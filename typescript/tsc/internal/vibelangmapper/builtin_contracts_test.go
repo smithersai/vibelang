@@ -168,7 +168,7 @@ func TestBuiltinContractsCase(t *testing.T) {
 }
 
 // TestBuiltinPlainCatchExceptions pins D260 for nested catches, catches
-// without a binding, and explicit throws, under every tracing mode. An
+// without a binding, and explicit throws. An
 // Effect catch still lets an unlisted exception through as a defect.
 func TestBuiltinPlainCatchExceptions(t *testing.T) {
 	source := `import { Effect } from "effect";
@@ -177,16 +177,14 @@ export function anonymous(text: string) { try { return JSON.parse(text) as numbe
 export function nested(text: string) { try { try { return JSON.parse(text) as number } catch (e) { throw e } } catch (e) { return e.name } }
 export function unsafe(text: string) { try { return JSON.parse(text) as number } catch(e) { throw e } }
 export function effectful(text: string) { try { Effect.succeed(0); return JSON.parse(text) as number } catch { return "caught" } }`
-	for _, tracing := range []string{"", "all", "exported"} {
-		t.Run(tracing, func(t *testing.T) {
-			dir, _ := stockBuiltinProject(t)
-			ctx := testContext
-			ctx.Tracing = tracing
-			js, _, ds := Emit(source, ctx)
-			if len(ds) > 0 {
-				t.Fatalf("%v", ds)
-			}
-			runner := `
+	t.Run("exceptions", func(t *testing.T) {
+		dir, _ := stockBuiltinProject(t)
+		ctx := testContext
+		js, _, ds := Emit(source, ctx)
+		if len(ds) > 0 {
+			t.Fatalf("%v", ds)
+		}
+		runner := `
 import { Effect as Runner, Cause as RunnerCause, Exit as RunnerExit } from "effect";
 const expected = [await Runner.runPromise(read("{")), await Runner.runPromise(anonymous("{")), await Runner.runPromise(nested("{"))];
 const escaped = await Runner.runPromise(Runner.flip(unsafe("{")));
@@ -196,18 +194,17 @@ const caught = await Promise.all([read("{"), anonymous("{"), nested("{")].map((p
 const defects = await Promise.all([unsafe("{"), effectful("{")].map((p) => Runner.runPromise(Runner.exit(p))));
 JSON.parse = original;
 console.log(JSON.stringify([expected, escaped.name, caught, defects.every((e) => RunnerExit.isFailure(e) && RunnerCause.hasDies(e.cause))]));`
-			if err := os.WriteFile(filepath.Join(dir, "main.mjs"), []byte(js+runner), 0600); err != nil {
-				t.Fatal(err)
-			}
-			cmd := exec.Command("node", "--no-warnings", "main.mjs")
-			cmd.Dir = dir
-			out, err := cmd.CombinedOutput()
-			if err != nil {
-				t.Fatalf("exec: %v\n%s\n%s", err, out, js)
-			}
-			if strings.TrimSpace(string(out)) != `[["SyntaxError","fallback","SyntaxError"],"SyntaxError",["TypeError","fallback","TypeError"],true]` {
-				t.Fatalf("wrong plain/Effect catch behavior: %s", out)
-			}
-		})
-	}
+		if err := os.WriteFile(filepath.Join(dir, "main.mjs"), []byte(js+runner), 0600); err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command("node", "--no-warnings", "main.mjs")
+		cmd.Dir = dir
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("exec: %v\n%s\n%s", err, out, js)
+		}
+		if strings.TrimSpace(string(out)) != `[["SyntaxError","fallback","SyntaxError"],"SyntaxError",["TypeError","fallback","TypeError"],true]` {
+			t.Fatalf("wrong plain/Effect catch behavior: %s", out)
+		}
+	})
 }

@@ -1457,6 +1457,9 @@ typescript/vibelang/cases/experimental-process/main.vibe:11:14 lambda effectFn t
 typescript/vibelang/cases/experimental-process/main.vibe:11:42 lambda effectFn table
 typescript/vibelang/cases/experimental-process/main.vibe:12:14 lambda effectFn table
 typescript/vibelang/cases/experimental-process/main.vibe:12:41 lambda effectFn table
+typescript/vibelang/cases/explicit-operation-spans/main.vibe:3:18 lambda dual fallback
+typescript/vibelang/cases/explicit-operation-spans/main.vibe:7:30 lambda program table
+typescript/vibelang/cases/explicit-operation-spans/main.vibe:9:27 byname program table
 typescript/vibelang/cases/explicit-type-argument-lambda/main.vibe:8:25 lambda choice fallback
 typescript/vibelang/cases/factory-body-throw.fail/main.vibe:7:23 lambda effectFn annotation
 typescript/vibelang/cases/factory-body-throw.fail/main.vibe:9:10 lambda choice fallback
@@ -2973,13 +2976,6 @@ typescript/vibelang/cases/rerun-parameter-assignment/main.vibe:8:27 lambda effec
 typescript/vibelang/cases/rerun-parameter-compound/main.vibe:2:24 lambda effectFn annotation
 typescript/vibelang/cases/rerun-parameter-compound/main.vibe:3:25 lambda effectFn annotation
 typescript/vibelang/cases/rerun-parameter-compound/main.vibe:8:27 lambda effectFn annotation
-typescript/vibelang/cases/rerun-parameter-method-traced/main.vibe:38:3 lambda effectFn annotation
-typescript/vibelang/cases/rerun-parameter-method-traced/main.vibe:43:23 lambda effectFn annotation
-typescript/vibelang/cases/rerun-parameter-method-traced/main.vibe:43:83 lambda plain table
-typescript/vibelang/cases/rerun-parameter-method-traced/main.vibe:44:40 lambda effectFn annotation
-typescript/vibelang/cases/rerun-parameter-method-traced/main.vibe:45:33 lambda effectFn annotation
-typescript/vibelang/cases/rerun-parameter-method-traced/main.vibe:46:24 lambda effectFn annotation
-typescript/vibelang/cases/rerun-parameter-method-traced/main.vibe:47:24 lambda effectFn annotation
 typescript/vibelang/cases/rerun-parameter-method/main.vibe:38:3 lambda effectFn annotation
 typescript/vibelang/cases/rerun-parameter-method/main.vibe:43:23 lambda effectFn annotation
 typescript/vibelang/cases/rerun-parameter-method/main.vibe:43:83 lambda plain table

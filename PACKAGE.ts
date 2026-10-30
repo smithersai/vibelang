@@ -177,6 +177,7 @@ const specTests = [
   "TestProvideCommaRecoveryQuoted",
   "TestMissingRuntimeQuoted",
   "TestWorkspaceDiagnosticOccurrencesQuoted",
+  "TestAutomaticTracingKeysQuoted",
   "TestServicesRulesQuoted",
   "TestProducerBindingQuoted",
   "TestEffectTypeSpacingQuoted",

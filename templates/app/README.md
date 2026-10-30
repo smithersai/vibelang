@@ -25,17 +25,9 @@ imports. Source maps connect Node debugging to those sources.
 
 ## Debugging failures
 
-During development, set `vibelang.tracing` to `"all"` at the top level of
-`tsconfig.json`:
-
-```json
-{ "vibelang": { "tracing": "all" } }
-```
-
-Merge this setting into your existing config, then rebuild or restart
-`bun run dev`. It adds source-located spans for local and exported function
-calls, making the caller chain visible when a defect occurs. Tracing adds
-runtime work; the default is `"none"`. See
+Run emitted JavaScript with `node --enable-source-maps` to map failures back
+to `.vibe` lines. Add operation spans explicitly with
+`try withSpan(program, "checkout")`. See
 [Debug stack traces](https://vibelang.sh/getting-started/012-devtools#debug-stack-traces).
 
 ## Editor

@@ -21,7 +21,6 @@
     "form": "plain",
     "identifier": "mapperLocal",
     "eol": "\n",
-    "tracing": "",
     "incomplete": "function unfinished(",
     "strictKnownFailures": true
   },
@@ -34,7 +33,7 @@
   "numRuns": 4,
   "numShrinks": 13,
   "error": "Fork accepts and executes the project; stock TypeScript receives EK9001 instead of the required EK9100 semantic refusal.",
-  "diagnostics": "\nM1 mapper-renderings form=plain modules=1\nM1 fork reference\nM1 execute native{\"result\":{\"text\":\"😀plain\",\"value\":0,\"trace\":[\"B1_TOKEN_0\"]},\"positive\":3,\"negative\":0}\n\nM1 stock check tracing=nonesrc/n0.vibe(4,24): error EK9001: The TypeScript 7 mapper does not lower this VibeLang form yet; TypeScript sees its source text unchanged.\n",
+  "diagnostics": "\nM1 mapper-renderings form=plain modules=1\nM1 fork reference\nM1 execute native{\"result\":{\"text\":\"\ud83d\ude00plain\",\"value\":0,\"trace\":[\"B1_TOKEN_0\"]},\"positive\":3,\"negative\":0}\n\nM1 stock check tracing=nonesrc/n0.vibe(4,24): error EK9001: The TypeScript 7 mapper does not lower this VibeLang form yet; TypeScript sees its source text unchanged.\n",
   "knownFailure": true,
   "reason": "D366/D416 require EK9100 when a fork-accepted program cannot be rendered. Importing from an inline TypeScript module is rejected with legacy EK9001 instead. Random projects retain native reference, protocol-span and edit checks; only this exact refusal-code mismatch is known.",
   "minimalInput": {
@@ -46,6 +45,6 @@
     "tsconfig.native.json": "{\"compilerOptions\":{\"target\":\"ES2022\",\"module\":\"NodeNext\",\"moduleResolution\":\"NodeNext\",\"strict\":true,\"skipLibCheck\":true,\"types\":[],\"lib\":[\"ES2022\",\"DOM\"],\"rootDir\":\".\",\"outDir\":\"dist\",\"noEmitOnError\":true,\"rewriteRelativeImportExtensions\":true,\"declaration\":true},\"include\":[\"src/**/*\"],\"vibelang\":{\"tracing\":\"none\"}}",
     "src/main.ts": "import { result } from \"./n0.vibe\"\nconsole.log(JSON.stringify(result))\n",
     "src/contracts.ts": "import { Effect } from \"effect\"\nimport { probe } from \"./n0.vibe\"\nconst forward: (n: number) => number = probe\nconst backward: typeof probe = forward\nconst notAny: 0 extends (1 & ReturnType<typeof probe>) ? true : false = false\nvoid backward; void notAny\n",
-    "src/n0.vibe": "module text {\n  export const result: { text: string; value: number; trace: string[] } = { text: \"😀plain\", value: 0, trace: [\"B1_TOKEN_0\"] }\n}\nimport { result } from text\nexport { result }\nexport function probe(mapperValue: number): number {\n  /* 😀plain */ const mapperLocal: number = mapperValue + 1\n  return mapperLocal\n}\n"
+    "src/n0.vibe": "module text {\n  export const result: { text: string; value: number; trace: string[] } = { text: \"\ud83d\ude00plain\", value: 0, trace: [\"B1_TOKEN_0\"] }\n}\nimport { result } from text\nexport { result }\nexport function probe(mapperValue: number): number {\n  /* \ud83d\ude00plain */ const mapperLocal: number = mapperValue + 1\n  return mapperLocal\n}\n"
   }
 }

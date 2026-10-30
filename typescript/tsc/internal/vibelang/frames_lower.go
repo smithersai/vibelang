@@ -562,10 +562,7 @@ func (tx *lowering) nameFreeGenerator(original *ast.Node, name string, parameter
 func (tx *lowering) selfBoundFunction(fn *ast.Node, parameters *ast.NodeList, body *ast.Node) *ast.Node {
 	f := tx.Factory()
 	generator := tx.forwarding(tx.nameFreeGenerator(fn, fn.Name().Text(), parameters, body))
-	// A traced expression captures its caller before forwarding, as a
-	// declaration does (forwardedTrace).
-	capture, pipeables := tx.forwardedTrace(fn)
-	lowered := tx.wrapFunction(fn, tx.generatedFunctions(generator), pipeables...)
+	lowered := tx.wrapGenerator("fnUntraced", fn, tx.generatedFunctions(generator))
 	apply := f.NewPropertyAccessExpression(lowered, nil /*questionDotToken*/, f.NewIdentifier("apply"), ast.NodeFlagsNone)
 	call := f.NewCallExpression(apply, nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList([]*ast.Node{f.NewThisExpression(), f.NewIdentifier("arguments")}), ast.NodeFlagsNone)
 	// Placeholder parameters keep the function's length, as a declaration's do.
@@ -586,7 +583,6 @@ func (tx *lowering) selfBoundFunction(fn *ast.Node, parameters *ast.NodeList, bo
 		}
 		statements = append(statements, f.NewExpressionStatement(f.NewStringLiteralFromNode(statement.Expression())))
 	}
-	statements = append(statements, capture...)
 	statements = append(statements, tx.generated(f.NewReturnStatement(call)))
 	expression := f.NewFunctionExpression(nil /*modifiers*/, nil /*asteriskToken*/, fn.Name(), nil /*typeParameters*/, f.NewNodeList(placeholders), nil /*type*/, nil /*fullSignature*/, f.NewBlock(f.NewNodeList(statements), true /*multiLine*/))
 	tx.EmitContext().SetOriginal(expression, fn)

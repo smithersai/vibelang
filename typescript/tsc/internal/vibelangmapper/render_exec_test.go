@@ -465,6 +465,7 @@ func TestEmitScopeOwnership(t *testing.T) {
 	js, _, diagnostics := Emit(source, testContext)
 	assert.Equal(t, len(diagnostics), 0, "%v\n%s", diagnostics, js)
 	assert.Assert(t, strings.Contains(js, "$region(($scope) => $gen(function* () {"), js)
+	assert.Assert(t, !strings.Contains(js, "f$fast"), js)
 	assert.Assert(t, strings.Contains(js, "$acquire($scope, acquire(\"log\"))"), js)
 	assert.Equal(t, strings.Count(js, "$region("), 2, js)
 	assert.Assert(t, !strings.Contains(js, "$scopedBody"), js)
@@ -584,14 +585,13 @@ func TestEmitReportsUnparsedText(t *testing.T) {
 }
 
 // TestEmitScopedContract keeps the contract's closing function brace
-// outside the private Scope and optional tracing wrapper (D14, D34, D57).
+// outside the private Scope (D14, D57).
 func TestEmitScopedContract(t *testing.T) {
 	t.Parallel()
 	ctx := testContext
-	ctx.Tracing = "all"
 	js, _, diagnostics := Emit("function f(): string!infer E { using r = lease(1); return r.name }", ctx)
 	assert.Equal(t, len(diagnostics), 0, "%v\n%s", diagnostics, js)
-	assert.Assert(t, strings.Contains(js, "$withSpan($region(($scope) => $gen(function* () {"), js)
+	assert.Assert(t, strings.Contains(js, "$region(($scope) => $gen(function* () {"), js)
 	assert.Assert(t, !strings.Contains(js, "f$fast"), js)
 }
 
@@ -624,36 +624,6 @@ func TestEmitProducerCleanup(t *testing.T) {
 	assert.Assert(t, strings.Contains(js, "$produce(() => $producerGen(function* () {"), js)
 	assert.Assert(t, strings.Contains(js, "$onExit($gen(() => it)"), js)
 	assert.Assert(t, strings.Contains(js, "it.return(undefined)"), js)
-}
-
-// TestEmitTracing keeps named functions, variable-bound arrows, and class
-// methods in their D34 spans; calls must not bypass them through fast entries.
-func TestEmitTracing(t *testing.T) {
-	t.Parallel()
-	source := `function inner() { return Effect.currentSpan().name }
- const viaArrow = () => Effect.currentSpan().name
- service Greeter { greet(): string!! }
- class Hello implements Greeter { greet() { return Effect.currentSpan().name } }
- export function main() { return [inner(), viaArrow(), new Hello().greet()] }`
-	for _, mode := range []string{"all", "exported"} {
-		t.Run(mode, func(t *testing.T) {
-			ctx := testContext
-			ctx.Tracing = mode
-			js, _, diagnostics := Emit(source, ctx)
-			for _, d := range diagnostics {
-				assert.Assert(t, d.Code != CodeExecSyntax, "%v\n%s", diagnostics, js)
-			}
-			assert.Assert(t, strings.Contains(js, `}), "main")`), js)
-			for _, name := range []string{"inner", "viaArrow", "Hello.greet"} {
-				assert.Equal(t, strings.Contains(js, `}), "`+name+`")`), mode == "all", js)
-			}
-			assert.Assert(t, !strings.Contains(js, "main$fast"), js)
-			if mode == "all" {
-				assert.Assert(t, strings.Contains(js, "(($t = inner()), $isRun($t) ? (yield* $t) : $t)"), js)
-				assert.Assert(t, !strings.Contains(js, "inner$fast"), js)
-			}
-		})
-	}
 }
 
 // TestEmitClauseContinuation keeps the continuation last when bindings

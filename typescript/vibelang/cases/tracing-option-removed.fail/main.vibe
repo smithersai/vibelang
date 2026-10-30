@@ -1,0 +1,2 @@
+// expect: TS5023
+export const value = 1

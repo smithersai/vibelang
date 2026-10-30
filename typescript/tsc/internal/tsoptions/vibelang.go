@@ -18,7 +18,6 @@ import (
 //
 //	"vibelang": {
 //	  "diagnostics": { "EK9204": "off", "EK4403": "warning" },
-//	  "tracing": "exported",
 //	  "trustedPackages": ["@smthrs/*"],
 //	  "declarationImportStyle": ".ts"
 //	}
@@ -32,7 +31,6 @@ var (
 	// change. Every other EK diagnostic keeps its category.
 	vibeLangAdjustableCodes = core.VibeLangAdjustableCodes
 	vibeLangCategories      = []string{"error", "warning", "off"}
-	vibeLangTracing         = []string{"none", "exported", "all"}
 	vibeLangImportStyles    = []string{".js", "extensionless", ".ts"}
 )
 
@@ -53,9 +51,6 @@ func parseVibeLangOptions(value any) *core.VibeLangOptions {
 				options.Diagnostics[code] = category
 			}
 		}
-	}
-	if tracing, ok := object.GetOrZero("tracing").(string); ok && slices.Contains(vibeLangTracing, tracing) {
-		options.Tracing = tracing
 	}
 	if style, ok := object.GetOrZero("declarationImportStyle").(string); ok && slices.Contains(vibeLangImportStyles, style) {
 		options.DeclarationImportStyle = style
@@ -138,10 +133,6 @@ func validateVibeLangOptions(value any, valueExpression *ast.Expression, sourceF
 					report(element, diagnostics.Argument_for_0_option_must_be_Colon_1, "vibelang.trustedPackages", "a valid package-name glob")
 				}
 			}
-		case "tracing":
-			if tracing, ok := v.(string); !ok || !slices.Contains(vibeLangTracing, tracing) {
-				report(jsonInitializer(property), diagnostics.Argument_for_0_option_must_be_Colon_1, "vibelang.tracing", quoteList(vibeLangTracing))
-			}
 		case "declarationImportStyle":
 			if style, ok := v.(string); !ok || !slices.Contains(vibeLangImportStyles, style) {
 				report(jsonInitializer(property), diagnostics.Argument_for_0_option_must_be_Colon_1, "vibelang.declarationImportStyle", quoteList(vibeLangImportStyles))
@@ -175,9 +166,6 @@ func serializeVibeLangOptions(options *core.VibeLangOptions) *collections.Ordere
 			codes.Set(code, options.Diagnostics[code])
 		}
 		result.Set("diagnostics", codes)
-	}
-	if options.Tracing != "" {
-		result.Set("tracing", options.Tracing)
 	}
 	if options.DeclarationImportStyle != "" {
 		result.Set("declarationImportStyle", options.DeclarationImportStyle)

@@ -13,8 +13,8 @@ import (
 // D297). A program reads another package's .vibe source when a project
 // imports a workspace package that exports it: TypeScript checks every source
 // file of the program, and the checker lowers each .vibe file to infer its
-// functions' Effect types. Trust (D261), diagnostic categories (D34), and
-// tracing (D34) decide what that file means, so they are the settings of the
+// functions' Effect types. Trust (D261) and diagnostic categories (D34)
+// decide what that file means, so they are the settings of the
 // package that owns it, the same settings its own build and the bundler
 // plugins compile it with:
 //

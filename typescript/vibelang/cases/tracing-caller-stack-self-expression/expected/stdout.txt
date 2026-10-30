@@ -1,1 +1,0 @@
-traced self-referring expression callers: ok

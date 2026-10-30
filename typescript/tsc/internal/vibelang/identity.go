@@ -58,7 +58,7 @@ func helpOptions() []*tsoptions.CommandLineOption {
 		IsTSConfigOnly:           true,
 		ShowInSimplifiedHelpView: true,
 		Category:                 diagnostics.Language_and_Environment,
-		Description:              diagnostics.NewAdHocMessage("Configure diagnostics, tracing and trusted packages in tsconfig.json (config only)."),
+		Description:              diagnostics.NewAdHocMessage("Configure diagnostics and trusted packages in tsconfig.json (config only)."),
 		DefaultValueDescription:  "{}",
 	})
 	return options

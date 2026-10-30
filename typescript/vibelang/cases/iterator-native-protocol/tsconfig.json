@@ -12,9 +12,7 @@
     "skipLibCheck": true,
     "outDir": "out",
     "declaration": true,
-    "vibelang": {
-      "tracing": "all"
-    }
+    "vibelang": {}
   },
   "include": [
     "*.vibe",

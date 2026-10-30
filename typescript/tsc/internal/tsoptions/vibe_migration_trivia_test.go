@@ -31,7 +31,7 @@ func TestLegacyMigrationAllCommentShapes(t *testing.T) {
 		{"entry-internal", `{"diagnostics":{"EK4830" /* KEEP_KEY */ : /* KEEP_VALUE */ "off"}}`},
 		{"wrapper-tail", `{"diagnostics":{"EK4830":"off"} // KEEP_WRAPPER_TAIL
 }`},
-		{"retained-wrapper", `{"tracing":"all", /* KEEP_BEFORE_MAP */ "diagnostics": /* KEEP_BEFORE_BRACE */ {"EK4830":"off" /* KEEP_TAIL */}}`},
+		{"retained-wrapper", `{"trustedPackages":["keep"], /* KEEP_BEFORE_MAP */ "diagnostics": /* KEEP_BEFORE_BRACE */ {"EK4830":"off" /* KEEP_TAIL */}}`},
 		{"strings", `{"diagnostics":{"EK4830":"off"},"trustedPackages":["https://example.invalid/*not-comment*/"] /* KEEP_STRING_NEIGHBOR */}`},
 	}
 	for _, shape := range shapes {
@@ -73,8 +73,8 @@ func TestLegacyMigrationAllCommentShapes(t *testing.T) {
 					if got := parsed.CompilerOptions().VibeLang; got == nil || !reflect.DeepEqual(got.Severities, want) || got.EffectModules != core.TSFalse {
 						t.Fatalf("changed options: %+v, want %v", got, want)
 					}
-					if shape.name == "retained-wrapper" && parsed.CompilerOptions().VibeLang.Tracing != "all" {
-						t.Fatal("lost tracing")
+					if kept := parsed.CompilerOptions().VibeLang.TrustedPackages; shape.name == "retained-wrapper" && (len(kept) != 1 || kept[0] != "keep") {
+						t.Fatal("lost trustedPackages")
 					}
 					if shape.name == "strings" && !strings.Contains(fixed, "https://example.invalid/*not-comment*/") {
 						t.Fatal("changed a string")

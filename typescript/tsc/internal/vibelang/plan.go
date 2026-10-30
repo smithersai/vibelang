@@ -30,7 +30,6 @@ type plan struct {
 	plainPlan
 	joinPlan
 	trustedPlan
-	tracingPlan
 	scopePlan
 	handlerPlan
 	producerPlan
@@ -64,7 +63,7 @@ func planFile(resolver printer.EmitResolver, file *ast.SourceFile) *plan {
 }
 
 func newFilePlan() *plan {
-	p := &plan{effects: map[*ast.Node]bool{}, programs: map[*ast.Node]bool{}, runs: map[*ast.Node]bool{}, heldPrograms: map[*ast.Node]bool{}, converts: map[*ast.Node]conversion{}, servicePlan: newServicePlan(), plainPlan: newPlainPlan(), trustedPlan: newTrustedPlan(), tracingPlan: newTracingPlan(), scopePlan: newScopePlan()}
+	p := &plan{effects: map[*ast.Node]bool{}, programs: map[*ast.Node]bool{}, runs: map[*ast.Node]bool{}, heldPrograms: map[*ast.Node]bool{}, converts: map[*ast.Node]conversion{}, servicePlan: newServicePlan(), plainPlan: newPlainPlan(), trustedPlan: newTrustedPlan(), scopePlan: newScopePlan()}
 	p.parameterWrites = map[*ast.Node]bool{}
 	p.returns = map[*ast.Node]bool{}
 	p.fieldlessErrorConstructors = map[*ast.Node]bool{}
@@ -176,7 +175,6 @@ func populateFilePlan(c *checker.Checker, file *ast.SourceFile, p *plan) {
 	p.prelude = core.Filter(p.prelude, func(name string) bool { return name != "$try" })
 	p.planTrustedCalls(c, a, file)
 	p.entry = planEntry(c, file)
-	p.planSpans(c, file)
 }
 
 // forEachCallInBody calls cb for each call that fn's own body evaluates,

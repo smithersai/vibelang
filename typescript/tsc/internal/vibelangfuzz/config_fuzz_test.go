@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"os"
 	"slices"
 	"strings"
 	"sync"
@@ -68,6 +69,20 @@ var ConfigSeeds = sync.OnceValue(func() [][2]string {
 	}
 	return seeds
 })
+
+// The current chapter lists the decided keys exhaustively; tracing has no
+// accepted VIP. Check the citation so changing it fails the spec gate.
+const automaticTracingKeysQuote = "The decided keys (VIP-30, amended) are:\n\n| Key | Meaning |\n| --- | --- |\n| `vibe.effectGlobals` | Boolean switch, default `true`, for Effect's function globals ([VIP-6](../vips/0006-effect-globals.md)); `false` turns them off. |\n| `vibe.effectModules` | Boolean switch, default `true`, for Effect's modules in scope ([VIP-14](../vips/0014-effect-modules-in-scope.md)); `false` turns them off. |\n| `vibe.severities` | Maps VibeLang's own warning codes and all imported `EK38xx` lint codes to `\"error\"`, `\"warning\"`, `\"suggestion\"` or `\"off\"` ([VIP-30](../vips/0030-config-files.md#decision), [VIP-34](../vips/0034-compiler-and-tooling.md#decision), [VIP-38](../vips/0038-effect-lint-built-in.md#decision)). |\n\n"
+
+func TestAutomaticTracingKeysQuoted(t *testing.T) {
+	chapter, err := os.ReadFile(SpecPath("007-tooling.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(chapter), automaticTracingKeysQuote) {
+		t.Fatal("configuration key citation changed")
+	}
+}
 
 // A configPlacement is where a project's settings sit (D34, D275).
 type configPlacement int

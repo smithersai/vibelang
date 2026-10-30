@@ -74,7 +74,7 @@ func (tx *lowering) lowerMethod(node *ast.Node) *ast.Node {
 		arguments = []*ast.Node{f.NewObjectLiteralExpression(f.NewNodeList([]*ast.Node{self}), false /*multiLine*/), generator}
 	}
 	gen := f.NewCallExpression(f.NewPropertyAccessExpression(tx.effectName(), nil /*questionDotToken*/, f.NewIdentifier("gen"), ast.NodeFlagsNone), nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList(arguments), ast.NodeFlagsNone)
-	block := f.NewBlock(f.NewNodeList([]*ast.Node{tx.generated(f.NewReturnStatement(tx.traceMethod(node, gen)))}), true /*multiLine*/)
+	block := f.NewBlock(f.NewNodeList([]*ast.Node{tx.generated(f.NewReturnStatement(gen))}), true /*multiLine*/)
 	lowered := f.UpdateMethodDeclaration(method, node.Modifiers(), method.AsteriskToken, node.Name(), method.PostfixToken, method.TypeParameters, parameters, method.Type, method.FullSignature, block)
 	ec.SetOriginal(lowered, node)
 	return lowered
@@ -111,7 +111,7 @@ func (tx *lowering) perRunMethod(node *ast.Node, parameters *ast.NodeList, body 
 		}
 		statements = append(statements, f.NewExpressionStatement(f.NewStringLiteralFromNode(statement.Expression())))
 	}
-	statements = append(statements, tx.generated(f.NewReturnStatement(tx.traceMethod(node, call))))
+	statements = append(statements, tx.generated(f.NewReturnStatement(call)))
 	block := f.NewBlock(f.NewNodeList(statements), true /*multiLine*/)
 	result := f.UpdateMethodDeclaration(method, node.Modifiers(), method.AsteriskToken, node.Name(), method.PostfixToken, method.TypeParameters, f.NewNodeList(forwarding), method.Type, method.FullSignature, block)
 	tx.EmitContext().SetOriginal(result, node)

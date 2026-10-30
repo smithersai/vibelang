@@ -83,10 +83,6 @@ type FileContext struct {
 	// declares, as the fork computes it (module.go): "app/src/users" for
 	// src/users.vibe in the package app.
 	ModuleKey string
-	// Tracing is the project's tracing mode (D34, Options): "exported",
-	// "all", or "". Spans change no type, so only the executable
-	// rendering reads it.
-	Tracing string
 }
 
 // Projection is the virtual TypeScript for one .vibe file.

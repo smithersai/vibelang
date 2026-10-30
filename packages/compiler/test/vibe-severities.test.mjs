@@ -83,14 +83,13 @@ export async function wait(value: Deferred.Deferred<number>) { return await valu
 
 for (const inherited of [false,true]) {
  test(`modern severities preserve ${inherited ? "inherited" : "local"} legacy options`,{skip},t=>{
-  const legacy={tracing:"all",trustedPackages:["example-package"]}
+  const legacy={trustedPackages:["example-package"]}
   const settings={vibe:{severities:{EK4609:"warning"}},...(inherited?{extends:"./base.json"}:{vibelang:legacy})}
   const dir=project(t,settings,source)
   if(inherited) writeFileSync(join(dir,"base.json"),JSON.stringify({vibelang:legacy}))
   const result=run(dir,"--showConfig")
   assert.equal(result.status,0,result.stdout+result.stderr)
   const shown=JSON.parse(result.stdout)
-  assert.equal(shown.compilerOptions.vibelang?.tracing,"all")
   assert.deepEqual(shown.compilerOptions.vibelang?.trustedPackages,["example-package"])
  })
 }
@@ -175,7 +174,7 @@ const legacyCommentShapes = {
  empty: '{"diagnostics":{/* KEEP_EMPTY */}}',
  superseded: '{"diagnostics":{/* KEEP_SUPERSEDED */ "EK4831":"error"}}',
  trailing: '{"diagnostics":{"EK4830":"off", // KEEP_TRAILING\n}}',
- retained: '{"tracing":"all", /* KEEP_PROPERTY */ "diagnostics":{"EK4830":"off" /* KEEP_MAP_TAIL */} // KEEP_WRAPPER_TAIL\n}',
+ retained: '{"trustedPackages":["keep"], /* KEEP_PROPERTY */ "diagnostics":{"EK4830":"off" /* KEEP_MAP_TAIL */} // KEEP_WRAPPER_TAIL\n}',
 }
 for (const [shape, legacy] of Object.entries(legacyCommentShapes)) {
  for (const nested of [false, true]) {

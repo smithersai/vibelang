@@ -44,7 +44,7 @@ code --install-extension node_modules/vibelang/editor/vibelang.vsix
 
 ## Debug your first program
 
-Source maps map JavaScript locations back to `.vibe` lines, but they don't record the
+Source maps map JavaScript locations back to `.vibe` lines (run the emitted JavaScript with `node --enable-source-maps`), but they don't record the
 caller chain, and VibeLang adds no spans of its own. Name a span where it matters
 with `try withSpan(effect { ... }, "load")`. See [Debug stack traces](/getting-started/012-devtools#debug-stack-traces)
 for source maps, named spans and a debugging entry.

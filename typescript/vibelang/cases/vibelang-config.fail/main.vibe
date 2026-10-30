@@ -1,6 +1,6 @@
 // expect: TS5023 TS6046
-// compilerOptions.vibelang in tsconfig.json has an unknown key (tracng),
-// a code that cannot be configured (EK9201), and two invalid values.
+// compilerOptions.vibelang rejects the unsupported tracing option and an
+// unknown key (tracng), a fixed diagnostic (EK9201), and an invalid severity.
 export function main() {
   return 1
 }

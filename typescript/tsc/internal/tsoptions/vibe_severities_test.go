@@ -80,7 +80,7 @@ func TestVibeSeverityLegacyMigration(t *testing.T) {
 	for _, text := range []string{
 		`{"vibelang":{"diagnostics":{"EK4609":"off"}},"files":["main.vibe"]}`,
 		`{"compilerOptions":{"vibelang":{"diagnostics":{"EK4609":"off"}}},"files":["main.vibe"]}`,
-		`{"vibelang":{"tracing":"all","diagnostics":{"EK4609":"off"}},"vibe":{"severities":{"EK4609":"warning"}},"files":["main.vibe"]}`,
+		`{"vibelang":{"trustedPackages":["example"],"diagnostics":{"EK4609":"off"}},"vibe":{"severities":{"EK4609":"warning"}},"files":["main.vibe"]}`,
 		"{ // keep me\n\"files\":[\"main.vibe\"],\"vibelang\":{\"diagnostics\":{\"EK4609\":\"off\"}}}",
 		`{"vibelang":{"diagnostics":{"EK4609":"off"}}}`,
 	} {
@@ -139,13 +139,16 @@ func TestVibeSeveritiesExtendsArrayAndSiblings(t *testing.T) {
 }
 
 func TestVibeSeveritiesLegacyCoexistence(t *testing.T) {
-	base := `{"vibelang":{"tracing":"all","trustedPackages":["example"]},"vibe":{"severities":{"EK4610":"warning"}}}`
-	for _, test := range []struct{ override, tracing string }{
-		{`"vibe":{"severities":{"EK4609":"off"}}`, "all"},
-		{`"compilerOptions":{"vibelang":{}}`, ""},
-		{`"compilerOptions":{"vibelang":null}`, ""},
-		{`"vibelang":null`, ""},
-		{`"vibelang":{"tracing":"none"},"vibe":{"severities":{"EK4609":"off"}}`, "none"},
+	base := `{"vibelang":{"trustedPackages":["example"]},"vibe":{"severities":{"EK4610":"warning"}}}`
+	for _, test := range []struct {
+		override string
+		trusted  []string
+	}{
+		{`"vibe":{"severities":{"EK4609":"off"}}`, []string{"example"}},
+		{`"compilerOptions":{"vibelang":{}}`, nil},
+		{`"compilerOptions":{"vibelang":null}`, nil},
+		{`"vibelang":null`, nil},
+		{`"vibelang":{"trustedPackages":["other"]},"vibe":{"severities":{"EK4609":"off"}}`, []string{"other"}},
 	} {
 		t.Run(test.override, func(t *testing.T) {
 			config := vibeConfig(t, `{"extends":"./base.json",`+test.override+`,"files":["main.vibe"]}`, base)
@@ -153,7 +156,7 @@ func TestVibeSeveritiesLegacyCoexistence(t *testing.T) {
 				t.Fatal(config.Errors)
 			}
 			options := config.CompilerOptions().VibeLang
-			if options == nil || options.Tracing != test.tracing || options.Severities["EK4610"] != "warning" {
+			if options == nil || !reflect.DeepEqual(options.TrustedPackages, test.trusted) || options.Severities["EK4610"] != "warning" {
 				t.Fatalf("lost independent sections: %+v", options)
 			}
 			shown, err := json.Marshal(tsoptions.ConvertToTSConfig(config, "/project/tsconfig.json"))

@@ -650,7 +650,7 @@ func (tx *lowering) lowerFunction(node *ast.Node) *ast.Node {
 	if node.Kind != ast.KindArrowFunction {
 		tx.forwarding(generator) // Effect.fnUntraced calls it with the function's this and arguments
 	}
-	lowered := tx.wrapFunction(node, generator)
+	lowered := tx.wrapGenerator("fnUntraced", node, generator)
 	if keepsThis(node) {
 		lowered = tx.Factory().NewFunctionBindCall(lowered, tx.Factory().NewThisExpression(), nil /*argumentsList*/)
 	}
@@ -787,7 +787,7 @@ func functionName(fn *ast.Node) string {
 // visitEffectFunctionDeclaration keeps a hoisted JavaScript declaration in
 // every lexical block (including declarations after a return). Only its body
 // becomes an Effect factory; moving a const cannot cover switch clauses or
-// cyclic module imports. Keep the existing generator and tracing wrapper so
+// cyclic module imports. Keep the existing generator wrapper so
 // defaults, destructuring, this, arguments, and recursive references still run
 // inside the Effect, rather than eagerly in the forwarding declaration. A
 // body with a direct Effect (direct.go) is the declaration's own body.
@@ -803,8 +803,7 @@ func (tx *lowering) visitEffectFunctionDeclaration(node *ast.Node) *ast.Node {
 	// The declaration stands for the source function; the generator it
 	// forwards to maps to no source position (generated.go) and runs as the
 	// source function on every run (frames_lower.go).
-	capture, pipeables := tx.forwardedTrace(node)
-	lowered := tx.wrapFunction(node, tx.generatedFunctions(tx.forwarding(tx.generatorFrom(node, loweredParameters, loweredBody))), pipeables...)
+	lowered := tx.wrapGenerator("fnUntraced", node, tx.generatedFunctions(tx.forwarding(tx.generatorFrom(node, loweredParameters, loweredBody))))
 
 	// Forward all arguments without evaluating the source parameters twice.
 	// Placeholder parameters preserve fnUntraced's observable function length.
@@ -830,7 +829,6 @@ func (tx *lowering) visitEffectFunctionDeclaration(node *ast.Node) *ast.Node {
 		}
 		statements = append(statements, f.NewExpressionStatement(f.NewStringLiteralFromNode(statement.Expression())))
 	}
-	statements = append(statements, capture...)
 	statements = append(statements, tx.generated(f.NewReturnStatement(call)))
 	body := f.NewBlock(f.NewNodeList(statements), true /*multiLine*/)
 	return tx.effectFunctionDeclaration(node, f.NewNodeList(parameters), body)

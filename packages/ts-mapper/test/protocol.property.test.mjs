@@ -11,7 +11,7 @@ import { checkProperty } from "../../../scripts/testing/property.mjs"
 import { projectArbitrary, projectFiles } from "../../../scripts/testing/projects.mjs"
 import { client, languageServer, offset, position } from "./protocol-client.mjs"
 
-const { M1_WORK: work, M1_MAPPER: mapper, M1_TRACING_MAPPER: tracingMapper, M1_STOCK: stock, VIBELANG_BINARY: compiler } = process.env
+const { M1_WORK: work, M1_MAPPER: mapper, M1_STOCK: stock, VIBELANG_BINARY: compiler } = process.env
 const tooling = "docs/design/history/src/428-part4-ch28-tooling.md"
 const spansRule = `${tooling}: Diagnostics (D61), The editor; metamorphic verbatim/edit round trips`
 const renderRule = "docs/design/history/src/427-part4-ch27-compiler.md: Other renderings (D366/D416); docs/design/history/src/213-part2-ch13-calls.md: Contracts; docs/design/history/src/326-part3-ch26-compiled.md: Modules"
@@ -19,7 +19,7 @@ const regressions = new URL("./property-regressions/", import.meta.url)
 const arbitrary = fc.record({ project: projectArbitrary(fc),
   form: fc.constantFrom("plain", "contract", "failure", "hatch"),
   identifier: fc.constantFrom("mapperLocal", "café", "雪"),
-  eol: fc.constantFrom("\n", "\r\n"), tracing: fc.constantFrom("", "exported", "all"),
+  eol: fc.constantFrom("\n", "\r\n"),
   incomplete: fc.constantFrom("function unfinished(", "export const unfinished = (", "function unfinished() { return 1 +") })
 let diagnostics = "", failureDiagnostics = ""
 const coverage = {}
@@ -61,9 +61,9 @@ function project(input) {
   const config = JSON.parse(files["tsconfig.json"])
   Object.assign(config.compilerOptions, { declaration: true })
   config.contentMappers = [{ package: "vibelang-ts-mapper", extensions: [".vibe"],
-    outputExtensions: { ".vibe": ".js" }, options: { tracing: input.tracing } }]
+    outputExtensions: { ".vibe": ".js" } }]
   files["tsconfig.json"] = JSON.stringify(config)
-  const native = { ...config, vibelang: { tracing: input.tracing || "none" } }
+  const native = { ...config }
   delete native.contentMappers
   files["tsconfig.native.json"] = JSON.stringify(native)
   for (const file of Object.keys(files).filter(file => /\.(vibe|ts)$/.test(file))) files[file] = files[file].replaceAll("\n", input.eol)
@@ -111,7 +111,7 @@ async function positions(root, input, p) {
     const init = await rpc.request("initialize", { positionEncodings: ["utf-16", "utf-8"] })
     assert.equal(init.positionEncoding, "utf-8")
     await rpc.request("openProject", { projectHandle: "M1", configFileName: join(root, "tsconfig.json"),
-      compilerOptions: {}, options: { tracing: input.tracing } })
+      compilerOptions: {} })
     trace("wire transforms")
     const transform = (file, content) => rpc.request("transform", { projectHandle: "M1", fileName: join(root, file), content })
     for (const [file, text] of Object.entries(p.files).filter(([file]) => file.endsWith(".vibe"))) mappings(text, await transform(file, text))
@@ -213,11 +213,10 @@ async function renderings(root, input, p) {
   const expected = { result: p.expected, positive: 3, negative: input.form === "failure" ? { tag: "MapperFailure", value: -1 } : 0 }
   assert.deepEqual(execute(root, p, "native"), expected)
   const config = JSON.parse(p.files["tsconfig.json"])
-  // D34/D366: tracing changes spans, but must retain contracts and observations.
-  for (const tracing of new Set(["", input.tracing || "all"])) {
-    config.contentMappers[0].options.tracing = tracing
+  {
+    // Retain contracts and observations through the production mapper.
     writeFileSync(join(root, "tsconfig.json"), JSON.stringify(config))
-    const check = () => run(stock, ["-p", "tsconfig.json", "--outDir", "stock", "--runExternalCode", ...args], root, `stock check tracing=${tracing || "none"}`)
+    const check = () => run(stock, ["-p", "tsconfig.json", "--outDir", "stock", "--runExternalCode", ...args], root, `stock check`)
     let checked = check()
     // Pending D421 (property-regressions/contract-member.json): a pure body with an Effect annotation gains a required $plain
     // member. Keep the strict, shrunk assignment below in the regression; random projects
@@ -237,15 +236,14 @@ async function renderings(root, input, p) {
         errors.every(line => /error EK9001: The TypeScript 7 mapper does not lower this VibeLang form yet;/.test(line))
       if (knownInline) trace("known inline-refusal diagnostic-code regression")
       else assert.match(checked.stdout + checked.stderr, /(?:EK|TS)9100\b/, "fork-accepted input requires stock acceptance or an explicit EK9100 refusal")
-      coverage[`${input.form}:refused:${tracing}`] = (coverage[`${input.form}:refused:${tracing}`] || 0) + 1
-      continue
+      coverage[`${input.form}:refused`] = (coverage[`${input.form}:refused`] || 0) + 1
+      return
     }
-    coverage[`${input.form}:accepted:${tracing}`] = (coverage[`${input.form}:accepted:${tracing}`] || 0) + 1
+    coverage[`${input.form}:accepted`] = (coverage[`${input.form}:accepted`] || 0) + 1
     for (const file of Object.keys(p.files).filter(file => file.endsWith(".vibe"))) {
-      const emitted = run(tracing ? tracingMapper : mapper, ["--emit", join(root, file), "--out", join(root, "stock", file.replace(/\.vibe$/, ".js")),
-        ...(tracing ? ["--tracing", tracing] : [])], root, `mapper emit ${file} tracing=${tracing || "none"}`)
+      const emitted = run(mapper, ["--emit", join(root, file), "--out", join(root, "stock", file.replace(/\.vibe$/, ".js"))], root, `mapper emit ${file}`)
       assert.equal(emitted.status, 0, emitted.stdout + emitted.stderr)
-      assert.doesNotMatch(emitted.stderr, /error EK\d+:/, "the tracing adapter reports semantic diagnostics on stderr")
+      assert.doesNotMatch(emitted.stderr, /error EK\d+:/, "the mapper reports semantic diagnostics on stderr")
     }
     sourceMaps(root, p, "stock")
     for (const out of ["native", "stock"]) {
@@ -260,7 +258,7 @@ async function renderings(root, input, p) {
 
 for (const [name, rule, check] of [["mapper-positions", spansRule, positions], ["mapper-renderings", renderRule, renderings]]) {
   test(name, async () => {
-    for (const [key, value] of Object.entries({ work, mapper, tracingMapper, stock, compiler })) assert.ok(value, `missing ${key}; run bash test/e2e.sh`)
+    for (const [key, value] of Object.entries({ work, mapper, stock, compiler })) assert.ok(value, `missing ${key}; run bash test/e2e.sh`)
     await checkProperty(fc, { name, rule, arbitrary, numRuns: 10, regressions, artifacts, diagnostics: () => failureDiagnostics || diagnostics,
       command: "bash test/e2e.sh", check: async input => {
         diagnostics = ""

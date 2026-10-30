@@ -1,7 +1,10 @@
 {
   "compilerOptions": {
     "target": "es2022",
-    "lib": ["esnext", "dom"],
+    "lib": [
+      "esnext",
+      "dom"
+    ],
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "strict": true,
@@ -9,7 +12,10 @@
     "skipLibCheck": true,
     "rewriteRelativeImportExtensions": true,
     "outDir": "out",
-    "vibelang": { "diagnostics": { "EK9204": "off", "EK4403": "warning" }, "tracing": "exported" }
+    "vibelang": { "diagnostics": { "EK9204": "off", "EK4403": "warning" } }
   },
-  "include": ["*.vibe", "*.ts"]
+  "include": [
+    "*.vibe",
+    "*.ts"
+  ]
 }

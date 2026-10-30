@@ -209,7 +209,7 @@ effect function productionReport() {
 
 ## Coming from Effect
 
-`withSpan` still adds tracing explicitly and takes an Effect value: `try withSpan(program, "name")`. Use `effect { ... }` when the spanned operation needs several statements. `Effect.withSpan` currently draws EK4836 and offers a quick fix to `withSpan`. Support for the new forms arrives with the compiler's VIP implementation. Don't span every helper to reproduce function boundaries; instrument the operations you need to diagnose.
+`withSpan` adds tracing explicitly and takes an Effect value: `try withSpan(program, "name")`. Use `effect { ... }` when the spanned operation needs several statements. Automatic function spans are not a compiler option; use `withSpan` to choose each operation boundary. Don't span every helper to reproduce function boundaries; instrument the operations you need to diagnose.
 
 ---
 

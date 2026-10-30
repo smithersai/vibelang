@@ -57,7 +57,7 @@ const (
 // generator, given body, node's lowered body, or nil when body needs one.
 // role says what its thunk stands for.
 func (tx *lowering) directEffect(node *ast.Node, body *ast.Node, role thunkRole) *ast.Node {
-	if _, traced := tx.plan.spans[node]; traced || ast.GetFunctionFlags(node)&ast.FunctionFlagsAsyncGenerator != 0 || tx.plan.resumesInTail(node) {
+	if ast.GetFunctionFlags(node)&ast.FunctionFlagsAsyncGenerator != 0 || tx.plan.resumesInTail(node) {
 		return nil
 	}
 	f := tx.Factory()

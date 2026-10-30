@@ -245,3 +245,31 @@ func helperContainerHoldsEffect(c *checker.Checker, t *checker.Type) bool {
 	}
 	return visit(t)
 }
+
+// isExportedFunction reports whether fn is a function declaration, or a
+// function a top-level const initializes, that file exports, by an export
+// modifier or an export declaration.
+func isExportedFunction(c *checker.Checker, file *ast.SourceFile, fn *ast.Node) bool {
+	declaration := fn
+	if fn.Kind != ast.KindFunctionDeclaration {
+		declaration = fn.Parent
+		if declaration == nil || declaration.Kind != ast.KindVariableDeclaration || declaration.Initializer() != fn {
+			return false
+		}
+	}
+	symbol := c.GetSymbolOfDeclaration(declaration)
+	module := file.AsNode().Symbol()
+	if symbol == nil || module == nil {
+		return false
+	}
+	for _, export := range c.GetExportsOfModule(module) {
+		target := export
+		if target.Flags()&ast.SymbolFlagsAlias != 0 {
+			target = c.GetAliasedSymbol(target)
+		}
+		if c.GetMergedSymbol(target) == c.GetMergedSymbol(symbol) {
+			return true
+		}
+	}
+	return false
+}

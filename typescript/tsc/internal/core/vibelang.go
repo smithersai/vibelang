@@ -24,9 +24,6 @@ type VibeLangOptions struct {
 	// Diagnostics maps an EK code in VibeLangAdjustableCodes, such as "EK9204",
 	// to "error", "warning", or "off".
 	Diagnostics map[string]string `json:"diagnostics,omitzero"`
-	// Tracing is "none", "exported", or "all": which functions compile with
-	// Effect.fn spans. Empty means "none".
-	Tracing string `json:"tracing,omitzero"`
 	// DeclarationImportStyle is ".js", "extensionless", or ".ts": how an
 	// emitted declaration spells a relative import of a VibeLang module that
 	// the source writes ./x.vibe, as ./x.js, ./x, or ./x.ts (D298). Empty
@@ -69,7 +66,7 @@ func (o *VibeLangOptions) Equals(other *VibeLangOptions) bool {
 	if o == nil || other == nil {
 		return o == other
 	}
-	return o.VibeOnly == other.VibeOnly && maps.Equal(o.Severities, other.Severities) && maps.Equal(o.InvalidSeverities, other.InvalidSeverities) && o.EffectGlobals == other.EffectGlobals && o.EffectModules == other.EffectModules && o.Tracing == other.Tracing && o.DeclarationImportStyle == other.DeclarationImportStyle && slices.Equal(o.TrustedPackages, other.TrustedPackages) && maps.Equal(o.Diagnostics, other.Diagnostics)
+	return o.VibeOnly == other.VibeOnly && maps.Equal(o.Severities, other.Severities) && maps.Equal(o.InvalidSeverities, other.InvalidSeverities) && o.EffectGlobals == other.EffectGlobals && o.EffectModules == other.EffectModules && o.DeclarationImportStyle == other.DeclarationImportStyle && slices.Equal(o.TrustedPackages, other.TrustedPackages) && maps.Equal(o.Diagnostics, other.Diagnostics)
 }
 
 // VibeSeverityCode implements VIP-30/34/38, details 57 and 77. Legacy
@@ -97,7 +94,6 @@ func MergeVibeSettings(base, child *VibeLangOptions) *VibeLangOptions {
 	if child.VibeOnly && !base.VibeOnly {
 		result.VibeOnly = false
 		result.Diagnostics = base.Diagnostics
-		result.Tracing = base.Tracing
 		result.TrustedPackages = base.TrustedPackages
 		result.DeclarationImportStyle = base.DeclarationImportStyle
 	}

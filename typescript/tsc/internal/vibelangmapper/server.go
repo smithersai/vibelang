@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
@@ -38,26 +39,8 @@ func Serve(ctx context.Context, rwc io.ReadWriteCloser) error {
 // Handler implements the content mapper protocol: initialize, openProject,
 // transform and closeProject. The protocol is driven by TypeScript alone. A
 // projection depends only on its file's text and context (FileContextOf),
-// which reads package.json files that openProject reports as watched, and
-// on the options of the mapper's tsconfig entry, which openProject records
-// per project handle.
-type Handler struct {
-	mu       sync.Mutex
-	projects map[string]Options
-}
-
-// Options are the mapper entry's options in a project's tsconfig:
-//
-//	"contentMappers": [{ "package": "vibelang-ts-mapper", "extensions": [".vibe"], "options": { "tracing": "all" } }]
-//
-// TypeScript folds them into the transform identity, so changing one
-// projects every file again.
-type Options struct {
-	// Tracing is the fork's compilerOptions.vibelang.tracing (D34):
-	// "exported", "all", or "" for none. Only the executable rendering
-	// reads it; spans change no type.
-	Tracing string `json:"tracing,omitempty"`
-}
+// which reads package.json files that openProject reports as watched.
+type Handler struct{}
 
 // HandleRequest answers one protocol request.
 func (h *Handler) HandleRequest(ctx context.Context, method string, params json.Value) (any, error) {
@@ -67,12 +50,6 @@ func (h *Handler) HandleRequest(ctx context.Context, method string, params json.
 	case contentmapper.MethodOpenProject:
 		return h.openProject(params)
 	case contentmapper.MethodCloseProject:
-		var p contentmapper.CloseProjectParams
-		if err := json.Unmarshal(params, &p); err == nil {
-			h.mu.Lock()
-			delete(h.projects, p.ProjectHandle)
-			h.mu.Unlock()
-		}
 		return nil, nil
 	case contentmapper.MethodTransform:
 		return h.transform(params)
@@ -138,28 +115,22 @@ func (h *Handler) openProject(params json.Value) (any, error) {
 	}
 	files, identity := projectPackageFiles(p.ConfigFileName)
 	result := contentmapper.OpenProjectResult{ConfigIdentity: buildIdentity() + ":" + identity, WatchedFiles: files}
-	var options Options
-	if len(p.Options) > 0 && json.Unmarshal(p.Options, &options) != nil {
-		result.OptionDiagnostics = append(result.OptionDiagnostics, contentmapper.OptionDiagnosticResult{
-			Path: []json.Value{}, MessageText: "vibelang-ts-mapper's options are an object: { \"tracing\": \"exported\" | \"all\" }.", Code: CodeInvalidOption,
-		})
+	var options map[string]json.Value
+	if len(p.Options) > 0 {
+		if err := json.Unmarshal(p.Options, &options); err != nil || options == nil {
+			result.OptionDiagnostics = append(result.OptionDiagnostics, contentmapper.OptionDiagnosticResult{
+				Path: []json.Value{}, MessageText: "vibelang-ts-mapper's options must be an empty object.", Code: CodeInvalidOption,
+			})
+		} else {
+			for _, key := range slices.Sorted(maps.Keys(options)) {
+				result.OptionDiagnostics = append(result.OptionDiagnostics, contentmapper.OptionDiagnosticResult{
+					Path:        []json.Value{json.Value(strconv.Quote(key))},
+					MessageText: "Unknown vibelang-ts-mapper option " + strconv.Quote(key) + "; remove it.",
+					Code:        CodeInvalidOption,
+				})
+			}
+		}
 	}
-	switch options.Tracing {
-	case "", "exported", "all":
-	default:
-		result.OptionDiagnostics = append(result.OptionDiagnostics, contentmapper.OptionDiagnosticResult{
-			Path:        []json.Value{json.Value(`"tracing"`)},
-			MessageText: "tracing is \"exported\" or \"all\" (D34), not " + strconv.Quote(options.Tracing) + ".",
-			Code:        CodeInvalidOption,
-		})
-		options.Tracing = ""
-	}
-	h.mu.Lock()
-	if h.projects == nil {
-		h.projects = map[string]Options{}
-	}
-	h.projects[p.ProjectHandle] = options
-	h.mu.Unlock()
 	if table, err := DefaultTable(); err == nil && p.ConfigFileName != "" {
 		dir := path.Dir(filepath.ToSlash(p.ConfigFileName))
 		if message := versionMismatch(table.Header, dir, os.ReadFile); message != "" {
@@ -175,17 +146,13 @@ func (h *Handler) openProject(params json.Value) (any, error) {
 }
 
 // transform projects one file from its content and its context, with the
-// options its project's tsconfig entry gives.
+// context derived from its file name.
 func (h *Handler) transform(params json.Value) (any, error) {
 	var p contentmapper.TransformParams
 	if err := json.Unmarshal(params, &p); err != nil {
 		return nil, err
 	}
-	ctx := FileContextOf(p.FileName)
-	h.mu.Lock()
-	ctx.Tracing = h.projects[p.ProjectHandle].Tracing
-	h.mu.Unlock()
-	return TransformResult(Project(p.Content, ctx))
+	return TransformResult(Project(p.Content, FileContextOf(p.FileName)))
 }
 
 // TransformResult encodes projection as the protocol's transform result.

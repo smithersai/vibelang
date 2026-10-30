@@ -110,11 +110,8 @@ func (tx *lowering) visitCyclicPlainFunctionDeclaration(node *ast.Node) *ast.Nod
 	savedCallbacks := tx.rawCallbacks
 	tx.rawCallbacks = true
 	effect := tx.visitEffectFunctionDeclaration(node)
-	// A traced factory's pipeable closes over this invocation's caller
-	// capture. Only untraced factories can be shared across invocations.
-	traced := tx.plan.spans[node] != ""
 	cached := false
-	if statements := effect.Body().Statements(); !traced && len(statements) > 0 {
+	if statements := effect.Body().Statements(); len(statements) > 0 {
 		ret := statements[len(statements)-1]
 		if ast.IsReturnStatement(ret) && ast.IsCallExpression(ret.Expression()) {
 			invoke := ret.Expression()
@@ -134,7 +131,7 @@ func (tx *lowering) visitCyclicPlainFunctionDeclaration(node *ast.Node) *ast.Nod
 		}
 	}
 
-	if !cached && !traced {
+	if !cached {
 		// A direct-Effect optimization binds the real source parameters
 		// in its declaration. Retain that binding in a private factory
 		// when restoring the public plain wrapper's zero arity.

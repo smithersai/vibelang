@@ -34,7 +34,7 @@ func sidecarConfigFixes(fs vfs.FS, errors []*ast.Diagnostic) (vfs.FS, map[tspath
 		}
 		if legacy {
 			args := diagnostic.MessageArgs()
-			if !slices.Contains(args, "vibelang.declarationSidecars") && !slices.Contains(args, "vibe.declarationSidecars") && !slices.Contains(args, "declarationSidecars") {
+			if !slices.ContainsFunc(args, isRetiredConfigOptionArg) {
 				continue
 			}
 		}
@@ -128,7 +128,7 @@ func removedSidecarSettingEdits(file *ast.SourceFile) []sourceEdit {
 		// The setting was all the object held, and no comment is in it: the
 		// object goes too, with its separator, rather than staying "vibelang": {}.
 		if len(properties) > 0 && !slices.ContainsFunc(properties, func(property *ast.Node) bool {
-			return sidecarConfigPropertyName(property) != "declarationSidecars"
+			return !retiredConfigOption(sidecarConfigPropertyName(property))
 		}) {
 			holder := held.siblings[held.index]
 			start, end := nodeStart(file, holder), holder.End()
@@ -148,7 +148,7 @@ func removedSidecarSettingEdits(file *ast.SourceFile) []sourceEdit {
 			}
 		}
 		for i, property := range properties {
-			if sidecarConfigPropertyName(property) != "declarationSidecars" {
+			if !retiredConfigOption(sidecarConfigPropertyName(property)) {
 				continue
 			}
 			start, end := nodeStart(file, property), property.End()
@@ -210,8 +210,28 @@ func reportSidecarConfigFixes(sys tsc.System, changes map[tspath.RootedFilePath]
 	}
 	slices.Sort(names)
 	for _, name := range names {
-		fmt.Fprintf(sys.Writer(), "vibelang --fix: %s: removed obsolete declarationSidecars setting\n", relativeName(sys, name))
+		fmt.Fprintf(sys.Writer(), "vibelang --fix: %s: removed obsolete %s\n", relativeName(sys, name), retiredConfigOptionsLabel)
 	}
+}
+
+// retiredConfigOptions are the vibelang and vibe settings that no longer
+// exist: declarationSidecars (VIP-27: declaration sidecars are unconditional)
+// and tracing (automatic spans were never part of the language). --fix
+// removes each from a config and reports it; nothing else in the file moves.
+var retiredConfigOptions = []string{"declarationSidecars", "tracing"}
+
+const retiredConfigOptionsLabel = "declarationSidecars or tracing setting"
+
+func retiredConfigOption(name string) bool { return slices.Contains(retiredConfigOptions, name) }
+
+// isRetiredConfigOptionArg matches TS5023's argument, the dotted option name.
+func isRetiredConfigOptionArg(name string) bool {
+	for _, option := range retiredConfigOptions {
+		if name == option || name == "vibelang."+option || name == "vibe."+option {
+			return true
+		}
+	}
+	return false
 }
 
 func sidecarConfigPropertyName(property *ast.Node) string {

@@ -116,7 +116,7 @@ node -e 'require("node:fs").writeFileSync(process.argv[1], JSON.stringify({ Repl
   "$work/emit-overlay.json" "$root/typescript/tsc/cmd/vibelang-mapper/main.go" "$here/parity/emit-main.go"
 (cd "$root/typescript/tsc" && CGO_ENABLED=0 sh "$root/scripts/native-output.sh" build "$work/emit-options" -overlay "$work/emit-overlay.json" -trimpath -gcflags=all=-dwarf=false ./cmd/vibelang-mapper)
 (cd "$package" && M1_WORK="$work" M1_MAPPER="$package/bin/vibelang-mapper" M1_STOCK="$native" \
-  M1_TRACING_MAPPER="$work/emit-options" VIBELANG_BINARY="$VIBELANG_BINARY" node --test "$here/protocol.property.test.mjs")
+  VIBELANG_BINARY="$VIBELANG_BINARY" node --test "$here/protocol.property.test.mjs")
 
 step "a .vibe file emitted as .js: stock tsc, vibelang-mapper --emit, node"
 # Inside $work, so the project resolves this package, effect and the runtime

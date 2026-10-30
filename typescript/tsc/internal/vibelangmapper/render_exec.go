@@ -296,7 +296,6 @@ var execHelpers = map[string]execSource{
 	"$sync":            {"effect/Effect", "sync"},
 	"$resume":          {"vibelang-runtime", "resume"},
 	"$resumeWith":      {"vibelang-runtime", "resumeWith"},
-	"$withSpan":        {"effect/Effect", "withSpan"},
 	"$onExit":          {"effect/Effect", "onExit"},
 	"$map":             {"effect/Effect", "map"},
 	"$fnUntraced":      {"effect/Effect", "fnUntraced"},
@@ -597,7 +596,6 @@ func (p *projector) execPlan() *plan {
 	l.args = p.freshWord("$args")
 	l.scopeBodies()
 	l.splitFunctions()
-	l.traceBodies()
 	l.lowerCalls()
 	l.lowerServiceCalls()
 	l.lowerClauses()
@@ -701,9 +699,6 @@ func (l *execLowering) splitFunctions() {
 			continue
 		}
 		name := statement.Name().Text()
-		if l.traceName(statement) != "" && l.p.plainBuiltinBodies[statement] == nil {
-			continue
-		}
 		if declarations[name] != 1 || ast.HasSyntacticModifier(statement, ast.ModifierFlagsAmbient) {
 			continue
 		}
@@ -1470,87 +1465,6 @@ func (l *execLowering) lowerClauses() {
 							}
 							l.insert(end, "; return "+pending+"; ")
 						}
-					}
-				}
-			}
-		}
-		n.ForEachChild(func(c *ast.Node) bool { visit(c); return false })
-	}
-	visit(l.p.file.AsNode())
-}
-
-// traceName names the D34 span of a named Effect function. Anonymous
-// callbacks share their caller's span; a variable names only its own lambda.
-func (l *execLowering) traceName(n *ast.Node) string {
-	mode := l.p.ctx.Tracing
-	if mode != "all" && mode != "exported" {
-		return ""
-	}
-	name := ""
-	exported := ast.HasSyntacticModifier(n, ast.ModifierFlagsExport)
-	switch n.Kind {
-	case ast.KindFunctionDeclaration, ast.KindFunctionExpression:
-		if n.Name() != nil {
-			name = n.Name().Text()
-		}
-	case ast.KindMethodDeclaration:
-		if ast.IsClassLike(n.Parent) && n.Parent.Name() != nil && n.Name() != nil {
-			name = n.Parent.Name().Text() + "." + n.Name().Text()
-			exported = ast.HasSyntacticModifier(n.Parent, ast.ModifierFlagsExport)
-		}
-	}
-	if name == "" && n.Parent != nil && n.Parent.Kind == ast.KindVariableDeclaration && ast.IsIdentifier(n.Parent.Name()) {
-		name = n.Parent.Name().Text()
-		statement := n.Parent.Parent.Parent
-		exported = statement != nil && ast.HasSyntacticModifier(statement, ast.ModifierFlagsExport)
-	}
-	if mode == "exported" && !exported {
-		return ""
-	}
-	return name
-}
-
-// traceBodies wraps named Effect bodies in withSpan (D34). Selected
-// declarations are left unsplit so neither a same-file fast call nor an
-// imported direct call can bypass the span.
-func (l *execLowering) traceBodies() {
-	bodies := map[int]span{}
-	for _, kind := range []editKind{editEffectBody, editContract} {
-		for _, s := range l.spans[kind] {
-			bodies[l.edits[s.close].pos] = s
-		}
-	}
-	var visit func(*ast.Node)
-	visit = func(n *ast.Node) {
-		if ast.IsFunctionLike(n) && n.Body() != nil {
-			if name := l.traceName(n); name != "" {
-				end := n.Body().End()
-				if n.Body().Kind == ast.KindBlock {
-					end--
-				}
-				s, ok := bodies[end]
-				if !ok {
-					s, ok = bodies[n.Body().End()]
-				}
-				if ok {
-					opening := s.open
-					if s.middle >= 0 {
-						opening = s.middle
-					}
-					open, _ := renderExec(l.edits[opening])
-					close, _ := renderExec(l.edits[s.close])
-					at := strings.Index(open, helperRef("$region"))
-					if at < 0 {
-						at = strings.Index(open, helperRef("$gen"))
-					}
-					if at >= 0 {
-						l.set(opening, open[:at]+helperRef("$withSpan")+"("+open[at:])
-						if s.middle >= 0 {
-							close = strings.TrimSuffix(close, "}") + ", " + strconv.Quote(name) + ")}"
-						} else {
-							close += ", " + strconv.Quote(name) + ")"
-						}
-						l.set(s.close, close)
 					}
 				}
 			}

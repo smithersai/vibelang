@@ -87,7 +87,7 @@ func FuzzLegacyConfigComments(f *testing.F) {
 		legacy := `{"diagnostics":{` + entries + `}`
 		expectedLegacy := ""
 		if retained {
-			extra := `,"tracing":"all","trustedPackages":["https://example.invalid/*string*/"]`
+			extra := `,"trustedPackages":["https://example.invalid/*string*/"]`
 			legacy += extra
 			expectedLegacy = `,"vibelang":{` + strings.TrimPrefix(extra, ",") + `}`
 		}

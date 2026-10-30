@@ -116,7 +116,6 @@ fi
 PARITY_ROOT="$root" \
 PARITY_FORK_TSC="$out/bin/tsc" \
 PARITY_MAPPER="$out/bin/vibelang-mapper" \
-PARITY_TRACING_EMITTER="$out/bin/vibelang-emit-options" \
 PARITY_STOCK_TSC="$stock_tsc" \
 PARITY_EFFECT_DIR="$effect_real" \
 PARITY_RUNTIME_DIR="$runtime" \

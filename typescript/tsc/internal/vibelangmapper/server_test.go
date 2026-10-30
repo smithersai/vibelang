@@ -77,22 +77,6 @@ func TestVersionMismatchDiagnostic(t *testing.T) {
 	assert.Assert(t, strings.Contains(diagnostics[0].MessageText, "effect 3.0.0 (the table pins 4.1.0)"), diagnostics[0].MessageText)
 }
 
-// TestTracingOption checks that the mapper entry's tracing option reaches
-// each file's context, and that an invalid value is a diagnostic on it.
-func TestTracingOption(t *testing.T) {
-	t.Parallel()
-	h := &Handler{}
-	_, err := h.HandleRequest(t.Context(), contentmapper.MethodOpenProject, []byte(`{"configFileName":"","projectHandle":"p","options":{"tracing":"all"},"compilerOptions":{}}`))
-	assert.NilError(t, err)
-	assert.Equal(t, h.projects["p"].Tracing, "all")
-	result, err := h.HandleRequest(t.Context(), contentmapper.MethodOpenProject, []byte(`{"configFileName":"","projectHandle":"q","options":{"tracing":"some"},"compilerOptions":{}}`))
-	assert.NilError(t, err)
-	diagnostics := result.(contentmapper.OpenProjectResult).OptionDiagnostics
-	assert.Equal(t, len(diagnostics), 1)
-	assert.Equal(t, diagnostics[0].Code, int32(CodeInvalidOption))
-	assert.Equal(t, h.projects["q"].Tracing, "")
-}
-
 // TestInitializeRequiresUTF8 checks that the mapper refuses a host that does
 // not accept its byte offsets.
 func TestInitializeRequiresUTF8(t *testing.T) {

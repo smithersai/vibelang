@@ -99,7 +99,7 @@ func (a *analyzer) callJoinsFailures(call *ast.Node) bool {
 }
 
 // joinFrames wraps in runtime.$joinedFrame each generated frame, the
-// generator an Effect.gen, Effect.fnUntraced or Effect.fn call runs, whose
+// generator an Effect.gen or Effect.fnUntraced call runs, whose
 // body can receive a SuppressedError the runtime made: one that calls a .vibe
 // function that can throw it, or that holds a plain for...of, whose
 // $finallyFailure makes it. A nested generator is a frame of its own;
@@ -152,21 +152,17 @@ func (tx *lowering) joinFrames(node *ast.Node) *ast.Node {
 }
 
 // isFrameCall reports whether node is a call that makes a generated frame:
-// Effect.gen, Effect.fnUntraced, or Effect.fn, whose traced form is
-// Effect.fn("span")(generator).
+// Effect.gen or Effect.fnUntraced.
 func (tx *lowering) isFrameCall(node *ast.Node) bool {
 	if !ast.IsCallExpression(node) || tx.effect == nil {
 		return false
 	}
 	callee := node.Expression()
-	if ast.IsCallExpression(callee) {
-		callee = callee.Expression()
-	}
 	if !ast.IsPropertyAccessExpression(callee) || callee.Expression() != tx.effect {
 		return false
 	}
 	switch callee.Name().Text() {
-	case "gen", "fnUntraced", "fn":
+	case "gen", "fnUntraced":
 		return true
 	}
 	return false
