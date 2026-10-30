@@ -61,6 +61,33 @@ test("the lint config loads where typescript-eslint refuses the repository's Typ
   assert.deepEqual(config.at(-1).files, ["**/*.vibe"])
   assert.equal(config.length, 2)
 })
+// foldkit: its .oxlintrc.json turns the correctness category off, enables
+// no-explicit-any and turns it off under packages/foldkit/src, and the .vibe
+// files there failed lint on typescript-eslint's recommended rules.
+test("the lint config applies the repository's Oxlint rules and overrides to .vibe files, and no rule it did not choose", async t => {
+  const oxlintrc = {
+    categories: { correctness: "off" },
+    rules: { "typescript/no-explicit-any": "error", "sort-imports": ["error", { ignoreCase: false }], "no-unused-vars": "deny", "eslint/no-debugger": "warn", "unicorn/no-null": "error", "oxc/no-barrel-file": "warn", "no-oxlint-only": "error" },
+    overrides: [{ files: ["src/**/*.ts"], rules: { "typescript/no-explicit-any": "off" } }, { files: ["**/*.json"], rules: { "sort-imports": "off" } }]
+  }
+  const typescriptEslint = 'const plugin = { rules: { "no-explicit-any": {}, "no-unused-vars": {} } }\nexport default { plugin, configs: { recommended: [{ plugins: { "@typescript-eslint": plugin }, rules: { "@typescript-eslint/ban-ts-comment": "error" } }] } }\n'
+  const root = fixture(t, {
+    "package.json": '{"scripts":{"lint":"oxlint"}}',
+    ".oxlintrc.json": "{\n  // the repository's own choices\n" + JSON.stringify(oxlintrc, null, 2).slice(1),
+    "node_modules/vibelang/package.json": '{"name":"vibelang","type":"module","exports":{"./eslint":"./eslint.mjs"}}',
+    "node_modules/vibelang/eslint.mjs": "export default { parseForESLint() {} }\n",
+    "node_modules/typescript-eslint/package.json": '{"name":"typescript-eslint","type":"module","exports":"./index.mjs"}',
+    "node_modules/typescript-eslint/index.mjs": typescriptEslint,
+    "node_modules/eslint/package.json": '{"name":"eslint","type":"module","exports":{"./use-at-your-own-risk":"./risk.mjs"}}',
+    "node_modules/eslint/risk.mjs": 'export const builtinRules = new Map([["no-debugger", {}], ["sort-imports", {}], ["no-unused-vars", {}]])\n'
+  })
+  wireDeveloperTools({ root, specsFor })
+  const config = (await import(join(root, ".vibelang/eslint.config.mjs"))).default
+  assert.equal(config.some(entry => entry.rules?.["@typescript-eslint/ban-ts-comment"]), false)
+  const vibe = config.find(entry => entry.languageOptions?.parser)
+  assert.deepEqual(vibe.rules, { "no-debugger": ["warn"], "@typescript-eslint/no-explicit-any": ["error"], "sort-imports": ["error", { ignoreCase: false }], "@typescript-eslint/no-unused-vars": ["error"] })
+  assert.deepEqual(config.at(-1), { files: ["src/**/*.vibe"], rules: { "@typescript-eslint/no-explicit-any": ["off"] } })
+})
 const deps = process.env.VIBELANG_TOOLING_NODE_MODULES
 test("the migrated lint command reports a debugger at its .vibe source location", { skip: !deps && "set VIBELANG_TOOLING_NODE_MODULES" }, t => {
   const root = fixture(t, { "package.json": '{"scripts":{"lint":"oxlint"}}', "probe.vibe": "export const value = 1\ndebugger;\n" })
