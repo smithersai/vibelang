@@ -28,6 +28,16 @@ export function startServer(command: string[]): Server {
   }
   // The server asks for settings and registrations; the defaults serve.
   const answer = (message: any) => send({ id: message.id, result: message.method === "workspace/configuration" ? message.params.items.map(() => null) : null })
+  // Dispatch complete messages independently of how stdout chunks split frames.
+  const receive = (message: any) => {
+    if (message.method && message.id !== undefined) answer(message)
+    else if (message.id !== undefined) {
+      const waiter = pending.get(message.id)
+      pending.delete(message.id)
+      if (message.error) waiter?.reject(new ResponseError(message.error.message, message.error.code))
+      else waiter?.resolve(message.result)
+    }
+  }
   void (async () => {
     for await (const chunk of child.stderr) stderr = (stderr + new TextDecoder().decode(chunk)).slice(-4000)
   })()
@@ -42,13 +52,7 @@ export function startServer(command: string[]): Server {
         if (buffer.length < head + 4 + length) break
         const message = JSON.parse(buffer.subarray(head + 4, head + 4 + length).toString())
         buffer = buffer.subarray(head + 4 + length)
-        if (message.method && message.id !== undefined) answer(message)
-        else if (message.id !== undefined) {
-          const waiter = pending.get(message.id)
-          pending.delete(message.id)
-          if (message.error) waiter?.reject(new ResponseError(message.error.message, message.error.code))
-          else waiter?.resolve(message.result)
-        }
+        receive(message)
       }
     }
   })()
