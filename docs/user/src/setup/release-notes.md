@@ -495,6 +495,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Interruption blocks lacked keyword highlighting. `uninterruptible`, `restore` and `interruptible` now receive it in block form.
 - Tree-sitter rejected `using` as a parameter or ordinary identifier. It now accepts those contextual uses.
 
+- After an edit to a `vibelang.manifest.json`, the language server kept the diagnostics of the old manifest, such as no EK4401 for a call of a declaration the manifest no longer listed, until the project reloaded. A change to a manifest now rebuilds the project's program, as a `package.json` change does.
+
 #### Tooling and bundlers
 
 - `vibelang --fix` parsed every library and package again for each round of fixes, so a type nesting 20 `Effect.Effect<…>` took half a minute on a busy machine. A run now parses a file again only when a fix edits it, which took that type from 23 s to 6 s.

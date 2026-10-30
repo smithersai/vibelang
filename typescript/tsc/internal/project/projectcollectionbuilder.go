@@ -1574,6 +1574,16 @@ func (b *ProjectCollectionBuilder) markFilesChanged(entry dirty.Value[*Project],
 
 			dirtyFilePath = p.dirtyFilePath
 			for _, path := range paths {
+				// A vibelang.manifest.json says which declaration files a
+				// VibeLang build emitted (D500). The checker reads it after
+				// the snapshot stops tracking what the program reads, so no
+				// program records it: a change to one rebuilds the program, as
+				// a package.json change does below.
+				if path.BaseName() == compiler.VibeLangManifestName {
+					dirty = true
+					dirtyFilePath = ""
+					break
+				}
 				if p.containsFile(path) {
 					dirty = true
 					if changeType == lsproto.FileChangeTypeDeleted {
