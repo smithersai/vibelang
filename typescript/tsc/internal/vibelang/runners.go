@@ -18,10 +18,10 @@ import (
 //	NodeRuntime.runMain(() => main())           // a runner: allowed here
 //
 // A runner may be called only where no fiber runs the code: at a module's top
-// level, and in a plain callback that such a place passes to a TypeScript
-// function, such as a describe body or a framework's route handler.
-// Anywhere else it would start a new root with an empty Context, outside the
-// caller's structured concurrency (EK1005):
+// level, in an async function, and in a plain callback that such a place
+// passes to a TypeScript function, such as a describe body or a framework's
+// route handler. Anywhere else it would start a new root with an empty
+// Context, outside the caller's structured concurrency (EK1005):
 //
 //	function refreshAll(ids: ReadonlyArray<string>) {
 //	  for (const id of ids) Effect.runFork(() => refresh(id))   // EK1005

@@ -1,0 +1,32 @@
+// expect-result: ["a","b","c",["d","e"]]
+// D38: no fiber runs an async function's body. It is TypeScript (VIP-1), so it
+// may call a runner, as EK0103 tells it to, and so may a callback it passes to
+// a TypeScript function.
+effect function load(id: string) {
+  try Effect.sleep("1 millis")
+  return id
+}
+
+export async function one(id: string): Promise<string> {
+  return await runPromise(() => load(id))
+}
+
+export const two = async (id: string) => await runPromise(() => load(id))
+
+export class Repo {
+  async three(id: string) {
+    return await runPromise(() => load(id))
+  }
+}
+
+export async function many(ids: ReadonlyArray<string>) {
+  return await Promise.all(ids.map((id) => runPromise(() => load(id))))
+}
+
+export effect function main() {
+  const a = try Effect.tryPromise(() => one("a"))
+  const b = try Effect.tryPromise(() => two("b"))
+  const c = try Effect.tryPromise(() => new Repo().three("c"))
+  const rest = try Effect.tryPromise(() => many(["d", "e"]))
+  return [a, b, c, rest]
+}

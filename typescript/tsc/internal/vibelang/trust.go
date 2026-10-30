@@ -539,10 +539,10 @@ func isBoundaryCallback(c *checker.Checker, fn *ast.Node) bool {
 }
 
 // outsideFibers reports whether node is code that no fiber runs: at the
-// module's top level, or in a plain callback that such a place passes to a
-// TypeScript function, such as a describe body or a route handler. A runner
-// may be called there (D38), and a plain call there is an ordinary JavaScript
-// call, as at the top level (D51).
+// module's top level, in an async function, or in a plain callback that such a
+// place passes to a TypeScript function, such as a describe body or a route
+// handler. A runner may be called there (D38), and a plain call there is an
+// ordinary JavaScript call, as at the top level (D51).
 func outsideFibers(c *checker.Checker, a *analyzer, node *ast.Node) bool {
 	if inHatch(node) {
 		return true // a hatch's body is the way back in to TypeScript (D148)
@@ -550,6 +550,9 @@ func outsideFibers(c *checker.Checker, a *analyzer, node *ast.Node) bool {
 	fn := enclosingFunction(node)
 	if fn == nil {
 		return true
+	}
+	if ast.HasSyntacticModifier(fn, ast.ModifierFlagsAsync) {
+		return true // its body is TypeScript, and it runs on a Promise (VIP-1)
 	}
 	if !isLambda(fn) || a.isEffect(fn) {
 		return false
