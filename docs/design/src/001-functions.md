@@ -173,6 +173,35 @@ Parameters, defaults included, are bound when the function is called, before `Ef
 | `effect go() { return super.offset() }`, where `offset` has an own `call` property | the method runs with the instance as `this`, and `call` is never read |
 | `` effect go() { return super.tag`value ${2}` } `` | the tag runs with the instance as `this` |
 
+
+<a id="source-names"></a>**Source names.** Generated captures preserve the source [NamedEvaluation](https://tc39.es/ecma262/#sec-runtime-semantics-namedevaluation) context. A value-only evaluation of an anonymous function or class cannot gain a name from a private variable or assignment; preserve a name the source explicitly requests. This covers pipe topics, `do`/`match` values and completion records. The naming context must be preserved or suppressed before creation, rather than repairing `.name` afterward: a class static initializer may already have observed it. Parentheses alone do not suppress source name inference. How the compiler preserves that context is its choice.
+
+```vibe es
+// compiler-gap: pending VIP-1, VIP-2, VIP-23
+function readName(f: () => number) { return f.name }
+effect function names() {
+  const n = (() => 7) |> readName(%)
+  const C = do { (class { static observed = this.name }) }
+  const named = () => 7
+  return [n, C.name, C.observed, named.name]
+}
+// Success(["", "", "", "named"])
+```
+
+```ts effect
+// Source-name reference controls
+import * as Effect from "effect/Effect"
+function readName(f: () => number) { return f.name }
+function asValue<A>(value: A): A { return value }
+const names = Effect.gen(function* () {
+  const n = readName(() => 7)
+  const C = asValue(class { static observed = this.name })
+  const named = () => 7
+  return [n, C.name, C.observed, named.name]
+})
+console.log(JSON.stringify(Effect.runSync(names)))
+```
+
 <a id="direct-eval"></a>**Legacy JavaScript.** Five JavaScript features are compile errors anywhere in a `.vibe` file, plain functions included, each with a quick fix (VIP-1 and VIP-4, amended 2026-10-29). Code that needs one lives in a `.ts` or `.js` file.
 
 | Banned | What the rule matches | Quick fix |
