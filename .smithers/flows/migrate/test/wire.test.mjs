@@ -157,13 +157,16 @@ test("wireVite wires the shared config the test command names, and gives its pac
   }
 })
 
-test("wireViteApps adds the plugin to every config that bundles migrated sources, through workspace dependencies", () => {
+test("wireViteApps adds the plugin to every config that bundles migrated sources, through workspace dependencies, and to no test's", () => {
   const root = mkdtempSync(join(tmpdir(), "migrate-vite-apps-"))
   try {
     const files = {
       "packages/core/package.json": { name: "core" },
       "packages/core/vitest.config.ts": vitestConfig,
       "packages/core/test/fixtures/app/vite.config.ts": vitestConfig,
+      "packages/core/test/Website/vite-do-fixture/vite.config.ts": vitestConfig,
+      "packages/mid/react-router-fixture/vite.config.ts": vitestConfig,
+      "apps/web/tests/e2e/vite.config.ts": vitestConfig,
       "packages/mid/package.json": { name: "mid", dependencies: { core: "workspace:^" } },
       "apps/web/package.json": { name: "web", dependencies: { core: "workspace:*" } },
       "apps/web/vite.config.ts": vitestConfig,

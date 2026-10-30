@@ -202,8 +202,12 @@ function wireViteConfig({ root, file, ts, specsFor, changed }) {
 }
 
 // Directories a repository walk skips: dependencies, hidden directories, and
-// the fixtures and templates a package ships rather than builds.
-const skippedDirectory = (name) => name === "node_modules" || name.startsWith(".") || name === "fixtures" || name === "__fixtures__" || name === "templates"
+// the fixtures and templates a package ships rather than builds, whatever the
+// fixture's name (fixtures, __fixtures__, vite-do-fixture).
+const skippedDirectory = (name) => name === "node_modules" || name.startsWith(".") || /fixture/i.test(name) || name === "templates"
+
+// A package's tests: a config under them is a test's input, and setup never edits a test.
+const testDirectory = (name) => name === "test" || name === "tests" || name === "__tests__"
 
 /** The repository's workspace packages: { dir, manifest } for each package.json outside skipped directories. */
 export function repositoryPackages(root) {
@@ -233,7 +237,7 @@ const localSpec = /^(?:workspace:|file:|link:|\*$)/
  * The Vite and Vitest configs that bundle migrated sources, as
  * repository-relative paths: each config in a migrated package, or in a
  * package that depends on one through workspace packages
- * (`"foldkit": "workspace:*"`), outside fixtures and templates. migrated holds
+ * (`"foldkit": "workspace:*"`), outside fixtures, templates and tests. migrated holds
  * the migrated packages' directories.
  */
 export function viteAppConfigs(root, migrated) {
@@ -254,7 +258,7 @@ export function viteAppConfigs(root, migrated) {
     for (const entry of readdirSync(join(root, dir), { withFileTypes: true })) {
       const path = dir ? posix.join(dir, entry.name) : entry.name
       if (entry.isDirectory()) {
-        if (!skippedDirectory(entry.name)) walk(path)
+        if (!skippedDirectory(entry.name) && !testDirectory(entry.name)) walk(path)
       } else if (viteConfigNames.includes(entry.name)) configs.push(path)
     }
   }
