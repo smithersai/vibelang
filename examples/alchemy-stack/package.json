@@ -22,5 +22,8 @@
   },
   "overrides": {
     "@effect/platform-node-shared": "4.1.0"
+  },
+  "patchedDependencies": {
+    "alchemy@2.0.0-beta.84": "patches/alchemy@2.0.0-beta.84.patch"
   }
 }

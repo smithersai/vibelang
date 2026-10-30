@@ -32,7 +32,7 @@ failed=0
 # Known-broken examples, one "name|owner|reason" per line. A listed example still
 # runs: its failure prints BROKEN and does not fail the check, and its pass prints
 # XPASS and fails it, so the commit that fixes the example deletes its line.
-broken='alchemy-stack|alchemy-41|alchemy 2.0.0-beta.84 imports effect/Crypto, which effect 4.1.0 removed, so importing @alchemy.run/cloudflare fails'
+broken=''
 broken_seen=
 fail() {
   reason=$(printf '%s\n' "$broken" | awk -F'|' -v n="$1" '$1 == n { print "owner " $2 ": " $3 }')
