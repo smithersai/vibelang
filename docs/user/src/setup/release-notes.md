@@ -748,6 +748,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Async conversion could put a directly nested `await` inside a plain callback; the refactors now decline that body and preserve nested function boundaries.
 
+- Async conversion could leave a returned Promise unbridged in an effect body; the refactors now require an explicit `await` for Promise or thenable returns, including unions that may contain one.
+
 - A producer could silently discard a returned value. It now reports `EK2128`: a Stream has no return value. `vibelang --fix` keeps the value's evaluation and ends the stream with a bare `return`.
 
 - The specification admitted generic parameters and return annotations on a bare effect-arrow parameter. Arrow heads now follow TypeScript: those decorations require parentheses, while `effect x => x` remains valid.

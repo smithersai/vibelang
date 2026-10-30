@@ -179,6 +179,9 @@ func (rc *refactorContext) schemaRefactor(declaration *ast.Node) []*ls.CodeActio
 // hatch that passes the bindings the promise reads as inputs (D229), and with
 // the second refactor maps a rejection to an error declaration of its own.
 func (rc *refactorContext) asyncRefactors(fn *ast.Node) []*ls.CodeAction {
+	if asyncReturnsPromiseValue(rc.c, fn.Body()) {
+		return nil
+	}
 	var awaits []*ast.Node
 	nested := false
 	var visit func(n *ast.Node) bool
@@ -250,6 +253,39 @@ func (rc *refactorContext) asyncRefactors(fn *ast.Node) []*ls.CodeAction {
 		actions = append(actions, &ls.CodeAction{Description: "Convert to a VibeLang function with an error per await", Changes: mapped})
 	}
 	return actions
+}
+
+// asyncReturnsPromiseValue finds a Promise returned without an await to bridge.
+// Async functions adopt returned thenables; an effect body cannot return them.
+func asyncReturnsPromiseValue(c *checker.Checker, body *ast.Node) bool {
+	promiseValue := func(node *ast.Node) bool {
+		if node == nil {
+			return false
+		}
+		for _, member := range unionMembers(c.GetTypeAtLocation(node)) {
+			if member.Flags()&checker.TypeFlagsAnyOrUnknown == 0 && c.GetPromisedTypeOfPromise(member) != nil {
+				return true
+			}
+		}
+		return false
+	}
+	if body == nil {
+		return false
+	}
+	if !ast.IsBlock(body) {
+		return promiseValue(body)
+	}
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if isFunctionBoundary(node) {
+			return false
+		}
+		if ast.IsReturnStatement(node) && promiseValue(node.Expression()) {
+			return true
+		}
+		return node.ForEachChild(visit)
+	}
+	return visit(body)
 }
 
 // containsAwait reports whether node holds an await outside nested functions.

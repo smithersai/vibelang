@@ -205,6 +205,8 @@ Fixes retain field comments and comments before unwrapped succeed/fail arguments
 
 When `vibe.effectModules` is `false`, `--fix` keeps the explicit Effect imports the program needs. The editor offers those bindings through imports and local declarations.
 
+Before async conversion, await a returned `Promise` or `PromiseLike` explicitly, as in `return await input`. Async functions adopt returned thenables; effect bodies require explicit Promise handling. The refactors therefore require an explicit `await` for those returns, including a union that may contain a Promise.
+
 ## Effect language service rules
 
 `@effect/language-service` 0.87.5 has 108 diagnostics and editor features. The table maps rules to VibeLang forms and existing EK diagnostics. Effect functions use `try` to run Effects, and `catch` expressions handle failures. The table also marks features not implemented.
