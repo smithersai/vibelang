@@ -1,0 +1,13 @@
+// expect: EK0902
+export service MethodBody {
+ static readonly key = "implementation/method";
+ run(): number!! { return 1 }
+}
+export service FieldBody {
+ static readonly key = "implementation/field";
+ value = 1
+}
+export service GetterBody {
+ static readonly key = "implementation/getter";
+ get value(): number { return 1 }
+}

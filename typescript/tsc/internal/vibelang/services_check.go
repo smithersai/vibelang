@@ -101,8 +101,17 @@ func checkDeclarationMembers(c *checker.Checker, class *ast.Node) {
 			continue
 		}
 		if member.Body() != nil || ast.IsPropertyDeclaration(member) && member.Initializer() != nil {
-			d := report(c, member.Name(), EK9207, scanner.GetTextOfNode(member.Name()), word)
-			note(d, "Implement it in a layer, or make it static to keep it on the class.")
+			diagnostic := EK9207
+			if word == "service" {
+				diagnostic = serviceImplementationMemberDiagnostic
+			}
+			d := report(c, member.Name(), diagnostic, scanner.GetTextOfNode(member.Name()), word)
+			if word == "service" {
+				cover(c, member)
+				note(d, "Implement it in a layer.")
+			} else {
+				note(d, "Implement it in a layer, or make it static to keep it on the class.")
+			}
 		}
 	}
 }
@@ -117,8 +126,9 @@ func checkShapeDeclarationMembers(c *checker.Checker, class *ast.Node, shape *as
 		if ast.HasStaticModifier(member) || member.Name() == nil {
 			continue
 		}
-		d := report(c, member.Name(), EK9207.With("{0} is an instance member, but service {1}: {2} takes its members from {2}."), scanner.GetTextOfNode(member.Name()), class.Name().Text(), scanner.GetTextOfNode(shape))
-		note(d, "Declare the member in {0}, or make it static to keep it on the class.", scanner.GetTextOfNode(shape))
+		d := report(c, member.Name(), serviceImplementationMemberDiagnostic.With("{0} is an instance member, but service {1}: {2} takes its members from {2}."), scanner.GetTextOfNode(member.Name()), class.Name().Text(), scanner.GetTextOfNode(shape))
+		cover(c, member)
+		note(d, "Declare the member in {0}, then provide its implementation in a layer.", scanner.GetTextOfNode(shape))
 	}
 }
 
@@ -192,7 +202,7 @@ func checkServiceDeclaration(c *checker.Checker, class *ast.Node) {
 			continue
 		}
 		if kind == serviceClass && ast.IsMethodDeclaration(member) && serviceShape(class) == nil && !isServiceConstructSignature(class, member) {
-			if member.Type() == nil {
+			if member.Type() == nil && member.Body() == nil {
 				cover(c, memberName) // TS7010: an implicit any return type
 				d := report(c, memberName, EK9205, name+"."+memberName.Text())
 				note(d, "Write the return type, such as {0} for a plain method or {1} for an Effect-returning method.", "number", "number!!")
@@ -202,7 +212,7 @@ func checkServiceDeclaration(c *checker.Checker, class *ast.Node) {
 		if serviceContractClassSyntax(member) {
 			continue // EK0902 already explains the invalid contract syntax.
 		}
-		if ast.IsMethodDeclaration(member) && serviceShape(class) == nil && !isServiceConstructSignature(class, member) && !isEffectContract(c, member.Type()) && !isUnresolved(c, member.Type()) {
+		if ast.IsMethodDeclaration(member) && serviceShape(class) == nil && (member.Body() == nil || declarationWord(class) != "service") && !isServiceConstructSignature(class, member) && !isEffectContract(c, member.Type()) && !isUnresolved(c, member.Type()) {
 			at := member.Type()
 			if at == nil {
 				at = memberName

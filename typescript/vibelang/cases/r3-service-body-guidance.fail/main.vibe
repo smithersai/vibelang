@@ -1,0 +1,2 @@
+// expect: EK0902
+service S { f(): number!! { return 1 } }

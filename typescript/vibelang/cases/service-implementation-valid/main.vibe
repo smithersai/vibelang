@@ -1,0 +1,12 @@
+// expect-result: [1,1]
+export service Declared {
+ static readonly key = "implementation/declared";
+ value: number
+ run(): number!!
+}
+export effect function main() {
+ provide Declared = { value: 1, run: effect () => 1 } {
+  const implementation = try Effect.service(Declared)
+  return [implementation.value, try implementation.run()]
+ }
+}
