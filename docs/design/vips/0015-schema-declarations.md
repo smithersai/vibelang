@@ -5,16 +5,17 @@
 ## Decision
 
 ```ts
+// fragment
 // VibeLang
 schema User { id: string; nickname?: string; role: "admin" | "member"; home: Address }
 schema Code = "root_missing" | "read_failed"           // alias form
 
 // exactly this Effect TS
 const User = Schema.Struct({
-  id: Schema.String,
-  nickname: Schema.optional(Schema.String),
-  role: Schema.Literals(["admin", "member"]),
-  home: Address,
+  id: Schema.mutableKey(Schema.String),
+  nickname: Schema.mutableKey(Schema.optional(Schema.String)),
+  role: Schema.mutableKey(Schema.Literals(["admin", "member"])),
+  home: Schema.mutableKey(Address),
 })
 type User = typeof User.Type
 const Code = Schema.Literals(["root_missing", "read_failed"])
@@ -46,6 +47,9 @@ const user = try Schema.decodeUnknownEffect(User)(input)   // fails with a Schem
 *Corrected 2026-10-29: under "mutability included", a writable `Record<K, V>` is `Schema.Record(K, Schema.mutableKey(V))` and `Readonly<Record<K, V>>` is `Schema.Record(K, V)`, because `Schema.Record(K, V).Type` is readonly in effect 4.1.0; and a union made only of literals is `Schema.Literals([...])`, as the decision example writes it (found by the round-3 review).*
 
 *Corrected 2026-10-29: a mutable tuple `[A, B]` is `Schema.mutable(Schema.Tuple([A, B]))`, because `Schema.Tuple([A, B]).Type` is readonly in effect 4.1.0; `readonly [A, B]` is `Schema.Tuple([A, B])` (found by the round-4 review).*
+
+
+- **Amended 2026-10-30: referenced schemas preserve source modifier promises by conservative admission.** A required source field, a required fixed tuple position (before or after rest), or a required `Record` value position requires the referenced schema's inferred decoded-key optionality to be required. An effectively readonly field or readonly `Record` value position requires readonly decoded-key mutability. Check resolved schema flags through aliases; conflicting or unprovable needed flags are rejected by the field-mapping rule, with the repair to use an unmodified value schema and write modifiers on the source occurrence. Apply this recursively in nested mappings. Writable fields/records and optional source occurrences keep their existing mappings. This checks the flags at the mapped occurrence, not constructor spellings; it invents no flag-reset or unwrapping API. Encoded and constructor-input defaults retain Effect's behavior. Schema-error payload keys are effectively readonly even without a written `readonly`; this is shallow key readonlyness, not a deeply readonly decoded value. The [Data chapter's mapping](../src/006-data.md#schema-declarations) states the admitted cases.
 
 ## History
 
