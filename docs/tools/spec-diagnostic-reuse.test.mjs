@@ -42,6 +42,12 @@ test("current compiler registry status stays separate from normative code alloca
   assert.match(compatibility, /registry/)
   assert.match(compatibility, /separately from the normative rules above/)
   assert.match(compatibility, /an interim code does not establish a language rule or reserve a new VIP block/)
+  // The registry still emits the old static-key number; this section names it until the compiler renumbers it.
+  const registry = read("typescript/tsc/internal/vibelang/fix_service_declarations.go")
+  if (/message\(3008,/.test(registry)) {
+    const section = appendix.split("### Transitional compiler diagnostics\n")[1]
+    assert.match(section, /still prints `EK3008` for `0\.0\.10`'s static-key rule, which the normative table numbers `EK0901`/)
+  }
 })
 
 test("the historical producer-number candidate stays retired in both public accounts", () => {

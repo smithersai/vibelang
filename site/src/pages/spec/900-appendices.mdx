@@ -1067,6 +1067,8 @@ A transitional compiler may still print compatibility diagnostics from the old l
 
 For example, `effect function bad(): number!! { throw new Bad() }`, with `error Bad`, fails ordinary Effect return-type checking: its error type is `Bad`, rather than `never`. `effect function run() { return try succeed(1) }` is valid and gives `Success(1)`. Removing the old statement warning never permits skipping an infallible Effect.
 
+The compiler also still prints `EK3008` for `0.0.10`'s static-key rule, which the normative table numbers `EK0901`; read an emitted `EK3008` as `EK0901` until the compiler is renumbered.
+
 The existing migration warnings retain their emitted codes until the compiler and documentation move together. They select repairs; they do not change the omitted-slot or service rules.
 
 | Code | Rule | VIP | Chapter |
