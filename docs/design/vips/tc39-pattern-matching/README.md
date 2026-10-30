@@ -34,4 +34,4 @@ The explainer and the draft specification differ in a few places. VibeLang follo
 - A `match` without `default` over a finite union that misses a case is EK4701 at compile time. The check reports; it never changes what runs, and an unmatched value throws the proposal's `TypeError`.
 - The runtime defines `Symbol.customMatcher` when the engine lacks it.
 - An `error` class has a static `[Symbol.customMatcher]` that tests the subject's `_tag`, so `when NotFound:` matches a `NotFound` from another copy of its package.
-- Effect's `Option`, `Exit` and `Result` keep their fixed compiled checks (D208) until Effect ships custom matchers; the proposal for Effect is drafted in [`docs/upstream/effect-custom-matchers.md`](../../../upstream/effect-custom-matchers.md).
+- Effect's `Option`, `Exit` and `Result`, and Effect's tagged errors (VIP-7), keep their fixed compiled checks (D208) until Effect ships custom matchers; the proposal for Effect is drafted in [`docs/upstream/effect-custom-matchers.md`](../../../upstream/effect-custom-matchers.md).

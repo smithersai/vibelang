@@ -6,14 +6,21 @@ Sources: [VIP-9](../vips/0009-service-declarations.md), [VIP-12](../vips/0012-pr
 
 ### Syntax
 
-```text
-ServiceDeclaration = "export"? "service" Name "{" (Member | KeyMember | DefaultMember)* "}"
-KeyMember          = "static" "readonly" "key" "=" StringLiteral
-DefaultMember      = "static" "readonly" "defaultValue" "=" Expression
-Member             = PropertySignature | MethodSignature              (TypeScript's)
+[ServiceDeclaration](900-appendices.md#servicedeclaration), whose members are TypeScript [Member](900-appendices.md#member) signatures, a [KeyMember](900-appendices.md#keymember) and a [DefaultMember](900-appendices.md#defaultmember). The parse is wider than the language: it accepts type parameters and any TypeScript class member, so that the static rules below reject them with their codes. Each member has one parse: a member that parses as a `KeyMember`, a `DefaultMember`, a `PropertySignature` or a `MethodSignature` is that member; any other member is a rejected `ClassElement` or TypeScript type member. Members are separated as in an `interface`: `a: number, b: string` and `a: number; b: string` are two property signatures, and `a: number b: string` on one line is a syntax error. A member with a body ends at its `}`, as in a class, so `m() { } n(): void` on one line is two members and gets the body rule below. A member's type is parsed greedily, as in TypeScript, so a line break ends a member only after its type is complete:
+
+```vibe es
+// compiler-gap: pending VIP-9
+service Auth {
+  role:
+    | "admin"
+    | "member"
+  check(token: string): boolean!never
+}
 ```
 
-`service Name { members }` is the only way to declare a service. An `abstract class` is not a service. Members are written out with their types, because they have no bodies to infer from.
+`service` is a declaration keyword under the one rule of [Declaration keywords](900-appendices.md#declaration-keywords), as `type` is in TypeScript: `service` and the name on one line begin a service; the body's `{` may follow line breaks, as a class body's may.
+
+`service Name { members }` is the only way to declare a service. `export default service S { }` is a syntax error, because `export default` takes only a function, class or expression, as in ECMAScript. Write `export { S as default }`. An `abstract class` is not a service. Members are written out with their types, because they have no bodies to infer from. A member may have any type, Effect or not, as `Context.Service` allows.
 
 ### Meaning
 
@@ -33,7 +40,21 @@ class Users extends Context.Service<Users, {
 declare namespace Users { type Shape = Context.Service.Shape<typeof Users> }
 ```
 
-- **The key** is Effect's run-time identity for the service. It is derived from the package, the file and the name, as in the example. A service can write it explicitly instead, `static readonly key = "app/Users"`, as a migrated service does to keep its key.
+- **The key** is Effect's run-time identity for the service. It is derived from the package, the file and the name, as in the example. A service can write it explicitly instead, as a migrated service does to keep its key:
+
+  ```vibe es
+  // compiler-gap: pending VIP-9
+  service Clock {
+    static readonly key = "app/Clock"
+    now(): number!never
+  }
+  ```
+
+  ```ts effect
+  // fragment
+  class Clock extends Context.Service<Clock, { now(): Effect.Effect<number> }>()("app/Clock") {}
+  declare namespace Clock { type Shape = Context.Service.Shape<typeof Clock> }
+  ```
 - **A default.** `static readonly defaultValue`, of the type of `Context.Reference`'s `defaultValue` (`() => Shape`), makes the service a `Context.Reference`. Nothing has to provide it, and providing it overrides the default.
 
   ```vibe es
@@ -78,6 +99,8 @@ function load(id: string) {
 
 A service is a key, not a class you use.
 
+A member gets one diagnostic: the first row below that names it. The last row applies only when no other row applies.
+
 | Rule | Code | Why |
 | --- | --- | --- |
 | two services with the same key anywhere in the program | EK3001 | |
@@ -85,7 +108,8 @@ A service is a key, not a class you use.
 | `new Users()` | EK3003 | |
 | `impl instanceof Users` | EK3004 | always false, because implementations are plain objects |
 | `service Repo<T> { … }` | EK3005 | `Repo<User>` and `Repo<Order>` would share one key |
-| a member with a body, `private` or `protected` on a member, or a `static` other than `key` and `defaultValue` | code pending | as in a TypeScript `interface`, members declare a shape and implement nothing |
+| `static key = "a"` without `readonly`, or a `key` whose initializer is not a string literal (`static readonly key = prefix + "S"`, `` static readonly key = `S` ``). A type annotation is allowed, as in TypeScript: `static readonly key: string = "S"` | code pending | EK3001 needs every key at compile time |
+| any member that is not a `PropertySignature`, a `MethodSignature`, a `KeyMember` or a `DefaultMember`: a body, an initializer, a modifier (`private`, `protected`, `#x`, `declare`, `accessor`, `override`), a `get` or `set` accessor, a `constructor`, an index signature, a call signature `(x: number): string`, a construct signature `new (): X`, or another `static` | code pending | as in a TypeScript `interface`, members declare a shape and implement nothing |
 
 **Undecided (pending VIP):** the derived key of a service in a file outside any package, or declared inside a function or block. VIP-9 gives one example, `"@acme/app/src/users#Users"` (package name, the file's path in the package without its extension, `#`, the name). Write `static readonly key` there until it is decided.
 
@@ -93,21 +117,44 @@ A service is a key, not a class you use.
 
 ### Syntax
 
-```text
-ProvideStatement = "provide" Provider ("," Provider)* Block
-Provider         = LeftHandSideExpression "=" AssignmentExpression   (Key = value)
-                 | ConditionalExpression                             (a Layer)
+[ProvideStatement](900-appendices.md#providestatement), a list of [Provider](900-appendices.md#provider)s. A top-level comma separates providers. A top-level `=` whose left side is a `LeftHandSideExpression` makes `Key = value`; any other `=` belongs to the expression, so `provide flag ? A : B = x { }` provides `flag ? A : (B = x)`. Parentheses make anything else a Layer expression: `provide (a, b) { }` provides the comma expression's value. The parse never depends on types. Providers are evaluated once, left to right, when the statement runs.
+
+`provide` is a contextual keyword, and its providers and block are on one line, as with `async` (VIP-12): [ProvideStatement](900-appendices.md#providestatement) puts `[no LineTerminator here]` after `provide`, on both sides of each comma and before the block's `{`. `provide` is a keyword only when the tokens from `provide` through that `{` parse as a whole `ProvideStatement`, as an arrow needs its whole head; otherwise it is an identifier, in any code. Inside a provider, line breaks are free, as in any expression:
+
+```vibe es
+// compiler-gap: pending VIP-12
+effect function test() {
+  provide AppLive, Users = {
+    find: (id: string) => fetchUser(id) } {
+    try a()
+  }
+  provide Layer.mergeAll(
+    UsersLive,
+    DbLive) {
+    try a()
+  }
+}
 ```
 
-A top-level comma separates providers, and a top-level `=` always makes `Key = value`. Parentheses make anything else a Layer expression: `provide (a, b) { }` provides the comma expression's value. The parse never depends on types. Providers are evaluated once, left to right, when the statement runs.
+`provide AppLive,` with `Users = testUsers {` on the next line is a syntax error: the break follows a comma.
 
-`provide` is a contextual keyword. Its providers and the block's `{` are on one line, as with `async`. Trailing blocks don't exist ([VIP-11](../vips/0011-trailing-blocks-denied.md)), so `provide(x) { … }` can't be read as a call.
+```vibe es
+// compiler-gap: pending VIP-12
+effect function local() {
+  const provide = makeProvider()   // a local named provide
+  provide(x)                       // a call: no same-line {
+  provide[0] = 1                   // an element assignment
+  provide - 1                      // a subtraction
+}
+```
+
+Trailing blocks don't exist ([VIP-11](../vips/0011-trailing-blocks-denied.md)), so `provide(x) { … }` can't be read as a call.
 
 ### Static rules
 
 | Rule | Diagnostic |
 | --- | --- |
-| `provide` outside effect code | code pending |
+| `provide L { }` outside effect code. The parser reads it as a `provide` statement to report this. In any code, `provide(x)` without a same-line `{` stays a call | code pending |
 
 VibeLang adds no typing rules of its own: Effect's `provide` types everything.
 
@@ -146,7 +193,7 @@ Layers are composed with Effect's own Layer API; there is no `wire` ([VIP-24](..
 const AppLive = UsersLive.pipe(Layer.provide(DbLive), Layer.provideMerge(ConfigLive))
 ```
 
-A `provide` block is an ordinary block, as in TypeScript: `return` leaves the function, `break` reaches the innermost loop or `switch` or its label, `continue` the innermost loop or its label, and a `var` inside it belongs to the enclosing function. [Leaving a block](002-running.md#leaving-a-block) gives the Effect TypeScript.
+A `provide` block is an ordinary block, as in TypeScript: its `return`, `break`, `continue` and declarations mean what they mean in any block, and the lowering keeps them with [region bodies](002-running.md#region-bodies). In a producer, `yield x` inside it is the producer's `yield` ([Producers](002-running.md#producers)).
 
 ## Effect's functions are globals
 
@@ -166,9 +213,9 @@ No language feature wraps TypeScript into an Effect. Effect's own functions do (
 // compiler-gap: pending VIP-6
 effect function lookup(q: string, s: string) {
   const r = try tryPromise((signal) => queryDb(q, { signal }))   // queryDb is from a .ts module
-  const n = try sync(() => Date.now())
+  const n = try sync(() => Date.now())                  // Date.now throws never (Appendix E)
   try sleep("1 second")
-  const d = try Effect.try(() => JSON.parse(s))
+  const d = try Effect.try(() => JSON.parse(s))     // allowed: Effect.try turns the throw into a failure
   return [r, n, d]
 }
 ```
@@ -200,7 +247,7 @@ Every root export of the core `effect` package (149 in effect 4.1.0, such as `Sc
 | `Record`, `Iterable` | TypeScript's types | `Effect.Record`, `Effect.Iterable` |
 | `Request`, `Option`, `Cache`, `FileSystem`, `Scheduler`, `Console` (platform-specific) | Effect's module | the bare name |
 
-`Crypto` is the DOM's: effect 4.1.0 has no root module `Crypto` (decided 2026-10-29). Import `effect/crypto` to use Effect's.
+`Crypto` is the DOM's: effect 4.1.0 has no root module `Crypto` (VIP-14, amended). Import `effect/crypto` to use Effect's.
 
 ```vibe es
 // compiler-gap: pending VIP-14
@@ -225,7 +272,7 @@ const o = Option.some(1)
 
 1. **Platform access is only through injected Effect services** (`FileSystem`, `Path`, `ChildProcess`, `HttpClient`, …), each provided by a per-platform layer. A `.vibe` file has no `node:*` value imports, no Node globals (`process`, `Buffer`) and no platform calls such as `fetch`, anywhere: in plain and `async` functions, and inside `Effect.try` and `tryPromise` arrows too (VIP-33, amended). A wrapper changes how a failure is represented, not whether the platform may be called. Code that needs the platform lives in a `.ts` file, which is the escape ([VIP-25](../vips/0025-inline-modules-denied.md) removed inline modules).
 2. **What Effect lacks goes under `Experimental.X`,** named after the Effect module it extends, and is written so it can be proposed upstream. Nothing that Effect already provides is reimplemented.
-3. **Subpath namespaces are in scope:** the namespaces exported by the 22 lowercase subpaths in effect 4.1.0's package `exports`: `effect/ai`, `effect/cli`, `effect/cluster`, `effect/crypto`, `effect/devtools`, `effect/encoding`, `effect/eventlog`, `effect/graphql`, `effect/http`, `effect/http-api`, `effect/net`, `effect/observability`, `effect/persistence`, `effect/process`, `effect/reactivity`, `effect/rpc`, `effect/schema`, `effect/socket`, `effect/sql`, `effect/testing`, `effect/workers` and `effect/workflow` (`HttpClient` comes from `effect/http`, `ChildProcess` from `effect/process`). The capitalized `effect/<Module>` subpaths are the root modules above. These namespaces come in scope with the precedence above, so `Headers`, `Response` and `Event`, which are web platform globals, name Effect's. `FileSystem` and `Path` are root modules. Emitted code imports each namespace from its subpath.
+3. **Subpath namespaces are in scope:** the namespaces exported by the 22 lowercase subpaths in effect 4.1.0's package `exports`: `effect/ai`, `effect/cli`, `effect/cluster`, `effect/crypto`, `effect/devtools`, `effect/encoding`, `effect/eventlog`, `effect/graphql`, `effect/http`, `effect/http-api`, `effect/net`, `effect/observability`, `effect/persistence`, `effect/process`, `effect/reactivity`, `effect/rpc`, `effect/schema`, `effect/socket`, `effect/sql`, `effect/testing`, `effect/workers` and `effect/workflow` (`HttpClient` comes from `effect/http`, `ChildProcess` from `effect/process`). The capitalized `effect/<Module>` subpaths are the root modules above. These namespaces come in scope with the precedence above, so a subpath namespace whose name is a web platform global names Effect's. In effect 4.1.0 these are `Headers`, `Response`, `Event` and `Worker`. `FileSystem` and `Path` are root modules. Emitted code imports each namespace from its subpath.
 
    **Undecided (pending VIP):** a name two subpaths export, or a subpath and a root (`Model`, `Prompt`, `Utils` in 4.1.0).
 

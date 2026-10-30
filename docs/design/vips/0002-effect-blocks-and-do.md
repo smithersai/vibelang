@@ -21,6 +21,7 @@ const x = do { const a = 1; a + 1 }                // TC39 do expression: runs n
 - `effect` before a function makes a function that returns an Effect (VIP-1). `effect` before a block makes the Effect itself.
 - `do { … }` is exactly TC39's do expression, pinned to a dated snapshot of the proposal (moved deliberately, as VIP-7 does for `match`), everywhere, with no exceptions. It runs now and gives its last statement's value, like an IIFE. As TC39 specifies, `await` inside `do` belongs to the enclosing function, and so does `try`.
 - No other syntax builds a program. A function literal never turns into a program because the parameter it's passed to expects an Effect.
+- **Amended 2026-10-29: `do` follows TC39 exactly.** VibeLang adds no limits on `var`, `break` or `continue` inside a `do` block (the old EK1019 is deleted). Sent to Will on Telegram 2026-10-29 12:28 under his standing rule 'assume I accept'; no objection by 13:00.
 
 ## Prior art
 

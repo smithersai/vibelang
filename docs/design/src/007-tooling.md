@@ -16,7 +16,9 @@ In a directory, VibeLang reads the first of these that exists:
 
 `vibe.config.json` is a strict superset of `tsconfig.json`. Every tsconfig field means the same there, `extends` included. The only addition is a top-level `"vibe"` section, which holds VibeLang's options in any of the three files. Plain `tsc` rejects unknown `compilerOptions` (TS5023) but ignores unknown top-level keys, so a repository's own TypeScript tooling keeps working.
 
-The decided keys are:
+**Undecided (pending VIP):** whether `extends` inherits the custom `vibe` section and, if so, how it merges keys. For example, a base config with `"vibe": { "effectGlobals": false }` and a child with `"vibe": { "effectModules": false }` does not yet specify whether both switches are disabled. TypeScript has no built-in inheritance rule for this custom section. This is a compiler setting, with no Effect TypeScript runtime translation.
+
+The decided keys (VIP-30, amended) are:
 
 | Key | Meaning |
 | --- | --- |
@@ -24,9 +26,15 @@ The decided keys are:
 | `vibe.effectModules` | Boolean switch for Effect's modules in scope ([VIP-14](../vips/0014-effect-modules-in-scope.md)); `false` turns them off. |
 | `vibe.severities` | Adjusts warning severities (VIP-34); errors cannot be set to `"off"`. |
 
-These are compiler settings, with no Effect TypeScript runtime translation. In the example, use explicit Effect imports instead of the disabled globals and modules, just as in TypeScript.
+These settings have no Effect TypeScript runtime translation. With both switches disabled, use explicit imports, just as in TypeScript:
 
-**Undecided (pending VIP):** the entry format, diagnostic identifiers and allowed warning severity values of `vibe.severities`.
+```ts
+import { Effect } from "effect"
+
+Effect.runSync(Effect.succeed(42)) // 42
+```
+
+**Undecided (pending VIP):** the entry format, diagnostic identifiers and allowed warning severity values of `vibe.severities`. VIP-34 decides that warnings are configurable and errors cannot be disabled; it does not decide a map keyed by `EKxxxx`, a rule-name map, or a list of entries. No entry syntax is normative yet.
 
 ## The Effect version
 
@@ -38,7 +46,7 @@ A migration upgrades the target repository to the pinned Effect first, on its ow
 
 1. **Diagnostics.** Every diagnostic has a code (`EKxxxx`) and a message in the user's words that says what is wrong and how to fix it, with a quick fix wherever the fix is mechanical. [Appendix B](900-appendices.md#appendix-b-diagnostics) lists the codes.
 2. **Codemods.** Every breaking change ships a `vibelang --fix` codemod, so code that compiled under the previous release migrates mechanically.
-3. **One formatter.** VibeLang's formatter is the only formatter. Prettier, dprint and Oxfmt reach it through plugins, so a repository's existing formatter command covers `.vibe` files.
+3. **One formatter.** VibeLang's formatter is the only formatter. Prettier, dprint and Oxfmt reach it through plugins, so a repository's existing formatter command covers `.vibe` files. It preserves the `provide` line restrictions ([VIP-12](../vips/0012-provide.md)): never break after `provide`, before or after a provider-separating comma, or before the block’s `{`. Wrap a long list inside `Layer.mergeAll(…)`, where argument line breaks are allowed ([example](005-services.md#syntax)).
 4. **Existing tools work.** Type checkers work through `.d.vibe.ts`, and linters, Knip, bundlers and test runners each read `.vibe`. Every tool is tested against the dogfood repositories.
 5. **Severities.** Warning severities can be adjusted in `vibe.severities`. Errors cannot be set to `"off"`.
 
@@ -48,8 +56,10 @@ A migration upgrades the target repository to the pinned Effect first, on its ow
 vibelang lint
 ```
 
-The Effect language service's type-aware rules (effect-tsgo's `effecttsgo/*` rules) run inside the `vibelang` compiler on `.vibe` files. They run wherever VibeLang reports diagnostics: the CLI, the language server, and `vibelang lint` for CI. A repository's existing Effect language-service configuration selects and configures them, so its lint script covers `.vibe` as it covers `.ts`. The lint command uses the same configuration and diagnostics as the compiler and language server; it has no Effect TypeScript runtime translation.
+The Effect language service's type-aware rules (effect-tsgo's `effecttsgo/*` rules) run inside the `vibelang` compiler on `.vibe` files. They run wherever VibeLang reports diagnostics: the CLI, the language server, and `vibelang lint` for CI (VIP-38, amended). A repository's existing Effect language-service configuration selects and configures them, so its lint script covers `.vibe` as it covers `.ts`. The lint command uses the same configuration and diagnostics as the compiler and language server; it has no Effect TypeScript runtime translation.
+
+An `effect { … }` expression statement builds an Effect and discards it without running it ([Effect blocks](002-running.md#effect-blocks)). The built-in Effect language-service floating-Effect diagnostic reports it, just as it reports a discarded Effect in TypeScript.
 
 Tools that only analyze code, such as cycle checkers (madge) and dependency graphs, may run on VibeLang's compiled output. Formatters cannot; they read `.vibe` itself.
 
-**Undecided (pending VIP):** lint-specific command-line options, including whether it adds any beyond the compiler’s options.
+**Undecided (pending VIP):** lint-specific command-line options, including whether it adds any beyond the compiler’s options. Only `vibelang lint` is decided here; neither additional flags nor their absence is specified by VIP-38.

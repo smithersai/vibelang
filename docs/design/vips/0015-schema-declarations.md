@@ -45,6 +45,8 @@ const user = try Schema.decodeUnknownEffect(User)(input)   // fails with a Schem
 
 *Corrected 2026-10-29: under "mutability included", a writable `Record<K, V>` is `Schema.Record(K, Schema.mutableKey(V))` and `Readonly<Record<K, V>>` is `Schema.Record(K, V)`, because `Schema.Record(K, V).Type` is readonly in effect 4.1.0; and a union made only of literals is `Schema.Literals([...])`, as the decision example writes it (found by the round-3 review).*
 
+*Corrected 2026-10-29: a mutable tuple `[A, B]` is `Schema.mutable(Schema.Tuple([A, B]))`, because `Schema.Tuple([A, B]).Type` is readonly in effect 4.1.0; `readonly [A, B]` is `Schema.Tuple([A, B])` (found by the round-4 review).*
+
 ## History
 
 One minor finding, a wrong Effect API name, fixed.

@@ -30,6 +30,10 @@ const c = (id) => fetchUser(id)   // neither keyword: plain JavaScript; returns 
   ```
 
 - A Promise used inside an `effect` function is wrapped with `tryPromise` or `promise`. An Effect used inside an `async` function goes through `runPromise`. All three are VIP-6 globals.
+- **Amended 2026-10-29: `new f()` on a `.vibe` function** gets TypeScript's own error only, with no stricter VibeLang check (the old EK1020 check is deleted). Sent to Will on Telegram 2026-10-29 12:28 under his standing rule 'assume I accept'; no objection by 13:00.
+- **Amended 2026-10-29: recursive inference** reports only TypeScript's own errors (TS7022, TS7023, TS7024); the old partial-slot rules of EK2102 are deleted. Sent to Will on Telegram 2026-10-29 12:28 under his standing rule 'assume I accept'; no objection by 13:00.
+- **Amended 2026-10-29: no direct `eval` or `arguments`.** Direct `eval` and `arguments` are compile errors anywhere in a `.vibe` file, plain functions included; code that needs them lives in a `.ts` or `.js` file. Will: "anything problematic from js legacy should be forced to be wrapped in js either coming from a ts or js file … Even writing a normal sync js function should be banning things like eval arguments etc." Decided by Will on factory.vibelang.sh, 2026-10-29 ~14:20–14:25 ("revisit-r5"). Whether `new Function`, `var` and `with` are banned too was pending his confirmation; the next amendment decides it.
+- **Amended 2026-10-29: legacy JavaScript banned in all `.vibe` code.** Direct and indirect `eval`, `new Function` (and `Function(...)`), `arguments` (use rest parameters), `var` (use `let`/`const`) and `with` are each a compile error with a quick fix anywhere in a `.vibe` file, plain functions included. Legacy JavaScript lives in `.ts`/`.js` files. Inline `module {}` stays denied (VIP-25). This replaces the previous amendment's pending list. Decided by Will, 2026-10-29 15:57: "I don't have every api memorized that's on the agent to do a good job."
 
 ## Prior art
 
