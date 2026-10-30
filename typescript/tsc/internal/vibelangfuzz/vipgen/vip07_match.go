@@ -62,6 +62,23 @@ func init() {
 			return dataMatchStmt(g, s)
 		},
 	})
+	// A match in code that can't run is still a match: its arms cover the
+	// union, as in reachable code. Until lane fix-vip-match's fix, the
+	// compiler reports EK4701 for it (after-landing campaign 20261030T1700).
+	Register(&Construct{
+		Key:       "vip07.match-unreachable",
+		VIP:       7,
+		Requires:  []string{"vip01.effect-function", "vip16.data"},
+		Citations: []Citation{matchOrder, objectPattern},
+		// The probe returns from a labeled block, then matches on both
+		// variants of a data union in code after it.
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			v := g.Name("v")
+			s.Locals = append(s.Locals, v)
+			exit := &Labeled{Label: g.Name("L"), Body: []Stmt{&Event{Label: g.Label()}, &Return{Value: &Num{Value: 1}}}}
+			return append([]Stmt{exit}, dataMatchFocus(g, v)...)
+		},
+	})
 	Register(&Construct{
 		Key:      "vip07.match-error",
 		VIP:      7,

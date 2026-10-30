@@ -429,6 +429,10 @@ func jumpNest(g *Gen, s *Scope, block func(body []Stmt) Stmt) Stmt {
 	} else {
 		body = []Stmt{&Event{Label: g.Label()}, &If{Cond: g.Cond(in), Then: []Stmt{j}}, &Event{Label: g.Label()}}
 	}
+	// An unconditional jump leaves every layer inside its target, and a
+	// return leaves them all (its target is -1), so such a layer ends and
+	// nothing is generated after it in code that can't run.
+	always := ends(body)
 	for i := len(layers) - 1; i >= 0; i-- {
 		ly := layers[i]
 		var st Stmt
@@ -465,6 +469,9 @@ func jumpNest(g *Gen, s *Scope, block func(body []Stmt) Stmt) Stmt {
 			st = &Switch{Label: ly.label, Shown: o.written && o.target == i, Subject: subject, Body: body}
 		case "label":
 			st = &Labeled{Label: ly.label, Body: body}
+		}
+		if always && i > o.target && !st.Ends() {
+			st = exits{st}
 		}
 		body = []Stmt{&Event{Label: g.Label()}, st}
 		if !st.Ends() {
@@ -617,6 +624,13 @@ func (s *Switch) print(w *Writer, label bool) {
 	})
 	w.Write("}")
 }
+
+// exits marks a statement that always leaves its enclosing block, though
+// its own Ends does not know it: a loop, switch or labeled block whose body
+// ends in an unconditional jump past it.
+type exits struct{ Stmt }
+
+func (exits) Ends() bool { return true }
 
 // A Labeled is a labeled block, `L: { … }`, in both prints.
 type Labeled struct {
