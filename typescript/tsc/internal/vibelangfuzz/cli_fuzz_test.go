@@ -153,6 +153,7 @@ var cliFlags = sync.OnceValue(func() []cliFlag {
 		{"", []string{"main.vibe", "main.ts", "missing.vibe", "tsconfig.json"}, "Chapter 27: files named on the command line"},
 		{"--fix", cliBareOnly, "Chapter 28, Diagnostics (D291)"},
 		{"--fix-migration-only", cliBareOnly, "D382; internal/vibelang/fix.go"},
+		{"--fix-vip-only", cliBareOnly, "internal/vibelang/fix.go: the VIP-1 and VIP-2 codemod's scope (fix_effect.go)"},
 		{"--loader-root", []string{".", "sub", "missing"}, "Chapter 28, Building and testing; internal/vibelang/loaderroot.go"},
 		{"--lsp", cliBareOnly, "Chapter 28, The editor (D32)"},
 		{"--stdio", cliBareOnly, "Chapter 28, The editor (D32)"},
@@ -616,9 +617,8 @@ func cliOptions(w *Workspace, dir string, args []string) *tsoptions.ParsedComman
 	if len(args) > 0 && cliDispatched(args[0]) || cliBuildMode(args) {
 		return nil
 	}
-	rest := slices.DeleteFunc(slices.Clone(args), func(arg string) bool {
-		return strings.EqualFold(arg, "--fix") || strings.EqualFold(arg, "--fix-migration-only")
-	})
+	fix := cliHasFix(args)
+	rest := slices.DeleteFunc(slices.Clone(args), func(arg string) bool { return cliFixFlag(arg, fix) })
 	return tsoptions.ParseCommandLine(rest, w.fs, tspath.RootedDirectoryPathFromAbsolute(filepath.ToSlash(dir)))
 }
 
@@ -647,6 +647,17 @@ func cliHasFix(args []string) bool {
 	return slices.ContainsFunc(args, func(arg string) bool { return strings.EqualFold(arg, "--fix") })
 }
 
+// cliFixFlag reports whether the CLI removes arg before TypeScript parses the
+// command line, fix saying whether it holds --fix: --fix always, and its
+// scope flags --fix-migration-only and --fix-vip-only only beside --fix, as
+// docs/tools/README.md writes `vibelang --fix --fix-migration-only` and
+// internal/vibelang/fix.go removes "the optional scope flag after --fix was
+// found". A scope flag alone scopes nothing, so TypeScript reports it as an
+// unknown option (TS5023).
+func cliFixFlag(arg string, fix bool) bool {
+	return strings.EqualFold(arg, "--fix") || fix && (strings.EqualFold(arg, "--fix-migration-only") || strings.EqualFold(arg, "--fix-vip-only"))
+}
+
 // cliNeutral reports whether a command line compiles the project as its
 // tsconfig.json says, so that its diagnostics are the library's: only -p
 // naming that file, --pretty false and --noEmit.
@@ -654,9 +665,12 @@ func cliNeutral(args []string, options *tsoptions.ParsedCommandLine) bool {
 	if options == nil || len(options.Errors) > 0 || len(options.FileNames()) > 0 || options.CompilerOptions().Pretty.IsTrue() {
 		return false
 	}
+	fix := cliHasFix(args)
 	for i := 0; i < len(args); i++ {
+		if cliFixFlag(args[i], fix) {
+			continue
+		}
 		switch args[i] {
-		case "--fix", "--fix-migration-only":
 		case "--noEmit":
 			if i+1 < len(args) && (args[i+1] == "true" || args[i+1] == "false") {
 				i++
