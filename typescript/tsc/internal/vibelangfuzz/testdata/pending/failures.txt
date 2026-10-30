@@ -231,14 +231,10 @@ FuzzFailuresSpec feature:error-priority-tag-initializer compiler VIP-13: 003-fai
 FuzzFailuresSpec corpus:error-priority-tag-initializer compiler VIP-13: minimized reproduction of feature:error-priority-tag-initializer; lane fix-vip-decls
 FuzzFailuresSpec feature:error-priority-static-initializer compiler VIP-13: 003-failures.md contract error-priority-static-initializer disagrees on main 84f966a6 (required metadata or diagnostic missing); lane fix-vip-decls
 FuzzFailuresSpec corpus:error-priority-static-initializer compiler VIP-13: minimized reproduction of feature:error-priority-static-initializer; lane fix-vip-decls
-FuzzFailuresSpec feature:error-implements compiler VIP-13: 003-failures.md contract error-implements disagrees on main 84f966a6 (required metadata or diagnostic missing); lane fix-vip-decls
-FuzzFailuresSpec corpus:error-implements compiler VIP-13: minimized reproduction of feature:error-implements; lane fix-vip-decls
 FuzzFailuresSpec feature:schema-error-priority-tag-initializer compiler VIP-29: 003-failures.md contract schema-error-priority-tag-initializer disagrees on main 84f966a6 (error EK2117; error TS2416); lane fix-vip-decls
 FuzzFailuresSpec corpus:schema-error-priority-tag-initializer compiler VIP-29: minimized reproduction of feature:schema-error-priority-tag-initializer; lane fix-vip-decls
 FuzzFailuresSpec feature:schema-error-priority-static-initializer compiler VIP-29: 003-failures.md contract schema-error-priority-static-initializer disagrees on main 84f966a6 (required metadata or diagnostic missing); lane fix-vip-decls
 FuzzFailuresSpec corpus:schema-error-priority-static-initializer compiler VIP-29: minimized reproduction of feature:schema-error-priority-static-initializer; lane fix-vip-decls
-FuzzFailuresSpec feature:schema-error-implements compiler VIP-29: 003-failures.md contract schema-error-implements disagrees on main 84f966a6 (required metadata or diagnostic missing); lane fix-vip-decls
-FuzzFailuresSpec corpus:schema-error-implements compiler VIP-29: minimized reproduction of feature:schema-error-implements; lane fix-vip-decls
 FuzzFailuresSpec feature:effect-decoder-sync-call compiler VIP-4 (decided detail 66): current 003-failures.md contract effect-decoder-sync-call cannot be checked before the effect marker parses (TS1434); lane vip-core2
 FuzzFailuresSpec corpus:effect-decoder-sync-call compiler VIP-4: minimized reproduction of feature:effect-decoder-sync-call; lane vip-core2
 

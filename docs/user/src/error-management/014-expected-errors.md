@@ -449,3 +449,6 @@ true
 ## Coming from Effect
 
 Effect functions replace `Effect.gen`; calls return Effects that the caller runs with `try` or a catch expression. `Effect.fail(error)` draws EK4834, whose quick fix writes `throw error`, and `Effect.catchTag(program, "Tag", handler)` draws EK4835 with a quick fix for catch-and-match recovery ([TypeScript-style Effect code](../getting-started/012-devtools.md#typescript-style-effect-code)). Pass an Effect such as `findItem(input)` when a recovery operator needs work it can control. Support for the new forms arrives with the compiler's VIP implementation.
+
+An `implements` clause on `error` or `schema error` is `EK1304`.
+Remove the clause and use the error's instance type structurally; `vibelang --fix` removes it without changing the runtime class.

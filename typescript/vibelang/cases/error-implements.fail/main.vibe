@@ -1,0 +1,4 @@
+// expect: EK1304 EK1304
+interface Shape {}
+error Ordinary implements Shape {}
+schema error Serializable implements Shape {}

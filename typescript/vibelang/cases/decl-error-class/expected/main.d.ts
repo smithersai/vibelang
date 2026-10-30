@@ -1,7 +1,4 @@
 import { Effect } from "effect";
-interface Coded {
-    readonly code: string;
-}
 declare const Validated_base: new <A extends Record<string, any> = {}>(args: import("effect/Types").VoidIfEmpty<{ readonly [P in keyof A as P extends "_tag" ? never : P]: A[P]; }>) => import("effect/Cause").YieldableError & {
     readonly _tag: "Validated";
 } & Readonly<A>;
@@ -10,7 +7,7 @@ export declare class Validated extends Validated_base<{
     /** The code, trimmed and in lower case. */
     readonly code: string;
     readonly attempts: number;
-}> implements Coded {
+}> {
     #private;
     static readonly docs = "https://example.com/errors";
     private readonly prefix;

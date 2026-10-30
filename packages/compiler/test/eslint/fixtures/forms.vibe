@@ -39,7 +39,7 @@ export error BadJson { error: unknown }
  * @category errors
  * @since 0.0.2
  */
-export error AppError implements Coded {
+export error AppError {
   _tag: string
   code: string
 

@@ -1,6 +1,6 @@
 // expect-result: {"code":"notfound","tag":"Validated","name":"Validated","label":"code notfound","first":"code notfound (1)","second":"code notfound (2)","json":"{\"code\":\"notfound\"}","docs":"https://example.com/errors","made":"a","coded":"notfound","attempts":0,"recovered":"x","wrapped":"w","matched":"Validated notfound"}
 // D278: an error declaration is a named class. Everything but the base and
-// the tag keeps its TypeScript meaning: implements, a constructor that calls
+// the tag keeps its TypeScript meaning: a constructor that calls
 // super, methods, accessors, override, and static and private members.
 
 interface Coded {
@@ -8,7 +8,7 @@ interface Coded {
 }
 
 /** A failure whose code is normalized when it is made. */
-export error Validated implements Coded {
+export error Validated  {
   /** The code, trimmed and in lower case. */
   code: string
   attempts: number

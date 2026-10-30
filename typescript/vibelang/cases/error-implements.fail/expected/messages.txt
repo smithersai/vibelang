@@ -1,0 +1,2 @@
+An error declaration cannot have an implements clause.
+Remove the implements clause; use the error's instance type structurally.
