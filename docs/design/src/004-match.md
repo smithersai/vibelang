@@ -46,7 +46,7 @@ A `match` inside a larger expression follows the shared [expression-lowering rul
 
 ## Typing
 
-For the ordered TypeScript counterparts shown here, use TypeScript's control-flow narrowing and property types: `tracking` in `label` is `string`, and `t._tag` in `errorLabel` is `"TimeoutError"`. A throwing path contributes no success value.
+Each Effect TypeScript counterpart in this chapter type-checks under TypeScript's own control-flow narrowing: in it, `tracking` in `label` is `string`, and `t._tag` in `errorLabel` is `"TimeoutError"`. A throwing path contributes no success value.
 
 **Undecided (pending VIP):** general static typing of patterns and `match` expressions. Neither the pinned proposal nor TypeScript defines it. In particular, the relationship between a custom matcher's declared extracted-list type, subject narrowing and extractor bindings is not yet specified; the examples' TypeScript types alone do not settle that contract.
 
@@ -199,7 +199,7 @@ effect function unwrap(s: unknown) {
     default: "other";
   }
 }
-// A local Option uses Option.Some[Symbol.customMatcher] instead.
+// A local Option is matched as an ordinary class instead (Class patterns).
 ```
 
 ```ts effect
@@ -263,7 +263,7 @@ This is the retained inventory for Effect `4.1.0` (VIP-7, D208; decided detail 5
 | `Terminal.QuitError` | `Terminal.isQuitError(s)` | `[s]` |
 | `TextDiff.TextDiffError` | `TextDiff.isTextDiffError(s)` | `[s]` |
 
-These guards recognize Effect’s brands across installed copies and reject an unbranded object with only the same `_tag`. Every other constructor, including `Config.ConfigError` (no guard), `PlatformError.BadArgument` and `PlatformError.SystemError`, uses ordinary TC39 matching. A VIP-32 Effect version bump updates this inventory.
+These guards recognize Effect’s brands across installed copies and reject an unbranded object with only the same `_tag`. Every other constructor, including `Config.ConfigError` (no guard), `PlatformError.BadArgument` and `PlatformError.SystemError`, follows the ordinary class rule in [Class patterns](#class-patterns): its own `Symbol.customMatcher` if it has one, otherwise `instanceof` (decided detail 67). A VIP-32 Effect version bump updates this inventory.
 
 ```vibe es
 // compiler-gap: pending VIP-7

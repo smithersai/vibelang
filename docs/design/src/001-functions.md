@@ -24,7 +24,7 @@ A function's kind is decided by a keyword on the function, never by its body or 
 - Anywhere else, `effect` is an ordinary identifier, so `Layer.effect(…)` and `const effect = …` keep working. As with `async`, an arrow needs its whole head: `effect(x) => …` is an arrow, and `effect(x)` without `=>` is a call.
 - `effect function*` declares a producer ([Running Effects](002-running.md#producers)).
 
-`effect` and `async` on one function, in either order, is a compile error, with quick fixes that remove one modifier (decided detail 46). No Effect TypeScript function is both an `Effect.gen` and a Promise-returning `async` function.
+`effect` and `async` on one function, in either order, is a compile error, with quick fixes that remove one modifier (decided detail 46). Both orders parse as an [EffectModifier](900-appendices.md#effectmodifier), so the error is `EK0105`, not a generic syntax error. No Effect TypeScript function is both an `Effect.gen` and a Promise-returning `async` function.
 
 ```vibe es
 // compiler-gap: pending VIP-1

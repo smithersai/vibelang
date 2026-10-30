@@ -24,11 +24,7 @@ provide(x)                         a call to provide: no "{" on the same line
 
 ### Contextual keywords
 
-<a id="declaration-keywords"></a>**Declaration keywords.** `service`, `error`, `schema` and `data` follow TypeScript's contextual keyword `type`, whose alias declaration is `type` [no LineTerminator here] `BindingIdentifier`. This is the one rule for all four, [DeclarationStart](#declarationstart):
-
-```text
-DeclarationStart = ServiceStart | ErrorStart | SchemaErrorStart | SchemaStart | DataStart
-```
+<a id="declaration-keywords"></a>**Declaration keywords.** `service`, `error`, `schema` and `data` follow TypeScript's contextual keyword `type`, whose alias declaration is `type` [no LineTerminator here] `BindingIdentifier`. This is the one rule for all four, written once as the production [DeclarationStart](#declarationstart) and its five start productions under [Productions](#productions).
 
 Where a TypeScript declaration can start (a `StatementListItem`, or after `export`), a `DeclarationStart` begins that declaration, longest alternative first. Anything else is ordinary TypeScript, where the word is an identifier: `const error = …`, `catch (error)`, `const e = error as Error`, `return data as User[]`, `const ok = schema satisfies Schema.Top` and `error instanceof NotFound;` (a reserved word is not a `BindingIdentifier`). After the name, the declaration's production decides the rest, and line breaks may separate its tokens as in a TypeScript `class` or `type` declaration: a body's `{` and a `schema` alias's `=` may follow line breaks. The one production-specific rule is the bodyless `error` and `schema error` form, under [ErrorDeclaration](#errordeclaration). No other line-break or disambiguation rule applies to these four words.
 
@@ -55,7 +51,7 @@ Timeout                       then another
 
 | Word | Keyword when followed by | Chapter |
 | --- | --- | --- |
-| `effect` | `function`; an arrow head, as for `async`: `(` … `)` then `=>`, `<` type parameters of such an arrow, or an identifier then `=>`; in a class or object literal only: a method name (`ClassElementName`, `#m` included) then `(` or `<`, `*`, or `get` or `set` then a name ([EffectAccessor](#effectaccessor)), as TypeScript parses `async get x()`; at a statement start, a name other than `as` or `satisfies`, then `(` or `<` ([EffectShorthand](#effectshorthand)); `{`, except directly after `extends` in a class heritage, where `effect` is an identifier and `{` starts the class body, as in TypeScript. `effect * rate` is a multiplication; `effect(x)` with no `=>` is a call; `class C extends effect { }` extends a value named `effect` | [Functions](001-functions.md) |
+| `effect` | `function`; an arrow head, as for `async`: `(` … `)` then `=>`, `<` type parameters of such an arrow, or an identifier then `=>`; in a class or object literal only: a method name (`ClassElementName`, `#m` included) then `(` or `<`, `*`, or `get` or `set` then a name ([EffectAccessor](#effectaccessor)), as TypeScript parses `async get x()`; at a statement start, a name other than `as` or `satisfies`, then `(` or `<` ([EffectShorthand](#effectshorthand)); `{`, except directly after `extends` in a class heritage, where `effect` is an identifier and `{` starts the class body, as in TypeScript. `effect * rate` is a multiplication; `effect(x)` with no `=>` is a call; `class C extends effect { }` extends a value named `effect`. `effect async` and `async effect` before any of these forms parse as an [EffectModifier](#effectmodifier), so `EK0105` reports them | [Functions](001-functions.md) |
 | `concurrent` | after `for`, then `(` | [Running Effects](002-running.md#for-concurrent) |
 | `uninterruptible`, `interruptible`, `restore` | `{` | [Running Effects](002-running.md#interruption-blocks) |
 | `provide` | only when the tokens from `provide` through the `{` on the line where the last provider ends parse as the head of a [ProvideStatement](#providestatement), everything before its Block's `StatementList`, as an arrow needs its whole head; otherwise an identifier, in effect code too | [Services](005-services.md#provide-blocks) |
@@ -103,22 +99,32 @@ SchemaStart      = "schema"  [no LineTerminator here] BindingIdentifier
 DataStart        = "data"    [no LineTerminator here] BindingIdentifier
 ```
 
+#### EffectModifier
+
+```text
+EffectModifier = "effect"
+               | "effect" [no LineTerminator here] "async"   (parses, then EK0105 rejects it)
+               | "async" [no LineTerminator here] "effect"   (parses, then EK0105 rejects it)
+```
+
+Each two-word form needs a function, a method name or arrow parameters after it, so TypeScript's forms keep their meaning: `async effect => 1` is an `async` arrow whose parameter is `effect`, `async effect() { }` is an `async` method named `effect`, and `effect async() { }` is an `effect` method named `async`.
+
 #### EffectFunction
 
 ```text
-EffectFunction = "effect" [no LineTerminator here] "function" Name? TypeParameters? Params ReturnType? Block
+EffectFunction = EffectModifier [no LineTerminator here] "function" Name? TypeParameters? Params ReturnType? Block
 ```
 
 #### EffectArrow
 
 ```text
-EffectArrow = "effect" [no LineTerminator here] TypeParameters? ArrowParams ReturnType? [no LineTerminator here] "=>" ConciseBody
+EffectArrow = EffectModifier [no LineTerminator here] TypeParameters? ArrowParams ReturnType? [no LineTerminator here] "=>" ConciseBody
 ```
 
 #### EffectMethod
 
 ```text
-EffectMethod = Modifiers? "effect" [no LineTerminator here] ClassElementName TypeParameters? Params ReturnType? Block   (in a class; PropertyName in an object literal)
+EffectMethod = Modifiers? EffectModifier [no LineTerminator here] ClassElementName TypeParameters? Params ReturnType? Block   (in a class; PropertyName in an object literal)
 ```
 
 #### EffectAccessor
@@ -140,13 +146,13 @@ EffectShorthand = ("effect" | "async") [no LineTerminator here] [lookahead ∉ {
 #### Producer
 
 ```text
-Producer = "effect" [no LineTerminator here] "function" "*" Name? TypeParameters? Params ReturnType? Block
+Producer = EffectModifier [no LineTerminator here] "function" "*" Name? TypeParameters? Params ReturnType? Block
 ```
 
 #### ProducerMethod
 
 ```text
-ProducerMethod = Modifiers? "effect" [no LineTerminator here] "*" ClassElementName TypeParameters? Params ReturnType? Block   (in a class; PropertyName in an object literal)
+ProducerMethod = Modifiers? EffectModifier [no LineTerminator here] "*" ClassElementName TypeParameters? Params ReturnType? Block   (in a class; PropertyName in an object literal)
 ```
 
 #### Params
@@ -565,7 +571,7 @@ Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34)
 | `EK1905` | a labeled `continue` naming a statement that encloses the `for concurrent` | 19 | [Running Effects](002-running.md#for-concurrent) |
 | `EK2001` | `for try` outside effect code | 20 | [Running Effects](002-running.md#for-try) |
 | `EK2002` | `return` in a `for try` body | 20 | [Running Effects](002-running.md#for-try) |
-| `EK2003` | a labeled `break` or `continue` from a `for try` body to the `for try` statement itself or a statement outside its body; remove a self-targeting jump’s label | 20 | [Running Effects](002-running.md#for-try) |
+| `EK2003` | a labeled `break` or `continue` from a `for try` body to a statement that encloses the `for try`; one naming the `for try` itself is its unlabeled `break` or `continue` | 20 | [Running Effects](002-running.md#for-try) |
 | `EK2004` | a `for try` operand that is not a `Stream` | 20 | [Running Effects](002-running.md#for-try) |
 | `EK2101` | `return value` in a producer | 21 | [Running Effects](002-running.md#producers) |
 | `EK2102` | a producer whose written return type is not a `Stream` | 21 | [Running Effects](002-running.md#producers) |

@@ -28,16 +28,18 @@ test("all grammar definitions live once in Appendix A Productions and chapter ci
   }
 })
 
-test("stream-loop labels outside the source body are rejected consistently", () => {
+test("stream-loop labels: a self-label is the loop's own jump; enclosing targets are rejected", () => {
   const running = readFileSync(root + "002-running.md", "utf8")
   const appendix = readFileSync(root + "900-appendices.md", "utf8")
   const section = running.split("## `for try`")[1].split("## Producers")[0]
-  assert.ok(section.includes("outside the body, including the `for try` statement itself"))
-  assert.ok(section.includes("break scan   // EK2003; write break"))
-  assert.ok(section.includes("continue scan               // EK2003; write continue"))
-  assert.ok(running.includes("a `for try` consumes an unlabeled `continue` as `return true` and an unlabeled `break` as `return false`"))
-  assert.ok(!running.includes("or a `break` naming it"))
-  assert.ok(appendix.includes("to the `for try` statement itself or a statement outside its body"))
+  // A jump naming the for try itself is its own unlabeled jump, as ECMAScript's LoopContinues
+  // tests the loop's label set; only statements enclosing the loop are rejected.
+  assert.ok(section.includes("naming a statement that encloses the `for try`"))
+  assert.ok(section.includes("break scan   // return false"))
+  assert.ok(section.includes("continue scan               // return true"))
+  assert.ok(running.includes("a `for try` consumes `continue`, or a `continue` naming it, as `return true` and `break`, or a `break` naming it, as `return false`"))
+  assert.ok(!running.includes("including the `for try` statement itself"))
+  assert.ok(appendix.includes("to a statement that encloses the `for try`; one naming the `for try` itself is its unlabeled"))
 })
 
 test("chapter production citations use stable Appendix A links", () => {

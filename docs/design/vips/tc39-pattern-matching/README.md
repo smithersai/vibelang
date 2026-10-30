@@ -27,7 +27,7 @@ The explainer and the draft specification differ in a few places. VibeLang follo
 | Regular-expression patterns | `/re/` as a pattern in an example | a `RegExp` value as a variable pattern, through `RegExp.prototype[Symbol.customMatcher]` | both: a literal `/re/` is a pattern, and a `RegExp` value matches through the specification's matcher |
 | `async match` | a possible future enhancement | absent | the explainer's sketch: `async match (s) { ... }` is a `Promise` of the arm's value, and its arms may `await` |
 | A custom matcher's arguments | the subject and `{ matchType: "boolean" }` or `{ matchType: "extractor" }` | the subject, the string `"boolean"` or `"list"`, and the receiver | the explainer's, which VibeLang already passed: the subject and `{ matchType }` |
-| Built-in custom matchers | `Function.prototype`, primitives, `RegExp.prototype` | also `Array`, `Error`, `Map`, `Set`, `Date`, `Promise` and the other built-in constructors | the specification's, emulated by the runtime's `$is` and `$extract` without changing any built-in object |
+| Built-in custom matchers | `Function.prototype`, primitives, `RegExp.prototype` | also `Array`, `Error`, `Map`, `Set`, `Date`, `Promise` and the other built-in constructors | the specification's for primitives, `RegExp.prototype` and the built-in constructors, emulated by the runtime's `$is` and `$extract` without changing any built-in object. The inherited `Function.prototype` matcher for other classes is replaced by `subject instanceof C` (decided detail 67): its `[[ConstructedBy]]` slot can only be recorded by an engine, so an object whose prototype changed after construction doesn't match and `Object.create(C.prototype)` does |
 
 ## What VibeLang adds or keeps
 

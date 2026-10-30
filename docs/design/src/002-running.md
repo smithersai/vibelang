@@ -16,7 +16,7 @@ A call never runs anything. Calling an `effect` function, or any function that r
 
 "Effect code" means the body of an `effect` function, a producer or an `effect` block, not counting nested functions, class field initializers or `static` blocks, as `await` is not allowed there in an `async` function. A computed class key and an `extends` clause are effect code, as `await` is allowed there: in `effect function f() { class C { [try key()]() { } } }`, `try key()` runs. It is the code Appendix A parses with [the grammar's Effect parameter](900-appendices.md#the-effect-parameter), minus parameter lists, class field initializers and `static` blocks. Parentheses, `do` and `match` are not boundaries; an `async match` is one, as a nested `async` function is ([Pattern matching](004-match.md)), so `try` inside it is an error. Outside effect code a parser still parses these constructs, as TypeScript parses `await x` outside an `async` function, and reports the construct's "outside effect code" error; tokens that are also valid TypeScript, such as `fork(x)` or `join(x)`, keep their TypeScript meaning.
 
-Every operand is evaluated once, left to right as written, with two exceptions: a `catch` handler is evaluated only on failure, and the body of an `effect` block or function is evaluated on each run. Where Effect's argument order differs from the source order (`fork.in(scope) e`, `for concurrent(n) (… of xs)`), the Effect TypeScript evaluates the operands into temporaries first, in source order: `const $s = scope` before `Effect.forkIn(e, $s)`, and `const $n = n, $xs = xs` before `Effect.forEach($xs, …, { concurrency: $n })`.
+Every operand is evaluated once, left to right as written, with three exceptions: a `catch` handler is evaluated only on failure; the body of an `effect` block or function is evaluated on each run; and `fork.in(scope) e` evaluates `e` before `scope`, as VIP-17's `Effect.forkIn(e, scope)` does. Where Effect's argument order differs from the source order elsewhere (`for concurrent(n) (… of xs)`), the Effect TypeScript evaluates the operands into temporaries first, in source order: `const $n = n, $xs = xs` before `Effect.forEach($xs, …, { concurrency: $n })`.
 
 ## `try`
 
@@ -82,7 +82,7 @@ Anything else after `catch` is a syntax error: a name, a call, any other value, 
 | `x catch function (e) { return 7 }` | plain function | `7` |
 | `x catch effect (e) => 7`, `x catch (effect function (e) { return 7 })` | effect function | `7` |
 | `x catch async (e) => 7` | plain function | a Promise: an error, see Static rules |
-| `x catch function* (e) { }` | Undecided (pending VIP) | VIP-5 admits function expressions; a generator handler would give an unrun Generator |
+| `x catch function* (e) { }` | plain function | the Generator object it returns, unrun, as any plain function's result |
 | `x catch guest` | syntax error | quick fix: `x catch () => guest` |
 | `x catch onErr` (`onErr` a function) | syntax error | quick fix: `x catch (e) => onErr(e)` |
 | `x catch effect { return 7 }` | syntax error | quick fix: `x catch effect () => { return 7 }` |
@@ -265,7 +265,7 @@ A line break after `fork` or `join` changes nothing, as after `await`: `join` th
 | VibeLang | Effect TypeScript | Owner |
 | --- | --- | --- |
 | `fork worker()` | `yield* Effect.forkChild(worker())` | the current fiber |
-| `fork.in(scope) worker()` | `const $s = scope; yield* Effect.forkIn(worker(), $s)` | the given scope; `scope` is evaluated first, as written |
+| `fork.in(scope) worker()` | `yield* Effect.forkIn(worker(), scope)` | the given scope; `worker()` is evaluated before `scope` |
 | `fork.scoped worker()` | `yield* Effect.forkScoped(worker())` | the current `Scope`; adds `Scope` to R |
 | `fork.detached worker()` | `yield* Effect.forkDetach(worker())` | none |
 | `join f` | `yield* Fiber.join(f)` | |
@@ -296,8 +296,7 @@ function both() {
 }
 function owners(scope: Scope.Scope) {
   return Effect.gen(function* () {
-    const $s = scope
-    const a = yield* Effect.forkIn(worker(), $s)
+    const a = yield* Effect.forkIn(worker(), scope)
     const b = yield* Effect.forkScoped(worker())
     const c = yield* Effect.forkDetach(worker())
     return [a, b, c]
