@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { defaultCompiler } from "./check-snippets"
+import { runSnippets, runTestLimit } from "./run-snippets"
 
 const compiler = defaultCompiler()
 
@@ -17,15 +18,11 @@ test.skipIf(!existsSync(compiler))("isolates run-mode output across projects whe
       ].join("\n"))
     }
     const output = join(root, "report.json")
-    const child = Bun.spawn(["bun", join(import.meta.dir, "check-snippets.ts"), "--root", root,
-      "--compiler", compiler, "--run", "--json", output], { stdout: "pipe", stderr: "pipe" })
-    const [stdout, stderr, status] = await Promise.all([
-      new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited
-    ])
+    const { stdout, stderr, status } = await runSnippets(root, compiler, output)
     expect({ status, stderr, failures: stdout.split("\n").filter(line => line.includes("ENOENT")) })
       .toEqual({ status: 0, stderr: "", failures: [] })
     const report = JSON.parse(readFileSync(output, "utf8"))
     expect(report.execution).toEqual({ marked: 2, passed: 2, failed: 0 })
     expect(report.pages.map((page: any) => page.blocks[0].execution.stdout)).toEqual(["first\n", "second\n"])
   } finally { rmSync(root, { recursive: true, force: true }) }
-}, 20000)
+}, runTestLimit)

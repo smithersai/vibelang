@@ -115,7 +115,7 @@ const targets = {
   ),
   "docs-tools": check(
     "docs/tools' bun tests, with cached specification links and without site contrast.",
-    "cd docs/tools && bun test $(ls *.test.* | grep -vE '^site-(contrast|spec-links)\\.test\\.')",
+    "cd docs/tools && bun test --timeout 60000 $(ls *.test.* | grep -vE '^site-(contrast|spec-links)\\.test\\.')",
     [Typescript.compiler, Packages["runtime-dist"], Packages["compiler-native"], siteSpecLinks],
     [bun, node]
   ),

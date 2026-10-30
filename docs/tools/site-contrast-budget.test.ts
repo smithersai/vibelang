@@ -18,4 +18,8 @@ test("the site contrast test's timeout covers the kernel suite and fits the targ
   // npm ci, typecheck, the rest of the build and the browser check take about 5 minutes on a loaded host.
   expect(timeout).toBeGreaterThanOrEqual(kernelSuiteDeadline + 5 * 60_000)
   expect(timeout).toBeLessThan(minutes(target!))
+  // The browser check stops at its own limit, which names the failure, before this test's.
+  const check = /\{ timeout: ([\d_]+) \}/.exec(readFileSync(resolve(repo, "site/scripts/contrast.test.mjs"), "utf8"))?.[1]
+  expect(check).toBeDefined()
+  expect(kernelSuiteDeadline + Number(check!.replaceAll("_", ""))).toBeLessThanOrEqual(timeout)
 })

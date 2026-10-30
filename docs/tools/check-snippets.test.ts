@@ -62,6 +62,7 @@ test("parses native ES and TS errors and ignores notes and warnings", () => {
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { join, relative, resolve } from "node:path"
 import { tmpdir } from "node:os"
+import { hangingBlockDeadline, runSnippets, runTestLimit } from "./run-snippets"
 const compiler = defaultCompiler()
 test.skipIf(!existsSync(compiler))("checks shared declarations, schema type/value names, captions, and expected errors together", async () => {
   const root = mkdtempSync(join(tmpdir(), "snippet-check-test-"))
@@ -220,8 +221,7 @@ test.skipIf(!existsSync(compiler))("runs marked blocks and reports output mismat
     }
     for (const [name, lines] of Object.entries(pages)) writeFileSync(join(root, `${name}.md`), lines.join("\n"))
     const output = join(root, "report.json")
-    const child = Bun.spawn(["bun", join(import.meta.dir, "check-snippets.ts"), "--root", root, "--compiler", compiler, "--run", "--json", output], { stdout: "pipe", stderr: "pipe" })
-    const [stdout, stderr, status] = await Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited])
+    const { stdout, stderr, status } = await runSnippets(root, compiler, output)
     expect({ status, stderr }).toEqual({ status: 1, stderr: "" })
     const report = JSON.parse(readFileSync(output, "utf8"))
     const page = (name: string) => report.pages.find((p: any) => p.page.endsWith(`/${name}.md`)).blocks
@@ -241,12 +241,11 @@ test.skipIf(!existsSync(compiler))("runs marked blocks and reports output mismat
     // to load a native entry's platform runtime.
     writeFileSync(join(root, "timeout.md"), ["```vibe", "export function main() { Effect.never() }", "// Output:", "```"].join("\n"))
     const timeoutReport = join(root, "timeout.json")
-    const hanging = Bun.spawn(["bun", join(import.meta.dir, "check-snippets.ts"), "--root", root, "--compiler", compiler, "--run", "--filter", "timeout.md", "--timeout", "3000", "--json", timeoutReport], { stdout: "pipe", stderr: "pipe" })
-    const [, timeoutStderr, timeoutStatus] = await Promise.all([new Response(hanging.stdout).text(), new Response(hanging.stderr).text(), hanging.exited])
+    const { stderr: timeoutStderr, status: timeoutStatus } = await runSnippets(root, compiler, timeoutReport, { filter: "timeout.md", deadline: hangingBlockDeadline })
     expect({ status: timeoutStatus, stderr: timeoutStderr }).toEqual({ status: 1, stderr: "" })
     expect(JSON.parse(readFileSync(timeoutReport, "utf8")).pages[0].blocks[0]).toMatchObject({ status: "fail", execution: { timedOut: true } })
   } finally { rmSync(root, { recursive: true, force: true }) }
-}, 60000)
+}, runTestLimit)
 
 
 test("output normalization preserves spaces and extra blank lines", () => {
@@ -270,33 +269,36 @@ test.skipIf(!existsSync(compiler))("runs Effect Vitest snippets, shared assertio
       "```vibe", 'import { assert, it } from "@effect/vitest"',
       'it.effect("reports assertion failures") { assert.strictEqual(1, 2) }', '// Output:', "```"
     ].join("\n"))
+    writeFileSync(join(root, "literal.md"), [
+      "```ts", "// TypeScript (.ts)", "// literal.ts", 'console.log("@effect/vitest")', '// Output: @effect/vitest', "```"
+    ].join("\n"))
+    const output = join(root, "report.json")
+    const { stderr, status } = await runSnippets(root, compiler, output)
+    expect({ status, stderr }).toEqual({ status: 1, stderr: "" })
+    const report = JSON.parse(readFileSync(output, "utf8"))
+    const pass = report.pages.find((p: any) => p.page.endsWith("/pass.md")).blocks
+    expect(pass.map((b: any) => [b.execution.status, b.reason])).toEqual([["passed", undefined], ["passed", undefined]])
+    expect(pass[1].execution.stdout).toBe("checked\n")
+    const literal = report.pages.find((p: any) => p.page.endsWith("/literal.md")).blocks[0]
+    expect(literal.execution.status).toBe("passed")
+    expect(literal.execution.stdout).toBe("@effect/vitest\n")
+    const failure = report.pages.find((p: any) => p.page.endsWith("/failure.md")).blocks[0]
+    expect(failure.execution.exitCode).not.toBe(0)
+    expect(failure.execution.stderr).toContain("AssertionError")
+    // Only this block hangs, so only its run has the short deadline.
     writeFileSync(join(root, "pending.md"), [
       "```ts", "// TypeScript (.ts)", "// pending.ts", '// run: return new Promise<void>(() => {})',
       'import { it } from "@effect/vitest"', 'import { Effect } from "effect"',
       'it.effect("baseline", () => Effect.void)', '// Output:', "```"
     ].join("\n"))
-    writeFileSync(join(root, "literal.md"), [
-      "```ts", "// TypeScript (.ts)", "// literal.ts", 'console.log("@effect/vitest")', '// Output: @effect/vitest', "```"
-    ].join("\n"))
-    const output = join(root, "report.json")
-    const child = Bun.spawn(["bun", join(import.meta.dir, "check-snippets.ts"), "--root", root, "--compiler", compiler, "--run", "--json", output], { stdout: "pipe", stderr: "pipe" })
-    const [, stderr, status] = await Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited])
-    expect({ status, stderr }).toEqual({ status: 1, stderr: "" })
-    const report = JSON.parse(readFileSync(output, "utf8"))
-    const pass = report.pages.find((p: any) => p.page.endsWith("/pass.md")).blocks
-    expect(pass.map((b: any) => b.execution.status)).toEqual(["passed", "passed"])
-    expect(pass[1].execution.stdout).toBe("checked\n")
-    const pending = report.pages.find((p: any) => p.page.endsWith("/pending.md")).blocks[0]
-    const literal = report.pages.find((p: any) => p.page.endsWith("/literal.md")).blocks[0]
-    expect({ pending: pending.execution.status, literal: literal.execution.status }).toEqual({ pending: "failed", literal: "passed" })
-    expect(pending.execution).toMatchObject({ phase: "run", timedOut: true })
+    const pendingReport = join(root, "pending.json")
+    const hanging = await runSnippets(root, compiler, pendingReport, { filter: "pending.md", deadline: hangingBlockDeadline })
+    expect({ status: hanging.status, stderr: hanging.stderr }).toEqual({ status: 1, stderr: "" })
+    const pending = JSON.parse(readFileSync(pendingReport, "utf8")).pages[0].blocks[0]
+    expect(pending.execution).toMatchObject({ phase: "run", status: "failed", timedOut: true })
     expect(pending.execution.exitCode).not.toBe(0)
-    expect(literal.execution.stdout).toBe("@effect/vitest\n")
-    const failure = report.pages.find((p: any) => p.page.endsWith("/failure.md")).blocks[0]
-    expect(failure.execution.exitCode).not.toBe(0)
-    expect(failure.execution.stderr).toContain("AssertionError")
   } finally { rmSync(root, { recursive: true, force: true }) }
-}, 60000)
+}, runTestLimit)
 
 test("onboarding pages include the starter and check their inline wrapper examples", () => {
   const repo = resolve(import.meta.dir, "../..")

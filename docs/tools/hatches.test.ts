@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import { defaultCompiler, extract } from "./check-snippets"
+import { runSnippets, runTestLimit } from "./run-snippets"
 
 const repo = resolve(import.meta.dir, "../..")
 const compiler = defaultCompiler()
@@ -53,8 +54,7 @@ function checkAdapter() {
 // Output: 4
 \`\`\`
 `)
-    const child = Bun.spawn(["bun", join(import.meta.dir, "check-snippets.ts"), "--root", temp, "--compiler", compiler, "--run"], { stdout: "pipe", stderr: "pipe" })
-    const [stdout, stderr, status] = await Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited])
+    const { stdout, stderr, status } = await runSnippets(temp, compiler)
     expect({ status, stderr, stdout }).toEqual({ status: 0, stderr: "", stdout: expect.stringContaining('"passed":1,"failed":0') })
   } finally { rmSync(temp, { recursive: true, force: true }) }
-}, 30000)
+}, runTestLimit)
