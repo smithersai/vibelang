@@ -39,7 +39,10 @@ test("strips local links and paths", () => {
 // The cache tests drive the local compiler through a wrapper script: the
 // cache key hashes the compiler file, so editing the wrapper stands in for a
 // rebuilt binary without copying it.
-const compiler = resolve(import.meta.dir, "../../typescript/built/local/tsc")
+const native = resolve(import.meta.dir, "../../packages/compiler/native", process.platform === "win32" ? "vibelang.exe" : "vibelang")
+const legacy = resolve(import.meta.dir, "../../typescript/built/local/tsc")
+const selected = process.env.VIBELANG_BINARY || (existsSync(native) ? native : legacy)
+const compiler = Bun.which(selected) ?? resolve(selected)
 const root = mkdtempSync(join(tmpdir(), "hovers-test-"))
 const cache = join(root, "cache")
 const wrapper = join(root, "vibelang")
