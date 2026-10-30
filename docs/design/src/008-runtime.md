@@ -5,7 +5,7 @@ Source: [VIP-31](../vips/0031-runtime-guarantees.md).
 - **No independent Effect runtime semantics.** Every accepted construct is sugar for its specified counterpart. Failures, defects, interruption, finalizer order and the combination of causes are those of the pinned `effect` 4.1.0 ([Configuration](007-tooling.md#the-effect-version)). [Pattern matching](004-match.md#class-patterns) follows VIP-7’s pinned TC39 snapshot and its explicit Effect-pattern adaptations, including the class tests in decided details 67 and 67a.
 - **Module boundaries.** The [source module classification](001-functions.md#modules-and-the-top-level) is fixed before checking and survives JavaScript and declaration emission; a generated prelude import cannot change binding visibility or select different script-versus-module behavior. Execution still follows the configured output format and its ordinary host rules.
 - **The guarantee.** Compiled output gives the same `Exit` as the accepted VIP’s Effect TypeScript counterpart: success, failure, defect or interruption, with finalizers run in the same order. This specification spells out that counterpart. [Running Effects](002-running.md) specifies operand order: temporaries preserve source order wherever Effect's argument order differs, `fork.in(scope) e` included (decided detail 84). Compare the canonical `Exit` and the finalizer trace (decided detail 91). The canonical form is `CanonicalVIPExit` in `typescript/tsc/internal/vibelangfuzz/vip.go`: object keys are ordered; `Cause.reasons` retain their order and each reason’s `_tag` and `error`, `defect` or `fiberId`; payloads recursively encode class name (`$class`), own enumerable fields and an error’s `name` and `message`, dropping `stack`; fiber IDs are renamed by first appearance. Object identity is not compared: independently allocated errors with equal encoded fields agree. A fixture names any extra comparison it needs.
-- **How it is checked.** Each VIP’s VibeLang and Effect TypeScript pair is a differential test: it compiles the VibeLang, runs both, and compares their `Exit`s and finalizer traces. The fuzz suite generates more pairs. Checking only the Effect TypeScript validates the counterpart, not compiler conformance; skipped pairs establish no conformance.
+- **How it is checked.** Each VIP’s VibeLang and Effect TypeScript pair is a differential test: it compiles the VibeLang, runs both, and compares their `Exit`s and finalizer traces. The fuzz suite generates more pairs. It also compares recorded events at the function call, before running its returned Effect, and the complete ordered event trace after the run (`VIPCompare` in `typescript/tsc/internal/vibelangfuzz/vip.go`). Equal `Exit`s alone cannot distinguish an eager body from a cold one. Call-time events, including parameter-default evaluation, must match the counterpart; running the same returned Effect again reruns its body, without repeating the call or its defaults (VIP-1, VIP-2). Checking only the Effect TypeScript validates the counterpart, not compiler conformance; skipped pairs establish no conformance.
 - **Runtime helpers** do not patch Effect ([VIP-7](../vips/0007-match.md)). They implement only the specified adaptations: defining `Symbol.customMatcher` where absent; generated error matchers; the class tests below and the pinned snapshot's extraction rules, without modifying built-in globals; and the retained fixed checks for Effect's `Option`, `Exit`, `Result` and tagged errors (VIP-7). These checks follow resolved bindings, including aliases, not identifier spelling. The thirty-nine fixed tests and extracted lists are listed once in [Retained fixed patterns](004-match.md#retained-fixed-patterns) (decided details 86 and 92). VIP-7 keeps today’s fixed checks for Effect’s tagged errors until Effect ships matchers; neither inherited instance matching nor a new universal `_tag` test replaces them.
 - **Class patterns** have one definition, in [Class patterns](004-match.md#class-patterns) and [Retained fixed patterns](004-match.md#retained-fixed-patterns): a retained guard, an own `Symbol.customMatcher`, a built-in test, `instanceof`, or a call, chosen in that order. This deliberately differs from the pinned draft's `[[ConstructedBy]]` and internal-slot tests, which JavaScript cannot read for untouched `.ts` and `.js` objects. No helper patches `Function.prototype` or records construction.
 - **Source bindings and control flow survive lowering.** Bindings and jump targets are resolved on the source before any callback is introduced. Function bodies follow [Functions](001-functions.md#meaning) (`this`, `super`, `new.target`); region bodies follow [Region bodies](002-running.md#region-bodies) (source completions kept separately from primitive Effect success payloads); expressions follow the [evaluation-order rule](002-running.md#evaluation-order) (call references, receivers, short-circuits); destructuring and parameter defaults behave as [JavaScript with the `do` proposal](002-running.md#destructuring-and-parameter-defaults). The lowering is the implementation's choice, checked by those sections' examples and the fuzz suite. A nested source function keeps its own bindings. The legacy JavaScript uses listed in [Legacy JavaScript](001-functions.md#direct-eval) are compile errors throughout `.vibe`, so no lowering has to preserve them. Type references such as `Function` and property names such as `o.arguments` keep TypeScript’s meaning.
@@ -14,6 +14,28 @@ Source: [VIP-31](../vips/0031-runtime-guarantees.md).
 - <a id="abandonment"></a>**Abandonment.** A rejected `await` resumes the `async` function with a throw. A failed `try` never resumes the generator. `try e` is `yield* e`, and `Effect.gen` calls only the generator's `next`, only on success. So when a `yield*` in effect code fails, dies or is interrupted, no JavaScript after it runs: no `using` disposal, no destructuring `IteratorClose`, no `FinishMatch`. `throw e` in effect code is `return yield* Effect.fail(e)`, so every `throw` abandons the generator, wherever it stands: in an arm, a guard, or a `do` in either. A JavaScript exception is different: a getter that throws, the no-match `TypeError` or a call that throws unwinds the generator, runs that cleanup, and then becomes a defect. Use `ensuring`, `scoped` or `acquireRelease` for cleanup on every exit.
 - Effect handlers would need a continuation runtime. They are an open VIP ([VIP-35](../vips/0035-handlers-open.md)), not part of the language.
 
+
+The call below evaluates its default once. Each run then succeeds with `7` and appends one body event:
+
+```ts effect
+// Coldness witness: VIP-1, VIP-2, VIP-31
+import { Effect, Exit } from "effect"
+
+const trace: string[] = []
+function parameter() { trace.push("parameter"); return 7 }
+function program(value = parameter()) {
+  return Effect.gen(function* () { trace.push("body"); return value })
+}
+const p = program()
+const called = trace.slice()
+if (called.includes("body")) throw new Error("body ran during construction")
+if (called.join() !== "parameter") throw new Error("call-time default changed")
+const first = Effect.runSyncExit(p)
+const second = Effect.runSyncExit(p)
+if (!Exit.isSuccess(first) || first.value !== 7 ||
+    !Exit.isSuccess(second) || second.value !== 7) throw new Error("Exit changed")
+if (trace.join() !== "parameter,body,body") throw new Error("body did not rerun")
+```
 
 ```vibe es
 // compiler-gap: pending VIP-7
