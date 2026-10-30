@@ -53,6 +53,10 @@ A recognized `effect` modifier follows the valid and diagnostic recovery positio
 
 `effect async { B }` and `async effect { B }` remain rejected, with `EK0105`, as mixed function modifiers are. The parser recognizes both block heads for that diagnostic. A function repair can remove either modifier; the block repair removes `async`, keeping VIP-2’s `effect { B }`. No `async { B }` or runtime hybrid is added.
 
+## Amendment: formal-parameter diagnostics
+
+A forbidden `await` expression in directly evaluated formal-parameter initialization of an Effect callable or producer is `EK0102`. A forbidden `yield` expression there has the [producer diagnostic](https://github.com/smithersai/vibelang/blob/main/docs/design/src/002-running.md#producers), and `try` keeps its [outside-Effect diagnostic](https://github.com/smithersai/vibelang/blob/main/docs/design/src/002-running.md#static-rules). Defaults, destructuring defaults and computed binding keys use the same source boundary. Nested source callable or context boundaries keep their own native rules; this permits no parameter suspension.
+
 ## Prior art
 
 - JavaScript and TypeScript `async function`, C# `async`, Rust `async fn`, Kotlin `suspend fun`. In each, a keyword on the function, never its body, decides its kind.

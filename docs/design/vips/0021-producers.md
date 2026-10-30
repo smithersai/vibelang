@@ -32,6 +32,8 @@ const ticks = () => Stream.callback<number>((queue) => Effect.gen(function* () {
 
 About 9 findings, on the old design (a type decided a producer's fiber; a runtime built on continuations). Neither applies to this design.
 
+- **Amended 2026-10-30: parameter yield ownership.** `yield` in directly evaluated formal-parameter initialization of any Effect callable, a producer included, is `EK2104`. A producer owns `yield` in its body, not its parameter initialization; nested native generators and ordinary async callables keep their own contexts. The existing nonproducer Effect-body rejection remains unchanged.
+
 ## Prior art
 
 JavaScript's `async function*`, Kotlin's `flow { emit(x) }`, Python's async generators.

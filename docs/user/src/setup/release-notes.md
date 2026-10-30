@@ -19,6 +19,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The migrate flow's `step revert` restored a file from the batch's parent commit, so it could not return a module an earlier batch had migrated, as foldkit's round 3 needed for 26 modules a later lint crash blocked; it now restores such a module from before the batch that migrated it and undoes that batch's import edits.
 
+- The specification left parameter suspension outside its diagnostic rules and tied invalid Effect-body yields to an outer producer; the same source boundaries now cover formal initialization and every nonproducer Effect body.
+
 - A writable interface or object-type property became `readonly` in emitted declarations, preventing TypeScript consumers from assigning to it; declarations now keep the source's property and index-signature modifiers, including optional and nested members.
 
 - Severity settings for TypeScript-form lint warnings reported `EK3006` and were ignored; every warning listed in Appendix B now accepts `vibe.severities` overrides.

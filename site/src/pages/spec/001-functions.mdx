@@ -101,7 +101,7 @@ class OrdinaryValue { effect(): number { return 1 } }   // a method named effect
 
 | Rule | Diagnostic |
 | --- | --- |
-| `await`, `for await` or `await using` in effect code: an `effect` function, a producer or an `effect` block | `EK0102` |
+| `await`, `for await` or `await using` in effect code: an `effect` function, a producer or an `effect` block; or `await` in directly evaluated formal-parameter initialization of an Effect function, arrow, method or producer | `EK0102` |
 | `await` on an Effect, by the [Result test](/spec/002-running#result-tests) (decided detail 89: not `never`, `any` or `unknown`, and at least one union member an Effect), in an `async` function or at the module top level (VIP-5); write `await runPromise(e)` | `EK0103` |
 | `effect` on a getter, setter or constructor | `EK0104` |
 | `effect` and `async` on one function or block | `EK0105` |
@@ -123,6 +123,8 @@ effect function n(): number { return 1 }            // EK0106: write number!! or
 `try` works like `await`, so an `effect` function's parameter list, a class field initializer and a `static` block are not effect code, as `await` can't appear there in an `async` function ([the grammar's Effect parameter](/spec/900-appendices#the-effect-parameter)). An effect construct there is that construct's "outside effect code" error ([Running Effects](/spec/002-running#static-rules)). What a parameter default may throw is in [Code outside the generator](/spec/003-failures#code-outside-the-generator).
 
 Class field and enum member initializers reset the Effect reservation context, so ordinary calls to identifiers named `fork` or `join` stay ordinary calls there. Static blocks inherit the surrounding reservation but stay outside Effect execution: `join(x)` in a class written in that reserved context receives `EK1701`; a static block in a plain context can call an ordinary `join`. Heritage and computed class element names keep their enclosing context, and a nested explicit Effect callable or block starts its own. [Appendix A](/spec/900-appendices#the-effect-parameter) states this rule and VIP-17’s outside-code identifier promise.
+
+Forbidden `await` in directly evaluated formal-parameter initialization of an Effect callable or producer is `EK0102`; forbidden `yield` there is `EK2104`. This does not make parameter initialization effect code: `try` keeps `EK0501`. Stop at a nested source callable or context boundary; an ordinary async callable or native generator keeps its own `await` or `yield` rules. Defaults, destructuring defaults and computed binding keys follow the same boundary ([parameter examples](/spec/002-running#parameter-defaults)).
 
 ### Meaning
 

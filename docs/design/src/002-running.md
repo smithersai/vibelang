@@ -493,7 +493,33 @@ Three things can happen in a default:
 - **A suspension.** A `try` or `yield` in a default runs in the enclosing effect function.
 - **A failure.** A `try` that fails, dies or is interrupted, or a `throw`, [abandons](008-runtime.md#abandonment) the generator, so nothing closes. A JavaScript throw, such as a getter's, unwinds it: the iterator closes, the throw wins over any error from closing, and it becomes a defect.
 
-<a id="parameter-defaults"></a>**Parameter defaults.** A parameter default can't run an Effect, as `async function g(x = await p)` is a SyntaxError. Everything else JavaScript with the `do` proposal allows there stays, including a `return` in a default's `do`. The pinned proposal allows it and stops there, so it acts as `return` at the top of the body, whatever the kind of function:
+<a id="parameter-defaults"></a>**Parameter defaults.** A parameter default can't run an Effect, as `async function g(x = await p)` is a SyntaxError. Directly evaluated formal-parameter initialization of an Effect function, arrow, method or producer rejects `await` with `EK0102` and `yield` with `EK2104`, as native async and generator parameters cannot suspend. This includes destructuring defaults and computed binding keys, and stops at nested source callable or context boundaries; it does not extend effect code into a parameter list. A `try` there remains `EK0501`.
+
+```vibe
+// compiler-gap: pending VIP-1, VIP-21
+effect function badParameterAwait(value = await Promise.resolve(7)) { return 0 } // EK0102
+effect function* badParameterYield(value = yield 7) { } // EK2104
+effect function badParameterTry(value = try succeed(7)) { return 0 } // EK0501
+effect function parameterBoundaryWitness(
+  make = function* () { yield 7 },
+  later = async () => await Promise.resolve(8)
+) { return 0 }
+```
+
+```ts effect
+import { Effect } from "effect"
+
+function parameterBoundaryWitness(
+  make = function* () { yield 7 },
+  later = async () => await Promise.resolve(8)
+) {
+  return Effect.gen(function* () { return 0 })
+}
+```
+
+`parameterBoundaryWitness()` succeeds with `0`. Its parameter defaults create functions; the nested async and generator bodies have their own native execution contexts.
+
+Everything else JavaScript with the `do` proposal allows there stays, including a `return` in a default's `do`. The pinned proposal allows it and stops there, so it acts as `return` at the top of the body, whatever the kind of function:
 
 | Function | `x = do { return 7 }` |
 | --- | --- |
@@ -994,11 +1020,26 @@ function first() {
 | `return value` in a producer, `effect function* p() { return 1 }` (a bare `return` is allowed and ends the stream) | `EK2128` |
 | a written return type that is not a `Stream.Stream<A, E, R>`, `effect function* p(): number[] { }`, as TypeScript requires an `AsyncGenerator` type for `async function*` | `EK2102` |
 | `yield*` in a producer, `effect function* p() { yield* other() }`: no VIP specifies delegation | `EK2103` |
-| `yield` in an `effect` block, arrow or `effect function` nested in a producer, where no generator encloses it | `EK2104` |
+| `yield` in nonproducer effect code (an `effect` function, arrow or block), whether or not an outer producer exists, or in directly evaluated formal-parameter initialization of an Effect callable or producer | `EK2104` |
+
+`EK2104` does not require an outer producer:
+
+```vibe
+// compiler-gap: pending VIP-1, VIP-21
+effect function invalid() { yield 1 } // EK2104: no producer body owns this yield
+effect function* outer() {
+  const p = effect { yield 1 }       // EK2104: the block is a separate activation
+  yield 2                            // belongs to outer
+}
+effect function permitted() {
+  function* native() { yield 1 }     // belongs to the native generator
+  return 7
+}
+```
 
 ### Meaning
 
-`effect function*` returns a Stream, as `async function*` returns an AsyncIterable. Its body is effect code: `yield x` emits `x`, and `try` and the other constructs run Effects. `yield` belongs to the innermost producer, as in JavaScript, so `yield` in a nested `effect` block, an arrow or an `effect function` handler is a syntax error (`EK2104`). A `provide` block, an interruption block, a `for try` body and a `for concurrent` body are not producers: `yield x` there is `yield* Queue.offer(queue, x)` on the enclosing producer's queue, as `yield` in a nested block of an `async function*` yields from that function. In a `for concurrent` body, each item's fiber offers its own elements, so elements arrive in offer order. It compiles to `Stream.callback` with one element of buffer. For one sequential emitter, the producer may run up to two elements ahead of its consumer: one in the buffer and one waiting to be offered. With concurrent yields, each active item fiber can evaluate a value before waiting in `Queue.offer`; the one-element buffer does not bound all pending offers or upstream work. Unbounded concurrency has no constant global lead bound. A finite concurrency limit bounds active pending emitters in addition to the buffered element and work already consumed. Exact pull semantics are not provided. `yield x` evaluates to `undefined`, as in an `async function*` consumed by `for await`: it is `(yield* Queue.offer(queue, x), undefined)`. A `yield` with no operand is `yield undefined`, so it offers `undefined`. A failure run by `try` in the body fails the stream. The return type, when written, is `Stream.Stream<A, E, R>`, and each `yield x` requires `x` assignable to `A`. When it is not written, `A` is the union of the `yield` operands' types, widened as for an `async function*`, or `never` with no `yield`; `E` and `R` are inferred as for an `effect` function ([Functions](001-functions.md#return-types)). So `effect function* f() { yield 1; yield "a" }` returns `Stream.Stream<number | string>`. The lowering writes all three as type arguments, `Stream.callback<A, E, R>`, since Effect 4.1.0 can't infer them from the callback. The generator gets the function's `this`, `super` and `new.target` as an `effect` function's does ([Functions](001-functions.md#meaning)); how the compiler passes these bindings is its choice.
+`effect function*` returns a Stream, as `async function*` returns an AsyncIterable. Its body is effect code: `yield x` emits `x`, and `try` and the other constructs run Effects. A `yield` expression belongs to a producer or native generator body of its own activation, as in JavaScript: a nested callable cannot yield through an outer producer. In an `effect` function, effect arrow or `effect` block that is not itself a producer, it is `EK2104`, whether or not an outer producer exists. `yield` in a nested `effect` block, an arrow or an `effect function` handler is a syntax error; each of those bodies is a nonproducer activation. A nested native generator retains its own TypeScript `yield`; a plain nongenerator function or arrow retains TypeScript’s own restrictions and diagnostics. A `provide` block, an interruption block, a `for try` body and a `for concurrent` body are not producers: `yield x` there is `yield* Queue.offer(queue, x)` on the enclosing producer's queue, as `yield` in a nested block of an `async function*` yields from that function. In a `for concurrent` body, each item's fiber offers its own elements, so elements arrive in offer order. It compiles to `Stream.callback` with one element of buffer. For one sequential emitter, the producer may run up to two elements ahead of its consumer: one in the buffer and one waiting to be offered. With concurrent yields, each active item fiber can evaluate a value before waiting in `Queue.offer`; the one-element buffer does not bound all pending offers or upstream work. Unbounded concurrency has no constant global lead bound. A finite concurrency limit bounds active pending emitters in addition to the buffered element and work already consumed. Exact pull semantics are not provided. `yield x` evaluates to `undefined`, as in an `async function*` consumed by `for await`: it is `(yield* Queue.offer(queue, x), undefined)`. A `yield` with no operand is `yield undefined`, so it offers `undefined`. A failure run by `try` in the body fails the stream. The return type, when written, is `Stream.Stream<A, E, R>`, and each `yield x` requires `x` assignable to `A`. When it is not written, `A` is the union of the `yield` operands' types, widened as for an `async function*`, or `never` with no `yield`; `E` and `R` are inferred as for an `effect` function ([Functions](001-functions.md#return-types)). So `effect function* f() { yield 1; yield "a" }` returns `Stream.Stream<number | string>`. The lowering writes all three as type arguments, `Stream.callback<A, E, R>`, since Effect 4.1.0 can't infer them from the callback. The generator gets the function's `this`, `super` and `new.target` as an `effect` function's does ([Functions](001-functions.md#meaning)); how the compiler passes these bindings is its choice.
 
 ```vibe es
 // compiler-gap: pending VIP-21
