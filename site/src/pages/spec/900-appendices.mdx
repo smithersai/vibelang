@@ -10,14 +10,72 @@ VibeLang's grammar is TypeScript's, plus three TC39 proposals and the production
 
 ### The `[Effect]` parameter
 
-VibeLang adds one grammar parameter, `[Effect]`, and uses it exactly as ECMAScript uses `[Await]`. A production is parsed with `[+Effect]` where ECMAScript would parse it with `[+Await]` if every `effect` modifier were `async`: the parameters and body of an `effect` function, arrow, method or producer, and the body of an `effect` block. As with `[Await]`, a nested plain function, arrow or method body is parsed with `[~Effect]`, an `async match` with `[~Effect, +Await]` as a nested `async` function, and a class body keeps the parameter of the code around it. "Effect code" ([Running Effects](/spec/002-running)) is the code parsed with `[+Effect]`, minus parameter lists, class field initializers and `static` blocks. A computed class key and an `extends` clause are effect code, as `await` is allowed there in an `async` function: in `effect function f() { class C { [try key()]() { } } }` the `try` is valid.
+VibeLang adds one grammar parameter, `[Effect]`, with the contextual boundaries below, following [TypeScript’s parser](https://github.com/microsoft/TypeScript/blob/v5.9.3/src/compiler/parser.ts). The parameters and body of an `effect` function, arrow, method or producer, and the body of an `effect` block, parse with `[+Effect]`. The body of any source callable without an `effect` modifier parses with `[~Effect]`, retaining TypeScript’s own `[Await]` and `[Yield]` rules; an `async match` parses with `[~Effect, +Await]`, as a nested `async` function. Class heritage and computed class element names keep their enclosing source context. Class field and enum member initializers parse with `[~Effect]`, even inside an effect function. Ordinary TypeScript checks on computed field names still apply. Static blocks inherit `[?Effect]` for keyword reservation, but cannot execute Effects. A nested explicit Effect callable or block starts its own normal context.
+
+The grammar parameter determines reservation; permission to execute additionally excludes parameter lists and `static` blocks. “Effect code” ([Running Effects](/spec/002-running)) is code parsed with `[+Effect]` that has that permission. A computed class key and an `extends` clause are effect code when their enclosing context is: `effect function f() { class C { [try key()]() { } } }` permits the `try`.
 
 Under `[+Effect]`:
 
 - `fork` and `join` are reserved words, as `await` is under `[+Await]` (VIP-17, amended). No next-token test applies. An `IdentifierReference`, `BindingIdentifier` or `LabelIdentifier` can't be `fork` or `join`, so `join(parts)` is always a [JoinExpression](/spec/900-appendices#joinexpression), `join - 1` joins `-1`, and a parameter or local named `join` is a syntax error (`EK1702`). A plain arrow written in effect code parses its parameters with `[?Effect]`, as ECMAScript parses `ArrowParameters[?Await]`, so `const g = (join) => join` is `EK1702`, as `(await) => 1` is an error in an `async` function; a nested `function h(join) { }` resets the parameter, as it does for `await`. They stay ordinary `IdentifierName`s, as `await` does: `parts.join(",")`, `o?.fork`, `{ join: 1 }` and `class { join() { } }` are names. After the keyword, `/` begins a regular expression, and the operand may follow a line break, as after `await`: `join` then `f` on the next line joins `f`.
-- [TryExpression](/spec/900-appendices#tryexpression), [CatchExpression](/spec/900-appendices#catchexpression), [ForkExpression](/spec/900-appendices#forkexpression), [JoinExpression](/spec/900-appendices#joinexpression), [TryAll](/spec/900-appendices#tryall), [ForConcurrent](/spec/900-appendices#forconcurrent), [ForTry](/spec/900-appendices#fortry), the interruption blocks and [ProvideStatement](/spec/900-appendices#providestatement) are available. As ECMAScript makes an `AwaitExpression` in an async function's `FormalParameters` or in a class field initializer an early error, any of these in a parameter list, a class field initializer or a `static` block is an error: the "outside effect code" rule of each construct ([Running Effects](/spec/002-running#static-rules)).
+- [TryExpression](/spec/900-appendices#tryexpression), [CatchExpression](/spec/900-appendices#catchexpression), [ForkExpression](/spec/900-appendices#forkexpression), [JoinExpression](/spec/900-appendices#joinexpression), [TryAll](/spec/900-appendices#tryall), [ForConcurrent](/spec/900-appendices#forconcurrent), [ForTry](/spec/900-appendices#fortry), the interruption blocks and [ProvideStatement](/spec/900-appendices#providestatement) parse in this context. In a parameter list or `static` block, a recognized execution form receives its applicable placement diagnostic ([Running Effects](/spec/002-running#static-rules)). Initializers parsed with `[~Effect]` follow the recovery rule below.
 
 Under `[~Effect]` those productions don't exist, and `fork` and `join` are identifiers. As TypeScript parses `await x` in a plain function to report "only allowed in async functions", a parser recovers by parsing these productions under `[~Effect]` and reports the construct's "outside effect code" rule, except where the tokens are also valid TypeScript, which keep their TypeScript meaning. A [ProvideStatement](/spec/900-appendices#providestatement) head is the exception: it wins in any code (decided detail 34), so the statement `provide / a / { }` in `function f(provide: number, a: number) { provide / a / { } }` is `EK1201`; after `return` no statement can start, so `return provide / a / { }` divides.
+
+
+VIP-17’s outside-code identifier promise is contextual: a plain class’s static block keeps ordinary `fork`/`join` identifiers. This deliberately differs from ECMAScript’s unconditional `[+Await]` for static blocks; VibeLang reserves these two words only in the inherited Effect context, so module classification adds no global reservation. The same call syntax in an Effect-reserved static block is a recognized operation and receives `EK1701`.
+
+The field and enum calls below are ordinary helper calls; the class head keeps the enclosing Effect context, and the nested block establishes its own. The Effect gives `Success([2, 3, 7])`:
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-1, VIP-2, VIP-5, VIP-17
+import { Effect } from "effect"
+function join(n: number): number { return n + 1 }
+function fork(n: number): number { return n + 2 }
+effect function contextBoundaries() {
+  class Base {}
+  class C extends (try Effect.succeed(Base)) {
+    [try Effect.succeed("read")]() { return 1 }
+    value = join(1)
+    program = effect { return try Effect.succeed(7) }
+  }
+  enum E { A = fork(1) }
+  const c = new C()
+  return [c.value, E.A, try c.program] as const
+}
+class Plain { static { join(9); fork(9) } }
+```
+
+```ts [Effect]
+import { Effect } from "effect"
+
+function join(n: number): number { return n + 1 }
+function fork(n: number): number { return n + 2 }
+const contextBoundaries = Effect.gen(function* () {
+  class Base {}
+  class C extends (yield* Effect.succeed(Base)) {
+    [yield* Effect.succeed("read")]() { return 1 }
+    value = join(1)
+    program = Effect.gen(function* () { return yield* Effect.succeed(7) })
+  }
+  enum E { A = fork(1) }
+  const c = new C()
+  return [c.value, E.A, yield* c.program] as const
+})
+class Plain { static { join(9); fork(9) } }
+```
+
+Execution stays forbidden in the initializer or static block itself:
+
+```vibe
+// compiler-gap: pending VIP-1, VIP-5, VIP-17
+import { Effect } from "effect"
+effect function badStatic() {
+  class Reserved { static { join(1) } } // EK1701
+}
+effect function badEnum() {
+  enum E { A = try Effect.succeed(1) } // EK0501
+}
+```
 
 ```text
 function f(p) { return try p }     try outside effect code

@@ -65,6 +65,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The producer specification still required one receiver-passing recipe after the shared binding rule had replaced it. Producers now use the same source-binding behavior as Effect functions, with the implementation left to the compiler.
 
+- The specification gave conflicting meanings to `fork` and `join` in class and enum initializers. It now follows their ordinary initializer context, keeps class heads in the enclosing context, and distinguishes static keyword reservation from permission to run Effects.
+
 - Config migration could put severity settings inside a JSONC comment containing `{`; it now keeps the settings active and the comment intact.
 
 - The specification left import-free `.vibe` files with conflicting scope rules. It now requires module scope before checking, preserves it in JavaScript and declarations, and states the `moduleDetection` exception and ordinary host behavior.

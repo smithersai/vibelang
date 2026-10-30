@@ -116,6 +116,8 @@ effect function n(): number { return 1 }            // EK0106: write number!! or
 
 `try` works like `await`, so an `effect` function's parameter list, a class field initializer and a `static` block are not effect code, as `await` can't appear there in an `async` function ([the grammar's Effect parameter](900-appendices.md#the-effect-parameter)). An effect construct there is that construct's "outside effect code" error ([Running Effects](002-running.md#static-rules)). What a parameter default may throw is in [Code outside the generator](003-failures.md#code-outside-the-generator).
 
+Class field and enum member initializers reset the Effect reservation context, so ordinary calls to identifiers named `fork` or `join` stay ordinary calls there. Static blocks inherit the surrounding reservation but stay outside Effect execution: `join(x)` in a class written in that reserved context receives `EK1701`; a static block in a plain context can call an ordinary `join`. Heritage and computed class element names keep their enclosing context, and a nested explicit Effect callable or block starts its own. [Appendix A](900-appendices.md#the-effect-parameter) states this rule and VIP-17’s outside-code identifier promise.
+
 ### Meaning
 
 Calling an `effect` function returns its Effect unrun, as calling an `async` function returns a Promise. Running that Effect runs the body.
