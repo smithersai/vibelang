@@ -48,6 +48,8 @@ Effect version against the package's exact pin, including `devDependencies` and
 `peerDependencies`, and reuses a matching tree. Stale or missing local trees and
 local `.smithers` installs run `bun install --frozen-lockfile`.
 
+Docs checks use `VIBELANG_BINARY` when set, otherwise the native checkout build at `packages/compiler/native/vibelang` (`vibelang.exe` on Windows), then `typescript/built/local/tsc`, then `vibelang` on `PATH`. Build the native compiler with `sh scripts/build-vibelang.sh`. Both `:snippets` and `:docs-tools` declare `:compiler-native` so its build and cache key cover the selected binary.
+
 ## Packages
 
 ```text
@@ -81,7 +83,7 @@ local `.smithers` installs run `bun install --frozen-lockfile`.
 
 ```text
 :srcs ─► :compiler ─┬─► :<case> x809 ◄─┬─ :runtime-dist ─► :runtime-test
-                    ├─► :compiler-native ─► :compiler-test, :vite-test, :unplugin-test
+                    ├─► :compiler-native ─► :compiler-test, :vite-test, :unplugin-test, :snippets, :docs-tools
                     ├─► :lsp-smoke ◄─ :runtime-dist
                     └─► :snippets, :docs-tools
 :tree ─► :release :snippets :tokens :forms :docs-tools :docs-check :go-vibelang*

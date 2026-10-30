@@ -31,6 +31,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The Promise comparison omitted existing operand and syntax restrictions and left its catch result unawaited. It now lists those differences and shows the handled result being awaited.
 
+- Docs checks could use an older compiler from `PATH` after a fresh native checkout build. They now prefer that build, and the snippets target builds and tracks it before checking.
+
 - Editor parsing rejected `for try` `Stream` loops; the tree-sitter grammar now recognizes the loop and its `continue` and `break` statements.
 
 - In a project that emits declarations, `vibelang --fix` removed an import such as `import * as DateTime from "effect/DateTime"` that the declaration file still printed, through a local type an export names (`type NonNull<V> = V extends DateTime.Utc ? …`), a conditional type or a written `keyof DateTime.Utc`, so the declaration imported `{ DateTime } from "effect"`; `--fix` now keeps every import the file's declaration keeps.

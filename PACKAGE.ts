@@ -114,7 +114,7 @@ const targets = {
   snippets: check(
     "Compile every code block in the docs.",
     "bun docs/tools/check-snippets.ts",
-    [Typescript.compiler, Packages["runtime-dist"]],
+    [Typescript.compiler, Packages["runtime-dist"], Packages["compiler-native"]],
     [bun, node]
   ),
   tokens: check("Token counts in the docs match a fresh count.", "bun docs/tools/token-counts.ts --check", [], [bun]),
