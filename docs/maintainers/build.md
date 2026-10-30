@@ -19,6 +19,27 @@ compiler package, `experiments`, `docs/tools`) from their lockfiles, then runs
 `smthrs ci`, which runs build and test targets alike. `explain` prints a
 target's inputs, its key and whether the cache holds a result for it.
 
+## The merge queue's pre-gate
+
+The merge queue tests every queued change alone on current `main`, and a landing
+batch takes only changes that passed. Most of that testing runs on the project's
+build hosts. `.github/workflows/mq-pregate.yml` adds GitHub-hosted runners: one
+run checks out a commit of `main`, applies one change's patch, runs `scripts/ci.sh`
+with the gate's targets, and uploads the graph's results as an artifact named
+after the run.
+
+The queue dispatches it with a `repository_dispatch` event, `mq-pregate`, and a
+person can dispatch the same inputs with `gh workflow run`:
+
+```sh
+gh workflow run mq-pregate.yml -f tag=<name> -f base=<commit on main> \
+  -f targets='<targets>' -f patch=<base64 of the gzipped git diff>
+```
+
+The workflow holds no secrets and its token only reads this repository. A hosted
+pass counts; a hosted failure sends the change back to a build host, which is the
+reference for rejecting it.
+
 ## Packages
 
 ```text

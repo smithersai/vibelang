@@ -1,0 +1,102 @@
+name: Merge queue pre-gate
+run-name: pre-gate ${{ github.event.client_payload.tag || inputs.tag }}
+
+# One queued change, alone: main at `base` plus the change's patch, through the merge gate's targets. The queue's
+# pool dispatches this and reads the artifact (docs/maintainers/build.md). No secrets; the token only reads this
+# repository.
+on:
+  repository_dispatch:
+    types: [mq-pregate]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Name of the result
+        required: true
+      base:
+        description: Full commit id on main
+        required: true
+      targets:
+        description: Graph targets, space-separated
+        required: true
+      patch:
+        description: Base64 of the gzipped diff against base
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  PRE_TAG: ${{ github.event.client_payload.tag || inputs.tag }}
+  PRE_BASE: ${{ github.event.client_payload.base || inputs.base }}
+  PRE_TARGETS: ${{ github.event.client_payload.targets || inputs.targets }}
+  PRE_PATCH: ${{ github.event.client_payload.patch || inputs.patch }}
+  CACHE_PATHS: |
+    ~/.cache/go-build
+    ~/.cache/go-build-smthrs
+    ~/go/pkg/mod
+    ~/.bun/install/cache
+    ~/.cache/ms-playwright
+
+jobs:
+  gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ env.PRE_BASE }}
+          persist-credentials: false
+      - name: Apply the change
+        run: printf '%s' "$PRE_PATCH" | base64 -d | gunzip | git apply --whitespace=nowarn -
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version-file: typescript/tsc/go.mod
+          cache: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "26"
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - uses: taiki-e/install-action@e67fa11c4b9316fa714ddf0abed07a0c3143b95b
+        with:
+          tool: jj-cli@0.39.0
+      - name: Track the tree for docs:check
+        run: jj git init --colocate
+      - name: Name today's cache
+        id: day
+        run: echo "day=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+      - id: cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ${{ env.CACHE_PATHS }}
+          key: gate-${{ steps.day.outputs.day }}
+          restore-keys: gate-
+      - name: Install Chromium
+        working-directory: site
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Gate
+        run: |
+          mkdir -p "$RUNNER_TEMP/pre"
+          printf '{"entries":[]}\n' > "$RUNNER_TEMP/known-red.json"
+          rc=0
+          EFFECT_NODE_MODULES=$PWD/experiments/node_modules CI_RESULTS="$RUNNER_TEMP/pre/$PRE_TAG-graph.json" \
+            sh scripts/ci.sh $PRE_TARGETS --verbose --jobs 2 --known-red "$RUNNER_TEMP/known-red.json" \
+            > "$RUNNER_TEMP/pre/$PRE_TAG-graph.log" 2>&1 || rc=$?
+          echo "$rc" > "$RUNNER_TEMP/pre/$PRE_TAG.rc"
+          exit "$rc"
+      # Saved whether the gate passed or not: a cold Go build outlasts //:spec-tests' 15 minutes, so a run with no cache
+      # can't pass, and waiting for a pass would never fill it. The Go cache is content-addressed.
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        if: always() && steps.cache.outputs.cache-hit != 'true'
+        with:
+          path: ${{ env.CACHE_PATHS }}
+          key: gate-${{ steps.day.outputs.day }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: ${{ env.PRE_TAG }}
+          path: ${{ runner.temp }}/pre
+          if-no-files-found: error
