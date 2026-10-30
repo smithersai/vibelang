@@ -179,6 +179,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The specification could lose a synchronous throw behind an effectful overload or an escaped rethrowing callback. It now checks every exposed overload bound and preserves the callback contract on returned and nested callables.
 
+- The specification omitted the surviving TypeScript-form advisory codes and their safe repairs. The reference now lists them as configurable warnings and excludes advice for retired language features.
+
 - The native compiler regression suite could exhaust its budget on a busy build host while cases were still completing. It now allows 45 minutes of testing and 70 minutes for the target, including queued builds.
 
 - The specification described how an `effect` body reads `this` and `super` with a helper recipe that was wrong in five separate edge cases. It now states the behavior: the body reads them exactly as the same body in an `async` function does, and building the Effect reads none of them.

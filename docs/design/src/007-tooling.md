@@ -85,6 +85,43 @@ The configured category controls reporting: an `"error"` makes both `vibelang` a
 
 The legacy `vibelang.diagnostics` key reports migration warning `EK3009`. `vibelang --fix` rewrites each map whose codes are all configurable to `vibe.severities`, including in extended configs, and retains existing modern entries. Maps with obsolete nonconfigurable codes stay in place until those entries are removed. Like other warnings, `EK3009` can be configured through `vibe.severities`.
 
+## TypeScript spellings with VibeLang forms
+
+These built-in warnings suggest an accepted VibeLang form without changing the meaning of TypeScript-style source. They are warnings by default and use `vibe.severities`, independently of the imported Effect lint table. A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output; otherwise the diagnostic explains why it has no automatic fix. A warning does not itself rewrite code, and a warning-only run exits zero. Untagged `Data.Error` has no equivalent tagged declaration: keep its library form rather than adding a tag. An unsupported legacy repair is retired, rather than treated as a language requirement.
+
+| Code | Trigger | Repair |
+| --- | --- | --- |
+| `EK4830` | A class written with `Data.TaggedError("Name")` | Use `error Name { … }` only when its tag and class behavior are preserved. |
+| `EK4831` | A class written with `Context.Service` | Use `service Name { … }`, preserving the key with `static readonly key`. |
+| `EK4832` | A `const` holding `Schema.Struct({ … })` | Use `schema Name { … }` where the field mapping and associated type are preserved. |
+| `EK4833` | A written `Effect.Effect<A, E, R>` type | Use the equivalent `A!E!R` spelling, preserving `never` slots and required parentheses. |
+| `EK4834` | An explicitly run `Effect.succeed(v)` or `Effect.fail(e)` in effect code | Use the value `v` or `throw e`; do not apply this to an unrun Effect value. |
+| `EK4835` | An explicitly run `Effect.catch`, `Effect.catchTag`, or `Effect.catchTags` in effect code | Use a `catch effect` handler, with `match` on the failure for tag cases and a typed `throw` for unmatched failures. |
+| `EK4836` | An explicitly run `Effect.provide` or `Effect.provideService` in effect code | Use a `provide` statement with Layers or `Key = value`, preserving operand evaluation order. |
+| `EK4837` | A class written with `Schema.TaggedError` | Use `schema error Name { … }` when the schema and tag are preserved; an ordinary `error` would lose the schema. |
+| `EK4839` | An Effect `Match` chain with a supported finisher | Use `match`, or a function returning `match` for `Match.type`, only for patterns and handlers whose tests and results are preserved. |
+| `EK4841` | A schema `const` immediately followed by its matching `typeof Name.Type` alias | Use the corresponding `schema Name = …` declaration where the schema mapping preserves both exports. |
+| `EK4842` | An Effect module imported under a conflicting JavaScript global name | Rename that import and its resolved uses, such as `Array as Arr`, only where emitted public types keep their meaning. |
+
+For example, the `EK4830` repair may replace this class with `error Missing { id: string }` while preserving `Fail(Missing { id: "x" })`:
+
+```vibe es
+// compiler-gap: pending VIP-1, VIP-13
+class Missing extends Data.TaggedError("Missing")<{ readonly id: string }> {}
+effect function program() { throw new Missing({ id: "x" }) }
+```
+
+```ts effect
+// TypeScript-form advisory reference
+import { Data, Effect, Exit } from "effect"
+class Missing extends Data.TaggedError("Missing")<{ readonly id: string }> {}
+const result = Effect.runSyncExit(Effect.fail(new Missing({ id: "x" })))
+if (Exit.isSuccess(result)) throw new Error("expected a failure")
+const reason = result.cause.reasons[0]
+if (reason._tag !== "Fail") throw new Error("expected a typed failure")
+console.log(JSON.stringify([reason._tag, reason.error._tag, reason.error.id]))
+```
+
 ## The Effect version
 
 During alpha, VibeLang pins exactly one Effect version, and the pin moves to each new Effect release. The pinned dependency artifact is `effect@4.1.0`, and 4.1 is the earliest supported version (VIP-32, amended). Every Effect TypeScript mapping in this specification, and the `Exit` guarantee of [Runtime guarantees](008-runtime.md), is relative to the pin. The pin controls variables during alpha; it is not the long-term plan, and supported version ranges get their own VIP after alpha.
