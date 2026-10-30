@@ -124,6 +124,71 @@ func TestCommandLintsVibeFilesWithTheOxlintConfiguration(t *testing.T) {
 
 }
 
+// TestCommandHonorsOxlintDisableComments: Oxlint never reads a .vibe file, so
+// the disable comments a migrated file keeps reach only vibelang lint, which
+// honors them as Oxlint does.
+func TestCommandHonorsOxlintDisableComments(t *testing.T) {
+	modules := os.Getenv("EFFECT_NODE_MODULES")
+	if modules == "" {
+		modules = "../../../../../experiments/node_modules"
+	}
+	effect, err := filepath.Abs(filepath.Join(modules, "effect"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(effect, "package.json")); err != nil {
+		t.Skipf("effect is not installed: %v", err)
+	}
+	dir := t.TempDir()
+	write := func(name, text string) {
+		path := filepath.Join(dir, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "node_modules"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(effect, filepath.Join(dir, "node_modules", "effect")); err != nil {
+		t.Fatal(err)
+	}
+	write("package.json", `{"private":true,"type":"module"}`)
+	write("tsconfig.json", `{"compilerOptions":{"target":"es2022","module":"nodenext","moduleResolution":"nodenext","strict":true,"types":[],"skipLibCheck":true,"noEmit":true},"include":["src"]}`)
+	write(".oxlintrc.json", `{ "rules": { "effecttsgo/effect-sleep-zero-to-yield-now": "error" } }`)
+	pause := func(before, after string) string {
+		return "import { Effect } from \"effect\"\n\n" + before + "export function pause() {\n  Effect.sleep(0)" + after + "\n  return 1\n}\n"
+	}
+	rule := "effecttsgo/effect-sleep-zero-to-yield-now"
+	next := func(names string) string {
+		return strings.Replace(pause("", ""), "  Effect.sleep(0)", "  // oxlint-disable-next-line "+names+"\n  Effect.sleep(0)", 1)
+	}
+	write("src/next.vibe", next(rule+" -- Effect 4 yields on sleep(0)"))
+	write("src/line.vibe", pause("", " // eslint-disable-line "+rule))
+	write("src/block.vibe", pause("/* oxlint-disable "+rule+" */\n", ""))
+	write("src/everything.vibe", next(""))
+	write("src/other.vibe", next("no-console"))
+	write("src/enabled.vibe", pause("/* oxlint-disable "+rule+" */\n/* oxlint-enable "+rule+" */\n", ""))
+
+	sys := &testSys{cwd: tspath.RootedDirectoryPathFromAbsolute(dir)}
+	if status := Command(context.Background(), sys, nil); status != 1 {
+		t.Fatalf("status %d, want 1\n%s%s", status, sys.out.String(), sys.err.String())
+	}
+	out := sys.out.String()
+	for _, file := range []string{"other.vibe", "enabled.vibe"} {
+		if !strings.Contains(out, "src/"+file+"(") {
+			t.Errorf("%s is not reported:\n%s", file, out)
+		}
+	}
+	for _, file := range []string{"next.vibe", "line.vibe", "block.vibe", "everything.vibe"} {
+		if strings.Contains(out, file) {
+			t.Errorf("%s is reported, though a comment disables the rule:\n%s", file, out)
+		}
+	}
+}
+
 func TestNearestProjectUsesConfigPrecedence(t *testing.T) {
 	dir := t.TempDir()
 	file := filepath.Join(dir, "main.vibe")

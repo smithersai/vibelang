@@ -7,6 +7,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -224,7 +225,7 @@ func lintProject(ctx context.Context, sys tsc.System, configFile string, files [
 		diags = append(diags, run(ctx, program, c, sf, &options)...)
 		done()
 		slices.SortFunc(diags, func(a, b *ast.Diagnostic) int { return a.Pos() - b.Pos() })
-		result = append(result, diags...)
+		result = append(result, withoutDisabled(diags, sf.Text())...)
 	}
 	return result, skipped, nil
 }
@@ -373,4 +374,108 @@ func vibePortDiagnostics(checked []*ast.Diagnostic, severity map[string]etscore.
 		result = append(result, d)
 	}
 	return result
+}
+
+// oxlintDirective matches an Oxlint or ESLint directive comment: its kind and
+// the rest of its line, which names the rules.
+var oxlintDirective = regexp.MustCompile(`(?://|/\*)\s*(?:oxlint|eslint)-(disable-next-line|disable-line|disable|enable)\b([^\n]*)`)
+
+// oxlintDisabled returns, by 0-based line of a .vibe file's text, the Effect
+// rules that an Oxlint or ESLint comment turns off there, "*" for all of them.
+// Oxlint never reads a .vibe file, so a migrated file's comments, such as
+// `// oxlint-disable-next-line effecttsgo/schema-sync -- why`, reach only
+// vibelang lint, which honors them as Oxlint does: the next line for
+// disable-next-line, the comment's own line for disable-line, and the lines
+// from disable to the enable that ends it.
+func oxlintDisabled(text string) map[int]map[string]bool {
+	disabled := map[int]map[string]bool{}
+	add := func(line int, names ...string) {
+		if disabled[line] == nil {
+			disabled[line] = map[string]bool{}
+		}
+		for _, name := range names {
+			disabled[line][name] = true
+		}
+	}
+	active := map[string]bool{}
+	for i, line := range strings.Split(text, "\n") {
+		for _, m := range oxlintDirective.FindAllStringSubmatch(line, -1) {
+			names := directiveRules(m[2])
+			switch m[1] {
+			case "disable-next-line":
+				add(i+1, names...)
+			case "disable-line":
+				add(i, names...)
+			case "disable":
+				for _, name := range names {
+					active[name] = true
+				}
+			case "enable":
+				if slices.Contains(names, "*") {
+					clear(active)
+				}
+				for _, name := range names {
+					delete(active, name)
+				}
+			}
+		}
+		for name := range active {
+			add(i, name)
+		}
+	}
+	return disabled
+}
+
+// directiveRules returns the Effect rules a directive's text names, by their
+// own names, or "*" when it names no rule; another plugin's rules are none of
+// Effect's. A reason after -- is not a rule.
+func directiveRules(text string) []string {
+	text, _, _ = strings.Cut(text, "--")
+	text, _, _ = strings.Cut(text, "*/")
+	var names []string
+	listed := false
+	for _, name := range strings.FieldsFunc(text, func(r rune) bool { return r == ',' || r == ' ' || r == '\t' }) {
+		listed = true
+		if rule, ok := ruleByOxlintName[name]; ok {
+			names = append(names, rule)
+		}
+	}
+	if !listed {
+		return []string{"*"}
+	}
+	return names
+}
+
+// ruleNames returns the names of the Effect rules a lint diagnostic reports:
+// an imported rule's, or each rule a VibeLang code answers.
+func ruleNames(d *ast.Diagnostic) []string {
+	code := fmt.Sprintf("EK%04d", d.Code())
+	if name, ok := core.VibeImportedLintCodes[code]; ok {
+		return []string{name}
+	}
+	var names []string
+	for name, answer := range vibeAnswers {
+		if answer.ek == code {
+			names = append(names, name)
+		}
+	}
+	return names
+}
+
+// withoutDisabled drops the diagnostics of text's file whose rule an Oxlint
+// or ESLint comment turns off on the diagnostic's line.
+func withoutDisabled(diags []*ast.Diagnostic, text string) []*ast.Diagnostic {
+	disabled := oxlintDisabled(text)
+	if len(disabled) == 0 {
+		return diags
+	}
+	var kept []*ast.Diagnostic
+	for _, d := range diags {
+		off := disabled[strings.Count(text[:min(d.Pos(), len(text))], "\n")]
+		if off != nil && (off["*"] || slices.ContainsFunc(ruleNames(d), func(name string) bool { return off[name] })) {
+			continue
+		}
+		kept = append(kept, d)
+	}
+	return kept
 }
