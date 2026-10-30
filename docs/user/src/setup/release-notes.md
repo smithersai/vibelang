@@ -73,6 +73,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The specification left template-pattern admission and signed-zero exhaustiveness inconsistent. Primitive templates now require no substitutions and compare without coercion; signed Number-zero arms no longer claim to cover both zero signs.
 
+- The specification nested async-match Promises and gave default or negated custom-matcher arms incorrect types. It now adopts async results and follows TypeScript control flow for the actual ordered matcher tests.
+
 - Repository validation could fail the site contrast check on a connection reset by its local server; the check now reads the built site directly.
 
 - A `match` or `if`/`else` chain with thousands of arms over a large union took about a minute and a half to check; repeated narrowing now reuses its results, so a 2000-arm `match` checks in about 10 seconds.

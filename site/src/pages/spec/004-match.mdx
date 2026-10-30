@@ -266,8 +266,8 @@ const skippedBindingCellExit = Effect.runSyncExit(Effect.sync(skippedBindingCell
 
 Patterns type as the TypeScript counterpart this chapter shows for them, so every rule below is what `tsc --strict` gives that counterpart (VIP-7, amended; decided detail 79).
 
-- **Result.** A `match` expression has the union of its arm types; a `throw` arm contributes `never`. A `match` with no `default` whose subject passes `EK4701` ([Exhaustiveness](/spec/004-match#exhaustiveness)) adds nothing for the no-match path. `async match` has type `Promise<union>`. `x is P` has type `boolean` and narrows `x` as a type predicate where `P` narrows.
-- **Subject narrowing.** Inside an arm the subject narrows as the arm's test narrows in TypeScript; a `default` arm sees the subject minus every member an earlier unguarded arm covers, as a `switch`'s `default` does. A guard `and if (c)` narrows further, as `if (c)` would.
+- **Result.** A `match` expression has the union of its arm types; a `throw` arm contributes `never`. A `match` with no `default` whose subject passes `EK4701` ([Exhaustiveness](/spec/004-match#exhaustiveness)) adds nothing for the no-match path. For arm-type union `U`, `async match` has type `Promise<Awaited<U>>`, with TypeScript's async-return resolution and Promise-like/thenable checks: a returned Promise is adopted, not nested. `x is P` has type `boolean` and narrows `x` as a type predicate where `P` narrows.
+- **Subject narrowing.** Inside an arm the subject narrows as the arm's test narrows in TypeScript; a `default` arm follows TypeScript control flow after every preceding ordered pattern and guard test has failed, including cached reads and source mutations. This is independent of exhaustiveness coverage: a predicate false branch may exclude a type even though the predicate covers no `EK4701` case; failure of a guard does not establish that its positive predicate failed. A guard `and if (c)` narrows further, as `if (c)` would.
 - **Bindings.** A `let` binding has the type TypeScript gives the value it is bound to in the counterpart.
 
 | Pattern | Narrows `s` to | Binding types |
@@ -287,9 +287,46 @@ Patterns type as the TypeScript counterpart this chapter shows for them, so ever
 | own matcher object `M(let x)` | only narrowing established by its matcher invocation | `x`: an element of its declared extraction iterable, excluding `false` |
 | call-only predicate `p` | its declared type predicate, as `if (p(s))` | bare: none; extractor `p(let x)`: an element of its declared return iterable, excluding `false` (detail 94) |
 | regex `/(\d+)/(let m)` | none | `m`: `RegExpMatchArray` (non-global); `RegExpExecArray` elements for a global regex |
-| relational `< 0`, `not P` | none, except `not` of a literal, `null`, `undefined` or class, which narrows by exclusion as `!==` or `!(s instanceof C)` does | none |
+| relational `< 0` | none | none |
+| `not P` | the false branch of the actual positive test: `!(s instanceof C)` only for an ordinary class using `instanceof`; an own matcher, generated error matcher or fixed guard complements its own invocation/test. A boolean-returning custom matcher establishes no narrowing | none |
 | `P or Q` | the union of each side's narrowing | a name bound in every alternative gets the union of its types |
 | `P and Q` | both narrowings in order | both sides' bindings |
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-7
+function isText(s: string | number): s is string { return typeof s === "string" }
+function classify(s: string | number) {
+  return match (s) { when isText: s.length; default: s.toFixed(0); }
+} // default s: number, although isText contributes no exhaustiveness coverage
+const adopted: Promise<number> = async match (true) { default: Promise.resolve(7); }
+class OnlyNumbers {
+  static [Symbol.customMatcher](s: unknown): boolean { return typeof s === "number" }
+}
+// For s: OnlyNumbers | number, an arm `when not OnlyNumbers: s.toFixed(0);`
+// is a TypeScript error: this boolean matcher establishes no narrowing.
+```
+
+```ts [Effect]
+import { Effect } from "effect"
+
+function isText(s: string | number): s is string { return typeof s === "string" }
+function classify(s: string | number) {
+  if (isText(s)) return s.length
+  return s.toFixed(0)
+}
+const adopted: Promise<number> = (async () => Promise.resolve(7))()
+const adoptedExit = await Effect.runPromiseExit(Effect.promise(() => adopted)) // Success(7)
+class OnlyNumbers {
+  static [Symbol.customMatcher](s: unknown): boolean { return typeof s === "number" }
+}
+function negated(s: OnlyNumbers | number) {
+  if (!OnlyNumbers[Symbol.customMatcher](s)) {
+    // @ts-expect-error no implicit instanceof exclusion for an own boolean matcher
+    s.toFixed(0)
+  }
+}
+const defaultNarrowingExit = Effect.runSyncExit(Effect.sync(() => [classify("text"), classify(7)])) // Success([4, "7"])
+```
 
 The object row describes narrowing; evaluation uses the cache/property algorithms above. An extracted property of an `unknown` subject is `unknown`; a declared field has its narrowed property type.
 
