@@ -21,24 +21,9 @@ import "slices"
 const catchRuns = "catch runs `e` (\"`e catch y` runs `e`\"), as try does, so inside Effect.gen the suite runs the table's Effect with yield*, as VIP-5 reads try. The table is not a code block."
 
 func init() {
-	Register(&Construct{
-		Key:      "vip05.catch-value",
-		VIP:      5,
-		Requires: []string{"vip01.effect-function"},
-		Citations: []Citation{{
-			VIP:      5,
-			Template: "yield* Effect.catch(‹x›, () => Effect.succeed(‹v›))",
-			Quote:    "| `x catch guest` (a value) | `Effect.catch(x, () => Effect.succeed(guest))` |",
-			Reading:  catchRuns,
-		}},
-		// The probe catches a typed failure with a value, and main returns it.
-		Focus: func(g *Gen, s *Scope) []Stmt {
-			return catchFocus(g, s, &CatchValue{Value: &Num{Value: 1}})
-		},
-		Stmt: func(g *Gen, s *Scope) Stmt {
-			return catchStmt(g, s, &CatchValue{Value: g.Num(s)})
-		},
-	})
+	// Decided detail 31a makes a handler always a function literal, so
+	// the value form `x catch v` is a syntax error (Chapter 2: quick fix
+	// `x catch () => v`); catch-function writes `() => { return v }`.
 	Register(&Construct{
 		Key:      "vip05.catch-function",
 		VIP:      5,
@@ -69,6 +54,9 @@ func init() {
 				h.Body = append(h.Body, &PlainThrow{Value: g.Value(s)})
 			default:
 				h.Body = append(h.Body, &Return{Value: g.Num(s)})
+				if g.Chance(2) {
+					h.Param = ""
+				}
 			}
 			return catchStmt(g, s, h)
 		},
@@ -106,35 +94,42 @@ func init() {
 			return catchStmt(g, s, &CatchEffectFunction{Param: e, Body: g.finish(inner, body)})
 		},
 	})
+	// An effect block is a catch operand only in this construct's
+	// programs: catchStmt writes one only when it is on. Decided details
+	// 31a and 31b make a handler always a function literal, so
+	// `x catch effect { … }`, an effect block as the handler, is a syntax
+	// error (Chapter 2) and has no construct.
 	Register(&Construct{
-		Key:      "vip05.catch-effect-block",
+		Key:      "vip05.catch-block-operand",
 		VIP:      5,
 		Requires: []string{"vip01.effect-function", "vip02.effect-block"},
 		Citations: []Citation{{
 			VIP:      5,
-			Template: "yield* Effect.catch(‹x›, () => Effect.gen(function* () { ‹body› }))",
-			Quote:    "| `x catch effect { … }` (an effect block; runs the fallback) | `Effect.catch(x, () => Effect.gen(…))` |",
-			Reading:  catchRuns + " The handler is an effect block, which VIP-2 reads as Effect.gen(function* () { … }).",
+			Template: "yield* Effect.catch(‹x›, (‹e›) => Effect.succeed(‹f›(‹e›)))",
+			Quote:    "| `x catch (e) => f(e)` (a plain function; a `throw` inside is a JavaScript exception, so a defect) | `Effect.catch(x, (e) => Effect.succeed(f(e)))` |",
+			Reading:  catchRuns + " Here x is an effect block, which VIP-2 reads as Effect.gen(function* () { … }), so catch runs the block.",
 		}},
-		// The probe's fallback runs an Effect with try, and main returns
-		// what it gives.
+		// The probe's operand is an effect block that logs, then fails:
+		// catch runs it, so the event is logged and the handler,
+		// `() => { return 1 }`, gives 1.
 		Focus: func(g *Gen, s *Scope) []Stmt {
-			v := g.Name("v")
 			g.UseEffect()
-			body := []Stmt{
+			block := &EffectBlock{Body: []Stmt{
 				&Event{Label: g.Label()},
-				&Const{Name: v, Value: &Try{X: &EffectCall{Fn: "sync", Arg: &Thunk{Label: g.Label(), Value: &Num{Value: 2}}}}},
-				&Return{Value: &Ref{Name: v}},
-			}
+				&Return{Value: &Try{X: &EffectCall{Fn: "fail", Arg: &NewError{Message: "m0"}}}},
+			}}
 			g.Use("vip05.try")
-			return catchFocus(g, s, &CatchEffectBlock{Body: body})
+			v := g.Name("v")
+			s.Locals = append(s.Locals, v)
+			h := &CatchFunction{Body: []Stmt{&Return{Value: &Num{Value: 1}}}}
+			return []Stmt{&Const{Name: v, Value: &Catch{X: block, Handler: h}}, &Event{Label: g.Label()}}
 		},
 		Stmt: func(g *Gen, s *Scope) Stmt {
-			if s.Depth >= maxDepth {
+			block := blockOf(g, s)
+			if block == nil {
 				return nil
 			}
-			inner := handlerScope(s)
-			return catchStmt(g, s, &CatchEffectBlock{Body: g.finish(inner, g.Block(inner))})
+			return catchOf(g, s, block, &CatchFunction{Body: []Stmt{&Return{Value: g.Num(s)}}})
 		},
 	})
 }
@@ -172,8 +167,29 @@ func catchStmt(g *Gen, s *Scope, h Node) Stmt {
 		x = &EffectCall{Fn: "die", Arg: g.Value(s)}
 		g.UseEffect()
 	default:
-		x = g.Operand(s, true)
+		x = catchOperand(g, s)
 	}
+	return catchOf(g, s, x, h)
+}
+
+// catchOperand writes an Effect for catch to run, as g.Operand does, but an
+// effect block only when vip05.catch-block-operand is on: until lane
+// core-catch's fix, the compiler doesn't run an effect-block operand, and
+// that construct's pending line names the gap.
+func catchOperand(g *Gen, s *Scope) Expr {
+	x := g.Operand(s, true)
+	if _, block := x.(*EffectBlock); block {
+		if !g.On("vip05.catch-block-operand") {
+			g.UseEffect()
+			return &EffectCall{Fn: "succeed", Arg: g.Num(s)}
+		}
+		g.Use("vip05.catch-block-operand")
+	}
+	return x
+}
+
+// catchOf writes `const v = x catch <handler>` or `return x catch <handler>`.
+func catchOf(g *Gen, s *Scope, x Expr, h Node) Stmt {
 	c := &Catch{X: x, Handler: h}
 	if !s.Fn.Void && g.Chance(4) {
 		return &Return{Value: c}
@@ -201,18 +217,6 @@ func (c *Catch) Effect(w *Writer) {
 	w.Node(c.X)
 	w.Write(", ")
 	w.Node(c.Handler)
-	w.Write(")")
-}
-
-// A CatchValue is a value handler, `x catch v`, read as
-// `() => Effect.succeed(v)`: the value is evaluated only on a failure.
-type CatchValue struct{ Value Expr }
-
-func (h *CatchValue) Vibe(w *Writer) { w.Node(h.Value) }
-
-func (h *CatchValue) Effect(w *Writer) {
-	w.Write("() => Effect.succeed(")
-	w.Node(h.Value)
 	w.Write(")")
 }
 
@@ -249,21 +253,6 @@ func (h *CatchEffectFunction) Vibe(w *Writer) {
 
 func (h *CatchEffectFunction) Effect(w *Writer) {
 	w.Write("(" + h.Param + ") => Effect.gen(function* () ")
-	w.Block(h.Body)
-	w.Write(")")
-}
-
-// A CatchEffectBlock is an effect block handler, `effect { … }`, read as
-// `() => Effect.gen(function* () { … })`.
-type CatchEffectBlock struct{ Body []Stmt }
-
-func (h *CatchEffectBlock) Vibe(w *Writer) {
-	w.Write("effect ")
-	w.Block(h.Body)
-}
-
-func (h *CatchEffectBlock) Effect(w *Writer) {
-	w.Write("() => Effect.gen(function* () ")
 	w.Block(h.Body)
 	w.Write(")")
 }

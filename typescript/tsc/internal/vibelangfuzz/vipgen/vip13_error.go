@@ -279,7 +279,7 @@ func catchConst(g *Gen, s *Scope, general, match bool) Stmt {
 	var x Expr
 	var union []*ErrorDecl
 	if general {
-		x = g.Operand(s, true)
+		x = catchOperand(g, s)
 	} else {
 		x, union = errorFail(g, s)
 	}
