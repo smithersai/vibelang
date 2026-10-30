@@ -285,6 +285,12 @@ func (p *projector) visit(node *ast.Node, e env) {
 	case isLayerDeclaration(node):
 		p.layerDeclaration(node)
 		return
+	case isInferReturnContract(node):
+		// f(n: number): infer _ { ... } is a plain function whose return type
+		// TypeScript infers from its body; TypeScript has no infer annotation
+		// outside a conditional type (TS1338), so the annotation goes.
+		p.plan.replace(p.colonBefore(node), node.End(), "")
+		return
 	case isEffectType(node):
 		p.effectType(node, false /*slotsOnly*/)
 		return
@@ -691,6 +697,14 @@ func contractOf(returnType *ast.Node) contractKind {
 		return contractEffect
 	}
 	return contractPlain
+}
+
+// isInferReturnContract reports whether t is a function's whole return
+// annotation `infer _`, which makes the function plain, with the return type
+// TypeScript infers from its body.
+func isInferReturnContract(t *ast.Node) bool {
+	fn := t.Parent
+	return t.Kind == ast.KindInferType && fn != nil && ast.IsFunctionLikeDeclaration(fn) && fn.Type() == t
 }
 
 // isWrittenEffectReference reports whether t is Effect<...> or
