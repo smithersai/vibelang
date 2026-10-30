@@ -26,6 +26,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The mask smoke test could hang when interruption arrived before the child entered its mask; it now waits for a start signal and checks delayed child scheduling.
 - Fiber operators before exponentiation could compile or report a misleading type error. `fork` and `join` now require parentheses on the left of `**`, like `await`.
 
+- Optional class methods such as `effect read?()` were rejected with syntax errors; optional names now work for ordinary, computed and generic Effect methods, with TypeScript's usual checks.
+
 - A statement such as `effect as (Handler)` or `async satisfies (Handler)` could be mistaken for a removed function shorthand and rejected; `as` and `satisfies` expressions now keep their TypeScript meaning.
 
 - An `effect` method with a computed name, such as `effect [key]()`, was rejected with syntax errors in a class or object literal; computed names now work for instance, static and generic Effect methods.

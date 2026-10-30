@@ -6,6 +6,8 @@ A function declaration keeps `function`: write `effect function load()` or `asyn
 
 `effect` and `async` remain identifiers outside their modifier positions. Expressions such as `effect as (Handler)` and `async satisfies (Handler)` keep TypeScript's assertion and checking rules.
 
+Optional class methods use `effect read?() { … }` or `effect [key]?() { … }`, as `async` methods do.
+
 ## Sequence computations
 
 ```vibe

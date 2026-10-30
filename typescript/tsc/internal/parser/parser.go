@@ -5944,7 +5944,8 @@ func (p *Parser) parseObjectLiteralElement() *ast.Node {
 		word := p.parseVibeLangEffectMember()
 		asteriskToken := p.parseOptionalToken(ast.KindAsteriskToken)
 		name := p.parsePropertyName()
-		return p.vibelangEffectMember(p.parseMethodDeclaration(pos, jsdoc, modifiers, asteriskToken, name, nil /*questionToken*/, nil /*diagnosticMessage*/), word) // effect m() { … } (vibelang_effect.go)
+		questionToken := p.parseOptionalToken(ast.KindQuestionToken)
+		return p.vibelangEffectMember(p.parseMethodDeclaration(pos, jsdoc, modifiers, asteriskToken, name, questionToken, nil /*diagnosticMessage*/), word) // effect m() { … } (vibelang_effect.go)
 	}
 	asteriskToken := p.parseOptionalToken(ast.KindAsteriskToken)
 	tokenIsIdentifier := p.isIdentifier()

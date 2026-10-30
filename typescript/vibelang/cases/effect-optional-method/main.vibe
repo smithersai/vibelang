@@ -1,0 +1,11 @@
+// expect-result: [3,"ok",5]
+class Optional {
+  offset = 1
+  effect read?(n: number) { return try Effect.succeed(this.offset + n) }
+  effect identity?<T>(value: T) { return try Effect.succeed(value) }
+  effect ["value"]?() { return try Effect.succeed(5) }
+}
+export effect function main() {
+  const c = new Optional()
+  return [try c.read!(2), try c.identity!("ok"), try c.value!()]
+}

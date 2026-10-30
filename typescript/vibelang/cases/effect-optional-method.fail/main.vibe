@@ -1,0 +1,2 @@
+// expect: TS1162
+const invalid = { effect read?() { return try Effect.succeed(1) } }

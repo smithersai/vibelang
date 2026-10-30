@@ -199,12 +199,13 @@ func (p *Parser) isStartOfVibeLangEffectMember() bool {
 		}
 		if p.token == ast.KindOpenBracketToken {
 			p.parseComputedPropertyName()
-			return p.token == ast.KindOpenParenToken || p.token == ast.KindLessThanToken
+		} else {
+			if !tokenIsIdentifierOrKeyword(p.token) && p.token != ast.KindStringLiteral && p.token != ast.KindNumericLiteral && p.token != ast.KindPrivateIdentifier {
+				return false
+			}
+			p.nextToken()
 		}
-		if !tokenIsIdentifierOrKeyword(p.token) && p.token != ast.KindStringLiteral && p.token != ast.KindNumericLiteral && p.token != ast.KindPrivateIdentifier {
-			return false
-		}
-		p.nextToken()
+		p.parseOptionalToken(ast.KindQuestionToken)
 		return p.token == ast.KindOpenParenToken || p.token == ast.KindLessThanToken
 	})
 }
