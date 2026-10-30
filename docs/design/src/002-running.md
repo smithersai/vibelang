@@ -16,7 +16,7 @@ A call never runs anything. Calling an `effect` function, or any function that r
 
 "Effect code" means the body of an `effect` function, a producer or an `effect` block, not counting nested functions, class field initializers or `static` blocks, as `await` is not allowed there in an `async` function. A computed class key and an `extends` clause are effect code, as `await` is allowed there: in `effect function f() { class C { [try key()]() { } } }`, `try key()` runs. It is the code Appendix A parses with [the grammar's Effect parameter](900-appendices.md#the-effect-parameter), minus parameter lists, class field initializers and `static` blocks. Parentheses, `do` and `match` are not boundaries; an `async match` is one, as a nested `async` function is ([Pattern matching](004-match.md)), so `try` inside it is an error. Outside effect code a parser still parses these constructs, as TypeScript parses `await x` outside an `async` function, and reports the construct's "outside effect code" error; tokens that are also valid TypeScript, such as `fork(x)` or `join(x)`, keep their TypeScript meaning.
 
-Every operand is evaluated once, left to right as written, with three exceptions: a `catch` handler is evaluated only on failure; the body of an `effect` block or function is evaluated on each run; and `fork.in(scope) e` evaluates `e` before `scope`, as VIP-17's `Effect.forkIn(e, scope)` does. Where Effect's argument order differs from the source order elsewhere (`for concurrent(n) (… of xs)`), the Effect TypeScript evaluates the operands into temporaries first, in source order: `const $n = n, $xs = xs` before `Effect.forEach($xs, …, { concurrency: $n })`.
+Every operand is evaluated once, left to right as written, with two exceptions: a `catch` handler is evaluated only on failure, and the body of an `effect` block or function is evaluated on each run. Where Effect's argument order differs from the source order (`fork.in(scope) e`, `for concurrent(n) (… of xs)`), the Effect TypeScript evaluates the operands into temporaries first, in source order: `const $s = scope` before `Effect.forkIn(e, $s)`, and `const $n = n, $xs = xs` before `Effect.forEach($xs, …, { concurrency: $n })`.
 
 ## `try`
 
@@ -82,6 +82,7 @@ Anything else after `catch` is a syntax error: a name, a call, any other value, 
 | `x catch function (e) { return 7 }` | plain function | `7` |
 | `x catch effect (e) => 7`, `x catch (effect function (e) { return 7 })` | effect function | `7` |
 | `x catch async (e) => 7` | plain function | a Promise: an error, see Static rules |
+| `x catch function* (e) { }` | Undecided (pending VIP) | VIP-5 admits function expressions; a generator handler would give an unrun Generator |
 | `x catch guest` | syntax error | quick fix: `x catch () => guest` |
 | `x catch onErr` (`onErr` a function) | syntax error | quick fix: `x catch (e) => onErr(e)` |
 | `x catch effect { return 7 }` | syntax error | quick fix: `x catch effect () => { return 7 }` |
@@ -109,7 +110,7 @@ After a parenthesized handler or a function expression handler, another `catch` 
 | Rule | Diagnostic |
 | --- | --- |
 | `catch` outside effect code | `EK0504` |
-| `try x catch h`: write `try x` or `x catch h`, never both. `try.all x catch h` and the other three operations get this error too, not the one below. `(try x) catch h` is allowed: it catches the Effect that `x` succeeds with | `EK0505` |
+| `try x catch h`: write `try x` or `x catch h`, never both. It fires when the head's leftmost unparenthesized operand is a `try` or `try.all` expression: `try a + b catch h` is `((try a) + b) catch h`, so `EK0505`. `try.all x catch h` and the other three operations get this error too, not the one below. `(try x) catch h` is allowed: it catches the Effect that `x` succeeds with | `EK0505` |
 | `e catch h` where `e` is not an Effect | `EK0506` |
 | a handler whose result type is a Promise or thenable, `async` or not (`x catch async (e) => 7`, `x catch (e) => queryDb(e)`): the Promise is never run, as for an unwrapped Promise in effect code ([Failures](003-failures.md)) | `EK0507` |
 
@@ -264,7 +265,7 @@ A line break after `fork` or `join` changes nothing, as after `await`: `join` th
 | VibeLang | Effect TypeScript | Owner |
 | --- | --- | --- |
 | `fork worker()` | `yield* Effect.forkChild(worker())` | the current fiber |
-| `fork.in(scope) worker()` | `yield* Effect.forkIn(worker(), scope)` | the given scope; `worker()` is evaluated before `scope` |
+| `fork.in(scope) worker()` | `const $s = scope; yield* Effect.forkIn(worker(), $s)` | the given scope; `scope` is evaluated first, as written |
 | `fork.scoped worker()` | `yield* Effect.forkScoped(worker())` | the current `Scope`; adds `Scope` to R |
 | `fork.detached worker()` | `yield* Effect.forkDetach(worker())` | none |
 | `join f` | `yield* Fiber.join(f)` | |
@@ -295,7 +296,8 @@ function both() {
 }
 function owners(scope: Scope.Scope) {
   return Effect.gen(function* () {
-    const a = yield* Effect.forkIn(worker(), scope)
+    const $s = scope
+    const a = yield* Effect.forkIn(worker(), $s)
     const b = yield* Effect.forkScoped(worker())
     const c = yield* Effect.forkDetach(worker())
     return [a, b, c]
@@ -430,7 +432,7 @@ function saveAll(entries: Array<[string, number]>) {
 | --- | --- |
 | `for try` outside effect code | `EK2001` |
 | `return` in the body | `EK2002` |
-| a labeled `break` or `continue` naming a statement outside the body, including the `for try` statement itself: `outer: for (const s of streams) { for try (const x of s) { continue outer } }` | `EK2003` |
+| a labeled `break` or `continue` naming a statement that encloses the `for try`: `outer: for (const s of streams) { for try (const x of s) { continue outer } }` | `EK2003` |
 | an operand that is not a `Stream`; convert an AsyncIterable with `Stream.fromAsyncIterable` first | `EK2004` |
 
 ### Meaning
@@ -465,14 +467,14 @@ function saveAll(rows: Stream.Stream<Row>) {
 }
 ```
 
-A label on the `for try` itself is outside its body (VIP-20, decided detail 49). Remove the labels from these jumps to use the unlabeled `break` and `continue` above:
+A `break` or `continue` naming the `for try` itself means the unlabeled one, as in JavaScript and as `for concurrent` rules:
 
 ```vibe es
 // compiler-gap: pending VIP-20
 effect function first(rows: Stream.Stream<number>) {
   scan: for try (const row of rows) {
-    if (row === 0) break scan   // EK2003; write break
-    continue scan               // EK2003; write continue
+    if (row === 0) break scan   // return false
+    continue scan               // return true
   }
 }
 ```
@@ -483,7 +485,7 @@ The head and its lowering are as for `for concurrent` (VIP-20, amended): a `cons
 // compiler-gap: pending VIP-20
 effect function first() {
   let out = 0
-  for try (const [n = try succeed(7)] of Stream.make([undefined] as [number | undefined])) { out = n }
+  for try (const [n = try succeed(7)] of Stream.make([undefined] as const)) { out = n }   // one element, the tuple [undefined]
   return out                                         // 7; a failing default fails the loop
 }
 ```
@@ -493,7 +495,7 @@ effect function first() {
 function first() {
   return Effect.gen(function* () {
     let out = 0
-    yield* Stream.runForEachWhile(Stream.make([undefined] as [number | undefined]), ($item) => Effect.gen(function* () {
+    yield* Stream.runForEachWhile(Stream.make([undefined] as const), ($item) => Effect.gen(function* () {
       const [n = yield* Effect.succeed(7)] = $item
       { out = n }
       return true
@@ -621,8 +623,8 @@ A *region body* is source code that the lowering moves into a generated callback
 - A completion consumed inside the region body stays as written.
 - Any other completion ends the body's generator with a record: `{ _tag: "Return", value }`, `{ _tag: "Break", label }` or `{ _tag: "Continue", label }`, under fresh names, and `{ _tag: "Normal" }` when the body completes normally. `return e` evaluates `e` once, inside the body.
 - Where the region stands, after `yield*` returns, the code re-issues the record: `return $c.value`, `break L` or `continue L`, where `L` is the consumer's label; the lowering gives an unlabeled consumer a fresh label. Inside an enclosing region body the re-issued jump is again a record, so it passes outward until it reaches its consumer.
-- When the consumer is itself a callback, the record becomes that callback's own completion: a `for try` consumes an unlabeled `continue` as `return true` and an unlabeled `break` as `return false` from the element's callback; a `for concurrent` consumes `continue`, or a `continue` naming it, as `return` from the item's callback.
-- A `for concurrent` body can't produce a `break` it doesn't consume, a `return` or a `continue` naming an enclosing statement, and a `for try` body can't produce a `return` or a labeled `break` or `continue` naming a statement outside its body, including the `for try` statement itself: their static rules make these errors, because no loop or function runs on the body's fiber (VIP-19, VIP-20).
+- When the consumer is itself a callback, the record becomes that callback's own completion: a `for try` consumes `continue`, or a `continue` naming it, as `return true` and `break`, or a `break` naming it, as `return false` from the element's callback; a `for concurrent` consumes `continue`, or a `continue` naming it, as `return` from the item's callback.
+- A `for concurrent` body can't produce a `break` it doesn't consume, a `return` or a `continue` naming an enclosing statement, and a `for try` body can't produce a `return` or a labeled `break` or `continue` naming a statement that encloses it: their static rules make these errors, because no loop or function runs on the body's fiber (VIP-19, VIP-20).
 - Only a body that completes gives a record. A failure, defect or interruption stays in Effect's `Cause`. The region's own finalizers, such as releasing a `provide`'s layers, run before the jump, because `Effect.provide` and the masks complete before `yield*` returns.
 
 ```vibe es

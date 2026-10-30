@@ -24,9 +24,11 @@ provide(x)                         a call to provide: no "{" on the same line
 
 ### Contextual keywords
 
-<a id="declaration-keywords"></a>**Declaration keywords.** `service`, `error`, `schema` and `data` follow TypeScript's contextual keyword `type`, whose alias declaration is `type` [no LineTerminator here] `BindingIdentifier`. This is the one rule for all four:
+<a id="declaration-keywords"></a>**Declaration keywords.** `service`, `error`, `schema` and `data` follow TypeScript's contextual keyword `type`, whose alias declaration is `type` [no LineTerminator here] `BindingIdentifier`. This is the one rule for all four, [DeclarationStart](#declarationstart):
 
-
+```text
+DeclarationStart = ServiceStart | ErrorStart | SchemaErrorStart | SchemaStart | DataStart
+```
 
 Where a TypeScript declaration can start (a `StatementListItem`, or after `export`), a `DeclarationStart` begins that declaration, longest alternative first. Anything else is ordinary TypeScript, where the word is an identifier: `const error = …`, `catch (error)`, `const e = error as Error`, `return data as User[]`, `const ok = schema satisfies Schema.Top` and `error instanceof NotFound;` (a reserved word is not a `BindingIdentifier`). After the name, the declaration's production decides the rest, and line breaks may separate its tokens as in a TypeScript `class` or `type` declaration: a body's `{` and a `schema` alias's `=` may follow line breaks. The one production-specific rule is the bodyless `error` and `schema error` form, under [ErrorDeclaration](#errordeclaration). No other line-break or disambiguation rule applies to these four words.
 
@@ -458,7 +460,9 @@ for concurrent (4) (const x of xs) f(x)        limit 4
 for concurrent (const x of xs) (try g(x));     no limit; the body is a parenthesized expression
 ```
 
-**`!` in types.** `A!B!C` is always the three-slot form; write `(A!B)!C` to nest, and `A!!B!C` is a syntax error. The `[no LineTerminator here]` before `!` is the restriction TypeScript puts on its postfix type operators (`[]`): in `x as User` followed by a line `!flag && fail()`, the type ends at `User`. `R` after `!!` starts on the same line and never with `{`; write `A!!({ … })` for a type-literal requirement. In a type, the scanner splits `!=` or `!==` only directly after `A!`, where the `!` completes `A!!`, as TypeScript rescans `>=` after type arguments only on demand; anywhere else they stay equality operators. `!` does not mix with `|`, `&`, function types or conditional types without parentheses: each is a syntax error with a quick fix that parenthesizes (`EK0301`). Each operand sits at the type-operator level, so prefix and postfix operators bind tighter than `!`.
+**`!` in types.** `A!B!C` is always the three-slot form; write `(A!B)!C` to nest, and `A!!B!C` is a syntax error. The `[no LineTerminator here]` before `!` is the restriction TypeScript puts on its postfix type operators (`[]`): in `x as User` followed by a line `!flag && fail()`, the type ends at `User`. `R` after `!!` starts on the same line and never with `{`; write `A!!({ … })` for a type-literal requirement. In a type, the scanner splits `!=` or `!==` only directly after `A!`, where the `!` completes `A!!`, as TypeScript rescans `>=` after type arguments only on demand; anywhere else they stay equality operators. `EffectType` is an alternative of TypeScript's `Type`, beside a function type and a conditional type. `!` does not mix with `|`, `&`, function types or conditional types without parentheses (decided detail 47): an `EffectType` can't be an operand of `|` or `&`, a part of a conditional type, or a function or constructor type's return type unless parenthesized. Each is a syntax error with a quick fix that parenthesizes (`EK0301`). Each operand sits at the type-operator level, so prefix and postfix operators bind tighter than `!`.
+
+After `as` or `satisfies`, a `!` that is followed on the same line by neither `!` nor the start of an `EffectOperand` is TypeScript's non-null assertion, so `x as Foo!;` is `(x as Foo)!`. `T!!` is always an `EffectType`: `x as Foo!!`, a double non-null assertion in TypeScript, is `x as Effect.Effect<Foo>` in VibeLang, a known TypeScript break.
 
 ```text
 service S {                       two members: R can't start on the next line
@@ -471,6 +475,14 @@ type T = A | B!E                  syntax error; write (A | B)!E or A | (B!E)
 keyof A!E                         (keyof A)!E
 A!E[]                             A!(E[]); write (A!E)[] for an array of Effects
 User!![]                          Effect.Effect<User, never, []>; write (User!!)[] for an array
+type Find = (id: string) => User!NotFound      syntax error; write (id: string) => (User!NotFound)
+type Find = (id: string) => (User!NotFound)    (id: string) => Effect.Effect<User, NotFound>
+type New = new () => (User!NotFound)           a constructor type returning an Effect
+A!(() => B)                       Effect.Effect<A, () => B>
+X extends Y ? A!E : B             syntax error; write X extends Y ? (A!E) : B
+A!E extends X ? 1 : 2             syntax error; write (A!E) extends X ? 1 : 2
+x as Foo!;                        (x as Foo)!, a non-null assertion, as in TypeScript
+x as Foo!!;                       x as Effect.Effect<Foo>; TypeScript reads ((x as Foo)!)!
 ```
 
 `(A | B)!E` is `Effect.Effect<A | B, E>`; `A | (B!E)` is `A | Effect.Effect<B, E>`.
@@ -509,7 +521,7 @@ service S { x: number = 1 }       RejectedMember: an initializer
 
 ## Appendix B. Diagnostics
 
-Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34). Each VIP's rules take one hundred-block, `EK` then the two-digit VIP number then two digits, so VIP-19's rules are `EK19xx` (decided detail 60). A code assigned before that scheme is kept where its rule is unchanged: `EK2109`, `EK2111`, `EK2117`, `EK2126`, `EK3001` to `EK3005`, `EK4402`, `EK4609`, `EK4610` and `EK4701`. Codes are unique across the table, so a kept code may sit inside another VIP's block. Each rule's chapter links to its definition. A row whose rule starts "warning" or "lint warning" is a warning; every other code is an error. Only a warning's code may appear in `vibe.severities` (VIP-30, amended): `{ "EK0801": "off" }` is valid, `{ "EK4701": "off" }` is `EK3006`. Whether the Effect language service's own rules (VIP-38), such as floating-Effect, get `EK` codes is Undecided (pending VIP).
+Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34). Each VIP's rules take one hundred-block, `EK` then the two-digit VIP number then two digits, so VIP-19's rules are `EK19xx` (decided detail 60). A code assigned before that scheme is kept where its rule is unchanged: `EK2109`, `EK2111`, `EK2117`, `EK2126`, `EK3001` to `EK3005`, `EK4402`, `EK4609`, `EK4610` and `EK4701`. Codes are unique across the table, so a kept code may sit inside another VIP's block. Each rule's chapter links to its definition. A row whose rule starts "warning" or "lint warning" is a warning; every other code is an error. Only a warning's code may appear in `vibe.severities` (VIP-30, amended): `{ "EK0801": "off" }` is valid, `{ "EK4701": "off" }` is `EK3006`. Reused numbers: `EK2003`, `EK2101` and `EK2102` previously named the deleted rules that VIP-4, VIP-9 and VIP-1 cite; in this table they mean only the rows below. Whether the Effect language service's own rules (VIP-38), such as floating-Effect, get `EK` codes is Undecided (pending VIP).
 
 | Code | Rule | VIP | Chapter |
 | --- | --- | --- | --- |
@@ -520,7 +532,7 @@ Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34)
 | `EK0105` | `effect` and `async` on one function | 1 | [Functions](001-functions.md#static-rules) |
 | `EK0106` | an `effect` function whose written return type is not an Effect | 1 | [Functions](001-functions.md#static-rules) |
 | `EK0107` | `eval`, `Function`, `arguments`, `var` or `with` in a `.vibe` file | 1, 4 | [Functions](001-functions.md#direct-eval) |
-| `EK0301` | `!` beside a union, an intersection, a function type or a conditional type without parentheses | 3 | [Functions](001-functions.md#the-aer-type-shorthand) |
+| `EK0301` | `!` beside a union, an intersection, a function type or a conditional type without parentheses, including an `A!E` function or constructor return type: `() => A!E` | 3 | [Functions](001-functions.md#the-aer-type-shorthand) |
 | `EK0401` | a `throw` or a call that may throw in a plain function whose return type is effectful, or a parameter default that may throw in any effectful function | 4 | [Failures](003-failures.md#effectful-callables) |
 | `EK0402` | a function that may throw where a function type doesn't admit its thrown type | 4 | [Failures](003-failures.md#assignability) |
 | `EK0403` | an unwrapped call, `new` expression or tagged template that may throw, in effect code or a plain `catch` handler | 4 | [Failures](003-failures.md#calls-in-effect-code) |

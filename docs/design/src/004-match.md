@@ -31,7 +31,9 @@ function label(d: { _tag: "Sent"; tracking: string } | { _tag: "Waiting" }) {
 }
 ```
 
-`match`, `when`, `is`, patterns, guards, `and`, `or`, `not` and `default` follow the [vendored TC39 snapshot](../vips/tc39-pattern-matching/README.md): commit `ba73ffe42f30f0cf56ece28bebdc28f955f2a52e`, dated `2025-10-03`, with the reconciliations listed there. VibeLang moves to a newer snapshot deliberately, never automatically. The full proposal is in the language, including regular-expression patterns, relational patterns and `async match`.
+`match`, `when`, `is`, patterns, guards, `and`, `or`, `not` and `default` follow the [vendored TC39 snapshot](../vips/tc39-pattern-matching/README.md): commit `ba73ffe42f30f0cf56ece28bebdc28f955f2a52e`, dated `2025-10-03`, with the reconciliations listed there. VibeLang moves to a newer snapshot deliberately, never automatically. The full proposal is in the language, including regular-expression patterns, relational patterns and `async match`, with the ordinary-class adaptation below (decided detail 67).
+
+The first `label` counterpart uses a short object test because its subject type guarantees an object with `_tag`. For an arbitrary subject, the pinned algorithm first rejects non-objects (functions are objects too), then checks property presence before reading it; the short form is not a general lowering.
 
 The arm grammar is [MatchBody](900-appendices.md#matchbody), [MatchArm](900-appendices.md#matcharm) and [ArmBody](900-appendices.md#armbody): the pinned draft with VIP-7's `when` prefix and VIP-5's `throw` arm body. `default` is last; guards belong to `MatchPattern` (`P and if (condition)`). Separate arms with `;`, including the final arm; a newline alone is not a separator. The reconciliations are: relational patterns use the draft specification; regex patterns accept both literals and `RegExp` values; `async match` uses the explainer's Promise-producing sketch; custom matchers receive `(subject, { matchType })`, with `matchType` either `"boolean"` or `"extractor"`; built-in matchers use the draft specification, emulated without modifying globals.
 
@@ -41,6 +43,12 @@ Synchronous `match` evaluates its subject once and tests arms in order. It intro
 - An arm's body may be `throw e`, as VIP-5's example writes it. In effect code it fails the Effect ([Failures](003-failures.md#throw)); outside effect code it is JavaScript's `throw`.
 
 A `match` inside a larger expression follows the shared [expression-lowering rule](002-running.md#do-expressions): call references, receivers and short-circuit evaluation are preserved, and `eval` and `arguments` are compile errors anywhere in `.vibe`, including subjects, guards and arms ([Legacy JavaScript](001-functions.md#direct-eval); VIP-1, amended).
+
+## Typing
+
+For the ordered TypeScript counterparts shown here, use TypeScript's control-flow narrowing and property types: `tracking` in `label` is `string`, and `t._tag` in `errorLabel` is `"TimeoutError"`. A throwing path contributes no success value.
+
+**Undecided (pending VIP):** general static typing of patterns and `match` expressions. Neither the pinned proposal nor TypeScript defines it. In particular, the relationship between a custom matcher's declared extracted-list type, subject narrowing and extractor bindings is not yet specified; the examples' TypeScript types alone do not settle that contract.
 
 ## Exhaustiveness
 
@@ -53,6 +61,8 @@ VibeLang adds one check to TC39's proposal.
 The check only reports errors. It never changes what runs: a `match` that passes the check compiles to the same tests as one that doesn't need it.
 
 The check covers literal unions, `boolean`, `data` unions, `error` unions and enums ([VIP-7, amended](../vips/0007-match.md)). An arm covers a case only when its pattern matches every value of that case: for `error NotFound { id: string }`, `when NotFound:` and `when NotFound(let e):` cover `NotFound`; `when NotFound():`, `when NotFound({ id: "x" }):` and guarded arms cover nothing. The empty extractor never matches; the field-constrained extractor leaves other `id` values uncovered.
+
+**Undecided (pending VIP):** the precise subject-type trigger for `EK4701`, beyond the categories above: mixed unions such as `NotFound | undefined`, `Option.Option<A>` / `Exit.Exit<A, E>` / `Result.Result<A, E>`, retained Effect errors mixed with declared errors, and foreign `Data.TaggedError` classes. No accepted rule says whether those types qualify; their runtime patterns remain defined below.
 
 **Undecided (pending VIP):** which non-class pattern forms the exhaustiveness checker can prove cover a case. VIP-7 specifies the checked subject types and that guarded arms cover nothing, but neither it nor TC39 specifies this static algorithm. In particular, coverage for `data` object patterns, `or`, `and`, `not`, regex, relational and built-in matcher patterns is pending. Their run-time matching remains the pinned TC39 algorithm; use `default` when relying on these forms until coverage is decided.
 
@@ -126,13 +136,43 @@ function asyncBit(b: boolean) {
 
 ## Class patterns
 
-Except for VIP-7's retained compiler intrinsics below, a class arm such as `when NotFound:` uses the class's `Symbol.customMatcher`, as TC39 says.
+A class arm uses an explicit `Symbol.customMatcher` when supplied, except for VIP-7's retained compiler intrinsics below. Ordinary classes without one use `instanceof` (decided detail 67).
 
 - An `error` class ([Failures](003-failures.md#error-declarations)), including a `schema error`, gets a matcher that tests `_tag`. It returns `[subject]` on a match and `false` otherwise; `when NotFound(let e):` binds that subject. `when NotFound():` never matches: the matcher returns one element, but the extractor has zero argument patterns. Write `when NotFound:` for a bare test. Thus `when NotFound:` matches across copies of the same package. The TypeScript counterpart is in [Failures](003-failures.md#error-declarations).
 - `data` variants get no custom matchers. Match them with object patterns on `_tag`: `when { _tag: "Sent", let tracking }: …` ([Data](006-data.md#data-declarations)).
 - **No run-time patching of Effect.** The six fixed patterns below are compiler intrinsics until Effect ships matchers. The names are pattern syntax, not values exported by Effect 4.1.0. Recognition follows the resolved module binding, including aliases: `import * as O from "effect/Option"` permits `when O.Some(let v):`. A local `Option` instead uses TC39's matcher lookup; spelling alone never selects an intrinsic.
 - VIP-7 also retains the fixed checks for Effect’s tagged errors until Effect ships matchers; the inventory below uses each module’s own guard (decided detail 53, 2026-10-29). The alias/shadowing rule above applies. Neither `instanceof`, a universal `_tag` test nor the subject’s static type replaces the guard.
-- Built-in constructor patterns, including `Array`, `Error`, `Map`, `Set`, `Date` and `Promise`, use the runtime's `$is`/`$extract` emulation of the snapshot's built-in matchers, without defining methods on globals. Outside the retained Effect tagged-error checks, the inherited `Function.prototype` matcher for other ordinary classes is also emulated, through `$is`, without modifying `Function.prototype`: use the pinned specification’s constructed-by test and non-class callable fallback, not a blanket `instanceof` rewrite. Where an engine lacks `Symbol.customMatcher`, the runtime defines the symbol ([Runtime guarantees](008-runtime.md)).
+- Built-in constructor patterns, including `Array`, `Error`, `Map`, `Set`, `Date` and `Promise`, use the runtime's `$is`/`$extract` emulation of the snapshot's built-in matchers, without defining methods on globals. Ordinary classes without an explicit matcher, including classes imported from untouched `.ts` or `.js`, instead test `subject instanceof C`, then extract as the draft specifies (decided detail 67). No helper patches `Function.prototype` or records construction identity. This deliberately differs from the snapshot's `[[ConstructedBy]]` test: changing a genuine instance's prototype can make it stop matching, while forging a prototype can make an object match. A future switch to engine matchers requires a VIP. Where an engine lacks `Symbol.customMatcher`, the runtime defines the symbol ([Runtime guarantees](008-runtime.md)).
+
+Zero-argument extractors: `Option.None()` matches (`[]`); `NotFound()` and the twelve retained error constructors with `()` never match (`[s]`). **Undecided (pending VIP):** whether VIP-38 should warn on these always-failing extractors.
+
+```vibe es
+// compiler-gap: pending VIP-7
+class Foreign {}
+effect function classify(x: unknown) {
+  return match (x) { when Foreign: "yes"; default: "no"; }
+}
+const real = new Foreign()
+Object.setPrototypeOf(real, null)
+const fake = Object.create(Foreign.prototype)
+// classify(real) succeeds with "no"; classify(fake) succeeds with "yes".
+```
+
+```ts effect
+import { Effect } from "effect"
+
+class Foreign {}
+function classify(x: unknown) {
+  return Effect.gen(function* () {
+    return x instanceof Foreign ? "yes" : "no"
+  })
+}
+const real = new Foreign()
+Object.setPrototypeOf(real, null)
+const fake = Object.create(Foreign.prototype)
+Effect.runSync(classify(real)) // "no"
+Effect.runSync(classify(fake)) // "yes"
+```
 
 For the six specified intrinsics below, `s` is the subject, evaluated once; modules mean the resolved `effect/Option`, `effect/Exit` and `effect/Result` identities. A bare pattern only runs the test. An extractor matches the listed array against its argument patterns using the snapshot's list-matching rules: without rest, zero arguments match only `[]`, one matches a singleton, and extra arguments fail. Rest patterns follow the snapshot. Arity mismatch is a failed match, not a new compile-time error.
 
