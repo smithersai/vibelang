@@ -1,0 +1,2 @@
+export service Empty { static readonly key = ""; n: number }
+export const key = Empty.key

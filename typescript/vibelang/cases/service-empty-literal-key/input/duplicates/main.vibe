@@ -1,0 +1,2 @@
+service First { static readonly key = ""; n: number }
+service Second { static readonly key = ""; n: number }

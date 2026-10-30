@@ -2936,6 +2936,7 @@ typescript/vibelang/cases/service-default-implementation/main.vibe:12:34 lambda 
 typescript/vibelang/cases/service-default-implementation/main.vibe:13:5 lambda plain fallback
 typescript/vibelang/cases/service-default-implementation/main.vibe:20:34 lambda plain fallback
 typescript/vibelang/cases/service-default-implementation/main.vibe:7:34 lambda plain fallback
+typescript/vibelang/cases/service-empty-literal-key/input/reference/main.vibe:3:34 lambda plain annotation
 typescript/vibelang/cases/service-identity-dts/consumer/src/use.vibe:13:55 lambda plain fallback
 typescript/vibelang/cases/service-identity-dts/consumer/src/use.vibe:24:53 lambda plain fallback
 typescript/vibelang/cases/service-identity-dts/main.vibe:17:11 lambda effectFn service

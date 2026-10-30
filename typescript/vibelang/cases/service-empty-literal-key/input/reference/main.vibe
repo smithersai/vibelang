@@ -1,0 +1,5 @@
+export service Reference {
+  static readonly key = ""
+  static readonly defaultValue = (): { n: number } => ({ n: 2 })
+  n: number
+}

@@ -59,6 +59,13 @@ func (tx *lowering) moduleKey(expression *ast.Node, receiver *ast.Node) *ast.Nod
 	return key
 }
 
+// hasKey reports whether node declares a service or a control operation. Its
+// key may be "", which a body writes as static readonly key = "" (VIP-9).
+func (p *servicePlan) hasKey(node *ast.Node) bool {
+	_, ok := p.keys[node]
+	return ok
+}
+
 // planServiceNode records the key of node when it declares a service or a
 // control operation, and the order of its arguments when it calls wire.
 func (p *servicePlan) planServiceNode(c *checker.Checker, node *ast.Node) {

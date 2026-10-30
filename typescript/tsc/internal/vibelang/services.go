@@ -285,7 +285,7 @@ func (s *services) key(class *ast.Node) string {
 	if key, ok := s.keys[class]; ok {
 		return key
 	}
-	if key, _ := writtenKey(class); key != "" {
+	if key, written := writtenKey(class); written != nil {
 		s.keys[class] = key
 		return key
 	}

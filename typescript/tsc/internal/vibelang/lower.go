@@ -270,7 +270,7 @@ func (tx *lowering) visitNode(node *ast.Node) *ast.Node {
 		return tx.visitServiceLookup(node)
 	case node.Kind == ast.KindPropertyAccessExpression && tx.plan.aliases[node] != "":
 		return tx.visitModuleAlias(node)
-	case node.Kind == ast.KindClassDeclaration && tx.plan.keys[node] != "":
+	case node.Kind == ast.KindClassDeclaration && tx.plan.hasKey(node):
 		return tx.visitServiceClass(node)
 	case tx.inEffect && isHandleStatement(node):
 		return tx.visitHandleStatement(node) // try { ... } handle Control.op(...) { ... } (handles.go)
