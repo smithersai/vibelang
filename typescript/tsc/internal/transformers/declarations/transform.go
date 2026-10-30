@@ -1841,9 +1841,18 @@ func (tx *DeclarationTransformer) transformTypeAliasDeclaration(input *ast.TypeA
 		// stripInternal can elide an @internal type RHS; fall back like index signatures
 		t = tx.Factory().NewKeywordTypeNode(ast.KindAnyKeyword)
 	}
+	modifiers := tx.ensureModifiers(input.AsNode())
+	if input.Name().Text() == "as" && input.Parent != nil && ast.IsSourceFile(input.Parent) && modifiers != nil {
+		flags := ast.ModifiersToFlags(modifiers.Nodes)
+		if flags&ast.ModifierFlagsExport != 0 {
+			// `export type as` starts a type-only export, not an alias. At the
+			// source-file level, `declare` disambiguates the alias without changing it.
+			modifiers = tx.Factory().NewModifierList(ast.CreateModifiersFromModifierFlags(flags|ast.ModifierFlagsAmbient, tx.Factory().NewModifier))
+		}
+	}
 	return tx.Factory().UpdateTypeAliasDeclaration(
 		input,
-		tx.ensureModifiers(input.AsNode()),
+		modifiers,
 		input.Name(),
 		tx.Visitor().VisitNodes(input.TypeParameters),
 		t,
