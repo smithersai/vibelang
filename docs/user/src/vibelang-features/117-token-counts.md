@@ -19,9 +19,9 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,144 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 14,903 |
-| The skill and the user guide (139 pages) | 305,030 |
-| The user guide alone | 300,886 |
-| The specification (10 chapters) | 98,519 |
+| The skill and the user guide (139 pages) | 305,176 |
+| The user guide alone | 301,032 |
+| The specification (10 chapters) | 99,263 |
 | The decision log, `docs/design/history/DECISIONS.md` | 141,521 |
 
 ## Effect TypeScript beside VibeLang
@@ -130,9 +130,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Zed](../setup/zed.md) | 479 |
 | [Other editors](../setup/other-editors.md) | 492 |
 | [Coding agents](../setup/coding-agents.md) | 990 |
-| **Upgrade** | **44,184** |
-| [Release notes](../setup/release-notes.md) | 44,184 |
-| **All 18 pages** | **70,367** |
+| **Upgrade** | **44,330** |
+| [Release notes](../setup/release-notes.md) | 44,330 |
+| **All 18 pages** | **70,513** |
 
 ### Guides
 
@@ -277,17 +277,17 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | Page | Tokens |
 | --- | ---: |
 | [Introduction](../../../design/src/000-intro.md) | 2,494 |
-| **The language** | **77,681** |
-| [1. Functions and Effect types](../../../design/src/001-functions.md) | 10,362 |
-| [2. Running Effects](../../../design/src/002-running.md) | 19,915 |
+| **The language** | **78,425** |
+| [1. Functions and Effect types](../../../design/src/001-functions.md) | 10,727 |
+| [2. Running Effects](../../../design/src/002-running.md) | 19,949 |
 | [3. Failures](../../../design/src/003-failures.md) | 12,924 |
 | [4. Pattern matching](../../../design/src/004-match.md) | 12,541 |
 | [5. Services and the environment](../../../design/src/005-services.md) | 8,543 |
 | [6. Data](../../../design/src/006-data.md) | 4,642 |
 | [7. Configuration and tooling](../../../design/src/007-tooling.md) | 4,503 |
-| [8. Runtime guarantees](../../../design/src/008-runtime.md) | 4,251 |
+| [8. Runtime guarantees](../../../design/src/008-runtime.md) | 4,596 |
 | **Appendices** | **18,344** |
 | [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 18,344 |
-| **All 10 pages** | **98,519** |
+| **All 10 pages** | **99,263** |
 
 <!-- token-counts: end -->
