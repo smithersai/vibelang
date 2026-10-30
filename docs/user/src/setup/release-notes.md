@@ -85,6 +85,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The public pattern decision omitted the accepted rule for negated custom matchers; it now states that narrowing follows the actual recognition test and demonstrates the ordinary-class and custom-matcher cases.
 
+- The reference did not explain how to provide a local named `effect`; it now shows `provide (effect) { … }` and distinguishes it from an Effect-block provider.
+
 - Config migration could put severity settings inside a JSONC comment containing `{`; it now keeps the settings active and the comment intact.
 
 - The specification left import-free `.vibe` files with conflicting scope rules. It now requires module scope before checking, preserves it in JavaScript and declarations, and states the `moduleDetection` exception and ordinary host behavior.

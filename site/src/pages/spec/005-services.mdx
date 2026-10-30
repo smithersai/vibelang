@@ -200,6 +200,39 @@ effect function local() {
 
 Trailing blocks don't exist ([VIP-11](/vips/0011-trailing-blocks-denied)), so `provide(x) { … }` can't be read as a call.
 
+The provider is an expression position, so `effect {` starts an [EffectBlock](/spec/900-appendices#effectblock), even when a local binding is named `effect`. Write `provide (effect) { … }` to provide that binding. `provide effect { … }` does not mean that binding followed by the body: the braces belong to the Effect block, leaving no provide body. With another block, `provide effect { … } { … }` parses with an Effect-block provider; it still fails the ordinary `Effect.provide` type check because a cold Effect is neither a Layer nor a Context. The parse does not inspect the local binding's type or run the Effect automatically.
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-12
+effect function providerName() {
+  const effect = Layer.empty
+  provide (effect) { }
+  // provide effect { }      // does not provide the binding: no separate body
+  // provide effect { } { }  // parsed Effect-block provider; not a Layer or Context
+  return 1
+}
+```
+
+```ts [Effect]
+import { Effect, Layer, Exit } from "effect"
+
+function providerName() {
+  return Effect.gen(function* () {
+    const effect = Layer.empty
+    yield* Effect.provide(Effect.void, effect)
+    return 1
+  })
+}
+function rejectedEffectProvider() {
+  const provider = Effect.gen(function* () {})
+  // @ts-expect-error an Effect is not a Layer or Context provider
+  return Effect.provide(Effect.void, provider)
+}
+const providerNameExit = Effect.runSyncExit(providerName())
+console.log(providerNameExit) // Success(1)
+```
+
+
 ### Static rules
 
 | Rule | Diagnostic |
