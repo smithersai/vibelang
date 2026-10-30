@@ -120,6 +120,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The module and resource VIP references still named `effect@4.0.6`; they now describe the accepted `effect@4.1.0` pin, with its 149 root exports and scope functions checked.
 
+- The specification and producer guide disagreed about labeled stream-loop jumps. Both now reject targets outside the `for try` body, including the loop itself, and show unlabeled `break` and `continue` as the repair.
+
 - The specification gave conflicting throw contracts for foreign callables and callback propagation; it now composes own throws with `@rethrows`, preserves contracts across declarations, and distinguishes both synchronous schema decoder builders from the decoders they return. Grammar tooling now sees every declaration-start production, and platform-global and namespace rules agree across chapters. Stream-loop jump diagnostics now agree with the shared rule that a label on the loop itself is consumed there.
 
 - Broken specification links could reach the published site before the full site check ran; the pre-merge graph now checks generated specification and VIP links in a small, independently cached target.

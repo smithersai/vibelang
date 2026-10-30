@@ -381,6 +381,19 @@ The banned globals ("All web apis and all node.js apis should be wrapped and eff
 
 **Undecided (pending VIP):** bare `Worker`, which the precedence above makes Effect's `effect/workers` namespace and this list bans as a web global. Either bare `Worker` is Effect's namespace and only `globalThis.Worker` is banned, with the name resolving to Effect's namespace as `Headers`, `Response` and `Event` do (those three are not on the banned list), or bare `Worker` is `EK4402`.
 
+An explicit import avoids the bare-name question without accessing the host global:
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-33
+import { Worker as EffectWorker } from "effect/workers"
+const workerSpawner = EffectWorker.Spawner
+```
+
+```ts [Effect]
+import { Worker as EffectWorker } from "effect/workers"
+const workerSpawner = EffectWorker.Spawner
+```
+
 ECMA-262 globals (`Date.now`, `Math.random`, `JSON`) and web data utilities with no I/O (`URL`, `URLSearchParams`, `TextEncoder`, `TextDecoder`, `structuredClone`, `atob`, `btoa`, `AbortController`, `Intl`) stay allowed.
 
 ```vibe [VibeLang]

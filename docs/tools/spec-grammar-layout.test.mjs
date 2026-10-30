@@ -28,13 +28,16 @@ test("all grammar definitions live once in Appendix A Productions and chapter ci
   }
 })
 
-test("stream-loop restrictions agree with completion dispatch to the loop itself", () => {
+test("stream-loop labels outside the source body are rejected consistently", () => {
   const running = readFileSync(root + "002-running.md", "utf8")
+  const appendix = readFileSync(root + "900-appendices.md", "utf8")
   const section = running.split("## `for try`")[1].split("## Producers")[0]
-  assert.ok(running.includes("a `break` naming it, as `return false`"),
-    "shared completion dispatch must handle a label on the stream loop")
-  assert.ok(section.includes("naming a statement outside the `for try` statement"),
-    "EK2003 must reject external targets without rejecting the loop itself")
+  assert.ok(section.includes("outside the body, including the `for try` statement itself"))
+  assert.ok(section.includes("break scan   // EK2003; write break"))
+  assert.ok(section.includes("continue scan               // EK2003; write continue"))
+  assert.ok(running.includes("a `for try` consumes an unlabeled `continue` as `return true` and an unlabeled `break` as `return false`"))
+  assert.ok(!running.includes("or a `break` naming it"))
+  assert.ok(appendix.includes("to the `for try` statement itself or a statement outside its body"))
 })
 
 test("chapter production citations use stable Appendix A links", () => {

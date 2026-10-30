@@ -134,7 +134,7 @@ effect function firstTwo() {
 
 An `effect function*` returns a Stream for `for try`; `yield` emits a value, and `try` runs an Effect. Leaving the loop early runs the producer's cleanup. A plain `function*` remains a JavaScript generator. Existing `Effect.gen` code stays in `.ts` files, where JavaScript generators keep their usual Effect meaning.
 
-A producer returns a `Stream` directly, so `Stream.take(ticks(), 2)` uses Effect's operators directly. It compiles to `Stream.callback` with one element of buffer, so the producer may run one element ahead of the consumer. Closing it interrupts the producer's fiber and runs its cleanup. `for try` consumes an Effect Stream in order and closes it when the loop exits.
+A producer returns a `Stream` directly, so `Stream.take(ticks(), 2)` uses Effect's operators directly. It compiles to `Stream.callback` with one element of buffer, so the producer may run up to two elements ahead of the consumer: one in the buffer and one waiting to be offered. Closing it interrupts the producer's fiber and runs its cleanup. `for try` consumes an Effect Stream in order and closes it when the loop exits.
 
 ## Coming from Effect
 

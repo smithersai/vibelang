@@ -557,7 +557,7 @@ Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34)
 | `EK1905` | a labeled `continue` naming a statement that encloses the `for concurrent` | 19 | [Running Effects](/spec/002-running#for-concurrent) |
 | `EK2001` | `for try` outside effect code | 20 | [Running Effects](/spec/002-running#for-try) |
 | `EK2002` | `return` in a `for try` body | 20 | [Running Effects](/spec/002-running#for-try) |
-| `EK2003` | a labeled `break` or `continue` from a `for try` body to a statement outside that `for try` statement | 20 | [Running Effects](/spec/002-running#for-try) |
+| `EK2003` | a labeled `break` or `continue` from a `for try` body to the `for try` statement itself or a statement outside its body; remove a self-targeting jump’s label | 20 | [Running Effects](/spec/002-running#for-try) |
 | `EK2004` | a `for try` operand that is not a `Stream` | 20 | [Running Effects](/spec/002-running#for-try) |
 | `EK2101` | `return value` in a producer | 21 | [Running Effects](/spec/002-running#producers) |
 | `EK2102` | a producer whose written return type is not a `Stream` | 21 | [Running Effects](/spec/002-running#producers) |

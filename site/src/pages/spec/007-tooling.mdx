@@ -75,7 +75,17 @@ vibelang lint -p tsconfig.json
 
 The Effect language service's type-aware rules (effect-tsgo's `effecttsgo/*` rules) run inside the `vibelang` compiler on `.vibe` files. They run wherever VibeLang reports diagnostics: the CLI, the language server, and `vibelang lint` for CI (VIP-38, amended). A repository's existing Effect language-service configuration selects and configures them, so its lint script covers `.vibe` as it covers `.ts`. The lint command uses the same configuration and diagnostics as the compiler and language server; it has no Effect TypeScript runtime translation.
 
-An `effect { … }` expression statement builds an Effect and discards it without running it ([Effect blocks](/spec/002-running#effect-blocks)). The Effect language service's floating-Effect rule reports it, just as it reports a discarded Effect in TypeScript, and the existing Effect language-service configuration selects and configures the rule. Undecided (pending VIP): the imported rules’ `EK` code mapping, whether `vibe.severities` can adjust them, and precedence when both configurations select a severity. No imported-rule code is assigned here.
+An `effect { … }` expression statement builds an Effect and discards it without running it ([Effect blocks](/spec/002-running#effect-blocks)). The Effect language service’s floating-Effect rule reports it, just as it reports a discarded Effect in TypeScript.
+
+These VibeLang warnings already have decided codes; they preserve the underlying TypeScript behavior ([Running Effects](/spec/002-running)):
+
+| Warning | Code | Suggested fix |
+| --- | --- | --- |
+| A plain `catch` handler returns an unrun Effect (decided detail 62) | `EK0508` | `catch effect (e) => try …` |
+| `await` on a `Fiber` (decided detail 28) | `EK4609` | `join fiber` in effect code |
+| `await` on a `Deferred` (decided detail 29) | `EK4610` | `try Deferred.await(deferred)` in effect code |
+
+Undecided (pending VIP): the imported rules’ `EK` code mapping, whether `vibe.severities` can adjust them, and precedence when both configurations select a severity. No imported-rule code is assigned here; the decided VibeLang warning codes above do not settle that mapping.
 
 Tools that only analyze code, such as cycle checkers (madge) and dependency graphs, may run on VibeLang's compiled output. Formatters cannot; they read `.vibe` itself.
 

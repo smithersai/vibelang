@@ -224,3 +224,19 @@ This is the retained inventory for Effect `4.1.0` (VIP-7, D208; decided detail 5
 | `TextDiff.TextDiffError` | `TextDiff.isTextDiffError(s)` | `[s]` |
 
 These guards recognize Effect’s brands across installed copies and reject an unbranded object with only the same `_tag`. Every other constructor, including `Config.ConfigError` (no guard), `PlatformError.BadArgument` and `PlatformError.SystemError`, uses ordinary TC39 matching. A VIP-32 Effect version bump updates this inventory.
+
+```vibe es
+// compiler-gap: pending VIP-7
+errorLabel(new Cause.TimeoutError())        // "TimeoutError"
+errorLabel({ _tag: "TimeoutError" })        // "other": no Effect brand
+```
+
+```ts effect
+import { Cause } from "effect"
+
+const taggedErrorLabel = (e: unknown) =>
+  Cause.isTimeoutError(e) ? e._tag : "other"
+
+taggedErrorLabel(new Cause.TimeoutError())  // "TimeoutError"
+taggedErrorLabel({ _tag: "TimeoutError" })  // "other"
+```
