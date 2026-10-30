@@ -1,6 +1,7 @@
 package vibelang
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
@@ -83,7 +84,8 @@ func (a *analyzer) thrownType(throw *ast.Node) *checker.Type {
 }
 
 // hasEscapingThrow reports whether a throw statement in fn's own body can end
-// fn: a throw that no try block of fn with a catch clause encloses.
+// fn: a throw that no try block of fn with a catch clause encloses, and whose
+// try statement's finally block does not discard it (discardsInFlight).
 func hasEscapingThrow(fn *ast.Node) bool {
 	var visit func(n *ast.Node, caught bool) bool
 	visit = func(n *ast.Node, caught bool) bool {
@@ -94,13 +96,47 @@ func hasEscapingThrow(fn *ast.Node) bool {
 			return true
 		case n.Kind == ast.KindTryStatement:
 			try := n.AsTryStatement()
-			return visit(try.TryBlock, caught || catches(n)) ||
-				try.CatchClause != nil && visit(try.CatchClause, caught) ||
+			discarded := caught || discardsInFlight(n)
+			return visit(try.TryBlock, discarded || catches(n)) ||
+				try.CatchClause != nil && visit(try.CatchClause, discarded) ||
 				try.FinallyBlock != nil && visit(try.FinallyBlock, caught)
 		}
 		return n.ForEachChild(func(child *ast.Node) bool { return visit(child, caught) })
 	}
 	return visit(fn.Body(), false /*caught*/)
+}
+
+// discardsInFlight reports whether try's finally block never completes
+// normally and a return, break, or continue leaves it. In plain code the
+// block's completion then replaces whatever its try and catch blocks raise,
+// as JavaScript's does (VIP-4), so none of it escapes the statement; in
+// effect code such a jump is EK2006. A finally block that only throws
+// replaces the failure in flight in plain code too, but an Effect frame joins
+// the two (D15), so it does not count.
+func discardsInFlight(try *ast.Node) bool {
+	block := try.AsTryStatement().FinallyBlock
+	if block == nil || !leavesAbruptly(block) {
+		return false
+	}
+	jumps := false
+	forEachJumpLeaving(block, func(*ast.Node) { jumps = true })
+	return jumps
+}
+
+// leavesAbruptly reports whether statement never completes normally: it is a
+// return, throw, break, or continue, a block that holds one, or an if whose
+// branches both leave abruptly. Any other statement may complete normally.
+func leavesAbruptly(statement *ast.Node) bool {
+	switch statement.Kind {
+	case ast.KindReturnStatement, ast.KindThrowStatement, ast.KindBreakStatement, ast.KindContinueStatement:
+		return true
+	case ast.KindBlock:
+		return slices.ContainsFunc(statement.AsBlock().Statements.Nodes, leavesAbruptly)
+	case ast.KindIfStatement:
+		s := statement.AsIfStatement()
+		return s.ElseStatement != nil && leavesAbruptly(s.ThenStatement) && leavesAbruptly(s.ElseStatement)
+	}
+	return false
 }
 
 // tryFlow collects what can escape a try statement.
@@ -109,16 +145,25 @@ func (a *analyzer) tryFlow(node *ast.Node) *effectInfo {
 	body := a.tryBlockFlow(try.TryBlock)
 	escapes := &effectInfo{effect: body.effect}
 	escapes.addRequirements(body)
+	discarded := discardsInFlight(node)
 	if try.CatchClause != nil {
 		clause := try.CatchClause.AsCatchClause()
+		handler := &effectInfo{}
 		if clause.VariableDeclaration != nil {
 			// catch ({ id = fallback() }): the binding's defaults and computed
 			// keys run in the handler, after the try block, so what they raise
 			// and need escapes the statement as the catch block's does.
-			escapes.add(a.flowOf(clause.VariableDeclaration))
+			handler.add(a.flowOf(clause.VariableDeclaration))
 		}
-		escapes.add(a.flowOf(clause.Block))
-	} else {
+		handler.add(a.flowOf(clause.Block))
+		escapes.addRequirements(handler)
+		if !discarded {
+			escapes.addErrors(handler)
+		}
+		if escapes.effect == nil {
+			escapes.effect = handler.effect
+		}
+	} else if !discarded {
 		escapes.addErrors(body)
 	}
 	if try.FinallyBlock != nil {

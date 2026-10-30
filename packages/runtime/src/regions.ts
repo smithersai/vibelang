@@ -170,13 +170,14 @@ const defectOf = (thrown: unknown): unknown => thrown instanceof ExpectedFailure
 export const $expected = (error: unknown): unknown => new ExpectedFailure(error)
 
 /**
- * D54, D15: a finally block of a function that compiles to plain JavaScript
- * that throws while a failure is in flight. The two join, the pending failure
- * first, as `$finally`'s Effect.onExit combines causes, rather than the
- * finally block's replacing the other as in JavaScript: a catch outside
+ * D404, D340: a native for...of in plain code whose iterator's return() throws
+ * while a failure is in flight (the compiler's closing.go). The two join, the
+ * pending failure first, as `$finally`'s Effect.onExit combines causes,
+ * rather than IteratorClose's keeping only the first: a catch outside
  * recovers the first expected failure, and a defect on either side makes the
- * whole a defect, which leaves as a `SuppressedError` whose `error` is the
- * finally block's exception and whose `suppressed` is the pending one (D340).
+ * whole a defect, which leaves as a `SuppressedError` whose `error` is
+ * return()'s exception and whose `suppressed` is the pending one. A plain
+ * finally block keeps JavaScript's meaning and never reaches this (VIP-4).
  * pending is `$normal` when no failure was in flight.
  */
 export const $finallyFailure = (pending: unknown, thrown: unknown): unknown => {

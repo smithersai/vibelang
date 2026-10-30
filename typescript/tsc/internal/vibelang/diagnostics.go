@@ -101,7 +101,7 @@ var (
 	EK9204 = message(9204, warningCategory, "This try block runs Effects but has no expected errors; defects pass through this catch.")
 	// EK2005: a resumeWith program that needs a service or fails outside the operation's contract. {0} is what it needs.
 	EK2005 = message(2005, errorCategory, "resumeWith runs this code at the perform site, inside the handled program, where the clause's providers are not in scope. It needs {0}.")
-	// EK2006: a return, break, or continue that leaves a finally block. {0} is the statement's keyword.
+	// EK2006: a return, break, or continue that leaves a finally block of effect code. {0} is the statement's keyword.
 	EK2006 = message(2006, errorCategory, "{0} leaves a finally block, which would discard a failure in flight.")
 	// EK9205: a declaration without a body whose return type is not an Effect type. {0} is the declaration.
 	EK9205 = message(9205, errorCategory, "{0} has no body to infer from, so its contract must be written as an Effect type.")

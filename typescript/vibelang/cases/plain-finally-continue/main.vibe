@@ -1,0 +1,36 @@
+// A plain function keeps JavaScript's try and finally (VIP-4): a continue in
+// a finally block replaces the completion in flight, a throw or a return, and
+// the loop goes on.
+error Boom
+
+function overThrow() {
+  let count = 0
+  for (let n = 0; n < 3; n++) {
+    try { count++; throw new Boom() } finally { continue }
+  }
+  return count
+}
+
+function overReturn() {
+  let total = 0
+  for (const n of [1, 2, 3]) {
+    try { total += n; return "returned" } finally { continue }
+  }
+  return total
+}
+
+// A labeled continue goes on with the outer loop.
+function labeled() {
+  const steps: string[] = []
+  outer: for (let i = 0; i < 2; i++) {
+    for (let j = 0; j < 3; j++) {
+      try { steps.push(i + ":" + j); throw new Boom() } finally { continue outer }
+    }
+  }
+  return steps
+}
+
+// expect-result: {"overThrow":3,"overReturn":6,"labeled":["0:0","1:0"]}
+export effect function main() {
+  return { overThrow: overThrow(), overReturn: overReturn(), labeled: labeled() }
+}

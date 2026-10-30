@@ -1,9 +1,8 @@
 // A finally block that fails while a defect is in flight, in a function that
-// compiles to plain JavaScript, keeps both failures (D340): the exception
-// that leaves is a SuppressedError whose error is the cleanup's and whose
-// suppressed is the pending one, and where it reaches an Effect frame the
-// runtime turns it back into both reasons, in order, as the frame lowering of
-// the same code gives (D341).
+// compiles to plain JavaScript, replaces it, as JavaScript's does (VIP-4):
+// the cleanup's exception leaves alone, and no SuppressedError is made. In an
+// Effect function the two join (D340), and the Exit holds both reasons, in
+// order (D341).
 error Bad
 
 function crash(label: string): number {
@@ -16,7 +15,7 @@ export function both(): number {
   finally { crash("second") }
 }
 
-// A SuppressedError in flight, and a third defect.
+// A defect in flight, replaced by a third.
 export function nested(): number {
   try { return both() }
   finally { crash("third") }
@@ -28,8 +27,8 @@ export function direct() {
   finally { crash("second") }
 }
 
-// An expected failure in flight becomes a defect beside the cleanup's (D305),
-// so the outer catch never runs.
+// The cleanup's defect replaces the expected failure in flight, and a catch
+// recovers only expected failures (D13), so the outer catch never runs.
 function mixed() {
   try {
     try { throw new Bad() }

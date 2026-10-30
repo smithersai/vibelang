@@ -482,8 +482,9 @@ func (tx *lowering) hoist(name *ast.Node) {
 //	try { if (n > 0) throw runtime.$expected(new Invalid()) } catch (e) { e = runtime.$caught(e); return -1 }
 //
 // What plain code throws stands for the Cause a frame would carry, so the
-// runtime decides what a catch recovers as $catch does, and a failure a
-// finally block raises joins the one in flight (visitPlainTryStatement).
+// runtime decides what a catch recovers as $catch does. A finally block keeps
+// JavaScript's meaning (VIP-4): a return, break, continue, or throw in it
+// replaces the completion in flight, a throw or a return, which is discarded.
 
 // visitPlainThrowStatement turns `throw e` into `throw runtime.$expected(e)`.
 func (tx *lowering) visitPlainThrowStatement(node *ast.Node) *ast.Node {
@@ -525,64 +526,20 @@ func (tx *lowering) visitPlainCatchClause(node *ast.Node) *ast.Node {
 	return f.UpdateCatchClause(clause, declaration, block)
 }
 
-// visitPlainTryStatement lowers a try statement with a finally block in plain
-// code, so that a failure the finally block raises joins the one in flight,
-// as $finally's Effect.onExit joins them, where JavaScript's finally would
-// replace it (D15). A finally block cannot jump out (EK2006), so it ends
-// normally or throws:
-//
-//	try { work() } finally { cleanup() }
-//
-// becomes
-//
-//	let pending_1 = runtime.$normal;
-//	try { work() } catch (thrown_1) { pending_1 = thrown_1; throw thrown_1; }
-//	finally { try { cleanup() } catch (thrown_2) { throw runtime.$finallyFailure(pending_1, thrown_2); } }
-//
-// A catch clause stays with the try block in an inner try statement, so a
-// failure the catch block raises is in flight too.
-func (tx *lowering) visitPlainTryStatement(node *ast.Node) *ast.Node {
-	f := tx.Factory()
-	ec := tx.EmitContext()
-	try := node.AsTryStatement()
-	tryBlock := tx.Visitor().VisitNode(try.TryBlock)
-	if try.CatchClause != nil {
-		inner := f.NewTryStatement(tryBlock, tx.Visitor().VisitNode(try.CatchClause), nil /*finallyBlock*/)
-		inner.Loc = node.Loc
-		tryBlock = f.NewBlock(f.NewNodeList([]*ast.Node{inner}), true /*multiLine*/)
-	}
-	pending := f.NewUniqueName("pending")
-	thrown := f.NewUniqueName("thrown")
-	capture := f.NewCatchClause(f.NewVariableDeclaration(thrown, nil /*exclamationToken*/, nil /*typeNode*/, nil /*initializer*/), f.NewBlock(f.NewNodeList([]*ast.Node{
-		f.NewExpressionStatement(f.NewAssignmentExpression(pending, thrown)),
-		f.NewThrowStatement(thrown),
-	}), true /*multiLine*/))
-	cleanupThrown := f.NewUniqueName("thrown")
-	join := f.NewCatchClause(f.NewVariableDeclaration(cleanupThrown, nil /*exclamationToken*/, nil /*typeNode*/, nil /*initializer*/), f.NewBlock(f.NewNodeList([]*ast.Node{
-		f.NewThrowStatement(tx.runtimeCall("$finallyFailure", pending, cleanupThrown)),
-	}), true /*multiLine*/))
-	cleanup := f.NewBlock(f.NewNodeList([]*ast.Node{f.NewTryStatement(tx.Visitor().VisitNode(try.FinallyBlock), join, nil /*finallyBlock*/)}), true /*multiLine*/)
-	statement := f.NewTryStatement(tryBlock, capture, cleanup)
-	ec.SetOriginal(statement, node)
-	statement.Loc = node.Loc
-	declaration := f.NewVariableStatement(nil /*modifiers*/, f.NewVariableDeclarationList(f.NewNodeList([]*ast.Node{
-		f.NewVariableDeclaration(pending, nil /*exclamationToken*/, nil /*typeNode*/, tx.runtimeMember("$normal")),
-	}), ast.NodeFlagsLet))
-	return f.NewSyntaxList([]*ast.Node{declaration, statement})
-}
-
 func init() {
 	fileChecks = append(fileChecks, checkFinallyJumps)
 }
 
 // checkFinallyJumps reports EK2006 at each return, break, or continue that
-// leaves a finally block of a .vibe function. In JavaScript such a jump
-// replaces the block's completion and discards a failure in flight, and
-// VibeLang never drops a failure silently (D15).
+// leaves a finally block of effect code, where the block runs as $finally's
+// Effect.onExit and the jump would discard a failure in flight (D15). Plain
+// code keeps JavaScript's finally (VIP-4), where such a jump replaces the
+// completion in flight.
 func checkFinallyJumps(c *checker.Checker, file *ast.SourceFile) {
+	a := analyzerFor(c)
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
-		if node.Kind == ast.KindTryStatement && node.AsTryStatement().FinallyBlock != nil && inLowerableBody(node) {
+		if node.Kind == ast.KindTryStatement && node.AsTryStatement().FinallyBlock != nil && inLowerableBody(node) && inEffectCode(a, node) {
 			forEachJumpLeaving(node.AsTryStatement().FinallyBlock, func(jump *ast.Node) {
 				keyword := jumpKind(jump.Kind)
 				d := reportAt(c, file, scanner.GetRangeOfTokenAtPosition(file, jump.Pos()), EK2006, keyword)
@@ -592,6 +549,14 @@ func checkFinallyJumps(c *checker.Checker, file *ast.SourceFile) {
 		return node.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
+}
+
+// inEffectCode reports whether node, in a lowerable body, is effect code: its
+// function is marked effect, or compiles to an Effect frame. A marked
+// function's plain variant changes no diagnostic (D421).
+func inEffectCode(a *analyzer, node *ast.Node) bool {
+	fn := enclosingFunction(node)
+	return isMarkedEffect(fn) || !a.compilesToPlain(fn)
 }
 
 // forEachJumpLeaving calls fn with each return, break, or continue in block,

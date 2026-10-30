@@ -1,0 +1,57 @@
+// A plain function keeps JavaScript's try and finally (VIP-4): a throw in a
+// finally block replaces the completion in flight, a throw or a return. The
+// replaced failure is discarded, not joined to the new one.
+error First
+error Second
+error Cleanup
+
+function overThrow() {
+  try {
+    try { throw new First() } finally { throw new Cleanup() }
+  } catch (e) { return e._tag }
+}
+
+// A throw from the catch block is in flight when the finally block runs.
+function overCatchThrow() {
+  try {
+    try { throw new First() } catch { throw new Second() } finally { throw new Cleanup() }
+  } catch (e) { return e._tag }
+}
+
+function overReturn() {
+  try {
+    try { return "returned" } finally { throw new Cleanup() }
+  } catch (e) { return e._tag }
+}
+
+// What leaves is the cleanup's own value, not a SuppressedError.
+function alone() {
+  try {
+    try { throw new First() } finally { throw new Cleanup() }
+  } catch (e) { return e instanceof Cleanup && !(e instanceof SuppressedError) }
+}
+
+function crash(label: string): number {
+  return (undefined as any)[label]
+}
+
+// A defect in the finally block replaces the defect in flight.
+function defect() {
+  try { return crash("first") } finally { crash("cleanup") }
+}
+
+function reasons(outcome: Exit<unknown, unknown>): string {
+  if (outcome is Exit.Success(let value)) return "ok"
+  return outcome.cause.reasons.map((reason) => reason._tag === "Die" ? "Die(" + ((reason.defect as Error).message.split("'")[1] ?? "?") + ")" : reason._tag).join("+")
+}
+
+// expect-result: {"overThrow":"Cleanup","overCatchThrow":"Cleanup","overReturn":"Cleanup","alone":true,"defect":"Die(cleanup)"}
+export effect function main() {
+  return {
+    overThrow: overThrow(),
+    overCatchThrow: overCatchThrow(),
+    overReturn: overReturn(),
+    alone: alone(),
+    defect: reasons(try exit(defect()))
+  }
+}

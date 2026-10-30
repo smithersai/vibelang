@@ -1,14 +1,13 @@
-// A function that compiles to plain JavaScript keeps its try, catch and
-// finally, but a failure its finally block raises joins the failure in
-// flight instead of replacing it, as an Effect function's finally does
-// (D15, Effect.onExit): an outer catch recovers the first expected failure,
-// and a defect on either side makes the whole a defect (D305). Only framed
-// yields, so every other function here compiles to plain JavaScript.
+// A function that compiles to plain JavaScript keeps JavaScript's try, catch
+// and finally (VIP-4): a failure its finally block raises replaces the one in
+// flight. An Effect function's finally block joins the two instead (D15,
+// Effect.onExit), so an outer catch recovers the first. Only framed yields,
+// so every other function here compiles to plain JavaScript.
 error First
 error Second
 error Cleanup
 
-function joined() {
+function replaced() {
   try {
     try { throw new First() }
     finally { throw new Cleanup() }
@@ -40,19 +39,6 @@ function cleanupOnly() {
   } catch (e) { return e._tag }
 }
 
-function crash(): number {
-  return (undefined as any).crash
-}
-
-// A defect in the finally block makes First a defect too; the outer catch
-// does not run.
-function defect() {
-  try {
-    try { throw new First() }
-    finally { crash() }
-  } catch { return "caught" }
-}
-
 // Jumps leave the try block through the finally block, which runs once each.
 function jumps(steps: string[]) {
   outer: for (const n of [1, 2, 3]) {
@@ -65,22 +51,15 @@ function jumps(steps: string[]) {
   try { return steps } finally { steps.push("returned") }
 }
 
-function described(outcome: Exit<string, never>): string {
-  if (outcome is Exit.Success(let value)) return value
-  const reason = outcome.cause.reasons[0]
-  return reason._tag === "Die" ? "Die:" + (reason.defect as { _tag?: string })._tag : reason._tag
-}
-
-// expect-result: {"joined":"First","framed":"First","catchRaises":"Second","cleanupOnly":"Cleanup","defect":"Die:First","jumps":["body 1","finally 1","continue 2","finally 3","returned"]}
+// expect-result: {"replaced":"Cleanup","framed":"First","catchRaises":"Cleanup","cleanupOnly":"Cleanup","jumps":["body 1","finally 1","continue 2","finally 3","returned"]}
 export effect function main() {
   const steps: string[] = []
   jumps(steps)
   return {
-    joined: joined(),
+    replaced: replaced(),
     framed: try framed(),
     catchRaises: catchRaises(),
     cleanupOnly: cleanupOnly(),
-    defect: described(try exit(defect())),
     jumps: steps
   }
 }

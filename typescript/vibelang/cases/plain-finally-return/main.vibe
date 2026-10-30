@@ -1,0 +1,47 @@
+// A plain function keeps JavaScript's try and finally (VIP-4): a return in a
+// finally block replaces the completion in flight, a throw or a return, and
+// the throw it replaces is discarded.
+error Boom
+
+function overThrow() {
+  try { throw new Boom() } finally { return "over throw" }
+}
+
+function overReturn() {
+  try { return "try" } finally { return "over return" }
+}
+
+// A throw from the catch block is in flight when the finally block runs.
+function overCatchThrow() {
+  try { throw new Boom() } catch { throw new Boom() } finally { return "over catch throw" }
+}
+
+// An inner finally block's return replaces the inner throw; the outer finally
+// block then runs and completes normally, so the return stands.
+function nested(steps: string[]) {
+  try {
+    try { throw new Boom() } finally { steps.push("inner"); return "nested" }
+  } finally { steps.push("outer") }
+}
+
+// Only a return that runs replaces the completion: without it the throw goes
+// on to the outer catch.
+function conditional(replace: boolean) {
+  try {
+    try { throw new Boom() } finally { if (replace) return "replaced" }
+  } catch (e) { return "caught " + e._tag }
+}
+
+// expect-result: {"overThrow":"over throw","overReturn":"over return","overCatchThrow":"over catch throw","nested":"nested","steps":["inner","outer"],"replaced":"replaced","kept":"caught Boom"}
+export effect function main() {
+  const steps: string[] = []
+  return {
+    overThrow: overThrow(),
+    overReturn: overReturn(),
+    overCatchThrow: overCatchThrow(),
+    nested: nested(steps),
+    steps,
+    replaced: conditional(true),
+    kept: conditional(false)
+  }
+}

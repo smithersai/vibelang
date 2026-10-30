@@ -6,7 +6,7 @@ function shown(value: unknown): string {
   return value instanceof Error ? value.message.split("'")[1] ?? value.message : String(value)
 }
 
-// A TypeScript caller of a plain function sees the SuppressedError itself.
+// A TypeScript caller of a plain function sees the cleanup's exception itself.
 for (const call of [both, nested]) {
   try {
     call()
@@ -15,6 +15,6 @@ for (const call of [both, nested]) {
     console.log(shown(e))
   }
 }
-// The Effect form fails with both reasons.
+// The Effect form fails with the cleanup's defect alone.
 console.log(reasons(Effect.runSyncExit(direct())))
 console.log(JSON.stringify(Effect.runSync(report())))

@@ -3,8 +3,9 @@ package vibelang
 import "github.com/microsoft/TypeScript/tsc/internal/ast"
 
 // Two failures that leave plain code (D340). In a function that compiles to
-// plain JavaScript, a finally block that fails while a failure is in flight
-// joins the two ($finallyFailure, visitPlainTryStatement). A plain function
+// plain JavaScript, a for...of whose iterator's return() fails while a
+// failure is in flight joins the two ($finallyFailure, closing.go), where a
+// finally block keeps JavaScript's meaning and replaces it. A plain function
 // never fails, so only defects leave it, and when the joined cause holds a
 // defect the exception that leaves is a SuppressedError whose error is the
 // cleanup's exception and whose suppressed is the pending one, as ECMA-262's
@@ -16,15 +17,15 @@ import "github.com/microsoft/TypeScript/tsc/internal/ast"
 //	function main() { return Effect.fnUntraced(runtime.$joinedFrame(function* main() { … both$direct() … })) }
 //
 // The Effect form of every plain function runs its plain form under
-// $plainSync, and a generated frame that calls one that can throw it, or holds plain
-// code with a finally block, is wrapped in $joinedFrame (joinFrames). A
+// $plainSync, and a generated frame that calls one that can throw it, or holds a
+// plain for...of, is wrapped in $joinedFrame (joinFrames). A
 // TypeScript caller of a plain function sees the SuppressedError itself.
 
 // joinsFailures reports whether a call of fn, a .vibe function that compiles
 // to plain JavaScript, can throw a SuppressedError the runtime made: fn, or a
 // .vibe function that compiles to plain JavaScript and that fn calls,
-// directly or through others, has a try statement with a finally block or a
-// for...of, whose iterator close joins failures too (closing.go).
+// directly or through others, has a for...of, whose iterator close joins
+// failures (closing.go).
 // Nested functions count, since a plain callback's exception passes through
 // whatever calls it.
 func (a *analyzer) joinsFailures(fn *ast.Node) bool {
@@ -45,7 +46,7 @@ func (a *analyzer) joinsFailures(fn *ast.Node) bool {
 		var visit func(n *ast.Node) bool
 		visit = func(n *ast.Node) bool {
 			switch {
-			case n.Kind == ast.KindTryStatement && n.AsTryStatement().FinallyBlock != nil, n.Kind == ast.KindForOfStatement:
+			case n.Kind == ast.KindForOfStatement:
 				joins = true
 				return true
 			case ast.IsCallExpression(n):
@@ -100,8 +101,8 @@ func (a *analyzer) callJoinsFailures(call *ast.Node) bool {
 // joinFrames wraps in runtime.$joinedFrame each generated frame, the
 // generator an Effect.gen, Effect.fnUntraced or Effect.fn call runs, whose
 // body can receive a SuppressedError the runtime made: one that calls a .vibe
-// function that can throw it, or that holds plain code with a finally block,
-// whose $finallyFailure makes it. A nested generator is a frame of its own;
+// function that can throw it, or that holds a plain for...of, whose
+// $finallyFailure makes it. A nested generator is a frame of its own;
 // a nested plain function is not, since its exception passes through the
 // frame that calls it.
 func (tx *lowering) joinFrames(node *ast.Node) *ast.Node {

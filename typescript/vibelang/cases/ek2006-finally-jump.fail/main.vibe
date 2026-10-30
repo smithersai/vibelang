@@ -1,6 +1,7 @@
 // expect: EK2006
-// Control cannot leave a finally block: in JavaScript a return, break, or
-// continue there discards the failure in flight.
+// Control cannot leave a finally block of effect code: a return, break, or
+// continue there would discard the failure in flight. Plain code keeps
+// JavaScript's finally (plain-finally-return, -break, -continue).
 class Boom extends TaggedError("Boom")<{}> {}
 
 export effect function swallow(n: number) {

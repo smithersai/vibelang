@@ -1,4 +1,4 @@
-SuppressedError(second, first)
-SuppressedError(third, SuppressedError(second, first))
-Die(first)+Die(second)
-{"both":"Die(first)+Die(second)","nested":"Die(first)+Die(second)+Die(third)","direct":"Die(first)+Die(second)","mixed":"Die(Bad)+Die(cleanup)","framed":"Die(first)+Die(second)"}
+second
+third
+Die(second)
+{"both":"Die(second)","nested":"Die(third)","direct":"Die(second)","mixed":"Die(cleanup)","framed":"Die(first)+Die(second)"}

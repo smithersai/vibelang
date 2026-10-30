@@ -306,9 +306,10 @@ func forEachEscapingThrowIn(root *ast.Node, cb func(throw *ast.Node)) {
 			return false
 		case n.Kind == ast.KindTryStatement:
 			try := n.AsTryStatement()
-			visit(try.TryBlock, caught || catches(n))
+			discarded := caught || discardsInFlight(n)
+			visit(try.TryBlock, discarded || catches(n))
 			if try.CatchClause != nil {
-				visit(try.CatchClause, caught)
+				visit(try.CatchClause, discarded)
 			}
 			if try.FinallyBlock != nil {
 				visit(try.FinallyBlock, caught)

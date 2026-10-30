@@ -160,11 +160,12 @@ var ruleInjections = []*ruleInjection{
 		Decls: "service Secret$$ {\n  read(): string!!\n}\ncontrol Ask$$ {\n  ask(question: string): string!!\n}",
 		Text:  "function secret$$() {\n  try {\n    return Ask$$.ask(\"password\");\n  } handle Ask$$.ask(question) {\n    resumeWith(() => Secret$$.read());\n  }\n}"},
 
-	// Chapter 17: a jump out of finally.
-	{Code: 2006, Name: "continue-finally", Quote: "A `return`, `break`, or `continue` that leaves a `finally` block", Slots: stmt,
+	// Chapter 17: a jump out of finally, in effect code. Plain code keeps
+	// JavaScript's finally, where the jump replaces the completion (VIP-4).
+	{Code: 2006, Name: "continue-finally", Quote: "A `return`, `break`, or `continue` that leaves a `finally` block", Slots: effectOnly,
 		Text: "for (const item$$ of [1, 2]) {\n  try {\n    const seen$$ = item$$;\n  } finally {\n    continue;\n  }\n}"},
 	{Code: 2006, Name: "return-finally", Quote: "A `return`, `break`, or `continue` that leaves a `finally` block", Slots: top,
-		Text: "export function swallow$$(n: number) {\n  try {\n    return n;\n  } finally {\n    return -1;\n  }\n}"},
+		Text: "export effect function swallow$$(n: number) {\n  try {\n    return n;\n  } finally {\n    return -1;\n  }\n}"},
 
 	// Chapter 14: declarations without bodies need Effect contracts.
 	{Code: 9205, Name: "service-bare", Quote: "A service or control method without a body whose return type is not an Effect type", Slots: top,

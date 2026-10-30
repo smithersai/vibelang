@@ -1,0 +1,43 @@
+// A plain function keeps JavaScript's try and finally (VIP-4): a break in a
+// finally block replaces the completion in flight, a throw or a return, and
+// the loop's next statement runs.
+error Boom
+
+function overThrow() {
+  const steps: string[] = []
+  while (true) {
+    try { steps.push("try"); throw new Boom() } finally { steps.push("finally"); break }
+  }
+  steps.push("after")
+  return steps
+}
+
+function overReturn() {
+  for (const n of [1, 2]) {
+    try { return "returned " + n } finally { break }
+  }
+  return "after loop"
+}
+
+// A labeled break leaves both loops.
+function labeled() {
+  let reached = "none"
+  outer: for (let i = 0; i < 3; i++) {
+    for (let j = 0; j < 3; j++) {
+      try { throw new Boom() } finally { reached = i + ":" + j; break outer }
+    }
+  }
+  return reached
+}
+
+// A break inside the finally block that stays in it replaces nothing.
+function inner() {
+  try {
+    try { throw new Boom() } finally { for (;;) break }
+  } catch (e) { return "caught " + e._tag }
+}
+
+// expect-result: {"overThrow":["try","finally","after"],"overReturn":"after loop","labeled":"0:0","inner":"caught Boom"}
+export effect function main() {
+  return { overThrow: overThrow(), overReturn: overReturn(), labeled: labeled(), inner: inner() }
+}
