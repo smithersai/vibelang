@@ -590,20 +590,27 @@ type platformRef struct {
 	module      string // the platform module it is imported from, or "" for a global
 	name        string // the name platformAPIs knows it by: its module and imported name, or the global's name
 	namespace   bool   // a namespace import, whose members are values until code runs them
-	unresolved  bool   // a platform global's name that does not resolve
 }
 
 // platformReference reports whether id refers to a platform API: a binding
 // imported from a platform module, or a global in platformGlobals that a lib
-// file or a platform package declares, or that does not resolve at all, as
-// process does without @types/node.
+// file or a platform package declares. An unresolved name keeps TypeScript's
+// missing-name or missing-property diagnostic.
 func platformReference(c *checker.Checker, id *ast.Node) (platformRef, bool) {
 	name := globalPlatformName(c, id)
 	if name == "" {
 		return platformRef{}, false
 	}
 	symbol := c.GetSymbolAtLocation(id)
-	if symbol != nil && symbol.Flags()&ast.SymbolFlagsAlias != 0 {
+	if symbol == nil && ast.IsElementAccessExpression(id) {
+		// Symbol lookup does not expose every literal-key access. Resolve the
+		// already-validated static name on the actual receiver type instead.
+		symbol = c.GetPropertyOfType(c.GetApparentType(c.GetTypeAtLocation(id.Expression())), name)
+	}
+	if symbol == nil {
+		return platformRef{}, false
+	}
+	if symbol.Flags()&ast.SymbolFlagsAlias != 0 {
 		for _, decl := range symbol.Declarations() {
 			if module, namespace := importedFrom(decl); module != "" {
 				if r, ok := platformModuleOf(module); ok {
@@ -617,10 +624,10 @@ func platformReference(c *checker.Checker, id *ast.Node) (platformRef, bool) {
 	if !listed {
 		return platformRef{}, false
 	}
-	if symbol != nil && !isPlatformGlobalBinding(c, symbol) {
+	if !isPlatformGlobalBinding(c, symbol) {
 		return platformRef{}, false // a local, or a global the program declares
 	}
-	return platformRef{replacement: r, name: name, unresolved: symbol == nil}, true
+	return platformRef{replacement: r, name: name}, true
 }
 
 // importedName returns the name platformAPIs knows decl, an import binding's
@@ -747,9 +754,6 @@ func checkPlatformUse(c *checker.Checker, file *ast.SourceFile, id *ast.Node) {
 		if why := consoleFixRefusal(c, call, method); why != "" {
 			note(d, "No quick fix: {0}", why)
 		}
-	}
-	if ref.unresolved {
-		cover(c, id) // EK4402 explains TypeScript's "cannot find name"
 	}
 }
 

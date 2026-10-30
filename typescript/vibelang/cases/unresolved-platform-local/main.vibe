@@ -1,0 +1,11 @@
+// expect-result: [true,true,true,true]
+export function local(fetch: number): number { return fetch }
+const process = { env: { USER: "local" } }
+export effect function main() {
+ return [
+  local(7) === 7,
+  process.env.USER === "local",
+  Array === globalThis.Array,
+  Math === globalThis.Math,
+ ]
+}

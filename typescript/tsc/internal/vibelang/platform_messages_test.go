@@ -220,9 +220,11 @@ export const run = (key: Uint8Array) => createHmac("sha256", key)`, []string{
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			files := computedKeyFiles(false)
-			files["/Users/x/src/node_modules/@types/node/package.json"] = `{"name":"@types/node","types":"index.d.ts"}`
-			files["/Users/x/src/node_modules/@types/node/index.d.ts"] = platformTypes
-			files["/Users/x/src/main.vibe"] = test.source
+			files["/workspace/x/src/node_modules/@types/node/package.json"] = `{"name":"@types/node","types":"index.d.ts"}`
+			files["/workspace/x/src/node_modules/@types/node/index.d.ts"] = platformTypes
+			files["/workspace/x/src/main.vibe"] = test.source
+			// Load the host declarations: these test replacement messages, not missing names.
+			files["/workspace/x/src/tsconfig.json"] = strings.Replace(files["/workspace/x/src/tsconfig.json"], `"files":["main.vibe"]`, `"files":["main.vibe","node_modules/@types/node/index.d.ts"]`, 1)
 			var got []string
 			for _, d := range computedKeyProgram(t, files).GetSemanticDiagnostics(t.Context(), nil) {
 				if d.Code() == EK4402.Code || d.Code() == EK4403.Code {

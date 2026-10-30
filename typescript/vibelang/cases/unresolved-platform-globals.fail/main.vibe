@@ -1,0 +1,7 @@
+// expect: TS2304 TS2591 TS7017 TS7053
+export const fetchValue = fetch
+export const processValue = process
+export const bufferValue = Buffer
+export const qualified = globalThis.fetch
+export const indexed = globalThis["fetch"]
+export const array = Array

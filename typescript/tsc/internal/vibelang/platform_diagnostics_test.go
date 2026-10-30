@@ -7,9 +7,11 @@ import (
 
 func TestGlobalThisPlatformDiagnostics(t *testing.T) {
 	files := computedKeyFiles(false)
-	files["/Users/x/src/node_modules/@types/node/package.json"] = `{"name":"@types/node","types":"index.d.ts"}`
-	files["/Users/x/src/node_modules/@types/node/index.d.ts"] = `declare var process: { env: { TMPDIR: string | undefined } }`
-	files["/Users/x/src/main.vibe"] = `export const direct = (): string | undefined => process.env.TMPDIR
+	// Node types load only when named: an unresolved process is TS2591, not EK4402.
+	files["/workspace/x/src/tsconfig.json"] = `{"compilerOptions":{"strict":true,"target":"ESNext","module":"NodeNext","declaration":true,"types":["node"]},"files":["main.vibe"]}`
+	files["/workspace/x/src/node_modules/@types/node/package.json"] = `{"name":"@types/node","types":"index.d.ts"}`
+	files["/workspace/x/src/node_modules/@types/node/index.d.ts"] = `declare var process: { env: { TMPDIR: string | undefined } }`
+	files["/workspace/x/src/main.vibe"] = `export const direct = (): string | undefined => process.env.TMPDIR
 export const viaGlobal = (): string | undefined => globalThis.process?.env?.TMPDIR
 export const viaGlobalPlain = (): string | undefined => globalThis.process.env.TMPDIR
 export const viaBracket = (): string | undefined => globalThis["process"].env.TMPDIR

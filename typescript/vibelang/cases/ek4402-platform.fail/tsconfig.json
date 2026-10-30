@@ -16,5 +16,8 @@
   "include": [
     "*.vibe",
     "*.ts"
+  ],
+  "files": [
+    "types-node/index.d.ts"
   ]
 }

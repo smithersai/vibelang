@@ -1069,6 +1069,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Nested interruption examples left the target of `restore` implicit. It now explicitly restores the nearest mask's entry state, including an already uninterruptible state, with a pending-interruption example.
 
+- Without host declarations, missing `fetch`, `process`, and `Buffer` names appeared as banned platform APIs; the compiler now keeps TypeScript's missing-name and missing-property diagnostics.
+
 - The migrate flow read a compiler crash as a clean run, recording no errors and no fixes; `compile`, `codemod` and the declaration step now stop and show the crash.
 
 - The migrate flow left a `.d.ts` beside each source file outside a project's `rootDir`, and the batch's commit picked them up; the declaration step now removes what the compiler wrote outside its output directory.
