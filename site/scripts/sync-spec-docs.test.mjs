@@ -45,6 +45,12 @@ test('inline HTML anchors resolve as fragments, locally and across chapters', ()
   const body = load().convert('000-intro.md', facts)
   assert.equal(body.match(/\]\(\/spec\/101-calls#direct-eval\)/g).length, 2)
 })
+test('an inline HTML anchor stays an element in the page, so the built page has its id', () => {
+  const { put, load } = fixture()
+  put('docs/design/src/101-calls.md', '# Calls\n\n<a id="direct-eval"></a><a id="bindings"></a>**Legacy.** a < b, `<a id="code"></a>`\n')
+  const body = load().convert('101-calls.md', facts)
+  assert.ok(body.includes('<a id="direct-eval"></a><a id="bindings"></a>**Legacy.** a \\< b, `<a id="code"></a>`'), body)
+})
 test('page titles are the inventory labels, not the first heading', () => {
   const { put, load } = fixture()
   put('docs/design/src/101-calls.md', '## Part I. Examples\n\n### 1. Calls\n')

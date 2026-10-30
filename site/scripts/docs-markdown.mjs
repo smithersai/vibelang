@@ -23,13 +23,19 @@ export function convertText(line, fromRel, convertLink) {
   return out
 }
 
+// An empty anchor element, <a id="x"></a>, names a link target, so it passes through as an element.
+const ANCHOR = /<a id="([\w-]+)"><\/a>/g
+
 function escapeText(text, fromRel, convertLink) {
+  const ids = []
   return text
+    .replace(ANCHOR, (_, id) => `\u0000${ids.push(id) - 1}\u0000`)
     .replace(/<!--[\s\S]*?-->/g, '')
     .replace(/<(https?:\/\/[^>\s]+)>/g, '[$1]($1)')
     .replace(/\]\(([^)\s]+)\)/g, (_, href) => `](${convertLink(href, fromRel)})`)
     .replace(/[{}]/g, (c) => `\\${c}`)
     .replace(/<(?!\/?(?:br|sup|sub|kbd)\b)/g, '\\<')
+    .replace(/\u0000(\d+)\u0000/g, (_, n) => `<a id="${ids[n]}"></a>`)
 }
 
 export function readFences(lines) {
