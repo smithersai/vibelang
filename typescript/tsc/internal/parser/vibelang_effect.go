@@ -34,7 +34,7 @@ func (p *Parser) isVibeLangEffectWord() bool {
 // followed by ( or <, the rest of a shorthand declaration, effect load(id) or
 // async get(url). It moves the scanner; call it through lookAhead.
 func (p *Parser) scanStartOfShorthandFunction() bool {
-	if !p.isBindingIdentifier() || p.hasPrecedingLineBreak() {
+	if !p.isBindingIdentifier() || p.hasPrecedingLineBreak() || p.token == ast.KindAsKeyword || p.token == ast.KindSatisfiesKeyword {
 		return false
 	}
 	p.nextToken()
@@ -59,7 +59,7 @@ func (p *Parser) scanStartOfEffectDeclaration() bool {
 // modifier, starts the shorthand declaration async get(url).
 func (p *Parser) isStartOfAsyncShorthand(modifiers *ast.ModifierList) bool {
 	return modifierListHasAsync(modifiers) && p.isVibeLangFile() && p.lookAhead(func(p *Parser) bool {
-		if !p.isBindingIdentifier() {
+		if !p.isBindingIdentifier() || p.token == ast.KindAsKeyword || p.token == ast.KindSatisfiesKeyword {
 			return false
 		}
 		p.nextToken()

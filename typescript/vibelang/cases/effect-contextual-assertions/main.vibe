@@ -1,0 +1,11 @@
+// expect-result: [4,6]
+type Handler = (n: number) => number
+const effect = (n: number): number => n + 1
+const async = (n: number): number => n + 2
+effect as (Handler)
+effect satisfies (Handler)
+async as (Handler)
+async satisfies (Handler)
+export effect function main() {
+  return [effect(3), async(4)]
+}
