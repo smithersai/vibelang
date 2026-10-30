@@ -340,7 +340,7 @@ import { Effect } from "effect"
 function leaveDo() { return Effect.gen(function* () { return 7 }) }
 ```
 
-<a id="evaluation-order"></a>**Evaluation order.** Captures also preserve the [source naming context](/spec/001-functions#source-names): a private temporary cannot give an anonymous value a name or erase a requested one. A `do` or `match` is an expression, and this is the one rule for it inside a larger expression: it runs where JavaScript evaluates the expression that holds it, never earlier or more often. Everything to its left runs first, in source order, the callee and a method's receiver included, so `o.m(try a(), match (x) { … })` reads `o.m`, runs `a()`, runs the `match`, and calls the method with `this` as `o`. In a conditional position (one side of `&&`, `||`, `??`, `?:`, `&&=`, `||=`, `??=`, after `?.`, a `case` test, a loop condition or update) it runs only when JavaScript evaluates that position. How the compiler keeps this is its choice. Destructuring and parameter defaults follow [their own rule](/spec/002-running#destructuring-and-parameter-defaults). As the snapshot's explainer says, an unlabeled `break` or `continue` in a `do` in a loop head is an early error.
+<a id="evaluation-order"></a>**Evaluation order.** Captures also preserve the [source naming context](/spec/001-functions#source-names): a private temporary cannot give an anonymous value a name or erase a requested one. A `do` or `match` is an expression, and this is the one rule for it inside a larger expression: it runs where JavaScript evaluates the expression that holds it, never earlier or more often. Everything to its left runs first, in source order, the callee and a method's receiver included, so `o.m(try a(), match (x) { … })` reads `o.m`, runs `a()`, runs the `match`, and calls the method with `this` as `o`. In a conditional position (one side of `&&`, `||`, `??`, `?:`, `&&=`, `||=`, `??=`, after `?.`, a `case` test, a loop condition or update) it runs only when JavaScript evaluates that position. How the compiler keeps this is its choice. Destructuring and parameter defaults follow [their own rule](/spec/002-running#destructuring-and-parameter-defaults). As the snapshot's explainer says, an unlabeled `break` or `continue` in a `do` in a loop head is an early error. Calls retain ECMA-262's `CallExpression` evaluation, `EvaluateCall` and `ArgumentListEvaluation` behavior, including the receiver, callee lookup, abrupt completions and native non-callable errors; generated invocation machinery must add no observable helper lookup.
 
 <a id="jumps-from-expressions"></a>**Jumps from expressions.** `do` gives an expression completions no other expression has: `return`, `break` and `continue`. Around it, each stays what it is. ECMA-262 and the pinned drafts say "abrupt" in steps written when an expression could only throw, and VibeLang reads those steps as "throw": [`FinishMatch`](/spec/004-match#leaving-a-match), and the parameter steps of [`async` functions and generators](/spec/002-running#parameter-defaults). The snapshot's README lists them.
 
@@ -356,12 +356,7 @@ effect function total(o: Calc) {
 // fragment
 function total(o: Calc) {
   return Effect.gen(function* () {
-    const $r = o, $f = $r.add, $t1 = yield* a()      // receiver, callee, then the first argument
-    const $s = n()
-    let $t2
-    if ($s === 1) $t2 = 10
-    else $t2 = 0
-    return Reflect.apply($f, $r, [$t1, $t2])          // this is o
+    return o.add(yield* a(), n() === 1 ? 10 : 0)
   })
 }
 ```
