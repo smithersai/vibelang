@@ -812,8 +812,8 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK3009` | warning: `vibelang.diagnostics` in tsconfig is replaced by `vibe.severities`; `--fix` rewrites it | 30 | [Configuration and tooling](007-tooling.md#config-files) |
 | `EK3201` | a resolved `effect` version other than the pin | 32 | [Configuration and tooling](007-tooling.md#the-effect-version) |
 | `EK4402` | a value import of a Node builtin, with or without `node:` (`node:fs`, `fs`), a string-literal `import(…)` of one, or a statically named value that [reaches the platform](005-services.md#reaches-the-platform): a global declared by `lib.dom`, `lib.webworker`, `lib.scripthost` or `@types/node` and not by `lib.es*` or `lib.decorators*`, minus the allowlist, or a banned member of an allowlisted global, in a `.vibe` file | 33 | [Services](005-services.md#the-platform-standard-library) |
-| `EK4609` | lint warning: `await` on a `Fiber` in an `async` function; use `join` | 5 | [Running Effects](002-running.md#await) |
-| `EK4610` | lint warning: `await` on a `Deferred` in an `async` function; use `try Deferred.await(d)` | 5 | [Running Effects](002-running.md#await) |
+| `EK4609` | lint warning: `await` on a `Fiber` in an `async` function; to obtain its result in that context, use `await runPromise(Fiber.join(fiber))` | 5 | [Running Effects](002-running.md#await) |
+| `EK4610` | lint warning: `await` on a `Deferred` in an `async` function; to obtain its result in that context, use `await runPromise(Deferred.await(deferred))` | 5 | [Running Effects](002-running.md#await) |
 | `EK4701` | a `match` with no `default` whose subject passes the exhaustiveness check and misses a case; a guarded arm covers nothing | 7 | [Pattern matching](004-match.md#exhaustiveness) |
 | `EK4830` | lint warning: A class written with `Data.TaggedError("Name")` | 13, 34 | [Configuration and tooling](007-tooling.md#typescript-spellings-with-vibelang-forms) |
 | `EK4831` | lint warning: A class written with `Context.Service` | 9, 34 | [Configuration and tooling](007-tooling.md#typescript-spellings-with-vibelang-forms) |

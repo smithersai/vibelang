@@ -214,7 +214,38 @@ fetchUser(id) catch effect (e) => try fetchUser("guest")   // the fix: Effect.ca
 
 ## `await`
 
-`await` keeps exactly JavaScript's meaning and belongs to `async` functions and the module top level. `await`, `for await` and `await using` inside effect code are errors, and so is `await` on an Effect inside an `async` function ([Functions](001-functions.md#static-rules)). `await fiber` and `await deferred` keep TypeScript's behavior and get a VIP-38 lint warning suggesting `join fiber` (`EK4609`) or `try Deferred.await(deferred)` (`EK4610`) (VIP-5, amended).
+`await` keeps exactly JavaScript's meaning and belongs to `async` functions and the module top level. `await`, `for await` and `await using` inside effect code are errors, and so is `await` on an Effect inside an `async` function ([Functions](001-functions.md#static-rules)). `await fiber` and `await deferred` keep TypeScript's native `await` behavior and get VIP-38 lint warnings (`EK4609` and `EK4610`). In the existing `async` context, suggest `await runPromise(Fiber.join(fiber))` or `await runPromise(Deferred.await(deferred))`, using the explicit Promise bridge from VIP-1 and VIP-5. The Effect-body forms `join fiber` and `try Deferred.await(deferred)` do not run in an ordinary `async` body; suggesting them there would introduce `EK1701` or `EK0501`. Reporting the warning does not run either object or change the original result.
+
+```vibe es
+// compiler-gap: pending VIP-5
+async function asyncFiberValue(fiber: Fiber.Fiber<number>) {
+  return await runPromise(Fiber.join(fiber))
+}
+async function asyncDeferredValue(deferred: Deferred.Deferred<number>) {
+  return await runPromise(Deferred.await(deferred))
+}
+```
+
+These existing bridges obtain the completion values. With a fiber completing with `7` and a Deferred completed with `8`, the observation below is `Success([7, 8])`. In this example, native `await` alone retains the unmodified Fiber and Deferred objects.
+
+```ts effect
+import { Effect, Fiber, Deferred } from "effect"
+
+async function asyncFiberValue(fiber: Fiber.Fiber<number>) {
+  return await Effect.runPromise(Fiber.join(fiber))
+}
+async function asyncDeferredValue(deferred: Deferred.Deferred<number>) {
+  return await Effect.runPromise(Deferred.await(deferred))
+}
+const fiber = Effect.runFork(Effect.succeed(7))
+const deferred = Effect.runSync(Deferred.make<number>())
+Effect.runSync(Deferred.succeed(deferred, 8))
+const nativeFiber = await fiber
+const nativeDeferred = await deferred
+const observed = await Effect.runPromiseExit(Effect.promise(async () => [
+  await asyncFiberValue(fiber), await asyncDeferredValue(deferred)
+]))
+```
 
 <a id="try-follows-await"></a>`try e` is allowed, forbidden and ordered exactly where `await e` is, and every rule that differs is listed here with its reason. The columns use their corresponding execution contexts; transparent expressions inherit that context:
 

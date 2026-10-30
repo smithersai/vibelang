@@ -151,6 +151,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The specification omitted `fork` and `join` in ordinary async-arrow heads inside Effect code; those heads now inherit the same reservation as plain arrows, while their bodies keep ordinary async behavior.
 
+- The documented `Fiber` and `Deferred` warnings suggested Effect-only syntax in `async` functions; their repairs now use the existing `runPromise` bridge and keep the source function asynchronous.
+
 - Repository validation could fail the site contrast check on a connection reset by its local server; the check now reads the built site directly.
 
 - A `match` or `if`/`else` chain with thousands of arms over a large union took about a minute and a half to check; repeated narrowing now reuses its results, so a 2000-arm `match` checks in about 10 seconds.

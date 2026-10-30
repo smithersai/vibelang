@@ -162,8 +162,8 @@ These are VibeLang’s own configurable warnings, distinct from the imported `EK
 | Warning | Code | Suggested fix |
 | --- | --- | --- |
 | A plain `catch` handler returns an unrun Effect (decided detail 62) | `EK0508` | `catch effect (e) => try …` |
-| `await` on a `Fiber` (decided detail 28) | `EK4609` | `join fiber` in effect code |
-| `await` on a `Deferred` (decided detail 29) | `EK4610` | `try Deferred.await(deferred)` in effect code |
+| `await` on a `Fiber` (decided detail 28) | `EK4609` | `await runPromise(Fiber.join(fiber))` in `async` code; `join fiber` in effect code |
+| `await` on a `Deferred` (decided detail 29) | `EK4610` | `await runPromise(Deferred.await(deferred))` in `async` code; `try Deferred.await(deferred)` in effect code |
 
 The imported rules are pinned by [`UPSTREAM`](../../../typescript/tsc/internal/effecttsgo/UPSTREAM) to `@effect/tsgo@0.57.0`, commit `999942fa41462eb46dfcb2d718e7671db8e14156` (decided detail 98). The normative [`lint-codes.json`](https://github.com/smithersai/vibelang/blob/main/docs/design/inventory/lint-codes.json) and the table below are generated with `node docs/tools/lint-codes.mjs --write`. An upstream bump runs `sh tsc/internal/effecttsgo/sync.sh <tag>` from `typescript/` and regenerates the inventory.
 
