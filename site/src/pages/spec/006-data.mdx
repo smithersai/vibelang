@@ -179,6 +179,28 @@ decodeFlagIntent({ must: undefined, frozen: "ok", tuple: [], entries: { a: undef
 decodeFlagIntent({ must: undefined, frozen: "ok", tuple: [undefined], entries: {} })               // Failure: required record key
 ```
 
+A schema's encoded representation follows its field codecs. JSON and other transports must support that representation; a declaration does not automatically convert unsupported values or property keys. For example, raw `Schema.BigInt` encodes a bigint, which JSON cannot serialize, while `Schema.BigIntFromString` encodes a string. Ordinary JSON omits object properties with `undefined`, symbol or function values, ignores symbol keys, and converts nonfinite numbers to `null`. Cycles and user serialization hooks retain their ordinary JSON behavior. Choose codecs and a transport that preserve the required data, including for [schema errors](/spec/003-failures#schema-error-declarations).
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-15, VIP-29
+schema error BigCount { count: bigint }
+schema error JsonCount { count: Schema.BigIntFromString }
+```
+
+```ts [Effect]
+import { Effect, Schema } from "effect"
+
+class BigCount extends Schema.TaggedError<BigCount>()("BigCount", { count: Schema.BigInt }) {}
+class JsonCount extends Schema.TaggedError<JsonCount>()("JsonCount", { count: Schema.BigIntFromString }) {}
+const encodedBigCount = Schema.encodeSync(BigCount)(new BigCount({ count: 1n }))
+const jsonTransportExit = Effect.runSyncExit(Effect.try({
+  try: () => JSON.stringify(encodedBigCount), catch: (error) => error,
+})) // Failure(TypeError): the encoded count is still a bigint
+const encodedJsonCount = Schema.encodeSync(JsonCount)(new JsonCount({ count: 1n }))
+const jsonRoundTripExit = Schema.decodeUnknownExit(JsonCount)(JSON.parse(JSON.stringify(encodedJsonCount)))
+// Success(JsonCount({ count: 1n })); the encoded count was "1"
+```
+
 Refinements and transformations stay Schema constants. In a schema type, an identifier or qualified name is looked up as a value and must satisfy Effect's `Schema.Top`; a type of the same name is not expanded. Imports and shadowing follow TypeScript value lookup. `typeof Name.Type` is the declared type.
 
 ```vibe [VibeLang]

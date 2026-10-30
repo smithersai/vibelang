@@ -912,7 +912,7 @@ Neither form accepts type parameters. For example, `error Invalid<T> { value: T 
 
 ### Meaning
 
-`schema error Name { fields }` combines `error` and the field mapping of `schema` declarations ([Data](006-data.md#schema-declarations)). Fields are written as TypeScript types and mapped to Schemas, so the error can be decoded from JSON and crosses workers and RPC. The body rules, and their diagnostics, are those of `error` declarations. Referenced field schemas also obey the [decoded-key modifier checks](006-data.md#schema-declarations): every payload field is effectively readonly, even without a written `readonly`, so a mutable-key reference is `EK2109`. Nested mutable values remain mutable.
+`schema error Name { fields }` combines `error` and the field mapping of `schema` declarations ([Data](006-data.md#schema-declarations)). Fields are written as TypeScript types and mapped to Schemas. Encoding follows those codecs' `Encoded` representations; JSON, worker messages and RPC transports must support that representation. The declaration adds no implicit wire conversion. For JSON, choose compatible field codecs, such as `Schema.BigIntFromString` for a bigint encoded as a string. The body rules, and their diagnostics, are those of `error` declarations. Referenced field schemas also obey the [decoded-key modifier checks](006-data.md#schema-declarations): every payload field is effectively readonly, even without a written `readonly`, so a mutable-key reference is `EK2109`. Nested mutable values remain mutable.
 
 ```vibe es
 // compiler-gap: pending VIP-29
