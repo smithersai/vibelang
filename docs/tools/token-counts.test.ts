@@ -83,3 +83,15 @@ test("corpus claims count longer pairs, weight combined tokens and ignore direct
   const claims = measuredClaims()
   expect(readFileSync(resolve(import.meta.dir, "../../README.md"), "utf8")).toContain(claims["README.md"])
 })
+
+test("long-form alternatives do not contribute to a paired entry or its token totals", async () => {
+  const { measurePairs } = await import("./token-counts")
+  const paired = ["**Values**", fence("ts effect", "const n = 1"), fence("vibe", "const n = 1")].join("\n")
+  const alternatives = [
+    "**Values**", fence("vibe long", "unmeasured leading alternative"),
+    fence("ts effect", "const n = 1"), fence("vibe long", "unmeasured middle alternative"),
+    fence("vibe", "const n = 1"), fence("vibe long", "unmeasured trailing alternative")
+  ].join("\n")
+  expect(cheatSheetPairs(alternatives)).toEqual(cheatSheetPairs(paired))
+  expect(measurePairs(alternatives)).toEqual(measurePairs(paired))
+})

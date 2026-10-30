@@ -35,8 +35,8 @@ export type Pair = { label: string; effect: string[]; vibe: string[] }
 // form, is neither side). Labels between two entries' blocks belong to the next
 // entry, which takes the first of them.
 export function cheatSheetPairs(markdown: string): Pair[] {
-  const entries: Array<Pair & { long: number }> = []
-  let current: (Pair & { long: number }) | undefined
+  const entries: Pair[] = []
+  let current: Pair | undefined
   let labels: string[] = []
   let fence: { info: string; lines: string[] } | undefined
   const close = () => {
@@ -48,11 +48,10 @@ export function cheatSheetPairs(markdown: string): Pair[] {
       if (/^```\s*$/.test(line)) {
         const code = fence.lines.join("\n")
         const [lang, role] = fence.info.split(/\s+/)
-        current ??= { label: labels[0] ?? "", effect: [], vibe: [], long: 0 }
+        current ??= { label: labels[0] ?? "", effect: [], vibe: [] }
         labels = []
         if (lang === "ts" && role === "effect") current.effect.push(code)
-        else if (lang === "vibe" && role === "long") current.long++
-        else if (lang === "vibe") current.vibe.push(code)
+        else if (lang === "vibe" && role !== "long") current.vibe.push(code)
         fence = undefined
       } else fence.lines.push(line)
       continue
@@ -74,7 +73,7 @@ export function cheatSheetPairs(markdown: string): Pair[] {
     }
   }
   close()
-  return entries.filter(e => e.effect.length && e.vibe.length).map(({ label, effect, vibe }) => ({ label, effect, vibe }))
+  return entries.filter(e => e.effect.length && e.vibe.length)
 }
 
 export function measurePairs(markdown: string) {
