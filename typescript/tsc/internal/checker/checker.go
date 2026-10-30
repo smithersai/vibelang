@@ -186,6 +186,12 @@ type NarrowedTypeKey struct {
 	checkDerived bool
 }
 
+// RemovedTypeKey identifies a removal of target from a union, see Checker.removedTypes.
+type RemovedTypeKey struct {
+	union  TypeId
+	target TypeId
+}
+
 // UnionOfUnionKey
 
 type UnionOfUnionKey struct {
@@ -694,6 +700,7 @@ type Checker struct {
 	tupleTypes                                  map[CacheHashKey]*Type
 	unionTypes                                  map[CacheHashKey]*Type
 	unionOfUnionTypes                           map[UnionOfUnionKey]*Type
+	removedTypes                                map[RemovedTypeKey]*Type
 	intersectionTypes                           map[CacheHashKey]*Type
 	propertiesTypes                             map[PropertiesTypesKey]*Type
 	diagnostics                                 ast.DiagnosticsCollection
@@ -1030,6 +1037,7 @@ func NewChecker(program Program, tracer *Tracer) (*Checker, *sync.Mutex) {
 	c.tupleTypes = make(map[CacheHashKey]*Type)
 	c.unionTypes = make(map[CacheHashKey]*Type)
 	c.unionOfUnionTypes = make(map[UnionOfUnionKey]*Type)
+	c.removedTypes = make(map[RemovedTypeKey]*Type)
 	c.intersectionTypes = make(map[CacheHashKey]*Type)
 	c.propertiesTypes = make(map[PropertiesTypesKey]*Type)
 	c.mergedSymbols = make(map[*ast.Symbol]*ast.Symbol)
@@ -27365,13 +27373,22 @@ func (c *Checker) removeType(t *Type, targetType *Type) *Type {
 		if len(types) == 2 {
 			return types[1-i]
 		}
+		// Flow analysis repeats one removal once per reference in an if/else chain.
+		// Hashing the remaining union each time makes a chain of n arms over n
+		// members cubic, so remember the result.
+		key := RemovedTypeKey{union: t.id, target: targetType.id}
+		if removed := c.removedTypes[key]; removed != nil {
+			return removed
+		}
 		// Remove the target type from the slice.
 		set := c.getTemporaryTypeSet()
 		defer c.releaseTemporaryTypeSet(set)
 		set.values = append(set.values[:0], types[:i]...)
 		set.values = append(set.values, types[i+1:]...)
 		filtered := set.values
-		return c.getUnionTypeFromSortedList(filtered, t.AsUnionType().objectFlags&(ObjectFlagsPrimitiveUnion|ObjectFlagsContainsIntersections), nil /*alias*/, nil /*origin*/)
+		removed := c.getUnionTypeFromSortedList(filtered, t.AsUnionType().objectFlags&(ObjectFlagsPrimitiveUnion|ObjectFlagsContainsIntersections), nil /*alias*/, nil /*origin*/)
+		c.removedTypes[key] = removed
+		return removed
 	}
 	return t
 }

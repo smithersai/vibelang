@@ -49,12 +49,27 @@ func variantsSource(form string, n int) string {
 	return b.String()
 }
 
-// checkVariants checks variantsSource(form, n) and returns the allocations
-// and the narrowings it took. Both are counts of work, not times, so a
-// loaded machine does not change them.
-func checkVariants(t *testing.T, form string, n int) (allocations, narrowings int64) {
+// literalsSource is a union of n string literals and an exhaustive match of it.
+func literalsSource(n int) string {
+	var b strings.Builder
+	b.WriteString("type Shape = \"V0\"")
+	for i := 1; i < n; i++ {
+		fmt.Fprintf(&b, " | \"V%d\"", i)
+	}
+	b.WriteString("\nexport function f(s: Shape): number {\n  return match (s) {\n")
+	for i := range n {
+		fmt.Fprintf(&b, "    when \"V%d\": %d;\n", i, i)
+	}
+	b.WriteString("  }\n}\n")
+	return b.String()
+}
+
+// checkSource checks source and returns the allocations, the bytes and the
+// narrowings it took. All are counts of work, not times, so a loaded machine
+// does not change them.
+func checkSource(t *testing.T, source string) (allocations, bytes, narrowings int64) {
 	t.Helper()
-	program, file, _, _ := editorProgram(t, variantsSource(form, n))
+	program, file, _, _ := editorProgram(t, source)
 	var before, after runtime.MemStats
 	runtime.ReadMemStats(&before)
 	flowNarrowings.Store(0)
@@ -62,9 +77,17 @@ func checkVariants(t *testing.T, form string, n int) (allocations, narrowings in
 	narrowings = flowNarrowings.Load()
 	runtime.ReadMemStats(&after)
 	for _, d := range diagnostics {
-		t.Errorf("%s n=%d: unexpected diagnostic %s", form, n, d.String())
+		t.Errorf("unexpected diagnostic %s", d.String())
 	}
-	return int64(after.Mallocs - before.Mallocs), narrowings
+	return int64(after.Mallocs - before.Mallocs), int64(after.TotalAlloc - before.TotalAlloc), narrowings
+}
+
+// checkVariants checks variantsSource(form, n) and returns the allocations
+// and the narrowings it took.
+func checkVariants(t *testing.T, form string, n int) (allocations, narrowings int64) {
+	t.Helper()
+	allocations, _, narrowings = checkSource(t, variantsSource(form, n))
+	return allocations, narrowings
 }
 
 // A match or is chain over a data type of n variants narrows each reference
@@ -85,6 +108,19 @@ func TestVariantPatternsScaleQuadratically(t *testing.T) {
 		if ratio := largeNarrowings / smallNarrowings; largeNarrowings >= limit*smallNarrowings {
 			t.Errorf("%s: %d variants narrow %d times as often as %d (%d, %d); want under %d", form, large, ratio, small, largeNarrowings, smallNarrowings, limit)
 		}
+	}
+}
+
+// A match over n string literals removes a literal from the subject's union
+// n times n over 2 times. A removal must not cost the union's size each time:
+// that made 2000 arms take 95 s of CPU, and match-flow-limit.fail went RED on
+// a busy host against the harness's 120 s limit.
+func TestLiteralPatternNarrowingAllocations(t *testing.T) {
+	const arms, limit = 500, 1024
+	_, bytes, narrowings := checkSource(t, literalsSource(arms))
+	t.Logf("%d arms: %d bytes over %d narrowings", arms, bytes, narrowings)
+	if narrowings == 0 || bytes >= limit*narrowings {
+		t.Errorf("%d arms allocate %d bytes over %d narrowings; want under %d bytes each", arms, bytes, narrowings, limit)
 	}
 }
 

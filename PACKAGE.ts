@@ -70,6 +70,10 @@ const specTests = [
 // a slower fix loop fails here in seconds; the rewrite cases, which meet it as
 // a 30 s limit on a busy host, run after the merge.
 const fixCostTests = ["TestFixProjectBoundsChecks", "TestFixProgramsShareParsedFiles"]
+// The cost guards of flow narrowing. They count allocations, so a repeated
+// union removal that rehashes fails here in seconds; match-flow-limit.fail,
+// which meets it as a 120 s limit on a busy host, runs after the merge.
+const narrowingCostTests = ["TestRemoveTypeRepeatAllocations", "TestLiteralPatternNarrowingAllocations"]
 const design = S.Filegroup({ srcs: [...S.glob(["docs/design/**"])] })
 
 // This check reads only the generated spec/VIP pages. Keep it independently
@@ -158,10 +162,10 @@ const targets = {
     "45m"
   ),
   "spec-tests": S.Shell.Test({
-    summary: "The Go tests that read docs/design (the registry, the VIP citations and coverage, the pending lines) and --fix's cost guards.",
+    summary: "The Go tests that read docs/design (the registry, the VIP citations and coverage, the pending lines) and the cost guards of --fix and flow narrowing.",
     shell:
       `cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} ` +
-      `go test -count=1 -trimpath -run '^(${[...specTests, ...fixCostTests].join("|")})$' ./internal/vibelang/ ./internal/vibelangfuzz/`,
+      `go test -count=1 -trimpath -run '^(${[...specTests, ...fixCostTests, ...narrowingCostTests].join("|")})$' ./internal/checker/ ./internal/vibelang/ ./internal/vibelangfuzz/`,
     data: [design, Tsc.srcs, Tsc["vibelang-files"], Tsc["vibelangfuzz-files"], Packages["runtime-dist"]] as Array<never>,
     tools: [go, node],
     sandbox: "none",

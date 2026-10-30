@@ -180,6 +180,7 @@ func newCompositeTestChecker() (*Checker, []*Type) {
 		strictNullChecks:      true,
 		unionTypes:            make(map[CacheHashKey]*Type),
 		unionOfUnionTypes:     make(map[UnionOfUnionKey]*Type),
+		removedTypes:          make(map[RemovedTypeKey]*Type),
 		intersectionTypes:     make(map[CacheHashKey]*Type),
 		subtypeReductionCache: make(map[CacheHashKey][]*Type),
 	}
@@ -242,6 +243,29 @@ func TestCompositeTypeCacheHitAllocations(t *testing.T) { //nolint:paralleltest
 	assert.Equal(t, testing.AllocsPerRun(10, func() { c.removeType(union, types[1]) }), float64(0))
 	assert.Equal(t, c.removeType(union, types[1]), filtered)
 	assert.Equal(t, c.getIntersectionType(objects), intersection)
+}
+
+// A long if/else chain re-narrows one reference through the same removals once per
+// arm, so a repeated removal must not rebuild and hash the remaining union.
+func TestRemoveTypeRepeatAllocations(t *testing.T) { //nolint:paralleltest
+	if race.Enabled {
+		t.Skip("race instrumentation changes hashing allocations")
+	}
+	c, _ := newCompositeTestChecker()
+	members := make([]*Type, 256)
+	for i := range members {
+		members[i] = c.newObjectType(ObjectFlagsInterface, nil)
+	}
+	union := c.getUnionType(members)
+	filtered := c.removeType(union, members[100])
+	assert.Equal(t, testing.AllocsPerRun(10, func() { c.removeType(union, members[100]) }), float64(0))
+	assert.Equal(t, c.removeType(union, members[100]), filtered)
+	assert.Equal(t, len(filtered.Types()), len(members)-1)
+	assert.Assert(t, !containsType(filtered.Types(), members[100]))
+	assert.Equal(t, c.removeType(filtered, members[100]), filtered)
+	other := c.removeType(union, members[101])
+	assert.Assert(t, other != filtered && containsType(other.Types(), members[100]))
+	assert.Equal(t, c.removeType(other, members[100]), c.removeType(filtered, members[101]))
 }
 
 func TestTemporaryTypeSetReuse(t *testing.T) {

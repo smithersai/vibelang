@@ -44,7 +44,7 @@ target's inputs, its key and whether the cache holds a result for it.
   :release :snippets :tokens :forms :docs-tools :docs-check :site-spec-links
   :site-contrast                exclusive: runs only with --include-exclusive
   :design-files                 Filegroup: docs/design
-  :spec-tests                   the Go tests that read docs/design (registry, VIP citations, pending lines), --fix's cost guards
+  :spec-tests                   the Go tests that read docs/design (registry, VIP citations, pending lines), the cost guards of --fix and flow narrowing
 ```
 
 ```text
