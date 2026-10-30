@@ -130,10 +130,18 @@ func FixWithOptions(ctx context.Context, sys tsc.System, args []string, options 
 	}
 	path := sys.FS().CaseSensitivity().PathKey(tspath.RootedPath(configFileName))
 	config, errors := tsoptions.GetParsedCommandLineOfConfigFilePath(configFileName, path, commandLine.CompilerOptions(), nil, sys.FS(), &tsc.ExtendedConfigCache{})
+	configDiagnostics := errors
+	if config != nil {
+		configDiagnostics = slices.Concat(configDiagnostics, config.GetConfigFileParsingDiagnostics())
+	}
+	configFS, configChanges := sidecarConfigFixes(sys.FS(), configDiagnostics)
+	if len(configChanges) > 0 {
+		config, errors = tsoptions.GetParsedCommandLineOfConfigFilePath(configFileName, path, commandLine.CompilerOptions(), nil, configFS, &tsc.ExtendedConfigCache{})
+	}
 	if len(errors) > 0 || config == nil {
 		return 0 // the compilation reports them
 	}
-	result := FixProjectWithOptions(ctx, sys.FS(), sys.DefaultLibraryPath(), config, options)
+	result := FixProjectWithOptions(ctx, configFS, sys.DefaultLibraryPath(), config, options)
 	if ctx.Err() != nil {
 		fmt.Fprintln(sys.ErrorWriter(), "vibelang --fix: interrupted; no file written.")
 		return int(tsc.ExitStatusInvalidProject_OutputsSkipped)
@@ -148,6 +156,10 @@ func FixWithOptions(ctx context.Context, sys tsc.System, args []string, options 
 			fmt.Fprintf(sys.ErrorWriter(), "vibelang --fix: %s: %v\n", relativeName(sys, name), err)
 			return int(tsc.ExitStatusInvalidProject_OutputsSkipped)
 		}
+	}
+	if err := writeSidecarConfigFixes(sys, configChanges); err != nil {
+		fmt.Fprintf(sys.ErrorWriter(), "vibelang --fix: %v\n", err)
+		return int(tsc.ExitStatusInvalidProject_OutputsSkipped)
 	}
 	result.Report(sys.Writer(), func(name tspath.RootedFilePath) string { return relativeName(sys, name) })
 	return 0

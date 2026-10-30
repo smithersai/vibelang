@@ -1,4 +1,4 @@
-// expect: EK3001
+// expect: EK3001 TS4058
 // Two services with the same key would share one slot in a Context (D1). The
 // key is the package, the module path, and the class name, so two classes
 // named Local in one module collide.

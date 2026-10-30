@@ -27,10 +27,6 @@ type VibeLangOptions struct {
 	// Tracing is "none", "exported", or "all": which functions compile with
 	// Effect.fn spans. Empty means "none".
 	Tracing string `json:"tracing,omitzero"`
-	// DeclarationSidecars writes each .vibe module's declarations beside it,
-	// x.d.vibe.ts for x.vibe, which stock TypeScript and the tools built on it
-	// resolve for an import of ./x.vibe under allowArbitraryExtensions.
-	DeclarationSidecars bool `json:"declarationSidecars,omitzero"`
 }
 
 // VibeLangAdjustableCodes are the EK codes whose category compilerOptions.vibelang
@@ -52,7 +48,7 @@ func (o *VibeLangOptions) Equals(other *VibeLangOptions) bool {
 	if o == nil || other == nil {
 		return o == other
 	}
-	return o.VibeOnly == other.VibeOnly && maps.Equal(o.Severities, other.Severities) && maps.Equal(o.InvalidSeverities, other.InvalidSeverities) && o.EffectGlobals == other.EffectGlobals && o.EffectModules == other.EffectModules && o.Tracing == other.Tracing && o.DeclarationSidecars == other.DeclarationSidecars && slices.Equal(o.TrustedPackages, other.TrustedPackages) && maps.Equal(o.Diagnostics, other.Diagnostics)
+	return o.VibeOnly == other.VibeOnly && maps.Equal(o.Severities, other.Severities) && maps.Equal(o.InvalidSeverities, other.InvalidSeverities) && o.EffectGlobals == other.EffectGlobals && o.EffectModules == other.EffectModules && o.Tracing == other.Tracing && slices.Equal(o.TrustedPackages, other.TrustedPackages) && maps.Equal(o.Diagnostics, other.Diagnostics)
 }
 
 // VibeSeverityCode implements VIP-30/34/38, details 57 and 77. Legacy
@@ -82,7 +78,6 @@ func MergeVibeSettings(base, child *VibeLangOptions) *VibeLangOptions {
 		result.Diagnostics = base.Diagnostics
 		result.Tracing = base.Tracing
 		result.TrustedPackages = base.TrustedPackages
-		result.DeclarationSidecars = base.DeclarationSidecars
 	}
 	result.Severities = maps.Clone(base.Severities)
 	if child.Severities != nil {

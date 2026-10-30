@@ -201,6 +201,8 @@ Stock `tsc`, `tsrs`, TypeDoc and other checkers built on TypeScript cannot read 
 
 The Node and Bun loaders reuse a cached compile when generated sidecars beside their sources appear, change or disappear. They still recompile when a source or a standalone declaration file changes.
 
+No VibeLang setting is needed. The retired `declarationSidecars` option is an error. Run `vibelang -p tsconfig.json --fix` to remove it from the project and its local inherited configs. This also removes the obsolete key from the top-level `vibe` section in `tsconfig.json` or `vibe.config.json`, preserving other settings, comments and a UTF-8 BOM.
+
 `bun check` runs the project's `check` script; a script that invokes a TypeScript checker uses that checker's sidecar resolution.
 
 In each project whose checker is not `vibelang`, set TypeScript's [`allowArbitraryExtensions`](https://www.typescriptlang.org/tsconfig/allowArbitraryExtensions.html), and import the module by its source name:

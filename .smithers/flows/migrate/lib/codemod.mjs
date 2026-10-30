@@ -156,7 +156,7 @@ export function restoreExports(root, edits, module) {
  * .ts file names a .vibe module by its source name too, ./user.vibe for
  * ./user.js or ./user.ts: stock TypeScript, and every checker built on it,
  * resolves only that name, to the module's declaration sidecar
- * user.d.vibe.ts (vibelang setting declarationSidecars), while vibelang,
+ * user.d.vibe.ts, while vibelang,
  * its loaders and its bundler plugins resolve it to the source, and vibelang
  * emits and declares it as ./user.js (D298). An extensionless specifier stays
  * as written, since its declaration would gain .js, except in a mock.module

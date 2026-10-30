@@ -9,8 +9,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
-// VibeLang: declaration sidecars. With the vibelang setting
-// declarationSidecars, each .vibe module of the program also gets its
+// VibeLang: declaration sidecars. Each .vibe module of the program gets its
 // declarations beside its source, x.d.vibe.ts for x.vibe. Stock TypeScript
 // resolves an import of ./x.vibe to that file under allowArbitraryExtensions,
 // as it resolves ./styles.css to styles.d.css.ts, so tsc, TypeDoc and every
@@ -40,10 +39,6 @@ var (
 // declaration emit's diagnostics. A sidecar whose text is unchanged is not
 // written, so a watch that includes it does not rebuild.
 func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileName string, text string) error) []*ast.Diagnostic {
-	vibelang := p.Options().VibeLang
-	if vibelang == nil || !vibelang.DeclarationSidecars {
-		return nil
-	}
 	var sources []*ast.SourceFile
 	for _, file := range p.getSourceFilesToEmit(nil, true /*forceDtsEmit*/, false /*forceJsEmit*/) {
 		if file.IsDeclarationFile || file.EmbeddedModule() != nil || !tspath.FileExtensionIs(string(file.FileName()), tspath.ExtensionVibe) {

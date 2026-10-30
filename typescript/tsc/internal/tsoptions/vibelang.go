@@ -19,8 +19,7 @@ import (
 //	"vibelang": {
 //	  "diagnostics": { "EK9204": "off", "EK4403": "warning" },
 //	  "tracing": "exported",
-//	  "trustedPackages": ["@smthrs/*"],
-//	  "declarationSidecars": true
+//	  "trustedPackages": ["@smthrs/*"]
 //	}
 //
 // It is added by hand to the generated option tables: its declaration in
@@ -55,9 +54,6 @@ func parseVibeLangOptions(value any) *core.VibeLangOptions {
 	}
 	if tracing, ok := object.GetOrZero("tracing").(string); ok && slices.Contains(vibeLangTracing, tracing) {
 		options.Tracing = tracing
-	}
-	if sidecars, ok := object.GetOrZero("declarationSidecars").(bool); ok {
-		options.DeclarationSidecars = sidecars
 	}
 	if packages, ok := object.GetOrZero("trustedPackages").([]any); ok {
 		for _, entry := range packages {
@@ -141,10 +137,6 @@ func validateVibeLangOptions(value any, valueExpression *ast.Expression, sourceF
 			if tracing, ok := v.(string); !ok || !slices.Contains(vibeLangTracing, tracing) {
 				report(jsonInitializer(property), diagnostics.Argument_for_0_option_must_be_Colon_1, "vibelang.tracing", quoteList(vibeLangTracing))
 			}
-		case "declarationSidecars":
-			if _, ok := v.(bool); !ok {
-				report(jsonInitializer(property), diagnostics.Compiler_option_0_requires_a_value_of_type_1, "vibelang.declarationSidecars", "boolean")
-			}
 		default:
 			report(jsonName(property), diagnostics.Unknown_compiler_option_0, "vibelang."+key)
 		}
@@ -177,9 +169,6 @@ func serializeVibeLangOptions(options *core.VibeLangOptions) *collections.Ordere
 	}
 	if options.Tracing != "" {
 		result.Set("tracing", options.Tracing)
-	}
-	if options.DeclarationSidecars {
-		result.Set("declarationSidecars", true)
 	}
 	return result
 }

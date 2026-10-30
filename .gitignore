@@ -16,3 +16,5 @@ templates/app/dist/
 templates/app/.prototype/
 dist-npm/
 .wrangler/
+# Declaration sidecars emitted beside sources by compiler checks.
+*.d.vibe.ts

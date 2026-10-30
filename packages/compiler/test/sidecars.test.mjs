@@ -6,7 +6,7 @@ import { dirname, join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 
-// The vibelang setting declarationSidecars writes x.d.vibe.ts beside each
+// VibeLang always writes x.d.vibe.ts beside each
 // .vibe module, which stock TypeScript reads under allowArbitraryExtensions.
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const native = process.env.VIBELANG_BINARY || join(repo, "typescript/built/local/tsc")
@@ -34,7 +34,6 @@ const options = { target: "ES2022", module: "NodeNext", moduleResolution: "NodeN
 const library = (compilerOptions = {}) => ({
   "lib/tsconfig.json": JSON.stringify({
     compilerOptions: { ...options, rewriteRelativeImportExtensions: true, noEmit: true, ...compilerOptions },
-    vibelang: { declarationSidecars: true },
     include: ["src"]
   }),
   "lib/src/name.vibe": "export type Name = { readonly first: string }\n",
@@ -96,10 +95,87 @@ test("vibelang -b writes the sidecars of a composite project", { skip }, (t) => 
   assert.equal(readFileSync(join(root, "lib/src/greet.d.vibe.ts"), "utf8"), "import type { Name } from \"./name.vibe\";\nexport declare function greet(name: Name): string;\n")
 })
 
-test("a project without the setting writes no sidecar", { skip }, (t) => {
-  const files = library()
-  files["lib/tsconfig.json"] = JSON.stringify({ compilerOptions: { ...options, rewriteRelativeImportExtensions: true, noEmit: true }, include: ["src"] })
-  const root = project(t, files)
-  assert.equal(run(native, ["-p", "lib/tsconfig.json"], root).status, 0)
-  assert.equal(existsSync(join(root, "lib/src/greet.d.vibe.ts")), false)
+for (const section of ["vibelang", "vibe"]) {
+  for (const value of [false, true]) {
+    test("the retired sidecar option is rejected in " + section + ": " + value, { skip }, (t) => {
+      const files = library()
+      const config = JSON.parse(files["lib/tsconfig.json"])
+      config[section] = { declarationSidecars: value }
+      files["lib/tsconfig.json"] = JSON.stringify(config)
+      const root = project(t, files)
+      const built = run(native, ["-p", "lib/tsconfig.json"], root)
+      assert.notEqual(built.status, 0)
+      assert.match(built.stdout + built.stderr, section === "vibe"
+        ? /EK3007: Unknown vibe option declarationSidecars/
+        : /TS5023: Unknown compiler option 'vibelang.declarationSidecars'/)
+    })
+  }
+}
+
+for (const placement of ["first", "last", "only", "extends", "compilerOptions", "bom", "duplicates", "vibe", "vibe.config.json"]) {
+  test("--fix removes the retired sidecar option from " + placement + " without rewriting sources", { skip }, (t) => {
+    const files = library()
+    const config = JSON.parse(files["lib/tsconfig.json"])
+    let edited = "lib/tsconfig.json"
+    let configPath = edited
+    if (placement === "extends") {
+      config.extends = "../base.json"
+      files["base.json"] = '{ /* keep this comment */ "vibelang": { "declarationSidecars": true } }'
+      edited = "base.json"
+    } else if (placement === "vibe" || placement === "vibe.config.json") {
+      config.vibe = { effectGlobals: false, declarationSidecars: true, severities: { EK0801: "warning" } }
+      if (placement === "vibe.config.json") configPath = edited = "lib/vibe.config.json"
+    } else if (placement === "compilerOptions") {
+      config.compilerOptions.vibelang = { declarationSidecars: true }
+    } else {
+      config.vibelang = placement === "first"
+        ? { declarationSidecars: false, tracing: "none" }
+        : placement === "last"
+          ? { tracing: "none", declarationSidecars: true }
+          : { declarationSidecars: true }
+    }
+    delete files["lib/tsconfig.json"]
+    files[configPath] = JSON.stringify(config)
+    if (placement === "bom") files["lib/tsconfig.json"] = "\ufeff" + files["lib/tsconfig.json"]
+    if (placement === "duplicates") files["lib/tsconfig.json"] = files["lib/tsconfig.json"].replace('"declarationSidecars":true', '"declarationSidecars":true,"declarationSidecars":false')
+    const root = project(t, files)
+    const source = readFileSync(join(root, "lib/src/greet.vibe"), "utf8")
+    const fixed = run(native, ["-p", configPath, "--fix", "--fix-vip-only"], root)
+    assert.equal(fixed.status, 0, fixed.stdout + fixed.stderr)
+    const after = readFileSync(join(root, edited), "utf8")
+    assert.doesNotMatch(after, /declarationSidecars/)
+    if (placement === "vibe" || placement === "vibe.config.json") {
+      assert.deepEqual(JSON.parse(after).vibe, { effectGlobals: false, severities: { EK0801: "warning" } })
+    }
+    if (placement === "extends") assert.match(after, /keep this comment/)
+    if (placement === "bom") assert.equal(after.charCodeAt(0), 0xfeff)
+    assert.equal(readFileSync(join(root, "lib/src/greet.vibe"), "utf8"), source)
+    assert.ok(existsSync(join(root, "lib/src/greet.d.vibe.ts")))
+    const again = run(native, ["-p", configPath, "--fix", "--fix-vip-only"], root)
+    assert.equal(again.status, 0, again.stdout + again.stderr)
+    assert.equal(readFileSync(join(root, edited), "utf8"), after)
+  })
+}
+
+test("unconditional sidecars retain declaration errors with or without declaration", { skip }, (t) => {
+  const root = project(t, {
+    "package.json": '{"type":"module"}',
+    "tsconfig.json": JSON.stringify({ compilerOptions: { ...options, noEmit: true }, files: ["main.vibe"] }),
+    "main.vibe": "export function make() {\n  service Local { value: number }\n  return Local\n}\n",
+    "reference.ts": "import { Context } from \"effect\"\nexport function make() {\n  class Local extends Context.Service<Local, { value: number }>()(\"local\") {}\n  return Local\n}\n"
+  })
+  const nativeResult = run(native, ["-p", "tsconfig.json", "--pretty", "false"], root)
+  const stockResult = run(process.execPath, [stockTsc, "--target", "es2022", "--module", "nodenext", "--strict", "--skipLibCheck", "--declaration", "--emitDeclarationOnly", "--outDir", "types", "reference.ts"], root)
+  const errors = (result) => [...new Set([...result.stdout.matchAll(/error (TS\d+):/g)].map((match) => match[1]))].sort()
+  assert.notEqual(stockResult.status, 0, stockResult.stdout + stockResult.stderr)
+  assert.deepEqual(errors(stockResult), ["TS4058"], stockResult.stdout + stockResult.stderr)
+  // Main's current policy: sidecars are declarations, so their errors
+  // stay errors even when the project did not request ordinary declarations.
+  assert.notEqual(nativeResult.status, 0, nativeResult.stdout + nativeResult.stderr)
+  assert.deepEqual(errors(nativeResult), errors(stockResult), nativeResult.stdout + nativeResult.stderr)
+  writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ compilerOptions: { ...options, noEmit: true, declaration: true }, files: ["main.vibe"] }))
+  const declared = run(native, ["-p", "tsconfig.json", "--pretty", "false"], root)
+  assert.notEqual(declared.status, 0, declared.stdout + declared.stderr)
+  assert.deepEqual(errors(declared), errors(stockResult), declared.stdout + declared.stderr)
+  assert.equal(existsSync(join(root, "main.js")), false)
 })

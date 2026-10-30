@@ -1921,7 +1921,7 @@ func getFileNamesFromConfigSpecs(
 				continue
 			}
 			// VibeLang: x.d.vibe.ts beside x.vibe is the declaration sidecar the
-			// compiler writes for it (vibelang setting declarationSidecars), an
+			// compiler writes for it, an
 			// output of the source rather than an input of its project.
 			if name := file.AsString(); strings.HasSuffix(name, ".d.vibe.ts") && host.FileExists(tspath.RootedFilePathFromNormalized(strings.TrimSuffix(name, ".d.vibe.ts")+tspath.ExtensionVibe)) {
 				continue

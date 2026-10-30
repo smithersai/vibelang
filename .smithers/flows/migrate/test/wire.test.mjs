@@ -6,7 +6,7 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { loadTypeScript } from "../lib/declarations.mjs"
 import { projectsOf } from "../lib/wire.mjs"
-import { addBunBuildPlugin, addBunPreload, bunProgramDirs, wireBunBuilds, addBunTestPreload, wireBunTests, addCompilerOptions, addEffectLint, addOxlintIgnore, copyTarballs, formattable, formatterOf, addVibeLang, addVibeIncludes, addVibeLangSetting, addVitePlugin, initAgents, installCommand, packageManager, replaceTsc, rootTsconfigs, runsBunTest, setIgnoreLine, testConfigArgument, toolchainDirectory, toolchainSpecs, viteAppConfigs, wireKnip, wireVite, wireViteApps } from "../lib/wire.mjs"
+import { addBunBuildPlugin, addBunPreload, bunProgramDirs, wireBunBuilds, addBunTestPreload, wireBunTests, addCompilerOptions, addEffectLint, addOxlintIgnore, copyTarballs, formattable, formatterOf, addVibeLang, addVibeIncludes, addVitePlugin, initAgents, installCommand, packageManager, replaceTsc, rootTsconfigs, runsBunTest, setIgnoreLine, testConfigArgument, toolchainDirectory, toolchainSpecs, viteAppConfigs, wireKnip, wireVite, wireViteApps } from "../lib/wire.mjs"
 import { setUpAgents } from "../lib/steps.mjs"
 import { must } from "../lib/util.mjs"
 
@@ -220,17 +220,6 @@ test("addVibeIncludes gives each .ts include pattern its .vibe pattern, which a 
   for (const text of ['{ "include": ["src/**/*.ts", "src/**/*.vibe"] }', '{ "include": ["src/**/*", "types/*.d.ts"] }', '{ "files": ["a.ts"] }', '{ "include": [] }']) {
     assert.equal(add(text), text)
   }
-})
-
-test("addVibeLangSetting adds to the vibelang object the file keeps, or a new top-level one", () => {
-  const set = (text) => addVibeLangSetting(text, ts, "declarationSidecars", true)
-  assert.equal(set('{\n  "compilerOptions": { "strict": true }\n}\n'), '{\n  "compilerOptions": { "strict": true },\n  "vibelang": { "declarationSidecars": true }\n}\n')
-  assert.equal(set('{\n\t// comment\n\t"include": ["src"],\n}\n'), '{\n\t// comment\n\t"include": ["src"],\n\t"vibelang": { "declarationSidecars": true },\n}\n')
-  assert.equal(set('{ "vibelang": { "tracing": "all" } }'), '{ "vibelang": { "declarationSidecars": true, "tracing": "all" } }')
-  assert.equal(set('{ "compilerOptions": { "vibelang": {} } }'), '{ "compilerOptions": { "vibelang": { "declarationSidecars": true } } }')
-  assert.equal(set('{}'), '{\n  "vibelang": { "declarationSidecars": true }\n}')
-  const done = '{ "vibelang": { "declarationSidecars": true } }'
-  assert.equal(set(done), done)
 })
 
 test("rootTsconfigs lists the tsconfig files that extend no other of the repository's", () => {

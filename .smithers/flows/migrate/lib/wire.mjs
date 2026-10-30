@@ -398,36 +398,6 @@ export function addCompilerOptions(text, options) {
 }
 
 /**
- * Sets key to value in a tsconfig's VibeLang settings (JSON with comments):
- * its top-level `vibelang` object, or `compilerOptions.vibelang` where the
- * file keeps them there, or a new top-level object. ts is TypeScript's
- * compiler API. A setting already there is left as it is.
- */
-export function addVibeLangSetting(text, ts, key, value) {
-  const file = ts.parseJsonText("tsconfig.json", text)
-  const root = file.statements[0]?.expression
-  if (!root || !ts.isObjectLiteralExpression(root)) throw new Error("not a tsconfig object")
-  const property = (object, name) => object.properties.find((p) => ts.isPropertyAssignment(p) && p.name && (ts.isStringLiteral(p.name) || ts.isIdentifier(p.name)) && p.name.text === name)
-  const options = property(root, "compilerOptions")
-  const settings = property(root, "vibelang") ?? (options && ts.isObjectLiteralExpression(options.initializer) ? property(options.initializer, "vibelang") : undefined)
-  const entry = `"${key}": ${JSON.stringify(value)}`
-  if (settings) {
-    const object = settings.initializer
-    if (!ts.isObjectLiteralExpression(object)) throw new Error("the tsconfig's vibelang setting is not an object")
-    if (property(object, key)) return text
-    const at = object.getStart(file) + 1
-    return text.slice(0, at) + (object.properties.length ? ` ${entry},` : ` ${entry} `) + text.slice(at)
-  }
-  const indent = /\n([ \t]+)\S/.exec(text.slice(root.getStart(file) + 1))?.[1] ?? "  "
-  const last = root.properties.at(-1)
-  if (!last) {
-    const at = root.getStart(file) + 1
-    return text.slice(0, at) + `\n${indent}"vibelang": { ${entry} }\n` + text.slice(at)
-  }
-  return text.slice(0, last.end) + `,\n${indent}"vibelang": { ${entry} }` + text.slice(last.end)
-}
-
-/**
  * Adds to a tsconfig's include (JSON with comments) the .vibe pattern of each
  * pattern that names .ts or .tsx files, src/**\/*.vibe beside src/**\/*.ts: a
  * composite project must list every file it compiles (TS6307), and a migrated
