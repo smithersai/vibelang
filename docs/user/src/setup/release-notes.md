@@ -19,6 +19,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Formatting a `catch` expression with a comment before its handler was refused; those comments and their line breaks now stay in place.
 - The specification lost loop-head binding scopes and allowed forbidden returns to hide in binding defaults. Both loop forms now retain JavaScript's operand scopes and apply their outward-jump restrictions to head initialization as well as the body.
 
+- The specification could lose a synchronous throw when a generic result became an Effect or a callback default disappeared from a declaration. Existing generic contracts and conservative default-callback bounds now survive both boundaries.
+
 - Config migration could put severity settings inside a JSONC comment containing `{`; it now keeps the settings active and the comment intact.
 
 - Project warning severities under `vibe.severities` were ignored; they now apply with config validation and inheritance, and `vibelang --fix` migrates legacy `vibelang.diagnostics` settings.

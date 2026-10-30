@@ -312,6 +312,47 @@ const initialized = Effect.try(() => {
 })
 ```
 
+Generic signatures are classified as effectful before type-argument substitution, using their constraints. An unconstrained return `T` is not wholly effectful, even when a call substitutes an Effect for `T`; a constraint wholly assignable to Effect, Stream or Layer can establish effectfulness. Instantiation substitutes inside the existing own-throws and `@rethrows` contracts and preserves that classification through aliases and declaration output.
+
+A parameter named by `@rethrows` admits a throwing default callback as well as a throwing argument. For a synchronous callable, infer the default callback's thrown contract before assignment to the parameter type, union it into the callable's own thrown bound, and emit it in `@throws`. Immediate throws while evaluating a default expression also contribute to that own bound. The default callback's contribution remains even when a caller supplies a safe callback; an omitted or `undefined` argument cannot lose it when declarations erase the initializer. A written `@throws` must bound these contributions or gets `EK0405`. Ordinary nongenerator `async` callables keep their Promise-rejection contract and preserve callback admission in their normalized declarations.
+
+```vibe es
+// compiler-gap: pending VIP-4
+/** @throws {"boom"} */
+function keep<T>(value: T): T { throw "boom" }
+function passEffect<T extends Effect.Effect<unknown>>(value: T): T { return value }
+/** @rethrows f */
+function invoke(f: () => number = () => { throw "default" }): number { return f() }
+effect function contracts() {
+  // keep(succeed(1))             // EK0403: substitution preserves "boom"
+  // invoke()                    // EK0403: the default's own bound
+  // invoke(undefined)           // EK0403
+  // invoke(() => 7)             // EK0403: conservative own bound
+  const e = try Effect.try(() => keep(succeed(1)))
+  return try e
+}
+```
+
+```ts effect
+import { Effect } from "effect"
+
+/** @throws {"boom"} */
+function keep<T>(value: T): T { throw "boom" }
+function passEffect<T extends Effect.Effect<unknown>>(value: T): T { return value }
+/** @throws {"default"} @rethrows f */
+function invoke(f: () => number = () => { throw "default" }): number { return f() }
+const constrainedContract = Effect.gen(function* () { return yield* passEffect(Effect.succeed(2)) })
+const genericContract = Effect.gen(function* () {
+  const e = yield* Effect.try({ try: () => keep(Effect.succeed(1)), catch: (error) => error })
+  return yield* e
+})
+const omittedContract = Effect.try({ try: () => invoke(), catch: (error) => error })
+const undefinedContract = Effect.try({ try: () => invoke(undefined), catch: (error) => error })
+const suppliedContract = Effect.try({ try: () => invoke(() => 7), catch: (error) => error })
+// genericContract fails with "boom"; omittedContract and undefinedContract fail with "default".
+// constrainedContract succeeds with 2; suppliedContract succeeds with 7; its static own bound is deliberately conservative.
+```
+
 ### Calls in effect code
 
 | Rule | Diagnostic |

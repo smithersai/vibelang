@@ -252,6 +252,8 @@ A platform API that Effect lacks, such as `os.hostname()`, is often one of VibeL
 
 A plain function known not to throw can be called directly inside an effect function. Wrap a potentially throwing call with `Effect.try`, then run it with `try`. Always wrap a Promise with `tryPromise` or `promise`. Callbacks capture local variables normally. Exported declarations record thrown types with `@throws {E}`. A foreign callable without a signature contract may throw `unknown`, whether imported from source or an emitted `.d.ts` and whether its type is written or inferred. Shipped contracts precede defaults; `@rethrows f` adds the actual callback's thrown type to own throws. Effectful callables never add synchronous throws.
 
+Generic instantiation substitutes within the declaration's existing thrown contract; it does not erase it when the result becomes an Effect. A rethrowing synchronous callable's default callback contributes to its conservative own bound even when a safe callback is supplied, so declaration output cannot lose that default's throws.
+
 ## Trace and debug calls
 
 Run emitted JavaScript with `node --enable-source-maps dist/main.js` and enable `"sourceMap": true` in `compilerOptions`. Source maps preserve `.vibe` locations. Function tracing defaults to `"none"`, so defects can show only one stack frame. Set `"vibe": { "tracing": "exported" }` at the top level of `tsconfig.json` and rebuild to trace exported functions. Use `"all"` to trace local functions too.

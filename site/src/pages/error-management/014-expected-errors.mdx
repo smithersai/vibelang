@@ -63,6 +63,8 @@ function quantity(text: string): number {
 }
 ```
 
+A generic call retains its declaration's thrown contract even when a type argument makes its result an Effect. A `@rethrows` parameter's possible default callback also contributes to a synchronous callable's conservative own thrown bound, retained in `@throws` when declaration output erases the default; a safe supplied callback does not erase that bound.
+
 Calling an effect function returns its unrun Effect. A caller runs it with `try` inside an effect function or Effect block. A defect is for a failure no caller should handle: a catch expression never receives one. In a plain or async function, `throw` is JavaScript's, and `sync` turns that exception into a defect.
 
 An effect method follows the same rules: its keyword determines its kind, and its return annotation checks the Effect type. A plain method, including a JavaScript protocol member such as `[Equal.symbol]`, keeps TypeScript's behavior. A plain function calls TypeScript code directly and handles JavaScript exceptions with `try`/`catch`. To run an Effect, use `try` inside an effect function or Effect block.
