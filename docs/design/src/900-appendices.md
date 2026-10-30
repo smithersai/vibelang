@@ -51,7 +51,7 @@ Timeout                       then another
 
 | Word | Keyword when followed by | Chapter |
 | --- | --- | --- |
-| `effect` | `function`; an arrow head, as for `async`: `(` … `)` then `=>`, `<` type parameters of such an arrow, or an identifier then `=>`; in a class or object literal only: a method name (`ClassElementName`, `#m` included) then `(` or `<`, `*`, or `get` or `set` then a name ([EffectAccessor](#effectaccessor)), as TypeScript parses `async get x()`; at a statement start, a name other than `as` or `satisfies`, then `(` or `<` ([EffectShorthand](#effectshorthand)); `{` in an expression position only, so in a heritage clause (`class C extends effect { }`, `class C implements effect { }`, `interface I extends A, effect { }`) `effect` is an identifier and `{` starts the body, as in TypeScript. `effect * rate` is a multiplication; `effect(x)` with no `=>` is a call; `class C extends effect { }` extends a value named `effect`. `effect async` and `async effect` before any of these forms parse as an [EffectModifier](#effectmodifier), so `EK0105` reports them | [Functions](001-functions.md) |
+| `effect` | `function`; an arrow head, as for `async`: `(` … `)` then `=>`, `<` type parameters of such an arrow, or an identifier then `=>`; in a class or object literal only: a method name (`ClassElementName`, `#m` included) then `(` or `<`, `*`, or `get` or `set` then a name ([EffectAccessor](#effectaccessor)), as TypeScript parses `async get x()`; at a statement start, a name other than `as`, `satisfies` or `is`, then `(` or `<` ([EffectShorthand](#effectshorthand)); `{` in an expression position only, so in a heritage clause (`class C extends effect { }`, `class C implements effect { }`, `interface I extends A, effect { }`) `effect` is an identifier and `{` starts the body, as in TypeScript. `effect * rate` is a multiplication; `effect(x)` with no `=>` is a call; `class C extends effect { }` extends a value named `effect`. `effect async` and `async effect` before any of these forms parse as an [EffectModifier](#effectmodifier), so `EK0105` reports them | [Functions](001-functions.md) |
 | `concurrent` | after `for` (line break allowed), then `(` | [Running Effects](002-running.md#for-concurrent) |
 | `uninterruptible`, `interruptible`, `restore` | `{` | [Running Effects](002-running.md#interruption-blocks) |
 | `provide` | only when the tokens from `provide` through the `{` on the line where the last provider ends parse as the head of a [ProvideStatement](#providestatement), everything before its Block's `StatementList`, as an arrow needs its whole head; otherwise an identifier, in effect code too | [Services](005-services.md#provide-blocks) |
@@ -162,8 +162,38 @@ EffectAccessor = DecoratorList? Modifiers? EffectModifier [no LineTerminator her
 #### EffectShorthand
 
 ```text
-EffectShorthand = ("effect" | "async") [no LineTerminator here] [lookahead ∉ { as, satisfies }] BindingIdentifier TypeParameters? Params ReturnType? Block   (at a statement start or after export; parses, then the top-level-shorthand rule rejects it)
+EffectShorthand = ("effect" | "async") [no LineTerminator here] [lookahead ∉ { as, satisfies, is }] BindingIdentifier TypeParameters? Params ReturnType? Block   (at a statement start or after export; parses, then the top-level-shorthand rule rejects it)
 ```
+
+The identifier-spelled expression operators `as`, `satisfies` and `is` retain their expression reading after a value named `effect` or `async`; they cannot select recovery for an invalid function shorthand. In particular, both statements below are VIP-7 `is` expressions, and the Effect succeeds with `2`:
+
+```vibe es
+// compiler-gap: pending VIP-1, VIP-7
+class Point {}
+effect function operatorHeads() {
+  const effect: unknown = new Point()
+  const async = 3
+  let hits = 0
+  effect is (Point) && (hits += 1)
+  async is < 5 && (hits += 1)
+  return hits
+}
+```
+
+```ts effect
+import { Effect } from "effect"
+
+class Point {}
+const operatorHeads = Effect.gen(function* () {
+  const effect: unknown = new Point()
+  const async = 3
+  let hits = 0
+  effect instanceof Point && (hits += 1)
+  async < 5 && (hits += 1)
+  return hits
+})
+```
+
 
 `effect load() { }` and `async load() { }` outside a class or object literal are `EffectShorthand`s; the quick fix inserts `function`. Neither token sequence is valid TypeScript there, so no program changes meaning; `effect as (Handler);` stays a TypeScript type assertion.
 
