@@ -1,0 +1,25 @@
+export const calls: string[] = []
+const key = Symbol("method")
+class Counter {
+  offset = 3
+  effect [key](n: number) { calls.push("method"); return try Effect.succeed(this.offset + n) }
+  static effect ["read"](n: number) { return try Effect.succeed(n) }
+  effect ["identity"]<T>(value: T) { return try Effect.succeed(value) }
+}
+const counter = {
+  offset: 5,
+  effect [key](n: number) { calls.push("method"); return try Effect.succeed(this.offset + n) },
+}
+// An ordinary member named effect with a computed field type stays ordinary.
+class Ordinary {
+  effect: { [key]: number } = { [key]: 11 }
+}
+export effect function main() {
+  return {
+    classValue: try new Counter()[key](2),
+    staticValue: try Counter.read(7),
+    objectValue: try counter[key](4),
+    genericValue: try new Counter().identity("ok"),
+    namedEffect: new Ordinary().effect[key],
+  }
+}

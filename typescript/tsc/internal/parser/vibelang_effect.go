@@ -197,6 +197,10 @@ func (p *Parser) isStartOfVibeLangEffectMember() bool {
 		if p.token == ast.KindAsteriskToken {
 			return true
 		}
+		if p.token == ast.KindOpenBracketToken {
+			p.parseComputedPropertyName()
+			return p.token == ast.KindOpenParenToken || p.token == ast.KindLessThanToken
+		}
 		if !tokenIsIdentifierOrKeyword(p.token) && p.token != ast.KindStringLiteral && p.token != ast.KindNumericLiteral && p.token != ast.KindPrivateIdentifier {
 			return false
 		}

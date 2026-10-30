@@ -2,7 +2,7 @@
 
 VibeLang sequences computations with effect functions and `try`, covering the control-flow tasks `Effect.gen` handles in TypeScript. `effect function*` produces Streams; plain `function*` keeps its JavaScript meaning.
 
-A function declaration keeps `function`: write `effect function load()` or `async function load()`. The removed shorthands `effect load()` and `async load()` report `EK4618`; the quick fix and `vibelang --fix` insert `function`. Methods keep `effect load()` and `async load()`, as in TypeScript.
+A function declaration keeps `function`: write `effect function load()` or `async function load()`. The removed shorthands `effect load()` and `async load()` report `EK4618`; the quick fix and `vibelang --fix` insert `function`. Methods keep `effect load()` and `async load()`, as in TypeScript. Computed names work in classes and object literals too: `effect [key]() { … }`, `static effect [key]() { … }` and `effect [key]<T>(value: T) { … }`.
 
 ## Sequence computations
 

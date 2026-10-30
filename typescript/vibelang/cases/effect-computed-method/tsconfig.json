@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "strict": true,
+    "outDir": "out",
+    "skipLibCheck": true
+  },
+  "files": [
+    "main.vibe",
+    "reference.ts"
+  ]
+}
