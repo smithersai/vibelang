@@ -21,8 +21,8 @@ import (
 // (parser/vibelang_data.go), so construction, $is, $match, equality and
 // hashing are Effect's. What VibeLang adds is checked here:
 //
-//   - the declaration's rules: at least one variant (EK2122), no variant
-//     twice (EK2123), no name Data.taggedEnum reserves (EK2124), only fields in
+//   - the declaration's rules: at least one variant (EK2122), no name
+//     Data.taggedEnum reserves (EK2124), only fields in
 //     a variant (EK2125), at most four type parameters (EK2801), no constraints (EK2126),
 //     and no comma between variants or fields (EK1013);
 //   - Name.Variant naming no variant, in a call, a pattern or anywhere else
@@ -44,8 +44,6 @@ import (
 var (
 	// EK2122: a data declaration with no variants. {0} is its name.
 	EK2122 = message(2122, errorCategory, "data {0} has no variants: a data type lists at least one.")
-	// EK2123: a data declaration that declares a variant twice. {0} is its name, {1} the variant.
-	EK2123 = message(2123, errorCategory, "data {0} declares the variant {1} twice.")
 	// EK2124: a name that Data.taggedEnum reserves: a variant named $is or $match. {0} is the name.
 	EK2124 = message(2124, errorCategory, "{0} cannot name a variant: Data.taggedEnum gives every data type its own {0}.")
 	// EK2125: a member of a variant that is not a field. {0} is the member.
@@ -69,7 +67,7 @@ var (
 )
 
 func init() {
-	for _, m := range []*Message{EK2122, EK2123, EK2124, EK2125, EK2126, EK2801, EK2127, EK4706, EK4707} {
+	for _, m := range []*Message{EK2122, EK2124, EK2125, EK2126, EK2801, EK2127, EK4706, EK4707} {
 		registry[m.Code] = m
 	}
 	fileChecks = append(fileChecks, checkData)
@@ -313,16 +311,8 @@ func checkDataDeclaration(c *checker.Checker, file *ast.SourceFile, alias *ast.N
 	if len(variants) == 0 {
 		report(c, alias.Name(), EK2122, name)
 	}
-	seen := map[string]*ast.Node{}
 	for _, variant := range variants {
 		variantName := variant.Name().Text()
-		if first := seen[variantName]; first != nil {
-			note(report(c, variant.Name(), EK2123, name, variantName), "Rename one of them, or remove this one.")
-			cover(c, variant.Name())
-			cover(c, first.Name())
-		} else {
-			seen[variantName] = variant
-		}
 		if slices.Contains(dataReserved, variantName) {
 			report(c, variant.Name(), EK2124, variantName)
 		}

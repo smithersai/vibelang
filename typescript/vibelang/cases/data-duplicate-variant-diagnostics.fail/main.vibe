@@ -1,0 +1,13 @@
+// expect: TS2300
+data Repeated {
+  Same
+  Same
+}
+data Generic<A> {
+  Value { readonly value: A }
+  Value { readonly value: A }
+}
+data RepeatedField {
+  Value { readonly value: string; readonly value: string }
+}
+export {}

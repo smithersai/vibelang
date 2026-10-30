@@ -1,10 +1,10 @@
-// expect: EK2122 EK2123 EK2124 EK2125 EK2126 EK2801 EK1013
+// expect: EK2122 TS2300 TS2717 EK2124 EK2125 EK2126 EK2801 EK1013
 // What a data declaration (D307) cannot hold.
 
 // EK2122: no variants.
 data Empty {}
 
-// EK2123: a variant declared twice.
+// TS2300: duplicate variant names follow TypeScript type literals.
 data Twice {
   Same
   Same { x: string }

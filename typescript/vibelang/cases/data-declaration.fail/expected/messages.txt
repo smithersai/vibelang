@@ -4,7 +4,8 @@ A cannot have a constraint: Data.TaggedEnum.WithGenerics passes a data type's ty
 count cannot be mutable: Data.TaggedEnum makes every field of a variant readonly.
 data Empty has no variants: a data type lists at least one.
 data Five has 5 type parameters, and Data.TaggedEnum.WithGenerics passes at most four.
-data Twice declares the variant Same twice.
+Duplicate identifier 'Same'.
+Subsequent property declarations must have the same type.
 [key: string]: unknown is not a field: a variant holds only fields, each written name: Type or name?: Type.
 run(): void is not a field: a variant holds only fields, each written name: Type or name?: Type.
 _tag cannot name a field: a variant's constructor sets _tag to the variant's name.

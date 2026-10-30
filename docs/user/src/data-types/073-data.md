@@ -219,7 +219,7 @@ const idle = LoadState.Idle()
 | Code | Cause | Fix |
 | --- | --- | --- |
 | EK2122 | A `data` declaration without variants, which the specification allows as `data Empty {}`; the current compiler still rejects it | Write a variant until the compiler accepts it |
-| EK2123 | A variant declared twice | Rename one, or remove the second |
+| `TS2300` | A variant or field declared twice | Rename one, or remove the duplicate |
 | EK2124 | A variant named `$is` or `$match`, a field named `_tag` | Rename it: the constructors object has its own `$is` and `$match`, and the constructor sets `_tag` |
 | EK2125 | A variant member that is not a field: a method, a signature, a field without a type, or a `mutable` field | Write `name: Type` or `name?: Type` |
 | `EK2801` | More than four type parameters | Use at most four type parameters |

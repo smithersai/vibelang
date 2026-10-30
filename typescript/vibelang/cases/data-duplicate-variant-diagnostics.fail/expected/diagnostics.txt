@@ -1,0 +1,6 @@
+main.vibe(3,3): error TS2300
+main.vibe(4,3): error TS2300
+main.vibe(7,3): error TS2300
+main.vibe(8,3): error TS2300
+main.vibe(11,20): error TS2300
+main.vibe(11,44): error TS2300
