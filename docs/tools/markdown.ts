@@ -5,6 +5,28 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import { dirname, extname, join, relative, resolve } from "node:path"
 import { pageKeys, readSidebar } from "./sidebar"
 
+// Keep fenced code verbatim while applying a rewrite to the surrounding prose.
+function rewriteProse(markdown: string, transform: (prose: string) => string): string {
+  const out: string[] = []
+  let prose: string[] = []
+  let fence: string | undefined
+  const flush = () => {
+    if (prose.length) out.push(transform(prose.join("\n")))
+    prose = []
+  }
+  for (const line of markdown.split("\n")) {
+    const bare = line.replace(/^[\s>]*/, "").trimEnd()
+    const marker = /^(`{3,}|~{3,})/.exec(bare)?.[1]
+    if (fence === undefined && marker) { flush(); fence = marker; out.push(line) }
+    else if (fence !== undefined) {
+      out.push(line)
+      if (marker?.[0] === fence[0] && marker.length >= fence.length && bare === marker) fence = undefined
+    } else prose.push(line)
+  }
+  flush()
+  return out.join("\n")
+}
+
 export function buildMarkdown(site: string, facts: Record<string, string>) {
   const repo = resolve(import.meta.dir, "../..")
   const root = join(repo, "docs/user")
@@ -92,35 +114,19 @@ export function buildMarkdown(site: string, facts: Record<string, string>) {
   }
   function markdownCopy(source: string, markdown: string): string {
     const found: string[] = []
-    const out: string[] = []
-    let prose: string[] = []
-    let fence: string | undefined
-    const flush = () => {
-      if (prose.length) out.push(prose.join("\n").replace(LINK, (match, ticks: string | undefined, text: string, href: string) => {
-        if (ticks !== undefined) return match
-        found.push(href)
-        const link = markdownLink(href, source)
-        return link === undefined ? text : `[${text}](${link})`
-      }))
-      prose = []
-    }
-    for (const line of markdown.split("\n")) {
-      const bare = line.replace(/^[\s>]*/, "").trimEnd()
-      const marker = /^(`{3,}|~{3,})/.exec(bare)?.[1]
-      if (fence === undefined && marker) { flush(); fence = marker; out.push(line) }
-      else if (fence !== undefined) {
-        out.push(line)
-        if (marker?.[0] === fence[0] && marker.length >= fence.length && bare === marker) fence = undefined
-      } else prose.push(line)
-    }
-    flush()
+    const rewritten = rewriteProse(markdown, prose => prose.replace(LINK, (match, ticks: string | undefined, text: string, href: string) => {
+      if (ticks !== undefined) return match
+      found.push(href)
+      const link = markdownLink(href, source)
+      return link === undefined ? text : `[${text}](${link})`
+    }))
     // The scan must find exactly the links marked finds, or a link would keep its repository path.
     const expected: string[] = []
     lexer.walkTokens(lexer.lexer(markdown), token => {
       if (token.type === "link" && token.raw.startsWith("[")) expected.push((token as Tokens.Link).href)
     })
     if (found.join("\n") !== expected.join("\n")) errors.push(`${where(source)}: the Markdown copy finds ${found.length} links where marked finds ${expected.length}`)
-    return out.join("\n")
+    return rewritten
   }
   const copies = new Map<string, string>()
   for (const [source, markdown] of sources) copies.set(source, markdownCopy(source, markdown))
