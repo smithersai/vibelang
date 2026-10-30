@@ -739,6 +739,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Nested `provide` hints falsely claimed separate builds and recommended removed `wire`. `EK4808` now suggests native composition that retains both layer outputs; the unsafe automatic merge is retired because it can change when provider expressions run and layers build.
 
+- Editor input quick fixes could introduce argument errors, and helper annotation fixes could leave a callback error unchanged; unsafe repairs are now withheld, and captured inputs keep their types.
+
 - The native compiler regression suite could exhaust its budget on a busy build host while cases were still completing. It now allows 45 minutes of testing and 70 minutes for the target, including queued builds.
 
 - The specification described how an `effect` body reads `this` and `super` with a helper recipe that was wrong in five separate edge cases. It now states the behavior: the body reads them exactly as the same body in an `async` function does, and building the Effect reads none of them.

@@ -775,8 +775,35 @@ var hatchInputFix = &ls.CodeFixProvider{
 		if len(names) == 0 {
 			return nil, nil
 		}
+		function := ast.SkipParentheses(call.Arguments()[0])
+		if ast.IsFunctionExpressionOrArrowFunction(function) && len(hatchInputs(call)) > len(function.Parameters()) {
+			return nil, nil // unmatched existing inputs have no unambiguous parameter mapping
+		}
+		var parameters []string
+		for _, name := range names {
+			var captured *checker.Type
+			for _, reference := range outsideReferences(c, hatchIsland(call)) {
+				if reference.Text() == name {
+					captured = c.GetTypeAtLocation(reference)
+					break
+				}
+			}
+			if captured == nil {
+				return nil, nil
+			}
+			// Preserve flow narrowing at the capture, rather than widening
+			// a parameter back to its binding's declared type.
+			t := c.TypeToStringEx(captured, function, checker.TypeFormatFlagsNoTruncation|checker.TypeFormatFlagsUseFullyQualifiedType, nil)
+			if t == "typeof "+name {
+				// The new parameter shadows the captured constructor or namespace.
+				// Let its input infer the type instead of referring to itself.
+				parameters = append(parameters, name)
+			} else {
+				parameters = append(parameters, name+": "+t)
+			}
+		}
 		list := strings.Join(names, ", ")
-		edits := hatchInputEdits(c, fix, file, call, list)
+		edits := hatchInputEdits(c, fix, file, call, strings.Join(parameters, ", "))
 		arguments := call.Arguments()
 		edits = append(edits, edit(fix, file, arguments[len(arguments)-1].End(), ", "+list))
 		description := "Pass " + list + " as an input"

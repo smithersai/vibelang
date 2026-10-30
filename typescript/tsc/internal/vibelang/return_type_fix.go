@@ -59,6 +59,17 @@ var returnTypeFix = &ls.CodeFixProvider{
 		defer done()
 		a := analyzerFor(c)
 		node := reportedNode(fix.SourceFile, fix.Span, func(*ast.Node) bool { return true })
+		// A helper annotation cannot remove a using declaration from the
+		// synchronous callback, which still requires an Effect scope.
+		if fix.ErrorCode == EK4301.Code {
+			fn := node
+			if fn != nil && !ast.IsFunctionLike(fn) {
+				fn = enclosingFunction(fn)
+			}
+			if fn != nil && declaresUsing(fn) {
+				return nil, nil
+			}
+		}
 		helper := a.unannotatedHelperAt(node)
 		if helper == nil || ast.GetSourceFileOfNode(helper) != fix.SourceFile {
 			return nil, nil

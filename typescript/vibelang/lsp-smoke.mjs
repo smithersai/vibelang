@@ -442,7 +442,7 @@ try {
     for (const e of [...edits].sort((a, b) => offset(b.range.start) - offset(a.range.start))) {
       fixed = fixed.slice(0, offset(e.range.start)) + e.newText + fixed.slice(offset(e.range.end))
     }
-    assert(fixed.includes("return sync((text) => text.length, text)"), `fixed text: ${fixed}`)
+    assert(fixed.includes("return sync((text: string) => text.length, text)"), `fixed text: ${fixed}`)
   })
 
   await check("code action: Effect's language service rules report in .vibe, and their quick fixes call and rename", async () => {
