@@ -611,7 +611,48 @@ function page(id: string) {
 
 ### Meaning
 
-Items run at once, or at most `n` at a time with `for concurrent(n)`. `n` is any Effect `Concurrency`, which in Effect 4.1.0 is a number or `"unbounded"`, passed straight to `concurrency` (VIP-19, amended). Whether an item gets its own fiber is `Effect.forEach`'s choice: in Effect 4.1.0 a limit above 1, or `"unbounded"`, forks one fiber per item, and `for concurrent(1)` runs the items in order on the enclosing fiber. So a `fork` child in the body is owned by the item's fiber, and interrupted when the item ends, under a limit above 1, and by the enclosing fiber under `for concurrent(1)`. All items join before the loop ends, and one failure interrupts the rest. Results are discarded; `try.all ids.map(…)` keeps them.
+Items run concurrently by default. With a positive integer `n`, `for concurrent(n)` runs at most `n` items at once; under Effect `4.1.0`, numeric limits below `1` run every item sequentially as `1` does. Other numbers retain Effect's native behavior. `n` is any Effect `Concurrency`, which in Effect 4.1.0 is a number or `"unbounded"`, passed unchanged to `concurrency`, without range checks or rounding (VIP-19, amended). Evaluate the limit once before entering the operand's head environment. Whether an item gets its own fiber is `Effect.forEach`'s choice: in Effect 4.1.0 a limit above 1, or `"unbounded"`, forks one fiber per item, and numeric limits at or below `1` run the items in order on the enclosing fiber. So a `fork` child in the body is owned by the item's fiber, and interrupted when the item ends, under a limit above 1, and by the enclosing fiber under `for concurrent(1)`. All items join before the loop ends, and one failure interrupts the rest. Results are discarded; `try.all ids.map(…)` keeps them.
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-19
+effect function numericLimit(limit: number | "unbounded") {
+  let active = 0
+  let maximum = 0
+  const seen: number[] = []
+  for concurrent(limit) (const id of [1, 2, 3]) {
+    active++
+    maximum = Math.max(maximum, active)
+    try sleep("1 millis")
+    seen.push(id)
+    active--
+  }
+  return { seen, maximum }
+}
+// At 0, -1, 0.5 or 1: Success({ seen: [1, 2, 3], maximum: 1 }).
+```
+
+```ts [Effect]
+import { Effect, type Types } from "effect"
+
+function numericLimit(limit: Types.Concurrency) {
+  return Effect.gen(function* () {
+    let active = 0
+    let maximum = 0
+    const seen: number[] = []
+    yield* Effect.forEach([1, 2, 3], id => Effect.gen(function* () {
+      active++
+      maximum = Math.max(maximum, active)
+      yield* Effect.sleep("1 millis")
+      seen.push(id)
+      active--
+    }), { concurrency: limit, discard: true })
+    return { seen, maximum }
+  })
+}
+// On Effect4.1.0, 0, -1, 0.5 and 1 each succeed after visiting all items with maximum 1.
+// 2 yields maximum 2; "unbounded" yields maximum 3 for this three-item fixture.
+```
+
 
 Pulling and iterator closing are also those of pinned `Effect.forEach`, not native `for…of`. At effective concurrency `1`, it pulls incrementally and does not call the iterator's `return()` merely because an item Effect fails. In the parallel branch, including effective limits above `1` and `"unbounded"`, `Array.fromIterable` materializes a non-array iterable before any item Effect starts; an existing array is reused by reference, with later indexed reads and without invoking its custom iterator. A limit bounds running items, not pulling. An endless non-array iterable cannot finish that initial parallel materialization, so a would-be item failure cannot stop it. The omitted limit is `"unbounded"`; numeric limits retain Effect's own behavior without a new validation or normalization rule. No additional `IteratorClose`, streaming prefetch or snapshot copy is introduced. Native iteration errors retain their defect behavior. See the [finite lifecycle witness](/spec/008-runtime#iterable-lifecycle).
 
