@@ -12,6 +12,7 @@ title: "VIP-38: Effect's type-aware lint is built into VibeLang"
 - They run wherever VibeLang reports diagnostics: the CLI, the language server, and a lint command for CI. A repo's existing Effect language-service configuration selects and configures them, so a repo's lint script covers `.vibe` the same way it covers `.ts`.
 - Tools that only analyze code (cycle checkers such as madge, and dependency graphs) may run on VibeLang's compiled output. That cannot work for formatters, which must read `.vibe` itself (VIP-34).
 - **Amended 2026-10-29: the command.** The lint command is `vibelang lint`. Sent to Will on Telegram 2026-10-29 11:28 under his standing rule 'assume I accept'; no objection by 12:00.
+- **Amended 2026-10-29: lint options.** `vibelang lint` takes the compiler's options (`-p`/`--project` and files) and no others. `vibelang --fix` stays the one codemod entry point. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 58).
 
 ## Will's words
 

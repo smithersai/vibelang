@@ -14,6 +14,8 @@ title: "VIP-34: compiler and tooling requirements"
 4. **Existing tools work.** Type checkers work through `.d.vibe.ts` (VIP-27), and linters, Knip, bundlers and test runners each read `.vibe`. Every tool is tested against the dogfood repositories.
 5. **Severities.** Warning severities can be adjusted in the config's `"vibe"` section (VIP-30). Errors can't be turned off.
 
+- **Amended 2026-10-29: code numbering.** Each VIP's rules take one fresh hundred-block of diagnostic codes, `EKvvxx` for VIP-vv; an older code is kept only where its rule is unchanged. The specification's Appendix B lists every code. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 60).
+
 ## Will's words
 
 > "make sure we have good compile error messages too"

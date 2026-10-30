@@ -44,6 +44,7 @@ class Users extends Context.Service<Users, {
   | `service Repo<T> { … }` | EK3005 | `Repo<User>` and `Repo<Order>` would share one key |
 
 - **Amended 2026-10-29: any member type.** A bodyless `service` member may declare any return type, Effect or not, as `Context.Service` allows (EK2101 is relaxed). Sent to Will on Telegram 2026-10-29 12:28 under his standing rule 'assume I accept'; no objection by 13:00.
+- **Amended 2026-10-29: no derived key outside a package.** A `service` in a file outside any package, or declared inside a function or block, has no derived key: omitting `static readonly key` there is a compile error with a quick fix that inserts one. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 54).
 
 ## History
 

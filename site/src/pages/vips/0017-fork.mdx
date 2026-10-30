@@ -21,6 +21,7 @@ const r = join f                      // yield* Fiber.join(f)
 - The owner forms use JavaScript's `keyword.name` shape, like `new.target` and `import.meta`.
 - **Ambiguity: none.** `fork` and `join` are contextual keywords whose operand must be on the same line. Bare modifier words were rejected because `fork scoped(x)` would have two readings.
 - **Amended 2026-10-29: reserved in effect code.** `fork` and `join` are reserved words in effect code exactly as `await` is in an `async` function body: they can't name a variable, parameter or label there, and where an expression can start they begin a `fork` or `join` expression, so `join(parts)` joins. In an `IdentifierName` position (`parts.join(",")`, `{ join: 1 }`) they stay ordinary names, as `await` does. Outside effect code they are identifiers. This replaces the contextual-keyword test above. Decided by Will on factory.vibelang.sh, 2026-10-29 ~14:20–14:25 ("revisit-r5", option 3A accepted).
+- **Amended 2026-10-29: the operand and bindings.** `ForkOperand` is a `UnaryExpression`, `await`'s operand. A binding named `fork` or `join` outside effect code gets no extra warning, as a binding named `await` gets none. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 65).
 
 ## Prior art
 

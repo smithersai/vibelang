@@ -20,7 +20,16 @@ In a directory, VibeLang reads the first of these that exists:
 
 `vibe.config.json` is a strict superset of `tsconfig.json`. Every tsconfig field means the same there, `extends` included. The only addition is a top-level `"vibe"` section, which holds VibeLang's options in any of the three files. Plain `tsc` rejects unknown `compilerOptions` (TS5023) but ignores unknown top-level keys, so a repository's own TypeScript tooling keeps working.
 
-**Undecided (pending VIP):** whether `extends` inherits the custom `vibe` section and, if so, how it merges keys. For example, a base config with `"vibe": { "effectGlobals": false }` and a child with `"vibe": { "effectModules": false }` does not yet specify whether both switches are disabled. TypeScript has no built-in inheritance rule for this custom section. This is a compiler setting, with no Effect TypeScript runtime translation.
+```jsonc
+// base.json
+{ "vibe": { "effectGlobals": false, "severities": { "EK4701": "off" } } }
+// child config
+{ "extends": "./base.json", "vibe": { "effectModules": false } }
+// effective vibe section
+{ "effectGlobals": false, "effectModules": false, "severities": { "EK4701": "off" } }
+```
+
+`extends` inherits `vibe` key by key: child keys win and missing keys come from the base. `severities` merges entry by diagnostic code (decided detail 59).
 
 The decided keys (VIP-30, amended) are:
 
@@ -28,7 +37,7 @@ The decided keys (VIP-30, amended) are:
 | --- | --- |
 | `vibe.effectGlobals` | Boolean switch for Effect's function globals ([VIP-6](/vips/0006-effect-globals)); `false` turns them off. |
 | `vibe.effectModules` | Boolean switch for Effect's modules in scope ([VIP-14](/vips/0014-effect-modules-in-scope)); `false` turns them off. |
-| `vibe.severities` | Adjusts warning severities (VIP-34); errors cannot be set to `"off"`. |
+| `vibe.severities` | Maps warning codes to `"error"`, `"warning"`, `"suggestion"` or `"off"` (VIP-34; decided detail 57). |
 
 These settings have no Effect TypeScript runtime translation. With both switches disabled, use explicit imports, just as in TypeScript:
 
@@ -38,7 +47,11 @@ import { Effect } from "effect"
 Effect.runSync(Effect.succeed(42)) // 42
 ```
 
-**Undecided (pending VIP):** the entry format, diagnostic identifiers and allowed warning severity values of `vibe.severities`. VIP-34 decides that warnings are configurable and errors cannot be disabled; it does not decide a map keyed by `EKxxxx`, a rule-name map, or a list of entries. No entry syntax is normative yet.
+```json
+{ "vibe": { "severities": { "EK4701": "warning", "EK4609": "off" } } }
+```
+
+`vibe.severities` is a map keyed by the `EKxxxx` code printed by the CLI and language server. Its values are TypeScript diagnostic category names (`"error"`, `"warning"`, `"suggestion"`) plus `"off"`. Only warning codes may appear; an error code or an unknown code is a config error (decided detail 57). This is a compiler setting, with no Effect TypeScript runtime translation.
 
 ## The Effect version
 
@@ -57,7 +70,7 @@ A migration upgrades the target repository to the pinned Effect first, on its ow
 ## Effect's type-aware lint
 
 ```sh
-vibelang lint
+vibelang lint -p tsconfig.json
 ```
 
 The Effect language service's type-aware rules (effect-tsgo's `effecttsgo/*` rules) run inside the `vibelang` compiler on `.vibe` files. They run wherever VibeLang reports diagnostics: the CLI, the language server, and `vibelang lint` for CI (VIP-38, amended). A repository's existing Effect language-service configuration selects and configures them, so its lint script covers `.vibe` as it covers `.ts`. The lint command uses the same configuration and diagnostics as the compiler and language server; it has no Effect TypeScript runtime translation.
@@ -66,4 +79,4 @@ An `effect { … }` expression statement builds an Effect and discards it withou
 
 Tools that only analyze code, such as cycle checkers (madge) and dependency graphs, may run on VibeLang's compiled output. Formatters cannot; they read `.vibe` itself.
 
-**Undecided (pending VIP):** lint-specific command-line options, including whether it adds any beyond the compiler’s options. Only `vibelang lint` is decided here; neither additional flags nor their absence is specified by VIP-38.
+`vibelang lint` accepts the compiler’s options, including `-p`/`--project` and file arguments, with no lint-specific options (decided detail 58). `vibelang --fix` remains the codemod entry point. These commands have no Effect TypeScript runtime translation.

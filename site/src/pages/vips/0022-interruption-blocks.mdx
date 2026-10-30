@@ -28,6 +28,7 @@ yield* Effect.interruptible(Effect.gen(function* () { yield* poll() }))
 - These are statements inside an `effect` function or block, like `provide` (VIP-12). Each is exact sugar for Effect's function.
 - `restore { … }` is allowed only inside an `uninterruptible` block; anywhere else it is a compile error.
 - **Amended 2026-10-29: these are ordinary blocks.** `return`, `break` and `continue` inside them reach the enclosing function or loop, as in any TypeScript block. (`for concurrent` and `for try` keep their own rule, because their bodies run once per item.) Recorded under Will's standing approval of recommendations.
+- **Amended 2026-10-29: `restore` is lexical.** A `restore` inside an `effect` arrow or `effect` block nested in an `uninterruptible` block is a compile error: the nested Effect can run after the mask ends. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 51).
 - Under VIP-6, the keywords remove the globals of the same name, so Effect's functions are written `Effect.uninterruptible` and `Effect.interruptible`.
 - **Ambiguity: none.** These are contextual keywords followed by `{` on the same line.
 

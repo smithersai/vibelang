@@ -6,7 +6,7 @@ title: "Grammar, diagnostics, and denied and open VIPs"
 
 ## Appendix A. Grammar
 
-VibeLang's grammar is TypeScript's, plus three TC39 proposals and the productions below. This appendix is the only place a VibeLang production is written; chapters show examples and link here by production name. Pattern matching is pinned to commit `ba73ffe42f30f0cf56ece28bebdc28f955f2a52e` with its reconciliations ([Pattern matching](/spec/004-match)). Do expressions and the Hack pipe operator are pinned too (**Undecided (pending VIP):** their snapshots). Names not defined here (`Block`, `Type`, `UnaryExpression`, `ConciseBody`, …) are TypeScript's or ECMAScript's. `"x"` is a token; `X?` is optional; `X*` repeats; `[no LineTerminator here]` and `[lookahead ∉ …]` are ECMAScript's restrictions.
+VibeLang's grammar is TypeScript's, plus three TC39 proposals and the productions below. This appendix is the only place a VibeLang production is written; chapters show examples and link here by production name. Pattern matching is pinned to commit `ba73ffe42f30f0cf56ece28bebdc28f955f2a52e` with its reconciliations ([Pattern matching](/spec/004-match)). Do expressions are pinned to `tc39/proposal-do-expressions` commit `3ef6d463b8163cbf222846b40d17178cca36e9e1` and the Hack pipe operator to `tc39/proposal-pipeline-operator` commit `5ac4dfd624e68b649e6f947885bf5ef67bac19f4`, each repository's head on 2026-10-28 (UTC), vendored in `vips/tc39-do-expressions/` and `vips/tc39-pipeline-operator/`. Names not defined here (`Block`, `Type`, `UnaryExpression`, `ConciseBody`, …) are TypeScript's or ECMAScript's. `"x"` is a token; `X?` is optional; `X*` repeats; `[no LineTerminator here]` and `[lookahead ∉ …]` are ECMAScript's restrictions.
 
 ### The `[Effect]` parameter
 
@@ -28,14 +28,15 @@ provide(x)                         a call to provide: no "{" on the same line
 
 ### Contextual keywords
 
-\<a id="declaration-keywords">\</a>\<a id="declarationstart">\</a>**Declaration keywords.** `service`, `error`, `schema` and `data` follow TypeScript's contextual keyword `type`, whose alias declaration is `type` [no LineTerminator here] `BindingIdentifier`. This is the one rule for all four:
+<a id="declaration-keywords"></a><a id="declarationstart"></a><a id="servicestart"></a><a id="errorstart"></a><a id="schemaerrorstart"></a><a id="schemastart"></a><a id="datastart"></a>**Declaration keywords.** `service`, `error`, `schema` and `data` follow TypeScript's contextual keyword `type`, whose alias declaration is `type` [no LineTerminator here] `BindingIdentifier`. This is the one rule for all four:
 
 ```text
-DeclarationStart = "service" [no LineTerminator here] BindingIdentifier
-                 | "error"   [no LineTerminator here] BindingIdentifier
-                 | "schema"  [no LineTerminator here] "error" [no LineTerminator here] BindingIdentifier
-                 | "schema"  [no LineTerminator here] BindingIdentifier
-                 | "data"    [no LineTerminator here] BindingIdentifier
+DeclarationStart = ServiceStart | ErrorStart | SchemaErrorStart | SchemaStart | DataStart
+ServiceStart     = "service" [no LineTerminator here] BindingIdentifier
+ErrorStart       = "error"   [no LineTerminator here] BindingIdentifier
+SchemaErrorStart = "schema"  [no LineTerminator here] "error" [no LineTerminator here] BindingIdentifier
+SchemaStart      = "schema"  [no LineTerminator here] BindingIdentifier
+DataStart        = "data"    [no LineTerminator here] BindingIdentifier
 ```
 
 Where a TypeScript declaration can start (a `StatementListItem`, or after `export`), a `DeclarationStart` begins that declaration, longest alternative first. Anything else is ordinary TypeScript, where the word is an identifier: `const error = …`, `catch (error)`, `const e = error as Error`, `return data as User[]`, `const ok = schema satisfies Schema.Top` and `error instanceof NotFound;` (a reserved word is not a `BindingIdentifier`). After the name, the declaration's production decides the rest, and line breaks may separate its tokens as in a TypeScript `class` or `type` declaration: a body's `{` and a `schema` alias's `=` may follow line breaks. The one production-specific rule is the bodyless `error` and `schema error` form, under [ErrorDeclaration](/spec/900-appendices#errordeclaration). No other line-break or disambiguation rule applies to these four words.
@@ -50,6 +51,7 @@ schema Code                   one alias, as `type Code` then `= …` is
 service as { a: string };     a service named as
 service as T;  error as T;    syntax errors: `T` can't follow the declaration of `as`;
 schema as T;  data as T;      write (service as T); for the TypeScript assertion
+schema satisfies T;           a syntax error, as for `as`: write (schema satisfies T);
 schema error = T              a schema named error: `=` is not a BindingIdentifier
 schema error E { }            a schema error E
 const e = error as Error      an assertion: not where a declaration starts
@@ -62,17 +64,17 @@ Timeout                       then another
 
 | Word | Keyword when followed by | Chapter |
 | --- | --- | --- |
-| `effect` | `function`; an arrow head, as for `async`: `(` … `)` then `=>`, `<` type parameters of such an arrow, or an identifier then `=>`; in a class or object literal only: a method name (`ClassElementName`, `#m` included) then `(` or `<`, `*`, or `get` or `set` then a name ([EffectAccessor](/spec/900-appendices#effectaccessor)), as TypeScript parses `async get x()`; at a statement start, a name other than `as` or `satisfies`, then `(` or `<` ([EffectShorthand](/spec/900-appendices#effectshorthand)); `{`. `effect * rate` is a multiplication; `effect(x)` with no `=>` is a call | [Functions](/spec/001-functions) |
+| `effect` | `function`; an arrow head, as for `async`: `(` … `)` then `=>`, `<` type parameters of such an arrow, or an identifier then `=>`; in a class or object literal only: a method name (`ClassElementName`, `#m` included) then `(` or `<`, `*`, or `get` or `set` then a name ([EffectAccessor](/spec/900-appendices#effectaccessor)), as TypeScript parses `async get x()`; at a statement start, a name other than `as` or `satisfies`, then `(` or `<` ([EffectShorthand](/spec/900-appendices#effectshorthand)); `{`, except directly after `extends` in a class heritage, where `effect` is an identifier and `{` starts the class body, as in TypeScript. `effect * rate` is a multiplication; `effect(x)` with no `=>` is a call; `class C extends effect { }` extends a value named `effect` | [Functions](/spec/001-functions) |
 | `concurrent` | after `for`, then `(` | [Running Effects](/spec/002-running#for-concurrent) |
 | `uninterruptible`, `interruptible`, `restore` | `{` | [Running Effects](/spec/002-running#interruption-blocks) |
-| `provide` | only when the tokens from `provide` through the `{` on the line where the last provider ends parse as a [ProvideStatement](/spec/900-appendices#providestatement), as an arrow needs its whole head; otherwise an identifier, in effect code too | [Services](/spec/005-services#provide-blocks) |
+| `provide` | only when the tokens from `provide` through the `{` on the line where the last provider ends parse as the head of a [ProvideStatement](/spec/900-appendices#providestatement), everything before its Block's `StatementList`, as an arrow needs its whole head; otherwise an identifier, in effect code too | [Services](/spec/005-services#provide-blocks) |
 | `match`, `when`, `is`, `and`, `or`, `not` | as TC39's pattern-matching proposal says | [Pattern matching](/spec/004-match) |
 
 `try` and `catch` are reserved words already; VibeLang gives them expression forms under `[+Effect]`. At the start of a statement, `try` followed by `{`, on the same line or not, is TypeScript's `try` statement, as in JavaScript.
 
 ### Productions
 
-Each declaration production starts with its own `DeclarationStart` alternative; `export` and `export default` come from ECMAScript's `ExportDeclaration`, so `export error E { }` parses and `export default error E { }` is a syntax error (`export default` takes only a function or class declaration or an expression).
+Each declaration production starts with its own start production (`ServiceDeclaration` with `ServiceStart`, and so on); `export` and `export default` come from ECMAScript's `ExportDeclaration`, so `export error E { }` parses and `export default error E { }` is a syntax error (`export default` takes only a function or class declaration or an expression).
 
 #### EffectFunction
 
@@ -143,7 +145,7 @@ Modifiers = the class-member modifiers TypeScript allows before async (static, p
 ```text
 EffectType = EffectOperand [no LineTerminator here] "!" EffectOperand [no LineTerminator here] "!" EffectOperand   (A!E!R)
            | EffectOperand [no LineTerminator here] "!" EffectOperand                                        (A!E)
-           | EffectOperand [no LineTerminator here] "!" "!" EffectOperand                                    (A!!R)
+           | EffectOperand [no LineTerminator here] "!" "!" [no LineTerminator here] [lookahead ≠ "{"] EffectOperand   (A!!R)
            | EffectOperand [no LineTerminator here] "!" "!"                                                  (A!!)
 ```
 
@@ -161,7 +163,7 @@ TryExpression = [+Effect] "try" UnaryExpression   (where ECMAScript has AwaitExp
 
 #### CatchExpression
 
-\<a id="shortcircuitexpression">\</a>
+<a id="shortcircuitexpression"></a>
 
 ```text
 ShortCircuitExpression = LogicalORExpression | CoalesceExpression | [+Effect] CatchExpression   (ECMAScript's, plus CatchExpression)
@@ -171,13 +173,13 @@ ShortCircuitExpression = LogicalORExpression | CoalesceExpression | [+Effect] Ca
 CatchExpression = CatchHead "catch" ArrowHandler | ClosedCatchExpression
 ```
 
-\<a id="closedcatchexpression">\</a>
+<a id="closedcatchexpression"></a>
 
 ```text
 ClosedCatchExpression = CatchHead "catch" NonArrowHandler
 ```
 
-\<a id="catchhead">\</a>
+<a id="catchhead"></a>
 
 ```text
 CatchHead = ClosedCatchExpression | BitwiseORExpression
@@ -189,13 +191,13 @@ CatchHead = ClosedCatchExpression | BitwiseORExpression
 CatchHandler = ArrowHandler | NonArrowHandler   (always a function literal; VIP-5, amended 2026-10-29)
 ```
 
-\<a id="arrowhandler">\</a>
+<a id="arrowhandler"></a>
 
 ```text
 ArrowHandler = ArrowFunction | AsyncArrowFunction | EffectArrow
 ```
 
-\<a id="nonarrowhandler">\</a>
+<a id="nonarrowhandler"></a>
 
 ```text
 NonArrowHandler = FunctionExpression | GeneratorExpression | AsyncFunctionExpression | AsyncGeneratorExpression
@@ -290,6 +292,7 @@ provide A,                      syntax error: a line break after ","
 provide(x)                      a call: no "{" on the line where the provider ends
 provide[0] = 1                  in effect code too: TypeScript, provide an identifier
 provide - 1                     in effect code too: TypeScript, provide an identifier
+provide / a / { }               a provide statement of the regex /a/: the cover rule wins, as an arrow head does
 ```
 
 #### Provider
@@ -302,10 +305,10 @@ Provider = LeftHandSideExpression "=" AssignmentExpression   (Key = value)
 #### ServiceDeclaration
 
 ```text
-ServiceDeclaration = DeclarationStart TypeParameters? "{" (ServiceMember Separator)* "}"   (a member that ends in a Block needs no Separator, as a class method)
+ServiceDeclaration = ServiceStart TypeParameters? "{" (ServiceMember Separator)* "}"   (a member that ends in a Block needs no Separator, as a class method)
 ```
 
-\<a id="servicemember">\</a>
+<a id="servicemember"></a>
 
 ```text
 ServiceMember = KeyMember | DefaultMember | Member   (separated as interface members)
@@ -317,7 +320,7 @@ ServiceMember = KeyMember | DefaultMember | Member   (separated as interface mem
 Member = PropertySignature | MethodSignature | RejectedMember
 ```
 
-\<a id="rejectedmember">\</a>
+<a id="rejectedmember"></a>
 
 ```text
 RejectedMember = a ClassElement or a TypeScript TypeMember (a call or construct signature) that is not a PropertySignature, MethodSignature, KeyMember or DefaultMember   (parses, then a static rule rejects it)
@@ -338,7 +341,7 @@ DefaultMember = "static" "readonly" "defaultValue" "=" AssignmentExpression
 #### ErrorDeclaration
 
 ```text
-ErrorDeclaration = DeclarationStart TypeParameters? ClassHeritage? ("{" ErrorBody "}")?   (no body: ends as a TypeScript statement)
+ErrorDeclaration = ErrorStart TypeParameters? ClassHeritage? ("{" ErrorBody "}")?   (no body: ends as a TypeScript statement)
 ```
 
 The body of an `error` or `schema error` declaration is optional, as the body of TypeScript's `declare module "m"` is: when the next token after the name is `{`, however many line breaks precede it, or `<`, `extends` or `implements` on the name's line, the declaration continues; otherwise it ends as a TypeScript statement does, at `;`, a line break, `}` or the end of the file. So `error Timeout` then `const t = 1` on the next line is a declaration with no fields, then a `const`; `error Timeout` then `<T>(x: T) => x` is a declaration, then a generic arrow statement.
@@ -346,7 +349,7 @@ The body of an `error` or `schema error` declaration is optional, as the body of
 #### SchemaErrorDeclaration
 
 ```text
-SchemaErrorDeclaration = DeclarationStart TypeParameters? ClassHeritage? ("{" ErrorBody "}")?   (no body: ends as a TypeScript statement)
+SchemaErrorDeclaration = SchemaErrorStart TypeParameters? ClassHeritage? ("{" ErrorBody "}")?   (no body: ends as a TypeScript statement)
 ```
 
 #### ErrorBody
@@ -355,7 +358,7 @@ SchemaErrorDeclaration = DeclarationStart TypeParameters? ClassHeritage? ("{" Er
 ErrorBody = (Field | MethodDefinition | EffectMethod | ProducerMethod | ";" | RejectedElement)*   (MethodDefinition is ECMAScript's: getters and setters included)
 ```
 
-\<a id="rejectedelement">\</a>
+<a id="rejectedelement"></a>
 
 ```text
 RejectedElement = a ClassElement (an EffectAccessor included) that is not a Field, MethodDefinition, EffectMethod, ProducerMethod or ";"   (parses, then a static rule rejects it)
@@ -376,14 +379,14 @@ Separator = ";" | "," | a LineTerminator before the next token | before "}"   (a
 #### SchemaDeclaration
 
 ```text
-SchemaDeclaration = DeclarationStart "{" Field* "}"
-                  | DeclarationStart "=" Type
+SchemaDeclaration = SchemaStart "{" Field* "}"
+                  | SchemaStart "=" Type
 ```
 
 #### DataDeclaration
 
 ```text
-DataDeclaration = DeclarationStart TypeParameters? "{" (Variant (Separator Variant)* Separator?)? "}"
+DataDeclaration = DataStart TypeParameters? "{" (Variant (Separator Variant)* Separator?)? "}"
 ```
 
 #### Variant
@@ -434,7 +437,19 @@ for concurrent (4) (const x of xs) f(x)        limit 4
 for concurrent (const x of xs) (try g(x));     no limit; the body is a parenthesized expression
 ```
 
-**`!` in types.** `A!B!C` is always the three-slot form; write `(A!B)!C` to nest, and `A!!B!C` is a syntax error. The `[no LineTerminator here]` before `!` is the restriction TypeScript puts on its postfix type operators (`[]`): in `x as User` followed by a line `!flag && fail()`, the type ends at `User`. In a type, the scanner splits `!=` and `!==` into `!` and `=` or `==`, as TypeScript rescans `>=` after type arguments: `const e: User!!= load()` is `const e: User!! = load()`. **Undecided (pending VIP):** the precedence of `!` among type operators (`A | B!E`).
+**`!` in types.** `A!B!C` is always the three-slot form; write `(A!B)!C` to nest, and `A!!B!C` is a syntax error. The `[no LineTerminator here]` before `!` is the restriction TypeScript puts on its postfix type operators (`[]`): in `x as User` followed by a line `!flag && fail()`, the type ends at `User`. `R` after `!!` starts on the same line and never with `{`; write `A!!({ … })` for a type-literal requirement. In a type, the scanner splits `!=` or `!==` only directly after `A!`, where the `!` completes `A!!`, as TypeScript rescans `>=` after type arguments only on demand; anywhere else they stay equality operators. `!` does not mix with `|`, `&`, function types or conditional types without parentheses: each is a syntax error with a quick fix that parenthesizes (`EK0301`).
+
+```text
+service S {                       two members: R can't start on the next line
+  now(): number!!
+  later(): number!! }
+effect function f(): number!! {   "{" begins the body, not R
+const e: User!!= load()           const e: User!! = load()
+x as number !== 0                 (x as number) !== 0, as in TypeScript
+type T = A | B!E                  syntax error; write (A | B)!E or A | (B!E)
+```
+
+`(A | B)!E` is `Effect.Effect<A | B, E>`; `A | (B!E)` is `A | Effect.Effect<B, E>`.
 
 **Fields.** A field's `Type` is parsed greedily, as in a TypeScript type member; then the field ends at `;`, `,`, a line break or `}`, so `{ a: string b: number }` is a syntax error and a union may continue on the next line:
 
@@ -470,40 +485,72 @@ service S { x: number = 1 }       RejectedMember: an initializer
 
 ## Appendix B. Diagnostics
 
-Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34). These codes are assigned, each one already in the compiler's registry:
+Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34). Each VIP's rules take one hundred-block, `EK` then the two-digit VIP number then two digits, so VIP-19's rules are `EK19xx` (decided detail 60). A code assigned before that scheme is kept where its rule is unchanged: EK2109, EK2111, EK2117, EK2126, EK3001 to EK3005, EK4402, EK4609, EK4610 and EK4701. Codes are unique across the table, so a kept code may sit inside another VIP's block. Each rule's chapter links to its definition.
 
-| Code | Rule | VIP |
-| --- | --- | --- |
-| EK2109 | a `schema` field type outside the mapping | 15 |
-| EK2111 | `restore` outside an `uninterruptible` block | 22 |
-| EK2117 | an `extends` clause or a `_tag` member in an `error` or `schema error` body | 13 |
-| EK2126 | a constraint on a generic `data` type parameter | 28 |
-| EK3001 | two services with the same key | 9 |
-| EK3002 | a class extends a service | 9 |
-| EK3003 | `new` on a service | 9 |
-| EK3004 | `instanceof` a service | 9 |
-| EK3005 | a generic service | 9 |
-| EK4402 | a `node:*` value import, a Node global or a platform call in a `.vibe` file | 33 |
-| EK4609 | lint warning: `await` on a `Fiber` in an `async` function; use `join` | 5 |
-| EK4610 | lint warning: `await` on a `Deferred` in an `async` function; use `try Deferred.await(d)` | 5 |
-| EK4701 | a `match` with no `default` over a literal union, `boolean`, a `data` or `error` union or an enum, that misses a case; a guarded arm covers nothing | 7 |
-
-**Undecided (pending VIP):** the codes of every other rule in this specification, each marked "code pending" where it is defined:
-
-| Rule | Chapter |
-| --- | --- |
-| `try` outside effect code, the top level included; `try` on a value that is not an Effect; a `try` statement in effect code | [Running Effects](/spec/002-running#try) |
-| `effect f() { }` or `async f() { }` outside a class or object literal; an `effect` getter, setter or constructor; an `effect` function whose written return type is not an Effect; `await` in effect code; `await` on an Effect in an `async` function; `eval`, `Function`, `arguments`, `var` or `with` in a `.vibe` file | [Functions](/spec/001-functions#static-rules) |
-| `catch` outside effect code; `try x catch h`; `e catch h` where `e` is not an Effect; a handler whose result is a Promise or thenable, `async` or not | [Running Effects](/spec/002-running#catch) |
-| `fork`, `join`, `for concurrent`, `for try`, interruption blocks or `provide` outside effect code | [Running Effects](/spec/002-running), [Services](/spec/005-services#provide-blocks) |
-| a `try.all` operand that is not an array of Effects | [Running Effects](/spec/002-running#running-effects-concurrently) |
-| `break`, `return` or a labeled `continue` leaving `for concurrent`; `return` in `for try` | [Running Effects](/spec/002-running) |
-| `return value` in a producer; a producer whose written return type is not a `Stream` | [Running Effects](/spec/002-running) |
-| an unwrapped call, `new` expression or tagged template that may throw, or an unwrapped Promise, in effect code; a parameter default that may throw; a function that may throw where a function type doesn't admit its thrown type; a `throw` or a call that may throw in a plain function that returns an Effect, Stream or Layer | [Failures](/spec/003-failures#thrown-types) |
-| a service member with a body, `private` or `protected`, or a `static` other than `key` and `defaultValue`; any other `RejectedMember`; a `static key` whose initializer is not a string literal | [Services](/spec/005-services#static-rules) |
-| a constructor, a `static` member, a setter or type parameters in an `error` or `schema error` declaration; any other `RejectedElement`; an `implements` clause | [Failures](/spec/003-failures#error-declarations) |
-| a `data` declaration with more than 4 type parameters | [Data](/spec/006-data) |
-| warning: `using` in effect code | [Runtime](/spec/008-runtime) |
+| Code | Rule | VIP | Chapter |
+| --- | --- | --- | --- |
+| EK0101 | `effect f() { }` or `async f() { }` outside a class or object literal | 1 | [Functions](/spec/001-functions#effect-functions) |
+| EK0102 | `await`, `for await` or `await using` in effect code | 1 | [Functions](/spec/001-functions#static-rules) |
+| EK0103 | `await` on an Effect in an `async` function | 1 | [Functions](/spec/001-functions#static-rules) |
+| EK0104 | `effect` on a getter, setter or constructor | 1 | [Functions](/spec/001-functions#static-rules) |
+| EK0105 | `effect` and `async` on one function | 1 | [Functions](/spec/001-functions#static-rules) |
+| EK0106 | an `effect` function whose written return type is not an Effect | 1 | [Functions](/spec/001-functions#static-rules) |
+| EK0107 | `eval`, `Function`, `arguments`, `var` or `with` in a `.vibe` file | 1, 4 | [Functions](/spec/001-functions#direct-eval) |
+| EK0301 | `!` beside a union, an intersection, a function type or a conditional type without parentheses | 3 | [Appendix A](/spec/900-appendices#notes-on-the-productions) |
+| EK0401 | a `throw`, a call that may throw, or a parameter default that may throw, in an effectful function | 4 | [Failures](/spec/003-failures#effectful-callables) |
+| EK0402 | a function that may throw where a function type doesn't admit its thrown type | 4 | [Failures](/spec/003-failures#assignability) |
+| EK0403 | an unwrapped call, `new` expression or tagged template that may throw, in effect code or a plain `catch` handler | 4 | [Failures](/spec/003-failures#calls-in-effect-code) |
+| EK0404 | an unwrapped Promise-producing call, `new` expression or `async match` in effect code | 4 | [Failures](/spec/003-failures#calls-in-effect-code) |
+| EK0405 | a body that throws more than its written `@throws {T}` | 4 | [Failures](/spec/003-failures#thrown-types) |
+| EK0501 | `try` outside effect code, the top level included | 5 | [Running Effects](/spec/002-running#try) |
+| EK0502 | `try` on a value that is not an Effect | 5 | [Running Effects](/spec/002-running#try) |
+| EK0503 | a `try` statement in effect code | 5 | [Running Effects](/spec/002-running#try) |
+| EK0504 | `catch` outside effect code | 5 | [Running Effects](/spec/002-running#catch) |
+| EK0505 | `try x catch h` | 5 | [Running Effects](/spec/002-running#catch) |
+| EK0506 | `e catch h` where `e` is not an Effect | 5 | [Running Effects](/spec/002-running#catch) |
+| EK0507 | a handler whose result is a Promise or thenable | 5 | [Running Effects](/spec/002-running#catch) |
+| EK0508 | lint warning: a plain handler whose result is an Effect; use `catch effect` | 5, 38 | [Running Effects](/spec/002-running#catch) |
+| EK0801 | warning: `using` in effect code; use `acquireDisposable` inside `scoped` | 8 | [Runtime](/spec/008-runtime) |
+| EK0901 | a `static key` without `readonly`, or whose initializer is not a string literal | 9 | [Services](/spec/005-services#static-rules) |
+| EK0902 | a service member that is not a `PropertySignature`, `MethodSignature`, `KeyMember` or `DefaultMember` | 9 | [Services](/spec/005-services#static-rules) |
+| EK0903 | a service with no derived key and no `static readonly key` | 9 | [Services](/spec/005-services#static-rules) |
+| EK1201 | `provide` outside effect code | 12 | [Services](/spec/005-services#provide-blocks) |
+| EK1301 | a constructor in an `error` or `schema error` body | 13 | [Failures](/spec/003-failures#error-declarations) |
+| EK1302 | a user-written `static` member or setter in an `error` or `schema error` body | 13 | [Failures](/spec/003-failures#error-declarations) |
+| EK1303 | type parameters on an `error` or `schema error` declaration | 13 | [Failures](/spec/003-failures#error-declarations) |
+| EK1304 | any other `RejectedElement` in an `error` or `schema error` body; an `implements` clause | 13 | [Failures](/spec/003-failures#error-declarations) |
+| EK1401 | a namespace name that two subpaths export, or a subpath and the root | 14 | [Services](/spec/005-services#the-platform-standard-library) |
+| EK1701 | `fork` or `join` outside effect code | 17 | [Running Effects](/spec/002-running#fork-and-join) |
+| EK1801 | a `try.all` operand that is not an array of Effects | 18 | [Running Effects](/spec/002-running#running-effects-concurrently) |
+| EK1901 | a `for concurrent` operand that is not an `Iterable` | 19 | [Running Effects](/spec/002-running#for-concurrent) |
+| EK1902 | `for concurrent` outside effect code | 19 | [Running Effects](/spec/002-running#for-concurrent) |
+| EK1903 | `break` leaving a `for concurrent` body | 19 | [Running Effects](/spec/002-running#for-concurrent) |
+| EK1904 | `return` in a `for concurrent` body | 19 | [Running Effects](/spec/002-running#for-concurrent) |
+| EK1905 | a labeled `continue` naming a statement that encloses the `for concurrent` | 19 | [Running Effects](/spec/002-running#for-concurrent) |
+| EK2001 | `for try` outside effect code | 20 | [Running Effects](/spec/002-running#for-try) |
+| EK2002 | `return` in a `for try` body | 20 | [Running Effects](/spec/002-running#for-try) |
+| EK2003 | a labeled `break` or `continue` from a `for try` body to a statement outside it | 20 | [Running Effects](/spec/002-running#for-try) |
+| EK2004 | a `for try` operand that is not a `Stream` | 20 | [Running Effects](/spec/002-running#for-try) |
+| EK2101 | `return value` in a producer | 21 | [Running Effects](/spec/002-running#producers) |
+| EK2102 | a producer whose written return type is not a `Stream` | 21 | [Running Effects](/spec/002-running#producers) |
+| EK2103 | `yield*` in a producer | 21 | [Running Effects](/spec/002-running#producers) |
+| EK2109 | a `schema` field type outside the mapping | 15 | [Data](/spec/006-data#schema-declarations) |
+| EK2111 | `restore` outside an `uninterruptible` block | 22 | [Running Effects](/spec/002-running#interruption-blocks) |
+| EK2117 | an `extends` clause or a `_tag` member in an `error` or `schema error` body | 13 | [Failures](/spec/003-failures#error-declarations) |
+| EK2126 | a constraint on a generic `data` type parameter | 28 | [Data](/spec/006-data#generic-unions) |
+| EK2201 | an interruption block outside effect code | 22 | [Running Effects](/spec/002-running#interruption-blocks) |
+| EK2202 | `restore` in an `effect` arrow or block nested in an `uninterruptible` block | 22 | [Running Effects](/spec/002-running#interruption-blocks) |
+| EK2801 | a `data` declaration with more than 4 type parameters | 28 | [Data](/spec/006-data#generic-unions) |
+| EK2803 | a default on a generic `data` type parameter | 28 | [Data](/spec/006-data#generic-unions) |
+| EK3001 | two services with the same key | 9 | [Services](/spec/005-services#static-rules) |
+| EK3002 | a class extends a service | 9 | [Services](/spec/005-services#static-rules) |
+| EK3003 | `new` on a service | 9 | [Services](/spec/005-services#static-rules) |
+| EK3004 | `instanceof` a service | 9 | [Services](/spec/005-services#static-rules) |
+| EK3005 | a generic service | 9 | [Services](/spec/005-services#static-rules) |
+| EK4402 | a `node:*` value import, a banned platform global or a platform call in a `.vibe` file | 33 | [Services](/spec/005-services#the-platform-standard-library) |
+| EK4609 | lint warning: `await` on a `Fiber` in an `async` function; use `join` | 5 | [Running Effects](/spec/002-running#await) |
+| EK4610 | lint warning: `await` on a `Deferred` in an `async` function; use `try Deferred.await(d)` | 5 | [Running Effects](/spec/002-running#await) |
+| EK4701 | a `match` with no `default` over a finite union that misses a case; a guarded arm covers nothing | 7 | [Pattern matching](/spec/004-match#exhaustiveness) |
 
 The compiler's current registry (`typescript/tsc/internal/vibelang/diagnostics.go`) still carries the old language's codes, documented in `docs/design/history/src/428-part4-ch28-tooling.md`. It is not normative.
 
@@ -560,12 +607,13 @@ These are the annotations [Thrown types](/spec/003-failures#thrown-types) refers
 | `Math.max`, `Date.now`, `Option.some` | `@throws {never}` |
 | `Schema.decodeUnknownSync`, `Schema.decodeSync` | `@throws {never}`: they only build a decoder |
 | the constructors of `Data.TaggedError` and `Data.taggedEnum` variants: `new NotFound({ id })`, `Delivery.Sent({ … })` | `@throws {never}` |
-| the constructor of `Schema.TaggedError`: `new Invalid({ … })` for a `schema error` | **Undecided (pending VIP):** `@throws {never}` or the `Error` its validating constructor throws on a bad field |
+| the constructor of `Schema.TaggedError`: `new Invalid({ … })` for a `schema error` | `@throws {never}`, as for `error` and `data`: a bad field at construction throws a plain `Error`, a defect: `effect { throw new Invalid({ name: "" }) }` dies |
 | the decoder that `Schema.decodeUnknownSync(schema)` returns | `@throws {SchemaError}` |
 | the thunk of `Effect.try` and `tryPromise`, in either form: the function argument, or the `try` property of the options argument | `@throws {unknown}`: the wrapper makes a throw a failure. The options form's `catch` callback has no `@throws`. `promise`'s thunk has no `@throws`, so it admits only a thunk that throws `never` |
-| `map`, `forEach`, `filter`, `reduce`, `find`, `some`, `every`, `sort`, `Array.from`, the `Promise` executor | `@rethrows` the callback |
+| `map`, `forEach`, `filter`, `reduce`, `find`, `some`, `every`, `sort`, `Array.from` | `@rethrows` the callback |
+| `new Promise(executor)` | `@throws {never}`: a throw in the executor rejects the Promise, as in JavaScript; it never throws at the construction site |
 
-`setTimeout` does not rethrow, because it stores the callback. A library declares the same tags in its own declarations:
+In a `.ts` file, `setTimeout` does not rethrow, because it stores the callback; in a `.vibe` file it is a banned platform global ([Services](/spec/005-services#the-platform-standard-library)). A library declares the same tags in its own declarations:
 
 ```ts
 /** @throws {never} @rethrows f */
@@ -620,4 +668,12 @@ function parseJson(s: string) {
 
 `Schema.decodeUnknownSync(User)` only builds the decoder and throws nothing; calling the decoder throws `SchemaError`.
 
-**Undecided (pending VIP):** the annotation of each remaining global and Effect export, and how a shipped annotation names a returned function's call signature.
+Every remaining global and effect 4.1.0 non-Effect export is annotated by a generator, not by hand: `@throws {never}` only when its source has no `throw` reachable from well-typed input, a named class when one is known (`SchemaError`), otherwise `@throws {unknown}`. The generated table is not yet published. `@throws` and `@rethrows` attach to a call signature, as TypeScript attaches JSDoc to each overload, so a returned function's contract sits on its own signature:
+
+```ts
+import type { Schema } from "effect"
+
+export declare function decodeUnknownSync<T>(s: Schema.Decoder<T>): {
+  /** @throws {Schema.SchemaError} */ (input: unknown): T
+}
+```
