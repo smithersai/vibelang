@@ -764,7 +764,7 @@ func init() {
 			return []Stmt{
 				&Mask{Body: []Stmt{&Code{V: "try " + run, E: "yield* " + run}}},
 				&Event{Label: g.Label()},
-				&Const{Name: v, Value: &Num{Value: 99}},
+				&Const{Name: v, Type: "number", Value: &Num{Value: 99}},
 			}
 		},
 	})
