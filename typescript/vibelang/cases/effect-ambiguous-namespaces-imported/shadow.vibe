@@ -1,0 +1,2 @@
+const Model = 1, Prompt = 2, Utils = 3
+export const sum = Model + Prompt + Utils

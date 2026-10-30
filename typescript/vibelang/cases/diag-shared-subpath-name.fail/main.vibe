@@ -1,4 +1,4 @@
-// expect: TS2304
+// expect: EK1401
 // effect/ai and effect/schema each have a module named Model, so neither is
 // in scope (D310, rule 3); the note names both imports. An import picks one.
 export const fields = effect () => Model.fields

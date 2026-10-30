@@ -59,7 +59,7 @@ function hexOf(text: string) {
 // Output: 6869
 ```
 
-Four rules settle a name that two globals share, in order: a JavaScript global that is not platform-specific wins in its meaning; a root module wins over a subpath module; when two subpath packages have a module of the same name, neither is in scope, so import the one you mean; and an import or local declaration shadows any of them. Ambient types keep their names independently. In value and namespace positions, `Headers` is `effect/http/Headers`, `Response` is `effect/ai/Response`, `Event` is `effect/eventlog/Event` and `Worker` is `effect/workers/Worker`. These are the names they settle for `effect@4.1.0`:
+Four rules settle a name that two globals share, in order: a JavaScript global that is not platform-specific wins in its meaning; a name exported by both the root and a subpath needs an explicit import; when two subpath packages have a module of the same name, neither is in scope, so import the one you mean; and an import or local declaration shadows any of them. Ambient types keep their names independently. `EK1401` names every exporter of an ambiguous name and offers an import for each. For a previously bare `Utils`, `vibelang --fix` adds `import { Utils } from "effect"` to preserve the root module. In value and namespace positions, `Headers` is `effect/http/Headers`, `Response` is `effect/ai/Response`, `Event` is `effect/eventlog/Event` and `Worker` is `effect/workers/Worker`. These are the names they settle for `effect@4.1.0`:
 
 <!-- D310 collisions: TestEffectNameCollisionsDocumented checks this table -->
 | Name | Modules | Without an import |
@@ -71,7 +71,7 @@ Four rules settle a name that two globals share, in order: a JavaScript global t
 | `Prompt` | `effect/ai`, `effect/cli` | nothing: import the one you mean (rule 3) |
 | `Response` | `effect/ai` | Effect's module; the DOM type keeps its name |
 | `Transferable` | `effect/workers` | Effect's module; the DOM type keeps its name |
-| `Utils` | `effect`, `effect/rpc` | `effect`'s root module (rule 2) |
+| `Utils` | `effect`, `effect/rpc` | nothing: import the one you mean (rule 2) |
 | `Worker` | `effect/workers` | Effect's module; the DOM type keeps its name |
 <!-- end D310 collisions -->
 

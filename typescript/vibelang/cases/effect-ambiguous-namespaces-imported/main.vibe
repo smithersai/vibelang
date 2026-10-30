@@ -1,0 +1,4 @@
+import { Model } from "effect/ai"
+import { Prompt } from "effect/cli"
+import { Utils } from "effect/rpc"
+export const modules = [Model, Prompt, Utils]

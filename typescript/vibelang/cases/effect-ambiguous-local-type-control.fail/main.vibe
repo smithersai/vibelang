@@ -1,0 +1,3 @@
+// expect: TS2503
+const Model = 1
+export type Missing = Model.Type

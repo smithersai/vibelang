@@ -62,6 +62,9 @@ const (
 // name, which the prelude supplies (D4, D146, D310): effect/Console,
 // effect/http/HttpRouter; or "" for any other name.
 func preludeModulePath(name string) string {
+	if len(effectSubpathShared[name]) > 0 {
+		return ""
+	}
 	if module := preludeModules[name]; strings.HasPrefix(module, "effect/") {
 		return module
 	}
@@ -77,6 +80,9 @@ func preludeModulePath(name string) string {
 // preludePackageOf returns the package whose index lists name, a module the
 // prelude supplies: effect for a root module, effect/http for HttpRouter.
 func preludePackageOf(name string) string {
+	if len(effectSubpathShared[name]) > 0 {
+		return ""
+	}
 	if subpath, ok := effectSubpathNames[name]; ok {
 		return subpath.barrel
 	}

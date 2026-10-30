@@ -556,6 +556,9 @@ func recordPreludeUse(state *preludeState, file *ast.SourceFile, name string) {
 // module is not installed or file does not resolve it, or, for an effect
 // export, ECMAScript defines a global value with the name.
 func preludeSymbol(c *checker.Checker, state *preludeState, file *ast.SourceFile, name string) *ast.Symbol {
+	if len(effectSubpathShared[name]) > 0 {
+		return nil
+	}
 	if _, ok := preludeModules[name]; ok {
 		if module := runtimeModuleSymbol(c, state, file); module != nil {
 			return c.TryGetMemberInModuleExports(name, module)

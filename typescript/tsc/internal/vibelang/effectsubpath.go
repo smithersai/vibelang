@@ -10,11 +10,9 @@ package vibelang
 //  1. An ECMAScript global of the same name wins in that meaning (VIP-14,
 //     isBuiltinGlobal). Platform values such as Headers name Effect's module;
 //     ambient global types keep their own meanings.
-//  2. A root module wins over a subpath module of the same name: Utils is
-//     effect/Utils, so effect/rpc's Utils is not in this table.
-//  3. When two subpath packages list a module of the same name, neither is in
-//     scope: effectSubpathShared names them, and TS2304 on one says which
-//     packages to import it from (effect_name_diagnostic.go).
+//  2. A root and subpath module sharing a name require an explicit import.
+//  3. The same holds for two subpaths: effectSubpathShared names every
+//     exporter, and EK1401 offers an import from each (VIP-14, detail 55).
 //  4. A local declaration or an import shadows the name, as it does any
 //     prelude name.
 //
@@ -27,6 +25,7 @@ package vibelang
 //
 // The tables are generated from effect@4.1.0's package.json exports and
 // each subpath's dist/<subpath>/index.d.ts, the version VibeLang pins (D1);
+// Regenerate with node scripts/generate-effect-subpaths.mjs --write.
 // TestEffectSubpathNamesMatchEffect checks them against the installed
 // package. Files below a module's own directory, such as
 // effect/schema/SchemaJITCompiler/enable, are parts of that module, which no
@@ -43,6 +42,9 @@ type effectSubpathExport struct {
 // isEffectExportName reports whether name is an effect root export or a
 // subpath module in scope (D146, D310).
 func isEffectExportName(name string) bool {
+	if len(effectSubpathShared[name]) > 0 {
+		return false
+	}
 	if _, ok := effectRootNames[name]; ok {
 		return true
 	}
@@ -301,9 +303,10 @@ var effectSubpathNames = map[string]effectSubpathExport{
 	"Zip":                          {barrel: "effect/encoding", module: "effect/encoding/Zip"},
 }
 
-// effectSubpathShared are the module names that two subpath packages list,
-// with the packages: neither module is in scope (rule 3).
+// effectSubpathShared are names listed by multiple exporters, including
+// the root: none is in scope without an import (rules 2 and 3).
 var effectSubpathShared = map[string][]string{
 	"Model":  {"effect/ai", "effect/schema"},
 	"Prompt": {"effect/ai", "effect/cli"},
+	"Utils":  {"effect", "effect/rpc"},
 }

@@ -280,6 +280,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			p = p.withFixes(dualBlockMigrationFixes(ctx, program, file, g.refused, refuse))
 			p = p.withFixes(keywordMigrationFixes(ctx, program, file, g.refused, refuse))
 			p = p.withFixes(vipTypeMigrationFixes(ctx, program, file, g.refused))
+			p = p.withFixes(ambiguousRootMigrationFixes(ctx, program, file, g.refused))
 			if len(p.fixes) == 0 && !options.MigrationOnly {
 				p = fileFixes(ctx, program, file, g.refused, tsFormFixCodes)
 			} else if len(p.fixes) == 0 {

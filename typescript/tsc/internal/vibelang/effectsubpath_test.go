@@ -88,6 +88,11 @@ func TestEffectSubpathNamesMatchEffect(t *testing.T) {
 	wantShared := map[string][]string{}
 	for name, exports := range listed {
 		if _, ok := root[name]; ok {
+			for _, e := range exports {
+				wantShared[name] = append(wantShared[name], e.barrel)
+			}
+			wantShared[name] = append(wantShared[name], "effect")
+			slices.Sort(wantShared[name])
 			continue
 		}
 		if len(exports) > 1 {
@@ -206,7 +211,7 @@ func TestEffectNameCollisionsDocumented(t *testing.T) {
 			scope = "the JavaScript global (rule 1)"
 		case isRoot:
 			packages = append([]string{"`effect`"}, packages...)
-			scope = "`effect`'s root module (rule 2)"
+			scope = "nothing: import the one you mean (rule 2)"
 		case len(packages) > 1:
 			scope = "nothing: import the one you mean (rule 3)"
 		case domValues[name]:

@@ -1,1 +1,1 @@
-Model is a module of effect/ai and effect/schema, so it is not in scope without an import; add one of: import { Model } from "effect/ai"; import { Model } from "effect/schema".
+Model is exported by effect/ai and effect/schema, so it needs an explicit import. Choose one: import { Model } from "effect/ai"; import { Model } from "effect/schema".

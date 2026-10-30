@@ -578,6 +578,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Spec-derived checks could confuse distinct imported lint codes by truncating longer numbers; they now keep each full diagnostic number.
 
 
+- Bare `Model` and `Prompt` gave generic missing-name errors, while `Utils` silently chose the root module; `EK1401` now lists every exporter and offers each import, and `--fix` preserves a previous root `Utils` binding with an explicit import (VIP-14, detail 55).
+
 - Repository validation could fail the site contrast check on a connection reset by its local server; the check now reads the built site directly.
 
 - A `match` or `if`/`else` chain with thousands of arms over a large union took about a minute and a half to check; repeated narrowing now reuses its results, so a 2000-arm `match` checks in about 10 seconds.
