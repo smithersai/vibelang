@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:vip15.schema-record-plain\x00")

@@ -56,6 +56,7 @@ const specTests = [
   "TestSuperseded",
   "TestDataGeneratedMatchSeparators",
   "TestDataSpecRulesQuoted",
+  "TestDataChapterWitnessesQuoted",
   "TestSpecRuleFacts",
   "TestSpecRuleTable",
   "TestSpecRuleCoverage",

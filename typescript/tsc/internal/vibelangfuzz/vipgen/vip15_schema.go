@@ -550,3 +550,151 @@ func readDecoded(g *Gen, s *Scope, d *SchemaDecl, r Expr) Stmt {
 	}
 	return &Event{Label: g.Label()}
 }
+
+// schemaProbes are the values each mapping witness tests with Schema.is, one
+// of each shape the mapping table names, so a schema mapped to the wrong
+// row accepts or rejects a different set.
+const schemaProbes = `["x", 7, true, 7n, Symbol.for("token"), ["x"], ["x", 1, 2], null, undefined, [7], ["x", 7], { a: 7 }, { active: true }, {}]`
+
+// The rows of chapter 6's mapping table. Each witness declares a schema per
+// type of the row, in VibeLang as `schema Sn = type` and in the reference as
+// the row's Effect schema, and returns which probes each accepts.
+var schemaRows = []struct {
+	key, row string
+	types    [][2]string
+}{
+	{"primitives", "| `string`, `number`, `boolean`, `bigint`, `symbol` | `Schema.String`, `Schema.Number`, `Schema.Boolean`, `Schema.BigInt`, `Schema.Symbol` |", [][2]string{{"string", "Schema.String"}, {"number", "Schema.Number"}, {"boolean", "Schema.Boolean"}, {"bigint", "Schema.BigInt"}, {"symbol", "Schema.Symbol"}}},
+	{"literals", "| single literal `\"a\"` | `Schema.Literal(\"a\")` (likewise numeric, boolean and bigint literals) |", [][2]string{{`"x"`, `Schema.Literal("x")`}, {"7", "Schema.Literal(7)"}, {"true", "Schema.Literal(true)"}, {"7n", "Schema.Literal(7n)"}}},
+	{"literal-union", "| union consisting entirely of literals `\"a\" \\| \"b\"` | `Schema.Literals([\"a\", \"b\"])` |", [][2]string{{`"x" | 7`, `Schema.Literals(["x", 7])`}}},
+	{"union", "For example, `\"a\" | \"b\" | null` maps to `Schema.Union([Schema.Literal(\"a\"), Schema.Literal(\"b\"), Schema.Null])`; it does not group the string literals into `Schema.Literals`.", [][2]string{{`"x" | "y" | null`, `Schema.Union([Schema.Literal("x"), Schema.Literal("y"), Schema.Null])`}, {"string | number[]", "Schema.Union([Schema.String, Schema.mutable(Schema.Array(Schema.Number))])"}}},
+	{"null-undefined", "| `null`, `undefined` | `Schema.Null`, `Schema.Undefined` |", [][2]string{{"null", "Schema.Null"}, {"undefined", "Schema.Undefined"}}},
+	{"array", "| `T[]`, `Array<T>` | `Schema.mutable(Schema.Array(S))` |", [][2]string{{"number[]", "Schema.mutable(Schema.Array(Schema.Number))"}, {"Array<string>", "Schema.mutable(Schema.Array(Schema.String))"}}},
+	{"readonly-array", "| `readonly T[]`, `ReadonlyArray<T>` | `Schema.Array(S)` |", [][2]string{{"readonly number[]", "Schema.Array(Schema.Number)"}, {"ReadonlyArray<string>", "Schema.Array(Schema.String)"}}},
+	{"tuple", "| `[A, B]` | `Schema.mutable(Schema.Tuple([A, B]))` |", [][2]string{{"[string, number]", "Schema.mutable(Schema.Tuple([Schema.String, Schema.Number]))"}}},
+	{"readonly-tuple", "| `readonly [A, B]` | `Schema.Tuple([A, B])` |", [][2]string{{"readonly [string, number]", "Schema.Tuple([Schema.String, Schema.Number])"}}},
+	{"optional-tuple", "| `[A, B?]` | `Schema.mutable(Schema.Tuple([A, Schema.optional(B)]))` |", [][2]string{{"[name: string, count?: number]", "Schema.mutable(Schema.Tuple([Schema.String, Schema.optional(Schema.Number)]))"}, {"readonly [name: string, count?: number]", "Schema.Tuple([Schema.String, Schema.optional(Schema.Number)])"}}},
+	{"rest-tuple", "Tuple element labels (`[name: A, count?: B]`) do not change the mapping.", [][2]string{{"[string, ...number[]]", "Schema.mutable(Schema.TupleWithRest(Schema.Tuple([Schema.String]), [Schema.Number]))"}, {"readonly [string, ...number[]]", "Schema.TupleWithRest(Schema.Tuple([Schema.String]), [Schema.Number])"}, {"[string, ...number[], boolean]", "Schema.mutable(Schema.TupleWithRest(Schema.Tuple([Schema.String]), [Schema.Number, Schema.Boolean]))"}}},
+	{"record", "| `Record<K, V>` | `Schema.Record(K, Schema.mutableKey(V))` |", [][2]string{{"Record<string, number>", "Schema.Record(Schema.String, Schema.mutableKey(Schema.Number))"}}},
+	{"readonly-record", "| `Readonly<Record<K, V>>` | `Schema.Record(K, V)` |", [][2]string{{"Readonly<Record<string, number>>", "Schema.Record(Schema.String, Schema.Number)"}}},
+	{"nested", "| nested object `{ name: T }` | `Schema.Struct({ name: Schema.mutableKey(S) })` |", [][2]string{{"{ active: boolean }", "Schema.Struct({ active: Schema.mutableKey(Schema.Boolean) })"}}},
+}
+
+func init() {
+	for _, r := range schemaRows {
+		var vibe, ref, results []string
+		for i, t := range r.types {
+			name := fmt.Sprintf("S%d", i)
+			vibe = append(vibe, fmt.Sprintf("schema %s = %s", name, t[0]))
+			ref = append(ref, fmt.Sprintf("const %s = %s", name, t[1]))
+			results = append(results, fmt.Sprintf("probes.map((v) => Schema.is(%s)(v))", name))
+			// is alone cannot distinguish grouped literal members or readonly ASTs.
+			// Compare the public schema shape with the chapter's exact Effect schema.
+			results = append(results, fmt.Sprintf("Object.keys(%s).sort()", name))
+			results = append(results, fmt.Sprintf(`JSON.stringify(%s.ast, (_, v) => typeof v === "bigint" ? { bigint: String(v) } : v)`, name))
+		}
+		body := "function witness() {\n  const probes: unknown[] = " + schemaProbes + "\n  return [" + strings.Join(results, ", ") + "]\n}"
+		registerWitness(15, ChapterWitness{
+			Key:     "vip15.schema-" + r.key + "-plain",
+			Chapter: "006-data.md",
+			Quote:   r.row,
+			Modules: []string{"Schema"},
+			Vibe:    strings.Join(vibe, "\n") + "\n" + body,
+			Effect:  strings.Join(ref, "\n") + "\n" + strings.ReplaceAll(body, ": unknown[]", ""),
+			Cite:    Citation{VIP: 15, Template: r.types[0][1], Quote: "Each field's schema is written from its TypeScript type: primitives, literals, unions, arrays, tuples, `Record`, nested object types, or another schema's name. A type outside that mapping is a compile error."},
+		})
+	}
+	for _, w := range []ChapterWitness{
+		{
+			// Chapter 6's own example, decoded and mutated as it shows.
+			Key:     "vip15.schema-sample-plain",
+			Chapter: "006-data.md",
+			Quote:   "Mappings preserve TypeScript mutability: properties are writable unless `readonly`; arrays and tuples are mutable unless `readonly`.",
+			Vibe: `schema Sample {
+  kind: "sample";
+  value: string | null;
+  absent: undefined;
+  items: number[];
+  readonly pair: readonly [string, number];
+  counts: Record<string, number>;
+  nested: { active: boolean };
+}
+function witness() {
+  const sample = Schema.decodeUnknownSync(Sample)({
+    kind: "sample", value: null, absent: undefined, items: [1],
+    pair: ["a", 2], counts: { a: 1 }, nested: { active: true },
+  })
+  sample.items.push(2)
+  sample.counts.a = 2
+  return [sample, Schema.is(Sample)({ ...sample, kind: "other" })]
+}`,
+			Effect: `const Sample = Schema.Struct({
+  kind: Schema.mutableKey(Schema.Literal("sample")),
+  value: Schema.mutableKey(Schema.Union([Schema.String, Schema.Null])),
+  absent: Schema.mutableKey(Schema.Undefined),
+  items: Schema.mutableKey(Schema.mutable(Schema.Array(Schema.Number))),
+  pair: Schema.Tuple([Schema.String, Schema.Number]),
+  counts: Schema.mutableKey(Schema.Record(Schema.String, Schema.mutableKey(Schema.Number))),
+  nested: Schema.mutableKey(Schema.Struct({ active: Schema.mutableKey(Schema.Boolean) })),
+})
+function witness() {
+  const sample = Schema.decodeUnknownSync(Sample)({
+    kind: "sample", value: null, absent: undefined, items: [1],
+    pair: ["a", 2], counts: { a: 1 }, nested: { active: true },
+  })
+  sample.items.push(2)
+  sample.counts.a = 2
+  return [sample, Schema.is(Sample)({ ...sample, kind: "other" })]
+}`,
+			Modules: []string{"Schema"},
+			Cite:    Citation{VIP: 15, Template: "Schema.mutableKey(Schema.mutable(Schema.Array(Schema.Number)))", Quote: "Each field's schema is written from its TypeScript type: primitives, literals, unions, arrays, tuples, `Record`, nested object types, or another schema's name. A type outside that mapping is a compile error."},
+		},
+		{
+			Key:     "vip15.schema-optional-plain",
+			Chapter: "006-data.md",
+			Quote:   "`Schema.optional` accepts a missing key or `undefined`, matching TypeScript’s default.",
+			Vibe: `schema S0 { x?: string; readonly y?: number }
+function witness() {
+  const probes: unknown[] = [{}, { x: undefined }, { x: "a", y: 1 }, { x: 1 }, { y: "b" }]
+  return [probes.map((v) => Schema.is(S0)(v)), "x" in Schema.decodeUnknownSync(S0)({})]
+}`,
+			Effect: `const S0 = Schema.Struct({ x: Schema.mutableKey(Schema.optional(Schema.String)), y: Schema.optional(Schema.Number) })
+function witness() {
+  const probes = [{}, { x: undefined }, { x: "a", y: 1 }, { x: 1 }, { y: "b" }]
+  return [probes.map((v) => Schema.is(S0)(v)), "x" in Schema.decodeUnknownSync(S0)({})]
+}`,
+			Modules: []string{"Schema"},
+			Cite:    Citation{VIP: 15, Template: "Schema.mutableKey(Schema.optional(Schema.String))", Quote: "Each field's schema is written from its TypeScript type: primitives, literals, unions, arrays, tuples, `Record`, nested object types, or another schema's name. A type outside that mapping is a compile error."},
+		},
+		{
+			// Review round 4: a named Schema constant was remapped.
+			Key:     "vip15.schema-reference-plain",
+			Chapter: "006-data.md",
+			Quote:   "Refinements and transformations stay Schema constants.",
+			Vibe: `type Count = boolean
+const Count = Schema.NumberFromString
+schema Address { city: string }
+schema S0 { n: Count; home: Address }
+function witness() {
+  return Schema.decodeUnknownSync(S0)({ n: "7", home: { city: "x" } })
+}`,
+			Effect: `const Count = Schema.NumberFromString
+const Address = Schema.Struct({ city: Schema.mutableKey(Schema.String) })
+const S0 = Schema.Struct({ n: Schema.mutableKey(Count), home: Schema.mutableKey(Address) })
+function witness() {
+  return Schema.decodeUnknownSync(S0)({ n: "7", home: { city: "x" } })
+}`,
+			Modules: []string{"Schema"},
+			Cite:    Citation{VIP: 15, Template: "Schema.mutableKey(Count)", Quote: "Each field's schema is written from its TypeScript type: primitives, literals, unions, arrays, tuples, `Record`, nested object types, or another schema's name. A type outside that mapping is a compile error."},
+		},
+	} {
+		registerWitness(15, w)
+	}
+}
+
+func init() {
+	registerWitness(15, ChapterWitness{Key: "vip15.computed-keys-plain", Chapter: "006-data.md", Quote: "Its expression is evaluated in declaration order, as in the emitted object literal", Vibe: "const trace:string[]=[];function key(s:string):string{trace.push(s);return s};schema S {[key(\"a\")]:number;[key(\"b\")]:string};function witness(){return [trace,Schema.decodeUnknownSync(S)({a:1,b:\"x\",extra:true}),Schema.is(S)({other:1})]}", Effect: "const trace=[];function key(s){trace.push(s);return s};const S=Schema.Struct({[key(\"a\")]:Schema.mutableKey(Schema.Number),[key(\"b\")]:Schema.mutableKey(Schema.String)});function witness(){return [trace,Schema.decodeUnknownSync(S)({a:1,b:\"x\",extra:true}),Schema.is(S)({other:1})]}", Modules: []string{"Schema"}, Cite: Citation{VIP: 15, Template: "Schema.Struct", Quote: "`schema Name { fields }` and `schema Name = type` declare a Schema constant and its type under one name."}})
+}
+
+func init() {
+	registerWitness(15, ChapterWitness{Key: "vip15.tdz-plain", Chapter: "006-data.md", Quote: "There is no implicit reordering or `Schema.suspend`", Vibe: "function witness():boolean{if(!Schema.is(Schema.Number)(0))return false;try{function build():Schema.Top {schema A {b:B};return A};const a=build();schema B {n:number};return false}catch(e){return e instanceof ReferenceError}}", Effect: "function witness(){if(!Schema.is(Schema.Number)(0))return false;try{function build(){const A=Schema.Struct({b:Schema.mutableKey(B)});return A};const a=build();const B=Schema.Struct({n:Schema.mutableKey(Schema.Number)});return false}catch(e){return e instanceof ReferenceError}}", Modules: []string{"Schema"}, Cite: Citation{VIP: 15, Template: "Schema.Struct", Quote: "`schema Name { fields }` and `schema Name = type` declare a Schema constant and its type under one name."}})
+}

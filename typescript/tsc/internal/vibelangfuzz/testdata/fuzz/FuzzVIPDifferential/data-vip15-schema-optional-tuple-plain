@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:vip15.schema-optional-tuple-plain\x00")

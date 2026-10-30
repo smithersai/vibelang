@@ -353,4 +353,8 @@ Static declaration witnesses also compile a consumer of emitted declarations and
 
 `TestDataGeneratedMatchSeparators` checks the match printer against the arm separator rule in the match chapter. Generated programs put `;` between arms and after the final arm, and a lone `default` starts directly with its arm. The fast spec gate runs this regression.
 
+### Chapter-backed data and match witnesses
+
+`FuzzVIPDifferential` also compares fixed pairs from the match, data, schema and schema-error chapters with their independently written Effect TypeScript. The pairs cover brand checks, extractor arity, bindings, observable evaluation order, per-match caches and schema mappings. `TestDataChapterWitnessesQuoted` checks each verbatim chapter or pinned-proposal citation in the fast gate. Disagreements use precise diagnostic codes or `Exit` comparison keys with named corpus inputs and compiler owners; passing a pending probe is an `XPASS`.
+
 The tagged-member controls distinguish shared tags, unions of tag literals, optional tags (including absent keys), non-string discriminants and open tag types. They also reject jumps out of an async match. Every static expectation quotes the landed chapter.

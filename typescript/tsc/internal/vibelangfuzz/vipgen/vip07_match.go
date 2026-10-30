@@ -2,7 +2,9 @@ package vipgen
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
+	"strings"
 )
 
 // VIP-7: `match` is the TC39 pattern-matching proposal, pinned to the
@@ -409,4 +411,450 @@ func errorMatch(g *Gen, s *Scope, e Expr, union []*ErrorDecl) *Match {
 		m.Default = g.Num(s)
 	}
 	return m
+}
+
+// A ChapterWitness is one rule of a specification chapter as a fixed pair:
+// the VibeLang the rule is about and the Effect TS the chapter gives it, each
+// declaring `function witness()`, which main calls. A plain witness's main
+// succeeds with its value; any other runs it with try. The pair is
+// handwritten from the chapter, so a wrong lowering of that one rule changes
+// the Exit. Quote is the chapter's own words (TestDataSpecRulesQuoted).
+type ChapterWitnessFile struct {
+	Name, Source string
+	Names        []string
+}
+
+type ChapterWitness struct {
+	Files               []ChapterWitnessFile
+	Key, Chapter, Quote string
+	Vibe, Effect        string
+	// Modules are the modules of effect both prints import.
+	Modules  []string
+	Requires []string
+	Cite     Citation
+	// ReturnsEffect forwards a plain factory value through main unchanged.
+	ReturnsEffect bool
+}
+
+var chapterWitnesses []ChapterWitness
+
+// ChapterWitnesses returns every registered witness, in registration order.
+func ChapterWitnesses() []ChapterWitness { return slices.Clone(chapterWitnesses) }
+
+// registerWitness registers w as a construct. Its citation's Reading is the
+// chapter's quote, since the chapter, not the VIP, shows the Effect TS.
+func registerWitness(vip int, w ChapterWitness) {
+	chapterWitnesses = append(chapterWitnesses, w)
+	cite := w.Cite
+	cite.Reading = "Chapter " + strings.TrimSuffix(w.Chapter, ".md") + " gives the Effect TS: " + w.Quote
+	Register(&Construct{
+		Key:       w.Key,
+		VIP:       vip,
+		Plain:     len(w.Requires) == 0,
+		Requires:  w.Requires,
+		Citations: []Citation{cite},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			name := g.Name("witness")
+			for _, m := range w.Modules {
+				g.UseModule(m, true)
+			}
+			for _, file := range w.Files {
+				g.AddFile(file.Name, file.Source, file.Names...)
+			}
+			g.AddDecl(&FixedPair{
+				Source:    strings.ReplaceAll(w.Vibe, "witness", name),
+				Reference: strings.ReplaceAll(w.Effect, "witness", name),
+			})
+			if len(w.Requires) == 0 {
+				return []Stmt{&Return{Value: &Call{Name: name}, Succeed: !w.ReturnsEffect}}
+			}
+			g.UseEffect()
+			return []Stmt{&Return{Value: &Try{X: &Call{Name: name}}}}
+		},
+	})
+}
+
+// A FixedPair is a declaration that prints Source in main.vibe and Reference
+// in the reference.
+type FixedPair struct{ Source, Reference string }
+
+func (p *FixedPair) Vibe(w *Writer)   { w.Write(p.Source) }
+func (p *FixedPair) Effect(w *Writer) { w.Write(p.Reference) }
+
+// vip7Cite is the VIP-7 sentence every chapter 4 witness gives meaning to;
+// its Template is the part of the witness's Effect TS that shows the rule.
+func vip7Cite(template string) Citation {
+	return Citation{VIP: 7, Template: template, Quote: "`match` is plain JavaScript, not an Effect: TC39's semantics, with the arms tested in order and the subject evaluated once."}
+}
+
+// The fixed checks for Option, Exit and Result (chapter 4's table). Each
+// witness matches a real value of the pattern's module, a forged object with
+// the same _tag, and a value of another module, so a check that tests _tag
+// before the module's brand matches the forgery.
+var matchIntrinsics = []struct {
+	key, module, pattern, test, list, row string
+	real, forged, other                   string
+}{
+	{"option-some", "Option", "Option.Some(let v): v", "Option.isOption(s) && Option.isSome(s)", "s.value", "| `Option.Some` | `Option.isOption(s) && Option.isSome(s)` | `[s.value]` |", "Option.some(3)", `{ _tag: "Some", value: 3 }`, "Option.none()"},
+	{"option-none", "Option", `Option.None: "none"`, "Option.isOption(s) && Option.isNone(s)", "", "| `Option.None` | `Option.isOption(s) && Option.isNone(s)` | `[]` |", "Option.none()", `{ _tag: "None" }`, "Option.some(3)"},
+	{"exit-success", "Exit", "Exit.Success(let v): v", "Exit.isExit(s) && Exit.isSuccess(s)", "s.value", "| `Exit.Success` | `Exit.isExit(s) && Exit.isSuccess(s)` | `[s.value]` |", "Exit.succeed(3)", `{ _tag: "Success", value: 3 }`, "Result.succeed(3)"},
+	{"exit-failure", "Exit", "Exit.Failure(let v): Exit.isFailure(real) && v === real.cause", "Exit.isExit(s) && Exit.isFailure(s)", "s.cause", "| `Exit.Failure` | `Exit.isExit(s) && Exit.isFailure(s)` | `[s.cause]` |", "Exit.fail(3)", `{ _tag: "Failure", cause: 3 }`, "Result.fail(3)"},
+	{"result-success", "Result", "Result.Success(let v): v", "Result.isResult(s) && Result.isSuccess(s)", "s.success", "| `Result.Success` | `Result.isResult(s) && Result.isSuccess(s)` | `[s.success]` |", "Result.succeed(3)", `{ _tag: "Success", success: 3 }`, "Exit.succeed(3)"},
+	{"result-failure", "Result", "Result.Failure(let v): v", "Result.isResult(s) && Result.isFailure(s)", "s.failure", "| `Result.Failure` | `Result.isResult(s) && Result.isFailure(s)` | `[s.failure]` |", "Result.fail(3)", `{ _tag: "Failure", failure: 3 }`, "Exit.fail(3)"},
+}
+
+func init() {
+	for _, m := range matchIntrinsics {
+		// The arm's value, read from the extracted list in the reference.
+		_, value, _ := strings.Cut(m.pattern, ": ")
+		bind := ""
+		if m.list != "" {
+			bind = "const v = " + m.list + "; "
+		}
+		modules := []string{"Exit", "Option", "Result"}
+		registerWitness(7, ChapterWitness{
+			Key:     "vip07.intrinsic-" + m.key + "-plain",
+			Chapter: "004-match.md",
+			Quote:   m.row,
+			Modules: modules,
+			Vibe: "function witness() {\n  const real = " + m.real + "\n  const subjects: unknown[] = [real, " + m.forged + ", " + m.other + "]\n" +
+				"  return subjects.map((s) => match (s) { when " + m.pattern + "; default: \"no\"; })\n}",
+			Effect: "function witness() {\n  const real = " + m.real + "\n  const subjects = [real, " + m.forged + ", " + m.other + "]\n" +
+				"  return subjects.map((s) => { if (" + m.test + ") { " + bind + "return " + value + " } return \"no\" })\n}",
+			Cite: Citation{VIP: 7, Template: m.test, Quote: "Until Effect ships custom matchers for `Option`, `Exit`, `Result` and its tagged errors, the compiler keeps today's fixed checks for them (D208)."},
+		})
+	}
+	for _, w := range []ChapterWitness{
+		{
+			// Review rounds 1 and 2: a bare key was read as a binding.
+			Key:     "vip07.property-versus-binding-plain",
+			Chapter: "004-match.md",
+			Quote:   "Replacing `let tracking` with `tracking` above would return `\"outer\"`, not the field.",
+			Vibe: `function witness() {
+  const tracking = "outer"
+  const x = { tracking: "field" }
+  return [match (x) { when { tracking }: tracking; default: "none"; }, match (x) { when { let tracking }: tracking; default: "none"; }]
+}`,
+			Effect: `function witness() {
+  const tracking = "outer"
+  const x = { tracking: "field" }
+  const bare = ((s) => { if (typeof s === "object" && s !== null && "tracking" in s) return tracking; return "none" })(x)
+  const bound = ((s) => { if (typeof s === "object" && s !== null && "tracking" in s) { const tracking = s.tracking; return tracking } return "none" })(x)
+  return [bare, bound]
+}`,
+			Cite: vip7Cite(`"tracking" in s`),
+		},
+		{
+			Key:     "vip07.inherited-property-plain",
+			Chapter: "004-match.md",
+			Quote:   "In an object pattern, a bare key such as `{ tracking }` only tests that the property exists.",
+			Vibe: `function witness() {
+  const subjects: unknown[] = [Object.create({ tracking: undefined }), {}, "tracking"]
+  return subjects.map((s) => match (s) { when { tracking }: "has"; default: "none"; })
+}`,
+			Effect: `function witness() {
+  const subjects = [Object.create({ tracking: undefined }), {}, "tracking"]
+  return subjects.map((s) => { if (typeof s === "object" && s !== null && "tracking" in s) return "has"; return "none" })
+}`,
+			Cite: vip7Cite(`"tracking" in s`),
+		},
+		{
+			Key:     "vip07.ordered-once-plain",
+			Chapter: "004-match.md",
+			Quote:   "Synchronous `match` evaluates its subject once and tests arms in order.",
+			Vibe: `function witness() {
+  const trace: string[] = []
+  let n = 0
+  const v = match ((trace.push("subject"), ++n)) { when 1 and if ((trace.push("guard"), false)): "guarded"; when 1: (trace.push("arm"), "one"); default: (trace.push("default"), "other"); }
+  return [v, n, trace]
+}`,
+			Effect: `function witness() {
+  const trace = []
+  let n = 0
+  const subject = (trace.push("subject"), ++n)
+  let v
+  if (subject === 1 && (trace.push("guard"), false)) v = "guarded"
+  else if (subject === 1) v = (trace.push("arm"), "one")
+  else v = (trace.push("default"), "other")
+  return [v, n, trace]
+}`,
+			Cite: vip7Cite("const subject ="),
+		},
+		{
+			Key:     "vip07.no-match-plain",
+			Chapter: "004-match.md",
+			Quote:   "When no arm matches and there is no `default`, it throws `new TypeError()`",
+			Vibe: `function witness() {
+  const s: unknown = 2
+  try {
+    return match (s) { when 1: "one"; }
+  } catch (e) {
+    return [e instanceof TypeError, (e as Error).message]
+  }
+}`,
+			Effect: `function witness() {
+  const s = 2
+  try {
+    const subject = s
+    if (subject === 1) return "one"
+    throw new TypeError()
+  } catch (e) {
+    return [e instanceof TypeError, e.message]
+  }
+}`,
+			Cite: vip7Cite(`throw new TypeError()`),
+		},
+		{
+			Key:     "vip07.intrinsic-alias-plain",
+			Chapter: "004-match.md",
+			Quote:   "Recognition follows the resolved module binding, including aliases: `import * as O from \"effect/Option\"` permits `when O.Some(let v):`.",
+			Vibe: `import * as O from "effect/Option"
+function witness() {
+  const subjects: unknown[] = [O.some(3), { _tag: "Some", value: 4 }, O.none()]
+  return subjects.map((s) => match (s) { when O.Some(let v): v; when O.None: "none"; default: "no"; })
+}`,
+			Effect: `import * as O from "effect/Option"
+function witness() {
+  const subjects = [O.some(3), { _tag: "Some", value: 4 }, O.none()]
+  return subjects.map((s) => { if (O.isOption(s) && O.isSome(s)) { const v = s.value; return v } if (O.isOption(s) && O.isNone(s)) return "none"; return "no" })
+}`,
+			Cite: Citation{VIP: 7, Template: "O.isOption(s) && O.isSome(s)", Quote: "Until Effect ships custom matchers for `Option`, `Exit`, `Result` and its tagged errors, the compiler keeps today's fixed checks for them (D208)."},
+		},
+		{
+			Key:     "vip07.intrinsic-arity-plain",
+			Chapter: "004-match.md",
+			Quote:   "without rest, zero arguments match only `[]`, one matches a singleton, and extra arguments fail.",
+			Modules: []string{"Option"},
+			Vibe: `function witness() {
+  const some: unknown = Option.some(3)
+  const none: unknown = Option.none()
+  return [
+    match (some) { when Option.Some(): "zero"; default: "no"; },
+    match (some) { when Option.Some(let a, let b): "two"; default: "no"; },
+    match (none) { when Option.None(let x): "one"; default: "no"; },
+    match (none) { when Option.None(): "zero"; default: "no"; },
+  ]
+}`,
+			Effect: `function witness() {
+  const some = Option.some(3)
+  const none = Option.none()
+  return [
+    Option.isOption(some) && Option.isSome(some) && [some.value].length === 0 ? "zero" : "no",
+    Option.isOption(some) && Option.isSome(some) && [some.value].length === 2 ? "two" : "no",
+    Option.isOption(none) && Option.isNone(none) && [].length === 1 ? "one" : "no",
+    Option.isOption(none) && Option.isNone(none) && [].length === 0 ? "zero" : "no",
+  ]
+}`,
+			Cite: Citation{VIP: 7, Template: "Option.isOption(some) && Option.isSome(some)", Quote: "Until Effect ships custom matchers for `Option`, `Exit`, `Result` and its tagged errors, the compiler keeps today's fixed checks for them (D208)."},
+		},
+		{
+			Key:     "vip07.error-cross-copy-plain",
+			Chapter: "004-match.md",
+			Quote:   "It returns `[subject]` on a match and `false` otherwise; `when NotFound(let e):` binds that subject.",
+			Vibe: `error Missing { n: number }
+function witness() {
+  const subjects: unknown[] = [new Missing({ n: 1 }), { _tag: "Missing", n: 7 }, { _tag: "Other" }, null]
+  return subjects.map((s) => match (s) { when Missing(let e): e === s; default: "no"; })
+}`,
+			Effect: `class Missing extends Data.TaggedError("Missing") {}
+function witness() {
+  const subjects = [new Missing({ n: 1 }), { _tag: "Missing", n: 7 }, { _tag: "Other" }, null]
+  return subjects.map((s) => { const r = s?._tag === "Missing" ? [s] : false; if (r !== false && r.length === 1) { const e = r[0]; return e === s } return "no" })
+}`,
+			Cite: Citation{VIP: 7, Template: `?._tag === "Missing" ? [s] : false`, Quote: "VibeLang's `error` classes get a matcher that tests `_tag`, so `when NotFound:` matches across copies of a package."},
+		},
+	} {
+		registerWitness(7, w)
+	}
+}
+
+func init() {
+	// Chapter 4: match "introduces no function or Effect boundary". Each
+	// effect witness's reference keeps the ordered tests and the selected
+	// arm in the enclosing Effect.gen.
+	quote := "It introduces no function or Effect boundary: its ordered tests and selected arm stay in the enclosing activation, so an arm's `try` becomes `yield*` in the enclosing Effect generator, as above."
+	requires := []string{"vip01.effect-function", "vip05.try", "vip04.throw"}
+	for _, w := range []ChapterWitness{
+		{
+			Key:    "vip07.try-arm",
+			Vibe:   `effect function witness() { return match (true) { when true: try Effect.succeed(7); default: throw "unselected"; } }`,
+			Effect: `function witness() { return Effect.gen(function* () { const subject = true; if (subject === true) return yield* Effect.succeed(7); return yield* Effect.fail("unselected") }) }`,
+		},
+		{
+			Key:    "vip07.throw-arm",
+			Vibe:   `effect function witness() { return match (false) { when true: 7; default: throw "selected"; } }`,
+			Effect: `function witness() { return Effect.gen(function* () { const subject = false; if (subject === true) return 7; return yield* Effect.fail("selected") }) }`,
+		},
+		{
+			Key:    "vip07.effect-guard",
+			Vibe:   `effect function witness() { return match (1) { when 1 and if (try Effect.sync(() => { ev("guard"); return false })): 9; when 1: (ev("selected"), 7); default: 0; } }`,
+			Effect: `function witness() { return Effect.gen(function* () { const subject = 1; if (subject === 1 && (yield* Effect.sync(() => { ev("guard"); return false }))) return 9; if (subject === 1) { ev("selected"); return 7 } return 0 }) }`,
+		},
+	} {
+		w.Chapter, w.Quote, w.Requires = "004-match.md", quote, requires
+		if w.Key == "vip07.effect-guard" {
+			w.Requires = requires[:2]
+		}
+		w.Cite = vip7Cite("if (subject ===")
+		registerWitness(7, w)
+	}
+}
+
+// Decided detail 53: the retained tagged-error inventory uses each module's
+// own guard, including aliases, and never spelling, instanceof or _tag alone.
+// A brand-carrying copy deliberately has no constructor prototype.
+func init() {
+	for _, row := range []struct{ module, name string }{
+		{"Cause", "NoSuchElementError"}, {"Cause", "TimeoutError"},
+		{"Cause", "IllegalArgumentError"}, {"Cause", "ExceededCapacityError"},
+		{"Cause", "AsyncFiberError"}, {"Cause", "UnknownError"},
+		{"Schema", "SchemaError"}, {"Cron", "CronParseError"},
+		{"PlatformError", "PlatformError"}, {"SemVer", "SemVerError"},
+		{"Terminal", "QuitError"}, {"TextDiff", "TextDiffError"},
+	} {
+		mod, name := row.module, row.name
+		guard := "M.is" + name + "(s)"
+		brand := "~effect/" + mod + "/" + name
+		if mod == "PlatformError" {
+			brand = "~effect/PlatformError"
+		}
+		common := "import * as M from " + fmt.Sprintf("%q", "effect/"+mod) + "\nfunction witness() {\n" +
+			"const copy = { _tag: " + fmt.Sprintf("%q", name) + ", [" + fmt.Sprintf("%q", brand) + "]: " + fmt.Sprintf("%q", brand) + " };\n" +
+			"const subjects: unknown[] = [copy, { _tag: " + fmt.Sprintf("%q", name) + " }, null, {}];\n"
+		vibe := common + "return subjects.map((s) => [match(s) { when M." + name + ": true; default: false; }, match(s) { when M." + name + "(let e): e === s; default: false; }, match(s) { when M." + name + "(): true; default: false; }, match(s) { when M." + name + "(let a, let b): true; default: false; }]);\n}"
+		ref := strings.ReplaceAll(common, ": unknown[]", "") + "if (!M.is" + name + "(copy)) throw new Error(\"tagged-error fixture lacks its brand\"); return subjects.map((s) => [" + guard + ", " + guard + ", false, false]);\n}"
+		registerWitness(7, ChapterWitness{
+			Key:     "vip07.tagged-" + strings.ToLower(mod) + "-" + strings.ToLower(name) + "-plain",
+			Chapter: "004-match.md",
+			Quote:   "| `" + mod + "." + name + "` | `" + mod + ".is" + name + "(s)` | `[s]` |",
+			Vibe:    vibe, Effect: ref,
+			Cite: Citation{VIP: 7, Template: guard, Quote: "A bare pattern runs the guard; an extractor matches `[s]`; arity mismatch is a failed match."},
+		})
+	}
+}
+
+func init() {
+	registerWitness(7, ChapterWitness{Key: "vip07.local-option-plain", Chapter: "004-match.md", Quote: "A local `Option` instead uses TC39's matcher lookup; spelling alone never selects an intrinsic.", Vibe: "function witness() { const Option={Some:{[Symbol.customMatcher](s:unknown){return [7]}}}; return match({}) { when Option.Some(let v):v; default:0; } }", Effect: "function witness() { const Option={Some:{[Symbol.customMatcher](s){return [7]}}}; const r=Option.Some[Symbol.customMatcher]({}, {matchType:\"extractor\"}); return r[0] }", Modules: []string{}, Cite: vip7Cite("return")})
+}
+
+func init() {
+	registerWitness(7, ChapterWitness{Key: "vip07.custom-match-type-plain", Chapter: "004-match.md", Quote: "custom matchers receive `(subject, { matchType })`, with `matchType` either `\"boolean\"` or `\"extractor\"`", Vibe: "function witness() { const log:string[]=[];const P={[Symbol.customMatcher](s:unknown,o:{matchType:string}){log.push(o.matchType);return o.matchType===\"extractor\"?[7]:true}};return [match(1){when P:1;default:0;},match(1){when P(let x):x;default:0;},log] }", Effect: "function witness() { const log=[];const P={[Symbol.customMatcher](s,o){log.push(o.matchType);return o.matchType===\"extractor\"?[7]:true}};const a=P[Symbol.customMatcher](1,{matchType:\"boolean\"})?1:0;const r=P[Symbol.customMatcher](1,{matchType:\"extractor\"});return [a,r[0],log] }", Modules: []string{}, Cite: vip7Cite("return")})
+}
+
+func init() {
+	registerWitness(7, ChapterWitness{Key: "vip07.regex-relational-plain", Chapter: "004-match.md", Quote: "regex patterns accept both literals and `RegExp` values", Vibe: "function witness(){const p=/^a/;const xs:unknown[]=[\"abc\",\"b\",3,7];return xs.map(s=>match(s){when p:\"regex\";when >= 5:\"large\";default:\"other\";})}", Effect: "function witness(){const p=/^a/;const xs=[\"abc\",\"b\",3,7];return xs.map(s=>typeof s===\"string\"&&p.test(s)?\"regex\":s>=5?\"large\":\"other\")}", Modules: []string{}, Cite: vip7Cite("return")})
+}
+
+func init() {
+	registerWitness(7, ChapterWitness{Key: "vip07.async-match", Chapter: "004-match.md", Quote: "subject evaluation, tests and the selected arm run inside the async function.", Vibe: "effect function witness(){return try Effect.promise(()=>async match(await Promise.resolve(\"sent\")){when \"sent\":await Promise.resolve(\"sent\");})}", Effect: "function witness(){return Effect.gen(function*(){return yield* Effect.promise(()=>(async()=>{const subject=await Promise.resolve(\"sent\");if(subject===\"sent\")return await Promise.resolve(\"sent\");throw new TypeError()})())})}", Modules: []string{}, Requires: []string{"vip01.effect-function", "vip05.try"}, Cite: vip7Cite("return")})
+}
+
+func init() {
+	registerWitness(7, ChapterWitness{Key: "vip07.exhaustive-runtime-plain", Chapter: "004-match.md", Quote: "The check only reports errors. It never changes what runs", Vibe: "function witness(){const s=2 as unknown as boolean;try{return match(s){when true:1;when false:0;}}catch(e){return e instanceof TypeError}}", Effect: "function witness(){const s=2;try{if(s===true)return 1;if(s===false)return 0;throw new TypeError()}catch(e){return e instanceof TypeError}}", Modules: []string{}, Cite: vip7Cite("return")})
+}
+
+func init() {
+	registerWitness(7, ChapterWitness{Key: "vip07.expression-order-plain", Chapter: "004-match.md", Quote: "A `match` inside a larger expression follows the shared [evaluation-order rule](002-running.md#evaluation-order).", Vibe: "function witness(){let n=0;const a=(++n)+(match(++n){when 2:++n;default:99;})+(++n);const b=false&&match(++n){default:9;};const obj={n:7,m(_unused?:number){return this.n}};const c=obj.m(match(1){default:0;});return [a,b,c,n]}", Effect: "function witness(){let n=0;const l=++n;const s=++n;const m=s===2?++n:99;const a=l+m+(++n);const b=false&&9;const obj={n:7,m(){return this.n}};const c=obj.m(0);return [a,b,c,n]}", Modules: []string{}, Cite: vip7Cite("return")})
+}
+
+func init() {
+	registerWitness(7, ChapterWitness{Key: "vip07.async-success-plain", Chapter: "004-match.md", Quote: "subject evaluation, tests and the selected arm run inside the async function.", Vibe: "function witness(){return Effect.promise(()=>async match(await Promise.resolve(\"sent\")){when \"sent\": await Promise.resolve(\"sent\"); default: \"other\";})}", Effect: "function witness(){return Effect.promise(()=>(async()=>{const subject=await Promise.resolve(\"sent\");if(subject===\"sent\")return await Promise.resolve(\"sent\");return \"other\";})())}", ReturnsEffect: true, Cite: vip7Cite("Effect.promise")})
+}
+
+func init() {
+	registerWitness(7, ChapterWitness{Key: "vip07.async-rejection-plain", Chapter: "004-match.md", Quote: "a thrown exception, including the no-match `TypeError`, rejects the resulting `Promise`.", Vibe: "function witness(){return Effect.promise(()=>async match(await Promise.resolve(\"other\" as unknown)){when \"sent\": await Promise.resolve(\"sent\");})}", Effect: "function witness(){return Effect.promise(()=>(async()=>{const subject=await Promise.resolve(\"other\");if(subject===\"sent\")return await Promise.resolve(\"sent\");throw new TypeError();})())}", ReturnsEffect: true, Cite: vip7Cite("Effect.promise")})
+}
+
+func init() {
+	registerWitness(7, ChapterWitness{Key: "vip07.no-match-message-plain", Chapter: "004-match.md", Quote: "When no arm matches and there is no `default`, it throws `new TypeError()`, with an empty message", Vibe: "function witness():string[]{const s=2 as unknown as boolean;try{const v=match(s){when true:1;when false:0;};return [\"matched\",String(v)]}catch(e){return [e instanceof TypeError?\"TypeError\":\"other\",(e as Error).message]}}", Effect: "function witness(){const s=2;try{let v;if(s===true)v=1;else if(s===false)v=0;else throw new TypeError();return [\"matched\",String(v)]}catch(e){return [e instanceof TypeError?\"TypeError\":\"other\",e.message]}}", Modules: []string{}, Requires: []string{}, Cite: vip7Cite("throw new TypeError()")})
+}
+
+func init() {
+	registerWitness(7, ChapterWitness{Key: "vip07.error-matcher-property-plain", Chapter: "004-match.md", Quote: "It returns `[subject]` on a match and `false` otherwise", Vibe: "error E { n:number };function witness():unknown[]{try{const symbol=(Symbol as any).customMatcher;const f=Reflect.get(E,symbol);if(typeof f!==\"function\")return [\"missing\"];const x={_tag:\"E\"};const a=f(x,{matchType:\"extractor\"});const b=f(x,{matchType:\"boolean\"});return [Object.hasOwn(E,symbol),Array.isArray(a)&&a.length===1&&a[0]===x,f({_tag:\"Other\"},{matchType:\"extractor\"})===false,f(null,{matchType:\"extractor\"})===false,Array.isArray(b)&&b.length===1&&b[0]===x]}catch(e){return [\"threw\",(e as Error).name]}}", Effect: "class E extends Data.TaggedError(\"E\") {static [Symbol.customMatcher](subject){return subject?._tag===\"E\"?[subject]:false}};function witness(){try{const symbol=Symbol.customMatcher;const f=Reflect.get(E,symbol);if(typeof f!==\"function\")return [\"missing\"];const x={_tag:\"E\"};const a=f(x,{matchType:\"extractor\"});const b=f(x,{matchType:\"boolean\"});return [Object.hasOwn(E,symbol),Array.isArray(a)&&a.length===1&&a[0]===x,f({_tag:\"Other\"},{matchType:\"extractor\"})===false,f(null,{matchType:\"extractor\"})===false,Array.isArray(b)&&b.length===1&&b[0]===x]}catch(e){return [\"threw\",e.name]}}", Modules: []string{}, Requires: []string{}, Cite: Citation{VIP: 7, Template: "static [Symbol.customMatcher]", Quote: "VibeLang's `error` classes get a matcher that tests `_tag`, so `when NotFound:` matches across copies of a package."}})
+}
+
+func init() {
+	registerWitness(7, ChapterWitness{Key: "vip07.combinators-plain", Chapter: "../vips/tc39-pattern-matching/explainer.md", Quote: "Combinator patterns cannot be combined at the same \"level\";", Vibe: "function witness():unknown[]{const xs:unknown[]=[0,1,2,3,\"x\",null];return xs.map(s=>[s is (1 or 2),s is (not 1),s is ((1 or 2) and (not 2)),match(s){when (1 or 2) and (not 2):\"one\";when 1 or 2:\"two\";default:\"other\";}])}", Effect: "function witness(){const xs=[0,1,2,3,\"x\",null];return xs.map(s=>[s===1||s===2,s!==1,(s===1||s===2)&&s!==2,s===1?\"one\":s===2?\"two\":\"other\"])}", Modules: []string{}, Requires: []string{}, Cite: vip7Cite("s!==1")})
+}
+
+func init() {
+	registerWitness(7, ChapterWitness{Key: "vip07.guard-and-order-plain", Chapter: "../vips/tc39-pattern-matching/explainer.md", Quote: "Short-circuiting applies; if any sub-pattern fails to match the subject,\nmatching stops immediately.", Vibe: "function witness():unknown[]{const log:string[]=[];const xs=[1,2,0];const values=xs.map(s=>match(s){when if((log.push(\"a\"+s),s>0)) and if((log.push(\"b\"+s),s<2)):\"yes\";default:\"no\";});return [values,log]}", Effect: "function witness(){const log=[];const xs=[1,2,0];const values=xs.map(s=>((log.push(\"a\"+s),s>0) && (log.push(\"b\"+s),s<2))?\"yes\":\"no\");return [values,log]}", Modules: []string{}, Requires: []string{}, Cite: vip7Cite("log.push")})
+}
+
+func init() {
+	registerWitness(7, ChapterWitness{Key: "vip07.guard-or-order-plain", Chapter: "../vips/tc39-pattern-matching/explainer.md", Quote: "Short-circuiting applies; if any sub-pattern successfully matches the subject,\nmatching stops immediately.", Vibe: "function witness():unknown[]{const log:string[]=[];const xs=[1,2,0];const values=xs.map(s=>match(s){when if((log.push(\"a\"+s),s===1)) or if((log.push(\"b\"+s),s===2)):\"yes\";default:\"no\";});return [values,log]}", Effect: "function witness(){const log=[];const xs=[1,2,0];const values=xs.map(s=>((log.push(\"a\"+s),s===1) || (log.push(\"b\"+s),s===2))?\"yes\":\"no\");return [values,log]}", Modules: []string{}, Requires: []string{}, Cite: vip7Cite("log.push")})
+}
+
+func init() {
+	registerWitness(7, ChapterWitness{Key: "vip07.is-binding-scope-plain", Chapter: "../vips/tc39-pattern-matching/explainer.md", Quote: "Bindings established in the pattern of an `is`\nare visible in the nearest block scope,", Vibe: "function witness():number{const read:()=>number=()=>n;const o={n:7};if(o is {let n}){}return read()}", Effect: "function witness(){const read=()=>n;const o={n:7};let n;if(o!==null&&typeof o===\"object\"&&\"n\" in o)n=o.n;return read()}", Modules: []string{}, Requires: []string{}, Cite: vip7Cite("return read()")})
+}
+
+func init() {
+	registerWitness(7, ChapterWitness{Key: "vip07.is-binding-tdz-plain", Chapter: "../vips/tc39-pattern-matching/explainer.md", Quote: "but will throw a ReferenceError if dereferenced,", Vibe: "function witness():string{try{const read:()=>string=()=>String(n);const o={};if(o is {let n}){}return read()}catch(e){return e instanceof ReferenceError?\"tdz\":\"wrong\"}}", Effect: "function witness(){try{let bound=false;let n;const read=()=>{if(!bound)throw new ReferenceError();return String(n)};const o={};if(o!==null&&typeof o===\"object\"&&\"n\" in o){n=o.n;bound=true}return read()}catch(e){return e instanceof ReferenceError?\"tdz\":\"wrong\"}}", Modules: []string{}, Requires: []string{}, Cite: vip7Cite("new ReferenceError()")})
+}
+
+func init() {
+	registerWitness(7, ChapterWitness{Key: "vip07.or-binding-override-plain", Chapter: "../vips/tc39-pattern-matching/explainer.md", Quote: "a binding pattern in a later sub-pattern", Vibe: "function witness():number{return match([1,2]){when [let foo] or {length:let foo}:foo;default:0;}}", Effect: "function witness(){const s=[1,2];let foo;if(Array.isArray(s)&&s.length===1){foo=s[0];return foo}if(s!==null&&typeof s===\"object\"&&\"length\" in s){foo=s.length;return foo}return 0}", Modules: []string{}, Requires: []string{}, Cite: vip7Cite("foo=s.length")})
+}
+
+func init() {
+	registerWitness(7, ChapterWitness{Key: "vip07.builtin-brands-plain", Chapter: "004-match.md", Quote: "Built-in constructor patterns use `Array.isArray(subject)` for `Array`, and `subject instanceof C` for every other built-in", Vibe: "function witness():unknown[]{const xs:unknown[]=[[],Object.create(Array.prototype),new Map(),Object.create(Map.prototype),new Set(),Object.create(Set.prototype),new Date(0),Object.create(Date.prototype),new Error(\"e\"),Object.create(Error.prototype),Promise.resolve(1),Object.create(Promise.prototype),null,1,...[\"Array\",\"Error\",\"Map\",\"Set\",\"Date\",\"Promise\"].map(tag=>({[Symbol.toStringTag]:tag}))];return xs.map(s=>[match(s){when Array:true;default:false;},match(s){when Map:true;default:false;},match(s){when Set:true;default:false;},match(s){when Date:true;default:false;},match(s){when Error:true;default:false;},match(s){when Promise:true;default:false;}])}", Effect: "function witness(){const xs=[[],Object.create(Array.prototype),new Map(),Object.create(Map.prototype),new Set(),Object.create(Set.prototype),new Date(0),Object.create(Date.prototype),new Error(\"e\"),Object.create(Error.prototype),Promise.resolve(1),Object.create(Promise.prototype),null,1,...[\"Array\",\"Error\",\"Map\",\"Set\",\"Date\",\"Promise\"].map(tag=>({[Symbol.toStringTag]:tag}))];return xs.map(s=>nativeBrands(s))}", Modules: []string{}, Requires: []string{}, Cite: vip7Cite("nativeBrands"), Files: []ChapterWitnessFile{
+		{Name: "native-brands.ts", Source: "export function nativeBrands(s:unknown):boolean[]{return [Array.isArray(s),s instanceof Map,s instanceof Set,s instanceof Date,s instanceof Error,s instanceof Promise]}\n", Names: []string{"nativeBrands"}},
+	}})
+}
+
+func init() {
+	registerWitness(7, ChapterWitness{Key: "vip07.class-instanceof-plain", Chapter: "004-match.md", Quote: "Any other class uses `instanceof`", Vibe: "class C {#brand=true;static owns(x:object):boolean{return #brand in x};static [Symbol.hasInstance](_x:unknown):boolean{return false}};function witness():unknown[]{const xs:unknown[]=[new C(),Object.create(C.prototype),{},null];return xs.map(s=>match(s){when C:true;default:false;})}", Effect: "class C {#brand=true;static owns(x){return #brand in x};static [Symbol.hasInstance](_x){return false}};function witness(){const xs=[new C(),Object.create(C.prototype),{},null];return xs.map(s=>s instanceof C)}", Modules: []string{}, Requires: []string{}, Cite: vip7Cite("s instanceof C")})
+}
+
+func init() {
+	registerWitness(7, ChapterWitness{Key: "vip07.predicate-receiver-plain", Chapter: "../vips/tc39-pattern-matching/spec.emu", Quote: "return ? Call(_func_, _receiver_, \u00ab _subject_, _hint_ \u00bb).", Vibe: "function witness():boolean[]{const matcher={limit:2,test(s:unknown):boolean{return typeof s===\"number\"&&s>this.limit}};const xs:unknown[]=[3,1,null];return xs.map(s=>match(s){when matcher.test:true;default:false;})}", Effect: "function witness(){const matcher={limit:2,test(s){return typeof s===\"number\"&&s>this.limit}};const xs=[3,1,null];return xs.map(s=>matcher.test(s))}", Modules: []string{}, Requires: []string{}, Cite: vip7Cite("matcher.test(s)")})
+}
+
+func init() {
+	registerWitness(7, ChapterWitness{Key: "vip07.no-global-patching-plain", Chapter: "004-match.md", Quote: "no methods are defined on globals.", Vibe: "class P {};function witness():boolean[]{const key=(Symbol as any).customMatcher;const a=match([1]){when Array:true;default:false;};const b=match(new P()){when P:true;default:false;};const roots=[Array,Error,Map,Set,Date,Promise,Function.prototype];return [a,b,...roots.map(x=>Object.hasOwn(x,key))]}", Effect: "class P {};function witness(){const key=Symbol.customMatcher;return [Array.isArray([1]),Object.getPrototypeOf(new P())===P.prototype,...nativeBaseline(key)]}", Modules: []string{}, Requires: []string{}, Cite: vip7Cite("nativeBaseline"), Files: []ChapterWitnessFile{{Name: "native-realm.ts", Source: "/// <reference path=\"./native-vm-types.ts\" />\nimport { runInNewContext } from \"node:vm\"\nconst roots = runInNewContext(\"[Array,Error,Map,Set,Date,Promise,Function.prototype]\") as object[]\nexport function nativeBaseline(key: PropertyKey): boolean[] {\n return roots.map(x => Object.hasOwn(x,key))\n}\n", Names: []string{"nativeBaseline"}}, {Name: "native-vm-types.ts", Source: "declare module \"node:vm\" { export function runInNewContext(source:string):any }", Names: []string{}}}})
+}
+
+func init() {
+	registerWitness(7, ChapterWitness{Key: "vip07.no-effect-patching-plain", Chapter: "004-match.md", Quote: "No run-time patching of Effect.", Vibe: "function witness():boolean[]{const key=(Symbol as any).customMatcher;const matched=match(null as unknown){when Cause.TimeoutError:true;default:false;};const ctors=[Cause.NoSuchElementError,Cause.TimeoutError,Cause.IllegalArgumentError,Cause.ExceededCapacityError,Cause.AsyncFiberError,Cause.UnknownError,Schema.SchemaError,Cron.CronParseError,PlatformError.PlatformError,SemVer.SemVerError,Terminal.QuitError,TextDiff.TextDiffError];return [matched,...ctors.map(c=>Object.hasOwn(c,key)),Object.hasOwn(Option,\"Some\"),Object.hasOwn(Option,\"None\"),Object.hasOwn(Exit,\"Success\"),Object.hasOwn(Exit,\"Failure\"),Object.hasOwn(Result,\"Success\"),Object.hasOwn(Result,\"Failure\")]}", Effect: "function witness(){const ctors=[Cause.NoSuchElementError,Cause.TimeoutError,Cause.IllegalArgumentError,Cause.ExceededCapacityError,Cause.AsyncFiberError,Cause.UnknownError,Schema.SchemaError,Cron.CronParseError,PlatformError.PlatformError,SemVer.SemVerError,Terminal.QuitError,TextDiff.TextDiffError];return [Cause.isTimeoutError(null),...ctors.map(()=>false),false,false,false,false,false,false]}", Modules: []string{"Cause", "Schema", "Cron", "PlatformError", "SemVer", "Terminal", "TextDiff", "Option", "Exit", "Result"}, Requires: []string{}, Cite: Citation{VIP: 7, Template: "Cause.isTimeoutError(null)", Quote: "**Condition: no run-time patching of Effect.**"}})
+}
+
+func init() {
+	registerWitness(7, ChapterWitness{Key: "vip07.property-observations-plain", Chapter: "004-match.md", Quote: "In an object pattern, a bare key such as `{ tracking }` only tests that the property exists.", Vibe: "function witness(){const trace:string[]=[];const tracking=\"outer\";const x={get tracking(){trace.push(\"get\");return \"field\"}};const a=match(x){when {tracking}:tracking;default:\"none\";};const before=trace.length;const b=match(x){when {let tracking}:tracking;default:\"none\";};return [a,b,before,trace]}", Effect: "function witness(){const trace=[];const tracking=\"outer\";const x={get tracking(){trace.push(\"get\");return \"field\"}};const a=\"tracking\" in x?tracking:\"none\";const before=trace.length;let b=\"none\";if(\"tracking\" in x){const tracking=x.tracking;b=tracking}return [a,b,before,trace]}", Modules: []string{}, Cite: Citation{VIP: 7, Template: "return", Quote: "Until Effect ships custom matchers for `Option`, `Exit`, `Result` and its tagged errors, the compiler keeps today's fixed checks for them (D208)."}})
+}
+
+func init() {
+	registerWitness(7, ChapterWitness{Key: "vip07.callable-property-plain", Chapter: "004-match.md", Quote: "For an arbitrary subject, the pinned algorithm first rejects non-objects (functions are objects too), then checks property presence before reading it", Vibe: "function witness(){const f=Object.assign(()=>7,{tracking:undefined});return match(f){when {tracking}:true;default:false;}}", Effect: "function witness(){const f=Object.assign(()=>7,{tracking:undefined});return ((typeof f===\"object\"&&f!==null)||typeof f===\"function\")&&\"tracking\" in f}", Modules: []string{}, Cite: Citation{VIP: 7, Template: "return", Quote: "Until Effect ships custom matchers for `Option`, `Exit`, `Result` and its tagged errors, the compiler keeps today's fixed checks for them (D208)."}})
+}
+
+func init() {
+	registerWitness(7, ChapterWitness{Key: "vip07.intrinsic-guard-order-plain", Chapter: "004-match.md", Quote: "| `Option.Some` | `Option.isOption(s) && Option.isSome(s)` | `[s.value]` |", Vibe: "function witness(){const trace:string[]=[];const s:unknown={get _tag(){trace.push(\"tag\");return \"Some\"}};return [[match(s){when Option.Some:true;default:false;},match(s){when Option.None:true;default:false;},match(s){when Exit.Success:true;default:false;},match(s){when Exit.Failure:true;default:false;},match(s){when Result.Success:true;default:false;},match(s){when Result.Failure:true;default:false;}],trace]}", Effect: "function witness(){const trace=[];const s={get _tag(){trace.push(\"tag\");return \"Some\"}};return [[Option.isOption(s)&&Option.isSome(s),Option.isOption(s)&&Option.isNone(s),Exit.isExit(s)&&Exit.isSuccess(s),Exit.isExit(s)&&Exit.isFailure(s),Result.isResult(s)&&Result.isSuccess(s),Result.isResult(s)&&Result.isFailure(s)],trace]}", Modules: []string{"Option", "Exit", "Result"}, Cite: Citation{VIP: 7, Template: "return", Quote: "Until Effect ships custom matchers for `Option`, `Exit`, `Result` and its tagged errors, the compiler keeps today's fixed checks for them (D208)."}})
+}
+
+func init() {
+	registerWitness(7, ChapterWitness{Key: "vip07.intrinsic-rest-plain", Chapter: "004-match.md", Quote: "An extractor matches the listed array against its argument patterns by the snapshot's list rules", Vibe: "function witness(){const s=Option.some(3);const n=Option.none();return [match(s){when Option.Some(...let xs):xs;default:\"no\";},match(s){when Option.Some(let head,...let tail):[head,tail];default:\"no\";},match(n){when Option.None(...let xs):xs;default:\"no\";},match(n){when Option.None(let head,...let tail):[head,tail];default:\"no\";}]}", Effect: "function witness(){const s=Option.some(3);const n=Option.none();const some=Option.isOption(s)&&Option.isSome(s);const none=Option.isOption(n)&&Option.isNone(n);return [some?[s.value]:\"no\",some?[s.value,[]]:\"no\",none?[]:\"no\",\"no\"]}", Modules: []string{"Option"}, Cite: Citation{VIP: 7, Template: "return", Quote: "Until Effect ships custom matchers for `Option`, `Exit`, `Result` and its tagged errors, the compiler keeps today's fixed checks for them (D208)."}})
+}
+
+func init() {
+	registerWitness(7, ChapterWitness{Key: "vip07.regex-literal-plain", Chapter: "004-match.md", Quote: "regex patterns accept both literals and `RegExp` values", Vibe: "function witness(){const xs:unknown[]=[\"abc\",\"b\",3,null];return xs.map(s=>match(s){when /^a/:\"regex\";default:\"other\";})}", Effect: "function witness(){const xs=[\"abc\",\"b\",3,null];return xs.map(s=>typeof s===\"string\"&&/^a/.test(s)?\"regex\":\"other\")}", Modules: []string{}, Cite: Citation{VIP: 7, Template: "return", Quote: "Until Effect ships custom matchers for `Option`, `Exit`, `Result` and its tagged errors, the compiler keeps today's fixed checks for them (D208)."}})
+}
+
+func init() {
+	registerWitness(7, ChapterWitness{Key: "vip07.expression-optional-chain-plain", Chapter: "004-match.md", Quote: "A `match` inside a larger expression follows the shared [evaluation-order rule](002-running.md#evaluation-order).", Vibe: "function witness(){\n const trace:string[]=[];\n type Holder={n:number;m(x:number):number};\n function base(present:boolean):Holder|null{trace.push(\"base\");return present?{n:7,get m(){trace.push(\"get\");return function(this:Holder,x:number){trace.push(\"call\");return this.n+x}}}:null}\n function call(present:boolean){return base(present)?.m(match((trace.push(\"subject\"),1)){default:(trace.push(\"arm\"),2);})}\n return [call(false),call(true),trace];\n}", Effect: "function witness(){\n const trace=[];\n function base(present){trace.push(\"base\");return present?{n:7,get m(){trace.push(\"get\");return function(x){trace.push(\"call\");return this.n+x}}}:null}\n function call(present){return base(present)?.m((trace.push(\"subject\"),trace.push(\"arm\"),2))}\n return [call(false),call(true),trace];\n}", Modules: []string{}, Cite: vip7Cite("return")})
+}
+
+func init() {
+	registerWitness(7, ChapterWitness{Key: "vip07.expression-logical-assignment-plain", Chapter: "004-match.md", Quote: "A `match` inside a larger expression follows the shared [evaluation-order rule](002-running.md#evaluation-order).", Vibe: "function witness(){\n const trace:string[]=[];let state:number|null=0;\n const box={get x():number|null{trace.push(\"get\");return state},set x(v:number|null){trace.push(\"set\");state=v}};\n function base(){trace.push(\"base\");return box}function key(){trace.push(\"key\");return \"x\" as const}\n const a=base()[key()] ||= match((trace.push(\"or-run\"),1)){default:2;};\n const b=base()[key()] ||= match((trace.push(\"or-skip\"),1)){default:9;};\n const c=base()[key()] &&= match((trace.push(\"and-run\"),1)){default:3;};\n state=null;\n const d=base()[key()] ??= match((trace.push(\"null-run\"),1)){default:4;};\n const e=base()[key()] ??= match((trace.push(\"null-skip\"),1)){default:9;};\n return [a,b,c,d,e,state,trace];\n}", Effect: "function witness(){\n const trace=[];let state=0;\n const box={get x(){trace.push(\"get\");return state},set x(v){trace.push(\"set\");state=v}};\n function base(){trace.push(\"base\");return box}function key(){trace.push(\"key\");return \"x\"}\n const a=base()[key()] ||= (trace.push(\"or-run\"),2);\n const b=base()[key()] ||= (trace.push(\"or-skip\"),9);\n const c=base()[key()] &&= (trace.push(\"and-run\"),3);\n state=null;\n const d=base()[key()] ??= (trace.push(\"null-run\"),4);\n const e=base()[key()] ??= (trace.push(\"null-skip\"),9);\n return [a,b,c,d,e,state,trace];\n}", Modules: []string{}, Cite: vip7Cite("return")})
+}
+
+func init() {
+	registerWitness(7, ChapterWitness{Key: "vip07.property-cache-reset-plain", Chapter: "../vips/tc39-pattern-matching/spec.emu", Quote: "If _hasCache_ is *true*, return ! Call(<emu-xref href=\"#sec-map.prototype.has\">%Map.prototype.get%</emu-xref>, _cache_, « _propertyName_ »).", Vibe: "function witness(){\n const trace:string[]=[];let reads=0;\n const s=new Proxy({get value(){trace.push(\"get\");return ++reads}},{has(target,key){trace.push(\"has:\"+String(key));return Reflect.has(target,key)}});\n const a=match(s){when {value:0}:0;when {let value}:value;default:-1;};\n const b=match(s){when {value:0}:0;when {let value}:value;default:-1;};\n const c=s is ({value:3} and {value:3});\n return [a,b,c,reads,trace];\n}", Effect: "function witness(){\n const trace=[];let reads=0;\n const s=new Proxy({get value(){trace.push(\"get\");return ++reads}},{has(target,key){trace.push(\"has:\"+String(key));return Reflect.has(target,key)}});\n function select(){if(!(\"value\" in s))return -1;const cached=s.value;if(cached===0)return 0;const value=cached;return value}\n const a=select();const b=select();\n let c=false;if(\"value\" in s){const cached=s.value;c=cached===3&&cached===3}\n return [a,b,c,reads,trace];\n}", Cite: vip7Cite("return")})
+}
+
+func init() {
+	registerWitness(7, ChapterWitness{Key: "vip07.iterator-cache-reuse-plain", Chapter: "../vips/tc39-pattern-matching/spec.emu", Quote: "If _nthItem_ is not *undefined*, return _nthItem_.[[Value]].", Vibe: "function witness(){\n const trace:string[]=[];\n function* values(){trace.push(\"start\");yield 1;trace.push(\"second\");yield 2;trace.push(\"done\")}\n const value=match(values()){when [1,9]:0;when [let a,let b]:a+b;default:-1;};\n return [value,trace];\n}", Effect: "function witness(){\n const trace=[];\n function* values(){trace.push(\"start\");yield 1;trace.push(\"second\");yield 2;trace.push(\"done\")}\n const iterator=values();const first=iterator.next();const second=iterator.next();\n let value=-1;\n if(!first.done&&!second.done){if(first.value===1&&second.value===9)value=0;else if(iterator.next().done)value=first.value+second.value}\n return [value,trace];\n}", Cite: vip7Cite("return")})
+}
+
+func init() {
+	registerWitness(7, ChapterWitness{Key: "vip07.expression-optional-reference-plain", Chapter: "004-match.md", Quote: "A `match` inside a larger expression follows the shared [evaluation-order rule](002-running.md#evaluation-order).", Vibe: "function witness(){\n const trace:string[]=[];\n type Holder={n:number;m(x:number):number};\n function method(this:Holder,x:number):number{trace.push(\"call\");return this.n+x}\n function base(present:boolean):Holder|null{trace.push(\"base\");return present?{n:7,get m(){trace.push(\"get\");return method}}:null}\n function call(present:boolean){return base(present)?.m(match((trace.push(\"subject\"),1)){default:(trace.push(\"arm\"),2);})}\n return [call(false),call(true),trace];\n}", Effect: "function witness(){\n const trace=[];\n function method(x){trace.push(\"call\");return this.n+x}\n function base(present){trace.push(\"base\");return present?{n:7,get m(){trace.push(\"get\");return method}}:null}\n function call(present){return base(present)?.m((trace.push(\"subject\"),trace.push(\"arm\"),2))}\n return [call(false),call(true),trace];\n}", Modules: []string{}, Cite: vip7Cite("return")})
 }

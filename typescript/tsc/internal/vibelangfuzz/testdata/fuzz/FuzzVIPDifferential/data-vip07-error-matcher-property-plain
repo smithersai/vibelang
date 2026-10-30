@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:vip07.error-matcher-property-plain\x00")

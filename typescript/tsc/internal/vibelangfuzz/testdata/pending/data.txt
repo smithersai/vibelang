@@ -87,3 +87,133 @@ FuzzDataSpecRules feature:tagged-template-disabled compiler VIP-7: the documente
 FuzzDataSpecRules corpus:data-tagged-template-disabled compiler VIP-7: minimized tagged-template-disabled witness; lane vip-match
 FuzzDataSpecRules feature:tagged-other-discriminant-disabled compiler VIP-7: the documented tagged-member or open-subject coverage is incorrectly rejected with EK4701; lane vip-match
 FuzzDataSpecRules corpus:data-tagged-other-discriminant-disabled compiler VIP-7: minimized tagged-other-discriminant-disabled witness; lane vip-match
+FuzzVIPDifferential compile:TS2339/vip07.custom-match-type-plain compiler VIP-7: Symbol.customMatcher is missing from SymbolConstructor, so the specified matcher protocol cannot be used in typed code; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-custom-match-type-plain compiler VIP-7: minimized vip07.custom-match-type-plain probe; lane vip-match
+FuzzVIPDifferential exit:value/vip07.error-cross-copy-plain compiler VIP-7: a copied object with the error's _tag does not match, although the matcher must test _tag across package copies; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-error-cross-copy-plain compiler VIP-7: minimized vip07.error-cross-copy-plain probe; lane vip-match
+FuzzVIPDifferential exit:exit-tag/vip07.exhaustive-runtime-plain compiler VIP-7: ordinary try/catch does not catch the no-match TypeError; match must stay in its enclosing plain activation; lane vip-core2
+FuzzVIPDifferential corpus:data-vip07-exhaustive-runtime-plain compiler VIP-7: minimized vip07.exhaustive-runtime-plain probe; lane vip-core2
+FuzzVIPDifferential compile:TS2551/vip07.intrinsic-alias-plain compiler VIP-7: resolved Option aliases are treated as missing Some/None value exports instead of intrinsic pattern syntax; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-intrinsic-alias-plain compiler VIP-7: minimized vip07.intrinsic-alias-plain probe; lane vip-match
+FuzzVIPDifferential compile:TS2345/vip07.intrinsic-arity-plain compiler VIP-7: extractor arity mismatch must fail the match at runtime, but typed singleton checks/indexing produce compile errors; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-intrinsic-arity-plain compiler VIP-7: minimized vip07.intrinsic-arity-plain probe; lane vip-match
+FuzzVIPDifferential compile:TS2345/vip07.intrinsic-exit-failure-plain compiler VIP-7: unknown subjects need the brand guard before the tag guard; generated tag checks reject unknown with TS2345; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-intrinsic-exit-failure-plain compiler VIP-7: minimized vip07.intrinsic-exit-failure-plain probe; lane vip-match
+FuzzVIPDifferential compile:TS2345/vip07.intrinsic-exit-success-plain compiler VIP-7: unknown subjects need the brand guard before the tag guard; generated tag checks reject unknown with TS2345; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-intrinsic-exit-success-plain compiler VIP-7: minimized vip07.intrinsic-exit-success-plain probe; lane vip-match
+FuzzVIPDifferential compile:TS2345/vip07.intrinsic-option-none-plain compiler VIP-7: unknown subjects need the brand guard before the tag guard; generated tag checks reject unknown with TS2345; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-intrinsic-option-none-plain compiler VIP-7: minimized vip07.intrinsic-option-none-plain probe; lane vip-match
+FuzzVIPDifferential compile:TS2345/vip07.intrinsic-option-some-plain compiler VIP-7: unknown subjects need the brand guard before the tag guard; generated tag checks reject unknown with TS2345; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-intrinsic-option-some-plain compiler VIP-7: minimized vip07.intrinsic-option-some-plain probe; lane vip-match
+FuzzVIPDifferential compile:TS2345/vip07.intrinsic-result-failure-plain compiler VIP-7: unknown subjects need the brand guard before the tag guard; generated tag checks reject unknown with TS2345; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-intrinsic-result-failure-plain compiler VIP-7: minimized vip07.intrinsic-result-failure-plain probe; lane vip-match
+FuzzVIPDifferential compile:TS2345/vip07.intrinsic-result-success-plain compiler VIP-7: unknown subjects need the brand guard before the tag guard; generated tag checks reject unknown with TS2345; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-intrinsic-result-success-plain compiler VIP-7: minimized vip07.intrinsic-result-success-plain probe; lane vip-match
+FuzzVIPDifferential compile:TS2339/vip07.local-option-plain compiler VIP-7: Symbol.customMatcher is missing from SymbolConstructor, so the specified matcher protocol cannot be used in typed code; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-local-option-plain compiler VIP-7: minimized vip07.local-option-plain probe; lane vip-match
+FuzzVIPDifferential compile:EK4701/vip07.no-match-plain compiler VIP-7: an unknown subject incorrectly draws EK4701; exhaustiveness applies only to the specified finite subject kinds; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-no-match-plain compiler VIP-7: minimized vip07.no-match-plain probe; lane vip-match
+FuzzVIPDifferential compile:EK4704/vip07.regex-relational-plain compiler VIP-7: RegExp-value and relational patterns are rejected by the retained subset parser; lane vip-match
+FuzzVIPDifferential compile:TS1005/vip07.regex-relational-plain compiler VIP-7: RegExp-value and relational patterns are rejected by the retained subset parser; lane vip-match
+FuzzVIPDifferential compile:TS1109/vip07.regex-relational-plain compiler VIP-7: RegExp-value and relational patterns are rejected by the retained subset parser; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-regex-relational-plain compiler VIP-7: minimized vip07.regex-relational-plain probe; lane vip-match
+FuzzVIPDifferential compile:TS2367/vip07.tagged-cause-asyncfibererror-plain compiler VIP-7: extractor arity mismatch must fail the match at runtime, but typed singleton checks/indexing produce compile errors; lane vip-match
+FuzzVIPDifferential compile:TS2493/vip07.tagged-cause-asyncfibererror-plain compiler VIP-7: extractor arity mismatch must fail the match at runtime, but typed singleton checks/indexing produce compile errors; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-tagged-cause-asyncfibererror-plain compiler VIP-7: minimized vip07.tagged-cause-asyncfibererror-plain probe; lane vip-match
+FuzzVIPDifferential compile:TS2367/vip07.tagged-cause-exceededcapacityerror-plain compiler VIP-7: extractor arity mismatch must fail the match at runtime, but typed singleton checks/indexing produce compile errors; lane vip-match
+FuzzVIPDifferential compile:TS2493/vip07.tagged-cause-exceededcapacityerror-plain compiler VIP-7: extractor arity mismatch must fail the match at runtime, but typed singleton checks/indexing produce compile errors; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-tagged-cause-exceededcapacityerror-plain compiler VIP-7: minimized vip07.tagged-cause-exceededcapacityerror-plain probe; lane vip-match
+FuzzVIPDifferential compile:TS2367/vip07.tagged-cause-illegalargumenterror-plain compiler VIP-7: extractor arity mismatch must fail the match at runtime, but typed singleton checks/indexing produce compile errors; lane vip-match
+FuzzVIPDifferential compile:TS2493/vip07.tagged-cause-illegalargumenterror-plain compiler VIP-7: extractor arity mismatch must fail the match at runtime, but typed singleton checks/indexing produce compile errors; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-tagged-cause-illegalargumenterror-plain compiler VIP-7: minimized vip07.tagged-cause-illegalargumenterror-plain probe; lane vip-match
+FuzzVIPDifferential compile:TS2367/vip07.tagged-cause-nosuchelementerror-plain compiler VIP-7: extractor arity mismatch must fail the match at runtime, but typed singleton checks/indexing produce compile errors; lane vip-match
+FuzzVIPDifferential compile:TS2493/vip07.tagged-cause-nosuchelementerror-plain compiler VIP-7: extractor arity mismatch must fail the match at runtime, but typed singleton checks/indexing produce compile errors; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-tagged-cause-nosuchelementerror-plain compiler VIP-7: minimized vip07.tagged-cause-nosuchelementerror-plain probe; lane vip-match
+FuzzVIPDifferential compile:TS2367/vip07.tagged-cause-timeouterror-plain compiler VIP-7: extractor arity mismatch must fail the match at runtime, but typed singleton checks/indexing produce compile errors; lane vip-match
+FuzzVIPDifferential compile:TS2493/vip07.tagged-cause-timeouterror-plain compiler VIP-7: extractor arity mismatch must fail the match at runtime, but typed singleton checks/indexing produce compile errors; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-tagged-cause-timeouterror-plain compiler VIP-7: minimized vip07.tagged-cause-timeouterror-plain probe; lane vip-match
+FuzzVIPDifferential compile:TS2367/vip07.tagged-cause-unknownerror-plain compiler VIP-7: extractor arity mismatch must fail the match at runtime, but typed singleton checks/indexing produce compile errors; lane vip-match
+FuzzVIPDifferential compile:TS2493/vip07.tagged-cause-unknownerror-plain compiler VIP-7: extractor arity mismatch must fail the match at runtime, but typed singleton checks/indexing produce compile errors; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-tagged-cause-unknownerror-plain compiler VIP-7: minimized vip07.tagged-cause-unknownerror-plain probe; lane vip-match
+FuzzVIPDifferential compile:TS2367/vip07.tagged-cron-cronparseerror-plain compiler VIP-7: extractor arity mismatch must fail the match at runtime, but typed singleton checks/indexing produce compile errors; lane vip-match
+FuzzVIPDifferential compile:TS2493/vip07.tagged-cron-cronparseerror-plain compiler VIP-7: extractor arity mismatch must fail the match at runtime, but typed singleton checks/indexing produce compile errors; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-tagged-cron-cronparseerror-plain compiler VIP-7: minimized vip07.tagged-cron-cronparseerror-plain probe; lane vip-match
+FuzzVIPDifferential compile:TS2367/vip07.tagged-platformerror-platformerror-plain compiler VIP-7: extractor arity mismatch must fail the match at runtime, but typed singleton checks/indexing produce compile errors; lane vip-match
+FuzzVIPDifferential compile:TS2493/vip07.tagged-platformerror-platformerror-plain compiler VIP-7: extractor arity mismatch must fail the match at runtime, but typed singleton checks/indexing produce compile errors; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-tagged-platformerror-platformerror-plain compiler VIP-7: minimized vip07.tagged-platformerror-platformerror-plain probe; lane vip-match
+FuzzVIPDifferential compile:TS2367/vip07.tagged-schema-schemaerror-plain compiler VIP-7: extractor arity mismatch must fail the match at runtime, but typed singleton checks/indexing produce compile errors; lane vip-match
+FuzzVIPDifferential compile:TS2493/vip07.tagged-schema-schemaerror-plain compiler VIP-7: extractor arity mismatch must fail the match at runtime, but typed singleton checks/indexing produce compile errors; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-tagged-schema-schemaerror-plain compiler VIP-7: minimized vip07.tagged-schema-schemaerror-plain probe; lane vip-match
+FuzzVIPDifferential compile:TS2367/vip07.tagged-semver-semvererror-plain compiler VIP-7: extractor arity mismatch must fail the match at runtime, but typed singleton checks/indexing produce compile errors; lane vip-match
+FuzzVIPDifferential compile:TS2493/vip07.tagged-semver-semvererror-plain compiler VIP-7: extractor arity mismatch must fail the match at runtime, but typed singleton checks/indexing produce compile errors; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-tagged-semver-semvererror-plain compiler VIP-7: minimized vip07.tagged-semver-semvererror-plain probe; lane vip-match
+FuzzVIPDifferential compile:TS2367/vip07.tagged-terminal-quiterror-plain compiler VIP-7: extractor arity mismatch must fail the match at runtime, but typed singleton checks/indexing produce compile errors; lane vip-match
+FuzzVIPDifferential compile:TS2493/vip07.tagged-terminal-quiterror-plain compiler VIP-7: extractor arity mismatch must fail the match at runtime, but typed singleton checks/indexing produce compile errors; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-tagged-terminal-quiterror-plain compiler VIP-7: minimized vip07.tagged-terminal-quiterror-plain probe; lane vip-match
+FuzzVIPDifferential compile:TS2367/vip07.tagged-textdiff-textdifferror-plain compiler VIP-7: extractor arity mismatch must fail the match at runtime, but typed singleton checks/indexing produce compile errors; lane vip-match
+FuzzVIPDifferential compile:TS2493/vip07.tagged-textdiff-textdifferror-plain compiler VIP-7: extractor arity mismatch must fail the match at runtime, but typed singleton checks/indexing produce compile errors; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-tagged-textdiff-textdifferror-plain compiler VIP-7: minimized vip07.tagged-textdiff-textdifferror-plain probe; lane vip-match
+FuzzVIPDifferential compile:EK2122/vip16.empty-data-plain compiler VIP-16: the permitted zero-variant data declaration still draws EK2122; lane vip-core2
+FuzzVIPDifferential corpus:data-vip16-empty-data-plain compiler VIP-16: minimized vip16.empty-data-plain probe; lane vip-core2
+FuzzVIPDifferential compile:TS2339/vip16.no-matcher-plain compiler VIP-16: Symbol.customMatcher is missing from SymbolConstructor, so the specified matcher protocol cannot be used in typed code; lane vip-match
+FuzzVIPDifferential corpus:data-vip16-no-matcher-plain compiler VIP-16: minimized vip16.no-matcher-plain probe; lane vip-match
+FuzzVIPDifferential exit:kind/vip29.schema-error-cross-copy-plain compiler VIP-29: the Schema import needed by a schema error is removed as unused, so its emitted module crashes with ReferenceError; lane vip-decls
+FuzzVIPDifferential corpus:data-vip29-schema-error-cross-copy-plain compiler VIP-29: minimized vip29.schema-error-cross-copy-plain probe; lane vip-decls
+FuzzVIPDifferential compile:EK4602/vip07.async-match compiler VIP-7: vip07.async-match disagrees with its cited rule (compile:EK4602); lane vip-match
+FuzzVIPDifferential compile:TS1005/vip07.async-match compiler VIP-7: vip07.async-match disagrees with its cited rule (compile:TS1005); lane vip-match
+FuzzVIPDifferential compile:TS2552/vip07.async-match compiler VIP-7: vip07.async-match disagrees with its cited rule (compile:TS2552); lane vip-match
+FuzzVIPDifferential compile:TS2554/vip07.async-match compiler VIP-7: vip07.async-match disagrees with its cited rule (compile:TS2554); lane vip-match
+FuzzVIPDifferential corpus:data-vip07-async-match compiler VIP-7: minimized vip07.async-match witness; lane vip-match
+FuzzVIPDifferential compile:EK4602/vip07.async-rejection-plain compiler VIP-7: vip07.async-rejection-plain disagrees with its cited rule (compile:EK4602); lane vip-match
+FuzzVIPDifferential compile:TS1005/vip07.async-rejection-plain compiler VIP-7: vip07.async-rejection-plain disagrees with its cited rule (compile:TS1005); lane vip-match
+FuzzVIPDifferential compile:TS2552/vip07.async-rejection-plain compiler VIP-7: vip07.async-rejection-plain disagrees with its cited rule (compile:TS2552); lane vip-match
+FuzzVIPDifferential compile:TS2554/vip07.async-rejection-plain compiler VIP-7: vip07.async-rejection-plain disagrees with its cited rule (compile:TS2554); lane vip-match
+FuzzVIPDifferential corpus:data-vip07-async-rejection-plain compiler VIP-7: minimized vip07.async-rejection-plain witness; lane vip-match
+FuzzVIPDifferential compile:EK4602/vip07.async-success-plain compiler VIP-7: vip07.async-success-plain disagrees with its cited rule (compile:EK4602); lane vip-match
+FuzzVIPDifferential compile:TS1005/vip07.async-success-plain compiler VIP-7: vip07.async-success-plain disagrees with its cited rule (compile:TS1005); lane vip-match
+FuzzVIPDifferential compile:TS2552/vip07.async-success-plain compiler VIP-7: vip07.async-success-plain disagrees with its cited rule (compile:TS2552); lane vip-match
+FuzzVIPDifferential compile:TS2554/vip07.async-success-plain compiler VIP-7: vip07.async-success-plain disagrees with its cited rule (compile:TS2554); lane vip-match
+FuzzVIPDifferential corpus:data-vip07-async-success-plain compiler VIP-7: minimized vip07.async-success-plain witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.builtin-brands-plain compiler VIP-7: built-in tests disagree with the Array.isArray/instanceof adapter required by decided detail 67a; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-builtin-brands-plain compiler VIP-7: minimized vip07.builtin-brands-plain witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.error-matcher-property-plain compiler VIP-7: vip07.error-matcher-property-plain disagrees with its cited rule (exit:value); lane vip-decls
+FuzzVIPDifferential corpus:data-vip07-error-matcher-property-plain compiler VIP-7: minimized vip07.error-matcher-property-plain witness; lane vip-decls
+FuzzVIPDifferential compile:TS2304/vip07.is-binding-scope-plain compiler VIP-7: vip07.is-binding-scope-plain disagrees with its cited rule (compile:TS2304); lane vip-match
+FuzzVIPDifferential corpus:data-vip07-is-binding-scope-plain compiler VIP-7: minimized vip07.is-binding-scope-plain witness; lane vip-match
+FuzzVIPDifferential compile:TS2304/vip07.is-binding-tdz-plain compiler VIP-7: vip07.is-binding-tdz-plain disagrees with its cited rule (compile:TS2304); lane vip-match
+FuzzVIPDifferential corpus:data-vip07-is-binding-tdz-plain compiler VIP-7: minimized vip07.is-binding-tdz-plain witness; lane vip-match
+FuzzVIPDifferential exit:exit-tag/vip07.no-match-message-plain compiler VIP-7: vip07.no-match-message-plain disagrees with its cited chapter pair (exit:exit-tag); lane vip-core2
+FuzzVIPDifferential corpus:data-vip07-no-match-message-plain compiler VIP-7: minimized vip07.no-match-message-plain witness; lane vip-core2
+FuzzVIPDifferential compile:EK4702/vip07.or-binding-override-plain compiler VIP-7: vip07.or-binding-override-plain disagrees with its cited chapter pair (compile:EK4702); lane vip-match
+FuzzVIPDifferential compile:TS2304/vip07.or-binding-override-plain compiler VIP-7: vip07.or-binding-override-plain disagrees with its cited chapter pair (compile:TS2304); lane vip-match
+FuzzVIPDifferential corpus:data-vip07-or-binding-override-plain compiler VIP-7: minimized vip07.or-binding-override-plain witness; lane vip-match
+FuzzVIPDifferential exit:exit-tag/vip07.predicate-receiver-plain compiler VIP-7: vip07.predicate-receiver-plain disagrees with its cited chapter pair (exit:exit-tag); lane vip-match
+FuzzVIPDifferential corpus:data-vip07-predicate-receiver-plain compiler VIP-7: minimized vip07.predicate-receiver-plain witness; lane vip-match
+FuzzVIPDifferential compile:TS2367/vip07.throw-arm compiler VIP-7: vip07.throw-arm disagrees with its cited chapter pair (compile:TS2367); lane vip-match
+FuzzVIPDifferential corpus:data-vip07-throw-arm compiler VIP-7: minimized vip07.throw-arm witness; lane vip-match
+FuzzVIPDifferential exit:value/vip15.schema-nested-plain compiler VIP-15: vip15.schema-nested-plain disagrees with its cited chapter pair (exit:value); lane ifix-data-r6
+FuzzVIPDifferential corpus:data-vip15-schema-nested-plain compiler VIP-15: minimized vip15.schema-nested-plain witness; lane ifix-data-r6
+FuzzVIPDifferential compile:EK2109/vip15.schema-optional-tuple-plain compiler VIP-15: vip15.schema-optional-tuple-plain disagrees with its cited chapter pair (compile:EK2109); lane impl-hunt-data
+FuzzVIPDifferential corpus:data-vip15-schema-optional-tuple-plain compiler VIP-15: minimized vip15.schema-optional-tuple-plain witness; lane impl-hunt-data
+FuzzVIPDifferential compile:EK2109/vip15.schema-rest-tuple-plain compiler VIP-15: vip15.schema-rest-tuple-plain disagrees with its cited chapter pair (compile:EK2109); lane impl-hunt-data
+FuzzVIPDifferential corpus:data-vip15-schema-rest-tuple-plain compiler VIP-15: minimized vip15.schema-rest-tuple-plain witness; lane impl-hunt-data
+FuzzVIPDifferential exit:exit-tag/vip15.tdz-plain compiler VIP-15: vip15.tdz-plain disagrees with its cited chapter pair (exit:exit-tag); lane vip-core2
+FuzzVIPDifferential corpus:data-vip15-tdz-plain compiler VIP-15: minimized vip15.tdz-plain witness; lane vip-core2
+FuzzVIPDifferential exit:kind/vip29.constructor-validation-defect compiler VIP-29: vip29.constructor-validation-defect disagrees with its cited chapter pair (exit:kind); lane vip-decls
+FuzzVIPDifferential corpus:data-vip29-constructor-validation-defect compiler VIP-29: minimized vip29.constructor-validation-defect witness; lane vip-decls
+FuzzVIPDifferential exit:value/vip29.schema-error-matcher-property-plain compiler VIP-29: vip29.schema-error-matcher-property-plain disagrees with its cited chapter pair (exit:value); lane vip-decls
+FuzzVIPDifferential corpus:data-vip29-schema-error-matcher-property-plain compiler VIP-29: minimized vip29.schema-error-matcher-property-plain witness; lane vip-decls
+FuzzVIPDifferential compile:TS2322/vip07.expression-optional-chain-plain compiler VIP-7: a getter-returned ordinary function is inferred as an Effect; lane vip-core2
+FuzzVIPDifferential corpus:data-vip07-expression-optional-chain-plain compiler VIP-7: minimized vip07.expression-optional-chain-plain witness; lane vip-core2
+FuzzVIPDifferential compile:TS2345/vip07.intrinsic-guard-order-plain compiler VIP-7: fixed intrinsic checks reject an unknown subject before testing its brand; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-intrinsic-guard-order-plain compiler VIP-7: minimized vip07.intrinsic-guard-order-plain witness; lane vip-match
+FuzzVIPDifferential compile:TS2304/vip07.intrinsic-rest-plain compiler VIP-7: extractor rest-pattern bindings are not declared; lane vip-match
+FuzzVIPDifferential compile:TS7005/vip07.intrinsic-rest-plain compiler VIP-7: the extractor rest binding receives an implicit any type; lane vip-match
+FuzzVIPDifferential compile:TS7034/vip07.intrinsic-rest-plain compiler VIP-7: the extractor rest binding cannot acquire its extracted-list type; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-intrinsic-rest-plain compiler VIP-7: minimized vip07.intrinsic-rest-plain witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.iterator-cache-reuse-plain compiler VIP-7: array patterns ignore the iterator and its cached elements across failed arms; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-iterator-cache-reuse-plain compiler VIP-7: minimized vip07.iterator-cache-reuse-plain witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.property-cache-reset-plain compiler VIP-7: property existence and value reads repeat across arms instead of using the match cache; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-property-cache-reset-plain compiler VIP-7: minimized vip07.property-cache-reset-plain witness; lane vip-match
+FuzzVIPDifferential compile:EK4704/vip07.regex-literal-plain compiler VIP-7: literal regular-expression patterns are rejected; lane vip-match
+FuzzVIPDifferential corpus:data-vip07-regex-literal-plain compiler VIP-7: minimized vip07.regex-literal-plain witness; lane vip-match

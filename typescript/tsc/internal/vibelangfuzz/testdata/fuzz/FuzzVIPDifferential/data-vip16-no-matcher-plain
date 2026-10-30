@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:vip16.no-matcher-plain\x00")

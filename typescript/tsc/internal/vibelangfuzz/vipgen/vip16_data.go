@@ -254,3 +254,24 @@ func dataStmt(g *Gen, s *Scope, d *DataDecl) Stmt {
 	}
 	return &TagEvent{X: n}
 }
+
+func init() {
+	// Decided detail 25: `data Empty {}` is allowed, an exact empty
+	// Data.TaggedEnum.
+	registerWitness(16, ChapterWitness{
+		Key:     "vip16.empty-data-plain",
+		Chapter: "006-data.md",
+		Quote:   "Zero variants are allowed",
+		Vibe:    "data Empty {}\nfunction witness() {\n  return [typeof Empty, typeof (Empty as any).$is, typeof (Empty as any).$match]\n}",
+		Effect:  "const Empty = Data.taggedEnum()\nfunction witness() {\n  return [typeof Empty, typeof Empty.$is, typeof Empty.$match]\n}",
+		Cite:    Citation{VIP: 16, Template: "const Empty = Data.taggedEnum()", Quote: "`data Name { Variant; Variant { fields } }` declares Effect's `Data.TaggedEnum` type and its `Data.taggedEnum` constructors under one name."},
+	})
+}
+
+func init() {
+	registerWitness(16, ChapterWitness{Key: "vip16.no-matcher-plain", Chapter: "006-data.md", Quote: "The variant constructors get no custom matchers.", Vibe: "data D {V};function witness(){return Object.hasOwn(D.V,Symbol.customMatcher)}", Effect: "const D=Data.taggedEnum();function witness(){return Object.hasOwn(D.V,Symbol.customMatcher)}", Modules: []string{}, Cite: Citation{VIP: 16, Template: "Data.taggedEnum()", Quote: "The variant constructors get no custom matchers."}})
+}
+
+func init() {
+	registerWitness(16, ChapterWitness{Key: "vip16.no-validation-plain", Chapter: "006-data.md", Quote: "This adds no runtime validation or wrapping to `Data.taggedEnum`.", Vibe: "data D { V { n:number } }; function witness(){return D.V({n:\"unchecked\"} as any).n}", Effect: "const D=Data.taggedEnum(); function witness(){return D.V({n:\"unchecked\"}).n}", Modules: []string{}, Requires: []string{}, Cite: Citation{VIP: 16, Template: "Data.taggedEnum()", Quote: "`data Name { Variant; Variant { fields } }` declares Effect's `Data.TaggedEnum` type and its `Data.taggedEnum` constructors under one name."}})
+}

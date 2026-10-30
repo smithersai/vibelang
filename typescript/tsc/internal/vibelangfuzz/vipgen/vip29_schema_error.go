@@ -292,3 +292,96 @@ func roundTrip(g *Gen, d *SchemaErrorDecl, err *NewSchemaError, corrupt *Entry) 
 		&Const{Name: decoded, Value: &Try{X: decode}},
 	}, decoded
 }
+
+// vip29Cite is the VIP-29 sentence the chapter 3 witnesses give meaning to.
+func vip29Cite(template string) Citation {
+	return Citation{VIP: 29, Template: template, Quote: "`schema error Name { fields }` combines VIP-13 (`error`) and VIP-15 (field mapping). Fields are written as TypeScript types and mapped to Schemas, and the error can be decoded from JSON, so it crosses workers and RPC."}
+}
+
+func init() {
+	for _, w := range []ChapterWitness{
+		{
+			// Chapter 3's own example, encoded to JSON and decoded back.
+			Key:     "vip29.schema-error-round-trip-plain",
+			Chapter: "003-failures.md",
+			Quote:   "Fields are written as TypeScript types and mapped to Schemas, so the error can be decoded from JSON and crosses workers and RPC.",
+			Vibe: `schema error NotFound { id: string }
+schema error Timeout
+function witness() {
+  const json = JSON.parse(JSON.stringify(Schema.encodeSync(NotFound)(new NotFound({ id: "a" }))))
+  const back = Schema.decodeUnknownSync(NotFound)(json)
+  const timeout = Schema.decodeUnknownSync(Timeout)(Schema.encodeSync(Timeout)(new Timeout()))
+  return [json, back instanceof NotFound, back._tag, back.id, timeout instanceof Timeout, Schema.is(NotFound)({ _tag: "NotFound", id: 1 })]
+}`,
+			Effect: `class NotFound extends Schema.TaggedError()("NotFound", { id: Schema.String }) {}
+class Timeout extends Schema.TaggedError()("Timeout", {}) {}
+function witness() {
+  const json = JSON.parse(JSON.stringify(Schema.encodeSync(NotFound)(new NotFound({ id: "a" }))))
+  const back = Schema.decodeUnknownSync(NotFound)(json)
+  const timeout = Schema.decodeUnknownSync(Timeout)(Schema.encodeSync(Timeout)(new Timeout()))
+  return [json, back instanceof NotFound, back._tag, back.id, timeout instanceof Timeout, Schema.is(NotFound)({ _tag: "NotFound", id: 1 })]
+}`,
+			Modules: []string{"Schema"},
+			Cite:    vip29Cite(`Schema.TaggedError()("NotFound", { id: Schema.String })`),
+		},
+		{
+			Key:     "vip29.schema-error-optional-plain",
+			Chapter: "003-failures.md",
+			Quote:   "Each field's type is mapped as in a `schema` declaration, optional properties included. Every field is readonly, as in `error`, so no field gets `Schema.mutableKey`.",
+			Vibe: `schema error Invalid { reason?: string }
+function witness() {
+  return [Schema.encodeSync(Invalid)(new Invalid({})), Schema.encodeSync(Invalid)(new Invalid({ reason: "r" })), Schema.is(Invalid)({ _tag: "Invalid", reason: 1 })]
+}`,
+			Effect: `class Invalid extends Schema.TaggedError()("Invalid", { reason: Schema.optional(Schema.String) }) {}
+function witness() {
+  return [Schema.encodeSync(Invalid)(new Invalid({})), Schema.encodeSync(Invalid)(new Invalid({ reason: "r" })), Schema.is(Invalid)({ _tag: "Invalid", reason: 1 })]
+}`,
+			Modules: []string{"Schema"},
+			Cite:    vip29Cite(`{ reason: Schema.optional(Schema.String) }`),
+		},
+		{
+			Key:     "vip29.schema-error-methods-plain",
+			Chapter: "003-failures.md",
+			Quote:   "Fields, methods and getters may be interleaved, as in a TypeScript class.",
+			Vibe: `schema error Bad { n: number; get doubled() { return this.n * 2 }; m: number; sum() { return this.n + this.m } }
+function witness() {
+  const e = Schema.decodeUnknownSync(Bad)({ _tag: "Bad", n: 3, m: 4 })
+  return [e.doubled, e.sum()]
+}`,
+			Effect: `class Bad extends Schema.TaggedError()("Bad", { n: Schema.Number, m: Schema.Number }) { get doubled() { return this.n * 2 }; sum() { return this.n + this.m } }
+function witness() {
+  const e = Schema.decodeUnknownSync(Bad)({ _tag: "Bad", n: 3, m: 4 })
+  return [e.doubled, e.sum()]
+}`,
+			Modules: []string{"Schema"},
+			Cite:    vip29Cite(`Schema.TaggedError()("Bad", { n: Schema.Number, m: Schema.Number })`),
+		},
+		{
+			Key:     "vip29.schema-error-cross-copy-plain",
+			Chapter: "004-match.md",
+			Quote:   "An `error` class ([Failures](003-failures.md#error-declarations)), including a `schema error`, gets a matcher that tests `_tag`.",
+			Vibe: `schema error Gone { id: string }
+function witness() {
+  const subjects: unknown[] = [new Gone({ id: "a" }), { _tag: "Gone" }, { _tag: "Other" }, undefined]
+  return subjects.map((s) => match (s) { when Gone(let e): e === s; default: "no"; })
+}`,
+			Effect: `class Gone extends Schema.TaggedError()("Gone", { id: Schema.String }) {}
+function witness() {
+  const subjects = [new Gone({ id: "a" }), { _tag: "Gone" }, { _tag: "Other" }, undefined]
+  return subjects.map((s) => { const r = s?._tag === "Gone" ? [s] : false; if (r !== false && r.length === 1) { const e = r[0]; return e === s } return "no" })
+}`,
+			Modules: []string{"Schema"},
+			Cite:    vip29Cite(`?._tag === "Gone" ? [s] : false`),
+		},
+	} {
+		registerWitness(29, w)
+	}
+}
+
+func init() {
+	registerWitness(29, ChapterWitness{Key: "vip29.constructor-validation-defect", Chapter: "003-failures.md", Quote: "invalid input can throw a plain `Error`, which becomes a defect inside `Effect.gen`.", Vibe: "schema error E { n:number }; effect function witness(){return new E({n:\"unchecked\"} as any)}", Effect: "class E extends Schema.TaggedError()(\"E\",{n:Schema.Number}){}; function witness(){return Effect.gen(function*(){return new E({n:\"unchecked\"})})}", Modules: []string{"Schema"}, Requires: []string{"vip01.effect-function", "vip05.try"}, Cite: Citation{VIP: 29, Template: "new E", Quote: "A validation failure at construction (effect 4.1.0 throws a plain `Error`) is a defect, as any implicit throw inside `Effect.gen` is."}})
+}
+
+func init() {
+	registerWitness(29, ChapterWitness{Key: "vip29.schema-error-matcher-property-plain", Chapter: "003-failures.md", Quote: "The matcher gives `[subject]` on a match", Vibe: "schema error E { n:number };function witness():unknown[]{try{if(!Schema.is(Schema.Number)(0))return [\"bad-number\"];const symbol=(Symbol as any).customMatcher;const f=Reflect.get(E,symbol);if(typeof f!==\"function\")return [\"missing\"];const x={_tag:\"E\"};const a=f(x,{matchType:\"extractor\"});const b=f(x,{matchType:\"boolean\"});return [Object.hasOwn(E,symbol),Array.isArray(a)&&a.length===1&&a[0]===x,f({_tag:\"Other\"},{matchType:\"extractor\"})===false,f(null,{matchType:\"extractor\"})===false,Array.isArray(b)&&b.length===1&&b[0]===x]}catch(e){return [\"threw\",(e as Error).name]}}", Effect: "class E extends Schema.TaggedError()(\"E\",{n:Schema.Number}) {static [Symbol.customMatcher](subject){return subject?._tag===\"E\"?[subject]:false}};function witness(){try{if(!Schema.is(Schema.Number)(0))return [\"bad-number\"];const symbol=Symbol.customMatcher;const f=Reflect.get(E,symbol);if(typeof f!==\"function\")return [\"missing\"];const x={_tag:\"E\"};const a=f(x,{matchType:\"extractor\"});const b=f(x,{matchType:\"boolean\"});return [Object.hasOwn(E,symbol),Array.isArray(a)&&a.length===1&&a[0]===x,f({_tag:\"Other\"},{matchType:\"extractor\"})===false,f(null,{matchType:\"extractor\"})===false,Array.isArray(b)&&b.length===1&&b[0]===x]}catch(e){return [\"threw\",e.name]}}", Modules: []string{"Schema"}, Requires: []string{}, Cite: vip29Cite("static [Symbol.customMatcher]")})
+}
