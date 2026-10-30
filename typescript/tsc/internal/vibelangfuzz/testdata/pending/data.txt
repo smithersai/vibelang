@@ -200,7 +200,6 @@ FuzzVIPDifferential corpus:data-vip15-schema-rest-tuple-plain compiler VIP-15: m
 FuzzVIPDifferential exit:exit-tag/vip15.tdz-plain compiler VIP-15: vip15.tdz-plain disagrees with its cited chapter pair (exit:exit-tag); lane vip-core2
 FuzzVIPDifferential corpus:data-vip15-tdz-plain compiler VIP-15: minimized vip15.tdz-plain witness; lane vip-core2
 FuzzVIPDifferential exit:kind/vip29.constructor-validation-defect compiler VIP-29: vip29.constructor-validation-defect disagrees with its cited chapter pair (exit:kind); lane vip-decls
-FuzzVIPDifferential corpus:data-vip29-constructor-validation-defect compiler VIP-29: minimized vip29.constructor-validation-defect witness; lane vip-decls
 FuzzVIPDifferential exit:value/vip29.schema-error-matcher-property-plain compiler VIP-29: vip29.schema-error-matcher-property-plain disagrees with its cited chapter pair (exit:value); lane vip-decls
 FuzzVIPDifferential corpus:data-vip29-schema-error-matcher-property-plain compiler VIP-29: minimized vip29.schema-error-matcher-property-plain witness; lane vip-decls
 FuzzVIPDifferential compile:TS2322/vip07.expression-optional-chain-plain compiler VIP-7: a getter-returned ordinary function is inferred as an Effect; lane vip-core2
