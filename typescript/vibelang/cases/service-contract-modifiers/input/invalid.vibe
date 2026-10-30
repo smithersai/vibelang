@@ -1,0 +1,12 @@
+service Public { public n: number }
+service Private { private n: number }
+service Protected { protected n: number }
+service Declared { declare n: number }
+service Overridden { override n: number }
+service AutoAccessor { accessor n: number }
+service Abstract { abstract n: number }
+service ReadonlyMethod { readonly run(): Effect<number> }
+service Definite { n!: number }
+service PrivateName { #n: number }
+service AsyncMethod { async run(): Effect<number> }
+service EffectMethod { effect run(): Effect<number> }

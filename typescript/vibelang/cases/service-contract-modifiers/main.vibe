@@ -1,0 +1,13 @@
+service Valid {
+  readonly n: number
+  optional?: string
+  run(): Effect<number>
+  typed: <T>(value: T) => T
+  effect(): Effect<number>
+  readonly: string
+}
+class Ordinary {
+  constructor(public n: number) {}
+  public read(): number { return this.n }
+}
+export const result = new Ordinary(3).read()

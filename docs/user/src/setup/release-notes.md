@@ -884,6 +884,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A project that resolved an `effect` other than the pinned 4.1.1 compiled, and its first Effect-typed use then failed with unrelated type errors; the compiler now reports one `EK3201` naming the resolved version, the VibeLang release and the pin.
 - `sh scripts/build-vibelang.sh` built only `packages/compiler/native/vibelang`, while the compiler case harness runs `typescript/built/local/tsc`, so cases run after a rebuild tested an earlier compiler and passed or failed for the wrong code. The script now installs the same binary at `typescript/built/local/tsc`, and the harness warns when that binary is older than a compiler source.
 
+- Bodyless service members accepted class-only syntax or raised unrelated TypeScript errors; they now report `EK0902`, with a quick fix that keeps comments and the written contract.
 - TypeScript consumers could not name an exported service's `S.Shape`; declarations now include that namespace alias and a shared private member type, preserving recursive, default and nested service shapes (VIP-9, VIP-27; detail 181).
 - A service copied into a `const` or object property bypassed its `new`, `extends` and `instanceof` diagnostics; typed aliases now retain the service's restrictions, as direct references do (VIP-9).
 

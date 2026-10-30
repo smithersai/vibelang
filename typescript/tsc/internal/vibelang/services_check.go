@@ -95,6 +95,11 @@ func checkDeclarationMembers(c *checker.Checker, class *ast.Node) {
 		if ast.HasStaticModifier(member) || member.Name() == nil {
 			continue
 		}
+		if serviceContractClassSyntax(member) {
+			report(c, member, serviceContractModifierDiagnostic)
+			cover(c, member)
+			continue
+		}
 		if member.Body() != nil || ast.IsPropertyDeclaration(member) && member.Initializer() != nil {
 			d := report(c, member.Name(), EK9207, scanner.GetTextOfNode(member.Name()), word)
 			note(d, "Implement it in a layer, or make it static to keep it on the class.")
@@ -185,6 +190,9 @@ func checkServiceDeclaration(c *checker.Checker, class *ast.Node) {
 				note(d, "Write the return type, such as {0} for a plain method or {1} for an Effect-returning method.", "number", "number!!")
 			}
 			continue
+		}
+		if serviceContractClassSyntax(member) {
+			continue // EK0902 already explains the invalid contract syntax.
 		}
 		if ast.IsMethodDeclaration(member) && serviceShape(class) == nil && !isEffectContract(c, member.Type()) && !isUnresolved(c, member.Type()) {
 			at := member.Type()
