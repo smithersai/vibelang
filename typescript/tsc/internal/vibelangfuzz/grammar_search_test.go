@@ -15,43 +15,43 @@ import (
 
 // A grammarLab is one copy of Appendix A, ready to search.
 type grammarLab struct {
-	a     *appendix
-	g     *cfg // Appendix A over the subset
-	ts    *cfg // the subset alone: TypeScript
-	prose *proseSet
+	a     *grammarAppendixData
+	g     *grammarCfg // Appendix A over the subset
+	ts    *grammarCfg // the subset alone: TypeScript
+	prose *grammarProseSet
 }
 
-func newGrammarLab(text, file string) (*grammarLab, error) {
-	a, err := readAppendix(text, file)
+func grammarNewGrammarLab(text, file string) (*grammarLab, error) {
+	a, err := grammarReadAppendix(text, file)
 	if err != nil {
 		return nil, err
 	}
-	g := buildGrammar(a)
-	ps := newProseSet(a, g)
+	g := grammarBuildGrammar(a)
+	ps := grammarNewProseSet(a, g)
 	ps.apply(g)
-	ts := buildGrammar(&appendix{file: "ts"})
+	ts := grammarBuildGrammar(&grammarAppendixData{file: "ts"})
 	return &grammarLab{a: a, g: g, ts: ts, prose: ps}, nil
 }
 
-// A reading is how one grammar parses one sentence.
-type reading struct {
-	p          *earley
+// A grammarReading is how one grammar parses one sentence.
+type grammarReading struct {
+	p          *grammarEarley
 	count      int64
-	trees      []*ptree
+	trees      []*grammarPtree
 	incomplete bool
 }
 
-func (l *grammarLab) read(g *cfg, toks []token, mode parseMode) reading {
-	var rules *proseSet
+func (l *grammarLab) read(g *grammarCfg, toks []grammarToken, mode grammarParseMode) grammarReading {
+	var rules *grammarProseSet
 	if mode.prose {
 		rules = l.prose
 	}
 	p := g.parse(toks, mode, rules)
 	c := p.count()
-	r := reading{p: p, count: c}
+	r := grammarReading{p: p, count: c}
 	if (mode.prose || mode.filters) && l.prose.hasFilters() && c > 0 {
 		limit := min(c, 64)
-		var kept []*ptree
+		var kept []*grammarPtree
 		for n := int64(0); n < limit; n++ {
 			if t := p.tree(n); l.prose.keep(p, t) {
 				kept = append(kept, t)
@@ -76,11 +76,11 @@ func (l *grammarLab) read(g *cfg, toks []token, mode parseMode) reading {
 
 // flat renders a derivation for comparing readings: every one-child node is
 // its child, and semicolons and empty statements are left out.
-func (r reading) flat(n int) string {
-	return flatRender(r.p, r.trees[n])
+func (r grammarReading) flat(n int) string {
+	return grammarFlatRender(r.p, r.trees[n])
 }
 
-func flatRender(p *earley, t *ptree) string {
+func grammarFlatRender(p *grammarEarley, t *grammarPtree) string {
 	if t.rule == -1 {
 		if tok := p.toks[t.i]; tok.text != ";" {
 			return tok.text
@@ -92,7 +92,7 @@ func flatRender(p *earley, t *ptree) string {
 	}
 	var parts []string
 	for _, k := range t.kids {
-		if s := flatRender(p, k); s != "" {
+		if s := grammarFlatRender(p, k); s != "" {
 			parts = append(parts, s)
 		}
 	}
@@ -116,8 +116,8 @@ type grammarFinding struct {
 	Trees       []string
 }
 
-// findingKinds says what each kind of finding means.
-var findingKinds = map[string]string{
+// grammarFindingKinds says what each kind of finding means.
+var grammarFindingKinds = map[string]string{
 	"ambiguous":       "two derivations under the productions and Appendix A's prose rules",
 	"prose-disagrees": "the productions alone and the productions with the prose rules each give one derivation, and they differ",
 	"prose-rejects":   "the productions give one derivation and the prose rules reject it",
@@ -145,16 +145,16 @@ func (f grammarFinding) String() string {
 		where = "in effect code"
 	}
 	var b strings.Builder
-	fmt.Fprintf(&b, "%s (%s): %s\n  sentence: %s\n  at %s, productions %s", f.Kind, where, findingKinds[f.Kind], strings.ReplaceAll(f.Sentence, "\n", " ⏎ "), f.At, strings.Join(f.Productions, ", "))
+	fmt.Fprintf(&b, "%s (%s): %s\n  sentence: %s\n  at %s, productions %s", f.Kind, where, grammarFindingKinds[f.Kind], strings.ReplaceAll(f.Sentence, "\n", " ⏎ "), f.At, strings.Join(f.Productions, ", "))
 	for i, t := range f.Trees {
 		fmt.Fprintf(&b, "\n  reading %d: %s", i+1, t)
 	}
 	return b.String()
 }
 
-// pair describes where two derivations part.
-func pair(kind string, effect bool, toks []token, pa *earley, a *ptree, pb *earley, b *ptree) grammarFinding {
-	f := grammarFinding{Kind: kind, Effect: effect, Sentence: spell(toks)}
+// grammarPair describes where two derivations part.
+func grammarPair(kind string, effect bool, toks []grammarToken, pa *grammarEarley, a *grammarPtree, pb *grammarEarley, b *grammarPtree) grammarFinding {
+	f := grammarFinding{Kind: kind, Effect: effect, Sentence: grammarSpell(toks)}
 	da, db := a, b
 	if pa.g == pb.g {
 		// The two parsers read the same tokens with the same grammar, so
@@ -162,8 +162,8 @@ func pair(kind string, effect bool, toks []token, pa *earley, a *ptree, pb *earl
 		f.At, da, db = pa.diverge(a, b, "Script")
 		// A split in a statement list or a TypeScript production is named
 		// by the Appendix A production on either side of it.
-		if tsNames()[f.At] || f.At == "Script" {
-			if n := differingVibe(pa, da, db); n != "" {
+		if grammarTsNames()[f.At] || f.At == "Script" {
+			if n := grammarDifferingVibe(pa, da, db); n != "" {
 				f.At = n
 			}
 		}
@@ -196,30 +196,30 @@ func pair(kind string, effect bool, toks []token, pa *earley, a *ptree, pb *earl
 }
 
 // check reads one sentence every way and returns what it finds.
-func (l *grammarLab) check(toks []token) []grammarFinding {
+func (l *grammarLab) check(toks []grammarToken) []grammarFinding {
 	var out []grammarFinding
-	tsr := l.read(l.ts, toks, parseMode{})
+	tsr := l.read(l.ts, toks, grammarParseMode{})
 	for _, effect := range []bool{true, false} {
-		full := l.read(l.g, toks, parseMode{effect: effect, prose: true})
+		full := l.read(l.g, toks, grammarParseMode{effect: effect, prose: true})
 		if full.incomplete {
-			out = append(out, grammarFinding{Kind: "budget", At: "Script", Parts: textKey(spell(toks)), Sentence: spell(toks), Effect: effect})
+			out = append(out, grammarFinding{Kind: "budget", At: "Script", Parts: grammarTextKey(grammarSpell(toks)), Sentence: grammarSpell(toks), Effect: effect})
 			continue
 		}
 		if full.count >= 2 {
-			out = append(out, pair("ambiguous", effect, toks, full.p, full.trees[0], full.p, full.trees[1]))
+			out = append(out, grammarPair("ambiguous", effect, toks, full.p, full.trees[0], full.p, full.trees[1]))
 			continue
 		}
-		prod := l.read(l.g, toks, parseMode{effect: effect})
+		prod := l.read(l.g, toks, grammarParseMode{effect: effect})
 		switch {
 		case prod.count == 1 && full.count == 1 && prod.flat(0) != full.flat(0):
-			out = append(out, pair("prose-disagrees", effect, toks, prod.p, prod.trees[0], full.p, full.trees[0]))
-		case prod.count == 1 && full.count == 0 && effect && l.read(l.g, toks, parseMode{effect: effect, filters: true}).count == 0:
+			out = append(out, grammarPair("prose-disagrees", effect, toks, prod.p, prod.trees[0], full.p, full.trees[0]))
+		case prod.count == 1 && full.count == 0 && effect && l.read(l.g, toks, grammarParseMode{effect: effect, filters: true}).count == 0:
 			// A rule that rejects a whole derivation, such as "a
 			// parenthesized group followed by another ( is the limit",
 			// rejected the productions' only reading. Keyword and
 			// line-break rules reject on purpose; lineCheck holds those to
 			// the productions.
-			f := pair("prose-rejects", effect, toks, prod.p, prod.trees[0], prod.p, prod.trees[0])
+			f := grammarPair("prose-rejects", effect, toks, prod.p, prod.trees[0], prod.p, prod.trees[0])
 			f.Trees = f.Trees[:1]
 			out = append(out, f)
 		}
@@ -228,11 +228,11 @@ func (l *grammarLab) check(toks []token) []grammarFinding {
 		if tsr.count == 1 && (!effect || !l.usesReserved(tsr)) && !l.saysSyntaxError(toks) {
 			switch {
 			case full.count == 0:
-				f := pair("ts-rejected", effect, toks, tsr.p, tsr.trees[0], tsr.p, tsr.trees[0])
+				f := grammarPair("ts-rejected", effect, toks, tsr.p, tsr.trees[0], tsr.p, tsr.trees[0])
 				f.Trees = f.Trees[:1]
 				// Named by the word the keyword table or a reserved-word
 				// rule governs nearest before where VibeLang's reading stops.
-				at := l.failsAtMode(toks, parseMode{effect: effect, prose: true})
+				at := l.failsAtMode(toks, grammarParseMode{effect: effect, prose: true})
 				f.At, f.Parts = "Script", "end"
 				if at < len(toks) {
 					f.Parts = toks[at].text
@@ -245,7 +245,7 @@ func (l *grammarLab) check(toks []token) []grammarFinding {
 				}
 				out = append(out, f)
 			case full.count == 1 && full.flat(0) != tsr.flat(0):
-				out = append(out, pair("ts-changed", effect, toks, tsr.p, tsr.trees[0], full.p, full.trees[0]))
+				out = append(out, grammarPair("ts-changed", effect, toks, tsr.p, tsr.trees[0], full.p, full.trees[0]))
 			}
 		}
 	}
@@ -254,20 +254,20 @@ func (l *grammarLab) check(toks []token) []grammarFinding {
 
 // usesReserved reports whether a TypeScript derivation uses a word effect
 // code reserves as an identifier.
-func (l *grammarLab) usesReserved(r reading) bool {
+func (l *grammarLab) usesReserved(r grammarReading) bool {
 	found := false
-	var walk func(t *ptree)
-	walk = func(t *ptree) {
+	var walk func(t *grammarPtree)
+	walk = func(t *grammarPtree) {
 		if t.rule < 0 {
 			return
 		}
 		rr := &r.p.g.rules[t.rule]
 		k := 0
 		for _, kid := range t.kids {
-			for k < len(rr.rhs) && rr.rhs[k].kind != symNT && rr.rhs[k].kind != symTok && rr.rhs[k].kind != symClass {
+			for k < len(rr.rhs) && rr.rhs[k].kind != grammarSymNT && rr.rhs[k].kind != grammarSymTok && rr.rhs[k].kind != grammarSymClass {
 				k++
 			}
-			if kid.rule == -1 && k < len(rr.rhs) && rr.rhs[k].kind == symClass && l.prose.reserved[rr.rhs[k].text][r.p.toks[kid.i].text] {
+			if kid.rule == -1 && k < len(rr.rhs) && rr.rhs[k].kind == grammarSymClass && l.prose.reserved[rr.rhs[k].text][r.p.toks[kid.i].text] {
 				found = true
 			}
 			walk(kid)
@@ -280,8 +280,8 @@ func (l *grammarLab) usesReserved(r reading) bool {
 
 // relex checks the sentence written tightly: when that lexes into other
 // tokens that read differently, the grammar depends on a token boundary.
-func (l *grammarLab) relex(toks []token) []grammarFinding {
-	again := lexSource(tight(toks))
+func (l *grammarLab) relex(toks []grammarToken) []grammarFinding {
+	again := grammarLexSource(grammarTight(toks))
 	if len(again) == len(toks) {
 		return nil
 	}
@@ -292,48 +292,48 @@ func (l *grammarLab) relex(toks []token) []grammarFinding {
 	}
 	var out []grammarFinding
 	for _, effect := range []bool{true, false} {
-		mode := parseMode{effect: effect, prose: true}
+		mode := grammarParseMode{effect: effect, prose: true}
 		a := l.read(l.g, toks, mode)
 		// Only a token boundary an Appendix A rule needs: TypeScript's own,
 		// such as "x! = y" against "x != y", is TypeScript's business.
-		if a.count != 1 || !tokenInVibeRule(a.p, a.trees[0], at) {
+		if a.count != 1 || !grammarTokenInVibeRule(a.p, a.trees[0], at) {
 			continue
 		}
 		b := l.read(l.g, again, mode)
 		if b.count == 1 && b.flat(0) == a.flat(0) {
 			continue
 		}
-		f := pair("relex", effect, toks, a.p, a.trees[0], a.p, a.trees[0])
-		f.Sentence = tight(toks)
-		f.Trees = []string{a.p.render(a.trees[0], false), fmt.Sprintf("relexed as %q: %d derivations", spell(again), b.count)}
+		f := grammarPair("relex", effect, toks, a.p, a.trees[0], a.p, a.trees[0])
+		f.Sentence = grammarTight(toks)
+		f.Trees = []string{a.p.render(a.trees[0], false), fmt.Sprintf("relexed as %q: %d derivations", grammarSpell(again), b.count)}
 		out = append(out, f)
 	}
 	return out
 }
 
-// tokenPools are the words the generator writes for each identifier class:
+// grammarTokenPools are the words the generator writes for each identifier class:
 // mostly plain names, and sometimes the contextual words, whose two
 // readings are where VibeLang's grammar meets TypeScript's.
-var tokenPools = map[string][]string{
+var grammarTokenPools = map[string][]string{
 	"plain":   {"a", "b", "x", "f", "T", "U"},
 	"context": {"effect", "fork", "join", "provide", "service", "error", "schema", "data", "concurrent", "restore", "uninterruptible", "as", "of", "key", "get", "type", "async", "readonly", "defaultValue", "in"},
 }
 
-// A generator writes random sentences from a grammar, preferring Appendix
+// A grammarGenerator writes random sentences from a grammar, preferring Appendix
 // A's productions.
-type generator struct {
-	g        *cfg
+type grammarGenerator struct {
+	g        *grammarCfg
 	rng      *rand.Rand
 	maxDepth int
 	maxLen   int
-	out      []token
+	out      []grammarToken
 	force    int8 // the next token's line: 0 free, 1 same line, 2 new line
 	pBreak   float64
 	reach    []bool
 }
 
-func newGenerator(g *cfg, seed int64) *generator {
-	gen := &generator{g: g, rng: rand.New(rand.NewSource(seed)), maxDepth: 9, maxLen: 40, pBreak: 0.12}
+func grammarNewGenerator(g *grammarCfg, seed int64) *grammarGenerator {
+	gen := &grammarGenerator{g: g, rng: rand.New(rand.NewSource(seed)), maxDepth: 9, maxLen: 40, pBreak: 0.12}
 	gen.reach = make([]bool, len(g.names))
 	for nt := range g.names {
 		gen.reach[nt] = g.vibe[nt]
@@ -345,7 +345,7 @@ func newGenerator(g *cfg, seed int64) *generator {
 				continue
 			}
 			for _, s := range r.rhs {
-				if s.kind == symNT && gen.reach[s.nt] {
+				if s.kind == grammarSymNT && gen.reach[s.nt] {
 					gen.reach[r.lhs] = true
 					changed = true
 					break
@@ -356,7 +356,7 @@ func newGenerator(g *cfg, seed int64) *generator {
 	return gen
 }
 
-func (gen *generator) sentence() []token {
+func (gen *grammarGenerator) sentence() []grammarToken {
 	for range 20 {
 		gen.out = gen.out[:0]
 		gen.force = 0
@@ -367,8 +367,8 @@ func (gen *generator) sentence() []token {
 	return nil
 }
 
-func (gen *generator) emit(text string, kind byte) bool {
-	t := token{text: text, kind: kind}
+func (gen *grammarGenerator) emit(text string, kind byte) bool {
+	t := grammarToken{text: text, kind: kind}
 	switch gen.force {
 	case 1:
 	case 2:
@@ -381,7 +381,7 @@ func (gen *generator) emit(text string, kind byte) bool {
 	return len(gen.out) <= gen.maxLen
 }
 
-func (gen *generator) nt(nt, depth int) bool {
+func (gen *grammarGenerator) nt(nt, depth int) bool {
 	rules := gen.g.byLHS[nt]
 	if len(rules) == 0 {
 		return false
@@ -403,7 +403,7 @@ func (gen *generator) nt(nt, depth int) bool {
 				w *= 6
 			}
 			for _, s := range gen.g.rules[r].rhs {
-				if s.kind == symNT && gen.reach[s.nt] {
+				if s.kind == grammarSymNT && gen.reach[s.nt] {
 					w *= 2
 					break
 				}
@@ -430,36 +430,36 @@ func (gen *generator) nt(nt, depth int) bool {
 	return true
 }
 
-func (gen *generator) ruleLen(r int) int {
+func (gen *grammarGenerator) ruleLen(r int) int {
 	n := 0
 	for _, s := range gen.g.rules[r].rhs {
 		switch s.kind {
-		case symNT:
+		case grammarSymNT:
 			n += gen.g.minLen[s.nt]
-		case symTok, symClass:
+		case grammarSymTok, grammarSymClass:
 			n++
 		}
 	}
 	return n
 }
 
-func (gen *generator) sym(s gsym, depth int) bool {
+func (gen *grammarGenerator) sym(s grammarGsym, depth int) bool {
 	switch s.kind {
-	case symNT:
+	case grammarSymNT:
 		return gen.nt(s.nt, depth)
-	case symTok:
+	case grammarSymTok:
 		kind := byte('p')
-		if isWordRune([]rune(s.text)[0]) {
+		if grammarIsWordRune([]rune(s.text)[0]) {
 			kind = 'w'
 		}
 		return gen.emit(s.text, kind)
-	case symClass:
+	case grammarSymClass:
 		return gen.class(s.text)
-	case symNoLT:
+	case grammarSymNoLT:
 		gen.force = 1
-	case symLT:
+	case grammarSymLT:
 		gen.force = 2
-	case symASI:
+	case grammarSymASI:
 		if gen.rng.Intn(2) == 0 {
 			return gen.emit(";", 'p')
 		}
@@ -468,15 +468,15 @@ func (gen *generator) sym(s gsym, depth int) bool {
 	return true
 }
 
-func (gen *generator) class(c string) bool {
+func (gen *grammarGenerator) class(c string) bool {
 	switch c {
 	case "IdentifierReference", "BindingIdentifier", "LabelIdentifier", "IdentifierName":
-		pool := tokenPools["plain"]
+		pool := grammarTokenPools["plain"]
 		if gen.rng.Intn(4) == 0 {
-			pool = tokenPools["context"]
+			pool = grammarTokenPools["context"]
 		}
 		w := pool[gen.rng.Intn(len(pool))]
-		if c != "IdentifierName" && reservedWords[w] {
+		if c != "IdentifierName" && grammarReservedWords[w] {
 			w = "a"
 		}
 		return gen.emit(w, 'w')
@@ -490,9 +490,9 @@ func (gen *generator) class(c string) bool {
 	return gen.emit(c, 'x')
 }
 
-// tokenInVibeRule reports whether token i is matched directly by an
+// grammarTokenInVibeRule reports whether token i is matched directly by an
 // Appendix A rule in the derivation.
-func tokenInVibeRule(p *earley, t *ptree, i int) bool {
+func grammarTokenInVibeRule(p *grammarEarley, t *grammarPtree, i int) bool {
 	if t.rule < 0 {
 		return false
 	}
@@ -500,7 +500,7 @@ func tokenInVibeRule(p *earley, t *ptree, i int) bool {
 		if k.rule == -1 && k.i == i && p.g.rules[t.rule].vibe {
 			return true
 		}
-		if k.i <= i && k.j > i && tokenInVibeRule(p, k, i) {
+		if k.i <= i && k.j > i && grammarTokenInVibeRule(p, k, i) {
 			return true
 		}
 	}
@@ -512,32 +512,32 @@ func tokenInVibeRule(p *earley, t *ptree, i int) bool {
 // ASI and [no LineTerminator here]; when the productions read both
 // sentences alike and the prose rules don't, a prose rule makes a line break
 // matter that the productions don't show.
-func (l *grammarLab) lineCheck(toks []token, k int) []grammarFinding {
+func (l *grammarLab) lineCheck(toks []grammarToken, k int) []grammarFinding {
 	other := slices.Clone(toks)
 	other[k].nl = !other[k].nl
 	var out []grammarFinding
 	for _, effect := range []bool{true, false} {
-		pa := l.read(l.g, toks, parseMode{effect: effect})
-		pb := l.read(l.g, other, parseMode{effect: effect})
+		pa := l.read(l.g, toks, grammarParseMode{effect: effect})
+		pb := l.read(l.g, other, grammarParseMode{effect: effect})
 		if pa.count != pb.count || pa.count == 1 && pa.flat(0) != pb.flat(0) || pa.count > 1 {
 			continue
 		}
-		fa := l.read(l.g, toks, parseMode{effect: effect, prose: true})
-		fb := l.read(l.g, other, parseMode{effect: effect, prose: true})
+		fa := l.read(l.g, toks, grammarParseMode{effect: effect, prose: true})
+		fb := l.read(l.g, other, grammarParseMode{effect: effect, prose: true})
 		if fa.count == fb.count && (fa.count != 1 || fa.flat(0) == fb.flat(0)) {
 			continue
 		}
 		if pa.count == 0 {
 			continue
 		}
-		f := grammarFinding{Kind: "prose-line", Effect: effect, Sentence: spell(toks)}
+		f := grammarFinding{Kind: "prose-line", Effect: effect, Sentence: grammarSpell(toks)}
 		prods := map[string]bool{}
 		pa.p.productions(pa.trees[0], prods)
 		f.At = l.lineSite(pa, k)
 		f.Productions = []string{f.At}
 		f.Trees = []string{
 			fmt.Sprintf("productions, either way: %s", pa.p.render(pa.trees[0], false)),
-			fmt.Sprintf("prose rules: %d derivation(s) for %q, %d for %q", fa.count, spell(toks), fb.count, spell(other)),
+			fmt.Sprintf("prose rules: %d derivation(s) for %q, %d for %q", fa.count, grammarSpell(toks), fb.count, grammarSpell(other)),
 		}
 		out = append(out, f)
 	}
@@ -546,10 +546,10 @@ func (l *grammarLab) lineCheck(toks []token, k int) []grammarFinding {
 
 // lineSite names the innermost Appendix A production that holds both the
 // tokens around the line break.
-func (l *grammarLab) lineSite(r reading, k int) string {
+func (l *grammarLab) lineSite(r grammarReading, k int) string {
 	site := "Script"
-	var walk func(t *ptree)
-	walk = func(t *ptree) {
+	var walk func(t *grammarPtree)
+	walk = func(t *grammarPtree) {
 		if t.rule < 0 {
 			return
 		}
@@ -566,10 +566,10 @@ func (l *grammarLab) lineSite(r reading, k int) string {
 	return site
 }
 
-// startsTryBlock reports whether a sentence has "try" then "{": the prose
+// grammarStartsTryBlock reports whether a sentence has "try" then "{": the prose
 // rule that makes a statement starting so TypeScript's try statement removes
 // the productions' TryExpression reading on purpose.
-func startsTryBlock(toks []token) bool {
+func grammarStartsTryBlock(toks []grammarToken) bool {
 	for i := 0; i+1 < len(toks); i++ {
 		if toks[i].text == "try" && toks[i+1].text == "{" {
 			return true
@@ -581,8 +581,8 @@ func startsTryBlock(toks []token) bool {
 // A grammarSearch is the sentences one search checks and what it found,
 // one witness per key.
 type grammarSearch struct {
-	sentences [][]token
-	lines     [][]token // sentences whose line breaks lineCheck toggles
+	sentences [][]grammarToken
+	lines     [][]grammarToken // sentences whose line breaks lineCheck toggles
 	found     map[string]grammarFinding
 	checked   int
 }
@@ -591,12 +591,12 @@ type grammarSearch struct {
 // generator's, sampled under -short so the target's seeds stay under its
 // budget. VIBELANG_GRAMMAR_FULL=1 checks every variant.
 func (l *grammarLab) search(short bool) *grammarSearch {
-	e := newEnumerator(l.g)
+	e := grammarNewEnumerator(l.g)
 	base := e.sentences(24)
 	// TypeScript's own phrases, so the contextual keywords meet every
 	// TypeScript position (xs.join(","), error as T, service as T).
-	base = append(base, newEnumerator(l.ts).tsSentences(16)...)
-	var all [][]token
+	base = append(base, grammarNewEnumerator(l.ts).tsSentences(16)...)
+	var all [][]grammarToken
 	all = append(all, base...)
 	full := os.Getenv("VIBELANG_GRAMMAR_FULL") == "1"
 	for i, toks := range base {
@@ -605,7 +605,7 @@ func (l *grammarLab) search(short bool) *grammarSearch {
 		}
 		vs := l.variants(toks)
 		if short && !full {
-			vs = sampleN(vs, 3, int64(i))
+			vs = grammarSampleN(vs, 3, int64(i))
 		}
 		all = append(all, vs...)
 	}
@@ -613,8 +613,8 @@ func (l *grammarLab) search(short bool) *grammarSearch {
 	if short && !full {
 		random = 300
 	}
-	for _, g := range []*cfg{l.g, l.ts} {
-		gen := newGenerator(g, 1)
+	for _, g := range []*grammarCfg{l.g, l.ts} {
+		gen := grammarNewGenerator(g, 1)
 		for range random {
 			if toks := gen.sentence(); toks != nil {
 				all = append(all, toks)
@@ -622,16 +622,16 @@ func (l *grammarLab) search(short bool) *grammarSearch {
 		}
 	}
 	if short && !full {
-		all = sampleN(all, 4000, 1)
+		all = grammarSampleN(all, 4000, 1)
 	}
-	var lines [][]token
+	var lines [][]grammarToken
 	for _, toks := range base {
 		if len(toks) <= 16 {
 			lines = append(lines, toks)
 		}
 	}
 	if short && !full {
-		lines = sampleN(lines, 600, 2)
+		lines = grammarSampleN(lines, 600, 2)
 	}
 	return &grammarSearch{sentences: all, lines: lines, found: map[string]grammarFinding{}}
 }
@@ -722,11 +722,11 @@ func (l *grammarLab) example(ex grammarExample) (grammarFinding, bool) {
 	if strings.ContainsAny(ex.Sentence, "…") || ex.Meaning == "" || strings.Contains(ex.Meaning, "outside effect code") || strings.HasPrefix(ex.Meaning, "error") {
 		return grammarFinding{}, false
 	}
-	toks := lexSource(ex.Sentence)
+	toks := grammarLexSource(ex.Sentence)
 	want := !strings.HasPrefix(ex.Meaning, "syntax error")
 	counts := [2]int64{}
 	for i, effect := range []bool{false, true} {
-		counts[i] = l.read(l.g, toks, parseMode{effect: effect, prose: true}).count
+		counts[i] = l.read(l.g, toks, grammarParseMode{effect: effect, prose: true}).count
 	}
 	got := counts[0] == 1 || counts[1] == 1
 	if !want {
@@ -741,14 +741,14 @@ func (l *grammarLab) example(ex grammarExample) (grammarFinding, bool) {
 		Kind:     "example",
 		Sentence: ex.Sentence,
 		At:       l.a.file,
-		Parts:    textKey(ex.Sentence),
+		Parts:    grammarTextKey(ex.Sentence),
 		Trees:    []string{fmt.Sprintf("Appendix A says %q; derivations outside effect code %d, in effect code %d", ex.Meaning, counts[0], counts[1])},
 	}, true
 }
 
 // firstVibe names the first Appendix A production a derivation uses, in
 // preorder.
-func (p *earley) firstVibe(t *ptree) string {
+func (p *grammarEarley) firstVibe(t *grammarPtree) string {
 	if t.rule < 0 {
 		return ""
 	}
@@ -760,7 +760,7 @@ func (p *earley) firstVibe(t *ptree) string {
 		// Appendix A may restate a TypeScript production with VibeLang's
 		// alternative added (ShortCircuitExpression); the VibeLang
 		// production is further in.
-		if !tsNames()[name] {
+		if !grammarTsNames()[name] {
 			return name
 		}
 	}
@@ -776,12 +776,12 @@ func (p *earley) firstVibe(t *ptree) string {
 // that starts as this one does is a syntax error, as "error as T;" is in a
 // specification that makes "error" before a name a declaration: the
 // specification breaks that TypeScript on purpose.
-func (l *grammarLab) saysSyntaxError(toks []token) bool {
+func (l *grammarLab) saysSyntaxError(toks []grammarToken) bool {
 	for _, ex := range l.a.examples {
 		if !strings.HasPrefix(ex.Meaning, "syntax error") {
 			continue
 		}
-		et := lexSource(ex.Sentence)
+		et := grammarLexSource(ex.Sentence)
 		if len(et) >= 2 && len(toks) >= 2 && et[0].text == toks[0].text && et[1].text == toks[1].text {
 			return true
 		}
@@ -809,7 +809,7 @@ func (l *grammarLab) staticFindings() []grammarFinding {
 			continue
 		}
 		for k, s := range rule.rhs {
-			if s.kind != symTok || isWordRune([]rune(s.text)[0]) {
+			if s.kind != grammarSymTok || grammarIsWordRune([]rune(s.text)[0]) {
 				continue
 			}
 			// The tokens that can follow s here: the next symbol's first
@@ -818,7 +818,7 @@ func (l *grammarLab) staticFindings() []grammarFinding {
 			next := map[string]bool{}
 			end := true
 			for _, t := range rule.rhs[k+1:] {
-				if t.kind == symNT {
+				if t.kind == grammarSymNT {
 					for key := range g.first[t.nt] {
 						next[key] = true
 					}
@@ -826,8 +826,8 @@ func (l *grammarLab) staticFindings() []grammarFinding {
 						end = false
 						break
 					}
-				} else if t.kind == symTok || t.kind == symClass {
-					next[termKey(t)] = true
+				} else if t.kind == grammarSymTok || t.kind == grammarSymClass {
+					next[grammarTermKey(t)] = true
 					end = false
 					break
 				}
@@ -839,10 +839,10 @@ func (l *grammarLab) staticFindings() []grammarFinding {
 			}
 			for key := range next {
 				b, ok := strings.CutPrefix(key, "t:")
-				if !ok || isWordRune([]rune(b)[0]) {
+				if !ok || grammarIsWordRune([]rune(b)[0]) {
 					continue
 				}
-				if toks := lexSource(s.text + b); len(toks) != 2 || toks[0].text != s.text {
+				if toks := grammarLexSource(s.text + b); len(toks) != 2 || toks[0].text != s.text {
 					name := g.base(rule.lhs)
 					if at := strings.IndexAny(name, "#:|"); at > 0 {
 						name = name[:at]
@@ -868,12 +868,12 @@ func (l *grammarLab) staticFindings() []grammarFinding {
 // variants returns a sentence with a line break toggled next to each token
 // an Appendix A rule matches, and with each identifier made each word the
 // keyword table or a reserved-word rule governs, in turn.
-func (l *grammarLab) variants(toks []token) [][]token {
-	r := l.read(l.g, toks, parseMode{effect: true})
+func (l *grammarLab) variants(toks []grammarToken) [][]grammarToken {
+	r := l.read(l.g, toks, grammarParseMode{effect: true})
 	near := map[int]bool{}
 	if r.count >= 1 {
-		var walk func(t *ptree)
-		walk = func(t *ptree) {
+		var walk func(t *grammarPtree)
+		walk = func(t *grammarPtree) {
 			if t.rule < 0 {
 				return
 			}
@@ -891,7 +891,7 @@ func (l *grammarLab) variants(toks []token) [][]token {
 			near[i] = true
 		}
 	}
-	var out [][]token
+	var out [][]grammarToken
 	for i := 1; i < len(toks); i++ {
 		if !near[i] {
 			continue
@@ -924,10 +924,10 @@ func (l *grammarLab) variants(toks []token) [][]token {
 	return out
 }
 
-// tsNames are the productions the TypeScript subset defines.
-var tsNames = sync.OnceValue(func() map[string]bool {
+// grammarTsNames are the productions the TypeScript subset defines.
+var grammarTsNames = sync.OnceValue(func() map[string]bool {
 	names := map[string]bool{}
-	for _, l := range strings.Split(tsSubset, "\n") {
+	for _, l := range strings.Split(grammarTsSubset, "\n") {
 		if m := production.FindStringSubmatch(l); m != nil {
 			names[m[1]] = true
 		}
@@ -935,7 +935,7 @@ var tsNames = sync.OnceValue(func() map[string]bool {
 	return names
 })
 
-type vibeBlock struct {
+type grammarVibeBlock struct {
 	line     int
 	text     string
 	rejected bool
@@ -943,9 +943,9 @@ type vibeBlock struct {
 
 var grammarVibeFence = regexp.MustCompile("^```vibe\\b")
 
-// vibeBlocks returns the ```vibe blocks of a document.
-func vibeBlocks(doc string) []vibeBlock {
-	var out []vibeBlock
+// grammarVibeBlocks returns the ```vibe blocks of a document.
+func grammarVibeBlocks(doc string) []grammarVibeBlock {
+	var out []grammarVibeBlock
 	lines := strings.Split(doc, "\n")
 	for i := 0; i < len(lines); i++ {
 		if !grammarVibeFence.MatchString(strings.TrimSpace(lines[i])) {
@@ -963,16 +963,16 @@ func vibeBlocks(doc string) []vibeBlock {
 				rejected = true
 			}
 		}
-		out = append(out, vibeBlock{line: start, text: body, rejected: rejected})
+		out = append(out, grammarVibeBlock{line: start, text: body, rejected: rejected})
 		i = j
 	}
 	return out
 }
 
-// pinnedProposal names the pinned TC39 proposal an example uses, if any:
+// grammarPinnedProposal names the pinned TC39 proposal an example uses, if any:
 // Appendix A pins pattern matching, do expressions and the Hack pipe by
 // commit, not by production, so the search can't parse them.
-func pinnedProposal(toks []token) string {
+func grammarPinnedProposal(toks []grammarToken) string {
 	for i, t := range toks {
 		next := ""
 		if i+1 < len(toks) {
@@ -990,20 +990,20 @@ func pinnedProposal(toks []token) string {
 	return ""
 }
 
-// textKey names a sentence or example by a hash of its text, which stays
+// grammarTextKey names a sentence or example by a hash of its text, which stays
 // put when the lines around it move.
-func textKey(s string) string {
+func grammarTextKey(s string) string {
 	h := fnv.New32a()
 	h.Write([]byte(strings.Join(strings.Fields(s), " ")))
 	return fmt.Sprintf("%08x", h.Sum32())
 }
 
 // failsAt returns the index of the first token no derivation reaches.
-func (l *grammarLab) failsAt(toks []token) int {
-	return l.failsAtMode(toks, parseMode{prose: true, names: true})
+func (l *grammarLab) failsAt(toks []grammarToken) int {
+	return l.failsAtMode(toks, grammarParseMode{prose: true, names: true})
 }
 
-func (l *grammarLab) failsAtMode(toks []token, mode parseMode) int {
+func (l *grammarLab) failsAtMode(toks []grammarToken, mode grammarParseMode) int {
 	p := l.g.parse(toks, mode, l.prose)
 	for i := 1; i <= len(toks); i++ {
 		if len(p.sets[i]) == 0 {
@@ -1013,18 +1013,18 @@ func (l *grammarLab) failsAtMode(toks []token, mode parseMode) int {
 	return len(toks)
 }
 
-// differingVibe names the innermost Appendix A production that one reading
+// grammarDifferingVibe names the innermost Appendix A production that one reading
 // has and the other lacks, with the same span: what a split in a statement
 // list is about.
-func differingVibe(p *earley, a, b *ptree) string {
+func grammarDifferingVibe(p *grammarEarley, a, b *grammarPtree) string {
 	type node struct {
 		name string
 		i, j int
 	}
-	collect := func(t *ptree) map[node]bool {
+	collect := func(t *grammarPtree) map[node]bool {
 		out := map[node]bool{}
-		var walk func(t *ptree)
-		walk = func(t *ptree) {
+		var walk func(t *grammarPtree)
+		walk = func(t *grammarPtree) {
 			if t.rule < 0 {
 				return
 			}
@@ -1033,7 +1033,7 @@ func differingVibe(p *earley, a, b *ptree) string {
 				if at := strings.IndexAny(name, "#:|"); at > 0 {
 					name = name[:at]
 				}
-				if !tsNames()[name] {
+				if !grammarTsNames()[name] {
 					out[node{name, t.i, t.j}] = true
 				}
 			}

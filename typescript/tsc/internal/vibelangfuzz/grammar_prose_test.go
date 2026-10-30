@@ -14,62 +14,62 @@ import (
 // where either reading is ambiguous. Each rule is recognized by its words;
 // a sentence or table cell it can't read is listed, never dropped.
 
-// A keywordRule is one row of the contextual keyword table.
-type keywordRule struct {
+// A grammarKeywordRule is one row of the contextual keyword table.
+type grammarKeywordRule struct {
 	Words      []string
 	Phrase     string
 	effectOnly bool
-	reference  bool       // "as an IdentifierReference": a keyword where a reference stands
-	alts       [][]kwElem // what may follow; nil for an alternative in words the reader can't check
+	reference  bool              // "as an IdentifierReference": a keyword where a reference stands
+	alts       [][]grammarKwElem // what may follow; nil for an alternative in words the reader can't check
 }
 
-// A kwElem matches tokens after the keyword: 't' one of toks, 'n' a name,
+// A grammarKwElem matches tokens after the keyword: 't' one of toks, 'n' a name,
 // 'g' a parenthesized group, 'e' a token that can start an expression, 'P'
 // the token before the keyword.
-type kwElem struct {
+type grammarKwElem struct {
 	kind byte
 	toks []string
 }
 
-// A proseRule is a sentence of Appendix A the search applies.
-type proseRule struct {
+// A grammarProseRule is a sentence of Appendix A the search applies.
+type grammarProseRule struct {
 	Kind, Text string
 }
 
 var (
-	tokenSet     = regexp.MustCompile("`([^`]+)` or `([^`]+)`")
-	classContext = regexp.MustCompile(`in a class or object literal[^;]*;?`)
-	backtick     = regexp.MustCompile("`([^`]*)`")
-	tableRow     = regexp.MustCompile(`^\|\s*(.+?)\s*\|\s*(.+?)\s*\|\s*.*\|\s*$`)
-	sentences    = regexp.MustCompile(`[^.]*(?:\.[^ \n][^.]*)*\.`)
+	grammarTokenSet     = regexp.MustCompile("`([^`]+)` or `([^`]+)`")
+	grammarClassContext = regexp.MustCompile(`in a class or object literal[^;]*;?`)
+	grammarBacktick     = regexp.MustCompile("`([^`]*)`")
+	grammarTableRow     = regexp.MustCompile(`^\|\s*(.+?)\s*\|\s*(.+?)\s*\|\s*.*\|\s*$`)
+	grammarSentences    = regexp.MustCompile(`[^.]*(?:\.[^ \n][^.]*)*\.`)
 )
 
-func readKeywordTable(text string) []keywordRule {
-	var out []keywordRule
+func grammarReadKeywordTable(text string) []grammarKeywordRule {
+	var out []grammarKeywordRule
 	in := false
 	for _, l := range strings.Split(text, "\n") {
 		if strings.HasPrefix(l, "### ") {
 			in = strings.Contains(l, "Contextual keywords")
 			continue
 		}
-		m := tableRow.FindStringSubmatch(l)
+		m := grammarTableRow.FindStringSubmatch(l)
 		if !in || m == nil || strings.HasPrefix(m[1], "---") || m[1] == "Word" {
 			continue
 		}
 		var words []string
-		for _, w := range backtick.FindAllStringSubmatch(m[1], -1) {
+		for _, w := range grammarBacktick.FindAllStringSubmatch(m[1], -1) {
 			words = append(words, w[1])
 		}
-		out = append(out, parseKeywordPhrase(words, m[2]))
+		out = append(out, grammarParseKeywordPhrase(words, m[2]))
 	}
 	return out
 }
 
-// kwFiller are words a keyword phrase uses that check nothing.
-var kwFiller = map[string]bool{"then": true, "and": true, "of": true, "an": true, "a": true, "arrow's": true, "arrow": true, "parameters": true, "such": true, "type": true, "as": true, "for": true, "methods": true, "head": true, "in": true, "class": true, "or": true, "object": true, "literal": true, "the": true, "declaration": true, "shorthand": true, "otherwise": true, "TypeScript's": true}
+// grammarKwFiller are words a keyword phrase uses that check nothing.
+var grammarKwFiller = map[string]bool{"then": true, "and": true, "of": true, "an": true, "a": true, "arrow's": true, "arrow": true, "parameters": true, "such": true, "type": true, "as": true, "for": true, "methods": true, "head": true, "in": true, "class": true, "or": true, "object": true, "literal": true, "the": true, "declaration": true, "shorthand": true, "otherwise": true, "TypeScript's": true}
 
-func parseKeywordPhrase(words []string, phrase string) keywordRule {
-	k := keywordRule{Words: words, Phrase: phrase}
+func grammarParseKeywordPhrase(words []string, phrase string) grammarKeywordRule {
+	k := grammarKeywordRule{Words: words, Phrase: phrase}
 	p := strings.TrimSpace(phrase)
 	if rest, ok := strings.CutPrefix(p, "in effect code, "); ok {
 		k.effectOnly = true
@@ -95,22 +95,22 @@ func parseKeywordPhrase(words []string, phrase string) keywordRule {
 	// "in a class or object literal, a method name then `(`, or `*`": the
 	// table's tokens alone can't tell a class body, so either reading
 	// stays there.
-	if loc := classContext.FindStringIndex(p); loc != nil {
+	if loc := grammarClassContext.FindStringIndex(p); loc != nil {
 		p = p[:loc[0]] + p[loc[1]:]
-		k.alts = append(k.alts, []kwElem{{kind: 'C'}})
+		k.alts = append(k.alts, []grammarKwElem{{kind: 'C'}})
 	}
 	// "`{` or `<`" is one position that takes either token.
-	p = tokenSet.ReplaceAllString(p, "`$1\x00$2`")
-	for _, part := range splitKeywordAlts(p) {
-		k.alts = append(k.alts, parseKeywordAlt(part)...)
+	p = grammarTokenSet.ReplaceAllString(p, "`$1\x00$2`")
+	for _, part := range grammarSplitKeywordAlts(p) {
+		k.alts = append(k.alts, grammarParseKeywordAlt(part)...)
 	}
 	return k
 }
 
-// splitKeywordAlts splits at ";", ", or", " or " and "," outside backticks
+// grammarSplitKeywordAlts splits at ";", ", or", " or " and "," outside backticks
 // and parentheses, except that a list after ":" or inside parentheses
 // replaces the words before it.
-func splitKeywordAlts(p string) []string {
+func grammarSplitKeywordAlts(p string) []string {
 	var parts []string
 	depth, tick, start := 0, false, 0
 	for i := 0; i < len(p); i++ {
@@ -147,7 +147,7 @@ func splitKeywordAlts(p string) []string {
 		// "an arrow's parameters (`(`, `<`, or an identifier then `=>`)"
 		// is the list in its parentheses.
 		if open := strings.Index(s, "("); open >= 0 && strings.HasSuffix(s, ")") && !strings.HasPrefix(s, "`") && strings.Contains(s[open:], "`") {
-			out = append(out, splitKeywordAlts(s[open+1:len(s)-1])...)
+			out = append(out, grammarSplitKeywordAlts(s[open+1:len(s)-1])...)
 			continue
 		}
 		out = append(out, s)
@@ -155,46 +155,46 @@ func splitKeywordAlts(p string) []string {
 	return out
 }
 
-// parseKeywordAlt reads one alternative; it returns a nil alternative when
+// grammarParseKeywordAlt reads one alternative; it returns a nil alternative when
 // the words check something the reader can't.
-func parseKeywordAlt(s string) [][]kwElem {
-	var seq []kwElem
+func grammarParseKeywordAlt(s string) [][]grammarKwElem {
+	var seq []grammarKwElem
 	rest := s
 	for rest = strings.TrimSpace(rest); rest != ""; rest = strings.TrimSpace(rest) {
 		switch {
 		case strings.HasPrefix(rest, "`(` … `)`"):
-			seq = append(seq, kwElem{kind: 'g'})
+			seq = append(seq, grammarKwElem{kind: 'g'})
 			rest = rest[len("`(` … `)`"):]
 		case strings.HasPrefix(rest, "`"):
 			end := strings.Index(rest[1:], "`")
 			if end < 0 {
-				return [][]kwElem{nil}
+				return [][]grammarKwElem{nil}
 			}
 			code := rest[1 : end+1]
 			rest = rest[end+2:]
 			if strings.Contains(code, "\x00") {
-				seq = append(seq, kwElem{kind: 't', toks: strings.Split(code, "\x00")})
+				seq = append(seq, grammarKwElem{kind: 't', toks: strings.Split(code, "\x00")})
 				continue
 			}
-			toks := lexSource(strings.Split(code, "…")[0])
+			toks := grammarLexSource(strings.Split(code, "…")[0])
 			for _, t := range toks {
-				seq = append(seq, kwElem{kind: 't', toks: []string{t.text}})
+				seq = append(seq, grammarKwElem{kind: 't', toks: []string{t.text}})
 			}
 		case strings.HasPrefix(rest, "a token that can start an expression"):
-			seq = append(seq, kwElem{kind: 'e'})
+			seq = append(seq, grammarKwElem{kind: 'e'})
 			rest = rest[len("a token that can start an expression"):]
 		case strings.HasPrefix(rest, "after `"):
 			end := strings.Index(rest[7:], "`")
-			seq = append(seq, kwElem{kind: 'P', toks: []string{rest[7 : 7+end]}})
+			seq = append(seq, grammarKwElem{kind: 'P', toks: []string{rest[7 : 7+end]}})
 			rest = rest[7+end+1:]
-		case hasWordPrefix(rest, "a method name"):
-			seq = append(seq, kwElem{kind: 'n'})
+		case grammarHasWordPrefix(rest, "a method name"):
+			seq = append(seq, grammarKwElem{kind: 'n'})
 			rest = rest[len("a method name"):]
-		case hasWordPrefix(rest, "a name"):
-			seq = append(seq, kwElem{kind: 'n'})
+		case grammarHasWordPrefix(rest, "a name"):
+			seq = append(seq, grammarKwElem{kind: 'n'})
 			rest = rest[len("a name"):]
-		case hasWordPrefix(rest, "an identifier"):
-			seq = append(seq, kwElem{kind: 'n'})
+		case grammarHasWordPrefix(rest, "an identifier"):
+			seq = append(seq, grammarKwElem{kind: 'n'})
 			rest = rest[len("an identifier"):]
 		case strings.ContainsAny(rest[:1], ",;:."):
 			rest = rest[1:]
@@ -204,9 +204,9 @@ func parseKeywordAlt(s string) [][]kwElem {
 				word = rest[:at]
 			}
 			if word == "identifier" {
-				seq = append(seq, kwElem{kind: 'n'})
-			} else if !kwFiller[strings.Trim(word, "():,")] && !strings.HasPrefix(word, "(") {
-				return [][]kwElem{nil}
+				seq = append(seq, grammarKwElem{kind: 'n'})
+			} else if !grammarKwFiller[strings.Trim(word, "():,")] && !strings.HasPrefix(word, "(") {
+				return [][]grammarKwElem{nil}
 			}
 			rest = rest[len(word):]
 		}
@@ -216,20 +216,20 @@ func parseKeywordAlt(s string) [][]kwElem {
 		// the list after its colon, or "in a class or object literal".
 		return nil
 	}
-	return [][]kwElem{seq}
+	return [][]grammarKwElem{seq}
 }
 
-func hasWordPrefix(s, w string) bool {
-	return strings.HasPrefix(s, w) && (len(s) == len(w) || !isWordRune(rune(s[len(w)])))
+func grammarHasWordPrefix(s, w string) bool {
+	return strings.HasPrefix(s, w) && (len(s) == len(w) || !grammarIsWordRune(rune(s[len(w)])))
 }
 
-// A proseSet is the prose rules of one appendix, ready to apply.
-type proseSet struct {
-	keywords               []keywordRule
+// A grammarProseSet is the prose rules of one appendix, ready to apply.
+type grammarProseSet struct {
+	keywords               []grammarKeywordRule
 	words                  map[string]bool
 	reserved               map[string]map[string]bool // identifier class → words effect code reserves
 	sameLine               int                        // 1: the token after a keyword is on its line; 2: every token the table names is
-	rules                  []proseRule
+	rules                  []grammarProseRule
 	tryOneLine, tryAnyLine bool
 	limitByParen           bool     // "a parenthesized group followed by another ( is the concurrency limit"
 	bodyless               []string // the tokens after which a bodyless declaration continues
@@ -237,8 +237,8 @@ type proseSet struct {
 	unread                 []string
 }
 
-func newProseSet(a *appendix, g *cfg) *proseSet {
-	s := &proseSet{keywords: a.keywords, words: map[string]bool{}, reserved: map[string]map[string]bool{}, rules: a.rules}
+func grammarNewProseSet(a *grammarAppendixData, g *grammarCfg) *grammarProseSet {
+	s := &grammarProseSet{keywords: a.keywords, words: map[string]bool{}, reserved: map[string]map[string]bool{}, rules: a.rules}
 	for _, k := range a.keywords {
 		for _, w := range k.Words {
 			s.words[w] = true
@@ -256,13 +256,13 @@ func newProseSet(a *appendix, g *cfg) *proseSet {
 	for _, r := range a.rules {
 		switch r.Kind {
 		case "reserved":
-			for _, w := range backtick.FindAllStringSubmatch(r.Text, 2) {
+			for _, w := range grammarBacktick.FindAllStringSubmatch(r.Text, 2) {
 				for _, class := range []string{"IdentifierReference", "BindingIdentifier", "LabelIdentifier"} {
 					s.reserve(class, w[1])
 				}
 			}
 		case "reference":
-			for _, w := range backtick.FindAllStringSubmatch(r.Text, 2) {
+			for _, w := range grammarBacktick.FindAllStringSubmatch(r.Text, 2) {
 				s.reserve("IdentifierReference", w[1])
 			}
 		case "same-line-first":
@@ -294,7 +294,7 @@ func newProseSet(a *appendix, g *cfg) *proseSet {
 	return s
 }
 
-func (s *proseSet) reserve(class, w string) {
+func (s *grammarProseSet) reserve(class, w string) {
 	if s.reserved[class] == nil {
 		s.reserved[class] = map[string]bool{}
 	}
@@ -302,7 +302,7 @@ func (s *proseSet) reserve(class, w string) {
 }
 
 // readProseRules finds the sentences of Appendix A the search applies.
-var proseRuleTexts = []struct {
+var grammarProseRuleTexts = []struct {
 	kind string
 	re   *regexp.Regexp
 }{
@@ -316,26 +316,26 @@ var proseRuleTexts = []struct {
 	{"bodyless", regexp.MustCompile("(The body of an `error` or `schema error` declaration is optional[^\n]*|no body: ends as a TypeScript statement)")},
 }
 
-func readProseRules(text string) []proseRule {
-	var out []proseRule
-	for _, p := range proseRuleTexts {
+func grammarReadProseRules(text string) []grammarProseRule {
+	var out []grammarProseRule
+	for _, p := range grammarProseRuleTexts {
 		if m := p.re.FindString(text); m != "" {
-			out = append(out, proseRule{Kind: p.kind, Text: m})
+			out = append(out, grammarProseRule{Kind: p.kind, Text: m})
 		}
 	}
 	return out
 }
 
 // mark gives each token its keyword state under the table.
-func (s *proseSet) mark(toks []token, effect bool, g *cfg) []kwState {
-	kw := make([]kwState, len(toks))
+func (s *grammarProseSet) mark(toks []grammarToken, effect bool, g *grammarCfg) []grammarKwState {
+	kw := make([]grammarKwState, len(toks))
 	for i, t := range toks {
 		if t.kind != 'w' || !s.words[t.text] {
 			continue
 		}
-		state := kwNo
+		state := grammarKwNo
 		for _, k := range s.keywords {
-			if !containsWord(k.Words, t.text) {
+			if !grammarContainsWord(k.Words, t.text) {
 				continue
 			}
 			if k.effectOnly && !effect {
@@ -346,13 +346,13 @@ func (s *proseSet) mark(toks []token, effect bool, g *cfg) []kwState {
 			}
 			for _, alt := range k.alts {
 				if alt == nil || alt[0].kind == 'C' {
-					if state == kwNo {
-						state = kwBoth
+					if state == grammarKwNo {
+						state = grammarKwBoth
 					}
 					continue
 				}
 				if s.matchAlt(alt, toks, i) {
-					state = kwYes
+					state = grammarKwYes
 				}
 			}
 		}
@@ -361,7 +361,7 @@ func (s *proseSet) mark(toks []token, effect bool, g *cfg) []kwState {
 	return kw
 }
 
-func containsWord(ws []string, w string) bool {
+func grammarContainsWord(ws []string, w string) bool {
 	for _, x := range ws {
 		if x == w {
 			return true
@@ -370,7 +370,7 @@ func containsWord(ws []string, w string) bool {
 	return false
 }
 
-func (s *proseSet) matchAlt(alt []kwElem, toks []token, i int) bool {
+func (s *grammarProseSet) matchAlt(alt []grammarKwElem, toks []grammarToken, i int) bool {
 	j := i + 1
 	for _, e := range alt {
 		if e.kind == 'P' {
@@ -385,17 +385,17 @@ func (s *proseSet) matchAlt(alt []kwElem, toks []token, i int) bool {
 		t := toks[j]
 		switch e.kind {
 		case 't':
-			if !containsWord(e.toks, t.text) || t.kind == 's' {
+			if !grammarContainsWord(e.toks, t.text) || t.kind == 's' {
 				return false
 			}
 			j++
 		case 'n':
-			if t.kind != 'w' || reservedWords[t.text] {
+			if t.kind != 'w' || grammarReservedWords[t.text] {
 				return false
 			}
 			j++
 		case 'e':
-			ok := s.exprStart["t:"+t.text] && t.kind == 'p' || t.kind == 'w' && !reservedWords[t.text] || t.kind == 's' || t.kind == 'n' || t.kind == 't' || reservedWords[t.text] && s.exprStart["t:"+t.text]
+			ok := s.exprStart["t:"+t.text] && t.kind == 'p' || t.kind == 'w' && !grammarReservedWords[t.text] || t.kind == 's' || t.kind == 'n' || t.kind == 't' || grammarReservedWords[t.text] && s.exprStart["t:"+t.text]
 			if !ok {
 				return false
 			}
@@ -426,7 +426,7 @@ func (s *proseSet) matchAlt(alt []kwElem, toks []token, i int) bool {
 
 // apply adds the prose rules that are restrictions on the productions'
 // symbols to the grammar, active only in prose mode.
-func (s *proseSet) apply(g *cfg) {
+func (s *grammarProseSet) apply(g *grammarCfg) {
 	defer g.analyze()
 	// "(providers and "{" on one line)": no line break between the
 	// production's own symbols.
@@ -435,14 +435,14 @@ func (s *proseSet) apply(g *cfg) {
 			if !strings.Contains(c, "on one line") {
 				continue
 			}
-			s.rules = append(s.rules, proseRule{Kind: "one-line", Text: name + ": (" + c + ")"})
+			s.rules = append(s.rules, grammarProseRule{Kind: "one-line", Text: name + ": (" + c + ")"})
 			for _, nt := range g.named(name) {
 				for _, r := range g.byLHS[nt] {
 					rule := &g.rules[r]
-					var rhs []gsym
+					var rhs []grammarGsym
 					for k, sym := range rule.rhs {
 						if k > 0 {
-							rhs = append(rhs, gsym{kind: symNoLT, prose: true})
+							rhs = append(rhs, grammarGsym{kind: grammarSymNoLT, prose: true})
 						}
 						rhs = append(rhs, sym)
 					}
@@ -459,7 +459,7 @@ func (s *proseSet) apply(g *cfg) {
 				for _, r := range g.byLHS[nt] {
 					rule := &g.rules[r]
 					last := rule.rhs[len(rule.rhs)-1]
-					if last.kind != symNT || !g.helper[last.nt] || !g.nullable[last.nt] {
+					if last.kind != grammarSymNT || !g.helper[last.nt] || !g.nullable[last.nt] {
 						continue
 					}
 					// The body becomes: the body, or nothing, then the end.
@@ -473,8 +473,8 @@ func (s *proseSet) apply(g *cfg) {
 					for _, t := range s.bodyless {
 						seqs = append(seqs, []string{t})
 					}
-					g.add(end, []gsym{{kind: symNotAhead, seqs: seqs, prose: true}, {kind: symEnd, eff: last.eff}}, rule.src, true)
-					rule.rhs[len(rule.rhs)-1] = gsym{kind: symNT, nt: end, text: g.names[end], eff: last.eff}
+					g.add(end, []grammarGsym{{kind: grammarSymNotAhead, seqs: seqs, prose: true}, {kind: grammarSymEnd, eff: last.eff}}, rule.src, true)
+					rule.rhs[len(rule.rhs)-1] = grammarGsym{kind: grammarSymNT, nt: end, text: g.names[end], eff: last.eff}
 				}
 			}
 		}
@@ -485,14 +485,14 @@ func (s *proseSet) apply(g *cfg) {
 	for _, es := range g.named("ExpressionStatement") {
 		for _, r := range g.byLHS[es] {
 			rule := &g.rules[r]
-			rule.rhs = append([]gsym{{kind: symNotAhead, seqs: [][]string{{"try", "{"}}, on: !s.tryAnyLine, prose: true}}, rule.rhs...)
+			rule.rhs = append([]grammarGsym{{kind: grammarSymNotAhead, seqs: [][]string{{"try", "{"}}, on: !s.tryAnyLine, prose: true}}, rule.rhs...)
 		}
 	}
 }
 
 // keep reports whether a derivation meets the prose rules the parser can't
 // check symbol by symbol.
-func (s *proseSet) keep(p *earley, t *ptree) bool {
+func (s *grammarProseSet) keep(p *grammarEarley, t *grammarPtree) bool {
 	if t.rule < 0 {
 		return true
 	}
@@ -516,12 +516,12 @@ func (s *proseSet) keep(p *earley, t *ptree) bool {
 }
 
 // hasFilters reports whether keep can reject a derivation.
-func (s *proseSet) hasFilters() bool {
+func (s *grammarProseSet) hasFilters() bool {
 	return s.limitByParen
 }
 
 // reservedAny reports whether effect code reserves a word in any position.
-func (s *proseSet) reservedAny(w string) bool {
+func (s *grammarProseSet) reservedAny(w string) bool {
 	for _, ws := range s.reserved {
 		if ws[w] {
 			return true

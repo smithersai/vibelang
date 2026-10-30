@@ -21,23 +21,23 @@ import (
 // production it stands for, or none, which leaves an opaque terminal that
 // only matches itself.
 
-type symKind uint8
+type grammarSymKind uint8
 
 const (
-	symNT       symKind = iota
-	symTok              // a literal token, such as "catch"
-	symClass            // a token class: an identifier, a literal or a prose terminal
-	symNoLT             // [no LineTerminator here]
-	symLT               // LineTerminator: a line break before the next token
-	symAhead            // before "}": the next tokens are one of seqs
-	symNotAhead         // [lookahead ∉ { … }]
-	symGuard            // [+Effect] or [~Effect]
-	symASI              // the semicolon automatic semicolon insertion supplies
-	symEnd              // a prose rule's statement end: ";" next, or where ASI would insert one
+	grammarSymNT       grammarSymKind = iota
+	grammarSymTok                     // a literal token, such as "catch"
+	grammarSymClass                   // a token class: an identifier, a literal or a prose terminal
+	grammarSymNoLT                    // [no LineTerminator here]
+	grammarSymLT                      // LineTerminator: a line break before the next token
+	grammarSymAhead                   // before "}": the next tokens are one of seqs
+	grammarSymNotAhead                // [lookahead ∉ { … }]
+	grammarSymGuard                   // [+Effect] or [~Effect]
+	grammarSymASI                     // the semicolon automatic semicolon insertion supplies
+	grammarSymEnd                     // a prose rule's statement end: ";" next, or where ASI would insert one
 )
 
-type gsym struct {
-	kind  symKind
+type grammarGsym struct {
+	kind  grammarSymKind
 	text  string // a nonterminal's name, a token or a class
 	nt    int
 	seqs  [][]string
@@ -46,28 +46,28 @@ type gsym struct {
 	eff   bool // the symbol stands in effect code ([+Effect])
 }
 
-type grule struct {
+type grammarGrule struct {
 	lhs  int
-	rhs  []gsym
+	rhs  []grammarGsym
 	src  string // "900-appendices.md:57" for a production, "ts" for the subset
 	vibe bool
 }
 
-// A proseTerm is an alternative Appendix A writes in words.
-type proseTerm struct {
+// A grammarProseTerm is an alternative Appendix A writes in words.
+type grammarProseTerm struct {
 	Name, Text, Meaning string
 	Line                int
 }
 
-type cfg struct {
+type grammarCfg struct {
 	names        []string
 	index        map[string]int
-	rules        []grule
+	rules        []grammarGrule
 	byLHS        [][]int
 	ordered      map[int]bool // "(the first that matches)"
 	vibe         map[int]bool // nonterminals Appendix A defines
 	helper       map[int]bool // nonterminals ?, * and groups introduce
-	prose        []proseTerm
+	prose        []grammarProseTerm
 	unresolved   []string
 	hooks        []string            // "Statement ← ForConcurrent", where the subset admits a production
 	comments     map[string][]string // each Appendix A production's comments
@@ -82,7 +82,7 @@ type cfg struct {
 	ruleNullable []bool
 }
 
-func (g *cfg) nt(name string) int {
+func (g *grammarCfg) nt(name string) int {
 	if i, ok := g.index[name]; ok {
 		return i
 	}
@@ -92,25 +92,25 @@ func (g *cfg) nt(name string) int {
 	return len(g.names) - 1
 }
 
-func (g *cfg) add(lhs int, rhs []gsym, src string, vibe bool) {
+func (g *grammarCfg) add(lhs int, rhs []grammarGsym, src string, vibe bool) {
 	g.byLHS[lhs] = append(g.byLHS[lhs], len(g.rules))
-	g.rules = append(g.rules, grule{lhs: lhs, rhs: rhs, src: src, vibe: vibe})
+	g.rules = append(g.rules, grammarGrule{lhs: lhs, rhs: rhs, src: src, vibe: vibe})
 }
 
-// tokenClasses are the terminals the notation names in words.
-var tokenClasses = map[string]bool{
+// grammarTokenClasses are the terminals the notation names in words.
+var grammarTokenClasses = map[string]bool{
 	"IdentifierReference": true, "BindingIdentifier": true, "LabelIdentifier": true,
 	"IdentifierName": true, "StringLiteral": true, "NumericLiteral": true, "TemplateLiteral": true,
 }
 
-// A ntok is a token of the notation.
-type ntok struct {
+// A grammarNtok is a token of the notation.
+type grammarNtok struct {
 	kind byte // 'q' "x", 'w' a word, 'b' [ … ], 'p' one of ( ) | ? * +, 'o' anything else
 	text string
 }
 
-func lexNotation(s string) []ntok {
-	var out []ntok
+func grammarLexNotation(s string) []grammarNtok {
+	var out []grammarNtok
 	rs := []rune(s)
 	for i := 0; i < len(rs); {
 		r := rs[i]
@@ -122,34 +122,34 @@ func lexNotation(s string) []ntok {
 			for j < len(rs) && rs[j] != '"' {
 				j++
 			}
-			out = append(out, ntok{'q', string(rs[i+1 : min(j, len(rs))])})
+			out = append(out, grammarNtok{'q', string(rs[i+1 : min(j, len(rs))])})
 			i = j + 1
 		case r == '[':
 			j := i + 1
 			for j < len(rs) && rs[j] != ']' {
 				j++
 			}
-			out = append(out, ntok{'b', string(rs[i+1 : min(j, len(rs))])})
+			out = append(out, grammarNtok{'b', string(rs[i+1 : min(j, len(rs))])})
 			i = j + 1
 		case strings.ContainsRune("()|?*+", r):
-			out = append(out, ntok{'p', string(r)})
+			out = append(out, grammarNtok{'p', string(r)})
 			i++
-		case isWordRune(r):
+		case grammarIsWordRune(r):
 			j := i
-			for j < len(rs) && (isWordRune(rs[j]) || rs[j] == '\'' || rs[j] == '’' || rs[j] == '-' || rs[j] == '…') {
+			for j < len(rs) && (grammarIsWordRune(rs[j]) || rs[j] == '\'' || rs[j] == '’' || rs[j] == '-' || rs[j] == '…') {
 				j++
 			}
-			out = append(out, ntok{'w', string(rs[i:j])})
+			out = append(out, grammarNtok{'w', string(rs[i:j])})
 			i = j
 		default:
-			out = append(out, ntok{'o', string(r)})
+			out = append(out, grammarNtok{'o', string(r)})
 			i++
 		}
 	}
 	return out
 }
 
-func isWordRune(r rune) bool {
+func grammarIsWordRune(r rune) bool {
 	return r == '_' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9'
 }
 
@@ -158,26 +158,26 @@ func isGrammarName(s string) bool {
 }
 
 // A notation element is a symbol, a name or a group, with its suffix.
-type nelem struct {
-	sym    *gsym
+type grammarNelem struct {
+	sym    *grammarGsym
 	name   string
-	alts   [][]nelem
+	alts   [][]grammarNelem
 	suffix byte
 }
 
-// A ndef is one production as written: its alternatives, their prose and
+// A grammarNdef is one production as written: its alternatives, their prose and
 // the comments after it.
-type ndef struct {
+type grammarNdef struct {
 	name     string
-	alts     [][]nelem
+	alts     [][]grammarNelem
 	prose    []string // alternatives written in words, by index of alts (nil elements)
 	comments []string
 	line     int
 	vibe     bool
 }
 
-// splitAlts splits a production body at its top-level "|".
-func splitAlts(body string) []string {
+// grammarSplitAlts splits a production body at its top-level "|".
+func grammarSplitAlts(body string) []string {
 	var alts []string
 	depth, start := 0, 0
 	inQuote, inBracket := false, false
@@ -204,9 +204,9 @@ func splitAlts(body string) []string {
 	return append(alts, string(rs[start:]))
 }
 
-// commentGroup reports whether the group toks[i:j] (inside parentheses) is
+// grammarCommentGroup reports whether the group toks[i:j] (inside parentheses) is
 // a comment: it holds anything but tokens, names and the notation.
-func commentGroup(toks []ntok) bool {
+func grammarCommentGroup(toks []grammarNtok) bool {
 	for _, t := range toks {
 		switch t.kind {
 		case 'w':
@@ -220,13 +220,13 @@ func commentGroup(toks []ntok) bool {
 	return false
 }
 
-// parseDef reads one production body. Parenthesized comments are kept as
+// grammarParseDef reads one production body. Parenthesized comments are kept as
 // comments; an alternative with words outside them is prose.
-func parseDef(name, body string, line int) ndef {
-	d := ndef{name: name, line: line}
-	for _, raw := range splitAlts(body) {
-		toks := lexNotation(raw)
-		var kept []ntok
+func grammarParseDef(name, body string, line int) grammarNdef {
+	d := grammarNdef{name: name, line: line}
+	for _, raw := range grammarSplitAlts(body) {
+		toks := grammarLexNotation(raw)
+		var kept []grammarNtok
 		for i := 0; i < len(toks); i++ {
 			if toks[i].kind == 'p' && toks[i].text == "(" {
 				depth, j := 0, i
@@ -243,8 +243,8 @@ func parseDef(name, body string, line int) ndef {
 				if j >= len(toks) {
 					j = len(toks) - 1
 				}
-				if commentGroup(toks[i+1 : j]) {
-					d.comments = append(d.comments, strings.TrimSpace(joinNotation(toks[i+1:j])))
+				if grammarCommentGroup(toks[i+1 : j]) {
+					d.comments = append(d.comments, strings.TrimSpace(grammarJoinNotation(toks[i+1:j])))
 					i = j
 					continue
 				}
@@ -262,14 +262,14 @@ func parseDef(name, body string, line int) ndef {
 			d.prose = append(d.prose, strings.TrimSpace(raw))
 			continue
 		}
-		elems, _ := parseElems(kept, 0)
+		elems, _ := grammarParseElems(kept, 0)
 		d.alts = append(d.alts, elems...)
 		d.prose = append(d.prose, make([]string, len(elems))...)
 	}
 	return d
 }
 
-func joinNotation(toks []ntok) string {
+func grammarJoinNotation(toks []grammarNtok) string {
 	var b strings.Builder
 	for i, t := range toks {
 		if i > 0 && t.kind != 'p' || i > 0 && t.text == "(" {
@@ -287,13 +287,13 @@ func joinNotation(toks []ntok) string {
 	return b.String()
 }
 
-// parseElems parses alternatives until a closing parenthesis; it returns
+// grammarParseElems parses alternatives until a closing parenthesis; it returns
 // the alternatives and the index after them.
-func parseElems(toks []ntok, i int) ([][]nelem, int) {
-	alts := [][]nelem{nil}
+func grammarParseElems(toks []grammarNtok, i int) ([][]grammarNelem, int) {
+	alts := [][]grammarNelem{nil}
 	for i < len(toks) {
 		t := toks[i]
-		var e nelem
+		var e grammarNelem
 		switch {
 		case t.kind == 'p' && t.text == ")":
 			return alts, i + 1
@@ -302,20 +302,20 @@ func parseElems(toks []ntok, i int) ([][]nelem, int) {
 			i++
 			continue
 		case t.kind == 'p' && t.text == "(":
-			var sub [][]nelem
-			sub, i = parseElems(toks, i+1)
-			e = nelem{alts: sub}
+			var sub [][]grammarNelem
+			sub, i = grammarParseElems(toks, i+1)
+			e = grammarNelem{alts: sub}
 		case t.kind == 'q':
-			e = nelem{sym: &gsym{kind: symTok, text: t.text}}
+			e = grammarNelem{sym: &grammarGsym{kind: grammarSymTok, text: t.text}}
 			i++
 		case t.kind == 'b':
-			e = nelem{sym: bracketSym(t.text)}
+			e = grammarNelem{sym: grammarBracketSym(t.text)}
 			i++
 		case t.kind == 'w' && t.text == "before" && i+1 < len(toks) && toks[i+1].kind == 'q':
-			e = nelem{sym: &gsym{kind: symAhead, seqs: [][]string{{toks[i+1].text}}}}
+			e = grammarNelem{sym: &grammarGsym{kind: grammarSymAhead, seqs: [][]string{{toks[i+1].text}}}}
 			i += 2
 		case t.kind == 'w':
-			e = nelem{name: t.text}
+			e = grammarNelem{name: t.text}
 			i++
 		default:
 			i++
@@ -330,20 +330,20 @@ func parseElems(toks []ntok, i int) ([][]nelem, int) {
 	return alts, i
 }
 
-var notationQuoted = regexp.MustCompile(`"([^"]*)"`)
+var grammarNotationQuoted = regexp.MustCompile(`"([^"]*)"`)
 
-// bracketSym reads an ECMAScript restriction or a grammar parameter.
-func bracketSym(text string) *gsym {
+// grammarBracketSym reads an ECMAScript restriction or a grammar parameter.
+func grammarBracketSym(text string) *grammarGsym {
 	t := strings.TrimSpace(text)
 	switch {
 	case t == "no LineTerminator here":
-		return &gsym{kind: symNoLT}
+		return &grammarGsym{kind: grammarSymNoLT}
 	case t == "+Effect" || t == "~Effect":
-		return &gsym{kind: symGuard, on: t == "+Effect"}
+		return &grammarGsym{kind: grammarSymGuard, on: t == "+Effect"}
 	case strings.HasPrefix(t, "lookahead ∉") || strings.HasPrefix(t, "lookahead ≠") || strings.HasPrefix(t, "lookahead ∈") || strings.HasPrefix(t, "lookahead ="):
-		kind := symNotAhead
+		kind := grammarSymNotAhead
 		if strings.Contains(t, "∈") || strings.Contains(t, "=") {
-			kind = symAhead
+			kind = grammarSymAhead
 		}
 		set := t[strings.IndexAny(t, "∉≠∈=")+len("∉"):]
 		if strings.ContainsAny(t, "=") {
@@ -354,19 +354,19 @@ func bracketSym(text string) *gsym {
 		var seqs [][]string
 		for _, part := range strings.Split(set, ",") {
 			var seq []string
-			for _, m := range notationQuoted.FindAllStringSubmatch(part, -1) {
+			for _, m := range grammarNotationQuoted.FindAllStringSubmatch(part, -1) {
 				seq = append(seq, m[1])
 			}
 			if len(seq) > 0 {
 				seqs = append(seqs, seq)
 			}
 		}
-		return &gsym{kind: kind, seqs: seqs}
+		return &grammarGsym{kind: kind, seqs: seqs}
 	}
-	return &gsym{kind: symClass, text: "‹[" + t + "]›"}
+	return &grammarGsym{kind: grammarSymClass, text: "‹[" + t + "]›"}
 }
 
-// tsSubset is the TypeScript the search embeds: ECMAScript 2025's
+// grammarTsSubset is the TypeScript the search embeds: ECMAScript 2025's
 // statements and expressions and TypeScript 5.9's types, cut to what the
 // VibeLang productions and the specification's examples touch (no regular
 // expressions, templates as one token, no JSX, no decorators, no enums or
@@ -379,7 +379,7 @@ func bracketSym(text string) *gsym {
 // has two readings: a type after "as" takes a following "|" or "&", and a
 // type name takes a following "<" as its type arguments, and "(" … ")"
 // followed by "=>" is a function type. Script is the start symbol.
-const tsSubset = `
+const grammarTsSubset = `
 Script = Statement*
 Statement = Block | VariableStatement | EmptyStatement | ExpressionStatement | IfStatement | WhileStatement | ForOfStatement | SwitchStatement | ReturnStatement | ThrowStatement | TryStatement | LabelledStatement | BreakStatement | ContinueStatement | Declaration
 SwitchStatement = "switch" "(" Expression ")" "{" CaseClause* "}"
@@ -509,14 +509,14 @@ AsyncGeneratorExpression = "async" [no LineTerminator here] GeneratorExpression
 Name = BindingIdentifier
 `
 
-// subsetHooks says where the subset admits each Appendix A production that
+// grammarSubsetHooks says where the subset admits each Appendix A production that
 // no other production names, by the alternatives ECMAScript gives the
 // construct it mirrors: an effect function stands where an async function
 // does, try where await does, a VibeLang statement where a statement does,
 // and A!E!R where a type does. A production comment such as "(a
 // PrimaryExpression)" or "(where ECMAScript has AwaitExpression)" overrides
 // the table.
-var subsetHooks = []struct{ at, name string }{
+var grammarSubsetHooks = []struct{ at, name string }{
 	{"PrimaryExpression", "EffectFunction"},
 	{"PrimaryExpression", "Producer"},
 	{"PrimaryExpression", "EffectBlock"},
@@ -552,17 +552,17 @@ var subsetHooks = []struct{ at, name string }{
 	{"Statement", "DataDeclaration"},
 }
 
-// placementComments are the production comments that say where a
+// grammarPlacementComments are the production comments that say where a
 // production stands.
-var placementComments = map[string]string{
+var grammarPlacementComments = map[string]string{
 	"a PrimaryExpression":                  "PrimaryExpression",
 	"where ECMAScript has AwaitExpression": "UnaryExpression",
 }
 
-// proseMeanings gives the subset production each prose alternative stands
+// grammarProseMeanings gives the subset production each prose alternative stands
 // for, by the words it starts with. A prose alternative no entry matches
 // stays an opaque terminal, listed by the target.
-var proseMeanings = []struct {
+var grammarProseMeanings = []struct {
 	re      *regexp.Regexp
 	meaning string
 	note    string
@@ -577,19 +577,19 @@ var proseMeanings = []struct {
 	{regexp.MustCompile(`^Undecided \(pending VIP\): UnaryExpression`), "UnaryExpression", "undecided; the search takes the first option, UnaryExpression"},
 }
 
-// undefinedMeanings stands in for a name a production uses and none
+// grammarUndefinedMeanings stands in for a name a production uses and none
 // defines, where Appendix A says what it may be: "Undecided (pending VIP):
 // ForkOperand, ... (a UnaryExpression or an AssignmentExpression)" gives the
 // first option. The name is still reported as undefined.
-var undefinedMeanings = map[string]string{"ForkOperand": "UnaryExpression"}
+var grammarUndefinedMeanings = map[string]string{"ForkOperand": "UnaryExpression"}
 
-// An appendix is Appendix A read from one copy of the specification.
-type appendix struct {
+// An grammarAppendixData is Appendix A read from one copy of the specification.
+type grammarAppendixData struct {
 	file     string
-	defs     []ndef
+	defs     []grammarNdef
 	examples []grammarExample
-	keywords []keywordRule
-	rules    []proseRule
+	keywords []grammarKeywordRule
+	rules    []grammarProseRule
 	text     string // Appendix A's prose
 }
 
@@ -602,11 +602,11 @@ type grammarExample struct {
 	joins    bool // the description ends with a comma: the next line goes on with this one
 }
 
-var exampleSplit = regexp.MustCompile(`\s{2,}`)
+var grammarExampleSplit = regexp.MustCompile(`\s{2,}`)
 
-// readAppendix reads Appendix A's productions and examples.
-func readAppendix(text, file string) (*appendix, error) {
-	a := &appendix{file: file}
+// grammarReadAppendix reads Appendix A's productions and examples.
+func grammarReadAppendix(text, file string) (*grammarAppendixData, error) {
+	a := &grammarAppendixData{file: file}
 	lines := strings.Split(text, "\n")
 	from, to := -1, len(lines)
 	prodAt := -1
@@ -645,7 +645,7 @@ func readAppendix(text, file string) (*appendix, error) {
 	var cur *pending
 	flush := func() {
 		if cur != nil {
-			d := parseDef(cur.name, cur.body, cur.line)
+			d := grammarParseDef(cur.name, cur.body, cur.line)
 			d.vibe = true
 			a.defs = append(a.defs, d)
 			cur = nil
@@ -668,7 +668,7 @@ func readAppendix(text, file string) (*appendix, error) {
 		if strings.TrimSpace(l) == "" {
 			continue
 		}
-		parts := exampleSplit.Split(strings.TrimSpace(l), -1)
+		parts := grammarExampleSplit.Split(strings.TrimSpace(l), -1)
 		ex := grammarExample{Line: n, Sentence: parts[0]}
 		if len(parts) > 1 {
 			ex.Meaning = parts[len(parts)-1]
@@ -678,7 +678,7 @@ func readAppendix(text, file string) (*appendix, error) {
 			prev = &a.examples[len(a.examples)-1]
 		}
 		switch {
-		case prev != nil && exampleSplit.MatchString(l[:min(len(l), 2)]):
+		case prev != nil && grammarExampleSplit.MatchString(l[:min(len(l), 2)]):
 			// An indented line continues the description above it.
 			prev.Meaning += " " + strings.TrimSpace(l)
 			prev.Line = n
@@ -703,19 +703,19 @@ func readAppendix(text, file string) (*appendix, error) {
 		}
 	}
 	flush()
-	a.keywords = readKeywordTable(a.text)
-	a.rules = readProseRules(a.text)
+	a.keywords = grammarReadKeywordTable(a.text)
+	a.rules = grammarReadProseRules(a.text)
 	return a, nil
 }
 
-// buildGrammar resolves an appendix against the subset into one grammar.
-func buildGrammar(a *appendix) *cfg {
-	g := &cfg{index: map[string]int{}, ordered: map[int]bool{}, vibe: map[int]bool{}, helper: map[int]bool{}, effectWords: map[string]bool{}, comments: map[string][]string{}}
-	var defs []ndef
-	tsDefs := map[string]ndef{}
-	for _, l := range strings.Split(tsSubset, "\n") {
+// grammarBuildGrammar resolves an appendix against the subset into one grammar.
+func grammarBuildGrammar(a *grammarAppendixData) *grammarCfg {
+	g := &grammarCfg{index: map[string]int{}, ordered: map[int]bool{}, vibe: map[int]bool{}, helper: map[int]bool{}, effectWords: map[string]bool{}, comments: map[string][]string{}}
+	var defs []grammarNdef
+	tsDefs := map[string]grammarNdef{}
+	for _, l := range strings.Split(grammarTsSubset, "\n") {
 		if m := production.FindStringSubmatch(l); m != nil {
-			d := parseDef(m[1], strings.TrimSpace(l[strings.Index(l, "=")+1:]), 0)
+			d := grammarParseDef(m[1], strings.TrimSpace(l[strings.Index(l, "=")+1:]), 0)
 			tsDefs[d.name] = d
 		}
 	}
@@ -723,7 +723,7 @@ func buildGrammar(a *appendix) *cfg {
 	for _, d := range a.defs {
 		defined[d.name] = true
 	}
-	for _, l := range strings.Split(tsSubset, "\n") {
+	for _, l := range strings.Split(grammarTsSubset, "\n") {
 		if m := production.FindStringSubmatch(l); m != nil && !defined[m[1]] {
 			defs = append(defs, tsDefs[m[1]])
 		}
@@ -738,19 +738,19 @@ func buildGrammar(a *appendix) *cfg {
 	named := map[string]bool{}
 	for _, d := range a.defs {
 		for _, alt := range d.alts {
-			walkNames(alt, func(n string) { named[n] = true })
+			grammarWalkNames(alt, func(n string) { named[n] = true })
 		}
 	}
 	placed := map[string]string{}
 	for _, d := range a.defs {
 		for _, c := range d.comments {
-			if at, ok := placementComments[c]; ok {
+			if at, ok := grammarPlacementComments[c]; ok {
 				placed[d.name] = at
 			}
 		}
 	}
-	extra := map[string][][]nelem{}
-	for _, h := range subsetHooks {
+	extra := map[string][][]grammarNelem{}
+	for _, h := range grammarSubsetHooks {
 		if !defined[h.name] {
 			continue
 		}
@@ -761,17 +761,17 @@ func buildGrammar(a *appendix) *cfg {
 		if defined[at] {
 			continue
 		}
-		if p, ok := placed[h.name]; ok && p != h.at && slices.ContainsFunc(subsetHooks, func(o struct{ at, name string }) bool { return o.name == h.name && o.at == p }) {
+		if p, ok := placed[h.name]; ok && p != h.at && slices.ContainsFunc(grammarSubsetHooks, func(o struct{ at, name string }) bool { return o.name == h.name && o.at == p }) {
 			continue
 		}
-		extra[at] = append(extra[at], []nelem{{name: h.name}})
+		extra[at] = append(extra[at], []grammarNelem{{name: h.name}})
 		g.hooks = append(g.hooks, at+" ← "+h.name)
 	}
 	for name, at := range placed {
-		if slices.ContainsFunc(subsetHooks, func(o struct{ at, name string }) bool { return o.name == name && o.at == at }) || defined[at] {
+		if slices.ContainsFunc(grammarSubsetHooks, func(o struct{ at, name string }) bool { return o.name == name && o.at == at }) || defined[at] {
 			continue
 		}
-		extra[at] = append(extra[at], []nelem{{name: name}})
+		extra[at] = append(extra[at], []grammarNelem{{name: name}})
 		g.hooks = append(g.hooks, at+" ← "+name)
 	}
 	g.start = g.nt("Script")
@@ -796,17 +796,17 @@ func buildGrammar(a *appendix) *cfg {
 			if i < len(d.prose) && d.prose[i] != "" {
 				meaning := ""
 				note := "uninterpreted: an opaque terminal"
-				for _, pm := range proseMeanings {
+				for _, pm := range grammarProseMeanings {
 					if pm.re.MatchString(d.prose[i]) {
 						meaning, note = pm.meaning, pm.note
 						break
 					}
 				}
-				g.prose = append(g.prose, proseTerm{Name: d.name, Text: d.prose[i], Line: d.line, Meaning: strings.TrimSpace(meaning + " " + note)})
+				g.prose = append(g.prose, grammarProseTerm{Name: d.name, Text: d.prose[i], Line: d.line, Meaning: strings.TrimSpace(meaning + " " + note)})
 				if meaning != "" {
-					g.add(lhs, g.expand(d.name, []nelem{{name: meaning}}, src, d.vibe, all), src, d.vibe)
+					g.add(lhs, g.expand(d.name, []grammarNelem{{name: meaning}}, src, d.vibe, all), src, d.vibe)
 				} else {
-					g.add(lhs, []gsym{{kind: symClass, text: "‹" + d.name + "›"}}, src, d.vibe)
+					g.add(lhs, []grammarGsym{{kind: grammarSymClass, text: "‹" + d.name + "›"}}, src, d.vibe)
 				}
 				continue
 			}
@@ -818,7 +818,7 @@ func buildGrammar(a *appendix) *cfg {
 	missing := map[string]bool{}
 	for r := range g.rules {
 		for k, s := range g.rules[r].rhs {
-			if s.kind != symNT {
+			if s.kind != grammarSymNT {
 				continue
 			}
 			if i, ok := g.index[s.text]; ok && len(g.byLHS[i]) > 0 {
@@ -826,12 +826,12 @@ func buildGrammar(a *appendix) *cfg {
 				continue
 			}
 			missing[s.text] = true
-			if stand, ok := undefinedMeanings[s.text]; ok {
+			if stand, ok := grammarUndefinedMeanings[s.text]; ok {
 				g.rules[r].rhs[k].text = stand
 				g.rules[r].rhs[k].nt = g.index[stand]
 				continue
 			}
-			g.rules[r].rhs[k] = gsym{kind: symClass, text: "‹" + s.text + "›"}
+			g.rules[r].rhs[k] = grammarGsym{kind: grammarSymClass, text: "‹" + s.text + "›"}
 		}
 	}
 	for n := range missing {
@@ -841,18 +841,18 @@ func buildGrammar(a *appendix) *cfg {
 	return g.parameterize()
 }
 
-// effectBodies are the subset's function-like productions, whose parameters
+// grammarEffectBodies are the subset's function-like productions, whose parameters
 // and body are parsed with [~Effect], as ECMAScript parses a nested plain
 // function's with [~Await].
-var effectBodies = map[string]bool{"FunctionDeclaration": true, "FunctionExpression": true, "ArrowFunction": true, "AsyncArrowFunction": true, "MethodDefinition": true, "GetAccessor": true, "NonStaticMethod": true}
+var grammarEffectBodies = map[string]bool{"FunctionDeclaration": true, "FunctionExpression": true, "ArrowFunction": true, "AsyncArrowFunction": true, "MethodDefinition": true, "GetAccessor": true, "NonStaticMethod": true}
 
 // parameterize gives every nonterminal its two copies, N and N[+Effect]
 // (written N⁺), the way ECMAScript parameterizes [Await]: after the token
 // "effect" in a rule (an effect function, arrow, method, producer or block)
 // the rest of the rule is effect code; a plain function's parts are not; and
 // everything else keeps the parameter of the code around it.
-func (g *cfg) parameterize() *cfg {
-	h := &cfg{index: map[string]int{}, ordered: map[int]bool{}, vibe: map[int]bool{}, helper: map[int]bool{}, prose: g.prose, unresolved: g.unresolved, hooks: g.hooks, comments: g.comments}
+func (g *grammarCfg) parameterize() *grammarCfg {
+	h := &grammarCfg{index: map[string]int{}, ordered: map[int]bool{}, vibe: map[int]bool{}, helper: map[int]bool{}, prose: g.prose, unresolved: g.unresolved, hooks: g.hooks, comments: g.comments}
 	idx := func(nt int, e bool) int {
 		name := g.names[nt]
 		if e {
@@ -874,17 +874,17 @@ func (g *cfg) parameterize() *cfg {
 		if at := strings.IndexAny(owner, "#:"); at > 0 {
 			owner = owner[:at]
 		}
-		plain := !r.vibe && effectBodies[owner]
+		plain := !r.vibe && grammarEffectBodies[owner]
 		for _, e := range []bool{false, true} {
 			rhs := slices.Clone(r.rhs)
 			child := e && !plain
 			for k := range rhs {
 				s := &rhs[k]
-				if s.kind == symTok && s.text == "effect" {
+				if s.kind == grammarSymTok && s.text == "effect" {
 					child = true
 				}
 				s.eff = e
-				if s.kind == symNT {
+				if s.kind == grammarSymNT {
 					s.eff = child
 					s.nt = idx(s.nt, child)
 					s.text = h.names[s.nt]
@@ -899,7 +899,7 @@ func (g *cfg) parameterize() *cfg {
 }
 
 // named returns both copies of a nonterminal.
-func (g *cfg) named(name string) []int {
+func (g *grammarCfg) named(name string) []int {
 	var out []int
 	for _, n := range []string{name, name + "⁺"} {
 		if i, ok := g.index[n]; ok {
@@ -910,38 +910,38 @@ func (g *cfg) named(name string) []int {
 }
 
 // base is a nonterminal's name without its parameter.
-func (g *cfg) base(nt int) string {
+func (g *grammarCfg) base(nt int) string {
 	return strings.TrimSuffix(g.names[nt], "⁺")
 }
 
-func walkNames(alt []nelem, f func(string)) {
+func grammarWalkNames(alt []grammarNelem, f func(string)) {
 	for _, e := range alt {
 		if e.name != "" {
 			f(e.name)
 		}
 		for _, sub := range e.alts {
-			walkNames(sub, f)
+			grammarWalkNames(sub, f)
 		}
 	}
 }
 
 // expand turns notation elements into symbols, adding helper nonterminals
 // for groups and suffixes.
-func (g *cfg) expand(owner string, alt []nelem, src string, vibe bool, all map[string]bool) []gsym {
-	var out []gsym
+func (g *grammarCfg) expand(owner string, alt []grammarNelem, src string, vibe bool, all map[string]bool) []grammarGsym {
+	var out []grammarGsym
 	for _, e := range alt {
-		var s gsym
+		var s grammarGsym
 		switch {
 		case e.sym != nil:
 			s = *e.sym
 		case e.name == "LineTerminator":
-			s = gsym{kind: symLT}
+			s = grammarGsym{kind: grammarSymLT}
 		case e.name == "ASI":
-			s = gsym{kind: symASI}
-		case tokenClasses[e.name]:
-			s = gsym{kind: symClass, text: e.name}
+			s = grammarGsym{kind: grammarSymASI}
+		case grammarTokenClasses[e.name]:
+			s = grammarGsym{kind: grammarSymClass, text: e.name}
 		case e.name != "":
-			s = gsym{kind: symNT, text: e.name}
+			s = grammarGsym{kind: grammarSymNT, text: e.name}
 		default:
 			g.fresh++
 			name := fmt.Sprintf("%s#%d", owner, g.fresh)
@@ -950,37 +950,37 @@ func (g *cfg) expand(owner string, alt []nelem, src string, vibe bool, all map[s
 			for _, sub := range e.alts {
 				g.add(h, g.expand(owner, sub, src, vibe, all), src, vibe)
 			}
-			s = gsym{kind: symNT, text: name}
+			s = grammarGsym{kind: grammarSymNT, text: name}
 		}
 		if e.suffix != 0 {
 			label := s.text
-			if s.kind != symNT && s.kind != symClass {
+			if s.kind != grammarSymNT && s.kind != grammarSymClass {
 				label = fmt.Sprint(s)
 			}
-			if s.kind == symTok {
+			if s.kind == grammarSymTok {
 				label = `"` + s.text + `"`
 			}
 			name := label + string(e.suffix)
-			if s.kind != symNT {
+			if s.kind != grammarSymNT {
 				name = owner + ":" + name
 			}
 			if _, ok := g.index[name]; !ok {
 				h := g.nt(name)
 				g.helper[h] = true
-				self := gsym{kind: symNT, text: name}
+				self := grammarGsym{kind: grammarSymNT, text: name}
 				switch e.suffix {
 				case '?':
-					g.add(h, []gsym{s}, src, vibe)
+					g.add(h, []grammarGsym{s}, src, vibe)
 					g.add(h, nil, src, vibe)
 				case '*':
 					g.add(h, nil, src, vibe)
-					g.add(h, []gsym{self, s}, src, vibe)
+					g.add(h, []grammarGsym{self, s}, src, vibe)
 				case '+':
-					g.add(h, []gsym{s}, src, vibe)
-					g.add(h, []gsym{self, s}, src, vibe)
+					g.add(h, []grammarGsym{s}, src, vibe)
+					g.add(h, []grammarGsym{self, s}, src, vibe)
 				}
 			}
-			s = gsym{kind: symNT, text: name}
+			s = grammarGsym{kind: grammarSymNT, text: name}
 		}
 		out = append(out, s)
 	}
@@ -990,7 +990,7 @@ func (g *cfg) expand(owner string, alt []nelem, src string, vibe bool, all map[s
 // analyze computes which nonterminals derive the empty string (assertions
 // count as empty), the first terminals of each nonterminal and rule, and
 // each nonterminal's shortest yield.
-func (g *cfg) analyze() {
+func (g *grammarCfg) analyze() {
 	n := len(g.names)
 	g.nullable = make([]bool, n)
 	g.first = make([]map[string]bool, n)
@@ -1007,7 +1007,7 @@ func (g *cfg) analyze() {
 	for changed := true; changed; {
 		changed = false
 		for ri, r := range g.rules {
-			if slices.ContainsFunc(r.rhs, func(s gsym) bool { return s.kind == symGuard && s.on != s.eff }) {
+			if slices.ContainsFunc(r.rhs, func(s grammarGsym) bool { return s.kind == grammarSymGuard && s.on != s.eff }) {
 				continue
 			}
 			nullable := true
@@ -1016,13 +1016,13 @@ func (g *cfg) analyze() {
 					break
 				}
 				switch s.kind {
-				case symNT:
+				case grammarSymNT:
 					for k := range g.first[s.nt] {
 						g.ruleFirst[ri][k] = true
 					}
 					nullable = g.nullable[s.nt]
-				case symTok, symClass:
-					g.ruleFirst[ri][termKey(s)] = true
+				case grammarSymTok, grammarSymClass:
+					g.ruleFirst[ri][grammarTermKey(s)] = true
 					nullable = false
 				}
 			}
@@ -1040,9 +1040,9 @@ func (g *cfg) analyze() {
 			full := 0
 			for _, s := range r.rhs {
 				switch s.kind {
-				case symNT:
+				case grammarSymNT:
 					full += g.minLen[s.nt]
-				case symTok, symClass:
+				case grammarSymTok, grammarSymClass:
 					full++
 				}
 			}
@@ -1054,34 +1054,34 @@ func (g *cfg) analyze() {
 	}
 }
 
-func termKey(s gsym) string {
-	if s.kind == symTok {
+func grammarTermKey(s grammarGsym) string {
+	if s.kind == grammarSymTok {
 		return "t:" + s.text
 	}
 	return "c:" + s.text
 }
 
 // ruleString writes a rule for messages.
-func (g *cfg) ruleString(r int) string {
+func (g *grammarCfg) ruleString(r int) string {
 	if r < 0 {
 		return "token"
 	}
 	var parts []string
 	for _, s := range g.rules[r].rhs {
 		switch s.kind {
-		case symNT:
+		case grammarSymNT:
 			parts = append(parts, g.names[s.nt])
-		case symTok:
+		case grammarSymTok:
 			parts = append(parts, `"`+s.text+`"`)
-		case symClass:
+		case grammarSymClass:
 			parts = append(parts, s.text)
-		case symNoLT:
+		case grammarSymNoLT:
 			parts = append(parts, "[no LineTerminator here]")
-		case symLT:
+		case grammarSymLT:
 			parts = append(parts, "LineTerminator")
-		case symASI:
+		case grammarSymASI:
 			parts = append(parts, "ASI")
-		case symGuard:
+		case grammarSymGuard:
 			parts = append(parts, fmt.Sprintf("[guard %v]", s.on))
 		default:
 			parts = append(parts, fmt.Sprintf("[lookahead %v %v]", s.kind, s.seqs))
@@ -1092,7 +1092,7 @@ func (g *cfg) ruleString(r int) string {
 
 // alt names a rule by its production and alternative, such as
 // "CatchExpression.0", without the grammar parameter.
-func (g *cfg) alt(r int) string {
+func (g *grammarCfg) alt(r int) string {
 	if r < 0 {
 		return "token"
 	}
@@ -1108,7 +1108,7 @@ func (g *cfg) alt(r int) string {
 }
 
 // follow returns, for each nonterminal, the tokens that can follow it.
-func (g *cfg) follow() []map[string]bool {
+func (g *grammarCfg) follow() []map[string]bool {
 	f := make([]map[string]bool, len(g.names))
 	for i := range f {
 		f[i] = map[string]bool{}
@@ -1117,12 +1117,12 @@ func (g *cfg) follow() []map[string]bool {
 		changed = false
 		for _, r := range g.rules {
 			for k, s := range r.rhs {
-				if s.kind != symNT {
+				if s.kind != grammarSymNT {
 					continue
 				}
 				end := true
 				for _, t := range r.rhs[k+1:] {
-					if t.kind == symNT {
+					if t.kind == grammarSymNT {
 						for key := range g.first[t.nt] {
 							if !f[s.nt][key] {
 								f[s.nt][key] = true
@@ -1133,8 +1133,8 @@ func (g *cfg) follow() []map[string]bool {
 							end = false
 							break
 						}
-					} else if t.kind == symTok || t.kind == symClass {
-						if key := termKey(t); !f[s.nt][key] {
+					} else if t.kind == grammarSymTok || t.kind == grammarSymClass {
+						if key := grammarTermKey(t); !f[s.nt][key] {
 							f[s.nt][key] = true
 							changed = true
 						}

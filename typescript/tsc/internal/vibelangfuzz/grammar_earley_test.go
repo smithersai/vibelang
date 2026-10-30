@@ -12,26 +12,26 @@ import (
 // token) when a line break or "}" precedes it, and at the end of the input.
 // The parser sees the token offending when no item of the set scans it.
 
-type token struct {
+type grammarToken struct {
 	text string
 	nl   bool // a line break precedes it
 	kind byte // 'w' word, 's' string, 'n' number, 't' template, 'p' punctuator, 'x' prose terminal
 }
 
-// reservedWords are ECMAScript's reserved words in strict code, which
+// grammarReservedWords are ECMAScript's reserved words in strict code, which
 // modules are, and TypeScript's strict-mode keywords.
-var reservedWords = map[string]bool{}
+var grammarReservedWords = map[string]bool{}
 
 func init() {
 	for _, w := range strings.Fields(`await break case catch class const continue debugger default delete do else enum export extends false finally for function if import in instanceof new null return super switch this throw true try typeof var void while with yield let static implements interface package private protected public`) {
-		reservedWords[w] = true
+		grammarReservedWords[w] = true
 	}
 }
 
-// A parseMode selects the grammar: effect code ([+Effect]) or not, and
+// A grammarParseMode selects the grammar: effect code ([+Effect]) or not, and
 // whether Appendix A's prose rules (its keyword table and the
 // disambiguation sentences) apply on top of its productions.
-type parseMode struct {
+type grammarParseMode struct {
 	effect  bool
 	prose   bool
 	noWords bool // with prose: leave out the keyword table and reserved words
@@ -39,26 +39,26 @@ type parseMode struct {
 	names   bool // with prose: a property name is never a keyword, the reading the examples assume
 }
 
-type kwState uint8
+type grammarKwState uint8
 
 const (
-	kwBoth kwState = iota // the word may be either
-	kwYes                 // the word is the keyword here
-	kwNo                  // the word is an identifier here
+	grammarKwBoth grammarKwState = iota // the word may be either
+	grammarKwYes                        // the word is the keyword here
+	grammarKwNo                         // the word is an identifier here
 )
 
-type eitem struct{ rule, dot, origin int32 }
+type grammarEitem struct{ rule, dot, origin int32 }
 
-type earley struct {
-	g     *cfg
-	toks  []token
-	mode  parseMode
+type grammarEarley struct {
+	g     *grammarCfg
+	toks  []grammarToken
+	mode  grammarParseMode
 	words map[string]bool            // contextual keywords the table governs
-	kw    [2][]kwState               // in prose mode, each token's keyword state outside and in effect code
+	kw    [2][]grammarKwState        // in prose mode, each token's keyword state outside and in effect code
 	resv  map[string]map[string]bool // in prose mode, identifier classes effect code excludes a word from
 
-	sets      [][]eitem
-	seen      []map[eitem]bool
+	sets      [][]grammarEitem
+	seen      []map[grammarEitem]bool
 	predicted []map[int]bool
 	emptyDone []map[int]bool
 	asiOK     []bool
@@ -70,27 +70,27 @@ type earley struct {
 	cyclic  bool
 }
 
-const countCap = int64(1) << 40
+const grammarCountCap = int64(1) << 40
 
-func sat(a, b int64) int64 {
-	if a+b > countCap {
-		return countCap
+func grammarSat(a, b int64) int64 {
+	if a+b > grammarCountCap {
+		return grammarCountCap
 	}
 	return a + b
 }
 
-func satMul(a, b int64) int64 {
+func grammarSatMul(a, b int64) int64 {
 	if a == 0 || b == 0 {
 		return 0
 	}
-	if a > countCap/b {
-		return countCap
+	if a > grammarCountCap/b {
+		return grammarCountCap
 	}
 	return a * b
 }
 
-func (g *cfg) parse(toks []token, mode parseMode, rules *proseSet) *earley {
-	p := &earley{g: g, toks: toks, mode: mode}
+func (g *grammarCfg) parse(toks []grammarToken, mode grammarParseMode, rules *grammarProseSet) *grammarEarley {
+	p := &grammarEarley{g: g, toks: toks, mode: mode}
 	if mode.prose && rules != nil && !mode.noWords {
 		p.words = rules.words
 		p.kw[0] = rules.mark(toks, false, g)
@@ -98,12 +98,12 @@ func (g *cfg) parse(toks []token, mode parseMode, rules *proseSet) *earley {
 		p.resv = rules.reserved
 	}
 	n := len(toks)
-	p.sets = make([][]eitem, n+2)
-	p.seen = make([]map[eitem]bool, n+2)
+	p.sets = make([][]grammarEitem, n+2)
+	p.seen = make([]map[grammarEitem]bool, n+2)
 	p.predicted = make([]map[int]bool, n+2)
 	p.emptyDone = make([]map[int]bool, n+2)
 	for i := range p.seen {
-		p.seen[i] = map[eitem]bool{}
+		p.seen[i] = map[grammarEitem]bool{}
 		p.predicted[i] = map[int]bool{}
 		p.emptyDone[i] = map[int]bool{}
 	}
@@ -111,7 +111,7 @@ func (g *cfg) parse(toks []token, mode parseMode, rules *proseSet) *earley {
 	p.ends = map[[2]int32][]int32{}
 	p.done = map[[3]int32]bool{}
 	for _, r := range g.byLHS[p.startNT()] {
-		p.add(0, eitem{int32(r), 0, 0})
+		p.add(0, grammarEitem{int32(r), 0, 0})
 	}
 	for i := 0; i <= n; i++ {
 		p.process(i)
@@ -121,16 +121,16 @@ func (g *cfg) parse(toks []token, mode parseMode, rules *proseSet) *earley {
 	return p
 }
 
-func (p *earley) startNT() int {
+func (p *grammarEarley) startNT() int {
 	if p.mode.effect {
 		return p.g.startE
 	}
 	return p.g.start
 }
 
-func (p *earley) kwAt(s gsym, i int) kwState {
+func (p *grammarEarley) kwAt(s grammarGsym, i int) grammarKwState {
 	if p.kw[0] == nil {
-		return kwBoth
+		return grammarKwBoth
 	}
 	if s.eff {
 		return p.kw[1][i]
@@ -138,17 +138,17 @@ func (p *earley) kwAt(s gsym, i int) kwState {
 	return p.kw[0][i]
 }
 
-func (p *earley) add(i int, it eitem) {
+func (p *grammarEarley) add(i int, it grammarEitem) {
 	if !p.seen[i][it] {
 		p.seen[i][it] = true
 		p.sets[i] = append(p.sets[i], it)
 	}
 }
 
-func (p *earley) process(i int) {
+func (p *grammarEarley) process(i int) {
 	g := p.g
 	n := len(p.toks)
-	var pending []eitem
+	var pending []grammarEitem
 	decided := false
 	for k := 0; ; {
 		for ; k < len(p.sets[i]); k++ {
@@ -170,34 +170,34 @@ func (p *earley) process(i int) {
 				for m := 0; m < len(origin); m++ {
 					o := origin[m]
 					or := &g.rules[o.rule]
-					if int(o.dot) < len(or.rhs) && or.rhs[o.dot].kind == symNT && or.rhs[o.dot].nt == r.lhs {
-						p.add(i, eitem{o.rule, o.dot + 1, o.origin})
+					if int(o.dot) < len(or.rhs) && or.rhs[o.dot].kind == grammarSymNT && or.rhs[o.dot].nt == r.lhs {
+						p.add(i, grammarEitem{o.rule, o.dot + 1, o.origin})
 					}
 					origin = p.sets[it.origin]
 				}
 				continue
 			}
 			s := r.rhs[it.dot]
-			next := eitem{it.rule, it.dot + 1, it.origin}
+			next := grammarEitem{it.rule, it.dot + 1, it.origin}
 			switch s.kind {
-			case symNT:
+			case grammarSymNT:
 				if !p.predicted[i][s.nt] {
 					p.predicted[i][s.nt] = true
 					for _, r2 := range g.byLHS[s.nt] {
 						if g.ruleNullable[r2] || i < n && p.startsWith(r2, i) {
-							p.add(i, eitem{int32(r2), 0, int32(i)})
+							p.add(i, grammarEitem{int32(r2), 0, int32(i)})
 						}
 					}
 				}
 				if p.emptyDone[i][s.nt] {
 					p.add(i, next)
 				}
-			case symTok, symClass:
+			case grammarSymTok, grammarSymClass:
 				if i < n && p.match(s, i) {
 					p.add(i+1, next)
 				}
-			case symASI, symEnd:
-				if s.kind == symEnd && (!p.mode.prose || i < n && p.toks[i].text == ";") {
+			case grammarSymASI, grammarSymEnd:
+				if s.kind == grammarSymEnd && (!p.mode.prose || i < n && p.toks[i].text == ";") {
 					p.add(i, next)
 					continue
 				}
@@ -223,13 +223,13 @@ func (p *earley) process(i int) {
 			return
 		}
 		for _, it := range pending {
-			p.add(i, eitem{it.rule, it.dot + 1, it.origin})
+			p.add(i, grammarEitem{it.rule, it.dot + 1, it.origin})
 		}
 	}
 }
 
 // startsWith reports whether rule r can start with token i.
-func (p *earley) startsWith(r, i int) bool {
+func (p *grammarEarley) startsWith(r, i int) bool {
 	t := p.toks[i]
 	f := p.g.ruleFirst[r]
 	if f["t:"+t.text] && t.kind != 's' && t.kind != 't' {
@@ -250,14 +250,14 @@ func (p *earley) startsWith(r, i int) bool {
 	return false
 }
 
-func (p *earley) match(s gsym, i int) bool {
+func (p *grammarEarley) match(s grammarGsym, i int) bool {
 	t := p.toks[i]
-	if s.kind == symTok {
+	if s.kind == grammarSymTok {
 		if t.text != s.text || t.kind == 's' || t.kind == 't' || t.kind == 'x' {
 			return false
 		}
 		if p.words[t.text] {
-			return p.kwAt(s, i) != kwNo
+			return p.kwAt(s, i) != grammarKwNo
 		}
 		return true
 	}
@@ -265,12 +265,12 @@ func (p *earley) match(s gsym, i int) bool {
 	case "IdentifierName":
 		// A word the keyword table makes a keyword here is a keyword
 		// token, as a lexer applying the table would make it.
-		return t.kind == 'w' && (p.mode.names || !(p.words[t.text] && p.kwAt(s, i) == kwYes))
+		return t.kind == 'w' && (p.mode.names || !(p.words[t.text] && p.kwAt(s, i) == grammarKwYes))
 	case "IdentifierReference", "BindingIdentifier", "LabelIdentifier":
-		if t.kind != 'w' || reservedWords[t.text] {
+		if t.kind != 'w' || grammarReservedWords[t.text] {
 			return false
 		}
-		if p.words[t.text] && p.kwAt(s, i) == kwYes {
+		if p.words[t.text] && p.kwAt(s, i) == grammarKwYes {
 			return false
 		}
 		return !s.eff || !p.resv[s.text][t.text]
@@ -284,7 +284,7 @@ func (p *earley) match(s gsym, i int) bool {
 	return t.kind == 'x' && t.text == s.text
 }
 
-func (p *earley) seqAt(seq []string, i int, oneLine bool) bool {
+func (p *grammarEarley) seqAt(seq []string, i int, oneLine bool) bool {
 	for k, w := range seq {
 		if i+k >= len(p.toks) || p.toks[i+k].text != w || p.toks[i+k].kind == 's' {
 			return false
@@ -297,46 +297,46 @@ func (p *earley) seqAt(seq []string, i int, oneLine bool) bool {
 }
 
 // holds reports whether a zero-width symbol holds before token i.
-func (p *earley) holds(s gsym, i int) bool {
+func (p *grammarEarley) holds(s grammarGsym, i int) bool {
 	if s.prose && !p.mode.prose {
 		return true
 	}
 	n := len(p.toks)
 	switch s.kind {
-	case symNoLT:
+	case grammarSymNoLT:
 		return i == n || !p.toks[i].nl
-	case symLT:
+	case grammarSymLT:
 		return i == n || p.toks[i].nl
-	case symGuard:
+	case grammarSymGuard:
 		return s.on == s.eff
-	case symAhead:
+	case grammarSymAhead:
 		for _, seq := range s.seqs {
 			if p.seqAt(seq, i, s.on) {
 				return true
 			}
 		}
 		return false
-	case symNotAhead:
+	case grammarSymNotAhead:
 		for _, seq := range s.seqs {
 			if p.seqAt(seq, i, s.on) {
 				return false
 			}
 		}
 		return true
-	case symASI:
+	case grammarSymASI:
 		return p.asiOK[i]
-	case symEnd:
+	case grammarSymEnd:
 		return !p.mode.prose || i < n && p.toks[i].text == ";" || p.asiOK[i]
 	}
 	return false
 }
 
 // count returns the number of derivations of the whole sentence.
-func (p *earley) count() int64 {
+func (p *grammarEarley) count() int64 {
 	return p.countNT(p.startNT(), 0, len(p.toks))
 }
 
-func (p *earley) countNT(nt, i, j int) int64 {
+func (p *grammarEarley) countNT(nt, i, j int) int64 {
 	key := [3]int32{int32(nt), int32(i), int32(j)}
 	if v, ok := p.memoNT[key]; ok {
 		if v < 0 {
@@ -356,13 +356,13 @@ func (p *earley) countNT(nt, i, j int) int64 {
 			total = c
 			break
 		}
-		total = sat(total, c)
+		total = grammarSat(total, c)
 	}
 	p.memoNT[key] = total
 	return total
 }
 
-func (p *earley) countSeq(r, k, i, j int) int64 {
+func (p *grammarEarley) countSeq(r, k, i, j int) int64 {
 	rhs := p.g.rules[r].rhs
 	if k == len(rhs) {
 		if i == j {
@@ -377,11 +377,11 @@ func (p *earley) countSeq(r, k, i, j int) int64 {
 	s := rhs[k]
 	total := int64(0)
 	switch s.kind {
-	case symTok, symClass:
+	case grammarSymTok, grammarSymClass:
 		if i < j && p.match(s, i) {
 			total = p.countSeq(r, k+1, i+1, j)
 		}
-	case symNT:
+	case grammarSymNT:
 		for _, m := range p.ends[[2]int32{int32(s.nt), int32(i)}] {
 			if int(m) > j {
 				continue
@@ -392,7 +392,7 @@ func (p *earley) countSeq(r, k, i, j int) int64 {
 			if rest == 0 {
 				continue
 			}
-			total = sat(total, satMul(p.countNT(s.nt, i, int(m)), rest))
+			total = grammarSat(total, grammarSatMul(p.countNT(s.nt, i, int(m)), rest))
 		}
 	default:
 		if p.holds(s, i) {
@@ -403,19 +403,19 @@ func (p *earley) countSeq(r, k, i, j int) int64 {
 	return total
 }
 
-// A ptree is one derivation.
-type ptree struct {
+// A grammarPtree is one derivation.
+type grammarPtree struct {
 	nt, rule int // rule < 0 for a token
 	i, j     int
-	kids     []*ptree
+	kids     []*grammarPtree
 }
 
 // tree returns derivation number n of the sentence, counting from 0.
-func (p *earley) tree(n int64) *ptree {
+func (p *grammarEarley) tree(n int64) *grammarPtree {
 	return p.treeNT(p.startNT(), 0, len(p.toks), n)
 }
 
-func (p *earley) treeNT(nt, i, j int, n int64) *ptree {
+func (p *grammarEarley) treeNT(nt, i, j int, n int64) *grammarPtree {
 	for _, r := range p.g.byLHS[nt] {
 		if !p.done[[3]int32{int32(r), int32(i), int32(j)}] {
 			continue
@@ -425,23 +425,23 @@ func (p *earley) treeNT(nt, i, j int, n int64) *ptree {
 			continue
 		}
 		if n < c || p.g.ordered[nt] {
-			return &ptree{nt: nt, rule: r, i: i, j: j, kids: p.treeSeq(r, 0, i, j, n%c)}
+			return &grammarPtree{nt: nt, rule: r, i: i, j: j, kids: p.treeSeq(r, 0, i, j, n%c)}
 		}
 		n -= c
 	}
-	return &ptree{nt: nt, rule: -2, i: i, j: j}
+	return &grammarPtree{nt: nt, rule: -2, i: i, j: j}
 }
 
-func (p *earley) treeSeq(r, k, i, j int, n int64) []*ptree {
+func (p *grammarEarley) treeSeq(r, k, i, j int, n int64) []*grammarPtree {
 	rhs := p.g.rules[r].rhs
 	if k == len(rhs) {
 		return nil
 	}
 	s := rhs[k]
 	switch s.kind {
-	case symTok, symClass:
-		return append([]*ptree{{nt: -1, rule: -1, i: i, j: i + 1}}, p.treeSeq(r, k+1, i+1, j, n)...)
-	case symNT:
+	case grammarSymTok, grammarSymClass:
+		return append([]*grammarPtree{{nt: -1, rule: -1, i: i, j: i + 1}}, p.treeSeq(r, k+1, i+1, j, n)...)
+	case grammarSymNT:
 		for _, m := range p.ends[[2]int32{int32(s.nt), int32(i)}] {
 			if int(m) > j {
 				continue
@@ -451,12 +451,12 @@ func (p *earley) treeSeq(r, k, i, j int, n int64) []*ptree {
 				continue
 			}
 			c1 := p.countNT(s.nt, i, int(m))
-			c := satMul(c1, c2)
+			c := grammarSatMul(c1, c2)
 			if c == 0 {
 				continue
 			}
 			if n < c {
-				return append([]*ptree{p.treeNT(s.nt, i, int(m), n/c2)}, p.treeSeq(r, k+1, int(m), j, n%c2)...)
+				return append([]*grammarPtree{p.treeNT(s.nt, i, int(m), n/c2)}, p.treeSeq(r, k+1, int(m), j, n%c2)...)
 			}
 			n -= c
 		}
@@ -469,7 +469,7 @@ func (p *earley) treeSeq(r, k, i, j int, n int64) []*ptree {
 // child, unless Appendix A defines it, and helper nonterminals vanish.
 // coarse leaves out semicolons and empty statements, which differ between
 // readings that end a statement at the same place.
-func (p *earley) render(t *ptree, coarse bool) string {
+func (p *grammarEarley) render(t *grammarPtree, coarse bool) string {
 	if t.rule == -1 {
 		tok := p.toks[t.i]
 		if coarse && tok.text == ";" {
@@ -501,7 +501,7 @@ func (p *earley) render(t *ptree, coarse bool) string {
 
 // diverge returns the first nodes at which two derivations differ, with
 // the nearest named nonterminal above them.
-func (p *earley) diverge(a, b *ptree, named string) (string, *ptree, *ptree) {
+func (p *grammarEarley) diverge(a, b *grammarPtree, named string) (string, *grammarPtree, *grammarPtree) {
 	if a.nt >= 0 && !p.g.helper[a.nt] {
 		named = p.g.base(a.nt)
 	}
@@ -514,19 +514,19 @@ func (p *earley) diverge(a, b *ptree, named string) (string, *ptree, *ptree) {
 		}
 	}
 	for k := range a.kids {
-		if !sameTree(a.kids[k], b.kids[k]) {
+		if !grammarSameTree(a.kids[k], b.kids[k]) {
 			return p.diverge(a.kids[k], b.kids[k], named)
 		}
 	}
 	return named, a, b
 }
 
-func sameTree(a, b *ptree) bool {
+func grammarSameTree(a, b *grammarPtree) bool {
 	if a.rule != b.rule || a.i != b.i || a.j != b.j || len(a.kids) != len(b.kids) {
 		return false
 	}
 	for k := range a.kids {
-		if !sameTree(a.kids[k], b.kids[k]) {
+		if !grammarSameTree(a.kids[k], b.kids[k]) {
 			return false
 		}
 	}
@@ -534,7 +534,7 @@ func sameTree(a, b *ptree) bool {
 }
 
 // productions lists the Appendix A productions a derivation uses.
-func (p *earley) productions(t *ptree, into map[string]bool) {
+func (p *grammarEarley) productions(t *grammarPtree, into map[string]bool) {
 	if t.rule >= 0 && p.g.rules[t.rule].vibe {
 		name := p.g.base(p.g.rules[t.rule].lhs)
 		if !p.g.helper[t.nt] {

@@ -15,23 +15,23 @@ func TestGrammarEngine(t *testing.T) {
 		{"nullable ambiguity", true, "x", 2},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			g := &cfg{index: map[string]int{}, ordered: map[int]bool{}, vibe: map[int]bool{}, helper: map[int]bool{}}
+			g := &grammarCfg{index: map[string]int{}, ordered: map[int]bool{}, vibe: map[int]bool{}, helper: map[int]bool{}}
 			s, a, b, c := g.nt("Script"), g.nt("A"), g.nt("B"), g.nt("C")
 			g.start = s
 			g.startE = s
-			g.add(s, []gsym{{kind: symNT, nt: a}, {kind: symTok, text: "x"}}, "test", false)
-			g.add(a, []gsym{{kind: symNT, nt: b}}, "test", false)
+			g.add(s, []grammarGsym{{kind: grammarSymNT, nt: a}, {kind: grammarSymTok, text: "x"}}, "test", false)
+			g.add(a, []grammarGsym{{kind: grammarSymNT, nt: b}}, "test", false)
 			g.add(b, nil, "test", false)
 			if tc.nullable {
-				g.add(a, []gsym{{kind: symNT, nt: c}}, "test", false)
+				g.add(a, []grammarGsym{{kind: grammarSymNT, nt: c}}, "test", false)
 				g.add(c, nil, "test", false)
 			}
 			g.analyze()
-			p := g.parse(lexSource(tc.input), parseMode{}, nil)
+			p := g.parse(grammarLexSource(tc.input), grammarParseMode{}, nil)
 			if got := p.count(); got != tc.want {
 				t.Fatalf("count=%d, want %d", got, tc.want)
 			}
-			if tc.want == 2 && sameTree(p.tree(0), p.tree(1)) {
+			if tc.want == 2 && grammarSameTree(p.tree(0), p.tree(1)) {
 				t.Fatal("ambiguous sentence has identical witness trees")
 			}
 		})
@@ -39,7 +39,7 @@ func TestGrammarEngine(t *testing.T) {
 }
 
 func TestGrammarLoadsCurrentAppendix(t *testing.T) {
-	lab, err := newGrammarLab(SpecText(grammarAppendix), grammarAppendix)
+	lab, err := grammarNewGrammarLab(SpecText(grammarAppendix), grammarAppendix)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,14 +67,14 @@ func TestGrammarLoadsCurrentAppendix(t *testing.T) {
 // Disabling prose restrictions must affect both chart recognition and
 // forest counting, including a prose-only declaration boundary.
 func TestGrammarProseBoundary(t *testing.T) {
-	g := &cfg{index: map[string]int{}, ordered: map[int]bool{}, vibe: map[int]bool{}, helper: map[int]bool{}}
+	g := &grammarCfg{index: map[string]int{}, ordered: map[int]bool{}, vibe: map[int]bool{}, helper: map[int]bool{}}
 	s := g.nt("Script")
 	g.start = s
 	g.startE = s
-	g.add(s, []gsym{{kind: symEnd}, {kind: symTok, text: "x"}}, "test", false)
+	g.add(s, []grammarGsym{{kind: grammarSymEnd}, {kind: grammarSymTok, text: "x"}}, "test", false)
 	g.analyze()
 	for _, prose := range []bool{false, true} {
-		p := g.parse(lexSource("x"), parseMode{prose: prose}, nil)
+		p := g.parse(grammarLexSource("x"), grammarParseMode{prose: prose}, nil)
 		want := int64(1)
 		if prose {
 			want = 0
@@ -88,32 +88,32 @@ func TestGrammarProseBoundary(t *testing.T) {
 // A competing completed branch must not suppress a statement boundary
 // before a closing brace in another branch of the forest.
 func TestGrammarClosingBrace(t *testing.T) {
-	g := &cfg{index: map[string]int{}, ordered: map[int]bool{}, vibe: map[int]bool{}, helper: map[int]bool{}}
+	g := &grammarCfg{index: map[string]int{}, ordered: map[int]bool{}, vibe: map[int]bool{}, helper: map[int]bool{}}
 	s := g.nt("Script")
 	g.start = s
 	g.startE = s
 	for _, boundary := range []bool{false, true} {
-		rhs := []gsym{{kind: symTok, text: "{"}, {kind: symTok, text: "x"}}
+		rhs := []grammarGsym{{kind: grammarSymTok, text: "{"}, {kind: grammarSymTok, text: "x"}}
 		if boundary {
-			rhs = append(rhs, gsym{kind: symASI})
+			rhs = append(rhs, grammarGsym{kind: grammarSymASI})
 		}
-		rhs = append(rhs, gsym{kind: symTok, text: "}"})
+		rhs = append(rhs, grammarGsym{kind: grammarSymTok, text: "}"})
 		g.add(s, rhs, "test", false)
 	}
 	g.analyze()
-	p := g.parse(lexSource("{x}"), parseMode{}, nil)
+	p := g.parse(grammarLexSource("{x}"), grammarParseMode{}, nil)
 	if got := p.count(); got != 2 {
 		t.Fatalf("count=%d, want both branches", got)
 	}
 }
 
 func TestGrammarInheritedFunctions(t *testing.T) {
-	g := buildGrammar(&appendix{})
+	g := grammarBuildGrammar(&grammarAppendixData{})
 	for _, src := range []string{
 		"const f = function() {}", "const f = async function() {}",
 		"const f = function*() {}", "const f = async function*() {}",
 	} {
-		p := g.parse(lexSource(src), parseMode{}, nil)
+		p := g.parse(grammarLexSource(src), grammarParseMode{}, nil)
 		if got := p.count(); got != 1 {
 			t.Errorf("%s: count=%d, want one derivation", src, got)
 		}

@@ -17,18 +17,18 @@ import (
 // whose arrow body is itself a catch, an Effect type whose operand is an
 // Effect type, and a declaration keyword before a line break.
 
-const inf = 1 << 20
+const grammarInf = 1 << 20
 
-type enumerator struct {
-	g       *cfg
+type grammarEnumerator struct {
+	g       *grammarCfg
 	targets []int
 	with    map[int][]int // target rule → shortest length of each nonterminal using it
 	ctx     [2][]int      // shortest context length of each nonterminal, from Script and Script⁺
 	ctxVia  [2][][2]int   // the rule and child position that context comes through
 }
 
-func newEnumerator(g *cfg) *enumerator {
-	e := &enumerator{g: g, with: map[int][]int{}}
+func grammarNewEnumerator(g *grammarCfg) *grammarEnumerator {
+	e := &grammarEnumerator{g: g, with: map[int][]int{}}
 	for r, rule := range g.rules {
 		if !e.possible(r) {
 			continue
@@ -36,10 +36,10 @@ func newEnumerator(g *cfg) *enumerator {
 		tokens, size := 0, 0
 		for _, s := range rule.rhs {
 			switch s.kind {
-			case symTok:
+			case grammarSymTok:
 				tokens++
 				size++
-			case symNT, symClass:
+			case grammarSymNT, grammarSymClass:
 				size++
 			}
 		}
@@ -57,47 +57,47 @@ func newEnumerator(g *cfg) *enumerator {
 }
 
 // possible reports whether a rule's grammar parameter allows it.
-func (e *enumerator) possible(r int) bool {
+func (e *grammarEnumerator) possible(r int) bool {
 	for _, s := range e.g.rules[r].rhs {
-		if s.kind == symGuard && s.on != s.eff {
+		if s.kind == grammarSymGuard && s.on != s.eff {
 			return false
 		}
 	}
 	return true
 }
 
-func (e *enumerator) ruleLen(r int) int {
+func (e *grammarEnumerator) ruleLen(r int) int {
 	if !e.possible(r) {
-		return inf
+		return grammarInf
 	}
 	n := 0
 	for _, s := range e.g.rules[r].rhs {
 		switch s.kind {
-		case symNT:
+		case grammarSymNT:
 			n += e.g.minLen[s.nt]
-		case symTok, symClass:
+		case grammarSymTok, grammarSymClass:
 			n++
 		}
 	}
-	return min(n, inf)
+	return min(n, grammarInf)
 }
 
-func (e *enumerator) lengthsWith(t int) []int {
+func (e *grammarEnumerator) lengthsWith(t int) []int {
 	g := e.g
 	l := make([]int, len(g.names))
 	for i := range l {
-		l[i] = inf
+		l[i] = grammarInf
 	}
 	l[g.rules[t].lhs] = e.ruleLen(t)
 	for changed := true; changed; {
 		changed = false
 		for q := range g.rules {
 			base := e.ruleLen(q)
-			if base >= inf {
+			if base >= grammarInf {
 				continue
 			}
 			for _, s := range g.rules[q].rhs {
-				if s.kind != symNT || l[s.nt] >= inf {
+				if s.kind != grammarSymNT || l[s.nt] >= grammarInf {
 					continue
 				}
 				if c := base - g.minLen[s.nt] + l[s.nt]; c < l[g.rules[q].lhs] {
@@ -110,12 +110,12 @@ func (e *enumerator) lengthsWith(t int) []int {
 	return l
 }
 
-func (e *enumerator) contexts(start int) ([]int, [][2]int) {
+func (e *grammarEnumerator) contexts(start int) ([]int, [][2]int) {
 	g := e.g
 	c := make([]int, len(g.names))
 	via := make([][2]int, len(g.names))
 	for i := range c {
-		c[i] = inf
+		c[i] = grammarInf
 		via[i] = [2]int{-1, -1}
 	}
 	c[start] = 0
@@ -123,15 +123,15 @@ func (e *enumerator) contexts(start int) ([]int, [][2]int) {
 		changed = false
 		for q := range g.rules {
 			lhs := g.rules[q].lhs
-			if c[lhs] >= inf {
+			if c[lhs] >= grammarInf {
 				continue
 			}
 			base := e.ruleLen(q)
-			if base >= inf {
+			if base >= grammarInf {
 				continue
 			}
 			for k, s := range g.rules[q].rhs {
-				if s.kind != symNT {
+				if s.kind != grammarSymNT {
 					continue
 				}
 				if v := c[lhs] + base - g.minLen[s.nt]; v < c[s.nt] {
@@ -145,20 +145,20 @@ func (e *enumerator) contexts(start int) ([]int, [][2]int) {
 	return c, via
 }
 
-// A phrase is tokens with line constraints still open.
-type phrase struct {
-	toks  []token
+// A grammarPhrase is tokens with line constraints still open.
+type grammarPhrase struct {
+	toks  []grammarToken
 	force int8
 }
 
-func (p *phrase) emit(text string, kind byte) {
-	p.toks = append(p.toks, token{text: text, kind: kind, nl: p.force == 2 && len(p.toks) > 0})
+func (p *grammarPhrase) emit(text string, kind byte) {
+	p.toks = append(p.toks, grammarToken{text: text, kind: kind, nl: p.force == 2 && len(p.toks) > 0})
 	p.force = 0
 }
 
 // shortest writes nonterminal nt's shortest yield.
-func (e *enumerator) shortest(p *phrase, nt, depth int) {
-	best, pick := inf+1, -1
+func (e *grammarEnumerator) shortest(p *grammarPhrase, nt, depth int) {
+	best, pick := grammarInf+1, -1
 	for _, r := range e.g.byLHS[nt] {
 		if l := e.ruleLen(r); l < best {
 			best, pick = l, r
@@ -171,22 +171,22 @@ func (e *enumerator) shortest(p *phrase, nt, depth int) {
 
 // rule writes rule r with its children shortest, except child k, which
 // fill writes.
-func (e *enumerator) rule(p *phrase, r, k int, fill func(*phrase), depth int) {
+func (e *grammarEnumerator) rule(p *grammarPhrase, r, k int, fill func(*grammarPhrase), depth int) {
 	for i, s := range e.g.rules[r].rhs {
 		switch s.kind {
-		case symNT:
+		case grammarSymNT:
 			if i == k {
 				fill(p)
 			} else {
 				e.shortest(p, s.nt, depth+1)
 			}
-		case symTok:
+		case grammarSymTok:
 			kind := byte('p')
-			if isWordRune([]rune(s.text)[0]) {
+			if grammarIsWordRune([]rune(s.text)[0]) {
 				kind = 'w'
 			}
 			p.emit(s.text, kind)
-		case symClass:
+		case grammarSymClass:
 			switch s.text {
 			case "IdentifierReference", "BindingIdentifier", "LabelIdentifier", "IdentifierName":
 				p.emit("a", 'w')
@@ -199,18 +199,18 @@ func (e *enumerator) rule(p *phrase, r, k int, fill func(*phrase), depth int) {
 			default:
 				p.emit(s.text, 'x')
 			}
-		case symLT:
+		case grammarSymLT:
 			p.force = 2
-		case symNoLT:
+		case grammarSymNoLT:
 			p.force = 1
-		case symASI:
+		case grammarSymASI:
 			p.emit(";", 'p')
 		}
 	}
 }
 
 // using writes nt's shortest yield that uses target rule t.
-func (e *enumerator) using(p *phrase, nt, t, depth int) {
+func (e *grammarEnumerator) using(p *grammarPhrase, nt, t, depth int) {
 	l := e.with[t]
 	if nt == e.g.rules[t].lhs && l[nt] == e.ruleLen(t) {
 		e.rule(p, t, -1, nil, depth)
@@ -218,12 +218,12 @@ func (e *enumerator) using(p *phrase, nt, t, depth int) {
 	}
 	for _, q := range e.g.byLHS[nt] {
 		base := e.ruleLen(q)
-		if base >= inf || depth > 60 {
+		if base >= grammarInf || depth > 60 {
 			continue
 		}
 		for k, s := range e.g.rules[q].rhs {
-			if s.kind == symNT && l[s.nt] < inf && base-e.g.minLen[s.nt]+l[s.nt] == l[nt] {
-				e.rule(p, q, k, func(p *phrase) { e.using(p, s.nt, t, depth+1) }, depth)
+			if s.kind == grammarSymNT && l[s.nt] < grammarInf && base-e.g.minLen[s.nt]+l[s.nt] == l[nt] {
+				e.rule(p, q, k, func(p *grammarPhrase) { e.using(p, s.nt, t, depth+1) }, depth)
 				return
 			}
 		}
@@ -232,26 +232,26 @@ func (e *enumerator) using(p *phrase, nt, t, depth int) {
 
 // within writes nt's shortest context from Script (k 0) or Script⁺ (k 1)
 // around fill.
-func (e *enumerator) within(p *phrase, k, nt int, fill func(*phrase), depth int) {
+func (e *grammarEnumerator) within(p *grammarPhrase, k, nt int, fill func(*grammarPhrase), depth int) {
 	via := e.ctxVia[k][nt]
 	if via[0] < 0 || depth > 60 {
 		fill(p)
 		return
 	}
 	parent := e.g.rules[via[0]].lhs
-	e.within(p, k, parent, func(p *phrase) { e.rule(p, via[0], via[1], fill, depth+1) }, depth+1)
+	e.within(p, k, parent, func(p *grammarPhrase) { e.rule(p, via[0], via[1], fill, depth+1) }, depth+1)
 }
 
 // sentences returns the search's phrases in a fixed order; maxLen bounds
 // their length.
-func (e *enumerator) sentences(maxLen int) [][]token {
-	var out [][]token
+func (e *grammarEnumerator) sentences(maxLen int) [][]grammarToken {
+	var out [][]grammarToken
 	seen := map[string]bool{}
-	add := func(toks []token) {
+	add := func(toks []grammarToken) {
 		if len(toks) == 0 || len(toks) > maxLen {
 			return
 		}
-		if s := spell(toks); !seen[s] {
+		if s := grammarSpell(toks); !seen[s] {
 			seen[s] = true
 			out = append(out, toks)
 		}
@@ -264,23 +264,23 @@ func (e *enumerator) sentences(maxLen int) [][]token {
 		if strings.HasSuffix(e.g.names[rule.lhs], "⁺") {
 			k = 1
 		}
-		if e.ctx[k][rule.lhs] >= inf {
+		if e.ctx[k][rule.lhs] >= grammarInf {
 			continue
 		}
-		var base phrase
-		e.within(&base, k, rule.lhs, func(p *phrase) { e.rule(p, r, -1, nil, 0) }, 0)
+		var base grammarPhrase
+		e.within(&base, k, rule.lhs, func(p *grammarPhrase) { e.rule(p, r, -1, nil, 0) }, 0)
 		add(base.toks)
 		for c, s := range rule.rhs {
-			if s.kind != symNT {
+			if s.kind != grammarSymNT {
 				continue
 			}
 			for _, t := range e.targets {
-				if l := e.with[t][s.nt]; l >= inf || l > maxLen {
+				if l := e.with[t][s.nt]; l >= grammarInf || l > maxLen {
 					continue
 				}
-				var p phrase
-				e.within(&p, k, rule.lhs, func(p *phrase) {
-					e.rule(p, r, c, func(p *phrase) { e.using(p, s.nt, t, 0) }, 0)
+				var p grammarPhrase
+				e.within(&p, k, rule.lhs, func(p *grammarPhrase) {
+					e.rule(p, r, c, func(p *grammarPhrase) { e.using(p, s.nt, t, 0) }, 0)
 				}, 0)
 				add(p.toks)
 			}
@@ -289,8 +289,8 @@ func (e *enumerator) sentences(maxLen int) [][]token {
 	return out
 }
 
-// sampleN keeps n of a list, in a fixed pseudo-random order.
-func sampleN[T any](xs []T, n int, seed int64) []T {
+// grammarSampleN keeps n of a list, in a fixed pseudo-random order.
+func grammarSampleN[T any](xs []T, n int, seed int64) []T {
 	if len(xs) <= n {
 		return xs
 	}
@@ -307,17 +307,17 @@ func sampleN[T any](xs []T, n int, seed int64) []T {
 // tsSentences writes each rule of the grammar that has a token, with its
 // children shortest, in its shortest statement context: the TypeScript
 // sentences the keyword variants then turn into VibeLang's contested ones.
-func (e *enumerator) tsSentences(maxLen int) [][]token {
-	var out [][]token
+func (e *grammarEnumerator) tsSentences(maxLen int) [][]grammarToken {
+	var out [][]grammarToken
 	seen := map[string]bool{}
 	for _, r := range e.targets {
 		lhs := e.g.rules[r].lhs
-		if strings.HasSuffix(e.g.names[lhs], "⁺") || e.ctx[0][lhs] >= inf {
+		if strings.HasSuffix(e.g.names[lhs], "⁺") || e.ctx[0][lhs] >= grammarInf {
 			continue
 		}
-		var p phrase
-		e.within(&p, 0, lhs, func(p *phrase) { e.rule(p, r, -1, nil, 0) }, 0)
-		if s := spell(p.toks); len(p.toks) > 0 && len(p.toks) <= maxLen && !seen[s] {
+		var p grammarPhrase
+		e.within(&p, 0, lhs, func(p *grammarPhrase) { e.rule(p, r, -1, nil, 0) }, 0)
+		if s := grammarSpell(p.toks); len(p.toks) > 0 && len(p.toks) <= maxLen && !seen[s] {
 			seen[s] = true
 			out = append(out, p.toks)
 		}
