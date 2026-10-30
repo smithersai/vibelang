@@ -6,6 +6,7 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { loadTypeScript } from "../lib/declarations.mjs"
 import { addBunTestPreload, addCompilerOptions, addEffectLint, copyTarballs, formattable, formatterOf, addVibeLang, addVibeIncludes, addVibeLangSetting, addVitePlugin, initAgents, installCommand, packageManager, replaceTsc, rootTsconfigs, runsBunTest, setIgnoreLine, testConfigArgument, toolchainDirectory, toolchainSpecs, viteAppConfigs, wireKnip, wireVite, wireViteApps } from "../lib/wire.mjs"
+import { setUpAgents } from "../lib/steps.mjs"
 import { must } from "../lib/util.mjs"
 
 // The runtime package's TypeScript (bun install in packages/runtime) has the compiler API.
@@ -386,6 +387,26 @@ test("initAgents sets the target's coding agents up with the vibelang a workspac
     const hook = JSON.parse(readFileSync(join(root, ".claude/settings.json"), "utf8")).hooks.PostToolUse[0].hooks[0].command
     assert.equal(hook, "npx --no --prefix packages/core -- vibelang agents hook")
     assert.match(readFileSync(join(root, "AGENTS.md"), "utf8"), /npx --prefix packages\/core vibelang agents check/)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test("setup formats the files vibelang agents init writes, with the target's own formatter", async () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-agents-"))
+  try {
+    writeFileSync(join(root, "package.json"), JSON.stringify({ scripts: { format: "oxfmt" } }))
+    mkdirSync(join(root, "node_modules/.bin"), { recursive: true })
+    // The formatter records the files it was given.
+    writeFileSync(join(root, "node_modules/.bin/oxfmt"), '#!/bin/sh\nprintf "%s\\n" "$@" > formatted.txt\n', { mode: 0o755 })
+    mkdirSync(join(root, "packages/core/node_modules/.bin"), { recursive: true })
+    symlinkSync(fileURLToPath(new URL("../../../../packages/compiler/", import.meta.url)), join(root, "packages/core/node_modules/vibelang"))
+    symlinkSync("../vibelang/bin/vibelang", join(root, "packages/core/node_modules/.bin/vibelang"))
+    const { files } = await setUpAgents(root, "packages/core", root)
+    const formatted = readFileSync(join(root, "formatted.txt"), "utf8").split("\n")
+    const json = files.filter((file) => file.endsWith(".json"))
+    assert.ok(json.length > 0, files.join(", "))
+    for (const file of json) assert.ok(formatted.includes(file), `${file} was not formatted`)
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

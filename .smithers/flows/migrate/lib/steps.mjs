@@ -180,6 +180,17 @@ export async function formatVibe(config, files, log) {
   return { files: targets, code }
 }
 
+/**
+ * Runs vibelang agents init in the target t with the vibelang packageDir
+ * installed, then formats what it wrote with the target's formatter: the
+ * settings, plugin manifests and opencode.json it writes are the
+ * repository's files, which its format check reads.
+ */
+export async function setUpAgents(t, packageDir, logs) {
+  const agents = await Wire.initAgents({ root: t, packageDir, log: join(logs, "agents-init.log") })
+  return { ...agents, formatted: await formatWritten(t, agents.files, join(logs, "agents-format.log")) }
+}
+
 const testsOf = (r) => ({ code: r.code, total: r.total, passed: r.passed, failed: r.failed, skipped: r.skipped, ms: r.ms })
 
 /**
@@ -422,7 +433,7 @@ export async function setup(options) {
   writeJson(p.inventory, inventory)
 
   // The target's coding agents get the skill, the language server and a check after each edit.
-  const agents = wired ? await Wire.initAgents({ root: t, packageDir: config.packages[0].dir, log: join(logs, "agents-init.log") }) : null
+  const agents = wired ? await setUpAgents(t, config.packages[0].dir, logs) : null
 
   await assertPortable(t, machineRoots(t, p.run, config.toolchain.dir))
   const setupCommit = await Jj.commit(t, `migrate(vibelang): set up ${version.trim()}\n\nAdds the compiler, the runtime and the Vite plugin, replaces tsc with vibelang\nin scripts, lets .vibe files import modules by source name, and sets coding\nagents up for .vibe files (vibelang agents init). Effect\n${upgrade.effect.to} came in the commit before.`)
