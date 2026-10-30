@@ -371,6 +371,10 @@ func schemaTypeText(c *checker.Checker, file *ast.SourceFile, schema *ast.Node, 
 		if mutable {
 			valueSchema = valueSchema.Arguments()[0]
 		}
+		// Source Record keys remain required, and Readonly keeps key mutability.
+		if known, missing := schemaRecordValueMissingFlags(c, valueSchema, !mutable); !known || len(missing) != 0 {
+			return "", false
+		}
 		value, ok := schemaTypeText(c, file, valueSchema, indent)
 		if !ok {
 			return "", false

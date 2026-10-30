@@ -84,6 +84,8 @@ A union accepts one of its members, exposed as `.members`. When alternatives ove
 
 For a tag absent from the wire representation, add a field with `Schema.tagDefaultOmit("Warehouse")`: decoding supplies the tag and encoding omits it. `NullOr`, `UndefinedOr`, and `NullishOr` accept values in addition to the wrapped schema; they do not make an object key optional.
 
+In a `schema` declaration, a `Record<K, V>` value schema must have required decoded keys. A `Readonly<Record<K, V>>` value schema must also keep those keys readonly. Conflicting or uncertain inferred flags, including aliased schema values built with `Schema.optionalKey` or `Schema.mutableKey`, report `EK2109`. Use an unmodified value schema and write the modifiers on the `Record` type. A required value union with `undefined` keeps finite keys present; readonly keys can still hold mutable arrays. Run `vibelang --fix` to preserve existing decoding with explicit Effect codecs and the same declaration types. In a `schema error`, it names the field codecs and keeps the constructor, methods and matcher. The migration also runs with `--fix-migration-only`.
+
 ## Defining tuples with optional and rest elements
 
 ```vibe

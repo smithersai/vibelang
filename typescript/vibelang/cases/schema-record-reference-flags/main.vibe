@@ -1,0 +1,8 @@
+const RequiredNumber = Schema.Number
+export schema Writable = Record<"a", RequiredNumber>
+export schema Readonly = Readonly<Record<"a", number>>
+export schema PresentUndefined = Record<"a", number | undefined>
+export schema ReadonlyArrays = Readonly<Record<string, number[]>>
+export schema Nested = Readonly<Record<string, { readonly value: number }>>
+schema DeclaredNumber = number
+export schema ViaDeclaration = Readonly<Record<string, DeclaredNumber>>

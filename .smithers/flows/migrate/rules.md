@@ -31,6 +31,8 @@ The skill below teaches accepted VIPs, and the toolchain does not implement ever
 
 - Preserve schema collection mutability when converting declarations. `Schema.Array(S)` maps to `ReadonlyArray<T>`, `Schema.Tuple([...])` to a `readonly` tuple, and `Schema.Record(K, V)` to `Readonly<Record<K, V>>`. `Schema.mutable` gives a mutable array or tuple; `Schema.mutableKey` on a record’s value schema gives `Record<K, V>`. Use `vibelang --fix` and compare the resulting declaration types.
 
+- A schema-reference `EK2109` about decoded key flags needs a preserving codec expansion. Run `vibelang --fix` and retain its explicit Effect codecs; do not change `optionalKey` to `optional` or add `?` as a substitute, because explicit `undefined` and omitted keys differ. Compare declaration output and success/failure Exits. Keep schema-error matchers, constructor contracts and methods intact.
+
 ## Platform access goes through services
 
 - Reach the platform only through injected Effect services (`FileSystem`, `Path`, `HttpClient`, `Clock`, `Random`, `Crypto`, `Console`, `Terminal`, `KeyValueStore`, `ChildProcessSpawner`, `Stdio`, `Config`), Effect's own modules, or VibeLang's `Experimental.Process`, `Experimental.FileSystem`, `Experimental.Crypto` and `Experimental.Locks`. The replacement table below names each global's replacement; EK4402 names it too.
