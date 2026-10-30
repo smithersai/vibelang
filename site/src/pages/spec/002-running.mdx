@@ -198,7 +198,7 @@ effect function c() { const p = maybeQuery() }                      // EK0404: P
 
 ### Meaning
 
-`e catch h` runs `e`. On a failure in its error channel it calls `h` with the error, as Zig's `catch |err|` does. `h` runs only when the `Cause` holds no defect: a `Cause` with both a failure and a defect, as `try.any` gives when an operand dies, passes through with its failures re-raised as defects, as `Effect.catch` does in Effect 4.1.0. The handler's kind decides whether its result runs Effects, as for any function. `h` is evaluated only on failure. An `effect` block is an ordinary operand, so `effect { try write(x); try close() } catch effect (e) => try log(e)` replaces the banned `try { } catch { }` statement:
+`e catch h` runs `e`. On a failure in its error channel it calls `h` with the error, as Zig's `catch |err|` does. `h` runs only when the `Cause` holds no defect: a `Cause` with both a failure and a defect, passes through with its failures re-raised as defects, as `Effect.catch` does in Effect 4.1.0. The handler's kind decides whether its result runs Effects, as for any function. `h` is evaluated only on failure. An `effect` block is an ordinary operand, so `effect { try write(x); try close() } catch effect (e) => try log(e)` replaces the banned `try { } catch { }` statement:
 
 | Written | Effect TypeScript |
 | --- | --- |
