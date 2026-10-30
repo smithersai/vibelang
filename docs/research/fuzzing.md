@@ -268,6 +268,10 @@ A function may be its module's default export (`Func.Default`): both prints writ
 graph seed check. Their compiler packages share Go build-cache entries, so
 a fresh mirror does not compile them twice in different build modes.
 
+The build-graph seed target declares `GOMAXPROCS` capped at the smaller of `24` and the machine CPU count and `GOFLAGS=-p=6`
+inside its shell. The outer runner's environment is deliberately filtered,
+so its Go concurrency settings do not reach a shell unless declared.
+
 ```sh
 cd typescript/tsc
 export ES_REMOTE_HOST=ubuntu@<host> ES_REMOTE_KEY=~/.ssh/<key>

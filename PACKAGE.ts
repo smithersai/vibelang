@@ -133,9 +133,11 @@ const targets = {
     `CGO_ENABLED=0 ${effect} go test -count=1 -p 8 -timeout 25m -trimpath ./internal/vibelangmapper/...`,
     [Tsc["vibelangmapper-files"]]
   ),
+  // Shell targets do not inherit ambient Go controls. Declare the
+  // post-merge fuzz budget: 24 seed workers and six build jobs.
   "go-vibelangfuzz": goVibelang(
     "The fuzz oracles over the seed corpus: cases, snippets and saved reproductions.",
-    `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} ` +
+    `CGO_ENABLED=0 GOMAXPROCS=$(n=$(getconf _NPROCESSORS_ONLN); [ "$n" -lt 24 ] && echo "$n" || echo 24) GOFLAGS=-p=6 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} ` +
       "go test -short -count=1 -timeout=20m -trimpath ./internal/vibelangfuzz/...",
     [Tsc["vibelangfuzz-files"]],
     // go test bounds the run at 20m and names a stuck test; the budget

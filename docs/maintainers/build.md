@@ -68,6 +68,11 @@ They run `go test -count=1`: the graph caches their results, and Go's own test
 cache would first hash every file the tests opened. `:go-vibelangfuzz` opens
 about 25 million, which took 14 minutes on one core after its tests passed.
 
+The fuzz shell caps `GOMAXPROCS` at the smaller of `24` and the machine CPU count and declares `GOFLAGS=-p=6`, matching the
+post-merge shard allocation. Smithers withholds ambient Go variables, so
+setting them only on the outer CI process does not constrain the test.
+These declared values also enter the target cache key.
+
 ## What a change reruns
 
 | Change | Reruns | Replays |
