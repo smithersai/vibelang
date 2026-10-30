@@ -17,6 +17,8 @@ Optional class methods use `effect read?() { … }` or `effect [key]?() { … }`
 
 Method names follow TypeScript's property-name rules, including bigint literals: `effect 1n() { … }` works in a class or object literal.
 
+A class can extend a value named `effect`: in `class Derived extends effect { }`, the braces are the class body.
+
 ## Sequence computations
 
 ```vibe

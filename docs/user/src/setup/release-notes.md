@@ -896,6 +896,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The LSP benchmark could loop forever with an infinite hover count or crash with an empty sample set; it now rejects invalid counts and missing arguments before reading a project or starting the server.
 
+- Classes extending a value named `effect` were rejected with syntax errors; `class Derived extends effect { }` now compiles as it does in TypeScript.
+
 - The site's contrast check could lose its Chromium renderer under build-host memory pressure; it now audits each single-document page in place instead of opening a second renderer to combine the results.
 - VIP migration could remove `try` from calls returning tagged errors and turn their failures into success values; it now preserves execution of those Effects, while non-Effect Yieldables retain their `asEffect()` repair.
 

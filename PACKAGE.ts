@@ -254,6 +254,7 @@ const specTests = [
   "TestCatchArrowHeadsQuoted",
   "TestFiberUnaryOperandsQuoted",
   "TestDeclarationLineBreakQuoted",
+  "TestEffectHeritageQuoted",
   "TestSchemaDecodedKeyFlagsQuoted",
   "TestFormatBlockHeaderRulesQuoted",
   "TestFormatContractCommentQuote",

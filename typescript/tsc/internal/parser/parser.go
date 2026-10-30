@@ -2017,7 +2017,14 @@ func (p *Parser) parseExpressionWithTypeArguments() *ast.Node {
 	pos := p.nodePos()
 	saveNoBlockParams := p.vibelangNoBlockParams
 	p.vibelangNoBlockParams = true // the { after a heritage clause opens the class body (vibelang_blocks.go)
-	expression := p.parseLeftHandSideExpressionOrHigher()
+	var expression *ast.Node
+	if p.isVibeLangEffectWord() && p.lookAhead((*Parser).nextTokenIsOpenBrace) {
+		// In extends effect { ... }, effect is the base and { opens the
+		// class body. Nested expressions still admit effect blocks.
+		expression = p.parseIdentifier()
+	} else {
+		expression = p.parseLeftHandSideExpressionOrHigher()
+	}
 	p.vibelangNoBlockParams = saveNoBlockParams
 	if ast.IsExpressionWithTypeArguments(expression) {
 		return expression

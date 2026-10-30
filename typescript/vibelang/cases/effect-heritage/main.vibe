@@ -1,0 +1,11 @@
+interface effect { value: number }
+const effect = class { value = 7 }
+export class Direct extends effect {
+  effect read() { return try Effect.succeed(this.value + 1) }
+}
+export const Expression = class extends effect {
+  effect read() { return try Effect.succeed(this.value + 2) }
+}
+export class TypeOnly implements effect { value = 11 }
+// Nested Effect blocks in a heritage expression remain expressions.
+export class Nested extends (class { program = effect { return 12 } }) {}
