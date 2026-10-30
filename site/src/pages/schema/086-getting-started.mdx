@@ -28,6 +28,8 @@ effect function receive(input: unknown) {
 
 Each field describes its own representation and checks; the struct combines them into one codec, so `pieces` arrives as text and becomes a number. Declaring `Shipment` builds a description and decodes nothing.
 
+A required `schema` field must reference a codec with required decoded key flags (`EK2109`). Use an unmodified value codec and write optionality on the field. To retain an existing optional-key codec, `vibelang --fix` writes the explicit `Schema.Struct` value.
+
 ## Extracting decoded, encoded, and service types
 
 ```vibe

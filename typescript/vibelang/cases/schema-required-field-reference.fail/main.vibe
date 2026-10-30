@@ -1,0 +1,11 @@
+// expect: EK2109
+const Optional = Schema.optionalKey(Schema.Number)
+const Alias = Optional
+const Uncertain = Optional as Schema.Top
+schema Direct { readonly value: Optional }
+schema Aliased { readonly value: Alias }
+schema Nested { readonly child: { readonly value: Optional } }
+schema Wide { readonly value: Uncertain }
+namespace N { export schema Nested { readonly value: Optional } }
+schema error Outer { readonly nested: { readonly value: Optional } }
+export {}

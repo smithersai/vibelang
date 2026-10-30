@@ -1,0 +1,29 @@
+const Optional = Schema.optionalKey(Schema.Number)
+const events: string[] = []
+const fields = { get value(): typeof Optional { events.push("field"); return Optional } }
+export const Direct = Schema.Struct({
+    value: fields.value,
+});
+export type Direct = typeof Direct.Type;
+export const Nested = Schema.Struct({
+    child: Schema.Struct({
+        value: Optional,
+    }),
+});
+export type Nested = typeof Nested.Type;
+const $makeCodec420_0 = (): infer _ => Schema.Struct({
+    value: Optional,
+});
+const $codecs420 = { get $codec420_0() { return $makeCodec420_0(); } };
+
+export schema error Outer {
+  readonly child: $codecs420.$codec420_0
+  get label(): string { return "kept" }
+}
+export namespace N { export const Named = Schema.Struct({
+    value: Optional,
+});
+export type Named = typeof Named.Type; }
+export { events }
+export function make() { return new Outer({ child: {} }) }
+export function matches(subject: unknown) { return subject is Outer }

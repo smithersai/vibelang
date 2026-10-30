@@ -232,6 +232,11 @@ func structFieldType(c *checker.Checker, file *ast.SourceFile, property *ast.Nod
 	if isSchemaCall(c, value, "optional", 1) {
 		optional, value = true, value.Arguments()[0]
 	}
+	if !optional {
+		if known, required := schemaStructValueRequired(c, value); known && !required {
+			return "", false
+		}
+	}
 	typeText, ok := schemaTypeText(c, file, value, indent)
 	if !ok {
 		return "", false

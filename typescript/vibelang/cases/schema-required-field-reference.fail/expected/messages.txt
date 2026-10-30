@@ -1,0 +1,1 @@
+A required schema field must use a schema whose decoded key is required.

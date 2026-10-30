@@ -2653,6 +2653,7 @@ typescript/vibelang/cases/s19-30-callback-finalizer/main.vibe:7:40 lambda plain 
 typescript/vibelang/cases/s19-30-callback-finalizer/main.vibe:7:57 lambda plain hatch
 typescript/vibelang/cases/s2170-function-hoisting/main.vibe:78:14 lambda plain annotation
 typescript/vibelang/cases/schema-class-recursive-contract/main.vibe:15:20 lambda plain table
+typescript/vibelang/cases/schema-required-field-reference-upgrade/main.vibe:14:25 lambda plain annotation
 typescript/vibelang/cases/schema-statics-annotation/main.vibe:10:21 lambda plain annotation
 typescript/vibelang/cases/schema-statics-annotation/main.vibe:14:9 lambda plain annotation
 typescript/vibelang/cases/schema-statics-annotation/main.vibe:21:9 lambda effectFn annotation

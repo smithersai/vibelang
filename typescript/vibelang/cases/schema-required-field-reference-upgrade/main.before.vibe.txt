@@ -1,0 +1,13 @@
+const Optional = Schema.optionalKey(Schema.Number)
+const events: string[] = []
+const fields = { get value(): typeof Optional { events.push("field"); return Optional } }
+export schema Direct { readonly value: fields.value }
+export schema Nested = { readonly child: { readonly value: Optional } }
+export schema error Outer {
+  readonly child: { readonly value: Optional }
+  get label(): string { return "kept" }
+}
+export namespace N { export schema Named { readonly value: Optional } }
+export { events }
+export function make() { return new Outer({ child: {} }) }
+export function matches(subject: unknown) { return subject is Outer }

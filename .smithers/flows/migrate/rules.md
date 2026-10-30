@@ -57,3 +57,7 @@ A call runs where it stands; only a function literal defers it. Write `retry(() 
 ## VIP-9: Service declarations
 
 Use only `service Name { … }` for services; abstract classes remain ordinary classes. Preserve existing runtime identities with `static readonly key = "…"`. A reference default is `static readonly defaultValue = () => shape`, typed `() => Name.Shape`; migrate `default` by wrapping its value in a thunk and changing reads to `Name.defaultValue()`. Implementations have type `Name.Shape`, while `Name` is the identifier in `R`.
+
+## Required schema field references (VIP-15, detail 132)
+
+A source-required struct field cannot reference a codec with optional or unprovable decoded key flags. For `EK2109`, preserve existing decoding by expanding the enclosing schema declaration to explicit codecs with `vibelang --fix`. Keep optionalKey omission distinct from accepting undefined; adding a question token is not a preserving upgrade. Nested struct codecs in schema-error fields may be named before the error declaration while retaining its constructor, methods and matcher. Explicit optional-key Struct calls stay explicit; do not suggest an inverse rewrite that makes a required field optional.
