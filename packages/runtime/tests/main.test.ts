@@ -28,6 +28,9 @@ for (const delayed of [false, true]) {
   })
 }
 
+// Each child process loads the runtime and Effect; on a loaded host that can take longer than bun test's 5 s default.
+const CHILD_PROCESS_TIMEOUT = 30_000
+
 for (const executable of ["node", process.execPath]) {
   const host = executable === "node" ? "Node" : "Bun"
   test(`main on ${host} exits on failure and honors the runtime's exit-code marker`, () => {
@@ -42,7 +45,7 @@ for (const executable of ["node", process.execPath]) {
       expect(result.exitCode).toBe(code)
       expect(result.stderr.toString()).toBe("")
     }
-  })
+  }, CHILD_PROCESS_TIMEOUT)
 
   for (const signal of ["SIGINT", "SIGTERM"]) {
     test(`main on ${host} handles ${signal} and finishes resource cleanup before exit`, () => {
@@ -54,7 +57,7 @@ for (const executable of ["node", process.execPath]) {
       expect(result.exitCode).toBe(130)
       expect(result.stdout.toString().trim()).toBe("released")
       expect(result.stderr.toString()).toBe("")
-    })
+    }, CHILD_PROCESS_TIMEOUT)
   }
 }
 
@@ -68,7 +71,7 @@ test("main can finish successfully without a host process (browser fallback)", (
   expect(result.exitCode).toBe(0)
   expect(result.stdout.toString().trim()).toBe("42")
   expect(result.stderr.toString()).toBe("")
-})
+}, CHILD_PROCESS_TIMEOUT)
 
 for (const executable of ["node", process.execPath]) {
   test("main reports typed error fields on " + (executable === "node" ? "Node" : "Bun"), () => {
@@ -81,7 +84,7 @@ for (const executable of ["node", process.execPath]) {
     expect(report).toContain("boom")
     expect(report).toContain("count")
     expect(report).toContain("3")
-  })
+  }, CHILD_PROCESS_TIMEOUT)
 }
 
 for (const executable of ["node", process.execPath]) {
@@ -92,7 +95,7 @@ for (const executable of ["node", process.execPath]) {
       expect(result.exitCode).toBe(1)
       expect(result.stdout.toString() + result.stderr.toString()).toBe("")
     }
-  })
+  }, CHILD_PROCESS_TIMEOUT)
 
   test("main reports circular error fields on " + (executable === "node" ? "Node" : "Bun"), () => {
     const source = 'import { $runMain, Effect, TaggedError } from "vibelang-runtime"; class Fatal extends TaggedError("Fatal") {} const circular = {}; circular.self = circular; const error = new Fatal({ why: "boom", circular }); $runMain(Effect.fail(error));'
@@ -100,5 +103,5 @@ for (const executable of ["node", process.execPath]) {
     expect(result.exitCode).toBe(1)
     const report = result.stdout.toString() + result.stderr.toString()
     expect(report).toContain("boom")
-  })
+  }, CHILD_PROCESS_TIMEOUT)
 }
