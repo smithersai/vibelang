@@ -1225,6 +1225,11 @@ typescript/vibelang/cases/ek4201.fail/main.vibe:44:42 lambda effectFn table
 typescript/vibelang/cases/ek4201.fail/main.vibe:45:16 lambda program table
 typescript/vibelang/cases/ek4201.fail/main.vibe:46:16 lambda effectFn table
 typescript/vibelang/cases/ek4202.fail/main.vibe:14:20 lambda choice fallback
+typescript/vibelang/cases/ek4301-union-data-member-generic/main.vibe:12:25 lambda effectFn annotation
+typescript/vibelang/cases/ek4301-union-data-member-generic/main.vibe:12:59 lambda choice fallback
+typescript/vibelang/cases/ek4301-union-data-member-generic/main.vibe:13:17 lambda plain fallback
+typescript/vibelang/cases/ek4301-union-data-member-generic/main.vibe:16:21 lambda dual fallback
+typescript/vibelang/cases/ek4301-union-data-member-generic/main.vibe:19:48 byname program table
 typescript/vibelang/cases/ek4301-visitor-note.fail/main.vibe:3:15 lambda plain annotation
 typescript/vibelang/cases/ek4301-visitor-note.fail/main.vibe:6:22 lambda plain annotation
 typescript/vibelang/cases/ek4301-visitor-note.fail/main.vibe:7:12 lambda plain table

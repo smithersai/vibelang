@@ -221,7 +221,17 @@ func (a *analyzer) takenAsData(expected []*checker.Type, t *checker.Type) bool {
 			}
 			return
 		}
-		if e.Flags()&checker.TypeFlagsObject == 0 || !a.checker.IsTypeAssignableTo(t, e) {
+		// A type parameter takes what its constraint takes, as T of
+		// collection<T extends Like<any> | Plat<any>>(resources: T[]) does.
+		if e.Flags()&checker.TypeFlagsTypeParameter != 0 {
+			if constraint := a.checker.GetConstraintOfTypeParameter(e); constraint != nil {
+				visit(constraint, depth+1)
+			}
+			return
+		}
+		// The declared signature keeps its type parameters, as Like<W> of
+		// register<W>(cls: Like<W> | Plat) does, so W matches anything here.
+		if e.Flags()&checker.TypeFlagsObject == 0 || !a.checker.IsTypeAssignableTo(t, a.checker.GetPermissiveInstantiation(e)) {
 			return
 		}
 		if len(a.checker.GetSignaturesOfType(e, checker.SignatureKindCall)) == 0 {

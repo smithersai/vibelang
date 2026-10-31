@@ -321,6 +321,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Migration rejected private examples and websites when their declarations changed; `verify` now reports `"not published"` for packages marked `"private": true`, while keeping tests, compiler and style checks.
 
+- Passing an Effect-returning resource class where a union's generic data member takes it, as `register<W>(cls: Like<W> | Platform)` or `collection<T extends Like<any> | Platform<any>>(all: T[])`, was EK4301 and could cascade into EK3101; such a value is data there now.
+
 - A JSDoc `{@link Envelope.id}` beside a local `Envelope` made the emitted JavaScript import `Envelope` from `effect/cluster` too, and the module failed to load with `Identifier 'Envelope' has already been declared`; names in comments no longer import Effect modules.
 
 

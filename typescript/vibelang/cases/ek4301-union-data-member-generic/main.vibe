@@ -1,0 +1,21 @@
+// expect-result: "1:42 2"
+// alchemy-28: a generic data member of a union target, Like<W> in
+// register<W>(cls: Like<W> | Plat), takes the value as data, as the
+// non-generic member of ek4301-union-data-member does: W matches the
+// resource's witness, so an Effect-returning resource class is no EK4301
+// there, and RunR still infers run's call-time requirement S (no EK3101).
+// So does a type parameter whose constraint is such a union, as the
+// elements of collection<T extends Like<any> | PlatOf<any>>(resources: T[]).
+// From alchemy's AWS and acme providers (160 errors in AWS batch 02).
+import { Thing, Certificate, S, register, operation, collection } from "./lib.ts"
+
+export const provider = (): infer _!!S => register(Thing, effect {
+  return { run: effect (n) => { return try operation(n) } }
+})
+
+export const make = effect () => try collection([Thing, Certificate])
+
+export effect function main() {
+  const registered = try Effect.provideService(provider(), S, { value: 40 })
+  return `${registered} ${try make()}`
+}
