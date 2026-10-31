@@ -416,11 +416,13 @@ function classify(s: string | number) {
 }
 const adopted: Promise<number> = (async () => Promise.resolve(7))()
 const adoptedExit = await Effect.runPromiseExit(Effect.promise(() => adopted)) // Success(7)
+// Stand-in for the runtime-provided Symbol.customMatcher key.
+const customMatcher: unique symbol = Symbol.for("Symbol.customMatcher")
 class OnlyNumbers {
-  static [Symbol.customMatcher](s: unknown): boolean { return typeof s === "number" }
+  static [customMatcher](s: unknown): boolean { return typeof s === "number" }
 }
 function negated(s: OnlyNumbers | number) {
-  if (!OnlyNumbers[Symbol.customMatcher](s)) {
+  if (!OnlyNumbers[customMatcher](s)) {
     // @ts-expect-error no implicit instanceof exclusion for an own boolean matcher
     s.toFixed(0)
   }
