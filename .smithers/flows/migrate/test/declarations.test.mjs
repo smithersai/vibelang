@@ -15,6 +15,79 @@ test("canonical text ignores comments, union order, property order and parenthes
   assert.equal(a, b)
 })
 
+test("canonical text ignores redundant type parentheses and keeps the ones precedence needs", () => {
+  // foldkit-13: vibelang-format drops the parentheses around an explicit return type (html/lazy.d.ts).
+  for (const [a, b] of [
+    ["export declare const make: () => (<A>(value: A) => A);", "export declare const make: () => <A>(value: A) => A;"],
+    ["export declare const x: (string);", "export declare const x: string;"],
+    ["export type T = ((A | B)) | C;", "export type T = A | B | C;"],
+    ["export declare function f(): (readonly string[]);", "export declare function f(): readonly string[];"]
+  ]) assert.equal(canonicalize(ts, a), canonicalize(ts, b), a)
+  for (const [a, b] of [
+    ["export type T = (A | B)[];", "export type T = A | B[];"],
+    ["export type T = (() => void) | string;", "export type T = () => void | string;"],
+    ["export type T = keyof (A | B);", "export type T = keyof A | B;"],
+    ["export type T = (A & B) | C;", "export type T = A & (B | C);"],
+    ["export type F = (new () => A)[];", "export type F = new () => A[];"],
+    ["export declare const make: () => (<A>(value: A) => A);", "export declare const make: () => <A>(value: A) => B;"]
+  ]) assert.notEqual(canonicalize(ts, a), canonicalize(ts, b), a)
+})
+
+test("property: a type means the same with every redundant parenthesis written, and different types stay different", () => {
+  // foldkit-13's neighbourhood: seeded random types over the operators whose precedence parentheses change.
+  let seed = 13
+  const next = (n) => ((seed = (seed * 1103515245 + 12345) % 2147483648), seed % n)
+  const gen = (depth) => {
+    const k = depth <= 0 ? 0 : next(7)
+    if (k === 0) return { k: "ref", name: ["A", "B", "C", "string"][next(4)] }
+    if (k === 1 || k === 2) return { k: k === 1 ? "union" : "and", parts: [gen(depth - 1), gen(depth - 1)] }
+    if (k === 3) return { k: "array", of: gen(depth - 1) }
+    if (k === 4) return { k: "keyof", of: gen(depth - 1) }
+    if (k === 5) return { k: "fn", ret: gen(depth - 1) }
+    return { k: "generic", ret: gen(depth - 1) }
+  }
+  const f = ts.factory
+  const node = (t) => {
+    switch (t.k) {
+      case "ref": return t.name === "string" ? f.createKeywordTypeNode(ts.SyntaxKind.StringKeyword) : f.createTypeReferenceNode(t.name)
+      case "union": return f.createUnionTypeNode(t.parts.map(node))
+      case "and": return f.createIntersectionTypeNode(t.parts.map(node))
+      case "array": return f.createArrayTypeNode(node(t.of))
+      case "keyof": return f.createTypeOperatorNode(ts.SyntaxKind.KeyOfKeyword, node(t.of))
+      case "fn": return f.createFunctionTypeNode(undefined, [], node(t.ret))
+      case "generic": return f.createFunctionTypeNode([f.createTypeParameterDeclaration(undefined, "X")], [], node(t.ret))
+    }
+  }
+  const full = (t) => {
+    switch (t.k) {
+      case "ref": return t.name
+      case "union": return `(${t.parts.map(full).join(" | ")})`
+      case "and": return `(${t.parts.map(full).join(" & ")})`
+      case "array": return `(${full(t.of)}[])`
+      case "keyof": return `(keyof ${full(t.of)})`
+      case "fn": return `(() => ${full(t.ret)})`
+      case "generic": return `(<X>() => ${full(t.ret)})`
+    }
+  }
+  const printer = ts.createPrinter()
+  const source = ts.createSourceFile("t.d.ts", "", ts.ScriptTarget.Latest, false, ts.ScriptKind.TS)
+  const minimal = (t) => printer.printNode(ts.EmitHint.Unspecified, node(t), source)
+  const seen = new Map()
+  for (let i = 0; i < 300; i++) {
+    const t = gen(4)
+    const a = canonicalize(ts, `export type T = ${minimal(t)};`)
+    assert.equal(a, canonicalize(ts, `export type T = ${full(t)};`), full(t))
+    assert.equal(a, canonicalize(ts, a), "canonical text is a fixed point")
+    // Two types whose minimal printings differ only by parentheses must not collapse: drop each needed pair and compare.
+    const printed = minimal(t)
+    if (printed.includes("(") && !seen.has(printed)) {
+      seen.set(printed, true)
+      const stripped = printed.replace(/\(([^()]*\|[^()]*)\)\[\]/, "$1[]")
+      if (stripped !== printed) assert.notEqual(a, canonicalize(ts, `export type T = ${stripped};`), printed)
+    }
+  }
+})
+
 test("canonical text keeps real changes: a type, an optional member, method order", () => {
   const base = canonicalize(ts, "export interface I { a: number; m(): void; n(): void }\n")
   assert.notEqual(base, canonicalize(ts, "export interface I { a: string; m(): void; n(): void }\n"))

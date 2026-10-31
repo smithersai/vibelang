@@ -71,10 +71,17 @@ export function canonicalize(ts, text, fileName = "file.d.ts") {
     let i = 0
     return ts.factory.createNodeArray(members.map((m) => (eligible(m) ? sorted[i++] : m)))
   }
+  // The parenthesizer wraps a union inside a union, so unwrap it before flattening.
+  const unionMembers = (t) => {
+    const inner = ts.isParenthesizedTypeNode(t) ? t.type : t
+    return ts.isUnionTypeNode(inner) ? inner.types.flatMap(unionMembers) : [t]
+  }
   const normalize = (ctx) => {
     const f = ctx.factory
     const visit = (node) => {
       let x = ts.visitEachChild(node, visit, ctx)
+      // A redundant type parenthesis is spelling; the printer restores each one precedence needs.
+      if (ts.isParenthesizedTypeNode(x)) return x.type
       if (ts.isStringLiteral(x) && /^\.\.?\/.*(?<!\.d)\.ts$/.test(x.text) && isModuleName(ts, node)) return f.createStringLiteral(x.text.replace(/\.ts$/, ".js"))
       if (ts.isTypeReferenceNode(x) && x.typeArguments) {
         x = f.updateTypeReferenceNode(x, x.typeName, f.createNodeArray(x.typeArguments.map((t) => (ts.isParenthesizedTypeNode(t) ? t.type : t))))
@@ -82,7 +89,7 @@ export function canonicalize(ts, text, fileName = "file.d.ts") {
       const sorted = (elements) => f.createNodeArray([...elements].sort((a, b) => compare(print(a), print(b))))
       if (ts.isNamedImports(x)) x = f.updateNamedImports(x, sorted(x.elements))
       else if (ts.isNamedExports(x)) x = f.updateNamedExports(x, sorted(x.elements))
-      if (ts.isUnionTypeNode(x)) x = f.updateUnionTypeNode(x, f.createNodeArray([...x.types].sort((a, b) => compare(print(a), print(b)))))
+      if (ts.isUnionTypeNode(x)) x = f.updateUnionTypeNode(x, f.createNodeArray(x.types.flatMap(unionMembers).sort((a, b) => compare(print(a), print(b)))))
       else if (ts.isTypeLiteralNode(x)) x = f.updateTypeLiteralNode(x, sortMembers(x.members))
       else if (ts.isInterfaceDeclaration(x)) x = f.updateInterfaceDeclaration(x, x.modifiers, x.name, x.typeParameters, x.heritageClauses, sortMembers(x.members))
       else if (ts.isClassDeclaration(x)) x = f.updateClassDeclaration(x, x.modifiers, x.name, x.typeParameters, x.heritageClauses, sortMembers(x.members))
