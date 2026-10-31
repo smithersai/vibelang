@@ -18,10 +18,10 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | Load | Tokens |
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,194 |
-| The skill and the [cheat sheet](115-cheat-sheet.md) | 15,003 |
-| The skill and the user guide (139 pages) | 315,417 |
-| The user guide alone | 311,223 |
-| The specification (10 chapters) | 128,157 |
+| The skill and the [cheat sheet](115-cheat-sheet.md) | 15,014 |
+| The skill and the user guide (139 pages) | 315,837 |
+| The user guide alone | 311,643 |
+| The specification (10 chapters) | 128,841 |
 | The decision log, `docs/design/history/DECISIONS.md` | 141,521 |
 
 ## Effect TypeScript beside VibeLang
@@ -130,9 +130,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Zed](../setup/zed.md) | 479 |
 | [Other editors](../setup/other-editors.md) | 492 |
 | [Coding agents](../setup/coding-agents.md) | 990 |
-| **Upgrade** | **51,373** |
-| [Release notes](../setup/release-notes.md) | 51,373 |
-| **All 18 pages** | **78,575** |
+| **Upgrade** | **51,741** |
+| [Release notes](../setup/release-notes.md) | 51,741 |
+| **All 18 pages** | **78,943** |
 
 ### Guides
 
@@ -207,11 +207,11 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Pattern Matching](../code-style/067-pattern-matching.md) | 1,907 |
 | [Excessive Nesting](../code-style/068-do.md) | 1,303 |
 | [Control Flow Operators](../code-style/069-control-flow.md) | 2,025 |
-| **Data Types** | **19,399** |
+| **Data Types** | **19,440** |
 | [BigDecimal](../data-types/070-bigdecimal.md) | 1,500 |
 | [Cause](../data-types/071-cause.md) | 1,324 |
 | [Chunk](../data-types/072-chunk.md) | 992 |
-| [Data](../data-types/073-data.md) | 3,105 |
+| [Data](../data-types/073-data.md) | 3,146 |
 | [DateTime](../data-types/074-datetime.md) | 3,217 |
 | [Duration](../data-types/075-duration.md) | 1,408 |
 | [Result](../data-types/076-result.md) | 1,661 |
@@ -256,7 +256,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Platform globals in VibeLang](../platform/platform-globals.md) | 5,094 |
 | [Cloudflare Workers](../platform/cloudflare-workers.md) | 790 |
 | [Alchemy](../platform/alchemy.md) | 2,519 |
-| **All 101 pages** | **168,774** |
+| **All 101 pages** | **168,815** |
 
 ### VibeLang features
 
@@ -266,20 +266,20 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Producers](112-producers.md) | 2,100 |
 | [Building an HTTP API](113-building-an-http-api.md) | 1,649 |
 | [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 5,773 |
-| [Cheat sheet](115-cheat-sheet.md) | 10,809 |
+| [Cheat sheet](115-cheat-sheet.md) | 10,820 |
 | [Pattern matching with match and is](116-match-and-is.md) | 5,481 |
 | [Diagnostic code map](diagnostic-code-map.md) | 2,082 |
 | [Experimental platform APIs](118-experimental-platform-apis.md) | 3,813 |
-| **All 8 pages** | **31,772** |
+| **All 8 pages** | **31,783** |
 
 ### Specification
 
 | Page | Tokens |
 | --- | ---: |
 | [Introduction](../../../design/src/000-intro.md) | 2,538 |
-| **The language** | **98,663** |
+| **The language** | **99,347** |
 | [1. Functions and Effect types](../../../design/src/001-functions.md) | 11,316 |
-| [2. Running Effects](../../../design/src/002-running.md) | 24,251 |
+| [2. Running Effects](../../../design/src/002-running.md) | 24,935 |
 | [3. Failures](../../../design/src/003-failures.md) | 14,159 |
 | [4. Pattern matching](../../../design/src/004-match.md) | 17,937 |
 | [5. Services and the environment](../../../design/src/005-services.md) | 10,063 |
@@ -288,6 +288,6 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [8. Runtime guarantees](../../../design/src/008-runtime.md) | 5,824 |
 | **Appendices** | **26,956** |
 | [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 26,956 |
-| **All 10 pages** | **128,157** |
+| **All 10 pages** | **128,841** |
 
 <!-- token-counts: end -->

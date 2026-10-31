@@ -28,6 +28,14 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The specification described `async match` without connecting it to Appendix A. Explicit primary-expression productions now connect match bodies and the independent async context, including its line-break and jump restrictions.
 
+- `vibelang --fix` crashed with a nil pointer dereference when `EK9203` was reported at a return annotation that is itself a function type, such as `(): () => Effect.Effect<number, never, never> => { … }`. It now looks for the helper behind the annotated functions first Effect call and writes that helpers return type, or leaves the annotation alone when there is none.
+
+- In the editor, expanding the selection from `resume` inside a `handle` clause produced a range that started at `resume` and stopped before the call's `)`, nested inside `resume` itself; the selection now grows from `resume` to the whole `resume(…)` call.
+
+- The interruption-block placement rule counted `restore` twice. It now names the three forms governed by `EK2201` explicitly.
+
+- The Promise comparison omitted existing operand and syntax restrictions and left its catch result unawaited. It now lists those differences and shows the handled result being awaited.
+
 - Editor parsing rejected `for try` `Stream` loops; the tree-sitter grammar now recognizes the loop and its `continue` and `break` statements.
 
 - In a project that emits declarations, `vibelang --fix` removed an import such as `import * as DateTime from "effect/DateTime"` that the declaration file still printed, through a local type an export names (`type NonNull<V> = V extends DateTime.Utc ? …`), a conditional type or a written `keyof DateTime.Utc`, so the declaration imported `{ DateTime } from "effect"`; `--fix` now keeps every import the file's declaration keeps.
@@ -39,6 +47,24 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The migrate flow's `step revert` restored a file from the batch's parent commit, so it could not return a module an earlier batch had migrated, as foldkit's round 3 needed for 26 modules a later lint crash blocked; it now restores such a module from before the batch that migrated it and undoes that batch's import edits.
 
 - The specification left parameter suspension outside its diagnostic rules and tied invalid Effect-body yields to an outer producer; the same source boundaries now cover formal initialization and every nonproducer Effect body.
+
+- Several recent fixes were listed under the previous published release; their notes now appear with the release that includes them.
+
+- The platform guide put `Intl` in the web allowlist and suggested a nonexistent `Path.fromFileUrl` shortcut; it now identifies `Intl` as an ECMAScript global and shows access through the `Path.Path` service.
+
+- The pattern documentation omitted an `is` comparison and its binding scope; it now shows the Boolean test, explains block visibility and TDZ, and distinguishes skipped initialization from a later failed guard.
+
+- The declaration reference omitted diagnostic codes for direct default `schema` and `data` exports and for schema type parameters; it now assigns `EK1501`, `EK1603` and `EK1502` and shows named exports and generic factories as repairs.
+
+- The accepted schema example still gave writable source fields readonly TypeScript types; its counterpart now uses `Schema.mutableKey`, and the public schema VIPs record the conservative checks for conflicting referenced-schema modifiers.
+
+- The public service decision omitted the recursive `Shape` binding and outer-generic capture rule; it now records the private recursive alias, its type-only projection and the generic-service rejection for a shape that would specialize one key through erased outer type arguments.
+
+- The schema-error reference could admit a reserved `_tag` key hidden by a generic, enum or brand; it now requires proof over the runtime key domain and preserves the generated discriminant without a runtime guard.
+
+- The public pattern decision omitted the binding-cell lifetime rules; it now records shared `or` cells, fresh loop-condition cells and the initial `do` body's TDZ, with checked closure witnesses.
+
+- The reserved data helper-name diagnostic appeared outside its rules table; it now renders as a table row.
 
 - A writable interface or object-type property became `readonly` in emitted declarations, preventing TypeScript consumers from assigning to it; declarations now keep the source's property and index-signature modifiers, including optional and nested members.
 
@@ -169,6 +195,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Editor regressions could pass repository validation unnoticed; the merge gate and post-merge compiler checks now run the language-server smoke suite and name each failing check.
 
+- Nested interruption examples left the target of `restore` implicit. It now explicitly restores the nearest mask's entry state, including an already uninterruptible state, with a pending-interruption example.
+
 - The migrate flow read a compiler crash as a clean run, recording no errors and no fixes; `compile`, `codemod` and the declaration step now stop and show the crash.
 
 - The migrate flow left a `.d.ts` beside each source file outside a project's `rootDir`, and the batch's commit picked them up; the declaration step now removes what the compiler wrote outside its output directory.
@@ -260,6 +288,10 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The pattern specification left failed `or` binding replacement and repeated lexical `is` loop bindings inconsistent. Alternatives now retain one shared cell, while loop conditions use fresh cells and preserve the initial do-body TDZ.
 
 - The matching specification inherited inconsistent iterator records, list cardinality, expression reads and property order from the pinned draft. It now states one set of source-order and ECMAScript protocol rules, preserving primitive iterables, optional absence, ordinary rest copying and inclusive comparisons.
+
+- The catch explanation incorrectly attributed a mixed failure/defect Cause to `try.any`. It now describes recovery without that origin claim; the native operation already elects those failures to defects.
+
+- Imported generic `data` constructors could report `EK4401` when read from a standalone declaration file; their declarations now retain Effect’s constructor signatures, so direct calls and aliases work without a boundary wrapper.
 
 - Repository validation could fail the site contrast check on a connection reset by its local server; the check now reads the built site directly.
 
@@ -474,7 +506,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
-- The accepted schema example still gave writable source fields readonly TypeScript types; its counterpart now uses `Schema.mutableKey`, and the public schema VIPs record the conservative checks for conflicting referenced-schema modifiers.
+
 
 - EK4802's quick fix "Call it to run it" was offered in a function whose written contract rejects what the call runs, such as `return Exit.fail("data")` in an `unknown!!` function, and applying it added EK2001. It is now offered only where the contract accepts the call's failure, requirements and success.
 
@@ -482,15 +514,15 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Bun, `vibelang/register`, Vite and unplugin could report `Cannot find module` for extensionless or directory imports after their TypeScript targets became `.vibe` files. They now resolve those imports with TypeScript's file priority and `index.vibe` fallback, preserving existing source files.
 
-- The pattern documentation omitted an `is` comparison and its binding scope; it now shows the Boolean test, explains block visibility and TDZ, and distinguishes skipped initialization from a later failed guard.
 
-- The declaration reference omitted diagnostic codes for direct default `schema` and `data` exports and for schema type parameters; it now assigns `EK1501`, `EK1603` and `EK1502` and shows named exports and generic factories as repairs.
 
-- The public service decision omitted the recursive `Shape` binding and outer-generic capture rule; it now records the private recursive alias, its type-only projection and the generic-service rejection for a shape that would specialize one key through erased outer type arguments.
 
-- The schema-error reference could admit a reserved `_tag` key hidden by a generic, enum or brand; it now requires proof over the runtime key domain and preserves the generated discriminant without a runtime guard.
 
-- The public pattern decision omitted the binding-cell lifetime rules; it now records shared `or` cells, fresh loop-condition cells and the initial `do` body's TDZ, with checked closure witnesses.
+
+
+
+
+
 
 - The diagnostic reference omitted compatibility checks and the three existing requirement/service migration warnings. It now lists all eight interim `EK92xx` checks with their meanings and retirement owners, plus the migration warnings and their defaults.
 
@@ -508,7 +540,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The specification introduction described every Effect TypeScript comparison as an unchecked fragment. It now distinguishes partial examples from complete comparisons that can be checked directly.
 
-- The platform guide put `Intl` in the web allowlist and suggested a nonexistent `Path.fromFileUrl` shortcut; it now identifies `Intl` as an ECMAScript global and shows access through the `Path.Path` service.
+
 
 - The specification did not prevent generated temporaries from changing anonymous function and class names. It now preserves source naming context, including names observed by class static initializers.
 
