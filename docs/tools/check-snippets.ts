@@ -468,7 +468,9 @@ async function main() {
   const timeout = Number(option("--timeout", "10000"))
   if (!Number.isSafeInteger(timeout) || timeout <= 0) throw new Error("--timeout must be a positive integer in milliseconds")
   if (args.some(a => a !== "--keep" && a !== "--run")) throw new Error(`Unknown argument: ${args.join(" ")}`)
-  const temp = mkdtempSync(join(tmpdir(), "vibelang-docs-"))
+  // The compiler reports paths relative to its physical cwd. Keep diagnostic
+  // ownership stable when TMPDIR reaches that cwd through a symlink.
+  const temp = mkdtempSync(join(realpathSync(tmpdir()), "vibelang-docs-"))
   const pages: { page: string; blocks: Result[] }[] = []
   try {
     const { runtime, effect } = linkModules(temp)

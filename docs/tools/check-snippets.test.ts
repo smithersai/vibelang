@@ -433,3 +433,39 @@ test.skipIf(!existsSync(compiler))("late-start documentation runs expose timer r
     rmSync(root, { recursive: true, force: true })
   }
 }, 150_000)
+
+
+for (const layout of [
+  { name: "same depth", target: [], alias: [] },
+  { name: "deeper target", target: ["nested", "deep"], alias: [] },
+  { name: "deeper alias", target: [], alias: ["nested", "deep"] },
+  { name: "both nested", target: ["nested"], alias: ["alias"] },
+]) {
+test.skipIf(!existsSync(compiler))("symlinked temporary directories (" + layout.name + ") retain snippet diagnostics and later pages", async () => {
+  const root = mkdtempSync(join(realpathSync(tmpdir()), "snippet-symlink-test-"))
+  try {
+    const actual = join(root, "physical", ...layout.target)
+    const parent = join(root, ...layout.alias)
+    mkdirSync(parent, { recursive: true })
+    const linked = join(parent, "temporary alias Ω")
+    const pages = join(root, "pages")
+    mkdirSync(actual, { recursive: true })
+    mkdirSync(pages)
+    symlinkSync(actual, linked, "dir")
+    writeFileSync(join(pages, "a.md"), ["```vibe", "const invalid: number = 'text'", "```"].join("\n"))
+    writeFileSync(join(pages, "b.md"), ["```vibe", "export const valid = 1", "```"].join("\n"))
+    const output = join(root, "report.json")
+    const child = Bun.spawn(["bun", join(import.meta.dir, "check-snippets.ts"), "--root", pages, "--compiler", compiler, "--json", output], {
+      env: { ...process.env, TMPDIR: linked, TMP: linked, TEMP: linked },
+      stdout: "pipe", stderr: "pipe"
+    })
+    const [stdout, stderr, status] = await Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited])
+    expect({ status, stderr }).toEqual({ status: 1, stderr: "" })
+    const report = JSON.parse(readFileSync(output, "utf8"))
+    expect(report.totals).toMatchObject({ pages: 2, blocks: 2, ok: 1, fail: 1 })
+    expect(report.pages[0].blocks[0].diagnostics).toContainEqual(expect.objectContaining({ code: "TS2322", line: 2 }))
+    expect(report.pages[1].blocks[0].status).toBe("ok")
+    expect(stdout).toContain("TS2322")
+  } finally { rmSync(root, { recursive: true, force: true }) }
+}, 30_000)
+}

@@ -14,6 +14,9 @@ Then, from the repository root:
 bun docs/tools/check-snippets.ts
 ```
 
+`TMPDIR` may name a symlink to a temporary directory. The checker resolves that directory before creating example projects, so compiler diagnostics still belong to their Markdown blocks and later pages are checked.
+
+
 The checker extracts `vibe` and `ts` fences under `docs/user`. The fence sets the language: a `vibe` block
 compiles as a `.vibe` module, a `ts` block as a `.ts` module. It also checks
 `ts effect` comparison blocks. Mark deliberate fragments with `// fragment`;
