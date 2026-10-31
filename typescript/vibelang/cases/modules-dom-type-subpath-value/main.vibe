@@ -1,0 +1,9 @@
+// expect-result: {"bytes":1,"format":"raw","module":"function"}
+// Chapter 005 (loop round 3, OPUS-10): KeyFormat and Transferable are DOM types
+// only, so a bare type position keeps the DOM's meaning and Transferable.X
+// names Effect's module.
+export const buffer: Transferable = new ArrayBuffer(1)
+export const format: KeyFormat = "raw"
+export effect function main() {
+  return { bytes: (buffer as ArrayBuffer).byteLength, format, module: typeof Transferable.schema }
+}
