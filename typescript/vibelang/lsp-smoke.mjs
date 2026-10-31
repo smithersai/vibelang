@@ -413,8 +413,20 @@ try {
     const fix = actions.find((a) => a.title === "Match on exit(…)")
     assert(fix, `no quick fix among ${JSON.stringify(actions.map((a) => a.title))}`)
     const edits = fix.edit?.changes?.[uri] ?? []
-    const want = "return match (exit(lookupUser(id))) {\n    when Exit.Success(let value): value;\n    when Exit.Failure(let cause): \"fallback\";\n  }"
+    // Tooling: a quick fix preserves evaluation order, coldness and types.
+    // 4db9c1cb correctly keeps the protected expression inside exit's Effect.
+    const want = "return match (try exit(effect { return lookupUser(id) })) {\n    when Exit.Success(let value): value;\n    when Exit.Failure(let cause): \"fallback\";\n  }"
     assert(edits.length === 1 && edits[0].newText === want, `edits ${JSON.stringify(edits)}`)
+    const original = text("src/old-catch.vibe")
+    const offset = (p) => original.split("\n").slice(0, p.line).reduce((n, line) => n + line.length + 1, 0) + p.character
+    const fixed = original.slice(0, offset(edits[0].range.start)) + edits[0].newText + original.slice(offset(edits[0].range.end))
+    connection.notify("textDocument/didChange", { textDocument: { uri, version: 2 }, contentChanges: [{ text: fixed }] })
+    try {
+      const after = await diagnostics("src/old-catch.vibe")
+      assert(!after.some((d) => d.code === 2113 || d.severity === 1), `fixed Cause catch: ${JSON.stringify(after)}`)
+    } finally {
+      connection.notify("textDocument/didChange", { textDocument: { uri, version: 3 }, contentChanges: [{ text: original }] })
+    }
   })
 
   await check("diagnostics: catch-expression.vibe, with a fallback and a handler, checks clean", async () => {

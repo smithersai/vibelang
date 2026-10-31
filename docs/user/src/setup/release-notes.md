@@ -175,6 +175,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 | Old diagnostic numbers, including `EK4617` | Appendix B numbering, including `EK0103`. Diagnostic triggers are unchanged. See the [old-to-new map](../vibelang-features/diagnostic-code-map.md). |
 
 ### Bugs fixed since 0.0.10
+- Editor smoke validation rejected the safe `catch (cause: Cause)` migration; it now checks the replacement with `try exit(effect { ... })` and verifies that applying it adds no error.
 
 - With a `paths` alias such as `"@/*": ["./lib/*", "./src/*"]`, an import of `@/x.vibe` compiled against `lib/x.d.ts` but the loaders ran `src/x.vibe`; the loaders now resolve it as the compiler does, so both use `lib/x.d.ts`.
 - Compiler fuzz validation left selection modes around rare syntax untested; named splice fixtures now exercise every category and fuzz replay, source spans and donor choices.
