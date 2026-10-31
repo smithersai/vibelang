@@ -1,0 +1,18 @@
+// expect: EK0510 EK0510
+// Decided detail 212 (loop round 1, ASTRA-10): an unparenthesized try, fork or
+// join expression on the left of ** is EK0510, as ECMAScript rejects
+// `await a ** b`. The parenthesized forms below compile.
+declare const a: Effect.Effect<number>
+declare const f: Fiber.Fiber<number>
+
+export effect function bad() {
+  const x = try a ** 2
+  const z = join f ** 2
+  return [x, z]
+}
+
+export effect function good() {
+  const x = (try a) ** 2
+  const z = (join f) ** 2
+  return [x, z]
+}

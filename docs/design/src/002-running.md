@@ -34,6 +34,7 @@ Every operand is evaluated once, left to right as written, with two exceptions: 
 | `try` outside effect code; the same rule applies to `try.all`, `try.race`, `try.any` or `try.allSettled` | `EK0501` |
 | `try e` where `e` is not an Effect. A call that may throw, and a Promise, must first be wrapped with `Effect.try`, `tryPromise` or `promise` | `EK0502` |
 | a `try` statement (`try { } catch { }`, `try { } finally { }`) anywhere in effect code. Handle failures with `catch` or `match`, and clean up with `ensuring` or `onExit`: `try ensuring(write(x), close())` | `EK0503` |
+| an unparenthesized `try`, `fork` or `join` expression on the left of `**`: `try a ** b`, as ECMAScript rejects `await a ** b`; write `(try a) ** b` | `EK0510` |
 
 <a id="operand-test"></a>**Operand test.** `e` is an Effect when its type is assignable to `Effect.Effect<any, any, any>`. For example, in Effect 4.1.0 an `Exit`, a `Config`, a `Context.Service` key, a `Context.Reference` and an `error` instance (`Data.TaggedError` or `Schema.TaggedError`) pass this structural test; the list is not exhaustive. So `try new NotFound({ id })` fails like `throw`. `Option`, `Result`, `Stream`, `Layer` and `Fiber` do not pass the Effect operand test. An Effect that can't fail is still run with `try`. `never` and `any` pass this test, `never` as the success of an Effect that only fails; `unknown` does not, as TypeScript doesn't assign it to `Effect.Effect<any, any, any>`; it is the operand test, not [Failures](003-failures.md)' test of which callables are effectful.
 

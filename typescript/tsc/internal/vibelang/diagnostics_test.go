@@ -93,6 +93,8 @@ var specAhead = map[int32]string{
 	705: renumbering,
 	// The round-24 trigger catalog gives unsupported fork owners, fork.in scopes, dotted try names and concurrency limits their codes.
 	1705: renumbering, 1706: renumbering, 1803: renumbering, 1907: renumbering,
+	// Decided detail 212 gives an unparenthesized execution expression on the left of ** its code (loop round 1, ASTRA-10).
+	510: "lane impl-hunt-fail registers EK0510 (claim diag:unregistered-codes-r1)",
 }
 
 // TestRegistryMatchesSpec checks the registry against Appendix B of the
