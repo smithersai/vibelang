@@ -343,7 +343,6 @@ const D = Data.taggedEnum<D>()
 export { D as default }
 const namedDataExit = Effect.runSyncExit(Effect.sync(() => D.A())) // Success({ _tag: "A" })
 ```
-| a variant named `$is` or `$match`, generic data included; rename it and its resolved references to a fresh name | `EK1602` |
 
 ### Generic unions
 

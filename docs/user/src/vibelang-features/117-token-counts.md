@@ -19,9 +19,9 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,194 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 15,014 |
-| The skill and the user guide (139 pages) | 316,134 |
-| The user guide alone | 311,940 |
-| The specification (10 chapters) | 129,452 |
+| The skill and the user guide (139 pages) | 316,280 |
+| The user guide alone | 312,086 |
+| The specification (10 chapters) | 130,114 |
 | The decision log, `docs/design/history/DECISIONS.md` | 141,521 |
 
 ## Effect TypeScript beside VibeLang
@@ -130,9 +130,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Zed](../setup/zed.md) | 479 |
 | [Other editors](../setup/other-editors.md) | 492 |
 | [Coding agents](../setup/coding-agents.md) | 990 |
-| **Upgrade** | **51,975** |
-| [Release notes](../setup/release-notes.md) | 51,975 |
-| **All 18 pages** | **79,177** |
+| **Upgrade** | **52,083** |
+| [Release notes](../setup/release-notes.md) | 52,083 |
+| **All 18 pages** | **79,285** |
 
 ### Guides
 
@@ -151,10 +151,10 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Error Channel Operations](../error-management/022-error-channel-operations.md) | 1,538 |
 | [Parallel and Sequential Errors](../error-management/023-parallel-and-sequential-errors.md) | 874 |
 | [Custom Error Classes](../error-management/024-yieldable-errors.md) | 1,215 |
-| **Requirements Management** | **7,962** |
+| **Requirements Management** | **8,000** |
 | [Managing Services](../requirements-management/025-services.md) | 2,744 |
 | [Default Services](../requirements-management/026-default-services.md) | 1,267 |
-| [Managing Layers](../requirements-management/027-layers.md) | 2,845 |
+| [Managing Layers](../requirements-management/027-layers.md) | 2,883 |
 | [Layer Memoization](../requirements-management/028-layer-memoization.md) | 1,106 |
 | **Resource Management** | **4,732** |
 | [Introduction](../resource-management/029-introduction.md) | 1,761 |
@@ -256,7 +256,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Platform globals in VibeLang](../platform/platform-globals.md) | 5,094 |
 | [Cloudflare Workers](../platform/cloudflare-workers.md) | 790 |
 | [Alchemy](../platform/alchemy.md) | 2,519 |
-| **All 101 pages** | **168,815** |
+| **All 101 pages** | **168,853** |
 
 ### VibeLang features
 
@@ -277,17 +277,17 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | Page | Tokens |
 | --- | ---: |
 | [Introduction](../../../design/src/000-intro.md) | 2,538 |
-| **The language** | **99,958** |
+| **The language** | **100,511** |
 | [1. Functions and Effect types](../../../design/src/001-functions.md) | 11,316 |
 | [2. Running Effects](../../../design/src/002-running.md) | 24,935 |
 | [3. Failures](../../../design/src/003-failures.md) | 14,159 |
 | [4. Pattern matching](../../../design/src/004-match.md) | 18,358 |
-| [5. Services and the environment](../../../design/src/005-services.md) | 10,063 |
+| [5. Services and the environment](../../../design/src/005-services.md) | 10,616 |
 | [6. Data](../../../design/src/006-data.md) | 5,530 |
 | [7. Configuration and tooling](../../../design/src/007-tooling.md) | 9,773 |
 | [8. Runtime guarantees](../../../design/src/008-runtime.md) | 5,824 |
-| **Appendices** | **26,956** |
-| [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 26,956 |
-| **All 10 pages** | **129,452** |
+| **Appendices** | **27,065** |
+| [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 27,065 |
+| **All 10 pages** | **130,114** |
 
 <!-- token-counts: end -->
