@@ -11,7 +11,9 @@ const prefix = 'import { Effect } from "effect"\nconst syncOne = (id: string) =>
 test("the concurrent ownership example passes a thunk to the injected sync", () => {
   const source = block(running(), "function run(ids:", "vibe es")
   assert.doesNotMatch(source, /fork sync\(id\)/)
-  assert.equal([...source.matchAll(/fork sync\(\(\) => id\)/g)].length, 2)
+  // Every injected sync gets a thunk, however many limits the example shows.
+  assert.doesNotMatch(source, /fork sync\((?!\(\) => )/)
+  assert.ok([...source.matchAll(/fork sync\(\(\) => id\)/g)].length >= 2)
   const native = block(running(), "function run(ids:")
   const dir = mkdtempSync(join(tools, ".spec-fork-sync-"))
   try {

@@ -847,7 +847,7 @@ function page(id: string) {
 
 ### Meaning
 
-Items run concurrently by default. With a positive integer `n`, `for concurrent(n)` runs at most `n` items at once; under Effect `4.1.0`, numeric limits below `1` run every item sequentially as `1` does. Other numbers retain Effect's native behavior. `n` is any Effect `Concurrency`, which in Effect 4.1.0 is a number or `"unbounded"`, passed unchanged to `concurrency`, without range checks or rounding (VIP-19, amended). Evaluate the limit once before entering the operand's head environment. Whether an item gets its own fiber is `Effect.forEach`'s choice: in Effect 4.1.0 a limit above 1, or `"unbounded"`, forks one fiber per item, and numeric limits at or below `1` run the items in order on the enclosing fiber. So a `fork` child in the body is owned by the item's fiber, and interrupted when the item ends, under a limit above 1, and by the enclosing fiber under `for concurrent(1)`. All items join before the loop ends, and one failure interrupts the rest. Results are discarded; `try.all ids.map(…)` keeps them.
+Items run concurrently by default. With a positive integer `n`, `for concurrent(n)` runs at most `n` items at once; under Effect `4.1.0`, numeric limits below `1` run every item sequentially as `1` does. Other numbers retain Effect's native behavior. `n` is any Effect `Concurrency`, which in Effect 4.1.0 is a number or `"unbounded"`, passed unchanged to `concurrency`, without range checks or rounding (VIP-19, amended). Evaluate the limit once before entering the operand's head environment. Whether an item gets its own fiber is `Effect.forEach`'s choice. Effect 4.1.0 resolves a numeric limit `n` to `Math.max(1, n)` and takes its sequential branch exactly when that is `1`: every limit at or below `1` runs the items in order on the enclosing fiber. Every other limit, `NaN` and `"unbounded"` included, takes its parallel branch, which forks one fiber per item and starts another item only while fewer are running than the resolved limit: at most `ceil(n)` at once, and one at a time for `NaN`. So a `fork` child in the body is owned by the item's fiber, and interrupted when the item ends, in the parallel branch, and by the enclosing fiber under `for concurrent(1)`. All items join before the loop ends, and one failure interrupts the rest. Results are discarded; `try.all ids.map(…)` keeps them.
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-19
@@ -890,7 +890,7 @@ function numericLimit(limit: Types.Concurrency) {
 ```
 
 
-Pulling and iterator closing are also those of pinned `Effect.forEach`, not native `for…of`. At effective concurrency `1`, it pulls incrementally and does not call the iterator's `return()` merely because an item Effect fails. In the parallel branch, including effective limits above `1` and `"unbounded"`, `Array.fromIterable` materializes a non-array iterable before any item Effect starts; an existing array is reused by reference, with later indexed reads and without invoking its custom iterator. A limit bounds running items, not pulling. An endless non-array iterable cannot finish that initial parallel materialization, so a would-be item failure cannot stop it. The omitted limit is `"unbounded"`; numeric limits retain Effect's own behavior without a new validation or normalization rule. No additional `IteratorClose`, streaming prefetch or snapshot copy is introduced. Native iteration errors retain their defect behavior. See the [finite lifecycle witness](/spec/008-runtime#iterable-lifecycle).
+Pulling and iterator closing are also those of pinned `Effect.forEach`, not native `for…of`. At effective concurrency `1`, it pulls incrementally and does not call the iterator's `return()` merely because an item Effect fails. In the parallel branch, which every limit not resolving to `1` takes, `NaN` included, `Array.fromIterable` materializes a non-array iterable before any item Effect starts; an existing array is reused by reference, with later indexed reads and without invoking its custom iterator. A limit bounds running items, not pulling. An endless non-array iterable cannot finish that initial parallel materialization, so a would-be item failure cannot stop it. The omitted limit is `"unbounded"`; numeric limits retain Effect's own behavior without a new validation or normalization rule. No additional `IteratorClose`, streaming prefetch or snapshot copy is introduced. Native iteration errors retain their defect behavior. See the [finite lifecycle witness](/spec/008-runtime#iterable-lifecycle).
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-19
@@ -902,6 +902,7 @@ effect function syncAll(ids: string[]) {
 effect function run(ids: string[]) {
   for concurrent(1) (const id of ids) { fork sync(() => id) }   // each child is owned by run's fiber
   for concurrent(2) (const id of ids) { fork sync(() => id) }   // each child is interrupted when its item ends
+  for concurrent(NaN) (const id of ids) { fork sync(() => id) } // one item at a time, each on its own fiber, as at 2
 }
 ```
 
@@ -920,6 +921,7 @@ function run(ids: string[]) {
   return Effect.gen(function* () {
     yield* Effect.forEach(ids, id => Effect.gen(function* () { yield* Effect.forkChild(Effect.sync(() => id)) }), { concurrency: 1, discard: true })
     yield* Effect.forEach(ids, id => Effect.gen(function* () { yield* Effect.forkChild(Effect.sync(() => id)) }), { concurrency: 2, discard: true })
+    yield* Effect.forEach(ids, id => Effect.gen(function* () { yield* Effect.forkChild(Effect.sync(() => id)) }), { concurrency: NaN, discard: true })
   })
 }
 // run succeeds with undefined; the limits keep their existing child ownership.
