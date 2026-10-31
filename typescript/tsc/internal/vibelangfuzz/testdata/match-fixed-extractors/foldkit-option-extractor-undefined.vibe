@@ -1,0 +1,5 @@
+import { Option } from "effect"
+export const read = <A>(input: Option.Option<A>, fallback: A): A => match (input) {
+  when Option.None: fallback;
+  when Option.Some(let value): value;
+}

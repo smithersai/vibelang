@@ -2116,6 +2116,13 @@ typescript/vibelang/cases/match-extractor-errors/main.vibe:6:26 lambda effectFn 
 typescript/vibelang/cases/match-extractor-errors/main.vibe:6:50 lambda dual fallback
 typescript/vibelang/cases/match-extractor-errors/main.vibe:7:13 lambda dual fallback
 typescript/vibelang/cases/match-extractor-errors/main.vibe:8:20 lambda dual fallback
+typescript/vibelang/cases/match-fixed-extractor-unchecked/main.vibe:22:38 lambda plain fallback
+typescript/vibelang/cases/match-fixed-extractor-unchecked/main.vibe:28:40 lambda plain fallback
+typescript/vibelang/cases/match-fixed-extractor-unchecked/main.vibe:40:32 lambda plain fallback
+typescript/vibelang/cases/match-fixed-extractor-unchecked/main.vibe:5:21 lambda plain annotation
+typescript/vibelang/cases/match-fixed-extractor-unchecked/main.vibe:5:75 lambda dual fallback
+typescript/vibelang/cases/match-fixed-extractor-unchecked/main.vibe:9:24 lambda plain annotation
+typescript/vibelang/cases/match-fixed-extractor-unchecked/main.vibe:9:73 lambda dual fallback
 typescript/vibelang/cases/match-getter-multiple-tests/main.vibe:11:24 lambda dual fallback
 typescript/vibelang/cases/match-getter-once/main.vibe:10:24 lambda dual fallback
 typescript/vibelang/cases/match-last-arm-tested/main.vibe:24:53 lambda plain fallback

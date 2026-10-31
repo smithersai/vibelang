@@ -210,6 +210,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Under the `vibelang/bun` preload, every resolution Bun made, a bare `effect/package.json` included, ran a JavaScript callback, so opencode's TUI plugin test took 34 s instead of 1 s; the preload now handles only resolutions of a path.
 
 - In a Bun build, importing `./x.js` from a `.vibe` module could make the VibeLang plugin claim an `x.ts` or `x.tsx` when another directory contained `x.vibe`; the hook now claims only the VibeLang modules it serves and leaves TypeScript resolution to Bun.
+- With `noUncheckedIndexedAccess`, `Option.Some`, `Exit.Success` and `Result.Failure` pattern bindings could gain `undefined` and reject valid code; fixed extractors now preserve their payload types, including through import aliases.
+
 - Release checks could fail with `ETXTBSY` while a parallel build overwrote the native compiler; native binaries now replace completed builds atomically, and release checks wait for the compiler and runtime builds.
 
 - The runtime's `main` tests, which start Node and Bun child processes, could fail at Bun's 5 s default on a loaded host; the runtime suite and every other `bun test` the build graph runs now pass an explicit `--timeout`, and a check keeps the flag in place.

@@ -1,0 +1,63 @@
+// Foldkit's minimized generic pattern, with its strict compiler options.
+import { Option, Option as O, Exit, Result } from "effect"
+import * as Other from "effect/Option"
+
+export const read = <A>(input: Option.Option<A>, fallback: A): A => match (input) {
+  when Option.None: fallback;
+  when Option.Some(let value): value;
+}
+export const aliased = <A>(input: O.Option<A>, fallback: A): A => match (input) {
+  when O.Some(const value): value;
+  when O.None: fallback;
+}
+export function submodule<A>(input: Other.Option<A>, fallback: A): A {
+  return match (input) {
+    when Other.Some(let value): value;
+    when Other.None: fallback;
+  }
+}
+export function success<A, E>(input: Exit.Exit<A, E>, fallback: A): A {
+  return match (input) {
+    when Exit.Success(let value): value;
+    when Exit.Failure(let cause): do { const checked: Cause.Cause<E> = cause; fallback; };
+  }
+}
+export function failure<A, E>(input: Result.Result<A, E>, fallback: E): E {
+  return match (input) {
+    when Result.Failure(let error): error;
+    when Result.Success(let value): do { const checked: A = value; fallback; };
+  }
+}
+export function payload(input: Option.Option<{ readonly count: number }>): number {
+  return match (input) { when Option.Some(let value): value.count; when Option.None: 0; }
+}
+export effect function effectPayload(input: Option.Option<{ readonly count: number }>) {
+  return match (input) { when Option.Some(let value): value.count; when Option.None: 0; }
+}
+// A payload that really includes undefined must retain it.
+export function maybe(input: O.Option<number | undefined>): number | undefined {
+  return match (input) {
+    when O.Some(let value): do {
+      // @ts-expect-error: a present payload may itself be undefined.
+      const numberOnly: number = value;
+      value;
+    };
+    when O.None: undefined;
+  }
+}
+function arity(input: unknown): unknown {
+  return match (input) {
+    when O.Some(): "wrong zero";
+    when O.Some(let a, let b): "wrong two";
+    when O.Some(let value): value;
+    default: "fallback";
+  }
+}
+// expect-result: [3,7,4,5,6,"bad",8,9,null,10,"fallback"]
+export effect function main() {
+  return [read(O.some(3), 0), read(O.none<number>(), 7),
+    aliased(O.some(4), 0), submodule(O.some(5), 0),
+    success(Exit.succeed(6), 0), failure(Result.fail("bad"), "fallback"),
+    payload(O.some({ count: 8 })), try effectPayload(O.some({ count: 9 })),
+    maybe(O.some(undefined)), arity(O.some(10)), arity(O.none())]
+}

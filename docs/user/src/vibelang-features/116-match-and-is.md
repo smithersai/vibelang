@@ -356,6 +356,8 @@ A `match` can end a `do` block: `do { match (0) { default: 2; } }` has the selec
 
 Imported module aliases work in the six retained `Option`, `Exit` and `Result` patterns. Each checks the module brand before its variant guard; an unbranded subject falls through to the next arm.
 
+Successful fixed extractors preserve their payload type with `strict` and `noUncheckedIndexedAccess`. For example, `when Option.Some(let value): value` binds `A` from `Option.Option<A>`, including through an import alias. `Exit.Success` and `Result.Failure` likewise bind their success and failure types. A payload whose type already includes `undefined` keeps it.
+
 ## Effect tagged-error guards
 
 Patterns for `Cause.NoSuchElementError`, `Cause.TimeoutError`,

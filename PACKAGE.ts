@@ -83,6 +83,7 @@ const specTests = [
   "TestDiagnosticCodesKeepFullOrdinal",
   "TestPendingLines",
   "TestLiteralMatchCorpusActive",
+  "TestMatchFixedExtractorTypesQuoted",
   "TestSuperseded",
   "TestDataGeneratedMatchSeparators",
   "TestDataSpecRulesQuoted",
