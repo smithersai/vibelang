@@ -1,0 +1,24 @@
+// expect-result: "Envelope object"
+// alchemy-29: a name in a JSDoc comment is no use of Effect's module of that
+// name (VIP-14: emitted code imports each module it uses). Here Entity loads
+// effect/cluster, whose modules include Envelope and Sharding. The
+// {@link Envelope.correlationId} that alchemy's domain/Aggregate writes once
+// imported effect/cluster's Envelope beside the local Envelope, so the module
+// did not load: "Identifier 'Envelope' has already been declared". So did
+// the template literal main returns, without any comment.
+export const Envelope = { name: "Envelope" }
+
+export interface Meta {
+  /** See {@link Envelope.correlationId}. */
+  readonly correlationId?: string
+}
+
+/**
+ * Shards with {@linkcode Sharding.make} and {@linkplain Sharding}.
+ * @see Envelope
+ */
+export const entity = Entity
+
+export effect function main() {
+  return `${Envelope.name} ${typeof entity}`
+}

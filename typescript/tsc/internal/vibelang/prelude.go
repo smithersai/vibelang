@@ -464,9 +464,16 @@ func resolvePreludeName(c *checker.Checker, location *ast.Node, name string, mea
 		return nil
 	}
 	if isValueReference(location, name, meaning) && !isLoweredHatchCallee(location) && !isClauseCallee(location) && !isRemovedPrimitiveMarker(location) && !isServiceShapeFactory(location) {
-		if location.Flags&ast.NodeFlagsVibeLangIntrinsic != 0 {
+		switch {
+		case location.Flags&ast.NodeFlagsVibeLangIntrinsic != 0:
 			recordIntrinsic(c, state, file, location, name, meaning, symbol)
-		} else {
+		case !shadowedByValue(location, name):
+			// A value a scope around location declares is that binding's,
+			// never an import: a lookup in another meaning, as a template
+			// literal's span or a JSDoc link makes, reaches here past a local
+			// const Envelope, and importing effect/cluster's Envelope beside
+			// it is a redeclaration that does not load (alchemy-29). A local
+			// type of the name is erased, so a value use still imports.
 			recordPreludeUse(state, file, name)
 		}
 	}
@@ -629,13 +636,30 @@ func isBuiltinGlobal(c *checker.Checker, name string) bool {
 	return false
 }
 
+// shadowedByValue reports whether a scope around node declares name as a
+// value, which the emitted JavaScript binds there.
+func shadowedByValue(node *ast.Node, name string) bool {
+	for n := node; n != nil; n = n.Parent {
+		if locals := n.Locals(); locals != nil {
+			if symbol, ok := locals[name]; ok && symbol.Flags()&(ast.SymbolFlagsValue|ast.SymbolFlagsExportValue|ast.SymbolFlagsAlias) != 0 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // isValueReference reports whether resolving name at location, with
 // meaning, is a reference in the source that the emitted JavaScript keeps:
 // an identifier with that name, outside every type. Checks that resolve a
 // name for their own purposes, such as the namespace Effect at a function,
-// pass another location and are not uses.
+// pass another location and are not uses. Neither is a name in a JSDoc
+// comment, such as {@link Envelope.id} or @see: the editor resolves it, but
+// the emitted JavaScript has no code there to import for, and an import of
+// effect/cluster's Envelope would clash with a local Envelope (VIP-14:
+// "Emitted code imports each module it uses").
 func isValueReference(location *ast.Node, name string, meaning ast.SymbolFlags) bool {
-	return meaning&ast.SymbolFlagsValue != 0 && ast.IsIdentifier(location) && location.Text() == name && !inTypeNode(location)
+	return meaning&ast.SymbolFlagsValue != 0 && ast.IsIdentifier(location) && location.Text() == name && location.Flags&ast.NodeFlagsJSDoc == 0 && !inTypeNode(location)
 }
 
 // inTypeNode reports whether node is inside a type, such as the Scope of

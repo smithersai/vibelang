@@ -250,6 +250,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Migration setup could lint native files excluded by the original Oxlint policy; its ESLint bridge now preserves `ignorePatterns`, source-extension globs and ordered negations.
 - With a `paths` alias such as `"@/*": ["./lib/*", "./src/*"]`, an import of `@/x.vibe` compiled against `lib/x.d.ts` but the loaders ran `src/x.vibe`; the loaders now resolve it as the compiler does, so both use `lib/x.d.ts`.
+
 - Compiler fuzz validation left selection modes around rare syntax untested; named splice fixtures now exercise every category and fuzz replay, source spans and donor choices.
 
 - The schema regression check rejected the two distinct `EK2109` messages for a reference with unproven required and readonly keys; it now checks both decoded-key promises.
@@ -273,8 +274,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `EK4805` told an exported class that extends `Error` to become an `error` declaration, whose constructor takes one object, so following it broke callers of `new X(message, options)`, and the migrate flow refused the file. For an exported class it now says there is no quick fix, and the migrate flow keeps the class.
 
 - Cross-platform compiler builds could fail without naming the affected platform or its exit status; each target now keeps a completion record and silent failures are identified.
-
-
 
 - Chapter 2 did not say where a `Cause` with both a failure and a defect comes from after dropping the wrong `try.any` example; it now names `Effect.failCause` in TypeScript code.
 
@@ -301,6 +300,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Source collectors could silently omit migrated files because their extension allowlists named only TypeScript; migration setup now warns with the file and line when `.ts` appears without `.vibe`.
 
 - Release notes repeated fixes and mixed internal audit records with user-facing changes; the publication list now covers introductory bullets and every unpublished bug list while retaining each product fix once.
+
 - A `Bun.build` with `vibelang-unplugin/bun` could produce a program that failed at startup with a `ReferenceError` inside a CommonJS dependency such as `ws` (Bun 1.4.4), because the plugin's resolve hook matched every relative `.js` import; it now matches a `.js` import only where a `.vibe` module of that name exists.
 
 - Under `bun --preload vibelang/bun` on Bun 1.3.13, `createRequire(import.meta.url).resolve("srvx/node")` resolved from the working directory and failed with `Cannot find module 'srvx/node' from ''`; on a Bun that drops `createRequire`'s origin the preload now leaves the CommonJS hook alone, so `createRequire` resolves from its URL, and a CommonJS `require` of a `.vibe` module names its extension.
@@ -320,6 +320,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The failures-spec check stopped after the missing error-member separator rule was documented; it now records the pending `EK1306` implementation and its owner while preserving the rule.
 
 - Migration rejected private examples and websites when their declarations changed; `verify` now reports `"not published"` for packages marked `"private": true`, while keeping tests, compiler and style checks.
+
+- A JSDoc `{@link Envelope.id}` beside a local `Envelope` made the emitted JavaScript import `Envelope` from `effect/cluster` too, and the module failed to load with `Identifier 'Envelope' has already been declared`; names in comments no longer import Effect modules.
 
 
 - Checking documentation examples with a symlinked `TMPDIR` could stop with `Compiler failed` instead of reporting an example's type error; diagnostics now stay attached to their examples and later pages are checked.
