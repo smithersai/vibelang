@@ -1470,6 +1470,8 @@ node scripts/bench/gen-synthetic.mjs .cache/lsp 400
 node scripts/bench/lsp.mjs typescript/built/local/tsc .cache/lsp/vibelang
 ```
 
+The LSP benchmark requires a server binary and project directory. Its optional hover count defaults to `20` and must be a positive safe integer; invalid or missing arguments exit with status `2` before project discovery or server startup.
+
 `scripts/bench/gen-synthetic.mjs` writes the same N modules twice, in VibeLang and in hand-written Effect 4 TypeScript. Each module declares two errors, a schema, a service and its layer, a plain helper, and functions that call into the previous module, catch with `match`, fork and join two fibers, provide the layer, and pipe the result. Its shapes are `chain` (small contracts), `dense` (each module's `deep` function also loads four earlier modules' services and calls the previous `deep`, so requirement and error unions grow with depth), and `single` (every module in one file). `compiler.sh` compiles the synthetic projects, the examples, the template, and the docs snippet corpus as one program with `--extendedDiagnostics`, and measures wall time and peak RSS with `scripts/bench/measure.py`.
 
 Docs extraction must finish successfully before the corpus is measured. If it fails, `compiler.sh` exits with the extractor's status, names the failed stage and keeps stdout in `docs-corpus.log` and stderr in `docs-corpus.stderr.log` under the working directory. It retains the incomplete corpus and omits the final completion footer.

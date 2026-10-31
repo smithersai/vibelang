@@ -883,6 +883,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Calling an Effect value, such as `body()` for an Effect parameter, type-checked as the Effect but ran it, so `Effect.provideService(flag ? body() : other, Tag, 1)` compiled and then died with `Not a valid effect`. An Effect is now not callable, as in TypeScript (`TS2349`), and `try body` runs it (VIP-5).
 - An unmarked function became an Effect function when its body ran an Effect or threw, or when its return type was an Effect, so `export function f() { return 7 }` could return an Effect and a local function named `provide` or `succeed` was read as a program; now only `effect` makes an Effect function (VIP-1), `try` outside effect code is `EK0501`, and an `effect` function's written return type must be an Effect type (`EK0106`).
 
+- The LSP benchmark could loop forever with an infinite hover count or crash with an empty sample set; it now rejects invalid counts and missing arguments before reading a project or starting the server.
+
 - The site's contrast check could lose its Chromium renderer under build-host memory pressure; it now audits each single-document page in place instead of opening a second renderer to combine the results.
 - VIP migration could remove `try` from calls returning tagged errors and turn their failures into success values; it now preserves execution of those Effects, while non-Effect Yieldables retain their `asEffect()` repair.
 

@@ -13,9 +13,14 @@ import { readdirSync, readFileSync } from "node:fs"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
 
-const server = path.resolve(process.argv[2] ?? "")
-const project = path.resolve(process.argv[3] ?? "")
-const hovers = Number(process.argv[4] ?? 20)
+const args = process.argv.slice(2)
+const hovers = Number(args[2] ?? 20)
+if (args.length < 2 || args.length > 3 || !args[0].trim() || !args[1].trim() || !Number.isSafeInteger(hovers) || hovers < 1) {
+  console.error("usage: lsp.mjs <server binary> <project dir> [hovers=20]; hovers must be a positive safe integer")
+  process.exit(2)
+}
+const server = path.resolve(args[0])
+const project = path.resolve(args[1])
 const src = path.join(project, "src")
 const files = readdirSync(src)
 const ext = files.some((f) => f.endsWith(".vibe")) ? ".vibe" : ".ts"
