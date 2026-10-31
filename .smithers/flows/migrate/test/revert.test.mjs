@@ -184,3 +184,32 @@ test("revert returns a module an earlier batch migrated, undoing that batch's im
     rmSync(root, { recursive: true, force: true })
   }
 })
+
+// Smithers flows/database: the codemod moved SqliteOpen's platform code to
+// SqliteOpen.platform.ts. revert restores the module with that code, so the
+// sibling goes too.
+test("revert removes the platform sibling the codemod split a module into", async () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-platform-revert-"))
+  const target = join(root, "repo")
+  const run = join(root, "run")
+  try {
+    mkdirSync(join(target, "src"), { recursive: true })
+    await must("jj git init && jj config set --repo user.name test && jj config set --repo user.email test@localhost", { cwd: target })
+    writeFileSync(join(target, "package.json"), "{}\n")
+    const original = 'import { closeSync } from "node:fs"\nexport const close = (fd: number): void => closeSync(fd)\n'
+    writeFileSync(join(target, "src/open.ts"), original)
+    await Jj.commit(target, "base")
+    writeJson(paths(run).config, makeConfig({ target, test: "true", toolchain: join(root, "toolchain") }))
+    writeJson(paths(run).plan, { batches: [{ files: ["src/open.ts"] }] })
+    writeFileSync(join(target, "src/open.platform.ts"), 'import { closeSync } from "node:fs"\nexport const close = (fd: number): void => closeSync(fd)\n')
+    writeFileSync(join(target, "src/open.ts"), 'import * as $platform from "./open.platform.ts"\nexport const close = (fd: number): void => $platform.close(fd)\n')
+    renameBatch(target, ["src/open.ts"])
+    writeJson(paths(run).codemod("01"), { importEdits: [], platform: { splits: [{ file: "src/open.ts", platform: "src/open.platform.ts", moved: ["close"], wrapped: ["close"] }], refused: [] } })
+    await revert({ run, batch: "01", file: "src/open.vibe", reason: "blocked on an issue" })
+    assert.equal(readFileSync(join(target, "src/open.ts"), "utf8"), original)
+    assert.ok(!existsSync(join(target, "src/open.platform.ts")))
+    assert.ok(!existsSync(join(target, "src/open.vibe")))
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})

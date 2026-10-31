@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url"
 import { buildInventory, listSources, readCoverage } from "./inventory.mjs"
 import { defaultLimits, draftPlan, planPrompt, validatePlan } from "./plan.mjs"
 import { fixToFixedPoint, renameBatch, restoreExports, restoreSpecifiers, rewriteExports, rewriteImports, rewriteTotals } from "./codemod.mjs"
+import { splitBatchPlatform } from "./platform.mjs"
 import { check, newErrors, styleProblems, summarize } from "./diagnostics.mjs"
 import { compareDeclarations, recordDeclarationSurface, emitDeclarations, emitErrorsIn, loadTypeScript } from "./declarations.mjs"
 import { compareTests, regressionIssue, runTests } from "./tests.mjs"
@@ -724,6 +725,8 @@ export async function codemod(options) {
   if (existsSync(p.codemod(b))) return readJson(p.codemod(b))
   const t = config.target
   const files = thePlan.batches[Number(b) - 1].files
+  // Platform code moves to <Name>.platform.ts first, so the .vibe module imports no builtin (EK4402).
+  const platform = splitBatchPlatform(t, files, typeScriptOf(config))
   const renames = renameBatch(t, files)
   const exportEdits = rewriteExports(t, renames)
   const importEdits = rewriteImports(t, await importers(t), renames.map((r) => r.to))
@@ -742,7 +745,7 @@ export async function codemod(options) {
       settled &&= fixed.settled
     }
   }
-  const result = { batch: b, at: new Date().toISOString(), files, renames, exportEdits, importEdits, fix: { settled, rounds, byFile, totals: rewriteTotals(byFile), refused } }
+  const result = { batch: b, at: new Date().toISOString(), files, platform, renames, exportEdits, importEdits, fix: { settled, rounds, byFile, totals: rewriteTotals(byFile), refused } }
   writeJson(p.codemod(b), result)
   return result
 }
@@ -814,6 +817,9 @@ export async function revert(options) {
   rmSync(join(config.target, vibe.replace(/\.vibe$/, ".d.vibe.ts")), { force: true }) // its declaration sidecar
   // A TypeScript importer gets the specifier it had before the codemod; a .vibe importer names the .ts source.
   const codemodResult = readJsonIf(p.codemod(source.batch))
+  // The restored module has its platform code again, so the sibling the codemod split it into goes.
+  const split = codemodResult?.platform?.splits?.find((s) => s.file === ts)
+  if (split) rmSync(join(config.target, split.platform), { force: true })
   const exportEdits = restoreExports(config.target, codemodResult?.exportEdits ?? [], ts)
   const importEdits = [...restoreSpecifiers(config.target, codemodResult?.importEdits ?? [], ts), ...rewriteImports(config.target, await importers(config.target), [ts])]
   const reverted = readJsonIf(p.reverted(b), [])

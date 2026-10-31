@@ -1,0 +1,33 @@
+{
+  "finding": "smithers:ek4402-platform-split",
+  "note": "Minimized from Smithers packages/smithers/flows/database/src/internal/PostgresSelection.ts (createHash from node:crypto) and SqliteOpen.ts (closeSync from node:fs), two of the 22 modules EK4402 returned to TypeScript.",
+  "modules": [
+    {
+      "file": "src/internal/PostgresSelection.ts",
+      "text": "/** Native configuration selection shared by Node and Bun.\n * @since 1.0.0\n */\n\nimport { createHash } from \"node:crypto\"\nimport { basename, resolve } from \"node:path\"\nimport { UnsupportedDatabase } from \"./UnsupportedDatabase.ts\"\n\n/** Recognizes PostgreSQL connection strings. */\nexport const isUrl = (value: string): boolean => /^postgres(?:ql)?:\\/\\//.test(value)\n\n/** SQLite keeps memory and URI opens. */\nconst sqliteOwned = (filename: string): boolean => filename === \"\" || filename.startsWith(\"file:\")\n\n/** Where a filename's store lives on PostgreSQL. */\nexport const location = (filename: string): { readonly url: string; readonly schema: string } | undefined => {\n  if (sqliteOwned(filename)) return undefined\n  if (!isUrl(filename)) throw new UnsupportedDatabase(\"postgres_url_invalid\")\n  return { url: filename, schema: `smithers_${createHash(\"sha256\").update(resolve(filename)).digest(\"hex\").slice(0, 32)}_${basename(filename)}` }\n}\n\n/** The client for a filename location places on PostgreSQL. */\nexport const layer = (filename: string, readOnly = false): string | undefined => {\n  const selected = location(filename)\n  return selected === undefined ? undefined : `${selected.url}?readOnly=${readOnly}`\n}\n",
+      "others": {
+        "src/internal/UnsupportedDatabase.ts": "export class UnsupportedDatabase extends Error {}\n"
+      },
+      "moved": [
+        "isUrl",
+        "sqliteOwned",
+        "location"
+      ],
+      "wrapped": [
+        "isUrl",
+        "location"
+      ]
+    },
+    {
+      "file": "src/internal/SqliteOpen.ts",
+      "text": "import { closeSync, readFileSync } from \"node:fs\"\n\n/** Creates the database file with owner-only permissions. */\nexport const createDatabaseFile = (filename: string, create: boolean, mode = 0o600): void => {\n  if (!create) return\n  closeSync(Number(readFileSync(filename)) + mode)\n}\n\n/** Whether an error is SQLite's busy error. */\nexport const isLockedError = (error: unknown): boolean => String(error).includes(\"SQLITE_BUSY\")\n\nexport function open(filename: string): string {\n  createDatabaseFile(filename, true)\n  return filename\n}\n",
+      "others": {},
+      "moved": [
+        "createDatabaseFile"
+      ],
+      "wrapped": [
+        "createDatabaseFile"
+      ]
+    }
+  ]
+}
