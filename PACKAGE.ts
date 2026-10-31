@@ -50,6 +50,7 @@ const specTests = [
   "TestAsyncRefactorBridgesQuoted",
   "TestMigrationEffectOperandsQuoted",
   "TestMigrationEffectHeritageQuoted",
+  "TestMigrationGeneratorReturnsQuoted",
   "TestCheckerLayout",
   "TestVibeModuleBoundaryQuoted",
   "TestVibeModuleBoundaryRegression",

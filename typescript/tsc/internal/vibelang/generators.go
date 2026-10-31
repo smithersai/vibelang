@@ -72,9 +72,30 @@ func generatorDeclaration(c *checker.Checker, arg *ast.Node) *ast.Node {
 // expectsGenerator reports whether the parameter that receives arg is a
 // function that returns a JavaScript iterator. Either type may be a union:
 // while TypeScript resolves an overloaded call such as Effect.fn("name")(…),
-// the contextual type joins what the candidates expect.
+// the contextual type joins what the candidates expect. A call that no
+// overload accepts, as Effect.fn("name")(function* …, Effect.orElse…) is while
+// function* declares a producer, may give arg another candidate's type, so the
+// parameter at arg's position in each of the callee's signatures counts too.
 func expectsGenerator(c *checker.Checker, arg *ast.Node) bool {
-	t := c.GetContextualType(arg, checker.ContextFlagsNone)
+	if returnsIterator(c, c.GetContextualType(arg, checker.ContextFlagsNone)) {
+		return true
+	}
+	call := arg.Parent
+	if call == nil || !ast.IsCallExpression(call) {
+		return false
+	}
+	position := slices.Index(call.Arguments(), arg)
+	for _, sig := range c.GetSignaturesOfType(c.GetTypeAtLocation(call.Expression()), checker.SignatureKindCall) {
+		if returnsIterator(c, c.GetTypeAtPosition(sig, position)) {
+			return true
+		}
+	}
+	return false
+}
+
+// returnsIterator reports whether t, or a member of it, is a function type
+// that returns one of the lib's iterator interfaces.
+func returnsIterator(c *checker.Checker, t *checker.Type) bool {
 	if t == nil {
 		return false
 	}

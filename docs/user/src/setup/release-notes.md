@@ -149,6 +149,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A plain function's `try`/`catch` let an exception the compiler does not track pass through, with only `EK9204`, so `try { return new URL(x).hostname } catch { return null }` threw where the TypeScript returned null; the statement is now JavaScript's and catches every exception that reaches it, and where the `try` block has no tracked failure `catch (e)` binds `e` as `unknown`.
 
+- `vibelang --fix` changed `return value` to `{ value; return }` in the generator of `Effect.fn("name")(function* … , pipeline)` when a pipeline argument followed it, as if the generator were a Stream producer (`EK2128`), so the migrated function lost its result; it is now `EK1002` like the generator of `Effect.fn` alone, and `--fix` leaves it.
+
 - In a `.vibe` file a member of an interface or an object type was readonly to the checker, so `options.minimum = 0` was `TS2540`, while its declaration printed the member writable; such a member is now writable unless written `readonly`, as in TypeScript, and the checker and the declaration agree. The fields of `data`, `schema` and `error` bodies keep their readonly default, and `mutable` is still accepted. The migrate flow's codemod no longer writes `mutable`.
 
 - Editor validation rejected the `async` conversion actions because its smoke check still expected the retired Promise hatch; it now checks the `Effect.tryPromise` bridge and the mapped rejection form.

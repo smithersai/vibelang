@@ -157,6 +157,32 @@ func TestEffectGenLeavesEffectFn(t *testing.T) {
 	}
 }
 
+// An Effect.fn with a pipeline argument is EK1002 too, though no overload
+// accepts the call while function* declares a producer: its generator is not
+// a producer, so EK2128's fix never drops its return value (drive-t3code).
+func TestEffectGenLeavesEffectFnPipeline(t *testing.T) {
+	source := `export const load = Effect.fn("load")(
+  function* (n: number) {
+    yield* Effect.void
+    return n ? Option.some(n) : Option.none<number>()
+  },
+  Effect.orElseSucceed(() => Option.none<number>()),
+)
+`
+	program, file, _, _ := editorProgram(t, source)
+	var codes []int32
+	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
+		codes = append(codes, d.Code())
+	}
+	if !slices.Contains(codes, EK1002.Code) || slices.Contains(codes, EK2128.Code) {
+		t.Fatalf("codes %v; want EK1002 and no EK2128", codes)
+	}
+	result := fixCase(t, filepath.Dir(file.FileName().AsString()))
+	if fixed := result.Files[file.FileName()]; fixed != nil && (fixed.Counts[EK2128.Code] != 0 || !strings.Contains(fixed.Text, "return n ? Option.some(n)")) {
+		t.Fatalf("--fix wrote\n%s\ncounts %v", fixed.Text, fixed.Counts)
+	}
+}
+
 // vibelang --fix fixes an inner Effect.gen first and its outer one in the
 // next round, though a fix of another Effect.gen was refused before it: each
 // call is its own fix (fixKey).
