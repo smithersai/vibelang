@@ -999,6 +999,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A migration could need a second `vibelang --fix` run after an import cleanup exposed another fix; one invocation now repeats its passes, and reports any fixes left at its limit.
 
+- The contributor guide said there was no CI; it now points to the cached build graph and hosted merge-queue checks while keeping the maintainer-run pull-request checks explicit.
+
 
 - Checking documentation examples with a symlinked `TMPDIR` could stop with `Compiler failed` instead of reporting an example's type error; diagnostics now stay attached to their examples and later pages are checked.
 

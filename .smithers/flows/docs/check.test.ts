@@ -71,9 +71,17 @@ test("the shipped skill teaches current declarations and wraps a call that may t
   expect(skill).not.toContain("trusted");
 });
 
-test("contributing makes the maintainer-run PR checks explicit", async () => {
+test("contributing describes actual CI entrypoints and maintainer-run PR checks", async () => {
   const output = render(await readSources())["CONTRIBUTING.md"]!
-  expect(output).toContain("The repository has no CI or commit statuses.")
+  const workflow = await readFile(join(repository, ".github/workflows/mq-pregate.yml"), "utf8")
+  const event = /^\s+types: \[([^\]]+)\]/m.exec(workflow)![1]!
+  expect(workflow).toContain("repository_dispatch:")
+  expect(await readFile(join(repository, "scripts/ci.sh"), "utf8")).toContain("smthrs")
+  expect(output).toContain("`sh scripts/ci.sh`")
+  expect(output).toContain("`.github/workflows/mq-pregate.yml`")
+  expect(output).toContain("`" + event + "`")
+  expect(output).toContain("[the build graph](docs/maintainers/build.md)")
+  expect(output).not.toContain("The repository has no CI or commit statuses.")
   expect(output).toContain("For each pull request, a maintainer runs")
   expect(output).toContain("`sh scripts/e2e.sh` and the compiler case suite, `(cd typescript && sh vibelang/smoke.sh --jobs 8)`")
 })
