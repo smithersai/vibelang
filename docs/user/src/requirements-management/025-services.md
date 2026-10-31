@@ -56,6 +56,8 @@ Derived keys require a module-scope declaration in a package whose `package.json
 
 The special `key` and `defaultValue` property headers allow only `static readonly`, without `public`, `private`, `protected`, `declare`, optional `?` or definite `!` markers. `defaultValue` also needs an initializer. Malformed headers report `EK0902`; invalid key literals or a missing `readonly` on `key` use the key-validation diagnostic instead.
 
+A `defaultValue` initializer has ordinary class-field context, even when its service is declared inside an effect function. A `try` expression there is `EK0501`. Compute an effectful input before the service declaration, then capture the resulting value in its `() => Shape` default factory.
+
 ## Declaring a service of any shape
 
 ```vibe

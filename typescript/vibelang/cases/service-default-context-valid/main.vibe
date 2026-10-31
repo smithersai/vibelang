@@ -1,0 +1,10 @@
+// expect-result: 1
+export effect function main() {
+ const seed = try Effect.succeed(1)
+ service Num: number {
+  static readonly key = "default-context/valid";
+  static readonly defaultValue = () => seed
+ }
+ return try Effect.service(Num)
+}
+export class Ordinary { static readonly defaultValue = () => 1 }

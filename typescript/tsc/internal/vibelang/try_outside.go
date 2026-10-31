@@ -151,7 +151,13 @@ func reportTryInPlainCode(c *checker.Checker, file *ast.SourceFile, node *ast.No
 	switch plain.Kind {
 	case ast.KindPropertyDeclaration:
 		d := reportAt(c, file, span, EK0501, "a class field's initializer is plain JavaScript")
-		note(d, "Run it in an effect function and pass the value to the constructor, or make {0} an effect method.", nodeText(file, plain.Name()))
+		if isServiceDefaultValue(plain) {
+			// A service's defaultValue keeps class-field context (details 216/235)
+			// and can't be a method, so the advice moves the work before the service.
+			note(d, "Compute the value in effect code before declaring the service, then capture it in the default factory.")
+		} else {
+			note(d, "Run it in an effect function and pass the value to the constructor, or make {0} an effect method.", nodeText(file, plain.Name()))
+		}
 	case ast.KindParameter:
 		fn := plain.Parent
 		owner := "the function"
@@ -215,4 +221,13 @@ func effectMarkerEdit(file *ast.SourceFile, fn *ast.Node) (sourceEdit, string, b
 		return sourceEdit{start, start, "effect "}, "effect " + nodeText(file, fn.Name()) + "(…)", true // a name may be computed
 	}
 	return sourceEdit{}, "", false
+}
+
+// isServiceDefaultValue reports whether field is a service's
+// static readonly defaultValue (VIP-9).
+func isServiceDefaultValue(field *ast.Node) bool {
+	return ast.IsPropertyDeclaration(field) && field.Parent != nil && ast.IsClassLike(field.Parent) &&
+		declarationWord(field.Parent) == "service" && ast.HasStaticModifier(field) &&
+		ast.HasSyntacticModifier(field, ast.ModifierFlagsReadonly) &&
+		field.Name() != nil && ast.IsIdentifier(field.Name()) && field.Name().Text() == "defaultValue"
 }

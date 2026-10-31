@@ -1,0 +1,2 @@
+try runs an Effect only in effect code, but a class field's initializer is plain JavaScript.
+Compute the value in effect code before declaring the service, then capture it in the default factory.

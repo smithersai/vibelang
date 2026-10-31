@@ -1232,6 +1232,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A `data`, `schema` or `error` declaration with its opening brace on the next line gained extra indentation on its first format pass; it now reaches its final indentation in one pass.
 
 
+- A `try` in a service's `defaultValue` initializer reported `EK0501` with advice to make `defaultValue` an effect method, which a service cannot declare; it now explains how to compute the value before the declaration and capture it in the default factory.
+
 - The migrate flow ran `vibelang --fix` over a whole package for each batch, which rewrote files earlier batches had committed and undid their hand repairs; each batch now keeps the rewrites of its own files only.
 - The migrate flow's rules told the repair agent that a function with no Effect operation stays plain, while the toolchain compiles an unannotated function or method to an Effect; the rules now say to write its return type or `: infer _`, and list the skill's forms the toolchain does not implement yet with what to write until each lands.
 - The migrate flow judged a test command without per-test results by one exit status, so a flaky test stopped `upgrade-effect` with "the target's tests do not run" or read as a batch's regression; such a command now runs once more after a nonzero exit, and the second run counts.

@@ -1,0 +1,17 @@
+// expect: EK0501
+export effect function main() {
+ const pending: (() => number)!! = Effect.succeed((): number => 1)
+ service Called: number {
+  static readonly key = "default-context/called";
+  static readonly defaultValue = (try Effect.succeed((): number => 1)) as any
+ }
+ service Held: number {
+  static readonly key = "default-context/held";
+  static readonly defaultValue = (try pending) as any
+ }
+ service Parenthesized: number {
+  static readonly key = "default-context/parenthesized";
+  static readonly defaultValue = (try (Effect.succeed((): number => 1))) as any
+ }
+ return 1
+}
