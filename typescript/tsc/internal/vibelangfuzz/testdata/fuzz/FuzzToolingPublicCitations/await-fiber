@@ -1,0 +1,4 @@
+go test fuzz v1
+string("await-fiber")
+uint32(42)
+byte(8)

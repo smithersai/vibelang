@@ -52,7 +52,7 @@ This includes `src/user.vibe` without also checking its stale `src/user.d.vibe.t
 { "effectGlobals": false, "effectModules": false, "severities": { "EK0801": "off" } }
 ```
 
-`extends` inherits `vibe` key by key: child keys win and missing keys come from the base. `severities` merges entry by diagnostic code (decided detail 59). An `extends` array merges bases left to right, later entries winning, before applying the child, as in TypeScript.
+`extends` inherits `vibe` key by key: child keys win and missing keys come from the base. `severities` merges entry by diagnostic code ([VIP-30](../vips/0030-config-files.md#decision)). An `extends` array merges bases left to right, later entries winning, before applying the child, as in TypeScript.
 
 The decided keys (VIP-30, amended) are:
 
@@ -60,7 +60,7 @@ The decided keys (VIP-30, amended) are:
 | --- | --- |
 | `vibe.effectGlobals` | Boolean switch, default `true`, for Effect's function globals ([VIP-6](../vips/0006-effect-globals.md)); `false` turns them off. |
 | `vibe.effectModules` | Boolean switch, default `true`, for Effect's modules in scope ([VIP-14](../vips/0014-effect-modules-in-scope.md)); `false` turns them off. |
-| `vibe.severities` | Maps VibeLang's own warning codes and all imported `EK38xx` lint codes to `"error"`, `"warning"`, `"suggestion"` or `"off"` (VIP-34, VIP-38; decided details 57 and 77). |
+| `vibe.severities` | Maps VibeLang's own warning codes and all imported `EK38xx` lint codes to `"error"`, `"warning"`, `"suggestion"` or `"off"` ([VIP-30](../vips/0030-config-files.md#decision), [VIP-34](../vips/0034-compiler-and-tooling.md#decision), [VIP-38](../vips/0038-effect-lint-built-in.md#decision)). |
 
 An unknown `vibe` key or a value of the wrong type is a config error (`EK3007`), as for TypeScript’s `compilerOptions`; remove the key or supply its declared type. Exception: a `severities` entry whose value is not one of the four strings, whatever its JSON type, is `EK3006`; replace it with one of them. `EK3007` covers every other wrong-typed `vibe` value, including a `severities` value that is not an object.
 
@@ -93,14 +93,14 @@ Effect.runSync(Effect.succeed(42)) // 42
 { "vibe": { "severities": { "EK0801": "error", "EK4609": "off", "EK38100": "warning" } } }
 ```
 
-`vibe.severities` is a map keyed by the full `EK` code printed by the CLI and language server. Imported lint ordinals can add digits after `EK38`; `EK3801` and `EK38100` are distinct keys, compared as whole strings. Its values are TypeScript diagnostic category names (`"error"`, `"warning"`, `"suggestion"`) plus `"off"`. Only VibeLang's own warning codes and imported `EK38xx` codes may appear; a VibeLang error code or an unknown code is a config error (`EK3006`: remove the entry; decided details 57 and 77). `EK0801` is the configurable `using` warning; `EK4701` is the non-exhaustive `match` error and cannot be configured. This is a compiler setting, with no Effect TypeScript runtime translation.
+`vibe.severities` is a map keyed by the full `EK` code printed by the CLI and language server. Imported lint ordinals can add digits after `EK38`; `EK3801` and `EK38100` are distinct keys, compared as whole strings. Its values are TypeScript diagnostic category names (`"error"`, `"warning"`, `"suggestion"`) plus `"off"`. Only VibeLang's own warning codes and imported `EK38xx` codes may appear; a VibeLang error code or an unknown code is a config error (`EK3006`: remove the entry; [VIP-30](../vips/0030-config-files.md#decision), [VIP-38](../vips/0038-effect-lint-built-in.md#decision)). `EK0801` is the configurable `using` warning; `EK4701` is the non-exhaustive `match` error and cannot be configured. This is a compiler setting, with no Effect TypeScript runtime translation.
 
 ```jsonc
 // Invalid even when retaining the severity: VibeLang's own error codes cannot be configured.
 { "vibe": { "severities": { "EK4701": "error" } } } // EK3006: remove the entry
 ```
 
-The configured category controls reporting: an `"error"` makes both `vibelang` and `vibelang lint` exit non-zero and participates in `noEmitOnError`; a `"warning"` prints without changing exit status (decided detail 71). A `"suggestion"` is shown by the language server only; `"off"` reports nothing. To fail CI on a configurable warning, set it to `"error"`.
+The configured category controls reporting: an `"error"` makes both `vibelang` and `vibelang lint` exit non-zero and participates in `noEmitOnError`; a `"warning"` prints without changing exit status ([VIP-34](../vips/0034-compiler-and-tooling.md#decision)). A `"suggestion"` is shown by the language server only; `"off"` reports nothing. To fail CI on a configurable warning, set it to `"error"`.
 
 ### Legacy severity maps
 
@@ -164,7 +164,7 @@ During alpha, VibeLang pins exactly one Effect version, and the pin moves to eac
 
 A migration upgrades the target repository to the pinned Effect first, on its own: it fixes what breaks and lands that commit with green tests. Only then does it convert files to `.vibe`, so each breakage shows its real cause. A repository that already uses VibeLang upgrades Effect together with the VibeLang release pinned to the new Effect, because the published `vibelang-runtime` enforces its exact pin.
 
-VibeLang declares an exact `effect` peer dependency. The compiler reads the resolved `effect/package.json`; any version other than `4.1.0` is `EK3201` in the CLI and editor (decided detail 70). For example, resolving `effect@4.0.3` reports: `the resolved effect is 4.0.3; VibeLang Y pins 4.1.0: upgrade both together`, where `Y` is the VibeLang release.
+VibeLang declares an exact `effect` peer dependency. The compiler reads the resolved `effect/package.json`; any version other than `4.1.0` is `EK3201` in the CLI and editor ([VIP-32](../vips/0032-effect-version.md#decision)). For example, resolving `effect@4.0.3` reports: `the resolved effect is 4.0.3; VibeLang Y pins 4.1.0: upgrade both together`, where `Y` is the VibeLang release.
 
 ## Compiler and tooling requirements
 
@@ -174,7 +174,7 @@ VibeLang declares an exact `effect` peer dependency. The compiler reads the reso
 
    Ordinary layout and lexical-spelling normalization may change emitted JavaScript bytes. `Function.prototype.toString`, generated source text, source offsets, line/column and stack presentation may reflect the formatted text. This source-text boundary never permits changes to ordinary strings/data, tagged-template raw or cooked values, regex meaning, function names or lengths, property names or directive semantics. For example, changing an escaped string into an actual `use strict` directive changes meaning. Regenerate compiler-generated source-map and declaration-map provenance, including `sourcesContent`, for the formatted file; never retain stale maps. Preservation tests compare parsed source/emit structure, runtime behavior, types/declarations, diagnostics, comments/directives and maps; arbitrary regex stripping is unsound, and a finite structural oracle is not a proof of all program equivalence. Exact-byte tests remain useful where equality is expected, without restricting advertised native formatter style settings.
 4. **Existing tools work.** Type checkers work through `.d.vibe.ts`, and linters, Knip, bundlers and test runners each read `.vibe`. Every tool is tested against the dogfood repositories. The language server also resolves `./x.vibe` to the source whenever it is in the program, ignoring its stale `x.d.vibe.ts`.
-5. **Emit names.** `x.vibe` emits `x.js` beside `x.d.ts` in `outDir`; relative `./x.vibe` specifiers become `./x.js`, as TypeScript’s `rewriteRelativeImportExtensions` does for `.ts`. Bundler plugins use the same names (decided detail 72). The `.d.vibe.ts` compatibility route above remains for tools reading `.vibe` specifiers.
+5. **Emit names.** `x.vibe` emits `x.js` beside `x.d.ts` in `outDir`; relative `./x.vibe` specifiers become `./x.js`, as TypeScript’s `rewriteRelativeImportExtensions` does for `.ts`. Bundler plugins use the same names ([VIP-34](../vips/0034-compiler-and-tooling.md#decision)). The `.d.vibe.ts` compatibility route above remains for tools reading `.vibe` specifiers.
 6. **Severities.** Only VibeLang's own warning codes and all imported `EK38xx` lint codes can be configured in `vibe.severities`. Entries for VibeLang's own error codes or unknown codes are config errors (`EK3006`), even if the requested severity is `"error"`.
 
 The transitional compiler also emits three migration warnings: `EK4853` writes previously inferred requirements explicitly under VIP-3; `EK4854` changes the retired abstract-class service spelling to `service`; and `EK4855` changes a service's `default` value to a `defaultValue` factory under VIP-9. Their [compatibility inventory](900-appendices.md#transitional-compiler-diagnostics) records the emitted codes. `vibelang --fix` keeps the existing safe-fix checks and refusal rules. These repairs do not run Effects or change the normative omitted-slot and service semantics.
@@ -187,7 +187,7 @@ vibelang lint -p tsconfig.json
 
 The Effect language service's type-aware rules (effect-tsgo's `effecttsgo/*` rules) run inside the `vibelang` compiler on selected `.ts` and `.vibe` inputs, keeping the pinned upstream rule/file eligibility and declaration/library exclusions. VibeLang-specific language checks remain confined to `.vibe`. They run wherever VibeLang reports diagnostics: the CLI, the language server, and `vibelang lint` for CI (VIP-38, amended). A repository's existing Effect language-service configuration selects and configures them, so its lint script covers `.vibe` as it covers `.ts`. The lint command emits no files and uses the same configuration and diagnostic categories as the compiler and language server; it has no Effect TypeScript runtime translation.
 
-Each imported `effecttsgo/*` rule gets one stable `EK38xx` code, in a normative table generated from the pinned effect-tsgo version ([Imported lint codes](900-appendices.md#imported-lint-codes)); a VIP-32 bump regenerates the table, and a rule's code never changes once assigned (decided detail 77). The CLI and language server print that code with the rule name in the message: `EK3801 floatingEffect: …`. A rule's severity resolves in this order, the more specific winning, as a tsconfig child overrides its base: an entry for its code in `vibe.severities`; else the repository's Effect language-service configuration; else the rule's default. Every `EK38xx` code is a lint code and may be set to any value, `"off"` included: VIP-34's "errors can't be off" covers VibeLang's own rules.
+Each imported `effecttsgo/*` rule gets one stable `EK38xx` code, in a normative table generated from the pinned effect-tsgo version ([Imported lint codes](900-appendices.md#imported-lint-codes)); a VIP-32 bump regenerates the table, and a rule's code never changes once assigned ([VIP-38](../vips/0038-effect-lint-built-in.md#decision)). The CLI and language server print that code with the rule name in the message: `EK3801 floatingEffect: …`. A rule's severity resolves in this order, the more specific winning, as a tsconfig child overrides its base: an entry for its code in `vibe.severities`; else the repository's Effect language-service configuration; else the rule's default. Every `EK38xx` code is a lint code and may be set to any value, `"off"` included: VIP-34's "errors can't be off" covers VibeLang's own rules.
 
 ```json
 { "vibe": { "severities": { "EK3801": "warning" } } }
@@ -199,18 +199,18 @@ These are VibeLang’s own configurable warnings, distinct from the imported `EK
 
 | Warning | Code | Suggested fix |
 | --- | --- | --- |
-| A plain `catch` handler returns an unrun Effect (decided detail 62) | `EK0508` | `catch effect (e) => try …` |
+| A plain `catch` handler returns an unrun Effect ([VIP-5](../vips/0005-try-runs-effects.md#decision)) | `EK0508` | `catch effect (e) => try …` |
 | A legacy severity map remains in the config | `EK3009` | Run `vibelang --fix` after resolving obsolete entries. |
 | `using` in effect code | `EK0801` | Use `acquireDisposable` inside `scoped`. |
 | An extractor's argument count cannot match its extraction list | `EK0703` | Use a bare class test or the matching number of subpatterns. |
-| `await` on a `Fiber` (decided detail 28) | `EK4609` | `await runPromise(Fiber.join(fiber))` in `async` code; `join fiber` in effect code |
-| `await` on a `Deferred` (decided detail 29) | `EK4610` | `await runPromise(Deferred.await(deferred))` in `async` code; `try Deferred.await(deferred)` in effect code |
+| `await` on a `Fiber` ([VIP-5](../vips/0005-try-runs-effects.md#decision)) | `EK4609` | `await runPromise(Fiber.join(fiber))` in `async` code; `join fiber` in effect code |
+| `await` on a `Deferred` ([VIP-5](../vips/0005-try-runs-effects.md#decision)) | `EK4610` | `await runPromise(Deferred.await(deferred))` in `async` code; `try Deferred.await(deferred)` in effect code |
 
-The imported rules are pinned by [`UPSTREAM`](../../../typescript/tsc/internal/effecttsgo/UPSTREAM) to `@effect/tsgo@0.57.0`, commit `999942fa41462eb46dfcb2d718e7671db8e14156` (decided detail 98). The normative [`lint-codes.json`](https://github.com/smithersai/vibelang/blob/main/docs/design/inventory/lint-codes.json) and the table below are generated with `node docs/tools/lint-codes.mjs --write`. An upstream bump runs `sh tsc/internal/effecttsgo/sync.sh <tag>` from `typescript/` and regenerates the inventory.
+The imported rules are pinned by [`UPSTREAM`](../../../typescript/tsc/internal/effecttsgo/UPSTREAM) to `@effect/tsgo@0.57.0`, commit `999942fa41462eb46dfcb2d718e7671db8e14156` ([VIP-38](../vips/0038-effect-lint-built-in.md#decision)). The normative [`lint-codes.json`](https://github.com/smithersai/vibelang/blob/main/docs/design/inventory/lint-codes.json) and the table below are generated with `node docs/tools/lint-codes.mjs --write`. An upstream bump runs `sh tsc/internal/effecttsgo/sync.sh <tag>` from `typescript/` and regenerates the inventory.
 
-Each rule has one stable code: the `EK38` prefix followed by a decimal ordinal of at least two digits. The initial allocation retains `EK3801` for `floatingEffect` and sorts all remaining rule names from ordinal 2 (decided detail 106); future additions sort only the new names and append after the largest reserved ordinal. After `EK3899` comes `EK38100`, so the prefix also accommodates this pin's 130 rules (decided detail 142). Keep assignments in `docs/tools/lint-code-assignments.json`; removed rules retain their reservation and codes are never renumbered or reused.
+Each rule has one stable code: the `EK38` prefix followed by a decimal ordinal of at least two digits. The initial allocation retains `EK3801` for `floatingEffect` and sorts all remaining rule names from ordinal 2 ([VIP-38](../vips/0038-effect-lint-built-in.md#decision)); future additions sort only the new names and append after the largest reserved ordinal. After `EK3899` comes `EK38100`, so the prefix also accommodates this pin's 130 rules ([VIP-38](../vips/0038-effect-lint-built-in.md#decision)). Keep assignments in `docs/tools/lint-code-assignments.json`; removed rules retain their reservation and codes are never renumbered or reused.
 
-Severity resolves from an entry for the printed code in `vibe.severities`, then the repository's Effect language-service configuration, then the rule's default (details 60 and 77). Every imported code accepts `"off"`, including rules whose default is `"error"`. A code identifies one rule even when that rule emits several upstream messages.
+Severity resolves from an entry for the printed code in `vibe.severities`, then the repository's Effect language-service configuration, then the rule's default ([VIP-38](../vips/0038-effect-lint-built-in.md#decision)). Every imported code accepts `"off"`, including rules whose default is `"error"`. A code identifies one rule even when that rule emits several upstream messages.
 
 <!-- lint-codes:start: generated by docs/tools/lint-codes.mjs; do not edit -->
 
@@ -353,7 +353,7 @@ Imported rules from `@effect/tsgo@0.57.0` (commit `999942fa41462eb46dfcb2d718e76
 
 Tools that only analyze code, such as cycle checkers (madge) and dependency graphs, may run on VibeLang's compiled output. Formatters cannot; they read `.vibe` itself.
 
-`vibelang lint` accepts the compiler’s options, including `-p`/`--project` and file arguments, with no lint-specific options; for example, `vibelang lint --project tsconfig.json` selects that project (decided detail 58). `vibelang --fix` remains the codemod entry point. Two flags scope that invocation:
+`vibelang lint` accepts the compiler’s options, including `-p`/`--project` and file arguments, with no lint-specific options; for example, `vibelang lint --project tsconfig.json` selects that project ([VIP-38](../vips/0038-effect-lint-built-in.md#decision)). `vibelang --fix` remains the codemod entry point. Two flags scope that invocation:
 
 | Flag | Scope when used with `--fix` |
 | --- | --- |

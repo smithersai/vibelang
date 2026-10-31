@@ -1,0 +1,4 @@
+go test fuzz v1
+string("lint-options")
+uint32(42)
+byte(14)

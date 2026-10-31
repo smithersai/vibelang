@@ -1,0 +1,4 @@
+go test fuzz v1
+string("plain-handler-effect")
+uint32(42)
+byte(7)

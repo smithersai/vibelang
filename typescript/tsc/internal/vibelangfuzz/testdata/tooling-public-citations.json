@@ -1,0 +1,164 @@
+[
+  {
+    "key": "severity-inheritance",
+    "claim": "`severities` merges entry by diagnostic code",
+    "sources": [
+      {
+        "file": "0030-config-files.md",
+        "heading": "`extends` and the `vibe` section"
+      }
+    ]
+  },
+  {
+    "key": "severity-settings",
+    "claim": "Maps VibeLang's own warning codes",
+    "sources": [
+      {
+        "file": "0030-config-files.md",
+        "heading": "the `severities` format"
+      },
+      {
+        "file": "0034-compiler-and-tooling.md",
+        "heading": "Severities"
+      },
+      {
+        "file": "0038-effect-lint-built-in.md",
+        "heading": "codes for the imported rules"
+      }
+    ]
+  },
+  {
+    "key": "severity-code-admission",
+    "claim": "a VibeLang error code or an unknown code is a config error",
+    "sources": [
+      {
+        "file": "0030-config-files.md",
+        "heading": "the `severities` format"
+      },
+      {
+        "file": "0038-effect-lint-built-in.md",
+        "heading": "codes for the imported rules"
+      }
+    ]
+  },
+  {
+    "key": "severity-reporting",
+    "claim": "prints without changing exit status",
+    "sources": [
+      {
+        "file": "0034-compiler-and-tooling.md",
+        "heading": "warnings never change the exit status"
+      }
+    ]
+  },
+  {
+    "key": "effect-pin",
+    "claim": "any version other than `4.1.0` is `EK3201`",
+    "sources": [
+      {
+        "file": "0032-effect-version.md",
+        "heading": "an off-pin Effect is a compile error"
+      }
+    ]
+  },
+  {
+    "key": "emit-names",
+    "claim": "Bundler plugins use the same names",
+    "sources": [
+      {
+        "file": "0034-compiler-and-tooling.md",
+        "heading": "emit names mirror TypeScript"
+      }
+    ]
+  },
+  {
+    "key": "stable-lint-code",
+    "claim": "a rule's code never changes once assigned",
+    "sources": [
+      {
+        "file": "0038-effect-lint-built-in.md",
+        "heading": "codes for the imported rules"
+      }
+    ]
+  },
+  {
+    "key": "plain-handler-effect",
+    "claim": "A plain `catch` handler returns an unrun Effect",
+    "sources": [
+      {
+        "file": "0005-try-runs-effects.md",
+        "heading": "a plain handler returning an Effect"
+      }
+    ]
+  },
+  {
+    "key": "await-fiber",
+    "claim": "`await` on a `Fiber`",
+    "sources": [
+      {
+        "file": "0005-try-runs-effects.md",
+        "heading": "`await fiber`"
+      }
+    ]
+  },
+  {
+    "key": "await-deferred",
+    "claim": "`await` on a `Deferred`",
+    "sources": [
+      {
+        "file": "0005-try-runs-effects.md",
+        "heading": "`await deferred`"
+      }
+    ]
+  },
+  {
+    "key": "upstream-pin",
+    "claim": "The imported rules are pinned by",
+    "sources": [
+      {
+        "file": "0038-effect-lint-built-in.md",
+        "heading": "the imported rules are pinned to `@effect/tsgo@0.57.0`"
+      }
+    ]
+  },
+  {
+    "key": "initial-lint-ordinal",
+    "claim": "sorts all remaining rule names from ordinal 2",
+    "sources": [
+      {
+        "file": "0038-effect-lint-built-in.md",
+        "heading": "stable imported codes"
+      }
+    ]
+  },
+  {
+    "key": "growing-lint-ordinal",
+    "claim": "prefix also accommodates this pin",
+    "sources": [
+      {
+        "file": "0038-effect-lint-built-in.md",
+        "heading": "stable imported codes"
+      }
+    ]
+  },
+  {
+    "key": "lint-severity-precedence",
+    "claim": "then the rule's default (",
+    "sources": [
+      {
+        "file": "0038-effect-lint-built-in.md",
+        "heading": "codes for the imported rules"
+      }
+    ]
+  },
+  {
+    "key": "lint-options",
+    "claim": "with no lint-specific options",
+    "sources": [
+      {
+        "file": "0038-effect-lint-built-in.md",
+        "heading": "lint options"
+      }
+    ]
+  }
+]

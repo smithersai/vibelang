@@ -67,6 +67,7 @@ const specTests = [
   "TestConfigPathBases",
   "TestRegistryRowsSuggestRepairs",
   "TestCommandLineFlagsCoverSpec",
+  "TestToolingPublicCitationsQuoted",
   "TestCommandLineFixScopes",
   "TestSpecFacts",
   "TestDiagnosticCodesKeepFullOrdinal",

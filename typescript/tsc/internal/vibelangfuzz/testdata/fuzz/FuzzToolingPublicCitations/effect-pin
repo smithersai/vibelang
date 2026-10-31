@@ -1,0 +1,4 @@
+go test fuzz v1
+string("effect-pin")
+uint32(42)
+byte(4)
