@@ -115,7 +115,7 @@ Timeout                       then another
 
 | Word | Keyword when followed by | Chapter |
 | --- | --- | --- |
-| `effect` | `function`; an arrow head, as for `async`: `(` … `)` then `=>`, `<` type parameters of such an arrow, or an identifier then `=>`; in a class or object literal only: a method name (`ClassElementName`, `#m` included) then `(` or `<`, `*`, or `get` or `set` then a name ([EffectAccessor](/spec/900-appendices#effectaccessor)), as TypeScript parses `async get x()`; at a statement start, a name other than `as`, `satisfies` or `is`, then `(` or `<` ([EffectShorthand](/spec/900-appendices#effectshorthand)); `{` in an expression position only, so in a heritage clause (`class C extends effect { }`, `class C implements effect { }`, `interface I extends A, effect { }`) `effect` is an identifier and `{` starts the body, as in TypeScript. `effect * rate` is a multiplication; `effect(x)` with no `=>` is a call; `class C extends effect { }` extends a value named `effect`. `effect async` and `async effect` before any of these forms parse as an [EffectModifier](/spec/900-appendices#effectmodifier), so `EK0105` reports them | [Functions](/spec/001-functions) |
+| `effect` | `function`; an arrow head, as for `async`: `(` … `)` then `=>`, `<` type parameters of such an arrow, or an identifier then `=>`; in a class or object literal: a method name (`ClassElementName`, `#m` included) then `(` or `<`, `*`, or `get` or `set` then a name ([EffectAccessor](/spec/900-appendices#effectaccessor)), as TypeScript parses `async get x()`; on an `interface` or type literal member: a member name or `[`, where TypeScript parses an `async` modifier and reports TS1070 or TS1071, so that `EK0108` reports it; at a statement start, a name other than `as`, `satisfies` or `is`, then `(` or `<` ([EffectShorthand](/spec/900-appendices#effectshorthand)); `{` in an expression position only, so in a heritage clause (`class C extends effect { }`, `class C implements effect { }`, `interface I extends A, effect { }`) `effect` is an identifier and `{` starts the body, as in TypeScript. `effect * rate` is a multiplication; `effect(x)` with no `=>` is a call; `class C extends effect { }` extends a value named `effect`. `effect async` and `async effect` before any of these forms parse as an [EffectModifier](/spec/900-appendices#effectmodifier), so `EK0105` reports them | [Functions](/spec/001-functions) |
 | `concurrent` | after `for` (line break allowed), then `(` | [Running Effects](/spec/002-running#for-concurrent) |
 | `uninterruptible`, `interruptible`, `restore` | `{` | [Running Effects](/spec/002-running#interruption-blocks) |
 | `provide` | at a statement start when a valid [ProvideStatement](/spec/900-appendices#providestatement) head parses, or bounded recovery relaxes only line breaks immediately before/after top-level provider commas; the ordinary provider grammar, no break after `provide` and same-line final `{` still apply; otherwise an identifier | [Services](/spec/005-services#provide-blocks) |
@@ -173,7 +173,7 @@ EffectModifier = "effect"
 
 Each two-word form needs a function, a method name, arrow parameters or an expression-position block after it, so TypeScript's forms keep their meaning: `async effect => 1` is an `async` arrow whose parameter is `effect`, `async effect() { }` is an `async` method named `effect`, and `effect async() { }` is an `effect` method named `async`.
 
-A recognized `effect` modifier follows TypeScript’s `async` diagnostic recovery positions too. An `abstract` declaration, ambient `declare` context, or an `interface` or type literal member with that modifier is rejected with `EK0108` ([Functions](/spec/001-functions#static-rules)). Recognition is syntactic: identifiers named `effect` retain their ordinary member reading. Function/class overload signatures follow TypeScript’s ordinary admission and compatibility; generator overloads retain their native rejection.
+A recognized `effect` modifier follows TypeScript’s `async` diagnostic recovery positions too. An `abstract` declaration, ambient `declare` context, or an `interface` or type literal member with that modifier is rejected with `EK0108` ([Functions](/spec/001-functions#static-rules)). Recognition is syntactic: identifiers named `effect` retain their ordinary member reading. Function/class overload signatures follow TypeScript’s ordinary admission and compatibility. A starred bodyless signature parses as its `async` counterpart does and keeps TypeScript’s `TS1222`.
 
 #### EffectFunction
 
@@ -188,7 +188,7 @@ EffectFunction = EffectModifier [no LineTerminator here] "function" Name? TypePa
 EffectFunctionOverload = EffectModifier [no LineTerminator here] "function" Name? TypeParameters? Params ReturnType? ";"   (function declarations only; TypeScript overload signatures and semicolon insertion)
 ```
 
-Bodyless signatures follow TypeScript overload ordering, adjacent-implementation and compatibility checks, with the same name requirements as the corresponding `async` declaration. Function expressions, object-literal methods and arrows still require bodies. TypeScript rejects starred overload signatures, `abstract async` methods and ambient `async` declarations; the corresponding `effect` forms are rejected too.
+Bodyless signatures follow TypeScript overload ordering, adjacent-implementation and compatibility checks, with the same name requirements as the corresponding `async` declaration. Function expressions, object-literal methods and arrows still require bodies. TypeScript rejects starred overload signatures (TS1222), `abstract async` methods (TS1243) and ambient `async` declarations (TS1040). The corresponding `effect` forms are rejected too: a starred signature keeps `TS1222`, and the other two are `EK0108`. A signature without a return annotation exposes `any`, as a bodyless `async` signature does, with TypeScript’s `TS7010` under `noImplicitAny`; it is not inferred from the implementation, so a written Effect type such as `string!!` gives the signature its checked contract.
 
 #### EffectArrow
 
@@ -267,12 +267,13 @@ const operatorHeads = Effect.gen(function* () {
 
 ```text
 Producer = EffectModifier [no LineTerminator here] "function" "*" Name? TypeParameters? Params ReturnType? Block
+         | EffectModifier [no LineTerminator here] "function" "*" Name? TypeParameters? Params ReturnType? ";"   (function declarations only; parses, then TypeScript's TS1222 rejects it)
 ```
 
 #### ProducerMethod
 
 ```text
-ProducerMethod = DecoratorList? Modifiers? EffectModifier [no LineTerminator here] "*" ClassElementName TypeParameters? Params ReturnType? Block   (in a class; PropertyName in an object literal, with no DecoratorList or Modifiers there)
+ProducerMethod = DecoratorList? Modifiers? EffectModifier [no LineTerminator here] "*" ClassElementName TypeParameters? Params ReturnType? (Block | ";")   (in a class, where ";" parses, then TypeScript's TS1222 rejects it; PropertyName and Block in an object literal, with no DecoratorList or Modifiers there)
 ```
 
 #### Params
@@ -357,7 +358,7 @@ An enclosing TypeScript tuple can mark the completed Effect type as an optional 
 
 A leading `<` does not start a type at the type-operator level: `x as A!! < 3` omits `R` and continues with a comparison, subject to ordinary operand checking. A generic function requirement needs parentheses, `A!!(<T>() => T)`. A leading `[` does start a tuple type, so `x as A!![0]` consumes `[0]` as `R`; `(x as A!!)[0]` requests a later element access, subject to ordinary type checking.
 
-In an expression, `x as A!! as B` and `x as A!! satisfies B` retain the ordinary chained assertion or check when consuming the keyword as `R` would strand `B`. Priority is between complete source parses, not parser-recovery trees. This is not a token ban: TypeScript allows type aliases named `as` and `satisfies`, so a pure type `A!!as`, a required or parenthesized slot using those aliases, and `x as A!!as satisfies unknown` retain their valid present-`R` parse. When both complete source parses survive, prefer the present `R`, with no symbol lookup.
+In an expression, `x as A!! as B` and `x as A!! satisfies B` retain the ordinary chained assertion or check when consuming the keyword as `R` would strand `B`. Priority is between complete source parses, not parser-recovery trees. This is not a token ban: TypeScript allows type aliases named `as` and `satisfies`, so a pure type `A!!as`, a required or parenthesized slot using those aliases, and `x as A!!as satisfies unknown` retain their valid present-`R` parse. When both complete source parses survive, prefer the present `R`, with no symbol lookup. A complete source parse includes TypeScript’s automatic semicolon insertion. With `x as A!!as` at the end of a line and `B` on the next, both parses complete: the present `R` ends the statement by ASI, leaving `B` a second statement, and the chained assertion continues across the line break, so the present `R` wins. On one line, `x as A!! as B` has no semicolon to insert after `as`, so only the chained assertion completes.
 
 ```vibe
 // compiler-gap: pending VIP-3
@@ -380,6 +381,11 @@ function assertions(x: unknown) {
   const comparison = x as number!! < 3
   // @ts-expect-error: an Effect has no numeric index
   const indexed = (x as number!!)[0]
+}
+
+function lineBreak(x: unknown, B: unknown) {
+  x as number!!as
+  B // a second statement: the assertion above supplies R = as
 }
 
 effect function slotBoundaryWitness() {
@@ -411,6 +417,11 @@ function assertions(x: unknown) {
   const comparison = (x as Effect.Effect<number>) < 3
   // @ts-expect-error: an Effect has no numeric index
   const indexed = (x as Effect.Effect<number>)[0]
+}
+
+function lineBreak(x: unknown, B: unknown) {
+  x as Effect.Effect<number, never, as>
+  B
 }
 
 ```
