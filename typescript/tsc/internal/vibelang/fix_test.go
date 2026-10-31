@@ -59,8 +59,9 @@ func countingFS(dir string, onRead func(int)) (*int, vfs.FS) {
 	}})
 }
 
-// When a round's fixes together add an error, --fix finds the files that
-// add it by halving the round, not by checking the program once per file.
+// When a round's fixes together add an error, --fix finds the fix that
+// adds it from the declaration the error reads, not by checking the
+// program once per file.
 func TestFixProjectBoundsChecks(t *testing.T) {
 	dir, config := fixFiles(t)
 	builds, fs := countingFS(dir, func(int) {})
@@ -69,9 +70,10 @@ func TestFixProjectBoundsChecks(t *testing.T) {
 		t.Fatalf("fixed %d files, refused %+v; want 32 files and the EK4834 fix refused for an error in more.vibe", len(result.Order), result.Refused)
 	}
 	t.Logf("%d programs", *builds)
-	// One program per round, the baseline's, and about two per halving of
-	// the 32 files and of main.vibe's two fixes; one per file is over 32.
-	if *builds > 20 {
+	// The baseline, the round, two to find the fix that more.vibe's error
+	// traces to, the rest again, the next round and the prelude: about
+	// eight. Halving the 32 files built 17; one per file is over 32.
+	if *builds > 10 {
 		t.Fatalf("--fix built %d programs for 32 files", *builds)
 	}
 }

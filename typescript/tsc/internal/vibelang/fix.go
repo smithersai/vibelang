@@ -14,7 +14,6 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/collections"
 	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
-	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/execute/tsc"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/ls/autoimport"
@@ -42,13 +41,16 @@ import (
 // overlaps one taken waits for the next round, which rechecks the edited
 // program. A round's fixes are kept only when the edited program reports no
 // error the original did not, compared by file, code, and message; when the
-// round as a whole would add one, the files that report the added errors are
-// tried apart from the rest, and a set of files that adds one is halved until
-// the files that add it are found, then each such file's fixes are; each fix
-// that adds an error is refused, named with the first error it adds, and not
-// tried again. A round so costs a few checks of the program, not one per
-// file, and the programs share the files no fix edited. After the last
-// round, it writes what the prelude makes shorter
+// round as a whole would add one, the errors say which fixes add them: a
+// fix whose own text holds an added error is set aside, an error elsewhere
+// is traced to the fix whose text holds a declaration it reads, and the
+// rest is checked again (fix_gate.go). Each fix that adds an error is
+// refused, named with the first error it adds, and not tried again; an
+// edit refused on its own is refused without a check when a later round
+// offers it again to the same texts. A round so costs a few checks of the
+// program however many fixes it refuses, and the programs share the files
+// no fix edited. After the last round, it writes what the prelude makes
+// shorter
 // (fix_prelude.go): it removes the imports of modules the prelude supplies
 // (D310, D311) and writes M.M as M where a module's name names its service,
 // keeping each file's rewrites only when the program then reports no error
@@ -70,8 +72,10 @@ const FixFlag = "--fix"
 
 // FixOptions scopes repository migration tools without also rewriting the
 // TypeScript-style teaching examples or their explicit imports (D382).
-// VIPOnly applies the VIP migrations and nothing else.
-type FixOptions struct{ MigrationOnly, VIPOnly bool }
+// VIPOnly applies the VIP migrations and nothing else. CheckEachFix checks
+// each fix on its own instead of a round together: the oracle the fix gate
+// is fuzzed against, which no command line sets.
+type FixOptions struct{ MigrationOnly, VIPOnly, CheckEachFix bool }
 
 // FixOptionsArguments removes the optional scope flag after --fix was found.
 // Ordinary --fix keeps its existing behavior, including prelude cleanup.
@@ -278,7 +282,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 	if done.Err() != nil {
 		return result
 	}
-	g := &fixGate{ctx: ctx, done: done, build: build, baseline: errorCounts(ctx, program), refused: map[string]bool{}}
+	g := &fixGate{ctx: ctx, done: done, build: build, baseline: errorCounts(ctx, program), refused: map[string]bool{}, alone: map[[32]byte]map[string]int{}}
 	seen := map[[32]byte]bool{fixState(program): true}
 	for {
 		if done.Err() != nil {
@@ -324,7 +328,11 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 		if len(proposals) == 0 {
 			break
 		}
-		accepted := g.accept(texts, proposals, func(refusal FixRefusal, key string) {
+		accept := g.accept
+		if options.CheckEachFix {
+			accept = g.acceptEach
+		}
+		accepted := accept(texts, proposals, func(refusal FixRefusal, key string) {
 			g.refused[key] = true
 			result.Refused = append(result.Refused, refusal)
 		})
@@ -547,24 +555,12 @@ func fixableFiles(program *compiler.Program) []*ast.SourceFile {
 	return files
 }
 
-// errorCounts counts program's errors by file, code, and message. It
-// collects every kind of error whatever the others hold, as the language
-// server does: GetDiagnosticsOfAnyProgram stops at syntax errors, so a
-// syntax error anywhere would hide every type error a fix adds.
+// errorCounts counts the errors of program (programErrors) by file, code,
+// and message.
 func errorCounts(ctx context.Context, program *compiler.Program) map[string]int {
 	counts := map[string]int{}
-	all := slices.Concat(
-		program.GetConfigFileParsingDiagnostics(),
-		program.GetSyntacticDiagnostics(ctx, nil),
-		program.GetProgramDiagnostics(),
-		program.GetGlobalDiagnostics(ctx),
-		program.GetBindDiagnostics(ctx, nil),
-		program.GetSemanticDiagnostics(ctx, nil),
-	)
-	for _, d := range all {
-		if d.Category() == diagnostics.CategoryError {
-			counts[errorKey(d)]++
-		}
+	for _, d := range programErrors(ctx, program) {
+		counts[errorKey(d)]++
 	}
 	return counts
 }
@@ -618,6 +614,10 @@ type fixGate struct {
 	build      func(map[tspath.RootedFilePath]string) *compiler.Program
 	baseline   map[string]int
 	refused    map[string]bool // fixes refused, by fixKey
+	// alone holds the errors each fix refused on its own added, by
+	// aloneKey: a later round that offers the same edit to the same texts
+	// builds the same program, so it is refused without a check.
+	alone map[[32]byte]map[string]int
 }
 
 // passes reports whether the program with overlay over texts adds no error,
@@ -630,122 +630,6 @@ func (g *fixGate) passes(texts, overlay map[tspath.RootedFilePath]string) (strin
 		g.lastFailed = program
 	}
 	return error, !bad
-}
-
-// accept returns proposals cut down to the fixes that, together, add no
-// error, and calls refuse for each fix that adds one. It tries the round as
-// a whole; when that adds an error, it tries the files that report none of
-// the added errors, then the files that do, which most likely hold the fixes
-// that add them. A set of files that adds an error is halved until each half
-// passes or is one file, keeping the halves that pass, and each failing
-// file's fixes are halved the same way, so that finding k bad files among n
-// costs about 2k·log2(n) checks of the program, not n. References in an
-// unchanged importer's added error also guide the search back to edited
-// declarations; these hints only choose groups, never replace a full check.
-func (g *fixGate) accept(texts map[tspath.RootedFilePath]string, proposals []proposal, refuse func(FixRefusal, string)) []proposal {
-	all := map[tspath.RootedFilePath]string{}
-	for _, p := range proposals {
-		all[p.file.FileName()] = p.text()
-	}
-	program := g.build(maps(texts, all))
-	added := addedErrors(g.ctx, program, g.baseline)
-	g.lastFailed = program
-	if len(added) == 0 {
-		return proposals
-	}
-	origins := g.errorSources(proposals)
-	var others, suspects []proposal
-	for _, p := range proposals {
-		prefix := p.file.FileName().AsString() + ": " // errorKey's
-		if origins[p.file.FileName()] || (len(origins) == 0 && slices.ContainsFunc(added, func(key string) bool { return strings.HasPrefix(key, prefix) })) {
-			suspects = append(suspects, p)
-		} else {
-			others = append(others, p)
-		}
-	}
-	var accepted, failing []proposal
-	kept := map[tspath.RootedFilePath]string{}
-	keep := func(p proposal) {
-		kept[p.file.FileName()] = p.text()
-		accepted = append(accepted, p)
-	}
-	var files func([]proposal, bool)
-	files = func(ps []proposal, known bool) { // known: ps together add an error
-		if g.done.Err() != nil {
-			return
-		}
-		if !known {
-			trial := maps(kept, nil)
-			for _, p := range ps {
-				trial[p.file.FileName()] = p.text()
-			}
-			if _, ok := g.passes(texts, trial); ok {
-				for _, p := range ps {
-					keep(p)
-				}
-				return
-			}
-		}
-		if len(ps) == 1 {
-			failing = append(failing, ps[0])
-			return
-		}
-		sources := g.errorSources(ps)
-		var rest, likely []proposal
-		for _, p := range ps {
-			if sources[p.file.FileName()] {
-				likely = append(likely, p)
-			} else {
-				rest = append(rest, p)
-			}
-		}
-		if len(likely) > 0 && len(rest) > 0 {
-			files(rest, false)
-			files(likely, false)
-			return
-		}
-		files(ps[:len(ps)/2], false)
-		files(ps[len(ps)/2:], false)
-	}
-	if len(others) == 0 || len(suspects) == 0 {
-		files(proposals, true)
-	} else {
-		files(others, false)
-		files(suspects, false)
-	}
-	for _, p := range failing {
-		name := p.file.FileName()
-		var taken []fileFix
-		var fixes func([]fileFix, bool)
-		fixes = func(fs []fileFix, known bool) { // known: taken and fs together add an error
-			if g.done.Err() != nil {
-				return
-			}
-			if !known || len(fs) == 1 {
-				trial := p
-				trial.fixes = append(slices.Clone(taken), fs...)
-				error, ok := g.passes(texts, maps(kept, map[tspath.RootedFilePath]string{name: trial.text()}))
-				if ok {
-					taken = append(taken, fs...)
-					return
-				}
-				if len(fs) == 1 {
-					line, _ := scannerLineOf(p.file, firstEdit(fs[0].edits))
-					refuse(FixRefusal{File: name, Line: line + 1, Code: fs[0].code, Error: error}, fs[0].key)
-					return
-				}
-			}
-			fixes(fs[:len(fs)/2], false)
-			fixes(fs[len(fs)/2:], false)
-		}
-		fixes(p.fixes, true)
-		if len(taken) > 0 {
-			partial := p
-			partial.fixes = taken
-			keep(partial)
-		}
-	}
-	return accepted
 }
 
 // scannerLineOf returns the 0-based line and column of pos in file.
