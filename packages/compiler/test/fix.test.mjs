@@ -127,3 +127,20 @@ test("--fix writes only the project's own files, and leaves a dependency's sourc
   assert.notEqual(readFileSync(join(root, "src/own.vibe"), "utf8"), dependency)
   assert.match(result.stdout, /^dependency\/index\.vibe\(1,\d+\): \w+ EK4833/m, "the compilation still reports the dependency's diagnostic")
 })
+
+for (const [name, source, rewrite] of [["direct", "export interface Query extends Effect.Effect<number> { readonly sql: string }\n", false], ["nested", "interface Holder<T> { readonly value: T }\nexport interface Wrapped extends Holder<Effect.Effect<number>> {}\n", true]]) {
+  test("--fix respects Effect type heritage grammar: " + name, { skip }, (t) => {
+    const root = project(t, source)
+    const result = vibelang(root, "-p", "tsconfig.json", "--fix", "--pretty", "false")
+    assert.equal(result.status, 0, result.stdout + result.stderr)
+    assert.doesNotMatch(result.stdout, /not fixed|refused/)
+    const text = readFileSync(join(root, "main.vibe"), "utf8")
+    if (rewrite) {
+      assert.ok(text.includes("number!!") && !text.includes("Effect.Effect"), text)
+    } else {
+      assert.equal(text, source)
+      assert.doesNotMatch(result.stdout, /EK4833/)
+    }
+  })
+}
+
