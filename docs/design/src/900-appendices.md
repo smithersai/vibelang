@@ -10,6 +10,8 @@ VibeLang adds one grammar parameter, `[Effect]`, with the contextual boundaries 
 
 The grammar parameter determines reservation; permission to execute additionally excludes parameter lists and `static` blocks. “Effect code” ([Running Effects](002-running.md)) is code parsed with `[+Effect]` that has that permission. A computed class key and an `extends` clause are effect code when their enclosing context is: `effect function f() { class C { [try key()]() { } } }` permits the `try`.
 
+An `effect` function or producer expression's own [Name](#name) parses with the parameters of its body, `[+Effect]` included, as ECMAScript parses every function expression's name with its body's (`AsyncFunctionExpression : async function BindingIdentifier[~Yield, +Await]opt`). So `fork` or `join` as that name is `EK1702`, as `(async function await() { })` is a SyntaxError. A declaration's name and an overload signature's take the enclosing context, as `AsyncFunctionDeclaration` does, so `export effect function fork() { }` declares `fork` in plain code. A method name is a `PropertyName` or `ClassElementName`, which ECMAScript never reserves, so `{ effect join() { } }` is valid.
+
 Under `[+Effect]`:
 
 - `fork` and `join` are reserved words, as `await` is under `[+Await]` (VIP-17, amended). No next-token test applies. An `IdentifierReference`, `BindingIdentifier` or `LabelIdentifier` can't be `fork` or `join`, so `join(parts)` is always a [JoinExpression](#joinexpression), `join - 1` joins `-1`, and a parameter or local named `join` is a syntax error (`EK1702`). A plain or `async` arrow head inherits the enclosing `fork`/`join` reservation, including in an Effect callable's parameter list, through its binding names, defaults and destructuring; the `async` prefix does not reset the head. This follows ECMAScript's [arrow](https://tc39.es/ecma262/#sec-arrow-function-definitions) and [async-arrow head](https://tc39.es/ecma262/#sec-async-arrow-function-definitions) context rules. Both `const g = (join) => 1` and `const g = async (join) => 1` are `EK1702` there. Each arrow body then has its own source context: a plain body is `[~Effect, ~Await]`, an ordinary `async` body `[~Effect, +Await]`. A nested `function h(join) { }` resets the head as well as its body. Outside an enclosing Effect reservation, `fork` and `join` remain ordinary identifiers even in an ordinary `async` arrow's head and body: native async's own `await` reservation does not reserve these two names. They stay ordinary `IdentifierName`s, as `await` does: `parts.join(",")`, `o?.fork`, `{ join: 1 }` and `class { join() { } }` are names. After the keyword, `/` begins a regular expression, and the operand may follow a line break, as after `await`: `join` then `f` on the next line joins `f`.
@@ -276,6 +278,18 @@ ProducerMethod = DecoratorList? Modifiers? EffectModifier [no LineTerminator her
 
 ```text
 Params = "(" FormalParameters ")"
+```
+
+#### Name
+
+```text
+Name = BindingIdentifier   (an expression's own name: the parameters of its body, [+Effect] included, and [+Yield] for a Producer; a declaration's or overload signature's: the enclosing context's)
+```
+
+#### ReturnType
+
+```text
+ReturnType = ":" Type   (TypeScript's return-type annotation, parsed as TypeScript parses it; a type takes no Effect parameter)
 ```
 
 #### ArrowParams
