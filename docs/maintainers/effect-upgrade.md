@@ -30,6 +30,10 @@ site's Cloudflare deploy).
 
 ## Steps
 
+The effect-bump flow runs steps 1 to 3 and the checks that compare
+VibeLang with Effect, in a throwaway checkout, and writes a report of what to
+change: `.smithers/flows/effect-bump/README.md`.
+
 1. Run `node scripts/effect-pin.mjs --write <version>`. It prints each
    directory whose lockfile still pins the old version; run `bun install` (or
    `npm install` for a `package-lock.json`) there.
