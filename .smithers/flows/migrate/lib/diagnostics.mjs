@@ -68,15 +68,17 @@ export function summarize(diagnostics, files = []) {
  * What a batch may not keep in the given files: TypeScript-style Effect forms
  * (EK48xx), platform globals (EK4402), and a catch that can never run (EK9204).
  * EK4832 stays out: the Struct constant --fix leaves is one a schema
- * declaration would add a public type to. So does an EK4831 or EK4837 that says
- * it has no quick fix: a service declaration lists its members inline, so a
- * named shape, static members or a dynamic key cannot keep the class's
- * declaration, and a schema error has no annotations argument, type parameters
- * or constructor, so a Schema.TaggedError class with one stays a class.
+ * declaration would add a public type to. So does an EK4831, EK4837 or EK4805
+ * that says it has no quick fix: a service declaration lists its members
+ * inline, so a named shape, static members or a dynamic key cannot keep the
+ * class's declaration; a schema error has no annotations argument, type
+ * parameters or constructor, so a Schema.TaggedError class with one stays a
+ * class; and an error declaration's constructor takes one object, so an
+ * exported class that extends Error keeps its new X(message, options).
  */
 export function styleProblems(diagnostics, files) {
   const inFiles = new Set(files)
-  const refused = (d) => (d.code === "EK4831" || d.code === "EK4837") && d.notes.some((note) => note.startsWith("No quick fix"))
+  const refused = (d) => ["EK4805", "EK4831", "EK4837"].includes(d.code) && d.notes.some((note) => note.startsWith("No quick fix"))
   const kept = (d) => d.code === "EK4832" || refused(d)
   return diagnostics.filter((d) => inFiles.has(d.file) && ((/^EK48\d\d$/.test(d.code) && !kept(d)) || d.code === "EK4402" || d.code === "EK9204"))
 }

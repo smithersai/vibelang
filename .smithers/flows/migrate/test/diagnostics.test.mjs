@@ -106,6 +106,20 @@ test("styleProblems leaves a Schema.TaggedError class no schema error can write,
   assert.deepEqual(styleProblems(diagnostics, ["src/a.vibe", "src/b.vibe"]).map((d) => d.file), ["src/b.vibe"])
 })
 
+// drive-t3code: provider-acp exports AcpMcpOverAcpError extends Error and
+// calls new AcpMcpOverAcpError(message, { cause }); an error declaration's
+// constructor takes one object, so the class keeps its declaration.
+test("styleProblems leaves an exported Error class no error declaration can write, and rejects a local one", () => {
+  const diagnostics = parseDiagnostics([
+    "src/a.vibe(1,14): warning EK4805: LegacyError extends Error, but a VibeLang failure is an error declaration.",
+    "  No quick fix: an error declaration's constructor takes one object of its fields, so declaring LegacyError with error would change the constructor it exports, new LegacyError(message, options).",
+    "src/b.vibe(1,7): warning EK4805: Local extends Error, but a VibeLang failure is an error declaration.",
+    "  Declare it with error instead, as in error Local { message: string }, so that catch, match, and is can tell it apart by its _tag.",
+    ""
+  ].join("\n"))
+  assert.deepEqual(styleProblems(diagnostics, ["src/a.vibe", "src/b.vibe"]).map((d) => d.file), ["src/b.vibe"])
+})
+
 test("styleProblems leaves the Struct constant --fix must keep: a schema declaration would add a public type", () => {
   const diagnostics = parseDiagnostics("src/a.vibe(1,14): warning EK4832: Input holds a Schema.Struct.\nsrc/a.vibe(3,3): warning EK4831: Users extends Context.Service.\n")
   assert.deepEqual(styleProblems(diagnostics, ["src/a.vibe"]).map((d) => d.code), ["EK4831"])

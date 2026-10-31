@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("ek:EK4805/extends-error\x00template:minimal\x00")

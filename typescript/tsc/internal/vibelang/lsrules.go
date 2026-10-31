@@ -513,7 +513,15 @@ func (r *ruleCheck) checkClass(class *ast.Node) {
 			if class.Name() != nil {
 				node = class.Name()
 			}
-			note(report(r.c, node, EK4805, name, errorName), "Declare it with error instead, as in error {0} { message: string }, so that catch, match, and is can tell it apart by its _tag.", core.IfElse(class.Name() != nil, name, "Failed"))
+			d := report(r.c, node, EK4805, name, errorName)
+			if ast.HasSyntacticModifier(class, ast.ModifierFlagsExport) {
+				// An error declaration's constructor takes one object of its
+				// fields, so it cannot keep the positional constructor
+				// new Legacy(message, options) that the class exports.
+				note(d, "No quick fix: an error declaration's constructor takes one object of its fields, so declaring {0} with error would change the constructor it exports, new {0}(message, options).", name)
+			} else {
+				note(d, "Declare it with error instead, as in error {0} { message: string }, so that catch, match, and is can tell it apart by its _tag.", core.IfElse(class.Name() != nil, name, "Failed"))
+			}
 		}
 		return
 	}

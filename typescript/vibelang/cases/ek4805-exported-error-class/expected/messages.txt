@@ -1,0 +1,2 @@
+No quick fix: an error declaration's constructor takes one object of its fields, so declaring LegacyError with error would change the constructor it exports, new LegacyError(message, options).
+Declare it with error instead, as in error Local { message: string }, so that catch, match, and is can tell it apart by its _tag.

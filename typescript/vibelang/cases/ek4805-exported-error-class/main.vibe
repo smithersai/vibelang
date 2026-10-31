@@ -1,0 +1,18 @@
+// expect-result: {"message":"message","cause":1,"tag":"LegacyError"}
+// An exported class that extends Error keeps its positional constructor:
+// EK4805 says no quick fix can write it as an error declaration, whose
+// constructor takes one object (t3code's provider-acp AcpMcpOverAcpError).
+// A class the module keeps to itself is told to become one.
+export class LegacyError extends Error {
+  readonly _tag = "LegacyError"
+  override readonly name = "LegacyError"
+}
+
+class Local extends Error {}
+
+export const example = new LegacyError("message", { cause: 1 })
+export const local = new Local("local")
+
+export effect function main() {
+  return { message: example.message, cause: example.cause, tag: example._tag }
+}
