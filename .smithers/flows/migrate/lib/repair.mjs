@@ -39,7 +39,7 @@ ${elsewhere.length ? `\nNew errors outside the batch, in files that import it:\n
 
 1. \`${test}\` passes: no test fails that passed before, and none is gone.
 2. The package's emitted declarations are identical to the baseline's: the public API does not change.
-3. The batch's files report no error, no TypeScript-style Effect form (EK48xx) and no platform global (EK4402), and no file reports an error it did not before.
+3. The batch's files report no error, no TypeScript-style Effect form (EK48xx, except a Struct constant --fix leaves and a Context.Service class with no quick fix) and no platform global (EK4402), and no file reports an error it did not before.
 4. Every batch file is idiomatic VibeLang, or stays .ts with a recorded reason.
 
 Check as you go: \`${step} compile --run ${run} --batch ${batch}\` and \`${step} verify --run ${run} --batch ${batch}\`.

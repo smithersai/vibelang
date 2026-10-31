@@ -19,6 +19,8 @@ Under `[+Effect]`:
 - `fork` and `join` are reserved words, as `await` is under `[+Await]` (VIP-17, amended). No next-token test applies. An `IdentifierReference`, `BindingIdentifier` or `LabelIdentifier` can't be `fork` or `join`, so `join(parts)` is always a [JoinExpression](/spec/900-appendices#joinexpression), `join - 1` joins `-1`, and a parameter or local named `join` is a syntax error (`EK1702`). A plain or `async` arrow head inherits the enclosing `fork`/`join` reservation, including in an Effect callable's parameter list, through its binding names, defaults and destructuring; the `async` prefix does not reset the head. This follows ECMAScript's [arrow](https://tc39.es/ecma262/#sec-arrow-function-definitions) and [async-arrow head](https://tc39.es/ecma262/#sec-async-arrow-function-definitions) context rules. Both `const g = (join) => 1` and `const g = async (join) => 1` are `EK1702` there. Each arrow body then has its own source context: a plain body is `[~Effect, ~Await]`, an ordinary `async` body `[~Effect, +Await]`. A nested `function h(join) { }` resets the head as well as its body. Outside an enclosing Effect reservation, `fork` and `join` remain ordinary identifiers even in an ordinary `async` arrow's head and body: native async's own `await` reservation does not reserve these two names. They stay ordinary `IdentifierName`s, as `await` does: `parts.join(",")`, `o?.fork`, `{ join: 1 }` and `class { join() { } }` are names. After the keyword, `/` begins a regular expression, and the operand may follow a line break, as after `await`: `join` then `f` on the next line joins `f`.
 - [TryExpression](/spec/900-appendices#tryexpression), [CatchExpression](/spec/900-appendices#catchexpression), [ForkExpression](/spec/900-appendices#forkexpression), [JoinExpression](/spec/900-appendices#joinexpression), [TryAll](/spec/900-appendices#tryall), [ForConcurrent](/spec/900-appendices#forconcurrent), [ForTry](/spec/900-appendices#fortry), the interruption blocks and [ProvideStatement](/spec/900-appendices#providestatement) parse in this context. In a parameter list or `static` block, a recognized execution form receives its applicable placement diagnostic ([Running Effects](/spec/002-running#static-rules)). Initializers parsed with `[~Effect]` follow the recovery rule below.
 
+The same formal-parameter boundary rejects directly evaluated `await` with `EK0102` and `yield` with `EK2104` for Effect callables, producers included. Nested source callable or context boundaries keep their own native rules; this reserves no new names and permits no parameter suspension.
+
 Under `[~Effect]` those productions don't exist, and `fork` and `join` are identifiers. As TypeScript parses `await x` in a plain function to report "only allowed in async functions", a parser recovers by parsing these productions under `[~Effect]` and reports the construct's "outside effect code" rule, except where the tokens are also valid TypeScript, which keep their TypeScript meaning. A [ProvideStatement](/spec/900-appendices#providestatement) head is the exception: it wins in any code (decided detail 34), so the statement `provide / a / { }` in `function f(provide: number, a: number) { provide / a / { } }` is `EK1201`; after `return` no statement can start, so `return provide / a / { }` divides.
 
 
@@ -621,6 +623,8 @@ KeyMember = "static" "readonly" "key" (":" Type)? "=" StringLiteral
 DefaultMember = "static" "readonly" "defaultValue" (":" Type)? "=" AssignmentExpression
 ```
 
+A `DefaultMember` initializer uses the source class-field context: the enclosing Effect execution and `fork`/`join` reservation reset. An explicit Effect run there is outside effect code (`try e` is `EK0501`); an ordinary identifier call such as `join(...)` keeps its ordinary meaning. Native `await`/`yield`, nested callable boundaries and eager initializer/throw checks retain their native source rules. Evaluate the initializer at the declaration, with the enclosing Effect body's existing coldness; do not move it into the fallback callback because the emitted counterpart uses an options object.
+
 #### ErrorDeclaration
 
 ```text
@@ -858,7 +862,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | Code | Rule | VIP | Chapter |
 | --- | --- | --- | --- |
 | `EK0101` | `effect f() { }` or `async f() { }` outside a class or object literal | 1 | [Functions](/spec/001-functions#effect-functions) |
-| `EK0102` | `await`, `for await` or `await using` in effect code | 1 | [Functions](/spec/001-functions#static-rules) |
+| `EK0102` | `await`, `for await` or `await using` in effect code, or `await` in directly evaluated formal-parameter initialization of an Effect function, arrow, method or producer | 1 | [Functions](/spec/001-functions#static-rules) |
 | `EK0103` | `await` on an Effect in an `async` function or at the module top level | 1, 5 | [Functions](/spec/001-functions#static-rules) |
 | `EK0104` | `effect` on a getter, setter or constructor | 1 | [Functions](/spec/001-functions#static-rules) |
 | `EK0105` | `effect` and `async` on one function or block | 1 | [Functions](/spec/001-functions#static-rules) |
@@ -873,7 +877,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK0404` | an unwrapped Promise-producing call (runtime `import()` included), `new` expression, tagged template or `async match` in effect code | 4, 5 | [Failures](/spec/003-failures#calls-in-effect-code) |
 | `EK0405` | a body that throws more than its written `@throws {T}` | 4 | [Failures](/spec/003-failures#thrown-types) |
 | `EK0406` | a `@throws` or `@rethrows` tag on an effectful `.vibe` callable: an `effect` function, arrow, method or producer, or a callable whose return type is wholly `Effect`, `Stream` or `Layer`; quick fix: remove the tag | 4 | [Failures](/spec/003-failures#thrown-types) |
-| `EK0501` | `try` outside effect code, the top level included; the same rule applies to `try.all`, `try.race`, `try.any` or `try.allSettled` | 5, 18 | [Running Effects](/spec/002-running#try) |
+| `EK0501` | `try` outside effect code, the top level included; the same rule applies to `try.all`, `try.race`, `try.any` or `try.allSettled` | 5, 18, 9 | [Running Effects](/spec/002-running#try) |
 | `EK0502` | `try` on a value that is not an Effect | 5 | [Running Effects](/spec/002-running#try) |
 | `EK0503` | a `try` statement in effect code | 5 | [Running Effects](/spec/002-running#try) |
 | `EK0504` | `catch` outside effect code | 5 | [Running Effects](/spec/002-running#catch) |
@@ -924,7 +928,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK2005` | a `var` or assignment head in `for try` | 20 | [Running Effects](/spec/002-running#for-try) |
 | `EK2102` | a producer whose written return type is not a `Stream` | 21 | [Running Effects](/spec/002-running#producers) |
 | `EK2103` | `yield*` in a producer | 21 | [Running Effects](/spec/002-running#producers) |
-| `EK2104` | `yield` in an `effect` block, arrow or `effect function` nested in a producer | 21 | [Running Effects](/spec/002-running#producers) |
+| `EK2104` | `yield` in nonproducer effect code (an `effect` function, arrow or block), whether or not an outer producer exists, or in directly evaluated formal-parameter initialization of an Effect callable or producer | 21 | [Running Effects](/spec/002-running#producers) |
 | `EK2109` | a `schema` field type outside the mapping, or conflicting/unprovable referenced-schema decoded-key flags at a required or effectively readonly position | 15 | [Data](/spec/006-data#schema-declarations) |
 | `EK2111` | `restore` outside an `uninterruptible` block | 22 | [Running Effects](/spec/002-running#interruption-blocks) |
 | `EK2117` | an `extends` clause or a `_tag` member in an `error` or `schema error` body, or a computed `schema error` key whose runtime domain cannot be proved to exclude `"_tag"` | 13 | [Failures](/spec/003-failures#error-declarations) |

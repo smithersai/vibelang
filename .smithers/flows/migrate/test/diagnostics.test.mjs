@@ -79,6 +79,22 @@ test("styleProblems holds a catch that can never run, which recovers in the Type
   assert.deepEqual(styleProblems(diagnostics, ["src/a.vibe"]).map((d) => d.code), ["EK9204"])
 })
 
+test("styleProblems leaves a Context.Service class no service declaration can write, and rejects one it can", () => {
+  const diagnostics = parseDiagnostics([
+    "src/a.vibe(1,14): warning EK4831: Svc extends Context.Service; in VibeLang a service is a service declaration: service Svc { … }.",
+    "  No quick fix: its members come from Shape; write them in the declaration.",
+    "src/b.vibe(1,14): warning EK4831: Repo extends Context.Service; in VibeLang a service is a service declaration: service Repo { … }.",
+    "  No quick fix: move its static members into the declaration.",
+    "src/c.vibe(1,14): warning EK4831: Users extends Context.Service; in VibeLang a service is a service declaration: service Users { … }.",
+    "  Its quick fix writes service Users { … }; vibelang --fix applies every such fix in the project.",
+    "src/d.vibe(1,14): warning EK4830: Gone extends Data.TaggedError; in VibeLang an error is an error declaration: error Gone { … }.",
+    "  No quick fix: the fields come from Fields.",
+    ""
+  ].join("\n"))
+  const files = ["src/a.vibe", "src/b.vibe", "src/c.vibe", "src/d.vibe"]
+  assert.deepEqual(styleProblems(diagnostics, files).map((d) => d.file), ["src/c.vibe", "src/d.vibe"])
+})
+
 test("styleProblems leaves the Struct constant --fix must keep: a schema declaration would add a public type", () => {
   const diagnostics = parseDiagnostics("src/a.vibe(1,14): warning EK4832: Input holds a Schema.Struct.\nsrc/a.vibe(3,3): warning EK4831: Users extends Context.Service.\n")
   assert.deepEqual(styleProblems(diagnostics, ["src/a.vibe"]).map((d) => d.code), ["EK4831"])

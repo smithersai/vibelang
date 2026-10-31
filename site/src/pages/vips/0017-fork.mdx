@@ -34,6 +34,8 @@ Static blocks cannot execute Effects. They inherit the enclosing Effect reservat
 
 - **Amended 2026-10-30: ordinary arrow heads inherit the source reservation.** A plain or `async` arrow head inherits the enclosing `fork`/`join` reservation through bindings, defaults and destructuring, including in an Effect callable's parameters. Its body has its own callable context; an ordinary `async` body uses native `await` and does not reserve `fork`/`join`. A nested ordinary function resets its head too. Outside an enclosing Effect reservation these names remain ordinary identifiers, including ordinary `async` parameters: native async's own `await` reservation adds no global ban on them. See [the source grammar](https://github.com/smithersai/vibelang/blob/main/docs/design/src/900-appendices.md#the-effect-parameter).
 
+- **Amended 2026-10-30: service default initializer context.** The special service `static readonly defaultValue` initializer has the source class-field reset: it inherits neither enclosing Effect execution nor `fork`/`join` reservation. `join(...)` can be an ordinary user helper there; explicit fiber execution retains the existing outside-effect diagnostic. Nested explicit Effect callables keep their own context, and initializer timing, throw checks and the service factory type remain unchanged.
+
 ## Prior art
 
 | Language | child of current | given scope | detached |

@@ -119,7 +119,7 @@ After a parenthesized handler or a function expression handler, another `catch` 
 | Rule | Diagnostic |
 | --- | --- |
 | `catch` outside effect code | `EK0504` |
-| `try x catch h`: write `try x` or `x catch h`, never both. It fires when a `try` or `try.all` is reachable from the head through unary and binary operator nodes only: `try a + b catch h`, `-try a catch h` and `x + try a catch h` are each `EK0505`; the quick fix removes `try`. One inside arguments, an array or object literal, a template substitution, parentheses, a function body or a `match` arm does not count, so `g(try a) catch h` catches `g`'s failure. `try.all x catch h` and the other three operations get this error too, not the one below. A `fork`, `fork.in(s)`, `fork.scoped`, `fork.detached` or `join` head gets it by the same rule, since each runs an Effect as `try` does (decided detail 99): `join f catch h` (quick fix `Fiber.join(f) catch h`, which handles the fiber's failure) and `fork e catch h` (quick fix `fork Effect.catch(e, ($e) => Effect.succeed(h($e)))`, or `fork Effect.catch(e, h)` for an `effect` handler: `e` stays on the caller and the handler runs on the forked fiber, as [`fork`'s operand](/spec/002-running#fork-operand) says). `fork (e catch h)` runs `e` here and forks its result: `EK1703` unless the result is an Effect. `(try x) catch h` and `(join f) catch h` are allowed: each catches the Effect its parenthesized operand succeeds with. `(fork e) catch h` is not `EK0505`, but its head is a `Fiber`, which is not an Effect in Effect 4.1.0, so it is `EK0506` | `EK0505` |
+| `try x catch h`: write `try x` or `x catch h`, never both. It fires when a `try` or `try.all` is reachable from the head through unary and binary operator nodes only, ignoring the erased TypeScript wrappers described below: `try a + b catch h`, `-try a catch h` and `x + try a catch h` are each `EK0505`; the quick fix removes `try`. One inside arguments, an array or object literal, a template substitution, parentheses, a function body or a `match` arm does not count, so `g(try a) catch h` catches `g`'s failure. `try.all x catch h` and the other three operations get this error too, not the one below. A `fork`, `fork.in(s)`, `fork.scoped`, `fork.detached` or `join` head gets it by the same rule, since each runs an Effect as `try` does (decided detail 99): `join f catch h` (quick fix `Fiber.join(f) catch h`, which handles the fiber's failure) and `fork e catch h` (quick fix `fork Effect.catch(e, ($e) => Effect.succeed(h($e)))`, or `fork Effect.catch(e, h)` for an `effect` handler: `e` stays on the caller and the handler runs on the forked fiber, as [`fork`'s operand](/spec/002-running#fork-operand) says). `fork (e catch h)` runs `e` here and forks its result: `EK1703` unless the result is an Effect. `(try x) catch h` and `(join f) catch h` are allowed: each catches the Effect its parenthesized operand succeeds with. `(fork e) catch h` is not `EK0505`, but its head is a `Fiber`, which is not an Effect in Effect 4.1.0, so it is `EK0506` | `EK0505` |
 | `e catch h` where `e` is not an Effect | `EK0506` |
 | a non-function handler, including a parameter list followed directly by a block, or an `async`, generator or `async` generator handler (table above) | `EK0509` |
 | a plain handler whose result type is a Promise or thenable (`x catch (e) => queryDb(e)`): the Promise is never run, as for an unwrapped Promise in effect code ([Failures](/spec/003-failures)) | `EK0507` |
@@ -154,6 +154,36 @@ function repairedPlainCatchHandler() {
     return yield* Effect.catch(Effect.fail("x"), (e) => Effect.succeed(0))
   })
 }
+```
+
+For `EK0505`'s head search, [runtime-erased TypeScript expression wrappers](https://github.com/microsoft/TypeScript/blob/v5.9.3/src/compiler/transformers/ts.ts) are transparent along the unary/binary path: `as`, angle-bracket assertions where admitted, `satisfies`, non-null `!` and type-only instantiation expressions that add no call. Actual source parentheses still stop the search; grouping added by emission is not a source grouping choice. Ordinary TypeScript checks on each wrapper still apply, and calls, literals, source functions and the other existing barriers retain their rules.
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-5
+import { Effect } from "effect"
+type Nested = Effect.Effect<Effect.Effect<number, string>, string>
+effect function rejectedCatchHeads(nested: Nested, genericEffect: (<T>() => T) & Nested) {
+  try nested as Effect.Effect<number, string> catch () => 7 // EK0505
+  <Effect.Effect<number, string>>try nested catch () => 7   // EK0505
+  try nested satisfies Effect.Effect<number, string> catch () => 7 // EK0505
+  try nested! catch () => 7                                // EK0505
+  try genericEffect<number> catch () => 7                  // EK0505
+}
+effect function groupedHead(nested: Nested) {
+  return (try nested) as Effect.Effect<number, string> catch () => 7
+} // Success(7) for an inner failure; an outer failure propagates
+```
+
+```ts [Effect]
+import { Effect } from "effect"
+
+type Nested = Effect.Effect<Effect.Effect<number, string>, string>
+function groupedHead(nested: Nested) {
+  return Effect.gen(function* () {
+    return yield* Effect.catch((yield* nested) as Effect.Effect<number, string>, () => Effect.succeed(7))
+  })
+}
+// The parentheses expose the inner Effect to the handler, not the outer run.
 ```
 
 <a id="result-tests"></a>**Result tests.** `EK0103` and `EK0508` ask: may this value be an unrun Effect? A type answers yes when it is not `never`, `any` or `unknown` and at least one union member is an Effect. `EK0404` and `EK0507` ask the same of Promises, with `PromiseLike` for Effect, as typescript-eslint's `no-floating-promises` does (decided detail 89). Detail 36 keeps its every-member test, because it asks the opposite question. Only the [operand test](/spec/002-running#operand-test) of `try` (`EK0502`), `catch` (`EK0506`), `try.all` (`EK1801`) and `fork` (`EK1703`) uses assignability to `Effect.Effect<any, any, any>`, which `never` and `any` pass. Every other chapter names one of these two tests.
