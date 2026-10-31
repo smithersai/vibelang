@@ -358,3 +358,28 @@ test("workspaceManifests keeps what the package manager installs and leaves trac
   assert.deepEqual(workspaceManifests(paths, ["**/fixture"]), ["package.json", "pnpm-workspace.yaml", "apps/web/fixture/package.json"])
   assert.deepEqual(workspaceManifests(paths, []), ["package.json", "pnpm-workspace.yaml"])
 })
+
+// opencode's run on a new toolchain: Effect is already where it belongs, so the
+// commit only repins VibeLang's packages and must not read as an Effect upgrade.
+test("a run that moves no Effect package names the toolchain it switches to", async () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-toolchain-switch-"))
+  const target = join(root, "repo")
+  const toolchain = join(root, "toolchain")
+  try {
+    mkdirSync(target)
+    mkdirSync(toolchain)
+    await must("jj git init && jj config set --repo user.name test && jj config set --repo user.email test@localhost", { cwd: target })
+    writeFileSync(join(target, "package.json"), JSON.stringify({ name: "fixture", private: true, dependencies: { effect: "4.0.6", vibelang: "file:./.vibelang-toolchain/vibelang-old.tgz" } }))
+    writeFileSync(join(target, "bun.lock"), "")
+    writeFileSync(join(target, ".gitignore"), ".vibelang-toolchain/\n")
+    const base = await Jj.commit(target, "base")
+    writeFileSync(join(toolchain, "vibelang-new.tgz"), "tarball\n")
+    writeJson(join(toolchain, "toolchain.json"), { version: "0.0.11", commit: "0123456789abcdef0123", effect: "4.0.6", compiler: "native/vibelang", packages: { vibelang: "vibelang-new.tgz" } })
+    const result = await upgradeEffect({ run: join(root, "run"), target, packages: ["."], test: "true", testCwd: ".", toolchain, install: "true", base })
+    assert.deepEqual(result.changed, ["package.json"])
+    const { stdout: subject } = await must(`jj log -r ${result.jj.commit} --no-graph -T 'description.first_line()'`, { cwd: target })
+    assert.equal(subject, "migrate(vibelang): switch to the toolchain of VibeLang 0123456789ab")
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})

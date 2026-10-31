@@ -262,7 +262,8 @@ export async function upgradeEffect(options) {
     })
     if (issue) appendJsonl(p.issues, issue)
     await assertPortable(t, machineRoots(t, p.run, config.toolchain.dir))
-    commit = await Jj.commit(t, `migrate(vibelang): upgrade Effect to ${to}\n\nThe VibeLang runtime requires exactly effect ${to}. Moves effect and every\n@effect/* package on its major line from ${upgrade.from} to ${to}, with overrides\nthat keep one copy installed.${vibelang.length ? " The VibeLang packages it already uses move\nto this run's release, which requires that Effect." : ""} No source file changes;\nVibeLang comes next.`)
+    const moved = upgrade.files.length || upgrade.patches.length
+    commit = await Jj.commit(t, moved ? `migrate(vibelang): upgrade Effect to ${to}\n\nThe VibeLang runtime requires exactly effect ${to}. Moves effect and every\n@effect/* package on its major line from ${upgrade.from} to ${to}, with overrides\nthat keep one copy installed.${vibelang.length ? " The VibeLang packages it already uses move\nto this run's release, which requires that Effect." : ""} No source file changes;\nVibeLang comes next.` : switchMessage(config))
   }
   writeJson(join(p.baseline, "upgraded-tests.json"), { code: after.code, tests: after.tests })
   // A --base names where the run starts, so the bookmark restarts there even when an earlier run left it elsewhere.
@@ -284,6 +285,12 @@ export async function upgradeEffect(options) {
   }
   writeJson(p.upgrade, result)
   return result
+}
+
+/** The commit of an upgrade step that moved no Effect package: only VibeLang's pins changed. */
+function switchMessage(config) {
+  const name = config.toolchain.kind === "staged" ? readToolchain(config.toolchain.dir).commit?.slice(0, 12) ?? config.toolchain.dir : config.toolchain.version
+  return `migrate(vibelang): switch to the toolchain of VibeLang ${name}\n\nEffect stays where it is. Repins vibelang and its packages.`
 }
 
 /**
