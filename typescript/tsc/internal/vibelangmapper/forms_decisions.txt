@@ -3495,6 +3495,15 @@ typescript/vibelang/cases/rerun-rest-parameters/main.vibe:24:22 lambda effectFn 
 typescript/vibelang/cases/rerun-rest-parameters/main.vibe:2:24 lambda effectFn annotation
 typescript/vibelang/cases/rerun-rest-parameters/main.vibe:3:25 lambda effectFn annotation
 typescript/vibelang/cases/rerun-rest-parameters/main.vibe:8:27 lambda effectFn annotation
+typescript/vibelang/cases/restore-for-concurrent-outside-items/main.vibe:12:35 lambda effectFn table
+typescript/vibelang/cases/restore-for-concurrent.fail/main.vibe:14:27 lambda effectFn table
+typescript/vibelang/cases/restore-for-concurrent.fail/main.vibe:14:41 lambda dual fallback
+typescript/vibelang/cases/restore-for-concurrent.fail/main.vibe:19:27 lambda effectFn table
+typescript/vibelang/cases/restore-for-concurrent.fail/main.vibe:19:33 lambda dual fallback
+typescript/vibelang/cases/restore-for-concurrent.fail/main.vibe:24:27 lambda effectFn table
+typescript/vibelang/cases/restore-for-concurrent.fail/main.vibe:28:25 lambda effectFn table
+typescript/vibelang/cases/restore-for-concurrent.fail/main.vibe:9:27 lambda effectFn table
+typescript/vibelang/cases/restore-for-concurrent.fail/main.vibe:9:36 lambda dual fallback
 typescript/vibelang/cases/restore-in-uninterruptible-expression/main.vibe:19:20 byname program table
 typescript/vibelang/cases/restore-in-uninterruptible-expression/main.vibe:25:30 lambda program table
 typescript/vibelang/cases/restore-in-uninterruptible-expression/main.vibe:8:22 lambda program table

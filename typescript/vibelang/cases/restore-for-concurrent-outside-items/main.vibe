@@ -1,0 +1,15 @@
+// expect-result: [1,2]
+// Chapter 002 and VIP-22 (loop round 3, OPUS-4): the limit and the iterable of
+// for concurrent run outside the item region, on the enclosing fiber, so
+// restore stays legal there.
+export effect function main() {
+  const out: number[] = []
+  uninterruptible {
+    let limit = 0
+    let xs: number[] = []
+    restore { limit = try Effect.succeed(2) }
+    restore { xs = try Effect.succeed([1, 2]) }
+    for concurrent (limit) (const x of xs) { out.push(x) }
+  }
+  return out
+}

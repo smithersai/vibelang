@@ -1,0 +1,32 @@
+// expect: EK2202 EK2202 EK2202 EK2202 EK2202
+// Chapter 002 (loop round 3, OPUS-4): restore in a for concurrent item region,
+// head binding initialization or body, is EK2202: each item runs outside the
+// enclosing mask. The limit and iterable are outside the region; see
+// restore-for-concurrent-outside-items.
+declare const poll: Effect.Effect<number>
+export effect function headDefault(xs: Array<{ n?: number }>) {
+  uninterruptible {
+    for concurrent (const { n = do { restore { try poll }; 1 } } of xs) { n }
+  }
+}
+export effect function nestedDefault(xs: Array<{ a: { n?: number } }>) {
+  uninterruptible {
+    for concurrent (const { a: { n = do { restore { try poll }; 1 } } } of xs) { n }
+  }
+}
+export effect function computedKey(xs: Array<Record<string, number>>) {
+  uninterruptible {
+    for concurrent (const { [do { restore { try poll }; "k" }]: n } of xs) { n }
+  }
+}
+export effect function body(xs: number[]) {
+  uninterruptible {
+    for concurrent (const x of xs) { restore { try poll }; x }
+  }
+}
+export effect function innerMask(xs: number[]) {
+  for concurrent (const x of xs) {
+    uninterruptible { restore { try poll } }
+    x
+  }
+}

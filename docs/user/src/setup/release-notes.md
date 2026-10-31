@@ -694,6 +694,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 - The Foldkit guide showed only the small example app inline; it now also compares four excerpts from Foldkit's own migrated source with their originals.
+- `EK2202` named only a `for concurrent` body, so `restore` in a head default slipped past the written rule. The rule now names head binding initialization too; the compiler does not report the code yet.
+
 - `--fix-migration-only` and `--fix-vip-only` appeared in the tooling chapter with no accepted VIP. VIP-34 now records both.
 
 - The spec listed four Effect subpath namespaces that share a web platform name. It now lists `KeyFormat` and `Transferable` too; both keep their DOM meaning in a bare type position.

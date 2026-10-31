@@ -1,0 +1,1 @@
+impl-hunt-run EK2202 is registered in appendix_codes.go but no checker reports it (loop round 3, OPUS-4, VIP-22 2026-10-30 amendment): restore in a for concurrent item region reports EK2111 or nothing
