@@ -111,3 +111,4 @@ FuzzVIPDifferential compile:EK4801/vip21.lexical-receiver compiler VIP-21: the `
 FuzzVIPDifferential corpus:fz-run-vip21-lexical-receiver compiler VIP-21: minimal named probe reproduces compile:EK4801/vip21.lexical-receiver; lane w2-genpipe
 FuzzVIPDifferential compile:EK9203/vip21.lexical-receiver compiler VIP-21: the `effect *name()` method shorthand compiles as a JavaScript generator (EK4801, EK9203, TS2739); lane w2-genpipe
 FuzzVIPDifferential compile:TS2739/vip21.lexical-receiver compiler VIP-21: the `effect *name()` method shorthand compiles as a JavaScript generator (EK4801, EK9203, TS2739); lane w2-genpipe
+FuzzPlainHandlerThrow missing:EK0511 sl1-apply decided detail 239 (loop r1 ASTRA-9): an explicit throw that can complete a plain catch handler gets no EK0511 warning
