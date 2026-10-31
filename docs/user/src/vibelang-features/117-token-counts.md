@@ -19,8 +19,8 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,238 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 15,022 |
-| The skill and the user guide (139 pages) | 311,829 |
-| The user guide alone | 307,591 |
+| The skill and the user guide (139 pages) | 312,426 |
+| The user guide alone | 308,188 |
 | The specification (10 chapters) | 120,573 |
 | The decision log, `docs/design/history/DECISIONS.md` | 141,521 |
 
@@ -116,8 +116,8 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Build and test** | **6,427** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 4,639 |
 | [Vite and Vitest](../setup/vite.md) | 1,788 |
-| **Format and lint** | **2,298** |
-| [Format with dprint](../setup/formatting.md) | 1,331 |
+| **Format and lint** | **2,317** |
+| [Format with dprint](../setup/formatting.md) | 1,350 |
 | [Developer tools](../setup/developer-tools.md) | 967 |
 | **Frameworks** | **9,536** |
 | [React](../setup/react.md) | 2,131 |
@@ -130,9 +130,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Zed](../setup/zed.md) | 479 |
 | [Other editors](../setup/other-editors.md) | 492 |
 | [Coding agents](../setup/coding-agents.md) | 990 |
-| **Upgrade** | **49,104** |
-| [Release notes](../setup/release-notes.md) | 49,104 |
-| **All 18 pages** | **75,999** |
+| **Upgrade** | **49,674** |
+| [Release notes](../setup/release-notes.md) | 49,674 |
+| **All 18 pages** | **76,588** |
 
 ### Guides
 
@@ -246,17 +246,17 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Equivalence](../schema/102-equivalence.md) | 867 |
 | [Formatter](../schema/103-formatter.md) | 612 |
 | [Schema Compilers](../schema/104-compilers.md) | 2,406 |
-| **Platform** | **17,988** |
+| **Platform** | **17,996** |
 | [Introduction](../platform/105-introduction.md) | 3,001 |
 | [FileSystem](../platform/106-file-system.md) | 1,461 |
 | [Path](../platform/107-path.md) | 1,037 |
 | [PlatformLogger](../platform/108-platformlogger.md) | 872 |
 | [Runtime](../platform/109-runtime.md) | 1,399 |
 | [Terminal](../platform/110-terminal.md) | 1,823 |
-| [Platform globals in VibeLang](../platform/platform-globals.md) | 5,086 |
+| [Platform globals in VibeLang](../platform/platform-globals.md) | 5,094 |
 | [Cloudflare Workers](../platform/cloudflare-workers.md) | 790 |
 | [Alchemy](../platform/alchemy.md) | 2,519 |
-| **All 101 pages** | **168,377** |
+| **All 101 pages** | **168,385** |
 
 ### VibeLang features
 

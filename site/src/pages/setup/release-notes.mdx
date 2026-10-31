@@ -32,6 +32,12 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - `service S extends Base { }` and `service S implements I { }` failed with a parse error, `TS1005: '{' expected`; they now report `EK0904`, which says a service's identity is its key and to compose shapes with types.
 
+- A `Bun.build` script in a project the migrate flow moved failed to bundle any `.vibe` module, because setup wired only `vibelang/bun`, a runtime plugin that bundles do not use; setup now adds `vibelang()` from `vibelang-unplugin/bun` to each such script and warns about a build it can't edit.
+
+- The migrate flow renamed a module that a package exports, by name or by a pattern such as `"./*": "./src/*.ts"`, without updating `package.json`, so every import of it by package name failed; the codemod now points the entry at the `.vibe` source, revert takes that back, and setup preloads `vibelang/bun` in each package that runs `bun test` and reaches a migrated package.
+
+- `try conf` with `conf` a `Config`, an Effect intersected with a brand, or a value of an interface that extends Effect reported EK0502 though its type came out right; `try` now runs such a value.
+
 - Running the migrate flow's setup again left the earlier setup's `.vibelang-toolchain` tarballs on disk, where `jj` committed them with the new setup; setup now removes that directory before it returns to the Effect upgrade.
 
 - `vibelang --fix --fix-vip-only` removed the `try` of a plain call that gives a yieldable error, `return try toError(id)`, so the error became the program's success value, and `--fix` did the same to `yield* toError(id)`; both now write `throw toError(id)`, keep `try` where no statement can throw, and write `try x.asEffect()` for an `Effect.Yieldable`.
@@ -58,6 +64,12 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The migrate flow left a `Data.TaggedError("E")<{ … }>` field unmarked, so the migrated `error` declaration declared it `readonly` where the TypeScript's declaration did not; the codemod now marks it `mutable`.
 
 - The sidecar guide listed `bun check` without requiring a `check` script, so the documented command failed in a new Bun project. It now explains how Bun invokes the project's TypeScript checking script.
+
+- The `knip.config.ts` the migrate flow writes held a type assertion, `{ … } as { ignore?: … }`, so a repository whose Oxlint or ESLint forbids type assertions (`typescript/consistent-type-assertions`) failed its lint on the migrated configuration. It now declares the type, `const config: { ignore?: …; [setting: string]: unknown } = { … }`.
+
+- The formatter sorted the names within an import or export, case-insensitively, so `import { Option, String, flow }` became `import { flow, Option, String }` and a repository's Oxlint or ESLint `sort-imports` rule then failed on the formatted file. The names now keep the order you wrote.
+
+- A tool that reads a `.vibe` file through the TypeScript mapper, such as Oxlint through the Oxc fork's VibeLang hook, reported `TS1338: 'infer' declarations are only permitted in the 'extends' clause of a conditional type` at each `: infer _` return annotation, because the mapper kept it in the TypeScript it returns. The mapper now drops the annotation, and TypeScript infers the return type from the body, as `infer _` means.
 
 - The migrate flow ran `vibelang --fix` over a whole package for each batch, which rewrote files earlier batches had committed and undid their hand repairs; each batch now keeps the rewrites of its own files only.
 
@@ -255,6 +267,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The accepted interruption rules named only some callable forms and could appear to reject a callable's own mask. They now cover every independent effect activation and explicitly allow its local mask.
 
+- `Date.now()`, `Date()`, `new Date()`, and `Math.random()` were incorrectly rejected with `EK4403`; these ECMAScript built-ins now compile as VIP-33 requires.
+
 - Config migration could put severity settings inside a JSONC comment containing `{`; it now keeps the settings active and the comment intact.
 
 - The specification left import-free `.vibe` files with conflicting scope rules. It now requires module scope before checking, preserves it in JavaScript and declarations, and states the `moduleDetection` exception and ordinary host behavior.
@@ -436,6 +450,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The platform guide put `Intl` in the web allowlist and suggested a nonexistent `Path.fromFileUrl` shortcut; it now identifies `Intl` as an ECMAScript global and shows access through the `Path.Path` service.
 
 - The specification did not prevent generated temporaries from changing anonymous function and class names. It now preserves source naming context, including names observed by class static initializers.
+
+- The proposals comparison still listed handlers as shipped, and upstream drafts linked retired local research sources; handlers now remain explicitly open under VIP-35, archived chapters state that the first release has no handlers, and historical evidence links to its source revision.
 
 - The native compiler regression suite could exhaust its budget on a busy build host while cases were still completing. It now allows 45 minutes of testing and 70 minutes for the target, including queued builds.
 
