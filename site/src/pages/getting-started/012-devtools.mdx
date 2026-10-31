@@ -194,6 +194,8 @@ When a fix removes the last value imported from another module, it keeps a side-
 
 A proposed rewrite includes removal of imports from `effect` and its modules that it makes unused, so `noUnusedLocals` does not prevent an otherwise valid fix.
 
+When a proposed fix adds an error in an unchanged importer, `--fix` follows references in that error to prioritize the edited declarations. It still checks each candidate against the original project's errors before keeping it; ambiguous references use the ordinary grouped search.
+
 Normalization continues until no accepted fix remains, even when nested edits overlap for more than sixteen rounds. If a rewrite repeats a source state, the command reports non-convergence and writes no files.
 
 A direct `extends` or `implements` entry retains its named type, such as `Effect.Effect<number>`. Effect types inside another base's type arguments can still shorten, as in `Holder<number!!>`.
