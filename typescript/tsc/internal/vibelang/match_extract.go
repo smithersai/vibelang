@@ -52,7 +52,7 @@ func narrowExtractedError(c *checker.Checker, reference *ast.Node, t *checker.Ty
 				if ast.IsBinaryExpression(parent) && parent == test {
 					binary := parent.AsBinaryExpression()
 					if binary.Left == node && binary.Right.Kind == ast.KindFalseKeyword && binary.OperatorToken.Kind == ast.KindExclamationEqualsEqualsToken {
-						return c.NarrowTypeTo(t, instance, assumeTrue)
+						return narrowByErrorTag(c, t, instance, assumeTrue)
 					}
 				}
 				if ast.IsElementAccessExpression(parent) && parent.Expression() == node {

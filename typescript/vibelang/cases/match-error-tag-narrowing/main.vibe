@@ -1,0 +1,36 @@
+// An error class pattern narrows as Effect.catchTag does (decided detail
+// 103; chapter 004, Typing): to the subject's own members with its tag, a
+// plain object with that tag included, since the generated matcher tests the
+// tag. A subject with no such member keeps the declared class.
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+export error NotFound { id: string }
+export error Timeout {}
+type Plain = { readonly _tag: "NotFound"; readonly id: string; readonly source: string }
+export function bare(s: NotFound | Plain | Timeout) {
+  return match (s) {
+    when NotFound: do {
+      const typed: Equal<typeof s, NotFound | Plain> = true
+      typed ? s.id : ""
+    };
+    default: "other";
+  }
+}
+// The extractor binds the same members, and the arm leaves only Timeout.
+export function bound(s: NotFound | Plain | Timeout) {
+  return match (s) {
+    when NotFound(let e): do {
+      const typed: Equal<typeof e, NotFound | Plain> = true
+      typed ? e.id : ""
+    };
+    when Timeout: "timeout";
+  }
+}
+export function fallback(s: unknown) {
+  return match (s) {
+    when NotFound(let e): do {
+      const typed: Equal<typeof e, NotFound> = true
+      typed ? e.id : ""
+    };
+    default: "none";
+  }
+}

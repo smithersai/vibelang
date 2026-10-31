@@ -1,6 +1,7 @@
 // expect-result: {"sameName":["A a","timeout 5.0","A b"],"sameNameIs":["A a","timeout","A b"],"family":["app /p","other o"],"shape":["circle","square 2","circle","No match arm matched [object Object]"],"parity":["even","odd 3","neither"],"shapeOrCount":["circle","none","some 4","No match arm matched [object Object]"],"positions":[["square 2"],"No match arm matched [object Object]","square 2","No match arm matched [object Object]","logged","No match arm matched [object Object]"]}
 // An error class's matcher tests _tag (chapter 4, VIP-13), so two error
-// classes that share a name match each other, as with Effect's catchTag, and
+// classes that share a name match each other, as with Effect's catchTag: the
+// first one's arm takes both and narrows to both (decided detail 103), and
 // a value cast to a class type matches by its tag. A family's base still
 // covers its subclasses, but not an unrelated error with the same fields
 // (D278), and is narrows as match does. D294 keeps the last arm's tests of a
@@ -41,14 +42,12 @@ function sameName(e: Failure) {
   return match (e) {
     when A.NotFound: `A ${e.id}`;
     when Timeout: `timeout ${e.ms.toFixed(1)}`;
-    when B.NotFound: `B ${e.id}`;
   }
 }
 
 function sameNameIs(e: Failure) {
   if (e is A.NotFound) return `A ${e.id}`
-  if (e is Timeout) return "timeout"
-  return `B ${e.id}`
+  return "timeout"
 }
 
 function family(e: Missing | Other) {

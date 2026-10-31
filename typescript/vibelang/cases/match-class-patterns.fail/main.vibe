@@ -1,7 +1,8 @@
 // expect: EK4701
-// D209's proof follows a class pattern's class, as instanceof narrows: an
-// arm for one of two error classes that share a name and fields leaves the
-// other, and a family's base leaves an unrelated error with the same fields.
+// An error class's arm covers each member with its tag (chapter 004,
+// Coverage): its generated matcher tests _tag, so an arm for one of two
+// error classes that share a name covers the other. A family's base leaves
+// an unrelated error with the same fields.
 import * as A from "./a.vibe"
 import * as B from "./b.vibe"
 

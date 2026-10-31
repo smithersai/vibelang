@@ -812,6 +812,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - In a `.vibe` file a member of an interface or an object type was readonly to the checker, so `options.minimum = 0` was `TS2540`, while its declaration printed the member writable; such a member is now writable unless written `readonly`, as in TypeScript, and the checker and the declaration agree. The fields of `data`, `schema` and `error` bodies keep their readonly default, and `mutable` is still accepted. The migrate flow's codemod no longer writes `mutable`.
 
+- `when NotFound:` and `when NotFound(let e):` narrowed the subject, and typed `e`, as the `NotFound` class alone, although the generated matcher also accepts a plain object or another package's copy with the tag `"NotFound"`; a `match` over such a member then reported `EK4701` after the arm. They now narrow as `Effect.catchTag` does, to the subject's members with that tag, and keep the class only when the subject has none, so a later arm for another class with the same tag sees `never`: that arm never runs.
+
 
 - With paired `moduleSuffixes` such as `["", ".d.vibe"]`, VibeLang read a stale declaration sidecar instead of its `.vibe` source and reported incorrect types; it now reads the source and keeps ordinary `.ts` and `.tsx` priority.
 
