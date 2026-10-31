@@ -8,10 +8,11 @@ import { dirname, join, parse, relative, resolve } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import fc from "fast-check"
-import { build, createServer } from "vite"
+import { build } from "vite"
 import { checkProperty } from "../../../scripts/testing/property.mjs"
 import { projectArbitrary, projectArtifacts, projectFiles } from "../../../scripts/testing/projects.mjs"
 import vibelang from "../src/index.js"
+import { devServer } from "./dev-server.mjs"
 
 const here = fileURLToPath(new URL(".", import.meta.url))
 const self = fileURLToPath(import.meta.url)
@@ -145,8 +146,8 @@ async function coldBuild(root, input, project, oracle) {
 
 async function buildDev(root, input) {
   const plugin = pluginFor(input), messages = []
-  const server = await createServer({ root, configFile: false, logLevel: "silent", plugins: [plugin],
-    server: { middlewareMode: true, watch: null }, optimizeDeps: { noDiscovery: true } })
+  const server = await devServer({ root, configFile: false, logLevel: "silent", plugins: [plugin],
+    server: { middlewareMode: true, watch: null } })
   server.ws.send = message => messages.push(message)
   const entry = join(root, input.directory, "n0.vibe")
   async function update(file) {

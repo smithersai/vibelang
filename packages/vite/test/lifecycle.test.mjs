@@ -1,5 +1,6 @@
 import vibelang from "../src/index.js"
 import { lifecycleTests } from "../../compiler/test/bundler-lifecycle.mjs"
+import { devServer } from "./dev-server.mjs"
 
 import assert from "node:assert/strict"
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
@@ -7,7 +8,6 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { setTimeout as delay } from "node:timers/promises"
-import { createServer } from "vite"
 
 lifecycleTests(vibelang)
 
@@ -24,9 +24,9 @@ process.on("SIGTERM", () => {})
 writeFileSync(${JSON.stringify(ready)}, String(process.pid))
 setInterval(() => {}, 1000)
 `)
-    const server = await createServer({
+    const server = await devServer({
       root, configFile: false, logLevel: "silent", plugins: [vibelang({ compiler })],
-      server: { middlewareMode: true, watch: null }, optimizeDeps: { noDiscovery: true }
+      server: { middlewareMode: true, watch: null }
     })
     let child, pending
     t.after(async () => {

@@ -1,23 +1,35 @@
 import assert from "node:assert/strict"
-import { cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises"
+import { cp, mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from "node:fs/promises"
 import { createRequire } from "node:module"
 import { dirname, join } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import test from "node:test"
-import { build, createServer } from "vite"
+import { build } from "vite"
 import vibelang from "../src/index.js"
 import { runChild } from "./child.mjs"
+import { devServer } from "./dev-server.mjs"
 
 const packageRoot = fileURLToPath(new URL("../", import.meta.url))
 const compiler = join(packageRoot, "../compiler/bin/vibelang")
 const require = createRequire(import.meta.url)
 const vitest = join(dirname(require.resolve("vitest/package.json")), "vitest.mjs")
 
+const fixtureServers = new Map()
+
 async function fixture(t) {
   const base = join(packageRoot, "test/.fixtures")
   await mkdir(base, { recursive: true })
   const root = await mkdtemp(join(base, "fixture-"))
-  t.after(() => rm(root, { recursive: true, force: true }))
+  fixtureServers.set(root, [])
+  // t.after hooks run in the order they were added and stop at the first that
+  // throws, so this one hook closes a fixture's servers before removing its files.
+  t.after(async () => {
+    try {
+      await Promise.all(fixtureServers.get(root).map((server) => server.close()))
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
   await cp(join(packageRoot, "test/project"), root, { recursive: true })
   await writeFile(join(root, "vitest.config.ts"), `
 import { defineConfig } from "vitest/config"
@@ -28,6 +40,13 @@ export default defineConfig({
 })
 `)
   return root
+}
+
+// A server the fixture at options.root closes before it removes its files.
+async function serve(options) {
+  const server = await devServer(options)
+  fixtureServers.get(options.root).push(server)
+  return server
 }
 
 function runVitest(root, failing = false) {
@@ -145,6 +164,53 @@ test("a deliberate failing assertion reports failure.test.vibe:6", async (t) => 
   console.log("PASS expected failure: assertion stack at failure.test.vibe:6:28")
 })
 
+test("a fixture goes at once after a request, with no dependency optimizer writing into it", async (t) => {
+  for (let run = 0; run < 3; run += 1) {
+    await t.test(`run ${run}`, async (t) => {
+      const root = await fixture(t)
+      const server = await serve({
+        root, configFile: false, plugins: [vibelang({ compiler })], logLevel: "silent",
+        server: { host: "127.0.0.1", port: 0, watch }
+      })
+      await server.listen()
+      const response = await fetch(`http://127.0.0.1:${server.httpServer.address().port}/main.vibe`)
+      // main.vibe imports effect: this bare import is what queues an optimizer run.
+      assert.match(await response.text(), /from "[^"]*effect/)
+      assert.equal(server.environments.client.depsOptimizer, undefined)
+    })
+  }
+})
+
+test("a fixture closes its server before removing the files that server writes", async (t) => {
+  for (let run = 0; run < 20; run += 1) {
+    await t.test(`run ${run}`, async (t) => {
+      const root = await fixture(t)
+      const directory = join(root, "node_modules/.vite/deps_temp_writer")
+      await mkdir(directory, { recursive: true })
+      // Writes like an optimizer run, until the server closes.
+      let open = true
+      const writing = (async () => {
+        for (let chunk = 0; open; chunk += 1) await writeFile(join(directory, `chunk-${chunk}.js`), "")
+      })()
+      const writer = { name: "writer", async closeBundle() { open = false; await writing } }
+      await serve({
+        root, configFile: false, plugins: [writer], logLevel: "silent",
+        server: { middlewareMode: true, watch: null }
+      })
+    })
+  }
+})
+
+test("every Vite dev server in these tests starts through devServer", async () => {
+  const directory = join(packageRoot, "test")
+  const files = (await readdir(directory)).filter((file) => file.endsWith(".mjs") && file !== "dev-server.mjs")
+  assert.ok(files.includes("plugin.test.mjs"))
+  for (const file of files) {
+    assert.doesNotMatch(await readFile(join(directory, file), "utf8"),
+      /import\s*\{[^}]*\bcreateServer\b[^}]*\}\s*from\s*"vite"/, file)
+  }
+})
+
 test("Vite serves JS and maps, invalidates importers, reports diagnostics and recovers", async (t) => {
   const root = await fixture(t)
   const configPath = join(root, "tsconfig.json")
@@ -153,13 +219,12 @@ test("Vite serves JS and maps, invalidates importers, reports diagnostics and re
   await writeFile(configPath, JSON.stringify(config))
   await writeFile(join(root, "entry.ts"), 'export { answer } from "./main.js"\n')
   const errors = []
-  const server = await createServer({
+  const server = await serve({
     root, configFile: false, plugins: [vibelang({ compiler })],
     customLogger: { info() {}, warn() {}, warnOnce() {}, error: (message) => errors.push(message),
       clearScreen() {}, hasErrorLogged() { return false }, hasWarned: false },
     server: { host: "127.0.0.1", port: 0, watch }
   })
-  t.after(() => server.close())
   const messages = []
   const originalSend = server.ws.send.bind(server.ws)
   server.ws.send = (...args) => { messages.push(args[0]); return originalSend(...args) }
@@ -225,11 +290,10 @@ test("Vite serves and builds a module declaration as a module of its own (D403)"
     "export { bump, count } from counter",
     ""
   ].join("\n"))
-  const server = await createServer({
+  const server = await serve({
     root, configFile: false, plugins: [vibelang({ compiler })], logLevel: "silent",
     server: { host: "127.0.0.1", port: 0, watch }
   })
-  t.after(() => server.close())
   await server.listen()
   const base = `http://127.0.0.1:${server.httpServer.address().port}`
   let response = await fetch(`${base}/counter.vibe`)
