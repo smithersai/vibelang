@@ -325,7 +325,11 @@ func reportPatternError(c *checker.Checker, file *ast.SourceFile, call *ast.Node
 	case 4702:
 		note(reportAt(c, file, at, EK4702), "Bind the whole value outside it, when let v and (A or B): …, or write one arm for each alternative.")
 	case 4703:
-		note(reportAt(c, file, at, EK4703), "Use the pattern in an if or while condition, or match the value with match.")
+		if unsettledIsBindingHome(file, call) {
+			note(reportAt(c, file, at, EK0705), "Use an explicit local block or an ordinary parameter when that preserves initialization order. Do not move the initializer into the body.")
+		} else {
+			note(reportAt(c, file, at, EK4703), "Use the pattern in an if or while condition, or match the value with match.")
+		}
 	case 4704:
 		detail := "These"
 		if len(args) > 1 && args[1].Kind == ast.KindStringLiteral {

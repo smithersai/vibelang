@@ -99,3 +99,5 @@ An explicitly `readonly` schema field requires known readonly decoded-key flags 
 ## VIP-20: Stream loops
 
 For `Stream` iteration, write `for try (const x of stream)` in effect code. Rewrite legacy `for await` over a `Stream` to `for try`; keep `for await` over `AsyncIterable` values in `async` code. `continue` skips an element and `break` stops consuming. A body `return` is `EK2002`: use `break` and return after the loop. `EK2007` offers the loop spelling migration through `vibelang --fix`.
+
+An `is` binding without a defined lexical home in a formal-parameter, catch-parameter or enum-member initializer is `EK0705` (VIP-7, details214/240/249). Do not automatically move it into a function body: preserve initializer evaluation order and parameter/body environments. Use an explicit local block only when its returned result preserves the source behavior.

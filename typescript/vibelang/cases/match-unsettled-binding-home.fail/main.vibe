@@ -1,0 +1,8 @@
+// expect: EK0705
+// Decided details 214, 240 and 249: an is binding in a formal-parameter or enum
+// initializer has no settled home. The destructured-parameter, computed-key and
+// catch-parameter forms are covered by is_binding_context_test.go: the
+// TypeScript 7 mapper does not render a function with an is in a destructured
+// parameter, and the purity corpus compares every case function's rendering.
+function f1(a=(1 is let one)){return a}
+enum E{A=(1 is let one)?1:0}
