@@ -63,10 +63,22 @@ export function inSubmodule(submodules, path) {
   return submodules.some((dir) => normal === dir || normal.startsWith(dir + "/"))
 }
 
-/** Keeps each compiler command's project arguments, including native TypeScript checkers. */
+/**
+ * The commands of the TypeScript compilers a script may run: TypeScript's
+ * `tsc`, the native preview's `tsgo`, and `tsrs`, a TypeScript 7.1 build
+ * alchemy runs as `tsrs -b`. vibelang takes each one's flags.
+ */
+export const typeScriptCompilers = ["tsc", "tsgo", "tsrs"]
+
+/**
+ * Replaces a TypeScript compiler with vibelang in package scripts: `tsc -b x`
+ * becomes `vibelang -b x`, as do `tsgo -b x` and `tsrs -b x`, and so does a
+ * compiler a shell separator ends, as in `tsc; node x`.
+ */
 export function replaceTsc(scripts = {}) {
+  const command = new RegExp(`(^|[\\s;&|(])(?:${typeScriptCompilers.join("|")})(?=[\\s;&|)]|$)`, "g")
   const next = {}
-  for (const [name, command] of Object.entries(scripts)) next[name] = command.replace(/(^|[\s;&|(])(?:tsc|tsgo|tsrs)(?=\s|$)/g, "$1vibelang")
+  for (const [name, script] of Object.entries(scripts)) next[name] = script.replace(command, "$1vibelang")
   return next
 }
 

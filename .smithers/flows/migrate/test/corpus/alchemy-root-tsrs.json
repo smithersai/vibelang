@@ -1,0 +1,19 @@
+{
+  "reason": "alchemy-32: alchemy's root scripts build, watch, clean and typecheck every project with tsrs -b, a stock TypeScript 7.1 build; it rebuilt packages/sql's Vibe project and wrote ./Format.vibe imports into the published JavaScript.",
+  "scripts": {
+    "build": "pnpm -r --filter \"{./packages/*}...\" run build:package && pnpm --filter ./website build && tsrs -b && bun lint:providers",
+    "clean:shallow": "rm -rf alchemy/*.tgz && tsrs -b --clean",
+    "dev": "tsrs -b -w & pnpm --filter alchemy dev",
+    "tsc": "tsrs",
+    "typecheck": "pnpm ensure:built && tsrs -b && pnpm -C packages/frontend-frameworks exec tsrs --noEmit -p tsconfig.test.json",
+    "lint:providers": "node scripts/lint-providers.ts"
+  },
+  "expected": {
+    "build": "pnpm -r --filter \"{./packages/*}...\" run build:package && pnpm --filter ./website build && vibelang -b && bun lint:providers",
+    "clean:shallow": "rm -rf alchemy/*.tgz && vibelang -b --clean",
+    "dev": "vibelang -b -w & pnpm --filter alchemy dev",
+    "tsc": "vibelang",
+    "typecheck": "pnpm ensure:built && vibelang -b && pnpm -C packages/frontend-frameworks exec vibelang --noEmit -p tsconfig.test.json",
+    "lint:providers": "node scripts/lint-providers.ts"
+  }
+}

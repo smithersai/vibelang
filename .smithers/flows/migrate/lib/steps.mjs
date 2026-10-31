@@ -758,6 +758,14 @@ export async function wireTarget(config, log) {
     if (JSON.stringify(scripts) !== JSON.stringify(next.scripts ?? {})) next.scripts = scripts
     if (JSON.stringify(next) !== JSON.stringify(root)) writeIfChanged(rootPackage, before, JSON.stringify(next, null, 2) + "\n")
   }
+  // A package that reaches a migrated one through workspace dependencies builds it with its own scripts' compiler.
+  const own = Wire.ownedPaths(t)
+  for (const reaching of Wire.packagesReaching(t, packages.map((pkg) => pkg.dir))) {
+    if (reaching.dir === "." || packages.some((pkg) => pkg.dir === reaching.dir) || !own(posix.join(reaching.dir, "package.json"))) continue
+    const path = join(t, reaching.dir, "package.json")
+    const next = Wire.addCompilerScripts(reaching.manifest, specsFor(reaching.dir).vibelang)
+    if (JSON.stringify(next) !== JSON.stringify(reaching.manifest)) writeIfChanged(path, readFileSync(path, "utf8"), JSON.stringify(next, null, 2) + "\n")
+  }
   // Every project resolves an import of ./x.vibe to its sidecar, as stock TypeScript does under this option.
   for (const tsconfig of Wire.rootTsconfigs(t, ts)) {
     const file = join(t, tsconfig)
