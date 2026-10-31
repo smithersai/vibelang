@@ -198,22 +198,20 @@ export function restoreExports(root, edits, module) {
 /**
  * The specifier that names target from a file, by VibeLang's rules: a .vibe
  * file imports a local module by its source name (./user.vibe, ./util.ts). A
- * .ts file names a .vibe module by its source name too, ./user.vibe for
- * ./user.js or ./user.ts: stock TypeScript, and every checker built on it,
- * resolves only that name, to the module's declaration sidecar
- * user.d.vibe.ts, while vibelang,
- * its loaders and its bundler plugins resolve it to the source, and vibelang
- * emits and declares it as ./user.js (D298). An extensionless specifier stays
- * as written, since its declaration would gain .js, except in a mock.module
- * call (mock), where Bun matches the module only by a name it resolves. A
- * .vibe specifier of a module that revert returned to .ts names its .ts source
- * again.
+ * .ts file names a .vibe module by its source name too: stock TypeScript,
+ * and every checker built on it, resolves that name to the declaration
+ * sidecar user.d.vibe.ts under allowArbitraryExtensions (VIP-27, chapter 7).
+ * This includes extensionless file and directory-index imports, which stock
+ * TypeScript cannot resolve to the sidecar as originally written. VibeLang
+ * and its loaders resolve the source, and emit and declare ./user.vibe as
+ * ./user.js (D298). A .vibe specifier of a module that revert returned to .ts
+ * names its .ts source again.
  */
 export function rewriteSpecifier(importer, specifier, target, { mock = false } = {}) {
   const targetExt = posix.extname(target)
   const ext = posix.extname(specifier)
   const vibeImporter = importer.endsWith(".vibe") || (mock && targetExt === ".vibe")
-  if (vibeImporter || (targetExt === ".vibe" && [".js", ".ts", ".mts"].includes(ext))) {
+  if (vibeImporter || targetExt === ".vibe") {
     if (ext === targetExt) return specifier
     if ([".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts", ".vibe"].includes(ext)) return specifier.slice(0, -ext.length) + targetExt
     // Extensionless: name the file, or the directory's index file.

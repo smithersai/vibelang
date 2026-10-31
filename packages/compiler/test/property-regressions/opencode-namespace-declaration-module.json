@@ -1,0 +1,11 @@
+{
+  "property": "migrate-source-declaration-identity",
+  "input": {
+    "name": "runtime",
+    "parent": false,
+    "directory": false,
+    "slash": false,
+    "form": "namespace"
+  },
+  "reason": "opencode stats/core namespace export changes from ./runtime to emitted ./runtime.js after its source becomes runtime.vibe."
+}

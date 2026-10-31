@@ -26,8 +26,8 @@ test("a .vibe importer names local modules by their source names", () => {
 test("a .ts importer names a .vibe module by its source name, which stock TypeScript resolves to its sidecar", () => {
   assert.equal(rewriteSpecifier("src/a.ts", "./b.js", "src/b.vibe"), "./b.vibe")
   assert.equal(rewriteSpecifier("src/a.ts", "./b.ts", "src/b.vibe"), "./b.vibe")
-  // An extensionless specifier stays: its declaration would name ./b.js.
-  assert.equal(rewriteSpecifier("src/a.ts", "./b", "src/b.vibe"), "./b")
+  assert.equal(rewriteSpecifier("src/a.ts", "./b", "src/b.vibe"), "./b.vibe")
+  assert.equal(rewriteSpecifier("src/a.ts", "./dir", "src/dir/index.vibe"), "./dir/index.vibe")
   assert.equal(rewriteSpecifier("src/a.ts", "./c.js", "src/c.ts"), "./c.js")
   // After revert returns b to .ts, the codemod's .vibe specifier names it again.
   assert.equal(rewriteSpecifier("src/a.ts", "./b.vibe", "src/b.ts"), "./b.ts")
@@ -295,4 +295,24 @@ test("directory slash specifiers keep the selected index source", () => {
   assert.equal(rewriteSpecifier("pkg/a.vibe", "./runtime/", "pkg/runtime/index.vibe"), "./runtime/index.vibe")
   assert.equal(rewriteSpecifier("pkg/a.vibe", "./", "pkg/index.ts"), "./index.ts")
   assert.equal(rewriteSpecifier("pkg/a.vibe", "../", "index.vibe"), "../index.vibe")
+  // A .ts importer names the migrated index by its source name too (opencode-19).
+  assert.equal(rewriteSpecifier("pkg/a.ts", "./runtime/", "pkg/runtime/index.vibe"), "./runtime/index.vibe")
+  assert.equal(rewriteSpecifier("pkg/a.ts", "./runtime/", "pkg/runtime/index.ts"), "./runtime/")
+})
+
+// Minimized opencode stats/core namespace re-export: every migrated module is
+// reached through an extensionless TypeScript barrel.
+test("opencode namespace re-exports name the migrated source for stock checkers", () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-opencode-namespace-"))
+  try {
+    writeFileSync(join(root, "index.ts"), 'export * as Runtime from "./runtime"\nexport { other } from "./other"\n')
+    writeFileSync(join(root, "runtime.vibe"), "export const value = 42\n")
+    writeFileSync(join(root, "other.ts"), "export const other = 1\n")
+    const edits = rewriteImports(root, ["index.ts", "runtime.vibe", "other.ts"])
+    assert.deepEqual(edits, [{ file: "index.ts", from: "./runtime", to: "./runtime.vibe" }])
+    assert.equal(readFileSync(join(root, "index.ts"), "utf8"), 'export * as Runtime from "./runtime.vibe"\nexport { other } from "./other"\n')
+    assert.deepEqual(rewriteImports(root, ["index.ts", "runtime.vibe", "other.ts"]), [])
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
 })

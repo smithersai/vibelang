@@ -1,0 +1,12 @@
+{
+  "property": "migrate-source-sidecar-imports",
+  "input": {
+    "name": "runtime",
+    "parent": false,
+    "directory": true,
+    "extension": "none",
+    "slash": false,
+    "kind": "namespace"
+  },
+  "reason": "Opencode namespace re-export through an extensionless directory entrypoint."
+}

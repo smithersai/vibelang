@@ -1,14 +1,10 @@
-// Declaration identity: a package's public API is its emitted .d.ts files,
-// and a migrated batch must leave them as they were. Both sides are emitted by
-// the same vibelang, then compared after the normalizations the Smithers
-// package migration's identity gate accepts and nothing more: comments
-// dropped, nodes reprinted, union members and uniquely named property members
-// in a stable order, and parentheses around a whole generic type argument
-// removed. Two normalizations are the migration's own: a relative specifier
-// spelled ./x.ts becomes ./x.js, because a renamed module's importers declare
-// it that way (D298) and TypeScript resolves both spellings to the same
-// x.d.ts; and an import or export list sorts, because vibelang-format sorts
-// the source's and the declaration prints that order.
+// Declaration identity preserves the emitted public API. Canonical text drops
+// comments, sorts union/property/import members and removes redundant type
+// parentheses. D298 makes relative .ts and .js names equivalent. An
+// extensionless relative name becomes its emitted .js spelling only when
+// stock TypeScript proves both select the same present emitted declaration.
+// Explicit names, unresolved modules and literal type values stay as written.
+// A published declaration (public-surface.json) is compared byte for byte.
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { join, posix, resolve, sep } from "node:path"
@@ -42,7 +38,7 @@ const isModuleName = (ts, node) => {
 }
 
 /** A declaration file's canonical text. */
-export function canonicalize(ts, text, fileName = "file.d.ts") {
+export function canonicalize(ts, text, fileName = "file.d.ts", modulePath = (text) => text) {
   const source = ts.createSourceFile(fileName, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
   const printer = ts.createPrinter({ removeComments: true, newLine: ts.NewLineKind.LineFeed })
   // Reprint from the tree, never from the source's own spelling of a literal.
@@ -82,6 +78,10 @@ export function canonicalize(ts, text, fileName = "file.d.ts") {
       let x = ts.visitEachChild(node, visit, ctx)
       // A redundant type parenthesis is spelling; the printer restores each one precedence needs.
       if (ts.isParenthesizedTypeNode(x)) return x.type
+      if (ts.isStringLiteral(x) && isModuleName(ts, node)) {
+        const name = modulePath(x.text)
+        if (name !== x.text) return f.createStringLiteral(name)
+      }
       if (ts.isStringLiteral(x) && /^\.\.?\/.*(?<!\.d)\.ts$/.test(x.text) && isModuleName(ts, node)) return f.createStringLiteral(x.text.replace(/\.ts$/, ".js"))
       if (ts.isTypeReferenceNode(x) && x.typeArguments) {
         x = f.updateTypeReferenceNode(x, x.typeName, f.createNodeArray(x.typeArguments.map((t) => (ts.isParenthesizedTypeNode(t) ? t.type : t))))
@@ -286,11 +286,26 @@ export function compareDeclarations(ts, baselineDir, currentDir) {
     if (publicFiles.has(destination)) publicFiles.add(source)
   }
   const originalName = new Map([...moved].map(([source, destination]) => [destination, source]))
+  // D298's extensionless source import and emitted .js name select one
+  // module only when stock TypeScript proves the same present declaration.
+  // Explicit extensions, unresolved paths and external names stay as written.
+  const modulePath = (directory, file, declarations) => (text) => {
+    if (!/^\.\.?\//.test(text) || /\.(?:d\.[cm]?ts|[cm]?[jt]s|[jt]sx|json|vibe)$/.test(text)) return text
+    const options = { module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler }
+    const select = (name) => ts.resolveModuleName(name, join(directory, file), options, ts.sys).resolvedModule?.resolvedFileName
+    const selected = select(text)
+    if (!selected) return text
+    const target = rel(directory, selected)
+    if (!declarations.has(target) || !target.endsWith(".d.ts")) return text
+    const relative = posix.relative(posix.dirname(file), target.slice(0, -5) + ".js")
+    const output = relative.startsWith("./") || relative.startsWith("../") ? relative : "./" + relative
+    return select(output) === selected ? output : text
+  }
   const changed = []
   for (const file of before.filter(f => afterSet.has(f))) {
     const text = dir => readFileSync(join(dir, dir === currentDir ? moved.get(file) ?? file : file), "utf8")
-    const a = publicFiles.has(file) ? text(baselineDir) : canonicalize(ts, text(baselineDir), file)
-    const b = publicFiles.has(file) ? text(currentDir) : canonicalize(ts, text(currentDir), file)
+    const a = publicFiles.has(file) ? text(baselineDir) : canonicalize(ts, text(baselineDir), file, modulePath(baselineDir, file, beforeSet))
+    const b = publicFiles.has(file) ? text(currentDir) : canonicalize(ts, text(currentDir), file, modulePath(currentDir, moved.get(file) ?? file, afterSet))
     if (a !== b) changed.push({ file, diff: lineDiff(a, b) })
   }
   const removed = before.filter(f => !afterSet.has(f))
