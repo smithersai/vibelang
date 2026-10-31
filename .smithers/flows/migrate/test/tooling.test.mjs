@@ -33,6 +33,42 @@ test("migration extends existing format, lint and Prettier commands idempotently
   assert.deepEqual(JSON.parse(readFileSync(join(root, ".prettierrc"))).plugins, ["vibelang/prettier"])
   assert.deepEqual(wireDeveloperTools({ root, specsFor }).changed, [])
 })
+// smithers: every dprint.json pins its plugins by checksum, which
+// DprintPlugins.test.ts checks, and dprint and ESLint read the declaration
+// sidecars as source (batch 01: Canonical.d.vibe.ts failed fmt and lint).
+const pin = "@" + "a".repeat(64)
+test("setup leaves a pinned dprint configuration's plugins alone and keeps dprint and ESLint off the sidecars", t => {
+  const pinnedConfig = { includes: ["**/*.{ts,json}"], excludes: ["**/dist"], plugins: [`https://plugins.dprint.dev/typescript-0.93.4.wasm${pin}`] }
+  const root = fixture(t, {
+    "package.json": JSON.stringify({ name: "root", workspaces: ["packages/*"] }),
+    "packages/pinned/package.json": JSON.stringify({ name: "pinned", scripts: { fmt: "dprint check", "fmt:write": "dprint fmt" } }),
+    "packages/pinned/dprint.json": JSON.stringify(pinnedConfig),
+    "packages/pinned/eslint.config.js": 'import tseslint from "typescript-eslint"\n\nexport default tseslint.config(\n  { ignores: ["**/dist"] },\n  { files: ["src/**/*.ts"] }\n)\n',
+    "packages/open/package.json": JSON.stringify({ name: "open", scripts: { fmt: "dprint check" } }),
+    "packages/open/dprint.json": JSON.stringify({ plugins: ["https://plugins.dprint.dev/typescript-0.93.4.wasm"] }),
+    "packages/open/eslint.config.mjs": "export default [\n  { files: [\"**/*.ts\"] },\n]\n",
+    "packages/named/package.json": JSON.stringify({ name: "named" }),
+    "packages/named/eslint.config.js": "const config = [{ files: [\"**/*.ts\"] }]\nexport default config\n"
+  })
+  const result = wireDeveloperTools({ root, specsFor })
+  const read = file => readFileSync(join(root, file), "utf8")
+  assert.deepEqual(JSON.parse(read("packages/pinned/dprint.json")), { ...pinnedConfig, excludes: ["**/dist", "**/*.d.vibe.ts"] })
+  const pinned = JSON.parse(read("packages/pinned/package.json"))
+  assert.deepEqual(pinned.scripts, { fmt: "(dprint check) && vibelang-format --check", "fmt:write": "(dprint fmt) && vibelang-format --write" })
+  assert.equal(pinned.devDependencies.vibelang, "0.0.11")
+  const open = JSON.parse(read("packages/open/dprint.json"))
+  assert.ok(open.plugins.includes("npm:vibelang/dprint-plugin.json"))
+  assert.deepEqual(open.excludes, ["**/*.d.vibe.ts"])
+  assert.equal(JSON.parse(read("packages/open/package.json")).scripts.fmt, "dprint check")
+  assert.equal(read("packages/pinned/eslint.config.js"), 'import tseslint from "typescript-eslint"\n\nexport default tseslint.config(\n  { ignores: ["**/*.d.vibe.ts"] },\n  { ignores: ["**/dist"] },\n  { files: ["src/**/*.ts"] }\n)\n')
+  assert.equal(read("packages/open/eslint.config.mjs"), 'export default [\n  { ignores: ["**/*.d.vibe.ts"] },\n  { files: ["**/*.ts"] },\n]\n')
+  assert.equal(read("packages/named/eslint.config.js"), "const config = [{ files: [\"**/*.ts\"] }]\nexport default config\n")
+  assert.equal(result.warnings.length, 2)
+  assert.match(result.warnings[0], /^1 dprint configuration pins every plugin by checksum \(packages\/pinned\/dprint\.json\)/)
+  assert.match(result.warnings[1], /^packages\/named\/eslint\.config\.js: add \{ ignores/)
+  assert.deepEqual(wireDeveloperTools({ root, specsFor }).changed, [])
+})
+
 test("ast-grep registration uses the canonical grammar and extends TS rules", t => {
   const root = fixture(t, {
     "package.json": "{}",

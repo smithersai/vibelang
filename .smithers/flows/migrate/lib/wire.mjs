@@ -484,6 +484,23 @@ export function addOxlintIgnore(text, pattern = `**/${sidecarIgnore}`) {
 }
 
 /**
+ * An ESLint flat configuration's text with a global ignores entry for
+ * pattern first in what it exports, `export default [`, or a call such as
+ * `tseslint.config(` or `defineConfig([`: ESLint lints x.d.vibe.ts as
+ * TypeScript wherever a files glob takes *.ts. Returns null for a shape it
+ * does not know, such as a configuration bound to a name first.
+ */
+export function addEslintIgnore(text, pattern = `**/${sidecarIgnore}`) {
+  if (text.includes(JSON.stringify(pattern))) return text
+  const open = /(?:export\s+default|module\.exports\s*=)\s*(?:[\w$.]+\((?:\s*\[)?|\[)/.exec(text)
+  if (!open) return null
+  const at = open.index + open[0].length
+  const entry = `{ ignores: [${JSON.stringify(pattern)}] },`
+  const indent = /^\r?\n([ \t]*)\S/.exec(text.slice(at))?.[1]
+  return indent === undefined ? `${text.slice(0, at)}${entry} ${text.slice(at)}` : `${text.slice(0, at)}\n${indent}${entry}${text.slice(at)}`
+}
+
+/**
  * Whether a test command runs `bun test`, itself or through the package
  * script it runs (`bun run test`, `pnpm test`).
  */

@@ -539,6 +539,7 @@ async function wireTarget(config, log) {
   warnings.push(...vite.warnings)
   const tooling = wireDeveloperTools({ root: t, specsFor })
   changed.push(...tooling.changed.filter(file => !changed.includes(file)))
+  warnings.push(...tooling.warnings)
   // And into every other config that bundles migrated sources: apps, examples and websites build and serve them too.
   const apps = Wire.wireViteApps({ root: t, packages: config.packages, ts, specsFor, wired: vite.configs })
   changed.push(...apps.changed.filter((file) => !changed.includes(file)))
