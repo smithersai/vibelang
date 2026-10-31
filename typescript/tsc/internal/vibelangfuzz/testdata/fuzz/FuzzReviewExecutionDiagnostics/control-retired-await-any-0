@@ -1,0 +1,4 @@
+go test fuzz v1
+string("retired-await-any")
+byte('\x00')
+bool(false)

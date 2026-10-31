@@ -1,0 +1,4 @@
+go test fuzz v1
+string("scope-2")
+byte('\x00')
+bool(false)

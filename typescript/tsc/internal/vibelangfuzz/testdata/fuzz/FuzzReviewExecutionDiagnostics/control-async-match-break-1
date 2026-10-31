@@ -1,0 +1,4 @@
+go test fuzz v1
+string("async-match-break")
+byte('\x01')
+bool(false)
