@@ -677,6 +677,10 @@ typescript/vibelang/cases/concurrent-continue-outer.fail/main.vibe:19:32 lambda 
 typescript/vibelang/cases/concurrent-continue-outer.fail/main.vibe:20:27 lambda effectFn table
 typescript/vibelang/cases/concurrent-continue-outer.fail/main.vibe:28:27 lambda effectFn table
 typescript/vibelang/cases/concurrent-continue-outer.fail/main.vibe:4:27 lambda effectFn table
+typescript/vibelang/cases/concurrent-head-newline/main.vibe:11:30 lambda effectFn table
+typescript/vibelang/cases/concurrent-head-newline/main.vibe:13:36 lambda effectFn table
+typescript/vibelang/cases/concurrent-head-newline/main.vibe:5:12 lambda effectFn table
+typescript/vibelang/cases/concurrent-head-newline/main.vibe:9:12 lambda effectFn table
 typescript/vibelang/cases/conditional-factory-lambda-infers-channels/main.vibe:10:15 lambda effectFn annotation
 typescript/vibelang/cases/conditional-factory-lambda-infers-channels/main.vibe:11:19 lambda effectFn annotation
 typescript/vibelang/cases/conditional-factory-lambda-infers-channels/main.vibe:14:32 lambda plain fallback
