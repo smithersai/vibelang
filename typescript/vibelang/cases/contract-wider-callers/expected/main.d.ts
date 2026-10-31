@@ -2,7 +2,7 @@ import { Context, Effect } from "effect";
 declare const Gone_base: new <A extends Record<string, any> = {}>(args: import("effect/Types").VoidIfEmpty<{ readonly [P in keyof A as P extends "_tag" ? never : P]: A[P]; }>) => import("effect/Cause").YieldableError & {
     readonly _tag: "Gone";
 } & Readonly<A>;
-declare class Gone extends Gone_base<{}> {
+declare class Gone extends Gone_base {
 }
 declare const Needed_base: Context.ServiceClass<Needed, "contract-wider-callers/main#Needed", {
     readonly id: string;

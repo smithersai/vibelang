@@ -9,7 +9,7 @@ declare class NotFound extends NotFound_base<{
 declare const Timeout_base: new <A extends Record<string, any> = {}>(args: import("effect/Types").VoidIfEmpty<{ readonly [P in keyof A as P extends "_tag" ? never : P]: A[P]; }>) => import("effect/Cause").YieldableError & {
     readonly _tag: "Timeout";
 } & Readonly<A>;
-declare class Timeout extends Timeout_base<{}> {
+declare class Timeout extends Timeout_base {
 }
 export declare function find(id: string): Effect.Effect<string, NotFound>;
 export declare function lookup(id: string): Effect.Effect<string, NotFound | Timeout>;

@@ -86,6 +86,7 @@ const specTests = [
   "TestServicesRulesQuoted",
   "TestCLISpecCommandFlags",
   "TestVIPFiberIDNumberEquality",
+  "TestErrorDeclarationTwinQuoted",
   "TestFunctionsSpecQuotes",
   "TestVIPCoverage",
   "TestSpecProductionsOnlyInAppendixA",

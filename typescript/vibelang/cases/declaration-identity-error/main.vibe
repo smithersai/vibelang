@@ -6,4 +6,12 @@
 /** A managed resource was read while it was not acquired. */
 export error ResourceNotAvailable { resource: string }
 
+// error Timeout, with no fields, is Data.TaggedError("Timeout") with no
+// type argument (chapter 3), declared Timeout_base, not Timeout_base<{}>.
 export error Timeout
+
+export error Gone {
+  get message(): string {
+    return "gone"
+  }
+}

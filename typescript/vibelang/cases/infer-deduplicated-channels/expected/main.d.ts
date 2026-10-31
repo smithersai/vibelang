@@ -2,7 +2,7 @@ import { Context, Effect } from "effect";
 declare const Missing_base: new <A extends Record<string, any> = {}>(args: import("effect/Types").VoidIfEmpty<{ readonly [P in keyof A as P extends "_tag" ? never : P]: A[P]; }>) => import("effect/Cause").YieldableError & {
     readonly _tag: "Missing";
 } & Readonly<A>;
-export declare class Missing extends Missing_base<{}> {
+export declare class Missing extends Missing_base {
 }
 declare const Need_base: Context.ServiceClass<Need, "infer-deduplicated-channels/main#Need", {
     value(): Effect.Effect<number>;

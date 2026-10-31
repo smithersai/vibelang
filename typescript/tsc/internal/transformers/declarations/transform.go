@@ -734,6 +734,27 @@ func (tx *DeclarationTransformer) transformMappedTypeNode(input *ast.MappedTypeN
 	)
 }
 
+// baseTypeArguments returns the visited type arguments of extends, the
+// extends element of a class whose base is not an entity name. A VibeLang
+// error declaration with no fields, `error Timeout`, extends the parser's
+// TaggedError("Timeout")<{}>, whose empty type literal is synthesized. The
+// class it stands for is Data.TaggedError("Timeout") with no type argument
+// (chapter 3), which TypeScript declares as Timeout_base, so the declaration
+// drops the literal. A written Data.TaggedError("Timeout")<{}> keeps it.
+func (tx *DeclarationTransformer) baseTypeArguments(extends *ast.Node) *ast.NodeList {
+	arguments := extends.AsExpressionWithTypeArguments().TypeArguments
+	if arguments != nil && len(arguments.Nodes) == 1 {
+		fields := arguments.Nodes[0]
+		call := extends.Expression()
+		if fields.Kind == ast.KindTypeLiteral && fields.Flags&ast.NodeFlagsReparsed != 0 && len(fields.Members()) == 0 &&
+			ast.IsCallExpression(call) && ast.IsIdentifier(call.Expression()) &&
+			call.Expression().Flags&ast.NodeFlagsVibeLangIntrinsic != 0 && call.Expression().Text() == "TaggedError" {
+			return nil
+		}
+	}
+	return tx.Visitor().VisitNodes(arguments)
+}
+
 func (tx *DeclarationTransformer) transformHeritageClause(clause *ast.HeritageClause) *ast.Node {
 	retainedClauses := core.Filter(clause.Types.Nodes, func(t *ast.HeritageClauseElement) bool {
 		name := ast.GetHeritageClauseElementName(t)
@@ -2078,7 +2099,7 @@ func (tx *DeclarationTransformer) transformClassDeclaration(input *ast.ClassDecl
 				tx.Factory().UpdateExpressionWithTypeArguments(
 					extendsClause.AsExpressionWithTypeArguments(),
 					newId,
-					tx.Visitor().VisitNodes(extendsClause.AsExpressionWithTypeArguments().TypeArguments),
+					tx.baseTypeArguments(extendsClause),
 				),
 			}),
 		)

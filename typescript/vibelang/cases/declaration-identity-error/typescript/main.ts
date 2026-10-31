@@ -6,4 +6,10 @@ export class ResourceNotAvailable extends Data.TaggedError("ResourceNotAvailable
   readonly resource: string
 }> {}
 
-export class Timeout extends Data.TaggedError("Timeout")<{}> {}
+export class Timeout extends Data.TaggedError("Timeout") {}
+
+export class Gone extends Data.TaggedError("Gone") {
+  get message(): string {
+    return "gone"
+  }
+}
