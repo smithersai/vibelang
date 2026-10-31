@@ -198,3 +198,203 @@ $ vibelang -p tsconfig.json --noEmit && vitest run && vite build
 ## Migrating Foldkit code
 
 The [migration pairs](https://github.com/smithersai/vibelang/tree/main/examples/foldkit-app/pairs) are three files from VibeLang's migration of Foldkit itself, each of which passed Foldkit's 3,022 tests with identical public declarations. [Add VibeLang to an existing project](/setup/existing-project) covers porting an Effect file with `vibelang --fix`.
+
+## foldkit's own code, migrated
+
+The [migration PR](https://github.com/smithersai/foldkit/pull/1) is in progress: 576 of 735 first-party Effect modules were migrated as of 2026-11-01, 06:08 UTC.
+
+These are matching excerpts from Foldkit's own source, with links fixed to each commit; `// fragment` marks excerpts that need their surrounding module.
+
+### A dialog service
+
+`service DialogRuntime` replaces the `Context.Service` class while keeping its key and registration methods.
+
+[Before: `packages/foldkit/src/dom/dialogRuntime.ts`](https://github.com/foldkit/foldkit/blob/b702a5efbb74bebc056b798b414ddb923a82fbd5/packages/foldkit/src/dom/dialogRuntime.ts#L1-L9) · [After: `packages/foldkit/src/dom/dialogRuntime.vibe`](https://github.com/smithersai/foldkit/blob/64a3e6edd7df91fafd655c9d2d5789c1523388ae/packages/foldkit/src/dom/dialogRuntime.vibe#L1-L5)
+
+:::code-group
+
+```vibe [VibeLang]
+export service DialogRuntime {
+  static readonly key = '@foldkit/DialogRuntime'
+  register: (id: string) => void
+  unregister: (id: string) => void
+}
+```
+
+```ts [Effect]
+import { Context } from 'effect'
+
+export class DialogRuntime extends Context.Service<
+  DialogRuntime,
+  {
+    readonly register: (id: string) => void
+    readonly unregister: (id: string) => void
+  }
+>()('@foldkit/DialogRuntime') {}
+```
+
+:::
+
+### The DevTools runtime model
+
+`schema RuntimeInfo` combines the runtime metadata schema and its TypeScript type into one declaration.
+
+[Before: `packages/foldkit/src/devTools/protocol.ts`](https://github.com/foldkit/foldkit/blob/b702a5efbb74bebc056b798b414ddb923a82fbd5/packages/foldkit/src/devTools/protocol.ts#L50-L56) · [After: `packages/foldkit/src/devTools/protocol.vibe`](https://github.com/smithersai/foldkit/blob/64a3e6edd7df91fafd655c9d2d5789c1523388ae/packages/foldkit/src/devTools/protocol.vibe#L46-L50)
+
+:::code-group
+
+```vibe [VibeLang]
+export schema RuntimeInfo {
+  connectionId: string
+  url: string
+  title: string
+}
+```
+
+```ts [Effect]
+// fragment
+export const RuntimeInfo = Schema.Struct({
+  connectionId: Schema.String,
+  url: Schema.String,
+  title: Schema.String,
+})
+/** Metadata about a connected browser runtime. */
+export type RuntimeInfo = typeof RuntimeInfo.Type
+```
+
+:::
+
+### Decoding a date with typed failures
+
+`CalendarDateFromIsoString` uses `effect` callbacks, with `throw` for a typed `SchemaIssue.InvalidValue` failure and direct returns replacing `Effect.succeed`.
+
+[Before: `packages/foldkit/src/calendar/calendarDate.ts`](https://github.com/foldkit/foldkit/blob/b702a5efbb74bebc056b798b414ddb923a82fbd5/packages/foldkit/src/calendar/calendarDate.ts#L211-L237) · [After: `packages/foldkit/src/calendar/calendarDate.vibe`](https://github.com/smithersai/foldkit/blob/64a3e6edd7df91fafd655c9d2d5789c1523388ae/packages/foldkit/src/calendar/calendarDate.vibe#L209-L235)
+
+:::code-group
+
+```vibe [VibeLang]
+// fragment
+export const CalendarDateFromIsoString = Schema.String.pipe(
+  Schema.decodeTo(
+    CalendarDate,
+    SchemaTransformation.transformEffect({
+      decode: effect input => {
+        const match = input.match(isoPattern)
+        if (match === null) {
+          throw new SchemaIssue.InvalidValue({
+            message: `Expected ISO date (YYYY-MM-DD), got ${
+              JSON.stringify(input)
+            }`,
+          })
+        }
+        const [, yearString, monthString, dayString] = match
+        return {
+          year: Number(yearString),
+          month: Number(monthString),
+          day: Number(dayString),
+        }
+      },
+      encode: effect ({ year, month, day }) =>
+        `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${
+          String(day).padStart(2, '0')
+        }`,
+    }),
+  ),
+)
+```
+
+```ts [Effect]
+// fragment
+export const CalendarDateFromIsoString = Schema.String.pipe(
+  Schema.decodeTo(
+    CalendarDate,
+    SchemaTransformation.transformEffect({
+      decode: input => {
+        const match = input.match(isoPattern)
+        if (match === null) {
+          return Effect.fail(
+            new SchemaIssue.InvalidValue({
+              message: `Expected ISO date (YYYY-MM-DD), got ${JSON.stringify(input)}`,
+            }),
+          )
+        }
+        const [, yearString, monthString, dayString] = match
+        return Effect.succeed({
+          year: Number(yearString),
+          month: Number(monthString),
+          day: Number(dayString),
+        })
+      },
+      encode: ({ year, month, day }) =>
+        Effect.succeed(
+          `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
+        ),
+    }),
+  ),
+)
+```
+
+:::
+
+### Running a subscription stream
+
+The subscription pipeline uses `Stream` methods and `effect` callbacks, with `try` running message delivery and the scoped fork.
+
+[Before: `packages/foldkit/src/runtime/subscriptionFibers.ts`](https://github.com/foldkit/foldkit/blob/b702a5efbb74bebc056b798b414ddb923a82fbd5/packages/foldkit/src/runtime/subscriptionFibers.ts#L128-L146) · [After: `packages/foldkit/src/runtime/subscriptionFibers.vibe`](https://github.com/smithersai/foldkit/blob/64a3e6edd7df91fafd655c9d2d5789c1523388ae/packages/foldkit/src/runtime/subscriptionFibers.vibe#L111-L136)
+
+:::code-group
+
+```vibe [VibeLang]
+// fragment
+    const consume: void!never!Services = Stream.concat(
+      Stream.make(initDependencies),
+      modelChangesStream,
+    )
+      .changesWith(equivalence)
+      .switchMap(dependencies =>
+        dependenciesToStream(
+          dependencies,
+          (): ReturnType<typeof modelToDependencies> =>
+            Ref.getUnsafe(latestDependenciesRef),
+        )
+      )
+      .runForEach(effect (message) => {
+        /* eslint-disable-next-line @typescript-eslint/consistent-type-assertions */
+        try enqueueMessageEffect(message as Message)
+      })
+
+    const runSubscription = effect (): void!! => {
+      try Effect.catchCause(
+        provideAllResources(consume),
+        effect (cause) => {
+          try crashWith(cause, Option.none())
+        },
+      )
+    }
+    try forkIn(runtimeScope, () => runSubscription())
+```
+
+```ts [Effect]
+// fragment
+          yield* Effect.forkIn(runtimeScope)(
+            Stream.concat(
+              Stream.make(initDependencies),
+              modelChangesStream,
+            ).pipe(
+              Stream.changesWith(equivalence),
+              Stream.switchMap(dependencies =>
+                dependenciesToStream(dependencies, () =>
+                  Ref.getUnsafe(latestDependenciesRef),
+                ),
+              ),
+              Stream.runForEach(message =>
+                /* eslint-disable-next-line @typescript-eslint/consistent-type-assertions */
+                enqueueMessageEffect(message as Message),
+              ),
+              provideAllResources,
+              Effect.catchCause(cause => crashWith(cause, Option.none())),
+            ),
+          )
+```
+
+:::

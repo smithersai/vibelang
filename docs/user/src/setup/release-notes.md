@@ -665,6 +665,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Migration could record missing build outputs as pre-existing test failures and later test stale distributions; upgrade, setup and verification now run declared build prerequisites, retain their source and dependency evidence, and refuse an unprepared failing baseline.
 
+
+- The Foldkit guide showed only the small example app inline; it now also compares four excerpts from Foldkit's own migrated source with their originals.
 - The compiler package's tests could fail with a missing `packages/runtime/dist/index.js`, or skip their cache checks, when the runtime rebuilt at the same time; `//packages:compiler-test` now declares that build and runs after it.
 - Sharded Go test discovery dropped the run's flags, so test setup that required custom flags could fail before any test ran; discovery now retains the original arguments, including `-short` and custom values with spaces.
 
