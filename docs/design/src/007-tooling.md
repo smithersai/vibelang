@@ -23,7 +23,17 @@ vibelang                       # packages/a/tsconfig.json
 vibelang -p ../../vibe.config.json # the explicitly named file
 ```
 
-`vibe.config.json` accepts every `tsconfig.json` field, `extends` included; `jsconfig.json` has TypeScript’s implied defaults. Relative paths, including `extends`, resolve from the config that contains them. Fields retain their TypeScript meaning with one deliberate file-kind exception: `moduleDetection` applies ordinarily to `.ts` and `.js`, but every source `.vibe` file is an external module before binding and checking, independently of imports and prelude switches ([Modules and the top level](001-functions.md#modules-and-the-top-level)). None of its values enables shared script globals in `.vibe`; ordinary module emission, host rules and incompatible-option diagnostics still apply. The added top-level `"vibe"` section holds VibeLang's options in any of the three files. Plain `tsc` rejects unknown `compilerOptions` (TS5023) but ignores unknown top-level keys, so a repository's own TypeScript tooling keeps working.
+`vibe.config.json` accepts every `tsconfig.json` field, `extends` included; `jsconfig.json` has TypeScript’s implied defaults. Ordinary relative paths, including relative `extends` entries, resolve from the config that declares them. A leading `${configDir}` in a supported path field instead expands from the selected project config’s directory, even when that field is inherited. Fields retain their TypeScript meaning with one deliberate file-kind exception: `moduleDetection` applies ordinarily to `.ts` and `.js`, but every source `.vibe` file is an external module before binding and checking, independently of imports and prelude switches ([Modules and the top level](001-functions.md#modules-and-the-top-level)). None of its values enables shared script globals in `.vibe`; ordinary module emission, host rules and incompatible-option diagnostics still apply. The added top-level `"vibe"` section holds VibeLang's options in any of the three files. Plain `tsc` rejects unknown `compilerOptions` (TS5023) but ignores unknown top-level keys, so a repository's own TypeScript tooling keeps working.
+
+For example, TypeScript’s [`${configDir}` substitution](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-5-5.html#the-configdir-template-variable-for-configuration-files) keeps the inherited output directory local to the selected project while the ordinary source path stays relative to the base:
+
+```jsonc
+// configs/base.json
+{ "compilerOptions": { "outDir": "${configDir}/dist", "rootDir": "./src" } }
+// app/tsconfig.json
+{ "extends": "../configs/base.json" }
+// Effective paths: outDir is app/dist; rootDir is configs/src.
+```
 
 `.vibe` is a supported source extension: `files` may list it, and `include`, `exclude` and the default `**/*` treat it as they treat `.ts`. When both `x.vibe` and its compatibility declaration `x.d.vibe.ts` are selected, VibeLang uses the source and resolves `./x.vibe` to it; plain `tsc` uses the declaration.
 

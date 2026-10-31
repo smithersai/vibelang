@@ -55,6 +55,8 @@ const specTests = [
   "TestAppendixBSeveritySettingsTakeEffect",
   "TestCompilerRegistryIsSpecified",
   "TestConfigOracleMatchesCompiler",
+  "TestConfigPathBasesQuoted",
+  "TestConfigPathBases",
   "TestRegistryRowsSuggestRepairs",
   "TestCommandLineFlagsCoverSpec",
   "TestCommandLineFixScopes",
