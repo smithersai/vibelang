@@ -172,7 +172,7 @@ func TestTypeScriptFormRefusals(t *testing.T) {
 	}{
 		{"error tag differs from the name", `export class Renamed extends Data.TaggedError("app/Renamed")<{ id: string }> {}`, 4830, `the tag would become "Renamed" instead of "app/Renamed"`},
 		{"untagged Data.Error", `export class Untagged extends Data.Error<{ id: string }> {}`, 4830, `adds a _tag, "Untagged"`},
-		{"Schema error", `export class Failed extends Schema.TaggedError<Failed>()("Failed", { id: Schema.String }) {}`, 4837, "is not a Schema"},
+		{"Schema error tag differs from the name", `export class Failed extends Schema.TaggedError<Failed>()("app/Failed", { id: Schema.String }) {}`, 4837, "a schema error's tag is its name"},
 		{"fields from a named type", "interface Fields { id: string }\nexport class Named extends Data.TaggedError(\"Named\")<Fields> {}", 4830, "the fields come from Fields"},
 		{"error class with members", `export class Custom extends Data.TaggedError("Custom")<{ id: string }> { get message() { return this.id } }`, 4830, ""},
 		{"service with a named shape", "interface Shape { read(): string!! }\nexport class Named extends Context.Service<Named, Shape>()(\"app/Named\") {}", 4831, "its members come from Shape"},

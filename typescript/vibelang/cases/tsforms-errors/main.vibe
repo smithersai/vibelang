@@ -1,8 +1,8 @@
 // expect-result: {"found":{"id":"7","count":2,"_tag":"NotFound"},"slow":{"_tag":"Timeout"},"boxed":{"value":3,"_tag":"Boxed"},"renamed":{"id":"r","_tag":"app/Renamed"},"untagged":{"id":"u"},"schema":{"_tag":"SchemaFail","id":"s"},"described":["missing 7","slow"]}
 // TypeScript-style error classes draw EK4830 (D284). The fixed twin,
 // tsforms-errors-fixed, is what vibelang --fix writes, and returns the same
-// result. A class whose tag, base, or Schema an error declaration would
-// change keeps its warning, without a fix.
+// result. A class whose tag or base an error declaration would change keeps
+// its warning, without a fix; a Schema.TaggedError class becomes a schema error.
 import * as Data from "effect/Data"
 import { Boxed, NotFound, Timeout } from "./errors.vibe"
 
