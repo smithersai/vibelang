@@ -1,4 +1,5 @@
-// expect: TS17006
+// expect: EK0510
+// Spec 002 and Appendix B: an unparenthesized fork or join head on the left of ** is EK0510.
 effect function badJoin() {
   const child = fork Effect.succeed(2)
   return join child ** 2

@@ -4939,7 +4939,7 @@ func (p *Parser) parseUnaryExpressionOrHigher() *ast.Expression {
 		}
 		if p.token == ast.KindAsteriskAsteriskToken {
 			pos := scanner.SkipTrivia(p.sourceText, expression.Pos())
-			p.parseErrorAt(pos, expression.End(), diagnostics.An_unary_expression_with_the_0_operator_is_not_allowed_in_the_left_hand_side_of_an_exponentiation_expression_Consider_enclosing_the_expression_in_parentheses, unaryOperator)
+			p.reportVibeLangExecutionPower(pos, expression.End(), unaryOperator)
 		}
 		return expression
 	}
@@ -4972,7 +4972,7 @@ func (p *Parser) parseUnaryExpressionOrHigher() *ast.Expression {
 			p.parseErrorAt(pos, end, diagnostics.A_type_assertion_expression_is_not_allowed_in_the_left_hand_side_of_an_exponentiation_expression_Consider_enclosing_the_expression_in_parentheses)
 		} else {
 			debug.Assert(isKeywordOrPunctuation(unaryOperator))
-			p.parseErrorAt(pos, end, diagnostics.An_unary_expression_with_the_0_operator_is_not_allowed_in_the_left_hand_side_of_an_exponentiation_expression_Consider_enclosing_the_expression_in_parentheses, scanner.TokenToString(unaryOperator))
+			p.reportVibeLangExecutionPower(pos, end, scanner.TokenToString(unaryOperator))
 		}
 	}
 	return simpleUnaryExpression

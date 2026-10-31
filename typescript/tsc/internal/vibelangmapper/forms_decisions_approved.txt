@@ -337,3 +337,5 @@ typescript/vibelang/lsp-fixture/src/lsrules.vibe:16:45 block: appended/program t
 typescript/vibelang/cases/tsforms-match-fixed/main.vibe:26:25 lambda: effectFn fallback -> plain fallback # foldkit-85 golden now returns its checked string binding from do; the unchanged runtime golden and Match differential retain its plain result contract.
 
 typescript/vibelang/cases/tsforms-option-fixed/main.vibe:24:24 lambda: effectFn fallback -> plain fallback # foldkit-39 golden eagerly captures the argument before native contains; the unchanged boolean runtime golden and Option differentials retain its plain result contract.
+
+typescript/vibelang/cases/execution-power-parentheses/main.vibe:4:38 byname: absent -> program table # Added numeric execution control passes an Effect program to pinned Effect.forkChild by name; no existing call decision or classifier changes.

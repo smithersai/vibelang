@@ -148,3 +148,5 @@ The three contract channels do not say whether work runs synchronously. Prefer a
 In `.vibe` and TypeScript files, pass the runner an Effect directly, as in `runPromise(main())`. Calling an exported effect function returns that Effect without running it.
 
 [Upstream Effect page](https://effect.website/docs/v4/getting-started/running-effects)
+
+Before exponentiation, parenthesize the whole execution expression: `(try program) ** 2`. The unparenthesized form reports `EK0510`. Use the editor action or `vibelang --fix` to add the parentheses.

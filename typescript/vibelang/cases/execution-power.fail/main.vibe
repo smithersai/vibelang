@@ -1,0 +1,7 @@
+// expect: EK0510 EK0510 EK0510
+import { Effect, Fiber } from "effect"
+declare const program: Effect.Effect<number>
+declare const fiber: Fiber.Fiber<number>
+export effect function badTry() { return try program ** 2 }
+export effect function badFork() { return fork program ** 2 }
+export effect function badJoin() { return join fiber ** 2 }

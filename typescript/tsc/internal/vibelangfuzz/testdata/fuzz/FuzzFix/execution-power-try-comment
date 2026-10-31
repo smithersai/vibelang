@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nexport effect function run(value: Effect.Effect<number>) { return /* preserved */ try value ** 3 }\n-- tsconfig.json --\n{\"compilerOptions\": {\"target\": \"es2022\", \"module\": \"nodenext\", \"moduleResolution\": \"nodenext\", \"strict\": true, \"skipLibCheck\": true, \"types\": [], \"outDir\": \"out\", \"declaration\": true}, \"include\": [\"*.vibe\"]}\n")

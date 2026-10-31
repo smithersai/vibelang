@@ -103,3 +103,5 @@ Registration reserves a code; it does not mean the compiler already implements e
 | `EK4609` | lint warning: `await` on a `Fiber` in an `async` function; use `join` |
 | `EK4610` | lint warning: `await` on a `Deferred` in an `async` function; use `try Deferred.await(d)` |
 | `EK4701` | a `match` with no `default` over a finite union that misses a case; a guarded arm covers nothing |
+
+`EK0510` reports an unparenthesized `try`, `fork` or `join` on the left of `**`. The editor action wraps the whole execution expression, such as `(try program) ** 2`, in parentheses. `vibelang --fix` applies the same repair when it introduces no new error. Native TypeScript unary expressions retain `TS17006`.

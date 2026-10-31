@@ -1,0 +1,7 @@
+import { Effect } from "effect"
+export effect function main() {
+  const a = (try Effect.succeed(2)) ** 3
+  const fiber = try Effect.forkChild(Effect.succeed(3))
+  const b = (join fiber) ** 2
+  return [a, b]
+}

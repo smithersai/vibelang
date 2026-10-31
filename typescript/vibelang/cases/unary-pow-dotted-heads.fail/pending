@@ -1,1 +1,0 @@
-impl-hunt-fail EK0510 is not reported for the dotted try heads: try.race [a] ** 2 reports TS17006, and fork.scoped a ** 2 reports TS1005 (loop round 4 OPUS-7, decided detail 212)

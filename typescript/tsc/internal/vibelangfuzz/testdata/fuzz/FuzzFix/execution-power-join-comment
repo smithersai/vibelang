@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nexport effect function run(fiber: Fiber.Fiber<number>) { return /* preserved */ join fiber ** 4 }\n-- tsconfig.json --\n{\"compilerOptions\": {\"target\": \"es2022\", \"module\": \"nodenext\", \"moduleResolution\": \"nodenext\", \"strict\": true, \"skipLibCheck\": true, \"types\": [], \"outDir\": \"out\", \"declaration\": true}, \"include\": [\"*.vibe\"]}\n")

@@ -271,3 +271,5 @@ effect function waitForReady() {
 ```
 
 Forking schedules a child; it doesn't prove the child reached a particular statement. `try yieldNow` lets other work run but guarantees no readiness, and sleeping for an estimated startup time leaves a race. When ordering matters, use a `Deferred`: `try Deferred.await(ready)` waits until the child completes it.
+
+Parenthesize an execution expression before exponentiation: `(join fiber) ** 2`. A bare `join fiber ** 2` or `fork program ** 2` reports `EK0510`. For a numeric `join` result, the editor action and `vibelang --fix` write `(join fiber) ** 2`.
