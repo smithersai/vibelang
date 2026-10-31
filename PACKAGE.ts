@@ -128,9 +128,11 @@ const targets = {
     [bun, node]
   ),
   tokens: check("Token counts in the docs match a fresh count.", "bun docs/tools/token-counts.ts --check", [], [bun]),
+  // The Go cache the compiler and Go test targets fill: with Go's default
+  // cache, this check compiled the whole module a second time.
   forms: check(
     "The forms table and its decisions match a fresh generation.",
-    "bash scripts/check-forms-table.sh",
+    "GOCACHE=$HOME/.cache/go-build-smthrs bash scripts/check-forms-table.sh",
     [],
     [go, bun, node]
   ),

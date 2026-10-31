@@ -40,6 +40,20 @@ The workflow holds no secrets and its token only reads this repository. A hosted
 pass counts; a hosted failure sends the change back to a build host, which is the
 reference for rejecting it.
 
+A hosted run compiles every Go package that changed since the Go cache it
+restores. `.github/workflows/go-cache.yml` keeps that cache current: on each push
+to `main` it runs `scripts/warm-go-cache.sh`, which compiles and vets what
+the graph's Go targets and `scripts/check-forms-table.sh` compile, with their
+flags, and saves the cache as `go-<commit>`. The pre-gate restores the newest
+`go-` cache over the day's `gate-` cache, which also holds a Go build: the Go
+cache is content-addressed, so the two merge, and a run before the first `go-`
+save, or after GitHub evicts every `go-` cache, starts from the day-old build. With one cache saved a day, the hosted `//typescript:compiler` build
+took 41 s an hour after the save and 393 s by the next morning (2026-10-31).
+Every Go target, `//:forms` included, uses `GOCACHE=$HOME/.cache/go-build-smthrs`,
+so one cache serves them all. `scripts/go-cache.test.mjs` fails when a target
+compiles a package the script misses, or when the two workflows' cache paths
+differ.
+
 A `node_modules` symlink in any of these directories, including `.smithers`,
 is provisioned by whoever made the link. `scripts/ci.sh` uses it as is and never
 runs `bun install` through it. The link owner must keep that install current.

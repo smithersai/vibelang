@@ -72,6 +72,14 @@ jobs:
           path: ${{ env.CACHE_PATHS }}
           key: gate-${{ steps.day.outputs.day }}
           restore-keys: gate-
+      # The Go build cache of a recent main, which go-cache.yml saves on each push, over the day's cache, so the gate
+      # compiles only the packages that changed since. The Go cache is content-addressed, so the two merge. The path
+      # matches go-cache.yml's: a cache's version hashes its paths.
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ~/.cache/go-build-smthrs
+          key: go-${{ env.PRE_BASE }}
+          restore-keys: go-
       - name: Install Chromium
         working-directory: site
         run: |
@@ -88,7 +96,8 @@ jobs:
           echo "$rc" > "$RUNNER_TEMP/pre/$PRE_TAG.rc"
           exit "$rc"
       # Saved whether the gate passed or not: a cold Go build outlasts //:spec-tests' 15 minutes, so a run with no cache
-      # can't pass, and waiting for a pass would never fill it. The Go cache is content-addressed.
+      # can't pass, and waiting for a pass would never fill it. It is the floor under the go- cache: a run before
+      # go-cache.yml's first save, or after GitHub evicts every go- cache, still starts from a day-old Go build.
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         if: always() && steps.cache.outputs.cache-hit != 'true'
         with:

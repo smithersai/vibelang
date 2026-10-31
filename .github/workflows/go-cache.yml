@@ -1,0 +1,46 @@
+name: Go build cache
+run-name: go cache ${{ github.sha }}
+
+# Keeps the Go build cache that mq-pregate.yml restores current with main. A
+# hosted pre-gate compiles every Go package that changed since the cache it
+# restores was saved; with one cache a day, the compiler build took 41 s an hour
+# after the save and 393 s by the next morning (2026-10-31). Each push to main
+# compiles what the graph's Go targets compile and saves the result under the
+# commit's id; the pre-gate restores the newest. One run at a time: a push
+# during a run waits, and a newer push replaces the waiting one.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: go-cache
+  cancel-in-progress: false
+
+jobs:
+  warm:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version-file: typescript/tsc/go.mod
+          cache: false
+      # mq-pregate.yml restores the same path: a cache's version hashes its paths.
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ~/.cache/go-build-smthrs
+          key: go-${{ github.sha }}
+          restore-keys: go-
+      - name: Compile what the graph's Go targets compile
+        run: sh scripts/warm-go-cache.sh
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ~/.cache/go-build-smthrs
+          key: go-${{ github.sha }}
