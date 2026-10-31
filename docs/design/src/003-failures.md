@@ -456,8 +456,11 @@ effect function contracts() {
   // invoke()                    // EK0403: the default's own bound
   // invoke(undefined)           // EK0403
   // invoke(() => 7)             // EK0403: conservative own bound
-  const e = try Effect.try(() => keep(succeed(1)))
+  const e = try Effect.try({ try: () => keep(succeed(1)), catch: (error) => error })
   return try e
+}
+effect function constrained() {
+  return try passEffect(succeed(2)) // a constraint wholly assignable to Effect is effectful
 }
 ```
 
