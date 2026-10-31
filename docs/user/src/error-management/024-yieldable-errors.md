@@ -110,6 +110,6 @@ Both versions remove `EmptyTitle` from `E` and keep `TitleTooLong`. When cases n
 
 Existing `.ts` functions that yield `Data.Error` or `Data.TaggedError` stay in TypeScript; effect functions run their returned Effects with `try`. In an effect function, `return yield* new ErrorCase(...)` becomes `throw new ErrorCase(...)`.
 
-In a `.vibe` file, `class NotFound extends Data.TaggedError("NotFound")<{ … }> {}` draws EK4830, whose quick fix writes `error NotFound { … }`; a `Schema.TaggedError` class draws EK4837, without a fix, because an error declaration is not a Schema ([TypeScript-style Effect code](../getting-started/012-devtools.md#typescript-style-effect-code)).
+In a `.vibe` file, `class NotFound extends Data.TaggedError("NotFound")<{ … }> {}` draws EK4830, whose quick fix writes `error NotFound { … }`; a `Schema.TaggedError` class draws EK4837, whose quick fix writes `schema error NotFound { … }`, which keeps its Schema ([TypeScript-style Effect code](../getting-started/012-devtools.md#typescript-style-effect-code)).
 
 A producer uses `effect function*` and returns a Stream; a plain `function*` remains a JavaScript generator. Support for the new forms arrives with the compiler's VIP implementation.

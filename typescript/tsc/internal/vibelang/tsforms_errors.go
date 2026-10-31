@@ -6,7 +6,6 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
@@ -22,17 +21,23 @@ import (
 // an error declaration could still replace, one with an empty body, draws the
 // warning without a fix, and its note says what a declaration would change:
 // a tag other than the name, or the _tag that Data.Error lacks. A
-// Schema.TaggedError class draws EK4837 instead, also without a fix, since a
-// declaration would drop its Schema; D279's schema error writes one, and a
-// project whose errors are Schemas by design turns the code off until the
-// parser accepts it. A class with members, a constructor, decorators, or
-// another base draws nothing until the parser accepts D278's error
-// declarations with class members.
+// Schema.TaggedError class draws EK4837 instead, whose fix writes D279's
+// schema error, which keeps its Schema (schemaErrorRewrite). Any other class
+// with members, a constructor, decorators, or another base draws nothing until
+// the parser accepts D278's error declarations with class members.
 
 func init() {
 	tsFormRules[EK4830.Code] = &tsFormRule{
 		message: EK4830,
 		find:    findErrorClasses,
+		plan: func(c *checker.Checker, file *ast.SourceFile, at *ast.Node) *formRewrite {
+			return errorClassRewrite(c, file, at.Parent)
+		},
+		diagnosed: isClassName,
+	}
+	tsFormRules[EK4837.Code] = &tsFormRule{
+		message: EK4837,
+		find:    findSchemaErrorClasses,
 		plan: func(c *checker.Checker, file *ast.SourceFile, at *ast.Node) *formRewrite {
 			return errorClassRewrite(c, file, at.Parent)
 		},
@@ -119,19 +124,24 @@ func errorClassOf(c *checker.Checker, file *ast.SourceFile, class *ast.Node) err
 // from its base: a named class declaration, exported or not, with no other
 // modifiers, no implements clause, and an empty body.
 func errorClassShape(file *ast.SourceFile, class *ast.Node) bool {
-	if class.Name() == nil || len(ast.GetImplementsHeritageClauseElements(class)) != 0 {
+	if !errorClassHead(class) {
 		return false
-	}
-	for _, modifier := range class.ModifierNodes() {
-		if modifier.Kind != ast.KindExportKeyword {
-			return false
-		}
 	}
 	if slices.ContainsFunc(class.Members(), func(m *ast.Node) bool { return !ast.IsSemicolonClassElement(m) }) {
 		return false
 	}
 	extends := ast.GetClassExtendsHeritageElement(class)
 	return strings.TrimSpace(strings.Trim(strings.TrimSpace(file.Text()[extends.End():class.End()]), "{}")) == ""
+}
+
+// errorClassHead reports whether class's head could be an error declaration's:
+// a named class declaration, exported or not, with no other modifiers and no
+// implements clause.
+func errorClassHead(class *ast.Node) bool {
+	if class.Name() == nil || len(ast.GetImplementsHeritageClauseElements(class)) != 0 {
+		return false
+	}
+	return !slices.ContainsFunc(class.ModifierNodes(), func(modifier *ast.Node) bool { return modifier.Kind != ast.KindExportKeyword })
 }
 
 // findErrorClasses reports EK4830 at each error class of file that an error
@@ -141,14 +151,22 @@ func findErrorClasses(c *checker.Checker, file *ast.SourceFile, report func(at *
 	visit = func(node *ast.Node) bool {
 		if ast.IsClassDeclaration(node) && !inHatch(node) {
 			parts := errorClassOf(c, file, node)
-			if parts.base != notErrorBase && errorClassShape(file, node) {
-				rewrite := errorClassRewrite(c, file, node)
-				if rewrite != nil && rewrite.message == EK4837 {
-					report(node.Name(), rewrite, node.Name().Text())
-				} else {
-					report(node.Name(), rewrite, node.Name().Text(), parts.baseText)
-				}
+			if parts.base != notErrorBase && parts.base != schemaErrorBase && errorClassShape(file, node) {
+				report(node.Name(), errorClassRewrite(c, file, node), node.Name().Text(), parts.baseText)
 			}
+		}
+		return node.ForEachChild(visit)
+	}
+	file.AsNode().ForEachChild(visit)
+}
+
+// findSchemaErrorClasses reports EK4837 at each Schema.TaggedError class of
+// file. Its body may hold what a schema error's does, so only its head counts.
+func findSchemaErrorClasses(c *checker.Checker, file *ast.SourceFile, report func(at *ast.Node, rewrite *formRewrite, args ...any)) {
+	var visit func(node *ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if ast.IsClassDeclaration(node) && !inHatch(node) && errorClassOf(c, file, node).base == schemaErrorBase && errorClassHead(node) {
+			report(node.Name(), errorClassRewrite(c, file, node), node.Name().Text())
 		}
 		return node.ForEachChild(visit)
 	}
@@ -166,7 +184,7 @@ func errorClassRewrite(c *checker.Checker, file *ast.SourceFile, class *ast.Node
 	silence := " Keep the class if something depends on that, and silence this line with // @vibelang-diagnostics-next-line EK4830:off."
 	switch {
 	case parts.base == schemaErrorBase:
-		return &formRewrite{message: EK4837, why: "No quick fix: an error declaration is not a Schema, so decoding, encoding, and the checks at construction would change" + core.IfElse(literal && tag != name, ", and its tag would be "+name+", not \""+tag+"\"", "") + ". Where the Schema is needed, keep the class; a project whose errors are Schemas by design turns EK4837 off."}
+		return schemaErrorRewrite(c, file, class, tag, literal)
 	case parts.base == dataErrorBase:
 		return &formRewrite{why: "No quick fix: an error declaration adds a _tag, \"" + name + "\", which Data.Error has none of." + silence}
 	case !literal:
@@ -226,4 +244,103 @@ func errorFieldsText(file *ast.SourceFile, literal *ast.Node) string {
 		out = out[:r.start-start] + out[r.end-start:]
 	}
 	return out
+}
+
+// schemaErrorRewrite plans EK4837's fix for class, which extends
+// Schema.TaggedError: a schema error declaration keeps its Schema, tag and
+// accessors (D279). A field whose codec has no type form is named by a
+// constant before the declaration, which a schema error's field may name:
+//
+//	class Failed extends Schema.TaggedError<Failed>()("Failed", {   const FailedCauseField = Schema.Defect()
+//	  cause: Schema.Defect(),                                       schema error Failed {
+//	}) {}                                                             cause: FailedCauseField
+//	                                                                }
+func schemaErrorRewrite(c *checker.Checker, file *ast.SourceFile, class *ast.Node, tag string, literal bool) *formRewrite {
+	no := func(why string) *formRewrite {
+		return &formRewrite{why: "No quick fix: " + why}
+	}
+	name := class.Name().Text()
+	arguments := ast.GetClassExtendsHeritageElement(class).Expression().Arguments()
+	switch {
+	case class.TypeParameters() != nil:
+		return no("a schema error has no type parameters.")
+	case !literal || tag != name:
+		return no("a schema error's tag is its name.")
+	case len(arguments) != 2:
+		return no("a schema error has no annotations argument.")
+	case !ast.IsObjectLiteralExpression(arguments[1]):
+		return no("the fields come from " + expressionText(file, arguments[1]) + "; write them in the declaration.")
+	}
+	text := file.Text()
+	object := arguments[1]
+	if body := text[nodeStart(file, object):object.End()]; strings.Contains(body, "//") || strings.Contains(body, "/*") {
+		return no("a comment among the fields would be lost.")
+	}
+	var lines, constants []string
+	for _, property := range object.AsObjectLiteralExpression().Properties.Nodes {
+		field, constant, why := schemaErrorField(c, file, property, name)
+		if why != "" {
+			return no(why)
+		}
+		lines = append(lines, field)
+		if constant != "" {
+			constants = append(constants, constant)
+		}
+	}
+	for _, member := range class.Members() {
+		// An accessor runs as plain JavaScript (D282), and a written return
+		// type keeps a method's form; anything else would change meaning.
+		method := ast.IsMethodDeclaration(member) && member.Type() != nil
+		if !ast.IsGetAccessorDeclaration(member) && !method && !ast.IsSemicolonClassElement(member) {
+			return no("a schema error's body keeps accessors and annotated methods.")
+		}
+		if !ast.IsSemicolonClassElement(member) {
+			lines = append(lines, text[nodeStart(file, member):member.End()])
+		}
+	}
+	start := nodeStart(file, class)
+	if modifiers := class.Modifiers(); modifiers != nil && len(modifiers.Nodes) > 0 {
+		start = scanner.SkipTrivia(text, modifiers.End())
+	}
+	declaration := "schema error " + name + " {\n  " + strings.Join(lines, "\n  ") + "\n}"
+	if len(lines) == 0 {
+		declaration = "schema error " + name + " {}"
+	}
+	edits := []sourceEdit{{start, class.End(), declaration}}
+	if len(constants) != 0 {
+		before := class.Pos()
+		for before < len(text) && strings.ContainsRune(" \t\r\n", rune(text[before])) {
+			before++
+		}
+		edits = append([]sourceEdit{{before, before, strings.Join(constants, "\n") + "\n"}}, edits...)
+	}
+	return withImportRemovals(c, file, &formRewrite{edits: edits, description: "schema error " + name + " { … }"})
+}
+
+// schemaErrorField returns property, a field of a Schema.TaggedError's
+// object, as a schema error's field, and the constant that names its codec
+// when it has no type form, or why it cannot be written.
+func schemaErrorField(c *checker.Checker, file *ast.SourceFile, property *ast.Node, class string) (field string, constant string, why string) {
+	if field, ok := structFieldType(c, file, property, "  "); ok {
+		return field, "", ""
+	}
+	if !ast.IsPropertyAssignment(property) || !ast.IsIdentifier(property.Name()) {
+		return "", "", "the field " + expressionText(file, property) + " has no schema error form."
+	}
+	key, value := property.Name().Text(), property.Initializer()
+	optional := isSchemaCall(c, value, "optional", 1)
+	if optional {
+		value = value.Arguments()[0]
+	}
+	if known, required := schemaStructValueRequired(c, value); !optional && known && !required {
+		return "", "", "the field " + key + " is an optional key, which a schema error's ? does not write."
+	}
+	name := class + strings.ToUpper(key[:1]) + key[1:] + "Field"
+	if strings.Contains(file.Text(), name) {
+		return "", "", "the name " + name + " is taken."
+	}
+	if optional {
+		return key + "?: " + name, "const " + name + " = " + expressionText(file, value), ""
+	}
+	return key + ": " + name, "const " + name + " = " + expressionText(file, value), ""
 }

@@ -26,7 +26,7 @@ import (
 //	EK4834  Effect.succeed(x), Effect.fail(e) where they run  x, throw e
 //	EK4835  Effect.catchTag, catchTags, catch                 x catch (e) => match (e) { … }
 //	EK4836  Effect.withSpan, provide, provideService          withSpan(() => p, "n"), provide L { … }
-//	EK4837  class X extends Schema.TaggedError<X>()("X", { … })  error X { … }, without its Schema; no fix
+//	EK4837  class X extends Schema.TaggedError<X>()("X", { … })  schema error X { … }
 //
 // The rules are lint (D241): adjustable in the vibelang setting diagnostics,
 // silenced for one line by @vibelang-diagnostics-next-line, warnings by
@@ -50,8 +50,8 @@ var (
 	EK4835 = message(4835, warningCategory, "{0} catches by tag; write a catch expression that matches on the failure: x catch (e) => match (e) { … }.")
 	// EK4836 (D290): a combinator that a VibeLang block form writes. {0} is the combinator, {1} the block form.
 	EK4836 = message(4836, warningCategory, "{0} wraps a program in a call; write it as a block: {1}.")
-	// EK4837 (D284): a Schema error class, which an error declaration replaces only by dropping its Schema. {0} is the class.
-	EK4837 = message(4837, warningCategory, "{0} extends Schema.TaggedError; an error declaration, error {0} { … }, writes the same failure without its Schema.")
+	// EK4837 (D284): a Schema error class, which a schema error declaration writes with its Schema. {0} is the class.
+	EK4837 = message(4837, warningCategory, "{0} extends Schema.TaggedError; a schema error declaration, schema error {0} { … }, writes the same failure with its Schema.")
 )
 
 // tsFormMessages are the rules' messages, in code order.
@@ -107,7 +107,7 @@ var tsFormRules = map[int32]*tsFormRule{}
 // (D291): the rules above, whose fixes keep the program's meaning, and the
 // retired spellings whose fixes write the current ones (D172, D219, D221,
 // D223).
-var tsFormFixCodes = []int32{4830, 4831, 4832, 4833, 4834, 4835, 4836, 2112, 2113, 2120, 2121}
+var tsFormFixCodes = []int32{4830, 4831, 4832, 4833, 4834, 4835, 4836, 4837, 2112, 2113, 2120, 2121}
 
 // checkTypeScriptForms reports the rules' warnings in file.
 func checkTypeScriptForms(c *checker.Checker, file *ast.SourceFile) {
@@ -169,7 +169,7 @@ func tsFormNodeAt(file *ast.SourceFile, span core.TextRange, test func(node *ast
 // typeScriptFormFix is the quick fix of every rule.
 var typeScriptFormFix = &ls.CodeFixProvider{
 	Source:     diagnosticSource,
-	ErrorCodes: []int32{4830, 4831, 4832, 4833, 4834, 4835, 4836},
+	ErrorCodes: []int32{4830, 4831, 4832, 4833, 4834, 4835, 4836, 4837},
 	GetCodeActions: func(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
 		rule := tsFormRules[fix.ErrorCode]
 		if rule == nil {

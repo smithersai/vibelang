@@ -1,0 +1,17 @@
+// What vibelang --fix writes for the Schema.TaggedError classes in
+// typescript/main.ts declares what they do (D501): accessors stay, and a
+// codec with no type form is named by a constant the declaration keeps private.
+import * as Schema from "effect/Schema"
+
+export schema error Plain {
+  message: string
+}
+
+const FailedCauseField = Schema.Defect()
+export schema error Failed {
+  reason: string
+  cause?: FailedCauseField
+  override get message(): string {
+    return `failed: ${this.reason}`
+  }
+}
