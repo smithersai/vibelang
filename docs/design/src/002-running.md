@@ -287,10 +287,14 @@ const observed = await Effect.runPromiseExit(Effect.promise(async () => [
 | a nested plain function | SyntaxError | error |
 | the module top level | allowed | error: the top level is not effect code, and nothing runs an Effect implicitly (VIP-26). Write `await runPromise(e)` |
 
-The other constructs follow the Promise they mirror: `effect { }` builds a cold Effect much as `(async () => { })()` constructs a Promise, `fork e` is starting a Promise without awaiting it, `e catch h` is `.catch(h)`, and a failure is a rejection. They differ where an Effect isn't a Promise:
+The other constructs follow the Promise they mirror: `effect { }` builds a cold Effect much as `(async () => { })()` constructs a Promise, `fork e` is starting a Promise without awaiting it, `e catch h` is `await e.catch(h)`, and a failure is a rejection. They differ where an Effect isn't a Promise:
 
 | Promise | Effect | Why |
 | --- | --- | --- |
+| `await` accepts non-Promise operands, including `1` and a possibly `undefined` optional-call result | A statically non-Effect or possibly `undefined` operand is `EK0502` | VIP-5 runs an Effect; the [operand test](#operand-test) requires Effect assignability, independently of optional-call syntax |
+| `await p.catch(h)` awaits the handled Promise's result | `try e catch h` is `EK0505` under the head rule; write `e catch h` | VIP-5's `catch` already runs its operand; explicit source parentheses retain the separate rule for catching an Effect returned by another run |
+| A statement beginning `await { value: 1 }` awaits an object expression | A statement-start `try` followed by `{` begins JavaScript's `try` statement; a complete `try { } finally { }` in effect code is `EK0503` | The existing JavaScript statement grammar keeps priority over the unary expression |
+| `for await (x of values)` may assign an existing binding | `for try (x of stream)` is `EK2005`; write `for try (const v of stream) { x = v }` | VIP-20 requires a `ForDeclaration` head; assignment remains available in the body |
 | Even an already completed value resumes `await` on a later Promise job | `try` can complete without suspending; cooperative scheduling can still run other fibers | `yield*` follows Effect's scheduler, with no added Promise job or implicit `yieldNow` |
 | A rejected `await` resumes the function with a throw, so `using`, iterator closing and `finally` run | A failed `try` never resumes the generator, so none of them run | [Abandonment](008-runtime.md#abandonment): `try e` is `yield* e` |
 | A thrown error and a rejection are one channel, and `.catch` sees both | A failure and a defect are two channels, and `catch` sees failures only | Effect's typed error channel |
