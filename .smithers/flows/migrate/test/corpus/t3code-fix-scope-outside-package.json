@@ -1,0 +1,14 @@
+{
+  "key": "t3code-fix-scope-outside-package",
+  "source": "drive-t3code-server 2026-10-31T19:16Z, apps/server batch over 184 earlier .vibe modules",
+  "files": {
+    "pkg/main.vibe": "export { E } from \"../lib/error.vibe\"\n",
+    "lib/error.vibe": "import * as Schema from \"effect/Schema\"\nexport class E extends Schema.TaggedError<E>()(\"E\", { message: Schema.String }) {}\n"
+  },
+  "fixed": {
+    "lib/error.vibe": "export schema error E { message: string }\n"
+  },
+  "batch": [
+    "pkg/main.vibe"
+  ]
+}

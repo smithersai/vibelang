@@ -350,7 +350,9 @@ export async function fixToFixedPoint({ compiler, tsconfig, cwd, root, maxRounds
   const kept = only && new Set(only)
   const others = new Map()
   if (kept) {
-    for (const path of vibeFilesUnder(cwd)) {
+    // The whole repository: the package's project also reaches an earlier
+    // batch's .vibe module in another package, which --fix rewrites too.
+    for (const path of vibeFilesUnder(root)) {
       const file = posix.relative(root, path)
       if (!kept.has(file)) others.set(file, readFileSync(path, "utf8"))
     }

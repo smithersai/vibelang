@@ -244,6 +244,40 @@ console.log("vibelang --fix: " + n + " fixes in " + n + " files.")
   }
 })
 
+// drive-t3code-server 19:16Z: the 534-file server batch imports 184 modules
+// migrated earlier in other packages; --fix in apps/server rewrote
+// ../lib/error.vibe (EK4837), and the flow reported no fix and kept it.
+test("fixToFixedPoint puts back an earlier batch's file in another package that --fix rewrote", async () => {
+  const corpus = JSON.parse(readFileSync(new URL("./corpus/t3code-fix-scope-outside-package.json", import.meta.url), "utf8"))
+  const root = mkdtempSync(join(tmpdir(), "migrate-fix-scope-outside-"))
+  try {
+    for (const [file, text] of Object.entries(corpus.files)) {
+      mkdirSync(join(root, file, ".."), { recursive: true })
+      writeFileSync(join(root, file), text)
+    }
+    // vibelang --fix rewrites the project's every .vibe file, the dependency outside cwd included.
+    const compiler = join(root, "fake-vibelang")
+    writeFileSync(compiler, `#!/usr/bin/env node
+const fs = require("node:fs"), path = require("node:path")
+let n = 0
+for (const [file, text] of Object.entries(${JSON.stringify(corpus.fixed)})) {
+  const abs = path.join(${JSON.stringify(root)}, file)
+  if (fs.readFileSync(abs, "utf8") === text) continue
+  fs.writeFileSync(abs, text)
+  console.log("vibelang --fix: " + path.relative(process.cwd(), abs) + ": 1 fix (EK4837 ×1)")
+  n++
+}
+console.log("vibelang --fix: " + n + " fixes in " + n + " files.")
+`)
+    chmodSync(compiler, 0o755)
+    const result = await fixToFixedPoint({ compiler, tsconfig: "tsconfig.json", cwd: join(root, "pkg"), root, only: corpus.batch })
+    for (const [file, text] of Object.entries(corpus.files)) assert.equal(readFileSync(join(root, file), "utf8"), text, `${corpus.key}: ${file}`)
+    assert.deepEqual(result.byFile, {})
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
 test("the fix loop asks for declarations, so --fix keeps what they print under a noEmit tsconfig", async () => {
   const root = mkdtempSync(join(tmpdir(), "migrate-fix-"))
   try {
