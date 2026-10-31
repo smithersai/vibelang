@@ -672,6 +672,8 @@ Field = "readonly"? PropertyName "?"? ":" Type Separator   (keys as in a TypeScr
 Separator = ";" | "," | a LineTerminator before the next token | before "}"   (after the Type is complete, as TypeScript's parseTypeMemberSemicolon)
 ```
 
+Two members or fields with no `Separator` between them are a VibeLang syntax error with the owning declaration's code: `EK0908` in a `service` body, `EK1306` in an `error` or `schema error` body, `EK1504` in a `schema` body and `EK1605` in a `data` declaration's variant list or a variant's field list. The quick fix inserts `;` after the first. These bodies never report TypeScript's `TS1005` or `TS1442` for it; native `class` and `interface` members keep TypeScript's codes.
+
 #### SchemaDeclaration
 
 ```text
@@ -860,7 +862,8 @@ error E { get message() { } }     a ClassMethod (a getter)
 error E { effect again() { } }    an EffectMethod
 error E { m() { }; id: string }   a ClassMethod, the empty element ";", a Field
 error E { effect get x() { } }    an EffectAccessor: the getter/setter rule alone
-service S { a: number b: string } syntax error: no separator, as in an interface
+service S { a: number b: string } EK0908: no separator; write ; or a line break
+error E { a: number b: string }   EK1306: no separator; write ; or a line break
 error E implements I { }          parses; an implements clause is rejected
 service S { static readonly key = "k" }   a KeyMember
 service S { static readonly key: string = "k" }   a KeyMember
@@ -918,6 +921,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK0905` | `export default service S { }`; write `export { S as default }` | 9 | [Services](/spec/005-services#static-rules) |
 | `EK0906` | a recognized service declaration missing its required body | 9 | [Services](/spec/005-services#static-rules) |
 | `EK0907` | a custom `service` declaration in a native ambient source context, explicit or inherited; includes `declare service`, ahead of the same missing-body recovery | 9 | [Services](/spec/005-services#static-rules) |
+| `EK0908` | two `service` members with no separator between them, such as `a: number b: string` on one line; write `;` or a line break between them (quick fix: insert `;`) | 9 | [Services](/spec/005-services#static-rules) |
 | `EK1201` | `provide` outside effect code | 12 | [Services](/spec/005-services#provide-blocks) |
 | `EK1202` | a line break immediately before or after a top-level provider-separating `,` | 12 | [Services](/spec/005-services#provide-blocks) |
 | `EK1301` | a constructor in an `error` or `schema error` body | 13 | [Failures](/spec/003-failures#error-declarations) |
@@ -925,14 +929,17 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK1303` | type parameters on an `error` or `schema error` declaration | 13 | [Failures](/spec/003-failures#error-declarations) |
 | `EK1304` | any other `RejectedElement` in an `error` or `schema error` body; an `implements` clause | 13 | [Failures](/spec/003-failures#error-declarations) |
 | `EK1305` | `export default error E` or `export default schema error E`; write `export { E as default }` | 13 | [Failures](/spec/003-failures#error-declarations) |
+| `EK1306` | two `error` or `schema error` body members with no separator between them; write `;` or a line break between them (quick fix: insert `;`) | 13 | [Failures](/spec/003-failures#error-declarations) |
 | `EK1401` | a namespace name that two subpaths export, or a subpath and the root | 14 | [Services](/spec/005-services#the-platform-standard-library) |
 | `EK1501` | `export default schema S …`; write `export { S as default }` | 15 | [Data](/spec/006-data#schema-declarations) |
 | `EK1502` | type parameters on a `schema` declaration; use an ordinary generic TypeScript factory | 15 | [Data](/spec/006-data#schema-declarations) |
 | `EK1503` | a recognized ordinary schema declaration missing its required body or admitted alias form | 15 | [Data](/spec/006-data#schema-declarations) |
+| `EK1504` | two `schema` fields with no separator between them; write `;` or a line break between them (quick fix: insert `;`) | 15 | [Data](/spec/006-data#schema-declarations) |
 | `EK1601` | a `data` variant field named `_tag` | 16 | [Data](/spec/006-data#data-declarations) |
 | `EK1603` | `export default data D { … }`; write `export { D as default }` | 16 | [Data](/spec/006-data#data-declarations) |
 | `EK1602` | a `data` variant named `$is` or `$match`; rename it and its resolved references | 16, 28 | [Data](/spec/006-data#data-declarations) |
 | `EK1604` | a recognized data declaration missing its required variant body | 16 | [Data](/spec/006-data#data-declarations) |
+| `EK1605` | two variants of a `data` declaration, or two fields of a variant, with no separator between them; write `;` or a line break between them (quick fix: insert `;`) | 16 | [Data](/spec/006-data#data-declarations) |
 | `EK1701` | `fork` or `join` outside effect code | 17 | [Running Effects](/spec/002-running#fork-and-join) |
 | `EK1702` | `fork` or `join` as a variable, parameter or label name in effect code, in the parameters of an `effect` function, arrow, method or producer, or in a plain or `async` arrow head inheriting that reservation, including one in an Effect callable's parameters; the arrow body has its own context | 17 | [Running Effects](/spec/002-running#fork-and-join) |
 | `EK1703` | a `fork`, `fork.in(s)`, `fork.scoped` or `fork.detached` operand that fails the operand test of `try` | 5, 17 | [Running Effects](/spec/002-running#fork-and-join) |
