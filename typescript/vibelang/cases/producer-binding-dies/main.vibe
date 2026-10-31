@@ -1,0 +1,12 @@
+// 003-failures.md, Code outside the generator: parameter defaults and
+// destructuring run at the call, and when they throw, "the call of an effect
+// function then gives an Effect that dies with that value, and a producer's
+// gives a Stream that dies with it. The call itself never throws." run.mjs
+// calls each with arguments that make binding throw.
+type User = { id: string }
+export effect function* object({ id }: User) { yield id }
+export effect function* array([first]: number[]) { yield first }
+export effect function* defaulted(n: number, { id }: User = { id: "default" }) { yield n; yield id }
+export const expression = effect function* ({ id }: User) { yield id }
+export effect function* plain(n: number) { yield n }
+export effect function single({ id }: User) { return id }

@@ -367,6 +367,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The specification wrote a spread element of a `try.allSettled` literal as `...xs.map(Effect.exit)`, which fails on a `Set` and reads an array by index instead of through its iterator; it now spreads natively and wraps each value the spread yields, as the compiler already does.
 
+- Calling a producer whose parameter binding throws, such as `effect function* s({ id }: User)` called with `undefined` from TypeScript, threw a `TypeError` at the call; the call now returns a Stream that dies with the thrown value, as chapter 3 says, and binding still happens once, at the call.
+
 - TypeScript tools could not resolve a `.vibe` import unless its project opted into declaration sidecars; every compile now writes `x.d.vibe.ts`, and `vibelang --fix` removes the obsolete `declarationSidecars` setting from the project and its local inherited configs.
 
 - The Node and Bun loaders compiled a project again when its declaration sidecars appeared; generated sidecars beside their sources now preserve the cached compile, while standalone declarations and source changes still invalidate it.

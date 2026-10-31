@@ -328,6 +328,18 @@ func bodyPauses(c *checker.Checker, statement *ast.Node) bool {
 // runtime.$produce(Effect.fnUntraced(function* name() { body })): its
 // parameters stay on the plain function, and its body, an Effect body, runs
 // each time the Stream it returns runs.
+//
+// Parameters are bound at the call, but the call never throws: when binding
+// can throw, as destructuring undefined does, the call returns a Stream that
+// dies with the thrown value (003-failures.md, Code outside the generator).
+// Such parameters move to an arrow the plain function calls in a try:
+//
+//	function s(arg_1) {
+//	  try { return (({ id }) => runtime.$produce(…))(...arguments) }
+//	  catch (e) { return runtime.$produce(() => Effect.die(e)) }
+//	}
+//
+// The placeholders keep the function's length, and the arrow keeps this.
 func (tx *lowering) visitProducer(node *ast.Node) *ast.Node {
 	f := tx.Factory()
 	ec := tx.EmitContext()
@@ -353,6 +365,9 @@ func (tx *lowering) visitProducer(node *ast.Node) *ast.Node {
 	}
 	produce := tx.runtimeCall("$produce", run)
 	block := f.NewBlock(f.NewNodeList([]*ast.Node{f.NewReturnStatement(produce)}), true /*multiLine*/)
+	if bindingMayThrow(node) {
+		parameters, block = tx.producerBindingBoundary(node, parameters, produce)
+	}
 	block.Loc = node.Body().Loc
 	var lowered *ast.Node
 	if node.Kind == ast.KindFunctionDeclaration {
@@ -362,6 +377,52 @@ func (tx *lowering) visitProducer(node *ast.Node) *ast.Node {
 	}
 	ec.SetOriginal(lowered, node)
 	return lowered
+}
+
+// bindingMayThrow reports whether binding fn's parameters can throw: a
+// parameter is a binding pattern or has a default.
+func bindingMayThrow(fn *ast.Node) bool {
+	for _, parameter := range fn.Parameters() {
+		if ast.IsIdentifier(parameter.Name()) && parameter.Name().Text() == "this" {
+			continue
+		}
+		if !ast.IsIdentifier(parameter.Name()) || parameter.Initializer() != nil {
+			return true
+		}
+	}
+	return false
+}
+
+// producerBindingBoundary returns the placeholder parameters and the body
+// that bind parameters, the producer's lowered parameters, in a try whose
+// catch returns a Stream that dies with the thrown value (visitProducer).
+func (tx *lowering) producerBindingBoundary(node *ast.Node, parameters *ast.NodeList, produce *ast.Node) (*ast.NodeList, *ast.Node) {
+	f := tx.Factory()
+	var bound, placeholders []*ast.Node
+	for _, parameter := range parameters.Nodes {
+		if ast.IsIdentifier(parameter.Name()) && parameter.Name().Text() == "this" {
+			continue // TypeScript's this parameter types the plain function only
+		}
+		bound = append(bound, parameter)
+	}
+	for _, parameter := range node.Parameters() {
+		if ast.IsIdentifier(parameter.Name()) && parameter.Name().Text() == "this" {
+			continue
+		}
+		p := parameter.AsParameterDeclaration()
+		if p.Initializer != nil || p.DotDotDotToken != nil {
+			break
+		}
+		placeholders = append(placeholders, f.NewParameterDeclaration(nil, nil, f.NewUniqueName("arg"), nil, nil, nil))
+	}
+	bind := f.NewArrowFunction(nil /*modifiers*/, nil /*typeParameters*/, f.NewNodeList(bound), nil /*returnType*/, nil /*fullSignature*/, f.NewToken(ast.KindEqualsGreaterThanToken), produce)
+	call := f.NewCallExpression(f.NewParenthesizedExpression(bind), nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList([]*ast.Node{f.NewSpreadElement(f.NewIdentifier("arguments"))}), ast.NodeFlagsNone)
+	thrown := f.NewUniqueName("e")
+	die := f.NewCallExpression(f.NewPropertyAccessExpression(tx.effectName(), nil /*questionDotToken*/, f.NewIdentifier("die"), ast.NodeFlagsNone), nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList([]*ast.Node{thrown}), ast.NodeFlagsNone)
+	dies := tx.runtimeCall("$produce", f.NewArrowFunction(nil /*modifiers*/, nil /*typeParameters*/, f.NewNodeList(nil), nil /*returnType*/, nil /*fullSignature*/, f.NewToken(ast.KindEqualsGreaterThanToken), die))
+	catch := f.NewCatchClause(f.NewVariableDeclaration(thrown, nil, nil, nil), f.NewBlock(f.NewNodeList([]*ast.Node{tx.generated(f.NewReturnStatement(dies))}), true /*multiLine*/))
+	try := f.NewTryStatement(f.NewBlock(f.NewNodeList([]*ast.Node{f.NewReturnStatement(call)}), true /*multiLine*/), catch, nil /*finallyBlock*/)
+	return f.NewNodeList(placeholders), f.NewBlock(f.NewNodeList([]*ast.Node{tx.generated(try)}), true /*multiLine*/)
 }
 
 // visitYield turns `yield v` in a producer into `yield* runtime.$yield(v)`,

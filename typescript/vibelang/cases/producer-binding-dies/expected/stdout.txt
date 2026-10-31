@@ -1,0 +1,13 @@
+object undefined Die:TypeError
+object getter Die:RangeError:getter
+object value Success:["a"]
+array number Die:TypeError
+array value Success:[4]
+default null Die:TypeError
+default omitted Success:[1,"default"]
+expression undefined Die:TypeError
+plain undefined Success:[null]
+single undefined Die:TypeError
+reads at the call 1
+reads after two runs 1
+lengths 1 1 1 1 1
