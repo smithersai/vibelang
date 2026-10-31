@@ -1,0 +1,4 @@
+go test fuzz v1
+string("method")
+uint8(12)
+uint8(7)

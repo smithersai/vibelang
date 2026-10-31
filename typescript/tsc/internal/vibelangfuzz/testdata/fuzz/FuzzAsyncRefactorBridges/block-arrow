@@ -1,0 +1,4 @@
+go test fuzz v1
+string("block-arrow")
+uint8(12)
+uint8(7)

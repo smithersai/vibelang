@@ -34,6 +34,8 @@ For GitHub highlighting, add `*.vibe linguist-language=TypeScript` to `.gitattri
 
 Ordinary `async` functions in `.vibe` files return `Promise<T>`, as in TypeScript. The server accepts them and shows the promise's type on hover. Write an `effect` function to run Effects with `try`.
 
+Converting an `async` function writes a qualified `Effect.tryPromise(() => promise)` bridge for each `await`. The action with an error per await uses `Effect.tryPromise({ try: () => promise, catch: (cause) => new PromiseFailed({ cause }) })`; the generated error name follows the awaited call.
+
 ## Inspect inferred information
 
 ```vibe
