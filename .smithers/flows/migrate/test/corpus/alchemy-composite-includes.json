@@ -1,0 +1,11 @@
+{
+  "finding": "alchemy-flow:composite-include-vibe",
+  "input": {
+    "patterns": [
+      "src/**/*.ts",
+      "src/**/*.tsx",
+      "types/*.d.ts"
+    ],
+    "multiline": true
+  }
+}

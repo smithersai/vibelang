@@ -1,0 +1,9 @@
+{
+  "finding": "alchemy-flow:bun-toplevel-preload",
+  "input": {
+    "directory": "packages/integration-tests",
+    "modules": [
+      "./setup.ts"
+    ]
+  }
+}

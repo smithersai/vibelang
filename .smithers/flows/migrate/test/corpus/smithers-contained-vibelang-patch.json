@@ -1,0 +1,7 @@
+{
+  "finding": "smithers:contained-vibelang-0.0.8-patch",
+  "file": "register.mjs",
+  "before": "      source: `${code}\\n//# sourceMappingURL=data:application/json;base64,${inline}\\n`,\n",
+  "after": "      source: `${code}\\n//# sourceMapping${\"URL\"}=data:application/json;base64,${inline}\\n`,\n",
+  "patch": "diff --git a/register.mjs b/register.mjs\n--- a/register.mjs\n+++ b/register.mjs\n@@ -1,1 +1,1 @@\n-      source: `${code}\\n//# sourceMappingURL=data:application/json;base64,${inline}\\n`,\n+      source: `${code}\\n//# sourceMapping${\"URL\"}=data:application/json;base64,${inline}\\n`,\n"
+}

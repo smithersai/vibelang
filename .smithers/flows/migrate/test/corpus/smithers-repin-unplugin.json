@@ -1,0 +1,20 @@
+{
+  "finding": "smithers:upgrade-effect-unplugin-release",
+  "input": {
+    "fields": [
+      "devDependencies"
+    ],
+    "packages": [
+      "vibelang",
+      "vibelang-unplugin"
+    ],
+    "specs": [
+      "vibelang",
+      "vibelang-runtime",
+      "vibelang-vite",
+      "vibelang-unplugin"
+    ],
+    "old": "0.0.8",
+    "indent": 2
+  }
+}

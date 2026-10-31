@@ -1,0 +1,4 @@
+{
+  "finding": "t3code:assertPortable-file-url-prose",
+  "witness": "/** Absolute file:// preload URL; null requires disabling element picking. */"
+}
