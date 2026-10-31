@@ -68,10 +68,15 @@ function sameValue(pattern: unknown, subject: unknown): boolean {
  * Tests a variable pattern: a custom matcher decides when the value has one;
  * a primitive's class tests typeof; another class tests instanceof; another
  * function is called as a predicate; any other value matches by SameValue.
+ *
+ * A predicate's and an extractor's subject parameter is the inferred S, not
+ * any: TypeScript tries overloads by subtype first, where any is no subtype
+ * of a parameter typed string | number, and the value overload would then
+ * take the function and narrow the subject to it.
  */
 export function $is<C extends abstract new(...args: any) => any>(matcher: C, subject: unknown): subject is InstanceType<C>
-export function $is<T>(matcher: (subject: any, hint: MatchHint) => subject is T, subject: unknown): subject is T
-export function $is(matcher: CustomMatcher | ((subject: any, hint: MatchHint) => unknown), subject: unknown): boolean
+export function $is<S, T extends S>(matcher: (subject: S, hint: MatchHint) => subject is T, subject: unknown): subject is T
+export function $is<S>(matcher: CustomMatcher | ((subject: S, hint: MatchHint) => unknown), subject: unknown): boolean
 export function $is<const T>(matcher: T, subject: unknown): subject is T
 export function $is(matcher: unknown, subject: unknown): boolean {
   if (matcher !== null && (typeof matcher === "object" || typeof matcher === "function")) {
@@ -124,7 +129,7 @@ export function $extract<S>(matcher: ArrayConstructor, subject: S): ArrayExtract
 export function $extract<T>(matcher: TypedArrayClass<T>, subject: unknown): T | false
 export function $extract<R>(matcher: CustomMatcher<R>, subject: unknown): Extracted<R> | false
 export function $extract<C extends abstract new(...args: any) => any>(matcher: C, subject: unknown): readonly [InstanceType<C>] | false
-export function $extract<R>(matcher: (subject: any, hint: MatchHint) => R, subject: unknown): Extracted<R> | false
+export function $extract<S, R>(matcher: (subject: S, hint: MatchHint) => R, subject: unknown): Extracted<R> | false
 export function $extract(matcher: unknown, subject: unknown): ReadonlyArray<any> | false
 export function $extract(matcher: unknown, subject: unknown): unknown {
   const custom = matcher === null || matcher === undefined ? undefined : (matcher as any)[customMatcher]

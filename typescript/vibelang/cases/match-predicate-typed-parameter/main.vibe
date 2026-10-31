@@ -1,0 +1,33 @@
+// A predicate or call-only extractor whose parameter has a type narrows and
+// types as if (p(s)) does (chapter 004, Typing), not as a value pattern.
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+function isText(s: string | number): s is string {
+  return typeof s === "string"
+}
+function isEven(n: number): boolean {
+  return n % 2 === 0
+}
+function pair(s: number, hint: { matchType: string }): false | [number, string] {
+  return s > 0 ? [s, hint.matchType] : false
+}
+export function label(s: string | number) {
+  return match (s) { when isText: s.toUpperCase(); default: s.toFixed(1); }
+}
+export function test(s: string | number) {
+  if (s is isText) return s.length
+  return s * 2
+}
+export function parity(n: number) {
+  return match (n) { when isEven: "even " + n.toFixed(0); default: "odd " + n.toFixed(0); }
+}
+// The bindings have the extractor's element types, not any.
+export function extracted(n: number) {
+  return match (n) {
+    when pair(let a, let b): do {
+      const typedA: Equal<typeof a, number> = true
+      const typedB: Equal<typeof b, string> = true
+      typedA && typedB ? a.toFixed(0) + b : ""
+    };
+    default: "none";
+  }
+}

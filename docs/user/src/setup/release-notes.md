@@ -333,6 +333,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The configuration specification incorrectly based every inherited path on the declaring config. It now distinguishes ordinary relative paths from `${configDir}`, which uses the selected project config’s directory, matching TypeScript.
 
+- A predicate pattern whose parameter had a type, such as `when isText:` with `isText(s: string | number): s is string`, narrowed the subject to the function's type, so `s.toUpperCase()` in the arm and `s.toFixed()` in `default` did not compile, and a call-only extractor with a typed parameter bound `any`. The arm and `default` now narrow as `if (isText(s))` does, and the bindings take the extractor's element types.
+
 - `vibelang/bun` scanned every module of every dependency and resolved each of their imports a second time, so a large package's tests ran about three times slower and timed out with no `.vibe` module loaded; it now stops at `node_modules`, and a 294-module import graph costs about the same with the preload as without it.
 
 - `vibelang --fix` deleted `import * as Schema from "effect/Schema"` when a `Schema.TaggedError` class was its only use, and rewrote a class whose module has another name, so the declaration file changed; in a project that emits declarations it now keeps the import and leaves such a class.

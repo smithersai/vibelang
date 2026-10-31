@@ -2039,6 +2039,7 @@ typescript/vibelang/cases/match-patterns/main.vibe:141:26 lambda plain fallback
 typescript/vibelang/cases/match-patterns/main.vibe:161:21 lambda plain fallback
 typescript/vibelang/cases/match-patterns/main.vibe:41:35 byname program table
 typescript/vibelang/cases/match-patterns/main.vibe:92:3 lambda plain fallback
+typescript/vibelang/cases/match-predicate-typed-parameter/main.vibe:26:33 lambda dual fallback
 typescript/vibelang/cases/match-subject-once/main.vibe:136:17 lambda plain fallback
 typescript/vibelang/cases/match-subject-once/main.vibe:144:9 lambda effectFn fallback
 typescript/vibelang/cases/match-subject-once/main.vibe:152:14 lambda plain fallback
