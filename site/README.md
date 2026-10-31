@@ -37,7 +37,7 @@ npm run build
 npm run preview
 ```
 
-Vocs checks internal links during the production build, and a dead link fails it. docs/tools/check-site.ts then validates built page and heading targets and self-contained images. Generated output is written to `dist/`. The prebuild hook runs the kernel law suite and syncs both doc sets. The postbuild hook writes Markdown copies and llms.txt to dist/public using docs/tools/markdown.ts, normalizes Vocs build metadata to repo-relative paths, and runs the unchanged publication leak scan over dist/. Synthetic playground paths and IPs use public examples. Run npm run test:llms after building.
+Vocs checks internal links during the production build, and a dead link fails it. docs/tools/check-site.ts then validates built page and heading targets and self-contained images. Generated output is written to `dist/`. The prebuild hook runs the kernel law suite, or reuses the receipt of a passing run with the same inputs (`docs/tools/kernel-facts.ts`), and syncs both doc sets. The postbuild hook writes Markdown copies and llms.txt to dist/public using docs/tools/markdown.ts, normalizes Vocs build metadata to repo-relative paths, and runs the unchanged publication leak scan over dist/. Synthetic playground paths and IPs use public examples. Run npm run test:llms after building.
 
 ### Browser contrast check
 
