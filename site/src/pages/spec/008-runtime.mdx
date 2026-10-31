@@ -496,3 +496,27 @@ const result = await Effect.runPromiseExit(Effect.gen(function* () {
 }))
 if (!Exit.isSuccess(result) || trace.join() !== "item,loop,child,joined") throw new Error("consuming-fiber ownership changed")
 ```
+
+The producer callback supplies `Scope` for its body, so its inferred `Stream` environment excludes that Scope and keeps other services ([Producers](/spec/002-running#producers)). This witness's body needs `Scope.Scope`, while each consumption succeeds with `[1]` without an external `Scope`. Construction is cold; two consumptions start two bodies and close two callback scopes. Values of type `Scope.Scope` and explicit annotation checks are unchanged, and the witness adds no ordering promise for unrelated fibers.
+
+```ts [Effect]
+// Producer Scope witness: VIP-21, VIP-31, VIP-32
+import { Effect, Exit, Queue, Scope, Stream } from "effect"
+
+let starts = 0, closes = 0
+const body: Effect.Effect<void, never, Scope.Scope> = Effect.gen(function* () {
+  starts++
+  yield* Effect.addFinalizer(() => Effect.sync(() => { closes++ }))
+  yield* Effect.forkScoped(Effect.never)
+})
+const values: Stream.Stream<number> = Stream.callback<number>(queue => body.pipe(
+  Effect.andThen(Queue.offer(queue, 1)),
+  Effect.andThen(Queue.end(queue))
+), { bufferSize: 1, strategy: "suspend" })
+if (starts !== 0 || closes !== 0) throw new Error("producer started at construction")
+for (let run = 1; run <= 2; run++) {
+  const result = await Effect.runPromiseExit(Stream.runCollect(values))
+  if (!Exit.isSuccess(result) || result.value.join() !== "1") throw new Error("producer Exit changed")
+  if (starts !== run || closes !== run) throw new Error("callback Scope was not fresh or finalized")
+}
+```
