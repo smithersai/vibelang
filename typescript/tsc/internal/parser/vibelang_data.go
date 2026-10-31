@@ -161,7 +161,7 @@ func (p *Parser) parseDataVariant(form *VibeSyntax) *ast.Node {
 		// A variant's payload is readonly, as in Effect's Data.TaggedEnum (006).
 		saved := p.vibelangImplicitReadonly
 		p.vibelangImplicitReadonly = true
-		fields = p.parseTypeLiteral()
+		fields = p.parseDataFields()
 		p.vibelangImplicitReadonly = saved
 		for _, field := range fields.Members() {
 			if field.Type() != nil {
@@ -174,12 +174,47 @@ func (p *Parser) parseDataVariant(form *VibeSyntax) *ast.Node {
 	}
 	form.Variants = append(form.Variants, variant)
 	if !p.parseOptional(ast.KindCommaToken) {
-		p.parseSemicolon()
+		if p.canParseSemicolon() {
+			p.parseSemicolon()
+		} else {
+			p.diagnostics = append(p.diagnostics, dataMemberSeparatorDiagnostic(p.nodePos()))
+			p.hasParseError = true
+		}
 	}
 	signature := p.factory.NewPropertySignatureDeclaration(nil /*modifiers*/, name, nil /*postfixToken*/, fields, nil /*initializer*/)
 	p.finishNode(signature, pos)
 	p.withJSDoc(signature, jsdoc)
 	return signature
+}
+
+// VIP-16 / decided detail 241: only a data declaration's own member
+// separators use EK1605. Its nested TypeScript types keep their diagnostics.
+func dataMemberSeparatorDiagnostic(pos int) *ast.Diagnostic {
+	return ast.NewExternalDiagnostic(nil, core.NewTextRange(pos, pos), "EK", diagnostics.CategoryError, 1605,
+		"These data members need a separator. Write `;` or a line break between them.")
+}
+
+func (p *Parser) parseDataFields() *ast.Node {
+	pos := p.nodePos()
+	p.parseExpected(ast.KindOpenBraceToken)
+	members := p.parseList(PCTypeMembers, func(p *Parser) *ast.Node {
+		before := len(p.diagnostics)
+		member := p.parseTypeMember()
+		// parseTypeMember finishes by parsing its separator. Reclassify only
+		// that last failure at the current token; errors inside the member's
+		// type have different ranges and remain native TypeScript errors.
+		if len(p.diagnostics) > before && !p.canParseSemicolon() && p.token != ast.KindCommaToken {
+			i := len(p.diagnostics) - 1
+			d := p.diagnostics[i]
+			args := d.MessageArgs()
+			if d.Code() == diagnostics.X_0_expected.Code() && len(args) == 1 && args[0] == ";" && d.Loc() == p.scanner.TokenRange() {
+				p.diagnostics[i] = dataMemberSeparatorDiagnostic(member.End())
+			}
+		}
+		return member
+	})
+	p.parseExpected(ast.KindCloseBraceToken)
+	return p.finishNode(p.factory.NewTypeLiteralNode(members), pos)
 }
 
 // dataDefinition writes the interface through which a generic data type

@@ -594,6 +594,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - After VIP-1, a `catch` passed where an Effect is expected, as in `FiberMap.run(map, key, (effect { … }) catch effect (e) => …)`, ran instead of being passed, and `vibelang --fix --fix-vip-only` left it; the migration now writes it as `effect { return … catch … }`, the program the old compiler passed.
 
 - Contribution and maintainer guides directed work straight to `main`; they now describe landing on `vibe` and advancing `main` only through passing post-merge checks.
+- Adjacent `data` variants and payload fields reported a TypeScript semicolon error. They now report `EK1605` and offer a quick fix to insert `;`.
 - The migrate flow could not load from a staged copy of `.smithers`, as a toolchain build stages it: `source-paths.mjs` imported `minimatch` from `node_modules`. The flow now ships minimatch in `lib/vendor/`.
 - The migrate flow's `verify` failed a batch when the flow had just written a loader record (`.vibelang/js/.loader/`), calling that record a foreign file; the flow now treats everything under `.vibelang/js/` as its own output.
 - The migration codemod rewrote a migrated module's written `./c.js` or `./e` import of a module that stays TypeScript to `./c.ts` or `./e.ts`, so the package's published `.d.ts` no longer matched the original (18 of foldkit's 225 declarations); it now keeps every written specifier of an unchanged module and rewrites only a renamed module's name to `.vibe` (decided detail 272).

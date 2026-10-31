@@ -1,0 +1,4 @@
+// expect: EK1605
+data Variants { A B }
+data Payloads { A { x: number y: string } }
+data Nested { A { x: { n: number } /* keep */ y: string } B }
