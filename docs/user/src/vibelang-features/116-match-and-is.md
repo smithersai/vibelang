@@ -106,6 +106,7 @@ These matchers compile to the module's own test. A name means what it resolves t
 | `Result.Success`, `Result.Failure` | `Result.isResult(s) && Result.isSuccess(s)`, `Result.isResult(s) && Result.isFailure(s)` | the success, the failure |
 | `String`, `Number`, `Boolean`, `BigInt`, `Symbol` | `typeof` or `instanceof` the boxed constructor | the primitive value, unboxed with `valueOf()` for a boxed object |
 
+
 ```vibe
 // pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-6, VIP-7, VIP-14
 // run: try Console.log(greeting(Option.some("Ada"))); try Console.log(greeting(Option.none())); try Console.log(try report("ada")); try Console.log((try report("")).includes("NotFound"))
@@ -358,7 +359,7 @@ Support for the new forms arrives with the compiler's VIP implementation. VIP-7 
 
 A `match` can end a `do` block: `do { match (0) { default: 2; } }` has the selected arm’s value, `2`.
 
-`Date` patterns test `subject instanceof Date`, as other built-in constructor patterns do, so `Object.create(Date.prototype)` matches and a date from another realm may not.
+`Date` patterns test `subject instanceof Date`, as other built-in constructor patterns do, so `Object.create(Date.prototype)` matches and a date from another realm may not. Replacing a date’s prototype can make it stop matching. Errors from prototype lookup propagate normally.
 
 Imported module aliases work in the six retained `Option`, `Exit` and `Result` patterns. Each checks the module brand before its variant guard; an unbranded subject falls through to the next arm.
 

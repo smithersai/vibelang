@@ -39,13 +39,9 @@ const primitiveTypes = new Map<unknown, string>([
   [Symbol, "symbol"]
 ])
 
+// VIP-7, detail 67a: Date follows the current native prototype chain.
 function dateMatches(subject: unknown): boolean {
-  try {
-    Date.prototype.getTime.call(subject)
-    return true
-  } catch {
-    return false
-  }
+  return subject instanceof Date
 }
 
 /**

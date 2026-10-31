@@ -1,0 +1,14 @@
+// expect-result: [true,true,true,true,true,true,false,false,true,true,false,false]
+export effect function main(): readonly boolean[]!never {
+  const subjects: readonly unknown[] = [
+    new Date(0), new Date(NaN), Object.create(Date.prototype),
+    Object.setPrototypeOf(new Date(0), Object.prototype),
+    new Proxy(new Date(0), {}), { [Symbol.toStringTag]: "Date" },
+  ]
+  const result: boolean[] = []
+  for (const value of subjects) {
+    result.push(value is Date)
+    result.push(match (value) { when Date: true; default: false; })
+  }
+  return result
+}
