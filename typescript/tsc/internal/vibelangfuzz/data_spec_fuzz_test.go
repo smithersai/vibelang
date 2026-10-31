@@ -237,7 +237,7 @@ func dataRules() []dataRule {
 	add("data-written-readonly", "006-data.md", "a variant's fields may be `readonly`", "data D { V { readonly n:number } }; const x:D=D.V({n:1})", "", "vip-core2")
 	add("schema-field-separator", "006-data.md", "Fields use TypeScript's type-member separators", "schema S { a:string b:number }", "error", "vip-decls")
 	add("schema-error-field-separator", "006-data.md", "Fields use TypeScript's type-member separators", "schema error E { a:string b:number }", "error", "vip-decls")
-	add("data-field-separator", "006-data.md", "Fields use TypeScript's type-member separators", "data D { V { a:string b:number } }", "error", "vip-decls")
+	add("data-field-separator", data, "A missing separator between two variants or two fields of a variant, `data D { A B }` or `A { x: number y: string }`, is `EK1605`.", "data D { V { a:string b:number } }", "only:EK1605", "impl-hunt-data")
 	add("schema-error-priority-tag-initializer", "003-failures.md", "Otherwise a member gets one diagnostic: the first row that names it.", "schema error E { _tag = 1 }", "only:EK2117", "vip-decls")
 	add("schema-error-priority-static-initializer", "003-failures.md", "Otherwise a member gets one diagnostic: the first row that names it.", "schema error E { static x = 1 }", "only:EK1302", "vip-decls")
 	add("schema-error-priority-setter", "003-failures.md", "Otherwise a member gets one diagnostic: the first row that names it.", "schema error E { set x(v:number) {} }", "only:EK1302", "vip-decls")
@@ -255,6 +255,7 @@ func dataRules() []dataRule {
 	add("async-match-direct", match, "Inside effect code, a direct `async match` is a compile error", `effect function f(){return async match(true){default:1;}}`, "error", "vip-match")
 	add("async-match-effect-try", match, "`await` is allowed there and effect `try` is not", `effect function f(){return try promise(()=>async match(true){default:try succeed(1);})}`, "error", "vip-match")
 
+	rules = append(rules, dataMemberSeparatorRules()...)
 	rules = append(rules, dataExhaustivenessRules()...)
 	rules = append(rules, dataHelperNameRules()...)
 	rules = append(rules, dataTaggedMembersRules()...)
