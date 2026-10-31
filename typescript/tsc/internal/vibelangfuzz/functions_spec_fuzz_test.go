@@ -316,7 +316,7 @@ func FuzzRestoreFunctionBoundary(f *testing.F) {
 	if err != nil {
 		f.Fatal(err)
 	}
-	const quote = "`restore` is lexical, and the nested Effect, or each item's Effect, runs outside the mask's control"
+	const quote = "the nested Effect, or each item's Effect, is outside the enclosing mask's control"
 	if !strings.Contains(string(chapter), quote) {
 		f.Fatal("stale restore boundary citation")
 	}
