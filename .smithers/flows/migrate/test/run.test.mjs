@@ -6,7 +6,7 @@ import { test } from "node:test"
 import { parseArgs, many, one } from "../lib/args.mjs"
 import { readIssues, validateIssue, ofKind } from "../lib/issues.mjs"
 import { buildInventory, isTestFile } from "../lib/inventory.mjs"
-import { formatVibe, makeConfig, nextStep, paths } from "../lib/steps.mjs"
+import { formatRecorded, formatVibe, makeConfig, nextStep, paths } from "../lib/steps.mjs"
 import { parseTokenCounts } from "../lib/tokens.mjs"
 import { repairPrompt } from "../lib/repair.mjs"
 
@@ -131,6 +131,35 @@ test("the repair prompt carries the context, the diagnostics, the checks and the
   assert.ok(prompt.startsWith("# Context\n"))
   for (const part of ["- pkg/src/a.vibe: EK4830 ×1", "EK4835 not fixed", "- pkg/src/a.vibe:8:2 error EK1002: Effect.gen expects\n  Write the body", "pkg/src/b.ts:1:1 error TS2305", '"kind":"codemod-gap","batch":"01"', "node step.mjs revert --run /run", "node step.mjs repair --run /run --batch 01 --done"]) {
     assert.ok(prompt.includes(part), `the prompt lacks ${part}`)
+  }
+})
+
+// vibelang-format sorts import specifiers, which a declaration prints, so the
+// sidecar an earlier compile wrote no longer matches the committed source.
+test("formatRecorded compiles a package again when formatting changed one of its .vibe files", async () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-format-sidecars-"))
+  try {
+    const compiled = join(root, "compiled.txt")
+    const a = join(root, "packages/core/src/a.vibe")
+    const sidecar = join(root, "packages/core/src/a.d.vibe.ts")
+    mkdirSync(join(root, "packages/core/node_modules/.bin"), { recursive: true })
+    mkdirSync(join(root, "packages/core/src"), { recursive: true })
+    mkdirSync(join(root, "packages/other"), { recursive: true })
+    writeFileSync(a, "b\na\n")
+    writeFileSync(sidecar, "b\na\n")
+    // A formatter that sorts, and a compiler that writes the sidecar from the source.
+    writeFileSync(join(root, "packages/core/node_modules/.bin/vibelang-format"), '#!/bin/sh\nshift\nfor f in "$@"; do sort -o "$f" "$f"; done\n', { mode: 0o755 })
+    writeFileSync(join(root, "packages/core/node_modules/.bin/vibelang"), `#!/bin/sh\npwd >> ${compiled}\ncp src/a.vibe src/a.d.vibe.ts\n`, { mode: 0o755 })
+    const config = { target: root, toolchain: { kind: "published" }, packages: [{ dir: "packages/core", tsconfig: "tsconfig.json" }, { dir: "packages/other", tsconfig: "tsconfig.json" }] }
+    const formatted = await formatRecorded(config, ["packages/core/src/a.vibe"], root)
+    assert.deepEqual(formatted, { files: ["packages/core/src/a.vibe"], code: 0 })
+    assert.equal(readFileSync(sidecar, "utf8"), "a\nb\n")
+    assert.equal(readFileSync(compiled, "utf8"), `${join(root, "packages/core")}\n`)
+    // Already formatted: nothing changed, so no compile.
+    await formatRecorded(config, ["packages/core/src/a.vibe"], root)
+    assert.equal(readFileSync(compiled, "utf8"), `${join(root, "packages/core")}\n`)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
   }
 })
 

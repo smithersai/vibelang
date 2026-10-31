@@ -181,6 +181,24 @@ export async function formatVibe(config, files, log) {
 }
 
 /**
+ * Formats the .vibe files a batch recorded and compiles each package whose
+ * files that changed: vibelang-format sorts import specifiers, which a
+ * declaration prints, so the sidecar from the last compile no longer matches
+ * its source, and the next batch's compile would carry the difference.
+ */
+export async function formatRecorded(config, files, logs) {
+  const t = config.target
+  const read = (file) => (existsSync(join(t, file)) ? readFileSync(join(t, file), "utf8") : null)
+  const before = new Map(files.map((file) => [file, read(file)]))
+  const formatted = await formatVibe(config, files, join(logs, "format-vibe.log"))
+  const changed = formatted.files.filter((file) => read(file) !== before.get(file))
+  for (const pkg of config.packages.filter((pkg) => changed.some((file) => packageOf(config, file) === pkg))) {
+    await check({ compiler: compilerOf(config), tsconfig: pkg.tsconfig, cwd: join(t, pkg.dir), root: t, log: join(logs, `sidecars-${slug(pkg.dir)}.log`) })
+  }
+  return formatted
+}
+
+/**
  * Runs vibelang agents init in the target t with the vibelang packageDir
  * installed, then formats what it wrote with the target's formatter: the
  * settings, plugin manifests and opencode.json it writes are the
@@ -721,7 +739,7 @@ export async function record(options) {
   // The batch's other files, such as a test or config the repair edited, are in the repository's own format.
   const written = (await Jj.changedPaths(t)).filter((c) => c.status !== "D").map((c) => c.path)
   const formatted = await formatWritten(t, written, join(p.batch(b), "logs", "format.log"))
-  const vibeFormatted = await formatVibe(config, written, join(p.batch(b), "logs", "format-vibe.log"))
+  const vibeFormatted = await formatRecorded(config, written, join(p.batch(b), "logs"))
   await assertPortable(t, machineRoots(t, p.run, config.toolchain.dir))
   const commit = await Jj.commit(t, lines.join("\n"))
   if (commit) await Jj.setBookmark(t, config.bookmark, commit)

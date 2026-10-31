@@ -15,6 +15,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - EK4301 rejected an Effect-returning value passed to a union such as `ResourceClassLike<R> | Platform` even when the value fit only the member with no call signature, as alchemy's `Provider.effect(Resource, …)` does; such a member now takes the value as data.
 
+- The migrate flow formatted a batch's `.vibe` files after the last compile, so each batch committed a stale `.d.vibe.ts` and the next batch's commit carried the difference; `record` now compiles again when formatting changed a file.
+
 - A writable interface or object-type property became `readonly` in emitted declarations, preventing TypeScript consumers from assigning to it; declarations now keep the source's property and index-signature modifiers, including optional and nested members.
 
 - Severity settings for TypeScript-form lint warnings reported `EK3006` and were ignored; every warning listed in Appendix B now accepts `vibe.severities` overrides.
