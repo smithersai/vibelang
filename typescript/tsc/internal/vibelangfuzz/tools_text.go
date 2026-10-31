@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"runtime/debug"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -115,6 +116,20 @@ var toolsFeatures = map[string]*regexp.Regexp{
 	"layer-declaration": regexp.MustCompile(`(^|[^\w$.])layer\s+[\w$]`),
 }
 
+// toolsFeature returns a feature's pattern. compiler-gap-vipNN recognizes a
+// specification example marked `// compiler-gap: pending VIP-NN` (with any
+// other VIPs), the gap the snippet checker reports as known rather than as a
+// failure (000-intro.md), so a tools oracle skips it as the checker does.
+func toolsFeature(name string) (*regexp.Regexp, bool) {
+	if vip, ok := strings.CutPrefix(name, "compiler-gap-vip"); ok {
+		if _, err := strconv.Atoi(vip); err == nil {
+			return regexp.MustCompile(`//\s*compiler-gap:\s*pending\b[^\n]*\bVIP-` + vip + `\b`), true
+		}
+	}
+	pattern, ok := toolsFeatures[name]
+	return pattern, ok
+}
+
 // toolsLeftOut reports whether a project uses a feature that testdata/pending
 // lists for the target, unless VIBELANG_FUZZ_PENDING=1 or a hang probe is running.
 func toolsLeftOut(target string, files map[string]string) bool {
@@ -122,7 +137,7 @@ func toolsLeftOut(target string, files map[string]string) bool {
 		return false
 	}
 	for name := range PendingFeatures(target) {
-		pattern, ok := toolsFeatures[name]
+		pattern, ok := toolsFeature(name)
 		if !ok {
 			panic("testdata/pending names an unknown feature " + name + " for " + target)
 		}
