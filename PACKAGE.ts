@@ -114,6 +114,7 @@ const specTests = [
   "TestUnionDataMemberQuoted",
   "TestCheckerLayout",
   "TestVibeModuleBoundaryQuoted",
+  "TestProvideParenthesizedExpressionsQuoted",
   "TestVibeModuleBoundaryRegression",
   "TestVibeModuleBoundaryEmission",
   "TestVibeModuleNativeCounterparts",

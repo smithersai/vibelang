@@ -255,6 +255,8 @@ effect function testBannerWithInlineSettings() {
 
 Replace a dependency to exercise the real factory, or the service itself to isolate its consumers. If a test needs different construction inputs, change a layer that already includes production dependencies at its exposed factory boundary. For a small local override, `provide Key = value` supplies `Layer.succeed(Key, value)`. All providers keep their source order; the later provider of the same service wins, including when a `Layer` follows `Key = value`. Put construction dependencies in an outer block so they exist while the inner layer builds: providers in one list supply the block together and don't feed one another's construction dependencies.
 
+Parentheses keep one provider expression intact. `provide (record(), Live) { … }` evaluates `record()` once and supplies the resulting `Live` layer. A parenthesized assignment is an ordinary assignment too. Write `provide A, B { … }` to supply both layers.
+
 ## Coming from Effect
 
 `service` declarations, with layer constants beside them, replace hand-written key classes, and `effect { ... }` replaces generator-based factories. The Layer graph, memoization, and resource semantics stay Effect 4's. `Effect.provide` wrappers currently draw `EK4836` and have a quick fix to write a `provide` block. `Effect.provideService` retains its native call: `provide Key = value` builds a `Layer`, changing `Scope` and `Layer.CurrentMemoMap`. `EK4836` explains why the service call has no automatic block rewrite.

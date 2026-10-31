@@ -572,13 +572,15 @@ func (p *Parser) scanStartOfVibeLangProvide() bool {
 	return p.token == ast.KindOpenBraceToken && !p.hasPrecedingLineBreak()
 }
 
-// scanVibeLangProvideArguments reports whether the current token, (, opens the
-// call shape of a provide block, provide(A, Key = value) { ... }: a provider
-// list, a closing parenthesis, and { on the same line. The list is read as an
-// expression, not as the parameters of an arrow function, which (a, b = {})
-// followed by { would otherwise look like. It moves the scanner; call it
-// through lookAhead.
+// scanVibeLangProvideArguments probes a parenthesized provider followed by
+// the same-line body. Probe inside its delimiters to avoid block-parameter
+// ambiguity; the actual parse preserves the complete parenthesized expression.
 func (p *Parser) scanVibeLangProvideArguments() bool {
+	// Inside the delimiters, a callback block belongs to the provider
+	// expression. The provide body can only follow the closing parenthesis.
+	saveNoBlockParams := p.vibelangNoBlockParams
+	p.vibelangNoBlockParams = false
+	defer func() { p.vibelangNoBlockParams = saveNoBlockParams }()
 	p.nextToken()
 	if p.token == ast.KindCloseParenToken {
 		return false
@@ -609,19 +611,20 @@ func (p *Parser) parseVibeLangProvideStatement() *ast.Node {
 	form := VibeSyntax{Kind: VibeSyntaxBlockStatement, Word: p.tokenRange()}
 	p.nextToken() // provide
 	var providers *ast.Node
+	saveNoBlockParams := p.vibelangNoBlockParams
+	p.vibelangNoBlockParams = true // the following { opens the provide body, not a block-parameter lambda
 	if p.token == ast.KindOpenParenToken && p.lookAhead((*Parser).scanVibeLangProvideArguments) {
-		// provide(A, Key = value) { ... } means provide A, Key = value { ... },
-		// as fork(x) means fork x.
-		p.nextToken()
-		providers = p.parseExpression()
-		p.parseExpected(ast.KindCloseParenToken)
+		// The complete provider is parenthesized. Parse those parentheses
+		// directly: TypeScript's speculative arrow recovery treats (x = y) {
+		// as a parameter list missing =>, but this { is the provide body.
+		// An actual arrow's => fails this probe and keeps the ordinary parse.
+		p.vibelangNoBlockParams = false
+		providers = p.parseParenthesizedExpression()
 	} else {
-		saveNoBlockParams := p.vibelangNoBlockParams
-		p.vibelangNoBlockParams = true // the { after the providers opens the block (vibelang_blocks.go)
 		providers = p.parseExpression()
 		p.checkVibeLangProviderLineBreaks(providers)
-		p.vibelangNoBlockParams = saveNoBlockParams
 	}
+	p.vibelangNoBlockParams = saveNoBlockParams
 	form.Head = core.NewTextRange(form.Word.Pos(), p.nodePos())
 	layer := p.vibelangProviders(providers)
 	statement := p.vibelangSpanning(p.factory.NewExpressionStatement(layer), layer.Loc)
@@ -670,9 +673,6 @@ func (p *Parser) vibelangProviders(expression *ast.Node) *ast.Node {
 		items = append(items, node)
 	}
 	list := expression
-	for ast.IsParenthesizedExpression(list) {
-		list = list.Expression() // provide(A, Key = value) { ... } reads as provide A, Key = value { ... }
-	}
 	collect(list)
 	services := false
 	for i, item := range items {

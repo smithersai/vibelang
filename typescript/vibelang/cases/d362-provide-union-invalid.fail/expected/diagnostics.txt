@@ -1,1 +1,1 @@
-main.vibe(6,12): error EK3207
+main.vibe(6,11): error EK3207

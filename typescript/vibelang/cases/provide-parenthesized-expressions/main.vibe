@@ -1,0 +1,12 @@
+// expect-result: [1,1]
+export effect function main() {
+  const seen: number[] = []
+  let count = 0
+  provide (seen.push(1), Layer.empty) {
+    count = seen.length
+  }
+  let chosen = Layer.empty
+  provide (chosen = Layer.empty) {
+    return [count, seen.length]
+  }
+}
