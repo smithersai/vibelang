@@ -4,7 +4,7 @@ import { block, chapter, read, run } from "./spec-witness.mjs"
 
 test("primitive templates follow the formal grammar and never coerce subjects", () => {
   const match = chapter("004-match")
-  assert.ok(match.includes("An interpolated template in pattern position is a syntax error"))
+  assert.ok(match.includes("An interpolated template in pattern position is `EK0707`"))
   assert.ok(match.includes("A no-substitution template uses general `SameValueZero`"))
   const pin = read("docs/design/vips/tc39-pattern-matching/README.md")
   assert.ok(pin.includes("| Primitive template patterns |"))

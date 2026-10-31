@@ -243,7 +243,7 @@ effect function firstFailure(id: string) {
 
 Loop bindings follow the pinned TC39 loop scopes. A `for` head scopes its bindings to the head and body, with per-iteration copies for `for-of`. The proposal gives `while` and `do-while` a head scope and per-iteration body scopes. Bindings are in the temporal dead zone on the first `do-while` iteration.
 
-A template pattern such as `` `ready` `` has no substitutions and compares without coercion. For interpolation use a guard, ``when let value and if (value === `tag-${kind}`): ...;``; an interpolated primitive pattern is a syntax error.
+A template pattern such as `` `ready` `` has no substitutions and compares without coercion. For interpolation use a guard, ``when let value and if (value === `tag-${kind}`): ...;``; an interpolated primitive pattern is `EK0707`.
 
 A default arm follows the failed ordered pattern and guard tests, as TypeScript control flow does; its type is independent of the exhaustiveness check. A negated class with an own matcher complements that matcher, so a boolean matcher does not imply an `instanceof` exclusion. `async match` adopts returned Promises and thenables, giving `Promise<Awaited<U>>` for arm union `U`.
 

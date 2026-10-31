@@ -37,7 +37,36 @@ The first `label` counterpart uses a short object test because its subject type 
 
 The arm grammar is [MatchBody](900-appendices.md#matchbody), [MatchArm](900-appendices.md#matcharm) and [ArmBody](900-appendices.md#armbody): the pinned draft with VIP-7's `when` prefix and VIP-5's `throw` arm body. At least one arm is required; `default` appears at most once, last; guards belong to `MatchPattern` (`P and if (condition)`). Separate arms with `;`, including the final arm; a missing separator is `EK0701` (quick fix: insert `;`). A newline alone is not a separator. The reconciliations are: relational patterns use the draft specification; regex patterns accept both literals and `RegExp` values; `async match` uses the explainer's Promise-producing sketch; custom matchers receive `(subject, { matchType })`, with `matchType` either `"boolean"` or `"extractor"`; the `RegExp.prototype` matcher uses the draft specification, emulated without modifying globals; built-in and primitive constructor tests use decided details 67a and 87 below.
 
-A primitive template pattern is a `NoSubstitutionTemplate`, such as `` `tag-A` ``. An interpolated template in pattern position is a syntax error; ordinary interpolation remains valid in guards and arm expressions. This follows the pinned formal grammar where the explainer leaves interpolation unsettled. A no-substitution template uses general `SameValueZero`: equal strings match and every non-string subject fails without coercion, as for a string literal.
+Invalid `match`/`is` grammar and pattern-specific early errors use `EK0707` when no more specific diagnostic is assigned. The message identifies the rejected form and a valid repair. Do not add it to a specific diagnostic for the same rejection, including arm separation, matcher admission, arity lint, ordinary-class extraction, parameter-home bindings, outward async-match jumps, exhaustiveness or service patterns. Independent native lexical, type and name errors, including errors in valid embedded expressions, retain TypeScript's diagnostics; malformed native templates do not become `EK0707` merely by appearing in a match.
+
+```vibe
+const bad = match (s) { when `tag-${kind}`: 1; default: 0; } // EK0707
+const good = match (s) { when let v and if (v === `tag-${kind}`): 1; default: 0; }
+const nativeError = match (s) { when let v and if (missingName): 1; default: 0; } // TS2304
+```
+
+The rejected primitive pattern has no runtime counterpart. The guard repair retains ordinary template evaluation:
+
+```ts effect
+import { Effect, Exit } from "effect"
+
+function patternGuardRepair(s: unknown, kind: string) {
+  const v = s
+  return v === `tag-${kind}` ? 1 : 0
+}
+function independentNativeError() {
+  // @ts-expect-error TS2304: this remains a native name error
+  return missingName ? 1 : 0
+}
+const patternSyntaxExit = Effect.runSyncExit(Effect.sync(() => [
+  patternGuardRepair("tag-A", "A"),
+  patternGuardRepair("tag-B", "A"),
+  patternGuardRepair(Symbol("tag-A"), "A")
+]))
+console.log(patternSyntaxExit) // Success([1, 0, 0])
+```
+
+A primitive template pattern is a `NoSubstitutionTemplate`, such as `` `tag-A` ``. An interpolated template in pattern position is `EK0707`; ordinary interpolation remains valid in guards and arm expressions. This follows the pinned formal grammar where the explainer leaves interpolation unsettled. A no-substitution template uses general `SameValueZero`: equal strings match and every non-string subject fails without coercion, as for a string literal.
 
 ```vibe es
 // compiler-gap: pending VIP-7
@@ -512,6 +541,7 @@ VibeLang adds these checks to TC39's proposal; `EK4701` is the exhaustiveness ch
 | Rule | Diagnostic |
 | --- | --- |
 | a `match` with no `default` over a finite union that misses a case | `EK4701` |
+| invalid `match`/`is` grammar or a pattern-specific early error without a more specific diagnostic | `EK0707` |
 | a missing `;` after a `match` arm, the last one included | `EK0701` |
 | a class pattern naming a `data` declaration or variant, a `schema`, or a directly constructed `Context.Reference`; a call-only callee whose return type fails detail 94, or a callee with neither signature (services use `EK3004`; [Class patterns](#class-patterns)) | `EK0702` |
 | an ordinary-class extractor without an own matcher (detail 100) | `EK0704` |

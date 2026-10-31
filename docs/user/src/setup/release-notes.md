@@ -94,6 +94,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Service reads such as `try Users` were rejected as non-Effects, and the LSP service fixture still used a retired `abstract class`; service keys now pass the Effect operand check, and the migrated fixture retains its expected `string` hover and member completions.
 
+- Rejected pattern syntax such as primitive template interpolation had no assigned fallback code; the reference now uses `EK0707` while preserving specific pattern diagnostics and independent TypeScript errors.
+
 - The migrate flow ran `vibelang --fix` over a whole package for each batch, which rewrote files earlier batches had committed and undid their hand repairs; each batch now keeps the rewrites of its own files only.
 
 - The migrate flow's rules told the repair agent that a function with no Effect operation stays plain, while the toolchain compiles an unannotated function or method to an Effect; the rules now say to write its return type or `: infer _`, and list the skill's forms the toolchain does not implement yet with what to write until each lands.
