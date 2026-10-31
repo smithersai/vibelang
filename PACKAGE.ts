@@ -47,6 +47,8 @@ const goVibelang = (summary: string, shell: string, data: ReadonlyArray<unknown>
 // Go sources, not the whole tree, so a specification edit runs them before it
 // lands and they stay cached otherwise.
 const specTests = [
+  "TestMigrationEffectOperandsQuoted",
+  "TestMigrationEffectHeritageQuoted",
   "TestCheckerLayout",
   "TestVIPCanonicalFieldNames",
   "TestVIPEncodedFieldNames",
