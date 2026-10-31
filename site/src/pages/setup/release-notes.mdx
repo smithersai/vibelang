@@ -13,6 +13,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ## 0.0.11 (unreleased)
 - The migrate flow's codemod, which rewrites a renamed module's importers anywhere in the repository, also rewrote specifiers such as `../src/Command.ts` that name a module an earlier migration had already made `.vibe`, so a batch edited files it had nothing to do with; the codemod and `revert` now change only the imports of the modules the batch renames or puts back, and the imports inside them.
 - The migrate flow's `record` left a batch's `.vibe` files unformatted whenever jj saw the module as renamed, as Smithers' `src/{Crypto.ts => Crypto.vibe}`, so the repository's format check then failed on them; `record` now formats and refreshes the sidecars of every `.vibe` file the batch wrote, renamed or not.
+- The migrate flow's `verify` listed a baseline test as missing when its name printed a date, such as `it.each([[new Date()]])("rejects %s")`, so a package with one could never pass; tests are now matched with any `Date#toString`, `toUTCString` or ISO date in their names set aside.
 - The migrate flow pointed a renamed module's package `exports` and `types` at `x.vibe`, so stock TypeScript, reading the module through its declaration sidecar, reported `TS2883` where a consumer's inferred type named one of the module's types; a `types` field or condition now names `x.d.vibe.ts`, and a bare entry becomes `{ "types": "./x.d.vibe.ts", "default": "./x.vibe" }`.
 - The migrate flow's `verify` passed a batch whose declaration emit failed in a migrated file, such as `TS7056` for a type too long to serialize, when the baseline's emit failed the same way and the two fallbacks were equal; it now fails the batch on any declaration emit error in a migrated file.
 - Formatting an inline `@internal` or other JSDoc comment beside an error payload could silently change its declaration output; the formatter now refuses changes to comment attachment and leaves the file intact.
@@ -183,6 +184,14 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Editor smoke validation rejected the safe `catch (cause: Cause)` migration; it now checks the replacement with `try exit(effect { ... })` and verifies that applying it adds no error.
 
 - With a `paths` alias such as `"@/*": ["./lib/*", "./src/*"]`, an import of `@/x.vibe` compiled against `lib/x.d.ts` but the loaders ran `src/x.vibe`; the loaders now resolve it as the compiler does, so both use `lib/x.d.ts`.
+- Compiler fuzz validation left selection modes around rare syntax untested; named splice fixtures now exercise every category and fuzz replay, source spans and donor choices.
+
+- The schema regression check rejected the two distinct `EK2109` messages for a reference with unproven required and readonly keys; it now checks both decoded-key promises.
+
+- Migration could lose literal braces from renamed paths and skip formatting the real file; rename summaries now preserve those braces and retain both the original and destination paths.
+
+- The migrate flow's declaration emit deleted every `.d.ts` file it wrote outside its output directory, so setup and verify deleted a tracked declaration file beside a source outside a project's `rootDir`; the emit now removes only the files it created and puts back the ones that existed.
+
 - Cross-platform compiler builds could fail without naming the affected platform or its exit status; each target now keeps a completion record and silent failures are identified.
 
 
@@ -204,6 +213,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Vite could fail with an unexpected token in a native dependency before evaluating its config; migration setup now preloads `vibelang/register` and selects `--configLoader native` for affected Vite scripts, with the supported config-loading path documented.
 
+- Converting an `async` function in the editor could leave `try` in an unmarked function or skip an arrow's awaited expression. The refactors now write `effect`, handle expression bodies, and preserve comments around the modifier.
+
 - Installing `vibelang` alone did not declare the Effect version it supports; the compiler now requires the same exact `effect` peer as the runtime, and release packaging rejects a missing, optional, ranged or mismatched pin.
 
 - Source collectors could silently omit migrated files because their extension allowlists named only TypeScript; migration setup now warns with the file and line when `.ts` appears without `.vibe`.
@@ -222,6 +233,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Running `go vet` on the fuzz suite reported a copied compiler-options lock guard; lint severity checks now clone options without copying that guard.
 
 - A documented field of a `service` declared `readonly` as a property of its own before the field (`readonly: any` and a mutable field), so consumers of the service shape failed with TS2741; the comment now precedes the whole `readonly` field.
+
+- The migrate flow's setup and Effect upgrade edited the manifests and tsconfigs of packages inside a Git submodule that the workspace named, so the lockfile recorded edits no commit of the parent could hold and a fresh `pnpm install --frozen-lockfile` at the submodule's gitlink failed; setup now leaves every submodule as it is, with a warning for a package the run names inside one.
 
 
 - Checking documentation examples with a symlinked `TMPDIR` could stop with `Compiler failed` instead of reporting an example's type error; diagnostics now stay attached to their examples and later pages are checked.
@@ -325,6 +338,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The configuration specification incorrectly based every inherited path on the declaring config. It now distinguishes ordinary relative paths from `${configDir}`, which uses the selected project config’s directory, matching TypeScript.
 
+- A predicate pattern whose parameter had a type, such as `when isText:` with `isText(s: string | number): s is string`, narrowed the subject to the function's type, so `s.toUpperCase()` in the arm and `s.toFixed()` in `default` did not compile, and a call-only extractor with a typed parameter bound `any`. The arm and `default` now narrow as `if (isText(s))` does, and the bindings take the extractor's element types.
+
 - `vibelang/bun` scanned every module of every dependency and resolved each of their imports a second time, so a large package's tests ran about three times slower and timed out with no `.vibe` module loaded; it now stops at `node_modules`, and a 294-module import graph costs about the same with the preload as without it.
 
 - `vibelang --fix` deleted `import * as Schema from "effect/Schema"` when a `Schema.TaggedError` class was its only use, and rewrote a class whose module has another name, so the declaration file changed; in a project that emits declarations it now keeps the import and leaves such a class.
@@ -345,6 +360,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The specification’s grammar used `Name` and `ReturnType` in its `effect` function productions without defining them, so it did not say whether `fork` or `join` could name an `effect` function expression. It now makes `const f = effect function join() { }` `EK1702`, as an `async` function expression named `await` is a syntax error, and keeps a declaration such as `export effect function fork() { }` in plain code valid.
 
+
+- `when Array(let n):` bound the whole array, a typed-array extractor bound the whole value, `when pair(let a, let b):` threw at run time when `pair` was a plain function, and a class whose matcher declared its hint as `{ matchType: "extractor" }` typed its bindings as the class instance. `Array` and typed arrays now list their elements, as the proposal says, a plain function is called with the value and `{ matchType: "extractor" }` and returns `false` or the values, and the matcher's declared return type types the bindings.
 
 - `vibelang-format` and the `vibelang/prettier` plugin wrote double quotes and wrapped at 120 columns whatever the repository's formatter settings said, so in a repository such as foldkit (Oxfmt, `singleQuote`, `printWidth: 80`) `.vibe` files differed in style from its `.ts` files. They now take the quote style and print width from the repository's Oxfmt, Prettier or dprint configuration, or from Prettier's options.
 

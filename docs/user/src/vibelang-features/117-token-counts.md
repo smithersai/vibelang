@@ -19,8 +19,8 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,194 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 15,041 |
-| The skill and the user guide (139 pages) | 331,093 |
-| The user guide alone | 326,899 |
+| The skill and the user guide (139 pages) | 332,021 |
+| The user guide alone | 327,827 |
 | The specification (10 chapters) | 144,074 |
 | The decision log, `docs/design/history/DECISIONS.md` | 141,521 |
 
@@ -96,13 +96,13 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Creating Effects](../getting-started/005-creating-effects.md) | 3,158 |
 | [Two Types of Errors](../error-management/006-two-error-types.md) | 699 |
 | [Basic Concurrency](../concurrency/007-basic-concurrency.md) | 2,454 |
-| **Core Concepts** | **19,666** |
+| **Core Concepts** | **19,749** |
 | [Effect's Modules](../getting-started/008-importing-effect.md) | 2,816 |
 | [Running Effects](../getting-started/009-running-effects.md) | 1,770 |
 | [Sequencing Effects](../getting-started/010-using-generators.md) | 1,629 |
 | [Building Pipelines](../getting-started/011-building-pipelines.md) | 2,012 |
-| [Devtools](../getting-started/012-devtools.md) | 11,439 |
-| **All 12 pages** | **33,475** |
+| [Devtools](../getting-started/012-devtools.md) | 11,522 |
+| **All 12 pages** | **33,558** |
 
 ### Setup
 
@@ -130,18 +130,18 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Zed](../setup/zed.md) | 479 |
 | [Other editors](../setup/other-editors.md) | 492 |
 | [Coding agents](../setup/coding-agents.md) | 990 |
-| **Upgrade** | **61,431** |
-| [Release notes](../setup/release-notes.md) | 61,431 |
-| **All 18 pages** | **90,708** |
+| **Upgrade** | **62,101** |
+| [Release notes](../setup/release-notes.md) | 62,101 |
+| **All 18 pages** | **91,378** |
 
 ### Guides
 
 | Page | Tokens |
 | --- | ---: |
 | [Getting Started](../013-getting-started.md) | 1,080 |
-| **Error Management** | **16,234** |
+| **Error Management** | **16,253** |
 | [Expected Errors](../error-management/014-expected-errors.md) | 5,439 |
-| [Unexpected Errors](../error-management/015-unexpected-errors.md) | 1,590 |
+| [Unexpected Errors](../error-management/015-unexpected-errors.md) | 1,609 |
 | [Fallback](../error-management/016-fallback.md) | 1,333 |
 | [Matching](../error-management/017-matching.md) | 869 |
 | [Retrying](../error-management/018-retrying.md) | 864 |
@@ -225,9 +225,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Behaviour** | **2,185** |
 | [Equivalence](../behaviour/083-equivalence.md) | 697 |
 | [Order](../behaviour/084-order.md) | 1,488 |
-| **Schema** | **36,568** |
+| **Schema** | **36,606** |
 | [Introduction](../schema/085-introduction.md) | 1,532 |
-| [Getting Started](../schema/086-getting-started.md) | 3,067 |
+| [Getting Started](../schema/086-getting-started.md) | 3,105 |
 | [Basic Usage](../schema/087-basic-usage.md) | 3,446 |
 | [Filters](../schema/088-filters.md) | 1,628 |
 | [Advanced Usage](../schema/089-advanced-usage.md) | 3,255 |
@@ -256,7 +256,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Platform globals in VibeLang](../platform/platform-globals.md) | 5,131 |
 | [Cloudflare Workers](../platform/cloudflare-workers.md) | 790 |
 | [Alchemy](../platform/alchemy.md) | 2,527 |
-| **All 101 pages** | **170,205** |
+| **All 101 pages** | **170,262** |
 
 ### VibeLang features
 
@@ -267,10 +267,10 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Building an HTTP API](113-building-an-http-api.md) | 1,649 |
 | [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 5,773 |
 | [Cheat sheet](115-cheat-sheet.md) | 10,847 |
-| [Pattern matching with match and is](116-match-and-is.md) | 5,821 |
+| [Pattern matching with match and is](116-match-and-is.md) | 5,939 |
 | [Diagnostic code map](diagnostic-code-map.md) | 2,082 |
 | [Experimental platform APIs](118-experimental-platform-apis.md) | 3,813 |
-| **All 8 pages** | **32,511** |
+| **All 8 pages** | **32,629** |
 
 ### Specification
 
