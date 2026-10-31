@@ -297,11 +297,18 @@ test("current release notes describe user fixes without internal CI or fuzz book
     assert.ok(fixes, "every unpublished section needs a bug list")
     return fixes
   }).join("\n")
-  assert.doesNotMatch(bugs, /\bfuzz\b|go-vibelangfuzz|pre-merge|post-merge|grammar test engine|editor syntax property tests|test cache/i)
-  assert.doesNotMatch(bugs, /regression checks|migration checks|diagnostic golden|fixtures now verify|grammar tooling now sees/i)
-  assert.doesNotMatch(bugs, /scripts\/ci\.sh|differential (?:checks|comparisons)|AST layout regression test|Repository validation|Arrow-body and heartbeat checks|named-region runtime checks/i)
-  assert.doesNotMatch(bugs, /Docs checks could use|The docs check read|Specification checks could mistake|A docs check could confuse|Generating documentation could hang|Spec-derived checks could confuse|The documented debugging recipe check|Differential .Exit. checks/i)
-  assert.doesNotMatch(bugs, /The release rehearsal stopped at its Vite warning check|A registry rehearsal could inherit/i)
+  const publicationNotes = releases.slice(0, candidate + 1).flatMap(release =>
+    release.match(/^- .*(?:\n(?!\n|[-*] |#{1,6} ).+)*/gm) ?? []
+  ).join("\n")
+  assert.doesNotMatch(publicationNotes, /\bfuzz\b|go-vibelangfuzz|pre-merge|post-merge|grammar test engine|editor syntax property tests|test cache/i)
+  assert.doesNotMatch(publicationNotes, /merge\s+gate|bounded\s+hang\s+probes|stale\s+hang\s+marker/i)
+  assert.doesNotMatch(publicationNotes, /regression checks|migration checks|diagnostic golden|fixtures now verify|grammar tooling now sees/i)
+  assert.doesNotMatch(publicationNotes, /scripts\/ci\.sh|differential (?:checks|comparisons)|AST layout regression test|Repository validation|Arrow-body and heartbeat checks|named-region runtime checks/i)
+  assert.doesNotMatch(publicationNotes, /Docs checks could use|The docs check read|Specification checks could mistake|A docs check could confuse|Generating documentation could hang|Spec-derived checks could confuse|The documented debugging recipe check|Differential .Exit. checks/i)
+  assert.doesNotMatch(publicationNotes, /The release rehearsal stopped at its Vite warning check|A registry rehearsal could inherit/i)
+  assert.doesNotMatch(publicationNotes, /forms[- ]table\s+check|Go\s+build\s+slot/i)
+  assert.doesNotMatch(publicationNotes, /(?:mask|LSP|editor)\s+smoke\s+test|fork\s+startup\s+checks/i)
+  assert.doesNotMatch(publicationNotes, /Compiler\s+validation\s+treated\s+an?\s+error\s+name|CI\s+reused\s+an?\s+older/i)
   const bullets = bugs.split("\n").filter(line => line.startsWith("- "))
   assert.equal(new Set(bullets).size, bullets.length, "each user-facing fix appears once")
   for (const symptom of ["Editor parsing rejected `for try` `Stream` loops", "A tool that reads a `.vibe` file through the TypeScript mapper"]) {

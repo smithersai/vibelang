@@ -16,12 +16,10 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The migrate flow's `verify` passed a batch whose declaration emit failed in a migrated file, such as `TS7056` for a type too long to serialize, when the baseline's emit failed the same way and the two fallbacks were equal; it now fails the batch on any declaration emit error in a migrated file.
 - Formatting an inline `@internal` or other JSDoc comment beside an error payload could silently change its declaration output; the formatter now refuses changes to comment attachment and leaves the file intact.
 - The runtime helper `$produce` required an external `Scope` even though its Stream callback supplies one; its result now removes that requirement and keeps other services.
-- Compiler validation treated an error name as a private binding during rename and reported false failures; it now accounts for the public `_tag` value while checking every reference and edit (VIP-13, VIP-29).
 
 - Splitting `for concurrent` across lines could cause syntax errors; line breaks and multiline comments now work before either the limit or loop head.
 - Exporting a top-level `data` or `schema` named `as` produced a `.d.ts` file TypeScript could not parse; its exported type now uses an unambiguous declaration and keeps the same public name.
 
-- Retiring valid compiler cases could make the fuzz splicer's category check fail even though mutation still worked; it now checks a rare category explicitly when the random sample misses it.
 
 - Formatting `async f()` or `effect f()` silently migrated the declaration and removed `EK4618`; formatting now preserves the shorthand, and `vibelang --fix` applies its existing repair.
 
@@ -29,7 +27,6 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A local binding named `undefined` could reject `for concurrent` or silently limit its concurrency; an omitted limit now always runs unbounded.
 - The TypeScript mapper evaluated a `for concurrent` iterable before its written limit; both renderings now evaluate the limit first, once.
-- The mask smoke test could hang when interruption arrived before the child entered its mask; it now waits for a start signal and checks delayed child scheduling.
 - Fiber operators before exponentiation could compile or report a misleading type error. `fork` and `join` now require parentheses on the left of `**`, like `await`.
 
 - Effect methods with bigint literal names, such as `effect 1n()`, were rejected with syntax errors; those names now work as TypeScript method names do.
@@ -180,10 +177,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Installing `vibelang` alone did not declare the Effect version it supports; the compiler now requires the same exact `effect` peer as the runtime, and release packaging rejects a missing, optional, ranged or mismatched pin.
 
-- A fresh checkout failed the compiler package tests with `TS2883` on every `error` declaration, because `packages/runtime` installed its own Effect beneath the link each fixture uses; `scripts/ci.sh` now gives the runtime the `experiments` copy, and published installs were never affected.
 - Source collectors could silently omit migrated files because their extension allowlists named only TypeScript; migration setup now warns with the file and line when `.ts` appears without `.vibe`.
 
-- Release notes repeated fixes and included internal test results in an earlier unpublished section; the final check now covers all unpublished fixes and lists each user-visible change once.
+- Release notes repeated fixes and mixed maintainer validation entries with user-facing changes; the publication check now covers introductory bullets and every unpublished bug list while retaining each product fix once.
 
 - Checking documentation examples with a symlinked `TMPDIR` could stop with `Compiler failed` instead of reporting an example's type error; diagnostics now stay attached to their examples and later pages are checked.
 
@@ -207,7 +203,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Some unary or multiline top-level `await` expressions compiled into output incompatible with the selected target or CommonJS host; they now report `TS1378` or `TS1309`.
 
-- A contributor changing only documentation or tests could wait for another Go build slot during the forms-table check; the build graph now reuses a generator keyed on compiler sources while still freshly checking the table, decision snapshot and data-method declarations.
 
 - In a `.vibe` file a member of an interface or an object type was readonly to the checker, so `options.minimum = 0` was `TS2540`, while its declaration printed the member writable; such a member is now writable unless written `readonly`, as in TypeScript, and the checker and the declaration agree. The fields of `data`, `schema` and `error` bodies keep their readonly default, and `mutable` is still accepted. The migrate flow's codemod no longer writes `mutable`.
 
@@ -237,7 +232,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Migration checks could miss errors and repair notes in compiler output with Windows line endings, or mistake a normal error exit for a compiler crash; they now read those diagnostics and notes correctly.
 
-- The merge gate skipped known hang reproductions, so a fixed compiler could leave a stale hang marker that failed only after merging; the gate now runs the bounded hang probes before accepting the change.
 
 - The tooling specification linked to private numbered decisions for configuration, diagnostics, and lint rules; it now links to the accepted public VIP amendments.
 
@@ -548,7 +542,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Schema references could silently make required fields, tuple slots or record keys optional, or readonly fields writable. The specification now rejects conflicting decoded-key flags with `EK2109`, including implicitly readonly schema-error payloads.
 
-- Service reads such as `try Users` were rejected as non-Effects, and the LSP service fixture still used a retired `abstract class`; service keys now pass the Effect operand check, and the migrated fixture retains its expected `string` hover and member completions.
+- Service reads such as `try Users` were rejected as non-Effects; service keys now pass the Effect operand check.
 
 - Rejected pattern syntax such as primitive template interpolation had no assigned fallback code; the reference now uses `EK0707` while preserving specific pattern diagnostics and independent TypeScript errors.
 
@@ -560,7 +554,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A `.vibe` file in a project without `vibelang-runtime` or `effect` installed reported only `Cannot find namespace 'Effect'` or `Cannot find name 'TaggedError'`, and its exports declared `any`; each such error now names the package that supplies the name and says to install it.
 
-- Running the fork startup checks alongside individual compiler cases could delete their output; concurrent checks now use separate case copies.
 
 - EK4833 warned on `interface Api<A> extends Effect.Effect<A, never, never>`, where `A!E!R` cannot stand and its quick fix was refused; it now skips an interface's `extends` element and still rewrites an Effect type nested in its type arguments.
 
@@ -751,7 +744,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - `Date.now()`, `Date()`, `new Date()`, and `Math.random()` were incorrectly rejected with `EK4403`; these ECMAScript built-ins now compile as VIP-33 requires.
 
-- Schema hover checks in the LSP smoke test incorrectly required an `interface` label; they now verify the decoded `type` alias and field types.
 
 - `vibe.effectModules: false` left implicit Effect names available; it now requires imports, filters implicit editor suggestions and keeps required imports during `--fix`.
 
@@ -769,7 +761,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Project warning severities under `vibe.severities` were ignored; they now apply with config validation and inheritance, and `vibelang --fix` migrates legacy `vibelang.diagnostics` settings.
 - Severity overrides for `EK0508`, `EK0703` and `EK0801` lost their leading zero during lookup; all four severity values now apply to these warnings.
-- Diagnostic codes used the old numbering and dropped leading zeros; matching checks now use Appendix B codes, and terminal output keeps all four digits. See the [diagnostic code map](/vibelang-features/diagnostic-code-map).
+- Terminal diagnostics dropped leading zeros from VibeLang codes; they now preserve them. See the [diagnostic code map](/vibelang-features/diagnostic-code-map).
 
 - An identifier or call followed by a separate block on the next line was rejected with `EK1022`. Standalone blocks now compile normally, including after identifiers named `uninterruptible`, `interruptible` and `restore`.
 
@@ -824,11 +816,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The proposals comparison still listed handlers as shipped, and upstream drafts linked retired local research sources; handlers now remain explicitly open under VIP-35, archived chapters state that the first release has no handlers, and historical evidence links to its source revision.
 
-- The LSP smoke test failed when a contract quick fix omitted unused requirements. It now checks the canonical `A!E` title and edit.
 
-- The editor smoke test rejected its random-service fixture; `nextIntUnsafe` and `nextDoubleUnsafe` now return `number`, as Effect `4.1.0` requires.
 
-- The LSP smoke test treated an ordinary `async` function as invalid. It now checks that the function is accepted and its hover shows a `Promise`.
 
 - Benchmark projects could miss packages when the experiments and docs installs shared an npm scope. Staging now merges each scope's packages while keeping the first package found and the runtime's `effect` copy.
 
@@ -897,7 +886,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Rehearsing a release with the Windows compiler packages failed with an HTTP `403`; the throwaway registry now accepts both `@vibelang/cli-win32-x64` and `@vibelang/cli-win32-arm64`.
 
-- The optional Windows smoke test failed with an unhelpful module error in paths containing `#`; it now explains Vitest's limitation and how to run the compiler checks and the `--vitest` checks separately.
+- Running the optional Windows compiler check with `--vitest` in a path containing `#` failed with an unhelpful module error; it now explains Vitest's limitation and how to run compilation checks and `--vitest` checks separately.
 
 - Documentation hover requests keep their results and error codes after an internal cleanup; stdio protocol tests now cover split responses and server settings requests.
 
@@ -971,7 +960,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 - Formatting a concurrent loop whose limit used `try` could fail with an overlapping-edits error; the formatter now preserves the complete loop head.
-- After an Effect upgrade, CI reused an older `node_modules` tree and failed to build the runtime; CI now refreshes installs that disagree with a package's exact Effect pin.
 - Building from source could fail the runtime test of a 100,000-element delegated producer on a busy host after five seconds, while it was still delivering elements; it now allows 30 seconds.
 
 
@@ -994,7 +982,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The TypeScript mapper still read the built-in failure list that VIP-4 replaced, so it knew only `JSON.parse` and `decodeURI` and its contract test failed; it now takes every single-class annotation from VIP-4's table, such as `Intl.getCanonicalLocales` throwing `RangeError` and `atob` throwing `DOMException`.
 
-- The `examples/pipeline` README and output fixture expected a producer that never reads ahead, so the example check failed; both now show the VIP-21 order, where `Stream.take` closes the producer before the loop logs the second alert.
+- The `examples/pipeline` README and sample output showed producer logs in the wrong order; both now show `Stream.take` closing the producer before the loop logs the second alert (VIP-21).
 
 - Source maps from `vibelang-vite` and `vibelang-unplugin` named each `.vibe` source by `file:` URL, so webpack listed `src/file:/…/main.vibe` and Vite tests could not find the source. Bundler maps name the absolute path again; `vibelang/register` alone gives Node `file:` URLs, which a Windows drive path or a `#` needs.
 
@@ -1065,7 +1053,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Tree-sitter accepted unescaped line breaks inside quoted strings; it now rejects them as the compiler does, while preserving escaped line continuations.
 
 
-- Neovim's editor smoke test rejected an intentionally malformed LSP fixture; it now checks that fixture's expected parse error and keeps checking valid fixtures for clean syntax.
 
 - Tree-sitter highlighting could misread `catch`, `??`, statement starts, `!T`, empty type parameters and bare `await`; these forms now parse as the compiler parses them.
 
