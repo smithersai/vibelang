@@ -95,18 +95,14 @@ JS
     "target": "ES2022", "lib": ["ESNext", "DOM"],
     "module": "ESNext", "moduleResolution": "Bundler",
     "strict": true, "types": [], "skipLibCheck": true,
-    "rewriteRelativeImportExtensions": true, "noEmitOnError": true,
-    "vibelang": { "diagnostics": { "EK4403": "warning" } }
+    "rewriteRelativeImportExtensions": true, "noEmitOnError": true
   },
   "include": ["*.ts", "*.vibe"]
 }
 JSON
   cat >warning-vite/warning.vibe <<'VIBE'
 import { Effect } from "effect"
-export function stamp() {
-  Effect.sleep("1 millis")
-  return Date.now()
-}
+export const stamp: Effect.Effect<number, never, never> = Effect.succeed(42)
 VIBE
   cat >warning-vite/main.ts <<'TS'
 import { stamp } from "./warning.vibe"
@@ -124,7 +120,7 @@ JS
     exit 1
   fi
   cat "$scratch/$manager-vite.txt"
-  /usr/bin/grep -Fq 'warning EK4403' "$scratch/$manager-vite.txt"
+  /usr/bin/grep -Fq 'warning EK4833' "$scratch/$manager-vite.txt"
   /usr/bin/grep -Fq 'warning-only-vite-import' warning-vite/dist/assets/*.js
   step "Vite warning-only .vibe import: PASS (1 warning, emitted bundle)"
   if [ "$manager" = npm ]; then
