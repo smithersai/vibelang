@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport type * as Statement from \"effect/sql/Statement\";\ndeclare const make: () => Statement.Statement<{ readonly value: number }>;\nexport effect function direct() { return try make(); }\nexport effect function stored() {\n  const statement = make();\n  return try statement;\n}\n")

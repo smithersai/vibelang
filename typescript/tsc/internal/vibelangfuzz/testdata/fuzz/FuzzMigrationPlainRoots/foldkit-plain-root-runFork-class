@@ -1,0 +1,3 @@
+go test fuzz v1
+string("runFork:class")
+string("import { Effect } from \"effect\";\nexport class Roots { run() { return Effect.runFork(Effect.succeed(1)); } }\n")

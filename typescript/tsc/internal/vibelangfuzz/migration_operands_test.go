@@ -22,9 +22,14 @@ type migrationOperandRule struct {
 // test. The oracle does not ask today's compiler to decide the expected side.
 // alchemy-20 supplies the Config, inherited, branded and callable witnesses;
 // alchemy-14 supplies the yieldable error; t3code supplies the generic
-// subinterface, Effect's sql Statement<A>.
+// subinterface, Effect's sql Statement<A>, and the actual pinned SQL Statement
+// subtype, including its direct-call result and inherited aliases.
 func migrationOperandRules() []migrationOperandRule {
 	return []migrationOperandRule{
+		{"sql-statement", "import type * as Statement from \"effect/sql/Statement\"; declare const input: Statement.Statement<{ readonly value:number }>;", true},
+		{"sql-statement-inherited", "import type * as Statement from \"effect/sql/Statement\"; interface Query extends Statement.Statement<{ readonly value:number }> { readonly query:\"q\" }; declare const input:Query;", true},
+		{"sql-statement-branded", "import type * as Statement from \"effect/sql/Statement\"; declare const input:Statement.Statement<{ readonly value:number }> & { readonly query:\"q\" };", true},
+		{"sql-statement-generic", "import type * as Statement from \"effect/sql/Statement\"; type Query<A> = Statement.Statement<A>; declare const input:Query<{readonly value:number}>;", true},
 		{"exact", "declare const input: Effect.Effect<number, string>;", true},
 		{"config", "declare const input: Config.Config<string>;", true},
 		{"inherited", "interface Sub extends Effect.Effect<number> { readonly tag: \"Sub\" }; declare const input: Sub;", true},
@@ -69,6 +74,11 @@ func checkMigrationEffectOperand(t *testing.T, w *Workspace, rule migrationOpera
 	operators := []string{"try", "catch", "try.all", "fork"}
 	codes := []int32{502, 506, 1801, 1703}
 	op := int(variant & 3)
+	// Extend the SQL finding across try, catch and try.all. Fork's separate
+	// program-operand contract is outside this execution-operand extension.
+	if strings.HasPrefix(rule.key, "sql-statement") {
+		op %= 3
+	}
 	expression := []string{
 		"return try " + operand,
 		"return " + operand + " catch (() => 0)",

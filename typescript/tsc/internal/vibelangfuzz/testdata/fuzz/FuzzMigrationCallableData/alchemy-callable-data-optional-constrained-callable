@@ -1,0 +1,3 @@
+go test fuzz v1
+string("optional:constrained:callable")
+byte('\x00')

@@ -591,3 +591,13 @@ The docs-tools gate inventories every static-rule quote test against the root bu
 When a quick-fix check reports added errors, its file-and-code counts decide the failure. The diagnostic printed below that count includes its file, code and byte span. It comes from the edited program after matching the original diagnostic messages as a multiset, so an existing error with the same code does not hide the added diagnostic. A changed message alone does not change the count oracle.
 
 The loader script-project property covers Opencode's excluded script, missing projects, nested script paths and custom config names through both Node and Bun. Native TypeScript scripts remain controls; an explicit `VIBELANG_PROJECT` selects a config that includes the `.vibe` script.
+
+## Spec and migration static neighborhoods
+
+### Migrated callable boundaries
+
+`FuzzMigrationCallableData` compares TypeScript call admission with a VibeLang rename through required or optional noncallable union members, generic constraints, arrays, tuples and nested readonly wrappers. Synchronous callback requirements and ordinary data provide negative controls.
+
+`FuzzMigrationPlainRoots` puts root runners in plain function, arrow, method, getter, callback and asynchronous homes, retaining T3code's captured SDK runner. `FuzzMigrationEffectOperands` adds SQL Statement exact, inherited, branded and generic subtypes, comparing stored values with direct calls under `try`, `catch` and `try.all`.
+
+The oracles come from [functions](../design/src/001-functions.md) and [Effect operands](../design/src/002-running.md). The 114 keyed neighborhood files and four original migration archives retain the Alchemy, Foldkit and T3code patterns. The 53 observed feature gaps have separate feature and corpus pending entries owned by the migration lanes; a passing original witness stays in the corpus.

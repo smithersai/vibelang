@@ -1,0 +1,63 @@
+# Spec-derived gaps observed on 9f4764d274e9; static-next-seven-before.jsonl.
+FuzzMigrationPlainRoots root:captured-sdk compiler VIP-1: A keyword-free callable remains plain at a root runner, including nested callable homes; lane migfix-t3code
+FuzzMigrationPlainRoots root:runFork:arrow compiler VIP-1: A keyword-free callable remains plain at a root runner, including nested callable homes; lane migfix-foldkit
+FuzzMigrationPlainRoots root:runFork:class compiler VIP-1: A keyword-free callable remains plain at a root runner, including nested callable homes; lane migfix-foldkit
+FuzzMigrationPlainRoots root:runFork:factory compiler VIP-1: A keyword-free callable remains plain at a root runner, including nested callable homes; lane migfix-foldkit
+FuzzMigrationPlainRoots root:runFork:function compiler VIP-1: A keyword-free callable remains plain at a root runner, including nested callable homes; lane migfix-foldkit
+FuzzMigrationPlainRoots root:runFork:getter compiler VIP-1: A keyword-free callable remains plain at a root runner, including nested callable homes; lane migfix-foldkit
+FuzzMigrationPlainRoots root:runFork:object compiler VIP-1: A keyword-free callable remains plain at a root runner, including nested callable homes; lane migfix-foldkit
+FuzzMigrationPlainRoots root:runPromise:arrow compiler VIP-1: A keyword-free callable remains plain at a root runner, including nested callable homes; lane migfix-foldkit
+FuzzMigrationPlainRoots root:runPromise:class compiler VIP-1: A keyword-free callable remains plain at a root runner, including nested callable homes; lane migfix-foldkit
+FuzzMigrationPlainRoots root:runPromise:factory compiler VIP-1: A keyword-free callable remains plain at a root runner, including nested callable homes; lane migfix-foldkit
+FuzzMigrationPlainRoots root:runPromise:function compiler VIP-1: A keyword-free callable remains plain at a root runner, including nested callable homes; lane migfix-foldkit
+FuzzMigrationPlainRoots root:runPromise:getter compiler VIP-1: A keyword-free callable remains plain at a root runner, including nested callable homes; lane migfix-foldkit
+FuzzMigrationPlainRoots root:runPromise:object compiler VIP-1: A keyword-free callable remains plain at a root runner, including nested callable homes; lane migfix-foldkit
+FuzzMigrationPlainRoots root:runPromiseExit:arrow compiler VIP-1: A keyword-free callable remains plain at a root runner, including nested callable homes; lane migfix-foldkit
+FuzzMigrationPlainRoots root:runPromiseExit:class compiler VIP-1: A keyword-free callable remains plain at a root runner, including nested callable homes; lane migfix-foldkit
+FuzzMigrationPlainRoots root:runPromiseExit:factory compiler VIP-1: A keyword-free callable remains plain at a root runner, including nested callable homes; lane migfix-foldkit
+FuzzMigrationPlainRoots root:runPromiseExit:function compiler VIP-1: A keyword-free callable remains plain at a root runner, including nested callable homes; lane migfix-foldkit
+FuzzMigrationPlainRoots root:runPromiseExit:getter compiler VIP-1: A keyword-free callable remains plain at a root runner, including nested callable homes; lane migfix-foldkit
+FuzzMigrationPlainRoots root:runPromiseExit:object compiler VIP-1: A keyword-free callable remains plain at a root runner, including nested callable homes; lane migfix-foldkit
+FuzzMigrationPlainRoots root:runSync:arrow compiler VIP-1: A keyword-free callable remains plain at a root runner, including nested callable homes; lane migfix-foldkit
+FuzzMigrationPlainRoots root:runSync:class compiler VIP-1: A keyword-free callable remains plain at a root runner, including nested callable homes; lane migfix-foldkit
+FuzzMigrationPlainRoots root:runSync:factory compiler VIP-1: A keyword-free callable remains plain at a root runner, including nested callable homes; lane migfix-foldkit
+FuzzMigrationPlainRoots root:runSync:function compiler VIP-1: A keyword-free callable remains plain at a root runner, including nested callable homes; lane migfix-foldkit
+FuzzMigrationPlainRoots root:runSync:getter compiler VIP-1: A keyword-free callable remains plain at a root runner, including nested callable homes; lane migfix-foldkit
+FuzzMigrationPlainRoots root:runSync:object compiler VIP-1: A keyword-free callable remains plain at a root runner, including nested callable homes; lane migfix-foldkit
+FuzzMigrationPlainRoots root:runSyncExit:arrow compiler VIP-1: A keyword-free callable remains plain at a root runner, including nested callable homes; lane migfix-foldkit
+FuzzMigrationPlainRoots root:runSyncExit:class compiler VIP-1: A keyword-free callable remains plain at a root runner, including nested callable homes; lane migfix-foldkit
+FuzzMigrationPlainRoots root:runSyncExit:factory compiler VIP-1: A keyword-free callable remains plain at a root runner, including nested callable homes; lane migfix-foldkit
+FuzzMigrationPlainRoots root:runSyncExit:function compiler VIP-1: A keyword-free callable remains plain at a root runner, including nested callable homes; lane migfix-foldkit
+FuzzMigrationPlainRoots root:runSyncExit:getter compiler VIP-1: A keyword-free callable remains plain at a root runner, including nested callable homes; lane migfix-foldkit
+FuzzMigrationPlainRoots root:runSyncExit:object compiler VIP-1: A keyword-free callable remains plain at a root runner, including nested callable homes; lane migfix-foldkit
+FuzzMigrationPlainRoots corpus:foldkit-plain-root-runFork-arrow compiler VIP-1: minimized keyed reproduction of root:runFork:arrow; lane migfix-foldkit
+FuzzMigrationPlainRoots corpus:foldkit-plain-root-runFork-class compiler VIP-1: minimized keyed reproduction of root:runFork:class; lane migfix-foldkit
+FuzzMigrationPlainRoots corpus:foldkit-plain-root-runFork-factory compiler VIP-1: minimized keyed reproduction of root:runFork:factory; lane migfix-foldkit
+FuzzMigrationPlainRoots corpus:foldkit-plain-root-runFork-function compiler VIP-1: minimized keyed reproduction of root:runFork:function; lane migfix-foldkit
+FuzzMigrationPlainRoots corpus:foldkit-plain-root-runFork-getter compiler VIP-1: minimized keyed reproduction of root:runFork:getter; lane migfix-foldkit
+FuzzMigrationPlainRoots corpus:foldkit-plain-root-runFork-object compiler VIP-1: minimized keyed reproduction of root:runFork:object; lane migfix-foldkit
+FuzzMigrationPlainRoots corpus:foldkit-plain-root-runPromise-arrow compiler VIP-1: minimized keyed reproduction of root:runPromise:arrow; lane migfix-foldkit
+FuzzMigrationPlainRoots corpus:foldkit-plain-root-runPromise-class compiler VIP-1: minimized keyed reproduction of root:runPromise:class; lane migfix-foldkit
+FuzzMigrationPlainRoots corpus:foldkit-plain-root-runPromise-factory compiler VIP-1: minimized keyed reproduction of root:runPromise:factory; lane migfix-foldkit
+FuzzMigrationPlainRoots corpus:foldkit-plain-root-runPromise-function compiler VIP-1: minimized keyed reproduction of root:runPromise:function; lane migfix-foldkit
+FuzzMigrationPlainRoots corpus:foldkit-plain-root-runPromise-getter compiler VIP-1: minimized keyed reproduction of root:runPromise:getter; lane migfix-foldkit
+FuzzMigrationPlainRoots corpus:foldkit-plain-root-runPromise-object compiler VIP-1: minimized keyed reproduction of root:runPromise:object; lane migfix-foldkit
+FuzzMigrationPlainRoots corpus:foldkit-plain-root-runPromiseExit-arrow compiler VIP-1: minimized keyed reproduction of root:runPromiseExit:arrow; lane migfix-foldkit
+FuzzMigrationPlainRoots corpus:foldkit-plain-root-runPromiseExit-class compiler VIP-1: minimized keyed reproduction of root:runPromiseExit:class; lane migfix-foldkit
+FuzzMigrationPlainRoots corpus:foldkit-plain-root-runPromiseExit-factory compiler VIP-1: minimized keyed reproduction of root:runPromiseExit:factory; lane migfix-foldkit
+FuzzMigrationPlainRoots corpus:foldkit-plain-root-runPromiseExit-function compiler VIP-1: minimized keyed reproduction of root:runPromiseExit:function; lane migfix-foldkit
+FuzzMigrationPlainRoots corpus:foldkit-plain-root-runPromiseExit-getter compiler VIP-1: minimized keyed reproduction of root:runPromiseExit:getter; lane migfix-foldkit
+FuzzMigrationPlainRoots corpus:foldkit-plain-root-runPromiseExit-object compiler VIP-1: minimized keyed reproduction of root:runPromiseExit:object; lane migfix-foldkit
+FuzzMigrationPlainRoots corpus:foldkit-plain-root-runSync-arrow compiler VIP-1: minimized keyed reproduction of root:runSync:arrow; lane migfix-foldkit
+FuzzMigrationPlainRoots corpus:foldkit-plain-root-runSync-class compiler VIP-1: minimized keyed reproduction of root:runSync:class; lane migfix-foldkit
+FuzzMigrationPlainRoots corpus:foldkit-plain-root-runSync-factory compiler VIP-1: minimized keyed reproduction of root:runSync:factory; lane migfix-foldkit
+FuzzMigrationPlainRoots corpus:foldkit-plain-root-runSync-function compiler VIP-1: minimized keyed reproduction of root:runSync:function; lane migfix-foldkit
+FuzzMigrationPlainRoots corpus:foldkit-plain-root-runSync-getter compiler VIP-1: minimized keyed reproduction of root:runSync:getter; lane migfix-foldkit
+FuzzMigrationPlainRoots corpus:foldkit-plain-root-runSync-object compiler VIP-1: minimized keyed reproduction of root:runSync:object; lane migfix-foldkit
+FuzzMigrationPlainRoots corpus:foldkit-plain-root-runSyncExit-arrow compiler VIP-1: minimized keyed reproduction of root:runSyncExit:arrow; lane migfix-foldkit
+FuzzMigrationPlainRoots corpus:foldkit-plain-root-runSyncExit-class compiler VIP-1: minimized keyed reproduction of root:runSyncExit:class; lane migfix-foldkit
+FuzzMigrationPlainRoots corpus:foldkit-plain-root-runSyncExit-factory compiler VIP-1: minimized keyed reproduction of root:runSyncExit:factory; lane migfix-foldkit
+FuzzMigrationPlainRoots corpus:foldkit-plain-root-runSyncExit-function compiler VIP-1: minimized keyed reproduction of root:runSyncExit:function; lane migfix-foldkit
+FuzzMigrationPlainRoots corpus:foldkit-plain-root-runSyncExit-getter compiler VIP-1: minimized keyed reproduction of root:runSyncExit:getter; lane migfix-foldkit
+FuzzMigrationPlainRoots corpus:foldkit-plain-root-runSyncExit-object compiler VIP-1: minimized keyed reproduction of root:runSyncExit:object; lane migfix-foldkit
+FuzzMigrationPlainRoots corpus:t3code-captured-sdk-root-callbacks compiler VIP-1: minimized keyed reproduction of root:captured-sdk; lane migfix-t3code

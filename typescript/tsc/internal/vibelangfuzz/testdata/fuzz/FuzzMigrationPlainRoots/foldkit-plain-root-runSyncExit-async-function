@@ -1,0 +1,3 @@
+go test fuzz v1
+string("runSyncExit:async-function")
+string("import { Effect } from \"effect\";\nexport async function root() { return Effect.runSyncExit(Effect.succeed(1)); }\n")
