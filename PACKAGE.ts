@@ -108,6 +108,7 @@ const specTests = [
   "TestBangSlotGroupingQuoted",
   "TestEffectLintConfigurationQuoted",
   "TestServicesRulesQuoted",
+  "TestProducerBindingQuoted",
   "TestCLISpecCommandFlags",
   "TestVIPFiberIDNumberEquality",
   "TestErrorDeclarationTwinQuoted",
