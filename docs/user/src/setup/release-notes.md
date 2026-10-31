@@ -173,6 +173,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A browser crash during the site's contrast check reported only `Target crashed`; diagnostics now name the theme, page, audit state, failed requests and resource pressure.
 
+- Chapter 2 did not say where a `Cause` with both a failure and a defect comes from after dropping the wrong `try.any` example; it now names `Effect.failCause` in TypeScript code.
+
 - Chapter 1 showed an `effect` function binding its parameters before `Effect.gen`, as if a destructuring failure threw at the call; it now says the call returns an Effect that dies with the error, as an `async` call returns a rejected Promise.
 
 - The specification omitted the code for `try a ** b`, which ECMAScript-style parsing rejects as it rejects `await a ** b`; chapter 2 and Appendix B now name it `EK0510`, with the fix `(try a) ** b`.

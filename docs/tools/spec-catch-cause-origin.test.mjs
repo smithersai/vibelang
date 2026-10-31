@@ -8,7 +8,7 @@ const running = () => process.env.SPEC_RUNNING ? readFileSync(process.env.SPEC_R
 test("catch's mixed-cause explanation does not attribute an unelected failure to try.any", () => {
   const text = running()
   assert.doesNotMatch(text, /as `try.any` gives when an operand dies/)
-  assert.match(text, /a `Cause` with both a failure and a defect/)
+  assert.match(text, /a `Cause` with both a failure and a defect, such as one a `.ts` function builds with `Effect.failCause`, passes through/)
 })
 
 test("native error recovery and defect election differ from the cause's origin", () => {
