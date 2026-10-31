@@ -1,0 +1,5 @@
+function local(): number {
+ const AbortSignal = { timeout: (_n: number): number => 7 }
+ return AbortSignal.timeout(1)
+}
+export const result = local()

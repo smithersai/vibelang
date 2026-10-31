@@ -964,6 +964,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - `vibelang --fix` could refuse a safe rewrite inside `Effect.catchTags` because an existing error quoted its old arguments. It now keeps that diagnostic's identity while applying the rewrite.
 
+- Host timer and object-URL methods could escape checks through aliases, interface augmentations, or static `globalThis` constructor keys; those reads now consistently report `EK4402` while pure helpers and local implementations remain valid.
+
 - Running the migrate flow's setup again left the earlier setup's `.vibelang-toolchain` tarballs on disk, where `jj` committed them with the new setup; setup now removes that directory before it returns to the Effect upgrade.
 
 - In the specification's region-body rules, a paragraph about `do` checks sat between the sentence ending "how it transports completions is its choice:" and the list it introduces, so it read as that list. The paragraph now follows the list.
@@ -1063,6 +1065,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Nested interruption examples left the target of `restore` implicit. It now explicitly restores the nearest mask's entry state, including an already uninterruptible state, with a pending-interruption example.
 
+- Without host declarations, missing `fetch`, `process`, and `Buffer` names appeared as banned platform APIs; the compiler now keeps TypeScript's missing-name and missing-property diagnostics.
+
 - The migrate flow read a compiler crash as a clean run, recording no errors and no fixes; `compile`, `codemod` and the declaration step now stop and show the crash.
 
 - The migrate flow left a `.d.ts` beside each source file outside a project's `rootDir`, and the batch's commit picked them up; the declaration step now removes what the compiler wrote outside its output directory.
@@ -1099,6 +1103,10 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A plain `error` pattern rejected errors from another copy of a package; it now matches the same `_tag`, an error family's base still matches its subclasses' errors, and its extractor binds the original value.
 
 - A `data` declaration with more than four type parameters reported `EK2126`, the constraint diagnostic; it now reports `EK2801` and constraints keep `EK2126`.
+
+- Template-literal keys and repeated `globalThis.globalThis` accesses bypassed platform diagnostics; equivalent static spellings now report the same `EK4402` as direct access.
+
+- Host globals missing from the old name table bypassed platform diagnostics; their declaration files now identify values such as `FileReader`, `WebAssembly`, and `globalThis.Headers` and report `EK4402`.
 
 
 
@@ -1158,6 +1166,14 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 - Bare `Model` and `Prompt` gave generic missing-name errors, while `Utils` silently chose the root module; `EK1401` now lists every exporter and offers each import, and `--fix` preserves a previous root `Utils` binding with an explicit import (VIP-14, detail 55).
+
+- Host-specific `import.meta` members and copies of its object compiled in `.vibe` files; only direct `import.meta.url` reads are now allowed, with `EK4402` explaining how to move host access to TypeScript.
+
+- Copies of `globalThis` and reads through nonliteral keys bypassed its access restriction; they now report `EK0107`, while literal member access, type queries and local shadows keep working.
+
+- Literal `data:` and `blob:` imports could load string-supplied code from `.vibe` files; they now report `EK0107`, including URL-equivalent scheme spellings and imports inside Effect wrappers.
+
+- Inline type-only and empty Node imports could retain runtime module loads under `verbatimModuleSyntax`; they now report `EK4402`, and the type-binding fix writes an erased `import type` clause.
 
 
 - A `match` or `if`/`else` chain with thousands of arms over a large union took about a minute and a half to check; repeated narrowing now reuses its results, so a 2000-arm `match` checks in about 10 seconds.
@@ -1229,6 +1245,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `vibe.effectModules: false` left implicit Effect names available; it now requires imports, filters implicit editor suggestions and keeps required imports during `--fix`.
 
 - A module-level `provide` block reported a generic top-level error and suggested implicit execution through `main`; `EK1201` now points to an `effect function` or `effect { }` block (VIP-12).
+
+- Bare internal HTTP, TLS and legacy stream imports escaped the Node platform check; they now report `EK4402` like their `node:` forms, while type-only imports remain erased.
 
 - Config migration could put severity settings inside a JSONC comment containing `{`; it now keeps the settings active and the comment intact.
 
@@ -3099,12 +3117,14 @@ compiled code does.
 
 #### Platform globals through `globalThis` are EK4402
 
-`process.env` was already EK4402. `globalThis.process.env`,
+`process.env` was already `EK4402`. `globalThis.process.env`,
 `globalThis.fetch`, `globalThis.crypto.subtle`, `globalThis.location`,
-`globalThis.navigator`, and the other platform globals now are too.
+`globalThis.navigator`, and the other platform globals now are too when their
+host declarations resolve. Without those declarations, TypeScript's usual
+missing-member diagnostic remains. This standalone example has no Node types:
 
 ```vibe
-// expect-error: EK4402
+// expect-error: TS7017
 function home() {
   return globalThis.process.env.HOME
 }

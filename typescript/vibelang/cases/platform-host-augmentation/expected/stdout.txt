@@ -1,0 +1,1 @@
+type augmentation keeps host origins

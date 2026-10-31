@@ -1,0 +1,23 @@
+export function direct(): number {
+ let Signals = AbortSignal
+ const held = Signals.timeout // host-read
+ return 1
+}
+export function copied(): number {
+ let Signals = AbortSignal
+ const Alias = Signals
+ const held = Alias.timeout // host-read
+ return 1
+}
+export function shadowed(): number {
+ let Signals = AbortSignal
+ function other(): void { let Signals = 1; Signals = 2 }
+ const held = Signals.timeout // host-read
+ return 1
+}
+export function urls(): number {
+ let Urls = URL
+ const create = Urls.createObjectURL // host-read
+ const revoke = Urls["revokeObjectURL"] // host-read
+ return 1
+}

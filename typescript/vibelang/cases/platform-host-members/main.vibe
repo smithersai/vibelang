@@ -1,0 +1,7 @@
+const pure = AbortSignal.any([AbortSignal.abort()]).aborted
+const host = new URL("https://example.com").hostname
+function shadow(AbortSignal: {timeout(n: number): number}): number { return AbortSignal.timeout(3) }
+const typed: typeof AbortSignal.timeout = (_n: number): AbortSignal => AbortSignal.abort()
+const simulated = { timeout: (_n: number): AbortSignal => AbortSignal.abort() } satisfies Pick<typeof AbortSignal, "timeout">
+type Timeout = typeof AbortSignal.timeout
+export const result = [pure, host, shadow({ timeout: (n: number): number => n+1 }), typed(0).aborted, simulated.timeout(0).aborted]

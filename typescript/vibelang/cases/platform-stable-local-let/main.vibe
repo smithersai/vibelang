@@ -1,0 +1,59 @@
+type SignalsShape = Pick<typeof AbortSignal, "timeout">
+const local: typeof AbortSignal.timeout = (_n: number): AbortSignal => AbortSignal.abort()
+const mock: SignalsShape = { timeout: local }
+function direct(): boolean {
+ let Signals: SignalsShape = AbortSignal
+ Signals = mock
+ return Signals.timeout(1).aborted
+}
+function closure(): boolean {
+ let Signals: SignalsShape = AbortSignal
+ function reset(): void { Signals = mock }
+ reset()
+ return Signals.timeout(1).aborted
+}
+function shorthand(): boolean {
+ let Signals: SignalsShape = AbortSignal
+ ;({ Signals } = { Signals: mock })
+ return Signals.timeout(1).aborted
+}
+function renamed(): boolean {
+ let Signals: SignalsShape = AbortSignal
+ ;({ constructor: Signals } = { constructor: mock })
+ return Signals.timeout(1).aborted
+}
+function array(): boolean {
+ let Signals: SignalsShape = AbortSignal
+ ;[Signals] = [mock]
+ return Signals.timeout(1).aborted
+}
+function loop(): boolean {
+ let Signals: SignalsShape = AbortSignal
+ for (Signals of [mock]) { }
+ return Signals.timeout(1).aborted
+}
+function logical(): boolean {
+ let Signals: SignalsShape = AbortSignal
+ Signals &&= mock
+ return Signals.timeout(1).aborted
+}
+function lookalike(): boolean {
+ let Signals: SignalsShape = mock
+ return Signals.timeout(1).aborted
+}
+function erased(): boolean {
+ let Signals = AbortSignal
+ type Timer = typeof Signals.timeout
+ return typeof Signals === "function"
+}
+function cast(): boolean {
+ let Signals: SignalsShape = AbortSignal
+ ;(Signals as SignalsShape) = mock
+ return Signals.timeout(1).aborted
+}
+function asserted(): boolean {
+ let Signals: SignalsShape = AbortSignal
+ ;(<SignalsShape>Signals) = mock
+ return Signals.timeout(1).aborted
+}
+export const result = [direct(), closure(), shorthand(), renamed(), array(), loop(), logical(), lookalike(), erased(), cast(), asserted()]

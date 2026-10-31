@@ -2738,6 +2738,13 @@ typescript/vibelang/cases/plain-throw-escapes.fail/a.vibe:19:14 lambda dual fall
 typescript/vibelang/cases/plain-throw-escapes.fail/a.vibe:24:13 lambda dual fallback
 typescript/vibelang/cases/plain-throw-escapes.fail/a.vibe:49:38 lambda plain table
 typescript/vibelang/cases/plain-throw-escapes.fail/a.vibe:7:25 lambda plain annotation
+typescript/vibelang/cases/platform-host-augmentation/main.vibe:2:33 lambda plain annotation
+typescript/vibelang/cases/platform-host-members/input/main.vibe:17:58 lambda plain table
+typescript/vibelang/cases/platform-host-members/input/main.vibe:18:72 lambda plain table
+typescript/vibelang/cases/platform-host-members/input/main.vibe:19:63 lambda plain table
+typescript/vibelang/cases/platform-host-members/main.vibe:4:43 lambda plain annotation
+typescript/vibelang/cases/platform-host-members/main.vibe:5:30 lambda plain annotation
+typescript/vibelang/cases/platform-host-members/main.vibe:7:54 lambda plain annotation
 typescript/vibelang/cases/platform-postmessage.fail/main.vibe:5:22 lambda plain fallback
 typescript/vibelang/cases/platform-postmessage.fail/main.vibe:6:28 lambda plain fallback
 typescript/vibelang/cases/platform-scope.fail/main.vibe:13:22 lambda plain fallback
@@ -2756,6 +2763,9 @@ typescript/vibelang/cases/platform-services/main.vibe:23:21 lambda choice fallba
 typescript/vibelang/cases/platform-services/main.vibe:24:24 lambda choice fallback
 typescript/vibelang/cases/platform-services/main.vibe:25:20 lambda plain fallback
 typescript/vibelang/cases/platform-services/main.vibe:27:43 lambda effectFn table
+typescript/vibelang/cases/platform-stable-local-let/main.vibe:2:43 lambda plain annotation
+typescript/vibelang/cases/platform-static-constructor-keys/main.vibe:10:26 lambda plain annotation
+typescript/vibelang/cases/platform-static-constructor-keys/main.vibe:9:26 lambda plain annotation
 typescript/vibelang/cases/prelude-collision-imports/main.vibe:13:59 lambda plain table
 typescript/vibelang/cases/prelude-imports-cjs/main.vibe:16:3 lambda effectFn service
 typescript/vibelang/cases/prelude-imports-cjs/main.vibe:29:23 lambda plain table

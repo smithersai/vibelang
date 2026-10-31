@@ -1,0 +1,16 @@
+type Local = {
+ AbortSignal: { timeout(n: number): number };
+ URL: { createObjectURL(value: string): string }
+}
+function shadow(globalThis: Local): [number, string] {
+ return [globalThis["AbortSignal"].timeout(1), globalThis[`URL`].createObjectURL("x")]
+}
+const local: Local = {
+ AbortSignal: { timeout: (_n: number): number => 7 },
+ URL: { createObjectURL: (value: string): string => value }
+}
+export const result = [
+ shadow(local),
+ globalThis["URL"].canParse("https://example.com"),
+ globalThis[`AbortSignal`].abort().aborted
+]

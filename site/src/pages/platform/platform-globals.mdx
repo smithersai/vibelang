@@ -13,6 +13,8 @@ A host messaging reference such as `postMessage`, `globalThis.postMessage` or `g
 
 Adding a type-only host interface augmentation in a `.ts` or `.d.ts` file does not change the global's origin: references to host constructors such as `XMLHttpRequest` still report `EK4402`. Local declarations and explicit imports continue to shadow those globals.
 
+Pure platform helpers do not make every member pure: `AbortSignal.timeout`, `URL.createObjectURL` and `URL.revokeObjectURL` report `EK4402`. The check also follows constant constructor/function aliases, named destructuring, and function-local `let` bindings with no source writes to that binding, and applies inside `Effect.try`, `Effect.tryPromise` and `Effect.sync` arrows. Use Effect's timeout operators, or move these host operations into a sibling `.ts` module and expose them through an Effect. A project's type-only augmentation of `AbortSignal` or `URL` leaves these host operations banned; it changes the interface, not the runtime constructor. Static `globalThis` access keeps the same origin through dotted, quoted, template-key and repeated `globalThis` receivers, including optional accesses. Local bindings, pure methods and erased type queries remain valid.
+
 ## Replacements
 
 Each row says what replaces a global or one of its members: an Effect API first, then VibeLang's experimental service where Effect lacks one, then the escape to TypeScript, with the reason. EK4402 reads the same table. In effect code, `try` runs an Effect value. Get a service first, then call its members. In effect code, `vibelang --fix` writes a `console` call as Effect's `Console`, which needs no layer: `console.error("failed:", name)` becomes `try Console.error("failed:", name)`.
@@ -75,7 +77,7 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `document.addEventListener` | `BrowserStream.fromEventListenerDocument("visibilitychange")` |
 | `exports` | `export const name = value` |
 | `fetch` | `try HttpClient.get(url)` |
-| `global` | `globalThis.name` for a statically named member. Other uses of the global object belong in a `.ts` file. |
+| `global` | escape to TypeScript for now: Effect has no global-object service; keep access to the host global object in TypeScript. |
 | `history` | escape to TypeScript for now: Effect has no service for the DOM; UI code belongs in a .ts or .tsx file, such as a React component's. |
 | `importScripts` | `effect/workers`: `import { Worker as EffectWorker }` and `WorkerRunner` |
 | `indexedDB` | `try (try KeyValueStore.KeyValueStore).get(key)` |
@@ -123,7 +125,7 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `requestIdleCallback` | escape to TypeScript for now: Effect has no service for the browser's animation and idle callbacks; schedule work with Schedule, or call them in a .ts file. |
 | `require` | `import { name } from "./module.ts"` |
 | `require.resolve` | escape to TypeScript: resolve in a `.ts` module and call it with `Effect.try`, because `import.meta` allows only `.url` |
-| `self` | `globalThis.name` for a statically named member. Other uses of the global object belong in a `.ts` file. |
+| `self` | escape to TypeScript for now: Effect has no global-object service; keep access to the host global object in TypeScript. |
 | `sessionStorage` | `try (try KeyValueStore.KeyValueStore).get(key)` |
 | `setImmediate` | `try yieldNow` |
 | `setInterval` | `try repeat(program, Schedule.spaced("1 second"))` |
@@ -135,13 +137,25 @@ A numeric return value from `main` does not set the exit status:
 `effect function main(): number!! { return 3 }` succeeds with 3 and still exits 0 when passed to `NodeRuntime.runMain`. Return normally for exit 0,
 fail for exit 1, or interrupt for exit 130.
 
-`import.meta` gives a `.vibe` file only `import.meta.url`, its module identity (VIP-33, amended). `import.meta.dirname`, `import.meta.filename` and `import.meta.env` read host state, as `__dirname`, `__filename` and `process.env` do, and take the same replacements. The specification makes every other member, `import.meta.resolve` included, and every use of `import.meta` as a value EK4402. In the specification's explicit module spelling, first read `try Path.Path`, then call `fromFileUrl` and `dirname` on that service. The compiler does not report these yet, and the `require.resolve` row above still shows its current suggestion.
+`globalThis` is available only as the object of a statically named member access: `.name`, `?.name`, a string-literal key or a template key without substitutions. Copying the object, destructuring it, passing or spreading it, using it with `in` or value-level `typeof`, or reading a nonliteral key reports `EK0107`; move that code to a `.ts` file. A repeated `globalThis.globalThis` also has to be a static member's object. Type queries and local bindings with the name `globalThis` keep their TypeScript meaning. Static access still follows the platform and dynamic-code rules.
+
+`import.meta` gives a `.vibe` file only `import.meta.url`, its module identity (VIP-33, amended). `import.meta.dirname`, `import.meta.filename` and `import.meta.env` read host state, as `__dirname`, `__filename` and `process.env` do, and take the same replacements. In the specification's explicit module spelling, first read `try Path.Path`, then call `fromFileUrl` and `dirname` on that service. Every other member, `import.meta.resolve` included, and every other use of `import.meta` as a value reports `EK4402`. Aliases, destructuring, computed keys, arguments and spreads are rejected, including inside `Effect.try`, `tryPromise` or `sync` callbacks. Direct `import.meta.url` reads keep working. Put module resolution in a TypeScript helper:
+
+```ts
+// resolve-module.ts
+export function resolveModule(specifier: string): string {
+  return import.meta.resolve(specifier)
+}
+```
+
 
 ## The replacements at work
 
 Each call above, in an effect function. A function that calls a service needs its layer at the application boundary, such as `NodeServices.layer` from `@effect/platform-node`:
 
 ```vibe
+import { resolveModule } from "./resolve-module.ts"
+
 effect function replacements(
   path: string, text: string, url: string, key: string, specifier: string, message: string,
   size: number, min: number, max: number, bytes: Uint8Array, a: Uint8Array, b: Uint8Array,
@@ -152,6 +166,7 @@ effect function replacements(
   const directory = (try Path.Path).resolve()
   const file = try (try Path.Path).fromFileUrl(try orDie(Effect.try(() => new URL(import.meta.url))))
   const here = (try Path.Path).dirname(try (try Path.Path).fromFileUrl(try orDie(Effect.try(() => new URL(import.meta.url)))))
+  const resolved = try Effect.try(() => resolveModule(specifier))
   const line = try (try Terminal.Terminal).readLine
   try Console.log(message)
   try Console.log(text)
@@ -287,6 +302,10 @@ import { server } from "./server.ts"
 ## Limits of static checks
 
 The platform check also recognizes optional accesses, string-literal and template-literal keys without substitutions, and repeated `globalThis.globalThis` objects. For example, ``globalThis[`fetch`]`` and `globalThis.globalThis.fetch` report the same `EK4402` as `globalThis.fetch`. Local shadows and erased type queries keep their TypeScript meaning.
+
+Host globals outside the replacement table are checked by their resolved declarations too. For example, value reads of `FileReader`, `WebAssembly`, window properties such as `name`, and `globalThis.Headers` report `EK4402`. Local properties and erased type queries remain allowed; Effect's in-scope namespaces retain precedence over host names.
+
+An unresolved name or property keeps TypeScript's normal diagnostic. Without DOM declarations, for example, `fetch` reports `TS2304`; missing Node.js declarations can produce `TS2591`. Platform diagnostics apply to values that resolve to host declarations.
 
 EK4402 is a static, lint-strength check, not a sandbox or a
 security boundary. They recognize direct uses, statically named members of `globalThis`, and

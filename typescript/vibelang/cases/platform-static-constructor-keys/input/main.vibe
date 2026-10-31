@@ -1,0 +1,11 @@
+export const dot = globalThis.AbortSignal.timeout // host-read
+export const quoted = globalThis["AbortSignal"].timeout // host-read
+export const template = globalThis[`AbortSignal`].timeout // host-read
+export const urlQuoted = globalThis["URL"].createObjectURL // host-read
+export const urlTemplate = globalThis[`URL`].revokeObjectURL // host-read
+export const repeated = globalThis.globalThis.AbortSignal.timeout // host-read
+export const repeatedQuoted = globalThis["globalThis"]["URL"].createObjectURL // host-read
+export const repeatedTemplate = globalThis[`globalThis`][`URL`].revokeObjectURL // host-read
+export const optional = globalThis?.["AbortSignal"]?.["timeout"] // host-read
+export const held = globalThis["URL"]
+export const aliased = held.createObjectURL // host-read

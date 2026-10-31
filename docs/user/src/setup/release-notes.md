@@ -970,6 +970,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - `vibelang --fix` could refuse a safe rewrite inside `Effect.catchTags` because an existing error quoted its old arguments. It now keeps that diagnostic's identity while applying the rewrite.
 
+- Host timer and object-URL methods could escape checks through aliases, interface augmentations, or static `globalThis` constructor keys; those reads now consistently report `EK4402` while pure helpers and local implementations remain valid.
+
 - Running the migrate flow's setup again left the earlier setup's `.vibelang-toolchain` tarballs on disk, where `jj` committed them with the new setup; setup now removes that directory before it returns to the Effect upgrade.
 
 - In the specification's region-body rules, a paragraph about `do` checks sat between the sentence ending "how it transports completions is its choice:" and the list it introduces, so it read as that list. The paragraph now follows the list.
@@ -3121,12 +3123,14 @@ compiled code does.
 
 #### Platform globals through `globalThis` are EK4402
 
-`process.env` was already EK4402. `globalThis.process.env`,
+`process.env` was already `EK4402`. `globalThis.process.env`,
 `globalThis.fetch`, `globalThis.crypto.subtle`, `globalThis.location`,
-`globalThis.navigator`, and the other platform globals now are too.
+`globalThis.navigator`, and the other platform globals now are too when their
+host declarations resolve. Without those declarations, TypeScript's usual
+missing-member diagnostic remains. This standalone example has no Node types:
 
 ```vibe
-// expect-error: EK4402
+// expect-error: TS7017
 function home() {
   return globalThis.process.env.HOME
 }
