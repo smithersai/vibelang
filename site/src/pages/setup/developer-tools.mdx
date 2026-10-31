@@ -14,8 +14,22 @@ Install `vibelang` and configure Prettier's `plugins` with
 `"vibelang/prettier"` (or pass `--plugin vibelang/prettier`). The plugin infers
 `.vibe` and delegates the entire file to the shipped dprint process plugin,
 the same formatter used by `vibelang-format --write` and
-`vibelang-format --check`. Prettier's own layout options do not alter that
-result. This keeps the two entry points identical. dprint 0.64.3 is installed
+`vibelang-format --check`. Prettier's `singleQuote` and `printWidth` decide
+the quote style and line width; its other layout options do not alter the
+result.
+
+`vibelang-format` reads the same two settings from the repository's formatter
+configuration, so `.vibe` files follow the style of its `.ts` files. It uses
+the nearest configuration from the file's directory up to the repository's
+root: `.oxfmtrc.json` or `.oxfmtrc.jsonc` (Oxfmt), `.prettierrc`,
+`.prettierrc.json` or the `prettier` key of `package.json` (Prettier), or
+`dprint.json` (its `typescript` `quoteStyle` and `lineWidth`). A setting the
+configuration leaves out takes that formatter's default: width 100 for Oxfmt,
+80 for Prettier, 120 for dprint, and double quotes. With no configuration,
+files get double quotes and width 120. A Prettier configuration in another
+form, such as `.prettierrc.yaml` or `prettier.config.js`, stops
+`vibelang-format` with an error naming the file: format through Prettier with
+`vibelang/prettier`, which reads every form. dprint 0.64.3 is installed
 with the compiler; the pinned TypeScript Wasm plugin is downloaded and cached
 on first use.
 

@@ -58,3 +58,10 @@ test("Prettier --debug-check ignores source locations while comparing the format
     assert.equal(readFileSync(join(dir, "probe.vibe"), "utf8"), input)
   } finally { rmSync(dir, { recursive: true, force: true }) }
 })
+
+test("Prettier's singleQuote and printWidth decide the .vibe file's quotes and width", async () => {
+  const input = 'export const greeting = "hi"\nexport const sizes = [111111, 222222, 333333, 444444, 555555, 666666, 777777, 888888, 999999, 101010]\n'
+  const expected = "export const greeting = 'hi'\nexport const sizes = [\n  111111,\n  222222,\n  333333,\n  444444,\n  555555,\n  666666,\n  777777,\n  888888,\n  999999,\n  101010,\n]\n"
+  assert.equal(await prettier.format(input, { filepath: "style.vibe", plugins: [plugin], singleQuote: true, printWidth: 100 }), expected)
+  assert.equal(await prettier.check(expected, { filepath: "style.vibe", plugins: [plugin], singleQuote: true, printWidth: 100 }), true)
+})
