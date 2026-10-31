@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
 import AxeBuilder from '@axe-core/playwright'
 import { routeBuiltSite } from './built-site.mjs'
+import { contrastDiagnostics } from './contrast-diagnostics.mjs'
 
 const site = fileURLToPath(new URL('../', import.meta.url))
 
@@ -14,21 +15,26 @@ export async function checkSiteContrast() {
   const observations = []
   const failures = []
   let browser
+  let closing = false
+  const diagnostics = contrastDiagnostics()
   const check = (condition, message) => { if (!condition) failures.push(message) }
   try {
-    browser = await chromium.launch({
+    browser = await diagnostics.run('launch', {}, () => chromium.launch({
       executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined,
       headless: true,
       args: ['--disable-dev-shm-usage'],
-    })
+    }))
+    diagnostics.event('browser-ready', { version: browser.version() })
+    browser.on('disconnected', () => { if (!closing) diagnostics.event('browser-disconnected') })
     for (const theme of ['light', 'dark']) {
       const context = await browser.newContext({ viewport: { width: 1366, height: 900 }, colorScheme: theme })
       await routeBuiltSite(context, resolve(site, 'dist/public'))
       for (const path of ['/', '/001-onboarding', '/vibelang-features/115-cheat-sheet']) {
         const page = await context.newPage()
+        diagnostics.watch(page, { theme, path })
         const errors = []
         page.on('pageerror', error => errors.push(error.message))
-        const response = await page.goto('https://vibelang.sh' + path, { waitUntil: 'networkidle' })
+        const response = await diagnostics.run('navigate', { theme, path }, () => page.goto('https://vibelang.sh' + path, { waitUntil: 'networkidle' }))
         assert.equal(response.status(), 200, path + ' must load from the build')
         await page.evaluate(() => document.fonts.ready)
         assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme), theme)
@@ -36,7 +42,7 @@ export async function checkSiteContrast() {
           await page.screenshot({ path: resolve(artifacts, 'home-1366-' + theme + '.png') })
         }
         const audit = async state => {
-          const result = await new AxeBuilder({ page }).withRules(['color-contrast']).analyze()
+          const result = await diagnostics.run('axe', { theme, path, state }, () => new AxeBuilder({ page }).withRules(['color-contrast']).analyze())
           const violations = []
           for (const node of result.violations.flatMap(rule => rule.nodes)) {
             const data = node.any.find(check => check.id === 'color-contrast')?.data
@@ -259,6 +265,7 @@ export async function checkSiteContrast() {
       await context.close()
     }
   } finally {
+    closing = true
     await browser?.close()
     if (artifacts) await writeFile(resolve(artifacts, 'contrast.json'), JSON.stringify({ observations, failures }, null, 2) + '\n')
   }

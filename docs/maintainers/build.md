@@ -304,3 +304,12 @@ package artifacts in the Go build cache on a fresh validation mirror.
   it.
 
 `//:site-spec-links` checks the generated specification and VIP pages for unconverted `.md` links, missing pages and missing anchors. `//:docs-tools` depends on it, so the pre-merge gate runs it. Its inputs are `site/src/pages/spec/**`, `site/src/pages/vips/**` and `docs/tools/site-spec-links.test.ts`; unrelated changes reuse its cached result.
+
+The `//:site-contrast` browser audit emits `site contrast diagnostic:` JSON
+records before and after each navigation and axe audit. Each names the theme,
+page, state, operation sequence and elapsed time. A `renderer-crash` or
+`browser-disconnected` event names the operation in flight; memory pressure,
+available memory and cgroup memory events distinguish resource exhaustion
+from an audit assertion. Failed requests include their path and error, with
+query strings omitted. `CONTRAST_ARTIFACTS` additionally saves screenshots
+and the completed contrast observations.

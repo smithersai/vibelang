@@ -171,6 +171,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Cross-platform compiler builds could fail without naming the affected platform or its exit status; each target now keeps a completion record and silent failures are identified.
 
 
+- A browser crash during the site's contrast check reported only `Target crashed`; diagnostics now name the theme, page, audit state, failed requests and resource pressure.
+
 - Installing `vibelang` alone did not declare the Effect version it supports; the compiler now requires the same exact `effect` peer as the runtime, and release packaging rejects a missing, optional, ranged or mismatched pin.
 
 - A fresh checkout failed the compiler package tests with `TS2883` on every `error` declaration, because `packages/runtime` installed its own Effect beneath the link each fixture uses; `scripts/ci.sh` now gives the runtime the `experiments` copy, and published installs were never affected.
