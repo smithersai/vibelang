@@ -78,7 +78,7 @@ test("contributing makes the maintainer-run PR checks explicit", async () => {
   expect(output).toContain("`sh scripts/e2e.sh` and the compiler case suite, `(cd typescript && sh vibelang/smoke.sh --jobs 8)`")
 })
 
-test("maintainer docs describe direct landings, outside reviews, and the six-platform release", async () => {
+test("maintainer docs describe direct landings, outside reviews, and every release platform", async () => {
   const output = render(await readSources())
   for (const path of ["MAINTAINERS.md", "CONTRIBUTING.md"]) {
     expect(output[path]).toContain("Maintainers land their own work directly on `main`.")
@@ -86,14 +86,17 @@ test("maintainer docs describe direct landings, outside reviews, and the six-pla
     expect(output[path]).not.toContain("A person reviews and merges every change.")
   }
   const maintainers = output["MAINTAINERS.md"]!
+  // The counts come from the table that builds the release, so a platform change fails here instead of a stale pin.
+  const script = await readFile(join(repository, "scripts/release/make-packages.mjs"), "utf8")
+  const table = /const platforms = \{([^}]*)\}/.exec(script)![1]!
+  const platforms = [...table.matchAll(/"([a-z0-9]+-[a-z0-9]+)":/g)].map((match) => match[1]!)
+  const packages = platforms.length + 5 // vibelang, runtime, vite, unplugin and create-vibelang
+  const word = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"]
+  expect(maintainers).toContain(`${word[platforms.length]} platform binaries`)
+  expect(maintainers).toContain(`${word[packages]} packages`)
+  for (const platform of platforms.filter((name) => name.startsWith("win32-"))) expect(maintainers).toContain(`@vibelang/cli-${platform}`)
   expect(maintainers).not.toContain("VIBELANG_SKIP=win32")
-  expect(maintainers).toContain("six platform binaries")
-  expect(maintainers).toContain("eleven packages")
-  expect(maintainers).toContain("@vibelang/cli-win32-x64")
-  expect(maintainers).toContain("@vibelang/cli-win32-arm64")
   expect(maintainers).toContain("publish.sh --otp <one-time-password>")
-  expect(maintainers).not.toContain("four platform binaries")
-  expect(maintainers).not.toContain("nine packages")
 })
 
 
