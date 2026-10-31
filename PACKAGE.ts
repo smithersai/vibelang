@@ -81,6 +81,7 @@ const specTests = [
   "TestCanonicalVIPExitReasonTagControls",
   "TestVIPTemplatesCited",
   "TestRunningRulesQuoted",
+  "TestServicesRulesQuoted",
   "TestCLISpecCommandFlags",
   "TestVIPFiberIDNumberEquality",
   "TestFunctionsSpecQuotes",

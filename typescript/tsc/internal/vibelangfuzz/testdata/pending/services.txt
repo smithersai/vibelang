@@ -1,0 +1,35 @@
+# Chapter 5 (Services) static rules: FuzzServicesRules reads each table row at test time.
+# Owner impl-hunt-svc has a 20-commit services stack queued (d7a5690ed2d7, 2026-10-31); when it lands, these probes XPASS and the lines go.
+
+FuzzServicesRules diagnostic:key-without-readonly compiler VIP-9: a static key without readonly is EK3008, not the EK0901 the table assigns (fix queued in impl-hunt-svc stack d7a5690ed2d7, enforce quoted literal keys with EK0901); lane impl-hunt-svc
+FuzzServicesRules corpus:key-without-readonly compiler VIP-9: minimized reproduction of diagnostic:key-without-readonly; lane impl-hunt-svc
+FuzzServicesRules diagnostic:key-not-literal compiler VIP-9: a key whose initializer is not a string literal is EK3008, not EK0901 (fix queued in impl-hunt-svc stack d7a5690ed2d7); lane impl-hunt-svc
+FuzzServicesRules corpus:key-not-literal compiler VIP-9: minimized reproduction of diagnostic:key-not-literal; lane impl-hunt-svc
+FuzzServicesRules diagnostic:member-body compiler VIP-9: a member with a body is the interim EK9207, not EK0902 (fix queued in impl-hunt-svc stack d7a5690ed2d7, report EK0902 for implementation members); lane impl-hunt-svc
+FuzzServicesRules corpus:member-body compiler VIP-9: minimized reproduction of diagnostic:member-body; lane impl-hunt-svc
+FuzzServicesRules diagnostic:member-initializer compiler VIP-9: a member with an initializer is the interim EK9207, not EK0902 (fix queued in impl-hunt-svc stack d7a5690ed2d7); lane impl-hunt-svc
+FuzzServicesRules corpus:member-initializer compiler VIP-9: minimized reproduction of diagnostic:member-initializer; lane impl-hunt-svc
+FuzzServicesRules diagnostic:member-private compiler VIP-9: a private member is TS1029 from the synthesized readonly, not EK0902 (fix queued in impl-hunt-svc stack d7a5690ed2d7, ee93e42e95d1 reject class modifiers on bodyless contracts); lane impl-hunt-svc
+FuzzServicesRules corpus:member-private compiler VIP-9: minimized reproduction of diagnostic:member-private; lane impl-hunt-svc
+FuzzServicesRules diagnostic:member-protected compiler VIP-9: a protected member is TS1029, not EK0902 (fix queued in impl-hunt-svc stack d7a5690ed2d7, ee93e42e95d1); lane impl-hunt-svc
+FuzzServicesRules corpus:member-protected compiler VIP-9: minimized reproduction of diagnostic:member-protected; lane impl-hunt-svc
+FuzzServicesRules reject:member-declare compiler VIP-9: a declare member compiles; the table assigns EK0902 (fix queued in impl-hunt-svc stack d7a5690ed2d7, ee93e42e95d1); lane impl-hunt-svc
+FuzzServicesRules corpus:member-declare compiler VIP-9: minimized reproduction of reject:member-declare; lane impl-hunt-svc
+FuzzServicesRules diagnostic:member-accessor compiler VIP-9: an accessor member is TS1243, not EK0902 (fix queued in impl-hunt-svc stack d7a5690ed2d7, ee93e42e95d1); lane impl-hunt-svc
+FuzzServicesRules corpus:member-accessor compiler VIP-9: minimized reproduction of diagnostic:member-accessor; lane impl-hunt-svc
+FuzzServicesRules diagnostic:member-override compiler VIP-9: an override member is TS1029 and TS4112, not EK0902 (fix queued in impl-hunt-svc stack d7a5690ed2d7, ee93e42e95d1); lane impl-hunt-svc
+FuzzServicesRules corpus:member-override compiler VIP-9: minimized reproduction of diagnostic:member-override; lane impl-hunt-svc
+FuzzServicesRules diagnostic:member-private-name compiler VIP-9: a #name member is TS18019, not EK0902 (fix queued in impl-hunt-svc stack d7a5690ed2d7, ee93e42e95d1); lane impl-hunt-svc
+FuzzServicesRules corpus:member-private-name compiler VIP-9: minimized reproduction of diagnostic:member-private-name; lane impl-hunt-svc
+FuzzServicesRules diagnostic:member-getter compiler VIP-9: a get accessor is the interim EK9207, not EK0902 (fix queued in impl-hunt-svc stack d7a5690ed2d7); lane impl-hunt-svc
+FuzzServicesRules corpus:member-getter compiler VIP-9: minimized reproduction of diagnostic:member-getter; lane impl-hunt-svc
+FuzzServicesRules reject:member-constructor compiler VIP-9: a constructor compiles; the table assigns EK0902 (fix queued in impl-hunt-svc stack d7a5690ed2d7, reject constructors and index signatures); lane impl-hunt-svc
+FuzzServicesRules corpus:member-constructor compiler VIP-9: minimized reproduction of reject:member-constructor; lane impl-hunt-svc
+FuzzServicesRules reject:member-index-signature compiler VIP-9: an index signature compiles; the table assigns EK0902 (fix queued in impl-hunt-svc stack d7a5690ed2d7, reject constructors and index signatures); lane impl-hunt-svc
+FuzzServicesRules corpus:member-index-signature compiler VIP-9: minimized reproduction of reject:member-index-signature; lane impl-hunt-svc
+FuzzServicesRules reject:member-static-other compiler VIP-9: a static member other than key and defaultValue compiles; the table assigns EK0902 (fix queued in impl-hunt-svc stack d7a5690ed2d7, reject extra static service members); lane impl-hunt-svc
+FuzzServicesRules corpus:member-static-other compiler VIP-9: minimized reproduction of reject:member-static-other; lane impl-hunt-svc
+FuzzServicesRules reject:member-effect-modifier compiler VIP-9: a bodyless effect method compiles; the table assigns EK0902 (fix queued in impl-hunt-svc stack d7a5690ed2d7, ee93e42e95d1); lane impl-hunt-svc
+FuzzServicesRules corpus:member-effect-modifier compiler VIP-9: minimized reproduction of reject:member-effect-modifier; lane impl-hunt-svc
+FuzzServicesRules diagnostic:export-default compiler VIP-9: export default service S is TypeScript syntax errors, not EK0905; chapter 5 is lane impl-hunt-svc territory, no fix queued yet; lane impl-hunt-svc
+FuzzServicesRules corpus:export-default compiler VIP-9: minimized reproduction of diagnostic:export-default; lane impl-hunt-svc

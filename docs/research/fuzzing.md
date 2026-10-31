@@ -437,6 +437,10 @@ lines and minimized byte corpus inputs remain active until the compiler lands
 the rule. The target checks nested plain functions, Effect-only operands, catch
 precedence, concurrent-array operands, forbidden loop exits and producer returns.
 
+## Service declaration coverage
+
+Chapter 5 has a dedicated static target, `FuzzServicesRules`, with rule-key corpus inputs. Each rule quotes a row of the static-rules table in `docs/design/src/005-services.md` at test time, compiles a valid control in a named package (so services derive their keys), then requires rejection of the forbidden form with the code the row assigns: `new`, `extends`, `instanceof` and generic services, written keys that are not readonly string literals, duplicate keys, and every kind of member the table excludes (a body, an initializer, each modifier and a private name, accessors, a constructor, an index signature, another static, a bodyless `effect` method), plus `extends`/`implements` clauses and `export default`. Gaps are `control:<rule>`, `reject:<rule>` and `diagnostic:<rule>`; pending lines live in `testdata/pending/services.txt`.
+
 Runtime coverage stays in `FuzzVIPDifferential`. The running-Effect VIP files add
 probes for parenthesized catch handlers and handlers returning fallback values, suspension and
 lexical mutation, `do` evaluation order, named tuples
