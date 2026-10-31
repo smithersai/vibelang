@@ -8,7 +8,6 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
-	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/printer"
 	"github.com/microsoft/TypeScript/tsc/internal/transformers"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
@@ -129,6 +128,9 @@ func transformDeclarations(resolver printer.EmitResolver, sourceFile *ast.Source
 			aliases := &runtimeAliasTypes{record: func(identifier *ast.Node) { recordTypeUse(state, sourceFile, identifier) }}
 			aliases.NewTransformer(aliases.visit, resolver.EmitContext())
 			declarations = aliases.TransformSourceFile(declarations)
+			dataTypes := &dataConstructorTypes{record: func(identifier *ast.Node) { recordTypeUse(state, sourceFile, identifier) }}
+			dataTypes.NewTransformer(dataTypes.visit, resolver.EmitContext())
+			declarations = dataTypes.TransformSourceFile(declarations)
 			collisions = lockedCopy(collisionModules(c))
 		})
 		if len(collisions) > 0 {
@@ -755,17 +757,16 @@ func (tx *moduleServiceTypes) visit(node *ast.Node) *ast.Node {
 // properties and index signatures (Chapter 1, Declaration output). The parser's
 // D134 readonly default is a checker rule, not a modifier in the source's public
 // TypeScript declaration. Explicit readonly and compiler-generated members keep
-// their modifiers. In particular, data payloads retain their documented
-// Data.TaggedEnum declaration form, and inferred Schema types are untouched.
+// their modifiers. A data payload is written as its Data.TaggedEnum
+// counterpart writes it, { tracking: string } (foldkit-16): Data.TaggedEnum
+// makes each field readonly in the type, whatever the payload writes.
+// Inferred Schema types are untouched.
 type sourcePropertyModifiers struct {
 	transformers.Transformer
 }
 
 func (tx *sourcePropertyModifiers) visit(node *ast.Node) *ast.Node {
 	original := tx.EmitContext().MostOriginal(node)
-	if parser.IsDataDeclaration(original) {
-		return node
-	}
 	node = tx.Visitor().VisitEachChild(node)
 	f := tx.Factory()
 	modifiers, dropped := withoutImplicitReadonly(f, node, original)
@@ -799,12 +800,9 @@ func withoutImplicitReadonly(f *printer.NodeFactory, member *ast.Node, original 
 	}
 	// Error payload signatures are generated in the class heritage, but
 	// retain the source field's range for diagnostics rather than Reparsed.
-	// They and data payloads follow their Effect counterparts, not ordinary
-	// interface/type-literal declaration modifiers.
+	// They follow their Effect counterparts, not ordinary interface/type-literal
+	// declaration modifiers.
 	for parent := original.Parent; parent != nil; parent = parent.Parent {
-		if parser.IsDataDeclaration(parent) {
-			return nil, false
-		}
 		if parent.Kind == ast.KindHeritageClause {
 			if form, _ := errorFormOf(parent.Parent); form != errorFormNone {
 				return nil, false

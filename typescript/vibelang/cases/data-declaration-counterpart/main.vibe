@@ -1,0 +1,22 @@
+// foldkit-16: a data declaration declares what TypeScript declares for its
+// Effect TypeScript counterpart (typescript/main.ts): the type first, the
+// payload as written, and the constant's inferred type.
+
+/** Why a lazy call ran its view instead of reusing the cached result. */
+export data LazyMissReason {
+  NoCachedEntry
+  ArgumentCountChanged { readonly previousCount: number; readonly currentCount: number }
+}
+
+/** A parcel on its way. */
+export data Delivery {
+  Waiting
+  Sent { tracking: string; carrier?: string }
+  Rejected { readonly reason: string }
+}
+
+export data Tree { Leaf; Node { left: Tree; right: Tree } }
+
+export data Json { Null; Items { items: ReadonlyArray<Json> }; Fields { fields: Record<string, Json> } }
+
+export data Outcome<A, E> { Ok { value: A }; Err { error: E } }

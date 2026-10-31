@@ -83,6 +83,7 @@ const specTests = [
   "TestFormatContractCommentNeighborhood",
   "TestFormatContractCommentEqualityTokens",
   "TestFormatContractCommentModules",
+  "TestDataCounterpartQuoted",
   "TestAsyncRefactorBridgesQuoted",
   "TestMigrationEffectOperandsQuoted",
   "TestMigrationEffectHeritageQuoted",

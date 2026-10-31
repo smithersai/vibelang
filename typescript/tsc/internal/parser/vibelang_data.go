@@ -19,13 +19,12 @@ import (
 //
 // parses as the declarations Effect's documentation writes for it:
 //
-//	const Delivery: Data.TaggedEnum.Constructor<Delivery> = Data.taggedEnum<Delivery>()
+//	const Delivery = Data.taggedEnum<Delivery>()
 //	type Delivery = Data.TaggedEnum<{ Waiting: {}; Sent: { readonly tracking: string } }>
 //
-// The constant's type is the one Data.taggedEnum returns, written out so that
-// a declaration file names it, Data.TaggedEnum.Constructor<Delivery>, rather
-// than expanding it, which TypeScript cannot do for a recursive data type
-// (TS5088).
+// The constant has no annotation, as in Effect TypeScript, so its declaration
+// file declares the type TypeScript infers for it, Data.TaggedEnum.Constructor
+// with the union expanded (D001 Declaration output, foldkit-16).
 //
 // A data type with type parameters passes them through the interface that
 // Data.TaggedEnum.WithGenerics describes, named for the type:
@@ -130,10 +129,10 @@ func (p *Parser) parseDataDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers
 	}
 	typeArgument := p.vibelangSynthesized(p.factory.NewTypeReferenceNode(constructedName, nil), name.Loc)
 	call := p.vibelangSynthesized(p.factory.NewCallExpression(callee, nil, p.newNodeList(name.Loc, []*ast.Node{typeArgument}), p.newNodeList(name.Loc, nil), ast.NodeFlagsNone), name.Loc)
+	// A generic one keeps Effect's generic constructors written out, which is
+	// also what TypeScript declares for Data.taggedEnum<NameDefinition>().
 	var constructorsType *ast.Node
-	if constructed == name.Text() {
-		constructorsType = p.dataType(keyword, []*ast.Node{p.dataReference(name.Text(), name.Loc)}, "Data", "TaggedEnum", "Constructor")
-	} else {
+	if constructed != name.Text() {
 		constructorsType = p.dataGenericConstructors(constructed, name.Loc, keyword)
 	}
 	declaration := p.vibelangSpanning(p.factory.NewVariableDeclaration(p.mIdent(name.Text(), name.Loc), nil /*exclamationToken*/, constructorsType, call), name.Loc)

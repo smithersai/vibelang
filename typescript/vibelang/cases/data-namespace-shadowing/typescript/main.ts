@@ -1,7 +1,7 @@
 import { Data as Data_1 } from "effect"
 export const Data = "user namespace"
-export const Parcel: Data_1.TaggedEnum.Constructor<Parcel> = Data_1.taggedEnum<Parcel>()
 export type Parcel = Data_1.TaggedEnum<{ Empty: {}; Value: { readonly value: number } }>
+export const Parcel = Data_1.taggedEnum<Parcel>()
 export const empty = Parcel.Empty()
 export const value = Parcel.Value({ value: 7 })
 export function generic(): string {

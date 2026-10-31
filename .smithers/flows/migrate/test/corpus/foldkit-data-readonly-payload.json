@@ -1,0 +1,6 @@
+{
+  "finding": "foldkit-16:data-declaration-counterpart",
+  "source": "foldkit packages/foldkit/src/html/lazy: control.ts vs the declaration a .vibe data declaration with readonly fields emits (drive repro 08-data-decl)",
+  "typescript": "import { Data } from \"effect\";\nexport type LazyMissReason = Data.TaggedEnum<{\n    NoCachedEntry: {};\n    ArgumentCountChanged: Readonly<{\n        previousCount: number;\n        currentCount: number;\n    }>;\n}>;\nexport declare const LazyMissReason: Data.TaggedEnum.Constructor<{\n    readonly _tag: \"ArgumentCountChanged\";\n    readonly previousCount: number;\n    readonly currentCount: number;\n} | {\n    readonly _tag: \"NoCachedEntry\";\n}>;\n",
+  "vibelang": "import { Data } from \"effect\";\nexport type LazyMissReason = Data.TaggedEnum<{\n    NoCachedEntry: {};\n    ArgumentCountChanged: {\n        readonly previousCount: number;\n        readonly currentCount: number;\n    };\n}>;\nexport declare const LazyMissReason: Data.TaggedEnum.Constructor<{\n    readonly _tag: \"NoCachedEntry\";\n} | {\n    readonly _tag: \"ArgumentCountChanged\";\n    readonly previousCount: number;\n    readonly currentCount: number;\n}>;\n"
+}

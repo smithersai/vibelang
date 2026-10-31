@@ -48,3 +48,28 @@ test("relative module normalization preserves strings, package names and declara
     assert.notEqual(canonicalize(ts, forms[form](path + ".d.ts")), canonicalize(ts, forms[form](path + ".d.js")))
   }), { seed: 298366, numRuns: 350 })
 })
+
+// foldkit-16: html/lazy's TypeScript wraps a TaggedEnum payload in
+// Readonly<{ … }>; its .vibe data declaration writes the fields readonly.
+test("foldkit-16: Readonly<{ … }> is the type literal with every member readonly", () => {
+  fc.assert(fc.property(
+    fc.uniqueArray(fc.record({ name: fc.constantFrom("a", "b", "count", "previousCount"), optional: fc.boolean(), written: fc.boolean(), type: fc.constantFrom("number", "string", "A", "ReadonlyArray<B>") }), { selector: (m) => m.name, minLength: 1, maxLength: 4 }),
+    fc.constantFrom((t) => `export type Item = ${t};`, (t) => `export type E = Data.TaggedEnum<{ V: ${t} }>;`, (t) => `export declare const make: (x: ${t}) => void;`),
+    fc.boolean(),
+    (members, wrap, index) => {
+      const field = (m, readonly) => `${readonly ? "readonly " : ""}${m.name}${m.optional ? "?" : ""}: ${m.type}`
+      const fields = members.map((m) => field(m, m.written))
+      if (index) fields.push(`${members.some((m) => m.written) ? "readonly " : ""}[key: string]: unknown`)
+      const wrapped = `Readonly<{ ${fields.join("; ")} }>`
+      const all = members.map((m) => field(m, true))
+      if (index) all.push("readonly [key: string]: unknown")
+      assert.equal(canonicalize(ts, wrap(wrapped)), canonicalize(ts, wrap(`{ ${all.join("; ")} }`)))
+      // A member Readonly does not cover stays writable on the other side.
+      if (!members[0].written) assert.notEqual(canonicalize(ts, wrap(`{ ${fields.join("; ")} }`)), canonicalize(ts, wrap(`{ ${all.join("; ")} }`)))
+    }
+  ), { seed: 16016, numRuns: 300 })
+  const corpus = JSON.parse(readFileSync(new URL("./corpus/foldkit-data-readonly-payload.json", import.meta.url), "utf8"))
+  assert.equal(canonicalize(ts, corpus.typescript), canonicalize(ts, corpus.vibelang), corpus.finding)
+  // A method makes no readonly member, so Readonly<{ m(): void }> keeps its spelling.
+  assert.notEqual(canonicalize(ts, "export type T = Readonly<{ m(): void }>;"), canonicalize(ts, "export type T = { m(): void };"))
+})

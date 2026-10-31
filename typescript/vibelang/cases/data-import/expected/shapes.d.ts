@@ -1,25 +1,33 @@
 import { Data, Effect } from "effect";
-export declare const Shape: Data.TaggedEnum.Constructor<Shape>;
 export type Shape = Data.TaggedEnum<{
     Circle: {
-        readonly radius: number;
+        radius: number;
     };
     Square: {
-        readonly side: number;
+        side: number;
     };
     Dot: {};
+}>;
+export declare const Shape: Data.TaggedEnum.Constructor<{
+    readonly _tag: "Circle";
+    readonly radius: number;
+} | {
+    readonly _tag: "Dot";
+} | {
+    readonly _tag: "Square";
+    readonly side: number;
+}>;
+export type Tree<A> = Data.TaggedEnum<{
+    Leaf: {
+        value: A;
+    };
+    Node: {
+        left: Tree<A>;
+        right: Tree<A>;
+    };
 }>;
 export interface TreeDefinition extends Data.TaggedEnum.WithGenerics<1> {
     readonly taggedEnum: Tree<this["A"]>;
 }
 export declare const Tree: Data.TaggedEnum.GenericConstructor<TreeDefinition>;
-export type Tree<A> = Data.TaggedEnum<{
-    Leaf: {
-        readonly value: A;
-    };
-    Node: {
-        readonly left: Tree<A>;
-        readonly right: Tree<A>;
-    };
-}>;
 export declare function area(shape: Shape): Effect.Effect<number, never, never>;

@@ -1,8 +1,10 @@
 // Declaration identity preserves the emitted public API. Canonical text drops
-// comments, sorts union/property/import members and removes redundant type
-// parentheses. D298 makes relative .ts and .js names equivalent. An
-// extensionless relative name becomes its emitted .js spelling only when
-// stock TypeScript proves both select the same present emitted declaration.
+// comments, sorts union/property/import members, removes redundant type
+// parentheses and reads Readonly<{ a: T }> as { readonly a: T }, the one
+// spelling a .vibe data payload has for it. D298 makes relative .ts and .js
+// names equivalent. An extensionless relative name becomes its emitted .js
+// spelling only when stock TypeScript proves both select the same present
+// emitted declaration.
 // Explicit names, unresolved modules and literal type values stay as written.
 // A published declaration (public-surface.json) is compared byte for byte.
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
@@ -155,6 +157,15 @@ export function canonicalize(ts, text, fileName = "file.d.ts", modulePath = (tex
       if (ts.isStringLiteral(x) && /^\.\.?\/.*(?<!\.d)\.ts$/.test(x.text) && isModuleName(ts, node)) return f.createStringLiteral(x.text.replace(/\.ts$/, ".js"))
       if (ts.isTypeReferenceNode(x) && x.typeArguments) {
         x = f.updateTypeReferenceNode(x, x.typeName, f.createNodeArray(x.typeArguments.map((t) => (ts.isParenthesizedTypeNode(t) ? t.type : t))))
+      }
+      // Readonly<{ a: T }> is { readonly a: T }: a .vibe data payload writes its
+      // fields readonly where the TypeScript wrapped them (foldkit-16).
+      if (ts.isTypeReferenceNode(x) && ts.isIdentifier(x.typeName) && x.typeName.text === "Readonly" && x.typeArguments?.length === 1 &&
+        ts.isTypeLiteralNode(x.typeArguments[0]) && x.typeArguments[0].members.every((m) => ts.isPropertySignature(m) || ts.isIndexSignatureDeclaration(m))) {
+        const readonly = (modifiers) => modifiers?.some((m) => m.kind === ts.SyntaxKind.ReadonlyKeyword) ? modifiers : [f.createModifier(ts.SyntaxKind.ReadonlyKeyword), ...(modifiers ?? [])]
+        x = f.createTypeLiteralNode(x.typeArguments[0].members.map((m) => ts.isPropertySignature(m)
+          ? f.updatePropertySignature(m, readonly(m.modifiers), m.name, m.questionToken, m.type)
+          : f.updateIndexSignature(m, readonly(m.modifiers), m.parameters, m.type)))
       }
       const sorted = (elements) => f.createNodeArray([...elements].sort((a, b) => compare(print(a), print(b))))
       if (ts.isNamedImports(x)) x = f.updateNamedImports(x, sorted(x.elements))
