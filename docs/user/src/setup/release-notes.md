@@ -220,6 +220,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Passing an Effect function to a `Function` destination could bypass `EK4301` after generic union matching; callable destinations now keep the synchronous-callback check.
 
 - `vibelang --fix` could remove an explicit `<{}>` payload from a fieldless `Data.TaggedError` class, changing its published declaration. Projects that emit declarations now keep the class and receive an explanation instead.
+- Reverting a migration importer before its dependency could replace an original `.js` import with `.ts`; either revert order now restores the original specifier.
+
 
 - Switching migration toolchains could absorb newly failing tests or compiler errors into a passing baseline; the flow now rejects the switch and retains its before-and-after evidence.
 

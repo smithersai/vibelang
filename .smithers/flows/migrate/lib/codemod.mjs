@@ -271,9 +271,20 @@ export function restoreSpecifiers(root, edits, module, aliases) {
   const restored = []
   const byFile = new Map()
   for (const edit of edits) {
-    const named = resolveRelative(edit.file, edit.to, new Set([vibe])) ?? resolveAliased(edit.file, edit.to, new Set([vibe]), aliases)?.target
-    if (edit.file.endsWith(".vibe") || named !== vibe) continue
-    byFile.set(edit.file, [...(byFile.get(edit.file) ?? []), edit])
+    let file = edit.file
+    if (file.endsWith(".vibe")) {
+      // Revert may already have returned this importer to TypeScript. Its
+      // recorded path still names .vibe; find the restored source, never a
+      // still-native importer or an ambiguous pair of TypeScript sources.
+      if (existsSync(join(root, file))) continue
+      const candidates = [".ts", ".mts", ".cts"].map(ext => file.slice(0, -".vibe".length) + ext)
+        .filter(path => existsSync(join(root, path)))
+      if (candidates.length !== 1) continue
+      file = candidates[0]
+    }
+    const named = resolveRelative(file, edit.to, new Set([vibe])) ?? resolveAliased(file, edit.to, new Set([vibe]), aliases)?.target
+    if (named !== vibe) continue
+    byFile.set(file, [...(byFile.get(file) ?? []), edit])
   }
   for (const [file, fileEdits] of byFile) {
     const path = join(root, file)

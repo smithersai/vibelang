@@ -1,0 +1,10 @@
+{
+  "files": {
+    "src/frontmatter.ts": "import type { Fields } from './validateFields.js'\nexport type Frontmatter = Fields\n",
+    "src/validateFields.ts": "export type Fields = { title: string }\n"
+  },
+  "orders": [
+    ["src/frontmatter.ts", "src/validateFields.ts"],
+    ["src/validateFields.ts", "src/frontmatter.ts"]
+  ]
+}
