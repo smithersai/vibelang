@@ -108,7 +108,7 @@ export function effectUse(imports) {
 }
 
 const sourceExtensions = [".ts", ".tsx", ".mts", ".cts", ".vibe"]
-const jsToSource = { ".js": [".ts", ".tsx", ".vibe"], ".jsx": [".tsx"], ".mjs": [".mts"], ".cjs": [".cts"] }
+const jsToSource = { ".js": [".ts", ".tsx", ".vibe"], ".jsx": [".tsx"], ".mjs": [".mts", ".vibe"], ".cjs": [".cts"] }
 
 /**
  * The repository-relative file a relative specifier of `from` names, given the

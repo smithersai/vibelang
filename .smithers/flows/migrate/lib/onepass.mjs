@@ -18,7 +18,7 @@ import * as Jj from "./jj.mjs"
 import { appendJsonl, isDeclarationFile, quote, readJson, readJsonIf, run, slug, writeJson } from "./util.mjs"
 
 const sourceModule = f => /\.(?:ts|tsx|mts|cts|vibe)$/.test(f) && !isDeclarationFile(f)
-const livePath = (root, f) => f.endsWith(".ts") && existsSync(join(root, f.replace(/\.ts$/, ".vibe"))) ? f.replace(/\.ts$/, ".vibe") : f
+const livePath = (root, f) => /\.(?:ts|mts)$/.test(f) && existsSync(join(root, f.replace(/\.(?:ts|mts)$/, ".vibe"))) ? f.replace(/\.(?:ts|mts)$/, ".vibe") : f
 const positive = (v, fallback, name, max = Infinity) => {
   const n = Number(v ?? fallback)
   if (!Number.isInteger(n) || n < 1 || n > max) throw new Error(`${name} must be an integer from 1 to ${max}`)
@@ -30,10 +30,10 @@ export function planScope(root, scope) {
   for (const file of new Set(scope.map(f => f.trim()).filter(Boolean))) {
     if (posix.isAbsolute(file) || file.split("/").includes("..") || file !== posix.normalize(file)) throw new Error("scope paths must be repository-relative: " + file)
     if (!existsSync(join(root, file))) throw new Error("scope module missing: " + file)
-    if (file.endsWith(".ts") && !isDeclarationFile(file)) files.push(file)
-    else deferred.push({ file, reason: file.endsWith(".tsx") ? "JSX source is not supported in .vibe; keep .tsx" : file.endsWith(".vibe") ? "already .vibe; no rename needed" : "not a .ts source module; keep its source format" })
+    if (/\.(?:ts|mts)$/.test(file) && !isDeclarationFile(file)) files.push(file)
+    else deferred.push({ file, reason: file.endsWith(".tsx") ? "JSX source is not supported in .vibe; keep .tsx" : file.endsWith(".vibe") ? "already .vibe; no rename needed" : "not a .ts or .mts source module; keep its source format" })
   }
-  if (!files.length) throw new Error("scope contains no .ts modules to migrate")
+  if (!files.length) throw new Error("scope contains no .ts or .mts modules to migrate")
   return { version: 1, mode: "one-pass", batches: [{ files, reason: "One whole-scope pass; settle returns failing modules by diagnostic cause, dependency roots first." }], deferred }
 }
 

@@ -2,6 +2,7 @@
 // writes it; this module drafts a deterministic starting point, renders the
 // agent's prompt, and validates what the agent returns before any later step
 // reads it.
+import { isDeclarationFile } from "./util.mjs"
 import { posix } from "node:path"
 
 export const defaultLimits = { maxFiles: 6, maxLines: 900 }
@@ -12,12 +13,12 @@ export const defaultLimits = { maxFiles: 6, maxLines: 900 }
  * `drizzle.config.ts`. Renamed to .vibe, the tool finds no config.
  */
 export function isToolConfig(path) {
-  return /\.config\.ts$/.test(posix.basename(path))
+  return /\.config\.(?:ts|mts)$/.test(posix.basename(path))
 }
 
 /** The files a migration may move to .vibe: sources that use Effect values, but no tool's config. Tests stay .ts unless asked. */
 export function candidates(inventory, { includeTests = false } = {}) {
-  return inventory.files.filter((f) => f.effect === "values" && (includeTests || !f.test) && f.path.endsWith(".ts") && !isToolConfig(f.path))
+  return inventory.files.filter((f) => f.effect === "values" && (includeTests || !f.test) && /\.(?:ts|mts)$/.test(f.path) && !isDeclarationFile(f.path) && !isToolConfig(f.path))
 }
 
 /** Report the full owned inventory separately from automatic and explicit selections (detail 279). */
@@ -126,9 +127,9 @@ export function validatePlan(plan, inventory, limits = defaultLimits) {
       if (!f) { errors.push(`${name}: ${path} is not in the inventory`); continue }
       if (batchOf.has(path)) errors.push(`${name}: ${path} is already in batch ${batchOf.get(path) + 1}`)
       batchOf.set(path, index)
-      if (!path.endsWith(".ts")) errors.push(`${name}: ${path} is not a .ts module; only .ts files become .vibe`)
-      if (f.effect === "none") errors.push(`${name}: ${path} has no Effect code, so it stays .ts`)
-      if (isToolConfig(path)) errors.push(`${name}: ${path} is a tool's config, which the tool finds by its name, so it stays .ts`)
+      if (!/\.(?:ts|mts)$/.test(path) || isDeclarationFile(path)) errors.push(`${name}: ${path} is not a .ts module or .mts source module; only those files become .vibe`)
+      if (f.effect === "none") errors.push(`${name}: ${path} has no Effect code, so it keeps its TypeScript filename`)
+      if (isToolConfig(path)) errors.push(`${name}: ${path} is a tool's config, which the tool finds by its name, so it keeps its TypeScript filename`)
       else if (f.effect === "types") warnings.push(`${name}: ${path} imports only Effect types`)
       lines += f.lines
     }

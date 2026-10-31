@@ -1,0 +1,20 @@
+{
+  "key": "migrate:durable-mts-esm-boundary",
+  "source": "tc-foldkit 2026-10-31T23:24Z: combining the .mts fix with durable codemod state let a replayed codemod rename a .mts module across a CommonJS boundary that renameBatch refused",
+  "minimized": {
+    "mode": "commonjs",
+    "ext": ".mts",
+    "nested": false,
+    "stem": "a"
+  },
+  "modes": [
+    "module",
+    "commonjs",
+    "absent"
+  ],
+  "extensions": [
+    ".ts",
+    ".mts"
+  ],
+  "seed": 190074
+}

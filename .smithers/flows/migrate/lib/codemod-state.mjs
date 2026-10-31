@@ -5,7 +5,7 @@ import { dirname, join } from "node:path"
 import { pathReadDeferrals, rewriteReferences } from "./references.mjs"
 import { splitBatchPlatform } from "./platform.mjs"
 import { rewriteSourceLiterals } from "./source-paths.mjs"
-import { rewriteExports, rewriteImports, vibePath } from "./codemod.mjs"
+import { assertModuleBoundary, rewriteExports, rewriteImports, vibePath } from "./codemod.mjs"
 
 function syncDirectory(path) {
   const fd = openSync(path, "r")
@@ -29,6 +29,7 @@ export const saveState = (path, state) => durableWrite(path, JSON.stringify(stat
 
 /** Plan all edits without changing the target; original source bytes live in the journal. */
 export function prepareState(target, files, scope, { ts, aliases, referenceFiles = scope, references = [], catalog = scope } = {}) {
+  for (const from of files) assertModuleBoundary(target, from)
   const deferred = pathReadDeferrals(target, files, referenceFiles)
   if (deferred.length) throw new Error("source text test requires .ts: " + deferred.map(d => d.file).join(", "))
   const renames = files.map(from => ({ from, to: vibePath(from) }))

@@ -587,7 +587,7 @@ export function addVibeIncludes(text, ts) {
   if (!include || !ts.isArrayLiteralExpression(include.initializer) || !include.initializer.elements.length) return text
   const elements = include.initializer.elements
   const patterns = elements.filter((e) => ts.isStringLiteral(e)).map((e) => e.text)
-  const added = [...new Set(patterns.filter((p) => /\.tsx?$/.test(p) && !/\.d\.tsx?$/.test(p)).map((p) => p.replace(/\.tsx?$/, ".vibe")))].filter((p) => !patterns.includes(p))
+  const added = [...new Set(patterns.filter((p) => /\.(?:m?ts|tsx)$/.test(p) && !/\.d\.(?:m?ts|tsx)$/.test(p)).map((p) => p.replace(/\.(?:m?ts|tsx)$/, ".vibe")))].filter((p) => !patterns.includes(p))
   if (!added.length) return text
   const last = elements.at(-1)
   const start = last.getStart(file)

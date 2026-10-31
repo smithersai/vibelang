@@ -136,7 +136,7 @@ export async function importers(t) {
 /** A batch's files as they are now: each plan path, as .vibe when migrated. */
 function batchFiles(config, plan, b) {
   return plan.batches[Number(b) - 1].files.map((file) => {
-    const vibe = file.replace(/\.ts$/, ".vibe")
+    const vibe = vibePath(file)
     if (existsSync(join(config.target, vibe))) return { planned: file, path: vibe, migrated: true }
     return { planned: file, path: file, migrated: false }
   })
@@ -1081,9 +1081,9 @@ export async function revertMany(options) {
   const seen = new Set(), prepared = []
   for (const item of requests) {
     const { file, reason = options.reason } = typeof item === "string" ? { file: item } : item
-    if (typeof file !== "string" || !/\.(?:ts|vibe)$/.test(file) || isDeclarationFile(file) || !reason) throw new Error("revert needs module paths and a cause")
+    if (typeof file !== "string" || !/\.(?:ts|mts|vibe)$/.test(file) || isDeclarationFile(file) || !reason) throw new Error("revert needs module paths and a cause")
     if (posix.isAbsolute(file) || file.split("/").includes("..")) throw new Error("revert paths must be repository-relative")
-    const vibe = file.replace(/\.ts$/, ".vibe"), ts = vibe.replace(/\.vibe$/, ".ts")
+    const vibe = file.replace(/\.(?:ts|mts)$/, ".vibe"), ts = plan.batches.flatMap(batch => batch.files).find(source => vibePath(source) === vibe) ?? vibe.replace(/\.vibe$/, ".ts")
     if (seen.has(ts)) throw new Error("duplicate revert: " + file)
     seen.add(ts)
     if (!existsSync(join(config.target, vibe))) throw new Error("missing .vibe module (already reverted?): " + vibe)
@@ -1146,7 +1146,7 @@ export async function revertMany(options) {
   }
   const importEdits = rewriteImports(config.target, await importers(config.target), prepared.map(x => x.ts), aliases)
   for (const result of results) result.importEdits.push(...importEdits.filter(e => {
-    const vibe = result.file.replace(/\.ts$/, ".vibe")
+    const vibe = vibePath(result.file)
     return (resolveRelative(e.file, e.from, new Set([vibe])) ?? resolveAliased(e.file, e.from, new Set([vibe]), aliases)?.target) === vibe
   }))
   writeJson(p.reverted(b), [...readJsonIf(p.reverted(b), []), ...results])

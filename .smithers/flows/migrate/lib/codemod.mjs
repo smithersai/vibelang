@@ -45,16 +45,31 @@ export function pathAliases(ts, root) {
   }
 }
 
-/** x.ts becomes x.vibe. Only .ts modules are renamed. */
+/** .ts and .mts source modules become .vibe. Declaration files stay put. */
 export function vibePath(path) {
-  if (!path.endsWith(".ts") || isDeclarationFile(path)) throw new Error(`${path}: only a .ts module becomes .vibe`)
-  return path.slice(0, -3) + ".vibe"
+  if (!/\.(?:ts|mts)$/.test(path) || isDeclarationFile(path)) throw new Error(`${path}: only a .ts or .mts module becomes .vibe`)
+  return path.replace(/\.(?:ts|mts)$/, ".vibe")
+}
+
+/**
+ * A .mts module becomes .vibe only inside an ESM package: its nearest
+ * package.json must declare type: "module", or the renamed module would emit
+ * CommonJS. Checked before any file moves, by the legacy rename and by the
+ * durable codemod state alike, so a replayed codemod cannot cross it either.
+ */
+export function assertModuleBoundary(root, from) {
+  if (!from.endsWith(".mts")) return
+  const manifest = join(root, packageDirOf(root, from), "package.json")
+  if (!existsSync(manifest) || JSON.parse(readFileSync(manifest, "utf8")).type !== "module") {
+    throw new Error(`${from}: .mts requires an ESM package boundary (package.json type: "module") before becoming .vibe; preserve the existing CommonJS modules when configuring it`)
+  }
 }
 
 /** Renames each file of the batch on disk; refuses to overwrite. */
 export function renameBatch(root, files) {
   const renames = files.map((from) => ({ from, to: vibePath(from) }))
   for (const { from, to } of renames) {
+    assertModuleBoundary(root, from)
     if (!existsSync(join(root, from))) throw new Error(`${from} does not exist`)
     if (existsSync(join(root, to))) throw new Error(`${to} already exists`)
   }
@@ -117,7 +132,7 @@ const typeConditions = new Set(["types", "typings"])
 function pointAt(value, source, { condition, entry = false } = {}) {
   if (typeof value === "string") {
     if (posix.normalize(value) !== source) return value
-    const stem = value.slice(0, -".ts".length)
+    const stem = value.replace(/\.(?:ts|mts)$/, "")
     if (typeConditions.has(condition)) return stem + ".d.vibe.ts"
     return entry ? { types: stem + ".d.vibe.ts", default: stem + ".vibe" } : stem + ".vibe"
   }
@@ -131,19 +146,19 @@ function pointAt(value, source, { condition, entry = false } = {}) {
  * .vibe source or its sidecar names the .ts file, and an entry pointAt wrote
  * from a bare path is that path again.
  */
-function pointBack(value, vibe) {
+function pointBack(value, vibe, extension = ".ts") {
   const stem = vibe.slice(0, -".vibe".length)
   const ts = (target) => {
-    if (posix.normalize(target) === vibe) return target.slice(0, -".vibe".length) + ".ts"
-    if (posix.normalize(target) === stem + ".d.vibe.ts") return target.slice(0, -".d.vibe.ts".length) + ".ts"
+    if (posix.normalize(target) === vibe) return target.slice(0, -".vibe".length) + extension
+    if (posix.normalize(target) === stem + ".d.vibe.ts") return target.slice(0, -".d.vibe.ts".length) + extension
     return target
   }
   if (typeof value === "string") return ts(value)
-  if (Array.isArray(value)) return value.map((item) => pointBack(item, vibe))
+  if (Array.isArray(value)) return value.map((item) => pointBack(item, vibe, extension))
   if (value && typeof value === "object") {
     const keys = Object.keys(value)
     if (keys.length === 2 && typeof value.types === "string" && typeof value.default === "string" && posix.normalize(value.types) === stem + ".d.vibe.ts" && posix.normalize(value.default) === vibe) return ts(value.default)
-    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, pointBack(item, vibe)]))
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, pointBack(item, vibe, extension)]))
   }
   return value
 }
@@ -217,7 +232,7 @@ export function rewriteExports(root, renames, { write = (file, text) => writeFil
  * names the .ts file again (pointBack). Returns the edits it undid.
  */
 export function restoreExports(root, edits, module) {
-  const vibe = module.replace(/\.ts$/, ".vibe")
+  const vibe = module.replace(/\.(?:ts|mts)$/, ".vibe")
   const undone = edits.filter((edit) => edit.module === vibe)
   for (const edit of undone) {
     const path = join(root, edit.manifest)
@@ -225,8 +240,8 @@ export function restoreExports(root, edits, module) {
     const pkg = JSON.parse(readFileSync(path, "utf8"))
     const source = posix.relative(posix.dirname(edit.manifest), vibe)
     if (edit.added) delete pkg[edit.field][edit.key]
-    else if (edit.key !== undefined) pkg[edit.field][edit.key] = pointBack(pkg[edit.field][edit.key], source)
-    else pkg[edit.field] = pointBack(pkg[edit.field], source)
+    else if (edit.key !== undefined) pkg[edit.field][edit.key] = pointBack(pkg[edit.field][edit.key], source, posix.extname(module))
+    else pkg[edit.field] = pointBack(pkg[edit.field], source, posix.extname(module))
     writeFileSync(path, JSON.stringify(pkg, null, 2) + "\n")
   }
   return undone
@@ -267,7 +282,7 @@ export function rewriteSpecifier(importer, specifier, target, { mock = false, ba
  * so ./user.js stays ./user.js. Returns the edits made.
  */
 export function restoreSpecifiers(root, edits, module, aliases) {
-  const vibe = module.replace(/\.ts$/, ".vibe")
+  const vibe = module.replace(/\.(?:ts|mts)$/, ".vibe")
   const restored = []
   const byFile = new Map()
   for (const edit of edits) {

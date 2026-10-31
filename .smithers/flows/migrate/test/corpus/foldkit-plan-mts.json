@@ -1,0 +1,6 @@
+{
+  "key": "migrate:mts-module",
+  "path": "scripts/main.mts",
+  "manifest": { "type": "module", "exports": "./scripts/main.mts" },
+  "source": "export const answer = await Promise.resolve(42)\n"
+}

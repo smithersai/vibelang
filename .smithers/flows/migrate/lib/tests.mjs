@@ -22,7 +22,7 @@ export function withJsonReporter(command, outFile) {
 }
 
 // A test keeps its identity when its file moves from .ts to .vibe.
-const fileKey = (root, file) => posix.relative(root, file).replace(/\.(?:ts|tsx|vibe)$/, "")
+const fileKey = (root, file) => posix.relative(root, file).replace(/\.(?:ts|tsx|mts|vibe)$/, "")
 
 /** Reads Vitest's JSON report into one status per test: "file > full name". */
 export function parseVitestJson(report, root) {
