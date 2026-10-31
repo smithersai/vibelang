@@ -198,7 +198,7 @@ effect function discard() {
 // Output: 0
 ```
 
-`// @vibelang-diagnostics EK4818:warning` applies from its line to the end of the file; `*` names every adjustable code. Language diagnostics report in `.vibe` files, configuration diagnostics in config files; a `.ts` file keeps TypeScript's verdict. `vibelang` also runs Effect's own rules, copied from `@effect/tsgo`, on both kinds of file ([Lint Effect code](/setup/vibelang-cli#lint-effect-code)). In a `.vibe` file, a rule this table marks "Not needed" or "Covered" does not run, imported rules report their assigned `EK38xx` codes and rule names, at the configured severity. A rule's severity comes from its code's entry in `vibe.severities`, else the repository's Effect language-service configuration, else the rule's default.
+`// @vibelang-diagnostics EK4818:warning` applies from its line to the end of the file; `*` names every adjustable code. Language diagnostics report in `.vibe` files, configuration diagnostics in config files; a `.ts` file keeps TypeScript's verdict. `vibelang` also runs Effect's own rules, copied from `@effect/tsgo`, on selected `.ts` and `.vibe` inputs, keeping the pinned upstream rule/file eligibility and declaration/library exclusions ([Lint Effect code](/setup/vibelang-cli#lint-effect-code)). In a `.vibe` file, a rule this table marks "Not needed" or "Covered" does not run, imported rules report their assigned `EK38xx` codes and rule names, at the configured severity. A rule's severity comes from its code's entry in `vibe.severities`, else the repository's existing Effect language-service configuration, else the rule's default.
 
 | Group | Effect's rule or feature | In VibeLang | Example |
 | --- | --- | --- | --- |

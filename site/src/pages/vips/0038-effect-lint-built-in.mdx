@@ -8,7 +8,7 @@ title: "VIP-38: Effect's type-aware lint is built into VibeLang"
 
 ## Decision
 
-- The Effect language service's type-aware rules (effect-tsgo's `effecttsgo/*` rules) run inside the `vibelang` compiler on `.vibe` files. Both are typescript-go forks, so the rule runner is built in rather than run beside it.
+- The Effect language service's type-aware rules (effect-tsgo's `effecttsgo/*` rules) run inside the `vibelang` compiler on selected `.ts` and `.vibe` inputs, keeping the pinned upstream rule/file eligibility and declaration/library exclusions. VibeLang-specific language checks remain confined to `.vibe`. Both are typescript-go forks, so the rule runner is built in rather than run beside it.
 - They run wherever VibeLang reports diagnostics: the CLI, the language server, and a lint command for CI. A repo's existing Effect language-service configuration selects and configures them, so a repo's lint script covers `.vibe` the same way it covers `.ts`.
 - Tools that only analyze code (cycle checkers such as madge, and dependency graphs) may run on VibeLang's compiled output. That cannot work for formatters, which must read `.vibe` itself (VIP-34).
 - **Amended 2026-10-29: the command.** The lint command is `vibelang lint`. Sent to Will on Telegram 2026-10-29 11:28 under his standing rule 'assume I accept'; no objection by 12:00.
