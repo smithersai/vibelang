@@ -572,6 +572,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - After a `chmod` of the compiler, or any change to its timestamps that kept its bytes, every Vite or loader run recompiled each project (`compiler changed`). The cache now compares the compiler's contents when its timestamps differ, and recompiles only for a changed compiler.
 
 
+- `vibelang --fix` rewrote a `Context.Service` class as a `service` declaration and removed `import * as Context from "effect/Context"`, which the module's declaration file writes the service through, so the `.d.ts` changed; in a project that emits declarations the import now stays.
 - `vibelang --fix` removed the retired `declarationSidecars` setting but left an empty `"vibelang": {  }` object behind, which a repository's formatter then rewrote; a settings object that held only that setting now goes with it, and one with a comment keeps the comment.
 
 - Migration left a plain `Option.match(value, { onNone, onSome })` in native sources and `--fix` offered nothing, so Foldkit's nine pure choices were rewritten by hand; `--fix` now writes a native `match` over `Option.Some`, reading the subject and the handler object once in their original order.
@@ -585,7 +586,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A function returning `{ status: 2 }` or `{}` could declare `readonly status?: never` or `status?: never` depending on which unrelated function the checker reached first, so a package's declarations changed between runs with no source change. The added property now follows the function's own literal. TypeScript 5.9 has the same bug.
 
 - The migrate flow's setup rewrote only `tsc` in the migrated packages' scripts, so a root or TypeScript-only package that built with `tsrs -b` or `tsgo -b` rebuilt migrated projects with a stock compiler and published JavaScript that imports `./x.vibe`; setup now runs `vibelang` for `tsc`, `tsgo` and `tsrs` in the root's scripts and in every package that reaches a migrated one.
-
 - Formatting valid `for` heads with `is` patterns could fail with an internal parse error; they now format at narrow and normal widths while keeping `is` attached to its subject.
 - Formatting native `Option` control flow could reject parenthesized `return (match …)` expressions and binding `is` branches; these forms now format while preserving their parsed structure.
 - A dprint `operatorPosition` of `sameLine` or `maintain` could wrap an `is` pattern onto the next line at a narrow width and fail with `')' expected`; the pattern now stays on the line of `is`.

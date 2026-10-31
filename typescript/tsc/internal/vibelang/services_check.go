@@ -40,19 +40,30 @@ func checkServices(c *checker.Checker, file *ast.SourceFile) {
 }
 
 // markDeclarationImports marks the file's own import of a module that only
-// its declaration file reads, through that import (D501): a service's base
-// writes Context, and a schema error's writes Schema.
+// its declaration file reads, through that import (D501).
 func markDeclarationImports(c *checker.Checker, file *ast.SourceFile) {
+	for _, statement := range declarationImports(file) {
+		c.MarkSymbolReferenced(statement.ImportClause().AsImportClause().NamedBindings.Symbol())
+	}
+}
+
+// declarationImports returns the file's namespace imports of an Effect
+// module that its declaration file writes through and no name in the source
+// reads (D501): a service's base writes Context, and a schema error's writes
+// Schema.
+func declarationImports(file *ast.SourceFile) []*ast.Node {
 	service := declaresService(file)
 	schemaError := core.Some(file.Statements.Nodes, func(statement *ast.Node) bool {
 		form, _ := errorFormOf(statement)
 		return form == errorFormSchemaRoot
 	})
+	var imports []*ast.Node
 	for _, statement := range file.Statements.Nodes {
 		if name := namespaceImportOfModule(statement); name == "Context" && service || name == "Schema" && schemaError {
-			c.MarkSymbolReferenced(statement.ImportClause().AsImportClause().NamedBindings.Symbol())
+			imports = append(imports, statement)
 		}
 	}
+	return imports
 }
 
 // declarationWord returns "service" or "control" when class was declared with
