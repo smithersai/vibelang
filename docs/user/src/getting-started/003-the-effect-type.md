@@ -121,7 +121,7 @@ Creating `conversion` does no work. `try conversion` runs the computation within
 
 An Effect value such as `Clock.currentTimeMillis` is a description; `try Clock.currentTimeMillis` reads the clock inside an effect function. Effect-returning library functions build Effects that run with `try`.
 
-`Config` descriptors and Context keys are Effect values that run with `try`. Returning an Effect leaves it unrun; `new` only constructs an instance. Use `throw error` to fail with an error instance.
+`Config` descriptors and Context keys are Effect values that run with `try`. A direct call such as `try Config.String("NAME")` runs the same descriptor as storing it first and writing `try config`; its error channel remains `Config.ConfigError`. Aliases and generic wrappers keep that contract, including values whose type parameter is constrained to an Effect subtype, such as `T extends Config.Config<string>`, and unions or intersections of those constrained types. Using `try` as a statement still runs the Effect when its success value is unused. Effect subtypes such as `Exit` work too; `Option` and `Result` are not Effects in Effect 4.1. Returning an Effect leaves it unrun; `new` only constructs an instance. Use `throw error` to fail with an error instance.
 
 ## Extract inferred channel types
 

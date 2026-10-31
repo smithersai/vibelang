@@ -1,0 +1,6 @@
+// expect: EK9201
+import { Config } from "effect"
+// ConfigError must remain in E; a direct call cannot promise never.
+export effect function read(): string!! {
+  return try Config.String("FOLDKIT_REPRO_VALUE")
+}

@@ -610,6 +610,12 @@ func isEffectValueCall(c *checker.Checker, call *ast.Node) bool {
 // union of two Effects; or a tagged error instance, whose class declares the
 // variance itself.
 func effectOfValue(c *checker.Checker, t *checker.Type) *checker.Type {
+	// Deferred types and unions/intersections of constrained members meet the
+	// operand test through their base constraint. Read its channels instead
+	// of rejecting a type merely because it is not a concrete object yet.
+	if t != nil && t.Flags()&(checker.TypeFlagsInstantiableNonPrimitive|checker.TypeFlagsUnionOrIntersection) != 0 {
+		t = c.GetBaseConstraintOfType(t)
+	}
 	if t == nil || !isEffectValueType(c, t) {
 		return nil
 	}

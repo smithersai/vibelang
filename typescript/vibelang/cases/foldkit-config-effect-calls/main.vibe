@@ -1,0 +1,86 @@
+// expect-result: {"direct":"provided","bound":"provided","alias":"provided","generic":"provided","fallback":"fallback","exit":7,"missing":"ConfigError","constrained":["provided","provided","provided","provided","provided","provided","provided","provided"],"discarded":3}
+import { Config, ConfigProvider, Effect, Exit } from "effect"
+
+const configString = Config.String
+/** @throws {never} */
+function identity<T>(value: T): T { return value }
+
+// Foldkit relayLocation: no binding or cast is needed for the direct call.
+export const read = effect () => { return try Config.String("FOLDKIT_REPRO_VALUE") }
+export const readBound = effect () => {
+  const config = Config.String("FOLDKIT_REPRO_VALUE")
+  return try config
+}
+export const readAlias = effect () => { return try configString("FOLDKIT_REPRO_VALUE") }
+export const readGeneric = effect () => { return try identity(Config.String("FOLDKIT_REPRO_VALUE")) }
+
+export effect function readConstrained<T extends Config.Config<string>>(config: T) {
+  return try identity(config)
+}
+export effect function readConstrainedBound<T extends Config.Config<string>>(config: T) {
+  const bound = identity(config)
+  return try bound
+}
+export effect function readConstrainedAlias<T extends Config.Config<string>>(config: T) {
+  const alias = identity
+  return try alias(config)
+}
+export effect function readConstrainedGeneric<T extends Config.Config<string>>(config: T) {
+  return try identity(identity(config))
+}
+
+export effect function readAllChannels<A, E, R, T extends Effect.Effect<A, E, R>>(value: T) {
+  return try identity(value)
+}
+
+export effect function readConditional<T>(config: T extends string ? Config.Config<string> : Config.Config<number>) {
+  return try identity(config)
+}
+export effect function readIndexed<T extends { readonly task: Config.Config<string> }>(config: T["task"]) {
+  return try identity(config)
+}
+
+const brandedConfig = Object.assign(Config.String("FOLDKIT_REPRO_VALUE"), { brand: "Config" as const })
+export effect function readUnion<T extends Config.Config<string>, U extends Config.Config<number>>(config: T | U) {
+  return try identity(config)
+}
+export effect function readIntersection<T extends Config.Config<string>>(config: T & { readonly brand: "Config" }) {
+  return try identity(config)
+}
+
+export effect function runDiscarded<T extends Config.Config<string>>(config: T) {
+  try identity(config)
+}
+
+export effect function main() {
+  const provider = ConfigProvider.layer(ConfigProvider.fromEnvRecord({ FOLDKIT_REPRO_VALUE: "provided" }))
+  const direct = try Effect.provide(read(), provider)
+  const bound = try Effect.provide(readBound(), provider)
+  const alias = try Effect.provide(readAlias(), provider)
+  const generic = try Effect.provide(readGeneric(), provider)
+  const fallback = try Effect.provide(effect {
+    return try Config.withDefault(Config.String("MISSING"), "fallback")
+  }, provider)
+  const completed = try Exit.succeed(7)
+  const missing = try Effect.provide(Effect.flip(read()), ConfigProvider.layer(ConfigProvider.fromEnvRecord({})))
+  let discarded = 0
+  const constrained = try Effect.provide(effect {
+    const config = Config.String("FOLDKIT_REPRO_VALUE")
+    const counted = Config.map(config, (value) => { discarded++; return value })
+    try Config.String("FOLDKIT_REPRO_VALUE")
+    try runDiscarded(counted)
+    try counted
+    try identity(counted)
+    return [
+      try readConstrained(config),
+      try readConstrainedBound(config),
+      try readConstrainedAlias(config),
+      try readConstrainedGeneric(config),
+      try readConditional<string>(config),
+      try readIndexed<{ readonly task: Config.Config<string> }>(config),
+      try readUnion<Config.Config<string>, Config.Config<number>>(config),
+      try readIntersection(brandedConfig)
+    ]
+  }, provider)
+  return { direct, bound, alias, generic, fallback, exit: completed, missing: missing._tag, constrained, discarded }
+}

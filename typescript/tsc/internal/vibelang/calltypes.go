@@ -215,7 +215,9 @@ func checkInvocationRuns(c *checker.Checker, file *ast.SourceFile) {
 				for statement != nil && ast.IsParenthesizedExpression(statement) {
 					statement = statement.Parent
 				}
-				if isStructuredEffectResult(c, t) && statement != nil && ast.IsExpressionStatement(statement) {
+				// A tried call already runs its structured result; only an
+				// unrun result is discarded by an expression statement.
+				if isStructuredEffectResult(c, t) && statement != nil && ast.IsExpressionStatement(statement) && !runsWhereItStands(analyzerFor(c), node) {
 					text := shortText(nodeText(file, node), "this result")
 					if ast.IsCallExpression(node) {
 						d := report(c, node, structuredResult, "This call", "its")
