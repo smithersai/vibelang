@@ -1,0 +1,7 @@
+// A schema error is this file's only use of Schema, so the import is read only
+// by the declaration file, which prints it as typescript/plain.ts does.
+import * as Schema from "effect/Schema"
+
+export schema error Alone {
+  message: string
+}

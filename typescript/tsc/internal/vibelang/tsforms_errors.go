@@ -184,7 +184,7 @@ func errorClassRewrite(c *checker.Checker, file *ast.SourceFile, class *ast.Node
 	silence := " Keep the class if something depends on that, and silence this line with // @vibelang-diagnostics-next-line EK4830:off."
 	switch {
 	case parts.base == schemaErrorBase:
-		return schemaErrorRewrite(c, file, class, tag, literal)
+		return schemaErrorRewrite(c, file, class, parts.baseText, tag, literal)
 	case parts.base == dataErrorBase:
 		return &formRewrite{why: "No quick fix: an error declaration adds a _tag, \"" + name + "\", which Data.Error has none of." + silence}
 	case !literal:
@@ -246,22 +246,28 @@ func errorFieldsText(file *ast.SourceFile, literal *ast.Node) string {
 	return out
 }
 
-// schemaErrorRewrite plans EK4837's fix for class, which extends
-// Schema.TaggedError: a schema error declaration keeps its Schema, tag and
-// accessors (D279). A field whose codec has no type form is named by a
-// constant before the declaration, which a schema error's field may name:
+// schemaErrorRewrite plans EK4837's fix for class, which extends base, written
+// so: a schema error declaration keeps its Schema, tag and accessors (D279). In
+// a project that emits declarations, the file keeps its import of Schema, which
+// the declaration file prints (D501), and a base spelled another way keeps the
+// class, since that file would print Schema. A field whose codec has no type
+// form is named by a constant before the declaration, which a schema error's
+// field may name:
 //
 //	class Failed extends Schema.TaggedError<Failed>()("Failed", {   const FailedCauseField = Schema.Defect()
 //	  cause: Schema.Defect(),                                       schema error Failed {
 //	}) {}                                                             cause: FailedCauseField
 //	                                                                }
-func schemaErrorRewrite(c *checker.Checker, file *ast.SourceFile, class *ast.Node, tag string, literal bool) *formRewrite {
+func schemaErrorRewrite(c *checker.Checker, file *ast.SourceFile, class *ast.Node, base string, tag string, literal bool) *formRewrite {
 	no := func(why string) *formRewrite {
 		return &formRewrite{why: "No quick fix: " + why}
 	}
 	name := class.Name().Text()
 	arguments := ast.GetClassExtendsHeritageElement(class).Expression().Arguments()
+	declarations := c.CompilerOptions().GetEmitDeclarations()
 	switch {
+	case declarations && base != "Schema.TaggedError":
+		return no("the declaration file would print Schema.TaggedError, not " + base + ".")
 	case class.TypeParameters() != nil:
 		return no("a schema error has no type parameters.")
 	case !literal || tag != name:
@@ -314,7 +320,11 @@ func schemaErrorRewrite(c *checker.Checker, file *ast.SourceFile, class *ast.Nod
 		}
 		edits = append([]sourceEdit{{before, before, strings.Join(constants, "\n") + "\n"}}, edits...)
 	}
-	return withImportRemovals(c, file, &formRewrite{edits: edits, description: "schema error " + name + " { … }"})
+	rewrite := &formRewrite{edits: edits, description: "schema error " + name + " { … }"}
+	if declarations {
+		return rewrite
+	}
+	return withImportRemovals(c, file, rewrite)
 }
 
 // schemaErrorField returns property, a field of a Schema.TaggedError's

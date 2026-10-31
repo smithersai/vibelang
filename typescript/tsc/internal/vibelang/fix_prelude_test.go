@@ -267,6 +267,44 @@ export const isUtc = (value: unknown): boolean => DateTime.isDateTime(value)
 	}
 }
 
+// In a project that emits declarations, EK4837's fix keeps the import the
+// declaration file prints, even where the class was its only use, and leaves
+// a class whose Schema has another name (D501). Without declarations nothing
+// reads the import, so it goes.
+func TestFixSchemaErrorImports(t *testing.T) {
+	plain := "import * as Schema from \"effect/Schema\"\n\nexport class Plain extends Schema.TaggedError<Plain>()(\"Plain\", {\n  message: Schema.String,\n}) {}\n"
+	alias := "import { Schema as EffectSchema } from \"effect\"\n\nexport class Plain extends EffectSchema.TaggedError<Plain>()(\"Plain\", {\n  message: EffectSchema.String,\n}) {}\n"
+	declared := "export schema error Plain {\n  message: string\n}\n"
+	for _, tc := range []struct {
+		name, source, options, want string
+	}{
+		{"kept", plain, `"declaration":true,"noEmit":true`, "import * as Schema from \"effect/Schema\"\n\n" + declared},
+		{"alias keeps the class", alias, `"declaration":true,"noEmit":true`, ""},
+		{"removed without declarations", plain, `"noEmit":true`, "\n" + declared},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, file, _, _ := editorProgram(t, tc.source)
+			dir := filepath.Dir(file.FileName().AsString())
+			if err := os.WriteFile(filepath.Join(dir, "tsconfig.json"), []byte(`{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"types":[],`+tc.options+`}}`), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			fs := bundled.WrapFS(osvfs.FS())
+			config, errors := tsoptions.GetParsedCommandLineOfConfigFile(tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(dir, "tsconfig.json"))), &core.CompilerOptions{}, nil, fs, nil)
+			if len(errors) != 0 {
+				t.Fatalf("config: %v", errors)
+			}
+			fixed := FixProject(t.Context(), fs, bundled.LibPath(), config).Files[file.FileName()]
+			got := ""
+			if fixed != nil {
+				got = fixed.Text
+			}
+			if got != tc.want {
+				t.Fatalf("--fix wrote\n%s\nwant\n%s", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestFixPreludeRewrites(t *testing.T) {
 	source := `import { FileSystem } from "effect/FileSystem"
 import * as Path from "effect/Path"

@@ -5,6 +5,7 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
@@ -35,13 +36,20 @@ func checkServices(c *checker.Checker, file *ast.SourceFile) {
 		return node.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
-	if !declaresService(file) {
-		return
-	}
-	// The declaration file writes a service's base through the file's own
-	// import of Context, which no name in the source reads (D501).
+	markDeclarationImports(c, file)
+}
+
+// markDeclarationImports marks the file's own import of a module that only
+// its declaration file reads, through that import (D501): a service's base
+// writes Context, and a schema error's writes Schema.
+func markDeclarationImports(c *checker.Checker, file *ast.SourceFile) {
+	service := declaresService(file)
+	schemaError := core.Some(file.Statements.Nodes, func(statement *ast.Node) bool {
+		form, _ := errorFormOf(statement)
+		return form == errorFormSchemaRoot
+	})
 	for _, statement := range file.Statements.Nodes {
-		if namespaceImportOfModule(statement) == "Context" {
+		if name := namespaceImportOfModule(statement); name == "Context" && service || name == "Schema" && schemaError {
 			c.MarkSymbolReferenced(statement.ImportClause().AsImportClause().NamedBindings.Symbol())
 		}
 	}
