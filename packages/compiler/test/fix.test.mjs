@@ -193,3 +193,16 @@ for (const [name, source, rewrite] of [["direct", "export interface Query extend
   })
 }
 
+
+test("--fix qualifies an imported helper return type in its own scope", { skip }, (t) => {
+  const root = project(t, "import * as foreign from './foreign.js';\nfunction helper(){return new foreign.Thing()}\nexport function caller():foreign.Thing{return helper()}\n")
+  writeFileSync(join(root, "foreign.ts"), "export class Thing { readonly value=1 }\n")
+  const first = vibelang(root, "--fix", "--pretty", "false")
+  assert.equal(first.status, 0, first.stdout + first.stderr)
+  const changed = readFileSync(join(root, "main.vibe"), "utf8")
+  assert.match(changed, /helper\(\): (?:foreign\.Thing|infer _)/)
+  assert.doesNotMatch(changed, /helper\(\): Thing/)
+  const second = vibelang(root, "--fix", "--pretty", "false")
+  assert.equal(second.status, 0, second.stdout + second.stderr)
+  assert.match(second.stdout, /0 fixes in 0 files/)
+})

@@ -382,6 +382,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A provider-comma line break could lose its documented keyword classification; recoverable heads now retain `provide` and `EK1202` on either side of the separator.
 
+- A helper return-type quick fix could write an imported type name that was out of scope and be refused by `--fix`. It now qualifies the type through its import, or uses `infer _` when a type cannot be written there.
+
 - Running the migrate flow's setup again left the earlier setup's `.vibelang-toolchain` tarballs on disk, where `jj` committed them with the new setup; setup now removes that directory before it returns to the Effect upgrade.
 
 - In the specification's region-body rules, a paragraph about `do` checks sat between the sentence ending "how it transports completions is its choice:" and the list it introduces, so it read as that list. The paragraph now follows the list.
