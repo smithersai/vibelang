@@ -594,6 +594,18 @@ func (a *analyzer) byNameOf(node *ast.Node) *ast.Node {
 	return nil
 }
 
+// resolveByNameOwners resolves each call that node, or an ancestor of it in
+// the same function, is an argument of, so byNameOf finds the conversions
+// those calls record. The checker records them when it checks the call; a
+// hover can come first, as after an edit, when a fresh checker answers it.
+func (a *analyzer) resolveByNameOwners(node *ast.Node) {
+	for n := node; n != nil && !isFunctionBoundary(n); n = n.Parent {
+		if a.conversions[n] == nil && mayRunByName(n) {
+			a.isByName(n)
+		}
+	}
+}
+
 // byNameOwner returns the call that receives byName, an expression passed by
 // name, as a program: the call it is an argument of, or, for a pipe's left
 // side, the call whose argument is the first topic passed by name.

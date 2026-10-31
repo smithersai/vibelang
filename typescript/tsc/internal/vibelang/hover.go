@@ -38,7 +38,9 @@ func runningCallQuickInfo(c *checker.Checker, node *ast.Node) (string, string) {
 		return "", ""
 	}
 	returns := "`" + c.TypeToStringEx(success, call, hoverTypeFlags, nil) + "`"
-	if a := analyzerFor(c); a.byNameOf(call) != nil {
+	a := analyzerFor(c)
+	a.resolveByNameOwners(call)
+	if a.byNameOf(call) != nil {
 		if form := a.keywordFormOf(a.byNameOf(call)); form != nil && a.keywordOperand(a.byNameOf(call)) {
 			return "", "The operand of `fork`, a program by syntax: it runs on the new fiber, not here, and returns " + returns + "."
 		}

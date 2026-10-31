@@ -210,6 +210,33 @@ func TestEditorHoverOnByNameArgumentBeforeCheck(t *testing.T) {
 	}
 }
 
+// A hover on a call passed by name as an argument, before its owning call is
+// checked, resolves that call first, as a hover on a pipe's topic does: the
+// lowering passes greeting() to its owner by name, so the hover must not say
+// it runs here. The language server reaches this after an edit, when a fresh
+// checker answers the hover before any diagnostics run.
+func TestEditorHoverOnByNameCallArgumentBeforeCheck(t *testing.T) {
+	const greeting = "function greeting() {\n  Effect.sleep(\"1 millis\")\n  return \"hello\"\n}\n"
+	for _, test := range []struct{ name, body, owner string }{
+		{"argument", "return Effect.timeout(greeting(), \"1 second\")", "Effect.timeout"},
+		{"second owner", "return Effect.retry(greeting(), { times: 2 })", "Effect.retry"},
+		{"array element", "return Effect.all([greeting(), Effect.succeed(1)])", "Effect.all"},
+		{"nested owner", "return Effect.timeout(Effect.retry(greeting(), { times: 2 }), \"1 second\")", "Effect.retry"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			source := greeting + "export function eventually() {\n  " + test.body + "\n}\n"
+			_, file, service, _ := editorProgram(t, source)
+			uri := lsconv.FileNameToDocumentURI(file.FileName())
+			line := strings.Split(source, "\n")[5]
+			shown := hoverText(t, service, uri, lsproto.Position{Line: 5, Character: uint32(strings.Index(line, "greeting()"))})
+			want := "Passed by name to `" + test.owner + "` as a program: it runs when that program runs, not here, and returns `string`."
+			if !strings.Contains(shown, want) {
+				t.Fatalf("hover %q; want %q", shown, want)
+			}
+		})
+	}
+}
+
 // Chapter 28's editor answers hover at a name a .vibe file declares or
 // references, as TypeScript does: the base of an error's extends clause
 // hovers as that error.

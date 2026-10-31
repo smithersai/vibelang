@@ -223,6 +223,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The specification gave no home for an `is` binding in an `enum` member initializer, and the match guide said only `for-of` heads copy bindings per iteration; such a binding is now `EK0705`, as in a parameter default, and the guide states the `for (;;)` copies too.
 
+- After an edit, hovering a call passed by name as an argument, such as `greeting()` in `Effect.timeout(greeting(), "1 second")`, said `Runs here`, although the compiled code passes it to `Effect.timeout` as a program; the hover now says it is passed by name and runs when that program runs.
+
 
 - In a project with no `declaration` setting, an export whose inferred type was too long to serialize (`TS7056`) got only a warning, and its declaration sidecar held `any` in place of the type, so a stock `tsc` consumer lost its types without an error; it is an error again, as it is where the project emits declarations.
 
