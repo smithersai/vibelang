@@ -1,0 +1,19 @@
+{
+ "ok": false,
+ "counts": {},
+ "results": [
+  {
+   "label": "//:docs-tools",
+   "status": "ran",
+   "key": "0dad724568288f00e9bf55ac5fe0c27092d4823780c15e1afbc258e5eeb7a8b4",
+   "durationMs": 120104.222754
+  },
+  {
+   "label": "//:cached",
+   "status": "hit",
+   "key": "cccccccc",
+   "durationMs": 1
+  }
+ ],
+ "version": 1
+}

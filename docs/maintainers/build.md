@@ -281,6 +281,11 @@ post-merge shard allocation. Smithers withholds ambient Go variables, so
 setting them only on the outer CI process does not constrain the test.
 These declared values also enter the target cache key.
 
+## Finding slow and flaky targets
+
+The ci-health flow ranks them from `CI_RESULTS` files and graph logs, with the
+tests and causes behind each flaky target: `.smithers/flows/ci-health/README.md`.
+
 ## What a change reruns
 
 | Change | Reruns | Replays |

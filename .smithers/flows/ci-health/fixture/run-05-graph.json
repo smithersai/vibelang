@@ -1,0 +1,19 @@
+{
+ "ok": false,
+ "counts": {},
+ "results": [
+  {
+   "label": "//packages:unplugin-test",
+   "status": "ran",
+   "key": "88760d2e767a38736f219eb72ef35ffbd283fa6f9fb4632e68a1954fb8ce920d",
+   "durationMs": 44860.58056700001
+  },
+  {
+   "label": "//:cached",
+   "status": "hit",
+   "key": "cccccccc",
+   "durationMs": 1
+  }
+ ],
+ "version": 1
+}

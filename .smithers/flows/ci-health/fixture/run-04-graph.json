@@ -1,0 +1,19 @@
+{
+ "ok": false,
+ "counts": {},
+ "results": [
+  {
+   "label": "//:spec-tests",
+   "status": "failed",
+   "key": "18c5c5a3bb60801a7557ddee35d6371fc5245e9f0f61533edea1f00cfbc3ece8",
+   "durationMs": 13502.342394999996
+  },
+  {
+   "label": "//:cached",
+   "status": "hit",
+   "key": "cccccccc",
+   "durationMs": 1
+  }
+ ],
+ "version": 1
+}

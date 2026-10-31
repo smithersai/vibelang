@@ -1,0 +1,3 @@
+//packages:compiler-test: ✖ paths-imports: a paths alias resolves to the file the compiler resolves it to (896.587562ms)
+//packages:compiler-test:   Error: property paths-imports failed; saved <repo>/packages/compiler/.cache/property-failures/paths-imports/failure.json
+//packages:compiler-test:   FC_PROPERTY='paths-imports' FC_SEED=-1556648763 FC_PATH='32:2:2:4:4:4:4:5' node --test test/paths-imports.property.test.mjs

@@ -1,0 +1,19 @@
+{
+ "ok": false,
+ "counts": {},
+ "results": [
+  {
+   "label": "//packages:compiler-test",
+   "status": "ran",
+   "key": "0335398203f50dce430a3c0e2d9d14ed7cb8fdee6d2020991e11f5c4edc10cd3",
+   "durationMs": 49328.37557100004
+  },
+  {
+   "label": "//:cached",
+   "status": "hit",
+   "key": "cccccccc",
+   "durationMs": 1
+  }
+ ],
+ "version": 1
+}

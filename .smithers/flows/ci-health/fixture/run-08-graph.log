@@ -1,0 +1,10 @@
+//packages:unplugin-test:   ✖ rollup: watch mode recompiles on .vibe, .ts and tsconfig changes (60268.867061ms)
+//packages:unplugin-test:   ✖ rollup: watch mode keeps a save made during a compile (60036.60449ms)
+//packages:unplugin-test:   ✖ rolldown: watch mode recompiles on .vibe, .ts and tsconfig changes (60230.57015ms)
+//packages:unplugin-test:   ✖ rolldown: watch mode keeps a save made during a compile (60206.166416ms)
+//packages:unplugin-test: ✖ vibelang-unplugin (72126.776137ms)
+//packages:unplugin-test: ✖ failing tests:
+//packages:unplugin-test: ✖ rollup: watch mode recompiles on .vibe, .ts and tsconfig changes (60268.867061ms)
+//packages:unplugin-test:   AssertionError [ERR_ASSERTION]: rollup --watch: no build success within 60s
+//packages:unplugin-test: ✖ rollup: watch mode keeps a save made during a compile (60036.60449ms)
+//packages:unplugin-test:   AssertionError [ERR_ASSERTION]: rollup --watch: no build success within 60s

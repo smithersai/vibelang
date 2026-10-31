@@ -1,0 +1,8 @@
+//:docs-tools: (fail) isolates run-mode output across projects when the second has a warning [20015.35ms]
+//:docs-tools:   ^ this test timed out after 20000ms.
+//:docs-tools: (fail) runs marked Vitest examples and fails test assertions even with matching stdout [30008.86ms]
+//:docs-tools:   ^ this test timed out after 30000ms.
+//:docs-tools: (fail) an explicit fragment's syntax error hides no other block's error [5022.22ms]
+//:docs-tools:   ^ this test timed out after 5000ms.
+//:docs-tools: (fail) runs marked blocks and reports output mismatches, exits, timeouts, and unrun fragments [60011.29ms]
+//:docs-tools:   ^ this test timed out after 60000ms.
