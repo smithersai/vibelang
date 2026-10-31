@@ -368,11 +368,35 @@ func effectPosition(file *ast.SourceFile, fn *ast.Node) int {
 
 // returnTries returns the edits that write try before each value fn returns
 // that the analyzer runs: a returned program, or an arrow's body that is a
-// call it runs.
+// call it runs. In a function with a contract, an arm of a returned ?: that
+// is a program its contract's success does not accept gets try too: the
+// contract makes the function run what it returns, and TypeScript's
+// (v): Effect<void, SyncError> => v === current ? Effect.void : Effect.fail(e)
+// (Smithers' requireVersion) keeps its meaning as
+// ? try Effect.void : try Effect.fail(e). An arm that is a call gets its try
+// where it stands (tryEdits).
 func (a *analyzer) returnTries(file *ast.SourceFile, fn *ast.Node) []sourceEdit {
 	var edits []sourceEdit
-	add := func(expr *ast.Node) {
-		if expr == nil || a.runsReturned(expr) == false {
+	var add func(expr *ast.Node)
+	add = func(expr *ast.Node) {
+		if expr == nil {
+			return
+		}
+		if inner := ast.SkipParentheses(expr); inner.Kind == ast.KindConditionalExpression && inner.Flags&(ast.NodeFlagsReparsed|ast.NodeFlagsVibeLang) == 0 {
+			conditional := inner.AsConditionalExpression()
+			for _, arm := range []*ast.Node{conditional.WhenTrue, conditional.WhenFalse} {
+				armInner := ast.SkipParentheses(arm)
+				switch {
+				case isInvocation(armInner):
+				case armInner.Kind == ast.KindConditionalExpression:
+					add(arm)
+				case a.runsReturned(arm) || a.contractRunsArm(fn, arm):
+					edits = append(edits, tryEditsAround(file, arm)...)
+				}
+			}
+			return
+		}
+		if !a.runsReturned(expr) {
 			return
 		}
 		edits = append(edits, tryEditsAround(file, expr)...)
@@ -430,6 +454,27 @@ func (a *analyzer) runsReturned(expr *ast.Node) bool {
 		}
 	}
 	return a.returnedProgram(expr) != nil
+}
+
+// contractRunsArm reports whether arm, an arm of a ?: that fn returns, is a
+// program that fn's contract runs: fn has a contract, arm's type is an
+// Effect, and the contract's success type does not accept that Effect as a
+// value, so only running it gives the function a value.
+func (a *analyzer) contractRunsArm(fn *ast.Node, arm *ast.Node) bool {
+	c := a.checker
+	if a.contractOf(fn) == nil || ast.SkipParentheses(arm).Flags&ast.NodeFlagsVibeLangTry != 0 {
+		return false
+	}
+	t := c.GetTypeAtLocation(arm)
+	if t == nil || !isEffectType(c, t) {
+		return false
+	}
+	signature := c.GetSignatureFromDeclaration(fn)
+	if signature == nil {
+		return false
+	}
+	success := successType(c, c.GetReturnTypeOfSignature(signature))
+	return success != nil && !c.IsTypeAssignableTo(t, success)
 }
 
 // tryEditsAround writes try before expr, with parentheses around expr

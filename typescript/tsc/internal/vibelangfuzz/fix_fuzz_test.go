@@ -136,8 +136,13 @@ func FuzzFix(f *testing.F) {
 				Gap(t, "FuzzFix", "fix:idempotence", "a second --fix changes the fixed project (%v):\n%s\nfixed:\n%s\nthen:\n%s", second.Err, archive, Archive(fixed), strings.Join(changed, "\n"))
 			}
 			// Chapter 28, Diagnostics: the spec, rather than the implementation's
-			// offered actions, determines which codes --fix must address.
-			toolsUnappliedFixes(t, w, after, codes, second.Refused, archive)
+			// offered actions, determines which codes --fix must address. Chapter
+			// 7 scopes --fix-vip-only to "The existing VIP migration passes",
+			// so a fix-vip-only-* run leaves the TypeScript-form rewrites
+			// (EK4833, EK4834) to a later --fix and is not held to them.
+			if !options.VIPOnly {
+				toolsUnappliedFixes(t, w, after, codes, second.Refused, archive)
+			}
 			if len(result.Files) == 0 {
 				return
 			}

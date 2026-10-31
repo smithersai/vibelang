@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport * as Effect from \"effect/Effect\"\n\nerror Mismatch { version: number | undefined }\n\nexport const requireVersion = (version: number | undefined): Effect.Effect<void, Mismatch> =>\n  version === 1\n    ? Effect.void\n    : Effect.fail(new Mismatch({ version }))\n\nexport const main = (): Effect.Effect<string, Mismatch> => Effect.map(requireVersion(1), () => \"ok\")\n")
