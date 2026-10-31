@@ -6,6 +6,7 @@ import { posix } from "node:path"
 const fromClause = /(?<=^|[;\n}])[ \t]*(import|export)\s+(type\s+)?((?:(?!\b(?:import|export)\b)[^'";=])*?)\s*from\s*(['"])([^'"\n]+)\4/dg
 const bare = /(?<=^|[;\n}])[ \t]*import\s*(['"])([^'"\n]+)\1/dg
 const dynamic = /\bimport\(\s*(['"])([^'"\n]+)\1\s*\)/dg
+const mocked = /\bmock\.module\(\s*(['"])([^'"\n]+)\1/dg
 
 /** Every import and re-export specifier of text, in source order. */
 export function parseImports(text) {
@@ -26,6 +27,7 @@ export function parseImports(text) {
   }
   for (const m of text.matchAll(bare)) found.push({ kind: "import", specifier: m[2], typeOnly: false, clause: "", start: m.indices[2][0], end: m.indices[2][1] })
   for (const m of text.matchAll(dynamic)) found.push({ kind: "dynamic", specifier: m[2], typeOnly: false, clause: "", start: m.indices[2][0], end: m.indices[2][1] })
+  for (const m of text.matchAll(mocked)) found.push({ kind: "mock", specifier: m[2], typeOnly: false, clause: "", start: m.indices[2][0], end: m.indices[2][1] })
   return found.sort((a, b) => a.start - b.start)
 }
 

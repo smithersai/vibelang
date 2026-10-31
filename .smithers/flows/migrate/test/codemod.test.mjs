@@ -110,6 +110,32 @@ test("restoreExports undoes one module's entries and keeps the others'", () => {
   })
 })
 
+// Bun matches a mock by the module it resolves, and an extensionless path does not
+// reach a .vibe module through the preload, so the mock silently stops applying.
+test("rewriteImports names a mocked .vibe module by its source name, and leaves others", () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-mock-"))
+  try {
+    mkdirSync(join(root, "src"))
+    mkdirSync(join(root, "test"))
+    writeFileSync(join(root, "src/mini.vibe"), "export const mini = 1\n")
+    writeFileSync(join(root, "src/other.ts"), "export const other = 1\n")
+    writeFileSync(join(root, "test/a.test.ts"), [
+      "import { mock } from \"bun:test\"",
+      "mock.module(\"../src/mini\", () => ({ mini: 2 }))",
+      "mock.module(\"../src/other\", () => ({ other: 2 }))",
+      "mock.module(\"effect\", () => ({}))",
+      ""
+    ].join("\n"))
+    const edits = rewriteImports(root, ["src/mini.vibe", "src/other.ts", "test/a.test.ts"])
+    assert.deepEqual(edits, [{ file: "test/a.test.ts", from: "../src/mini", to: "../src/mini.vibe" }])
+    const text = readFileSync(join(root, "test/a.test.ts"), "utf8")
+    assert.ok(text.includes("mock.module(\"../src/mini.vibe\", () => ({ mini: 2 }))"))
+    assert.ok(text.includes("mock.module(\"../src/other\", () => ({ other: 2 }))"))
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
 test("renameBatch and rewriteImports update a small package", () => {
   const root = mkdtempSync(join(tmpdir(), "migrate-codemod-"))
   try {

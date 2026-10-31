@@ -200,13 +200,15 @@ export function restoreExports(root, edits, module) {
  * user.d.vibe.ts (vibelang setting declarationSidecars), while vibelang,
  * its loaders and its bundler plugins resolve it to the source, and vibelang
  * emits and declares it as ./user.js (D298). An extensionless specifier stays
- * as written, since its declaration would gain .js. A .vibe specifier of a
- * module that revert returned to .ts names its .ts source again.
+ * as written, since its declaration would gain .js, except in a mock.module
+ * call (mock), where Bun matches the module only by a name it resolves. A
+ * .vibe specifier of a module that revert returned to .ts names its .ts source
+ * again.
  */
-export function rewriteSpecifier(importer, specifier, target) {
+export function rewriteSpecifier(importer, specifier, target, { mock = false } = {}) {
   const targetExt = posix.extname(target)
   const ext = posix.extname(specifier)
-  const vibeImporter = importer.endsWith(".vibe")
+  const vibeImporter = importer.endsWith(".vibe") || (mock && targetExt === ".vibe")
   if (vibeImporter || (targetExt === ".vibe" && [".js", ".ts", ".mts"].includes(ext))) {
     if (ext === targetExt) return specifier
     if ([".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts", ".vibe"].includes(ext)) return specifier.slice(0, -ext.length) + targetExt
@@ -265,7 +267,7 @@ export function rewriteImports(root, scope) {
     for (const i of parseImports(text)) {
       const target = resolveRelative(file, i.specifier, files)
       if (!target) continue
-      const next = rewriteSpecifier(file, i.specifier, target)
+      const next = rewriteSpecifier(file, i.specifier, target, { mock: i.kind === "mock" })
       if (next !== i.specifier) {
         changes.push({ start: i.start, end: i.end, text: next })
         edits.push({ file, from: i.specifier, to: next })
