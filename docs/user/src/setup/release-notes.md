@@ -239,6 +239,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The migrate flow's setup and Effect upgrade edited the manifests and tsconfigs of packages inside a Git submodule that the workspace named, so the lockfile recorded edits no commit of the parent could hold and a fresh `pnpm install --frozen-lockfile` at the submodule's gitlink failed; setup now leaves every submodule as it is, with a warning for a package the run names inside one.
 
+- The failures-spec check stopped after the missing error-member separator rule was documented; it now records the pending `EK1306` implementation and its owner while preserving the rule.
+
 
 - Checking documentation examples with a symlinked `TMPDIR` could stop with `Compiler failed` instead of reporting an example's type error; diagnostics now stay attached to their examples and later pages are checked.
 

@@ -274,7 +274,7 @@ A function may be its module's default export (`Func.Default`): both prints writ
 
 `FuzzFailuresSpec` reads `003-failures.md` and the declaration contracts in
 `001-functions.md`. Each case quotes its rule verbatim; quote and coverage
-checks flag changed chapter bullets and static-rule rows. The target validates its
+checks flag changed chapter bullets and static-rule rows. A newly documented rule whose diagnostic is not implemented belongs in `failuresNotAsserted` with the exact quoted row, the observed gap and its owning lane; keep the specification intact and move the row to active cases when that implementation lands. The target validates its
 quotes at startup even when a campaign skips ordinary tests. Rejected programs
 must report the chapter's diagnostic at the marked expression, without an
 unrelated error elsewhere. Accepted programs must compile without errors.

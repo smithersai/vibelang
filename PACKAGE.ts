@@ -86,6 +86,7 @@ const specTests = [
   "TestMigrationJSDocImportsQuoted",
   "TestDataChapterWitnessesQuoted",
   "TestFailuresSpecQuotes",
+  "TestFailuresSpecCoverage",
   "TestSpecRuleFacts",
   "TestSpecRuleTable",
   "TestSpecRuleCoverage",
