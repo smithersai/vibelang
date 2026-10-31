@@ -324,6 +324,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A labeled `continue` from a `for concurrent` item to an enclosing loop reported a TypeScript function-boundary error; it now reports `EK1905` and explains how to end the item.
 
+- Producer documentation kept callback-owned `Scope` as an external requirement; it now shows only the other services that consumers must provide, while preserving checks on written annotations and emitted values.
+
 - Editor parsing rejected `for try` `Stream` loops; the tree-sitter grammar now recognizes the loop and its `continue` and `break` statements.
 
 - In a project that emits declarations, `vibelang --fix` removed an import such as `import * as DateTime from "effect/DateTime"` that the declaration file still printed, through a local type an export names (`type NonNull<V> = V extends DateTime.Utc ? …`), a conditional type or a written `keyof DateTime.Utc`, so the declaration imported `{ DateTime } from "effect"`; `--fix` now keeps every import the file's declaration keeps.
