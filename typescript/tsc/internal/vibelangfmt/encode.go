@@ -431,7 +431,7 @@ func (e *encoder) declaration(form parser.VibeSyntax) error {
 			e.holders[len(e.holders)-1].noBody = true
 			e.insert(form.Range.End(), " = {}", 0)
 		} else {
-			e.insert(form.Open.Pos(), "= ", 0)
+			e.typeBody(form)
 		}
 	case parser.VibeSyntaxData:
 		// data D { A; B { f: T } } is type $v = { A; B: { f: T } }: a variant
@@ -439,7 +439,7 @@ func (e *encoder) declaration(form parser.VibeSyntax) error {
 		name := e.hold(placeholderTypeHead, head, form.Head.Pos(), firstLineWidth(head)-len("type  ="))
 		e.holders[len(e.holders)-1].data = true
 		e.add(edit{pos: form.Head.Pos(), end: form.Head.End(), text: "type " + name, opaque: true})
-		e.insert(form.Open.Pos(), "= ", 0)
+		e.typeBody(form)
 		for _, variant := range form.Variants {
 			if variant.Open.Pos() != variant.Open.End() {
 				e.insert(variant.Name.End(), ":", 0)
@@ -467,6 +467,21 @@ func (e *encoder) declaration(form parser.VibeSyntax) error {
 		e.add(edit{pos: form.Range.Pos(), end: form.Range.End(), text: name, opaque: true})
 	}
 	return nil
+}
+
+// typeBody keeps the projected type alias on one line up to its opening
+// brace. A newline before "=" adds a continuation indent that survives
+// decoding the declaration back to VibeLang.
+func (e *encoder) typeBody(form parser.VibeSyntax) {
+	start := form.Open.Pos()
+	if !hasComment(e.source[form.Head.End():start]) {
+		for start > form.Head.End() && isSpace(e.source[start-1]) {
+			start--
+		}
+		e.replace(start, form.Open.Pos(), " = ")
+		return
+	}
+	e.insert(form.Open.Pos(), "= ", 0)
 }
 
 // declarationKeywordSpacing normalizes the gaps after declaration keywords.
