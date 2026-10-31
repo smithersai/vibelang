@@ -9,8 +9,8 @@ import (
 
 func init() { checker.RegisterDiagnosticsFilterHook(explainDefaultReadonly) }
 
-// Keep TS2540 and its location. Only a .vibe property signature with the
-// parser's implicit readonly modifier supports the suggested mutable syntax.
+// Keep TS2540 and its location. Only a member of a data, schema or error body
+// carries the parser's implicit readonly modifier, which mutable removes.
 func explainDefaultReadonly(c *checker.Checker, file *ast.SourceFile, all []*ast.Diagnostic) []*ast.Diagnostic {
 	if !isVibeLangFile(file) {
 		return all
@@ -33,7 +33,7 @@ func explainDefaultReadonly(c *checker.Checker, file *ast.SourceFile, all []*ast
 			}
 			for _, modifier := range declaration.Modifiers().Nodes {
 				if modifier.Kind == ast.KindReadonlyKeyword && modifier.Flags&ast.NodeFlagsReparsed != 0 {
-					all[i] = note(d.Clone(), "Members are readonly by default in .vibe; declare it mutable: { mutable {0}: {1} }.",
+					all[i] = note(d.Clone(), "In a data, schema or error body a member is readonly unless written mutable: { mutable {0}: {1} }.",
 						scanner.GetTextOfNode(declaration.Name()), c.TypeToString(c.GetTypeOfSymbol(symbol)))
 					break
 				}

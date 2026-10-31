@@ -1,2 +1,3 @@
-declare it mutable: { mutable n: number }
-declare it mutable: { mutable "display-name": number }
+Cannot assign to 'n' because it is a read-only property.
+Cannot assign to '"display-name"' because it is a read-only property.
+In a data, schema or error body a member is readonly unless written mutable: { mutable r: number }.

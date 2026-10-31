@@ -1,6 +1,6 @@
 // expect-result: {"a":2,"b":{"seen":5},"c":"tags: a","e":"Ada!"}
-// In a .vibe file the members of interfaces and object types are readonly
-// unless written mutable (D134).
+// mutable, written for the retired readonly default (D134), is still accepted
+// on interface and object-type members, where it changes nothing.
 export interface Counter {
   label: string
   mutable count: number

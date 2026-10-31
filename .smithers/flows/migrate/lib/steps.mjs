@@ -7,7 +7,7 @@ import { join, posix, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { buildInventory, listSources, readCoverage } from "./inventory.mjs"
 import { defaultLimits, draftPlan, planPrompt, validatePlan } from "./plan.mjs"
-import { fixToFixedPoint, keepMutableMembers, renameBatch, restoreExports, restoreSpecifiers, rewriteExports, rewriteImports, rewriteTotals } from "./codemod.mjs"
+import { fixToFixedPoint, renameBatch, restoreExports, restoreSpecifiers, rewriteExports, rewriteImports, rewriteTotals } from "./codemod.mjs"
 import { check, newErrors, styleProblems, summarize } from "./diagnostics.mjs"
 import { compareDeclarations, emitDeclarations, loadTypeScript } from "./declarations.mjs"
 import { compareTests, regressionIssue, runTests } from "./tests.mjs"
@@ -667,7 +667,7 @@ export async function plan(options) {
   return { plan: accepted, accepted: true }
 }
 
-/** codemod: keep writable members writable, rename the batch to .vibe, rewrite imports, and run vibelang --fix to a fixed point. */
+/** codemod: rename the batch to .vibe, rewrite imports, and run vibelang --fix to a fixed point. */
 export async function codemod(options) {
   const { p, config, plan: thePlan } = loadRun(options.run)
   if (!thePlan) throw new Error("plan has not been accepted")
@@ -675,7 +675,6 @@ export async function codemod(options) {
   if (existsSync(p.codemod(b))) return readJson(p.codemod(b))
   const t = config.target
   const files = thePlan.batches[Number(b) - 1].files
-  const mutable = keepMutableMembers(typeScriptOf(config), t, files)
   const renames = renameBatch(t, files)
   const exportEdits = rewriteExports(t, renames)
   const importEdits = rewriteImports(t, scopeFiles(config))
@@ -694,7 +693,7 @@ export async function codemod(options) {
       settled &&= fixed.settled
     }
   }
-  const result = { batch: b, at: new Date().toISOString(), files, mutable, renames, exportEdits, importEdits, fix: { settled, rounds, byFile, totals: rewriteTotals(byFile), refused } }
+  const result = { batch: b, at: new Date().toISOString(), files, renames, exportEdits, importEdits, fix: { settled, rounds, byFile, totals: rewriteTotals(byFile), refused } }
   writeJson(p.codemod(b), result)
   return result
 }

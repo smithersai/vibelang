@@ -50,7 +50,10 @@ func (p *Parser) parseSchemaAliasDeclaration(pos int, jsdoc jsdocScannerInfo, mo
 	p.nextToken() // schema
 	name := p.parseBindingIdentifier()
 	p.parseExpected(ast.KindEqualsToken)
+	saved := p.vibelangImplicitReadonly
+	p.vibelangImplicitReadonly = true // as in a schema's fields (vibelang.go)
 	typeNode := p.parseType()
+	p.vibelangImplicitReadonly = saved
 	p.parseSemicolon()
 	p.recordVibeSyntax(VibeSyntax{
 		Kind:  VibeSyntaxDeclaration,

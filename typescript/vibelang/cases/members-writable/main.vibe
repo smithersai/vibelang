@@ -1,0 +1,36 @@
+// expect-result: {"between":true,"minimum":0,"x":2,"z":3,"count":2}
+// A member of an interface or an object type is writable unless written
+// readonly, as in TypeScript, and its declaration says the same (foldkit-10:
+// calendar/comparison's options and mount's MountDefinition members).
+export const between = (self: number, options: { minimum: number; maximum: number }): boolean =>
+  self >= options.minimum && self <= options.maximum
+
+export const widen = (options: { minimum: number }): number => {
+  options.minimum = 0
+  return options.minimum
+}
+
+export interface Point {
+  x: number
+  readonly y: number
+  [key: string]: number
+}
+
+export const move = (point: Point): Point => {
+  point.x = point.x + 1
+  point["z"] = 3
+  return point
+}
+
+// mutable, from the retired readonly default, is still accepted and changes nothing.
+export interface Counter { mutable count: number }
+
+export const bump = (counter: Counter): number => {
+  counter.count++
+  return counter.count
+}
+
+export function main() {
+  const point = move({ x: 1, y: 2 })
+  return { between: between(2, { minimum: 1, maximum: 3 }), minimum: widen({ minimum: 5 }), x: point.x, z: point["z"], count: bump({ count: 1 }) }
+}

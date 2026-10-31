@@ -4,7 +4,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { fixToFixedPoint, keepMutableMembers, mergeFixes, parseFixOutput, renameBatch, restoreExports, rewriteExports, rewriteImports, rewriteSpecifier, rewriteTotals, vibePath } from "../lib/codemod.mjs"
+import { fixToFixedPoint, mergeFixes, parseFixOutput, renameBatch, restoreExports, rewriteExports, rewriteImports, rewriteSpecifier, rewriteTotals, vibePath } from "../lib/codemod.mjs"
 import { loadTypeScript } from "../lib/declarations.mjs"
 
 test("vibePath renames only .ts modules", () => {
@@ -185,46 +185,6 @@ test("mergeFixes and rewriteTotals add rounds and files", () => {
   const merged = mergeFixes(mergeFixes({}, { a: { EK4830: 1 } }), { a: { EK4830: 2, "prelude import": 1 }, b: { EK4833: 1 } })
   assert.deepEqual(merged, { a: { EK4830: 3, "prelude import": 1 }, b: { EK4833: 1 } })
   assert.deepEqual(rewriteTotals(merged), { EK4830: 3, "prelude import": 1, EK4833: 1 })
-})
-
-test("keepMutableMembers marks the members TypeScript declares writable mutable, so the .vibe file declares the same types", () => {
-  // The runtime package's TypeScript (bun install in packages/runtime) has the compiler API.
-  const ts = loadTypeScript([fileURLToPath(new URL("../../../../packages/runtime/", import.meta.url))])
-  const root = mkdtempSync(join(tmpdir(), "migrate-mutable-"))
-  try {
-    mkdirSync(join(root, "src"))
-    writeFileSync(join(root, "src/types.ts"), [
-      "export interface SendOptions {",
-      "  /** json or text */",
-      "  contentType?: \"json\" | \"text\"",
-      "  readonly id: string",
-      "  [key: string]: unknown",
-      "}",
-      "export const retry = <E extends { _tag: string }>(error: E) => error",
-      "export type Info = Readonly<{ path: string }>",
-      "export class SendError extends Data.TaggedError(\"SendError\")<{ message: string }> {}",
-      "export class Box { value: number = 1 }",
-      ""
-    ].join("\n"))
-    writeFileSync(join(root, "src/plain.ts"), "export const one = 1\n")
-    assert.deepEqual(keepMutableMembers(ts, root, ["src/types.ts", "src/plain.ts"]), [{ file: "src/types.ts", count: 4 }])
-    assert.equal(readFileSync(join(root, "src/types.ts"), "utf8"), [
-      "export interface SendOptions {",
-      "  /** json or text */",
-      "  mutable contentType?: \"json\" | \"text\"",
-      "  readonly id: string",
-      "  mutable [key: string]: unknown",
-      "}",
-      "export const retry = <E extends { mutable _tag: string }>(error: E) => error",
-      "export type Info = Readonly<{ path: string }>",
-      "export class SendError extends Data.TaggedError(\"SendError\")<{ mutable message: string }> {}",
-      "export class Box { value: number = 1 }",
-      ""
-    ].join("\n"))
-    assert.equal(readFileSync(join(root, "src/plain.ts"), "utf8"), "export const one = 1\n")
-  } finally {
-    rmSync(root, { recursive: true, force: true })
-  }
 })
 
 test("fixToFixedPoint keeps the rewrites of the batch's files only, and an earlier batch's file stays as committed", async () => {

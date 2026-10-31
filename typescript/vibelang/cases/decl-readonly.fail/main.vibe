@@ -1,17 +1,25 @@
 // expect: TS2540
+// A member written readonly is readonly, as in TypeScript.
 interface Point {
-  x: number
+  readonly x: number
   y: number
 }
 
-// TS2540: x is readonly, since it is not written mutable.
 export function move(point: Point) {
   point.x = point.x + 1
   return point
 }
 
-// TS2540: so is a member of an object type.
-export function rename(user: { name: string }) {
+// So is an object type's member written readonly.
+export function rename(user: { readonly name: string }) {
   user.name = "Ada"
   return user
+}
+
+// A schema's fields keep their readonly default: Schema.Struct's keys are readonly.
+schema Draft { title: string }
+
+export function edit(draft: Draft) {
+  draft.title = "Ada"
+  return draft
 }

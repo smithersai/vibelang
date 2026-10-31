@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/collections"
 	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
 )
@@ -170,7 +171,7 @@ func compileDeclarationIdentity(t *testing.T, w *Workspace, archive string) (*Co
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.Program == nil || HasError(c.Diagnostics) {
+	if c.Program == nil || HasError(c.Diagnostics) && !mutabilityErrors(c.Diagnostics) {
 		c.Remove()
 		t.Skipf(".vibe compilation reports errors: %v", SortedKeys(Keys(c.Dir, c.Diagnostics)))
 	}
@@ -184,14 +185,43 @@ func compileDeclarationIdentity(t *testing.T, w *Workspace, archive string) (*Co
 	return c, stock
 }
 
+// mutabilityErrors reports whether ds has a write through a readonly member,
+// TS2540 or TS2542.
+func mutabilityErrors(ds []*ast.Diagnostic) bool {
+	for _, d := range ds {
+		if d.Code() == 2540 || d.Code() == 2542 {
+			return true
+		}
+	}
+	return false
+}
+
 // CheckDeclarationIdentity compares one admitted project with stock tsc.
+//
+// It also enforces principle 4 of docs/design/src/000-intro.md, "TypeScript's
+// meaning outside Effect code", for member mutability: Chapter 1 says the
+// declaration keeps "exactly the source's written readonly modifiers", so a
+// renamed module whose writes stock tsc accepts must not report TS2540 or
+// TS2542 (foldkit-10: the checker kept the retired readonly default while the
+// declaration printed the members writable).
 func CheckDeclarationIdentity(t *testing.T, w *Workspace, tsc, api, archive string) {
 	const target = "FuzzDeclarationIdentity"
 	defer recoverCompilerPanic(t, target)
 	c, stock := compileDeclarationIdentity(t, w, archive)
 	defer c.Remove()
-	dir := emitDeclarationIdentityStock(t, w, tsc, stock)
+	dir := emitDeclarationIdentityStock(t, w, tsc, stock) // skips a program stock tsc rejects
 	defer os.RemoveAll(dir)
+	if HasError(c.Diagnostics) {
+		g := &Gaps{Target: target, Input: SeedName(archive)}
+		key := ""
+		if name := corpusFile(t, target); name != "" {
+			key = "corpus:" + name
+			g.Input = "testdata/fuzz/" + target + "/" + name
+		}
+		g.Add("feature:member-mutability", "000 principle 4, \"TypeScript's meaning outside Effect code\", and Chapter 1, declarations keep \"exactly the source's written readonly modifiers\": stock tsc accepts the program, and the renamed .vibe reports %v", SortedKeys(Keys(c.Dir, c.Diagnostics)))
+		g.FinishInput(t, key)
+		return
+	}
 	ctx, cancel := context.WithTimeout(t.Context(), 2*HangLimit)
 	defer cancel()
 	current := filepath.Join(c.Dir, "__identity_current")

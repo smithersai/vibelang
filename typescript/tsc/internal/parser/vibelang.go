@@ -171,15 +171,23 @@ func (p *Parser) vibelangAbstractMember(modifiers *ast.ModifierList, name *ast.N
 	return p.vibelangModifiers(modifiers, name, ast.KindAbstractKeyword)
 }
 
-// Readonly members (D134). In a .vibe file a property signature or an
-// index signature of an interface or an object type is readonly unless it is
-// written with mutable:
+// Members keep TypeScript's mutability: a property signature or an index
+// signature of an interface or an object type is writable unless written
+// readonly (000: where no VIP speaks, TypeScript applies; 001 keeps the
+// written modifiers in declarations), so the checker and the declaration agree:
 //
-//	interface Counter { label: string; mutable count: number }
+//	export const widen = (o: { minimum: number }): void => { o.minimum = 0 }
 //
-// reads as `interface Counter { readonly label: string; count: number }`.
-// mutable is a modifier only when a member name follows it on the same line,
-// so a member named mutable still parses as before.
+// Inside a data, schema or error body the type members keep the old default
+// (D134), readonly unless written with mutable, so those declarations and
+// schema mappings are unchanged:
+//
+//	data Shape { Circle { r: number }; Grow { mutable r: number } }
+//
+// mutable is still accepted on any member, where outside those bodies it
+// changes nothing, so code written for the default compiles. It is a modifier
+// only when a member name follows it on the same line, so a member named
+// mutable still parses as before.
 
 // parseVibeLangMutable consumes mutable at the start of a type member and
 // reports whether it did.
@@ -1128,7 +1136,10 @@ func (p *Parser) parseSchemaDeclaration(pos int, jsdoc jsdocScannerInfo, modifie
 	body := name.Loc
 	form := VibeSyntax{Kind: VibeSyntaxDeclaration, Name: "schema", Head: core.NewTextRange(keyword.Pos(), name.End())}
 	if p.token == ast.KindOpenBraceToken {
+		saved := p.vibelangImplicitReadonly
+		p.vibelangImplicitReadonly = true // a schema's fields map as written (D134; see Members keep TypeScript's mutability)
 		literal := p.parseTypeLiteral()
+		p.vibelangImplicitReadonly = saved
 		members = literal.AsTypeLiteralNode().Members.Nodes
 		body = literal.Loc
 		form.Open, form.Close = p.blockBraces(literal)

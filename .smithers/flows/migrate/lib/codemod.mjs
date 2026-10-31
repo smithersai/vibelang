@@ -14,47 +14,6 @@ export function vibePath(path) {
   return path.slice(0, -3) + ".vibe"
 }
 
-/**
- * Keeps the members that TypeScript declares writable writable in VibeLang,
- * where a member of an interface or an object type is readonly unless it is
- * written `mutable` (D134), so a renamed module declares the same types:
- * before the batch is renamed, each property or index signature without
- * `readonly` gains `mutable`. An object type that is Readonly's type argument,
- * whose members Readonly makes readonly, is left as it is. A type argument of
- * a class's extends clause is not: Data.TaggedError("E")<{ message: string }>
- * declares message as written, where an error declaration's fields are
- * readonly. ts is TypeScript's compiler API.
- * Returns the files changed, each with its count: { file, count }.
- */
-export function keepMutableMembers(ts, root, files) {
-  const changed = []
-  for (const file of files) {
-    const path = join(root, file)
-    const text = readFileSync(path, "utf8")
-    const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
-    const starts = []
-    const visit = (node) => {
-      if ((ts.isPropertySignature(node) || ts.isIndexSignatureDeclaration(node)) && writableMember(ts, node)) starts.push(node.getStart(source))
-      ts.forEachChild(node, visit)
-    }
-    visit(source)
-    if (!starts.length) continue
-    writeFileSync(path, applyEdits(text, starts.map((start) => ({ start, end: start, text: "mutable " }))))
-    changed.push({ file, count: starts.length })
-  }
-  return changed
-}
-
-/** Whether member, a property or index signature, is writable where VibeLang would make it readonly. */
-function writableMember(ts, member) {
-  if (member.modifiers?.some((m) => m.kind === ts.SyntaxKind.ReadonlyKeyword)) return false
-  const owner = member.parent
-  if (ts.isInterfaceDeclaration(owner)) return true
-  if (!ts.isTypeLiteralNode(owner)) return false
-  const use = owner.parent
-  return !(ts.isTypeReferenceNode(use) && ts.isIdentifier(use.typeName) && use.typeName.text === "Readonly")
-}
-
 /** Renames each file of the batch on disk; refuses to overwrite. */
 export function renameBatch(root, files) {
   const renames = files.map((from) => ({ from, to: vibePath(from) }))

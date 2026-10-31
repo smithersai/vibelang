@@ -442,9 +442,10 @@ func (p *projector) layerMember(member *ast.Node, e env) int {
 }
 
 // readonlyMember lowers a property or index signature of an interface or an
-// object type. In a .vibe file such a member is readonly unless written
-// mutable (D134): the parser gives it a synthesized readonly modifier, which
-// becomes written text, and consumes mutable, whose text goes.
+// object type. Such a member keeps TypeScript's mutability, except inside a
+// data, schema or error body, where it is readonly unless written mutable
+// (D134): there the parser gives it a synthesized readonly modifier, which
+// becomes written text. The parser consumes mutable, whose text goes.
 func (p *projector) readonlyMember(member *ast.Node, e env) {
 	start := p.tokenStart(member)
 	readonly := false

@@ -343,14 +343,14 @@ var projectionCases = []struct {
 		virtual: "class Wrapped<T> extends TaggedError(\"Wrapped\")<{ readonly value: T }> {}\n",
 	},
 	{
-		name:    "members are readonly unless mutable (D134)",
-		source:  "interface Counter {\n  label: string\n  mutable count: number\n  [key: string]: unknown\n  tick(): void\n}\ntype P = { x: number; mutable y: number }\n",
-		virtual: "interface Counter {\n  readonly label: string\n  count: number\n  readonly [key: string]: unknown\n  tick(): void\n}\ntype P = { readonly x: number; y: number }\n",
+		name:    "members keep TypeScript's mutability, and mutable goes",
+		source:  "interface Counter {\n  label: string\n  mutable count: number\n  readonly id: string\n  [key: string]: unknown\n  tick(): void\n}\ntype P = { x: number; mutable y: number }\n",
+		virtual: "interface Counter {\n  label: string\n  count: number\n  readonly id: string\n  [key: string]: unknown\n  tick(): void\n}\ntype P = { x: number; y: number }\n",
 	},
 	{
 		name:    "a member named mutable stays",
 		source:  "interface M { mutable: boolean }\n",
-		virtual: "interface M { readonly mutable: boolean }\n",
+		virtual: "interface M { mutable: boolean }\n",
 	},
 	{
 		name:    "contract with every slot",

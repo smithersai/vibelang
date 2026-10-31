@@ -159,7 +159,11 @@ func (p *Parser) parseDataVariant(form *VibeSyntax) *ast.Node {
 	variant := VibeSyntaxVariant{Name: p.sourceRange(name)}
 	var fields *ast.Node
 	if p.token == ast.KindOpenBraceToken {
+		// A variant's payload is readonly, as in Effect's Data.TaggedEnum (006).
+		saved := p.vibelangImplicitReadonly
+		p.vibelangImplicitReadonly = true
 		fields = p.parseTypeLiteral()
+		p.vibelangImplicitReadonly = saved
 		variant.Open, variant.Close = p.blockBraces(fields)
 	} else {
 		fields = p.vibelangSynthesized(p.factory.NewTypeLiteralNode(p.newNodeList(name.Loc, nil)), name.Loc)

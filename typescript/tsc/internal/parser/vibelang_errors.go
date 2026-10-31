@@ -132,8 +132,8 @@ func (p *Parser) parseErrorDeclaration(pos int, jsdoc jsdocScannerInfo, modifier
 		form.Open = p.tokenRange()
 		p.nextToken()
 		d.mutable = map[*ast.Node]bool{}
-		saveAbstract, saveFieldBody := p.vibelangAbstractMembers, p.vibelangFieldBody // an error inside a service body is not one of its members
-		p.vibelangAbstractMembers, p.vibelangFieldBody = false, true
+		saveAbstract, saveFieldBody, saveReadonly := p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangImplicitReadonly // an error inside a service body is not one of its members
+		p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangImplicitReadonly = false, true, true
 		list := p.parseList(PCClassMembers, func(p *Parser) *ast.Node {
 			start := p.nodePos()
 			mutable := p.parseVibeLangMutable()
@@ -145,7 +145,7 @@ func (p *Parser) parseErrorDeclaration(pos int, jsdoc jsdocScannerInfo, modifier
 			}
 			return element
 		})
-		p.vibelangAbstractMembers, p.vibelangFieldBody = saveAbstract, saveFieldBody
+		p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangImplicitReadonly = saveAbstract, saveFieldBody, saveReadonly
 		elements = list.Nodes
 		if p.token == ast.KindCloseBraceToken {
 			form.Close = p.tokenRange()

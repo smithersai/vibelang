@@ -100,18 +100,19 @@ type Parser struct {
 	setParentFromContext ast.Visitor
 	reparsedClones       []*ast.Node
 
-	vibelangMutableMember   bool                     // the type member being parsed was written with mutable (vibelang.go)
-	vibelangAbstractMembers bool                     // bodiless class members become abstract: a service or control body (vibelang.go)
-	vibelangFieldBody       bool                     // the class body is an error, service, or control body, whose fields a comma cannot separate (vibelang_errors.go)
-	vibelangFieldComma      bool                     // a comma follows the field just parsed in such a body (vibelang_errors.go)
-	vibelangSelects         int                      // select statements parsed so far, which number their labels (vibelang_fibers.go)
-	vibelangNoBlockParams   bool                     // a { after an expression is not a block param here: heritage clauses and provide's providers (vibelang_blocks.go)
-	vibelangMatchTemps      int                      // names written for match and is, numbered per file (vibelang_match.go)
-	vibelangTemps           []*ast.Node              // the identifiers of those names, which freshenVibeLangTemps renames when the file spells them (vibelang_match.go)
-	vibelangMatches         map[*ast.Node]*matchInfo // match expressions as written, by their call or statement (vibelang_match.go)
-	vibelangIsBindings      map[*ast.Node]*isInfo    // is expressions whose patterns bind names, by their markers (vibelang_match.go)
-	vibelangSyntax          *[]VibeSyntax            // the forms recorded for ParseVibeLangSyntax, or nil (vibelang_syntax.go)
-	vibelangTypeScript      bool                     // reading a module declaration's body, which is TypeScript (vibelang_modules.go)
+	vibelangMutableMember    bool                     // the type member being parsed was written with mutable (vibelang.go)
+	vibelangImplicitReadonly bool                     // inside a data, schema or error body, whose type members are readonly unless written mutable (vibelang.go)
+	vibelangAbstractMembers  bool                     // bodiless class members become abstract: a service or control body (vibelang.go)
+	vibelangFieldBody        bool                     // the class body is an error, service, or control body, whose fields a comma cannot separate (vibelang_errors.go)
+	vibelangFieldComma       bool                     // a comma follows the field just parsed in such a body (vibelang_errors.go)
+	vibelangSelects          int                      // select statements parsed so far, which number their labels (vibelang_fibers.go)
+	vibelangNoBlockParams    bool                     // a { after an expression is not a block param here: heritage clauses and provide's providers (vibelang_blocks.go)
+	vibelangMatchTemps       int                      // names written for match and is, numbered per file (vibelang_match.go)
+	vibelangTemps            []*ast.Node              // the identifiers of those names, which freshenVibeLangTemps renames when the file spells them (vibelang_match.go)
+	vibelangMatches          map[*ast.Node]*matchInfo // match expressions as written, by their call or statement (vibelang_match.go)
+	vibelangIsBindings       map[*ast.Node]*isInfo    // is expressions whose patterns bind names, by their markers (vibelang_match.go)
+	vibelangSyntax           *[]VibeSyntax            // the forms recorded for ParseVibeLangSyntax, or nil (vibelang_syntax.go)
+	vibelangTypeScript       bool                     // reading a module declaration's body, which is TypeScript (vibelang_modules.go)
 }
 
 func newParser() *Parser {
@@ -3375,7 +3376,7 @@ func (p *Parser) parseTypeMember() *ast.Node {
 	}
 	pos := p.nodePos()
 	jsdoc := p.jsdocScannerInfo()
-	mutable := p.isVibeLangFile() && p.parseVibeLangMutable() // members are readonly unless written mutable (vibelang.go)
+	mutable := p.isVibeLangFile() && p.parseVibeLangMutable() // readonly unless written mutable inside a data, schema or error body (vibelang.go)
 	modifiers := p.parseModifiers()
 	if p.parseContextualModifier(ast.KindGetKeyword) {
 		return p.parseAccessorDeclaration(pos, jsdoc, modifiers, ast.KindGetAccessor, ParseFlagsType)
@@ -3384,7 +3385,7 @@ func (p *Parser) parseTypeMember() *ast.Node {
 		return p.parseAccessorDeclaration(pos, jsdoc, modifiers, ast.KindSetAccessor, ParseFlagsType)
 	}
 	if p.isIndexSignature() {
-		if p.isVibeLangFile() && !mutable {
+		if p.vibelangImplicitReadonly && !mutable {
 			modifiers = p.vibelangReadonly(modifiers, p.scanner.TokenRange())
 		}
 		return p.parseIndexSignatureDeclaration(pos, jsdoc, modifiers)
@@ -3792,7 +3793,7 @@ func (p *Parser) parsePropertyOrMethodSignature(pos int, jsdoc jsdocScannerInfo,
 		if p.token == ast.KindEqualsToken {
 			initializer = p.parseInitializer()
 		}
-		if p.isVibeLangFile() && !mutable {
+		if p.vibelangImplicitReadonly && !mutable {
 			modifiers = p.vibelangReadonly(modifiers, name.Loc)
 		}
 		result = p.factory.NewPropertySignatureDeclaration(modifiers, name, questionToken, typeNode, initializer)

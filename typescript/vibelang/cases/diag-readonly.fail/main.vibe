@@ -1,5 +1,9 @@
 // expect: TS2540
-export function increment(state: { n: number }) { state.n++ }
+export function increment(state: { readonly n: number }) { state.n++ }
 
-export function mutable(state: { mutable n: number }) { state.n++ }
-export function quoted(state: { "display-name": number }) { state["display-name"]++ }
+export function bump(state: { n: number }) { state.n++ }
+export function quoted(state: { readonly "display-name": number }) { state["display-name"]++ }
+
+// A data variant field keeps the readonly default, which mutable removes.
+data Shape { Circle { r: number } }
+export const grow = (c: Extract<Shape, { _tag: "Circle" }>): void => { c.r = 2 }
