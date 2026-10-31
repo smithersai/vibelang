@@ -319,3 +319,5 @@ Inside an Effect function, `throw` adds an expected failure to the function's er
 `A!E!R` means exactly `Effect.Effect<A, E, R>`. Every omitted slot is `never`, including on a function with a body. Leave out the whole annotation to infer success, errors, and requirements.
 
 See [Control operations and handlers](111-control-operations-and-handlers.md) for the proposal's status.
+
+Inferred parameter types of retained SDK error constructors keep their Effect namespace spelling in declarations. For example, exporting `AsyncFiberError` writes its inferred fiber parameter as `Fiber.Fiber<unknown, unknown>` with an import from `effect`, independently of nearby matching code. Explicit import types and local or generic `Fiber` bindings retain their written scope.

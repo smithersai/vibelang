@@ -1,0 +1,4 @@
+import {AsyncFiberError as Imported} from "effect/Cause"
+export const ctor=Imported
+function classify(s:unknown):boolean{return match(s){when Imported:true;default:false;}}
+void classify

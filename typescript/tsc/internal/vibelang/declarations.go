@@ -132,6 +132,10 @@ func transformDeclarations(resolver printer.EmitResolver, sourceFile *ast.Source
 			dataTypes.NewTransformer(dataTypes.visit, resolver.EmitContext())
 			declarations = dataTypes.TransformSourceFile(declarations)
 			collisions = lockedCopy(collisionModules(c))
+			if constructors := newConstructorFiberTypes(c, sourceFile); constructors != nil {
+				constructors.NewTransformer(constructors.visit, resolver.EmitContext())
+				declarations = constructors.TransformSourceFile(declarations)
+			}
 		})
 		if len(collisions) > 0 {
 			types := &effectCollisionTypes{modules: collisions}

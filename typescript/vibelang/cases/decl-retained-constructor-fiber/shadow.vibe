@@ -1,0 +1,3 @@
+import {AsyncFiberError as Imported} from "effect/Cause"
+export const ctor=Imported
+export function identity<Fiber>(value:Fiber):Fiber{return value}

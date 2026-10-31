@@ -1,0 +1,2 @@
+import {AsyncFiberError as Imported} from "effect/Cause"
+export const ctor: new(fiber:import("effect/Fiber").Fiber<unknown,unknown>)=>Imported = Imported
