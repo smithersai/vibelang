@@ -20,6 +20,30 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Splitting `for concurrent` across lines could cause syntax errors; line breaks and multiline comments now work before either the limit or loop head.
 - Exporting a top-level `data` or `schema` named `as` produced a `.d.ts` file TypeScript could not parse; its exported type now uses an unambiguous declaration and keeps the same public name.
 
+- Retiring valid compiler cases could make the fuzz splicer's category check fail even though mutation still worked; it now checks a rare category explicitly when the random sample misses it.
+
+- Formatting `async f()` or `effect f()` silently migrated the declaration and removed `EK4618`; formatting now preserves the shorthand, and `vibelang --fix` applies its existing repair.
+
+- Checking explicit files beside a project config failed with `TS5112` unless `--ignoreConfig` was added; compiler and `lint` file arguments now bypass config discovery as specified.
+
+- A local binding named `undefined` could reject `for concurrent` or silently limit its concurrency; an omitted limit now always runs unbounded.
+- The TypeScript mapper evaluated a `for concurrent` iterable before its written limit; both renderings now evaluate the limit first, once.
+- The mask smoke test could hang when interruption arrived before the child entered its mask; it now waits for a start signal and checks delayed child scheduling.
+- Fiber operators before exponentiation could compile or report a misleading type error. `fork` and `join` now require parentheses on the left of `**`, like `await`.
+
+- Effect methods with bigint literal names, such as `effect 1n()`, were rejected with syntax errors; those names now work as TypeScript method names do.
+
+- Optional class methods such as `effect read?()` were rejected with syntax errors; optional names now work for ordinary, computed and generic Effect methods, with TypeScript's usual checks.
+
+- A statement such as `effect as (Handler)` or `async satisfies (Handler)` could be mistaken for a removed function shorthand and rejected; `as` and `satisfies` expressions now keep their TypeScript meaning.
+
+- An `effect` method with a computed name, such as `effect [key]()`, was rejected with syntax errors in a class or object literal; computed names now work for instance, static and generic Effect methods.
+
+- The config preview silently dropped invalid settings; `vibelang --showConfig` now reports local and inherited configuration errors and exits unsuccessfully.
+
+- `vibelang --fix` could refuse a plain helper that collected another helper's results, because it wrote their old `Effect` result type. It now infers the corrected return type.
+- Expressions such as `join fork task` and `! join child` caused parser errors. Fiber operators now compose as ordinary unary expressions.
+
 
 Update `vibelang`, `vibelang-runtime` and your bundler plugin together to
 0.0.11. Use exactly `effect@4.1.0`, the earliest Effect version VibeLang
@@ -479,6 +503,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Service default initializers had an unspecified Effect boundary; they now follow source class-field rules, with Effect-based factories computed before the declaration.
 
+- Effect functions and methods inferred `void` for throw-only or mixed throw/fallthrough bodies; they now infer `never` or `undefined`, matching `Effect.gen`.
+
 - The migrate flow failed a batch on `EK4832` for an exported `Schema.Struct` constant with no type export, which `--fix` must leave because a `schema` declaration would add a public type; `verify` no longer counts it.
 
 - The ESLint configuration the migrate flow writes for `.vibe` files enabled typescript-eslint's recommended rules whatever the repository's Oxlint configuration chose, so a rule the repository turns off, such as foldkit's `no-explicit-any` under `packages/foldkit/src`, failed its lint on migrated files, and the rules it enables never ran on them; the configuration now reads `.oxlintrc.json` on each run and applies its rules and overrides wherever ESLint or typescript-eslint has the rule.
@@ -751,6 +777,10 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Async conversion could put a directly nested `await` inside a plain callback; the refactors now decline that body and preserve nested function boundaries.
 
+- Async conversion could leave a returned Promise unbridged in an effect body; the refactors now require an explicit `await` for Promise or thenable returns, including unions that may contain one.
+
+
+- Async conversion could pass a scalar or unproven `await` operand to `Effect.tryPromise`; the refactors now require Promise-like operands and retain nested async functions unchanged.
 - A producer could silently discard a returned value. It now reports `EK2128`: a Stream has no return value. `vibelang --fix` keeps the value's evaluation and ends the stream with a bare `return`.
 
 - The specification admitted generic parameters and return annotations on a bare effect-arrow parameter. Arrow heads now follow TypeScript: those decorations require parentheses, while `effect x => x` remains valid.

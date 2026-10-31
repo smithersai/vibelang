@@ -176,6 +176,8 @@ Use an effect function for a sequence with parameters, and `effect { … }` for 
 
 When migrating `yield*`, `--fix` also runs structured Effect results, such as SQL queries returned by `.vibe` helpers. Calling the helper constructs the query; the rewrite calls that result to run it.
 
+Async conversion requires every `await` operand to be statically `PromiseLike`. JavaScript also permits `await` on a scalar, an unknown value or a mixed union. Normalize those operands explicitly, for example with `await Promise.resolve(value)`, before requesting the refactor.
+
 Apply every fix in a project, then compile as the rest of the command says:
 
 ```sh
@@ -198,9 +200,13 @@ A direct `extends` or `implements` entry retains its named type, such as `Effect
 
 A helper's return-type quick fix writes imported names in the helper's scope: for a namespace import such as `foreign`, it writes `foreign.Thing`. If the inferred type cannot be written there, the annotation is `infer _`.
 
+When annotating helpers also changes a collected callback result, the fix writes `: infer _` so the return type follows the corrected helpers.
+
 Fixes retain field comments and comments before unwrapped succeed/fail arguments. If a proposed rewrite cannot retain its comments, neither the editor nor --fix applies it.
 
 When `vibe.effectModules` is `false`, `--fix` keeps the explicit Effect imports the program needs. The editor offers those bindings through imports and local declarations.
+
+Before async conversion, await a returned `Promise` or `PromiseLike` explicitly, as in `return await input`. Async functions adopt returned thenables; effect bodies require explicit Promise handling. The refactors therefore require an explicit `await` for those returns, including a union that may contain a Promise.
 
 ## Effect language service rules
 

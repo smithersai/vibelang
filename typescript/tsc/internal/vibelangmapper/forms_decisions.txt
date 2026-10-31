@@ -677,6 +677,8 @@ typescript/vibelang/cases/concurrent-continue-outer.fail/main.vibe:19:32 lambda 
 typescript/vibelang/cases/concurrent-continue-outer.fail/main.vibe:20:27 lambda effectFn table
 typescript/vibelang/cases/concurrent-continue-outer.fail/main.vibe:28:27 lambda effectFn table
 typescript/vibelang/cases/concurrent-continue-outer.fail/main.vibe:4:27 lambda effectFn table
+typescript/vibelang/cases/concurrent-default-shadow/main.vibe:11:25 lambda effectFn table
+typescript/vibelang/cases/concurrent-default-shadow/main.vibe:5:25 lambda effectFn table
 typescript/vibelang/cases/concurrent-head-newline/main.vibe:11:30 lambda effectFn table
 typescript/vibelang/cases/concurrent-head-newline/main.vibe:13:36 lambda effectFn table
 typescript/vibelang/cases/concurrent-head-newline/main.vibe:5:12 lambda effectFn table
@@ -1034,7 +1036,11 @@ typescript/vibelang/cases/dual-block-legacy.fail/main.vibe:13:27 block appended/
 typescript/vibelang/cases/dual-block-legacy.fail/main.vibe:19:30 block appended/dual fallback
 typescript/vibelang/cases/dual-block-legacy.fail/main.vibe:26:35 block appended/dual fallback
 typescript/vibelang/cases/dual-block-legacy.fail/main.vibe:32:30 block appended/plain table
+typescript/vibelang/cases/effect-bigint-method/main.vibe:8:3 lambda plain fallback
 typescript/vibelang/cases/effect-collision-namespaces/main.vibe:2:37 lambda plain table
+typescript/vibelang/cases/effect-computed-method/main.vibe:11:3 lambda choice fallback
+typescript/vibelang/cases/effect-contextual-assertions/main.vibe:3:16 lambda plain annotation
+typescript/vibelang/cases/effect-contextual-assertions/main.vibe:4:15 lambda plain annotation
 typescript/vibelang/cases/effect-contract-plain-destinations.fail/main.vibe:6:18 lambda plain table
 typescript/vibelang/cases/effect-contract-plain-destinations.fail/main.vibe:8:13 lambda plain table
 typescript/vibelang/cases/effect-contract-plain-destinations.fail/main.vibe:9:13 lambda plain table
@@ -1049,6 +1055,7 @@ typescript/vibelang/cases/effect-method-super/main.vibe:50:12 lambda choice fall
 typescript/vibelang/cases/effect-method-super/main.vibe:90:15 lambda effectFn fallback
 typescript/vibelang/cases/effect-method-super/main.vibe:91:17 lambda dual fallback
 typescript/vibelang/cases/effect-modules-explicit/main.vibe:3:168 lambda plain table
+typescript/vibelang/cases/effect-optional-method.fail/main.vibe:2:19 lambda dual fallback
 typescript/vibelang/cases/effect-platform-name-meanings/main.vibe:22:15 lambda plain annotation
 typescript/vibelang/cases/effect-subtype-returns.fail/main.vibe:7:24 lambda choice fallback
 typescript/vibelang/cases/effect-subtype-returns/main.vibe:10:53 lambda effectFn annotation
