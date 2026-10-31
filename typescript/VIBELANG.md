@@ -406,6 +406,7 @@ VibeLang code lives in `tsc/internal/vibelang/`, which may import any internal p
 
 | Upstream file | Change | Lines (+/-) |
 | --- | --- | --- |
+| `tsc/internal/checker/nodebuilderimpl.go` | `createAnonymousTypeNodeEx` declares an anonymous type it meets again as `/*elided*/ any`, as TypeScript 7.0.2 does, at the three sites upstream 834e7862c031 turned into TS5088 (see Behavior that differs from upstream) | +8 / -3 |
 | `tsc/internal/parser/parser.go` | Hand an identifier that starts a short form to `vibelang.go` in `parseStatement`, `parseDeclarationWorker`, and `scanStartOfDeclaration`; add a readonly modifier in `parsePropertyOrMethodSignature` while `vibelangReadonlyMembers` is set; read Effect types after `parseType`, stop `parsePostfixTypeOrHigher` at `!`, and infer left-out dependencies in `parseReturnType`; make bodiless members of a service or control body abstract in `parseMethodDeclaration` and `parsePropertyDeclaration`, and clear that inside `parseClassDeclarationOrExpression`; parse `provide` (and its old spelling `with`) as a provide block in `parseStatement`; read typed and repeated catch clauses, and handle clauses, in `parseTryStatement`; read `mutable` in `scanTypeMemberStart` and `parseTypeMember`, and make other property and index signatures readonly | +64 / -1 |
 | `tsc/internal/ls/extensions.go` | `RegisterQuickInfoTextHook` rewrites a hover's quick info line after the quick info hooks; `RegisterCodeFixProvider` adds a quick fix, such as EK1009's | +22 / -0 |
 | `tsc/internal/ls/codeactions.go` | `CodeFixProvider.Source` lets a provider fix diagnostics from a source other than `ts`, such as `EK` | +7 / -1 |
@@ -479,6 +480,14 @@ VibeLang code lives in `tsc/internal/vibelang/`, which may import any internal p
 | `tsc/internal/ls/autoimport/effectlint.go` (new) | `aliasResolver.IsSourceFileFromExternalLibrary`, which patch 002's `checker.Program` needs (from Effect's patch 018) | +10 |
 
 A rebase onto a newer nightly can conflict only in the existing files above. If upstream regenerates the option tables, add the `vibelang` lines again; `tsoptions/vibelang.go` lists where they go.
+
+## Behavior that differs from upstream
+
+Where upstream TypeScript 7.1 rejects ordinary TypeScript that 5.9 and 7.0 accept, VibeLang keeps 7.0's behavior, so a repository's unchanged TypeScript compiles under VibeLang as it did under its own compiler (decision 6, 2026-10-31).
+
+| Upstream change | TypeScript 7.1 | VibeLang |
+| --- | --- | --- |
+| microsoft/TypeScript #64461 (834e7862c031), "Report cyclic structures and truncation during declaration emit" | An inferred type that meets its own anonymous type again, such as a builder whose method returns the builder, reports TS5088 and declares nothing | Declares the type met again as `/*elided*/ any`, as 5.9 and 7.0.2 do (alchemy's `packages/aws`) |
 
 ## What the lowering does
 

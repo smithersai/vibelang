@@ -2982,7 +2982,7 @@ func (b *NodeBuilderImpl) createAnonymousTypeNodeEx(t *Type, forceClassExpansion
 				// in turn try to reuse the same node again. Mark the type as visited around the reuse
 				// attempt so the inner recursion bottoms out via the visitedTypes guard below.
 				if b.ctx.visitedTypes.Has(typeId) {
-					return b.createCyclicStructurePlaceholder()
+					return b.createElidedInformationPlaceholder() // 7.0.2: elided, not TS5088 (alchemy-23)
 				}
 				b.ctx.visitedTypes.Add(typeId)
 				typeNode := b.tryReuseExistingNonParameterTypeNode(existing, t, nil, nil)
@@ -2992,7 +2992,7 @@ func (b *NodeBuilderImpl) createAnonymousTypeNodeEx(t *Type, forceClassExpansion
 				}
 			}
 			if b.ctx.visitedTypes.Has(typeId) {
-				return b.createCyclicStructurePlaceholder()
+				return b.createElidedInformationPlaceholder() // 7.0.2: elided, not TS5088 (alchemy-23)
 			}
 			return b.visitAndTransformType(t, (*NodeBuilderImpl).createTypeNodeFromObjectType)
 		}
@@ -3022,7 +3022,12 @@ func (b *NodeBuilderImpl) createAnonymousTypeNodeEx(t *Type, forceClassExpansion
 				// The specified symbol flags need to be reinterpreted as type flags
 				return b.symbolToTypeNode(typeAlias, ast.SymbolFlagsType, nil)
 			} else {
-				return b.createCyclicStructurePlaceholder()
+				// TypeScript 5.9 and 7.0.2 elide an anonymous type met again
+				// here, as /*elided*/ any; 7.1 reports TS5088 instead, which
+				// rejects alchemy's recursive inferred builders, such as
+				// makeBuilder in packages/aws (alchemy-23, decision 6: match
+				// 7.0.2 where 7.1 regressed).
+				return b.createElidedInformationPlaceholder()
 			}
 		} else {
 			return b.visitAndTransformType(t, (*NodeBuilderImpl).createTypeNodeFromObjectType)

@@ -348,7 +348,6 @@ typescript/vibelang/cases/catch-expression-context/main.vibe:24:68 lambda effect
 typescript/vibelang/cases/catch-expression-context/main.vibe:33:10 lambda effectFn table
 typescript/vibelang/cases/catch-expression-context/main.vibe:33:50 lambda effectFn table
 typescript/vibelang/cases/catch-expression-context/main.vibe:45:10 lambda effectFn table
-typescript/vibelang/cases/catch-expression-context/main.vibe:45:10 lambda effectFn table
 typescript/vibelang/cases/catch-expression-context/main.vibe:45:33 lambda effectFn table
 typescript/vibelang/cases/catch-expression-context/main.vibe:45:57 lambda effectFn table
 typescript/vibelang/cases/catch-expression-context/main.vibe:49:10 lambda effectFn table
@@ -378,7 +377,6 @@ typescript/vibelang/cases/catch-expression/main.vibe:27:10 lambda effectFn table
 typescript/vibelang/cases/catch-expression/main.vibe:27:25 lambda effectFn table
 typescript/vibelang/cases/catch-expression/main.vibe:27:45 lambda dual fallback
 typescript/vibelang/cases/catch-expression/main.vibe:29:14 lambda dual fallback
-typescript/vibelang/cases/catch-expression/main.vibe:35:10 lambda effectFn table
 typescript/vibelang/cases/catch-expression/main.vibe:35:10 lambda effectFn table
 typescript/vibelang/cases/catch-expression/main.vibe:35:24 lambda effectFn table
 typescript/vibelang/cases/catch-expression/main.vibe:35:38 lambda effectFn table
@@ -1005,6 +1003,8 @@ typescript/vibelang/cases/declaration-linked-esm.fail/main.vibe:3:19 lambda choi
 typescript/vibelang/cases/declaration-linked-esm/main.vibe:2:19 lambda choice fallback
 typescript/vibelang/cases/declaration-linked-esm/main.vibe:3:25 lambda choice fallback
 typescript/vibelang/cases/declaration-prelude-library-types/main.vibe:5:21 lambda plain annotation
+typescript/vibelang/cases/declaration-recursive-inferred/main.vibe:6:34 lambda plain table
+typescript/vibelang/cases/declaration-recursive-inferred/main.vibe:7:32 lambda plain table
 typescript/vibelang/cases/diag-any-contracted.fail/main.vibe:10:18 lambda plain fallback
 typescript/vibelang/cases/diag-any-contracted.fail/main.vibe:17:18 lambda dual fallback
 typescript/vibelang/cases/diag-any-contracted.fail/main.vibe:21:18 lambda dual fallback
@@ -2396,7 +2396,6 @@ typescript/vibelang/cases/pipe-asserted-program/main.vibe:13:64 byname program t
 typescript/vibelang/cases/pipe-asserted-program/main.vibe:13:67 lambda plain table
 typescript/vibelang/cases/pipe-asserted-program/main.vibe:16:65 byname program table
 typescript/vibelang/cases/pipe-asserted-program/main.vibe:16:68 lambda plain table
-typescript/vibelang/cases/pipe-asserted-program/main.vibe:22:33 byname program table
 typescript/vibelang/cases/pipe-asserted-program/main.vibe:22:33 byname program table
 typescript/vibelang/cases/pipe-asserted-program/main.vibe:22:68 lambda plain table
 typescript/vibelang/cases/pipe-asserted-program/main.vibe:23:75 byname program table

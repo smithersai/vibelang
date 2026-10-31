@@ -292,6 +292,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The migrate flow kept `vibelang --fix` rewrites of an earlier batch's `.vibe` module in another package, such as a `schema error` conversion of `../lib/error.vibe` while fixing `apps/server`, and reported no fix. It now puts back every `.vibe` file outside the batch, wherever it is in the repository.
 
 - The fuzz suite did not check jumps in a `for concurrent` head; new checks cover `return`, `break` and `continue` in head defaults and computed keys, and `return` in the limit and operand.
+
 - Rerunning the migrate flow's setup on a repository an earlier release set up left the `declarationSidecars` setting it had written, so every compile of those packages failed with `TS5023`; setup now removes it from each tsconfig it wires.
 
 - The migrate flow's style gate refused a `Schema.TaggedError` class it must keep (its `EK4837` has no quick fix) because the class keeps its constructor, which `EK4814` warns about. It now accepts that `EK4814` on such a class.
@@ -349,6 +350,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Passing an Effect-returning resource class where a union's generic data member takes it, as `register<W>(cls: Like<W> | Platform)` or `collection<T extends Like<any> | Platform<any>>(all: T[])`, was EK4301 and could cascade into EK3101; such a value is data there now.
 
 - A JSDoc `{@link Envelope.id}` beside a local `Envelope` made the emitted JavaScript import `Envelope` from `effect/cluster` too, and the module failed to load with `Identifier 'Envelope' has already been declared`; names in comments no longer import Effect modules.
+
+- An inferred return type that meets its own anonymous type again, such as a builder whose method returns `makeBuilder(…)`, failed with `TS5088: The inferred type of 'from' references a type with a cyclic structure` and declared nothing; it now declares the type met again as `/*elided*/ any`, as TypeScript 5.9 and 7.0.2 do.
 
 
 - Checking documentation examples with a symlinked `TMPDIR` could stop with `Compiler failed` instead of reporting an example's type error; diagnostics now stay attached to their examples and later pages are checked.

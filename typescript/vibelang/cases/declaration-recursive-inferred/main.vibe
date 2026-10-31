@@ -1,0 +1,9 @@
+// expect-result: "a b"
+// alchemy-23: lib.ts holds TypeScript builders whose inferred types recur.
+import { from } from "./lib.ts"
+
+export effect function main() {
+  const builder = try Effect.try(() => from("a"))
+  const named = try Effect.try(() => builder.named("b"))
+  return `${builder.state.value} ${named.state.value}`
+}
