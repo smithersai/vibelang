@@ -20,9 +20,10 @@ export function vibePath(path) {
  * written `mutable` (D134), so a renamed module declares the same types:
  * before the batch is renamed, each property or index signature without
  * `readonly` gains `mutable`. An object type that is Readonly's type argument,
- * whose members Readonly makes readonly, and one that is a type argument of a
- * class's extends clause, such as Data.TaggedError's fields, which Effect
- * makes readonly, are left as they are. ts is TypeScript's compiler API.
+ * whose members Readonly makes readonly, is left as it is. A type argument of
+ * a class's extends clause is not: Data.TaggedError("E")<{ message: string }>
+ * declares message as written, where an error declaration's fields are
+ * readonly. ts is TypeScript's compiler API.
  * Returns the files changed, each with its count: { file, count }.
  */
 export function keepMutableMembers(ts, root, files) {
@@ -51,8 +52,7 @@ function writableMember(ts, member) {
   if (ts.isInterfaceDeclaration(owner)) return true
   if (!ts.isTypeLiteralNode(owner)) return false
   const use = owner.parent
-  if (ts.isTypeReferenceNode(use) && ts.isIdentifier(use.typeName) && use.typeName.text === "Readonly") return false
-  return !(ts.isExpressionWithTypeArguments(use) && ts.isHeritageClause(use.parent))
+  return !(ts.isTypeReferenceNode(use) && ts.isIdentifier(use.typeName) && use.typeName.text === "Readonly")
 }
 
 /** Renames each file of the batch on disk; refuses to overwrite. */

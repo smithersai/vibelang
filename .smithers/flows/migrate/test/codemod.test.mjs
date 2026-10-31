@@ -104,7 +104,7 @@ test("keepMutableMembers marks the members TypeScript declares writable mutable,
       ""
     ].join("\n"))
     writeFileSync(join(root, "src/plain.ts"), "export const one = 1\n")
-    assert.deepEqual(keepMutableMembers(ts, root, ["src/types.ts", "src/plain.ts"]), [{ file: "src/types.ts", count: 3 }])
+    assert.deepEqual(keepMutableMembers(ts, root, ["src/types.ts", "src/plain.ts"]), [{ file: "src/types.ts", count: 4 }])
     assert.equal(readFileSync(join(root, "src/types.ts"), "utf8"), [
       "export interface SendOptions {",
       "  /** json or text */",
@@ -114,7 +114,7 @@ test("keepMutableMembers marks the members TypeScript declares writable mutable,
       "}",
       "export const retry = <E extends { mutable _tag: string }>(error: E) => error",
       "export type Info = Readonly<{ path: string }>",
-      "export class SendError extends Data.TaggedError(\"SendError\")<{ message: string }> {}",
+      "export class SendError extends Data.TaggedError(\"SendError\")<{ mutable message: string }> {}",
       "export class Box { value: number = 1 }",
       ""
     ].join("\n"))
