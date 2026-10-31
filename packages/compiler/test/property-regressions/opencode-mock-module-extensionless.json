@@ -1,0 +1,10 @@
+{
+  "property": "opencode-mock-source-paths",
+  "input": {
+    "name": "mini",
+    "directory": false,
+    "extension": "none",
+    "mocked": 2
+  },
+  "reason": "Minimized extensionless Bun mock pattern found during opencode migration."
+}

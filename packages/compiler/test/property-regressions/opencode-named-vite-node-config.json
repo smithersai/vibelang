@@ -1,0 +1,11 @@
+{
+  "property": "opencode-named-vite-configs",
+  "input": {
+    "name": "node",
+    "extension": "ts",
+    "prefix": "vite",
+    "factory": true,
+    "supported": true
+  },
+  "reason": "opencode CLI build calls mainConfig from vite.node.config.ts."
+}
