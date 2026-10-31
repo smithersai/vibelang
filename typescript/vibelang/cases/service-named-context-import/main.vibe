@@ -1,0 +1,10 @@
+// foldkit-37: foldkit's TypeScript wrote import { Context } from "effect" for
+// its Context.Service classes. Beside the service declaration that replaces
+// one, that import is what the declaration file writes the service base
+// through (D501), so it counts as used: noUnusedLocals reports no TS6133.
+import { Context } from "effect"
+
+export service Port {
+  static readonly key = "Port"
+  read: () => number
+}

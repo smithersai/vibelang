@@ -572,6 +572,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - After a `chmod` of the compiler, or any change to its timestamps that kept its bytes, every Vite or loader run recompiled each project (`compiler changed`). The cache now compares the compiler's contents when its timestamps differ, and recompiles only for a changed compiler.
 
 
+- An explicit `import { Context } from "effect"` beside a `service` declaration was reported unused (`TS6133`) under `noUnusedLocals`, though the declaration file writes the service through `Context`; it now counts as used, as `import * as Context from "effect/Context"` already did.
 - `vibelang --fix` rewrote a `Context.Service` class as a `service` declaration and removed `import * as Context from "effect/Context"`, which the module's declaration file writes the service through, so the `.d.ts` changed; in a project that emits declarations the import now stays.
 - `vibelang --fix` removed the retired `declarationSidecars` setting but left an empty `"vibelang": {  }` object behind, which a repository's formatter then rewrote; a settings object that held only that setting now goes with it, and one with a comment keeps the comment.
 
