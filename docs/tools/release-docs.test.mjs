@@ -7,8 +7,11 @@ import { fileURLToPath } from "node:url"
 import { releaseDocsProblems, renderReleasePage } from "./release-docs.mjs"
 
 
-// Release headings may lead package versions only for the next unreleased section.
-function assertReleaseHistory(notes, version) {
+// A compiler-version candidate may stay unreleased until npm publication.
+const releaseVersion = release => release.split("\n")[0].replace(/ \(unreleased\)$/, "")
+
+// Development headings may lead package versions for the next unreleased section.
+function assertReleaseHistory(notes, version, lastPublishedVersion) {
   const [current, previous] = notes.split(/^## /m).slice(1)
   assert.ok(current && previous, "release notes need current and previous sections")
   const heading = /^(\d+\.\d+\.\d+(?:-[\w.-]+)?)( \(unreleased\))?$/.exec(current.split("\n")[0])
@@ -16,9 +19,10 @@ function assertReleaseHistory(notes, version) {
   const previousVersion = previous.split("\n")[0]
   assert.match(previousVersion, /^\d+\.\d+\.\d+(?:-[\w.-]+)?$/, "the section below must be a published version")
   if (heading[2]) {
-    assert.equal(previousVersion, version, "an unreleased section follows the compiler's published version")
+    const baseVersion = heading[1] === version ? previousVersion : version
+    if (heading[1] !== version) assert.equal(previousVersion, version, "a next-development section follows the compiler version")
     const next = heading[1].split(/[.-]/).slice(0, 3).map(Number)
-    const published = version.split(/[.-]/).slice(0, 3).map(Number)
+    const published = baseVersion.split(/[.-]/).slice(0, 3).map(Number)
     const difference = next.map((part, i) => part - published[i]).find(part => part !== 0)
     assert.ok(difference > 0, "the unreleased version must be newer than the published version")
   } else {
@@ -26,12 +30,33 @@ function assertReleaseHistory(notes, version) {
   }
   assert.ok(current.split("\n").includes("### Bugs fixed since " + previousVersion),
     "top release must have ### Bugs fixed since " + previousVersion)
+  if (lastPublishedVersion !== undefined) {
+    assert.match(lastPublishedVersion, /^\d+\.\d+\.\d+$/, "npm publication snapshot must be a stable version")
+    const published = lastPublishedVersion.split(".").map(Number)
+    assert.equal(version, [published[0], published[1], published[2] + 1].join("."), "candidate must advance the last npm patch version once")
+    assert.equal(current.split("\n")[0], version + " (unreleased)", "all unpublished fixes belong to the compiler candidate")
+    assert.equal(previousVersion, lastPublishedVersion, "release history starts at the version npm actually published")
+  }
 }
 
 test("the top release names the previous published version in its bug heading", () => {
   const root = fileURLToPath(new URL("../../", import.meta.url))
   const version = JSON.parse(readFileSync(join(root, "packages/compiler/package.json"), "utf8")).version
   assertReleaseHistory(readFileSync(join(root, "docs/user/src/setup/release-notes.md"), "utf8"), version)
+})
+
+test("release history rejects a next-development section when the compiler candidate is unpublished", () => {
+  assert.throws(() => assertReleaseHistory("## 9.8.8 (unreleased)\n### Bugs fixed since 9.8.7\n## 9.8.7\n### Bugs fixed since 9.8.6\n## 9.8.6\n", "9.8.7", "9.8.6"), /candidate|npm/)
+})
+
+test("release history rejects an empty or malformed npm publication snapshot", () => {
+  for (const last of ["", "9.8", "not-a-version"]) {
+    assert.throws(() => assertReleaseHistory("## 9.8.7 (unreleased)\n### Bugs fixed since 9.8.6\n## 9.8.6\n", "9.8.7", last), /npm publication/)
+  }
+})
+
+test("release history accepts an unpublished candidate at the compiler version", () => {
+  assertReleaseHistory("## 9.8.7 (unreleased)\n### Bugs fixed since 9.8.6\n## 9.8.6\n", "9.8.7")
 })
 
 test("release history accepts the published and next unreleased states", () => {
@@ -214,7 +239,7 @@ test("the 0.0.10 release owns the Effect 4.0.6 migration and upgrade instruction
   const effect = "4.0.6"
   const notes = readFileSync(join(root, "docs/user/src/setup/release-notes.md"), "utf8")
   const releases = notes.split(/^## /m).slice(1)
-  const current = releases.find((release) => release.split("\n")[0] === version)
+  const current = releases.find((release) => releaseVersion(release) === version)
   assert.ok(current, "release notes have a section for " + version)
   for (const text of [
     "### Effect " + effect + " and failures",
@@ -229,7 +254,7 @@ test("the 0.0.11 release retains its upgrade instructions", () => {
   const root = fileURLToPath(new URL("../../", import.meta.url))
   const version = "0.0.11"
   const notes = readFileSync(join(root, "docs/user/src/setup/release-notes.md"), "utf8")
-  const current = notes.split(/^## /m).slice(1).find(release => release.split("\n")[0] === version)
+  const current = notes.split(/^## /m).slice(1).find(release => releaseVersion(release) === version)
   assert.ok(current, "release notes retain " + version)
   for (const heading of ["Upgrade from 0.0.10", "Bugs fixed since 0.0.10", "Known limitations"]) {
     assert.ok(current.includes("### " + heading), heading)
@@ -244,7 +269,7 @@ test("the 0.0.11 release retains its upgrade instructions", () => {
 
 test("the 0.0.11 bug list covers the receiver report and service-alias diagnostic", () => {
   const notes = readFileSync(new URL("../user/src/setup/release-notes.md", import.meta.url), "utf8")
-  const current = notes.split(/^## /m).slice(1).find(release => release.split("\n")[0] === "0.0.11")
+  const current = notes.split(/^## /m).slice(1).find(release => releaseVersion(release) === "0.0.11")
   assert.ok(current, "release notes retain 0.0.11")
   const bugs = current.split("### Bugs fixed since 0.0.10\n")[1]?.split(/^### /m)[0]
   assert.ok(bugs, "0.0.11 needs a bug list for testers")
@@ -270,4 +295,14 @@ test("current release notes describe user fixes without internal CI or fuzz book
   assert.doesNotMatch(bugs, /regression checks|migration checks|diagnostic golden|fixtures now verify|grammar tooling now sees/i)
   const bullets = bugs.split("\n").filter(line => line.startsWith("- "))
   assert.equal(new Set(bullets).size, bullets.length, "each user-facing fix appears once")
+})
+
+// Release time supplies the registry snapshot; ordinary tests never query npm.
+test("the release candidate follows the last npm publication", {
+  skip: process.env.VIBELANG_LAST_PUBLISHED_VERSION === undefined
+}, () => {
+  const root = fileURLToPath(new URL("../../", import.meta.url))
+  const version = JSON.parse(readFileSync(join(root, "packages/compiler/package.json"), "utf8")).version
+  const notes = readFileSync(join(root, "docs/user/src/setup/release-notes.md"), "utf8")
+  assertReleaseHistory(notes, version, process.env.VIBELANG_LAST_PUBLISHED_VERSION)
 })

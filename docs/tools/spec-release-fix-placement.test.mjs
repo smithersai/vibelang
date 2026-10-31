@@ -11,10 +11,10 @@ const fixes=[
   "- The schema-error reference could admit a reserved `_tag` key hidden by a generic, enum or brand; it now requires proof over the runtime key domain and preserves the generated discriminant without a runtime guard.",
   "- The public pattern decision omitted the binding-cell lifetime rules; it now records shared `or` cells, fresh loop-condition cells and the initial `do` body's TDZ, with checked closure witnesses."
 ]
-test("these fixes belong to the release after 0.0.11, rather than the published 0.0.11 history",()=>{
- const start=notes.indexOf("### Bugs fixed since 0.0.11\n")
- const end=notes.indexOf("### Bugs fixed since 0.0.10\n",start)
- assert.ok(start>=0&&end>start)
- const section=notes.slice(start,end)
+test("these fixes belong to the unpublished 0.0.11 candidate since the last npm release",()=>{
+ const release=notes.split(/^## /m).slice(1).find(section=>section.split("\n")[0].replace(/ \(unreleased\)$/, "")==="0.0.11")
+ assert.ok(release,"retain the 0.0.11 candidate")
+ const section=release.split("### Bugs fixed since 0.0.10\n")[1]?.split(/^### /m)[0]
+ assert.ok(section,"candidate lists fixes since the last npm release")
  for(const fix of fixes){assert.ok(section.includes(fix),fix);assert.equal(notes.split(fix).length-1,1,fix)}
 })
