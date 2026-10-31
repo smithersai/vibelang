@@ -620,6 +620,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Mixing `Key = value` with `Layer` providers could keep an earlier service implementation; `provide` now uses native `Layer` ordering, scopes and finalization, so the later provider wins.
   `vibelang --fix` retains native `Effect.provideService` calls because replacing them with a block changes scope and memo-map observations.
 
+- Fuzz checks could count a diagnostic twice when `noEmitOnError` stopped emit; the harness now matches the compiler's diagnostic list and keeps errors at distinct locations.
+
 - Installing `vibelang` alone did not declare the Effect version it supports; the compiler now requires the same exact `effect` peer as the runtime, and release packaging rejects a missing, optional, ranged or mismatched pin.
 
 - Source collectors could silently omit migrated files because their extension allowlists named only TypeScript; migration setup now warns with the file and line when `.ts` appears without `.vibe`.

@@ -309,6 +309,9 @@ func (w *Workspace) Compile(ctx context.Context, project Project) (*Result, erro
 	}})
 	result.EmitSkipped = emitted.EmitSkipped
 	result.Diagnostics = append(result.Diagnostics, emitted.Diagnostics...)
+	// Emit with noEmitOnError returns pre-emit diagnostics again. Match the CLI
+	// while retaining different source spans and diagnostic identities.
+	result.Diagnostics = compiler.SortAndDeduplicateDiagnostics(result.Diagnostics)
 	return result, nil
 }
 

@@ -45,6 +45,8 @@ func toolsRecompile(t *testing.T, w *Workspace, before *Result, files map[string
 		}})
 		result.EmitSkipped = emitted.EmitSkipped
 		result.Diagnostics = append(result.Diagnostics, emitted.Diagnostics...)
+		// Match Workspace.Compile and the CLI when emit repeats pre-emit diagnostics.
+		result.Diagnostics = compiler.SortAndDeduplicateDiagnostics(result.Diagnostics)
 	})
 	return result
 }
