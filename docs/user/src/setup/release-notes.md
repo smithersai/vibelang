@@ -173,6 +173,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A browser crash during the site's contrast check reported only `Target crashed`; diagnostics now name the theme, page, audit state, failed requests and resource pressure.
 
+- The specification did not say that one `vibelang --fix` run reaches a fixed point, or how a missing `vibelang-runtime` is reported; chapter 7 now states both: a second run changes nothing, and a missing runtime is one `TS2307` error naming the package.
+
 - The specification gave no warning for an explicit `throw` in a plain `catch` handler, which turns the failure into a defect; it now names lint warning `EK0511` with the quick fix `catch effect`, and the compiler registers the code (reporting it is tracked by a pending acceptance case).
 
 - Installing `vibelang` alone did not declare the Effect version it supports; the compiler now requires the same exact `effect` peer as the runtime, and release packaging rejects a missing, optional, ranged or mismatched pin.
