@@ -1278,14 +1278,14 @@ effect function limitReturn() {
 
 **Jumps.** Across `provide`, `uninterruptible`, `restore` and `interruptible`, a statement retains its ECMAScript completion kind, value (including `empty`) and target. A `provide` or interruption block has its source block's normal completion value, observable from `do`; local labels and loops consume jumps with their source values under `UpdateEmpty`. Label targets are empty when unlabeled. LabelledEvaluation decides which statement consumes a `break` or `continue`: an unlabeled `break` is consumed by the innermost iteration or `switch` statement, an unlabeled `continue` by the innermost iteration statement, and a labeled one by the statement whose label set holds the label (any statement for `break`, an iteration statement for `continue`). A `return` is consumed by the function. The compiler preserves that behavior; how it transports completions is its choice:
 
-Syntax-directed `do` checks traverse these transparent source blocks as ordinary `BlockStatement`s, respecting source activation boundaries rather than generated callbacks.
-
 - A completion consumed inside the region body stays as written.
 - A normally completed `provide` or interruption block contributes its source block's normal value or empty completion. An outward `return`, `break` or `continue` keeps its kind, value and target, including a value inherited before a jump. An empty completion remains distinct from an explicit `undefined`.
 - A completion continues from the source region's position to the same consumer, even across further regions. A consumed jump can therefore supply a `do` result; crossing a generated callback does not discard that value.
 - The item protocol remains the API's: a `for try` consumes `continue`, or a `continue` naming it, as `return true` and `break`, or a `break` naming it, as `return false`; a `for concurrent` consumes its own `continue` by ending that item. Nested source functions keep their own completion boundaries.
 - A `for concurrent` head's binding initialization or body can't produce a `break` it doesn't consume, a `return` or a `continue` naming an enclosing statement, and a `for try` head's binding initialization or body can't produce a `return` or a labeled `break` or `continue` naming a statement that encloses it: their static rules make these errors, because the body runs in `Effect.forEach`'s or `Stream.runForEachWhile`'s callback, not in the enclosing loop or function (VIP-19, VIP-20).
 - A completion transfers to the surrounding source expression only after the region Effect and its finalizers succeed. A failure, defect or interruption stays in Effect's `Cause`. The region's own finalizers, such as releasing a `provide`'s layers, run before the jump, because `Effect.provide` and the masks complete before `yield*` returns.
+
+Syntax-directed `do` checks traverse these transparent source blocks as ordinary `BlockStatement`s, respecting source activation boundaries rather than generated callbacks.
 
 
 **Effect observers.** Source completion transport is private. At every observable Effect or Scope boundary, `provide` and interruption regions keep the accepted generator's success payload:
