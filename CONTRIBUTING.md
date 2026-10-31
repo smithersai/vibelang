@@ -91,4 +91,4 @@ Start with [good first issues](https://github.com/smithersai/vibelang/issues?q=i
 
 Ask with the [question form](https://github.com/smithersai/vibelang/issues/new?template=question.yml). Report a vulnerability privately, never in an issue: see [SECURITY.md](.github/SECURITY.md).
 
-<sub>2,384 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
+<sub>2,391 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
