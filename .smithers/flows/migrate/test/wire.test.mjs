@@ -5,7 +5,7 @@ import { join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { loadTypeScript } from "../lib/declarations.mjs"
-import { addBunTestPreload, addCompilerOptions, addEffectLint, copyTarballs, formattable, formatterOf, addVibeLang, addVibeIncludes, addVibeLangSetting, addVitePlugin, initAgents, installCommand, packageManager, replaceTsc, rootTsconfigs, runsBunTest, setIgnoreLine, testConfigArgument, toolchainDirectory, toolchainSpecs, viteAppConfigs, wireKnip, wireVite, wireViteApps } from "../lib/wire.mjs"
+import { addBunTestPreload, wireBunTests, addCompilerOptions, addEffectLint, copyTarballs, formattable, formatterOf, addVibeLang, addVibeIncludes, addVibeLangSetting, addVitePlugin, initAgents, installCommand, packageManager, replaceTsc, rootTsconfigs, runsBunTest, setIgnoreLine, testConfigArgument, toolchainDirectory, toolchainSpecs, viteAppConfigs, wireKnip, wireVite, wireViteApps } from "../lib/wire.mjs"
 import { setUpAgents } from "../lib/steps.mjs"
 import { must } from "../lib/util.mjs"
 
@@ -253,6 +253,32 @@ test("rootTsconfigs lists the tsconfig files that extend no other of the reposit
       writeFileSync(join(root, file), text)
     }
     assert.deepEqual(rootTsconfigs(root, ts).sort(), ["packages/b/tsconfig.json", "tsconfig.base.json", "tsconfig.json"])
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test("wireBunTests preloads vibelang/bun in every package that runs bun test and reaches migrated sources", () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-bun-tests-"))
+  try {
+    const manifest = (dir, value) => {
+      mkdirSync(join(root, dir), { recursive: true })
+      writeFileSync(join(root, dir, "package.json"), JSON.stringify(value))
+    }
+    manifest(".", { name: "root" })
+    manifest("packages/util", { name: "util", scripts: { test: "bun test --timeout 5000" } })
+    manifest("packages/core", { name: "core", scripts: { test: "bun run clean && bun test" }, dependencies: { util: "workspace:*" } })
+    manifest("packages/app", { name: "app", scripts: { test: "vitest run" }, dependencies: { util: "workspace:*" } })
+    manifest("packages/alone", { name: "alone", scripts: { test: "bun test" } })
+    writeFileSync(join(root, "packages/core/bunfig.toml"), '[test]\npreload = ["./test/setup.ts"]\n')
+    const wired = wireBunTests({ root, packages: [{ dir: "packages/util" }], specsFor: () => ({ vibelang: "file:/t/v.tgz" }) })
+    assert.deepEqual(wired.warnings, [])
+    assert.equal(readFileSync(join(root, "packages/util/bunfig.toml"), "utf8"), '[test]\npreload = ["vibelang/bun"]\n')
+    assert.equal(readFileSync(join(root, "packages/core/bunfig.toml"), "utf8"), '[test]\npreload = ["vibelang/bun", "./test/setup.ts"]\n')
+    assert.equal(existsSync(join(root, "packages/app/bunfig.toml")), false)
+    assert.equal(existsSync(join(root, "packages/alone/bunfig.toml")), false)
+    assert.equal(JSON.parse(readFileSync(join(root, "packages/core/package.json"), "utf8")).devDependencies.vibelang, "file:/t/v.tgz")
+    assert.deepEqual(wired.changed.sort(), ["packages/core/bunfig.toml", "packages/core/package.json", "packages/util/bunfig.toml", "packages/util/package.json"])
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

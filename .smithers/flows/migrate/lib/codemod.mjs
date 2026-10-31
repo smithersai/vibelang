@@ -1,7 +1,7 @@
 // The codemod: keep the batch's writable members writable, rename its
-// modules to .vibe, rewrite the imports that name them by VibeLang's rules,
-// then run `vibelang --fix` until it finds nothing more to fix, recording each
-// rewrite it applied and each it refused.
+// modules to .vibe, point their packages' exports at them, rewrite the imports
+// that name them by VibeLang's rules, then run `vibelang --fix` until it finds
+// nothing more to fix, recording each rewrite it applied and each it refused.
 import { existsSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs"
 import { join, posix } from "node:path"
 import { applyEdits, parseImports, resolveRelative } from "./imports.mjs"
@@ -64,6 +64,131 @@ export function renameBatch(root, files) {
   }
   for (const { from, to } of renames) renameSync(join(root, from), join(root, to))
   return renames
+}
+
+/** The directory of the package that owns file: the nearest with a package.json, or the root. */
+export function packageDirOf(root, file) {
+  let dir = posix.dirname(file)
+  while (dir !== "." && !existsSync(join(root, dir, "package.json"))) dir = posix.dirname(dir)
+  return dir
+}
+
+// The package.json fields that name a module by its path: maps, then single paths.
+const moduleMaps = ["exports", "imports"]
+const modulePaths = ["main", "module", "types", "typings"]
+
+/** value with each path in it, at any depth of conditions, mapped by f. */
+function mapTargets(value, f) {
+  if (typeof value === "string") return f(value)
+  if (Array.isArray(value)) return value.map((item) => mapTargets(item, f))
+  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, mapTargets(item, f)]))
+  return value
+}
+
+/** Each path in value, at any depth of conditions. */
+function targetsOf(value) {
+  const targets = []
+  mapTargets(value, (target) => (targets.push(target), target))
+  return targets
+}
+
+/** What the * of pattern (./src/*.ts) stands for in path, or undefined. */
+function starOf(pattern, path) {
+  const at = pattern.indexOf("*")
+  if (at < 0) return undefined
+  const head = pattern.slice(0, at)
+  const tail = pattern.slice(at + 1)
+  return path.startsWith(head) && path.endsWith(tail) && path.length > head.length + tail.length ? path.slice(head.length, path.length - tail.length) : undefined
+}
+
+// A subpath map has keys that start with . or #; any other object is conditions.
+const isSubpathMap = (value) => value !== null && typeof value === "object" && !Array.isArray(value) && Object.keys(value).some((key) => key.startsWith(".") || key.startsWith("#"))
+
+/**
+ * Points each renamed module's package at its .vibe source: an entry of
+ * `exports` or `imports`, at any depth of conditions, or a `main`, `module` or
+ * `types` field that named the .ts file now names the .vibe file, and a
+ * pattern that matches it (`"./*": "./src/*.ts"`) gains an exact entry, which
+ * wins over the pattern, so the package's other modules keep it. vibelang,
+ * stock TypeScript (through the sidecar) and the loaders all read a .vibe
+ * target. Returns the edits, { manifest, field, key, added, module }, for
+ * restoreExports.
+ */
+export function rewriteExports(root, renames) {
+  const edits = []
+  const owners = new Map()
+  for (const rename of renames) {
+    const dir = packageDirOf(root, rename.from)
+    if (existsSync(join(root, dir, "package.json"))) owners.set(dir, [...(owners.get(dir) ?? []), rename])
+  }
+  for (const [dir, moved] of owners) {
+    const manifest = posix.join(dir, "package.json")
+    const pkg = JSON.parse(readFileSync(join(root, manifest), "utf8"))
+    let changed = false
+    for (const { from, to } of moved) {
+      const source = posix.relative(dir, from)
+      const swap = (target) => posix.normalize(target) === source ? target.slice(0, -".ts".length) + ".vibe" : target
+      const record = (edit) => {
+        edits.push({ manifest, ...edit, module: to })
+        changed = true
+      }
+      for (const field of modulePaths) {
+        if (typeof pkg[field] !== "string" || swap(pkg[field]) === pkg[field]) continue
+        pkg[field] = swap(pkg[field])
+        record({ field })
+      }
+      for (const field of moduleMaps) {
+        const map = pkg[field]
+        if (!isSubpathMap(map)) {
+          if (targetsOf(map).some((target) => swap(target) !== target)) {
+            pkg[field] = mapTargets(map, swap)
+            record({ field })
+          }
+          continue
+        }
+        const entries = []
+        for (const [key, value] of Object.entries(map)) {
+          if (!key.includes("*")) {
+            if (targetsOf(value).some((target) => swap(target) !== target)) record({ field, key })
+            entries.push([key, mapTargets(value, swap)])
+            continue
+          }
+          const star = targetsOf(value).map((target) => starOf(target, `./${source}`)).find((match) => match !== undefined)
+          const exact = star === undefined ? undefined : key.replace("*", star)
+          if (exact !== undefined && !(exact in map) && !entries.some(([name]) => name === exact)) {
+            entries.push([exact, mapTargets(value, (target) => swap(target.replaceAll("*", star)))])
+            record({ field, key: exact, added: true })
+          }
+          entries.push([key, value])
+        }
+        pkg[field] = Object.fromEntries(entries)
+      }
+    }
+    if (changed) writeFileSync(join(root, manifest), JSON.stringify(pkg, null, 2) + "\n")
+  }
+  return edits
+}
+
+/**
+ * Undoes the edits of rewriteExports for one module that revert returns to
+ * .ts (repository-relative, now .ts): an added entry goes, and a rewritten one
+ * names the .ts file again. Returns the edits it undid.
+ */
+export function restoreExports(root, edits, module) {
+  const vibe = module.replace(/\.ts$/, ".vibe")
+  const undone = edits.filter((edit) => edit.module === vibe)
+  for (const edit of undone) {
+    const path = join(root, edit.manifest)
+    if (!existsSync(path)) continue
+    const pkg = JSON.parse(readFileSync(path, "utf8"))
+    const source = posix.relative(posix.dirname(edit.manifest), vibe)
+    const swap = (target) => posix.normalize(target) === source ? target.slice(0, -".vibe".length) + ".ts" : target
+    if (edit.added) delete pkg[edit.field][edit.key]
+    else if (edit.key !== undefined) pkg[edit.field][edit.key] = mapTargets(pkg[edit.field][edit.key], swap)
+    else pkg[edit.field] = mapTargets(pkg[edit.field], swap)
+    writeFileSync(path, JSON.stringify(pkg, null, 2) + "\n")
+  }
+  return undone
 }
 
 /**

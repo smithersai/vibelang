@@ -4,7 +4,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { fixToFixedPoint, keepMutableMembers, mergeFixes, parseFixOutput, renameBatch, rewriteImports, rewriteSpecifier, rewriteTotals, vibePath } from "../lib/codemod.mjs"
+import { fixToFixedPoint, keepMutableMembers, mergeFixes, parseFixOutput, renameBatch, restoreExports, rewriteExports, rewriteImports, rewriteSpecifier, rewriteTotals, vibePath } from "../lib/codemod.mjs"
 import { loadTypeScript } from "../lib/declarations.mjs"
 
 test("vibePath renames only .ts modules", () => {
@@ -31,6 +31,83 @@ test("a .ts importer names a .vibe module by its source name, which stock TypeSc
   assert.equal(rewriteSpecifier("src/a.ts", "./c.js", "src/c.ts"), "./c.js")
   // After revert returns b to .ts, the codemod's .vibe specifier names it again.
   assert.equal(rewriteSpecifier("src/a.ts", "./b.vibe", "src/b.ts"), "./b.ts")
+})
+
+// A package names its modules outside any importer: opencode's @opencode/util
+// has `"./*": "./src/*.ts"`, which 234 imports in 20+ packages go through.
+const withManifest = (manifest, files, check) => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-exports-"))
+  try {
+    mkdirSync(join(root, "packages/util/src/effect"), { recursive: true })
+    writeFileSync(join(root, "package.json"), '{ "name": "root" }\n')
+    writeFileSync(join(root, "packages/util/package.json"), JSON.stringify(manifest))
+    for (const file of files) writeFileSync(join(root, file), "export const value = 1\n")
+    check(root, () => JSON.parse(readFileSync(join(root, "packages/util/package.json"), "utf8")))
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+}
+
+test("a pattern that matches a renamed module gains an exact entry, and other modules keep the pattern", () => {
+  const manifest = { name: "@o/util", exports: { "./effect/layer-node": "./src/effect/layer-node.ts", "./*": "./src/*.ts" } }
+  withManifest(manifest, ["packages/util/src/bom.ts", "packages/util/src/effect/deep.ts", "packages/util/src/other.ts"], (root, read) => {
+    const renames = renameBatch(root, ["packages/util/src/bom.ts", "packages/util/src/effect/deep.ts"])
+    const edits = rewriteExports(root, renames)
+    assert.deepEqual(read().exports, {
+      "./effect/layer-node": "./src/effect/layer-node.ts",
+      "./bom": "./src/bom.vibe",
+      "./effect/deep": "./src/effect/deep.vibe",
+      "./*": "./src/*.ts"
+    })
+    assert.deepEqual(Object.keys(read().exports).at(-1), "./*")
+    assert.deepEqual(edits.map((e) => [e.manifest, e.field, e.key, e.added, e.module]), [
+      ["packages/util/package.json", "exports", "./bom", true, "packages/util/src/bom.vibe"],
+      ["packages/util/package.json", "exports", "./effect/deep", true, "packages/util/src/effect/deep.vibe"]
+    ])
+  })
+})
+
+test("an entry, a condition, an imports map and a main field that name a renamed module name its .vibe source", () => {
+  const manifest = {
+    main: "src/bom.ts",
+    exports: { ".": { bun: "./src/bom.ts", default: "./dist/bom.js" }, "./other": "./src/other.ts" },
+    imports: { "#bom": { workerd: "./src/bom.ts", default: "./src/other.ts" } }
+  }
+  withManifest(manifest, ["packages/util/src/bom.ts", "packages/util/src/other.ts"], (root, read) => {
+    const edits = rewriteExports(root, renameBatch(root, ["packages/util/src/bom.ts"]))
+    assert.deepEqual(read(), {
+      main: "src/bom.vibe",
+      exports: { ".": { bun: "./src/bom.vibe", default: "./dist/bom.js" }, "./other": "./src/other.ts" },
+      imports: { "#bom": { workerd: "./src/bom.vibe", default: "./src/other.ts" } }
+    })
+    assert.equal(edits.length, 3)
+  })
+})
+
+test("a conditional pattern gives its other conditions the module's own targets", () => {
+  const manifest = { exports: { "./*.js": { types: "./dist/*.d.ts", bun: "./src/*.ts" } } }
+  withManifest(manifest, ["packages/util/src/bom.ts"], (root, read) => {
+    rewriteExports(root, renameBatch(root, ["packages/util/src/bom.ts"]))
+    assert.deepEqual(read().exports["./bom.js"], { types: "./dist/bom.d.ts", bun: "./src/bom.vibe" })
+  })
+})
+
+test("a package that names no renamed module is not rewritten", () => {
+  const manifest = { exports: { "./*": "./lib/*.js" } }
+  withManifest(manifest, ["packages/util/src/bom.ts"], (root, read) => {
+    assert.deepEqual(rewriteExports(root, renameBatch(root, ["packages/util/src/bom.ts"])), [])
+    assert.deepEqual(read(), manifest)
+  })
+})
+
+test("restoreExports undoes one module's entries and keeps the others'", () => {
+  const manifest = { main: "src/bom.ts", exports: { ".": "./src/other.ts", "./*": "./src/*.ts" } }
+  withManifest(manifest, ["packages/util/src/bom.ts", "packages/util/src/other.ts"], (root, read) => {
+    const edits = rewriteExports(root, renameBatch(root, ["packages/util/src/bom.ts", "packages/util/src/other.ts"]))
+    assert.deepEqual(read(), { main: "src/bom.vibe", exports: { ".": "./src/other.vibe", "./bom": "./src/bom.vibe", "./other": "./src/other.vibe", "./*": "./src/*.ts" } })
+    restoreExports(root, edits, "packages/util/src/bom.ts")
+    assert.deepEqual(read(), { main: "src/bom.ts", exports: { ".": "./src/other.vibe", "./other": "./src/other.vibe", "./*": "./src/*.ts" } })
+  })
 })
 
 test("renameBatch and rewriteImports update a small package", () => {

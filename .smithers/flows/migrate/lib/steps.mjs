@@ -7,7 +7,7 @@ import { join, posix, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { buildInventory, listSources, readCoverage } from "./inventory.mjs"
 import { defaultLimits, draftPlan, planPrompt, validatePlan } from "./plan.mjs"
-import { fixToFixedPoint, keepMutableMembers, renameBatch, restoreSpecifiers, rewriteImports, rewriteTotals } from "./codemod.mjs"
+import { fixToFixedPoint, keepMutableMembers, renameBatch, restoreExports, restoreSpecifiers, rewriteExports, rewriteImports, rewriteTotals } from "./codemod.mjs"
 import { check, newErrors, styleProblems, summarize } from "./diagnostics.mjs"
 import { compareDeclarations, emitDeclarations, loadTypeScript } from "./declarations.mjs"
 import { compareTests, regressionIssue, runTests } from "./tests.mjs"
@@ -399,6 +399,10 @@ async function wireTarget(config, log) {
     const text = existsSync(bunfig) ? readFileSync(bunfig, "utf8") : ""
     writeIfChanged(bunfig, text, Wire.addBunTestPreload(text))
   }
+  // And in every package that runs bun test and reaches migrated sources: a workspace import loads them too.
+  const bunTests = Wire.wireBunTests({ root: t, packages: config.packages, specsFor })
+  changed.push(...bunTests.changed.filter((file) => !changed.includes(file)))
+  warnings.push(...bunTests.warnings)
   // The plugin goes into the config the tests load: the shared one the test command names, else each package's.
   const vite = Wire.wireVite({ root: t, packages: config.packages, test: config.test, ts, specsFor })
   changed.push(...vite.changed.filter((file) => !changed.includes(file)))
@@ -549,6 +553,7 @@ export async function codemod(options) {
   const files = thePlan.batches[Number(b) - 1].files
   const mutable = keepMutableMembers(typeScriptOf(config), t, files)
   const renames = renameBatch(t, files)
+  const exportEdits = rewriteExports(t, renames)
   const importEdits = rewriteImports(t, scopeFiles(config))
   const compiler = compilerOf(config)
   const byFile = {}
@@ -562,7 +567,7 @@ export async function codemod(options) {
     rounds.push(...fixed.rounds.map((r) => ({ package: pkg.dir, ...r })))
     settled &&= fixed.settled
   }
-  const result = { batch: b, at: new Date().toISOString(), files, mutable, renames, importEdits, fix: { settled, rounds, byFile, totals: rewriteTotals(byFile), refused } }
+  const result = { batch: b, at: new Date().toISOString(), files, mutable, renames, exportEdits, importEdits, fix: { settled, rounds, byFile, totals: rewriteTotals(byFile), refused } }
   writeJson(p.codemod(b), result)
   return result
 }
@@ -631,10 +636,11 @@ export async function revert(options) {
   await Jj.restore(config.target, "@-", [ts, vibe])
   rmSync(join(config.target, vibe.replace(/\.vibe$/, ".d.vibe.ts")), { force: true }) // its declaration sidecar
   // A TypeScript importer gets the specifier it had before the codemod; a .vibe importer names the .ts source.
-  const codemodEdits = readJsonIf(p.codemod(b))?.importEdits ?? []
-  const importEdits = [...restoreSpecifiers(config.target, codemodEdits, ts), ...rewriteImports(config.target, scopeFiles(config))]
+  const codemodResult = readJsonIf(p.codemod(b))
+  const exportEdits = restoreExports(config.target, codemodResult?.exportEdits ?? [], ts)
+  const importEdits = [...restoreSpecifiers(config.target, codemodResult?.importEdits ?? [], ts), ...rewriteImports(config.target, scopeFiles(config))]
   const reverted = readJsonIf(p.reverted(b), [])
-  reverted.push({ file: ts, reason: options.reason, at: new Date().toISOString(), importEdits })
+  reverted.push({ file: ts, reason: options.reason, at: new Date().toISOString(), exportEdits, importEdits })
   writeJson(p.reverted(b), reverted)
   return reverted.at(-1)
 }

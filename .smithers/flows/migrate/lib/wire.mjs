@@ -257,13 +257,11 @@ export function repositoryPackages(root) {
 const localSpec = /^(?:workspace:|file:|link:|\*$)/
 
 /**
- * The Vite and Vitest configs that bundle migrated sources, as
- * repository-relative paths: each config in a migrated package, or in a
- * package that depends on one through workspace packages
- * (`"foldkit": "workspace:*"`), outside fixtures, templates and tests. migrated holds
- * the migrated packages' directories.
+ * The repository's packages that load migrated sources: each migrated package
+ * and each that depends on one through workspace packages
+ * (`"foldkit": "workspace:*"`). migrated holds the migrated packages' directories.
  */
-export function viteAppConfigs(root, migrated) {
+export function packagesReaching(root, migrated) {
   const all = repositoryPackages(root)
   const byName = new Map(all.filter((pkg) => pkg.manifest.name).map((pkg) => [pkg.manifest.name, pkg]))
   const local = (pkg) => Object.entries({ ...pkg.manifest.dependencies, ...pkg.manifest.devDependencies, ...pkg.manifest.peerDependencies })
@@ -276,6 +274,17 @@ export function viteAppConfigs(root, migrated) {
     reaches.set(pkg.dir, result)
     return result
   }
+  return all.filter(reachesMigrated)
+}
+
+/**
+ * The Vite and Vitest configs that bundle migrated sources, as
+ * repository-relative paths: each config in a package that reaches them
+ * (packagesReaching), outside fixtures, templates and tests.
+ */
+export function viteAppConfigs(root, migrated) {
+  const reaching = packagesReaching(root, migrated)
+  const all = repositoryPackages(root)
   const configs = []
   const walk = (dir) => {
     for (const entry of readdirSync(join(root, dir), { withFileTypes: true })) {
@@ -293,7 +302,7 @@ export function viteAppConfigs(root, migrated) {
   }
   return configs.filter((file) => {
     const owner = ownerOf(file)
-    return owner !== undefined && reachesMigrated(owner)
+    return owner !== undefined && reaching.some((pkg) => pkg.dir === owner.dir)
   })
 }
 
@@ -471,6 +480,40 @@ export function addBunTestPreload(text) {
   const items = single[2] !== undefined ? single[2].trim().replace(/,\s*$/, "") : single[3]
   lines[at] = `${single[1]}[${entry}${items ? `, ${items}` : ""}]`
   return lines.join("\n")
+}
+
+/**
+ * Adds vibelang/bun to the [test] preload of every package that runs `bun
+ * test` and reaches migrated sources (packagesReaching), with the compiler the
+ * preload needs: a workspace import reaches a .vibe module from any of them,
+ * and Bun reads only the bunfig.toml of the directory it runs in. A bunfig.toml
+ * addBunTestPreload cannot edit is left as it is, with a warning. Returns the
+ * files changed and the warnings.
+ */
+export function wireBunTests({ root, packages, specsFor }) {
+  const changed = []
+  const warnings = []
+  const write = (file, before, after) => {
+    if (before === after) return
+    writeFileSync(join(root, file), after)
+    changed.push(file)
+  }
+  for (const pkg of packagesReaching(root, packages.map((migrated) => migrated.dir))) {
+    if (!Object.values(pkg.manifest.scripts ?? {}).some((script) => runsBunTest(script))) continue
+    const bunfig = posix.join(pkg.dir, "bunfig.toml")
+    const text = existsSync(join(root, bunfig)) ? readFileSync(join(root, bunfig), "utf8") : ""
+    try {
+      write(bunfig, text, addBunTestPreload(text))
+    } catch (error) {
+      warnings.push(`${bunfig}: ${error.message}`)
+      continue
+    }
+    const manifest = posix.join(pkg.dir, "package.json")
+    const before = readFileSync(join(root, manifest), "utf8")
+    const compiler = pkg.manifest.dependencies?.vibelang ?? pkg.manifest.devDependencies?.vibelang
+    if (!compiler) write(manifest, before, JSON.stringify({ ...pkg.manifest, devDependencies: { ...pkg.manifest.devDependencies, vibelang: specsFor(pkg.dir).vibelang } }, null, 2) + "\n")
+  }
+  return { changed, warnings }
 }
 
 // Where Knip looks for its configuration, in its order (knip 6, KNIP_CONFIG_LOCATIONS).
