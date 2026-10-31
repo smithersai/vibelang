@@ -1129,7 +1129,7 @@ class Feed {
 
 | Rule | Diagnostic |
 | --- | --- |
-| any of the three, or `restore { }`, outside effect code, `function f() { uninterruptible { } }`; `EK2201` fires, not `EK2111` | `EK2201` |
+| `uninterruptible { }`, `interruptible { }` or `restore { }` outside effect code, `function f() { uninterruptible { } }`; `EK2201` fires, not `EK2111` | `EK2201` |
 | `restore { }` outside an `uninterruptible` block, `effect function f() { restore { } }`; one inside an `interruptible` block nested in it is inside, as `$restore` is in scope there | `EK2111` |
 | `restore { }` that captures an outer mask across an independent `effect` function declaration/expression, arrow, method, producer or block, as in `uninterruptible { const e = effect { restore { try poll() } }; try e }`, or inside any `for concurrent` body: the nested Effect, or each item's Effect, is outside the enclosing mask's control. Mask per item with `Effect.uninterruptibleMask` inside the body, or use a plain `for` | `EK2202` |
 
