@@ -29,7 +29,7 @@ test("is bindings have a home in every head and initializer, and reads before as
   assert.ok(!guide.includes("Reading it before then throws `ReferenceError`."))
   const result = run(block(match, "const loopHomesExit") + `
 import { Exit } from "effect"
-if (!Exit.isSuccess(loopHomesExit) || JSON.stringify(loopHomesExit.value) !== "[[1,2,3],[3,2,1]]") throw new Error("loop homes")
+if (!Exit.isSuccess(loopHomesExit) || JSON.stringify(loopHomesExit.value) !== "[[1,2,3],[3,2,1],[1,2]]") throw new Error("loop homes")
 `)
   assert.equal(result.status, 0, result.stdout + result.stderr)
 })

@@ -10,7 +10,7 @@ test("pattern cells retain alternative provenance and per-condition loop identit
     "successful condition and its following body share those cells",
     "Short-circuiting past a binding leaves it uninitialized",
     "initial closures are never rebound to a later condition",
-    "`if` keeps its existing nearest-block scope",
+    "An `if` head belongs to the home that contains the `if` statement",
   ]) assert.ok(match.includes(text), text)
   const pin = read("docs/design/vips/tc39-pattern-matching/README.md")
   assert.ok(pin.includes("| Failed `or` bindings |"))

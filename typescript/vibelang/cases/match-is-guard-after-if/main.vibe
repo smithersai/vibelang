@@ -1,0 +1,10 @@
+// expect-result: {"hit":1,"miss":0}
+// Chapter 004, decided detail 245 (loop round 3, OPUS-2): an if head belongs to
+// the home that contains the if statement, so a block reads it after the if.
+function guard(x: unknown) {
+  if (!(x is { id: let id })) return 0
+  return id
+}
+export effect function main() {
+  return { hit: guard({ id: 1 }), miss: guard({}) }
+}

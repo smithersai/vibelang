@@ -1,0 +1,45 @@
+// expect-result: {"forOf":[1,2],"forIn":["a"],"forLoop":[1,2],"whileLoop":[1,2],"doLoop":[1],"closures":[1,2],"elseIf":"y"}
+// Chapter 004, decided detail 245 (loop round 3, OPUS-2): an unbraced statement
+// body is its own fresh home, so braces around a body never change a result.
+function ids(xs: unknown[]) {
+  const out: unknown[] = []
+  for (const x of xs) if (x is { id: let id }) out.push(id)
+  return out
+}
+function keys(o: Record<string, number>) {
+  const out: string[] = []
+  for (const k in o) if (k is String and let name) out.push(name)
+  return out
+}
+function counted(xs: unknown[]) {
+  const out: unknown[] = []
+  for (let i = 0; i < xs.length; i++) if (xs[i] is { id: let id }) out.push(id)
+  return out
+}
+function looped(xs: unknown[]) {
+  const out: unknown[] = []
+  let i = 0
+  while (i < xs.length) if (xs[i++] is { id: let id }) out.push(id)
+  return out
+}
+function once(x: unknown) {
+  const out: unknown[] = []
+  let i = 0
+  do if (x is { id: let id }) out.push(id)
+  while (++i < 1)
+  return out
+}
+function closures(xs: unknown[]) {
+  const out: (() => unknown)[] = []
+  for (const x of xs) if (x is { id: let id }) out.push(() => id)
+  return out.map((f) => f())
+}
+function elseIf(a: { x: string } | { y: string }) {
+  if (a is { x: let v }) return v
+  else if (a is { y: let v }) return v
+  return ""
+}
+export effect function main() {
+  const xs = [{ id: 1 }, { id: 2 }]
+  return { forOf: ids(xs), forIn: keys({ a: 1 }), forLoop: counted(xs), whileLoop: looped(xs), doLoop: once({ id: 1 }), closures: closures(xs), elseIf: elseIf({ y: "y" }) }
+}

@@ -314,7 +314,7 @@ function defaultBit(o: { x?: number }, b: boolean) {
 
 ## `is` expressions
 
-`subject is P` evaluates the subject once and returns the pattern's Boolean result, using the same cache and finishing rules as `match`. In an ordinary block expression or an `if` head, its `let` and `const` names belong to the nearest enclosing lexical block, as the pinned explainer's binding rule states. They are in scope in both branches and after the `if`, shadow outer names throughout that block, and exist even when short-circuiting skips the expression or a preceding subpattern fails. Each cell stays in TDZ until its binding pattern executes. A failed overall test does not undo bindings already initialized; a skipped binding is still uninitialized. Source assignments keep ordinary `const` immutability; repeated binding patterns keep the pinned duplicate-initialization rules and their `or` replacement exception.
+`subject is P` evaluates the subject once and returns the pattern's Boolean result, using the same cache and finishing rules as `match`. In an ordinary block expression or an `if` head, its `let` and `const` names belong to the nearest enclosing lexical home, as the pinned explainer's binding rule states for a block: a block, a match arm or one of the [other homes](/spec/004-match#pattern-bindings). They are in scope in both branches and after the `if` within that home, shadow outer names throughout it, and exist even when short-circuiting skips the expression or a preceding subpattern fails. Each cell stays in TDZ until its binding pattern executes. A failed overall test does not undo bindings already initialized; a skipped binding is still uninitialized. Source assignments keep ordinary `const` immutability; repeated binding patterns keep the pinned duplicate-initialization rules and their `or` replacement exception.
 
 An `is` in a loop head uses the pinned loop-head/per-iteration scopes. Each complete `while` or `do…while` condition evaluation has fresh cells; the initial `do` body sees its uninitialized head cells. A match arm has its own lexical scope, so an `is` inside it does not export names to another arm.
 
@@ -517,7 +517,7 @@ An `or` pattern shares one lexical cell for a name bound with the same keyword i
 
 Lexical `is` bindings in `while` and `do…while` have the pinned explainer's loop-head/per-iteration scope, rather than an enclosing block's scope. The loop head shadows outer names and does not leak outside the loop. Each complete condition evaluation starts with fresh uninitialized cells, including after `continue`; condition reads see TDZ until the matching pattern initializes them. A successful condition and its following body share those cells, so closures see that body's later `let` writes. Short-circuiting past a binding leaves it uninitialized even if the condition is true. Nested source blocks/functions retain their own scopes.
 
-The first `do…while` body runs with the initial uninitialized head cells. Its direct reads precede the binding, so they are `TS2448`, and with the check suppressed they throw `ReferenceError`; closures captured there keep those cells permanently in TDZ. Each subsequent condition gets new cells; its true result shares them with the following body. `continue` reaches a fresh condition set, and false/`break` exits without exporting names. The initial closures are never rebound to a later condition. `if` keeps its existing nearest-block scope; the within-one-`or` replacement above is unchanged.
+The first `do…while` body runs with the initial uninitialized head cells. Its direct reads precede the binding, so they are `TS2448`, and with the check suppressed they throw `ReferenceError`; closures captured there keep those cells permanently in TDZ. Each subsequent condition gets new cells; its true result shares them with the following body. `continue` reaches a fresh condition set, and false/`break` exits without exporting names. The initial closures are never rebound to a later condition. An `if` head belongs to the home that contains the `if` statement; the within-one-`or` replacement above is unchanged.
 
 Every other home follows the pinned explainer's rule that the usual binding scopes apply, with ECMAScript's environments:
 
@@ -525,6 +525,7 @@ Every other home follows the pinned explainer's rule that the usual binding scop
 - In `for…in`, `for…of`, `for await`, `for concurrent` and `for try`, a binding from the head expression, which runs once in the head's own environment, is copied into each iteration's binding environment; a skipped binding is copied uninitialized. A binding from a default inside the head declaration belongs to that iteration's fresh binding environment.
 - In a concise arrow body, a binding belongs to the arrow body's scope, where the block-body form would declare it.
 - In a class field or static field initializer, a binding belongs to that initializer's own scope, because ECMAScript evaluates each initializer as a separate method-like body. A `static` block is a block.
+- The statement body of `if`, `else`, `for`, `for…in`, `for…of`, `for await`, `for concurrent`, `for try`, `while`, `do…while` or a labeled statement, when it is not a Block, is the home of the bindings inside it, exactly as if it were wrapped in braces, and it is fresh each time the body runs, so braces around a body never change a result (decided detail 245). An `if` head is outside its own body: `if (!(x is { id: let id })) return; use(id)` in a block reads `id` after the `if`, and the head of an `else if` belongs to the `else` body's home.
 - An `enum` member initializer has no lexical home in ECMAScript or the pinned explainer, so a binding introduced there is `EK0705`, as for a formal parameter: `enum E { A = (1 is let one) ? 1 : 0 }` is `EK0705`.
 
 Each binding stays in TDZ until its pattern runs, under the checks in [`is` expressions](/spec/004-match#is-expressions).
@@ -540,6 +541,11 @@ function countdown(src: { n: number }) {
   const seen: (() => number)[] = []
   for (src.n is let n; n > 0; n--) seen.push(() => n)
   return seen.map(g => g()) // [3, 2, 1] for n = 3: copied each iteration, as a let is
+}
+function ids(xs: unknown[]) {
+  const out: unknown[] = []
+  for (const x of xs) if (x is { id: let id }) out.push(id)
+  return out // [1, 2] for [{ id: 1 }, { id: 2 }], as with braces
 }
 ```
 
@@ -561,7 +567,14 @@ function countdown(src: { n: number }) {
   for (let n = src.n; n > 0; n--) seen.push(() => n)
   return seen.map(g => g())
 }
-const loopHomesExit = Effect.runSyncExit(Effect.sync(() => [drain([1, 2, 3][Symbol.iterator]()), countdown({ n: 3 })])) // Success([[1, 2, 3], [3, 2, 1]])
+function ids(xs: unknown[]) {
+  const out: unknown[] = []
+  for (const x of xs) {
+    if (typeof x === "object" && x !== null && "id" in x) { let id = x.id; out.push(id) }
+  }
+  return out
+}
+const loopHomesExit = Effect.runSyncExit(Effect.sync(() => [drain([1, 2, 3][Symbol.iterator]()), countdown({ n: 3 }), ids([{ id: 1 }, { id: 2 }])])) // Success([[1, 2, 3], [3, 2, 1], [1, 2]])
 ```
 
 ```vibe [VibeLang]
