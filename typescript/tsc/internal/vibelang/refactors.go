@@ -247,7 +247,9 @@ func (rc *refactorContext) asyncRefactors(fn *ast.Node) []*ls.CodeAction {
 		for _, name := range errorNames {
 			declarations.WriteString("error " + name + " { cause: unknown }\n" + indent)
 		}
-		mapped = append(mapped, rc.textEdit(declarationStart, declarationStart, declarations.String()))
+		// The declarations can start where the edit removing async does (a declaration without export), and LSP
+		// orders edits that share a start as inserts before the replacement: insert them first.
+		mapped = append([]*lsproto.TextEdit{rc.textEdit(declarationStart, declarationStart, declarations.String())}, mapped...)
 		actions = append(actions, &ls.CodeAction{Description: "Convert to a VibeLang function with an error per await", Changes: mapped})
 	}
 	return actions

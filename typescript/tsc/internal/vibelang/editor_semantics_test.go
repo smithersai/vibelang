@@ -1,6 +1,7 @@
 package vibelang
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -41,6 +42,48 @@ func TestEditorAsyncRefactorGoldens(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// A declaration without export starts at async, so the inserted error declaration
+// shares its start with the edit that removes async. LSP 3.17 allows that only
+// as the insert first; lspApply applies edits by that rule, as editors do.
+func TestEditorAsyncRefactorUnexportedDeclaration(t *testing.T) {
+	const source = "async function load(input: Promise<number>) { return await input }"
+	const want = "error PromiseFailed { cause: unknown }\nfunction load(input: Promise<number>) { return try Effect.tryPromise({ try: () => input, catch: (cause) => new PromiseFailed({ cause }) }) }"
+	program, file, service, converters := editorProgram(t, source)
+	pos := strings.Index(source, "load")
+	var chosen *ls.CodeAction
+	for _, action := range vibelangRefactors(t.Context(), &ls.RefactorContext{SourceFile: file, Span: core.NewTextRange(pos, pos), Program: program, LS: service}) {
+		if action.Description == "Convert to a VibeLang function with an error per await" {
+			chosen = action
+		}
+	}
+	if chosen == nil {
+		t.Fatal("missing action")
+	}
+	type span struct {
+		start, end int
+		text       string
+	}
+	var spans []span
+	for _, edit := range chosen.Changes {
+		r := converters.FromLSPRangeToOriginal(file, edit.Range)
+		spans = append(spans, span{r.Pos(), r.End(), edit.NewText})
+	}
+	slices.SortStableFunc(spans, func(a, b span) int { return a.start - b.start })
+	var got strings.Builder
+	last := 0
+	for i, s := range spans {
+		if i > 0 && s.start < spans[i-1].end {
+			t.Fatalf("edits overlap at bytes %d-%d and %d-%d", spans[i-1].start, spans[i-1].end, s.start, s.end)
+		}
+		got.WriteString(source[last:s.start] + s.text)
+		last = s.end
+	}
+	got.WriteString(source[last:])
+	if got.String() != want {
+		t.Fatalf("async edit differs:\ngot: %s\nwant: %s", got.String(), want)
 	}
 }
 
