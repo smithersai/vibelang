@@ -149,8 +149,9 @@ var ruleInjections = []*ruleInjection{
 	{Code: 9203, Name: "constructor-throw", Quote: "or a throw or listed failure that can escape a constructor, an accessor or a class static block", Slots: top,
 		Decls: "error Bad$$", Text: "export class Checked$$ {\n  constructor(n: number) {\n    if (n < 0) throw new Bad$$();\n  }\n}"},
 
-	// Chapter 3: a catch that cannot catch an expected failure (D238, D282).
-	{Code: 9204, Name: "dead-catch", Quote: "a catch whose try block has E = `never`, in an Effect or a plain function", Slots: stmt,
+	// Chapter 3: a catch that cannot catch an expected failure (D238). A plain
+	// function's catch is JavaScript's and receives any exception (detail 205).
+	{Code: 9204, Name: "dead-catch", Quote: "a catch whose try block has E = `never`, in an Effect or a plain function", Slots: []string{slotEffect},
 		Text: "try {\n  const inner$$ = 1;\n} catch (e) {\n  const caught$$ = 2;\n}"},
 	{Code: 9204, Name: "dead-catch-expression", Quote: "or a catch expression with no expected errors", Slots: stmt,
 		Text: "const constant$$ = 1 catch 2;"},

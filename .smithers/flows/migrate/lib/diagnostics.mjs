@@ -66,8 +66,7 @@ export function summarize(diagnostics, files = []) {
 
 /**
  * What a batch may not keep in the given files: TypeScript-style Effect forms
- * (EK48xx), platform globals (EK4402), and a catch that can never run (EK9204),
- * a warning, which there means the TypeScript recovered and the .vibe throws.
+ * (EK48xx), platform globals (EK4402), and a catch that can never run (EK9204).
  * EK4832 stays out: the Struct constant --fix leaves is one a schema
  * declaration would add a public type to. So does an EK4831 or EK4837 that says
  * it has no quick fix: a service declaration lists its members inline, so a

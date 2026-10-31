@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:vip04.native-catch-plain\x00")

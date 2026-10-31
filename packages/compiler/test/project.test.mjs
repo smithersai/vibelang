@@ -205,11 +205,11 @@ test("a module outside root compiles with its own package's project, once per re
 })
 
 test("a project's compile checks its own files; an imported workspace package's source only supplies types", { skip }, async (t) => {
-  // Each module holds one warning (EK9204), which a check of that module reports.
+  // Each module holds one warning (EK4833), which a check of that module reports.
   // Checking every imported package in each project's compile checked a
   // package once per project that imports it.
   const { root, app, compiler, compiles } = workspace(t)
-  const unreachable = (name) => `export function ${name}(): number {\n  try { return 1 } catch (e) { return 2 }\n}\n`
+  const unreachable = (name) => `import { Effect } from "effect"\nexport const ${name}: Effect.Effect<number> = Effect.succeed(1)\n`
   for (const [path, text] of Object.entries({
     "dep/src/lib.vibe": unreachable("fromLib") + "export function shout(text: string): string { return text.toUpperCase() }\n",
     "app/src/main.vibe": "import { shout } from \"../../dep/src/lib.vibe\"\n" + unreachable("fromMain") + "export const fromApp: string = shout(\"app\")\n"
@@ -221,12 +221,12 @@ test("a project's compile checks its own files; an imported workspace package's 
   const warnings = (result) => result.warnings.map(({ file, code }) => [file, code])
   const main = await compile(app)
   assert.deepEqual(main.errors, [])
-  assert.deepEqual(warnings(main), [[join(app, "src/main.vibe"), "EK9204"]])
+  assert.deepEqual(warnings(main), [[join(app, "src/main.vibe"), "EK4833"]])
   assert.match(main.outputs.get(join(app, "src/main.vibe")).code, /shout\("app"\)/)
   assert.ok(main.inputs.includes(join(root, "dep/src/lib.vibe")), "the package's source still supplies its types")
   const lib = await compile(join(root, "dep"))
   assert.deepEqual(lib.errors, [])
-  assert.deepEqual(warnings(lib), [[join(root, "dep/src/lib.vibe"), "EK9204"]])
+  assert.deepEqual(warnings(lib), [[join(root, "dep/src/lib.vibe"), "EK4833"]])
   assert.deepEqual(compiles(), [join(app, "tsconfig.json"), join(root, "dep/tsconfig.json")])
 })
 

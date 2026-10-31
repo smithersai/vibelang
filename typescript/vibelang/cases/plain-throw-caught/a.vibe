@@ -1,7 +1,6 @@
-// D282: throw is a typed failure everywhere, and catch receives typed
-// failures only. A plain function may throw what its own catch handles; it
-// still never fails. An exception from TypeScript code is not a typed
-// failure: it passes through the catch and reaches the caller unchanged.
+// throw is a typed failure everywhere. A plain function may throw what its own
+// catch handles; it still never fails. Its try statement is JavaScript's
+// (detail 205), so its catch also receives an exception from TypeScript code.
 import { hostile, tagged } from "./fixtures.js"
 
 export error Invalid { value: string }
@@ -16,7 +15,7 @@ export const clamp = (n: number): number => {
   }
 }
 
-// The catch never sees the TypeError from hostile(): it is a defect.
+// The catch receives the exception from hostile() too.
 export const passesThrough = (n: number): number => {
   try {
     if (n < 0) throw new Invalid({ value: String(n) })

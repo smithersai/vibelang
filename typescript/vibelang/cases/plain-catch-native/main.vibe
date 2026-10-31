@@ -1,0 +1,32 @@
+// expect-result: ["a.b",null,"x",null,"caught",null]
+// Detail 205: a try statement in a plain function is JavaScript's, as in
+// TypeScript. Its catch receives any exception that reaches it, tracked or not,
+// from a built-in, a package or a .ts helper, and its variable is unknown.
+import { identity } from "./identity.ts"
+
+error Empty
+
+export function host(x: string): string | null {
+  try { return new URL(x).hostname } catch { return null }
+}
+
+export const decoded = (text: string): string | undefined => {
+  try {
+    return Schema.decodeUnknownSync(Schema.String)(JSON.parse(text))
+  } catch {
+    return undefined
+  }
+}
+
+export function checked(text: string): unknown {
+  try {
+    if (text === "") throw new Empty()
+    return identity(text)
+  } catch (e) {
+    return e instanceof Empty ? "caught" : undefined
+  }
+}
+
+export function main() {
+  return [host("https://a.b/c"), host("nope"), decoded("\"x\""), decoded("{}"), checked(""), checked("bad")]
+}

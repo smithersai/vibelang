@@ -288,11 +288,18 @@ export const $joinedFrame = <F extends (...args: any[]) => Generator<Effect.Effe
 }
 
 /**
- * D54, D13: a catch in a function that compiles to plain JavaScript starts
- * with `e = $caught(e)`. It returns the expected failure, and rethrows
+ * D54, D13: a catch in an Effect function that compiles to plain JavaScript
+ * starts with `e = $caught(e)`. It returns the expected failure, and rethrows
  * anything else, a defect, so the catch never sees it.
  */
 export const $caught = (thrown: unknown): unknown => {
   if (thrown instanceof ExpectedFailure) return thrown.error
   throw thrown
 }
+
+/**
+ * Detail 205: a catch in a plain function starts with `e = $thrown(e)`. The
+ * statement is JavaScript's and catches every exception that reaches it, so
+ * this only unwraps what a plain `throw` marked.
+ */
+export const $thrown = (thrown: unknown): unknown => (thrown instanceof ExpectedFailure ? thrown.error : thrown)

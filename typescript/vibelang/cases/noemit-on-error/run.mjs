@@ -9,8 +9,8 @@ const compiler = path.resolve(dir, "../../../built/local/tsc")
 assert.ok(existsSync(path.join(dir, "out/main.js")), "the warning-only case must emit JavaScript")
 // Keep the original unannotated Smithers repro as well as the explicitly
 // plain contracts in plain-catch-exceptions (the projector requires those).
-// Its catch receives typed failures only (D282), so EK9204 warns and the
-// coercion exception passes through.
+// Its try statement is JavaScript's (detail 205), so the catch receives the
+// coercion exception.
 const repro = `export const f = (x: unknown): string => {
   try {
     return String(x)
@@ -41,8 +41,8 @@ for (const mode of ["-p", "-b"]) {
       assert.ok(existsSync(emitted), `${mode}: a warning must permit emit`)
       const { f } = await import(pathToFileURL(emitted).href)
       const coercion = new TypeError("coercion")
-      assert.throws(() => f({ [Symbol.toPrimitive]() { throw coercion } }), (e) => e === coercion, "a plain catch must not receive a JavaScript exception (D282)")
-      assert.match(output, /EK9204/)
+      assert.equal(f({ [Symbol.toPrimitive]() { throw coercion } }), "", "a plain catch receives a JavaScript exception (detail 205)")
+      assert.doesNotMatch(output, /EK9204/)
       if (mode === "-b") {
         // A rebuild with unchanged output must refresh its timestamp even
         // when it reports warnings (buildtask.go's noEmitOnError gate).

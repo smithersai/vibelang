@@ -161,7 +161,8 @@ JavaScript value. Decisions are in [`docs/design/history/DECISIONS.md`](../../do
 | `$isFailure` | Test a caught failure's `_tag` against a retired typed catch clause's tags | D131, D216 |
 | `$finally` | Run cleanup on every exit and retain cleanup failures | D15, D46 |
 | `$expected` | Mark a typed failure thrown in a function that compiles to plain JavaScript | D54, D282 |
-| `$caught` | Return the expected failure a plain function's catch received, and rethrow a defect | D54, D282 |
+| `$caught` | Return the expected failure the catch of an Effect function that compiles to plain JavaScript received, and rethrow a defect | D54, D282 |
+| `$thrown` | Unwrap the expected failure a plain function's catch received, and return any other exception as it is | D54, detail 205 |
 | `$finallyFailure` | Join a failure a plain function's finally block raises to the failure in flight; two failures with a defect leave as a `SuppressedError` that stands for their joined cause | D15, D54, D340 |
 | `$plainSync` | A plain function's Effect form: run the plain form, failing with the cause a `SuppressedError` the runtime made stands for, and record the plain form on the program | D340, D446 |
 | `$plainOf` | A plain function's plain form from another module, before its module has attached `f[$direct]` too | D268, D446 |

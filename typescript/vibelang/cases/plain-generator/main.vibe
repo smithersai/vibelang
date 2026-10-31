@@ -1,4 +1,4 @@
-// expect-result: [1,[2,3],9,3,[4,5,6],"caught","step",7]
+// expect-result: [1,[2,3],9,3,[4,5,6],"caught","kept",7]
 import { Effect } from "effect"
 
 export function* steps(): Generator<number, number, unknown> {
@@ -22,8 +22,8 @@ export function* iterable(): Iterable<number> { yield 6 }
 
 export error Stop
 
-// D296: the catch receives typed failures only. A throw it handles stays
-// inside; an exception passed in with generator.throw() passes through.
+// Detail 205: a generator's try statement is JavaScript's. A throw it handles
+// stays inside, and so does an exception passed in with generator.throw().
 export function* recover(stop: boolean): Generator<string, void, unknown> {
   try {
     yield "ready"

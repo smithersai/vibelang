@@ -147,6 +147,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The migrate flow's setup wired the `.vibe` formatter into a repository's format check but left the `.vibe` files it already had unformatted, so Smithers' `agent/fs` package, with 18 such files from VibeLang 0.0.8, failed `dprint check` before any batch; setup now formats them with `vibelang-format` in its commit.
 
+- A plain function's `try`/`catch` let an exception the compiler does not track pass through, with only `EK9204`, so `try { return new URL(x).hostname } catch { return null }` threw where the TypeScript returned null; the statement is now JavaScript's and catches every exception that reaches it, and where the `try` block has no tracked failure `catch (e)` binds `e` as `unknown`.
+
 - In a `.vibe` file a member of an interface or an object type was readonly to the checker, so `options.minimum = 0` was `TS2540`, while its declaration printed the member writable; such a member is now writable unless written `readonly`, as in TypeScript, and the checker and the declaration agree. The fields of `data`, `schema` and `error` bodies keep their readonly default, and `mutable` is still accepted. The migrate flow's codemod no longer writes `mutable`.
 
 - Editor validation rejected the `async` conversion actions because its smoke check still expected the retired Promise hatch; it now checks the `Effect.tryPromise` bridge and the mapped rejection form.
@@ -475,8 +477,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The migrate flow's rules told the repair agent that a function with no Effect operation stays plain, while the toolchain compiles an unannotated function or method to an Effect; the rules now say to write its return type or `: infer _`, and list the skill's forms the toolchain does not implement yet with what to write until each lands.
 
 - The migrate flow judged a test command without per-test results by one exit status, so a flaky test stopped `upgrade-effect` with "the target's tests do not run" or read as a batch's regression; such a command now runs once more after a nonzero exit, and the second run counts.
-
-- The skill said plain functions mean exactly what they mean in TypeScript, but a plain `catch` receives only tracked failures, so `try { new URL(x) } catch { … }` rethrew with only a warning; the skill now says so, and the migrate flow rejects a batch with `EK9204`.
 
 - A `.vibe` file in a project without `vibelang-runtime` or `effect` installed reported only `Cannot find namespace 'Effect'` or `Cannot find name 'TaggedError'`, and its exports declared `any`; each such error now names the package that supplies the name and says to install it.
 

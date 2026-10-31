@@ -2,7 +2,6 @@ package vibelang
 
 import (
 	"slices"
-	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
@@ -235,8 +234,10 @@ func (a *analyzer) addCall(info *effectInfo, call *ast.Node) {
 
 // catchVariableType types the variable of a catch clause in a function that
 // runs Effects: it is a union of the expected failures the try block can
-// raise, and never when it raises none. A plain function catches every
-// JavaScript exception as unknown (D260).
+// raise, and never when it raises none. With none, TypeScript types a plain
+// function's variable, since its catch receives any exception (detail 205). The
+// form is read from the source: a form that needs the body would ask for this
+// type again.
 func catchVariableType(c *checker.Checker, declaration *ast.Node) *checker.Type {
 	if t := causeVariableType(c, declaration); t != nil {
 		return t // catch (cause: Cause) (primitives.go)
@@ -245,8 +246,24 @@ func catchVariableType(c *checker.Checker, declaration *ast.Node) *checker.Type 
 	if clause == nil || clause.Kind != ast.KindCatchClause || !inLowerableBody(clause.Parent) && !inPlainGeneratorBody(clause.Parent) || isHandleStatement(clause.Parent) {
 		return nil
 	}
-	info := analyzerFor(c).tryBlockFlow(clause.Parent.AsTryStatement().TryBlock)
+	a := analyzerFor(c)
+	info := a.tryBlockFlow(clause.Parent.AsTryStatement().TryBlock)
+	if fn := ast.GetContainingFunction(clause.Parent); len(info.errors) == 0 && fn != nil && !isMarkedEffect(fn) && (!isWrittenForm(fn) || a.hasPlainContract(fn)) {
+		return nil
+	}
 	return c.GetUnionType(info.errors)
+}
+
+// isNativeTry reports whether try, a try statement in a .vibe function, is
+// JavaScript's: in a plain function or generator it catches any exception that
+// reaches it, tracked or not (detail 205). Effect code bans the statement, so
+// one there is the retired form, which catches typed failures.
+func (a *analyzer) isNativeTry(try *ast.Node) bool {
+	if inPlainGeneratorBody(try) {
+		return true
+	}
+	fn := ast.GetContainingFunction(try)
+	return fn == nil || !a.isEffect(fn)
 }
 
 func init() {
@@ -279,20 +296,18 @@ func (a *analyzer) blockRunsEffects(block *ast.Node) bool {
 // fails with no expected error (D282).
 var deadCatch = EK9204.With("This catch can never run: nothing in its try block fails with an expected error, and a JavaScript exception passes through it as a defect.")
 
-// checkDeadCatches reports EK9204 when a try block's E is never (D260, D282):
+// checkDeadCatches reports EK9204 when a try block's E is never in effect code:
 // the catch receives typed failures only, so defects, JavaScript exceptions
 // included, pass through it. The warning covers TypeScript's errors about the
-// never binding.
+// never binding. A plain function's catch is JavaScript's and receives them.
 func checkDeadCatches(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
-		if node.Kind == ast.KindTryStatement && catches(node) && !isCauseCatch(node) && (inLowerableBody(node) || inPlainGeneratorBody(node)) {
+		if node.Kind == ast.KindTryStatement && catches(node) && !isCauseCatch(node) && inLowerableBody(node) && !analyzerFor(c).isNativeTry(node) {
 			try := node.AsTryStatement()
 			a := analyzerFor(c)
 			info := a.tryBlockFlow(try.TryBlock)
 			if c.GetUnionType(info.errors).Flags()&checker.TypeFlagsNever != 0 {
-				// A catch receives typed failures only, in a plain function too
-				// (D282): a JavaScript exception is a defect that passes through.
 				m := deadCatch
 				if a.blockRunsEffects(try.TryBlock) {
 					m = EK9204
@@ -302,99 +317,9 @@ func checkDeadCatches(c *checker.Checker, file *ast.SourceFile) {
 					note(d, "Use a form that can fail, such as Option.getOrElse or Schema.decodeUnknownEffect, or bound the call with try.")
 					cover(c, try.CatchClause)
 				}
-			} else if fn := ast.GetContainingFunction(node); fn != nil && a.compilesPlain(fn) {
-				// The try block can fail, so the catch runs, but only for
-				// those failures: an exception that TypeScript code in the
-				// block throws passes through it, where TypeScript's catch
-				// received it.
-				if call := a.passingCall(try.TryBlock); call != nil {
-					d := report(c, call, passingCatch, messageText(call.Expression(), "this call"))
-					note(d, "To catch it here, call it through Result.try, or move this code into a module block, whose catch is TypeScript's.")
-				}
 			}
 		}
 		return node.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
-}
-
-// passingCatch is EK9204's text for a call in a plain function's try block
-// whose exception passes through the catch (passingCall). {0} is the callee.
-var passingCatch = EK9204.With("This catch receives expected failures only, so an exception that {0} throws passes through it as a defect.")
-
-// compilesPlain reports whether fn compiles to plain JavaScript, where a catch
-// written in TypeScript received every exception its try block threw.
-func (a *analyzer) compilesPlain(fn *ast.Node) bool {
-	return isLowerable(fn) && !isProducer(fn) && (a.isPlainFunction(fn) || !a.isEffect(fn) && !a.isFactory(fn))
-}
-
-// passingCall returns the first call in block, a plain function's try block,
-// whose exception passes through the try's catch (D282): a call of TypeScript
-// code from a .ts file or a package that returns no Effect and declares no
-// expected failure, such as Schema.decodeUnknownSync's decoder or a .ts
-// helper beside a JSON.parse whose SyntaxError the catch does receive. Calls
-// of JavaScript's built-ins are not reported: their exceptions are defects
-// too (D101), but a block of them would warn at every array method. Nested
-// functions, hatches and nested try statements with a catch, which report
-// their own, are not searched.
-func (a *analyzer) passingCall(block *ast.Node) *ast.Node {
-	var found *ast.Node
-	var visit func(n *ast.Node) bool
-	visit = func(n *ast.Node) bool {
-		if n != block && (isFunctionBoundary(n) || isHatchArgument(n) || n.Kind == ast.KindTryStatement && catches(n)) {
-			return false
-		}
-		if ast.IsCallExpression(n) && a.throwsPastCatch(n) {
-			found = n
-			return true
-		}
-		return n.ForEachChild(visit)
-	}
-	visit(block)
-	return found
-}
-
-// throwsPastCatch reports whether call, in a plain function, calls TypeScript
-// code whose exceptions are defects: an untrusted function, a tagged
-// declaration without @throws, or an export of a trusted package whose name
-// says it throws (throwsByName). Most of a trusted package's functions, such
-// as Option.some or Result.try, never throw, and their calls fill try blocks.
-func (a *analyzer) throwsPastCatch(call *ast.Node) bool {
-	t := callTrust(a.checker, call)
-	switch t.kind {
-	case trustTagged, trustForeign:
-	case trustEffect:
-		if !throwsByName(call) {
-			return false
-		}
-	default:
-		return false
-	}
-	if len(t.failures) > 0 {
-		return false // the catch receives its expected failures
-	}
-	sig := a.checker.GetResolvedSignature(call)
-	return sig != nil && !isEffectType(a.checker, a.checker.GetReturnTypeOfSignature(sig))
-}
-
-// throwsByName reports whether call's callee has a name that, in Effect's
-// API, says it throws: one that ends in Sync, as Schema.decodeUnknownSync and
-// Effect.runSync do, or has OrThrow in it, as Option.getOrThrow does. For a
-// call of what a call returned, as Schema.decodeUnknownSync(S)(input) is, the
-// inner call's callee names it.
-func throwsByName(call *ast.Node) bool {
-	callee := ast.SkipParentheses(call.Expression())
-	for ast.IsCallExpression(callee) {
-		callee = ast.SkipParentheses(callee.Expression())
-	}
-	var name string
-	switch {
-	case ast.IsIdentifier(callee):
-		name = callee.Text()
-	case ast.IsPropertyAccessExpression(callee):
-		name = callee.Name().Text()
-	default:
-		return false
-	}
-	return strings.HasSuffix(name, "Sync") || strings.Contains(name, "OrThrow")
 }

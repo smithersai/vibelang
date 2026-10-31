@@ -232,3 +232,19 @@ func (p *boundaryDefects) Effect(w *Writer) {
 	w.Write("return [" + p.StaticExit + ", " + p.ParamExit + "]")
 }
 func (*boundaryDefects) Ends() bool { return true }
+
+// A plain function's try statement is JavaScript's (decided detail 205): its
+// catch receives every exception that reaches it, untracked ones included,
+// from a built-in, a getter, a coercion or a .ts helper, with or without a
+// variable. t3code's `try { return new URL(x).hostname } catch { return null }`
+// is the first host.
+func init() {
+	registerWitness(4, ChapterWitness{Key: "vip04.native-catch-plain", Chapter: "001-functions.md", Quote: "A `try { } catch { }` statement at the top level, or in a plain or `async` function, is JavaScript's, as in TypeScript.",
+		Vibe:    "function witness():unknown[]{const box=undefined as unknown as {value:number};const read=(f:()=>unknown):unknown=>{try{return f()}catch(e){return e instanceof Error?e.name:\"other\"}};const host=(x:string):string|null=>{try{return new URL(x).hostname}catch{return null}};const getter={get value():number{return box.value}};let n=0;try{n=getter.value}catch{n=-1};return [host(\"https://a.b/c\"),host(\"nope\"),read(()=>box.value),read(()=>JSON.parse(\"{\")),read(()=>BigInt(1.5)),read(()=>decodeURIComponent(\"%\")),read(()=>checked(\"bad\")),read(()=>checked(\"ok\")),n]}",
+		Effect:  "function witness(){const box=undefined;const read=(f)=>{try{return f()}catch(e){return e instanceof Error?e.name:\"other\"}};const host=(x)=>{try{return new URL(x).hostname}catch{return null}};const getter={get value(){return box.value}};let n=0;try{n=getter.value}catch{n=-1};return [host(\"https://a.b/c\"),host(\"nope\"),read(()=>box.value),read(()=>JSON.parse(\"{\")),read(()=>BigInt(1.5)),read(()=>decodeURIComponent(\"%\")),read(()=>checked(\"bad\")),read(()=>checked(\"ok\")),n]}",
+		Modules: []string{}, Requires: []string{},
+		Cite: Citation{VIP: 4, Template: "try{return new URL(x).hostname}catch{return null}", Quote: "in a plain or `async` function, `throw` is JavaScript's throw;"},
+		Files: []ChapterWitnessFile{
+			{Name: "checked.ts", Source: "export function checked(s:string):string{if(s===\"bad\")throw new SyntaxError(\"bad\");return s}\n", Names: []string{"checked"}},
+		}})
+}

@@ -17,6 +17,7 @@ export const {
   $catchCause,
   $catchExpression,
   $caught,
+  $thrown,
   $clause,
   $control,
   $defineProperty,
