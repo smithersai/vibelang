@@ -703,3 +703,9 @@ The oracles come from [functions](../design/src/001-functions.md) and [Effect op
 `FuzzMigrationInferredImports` compares decoder and encoder declarations across root or subpath imports, aliases, comments, export forms and local `SchemaAST` shadows. Its [declaration oracle](../design/src/001-functions.md) is the native TypeScript output, not the compiler's current qualifier choice.
 
 The 58 keyed neighborhood files and two original migration archives retain the Foldkit and OpenCode patterns. The 25 observed feature gaps have exact feature and corpus pending entries owned by those migration lanes.
+
+### Execution diagnostic neighborhoods
+
+`FuzzReviewExecutionDiagnostics` reads the [diagnostic catalog](../design/src/900-appendices.md) at test time. It varies fork owners and scope operands, aggregate names, concurrency limits, async-match jumps and retired aggregate spellings. Valid repairs are controls; an arbitrary rejection cannot satisfy a required diagnostic.
+
+The 118 keyed inputs vary spacing, comments and the line breaks the catalog explicitly allows. The 84 observed feature gaps retain separate corpus entries and the spec apply-lane owner. `TestReviewExecutionDiagnosticsQuoted` keeps every quoted code assignment and token-separation rule in the spec gate.
