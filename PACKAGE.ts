@@ -58,6 +58,7 @@ const specTests = [
   "TestInferredEffectDefaultsQuoted",
   "TestAsyncCleanupRefactorQuoted",
   "TestEffectInitializerQuoted",
+  "TestAsyncCleanupRefactorQuoted",
   "TestDoLoopHeadQuoted",
   "TestSidecarEscapesQuoted",
   "TestSidecarSourceIdentityQuoted",
