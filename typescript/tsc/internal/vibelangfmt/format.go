@@ -224,7 +224,10 @@ func statements(node *ast.Node, nodes []*ast.Node) []*ast.Node {
 // unbraced returns the children of node, replacing a block that holds one
 // statement with the statement when it is the body of an if, else, or loop,
 // which dprint's useBraces settings write with or without braces. A
-// declaration keeps its block, which scopes it.
+// declaration keeps its block, which scopes it. The block's statements are
+// counted as statements counts them, without the empty statement dprint's
+// "asi" setting writes: in alchemy's `if (c) {\n  ;(try x) catch h\n}` the
+// block still holds one statement, as it did before formatting.
 func unbraced(node *ast.Node, nodes []*ast.Node) []*ast.Node {
 	switch node.Kind {
 	case ast.KindIfStatement, ast.KindForStatement, ast.KindForInStatement, ast.KindForOfStatement, ast.KindWhileStatement, ast.KindDoStatement:
@@ -236,8 +239,8 @@ func unbraced(node *ast.Node, nodes []*ast.Node) []*ast.Node {
 		if child.Kind != ast.KindBlock {
 			continue
 		}
-		if statements := child.AsBlock().Statements.Nodes; len(statements) == 1 && statements[0].Kind != ast.KindVariableStatement && !ast.IsDeclarationStatement(statements[0]) {
-			result[i] = statements[0]
+		if inner := statements(child, child.AsBlock().Statements.Nodes); len(inner) == 1 && inner[0].Kind != ast.KindVariableStatement && !ast.IsDeclarationStatement(inner[0]) {
+			result[i] = inner[0]
 		}
 	}
 	return result

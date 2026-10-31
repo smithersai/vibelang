@@ -484,6 +484,11 @@ func TestSameProgram(t *testing.T) {
 		{"braces around a declaration", "if (a) { function f() {} }\n", "if (a) function f() {}\n", "1:8: KindBlock became KindFunctionDeclaration"},
 		{"an ASI guard before a parenthesized statement", "function f() {\n  (() => {\n    g()\n  })()\n}\n", "function f() {\n  ;(() => {\n    g()\n  })()\n}\n", ""},
 		{"an empty statement that is an if's body", "if (a) ;\nelse g()\n", "if (a) g()\n", "1:1:"},
+		// alchemy-26: dprint's ASI guard inside an if's block of one statement.
+		{"an ASI guard in an if's block", "export const run = effect (c: boolean) => {\n  if (c) {\n    (try effect { return 1 }) catch effect (e) => 2\n  }\n}\n", "export const run = effect (c: boolean) => {\n  if (c) {\n    ;(try effect { return 1 }) catch effect (e) => 2\n  }\n}\n", ""},
+		{"an ASI guard in a loop's block", "for (const x of xs) {\n  (g)(x)\n}\nwhile (a) {\n  [x] = [1]\n}\n", "for (const x of xs) {\n  ;(g)(x)\n}\nwhile (a) {\n  ;[x] = [1]\n}\n", ""},
+		{"an ASI guard and braces removed", "if (a) {\n  (g)()\n} else {\n  (h)()\n}\n", "if (a) (g)()\nelse {\n  ;(h)()\n}\n", ""},
+		{"an ASI guard that becomes the if's body", "if (a) {\n  (g)()\n}\n", "if (a) ;(g)()\n", "1:1: KindSourceFile has 2 children, then 3"},
 		{"exports across a statement", "export * from \"./b\"\nconst x = 1\nexport * from \"./a\"\n", "export * from \"./a\"\nconst x = 1\nexport * from \"./b\"\n", "1:15:"},
 	}
 	for _, c := range cases {

@@ -196,6 +196,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Under `bun --preload vibelang/bun` on Bun 1.3.13, `createRequire(import.meta.url).resolve("srvx/node")` resolved from the working directory and failed with `Cannot find module 'srvx/node' from ''`; on a Bun that drops `createRequire`'s origin the preload now leaves the CommonJS hook alone, so `createRequire` resolves from its URL, and a CommonJS `require` of a `.vibe` module names its extension.
 
+- Formatting a `.vibe` file whose `if` block held one statement that dprint guards with a leading `;`, such as `(try x) catch h`, failed with `formatting changed the program: KindExpressionStatement became KindBlock`; it formats now.
+
 
 - Checking documentation examples with a symlinked `TMPDIR` could stop with `Compiler failed` instead of reporting an example's type error; diagnostics now stay attached to their examples and later pages are checked.
 
