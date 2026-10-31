@@ -52,7 +52,8 @@ const compilerTest = S.Shell.Test({
   // Migration properties exercise the flow's package-export and Bun.build edits.
   // Their helpers and the TypeScript API install must enter the cache key too.
   data: [compilerNative, S.glob("compiler/**"), S.glob("//.smithers/flows/migrate/lib/**"),
-    S.file("//scripts/testing/property.mjs"), S.file("//docs/design/src/007-tooling.md"), ...install],
+    S.file("//scripts/testing/property.mjs"), S.file("//docs/design/src/007-tooling.md"),
+    S.file("vite/src/relative-imports.js"), S.file("unplugin/src/relative-imports.js"), ...install],
   tools: [S.Host.bin("node"), S.Host.bin("bun")],
   sandbox: "none",
   timeout: "15m"

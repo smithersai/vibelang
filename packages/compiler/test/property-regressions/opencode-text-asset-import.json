@@ -1,0 +1,6 @@
+{
+  "property": "bun-asset-imports",
+  "rule": "opencode-15: a relative non-script file must remain with the host resolver instead of stat-ing its index as a directory",
+  "input": { "asset": "prompt.txt", "nested": false, "parent": false, "contents": "hello\n" },
+  "reason": "Minimized opencode CLI build text import: ./prompt.txt."
+}
