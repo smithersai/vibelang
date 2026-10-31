@@ -261,6 +261,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The fuzz suite did not check jumps in a `for concurrent` head; new checks cover `return`, `break` and `continue` in head defaults and computed keys, and `return` in the limit and operand.
 - Rerunning the migrate flow's setup on a repository an earlier release set up left the `declarationSidecars` setting it had written, so every compile of those packages failed with `TS5023`; setup now removes it from each tsconfig it wires.
 
+- `EK4805` told an exported class that extends `Error` to become an `error` declaration, whose constructor takes one object, so following it broke callers of `new X(message, options)`, and the migrate flow refused the file. For an exported class it now says there is no quick fix, and the migrate flow keeps the class.
+
 - Cross-platform compiler builds could fail without naming the affected platform or its exit status; each target now keeps a completion record and silent failures are identified.
 
 
