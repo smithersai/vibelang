@@ -181,6 +181,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The `for try` ownership rule could imply that plain child forks ended with an item; it now names the current consuming fiber as owner, so those children can survive successful loop completion.
 
+- Iterator guidance promised cleanup for every JavaScript error; it now follows native closing decisions and distinguishes abandoned `Effect` execution from JavaScript unwinding, including defaults after exhaustion.
+
 - A writable interface or object-type property became `readonly` in emitted declarations, preventing TypeScript consumers from assigning to it; declarations now keep the source's property and index-signature modifiers, including optional and nested members.
 
 - Severity settings for TypeScript-form lint warnings reported `EK3006` and were ignored; every warning listed in Appendix B now accepts `vibe.severities` overrides.

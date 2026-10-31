@@ -15,8 +15,43 @@ Source: [VIP-31](../vips/0031-runtime-guarantees.md).
 - **Match cache and cleanup** follow [Pattern matching](004-match.md#match-evaluation), including its explicit snapshot reconciliations and [cleanup rule](004-match.md#leaving-a-match).
 - **Region observers.** `provide` and interruption regions preserve the original generator payload at every Effect/Scope boundary: normal completion and outward `break`/`continue` succeed with `undefined`, while source `return value` succeeds with that value, preserving identity. Source completion values and targets are carried separately and transferred only after successful finalization. Nested regions apply the rule independently; compiler control records never become finalizer payloads. See [Region bodies](002-running.md#region-bodies).
 - **Pattern binding lifetimes** follow [Pattern bindings](004-match.md#pattern-bindings); helper generation preserves the source lexical cells and the closures that capture them.
-- <a id="abandonment"></a>**Abandonment.** A rejected `await` resumes the `async` function with a throw. A failed `try` never resumes the generator. `try e` is `yield* e`, and `Effect.gen` calls only the generator's `next`, only on success. So when a `yield*` in effect code fails, dies or is interrupted, no JavaScript after it runs: no `using` disposal, no destructuring `IteratorClose`, no `FinishMatch`. `throw e` in effect code is `return yield* Effect.fail(e)`, so every `throw` abandons the generator, wherever it stands: in an arm, a guard, or a `do` in either. A JavaScript exception is different: a getter that throws, the no-match `TypeError` or a call that throws unwinds the generator, runs that cleanup, and then becomes a defect. Use `ensuring`, `scoped` or `acquireRelease` for cleanup on every exit.
+- <a id="abandonment"></a>**Abandonment.** A rejected `await` resumes the `async` function with a throw. A failed `try` never resumes the generator. `try e` is `yield* e`, and `Effect.gen` calls only the generator's `next`, only on success. So when a `yield*` in effect code fails, dies or is interrupted, no JavaScript after it runs: no `using` disposal, no destructuring `IteratorClose`, no `FinishMatch`. `throw e` in effect code is `return yield* Effect.fail(e)`, so every `throw` abandons the generator, wherever it stands: in an arm, a guard, or a `do` in either. A JavaScript exception is different: a getter that throws, the no-match `TypeError` or a call that throws unwinds the generator and then becomes a defect. Cleanup follows the applicable JavaScript or matching algorithm; iterator acquisition and advancement failures do not necessarily invoke `IteratorClose`. Use `ensuring`, `scoped` or `acquireRelease` for cleanup on every exit.
 - Effect handlers would need a continuation runtime. They are an open VIP ([VIP-35](../vips/0035-handlers-open.md)), not part of the language.
+
+Native iterator completion determines cleanup. In this example all three runs end with `Die(problem)`: an exception from `next` or a default after exhaustion has trace `[]`, while a default exception before exhaustion closes the iterator, records `["close"]` and wins over `closeProblem`. See the [destructuring rule](002-running.md#destructuring-and-parameter-defaults).
+
+```ts effect
+// Native iterator completion witness: VIP-2, VIP-8, VIP-31
+import { Effect, Exit } from "effect"
+
+const problem = { label: "source" }, closeProblem = { label: "close" }
+const box = { get value(): number { throw problem } }
+for (const phase of ["advance", "default", "exhausted"] as const) {
+  const trace: string[] = []
+  const input: Iterable<number | undefined> = {
+    [Symbol.iterator]() {
+      return {
+        next(): IteratorResult<number | undefined> {
+          if (phase === "advance") throw problem
+          if (phase === "exhausted") return { done: true, value: undefined }
+          return { done: false, value: undefined }
+        },
+        return(): IteratorResult<number | undefined> {
+          trace.push("close")
+          throw closeProblem
+        },
+      }
+    },
+  }
+  const exit = Effect.runSyncExit(Effect.gen(function* () {
+    const [value = box.value] = input
+    return value
+  }))
+  if (!Exit.isFailure(exit) || exit.cause.reasons.length !== 1 ||
+      exit.cause.reasons[0]._tag !== "Die" || exit.cause.reasons[0].defect !== problem ||
+      trace.join() !== (phase === "default" ? "close" : "")) throw new Error("native iterator completion changed")
+}
+```
 
 
 The call below evaluates its default once. Each run then succeeds with `7` and appends one body event:
