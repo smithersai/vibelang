@@ -246,6 +246,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - VIP migration treated a plain function without a return type that returns an `error` instance or an object with `asEffect()` as an Effect: it kept `try` on its call, rewrote the call to `try f().asEffect()`, which returned a different value, or refused to migrate the file. It now removes that `try`, and the call gives the returned value, as it did before.
 
 - `try` could reject generic Effect subtype operands or report a standalone `Config` call as discarded; values and calls now run consistently, retaining their success, error and requirement types.
+
+
+- Oxlint scripts that select TypeScript files by extension skipped converted `.vibe` files and their `warn` rules; migration setup now includes them through ESLint with the same configured rule names, severities, source lines and warning policy, while keeping upstream `oxlint`.
 - Editor smoke validation rejected the safe `catch (cause: Cause)` migration; it now checks the replacement with `try exit(effect { ... })` and verifies that applying it adds no error.
 
 - The migrate flow planned a tool's config that uses Effect, such as `graphql.config.ts`, for `.vibe`, and the tool, which finds its config by name, then failed with `config file not found`. A `*.config.ts` file now stays `.ts`, and a plan that names one is refused.

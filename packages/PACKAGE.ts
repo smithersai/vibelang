@@ -51,7 +51,9 @@ const compilerTest = S.Shell.Test({
   shell: "cd packages/compiler && bun install --frozen-lockfile && node --test test/*.test.mjs",
   // Migration properties exercise the flow's package-export and Bun.build edits.
   // Their helpers and the TypeScript API install must enter the cache key too.
-  data: [compilerNative, runtimeDist, S.glob("compiler/**"), S.glob("//.smithers/flows/migrate/lib/**"),
+  data: [compilerNative, runtimeDist, S.glob("compiler/**"), S.glob("//.smithers/flows/migrate/lib/**"), S.glob("//.smithers/flows/migrate/templates/**"),
+    S.file("//.smithers/flows/migrate/test/oxlint.test.mjs"),
+    S.file("//.smithers/flows/migrate/test/corpus/opencode-oxlint-changed.json"), S.file("//.smithers/flows/migrate/README.md"),
     S.file("//scripts/testing/property.mjs"), S.file("//docs/design/src/007-tooling.md"), S.file("//.smithers/flows/migrate/rules.md"),
     S.file("vite/src/relative-imports.js"), S.file("vite/src/paths-imports.js"), S.file("unplugin/src/relative-imports.js"), ...install],
   tools: [S.Host.bin("node"), S.Host.bin("bun")],

@@ -37,24 +37,26 @@ const oxlint = fc.record({
   paths: fc.subarray(["src", "examples", "packages/website/src"])
 }).map(({ config, spelling, flags, paths }) => ({
   text: ["oxlint", ...(config ? [spelling + config] : []), ...flags, ...paths].join(" "),
-  pass: `eslint --config .vibelang/${configFile[config ?? ".oxlintrc.json"]} ${paths.length ? paths.join(" ") : '"**/*.vibe"'} --no-error-on-unmatched-pattern`
+  nativeText: ["oxlint", "--no-error-on-unmatched-pattern", ...(config ? [spelling + config] : []), ...flags, ...paths].join(" "),
+  pass: `eslint --config .vibelang/${configFile[config ?? ".oxlintrc.json"]} ${paths.length ? paths.join(" ") : '"**/*.vibe"'} --no-error-on-unmatched-pattern${flags.includes("--deny-warnings") ? " --max-warnings 0" : ""}`
 }))
-const other = fc.constantFrom("pnpm build", "echo done", "tsc -b").map(text => ({ text, pass: null }))
-const step = fc.tuple(fc.oneof(oxlint, other), fc.boolean()).map(([s, parens]) => parens ? { ...s, text: `(${s.text})` } : s)
+const other = fc.constantFrom("pnpm build", "echo done", "tsc -b").map(text => ({ text, nativeText: text, pass: null }))
+const step = fc.tuple(fc.oneof(oxlint, other), fc.boolean()).map(([s, parens]) => parens ? { ...s, text: `(${s.text})`, nativeText: `(${s.nativeText})` } : s)
 const script = fc.tuple(fc.array(step, { minLength: 1, maxLength: 3 }), oxlint, fc.nat(3), fc.constantFrom(" && ", "; "), fc.boolean())
   .map(([steps, lint, at, separator, parens]) => {
     const all = [...steps]; all.splice(at % (steps.length + 1), 0, lint)
     const text = all.map(s => s.text).join(separator)
-    return { text: parens ? `(${text})` : text, passes: [...new Set(all.map(s => s.pass).filter(Boolean))] }
+    const nativeText = all.map(s => s.nativeText).join(separator)
+    return { text: parens ? `(${text})` : text, nativeText: parens ? `(${nativeText})` : nativeText, passes: [...new Set(all.map(s => s.pass).filter(Boolean))] }
   })
 
 test("foldkit-17: every oxlint invocation, in a subshell or not, gets the .vibe pass for its configuration and paths", () => {
   assert.ok(readFileSync(docs, "utf8").includes(quote), "update the quoted developer-tools contract")
-  fc.assert(fc.property(script, ({ text, passes }) => {
+  fc.assert(fc.property(script, ({ text, nativeText, passes }) => {
     const { wired, again } = wire(text)
     const suffix = " && " + passes.join(" && ")
     assert.ok(wired.endsWith(suffix), `${text}\n-> ${wired}`)
-    assert.ok([text, `(${text})`].includes(wired.slice(0, -suffix.length)), `the script itself is kept: ${wired}`)
+    assert.ok([text, `(${text})`, nativeText, `(${nativeText})`].includes(wired.slice(0, -suffix.length)), `the script itself is kept: ${wired}`)
     assert.deepEqual(again, [], "a second setup changes nothing")
     // A pass an earlier run wrote for another configuration is written anew,
     // and so are the layers an old setup added on each rerun.

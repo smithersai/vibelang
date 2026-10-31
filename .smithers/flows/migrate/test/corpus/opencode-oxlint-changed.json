@@ -1,0 +1,5 @@
+{
+  "issue": "opencode-8",
+  "source": "const packages = [\"packages/gui-plugins/\"]\nconst files = paths.filter(\n  (file) => /\\.(ts|tsx)$/.test(file) && !file.endsWith(\".d.ts\") && packages.some(prefix => file.startsWith(prefix)),\n)\nfor (const chunk of [files]) {\n  await $`bunx oxlint --format json ${chunk}`.nothrow().quiet().text()\n}\n"
+}
+

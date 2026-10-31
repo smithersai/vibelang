@@ -48,32 +48,41 @@ explicitly excludes custom formats and parsers. Its
 dispatches only Vue, Astro, and Svelte script regions. VibeLang is a language,
 not a container of JavaScript script tags, so that mechanism cannot parse it.
 
-Migration appends ESLint with the shipped `vibelang/eslint` parser to the
-existing Oxlint/Vite+ lint script: one pass for each `oxlint` invocation in it,
+Migration keeps upstream `oxlint`. For a package's existing Oxlint/Vite+
+lint script, setup adds one pass for each `oxlint` invocation in it,
 including one in a subshell such as `(oxlint --disable-nested-config)`, over
-the paths it lints, with the configuration it names with `-c` or `--config`
-(`.vibelang/eslint.app.config.mjs` for `.oxlintrc.app.json`). The generated
-`.vibelang/eslint.config.mjs` reads the repository's `.oxlintrc.json` (or
-`.oxlintrc.jsonc`) on each run and applies its rules and overrides to `.vibe`
-files, a `*.ts` glob read as `*.vibe`, wherever ESLint, typescript-eslint or
-one of the configuration's JS plugins has the rule: `typescript/*` rules and
-the core rules typescript-eslint extends run as `@typescript-eslint/*`, and a
-rule the repository turns off stays off. Each JS plugin in `jsPlugins` loads
-as Oxlint loads it, a path from the configuration's directory or a package,
-under its alias, else its `meta.name` or package name without the
-`eslint-plugin-` or `oxlint-plugin-` prefix, so its rules keep their names,
-such as foldkit's `foldkit/no-noop-message`. Its rules read the `.vibe` file's
-source tree as they read a `.ts` file's, including rules written for Oxlint's
-`createOnce` API. typescript-eslint's recommended rules stand in for Oxlint's
-default correctness rules unless the configuration turns that category off,
-and `no-debugger` is on unless it says otherwise. Locations are the original
-VibeLang ones. Rules of Oxlint's other built-in plugins, such as `unicorn` or
-`import`, type-aware rules and `extends` are not carried. The files are
-editable; running setup again writes them and the script's passes anew. Raw
-Oxlint still skips VibeLang.
-This is smaller and preserves source locations better than linting emitted
-TypeScript; a future Oxlint-only bridge would need emitted TS, source-map
-remapping, and filtering of diagnostics on compiler-generated code.
+the same paths with the configuration named by `-c` or `--config`. ESLint
+checks `.vibe` through `vibelang/eslint`. Each generated pass retains its
+invocation's `--deny-warnings` or `--max-warnings 0` policy. Running setup
+again refreshes its generated configurations and passes.
+It also follows local JavaScript and TypeScript runners launched by package
+scripts, including their relative imports. In runners that invoke Oxlint it
+extends TypeScript extension filters to `.vibe`, keeps directory and package
+filters, and excludes `.d.vibe.ts` declaration sidecars. Unsupported filter
+shapes produce a setup warning naming the runner.
+
+File-list runners invoke the generated `.vibelang/oxlint.mjs` adapter.
+Upstream Oxlint checks their TypeScript files; ESLint checks their VibeLang
+files with the repository's JS plugins on the original source tree. The
+generated configuration retains rule names, options, severities and directory
+overrides, including overrides such as `packages/gui/**` that do not name an
+extension. It reads the repository's configuration on each invocation. JSON
+output merges both passes in Oxlint's diagnostic shape, with the original
+`.vibe` filename and line. Warn rules remain warnings; a runner that rejects
+every problem, or `--deny-warnings`, rejects them too.
+
+The ESLint configuration carries applicable core, TypeScript and JS plugin
+rules. It also supplies `oxc/no-accumulating-spread`, checked against upstream
+Oxlint's reducer and loop behavior. A file-list runner fails with the names of
+enabled rules that have no ESLint counterpart, rather than silently skipping
+them. When the default correctness category is enabled, typescript-eslint's
+recommended rules provide the existing ESLint fallback; turning that
+category off disables that fallback. Other native Oxlint rules are not
+automatically ported. Rules requiring project type information remain with
+`vibelang lint` (VIP-38).
+
+Setup installs neither an Oxlint patch nor a fork. No projection hook or
+platform-specific binary is needed beyond the existing VibeLang compiler.
 
 ## ast-grep
 
