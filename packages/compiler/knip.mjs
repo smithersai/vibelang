@@ -41,7 +41,7 @@ export function compile(text, path = "file.vibe") {
   imports(program.body)
   for (const node of program.body) {
     if (node.type === "ExportAllDeclaration" || (node.type === "ExportNamedDeclaration" && !node.declaration)) lines.push(source(node))
-    else if (node.type === "ExportNamedDeclaration") lines.push(...stubs(node.declaration))
+    else if (node.type === "ExportNamedDeclaration") lines.push(...stubs(node.declaration, typeReads(node.declaration)))
     else if (node.type === "ExportDefaultDeclaration") lines.push("export default 0")
   }
   const reads = new Set()
@@ -54,20 +54,55 @@ export function compile(text, path = "file.vibe") {
   return lines.join("\n") + "\n"
 }
 
-// The stub export of a declaration: its names, without its body.
-function stubs(declaration) {
+// The stub export of a declaration: its names, without its body, and the
+// types its signature reads (reads), which Knip counts as uses of the exports
+// they name.
+function stubs(declaration, reads) {
   const name = declaration.id?.name
+  const types = reads.length ? `[${reads.join(", ")}]` : ""
+  const value = types ? `0 as unknown as ${types}` : "0"
   switch (declaration.type) {
-    case "VariableDeclaration": return declaration.declarations.flatMap((d) => names(d.id)).map((n) => `export const ${n} = 0`)
+    case "VariableDeclaration": return declaration.declarations.flatMap((d) => names(d.id)).map((n) => `export const ${n} = ${value}`)
     case "FunctionDeclaration":
-    case "TSDeclareFunction": return name ? [`export function ${name}() {}`] : []
-    case "ClassDeclaration": return name ? [`export class ${name} {}`] : []
-    case "TSTypeAliasDeclaration": return [`export type ${name} = unknown`]
-    case "TSInterfaceDeclaration": return [`export interface ${name} {}`]
+    case "TSDeclareFunction": return name ? [`export function ${name}(${types ? `..._: ${types}` : ""}) {}`] : []
+    case "ClassDeclaration": return name ? [`export class ${name} {${types ? ` _?: ${types} ` : ""}}`] : []
+    case "TSTypeAliasDeclaration": return [`export type ${name} = ${types || "unknown"}`]
+    case "TSInterfaceDeclaration": return [`export interface ${name} {${types ? ` _?: ${types} ` : ""}}`]
     case "TSEnumDeclaration": return [`export enum ${name} {}`]
     case "TSModuleDeclaration": return declaration.id?.type === "Identifier" ? [`export namespace ${name} {}`] : []
-    default: return name ? [`export const ${name} = 0`] : []
+    default: return name ? [`export const ${name} = ${value}`] : []
   }
+}
+
+// The types an exported declaration's signature reads, outside its function
+// bodies: each name a type reference or a typeof query starts with, except
+// the declaration's own type parameters. Knip counts such a read as a use of
+// the export it names, and a read in a body as none, as for TypeScript:
+// `export function read(input: typeof sample)` uses the export sample.
+function typeReads(declaration) {
+  const found = new Set()
+  const parameters = new Set()
+  const functions = new Set(["FunctionDeclaration", "FunctionExpression", "ArrowFunctionExpression"])
+  const root = (name) => {
+    while (name?.type === "TSQualifiedName") name = name.left
+    return name?.type === "Identifier" ? name.name : undefined
+  }
+  const walk = (node) => {
+    if (Array.isArray(node)) {
+      for (const item of node) if (item !== null && typeof item === "object") walk(item)
+      return
+    }
+    if (node.type === "TSTypeParameter") parameters.add(typeof node.name === "string" ? node.name : node.name?.name)
+    if (node.type === "TSTypeReference" && root(node.typeName)) found.add(root(node.typeName))
+    if (node.type === "TSTypeQuery" && root(node.exprName)) found.add(`typeof ${root(node.exprName)}`)
+    for (const [key, value] of Object.entries(node)) {
+      if (key === "range" || key === "loc" || value === null || typeof value !== "object") continue
+      if (key === "body" && functions.has(node.type)) continue
+      walk(value)
+    }
+  }
+  walk(declaration)
+  return [...found].filter((read) => !parameters.has(read))
 }
 
 // The names a binding pattern declares.

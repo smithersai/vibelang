@@ -43,10 +43,10 @@ test("a .vibe module compiles to its imports, export stubs, dynamic imports and 
     'import type { T } from "./t.ts"',
     'import "./side-effect.vibe"',
     "export class NotFound {}",
-    "export const User = 0",
+    "export const User = 0 as unknown as [typeof String]",
     "export type Id = unknown",
     "export interface Box {}",
-    "export function find() {}",
+    "export function find(..._: [T]) {}",
     "export const c = 0",
     "export const d = 0",
     "export const f = 0",
@@ -58,6 +58,30 @@ test("a .vibe module compiles to its imports, export stubs, dynamic imports and 
     'import("./lazy.vibe")',
     "Users.Row",
     "Users.first",
+    ""
+  ].join("\n"))
+})
+
+// Knip counts a type an exported declaration's signature reads, outside its
+// bodies, as a use of the export it names, and a read in a body as none. The
+// stub keeps the first (drive-t3code: OpenCode's probeResponses fixture
+// exports a constant only a typeof in replayOpenCodeServer's parameter reads).
+test("an export's stub reads the types its signature reads, not those its body reads", { skip }, () => {
+  const text = `export const sample = { value: 1 }
+export function read(input: typeof sample): number { const hidden: Hidden = 1; return input.value }
+export const arrow = (input: typeof sample): Out => input.value
+export type Box<V> = { v: V; s: Sample }
+export class K { field?: Sample; m(): number { const b: Hidden = 1; return b } }
+export interface Shape { s: typeof sample }
+`
+  assert.equal(compile(text, "src/reads.vibe"), [
+    'import "vibelang-runtime"',
+    "export const sample = 0",
+    "export function read(..._: [typeof sample]) {}",
+    "export const arrow = 0 as unknown as [typeof sample, Out]",
+    "export type Box = [Sample]",
+    "export class K { _?: [Sample] }",
+    "export interface Shape { _?: [typeof sample] }",
     ""
   ].join("\n"))
 })

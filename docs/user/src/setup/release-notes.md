@@ -199,6 +199,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Formatting a `.vibe` file whose `if` block held one statement that dprint guards with a leading `;`, such as `(try x) catch h`, failed with `formatting changed the program: KindExpressionStatement became KindBlock`; it formats now.
 
+- `vibelang/knip` stubbed each export without its signature, so Knip reported an export as unused when only another export's signature read it, such as `sample` in `export function read(input: typeof sample)`, where the TypeScript passed; the stub now keeps the types a signature reads, outside its body.
+
 
 - Checking documentation examples with a symlinked `TMPDIR` could stop with `Compiler failed` instead of reporting an example's type error; diagnostics now stay attached to their examples and later pages are checked.
 
