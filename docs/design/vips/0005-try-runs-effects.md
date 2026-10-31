@@ -65,6 +65,8 @@ effect function load(id) {
 
 - **Amended 2026-10-30: return values stay unflattened.** An `effect` function returns its body value as `Effect.gen` success data. A returned inner Effect stays unrun: `return e` keeps it, while `return try e` runs it and returns its success. A successful `try` and a plain `catch` handler result likewise keep their immediate value as data, without recursive execution or thenable assimilation. An `async` return instead assimilates its returned Promise or thenable. This records the existing VIP-1 counterpart rather than adding implicit execution.
 
+- **Amended 2026-10-30: erased TypeScript wrappers in a `catch` head.** The `EK0505` unary/binary head search treats `as`, admitted angle-bracket assertions, `satisfies`, non-null `!` and type-only instantiation expressions without a call as transparent. Explicit source parentheses remain a boundary; emitter-added grouping does not count. The wrappers keep native type checks and do not change the existing call, literal or source-function boundaries. See [the checked examples](../src/002-running.md#catch).
+
 ## Prior art
 
 - Zig's `try` and `catch`.
