@@ -164,6 +164,18 @@ const targets = {
     [Tsc["vibelangfuzz-files"]],
     "30m"
   ),
+  // The merge gate runs it for a change to the documentation or a case, which
+  // seed its sample, where //:go-vibelangfuzz runs only post-merge: an example
+  // the editor cannot answer for fails before it lands, not on main
+  // (d2f2bc108caf on 2026-10-30). Marking a known gap takes a compiler-gap
+  // pending line, as testdata/pending/tools.txt shows.
+  "go-vibelangfuzz-editor": goVibelang(
+    "The editor oracles over their short sample of documentation examples and cases.",
+    `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} ` +
+      "go test -short -count=1 -timeout=15m -trimpath -run '^(FuzzEditor|FuzzEditorConsistency)$' ./internal/vibelangfuzz/",
+    [Tsc["vibelangfuzz-files"]],
+    "30m"
+  ),
   // Shell targets do not inherit ambient Go controls. Declare the
   // post-merge fuzz budget: 24 seed workers and six build jobs.
   "go-vibelangfuzz": goVibelang(
