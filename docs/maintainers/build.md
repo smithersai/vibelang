@@ -166,6 +166,18 @@ child, the receipt records the negative signal number and the wrapper returns
 fails: its docs corpus includes expected diagnostics. Each table row reports
 the recorded exit statuses and diagnostic count beside its measurements.
 
+## Runtime test budgets
+
+The static runtime/kernel import-order cases run two child processes, each
+bounded at ten seconds, under a thirty-second parent deadline.
+`packages/runtime/tests/package-budget.test.ts` checks that the parent budget
+exceeds the sum of the child budgets and remains bounded. This catches the
+five-second default that previously killed healthy slow imports.
+
+```sh
+(cd packages/runtime && bun test tests/package-budget.test.ts tests/package.test.ts)
+```
+
 ## Packages
 
 ```text
