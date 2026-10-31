@@ -229,6 +229,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - After a `chmod` of the compiler, or any change to its timestamps that kept its bytes, every Vite or loader run recompiled each project (`compiler changed`). The cache now compares the compiler's contents when its timestamps differ, and recompiles only for a changed compiler.
 
 
+- `vibelang --fix` removed the retired `declarationSidecars` setting but left an empty `"vibelang": {  }` object behind, which a repository's formatter then rewrote; a settings object that held only that setting now goes with it, and one with a comment keeps the comment.
 - Formatting valid `for` heads with `is` patterns could fail with an internal parse error; they now format at narrow and normal widths while keeping `is` attached to its subject.
 
 - Compiler fuzz checks could stop before finishing their seed corpus; the build target now uses the documented 40-minute deadline and allows separate build time.

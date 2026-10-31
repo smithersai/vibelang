@@ -89,15 +89,23 @@ func removedSidecarSettingEdits(file *ast.SourceFile) []sourceEdit {
 		return nil
 	}
 	root := file.Statements.Nodes[0].Expression()
-	var settings []*ast.Node
+	// A setting is a vibelang or vibe object, the property that holds it, and
+	// that property's siblings.
+	type setting struct {
+		object   *ast.Node
+		siblings []*ast.Node
+		index    int
+	}
+	var settings []setting
 	addSettings := func(object *ast.Node, allowVibe bool) {
 		if object == nil || !ast.IsObjectLiteralExpression(object) {
 			return
 		}
-		for _, property := range object.AsObjectLiteralExpression().Properties.Nodes {
+		siblings := object.AsObjectLiteralExpression().Properties.Nodes
+		for i, property := range siblings {
 			name := sidecarConfigPropertyName(property)
 			if name == "vibelang" || allowVibe && name == "vibe" {
-				settings = append(settings, property.AsPropertyAssignment().Initializer)
+				settings = append(settings, setting{property.AsPropertyAssignment().Initializer, siblings, i})
 			}
 		}
 	}
@@ -110,11 +118,35 @@ func removedSidecarSettingEdits(file *ast.SourceFile) []sourceEdit {
 		}
 	}
 	var edits []sourceEdit
-	for _, object := range settings {
+	text := file.Text()
+	for _, held := range settings {
+		object := held.object
 		if object == nil || !ast.IsObjectLiteralExpression(object) {
 			continue
 		}
 		properties := object.AsObjectLiteralExpression().Properties.Nodes
+		// The setting was all the object held, and no comment is in it: the
+		// object goes too, with its separator, rather than staying "vibelang": {}.
+		if len(properties) > 0 && !slices.ContainsFunc(properties, func(property *ast.Node) bool {
+			return sidecarConfigPropertyName(property) != "declarationSidecars"
+		}) {
+			holder := held.siblings[held.index]
+			start, end := nodeStart(file, holder), holder.End()
+			if after := scanner.SkipTrivia(text, end); after < len(text) && text[after] == ',' {
+				end = after + 1
+				for end < len(text) && strings.ContainsRune(" \t\r\n", rune(text[end])) {
+					end++
+				}
+			} else if held.index > 0 {
+				if comma := scanner.SkipTrivia(text, held.siblings[held.index-1].End()); comma < start && text[comma] == ',' {
+					start = comma
+				}
+			}
+			if removed := text[start:end]; !strings.Contains(removed, "//") && !strings.Contains(removed, "/*") {
+				edits = append(edits, sourceEdit{start, end, ""})
+				continue
+			}
+		}
 		for i, property := range properties {
 			if sidecarConfigPropertyName(property) != "declarationSidecars" {
 				continue
