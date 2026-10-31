@@ -2,7 +2,7 @@ import "vibelang/platform/node"
 error A { n: number }
 error B { n: number }
 const e = { n: 100 }
-effect function fail(n: number): number!A | B {
+effect function fail(n: number): number!(A | B) {
   if (n === 1) throw new A({ n: 1 })
   throw new B({ n: 2 })
 }

@@ -68,7 +68,11 @@ func FuzzContractDeclarationParens(f *testing.F) {
 		if mode == 2 {
 			value, failure, env = "{ readonly n: number }", "Failure | undefined", "Env"
 		}
-		vibe := "(" + value + "!" + failure + "!" + env + ")"
+		vibeFailure := failure
+		if mode == 2 {
+			vibeFailure = "(" + failure + ")"
+		}
+		vibe := "(" + value + "!" + vibeFailure + "!" + env + ")"
 		twin := fmt.Sprintf("Effect.Effect<%s, %s, %s>", value, failure, env)
 		wrap := func(contract string) string {
 			switch key {

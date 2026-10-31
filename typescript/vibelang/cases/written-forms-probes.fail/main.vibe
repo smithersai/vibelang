@@ -26,6 +26,6 @@ export function mixed(flag: boolean) {
 }
 
 // A callback's channels are type parameters: E and R are not declared here.
-export effect function channels<A>(work: () => A): A!TxError | E!R {
+export effect function channels<A>(work: () => A): A!(TxError | E)!R {
   return work()
 }

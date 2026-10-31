@@ -59,6 +59,8 @@ effect function anyRate(currency: string) {
 
 `.vibe` code writes `Effect.Effect<A, E, R>` as `Result!Error!Dependencies`. An empty slot is `never`: `number!MissingRate` cannot need a service, and `number!!` neither fails nor needs one. An omitted dependencies slot is `never` everywhere. Code that relied on the older rule, under which a function with a body inferred them, draws `EK4853`; its fix, which `vibelang --fix` applies, writes the dependencies the body needs, such as `number!MissingRate!Rates`. `anyRate` omits the whole return annotation, so all three channels are inferred. A union in a slot needs parentheses: `string!(MissingRate | Offline)!Rates` fails with either error. Parenthesize an intersection, a function type or a conditional type the same way. A type literal can fill a slot, except right after `!!`, where `{` begins the function's body: write `number!!({ … })`. A line break ends an Effect type, so each `!` and its slot start on the line where the previous slot ends.
 
+Unparenthesized combinations report `EK0301`. The quick fix and `vibelang --fix` insert parentheses around the grouping the compiler previously used. For example, the old `number!! | null` becomes `number!!(| null)`, preserving its `null` requirement. To describe an Effect or `null`, write `(number!!) | null` instead. The same rule applies in aliases, parameter types, service contracts and return annotations; parentheses inside a type argument or object member already delimit their types.
+
 Hovers show contracts this way, and declaration files keep `Effect.Effect<A, E, R>` for TypeScript callers. `Effect.Effect<A, E, R>` is accepted anywhere a type is.
 
 ## Check selected channels

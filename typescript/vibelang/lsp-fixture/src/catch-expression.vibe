@@ -2,7 +2,7 @@
 error Missing { id: string }
 error Late
 
-effect function findUser(id: string): string!Missing | Late! {
+effect function findUser(id: string): string!(Missing | Late)! {
   if (id === "") throw new Missing({ id })
   if (id === "late") throw new Late()
   return id

@@ -10,7 +10,6 @@ var (
 	EK0104 = message(104, errorCategory, "Effect on a getter, setter or constructor. Use the matching effect or async function form; move legacy JavaScript to a .ts file.")
 	EK0105 = message(105, errorCategory, "Effect and async on one function. Use the matching effect or async function form; move legacy JavaScript to a .ts file.")
 	EK0107 = message(107, errorCategory, "Eval, Function, arguments, var or with in a .vibe file. Use the matching effect or async function form; move legacy JavaScript to a .ts file.")
-	EK0301 = message(301, errorCategory, "! beside a union, an intersection, a function type or a conditional type without parentheses. Parenthesize the intended type before combining ! with another type operator.")
 	EK0401 = message(401, errorCategory, "A throw, a call that may throw, or a parameter default that may throw, in an effectful function. Wrap throwing code with Effect.try or tryPromise, or declare a compatible @throws contract.")
 	EK0402 = message(402, errorCategory, "A function that may throw where a function type doesn't admit its thrown type. Wrap throwing code with Effect.try or tryPromise, or declare a compatible @throws contract.")
 	EK0403 = message(403, errorCategory, "An unwrapped call, new expression or tagged template that may throw, in effect code or a plain catch handler. Wrap throwing code with Effect.try or tryPromise, or declare a compatible @throws contract.")
@@ -44,7 +43,7 @@ var (
 )
 
 func init() {
-	for _, m := range []*Message{EK0101, EK0102, EK0104, EK0105, EK0107, EK0301, EK0401, EK0402, EK0403, EK0404, EK0405, EK0503, EK0504, EK0505, EK0506, EK0507, EK0508, EK0511, EK0801, EK0901, EK0902, EK0903, EK1201, EK1401, EK1701, EK1901, EK1902, EK1905, EK2102, EK2103, EK2201, EK2202, EK2301, EK2803, EK3006} {
+	for _, m := range []*Message{EK0101, EK0102, EK0104, EK0105, EK0107, EK0401, EK0402, EK0403, EK0404, EK0405, EK0503, EK0504, EK0505, EK0506, EK0507, EK0508, EK0511, EK0801, EK0901, EK0902, EK0903, EK1201, EK1401, EK1701, EK1901, EK1902, EK1905, EK2102, EK2103, EK2201, EK2202, EK2301, EK2803, EK3006} {
 		registry[m.Code] = m
 	}
 }

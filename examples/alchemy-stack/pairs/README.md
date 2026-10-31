@@ -63,7 +63,7 @@ export const correlationFor = (commandId: string): Effect.Effect<string> =>
 ```
 
 ```vibe
-export const currentTrace: TraceJson | undefined!! = () => {
+export const currentTrace: (TraceJson | undefined)!! = () => {
   return do {
     const span = Effect.currentParentSpan();
     ({ traceId: span.traceId, spanId: span.spanId, sampled: span.sampled })

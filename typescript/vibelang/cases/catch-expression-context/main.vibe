@@ -45,12 +45,12 @@ effect function block(n: number): Outcome!! {
   }
 }
 
-effect function step(label: "first" | "second", n: number): "first" | "second"!Missing {
+effect function step(label: "first" | "second", n: number): ("first" | "second")!Missing {
   if (n < 0) throw new Missing({ code: label })
   return label
 }
 
-effect function chained(a: number, b: number): "first" | "second" | "last"!! {
+effect function chained(a: number, b: number): ("first" | "second" | "last")!! {
   return (step("first", a) catch effect () => try step("second", b)) catch () => "last"
 }
 

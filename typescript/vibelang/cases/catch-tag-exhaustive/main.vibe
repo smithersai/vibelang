@@ -21,7 +21,7 @@ export effect function declRecovered(): number!! {
     return match (e) { when { _tag: "DeclFailure" }: 3; default: throw e; }
   }
 }
-effect function both(data: boolean): never!ProbeFailure | DataFailure! {
+effect function both(data: boolean): never!(ProbeFailure | DataFailure)! {
   if (data) try dataFail()
   return try failed()
 }

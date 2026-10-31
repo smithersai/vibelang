@@ -83,7 +83,8 @@ func FuzzMatchFixedExtractorTypes(f *testing.F) {
 		}
 		prefix, annotation := "", resultType
 		if variant&8 != 0 {
-			prefix, annotation = "effect ", resultType+"!!"
+			// VIP-3 requires explicit grouping when the payload is a union.
+			prefix, annotation = "effect ", "("+resultType+")!!"
 		}
 		source := fmt.Sprintf("%s\nexport %sfunction read<A, E>(input: %s, fallback: %s): %s {\n  return match (input) { when %s(%s value): %s; default: fallback; }\n}\n",
 			rule.imports, prefix, subject, resultType, annotation, rule.pattern, binding, use)

@@ -1,0 +1,8 @@
+// expect: EK0301 EK0301 EK0301 EK0301 EK0301 EK0301
+// VIP-3: compound operands need explicit grouping; the migration retains channels.
+export type Success = number | string!!
+export type Failure = number!string | Error
+export type Requirements = number!!string | symbol
+export type Branch = string extends string ? number!! : boolean
+export type FunctionSlot = number!() => string
+export type Check = number!! extends object ? true : false

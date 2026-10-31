@@ -3,7 +3,7 @@
 control Step { next(): void!! }
 
 // The example from Chapter 9, with the owner's corrected type for n.
-effect function written(): number | string!! {
+effect function written(): (number | string)!! {
   try {
     try Step.next()
     try Step.next()

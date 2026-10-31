@@ -12,7 +12,7 @@ schema error SchemaFail {
   id: string
 }
 
-effect function find(id: string): never!NotFound | Timeout {
+effect function find(id: string): never!(NotFound | Timeout) {
   if (id === "slow") throw new Timeout()
   throw new NotFound({ id, count: 2 })
 }

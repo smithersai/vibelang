@@ -2,7 +2,7 @@
 import { Effect, Data } from "effect"
 class First extends Data.TaggedError("First")<{}> {}
 class Second extends Data.TaggedError("Second")<{}> {}
-effect function fail(second: boolean): never!First | Second! {
+effect function fail(second: boolean): never!(First | Second)! {
   if (second) throw new Second()
   throw new First()
 }

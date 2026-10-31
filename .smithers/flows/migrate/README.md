@@ -393,6 +393,7 @@ A run's `issues.jsonl` is the input to the loop that improves the flow. The repa
 
 | Effect TypeScript | `--fix` writes | Code |
 | --- | --- | --- |
+| Bare unions, intersections, conditional or function types beside `!`, such as `number!Error \| string` | Parentheses preserving the parsed channels, `number!(Error \| string)` | `EK0301` (VIP-3) |
 | `Effect.gen(function* () { … })`, as a value or the whole body of an arrow, a function or a method; `Effect.fn(function* (…) { … })`, `Effect.fn("name")(…)`, `Effect.fnUntraced(…)` | `effect { … }`, `effect (a) => { … }`, `effect function f(a) { … }`; a span as `try Effect.withSpan(effect { … }, "name")`. `yield* e` becomes `try e`, `try e.asEffect()` for a Yieldable, or `throw e` for an error in a statement; a held program `const p = load()` becomes `const p = effect { return try load() }`; a generator's `throw` becomes `return try Effect.die(e)` | EK1002 (D470) |
 | `x.pipe(Effect.map(f), Effect.asVoid, stage)` whose receiver is an Effect or with a stage of `Effect` | `x \|> Effect.map(%, f) \|> Effect.asVoid(%) \|> stage(%)` | EK4502 (VIP-23) |
 | A program a module holds, `export const p = load("x")`, in a variable, a field or an element | `effect { return try load("x") }` | EK1001 (VIP-2) |

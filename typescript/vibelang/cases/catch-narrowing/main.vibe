@@ -6,7 +6,7 @@ export effect function ternary(source: Source): number!! {
   return source.read === undefined ? 0 : (source.read() catch () => -1)
 }
 
-export effect function and(source: Source): number | false!! {
+export effect function and(source: Source): (number | false)!! {
   return source.read !== undefined && (source.read() catch () => -1)
 }
 

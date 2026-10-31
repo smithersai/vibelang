@@ -9,7 +9,7 @@ export effect function find(id: string): string!NotFound! {
 }
 
 // Dependencies left out: the body supplies them. The union is the error slot.
-export effect function lookup(id: string): string!NotFound | Timeout {
+export effect function lookup(id: string): string!(NotFound | Timeout) {
   if (id === "slow") throw new Timeout()
   return try find(id)
 }

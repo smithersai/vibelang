@@ -10,7 +10,7 @@ class Tagged {
   readonly _tag = "Tagged" as const
 }
 
-effect function find(id: number): string!Missing | Timeout {
+effect function find(id: number): string!(Missing | Timeout) {
   if (id === 0) throw new Missing({ id })
   if (id < 0) throw new Timeout()
   return "Ada"

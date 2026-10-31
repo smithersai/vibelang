@@ -41,7 +41,7 @@ effect function after() {
 }
 
 // A written success type covers a return computed from resume's result.
-effect function written(): number | string!! {
+effect function written(): (number | string)!! {
   try {
     return try work()
   } handle Steps.first() {

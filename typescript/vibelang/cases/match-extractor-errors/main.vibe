@@ -1,7 +1,7 @@
 export error A { id: string }
 export error B { code: string }
 export error Out { code: string }
-export service S { get(id: string): string!A | B }
+export service S { get(id: string): string!(A | B) }
 export effect function viaLet(id: string) {
   return (try S).get(id) catch effect (error) => match (error) {
     when A: throw new Out({ code: "a" });
@@ -45,7 +45,7 @@ export effect function viaVar(id: string): string!Out!S {
   }
 }
 // A refutable payload keeps B in the default branch.
-export effect function partial(id: string): string!Out | B!S {
+export effect function partial(id: string): string!(Out | B)!S {
   return (try S).get(id) catch effect (error) => match (error) {
     when A: throw new Out({ code: "a" });
     when B({ code: "only" }): throw new Out({ code: "only" });

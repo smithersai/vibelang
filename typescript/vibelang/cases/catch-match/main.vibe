@@ -2,7 +2,7 @@
 error NotFound { id: string }
 error Timeout
 
-effect function find(id: string): string!NotFound | Timeout! {
+effect function find(id: string): string!(NotFound | Timeout)! {
   if (id === "missing") throw new NotFound({ id })
   if (id === "slow") throw new Timeout()
   return `user ${id}`

@@ -12,7 +12,7 @@ class ApiError extends Data.TaggedError("ApiError")<{ status: number }> {}
 // @vibelang-diagnostics-next-line EK4830:off
 class NotReady extends Data.TaggedError("NotReady")<{}> {}
 
-effect function read(value: string | undefined | number): string | undefined!Error | ApiError! {
+effect function read(value: string | undefined | number): (string | undefined)!(Error | ApiError)! {
   if (typeof value === "number") throw new ApiError({ status: value })
   return value
 }

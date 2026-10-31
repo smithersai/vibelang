@@ -2,7 +2,7 @@
 error UserNotFound { id: string }
 
 service Directory {
-  lookup(id: string): string | undefined!!
+  lookup(id: string): (string | undefined)!!
 }
 
 service Users {

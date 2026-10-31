@@ -17,6 +17,6 @@ effect function wrongHandler(n: number): Outcome!! {
   return found(n) catch (error) => ({ _tag: "Lost", error })
 }
 
-effect function wrongFallback(n: number): "fast" | "slow"!! {
+effect function wrongFallback(n: number): ("fast" | "slow")!! {
   return (effect { return (try find(n)) > 10 ? "fast" : "slow" }) catch () => "stopped"
 }

@@ -510,6 +510,7 @@ func (p *Parser) parseSourceFileWorker() *ast.SourceFile {
 		p.parseVibeLangDos(result)      // do expressions, lowered to statements (vibelang_do.go)
 		p.freshenVibeLangTemps(result)  // the names written for match, is and do (vibelang_match.go)
 		p.attachVibeLangModules(result) // module declarations' bodies (vibelang_modules.go)
+		p.checkVibeLangEffectChannels(result)
 	}
 	return result
 }
@@ -2935,7 +2936,11 @@ func (p *Parser) parseType() *ast.TypeNode {
 		}
 	}
 	p.contextFlags = saveContextFlags
-	return p.parseVibeLangEffectType(typeNode)
+	result := p.parseVibeLangEffectType(typeNode)
+	if result != typeNode {
+		return p.parseVibeLangConditionalCheck(result)
+	}
+	return result
 }
 
 func (p *Parser) parseUnionTypeOrHigher() *ast.TypeNode {

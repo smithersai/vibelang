@@ -6,7 +6,7 @@ export interface User {
 export error UserNotFound { id: string }
 
 export service Directory {
-  lookup(id: string): User | undefined!!
+  lookup(id: string): (User | undefined)!!
 }
 
 export service Users {

@@ -215,7 +215,7 @@ effect function handBuiltMixed() {
 }
 
 // Recovery forms.
-effect function viaCatch(src: () => unknown!E | E2) {
+effect function viaCatch(src: () => unknown!(E | E2)) {
   try {
     try src()
     return "no failure"
@@ -224,15 +224,15 @@ effect function viaCatch(src: () => unknown!E | E2) {
   }
 }
 
-effect function viaCatchMatch(src: () => unknown!E | E2) {
+effect function viaCatchMatch(src: () => unknown!(E | E2)) {
   return src() catch (e) => match (e) { when E: "matched E"; when E2: "matched E2"; }
 }
 
-effect function viaCatchValue(src: () => unknown!E | E2) {
+effect function viaCatchValue(src: () => unknown!(E | E2)) {
   return src() catch () => "fallback"
 }
 
-effect function viaRetry(src: () => unknown!E | E2) {
+effect function viaRetry(src: () => unknown!(E | E2)) {
   attempts = 0
   return try retry(effect {
     attempts++
@@ -240,15 +240,15 @@ effect function viaRetry(src: () => unknown!E | E2) {
   }, { times: 2 })
 }
 
-effect function viaMapError(src: () => unknown!E | E2) {
+effect function viaMapError(src: () => unknown!(E | E2)) {
   return try Effect.mapError(src(), (e) => new M({ of: e._tag }))
 }
 
-effect function viaCatchDefect(src: () => unknown!E | E2) {
+effect function viaCatchDefect(src: () => unknown!(E | E2)) {
   return try Effect.catchDefect(src(), effect (d) => `defect ${name(d)}`)
 }
 
-effect function forms(src: () => unknown!E | E2) {
+effect function forms(src: () => unknown!(E | E2)) {
   const raw = try outcome(src())
   const caught = try outcome(viaCatch(src))
   const matched = try outcome(viaCatchMatch(src))

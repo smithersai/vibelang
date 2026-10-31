@@ -2,7 +2,7 @@
 error A { id: string }
 error B { code: string }
 error Out { code: string }
-service S { get(id: string): string!A | B }
+service S { get(id: string): string!(A | B) }
 
 export function refutable(error: A | B) {
   return match (error) {

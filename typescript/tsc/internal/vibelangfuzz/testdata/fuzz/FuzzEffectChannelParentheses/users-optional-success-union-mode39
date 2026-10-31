@@ -1,0 +1,3 @@
+go test fuzz v1
+string("users-optional-success")
+byte(39)

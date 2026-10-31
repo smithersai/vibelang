@@ -246,8 +246,10 @@ func (p *Parser) vibelangReadonly(modifiers *ast.ModifierList, anchor core.TextR
 //	User!!             Effect.Effect<User, never, never>
 //
 // A slot without a type is never. Dependencies left out entirely, as in
-// User!NotFound, are never too, everywhere (VIP-3). Unions bind inside a slot:
-// User!NotFound | Timeout!Db fails with NotFound | Timeout. An error operand
+// User!NotFound, are never too, everywhere (VIP-3). Compound operands need
+// parentheses: User!(NotFound | Timeout)!Db. The parser retains the old slot
+// grouping only for recovery; checkVibeLangEffectChannels reports EK0301 and
+// its migration makes that grouping explicit. An error operand
 // may start with {; a requirement must be parenthesized so a following {
 // still starts the function body. A slot's type starts on the line of
 // its !, so a member that ends in `void!!` does not take the next member.

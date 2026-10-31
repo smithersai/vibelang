@@ -2,7 +2,7 @@
 // D351: the written success type is H even without a dependent return.
 control Step { next(): void!! }
 
-export effect function resumeWritten(): number | string!! {
+export effect function resumeWritten(): (number | string)!! {
   try {
     try Step.next()
     return 1
@@ -12,7 +12,7 @@ export effect function resumeWritten(): number | string!! {
   }
 }
 
-export effect function resumeWithWritten(): number | string!! {
+export effect function resumeWithWritten(): (number | string)!! {
   try {
     try Step.next()
     return 1

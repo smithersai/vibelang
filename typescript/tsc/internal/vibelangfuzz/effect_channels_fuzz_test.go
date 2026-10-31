@@ -137,7 +137,7 @@ func CheckEffectChannels(t *testing.T, w *Workspace, runs []effectChannelRun) {
 	if len(runs) == 0 {
 		return
 	}
-	vibe, twin := []string{effectChannelsImports, "const quiet = effect (n: number) => n\n\neffect function vibeRead(): string | undefined!Error | ApiError! { return undefined }\n\nexport const program = effect (n: number) => {\n"}, []string{"import { Effect } from \"effect\"\n", effectChannelsImports, "const quiet = Effect.fn(function* (n: number) {\n  return n\n})\n\nconst vibeRead = (): Effect.Effect<string | undefined, Error | ApiError> => Effect.succeed(undefined)\n\nexport const program = Effect.fn(function* (n: number) {\n"}
+	vibe, twin := []string{effectChannelsImports, "const quiet = effect (n: number) => n\n\neffect function vibeRead(): (string | undefined)!(Error | ApiError)! { return undefined }\n\nexport const program = effect (n: number) => {\n"}, []string{"import { Effect } from \"effect\"\n", effectChannelsImports, "const quiet = Effect.fn(function* (n: number) {\n  return n\n})\n\nconst vibeRead = (): Effect.Effect<string | undefined, Error | ApiError> => Effect.succeed(undefined)\n\nexport const program = Effect.fn(function* (n: number) {\n"}
 	for _, run := range runs {
 		vibe = append(vibe, "  "+run.vibe+"\n")
 		twin = append(twin, "  "+run.twin+"\n")
