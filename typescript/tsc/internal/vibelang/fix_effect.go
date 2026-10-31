@@ -76,6 +76,18 @@ func (a *analyzer) effectEditsIn(file *ast.SourceFile, node *ast.Node) ([]source
 	}
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
+		// A retired try hatch's function and mapper are TypeScript, which
+		// EK4616's fix wraps in Effect.try as they are: neither is marked, and
+		// only the inputs, VibeLang, are visited.
+		if operand := tryOperand(node); operand != nil {
+			if arguments := retiredTryArguments(operand); arguments != nil {
+				_, inputs := retiredTryMapper(a.checker, arguments[1:])
+				for _, input := range inputs {
+					visit(input)
+				}
+				return false
+			}
+		}
 		if value := byName[node]; value != nil {
 			replacement := a.byNameEffectText(file, node)
 			start := scanner.SkipTrivia(text, node.Pos())

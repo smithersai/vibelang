@@ -214,6 +214,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The migrate flow's codemod and `revert` rewrote imports of a migrated module only inside the run's `--source` directories, so a test under `test/` kept `import … from "../src/Crypto.ts"` after `Crypto.ts` became `Crypto.vibe` and failed to load; they now rewrite every source file the repository tracks.
 
+- `vibelang --fix` rewrote a retired `try(fn, onError, …inputs)` hatch whose error handler was a name, such as `onError`, by passing the handler to `fn` as its first input and dropping the catch, so the fix was refused with a type error; and `--fix-vip-only` marked the hatch's own function `effect`. The second argument now becomes `catch` whatever its form, `undefined` there leaves `catch` out, and the hatch's function stays plain, as Smithers' `agent/fs` needed.
+
 - The migrate flow's setup added `npm:vibelang/dprint-plugin.json`, which has no checksum, to `dprint.json` files that pin every plugin by checksum, and left dprint and ESLint reading the `x.d.vibe.ts` sidecars as source, so Smithers' plugin-pinning test, `dprint check` and its lint failed on the first batch; setup now keeps a pinned configuration's plugins and runs `vibelang-format` in its dprint scripts instead, and adds `**/*.d.vibe.ts` to each `dprint.json`'s `excludes` and each ESLint flat configuration's ignores.
 
 - The migrate flow's setup wired the `.vibe` formatter into a repository's format check but left the `.vibe` files it already had unformatted, so Smithers' `agent/fs` package, with 18 such files from VibeLang 0.0.8, failed `dprint check` before any batch; setup now formats them with `vibelang-format` in its commit.

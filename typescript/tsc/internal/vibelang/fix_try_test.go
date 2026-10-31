@@ -132,3 +132,83 @@ export effect function main() {
 		t.Errorf("a second run wrote %+v", again.Files[file.FileName()])
 	}
 }
+
+// smithers' agent/fs (SchemaBridge.vibe, Route.vibe), on VibeLang 0.0.8: a
+// retired try hatch with a handler by name. The second argument is the
+// mapper whatever its form (D330), so EK4616's fix makes it the catch, and
+// undefined there leaves the catch out. The hatch's function is TypeScript
+// that Effect.try wraps as it is: --fix-vip-only marks the function holding
+// the hatch effect, never the hatch's own function.
+func TestFixVIPRetiredHatchMapperByName(t *testing.T) {
+	source := `const documentOf = (n: number): { readonly a: number } => {
+  if (n < 0) throw new Error("negative")
+  return { a: n }
+}
+
+const unsupported = (): Error => new Error("unsupported")
+
+export const project = (n: number): Effect<number, Error> => {
+  const { a } = try((documentOf, n) => documentOf(n), unsupported, documentOf, n)
+  return a
+}
+
+export const projectBlock = (n: number): Effect<number, Error> => {
+  const { a } = try((documentOf, n) => {
+    return documentOf(n)
+  }, unsupported, documentOf, n)
+  return a
+}
+
+export const parse = (text: string): Effect<number, unknown> => {
+  const n: number = try((text) => JSON.parse(text), undefined, text)
+  return n
+}
+`
+	want := `const documentOf = (n: number): { readonly a: number } => {
+  if (n < 0) throw new Error("negative")
+  return { a: n }
+}
+
+const unsupported = (): Error => new Error("unsupported")
+
+export const project = effect (n: number): Effect<number, Error> => {
+  const { a } = try Effect.try({ try: () => ((documentOf, n) => documentOf(n))(documentOf, n), catch: unsupported })
+  return a
+}
+
+export const projectBlock = effect (n: number): Effect<number, Error> => {
+  const { a } = try Effect.try({ try: () => ((documentOf, n) => {
+    return documentOf(n)
+  })(documentOf, n), catch: unsupported })
+  return a
+}
+
+export const parse = effect (text: string): Effect<number, unknown> => {
+  const n: number = try Effect.try(() => ((text) => JSON.parse(text))(text))
+  return n
+}
+`
+	_, file, _, _ := editorProgram(t, source)
+	dir := filepath.Dir(file.FileName().AsString())
+	if err := os.WriteFile(filepath.Join(dir, "tsconfig.json"), []byte(`{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"noEmit":true},"files":["main.vibe"]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	fs := bundled.WrapFS(osvfs.FS())
+	configPath := tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(dir, "tsconfig.json")))
+	config, errors := tsoptions.GetParsedCommandLineOfConfigFile(configPath, &core.CompilerOptions{}, nil, fs, nil)
+	if len(errors) != 0 {
+		t.Fatalf("config: %v", errors)
+	}
+	result := FixProjectWithOptions(t.Context(), fs, bundled.LibPath(), config, FixOptions{VIPOnly: true})
+	fixed := result.Files[file.FileName()]
+	if fixed == nil || fixed.Text != want {
+		got := ""
+		if fixed != nil {
+			got = fixed.Text
+		}
+		t.Fatalf("--fix-vip-only wrote\n%s\nwant\n%s\nrefused %+v", got, want, result.Refused)
+	}
+	if fixed.Counts[EK4616.Code] != 3 {
+		t.Errorf("fixes %v; want three EK4616 fixes", fixed.Counts)
+	}
+}

@@ -227,11 +227,7 @@ func retiredTryRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 		return nil
 	}
 	evaluate := ast.SkipParentheses(arguments[0])
-	rest := arguments[1:]
-	var mapper *ast.Node
-	if len(rest) > 0 && ast.IsFunctionExpressionOrArrowFunction(ast.SkipParentheses(rest[0])) {
-		mapper, rest = rest[0], rest[1:]
-	}
+	mapper, rest := retiredTryMapper(c, arguments[1:])
 	literal := ast.IsFunctionExpressionOrArrowFunction(evaluate)
 	function, async, signal := literal, false, false
 	if t := c.GetTypeAtLocation(evaluate); t != nil {
@@ -290,6 +286,29 @@ func retiredTryRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 		text = "try " + text
 	}
 	return &formRewrite{edits: []sourceEdit{{start, call.End(), text}}, description: text}
+}
+
+// retiredTryMapper splits the arguments after a retired try hatch's function
+// into its mapper and its inputs. The second argument was the mapper (D330:
+// "try's second argument is always the mapper, as the runtime's try already
+// read it"), a function literal or a function by name, such as a handler
+// bound to a const; undefined there left the place empty, to pass inputs
+// without one. Any other value is an input, as D148's try(f, text) passed it.
+func retiredTryMapper(c *checker.Checker, rest []*ast.Node) (*ast.Node, []*ast.Node) {
+	if len(rest) == 0 {
+		return nil, rest
+	}
+	second := ast.SkipParentheses(rest[0])
+	if ast.IsIdentifier(second) && second.Text() == "undefined" {
+		return nil, rest[1:]
+	}
+	if ast.IsFunctionExpressionOrArrowFunction(second) {
+		return rest[0], rest[1:]
+	}
+	if t := c.GetTypeAtLocation(second); t != nil && len(c.GetSignaturesOfType(t, checker.SignatureKindCall)) > 0 {
+		return rest[0], rest[1:]
+	}
+	return nil, rest
 }
 
 // hatchRan reports whether call, a retired try hatch, ran where it stood, as

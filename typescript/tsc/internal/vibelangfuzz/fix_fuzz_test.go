@@ -42,6 +42,10 @@ import (
 //     exported zero-argument Effect function, with or without an expectation marker)
 //     returns the same outcome after fixing, and its declarations, its
 //     contracts, are unchanged ("It has the same types too").
+//
+// A corpus file named fix-vip-only-* runs vibelang --fix --fix-vip-only
+// instead, the first step the migrate flow takes on a repository written
+// for VibeLang 0.0.10 or earlier, under the same checks.
 func FuzzFix(f *testing.F) {
 	startShortBudget(f)
 	// Under -short every pending reproduction runs, with six of the
@@ -72,6 +76,7 @@ func FuzzFix(f *testing.F) {
 	})
 	f.Fuzz(func(t *testing.T, archive string) {
 		toolsGuard(t, "FuzzFix", func() {
+			options := vibelang.FixOptions{VIPOnly: strings.HasPrefix(corpusFile(t, "FuzzFix"), "fix-vip-only-")}
 			files := toolsUnarchive(archive)
 			if toolsMainFile(files) == "" || toolsTooLarge(files) || toolsLeftOut("FuzzFix", files) {
 				return
@@ -84,7 +89,7 @@ func FuzzFix(f *testing.F) {
 			}
 			var result *vibelang.FixResult
 			toolsRun(t, "FuzzFix", "fix", archive, nil, func() {
-				result = vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), config, vibelang.FixOptions{})
+				result = vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), config, options)
 			})
 			if result.Err != nil {
 				Gap(t, "FuzzFix", "fix:converge", "--fix did not reach a fixed point (%v):\n%s", result.Err, archive)
@@ -120,7 +125,7 @@ func FuzzFix(f *testing.F) {
 			if len(result.Files) > 0 {
 				again := toolsConfig(w, after.Dir)
 				toolsRun(t, "FuzzFix", "fix", Archive(fixed), nil, func() {
-					second = vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), again, vibelang.FixOptions{})
+					second = vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), again, options)
 				})
 			}
 			if second.Err != nil || len(second.Files) > 0 {
