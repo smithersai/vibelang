@@ -527,6 +527,10 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Specification rules could change without an executable example in the same entry; the new `//:spec-rule-evidence` check reports the affected sentence and requires a relevant compiler case or a compiled Effect TypeScript twin with matching declarations.
 
 - A misspelled compiler-case option, such as `--isolatd`, was silently ignored and could erase the original case output; unknown switches now exit with status `2` before running a case or changing its files.
+- Browser and signal examples rejected the runtime's Effect `4.1.1` after the upgrade; their package pins now match the runtime.
+
+- A `.vibe` file that read `window.crossOriginIsolated` or `navigator.userAgent` got `EK4402` with no service to use; `Experimental.BrowserInfo` now reads them, `EK4402` names it, and `ExperimentalBrowserServices.layer` provides it.
+
 
 - The fibers guide suggested Effect-body repairs inside ordinary async functions; it now shows `runPromise` bridges that run in the original Promise context.
 - Only the first `catch` outside effect code in a file reported `EK0504` and `EK0509`; every later one went unreported, and `vibelang --fix` had no repair for its value fallback. Every catch is now checked.

@@ -29,7 +29,8 @@ declare var matchMedia: typeof window.matchMedia
 declare var requestAnimationFrame: (callback: (time: number) => void) => number
 declare var cancelAnimationFrame: (id: number) => void
 declare var FileReader: { new(): unknown }
-declare var ResizeObserver: { new(callback: () => void): unknown }`
+declare var ResizeObserver: { new(callback: () => void): unknown }
+declare var crossOriginIsolated: boolean`
 
 const (
 	provideNodeServices        = `Provide it in main with NodeServices.layer from "@effect/platform-node", or BunServices.layer from "@effect/platform-bun".`
@@ -223,6 +224,14 @@ export const run = (key: Uint8Array) => createHmac("sha256", key)`, []string{
 		{"resize observer", `export const run = () => new ResizeObserver(() => {})`, []string{
 			"ResizeObserver is platform code, which VibeLang code does not use directly.",
 			"Use the experimental ResizeObserver service:   try (try Experimental.ResizeObserver.ResizeObserver).observe(element, onResize)", provideExperimentalBrowser,
+		}},
+		{"cross-origin isolation", `export const run = () => crossOriginIsolated`, []string{
+			"crossOriginIsolated is platform code, which VibeLang code does not use directly.",
+			"Use the experimental BrowserInfo service:   try (try Experimental.BrowserInfo.BrowserInfo).crossOriginIsolated", provideExperimentalBrowser,
+		}},
+		{"user agent", `export const run = () => navigator.userAgent`, []string{
+			"navigator.userAgent is platform code, which VibeLang code does not use directly.",
+			"Use the experimental BrowserInfo service:   try (try Experimental.BrowserInfo.BrowserInfo).userAgent", provideExperimentalBrowser,
 		}},
 		{"gap", `export const run = () => document.title`, []string{
 			"document.title is platform code, which VibeLang code does not use directly.",

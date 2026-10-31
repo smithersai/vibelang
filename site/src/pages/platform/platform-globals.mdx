@@ -56,6 +56,7 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `console.table` | `try Console.table(rows)` |
 | `console.trace` | `try Console.trace(message)` |
 | `console.warn` | `try Console.warn(message)` |
+| `crossOriginIsolated` | `try (try Experimental.BrowserInfo.BrowserInfo).crossOriginIsolated` |
 | `crypto` | `try (try SecureRandom.SecureRandom).randomBytes(size)` |
 | `crypto.createCipheriv` | `try (try Aead.Aead).encrypt(aeadKey, plaintext, { nonce })` |
 | `crypto.createDecipheriv` | `try (try Aead.Aead).decrypt(aeadKey, ciphertext, { nonce })` |
@@ -95,6 +96,7 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `navigator.hardwareConcurrency` | `try (try Experimental.Process.Process).availableParallelism` |
 | `navigator.locks` | `try (try Experimental.Locks.Locks).hold(name)` |
 | `navigator.permissions` | `try (try Permissions.Permissions).query("geolocation")` |
+| `navigator.userAgent` | `try (try Experimental.BrowserInfo.BrowserInfo).userAgent` |
 | `performance` | `try Clock.currentTimeMillis` |
 | `performance.now` | `try Clock.monotonicTimeNanos` |
 | `performance.timeOrigin` | `try (try Experimental.Process.Process).timeOrigin` |
@@ -140,6 +142,7 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `window.ResizeObserver` | `try (try Experimental.ResizeObserver.ResizeObserver).observe(element, onResize)` |
 | `window.addEventListener` | `BrowserStream.fromEventListenerWindow("resize")` |
 | `window.cancelAnimationFrame` | `try (try Experimental.Animations.Animations).nextFrame` |
+| `window.crossOriginIsolated` | `try (try Experimental.BrowserInfo.BrowserInfo).crossOriginIsolated` |
 | `window.matchMedia` | `try (try Experimental.MediaQuery.MediaQuery).matches(query)` |
 | `window.requestAnimationFrame` | `try (try Experimental.Animations.Animations).nextFrame` |
 
@@ -253,7 +256,9 @@ effect function experimental(path: string, pid: number, killSignal: ChildProcess
   try (try Experimental.Animations.Animations).nextFrameUnless(() => undefined)
   const text = try (try Experimental.FileReader.FileReader).readAsText(blob)
   try (try Experimental.ResizeObserver.ResizeObserver).observe(element, onResize)
-  return { id, platform, arch, executable, versions, memory, host, cores, origin, running, file, mac, signed, valid, sealed, opened, pair, lock, reducedMotion, frame, text, element }
+  const isolated = try (try Experimental.BrowserInfo.BrowserInfo).crossOriginIsolated
+  const agent = try (try Experimental.BrowserInfo.BrowserInfo).userAgent
+  return { id, platform, arch, executable, versions, memory, host, cores, origin, running, file, mac, signed, valid, sealed, opened, pair, lock, reducedMotion, frame, text, element, isolated, agent }
 }
 ```
 

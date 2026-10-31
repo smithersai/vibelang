@@ -231,7 +231,7 @@ VibeLang is TypeScript with syntax for Effect. An `effect` function returns an E
 ### Rules
 
 1. `try` runs only Effects, and only inside an `effect` function or block. A module's top level is ordinary JavaScript: top-level `await` of a Promise works there, and `try` does not.
-2. Platform access goes through Effect's services, provided by a per-platform layer: `FileSystem`, `Path`, `HttpClient`, `ChildProcess`. A `.vibe` file has no `node:*` value imports and no Node globals such as `process` or `Buffer`; code that needs them lives in a `.ts` file, including platform calls inside `Effect.try` and `tryPromise` arrows. What Effect lacks lives under `Experimental`: `Experimental.Process`, `Experimental.FileSystem` and `Experimental.Crypto`, which `ExperimentalNodeServices.layer` from `vibelang-runtime/experimental/platform-node` (or Bun's) provides, and and and and `Experimental.Animations`, `Experimental.Document`, `Experimental.FileReader`, `Experimental.Locks`, `Experimental.MediaQuery` and `Experimental.ResizeObserver`, which `ExperimentalBrowserServices.layer` from `vibelang-runtime/experimental/platform-browser` provides.
+2. Platform access goes through Effect's services, provided by a per-platform layer: `FileSystem`, `Path`, `HttpClient`, `ChildProcess`. A `.vibe` file has no `node:*` value imports and no Node globals such as `process` or `Buffer`; code that needs them lives in a `.ts` file, including platform calls inside `Effect.try` and `tryPromise` arrows. What Effect lacks lives under `Experimental`: `Experimental.Process`, `Experimental.FileSystem` and `Experimental.Crypto`, which `ExperimentalNodeServices.layer` from `vibelang-runtime/experimental/platform-node` (or Bun's) provides, and `Experimental.Animations`, `Experimental.BrowserInfo`, `Experimental.Document`, `Experimental.FileReader`, `Experimental.Locks`, `Experimental.MediaQuery` and `Experimental.ResizeObserver`, which `ExperimentalBrowserServices.layer` from `vibelang-runtime/experimental/platform-browser` provides.
 3. A service is a key, not a class to use: `class X extends Users` (EK3002), `new Users()` (EK3003), `x instanceof Users` (EK3004) and `service Repo<T>` (EK3005) are errors, and keys are unique (EK3001). `Users` is the type in R; `Users.Shape` is the members an implementation has.
 4. An `error` is a `Data.TaggedError` class: its tag is its name and its fields are readonly. Its body may hold methods and getters, not a constructor, an `extends` clause or a `_tag` override; group errors with a union. `when NotFound:` matches by `_tag`, across copies of a package.
 5. `match` is TC39 pattern matching. A `match` without `default` over a finite union that misses a case is a compile error; the check never changes what runs.
@@ -742,6 +742,7 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `console.table` | `try Console.table(rows)` |
 | `console.trace` | `try Console.trace(message)` |
 | `console.warn` | `try Console.warn(message)` |
+| `crossOriginIsolated` | `try (try Experimental.BrowserInfo.BrowserInfo).crossOriginIsolated` |
 | `crypto` | `try (try SecureRandom.SecureRandom).randomBytes(size)` |
 | `crypto.createCipheriv` | `try (try Aead.Aead).encrypt(aeadKey, plaintext, { nonce })` |
 | `crypto.createDecipheriv` | `try (try Aead.Aead).decrypt(aeadKey, ciphertext, { nonce })` |
@@ -781,6 +782,7 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `navigator.hardwareConcurrency` | `try (try Experimental.Process.Process).availableParallelism` |
 | `navigator.locks` | `try (try Experimental.Locks.Locks).hold(name)` |
 | `navigator.permissions` | `try (try Permissions.Permissions).query("geolocation")` |
+| `navigator.userAgent` | `try (try Experimental.BrowserInfo.BrowserInfo).userAgent` |
 | `performance` | `try Clock.currentTimeMillis` |
 | `performance.now` | `try Clock.monotonicTimeNanos` |
 | `performance.timeOrigin` | `try (try Experimental.Process.Process).timeOrigin` |
@@ -826,6 +828,7 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `window.ResizeObserver` | `try (try Experimental.ResizeObserver.ResizeObserver).observe(element, onResize)` |
 | `window.addEventListener` | `BrowserStream.fromEventListenerWindow("resize")` |
 | `window.cancelAnimationFrame` | `try (try Experimental.Animations.Animations).nextFrame` |
+| `window.crossOriginIsolated` | `try (try Experimental.BrowserInfo.BrowserInfo).crossOriginIsolated` |
 | `window.matchMedia` | `try (try Experimental.MediaQuery.MediaQuery).matches(query)` |
 | `window.requestAnimationFrame` | `try (try Experimental.Animations.Animations).nextFrame` |
 

@@ -1,0 +1,20 @@
+// expect-result: {"plain":false,"isolated":true,"firefox":false}
+// foldkit's packages/website/src/main.ts, detectPlaygroundSupport: the predicate keeps its three checks.
+effect function detectPlaygroundSupport() {
+  const browser = try Experimental.BrowserInfo.BrowserInfo
+  return (try browser.crossOriginIsolated) && typeof SharedArrayBuffer !== "undefined" && !(try browser.userAgent).includes("Firefox/")
+}
+
+effect function underLayer(layer: Layer.Layer<Experimental.BrowserInfo.BrowserInfo>) {
+  provide layer {
+    return try detectPlaygroundSupport()
+  }
+}
+
+export effect function main() {
+  return {
+    plain: try underLayer(Experimental.BrowserInfo.layerTest()),
+    isolated: try underLayer(Experimental.BrowserInfo.layerTest({ crossOriginIsolated: Effect.succeed(true) })),
+    firefox: try underLayer(Experimental.BrowserInfo.layerTest({ crossOriginIsolated: Effect.succeed(true), userAgent: Effect.succeed("Gecko Firefox/140.0") }))
+  }
+}

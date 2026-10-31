@@ -47,6 +47,11 @@
       "import": "./dist/experimental/Animations.js",
       "default": "./dist/experimental/Animations.js"
     },
+    "./experimental/BrowserInfo": {
+      "types": "./dist/experimental/BrowserInfo.d.ts",
+      "import": "./dist/experimental/BrowserInfo.js",
+      "default": "./dist/experimental/BrowserInfo.js"
+    },
     "./experimental/Crypto": {
       "types": "./dist/experimental/Crypto.d.ts",
       "import": "./dist/experimental/Crypto.js",

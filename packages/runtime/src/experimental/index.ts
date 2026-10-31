@@ -12,6 +12,7 @@
  * @since 0.0.11
  */
 export * as Animations from "./Animations.js"
+export * as BrowserInfo from "./BrowserInfo.js"
 export * as Crypto from "./Crypto.js"
 export * as Document from "./Document.js"
 export * as FileReader from "./FileReader.js"

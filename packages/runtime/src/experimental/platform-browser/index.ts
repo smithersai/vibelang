@@ -10,6 +10,7 @@ export * as ExperimentalBrowserAnimations from "./ExperimentalBrowserAnimations.
 export * as ExperimentalBrowserCrypto from "./ExperimentalBrowserCrypto.js"
 export * as ExperimentalBrowserDocument from "./ExperimentalBrowserDocument.js"
 export * as ExperimentalBrowserFileReader from "./ExperimentalBrowserFileReader.js"
+export * as ExperimentalBrowserInfo from "./ExperimentalBrowserInfo.js"
 export * as ExperimentalBrowserLocks from "./ExperimentalBrowserLocks.js"
 export * as ExperimentalBrowserMediaQuery from "./ExperimentalBrowserMediaQuery.js"
 export * as ExperimentalBrowserResizeObserver from "./ExperimentalBrowserResizeObserver.js"
