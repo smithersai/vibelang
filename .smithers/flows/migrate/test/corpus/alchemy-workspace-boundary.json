@@ -1,0 +1,19 @@
+{
+  "key": "alchemy-flow:t3code-fixture-manifests",
+  "paths": [
+    "package.json",
+    "pnpm-workspace.yaml",
+    "packages/domain/package.json",
+    "test/cross-version-test/test/01-beta.39/package.json",
+    ".repos/alchemy-effect/packages/core/package.json",
+    "packages/domain/template/package.json"
+  ],
+  "globs": [
+    "packages/*"
+  ],
+  "expected": [
+    "package.json",
+    "pnpm-workspace.yaml",
+    "packages/domain/package.json"
+  ]
+}

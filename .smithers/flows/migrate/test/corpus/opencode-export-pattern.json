@@ -1,0 +1,17 @@
+{
+  "key": "opencode-3",
+  "manifest": {
+    "exports": {
+      "./*": "./src/*.ts"
+    }
+  },
+  "renames": [
+    {
+      "from": "src/bom.ts",
+      "to": "src/bom.vibe"
+    }
+  ],
+  "field": "exports",
+  "stem": "bom",
+  "shape": 0
+}

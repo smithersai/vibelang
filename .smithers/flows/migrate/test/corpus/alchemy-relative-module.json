@@ -1,0 +1,5 @@
+{
+  "key": "alchemy-2:t3code-relative-module",
+  "before": "export type { Filter } from \"./Filter.ts\";\n",
+  "after": "export type { Filter } from \"./Filter.js\";\n"
+}
