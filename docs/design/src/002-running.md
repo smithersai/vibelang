@@ -1428,7 +1428,7 @@ function find(ids: string[]) {
           $control.value = id
           return id
         }
-      }), [Layer.succeed(Users, testUsers)])
+      }), Layer.succeed(Users, testUsers))
       if ($control.kind === "Return") return $control.value
       if ($control.kind === "Break") break outer
       if ($control.kind === "Continue") continue outer
