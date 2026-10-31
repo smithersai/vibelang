@@ -27,7 +27,9 @@ import (
 // in a package whose modules were just renamed to .vibe. When hidden, the
 // module after each such fix reads it through a string in an import type,
 // which names nothing, so that no error traces to the fix (blameReads) and
-// the gate halves.
+// the gate halves. That module reports no error before the fix, so the one
+// the fix adds is new: an error the program already reported at the same
+// place, which a fix only rewords, is none (addedCounts).
 func scaleProject(t testing.TB, n int, hidden bool) (string, *tsoptions.ParsedCommandLine) {
 	t.Helper()
 	_, file, _, _ := editorProgram(t, "export const main = 1\n")
@@ -53,7 +55,7 @@ func scaleProject(t testing.TB, n int, hidden bool) (string, *tsoptions.ParsedCo
 			fmt.Fprintf(&b, "export function modes%d() {\n  const mode = Effect.succeed(\"fast\")\n  const all: Array<typeof mode> = [mode]\n  return all\n}\n", i)
 		}
 		if i%10 == 3 && hidden {
-			fmt.Fprintf(&b, "export function more%d() {\n  const all: ReturnType<(typeof import(\"./m%03d.vibe\"))[\"modes%d\"]> = []\n  all.push(\"slow\")\n  return all\n}\n", i, i-1, i-1)
+			fmt.Fprintf(&b, "export const more%d: ReturnType<(typeof import(\"./m%03d.vibe\"))[\"modes%d\"]> extends (\"fast\"[]!!) ? false : true = true\n", i, i-1, i-1)
 		} else if i%10 == 3 {
 			fmt.Fprintf(&b, "import { modes%d } from \"./m%03d.vibe\"\nexport function more%d() {\n  const all = modes%d()\n  all.push(\"slow\")\n  return all\n}\n", i-1, i-1, i, i-1)
 		}

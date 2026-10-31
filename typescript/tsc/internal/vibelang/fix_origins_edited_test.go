@@ -25,7 +25,7 @@ func TestFixGateEditedImporterOrigins(t *testing.T) {
 		return fixProgram(fs, bundled.LibPath(), config, &fixParsedFiles{}, texts)
 	}
 	original := build(nil)
-	baseline := errorCounts(t.Context(), original)
+	baseline := baselineOf(t.Context(), original)
 	var ps []proposal
 	overlay := map[tspath.RootedFilePath]string{}
 	for _, f := range fixableFiles(original) {

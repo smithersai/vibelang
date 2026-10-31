@@ -37,7 +37,7 @@ func TestRepeatedFactoriesKeepDiagnosticIdentity(t *testing.T) {
 	before := "export const a:(...args:any[])=>void=" + oldCall + ";\nexport const b:infer _=" + newCall + ";\n"
 	next := "export const a:infer _=" + oldCall + ";\nexport const b:(...args:any[])=>void=" + newCall + ";\n"
 	p, file, _, _ := editorProgram(t, before)
-	baseline := errorCounts(t.Context(), p)
+	baseline := baselineOf(t.Context(), p)
 	fs := wrapvfs.Wrap(p.Host().FS(), wrapvfs.Replacements{ReadFile: func(name tspath.RootedFilePath) (string, bool) {
 		if name == file.FileName() {
 			return next, true

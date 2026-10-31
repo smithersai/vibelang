@@ -35,8 +35,8 @@ func TestFixGateIgnoresUnrelatedDeclarationChains(t *testing.T) {
 		return fixProgram(fs, bundled.LibPath(), config, &fixParsedFiles{}, texts)
 	}
 	original := build(nil)
-	baseline := errorCounts(t.Context(), original)
-	for key := range baseline {
+	baseline := baselineOf(t.Context(), original)
+	for key := range baseline.messages {
 		if strings.Contains(key, "TS2345") {
 			t.Fatalf("invalid original fixture: %s", key)
 		}

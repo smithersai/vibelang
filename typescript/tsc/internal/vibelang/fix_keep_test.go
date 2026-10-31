@@ -162,7 +162,7 @@ func TestFixKeepsVerifiedFixesWhenSignaled(t *testing.T) {
 			}
 			// And independently of the gate, the kept program adds no error.
 			disk := bundled.WrapFS(osvfs.FS())
-			baseline := errorCounts(t.Context(), fixProgram(disk, bundled.LibPath(), keepConfig(t, dir), &fixParsedFiles{}, originalsIn(dir, original)))
+			baseline := baselineOf(t.Context(), fixProgram(disk, bundled.LibPath(), keepConfig(t, dir), &fixParsedFiles{}, originalsIn(dir, original)))
 			if added := addedErrors(t.Context(), fixProgram(disk, bundled.LibPath(), keepConfig(t, dir), &fixParsedFiles{}, nil), baseline); len(added) > 0 {
 				t.Fatalf("the kept files add %v", added)
 			}

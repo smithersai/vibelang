@@ -47,7 +47,7 @@ func testFixGateImporterOrigins(t *testing.T, many bool) {
 		return fixProgram(fs, bundled.LibPath(), config, &fixParsedFiles{}, texts)
 	}
 	program := build(nil)
-	baseline := errorCounts(t.Context(), program)
+	baseline := baselineOf(t.Context(), program)
 	var proposals []proposal
 	for _, file := range fixableFiles(program) {
 		p := fileFixes(t.Context(), program, file, nil, tsFormFixCodes)
@@ -90,7 +90,7 @@ func TestFixGatePrioritizesImporterOrigins(t *testing.T) {
 		return fixProgram(fs, bundled.LibPath(), config, &fixParsedFiles{}, texts)
 	}
 	original := build(nil)
-	baseline := errorCounts(t.Context(), original)
+	baseline := baselineOf(t.Context(), original)
 	var proposals []proposal
 	main := tspath.RootedFilePathFromAbsolute(filepath.Join(dir, "main.vibe"))
 	direct := tspath.RootedFilePathFromAbsolute(filepath.Join(dir, "f00.vibe"))

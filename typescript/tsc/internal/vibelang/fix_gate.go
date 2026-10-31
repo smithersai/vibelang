@@ -255,17 +255,7 @@ func (r *gateRound) likelyFiles(parts []part) []tspath.RootedFilePath {
 // addedBy returns the errors of errors that the baseline does not hold,
 // by key and number.
 func (r *gateRound) addedBy(errors []*ast.Diagnostic) map[string]int {
-	counts := map[string]int{}
-	for _, d := range errors {
-		counts[errorKey(d)]++
-	}
-	added := map[string]int{}
-	for key, n := range counts {
-		if n > r.g.baseline[key] {
-			added[key] = n - r.g.baseline[key]
-		}
-	}
-	return added
+	return addedCounts(errors, r.g.baseline)
 }
 
 // fileErrors returns the errors of files in program.

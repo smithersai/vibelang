@@ -48,7 +48,7 @@ func BenchmarkFixImporterErrorSearch(b *testing.B) {
 		return fixProgram(fs, bundled.LibPath(), config, &fixParsedFiles{}, texts)
 	}
 	program := build(nil)
-	baseline := errorCounts(b.Context(), program)
+	baseline := baselineOf(b.Context(), program)
 	var proposals []proposal
 	for _, file := range program.SourceFiles() {
 		name := file.FileName()

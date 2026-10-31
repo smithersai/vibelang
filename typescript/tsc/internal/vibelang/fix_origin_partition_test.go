@@ -31,7 +31,7 @@ func TestFixGateRetainsSafeReporterEdits(t *testing.T) {
 		return fixProgram(fs, bundled.LibPath(), config, &fixParsedFiles{}, texts)
 	}
 	original := build(nil)
-	baseline := errorCounts(t.Context(), original)
+	baseline := baselineOf(t.Context(), original)
 	var proposals []proposal
 	for _, f := range fixableFiles(original) {
 		p := fileFixes(t.Context(), original, f, nil, tsFormFixCodes)

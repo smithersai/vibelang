@@ -44,7 +44,7 @@ func TestFixGatePrefersStableContextInEditedImporter(t *testing.T) {
 		return fixProgram(fs, bundled.LibPath(), config, &fixParsedFiles{}, texts)
 	}
 	base := build(nil)
-	baseline := errorCounts(t.Context(), base)
+	baseline := baselineOf(t.Context(), base)
 	var ps []proposal
 	overlay := map[tspath.RootedFilePath]string{}
 	for name, text := range changed {

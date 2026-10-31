@@ -41,7 +41,8 @@ import (
 // takes, in each file, the fixes whose edits do not overlap, and a fix that
 // overlaps one taken waits for the next round, which rechecks the edited
 // program. A round's fixes are kept only when the edited program reports no
-// error the original did not, compared by file, code, and message; when the
+// error the original did not, by file, code, and message, or by file, code,
+// and span (an error whose message a fix makes more precise is not new); when the
 // round as a whole would add one, the errors say which fixes add them: a
 // fix whose own text holds an added error is set aside, an error elsewhere
 // is traced to the fix whose text holds a declaration it reads, and the
@@ -335,7 +336,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 	if done.Err() != nil {
 		return result
 	}
-	g := &fixGate{ctx: ctx, done: done, build: build, baseline: errorCounts(ctx, program), refused: map[string]bool{}, alone: map[[32]byte]map[string]int{}, verified: verified, progress: progress}
+	g := &fixGate{ctx: ctx, done: done, build: build, baseline: baselineOf(ctx, program), refused: map[string]bool{}, alone: map[[32]byte]map[string]int{}, verified: verified, progress: progress}
 	seen := map[[32]byte]bool{fixState(program): true}
 	for round := 1; ; round++ {
 		if done.Err() != nil {
@@ -665,20 +666,81 @@ func errorKey(d *ast.Diagnostic) string {
 	if d.File() != nil {
 		file = d.File().FileName().AsString()
 	}
+	return file + ": " + errorCode(d) + ": " + d.String()
+}
+
+// errorCode is d's code as a diagnostic prints it: TS2345, EK1001.
+func errorCode(d *ast.Diagnostic) string {
 	source := d.Source()
 	if source == "" {
 		source = "TS"
 	}
-	code := source + strconv.Itoa(int(d.Code()))
 	if source == diagnosticSource {
-		code = fmt.Sprintf("EK%04d", d.Code())
+		return fmt.Sprintf("EK%04d", d.Code())
 	}
-	return file + ": " + code + ": " + d.String()
+	return source + strconv.Itoa(int(d.Code()))
+}
+
+// errorSpanKey names d by its file, code, and span, which a fix leaves as
+// they were in every file it does not edit, and before its first edit in a
+// file it does; "" for an error with no file.
+func errorSpanKey(d *ast.Diagnostic) string {
+	if d.File() == nil {
+		return ""
+	}
+	return fmt.Sprintf("%s: %s at %d+%d", d.File().FileName().AsString(), errorCode(d), d.Pos(), d.Len())
+}
+
+// An errorBaseline holds the errors a fix may not add to: the program's
+// errors counted by errorKey, and by errorSpanKey.
+type errorBaseline struct{ messages, spans map[string]int }
+
+func baselineOf(ctx context.Context, program *compiler.Program) errorBaseline {
+	return countErrors(programErrors(ctx, program))
+}
+
+func countErrors(errors []*ast.Diagnostic) errorBaseline {
+	b := errorBaseline{messages: map[string]int{}, spans: map[string]int{}}
+	for _, d := range errors {
+		b.messages[errorKey(d)]++
+		if key := errorSpanKey(d); key != "" {
+			b.spans[key]++
+		}
+	}
+	return b
+}
+
+// addedCounts returns how many of errors baseline does not hold, by
+// errorKey. An error is held by its file, code, and message, or by its file,
+// code, and span: a fix that makes a type more precise rewrites the message
+// of an error the program already reported at the same place, and adds no
+// error. In t3code, writing a schema helper's plain return type turns
+// Effect<brand<…>> into brand<…> in a test's existing TS2345, which an
+// unrelated helper causes.
+func addedCounts(errors []*ast.Diagnostic, baseline errorBaseline) map[string]int {
+	now := countErrors(errors)
+	added := map[string]int{}
+	for _, d := range errors {
+		key := errorKey(d)
+		if now.messages[key] <= baseline.messages[key] {
+			continue
+		}
+		if span := errorSpanKey(d); span != "" && now.spans[span] <= baseline.spans[span] {
+			continue
+		}
+		added[key]++
+	}
+	for key, n := range added {
+		if excess := now.messages[key] - baseline.messages[key]; n > excess {
+			added[key] = excess
+		}
+	}
+	return added
 }
 
 // newError returns an error program reports that baseline does not hold, as
 // the line a refusal names, and true; or false.
-func newError(ctx context.Context, program *compiler.Program, baseline map[string]int) (string, bool) {
+func newError(ctx context.Context, program *compiler.Program, baseline errorBaseline) (string, bool) {
 	added := addedErrors(ctx, program, baseline)
 	if len(added) == 0 {
 		return "", false
@@ -687,13 +749,11 @@ func newError(ctx context.Context, program *compiler.Program, baseline map[strin
 }
 
 // addedErrors returns the errors program reports that baseline does not
-// hold, by errorKey, sorted.
-func addedErrors(ctx context.Context, program *compiler.Program, baseline map[string]int) []string {
+// hold (addedCounts), by errorKey, sorted.
+func addedErrors(ctx context.Context, program *compiler.Program, baseline errorBaseline) []string {
 	var added []string
-	for key, n := range errorCounts(ctx, program) {
-		if n > baseline[key] {
-			added = append(added, key)
-		}
+	for key := range addedCounts(programErrors(ctx, program), baseline) {
+		added = append(added, key)
 	}
 	slices.Sort(added)
 	return added
@@ -705,7 +765,7 @@ type fixGate struct {
 	ctx        context.Context   // never canceled: see FixProject
 	done       context.Context   // canceled when the command is interrupted
 	build      func(map[tspath.RootedFilePath]string) *compiler.Program
-	baseline   map[string]int
+	baseline   errorBaseline
 	refused    map[string]bool // fixes refused, by fixKey
 	// verified is called with the texts of each set of fixes the gate
 	// verifies together (FixOptions.Verified).
