@@ -26,6 +26,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The release publisher ignored an explicit `--otp` password and prompted again; it now forwards that password to npm, accepts it with `--dry-run` in either order, and rejects unknown options before doing any work.
 
+- The configuration specification incorrectly based every inherited path on the declaring config. It now distinguishes ordinary relative paths from `${configDir}`, which uses the selected project config’s directory, matching TypeScript.
+
 - `vibelang/bun` scanned every module of every dependency and resolved each of their imports a second time, so a large package's tests ran about three times slower and timed out with no `.vibe` module loaded; it now stops at `node_modules`, and a 294-module import graph costs about the same with the preload as without it.
 
 - `vibelang --fix` deleted `import * as Schema from "effect/Schema"` when a `Schema.TaggedError` class was its only use, and rewrote a class whose module has another name, so the declaration file changed; in a project that emits declarations it now keeps the import and leaves such a class.
@@ -35,6 +37,10 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The specification gave no diagnostic code for two members of a `service`, `error`, `schema` or `data` body written on one line with no separator, and the compiler printed TypeScript class or interface messages for it; the specification now assigns `EK0908`, `EK1306`, `EK1504` and `EK1605`, each with a quick fix that inserts `;`.
 
 - Appendix D told contributors that a "Stale compiler-gap marker" result meant the compiler implemented a specification example, but the snippet checker compares only the codes in a block's `// expect-error:` header, so a block promising `EK0106` in a comment reported stale while the compiler printed nothing. The procedure now has you list those codes in the header and rerun before deleting the marker.
+
+- The specification told the formatter to wrap long `provide` lists in `Layer.mergeAll(…)`, a semantic rewrite it never performs. It now says a long list stays on one line.
+
+- Ordinary formatter styling could be rejected for changing emitted token spellings; preservation checks now compare parsed meaning and declarations while retaining diagnostic, directive and source-map checks.
 
 - `vibelang-format` and the `vibelang/prettier` plugin wrote double quotes and wrapped at 120 columns whatever the repository's formatter settings said, so in a repository such as foldkit (Oxfmt, `singleQuote`, `printWidth: 80`) `.vibe` files differed in style from its `.ts` files. They now take the quote style and print width from the repository's Oxfmt, Prettier or dprint configuration, or from Prettier's options.
 
@@ -102,6 +108,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Duplicate data variants reported a legacy error only on the repeated name; they now report TypeScript’s `TS2300` on both source names, matching duplicate fields.
 
+- An Effect TypeScript counterpart in the pattern-matching chapter did not compile under `tsc --strict`: it used `Symbol.customMatcher`, which TypeScript does not declare. It now uses the chapter's stand-in key, and a docs test type-checks every counterpart in the specification and the VIPs.
+
 - Editor parsing rejected `for try` `Stream` loops; the tree-sitter grammar now recognizes the loop and its `continue` and `break` statements.
 
 - In a project that emits declarations, `vibelang --fix` removed an import such as `import * as DateTime from "effect/DateTime"` that the declaration file still printed, through a local type an export names (`type NonNull<V> = V extends DateTime.Utc ? …`), a conditional type or a written `keyof DateTime.Utc`, so the declaration imported `{ DateTime } from "effect"`; `--fix` now keeps every import the file's declaration keeps.
@@ -135,6 +143,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The reserved data helper-name diagnostic appeared outside its rules table; it now renders as a table row.
 
 - The Effect operand examples omitted `Exit` and `Config`. They now show both and make clear that structural assignability, rather than a list of type names, decides admission.
+
+- The `async match` reference attributed its body grammar to an unvendored `async do` draft; it now states the accepted grammar contexts explicitly and shows that nested source functions keep their own `return` context.
 
 - A writable interface or object-type property became `readonly` in emitted declarations, preventing TypeScript consumers from assigning to it; declarations now keep the source's property and index-signature modifiers, including optional and nested members.
 
@@ -450,6 +460,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - `Date.now()`, `Date()`, `new Date()`, and `Math.random()` were incorrectly rejected with `EK4403`; these ECMAScript built-ins now compile as VIP-33 requires.
 
+- Schema hover checks in the LSP smoke test incorrectly required an `interface` label; they now verify the decoded `type` alias and field types.
+
 - Config migration could put severity settings inside a JSONC comment containing `{`; it now keeps the settings active and the comment intact.
 
 - The specification left import-free `.vibe` files with conflicting scope rules. It now requires module scope before checking, preserves it in JavaScript and declarations, and states the `moduleDetection` exception and ordinary host behavior.
@@ -635,6 +647,12 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The proposals comparison still listed handlers as shipped, and upstream drafts linked retired local research sources; handlers now remain explicitly open under VIP-35, archived chapters state that the first release has no handlers, and historical evidence links to its source revision.
 
+- The LSP smoke test failed when a contract quick fix omitted unused requirements. It now checks the canonical `A!E` title and edit.
+
+- The editor smoke test rejected its random-service fixture; `nextIntUnsafe` and `nextDoubleUnsafe` now return `number`, as Effect `4.1.0` requires.
+
+- The LSP smoke test treated an ordinary `async` function as invalid. It now checks that the function is accepted and its hover shows a `Promise`.
+
 - The native compiler regression suite could exhaust its budget on a busy build host while cases were still completing. It now allows 45 minutes of testing and 70 minutes for the target, including queued builds.
 
 - The specification described how an `effect` body reads `this` and `super` with a helper recipe that was wrong in five separate edge cases. It now states the behavior: the body reads them exactly as the same body in an `async` function does, and building the Effect reads none of them.
@@ -697,6 +715,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Property-test replay mixed loading saved cases with executing them; loading is now separate, preserving replay order, property selection and known-failure checks.
 
 - A tool that reads a `.vibe` file through the TypeScript mapper, such as Oxlint through the Oxc fork's VibeLang hook, reported `TS1338: 'infer' declarations are only permitted in the 'extends' clause of a conditional type` at each `: infer _` return annotation, because the mapper kept it in the TypeScript it returns. The mapper now drops the annotation, and TypeScript infers the return type from the body, as `infer _` means.
+
+- The deployed-release check mixed fetching pages with checking their release claims; page validation is now separate, preserving the same version and platform diagnostics.
 
 - The `alchemy-stack` example failed on `effect@4.1.0`: importing `@alchemy.run/cloudflare` failed with `Cannot find module .../effect/dist/Crypto.js`, because `alchemy@2.0.0-beta.84` imports the removed `effect/Crypto`. The example now patches `alchemy` with Alchemy's own Effect 4.1 port on install, and the Alchemy page shows how to apply the patch.
 

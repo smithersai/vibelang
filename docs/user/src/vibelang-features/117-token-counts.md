@@ -19,9 +19,9 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,194 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 15,041 |
-| The skill and the user guide (139 pages) | 319,132 |
-| The user guide alone | 314,938 |
-| The specification (10 chapters) | 135,707 |
+| The skill and the user guide (139 pages) | 319,860 |
+| The user guide alone | 315,666 |
+| The specification (10 chapters) | 136,314 |
 | The decision log, `docs/design/history/DECISIONS.md` | 141,521 |
 
 ## Effect TypeScript beside VibeLang
@@ -96,13 +96,13 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Creating Effects](../getting-started/005-creating-effects.md) | 3,158 |
 | [Two Types of Errors](../error-management/006-two-error-types.md) | 699 |
 | [Basic Concurrency](../concurrency/007-basic-concurrency.md) | 2,371 |
-| **Core Concepts** | **18,566** |
+| **Core Concepts** | **18,653** |
 | [Effect's Modules](../getting-started/008-importing-effect.md) | 2,559 |
 | [Running Effects](../getting-started/009-running-effects.md) | 1,770 |
 | [Sequencing Effects](../getting-started/010-using-generators.md) | 1,481 |
 | [Building Pipelines](../getting-started/011-building-pipelines.md) | 2,012 |
-| [Devtools](../getting-started/012-devtools.md) | 10,744 |
-| **All 12 pages** | **32,146** |
+| [Devtools](../getting-started/012-devtools.md) | 10,831 |
+| **All 12 pages** | **32,233** |
 
 ### Setup
 
@@ -113,11 +113,11 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Start a project** | **2,339** |
 | [New project](../setup/new-project.md) | 543 |
 | [Existing project](../setup/existing-project.md) | 1,796 |
-| **Build and test** | **6,656** |
-| [vibelang CLI](../setup/vibelang-cli.md) | 4,868 |
+| **Build and test** | **6,715** |
+| [vibelang CLI](../setup/vibelang-cli.md) | 4,927 |
 | [Vite and Vitest](../setup/vite.md) | 1,788 |
-| **Format and lint** | **2,710** |
-| [Format with dprint](../setup/formatting.md) | 1,350 |
+| **Format and lint** | **2,843** |
+| [Format with dprint](../setup/formatting.md) | 1,483 |
 | [Developer tools](../setup/developer-tools.md) | 1,360 |
 | **Frameworks** | **9,536** |
 | [React](../setup/react.md) | 2,131 |
@@ -130,9 +130,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Zed](../setup/zed.md) | 479 |
 | [Other editors](../setup/other-editors.md) | 492 |
 | [Coding agents](../setup/coding-agents.md) | 990 |
-| **Upgrade** | **54,333** |
-| [Release notes](../setup/release-notes.md) | 54,333 |
-| **All 18 pages** | **81,869** |
+| **Upgrade** | **54,782** |
+| [Release notes](../setup/release-notes.md) | 54,782 |
+| **All 18 pages** | **82,510** |
 
 ### Guides
 
@@ -277,17 +277,17 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | Page | Tokens |
 | --- | ---: |
 | [Introduction](../../../design/src/000-intro.md) | 2,538 |
-| **The language** | **104,649** |
+| **The language** | **105,256** |
 | [1. Functions and Effect types](../../../design/src/001-functions.md) | 11,625 |
-| [2. Running Effects](../../../design/src/002-running.md) | 25,251 |
+| [2. Running Effects](../../../design/src/002-running.md) | 25,296 |
 | [3. Failures](../../../design/src/003-failures.md) | 14,729 |
-| [4. Pattern matching](../../../design/src/004-match.md) | 19,203 |
+| [4. Pattern matching](../../../design/src/004-match.md) | 19,365 |
 | [5. Services and the environment](../../../design/src/005-services.md) | 11,329 |
 | [6. Data](../../../design/src/006-data.md) | 6,531 |
-| [7. Configuration and tooling](../../../design/src/007-tooling.md) | 10,028 |
+| [7. Configuration and tooling](../../../design/src/007-tooling.md) | 10,428 |
 | [8. Runtime guarantees](../../../design/src/008-runtime.md) | 5,953 |
 | **Appendices** | **28,520** |
 | [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 28,520 |
-| **All 10 pages** | **135,707** |
+| **All 10 pages** | **136,314** |
 
 <!-- token-counts: end -->

@@ -837,13 +837,19 @@ function bit(b: boolean) {
 
 <a id="async-match"></a>
 
-[AsyncMatchExpression](/spec/900-appendices#asyncmatchexpression) is a primary expression; no line terminator may separate `async` and `match`. Its independent context is `[~Yield, +Await, ~Effect]`, even inside a plain function. `async match (s) { … }` has the async-function behavior `(async () => match (s) { … })()`: subject evaluation, tests and the selected arm run inside the async function. `await` is allowed there; a thrown exception, including the no-match `TypeError`, rejects the resulting `Promise`. Under VIP-7, a `return` in it, and a `break` or `continue` whose target is outside it, are syntax errors.
+[AsyncMatchExpression](/spec/900-appendices#asyncmatchexpression) is a primary expression; no line terminator may separate `async` and `match`. `async match (s) { … }` has the async-function behavior `(async () => match (s) { … })()`: subject evaluation, tests and the selected arm run inside the async function. `await` is allowed there; a thrown exception, including the no-match `TypeError`, rejects the resulting `Promise`. The explicit VIP-7 reconciliation gives the subject, tests and arms `[~Yield, +Await, ~Return, ~Effect]` contexts, even inside a plain function. Under VIP-7, a `return` in it, and a `break` or `continue` whose target is outside it, are syntax errors. Nested source callables retain their own grammar contexts.
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-7
 function asyncLabel(s: Promise<string>) {
   return async match (await s) {
     when "sent": await Promise.resolve("sent");
+  }
+}
+function asyncNested(s: Promise<string>) {
+  return async match (await s) {
+    when "sent": (() => { return 1 })();
+    default: 0;
   }
 }
 ```
@@ -854,6 +860,13 @@ function asyncLabel(s: Promise<string>) {
     const subject = await s
     if (subject === "sent") return await Promise.resolve("sent")
     throw new TypeError()
+  })()
+}
+function asyncNested(s: Promise<string>) {
+  return (async () => {
+    const subject = await s
+    if (subject === "sent") return (() => { return 1 })()
+    return 0
   })()
 }
 ```
