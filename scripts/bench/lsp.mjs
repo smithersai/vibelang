@@ -17,8 +17,9 @@ const server = path.resolve(process.argv[2] ?? "")
 const project = path.resolve(process.argv[3] ?? "")
 const hovers = Number(process.argv[4] ?? 20)
 const src = path.join(project, "src")
-const ext = readdirSync(src).some((f) => f.endsWith(".vibe")) ? ".vibe" : ".ts"
-const count = readdirSync(src).filter((f) => /^m\d+\./.test(f)).length
+const files = readdirSync(src)
+const ext = files.some((f) => f.endsWith(".vibe")) ? ".vibe" : ".ts"
+const count = files.filter((f) => /^m\d+\.(?:vibe|ts)$/.test(f) && f.endsWith(ext)).length
 const last = path.join(src, `m${count - 1}${ext}`)
 const other = path.join(src, `m${Math.floor(count / 2)}${ext}`)
 const uri = (file) => pathToFileURL(file).href
