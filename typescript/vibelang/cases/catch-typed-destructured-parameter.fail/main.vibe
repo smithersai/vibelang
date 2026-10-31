@@ -1,0 +1,8 @@
+// expect: EK2105
+// Loop round 3, OPUS-8: a typed destructured catch parameter panicked in
+// Node.Text while checkRetiredCatches named the clause. It now reports what a
+// typed identifier parameter reports.
+declare function work(): void
+export function destructured() {
+  try { work() } catch ({ code = 1 }: any) {}
+}
