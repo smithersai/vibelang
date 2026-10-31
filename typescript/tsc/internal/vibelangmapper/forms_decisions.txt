@@ -974,6 +974,7 @@ typescript/vibelang/cases/diag-call-pipe.fail/main.vibe:7:29 lambda plain fallba
 typescript/vibelang/cases/diag-default-parameter.fail/main.vibe:7:43 lambda dual fallback
 typescript/vibelang/cases/diag-default-parameter.fail/main.vibe:8:53 lambda dual fallback
 typescript/vibelang/cases/diag-platform-spelling.fail/main.vibe:12:19 lambda plain table
+typescript/vibelang/cases/diag-readonly.fail/main.vibe:9:21 lambda plain annotation
 typescript/vibelang/cases/diag-service-key-names.fail/main.vibe:63:43 lambda plain table
 typescript/vibelang/cases/diag-shared-subpath-name.fail/main.vibe:4:23 lambda plain fallback
 typescript/vibelang/cases/diag-typed-catch-expression.fail/main.vibe:4:40 lambda effectFn table
@@ -2040,6 +2041,10 @@ typescript/vibelang/cases/match-tagged-error-guards/guard9.vibe:1:309 lambda dua
 typescript/vibelang/cases/match-tagged-error-guards/guard9.vibe:1:371 lambda dual fallback
 typescript/vibelang/cases/match-unused-names/main.vibe:17:16 lambda plain fallback
 typescript/vibelang/cases/match-unused-names/main.vibe:21:17 lambda dual fallback
+typescript/vibelang/cases/members-writable/main.vibe:19:21 lambda plain annotation
+typescript/vibelang/cases/members-writable/main.vibe:28:21 lambda plain annotation
+typescript/vibelang/cases/members-writable/main.vibe:5:24 lambda plain annotation
+typescript/vibelang/cases/members-writable/main.vibe:8:22 lambda plain annotation
 typescript/vibelang/cases/method-plain-annotation-effect.fail/main.vibe:26:3 lambda plain annotation
 typescript/vibelang/cases/methods-optional-chain.fail/main.vibe:5:21 lambda plain fallback
 typescript/vibelang/cases/migrate-effect-gen-fixed/lib.vibe:31:22 lambda choice fallback
