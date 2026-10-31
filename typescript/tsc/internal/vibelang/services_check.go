@@ -196,7 +196,7 @@ func checkServiceDeclaration(c *checker.Checker, class *ast.Node) {
 			continue
 		}
 		if ast.IsStatic(member) {
-			if instance[memberName.Text()] {
+			if instance[memberName.Text()] && !(kind == serviceClass && serviceStaticIdentityMember(member)) {
 				note(report(c, memberName, EK9208, memberName.Text()), "Rename one: {0}.{1} would call the service member.", name, memberName.Text())
 			}
 			continue

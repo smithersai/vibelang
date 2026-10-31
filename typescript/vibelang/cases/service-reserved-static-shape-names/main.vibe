@@ -1,0 +1,30 @@
+// expect-result: ["payload",7,"payload",7,"alias"]
+service Keyed {
+ static readonly key = "static-shape/key";
+ key: string
+}
+service Defaults {
+ static readonly key = "static-shape/default";
+ static readonly defaultValue = () => ({ defaultValue: 7 });
+ defaultValue: number
+}
+service Both {
+ static readonly key = "static-shape/both";
+ static readonly defaultValue = () => ({ key: "payload", defaultValue: 7 });
+ key: string;
+ defaultValue: number
+}
+interface Named { key: string }
+service Alias: Named {
+ static readonly key = "static-shape/alias";
+ static readonly defaultValue = () => ({ key: "alias" })
+}
+export effect function main() {
+ provide Keyed = { key: "payload" } {
+  const keyed = try Effect.service(Keyed)
+  const defaults = try Effect.service(Defaults)
+  const both = try Effect.service(Both)
+  const alias = try Effect.service(Alias)
+  return [keyed.key, defaults.defaultValue, both.key, both.defaultValue, alias.key]
+ }
+}

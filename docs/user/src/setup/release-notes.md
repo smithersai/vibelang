@@ -1214,6 +1214,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The specification left the ending check for `do` undefined for empty switches and VibeLang loops. It now uses an explicit empty-switch base case and the native iteration checks, preserving nonfinal values and rejecting final loops.
 - Service default initializers had an unspecified Effect boundary; they now follow source class-field rules, with Effect-based factories computed before the declaration.
 - Effect functions and methods inferred `void` for throw-only or mixed throw/fallthrough bodies; they now infer `never` or `undefined`, matching `Effect.gen`.
+
+- Service shapes with properties named `key` or `defaultValue` were rejected when the service declared the matching identity or default factory; these ordinary implementation properties now work.
+
 - The migrate flow failed a batch on `EK4832` for an exported `Schema.Struct` constant with no type export, which `--fix` must leave because a `schema` declaration would add a public type; `verify` no longer counts it.
 - The ESLint configuration the migrate flow writes for `.vibe` files enabled typescript-eslint's recommended rules whatever the repository's Oxlint configuration chose, so a rule the repository turns off, such as foldkit's `no-explicit-any` under `packages/foldkit/src`, failed its lint on migrated files, and the rules it enables never ran on them; the configuration now reads `.oxlintrc.json` on each run and applies its rules and overrides wherever ESLint or typescript-eslint has the rule.
 - The migrate flow's `--fix` dropped an Effect import the declaration file prints when a tsconfig set `noEmit`; it now asks for declarations, whatever the tsconfig says.

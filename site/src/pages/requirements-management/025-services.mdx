@@ -61,6 +61,8 @@ The special `key` and `defaultValue` property headers allow only `static readonl
 
 A `defaultValue` initializer has ordinary class-field context, even when its service is declared inside an effect function. A `try` expression there is `EK0501`. Compute an effectful input before the service declaration, then capture the resulting value in its `() => Shape` default factory.
 
+A service's shape may have properties named `key` or `defaultValue`. They are ordinary implementation members and can coexist with the service's `static readonly key` and `static readonly defaultValue`. Read them from the implementation returned by `try Effect.service(ServiceName)`.
+
 ## Declaring a service of any shape
 
 ```vibe
