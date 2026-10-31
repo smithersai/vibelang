@@ -9,7 +9,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 )
 
 // Each quote is read from chapter 2 or VIP-5 at test time. A valid control must
@@ -308,5 +310,108 @@ func FuzzForConcurrentBodyScope(f *testing.F) {
 		}
 		ExpectPending(t, concurrentScopeTarget, precise)
 		ExpectPending(t, concurrentScopeTarget, specCorpusKey(t))
+	})
+}
+
+const contextualCatchTarget = "FuzzCatchContextualArrowParameters"
+
+func contextualCatchChapter(t testing.TB) {
+	t.Helper()
+	text, err := os.ReadFile(SpecPath("002-running.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, quote := range []string{
+		"| an arrow or `function` expression | plain function |",
+		"An arrow handler's body is TypeScript's concise body",
+	} {
+		if !strings.Contains(string(text), quote) {
+			t.Fatalf("chapter 2 no longer says %q", quote)
+		}
+	}
+}
+func TestCatchContextualArrowParametersQuoted(t *testing.T) { contextualCatchChapter(t) }
+
+// A catch's plain arrow must admit the same contextual parameter spelling
+// and concise body as an ordinary TypeScript arrow in the same activation.
+// This compares syntax admission/kind; VIPDifferential owns runtime Exits.
+func FuzzCatchContextualArrowParameters(f *testing.F) {
+	startShortBudget(f)
+	contextualCatchChapter(f)
+	names := []string{"value", "async", "of", "from", "get", "set", "type", "as", "satisfies", "keyof", "infer", "is", "asserts", "unknown", "never", "number", "string", "boolean", "object", "undefined", "readonly", "abstract", "override", "declare", "namespace", "module", "require", "global", "unique", "out", "accessor", "using", "effect", "error", "data", "schema", "service", "provide", "restore", "interruptible", "uninterruptible"}
+	for _, name := range names {
+		f.Add([]byte(name))
+		for mode := range 8 {
+			f.Add(append([]byte(name+":"), byte(mode)))
+		}
+	}
+	f.Fuzz(func(t *testing.T, data []byte) {
+		choice, tail := 0, data
+		if len(data) > 0 {
+			choice = int(data[0]) % len(names)
+			tail = data[1:]
+		}
+		for i, name := range names {
+			if string(data) == name {
+				choice, tail = i, nil
+				break
+			}
+			if rest, ok := strings.CutPrefix(string(data), name+":"); ok {
+				choice, tail = i, []byte(rest)
+				break
+			}
+		}
+		mode := 0
+		if len(tail) > 0 {
+			mode = int(tail[0])
+		}
+		name := names[choice]
+		body := name + ".length"
+		switch mode % 4 {
+		case 1:
+			body = "{ return " + name + ".length }"
+		case 2:
+			body = name + ".length ? 1 : 0"
+		case 3:
+			body = "({value:" + name + ".length})"
+		}
+		trivia := " "
+		if mode&4 != 0 {
+			trivia = " /* parameter */ "
+		}
+		arrow := name + trivia + "=>\n" + body
+		parse := func(source string) *ast.SourceFile {
+			file, _ := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, source)
+			return file
+		}
+		control := "export effect function main(){ const handler = " + arrow + "; return 1 }"
+		if file := parse(control); len(file.Diagnostics()) != 0 {
+			Gap(t, contextualCatchTarget, "control:"+name, "TypeScript arrow control must admit this parameter:\n%s\n%v", control, file.Diagnostics())
+			return
+		}
+		source := "export effect function main(){ return task catch " + arrow + " }"
+		file := parse(source)
+		if len(file.Diagnostics()) != 0 {
+			Gap(t, contextualCatchTarget, "admit:"+name, "chapter 2 admits the same plain arrow after catch:\n%s\n%v", source, file.Diagnostics())
+			return
+		}
+		var handler *ast.Node
+		var visit func(*ast.Node) bool
+		visit = func(node *ast.Node) bool {
+			if ast.IsCallExpression(node) && ast.IsIdentifier(node.Expression()) && node.Expression().Text() == "$catchExpression" {
+				handler = node.Arguments()[1]
+				return true
+			}
+			return node.ForEachChild(visit)
+		}
+		visit(file.AsNode())
+		if handler == nil || !ast.IsArrowFunction(handler) || handler.AsArrowFunction().EqualsGreaterThanToken.Flags&ast.NodeFlagsReparsed != 0 {
+			Gap(t, contextualCatchTarget, "kind:"+name, "chapter 2 classifies the written arrow as a plain handler:\n%s\nhandler %v", source, fmt.Sprint(handler))
+			return
+		}
+		for _, prefix := range []string{"control:", "admit:", "kind:"} {
+			ExpectPending(t, contextualCatchTarget, prefix+name)
+		}
+		ExpectPending(t, contextualCatchTarget, specCorpusKey(t))
 	})
 }

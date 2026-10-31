@@ -1,0 +1,8 @@
+// expect-result: [3,3,3,3]
+export effect function main() {
+  const a = Effect.fail("bad") catch async => async.length
+  const b = Effect.fail("bad") catch of => of.length
+  const c = Effect.fail("bad") catch from => from.length
+  const d = Effect.fail("bad") catch get => get.length
+  return [a, b, c, d]
+}
