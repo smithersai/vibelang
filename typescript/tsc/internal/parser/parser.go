@@ -108,6 +108,7 @@ type Parser struct {
 	vibelangAbstractMembers  bool                        // bodiless class members become abstract: a service or control body (vibelang.go)
 	vibelangFieldBody        bool                        // the class body is an error, service, or control body, whose fields a comma cannot separate (vibelang_errors.go)
 	vibelangFieldComma       bool                        // a comma follows the field just parsed in such a body (vibelang_errors.go)
+	vibelangNoSeparator      bool                        // a member follows the one just parsed in such a body on its line, with no separator (vibelang_errors.go)
 	vibelangSelects          int                         // select statements parsed so far, which number their labels (vibelang_fibers.go)
 	vibelangNoBlockParams    bool                        // a { after an expression is not a block param here: heritage clauses and provide's providers (vibelang_blocks.go)
 	vibelangMatchTemps       int                         // names written for match and is, numbered per file (vibelang_match.go)
@@ -900,7 +901,7 @@ func (p *Parser) isListElement(parsingContext ParsingContext, inErrorRecovery bo
 		// semicolon to be treated as a class member (since they're almost always used
 		// for statements.
 		return p.isStartOfVibeLangModuleDeclaration() || // VIP-40: consume and diagnose misplaced modules
-			p.vibelangFieldComma && p.token == ast.KindCommaToken || // vibelang_errors.go
+			p.vibelangFieldComma && p.token == ast.KindCommaToken || p.vibelangNoSeparator || // vibelang_errors.go
 			p.lookAhead((*Parser).scanClassMemberStart) || p.token == ast.KindSemicolonToken && !inErrorRecovery
 	case PCEnumMembers:
 		// Include open bracket computed properties. This technically also lets in indexers,
@@ -2071,6 +2072,9 @@ func (p *Parser) parseClassElement() *ast.Node {
 	if p.vibelangFieldComma && p.token == ast.KindCommaToken {
 		return p.parseVibeLangFieldComma() // vibelang_errors.go
 	}
+	if p.vibelangNoSeparator {
+		return p.parseVibeLangNoSeparator() // vibelang_errors.go
+	}
 	pos := p.nodePos()
 	jsdoc := p.jsdocScannerInfo()
 	if p.token == ast.KindSemicolonToken {
@@ -2186,7 +2190,14 @@ func (p *Parser) parseMethodDeclaration(pos int, jsdoc jsdocScannerInfo, modifie
 	typeParameters := p.parseTypeParameters()
 	parameters := p.parseParameters(signatureFlags)
 	typeNode := p.parseReturnType(ast.KindColonToken, false /*isType*/)
-	body := p.parseFunctionBlockOrSemicolon(signatureFlags, diagnosticMessage)
+	var body *ast.Node
+	// Only class methods carry this recovery diagnostic; object literal
+	// methods keep their native body syntax, even inside an error method.
+	if diagnosticMessage != nil && p.isVibeLangNoSeparator() {
+		p.vibelangNoSeparator = true
+	} else {
+		body = p.parseFunctionBlockOrSemicolon(signatureFlags, diagnosticMessage)
+	}
 	if body == nil {
 		modifiers = p.vibelangAbstractMember(modifiers, name, false /*property*/)
 	}
@@ -2210,6 +2221,8 @@ func (p *Parser) parsePropertyDeclaration(pos int, jsdoc jsdocScannerInfo, modif
 	initializer = p.hoistInitializerBody(initializer)
 	if p.isVibeLangFieldComma(typeNode, initializer) {
 		p.vibelangFieldComma = true // the comma is the next class element (vibelang_errors.go)
+	} else if p.isVibeLangNoSeparator() {
+		p.vibelangNoSeparator = true // the missing separator is the next class element (vibelang_errors.go)
 	} else {
 		p.parseSemicolonAfterPropertyName(name, typeNode, initializer)
 	}

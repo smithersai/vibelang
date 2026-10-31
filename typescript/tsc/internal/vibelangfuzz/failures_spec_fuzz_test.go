@@ -352,6 +352,32 @@ func failuresCases() []*failCase {
 		Decls: "export error NotFound {\n  id: string\n  get message() { return `no user ${this.id}` }\n  code: number\n  describe() { return this.id + this.code }\n}\nexport const m: string = new NotFound({ id: \"x\", code: 1 }).describe()"})
 	add(&failCase{Name: "error-contextual", VIP: 13, Owner: "fix-vip-decls", Host: "none", Quote: "`error`, like `service`, `schema` and `data`, follows TypeScript's contextual keyword `type`: a declaration is the keyword, no line break, then the declaration's name (a `BindingIdentifier`), where a declaration can start; anything else is ordinary TypeScript, where `error` is an identifier ([Declaration keywords](900-appendices.md#declaration-keywords), the one rule for all four). So `const error = …`, `catch (error)`, `const e = error as Error` and `error instanceof NotFound` still work, and `error as T;` declares `as`, then fails; write `(error as T);`. The body is optional, as for TypeScript's `declare module \"m\"` ([ErrorDeclaration](900-appendices.md#errordeclaration)). As in ECMAScript's `ExportDeclaration`, `export error E` and `export schema error E` are named declarations; `export default error E` and `export default schema error E` are syntax errors (`EK1305`). Write `export { E as default }` instead, as for a [service](005-services.md).",
 		Decls: "export const error = 1\nexport function f() {\n  try { return JSON.parse(\"1\") } catch (error) { return error }\n}"})
+	// Appendix A Separator (decided detail 241): body members on one line need
+	// a separator, whatever the members and the gap between them are.
+	for _, form := range []struct {
+		prefix string
+		vip    int
+	}{{"error", 13}, {"schema error", 29}} {
+		for i, next := range []string{" ⟦b⟧: string", " /* gap */ ⟦b⟧?: string", "\t⟦readonly⟧ b: string", " ⟦get⟧ b() { return 1 }", " ⟦describe⟧() { return 1 }"} {
+			add(&failCase{Name: fmt.Sprintf("%s-missing-separator-%d", strings.ReplaceAll(form.prefix, " ", "-"), i), Chapter: failuresChapter, VIP: form.vip, Owner: "impl-hunt-fail", Host: "none", Code: 1306, OneDiagnostic: true,
+				Quote: "| two members on one line with no separator, in either error form; write `;` or a line break between them (quick fix: insert `;`) | `EK1306` |",
+				Decls: "export " + form.prefix + " E { a: number" + next + " }"})
+		}
+	}
+	for _, form := range []struct {
+		prefix string
+		vip    int
+	}{{"error", 13}, {"schema error", 29}} {
+		for _, member := range []struct{ key, source string }{
+			{"signature", "a(): number ⟦a⟧(): number { return 1 }"},
+			{"decorator", "a: number ⟦@⟧dec b() { return 1 }"},
+		} {
+			add(&failCase{Name: strings.ReplaceAll(form.prefix, " ", "-") + "-" + member.key + "-missing-separator",
+				Chapter: failuresChapter, VIP: form.vip, Owner: "impl-hunt-fail", Host: "none", Code: 1306, OneDiagnostic: true,
+				Quote: "| two members on one line with no separator, in either error form; write `;` or a line break between them (quick fix: insert `;`) | `EK1306` |",
+				Decls: "declare const dec: any; export " + form.prefix + " E { " + member.source + " }"})
+		}
+	}
 	add(&failCase{Name: "schema-error-named-error", VIP: 29, Owner: "fix-vip-decls", Host: "none", Quote: "`schema error NotFound {` and a schema named `error` (`schema error = …`) differ at the next token. `schema error { id: string }` is a schema named `error`: `{` is not the name required after `schema error`.",
 		Decls: "schema error = \"a\" | \"b\"\nexport schema error NotFound { id: string }\nexport const n = new NotFound({ id: \"x\" })\nexport const e = Schema.decodeUnknownSync(error)(\"a\")"})
 	add(&failCase{Name: "assign-object-member", Quote: "The rule applies wherever TypeScript checks one call signature against another: assignments, arguments, returns against a written return type, object members, class overrides and `implements`. An overriding or implementing method may throw only what the base or interface signature admits (`EK0402`). VIP-4's two wrappers declare their thunk parameter `@throws {unknown}` ([Appendix E](900-appendices.md#appendix-e-shipped-throws-and-rethrows-annotations)), in both overloads: the function argument or the options object's `try` property. Thus `Effect.try(() => parse(s))` and `tryPromise(() => queryDb(q))` are allowed, and the wrapper turns a throw into a failure. The options object's `catch` callback has the ordinary non-throwing function type; a tracked throw there is rejected, while an implicit throw is a defect. Effect's `LazyArg` and other callback parameter types, including those in `.d.ts` files, describe what an argument callback may throw; without `@throws`, they admit only `never`. This admission rule does not change the foreign-callable default: calling an unannotated foreign function-typed property still throws `unknown`. Every other function parameter admits only what its type says: `sync(() => parse(s))` is an error, so wrap the call with `Effect.try`.", Host: "plain", Body: "⟦const r: { read: (s: string) => string } = { read: parse }⟧", Decls: "function parse(s: string) { if (!s) throw new Error(\"empty\"); return s }"})
@@ -444,7 +470,6 @@ func failuresCases() []*failCase {
 // each with the reason. Each key must be verbatim in the chapter.
 var failuresNotAsserted = map[string]string{
 	"| a custom `error` or `schema error` declaration in an ambient source context, inherited or its own `declare` | `EK1307` |": "asserted in internal/vibelang by TestAmbientErrorDeclaration*, across own declare, namespace and module contexts",
-	"| two members on one line with no separator, in either error form; write `;` or a line break between them (quick fix: insert `;`) | `EK1306` |": "not implemented on main: both error forms report TypeScript TS1442 instead of EK1306; compiler coverage and implementation owned by lane impl-hunt-fail (005-006-body-separator-code:compiler:EK1306)",
 	"| `throw e` means |": "table header",
 }
 

@@ -138,6 +138,9 @@ func (p *Parser) parseErrorDeclaration(pos int, jsdoc jsdocScannerInfo, modifier
 		saveAbstract, saveFieldBody, saveReadonly := p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangImplicitReadonly // an error inside a service body is not one of its members
 		p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangImplicitReadonly = false, true, true
 		list := p.parseList(PCClassMembers, func(p *Parser) *ast.Node {
+			if p.vibelangNoSeparator {
+				return p.parseVibeLangNoSeparator()
+			}
 			start := p.nodePos()
 			mutable := p.parseVibeLangMutable()
 			element := p.parseVibeLangErrorElement()
@@ -314,6 +317,31 @@ func (p *Parser) parseVibeLangErrorElement() *ast.Node {
 	jsdoc := p.jsdocScannerInfo()
 	modifiers := p.parseModifiersEx(true /*allowDecorators*/, true /*permitConstAsModifier*/, true /*stopOnStartOfClassStaticBlock*/)
 	return p.parsePropertyOrMethodDeclaration(pos, jsdoc, modifiers, false /*effect*/)
+}
+
+// Appendix A Separator (decided detail 241): in an error, schema error,
+// service or control body, a member that starts on the line of a property
+// with no ; between them is missing a separator. The parser reads the gap as
+// an empty class member of no width flagged NodeFlagsVibeLang, rather than
+// report TypeScript's "Expected '=' for property initializer." or "';'
+// expected.", and the checker reports the body's code, EK1306 or EK0908
+// (fieldcommas.go in package vibelang).
+
+// isVibeLangNoSeparator reports whether the current token starts a class
+// member on the line of the property or signature just parsed in such a body.
+func (p *Parser) isVibeLangNoSeparator() bool {
+	return p.vibelangFieldBody && !p.canParseSemicolon() && p.token != ast.KindCommaToken &&
+		p.token != ast.KindOpenParenToken && p.lookAhead((*Parser).scanClassMemberStart)
+}
+
+// parseVibeLangNoSeparator parses the missing separator as an empty class
+// member of no width flagged NodeFlagsVibeLang, for EK1306 and EK0908.
+func (p *Parser) parseVibeLangNoSeparator() *ast.Node {
+	pos := p.nodePos()
+	p.vibelangNoSeparator = false
+	result := p.finishNode(p.factory.NewSemicolonClassElement(), pos)
+	result.Flags |= ast.NodeFlagsVibeLang
+	return result
 }
 
 // isVibeLangErrorField reports whether element, a member of an error

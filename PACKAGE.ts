@@ -351,6 +351,7 @@ const specTests = [
   "TestDataChapterWitnessesQuoted",
   "TestFailuresSpecQuotes",
   "TestFailuresSpecCoverage",
+  "TestFormatSeparatorRuleQuoted",
   "TestSpecRuleFacts",
   "TestSpecRuleTable",
   "TestSpecRuleCoverage",

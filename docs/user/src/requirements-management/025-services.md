@@ -24,7 +24,7 @@ effect function stringify(value: unknown) {
 
 Export a service with `export service Counter { readonly value: number }`, or declare it and write `export { Counter as default }`. `export default service Counter { }` reports `EK0905`; an ordinary expression whose variable is named `service` can still follow `export default`.
 
-A service has no superclass or type parameters, and every instance member is abstract. Methods and properties declare the service's shape as in a TypeScript `interface`; `readonly` value members are allowed. Write intended types; a default factory does not infer missing member types. Its only static members are `static readonly key` and `defaultValue`; keep layers and helpers in ordinary declarations beside it.
+A service has no superclass or type parameters, and every instance member is abstract. Methods and properties declare the service's shape as in a TypeScript `interface`; `readonly` value members are allowed. Write intended types; a default factory does not infer missing member types. Its only static members are `static readonly key` and `defaultValue`; keep layers and helpers in ordinary declarations beside it. Two members on one line with no separator are `EK0908`, whose quick fix inserts `;`.
 
 `Users.Shape` names the written member object directly, so service contracts can refer to their own or another service's `.Shape`. A service cannot declare type parameters or capture an enclosing type parameter in a member contract (`EK3005`): different specializations would share one runtime key. Use a concrete contract or a member-local generic method independent of outer parameters.
 

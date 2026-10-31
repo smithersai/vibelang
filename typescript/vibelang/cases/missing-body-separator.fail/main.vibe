@@ -1,0 +1,9 @@
+// expect: EK1306 EK1306 EK0908 EK1306 EK1306 EK0908
+// Decided detail 241: two members on one line need a separator, ; or a line
+// break, and the body's own code reports a missing one.
+error E { a: number b: string }
+schema error S { id: string get label() { return this.id } }
+service Svc { a: number b: string }
+error Overloaded { a(): number a(): number { return 1 } }
+schema error EncodedOverloaded { a(): number a(): number { return 1 } }
+service Methods { a(): Effect.Effect<number> b(): Effect.Effect<string> }

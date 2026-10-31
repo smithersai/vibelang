@@ -340,8 +340,15 @@ func formatSyntaxError(source string) string {
 		return syntax
 	}
 	at := -1
+	separatorAt := -1
 	var visit ast.Visitor
 	visit = func(node *ast.Node) bool {
+		// Appendix A Separator remains a syntax rule even when recovery
+		// moves the owning EK1306/EK0908 diagnostic to the checker.
+		if ast.IsSemicolonClassElement(node) && node.Flags&ast.NodeFlagsVibeLang != 0 && node.Pos() == node.End() {
+			separatorAt = node.Pos()
+			return true
+		}
 		if ast.IsCallExpression(node) && node.Expression().Flags&ast.NodeFlagsVibeLangIntrinsic != 0 && node.Expression().Text() == "$patternError" {
 			if arguments := node.Arguments(); len(arguments) > 0 && arguments[0].Text() == "1017" {
 				at = node.Pos()
@@ -351,8 +358,52 @@ func formatSyntaxError(source string) string {
 		return node.ForEachChild(visit)
 	}
 	toolsParse("main.vibe", source).AsNode().ForEachChild(visit)
+	if separatorAt >= 0 {
+		return fmt.Sprintf("%d: missing member separator (EK1306/EK0908)", separatorAt)
+	}
 	if at >= 0 {
 		return fmt.Sprintf("%d: EK1017, provide used as an expression", at)
 	}
 	return ""
+}
+
+// TestFormatSeparatorRuleQuoted guards the grammar quote behind the syntax
+// classifier used by FuzzFormat.
+//
+//gate:spec-tests
+func TestFormatSeparatorRuleQuoted(t *testing.T) {
+	text, err := os.ReadFile(SpecPath("900-appendices.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const quote = "Two members or fields with no `Separator` between them are a VibeLang syntax error with the owning declaration's code: `EK0908` in a `service` body, `EK1306` in an `error` or `schema error` body, `EK1504` in a `schema` body and `EK1605` in a `data` declaration's variant list or a variant's field list."
+	if !strings.Contains(string(text), quote) {
+		t.Fatal("Appendix A no longer states the missing-separator syntax rule; review the formatter oracle")
+	}
+}
+
+func TestFormatRecoveredMissingSeparators(t *testing.T) {
+	for _, source := range []string{
+		"error E { a: number b: string }",
+		"schema error E { a: number get b() { return 1 } }",
+		"service S { a: number b: string }",
+		"error E { a(): number a(): number { return 1 } }",
+	} {
+		t.Run(source, func(t *testing.T) {
+			if got := formatSyntaxError(source); got == "" {
+				t.Fatal("a missing member separator must remain a syntax error")
+			}
+		})
+	}
+	for _, source := range []string{
+		"error E { a: number; b: string }",
+		"schema error E { a: number; get b() { return 1 } }",
+		"service S { a: number; b: string }",
+	} {
+		t.Run(source, func(t *testing.T) {
+			if got := formatSyntaxError(source); got != "" {
+				t.Fatalf("valid separators classified as syntax errors: %s", got)
+			}
+		})
+	}
 }

@@ -186,6 +186,9 @@ func encode(fileName, source string) (*encoding, error) {
 	if diagnostics := file.Diagnostics(); len(diagnostics) != 0 {
 		return nil, syntaxError(source, diagnostics[0])
 	}
+	if err := missingSeparator(file, source); err != nil {
+		return nil, err
+	}
 	if err := checkModules(file, source); err != nil {
 		return nil, err
 	}
@@ -231,6 +234,30 @@ func (e *encoder) normalizeErrorFieldCommas() {
 		return node.ForEachChild(visit)
 	}
 	e.file.AsNode().ForEachChild(visit)
+}
+
+// missingSeparator refuses a file with two members of an error, schema
+// error, service or control body on one line and no separator between them
+// (EK1306, EK0908; decided detail 241). The parser reads the gap as an empty
+// member of no width flagged NodeFlagsVibeLang (parser/vibelang_errors.go)
+// instead of reporting a syntax error; inserting the separator is the
+// diagnostic's quick fix, never formatting's.
+func missingSeparator(file *ast.SourceFile, source string) error {
+	var gap *ast.Node
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if ast.IsSemicolonClassElement(node) && node.Flags&ast.NodeFlagsVibeLang != 0 && node.Pos() == node.End() {
+			gap = node
+			return true
+		}
+		return node.ForEachChild(visit)
+	}
+	file.AsNode().ForEachChild(visit)
+	if gap == nil {
+		return nil
+	}
+	line, column := lineColumn(source, scanner.SkipTrivia(source, gap.Pos()))
+	return fmt.Errorf("vibelang format: %d:%d: two members need a separator: write ; or a line break before this one", line, column)
 }
 
 // syntaxError reports a parse diagnostic with its line and column.
