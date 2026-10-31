@@ -8,20 +8,23 @@
  * @since 0.0.11
  */
 import * as Layer from "effect/Layer"
+import type * as Animations from "../Animations.js"
 import type * as Crypto from "../Crypto.js"
 import type * as Locks from "../Locks.js"
 import type * as MediaQuery from "../MediaQuery.js"
+import * as ExperimentalBrowserAnimations from "./ExperimentalBrowserAnimations.js"
 import * as ExperimentalBrowserCrypto from "./ExperimentalBrowserCrypto.js"
 import * as ExperimentalBrowserLocks from "./ExperimentalBrowserLocks.js"
 import * as ExperimentalBrowserMediaQuery from "./ExperimentalBrowserMediaQuery.js"
 
 /**
  * The services of the browser bundle: the experimental `Crypto`, Effect's
- * crypto services from `@effect/platform-browser`, `Locks` and `MediaQuery`.
+ * crypto services from `@effect/platform-browser`, and the browser services.
  *
  * @since 0.0.11
  */
 export type ExperimentalBrowserServices =
+  | Animations.Animations
   | Crypto.Crypto
   | Layer.Success<typeof ExperimentalBrowserCrypto.layer>
   | Locks.Locks
@@ -29,13 +32,14 @@ export type ExperimentalBrowserServices =
 
 /**
  * `ExperimentalBrowserCrypto.layer`, which provides the experimental `Crypto` and
- * `@effect/platform-browser`'s Effect crypto services, `ExperimentalBrowserLocks.layer` and
- * `ExperimentalBrowserMediaQuery.layer`.
+ * `@effect/platform-browser`'s Effect crypto services, and each browser service's layer. A layer
+ * reads the host only when a member runs, so a worker can provide the bundle.
  *
  * @category layers
  * @since 0.0.11
  */
 export const layer: Layer.Layer<ExperimentalBrowserServices> = Layer.mergeAll(
+  ExperimentalBrowserAnimations.layer,
   ExperimentalBrowserCrypto.layer,
   ExperimentalBrowserLocks.layer,
   ExperimentalBrowserMediaQuery.layer

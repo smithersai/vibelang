@@ -14,6 +14,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.Process` | the process id, platform, host name and other facts; `kill`, `isRunning` | Node, Bun |
 | `Experimental.Locks` | `hold`, `tryHold`, `query` over Web Locks | browser; Node within one process |
 | `Experimental.MediaQuery` | `matches`, `changes` over `window.matchMedia` | browser |
+| `Experimental.Animations` | `nextFrame`, `onNextFrame`, `frameDeltas`, `settled` over animation frames and the Web Animations API | browser |
 
 `Experimental` is in scope in every `.vibe` file without an import, as Effect's modules are. A local declaration or an import named `Experimental` shadows it. TypeScript imports the same modules from `vibelang-runtime/experimental`, or one module from its subpath, such as `vibelang-runtime/experimental/FileSystem`.
 
@@ -21,7 +22,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 
 Each experimental service has its own key, such as `Experimental.FileSystem.FileSystem`. Look up its implementation with `const fs = try Experimental.FileSystem.FileSystem`, then run a member with `try fs.access(path, { executable: true })`. A contract names the key type in its requirements: `boolean!PlatformError.PlatformError!Experimental.FileSystem.FileSystem`.
 
-The experimental `FileSystem` and `Crypto` keys are class services, as Effect declares them. `Experimental.FileSystem.Service` is Effect's interface plus the new members, and the service itself is not Effect's. Effect 4.1 removed its `Crypto` service for the family services of `effect/crypto`; `Experimental.Crypto.Service` keeps the members Effect 4.0's had, such as `randomBytes`, `digest` and `randomUUIDv4`, beside `hmac`, `sign` and `verify`. A layer of Effect's `FileSystem` therefore never provides the experimental one, in VibeLang and in stock TypeScript alike, because at run time it provides a different key. Type an implementation as `Experimental.FileSystem.Service`. `Process`, `Locks` and `MediaQuery` extend nothing, so `Experimental.Process.Process`, `Experimental.Locks.Locks` and `Experimental.MediaQuery.MediaQuery` each name both the service and its implementation type, as Effect's `FileSystem` is. The module's own exports keep their meaning, as `Experimental.FileSystem.layerNoop` does. An import by name from the subpath, `import { FileSystem } from "vibelang-runtime/experimental/FileSystem"`, works too, and shadows the prelude's `FileSystem`.
+The experimental `FileSystem` and `Crypto` keys are class services, as Effect declares them. `Experimental.FileSystem.Service` is Effect's interface plus the new members, and the service itself is not Effect's. Effect 4.1 removed its `Crypto` service for the family services of `effect/crypto`; `Experimental.Crypto.Service` keeps the members Effect 4.0's had, such as `randomBytes`, `digest` and `randomUUIDv4`, beside `hmac`, `sign` and `verify`. A layer of Effect's `FileSystem` therefore never provides the experimental one, in VibeLang and in stock TypeScript alike, because at run time it provides a different key. Type an implementation as `Experimental.FileSystem.Service`. `Process`, `Locks` and the browser services extend nothing, so `Experimental.Process.Process`, `Experimental.Locks.Locks` and `Experimental.MediaQuery.MediaQuery` each name both the service and its implementation type, as Effect's `FileSystem` is. The module's own exports keep their meaning, as `Experimental.FileSystem.layerNoop` does. An import by name from the subpath, `import { FileSystem } from "vibelang-runtime/experimental/FileSystem"`, works too, and shadows the prelude's `FileSystem`.
 
 Provide a platform layer at the application boundary. The layers live beside Effect's platform packages. A layer of a service that extends Effect's provides the experimental service and Effect's service of the same name from one implementation, so code that uses Effect's `FileSystem` and code that uses the additions share it:
 
@@ -29,7 +30,7 @@ Provide a platform layer at the application boundary. The layers live beside Eff
 | --- | --- |
 | `vibelang-runtime/experimental/platform-node` | `ExperimentalNodeServices.layer`: `@effect/platform-node`'s bundle plus `FileSystem`, `Crypto` and `Process`; `ExperimentalNodeFileSystem.layer`, `ExperimentalNodeCrypto.layer`, `ExperimentalNodeProcess.layer`; `ExperimentalNodeLocks.layer`, within one process |
 | `vibelang-runtime/experimental/platform-bun` | `ExperimentalBunServices.layer`: `@effect/platform-bun`'s bundle plus `FileSystem`, `Crypto` and `Process`; `ExperimentalBunFileSystem.layer`, `ExperimentalBunCrypto.layer`, `ExperimentalBunProcess.layer` |
-| `vibelang-runtime/experimental/platform-browser` | `ExperimentalBrowserServices.layer`: `Crypto`, `@effect/platform-browser`'s crypto services, `Locks` and `MediaQuery`; `ExperimentalBrowserCrypto.layer`, `ExperimentalBrowserLocks.layer`, `ExperimentalBrowserMediaQuery.layer` |
+| `vibelang-runtime/experimental/platform-browser` | `ExperimentalBrowserServices.layer`: `Crypto`, `@effect/platform-browser`'s crypto services and the browser services; `ExperimentalBrowserCrypto.layer`, `ExperimentalBrowserLocks.layer`, `ExperimentalBrowserMediaQuery.layer`, `ExperimentalBrowserAnimations.layer` |
 
 `ExperimentalNodeServices.layer` replaces `@effect/platform-node`'s `NodeServices.layer`: it provides every service Effect's does. Each `Crypto` layer, such as `ExperimentalNodeCrypto.layer`, provides the experimental `Crypto` and the platform's Effect crypto services, such as `SecureRandom` and `Digest`; the bundles for Node and Bun, like Effect's, hold none of Effect's crypto services. The runtime lists `@effect/platform-node`, `@effect/platform-bun` and `@effect/platform-browser` as optional peer dependencies: install the one your program runs on. Failures are Effect's `PlatformError`, as for Effect's services.
 
@@ -240,6 +241,44 @@ Neither fails: a browser reads a malformed query as `not all`, which never match
 A library whose published type has no requirement provides the layer at the call: `Stream.provide(stream, ExperimentalBrowserMediaQuery.layer)`.
 
 `Experimental.MediaQuery.layerTest()` answers `false`, and `changes` stays open after its first value. Pass `matches`, which `changes` follows, or `changes` for a Stream of your own.
+
+## Animations
+
+```vibe
+// settle.vibe
+export effect function closeMenu() {
+  const animations = try Experimental.Animations.Animations
+  const time = try animations.nextFrame
+  try animations.settled("#menu-items")
+  return `closed at ${time}`
+}
+// Output: closed at 16
+```
+
+| Expression | Gives | Replaces |
+| --- | --- | --- |
+| `try animations.nextFrame` | the next frame's timestamp, in the milliseconds of `performance.now` | `requestAnimationFrame(callback)` |
+| `animations.onNextFrame(callback)` | a function that cancels the frame, and runs `callback` inside it | `requestAnimationFrame`, `cancelAnimationFrame` |
+| `animations.frameDeltas` | a `Stream` of the milliseconds between frames | a loop of `requestAnimationFrame` |
+| `try animations.settled(selector)` | nothing, once the element's animations and transitions end | `element.getAnimations()`, then each `finished` |
+
+Interrupting `nextFrame` cancels its frame, and ending `frameDeltas` cancels the next one. The first delta is the time since the Stream started. The browser pauses frames in a hidden tab, so a delta can be seconds long.
+
+`settled` waits a frame, so styles set just before it apply, then waits for the first element that matches `selector`, and completes when none does. A cancelled animation counts as ended, and one with infinite iterations never ends. A selector the browser rejects is a defect.
+
+`onNextFrame` is a plain function, the one member here that is not an Effect. A fiber can yield between two Effects, so code that checks something and then asks for a frame must do both in one synchronous body. Its result is the cleanup that `callback` expects:
+
+```vibe
+effect function afterCommit(isPending: () => boolean, onCommit: (listener: () => void) => () => void) {
+  const animations = try Experimental.Animations.Animations
+  try callback((isPending: () => boolean, onCommit: (listener: () => void) => () => void, animations: Experimental.Animations.Animations, resume: Resume<void, never>) => {
+    if (isPending()) return onCommit(() => resume())
+    return animations.onNextFrame(() => resume())
+  }, isPending, onCommit, animations)
+}
+```
+
+`ExperimentalBrowserAnimations.layer`, also in `ExperimentalBrowserServices.layer`, uses `requestAnimationFrame` and `document`. `Experimental.Animations.layerTest()` completes every wait at time 0, and `frameDeltas` stays open and gives nothing. Pass the members a test needs, as above.
 
 ## When Effect ships them
 

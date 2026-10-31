@@ -122,6 +122,7 @@ var platformServices = map[string]*platformService{
 	"ExperimentalLocks": {"the experimental Locks service", "Experimental.Locks.hold(name)", "",
 		`ExperimentalBrowserLocks.layer from "vibelang-runtime/experimental/platform-browser"; ExperimentalNodeLocks.layer from "vibelang-runtime/experimental/platform-node" locks only within one Node.js process`},
 	"ExperimentalMediaQuery": {"the experimental MediaQuery service", "try (try Experimental.MediaQuery.MediaQuery).matches(query)", "", experimentalBrowser},
+	"ExperimentalAnimations": {"the experimental Animations service", "try (try Experimental.Animations.Animations).nextFrame", "", experimentalBrowser},
 	"import":                 {"an import declaration", `import { name } from "./module.ts"`, "", ""},
 	"export":                 {"an export declaration", "export const name = value", "", ""},
 }
@@ -200,7 +201,7 @@ var platformGlobals = map[string]string{
 	"fetch": "HttpClient", "XMLHttpRequest": "HttpClient", "EventSource": "HttpClient", "WebSocket": "WebSocket",
 	"setTimeout": "Schedule", "setInterval": "Schedule", "setImmediate": "Yield", "clearTimeout": "Interrupt",
 	"clearInterval": "Interrupt", "clearImmediate": "Interrupt", "queueMicrotask": "Yield",
-	"requestAnimationFrame": "", "cancelAnimationFrame": "", "requestIdleCallback": "",
+	"requestAnimationFrame": "ExperimentalAnimations", "cancelAnimationFrame": "ExperimentalAnimations", "requestIdleCallback": "",
 	"cancelIdleCallback": "",
 	"process":            "Config", "console": "Console", "crypto": "Crypto", "performance": "Clock",
 	"localStorage": "KeyValueStore", "sessionStorage": "KeyValueStore", "indexedDB": "KeyValueStore",
@@ -296,8 +297,10 @@ var platformAPIs = map[string]platformAPI{
 	"window":                        {note: domGap},
 	"location":                      {note: domGap},
 	"history":                       {note: domGap},
-	"requestAnimationFrame":         {note: frameGap},
-	"cancelAnimationFrame":          {note: frameGap},
+	"requestAnimationFrame":         {service: "ExperimentalAnimations"},
+	"window.requestAnimationFrame":  {service: "ExperimentalAnimations"},
+	"cancelAnimationFrame":          {"ExperimentalAnimations", "(try Experimental.Animations.Animations).onNextFrame(callback)", "Interrupting nextFrame cancels its frame; onNextFrame gives the function that cancels it."},
+	"window.cancelAnimationFrame":   {"ExperimentalAnimations", "(try Experimental.Animations.Animations).onNextFrame(callback)", "Interrupting nextFrame cancels its frame; onNextFrame gives the function that cancels it."},
 	"requestIdleCallback":           {note: frameGap},
 	"cancelIdleCallback":            {note: frameGap},
 	"alert":                         {note: dialogGap},
@@ -366,7 +369,7 @@ const (
 	signatureKeys  = "Signature.privateKey(Signature.ed25519, bytes) and Signature.publicKey make the keys from their bytes."
 	aeadKeys       = "Aead.key(Aead.aes256Gcm, bytes) makes the key; Aead also has ChaCha20-Poly1305, and Cipher has AES-CTR and AES-CBC."
 	domGap         = "Effect has no service for the DOM; UI code belongs in a .ts or .tsx file, such as a React component's."
-	frameGap       = "Effect has no service for the browser's animation and idle callbacks; schedule work with Schedule, or call them in a .ts file."
+	frameGap       = "Effect has no service for the browser's idle callbacks; schedule work with Schedule, or call them in a .ts file."
 	dialogGap      = "Effect has no service for the browser's dialogs; a terminal program asks with Terminal.readLine()."
 	runtimeGap     = "A runtime's own API belongs to its platform package's layers, such as @effect/platform-bun's, or to a .ts file."
 	processExit    = "Let main return or fail: NodeRuntime.runMain, which runs it, exits with 0 when it succeeds and 1 when it fails."

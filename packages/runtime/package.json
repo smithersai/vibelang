@@ -42,6 +42,11 @@
       "import": "./dist/experimental/index.js",
       "default": "./dist/experimental/index.js"
     },
+    "./experimental/Animations": {
+      "types": "./dist/experimental/Animations.d.ts",
+      "import": "./dist/experimental/Animations.js",
+      "default": "./dist/experimental/Animations.js"
+    },
     "./experimental/Crypto": {
       "types": "./dist/experimental/Crypto.d.ts",
       "import": "./dist/experimental/Crypto.js",

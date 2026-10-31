@@ -6,6 +6,7 @@
  * @experimental
  * @since 0.0.11
  */
+export * as ExperimentalBrowserAnimations from "./ExperimentalBrowserAnimations.js"
 export * as ExperimentalBrowserCrypto from "./ExperimentalBrowserCrypto.js"
 export * as ExperimentalBrowserLocks from "./ExperimentalBrowserLocks.js"
 export * as ExperimentalBrowserMediaQuery from "./ExperimentalBrowserMediaQuery.js"

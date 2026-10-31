@@ -25,7 +25,9 @@ declare var process: { cwd(): string; env: Record<string, string | undefined>; p
 declare var Buffer: { from(text: string): Uint8Array }
 declare var document: { title: string }
 declare var window: { matchMedia(query: string): { matches: boolean } }
-declare var matchMedia: typeof window.matchMedia`
+declare var matchMedia: typeof window.matchMedia
+declare var requestAnimationFrame: (callback: (time: number) => void) => number
+declare var cancelAnimationFrame: (id: number) => void`
 
 const (
 	provideNodeServices        = `Provide it in main with NodeServices.layer from "@effect/platform-node", or BunServices.layer from "@effect/platform-bun".`
@@ -202,6 +204,15 @@ export const run = (key: Uint8Array) => createHmac("sha256", key)`, []string{
 		{"experimental browser member of window", `export const run = (query: string) => window.matchMedia(query)`, []string{
 			"window.matchMedia is platform code, which VibeLang code does not use directly.",
 			"Use the experimental MediaQuery service:   try (try Experimental.MediaQuery.MediaQuery).matches(query)", provideExperimentalBrowser,
+		}},
+		{"animation frame", `export const run = (draw: (time: number) => void) => requestAnimationFrame(draw)`, []string{
+			"requestAnimationFrame is platform code, which VibeLang code does not use directly.",
+			"Use the experimental Animations service:   try (try Experimental.Animations.Animations).nextFrame", provideExperimentalBrowser,
+		}},
+		{"cancelling an animation frame", `export const run = (id: number) => cancelAnimationFrame(id)`, []string{
+			"cancelAnimationFrame is platform code, which VibeLang code does not use directly.",
+			"Use the experimental Animations service:   (try Experimental.Animations.Animations).onNextFrame(callback)", provideExperimentalBrowser,
+			"Interrupting nextFrame cancels its frame; onNextFrame gives the function that cancels it.",
 		}},
 		{"gap", `export const run = () => document.title`, []string{
 			"document.title is platform code, which VibeLang code does not use directly.",

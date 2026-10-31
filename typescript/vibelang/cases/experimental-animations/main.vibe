@@ -1,0 +1,25 @@
+// expect-result: {"frame":0,"barrier":0,"settled":true}
+// foldkit's render/render.ts and dom/waitForAnimation.ts. The pending check and the frame's registration share one
+// synchronous body, so no commit can land between them; each cancels what it registered.
+effect function awaitCommitOrFrame(isCommitPending: () => boolean, onNextCommit: (listener: () => void) => () => void) {
+  const animations = try Experimental.Animations.Animations
+  return try callback((isCommitPending: () => boolean, onNextCommit: (listener: () => void) => () => void, animations: Experimental.Animations.Animations, resume: Resume<number, never>) => {
+    if (isCommitPending()) return onNextCommit(() => resume(1))
+    return animations.onNextFrame((time) => resume(time))
+  }, isCommitPending, onNextCommit, animations)
+}
+
+effect function waitForAnimationSettled(selector: string) {
+  try (try Experimental.Animations.Animations).settled(selector)
+  return true
+}
+
+export effect function main() {
+  provide Experimental.Animations.layerTest() {
+    return {
+      frame: try (try Experimental.Animations.Animations).nextFrame,
+      barrier: try awaitCommitOrFrame(() => false, () => () => {}),
+      settled: try waitForAnimationSettled("#menu-items")
+    }
+  }
+}

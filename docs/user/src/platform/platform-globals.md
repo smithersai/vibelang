@@ -35,8 +35,8 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `addEventListener` | `Stream.fromEventListener(target, "message")` |
 | `alert` | escape to TypeScript for now: Effect has no service for the browser's dialogs; a terminal program asks with `try (try Terminal.Terminal).readLine`. |
 | `caches` | escape to TypeScript for now: Effect has no service for the browser's Cache Storage; KeyValueStore stores strings by key. |
-| `cancelAnimationFrame` | escape to TypeScript for now: Effect has no service for the browser's animation and idle callbacks; schedule work with Schedule, or call them in a .ts file. |
-| `cancelIdleCallback` | escape to TypeScript for now: Effect has no service for the browser's animation and idle callbacks; schedule work with Schedule, or call them in a .ts file. |
+| `cancelAnimationFrame` | `(try Experimental.Animations.Animations).onNextFrame(callback)` |
+| `cancelIdleCallback` | escape to TypeScript for now: Effect has no service for the browser's idle callbacks; schedule work with Schedule, or call them in a .ts file. |
 | `clearImmediate` | `try Fiber.interrupt(fiber)` |
 | `clearInterval` | `try Fiber.interrupt(fiber)` |
 | `clearTimeout` | `try Fiber.interrupt(fiber)` |
@@ -119,8 +119,8 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `prompt` | escape to TypeScript for now: Effect has no service for the browser's dialogs; a terminal program asks with `try (try Terminal.Terminal).readLine`. |
 | `queueMicrotask` | `try yieldNow` |
 | `removeEventListener` | `Stream.fromEventListener(target, "message")` |
-| `requestAnimationFrame` | escape to TypeScript for now: Effect has no service for the browser's animation and idle callbacks; schedule work with Schedule, or call them in a .ts file. |
-| `requestIdleCallback` | escape to TypeScript for now: Effect has no service for the browser's animation and idle callbacks; schedule work with Schedule, or call them in a .ts file. |
+| `requestAnimationFrame` | `try (try Experimental.Animations.Animations).nextFrame` |
+| `requestIdleCallback` | escape to TypeScript for now: Effect has no service for the browser's idle callbacks; schedule work with Schedule, or call them in a .ts file. |
 | `require` | `import { name } from "./module.ts"` |
 | `require.resolve` | escape to TypeScript: resolve in a `.ts` module and call it with `Effect.try`, because `import.meta` allows only `.url` |
 | `self` | escape to TypeScript for now: Effect has no global-object service; keep access to the host global object in TypeScript. |
@@ -130,6 +130,9 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `setTimeout` | `try sleep("1 second")` |
 | `window` | escape to TypeScript for now: Effect has no service for the DOM; UI code belongs in a .ts or .tsx file, such as a React component's. |
 | `window.addEventListener` | `BrowserStream.fromEventListenerWindow("resize")` |
+| `window.cancelAnimationFrame` | `(try Experimental.Animations.Animations).onNextFrame(callback)` |
+| `window.matchMedia` | `try (try Experimental.MediaQuery.MediaQuery).matches(query)` |
+| `window.requestAnimationFrame` | `try (try Experimental.Animations.Animations).nextFrame` |
 
 A numeric return value from `main` does not set the exit status:
 `effect function main(): number!! { return 3 }` succeeds with 3 and still exits 0 when passed to `NodeRuntime.runMain`. Return normally for exit 0,
@@ -217,7 +220,7 @@ VibeLang's experimental services fill what Effect lacks, provided by `Experiment
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14, VIP-33
-effect function experimental(path: string, pid: number, killSignal: ChildProcess.Signal, name: string, query: string, macKey: Mac.Key, aeadKey: Aead.Key, privateKey: Signature.PrivateKey, publicKey: Signature.PublicKey, signature: Uint8Array, data: Uint8Array, plaintext: Uint8Array, ciphertext: Uint8Array, nonce: Uint8Array) {
+effect function experimental(path: string, pid: number, killSignal: ChildProcess.Signal, name: string, query: string, callback: (time: number) => void, macKey: Mac.Key, aeadKey: Aead.Key, privateKey: Signature.PrivateKey, publicKey: Signature.PublicKey, signature: Uint8Array, data: Uint8Array, plaintext: Uint8Array, ciphertext: Uint8Array, nonce: Uint8Array) {
   const fs = try Experimental.FileSystem.FileSystem
   const id = try (try Experimental.Process.Process).pid
   const platform = try (try Experimental.Process.Process).platform
@@ -240,7 +243,9 @@ effect function experimental(path: string, pid: number, killSignal: ChildProcess
   const pair = try (try Signature.Signature).generateKeyPair(Signature.ed25519)
   const lock = try (try Experimental.Locks.Locks).hold(name)
   const reducedMotion = try (try Experimental.MediaQuery.MediaQuery).matches(query)
-  return { id, platform, arch, executable, versions, memory, host, cores, origin, running, file, mac, signed, valid, sealed, opened, pair, lock, reducedMotion }
+  const frame = try (try Experimental.Animations.Animations).nextFrame
+  const cancelFrame = (try Experimental.Animations.Animations).onNextFrame(callback)
+  return { id, platform, arch, executable, versions, memory, host, cores, origin, running, file, mac, signed, valid, sealed, opened, pair, lock, reducedMotion, frame, cancelFrame }
 }
 ```
 
