@@ -278,7 +278,8 @@ func checkVIPReasons(value any) error {
 	}
 	for _, r := range reasons {
 		reason, _ := r.(map[string]any)
-		payload := map[any]string{"Fail": "error", "Die": "defect", "Interrupt": "fiberId"}[reason["_tag"]]
+		tag, _ := reason["_tag"].(string)
+		payload := map[string]string{"Fail": "error", "Die": "defect", "Interrupt": "fiberId"}[tag]
 		if _, ok := reason[payload]; payload == "" || !ok || len(reason) != 2 {
 			return fmt.Errorf("a reason that is not Fail(error), Die(defect) or Interrupt(fiberId)")
 		}

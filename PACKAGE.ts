@@ -68,6 +68,8 @@ const specTests = [
   "TestSpecRuleCoverage",
   "TestRuntimeFeatureCitations",
   "TestToolsHelpers",
+  "TestCanonicalVIPExitRejectsInvalidReasonTags",
+  "TestCanonicalVIPExitReasonTagControls",
   "TestVIPTemplatesCited",
   "TestRunningRulesQuoted",
   "TestVIPCoverage",
