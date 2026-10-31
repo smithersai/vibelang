@@ -11,6 +11,8 @@ ECMAScript's built-ins stay: `Array`, `Map`, `Set`, `JSON`, `Math`, `Promise`, `
 
 A host messaging reference such as `postMessage`, `globalThis.postMessage` or `globalThis["postMessage"]` is also `EK4402`, even when held without calling it. Put native host messaging in a `.ts` file; local bindings named `postMessage` keep their ordinary meaning.
 
+Adding a type-only host interface augmentation in a `.ts` or `.d.ts` file does not change the global's origin: references to host constructors such as `XMLHttpRequest` still report `EK4402`. Local declarations and explicit imports continue to shadow those globals.
+
 ## Replacements
 
 Each row says what replaces a global or one of its members: an Effect API first, then VibeLang's experimental service where Effect lacks one, then the escape to TypeScript, with the reason. EK4402 reads the same table. In effect code, `try` runs an Effect value. Get a service first, then call its members. In effect code, `vibelang --fix` writes a `console` call as Effect's `Console`, which needs no layer: `console.error("failed:", name)` becomes `try Console.error("failed:", name)`.

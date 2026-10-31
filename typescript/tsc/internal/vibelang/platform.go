@@ -611,7 +611,7 @@ func platformReference(c *checker.Checker, id *ast.Node) (platformRef, bool) {
 	if !listed {
 		return platformRef{}, false
 	}
-	if symbol != nil && !isGlobalOf(symbol, func(file *ast.SourceFile) bool { return isLibFile(c, file) || isPlatformPackage(packageOf(c, file)) }) {
+	if symbol != nil && !isPlatformGlobalBinding(c, symbol) {
 		return platformRef{}, false // a local, or a global the program declares
 	}
 	return platformRef{replacement: r, name: name, unresolved: symbol == nil}, true

@@ -1,0 +1,5 @@
+// expect: EK4402
+export const request = XMLHttpRequest
+export const events = EventSource
+export const socket = WebSocket
+export const worker = SharedWorker

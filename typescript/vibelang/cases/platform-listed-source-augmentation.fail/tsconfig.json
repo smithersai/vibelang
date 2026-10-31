@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "NodeNext",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "types": [],
+    "lib": [
+      "ESNext",
+      "DOM"
+    ]
+  },
+  "files": [
+    "main.vibe",
+    "shadow.vibe",
+    "augment.ts"
+  ]
+}

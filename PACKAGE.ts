@@ -174,6 +174,7 @@ const specTests = [
   "TestProducerBindingQuoted",
   "TestEffectTypeSpacingQuoted",
   "TestPipeEdgesQuoted",
+  "TestPlatformGlobalAugmentationQuoted",
   "TestCLISpecCommandFlags",
   "TestVIPFiberIDNumberEquality",
   "TestErrorDeclarationTwinQuoted",

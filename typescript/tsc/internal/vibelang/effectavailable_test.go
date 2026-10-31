@@ -29,9 +29,9 @@ export function shout(name: string): string {
 }
 `
 	p := computedKeyProgram(t, map[string]string{
-		"/Users/x/src/package.json":  `{"type":"module"}`,
-		"/Users/x/src/tsconfig.json": `{"compilerOptions":{"strict":true,"target":"ESNext","module":"NodeNext","declaration":true,"types":[]},"files":["main.vibe"]}`,
-		"/Users/x/src/main.vibe":     source,
+		"/workspace/x/src/package.json":  `{"type":"module"}`,
+		"/workspace/x/src/tsconfig.json": `{"compilerOptions":{"strict":true,"target":"ESNext","module":"NodeNext","declaration":true,"types":[]},"files":["main.vibe"]}`,
+		"/workspace/x/src/main.vibe":     source,
 	})
 	var reported []string
 	for _, d := range p.GetSemanticDiagnostics(t.Context(), nil) {
@@ -51,12 +51,12 @@ func TestUnsupportedEffectReportsInstalledVersion(t *testing.T) {
 	for _, prefix := range []string{"", "import { Effect } from \"effect\"\n"} {
 		t.Run(prefix, func(t *testing.T) {
 			p := computedKeyProgram(t, map[string]string{
-				"/Users/x/src/package.json":                             `{"type":"module"}`,
-				"/Users/x/src/tsconfig.json":                            `{"compilerOptions":{"strict":true,"target":"ESNext","module":"NodeNext","skipLibCheck":true,"types":[]},"files":["main.vibe"]}`,
-				"/Users/x/src/main.vibe":                                prefix + `export function fail() { throw new Error("bad") }`,
-				"/Users/x/src/node_modules/effect/package.json":         `{"name":"effect","version":"3.19.0","type":"module","exports":{".":{"types":"./dist/dts/index.d.ts"},"./Effect":{"types":"./dist/dts/Effect.d.ts"}}}`,
-				"/Users/x/src/node_modules/effect/dist/dts/index.d.ts":  `export * as Effect from "./Effect.js"`,
-				"/Users/x/src/node_modules/effect/dist/dts/Effect.d.ts": `export interface Effect<A, E = never, R = never> { readonly _A: A; readonly _E: E; readonly _R: R }`,
+				"/workspace/x/src/package.json":                             `{"type":"module"}`,
+				"/workspace/x/src/tsconfig.json":                            `{"compilerOptions":{"strict":true,"target":"ESNext","module":"NodeNext","skipLibCheck":true,"types":[]},"files":["main.vibe"]}`,
+				"/workspace/x/src/main.vibe":                                prefix + `export function fail() { throw new Error("bad") }`,
+				"/workspace/x/src/node_modules/effect/package.json":         `{"name":"effect","version":"3.19.0","type":"module","exports":{".":{"types":"./dist/dts/index.d.ts"},"./Effect":{"types":"./dist/dts/Effect.d.ts"}}}`,
+				"/workspace/x/src/node_modules/effect/dist/dts/index.d.ts":  `export * as Effect from "./Effect.js"`,
+				"/workspace/x/src/node_modules/effect/dist/dts/Effect.d.ts": `export interface Effect<A, E = never, R = never> { readonly _A: A; readonly _E: E; readonly _R: R }`,
 			})
 			found := false
 			for _, d := range p.GetSemanticDiagnostics(t.Context(), nil) {

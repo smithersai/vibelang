@@ -80,14 +80,14 @@ func TestDeclarationImportsComputedKey(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			files := computedKeyFiles(strings.HasPrefix(test.name, "symlinked "))
-			files["/Users/x/src/main.vibe"] = test.source
+			files["/workspace/x/src/main.vibe"] = test.source
 			dts := emitDeclarations(t, files)
 			// A consumer that checks libraries must resolve every name the
 			// declaration writes.
-			files["/Users/x/src/main.d.ts"] = dts
-			delete(files, "/Users/x/src/main.vibe")
-			files["/Users/x/src/consumer.ts"] = `import * as value from "./main.js"; export { value }`
-			files["/Users/x/src/tsconfig.json"] = `{"compilerOptions":{"strict":true,"skipLibCheck":false,"module":"NodeNext","noEmit":true},"files":["consumer.ts"]}`
+			files["/workspace/x/src/main.d.ts"] = dts
+			delete(files, "/workspace/x/src/main.vibe")
+			files["/workspace/x/src/consumer.ts"] = `import * as value from "./main.js"; export { value }`
+			files["/workspace/x/src/tsconfig.json"] = `{"compilerOptions":{"strict":true,"skipLibCheck":false,"module":"NodeNext","noEmit":true},"files":["consumer.ts"]}`
 			p := computedKeyProgram(t, files)
 			for _, d := range p.GetSemanticDiagnostics(t.Context(), nil) {
 				if d.Category() == diagnostics.CategoryError {
@@ -116,15 +116,15 @@ func TestDeclarationImportsComputedKey(t *testing.T) {
 // computedKeyFiles is a package with effect and vibelang-runtime installed, or
 // linked from outside every ancestor node_modules when symlinked is true.
 func computedKeyFiles(symlinked bool) map[string]string {
-	effect := "/Users/x/src/node_modules/effect/"
-	runtime := "/Users/x/src/node_modules/vibelang-runtime/"
+	effect := "/workspace/x/src/node_modules/effect/"
+	runtime := "/workspace/x/src/node_modules/vibelang-runtime/"
 	if symlinked {
 		effect = "/external/experiments/node_modules/effect/"
 		runtime = "/external/runtime/"
 	}
 	return map[string]string{
-		"/Users/x/src/package.json":  `{"type":"module"}`,
-		"/Users/x/src/tsconfig.json": `{"compilerOptions":{"strict":true,"target":"ESNext","module":"NodeNext","declaration":true},"files":["main.vibe"]}`,
+		"/workspace/x/src/package.json":  `{"type":"module"}`,
+		"/workspace/x/src/tsconfig.json": `{"compilerOptions":{"strict":true,"target":"ESNext","module":"NodeNext","declaration":true},"files":["main.vibe"]}`,
 		effect + "package.json":      `{"name":"effect","type":"module","exports":{".":{"types":"./index.d.ts"},"./Effect":{"types":"./Effect.d.ts"},"./Inspectable":{"types":"./Inspectable.d.ts"}}}`,
 		effect + "index.d.ts":        `export * as Effect from "./Effect.js"; export * as Inspectable from "./Inspectable.js"`,
 		effect + "Effect.d.ts":       `export interface Effect<A, E = never, R = never> { readonly "~effect/Effect": { readonly _A: (_: never) => A; readonly _E: (_: never) => E; readonly _R: (_: never) => R } }`,
@@ -135,7 +135,7 @@ func computedKeyFiles(symlinked bool) map[string]string {
 	}
 }
 
-// computedKeyProgram builds the program of /Users/x/src/tsconfig.json, linking
+// computedKeyProgram builds the program of /workspace/x/src/tsconfig.json, linking
 // the packages into node_modules when they live outside it.
 func computedKeyProgram(t *testing.T, files map[string]string) *compiler.Program {
 	t.Helper()
@@ -144,12 +144,12 @@ func computedKeyProgram(t *testing.T, files map[string]string) *compiler.Program
 		entries[name] = text
 	}
 	if _, linked := files["/external/runtime/index.d.ts"]; linked {
-		entries["/Users/x/src/node_modules/effect"] = vfstest.Symlink("/external/experiments/node_modules/effect")
-		entries["/Users/x/src/node_modules/vibelang-runtime"] = vfstest.Symlink("/external/runtime")
+		entries["/workspace/x/src/node_modules/effect"] = vfstest.Symlink("/external/experiments/node_modules/effect")
+		entries["/workspace/x/src/node_modules/vibelang-runtime"] = vfstest.Symlink("/external/runtime")
 		entries["/external/runtime/node_modules/effect"] = vfstest.Symlink("/external/experiments/node_modules/effect")
 	}
 	var fs vfs.FS = bundled.WrapFS(vfstest.FromMap(entries, tspath.CaseInsensitive))
-	parsed, errors := tsoptions.GetParsedCommandLineOfConfigFile("/Users/x/src/tsconfig.json", &core.CompilerOptions{}, nil, fs, nil)
+	parsed, errors := tsoptions.GetParsedCommandLineOfConfigFile("/workspace/x/src/tsconfig.json", &core.CompilerOptions{}, nil, fs, nil)
 	if len(errors) != 0 {
 		t.Fatalf("config: %v", errors)
 	}
@@ -202,7 +202,7 @@ func TestDeclarationImportsRecycledAnnotation(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			files := computedKeyFiles(false)
-			files["/Users/x/src/main.vibe"] = test.source
+			files["/workspace/x/src/main.vibe"] = test.source
 			dts := emitDeclarations(t, files)
 			if !strings.Contains(dts, test.want) {
 				t.Fatalf("declaration lacks %q:\n%s", test.want, dts)
@@ -210,10 +210,10 @@ func TestDeclarationImportsRecycledAnnotation(t *testing.T) {
 			if got := strings.Contains(dts, `import { Effect } from "effect";`); got != test.prelude {
 				t.Fatalf("prelude import = %v, want %v:\n%s", got, test.prelude, dts)
 			}
-			files["/Users/x/src/main.d.ts"] = dts
-			delete(files, "/Users/x/src/main.vibe")
-			files["/Users/x/src/consumer.ts"] = `import * as value from "./main.js"; export { value }`
-			files["/Users/x/src/tsconfig.json"] = `{"compilerOptions":{"strict":true,"skipLibCheck":false,"module":"NodeNext","noEmit":true},"files":["consumer.ts"]}`
+			files["/workspace/x/src/main.d.ts"] = dts
+			delete(files, "/workspace/x/src/main.vibe")
+			files["/workspace/x/src/consumer.ts"] = `import * as value from "./main.js"; export { value }`
+			files["/workspace/x/src/tsconfig.json"] = `{"compilerOptions":{"strict":true,"skipLibCheck":false,"module":"NodeNext","noEmit":true},"files":["consumer.ts"]}`
 			p := computedKeyProgram(t, files)
 			for _, d := range p.GetSemanticDiagnostics(t.Context(), nil) {
 				if d.Category() == diagnostics.CategoryError {
@@ -249,9 +249,9 @@ func TestDeclarationElidesPrivateJSDoc(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			files := computedKeyFiles(false)
-			files["/Users/x/src/main.vibe"] = test.source
+			files["/workspace/x/src/main.vibe"] = test.source
 			if test.name == "strip internal" {
-				files["/Users/x/src/tsconfig.json"] = strings.Replace(files["/Users/x/src/tsconfig.json"], `"declaration":true`, `"declaration":true,"stripInternal":true`, 1)
+				files["/workspace/x/src/tsconfig.json"] = strings.Replace(files["/workspace/x/src/tsconfig.json"], `"declaration":true`, `"declaration":true,"stripInternal":true`, 1)
 			}
 			dts := emitDeclarations(t, files)
 			for _, want := range test.want {

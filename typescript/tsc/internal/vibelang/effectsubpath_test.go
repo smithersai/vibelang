@@ -128,21 +128,21 @@ func TestEffectSubpathNamesMatchEffect(t *testing.T) {
 func TestDeclarationImportsSubpathModule(t *testing.T) {
 	t.Parallel()
 	files := computedKeyFiles(false)
-	effect := "/Users/x/src/node_modules/effect/"
+	effect := "/workspace/x/src/node_modules/effect/"
 	files[effect+"package.json"] = `{"name":"effect","type":"module","exports":{".":{"types":"./index.d.ts"},"./process":{"types":"./process/index.d.ts"},"./*":{"types":"./*.d.ts"}}}`
 	files[effect+"process/index.d.ts"] = `export * as ChildProcess from "./ChildProcess.js"`
 	files[effect+"process/ChildProcess.d.ts"] = "export interface Command { readonly command: string }\nexport declare const make: (command: string) => Command"
-	files["/Users/x/src/main.vibe"] = `export const command: ChildProcess.Command = ChildProcess.make("git")`
+	files["/workspace/x/src/main.vibe"] = `export const command: ChildProcess.Command = ChildProcess.make("git")`
 	dts := emitDeclarations(t, files)
 	for _, want := range []string{`import { ChildProcess } from "effect/process";`, `export declare const command: ChildProcess.Command;`} {
 		if !strings.Contains(dts, want) {
 			t.Fatalf("declaration lacks %q:\n%s", want, dts)
 		}
 	}
-	files["/Users/x/src/main.d.ts"] = dts
-	delete(files, "/Users/x/src/main.vibe")
-	files["/Users/x/src/consumer.ts"] = `import * as value from "./main.js"; export { value }`
-	files["/Users/x/src/tsconfig.json"] = `{"compilerOptions":{"strict":true,"skipLibCheck":false,"module":"NodeNext","noEmit":true},"files":["consumer.ts"]}`
+	files["/workspace/x/src/main.d.ts"] = dts
+	delete(files, "/workspace/x/src/main.vibe")
+	files["/workspace/x/src/consumer.ts"] = `import * as value from "./main.js"; export { value }`
+	files["/workspace/x/src/tsconfig.json"] = `{"compilerOptions":{"strict":true,"skipLibCheck":false,"module":"NodeNext","noEmit":true},"files":["consumer.ts"]}`
 	for _, d := range computedKeyProgram(t, files).GetSemanticDiagnostics(t.Context(), nil) {
 		if d.Category() == diagnostics.CategoryError {
 			t.Fatalf("declaration consumer: %s\n%s", d.String(), dts)

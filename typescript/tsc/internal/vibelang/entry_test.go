@@ -7,8 +7,8 @@ import "testing"
 // runPromise re-exports, and Runtime.makeRunMain.
 func entryRunnerFiles() map[string]string {
 	files := computedKeyFiles(false)
-	effect := "/Users/x/src/node_modules/effect/"
-	runtime := "/Users/x/src/node_modules/vibelang-runtime/"
+	effect := "/workspace/x/src/node_modules/effect/"
+	runtime := "/workspace/x/src/node_modules/vibelang-runtime/"
 	files[effect+"package.json"] = `{"name":"effect","type":"module","exports":{".":{"types":"./index.d.ts"},"./Effect":{"types":"./Effect.d.ts"},"./Inspectable":{"types":"./Inspectable.d.ts"},"./Runtime":{"types":"./Runtime.d.ts"}}}`
 	files[effect+"index.d.ts"] = `export * as Effect from "./Effect.js"; export * as Inspectable from "./Inspectable.js"; export * as Runtime from "./Runtime.js"`
 	files[effect+"Effect.d.ts"] += "\nexport declare const runPromise: <A, E>(effect: Effect<A, E>) => Promise<A>\n"
@@ -42,9 +42,9 @@ func TestEntryMainExplicitRunner(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			files := entryRunnerFiles()
-			files["/Users/x/src/main.vibe"] = "export function main() { return 1 }\n" + test.setup
+			files["/workspace/x/src/main.vibe"] = "export function main() { return 1 }\n" + test.setup
 			program := computedKeyProgram(t, files)
-			file := program.GetSourceFile("/Users/x/src/main.vibe")
+			file := program.GetSourceFile("/workspace/x/src/main.vibe")
 			c, done := program.GetTypeCheckerForFile(t.Context(), file)
 			defer done()
 			if got := entryMain(c, file) != nil; got != test.automatic {

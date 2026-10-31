@@ -29,8 +29,8 @@ import (
 func TestModuleServiceDeclarations(t *testing.T) {
 	t.Parallel()
 	files := computedKeyFiles(false)
-	effect := "/Users/x/src/node_modules/effect/"
-	runtime := "/Users/x/src/node_modules/vibelang-runtime/"
+	effect := "/workspace/x/src/node_modules/effect/"
+	runtime := "/workspace/x/src/node_modules/vibelang-runtime/"
 	files[effect+"package.json"] = `{"name":"effect","type":"module","exports":{".":{"types":"./index.d.ts"},"./ai":{"types":"./ai/index.d.ts"},"./*":{"types":"./*.d.ts"}}}`
 	files[effect+"index.d.ts"] = `export * as Effect from "./Effect.js"; export * as Inspectable from "./Inspectable.js"; export * as FileSystem from "./FileSystem.js"; export * as Option from "./Option.js"`
 	files[effect+"Option.d.ts"] = "export type Option<A> = { readonly _tag: \"Some\"; readonly value: A } | { readonly _tag: \"None\" }\nexport declare const some: <A>(value: A) => Option<A>\n"
@@ -49,7 +49,7 @@ func TestModuleServiceDeclarations(t *testing.T) {
 		"export const first = (value: Option<number>): infer _ => value\n" +
 		"export const spelled = (value: Option.Option<number>): infer _ => value\n"
 	files[src+"prompt.vibe"] = "import { Prompt } from \"effect/ai\"\nexport const text = (prompt: Prompt): string => prompt.text\n"
-	files["/Users/x/src/tsconfig.json"] = `{"compilerOptions":{"strict":true,"target":"ESNext","module":"NodeNext","declaration":true},"files":["main.vibe","prompt.vibe"]}`
+	files["/workspace/x/src/tsconfig.json"] = `{"compilerOptions":{"strict":true,"target":"ESNext","module":"NodeNext","declaration":true},"files":["main.vibe","prompt.vibe"]}`
 	dts := emitDeclarations(t, files)
 	for _, want := range []string{
 		`import { FileSystem as FileSystem_1, Option } from "effect";`,
@@ -70,12 +70,12 @@ func TestModuleServiceDeclarations(t *testing.T) {
 			t.Fatalf("declaration lacks %q:\n%s", want, prompt)
 		}
 	}
-	files["/Users/x/src/main.d.ts"] = dts
-	files["/Users/x/src/prompt.d.ts"] = prompt
-	delete(files, "/Users/x/src/main.vibe")
-	delete(files, "/Users/x/src/prompt.vibe")
-	files["/Users/x/src/consumer.ts"] = `import * as value from "./main.js"; import * as prompt from "./prompt.js"; export { value, prompt }`
-	files["/Users/x/src/tsconfig.json"] = `{"compilerOptions":{"strict":true,"skipLibCheck":false,"module":"NodeNext","noEmit":true},"files":["consumer.ts"]}`
+	files["/workspace/x/src/main.d.ts"] = dts
+	files["/workspace/x/src/prompt.d.ts"] = prompt
+	delete(files, "/workspace/x/src/main.vibe")
+	delete(files, "/workspace/x/src/prompt.vibe")
+	files["/workspace/x/src/consumer.ts"] = `import * as value from "./main.js"; import * as prompt from "./prompt.js"; export { value, prompt }`
+	files["/workspace/x/src/tsconfig.json"] = `{"compilerOptions":{"strict":true,"skipLibCheck":false,"module":"NodeNext","noEmit":true},"files":["consumer.ts"]}`
 	for _, d := range computedKeyProgram(t, files).GetSemanticDiagnostics(t.Context(), nil) {
 		if d.Category() == diagnostics.CategoryError {
 			t.Fatalf("declaration consumer: %s\n%s", d.String(), dts)
@@ -370,15 +370,15 @@ func TestEditorModuleServiceCompletionEndpoint(t *testing.T) {
 // must retain the namespace symbol, rather than an intersection of both.
 func TestModuleServiceCompletionExportsWin(t *testing.T) {
 	files := computedKeyFiles(false)
-	effect := "/Users/x/src/node_modules/effect/"
+	effect := "/workspace/x/src/node_modules/effect/"
 	files[effect+"package.json"] = `{"name":"effect","type":"module","exports":{".":{"types":"./index.d.ts"},"./*":{"types":"./*.d.ts"}}}`
 	files[effect+"FileSystem.d.ts"] = `export interface FileSystem { readonly make: () => number; readonly read: () => string }
 export declare const FileSystem: { readonly "~effect/Context/Service": "~effect/Context/Service"; readonly Identifier: FileSystem; readonly Service: FileSystem };
 export declare const make: (value: string) => FileSystem;`
 	source := "import * as FileSystem from \"effect/FileSystem\"; export function f() { return FileSystem.make(\"x\") }"
-	files["/Users/x/src/main.vibe"] = source
+	files["/workspace/x/src/main.vibe"] = source
 	program := computedKeyProgram(t, files)
-	file := program.GetSourceFile("/Users/x/src/main.vibe")
+	file := program.GetSourceFile("/workspace/x/src/main.vibe")
 	converters := lsconv.NewConverters(lsproto.PositionEncodingKindUTF16, func(name tspath.RootedFilePath) *lsconv.LSPLineMap {
 		return lsconv.ComputeLSPLineStarts(program.GetSourceFile(name).Text())
 	})

@@ -11,7 +11,7 @@ import (
 // D268 attaches the direct marker to the wrapper, including export-list aliases.
 func TestD268ExportListMarker(t *testing.T) {
 	files := computedKeyFiles(false)
-	files["/Users/x/src/main.vibe"] = `function double(n: number) { return n * 2 }; export { double, double as twice }`
+	files["/workspace/x/src/main.vibe"] = `function double(n: number) { return n * 2 }; export { double, double as twice }`
 	p := computedKeyProgram(t, files)
 	var js string
 	p.Emit(t.Context(), compiler.EmitOptions{WriteFile: func(name tspath.RootedFilePath, text string, _ *compiler.WriteFileData) error {

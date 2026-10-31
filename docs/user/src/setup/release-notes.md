@@ -414,6 +414,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - VIP-39's JSX clash table showed `x ?? throw <E/>`, a throw expression that no VIP adds and TypeScript rejects. The row now shows the `throw` statement and `x ?? do { throw <E/> }`.
 
 - The migrate flow's setup left a build script that only runs `tsc` through Bun's shell, such as opencode's codemode `` $`bun tsc -p tsconfig.build.json` ``, on stock `tsc`, so the published `dist/index.js` imported `./codemode.vibe` and failed to load once installed; setup now runs `vibelang` there too, which writes `dist/codemode.js`, and adds `vibelang` to the package's `devDependencies`.
+
+- Adding a host interface augmentation in a `.ts` file disabled platform diagnostics for constructors such as `XMLHttpRequest`; those references now keep `EK4402`, while local and imported bindings still shadow globals.
 - `FuzzCommandLine` could fail with `the compilation rewrote the source main.d.vibe.ts` in a checkout where an earlier compile had left that sidecar in an acceptance case; the fuzz seeds now skip these generated files.
 
 - `vibelang --fix` refused to annotate the first of two `Config` helpers that a plain function calls, so neither helper was fixed: the function's one `EK9203` moved with the edit and named the second call, which the gate read as a new error; a span after or before a fix's edits in the file it edits is now compared where it lay before them.

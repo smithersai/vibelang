@@ -22,19 +22,19 @@ func TestProvideBlockKeepsProviderWhenScoped(t *testing.T) {
 		t.Run(body, func(t *testing.T) {
 			t.Parallel()
 			files := computedKeyFiles(false)
-			base := "/Users/x/src/node_modules/"
+			base := "/workspace/x/src/node_modules/"
 			files[base+"effect/Effect.d.ts"] += `
 export declare function succeed<A>(value: A): Effect<A>
 `
 			files[base+"vibelang-runtime/index.d.ts"] += `
 export declare function fork<A, E, R>(program: import("effect/Effect").Effect<A, E, R>): import("effect/Effect").Effect<unknown, never, R>
 `
-			files["/Users/x/src/main.vibe"] = `
+			files["/workspace/x/src/main.vibe"] = `
 import { provider } from "./provider.js"
 export function example() { provide provider { ` + body + ` } }
 `
 			// Provider channels have the same variance structure as Effect's Layer.
-			files["/Users/x/src/provider.d.ts"] = `
+			files["/workspace/x/src/provider.d.ts"] = `
 export declare const provider: { readonly "~effect/Layer": {
   readonly _ROut: (_: never) => void
   readonly _E: (_: never) => never
