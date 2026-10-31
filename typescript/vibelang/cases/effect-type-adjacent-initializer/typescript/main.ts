@@ -1,5 +1,5 @@
 import { Effect } from "effect"
-const x:Effect.Effect<number>=Effect.succeed(1)
-const y = (1 as number !== 0)
-const z = (1 as number != 0)
+export const x:Effect.Effect<number>=Effect.succeed(1)
+export const y = (1 as number !== 0)
+export const z = (1 as number != 0)
 export {}

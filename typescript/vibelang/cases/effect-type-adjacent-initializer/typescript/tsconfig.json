@@ -9,7 +9,7 @@
     "declaration": true,
     "outDir": "out"
   },
-  "include": [
-    "*.ts"
+  "files": [
+    "main.ts"
   ]
 }
