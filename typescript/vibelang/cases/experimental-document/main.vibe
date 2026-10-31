@@ -1,0 +1,15 @@
+// expect-result: {"prevented":true,"key":"ArrowUp"}
+// foldkit's examples/snake/src/main.ts: the injected Document goes to a helper that takes an event target. The real
+// Document type carries keydown's event type to the callback.
+import { cancelKeydown, fakeDocument, pressKey } from "./page.ts"
+
+export effect function main() {
+  provide Experimental.Document.layerTest(fakeDocument()) {
+    const document = try (try Experimental.Document.Document).current
+    let key = ""
+    cancelKeydown(document, (event) => {
+      key = event.key
+    })
+    return { prevented: pressKey(document, "ArrowUp"), key }
+  }
+}

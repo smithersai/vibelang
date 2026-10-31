@@ -226,7 +226,7 @@ export const run = (key: Uint8Array) => createHmac("sha256", key)`, []string{
 		}},
 		{"gap", `export const run = () => document.title`, []string{
 			"document.title is platform code, which VibeLang code does not use directly.",
-			noServiceYet, "Effect has no service for the DOM; UI code belongs in a .ts or .tsx file, such as a React component's.",
+			noServiceYet, "Effect has no service for the DOM; try (try Experimental.Document.Document).current gives an API that takes it the page's Document, and other UI code belongs in a .ts or .tsx file, such as a React component's.",
 			"Run it in a hatch:   sync(() => document.title), or with try when it can throw; or move it to a module block or a .ts file.",
 		}},
 		{"clock", `export const run = () => Date.now()`, nil},

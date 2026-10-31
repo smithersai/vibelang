@@ -52,6 +52,11 @@
       "import": "./dist/experimental/Crypto.js",
       "default": "./dist/experimental/Crypto.js"
     },
+    "./experimental/Document": {
+      "types": "./dist/experimental/Document.d.ts",
+      "import": "./dist/experimental/Document.js",
+      "default": "./dist/experimental/Document.js"
+    },
     "./experimental/FileReader": {
       "types": "./dist/experimental/FileReader.d.ts",
       "import": "./dist/experimental/FileReader.js",

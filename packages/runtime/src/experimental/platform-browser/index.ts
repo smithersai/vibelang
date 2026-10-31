@@ -8,6 +8,7 @@
  */
 export * as ExperimentalBrowserAnimations from "./ExperimentalBrowserAnimations.js"
 export * as ExperimentalBrowserCrypto from "./ExperimentalBrowserCrypto.js"
+export * as ExperimentalBrowserDocument from "./ExperimentalBrowserDocument.js"
 export * as ExperimentalBrowserFileReader from "./ExperimentalBrowserFileReader.js"
 export * as ExperimentalBrowserLocks from "./ExperimentalBrowserLocks.js"
 export * as ExperimentalBrowserMediaQuery from "./ExperimentalBrowserMediaQuery.js"

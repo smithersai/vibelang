@@ -75,7 +75,7 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `crypto.verify` | `try (try Signature.Signature).verify(publicKey, signature, data)` |
 | `crypto.webcrypto` | `try (try Mac.Mac).sign(macKey, data)` |
 | `dispatchEvent` | `Stream.fromEventListener(target, "message")` |
-| `document` | escape to TypeScript for now: Effect has no service for the DOM; UI code belongs in a .ts or .tsx file, such as a React component's. |
+| `document` | escape to TypeScript for now: Effect has no service for the DOM; try (try Experimental.Document.Document).current gives an API that takes it the page's Document, and other UI code belongs in a .ts or .tsx file, such as a React component's. |
 | `document.addEventListener` | `BrowserStream.fromEventListenerDocument("visibilitychange")` |
 | `exports` | `export const name = value` |
 | `fetch` | `try HttpClient.get(url)` |

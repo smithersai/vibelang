@@ -125,6 +125,7 @@ var platformServices = map[string]*platformService{
 	"ExperimentalAnimations":     {"the experimental Animations service", "try (try Experimental.Animations.Animations).nextFrame", "", experimentalBrowser},
 	"ExperimentalFileReader":     {"the experimental FileReader service", "try (try Experimental.FileReader.FileReader).readAsText(blob)", "", experimentalBrowser},
 	"ExperimentalResizeObserver": {"the experimental ResizeObserver service", "try (try Experimental.ResizeObserver.ResizeObserver).observe(element, onResize)", "", experimentalBrowser},
+	"ExperimentalDocument":       {"the experimental Document service", "try (try Experimental.Document.Document).current", "", experimentalBrowser},
 	"import":                     {"an import declaration", `import { name } from "./module.ts"`, "", ""},
 	"export":                     {"an export declaration", "export const name = value", "", ""},
 }
@@ -295,7 +296,7 @@ var platformAPIs = map[string]platformAPI{
 	"navigator.hardwareConcurrency": {"ExperimentalProcess", "Experimental.Process.availableParallelism()", ""},
 	"navigator":                     {note: "Effect has no service for the browser's navigator; navigator.clipboard, geolocation, permissions, and locks have services."},
 	"navigator.*":                   {note: "Effect has no service for the browser's other navigator properties; read them in a .ts file."},
-	"document":                      {note: domGap},
+	"document":                      {note: documentGap},
 	"window":                        {note: domGap},
 	"location":                      {note: domGap},
 	"history":                       {note: domGap},
@@ -372,6 +373,7 @@ const (
 	cryptoFamilies = "effect/crypto has a service for each WebCrypto family: Digest, Mac, Signature, Cipher, Aead, Kdf, KeyAgreement and KeyWrap."
 	signatureKeys  = "Signature.privateKey(Signature.ed25519, bytes) and Signature.publicKey make the keys from their bytes."
 	aeadKeys       = "Aead.key(Aead.aes256Gcm, bytes) makes the key; Aead also has ChaCha20-Poly1305, and Cipher has AES-CTR and AES-CBC."
+	documentGap    = "Effect has no service for the DOM; try (try Experimental.Document.Document).current gives an API that takes it the page's Document, and other UI code belongs in a .ts or .tsx file, such as a React component's."
 	domGap         = "Effect has no service for the DOM; UI code belongs in a .ts or .tsx file, such as a React component's."
 	frameGap       = "Effect has no service for the browser's idle callbacks; schedule work with Schedule, or call them in a .ts file."
 	dialogGap      = "Effect has no service for the browser's dialogs; a terminal program asks with Terminal.readLine()."
