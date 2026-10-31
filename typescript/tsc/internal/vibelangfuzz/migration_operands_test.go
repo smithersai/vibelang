@@ -21,12 +21,14 @@ type migrationOperandRule struct {
 // These types meet (or explicitly fail) the spec's structural assignability
 // test. The oracle does not ask today's compiler to decide the expected side.
 // alchemy-20 supplies the Config, inherited, branded and callable witnesses;
-// alchemy-14 supplies the yieldable error.
+// alchemy-14 supplies the yieldable error; t3code supplies the generic
+// subinterface, Effect's sql Statement<A>.
 func migrationOperandRules() []migrationOperandRule {
 	return []migrationOperandRule{
 		{"exact", "declare const input: Effect.Effect<number, string>;", true},
 		{"config", "declare const input: Config.Config<string>;", true},
 		{"inherited", "interface Sub extends Effect.Effect<number> { readonly tag: \"Sub\" }; declare const input: Sub;", true},
+		{"statement", "interface Statement<A> extends Effect.Effect<ReadonlyArray<A>, string> { readonly sql: string }; declare const input: Statement<{ readonly value: number }>;", true},
 		{"branded", "declare const input: Effect.Effect<number> & { readonly brand: \"Service\" };", true},
 		{"callable", "type Operation = ((id:string) => Effect.Effect<number, string>) & Effect.Effect<(id:string) => Effect.Effect<number, string>>; declare const input: Operation;", true},
 		{"generic", "type Wrapped<T> = Effect.Effect<T, string>; declare const input: Wrapped<number>;", true},

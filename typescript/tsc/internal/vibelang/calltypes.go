@@ -26,6 +26,7 @@ func callExpressionType(c *checker.Checker, call *ast.Node, t *checker.Type) *ch
 		// skips expression hooks, including parenthesized callback returns.
 		return returnedProgramType(c, call, t)
 	}
+	t = triedResult(c, call, t)
 	if ast.IsOptionalChain(call) {
 		parts := []*checker.Type{}
 		for _, part := range t.Distributed() {
@@ -78,7 +79,24 @@ func callRunsResult(c *checker.Checker, call *ast.Node, t *checker.Type) bool {
 	if ast.IsOptionalChain(call) {
 		t = presentCallResult(c, t)
 	}
-	return isEffectType(c, t)
+	return isEffectType(c, triedResult(c, call, t))
+}
+
+// triedResult is the Effect that call, written after try, runs when its
+// result t is an Effect with structure of its own: t read as Effect<A, E, R>
+// (effectOfValue), as try reads a stored value (Chapter 2's operand test). A
+// Config, a branded Effect, or an interface that extends Effect, such as
+// sql's Statement<A>, then runs where `try make()` stands, as `const s =
+// make(); try s` runs it. Without try, D24 keeps such a result as data, and t
+// stays as it is.
+func triedResult(c *checker.Checker, call *ast.Node, t *checker.Type) *checker.Type {
+	if call.Flags&ast.NodeFlagsVibeLangTry == 0 || t == nil || isEffectType(c, t) {
+		return t
+	}
+	if effect := effectOfValue(c, t); effect != nil {
+		return effect
+	}
+	return t
 }
 
 // inLowerableBody reports whether node is evaluated by the body of a function

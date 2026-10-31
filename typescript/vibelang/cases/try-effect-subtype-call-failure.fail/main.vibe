@@ -1,0 +1,9 @@
+// expect: EK9201
+// try failing() runs a Statement<A>, an interface that extends
+// Effect<ReadonlyArray<A>, string>, so its string failure is the function's:
+// a contract that says E = never leaves it out.
+import { failing } from "./factories.ts"
+
+export effect function count(): number!! {
+  return (try failing()).length
+}

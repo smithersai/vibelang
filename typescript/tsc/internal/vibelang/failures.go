@@ -220,7 +220,7 @@ func (a *analyzer) addCall(info *effectInfo, call *ast.Node) {
 	// D269 declared factories and S3-3 plain factories read returned channels.
 	// A plain factory returns an existing program: its E/R belong to that
 	// program's type, not to the JavaScript body that constructs it.
-	t := runningCallResultOf(a.checker, call, a.callReturnType(sig))
+	t := triedResult(a.checker, call, runningCallResultOf(a.checker, call, a.callReturnType(sig)))
 	if e := channelType(a.checker, t, "_E"); e != nil {
 		info.addError(e, call)
 	}

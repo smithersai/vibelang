@@ -187,6 +187,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The migrate flow's declaration emit deleted every `.d.ts` file it wrote outside its output directory, so setup and verify deleted a tracked declaration file beside a source outside a project's `rootDir`; the emit now removes only the files it created and puts back the ones that existed.
 
+- `try make()` where `make()` returns an Effect with structure of its own, such as Effect's sql `Statement<A>`, a `Config` or a branded Effect, was `EK0502` ("not an Effect"), or for a `.ts` function compiled to a plain call that left the value unrun, while `const s = make(); try s` ran it. The call now runs where `try` stands, gives its success value, and its failures join the function's.
+
 - Cross-platform compiler builds could fail without naming the affected platform or its exit status; each target now keeps a completion record and silent failures are identified.
 
 
