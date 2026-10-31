@@ -308,6 +308,8 @@ func reportPatternError(c *checker.Checker, file *ast.SourceFile, call *ast.Node
 		if len(args) > 1 && args[1].Kind == ast.KindStringLiteral {
 			reportAt(c, file, at, EK0707, args[1].Text())
 		}
+	case 107:
+		note(reportAt(c, file, at, EK0107), "A pattern binds a name with let or const: write when let x: or when const x:. The quick fix and vibelang --fix replace this var with let.")
 	case 1017:
 		reportAt(c, file, at, EK1017)
 	case 4702:
