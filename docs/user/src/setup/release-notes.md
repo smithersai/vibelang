@@ -173,6 +173,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A browser crash during the site's contrast check reported only `Target crashed`; diagnostics now name the theme, page, audit state, failed requests and resource pressure.
 
+- Chapter 1 showed an `effect` function binding its parameters before `Effect.gen`, as if a destructuring failure threw at the call; it now says the call returns an Effect that dies with the error, as an `async` call returns a rejected Promise.
+
 - The specification omitted the code for `try a ** b`, which ECMAScript-style parsing rejects as it rejects `await a ** b`; chapter 2 and Appendix B now name it `EK0510`, with the fix `(try a) ** b`.
 
 - The specification did not say that one `vibelang --fix` run reaches a fixed point, or how a missing `vibelang-runtime` is reported; chapter 7 now states both: a second run changes nothing, and a missing runtime is one `TS2307` error naming the package.
