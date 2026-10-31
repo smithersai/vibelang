@@ -1,0 +1,9 @@
+{
+  "importer": "src/use.ts",
+  "originalModule": "src/leaf.ts",
+  "nativeModule": "src/leaf.vibe",
+  "before": "import { answer } from './leaf'\nexport const result = answer\n",
+  "after": "import { answer } from './leaf.vibe'\nexport const result = answer\n",
+  "module": "export const answer = 42\n",
+  "declaration": "export declare const answer = 42;\n"
+}
