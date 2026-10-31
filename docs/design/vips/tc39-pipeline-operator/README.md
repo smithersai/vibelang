@@ -21,7 +21,7 @@ The topic token is `%`, the explainer placeholder. The upstream `spec.html` stay
 | Area | Effective behavior |
 | --- | --- |
 | Missing topic | The missing-topic early error checks `AssignmentExpression` with `ContainsOuterTopic`, not the wrapping `PipeBody`. `ContainsOuterTopic(PipeBody)` stays `false`, hiding a nested body from its outer topic check. |
-| Grammar entry and chains | `PipeExpression` is an alternative of `ShortCircuitExpression`. A body whose whole unparenthesized expression is a `PipeExpression` is an early error, leaving unparenthesized chains left-associated. Parenthesized nesting remains valid, with separate topic scopes. |
+| Grammar entry and chains | `PipeExpression` is an alternative of `ShortCircuitExpression`. A body whose whole unparenthesized expression is a `PipeExpression` is an early error, leaving unparenthesized chains left-associated. Parenthesized nesting remains valid, with separate topic scopes. A `PipeExpression` as the test of a `ConditionalExpression` is an early error too, keeping the explainer’s precedence for `|>`, looser than `?:`; a parenthesized test or body and a pipe in a branch stay valid. |
 | Input evaluation | Evaluation belongs to the declared `ShortCircuitExpression` input, which evaluates once and is read with `GetValue` before `EvaluateWithTopics`. The printed `ConditionalExpression` reference does not change precedence. |
 | Topic read | `GetPrimaryTopicValue` reads `topicEnv.[[TopicValues]]`, the environment it just obtained; the printed `envRec` is out of scope. |
 | Punctuators | Binary XOR `^` and XOR assignment `^=` retain their TypeScript meanings. The duplicated `%` in `OtherPunctuator` does not delete XOR; `%` remains modulo or the topic according to its syntactic position. |

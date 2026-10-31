@@ -468,6 +468,15 @@ ConditionalExpression = ShortCircuitExpression "?" AssignmentExpression ":" Assi
 
 It is a Syntax Error if the `ShortCircuitExpression` before `?` is a `CatchExpression` whose handler is an `ArrowHandler`; the `?` then belongs to the arrow's body.
 
+It is a Syntax Error if the `ShortCircuitExpression` before `?` is a [PipeExpression](/spec/900-appendices#pipeexpression). The pinned proposal gives `|>` the precedence of `=>` and assignment, looser than `?:`, and rejects a conditional as a pipe head or body, so `x |> f(%) ? 1 : 2` has one answer, a syntax error. A parenthesized pipe is a `ParenthesizedExpression`, and a pipe in either branch is an `AssignmentExpression`, so neither is affected:
+
+```text
+x |> f(%) ? 1 : 2           syntax error: write (x |> f(%)) ? 1 : 2 or x |> (f(%) ? 1 : 2)
+(x |> f(%)) ? 1 : 2         the pipe result is the test
+x |> (f(%) ? 1 : 2)         the conditional is the body
+ok ? x |> % + 1 : 0         a pipe in a branch
+```
+
 <a id="closedcatchexpression"></a>
 
 ```text
