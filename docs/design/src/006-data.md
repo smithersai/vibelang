@@ -326,6 +326,7 @@ VIP-7 includes `data` unions and [tagged members](004-match.md#tagged-members) i
 | Rule | Diagnostic |
 | --- | --- |
 | a variant field named `_tag`; rename it, because the variant name supplies the tag | `EK1601` |
+| a variant named `$is` or `$match`, generic data included; rename it and its resolved references to a fresh name | `EK1602` |
 | `export default data D { … }`; declare the name and write `export { D as default }` | `EK1603` |
 
 
@@ -338,7 +339,6 @@ const D = Data.taggedEnum<D>()
 export { D as default }
 const namedDataExit = Effect.runSyncExit(Effect.sync(() => D.A())) // Success({ _tag: "A" })
 ```
-| a variant named `$is` or `$match`, generic data included; rename it and its resolved references to a fresh name | `EK1602` |
 
 ### Generic unions
 
