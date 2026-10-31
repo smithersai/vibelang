@@ -195,6 +195,8 @@ The same change set adds what the first results argued for:
 | 15 more generated runtime forms: joined fiber literals, detached, scoped and scope-held forks, Cause values, interruptible regions, held fibers interrupted inside `try`/`finally` with `using`, failures beside defects | VibeLang and Effect agreed on every seed. `yield` in a producer's `do` block is TS1163, and writing the inferred contract on a function holding an async hatch is TS7024 |
 | `nightly.sh`: every seed, then every target's campaign, against the latest `main` each night on the build host, the race detector on Sundays | Its first test run found the formatter refusing a field comma (EK1013), recorded in `tools.txt` |
 
+The splicer also has fixed same-file fixtures for every category, including block parameters. `TestSpliceMutationCategories` guarantees a witness without selecting from the changing donor pool; `FuzzSpliceMutation` varies node, donor and selection-mode choices under named category keys and checks replay, source spans and category preservation. `TestSpliceMutation` retains both real-corpus samples and its explicit fallback for a rare category.
+
 ## Independent review
 
 Two independent reviews ran before the suite landed. Codex Astra (`gpt-6-astra`) reviewed it against the specification first. It found every registered code and every Forms row accounted for, and eight classes of weakness. Each was fixed before landing, except where the table says otherwise:

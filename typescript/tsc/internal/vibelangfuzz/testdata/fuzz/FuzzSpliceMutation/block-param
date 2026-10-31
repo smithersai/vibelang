@@ -1,0 +1,2 @@
+go test fuzz v1
+string("block-param\u0000\u0000\u0002\u0000")
