@@ -1538,7 +1538,7 @@ function f(xs: number[]) {
 
 `|>` follows the pinned TC39 Hack pipe proposal with the snapshot reconciliations and effective [PipeExpression](/spec/900-appendices#pipeexpression) and [PipeBody](/spec/900-appendices#pipebody). `%` is the topic: the left input value, evaluated once at its source position. The input is the declared [ShortCircuitExpression](/spec/900-appendices#shortcircuitexpression), read with `GetValue`; the printed evaluator's [ConditionalExpression](/spec/900-appendices#conditionalexpression) is a stale reference, not a change of precedence.
 
-The missing-topic early error applies `ContainsOuterTopic` to the body's `AssignmentExpression` child; the [PipeBody](/spec/900-appendices#pipebody) boundary still returns `false`, so an inner topic cannot satisfy an outer body. A body whose whole unparenthesized expression is a pipe is also an early error, making a chain sequential and left-associated. Parenthesized nested pipes retain their separate topic scopes. The existing conditional, yield, assignment and arrow covering-production errors remain. `GetPrimaryTopicValue` reads `topicEnv.[[TopicValues]]`, the environment it just acquired. Binary XOR `^` and XOR assignment `^=` keep their TypeScript meanings; the snapshot's duplicated `%` does not remove them, and `%` remains the topic or modulo according to its syntactic position.
+The missing-topic early error applies `ContainsOuterTopic` to the body's `AssignmentExpression` child; the [PipeBody](/spec/900-appendices#pipebody) boundary still returns `false`, so an inner topic cannot satisfy an outer body. A body whose whole unparenthesized expression is a pipe is also an early error, making a chain sequential and left-associated. Parenthesized nested pipes retain their separate topic scopes. The existing conditional, yield, assignment and arrow covering-production errors remain, and an [EffectArrow](/spec/900-appendices#effectarrow) is an arrow here. A pipe input cannot end in an open arrow handler, so a `|>` after `catch () => y` belongs to the handler's body, at the right edge of a pipe body too ([CatchExpression](/spec/900-appendices#catchexpression)). `GetPrimaryTopicValue` reads `topicEnv.[[TopicValues]]`, the environment it just acquired. Binary XOR `^` and XOR assignment `^=` keep their TypeScript meanings; the snapshot's duplicated `%` does not remove them, and `%` remains the topic or modulo according to its syntactic position.
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-23
@@ -1574,6 +1574,34 @@ const outer = 1 |> (2 |> % + 1)            // syntax error: outer body has no to
 ```
 
 An unparenthesized conditional at either end of a pipe is `EK2301`: `x |> % ? 1 : 2 // EK2301`; write `(x |> %) ? 1 : 2` or `x |> (% ? 1 : 2)`.
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-5, VIP-23
+effect function rightEdge() {
+  const x = succeed(5)
+  const a = x |> % catch () => 0 |> % + 1            // 5: + 1 belongs to the handler
+  const b = (x |> % catch () => 0) |> % + 1          // 6: parentheses close the handler
+  const c = x |> % catch () => { return 0 } |> % + 1 // 6: a block closes the handler
+  return [a, b, c]
+}
+const bare = 1 |> effect () => % |> [%]              // rejected: an arrow as a whole pipe body
+const closed = 1 |> (effect () => %)                 // a parenthesized arrow, not run
+```
+
+```ts [Effect]
+import { Effect } from "effect"
+
+const rightEdge = Effect.gen(function* () {
+  const x = Effect.succeed(5)
+  const a = yield* Effect.catch(x, () => Effect.succeed(0 + 1))
+  const $t1 = yield* Effect.catch(x, () => Effect.succeed(0))
+  const b = $t1 + 1
+  const $t2 = yield* Effect.catch(x, () => { return Effect.succeed(0) })
+  const c = $t2 + 1
+  return [a, b, c]
+})
+const rightEdgeExit = Effect.runSyncExit(rightEdge) // Success([5, 6, 6])
+```
 
 The admitted controls have the following Effect TypeScript counterpart, with `Success([2, 4, 4, 1, 11, 7, true, 2, 2, 3])`:
 

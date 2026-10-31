@@ -1,0 +1,6 @@
+// expect: EK2301 EK2301 EK2301
+// Appendix A, decided detail 246 (loop round 3, OPUS-3): an arrow is not a whole
+// pipe body, an EffectArrow included.
+export const plain = 1 |> () => %
+export const later = 1 |> async () => %
+export const effectful = 1 |> effect () => %

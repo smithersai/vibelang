@@ -1,0 +1,15 @@
+// expect-result: {"edge":5,"grouped":6,"block":6,"effectBlock":6,"failed":1,"head":5}
+// Appendix A, decided detail 246 (loop round 3, OPUS-3): a pipe after an open
+// catch arrow handler belongs to the handler's body. Parentheses, a closed
+// handler and a block body end the handler.
+const x: number!string = Effect.succeed(5)
+const none: number!string = Effect.fail("no")
+export effect function main() {
+  const edge = x |> % catch () => 0 |> % + 1
+  const grouped = (x |> % catch () => 0) |> % + 1
+  const block = x |> % catch () => { return 0 } |> % + 1
+  const effectBlock = x |> % catch effect () => { return 0 } |> % + 1
+  const failed = none |> % catch () => 0 |> % + 1
+  const head = x catch () => 0 |> % + 1
+  return { edge, grouped, block, effectBlock, failed, head }
+}

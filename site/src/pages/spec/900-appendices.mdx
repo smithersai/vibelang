@@ -320,7 +320,7 @@ PipeExpression = ShortCircuitExpression "|>" PipeBody
 PipeBody = AssignmentExpression
 ```
 
-These productions carry the enclosing `In`, `Yield`, `Await` and `Effect` grammar parameters consistently. Alongside the pinned covering-production restrictions on conditional, yield, assignment and arrow bodies, reject a body whose whole unparenthesized expression is a `PipeExpression`. Thus an unparenthesized chain has its unique sequential left-associated derivation; a parenthesized nested pipe remains valid with a separate topic scope. This restriction tests the whole body, not every nested occurrence of a pipe.
+These productions carry the enclosing `In`, `Yield`, `Await` and `Effect` grammar parameters consistently. Alongside the pinned covering-production restrictions on conditional, yield, assignment and arrow bodies, an `EffectArrow` included, reject a body whose whole unparenthesized expression is a `PipeExpression`. Thus an unparenthesized chain has its unique sequential left-associated derivation; a parenthesized nested pipe remains valid with a separate topic scope. This restriction tests the whole body, not every nested occurrence of a pipe.
 
 It is a Syntax Error if the `ShortCircuitExpression` of a `PipeExpression` is a `CatchExpression` whose handler is an `ArrowHandler`; the `|>` then belongs to the arrow's body, as `?` does under [ConditionalExpression](/spec/900-appendices#conditionalexpression). So `a catch () => b |> % + 1` is `a catch (() => (b |> % + 1))`; write `(a catch () => b) |> % + 1` to pipe the recovered value.
 
@@ -483,6 +483,8 @@ ConditionalExpression = ShortCircuitExpression "?" AssignmentExpression ":" Assi
 ```
 
 It is a Syntax Error if the `ShortCircuitExpression` before `?` is a `CatchExpression` whose handler is an `ArrowHandler`; the `?` then belongs to the arrow's body.
+
+It is a Syntax Error if the input of a [PipeExpression](/spec/900-appendices#pipeexpression) ends in an open arrow handler: a `CatchExpression` whose handler is an `ArrowHandler` with an expression body, or a `PipeExpression` whose `PipeBody` ends in one. The `|>` then belongs to the arrow's body, as `?` does above: `a catch () => b |> % + 1` is `a catch (() => (b |> % + 1))`, and `x |> % catch () => y |> % + 1` is `x |> (% catch (() => (y |> % + 1)))`. This removes a derivation, not a program. Parentheses around the handler or the whole `catch` expression, a `NonArrowHandler` and a block-bodied arrow close the handler, so a following `|>` pipes the recovered value.
 
 It is a Syntax Error if the `ShortCircuitExpression` before `?` is a [PipeExpression](/spec/900-appendices#pipeexpression). The pinned proposal gives `|>` the precedence of `=>` and assignment, looser than `?:`, and rejects a conditional as a pipe head or body, so `x |> f(%) ? 1 : 2` has one answer, a syntax error. A parenthesized pipe is a `ParenthesizedExpression`, and a pipe in either branch is an `AssignmentExpression`, so neither is affected:
 

@@ -694,6 +694,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 - The Foldkit guide showed only the small example app inline; it now also compares four excerpts from Foldkit's own migrated source with their originals.
+- `a catch () => b |> % + 1`, `x |> % catch () => y |> % + 1` and `1 |> effect () => % |> [%]` each had two parses in the spec. A pipe after an open arrow handler now belongs to the handler, and an `EffectArrow` is an arrow for the pipe-body restriction.
+
 - Six VibeLang syntax rules had no code in Appendix B. They are now `EK0109`, `EK0202`, `EK0512`, `EK1505` and `EK1606`; the compiler moves to them with its pending cases.
 
 - The spec said `S.Shape` is undeclared for a local service, against VIP-9. A local service now names `S.Shape` inside its own members, and uses `Context.Service.Shape<typeof S>` elsewhere.
