@@ -194,14 +194,14 @@ func checkExitCodeOptions(t *testing.T, options *core.CompilerOptions, diagnosti
 		"noEmitOnError": compiler.FilterDiagnosticsForNoEmitOnErrorCallback,
 	}
 	for _, ignore := range []bool{true, false} {
-		set := *options
+		set := options.Clone()
 		effect := *options.Effect
 		effect.IgnoreEffectErrorsInTscExitCode = ignore
 		effect.IgnoreEffectWarningsInTscExitCode = ignore
 		effect.IgnoreEffectSuggestionsInTscExitCode = ignore
 		set.Effect = &effect
 		for _, name := range mapKeys(filters) {
-			kept := filters[name](&set, diagnostics)
+			kept := filters[name](set, diagnostics)
 			want := len(diagnostics) - effects
 			if !ignore {
 				want = len(diagnostics)

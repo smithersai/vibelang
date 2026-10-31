@@ -203,6 +203,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - `vibelang/knip` stubbed each export without its signature, so Knip reported an export as unused when only another export's signature read it, such as `sample` in `export function read(input: typeof sample)`, where the TypeScript passed; the stub now keeps the types a signature reads, outside its body.
 
+- Running `go vet` on the fuzz suite reported a copied compiler-options lock guard; lint severity checks now clone options without copying that guard.
+
 
 - Checking documentation examples with a symlinked `TMPDIR` could stop with `Compiler failed` instead of reporting an example's type error; diagnostics now stay attached to their examples and later pages are checked.
 
