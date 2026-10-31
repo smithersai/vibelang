@@ -23,6 +23,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The specification described `async match` without connecting it to Appendix A. Explicit primary-expression productions now connect match bodies and the independent async context, including its line-break and jump restrictions.
 
+- `vibelang --fix` crashed with a nil pointer dereference when `EK9203` was reported at a return annotation that is itself a function type, such as `(): () => Effect.Effect<number, never, never> => { … }`. It now looks for the helper behind the annotated functions first Effect call and writes that helpers return type, or leaves the annotation alone when there is none.
+
 - Editor parsing rejected `for try` `Stream` loops; the tree-sitter grammar now recognizes the loop and its `continue` and `break` statements.
 
 - In a project that emits declarations, `vibelang --fix` removed an import such as `import * as DateTime from "effect/DateTime"` that the declaration file still printed, through a local type an export names (`type NonNull<V> = V extends DateTime.Utc ? …`), a conditional type or a written `keyof DateTime.Utc`, so the declaration imported `{ DateTime } from "effect"`; `--fix` now keeps every import the file's declaration keeps.

@@ -171,8 +171,13 @@ func planFile(resolver printer.EmitResolver, file *ast.SourceFile) *plan {
 
 // forEachCallInBody calls cb for each call that fn's own body evaluates,
 // skipping nested functions and classes, until cb returns true. It reports
-// whether cb returned true.
+// whether cb returned true. A function-like node without a body, a function
+// type or an overload signature, evaluates no call.
 func forEachCallInBody(fn *ast.Node, cb func(call *ast.Node) bool) bool {
+	body := fn.Body()
+	if body == nil {
+		return false
+	}
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		if isFunctionBoundary(node) {
@@ -183,13 +188,17 @@ func forEachCallInBody(fn *ast.Node, cb func(call *ast.Node) bool) bool {
 		}
 		return node.ForEachChild(visit)
 	}
-	return visit(fn.Body())
+	return visit(body)
 }
 
 // forEachRunningCallInBody excludes expressions passed by name (D147).
 // Constructing a cold program does not make its enclosing factory effectful.
 // Lowering still uses forEachCallInBody to plan the deferred program itself.
 func (a *analyzer) forEachRunningCallInBody(fn *ast.Node, cb func(*ast.Node) bool) bool {
+	body := fn.Body()
+	if body == nil {
+		return false
+	}
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		if isFunctionBoundary(node) || a.isByName(node) {
@@ -200,7 +209,7 @@ func (a *analyzer) forEachRunningCallInBody(fn *ast.Node, cb func(*ast.Node) boo
 		}
 		return node.ForEachChild(visit)
 	}
-	return visit(fn.Body())
+	return visit(body)
 }
 
 type fnState uint8

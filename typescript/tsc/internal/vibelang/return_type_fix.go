@@ -86,9 +86,10 @@ var returnTypeFix = &ls.CodeFixProvider{
 
 // unannotatedHelperAt returns the function behind node, the node a written
 // form diagnostic was reported at: the function a name passes, the function a
-// call calls, or, for a function that runs one, the function its first
-// Effect call calls. It returns nil when that is not a .vibe function without
-// a return annotation.
+// call calls, or, for a function with a body that runs one, the function its
+// first Effect call calls. A return annotation, a function type among them,
+// stands for the function it annotates. It returns nil when that is not a
+// .vibe function without a return annotation.
 func (a *analyzer) unannotatedHelperAt(node *ast.Node) *ast.Node {
 	if node == nil {
 		return nil
@@ -99,11 +100,11 @@ func (a *analyzer) unannotatedHelperAt(node *ast.Node) *ast.Node {
 		fn = esFunctionOf(a.checker, node)
 	case isInvocation(node):
 		fn = a.calledFunction(node)
-	case ast.IsFunctionLike(node):
+	case ast.IsFunctionLike(node) && node.Body() != nil:
 		if pause := a.firstPause(node); pause != nil {
 			fn = a.calledFunction(pause)
 		}
-	case node.Parent != nil && ast.IsFunctionLike(node.Parent) && node.Parent.Type() == node:
+	case node.Parent != nil && ast.IsFunctionLike(node.Parent) && node.Parent.Body() != nil && node.Parent.Type() == node:
 		if pause := a.firstPause(node.Parent); pause != nil {
 			fn = a.calledFunction(pause)
 		}
