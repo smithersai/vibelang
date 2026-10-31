@@ -412,22 +412,16 @@ func toolsUnpermitted(t *testing.T, w *Workspace, r *Result, codes []int32, refu
 	return out
 }
 
-// TestFixPermittedRefusals checks the refusal oracle of FuzzFix on the
-// acceptance case catch-tag-exhaustive: its Schema.TaggedError draws EK4837,
-// a warning with no quick fix that says what an error declaration would
-// change, the Schema, so Chapter 28 permits it ("where it would not, the
-// warning says what would change and offers none"). The same warning
-// without its explanation is no permitted refusal.
+// TestFixPermittedRefusals checks the refusal oracle of FuzzFix: EK4837 on a
+// Schema.TaggedError class whose tag is not its name is a warning with no
+// quick fix that says what a schema error declaration would change (its tag
+// is its name), so Chapter 28 permits it ("where it would not, the warning
+// says what would change and offers none"). The same warning without its
+// explanation is no permitted refusal. Since bc799ed7, EK4837 offers a fix for
+// a class tagged with its own name, as in catch-tag-exhaustive.
 func TestFixPermittedRefusals(t *testing.T) {
-	var files map[string]string
-	for _, seed := range CaseSeeds() {
-		if seed.Name == "catch-tag-exhaustive" {
-			files = seed.Files
-		}
-	}
-	if files == nil {
-		t.Fatal("no acceptance case catch-tag-exhaustive")
-	}
+	files := map[string]string{"main.vibe": "import { Schema } from \"effect\"\n" +
+		"export class ProbeFailure extends Schema.TaggedError<ProbeFailure>()(\"Probe\", { message: Schema.String }) {}\n"}
 	w := NewWorkspace(t)
 	r := toolsCompile(t, w, "FuzzFix", files)
 	defer r.Remove()
@@ -439,10 +433,8 @@ func TestFixPermittedRefusals(t *testing.T) {
 		}
 	}
 	if warning == nil {
-		t.Fatal("catch-tag-exhaustive draws no EK4837")
+		t.Fatal("a Schema.TaggedError class tagged other than its name draws no EK4837")
 	}
-	// The case's other warnings, such as EK4833, have quick fixes that
-	// --fix would apply; only the EK4837 warning is the refusal under test.
 	only := func(d *ast.Diagnostic) *Result {
 		copied := *r
 		copied.Diagnostics = []*ast.Diagnostic{d}
