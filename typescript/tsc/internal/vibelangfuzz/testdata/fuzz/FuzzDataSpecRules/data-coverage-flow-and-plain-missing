@@ -1,0 +1,3 @@
+go test fuzz v1
+string("coverage-flow-and-plain-missing")
+byte(0)

@@ -603,6 +603,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Contribution and maintainer guides directed work straight to `main`; they now describe landing on `vibe` and advancing `main` only through passing post-merge checks.
 - Adjacent `data` variants and payload fields reported a TypeScript semicolon error. They now report `EK1605` and offer a quick fix to insert `;`.
+- An arm that used `not`, or `and` with two tests, counted toward exhaustiveness, so `match (x) { when true and true: 1; when false: 0; }` compiled; such an arm now covers nothing, and the match needs another arm or a `default` (`EK4701`).
 - The migrate flow could not load from a staged copy of `.smithers`, as a toolchain build stages it: `source-paths.mjs` imported `minimatch` from `node_modules`. The flow now ships minimatch in `lib/vendor/`.
 - The migrate flow's `verify` failed a batch when the flow had just written a loader record (`.vibelang/js/.loader/`), calling that record a foreign file; the flow now treats everything under `.vibelang/js/` as its own output.
 - The migration codemod rewrote a migrated module's written `./c.js` or `./e` import of a module that stays TypeScript to `./c.ts` or `./e.ts`, so the package's published `.d.ts` no longer matched the original (18 of foldkit's 225 declarations); it now keeps every written specifier of an unchanged module and rewrites only a renamed module's name to `.vibe` (decided detail 272).

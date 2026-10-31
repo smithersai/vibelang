@@ -331,6 +331,7 @@ func dataRules() []dataRule {
 	rules = append(rules, dataSchemaBindingScopeRules()...)
 	rules = append(rules, dataMemberSeparatorRules()...)
 	rules = append(rules, dataSchemaInitializerRules()...)
+	rules = append(rules, dataCoverageFlowRules()...)
 	rules = append(rules, dataExhaustivenessRules()...)
 	rules = append(rules, dataHelperNameRules()...)
 	rules = append(rules, dataTaggedMembersRules()...)
@@ -374,12 +375,14 @@ func checkDataRule(t *testing.T, w *Workspace, c dataRule, trivia uint8) {
 	checkDataHelperName(t, c, r)
 	wantCode := strings.TrimPrefix(c.code, "only:")
 	var got []string
+	var gotCodes []string
 	matched := false
 	for _, d := range r.Diagnostics {
 		if d.Category() != diagnostics.CategoryError {
 			continue
 		}
 		got = append(got, specDiagnosticText(d))
+		gotCodes = append(gotCodes, diagnosticKey(d))
 		match := wantCode == "error" || diagnosticKey(d) == wantCode
 		if c.name == "generic-limit" {
 			// "the message names the limit"
@@ -387,8 +390,15 @@ func checkDataRule(t *testing.T, w *Workspace, c dataRule, trivia uint8) {
 		}
 		matched = matched || match
 	}
-	if strings.HasPrefix(c.code, "only:") && len(got) != 1 {
-		matched = false
+	if strings.HasPrefix(c.code, "only:") {
+		wantCodes := strings.Split(wantCode, ",")
+		slices.Sort(wantCodes)
+		slices.Sort(gotCodes)
+		if !slices.Equal(gotCodes, wantCodes) {
+			matched = false
+		} else if len(wantCodes) > 1 {
+			matched = true
+		}
 	}
 	key := "feature:" + c.name
 	if (c.code == "" && len(got) > 0) || (c.code != "" && !matched) {
@@ -415,9 +425,10 @@ func TestDataSpecRulesQuoted(t *testing.T) {
 		if !strings.Contains(SpecText(c.chapter), c.quote) {
 			t.Errorf("%s: chapter %s no longer says %q; update the quote", c.name, c.chapter, c.quote)
 		}
-		code := strings.TrimPrefix(c.code, "only:")
-		if strings.HasPrefix(code, "EK") && !strings.Contains(SpecText(c.chapter), code) {
-			t.Errorf("%s: chapter %s no longer specifies %s", c.name, c.chapter, code)
+		for _, code := range strings.Split(strings.TrimPrefix(c.code, "only:"), ",") {
+			if strings.HasPrefix(code, "EK") && !strings.Contains(SpecText(c.chapter), code) {
+				t.Errorf("%s: chapter %s no longer specifies %s", c.name, c.chapter, code)
+			}
 		}
 	}
 }

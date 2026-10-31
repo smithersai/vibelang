@@ -9,10 +9,6 @@ FuzzDataSpecRules feature:data-body-required-satisfies compiler VIP-16: data-bod
 FuzzDataSpecRules corpus:data-data-body-required-satisfies compiler VIP-16: data-body-required-satisfies requires error, got no error; lane vip-decls; reproduction of feature:data-body-required-satisfies
 FuzzDataSpecRules feature:declaration-schema compiler VIP-15: exported schema declarations omit Schema.mutableKey wrappers for writable fields, changing instance and constructor types; lane vip-decls
 FuzzDataSpecRules corpus:data-declaration-schema compiler VIP-15: minimized exported writable schema contract; lane vip-decls; reproduction of feature:declaration-schema
-FuzzDataSpecRules feature:exhaustive-and-does-not-cover compiler VIP-7: the combinator incorrectly establishes finite coverage; lane vip-match
-FuzzDataSpecRules corpus:data-exhaustive-and-does-not-cover compiler VIP-7: minimized exhaustive-and-does-not-cover witness; lane vip-match; reproduction of feature:exhaustive-and-does-not-cover
-FuzzDataSpecRules feature:exhaustive-not-does-not-cover compiler VIP-7: the combinator incorrectly establishes finite coverage; lane vip-match
-FuzzDataSpecRules corpus:data-exhaustive-not-does-not-cover compiler VIP-7: minimized exhaustive-not-does-not-cover witness; lane vip-match; reproduction of feature:exhaustive-not-does-not-cover
 FuzzDataSpecRules feature:generic-helper-names-1 compiler VIP-28: the emitted generic helper does not use the documented collision suffix; lane vip-core2
 FuzzDataSpecRules corpus:data-generic-helper-names-1 compiler VIP-28: minimized generic-helper-names-1 witness; lane vip-core2; reproduction of feature:generic-helper-names-1
 FuzzDataSpecRules feature:generic-helper-names-2 compiler VIP-28: the emitted generic helper does not use the documented collision suffix; lane vip-core2
