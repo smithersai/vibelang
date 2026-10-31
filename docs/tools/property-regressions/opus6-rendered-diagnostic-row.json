@@ -1,0 +1,5 @@
+{
+  "key": "OPUS-6",
+  "before": "| Rule | Diagnostic |\n| --- | --- |\n\nA default-export example.\n\n```vibe\nexport { D as default }\n```\n| a variant named `$is` or `$match` | `EK1602` |\n",
+  "after": "| Rule | Diagnostic |\n| --- | --- |\n| a variant named `$is` or `$match` | `EK1602` |\n\nA default-export example.\n\n```vibe\nexport { D as default }\n```\n"
+}

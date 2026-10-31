@@ -1,0 +1,5 @@
+{
+  "key": "foldkit-13",
+  "before": "export declare const make: () => (<A>(value: A) => A);\n",
+  "after": "export declare const make: () => <A>(value: A) => A;\n"
+}

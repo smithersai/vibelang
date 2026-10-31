@@ -1,0 +1,8 @@
+{
+  "property": "NonScriptAssetResolution",
+  "rule": "OpenCode-15: Bun statSync throws ENOTDIR when a resolver probes prompt.txt/index.ts; existing assets must defer to the host loader.",
+  "input": {
+    "path": "prompt",
+    "extension": "txt"
+  }
+}

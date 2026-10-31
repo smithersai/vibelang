@@ -76,6 +76,8 @@ const specTests = [
   "TestDataGeneratedMatchSeparators",
   "TestDataSpecRulesQuoted",
   "TestMigrationDeclarationFixQuoted",
+  "TestMigrationDeclarationCanonicalizationQuoted",
+  "TestReviewDiagnosticTablesQuoted",
   "TestDataChapterWitnessesQuoted",
   "TestFailuresSpecQuotes",
   "TestSpecRuleFacts",
