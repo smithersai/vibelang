@@ -188,7 +188,8 @@ export class Renamed extends Schema.TaggedError<Renamed>()("Other", {}) {}
 // vibelang --fix keeps an import that the emitted declaration file keeps,
 // wherever the declaration prints the module: in a local type an export
 // names, in a conditional type, or in a written type the checker resolves to
-// one that no longer names the module. An import only code uses still goes.
+// one that no longer names the module, and an import whose type modifier is
+// all that differs from the prelude's. An import only code uses still goes.
 func TestFixKeepsImportsTheDeclarationPrints(t *testing.T) {
 	cases := []struct{ name, source, want string }{
 		{"local conditional alias", `import * as DateTime from "effect/DateTime"
@@ -210,6 +211,27 @@ export interface Tracked<M extends Metric.Metric<number, any>> {
   readonly metric: M
 }
 `, ""},
+		{"a statement's type modifier", `import type { HttpClientResponse } from "effect/http"
+
+export interface Handled {
+  readonly response: HttpClientResponse.HttpClientResponse
+}
+`, ""},
+		{"a specifier's type modifier", `import { type Duration, type Scope } from "effect"
+
+export interface Timed {
+  readonly delay: Duration.Input
+  readonly scope: Scope.Scope
+}
+`, ""},
+		{"a type import the declaration drops", `import type { Duration } from "effect"
+
+const delay: Duration.Input = 10
+export const value: number = 1
+`, `
+const delay: Duration.Input = 10
+export const value: number = 1
+`},
 		{"code only", `import * as DateTime from "effect/DateTime"
 
 export const isUtc = (value: unknown): boolean => DateTime.isDateTime(value)

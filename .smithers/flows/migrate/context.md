@@ -50,7 +50,7 @@ The skill below teaches accepted VIPs, and the toolchain does not implement ever
 
 - Keep every export, with its name and type: the package's emitted declarations must stay identical. Annotate an export's return type when inference would change its declared type, and keep a class a class when callers construct it or test `instanceof`.
 - The declaration file prints what the source writes, so write an export's types as the TypeScript did:
-  - Keep an import of an Effect module that an export's type names in the TypeScript's spelling, `import * as Schema from "effect/Schema"`: without it the declaration imports `{ Schema } from "effect"`. `--fix` keeps such an import in a project that emits declarations.
+  - Keep an import of an Effect module that an export's type names in the TypeScript's spelling, `import * as Schema from "effect/Schema"`: without it the declaration imports `{ Schema } from "effect"`. The same goes for `import type`, whose modifier the declaration prints. `--fix` keeps such an import in a project that emits declarations.
   - Keep each type argument the TypeScript wrote: `Effect.Effect<void, never, never>` is `void!never!never` in an export, not `void!!`, whose declaration is `Effect.Effect<void>`. `--fix` writes it so.
   - Inside `Readonly<{ … }>`, write each member as the TypeScript did: `readonly` where it wrote one, `mutable` where it did not. The declaration prints a `Readonly` argument's members as written, and its consumers infer from them. Elsewhere, members are readonly by default.
   - A `Schema.Struct` constant becomes `schema X { … }` only when the TypeScript also exports `type X = typeof X.Type`: the schema declaration declares that type (D501). `--fix` leaves a constant without one (EK4832).

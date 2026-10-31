@@ -39,7 +39,7 @@ import (
 // import its TypeScript wrote (D501): with import * as Schema from
 // "effect/Schema" and an export typed Schema.Codec, the declaration keeps
 // import * as Schema from "effect/Schema" rather than import { Schema } from
-// "effect". The declaration file prints types as the source writes them, so
+// "effect", and import type keeps its modifier. The declaration file prints types as the source writes them, so
 // the emitted declaration decides, not the exports' types: a local
 // type NonNull<V> = V extends DateTime.Utc ? … that an export names, or an
 // export typed keyof DateTime.Utc, keeps import * as DateTime.
@@ -93,7 +93,7 @@ func preludeRewritesOf(c *checker.Checker, file *ast.SourceFile, declared map[st
 	var r preludeRewrite
 	text := file.Text()
 	removed := map[string]bool{} // names whose imports go, so the prelude supplies them
-	kept := map[string]bool{}    // namespace imports the declaration file writes, so M.M stays
+	kept := map[string]bool{}    // imports the declaration file writes in their own spelling, so M.M stays
 	gone := map[*ast.Node]bool{} // the import bindings that go
 	for _, statement := range file.Statements.Nodes {
 		if !ast.IsImportDeclaration(statement) || statement.ImportClause() == nil || !ast.IsStringLiteral(statement.ModuleSpecifier()) {
@@ -127,6 +127,10 @@ func preludeRewritesOf(c *checker.Checker, file *ast.SourceFile, declared map[st
 			}
 			switch {
 			case preludePackageOf(name) == specifier:
+				if hasTypeModifier(statement, element) && declared[declaredImportKey(specifier, name)] {
+					kept[name] = true
+					continue
+				}
 				gone[element] = true
 				removed[name] = true
 			case preludeModulePath(name) == specifier && !declared[declaredImportKey(specifier, name)]:
@@ -197,6 +201,16 @@ func preludeRewritesOf(c *checker.Checker, file *ast.SourceFile, declared map[st
 	return r
 }
 
+// hasTypeModifier reports whether binding, an import of statement, is written
+// import type or { type X }. The declaration file prints that modifier and the
+// prelude's own import has none, so it is a spelling of its own.
+func hasTypeModifier(statement *ast.Node, binding *ast.Node) bool {
+	if statement.ImportClause().AsImportClause().PhaseModifier == ast.KindTypeKeyword {
+		return true
+	}
+	return ast.IsImportSpecifier(binding) && binding.AsImportSpecifier().IsTypeOnly
+}
+
 // declaredImportKey names the import of name from specifier.
 func declaredImportKey(specifier, name string) string {
 	return specifier + "\x00" + name
@@ -212,7 +226,11 @@ func declaredImports(ctx context.Context, program *compiler.Program, file *ast.S
 	}
 	candidate := false
 	for _, b := range importBindingsOf(file) {
-		if module := b.declaration.ModuleSpecifier(); module != nil && ast.IsStringLiteral(module) && preludeModulePath(b.name) == module.Text() {
+		module := b.declaration.ModuleSpecifier()
+		if module == nil || !ast.IsStringLiteral(module) {
+			continue
+		}
+		if preludeModulePath(b.name) == module.Text() || preludePackageOf(b.name) == module.Text() && hasTypeModifier(b.declaration, b.node) {
 			candidate = true
 		}
 	}
