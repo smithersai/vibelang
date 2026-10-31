@@ -69,13 +69,16 @@ export function summarize(diagnostics, files = []) {
  * (EK48xx), platform globals (EK4402), and a catch that can never run (EK9204),
  * a warning, which there means the TypeScript recovered and the .vibe throws.
  * EK4832 stays out: the Struct constant --fix leaves is one a schema
- * declaration would add a public type to. So does an EK4831 that says it has no
- * quick fix: a service declaration lists its members inline, so a named shape,
- * static members or a dynamic key cannot keep the class's declaration.
+ * declaration would add a public type to. So does an EK4831 or EK4837 that says
+ * it has no quick fix: a service declaration lists its members inline, so a
+ * named shape, static members or a dynamic key cannot keep the class's
+ * declaration, and a schema error has no annotations argument, type parameters
+ * or constructor, so a Schema.TaggedError class with one stays a class.
  */
 export function styleProblems(diagnostics, files) {
   const inFiles = new Set(files)
-  const kept = (d) => d.code === "EK4832" || (d.code === "EK4831" && d.notes.some((note) => note.startsWith("No quick fix")))
+  const refused = (d) => (d.code === "EK4831" || d.code === "EK4837") && d.notes.some((note) => note.startsWith("No quick fix"))
+  const kept = (d) => d.code === "EK4832" || refused(d)
   return diagnostics.filter((d) => inFiles.has(d.file) && ((/^EK48\d\d$/.test(d.code) && !kept(d)) || d.code === "EK4402" || d.code === "EK9204"))
 }
 

@@ -95,6 +95,17 @@ test("styleProblems leaves a Context.Service class no service declaration can wr
   assert.deepEqual(styleProblems(diagnostics, files).map((d) => d.file), ["src/c.vibe", "src/d.vibe"])
 })
 
+test("styleProblems leaves a Schema.TaggedError class no schema error can write, and rejects one it can", () => {
+  const diagnostics = parseDiagnostics([
+    "src/a.vibe(2,14): warning EK4837: Failure extends Schema.TaggedError; in VibeLang it is a schema error declaration: schema error Failure { … }.",
+    "  No quick fix: a schema error has no annotations argument.",
+    "src/b.vibe(2,14): warning EK4837: Missing extends Schema.TaggedError; in VibeLang it is a schema error declaration: schema error Missing { … }.",
+    "  Its quick fix writes schema error Missing { … }; vibelang --fix applies every such fix in the project.",
+    ""
+  ].join("\n"))
+  assert.deepEqual(styleProblems(diagnostics, ["src/a.vibe", "src/b.vibe"]).map((d) => d.file), ["src/b.vibe"])
+})
+
 test("styleProblems leaves the Struct constant --fix must keep: a schema declaration would add a public type", () => {
   const diagnostics = parseDiagnostics("src/a.vibe(1,14): warning EK4832: Input holds a Schema.Struct.\nsrc/a.vibe(3,3): warning EK4831: Users extends Context.Service.\n")
   assert.deepEqual(styleProblems(diagnostics, ["src/a.vibe"]).map((d) => d.code), ["EK4831"])
