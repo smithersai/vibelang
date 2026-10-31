@@ -88,6 +88,14 @@ test("the lint config applies the repository's Oxlint rules and overrides to .vi
   assert.deepEqual(vibe.rules, { "no-debugger": ["warn"], "@typescript-eslint/no-explicit-any": ["error"], "sort-imports": ["error", { ignoreCase: false }], "@typescript-eslint/no-unused-vars": ["error"] })
   assert.deepEqual(config.at(-1), { files: ["src/**/*.vibe"], rules: { "@typescript-eslint/no-explicit-any": ["off"] } })
 })
+test("setup regenerates the .vibe lint config where the lint script already runs it", t => {
+  const step = "oxlint && eslint --config .vibelang/eslint.config.mjs \"**/*.vibe\" --no-error-on-unmatched-pattern"
+  const root = fixture(t, { "package.json": JSON.stringify({ scripts: { lint: step } }), ".vibelang/eslint.config.mjs": "export default []\n" })
+  wireDeveloperTools({ root, specsFor })
+  assert.match(readFileSync(join(root, ".vibelang/eslint.config.mjs"), "utf8"), /vibelang\/eslint/)
+  assert.equal(JSON.parse(readFileSync(join(root, "package.json"))).scripts.lint, step)
+  assert.deepEqual(wireDeveloperTools({ root, specsFor }).changed, [])
+})
 const deps = process.env.VIBELANG_TOOLING_NODE_MODULES
 test("the migrated lint command reports a debugger at its .vibe source location", { skip: !deps && "set VIBELANG_TOOLING_NODE_MODULES" }, t => {
   const root = fixture(t, { "package.json": '{"scripts":{"lint":"oxlint"}}', "probe.vibe": "export const value = 1\ndebugger;\n" })

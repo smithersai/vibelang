@@ -58,7 +58,7 @@ default correctness rules unless the configuration turns that category off,
 and `no-debugger` is on unless it says otherwise. Locations are the original
 VibeLang ones. Rules of other Oxlint plugins, including JS plugins, type-aware
 rules, and a configuration a script names with `-c` are not carried; the file
-is editable. Raw Oxlint still skips VibeLang.
+is editable, and running setup again writes it anew. Raw Oxlint still skips VibeLang.
 This is smaller and preserves source locations better than linting emitted
 TypeScript; a future Oxlint-only bridge would need emitted TS, source-map
 remapping, and filtering of diagnostics on compiler-generated code.

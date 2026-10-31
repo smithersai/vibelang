@@ -53,9 +53,10 @@ export function wireDeveloperTools({ root, specsFor }) {
         next = next.replace(/\bprettier\b/, "prettier --plugin vibelang/prettier")
         needsCompiler = true
       }
-      if (/(^|[\s;&|])(?:oxlint\b|vp\s+lint\b)/.test(command) && !command.includes("eslint.config.mjs")) {
-        next = `(${next}) && eslint --config ${up}.vibelang/eslint.config.mjs "**/*.vibe" --no-error-on-unmatched-pattern`
+      if (/(^|[\s;&|])(?:oxlint\b|vp\s+lint\b)/.test(command)) {
+        // The config is the output of this flow, so a run on a new toolchain writes it again.
         needsCompiler = true; needsLint = true
+        if (!command.includes("eslint.config.mjs")) next = `(${next}) && eslint --config ${up}.vibelang/eslint.config.mjs "**/*.vibe" --no-error-on-unmatched-pattern`
       }
       if (next !== command) pkg.scripts[name] = next
     }
