@@ -695,3 +695,11 @@ The loader script-project property covers Opencode's excluded script, missing pr
 `FuzzMigrationPlainRoots` puts root runners in plain function, arrow, method, getter, callback and asynchronous homes, retaining T3code's captured SDK runner. `FuzzMigrationEffectOperands` adds SQL Statement exact, inherited, branded and generic subtypes, comparing stored values with direct calls under `try`, `catch` and `try.all`.
 
 The oracles come from [functions](../design/src/001-functions.md) and [Effect operands](../design/src/002-running.md). The 114 keyed neighborhood files and four original migration archives retain the Alchemy, Foldkit and T3code patterns. The 53 observed feature gaps have separate feature and corpus pending entries owned by the migration lanes; a passing original witness stays in the corpus.
+
+### Declaration output neighborhoods
+
+`FuzzMigrationDataDeclarations` compares the exact public declaration bytes of the [documented data counterpart](../design/src/006-data.md), including payload modifiers and Foldkit's lazy-cache reason. It does not normalize declaration order or replace a published type with a merely assignable spelling.
+
+`FuzzMigrationInferredImports` compares decoder and encoder declarations across root or subpath imports, aliases, comments, export forms and local `SchemaAST` shadows. Its [declaration oracle](../design/src/001-functions.md) is the native TypeScript output, not the compiler's current qualifier choice.
+
+The 58 keyed neighborhood files and two original migration archives retain the Foldkit and OpenCode patterns. The 25 observed feature gaps have exact feature and corpus pending entries owned by those migration lanes.
