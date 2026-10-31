@@ -325,3 +325,33 @@ test("the release candidate follows the last npm publication", {
   const notes = readFileSync(join(root, "docs/user/src/setup/release-notes.md"), "utf8")
   assertReleaseHistory(notes, version, process.env.VIBELANG_LAST_PUBLISHED_VERSION)
 })
+
+// Publication excludes maintainer audit records while retaining product changes.
+test("current publication notes omit internal contrast audit records", {
+  skip: !process.env.VIBELANG_RELEASE_NOTES_FINAL
+}, () => {
+  const notes = readFileSync(new URL("../user/src/setup/release-notes.md", import.meta.url), "utf8")
+  const version = JSON.parse(readFileSync(new URL("../../packages/compiler/package.json", import.meta.url), "utf8")).version
+  const releases = notes.split(/^## /m).slice(1)
+  const candidate = releases.findIndex(release => releaseVersion(release) === version)
+  assert.ok(candidate >= 0)
+  const bullets = releases.slice(0, candidate + 1).flatMap(release =>
+    release.match(/^- .*(?:\n(?!\n|[-*] |#{1,6} ).+)*/gm) ?? []
+  ).join("\n")
+  assert.doesNotMatch(bullets, /site(?:['’]s)?\s+contrast\s+check|contrast\s+audit\s+(?:state|diagnostics?|failure)/i)
+})
+
+// Release notes omit development-only vet and compiler-options guard records.
+test("current publication notes omit compiler-options vet records", {
+  skip: !process.env.VIBELANG_RELEASE_NOTES_FINAL
+}, () => {
+  const notes = readFileSync(new URL("../user/src/setup/release-notes.md", import.meta.url), "utf8")
+  const version = JSON.parse(readFileSync(new URL("../../packages/compiler/package.json", import.meta.url), "utf8")).version
+  const releases = notes.split(/^## /m).slice(1)
+  const candidate = releases.findIndex(release => releaseVersion(release) === version)
+  assert.ok(candidate >= 0)
+  const bullets = releases.slice(0, candidate + 1).flatMap(release =>
+    release.match(/^- .*(?:\n(?!\n|[-*] |#{1,6} ).+)*/gm) ?? []
+  ).join("\n")
+  assert.doesNotMatch(bullets, /go\s+vet|fuzz\s+suite|compiler.options\s+lock\s+guard/i)
+})

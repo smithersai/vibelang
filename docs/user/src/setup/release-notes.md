@@ -199,7 +199,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Cross-platform compiler builds could fail without naming the affected platform or its exit status; each target now keeps a completion record and silent failures are identified.
 
 
-- A browser crash during the site's contrast check reported only `Target crashed`; diagnostics now name the theme, page, audit state, failed requests and resource pressure.
 
 - Chapter 2 did not say where a `Cause` with both a failure and a defect comes from after dropping the wrong `try.any` example; it now names `Effect.failCause` in TypeScript code.
 
@@ -223,7 +222,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Source collectors could silently omit migrated files because their extension allowlists named only TypeScript; migration setup now warns with the file and line when `.ts` appears without `.vibe`.
 
-- Release notes repeated fixes and mixed maintainer validation entries with user-facing changes; the publication check now covers introductory bullets and every unpublished bug list while retaining each product fix once.
+- Release notes repeated fixes and mixed internal audit records with user-facing changes; the publication list now covers introductory bullets and every unpublished bug list while retaining each product fix once.
 - A `Bun.build` with `vibelang-unplugin/bun` could produce a program that failed at startup with a `ReferenceError` inside a CommonJS dependency such as `ws` (Bun 1.4.4), because the plugin's resolve hook matched every relative `.js` import; it now matches a `.js` import only where a `.vibe` module of that name exists.
 
 - Under `bun --preload vibelang/bun` on Bun 1.3.13, `createRequire(import.meta.url).resolve("srvx/node")` resolved from the working directory and failed with `Cannot find module 'srvx/node' from ''`; on a Bun that drops `createRequire`'s origin the preload now leaves the CommonJS hook alone, so `createRequire` resolves from its URL, and a CommonJS `require` of a `.vibe` module names its extension.
@@ -233,8 +232,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Knip reported an export marked `/** @public */` in a `.vibe` file as unused when no other module imported it, because `vibelang/knip` dropped the comment; each export's stub now keeps the JSDoc written before it, so Knip reads its tags as for TypeScript.
 
 - `vibelang/knip` stubbed each export without its signature, so Knip reported an export as unused when only another export's signature read it, such as `sample` in `export function read(input: typeof sample)`, where the TypeScript passed; the stub now keeps the types a signature reads, outside its body.
-
-- Running `go vet` on the fuzz suite reported a copied compiler-options lock guard; lint severity checks now clone options without copying that guard.
 
 - A documented field of a `service` declared `readonly` as a property of its own before the field (`readonly: any` and a mutable field), so consumers of the service shape failed with TS2741; the comment now precedes the whole `readonly` field.
 
@@ -933,8 +930,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The specification gave conflicting throw contracts for foreign callables and callback propagation; it now composes own throws with `@rethrows`, preserves contracts across declarations, and distinguishes both synchronous schema decoder builders from the decoders they return. Platform-global and namespace rules now agree across chapters. Stream-loop jump diagnostics now agree with the shared rule that a label on the loop itself is consumed there.
 
-
-- The release notes mixed development bookkeeping with user changes and repeated some fixes; the current list now contains each user-facing fix once and keeps the final stream-loop rule.
 
 
 
