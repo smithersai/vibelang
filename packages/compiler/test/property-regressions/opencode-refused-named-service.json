@@ -1,0 +1,13 @@
+{
+  "property": "opencode-refused-service-verification",
+  "input": {
+    "line": 3,
+    "column": 14,
+    "shape": "named",
+    "refused": true,
+    "inBatch": true,
+    "code": "EK4831",
+    "crlf": false
+  },
+  "reason": "opencode-17 named Context.Service shape with a No quick fix note; compiler warning remains and migration verify accepts it."
+}

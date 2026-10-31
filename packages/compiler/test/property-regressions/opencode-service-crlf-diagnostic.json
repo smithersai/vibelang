@@ -1,0 +1,22 @@
+{
+  "property": "migration-diagnostic-line-endings",
+  "input": {
+    "ending": "crlf",
+    "headers": [
+      {
+        "global": false,
+        "file": "src/testing.vibe",
+        "line": 3,
+        "column": 14,
+        "category": "warning",
+        "code": "EK4831",
+        "message": "Svc extends Context.Service; use a service declaration.",
+        "notes": [
+          "No quick fix: its members come from Shape; write them in the declaration."
+        ]
+      }
+    ],
+    "source": "export interface Shape { readonly count: () => number }\nexport class Svc extends Context.Service<Svc, Shape>()(\"app/Svc\") {}\n"
+  },
+  "reason": "CRLF mutation of opencode named-service diagnostic and its refusal note."
+}

@@ -11,7 +11,7 @@ const global = /^(error|warning) ([A-Z]+\d+): (.*)$/
 /** Parses diagnostics; file paths become relative to root when cwd is given. */
 export function parseDiagnostics(output, { cwd, root } = {}) {
   const out = []
-  for (const line of output.split("\n")) {
+  for (const line of output.split(/\r?\n/)) {
     const m = head.exec(line)
     if (m) {
       let file = m[1]

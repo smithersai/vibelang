@@ -5,7 +5,7 @@ import { join } from "node:path"
 import { test } from "node:test"
 import { fixToFixedPoint } from "../lib/codemod.mjs"
 import { emitDeclarations } from "../lib/declarations.mjs"
-import { check, newErrors, parseDiagnostics, styleProblems, summarize } from "../lib/diagnostics.mjs"
+import { assertFinished, check, newErrors, parseDiagnostics, styleProblems, summarize } from "../lib/diagnostics.mjs"
 
 const output = `src/users.vibe(8,60): error EK1002: Effect.gen expects a JavaScript generator, but in VibeLang function* declares a producer.
   Write the body as an ordinary function: remove Effect.gen, function*, and yield*.
@@ -109,4 +109,20 @@ test("styleProblems leaves a Schema.TaggedError class no schema error can write,
 test("styleProblems leaves the Struct constant --fix must keep: a schema declaration would add a public type", () => {
   const diagnostics = parseDiagnostics("src/a.vibe(1,14): warning EK4832: Input holds a Schema.Struct.\nsrc/a.vibe(3,3): warning EK4831: Users extends Context.Service.\n")
   assert.deepEqual(styleProblems(diagnostics, ["src/a.vibe"]).map((d) => d.code), ["EK4831"])
+})
+
+test("CRLF diagnostic streams preserve errors, locations and repair notes", () => {
+  const output = [
+    "src/testing.vibe(3,14): warning EK4831: Svc extends Context.Service.",
+    "  No quick fix: its members come from Shape.",
+    "src/testing.vibe(8,2): error TS2322: Wrong type.",
+    "error TS18003: No inputs.",
+    ""
+  ].join(String.fromCharCode(13, 10))
+  const diagnostics = parseDiagnostics(output)
+  assert.equal(diagnostics.length, 3)
+  assert.deepEqual(diagnostics[0], { file: "src/testing.vibe", line: 3, column: 14, category: "warning", code: "EK4831", message: "Svc extends Context.Service.", notes: ["No quick fix: its members come from Shape."] })
+  assert.equal(diagnostics[1].code, "TS2322")
+  assert.equal(diagnostics[2].file, null)
+  assert.doesNotThrow(() => assertFinished({ code: 1, stdout: output, stderr: "" }))
 })

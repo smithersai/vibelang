@@ -21,6 +21,8 @@ upgrade-effect ──▶ setup ──▶ plan ──▶ for each batch: codemod 
 
 Each step reads and writes the run directory, so a step that already recorded its result returns it, and a stopped run resumes where it stopped.
 
+The diagnostic reader accepts compiler output with `LF`, `CRLF`, or mixed line endings, preserving diagnostic codes, source locations and repair notes. A nonzero compiler exit with ordinary diagnostics is an error result; a crash, signal, or failing exit without diagnostics stops the step.
+
 Every install the flow runs also rewrites each other lockfile at the repository's root, which the package manager's install leaves stale: `bun install --lockfile-only` for a `bun.lock` or `bun.lockb` beside `pnpm-lock.yaml`, and `npm install --package-lock-only --ignore-scripts` for a `package-lock.json` beside another manager's lockfile. A `--install` command replaces all of it.
 
 Upgrade-effect, setup and record run the target's own formatter on the files they wrote or the batch changed, other than `.vibe` files, sidecars and lockfiles: the tool its root `package.json`'s format scripts run (`oxfmt`, `vp fmt`, `prettier`, `biome format`, `dprint fmt`), else one it installs. The target's format check then passes on them. Record then runs the target's `vibelang-format --write` on the batch's `.vibe` files, because `vibelang --fix` does not format what it rewrites and a format check covers them.
