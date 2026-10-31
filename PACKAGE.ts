@@ -113,7 +113,7 @@ const specTests = [
 // The cost guards of vibelang --fix. They count programs and parsed files, so
 // a slower fix loop fails here in seconds; the rewrite cases, which meet it as
 // a 30 s limit on a busy host, run after the merge.
-const fixCostTests = ["TestFixProjectBoundsChecks", "TestFixProgramsShareParsedFiles"]
+const fixCostTests = ["TestFixProjectBoundsChecks", "TestFixProgramsShareParsedFiles", "TestFixProjectChecksAPassingRoundOnce"]
 // The cost guards of flow narrowing. They count allocations, so a repeated
 // union removal that rehashes fails here in seconds; match-flow-limit.fail,
 // which meets it as a 120 s limit on a busy host, runs after the merge.

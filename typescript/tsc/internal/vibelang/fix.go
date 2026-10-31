@@ -261,8 +261,18 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 	ctx = context.WithoutCancel(ctx)
 	texts := map[tspath.RootedFilePath]string{}
 	parsed := &fixParsedFiles{}
+	// When a round's fixes pass together, the next round's program is the one
+	// the gate just checked them in; building it again checked the project
+	// twice per round. A program does not change once built, so build returns
+	// the last one when the overlay is the same.
+	var lastOverlay [32]byte
+	var last *compiler.Program
 	build := func(overlay map[tspath.RootedFilePath]string) *compiler.Program {
-		return fixProgram(fs, libraryPath, config, parsed, overlay)
+		key := overlayKey(overlay)
+		if last == nil || key != lastOverlay {
+			last, lastOverlay = fixProgram(fs, libraryPath, config, parsed, overlay), key
+		}
+		return last
 	}
 	program := build(texts)
 	if done.Err() != nil {
@@ -453,6 +463,23 @@ func maps(base, additions map[tspath.RootedFilePath]string) map[tspath.RootedFil
 		merged[k] = v
 	}
 	return merged
+}
+
+// overlayKey fingerprints overlay, its file names and texts in name order,
+// framed by quoting as fixState frames them.
+func overlayKey(overlay map[tspath.RootedFilePath]string) [32]byte {
+	names := make([]tspath.RootedFilePath, 0, len(overlay))
+	for name := range overlay {
+		names = append(names, name)
+	}
+	slices.SortFunc(names, tspath.RootedFilePath.Compare)
+	hash := sha256.New()
+	for _, name := range names {
+		fmt.Fprintf(hash, "%q%q", name.AsString(), overlay[name])
+	}
+	var key [32]byte
+	copy(key[:], hash.Sum(nil))
+	return key
 }
 
 // fixParsedFiles holds the files a --fix run has parsed, by parse options.

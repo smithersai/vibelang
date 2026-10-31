@@ -254,6 +254,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - After an edit, hovering a call passed by name as an argument, such as `greeting()` in `Effect.timeout(greeting(), "1 second")`, said `Runs here`, although the compiled code passes it to `Effect.timeout` as a program; the hover now says it is passed by name and runs when that program runs.
 
+- `vibelang --fix` built and checked the project twice for each round of fixes that passed, so a file with nested fixes, which take a round per level, took twice as long as it needed: 20 nested `Effect.Effect<…>` types took about 10 seconds on a busy machine. Each passing round is now checked once, and that file takes about 5 seconds.
 
 - In a project with no `declaration` setting, an export whose inferred type was too long to serialize (`TS7056`) got only a warning, and its declaration sidecar held `any` in place of the type, so a stock `tsc` consumer lost its types without an error; it is an error again, as it is where the project emits declarations.
 
