@@ -258,10 +258,14 @@ export function restoreSpecifiers(root, edits, module) {
 /**
  * Rewrites the relative imports of every file in scope (repository-relative
  * paths after the renames) so each names its target as VibeLang reads it.
- * Returns the edits made: { file, from, to }.
+ * With moved, the modules a batch renamed (or revert put back), only the
+ * imports of those modules and the imports in them change: a specifier that
+ * names an earlier migration's .vibe module by its .ts name stays as the
+ * repository wrote it. Returns the edits made: { file, from, to }.
  */
-export function rewriteImports(root, scope) {
+export function rewriteImports(root, scope, moved) {
   const files = new Set(scope)
+  const only = moved && new Set(moved)
   const edits = []
   for (const file of scope) {
     if (!/\.(?:ts|tsx|mts|cts|vibe)$/.test(file)) continue
@@ -270,7 +274,7 @@ export function rewriteImports(root, scope) {
     const changes = []
     for (const i of parseImports(text)) {
       const target = resolveRelative(file, i.specifier, files)
-      if (!target) continue
+      if (!target || (only && !only.has(file) && !only.has(target))) continue
       const next = rewriteSpecifier(file, i.specifier, target, { mock: i.kind === "mock" })
       if (next !== i.specifier) {
         changes.push({ start: i.start, end: i.end, text: next })

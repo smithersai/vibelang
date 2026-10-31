@@ -1,0 +1,19 @@
+{
+  "finding": "smithers:codemod-rewrites-unrenamed-vibe-importers",
+  "note": "Smithers run 2, batch 01: the capability batch rewrote .smithers/flows/test/coding-builtin-routes.test.ts, whose Command.ts, FileRouter.ts and FlowInvoker.ts specifiers name modules Smithers' 0.0.8 migration had already made .vibe.",
+  "batch": ["packages/smithers/flows/capability/src/internal/PatternResource.ts"],
+  "files": {
+    "packages/smithers/flows/capability/src/internal/PatternResource.ts": "import { Command } from \"../../../../agent/fs/src/Command.ts\"\nexport const resource = Command\n",
+    "packages/smithers/flows/capability/src/Capability.ts": "import { resource } from \"./internal/PatternResource.ts\"\nexport const capability = resource\n",
+    "packages/smithers/flows/capability/test/PatternResource.test.ts": "import { resource } from \"../src/internal/PatternResource.js\"\nexport const tested = resource\n",
+    "packages/smithers/agent/fs/src/Command.vibe": "export const Command = 1\n",
+    "packages/smithers/agent/fs/src/FileRouter.vibe": "export const FileRouter = 1\n",
+    "packages/smithers/agent/fs/src/FlowInvoker.vibe": "export const FlowInvoker = 1\n",
+    ".smithers/flows/test/coding-builtin-routes.test.ts": "import { Command } from \"../../../packages/smithers/agent/fs/src/Command.ts\"\nimport { FileRouter } from \"../../../packages/smithers/agent/fs/src/FileRouter.ts\"\nimport { FlowInvoker } from \"../../../packages/smithers/agent/fs/src/FlowInvoker.ts\"\nexport const routes = [Command, FileRouter, FlowInvoker]\n"
+  },
+  "expected": [
+    "packages/smithers/flows/capability/src/internal/PatternResource.vibe: ../../../../agent/fs/src/Command.ts -> ../../../../agent/fs/src/Command.vibe",
+    "packages/smithers/flows/capability/src/Capability.ts: ./internal/PatternResource.ts -> ./internal/PatternResource.vibe",
+    "packages/smithers/flows/capability/test/PatternResource.test.ts: ../src/internal/PatternResource.js -> ../src/internal/PatternResource.vibe"
+  ]
+}

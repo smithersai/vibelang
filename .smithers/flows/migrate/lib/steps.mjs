@@ -704,7 +704,7 @@ export async function codemod(options) {
   const files = thePlan.batches[Number(b) - 1].files
   const renames = renameBatch(t, files)
   const exportEdits = rewriteExports(t, renames)
-  const importEdits = rewriteImports(t, await importers(t))
+  const importEdits = rewriteImports(t, await importers(t), renames.map((r) => r.to))
   const compiler = compilerOf(config)
   const byFile = {}
   const refused = []
@@ -793,7 +793,7 @@ export async function revert(options) {
   // A TypeScript importer gets the specifier it had before the codemod; a .vibe importer names the .ts source.
   const codemodResult = readJsonIf(p.codemod(source.batch))
   const exportEdits = restoreExports(config.target, codemodResult?.exportEdits ?? [], ts)
-  const importEdits = [...restoreSpecifiers(config.target, codemodResult?.importEdits ?? [], ts), ...rewriteImports(config.target, await importers(config.target))]
+  const importEdits = [...restoreSpecifiers(config.target, codemodResult?.importEdits ?? [], ts), ...rewriteImports(config.target, await importers(config.target), [ts])]
   const reverted = readJsonIf(p.reverted(b), [])
   reverted.push({ file: ts, reason: options.reason, at: new Date().toISOString(), ...(source.batch === b ? {} : { from: source.batch }), exportEdits, importEdits })
   writeJson(p.reverted(b), reverted)
