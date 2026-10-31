@@ -124,6 +124,8 @@ const specTests = [
   "TestTrySubtypeShapesQuoted",
   "TestUnionPipeRequirementsQuoted",
   "TestLoaderScriptProjectQuoted",
+  "TestMigrationCallableDataQuoted",
+  "TestMigrationPlainRootsQuoted",
   "TestDoForTryDiagnosticOwnerQuoted",
   "TestDoDeclarationBytesQuoted",
   "TestDoContextualResultFuzzQuoted",
