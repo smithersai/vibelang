@@ -36,6 +36,17 @@ test("scans all tracked source, including new files and VibeLang cases, with loc
   assert.ok(found.every(p => !p.includes("private-build.example")))
 })
 
+// A hosted //:docs-check failed with ENOENT on packages/runtime/tests/.experimental-node-9951.mjs,
+// which //packages:runtime-test wrote and removed while this check read the snapshot.
+test("a listed file another target removed is skipped", () => {
+  const root = mkdtempSync(join(tmpdir(), "tracked-leaks-"))
+  try {
+    assert.deepEqual(trackedLeaks(root, ["gone.mjs"]), [])
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
 test("fixture exclusions are limited to upstream tests and generated baselines", () => {
   assert.equal(upstreamFixture("typescript/tsc/internal/checker/checker_test.go"), true)
   for (const path of ["docs/test.md", "typescript/VIBELANG.md", "typescript/tsc/internal/checker/vibelang_test.go",

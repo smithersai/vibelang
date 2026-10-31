@@ -14,16 +14,19 @@ export function upstreamFixture(path) {
   return /(?:^|\/)(?:test|tests)(?:\/|$)|_test\.go$|\.test\.[cm]?[jt]s$/.test(path)
 }
 
-export function trackedLeaks(root) {
-  // jj file list snapshots the working copy too, so a newly added source file
-  // cannot evade this gate while it is being reviewed.
-  const files = execFileSync("jj", ["file", "list"], { cwd: root, encoding: "utf8", maxBuffer: 16 * 1024 * 1024 })
-    .trimEnd().split("\n").filter(Boolean)
+// jj file list snapshots the working copy too, so a newly added source file
+// cannot evade this gate while it is being reviewed.
+const trackedFiles = (root) =>
+  execFileSync("jj", ["file", "list"], { cwd: root, encoding: "utf8", maxBuffer: 16 * 1024 * 1024 }).trimEnd().split("\n").filter(Boolean)
+
+export function trackedLeaks(root, files = trackedFiles(root)) {
   const problems = []
   for (const file of files) {
     if (upstreamFixture(file)) continue
     const path = resolve(root, file)
-    if (!lstatSync(path).isFile()) continue // do not follow a tracked symlink outside the tree
+    // A target running beside this check removes its temporary files, which the
+    // snapshot may have listed. Do not follow a tracked symlink outside the tree.
+    if (!lstatSync(path, { throwIfNoEntry: false })?.isFile()) continue
     const bytes = readFileSync(path)
     if (bytes.includes(0)) continue // binary assets are not text
     const text = bytes.toString("utf8")
