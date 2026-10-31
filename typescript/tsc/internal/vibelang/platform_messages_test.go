@@ -27,7 +27,8 @@ declare var document: { title: string }
 declare var window: { matchMedia(query: string): { matches: boolean } }
 declare var matchMedia: typeof window.matchMedia
 declare var requestAnimationFrame: (callback: (time: number) => void) => number
-declare var cancelAnimationFrame: (id: number) => void`
+declare var cancelAnimationFrame: (id: number) => void
+declare var FileReader: { new(): unknown }`
 
 const (
 	provideNodeServices        = `Provide it in main with NodeServices.layer from "@effect/platform-node", or BunServices.layer from "@effect/platform-bun".`
@@ -213,6 +214,10 @@ export const run = (key: Uint8Array) => createHmac("sha256", key)`, []string{
 			"cancelAnimationFrame is platform code, which VibeLang code does not use directly.",
 			"Use the experimental Animations service:   (try Experimental.Animations.Animations).onNextFrame(callback)", provideExperimentalBrowser,
 			"Interrupting nextFrame cancels its frame; onNextFrame gives the function that cancels it.",
+		}},
+		{"file reader", `export const run = () => new FileReader()`, []string{
+			"FileReader is platform code, which VibeLang code does not use directly.",
+			"Use the experimental FileReader service:   try (try Experimental.FileReader.FileReader).readAsText(blob)", provideExperimentalBrowser,
 		}},
 		{"gap", `export const run = () => document.title`, []string{
 			"document.title is platform code, which VibeLang code does not use directly.",

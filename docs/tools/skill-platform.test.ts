@@ -6,7 +6,7 @@ const repo = resolve(import.meta.dir, "../..")
 const skill = "packages/compiler/skills/vibelang/SKILL.md"
 
 // The experimental services VibeLang adds for what Effect lacks (D313).
-const services = ["Animations", "Crypto", "FileSystem", "Locks", "MediaQuery", "Process"]
+const services = ["Animations", "Crypto", "FileReader", "FileSystem", "Locks", "MediaQuery", "Process"]
 
 // The experimental modules a clause of the skill names, such as `Experimental.Process`.
 const modules = (clause: string) => [...clause.matchAll(/`Experimental\.(\w+)`/g)].map(m => m[1]).sort()

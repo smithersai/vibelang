@@ -240,7 +240,7 @@ Effect's interface. The layers are in
 `vibelang-runtime/experimental/platform-node` (`ExperimentalNodeServices`,
 `ExperimentalNodeFileSystem`, `ExperimentalNodeCrypto`, `ExperimentalNodeProcess`, `ExperimentalNodeLocks`), `-bun`
 (`ExperimentalBunServices`, `ExperimentalBunFileSystem`, `ExperimentalBunCrypto`, `ExperimentalBunProcess`) and `-browser`
-(`ExperimentalBrowserServices`, `ExperimentalBrowserCrypto`, `ExperimentalBrowserLocks`, `ExperimentalBrowserMediaQuery`, `ExperimentalBrowserAnimations`). A layer of a service
+(`ExperimentalBrowserServices`, `ExperimentalBrowserCrypto`, `ExperimentalBrowserLocks`, `ExperimentalBrowserMediaQuery`, `ExperimentalBrowserFileReader`, `ExperimentalBrowserAnimations`). A layer of a service
 that extends Effect's provides the experimental service and Effect's service
 of the same name from one implementation; a `Crypto` layer provides the
 experimental `Crypto` and the platform's Effect crypto services, such as

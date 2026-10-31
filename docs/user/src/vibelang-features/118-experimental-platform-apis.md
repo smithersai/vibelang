@@ -9,6 +9,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.Process` | the process id, platform, host name and other facts; `kill`, `isRunning` | Node, Bun |
 | `Experimental.Locks` | `hold`, `tryHold`, `query` over Web Locks | browser; Node within one process |
 | `Experimental.MediaQuery` | `matches`, `changes` over `window.matchMedia` | browser |
+| `Experimental.FileReader` | `readAsText`, `readAsDataUrl`, `readAsArrayBuffer` of a `Blob` or a `File` | browser |
 | `Experimental.Animations` | `nextFrame`, `onNextFrame`, `frameDeltas`, `settled` over animation frames and the Web Animations API | browser |
 
 `Experimental` is in scope in every `.vibe` file without an import, as Effect's modules are. A local declaration or an import named `Experimental` shadows it. TypeScript imports the same modules from `vibelang-runtime/experimental`, or one module from its subpath, such as `vibelang-runtime/experimental/FileSystem`.
@@ -25,7 +26,7 @@ Provide a platform layer at the application boundary. The layers live beside Eff
 | --- | --- |
 | `vibelang-runtime/experimental/platform-node` | `ExperimentalNodeServices.layer`: `@effect/platform-node`'s bundle plus `FileSystem`, `Crypto` and `Process`; `ExperimentalNodeFileSystem.layer`, `ExperimentalNodeCrypto.layer`, `ExperimentalNodeProcess.layer`; `ExperimentalNodeLocks.layer`, within one process |
 | `vibelang-runtime/experimental/platform-bun` | `ExperimentalBunServices.layer`: `@effect/platform-bun`'s bundle plus `FileSystem`, `Crypto` and `Process`; `ExperimentalBunFileSystem.layer`, `ExperimentalBunCrypto.layer`, `ExperimentalBunProcess.layer` |
-| `vibelang-runtime/experimental/platform-browser` | `ExperimentalBrowserServices.layer`: `Crypto`, `@effect/platform-browser`'s crypto services and the browser services; `ExperimentalBrowserCrypto.layer`, `ExperimentalBrowserLocks.layer`, `ExperimentalBrowserMediaQuery.layer`, `ExperimentalBrowserAnimations.layer` |
+| `vibelang-runtime/experimental/platform-browser` | `ExperimentalBrowserServices.layer`: `Crypto`, `@effect/platform-browser`'s crypto services and the browser services; `ExperimentalBrowserCrypto.layer`, `ExperimentalBrowserLocks.layer`, `ExperimentalBrowserMediaQuery.layer`, `ExperimentalBrowserFileReader.layer`, `ExperimentalBrowserAnimations.layer` |
 
 `ExperimentalNodeServices.layer` replaces `@effect/platform-node`'s `NodeServices.layer`: it provides every service Effect's does. Each `Crypto` layer, such as `ExperimentalNodeCrypto.layer`, provides the experimental `Crypto` and the platform's Effect crypto services, such as `SecureRandom` and `Digest`; the bundles for Node and Bun, like Effect's, hold none of Effect's crypto services. The runtime lists `@effect/platform-node`, `@effect/platform-bun` and `@effect/platform-browser` as optional peer dependencies: install the one your program runs on. Failures are Effect's `PlatformError`, as for Effect's services.
 
@@ -288,6 +289,47 @@ effect function afterCommit(isPending: () => boolean, onCommit: (listener: () =>
 ```
 
 `ExperimentalBrowserAnimations.layer`, also in `ExperimentalBrowserServices.layer`, uses `requestAnimationFrame` and `document`. `Experimental.Animations.layerTest()` completes every wait at time 0, and `frameDeltas` stays open and gives nothing. Pass the members a test needs, as above.
+
+## FileReader
+
+A `.vibe` file does not construct a `Blob` or a `File`, which VIP-33 bans; the browser hands one to the page, and a test makes one in a `.ts` file:
+
+```ts
+// note.ts
+export const note = (): Blob => new Blob(["hi"], { type: "text/plain" })
+```
+
+```vibe
+// preview.vibe
+// run: provide Experimental.FileReader.layerTest() { try Console.log(try preview(try Effect.try(() => note()))) }
+import { note } from "./note.ts"
+
+export effect function preview(file: Blob) {
+  const reader = try Experimental.FileReader.FileReader
+  return try reader.readAsDataUrl(file)
+}
+// Output: data:text/plain;base64,aGk=
+```
+
+| Expression | Gives | Replaces |
+| --- | --- | --- |
+| `try reader.readAsText(file)` | the contents as UTF-8 text | `readAsText` |
+| `try reader.readAsDataUrl(file)` | the contents as a base64 `data:` URL | `readAsDataURL` |
+| `try reader.readAsArrayBuffer(file)` | the contents as an `ArrayBuffer` | `readAsArrayBuffer` |
+
+Each takes a `Blob` or a `File`. For a file on disk, a path, use Effect's `FileSystem`. Interrupting a read aborts it. A failed read fails with a `PlatformError` whose `description` is the browser's message and whose `cause` is the browser's own value:
+
+| Reason | When |
+| --- | --- |
+| `BadArgument` | The browser refused to start the read: the call threw, as for a value that is not a `Blob`. |
+| `NotFound` | The file went away while it was read. |
+| `PermissionDenied` | The browser refused the read. |
+| `BadResource` | The file could not be read. |
+| `Unknown` | Any other error while reading. |
+
+Every reason but `BadArgument` comes from the reader's `error` event, so `error.reason._tag === "BadArgument"` tells a refused call from a failed read.
+
+`ExperimentalBrowserFileReader.layer`, also in `ExperimentalBrowserServices.layer`, uses the host's `FileReader`. `Experimental.FileReader.layerTest()` needs no host: each member reads the `Blob` itself. Pass the members a test needs, such as one that fails.
 
 ## When Effect ships them
 

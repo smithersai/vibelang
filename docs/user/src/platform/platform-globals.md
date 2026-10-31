@@ -26,6 +26,7 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `Bun` | escape to TypeScript for now: A runtime's own API belongs to its platform package's layers, such as @effect/platform-bun's, or to a .ts file. |
 | `Deno` | escape to TypeScript for now: A runtime's own API belongs to its platform package's layers, such as @effect/platform-bun's, or to a .ts file. |
 | `EventSource` | `try HttpClient.get(url)` |
+| `FileReader` | `try (try Experimental.FileReader.FileReader).readAsText(blob)` |
 | `SharedWorker` | `effect/workers`: `import { Worker as EffectWorker }` and `WorkerRunner` |
 | `WebSocket` | `try Socket.makeWebSocket(url)` |
 | `Worker` | `effect/workers`: `import { Worker as EffectWorker }` and `WorkerRunner`. Bare `Worker` is Effect's `effect/workers` namespace, and `globalThis.Worker` is EK4402 |
@@ -129,6 +130,7 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `setInterval` | `try repeat(program, Schedule.spaced("1 second"))` |
 | `setTimeout` | `try sleep("1 second")` |
 | `window` | escape to TypeScript for now: Effect has no service for the DOM; UI code belongs in a .ts or .tsx file, such as a React component's. |
+| `window.FileReader` | `try (try Experimental.FileReader.FileReader).readAsText(blob)` |
 | `window.addEventListener` | `BrowserStream.fromEventListenerWindow("resize")` |
 | `window.cancelAnimationFrame` | `(try Experimental.Animations.Animations).onNextFrame(callback)` |
 | `window.matchMedia` | `try (try Experimental.MediaQuery.MediaQuery).matches(query)` |
@@ -220,7 +222,7 @@ VibeLang's experimental services fill what Effect lacks, provided by `Experiment
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14, VIP-33
-effect function experimental(path: string, pid: number, killSignal: ChildProcess.Signal, name: string, query: string, callback: (time: number) => void, macKey: Mac.Key, aeadKey: Aead.Key, privateKey: Signature.PrivateKey, publicKey: Signature.PublicKey, signature: Uint8Array, data: Uint8Array, plaintext: Uint8Array, ciphertext: Uint8Array, nonce: Uint8Array) {
+effect function experimental(path: string, pid: number, killSignal: ChildProcess.Signal, name: string, query: string, callback: (time: number) => void, blob: Blob, macKey: Mac.Key, aeadKey: Aead.Key, privateKey: Signature.PrivateKey, publicKey: Signature.PublicKey, signature: Uint8Array, data: Uint8Array, plaintext: Uint8Array, ciphertext: Uint8Array, nonce: Uint8Array) {
   const fs = try Experimental.FileSystem.FileSystem
   const id = try (try Experimental.Process.Process).pid
   const platform = try (try Experimental.Process.Process).platform
@@ -245,7 +247,8 @@ effect function experimental(path: string, pid: number, killSignal: ChildProcess
   const reducedMotion = try (try Experimental.MediaQuery.MediaQuery).matches(query)
   const frame = try (try Experimental.Animations.Animations).nextFrame
   const cancelFrame = (try Experimental.Animations.Animations).onNextFrame(callback)
-  return { id, platform, arch, executable, versions, memory, host, cores, origin, running, file, mac, signed, valid, sealed, opened, pair, lock, reducedMotion, frame, cancelFrame }
+  const text = try (try Experimental.FileReader.FileReader).readAsText(blob)
+  return { id, platform, arch, executable, versions, memory, host, cores, origin, running, file, mac, signed, valid, sealed, opened, pair, lock, reducedMotion, frame, cancelFrame, text }
 }
 ```
 

@@ -1,0 +1,35 @@
+// expect-result: {"text":"hi","dataUrl":"data:text/plain;base64,aGk=","bytes":2,"reason":"the file went away"}
+// foldkit's file/reader.ts: a library's own error type over the service's PlatformError.
+import { textFile } from "./page.ts"
+
+error FileReadError { reason: string }
+
+effect function readAsText(file: Blob) {
+  const reader = try Experimental.FileReader.FileReader
+  return try Effect.mapError(reader.readAsText(file), (cause) => new FileReadError({ reason: cause.reason.description ?? cause.message }))
+}
+
+effect function readAll(file: Blob) {
+  provide Experimental.FileReader.layerTest() {
+    const reader = try Experimental.FileReader.FileReader
+    return {
+      text: try readAsText(file),
+      dataUrl: try reader.readAsDataUrl(file),
+      bytes: (try reader.readAsArrayBuffer(file)).byteLength
+    }
+  }
+}
+
+effect function failedRead(file: Blob) {
+  const failing = Experimental.FileReader.layerTest({
+    readAsText: effect () => { throw PlatformError.systemError({ _tag: "NotFound", module: "FileReader", method: "readAsText", description: "the file went away" }) }
+  })
+  provide failing {
+    return readAsText(file) catch (cause) => cause.reason
+  }
+}
+
+export effect function main() {
+  const file = textFile()
+  return { ...try readAll(file), reason: try failedRead(file) }
+}

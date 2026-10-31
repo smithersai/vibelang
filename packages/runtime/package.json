@@ -52,6 +52,11 @@
       "import": "./dist/experimental/Crypto.js",
       "default": "./dist/experimental/Crypto.js"
     },
+    "./experimental/FileReader": {
+      "types": "./dist/experimental/FileReader.d.ts",
+      "import": "./dist/experimental/FileReader.js",
+      "default": "./dist/experimental/FileReader.js"
+    },
     "./experimental/FileSystem": {
       "types": "./dist/experimental/FileSystem.d.ts",
       "import": "./dist/experimental/FileSystem.js",

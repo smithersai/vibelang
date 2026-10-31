@@ -13,6 +13,7 @@
  */
 export * as Animations from "./Animations.js"
 export * as Crypto from "./Crypto.js"
+export * as FileReader from "./FileReader.js"
 export * as FileSystem from "./FileSystem.js"
 export * as Locks from "./Locks.js"
 export * as MediaQuery from "./MediaQuery.js"
