@@ -1,0 +1,20 @@
+// expect-result: {"name":"fallback","count":2,"sub":3}
+// try runs a value whose type is an Effect with structure of its own, as
+// yield* does: a Config, an Effect intersected with a brand, and an interface
+// that extends Effect each give their success value, not EK0502.
+import * as Effect from "effect/Effect"
+
+interface Sub extends Effect.Effect<number> {
+  readonly tag: "Sub"
+}
+
+const name = Config.withDefault(Config.String("VIBELANG_CASE_TRY_SUBTYPE_UNSET"), "fallback")
+const tagged = Object.assign(Effect.succeed(2), { brand: "Service" as const })
+const sub: Sub = Object.assign(Effect.succeed(3), { tag: "Sub" as const })
+
+export effect function main() {
+  const n = try name
+  const count = try tagged
+  const s = try sub
+  return { name: n, count, sub: s }
+}

@@ -103,6 +103,12 @@ func checkTry(c *checker.Checker, file *ast.SourceFile, call, operand *ast.Node)
 	if t == nil || t.Flags()&checker.TypeFlagsAnyOrUnknown != 0 || isEffectType(c, t) || isEffectType(c, presentCallResult(c, t)) {
 		return
 	}
+	// An Effect with structure of its own runs too, as yield* runs it: a
+	// Config, an Effect intersected with a brand, an interface that extends
+	// Effect. try reads its channels (effectOfValue), as the type it gives does.
+	if effectOfValue(c, t) != nil {
+		return
+	}
 	text := shortText(expressionText(file, operand), "the operand")
 	d := report(c, operand, EK0502, text, "not an Effect: "+c.TypeToString(t))
 	switch {
