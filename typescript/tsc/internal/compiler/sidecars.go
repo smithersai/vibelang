@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	tsdiagnostics "github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
@@ -55,7 +56,6 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 		return nil
 	}
 	fs := p.Host().FS()
-	var diagnostics []*ast.Diagnostic
 	result := p.Emit(ctx, EmitOptions{
 		TargetSourceFiles: sources,
 		EmitOnly:          EmitOnlyDts,
@@ -73,8 +73,20 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 			return write(sidecar, text)
 		},
 	})
-	if result != nil {
-		diagnostics = result.Diagnostics
+	if result == nil {
+		return nil
+	}
+	if p.Options().GetEmitDeclarations() {
+		return result.Diagnostics
+	}
+	// A project that asks for no declarations does not fail on what a sidecar
+	// cannot print: a sidecar holds what emit writes, and the checkers that
+	// read it report what they need.
+	var diagnostics []*ast.Diagnostic
+	for _, d := range result.Diagnostics {
+		warning := d.Clone()
+		warning.SetCategory(tsdiagnostics.CategoryWarning)
+		diagnostics = append(diagnostics, warning)
 	}
 	return diagnostics
 }

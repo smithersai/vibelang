@@ -21,6 +21,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A migrate run that switched to a new toolchain committed `upgrade Effect to <version>` although Effect did not change; that commit now says `switch to the toolchain of VibeLang <commit>`.
 
+- With `declarationSidecars`, a project that sets no `declaration` failed on declaration-only errors such as `TS7056` that its `tsc --noEmit` never reported; those are now warnings there, and stay errors in a project that emits declarations.
+
 - Running the migrate flow's setup again left the earlier setup's `.vibelang-toolchain` tarballs on disk, where `jj` committed them with the new setup; setup now removes that directory before it returns to the Effect upgrade.
 
 - `vibelang --fix --fix-vip-only` removed the `try` of a plain call that gives a yieldable error, `return try toError(id)`, so the error became the program's success value, and `--fix` did the same to `yield* toError(id)`; both now write `throw toError(id)`, keep `try` where no statement can throw, and write `try x.asEffect()` for an `Effect.Yieldable`.
