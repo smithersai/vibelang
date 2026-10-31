@@ -1,0 +1,33 @@
+// expect: EK4701
+// and and not cover nothing, so a match that needs them to cover a case has
+// no proof of it (chapter 004, Coverage).
+export function andArm(x: boolean) {
+  return match (x) { when true and true: 1; when false: 0; }
+}
+export function notArm(x: boolean) {
+  return match (x) { when not false: 1; when false: 0; }
+}
+export function nested(x: "a" | "b" | "c") {
+  return match (x) { when "a": 1; when ("b" and "b") or "c": 2; }
+}
+export function guarded(x: boolean, flag: boolean) {
+  return match (x) { when true and if (flag): 1; when false: 0; }
+}
+// An and whose other side only binds covers what its test covers.
+export function bindOnly(x: "a" | "b") {
+  return match (x) { when "a" and let y: y; when "b": "b"; }
+}
+export function keyOnly(x: { _tag: "A"; id: string } | { _tag: "B" }) {
+  return match (x) { when { _tag: "A" } and { let id }: id; when { _tag: "B" }: "b"; }
+}
+// An unguarded arm beside them covers its case.
+export function covered(x: boolean) {
+  return match (x) { when true and true: 1; when true: 2; when false: 0; }
+}
+// With a default no coverage is checked, and the default narrows as TypeScript does.
+export function withDefault(x: string | null) {
+  return match (x) { when not null: x.length; default: x; }
+}
+export function bound(x: "a" | "b") {
+  return match (x) { when "a" and let y: y; when "b": "b"; default: x; }
+}

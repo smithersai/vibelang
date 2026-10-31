@@ -918,6 +918,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A predicate pattern whose parameter had a type, such as `when isText:` with `isText(s: string | number): s is string`, narrowed the subject to the function's type, so `s.toUpperCase()` in the arm and `s.toFixed()` in `default` did not compile, and a call-only extractor with a typed parameter bound `any`. The arm and `default` now narrow as `if (isText(s))` does, and the bindings take the extractor's element types.
 
+- An arm that used `not`, or `and` with two tests, counted toward exhaustiveness, so `match (x) { when true and true: 1; when false: 0; }` compiled; such an arm now covers nothing, and the match needs another arm or a `default` (`EK4701`).
+
 - `vibelang/bun` scanned every module of every dependency and resolved each of their imports a second time, so a large package's tests ran about three times slower and timed out with no `.vibe` module loaded; it now stops at `node_modules`, and a 294-module import graph costs about the same with the preload as without it.
 
 - `vibelang --fix` deleted `import * as Schema from "effect/Schema"` when a `Schema.TaggedError` class was its only use, and rewrote a class whose module has another name, so the declaration file changed; in a project that emits declarations it now keeps the import and leaves such a class.
@@ -1438,6 +1440,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 | `when -0:` or `when +0:` written to match either zero | Write `when 0:`, which matches both zeros. A signed zero now matches only that zero, and `EK4701` reports a `match` that relied on it to cover `0`. |
 | An explicitly `readonly` schema field referencing mutable or uncertain decoded key flags | `EK2109`: run `vibelang --fix` to retain the existing codec as an explicit `Schema.Struct` value. Nested value mutability is unchanged. |
+| A `match` with no `default` that relies on a `not` arm, or an `and` arm with two tests, to cover a case | `EK4701`: add an arm that covers the case, or a `default` arm. |
 
 - EK4802's quick fix "Call it to run it" was offered in a function whose written contract rejects what the call runs, such as `return Exit.fail("data")` in an `unknown!!` function, and applying it added EK2001. It is now offered only where the contract accepts the call's failure, requirements and success.
 
