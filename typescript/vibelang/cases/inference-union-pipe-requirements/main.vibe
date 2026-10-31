@@ -1,0 +1,9 @@
+// expect-result: "registered"
+// alchemy-25: lib.ts is TypeScript that TypeScript 5.9 and 7.0.2 accept, and
+// its declarations (expected/lib.d.ts) are 7.0.2's: provider requires B.
+import { provider } from "./lib.ts"
+
+export effect function main() {
+  const required: typeof provider = provider
+  return required === provider ? "registered" : "lost"
+}
