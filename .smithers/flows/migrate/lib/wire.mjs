@@ -124,11 +124,16 @@ export function addVibeLangPlugin(pkg, specs) {
  * (`defineConfig(() => ({ ... }))`, or a body whose last top-level return
  * is one), first in that object's own plugins,
  * never in a nested option's (a `lint: { plugins: [...] }`). ts is
- * TypeScript's compiler API. Returns the text unchanged when the plugin is
- * already there; throws when the config has a shape this edit does not know,
- * so a person wires it instead.
+ * TypeScript's compiler API. With register, for the config the tests load,
+ * the plugin is vibelang({ register: true }), so a node or bun process a
+ * test starts on the sources loads .vibe modules too, and a config that
+ * already has the plugin gains the option (addRegister). Returns the text
+ * unchanged when the plugin is already there; throws when the config has a
+ * shape this edit does not know, so a person wires it instead.
  */
-export function addVitePlugin(text, ts) {
+export function addVitePlugin(text, ts, { register = false } = {}) {
+  const imported = /import\s+([\w$]+)\s+from\s+['"]vibelang-vite['"]/.exec(text)
+  if (imported) return register ? addRegister(text, ts, imported[1]) : text
   if (/from\s+['"]vibelang-vite['"]/.test(text)) return text
   const source = ts.createSourceFile("vite.config.ts", text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
   let config
@@ -149,20 +154,46 @@ export function addVitePlugin(text, ts) {
   }
   find(source)
   if (!config) throw new Error("the config does not call defineConfig({ ... }) or defineConfig(() => ({ ... })); add vibelang() from vibelang-vite to its plugins by hand")
-  return applyPluginEdits(text, [importEdit(text, source, ts, "vibelang-vite"), pluginEdit(text, source, config, ts, "the config's plugins is not an array literal; add vibelang() to it by hand")])
+  const call = register ? "vibelang({ register: true })" : "vibelang()"
+  return applyPluginEdits(text, [importEdit(text, source, ts, "vibelang-vite"), pluginEdit(text, source, config, ts, "the config's plugins is not an array literal; add vibelang() to it by hand", call)])
 }
 
-/** The edit that puts vibelang() first in config's own plugins, or gives it plugins; throws `refusal` when they are not an array literal. */
-function pluginEdit(text, source, config, ts, refusal) {
+/**
+ * text, a config that imports vibelang-vite as name, with register: true in
+ * each name(...) call that does not set register: name() gains
+ * { register: true }, and an object literal argument gains the property
+ * first. A call whose argument is not an object literal is left as it is.
+ */
+export function addRegister(text, ts, name) {
+  const source = ts.createSourceFile("vite.config.ts", text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  const edits = []
+  const find = (node) => {
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === name) {
+      const [options] = node.arguments
+      if (!options) edits.push({ at: node.arguments.pos, text: "{ register: true }" })
+      else if (ts.isObjectLiteralExpression(options) && !options.properties.some((p) => p.name && (ts.isIdentifier(p.name) || ts.isStringLiteral(p.name)) && p.name.text === "register")) {
+        edits.push(options.properties.length
+          ? { at: options.properties[0].getStart(source), text: "register: true, " }
+          : { at: options.getStart(source) + 1, text: " register: true " })
+      }
+    }
+    ts.forEachChild(node, find)
+  }
+  find(source)
+  return applyPluginEdits(text, edits)
+}
+
+/** The edit that puts call, vibelang() by default, first in config's own plugins, or gives it plugins; throws `refusal` when they are not an array literal. */
+function pluginEdit(text, source, config, ts, refusal, call = "vibelang()") {
   const plugins = config.properties.find((p) => p.name && (ts.isIdentifier(p.name) || ts.isStringLiteral(p.name)) && p.name.text === "plugins")
   if (plugins) {
     if (!ts.isPropertyAssignment(plugins) || !ts.isArrayLiteralExpression(plugins.initializer)) throw new Error(refusal)
     const list = plugins.initializer
-    return list.elements.length ? { at: list.elements[0].getStart(source), text: "vibelang(), " } : { at: list.getStart(source) + 1, text: "vibelang()" }
+    return list.elements.length ? { at: list.elements[0].getStart(source), text: `${call}, ` } : { at: list.getStart(source) + 1, text: call }
   }
   const at = config.getStart(source) + 1
   const indent = /\n([ \t]+)\S/.exec(text.slice(at))?.[1]
-  return indent ? { at, text: `\n${indent}plugins: [vibelang()],` } : { at, text: " plugins: [vibelang()]," }
+  return indent ? { at, text: `\n${indent}plugins: [${call}],` } : { at, text: ` plugins: [${call}],` }
 }
 
 /** The edit that imports vibelang from module on the line after the last import, in the file's quote and semicolon style. */
@@ -236,7 +267,7 @@ export function testConfigArgument(command, scripts = {}) {
 export function wireVite({ root, packages, test, ts, specsFor }) {
   const changed = []
   const warnings = []
-  const wire = (file) => wireViteConfig({ root, file, ts, specsFor, changed })
+  const wire = (file) => wireViteConfig({ root, file, ts, specsFor, changed, register: true })
   const testCwd = join(root, test.cwd)
   const scripts = existsSync(join(testCwd, "package.json")) ? JSON.parse(readFileSync(join(testCwd, "package.json"), "utf8")).scripts : undefined
   const named = testConfigArgument(test.command, scripts)
@@ -266,14 +297,15 @@ export function wireVite({ root, packages, test, ts, specsFor }) {
 
 // Adds the plugin to one config, and the compiler and the plugin to the
 // package that owns it, the nearest one above it; records the files changed.
-function wireViteConfig({ root, file, ts, specsFor, changed }) {
+// register is for a config the tests load (addVitePlugin).
+function wireViteConfig({ root, file, ts, specsFor, changed, register = false }) {
   const write = (path, before, after) => {
     if (before === after) return
     writeFileSync(join(root, path), after)
     if (!changed.includes(path)) changed.push(path)
   }
   const text = readFileSync(join(root, file), "utf8")
-  write(file, text, addVitePlugin(text, ts))
+  write(file, text, addVitePlugin(text, ts, { register }))
   let owner = posix.dirname(file)
   while (owner !== "." && !existsSync(join(root, owner, "package.json"))) owner = posix.dirname(owner)
   const manifest = posix.join(owner, "package.json")

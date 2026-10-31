@@ -136,7 +136,7 @@ test("wireVite wires the shared config the test command names, and gives its pac
       const wired = wireVite({ root, packages, test: { command, cwd: "packages/contracts" }, ts, specsFor })
       assert.deepEqual(wired.configs, ["vite.config.ts"])
       assert.deepEqual(wired.warnings, [])
-      assert.ok(readFileSync(join(root, "vite.config.ts"), "utf8").includes('defineConfig({\n  plugins: [vibelang()],\n  test:'))
+      assert.ok(readFileSync(join(root, "vite.config.ts"), "utf8").includes('defineConfig({\n  plugins: [vibelang({ register: true })],\n  test:'))
       assert.deepEqual(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).devDependencies, {
         "vite-plus": "1.4.0",
         vibelang: "file:./.vibelang-toolchain/vibelang-0.0.11.tgz",
@@ -623,7 +623,7 @@ test("wireVite follows a package's test script to a shared config once, and warn
     const result = wireVite({ root, packages, test: { command: "python3 scope.py", cwd: "." }, ts, specsFor })
     assert.deepEqual(result.configs, ["vite.config.ts"])
     assert.deepEqual(result.warnings.map((w) => w.split(":")[0]), ["packages/c", "packages/d"])
-    assert.ok(readFileSync(join(root, "vite.config.ts"), "utf8").includes("vibelang()"))
+    assert.ok(readFileSync(join(root, "vite.config.ts"), "utf8").includes("vibelang({ register: true })"))
     assert.deepEqual(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).devDependencies, { vibelang: "0.0.12", "vibelang-vite": "0.0.12" })
   } finally {
     rmSync(root, { recursive: true, force: true })
