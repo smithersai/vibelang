@@ -313,3 +313,12 @@ available memory and cgroup memory events distinguish resource exhaustion
 from an audit assertion. Failed requests include their path and error, with
 query strings omitted. `CONTRAST_ARTIFACTS` additionally saves screenshots
 and the completed contrast observations.
+
+The contrast audit uses `axe.run` in the current document rather than the
+partial-results adapter, which opens a blank helper page and transfers a
+serialized copy of the results to its renderer. Post-merge diagnostics caught
+OOM kills while finishing an audit under build-host memory pressure. The built
+pages have no child frames; the audit checks that invariant before running,
+so adding frames requires an explicit frame-aware audit strategy. Shadow DOM
+remains covered. The browser regression checks both themes with readable and
+unreadable text, including shadow roots, and forbids opening a helper page.

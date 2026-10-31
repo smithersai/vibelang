@@ -3,7 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
-import AxeBuilder from '@axe-core/playwright'
+import { auditPageContrast } from './contrast-audit.mjs'
 import { routeBuiltSite } from './built-site.mjs'
 import { contrastDiagnostics } from './contrast-diagnostics.mjs'
 
@@ -42,7 +42,7 @@ export async function checkSiteContrast() {
           await page.screenshot({ path: resolve(artifacts, 'home-1366-' + theme + '.png') })
         }
         const audit = async state => {
-          const result = await diagnostics.run('axe', { theme, path, state }, () => new AxeBuilder({ page }).withRules(['color-contrast']).analyze())
+          const result = await diagnostics.run('axe', { theme, path, state, mode: 'single-document' }, () => auditPageContrast(page))
           const violations = []
           for (const node of result.violations.flatMap(rule => rule.nodes)) {
             const data = node.any.find(check => check.id === 'color-contrast')?.data
