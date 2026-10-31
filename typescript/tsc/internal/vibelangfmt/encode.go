@@ -194,6 +194,9 @@ func encode(fileName, source string) (*encoding, error) {
 	if err := checkModules(file, source); err != nil {
 		return nil, err
 	}
+	if err := checkServiceCallSignatures(file, source); err != nil {
+		return nil, err
+	}
 	sentinel := ""
 	for _, candidate := range sentinels {
 		if !strings.Contains(source, candidate) {
@@ -294,6 +297,26 @@ func (e *encoder) keepJSDocEmptyStatements() {
 		return node.ForEachChild(visit)
 	}
 	e.file.AsNode().ForEachChild(visit)
+}
+
+// checkServiceCallSignatures refuses a service body's call signature, which
+// parses so that the checker can report EK0902 but has no TypeScript class
+// form to format.
+func checkServiceCallSignatures(file *ast.SourceFile, source string) error {
+	var found *ast.Node
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if ast.IsCallSignatureDeclaration(node) && node.Parent != nil && ast.IsClassLike(node.Parent) {
+			found = node
+			return true
+		}
+		return node.ForEachChild(visit)
+	}
+	if !file.AsNode().ForEachChild(visit) {
+		return nil
+	}
+	line, column := lineColumn(source, scanner.SkipTrivia(source, found.Pos()))
+	return fmt.Errorf("vibelang format: %d:%d: a call signature cannot be a service member (EK0902); declare a named method instead", line, column)
 }
 
 // syntaxError reports a parse diagnostic with its line and column.

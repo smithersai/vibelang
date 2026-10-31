@@ -829,3 +829,4 @@ parser/vibelang_errors.go:Parser.parseVibeLangNoSeparator	admission:error	900-ap
 parser/vibelang_effect_channels.go:Parser.checkVibeLangEffectChannels	admission:effect-type	900-appendices.md#EffectOperand	support	VIP-3 EK0301 syntax validation also under --noCheck; does not admit bare compound slots
 parser/vibelang_effect_channels.go:Parser.parseVibeLangConditionalCheck	admission:effect-type	900-appendices.md#EffectOperand	recovery	VIP-3 EK0301 recovers the conditional check only to diagnose and preserve its grouping
 parser/vibelang_effect_channels.go:VibeLangEffectChannelParts	admission:effect-type	900-appendices.md#EffectOperand	support	VIP-3 EK0301 identifies written Effect operands needing parentheses for diagnostics and the preserving fix
+parser/vibelang.go:Parser.isVibeLangServiceCallSignature	admission:service	900-appendices.md#ServiceDeclaration	recovery	VIP-9 recovers a forbidden call signature for EK0902; it is not an admitted service member

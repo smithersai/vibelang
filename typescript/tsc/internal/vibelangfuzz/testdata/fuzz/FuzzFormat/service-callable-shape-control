@@ -1,0 +1,2 @@
+go test fuzz v1
+string("service Callable: { (x: number): string } { static readonly key = \"format/Callable\" }")

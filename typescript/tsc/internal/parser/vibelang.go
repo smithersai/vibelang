@@ -159,6 +159,15 @@ func (p *Parser) vibelangModifiers(modifiers *ast.ModifierList, name *ast.Node, 
 	return p.newModifierList(modifiers.Loc, append(added, modifiers.Nodes...))
 }
 
+// isVibeLangServiceCallSignature reports whether the token starts a call
+// signature in a service or control body: (x: number): string or
+// <T>(x: T): T. A TypeScript class body has no such member, but a service
+// body is interface-like (VIP-9), so the member parses as a call signature
+// and the checker reports one EK0902 instead of a cascade of syntax errors.
+func (p *Parser) isVibeLangServiceCallSignature() bool {
+	return p.vibelangAbstractMembers && (p.token == ast.KindOpenParenToken || p.token == ast.KindLessThanToken)
+}
+
 // vibelangAbstractMember adds abstract, and readonly for a legacy control property, to a
 // member of a service or control body that has no body or initializer and is
 // not static.

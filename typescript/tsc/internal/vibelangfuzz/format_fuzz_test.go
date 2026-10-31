@@ -335,6 +335,8 @@ func toolsSlug(message string) string {
 }
 
 // formatSyntaxError returns the first syntax error of a .vibe source, or "".
+// It includes forbidden grammar retained as recovery nodes for an owning EK
+// diagnostic, not only the parser's ordinary diagnostics.
 // `provide` is a statement whose block is code of the enclosing function
 // (Chapter 4: "`return` returns from the function"), so in expression
 // position it has no grammar: EK1017, "`provide` used as an expression
@@ -348,6 +350,7 @@ func formatSyntaxError(source string) string {
 	}
 	at := -1
 	separatorAt := -1
+	reason := "EK1017, provide used as an expression"
 	var visit ast.Visitor
 	visit = func(node *ast.Node) bool {
 		// Appendix A Separator remains a syntax rule even when recovery
@@ -355,6 +358,18 @@ func formatSyntaxError(source string) string {
 		if ast.IsSemicolonClassElement(node) && node.Flags&ast.NodeFlagsVibeLang != 0 && node.Pos() == node.End() {
 			separatorAt = node.Pos()
 			return true
+		}
+		// VIP-9 forbids a call signature directly in a service body. The
+		// parser retains it for EK0902, but it has no TypeScript class form.
+		// A signature nested in a property's type is a valid control.
+		if ast.IsClassLike(node) {
+			for _, member := range node.Members() {
+				if ast.IsCallSignatureDeclaration(member) {
+					at = member.Pos()
+					reason = "EK0902, call signature in a service body"
+					return true
+				}
+			}
 		}
 		if ast.IsCallExpression(node) && node.Expression().Flags&ast.NodeFlagsVibeLangIntrinsic != 0 && node.Expression().Text() == "$patternError" {
 			if arguments := node.Arguments(); len(arguments) > 0 && arguments[0].Text() == "1017" {
@@ -369,7 +384,7 @@ func formatSyntaxError(source string) string {
 		return fmt.Sprintf("%d: missing member separator (EK1306/EK0908)", separatorAt)
 	}
 	if at >= 0 {
-		return fmt.Sprintf("%d: EK1017, provide used as an expression", at)
+		return fmt.Sprintf("%d: %s", at, reason)
 	}
 	return ""
 }

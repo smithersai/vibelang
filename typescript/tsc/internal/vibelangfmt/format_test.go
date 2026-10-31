@@ -468,6 +468,7 @@ func TestFormatRejects(t *testing.T) {
 		{"module declaration without a name", "module {\n  export const a = 1\n}\n", "vibelang format: 1:1: a module declaration needs a name"},
 		{"nested module declaration without a name", "function f() {\n  module {\n    export const a = 1\n  }\n}\n", "vibelang format: 2:3: a module declaration needs a name"},
 		{"module declared twice", "module text {\n  export const a = 1\n}\nmodule text {\n  export const b = 2\n}\n", "vibelang format: 4:1: module text is declared twice"},
+		{"call signature in a service", "service Format {\n  static readonly key = \"f\";\n  (value: string): string\n}\n", "vibelang format: 3:3: a call signature cannot be a service member (EK0902)"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

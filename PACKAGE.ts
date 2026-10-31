@@ -382,6 +382,7 @@ const specTests = [
   "TestMissingRuntimeQuoted",
   "TestWorkspaceDiagnosticOccurrencesQuoted",
   "TestAutomaticTracingKeysQuoted",
+  "TestServiceShapeContractsQuoted",
   "TestServicesRulesQuoted",
   "TestServiceDefaultReadsQuoted",
   "TestProducerBindingQuoted",

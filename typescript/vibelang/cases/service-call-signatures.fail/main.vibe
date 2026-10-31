@@ -1,0 +1,19 @@
+// expect: EK0902
+export service Format {
+ static readonly key = "call/format";
+ (value: string): string
+}
+export service Generic {
+ static readonly key = "call/generic";
+ <T>(value: T): T!!
+}
+export service Mixed {
+ static readonly key = "call/mixed"
+ find(id: string): number!!
+ (id: string): number
+ readonly region: string
+}
+export service Untyped {
+ static readonly key = "call/untyped";
+ ()
+}

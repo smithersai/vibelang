@@ -92,8 +92,10 @@ func (tx *TypeEraserTransformer) visit(node *ast.Node) *ast.Node {
 		ast.KindIndexedAccessType,
 		ast.KindMappedType,
 		ast.KindLiteralType,
-		// TypeScript index signatures are elided.
-		ast.KindIndexSignature:
+		// TypeScript index signatures are elided, and so are the call
+		// signatures a VibeLang service body declares (EK0902).
+		ast.KindIndexSignature,
+		ast.KindCallSignature:
 		return nil
 
 	case ast.KindInKeyword, ast.KindOutKeyword:

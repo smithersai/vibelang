@@ -17,6 +17,8 @@ import (
 // of the service-member reports: a service is a key whose members are
 // signatures, as in an interface.
 var servicesRules = []struct{ key, quote, good, bad string }{
+	{"comma-methods", "two members on one line with no separator", "export service Users { a(): number, b(): string, }", "export service Users { a(): number b(): string }"},
+	{"comma-properties", "two members on one line with no separator", "export service Users { readonly a: number, b?: string, }", "export service Users { a: number b: string }"},
 	{"new-service", "`new Users()`", "export service Users { n: number }\nexport function f(): number { return 1 }", "export service Users { n: number }\nexport const u = new Users()"},
 	{"extends-service", "`class X extends Users {}`", "export service Users { n: number }\nexport class X {}", "export service Users { n: number }\nexport class X extends Users {}"},
 	{"instanceof-service", "`impl instanceof Users`", "export service Users { n: number }\nexport function f(impl: unknown): boolean { return typeof impl === \"object\" }", "export service Users { n: number }\nexport function f(impl: unknown): boolean { return impl instanceof Users }"},
@@ -82,20 +84,33 @@ func FuzzServicesRules(f *testing.F) {
 	chapter := servicesRulesChapter(f)
 	for _, rule := range servicesRules {
 		f.Add([]byte(rule.key))
+		f.Add([]byte(rule.key + "\x00\x03"))
 	}
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, data []byte) {
+		parts := strings.SplitN(string(data), "\x00", 2)
 		choice := 0
 		if len(data) != 0 {
 			choice = int(data[0]) % len(servicesRules)
 		}
 		for i, rule := range servicesRules {
-			if string(data) == rule.key {
+			if parts[0] == rule.key {
 				choice = i
 				break
 			}
 		}
 		rule := servicesRules[choice]
+		if len(parts) == 2 && len(parts[1]) > 0 {
+			variant := parts[1][0]
+			if variant&1 != 0 {
+				rule.good = "// retained trivia\n" + strings.ReplaceAll(rule.good, "Users", "UsersCafé")
+				rule.bad = "// retained trivia\n" + strings.ReplaceAll(rule.bad, "Users", "UsersCafé")
+			}
+			if variant&2 != 0 {
+				rule.good = strings.ReplaceAll(rule.good, "\"", "'")
+				rule.bad = strings.ReplaceAll(rule.bad, "\"", "'")
+			}
+		}
 		var compileErrors []string
 		var errorCodes map[int32]bool
 		compile := func(source string) bool {

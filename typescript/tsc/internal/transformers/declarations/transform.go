@@ -625,6 +625,11 @@ func (tx *DeclarationTransformer) visitDeclarationSubtree(input *ast.Node) *ast.
 		return nil
 	}
 
+	// A VibeLang service body's call signature (EK0902) has no class form.
+	if input.Kind == ast.KindCallSignature && input.Parent != nil && ast.IsClassLike(input.Parent) {
+		return nil
+	}
+
 	if ast.IsHeritageClause(input) && (len(input.AsHeritageClause().Types.Nodes) == 0 || (len(input.AsHeritageClause().Types.Nodes) == 1 && ast.NodeIsMissing(input.AsHeritageClause().Types.Nodes[0]))) {
 		return nil
 	}

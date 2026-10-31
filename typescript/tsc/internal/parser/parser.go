@@ -106,7 +106,7 @@ type Parser struct {
 	vibelangServiceMembers   bool                        // service member signatures use interface separators
 	vibelangMutableMember    bool                        // the type member being parsed was written with mutable (vibelang.go)
 	vibelangImplicitReadonly bool                        // inside a data, schema or error body, whose type members are readonly unless written mutable (vibelang.go)
-	vibelangControlMembers   bool                     // legacy control properties keep their readonly default (vibelang.go)
+	vibelangControlMembers   bool                        // legacy control properties keep their readonly default (vibelang.go)
 	vibelangAbstractMembers  bool                        // bodiless class members become abstract: a service or control body (vibelang.go)
 	vibelangFieldBody        bool                        // an error, service, or control body supports recoverable field commas (vibelang_errors.go)
 	vibelangFieldComma       bool                        // a comma follows the field just parsed in such a body (vibelang_errors.go)
@@ -905,6 +905,7 @@ func (p *Parser) isListElement(parsingContext ParsingContext, inErrorRecovery bo
 		// for statements.
 		return p.isStartOfVibeLangModuleDeclaration() || // VIP-40: consume and diagnose misplaced modules
 			p.vibelangFieldComma && p.token == ast.KindCommaToken || p.vibelangNoSeparator || // vibelang_errors.go
+			p.isVibeLangServiceCallSignature() || // vibelang.go
 			p.lookAhead((*Parser).scanClassMemberStart) || p.token == ast.KindSemicolonToken && !inErrorRecovery
 	case PCEnumMembers:
 		// Include open bracket computed properties. This technically also lets in indexers,
@@ -2077,6 +2078,9 @@ func (p *Parser) parseClassElement() *ast.Node {
 	}
 	if p.vibelangNoSeparator {
 		return p.parseVibeLangNoSeparator() // vibelang_errors.go
+	}
+	if p.isVibeLangServiceCallSignature() {
+		return p.parseSignatureMember(ast.KindCallSignature) // EK0902 (vibelang.go)
 	}
 	pos := p.nodePos()
 	jsdoc := p.jsdocScannerInfo()
