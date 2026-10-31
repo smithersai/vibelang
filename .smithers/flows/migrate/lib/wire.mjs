@@ -498,32 +498,76 @@ export function runsBunTest(command, scripts = {}) {
  * run`. Other lines are kept.
  */
 export function addBunTestPreload(text) {
-  const entry = '"vibelang/bun"'
   const lines = text.split("\n")
   const header = lines.findIndex((line) => /^\s*\[test\]\s*(#.*)?$/.test(line))
-  if (header < 0) return `${text}${text && !text.endsWith("\n") ? "\n" : ""}${text ? "\n" : ""}[test]\npreload = [${entry}]\n`
-  let end = lines.findIndex((line, i) => i > header && /^\s*\[/.test(line))
-  if (end < 0) end = lines.length
-  const at = lines.findIndex((line, i) => i > header && i < end && /^\s*preload\s*=/.test(line))
+  if (header < 0) return `${text}${text && !text.endsWith("\n") ? "\n" : ""}${text ? "\n" : ""}[test]\npreload = ["vibelang/bun"]\n`
+  const end = lines.findIndex((line, i) => i > header && /^\s*\[/.test(line))
+  return preloadIn(text, lines, header + 1, end < 0 ? lines.length : end)
+}
+
+/**
+ * A bunfig.toml's text with vibelang/bun in its top-level preload, the one
+ * `bun <file>` applies; `bun test` reads only [test]'s. Other lines are kept.
+ */
+export function addBunPreload(text) {
+  const lines = text.split("\n")
+  const end = lines.findIndex((line) => /^\s*\[/.test(line))
+  return preloadIn(text, lines, 0, end < 0 ? lines.length : end)
+}
+
+/** text, split into lines, with vibelang/bun first in the preload between lines start and end, or a new preload at start. */
+function preloadIn(text, lines, start, end) {
+  const entry = '"vibelang/bun"'
+  const at = lines.findIndex((line, i) => i >= start && i < end && /^\s*preload\s*=/.test(line))
   if (at < 0) {
-    lines.splice(header + 1, 0, `preload = [${entry}]`)
+    lines.splice(start, 0, `preload = [${entry}]`)
     return lines.join("\n")
   }
   if (lines[at].includes(entry)) return text
   const single = /^(\s*preload\s*=\s*)(?:\[(.*)\]|("[^"]*"))\s*$/.exec(lines[at])
-  if (!single) throw new Error("the bunfig.toml [test] preload spans lines; add \"vibelang/bun\" to it by hand")
+  if (!single) throw new Error("the bunfig.toml preload spans lines; add \"vibelang/bun\" to it by hand")
   const items = single[2] !== undefined ? single[2].trim().replace(/,\s*$/, "") : single[3]
   lines[at] = `${single[1]}[${entry}${items ? `, ${items}` : ""}]`
   return lines.join("\n")
 }
 
+// Bun's own commands. Anything else after `bun` in a script is a program, which
+// reads the top-level preload.
+const bunCommands = new Set(["test", "t", "install", "i", "add", "a", "remove", "rm", "update", "link", "unlink", "pm", "x", "create", "c", "init", "build", "upgrade", "outdated", "publish", "audit", "patch", "patch-commit", "info", "why", "repl", "exec", "feedback"])
+
 /**
- * Adds vibelang/bun to the [test] preload of every package that runs `bun
- * test` and reaches migrated sources (packagesReaching), with the compiler the
+ * The directories, relative to the script's package, where script runs a
+ * program under Bun: `bun file`, `bun run file` or a bin, `bun alchemy-test`,
+ * following `cd dir`. A package script that `bun name` runs, one of what
+ * scriptsIn(dir) gives for the directory it runs in, is not a program.
+ */
+export function bunProgramDirs(script, scriptsIn = () => ({})) {
+  const dirs = []
+  let dir = "."
+  for (const part of script.split(/&&|\|\||;/)) {
+    const words = part.replace(/[()]/g, " ").trim().split(/\s+/)
+    if (words[0] === "cd" && words[1]) {
+      dir = posix.normalize(posix.join(dir, words[1]))
+      continue
+    }
+    if (words[0] !== "bun") continue
+    const args = words.slice(1).filter((word) => !word.startsWith("-"))
+    const program = args[0] === "run" ? args[1] : args[0]
+    if (program === undefined || scriptsIn(dir)[program] || (args[0] !== "run" && bunCommands.has(program))) continue
+    dirs.push(dir)
+  }
+  return dirs
+}
+
+
+/**
+ * Adds vibelang/bun to the preload of every package that reaches migrated
+ * sources (packagesReaching) and runs them under Bun, with the compiler the
  * preload needs: a workspace import reaches a .vibe module from any of them,
- * and Bun reads only the bunfig.toml of the directory it runs in. A bunfig.toml
- * addBunTestPreload cannot edit is left as it is, with a warning. Returns the
- * files changed and the warnings.
+ * and Bun reads only the bunfig.toml of the directory it runs in. `bun test`
+ * reads [test]'s preload, and a program, `bun file` or a bin, the top-level
+ * one. A bunfig.toml this cannot edit is left as it is, with a warning.
+ * Returns the files changed and the warnings.
  */
 export function wireBunTests({ root, packages, specsFor }) {
   const changed = []
@@ -533,12 +577,22 @@ export function wireBunTests({ root, packages, specsFor }) {
     writeFileSync(join(root, file), after)
     changed.push(file)
   }
-  for (const pkg of packagesReaching(root, packages.map((migrated) => migrated.dir))) {
-    if (!Object.values(pkg.manifest.scripts ?? {}).some((script) => runsBunTest(script))) continue
+  const reaching = packagesReaching(root, packages.map((migrated) => migrated.dir))
+  const scriptsOf = (pkg) => Object.values(pkg.manifest.scripts ?? {})
+  // A script can run a program from another package's directory: `cd packages/e2e && bun run-all`.
+  const all = repositoryPackages(root)
+  const scriptsAt = (dir) => all.find((pkg) => pkg.dir === dir)?.manifest.scripts ?? {}
+  const programs = new Set(all.flatMap((pkg) => {
+    const at = (dir) => posix.normalize(posix.join(pkg.dir, dir))
+    return scriptsOf(pkg).flatMap((script) => bunProgramDirs(script, (dir) => scriptsAt(at(dir))).map(at))
+  }))
+  for (const pkg of reaching) {
+    const edits = [...(scriptsOf(pkg).some((script) => runsBunTest(script)) ? [addBunTestPreload] : []), ...(programs.has(pkg.dir) ? [addBunPreload] : [])]
+    if (!edits.length) continue
     const bunfig = posix.join(pkg.dir, "bunfig.toml")
     const text = existsSync(join(root, bunfig)) ? readFileSync(join(root, bunfig), "utf8") : ""
     try {
-      write(bunfig, text, addBunTestPreload(text))
+      write(bunfig, text, edits.reduce((next, edit) => edit(next), text))
     } catch (error) {
       warnings.push(`${bunfig}: ${error.message}`)
       continue

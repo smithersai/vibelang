@@ -5,7 +5,7 @@ import { join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { loadTypeScript } from "../lib/declarations.mjs"
-import { addBunBuildPlugin, wireBunBuilds, addBunTestPreload, wireBunTests, addCompilerOptions, addEffectLint, copyTarballs, formattable, formatterOf, addVibeLang, addVibeIncludes, addVibeLangSetting, addVitePlugin, initAgents, installCommand, packageManager, replaceTsc, rootTsconfigs, runsBunTest, setIgnoreLine, testConfigArgument, toolchainDirectory, toolchainSpecs, viteAppConfigs, wireKnip, wireVite, wireViteApps } from "../lib/wire.mjs"
+import { addBunBuildPlugin, addBunPreload, bunProgramDirs, wireBunBuilds, addBunTestPreload, wireBunTests, addCompilerOptions, addEffectLint, copyTarballs, formattable, formatterOf, addVibeLang, addVibeIncludes, addVibeLangSetting, addVitePlugin, initAgents, installCommand, packageManager, replaceTsc, rootTsconfigs, runsBunTest, setIgnoreLine, testConfigArgument, toolchainDirectory, toolchainSpecs, viteAppConfigs, wireKnip, wireVite, wireViteApps } from "../lib/wire.mjs"
 import { setUpAgents } from "../lib/steps.mjs"
 import { must } from "../lib/util.mjs"
 
@@ -267,7 +267,7 @@ test("wireBunTests preloads vibelang/bun in every package that runs bun test and
     }
     manifest(".", { name: "root" })
     manifest("packages/util", { name: "util", scripts: { test: "bun test --timeout 5000" } })
-    manifest("packages/core", { name: "core", scripts: { test: "bun run clean && bun test" }, dependencies: { util: "workspace:*" } })
+    manifest("packages/core", { name: "core", scripts: { clean: "rm -rf dist", test: "bun run clean && bun test" }, dependencies: { util: "workspace:*" } })
     manifest("packages/app", { name: "app", scripts: { test: "vitest run" }, dependencies: { util: "workspace:*" } })
     manifest("packages/alone", { name: "alone", scripts: { test: "bun test" } })
     writeFileSync(join(root, "packages/core/bunfig.toml"), '[test]\npreload = ["./test/setup.ts"]\n')
@@ -343,6 +343,48 @@ test("wireBunBuilds wires the builds that bundle migrated sources and leaves tes
     assert.deepEqual(wired.warnings.map((w) => w.split(":")[0]), ["packages/cli/script/unknown.ts", "packages/cli/test/bundle.test.ts"])
     const old = wireBunBuilds({ root, packages: [{ dir: "packages/util" }], ts, specsFor: () => ({ vibelang: "file:/t/v.tgz" }) })
     assert.ok(old.warnings.some((w) => /rebuild the toolchain/.test(w)))
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test("addBunPreload writes the top-level preload, the one `bun <file>` applies, beside [test]", () => {
+  assert.equal(addBunPreload(""), 'preload = ["vibelang/bun"]\n')
+  assert.equal(addBunPreload('[test]\npreload = ["vibelang/bun"]\n'), 'preload = ["vibelang/bun"]\n[test]\npreload = ["vibelang/bun"]\n')
+  assert.equal(addBunPreload('preload = ["./setup.ts"]\n\n[test]\nroot = "src"\n'), 'preload = ["vibelang/bun", "./setup.ts"]\n\n[test]\nroot = "src"\n')
+  const wired = addBunPreload('telemetry = false\n[test]\npreload = ["./x.ts"]\n')
+  assert.equal(wired, 'preload = ["vibelang/bun"]\ntelemetry = false\n[test]\npreload = ["./x.ts"]\n')
+  assert.equal(addBunPreload(wired), wired)
+})
+
+test("bunProgramDirs finds where a script runs a program under Bun, not Bun's own commands or scripts", () => {
+  assert.deepEqual(bunProgramDirs("cd ./packages/integration-tests && bun alchemy-test"), ["packages/integration-tests"])
+  assert.deepEqual(bunProgramDirs("bun ./script/run.ts"), ["."])
+  assert.deepEqual(bunProgramDirs("bun run script/run.ts --flag"), ["."])
+  assert.deepEqual(bunProgramDirs("bun --bun src/main.ts"), ["."])
+  assert.deepEqual(bunProgramDirs("(cd a && bun b.ts) && (cd ../c && bun d.ts)"), ["a", "c"])
+  for (const command of ["bun test", "bun install", "bun run build", "bun build ./a.ts", "bun x tsc", "tsc -p .", "bun"]) assert.deepEqual(bunProgramDirs(command, () => ({ build: "tsc" })), [], command)
+  // The script a `cd` reaches is the target package's.
+  assert.deepEqual(bunProgramDirs("cd a && bun run test", (dir) => (dir === "a" ? { test: "bun test" } : {})), [])
+})
+
+test("wireBunTests gives a program that runs under Bun the top-level preload in the directory it runs from", () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-bun-programs-"))
+  try {
+    const manifest = (dir, value) => {
+      mkdirSync(join(root, dir), { recursive: true })
+      writeFileSync(join(root, dir, "package.json"), JSON.stringify(value))
+    }
+    manifest(".", { name: "root", scripts: { "test:integration": "cd ./packages/integration-tests && bun alchemy-test" } })
+    manifest("packages/domain", { name: "domain" })
+    manifest("packages/integration-tests", { name: "integration-tests", dependencies: { domain: "workspace:*" } })
+    manifest("packages/alone", { name: "alone", scripts: { start: "bun ./main.ts" } })
+    const wired = wireBunTests({ root, packages: [{ dir: "packages/domain" }], specsFor: () => ({ vibelang: "file:/t/v.tgz" }) })
+    assert.deepEqual(wired.warnings, [])
+    assert.equal(readFileSync(join(root, "packages/integration-tests/bunfig.toml"), "utf8"), 'preload = ["vibelang/bun"]\n')
+    assert.equal(JSON.parse(readFileSync(join(root, "packages/integration-tests/package.json"), "utf8")).devDependencies.vibelang, "file:/t/v.tgz")
+    assert.equal(existsSync(join(root, "packages/alone/bunfig.toml")), false)
+    assert.equal(existsSync(join(root, "bunfig.toml")), false)
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
