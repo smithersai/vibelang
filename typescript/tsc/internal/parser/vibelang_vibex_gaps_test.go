@@ -132,3 +132,28 @@ func TestVibeLangFiberReservationBoundaries(t *testing.T) {
 		})
 	}
 }
+
+// Appendix A's ArrowHandler includes every ordinary generic arrow head.
+func TestVibeLangCatchGenericArrowHandler(t *testing.T) {
+	for _, head := range []string{"<E,>(e: E)", "<E>(e: E)", "<E extends string>(e: E)", "<E = string>(e: E)", "<const E,>(e: E)", "<E, R = number>(e: E): R"} {
+		t.Run(head, func(t *testing.T) {
+			file := parseVibe(t, "const result = x catch "+head+" => 1")
+			if ds := file.Diagnostics(); len(ds) != 0 {
+				t.Fatalf("generic catch handler rejected: %v", ds)
+			}
+			ss := file.Statements.Nodes
+			if len(ss) != 1 || ss[0].Kind != ast.KindVariableStatement {
+				t.Fatalf("want a variable statement, got %v", ss)
+			}
+			call := ss[0].AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0].Initializer()
+			if call.Kind != ast.KindCallExpression {
+				t.Fatalf("want catch call, got %v", call.Kind)
+			}
+			args := call.AsCallExpression().Arguments.Nodes
+			handler := args[1]
+			if handler.Kind != ast.KindArrowFunction || handler.TypeParameters() == nil {
+				t.Fatalf("want generic arrow handler, got %v", handler.Kind)
+			}
+		})
+	}
+}

@@ -59,10 +59,10 @@ func (p *Parser) parseVibeLangCatchHandler() *ast.Node {
 	if arrow := p.tryParseVibeLangEffectArrow(true /*allowReturnTypeInArrowFunction*/); arrow != nil {
 		return arrow // catch effect (e) => … (VIP-5)
 	}
-	if p.token == ast.KindIdentifier && p.lookAhead((*Parser).nextTokenIsEqualsGreaterThanToken) {
+	if p.isIdentifier() && p.lookAhead((*Parser).nextTokenIsEqualsGreaterThanToken) {
 		return p.parseAssignmentExpressionOrHigher()
 	}
-	if p.token == ast.KindOpenParenToken {
+	if p.token == ast.KindOpenParenToken || p.token == ast.KindLessThanToken {
 		return p.tryParseParenthesizedArrowFunctionExpression(true /*allowReturnTypeInArrowFunction*/)
 	}
 	if p.token == ast.KindAsyncKeyword {

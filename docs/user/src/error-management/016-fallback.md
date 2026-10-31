@@ -1,6 +1,6 @@
 # Fallback
 
-A fallback runs another computation after an expected failure; a catch expression or callback keeps it lazy.
+A fallback runs another computation after an expected failure; a catch expression or callback keeps it lazy. An arrow handler can be generic, as in `program catch <E,>(error: E) => "fallback"`; its head follows TypeScript's ordinary arrow-function syntax.
 
 [Upstream page](https://effect.website/docs/v4/error-management/fallback)
 

@@ -2505,6 +2505,16 @@ typescript/vibelang/cases/overload-program-ranking/main.vibe:92:39 byname progra
 typescript/vibelang/cases/overload-program-ranking/main.vibe:92:54 byname program table
 typescript/vibelang/cases/overload-program-ranking/main.vibe:97:27 byname program annotation
 typescript/vibelang/cases/overload-program-ranking/main.vibe:97:35 byname program annotation
+typescript/vibelang/cases/parser-catch-generic-arrow/main.vibe:3:16 lambda effectFn table
+typescript/vibelang/cases/parser-catch-generic-arrow/main.vibe:3:41 lambda effectFn table
+typescript/vibelang/cases/parser-catch-generic-arrow/main.vibe:4:21 lambda effectFn table
+typescript/vibelang/cases/parser-catch-generic-arrow/main.vibe:4:46 lambda effectFn table
+typescript/vibelang/cases/parser-catch-generic-arrow/main.vibe:5:20 lambda effectFn table
+typescript/vibelang/cases/parser-catch-generic-arrow/main.vibe:5:45 lambda effectFn table
+typescript/vibelang/cases/parser-catch-generic-arrow/main.vibe:6:26 lambda effectFn table
+typescript/vibelang/cases/parser-catch-generic-arrow/main.vibe:6:51 lambda effectFn table
+typescript/vibelang/cases/parser-catch-generic-arrow/main.vibe:7:23 lambda effectFn table
+typescript/vibelang/cases/parser-catch-generic-arrow/main.vibe:7:48 lambda effectFn table
 typescript/vibelang/cases/parser-error-newline-arrow/main.vibe:3:1 lambda plain fallback
 typescript/vibelang/cases/parser-error-newline-arrow/main.vibe:5:1 lambda plain fallback
 typescript/vibelang/cases/parser-fiber-unary-operands/main.vibe:4:21 byname program table

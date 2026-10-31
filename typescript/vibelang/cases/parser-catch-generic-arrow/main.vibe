@@ -1,0 +1,9 @@
+// expect-result: [1,2,3,4,5]
+export effect function main() {
+ const comma = Effect.fail("bad") catch <E,>(e: E) => 1
+ const constraint = Effect.fail("bad") catch <E extends string>(e: E) => 2
+ const defaulted = Effect.fail("bad") catch <E = string>(e: E) => 3
+ const contextualAsync = Effect.fail("bad") catch async => 4
+ const contextualOf = Effect.fail("bad") catch of => 5
+ return [comma, constraint, defaulted, contextualAsync, contextualOf]
+}
