@@ -107,6 +107,8 @@ These matchers compile to the module's own test. A name means what it resolves t
 | `String`, `Number`, `Boolean`, `BigInt`, `Symbol` | `typeof` or `instanceof` the boxed constructor | the primitive value, unboxed with `valueOf()` for a boxed object |
 
 
+The public runtime `$extract` helper accepts constructor values whose type does not identify the function that runs. For `C: NumberConstructor` or `new () => Number`, its result can contain a primitive `number` or a `Number` object; handle `number | Number`. The other primitive constructors follow the same rule. A required nominal field can exclude the intrinsic constructor from that structural type. This helper typing does not grant an ordinary class an extractor pattern: the specification requires an own `Symbol.customMatcher` for `C(...)`, with `EK0704` for an ordinary class without one; that diagnostic remains a compiler gap.
+
 ```vibe
 // pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-6, VIP-7, VIP-14
 // run: try Console.log(greeting(Option.some("Ada"))); try Console.log(greeting(Option.none())); try Console.log(try report("ada")); try Console.log((try report("")).includes("NotFound"))

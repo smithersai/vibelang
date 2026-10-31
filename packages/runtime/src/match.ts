@@ -115,6 +115,24 @@ function extractedList(result: unknown): ReadonlyArray<any> | false {
   throw new TypeError("A matcher used as an extractor must return true, false, an array, or an iterable")
 }
 
+// Constructor types are structural: a parameter can hold a primitive
+// constructor even when its construct signature describes only the box.
+type PrimitiveForConstructor<C> =
+  | (typeof String extends C ? string : never)
+  | (typeof Number extends C ? number : never)
+  | (typeof Boolean extends C ? boolean : never)
+  | (typeof BigInt extends C ? bigint : never)
+  | (typeof Symbol extends C ? symbol : never)
+
+type PrimitiveConstructor = typeof String | typeof Number | typeof Boolean | typeof BigInt | typeof Symbol
+type BoxForConstructor<C> =
+  | (typeof String extends C ? String : never)
+  | (typeof Number extends C ? Number : never)
+  | (typeof Boolean extends C ? Boolean : never)
+  | (typeof BigInt extends C ? BigInt : never)
+  | (typeof Symbol extends C ? Symbol : never)
+
+
 /**
  * Runs an extractor pattern's matcher: its values, or false when it does not
  * match. `Array` and a typed array list the subject's elements; another class
@@ -124,7 +142,8 @@ function extractedList(result: unknown): ReadonlyArray<any> | false {
 export function $extract<S>(matcher: ArrayConstructor, subject: S): ArrayExtraction<S> | false
 export function $extract<T>(matcher: TypedArrayClass<T>, subject: unknown): T | false
 export function $extract<R>(matcher: CustomMatcher<R>, subject: unknown): Extracted<R> | false
-export function $extract<C extends abstract new(...args: any) => any>(matcher: C, subject: unknown): readonly [InstanceType<C>] | false
+export function $extract<C extends abstract new(...args: any) => any>(matcher: C, subject: unknown): readonly [InstanceType<C> | PrimitiveForConstructor<C>] | false
+export function $extract<C extends PrimitiveConstructor>(matcher: C, subject: unknown): readonly [PrimitiveForConstructor<C> | BoxForConstructor<C>] | false
 export function $extract<S, R>(matcher: (subject: S, hint: MatchHint) => R, subject: unknown): Extracted<R> | false
 export function $extract(matcher: unknown, subject: unknown): ReadonlyArray<any> | false
 export function $extract(matcher: unknown, subject: unknown): unknown {

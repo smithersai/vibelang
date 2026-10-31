@@ -150,6 +150,8 @@ When upgrading old nested `schema` aliases containing named, optional or rest tu
 
 A schema field accepts `readonly` once, as TypeScript does. For `TS1030` on repeated `readonly`, run `vibelang --fix` to remove only the duplicate token. Keep comments, the remaining modifier, the codec and its decoded/encoded behavior. Do not weaken readonly fields or replace their codecs.
 
+Runtime helper consumers must handle the primitive branch of `$extract(C, value)` when a structural constructor type can hold `String`, `Number`, `Boolean`, `BigInt` or `Symbol` (VIP-7/detail87). Use the primitive/boxed union instead of promising `object`. This SDK type rule does not admit an ordinary-class extractor without an own `Symbol.customMatcher` (detail100).
+
 ## The language
 
 The VibeLang skill follows: every form beside the Effect code it replaces, and the rules with their EK codes. Accepted VIPs and the call rule above take precedence over older examples.

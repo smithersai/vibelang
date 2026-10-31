@@ -1,0 +1,14 @@
+// expect: TS2322
+import {$extract} from "vibelang-runtime"
+function fString(C: StringConstructor, s: unknown): object | undefined { const extracted=$extract(C,s);return extracted===false?undefined:extracted[0] }
+function fNumber(C: NumberConstructor, s: unknown): object | undefined { const extracted=$extract(C,s);return extracted===false?undefined:extracted[0] }
+function fBoolean(C: BooleanConstructor, s: unknown): object | undefined { const extracted=$extract(C,s);return extracted===false?undefined:extracted[0] }
+function fBigInt(C: BigIntConstructor, s: unknown): object | undefined { const extracted=$extract(C,s);return extracted===false?undefined:extracted[0] }
+function fSymbol(C: SymbolConstructor, s: unknown): object | undefined { const extracted=$extract(C,s);return extracted===false?undefined:extracted[0] }
+
+import { ImportedNumber } from "./ambient.js"
+declare class DeclaredNumber extends Number {}
+declare namespace Library { class N extends Number {} }
+function fAmbient(s:unknown):object|undefined{const extracted=$extract(DeclaredNumber,s);return extracted===false?undefined:extracted[0]}
+function fAmbientNamespace(s:unknown):object|undefined{const extracted=$extract(Library.N,s);return extracted===false?undefined:extracted[0]}
+function fImported(s:unknown):object|undefined{const extracted=$extract(ImportedNumber,s);return extracted===false?undefined:extracted[0]}

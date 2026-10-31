@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "NodeNext",
+    "strict": true,
+    "skipLibCheck": true,
+    "types": [],
+    "outDir": "out"
+  },
+  "files": [
+    "main.vibe"
+  ]
+}
