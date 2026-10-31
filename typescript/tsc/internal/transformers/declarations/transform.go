@@ -1289,7 +1289,7 @@ func (tx *DeclarationTransformer) transformExportAssignment(input *ast.Node, ass
 		tx.EmitContext().AssignSourceMapRange(exportAssignment, input)
 		tx.removeAllComments(exportAssignment)
 		return tx.Factory().NewSyntaxList([]*ast.Node{exportAssignment, classDecl})
-	} else if ast.IsFunctionLike(unwrapped) {
+	} else if ast.IsFunctionLike(unwrapped) && !isProgramArrow(unwrapped) {
 		// Promote function or arrow function expressions to a function declaration
 		var mods []*ast.Node
 		if tx.needsDeclare {
@@ -1329,6 +1329,15 @@ func (tx *DeclarationTransformer) transformExportAssignment(input *ast.Node, ass
 	// Remove comments from the export declaration and copy them onto the synthetic _default declaration
 	tx.preserveJsDoc(statement, input)
 	return tx.Factory().NewSyntaxList([]*ast.Node{statement, exportAssignment})
+}
+
+// isProgramArrow reports whether node is an arrow the VibeLang parser writes
+// for a program, such as the effect block of `export default effect { … }`:
+// its => is reparsed. Its value is the program, an Effect, not a function, so
+// a default export of one declares `const _default` of its type, as
+// `export default Effect.gen(function* () { … })` does, not a function.
+func isProgramArrow(node *ast.Node) bool {
+	return node.Kind == ast.KindArrowFunction && node.AsArrowFunction().EqualsGreaterThanToken.Flags&ast.NodeFlagsReparsed != 0
 }
 
 func (tx *DeclarationTransformer) transformFunctionLikeToDeclaration(unwrapped *ast.Node, funcName *ast.Node, mods *ast.ModifierList, fullSignatureType *ast.Node) *ast.Node {

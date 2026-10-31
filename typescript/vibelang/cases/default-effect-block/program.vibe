@@ -1,0 +1,5 @@
+// A default-exported effect block is the program, as a named one is: the
+// module exports Effect.sync(() => 2) and declares it as an Effect, not as a
+// function (t3code's server migrations default-export their programs).
+export const named = effect { return 1 }
+export default effect { return 2 }

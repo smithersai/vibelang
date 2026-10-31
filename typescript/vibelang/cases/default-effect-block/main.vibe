@@ -1,0 +1,6 @@
+// expect-result: {"named":1,"default":2}
+import program, { named } from "./program.vibe"
+
+export effect function main() {
+  return { named: try named, default: try program }
+}
