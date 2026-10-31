@@ -844,6 +844,10 @@ export async function verify(options) {
   const declarations = {}
   const emitErrors = []
   for (const pkg of config.packages) {
+    if (readJson(join(t, pkg.dir, "package.json")).private === true) {
+      declarations[pkg.dir] = "not published"
+      continue
+    }
     const outDir = join(p.batch(b), "dts", slug(pkg.dir))
     const emitted = await emitPackageDeclarations({ compiler, ts, t, pkg, outDir, log: join(logs, `dts-${slug(pkg.dir)}.log`) })
     const baselineDir = join(p.baseline, "dts", slug(pkg.dir))
@@ -871,7 +875,7 @@ export async function verify(options) {
     compile: { batchErrors, newErrors: checked.newErrors, style, emitErrors },
     checks: {
       tests: testDiff.ok,
-      declarations: Object.values(declarations).every((d) => d.identical),
+      declarations: Object.values(declarations).every((d) => d === "not published" || d.identical),
       declarationEmit: emitErrors.length === 0,
       batchErrors: batchErrors.length === 0,
       newErrors: checked.newErrors.length === 0,
@@ -961,7 +965,7 @@ export async function report(options) {
     "| --- | ---: | ---: | --- | --- | --- | --- | --- |",
     ...batches.map((b) => {
       const v = b.verify
-      return `| ${b.batch} | ${b.files.length} | ${v ? v.files.filter((f) => f.migrated).length : "-"} | ${v ? (v.checks.tests ? `pass (${v.tests.passed}/${v.tests.total})` : `FAIL: ${v.tests.newFailures.length} new, ${v.tests.missing.length} missing`) : "-"} | ${v ? (v.checks.declarations ? "identical" : "CHANGED") : "-"} | ${v ? (v.checks.style ? "clean" : `${v.compile.style.length} EK48xx/EK4402`) : "-"} | ${b.record ? `${b.record.tokens.before} -> ${b.record.tokens.after}` : "-"} | ${b.record?.commit?.slice(0, 12) ?? "-"} |`
+      return `| ${b.batch} | ${b.files.length} | ${v ? v.files.filter((f) => f.migrated).length : "-"} | ${v ? (v.checks.tests ? `pass (${v.tests.passed}/${v.tests.total})` : `FAIL: ${v.tests.newFailures.length} new, ${v.tests.missing.length} missing`) : "-"} | ${v ? (v.checks.declarations ? (Object.values(v.declarations ?? {}).every(d => d === "not published") ? "not published" : "identical") : "CHANGED") : "-"} | ${v ? (v.checks.style ? "clean" : `${v.compile.style.length} EK48xx/EK4402`) : "-"} | ${b.record ? `${b.record.tokens.before} -> ${b.record.tokens.after}` : "-"} | ${b.record?.commit?.slice(0, 12) ?? "-"} |`
     }),
     "",
     "## Rewrites vibelang --fix applied",

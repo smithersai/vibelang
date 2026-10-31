@@ -241,6 +241,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The failures-spec check stopped after the missing error-member separator rule was documented; it now records the pending `EK1306` implementation and its owner while preserving the rule.
 
+- Migration rejected private examples and websites when their declarations changed; `verify` now reports `"not published"` for packages marked `"private": true`, while keeping tests, compiler and style checks.
+
 
 - Checking documentation examples with a symlinked `TMPDIR` could stop with `Compiler failed` instead of reporting an example's type error; diagnostics now stay attached to their examples and later pages are checked.
 

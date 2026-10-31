@@ -1,0 +1,7 @@
+{
+  "key": "migrate:private-package-declarations",
+  "manifest": { "name": "snake", "private": true, "types": "./main.d.ts" },
+  "before": "import { Position } from \"./position\";\nexport declare const apple: Position;\n",
+  "after": "import { Position } from \"./position.js\";\nexport declare const apple: Position;\n",
+  "added": "export declare const keyboardTarget: Document;\n"
+}

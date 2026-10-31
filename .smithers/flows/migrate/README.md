@@ -21,6 +21,8 @@ upgrade-effect ──▶ setup ──▶ plan ──▶ for each batch: codemod 
 
 Setup warns with the file and line when a string source-extension allowlist includes `.ts` but omits `.vibe`. It checks arrays and `Set` initializers in the repository’s own source and configuration files; comments, code embedded in strings and vendored packages are excluded. Review the collector, include native sources and exclude generated `.d.vibe.ts` sidecars. These warnings appear in `setup.json` under `wired.warnings`; setup leaves the allowlists for the repository to configure.
 
+Declaration identity applies only to published packages. `verify` reports a package marked `"private": true` as `declarations: "not published"` and skips its declaration emit and comparison; its tests, compiler errors and style checks still gate the batch. The repository’s build, workspace typecheck, lint, format and Knip gates still apply.
+
 Each step reads and writes the run directory, so a step that already recorded its result returns it, and a stopped run resumes where it stopped.
 
 For a migrated `.mts` module, declaration identity pairs a removed `x.d.mts` with its new `x.d.ts`, recorded under `renamed`. A destination already present in the baseline is a collision; a change in public reachability still fails. Published declarations remain byte-identical, including comments and quote spelling.
