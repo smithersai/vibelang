@@ -463,7 +463,16 @@ func (p *Parser) parseSourceFileWorker() *ast.SourceFile {
 		p.contextFlags |= ast.NodeFlagsAmbient
 	}
 	pos := p.nodePos()
+	// VibeLang: a .vibe file is a module (VIP-30), and its top level is
+	// ordinary JavaScript, where await is ES top-level await of a Promise
+	// (VIP-26, foldkit-42). A function body leaves this context as it does in
+	// TypeScript, so await there is VibeLang's again.
+	saveContextFlags := p.contextFlags
+	if p.isVibeLangFile() && !isDeclarationFile {
+		p.setContextFlags(ast.NodeFlagsAwaitContext, true)
+	}
 	statements := p.parseListIndex(PCSourceElements, (*Parser).parseToplevelStatement)
+	p.contextFlags = saveContextFlags
 	end := p.nodePos()
 	endJSDoc := p.jsdocScannerInfo()
 	eof := p.parseTokenNode()
@@ -4517,7 +4526,10 @@ func (p *Parser) nextIsParenthesizedArrowFunctionExpression() core.Tristate {
 		// If we had "(" followed by something that's not an identifier,
 		// then this definitely doesn't look like a lambda.  "this" is not
 		// valid, but we want to parse it and then give a semantic error.
-		if !p.isIdentifier() && second != ast.KindThisKeyword {
+		// VibeLang: a .vibe top level is an await context (foldkit-42), where
+		// await is no identifier, but "(await:" or "(await," still begins a
+		// parameter list, whose binding reports TS1359 (TestBugBashAwaitBinding).
+		if !p.isIdentifier() && second != ast.KindThisKeyword && !(second == ast.KindAwaitKeyword && p.isVibeLangFile()) {
 			return core.TSFalse
 		}
 		switch p.nextToken() {

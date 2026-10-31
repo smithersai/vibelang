@@ -1,0 +1,13 @@
+// expect-result: [42,7,"done"]
+// A module top level is ordinary JavaScript: await there is ES top-level
+// await of a Promise (VIP-26), in a declaration, a statement and a block
+// (foldkit-42: website scripts/blogPosts exports what a top-level await
+// computes). Inside the effect function, await is VibeLang's again.
+export const answer = await Promise.resolve(42)
+let steps = 0
+await new Promise<void>((resolve) => { steps = 7; resolve() })
+let label = ""
+if (answer > 0) { label = await Promise.resolve("done") }
+export effect function main(): readonly [number, number, string]!never {
+  return [answer, steps, label] as const
+}

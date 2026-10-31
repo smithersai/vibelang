@@ -114,6 +114,7 @@ const specTests = [
   "TestSidecarIdentityQuoted",
 
   "TestDirectTryAdvisoriesQuoted",
+  "TestTopLevelAwaitQuoted",
   "TestFormatForHeadsQuoted",
   "TestPlainRunnersQuoted",
   "TestPlainEffectBodyQuoted",
