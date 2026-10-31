@@ -147,6 +147,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Prettier and `formatSource` could silently keep unformatted `.vibe` input whose path was ignored, including `node_modules`; they now format the supplied buffer and report syntax errors.
 
+- The error-declaration chapter never named `EK1306`, the code for two `error` or `schema error` members on one line with no separator; it now states it beside the separator rule and in its static rules.
+
 - Fixes for the unpublished 0.0.11 candidate were listed under 0.0.12; they now appear together under 0.0.11, and the release check compares that section with npm's last published version.
 
 - The migrate flow's codemod and `revert` rewrote imports of a migrated module only inside the run's `--source` directories, so a test under `test/` kept `import … from "../src/Crypto.ts"` after `Crypto.ts` became `Crypto.vibe` and failed to load; they now rewrite every source file the repository tracks.
