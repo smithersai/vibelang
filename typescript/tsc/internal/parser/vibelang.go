@@ -1047,19 +1047,20 @@ func (p *Parser) vibelangClauseResumes(block *ast.Node, anchor core.TextRange) b
 		default:
 			return false
 		}
-		callee := node.Expression()
-		k := p.vibelangSynthesized(p.factory.NewIdentifier(vibelangContinuationName), callee.Loc)
+		// The added arguments stand on the call's `(`, as a clause's own $k
+		// stands on its header's, so the list starts after the callee: on
+		// the callee they would nest around it for selection ranges, and an
+		// empty range would print as a missing name.
+		open := core.NewTextRange(arguments.Pos()-1, arguments.Pos())
+		k := p.vibelangSynthesized(p.factory.NewIdentifier(vibelangContinuationName), open)
 		passed := append([]*ast.Node{k}, arguments.Nodes...)
-		loc := k.Loc
-		if len(arguments.Nodes) != 0 {
-			loc = core.NewTextRange(k.Pos(), arguments.End())
-		} else if callee.Text() == "resume" {
-			passed = append(passed, p.vibelangSynthesized(p.factory.NewIdentifier("undefined"), callee.Loc))
+		if len(arguments.Nodes) == 0 && node.Expression().Text() == "resume" {
+			passed = append(passed, p.vibelangSynthesized(p.factory.NewIdentifier("undefined"), open))
 		}
 		for _, argument := range passed {
 			argument.Parent = node
 		}
-		call.Arguments = p.newNodeList(loc, passed)
+		call.Arguments = p.newNodeList(core.NewTextRange(open.Pos(), arguments.End()), passed)
 		used = true
 		return false
 	}

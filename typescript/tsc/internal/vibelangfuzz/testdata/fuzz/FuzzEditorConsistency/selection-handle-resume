@@ -1,0 +1,3 @@
+go test fuzz v1
+string("-- main.vibe --\ncontrol Ask { ask(): number!! }\n\neffect function run() {\n  try {\n    return try Ask.ask()\n  } handle Ask.ask() {\n    return try resume(1)\n  }\n}\n-- tsconfig.json --\n{\"compilerOptions\":{\"target\":\"es2022\",\"module\":\"nodenext\",\"moduleResolution\":\"nodenext\",\"strict\":true,\"types\":[],\"skipLibCheck\":true,\"outDir\":\"out\"},\"include\":[\"*.vibe\"]}\n")
+[]byte("\x00\x81\x00\x88")
