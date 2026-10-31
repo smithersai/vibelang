@@ -37,6 +37,58 @@ const isModuleName = (ts, node) => {
   return ts.isExternalModuleReference(parent)
 }
 
+/**
+ * The indexes of source's statements that are private type aliases nothing
+ * else names: in a module, a top-level `type X = …` without `export`, which
+ * no type reference, heritage clause, `export { X }` or `export default X` in
+ * another statement names, nor one that names it in turn. Such an alias is
+ * no part of the module's contract, but TypeScript prints one beside a value
+ * of its name: a schema declaration, `schema State { … }`, is a constant and
+ * `type State = typeof State.Type`, so a migrated private schema adds the
+ * alias where the TypeScript had only `const State = Schema.Struct(…)`
+ * (t3code chatAttachment.ts). Interfaces, which merge with other
+ * declarations, and every declaration of a global script stay.
+ */
+export function privateUnusedTypes(ts, source) {
+  if (!ts.isExternalModule(source)) return new Set()
+  const exported = (node) => (ts.getCombinedModifierFlags(node) & ts.ModifierFlags.Export) !== 0
+  const leftmost = (name) => (ts.isQualifiedName(name) ? leftmost(name.left) : ts.isPropertyAccessExpression(name) ? leftmost(name.expression) : name)
+  const names = (statement) => {
+    const found = new Set()
+    const visit = (node) => {
+      if (ts.isTypeReferenceNode(node) || ts.isExpressionWithTypeArguments(node)) {
+        const id = leftmost(ts.isTypeReferenceNode(node) ? node.typeName : node.expression)
+        if (ts.isIdentifier(id)) found.add(id.text)
+      } else if (ts.isExportSpecifier(node)) {
+        found.add((node.propertyName ?? node.name).text)
+      } else if (ts.isExportAssignment(node) && ts.isIdentifier(node.expression)) {
+        found.add(node.expression.text)
+      }
+      ts.forEachChild(node, visit)
+    }
+    visit(statement)
+    return found
+  }
+  const statements = source.statements
+  const candidates = new Map()
+  statements.forEach((statement, i) => {
+    if (ts.isTypeAliasDeclaration(statement) && !exported(statement)) candidates.set(i, statement.name.text)
+  })
+  const kept = new Set(statements.map((_, i) => i).filter((i) => !candidates.has(i)))
+  // An alias another kept statement names is kept, and so is each alias it names.
+  for (let grew = true; grew; ) {
+    grew = false
+    const named = new Set([...kept].flatMap((i) => [...names(statements[i])].filter((name) => !(candidates.get(i) === name))))
+    for (const [i, name] of candidates) {
+      if (!kept.has(i) && named.has(name)) {
+        kept.add(i)
+        grew = true
+      }
+    }
+  }
+  return new Set([...candidates.keys()].filter((i) => !kept.has(i)))
+}
+
 /** A declaration file's canonical text. */
 export function canonicalize(ts, text, fileName = "file.d.ts", modulePath = (text) => text) {
   const source = ts.createSourceFile(fileName, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
@@ -97,9 +149,10 @@ export function canonicalize(ts, text, fileName = "file.d.ts", modulePath = (tex
     }
     return (node) => ts.visitNode(node, visit)
   }
+  const unused = privateUnusedTypes(ts, source)
   const out = ts.transform(source, [normalize])
   try {
-    return out.transformed[0].statements.map((statement) => print(statement)).join("\n") + "\n"
+    return out.transformed[0].statements.filter((_, i) => !unused.has(i)).map((statement) => print(statement)).join("\n") + "\n"
   } finally {
     out.dispose()
   }

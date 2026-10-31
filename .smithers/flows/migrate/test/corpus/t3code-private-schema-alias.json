@@ -1,0 +1,7 @@
+{
+  "key": "declaration-gate:unused-private-schema-type-alias",
+  "repo": "t3code",
+  "file": "packages/contracts/src/chatAttachment.ts",
+  "before": "import * as Schema from \"effect/Schema\";\ndeclare const State: Schema.Struct<{\n    readonly active: Schema.Boolean;\n}>;\nexport interface Node {\n    readonly state: typeof State.Type;\n    readonly schema: Schema.Top;\n}\nexport {};\n",
+  "after": "import * as Schema from \"effect/Schema\";\ndeclare const State: Schema.Struct<{\n    readonly active: Schema.Boolean;\n}>;\ntype State = typeof State.Type;\nexport interface Node {\n    readonly state: typeof State.Type;\n    readonly schema: Schema.Top;\n}\nexport {};\n"
+}
