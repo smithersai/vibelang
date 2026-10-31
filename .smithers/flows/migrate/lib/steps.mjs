@@ -20,7 +20,7 @@ import * as Wire from "./wire.mjs"
 import { wireDeveloperTools } from "./tooling.mjs"
 import { readToolchain } from "./toolchain.mjs"
 import { assertPortable, machineRoots } from "./portable.mjs"
-import { appendJsonl, batchName, must, quote, readJson, readJsonIf, run as sh, slug, writeJson, writeText } from "./util.mjs"
+import { appendJsonl, batchName, isDeclarationFile, must, quote, readJson, readJsonIf, run as sh, slug, writeJson, writeText } from "./util.mjs"
 
 export const flowDir = fileURLToPath(new URL("../", import.meta.url))
 // The agent runs in the target, so the prompts name this checkout's step.mjs by its full path.
@@ -104,6 +104,16 @@ const typeScriptOf = (config) => loadTypeScript([
 
 /** Every source file of the packages, repository-relative. */
 const scopeFiles = (config) => config.packages.flatMap((pkg) => pkg.sources.flatMap((s) => listSources(config.target, posix.join(pkg.dir, s))))
+
+/**
+ * The files whose imports the codemod and revert rewrite: every source file
+ * the repository tracks, not only the scope's sources, since a module's tests
+ * and other packages import it by path too (smithers' crypto tests import
+ * ../src/Crypto.ts). A declaration file has no import to rewrite.
+ */
+export async function importers(t) {
+  return (await Jj.trackedFiles(t)).filter((f) => /\.(?:ts|tsx|mts|cts|vibe)$/.test(f) && !isDeclarationFile(f))
+}
 
 /** A batch's files as they are now: each plan path, as .vibe when migrated. */
 function batchFiles(config, plan, b) {
@@ -677,7 +687,7 @@ export async function codemod(options) {
   const files = thePlan.batches[Number(b) - 1].files
   const renames = renameBatch(t, files)
   const exportEdits = rewriteExports(t, renames)
-  const importEdits = rewriteImports(t, scopeFiles(config))
+  const importEdits = rewriteImports(t, await importers(t))
   const compiler = compilerOf(config)
   const byFile = {}
   const refused = []
@@ -766,7 +776,7 @@ export async function revert(options) {
   // A TypeScript importer gets the specifier it had before the codemod; a .vibe importer names the .ts source.
   const codemodResult = readJsonIf(p.codemod(source.batch))
   const exportEdits = restoreExports(config.target, codemodResult?.exportEdits ?? [], ts)
-  const importEdits = [...restoreSpecifiers(config.target, codemodResult?.importEdits ?? [], ts), ...rewriteImports(config.target, scopeFiles(config))]
+  const importEdits = [...restoreSpecifiers(config.target, codemodResult?.importEdits ?? [], ts), ...rewriteImports(config.target, await importers(config.target))]
   const reverted = readJsonIf(p.reverted(b), [])
   reverted.push({ file: ts, reason: options.reason, at: new Date().toISOString(), ...(source.batch === b ? {} : { from: source.batch }), exportEdits, importEdits })
   writeJson(p.reverted(b), reverted)

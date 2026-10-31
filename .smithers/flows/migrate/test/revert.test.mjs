@@ -4,7 +4,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { renameBatch, rewriteExports, rewriteImports } from "../lib/codemod.mjs"
-import { makeConfig, paths, returnToUpgrade, revert } from "../lib/steps.mjs"
+import { importers, makeConfig, paths, returnToUpgrade, revert } from "../lib/steps.mjs"
 import * as Jj from "../lib/jj.mjs"
 import { must, readJson, writeJson } from "../lib/util.mjs"
 
@@ -96,6 +96,47 @@ test("revert returns a file to .ts and points every import the codemod rewrote b
       { file: "src/c.vibe", from: "./b.vibe", to: "./b.ts" }
     ])
     assert.deepEqual(readJson(paths(run).reverted("01")).map((r) => [r.file, r.reason]), [["src/b.ts", "blocked on an issue"]])
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+// smithers batch 03: the codemod rewrote importers only inside the run's
+// --source directories, so test/Sha256.test.ts kept "../src/Crypto.ts" and
+// failed to load. Every tracked source file is an importer, in the codemod
+// and in revert.
+test("the codemod and revert rewrite importers outside the run's sources", async () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-importers-"))
+  const target = join(root, "repo")
+  const run = join(root, "run")
+  try {
+    mkdirSync(join(target, "src"), { recursive: true })
+    mkdirSync(join(target, "test"))
+    mkdirSync(join(target, "other/src"), { recursive: true })
+    await must("jj git init && jj config set --repo user.name test && jj config set --repo user.email test@localhost", { cwd: target })
+    writeFileSync(join(target, "package.json"), "{}\n")
+    writeFileSync(join(target, "src/crypto.ts"), "export const hash = 1\n")
+    writeFileSync(join(target, "src/crypto.d.ts"), 'export * from "./crypto.ts"\n')
+    writeFileSync(join(target, "test/crypto.test.ts"), 'import { hash } from "../src/crypto.ts"\n')
+    writeFileSync(join(target, "test/crypto.docs.test.vibe"), 'import { hash } from "../src/crypto.ts"\n')
+    writeFileSync(join(target, "other/src/use.ts"), 'import { hash } from "../../src/crypto.js"\n')
+    await Jj.commit(target, "base")
+    writeJson(paths(run).config, makeConfig({ target, test: "true", toolchain: join(root, "toolchain") }))
+    writeJson(paths(run).plan, { batches: [{ files: ["src/crypto.ts"] }] })
+
+    renameBatch(target, ["src/crypto.ts"])
+    assert.deepEqual(await importers(target), ["other/src/use.ts", "src/crypto.vibe", "test/crypto.docs.test.vibe", "test/crypto.test.ts"])
+    const importEdits = rewriteImports(target, await importers(target))
+    assert.deepEqual(importEdits.map((e) => `${e.file}: ${e.to}`), ["other/src/use.ts: ../../src/crypto.vibe", "test/crypto.docs.test.vibe: ../src/crypto.vibe", "test/crypto.test.ts: ../src/crypto.vibe"])
+    writeJson(paths(run).codemod("01"), { importEdits })
+    // A test a later edit wrote against the .vibe module, which no codemod edit records.
+    writeFileSync(join(target, "test/later.test.vibe"), 'import { hash } from "../src/crypto.vibe"\n')
+
+    await revert({ run, batch: "01", file: "src/crypto.vibe", reason: "blocked on an issue" })
+    assert.equal(readFileSync(join(target, "test/later.test.vibe"), "utf8"), 'import { hash } from "../src/crypto.ts"\n')
+    assert.equal(readFileSync(join(target, "test/crypto.test.ts"), "utf8"), 'import { hash } from "../src/crypto.ts"\n')
+    assert.equal(readFileSync(join(target, "other/src/use.ts"), "utf8"), 'import { hash } from "../../src/crypto.js"\n')
+    assert.equal(readFileSync(join(target, "test/crypto.docs.test.vibe"), "utf8"), 'import { hash } from "../src/crypto.ts"\n')
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
