@@ -1,0 +1,2 @@
+export const modules = [Effect.Array, Effect.String, Effect.Number, Effect.Boolean, Effect.BigInt, Effect.Symbol, Effect.Function, Effect.RegExp, Effect.Record, Effect.Iterable]
+export const result = modules.every(m => typeof m === "object") && Array.isArray([]) && Number("3") === 3

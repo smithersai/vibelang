@@ -13,6 +13,8 @@ const effectTypeID = "~effect/Effect"
 
 // plan records what the lowering does to one .vibe file.
 type plan struct {
+	collisionModules map[*ast.Node]string
+
 	parameterWrites map[*ast.Node]bool // Effect functions whose body writes a parameter binding
 
 	fieldlessErrorConstructors map[*ast.Node]bool
@@ -73,6 +75,7 @@ func planFile(resolver printer.EmitResolver, file *ast.SourceFile) *plan {
 	}
 	r.WithChecker(func(c *checker.Checker) {
 		p.prelude = preludeUses(c, file)
+		p.collisionModules = collisionModules(c)
 		p.intrinsics = preludeStateOf(c).intrinsics
 		p.ownExports = moduleExportNames(c, file.Symbol)
 		a := analyzerFor(c)

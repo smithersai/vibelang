@@ -1011,6 +1011,7 @@ typescript/vibelang/cases/dual-block-legacy.fail/main.vibe:13:27 block appended/
 typescript/vibelang/cases/dual-block-legacy.fail/main.vibe:19:30 block appended/dual fallback
 typescript/vibelang/cases/dual-block-legacy.fail/main.vibe:26:35 block appended/dual fallback
 typescript/vibelang/cases/dual-block-legacy.fail/main.vibe:32:30 block appended/plain table
+typescript/vibelang/cases/effect-collision-namespaces/main.vibe:2:37 lambda plain table
 typescript/vibelang/cases/effect-contract-plain-destinations.fail/main.vibe:6:18 lambda plain table
 typescript/vibelang/cases/effect-contract-plain-destinations.fail/main.vibe:8:13 lambda plain table
 typescript/vibelang/cases/effect-contract-plain-destinations.fail/main.vibe:9:13 lambda plain table

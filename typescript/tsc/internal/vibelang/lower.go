@@ -89,6 +89,9 @@ func newLowering(opts *transformers.TransformOptions, file *ast.SourceFile) *tra
 }
 
 func (tx *lowering) visit(node *ast.Node) *ast.Node {
+	if module := tx.plan.collisionModules[node]; module != "" {
+		return tx.moduleNamespace(module)
+	}
 	if isFunctionBoundary(node) {
 		budget, escapes := tx.eagerBudget, tx.eagerEscapes
 		tx.eagerBudget, tx.eagerEscapes = nil, false

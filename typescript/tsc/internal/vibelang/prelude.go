@@ -151,7 +151,7 @@ func implicitRuntimeImport(file *ast.SourceFile) []string {
 	if prelude || entry || runtime || declaresService(file) {
 		modules = append(modules, runtimeModule)
 	}
-	if root || effect || mayDeclareEffectFunction(file) {
+	if root || effect || mayDeclareEffectFunction(file) || file.HasIdentifier("Effect") {
 		modules = append(modules, effectRootModule)
 	}
 	modules = append(modules, barrels...)
