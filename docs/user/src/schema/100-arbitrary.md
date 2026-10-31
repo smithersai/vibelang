@@ -6,7 +6,7 @@ Effect's native `Arbitrary` module derives generators and shrinkers from schemas
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { const values = try sampleParcels(); try Console.log(values.length, values.every(Schema.is(Parcel))) })
+// run: const values = try sampleParcels(); try Console.log(values.length, values.every(Schema.is(Parcel)))
 const Parcel = Schema.Struct({
   label: Schema.NonEmptyString,
   count: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 24 }))
@@ -28,7 +28,7 @@ effect function sampleParcels() {
 
 ```vibe
 // pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { const generator = try sync(() => Arbitrary.schema(EvenCapacity)); const values = try Arbitrary.sampleEffect(generator, { count: 12, seed: 17 }); try Console.log(values.length, values.every(Schema.is(EvenCapacity))) })
+// run: const generator = try sync(() => Arbitrary.schema(EvenCapacity)); const values = try Arbitrary.sampleEffect(generator, { count: 12, seed: 17 }); try Console.log(values.length, values.every(Schema.is(EvenCapacity)))
 const EvenCapacity = Schema.Number.check(Schema.makeFilter(
   (value) => Number.isInteger(value) && value >= 2 && value <= 40 && value % 2 === 0,
   {
@@ -52,8 +52,7 @@ Built-in bounds, lengths, patterns, property counts, and uniqueness checks give 
 ## Handling opaque checks and transformed values
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { const values = try sampleRepresentations(); try Console.log(values.numbers.length, values.numbers.every(Number.isFinite)); try Console.log(values.strings.length, values.strings.every((value) => typeof value === "string")); try Console.log(values.strings.some((value) => Schema.decodeUnknownResult(Schema.FiniteFromString)(value).isFailure())) })
+// run: const values = try sampleRepresentations(); try Console.log(values.numbers.length, values.numbers.every(Number.isFinite)); try Console.log(values.strings.length, values.strings.every((value) => typeof value === "string")); try Console.log(values.strings.some((value) => Schema.decodeUnknownResult(Schema.FiniteFromString)(value).isFailure()))
 effect function sampleRepresentations() {
   const decoded = try sync(() => Arbitrary.schema(Schema.FiniteFromString))
   const encoded = try sync(() => Arbitrary.schema(Schema.toEncoded(Schema.FiniteFromString)))
@@ -74,8 +73,7 @@ Generation targets the decoded type, so a string-to-number codec generates numbe
 ## Checking properties
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-3, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log((try checkCountRoundTrip())._tag) })
+// run: try Console.log((try checkCountRoundTrip())._tag)
 effect function checkCountRoundTrip() {
   const Count = Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100 }))
   const generator = Arbitrary.schema(Count)
@@ -98,8 +96,7 @@ A falsification includes `shrunkInput` and a `replay` token. To reproduce it, ca
 ## Composing generators and customizing shrinking
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { const values = try sampleDispatchPlans(); try Console.log(values.length, values.every((plan) => plan.label === "test-dispatch" && Number.isInteger(plan.count) && plan.count >= 0 && plan.count <= 32)) })
+// run: const values = try sampleDispatchPlans(); try Console.log(values.length, values.every((plan) => plan.label === "test-dispatch" && Number.isInteger(plan.count) && plan.count >= 0 && plan.count <= 32))
 effect function sampleDispatchPlans() {
   const counts = try sync(() => Arbitrary.schema(Schema.Int.check(
     Schema.isBetween({ minimum: 0, maximum: 32 })
@@ -126,7 +123,7 @@ A custom `shrink` replaces the derived shrink strategy, not root generation. It 
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { const values = try sampleShelves(); try Console.log(values.length, values.every((shelf) => shelf instanceof ShelfRef && shelf.code.startsWith("shelf_"))) })
+// run: const values = try sampleShelves(); try Console.log(values.length, values.every((shelf) => shelf instanceof ShelfRef && shelf.code.startsWith("shelf_")))
 class ShelfRef {
   constructor(readonly code: `shelf_${string}`) {}
 }
@@ -155,8 +152,7 @@ An opaque declaration needs a generatable representation through `toCodecArbitra
 ## Diagnosing derivation failures
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-7, VIP-14, VIP-26
-// run: await runPromise(effect { try reportImpossibleGenerator() })
+// run: try reportImpossibleGenerator()
 effect function reportImpossibleGenerator() {
   const outcome = try exit(sync(() => Arbitrary.schema(Schema.Never)))
   if (outcome is Exit.Failure) {

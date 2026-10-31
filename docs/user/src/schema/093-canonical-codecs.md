@@ -5,8 +5,7 @@ Canonical codec derivation works as in Effect: it preserves a schema's decoded t
 ## Deriving JSON, string-tree, and isomorphism codecs
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { { const jsonValue = try encodeAudit({ created: new Date("2026-01-02T00:00:00Z"), sequence: 12n, labels: ["fragile"] }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
+// run: { const jsonValue = try encodeAudit({ created: new Date("2026-01-02T00:00:00Z"), sequence: 12n, labels: ["fragile"] }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const AuditRecord = Schema.Struct({
   created: Schema.Date,
   sequence: Schema.BigInt,
@@ -29,7 +28,7 @@ effect function encodeAudit(input: unknown) {
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { { const jsonValue = try encodeSearch(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
+// run: { const jsonValue = try encodeSearch(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const Search = Schema.Struct({
   offset: Schema.Int,
   archived: Schema.Boolean,
@@ -50,8 +49,7 @@ effect function encodeSearch() {
 `toCodecStringTree` preserves object and array structure and converts leaves to strings. A string tree can also contain `undefined`, so it is not limited to JSON values. It suits configuration, forms, and query parameters.
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { const slot = try slotRepresentation({ row: 2, column: 3 }); try Console.log(slot instanceof Slot, slot.row, slot.column) })
+// run: const slot = try slotRepresentation({ row: 2, column: 3 }); try Console.log(slot instanceof Slot, slot.row, slot.column)
 class Slot extends Schema.Class<Slot>("Slot")({
   row: Schema.Int,
   column: Schema.Int
@@ -75,7 +73,7 @@ true 2 3
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { { const jsonValue = try encodeDepot(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
+// run: { const jsonValue = try encodeDepot(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 class DepotRef {
   constructor(readonly region: string, readonly number: number) {}
 }
@@ -109,7 +107,7 @@ Without a hook, JSON uses an unconstrained JSON fallback and parsing can still f
 
 ```vibe
 // pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(try Effect.try(() => JSON.stringify(describeDepotJson()))) })
+// run: try Console.log(try Effect.try(() => JSON.stringify(describeDepotJson())))
 function describeDepotJson() {
   return Schema.toJsonSchemaDocument(DepotRefSchema)
 }

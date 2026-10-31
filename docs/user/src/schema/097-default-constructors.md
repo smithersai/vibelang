@@ -5,8 +5,7 @@ Schema constructors work as in Effect, on decoded values: they apply constructor
 ## Constructing structs and records
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { { const jsonValue = try makeLabels(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
+// run: { const jsonValue = try makeLabels(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const Label = Schema.Struct({ text: Schema.NonEmptyString })
 const LabelsById = Schema.Record(Schema.String, Schema.NonEmptyString)
 
@@ -26,8 +25,7 @@ Every schema has `make`, `makeOption`, and `makeEffect`. Each takes the schema's
 ## Applying filters and brands during construction
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(try makeCaseCount(6)); try Effect.catch(makeCaseCount(0), (issue) => Console.log(issue._tag)) })
+// run: try Console.log(try makeCaseCount(6)); try Effect.catch(makeCaseCount(0), (issue) => Console.log(issue._tag))
 const CaseCount = Schema.FiniteFromString.check(
   Schema.isInt(), Schema.isBetween({ minimum: 1, maximum: 48 })
 ).pipe(Schema.brand("CaseCount"))
@@ -47,8 +45,7 @@ Filters run during construction as well as parsing. A filter leaves the static t
 ## Handling constructor failures
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(try constructOrExplain(6)); try Console.log(constructAsOption(0).isNone()); try Effect.catch(constructWithExpectedFailure(0), (error) => Console.log("Construction rejected")) })
+// run: try Console.log(try constructOrExplain(6)); try Console.log(constructAsOption(0).isNone()); try Effect.catch(constructWithExpectedFailure(0), (error) => Console.log("Construction rejected"))
 effect function constructOrExplain(value: number) {
   return effect {
     return String(try CaseCount.makeEffect(value))
@@ -75,8 +72,7 @@ In local Effect 4.1.1, `makeEffect` fails with a raw `SchemaIssue.Issue`, not th
 ## Setting nested and lazy defaults
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { const first = try makePacking(); const second = try makePacking(); try Console.log(try Effect.try(() => JSON.stringify(first))); try Console.log(first.labels === second.labels) })
+// run: const first = try makePacking(); const second = try makePacking(); try Console.log(try Effect.try(() => JSON.stringify(first))); try Console.log(first.labels === second.labels)
 const Packing = Schema.Struct({
   handling: Schema.String.pipe(Schema.withConstructorDefault(effect { return "standard" })),
   dimensions: Schema.Struct({
@@ -104,8 +100,7 @@ A default Effect may fail with schema issues but cannot require services; read s
 ## Reusing defaults
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { { const jsonValue = try makeReturnPacking(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
+// run: { const jsonValue = try makeReturnPacking(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const ReturnPacking = Schema.Struct({
   reason: Schema.String,
   handling: Packing.fields.handling,
@@ -126,8 +121,7 @@ Defaults belong to field descriptions, so reusing a field carries its constructo
 ## Initializing schema-backed classes
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { const value = try createPackingRequest("pkg-94"); try Console.log(value instanceof PackingRequest); try Console.log(try Effect.try(() => JSON.stringify(value))) })
+// run: const value = try createPackingRequest("pkg-94"); try Console.log(value instanceof PackingRequest); try Console.log(try Effect.try(() => JSON.stringify(value)))
 class PackingRequest extends Schema.Class<PackingRequest>("PackingRequest")({
   reference: Schema.String,
   handling: Packing.fields.handling,

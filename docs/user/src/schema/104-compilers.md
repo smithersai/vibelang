@@ -6,8 +6,7 @@ Effect's experimental Schema compilers work behind the ordinary Schema APIs. The
 
 ```vibe
 // schemas/Parcel.vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { { const jsonValue = try readParcel({ reference: "pkg-94", count: 2 }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Effect.catch(readParcel({ reference: "pkg-94", count: "2" }), (error) => Console.log(error._tag)) })
+// run: { const jsonValue = try readParcel({ reference: "pkg-94", count: 2 }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Effect.catch(readParcel({ reference: "pkg-94", count: "2" }), (error) => Console.log(error._tag))
 export const Parcel = Schema.Struct({
   reference: Schema.String,
   count: Schema.Int
@@ -31,8 +30,7 @@ Compilation must be active for the AST and operation before a consumer captures 
 
 ```vibe
 // main.vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { { const jsonValue = try receiveCompiled({ reference: "pkg-94", count: 2 }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Effect.catch(receiveCompiled({}), (error) => Console.log(error.message)) })
+// run: { const jsonValue = try receiveCompiled({ reference: "pkg-94", count: 2 }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Effect.catch(receiveCompiled({}), (error) => Console.log(error.message))
 import "effect/schema/SchemaJITCompiler/enable"
 
 const CompiledParcel = Schema.Struct({
@@ -54,8 +52,7 @@ Missing key
 Put the enabling import before code that creates or runs parsers; importing the compiler namespace alone does not enable it. Operations compile lazily on first use, without eagerly running every check or default.
 
 ```vibe
-// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { enableSelectedDirections(); try Console.log(try Schema.decodeEffect(Schema.FiniteFromString)("2")); try Console.log(Schema.is(Schema.toType(Schema.FiniteFromString))(2)); try Console.log(try Schema.encodeEffect(Schema.FiniteFromString)(2)) })
+// run: enableSelectedDirections(); try Console.log(try Schema.decodeEffect(Schema.FiniteFromString)("2")); try Console.log(Schema.is(Schema.toType(Schema.FiniteFromString))(2)); try Console.log(try Schema.encodeEffect(Schema.FiniteFromString)(2))
 function enableSelectedDirections() {
   SchemaJITCompiler.enable(Schema.FiniteFromString.ast)
   SchemaJITCompiler.enable(SchemaAST.toType(Schema.FiniteFromString.ast))
@@ -155,8 +152,7 @@ Load the generated module before using the schemas, and ensure the bundler prese
 ## Using lower-level compiler APIs
 
 ```vibe
-// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(generateSource().includes("export function install")) })
+// run: try Console.log(generateSource().includes("export function install"))
 import * as SchemaAOTCompiler from "effect/schema/SchemaAOTCompiler"
 
 function generateSource() {
@@ -186,8 +182,7 @@ The low-level API calls directional parsing `decode`, the flipped encoding path 
 ## Specialized operations, registries, startup behavior, and limits
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { { const jsonValue = try parseNormally({ reference: "pkg-94", count: 2 }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Effect.catch(parseNormally({ reference: "pkg-94", count: 2, extra: true }), (error) => Console.log(error.message)) })
+// run: { const jsonValue = try parseNormally({ reference: "pkg-94", count: 2 }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Effect.catch(parseNormally({ reference: "pkg-94", count: 2, extra: true }), (error) => Console.log(error.message))
 effect function parseNormally(input: unknown) {
   return try Schema.decodeUnknownEffect(Parcel)(input, {
     errors: "all", onExcessProperty: "error"

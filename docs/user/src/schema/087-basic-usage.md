@@ -17,8 +17,7 @@ JSDoc on a `schema` declaration belongs to its constant. Its companion type alia
 ## Modeling primitives, symbols, literals, enums, and template strings
 
 ```vibe
-// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(Schema.is(Measurement)(Infinity), Schema.is(UnrestrictedNumber)(Infinity)); try Console.log(Schema.is(MarkerSchema)(Marker), Schema.is(MarkerSchema)(Symbol("shipping/marker"))); try Console.log(Schema.is(PendingState)("sent"), Schema.is(TrackingCode)("pkg_76"), Schema.is(PrioritySchema)("urgent")) })
+// run: try Console.log(Schema.is(Measurement)(Infinity), Schema.is(UnrestrictedNumber)(Infinity)); try Console.log(Schema.is(MarkerSchema)(Marker), Schema.is(MarkerSchema)(Symbol("shipping/marker"))); try Console.log(Schema.is(PendingState)("sent"), Schema.is(TrackingCode)("pkg_76"), Schema.is(PrioritySchema)("urgent"))
 const Measurement = Schema.Finite
 const UnrestrictedNumber = Schema.Number
 const Enabled = Schema.Boolean
@@ -45,8 +44,7 @@ false true true
 `Literal(value)` accepts one string, number, boolean, or bigint; `Literals([...])` combines exact values; null uses `Schema.Null`. Literal collections expose `.literals`, enum schemas `.enums`, and `revealCodec(schema)` reveals the full codec type without changing the value. `UniqueSymbol` checks one particular symbol, not any symbol.
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { { const jsonValue = try locateBin("bin:12/upper"); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
+// run: { const jsonValue = try locateBin("bin:12/upper"); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const BinPosition = Schema.TemplateLiteralParser([
   "bin:", Schema.FiniteFromString, "/", Schema.NonEmptyString
 ])
@@ -68,8 +66,7 @@ A reference in a `schema` declaration must satisfy Effect's `Schema.Top` contrac
 ## Building unions and tagged alternatives
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(try describeLocation({ _tag: "Warehouse", aisle: "A3" })); try Console.log(try describeLocation({ _tag: "Courier", route: 7 })) })
+// run: try Console.log(try describeLocation({ _tag: "Warehouse", aisle: "A3" })); try Console.log(try describeLocation({ _tag: "Courier", route: 7 }))
 const Warehouse = Schema.TaggedStruct("Warehouse", { aisle: Schema.String })
 const Courier = Schema.TaggedStruct("Courier", { route: Schema.Int })
 const Location = Schema.Union([Warehouse, Courier])
@@ -100,8 +97,7 @@ In a `schema` declaration, a `Record<K, V>` value schema must have required deco
 A fixed tuple spread such as `[string, ...[number, boolean]]` contributes fixed positions, as `[string, number, boolean]` does. This includes readonly rest operands, nested fixed spreads and fixed positions after an array rest. Literal spreads also follow native tuple normalization: `[number?, ...[string]]` requires two positions, with `number | undefined` first. Nested array rests retain their repeating and trailing positions.
 
 ```vibe
-// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(Schema.is(Coordinate)([1, 2]), Schema.is(Extended)([1, 2, "dock", true])); try Console.log(Schema.is(Readings)(["sensor"]), Schema.is(Readings)(["sensor", 2, true]), Schema.is(Readings)(["sensor", true])); try Console.log(Schema.is(BoundedReadings)(["sensor", 1, 2, false])) })
+// run: try Console.log(Schema.is(Coordinate)([1, 2]), Schema.is(Extended)([1, 2, "dock", true])); try Console.log(Schema.is(Readings)(["sensor"]), Schema.is(Readings)(["sensor", 2, true]), Schema.is(Readings)(["sensor", true])); try Console.log(Schema.is(BoundedReadings)(["sensor", 1, 2, false]))
 const Coordinate = Schema.Tuple([
   Schema.Finite.annotateKey({ title: "Longitude" }),
   Schema.Finite,
@@ -135,8 +131,7 @@ Fixed elements are `.elements`, or `.schema.elements` on a tuple with rest, whos
 ## Modeling mutable and nonempty arrays
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { { const jsonValue = try addLabel(["fragile"]); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(Schema.is(RequiredLabels)([])) })
+// run: { const jsonValue = try addLabel(["fragile"]); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(Schema.is(RequiredLabels)([]))
 const Labels = Schema.Array(Schema.String)
 const EditableLabels = Schema.mutable(Labels)
 const RequiredLabels = Schema.NonEmptyArray(Schema.NonEmptyString)
@@ -160,8 +155,7 @@ false
 In a `schema` declaration, `Readonly<Record<K, V>>` maps to `Schema.Record`. Parentheses only group its argument: `Readonly<(Record<string, number>)>` produces the same codec and readonly decoded properties.
 
 ```vibe
-// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { { const jsonValue = try Schema.decodeUnknownEffect(NormalizedStock)({ NORTH: 2, north: 3 }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(Schema.is(RegionalStock)({ east: 1 }), Schema.is(LabeledCounters)({ total: 3, east: 3 })) })
+// run: { const jsonValue = try Schema.decodeUnknownEffect(NormalizedStock)({ NORTH: 2, north: 3 }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(Schema.is(RegionalStock)({ east: 1 }), Schema.is(LabeledCounters)({ total: 3, east: 3 }))
 const Stock = Schema.Record(Schema.String, Schema.Int)
 const SymbolStock = Schema.Record(Schema.Symbol, Schema.Int)
 const RegionalStock = Schema.Record(Schema.Literals(["east", "west"]), Schema.Int)
@@ -194,8 +188,7 @@ A record exposes `.key` and `.value`; a struct with rest, `.schema.fields` and `
 ## Creating structs and tagged structs
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { { const jsonValue = try createPacked(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(Schema.is(Packed)({ reference: "box-76", weight: 2 })) })
+// run: { const jsonValue = try createPacked(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(Schema.is(Packed)({ reference: "box-76", weight: 2 }))
 const Package = Schema.Struct({
   reference: Schema.String,
   weight: Schema.Finite,
@@ -225,8 +218,7 @@ A struct describes fixed fields, exposed as `.fields`. `Struct({})` accepts any 
 ## Validating class instances
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log((try readPallet(new Pallet("P-1"))).code); try Effect.catch(readPallet({ code: "P-1" }), (error) => Console.log(error._tag)) })
+// run: try Console.log((try readPallet(new Pallet("P-1"))).code); try Effect.catch(readPallet({ code: "P-1" }), (error) => Console.log(error._tag))
 class Pallet {
   constructor(readonly code: string) {}
 }
@@ -250,8 +242,7 @@ SchemaError
 ## Selecting, removing, and changing optional fields
 
 ```vibe
-// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { { const jsonValue = try Schema.decodeUnknownEffect(PackageSummary)({ reference: "box-76", weight: 2, comment: "ok" }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(Schema.is(Patch)({ comment: undefined }), Schema.is(LoosePatch)({ comment: undefined }), Schema.is(RequiredPatch)({})) })
+// run: { const jsonValue = try Schema.decodeUnknownEffect(PackageSummary)({ reference: "box-76", weight: 2, comment: "ok" }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(Schema.is(Patch)({ comment: undefined }), Schema.is(LoosePatch)({ comment: undefined }), Schema.is(RequiredPatch)({}))
 const PackageSummary = Package.mapFields(Struct.pick(["reference", "weight"]))
 const WithoutComment = Package.mapFields(Struct.omit(["comment"]))
 const Patch = Package.mapFields(Struct.map(Schema.optionalKey))

@@ -7,8 +7,7 @@ The `Schema` module is in scope without an import. An explicit `import { Schema 
 ## Declaring schemas
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { { const jsonValue = try receive({ tracking: "box-76", pieces: "2" }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
+// run: { const jsonValue = try receive({ tracking: "box-76", pieces: "2" }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const Shipment = Schema.Struct({
   tracking: Schema.NonEmptyString,
   pieces: Schema.FiniteFromString
@@ -32,7 +31,6 @@ An empty type argument list on a schema reference, such as `Address<>`, reports 
 ## Extracting decoded, encoded, and service types
 
 ```vibe
-// pending: VIP-14
 type Shipment = typeof Shipment.Type
 type ShipmentWire = typeof Shipment.Encoded
 type ReadServices = typeof Shipment.DecodingServices
@@ -49,8 +47,7 @@ The decoded `pieces` is a number, the encoded one a string, and both service typ
 ## Understanding default immutability
 
 ```vibe
-// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-15, VIP-26
-// run: await runPromise(effect { { const jsonValue = try Schema.decodeUnknownEffect(Batch)({ shipments: [{ tracking: "box-76", pieces: "2" }] }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
+// run: { const jsonValue = try Schema.decodeUnknownEffect(Batch)({ shipments: [{ tracking: "box-76", pieces: "2" }] }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 schema Batch {
   shipments: ReadonlyArray<Shipment>
 }
@@ -78,8 +75,7 @@ A JSDoc comment on a `schema` declaration documents the emitted constant only; i
 ## Declaring a schema for any type
 
 ```vibe
-// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-15, VIP-26
-// run: await runPromise(effect { { const jsonValue = try Schema.decodeUnknownEffect(Delivery)({ status: "delivered", shipments: [] }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(Schema.is(Status)("lost")) })
+// run: { const jsonValue = try Schema.decodeUnknownEffect(Delivery)({ status: "delivered", shipments: [] }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(Schema.is(Status)("lost"))
 schema Status = "pending" | "delivered" | "returned"
 schema Delivery = { status: Status; shipments: ReadonlyArray<Shipment> }
 // Status: "pending" | "delivered" | "returned"
@@ -95,8 +91,7 @@ false
 ## Choosing synchronous, result, or effect decoding
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log((try decodeWithEffects({ tracking: "box-76", pieces: "2" })).pieces); try Console.log(decodeAsData({ tracking: "box-76", pieces: "2" })); try Console.log((try decodeWithDomainError({ tracking: "box-76", pieces: "2" })).pieces); try Effect.catch(decodeWithDomainError({}), (error) => Console.log(error._tag)); try Console.log(decodeAsData({})) })
+// run: try Console.log((try decodeWithEffects({ tracking: "box-76", pieces: "2" })).pieces); try Console.log(decodeAsData({ tracking: "box-76", pieces: "2" })); try Console.log((try decodeWithDomainError({ tracking: "box-76", pieces: "2" })).pieces); try Effect.catch(decodeWithDomainError({}), (error) => Console.log(error._tag)); try Console.log(decodeAsData({}))
 effect function decodeWithEffects(input: unknown) {
   return try Schema.decodeUnknownEffect(Shipment)(input)
 }
@@ -132,8 +127,7 @@ Prefer `decodeUnknownEffect`: it can pause, requires the codec's decoding servic
 ## Encoding values
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { { const jsonValue = try send({ tracking: "box-76", pieces: 2 }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Effect.catch(sendUntrusted({ tracking: "box-76", pieces: "2" }), (error) => Console.log(error._tag)) })
+// run: { const jsonValue = try send({ tracking: "box-76", pieces: 2 }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Effect.catch(sendUntrusted({ tracking: "box-76", pieces: "2" }), (error) => Console.log(error._tag))
 effect function send(shipment: Shipment) {
   return try Schema.encodeEffect(Shipment)(shipment)
 }
@@ -155,7 +149,7 @@ Encoding reverses the conversion, numeric `pieces` included. `encodeEffect` acce
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(try receiveOrExplain({ tracking: "box-76", pieces: "2" })); try Console.log(try receiveOrExplain({})) })
+// run: try Console.log(try receiveOrExplain({ tracking: "box-76", pieces: "2" })); try Console.log(try receiveOrExplain({}))
 effect function receiveOrExplain(input: unknown) {
   return effect {
     const shipment = try receive(input)
@@ -176,8 +170,7 @@ The parser's expected failure is a `SchemaError` with `_tag: "SchemaError"`: its
 ## Configuring excess properties and error collection
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Effect.catch(receiveStrict({ tracking: "box-76", pieces: "2", extra: true }), (error) => Console.log(error._tag)); { const jsonValue = try Schema.decodeUnknownEffect(ShipmentWithExtras)({ tracking: "box-76", pieces: "2", extra: true }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
+// run: try Effect.catch(receiveStrict({ tracking: "box-76", pieces: "2", extra: true }), (error) => Console.log(error._tag)); { const jsonValue = try Schema.decodeUnknownEffect(ShipmentWithExtras)({ tracking: "box-76", pieces: "2", extra: true }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function receiveStrict(input: unknown) {
   return try Schema.decodeUnknownEffect(Shipment)(input, {
     onExcessProperty: "error",
@@ -203,7 +196,7 @@ Pass options when creating the parser or when calling it; call options take prec
 
 ```vibe
 // pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(shipmentTracking({ tracking: "box-76", pieces: 2 })); try Console.log(shipmentTracking({ tracking: "box-76", pieces: "2" })); try Console.log(try Effect.try(() => assertShipment({ tracking: "box-76", pieces: 2 }))) })
+// run: try Console.log(shipmentTracking({ tracking: "box-76", pieces: 2 })); try Console.log(shipmentTracking({ tracking: "box-76", pieces: "2" })); try Console.log(try Effect.try(() => assertShipment({ tracking: "box-76", pieces: 2 })))
 const isShipment = Schema.is(Shipment)
 
 function shipmentTracking(input: unknown) {

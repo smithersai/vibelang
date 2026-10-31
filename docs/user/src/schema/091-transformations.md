@@ -5,8 +5,7 @@ Transformations work as in Effect: a codec validates one representation, convert
 ## Defining reversible infallible conversions
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(try readAvailability("ready"), try readAvailability("held")); try Console.log(try Schema.encodeEffect(Availability)(true)) })
+// run: try Console.log(try readAvailability("ready"), try readAvailability("held")); try Console.log(try Schema.encodeEffect(Availability)(true))
 const Availability = Schema.Literals(["ready", "held"]).pipe(
   Schema.decodeTo(Schema.Boolean, SchemaTransformation.transform({
     decode: (status) => status === "ready",
@@ -29,8 +28,7 @@ ready
 ## Understanding transformation inputs and outputs
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(try readNumericAvailability()); try Console.log(try Schema.encodeEffect(NumericAvailability)(true)) })
+// run: try Console.log(try readNumericAvailability()); try Console.log(try Schema.encodeEffect(NumericAvailability)(true))
 const NumericAvailability = Schema.FiniteFromString.pipe(
   Schema.decodeTo(Availability, SchemaTransformation.transform({
     decode: (quantity) => quantity > 0 ? "ready" : "held",
@@ -55,8 +53,7 @@ The middle functions above handle a number and a status string, though the compl
 ## Defining fallible conversions
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(try Schema.decodeUnknownEffect(DeliveryMode)(" RAIL ")); try Effect.catch(Schema.decodeUnknownEffect(DeliveryMode)("air"), (error) => Console.log(error.message)) })
+// run: try Console.log(try Schema.decodeUnknownEffect(DeliveryMode)(" RAIL ")); try Effect.catch(Schema.decodeUnknownEffect(DeliveryMode)("air"), (error) => Console.log(error.message))
 const DeliveryMode = Schema.String.pipe(
   Schema.decodeTo(Schema.Literals(["road", "rail"]), {
     decode: SchemaGetter.transformEffect<"road" | "rail", string>(effect (text) => {
@@ -79,8 +76,7 @@ Choose road or rail
 ## Running asynchronous conversions with dependencies
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-3, VIP-4, VIP-5, VIP-6, VIP-9, VIP-12, VIP-13, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(try previewRoute()); provide Routes = { effect check(code) { throw new UnknownRoute({ code }) } } { try Effect.catch(readRoute("missing"), (error) => Console.log(error.message)) } })
+// run: try Console.log(try previewRoute()); provide Routes = { effect check(code) { throw new UnknownRoute({ code }) } } { try Effect.catch(readRoute("missing"), (error) => Console.log(error.message)) }
 error UnknownRoute {
   code: string
 }
@@ -128,8 +124,7 @@ The getter can pause while its service runs. Decoding requires `Routes`; encodin
 ## Forbidding an encoding direction
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(try readInitial("Ada")); try Effect.catch(Schema.encodeEffect(Initial)("A"), (error) => Console.log(error.message)) })
+// run: try Console.log(try readInitial("Ada")); try Effect.catch(Schema.encodeEffect(Initial)("A"), (error) => Console.log(error.message))
 const Initial = Schema.NonEmptyString.pipe(
   Schema.decodeTo(Schema.String, {
     decode: SchemaGetter.transform((name) => name[0]),
@@ -152,8 +147,7 @@ A lossy conversion has no meaningful inverse. `forbidden` reports a schema issue
 ## Composing transformations and effectful checks
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-17, VIP-26
-// run: await runPromise(effect { { const jsonValue = try readNumbers(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(try Schema.decodeEffect(DeferredLabel)("crate")); try Effect.catch(Schema.decodeEffect(DeferredLabel)("x"), (error) => Console.log(error.message)) })
+// run: { const jsonValue = try readNumbers(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(try Schema.decodeEffect(DeferredLabel)("crate")); try Effect.catch(Schema.decodeEffect(DeferredLabel)("x"), (error) => Console.log(error.message))
 const SemicolonNumbers = Schema.String.pipe(
   Schema.decodeTo(Schema.Array(Schema.String), SchemaTransformation.transform({
     decode: (text): ReadonlyArray<string> => text.split(";"),
@@ -190,8 +184,7 @@ When converting a collection whose elements are already decoded, use `Schema.toT
 ## Converting string case, JSON, and binary encodings
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { { const jsonValue = try decodeTextFormats(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
+// run: { const jsonValue = try decodeTextFormats(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const LowerLabel = Schema.String.pipe(
   Schema.decodeTo(
     Schema.String.check(Schema.isLowercased()),
@@ -221,8 +214,7 @@ effect function decodeTextFormats() {
 ## Parsing numeric, date, and decimal values
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { const value = try readManifest({ units: "3.5", sequence: "12", departure: "2026-01-02T00:00:00Z", price: "1.25" }); try Console.log(value.units, String(value.sequence), value.departure.toISOString(), BigDecimal.format(value.price)); try Effect.catch(readManifest({ units: "Infinity", sequence: "12", departure: "invalid", price: "bad" }), (error) => Console.log(error._tag)) })
+// run: const value = try readManifest({ units: "3.5", sequence: "12", departure: "2026-01-02T00:00:00Z", price: "1.25" }); try Console.log(value.units, String(value.sequence), value.departure.toISOString(), BigDecimal.format(value.price)); try Effect.catch(readManifest({ units: "Infinity", sequence: "12", departure: "invalid", price: "bad" }), (error) => Console.log(error._tag))
 const Manifest = Schema.Struct({
   units: Schema.FiniteFromString,
   sequence: Schema.BigIntFromString,

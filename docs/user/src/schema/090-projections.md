@@ -5,8 +5,7 @@ Projections work exactly as in Effect: they turn one side of a codec into a sche
 ## Projecting a codec to its decoded schema
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(try inspectCount(4)); for (const value of ["4", 0, 1.5]) { try Effect.catch(inspectCount(value), (error) => Console.log(error._tag)) } })
+// run: try Console.log(try inspectCount(4)); for (const value of ["4", 0, 1.5]) { try Effect.catch(inspectCount(value), (error) => Console.log(error._tag)) }
 const CountFromText = Schema.FiniteFromString.check(
   Schema.isInt(), Schema.isGreaterThanOrEqualTo(1)
 )
@@ -30,8 +29,7 @@ SchemaError
 ## Projecting a codec to its encoded schema
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { { const jsonValue = try inspectWireName(" x "); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
+// run: { const jsonValue = try inspectWireName(" x "); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const Name = Schema.String.check(Schema.isMinLength(3)).pipe(
   Schema.decodeTo(Schema.Trim)
 )
@@ -52,8 +50,7 @@ effect function inspectWireName(input: unknown) {
 ## Retaining checks appropriate to each side
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { { const jsonValue = try compareViews(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Effect.catch(Schema.decodeUnknownEffect(ParcelCount)("00"), (error) => Console.log(error._tag)) })
+// run: { const jsonValue = try compareViews(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Effect.catch(Schema.decodeUnknownEffect(ParcelCount)("00"), (error) => Console.log(error._tag))
 const ParcelCount = Schema.String.check(Schema.isMinLength(2)).pipe(
   Schema.decodeTo(Schema.FiniteFromString),
   Schema.check(Schema.isGreaterThan(5))

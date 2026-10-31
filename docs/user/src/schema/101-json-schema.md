@@ -5,8 +5,7 @@ JSON Schema export works as in Effect. It describes the encoded side of a schema
 ## Exporting JSON Schema documents
 
 ```vibe
-// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { const document = depotDocument(); try Console.log(document.dialect); try Console.log(try Effect.try(() => JSON.stringify(document.schema))) })
+// run: const document = depotDocument(); try Console.log(document.dialect); try Console.log(try Effect.try(() => JSON.stringify(document.schema)))
 const Depot = Schema.Struct({
   name: Schema.String,
   capacity: Schema.Finite
@@ -28,7 +27,7 @@ The document holds `dialect` (default `"draft-2020-12"`), the root `schema`, and
 
 ```vibe
 // pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(try Effect.try(() => JSON.stringify(alternateDrafts()))) })
+// run: try Console.log(try Effect.try(() => JSON.stringify(alternateDrafts())))
 function alternateDrafts() {
   const document = Schema.toJsonSchemaDocument(
     Schema.Tuple([Schema.String, Schema.FiniteFromString])
@@ -49,7 +48,7 @@ Export derives `toCodecJson`, then describes its encoded side: `FiniteFromString
 
 ```vibe
 // pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(try Effect.try(() => JSON.stringify(nameDocument().schema))) })
+// run: try Console.log(try Effect.try(() => JSON.stringify(nameDocument().schema)))
 const DepotName = Schema.Trim.pipe(Schema.annotateEncoded({
   title: "Depot input",
   description: "Text entered before surrounding whitespace is removed",
@@ -75,7 +74,7 @@ function nameDocument() {
 
 ```vibe
 // pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(try Effect.try(() => JSON.stringify(requestDocument().schema))) })
+// run: try Console.log(try Effect.try(() => JSON.stringify(requestDocument().schema)))
 const DepotRequest = Schema.Struct({
   code: Schema.String.check(Schema.isPattern(/^[A-Z]{2}[0-9]{3}$/u)),
   note: Schema.optionalKey(Schema.String),
@@ -100,7 +99,7 @@ JavaScript counts string length in UTF-16 code units; JSON Schema counts Unicode
 
 ```vibe
 // pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(try Effect.try(() => JSON.stringify(treeDocument()))) })
+// run: try Console.log(try Effect.try(() => JSON.stringify(treeDocument())))
 interface DepotTree {
   name: string
   branches: ReadonlyArray<DepotTree>
@@ -125,7 +124,7 @@ An identifier creates a named definition referenced through `$ref`. Without one,
 
 ```vibe
 // pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(try Effect.try(() => JSON.stringify(strictDocument().schema))) })
+// run: try Console.log(try Effect.try(() => JSON.stringify(strictDocument().schema)))
 function strictDocument() {
   return Schema.toJsonSchemaDocument(DepotRequest, {
     onExcessProperty: "error",
@@ -145,7 +144,7 @@ function strictDocument() {
 
 ```vibe
 // pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(try Effect.try(() => JSON.stringify(jsonTextDocument().schema))) })
+// run: try Console.log(try Effect.try(() => JSON.stringify(jsonTextDocument().schema)))
 const DepotText = Schema.fromJsonString(Depot)
 
 function jsonTextDocument() {

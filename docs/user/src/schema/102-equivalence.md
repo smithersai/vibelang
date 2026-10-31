@@ -5,8 +5,7 @@ Schema-derived equivalence works exactly as in Effect. It compares decoded value
 ## Deriving equality from schemas
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-15, VIP-26
-// run: await runPromise(effect { try Console.log(try sameShipment({ reference: "pkg-94", stops: ["east"], extra: 1 }, { reference: "pkg-94", stops: ["east"], extra: 2 })); try Console.log(try sameShipment({ reference: "pkg-94", stops: ["east"] }, { reference: "pkg-94", stops: ["west"] })) })
+// run: try Console.log(try sameShipment({ reference: "pkg-94", stops: ["east"], extra: 1 }, { reference: "pkg-94", stops: ["east"], extra: 2 })); try Console.log(try sameShipment({ reference: "pkg-94", stops: ["east"] }, { reference: "pkg-94", stops: ["west"] }))
 schema Shipment {
   reference: string
   stops: ReadonlyArray<string>
@@ -29,8 +28,7 @@ false
 ## Handling broad schemas and custom declarations
 
 ```vibe
-// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(sameUnknown({ stops: ["east"] }, { stops: ["east"] })); try Console.log(sameRef()) })
+// run: try Console.log(sameUnknown({ stops: ["east"] }, { stops: ["east"] })); try Console.log(sameRef())
 function sameUnknown(left: unknown, right: unknown) {
   return Schema.toEquivalence(Schema.Unknown)(left, right)
 }
@@ -59,8 +57,7 @@ true
 ## Overriding generated comparison behavior
 
 ```vibe
-// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(sameIdentity({ reference: "pkg-94", stops: ["east"] }, { reference: "pkg-94", stops: ["west"] })); try Console.log(sameIdentity({ reference: "pkg-94", stops: [] }, { reference: "pkg-95", stops: [] })) })
+// run: try Console.log(sameIdentity({ reference: "pkg-94", stops: ["east"] }, { reference: "pkg-94", stops: ["west"] })); try Console.log(sameIdentity({ reference: "pkg-94", stops: [] }, { reference: "pkg-95", stops: [] }))
 const ShipmentIdentity = Shipment.pipe(Schema.overrideToEquivalence(
   () => (left, right) => left.reference === right.reference
 ))

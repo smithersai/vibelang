@@ -6,8 +6,7 @@
 
 ```vibe
 // settings.vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { { const jsonValue = try readSettings({ label: "depot" }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(Schema.is(Settings)({ label: "depot", hint: undefined })) })
+// run: { const jsonValue = try readSettings({ label: "depot" }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(Schema.is(Settings)({ label: "depot", hint: undefined }))
 const Settings = Schema.Struct({
   label: Schema.String,
   hint: Schema.optionalKey(Schema.String)
@@ -31,8 +30,7 @@ Synchronous Schema builders, `.pipe` methods, guards, and generated helpers are 
 ## Understanding schemas and codecs
 
 ```vibe
-// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(decodedView === Line, completeView === Line) })
+// run: try Console.log(decodedView === Line, completeView === Line)
 const Quantity = Schema.FiniteFromString
 const Line = Schema.Struct({ sku: Schema.NonEmptyString, quantity: Quantity })
 
@@ -52,8 +50,7 @@ A schema is an immutable description; adding fields, checks, or annotations prod
 ## Distinguishing decoded and encoded views
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { { const jsonValue = try unpack(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; { const jsonValue = try pack({ weight: 3.75 }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } })
+// run: { const jsonValue = try unpack(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; { const jsonValue = try pack({ weight: 3.75 }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const Parcel = Schema.Struct({ weight: Schema.FiniteFromString })
 
 type Parcel = typeof Parcel.Type       // { readonly weight: number }
@@ -78,8 +75,7 @@ Decoding goes from `Encoded` to `Type`, encoding from `Type` to `Encoded`. The c
 ## Decoding or encoding unknown inputs
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { { const jsonValue = try inspectBoundary("3.75", 2); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Effect.catch(inspectBoundary(3, "2"), (error) => Console.log(error._tag)) })
+// run: { const jsonValue = try inspectBoundary("3.75", 2); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Effect.catch(inspectBoundary(3, "2"), (error) => Console.log(error._tag))
 effect function inspectBoundary(incoming: unknown, outgoing: unknown) {
   const quantity = try Schema.decodeUnknownEffect(Schema.FiniteFromString)(incoming)
   const text = try Schema.encodeUnknownEffect(Schema.FiniteFromString)(outgoing)
@@ -100,8 +96,7 @@ Calling an Effect-returning parser builds an Effect. `try` runs it and gives the
 ## Reasoning about conversion round trips
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
-// run: await runPromise(effect { try Console.log(try roundTrip(3.75)); try Console.log(try normalizeText()) })
+// run: try Console.log(try roundTrip(3.75)); try Console.log(try normalizeText())
 effect function roundTrip(value: number) {
   const wire = try Schema.encodeEffect(Schema.FiniteFromString)(value)
   return try Schema.decodeEffect(Schema.FiniteFromString)(wire)
