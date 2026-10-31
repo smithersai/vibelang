@@ -160,6 +160,8 @@ Use `A!E!R` or `Effect.Effect<A, E, R>`, instead of the transitional bare global
 
 The same grouping rule applies to nested qualified types. An array boundary in `Effect.Effect<Array<Effect.Effect<number>>>` lets both levels use shorthand. Direct nesting in `Effect.Effect<Effect.Effect<number>>` keeps the outer qualified type when shortening it would need new parentheses.
 
+A required requirement can be an object type in a type alias, interface or function type: `type Read = number!string!{ readonly service: number }`. An implementation return annotation keeps its existing body-brace boundary; parenthesize an object requirement there. The optional requirement after `A!!` still requires parentheses around an object type.
+
 ---
 
 The matching Effect page: [effect.website/docs/v4/getting-started/the-effect-type](https://effect.website/docs/v4/getting-started/the-effect-type/)

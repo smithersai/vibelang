@@ -132,6 +132,8 @@ type Parser struct {
 
 	// VIP-11 diagnostic marker, separate from syntax-extension state.
 	vibelangDeniedTrailingBlock bool       // request migration diagnostics; never consume its block
+
+	vibelangCallableReturnType bool // implementation return annotations can end at a bare function-body brace
 	vibelangThrowStop           *throwStop // where automatic semicolon insertion may end a throw expression (vibelang_throw_lookahead.go)
 }
 
@@ -3769,6 +3771,9 @@ func (p *Parser) parseNameOfParameter(modifiers *ast.ModifierList) *ast.Node {
 
 func (p *Parser) parseReturnType(returnToken ast.Kind, isType bool) *ast.TypeNode {
 	if p.shouldParseReturnType(returnToken, isType) {
+		savedReturnType := p.vibelangCallableReturnType
+		p.vibelangCallableReturnType = savedReturnType || !isType && returnToken != ast.KindEqualsGreaterThanToken
+		defer func() { p.vibelangCallableReturnType = savedReturnType }()
 		returnType := p.doInContext(ast.NodeFlagsDisallowConditionalTypesContext, false, (*Parser).parseTypeOrTypePredicate)
 		return returnType
 	}

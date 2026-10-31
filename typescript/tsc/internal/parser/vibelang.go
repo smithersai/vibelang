@@ -264,8 +264,9 @@ func (p *Parser) vibelangReadonly(modifiers *ast.ModifierList, anchor core.TextR
 // parentheses: User!(NotFound | Timeout)!Db. The parser retains the old slot
 // grouping only for recovery; checkVibeLangEffectChannels reports EK0301 and
 // its migration makes that grouping explicit. An error operand
-// may start with {; a requirement must be parenthesized so a following {
-// still starts the function body. A slot's type starts on the line of
+// may start with {. A required requirement may be an object in a type
+// position; implementation return annotations and the optional R after !!
+// retain their body-brace boundary, so group an object requirement there. A slot's type starts on the line of
 // its !, so a member that ends in `void!!` does not take the next member.
 //
 // The reference is Effect.Effect, which names Effect's type whether Effect is
@@ -290,6 +291,10 @@ func (p *Parser) parseVibeLangEffectType(result *ast.TypeNode) *ast.TypeNode {
 		p.parseErrorAtRange(bang, diagnostics.X_0_at_the_end_of_a_type_is_not_valid_TypeScript_syntax_Did_you_mean_to_write_1, "!", p.sourceText[start:result.End()])
 		return result
 	}
+	omittedError := p.lookAhead(func(p *Parser) bool {
+		p.nextToken()
+		return p.token == ast.KindExclamationToken && !p.hasPrecedingLineBreak()
+	})
 	errors := p.parseVibeLangSlot(true)
 	// Only here can an equality token begin the second shorthand bang.
 	if errors.End() == bang.End() && !p.hasPrecedingLineBreak() {
@@ -309,7 +314,9 @@ func (p *Parser) parseVibeLangEffectType(result *ast.TypeNode) *ast.TypeNode {
 		p.nextToken()
 		dependencies = p.vibelangSynthesized(p.factory.NewKeywordTypeNode(ast.KindNeverKeyword), last)
 	} else {
-		dependencies = p.parseVibeLangSlot(false)
+		// Required requirements admit object types in type positions. Keep an
+		// implementation's existing body-brace boundary until migrated.
+		dependencies = p.parseVibeLangSlot(!omittedError && !p.vibelangCallableReturnType)
 	}
 	span := core.NewTextRange(result.Pos(), dependencies.End())
 	p.recordVibeSyntax(VibeSyntax{Kind: VibeSyntaxEffectType, Range: core.NewTextRange(scanner.SkipTrivia(p.sourceText, result.Pos()), dependencies.End())})

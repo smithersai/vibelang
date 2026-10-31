@@ -1,0 +1,1 @@
+required object channels preserve exact types and legacy bodies
