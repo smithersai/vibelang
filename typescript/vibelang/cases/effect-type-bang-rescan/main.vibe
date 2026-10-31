@@ -1,0 +1,16 @@
+// expect-result: [7,true,true,8,true,false,7]
+// VIP-3, 001-functions.md: directly after A!, the ! that completes A!! is one
+// token and scanning resumes at the next character, so A!!= v is A!! = v,
+// A!!== v is A!! == v, A!!=== v is A!! === v and (): A!!=> e is
+// (): A!! => e. After the slots, != and !== stay equality operators.
+import { seven } from "./effects.ts"
+export effect function main() {
+  const d: number!!= seven
+  const loose = seven as number!!== seven
+  const strict = seven as number!!=== seven
+  const arrow = effect (x: number): number!!=> x + 1
+  const spaced = seven as number!! != null
+  const different = seven as number!! !== seven
+  const r: number!!never= seven
+  return [try d, loose, strict, arrow(7), spaced, different, try r]
+}

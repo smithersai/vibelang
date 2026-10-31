@@ -334,11 +334,13 @@ In these examples `queryDb` is a Promise-returning function imported from a `.ts
 
 ### Syntax
 
-[EffectType](/spec/900-appendices#effecttype). `A!B!C` is always the three-slot form, never `(A!B)!C`; write the parentheses to nest. A line break ends an Effect type, as it ends TypeScript's postfix type operators: each `!`, and the slot after it, start on the line where the previous slot ends, and a slot in parentheses may span lines. Only the optional `R` after `!!` excludes an unparenthesized `{`; required error and requirement slots admit object types, so `): number!! {` begins the body; write `A!!({ … })` for a type-literal requirement. Otherwise, among complete source parses, prefer consuming an ordinary TypeScript source operand on that line as `R`: a negative literal type such as `-1` is consumed as `R`, so `x as A!! - 1` asserts `A!!-1`. Write `(x as A!!) - 1` for subtraction. Parser-only JSDoc type forms are excluded, including inside parentheses ([operand boundaries](/spec/900-appendices#effectoperand)). The scanner splits `!=` or `!==` into `!` and `=` or `==` only directly after `A!`, where the `!` completes `A!!`, as TypeScript rescans `>=` only after type arguments. Anywhere else they stay equality operators, as in TypeScript:
+[EffectType](/spec/900-appendices#effecttype). `A!B!C` is always the three-slot form, never `(A!B)!C`; write the parentheses to nest. A line break ends an Effect type, as it ends TypeScript's postfix type operators: each `!`, and the slot after it, start on the line where the previous slot ends, and a slot in parentheses may span lines. Only the optional `R` after `!!` excludes an unparenthesized `{`; required error and requirement slots admit object types, so `): number!! {` begins the body; write `A!!({ … })` for a type-literal requirement. Otherwise, among complete source parses, prefer consuming an ordinary TypeScript source operand on that line as `R`: a negative literal type such as `-1` is consumed as `R`, so `x as A!! - 1` asserts `A!!-1`. Write `(x as A!!) - 1` for subtraction. Parser-only JSDoc type forms are excluded, including inside parentheses ([operand boundaries](/spec/900-appendices#effectoperand)). Directly after `A!`, where the next `!` completes `A!!`, the scanner reads that `!` as one token and rescans from the next character, as TypeScript rescans `>` after type arguments: `A!!= v` is `A!! = v`, `A!!== v` is `A!! == v`, `A!!=== v` is `A!! === v` and `(): A!!=> e` is `(): A!! => e`. Anywhere else `!=` and `!==` stay equality operators, as in TypeScript:
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-3
 const e: User!!= load()     // const e: User!! = load()
+const f = effect (x: number): number!!=> x   // effect (x: number): number!! => x
+const same = e as User!!=== e  // (e as User!!) === e
 if (x as number !== 0) { }  // (x as number) !== 0
 interface Clock {
   now(): number!!           // two members, not R = later
