@@ -7,6 +7,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ## 0.0.11 (unreleased)
 - The migrate flow pointed a renamed module's package `exports` and `types` at `x.vibe`, so stock TypeScript, reading the module through its declaration sidecar, reported `TS2883` where a consumer's inferred type named one of the module's types; a `types` field or condition now names `x.d.vibe.ts`, and a bare entry becomes `{ "types": "./x.d.vibe.ts", "default": "./x.vibe" }`.
+- The migrate flow's `verify` passed a batch whose declaration emit failed in a migrated file, such as `TS7056` for a type too long to serialize, when the baseline's emit failed the same way and the two fallbacks were equal; it now fails the batch on any declaration emit error in a migrated file.
 - Formatting an inline `@internal` or other JSDoc comment beside an error payload could silently change its declaration output; the formatter now refuses changes to comment attachment and leaves the file intact.
 - The runtime helper `$produce` required an external `Scope` even though its Stream callback supplies one; its result now removes that requirement and keeps other services.
 - Compiler validation treated an error name as a private binding during rename and reported false failures; it now accounts for the public `_tag` value while checking every reference and edit (VIP-13, VIP-29).

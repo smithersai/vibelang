@@ -9,7 +9,7 @@ import { buildInventory, listSources, readCoverage } from "./inventory.mjs"
 import { defaultLimits, draftPlan, planPrompt, validatePlan } from "./plan.mjs"
 import { fixToFixedPoint, renameBatch, restoreExports, restoreSpecifiers, rewriteExports, rewriteImports, rewriteTotals } from "./codemod.mjs"
 import { check, newErrors, styleProblems, summarize } from "./diagnostics.mjs"
-import { compareDeclarations, emitDeclarations, loadTypeScript } from "./declarations.mjs"
+import { compareDeclarations, emitDeclarations, emitErrorsIn, loadTypeScript } from "./declarations.mjs"
 import { compareTests, regressionIssue, runTests } from "./tests.mjs"
 import { countTokens } from "./tokens.mjs"
 import { readIssues } from "./issues.mjs"
@@ -247,16 +247,18 @@ async function checkPackage({ compiler, ts, t, pkg, log }) {
 async function emitPackageDeclarations({ compiler, ts, t, pkg, outDir, log }) {
   const cwd = join(t, pkg.dir)
   const projects = Wire.projectsOf(ts, cwd, pkg.dtsTsconfig)
-  if (projects.length === 1) return emitDeclarations({ compiler, tsconfig: projects[0], cwd, outDir, log })
+  if (projects.length === 1) return emitDeclarations({ compiler, tsconfig: projects[0], cwd, outDir, log, root: t })
   rmSync(outDir, { recursive: true, force: true })
   let code = 0
   let files = 0
+  const diagnostics = []
   for (const tsconfig of projects) {
-    const emitted = await emitDeclarations({ compiler, tsconfig, cwd, outDir: join(outDir, slug(tsconfig)), log: projectLog(log, tsconfig, projects) })
+    const emitted = await emitDeclarations({ compiler, tsconfig, cwd, outDir: join(outDir, slug(tsconfig)), log: projectLog(log, tsconfig, projects), root: t })
     code ||= emitted.code
     files += emitted.files
+    diagnostics.push(...emitted.diagnostics)
   }
-  return { code, files }
+  return { code, files, diagnostics }
 }
 
 const testsOf = (r) => ({ code: r.code, total: r.total, passed: r.passed, failed: r.failed, skipped: r.skipped, ms: r.ms })
@@ -828,10 +830,12 @@ export async function verify(options) {
   const testDiff = compareTests(baselineTests, tests)
   const ts = typeScriptOf(config)
   const declarations = {}
+  const emitErrors = []
   for (const pkg of config.packages) {
     const outDir = join(p.batch(b), "dts", slug(pkg.dir))
-    await emitPackageDeclarations({ compiler, ts, t, pkg, outDir, log: join(logs, `dts-${slug(pkg.dir)}.log`) })
+    const emitted = await emitPackageDeclarations({ compiler, ts, t, pkg, outDir, log: join(logs, `dts-${slug(pkg.dir)}.log`) })
     declarations[pkg.dir] = compareDeclarations(ts, join(p.baseline, "dts", slug(pkg.dir)), outDir)
+    emitErrors.push(...emitErrorsIn(emitted.diagnostics, migrated))
   }
   const batchErrors = checked.diagnostics.filter((d) => migrated.includes(d.file) && d.category === "error")
   const style = checked.style.filter((d) => migrated.includes(d.file))
@@ -841,10 +845,11 @@ export async function verify(options) {
     files,
     tests: { code: tests.code, total: tests.total, passed: tests.passed, failed: tests.failed.length, skipped: tests.skipped, ...testDiff },
     declarations,
-    compile: { batchErrors, newErrors: checked.newErrors, style },
+    compile: { batchErrors, newErrors: checked.newErrors, style, emitErrors },
     checks: {
       tests: testDiff.ok,
       declarations: Object.values(declarations).every((d) => d.identical),
+      declarationEmit: emitErrors.length === 0,
       batchErrors: batchErrors.length === 0,
       newErrors: checked.newErrors.length === 0,
       style: style.length === 0,

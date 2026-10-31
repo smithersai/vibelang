@@ -12,7 +12,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs"
 import { createRequire } from "node:module"
 import { join, resolve, sep } from "node:path"
-import { assertFinished } from "./diagnostics.mjs"
+import { assertFinished, parseDiagnostics } from "./diagnostics.mjs"
 import { quote, rel, run } from "./util.mjs"
 
 /** The TypeScript compiler API (5.x or 6.x; TypeScript 7's package has no such API), from the first directory that has it. */
@@ -149,8 +149,12 @@ export function compareDeclarations(ts, baselineDir, currentDir) {
   return { identical: !changed.length && !removed.length && !added.length, files: before.length, added, removed, changed }
 }
 
-/** Emits a project's declarations, and only them, into outDir with vibelang. */
-export async function emitDeclarations({ compiler, tsconfig, cwd, outDir, log }) {
+/**
+ * Emits a project's declarations, and only them, into outDir with vibelang.
+ * Returns the exit code, the number of files and the diagnostics, each file
+ * repository-relative when root is given.
+ */
+export async function emitDeclarations({ compiler, tsconfig, cwd, outDir, log, root }) {
   rmSync(outDir, { recursive: true, force: true })
   mkdirSync(outDir, { recursive: true })
   const flags = "--noEmit false --declaration --emitDeclarationOnly --declarationMap false --sourceMap false --composite false --incremental false --noEmitOnError false --pretty false --listEmittedFiles"
@@ -161,5 +165,15 @@ export async function emitDeclarations({ compiler, tsconfig, cwd, outDir, log })
   for (const [, file] of result.stdout.matchAll(/^TSFILE: (.+)$/gm)) if (!file.startsWith(inside)) rmSync(file, { force: true })
   const files = listDeclarations(outDir)
   if (!files.length) throw new Error(`vibelang emitted no declarations for ${tsconfig} (exit ${result.code}${log ? `, log ${log}` : ""})`)
-  return { code: result.code, files: files.length }
+  return { code: result.code, files: files.length, diagnostics: parseDiagnostics(result.stdout + result.stderr, { cwd, root }) }
+}
+
+/**
+ * The errors a declaration emit reported in files, repository-relative. Where
+ * the compiler cannot print a module's declarations, as for TS7056's any
+ * fallback, the baseline's emit may fail the same way, so equal declarations
+ * prove nothing about that module: such a migrated file fails verify.
+ */
+export function emitErrorsIn(diagnostics, files) {
+  return diagnostics.filter((d) => d.category === "error" && files.includes(d.file))
 }

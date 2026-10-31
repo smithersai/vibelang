@@ -4,7 +4,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { canonicalize, compareDeclarations, emitDeclarations, lineDiff, listDeclarations, loadTypeScript } from "../lib/declarations.mjs"
+import { canonicalize, compareDeclarations, emitDeclarations, emitErrorsIn, lineDiff, listDeclarations, loadTypeScript } from "../lib/declarations.mjs"
 
 // The runtime package's TypeScript (bun install in packages/runtime) has the compiler API.
 const ts = loadTypeScript([fileURLToPath(new URL("../../../../packages/runtime/", import.meta.url))])
@@ -189,9 +189,33 @@ echo "TSFILE: ${stray}"
 exit 2
 `, { mode: 0o755 })
     const emitted = await emitDeclarations({ compiler, tsconfig: "tsconfig.json", cwd: root, outDir: join(root, "out") })
-    assert.deepEqual(emitted, { code: 2, files: 1 })
+    assert.deepEqual([emitted.code, emitted.files, emitted.diagnostics.map((d) => d.code)], [2, 1, ["TS6059"]])
     assert.equal(existsSync(stray), false)
     assert.deepEqual(listDeclarations(join(root, "out")), ["a.d.ts"])
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+// drive-t3code: t3code's contracts emit exits 1 with TS7056 in the baseline and
+// after a batch alike, and compareDeclarations finds the 98 files identical, so
+// a migrated module the serializer cannot print would pass on equal fallbacks.
+test("a declaration emit error in a migrated file is the batch's, and one in another file is not", async () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-dts-errors-"))
+  try {
+    const compiler = join(root, "vibelang")
+    mkdirSync(join(root, "packages/contracts/src"), { recursive: true })
+    writeFileSync(compiler, `#!/bin/sh
+while [ $# -gt 0 ]; do [ "$1" = "--outDir" ] && out="$2"; shift; done
+echo "export {};" > "$out/a.d.ts"
+echo "src/guestStream.vibe(37,14): error TS7056: The inferred type of this node exceeds the maximum length the compiler will serialize."
+echo "src/orchestrationV2.ts(3842,14): error TS7056: The inferred type of this node exceeds the maximum length the compiler will serialize."
+exit 1
+`, { mode: 0o755 })
+    const cwd = join(root, "packages/contracts")
+    const emitted = await emitDeclarations({ compiler, tsconfig: "tsconfig.json", cwd, outDir: join(root, "out"), root })
+    const errors = emitErrorsIn(emitted.diagnostics, ["packages/contracts/src/guestStream.vibe"])
+    assert.deepEqual(errors.map((d) => [d.file, d.code]), [["packages/contracts/src/guestStream.vibe", "TS7056"]])
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
