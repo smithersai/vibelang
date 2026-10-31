@@ -1,10 +1,12 @@
-// expect-result: {"name":"fallback","count":2,"sub":3,"rows":[{"value":1}],"stored":[{"value":1}],"failed":"no table"}
+// expect-result: {"name":"fallback","count":2,"sub":3,"rows":[{"value":1}],"stored":[{"value":1}],"failed":"no table","migrated":2}
 // try runs a call whose result is an Effect with structure of its own, as it
 // runs the same value stored first: a Config, an Effect intersected with a
 // brand, an interface that extends Effect, and a generic one shaped like
 // Effect's sql Statement<A> (t3code's usageLimits). None is EK0502, and the
 // Statement's failure joins the function's error channel, which catch reads.
-import { failing, make, name, sub, tagged } from "./factories.ts"
+// In statement position, as t3code's migrations write `try sql`ALTER …``, the
+// tried call or tag runs too, with no EK4301.
+import { failing, make, name, sql, sub, tagged } from "./factories.ts"
 
 export effect function main() {
   const n = try name()
@@ -13,7 +15,14 @@ export effect function main() {
   const rows = try make()
   const statement = make()
   const stored = try statement
-  return { name: n, count, sub: s, rows, stored, failed: try query() }
+  return { name: n, count, sub: s, rows, stored, failed: try query(), migrated: try migrate() }
+}
+
+effect function migrate() {
+  try sql`ALTER TABLE t ADD COLUMN c TEXT`
+  try make()
+  const rows = try sql`SELECT ${1}, ${2}`
+  return rows[0].value
 }
 
 effect function query(): string!! {

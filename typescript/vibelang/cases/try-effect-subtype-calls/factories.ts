@@ -22,3 +22,6 @@ export const sub = (): Sub => Object.assign(Effect.succeed(3), { tag: "Sub" as c
 export const make = (): Statement<{ readonly value: number }> => Object.assign(Effect.succeed([{ value: 1 }]), { sql: "select 1 as value" })
 /** @throws {never} */
 export const failing = (): Statement<{ readonly value: number }> => Object.assign(Effect.fail("no table"), { sql: "select * from missing" })
+/** @throws {never} */
+export const sql = (strings: TemplateStringsArray, ...args: ReadonlyArray<unknown>): Statement<{ readonly value: number }> =>
+  Object.assign(Effect.succeed([{ value: args.length }]), { sql: strings.join("?") })
