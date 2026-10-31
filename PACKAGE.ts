@@ -92,6 +92,7 @@ const specTests = [
   "TestMigrationDataDeclarationsQuoted",
   "TestMigrationInferredImportsQuoted",
   "TestReviewExecutionDiagnosticsQuoted",
+  "TestReviewNamespaceMeaningsQuoted",
   "TestDoForTryDiagnosticOwnerQuoted",
   "TestDoDeclarationBytesQuoted",
   "TestDoContextualResultFuzzQuoted",
