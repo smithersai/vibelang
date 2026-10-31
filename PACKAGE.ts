@@ -224,7 +224,7 @@ const targets = {
   "site-spec-links": siteSpecLinks,
   release: check(
     "The release and contributor scripts' node tests.",
-    "node --test scripts/release/*.test.mjs scripts/*.test.mjs typescript/vibelang/harness.test.mjs",
+    "node --test scripts/release/*.test.mjs scripts/*.test.mjs typescript/vibelang/harness.test.mjs docs/redirect/*.test.mjs",
     [Packages["compiler-native"], Packages["runtime-dist"]],
     [node, gofmt]
   ),

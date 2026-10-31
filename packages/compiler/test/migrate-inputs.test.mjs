@@ -25,7 +25,8 @@ for (const label of ["//packages:compiler-test", "//packages:vite-test", "//pack
     assert.ok(plan.dependencies.includes("//:migration-sources"), label + ": missing migration source dependency")
     const sources = explain("//:migration-sources")
     const files = new Map(sources.inputs.flatMap(input => input.files ?? []).map(f => [f.path, f.digest]))
-    const required = flowFiles()
+    // compiler-test also runs the convert flow's tests.
+    const required = [...flowFiles(), ...(label.includes("compiler-test") ? flowFiles(".smithers/flows/convert") : [])]
     assert.ok(required.some(f => f.startsWith(flow + "/templates/")) && required.some(f => f.startsWith(flow + "/test/corpus/")))
     for (const file of required) {
       assert.ok(files.has(file), label + ": missing cache input " + file)

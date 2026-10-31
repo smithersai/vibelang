@@ -47,9 +47,13 @@ const compilerNative = S.Shell.Build({
   timeout: "5m"
 })
 
+// The migrate and convert flows' tests run here too: they stage this compiler
+// and runtime as a toolchain, and scripts/test-runners.test.mjs fails when a
+// test file runs in no target. //:migration-sources keys both flows.
 const compilerTest = S.Shell.Test({
-  summary: "The compiler package's node tests.",
-  shell: "cd packages/compiler && bun install --frozen-lockfile && node --test test/*.test.mjs",
+  summary: "The compiler package's node tests and the migrate and convert flows' tests.",
+  shell: "cd packages/compiler && bun install --frozen-lockfile && node --test test/*.test.mjs && " +
+    "cd ../../.smithers/flows && node --test migrate/test/*.test.mjs convert/*.test.mjs",
   // Migration properties exercise the flow's package-export and Bun.build edits.
   // Their helpers and the TypeScript API install must enter the cache key too.
   data: [compilerNative, runtimeDist, S.glob("compiler/**"), migrationSources, S.glob("//.smithers/flows/migrate/lib/**"), S.glob("//.smithers/flows/migrate/templates/**"),
