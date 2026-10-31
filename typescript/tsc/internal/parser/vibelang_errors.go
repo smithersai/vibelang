@@ -290,7 +290,7 @@ func (p *Parser) parseVibeLangErrorElement() *ast.Node {
 	pos := p.nodePos()
 	jsdoc := p.jsdocScannerInfo()
 	modifiers := p.parseModifiersEx(true /*allowDecorators*/, true /*permitConstAsModifier*/, true /*stopOnStartOfClassStaticBlock*/)
-	return p.parsePropertyOrMethodDeclaration(pos, jsdoc, modifiers)
+	return p.parsePropertyOrMethodDeclaration(pos, jsdoc, modifiers, false /*effect*/)
 }
 
 // isVibeLangErrorField reports whether element, a member of an error

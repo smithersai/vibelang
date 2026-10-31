@@ -339,3 +339,9 @@ typescript/vibelang/cases/tsforms-match-fixed/main.vibe:26:25 lambda: effectFn f
 typescript/vibelang/cases/tsforms-option-fixed/main.vibe:24:24 lambda: effectFn fallback -> plain fallback # foldkit-39 golden eagerly captures the argument before native contains; the unchanged boolean runtime golden and Option differentials retain its plain result contract.
 
 typescript/vibelang/cases/execution-power-parentheses/main.vibe:4:38 byname: absent -> program table # Added numeric execution control passes an Effect program to pinned Effect.forkChild by name; no existing call decision or classifier changes.
+
+# VIP-39 G2 / amended VIP-17: coordinate-only moves; no existing site's decision or provenance changes.
+# typescript/vibelang/cases/await-call-shape/main.vibe:18:23 -> 18:24 byname program table # parenthesize the fork result before member access
+# typescript/vibelang/cases/block-do.fail/main.vibe:2:60 -> 2:53 block appended/program table # remove effect to keep the legacy do-recovery test outside reservation
+# typescript/vibelang/cases/keyword-parenthesized-calls/main.vibe:14:27 -> 14:28 byname program table # parenthesize the fork result before member access
+# New outer parenthesized operands are additional byname program table sites; their existing inner sites keep the same decision.

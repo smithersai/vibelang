@@ -1,11 +1,11 @@
 // expect-result: {"a":2,"b":7,"c":8}
-// fork x and fork { … } are syntax (rule H5, D391): a function the program
-// declares named fork changes what fork(x) means, an ordinary call of that
-// function, and never what the keyword forms mean. Through 0.0.10 the local
-// function captured fork slow(), so f was a number and join f was EK4611.
+// VIP-17 reserves fork in Effect code. A plain helper can still call an
+// ordinary function named fork, while keyword forms start fibers.
 function fork(x: number) {
   return x + 1
 }
+
+function ordinaryFork() { return fork(1) }
 
 effect function slow(): number!! {
   try sleep("1 millis")
@@ -13,7 +13,7 @@ effect function slow(): number!! {
 }
 
 export effect function main() {
-  const a = fork(1)
+  const a = ordinaryFork()
   const f = fork slow()
   const g = fork {
     try sleep("1 millis")

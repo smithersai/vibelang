@@ -1,0 +1,2 @@
+FuzzFiberUnaryOperands fork:object compiler VIP-17: legacy bare fork block recovery makes the object operand an arrow; lane vibex-1, deferred broader block migration
+FuzzFiberUnaryOperands corpus:fork-object compiler VIP-17: reproduces fork:object; lane vibex-1

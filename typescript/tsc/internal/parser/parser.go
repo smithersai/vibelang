@@ -114,6 +114,7 @@ type Parser struct {
 	vibelangIsHolders        map[*ast.Node]*ast.Node  // the parenthesized expression written around each such marker, which hoistVibeLangIs fills (vibelang_match.go)
 	vibelangHoists           map[*ast.Node]bool       // the let statements hoistVibeLangIs put on reparseList, which an unbraced statement body keeps as its own home (vibelang_match.go)
 	vibelangSyntax           *[]VibeSyntax            // the forms recorded for ParseVibeLangSyntax, or nil (vibelang_syntax.go)
+	vibelangFiberContext     bool                     // fork/join reservation inherited by source grammar
 	vibelangTypeScript       bool                     // reading a module declaration's body, which is TypeScript (vibelang_modules.go)
 }
 
@@ -355,6 +356,7 @@ func (p *Parser) parseErrorAtRange(loc core.TextRange, message *diagnostics.Mess
 }
 
 type ParserState struct {
+	vibelangFiberContext        bool
 	scannerState                scanner.ScannerState
 	contextFlags                ast.NodeFlags
 	diagnosticsLen              int
@@ -368,6 +370,7 @@ type ParserState struct {
 
 func (p *Parser) mark() ParserState {
 	return ParserState{
+		vibelangFiberContext:        p.vibelangFiberContext,
 		scannerState:                p.scanner.Mark(),
 		contextFlags:                p.contextFlags,
 		diagnosticsLen:              len(p.diagnostics),
@@ -381,6 +384,7 @@ func (p *Parser) mark() ParserState {
 }
 
 func (p *Parser) rewind(state ParserState) {
+	p.vibelangFiberContext = state.vibelangFiberContext
 	p.scanner.Rewind(state.scannerState)
 	p.token = p.scanner.Token()
 	p.contextFlags = state.contextFlags
@@ -1121,7 +1125,7 @@ func (p *Parser) parseStatementWorker() *ast.Statement {
 			return p.parseVariableStatement(p.nodePos(), p.jsdocScannerInfo(), nil /*modifiers*/)
 		}
 	case ast.KindFunctionKeyword:
-		return p.parseFunctionDeclaration(p.nodePos(), p.jsdocScannerInfo(), nil /*modifiers*/)
+		return p.parseFunctionDeclaration(p.nodePos(), p.jsdocScannerInfo(), nil /*modifiers*/, false /*effect*/)
 	case ast.KindClassKeyword:
 		return p.parseClassDeclaration(p.nodePos(), p.jsdocScannerInfo(), nil /*modifiers*/)
 	case ast.KindIfKeyword:
@@ -1206,7 +1210,7 @@ func (p *Parser) parseDeclaration() *ast.Statement {
 
 func (p *Parser) parseDeclarationWorker(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList) *ast.Statement {
 	if p.isStartOfAsyncShorthand(modifiers) {
-		return p.parseShorthandFunctionDeclaration(pos, jsdoc, modifiers) // async get(url) { … } (vibelang_effect.go)
+		return p.parseShorthandFunctionDeclaration(pos, jsdoc, modifiers, false /*effect*/) // async get(url) { … } (vibelang_effect.go)
 	}
 	switch p.token {
 	case ast.KindVarKeyword, ast.KindLetKeyword, ast.KindConstKeyword, ast.KindUsingKeyword:
@@ -1216,7 +1220,7 @@ func (p *Parser) parseDeclarationWorker(pos int, jsdoc jsdocScannerInfo, modifie
 			return p.parseVariableStatement(pos, jsdoc, modifiers)
 		}
 	case ast.KindFunctionKeyword:
-		return p.parseFunctionDeclaration(pos, jsdoc, modifiers)
+		return p.parseFunctionDeclaration(pos, jsdoc, modifiers, false /*effect*/)
 	case ast.KindClassKeyword:
 		return p.parseClassDeclaration(pos, jsdoc, modifiers)
 	case ast.KindInterfaceKeyword:
@@ -1823,7 +1827,7 @@ func (p *Parser) parseTypeAnnotation() *ast.TypeNode {
 	return nil
 }
 
-func (p *Parser) parseFunctionDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList) *ast.Node {
+func (p *Parser) parseFunctionDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList, effect bool) *ast.Node {
 	p.parseExpected(ast.KindFunctionKeyword)
 	asteriskToken := p.parseOptionalToken(ast.KindAsteriskToken)
 	// We don't parse the name here in await context, instead we will report a grammar error in the checker.
@@ -1831,6 +1835,7 @@ func (p *Parser) parseFunctionDeclaration(pos int, jsdoc jsdocScannerInfo, modif
 	if modifiers == nil || modifiers.ModifierFlags&ast.ModifierFlagsDefault == 0 || p.isBindingIdentifier() {
 		name = p.parseBindingIdentifier()
 	}
+	defer p.setVibeLangFiberContext(effect)()
 	signatureFlags := core.IfElse(asteriskToken != nil, ParseFlagsYield, ParseFlagsNone) | core.IfElse(modifiers != nil && modifiers.ModifierFlags&ast.ModifierFlagsAsync != 0, ParseFlagsAwait, ParseFlagsNone)
 	typeParameters := p.parseTypeParameters()
 	saveContextFlags := p.contextFlags
@@ -2041,7 +2046,7 @@ func (p *Parser) parseClassElement() *ast.Node {
 	}
 	if p.isStartOfVibeLangEffectMember() {
 		word := p.parseVibeLangEffectMember()
-		return p.vibelangEffectMember(p.parsePropertyOrMethodDeclaration(pos, jsdoc, modifiers), word) // effect m() { … } (vibelang_effect.go)
+		return p.vibelangEffectMember(p.parsePropertyOrMethodDeclaration(pos, jsdoc, modifiers, true /*effect*/), word) // effect m() { … } (vibelang_effect.go)
 	}
 	// It is very important that we check this *after* checking indexers because
 	// the [ token can start an index signature or a computed property name
@@ -2053,11 +2058,11 @@ func (p *Parser) parseClassElement() *ast.Node {
 			}
 			saveContextFlags := p.contextFlags
 			p.setContextFlags(ast.NodeFlagsAmbient, true)
-			result := p.parsePropertyOrMethodDeclaration(pos, jsdoc, modifiers)
+			result := p.parsePropertyOrMethodDeclaration(pos, jsdoc, modifiers, false /*effect*/)
 			p.contextFlags = saveContextFlags
 			return result
 		} else {
-			return p.parsePropertyOrMethodDeclaration(pos, jsdoc, modifiers)
+			return p.parsePropertyOrMethodDeclaration(pos, jsdoc, modifiers, false /*effect*/)
 		}
 	}
 	if modifiers != nil {
@@ -2091,6 +2096,7 @@ func (p *Parser) tryParseConstructorDeclaration(pos int, jsdoc jsdocScannerInfo,
 	state := p.mark()
 	if p.token == ast.KindConstructorKeyword || p.token == ast.KindStringLiteral && p.scanner.TokenValue() == "constructor" && p.lookAhead((*Parser).nextTokenIsOpenParen) {
 		p.nextToken()
+		defer p.setVibeLangFiberContext(false)()
 		typeParameters := p.parseTypeParameters()
 		parameters := p.parseParameters(ParseFlagsNone)
 		returnType := p.parseReturnType(ast.KindColonToken, false /*isType*/)
@@ -2108,19 +2114,20 @@ func (p *Parser) nextTokenIsOpenParen() bool {
 	return p.nextToken() == ast.KindOpenParenToken
 }
 
-func (p *Parser) parsePropertyOrMethodDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList) *ast.Node {
+func (p *Parser) parsePropertyOrMethodDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList, effect bool) *ast.Node {
 	asteriskToken := p.parseOptionalToken(ast.KindAsteriskToken)
 	name := p.parsePropertyName()
 	// Note: this is not legal as per the grammar.  But we allow it in the parser and
 	// report an error in the grammar checker.
 	questionToken := p.parseOptionalToken(ast.KindQuestionToken)
 	if asteriskToken != nil || p.token == ast.KindOpenParenToken || p.token == ast.KindLessThanToken {
-		return p.parseMethodDeclaration(pos, jsdoc, modifiers, asteriskToken, name, questionToken, diagnostics.X_or_expected)
+		return p.parseMethodDeclaration(pos, jsdoc, modifiers, asteriskToken, name, questionToken, diagnostics.X_or_expected, effect)
 	}
 	return p.parsePropertyDeclaration(pos, jsdoc, modifiers, name, questionToken)
 }
 
-func (p *Parser) parseMethodDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList, asteriskToken *ast.Node, name *ast.Node, questionToken *ast.Node, diagnosticMessage *diagnostics.Message) *ast.Node {
+func (p *Parser) parseMethodDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList, asteriskToken *ast.Node, name *ast.Node, questionToken *ast.Node, diagnosticMessage *diagnostics.Message, effect bool) *ast.Node {
+	defer p.setVibeLangFiberContext(effect)()
 	signatureFlags := core.IfElse(asteriskToken != nil, ParseFlagsYield, ParseFlagsNone) | core.IfElse(modifierListHasAsync(modifiers), ParseFlagsAwait, ParseFlagsNone)
 	typeParameters := p.parseTypeParameters()
 	parameters := p.parseParameters(signatureFlags)
@@ -2145,7 +2152,7 @@ func (p *Parser) parsePropertyDeclaration(pos int, jsdoc jsdocScannerInfo, modif
 		postfixToken = p.parseOptionalToken(ast.KindExclamationToken)
 	}
 	typeNode := p.parseTypeAnnotation()
-	initializer := p.doInContext(ast.NodeFlagsYieldContext|ast.NodeFlagsAwaitContext|ast.NodeFlagsDisallowInContext, false, (*Parser).parseInitializer)
+	initializer := p.doInContext(ast.NodeFlagsYieldContext|ast.NodeFlagsAwaitContext|ast.NodeFlagsDisallowInContext, false, (*Parser).parseVibeLangOrdinaryInitializer)
 	initializer = p.hoistInitializerBody(initializer)
 	if p.isVibeLangFieldComma(typeNode, initializer) {
 		p.vibelangFieldComma = true // the comma is the next class element (vibelang_errors.go)
@@ -2307,7 +2314,7 @@ func (p *Parser) parseEnumMember() *ast.Node {
 	pos := p.nodePos()
 	jsdoc := p.jsdocScannerInfo()
 	name := p.parsePropertyName()
-	initializer := p.doInContext(ast.NodeFlagsDisallowInContext, false, (*Parser).parseInitializer)
+	initializer := p.doInContext(ast.NodeFlagsDisallowInContext, false, (*Parser).parseVibeLangOrdinaryInitializer)
 	result := p.finishNode(p.factory.NewEnumMember(name, initializer), pos)
 	p.withJSDoc(result, jsdoc)
 	return result
@@ -3657,6 +3664,7 @@ func (p *Parser) parseTypeMemberSemicolon() {
 
 func (p *Parser) parseAccessorDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList, kind ast.Kind, flags ParseFlags) *ast.Node {
 	name := p.parsePropertyName()
+	defer p.setVibeLangFiberContext(false)()
 	typeParameters := p.parseTypeParameters()
 	parameters := p.parseParameters(ParseFlagsNone)
 	returnType := p.parseReturnType(ast.KindColonToken, false /*isType*/)
@@ -4375,7 +4383,7 @@ func (p *Parser) parseAssignmentExpressionOrHigherWorker(allowReturnTypeInArrowF
 	// parameter ('x => ...') above. We handle it here by checking if the parsed expression was a single
 	// identifier and the current token is an arrow.
 	if expr.Kind == ast.KindIdentifier && p.token == ast.KindEqualsGreaterThanToken {
-		return p.parseSimpleArrowFunctionExpression(pos, expr, allowReturnTypeInArrowFunction, jsdoc, nil /*asyncModifier*/)
+		return p.parseSimpleArrowFunctionExpression(pos, expr, allowReturnTypeInArrowFunction, jsdoc, nil /*asyncModifier*/, false /*effect*/)
 	}
 	// Now see if we might be in cases '2' or '3'.
 	// If the expression was a LHS expression, and we have an assignment operator, then
@@ -4572,7 +4580,7 @@ func (p *Parser) tryParseParenthesizedArrowFunctionExpression(allowReturnTypeInA
 	// it out, but don't allow any ambiguity, and return 'undefined' if this could be an
 	// expression instead.
 	if tristate == core.TSTrue {
-		return p.parseParenthesizedArrowFunctionExpression(true /*allowAmbiguity*/, true /*allowReturnTypeInArrowFunction*/)
+		return p.parseParenthesizedArrowFunctionExpression(true /*allowAmbiguity*/, true /*allowReturnTypeInArrowFunction*/, false /*effect*/)
 	}
 	state := p.mark()
 	result := p.parsePossibleParenthesizedArrowFunctionExpression(allowReturnTypeInArrowFunction)
@@ -4582,7 +4590,10 @@ func (p *Parser) tryParseParenthesizedArrowFunctionExpression(allowReturnTypeInA
 	return result
 }
 
-func (p *Parser) parseParenthesizedArrowFunctionExpression(allowAmbiguity bool, allowReturnTypeInArrowFunction bool) *ast.Node {
+func (p *Parser) parseParenthesizedArrowFunctionExpression(allowAmbiguity bool, allowReturnTypeInArrowFunction bool, effect bool) *ast.Node {
+	if effect {
+		defer p.setVibeLangFiberContext(true)()
+	}
 	pos := p.nodePos()
 	jsdoc := p.jsdocScannerInfo()
 	modifiers := p.parseModifiersForArrowFunction()
@@ -4645,7 +4656,7 @@ func (p *Parser) parseParenthesizedArrowFunctionExpression(allowAmbiguity bool, 
 	equalsGreaterThanToken := p.parseExpectedToken(ast.KindEqualsGreaterThanToken)
 	var body *ast.Node
 	if lastToken == ast.KindEqualsGreaterThanToken || lastToken == ast.KindOpenBraceToken {
-		body = p.parseArrowFunctionExpressionBody(isAsync, allowReturnTypeInArrowFunction)
+		body = p.parseArrowFunctionExpressionBody(isAsync, allowReturnTypeInArrowFunction, effect)
 	} else {
 		body = p.parseIdentifier()
 	}
@@ -4703,7 +4714,8 @@ func typeHasArrowFunctionBlockingParseError(node *ast.TypeNode) bool {
 	return false
 }
 
-func (p *Parser) parseArrowFunctionExpressionBody(isAsync bool, allowReturnTypeInArrowFunction bool) *ast.Node {
+func (p *Parser) parseArrowFunctionExpressionBody(isAsync bool, allowReturnTypeInArrowFunction bool, effect bool) *ast.Node {
+	defer p.setVibeLangFiberContext(effect)()
 	if p.token == ast.KindOpenBraceToken {
 		return p.parseFunctionBlock(core.IfElse(isAsync, ParseFlagsAwait, ParseFlagsNone), nil /*diagnosticMessage*/)
 	}
@@ -4742,7 +4754,7 @@ func (p *Parser) parsePossibleParenthesizedArrowFunctionExpression(allowReturnTy
 	if p.notParenthesizedArrow.Has(tokenPos) {
 		return nil
 	}
-	result := p.parseParenthesizedArrowFunctionExpression(false /*allowAmbiguity*/, allowReturnTypeInArrowFunction)
+	result := p.parseParenthesizedArrowFunctionExpression(false /*allowAmbiguity*/, allowReturnTypeInArrowFunction, false /*effect*/)
 	if result == nil {
 		p.notParenthesizedArrow.Add(tokenPos)
 	}
@@ -4756,7 +4768,7 @@ func (p *Parser) tryParseAsyncSimpleArrowFunctionExpression(allowReturnTypeInArr
 		jsdoc := p.jsdocScannerInfo()
 		asyncModifier := p.parseModifiersForArrowFunction()
 		expr := p.parseBinaryExpressionOrHigher(ast.OperatorPrecedenceLowest)
-		return p.parseSimpleArrowFunctionExpression(pos, expr, allowReturnTypeInArrowFunction, jsdoc, asyncModifier)
+		return p.parseSimpleArrowFunctionExpression(pos, expr, allowReturnTypeInArrowFunction, jsdoc, asyncModifier, false /*effect*/)
 	}
 	return nil
 }
@@ -4782,12 +4794,15 @@ func (p *Parser) nextIsUnParenthesizedAsyncArrowFunction() bool {
 	return false
 }
 
-func (p *Parser) parseSimpleArrowFunctionExpression(pos int, identifier *ast.Node, allowReturnTypeInArrowFunction bool, jsdoc jsdocScannerInfo, asyncModifier *ast.ModifierList) *ast.Node {
+func (p *Parser) parseSimpleArrowFunctionExpression(pos int, identifier *ast.Node, allowReturnTypeInArrowFunction bool, jsdoc jsdocScannerInfo, asyncModifier *ast.ModifierList, effect bool) *ast.Node {
+	if effect {
+		defer p.setVibeLangFiberContext(true)()
+	}
 	debug.Assert(p.token == ast.KindEqualsGreaterThanToken, "parseSimpleArrowFunctionExpression should only have been called if we had a =>")
 	parameter := p.finishNode(p.factory.NewParameterDeclaration(nil /*modifiers*/, nil /*dotDotDotToken*/, identifier, nil /*questionToken*/, nil /*typeNode*/, nil /*initializer*/), identifier.Pos())
 	parameters := p.newNodeList(parameter.Loc, []*ast.Node{parameter})
 	equalsGreaterThanToken := p.parseExpectedToken(ast.KindEqualsGreaterThanToken)
-	body := p.parseArrowFunctionExpressionBody(asyncModifier != nil /*isAsync*/, allowReturnTypeInArrowFunction)
+	body := p.parseArrowFunctionExpressionBody(asyncModifier != nil /*isAsync*/, allowReturnTypeInArrowFunction, effect)
 	result := p.finishNode(p.factory.NewArrowFunction(asyncModifier, nil /*typeParameters*/, parameters, nil /*returnType*/, nil /*fullSignature*/, equalsGreaterThanToken, body), pos)
 	p.withJSDoc(result, jsdoc)
 	return result
@@ -5898,13 +5913,13 @@ func (p *Parser) parsePrimaryExpression() *ast.Expression {
 		if !p.lookAhead((*Parser).nextTokenIsFunctionKeywordOnSameLine) {
 			break
 		}
-		return p.parseFunctionExpression()
+		return p.parseFunctionExpression(false /*effect*/)
 	case ast.KindAtToken:
 		return p.parseDecoratedExpression()
 	case ast.KindClassKeyword:
 		return p.parseClassExpression()
 	case ast.KindFunctionKeyword:
-		return p.parseFunctionExpression()
+		return p.parseFunctionExpression(false /*effect*/)
 	case ast.KindNewKeyword:
 		return p.parseNewExpressionOrNewDotTarget()
 	case ast.KindSlashToken, ast.KindSlashEqualsToken:
@@ -5979,7 +5994,7 @@ func (p *Parser) parseObjectLiteralElement() *ast.Node {
 		asteriskToken := p.parseOptionalToken(ast.KindAsteriskToken)
 		name := p.parsePropertyName()
 		questionToken := p.parseOptionalToken(ast.KindQuestionToken)
-		return p.vibelangEffectMember(p.parseMethodDeclaration(pos, jsdoc, modifiers, asteriskToken, name, questionToken, nil /*diagnosticMessage*/), word) // effect m() { … } (vibelang_effect.go)
+		return p.vibelangEffectMember(p.parseMethodDeclaration(pos, jsdoc, modifiers, asteriskToken, name, questionToken, nil /*diagnosticMessage*/, true /*effect*/), word) // effect m() { … } (vibelang_effect.go)
 	}
 	asteriskToken := p.parseOptionalToken(ast.KindAsteriskToken)
 	tokenIsIdentifier := p.isIdentifier()
@@ -5991,7 +6006,7 @@ func (p *Parser) parseObjectLiteralElement() *ast.Node {
 		postfixToken = p.parseOptionalToken(ast.KindExclamationToken)
 	}
 	if asteriskToken != nil || p.token == ast.KindOpenParenToken || p.token == ast.KindLessThanToken {
-		return p.parseMethodDeclaration(pos, jsdoc, modifiers, asteriskToken, name, postfixToken, nil /*diagnosticMessage*/)
+		return p.parseMethodDeclaration(pos, jsdoc, modifiers, asteriskToken, name, postfixToken, nil /*diagnosticMessage*/, false /*effect*/)
 	}
 	// check if it is short-hand property assignment or normal property assignment
 	// NOTE: if token is EqualsToken it is interpreted as CoverInitializedName production
@@ -6017,7 +6032,8 @@ func (p *Parser) parseObjectLiteralElement() *ast.Node {
 	return node
 }
 
-func (p *Parser) parseFunctionExpression() *ast.Expression {
+func (p *Parser) parseFunctionExpression(effect bool) *ast.Expression {
+	defer p.setVibeLangFiberContext(effect)()
 	// GeneratorExpression:
 	//      function* BindingIdentifier [Yield][opt](FormalParameters[Yield]){ GeneratorBody }
 	//

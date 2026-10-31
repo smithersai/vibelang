@@ -3,6 +3,8 @@ package parser_test
 import (
 	"fmt"
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"testing"
 )
 
@@ -30,5 +32,103 @@ func TestVibeLangVibexGaps(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+// VIP-17's amended ForkOperand is every UnaryExpression, as for await.
+// The .vibe path with TSX mode tests the inherited JSX parser without
+// introducing the .vibex extension (a later VIP-39 slice).
+func TestVibeLangFiberUnaryOperands(t *testing.T) {
+	for _, operator := range []string{"fork", "join"} {
+		for _, operand := range []string{"<number>value", "+value", "-value", "!value", "~value", "typeof value", "void value", "delete obj.value", "++value", "--value", "value++", "(value)", "[value][0]", "{value: value}", "1", "1n", "true", "false", "null", "\"text\"", "`text`", "/value/", "this.value", "new Work()", "function () {}", "class {}", "fork value", "join value", "effect { return value }", "do { value }"} {
+			t.Run("fork-join-operand-unary/"+operator+"/"+operand, func(t *testing.T) {
+				file := parseVibe(t, "effect function f() { const result = "+operator+" "+operand+" }")
+				if ds := file.Diagnostics(); len(ds) != 0 {
+					t.Fatalf("valid unary operand rejected: %v", ds)
+				}
+				ss := file.Statements.Nodes
+				if len(ss) != 1 || ss[0].Kind != ast.KindFunctionDeclaration {
+					t.Fatalf("want one function declaration: %v", ss)
+				}
+				body := ss[0].Body().AsBlock().Statements.Nodes
+				if len(body) != 1 || body[0].Kind != ast.KindVariableStatement {
+					t.Fatalf("want one variable statement: %v", body)
+				}
+				call := body[0].AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0].Initializer()
+				if call.Kind != ast.KindCallExpression || call.Expression().Flags&ast.NodeFlagsVibeLangIntrinsic == 0 {
+					t.Fatalf("operand parsed as %v, want intrinsic fiber call", call.Kind)
+				}
+			})
+		}
+		for _, operand := range []string{"<b/>", "<><b/></>", "<b>{value}</b>"} {
+			t.Run("fork-join-operand-unary/jsx/"+operator+"/"+operand, func(t *testing.T) {
+				file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, "effect function f() { const result = "+operator+" "+operand+" }", core.ScriptKindTSX)
+				if ds := file.Diagnostics(); len(ds) != 0 {
+					t.Fatalf("JSX unary operand rejected: %v", ds)
+				}
+			})
+		}
+	}
+}
+
+func TestVibeLangFiberReservationBoundaries(t *testing.T) {
+	for _, source := range []string{
+		"effect function f() { const result = fork +value }",
+		"effect function f(result = fork +value) { return result }",
+		"const f = effect (result = fork +value) => result",
+		"const f = effect result => fork +result",
+		"const f = effect function(result = fork +value) { return result }",
+		"const f = effect { return fork +value }",
+		"class C { effect f(result = fork +value) { return result } }",
+		"const c = { effect f(result = fork +value) { return result } }",
+		"effect function f() { class C { [fork +value]() {} } }",
+		"effect function f() { const c = { [fork +value]() {} } }",
+	} {
+		t.Run(source, func(t *testing.T) {
+			file := parseVibe(t, source)
+			if ds := file.Diagnostics(); len(ds) != 0 {
+				t.Fatalf("unexpected diagnostics: %v", ds)
+			}
+			found := false
+			var visit func(*ast.Node) bool
+			visit = func(n *ast.Node) bool {
+				if n.Kind == ast.KindCallExpression && n.Expression().Flags&ast.NodeFlagsVibeLangIntrinsic != 0 && n.Expression().Text() == "fork" {
+					found = true
+				}
+				n.ForEachChild(visit)
+				return false
+			}
+			file.AsNode().ForEachChild(visit)
+			if !found {
+				t.Fatal("source Effect context did not reserve fork")
+			}
+		})
+	}
+	for _, source := range []string{
+		"const result = fork +value",
+		"function f() { return fork +value }",
+		"effect function f() { function g() { return fork +value } }",
+		"effect function f() { const g = function() { return fork +value } }",
+		"effect function f() { const g = () => fork +value }",
+		"effect function f() { const g = async () => fork +value }",
+		"effect function f() { const c = { g() { return fork +value }, get value() { return fork +value } } }",
+		"effect function f() { class C { value = fork +value; constructor() { fork +value }; g() { return fork +value } } }",
+		"effect function f() { enum E { Value = fork +value } }",
+	} {
+		t.Run(source, func(t *testing.T) {
+			file := parseVibe(t, source)
+			if ds := file.Diagnostics(); len(ds) != 0 {
+				t.Fatalf("unexpected diagnostics: %v", ds)
+			}
+			var visit func(*ast.Node) bool
+			visit = func(n *ast.Node) bool {
+				if n.Kind == ast.KindCallExpression && n.Expression().Flags&ast.NodeFlagsVibeLangIntrinsic != 0 && n.Expression().Text() == "fork" {
+					t.Error("ordinary source context reserved fork")
+				}
+				n.ForEachChild(visit)
+				return false
+			}
+			file.AsNode().ForEachChild(visit)
+		})
 	}
 }

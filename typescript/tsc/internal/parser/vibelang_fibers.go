@@ -29,17 +29,14 @@ func (p *Parser) tokenRange() core.TextRange {
 	return core.NewTextRange(p.scanner.TokenStart(), p.scanner.TokenEnd())
 }
 
-// isStartOfVibeLangFork reports whether the current token, an identifier, is the
-// keyword fork: in a .vibe file, fork followed on the same line by an
-// operand. An identifier followed by another identifier, this, new, {, or
-// await is a TypeScript syntax error, so the form takes no code that parses
-// today. fork( stays a call: the keyword while fork resolves to the
-// prelude's binding, and an ordinary call otherwise (D391, D452).
+// isStartOfVibeLangFork recognizes the reserved operator in source Effect
+// context (VIP-17, amended). Outside it, only unambiguous legacy forms
+// are recovered for their outside-effect diagnostics and migration.
 func (p *Parser) isStartOfVibeLangFork() bool {
-	return p.token == ast.KindIdentifier && p.scanner.TokenValue() == "fork" && p.isVibeLangFile() && p.lookAhead((*Parser).nextTokenStartsForkOperand)
+	return p.token == ast.KindIdentifier && p.scanner.TokenValue() == "fork" && p.isVibeLangFile() && (p.vibelangFiberContext || p.lookAhead((*Parser).nextTokenStartsLegacyForkOperand))
 }
 
-func (p *Parser) nextTokenStartsForkOperand() bool {
+func (p *Parser) nextTokenStartsLegacyForkOperand() bool {
 	p.nextToken()
 	if p.hasPrecedingLineBreak() {
 		return false
@@ -56,15 +53,18 @@ func (p *Parser) nextTokenStartsForkOperand() bool {
 // parseVibeLangFork parses `fork operand` as fork(operand) and `fork { ... }` as
 // fork(() => { ... }) (D166). The operand binds as await's does: fork
 // getUser(id).name forks getUser(id).name, and fork a + b adds b to a fiber.
-// The keyword form is syntax (rule H5, D391): its callee is an intrinsic, the
-// prelude's fork whatever a scope declares, so a local function named fork
-// changes what fork(x) means and never what fork x means.
+// In source Effect context fork is reserved, even before a parenthesis.
+// Outside it, valid TypeScript calls keep their identifier reading. The
+// synthesized callee marks the operator independently of local bindings.
+// Bare brace-body recovery stays until the legacy block fixtures migrate.
 func (p *Parser) parseVibeLangFork() *ast.Node {
 	pos := p.nodePos()
 	keyword := p.tokenRange()
 	callee := p.parseIdentifier()
 	callee.Flags |= ast.NodeFlagsVibeLangIntrinsic
-	p.rejectVibeLangBlockDo("fork")
+	if !p.vibelangFiberContext {
+		p.rejectVibeLangBlockDo("fork")
+	}
 	var program *ast.Node
 	if p.token == ast.KindOpenBraceToken {
 		body := p.parseFunctionBlock(ParseFlagsNone, nil /*diagnosticMessage*/)
@@ -78,16 +78,13 @@ func (p *Parser) parseVibeLangFork() *ast.Node {
 	return call
 }
 
-// isStartOfVibeLangJoin reports whether the current token, an identifier, is the
-// keyword join (D225): in a .vibe file, join followed on the same line by
-// an operand that starts with a name, this, or {, or by [ after a space.
-// join( stays a call, so a function named join keeps working, and join[i]
-// without a space stays an element access.
+// isStartOfVibeLangJoin uses the same source Effect reservation as fork.
+// Outside it, valid TypeScript identifier expressions retain their reading.
 func (p *Parser) isStartOfVibeLangJoin() bool {
-	return p.token == ast.KindIdentifier && p.scanner.TokenValue() == "join" && p.isVibeLangFile() && p.lookAhead((*Parser).nextTokenStartsJoinOperand)
+	return p.token == ast.KindIdentifier && p.scanner.TokenValue() == "join" && p.isVibeLangFile() && (p.vibelangFiberContext || p.lookAhead((*Parser).nextTokenStartsLegacyJoinOperand))
 }
 
-func (p *Parser) nextTokenStartsJoinOperand() bool {
+func (p *Parser) nextTokenStartsLegacyJoinOperand() bool {
 	keywordEnd := p.scanner.TokenEnd()
 	p.nextToken()
 	if p.hasPrecedingLineBreak() {

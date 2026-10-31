@@ -1,7 +1,7 @@
 // expect-result: {"call":"a-b","method":"x,y","indexed":"first","member":"m","fiber":3}
-// join( is a call and join[i] an element access, so names called join keep
-// working beside the join keyword (D225).
-function join(a: string, b: string): string {
+// VIP-17 reserves join in Effect code. Keep the ordinary helper under
+// another name there; join remains an ordinary local in a plain function.
+function joinText(a: string, b: string): string {
   return `${a}-${b}`
 }
 
@@ -19,7 +19,7 @@ export effect function main() {
   const obj = { join: effect () => "m" }
   const f = fork count()
   return {
-    call: join("a", "b"),
+    call: joinText("a", "b"),
     method: words.join(","),
     indexed: indexed(),
     member: try obj.join(),

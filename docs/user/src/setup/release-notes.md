@@ -522,6 +522,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - `export default effect (n: number) => { … }` declared `declare function _default(n: number): A`, the body's value, not the Effect it returns. It now declares `: Effect<A, E, R>`, as `export default (n: number) => Effect.gen(function* () { … })` does.
 
+- A `fork` or `join` operand starting with a type assertion, literal, unary operator or newline could be read as an identifier expression or comparison; Effect code now recognizes those operand heads using `await`'s precedence and reservation.
+
 - A generic arrow on the line after a bodyless `error` or `schema error` could be consumed as the declaration's type parameters and report `EK1303`; it now starts a separate arrow statement.
 
 - The site's contrast check could lose its Chromium renderer under build-host memory pressure; it now audits each single-document page in place instead of opening a second renderer to combine the results.

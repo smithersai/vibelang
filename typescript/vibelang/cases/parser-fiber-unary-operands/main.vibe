@@ -1,0 +1,7 @@
+// expect-result: [7,8]
+effect function work(n: number) { return n }
+export effect function main() {
+ const first = fork [work][0]!(7)
+ const second = fork (<typeof work>work)(8)
+ return [join (first), join (second)]
+}

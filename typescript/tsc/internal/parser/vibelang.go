@@ -431,13 +431,13 @@ func (p *Parser) parseLayerDeclaration(pos int, jsdoc jsdocScannerInfo, modifier
 				effectWord := p.parseVibeLangEffectMember()
 				asterisk := p.parseOptionalToken(ast.KindAsteriskToken)
 				memberName := p.parsePropertyName()
-				members = append(members, p.vibelangEffectMember(p.parseMethodDeclaration(memberPos, memberJSDoc, nil /*modifiers*/, asterisk, memberName, nil /*questionToken*/, nil /*diagnosticMessage*/), effectWord))
+				members = append(members, p.vibelangEffectMember(p.parseMethodDeclaration(memberPos, memberJSDoc, nil /*modifiers*/, asterisk, memberName, nil /*questionToken*/, nil /*diagnosticMessage*/, true /*effect*/), effectWord))
 			case p.lookAhead((*Parser).scanLayerMethodStart):
 				memberPos := p.nodePos()
 				memberJSDoc := p.jsdocScannerInfo()
 				asterisk := p.parseOptionalToken(ast.KindAsteriskToken)
 				memberName := p.parsePropertyName()
-				members = append(members, p.parseMethodDeclaration(memberPos, memberJSDoc, nil /*modifiers*/, asterisk, memberName, nil /*questionToken*/, nil /*diagnosticMessage*/))
+				members = append(members, p.parseMethodDeclaration(memberPos, memberJSDoc, nil /*modifiers*/, asterisk, memberName, nil /*questionToken*/, nil /*diagnosticMessage*/, false /*effect*/))
 			default:
 				statements = append(statements, p.parseStatement())
 			}

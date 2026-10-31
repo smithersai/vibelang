@@ -80,16 +80,17 @@ func (p *Parser) parseEffectDeclaration(pos int, jsdoc jsdocScannerInfo, modifie
 	p.nextToken() // effect
 	var fn *ast.Node
 	if p.token == ast.KindFunctionKeyword {
-		fn = p.parseFunctionDeclaration(pos, jsdoc, modifiers)
+		fn = p.parseFunctionDeclaration(pos, jsdoc, modifiers, true /*effect*/)
 	} else {
-		fn = p.parseShorthandFunctionDeclaration(pos, jsdoc, modifiers)
+		fn = p.parseShorthandFunctionDeclaration(pos, jsdoc, modifiers, true /*effect*/)
 	}
 	return p.markEffect(fn, word)
 }
 
 // parseShorthandFunctionDeclaration parses name(…) { … }, a function
 // declaration without its function keyword, after effect or async.
-func (p *Parser) parseShorthandFunctionDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList) *ast.Node {
+func (p *Parser) parseShorthandFunctionDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList, effect bool) *ast.Node {
+	defer p.setVibeLangFiberContext(effect)()
 	p.recordVibeSyntax(VibeSyntax{Kind: VibeSyntaxShorthand, Word: p.tokenRange()})
 	name := p.parseBindingIdentifier()
 	signatureFlags := core.IfElse(modifierListHasAsync(modifiers), ParseFlagsAwait, ParseFlagsNone)
@@ -124,6 +125,7 @@ func (p *Parser) tryParseVibeLangEffectArrow(allowReturnTypeInArrowFunction bool
 		return nil
 	}
 	state := p.mark()
+	defer p.setVibeLangFiberContext(true)()
 	pos := p.nodePos()
 	word := p.tokenRange()
 	p.nextToken() // effect
@@ -137,9 +139,9 @@ func (p *Parser) tryParseVibeLangEffectArrow(allowReturnTypeInArrowFunction bool
 		case p.token == ast.KindOpenParenToken || p.token == ast.KindLessThanToken:
 			switch p.isParenthesizedArrowFunctionExpression() {
 			case core.TSTrue:
-				arrow = p.parseParenthesizedArrowFunctionExpression(true /*allowAmbiguity*/, allowReturnTypeInArrowFunction)
+				arrow = p.parseParenthesizedArrowFunctionExpression(true /*allowAmbiguity*/, allowReturnTypeInArrowFunction, true /*effect*/)
 			case core.TSUnknown:
-				arrow = p.parseParenthesizedArrowFunctionExpression(false /*allowAmbiguity*/, allowReturnTypeInArrowFunction)
+				arrow = p.parseParenthesizedArrowFunctionExpression(false /*allowAmbiguity*/, allowReturnTypeInArrowFunction, true /*effect*/)
 			}
 		case p.isIdentifier() && p.lookAhead(func(p *Parser) bool {
 			p.nextToken()
@@ -147,7 +149,7 @@ func (p *Parser) tryParseVibeLangEffectArrow(allowReturnTypeInArrowFunction bool
 		}):
 			jsdoc := p.jsdocScannerInfo()
 			parameter := p.parseIdentifier()
-			arrow = p.parseSimpleArrowFunctionExpression(parameter.Pos(), parameter, allowReturnTypeInArrowFunction, jsdoc, nil /*asyncModifier*/)
+			arrow = p.parseSimpleArrowFunctionExpression(parameter.Pos(), parameter, allowReturnTypeInArrowFunction, jsdoc, nil /*asyncModifier*/, true /*effect*/)
 		}
 	}
 	if arrow == nil || !ast.IsArrowFunction(arrow) {
@@ -187,7 +189,7 @@ func (p *Parser) tryParseVibeLangBareEffectArrow(allowReturnTypeInArrowFunction 
 	parameter := p.finishNode(p.factory.NewParameterDeclaration(nil, nil, name, question, typeNode, nil), name.Pos())
 	parameters := p.newNodeList(parameter.Loc, p.nodeSliceArena.NewSlice1(parameter))
 	equalsGreaterThan := p.parseExpectedToken(ast.KindEqualsGreaterThanToken)
-	body := p.parseArrowFunctionExpressionBody(false /*isAsync*/, allowReturnTypeInArrowFunction)
+	body := p.parseArrowFunctionExpressionBody(false /*isAsync*/, allowReturnTypeInArrowFunction, true /*effect*/)
 	result := p.finishNode(p.factory.NewArrowFunction(nil, typeParameters, parameters, nil, nil, equalsGreaterThan, body), pos)
 	p.withJSDoc(result, jsdoc)
 	// The recovered tree is complete. Retain its parameter/body type checks
@@ -214,10 +216,11 @@ func (p *Parser) parseVibeLangEffectExpression() *ast.Node {
 	word := p.tokenRange()
 	p.nextToken() // effect
 	if p.token == ast.KindFunctionKeyword {
-		fn := p.parseFunctionExpression()
+		fn := p.parseFunctionExpression(true /*effect*/)
 		fn.Loc = core.NewTextRange(pos, fn.End())
 		return p.markEffect(fn, word)
 	}
+	defer p.setVibeLangFiberContext(true)()
 	saveContextFlags := p.contextFlags
 	p.setContextFlags(ast.NodeFlagsAwaitContext|ast.NodeFlagsYieldContext, false)
 	open := p.tokenRange()

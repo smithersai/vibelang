@@ -153,7 +153,7 @@ typescript/vibelang/cases/await-call-shape/main.vibe:16:53 lambda program table
 typescript/vibelang/cases/await-call-shape/main.vibe:16:85 lambda program table
 typescript/vibelang/cases/await-call-shape/main.vibe:17:25 lambda program table
 typescript/vibelang/cases/await-call-shape/main.vibe:17:54 lambda program table
-typescript/vibelang/cases/await-call-shape/main.vibe:18:23 byname program table
+typescript/vibelang/cases/await-call-shape/main.vibe:18:24 byname program table
 typescript/vibelang/cases/await-callable-iterable/main.vibe:19:26 lambda plain table
 typescript/vibelang/cases/await-callable-iterable/main.vibe:24:38 lambda plain fallback
 typescript/vibelang/cases/await-callable-iterable/main.vibe:24:65 lambda plain table
@@ -213,7 +213,7 @@ typescript/vibelang/cases/await-ops/main.vibe:93:20 lambda program table
 typescript/vibelang/cases/await-ops/main.vibe:93:50 lambda program table
 typescript/vibelang/cases/await-ops/main.vibe:99:21 lambda program table
 typescript/vibelang/cases/await-ops/main.vibe:99:58 lambda program table
-typescript/vibelang/cases/block-do.fail/main.vibe:2:60 block appended/program table
+typescript/vibelang/cases/block-do.fail/main.vibe:2:53 block appended/program table
 typescript/vibelang/cases/block-param-postfix.fail/main.vibe:5:27 lambda effectFn annotation
 typescript/vibelang/cases/block-param-postfix.fail/main.vibe:6:30 lambda effectFn annotation
 typescript/vibelang/cases/block-param-postfix.fail/main.vibe:7:19 lambda effectFn annotation
@@ -1602,6 +1602,7 @@ typescript/vibelang/cases/fibers-fork-join/main.vibe:28:52 byname program table
 typescript/vibelang/cases/fibers-fork-join/main.vibe:33:28 byname program table
 typescript/vibelang/cases/fibers-fork-join/main.vibe:33:55 byname program table
 typescript/vibelang/cases/fibers-fork-join/main.vibe:39:8 block appended/program table
+typescript/vibelang/cases/fibers-fork-join/main.vibe:48:21 byname program table
 typescript/vibelang/cases/fibers-fork-join/main.vibe:48:22 byname program table
 typescript/vibelang/cases/fibers-fork-join/main.vibe:60:23 byname program table
 typescript/vibelang/cases/fibers-fork-join/main.vibe:69:21 block appended/program table
@@ -1747,6 +1748,7 @@ typescript/vibelang/cases/fork-escape-return.fail/main.vibe:50:24 byname program
 typescript/vibelang/cases/fork-escape-return.fail/main.vibe:59:24 lambda choice fallback
 typescript/vibelang/cases/fork-escape-return.fail/main.vibe:59:42 byname program table
 typescript/vibelang/cases/fork-escape-return.fail/main.vibe:60:28 lambda choice fallback
+typescript/vibelang/cases/fork-escape-return.fail/main.vibe:60:49 byname program table
 typescript/vibelang/cases/fork-escape-return.fail/main.vibe:60:50 byname program table
 typescript/vibelang/cases/fork-keyword-local-binding/main.vibe:17:18 byname program table
 typescript/vibelang/cases/fork-keyword-local-binding/main.vibe:18:18 block appended/program table
@@ -1804,6 +1806,7 @@ typescript/vibelang/cases/fork-region-operands/main.vibe:18:28 byname program ta
 typescript/vibelang/cases/fork-region-operands/main.vibe:18:46 lambda program table
 typescript/vibelang/cases/fork-region-operands/main.vibe:18:69 lambda dual fallback
 typescript/vibelang/cases/fork-region-operands/main.vibe:19:25 byname program table
+typescript/vibelang/cases/fork-region-operands/main.vibe:20:23 byname program table
 typescript/vibelang/cases/fork-region-operands/main.vibe:20:24 byname program table
 typescript/vibelang/cases/fork-region-operands/main.vibe:22:24 byname program table
 typescript/vibelang/cases/fork-region-operands/main.vibe:23:24 block appended/program table
@@ -2030,6 +2033,7 @@ typescript/vibelang/cases/iterator-native-protocol/main.vibe:74:28 lambda progra
 typescript/vibelang/cases/join-binding.fail/main.vibe:12:22 byname program table
 typescript/vibelang/cases/join-parenthesized/main.vibe:13:18 byname program table
 typescript/vibelang/cases/join-parenthesized/main.vibe:14:18 byname program table
+typescript/vibelang/cases/join-parenthesized/main.vibe:15:17 byname program table
 typescript/vibelang/cases/join-parenthesized/main.vibe:15:18 byname program table
 typescript/vibelang/cases/jump-without-target-region.fail/main.vibe:16:41 lambda program table
 typescript/vibelang/cases/jump-without-target-region.fail/main.vibe:16:62 lambda effectFn table
@@ -2066,6 +2070,7 @@ typescript/vibelang/cases/keyword-operand-comments/main.vibe:93:17 lambda plain 
 typescript/vibelang/cases/keyword-operand-comments/main.vibe:95:12 lambda plain table
 typescript/vibelang/cases/keyword-operand-comments/main.vibe:9:15 lambda effectFn annotation
 typescript/vibelang/cases/keyword-operands-syntax/main.vibe:13:23 byname program table
+typescript/vibelang/cases/keyword-operands-syntax/main.vibe:16:29 byname program table
 typescript/vibelang/cases/keyword-operands-syntax/main.vibe:16:30 byname program table
 typescript/vibelang/cases/keyword-operands-syntax/main.vibe:19:25 lambda program table
 typescript/vibelang/cases/keyword-operands-syntax/main.vibe:19:69 lambda program table
@@ -2078,7 +2083,7 @@ typescript/vibelang/cases/keyword-parenthesized-calls/main.vibe:12:28 lambda pro
 typescript/vibelang/cases/keyword-parenthesized-calls/main.vibe:12:59 lambda program table
 typescript/vibelang/cases/keyword-parenthesized-calls/main.vibe:13:28 lambda program table
 typescript/vibelang/cases/keyword-parenthesized-calls/main.vibe:13:59 lambda program table
-typescript/vibelang/cases/keyword-parenthesized-calls/main.vibe:14:27 byname program table
+typescript/vibelang/cases/keyword-parenthesized-calls/main.vibe:14:28 byname program table
 typescript/vibelang/cases/lambda-forms/main.vibe:10:19 lambda plain annotation
 typescript/vibelang/cases/lambda-forms/main.vibe:15:19 lambda plain annotation
 typescript/vibelang/cases/lambda-forms/main.vibe:21:23 lambda effectFn annotation
@@ -2476,6 +2481,7 @@ typescript/vibelang/cases/overload-program-ranking/main.vibe:110:29 lambda progr
 typescript/vibelang/cases/overload-program-ranking/main.vibe:110:65 byname program table
 typescript/vibelang/cases/overload-program-ranking/main.vibe:32:31 byname program table
 typescript/vibelang/cases/overload-program-ranking/main.vibe:32:46 byname program table
+typescript/vibelang/cases/overload-program-ranking/main.vibe:44:21 byname program table
 typescript/vibelang/cases/overload-program-ranking/main.vibe:44:22 byname program table
 typescript/vibelang/cases/overload-program-ranking/main.vibe:46:41 byname program table
 typescript/vibelang/cases/overload-program-ranking/main.vibe:46:60 byname program table
@@ -2501,6 +2507,8 @@ typescript/vibelang/cases/overload-program-ranking/main.vibe:97:27 byname progra
 typescript/vibelang/cases/overload-program-ranking/main.vibe:97:35 byname program annotation
 typescript/vibelang/cases/parser-error-newline-arrow/main.vibe:3:1 lambda plain fallback
 typescript/vibelang/cases/parser-error-newline-arrow/main.vibe:5:1 lambda plain fallback
+typescript/vibelang/cases/parser-fiber-unary-operands/main.vibe:4:21 byname program table
+typescript/vibelang/cases/parser-fiber-unary-operands/main.vibe:5:22 byname program table
 typescript/vibelang/cases/pausing-callback-fixes.fail/main.vibe:11:33 lambda plain table
 typescript/vibelang/cases/pausing-callback-fixes.fail/main.vibe:12:37 lambda plain table
 typescript/vibelang/cases/pausing-callback-fixes.fail/main.vibe:13:22 lambda plain annotation
@@ -3080,6 +3088,7 @@ typescript/vibelang/cases/scopes-fork/main.vibe:95:22 byname program table
 typescript/vibelang/cases/scopes-types/main.vibe:39:8 byname program table
 typescript/vibelang/cases/scopes-types/main.vibe:45:8 byname program table
 typescript/vibelang/cases/scopes-types/main.vibe:50:27 lambda choice fallback
+typescript/vibelang/cases/scopes-types/main.vibe:50:49 byname program table
 typescript/vibelang/cases/scopes-types/main.vibe:50:50 byname program table
 typescript/vibelang/cases/scopes-types/main.vibe:55:25 lambda program table
 typescript/vibelang/cases/scopes-types/main.vibe:61:12 lambda effectFn service
@@ -3655,6 +3664,7 @@ typescript/vibelang/cases/vibelang-by-name/main.vibe:41:30 byname program table
 typescript/vibelang/cases/vibelang-by-name/main.vibe:45:35 byname program table
 typescript/vibelang/cases/vibelang-by-name/main.vibe:46:34 byname program table
 typescript/vibelang/cases/vibelang-by-name/main.vibe:46:42 byname program table
+typescript/vibelang/cases/vibelang-by-name/main.vibe:48:21 byname program table
 typescript/vibelang/cases/vibelang-by-name/main.vibe:48:22 byname program table
 typescript/vibelang/cases/vibelang-by-name/main.vibe:50:32 byname program table
 typescript/vibelang/cases/vibelang-by-name/main.vibe:50:40 byname program table
@@ -3706,12 +3716,14 @@ typescript/vibelang/cases/vibelang-methods/main.vibe:35:66 lambda plain fallback
 typescript/vibelang/cases/vibelang-methods/main.vibe:38:48 lambda plain table
 typescript/vibelang/cases/vibelang-methods/main.vibe:38:73 lambda plain fallback
 typescript/vibelang/cases/vibelang-methods/main.vibe:39:30 lambda plain table
+typescript/vibelang/cases/vibelang-methods/main.vibe:40:21 byname program table
 typescript/vibelang/cases/vibelang-methods/main.vibe:40:22 byname program table
 typescript/vibelang/cases/vibelang-methods/main.vibe:43:22 lambda plain table
 typescript/vibelang/cases/vibelang-pipes/main.vibe:34:27 lambda plain fallback
 typescript/vibelang/cases/vibelang-pipes/main.vibe:36:19 lambda plain table
 typescript/vibelang/cases/vibelang-pipes/main.vibe:48:74 byname program table
 typescript/vibelang/cases/vibelang-pipes/main.vibe:49:32 byname program table
+typescript/vibelang/cases/vibelang-pipes/main.vibe:53:21 byname program table
 typescript/vibelang/cases/vibelang-pipes/main.vibe:53:22 byname program table
 typescript/vibelang/cases/vibelang-pipes/main.vibe:53:41 byname program table
 typescript/vibelang/cases/vibelang-pipes/main.vibe:60:40 byname program table
