@@ -8,8 +8,12 @@
 #
 #   cd typescript/tsc && sh internal/vibelangfuzz/pending.sh
 #
-# A corpus input (corpus:<file>) runs by name in its target, and a feature
-# (feature:<name>) runs its probe in TestVIPConstructs or TestDataSpecRules.
+# A corpus input (corpus:<file>) runs by name in its target. A feature
+# (feature:<name>) is a probe in TestVIPConstructs or TestDataSpecRules, and
+# its line also covers every probe that requires it, so those two tests run
+# whole: deleting a feature line whose own probe passes, while a probe that
+# requires it still fails, fails here (6c82278e deleted vip18.any, and
+# vip18.any-catch-first turned main 4e088ab33903 RED post-merge).
 # A rule table checks rule:, control:, reject: and diagnostic: keys inside
 # whichever seed picks the rule, so a target with such lines runs its whole
 # short seed set. Keys of what generated programs do (compile:, exit:, ek:)
@@ -30,8 +34,8 @@ whole=$(lines | sed -nE 's/^([A-Za-z]+)[[:space:]]+(rule|control|reject|diagnost
 
 cd "$dir"
 status=0
-"$bin" -test.short -test.count=1 -test.timeout=15m \
-  -test.run "^($named|TestVIPConstructs|TestDataSpecRules)\$/^($names)\$" || status=1
+"$bin" -test.short -test.count=1 -test.timeout=15m -test.run '^(TestVIPConstructs|TestDataSpecRules)$' || status=1
+"$bin" -test.short -test.count=1 -test.timeout=15m -test.run "^($named)\$/^($names)\$" || status=1
 if [ -n "$whole" ]; then
   "$bin" -test.short -test.count=1 -test.timeout=15m -test.run "^($whole)\$" || status=1
 fi

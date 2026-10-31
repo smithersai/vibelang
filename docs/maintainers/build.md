@@ -73,7 +73,7 @@ Docs checks use `VIBELANG_BINARY` when set, otherwise the native checkout build 
 //                              checks that read the whole repository
   :tree                         Filegroup: every file
   :go-vibelang :go-vibelang-race :go-vibelangmapper :go-vibelangfuzz
-  :go-vibelangfuzz-pending      the inputs testdata/pending/ lists, which must still fail (merge gate)
+  :go-vibelangfuzz-pending      the inputs testdata/pending/ lists, which must still fail, and every VIP and data probe (merge gate)
   :go-vibelangfuzz-editor       the editor oracles over documentation examples and cases (merge gate)
   :release :snippets :tokens :forms :docs-tools :docs-check :site-spec-links
   :site-contrast                exclusive: runs only with --include-exclusive

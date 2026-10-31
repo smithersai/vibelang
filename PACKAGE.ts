@@ -176,7 +176,7 @@ const targets = {
   // deleting its line fails before it lands, not on main (four times on
   // 2026-10-30).
   "go-vibelangfuzz-pending": goVibelang(
-    "The inputs testdata/pending/ lists still fail: a change that makes one pass deletes its line.",
+    "The inputs testdata/pending/ lists still fail, and every probe passes or is pending: a change that makes one pass deletes its line.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} sh internal/vibelangfuzz/pending.sh`,
     [Tsc["vibelangfuzz-files"]],
     "30m"
