@@ -56,6 +56,14 @@ func (p *plan) conversionOf(node *ast.Node) conversion { return p.converts[node]
 // planFile asks the checker which functions in file are Effects and which of
 // their calls run.
 func planFile(resolver printer.EmitResolver, file *ast.SourceFile) *plan {
+	p := newFilePlan()
+	if r, ok := resolver.(*checker.EmitResolver); ok {
+		r.WithChecker(func(c *checker.Checker) { populateFilePlan(c, file, p) })
+	}
+	return p
+}
+
+func newFilePlan() *plan {
 	p := &plan{effects: map[*ast.Node]bool{}, programs: map[*ast.Node]bool{}, runs: map[*ast.Node]bool{}, heldPrograms: map[*ast.Node]bool{}, converts: map[*ast.Node]conversion{}, servicePlan: newServicePlan(), plainPlan: newPlainPlan(), trustedPlan: newTrustedPlan(), tracingPlan: newTracingPlan(), scopePlan: newScopePlan()}
 	p.parameterWrites = map[*ast.Node]bool{}
 	p.returns = map[*ast.Node]bool{}
@@ -69,107 +77,106 @@ func planFile(resolver printer.EmitResolver, file *ast.SourceFile) *plan {
 	p.producerPlan = newProducerPlan()
 	p.exhaustivePlan = newExhaustivePlan()
 	p.dataPlan = newDataPlan()
-	r, ok := resolver.(*checker.EmitResolver)
-	if !ok {
-		return p
-	}
-	r.WithChecker(func(c *checker.Checker) {
-		p.prelude = preludeUses(c, file)
-		p.collisionModules = collisionModules(c)
-		p.intrinsics = preludeStateOf(c).intrinsics
-		p.ownExports = moduleExportNames(c, file.Symbol)
-		a := analyzerFor(c)
-		var visit func(node *ast.Node) bool
-		visit = func(node *ast.Node) bool {
-			if form, base := errorFormOf(node); form == errorFormSubclass && fieldlessGeneratedErrorBase(c, base) {
-				for _, member := range node.Members() {
-					if ast.IsConstructorDeclaration(member) && member.Flags&ast.NodeFlagsReparsed != 0 {
-						p.fieldlessErrorConstructors[member] = true
-					}
-				}
-			}
-			if isLowerable(node) && (a.isEffect(node) || a.onPlainCycle(node)) {
-				if isLambda(node) && a.finalForm(node) == formProgram {
-					p.programs[node] = true
-				} else {
-					p.effects[node] = true
-				}
-				p.parameterWrites[node] = writesParameters(c, node)
-				p.planClause(c, node)
-				p.planProducer(c, node)
-				forEachCallInBody(node, func(call *ast.Node) bool {
-					if a.runs(call) || a.isCycleCall(call) {
-						p.runs[call] = true
-					}
-					if ast.IsCallExpression(call) {
-						p.planServiceCall(c, call)
-						p.planResume(c, call)
-					}
-					return false
-				})
-				p.planScopes(a, node)
-			}
-			if a.returnedProgram(node) != nil {
-				p.returns[node] = true
-			}
-			if conversion := a.finalConversion(node); conversion == convertProgram || conversion == convertSyncProgram || conversion == convertPrograms || conversion == convertByName {
-				p.converts[node] = conversion
-				if conversion == convertByName {
-					byNameResults(byNameSubject(node), func(result *ast.Node) {
-						p.heldPrograms[result] = a.heldPrograms[result]
-					})
-				}
-			}
-			// A by-name expression has its own Effect body even when the
-			// enclosing factory stays plain. Plan the calls that body runs.
-			if isInvocation(node) && a.byNameOf(node) != nil {
-				if a.runs(node) {
-					p.runs[node] = true
-				}
-				if ast.IsCallExpression(node) {
-					p.planServiceCall(c, node)
-					p.planResume(c, node)
-				}
-			}
-			if form, ok := hatchFormOf(c, node); ok {
-				p.hatches[node] = form
-			}
-			if isFailureTest(node) {
-				p.failureTags[node], _ = failureTags(c, c.GetTypeFromTypeNode(node.TypeArguments()[0]))
-			}
-			if ast.IsCallExpression(node) && ast.IsPropertyAccessExpression(node.Expression()) {
-				if call, ok := methodCallOf(c, node.Expression()); ok {
-					p.methods[node] = call
-				}
-			}
-			if isPipe(node) {
-				p.planPipe(a, node)
-			}
-			p.planPlain(a, node)
-			p.planJoins(a, node) // D340 (joined.go)
-			p.planServiceNode(c, node)
-			if p.wireOrders[node] != nil || fiberHelper(node) == "$forConcurrent" {
-				p.noteStable(c, node.Arguments()...) // arguments emitted in another order (order.go)
-				for _, layer := range p.wireLists[node] {
-					p.noteStable(c, layer.node) // a layer a spread lists (wire.go)
-				}
-			}
-			p.planAcquisitionReference(c, node)
-			p.planExhaustiveMatch(c, node) // D294 (match_lower.go)
-			p.planVariantTest(c, node)     // D307 (data_lower.go)
-			node.ForEachChild(visit)
-			return false
-		}
-		file.AsNode().ForEachChild(visit)
-		p.prelude = p.withoutUnusedNoMatch(p.prelude)
-		p.prelude = p.withoutUnusedIs(p.prelude)
-		// The lowering writes try e as yield* e or e (try.go), never a call of $try.
-		p.prelude = core.Filter(p.prelude, func(name string) bool { return name != "$try" })
-		p.planTrustedCalls(c, a, file)
-		p.entry = planEntry(c, file)
-		p.planSpans(c, file)
-	})
 	return p
+}
+
+// populateFilePlan uses the caller's checker lock. Emit and missing-dependency
+// checking share the same lowering decisions rather than guessing from tokens.
+func populateFilePlan(c *checker.Checker, file *ast.SourceFile, p *plan) {
+	p.prelude = preludeUses(c, file)
+	p.collisionModules = collisionModules(c)
+	p.intrinsics = preludeStateOf(c).intrinsics
+	p.ownExports = moduleExportNames(c, file.Symbol)
+	a := analyzerFor(c)
+	var visit func(node *ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if form, base := errorFormOf(node); form == errorFormSubclass && fieldlessGeneratedErrorBase(c, base) {
+			for _, member := range node.Members() {
+				if ast.IsConstructorDeclaration(member) && member.Flags&ast.NodeFlagsReparsed != 0 {
+					p.fieldlessErrorConstructors[member] = true
+				}
+			}
+		}
+		if isLowerable(node) && (a.isEffect(node) || a.onPlainCycle(node)) {
+			if isLambda(node) && a.finalForm(node) == formProgram {
+				p.programs[node] = true
+			} else {
+				p.effects[node] = true
+			}
+			p.parameterWrites[node] = writesParameters(c, node)
+			p.planClause(c, node)
+			p.planProducer(c, node)
+			forEachCallInBody(node, func(call *ast.Node) bool {
+				if a.runs(call) || a.isCycleCall(call) {
+					p.runs[call] = true
+				}
+				if ast.IsCallExpression(call) {
+					p.planServiceCall(c, call)
+					p.planResume(c, call)
+				}
+				return false
+			})
+			p.planScopes(a, node)
+		}
+		if a.returnedProgram(node) != nil {
+			p.returns[node] = true
+		}
+		if conversion := a.finalConversion(node); conversion == convertProgram || conversion == convertSyncProgram || conversion == convertPrograms || conversion == convertByName {
+			p.converts[node] = conversion
+			if conversion == convertByName {
+				byNameResults(byNameSubject(node), func(result *ast.Node) {
+					p.heldPrograms[result] = a.heldPrograms[result]
+				})
+			}
+		}
+		// A by-name expression has its own Effect body even when the
+		// enclosing factory stays plain. Plan the calls that body runs.
+		if isInvocation(node) && a.byNameOf(node) != nil {
+			if a.runs(node) {
+				p.runs[node] = true
+			}
+			if ast.IsCallExpression(node) {
+				p.planServiceCall(c, node)
+				p.planResume(c, node)
+			}
+		}
+		if form, ok := hatchFormOf(c, node); ok {
+			p.hatches[node] = form
+		}
+		if isFailureTest(node) {
+			p.failureTags[node], _ = failureTags(c, c.GetTypeFromTypeNode(node.TypeArguments()[0]))
+		}
+		if ast.IsCallExpression(node) && ast.IsPropertyAccessExpression(node.Expression()) {
+			if call, ok := methodCallOf(c, node.Expression()); ok {
+				p.methods[node] = call
+			}
+		}
+		if isPipe(node) {
+			p.planPipe(a, node)
+		}
+		p.planPlain(a, node)
+		p.planJoins(a, node) // D340 (joined.go)
+		p.planServiceNode(c, node)
+		if p.wireOrders[node] != nil || fiberHelper(node) == "$forConcurrent" {
+			p.noteStable(c, node.Arguments()...) // arguments emitted in another order (order.go)
+			for _, layer := range p.wireLists[node] {
+				p.noteStable(c, layer.node) // a layer a spread lists (wire.go)
+			}
+		}
+		p.planAcquisitionReference(c, node)
+		p.planExhaustiveMatch(c, node) // D294 (match_lower.go)
+		p.planVariantTest(c, node)     // D307 (data_lower.go)
+		node.ForEachChild(visit)
+		return false
+	}
+	file.AsNode().ForEachChild(visit)
+	p.prelude = p.withoutUnusedNoMatch(p.prelude)
+	p.prelude = p.withoutUnusedIs(p.prelude)
+	// The lowering writes try e as yield* e or e (try.go), never a call of $try.
+	p.prelude = core.Filter(p.prelude, func(name string) bool { return name != "$try" })
+	p.planTrustedCalls(c, a, file)
+	p.entry = planEntry(c, file)
+	p.planSpans(c, file)
 }
 
 // forEachCallInBody calls cb for each call that fn's own body evaluates,

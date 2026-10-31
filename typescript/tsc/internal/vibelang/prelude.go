@@ -148,7 +148,7 @@ func implicitRuntimeImport(file *ast.SourceFile) []string {
 	effect, runtime := mayLowerToEffect(file)
 	entry := entryCandidate(file) != nil
 	var modules []string
-	if prelude || entry || runtime || declaresService(file) {
+	if prelude || entry || runtime || declaresService(file) || mayDeclareEffectFunction(file) {
 		modules = append(modules, runtimeModule)
 	}
 	if root || effect || mayDeclareEffectFunction(file) || file.HasIdentifier("Effect") {
@@ -481,6 +481,11 @@ func resolvePreludeName(c *checker.Checker, location *ast.Node, name string, mea
 		}
 	}
 	if symbol == nil || !hasMeaning(c, symbol, meaning) {
+		// Keep the emitted dependency even when resolution failed. It is a
+		// package error, not an unresolved compiler-generated helper.
+		if symbol == nil && preludeModules[name] == runtimeModule && isValueReference(location, name, meaning) {
+			recordPreludeUse(state, file, name)
+		}
 		return nil
 	}
 	if isValueReference(location, name, meaning) && !isLoweredHatchCallee(location) && !isClauseCallee(location) && !isRemovedPrimitiveMarker(location) && !isServiceShapeFactory(location) {

@@ -63,7 +63,7 @@ export function recovered(text: string): number {
 		{"warning", diagnostics.CategoryWarning}, {"error", diagnostics.CategoryError},
 	} {
 		files["/tsconfig.json"] = fmt.Sprintf(`{"compilerOptions":{"strict":true,"vibelang":{"diagnostics":{"EK4406":%q}}},"files":["main.vibe","helpers.ts"]}`, setting.name)
-		fs := bundled.WrapFS(vfstest.FromMap(files, tspath.CaseInsensitive))
+		fs := bundled.WrapFS(vfstest.FromMap(fixtureRuntime(files), tspath.CaseInsensitive))
 		parsed, errors := tsoptions.GetParsedCommandLineOfConfigFile("/tsconfig.json", &core.CompilerOptions{}, nil, fs, nil)
 		if len(errors) != 0 {
 			t.Fatalf("tsconfig: %v", errors)
@@ -123,7 +123,7 @@ func TestTrustedWorkspacePackageNames(t *testing.T) {
 				"/main.vibe":                   `import { key } from "@smthrs/keys"; export function use() { return key() }`,
 				"/tsconfig.json":               fmt.Sprintf(`{"compilerOptions":{"strict":true,"paths":{"@smthrs/keys":["./workspace/keys/index.ts"]},"vibelang":{"trustedPackages":%s}},"files":["main.vibe"]}`, test.patterns),
 			}
-			fs := bundled.WrapFS(vfstest.FromMap(files, tspath.CaseSensitive))
+			fs := bundled.WrapFS(vfstest.FromMap(fixtureRuntime(files), tspath.CaseSensitive))
 			parsed, errors := tsoptions.GetParsedCommandLineOfConfigFile("/tsconfig.json", &core.CompilerOptions{}, nil, fs, nil)
 			if len(errors) != 0 || len(parsed.Errors) != 0 {
 				t.Fatalf("config: %v / %v", errors, parsed.Errors)
@@ -166,7 +166,7 @@ export declare function make(): Schema`,
 				"/main.vibe":     `import { make } from "zodlike"; export function use(value: unknown) { const schema = make(); return schema.safeParse(value).success }`,
 				"/tsconfig.json": fmt.Sprintf(`{"compilerOptions":{"strict":true,"vibelang":{"trustedPackages":%s}},"files":["main.vibe"]}`, test.patterns),
 			}
-			fs := bundled.WrapFS(vfstest.FromMap(files, tspath.CaseSensitive))
+			fs := bundled.WrapFS(vfstest.FromMap(fixtureRuntime(files), tspath.CaseSensitive))
 			parsed, errors := tsoptions.GetParsedCommandLineOfConfigFile("/tsconfig.json", &core.CompilerOptions{}, nil, fs, nil)
 			if len(errors) != 0 || len(parsed.Errors) != 0 {
 				t.Fatalf("config: %v / %v", errors, parsed.Errors)
@@ -210,7 +210,7 @@ export declare const vi: { spyOn(target: object, name: string): Spy }`,
 				"/main.vibe":     `import { vi } from "@effect/vitest"; const target = { f: (): number => 1 }; export function use() { ` + test.body + ` }`,
 				"/tsconfig.json": `{"compilerOptions":{"strict":true},"files":["main.vibe"]}`,
 			}
-			fs := bundled.WrapFS(vfstest.FromMap(files, tspath.CaseSensitive))
+			fs := bundled.WrapFS(vfstest.FromMap(fixtureRuntime(files), tspath.CaseSensitive))
 			parsed, errors := tsoptions.GetParsedCommandLineOfConfigFile("/tsconfig.json", &core.CompilerOptions{}, nil, fs, nil)
 			if len(errors) != 0 || len(parsed.Errors) != 0 {
 				t.Fatalf("config: %v / %v", errors, parsed.Errors)

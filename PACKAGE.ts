@@ -175,6 +175,7 @@ const specTests = [
   "TestPreludeAmbientDeclarationsQuoted",
   "TestEffectLintConfigurationQuoted",
   "TestProvideCommaRecoveryQuoted",
+  "TestMissingRuntimeQuoted",
   "TestServicesRulesQuoted",
   "TestProducerBindingQuoted",
   "TestEffectTypeSpacingQuoted",

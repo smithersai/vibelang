@@ -138,6 +138,12 @@ func (r *aliasResolver) GetSourceFileForResolvedModule(resolved *module.Resolved
 	return r.getSourceFile(resolved.ResolvedFileName, resolved.ResolvedPath)
 }
 
+// ResolveModuleNameForFile implements checker.Program: an on-demand resolution
+// in the default mode, which only diagnostics ask for.
+func (r *aliasResolver) ResolveModuleNameForFile(moduleName string, file ast.HasFileName) *module.ResolvedModule {
+	return r.GetResolvedModule(file, moduleName, core.ResolutionModeNone)
+}
+
 // GetResolvedModules implements checker.Program.
 func (r *aliasResolver) GetResolvedModules() map[tspath.PathKey]module.ModeAwareCache[*module.ResolvedModule] {
 	// only used when producing diagnostics, which hopefully the checker won't do

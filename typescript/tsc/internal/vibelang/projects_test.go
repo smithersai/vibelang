@@ -18,7 +18,7 @@ import (
 // workspace package /producer, and both call key() from the plain TypeScript
 // package @acme/helper.
 func projectFiles(producerTrust, appTrust string) map[string]string {
-	return map[string]string{
+	return fixtureRuntime(map[string]string{
 		"/node_modules/@acme/helper/package.json": `{"name":"@acme/helper","types":"index.d.ts"}`,
 		"/node_modules/@acme/helper/index.d.ts":   `export declare function key(): number`,
 		"/producer/package.json":                  `{"name":"@acme/producer"}`,
@@ -27,14 +27,14 @@ func projectFiles(producerTrust, appTrust string) map[string]string {
 		"/app/package.json":                       `{"name":"app"}`,
 		"/app/main.vibe":                          `import { key } from "@acme/helper"` + "\n" + `import { produce } from "../producer/src/lib.vibe"` + "\n" + `export function use() { return produce() + key() }`,
 		"/app/tsconfig.json":                      fmt.Sprintf(`{"compilerOptions":{"strict":true,"noEmit":true,"allowImportingTsExtensions":true},"vibelang":{"trustedPackages":%s},"files":["main.vibe"]}`, appTrust),
-	}
+	})
 }
 
 // untrustedCalls compiles config in files and returns the EK4401 count in
 // each named file, failing the test on any other error.
 func untrustedCalls(t *testing.T, files map[string]string, config tspath.RootedFilePath, names ...tspath.RootedFilePath) []int {
 	t.Helper()
-	fs := bundled.WrapFS(vfstest.FromMap(files, tspath.CaseSensitive))
+	fs := bundled.WrapFS(vfstest.FromMap(fixtureRuntime(files), tspath.CaseSensitive))
 	parsed, errors := tsoptions.GetParsedCommandLineOfConfigFile(config, &core.CompilerOptions{}, nil, fs, nil)
 	if len(errors) != 0 || len(parsed.Errors) != 0 {
 		t.Fatalf("config: %v / %v", errors, parsed.Errors)
@@ -179,6 +179,9 @@ func TestLinkedWorkspaceVibeFileUsesItsOwnProjectSettings(t *testing.T) {
 			}
 			if test.project != "" {
 				files["/workspace/errors/tsconfig.json"] = test.project
+			}
+			for name, text := range fixtureRuntime(map[string]string{}) {
+				files[name] = text
 			}
 			fs := bundled.WrapFS(vfstest.FromMap(files, tspath.CaseSensitive))
 			parsed, errors := tsoptions.GetParsedCommandLineOfConfigFile("/app/tsconfig.json", &core.CompilerOptions{}, nil, fs, nil)

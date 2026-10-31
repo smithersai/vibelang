@@ -30,10 +30,10 @@ func TestPlainFunctionStopsAtItsOwnBody(t *testing.T) {
 		}
 		fmt.Fprintf(&source, "export function f%d(x: number) {\n  if (x < 0) throw new Error(\"negative\")\n  return %s\n}\n", i, result)
 	}
-	fs := bundled.WrapFS(vfstest.FromMap(map[string]string{
+	fs := bundled.WrapFS(vfstest.FromMap(fixtureRuntime(map[string]string{
 		"/chain.vibe":    source.String(),
 		"/tsconfig.json": `{ "compilerOptions": { "strict": true }, "files": ["chain.vibe"] }`,
-	}, tspath.CaseInsensitive))
+	}), tspath.CaseInsensitive))
 	parsed, errors := tsoptions.GetParsedCommandLineOfConfigFile("/tsconfig.json", &core.CompilerOptions{}, nil, fs, nil)
 	if len(errors) != 0 {
 		t.Fatalf("tsconfig: %v", errors)
@@ -57,7 +57,7 @@ func TestPlainFunctionStopsAtItsOwnBody(t *testing.T) {
 // plain callback parameter infers no Effect.
 func TestInferredPlainMethodContract(t *testing.T) {
 	t.Parallel()
-	fs := bundled.WrapFS(vfstest.FromMap(map[string]string{
+	fs := bundled.WrapFS(vfstest.FromMap(fixtureRuntime(map[string]string{
 		"/main.vibe": `interface Plain { call(build: (payload: string) => string): string }
 export class Impl implements Plain {
   call(build: (payload: string) => string) {
@@ -73,7 +73,7 @@ export const object: Plain = {
 }
 `,
 		"/tsconfig.json": `{ "compilerOptions": { "strict": true }, "files": ["main.vibe"] }`,
-	}, tspath.CaseInsensitive))
+	}), tspath.CaseInsensitive))
 	parsed, errors := tsoptions.GetParsedCommandLineOfConfigFile("/tsconfig.json", &core.CompilerOptions{}, nil, fs, nil)
 	if len(errors) != 0 {
 		t.Fatalf("tsconfig: %v", errors)

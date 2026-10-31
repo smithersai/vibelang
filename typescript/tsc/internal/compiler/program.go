@@ -243,6 +243,18 @@ func (p *Program) GetRedirectForResolution(file ast.HasFileName) *tsoptions.Pars
 	return redirect
 }
 
+// ResolveModuleNameForFile resolves moduleName from file on demand, outside the
+// import graph the program loaded. VibeLang asks it whether vibelang-runtime is
+// installed for a file whose prelude never requested the module (missing_runtime.go).
+func (p *Program) ResolveModuleNameForFile(moduleName string, file ast.HasFileName) *module.ResolvedModule {
+	var redirect module.ResolvedProjectReference
+	if r := p.GetRedirectForResolution(file); r != nil {
+		redirect = r
+	}
+	resolved, _, _ := p.newResolver().ResolveModuleName(moduleName, file.FileName(), p.GetDefaultResolutionModeForFile(file), redirect)
+	return resolved
+}
+
 func (p *Program) GetParseFileRedirect(fileName tspath.RootedFilePath) tspath.RootedFilePath {
 	return p.getParseFileRedirectByFileName(fileName)
 }

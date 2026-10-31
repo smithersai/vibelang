@@ -655,6 +655,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A generic call that infers a requirement from an implementation built inside a callback, such as alchemy's `AuthProvider` registering `Effect.gen(function* () { const configure = (name) => (name ? first : second).pipe(Effect.mapError(f)); return { configure } })`, inferred `never` and failed with TS2345; it infers the requirement again, as TypeScript 5.9 and 7.0.2 do.
 
+- A missing `vibelang-runtime` could go unnoticed or expose internal helper-name errors; compilation now reports one `TS2307` naming the dependency and keeps unrelated source errors.
 
 - Checking documentation examples with a symlinked `TMPDIR` could stop with `Compiler failed` instead of reporting an example's type error; diagnostics now stay attached to their examples and later pages are checked.
 

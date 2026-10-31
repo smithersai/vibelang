@@ -597,6 +597,7 @@ type Program interface {
 	GetEmitSyntaxForUsageLocation(sourceFile ast.HasFileName, usageLocation *ast.StringLiteralLike) core.ResolutionMode
 	GetImpliedNodeFormatForEmit(sourceFile ast.HasFileName) core.ModuleKind
 	GetResolvedModule(currentSourceFile ast.HasFileName, moduleReference string, mode core.ResolutionMode) *module.ResolvedModule
+	ResolveModuleNameForFile(moduleName string, file ast.HasFileName) *module.ResolvedModule // on demand, outside the import graph (vibelang missing_runtime.go)
 	GetResolvedModules() map[tspath.PathKey]module.ModeAwareCache[*module.ResolvedModule]
 	GetPackagesMap() map[string]bool
 	GetSourceFileMetaData(path tspath.PathKey) ast.SourceFileMetaData
@@ -14354,6 +14355,7 @@ func (c *Checker) getDiagnostics(ctx context.Context, sourceFile *ast.SourceFile
 	if c.wasCanceled {
 		return nil
 	}
+	prepareExtensionDiagnostics(c, sourceFile)
 	return c.applyDiagnosticsFilterHooks(sourceFile, collection.GetDiagnosticsForFile(sourceFile))
 }
 

@@ -81,6 +81,9 @@ func explainPreludeCollisions(c *checker.Checker, file *ast.SourceFile, all []*a
 // parser writes for a form, such as an error declaration's TaggedError. It
 // returns d unchanged otherwise.
 func explainMissingPreludePackage(c *checker.Checker, file *ast.SourceFile, d *ast.Diagnostic, name string) *ast.Diagnostic {
+	if writtenEffectModuleDisabled(c, file, d, name) {
+		return d
+	}
 	if !isPreludeName(name) {
 		return d
 	}
@@ -210,4 +213,14 @@ func declaredInEffect(symbol *ast.Symbol) bool {
 		}
 	}
 	return false
+}
+
+// Match the resolver's distinction between source names and parser intrinsics.
+// A deliberately disabled namespace has an independent native missing-name
+// error; installing the runtime does not bring that namespace into scope.
+func writtenEffectModuleDisabled(c *checker.Checker, file *ast.SourceFile, d *ast.Diagnostic, name string) bool {
+	token := astnav.GetTokenAtPosition(file, d.Pos())
+	return token != nil && ast.IsIdentifier(token) && token.Text() == name &&
+		token.Flags&(ast.NodeFlagsVibeLangIntrinsic|ast.NodeFlagsReparsed) == 0 &&
+		implicitEffectModuleDisabled(c, file, name)
 }

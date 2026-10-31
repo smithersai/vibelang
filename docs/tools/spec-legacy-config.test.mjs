@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { spawnSync } from "node:child_process"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -64,8 +64,14 @@ const compiler = process.env.VIBELANG_BINARY
 test("supported legacy settings stay active and the explicit modern port wins", { skip: !existsSync(compiler), timeout: 60000 }, () => {
   const fixture = mkdtempSync(resolve(repo, "docs/tools/.legacy-config-"))
   try {
-    symlinkSync(process.env.EFFECT_NODE_MODULES ?? resolve(repo, "docs/tools/node_modules"),
-      resolve(fixture, "node_modules"), "dir")
+    // The fixture's plain function takes an Effect, so its lowering imports
+    // vibelang-runtime ($plainSync); a compile that needs the runtime and cannot
+    // resolve it is one TS2307. Link effect and the repository's runtime.
+    const modules = process.env.EFFECT_NODE_MODULES ?? resolve(repo, "docs/tools/node_modules")
+    mkdirSync(resolve(fixture, "node_modules"))
+    symlinkSync(resolve(modules, "effect"), resolve(fixture, "node_modules/effect"), "dir")
+    const runtime = existsSync(resolve(modules, "vibelang-runtime")) ? resolve(modules, "vibelang-runtime") : resolve(repo, "packages/runtime")
+    symlinkSync(runtime, resolve(fixture, "node_modules/vibelang-runtime"), "dir")
     writeFileSync(resolve(fixture, "package.json"), '{"type":"module"}')
     writeFileSync(resolve(fixture, "main.vibe"),
       'import { Effect } from "effect"\nexport function floating(program: Effect.Effect<number>) { program; return 1 }\n')

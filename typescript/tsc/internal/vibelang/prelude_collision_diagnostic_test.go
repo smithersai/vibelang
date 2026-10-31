@@ -69,8 +69,8 @@ func TestPreludeMissingPackageNotes(t *testing.T) {
 		code         int32
 		want         string
 	}{
-		{"error declaration without the runtime", "export error NotFound { id: string }", effectOnly, 2304,
-			"TaggedError is in scope in a .vibe file without an import, from vibelang-runtime, and this file does not resolve vibelang-runtime."},
+		{"error declaration without the runtime", "export error NotFound { id: string }", effectOnly, 2307,
+			"Install vibelang-runtime at the version of vibelang."},
 		{"Effect module without effect", `export const policy = (): unknown => Schedule.spaced("1 second")`, map[string]string{"vibelang-runtime": "packages/runtime"}, 2552,
 			"Schedule is in scope in a .vibe file without an import, from effect, and this file does not resolve effect."},
 		{"own name", "export const x = Missing.value", effectOnly, 2304, ""},
