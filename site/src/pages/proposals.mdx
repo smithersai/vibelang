@@ -27,7 +27,7 @@ Code marked **Adapted** rewrites an original example in current VibeLang syntax:
 | [Toolchain commands](#toolchain-commands) | Partial | `vibelang`, `create-vibelang`, the language server, Vitest |
 | [Bundler plugins](#bundler-plugins) | Partial | Vite/Vitest and the shipped unplugin adapters |
 | [Mandatory compiler options](#mandatory-compiler-options) | Not in VibeLang | The starter sets `strict` |
-| [JSX source files](#jsx-source-files) | Not in VibeLang | `.tsx` files call `.vibe` code |
+| [JSX source files](#jsx-source-files) | Accepted as VIP-39, not yet built | `.tsx` files call `.vibe` code |
 | [TC39 adopt-early list](#tc39-adopt-early-list) | Not in VibeLang | A different set of TC39 forms |
 
 ## Durable execution
@@ -620,7 +620,7 @@ await build({
 
 ### JSX source files
 
-**Status: not in VibeLang.** The earlier design left the JSX-capable extension open, with `.vibex` as a candidate that must not imply a stricter language mode. Today components live in `.tsx` files that call `.vibe` functions through a runtime.
+**Status: accepted as [VIP-39](/vips/0039-vibex), not yet built.** A `.vibex` file is a `.vibe` file read the way TypeScript reads `.tsx`. Until the compiler supports it, components live in `.tsx` files that call `.vibe` functions through a runtime.
 
 ### TC39 adopt-early list
 
