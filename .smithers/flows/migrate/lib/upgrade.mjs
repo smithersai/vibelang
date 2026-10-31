@@ -6,6 +6,7 @@
 // are text-in, text-out edits: each changes only the versions it names and
 // keeps the file's formatting.
 import { posix } from "node:path"
+import { gunzipSync } from "node:zlib"
 import { applyEdits } from "./imports.mjs"
 
 /** An exact version or a ^ or ~ range of one: the specifiers the upgrade moves. Catalog references, workspace, npm: and file: specifiers stay. */
@@ -46,25 +47,28 @@ export function workspaceManifests(paths, globs) {
   })
 }
 
-const vibeLangPackages = new Set(["vibelang", "vibelang-runtime", "vibelang-vite"])
+const vibeLangPackages = new Set(["vibelang", "vibelang-runtime", "vibelang-vite", "vibelang-unplugin"])
 
 /**
  * A package.json's text with each VibeLang package it depends on moved to
  * specs[name], keeping the file's formatting, and the names it found. A
  * repository VibeLang already set up upgrades Effect together with the
  * VibeLang release that requires the new Effect, because the runtime pins
- * Effect exactly.
+ * Effect exactly. moved holds each version it moved from, { name, from },
+ * for the selectors and patches that name it.
  */
 export function repinVibeLang(text, specs) {
   const found = []
+  const moved = []
   const edits = jsonStrings(text).flatMap((s) => {
     const [field, name] = s.path
     if (s.path.length !== 2 || !dependencyFields.has(field) || !vibeLangPackages.has(name)) return []
     found.push(name)
+    if (specs[name] && specs[name] !== s.value && bumpable.test(s.value)) moved.push({ name, from: s.value.replace(/^[\^~]/, "") })
     const spec = specs[name]
     return spec && spec !== s.value ? [{ start: s.start, end: s.end, text: JSON.stringify(spec).slice(1, -1) }] : []
   })
-  return { text: applyEdits(text, edits), found }
+  return { text: applyEdits(text, edits), found, moved }
 }
 
 /** The package an overrides key names: `@opencode/schema>effect` and `effect@^4` name effect. */
@@ -302,4 +306,149 @@ export function planUpgrade(files, to, manager) {
     }
   }
   return { from, to, pins, bumped, selectors, patches, files: files.filter((f) => next.has(f.path)).map((f) => ({ path: f.path, text: next.get(f.path) })) }
+}
+
+/** A patch's file path from its `--- a/x` or `+++ b/x` line, or null for /dev/null. */
+const diffPath = (line) => {
+  const path = line.slice(4).replace(/\t.*$/, "")
+  return path === "/dev/null" ? null : path.replace(/^[ab]\//, "")
+}
+const isCode = (line) => line.trim() !== "" && !/^(?:\/\/|\/\*|\*|#)/.test(line.trim())
+
+/**
+ * What a unified diff (a pnpm or Bun patch) is to a package's new release,
+ * whose files read(path) gives (undefined for a missing file): "contained"
+ * when the release already made the change, every line of code a hunk
+ * removes gone and every one it adds there (comments aside, which a release
+ * words its own way); "applies" when each hunk's old lines are there as they
+ * were; otherwise "conflict". Contained comes first: a patch that only adds
+ * lines still finds its context in a release that has them.
+ */
+export function patchState(text, read) {
+  const hunks = []
+  let from = null
+  let to = null
+  let hunk = null
+  let oldLeft = 0
+  let newLeft = 0
+  for (const line of text.split("\n")) {
+    // A hunk's lines are counted by its header, so a removed "-- x" reads as "--- x" and stays the hunk's.
+    if (oldLeft > 0 || newLeft > 0) {
+      if (line.startsWith("\\")) continue
+      const kind = line[0] ?? " "
+      if (kind !== "+") {
+        hunk.old.push(line.slice(1))
+        oldLeft--
+      }
+      if (kind !== "-") newLeft--
+      if (kind === "-") hunk.removed.push(line.slice(1))
+      if (kind === "+") hunk.added.push(line.slice(1))
+      continue
+    }
+    const header = /^@@ -\d+(?:,(\d+))? \+\d+(?:,(\d+))? @@/.exec(line)
+    if (line.startsWith("--- ")) from = diffPath(line)
+    else if (line.startsWith("+++ ")) to = diffPath(line)
+    else if (header) {
+      hunk = { file: to ?? from, old: [], removed: [], added: [] }
+      hunks.push(hunk)
+      oldLeft = Number(header[1] ?? 1)
+      newLeft = Number(header[2] ?? 1)
+    }
+  }
+  const wrap = (lines) => `\n${lines.join("\n")}\n`
+  const applies = (h) => {
+    const file = read(h.file)
+    return h.old.length === 0 ? file === undefined : file !== undefined && wrap(file.split("\n")).includes(wrap(h.old))
+  }
+  const contained = (h) => {
+    const file = read(h.file)
+    if (file === undefined) return h.added.length === 0
+    const lines = new Set(file.split("\n").map((l) => l.trim()))
+    return h.removed.every((l) => !isCode(l) || !lines.has(l.trim())) && h.added.every((l) => !isCode(l) || lines.has(l.trim()))
+  }
+  if (hunks.length && hunks.every(contained)) return "contained"
+  if (hunks.length && hunks.every(applies)) return "applies"
+  return "conflict"
+}
+
+/** The lines of a pnpm-workspace.yaml's top-level block map key: [start, end), start the key's own line, or null. */
+function yamlBlock(lines, key) {
+  const start = lines.findIndex((l) => l.startsWith(`${key}:`) && /^\s*$/.test(l.slice(key.length + 1)))
+  if (start < 0) return null
+  let end = start + 1
+  while (end < lines.length && (/^\s+\S/.test(lines[end]) || lines[end].trim() === "")) end++
+  while (end > start + 1 && lines[end - 1].trim() === "") end--
+  return [start, end]
+}
+const yamlEntry = /^\s+(['"]?)([^'"#:\s][^'"#]*?)\1\s*:\s*(['"]?)([^'"#\s]+)\3/
+
+/**
+ * Each entry of a patchedDependencies map, `name@version: path`: a
+ * pnpm-workspace.yaml's, or a package.json's `pnpm.patchedDependencies`
+ * (pnpm) or top-level `patchedDependencies` (Bun). { key, name, version, patch }.
+ */
+export function patchedDependencies(path, text) {
+  let entries = []
+  if (path.endsWith(".yaml")) {
+    const lines = text.split("\n")
+    const block = yamlBlock(lines, "patchedDependencies")
+    if (block) entries = lines.slice(block[0] + 1, block[1]).map((l) => yamlEntry.exec(l)).filter(Boolean).map((m) => [m[2], m[4]])
+  } else {
+    const pkg = JSON.parse(text)
+    entries = Object.entries(pkg.pnpm?.patchedDependencies ?? pkg.patchedDependencies ?? {})
+  }
+  return entries.flatMap(([key, patch]) => {
+    const at = key.lastIndexOf("@")
+    return at > 0 ? [{ key, name: key.slice(0, at), version: key.slice(at + 1), patch }] : []
+  })
+}
+
+/** A pnpm-workspace.yaml or package.json without the patchedDependencies entry key, with the comment lines just above it; an emptied map goes too. */
+export function dropPatchedDependency(path, text, key) {
+  if (!path.endsWith(".yaml")) {
+    const pkg = JSON.parse(text)
+    const holder = pkg.pnpm?.patchedDependencies ? pkg.pnpm : pkg
+    delete holder.patchedDependencies[key]
+    if (!Object.keys(holder.patchedDependencies).length) delete holder.patchedDependencies
+    return JSON.stringify(pkg, null, indentOf(text)) + (text.endsWith("\n") ? "\n" : "")
+  }
+  const lines = text.split("\n")
+  const block = yamlBlock(lines, "patchedDependencies")
+  if (!block) return text
+  const at = lines.findIndex((l, i) => i > block[0] && i < block[1] && yamlEntry.exec(l)?.[2] === key)
+  if (at < 0) return text
+  let first = at
+  while (first > block[0] + 1 && /^\s+#/.test(lines[first - 1])) first--
+  lines.splice(first, at + 1 - first)
+  const end = block[1] - (at + 1 - first)
+  if (lines.slice(block[0] + 1, end).some((l) => yamlEntry.test(l))) return lines.join("\n")
+  // The map is empty: it goes with the blank lines that set it apart.
+  let after = end
+  while (after < lines.length && lines[after].trim() === "") after++
+  lines.splice(block[0], after - block[0])
+  return lines.join("\n")
+}
+
+/** The files of an npm tarball (a gzipped tar) by their path inside the package: `register.mjs`, not `package/register.mjs`. */
+export function tarballFiles(bytes) {
+  const tar = gunzipSync(bytes)
+  const files = {}
+  let longName = null
+  for (let at = 0; at + 512 <= tar.length;) {
+    const header = tar.subarray(at, at + 512)
+    if (header.every((b) => b === 0)) break
+    const field = (start, length) => header.subarray(start, start + length).toString("utf8").replace(/\0[^]*$/, "")
+    const size = parseInt(field(124, 12).trim() || "0", 8)
+    const type = field(156, 1)
+    const body = tar.subarray(at + 512, at + 512 + size)
+    const prefix = field(345, 155)
+    const name = longName ?? (prefix ? `${prefix}/${field(0, 100)}` : field(0, 100))
+    longName = null
+    // GNU tar names a long path in an "L" entry before it, POSIX tar in a pax "x" header's path record.
+    if (type === "L") longName = body.toString("utf8").replace(/\0[^]*$/, "")
+    else if (type === "x") longName = /(?:^|\n)\d+ path=([^\n]*)\n/.exec(body.toString("utf8"))?.[1] ?? null
+    else if (type === "0" || type === "") files[name.replace(/^[^/]+\//, "")] = body.toString("utf8")
+    at += 512 + Math.ceil(size / 512) * 512
+  }
+  return files
 }

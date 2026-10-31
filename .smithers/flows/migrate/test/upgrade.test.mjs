@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
-import { carryPatch, carrySelectors, jsonDeclarations, jsonStrings, planUpgrade, repinVibeLang, selectorTarget, setJsonOverrides, setYamlMap, yamlDeclarations, workspaceGlobs, workspaceManifests } from "../lib/upgrade.mjs"
+import { carryPatch, carrySelectors, dropPatchedDependency, jsonDeclarations, jsonStrings, patchedDependencies, patchState, planUpgrade, repinVibeLang, selectorTarget, setJsonOverrides, setYamlMap, tarballFiles, yamlDeclarations, workspaceGlobs, workspaceManifests } from "../lib/upgrade.mjs"
 import { readIssues } from "../lib/issues.mjs"
 import { flowStep, nextStep, paths, upgradeEffect } from "../lib/steps.mjs"
 import * as Jj from "../lib/jj.mjs"
@@ -381,5 +381,168 @@ test("a run that moves no Effect package names the toolchain it switches to", as
     assert.equal(subject, "migrate(vibelang): switch to the toolchain of VibeLang 0123456789ab")
   } finally {
     rmSync(root, { recursive: true, force: true })
+  }
+})
+
+// smithers: its pnpm-workspace.yaml patches vibelang@0.0.8's register.mjs, a
+// change VibeLang has since made itself, and its builds use vibelang-unplugin.
+// The upgrade moved vibelang but kept the patch for 0.0.8, which pnpm refuses
+// as unused, and left vibelang-unplugin on the old release.
+const vibelangFix = "diff --git a/register.mjs b/register.mjs\n--- a/register.mjs\n+++ b/register.mjs\n@@ -2,3 +2,4 @@\n   return {\n-    source: `${code}\\n//# sourceMappingURL=${map}`,\n+    // Keep the directive split in this loader's own source.\n+    source: `${code}\\n//# sourceMapping${\"URL\"}=${map}`,\n   }\n"
+const registerBefore = "function load() {\n  return {\n    source: `${code}\\n//# sourceMappingURL=${map}`,\n  }\n}\n"
+const registerAfter = "function load() {\n  return {\n    // Split, so tools that read this file for its own source map skip the template.\n    source: `${code}\\n//# sourceMapping${\"URL\"}=${map}`,\n  }\n}\n"
+
+async function vibeLangPatchFixture(root, register) {
+  const target = join(root, "repo")
+  const toolchain = join(root, "toolchain")
+  mkdirSync(join(target, "packages/core"), { recursive: true })
+  mkdirSync(join(target, "patches"))
+  await must("jj git init && jj config set --repo user.name test && jj config set --repo user.email test@localhost", { cwd: target })
+  writeFileSync(join(target, "package.json"), '{\n  "name": "fixture",\n  "private": true,\n  "devDependencies": {\n    "vibelang": "0.0.10",\n    "vibelang-unplugin": "0.0.10"\n  }\n}\n')
+  writeFileSync(join(target, "pnpm-lock.yaml"), "")
+  const yaml = "packages:\n  - packages/*\n\npatchedDependencies:\n  \"@vitest/coverage-v8@5.0.0\": patches/@vitest__coverage-v8@5.0.0.patch\n  # Keep the loader template from being mistaken for its own inline map.\n  vibelang@0.0.10: patches/vibelang@0.0.10.patch\n\nminimumReleaseAgeExclude:\n  - 'vibelang'\n"
+  writeFileSync(join(target, "pnpm-workspace.yaml"), yaml)
+  writeFileSync(join(target, "patches/vibelang@0.0.10.patch"), vibelangFix)
+  writeFileSync(join(target, "patches/@vitest__coverage-v8@5.0.0.patch"), "")
+  writeFileSync(join(target, "packages/core/package.json"), '{ "name": "core", "dependencies": { "effect": "4.0.6" } }\n')
+  writeFileSync(join(target, "packages/core/core.test.ts"), 'import { expect, test } from "bun:test"\ntest("runs", () => expect(1).toBe(1))\n')
+  const base = await Jj.commit(target, "base")
+  mkdirSync(join(toolchain, "package"), { recursive: true })
+  writeFileSync(join(toolchain, "package/register.mjs"), register)
+  writeFileSync(join(toolchain, "package/package.json"), '{ "name": "vibelang", "version": "0.0.11" }\n')
+  await must("tar -czf vibelang-0.0.11.tgz package && rm -r package", { cwd: toolchain })
+  writeFileSync(join(toolchain, "vibelang-unplugin-0.0.11.tgz"), "new unplugin")
+  writeJson(join(toolchain, "toolchain.json"), { version: "0.0.11", effect: "4.0.6", compiler: "native/vibelang", packages: { vibelang: "vibelang-0.0.11.tgz", "vibelang-unplugin": "vibelang-unplugin-0.0.11.tgz" } })
+  return { target, toolchain, base, yaml }
+}
+
+test("upgrade-effect drops a VibeLang patch the new release already contains and moves vibelang-unplugin with vibelang", async () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-upgrade-vibelang-patch-"))
+  try {
+    const { target, toolchain, base, yaml } = await vibeLangPatchFixture(root, registerAfter)
+    const result = await upgradeEffect({ run: join(root, "run"), target, packages: ["packages/core"], test: "bun test", testCwd: "packages/core", toolchain, install: "true", base })
+    const devDependencies = readJson(join(target, "package.json")).devDependencies
+    assert.match(devDependencies.vibelang, /^file:\.\/\.vibelang-toolchain\/vibelang-0\.0\.11-[0-9a-f]{12}\.tgz$/)
+    assert.match(devDependencies["vibelang-unplugin"], /^file:\.\/\.vibelang-toolchain\/vibelang-unplugin-0\.0\.11-[0-9a-f]{12}\.tgz$/)
+    assert.equal(readFileSync(join(target, "pnpm-workspace.yaml"), "utf8"), yaml.replace("  # Keep the loader template from being mistaken for its own inline map.\n  vibelang@0.0.10: patches/vibelang@0.0.10.patch\n", ""))
+    assert.equal(existsSync(join(target, "patches/vibelang@0.0.10.patch")), false)
+    assert.deepEqual(result.vibelangPatches, [{ key: "vibelang@0.0.10", patch: "patches/vibelang@0.0.10.patch", release: "vibelang@0.0.11", outcome: "dropped: the release contains it" }])
+    const { stdout } = await must(`jj diff --summary -r ${result.jj.commit}`, { cwd: target })
+    // A repository set up from a published VibeLang gets the ignore line for the staged tarballs, which stay out of the commit.
+    assert.equal(readFileSync(join(target, ".gitignore"), "utf8"), ".vibelang-toolchain/\n")
+    assert.deepEqual(stdout.trim().split("\n").sort(), ["A .gitignore", "D patches/vibelang@0.0.10.patch", "M package.json", "M pnpm-workspace.yaml"])
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test("upgrade-effect moves a VibeLang patch that still applies to the new version, and stops on one that neither applies nor is contained", async () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-upgrade-vibelang-patch-"))
+  try {
+    const { target, toolchain, base, yaml } = await vibeLangPatchFixture(root, registerBefore)
+    const result = await upgradeEffect({ run: join(root, "run"), target, packages: ["packages/core"], test: "bun test", testCwd: "packages/core", toolchain, install: "true", base })
+    assert.equal(readFileSync(join(target, "pnpm-workspace.yaml"), "utf8"), yaml.replace("vibelang@0.0.10: patches/vibelang@0.0.10.patch", "vibelang@0.0.11: patches/vibelang@0.0.11.patch"))
+    assert.equal(existsSync(join(target, "patches/vibelang@0.0.10.patch")), false)
+    assert.equal(readFileSync(join(target, "patches/vibelang@0.0.11.patch"), "utf8"), vibelangFix)
+    assert.deepEqual(result.vibelangPatches, [{ key: "vibelang@0.0.10", patch: "patches/vibelang@0.0.10.patch", release: "vibelang@0.0.11", outcome: "moved to patches/vibelang@0.0.11.patch" }])
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+  const conflict = mkdtempSync(join(tmpdir(), "migrate-upgrade-vibelang-patch-"))
+  try {
+    const { target, toolchain, base } = await vibeLangPatchFixture(conflict, "function load() {\n  return compile()\n}\n")
+    await assert.rejects(
+      upgradeEffect({ run: join(conflict, "run"), target, packages: ["packages/core"], test: "bun test", testCwd: "packages/core", toolchain, install: "true", base }),
+      /patches\/vibelang@0\.0\.10\.patch .*vibelang@0\.0\.11/
+    )
+  } finally {
+    rmSync(conflict, { recursive: true, force: true })
+  }
+})
+
+test("patchState tells a patch that applies from one a release already contains and one that conflicts", () => {
+  const read = (text) => (path) => (path === "register.mjs" ? text : undefined)
+  assert.equal(patchState(vibelangFix, read(registerBefore)), "applies")
+  assert.equal(patchState(vibelangFix, read(registerAfter)), "contained")
+  assert.equal(patchState(vibelangFix, read("function load() {\n  return compile()\n}\n")), "conflict")
+  assert.equal(patchState(vibelangFix, () => undefined), "conflict")
+  // A removed line starting with "-- " reads as "--- " and is still the hunk's.
+  const dashes = "--- a/x.sql\n+++ b/x.sql\n@@ -1,2 +1,2 @@\n--- old\n+-- new\n select 1\n"
+  assert.equal(patchState(dashes, () => "-- old\nselect 1\n"), "applies")
+  assert.equal(patchState(dashes, () => "-- new\nselect 1\n"), "contained")
+})
+
+test("patchedDependencies reads pnpm's and Bun's maps, and dropPatchedDependency removes one entry with its comment", () => {
+  const yaml = "patchedDependencies:\n  # First.\n  \"@a/b@1.0.0\": patches/@a__b@1.0.0.patch\n  # Second.\n  vibelang@0.0.8: patches/vibelang@0.0.8.patch\n\nother: 1\n"
+  assert.deepEqual(patchedDependencies("pnpm-workspace.yaml", yaml), [
+    { key: "@a/b@1.0.0", name: "@a/b", version: "1.0.0", patch: "patches/@a__b@1.0.0.patch" },
+    { key: "vibelang@0.0.8", name: "vibelang", version: "0.0.8", patch: "patches/vibelang@0.0.8.patch" }
+  ])
+  assert.equal(dropPatchedDependency("pnpm-workspace.yaml", yaml, "vibelang@0.0.8"), "patchedDependencies:\n  # First.\n  \"@a/b@1.0.0\": patches/@a__b@1.0.0.patch\n\nother: 1\n")
+  assert.equal(dropPatchedDependency("pnpm-workspace.yaml", "a: 1\n\npatchedDependencies:\n  vibelang@0.0.8: p.patch\n\nother: 1\n", "vibelang@0.0.8"), "a: 1\n\nother: 1\n")
+  const pnpm = '{\n  "pnpm": {\n    "patchedDependencies": { "vibelang@0.0.8": "patches/vibelang@0.0.8.patch" },\n    "overrides": { "effect": "4.0.6" }\n  }\n}\n'
+  assert.deepEqual(patchedDependencies("package.json", pnpm).map((e) => e.key), ["vibelang@0.0.8"])
+  assert.deepEqual(JSON.parse(dropPatchedDependency("package.json", pnpm, "vibelang@0.0.8")), { pnpm: { overrides: { effect: "4.0.6" } } })
+  const bun = '{ "patchedDependencies": { "vibelang@0.0.8": "patches/vibelang@0.0.8.patch" } }\n'
+  assert.deepEqual(patchedDependencies("package.json", bun).map((e) => e.patch), ["patches/vibelang@0.0.8.patch"])
+  assert.deepEqual(JSON.parse(dropPatchedDependency("package.json", bun, "vibelang@0.0.8")), {})
+})
+
+test("tarballFiles reads an npm tarball's files without its package/ directory", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "migrate-tarball-"))
+  try {
+    const long = `${"d".repeat(120)}/f.mjs`
+    mkdirSync(join(dir, "package", "d".repeat(120)), { recursive: true })
+    writeFileSync(join(dir, "package/register.mjs"), registerAfter)
+    writeFileSync(join(dir, "package", long), "long\n")
+    await must("tar -czf p.tgz package", { cwd: dir })
+    const files = tarballFiles(readFileSync(join(dir, "p.tgz")))
+    assert.equal(files["register.mjs"], registerAfter)
+    assert.equal(files[long], "long\n")
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+// A property over generated files and hunks: a patch applies to the file it
+// was made from, is contained in the file it makes, and conflicts with one
+// whose changed lines are gone, whatever its lines look like ("-- x" lines
+// and comments included) and however many hunks it has.
+test("patchState holds for generated patches: applies before, contained after, conflict without either", () => {
+  let seed = 7
+  const random = (n) => {
+    seed = (seed * 1103515245 + 12345) % 2147483648
+    return seed % n
+  }
+  const shapes = [(i) => `const v${i} = ${i}`, (i) => `-- line ${i}`, (i) => `  return f(${i})`, (i) => `--- ${i}`, (i) => `+${i}`]
+  for (let run = 0; run < 300; run++) {
+    const unique = (tag) => `${shapes[random(shapes.length)](`${tag}${run}_${random(1e6)}`)}`
+    const before = Array.from({ length: 6 + random(20) }, (_, i) => unique(`b${i}_`))
+    const hunks = []
+    let line = random(3)
+    const after = before.slice(0, line)
+    while (line < before.length) {
+      const context = Math.min(1 + random(2), before.length - line)
+      const removed = Math.min(random(3), before.length - line - context)
+      const added = Array.from({ length: 1 + random(3) }, (_, i) => unique(`a${i}_`))
+      const old = before.slice(line, line + context + removed)
+      hunks.push({ oldStart: line + 1, newStart: after.length + 1, context: old.slice(0, context), removed: old.slice(context), added })
+      after.push(...old.slice(0, context), ...added)
+      line += context + removed
+      const skip = Math.min(1 + random(4), before.length - line)
+      after.push(...before.slice(line, line + skip))
+      line += skip
+    }
+    const diff = ["diff --git a/f.mjs b/f.mjs", "--- a/f.mjs", "+++ b/f.mjs", ...hunks.flatMap((h) => [
+      `@@ -${h.oldStart},${h.context.length + h.removed.length} +${h.newStart},${h.context.length + h.added.length} @@`,
+      ...h.context.map((l) => ` ${l}`), ...h.removed.map((l) => `-${l}`), ...h.added.map((l) => `+${l}`)
+    ])].join("\n") + "\n"
+    const file = (lines) => () => `${lines.join("\n")}\n`
+    const message = `run ${run}:\n${diff}`
+    assert.equal(patchState(diff, file(before)), "applies", message)
+    assert.equal(patchState(diff, file(after)), "contained", message)
+    // The release reworded every line the patch touches: neither its old lines nor its new ones are there.
+    const reworded = after.map((l) => (hunks.some((h) => h.added.includes(l) || h.context.includes(l)) ? `${l} // reworded` : l))
+    assert.equal(patchState(diff, file(reworded)), "conflict", message)
   }
 })

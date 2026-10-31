@@ -291,8 +291,8 @@ export async function upgradeEffect(options) {
     rmSync(join(t, patch.from))
   }
   const vibelang = repinVibeLang(config, manifests)
-  const written = [...new Set([...upgrade.files.map((f) => f.path), ...vibelang])]
-  const changed = [...written, ...upgrade.patches.flatMap((patch) => [patch.from, patch.to])]
+  const written = [...new Set([...upgrade.files.map((f) => f.path), ...vibelang.manifests, ...vibelang.written])]
+  const changed = [...written, ...upgrade.patches.flatMap((patch) => [patch.from, patch.to]), ...vibelang.patchFiles]
   const formatted = await formatWritten(t, written, join(logs, "upgrade-format.log"))
 
   let after = before
@@ -309,7 +309,7 @@ export async function upgradeEffect(options) {
     if (issue) appendJsonl(p.issues, issue)
     await assertPortable(t, machineRoots(t, p.run, config.toolchain.dir))
     const moved = upgrade.files.length || upgrade.patches.length
-    commit = await Jj.commit(t, moved ? `migrate(vibelang): upgrade Effect to ${to}\n\nThe VibeLang runtime requires exactly effect ${to}. Moves effect and every\n@effect/* package on its major line from ${upgrade.from} to ${to}, with overrides\nthat keep one copy installed.${vibelang.length ? " The VibeLang packages it already uses move\nto this run's release, which requires that Effect." : ""} No source file changes;\nVibeLang comes next.` : switchMessage(config))
+    commit = await Jj.commit(t, moved ? `migrate(vibelang): upgrade Effect to ${to}\n\nThe VibeLang runtime requires exactly effect ${to}. Moves effect and every\n@effect/* package on its major line from ${upgrade.from} to ${to}, with overrides\nthat keep one copy installed.${vibelang.manifests.length ? " The VibeLang packages it already uses move\nto this run's release, which requires that Effect." : ""} No source file changes;\nVibeLang comes next.` : switchMessage(config))
   }
   writeJson(join(p.baseline, "upgraded-tests.json"), { code: after.code, tests: after.tests })
   // A --base names where the run starts, so the bookmark restarts there even when an earlier run left it elsewhere.
@@ -322,7 +322,8 @@ export async function upgradeEffect(options) {
     bumped: upgrade.bumped,
     selectors: upgrade.selectors,
     patches: upgrade.patches.map(({ from, to }) => ({ from, to })),
-    vibelang,
+    vibelang: vibelang.manifests,
+    vibelangPatches: vibelang.patches,
     changed,
     formatted,
     upstreamTests: testsOf(before),
@@ -345,29 +346,94 @@ function switchMessage(config) {
  * so the new Effect under the old runtime would fail for the runtime's sake.
  * Each VibeLang package a workspace manifest depends on moves to this run's
  * version, a staged toolchain's tarballs copied where setup puts them, and
- * the manifests it changed are returned.
+ * the manifests it changed are returned, with what carryVibeLangPatches did.
  */
 function repinVibeLang(config, manifests) {
   const t = config.target
   const files = manifests.filter((path) => posix.basename(path) === "package.json").map((path) => ({ path, text: readFileSync(join(t, path), "utf8") }))
-  if (!files.some((f) => Upgrade.repinVibeLang(f.text, {}).found.length)) return []
-  let specsFor = () => ({ vibelang: config.toolchain.version, "vibelang-runtime": config.toolchain.version, "vibelang-vite": config.toolchain.version })
+  if (!files.some((f) => Upgrade.repinVibeLang(f.text, {}).found.length)) return { manifests: [], written: [], patchFiles: [], patches: [] }
+  let version = config.toolchain.version
+  let specsFor = () => ({ vibelang: version, "vibelang-runtime": version, "vibelang-vite": version, "vibelang-unplugin": version })
+  let release = () => undefined
+  const ignored = []
   if (config.toolchain.kind === "staged") {
     const toolchain = readToolchain(config.toolchain.dir)
+    version = toolchain.version
+    // A repository set up from a published VibeLang has no ignore line for the tarballs yet, and the upgrade commit would carry them.
+    const ignore = join(t, ".gitignore")
+    const ignoreText = existsSync(ignore) ? readFileSync(ignore, "utf8") : ""
+    const ignoreNext = Wire.setIgnoreLine(ignoreText, `${Wire.toolchainDirectory}/`, true)
+    if (ignoreNext !== ignoreText) {
+      writeFileSync(ignore, ignoreNext)
+      ignored.push(".gitignore")
+    }
     const local = join(t, Wire.toolchainDirectory)
     rmSync(local, { recursive: true, force: true })
     const tarballs = Wire.copyTarballs(toolchain.dir, toolchain.packages, local)
     specsFor = (dir) => Wire.toolchainSpecs(dir, tarballs)
+    release = (name) => toolchain.packages[name] && Upgrade.tarballFiles(readFileSync(join(toolchain.dir, toolchain.packages[name])))
   }
   const changed = []
+  const moved = new Map()
   for (const f of files) {
-    const next = Upgrade.repinVibeLang(f.text, specsFor(posix.dirname(f.path))).text
-    if (next !== f.text) {
-      writeFileSync(join(t, f.path), next)
+    const repinned = Upgrade.repinVibeLang(f.text, specsFor(posix.dirname(f.path)))
+    for (const { name, from } of repinned.moved) moved.set(name, new Set([...(moved.get(name) ?? []), from]))
+    if (repinned.text !== f.text) {
+      writeFileSync(join(t, f.path), repinned.text)
       changed.push(f.path)
     }
   }
-  return changed
+  const carried = carryVibeLangPatches(t, moved, version, release)
+  return { manifests: changed, ...carried, written: [...ignored, ...carried.written] }
+}
+
+/**
+ * The patched dependencies and selectors that name a VibeLang package's old
+ * version, carried to the version this run installs, which pnpm otherwise
+ * refuses as an unused patch: a patch the new release already contains goes,
+ * with its file; one that still applies moves to the new version, as
+ * Effect's do; one that does neither stops the upgrade for a person to
+ * update. release(name) gives the new release's files, or undefined for a
+ * published version, whose patches move. moved maps each package to its old
+ * versions.
+ */
+function carryVibeLangPatches(t, moved, version, release) {
+  const written = []
+  const patchFiles = []
+  const patches = []
+  for (const path of ["pnpm-workspace.yaml", "package.json"]) {
+    const file = join(t, path)
+    if (!moved.size || !existsSync(file)) continue
+    const before = readFileSync(file, "utf8")
+    let text = before
+    for (const entry of Upgrade.patchedDependencies(path, before)) {
+      if (!moved.get(entry.name)?.has(entry.version) || entry.version === version) continue
+      const files = release(entry.name)
+      const state = files ? Upgrade.patchState(readFileSync(join(t, entry.patch), "utf8"), (p) => files[p]) : "applies"
+      const record = { key: entry.key, patch: entry.patch, release: `${entry.name}@${version}` }
+      if (state === "conflict") throw new Error(`${entry.patch} patches ${entry.key}, and ${entry.name}@${version} neither has the lines it changes nor its change: update the patch for ${entry.name}@${version}, or delete it, then run upgrade-effect again`)
+      if (state === "contained") {
+        text = Upgrade.dropPatchedDependency(path, text, entry.key)
+        rmSync(join(t, entry.patch))
+        patchFiles.push(entry.patch)
+        patches.push({ ...record, outcome: "dropped: the release contains it" })
+      } else {
+        patches.push({ ...record, outcome: "moved" })
+      }
+    }
+    const carried = Upgrade.carrySelectors(text, moved, version)
+    for (const patch of carried.patches) {
+      writeFileSync(join(t, patch.to), Upgrade.carryPatch(readFileSync(join(t, patch.from), "utf8"), patch.versions, version))
+      rmSync(join(t, patch.from))
+      patchFiles.push(patch.from, patch.to)
+      for (const p of patches) if (p.patch === patch.from && p.outcome === "moved") p.outcome = `moved to ${patch.to}`
+    }
+    if (carried.text !== before) {
+      writeFileSync(file, carried.text)
+      written.push(path)
+    }
+  }
+  return { written, patchFiles, patches }
 }
 
 /** Sets VibeLang up in the target: dependencies, scripts, the Vite plugin, tsconfigs and the declaration sidecars' format ignore. Returns what it changed. */
