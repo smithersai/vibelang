@@ -1669,7 +1669,10 @@ func (c *Checker) checkGrammarAwaitOrAwaitUsing(node *ast.Node) bool {
 		}
 		c.error(node, message)
 		hasError = true
-	} else if node.Flags&ast.NodeFlagsAwaitContext == 0 {
+	} else if node.Flags&ast.NodeFlagsAwaitContext == 0 ||
+		ast.IsInTopLevelContext(node) && ast.GetSourceFileOfNode(node).FileName().ExtensionIs(tspath.ExtensionVibe) {
+		// VIP-26 validates module/target options for every native top-level
+		// await in .vibe, including nodes reparsed with AwaitContext.
 		if ast.IsInTopLevelContext(node) {
 			sourceFile := ast.GetSourceFileOfNode(node)
 			if !c.hasParseDiagnostics(sourceFile) {

@@ -1,0 +1,7 @@
+{
+  "type": "commonjs",
+  "dependencies": {
+    "effect": "4.1.0",
+    "vibelang-runtime": "0.0.1"
+  }
+}

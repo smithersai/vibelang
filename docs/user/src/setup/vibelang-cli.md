@@ -33,6 +33,8 @@ Ordinary relative config paths stay relative to the config that declares them. I
 
 Every source `.vibe` file has its own module scope, including when `moduleDetection` is `"legacy"` or both `vibe.effectGlobals` and `vibe.effectModules` are `false`. Share a value through an explicit `export` and `import`. The option retains its TypeScript meaning for `.ts` and `.js` files.
 
+Top-level `await` keeps its module and target requirements for unary and multiline operands too. An unsupported target reports `TS1378`; CommonJS output under `module: "NodeNext"` reports `TS1309`.
+
 ### Inspect or initialize configuration
 
 - `vibelang --init` creates TypeScript's generic `tsconfig.json`. For an ESM project, set `"type": "module"` in `package.json`; then adapt `include` and the output options as above. The initializer does not create VibeLang's package setup.

@@ -1,0 +1,4 @@
+// expect: TS1378
+export {}
+const value = await
+ 1

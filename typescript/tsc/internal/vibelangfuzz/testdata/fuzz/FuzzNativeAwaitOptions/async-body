@@ -1,0 +1,4 @@
+go test fuzz v1
+string("async-body")
+byte('\x00')
+byte('\x00')

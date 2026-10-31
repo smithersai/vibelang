@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "moduleDetection": "force",
+    "skipLibCheck": true,
+    "types": [],
+    "rewriteRelativeImportExtensions": true,
+    "outDir": "out"
+  },
+  "include": [
+    "*.vibe"
+  ],
+  "vibe": {
+    "effectGlobals": false,
+    "effectModules": false
+  }
+}
