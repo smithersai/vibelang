@@ -70,6 +70,8 @@ var runningRules = []struct{ key, quote, good, bad string }{
 	{"fork-scoped-requirement", "adds `Scope` to R", "import type { Fiber, Scope } from \"effect\"; effect function f(): Effect.Effect<Fiber.Fiber<number>, never, Scope.Scope> { return fork.scoped Effect.succeed(1) }", "import type { Fiber } from \"effect\"; effect function f(): Effect.Effect<Fiber.Fiber<number>, never, never> { return fork.scoped Effect.succeed(1) }"},
 	{"concurrent-expression-body", "`for concurrent (const x of xs) (try f(x));` has no limit", "effect function f() { let n = 0; for concurrent (const x of [1, 2]) (try Effect.sync(() => { n += x })); return n }", "effect function f() { for concurrent(1)(2)(const x of [1]) { } }"},
 	{"restore-plain-boundary", "`uninterruptible { }`, `interruptible { }` or `restore { }` outside effect code", "function f() { return 1 }", "function f() { uninterruptible { restore { } } }"},
+	// foldkit-15: an Effect argument whose success is a function stays that Effect; its function is not called as a thunk.
+	{"effect-argument-function-success", "Calls retain ordinary JavaScript evaluation", "import type { Scope } from \"effect\"; const takes = (e: (() => number)!!): number => 1; effect function f(): number!never!Scope.Scope { const detach = try Effect.acquireRelease(Effect.sync((): (() => number) => (): number => 1), (release) => Effect.sync(release)); return detach() + takes(Effect.sync((): (() => number) => (): number => 1)) }", "const takes = (e: (() => number)!!): number => 1; effect function f() { return takes(Effect.sync((): number => 1)) }"},
 }
 
 func runningRulesChapter(f testing.TB) string {

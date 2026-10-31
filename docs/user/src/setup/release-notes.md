@@ -150,6 +150,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The migrate flow's `upgrade-effect` reinstalled with pnpm only, leaving a `bun.lock` kept beside `pnpm-lock.yaml` on the old Effect and VibeLang, and wrote a new override such as `@effect/sql-pg` to `pnpm-workspace.yaml` alone, single-quoted, although Smithers mirrors it in `package.json` with double quotes; each install now also rewrites the other lockfiles, and a new override goes to every overrides table in the quoting beside it.
 
+- An Effect whose success is a function, written where an Effect is expected, was run and its function called as a thunk: `Effect.acquireRelease(Effect.sync(() => detach), (release) => Effect.sync(release))` acquired `void` and reported `TS2345`. Such an argument is now passed as the Effect, and the function is its result.
+
 - The release rehearsal stopped at its Vite warning check because it expected a retired nondeterminism diagnostic and used deprecated configuration; it now checks the assigned `EK4833` warning and verifies that Vite emits the bundle with `noEmitOnError`.
 
 - In a project with no `declaration` setting, an export whose inferred type was too long to serialize (`TS7056`) got only a warning, and its declaration sidecar held `any` in place of the type, so a stock `tsc` consumer lost its types without an error; it is an error again, as it is where the project emits declarations.

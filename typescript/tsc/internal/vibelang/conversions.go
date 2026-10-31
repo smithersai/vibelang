@@ -289,7 +289,11 @@ func (a *analyzer) convert(node *ast.Node, t *checker.Type, position valuePositi
 			return convertPrograms, converted
 		}
 	}
-	if position.program && !position.plainFn && !position.effectFn {
+	// A function value is adopted; an expression that runs an Effect whose
+	// success is a function is passed by name below, and that function is its
+	// result (D147): Effect.acquireRelease(Effect.sync(() => detach), …)
+	// acquires detach, it does not call it (foldkit-15).
+	if position.program && !position.plainFn && !position.effectFn && !a.pauses(node) {
 		signatures := a.checker.GetSignaturesOfType(t, checker.SignatureKindCall)
 		if len(signatures) == 1 && signatures[0].MinArgumentCount() == 0 && len(signatures[0].TypeParameters()) == 0 {
 			returned := a.checker.GetReturnTypeOfSignature(signatures[0])

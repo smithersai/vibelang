@@ -1,0 +1,23 @@
+// expect-result: {"value":"detached","held":"held","events":["acquired","released"]}
+// An expression that runs an Effect whose success is a function, written where
+// an Effect is expected, is passed by name (D147): the function is its result,
+// not a thunk to call. foldkit-15: port.vibe acquires a channel subscription
+// whose resource is the function that detaches it.
+const events: Array<string> = []
+
+const takes = (program: (() => string)!!): (() => string)!! => program
+
+export effect function main() {
+  const value = try Effect.scoped(effect {
+    const detach = try Effect.acquireRelease(
+      Effect.sync((): (() => string) => {
+        events.push("acquired")
+        return (): string => "detached"
+      }),
+      (release) => Effect.sync(() => { events.push("released"); release() }),
+    )
+    return detach()
+  })
+  const held = try takes(Effect.sync((): (() => string) => (): string => "held"))
+  return { value, held: held(), events }
+}
