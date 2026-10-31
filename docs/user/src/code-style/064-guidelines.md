@@ -39,7 +39,6 @@ A runner also works in a plain framework callback registered from the module's t
 
 ```vibe
 // main.vibe
-// pending: VIP-1, VIP-5, VIP-14, VIP-26
 import { BunRuntime } from "@effect/platform-bun"
 
 effect function main() {

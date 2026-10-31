@@ -64,7 +64,6 @@ export type Model = typeof Model.Type
 ```
 
 ```vibe
-// pending: VIP-15
 export schema Todo { readonly id: number; readonly text: string; readonly done: boolean }
 
 export schema Model {
@@ -94,7 +93,6 @@ export const quoteOrFallback = (url: string) =>
 ```
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14, VIP-15, VIP-33
 schema Quote { readonly text: string }
 
 effect function loadQuote(url: string) {

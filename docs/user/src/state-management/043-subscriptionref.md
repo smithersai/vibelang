@@ -5,7 +5,6 @@ A `SubscriptionRef` combines shared state with a stream of changes. Use it for o
 ## Combining state with subscriptions
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: const progress = try makeProgress(); try advance(progress); { const jsonValue = try SubscriptionRef.get(progress); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function makeProgress() {
   return try SubscriptionRef.make({ completed: 0, total: 12 })
@@ -28,7 +27,6 @@ Running the creation Effect sets the reference's initial state. An update throug
 ## Reading and updating observable state
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: { const jsonValue = try renameStatus(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function renameStatus() {
   const status = try SubscriptionRef.make("starting")
@@ -46,7 +44,6 @@ effect function renameStatus() {
 ## Consuming current and future values
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: { const jsonValue = try currentSnapshot(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function currentSnapshot() {
   const count = try SubscriptionRef.make(7)

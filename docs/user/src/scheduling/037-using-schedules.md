@@ -5,7 +5,6 @@ A schedule decides when work runs again and when it stops. `Schedule` values wor
 ## Repeating successful computations
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-17
 // run: provide TestClock.layer() { const worker = fork heartbeat(); try TestClock.adjust("46 seconds"); try Fiber.interrupt(worker) }
 effect function heartbeat() {
   try repeat(
@@ -24,7 +23,6 @@ effect function heartbeat() {
 ## Stopping based on a result
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try waitForBuild(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function waitForBuild() {
   let checks = 0
@@ -65,7 +63,6 @@ effect function delayedCleanup() {
 ## Retrying failed computations
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
 // run: try Console.log(try reserveSlot())
 error Busy
 
@@ -86,7 +83,6 @@ effect function reserveSlot() {
 ## Handling failures while repeating
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-3, VIP-4, VIP-5, VIP-6, VIP-7, VIP-9, VIP-12, VIP-13, VIP-14, VIP-17
 // run: let reads = 0; provide Layer.mergeAll(TestClock.layer(), Layer.succeed(Sensor, { read: effect () => { reads++; if (reads !== 2) throw new SensorOffline(); return 22 } })) { const worker = fork sampleContinuously(); try TestClock.adjust("11 seconds"); try Fiber.interrupt(worker) }
 error SensorOffline
 

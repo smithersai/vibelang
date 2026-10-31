@@ -7,7 +7,6 @@ Matching turns an outcome into one value or selects the next computation. Use ty
 ## Folding success and failure into values
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-13, VIP-14
 // run: try Console.log(try countLabel(3)); try Console.log(try countLabel(-1))
 error InvalidCount
 

@@ -5,7 +5,6 @@ Operators build a new description of how to process a source. Keep pure transfor
 ## Observing and taking elements
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-12, VIP-14
 // run: try Effect.provide(effect { { const jsonValue = try readFirst(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; provide Logger.layer([]) { { const jsonValue = [try Stream.runCollect(below), try Stream.runCollect(through), try Stream.runCollect(last)]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } } }, Logger.layer([Logger.withConsoleLog(Logger.make(({ message }) => (message as unknown[])[0]))]))
 const observed = Stream.tap(Stream.range(10, 18), (n) => log(`reading ${n}`))
 const first = Stream.take(observed, 3)
@@ -50,7 +49,6 @@ export function countRows(rows: AsyncIterable<string>): Effect.Effect<number, Er
 ```
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-5, VIP-9, VIP-12, VIP-14
 // run: provide Exporter = { write: (rows) => countRows(rows) } { try Console.log(try exportRows(Stream.make("a", "b"))) }
 import { countRows } from "./exporter.js"
 
@@ -91,7 +89,6 @@ effect function printBatches() {
 ## Mapping, flattening, and state
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = [try Stream.runCollect(labels), try Stream.runCollect(upper), try Stream.runCollect(signals), try Stream.runCollect(words), try Stream.runCollect(totals)]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function loadLabel(id: number) {
   try sleep("10 millis")
@@ -119,7 +116,6 @@ const totals = Stream.mapAccum(Stream.make(4, 7, 9), () => 0, (total, n) => {
 ## Filtering, scanning, and changes
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try inspect(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const readings = Stream.make(2, 2, 5, 5, 2)
 const large = Stream.filter(readings, (n) => n >= 5)
@@ -141,7 +137,6 @@ effect function inspect() {
 ## Zipping and indexing
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = [try readPairs(), try Stream.runCollect(descriptions), try Stream.runCollect(indexed), (try Stream.runCollect(neighbors)).map(([previous, value, next]) => [Option.getOrNull(previous), value, Option.getOrNull(next)])]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const sizes = Stream.make(5, 8, 13)
 const names = Stream.make("small", "large")
@@ -163,7 +158,6 @@ For sources with different rates, `zipLatest` waits until both sides produce, th
 ## Cartesian products
 
 ```vibe
-// pending: VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = [try Stream.runCollect(variants), try Stream.runCollect(names)]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const variants = Stream.cross(Stream.make("linen", "wool"), Stream.make("blue", "gray"))
 const names = Stream.crossWith(
@@ -197,7 +191,6 @@ effect function partitionReadings() {
 `try Stream.partition(source, filter, options)` runs one source and returns the passing and failing streams, in that order. It is an Effect that requires Scope: keep both consumers within `scoped(effect { … })` and run them concurrently, since a full, unconsumed branch can backpressure the other. `partitionEffect` takes a `Filter.FilterEffect`; its Result's successes go to the passing branch, failures to the other.
 
 ```vibe
-// pending: VIP-2, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = [(try Stream.runCollect(summaries)).sort((a, b) => a.region.localeCompare(b.region)), try Stream.runCollect(batches), try Stream.runCollect(timedBatches)]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const requests = Stream.make(
   { region: "west", bytes: 10 },
@@ -220,7 +213,6 @@ const timedBatches = Stream.groupedWithin(requests, 20, "1 second")
 ## Concatenating, merging, and interleaving
 
 ```vibe
-// pending: VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = [try Stream.runCollect(sequential), try Stream.runCollect(flattened), try Stream.runCollect(expanded), (try Stream.runCollect(merged)).sort(), try Stream.runCollect(alternating), try Stream.runCollect(selected)]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const primary = Stream.make("a1", "a2")
 const secondary = Stream.make("b1", "b2", "b3")
@@ -242,7 +234,6 @@ const selected = Stream.interleaveWith(primary, secondary, Stream.make(true, fal
 ## Separators and affixes
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try Stream.mkString(separated)); try Console.log(try formatFields())
 const fields = Stream.make("name", "email", "role")
 const separated = Stream.intersperse(fields, ",")
@@ -299,7 +290,6 @@ const buffered = Stream.buffer(Stream.range(1, 12), { capacity: 3 })
 ## Debouncing and throttling
 
 ```vibe
-// pending: VIP-2, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = [try Stream.runCollect(settled), try Stream.runCollect(paced)]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const bursts = Stream.concat(Stream.make("c", "ca", "cat"), Stream.fromEffect(effect {
   try sleep("300 millis")
@@ -324,7 +314,6 @@ const paced = Stream.range(1, 10).pipe(
 ## Scheduling delivery
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: try announce()
 const announcements = Stream.schedule(
   Stream.make("prepare", "deploy", "verify"),

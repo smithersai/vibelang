@@ -5,7 +5,6 @@
 ## Constructing finite and infinite durations
 
 ```vibe
-// pending: VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = [String(try Effect.try(() => Duration.toNanosUnsafe(small))), String(try Effect.try(() => Duration.toNanosUnsafe(micro))), Duration.toMillis(polling), Duration.toSeconds(budget), Duration.toMinutes(session), Duration.toHours(shift), Duration.toDays(retention), Duration.toWeeks(fortnight), String(unbounded), Duration.toSeconds(negative)]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const small = Duration.nanos(750n)
 const micro = Duration.micros(20n)
@@ -26,7 +25,6 @@ const negative = Duration.seconds(-2)
 Constructors name the unit at the call site. `infinity` is an unbounded positive span and `negativeInfinity` its negative counterpart. A day is a fixed 24 hours, not a calendar day across daylight saving changes.
 
 ```vibe
-// pending: VIP-4, VIP-5, VIP-6, VIP-14
 // run: try Console.log(Duration.toMillis(milliseconds), String(try Effect.try(() => Duration.toNanosUnsafe(nanoseconds))), Duration.toSeconds(text), Option.isSome(checked), Option.isNone(Duration.fromInput("invalid" as Duration.Input)))
 const milliseconds = Duration.fromInputUnsafe(240)
 const nanoseconds = Duration.fromInputUnsafe(240n)
@@ -43,7 +41,6 @@ const checked = Duration.fromInput("3 seconds")
 ## Extracting values in chosen units
 
 ```vibe
-// pending: VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = [Duration.toMillis(delay), Duration.toSeconds(delay), Duration.toMinutes(delay), Duration.toHours(delay), Duration.toDays(Duration.weeks(1)), Duration.toWeeks(Duration.days(14)), String(try Effect.try(() => Option.getOrThrow(Duration.toNanos(Duration.millis(3))))), Option.isNone(Duration.toNanos(Duration.infinity))]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const delay = Duration.minutes(2)
 Duration.toMillis(delay) // 120000
@@ -65,7 +62,6 @@ Numeric conversions return a number in the requested unit. `toNanos` returns an 
 ## Comparing durations
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(Duration.isLessThan(elapsed, budget), Duration.isLessThanOrEqualTo(elapsed, elapsed), Duration.isGreaterThan(budget, elapsed), Duration.isGreaterThanOrEqualTo(budget, budget), Duration.equals(Duration.seconds(1), Duration.millis(1000)))
 const elapsed = Duration.seconds(9)
 const budget = Duration.seconds(12)
@@ -85,7 +81,6 @@ Comparison uses the elapsed span, whatever the constructor. Compare durations di
 ## Adding and scaling durations
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-17, VIP-33
 // run: provide TestClock.layer() { try TestClock.setTime(0); const waiting = fork waitBeforeRetry(); try TestClock.adjust("9 seconds"); join waiting; try Console.log(Duration.toMillis(doubled), try Clock.currentTimeMillis) }
 const attempt = Duration.seconds(4)
 const overhead = Duration.millis(500)
@@ -107,7 +102,6 @@ effect function waitBeforeRetry() {
 ## Converting and formatting
 
 ```vibe
-// pending: VIP-4, VIP-5, VIP-6, VIP-14
 // run: try Console.log(Duration.format(Duration.millis(6250)), String(Duration.infinity), String(try Effect.try(() => Duration.toNanosUnsafe(Duration.millis(2)))))
 Duration.format(Duration.millis(6250)) // "6s 250ms"
 String(Duration.infinity) // "Infinity"

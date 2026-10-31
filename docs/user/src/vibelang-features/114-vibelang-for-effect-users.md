@@ -3,7 +3,6 @@
 Keep Effect's runtime, libraries, layers, and error channels; in `.vibe` files, write sequential work as effect functions and statements. The [cheat sheet](115-cheat-sheet.md) shows every change beside its Effect code, and the [specification](../../../design/src/000-intro.md) gives the rules behind each.
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try main())
 effect function greet(name: string) {
   try sleep("10 millis")
@@ -80,7 +79,6 @@ A service is Effect's own `Context.Service` class, so TypeScript sees the same t
 
 ```vibe
 // users.vibe
-// pending: VIP-3, VIP-9, VIP-13
 export error NotFound { id: string }
 export service Users { find(id: string): string!NotFound; readonly region: string }
 ```
@@ -191,7 +189,6 @@ An effect function call constructs an Effect. `try` runs it at that point. `try.
 When TypeScript captures configuration before returning an Effect, keep that phase in a plain function with a declared Effect return and return an Effect value:
 
 ```vibe
-// pending: VIP-2
 export const capture = (input: { value: number }): Effect.Effect<number, never, never> => {
   const snapshot = input.value
   return effect { return snapshot }
@@ -295,7 +292,6 @@ Effect-contracted calls were in the same order of cost as `Effect.fn` generators
 ## Catch expected failures only
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-7, VIP-13, VIP-14
 // run: { const jsonValue = [try displayName("ada"), try displayName("missing")]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 error Missing { id: string }
 

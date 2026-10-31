@@ -102,7 +102,6 @@ The module top level constructs schemas, routes, and layers. Start the applicati
 
 ```vibe
 // start.vibe
-// pending: VIP-26
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import { main } from "./server.vibe"
 

@@ -92,7 +92,6 @@ In tests, `Experimental.FileSystem.layerNoop({ ... })` provides a stub for both 
 Effect 4.1's `Mac` and `Signature` services do the same work with opaque keys, so new code can use them; this service stays for code written against it. The signature algorithms are `"ECDSA-P256-SHA256"`, whose signatures are 64 bytes, r then s, as WebCrypto writes them, and `"Ed25519"`. A key of the wrong kind fails with `BadArgument`, whose message names no key bytes. Secret keys are `Redacted`, so logs and errors print `<redacted>`. One WebCrypto implementation serves every platform.
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-12, VIP-14, VIP-33
 // run: provide ExperimentalNodeServices.layer { try Console.log(try signature(Redacted.make(new TextEncoder().encode("Jefe")), "what do ya want for nothing?")) }
 import { ExperimentalNodeServices } from "vibelang-runtime/experimental/platform-node"
 

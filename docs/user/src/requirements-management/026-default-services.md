@@ -27,7 +27,6 @@ effect function stringify(value: unknown) {
 Default references include `Clock.Clock`, `ConfigProvider.ConfigProvider`, `Console.Console`, `Random.Random`, `Tracer.Tracer`, and `Scheduler.Scheduler`; their modules need no import in `.vibe` files. These defaults are why the example's `R` is `never` though it reads time and random state.
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-12, VIP-14
 // run: provide ConfigProvider.layer(ConfigProvider.fromUnknown({})) { try Console.log(try configuredPort()) }
 const Port = Config.withDefault(Config.Port("PORT"), 3000)
 
@@ -59,7 +58,6 @@ effect function fixedRandomSample() {
 An override holds across pauses, is inherited by new child fibers, and leaves unrelated programs unchanged. Prefer a module helper when it supplies the behavior without implementing a whole service.
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-9, VIP-12, VIP-14
 // run: try Console.log(try defaultLabel(17)); provide DisplaySettings = { prefix: "Order" } { try Console.log(try defaultLabel(17)) }
 service DisplaySettings {
   prefix: string

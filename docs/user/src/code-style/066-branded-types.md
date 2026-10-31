@@ -5,7 +5,6 @@
 ## Distinguishing identical representations
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(invoiceUrl("inv-3" as InvoiceId), customerUrl("customer-5" as CustomerId))
 type InvoiceId = string & Brand.Brand<"InvoiceId">
 type CustomerId = string & Brand.Brand<"CustomerId">

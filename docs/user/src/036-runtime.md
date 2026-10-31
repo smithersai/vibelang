@@ -24,7 +24,6 @@ Calling an effect function returns an unrun Effect. `try` inside `operation` run
 ## Run with an explicit service context
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-5, VIP-9, VIP-14, VIP-26
 // run: try Console.log(result)
 service Labels {
   format(value: string): string!!
@@ -74,7 +73,6 @@ For another format, supply a logger such as `Logger.consoleJson` through `Logger
 ## Replace a runtime service for a block
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-5, VIP-12, VIP-14
 // run: try Console.log(try roll())
 const seeded = { nextIntUnsafe: (): number => 4, nextDoubleUnsafe: (): number => 0.5 }
 

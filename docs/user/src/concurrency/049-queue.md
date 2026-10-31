@@ -5,7 +5,6 @@ A `Queue` passes values between fibers, delivering each offered value to one con
 ## Choosing an overflow strategy
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: const queues = try chooseQueues(); try Console.log(queues.jobs.capacity, queues.optionalEvents.capacity, queues.recentPositions.capacity, queues.unrestricted.capacity)
 effect function chooseQueues() {
   const jobs = try Queue.bounded<string>(32)
@@ -122,7 +121,6 @@ Ordinary block exit doesn't close a queue. When consumers and producers must sto
 ## Restricting producer and consumer capabilities
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try handoff())
 effect function send(outbox: Queue.Enqueue<string>, message: string) {
   return try Queue.offer(outbox, message)

@@ -7,7 +7,6 @@ Call a runner at module top level, in an `async` function, in a plain function (
 An effect function at the top level builds an Effect without running it:
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 export const migrate = effect () => {
   try Console.log("migrating")
 }
@@ -18,7 +17,6 @@ Importing this module prints nothing. Calling `migrate()` builds an Effect; run 
 An object-literal field can hold an effect function:
 
 ```vibe
-// pending: VIP-1, VIP-3
 interface Journal { read(): number!! }
 const makeNoop = (): Journal => ({ read: effect () => 0 })
 ```
@@ -45,7 +43,6 @@ The starter's `main.vibe` exports an effect function named `main` and calls `Nod
 ## Execute synchronous computations
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14, VIP-26
 // run: try Console.log(total)
 effect function subtotal() {
   return 7 * 8
@@ -99,7 +96,6 @@ An `Exit` is a success with a value or a failure with a `Cause`, which keeps exp
 ## Start and interrupt a fiber
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: try Console.log(Exit.isFailure(try Fiber.await(running)))
 effect function heartbeat() {
   try repeat(log("alive"), Schedule.spaced("200 millis"))
@@ -120,7 +116,6 @@ The empty logger layer keeps this heartbeat quiet. `Effect.runFork` returns a ru
 
 ```vibe
 // main.vibe
-// pending: VIP-1, VIP-5, VIP-14, VIP-26
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 
 export effect function main() {

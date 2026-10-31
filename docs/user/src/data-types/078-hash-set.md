@@ -30,7 +30,6 @@ Immutable updates keep earlier versions, so snapshots suit sharing between fiber
 ## Equality and uniqueness
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(Equal.equals(a, b), HashSet.size(HashSet.make(a, b)), new Set([a, b]).size)
 const a = { region: "west", active: true }
 const b = { region: "west", active: true }
@@ -48,7 +47,6 @@ Plain objects compare structurally in Effect 4.1.1, so separately allocated reco
 ## Constructing and changing immutable sets
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify([Array.from(initial).sort(Order.Number), Array.from(changed).sort(Order.Number), Array.from(together).sort(Order.Number), Array.from(common).sort(Order.Number), Array.from(exclusive).sort(Order.Number), Array.from(large).sort(Order.Number), Array.from(labels).sort(), sum, HashSet.size(empty)])))
 const empty = HashSet.empty<number>()
 const initial = HashSet.fromIterable([2, 4, 4, 6])
@@ -71,7 +69,6 @@ const sum = HashSet.reduce(initial, 0, (total, n) => total + n)
 ## Querying membership and size
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(HashSet.has(allowed, "write"), HashSet.size(allowed), HashSet.some(allowed, (name) => name.startsWith("a")), HashSet.every(allowed, (name) => name.length > 0), HashSet.isSubset(HashSet.make("read"), allowed))
 const allowed = HashSet.make("read", "write", "audit")
 HashSet.has(allowed, "write") // true
@@ -90,7 +87,6 @@ true 3 true true true
 ## Updating mutable sets
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: const result = uniqueRegions(["west", "west", ""]); try Console.log(result.count, result.containsUnknown, try Effect.try(() => JSON.stringify(result.values.sort())))
 function uniqueRegions(regions: ReadonlyArray<string>) {
   const seen = MutableHashSet.fromIterable(regions)
@@ -135,7 +131,6 @@ Persistent sets share storage between versions; mutable sets skip that allocatio
 ## Converting to JavaScript collections
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify([array.sort(), copy.sort(), Array.from(native).sort()]))); try report()
 const regions = HashSet.make("west", "east")
 const array = Array.from(regions)

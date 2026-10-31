@@ -283,7 +283,6 @@ A type parameter with a finite constraint is checked over that constraint: `T ex
 A missing case is a compile error, EK4701, `This match does not handle every case of {type}: {cases} is left.`:
 
 ```vibe
-// pending: VIP-7
 // expect-error: EK4701
 type Phase = "draft" | "review" | "published"
 
@@ -302,7 +301,6 @@ error EK4701: This match does not handle every case of Phase: "review" is left.
 For a data type, the message names the variants left:
 
 ```vibe
-// pending: VIP-7, VIP-16
 // expect-error: EK4701
 data Shipment {
   Packed
@@ -324,7 +322,6 @@ error EK4701: This match does not handle every case of Shipment: Shipment.Shippe
 Each error tag in a finite union needs coverage:
 
 ```vibe
-// pending: VIP-7, VIP-13
 // expect-error: EK4701
 error Missing { path: string }
 error Other { code: string }

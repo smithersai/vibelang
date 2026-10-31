@@ -5,7 +5,6 @@
 ## Requesting the path service
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-12, VIP-14, VIP-33
 // run: provide NodePath.layer { try Console.log(try pathSeparator()) }
 import * as NodePath from "@effect/platform-node/NodePath"
 
@@ -21,7 +20,6 @@ effect function pathSeparator() {
 ## Manipulating paths portably
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-12, VIP-14, VIP-33
 // run: provide NodePath.layer { { const jsonValue = try describeReport(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }
 import * as NodePath from "@effect/platform-node/NodePath"
 
@@ -57,7 +55,6 @@ Most `Path` methods are plain synchronous TypeScript functions. Getting the serv
 | `toFileUrl`, `fromFileUrl` | Effectful file-URL conversion |
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-12, VIP-14, VIP-33
 // run: provide NodePath.layer { try Console.log(try asFileUrl("/reports/weekly.txt")) }
 import * as NodePath from "@effect/platform-node/NodePath"
 
@@ -76,7 +73,6 @@ URL conversions return Effects, run with `try`, and report `BadArgument` on inva
 
 ```vibe
 // main.vibe
-// pending: VIP-1, VIP-5, VIP-14, VIP-26, VIP-33
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import * as NodePath from "@effect/platform-node/NodePath"
 

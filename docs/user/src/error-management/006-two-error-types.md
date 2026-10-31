@@ -7,7 +7,6 @@ A missing record and a broken invariant need different responses: VibeLang track
 ## Separating failures from defects
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-13, VIP-14
 // run: try Console.log(try displayPrice("notebook")); try Console.log(try displayPrice("pen"))
 error UnknownProduct {
   sku: string

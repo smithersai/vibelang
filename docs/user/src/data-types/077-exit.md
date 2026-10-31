@@ -5,7 +5,6 @@
 ## Representing full outcomes
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
 // run: try Console.log(try inspectExport())
 error ExportRejected {
   reason: string
@@ -55,7 +54,6 @@ true true true
 ## Matching exit variants
 
 ```vibe
-// pending: VIP-5, VIP-7, VIP-14
 // run: try Console.log(describe(Exit.succeed(12))); try Console.log(describe(Exit.failCause(Cause.empty)) === "")
 function describe<A, E>(outcome: Exit.Exit<A, E>) {
   return match (outcome) {
@@ -94,7 +92,6 @@ An exit carries roughly the information of `Result.Result<A, Cause.Cause<E>>`; a
 ## Relating exits to effects
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try replay(Exit.succeed(12))); const failed = try exit(replay(Exit.failCause(Cause.combine(Cause.fail("rejected"), Cause.die("broken"))))); if (Exit.isFailure(failed)) try Console.log(try Effect.try(() => JSON.stringify(failed.cause.reasons.map((reason) => reason._tag))))
 effect function replay<A, E>(outcome: Exit.Exit<A, E>) {
   return try outcome

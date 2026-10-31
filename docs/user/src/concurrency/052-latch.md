@@ -5,7 +5,6 @@ A latch is a reusable gate for fibers: closed, it makes callers wait; open, it l
 ## Waiting at a reusable gate
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-17
 // run: try Console.log(try initializeThenWork())
 effect function initializeThenWork() {
   const ready = try Latch.make()
@@ -25,7 +24,6 @@ effect function initializeThenWork() {
 ## Opening and closing
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-14, VIP-17
 // run: try Console.log(try reopenGate())
 effect function reopenGate() {
   const gate = try Latch.make(true)
@@ -43,7 +41,6 @@ Opening releases current waiters and lets future callers through. Closing makes 
 ## Choosing the initial state
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: const gates = try createGates(); try Console.log(Latch.isOpen(gates.starting), Latch.isOpen(gates.paused), Latch.isOpen(gates.active))
 effect function createGates() {
   const starting = try Latch.make()      // Closed by default.
@@ -59,7 +56,6 @@ Create the latch once and share it with every operation the condition controls. 
 ## Choosing a latch or a permit pool
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: try gatedExclusiveWork()
 effect function gatedExclusiveWork() {
   const initialized = try Latch.make(true)

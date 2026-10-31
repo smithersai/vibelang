@@ -5,7 +5,6 @@ Effect's structured logging records progress, failures, and diagnostic context. 
 ## Emitting structured records
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-12, VIP-14
 // run: const records: unknown[] = []; const capture = Logger.make(({ logLevel, message }) => { records.push([logLevel, message]) }); provide Logger.layer([capture]) { try reportProgress() }; try Console.log(try stringify(records))
 effect function reportProgress() {
   try log("export started", { format: "csv", stage: "prepare" })

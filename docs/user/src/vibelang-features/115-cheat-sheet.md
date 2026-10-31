@@ -64,7 +64,6 @@ class Timeout extends Data.TaggedError("Timeout") {}
 ```
 
 ```vibe es
-// pending: VIP-13
 error Missing { id: string }
 error Timeout
 ```
@@ -89,7 +88,6 @@ class Refused extends Failure {
 ```
 
 ```vibe es
-// pending: VIP-5, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify([new Invalid(" x ").label, new Refused({ code: "r" })._tag])))
 class Invalid extends Data.TaggedError("Invalid")<{ readonly code: string }> {
   constructor(input: string) {
@@ -115,7 +113,6 @@ class Stored extends Schema.TaggedError<Stored>()("Stored", { key: Schema.String
 ```
 
 ```vibe es
-// pending: VIP-29
 schema error Stored { key: string; attempts?: number }
 ```
 
@@ -151,7 +148,6 @@ class Prefix extends Context.Service<Prefix, string>()("app/Prefix") {}
 ```
 
 ```vibe es
-// pending: VIP-3, VIP-14
 interface SearchApi {
   find(query: string): string!!
 }
@@ -197,7 +193,6 @@ type Account = typeof Account.Type
 ```
 
 ```vibe es
-// pending: VIP-5, VIP-14, VIP-15
 // run: { const jsonValue = try Schema.decodeUnknownEffect(Account)({ id: "1", role: "admin" }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 schema Account {
   readonly id: string
@@ -217,7 +212,6 @@ type Role = typeof Role.Type
 ```
 
 ```vibe es
-// pending: VIP-5, VIP-14, VIP-15
 // run: try Console.log(Schema.is(Role)("admin")); try Console.log(Schema.is(Role)("owner"))
 schema Role = "admin" | "member"
 // Output: true
@@ -237,7 +231,6 @@ const Delivery = Data.taggedEnum<Delivery>()
 ```
 
 ```vibe es
-// pending: VIP-5, VIP-14, VIP-16
 // run: try Console.log(try Effect.try(() => JSON.stringify([Delivery.Waiting(), Delivery.Sent({ tracking: "parcel-8" })])))
 data Delivery {
   Waiting
@@ -338,7 +331,6 @@ const roll = Random.nextInt.pipe(
 ```
 
 ```vibe es
-// pending: VIP-1, VIP-3, VIP-5, VIP-12, VIP-14
 // run: try Console.log(try roll())
 const seeded = { nextIntUnsafe: (): number => 4, nextDoubleUnsafe: (): number => 0.5 }
 
@@ -580,7 +572,6 @@ const ready = Console.log(Hex.encode("ready"))
 ```
 
 ```vibe es
-// pending: VIP-1, VIP-5, VIP-14, VIP-33
 // run: try ready()
 effect function ready() {
   try Console.log(Hex.encode("ready"))
@@ -644,7 +635,6 @@ const hot = Stream.take(
 ```
 
 ```vibe es
-// pending: VIP-5, VIP-14
 // run: { const jsonValue = try Stream.runCollect(hot()); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 function hot() {
   return Stream.make(18, 25, 30).pipe(
@@ -1143,7 +1133,6 @@ const value = yield* Deferred.await(ready)
 ```
 
 ```vibe es
-// pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try signal())
 effect function signal() {
   const ready = try Deferred.make<string>()
@@ -1164,7 +1153,6 @@ const next = yield* Effect.raceFirst(
 ```
 
 ```vibe es
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-18
 // run: try Console.log(try next())
 effect function next() {
   const jobs = try Queue.unbounded<string>()

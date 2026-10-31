@@ -5,7 +5,6 @@
 ## Success, failure, and services
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-5, VIP-9, VIP-13, VIP-14
 // run: try Console.log(try Effect.provide(convert(30, "EUR"), Layer.succeed(Rates, { lookup: effect (_currency) => 2 })))
 error MissingRate {
   currency: string
@@ -127,7 +126,6 @@ An Effect value such as `Clock.currentTimeMillis` is a description; `try Clock.c
 
 ```vibe
 // convert.vibe
-// pending: VIP-1, VIP-3, VIP-5, VIP-14
 // run: try Console.log(try double(30))
 export effect function double(amount: number) {
   return amount * 2

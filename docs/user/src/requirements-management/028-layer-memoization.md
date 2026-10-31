@@ -7,7 +7,6 @@ Effect shares repeated uses of one layer value within a build graph, and VibeLan
 ## Sharing acquisition across a graph
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-9, VIP-12, VIP-14
 // run: try Console.log(try stringify(try documentLabels()))
 service Prefix {
   value: string

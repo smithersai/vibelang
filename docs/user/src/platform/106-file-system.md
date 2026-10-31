@@ -19,7 +19,6 @@ Getting the service adds `FileSystem` to the Effect's requirements. `readFileStr
 ## Performing file operations
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-12, VIP-14, VIP-33
 // run: provide NodeFileSystem.layer { { const jsonValue = try saveSummary("ready"); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }
 import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem"
 

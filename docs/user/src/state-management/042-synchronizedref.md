@@ -5,7 +5,6 @@ A `SynchronizedRef` serializes updates that run Effects. Use it when the next va
 ## Serializing effectful updates
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-19
 // run: { const jsonValue = (try recordRevisions()).toSorted((a, b) => a - b); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function recordRevisions() {
   const revisions = try SynchronizedRef.make<ReadonlyArray<number>>([])
@@ -25,7 +24,6 @@ Three fibers call the callbacks concurrently, but they acquire the reference's u
 ## Reading synchronized references
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: { const jsonValue = try inspect(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function inspect() {
   const state = try SynchronizedRef.make({ version: 0, ready: false })

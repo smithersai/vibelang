@@ -32,7 +32,6 @@ The default cache captures lookup services when created. `try Cache.get(cache, s
 ## Sharing concurrent requests
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-18
 // run: { const jsonValue = try concurrentLookup(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function concurrentLookup() {
   let calls = 0
@@ -98,7 +97,6 @@ effect function inspect() {
 ## Invalidating and refreshing entries
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: { const jsonValue = try refreshExample(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function refreshExample() {
   let version = 0

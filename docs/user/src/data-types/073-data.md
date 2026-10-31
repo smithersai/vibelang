@@ -5,7 +5,6 @@ A `data` declaration declares a tagged union: Effect's own `Data.TaggedEnum` typ
 ## Declaring tagged unions with data
 
 ```vibe
-// pending: VIP-5, VIP-7, VIP-14, VIP-16
 // run: try Console.log(describe(Delivery.Waiting())); try Console.log(describe(sent)); try Console.log(describe(Delivery.Rejected({ reason: "address missing" }))); try Console.log(Equal.equals(sent, Delivery.Sent({ tracking: "parcel-8" })))
 data Delivery {
   Waiting
@@ -44,7 +43,6 @@ The specification assigns `EK1603` to `export default data D { … }`. Declare t
 ## Generic data types
 
 ```vibe
-// pending: VIP-5, VIP-7, VIP-14, VIP-16, VIP-28
 // run: try Console.log(try Effect.try(() => JSON.stringify([loaded, failed, idle]))); try Console.log(count(loaded), count(idle))
 data LoadState<A, E> {
   Idle
@@ -128,7 +126,6 @@ In Effect 4, plain records, tuples, arrays, maps, and sets already compare struc
 ## Building ordinary and tagged classes
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(label.upper, Equal.equals(label, new Label({ text: "pending" })), new Archived({ documentId: "doc-3" })._tag)
 class Label extends Data.Class<{ text: string }> {
   get upper() { return this.text.toUpperCase() }
@@ -155,7 +152,6 @@ PENDING true Archived
 Effect's long form works in a `.vibe` file too, with the same `$is` and `$match`:
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(isSent(sent)); try Console.log(describe(waiting)); try Console.log(describe(sent)); try Console.log(describe(rejected))
 type Delivery = Data.TaggedEnum<{
   Waiting: {}
@@ -190,7 +186,6 @@ Rejected: address missing
 ## Writing generic union cases out
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify([loaded, failed, idle])))
 type LoadState<A, E> = Data.TaggedEnum<{
   Idle: {}
@@ -230,7 +225,6 @@ const idle = LoadState.Idle()
 ## Defining ordinary and tagged errors
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-7, VIP-13, VIP-14
 // run: try Console.log(new InvalidDocument({ message: "invalid", line: 3 }).line); { const jsonValue = [try documentOrDraft("doc-3"), try documentOrDraft("")]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(requireDocument("") catch (error) => error._tag)
 class InvalidDocument extends Data.Error<{
   message: string
@@ -265,7 +259,6 @@ DocumentMissing
 ## Preserving native error causes
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
 // run: { const jsonValue = try decodeDocument("{\"id\":3}"); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(decodeDocument("{") catch (error) => `${error._tag} ${error.cause instanceof SyntaxError}`)
 error DocumentDecodeError {
   cause: unknown

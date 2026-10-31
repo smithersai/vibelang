@@ -5,7 +5,6 @@ A consumer such as `Stream.runCollect` returns an Effect that consumes a Stream;
 ## Collecting elements
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try collectLabels(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function collectLabels() {
   return try Stream.runCollect(Stream.make("north", "south", "west"))
@@ -19,7 +18,6 @@ effect function collectLabels() {
 ## Executing per-element effects
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try announce()
 effect function announce() {
   try Stream.runForEach(Stream.make("build", "test", "package"), effect (stage) => {
@@ -38,7 +36,6 @@ effect function announce() {
 ## Stopping conditionally
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try reachBudget())
 effect function reachBudget() {
   let total = 0
@@ -56,7 +53,6 @@ The callback's Effect succeeds with `true` to continue or `false` to stop; the e
 ## Folding into an accumulator
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try totalBytes()); try Console.log(try totalWithProgress())
 effect function totalBytes() {
   return try Stream.runFold(Stream.make(256, 512, 128), () => 0, (total, n) => total + n)
@@ -82,7 +78,6 @@ The initial-state callback runs per consumption, so a mutable accumulator starts
 ## Running a sink
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try readHeader(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function readHeader() {
   const source = Stream.make("version", "length", "body")

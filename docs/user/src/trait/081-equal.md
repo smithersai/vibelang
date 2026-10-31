@@ -5,7 +5,6 @@
 ## Checking structural equality
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify([Object.is(left, right), Equal.equals(left, right), Equal.equals([1, { n: 2 }], [1, { n: 3 }]), Equal.equals(new Set([2, 5]), new Set([5, 2]))])))
 const left = { folder: "inbox", flags: ["unread", "starred"] }
 const right = { folder: "inbox", flags: ["unread", "starred"] }
@@ -21,7 +20,6 @@ Effect 4 compares plain objects, arrays, maps, sets, dates, and regular expressi
 ## Implementing the equality protocol
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(Equal.equals(new DocumentRevision("doc-8", 2, "reader-a"), new DocumentRevision("doc-8", 2, "reader-b")))
 class DocumentRevision implements Equal.Equal {
   constructor(
@@ -55,7 +53,6 @@ Both compile to plain JavaScript methods, which callers call as ordinary methods
 ## Opting into reference identity
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify([Equal.equals(reference, { state: "ready" }), Equal.equals(reference, reference), Equal.equals(record, { state: "ready" }), Equal.equals(owned, { state: "ready" })])))
 const record = { state: "ready" }
 const reference = Equal.byReference(record)
@@ -74,7 +71,6 @@ Equal.equals(owned, { state: "ready" }) // false
 ## Using custom equality in hash-based collections
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify([HashSet.size(seen), HashMap.size(byFolder), Option.getOrElse(HashMap.get(byFolder, { folder: "inbox" }), () => 0)])))
 const seen = HashSet.make(
   new DocumentRevision("doc-8", 2, "reader-a"),

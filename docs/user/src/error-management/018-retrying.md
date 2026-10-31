@@ -7,7 +7,6 @@ Retry transient domain failures when a new attempt has a useful chance of succee
 ## Retrying failed computations
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
 // run: try Console.log(try loadWithRetries())
 error Busy { attempt: number }
 

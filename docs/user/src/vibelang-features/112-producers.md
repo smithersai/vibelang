@@ -129,7 +129,6 @@ For JavaScript iterables, use `for (using value of source)` when each element ne
 ## JavaScript generators
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log([...countdown(3)].join(","))
 function* countdown(from: number): Generator<number> {
   for (let n = from; n > 0; n--) yield n

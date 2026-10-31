@@ -25,7 +25,6 @@ A chunk keeps order and shares internal structure across updates, so repeated co
 ## Building chunks
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify([Chunk.toReadonlyArray(empty), Chunk.toReadonlyArray(pair), Chunk.toReadonlyArray(fromArray), Chunk.toReadonlyArray(fromSet)])))
 const empty = Chunk.empty<string>()
 const pair = Chunk.make("north", "south")
@@ -60,7 +59,6 @@ function ownedBatch() {
 ## Concatenating and dropping elements
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify([Chunk.toReadonlyArray(original), Chunk.toReadonlyArray(remaining)])))
 const original = Chunk.make("draft", "review")
 const extended = Chunk.appendAll(original, Chunk.make("published"))
@@ -78,7 +76,6 @@ Chunk.toReadonlyArray(remaining) // ["review", "published"]
 ## Checking structural equality
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(Equal.equals(first, same), Equal.equals(first, reversed))
 const first = Chunk.make({ code: "A" }, { code: "B" })
 const same = Chunk.make({ code: "A" }, { code: "B" })
@@ -96,7 +93,6 @@ Equality compares lengths and corresponding elements by Effect's equality rules,
 ## Converting to arrays
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify([nonempty, none, mutableCopy])))
 const nonempty = Chunk.toReadonlyArray(Chunk.make(7, 8))
 const none = Chunk.toReadonlyArray(Chunk.empty<number>())

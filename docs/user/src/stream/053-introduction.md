@@ -5,7 +5,6 @@ A `Stream` produces values on demand. Use it for large inputs, ongoing events, a
 ## Element, error, and service types
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-3, VIP-4, VIP-5, VIP-6, VIP-9, VIP-12, VIP-13, VIP-14
 // run: provide Feed = { next: effect () => "message" } { { const jsonValue = try preview(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }
 error FeedUnavailable
 
@@ -33,7 +32,6 @@ Wrap calls that may throw with `Effect.try` and run them with `try`. Synchronous
 ## Choosing a streaming use case
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try firstFiveTickets(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function firstFiveTickets() {
   const tickets = Stream.iterate(100, (n) => n + 1)
@@ -48,7 +46,6 @@ The source never ends; the consumer takes only five elements. Log tails, paginat
 ## Streams and individual effects
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = [try oneResult(), try Stream.runCollect(noReadings), try Stream.runCollect(oneReading), ...(try compare())]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function oneResult() {
   return [12, 24, 36]
@@ -74,7 +71,6 @@ A successful Effect run returns one result, even an array. A stream emits zero o
 ## Incremental production and backpressure
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try printReadings()
 effect function printReadings() {
   const source = Stream.mapEffect(Stream.range(20, 25), effect (n) => {

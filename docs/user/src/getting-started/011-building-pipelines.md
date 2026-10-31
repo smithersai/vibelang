@@ -7,7 +7,6 @@ Use statements for dependent steps and the pipe operator, `|>`, for a series of 
 ## Compose reusable functions
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-5, VIP-14, VIP-23
 // run: try Console.log(try priceLabel())
 function addMargin(n: number) { return n + 3 }
 function double(n: number) { return n * 2 }
@@ -39,7 +38,6 @@ A pipe's `%` is always the value of the expression before its `|>`, and its body
 ## Map or replace a success
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try adjustedPrice())
 effect function adjustedPrice() {
   const price = 24
@@ -104,7 +102,6 @@ effect function validated(value: number) {
 ## Call a data type's module functions
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: { const jsonValue = [nickname(-1), try Stream.runCollect(warnings(Stream.make(24, 26, 30, 28, 40)))]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 function nickname(id: number) {
   return Option.some(id).pipe(

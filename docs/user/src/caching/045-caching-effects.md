@@ -5,7 +5,6 @@ Caching shares a computation's outcome across callers instead of repeating the w
 ## Memoizing parameterized computations
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try memoizeLengths(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function memoizeLengths() {
   let lookups = 0

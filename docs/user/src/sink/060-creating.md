@@ -5,7 +5,6 @@ Choose a Sink for the result you need and run it with `try Stream.run(source, si
 ## Basic consumers and endpoint values
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = [Option.getOrElse((try endpoints()).first, () => ""), Option.getOrElse((try endpoints()).last, () => ""), (try endpoints()).prefix]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function endpoints() {
   const source = Stream.make("opening", "middle", "closing")
@@ -25,7 +24,6 @@ effect function endpoints() {
 ## Counting, summing, draining, and timing
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: const summary = try summarize(); { const jsonValue = [summary.count, summary.sum, Duration.isDuration(summary.duration)]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try drainObserved()
 effect function summarize() {
   const source = Stream.make(6, 10, 14)
@@ -50,7 +48,6 @@ These sinks consume the whole source. `drain` discards elements but still runs s
 ## Per-element work
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try writeRecords()
 const print = Sink.forEach(effect (line: string) => {
   try Console.log(`record: ${line}`)
@@ -69,7 +66,6 @@ effect function writeRecords() {
 ## Successful and failed sinks
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-7, VIP-13, VIP-14
 // run: try Console.log(try immediateResult()); const tag = rejectInput() catch (error) => match (error) { when Rejected: error._tag; }; try Console.log(tag)
 error Rejected
 
@@ -90,7 +86,6 @@ effect function rejectInput() {
 ## Collecting by size or condition
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try collectSamples(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function collectSamples() {
   const source = Stream.make(8, 5, -1, 13)
@@ -109,7 +104,6 @@ effect function collectSamples() {
 ## Uniqueness and key limits
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = Array.from(try collectUnique()); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const unique = Sink.reduce(() => new Set<string>(), (set, value: string) => set.add(value))
 const threeUnique = Sink.reduceWhile(
@@ -128,7 +122,6 @@ effect function collectUnique() {
 Use a native Set when JavaScript value equality fits. A size limit counts unique values, so duplicates take no extra slot.
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = Array.from(try summarizeStations()); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 type Reading = { station: string; count: number }
 
@@ -161,7 +154,6 @@ The reducer defines both the grouping key and the merge rule. The limited sink s
 ## Folding with termination and count limits
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try Effect.provide(foldSamples(), Logger.layer([Logger.withConsoleLog(Logger.make(({ message }) => (message as unknown[])[0]))])); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const total = Sink.reduce(() => 0, (sum, n: number) => sum + n)
 const budget = Sink.fold(
@@ -193,7 +185,6 @@ effect function foldSamples() {
 ## Folding by weight
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try firstBatch(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 type Packet = { bytes: number }
 type Batch = { packets: ReadonlyArray<Packet>; bytes: number }

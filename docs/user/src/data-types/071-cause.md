@@ -5,7 +5,6 @@
 ## Representing failure reasons
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(expected.reasons[0]._tag, defect.reasons[0]._tag, interrupted.reasons[0]._tag, empty.reasons.length)
 const expected = Cause.fail("record missing")
 const defect = Cause.die(new Error("invariant broken"))
@@ -23,7 +22,6 @@ Fail Die Interrupt 0
 ## Combining reasons
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify(combined.reasons.map((reason) => reason._tag)))); try Console.log(Cause.combine(Cause.fail("same error"), Cause.fail("same error")).reasons.length)
 const combined = Cause.combine(Cause.fail("export failed"), Cause.die(new Error("cleanup failed")))
 combined.reasons.map((reason) => reason._tag) // ["Fail", "Die"]
@@ -40,7 +38,6 @@ Effect 4 stores reasons in a flat array: `combine` merges both sets and drops eq
 ## Extracting a computation's cause
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
 // run: try Console.log((try diagnose()).split("\n")[0].trim())
 error MissingRecord {
   id: string
@@ -66,7 +63,6 @@ MissingRecord:
 ## Identifying reason variants
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: { const jsonValue = try classify(Cause.combine(Cause.combine(Cause.fail("missing"), Cause.die("broken")), Cause.interrupt(17))); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; { const jsonValue = try classify(Cause.empty); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function classify<E>(cause: Cause.Cause<E>) {
   const summary = {

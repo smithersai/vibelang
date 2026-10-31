@@ -80,7 +80,6 @@ Create `src/greet.vibe`:
 
 ```vibe
 // src/greet.vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try greet("Vite"))
 export effect function greet(name: string) {
   return `Hello, ${name}!`
@@ -136,7 +135,6 @@ Create `src/greet.test.vibe`:
 
 ```vibe
 // src/greet.test.vibe
-// pending: VIP-2, VIP-5, VIP-6
 import { assert, it } from "@effect/vitest"
 import { greet } from "./greet.vibe"
 

@@ -5,7 +5,6 @@ A semaphore limits access to a shared resource with a pool of permits. One permi
 ## Creating a permit pool
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14
 // run: const limit = try makeUploadLimit(); try Console.log(try Semaphore.withPermits(limit, 3, effect { return "three permits acquired" }))
 effect function makeUploadLimit() {
   return try Semaphore.make(3)
@@ -64,7 +63,6 @@ An operation waits until it can acquire all its requested permits together, whic
 ## Releasing permits safely
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-7, VIP-13, VIP-14
 // run: try Console.log(try releaseOnFailure())
 error Rejected
 

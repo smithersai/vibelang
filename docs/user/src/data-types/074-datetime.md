@@ -5,7 +5,6 @@
 ## Modeling UTC and zoned instants
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(instant.epochMilliseconds === paris.epochMilliseconds); try Console.log(DateTime.formatIsoZoned(paris))
 const instant = DateTime.makeUnsafe("2026-04-12T10:00:00Z")
 const paris = DateTime.setZone(instant, DateTime.zoneMakeNamedUnsafe("Europe/Paris"))
@@ -23,7 +22,6 @@ A `Utc` holds epoch milliseconds; a `Zoned` adds a `TimeZone`, either a fixed mi
 ## Constructing timestamps from supported inputs
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify([Option.getOrNull(Option.map(text, DateTime.formatIso)), Option.getOrNull(Option.map(epoch, DateTime.formatIso)), Option.getOrNull(Option.map(parts, DateTime.formatIso)), DateTime.formatIso(date), Option.isNone(invalid), Option.getOrNull(Option.map(localAppointment, DateTime.formatIsoZoned)), Option.getOrNull(Option.map(serialized, DateTime.formatIsoZoned))])))
 const text = DateTime.make("2026-04-12T10:00:00Z")
 const epoch = DateTime.make(0)
@@ -51,7 +49,6 @@ const serialized = DateTime.makeZonedFromString(
 ## Reading current time
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-5, VIP-12, VIP-14, VIP-33
 // run: provide TestClock.layer() { try TestClock.setTime(0); try Console.log(try timestamp()) }
 effect function timestamp() {
   const now = try DateTime.now
@@ -69,7 +66,6 @@ effect function timestamp() {
 ## Identifying timestamp variants
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(describe(null), describe(instant), describe(paris), describe(DateTime.setZoneOffset(instant, 3600000)))
 function describe(value: unknown) {
   if (!DateTime.isDateTime(value)) return "not a timestamp"
@@ -91,7 +87,6 @@ not a timestamp UTC Europe/Paris 3600000
 ## Parsing and changing time zones
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-12, VIP-14, VIP-33
 // run: try Console.log(Option.isSome(named), Option.isSome(parsed), DateTime.zoneToString(fixed), Option.isSome(optional)); try Console.log(DateTime.formatIsoZoned(known)); try Console.log(DateTime.formatIsoOffset(shiftedView)); provide TestClock.layer() { try TestClock.setTime(0); try Console.log(DateTime.formatIsoZoned(try inTokyo())) }
 const named = DateTime.zoneMakeNamed("Asia/Tokyo")
 const parsed = DateTime.zoneFromString("+09:00")
@@ -122,7 +117,6 @@ For an invalid identifier, `zoneMakeNamed` and `zoneFromString` return `None`, `
 ## Comparing and converting instants
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(DateTime.isLessThan(start, end), Equal.equals(DateTime.min(start, end), start), Equal.equals(DateTime.max(start, end), end), Duration.toHours(DateTime.distance(start, end)), Duration.toHours(DateTime.distance(end, start))); try Console.log(DateTime.toEpochMillis(start), native.toISOString(), DateTime.formatIso(calendarDate))
 const start = DateTime.makeUnsafe("2026-04-12T10:00:00Z")
 const end = DateTime.add(start, { hours: 3 })
@@ -147,7 +141,6 @@ Ordering compares instants, ignoring zones. `distance(start, end)` is signed: re
 ## Accessing calendar components
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(DateTime.getPart(evening, "day"), DateTime.getPartUtc(evening, "day"), localParts.hour, utcParts.hour); try Console.log(DateTime.formatIsoZoned(rescheduled)); try Console.log(DateTime.formatIso(utcEdited))
 const evening = DateTime.makeZonedUnsafe("2026-04-12T22:30:00Z", {
   timeZone: "Asia/Tokyo"
@@ -171,7 +164,6 @@ const utcEdited = DateTime.setPartsUtc(evening, { hour: 9 })
 ## Calendar arithmetic and formatting
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify([DateTime.formatIso(tomorrow), DateTime.formatIso(previous), DateTime.formatIso(elapsedHour), DateTime.formatIso(earlier), DateTime.formatIso(dayStart), DateTime.formatIso(dayEnd), DateTime.formatIso(rounded), DateTime.formatIsoDate(appointment), DateTime.formatIsoDateUtc(appointment), DateTime.formatIsoOffset(appointment), DateTime.format(appointment, { locale: "en-GB", dateStyle: "long" })])))
 const appointment = DateTime.makeZonedUnsafe("2026-04-12T10:00:00Z", {
   timeZone: "Europe/Paris"
@@ -199,7 +191,6 @@ Calendar `add` and `subtract` change parts in the value's zone; duration arithme
 ## Providing a default time zone
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
 // run: provide TestClock.layer() { try TestClock.setTime(0); try Console.log(try main()) }
 effect function localDate() {
   return DateTime.formatIsoDate(try DateTime.nowInCurrentZone)

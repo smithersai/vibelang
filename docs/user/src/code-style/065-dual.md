@@ -5,7 +5,6 @@ Many Effect APIs are dual: they take the data then the options (data-first), or 
 ## Data first or data last
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try compare(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const source = Stream.make(5, 10, 15)
 const direct = Stream.map(source, (n) => n / 5)
@@ -27,7 +26,6 @@ The direct form supplies `source` in the first call; the data-last form builds a
 ## Methods
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try methods(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const missing = Cause.fail("missing port")
 
@@ -62,7 +60,6 @@ A data-last overload such as `Stream.zipLeft(other)` returns a function for `pip
 ## Direct calls and nested programs
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try directLookup(), try nestedLookup())
 effect function lookup() {
   try sleep("10 millis")

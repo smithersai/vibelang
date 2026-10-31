@@ -21,7 +21,6 @@ effect function dimensions() {
 
 ```vibe
 // main.vibe
-// pending: VIP-1, VIP-5, VIP-14, VIP-26, VIP-33
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import * as NodeTerminal from "@effect/platform-node/NodeTerminal"
 

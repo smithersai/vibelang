@@ -5,7 +5,6 @@ Build a Stream from values, effectful work, or an existing source. Construction 
 ## Finite and empty streams
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = [try Stream.runCollect(labels), try Stream.runCollect(absent), try Stream.runCount(signal), try Stream.runCollect(pages), try readPowers()]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const labels = Stream.make("queued", "running", "complete")
 const absent = Stream.empty
@@ -24,7 +23,6 @@ effect function readPowers() {
 ## Successes and failures
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-7, VIP-13, VIP-14
 // run: { const jsonValue = [try Stream.runCollect(ready), try readClosed()]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 error SourceClosed
 
@@ -44,7 +42,6 @@ effect function readClosed() {
 ## Arrays and iterables
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-3, VIP-4, VIP-5, VIP-6, VIP-9, VIP-12, VIP-14
 // run: provide Catalog = { codes: effect () => ["A", "B"] } { { const jsonValue = [try Stream.runCollect(fromArray), try Stream.runCollect(fromBatches), try Stream.runCollect(fromSet), try Stream.runCollect(codes)]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }
 const fromArray = Stream.fromArray([11, 22])
 const fromBatches = Stream.fromArrays([11, 22], [33])
@@ -151,7 +148,6 @@ const sessionNames = Stream.fromEffect(openSession()).pipe(
 ## Repeating values, streams, and effects
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = [try Stream.runCollect(Stream.take(pings, 3)), try Stream.runCollect(rounds), try Stream.runCount(Stream.take(times, 2)), try countdown()]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const pings = Stream.forever(Stream.succeed("ping"))
 const rounds = Stream.repeat(Stream.make("start", "finish"), Schedule.recurs(2))
@@ -190,7 +186,6 @@ effect function collectSamples() {
 ## Unfolding state and paginating responses
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-9, VIP-12, VIP-14
 // run: provide Directory = { page: effect (cursor) => ({ names: [String(cursor)], next: cursor < 2 ? cursor + 1 : undefined }) } { { const jsonValue = [try Stream.runCollect(halving), try Stream.runCollect(names)]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }
 const halving = Stream.unfold(32, effect (n) => {
   if (n < 2) return undefined
@@ -217,7 +212,6 @@ const names = Stream.paginate(0, effect (cursor) => {
 ## Queues and broadcasts
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try queuedNumbers(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; const bus = try PubSub.unbounded<string>({ replay: 1 }); try PubSub.publish(bus, "broadcast"); { const jsonValue = try Stream.runCollect(Stream.take(fromBroadcast(bus), 1)); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function queuedNumbers() {
   const queue = try Queue.unbounded<number, Cause.Done>()
@@ -239,7 +233,6 @@ function fromBroadcast(bus: PubSub.PubSub<string>) {
 ## Schedules as sources
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try readPulses(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const policy = Schedule.spaced("400 millis").pipe(Schedule.upTo({ times: 3 }))
 const pulses = Stream.fromSchedule(policy)

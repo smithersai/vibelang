@@ -5,7 +5,6 @@ VibeLang matches values with `match` and tests them with `is`, from the TC39 pat
 ## Matching values
 
 ```vibe
-// pending: VIP-5, VIP-7, VIP-14
 // run: try Console.log(describeInput(3)); try Console.log(describeInput("news")); try Console.log(describeJob({ state: "queued", attempts: 2 })); try Console.log(describeJob({ state: "done", attempts: 1 }))
 function describeInput(input: number | string) {
   return match (input) {
@@ -34,7 +33,6 @@ Arms are tried in order; the first that matches gives the value. `Number` and `S
 ## Shapes, guards, and tags
 
 ```vibe
-// pending: VIP-5, VIP-6, VIP-7, VIP-14
 // run: try Console.log(classifyRetry({ status: "failed", attempts: 3 }), classifyRetry({ status: "failed", attempts: 2 }), classifyRetry({ status: "done", attempts: 5 })); try Console.log(jobLabel({ _tag: "Queued" })); try Console.log(jobLabel({ _tag: "Running", worker: "w-1" })); try Console.log(jobLabel({ _tag: "Done", output: "report.csv" }))
 function classifyRetry(input: { status: string; attempts: number }) {
   return match (input) {
@@ -70,7 +68,6 @@ report.csv
 ## Negating and combining patterns
 
 ```vibe
-// pending: VIP-5, VIP-7, VIP-14
 // run: try Console.log(availability("active"), availability("paused"), availability("closed")); try Console.log(weekend("Saturday"), weekend("Sunday"), weekend("Monday"))
 function availability(status: "active" | "paused" | "closed") {
   return match (status) {
@@ -97,7 +94,6 @@ true true false
 ## Fixing the return type
 
 ```vibe
-// pending: VIP-5, VIP-7, VIP-14
 // run: const rendered = try Effect.try(() => [display(3), display(true), display(false)]); try Console.log(...rendered)
 function display(input: number | boolean): string {
   return match (input) {
@@ -116,7 +112,6 @@ A `match` expression has the union of its arm types. A `throw` arm contributes `
 ## Exhaustive handling
 
 ```vibe
-// pending: VIP-5, VIP-7, VIP-14
 // run: try Console.log(phaseLabel("draft"), phaseLabel("published"))
 type Phase = "draft" | "published"
 
@@ -137,7 +132,6 @@ Draft Published
 ## Defaults, optional outputs, and result outputs
 
 ```vibe
-// pending: VIP-5, VIP-7, VIP-14
 // run: try Console.log(withDefault("start"), withDefault("stop")); try Console.log(Option.getOrNull(optionalCommand("start")), Option.isNone(optionalCommand("help"))); try Console.log(Result.getOrElse(commandResult("start"), (error) => error), Result.getOrElse(commandResult("help"), (error) => error))
 type Command = "start" | "stop" | "help"
 

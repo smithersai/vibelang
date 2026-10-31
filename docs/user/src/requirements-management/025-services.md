@@ -7,7 +7,6 @@ A service is a named capability a program uses without passing an implementation
 ## Declaring typed service keys
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-6, VIP-9, VIP-12, VIP-14
 // run: provide Sequence = { next: effect () => 17 }, Reporter = { write: (message) => Console.log(message) } { const sequence = try Sequence; const reporter = try Reporter; try reporter.write(`ticket-${try sequence.next()}`) }
 service Sequence {
   next(): number!!
@@ -40,7 +39,6 @@ An explicit string-literal key keeps its value, including `""`. It is used for r
 ## Declaring a service of any shape
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-5, VIP-12, VIP-14
 // run: provide Prefix = "> ", Search = { find: effect (query) => `hit:${query}` } { try Console.log(try lookup("vibe")) }
 interface SearchApi {
   find(query: string): string!!
@@ -91,7 +89,6 @@ A service can declare `static readonly defaultValue = () => implementation` to s
 `try Sequence` looks up the implementation, to capture it or read value members; `try sequence.next()` runs its Effect-returning method. Supply every requirement before running the program.
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-9, VIP-12, VIP-14
 // run: provide Settings = { baseUrl: "https://example.test" } { try Console.log(try endpoint("tickets")) }
 service Settings {
   baseUrl: string
@@ -112,7 +109,6 @@ Read value members from the implementation, as `settings.baseUrl` after `const s
 ## Service identifiers and shapes
 
 ```vibe
-// pending: VIP-9, VIP-14
 type SequenceImplementation = Sequence.Shape
 type SameImplementation = Context.Service.Shape<typeof Sequence>
 ```
@@ -190,7 +186,6 @@ effect function optionalAnnouncement(message: string) {
 ## Handling dependencies between services
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-9, VIP-12, VIP-14
 // run: provide ReportSettings = { prefix: "audit" } { provide ReporterLive { const reporter = try Reporter; try reporter.write("ready") } }
 service ReportSettings {
   prefix: string

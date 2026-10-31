@@ -7,7 +7,6 @@ A fallback runs another computation after an expected failure; a catch expressio
 ## Recovering with another computation
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-13, VIP-14
 // run: try Console.log(try title())
 error SourceOffline
 

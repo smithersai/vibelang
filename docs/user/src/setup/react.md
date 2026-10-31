@@ -51,7 +51,6 @@ Create `src/users.vibe`. It declares a `Users` service and its layer; `greet` re
 
 ```vibe
 // src/users.vibe
-// pending: VIP-1, VIP-2, VIP-3, VIP-4, VIP-5, VIP-7, VIP-9, VIP-12, VIP-13, VIP-14, VIP-15
 // run: provide UsersLive { try Console.log(try greet("42")); try Console.log(try greet("404")); const users = try Users; try Console.log(users.find("404") catch (error) => `${error._tag} ${error.id}`) }
 export schema User { id: string; name: string }
 

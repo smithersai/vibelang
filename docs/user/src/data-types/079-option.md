@@ -5,7 +5,6 @@
 ## Representing optional values and properties
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(Option.getOrNull(named.nickname), Option.isNone(unnamed.nickname))
 interface Contact {
   name: string
@@ -25,7 +24,6 @@ The `nickname` property always exists and its value records presence; an optiona
 ## Constructing and identifying variants
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(Option.isNone(positive(-2)), Option.isSome(present), Option.isNone(absent)); try Console.log(label(present)); try Console.log(label(absent))
 const present = Option.some(24)
 const absent = Option.none<number>()
@@ -49,7 +47,6 @@ No limit
 `some` wraps a value; `none` carries no payload. `liftPredicate` makes a function that returns `Some` only for values that pass its predicate. Guards narrow the union; only `Some` has `.value`.
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(describe(Option.some("Mina"))); try Console.log(describe(Option.none()))
 function describe(value: Option.Option<string>) {
   return Option.match(value, {
@@ -69,7 +66,6 @@ Anonymous
 ## Mapping, sequencing, and filtering present values
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(Option.getOrNull(streetLabel(Option.some({ street: Option.some(" Main St ") })))); try Console.log(Option.isNone(streetLabel(Option.some({ street: Option.some(" ") }))), Option.isNone(streetLabel(Option.none())))
 interface Address {
   street: Option.Option<string>
@@ -116,7 +112,6 @@ false true
 ## Choosing fallback options
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(Option.getOrNull(choose(Option.some("preferred"), Option.some("backup"))), Option.getOrNull(choose(Option.none(), Option.some("backup"))), Option.getOrNull(first))
 function choose(
   preferred: Option.Option<string>,
@@ -139,7 +134,6 @@ preferred backup regional
 ## Adapting nullable values
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(Option.isNone(Option.fromNullishOr(null)), Option.isNone(Option.fromNullishOr(undefined)), Option.getOrNull(Option.fromNullishOr(0)), try Effect.try(() => JSON.stringify(Option.getOrNull(Option.fromNullishOr("")))))
 Option.fromNullishOr(null) // None
 Option.fromNullishOr(undefined) // None
@@ -181,7 +175,6 @@ NoSuchElementError
 ## Combining options
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: const result = combine(Option.some("Mina"), Option.some(3)); try Console.log(try Effect.try(() => JSON.stringify([Option.getOrNull(result.record), Option.getOrNull(result.tuple), Option.getOrNull(result.fields)]))); const absent = combine(Option.none(), Option.some(3)); try Console.log(Option.isNone(absent.record), Option.isNone(absent.tuple), Option.isNone(absent.fields))
 function combine(
   name: Option.Option<string>,
@@ -245,7 +238,6 @@ function combinedData() {
 ## Deriving equality and ordering
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(same(Option.some(4), Option.some(4)), same(Option.none(), Option.some(4))); try Console.log(try Effect.try(() => JSON.stringify([sorted.map((item) => Option.getOrNull(item)), descending.map((item) => Option.getOrNull(item))])))
 const same = Option.makeEquivalence(Equivalence.Number)
 same(Option.some(4), Option.some(4)) // true

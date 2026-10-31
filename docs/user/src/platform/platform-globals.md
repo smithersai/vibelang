@@ -207,7 +207,6 @@ effect function replacements(
 In the browser, `@effect/platform-browser` supplies these services and their layers:
 
 ```vibe
-// pending: VIP-1, VIP-5
 import { BrowserStream, Clipboard, Geolocation, Permissions } from "@effect/platform-browser"
 
 effect function browser() {
@@ -290,7 +289,6 @@ export function title(): string {
 
 ```vibe
 // page-title.vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-14
 import { title } from "./dom.ts"
 
 effect function pageTitle() {

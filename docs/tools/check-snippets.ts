@@ -6,7 +6,7 @@ import { createRequire } from "node:module"
 
 const repo = resolve(import.meta.dir, "../..")
 export type Diagnostic = { code: string; message: string; line?: number; column?: number }
-export type Block = { number: number; line: number; endLine?: number; language: "vibe" | "ts"; source: string; filename?: string; types?: string[]; firstLine: string; expected: string[]; fragment: boolean; comparison?: boolean; gap?: string; output?: string; run?: string; pending?: string[] }
+export type Block = { number: number; line: number; endLine?: number; language: "vibe" | "ts"; source: string; filename?: string; types?: string[]; firstLine: string; expected: string[]; fragment: boolean; comparison?: boolean; gap?: string; output?: string; run?: string; pending?: string[]; marker?: number; inherited?: boolean; imports?: string[] }
 export type Result = Block & { status: "ok" | "fragment" | "pending" | "compiler-gap" | "fail"; diagnostics: Diagnostic[]; reason?: string; execution?: Execution }
 export type Execution = { phase: "compile" | "run"; status: "passed" | "failed"; expectedStdout: string; stdout: string; stderr: string; exitCode: number; timedOut: boolean }
 
@@ -59,6 +59,7 @@ export function extract(markdown: string, options: { inlineExamples?: boolean } 
     const decisions = header.match(/\/\/ pending-decision:\s*([^\n]+)/)?.[1].split(/[\s,]+/).filter(Boolean).map(topic => `decision:${topic}`)
     const vips = header.match(/\/\/ pending:\s*([^\n]+)/)?.[1].split(/[\s,]+/).filter(Boolean)
     const pending = vips || decisions ? [...vips ?? [], ...decisions ?? []] : undefined
+    const marker = pending ? start + 1 + headers.findIndex(line => /^\s*\/\/ pending(?:-decision)?:/.test(line)) : undefined
     if (run && output === undefined) throw new Error(`Block ${number} has a run marker without expected output`)
     blocks.push({ number, line: start + 1, endLine: i + 1, language, source: body.join("\n"), filename, output, run,
       types: header.match(/\/\/ types:\s*([^\n]+)/)?.[1].split(/[\s,]+/).filter(Boolean),
@@ -69,6 +70,7 @@ export function extract(markdown: string, options: { inlineExamples?: boolean } 
       // VIPs it waits for; it stays out of the program, as a fragment does.
       fragment: /\/\/ fragment\s*(?:$|\n)/.test(header) || pending !== undefined,
       pending,
+      marker: /\/\/ fragment\s*(?:$|\n)/.test(header) ? undefined : marker,
       gap: header.match(/\/\/ compiler-gap:\s*([^\n]+)/)?.[1] })
   }
 
@@ -98,7 +100,8 @@ export function extract(markdown: string, options: { inlineExamples?: boolean } 
       const vips = [...block.source.matchAll(/(?:\bfrom\s+|\bimport\s*\(\s*)["']\.\/([\w./-]+)\.(?:js|vibe|ts)["']/g)]
         .flatMap(m => waiting.get(posix.join(from, m[1])) ?? [])
       if (!vips.length) continue
-      Object.assign(block, { pending: [...new Set(vips)], fragment: true })
+      const imports = [...block.source.matchAll(/(?:\bfrom\s+|\bimport\s*\(\s*)["']\.\/([\w./-]+)\.(?:js|vibe|ts)["']/g)].map(m => posix.join(from, m[1]))
+      Object.assign(block, { pending: [...new Set(vips)], fragment: true, inherited: true, imports })
       if (block.filename) waiting.set(stem(block.filename), block.pending!)
       changed = true
     }
@@ -471,6 +474,75 @@ export async function runBlock(dir: string, blocks: Block[], result: Result, com
     execution: { ...executed, phase: "run", status: reason ? "failed" : "passed", expectedStdout: result.output! } }
 }
 
+// One program for a page's blocks. An explicit fragment opts out of the check,
+// so it stays out of the program: TypeScript reports no semantic error in a
+// program with a syntax error, and a fragment would hide every other block.
+async function compilePage(dir: string, blocks: Block[], page: string, compiler: string, keep = false): Promise<Result[]> {
+  const { filenames, offsets } = writeProject(dir, blocks, { omitFragments: true })
+  const compiled = blocks.some(block => !block.fragment)
+  const child = compiled ? Bun.spawn([compiler, "--noEmit", "--pretty", "false", "-p", join(dir, "tsconfig.json")], { cwd: dir, stdout: "pipe", stderr: "pipe" }) : undefined
+  const [stdout, stderr, code] = child ? await Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited]) : ["", "", 0]
+  const output = `${stdout}\n${stderr}`
+  if (keep) writeFileSync(join(dir, "compiler.log"), output)
+  const parsed = parseDiagnostics(output)
+  const infrastructure = parsed.filter(d => !d.file || !offsets.has(relative(dir, resolve(dir, d.file)).replaceAll("\\", "/")))
+  if (infrastructure.length || (code !== 0 && !parsed.length)) throw new Error(`Compiler failed for ${relative(repo, page)} (exit ${code}):\n${output}`)
+  return blocks.map(block => {
+    const filename = filenames.get(block.number)!
+    const diagnostics = parsed.filter(d => d.file && relative(dir, resolve(dir, d.file)).replaceAll("\\", "/") === filename).map(({ diagnostic }) => ({
+      ...diagnostic, line: block.line + diagnostic.line! - offsets.get(filename)! - 1
+    }))
+    return classify(block, diagnostics)
+  })
+}
+
+// The pending blocks the compiler now takes, as the blocks they would be with
+// no marker: each compiles clean, and each that claims output prints it. A
+// failing block leaves the trial program, as a pending block does, so a later
+// round reads the rest without its syntax error hiding theirs. A block that
+// waits on another through an import stays with it.
+export async function retirable(dir: string, blocks: Block[], page: string, compiler: string, timeout: number, refused = new Map<number, string>()): Promise<Block[]> {
+  let trying = blocks.filter(block => block.marker !== undefined || block.inherited)
+  const without = (out: Block[]) => {
+    const stems = new Set(out.flatMap(block => block.inherited ? block.imports ?? [] : []))
+    return trying.filter(block => !out.includes(block) && !(block.filename && stems.has(block.filename.replace(/\.(?:vibe|ts)$/, ""))))
+  }
+  for (let round = 0; trying.length; round++) {
+    const trial = blocks.map(block => trying.includes(block) ? { ...block, pending: undefined, fragment: false } : block)
+    const results = await compilePage(join(dir, `retire-${round}`), trial, page, compiler)
+    const failed = trying.filter(block => results.find(r => r.number === block.number)!.status !== "ok")
+    for (const block of failed) refused.set(block.number, [...new Set(results.find(r => r.number === block.number)!.diagnostics.map(d => `${d.code} ${d.message.split("\n")[0]}`))].join("; "))
+    if (failed.length) { trying = without(failed); continue }
+    const runnable = results.filter(block => block.status === "ok" && !block.expected.length)
+    const wrong: Block[] = []
+    for (const block of trying) {
+      if (block.output === undefined) continue
+      const result = results.find(r => r.number === block.number)!
+      const ran = await runBlock(join(dir, `retire-${round}-run-${block.number}`), runnable, result, compiler, timeout)
+      if (ran.status === "ok") continue
+      wrong.push(block)
+      refused.set(block.number, `${ran.reason}; printed ${JSON.stringify(ran.execution?.stdout.slice(0, 300))}; stderr ${JSON.stringify(ran.execution?.stderr.slice(0, 300))}`)
+    }
+    if (!wrong.length) return trying
+    trying = without(wrong)
+  }
+  return []
+}
+
+// Each page's check, at most limit at once, in page order.
+async function inOrder<T, R>(items: T[], limit: number, check: (item: T, index: number) => Promise<R>): Promise<R[]> {
+  const results = new Array<R>(items.length)
+  let next = 0
+  const worker = async () => {
+    while (next < items.length) {
+      const index = next++
+      results[index] = await check(items[index], index)
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
+  return results
+}
+
 async function main() {
   const args = process.argv.slice(2)
   function option(name: string, fallback?: string) {
@@ -482,7 +554,7 @@ async function main() {
     return value
   }
   if (args.includes("--help")) {
-    console.log("bun docs/tools/check-snippets.ts [--compiler path] [--root docs/user] [--filter text] [--json path] [--pending-list path] [--keep] [--run] [--timeout milliseconds]")
+    console.log("bun docs/tools/check-snippets.ts [--compiler path] [--root docs/user] [--filter text] [--json path] [--pending-list path] [--keep] [--run] [--retire-pending] [--jobs n] [--timeout milliseconds]")
     return
   }
   const selectedCompiler = option("--compiler", defaultCompiler())!
@@ -494,8 +566,11 @@ async function main() {
   const keep = args.includes("--keep")
   const run = args.includes("--run")
   const timeout = Number(option("--timeout", "10000"))
+  const jobs = Number(option("--jobs", "8"))
+  if (!Number.isSafeInteger(jobs) || jobs <= 0) throw new Error("--jobs must be a positive integer")
+  const retire = args.includes("--retire-pending")
   if (!Number.isSafeInteger(timeout) || timeout <= 0) throw new Error("--timeout must be a positive integer in milliseconds")
-  if (args.some(a => a !== "--keep" && a !== "--run")) throw new Error(`Unknown argument: ${args.join(" ")}`)
+  if (args.some(a => a !== "--keep" && a !== "--run" && a !== "--retire-pending")) throw new Error(`Unknown argument: ${args.join(" ")}`)
   // The compiler reports paths relative to its physical cwd. Keep diagnostic
   // ownership stable when TMPDIR reaches that cwd through a symlink.
   const temp = mkdtempSync(join(realpathSync(tmpdir()), "vibelang-docs-"))
@@ -503,36 +578,34 @@ async function main() {
   try {
     const { runtime, effect } = linkModules(temp)
     console.log(`Compiler: ${Bun.which(compiler) ?? compiler}\nRuntime: ${runtime}\nEffect: ${effect}`)
-    let index = 0
-    for (const page of markdownPages(root).filter(p => relative(root, p).includes(filter))) {
-      const blocks = extract(readFileSync(page, "utf8"), { inlineExamples: [join(repo, "docs/user/llms-essentials.md"), join(repo, "templates/app/AGENTS.md")].includes(page) })
-      if (!blocks.length) continue
-      const dir = join(temp, String(++index))
-      // An explicit fragment opts out of the check, so it stays out of the
-      // program: TypeScript reports no semantic error in a program with a
-      // syntax error, and a fragments would hide every other blocks.
-      const { filenames, offsets } = writeProject(dir, blocks, { omitFragments: true })
-      const compiled = blocks.some(block => !block.fragment)
-      const child = compiled ? Bun.spawn([compiler, "--noEmit", "--pretty", "false", "-p", join(dir, "tsconfig.json")], { cwd: dir, stdout: "pipe", stderr: "pipe" }) : undefined
-      const [stdout, stderr, code] = child ? await Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited]) : ["", "", 0]
-      const output = `${stdout}\n${stderr}`
-      if (keep) writeFileSync(join(dir, "compiler.log"), output)
-      const parsed = parseDiagnostics(output)
-      const infrastructure = parsed.filter(d => !d.file || !offsets.has(relative(dir, resolve(dir, d.file)).replaceAll("\\", "/")))
-      if (infrastructure.length || (code !== 0 && !parsed.length)) throw new Error(`Compiler failed for ${relative(repo, page)} (exit ${code}):\n${output}`)
-      const results = blocks.map(block => {
-        const filename = filenames.get(block.number)!
-        const diagnostics = parsed.filter(d => d.file && relative(dir, resolve(dir, d.file)).replaceAll("\\", "/") === filename).map(({ diagnostic }) => ({
-          ...diagnostic, line: block.line + diagnostic.line! - offsets.get(filename)! - 1
-        }))
-        return classify(block, diagnostics)
-      })
+    const sources = markdownPages(root).filter(p => relative(root, p).includes(filter)).map(page => ({
+      page, blocks: extract(readFileSync(page, "utf8"), { inlineExamples: [join(repo, "docs/user/llms-essentials.md"), join(repo, "templates/app/AGENTS.md")].includes(page) })
+    })).filter(({ blocks }) => blocks.length)
+    let retired = 0
+    const checked = await inOrder(sources, jobs, async ({ page, blocks }, index) => {
+      const dir = join(temp, String(index + 1))
+      const results = await compilePage(dir, blocks, page, compiler, keep)
       // Automatic fragments have been identified by the page check. Do not
       // import their missing fixtures into otherwise independent run examples.
       const runnableBlocks = results.filter(block => block.status === "ok" && !block.expected.length)
       if (run) for (let i = 0; i < results.length; i++) {
         if (results[i].output !== undefined && results[i].status !== "pending") results[i] = await runBlock(join(dir, `run-${results[i].number}`), runnableBlocks, results[i], compiler, timeout)
       }
+      const refused = new Map<number, string>()
+      const stale = (await retirable(dir, blocks, page, compiler, timeout, refused)).filter(block => block.marker !== undefined)
+      for (const [i, result] of results.entries()) if (refused.has(result.number)) results[i] = { ...result, reason: refused.get(result.number) }
+      if (retire && stale.length) {
+        const gone = new Set(stale.map(block => block.marker!))
+        writeFileSync(page, readFileSync(page, "utf8").split("\n").filter((_, i) => !gone.has(i + 1)).join("\n"))
+        retired += stale.length
+      } else for (const block of stale) {
+        const at = results.findIndex(r => r.number === block.number)
+        results[at] = { ...results[at], status: "fail", reason: "Stale pending marker: the compiler takes this block. Remove it: bun docs/tools/check-snippets.ts --retire-pending" }
+      }
+      return { page, results }
+    })
+    if (retire) console.log(`Retired ${retired} pending markers`)
+    for (const { page, results } of checked) {
       pages.push({ page: relative(repo, page), blocks: results })
       console.log(`\n${relative(repo, page)}\n| Block | Line | Status | Diagnostics | Execution |\n| --- | --- | --- | --- | --- |`)
       for (const result of results) {
@@ -558,7 +631,7 @@ async function main() {
     console.log(`\nTotals: ${JSON.stringify(totals)}`)
     if (run) console.log(`Execution: ${JSON.stringify(execution)}`)
     if (pendingList) writeFileSync(resolve(pendingList), pages.flatMap(({ page, blocks }) => blocks.filter(block => block.status === "pending")
-      .map(block => `${page}:${block.line}\t${block.pending!.join(", ")}\t${block.firstLine.trim()}`)).join("\n") + "\n")
+      .map(block => `${page}:${block.line}\t${block.pending!.join(", ")}\t${block.firstLine.trim()}\t${block.reason}`)).join("\n") + "\n")
     if (json) writeFileSync(resolve(json), JSON.stringify({ compiler, totals, ...(run ? { execution } : {}), pages }, null, 2) + "\n")
     if (totals.fail) process.exitCode = 1
   } finally {

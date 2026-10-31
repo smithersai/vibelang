@@ -15,7 +15,6 @@ The core package supplies Effect's data types, schedules, concurrency tools, and
 ## Module and namespace imports
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(Number.isFinite(try pauseBeforeRetry()))
 effect function pauseBeforeRetry() {
   const started = try Clock.currentTimeMillis
@@ -53,7 +52,6 @@ Set `vibe.effectModules` to `false` to require imports for Effect's root and sub
 A subpath package's modules need no import either. The emitted JavaScript imports each module you use from its own file, such as `effect/encoding/Hex`, so a program loads only what it uses:
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(hexOf("hi"))
 function hexOf(text: string) {
   return Hex.encode(new TextEncoder().encode(text))
@@ -95,7 +93,6 @@ The module's exports stay namespace members: `Option.some`, `FileSystem.layerNoo
 Assigning a module stores its namespace: `const fs = FileSystem`. To call implementation methods, read the service first: `const fs = try FileSystem.FileSystem`. The same rule applies to `Experimental.Process` and the other modules that name a service.
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-12, VIP-14, VIP-33
 // run: provide Path.layer, FileSystem.layerNoop({ readFileString: effect (path) => `read ${path}` }) { try Console.log(try readConfig("/srv")); try Console.log(firstOr(Chunk.empty(), 7)) }
 effect function readConfig(dir: string) {
   const fs = try FileSystem.FileSystem
@@ -135,7 +132,6 @@ These meanings apply in value and namespace positions. In a type position, a nam
 ## Compose standalone functions
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(expirationWindow())
 function expirationWindow() {
   const short = Duration.seconds(15)
@@ -156,7 +152,6 @@ VibeLang's global names are source conveniences: they refer to Effect and langua
 ## Reusable operators
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-3, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try example())
 effect function withinSecond<A, E, R>(program: A!E!R) {
   return try timeout(program, "1 second")

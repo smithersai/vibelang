@@ -6,7 +6,6 @@ Compiler diagnostics show VibeLang contracts and catch failures or requirements 
 
 ```vibe
 // example.vibe
-// pending: VIP-1, VIP-3, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try sample())
 effect function sample() {
   try sleep("5 millis")
@@ -39,7 +38,6 @@ Converting an `async` function writes a qualified `Effect.tryPromise(() => promi
 ## Inspect inferred information
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-13, VIP-14
 // run: try Console.log(try accepted(2))
 error Rejected
 
@@ -255,7 +253,6 @@ Before async conversion, await a returned `Promise` or `PromiseLike` explicitly,
 EK4801-EK4825 are lint. Each has a default, error, warning, or off, and the historical port codes below remain available through legacy diagnostic comments. Configure assigned imported `EK38xx` codes through `vibe.severities`; core errors cannot be turned off. A later comment overrides an earlier one; within one comment, a code named on its own overrides `*`. Words after the codes are prose, and punctuation ends a category, so `// @vibelang-diagnostics-next-line EK4804:off: generic error` keeps its reason:
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-14
 // run: try Console.log(discard() catch () => 0)
 effect function discard() {
   // @vibelang-diagnostics-next-line EK4804:off

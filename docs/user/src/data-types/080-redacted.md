@@ -5,7 +5,6 @@
 ## Wrapping sensitive values
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(String(exampleKey)); try reportConfiguration(); try Console.log(try Effect.try(() => JSON.stringify(exampleKey)))
 const exampleKey = Redacted.make("example-key-not-a-real-secret")
 String(exampleKey) // "<redacted>"
@@ -67,7 +66,6 @@ true <redacted>
 ## Comparing protected values
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(same(first, second), same(first, third))
 const same = Redacted.makeEquivalence(Equivalence.String)
 const first = Redacted.make("example-a")

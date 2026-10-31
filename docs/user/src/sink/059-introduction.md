@@ -5,7 +5,6 @@ A Sink describes how to consume a Stream into one result. Use one to make a cons
 ## Consumers and result types
 
 ```vibe
-// pending: VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try Stream.run(Stream.make("one", "two", "three"), header); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const header: Sink.Sink<Array<string>, string, string, never, never> = Sink.take<string>(2)
 // Output: ["one","two"]
@@ -18,7 +17,6 @@ Sink constructors and operators that return Sinks build values; wrap any call th
 ## Running a consumer against a source
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try parseHeader(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function parseHeader() {
   const source = Stream.make("format-v2", "length-64", "payload")
@@ -35,7 +33,6 @@ effect function parseHeader() {
 ## Unconsumed elements
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try headerWithLeftovers(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function headerWithLeftovers() {
   const sink = Sink.mapEnd(Sink.take<string>(1), ([header, rest]) => [

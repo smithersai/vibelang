@@ -7,7 +7,6 @@ A layer describes how to build services: their dependencies, initialization erro
 ## Describing a dependency graph
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-6, VIP-9, VIP-12, VIP-14
 // run: provide Reports = { render: effect (title) => `report/${title}` } { try Console.log(try report("Inventory")) }
 service Settings {
   prefix: string
@@ -42,7 +41,6 @@ A `provide` block takes layers and `Key = value` entries, separated by commas, a
 ## Preventing dependency leakage
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-12, VIP-14
 // run: provide Settings = { prefix: "test" } { provide PrinterLive { const printer = try Printer; try printer.print("ready") } }
 const PrinterLive = Layer.effect(Printer, effect {
   const settings = try Settings

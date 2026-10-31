@@ -148,7 +148,6 @@ Create `src/hello.vibe`, in a directory that `include` selects:
 
 ```vibe
 // src/hello.vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try hello("VibeLang"))
 export effect function hello(name: string) {
   return `Hello, ${name}!`
@@ -170,7 +169,6 @@ The `start` script runs `dist/main.js`, so create `src/main.vibe`:
 
 ```vibe
 // src/main.vibe
-// pending: VIP-1, VIP-5, VIP-14, VIP-26
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import { hello } from "./hello.vibe"
 
@@ -211,7 +209,6 @@ Create `src/hello.test.vibe`:
 
 ```vibe
 // src/hello.test.vibe
-// pending: VIP-2, VIP-5, VIP-6
 import { assert, it } from "@effect/vitest"
 import { hello } from "./hello.vibe"
 

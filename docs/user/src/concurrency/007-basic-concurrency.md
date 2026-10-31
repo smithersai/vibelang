@@ -7,7 +7,6 @@ Running a completed Effect with `try` can continue in the same fiber turn. It ad
 ## Sequential, bounded, and unbounded work
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14, VIP-18
 // run: try Console.log(try stringify(try runTasks()))
 effect function task(id: number) {
   try Console.log("starting", id)
@@ -48,7 +47,6 @@ A written `for concurrent(limit())` limit is evaluated once, before the iterable
 ## Interrupting computations
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-17
 // run: const stopped = try cancelWork(); try Console.log(Exit.isFailure(stopped) && Cause.hasInterrupts(stopped.cause))
 effect function cancelWork() {
   const worker = fork effect {

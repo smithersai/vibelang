@@ -5,7 +5,6 @@ Transform a Sink when its consumption rule fits but its input or result type doe
 ## Adapting consumer input
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try countItems())
 const quantities = Sink.mapInput(Sink.sum, (entry: { quantity: number }) => entry.quantity)
 
@@ -39,7 +38,6 @@ The new sink accepts strings and can fail with `InvalidQuantity`. A failed input
 ## Mapping consumer output
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try totalReport(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const report = Sink.map(Sink.sum, (total) => ({ total, unit: "items" }))
 
@@ -55,7 +53,6 @@ effect function totalReport() {
 ## Composing input and output transformations
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try byteReport())
 const report = Sink.sum.pipe(
   Sink.mapInput((entry: { bytes: number }) => entry.bytes),
@@ -74,7 +71,6 @@ The input stage adapts each element, the original sink accumulates, and the outp
 ## Filtering before consumption
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try positiveBatches(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function positiveBatches() {
   const positive = Stream.filter(Stream.make(-3, 4, 0, 8, -1, 12, 16), (n) => n > 0)

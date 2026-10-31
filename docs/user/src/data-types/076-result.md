@@ -5,7 +5,6 @@
 ## Results and execution exits
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(Result.isSuccess(parseCount("6")), Result.isFailure(parseCount("-1")), Result.isFailure(parseCount("")))
 function parseCount(text: string) {
   const count = Number(text)
@@ -25,7 +24,6 @@ Returning a failed `Result` does not throw: `parseCount` is a plain function tha
 ## Constructing and identifying variants
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(Result.isResult(accepted), Result.isSuccess(accepted), Result.isFailure(rejected)); try Console.log(label(accepted)); try Console.log(label(rejected))
 const accepted = Result.succeed(8)
 const rejected = Result.fail("limit exceeded")
@@ -50,7 +48,6 @@ A success holds its payload in `.success`, a failure in `.failure`; guards narro
 ## Matching and mapping outcomes
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(summarize(Result.succeed(6))); try Console.log(summarize(Result.fail("invalid")))
 function summarize(result: Result.Result<number, string>) {
   const increased = Result.map(result, (count) => count + 2)
@@ -109,7 +106,6 @@ InvalidCount -1
 ## Sequencing and combining results
 
 ```vibe
-// pending: VIP-4, VIP-5, VIP-6, VIP-14
 // run: const result = combine(Result.succeed(" Weekly "), Result.succeed(6)); { const jsonValue = [try Effect.try(() => Result.getOrThrow(result.chained)), try Effect.try(() => Result.getOrThrow(result.tuple)), try Effect.try(() => Result.getOrThrow(result.record))]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; const failed = combine(Result.fail("missing"), Result.fail("invalid")); try Console.log(Result.getOrElse(failed.chained, (error) => error), Result.getOrElse(failed.tuple, (error) => error), Result.getOrElse(failed.record, (error) => error))
 function combine(
   name: Result.Result<string, string>,

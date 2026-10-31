@@ -5,7 +5,6 @@ These recipes use Effect values as repeatable programs. Each bounds its attempts
 ## Honoring server retry hints
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-12, VIP-13, VIP-14, VIP-17
 // run: provide TestClock.layer() { const worker = fork download(); try TestClock.adjust("5 seconds"); try Console.log(join worker) }
 error Throttled {
   retryAfter: Duration.Duration
@@ -37,7 +36,6 @@ Parse the response's retry hint into a duration at the HTTP boundary. The policy
 ## Polling with response-dependent delays
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-6, VIP-12, VIP-13, VIP-14, VIP-17
 // run: provide TestClock.layer() { const worker = fork waitForArchive(); try TestClock.adjust("1 second"); try Console.log(join worker) }
 type Status =
   | { _tag: "Pending"; pollAfter: Duration.Duration }
@@ -93,7 +91,6 @@ The outer timeout covers the first attempt, every wait, and every retry; a timeo
 ## Switching from rapid to slower retries
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-12, VIP-13, VIP-14, VIP-17
 // run: provide TestClock.layer() { const worker = fork reconnect(); try TestClock.adjust("5 seconds"); try Console.log(join worker) }
 error Disconnected
 
@@ -117,7 +114,6 @@ The first two retries wait briefly; later ones wait four seconds. This simulatio
 ## Recording retry decisions
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-12, VIP-13, VIP-14, VIP-17
 // run: provide TestClock.layer() { const worker = fork observedRequest(); try TestClock.adjust("1 second"); try Console.log(join worker) }
 error Unavailable {
   status: number

@@ -5,7 +5,6 @@ Leftovers are elements of a batch that a sink received but had not consumed when
 ## Collecting leftover elements
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try inspectRemainder(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function inspectRemainder() {
   const source = Stream.fromArray([21, 34, 55, 89])
@@ -21,7 +20,6 @@ effect function inspectRemainder() {
 `Sink.mapEnd` receives `[result, optionalLeftoverBatch]` and returns another such tuple. A one-element tuple moves the leftovers into the success result, leaving no separate leftover batch; `try Stream.run(source, sink)` returns that result.
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: const remainder = try inspectSmallBatches(); { const jsonValue = { first: Option.getOrElse(remainder.first, () => 0), leftover: remainder.leftover }; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function inspectSmallBatches() {
   const source = Stream.rechunk(Stream.fromArray([21, 34, 55, 89]), 2)
@@ -39,7 +37,6 @@ Here `55` and `89` are in a batch the sink never requests, so the leftovers you 
 ## Explicitly discarding leftovers
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try discardRemainder(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function discardRemainder() {
   const sink = Sink.take<number>(2).pipe(

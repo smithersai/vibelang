@@ -43,7 +43,6 @@ announced
 ## Combining two results
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-18
 // run: { const jsonValue = [try sequentialPair(), try concurrentPair(), try formattedPair()]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function amount() {
   try sleep("30 millis")
@@ -83,7 +82,6 @@ effect function formattedPair() {
 ## Repeating work in loops
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try inspectPages(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try logAttempts()
 effect function inspectPages() {
   const inspected: number[] = []
@@ -110,7 +108,6 @@ effect function logAttempts() {
 A loop can call services, pause, fail, and use `break` or `continue`. Accumulate results only when the caller needs them; a loop without an explicit return completes with `void`. Each run of the function recreates its local state.
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: try operatorLoop()
 effect function operatorLoop() {
   let index = 0
@@ -133,7 +130,6 @@ In Effect 4.1.1, `whileLoop` takes one options object and returns an Effect with
 ## Traversing collections and discarding values
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try prepareAll(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try logAll()
 effect function prepare(id: number) {
   try sleep("10 millis")
@@ -187,7 +183,6 @@ effect function collected() {
 ## Early termination and alternate collection modes
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
 // run: try Console.log(stopAtFailure() catch (error) => error._tag); { const jsonValue = (try collectOutcomes()).map((result) => Result.isSuccess(result) ? result.success : result.failure._tag); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 error Unavailable {
   id: number

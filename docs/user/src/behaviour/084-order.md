@@ -5,7 +5,6 @@
 ## Using built-in orderings
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify([Order.String("amber", "violet"), Order.Number(7, 7), Order.BigInt(11n, 3n), Order.Date(new Date("2026-01-01"), new Date("2026-02-01"))])))
 Order.String("amber", "violet") // -1
 Order.Number(7, 7) // 0
@@ -19,7 +18,6 @@ An `Order.Order<A>` compares two A values synchronously. Built-in orders cover s
 ## Sorting values
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify([sorted, input, mutableCopy])))
 const input = [9, 2, 6]
 const sorted = Effect.Array.sort(input, Order.Number)
@@ -36,7 +34,6 @@ Effect's array `sort` returns a sorted copy; JavaScript's sorts its receiver in 
 ## Deriving comparison rules
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(byPriority({ priority: 1, title: "Publish" }, { priority: 3, title: "Review" }))
 interface Task {
   priority: number
@@ -58,7 +55,6 @@ byPriority(
 ## Combining comparison rules
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(tasks.map((task) => task.title).join(", "))
 interface Task {
   priority: number
@@ -82,7 +78,6 @@ const tasks = Effect.Array.sort([
 ## Reversing an ordering
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify(Effect.Array.sort([5, 12, 3], descending))))
 const descending = Order.flip(Order.Number)
 Effect.Array.sort([5, 12, 3], descending) // [12, 5, 3]
@@ -94,7 +89,6 @@ Effect.Array.sort([5, 12, 3], descending) // [12, 5, 3]
 ## Checking comparisons
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify([less(3, 7), greater(7, 3), atMost(7, 7), atLeast(7, 7)])))
 const less = Order.isLessThan(Order.Number)
 const greater = Order.isGreaterThan(Order.Number)
@@ -112,7 +106,6 @@ These helpers turn an order, primitive or derived, into boolean tests. Equality 
 ## Selecting extrema
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify([Order.min(Order.Number)(13, 8), Order.max(Order.Number)(13, 8), Order.min(Order.flip(Order.Number))(13, 8)])))
 Order.min(Order.Number)(13, 8) // 8
 Order.max(Order.Number)(13, 8) // 13
@@ -125,7 +118,6 @@ Order.min(Order.flip(Order.Number))(13, 8) // 13
 ## Clamping values and testing ranges
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify([clamp(4), clamp(30), clamp(70), inside(10), inside(51)])))
 const bounds = { minimum: 10, maximum: 50 }
 const clamp = Order.clamp(Order.Number)(bounds)

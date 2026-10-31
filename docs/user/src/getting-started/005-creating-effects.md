@@ -5,7 +5,6 @@ An effect function describes a VibeLang computation: return a value to succeed, 
 ## Success and failure
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-13, VIP-14
 // run: try Console.log((try reserve("notebook", true)).item)
 error Unavailable {
   item: string
@@ -40,7 +39,6 @@ effect function attemptReservation(item: string, available: boolean) {
 ## Wrap synchronous operations
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-12, VIP-14, VIP-33
 // run: provide NodeCrypto.layer { try Console.log((try token()).length) }
 import * as NodeCrypto from "@effect/platform-node/NodeCrypto"
 
@@ -60,7 +58,6 @@ export { statfsSync } from "node:fs"
 ```
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-13, VIP-14
 // run: try Console.log((try freeBlocks(".")) > 0)
 import { statfsSync } from "./platform-fs.js"
 
@@ -93,7 +90,6 @@ In Effect code, `catch` sees expected failures only. Implicit exceptions, such a
 String computation needs no wrapper:
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(slug("Hello VibeLang"))
 function slug(title: string) {
   let s = title.trim().toLowerCase()
@@ -204,7 +200,6 @@ Keep shared adapters in `.ts` files and import them wherever needed. Relative sp
 ## Suspend work
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-3, VIP-5, VIP-14
 // run: { const jsonValue = try counters(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function nextCounter() {
   let count = 0
@@ -225,7 +220,6 @@ effect function counters() {
 The returned Effect delays its body until each run. For retry to create new state each time, wrap the whole computation, mutable setup included, in `effect { … }`. `suspend` delays building an Effect when its construction must repeat.
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try countdown(3))
 effect function countdown(n: number): number!! {
   if (n <= 0) return 0

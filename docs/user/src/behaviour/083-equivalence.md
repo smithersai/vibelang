@@ -5,7 +5,6 @@
 ## Representing a reusable equality relation
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify([sameLabel(" Inbox ", "inbox"), sameLabel("inbox", "archive")])))
 const sameLabel: Equivalence.Equivalence<string> = (a, b) =>
   a.trim().toLowerCase() === b.trim().toLowerCase()
@@ -20,7 +19,6 @@ An `Equivalence.Equivalence<A>` is a synchronous function from two A values to a
 ## Choosing built-in relations
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify([Equivalence.String("cyan", "cyan"), Equivalence.Number(12, 13), Equivalence.Boolean(true, true), Equivalence.BigInt(5n, 5n), Equivalence.Date(new Date("2026-04-12"), new Date("2026-04-12")), sameSymbol(key, key), sameSymbol(key, Symbol("entry"))])))
 Equivalence.String("cyan", "cyan") // true
 Equivalence.Number(12, 13) // false
@@ -40,7 +38,6 @@ The string, boolean, bigint, and `strictEqual` relations use strict equality; `E
 ## Deriving comparisons through input projections
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(bySku({ sku: "part-4", displayName: "Bolt" }, { sku: "part-4", displayName: "Steel bolt" }))
 interface Product {
   sku: string

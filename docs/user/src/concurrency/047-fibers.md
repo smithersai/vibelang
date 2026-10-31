@@ -5,7 +5,6 @@ A fiber is a running computation with a result and a lifetime. Effect's lightwei
 ## Forking and awaiting
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-17
 // run: try Console.log(try buildDashboard())
 effect function buildDashboard() {
   const chart = fork effect {
@@ -29,7 +28,6 @@ effect function buildDashboard() {
 ## Awaiting completion as data
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-14, VIP-17
 // run: try Console.log(Exit.isFailure(try inspectChild()))
 effect function inspectChild() {
   const child = fork effect { throw "render failed" }
@@ -78,7 +76,6 @@ To continue during cleanup, fork the interruption (`const stopping = fork Fiber.
 ## Protecting work from interruption
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-22
 // run: try saveReport(); try pollStatus(false); const stopped = try exit(pollStatus(true)); try Console.log(Exit.isFailure(stopped) && Cause.hasInterrupts(stopped.cause))
 effect function saveReport() {
   uninterruptible {
@@ -115,7 +112,6 @@ Statements in these blocks stay code of the enclosing function, so `return` retu
 ## Combining results
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-18
 // run: try Console.log(try combine())
 effect function title() {
   return "Inventory"
@@ -143,7 +139,6 @@ For fibers you already hold, join each handle or use `try all([Fiber.join(titleF
 ## Racing events
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14, VIP-17, VIP-18
 // run: provide TestClock.layer() { const jobs = try Queue.unbounded<string>(); const shutdown = try Deferred.make<void>(); try Queue.offer(jobs, "build"); try Console.log(try nextEvent(jobs, shutdown)); try Deferred.succeed(shutdown, undefined); try Console.log(try nextEvent(jobs, shutdown)); const neverShutdown = try Deferred.make<void>(); const idle = fork nextEvent(jobs, neverShutdown); try TestClock.adjust("30 seconds"); try Console.log(join idle) }
 effect function nextEvent(jobs: Queue.Queue<string>, shutdown: Deferred.Deferred<void>) {
   return try.race [
@@ -169,7 +164,6 @@ effect function nextEvent(jobs: Queue.Queue<string>, shutdown: Deferred.Deferred
 ## Running a loop body concurrently
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-19
 // run: try printAll(["a", "", "b"])
 effect function fetchPage(id: string) {
   try sleep("5 millis")
@@ -253,7 +247,6 @@ Start a fiber that must outlive its parent with `fork.scoped work()` for the cal
 ## Understanding execution scheduling
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-17
 // run: try waitForReady()
 effect function waitForReady() {
   const ready = try Deferred.make<void>()

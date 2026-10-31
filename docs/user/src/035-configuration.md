@@ -5,7 +5,6 @@
 ## Declare typed configuration
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-12, VIP-14
 // run: provide ConfigProvider.layer(ConfigProvider.fromUnknown({ HOST: "localhost", PORT: 9091 })) { { const jsonValue = try serverSettings(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }
 const Host = Config.NonEmptyString("HOST")
 const Port = Config.Port("PORT")
@@ -38,7 +37,6 @@ Prefer `Finite` to `Number` for ordinary numeric settings: `Number` also accepts
 ## Parse with schemas
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-5, VIP-12, VIP-14
 // run: provide ConfigProvider.layer(ConfigProvider.fromUnknown({ TEAM_NAME: "search" })) { try Console.log(try teamName()) }; provide ConfigProvider.layer(ConfigProvider.fromUnknown({ TEAM_NAME: "ab" })) { teamName() catch effect (error) => { try Console.log(error._tag) } }
 effect function teamName() {
   return try Config.schema(
@@ -55,7 +53,6 @@ effect function teamName() {
 
 ```vibe
 // descriptors.vibe
-// pending: VIP-5, VIP-14
 // run: { const jsonValue = try server.parse(ConfigProvider.fromUnknown({ server: { host: "localhost", port: 9091 } })); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 export const server = Config.schema(Schema.Struct({
   host: Schema.String,
@@ -65,7 +62,6 @@ export const server = Config.schema(Schema.Struct({
 ```
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: { const jsonValue = try localServer(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 import { server } from "./descriptors.vibe"
 
@@ -82,7 +78,6 @@ Use `descriptor.parse(provider)` for an explicit source, especially in tests; it
 ## Read arrays and records
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-12, VIP-14
 // run: provide ConfigProvider.layer(ConfigProvider.fromUnknown({ REGIONS: "north,south", LABELS: "team=search,tier=internal" })) { { const jsonValue = try routingSettings(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }
 effect function routingSettings() {
   const regions = try Config.Array(Schema.String, "REGIONS")
@@ -98,7 +93,6 @@ Arrays accept structural values or a separated string such as `north,south`; rec
 
 ```vibe
 // database-config.vibe
-// pending: VIP-5, VIP-14
 // run: { const jsonValue = try database.parse(ConfigProvider.fromEnv({ env: { DATABASE_HOST: "db.internal", DATABASE_PORT: "5433" } })); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 export const database = Config.nested(Config.all({
   host: Config.NonEmptyString("HOST"),
@@ -108,7 +102,6 @@ export const database = Config.nested(Config.all({
 ```
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: { const jsonValue = try testDatabaseSettings(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 import { database } from "./database-config.vibe"
 
@@ -126,7 +119,6 @@ effect function testDatabaseSettings() {
 
 ```vibe
 // optional-config.vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: const provider = ConfigProvider.fromUnknown({ BACKUP_HOST: "standby.internal" }); try Console.log(try port.parse(provider), Option.isNone(try apiKey.parse(provider)), try host.parse(provider)); port.parse(ConfigProvider.fromUnknown({ PORT: "invalid" })) catch effect (error) => { try Console.log(error._tag) }
 export const port = Config.withDefault(Config.Port("PORT"), 9091)
 export const apiKey = Config.option(Config.String("API_KEY"))
@@ -139,7 +131,6 @@ export const host = Config.orElse(
 ```
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: const result = try defaultsExample(); try Console.log(result.port, Option.isNone(result.apiKey), result.host)
 import { port, apiKey, host } from "./optional-config.vibe"
 
@@ -162,7 +153,6 @@ A default on a `Config.all` group replaces the whole group when any child is abs
 
 ```vibe
 // origin-config.vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(try origin.parse(ConfigProvider.fromUnknown({ HOST: "example.test", PORT: 9091 })))
 export const origin = Config.map(Config.all({
   host: Config.NonEmptyString("HOST"),
@@ -172,7 +162,6 @@ export const origin = Config.map(Config.all({
 ```
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-12, VIP-14
 // run: provide ConfigProvider.layer(ConfigProvider.fromUnknown({ HOST: "example.test", PORT: 9091 })) { try reportOrigin() }
 import { origin } from "./origin-config.vibe"
 
@@ -189,7 +178,6 @@ Use `Config.map` for a transformation that can't fail, a schema for validation, 
 ## Protect secrets
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-12, VIP-14
 // run: provide ConfigProvider.layer(ConfigProvider.fromUnknown({ ACCESS_TOKEN: "documentation-placeholder" })) { try Console.log(String(try secretSetting())) }
 effect function secretSetting() {
   const token = try Config.Redacted("ACCESS_TOKEN")
@@ -205,7 +193,6 @@ effect function secretSetting() {
 ## Load providers
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-12, VIP-14, VIP-33
 // run: try Console.log(try testPort(), try Config.Port("PORT").parse(EnvProvider), try Config.Port("PORT").parse(DotEnvProvider)); provide FileSystem.layerNoop({ readFileString: effect (path) => { try Console.log(path); return "PORT=9095" } }) { try Console.log(try Config.Port("PORT").parse(try fileProvider())) }
 const TestProvider = ConfigProvider.fromUnknown({ PORT: 9091 })
 const EnvProvider = ConfigProvider.fromEnv({ env: { PORT: "9092" } })
@@ -230,7 +217,6 @@ effect function fileProvider() {
 ## Remap provider paths
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-12, VIP-14
 // run: try Console.log(try deploymentPort())
 const DeploymentProvider = ConfigProvider.constantCase(
   ConfigProvider.fromEnv({ env: { SERVICE_PORT: "9094" } })
@@ -247,7 +233,6 @@ effect function deploymentPort() {
 ## Compose and install providers
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-12, VIP-14
 // run: { const jsonValue = try configuredServer(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const Combined = ConfigProvider.orElse(
   ConfigProvider.fromEnv({ env: { HOST: "edge.internal" } }),

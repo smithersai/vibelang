@@ -5,7 +5,6 @@ A `Deferred.Deferred<A, E>` is a result another fiber can complete once. Use it 
 ## Creating a one-time result
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
 // run: const signal = try makeStartupSignal(); try Console.log(try Deferred.isDone(signal)); try Console.log(Option.isNone(try Deferred.poll(signal)))
 error StartupFailed {
   stage: string
@@ -28,7 +27,6 @@ A new deferred is empty, holding neither a success nor a failure. Creating it is
 ## Waiting for completion
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14, VIP-17
 // run: try Console.log(try waitForAddress())
 effect function waitForAddress() {
   const address = try Deferred.make<string>()
@@ -93,7 +91,6 @@ effect function inspectWithoutWaiting() {
 ## Coordinating work across fibers
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-17
 // run: try Console.log(try coordinate())
 effect function coordinate() {
   const prepared = try Deferred.make<ReadonlyArray<string>>()

@@ -63,7 +63,6 @@ command = "node build.mjs"
 
 ```vibe
 // src/greeter.vibe
-// pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-9, VIP-12, VIP-13, VIP-14
 export error EmptyName
 
 service Greeter {

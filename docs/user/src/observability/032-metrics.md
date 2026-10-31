@@ -5,7 +5,6 @@ Effect's `Metric` module counts events, records current values, and measures dis
 ## Recording counters and gauges
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try stringify(try recordBatch())); try Console.log(String((try Metric.value(bytes)).count)); try Console.log(try stringify(try recordBatch()))
 const requests = Metric.counter("guide_requests", { incremental: true })
 const queued = Metric.gauge("guide_queued")
@@ -137,7 +136,6 @@ A frequency metric counts each observed string. Use a bounded set of categories,
 ## Attaching attributes to metrics and regions
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-12, VIP-14
 // run: const result = try attributed(); try Console.log(result.requests.count, result.failures.count); try Console.log((try Metric.value(apiRequests)).count, (try Metric.value(failures)).count)
 const apiRequests = Metric.withAttributes(
   Metric.counter("guide_api_requests", { incremental: true }),

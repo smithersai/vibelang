@@ -469,3 +469,59 @@ test.skipIf(!existsSync(compiler))("symlinked temporary directories (" + layout.
   } finally { rmSync(root, { recursive: true, force: true }) }
 }, 30_000)
 }
+
+// A marker says the compiler refuses a block. Like a fuzz pending line, it goes
+// in the commit that makes it false, or the examples behind it stop being checked.
+test.skipIf(!existsSync(compiler))("a pending marker stands only while the compiler refuses its block", async () => {
+  const root = mkdtempSync(join(tmpdir(), "snippet-stale-"))
+  try {
+    const pages: Record<string, string[]> = {
+      stale: ["```vibe", "// pending: VIP-1", "const takes = 1", "```"],
+      refused: ["```vibe", "// pending: VIP-1", "const wrong: number = 'text'", "```"],
+      // The syntax error stops semantic checks across the program, so the type
+      // error beside it reads as clean until a later round drops it.
+      hidden: [
+        "```vibe", "// pending: VIP-1", "const = 1", "```",
+        "```vibe", "// pending: VIP-1", "const wrong: number = 'text'", "```",
+        "```vibe", "// pending: VIP-1", "const takes = 1", "```"
+      ],
+      output: ["```vibe", "// pending: VIP-1", "export function main() { Console.log('actual') }", "// Output: claimed", "```"],
+      printed: ["```vibe", "// pending: VIP-1", "export function main() { Console.log('claimed') }", "// Output: claimed", "```"],
+      // waits imports a block the compiler takes, but fails itself, so the marker it inherits stays.
+      imported: [
+        "```vibe", "// lib.vibe", "// pending: VIP-1", "export const value = 1", "```",
+        "```vibe", '// uses.vibe', 'import { value } from "./lib.vibe"', "const wrong: string = value", "```"
+      ],
+      fragment: ["```vibe", "// fragment", "// pending: VIP-1", "const opted = 1", "```"]
+    }
+    for (const [name, lines] of Object.entries(pages)) writeFileSync(join(root, `${name}.md`), lines.join("\n"))
+    const report = join(root, "report.json")
+    const check = async (...flags: string[]) => {
+      const child = Bun.spawn(["bun", join(import.meta.dir, "check-snippets.ts"), "--root", root, "--compiler", compiler, "--json", report, ...flags], { stdout: "pipe", stderr: "pipe" })
+      const [, stderr, status] = await Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited])
+      const page = (name: string) => JSON.parse(readFileSync(report, "utf8")).pages.find((p: any) => p.page.endsWith(`/${name}.md`)).blocks.map((b: any) => b.status)
+      return { status, stderr, page }
+    }
+
+    const found = await check()
+    expect({ status: found.status, stderr: found.stderr }).toEqual({ status: 1, stderr: "" })
+    expect(found.page("stale")).toEqual(["fail"])
+    expect(found.page("refused")).toEqual(["pending"])
+    expect(found.page("hidden")).toEqual(["pending", "pending", "fail"])
+    expect(found.page("output")).toEqual(["pending"])
+    expect(found.page("printed")).toEqual(["fail"])
+    expect(found.page("imported")).toEqual(["pending", "pending"])
+    expect(found.page("fragment")).toEqual(["pending"])
+
+    expect((await check("--retire-pending")).status).toBe(0)
+    expect(readFileSync(join(root, "stale.md"), "utf8")).toBe(["```vibe", "const takes = 1", "```"].join("\n"))
+    expect(readFileSync(join(root, "hidden.md"), "utf8")).toBe(pages.hidden.slice(0, 8).concat("```vibe", "const takes = 1", "```").join("\n"))
+    expect(readFileSync(join(root, "refused.md"), "utf8")).toBe(pages.refused.join("\n"))
+
+    const again = await check()
+    expect({ status: again.status, stderr: again.stderr }).toEqual({ status: 0, stderr: "" })
+    expect(again.page("stale")).toEqual(["ok"])
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})

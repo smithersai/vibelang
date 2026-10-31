@@ -44,7 +44,6 @@ An ordinary nongenerator `async` function rejects its Promise for callback and p
 In an effect function, `throw` is a typed failure and a catch expression receives typed failures only. A plain function keeps TypeScript's behavior: its return annotation checks its result, and its `try`/`catch` statement can handle JavaScript exceptions while returning a value:
 
 ```vibe
-// pending: VIP-13, VIP-14, VIP-5
 // run: try Console.log(quantityOr("3", 0)); try Console.log(quantityOr("x", 0))
 error InvalidQuantity { text: string }
 
@@ -355,7 +354,6 @@ These operators inspect the tagged error's readonly `reason` field. `catchReason
 ## Errors are classes
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-7, VIP-13, VIP-14
 // run: try Console.log(try describeFailure(new Missing({ code: "E1", path: "/a" }))); try Console.log(try describeFailure(new Expired({ code: "E2" }))); try Console.log(match (new Missing({ code: "E1", path: "/a" })) { when Missing: true; default: false; }); try Console.log(normalizedError(" pen ").label)
 error Missing { code: string; path: string }
 error Expired { code: string }
@@ -401,7 +399,6 @@ Use a union of error classes to describe several cases. Each class has its own b
 ### Error families
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-7, VIP-13
 // run: try Console.log(try describeFamily(new MissingFile({ code: "E1", path: "/a" }))); try Console.log(try describeFamily(new ExpiredFile({ code: "E2" })))
 error MissingFile { code: string; path: string }
 error ExpiredFile { code: string }
@@ -429,7 +426,6 @@ An `error` declaration always extends `Data.TaggedError`, so `error MissingFile 
 ## Errors that encode
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-7, VIP-14, VIP-29
 // run: try Console.log(try encodeStoreError()); try Console.log(try decodeStoreError())
 schema error NotStored { key: string; attempts: number }
 

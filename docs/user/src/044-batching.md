@@ -5,7 +5,6 @@ Use requests and resolvers when independent lookups can share a backend call. A 
 ## Model requests and domain errors
 
 ```vibe
-// pending: VIP-5, VIP-13, VIP-14
 // run: const first = FindPart({ code: "ink-blue" }); const same = FindPart({ code: "ink-blue" }); try Console.log(Equal.equals(first, same), Hash.hash(first) === Hash.hash(same)); try Console.log(Equal.equals(first, FindPart({ code: "ink-black" })))
 type Part = { code: string; label: string }
 

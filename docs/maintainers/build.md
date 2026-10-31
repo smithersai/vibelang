@@ -156,6 +156,16 @@ when invoking `scripts/ci.sh`, or append the selector's labels to its existing
 changed-case list. A graph result from one of these families is a seed check,
 not a fuzz campaign. The full fuzz suite and editor smoke remain required.
 
+### Pending examples
+
+A `// pending: VIP-n` line in a guide example holds it out of `:snippets` while
+the compiler refuses it. `check-snippets.ts` tries every pending example on each
+run and fails on one that compiles clean and prints its `// Output:`, because a
+stale line leaves that example unchecked. Delete the stale lines with
+`bun docs/tools/check-snippets.ts --retire-pending` in the commit that makes the
+compiler take them. `--pending-list <file>` writes why each remaining example is
+refused.
+
 ### Pending hang probes
 
 The `//:go-vibelangfuzz-pending` merge-gate target requires the independently

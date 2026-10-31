@@ -5,7 +5,6 @@ Stream recovery replaces a failed source with another. Recover during consumptio
 ## Recovering typed failures and defects
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-13, VIP-14
 // run: { const jsonValue = [try readRecovered(), (try Stream.runCollect(tagged)).map((outcome) => outcome._tag)]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 error Disconnected
 
@@ -26,7 +25,6 @@ const tagged = Stream.catch(
 `Stream.catch` receives a typed failure and returns the replacement Stream. Recovery abandons the rest of the failed source; it does not resume after the failing step. Tag each source with `Result` when downstream code must tell live data from fallback.
 
 ```vibe
-// pending: VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try Stream.runCollect(boundary); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const boundary = Stream.catchDefect(
   Stream.die(new Error("decoder invariant failed")),
@@ -87,7 +85,6 @@ effect function consumeChecked() {
 ## Retrying a source
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-3, VIP-4, VIP-5, VIP-6, VIP-9, VIP-12, VIP-13, VIP-14
 // run: let attempts = 0; provide Sensor = { read: effect () => { attempts++; if (attempts < 4) throw new Offline(); return 42 } } { { const jsonValue = try Stream.runCollect(readings); try Console.log(try Effect.try(() => JSON.stringify(jsonValue)), attempts) } }
 error Offline
 

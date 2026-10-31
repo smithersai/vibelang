@@ -6,7 +6,6 @@ A platform `runMain` starts a VibeLang application and ties its lifetime to the 
 
 ```vibe
 // preparation.vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-26
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 
 effect function main() {

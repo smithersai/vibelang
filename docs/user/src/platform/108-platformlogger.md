@@ -5,7 +5,6 @@ File logging uses Effect's `Logger` module. Combine a string formatter with `Log
 ## Writing formatted logs to a file
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
 // run: provide NodeFileSystem.layer { provide FileLogger { try application() }; const fs = try FileSystem.FileSystem; const text = try fs.readFileString("./application.log"); try Console.log(text.includes("Index build started") && text.indexOf("Index build started") < text.indexOf("Index build completed")) }
 import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem"
 const FileLogger = Logger.layer([
@@ -29,7 +28,6 @@ In Effect 4.1.1, `toFile` batches with a one-second window by default; `batchWin
 
 ```vibe
 // main.vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-26, VIP-33
 import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem"
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 const LoggerLive = Layer.provide(
@@ -60,7 +58,6 @@ NodeRuntime.runMain(Effect.provide(main(), NodeFileSystem.layer))
 
 ```vibe
 // main.vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-26
 import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem"
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 const LoggerLive = Layer.provide(

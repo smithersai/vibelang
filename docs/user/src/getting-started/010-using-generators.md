@@ -17,7 +17,6 @@ A class can extend a value named `effect`: in `class Derived extends effect { }`
 ## Sequence computations
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try Effect.provide(invoice(3), ConfigProvider.layer(ConfigProvider.fromUnknown({ UNIT_PRICE: 4 }))))
 effect function invoice(quantity: number) {
   const unitPrice = try Config.Finite("UNIT_PRICE")
@@ -34,7 +33,6 @@ Each `try` completes before the next statement runs. `Config.Finite("UNIT_PRICE"
 ## Relate calls to async functions
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try greeting())
 effect function delayedLabel(name: string) {
   try sleep("30 millis")
@@ -55,7 +53,6 @@ effect function greeting() {
 ## Branches and loops
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try reportEven([1, 2, 3, 4, -1, 6]))
 effect function reportEven(values: ReadonlyArray<number>) {
   let count = 0
@@ -77,7 +74,6 @@ Conditions, local variables, `break`, `continue`, and early returns keep JavaScr
 ## Raise failures and stop early
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-13, VIP-14
 // run: try Console.log(try optionalTitle(undefined))
 error MissingTitle
 
@@ -100,7 +96,6 @@ When a cause contains several expected failures and no defect or interruption, `
 ## Retain the receiver
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try label())
 class Prefixer {
   constructor(readonly prefix: string) {}

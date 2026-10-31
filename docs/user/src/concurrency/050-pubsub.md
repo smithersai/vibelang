@@ -29,7 +29,6 @@ Subscribe before publishing a message that must be received: without replay conf
 ## Selecting capacity and overflow behavior
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: const hubs = try makeHubs(); try Console.log(PubSub.capacity(hubs.reliable), PubSub.capacity(hubs.bestEffort), PubSub.capacity(hubs.latest), PubSub.capacity(hubs.unlimited)); for (const hub of Object.values(hubs)) { try PubSub.shutdown(hub) }
 effect function makeHubs() {
   return {
