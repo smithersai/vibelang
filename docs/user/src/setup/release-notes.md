@@ -221,6 +221,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The migrate flow's declaration emit deleted every `.d.ts` file it wrote outside its output directory, so setup and verify deleted a tracked declaration file beside a source outside a project's `rootDir`; the emit now removes only the files it created and puts back the ones that existed.
 
+- `vibelang --fix` left a program a module holds at its top level, `export const ping = send("PING")`, as EK1001. It now writes `effect { return try send("PING") }`, a program of the same type.
 - `try make()` where `make()` returns an Effect with structure of its own, such as Effect's sql `Statement<A>`, a `Config` or a branded Effect, was `EK0502` ("not an Effect"), or for a `.ts` function compiled to a plain call that left the value unrun, while `const s = make(); try s` ran it. The call now runs where `try` stands, gives its success value, and its failures join the function's.
 
 - `EK4805` told an exported class that extends `Error` to become an `error` declaration, whose constructor takes one object, so following it broke callers of `new X(message, options)`, and the migrate flow refused the file. For an exported class it now says there is no quick fix, and the migrate flow keeps the class.

@@ -824,8 +824,8 @@ func fileFixes(ctx context.Context, program *compiler.Program, file *ast.SourceF
 			if action.CodeAction == nil || action.CodeAction.Edit == nil || action.CodeAction.Edit.Changes == nil {
 				continue
 			}
-			if slices.Contains(writtenFormCodes, d.Code()) && !strings.HasPrefix(action.CodeAction.Title, returnTypeFixTitle) {
-				continue // of these codes' fixes, --fix writes only a helper's return type (D500)
+			if slices.Contains(writtenFormCodes, d.Code()) && !strings.HasPrefix(action.CodeAction.Title, returnTypeFixTitle) && action.CodeAction.Title != holdProgramFixTitle {
+				continue // of these codes' fixes, --fix writes only a helper's return type (D500) and a held program (VIP-2)
 			}
 			changes := *action.CodeAction.Edit.Changes
 			if len(changes) != 1 || changes[uri] == nil {

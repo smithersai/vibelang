@@ -86,7 +86,7 @@ func TestEffectGenQuickFixes(t *testing.T) {
 `},
 		{"a program value", "export const program = Effect.gen(function* () {\n  return yield* Effect.succeed(1)\n})\n", "export const program = effect {\n  return 1\n}\n"},
 		{"a receiver", "export const f = () => Effect.gen(function* () {\n  return yield* Effect.succeed(1)\n}).pipe(Effect.asVoid)\n",
-			"export const f = () => (effect {\n  return 1\n}).pipe(Effect.asVoid)\n"},
+			"export const f = () => effect {\n  return 1\n} |> Effect.asVoid(%)\n"},
 		{"a destructured parameter stays bound at the call", "export const f = ({ id }: { id: string }) => Effect.gen(function* () {\n  return yield* Effect.succeed(id)\n})\n",
 			"export const f = ({ id }: { id: string }): infer _ => effect {\n  return id\n}\n"},
 		{"a default parameter stays bound at the call", "export function f(id = \"a\") {\n  return Effect.gen(function* () {\n    return yield* Effect.succeed(id)\n  })\n}\n",

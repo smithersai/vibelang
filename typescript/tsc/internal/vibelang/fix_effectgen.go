@@ -298,11 +298,27 @@ func planEffectGen(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *fo
 		at := functionKeywordStart(file, fn)
 		return &formRewrite{edits: []sourceEdit{{at, at, "effect "}, {start, end, body}}, description: "an effect function"}
 	}
+	// Effect.gen(…).pipe(stages) changes with its .pipe, whose stages read the
+	// block's type: effect { … } |> stages.
+	if pipe := pipeOfReceiver(outer); pipe != nil {
+		if rewrite := planEffectPipe(c, file, pipe); rewrite.fixable() {
+			return &formRewrite{edits: joinEditsAt(append(rewrite.edits, sourceEdit{start, end, "effect " + body})), description: "an effect block"}
+		}
+	}
 	rewrite := &formRewrite{edits: []sourceEdit{{start, end, effectValueParentheses(outer, "effect "+body)}}, description: "an effect block"}
 	if edit, ok := plainReturnEdit(file, outer); ok {
 		rewrite.edits = append(rewrite.edits, edit)
 	}
 	return rewrite
+}
+
+// pipeOfReceiver returns the .pipe call that node is the receiver of, or nil.
+func pipeOfReceiver(node *ast.Node) *ast.Node {
+	parent := node.Parent
+	if parent == nil || !ast.IsPropertyAccessExpression(parent) || parent.Expression() != node || parent.Parent == nil || !isPipeCall(parent.Parent) {
+		return nil
+	}
+	return parent.Parent
 }
 
 // functionKeywordStart returns where fn's text starts past its modifiers:

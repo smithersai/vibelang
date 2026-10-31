@@ -1,6 +1,7 @@
 package vibelang
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -38,5 +39,28 @@ func TestFixGateSeesErrorsBehindSyntaxError(t *testing.T) {
 				t.Errorf("want the Match chain's fix refused, got %+v", result.Refused)
 			}
 		})
+	}
+}
+
+// The gate checks a suspect file's fixes against that file, but a fix can add
+// an error only to a file that imports it: here the literal type of "fast"
+// reaches use.vibe. The check of the whole program still refuses that fix.
+func TestFixGateSeesErrorsInOtherFiles(t *testing.T) {
+	_, file, _, _ := editorProgram(t, "export function modes() {\n  const mode = Effect.succeed(\"fast\")\n  const all: Array<typeof mode> = [mode]\n  return all\n}\n")
+	dir := filepath.Dir(file.FileName().AsString())
+	for name, text := range map[string]string{
+		"use.vibe":      "import { modes } from \"./main.vibe\"\nexport function use() {\n  const all = modes()\n  all.push(\"slow\")\n  return all\n}\n",
+		"tsconfig.json": `{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"noEmit":true,"allowImportingTsExtensions":true},"files":["main.vibe","use.vibe"]}`,
+	} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(text), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	result := fixCase(t, dir)
+	if fixed := result.Files[file.FileName()]; fixed != nil && fixed.Counts[4834] != 0 {
+		t.Fatalf("--fix wrote a fix that adds an error to use.vibe:\n%s", fixed.Text)
+	}
+	if len(result.Refused) != 1 || result.Refused[0].Code != 4834 {
+		t.Fatalf("refused %+v, want EK4834", result.Refused)
 	}
 }
