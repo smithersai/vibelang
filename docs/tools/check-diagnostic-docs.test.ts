@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
 import { readFileSync, readdirSync } from "node:fs"
 import { join, resolve } from "node:path"
-import { diagnosticCodes, importedLintRules, retiredByVips, undocumentedCodes } from "./check-diagnostic-docs"
+import { diagnosticCodes, importedLintRules, pendingRegistryCodes, retiredByVips, undocumentedCodes } from "./check-diagnostic-docs"
 
 const repo = resolve(import.meta.dir, "../..")
 const docsRepo = process.env.DOCS_REVIEW_ROOT || repo
@@ -59,14 +59,17 @@ test("Appendix B codes, including leading zeros, have matching registry declarat
   // Use the native registry test's owned pending entries so their owner
   // removes each exception once, in the same commit as its registration.
   const registryTest = readFileSync(join(repo, "typescript/tsc/internal/vibelang/diagnostics_test.go"), "utf8")
-  const pendingBlock = registryTest.match(/var specAhead = map\[int32\]string\{([\s\S]*?)\n\}/)?.[1] ?? ""
-  const pending = [...pendingBlock.matchAll(/\b(\d+):/g)].map(match => "EK" + match[1].padStart(4, "0")).sort()
-  expect(assigned.filter(code => !declared.has(code)).sort()).toEqual(pending)
+  expect(assigned.filter(code => !declared.has(code)).sort()).toEqual(pendingRegistryCodes(registryTest))
   for (const source of sources) {
     for (const match of source.matchAll(/^\s*(?:var\s+)?(EK\d+)\s*=\s*message\((\d+),/gm)) {
       expect(Number(match[1].slice(2))).toBe(Number(match[2]))
     }
   }
+})
+
+test("pending registry extraction counts map keys, not numbers in comments or reasons", () => {
+  const source = "var specAhead = map[int32]string{\n\t// VIP-7: an existing jump rule\n\t706: renumbering, /* 8: */ 1602: \"9: a reason\", // 10: trailing\n\t704: `11:`,\n}"
+  expect(pendingRegistryCodes(source)).toEqual(["EK0704", "EK0706", "EK1602"])
 })
 
 test("imported registry extraction preserves whole codes and ignores other Go maps", () => {

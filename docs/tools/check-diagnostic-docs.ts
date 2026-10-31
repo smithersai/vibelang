@@ -31,6 +31,15 @@ export function importedLintRules(source: string): { code: string, rule: string 
   return rules
 }
 
+// The registry test's specAhead map lists the codes Appendix B assigns before the
+// compiler declares them. Only its keys are codes: a comment such as "VIP-7: ..."
+// or a quoted reason is not.
+export function pendingRegistryCodes(source: string): string[] {
+  const body = source.match(/var specAhead = map\[int32\]string\{([\s\S]*?)\n\}/)?.[1] ?? ""
+  const code = body.replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\/|"(?:\\.|[^"\\\n])*"|`[^`]*`/g, " ")
+  return [...code.matchAll(/(?:^|,)\s*([0-9]+)\s*:/g)].map(([, key]) => "EK" + key.padStart(4, "0")).sort()
+}
+
 // The codes of forms the VIPs (docs/design/vips) remove or respell. The user docs
 // describe the VIP language, so these have no reference until the compiler retires
 // or respells them; delete an entry when its code goes.
