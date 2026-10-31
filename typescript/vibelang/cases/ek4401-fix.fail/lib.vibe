@@ -1,0 +1,51 @@
+// expect: EK4401
+// vibelang --fix writes each EK4401 call so that it stays what it was: its value
+// is the same, and an exception is the defect it was in a generator.
+import { box, double, guarded, label, program, project, refuse } from "./plain.ts"
+
+const one = effect (): number!! => 1
+const text = (parts: TemplateStringsArray, ...values: ReadonlyArray<number>): string!! =>
+  parts.join("?") + values.join(",")
+
+// A const and a return.
+export const doubled = effect (n: number) => {
+  const m = double(n)
+  return label("doubled", m)
+}
+
+// An exception stays a defect.
+export const checked = effect (n: number): number!! => {
+  return refuse(n)
+}
+
+// An operand that runs an Effect runs first, as it did.
+export const operand = effect (n: number) => {
+  return label("operand", double(try one()) + n)
+}
+
+// A substitution of a template, a receiver, a branch, a condition.
+export const positions = effect (n: number) => {
+  const tagged = try text`a${double(n)}b`
+  const held = box(n).value
+  const branch = n > 0 ? double(n) : 0
+  if (double(n) > 100) return "large"
+  return `${tagged} ${held} ${branch} ${label("t", n)}`
+}
+
+// A function that returns an Effect can't throw (VIP-4): it stays a program.
+export const held = effect (n: number) => {
+  return try Effect.all({ one: program(n), two: program(2) })
+}
+
+// A destination that takes a program.
+export const projected = project({
+  reduce: (state: number) => {
+    if (state < 0) return state
+    return double(state)
+  },
+})
+
+// A function that runs no Effect stays plain, also where @throws names a class
+// this module can't reach.
+export const shout = (name: string) => label(name, double(1)).toUpperCase()
+export const hidden = (n: number) => guarded(n)

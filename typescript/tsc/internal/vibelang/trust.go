@@ -6,6 +6,7 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
 )
 
 // A call to code that is not Effect needs a declared trust level (design D5,
@@ -622,7 +623,7 @@ func checkCall(c *checker.Checker, a *analyzer, file *ast.SourceFile, call *ast.
 	if fn := enclosingFunction(call); fn != nil && !a.isSplittable(fn) && !a.isEffect(fn) {
 		return // D282: a plain function's calls of TypeScript code are JavaScript calls
 	}
-	if ast.IsSuperCall(call) || ast.IsImportCall(call) || a.performs(call) || isEffectValueCall(c, call) || isPlatformCallee(c, call) {
+	if ast.IsSuperCall(call) || ast.IsImportCall(call) || a.performs(call) || isEffectValueCall(c, call) || isPlatformCallee(c, call) || returnsEffectful(c, call) {
 		return
 	}
 	t := callTrust(c, call)
@@ -650,6 +651,30 @@ func checkCall(c *checker.Checker, a *analyzer, file *ast.SourceFile, call *ast.
 			}
 		}
 	}
+}
+
+// returnsEffectful reports whether call's declaration returns wholly an Effect,
+// a Stream or a Layer: such a function can't throw and is never throw-tracked,
+// wherever its call stands (VIP-4, amended). The return is read before type
+// arguments are substituted, so an unconstrained T is not one (detail 36).
+func returnsEffectful(c *checker.Checker, call *ast.Node) bool {
+	declaration := signatureDeclaration(c, call)
+	if declaration == nil {
+		return false
+	}
+	result := c.GetReturnTypeOfSignature(c.GetSignatureFromDeclaration(declaration))
+	if result != nil && result.Flags()&checker.TypeFlagsInstantiable != 0 {
+		result = c.GetBaseConstraintOfType(result)
+	}
+	if result == nil || result.Flags()&checker.TypeFlagsObject == 0 && result.Flags()&checker.TypeFlagsUnion == 0 {
+		return false
+	}
+	return core.Every(result.Distributed(), func(member *checker.Type) bool {
+		if member.Flags()&checker.TypeFlagsObject == 0 {
+			return false
+		}
+		return isEffectSubtype(c, member) || isLayerType(c, member) || streamInterface(c) != nil && member.Target() == streamInterface(c)
+	})
 }
 
 // trustedNote is EK4401's other fix: declare the function's failures with

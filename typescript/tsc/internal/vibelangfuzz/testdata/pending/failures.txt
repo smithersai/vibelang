@@ -17,8 +17,6 @@ FuzzFailuresSpec  feature:wrap-promise  compiler  VIP-4: 003-failures.md accepts
 FuzzFailuresSpec  feature:inferred-transitive  compiler  VIP-4: 003-failures.md rejects the marked call for "Otherwise, a plain, non-`async` `.vibe` function's thrown type is inferred from its body: an uncaught `thro…"; lane w2-throw
 FuzzFailuresSpec  feature:inferred-arrow-const  compiler  VIP-4: 003-failures.md rejects the marked call for "Otherwise, a plain, non-`async` `.vibe` function's thrown type is inferred from its body: an uncaught `thro…"; lane w2-throw
 FuzzFailuresSpec  feature:inferred-async-calls-throwing  compiler  VIP-1, VIP-4: an async function that calls a plain throwing function draws EK4801, because form inference still makes the plain function an Effect function; lane vip-core2
-FuzzFailuresSpec  feature:effectful-ts-stream  compiler  VIP-4: 003-failures.md accepts the program for "Stream"; lane w2-throw
-FuzzFailuresSpec  feature:effectful-ts-layer  compiler  VIP-4: 003-failures.md accepts the program for "Layer"; lane w2-throw
 FuzzFailuresSpec  feature:library-unannotated  compiler  VIP-4: 003-failures.md rejects the marked call for "Such a library or global declaration with no `@throws` is assumed to throw `unknown`."; lane w2-throw
 FuzzFailuresSpec  feature:library-tagged  compiler  VIP-4: 003-failures.md rejects the marked call for "A non-effectful library or global function says what it throws with the JSDoc tag `@throws {ErrorType}`."; lane w2-throw
 FuzzFailuresSpec  feature:library-unknown-tag  compiler  VIP-4: 003-failures.md rejects the marked call for "Such a library or global declaration with no `@throws` is assumed to throw `unknown`."; lane w2-throw
@@ -117,7 +115,6 @@ FuzzFailuresSpec feature:tagged-template-throw compiler VIP-4: 003-failures.md c
 FuzzFailuresSpec feature:callable-union-throw compiler VIP-4: 003-failures.md contract callable-union-throw disagrees on unmodified main c9327b36 (error TS1128, error TS1434, error TS2304); lane vip-core2
 FuzzFailuresSpec feature:written-throws-caller compiler VIP-4: 003-failures.md contract written-throws-caller disagrees on unmodified main c9327b36 (error TS1128, error TS1434, error TS2304); lane vip-core2
 FuzzFailuresSpec feature:effectful-unknown-return compiler VIP-4: 003-failures.md contract effectful-unknown-return disagrees on unmodified main c9327b36 (error EK2003, error TS1128, error TS1434, error TS2304); lane vip-core2
-FuzzFailuresSpec feature:effectful-whole-union compiler VIP-4: 003-failures.md contract effectful-whole-union disagrees on unmodified main c9327b36 (error EK4401, error TS1128, error TS1434, error TS2304); lane vip-core2
 FuzzFailuresSpec corpus:direct-local-const compiler VIP-4: minimized reproduction of feature:direct-local-const; lane w2-throw
 FuzzFailuresSpec corpus:direct-local-argument compiler VIP-4: minimized reproduction of feature:direct-local-argument; lane w2-throw
 FuzzFailuresSpec corpus:direct-local-return compiler VIP-4: minimized reproduction of feature:direct-local-return; lane w2-throw
@@ -127,8 +124,6 @@ FuzzFailuresSpec corpus:wrap-try-promise-async compiler VIP-4: minimized reprodu
 FuzzFailuresSpec corpus:wrap-promise compiler VIP-4: minimized reproduction of feature:wrap-promise; lane w2-throw
 FuzzFailuresSpec corpus:inferred-transitive compiler VIP-4: minimized reproduction of feature:inferred-transitive; lane w2-throw
 FuzzFailuresSpec corpus:inferred-arrow-const compiler VIP-4: minimized reproduction of feature:inferred-arrow-const; lane w2-throw
-FuzzFailuresSpec corpus:effectful-ts-stream compiler VIP-4: minimized reproduction of feature:effectful-ts-stream; lane w2-throw
-FuzzFailuresSpec corpus:effectful-ts-layer compiler VIP-4: minimized reproduction of feature:effectful-ts-layer; lane w2-throw
 FuzzFailuresSpec corpus:library-unannotated compiler VIP-4: minimized reproduction of feature:library-unannotated; lane w2-throw
 FuzzFailuresSpec corpus:library-tagged compiler VIP-4: minimized reproduction of feature:library-tagged; lane w2-throw
 FuzzFailuresSpec corpus:library-unknown-tag compiler VIP-4: minimized reproduction of feature:library-unknown-tag; lane w2-throw
@@ -194,7 +189,6 @@ FuzzFailuresSpec corpus:tagged-template-throw compiler VIP-4: minimized reproduc
 FuzzFailuresSpec corpus:callable-union-throw compiler VIP-4: minimized reproduction of feature:callable-union-throw; lane w2-throw
 FuzzFailuresSpec corpus:written-throws-caller compiler VIP-4: minimized reproduction of feature:written-throws-caller; lane w2-throw
 FuzzFailuresSpec corpus:effectful-unknown-return compiler VIP-4: minimized reproduction of feature:effectful-unknown-return; lane w2-throw
-FuzzFailuresSpec corpus:effectful-whole-union compiler VIP-4: minimized reproduction of feature:effectful-whole-union; lane w2-throw
 FuzzFailuresSpec feature:never-return-throw compiler VIP-4: never return types remain throw-tracked; effect function marker currently draws TS1434 before EK0403 can be checked; lane vip-core2
 FuzzFailuresSpec corpus:never-return-throw compiler VIP-4: minimized reproduction of feature:never-return-throw; lane vip-core2
 FuzzFailuresSpec feature:declaration-global-throws compiler VIP-4: 003-failures.md contract declaration-global-throws disagrees on main 84f966a6 (required metadata or diagnostic missing); lane w2-throw

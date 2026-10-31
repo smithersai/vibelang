@@ -104,6 +104,7 @@ const specTests = [
   "TestCanonicalVIPExitReasonTagControls",
   "TestVIPTemplatesCited",
   "TestRunningRulesQuoted",
+  "TestMigrationForeignCallQuoted",
   "TestEffectLintConfigurationQuoted",
   "TestServicesRulesQuoted",
   "TestCLISpecCommandFlags",

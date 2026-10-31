@@ -251,12 +251,38 @@ func wrappedCall(effect string, code string, mapper string) string {
 //	shout(hello("VibeLang"))   const s = try hello("VibeLang"); try Effect.try(() => shout(s))
 //	sortTitles(titles)         try Effect.try(() => sortTitles(titles))
 func boundaryCall(c *checker.Checker, file *ast.SourceFile, effect string, call *ast.Node, mapper string) string {
-	a := analyzerFor(c)
-	type input struct {
-		node        *ast.Node // the operand the const stands for
-		pos         int
-		param, text string
+	inputs, text := boundaryInputs(c, file, call)
+	return strings.Join(inputConsts(inputs), "") + wrappedCall(effect, text, mapper)
+}
+
+// A boundaryInput is an operand of a boundary's call that runs an Effect, so
+// a const holds it outside the wrapper's plain function.
+type boundaryInput struct {
+	node        *ast.Node // the operand the const stands for
+	pos         int
+	param, text string
+	tries       bool // the const's value runs its operand
+}
+
+// inputConsts writes the consts of inputs, each with its semicolon.
+func inputConsts(inputs []boundaryInput) []string {
+	var consts []string
+	for _, in := range inputs {
+		value := in.text
+		if in.tries {
+			value = "try " + value
+		}
+		consts = append(consts, "const "+in.param+" = "+value+"; ")
 	}
+	return consts
+}
+
+// boundaryInputs returns the operands of call that must stand outside its
+// wrapper, named so that no const shadows a name around them, and the text of
+// call with each replaced by its const.
+func boundaryInputs(c *checker.Checker, file *ast.SourceFile, call *ast.Node) ([]boundaryInput, string) {
+	a := analyzerFor(c)
+	type input = boundaryInput
 	var operands []input
 	callee := ast.SkipParentheses(call.Expression())
 	if ast.IsPropertyAccessExpression(callee) || ast.IsElementAccessExpression(callee) {
@@ -272,6 +298,9 @@ func boundaryCall(c *checker.Checker, file *ast.SourceFile, effect string, call 
 	for _, operand := range operands {
 		if a.runsVibeLang(operand.node) {
 			operand.pos, operand.text = nodeStart(file, operand.node), nodeText(file, operand.node)
+			if inner := ast.SkipParentheses(operand.node); isInvocation(inner) && a.performs(inner) && inner.Flags&ast.NodeFlagsVibeLangTry == 0 && !isTryCall(inner) {
+				operand.tries = true
+			}
 			inputs = append(inputs, operand)
 		}
 	}
@@ -317,15 +346,7 @@ func boundaryCall(c *checker.Checker, file *ast.SourceFile, effect string, call 
 		in := inputs[i]
 		text = text[:in.pos-start] + in.param + text[in.node.End()-start:]
 	}
-	var consts []string
-	for _, in := range inputs {
-		value := in.text
-		if operand := ast.SkipParentheses(in.node); isInvocation(operand) && a.performs(operand) {
-			value = "try " + value
-		}
-		consts = append(consts, "const "+in.param+" = "+value+"; ")
-	}
-	return strings.Join(consts, "") + wrappedCall(effect, text, mapper)
+	return inputs, text
 }
 
 // runsVibeLang reports whether evaluating node, an expression, runs an
@@ -336,6 +357,9 @@ func (a *analyzer) runsVibeLang(node *ast.Node) bool {
 	visit = func(n *ast.Node) bool {
 		if isFunctionBoundary(n) {
 			return false
+		}
+		if n.Flags&ast.NodeFlagsVibeLangTry != 0 || isTryCall(n) {
+			return true
 		}
 		if isInvocation(n) && (a.performs(n) || a.callsVibeLangFunction(n) || ast.IsCallExpression(n) && isEffectValueCall(a.checker, n)) {
 			return true

@@ -1,0 +1,20 @@
+// expect: EK4401
+// VIP-4, amended: only a return that is wholly Effect, Stream or Layer exempts a
+// function from throw tracking, and such a function is exempt wherever its call
+// stands, also where no try runs it. The union, the unconstrained T and any are
+// tracked.
+import { bound, layer, loose, maybe, program, same, stream } from "./helpers.ts"
+
+export effect function held(n: number) {
+  const values = try Effect.all({ one: program(n), two: bound(program(2)) })
+  const dependencies = [layer()]
+  const numbers = [stream()]
+  return [values, dependencies, numbers]
+}
+
+export effect function tracked(n: number) {
+  const option = maybe(n)
+  const value = same(1)
+  const unknown = loose()
+  return [option, value, unknown]
+}

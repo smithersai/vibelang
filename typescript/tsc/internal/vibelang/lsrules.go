@@ -739,6 +739,9 @@ func (r *ruleCheck) checkTryMapping(call *ast.Node) {
 	}
 	result := r.c.GetReturnTypeOfSignature(signatures[0])
 	if result.Flags()&(checker.TypeFlagsAny|checker.TypeFlagsUnknown) != 0 {
+		if isDefectBridge(r.c, call) {
+			return
+		}
 		d := report(r.c, mapping, EK4806, r.c.TypeToString(result))
 		note(d, "Return an error declaration's instance: Effect.try({ try: () => code, catch: (cause) => new Failed({ cause }) }).")
 		return
@@ -746,6 +749,14 @@ func (r *ruleCheck) checkTryMapping(call *ast.Node) {
 	if name := globalErrorName(r.c, result.Symbol()); name != "" {
 		noteErrorDeclaration(report(r.c, mapping, EK4804, name))
 	}
+}
+
+// isDefectBridge reports whether call, an Effect.try, is the operand of
+// Effect.orDie: no catch reads what its mapping returns, which a defect keeps
+// as it was thrown.
+func isDefectBridge(c *checker.Checker, call *ast.Node) bool {
+	parent := call.Parent
+	return parent != nil && ast.IsCallExpression(parent) && parent.Expression() != call && isEffectFunction(c, parent.Expression(), "Effect", "orDie")
 }
 
 // checkRunChannels reports EK4811 when call, which runs, adds any or unknown
