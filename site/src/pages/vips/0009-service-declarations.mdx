@@ -33,6 +33,8 @@ class Users extends Context.Service<Users, {
   // Context.Reference<{ newCheckout: boolean }>("…#Flags", { defaultValue: () => ({ newCheckout: false }) })
   ```
 
+- **Amended 2026-10-30: service default initializer context.** A service's `static readonly defaultValue` initializer uses the source class-field context, outside enclosing Effect execution and `fork`/`join` reservation. `try e` is `EK0501` there; compute an Effect-based factory in the surrounding permitted body first and assign that value. An ordinary `join(...)` helper call remains ordinary in the initializer. Preserve eager once-only declaration evaluation, source order, bindings/TDZ, cold enclosing bodies and eager throw checks. Creating the factory is distinct from native Reference fallback invocation; emitted options-object syntax grants no source permission or extra runtime wrapper. The factory must still have type `() => Shape`.
+
 - **Two types,** as in Effect. `Users` is the identifier, the type that appears in R. `Users.Shape` is the members, the type an implementation has; Effect writes it `Context.Service.Shape<typeof Users>`.
 - Contracts are written out, because members have no bodies to infer from.
 - **Misuse checks.** A service is a key, not a class you use, so these are compile errors:

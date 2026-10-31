@@ -137,6 +137,50 @@ const recursiveShapeExit = Effect.runSyncExit(Effect.provideService(Effect.gen(f
 }), Repo, impl)) // Success(7)
 ```
 
+The `defaultValue` initializer has the source class-field context, including in a service declared inside an Effect body. It is outside the enclosing Effect execution and `fork`/`join` reservation context: `try e` there is `EK0501`, while `join(...)` can call an ordinary user helper. A plain factory body has its own plain-function boundary; a nested explicit Effect callable keeps its existing context and must still satisfy `() => Shape`.
+
+The initializer runs once, eagerly at the declaration's existing execution point, in source order; inside an Effect body that declaration work stays cold until the body runs. Keep source bindings, TDZ, native exceptions and existing eager throw checks. Creating the factory value is distinct from invoking it through native `Context.Reference` fallback behavior. Lowering into an options object does not grant Effect execution, defer initializer work into the factory, or add a runtime wrapper.
+
+When computing a factory needs an Effect, compute the value in the surrounding Effect body first:
+
+```vibe es
+// compiler-gap: pending VIP-9
+let initializerRuns = 0; let fallbackCalls = 0
+function join(factory: () => { n: number }) { initializerRuns++; return factory }
+effect function localDefault() {
+  const factory = try succeed(() => { fallbackCalls++; return { n: 1 } })
+  service LocalFlags {
+    static readonly key = "default-context/LocalFlags"
+    static readonly defaultValue = join(factory)
+    n: number
+  }
+  const n = (try LocalFlags).n
+  return [initializerRuns, fallbackCalls, n]
+}
+// Putting try succeed(...) directly in defaultValue is EK0501.
+```
+
+```ts effect
+import { Context, Effect } from "effect"
+
+let initializerRuns = 0; let fallbackCalls = 0
+function join(factory: () => { n: number }) { initializerRuns++; return factory }
+function localDefault() {
+  return Effect.gen(function* () {
+    const factory = yield* Effect.succeed(() => { fallbackCalls++; return { n: 1 } })
+    const LocalFlags = Context.Reference<{ n: number }>("default-context/LocalFlags", {
+      defaultValue: join(factory)
+    })
+    const n = (yield* LocalFlags).n
+    return [initializerRuns, fallbackCalls, n]
+  })
+}
+const coldDefault = localDefault()
+const beforeDefaultRun = [initializerRuns, fallbackCalls] // [0, 0]
+const defaultInitializerExit = Effect.runSyncExit(coldDefault)
+console.log(defaultInitializerExit) // Success([1, 1, 1])
+```
+
 ### Using a service
 
 There is no `Users.find(id)` shorthand ([VIP-10](../vips/0010-service-call-shorthand-denied.md), denied). Get the service with `try`, then call it:

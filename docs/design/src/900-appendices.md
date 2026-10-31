@@ -619,6 +619,8 @@ KeyMember = "static" "readonly" "key" (":" Type)? "=" StringLiteral
 DefaultMember = "static" "readonly" "defaultValue" (":" Type)? "=" AssignmentExpression
 ```
 
+A `DefaultMember` initializer uses the source class-field context: the enclosing Effect execution and `fork`/`join` reservation reset. An explicit Effect run there is outside effect code (`try e` is `EK0501`); an ordinary identifier call such as `join(...)` keeps its ordinary meaning. Native `await`/`yield`, nested callable boundaries and eager initializer/throw checks retain their native source rules. Evaluate the initializer at the declaration, with the enclosing Effect body's existing coldness; do not move it into the fallback callback because the emitted counterpart uses an options object.
+
 #### ErrorDeclaration
 
 ```text
@@ -871,7 +873,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK0404` | an unwrapped Promise-producing call, `new` expression, tagged template or `async match` in effect code | 4, 5 | [Failures](003-failures.md#calls-in-effect-code) |
 | `EK0405` | a body that throws more than its written `@throws {T}` | 4 | [Failures](003-failures.md#thrown-types) |
 | `EK0406` | a `@throws` or `@rethrows` tag on an effectful `.vibe` callable: an `effect` function, arrow, method or producer, or a callable whose return type is wholly `Effect`, `Stream` or `Layer`; quick fix: remove the tag | 4 | [Failures](003-failures.md#thrown-types) |
-| `EK0501` | `try` outside effect code, the top level included; the same rule applies to `try.all`, `try.race`, `try.any` or `try.allSettled` | 5, 18 | [Running Effects](002-running.md#try) |
+| `EK0501` | `try` outside effect code, the top level included; the same rule applies to `try.all`, `try.race`, `try.any` or `try.allSettled` | 5, 18, 9 | [Running Effects](002-running.md#try) |
 | `EK0502` | `try` on a value that is not an Effect | 5 | [Running Effects](002-running.md#try) |
 | `EK0503` | a `try` statement in effect code | 5 | [Running Effects](002-running.md#try) |
 | `EK0504` | `catch` outside effect code | 5 | [Running Effects](002-running.md#catch) |
