@@ -224,9 +224,15 @@ func (a *analyzer) takenAsData(expected []*checker.Type, t *checker.Type) bool {
 		// A type parameter takes what its constraint takes, as T of
 		// collection<T extends Like<any> | Plat<any>>(resources: T[]) does.
 		if e.Flags()&checker.TypeFlagsTypeParameter != 0 {
-			if constraint := a.checker.GetConstraintOfTypeParameter(e); constraint != nil {
+			if constraint := a.checker.GetBaseConstraintOfType(e); constraint != nil && constraint != e && constraint.Flags()&checker.TypeFlagsUnknown == 0 {
 				visit(constraint, depth+1)
 			}
+			return
+		}
+		// Function has no call signature but takes a function, as React's
+		// useCallback<T extends Function> does (D513), so it is callable.
+		if e == a.checker.GetGlobalFunctionType() {
+			callable = true
 			return
 		}
 		// The declared signature keeps its type parameters, as Like<W> of

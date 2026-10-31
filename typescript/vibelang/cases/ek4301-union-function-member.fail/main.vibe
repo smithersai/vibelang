@@ -1,0 +1,7 @@
+// expect: EK4301
+// D513: Function is a synchronous callable destination even though it has
+// no call signatures. Matching a generic data member must not bypass it.
+import { Thing, register, collection } from "./lib.ts"
+
+export const registered = register(Thing)
+export const collected = collection([Thing])

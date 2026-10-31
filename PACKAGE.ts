@@ -58,6 +58,7 @@ const specTests = [
   "TestMigrationEffectOperandsQuoted",
   "TestMigrationEffectHeritageQuoted",
   "TestMigrationGeneratorReturnsQuoted",
+  "TestUnionDataMemberQuoted",
   "TestCheckerLayout",
   "TestVibeModuleBoundaryQuoted",
   "TestVibeModuleBoundaryRegression",

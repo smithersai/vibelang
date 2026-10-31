@@ -20,10 +20,20 @@ import (
 // picks the data member (plain, generic with a required or an optional
 // witness), the callable member (plain, generic, none), how the parameter
 // holds the union (directly, a type parameter it constrains, an array of
-// either) and the value (an Effect-returning resource class, a record).
+// either) and the value (an Effect-returning resource class, a record, a
+// resource the callable member also takes, which stays EK4301).
 // alchemy's Provider.effect(Resource, …) and Provider.collection([Account,
 // Certificate]) pass resource classes this way (corpus
 // alchemy-union-data-member-generic).
+//
+// The callable member Function is checked against D513: "a destination whose
+// type is a function type returning a type that is not definitely an Effect,
+// `Function`, or a type parameter that only the function fixes whose
+// constraint is one of these, gives the plain form". Function and
+// (...args: any) => any are in the same row, so a union with one reports
+// what the union with the other does (corpus
+// union-data-member-function-constrained, React's useCallback<T extends
+// Function> shape).
 func FuzzUnionDataMember(f *testing.F) {
 	startShortBudget(f)
 	unionDataMemberRuling(f)
@@ -33,6 +43,13 @@ func FuzzUnionDataMember(f *testing.F) {
 		}
 	}
 	f.Add([]byte("union-data:plain/plat/direct/record"))
+	for _, holder := range unionHolders {
+		f.Add([]byte("union-data:generic/function/" + holder.name + "/resource"))
+	}
+	f.Add([]byte("union-data:generic/function/direct/record"))
+	for _, holder := range unionHolders {
+		f.Add([]byte("union-data:generic/plat/" + holder.name + "/platform-resource"))
+	}
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, data []byte) {
 		CheckUnionDataMember(t, w, parseUnionData(data))
@@ -44,6 +61,8 @@ func TestUnionDataMemberQuoted(t *testing.T) { unionDataMemberRuling(t) }
 
 const unionDataMemberQuote = "a call signature or method of the target whose return type is neither definitely an Effect nor a union with such a member is not matched by a source signature or method whose return type is definitely an Effect: that check is EK4301"
 
+const functionDestinationQuote = "a destination whose type is a function type returning a type that is not definitely an Effect, `Function`, or a type parameter that only the function fixes whose constraint is one of these, gives the plain form"
+
 func unionDataMemberRuling(tb testing.TB) {
 	tb.Helper()
 	text, err := os.ReadFile(filepath.Join(Root(), "docs/design/history/DECISIONS.md"))
@@ -52,6 +71,9 @@ func unionDataMemberRuling(tb testing.TB) {
 	}
 	if !strings.Contains(string(text), unionDataMemberQuote) {
 		tb.Fatalf("D430 no longer says %q", unionDataMemberQuote)
+	}
+	if !strings.Contains(string(text), functionDestinationQuote) {
+		tb.Fatalf("D513 no longer says %q", functionDestinationQuote)
 	}
 }
 
@@ -68,7 +90,11 @@ var unionCallables = []unionChoice{
 	{"plat", "export interface Plat<R> { (id: string, props: number): any; readonly platform: true }"},
 	{"plat-generic", "export interface Plat<R> { (id: string, props: number): any; readonly platform: R }"},
 	{"none", ""},
+	{"function", "export type Plat<R> = Function"},
 }
+
+// functionTwin is the callable member D513 puts in Function's row.
+var functionTwin = unionChoice{"any-function", "export type Plat<R> = (...args: any) => any"}
 
 // P stands for the parameter's type: U for the union, or Like<any> alone.
 var unionHolders = []unionChoice{
@@ -81,6 +107,8 @@ var unionHolders = []unionChoice{
 var unionValues = []unionChoice{
 	{"resource", "export const Thing: Res<number> = Object.assign((_id: string) => Effect.succeed(1), { kind: \"thing\", witness: 1 })"},
 	{"record", "export const Thing = { kind: \"thing\", witness: 1 }"},
+	// Fits the callable member too, so its plain signature reaches the value.
+	{"platform-resource", "export const Thing: Res<number> & { readonly platform: true } = Object.assign((_id: string) => Effect.succeed(1), { kind: \"thing\", witness: 1, platform: true as const })"},
 }
 
 type unionDataInput struct{ data, callable, holder, value unionChoice }
@@ -140,7 +168,10 @@ func (in unionDataInput) project(union bool) map[string]string {
 const unionDataConfig = `{"compilerOptions":{"target":"ES2022","module":"NodeNext","moduleResolution":"NodeNext","strict":true,"skipLibCheck":true,"types":[],"noEmit":true,"allowImportingTsExtensions":true}}`
 
 // CheckUnionDataMember compares the codes of the union program with those of
-// the data-member program.
+// the data-member program. A value the callable member also takes meets that
+// member's call signature, which returns any, so where the parameter names
+// the union itself D430 requires EK4301; through a type parameter the target
+// is the instantiated value type, and no oracle applies.
 func CheckUnionDataMember(t *testing.T, w *Workspace, in unionDataInput) {
 	const target = "FuzzUnionDataMember"
 	defer recoverCompilerPanic(t, target)
@@ -166,7 +197,24 @@ func CheckUnionDataMember(t *testing.T, w *Workspace, in unionDataInput) {
 		slices.Sort(out)
 		return out
 	}
-	alone, union := codes(in.project(false)), codes(unionFiles)
+	union := codes(unionFiles)
+	if in.callable.name == "function" {
+		twin := in
+		twin.callable = functionTwin
+		if other := codes(twin.project(true)); !slices.Equal(other, union) {
+			g.Add("feature:union-function-member", "D513: %q; Function and (...args: any) => any give the same form, so the two unions report the same codes.\nwith Function: %v\nwith (...args: any) => any: %v\n%s\n%s", functionDestinationQuote, union, other, unionFiles["lib.ts"], unionFiles["main.vibe"])
+		}
+		g.FinishInput(t, key)
+		return
+	}
+	if in.value.name == "platform-resource" && in.callable.text != "" {
+		if !strings.HasPrefix(in.holder.name, "constrained") && !slices.Contains(union, "EK4301") {
+			g.Add("feature:union-callable-member", "D430: %q; the union's callable member takes %s, and its call signature returns any, so the Effect-returning value is EK4301.\nunion: %v\n%s\n%s", unionDataMemberQuote, in.value.name, union, unionFiles["lib.ts"], unionFiles["main.vibe"])
+		}
+		g.FinishInput(t, key)
+		return
+	}
+	alone := codes(in.project(false))
 	if !slices.Equal(alone, union) {
 		g.Add("feature:union-data-member", "D430: %q; the union's callable member takes no %s, so the program reports what the data member alone does.\ndata member alone: %v\nunion: %v\n%s\n%s", unionDataMemberQuote, in.value.name, alone, union, unionFiles["lib.ts"], unionFiles["main.vibe"])
 	}
