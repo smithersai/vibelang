@@ -105,6 +105,7 @@ The compiler cases and the doc snippet check also need the pinned packages in \`
 \`\`\`sh
 (cd experiments && bun install)
 (cd docs/tools && bun install)
+node scripts/share-effect.mjs
 \`\`\``
     },
     { heading: "Find your way around", body: "{{layout}}" },

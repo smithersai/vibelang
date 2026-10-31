@@ -21,6 +21,7 @@ install() {
 	(cd "$1" && bun install --frozen-lockfile >/dev/null)
 }
 for dir in .smithers packages/runtime packages/compiler experiments docs/tools; do install "$dir"; done
+node scripts/share-effect.mjs
 
 # The parity tests compare with the stock TypeScript the mapper pins.
 ts7_version=$(node -p 'require("./packages/ts-mapper/package.json").devDependencies.typescript')

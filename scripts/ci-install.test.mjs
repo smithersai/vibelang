@@ -14,7 +14,7 @@ function fixture(t) {
   const write = (name, text) => { fs.mkdirSync(path.dirname(name), { recursive: true }); fs.writeFileSync(name, text) }
   const executable = (name, text) => { write(name, text); fs.chmodSync(name, 0o755) }
   const installed = (dir, version) => write(path.join(dir, "effect/package.json"), JSON.stringify({ version }))
-  for (const file of ["ci.sh", "check-effect-install.mjs"]) {
+  for (const file of ["ci.sh", "check-effect-install.mjs", "share-effect.mjs"]) {
     write(path.join(root, "scripts", file), fs.readFileSync(new URL("./" + file, import.meta.url)))
   }
   for (const dir of directories) {

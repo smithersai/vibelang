@@ -26,6 +26,7 @@ The compiler cases and the doc snippet check also need the pinned packages in `e
 ```sh
 (cd experiments && bun install)
 (cd docs/tools && bun install)
+node scripts/share-effect.mjs
 ```
 
 ## Find your way around

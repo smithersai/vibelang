@@ -62,6 +62,12 @@ Effect version against the package's exact pin, including `devDependencies` and
 `peerDependencies`, and reuses a matching tree. Stale or missing local trees and
 local `.smithers` installs run `bun install --frozen-lockfile`.
 
+`scripts/ci.sh` then runs `scripts/share-effect.mjs`, which links the Effect
+packages in `packages/runtime/node_modules` to the copies in `experiments`. A
+fixture links `vibelang-runtime` to `packages/runtime`, so a separate copy lies
+beneath that link, and a declaration sidecar can name its types only by that
+path (`TS2883`). A symlinked `packages/runtime/node_modules` stays as it is.
+
 Docs checks use `VIBELANG_BINARY` when set, otherwise the native checkout build at `packages/compiler/native/vibelang` (`vibelang.exe` on Windows), then `typescript/built/local/tsc`, then `vibelang` on `PATH`. Build the native compiler with `sh scripts/build-vibelang.sh`. Both `:snippets` and `:docs-tools` declare `:compiler-native` so its build and cache key cover the selected binary.
 
 ### Pending hang probes
