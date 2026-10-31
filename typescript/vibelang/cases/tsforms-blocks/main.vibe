@@ -1,7 +1,7 @@
 // expect-result: {"traced":"Ada","provided":"eu","served":4,"many":"eu 4","logged":"done"}
-// Effect.withSpan, Effect.provide, and Effect.provideService draw EK4836
-// (D290). The fix writes withSpan(() => …, name) wherever the call stands,
-// and a provide block where a block can stand: a return or a statement.
+// Effect.withSpan and Effect.provide have safe EK4836 rewrites.
+// Effect.provideService keeps its native call: a Layer changes scope.
+// Its warning explains why there is no automatic block rewrite.
 // tsforms-blocks-fixed is what vibelang --fix writes.
 service Region {
   name(): string!!

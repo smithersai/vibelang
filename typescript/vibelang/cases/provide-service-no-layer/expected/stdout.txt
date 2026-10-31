@@ -1,6 +1,6 @@
-single: hi, no layer
-two: Bo hi, no layer
+single: hi, layer
+two: Bo hi, layer
 layer: Ada, layer
 mixed: Ada last, layer, first names names last
 nested: inner
-one-service block: 4 ops beyond Effect.provideService
+one-service block: 4 ops beyond Effect.provide

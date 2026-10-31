@@ -325,9 +325,8 @@ func layerChannels(c *checker.Checker, t *checker.Type) (provided, errors, needs
 
 // visitProvideBlock lowers node, a provide block, to a region closure that runs
 // under Effect.provide with the block's layer. A block with a Key = value
-// provider runs under $provideEntries instead, which provides each such
-// service as Effect.provideService does and builds only the other layers the
-// block lists:
+// provider runs under $provideEntries, which delegates to Effect.provide
+// with ordinary Layer.succeed entries in source order (VIP-12):
 //
 //	provide Clock = testClock { ... }          $provideEntries(run, [$provideService(Clock, "Clock", testClock)])
 //	provide AppLive, Clock = testClock { ... } $provideEntries(run, [AppLive, $provideService(Clock, "Clock", testClock)])

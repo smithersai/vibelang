@@ -1,11 +1,7 @@
-// Nanoseconds per pass through a provide block's providers, best of 15
-// rounds of 20,000 passes: `provide Key = value { }` as the lowering writes
-// it ($provideEntries), as it was written before (Effect.provide with a
-// one-service Layer), and Effect.provideService. The Layer form opened a
-// Scope and forked the Layer MemoMap on every pass. Run from packages/runtime
-// after a build:
-//
-//   bun run build && node tests/provide-bench.mjs
+// Nanoseconds per pass through provider helpers and their Effect 4.1.0
+// counterparts, best of 15 rounds of 20,000 passes. VIP-12 service entries
+// use ordinary Layer.succeed providers, including native Scope and MemoMap.
+// Run from packages/runtime: bun run build && node tests/provide-bench.mjs
 import { Context, Effect } from "effect"
 import { $provideEntries, $provideService } from "vibelang-runtime"
 
@@ -16,7 +12,7 @@ const body = Effect.map(Key, (n) => n + 1)
 const forms = {
   "Effect.provideService": () => Effect.provideService(body, Key, 1),
   "$provideEntries (provide Key = 1 { })": () => $provideEntries(body, [$provideService(Key, "Key", 1)]),
-  "Effect.provide one-service Layer (before)": () => Effect.provide(body, $provideService(Key, "Key", 1))
+  "Effect.provide one-service Layer": () => Effect.provide(body, $provideService(Key, "Key", 1))
 }
 
 const best = {}

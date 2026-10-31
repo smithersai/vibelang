@@ -12,14 +12,12 @@ import (
 //
 //	return Effect.withSpan(load(id), "load")          return withSpan(() => load(id), "load")
 //	return Effect.provide(main(), AppLive)            provide AppLive { return main() }
-//	return Effect.provideService(roll(), Random, r)   provide Random = r { return roll() }
 //
 // Effect.withSpan(self, name) becomes the prelude's withSpan(() => self, name)
 // (D151, D376) wherever it stands in a VibeLang function body: a block is its
 // call's last argument, and withSpan takes its program first, so the program
-// is an arrow there. Effect.provide(self, layers) and
-// Effect.provideService(self, key, value) become a provide block (D130, D172,
-// D173) where a block can stand: as a return, whose return inside the block
+// is an arrow there. Effect.provide(self, layers) becomes
+// a provide block (VIP-12) where a block can stand: as a return, whose return inside the block
 // returns from the function, and as an expression statement. A layer array
 // becomes the block's comma list. The program runs inside the arrow or the
 // block as the call ran it: a call runs where it stands, and an Effect value
@@ -31,6 +29,9 @@ import (
 // program is already a function literal becomes the prelude's withSpan with
 // the same arguments. The prelude's own withSpan is the VibeLang form.
 
+// Effect.provideService retains its native call: building a Layer would
+// change scope and memo-map observations, so VIP-34 forbids that repair.
+
 // withSpanArrowForm is EK4836's text for Effect.withSpan, which has no
 // block form: its program becomes an arrow.
 var withSpanArrowForm = EK4836.With("{0} wraps a program in a call; write the program as an arrow: {1}.")
@@ -38,6 +39,12 @@ var withSpanArrowForm = EK4836.With("{0} wraps a program in a call; write the pr
 // withSpanPreludeForm is EK4836's text for Effect.withSpan of a function
 // literal, which the prelude's withSpan takes as it is.
 var withSpanPreludeForm = EK4836.With("{0} is the prelude's withSpan written through Effect; write {1}.")
+
+// VIP-12 builds a Layer for Key = value; the native provideService does not.
+// VIP-34 permits a quick fix only when it preserves that observable behavior.
+var provideServiceNativeForm = EK4836.With("{0} installs a service without building a Layer; keep the native call.")
+
+const provideServiceScopeNote = "No quick fix: a provide block builds a Layer and changes Scope and Layer.CurrentMemoMap; keep Effect.provideService to preserve its behavior."
 
 func init() {
 	tsFormRules[EK4836.Code] = &tsFormRule{
@@ -174,7 +181,7 @@ func blockFormRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node) 
 			if !ast.IsEntityNameExpression(key) {
 				return nil
 			}
-			providers = []string{expressionText(file, key) + " = " + providerText(file, arguments[2])}
+			return &formRewrite{message: provideServiceNativeForm, why: provideServiceScopeNote}
 		}
 		start, end = nodeStart(file, statement), statement.End()
 		result = "provide " + strings.Join(providers, ", ") + blockText(program, indent, returns)

@@ -1,6 +1,6 @@
-// provide Key = value { ... } provides one service, as Effect.provideService
-// does: no Layer, so no Scope and no Layer MemoMap around the statements
-// (D173). Only a Layer the source writes goes through Effect.provide.
+// provide Key = value { ... } is Layer.succeed inside Effect.provide.
+// Native layer scope and memo maps apply to service entries too.
+// VIP-12 gives service entries and written Layers identical provider behavior.
 export service Greeting {
   text(): string!!
 }
@@ -75,7 +75,7 @@ export effect function once(): number!! {
   }
 }
 
-// The same statements, for Effect.provideService to provide.
+// The same statements, for the native Effect.provide counterpart.
 export effect function bare() {
   return (try Greeting.text()).length
 }

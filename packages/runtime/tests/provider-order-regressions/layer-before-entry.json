@@ -1,0 +1,21 @@
+{
+  "property": "provide-provider-order",
+  "rule": "VIP-12: exact Effect.provide; later provider wins",
+  "input": {
+    "providers": [
+      {
+        "kind": "layer",
+        "key": 0,
+        "value": 1,
+        "resource": true
+      },
+      {
+        "kind": "entry",
+        "key": 0,
+        "value": 2,
+        "resource": false
+      }
+    ],
+    "fail": false
+  }
+}

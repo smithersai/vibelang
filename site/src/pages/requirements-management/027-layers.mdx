@@ -239,7 +239,7 @@ effect function testBannerWithInlineSettings() {
 // Output: ["test: Orders","fixture/Orders","inline: Orders"]
 ```
 
-Replace a dependency to exercise the real factory, or the service itself to isolate its consumers. If a test needs different construction inputs, change a layer that already includes production dependencies at its exposed factory boundary. For a small local override, `provide Key = value` provides one implementation without a layer. Put construction dependencies in an outer block so they exist while the inner layer builds: providers in one list supply the block together and don't feed one another's construction dependencies.
+Replace a dependency to exercise the real factory, or the service itself to isolate its consumers. If a test needs different construction inputs, change a layer that already includes production dependencies at its exposed factory boundary. For a small local override, `provide Key = value` supplies `Layer.succeed(Key, value)`. All providers keep their source order; the later provider of the same service wins, including when a `Layer` follows `Key = value`. Put construction dependencies in an outer block so they exist while the inner layer builds: providers in one list supply the block together and don't feed one another's construction dependencies.
 
 ## Coming from Effect
 

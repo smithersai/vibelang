@@ -123,7 +123,7 @@ JavaScript value. Decisions are in [`docs/design/history/DECISIONS.md`](../../do
 | `$noFailure` | Sentinel for a Cause without a recoverable expected failure | — |
 | `$noMatch` | Throw for a value that no match arm handled | — |
 | `$patternError` | Mark an unsupported pattern during checking | — |
-| `$provideEntries` | Provide a block's entries: a `Key = value` service as `Effect.provideService` does, a layer through `Effect.provide` | D173 |
+| `$provideEntries` | Provide a block's `Layer` providers and `Key = value` entries through `Effect.provide` in source order | VIP-12 |
 | `$provideService` | Supply a service implementation | — |
 | `$rest` | Extract object rest properties for a pattern | — |
 | `$schemaErrorFamily` | Register a schema error family and its union schema | — |
@@ -355,20 +355,18 @@ and a suspending one at 259 ns. Rows that don't allocate repeated within 0.5 ns.
 ## Provide blocks
 
 `provide Key = value { }` compiles to
-`$provideEntries(body, [$provideService(Key, "Key", value)])`, which provides
-the service as `Effect.provideService` does. Only a layer the block lists
-goes through `Effect.provide`. Nanoseconds per pass, best of 15 rounds of
-20,000 passes. From this directory:
+`$provideEntries(body, [$provideService(Key, "Key", value)])`. Each entry is
+`Layer.succeed(Key, value)`, and the complete provider list goes through
+`Effect.provide`, as VIP-12 requires. Later providers of the same service win,
+including when a written `Layer` follows a service entry. Native scopes, `Layer`
+memo maps and finalizers apply to every form.
+
+The benchmark compares the block helper with its native Layer counterpart and
+with `Effect.provideService`. Run it from this directory:
 
 ```sh
 bun run build && node tests/provide-bench.mjs
 ```
-
-| Form | ns per pass |
-| --- | ---: |
-| `Effect.provideService` | 383 |
-| `provide Key = 1 { }` (`$provideEntries`) | 563 |
-| `Effect.provide` with a one-service Layer (before) | 2,103 |
 
 ## Prototype compatibility
 

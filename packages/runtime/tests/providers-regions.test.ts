@@ -32,17 +32,17 @@ test("provide accepts a generated key, an Effect service, or its module", async 
   }
 })
 
-test("$provideEntries provides Key = value services without a Layer, and builds only the other layers", async () => {
+test("$provideEntries provides Key = value entries through native Layers", async () => {
   const memoMap = Effect.map(Effect.serviceOption(Layer.CurrentMemoMap), (option) => option._tag)
   const probe = Effect.all([Counter, Left, memoMap])
   const one = $provideEntries(Effect.all([Counter, memoMap]), [$provideService(Counter, "Counter", { value: 0 })])
-  expect(await Effect.runPromise(one)).toEqual([{ value: 0 }, "None"])
+  expect(await Effect.runPromise(one)).toEqual([{ value: 0 }, "Some"])
   const services = $provideEntries(probe, [
     $provideService(Counter, "Counter", { value: 1 }),
     $provideService({ Left }, "Left", { value: 2 }),
     $provideService(Counter, "Counter", { value: 3 })
   ])
-  expect(await Effect.runPromise(services)).toEqual([{ value: 3 }, { value: 2 }, "None"])
+  expect(await Effect.runPromise(services)).toEqual([{ value: 3 }, { value: 2 }, "Some"])
   const mixed = $provideEntries([Layer.succeed(Counter)({ value: 4 }), $provideService(Left, "Left", { value: 5 })])(probe)
   expect(await Effect.runPromise(mixed)).toEqual([{ value: 4 }, { value: 5 }, "Some"])
 })
