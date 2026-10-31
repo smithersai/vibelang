@@ -485,6 +485,34 @@ export function rootTsconfigs(root, ts) {
 /** The ignore line that keeps formatters reading .prettierignore (Prettier, Oxfmt, Vite+) off vibelang's declaration sidecars. */
 export const sidecarIgnore = "*.d.vibe.ts"
 
+/** The Oxlint configurations a repository may keep at its root, in Oxlint's order. */
+export const oxlintConfigs = [".oxlintrc.json", ".oxlintrc.jsonc", "oxlint.config.ts", "oxlint.config.mts", "oxlint.config.js", "oxlint.config.mjs"]
+
+/**
+ * An Oxlint configuration's text, JSON or a defineConfig module, with
+ * pattern first in its ignorePatterns, which gains the key when it has none:
+ * Oxlint reads x.d.vibe.ts as TypeScript, not as a declaration file, and
+ * would lint vibelang's generated sidecars. Returns null for a shape it does
+ * not know.
+ */
+export function addOxlintIgnore(text, pattern = `**/${sidecarIgnore}`) {
+  if (text.includes(JSON.stringify(pattern))) return text
+  const list = /(["']?)ignorePatterns\1\s*:\s*\[/.exec(text)
+  if (list) {
+    const at = list.index + list[0].length
+    const indent = /^\r?\n([ \t]*)/.exec(text.slice(at))
+    return indent ? `${text.slice(0, at)}\n${indent[1]}${JSON.stringify(pattern)},${text.slice(at)}` : `${text.slice(0, at)}${JSON.stringify(pattern)}, ${text.slice(at)}`
+  }
+  const json = /^\s*\{/.exec(text)
+  const module = /(?:defineConfig\(\s*|export\s+default\s+)\{/.exec(text)
+  const open = json ?? module
+  if (!open) return null
+  const at = open.index + open[0].length
+  const indent = /^\r?\n([ \t]*)\S/.exec(text.slice(at))?.[1] ?? "  "
+  const key = json ? `"ignorePatterns"` : "ignorePatterns"
+  return `${text.slice(0, at)}\n${indent}${key}: [${JSON.stringify(pattern)}],${text.slice(at)}`
+}
+
 /**
  * Whether a test command runs `bun test`, itself or through the package
  * script it runs (`bun run test`, `pnpm test`).

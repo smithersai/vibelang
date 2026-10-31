@@ -498,6 +498,13 @@ async function wireTarget(config, log) {
   const formatIgnore = join(t, ".prettierignore")
   const formatIgnoreText = existsSync(formatIgnore) ? readFileSync(formatIgnore, "utf8") : ""
   writeIfChanged(formatIgnore, formatIgnoreText, Wire.setIgnoreLine(formatIgnoreText, Wire.sidecarIgnore, true))
+  // And Oxlint leaves them alone: it reads x.d.vibe.ts as TypeScript, not as a declaration file.
+  for (const name of Wire.oxlintConfigs.filter((name) => existsSync(join(t, name)))) {
+    const text = readFileSync(join(t, name), "utf8")
+    const next = Wire.addOxlintIgnore(text)
+    if (next === null) warnings.push(`${name}: add "**/${Wire.sidecarIgnore}" to its ignorePatterns by hand`)
+    else writeIfChanged(join(t, name), text, next)
+  }
   // pnpm 11 and later fail an install that leaves a build script undecided, and vibelang's dprint has one that links its binary.
   if (Wire.packageManager(readdirSync(t)) === "pnpm") {
     const workspace = join(t, "pnpm-workspace.yaml")

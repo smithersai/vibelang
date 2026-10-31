@@ -6,7 +6,7 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { loadTypeScript } from "../lib/declarations.mjs"
 import { projectsOf } from "../lib/wire.mjs"
-import { addBunBuildPlugin, addBunPreload, bunProgramDirs, wireBunBuilds, addBunTestPreload, wireBunTests, addCompilerOptions, addEffectLint, copyTarballs, formattable, formatterOf, addVibeLang, addVibeIncludes, addVibeLangSetting, addVitePlugin, initAgents, installCommand, packageManager, replaceTsc, rootTsconfigs, runsBunTest, setIgnoreLine, testConfigArgument, toolchainDirectory, toolchainSpecs, viteAppConfigs, wireKnip, wireVite, wireViteApps } from "../lib/wire.mjs"
+import { addBunBuildPlugin, addBunPreload, bunProgramDirs, wireBunBuilds, addBunTestPreload, wireBunTests, addCompilerOptions, addEffectLint, addOxlintIgnore, copyTarballs, formattable, formatterOf, addVibeLang, addVibeIncludes, addVibeLangSetting, addVitePlugin, initAgents, installCommand, packageManager, replaceTsc, rootTsconfigs, runsBunTest, setIgnoreLine, testConfigArgument, toolchainDirectory, toolchainSpecs, viteAppConfigs, wireKnip, wireVite, wireViteApps } from "../lib/wire.mjs"
 import { setUpAgents } from "../lib/steps.mjs"
 import { must } from "../lib/util.mjs"
 
@@ -542,6 +542,17 @@ test("projectsOf reads a solution-style tsconfig as the projects it references",
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
+})
+
+test("addOxlintIgnore puts the sidecars in an Oxlint configuration's ignorePatterns, JSON or a module", () => {
+  const module = 'export default defineConfig({\n  plugins: ["import"],\n  ignorePatterns: [\n    "submodules/**",\n    "**/*.test.ts",\n  ],\n})\n'
+  assert.equal(addOxlintIgnore(module), 'export default defineConfig({\n  plugins: ["import"],\n  ignorePatterns: [\n    "**/*.d.vibe.ts",\n    "submodules/**",\n    "**/*.test.ts",\n  ],\n})\n')
+  assert.equal(addOxlintIgnore('{ "ignorePatterns": ["dist/**"], "rules": {} }'), '{ "ignorePatterns": ["**/*.d.vibe.ts", "dist/**"], "rules": {} }')
+  assert.equal(addOxlintIgnore('{\n  "rules": {}\n}\n'), '{\n  "ignorePatterns": ["**/*.d.vibe.ts"],\n  "rules": {}\n}\n')
+  assert.equal(addOxlintIgnore('export default defineConfig({\n  rules: {},\n})\n'), 'export default defineConfig({\n  ignorePatterns: ["**/*.d.vibe.ts"],\n  rules: {},\n})\n')
+  const done = '{ "ignorePatterns": ["**/*.d.vibe.ts"] }'
+  assert.equal(addOxlintIgnore(done), done)
+  assert.equal(addOxlintIgnore("module.exports = makeConfig()\n"), null)
 })
 
 test("setIgnoreLine adds the toolchain directory once and removes it for a published version", () => {
