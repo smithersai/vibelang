@@ -56,6 +56,7 @@ const specTests = [
   "TestFormatFoldkitQuoted",
   "TestFormatLabelQuoted",
   "TestFormatReturnTypesQuoted",
+  "TestEffectArrowHeadsQuoted",
   "TestSchemaDecodedKeyFlagsQuoted",
   "TestFormatContractCommentQuote",
   "TestFormatContractCommentNeighbors",
@@ -256,7 +257,7 @@ const targets = {
   "go-vibelangfuzz-editor": goVibelang(
     "The editor oracles over their short sample of documentation examples and cases.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} ` +
-      "go test -short -count=1 -timeout=15m -trimpath -run '^(FuzzEditor|FuzzEditorConsistency|FuzzAsyncRefactorBridges)$' ./internal/vibelangfuzz/",
+      "go test -short -count=1 -timeout=15m -trimpath -run '^(FuzzEditor|FuzzEditorConsistency|FuzzEffectArrowHeads|FuzzAsyncRefactorBridges)$' ./internal/vibelangfuzz/",
     [Tsc["vibelangfuzz-files"]],
     "30m"
   ),

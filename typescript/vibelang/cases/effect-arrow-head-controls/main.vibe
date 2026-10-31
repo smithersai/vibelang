@@ -1,0 +1,6 @@
+import { Effect } from "effect"
+export const typed = effect (x: number) => x + 1
+export const generic = effect <T>(x: T) => x
+function effect(value: number): number { return value * 2 }
+const ordinary = (effect: number): number => effect + 1
+export const program = effect () => [try typed(3), try generic("ok"), effect(3), ordinary(7)]

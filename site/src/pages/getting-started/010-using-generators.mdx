@@ -11,6 +11,8 @@ A function declaration keeps `function`: write `effect function load()` or `asyn
 
 `effect` and `async` remain identifiers outside their modifier positions. Expressions such as `effect as (Handler)` and `async satisfies (Handler)` keep TypeScript's assertion and checking rules.
 
+Typed `effect` arrows put their parameters in parentheses: `effect (x: number) => x`. Type parameters also require parentheses, as in `effect <T>(x: T) => x`. A bare typed or generic head reports `EK0109`, including with `--noCheck`; its quick fix and `vibelang --fix` insert the parentheses and preserve the body and comments.
+
 Optional class methods use `effect read?() { … }` or `effect [key]?() { … }`, as `async` methods do.
 
 Method names follow TypeScript's property-name rules, including bigint literals: `effect 1n() { … }` works in a class or object literal.

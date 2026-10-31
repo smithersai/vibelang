@@ -767,9 +767,20 @@ func (p proposal) text() string {
 // not overlap.
 func fileFixes(ctx context.Context, program *compiler.Program, file *ast.SourceFile, refused map[string]bool, codes []int32) proposal {
 	var fixable []*ast.Diagnostic
-	for _, d := range program.GetSemanticDiagnostics(ctx, file) {
+	// Some VibeLang syntax errors have a recovered tree and an insertion-only
+	// fix. Keep those fixes available when type checking is disabled, too.
+	diagnostics := append(slices.Clone(program.GetSyntacticDiagnostics(ctx, file)), program.GetSemanticDiagnostics(ctx, file)...)
+	seen := map[string]bool{}
+	for _, d := range diagnostics {
 		if d.Source() == diagnosticSource && slices.Contains(codes, d.Code()) && d.File() == file {
-			fixable = append(fixable, d)
+			// The syntactic and semantic lists can both carry one diagnostic;
+			// identify it by position, not text, so two spellings of the same
+			// type on different lines keep their own fixes.
+			key := strconv.Itoa(int(d.Code())) + ":" + strconv.Itoa(d.Pos()) + ":" + strconv.Itoa(d.End())
+			if !seen[key] {
+				fixable = append(fixable, d)
+				seen[key] = true
+			}
 		}
 	}
 	if len(fixable) == 0 {

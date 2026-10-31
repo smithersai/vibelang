@@ -6,6 +6,12 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
+// EffectArrowHeadDiagnosticCode and Text identify VIP-1/detail247's
+// already-rejected typed/generic bare heads. The registry and parser share
+// their identity; parser diagnostics remain errors with --noCheck.
+const EffectArrowHeadDiagnosticCode int32 = 109
+const EffectArrowHeadDiagnosticText = "An effect arrow with a typed bare parameter or type parameters needs parentheses around its parameters."
+
 // effect marks an Effect function (VIP-1) exactly where TypeScript allows
 // async (VIP-39); before a block it builds an Effect from the block (VIP-2).
 // Each form parses as the function TypeScript parses without effect, flagged
@@ -125,22 +131,24 @@ func (p *Parser) tryParseVibeLangEffectArrow(allowReturnTypeInArrowFunction bool
 		p.rewind(state)
 		return nil
 	}
-	var arrow *ast.Node
-	switch {
-	case p.token == ast.KindOpenParenToken || p.token == ast.KindLessThanToken:
-		switch p.isParenthesizedArrowFunctionExpression() {
-		case core.TSTrue:
-			arrow = p.parseParenthesizedArrowFunctionExpression(true /*allowAmbiguity*/, allowReturnTypeInArrowFunction)
-		case core.TSUnknown:
-			arrow = p.parseParenthesizedArrowFunctionExpression(false /*allowAmbiguity*/, allowReturnTypeInArrowFunction)
+	arrow := p.tryParseVibeLangBareEffectArrow(allowReturnTypeInArrowFunction)
+	if arrow == nil {
+		switch {
+		case p.token == ast.KindOpenParenToken || p.token == ast.KindLessThanToken:
+			switch p.isParenthesizedArrowFunctionExpression() {
+			case core.TSTrue:
+				arrow = p.parseParenthesizedArrowFunctionExpression(true /*allowAmbiguity*/, allowReturnTypeInArrowFunction)
+			case core.TSUnknown:
+				arrow = p.parseParenthesizedArrowFunctionExpression(false /*allowAmbiguity*/, allowReturnTypeInArrowFunction)
+			}
+		case p.isIdentifier() && p.lookAhead(func(p *Parser) bool {
+			p.nextToken()
+			return p.token == ast.KindEqualsGreaterThanToken && !p.hasPrecedingLineBreak()
+		}):
+			jsdoc := p.jsdocScannerInfo()
+			parameter := p.parseIdentifier()
+			arrow = p.parseSimpleArrowFunctionExpression(parameter.Pos(), parameter, allowReturnTypeInArrowFunction, jsdoc, nil /*asyncModifier*/)
 		}
-	case p.isIdentifier() && p.lookAhead(func(p *Parser) bool {
-		p.nextToken()
-		return p.token == ast.KindEqualsGreaterThanToken && !p.hasPrecedingLineBreak()
-	}):
-		jsdoc := p.jsdocScannerInfo()
-		parameter := p.parseIdentifier()
-		arrow = p.parseSimpleArrowFunctionExpression(parameter.Pos(), parameter, allowReturnTypeInArrowFunction, jsdoc, nil /*asyncModifier*/)
 	}
 	if arrow == nil || !ast.IsArrowFunction(arrow) {
 		p.rewind(state)
@@ -148,6 +156,44 @@ func (p *Parser) tryParseVibeLangEffectArrow(allowReturnTypeInArrowFunction bool
 	}
 	arrow.Loc = core.NewTextRange(pos, arrow.End())
 	return p.markEffect(arrow, word)
+}
+
+// tryParseVibeLangBareEffectArrow recovers only a complete bare parameter
+// with a type or type parameters. VIP-1/detail247 still rejects these heads;
+// the checker owns EK0109 and its insertion-only parenthesizing repair.
+// Without a complete same-line =>, restore every speculative parser record,
+// so calls, comparisons and native arrow errors keep their ordinary reading.
+func (p *Parser) tryParseVibeLangBareEffectArrow(allowReturnTypeInArrowFunction bool) *ast.Node {
+	if p.token != ast.KindLessThanToken && !p.isIdentifier() {
+		return nil
+	}
+	state := p.mark()
+	pos := p.nodePos()
+	jsdoc := p.jsdocScannerInfo()
+	typeParameters := p.parseTypeParameters()
+	if !p.isIdentifier() || p.hasPrecedingLineBreak() {
+		p.rewind(state)
+		return nil
+	}
+	name := p.parseIdentifier()
+	question := p.parseOptionalToken(ast.KindQuestionToken)
+	typeNode := p.parseTypeAnnotation()
+	if typeParameters == nil && typeNode == nil ||
+		p.token != ast.KindEqualsGreaterThanToken || p.hasPrecedingLineBreak() ||
+		len(p.diagnostics) != state.diagnosticsLen {
+		p.rewind(state)
+		return nil
+	}
+	parameter := p.finishNode(p.factory.NewParameterDeclaration(nil, nil, name, question, typeNode, nil), name.Pos())
+	parameters := p.newNodeList(parameter.Loc, p.nodeSliceArena.NewSlice1(parameter))
+	equalsGreaterThan := p.parseExpectedToken(ast.KindEqualsGreaterThanToken)
+	body := p.parseArrowFunctionExpressionBody(false /*isAsync*/, allowReturnTypeInArrowFunction)
+	result := p.finishNode(p.factory.NewArrowFunction(nil, typeParameters, parameters, nil, nil, equalsGreaterThan, body), pos)
+	p.withJSDoc(result, jsdoc)
+	// The recovered tree is complete. Retain its parameter/body type checks
+	// while rejecting the original head independently of semantic checking.
+	p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, p.sourceRange(parameter), "EK", diagnostics.CategoryError, EffectArrowHeadDiagnosticCode, EffectArrowHeadDiagnosticText))
+	return result
 }
 
 // isStartOfVibeLangEffectExpression reports whether the current token, effect,

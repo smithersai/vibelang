@@ -49,6 +49,7 @@ Registration reserves a code; it does not mean the compiler already implements e
 | `EK0106` | an `effect` function whose written return type is not an Effect |
 | `EK0107` | `eval`, `Function`, `arguments`, `var` or `with` in a `.vibe` file |
 | `EK0108` | a recognized `effect` modifier on an `abstract` declaration, in an ambient `declare` context, or on an `interface` or type literal member |
+| `EK0109` | a typed or generic bare `effect` arrow head; parenthesize its parameters |
 | `EK0301` | `!` beside a union, an intersection, a function type or a conditional type without parentheses |
 | `EK0401` | a `throw` or a call that may throw in a plain function whose return type is effectful, or a parameter default that may throw in any effectful function, or a local implementation whose tracked throws exceed an exposed effectful overload's implicit `never` bound |
 | `EK0402` | a function that may throw where a function type doesn't admit its thrown type |

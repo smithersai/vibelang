@@ -1,0 +1,3 @@
+// expect: EK0109
+const typed = effect x: number => x
+const generic = effect <T> x: T => x

@@ -1080,6 +1080,12 @@ typescript/vibelang/cases/dual-block-legacy.fail/main.vibe:13:27 block appended/
 typescript/vibelang/cases/dual-block-legacy.fail/main.vibe:19:30 block appended/dual fallback
 typescript/vibelang/cases/dual-block-legacy.fail/main.vibe:26:35 block appended/dual fallback
 typescript/vibelang/cases/dual-block-legacy.fail/main.vibe:32:30 block appended/plain table
+typescript/vibelang/cases/effect-arrow-head-controls/main.vibe:2:22 lambda plain fallback
+typescript/vibelang/cases/effect-arrow-head-controls/main.vibe:3:24 lambda plain fallback
+typescript/vibelang/cases/effect-arrow-head-controls/main.vibe:5:18 lambda plain annotation
+typescript/vibelang/cases/effect-arrow-head-controls/main.vibe:6:24 lambda choice fallback
+typescript/vibelang/cases/effect-arrow-head-nocheck.fail/main.vibe:2:15 lambda plain fallback
+typescript/vibelang/cases/effect-arrow-head-nocheck.fail/main.vibe:3:17 lambda plain fallback
 typescript/vibelang/cases/effect-bigint-method/main.vibe:8:3 lambda plain fallback
 typescript/vibelang/cases/effect-block-jumps-inside/main.vibe:6:19 lambda program table
 typescript/vibelang/cases/effect-block-jumps.fail/main.vibe:10:15 lambda program table
