@@ -16,6 +16,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - `vibelang/bun` scanned every module of every dependency and resolved each of their imports a second time, so a large package's tests ran about three times slower and timed out with no `.vibe` module loaded; it now stops at `node_modules`, and a 294-module import graph costs about the same with the preload as without it.
 
+- `vibelang --fix` deleted `import * as Schema from "effect/Schema"` when a `Schema.TaggedError` class was its only use, and rewrote a class whose module has another name, so the declaration file changed; in a project that emits declarations it now keeps the import and leaves such a class.
+
 - `vibelang-format` and the `vibelang/prettier` plugin wrote double quotes and wrapped at 120 columns whatever the repository's formatter settings said, so in a repository such as foldkit (Oxfmt, `singleQuote`, `printWidth: 80`) `.vibe` files differed in style from its `.ts` files. They now take the quote style and print width from the repository's Oxfmt, Prettier or dprint configuration, or from Prettier's options.
 
 - Under Bun, the loader and bundler plugins failed with `ENOTDIR` on a relative import of a file that is not a script, such as `./prompt.txt`, which broke `Bun.build` in a project that imports text; they now leave that import to Bun.
@@ -55,6 +57,16 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The spec's generic-contract example bridged its call with the one-argument `Effect.try`, which fails with `UnknownError`, while its TypeScript counterpart failed with the thrown value. Both now use the `try`/`catch` form, and the constrained generic call has its VibeLang source.
 
 - The docs check read a number followed by a colon in a comment or reason of the compiler's pending-diagnostic list as a code, so a comment such as `VIP-7: …` failed it with a phantom `EK0007`; it now reads only the list's keys.
+
+- An invalid child severity could restore a base config's error setting; it now reports the config error and uses the diagnostic's normal fallback while keeping other valid settings.
+
+- The severity reference left invalid-entry recovery unclear; it now explains independent recovery after inheritance and that invalid child entries do not restore overwritten base settings.
+
+- Specification checks could mistake native `-Infinity` examples for CLI flags; they now read explicit compiler commands and exclude program examples.
+
+- Distinct non-finite cause interruptor IDs could compare equal in differential checks; comparison now preserves their native identity, including repeated IDs and signed zero.
+
+- The specification did not say where an `is` binding in a `for` head, a concise arrow body or a field initializer lives, and its examples compiled a read of a skipped binding; it now gives each home, and a read where the binding may not have run is TypeScript's `TS2454` or `TS2448`.
 
 - Editor parsing rejected `for try` `Stream` loops; the tree-sitter grammar now recognizes the loop and its `continue` and `break` statements.
 
@@ -320,6 +332,9 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The catch explanation incorrectly attributed a mixed failure/defect Cause to `try.any`. It now describes recovery without that origin claim; the native operation already elects those failures to defects.
 
 - Imported generic `data` constructors could report `EK4401` when read from a standalone declaration file; their declarations now retain Effect’s constructor signatures, so direct calls and aliases work without a boundary wrapper.
+
+- Spec-derived checks could confuse distinct imported lint codes by truncating longer numbers; they now keep each full diagnostic number.
+
 
 - Repository validation could fail the site contrast check on a connection reset by its local server; the check now reads the built site directly.
 
