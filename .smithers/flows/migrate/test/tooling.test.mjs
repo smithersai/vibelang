@@ -96,6 +96,32 @@ test("setup regenerates the .vibe lint config where the lint script already runs
   assert.equal(JSON.parse(readFileSync(join(root, "package.json"))).scripts.lint, step)
   assert.deepEqual(wireDeveloperTools({ root, specsFor }).changed, [])
 })
+// foldkit: its .oxlintrc.json loads its own plugin, ./packages/oxlint-plugin-foldkit,
+// and turns on 17 foldkit/* rules, none of which ran on .vibe files.
+test("the lint config runs the rules of the repository's Oxlint JS plugins on .vibe files, under Oxlint's names", async t => {
+  const oxlintrc = {
+    jsPlugins: [{ name: "house", specifier: "./tools/house.js" }, "eslint-plugin-shared", "./tools/named.mjs"],
+    rules: { "house/no-foo": "error", "house/missing": "error", "shared/bar": "warn", "@acme/named/baz": ["error", { strict: true }] },
+    overrides: [{ files: ["src/**/*.ts"], rules: { "house/no-foo": "off" } }]
+  }
+  const rule = "{ create: () => ({}) }"
+  const root = fixture(t, {
+    "package.json": '{"type":"module","scripts":{"lint":"oxlint"}}',
+    ".oxlintrc.json": JSON.stringify(oxlintrc),
+    "tools/house.js": `export default { meta: { name: "not-the-alias" }, rules: { "no-foo": ${rule} } }\n`,
+    "tools/named.mjs": `export default { meta: { name: "@acme/oxlint-plugin-named" }, rules: { baz: ${rule} } }\n`,
+    "node_modules/eslint-plugin-shared/package.json": '{"name":"eslint-plugin-shared","type":"module","exports":"./index.js"}',
+    "node_modules/eslint-plugin-shared/index.js": `export default { rules: { bar: ${rule} } }\n`,
+    "node_modules/vibelang/package.json": '{"name":"vibelang","type":"module","exports":{"./eslint":"./eslint.mjs"}}',
+    "node_modules/vibelang/eslint.mjs": "export default { parseForESLint() {} }\n"
+  })
+  wireDeveloperTools({ root, specsFor })
+  const config = (await import(join(root, ".vibelang/eslint.config.mjs"))).default
+  const vibe = config.find(entry => entry.languageOptions?.parser)
+  assert.deepEqual(Object.keys(vibe.plugins).sort(), ["@acme/named", "house", "shared"])
+  assert.deepEqual(vibe.rules, { "no-debugger": "error", "house/no-foo": ["error"], "shared/bar": ["warn"], "@acme/named/baz": ["error", { strict: true }] })
+  assert.deepEqual(config.at(-1), { files: ["src/**/*.vibe"], rules: { "house/no-foo": ["off"] } })
+})
 const deps = process.env.VIBELANG_TOOLING_NODE_MODULES
 test("the migrated lint command reports a debugger at its .vibe source location", { skip: !deps && "set VIBELANG_TOOLING_NODE_MODULES" }, t => {
   const root = fixture(t, { "package.json": '{"scripts":{"lint":"oxlint"}}', "probe.vibe": "export const value = 1\ndebugger;\n" })
@@ -106,6 +132,25 @@ test("the migrated lint command reports a debugger at its .vibe source location"
   assert.equal(bad.status, 1, bad.stdout + bad.stderr)
   assert.match(bad.stdout, /probe.vibe/)
   assert.match(bad.stdout, /2:1.*no-debugger/)
+  writeFileSync(join(root, "probe.vibe"), "export const value = 1\n")
+  const good = run()
+  assert.equal(good.status, 0, good.stdout + good.stderr)
+})
+test("the migrated lint command reports a JS plugin's rules at their .vibe source location", { skip: !deps && "set VIBELANG_TOOLING_NODE_MODULES" }, t => {
+  const report = "(context) => ({ Identifier(node) { if (node.name === \"foo\") context.report({ node, message: \"no foo\" }) } })"
+  const root = fixture(t, {
+    "package.json": '{"type":"module","scripts":{"lint":"oxlint"}}',
+    ".oxlintrc.json": JSON.stringify({ jsPlugins: ["./house.js"], rules: { "house/no-foo": "error", "house/no-foo-once": "warn" } }),
+    "house.js": `export default { meta: { name: "eslint-plugin-house" }, rules: { "no-foo": { create: ${report} }, "no-foo-once": { createOnce: ${report} } } }\n`,
+    "probe.vibe": "export const value = 1\nexport const foo = value\n"
+  })
+  wireDeveloperTools({ root, specsFor })
+  symlinkSync(resolve(deps), join(root, "node_modules"), "dir")
+  const run = () => spawnSync(process.execPath, [join(deps, "eslint/bin/eslint.js"), "--config", ".vibelang/eslint.config.mjs", "**/*.vibe"], { cwd: root, encoding: "utf8" })
+  const bad = run()
+  assert.equal(bad.status, 1, bad.stdout + bad.stderr)
+  assert.match(bad.stdout, /2:14\s+error\s+no foo\s+house\/no-foo\n/)
+  assert.match(bad.stdout, /2:14\s+warning\s+no foo\s+house\/no-foo-once\n/)
   writeFileSync(join(root, "probe.vibe"), "export const value = 1\n")
   const good = run()
   assert.equal(good.status, 0, good.stdout + good.stderr)

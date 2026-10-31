@@ -50,15 +50,22 @@ Migration appends ESLint with the shipped `vibelang/eslint` parser to the
 existing Oxlint/Vite+ lint script. The generated
 `.vibelang/eslint.config.mjs` reads the repository's `.oxlintrc.json` (or
 `.oxlintrc.jsonc`) on each run and applies its rules and overrides to `.vibe`
-files, a `*.ts` glob read as `*.vibe`, wherever ESLint or typescript-eslint
-has the rule: `typescript/*` rules and the core rules typescript-eslint
-extends run as `@typescript-eslint/*`, and a rule the repository turns off
-stays off. typescript-eslint's recommended rules stand in for Oxlint's
+files, a `*.ts` glob read as `*.vibe`, wherever ESLint, typescript-eslint or
+one of the configuration's JS plugins has the rule: `typescript/*` rules and
+the core rules typescript-eslint extends run as `@typescript-eslint/*`, and a
+rule the repository turns off stays off. Each JS plugin in `jsPlugins` loads
+as Oxlint loads it, a path from the configuration's directory or a package,
+under its alias, else its `meta.name` or package name without the
+`eslint-plugin-` or `oxlint-plugin-` prefix, so its rules keep their names,
+such as foldkit's `foldkit/no-noop-message`. Its rules read the `.vibe` file's
+source tree as they read a `.ts` file's, including rules written for Oxlint's
+`createOnce` API. typescript-eslint's recommended rules stand in for Oxlint's
 default correctness rules unless the configuration turns that category off,
 and `no-debugger` is on unless it says otherwise. Locations are the original
-VibeLang ones. Rules of other Oxlint plugins, including JS plugins, type-aware
-rules, and a configuration a script names with `-c` are not carried; the file
-is editable, and running setup again writes it anew. Raw Oxlint still skips VibeLang.
+VibeLang ones. Rules of Oxlint's other built-in plugins, such as `unicorn` or
+`import`, type-aware rules, `extends`, and a configuration a script names with
+`-c` are not carried; the file is editable, and running setup again writes it
+anew. Raw Oxlint still skips VibeLang.
 This is smaller and preserves source locations better than linting emitted
 TypeScript; a future Oxlint-only bridge would need emitted TS, source-map
 remapping, and filtering of diagnostics on compiler-generated code.
