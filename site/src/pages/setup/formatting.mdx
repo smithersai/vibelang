@@ -83,6 +83,8 @@ Normal quote, grouping, comma and layout styling may change emitted JavaScript b
 
 Formatting keeps diagnostics, including `EK4618` for `async f()` and `effect f()` declarations without `function`. Run `vibelang --fix` to insert the missing keyword.
 
+Commas between fields in `error` and `schema error` declarations remain commas after formatting, including beside methods and getters. Commas in tuple types and expressions follow the TypeScript formatter.
+
 ## What the formatter refuses
 
 The plugin reports the file and leaves it unchanged when:

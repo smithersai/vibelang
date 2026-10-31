@@ -146,6 +146,9 @@ type encoding struct {
 	// declaration of text, in order: non-empty for one the encoding wrote
 	// before a shorthand declaration's name, empty for one of the source.
 	functions []string
+	// fieldCommas records payload separators by property order, so decoding
+	// keeps the source comma even when TypeScript formatting removes semicolons.
+	fieldCommas []string
 	// modules are the file's module bodies, and references the number of
 	// identifier module specifiers text writes as strings.
 	modules     []moduleBody
@@ -197,6 +200,7 @@ func encode(fileName, source string) (*encoding, error) {
 		return nil, fmt.Errorf("vibelang format: the file contains every placeholder prefix (%s)", strings.Join(sentinels, ", "))
 	}
 	e := &encoder{file: file, source: source, sentinel: sentinel}
+	e.normalizeErrorFieldCommas()
 	forms = uniqueForms(forms)
 	for _, form := range forms {
 		if err := e.form(form); err != nil {
@@ -207,6 +211,25 @@ func encode(fileName, source string) (*encoding, error) {
 		return nil, err
 	}
 	return e.finish()
+}
+
+// normalizeErrorFieldCommas adapts payload commas to TypeScript separators.
+// Decoding restores each recorded comma, preserving diagnostics as well as
+// commas in method bodies and tuple types.
+func (e *encoder) normalizeErrorFieldCommas() {
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if node.Kind == ast.KindSemicolonClassElement &&
+			node.Flags&ast.NodeFlagsVibeLang != 0 &&
+			node.Flags&ast.NodeFlagsHasJSDoc == 0 {
+			start := scanner.SkipTrivia(e.source, node.Pos())
+			if e.source[start:node.End()] == "," {
+				e.add(edit{pos: start, end: node.End(), text: ";", token: "fieldComma", stands: ","})
+			}
+		}
+		return node.ForEachChild(visit)
+	}
+	e.file.AsNode().ForEachChild(visit)
 }
 
 // syntaxError reports a parse diagnostic with its line and column.
@@ -743,7 +766,7 @@ func (e *encoder) finish() (*encoding, error) {
 	var out strings.Builder
 	// marks holds, for each kind of token matched by order, the TypeScript
 	// offset of each token an edit wrote or kept and what it stands for.
-	marks := map[string]map[int]string{"void": {}, "||": {}, "for": {}, "finally": {}, "async": {}, "function": {}}
+	marks := map[string]map[int]string{"void": {}, "||": {}, "for": {}, "finally": {}, "async": {}, "function": {}, "fieldComma": {}}
 	written := map[string]int{}
 	var keywords []edit // for and finally keywords, by source position
 	for _, ed := range edits {
@@ -777,7 +800,7 @@ func (e *encoder) finish() (*encoding, error) {
 		if ed.token != "" {
 			written[ed.token]++
 		}
-		if ed.token == "void" || ed.token == "||" || ed.token == "async" || ed.token == "function" {
+		if ed.token == "void" || ed.token == "||" || ed.token == "async" || ed.token == "function" || ed.token == "fieldComma" {
 			marks[ed.token][out.Len()] = ed.stands
 		}
 		out.WriteString(ed.text)
@@ -816,7 +839,12 @@ func (e *encoder) finish() (*encoding, error) {
 	result.finallys = match("finally", tokens.finallys)
 	result.asyncs = match("async", tokens.asyncs)
 	result.functions = match("function", tokens.functions)
-	for _, token := range []string{"void", "||", "for", "finally", "async", "function"} {
+	fieldEnds := make([]int, len(tokens.fields))
+	for i, field := range tokens.fields {
+		fieldEnds[i] = field.End() - 1
+	}
+	result.fieldCommas = match("fieldComma", fieldEnds)
+	for _, token := range []string{"void", "||", "for", "finally", "async", "function", "fieldComma"} {
 		if written[token] != found[token] {
 			return nil, fmt.Errorf("vibelang format: internal error: wrote %d %s tokens, found %d", written[token], token, found[token])
 		}

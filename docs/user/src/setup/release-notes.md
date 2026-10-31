@@ -1341,6 +1341,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The headless editor check waited for request timeouts after its language server crashed, and could write to a closed pipe; it now reports the affected request and exit cause immediately and cleans up pending requests.
 
+- Formatting comma-separated `error` and `schema error` fields beside methods or getters failed with an internal error. These bodies now format while preserving their separators, comments and diagnostics.
+
 - `vibelang-format` and the `vibelang/prettier` plugin wrote double quotes and wrapped at 120 columns whatever the repository's formatter settings said, so in a repository such as foldkit (Oxfmt, `singleQuote`, `printWidth: 80`) `.vibe` files differed in style from its `.ts` files. They now take the quote style and print width from the repository's Oxfmt, Prettier or dprint configuration, or from Prettier's options.
 
 - Under Bun, the loader and bundler plugins failed with `ENOTDIR` on a relative import of a file that is not a script, such as `./prompt.txt`, which broke `Bun.build` in a project that imports text; they now leave that import to Bun.

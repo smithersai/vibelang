@@ -19,6 +19,7 @@ import (
 type tokens struct {
 	voids, ors, fors, finallys, asyncs, functions []int
 	voidNodes, orNodes                            map[int]*ast.Node
+	fields                                        []*ast.Node
 }
 
 // collectTokens finds the tokens of file, a parse of text, that decoding
@@ -40,6 +41,9 @@ func collectTokens(file *ast.SourceFile, text string) tokens {
 				start = scanner.SkipTrivia(text, modifiers.Nodes[len(modifiers.Nodes)-1].End())
 			}
 			t.functions = append(t.functions, start)
+		}
+		if node.Kind == ast.KindPropertyDeclaration || node.Kind == ast.KindPropertySignature {
+			t.fields = append(t.fields, node)
 		}
 		switch node.Kind {
 		case ast.KindVoidExpression:
@@ -69,6 +73,7 @@ func collectTokens(file *ast.SourceFile, text string) tokens {
 	slices.Sort(t.finallys)
 	slices.Sort(t.asyncs)
 	slices.Sort(t.functions)
+	slices.SortFunc(t.fields, func(a, b *ast.Node) int { return a.End() - b.End() })
 	return t
 }
 
@@ -131,8 +136,21 @@ func (enc *encoding) decode(formatted string) (string, error) {
 // ordered decodes the tokens matched by order.
 func (d *decoder) ordered() error {
 	t := collectTokens(d.file, d.text)
-	if len(t.voids) != len(d.enc.voids) || len(t.ors) != len(d.enc.pipes) || len(t.fors) != len(d.enc.fors) || len(t.finallys) != len(d.enc.finallys) || len(t.asyncs) != len(d.enc.asyncs) || len(t.functions) != len(d.enc.functions) {
-		return fmt.Errorf("vibelang format: internal error: the formatter changed the number of void, ||, for, finally, async, or function tokens")
+	if len(t.voids) != len(d.enc.voids) || len(t.ors) != len(d.enc.pipes) || len(t.fors) != len(d.enc.fors) || len(t.finallys) != len(d.enc.finallys) || len(t.asyncs) != len(d.enc.asyncs) || len(t.functions) != len(d.enc.functions) || len(t.fields) != len(d.enc.fieldCommas) {
+		return fmt.Errorf("vibelang format: internal error: the formatter changed the number of void, ||, for, finally, async, function, or property tokens")
+	}
+	// Preserve payload separators independently of the semicolon style.
+	// Keep separators so formatting preserves compiler diagnostics.
+	for i, comma := range d.enc.fieldCommas {
+		if comma == "" {
+			continue
+		}
+		end := t.fields[i].End()
+		start := end
+		if end > 0 && (d.text[end-1] == ';' || d.text[end-1] == ',') {
+			start--
+		}
+		d.replace(start, end, comma)
 	}
 	// The TypeScript formatter needs function, but the source shorthand must
 	// retain its EK4618 diagnostic. Only --fix inserts function permanently.

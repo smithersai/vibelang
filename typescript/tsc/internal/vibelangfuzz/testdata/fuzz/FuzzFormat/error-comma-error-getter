@@ -1,0 +1,2 @@
+go test fuzz v1
+string("error E { id: string, get label() { return this.id } }\n")
