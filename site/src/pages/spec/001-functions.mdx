@@ -46,8 +46,8 @@ const b = async effect { return 7 } // EK0105: remove async
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-1
 // Arrow-head syntax controls
-const f: (x: number) => (number!!) = effect x: number!! => x // syntax error: parenthesize x
-const g: (x: number) => (number!!) = effect <T> x => x       // syntax error: parenthesize parameters
+const f: (x: number) => (number!!) = effect x: number!! => x // EK0109: parenthesize x
+const g: (x: number) => (number!!) = effect <T> x => x       // EK0109: parenthesize parameters
 const a: (x: number) => (number!!) = effect (x): number!! => x // allowed
 const b = effect <T>(x: T) => x                              // allowed
 const c: (x: number) => (number!!) = effect x => x             // allowed
@@ -129,6 +129,7 @@ class OrdinaryValue { effect(): number { return 1 } }   // a method named effect
 | `effect` on a getter, setter or constructor | `EK0104` |
 | `effect` and `async` on one function or block | `EK0105` |
 | a recognized `effect` modifier on an `abstract` declaration, in an ambient `declare` context, or on an `interface` or type literal member | `EK0108` |
+| a recognized `effect` arrow head that breaks its required form: a typed or generic bare parameter; parenthesize the parameters | `EK0109` |
 | A written return type of an `effect` function that does not resolve to `Effect.Effect<A, E, R>`, an alias included, as TS1064 requires `Promise<T>` for `async` (`any`, `unknown` and `never` are errors) | `EK0106` |
 | A banned use of `eval`, `Function`, `arguments`, `var` or `with` anywhere in a `.vibe` file, plain functions included, as [Legacy JavaScript](/spec/001-functions#direct-eval) defines it | `EK0107` |
 

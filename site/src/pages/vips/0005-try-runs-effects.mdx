@@ -74,6 +74,8 @@ effect function load(id) {
 - **Amended 2026-10-30: erased TypeScript wrappers in a `catch` head.** The `EK0505` unary/binary head search treats `as`, admitted angle-bracket assertions, `satisfies`, non-null `!` and type-only instantiation expressions without a call as transparent. Explicit source parentheses remain a boundary; emitter-added grouping does not count. The wrappers keep native type checks and do not change the existing call, literal or source-function boundaries. See [the checked examples](https://github.com/smithersai/vibelang/blob/main/docs/design/src/002-running.md#catch).
 - **Amended 2026-10-30: an explicit `throw` in a plain handler warns (decided detail 239).** A plain `catch` handler with an explicit `throw` that can complete it gets the VIP-38 lint warning `EK0511`, with the quick fix `catch effect (e) => { … }`. The `throw` stays a JavaScript exception, so the result is a defect; an effect handler makes it a typed failure. A `throw` caught inside the handler, or written in a nested function, does not warn. Tracked throwing calls keep VIP-4's check, and implicit exceptions stay silent defects.
 
+- **Amended 2026-10-31: the remaining `catch` grammar code.** `catch` mixed with `??`, `||` or `&&` without parentheses, and a member access or call after a function-expression handler, are `EK0512`. `EK0504` to `EK0511` keep their specific triggers. Decided by the agent under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 247).
+
 ## Prior art
 
 - Zig's `try` and `catch`.

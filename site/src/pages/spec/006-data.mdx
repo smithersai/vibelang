@@ -343,6 +343,7 @@ The generated constants keep TypeScript declaration order and temporal dead zone
 | type parameters on a `schema` declaration; use an ordinary generic TypeScript factory returning a Schema value | `EK1502` |
 | a recognized ordinary schema declaration missing its required body or admitted alias form | `EK1503` |
 | two fields on one line with no separator, `{ a: string b: number }`; write `;` or a line break between them (quick fix: insert `;`) | `EK1504` |
+| a member of a `schema` body that is not a [Field](/spec/900-appendices#field): `schema S { m(): string }`, `schema S { [k: string]: number }` | `EK1505` |
 | a field type outside the mapping (including a shadowing type without a suitable Schema value), or a referenced schema with conflicting or unprovable decoded-key flags at a required or effectively readonly position; use an unmodified value schema and write the modifiers on the declaration (for `Date`, use `Schema.Date`) | `EK2109` |
 
 
@@ -501,6 +502,7 @@ VIP-7 includes `data` unions and [tagged members](/spec/004-match#tagged-members
 | `export default data D { … }`; declare the name and write `export { D as default }` | `EK1603` |
 | a recognized data declaration missing its required variant body | `EK1604` |
 | two variants, or two fields of a variant, on one line with no separator, `data D { A B }` or `A { x: number y: string }`; write `;` or a line break between them (quick fix: insert `;`) | `EK1605` |
+| a malformed variant or a payload member that is not a [Field](/spec/900-appendices#field): `data D { A(x: number) }`, `data D { A { m(): void } }`; write `A { x: number }` | `EK1606` |
 
 
 The named default-export counterpart is:

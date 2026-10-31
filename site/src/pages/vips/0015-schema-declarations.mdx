@@ -61,6 +61,8 @@ const user = try Schema.decodeUnknownEffect(User)(input)   // fails with a Schem
 
 - **Amended 2026-10-30: incomplete declaration diagnostics.** A recognized ordinary schema declaration missing its required body or admitted alias form is `EK1503`. Recovery does not turn a missing body into an empty struct or reject a valid schema alias. The explicitly admitted bodyless `schema error` form keeps its existing rules. These codes label existing rejections; they add no admitted syntax.
 
+- **Amended 2026-10-31: non-field members.** A member of an ordinary `schema` body that is not a `Field` is `EK1505`. Decided by the agent under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 247).
+
 ## History
 
 One minor finding, a wrong Effect API name, fixed.

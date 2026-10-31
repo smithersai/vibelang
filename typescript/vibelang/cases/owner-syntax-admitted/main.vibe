@@ -1,0 +1,20 @@
+// expect-result: {"parens":[1,1,2],"arrow":3,"inner":[0,1]}
+// Decided detail 247 (loop round 3, OPUS-7): the repaired forms of each rejected
+// program compile, and a jump inside an effect block stays legal.
+const a: number!string = Effect.fail("no")
+const b = undefined as number | undefined
+export const arrow = effect (x: number): number!! => x
+export effect function main() {
+  const one = b ?? (a catch () => 1)
+  const two = (a catch () => 1) ?? 2
+  const three = (a catch () => 2)
+  const inner = effect {
+    const seen: number[] = []
+    for (const x of [0, 1, 2]) {
+      if (x == 2) break
+      seen.push(x)
+    }
+    return seen
+  }
+  return { parens: [one, two, three], arrow: try arrow(3), inner: try inner }
+}

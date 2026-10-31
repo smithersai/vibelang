@@ -1,0 +1,16 @@
+// expect: EK0512 EK0512 EK0512 EK0512 EK0512 EK0512 EK0512
+// Chapter 002 and Appendix A, decided detail 247 (loop round 3, OPUS-7): catch
+// can't mix with ??, || or && without parentheses, and a member access or call
+// can't attach to a function-expression handler.
+declare const a: Effect.Effect<number, string>
+declare const b: number | undefined
+export effect function mixed() {
+  const one = b ?? a catch () => 1
+  const two = b || a catch () => 1
+  const three = b && a catch () => 1
+  const four = a catch function () { return 1 } ?? 2
+  const five = a catch function () { return 1 }.call(a)
+  const six = a catch function () { return [1] }[0]
+  const seven = a catch function () { return 1 }()
+  return [one, two, three, four, five, six, seven]
+}

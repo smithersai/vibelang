@@ -1,0 +1,5 @@
+// expect: EK0109 EK0109
+// Chapter 001, decided detail 247 (loop round 3, OPUS-7): a typed or generic
+// bare parameter of an effect arrow needs parentheses.
+export const f = effect x: number!! => x
+export const g = effect <T> x => x

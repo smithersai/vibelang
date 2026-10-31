@@ -1,0 +1,11 @@
+// expect: EK0202 EK0202
+// Appendix A, decided detail 247 (loop round 3, OPUS-7): a break or continue
+// whose target is outside its effect block.
+export effect function jumps(xs: number[]) {
+  for (const x of xs) {
+    const a = effect { break }
+    const b = effect { continue }
+    try a
+    try b
+  }
+}

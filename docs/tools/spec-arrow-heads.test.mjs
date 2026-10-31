@@ -28,6 +28,6 @@ test("all five printed effect-arrow heads agree with the native TypeScript synta
   for (const line of lines) {
     const native = line.replaceAll("number!!", "Promise<number>").replace(/\beffect\b/g, "async")
     const source = ts.createSourceFile("witness.ts", native, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
-    assert.equal(source.parseDiagnostics.length > 0, line.includes("// syntax error"), line)
+    assert.equal(source.parseDiagnostics.length > 0, line.includes("// EK0109"), line)
   }
 })

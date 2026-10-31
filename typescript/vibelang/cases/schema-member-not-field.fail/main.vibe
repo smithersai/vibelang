@@ -1,0 +1,5 @@
+// expect: EK1505 EK1505
+// Chapter 006, decided detail 247 (loop round 3, OPUS-7): a member of a schema
+// body that is not a Field.
+schema Method { m(): string }
+schema Index { [k: string]: number }

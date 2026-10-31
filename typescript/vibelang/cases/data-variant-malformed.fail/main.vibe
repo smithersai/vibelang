@@ -1,0 +1,5 @@
+// expect: EK1606 EK1606
+// Chapter 006, decided detail 247 (loop round 3, OPUS-7): a malformed variant or
+// a payload member that is not a Field.
+data Paren { A(x: number) }
+data Method { A { m(): void } }

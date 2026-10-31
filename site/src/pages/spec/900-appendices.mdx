@@ -532,7 +532,7 @@ Recovery for a parameter list followed directly by a block after `catch`, as in 
 EffectBlock = EffectModifier [no LineTerminator here] "{" FunctionBody[~Yield, ~Await, +Effect] "}"   (a PrimaryExpression; the body of effect () => { … })
 ```
 
-The braces hold a function body, as `(effect () => { … })()` does: `return` ends the block's Effect with a value, and `yield`, or a `break` or `continue` whose target is outside the block, is a syntax error. So `const p = effect { return 1 }` parses at module top level.
+The braces hold a function body, as `(effect () => { … })()` does: `return` ends the block's Effect with a value, and `yield` is `EK2104`, and a `break` or `continue` whose target is outside the block is `EK0202`. So `const p = effect { return 1 }` parses at module top level.
 
 Both `effect async { B }` and `async effect { B }` parse for recovery and receive `EK0105`. The block quick fix is to remove `async`, retaining `effect { B }`; `async { B }` is not admitted.
 
@@ -931,6 +931,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK0106` | an `effect` function whose written return type is not an Effect | 1 | [Functions](/spec/001-functions#static-rules) |
 | `EK0107` | `eval`, `Function`, `arguments`, `var` or `with` in a `.vibe` file; `globalThis` other than as the object of a statically named member; `.constructor` of a function; a `data:` or `blob:` import specifier; `var` in a pattern binding | 1, 4, 33 | [Functions](/spec/001-functions#direct-eval) |
 | `EK0108` | a recognized `effect` modifier on an `abstract` declaration, in an ambient `declare` context, or on an `interface` or type literal member | 1 | [Functions](/spec/001-functions#static-rules) |
+| `EK0109` | a recognized `effect` arrow head that breaks its required form: a typed or generic bare parameter; parenthesize the parameters | 1 | [Functions](/spec/001-functions#static-rules) |
 | `EK0201` | a `do` block whose last statement violates TC39's `EndsInIterationOrBareIfOrDeclaration` early error | 2 | [Running Effects](/spec/002-running#do-expressions) |
 | `EK0202` | a `break` or `continue` whose target is outside the block of an `effect { … }` expression | 2 | [Running Effects](/spec/002-running#effect-blocks) |
 | `EK0203` | `var` in a `do` expression in a parameter list | 2 | [Running Effects](/spec/002-running#do-expressions) |
@@ -955,6 +956,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK0509` | a `catch` handler that is not a plain or `effect` arrow or function expression: `a catch b`, `a catch effect { }`, `a catch async (e) => b`, `a catch function* (e) { }`; a parameter list followed directly by a block, as in `try x catch (e) { }`, gets `EK0509` without adding `EK0505` for the same malformed handler | 5 | [Running Effects](/spec/002-running#catch) |
 | `EK0510` | an unparenthesized `try`, `try.all`, `try.race`, `try.any`, `try.allSettled`, `fork`, `fork.in(s)`, `fork.scoped`, `fork.detached` or `join` expression on the left of `**`, as ECMAScript rejects `await a ** b`; parenthesize it: `(try a) ** b` | 5, 17, 18 | [Running Effects](/spec/002-running#static-rules) |
 | `EK0511` | lint warning: an explicit `throw` that can complete a plain `catch` handler, not one caught inside it or in a nested function; use `catch effect` | 5, 38 | [Running Effects](/spec/002-running#catch) |
+| `EK0512` | `catch` mixed with `??`, `\|\|` or `&&` without parentheses, or a member access or call after a function-expression handler; parenthesize | 5 | [Running Effects](/spec/002-running#catch) |
 | `EK0701` | a missing `;` after a `match` arm, the last one included | 7 | [Pattern matching](/spec/004-match#syntax-and-meaning) |
 | `EK0702` | a class pattern that [Class patterns](/spec/004-match#class-patterns) rejects: it names a `data` declaration or variant, a `schema` or a directly built `Context.Reference`, or its callee has no usable signature or return type (a `service` is `EK3004`) | 7 | [Pattern matching](/spec/004-match#class-patterns) |
 | `EK0703` | lint warning: an extractor whose argument count can never match its pattern's list, `when NotFound():` | 7, 38 | [Pattern matching](/spec/004-match#class-patterns) |
@@ -985,11 +987,13 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK1502` | type parameters on a `schema` declaration; use an ordinary generic TypeScript factory | 15 | [Data](/spec/006-data#schema-declarations) |
 | `EK1503` | a recognized ordinary schema declaration missing its required body or admitted alias form | 15 | [Data](/spec/006-data#schema-declarations) |
 | `EK1504` | two `schema` fields with no separator between them; write `;` or a line break between them (quick fix: insert `;`) | 15 | [Data](/spec/006-data#schema-declarations) |
+| `EK1505` | a member of a `schema` body that is not a `Field` | 15 | [Data](/spec/006-data#schema-declarations) |
 | `EK1601` | a `data` variant field named `_tag` | 16 | [Data](/spec/006-data#data-declarations) |
 | `EK1603` | `export default data D { … }`; write `export { D as default }` | 16 | [Data](/spec/006-data#data-declarations) |
 | `EK1602` | a `data` variant named `$is` or `$match`; rename it and its resolved references | 16, 28 | [Data](/spec/006-data#data-declarations) |
 | `EK1604` | a recognized data declaration missing its required variant body | 16 | [Data](/spec/006-data#data-declarations) |
 | `EK1605` | two variants of a `data` declaration, or two fields of a variant, with no separator between them; write `;` or a line break between them (quick fix: insert `;`) | 16 | [Data](/spec/006-data#data-declarations) |
+| `EK1606` | a malformed `data` variant or a payload member that is not a `Field` | 16 | [Data](/spec/006-data#data-declarations) |
 | `EK1701` | `fork` or `join` outside effect code | 17 | [Running Effects](/spec/002-running#fork-and-join) |
 | `EK1702` | `fork` or `join` as a variable, parameter or label name in effect code, in the parameters of an `effect` function, arrow, method or producer, or in a plain or `async` arrow head inheriting that reservation, including one in an Effect callable's parameters; the arrow body has its own context; or a reserved `fork` or `join` as a shorthand property, `{ join }` | 17 | [Running Effects](/spec/002-running#fork-and-join) |
 | `EK1703` | a `fork`, `fork.in(s)`, `fork.scoped` or `fork.detached` operand that fails the operand test of `try` | 5, 17 | [Running Effects](/spec/002-running#fork-and-join) |

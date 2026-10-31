@@ -694,6 +694,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 - The Foldkit guide showed only the small example app inline; it now also compares four excerpts from Foldkit's own migrated source with their originals.
+- Six VibeLang syntax rules had no code in Appendix B. They are now `EK0109`, `EK0202`, `EK0512`, `EK1505` and `EK1606`; the compiler moves to them with its pending cases.
+
 - The spec said `S.Shape` is undeclared for a local service, against VIP-9. A local service now names `S.Shape` inside its own members, and uses `Context.Service.Shape<typeof S>` elsewhere.
 
 - An `is` binding in a `for concurrent` limit or a catch parameter had no home in the spec. A limit binding belongs to the home around the loop, and a catch-parameter binding is `EK0705`.
