@@ -1,0 +1,17 @@
+// expect-result: {"set":["Success:1"],"custom":["Success:iterated"],"generated":["Success:2","Failure:g"],"mixed":["Success:0","Success:1","Success:iterated","Failure:e"],"empty":[],"log":["iterate","iterate"]}
+// 002-running.md, try.allSettled: a spread element spreads natively, then
+// wraps each value it yields, so a Set, a generator and an array with its own
+// Symbol.iterator give the Exits of what iteration yields, not of the
+// array's indexed elements.
+import { custom, first, generated, last, log, set, tag } from "./effects.ts"
+export effect function main() {
+  const s = set()
+  const cu = custom()
+  const one = try.allSettled [...s]
+  const it = try.allSettled [...cu]
+  const gen = try.allSettled [...generated()]
+  const mixed = try.allSettled [first(), ...s, ...cu, last()]
+  const none: Set<number!string> = new Set()
+  const empty = try.allSettled [...none]
+  return { set: one.map(tag), custom: it.map(tag), generated: gen.map(tag), mixed: mixed.map(tag), empty: empty.map(tag), log }
+}

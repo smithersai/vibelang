@@ -283,6 +283,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The specification's tooling requirements did not say that a repository's Oxlint JS-plugin rules run on `.vibe` files, a decided requirement the migrate flow already meets; chapter 7 now states it.
 
+- The specification wrote a spread element of a `try.allSettled` literal as `...xs.map(Effect.exit)`, which fails on a `Set` and reads an array by index instead of through its iterator; it now spreads natively and wraps each value the spread yields, as the compiler already does.
+
 - TypeScript tools could not resolve a `.vibe` import unless its project opted into declaration sidecars; every compile now writes `x.d.vibe.ts`, and `vibelang --fix` removes the obsolete `declarationSidecars` setting from the project and its local inherited configs.
 
 - The Node and Bun loaders compiled a project again when its declaration sidecars appeared; generated sidecars beside their sources now preserve the cached compile, while standalone declarations and source changes still invalidate it.
