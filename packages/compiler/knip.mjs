@@ -45,11 +45,15 @@ export function compile(text, path = "file.vibe") {
   // `/** @public */`, which keeps an export no other module imports. A comment
   // on the line where the statement before ends is that statement's.
   const comments = program.comments ?? []
-  const docs = (node, after) => comments
-    .filter((c) => c.type === "Block" && c.value.startsWith("*") && c.range[0] >= after && c.range[1] <= node.range[0])
-    .filter((c) => after === 0 || text.slice(after, c.range[0]).includes("\n"))
-    .map((c) => source(c) + "\n")
-    .join("")
+  const docs = (node, after) => {
+    const first = comments.find((c) =>
+      c.type === "Block" && c.value.startsWith("*") &&
+      c.range[0] >= after && c.range[1] <= node.range[0] &&
+      (after === 0 || text.slice(after, c.range[0]).includes("\n")))
+    // Preserve intervening comments as well: Knip's own TypeScript reader
+    // treats an ordinary comment after a JSDoc tag as an attachment barrier.
+    return first ? text.slice(first.range[0], node.range[0]) : ""
+  }
   program.body.forEach((node, i) => {
     const doc = docs(node, i ? program.body[i - 1].range[1] : 0)
     if (node.type === "ExportAllDeclaration" || (node.type === "ExportNamedDeclaration" && !node.declaration)) lines.push(doc + source(node))

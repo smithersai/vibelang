@@ -1,0 +1,11 @@
+{
+  "property": "KnipPublicJSDoc",
+  "rule": "Chapter0/7: actual Knip keeps native TypeScript comment attachment",
+  "input": {
+    "form": "multi-binding",
+    "layout": "crlf-after",
+    "name": "make",
+    "public": false,
+    "source": "/** An ordinary description. */\r\n/* An adjacent CRLF comment. */\r\nexport const make = 1, makeOther = 2;\nexport const layer = 1;\n"
+  }
+}

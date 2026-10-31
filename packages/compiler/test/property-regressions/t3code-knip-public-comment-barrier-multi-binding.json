@@ -1,7 +1,6 @@
 {
   "property": "KnipPublicJSDoc",
-  "rule": "Chapter0/7: keep the ordinary comment barrier after @public; lane fuzz-findings (follow-up fix)",
-  "knownFailure": true,
+  "rule": "Chapter0/7: actual Knip keeps native TypeScript comment attachment",
   "input": {
     "form": "multi-binding",
     "layout": "ordinary-after",

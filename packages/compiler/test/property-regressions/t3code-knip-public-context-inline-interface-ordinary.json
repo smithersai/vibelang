@@ -1,0 +1,11 @@
+{
+  "property": "KnipPublicJSDoc",
+  "rule": "Chapter0/7: actual Knip keeps native TypeScript comment attachment",
+  "input": {
+    "form": "interface",
+    "layout": "inline",
+    "name": "make",
+    "public": false,
+    "source": "/** An ordinary description. */ export interface make { value: number }\nexport const layer = 1;\n"
+  }
+}

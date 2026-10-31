@@ -128,6 +128,8 @@ export { local as renamed }
     " */",
     "export function f() {}",
     "/** @public */",
+    "",
+    "// a line comment between",
     "export class K {}",
     "/** @public */",
     "export const a = 0, b = 0",

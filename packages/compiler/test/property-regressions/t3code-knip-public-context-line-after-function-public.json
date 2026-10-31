@@ -1,0 +1,11 @@
+{
+  "property": "KnipPublicJSDoc",
+  "rule": "Chapter0/7: actual Knip keeps native TypeScript comment attachment",
+  "input": {
+    "form": "function",
+    "layout": "line-after",
+    "name": "make",
+    "public": true,
+    "source": "/** @public */\n// An adjacent line comment.\nexport function make(): number { return 1 }\nexport const layer = 1;\n"
+  }
+}
