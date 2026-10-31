@@ -91,6 +91,8 @@ var specAhead = map[int32]string{
 	1602: renumbering,
 	// VIP-7 conservatively rejects an undefined parameter home for is bindings.
 	705: renumbering,
+	// The round-24 trigger catalog gives unsupported fork owners, fork.in scopes, dotted try names and concurrency limits their codes.
+	1705: renumbering, 1706: renumbering, 1803: renumbering, 1907: renumbering,
 }
 
 // TestRegistryMatchesSpec checks the registry against Appendix B of the

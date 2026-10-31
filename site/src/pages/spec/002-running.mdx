@@ -692,9 +692,11 @@ A line break after `fork` or `join` changes nothing, as after `await`: `join` th
 | Rule | Diagnostic |
 | --- | --- |
 | `fork` or `join` outside effect code | `EK1701` |
-| a `fork` or `join` naming a variable, parameter or label under `[+Effect]`, including parameter lists and static blocks inheriting Effect reservation, including a plain or `async` arrow head inheriting that reservation, even in an Effect callable's parameters: both `const k = (join) => 1` and `const k = async (join) => 1` are errors in effect code, as their `await` counterparts are in an `async` function; the arrow body has its own context, and a nested `function h(join) { }` resets its head too | `EK1702` |
+| a `fork` or `join` naming a variable, parameter or label under `[+Effect]`, including parameter lists and static blocks inheriting Effect reservation, including a plain or `async` arrow head inheriting that reservation, even in an Effect callable's parameters: both `const k = (join) => 1` and `const k = async (join) => 1` are errors in effect code, as their `await` counterparts are in an `async` function; the arrow body has its own context, and a nested `function h(join) { }` resets its head too. A reserved `fork` or `join` as a shorthand property, `{ join }`, is the same error, as `{ await }` is in an `async` function; a property key or access, `{ join: f }` or `o.join`, stays a name | `EK1702` |
 | a `fork`, `fork.in(s)`, `fork.scoped` or `fork.detached` operand that fails the [operand test](/spec/002-running#operand-test): `fork n` with `n: number`; write `fork effect { … }` or call the function (decided detail 88) | `EK1703` |
 | a `join` operand not assignable to `Fiber.Fiber<any, any>`: `join p` with `p: Promise<number>`; `join` the value `fork` gave (decided detail 88) | `EK1704` |
+| a `fork.` owner other than `in(s)`, `scoped` or `detached`: `fork.other e`; write one of the three, or `fork e` | `EK1705` |
+| a `fork.in(s)` scope operand not assignable to `Scope.Scope`: `fork.in(5) e`; pass a `Scope`, as `Effect.forkIn` requires | `EK1706` |
 
 ### Meaning
 
@@ -788,6 +790,8 @@ function owners(scope: Scope.Scope) {
 | --- | --- |
 | `try.all`, `try.race`, `try.any` or `try.allSettled` outside effect code | `EK0501` |
 | an operand that is not an array of Effects, for `try.all`, `try.race`, `try.any` or `try.allSettled`, `try.all [1, a()]`; an object of Effects uses the `all` global instead | `EK1801` |
+| a retired `await.all`, `await.race`, `await.any` or `await.allSettled`; `vibelang --fix` writes the `try` operation | `EK1802` |
+| a name after `try.` other than `all`, `race`, `any` or `allSettled`: `try.map x`; run the Effect with `try` and apply the function to its result, `f(try x)`, or use one of the four | `EK1803` |
 
 ### Meaning
 
@@ -841,7 +845,8 @@ function page(id: string) {
 | `return` targeting the enclosing function in head binding initialization or the body: `for concurrent (const x of xs) { return x }` | `EK1904` |
 | a labeled `continue` in head binding initialization or the body naming a statement that encloses the `for concurrent` | `EK1905` |
 | an operand that is not an `Iterable`, `for concurrent (const x of 5) { }`; a Stream uses `for try` | `EK1901` |
-| a `var` or assignment head: `for concurrent (x of xs)` | `EK1906` |
+| a head other than a `const` or `let` declaration: `var`, `using`, `await using` or an assignment head, `for concurrent (x of xs)` | `EK1906` |
+| a limit not assignable to Effect's `Types.Concurrency`, `number \| "unbounded"`: `for concurrent("fast") (const x of xs) { }` | `EK1907` |
 
 `continue`, and a labeled `continue` naming the `for concurrent` itself, end that one item: each is `return` from the item's generator, as the example shows. The others are errors because the body runs in `Effect.forEach`'s callback, not in the enclosing loop or function (VIP-19). A loop or `switch` nested in the body keeps its own `break` and `continue`.
 
@@ -1000,7 +1005,7 @@ function limitReturn() { return Effect.gen(function* () { return 7 }) } // Succe
 | `return` targeting the enclosing function in head binding initialization or the body: `for try (const x of s) { return x }` | `EK2002` |
 | a labeled `break` or `continue` in head binding initialization or the body naming a statement that encloses the `for try`: `outer: for (const s of streams) { for try (const x of s) { continue outer } }` | `EK2003` |
 | an operand that is not a `Stream`, `for try (const x of [1, 2]) { }`; convert an AsyncIterable with `Stream.fromAsyncIterable` first | `EK2004` |
-| a `var` or assignment head: `for try (x of s)`; write `for try (const v of s) { x = v }` | `EK2005` |
+| a head other than a `const` or `let` declaration: `var`, `using`, `await using` or an assignment head, `for try (x of s)`; write `for try (const v of s) { x = v }` | `EK2005` |
 
 ### Meaning
 

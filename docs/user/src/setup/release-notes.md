@@ -427,6 +427,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The migrate flow's setup edited a vendored repository that no workspace names (foldkit's `repos/effect`): its `package.json` scripts, `dprint.json` and tsconfig files; setup now wires only the root and the workspace's own packages, as the Effect upgrade does.
 
+- The specification named no diagnostic for `fork.other e`, `fork.in(5) e`, `try.map x`, `for concurrent("fast")`, a reserved `{ join }` shorthand, or a `using` head in `for concurrent` or `for try`, and Appendix B omitted the compiler's `EK1802` for the retired `await.all` operations. They are now `EK1705`, `EK1706`, `EK1803`, `EK1907`, `EK1702`, and `EK1906` or `EK2005`, with an `EK1802` row, in chapter 2 and Appendix B; the compiler does not report the four new codes yet.
+
 - An explicit empty service key, `static readonly key = ""`, was replaced with a derived name; `""` now keeps its identity at runtime, in declarations and in duplicate-key checks.
 
 - `Effect.Array`, `Effect.String`, `Effect.Record` and the other Effect modules named like a JavaScript or TypeScript global reported `TS2339` in a `.vibe` file, so the specification's `Effect.Array.head(xs)` did not compile; each now names Effect's module, and the emitted code imports it.

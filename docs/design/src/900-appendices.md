@@ -557,7 +557,7 @@ ForkOperand = UnaryExpression   (await's operand, as for try; VIP-17, amended: "
 TryAll = [+Effect] "try" "." ("all" | "race" | "any" | "allSettled") UnaryExpression
 ```
 
-As in `new . target`, whitespace, comments and line breaks may separate the tokens of `try.all`, `fork.in`, `fork.scoped` and `fork.detached`: `try . all [a, b]` is `try.all [a, b]`.
+As in `new . target`, whitespace, comments and line breaks may separate the tokens of `try.all`, `fork.in`, `fork.scoped` and `fork.detached`: `try . all [a, b]` is `try.all [a, b]`. Any other name after `try .` or `fork .` is a syntax error: `try.map x` is `EK1803` and `fork.other e` is `EK1705`. The retired `await.all`, `await.race`, `await.any` and `await.allSettled` are `EK1802`.
 
 #### ForConcurrent
 
@@ -571,7 +571,7 @@ ForConcurrent = [+Effect] "for" "concurrent" ("(" AssignmentExpression ")")? "("
 ForTry = [+Effect] "for" "try" "(" ForDeclaration "of" AssignmentExpression ")" Statement
 ```
 
-`ForDeclaration` is ECMAScript's, `LetOrConst ForBinding`: a `const` or `let` declaration, destructuring included (VIP-19 and VIP-20, amended). `var` and an assignment head are syntax errors: `for try (x of s)` and `for try (o.x of s)` have no declaration; write `for try (const v of s) { x = v }`.
+`ForDeclaration` is ECMAScript's, `LetOrConst ForBinding`: a `const` or `let` declaration, destructuring included (VIP-19 and VIP-20, amended). `var`, `using`, `await using` and an assignment head are syntax errors (`EK1906` in `for concurrent`, `EK2005` in `for try`): `for try (x of s)` and `for try (o.x of s)` have no declaration; write `for try (const v of s) { x = v }`.
 
 #### Uninterruptible
 
@@ -977,21 +977,26 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK1604` | a recognized data declaration missing its required variant body | 16 | [Data](006-data.md#data-declarations) |
 | `EK1605` | two variants of a `data` declaration, or two fields of a variant, with no separator between them; write `;` or a line break between them (quick fix: insert `;`) | 16 | [Data](006-data.md#data-declarations) |
 | `EK1701` | `fork` or `join` outside effect code | 17 | [Running Effects](002-running.md#fork-and-join) |
-| `EK1702` | `fork` or `join` as a variable, parameter or label name in effect code, in the parameters of an `effect` function, arrow, method or producer, or in a plain or `async` arrow head inheriting that reservation, including one in an Effect callable's parameters; the arrow body has its own context | 17 | [Running Effects](002-running.md#fork-and-join) |
+| `EK1702` | `fork` or `join` as a variable, parameter or label name in effect code, in the parameters of an `effect` function, arrow, method or producer, or in a plain or `async` arrow head inheriting that reservation, including one in an Effect callable's parameters; the arrow body has its own context; or a reserved `fork` or `join` as a shorthand property, `{ join }` | 17 | [Running Effects](002-running.md#fork-and-join) |
 | `EK1703` | a `fork`, `fork.in(s)`, `fork.scoped` or `fork.detached` operand that fails the operand test of `try` | 5, 17 | [Running Effects](002-running.md#fork-and-join) |
 | `EK1704` | a `join` operand not assignable to `Fiber.Fiber<any, any>` | 17 | [Running Effects](002-running.md#fork-and-join) |
+| `EK1705` | a `fork.` owner other than `in(s)`, `scoped` or `detached`: `fork.other e` | 17 | [Running Effects](002-running.md#fork-and-join) |
+| `EK1706` | a `fork.in(s)` scope operand not assignable to `Scope.Scope` | 17 | [Running Effects](002-running.md#fork-and-join) |
 | `EK1801` | an operand that is not an array of Effects, for `try.all`, `try.race`, `try.any` or `try.allSettled` | 18 | [Running Effects](002-running.md#running-effects-concurrently) |
+| `EK1802` | a retired `await.all`, `await.race`, `await.any` or `await.allSettled`; quick fix: the `try` operation that replaces it | 18 | [Running Effects](002-running.md#running-effects-concurrently) |
+| `EK1803` | a name after `try.` other than `all`, `race`, `any` or `allSettled`: `try.map x` | 18 | [Running Effects](002-running.md#running-effects-concurrently) |
 | `EK1901` | a `for concurrent` operand that is not an `Iterable` | 19 | [Running Effects](002-running.md#for-concurrent) |
 | `EK1902` | `for concurrent` outside effect code | 19 | [Running Effects](002-running.md#for-concurrent) |
 | `EK1903` | `break` leaving head binding initialization or the body of `for concurrent` | 19 | [Running Effects](002-running.md#for-concurrent) |
 | `EK1904` | `return` in head binding initialization or the body of `for concurrent` | 19 | [Running Effects](002-running.md#for-concurrent) |
 | `EK1905` | a labeled `continue` naming a statement that encloses the `for concurrent` | 19 | [Running Effects](002-running.md#for-concurrent) |
-| `EK1906` | a `var` or assignment head in `for concurrent` | 19 | [Running Effects](002-running.md#for-concurrent) |
+| `EK1906` | a `var`, `using`, `await using` or assignment head in `for concurrent`: any head other than a `const` or `let` declaration | 19 | [Running Effects](002-running.md#for-concurrent) |
+| `EK1907` | a `for concurrent` limit not assignable to `Types.Concurrency` (`number \| "unbounded"`) | 19 | [Running Effects](002-running.md#for-concurrent) |
 | `EK2001` | `for try` outside effect code | 20 | [Running Effects](002-running.md#for-try) |
 | `EK2002` | `return` in head binding initialization or the body of `for try` | 20 | [Running Effects](002-running.md#for-try) |
 | `EK2003` | a labeled `break` or `continue` from `for try` head binding initialization or the body to a statement that encloses the `for try`; one naming the `for try` itself is its unlabeled `break` or `continue` | 20 | [Running Effects](002-running.md#for-try) |
 | `EK2004` | a `for try` operand that is not a `Stream` | 20 | [Running Effects](002-running.md#for-try) |
-| `EK2005` | a `var` or assignment head in `for try` | 20 | [Running Effects](002-running.md#for-try) |
+| `EK2005` | a `var`, `using`, `await using` or assignment head in `for try`: any head other than a `const` or `let` declaration | 20 | [Running Effects](002-running.md#for-try) |
 | `EK2102` | a producer whose written return type is not a `Stream` | 21 | [Running Effects](002-running.md#producers) |
 | `EK2103` | `yield*` in a producer | 21 | [Running Effects](002-running.md#producers) |
 | `EK2104` | `yield` in nonproducer effect code (an `effect` function, arrow or block), whether or not an outer producer exists, or in directly evaluated formal-parameter initialization of an Effect callable or producer | 21 | [Running Effects](002-running.md#producers) |
