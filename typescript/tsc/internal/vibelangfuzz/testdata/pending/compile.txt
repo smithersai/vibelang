@@ -17,6 +17,7 @@ FuzzCompile           corpus:declaration-module-body-dispose     compiler  Chapt
 FuzzCompile           feature:declaration-consumer-TS2550        compiler  Chapter 27 rules 1 and 4 (D366): declarations rely on lib esnext.disposable, which only the prelude's implicit import of effect brought into the program
 FuzzCompile           corpus:source-map-match-end                compiler  D34: the source map of a top-level match maps a segment one character past the end of the .vibe text
 FuzzCompile           feature:source-map-range:one-past-end                   compiler  D34: a top-level match's source map has a segment past the end of the .vibe text
+FuzzCompile           feature:source-map-range:generated         compiler  D34: a source map segment must stand inside its generated file, but on chapter 4 snippet 004-match.md#11 out/main.js.map has a segment at generated 16:4, outside out/main.js; lane sourcemap-match
 FuzzParse             corpus:schema-error-extends-span           compiler  Chapter 28 Linting (D61, D277): schema error E extends { … } parses to a CallExpression whose span ends before it starts ([22, 14)), and ESTree inherits the inverted range
 FuzzParse             feature:parse-span-CallExpression          compiler  D61: a schema error's extends clause parses to a CallExpression with an inverted span
 FuzzParse             feature:estree-range-CallExpression        compiler  Chapter 28 Linting (D277): a schema error's extends clause converts to a CallExpression whose range ends before it starts
