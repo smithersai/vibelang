@@ -10,7 +10,7 @@
 // vibelang defaults to built/local/vibelang. vibelang/lsp-smoke.sh builds it and
 // links the fixture's node_modules first. Each check prints "ok" or "FAIL";
 // the exit status is 1 when any check fails.
-import { spawn } from "node:child_process"
+import { Connection } from "./lsp-connection.mjs"
 import { readFileSync, rmSync, writeFileSync } from "node:fs"
 import path from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
@@ -18,98 +18,6 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 const here = path.dirname(fileURLToPath(import.meta.url))
 const fixture = path.join(here, "lsp-fixture")
 const server = path.resolve(process.argv[2] ?? path.join(here, "..", "built", "local", "vibelang"))
-const requestTimeoutMs = 60_000
-
-// A JSON-RPC connection to a language server over stdio.
-class Connection {
-  constructor(command, args, cwd) {
-    this.process = spawn(command, args, { cwd, stdio: ["pipe", "pipe", "pipe"] })
-    this.buffer = Buffer.alloc(0)
-    this.nextId = 1
-    this.pending = new Map()
-    this.registrations = []
-    this.log = []
-    this.exited = new Promise((resolve) => this.process.on("exit", (code, signal) => resolve({ code, signal })))
-    this.process.on("error", (error) => {
-      for (const { reject } of this.pending.values()) reject(error)
-    })
-    this.process.stderr.on("data", (chunk) => this.remember(`stderr: ${chunk}`))
-    this.process.stdout.on("data", (chunk) => this.receive(chunk))
-  }
-
-  remember(line) {
-    this.log.push(line.trimEnd())
-    if (this.log.length > 40) this.log.shift()
-  }
-
-  receive(chunk) {
-    this.buffer = Buffer.concat([this.buffer, chunk])
-    for (;;) {
-      const end = this.buffer.indexOf("\r\n\r\n")
-      if (end < 0) return
-      const length = Number(/Content-Length: *(\d+)/i.exec(this.buffer.subarray(0, end).toString())?.[1])
-      if (this.buffer.length < end + 4 + length) return
-      const message = JSON.parse(this.buffer.subarray(end + 4, end + 4 + length).toString())
-      this.buffer = this.buffer.subarray(end + 4 + length)
-      this.dispatch(message)
-    }
-  }
-
-  dispatch(message) {
-    if (message.method === undefined) {
-      const waiter = this.pending.get(message.id)
-      this.pending.delete(message.id)
-      if (message.error) waiter?.reject(new Error(`${waiter.method}: ${message.error.message}`))
-      else waiter?.resolve(message.result)
-      return
-    }
-    if (message.method === "window/logMessage") this.remember(message.params.message)
-    if (message.id === undefined) return
-    // A request from the server. Answer the ones a minimal editor answers.
-    let result = null
-    if (message.method === "workspace/configuration") result = message.params.items.map(() => null)
-    if (message.method === "client/registerCapability") this.registrations.push(...message.params.registrations)
-    this.send({ jsonrpc: "2.0", id: message.id, result })
-  }
-
-  send(message) {
-    const body = Buffer.from(JSON.stringify(message))
-    this.process.stdin.write(`Content-Length: ${body.length}\r\n\r\n`)
-    this.process.stdin.write(body)
-  }
-
-  request(method, params) {
-    const id = this.nextId++
-    this.send({ jsonrpc: "2.0", id, method, params })
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error(`${method}: no response in ${requestTimeoutMs} ms`)), requestTimeoutMs)
-      this.pending.set(id, {
-        method,
-        resolve: (value) => (clearTimeout(timer), resolve(value)),
-        reject: (error) => (clearTimeout(timer), reject(error))
-      })
-    })
-  }
-
-  notify(method, params) {
-    this.send({ jsonrpc: "2.0", method, params })
-  }
-
-  // close asks the server to shut down and exit, and returns how it exited.
-  async close() {
-    try {
-      await this.request("shutdown")
-      this.notify("exit")
-    } finally {
-      this.process.stdin.end()
-      const timer = setTimeout(() => this.process.kill("SIGKILL"), 5_000)
-      const exit = await this.exited
-      clearTimeout(timer)
-      return exit
-    }
-  }
-}
-
 const fileUri = (relative) => pathToFileURL(path.join(fixture, relative)).href
 const texts = new Map()
 const text = (relative) => {

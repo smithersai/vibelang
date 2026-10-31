@@ -28,7 +28,7 @@ test("LSP smoke is a cached compiler-suite target with editor and fixture inputs
   assert.ok(target.data.includes(compiler), "compiler input includes the Go language server")
   assert.ok(target.data.includes(runtime))
   assert.ok(target.data.includes(published))
-  for (const input of ["lsp-smoke.sh", "lsp-smoke.mjs", "lsp-fixture/**",
+  for (const input of ["lsp-smoke.sh", "lsp-smoke.mjs", "lsp-connection.mjs", "lsp-fixture/**",
     "//experiments/package.json", "//experiments/bun.lock", "//packages/runtime/bun.lock"]) {
     assert.ok(target.data.includes(input), "missing cache input: " + input)
   }

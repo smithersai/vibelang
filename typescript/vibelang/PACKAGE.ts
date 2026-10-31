@@ -77,6 +77,7 @@ targets["lsp-smoke"] = S.Shell.Test({
     S.file("//experiments/bun.lock"),
     S.file("lsp-smoke.sh"),
     S.file("lsp-smoke.mjs"),
+    S.file("lsp-connection.mjs"),
     S.glob("lsp-fixture/**")
   ],
   tools: [S.Host.bin("node")],

@@ -254,7 +254,7 @@ deadline covers every stage it runs.
 The `//typescript/vibelang:lsp-smoke` target runs `lsp-smoke.sh --no-build`
 against the graph's compiler and runtime outputs. Its inputs cover the Go
 language service through `:compiler`, the runtime, the Effect lockfiles,
-`lsp-smoke.sh`, `lsp-smoke.mjs` and `lsp-fixture/**`. Unchanged inputs
+`lsp-smoke.sh`, `lsp-smoke.mjs`, `lsp-connection.mjs` and `lsp-fixture/**`. Unchanged inputs
 replay the cached result. Run it alone with:
 
 ```sh
@@ -265,6 +265,13 @@ Post-merge selects it through `//typescript/vibelang/...` in the compiler-case
 shard. The merge gate also selects it when it covers the `compiler` step.
 The smoke runner continues after a failed check, prints each check's name on
 its own `FAIL` line, and exits with status `1` if any check fails.
+
+The smoke transport rejects outstanding requests as soon as the server closes,
+including failed starts, and reports the request method, ID and exit cause.
+Requests keep their `60_000` ms deadline while the server is alive; settled
+requests leave no pending waiter. Shutdown allows another `5_000` ms before
+killing a server that ignores EOF. Run the process-lifecycle regressions with
+`node --test scripts/lsp-connection.test.mjs` (also part of `//:release`).
 
 The `//typescript/vibelang:fork-late-start` target runs the fork startup
 regressions with delayed scheduling as part of the regular compiler suite.
