@@ -1,0 +1,3 @@
+go test fuzz v1
+string("subpath:Codec:decodeUnknownSync:array")
+byte('\x00')

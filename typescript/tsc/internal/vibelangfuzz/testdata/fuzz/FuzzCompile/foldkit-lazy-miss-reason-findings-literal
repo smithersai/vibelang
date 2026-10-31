@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\n/** Why a lazy call ran its view instead of reusing the cached result. */\nexport data LazyMissReason {\n  NoCachedEntry\n  ArgumentCountChanged { previousCount: number; currentCount: number }\n}\n")

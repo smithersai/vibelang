@@ -1,0 +1,3 @@
+go test fuzz v1
+string("root:Schema:encodeSync:struct")
+byte('\x00')

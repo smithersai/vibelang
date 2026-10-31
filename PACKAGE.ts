@@ -89,6 +89,8 @@ const specTests = [
   "TestLoaderScriptProjectQuoted",
   "TestMigrationCallableDataQuoted",
   "TestMigrationPlainRootsQuoted",
+  "TestMigrationDataDeclarationsQuoted",
+  "TestMigrationInferredImportsQuoted",
   "TestDoForTryDiagnosticOwnerQuoted",
   "TestDoDeclarationBytesQuoted",
   "TestDoContextualResultFuzzQuoted",
