@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nexport const one = 1\n-- a.ts --\nimport { Effect } from \"effect\"\nexport const program = Effect.gen(function* () {\n  Effect.log(\"dropped\")\n  return 1\n})\n-- tsconfig.json --\n{\n  \"compilerOptions\": {\"target\": \"ES2022\", \"module\": \"NodeNext\", \"moduleResolution\": \"NodeNext\", \"strict\": true, \"noEmit\": true, \"skipLibCheck\": true},\n  \"include\": [\"*.vibe\", \"*.ts\"]\n}\n")

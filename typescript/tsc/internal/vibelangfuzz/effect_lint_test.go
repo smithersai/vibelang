@@ -6,12 +6,15 @@ import (
 	"os"
 	"runtime/debug"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/collections"
+	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/execute/tsc"
 	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
@@ -69,6 +72,9 @@ func (l *effectLint) check(t *testing.T, w *Workspace, project Project, key stri
 			c.Diagnostics = append(c.Diagnostics, c.Program.GetSemanticDiagnostics(t.Context(), nil)...)
 		}
 	})
+	if c.Program != nil {
+		checkExitCodeOptions(t, c.Program.Options(), c.Diagnostics)
+	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	for _, d := range c.Diagnostics {
@@ -151,4 +157,58 @@ func importedEffectLint(d *ast.Diagnostic) bool {
 // that explicitly enable the plugin in their own tsconfig.json.
 func withoutEffectLint(ds []*ast.Diagnostic) []*ast.Diagnostic {
 	return slices.DeleteFunc(ds, importedEffectLint)
+}
+
+// Chapter 7 on the imported rules: "A repository's existing Effect
+// language-service configuration selects and configures them". That
+// configuration's ignoreEffectErrorsInTscExitCode,
+// ignoreEffectWarningsInTscExitCode and ignoreEffectSuggestionsInTscExitCode
+// keep Effect's diagnostics out of the exit status and noEmitOnError, and
+// the rules print EK38xx codes, not Effect's (smithers, 2026-10-31: every
+// package's check failed on EK3801 with both options set).
+const exitCodeQuote = "A repository's existing Effect language-service configuration selects and configures them"
+
+func TestEffectLintConfigurationQuoted(t *testing.T) {
+	chapter, err := os.ReadFile(SpecPath("007-tooling.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(chapter), exitCodeQuote) {
+		t.Fatalf("chapter 7 no longer says %q", exitCodeQuote)
+	}
+}
+
+// checkExitCodeOptions holds the exit-code and noEmitOnError filters to the
+// configuration: with the three options set, no Effect diagnostic (an
+// imported rule's EK38xx, or Effect's own 377xxx) counts; with none set,
+// every one does, and other diagnostics always do.
+func checkExitCodeOptions(t *testing.T, options *core.CompilerOptions, diagnostics []*ast.Diagnostic) {
+	t.Helper()
+	if options.Effect == nil {
+		return
+	}
+	isEffect := func(d *ast.Diagnostic) bool { return importedEffectLint(d) || d.Code() >= 377000 && d.Code() <= 377999 }
+	effects := len(slices.DeleteFunc(slices.Clone(diagnostics), func(d *ast.Diagnostic) bool { return !isEffect(d) }))
+	filters := map[string]func(*core.CompilerOptions, []*ast.Diagnostic) []*ast.Diagnostic{
+		"exit status":   tsc.FilterDiagnosticsForExitCodeCallback,
+		"noEmitOnError": compiler.FilterDiagnosticsForNoEmitOnErrorCallback,
+	}
+	for _, ignore := range []bool{true, false} {
+		set := *options
+		effect := *options.Effect
+		effect.IgnoreEffectErrorsInTscExitCode = ignore
+		effect.IgnoreEffectWarningsInTscExitCode = ignore
+		effect.IgnoreEffectSuggestionsInTscExitCode = ignore
+		set.Effect = &effect
+		for _, name := range mapKeys(filters) {
+			kept := filters[name](&set, diagnostics)
+			want := len(diagnostics) - effects
+			if !ignore {
+				want = len(diagnostics)
+			}
+			if got := len(kept); got != want || ignore && slices.ContainsFunc(kept, isEffect) {
+				t.Errorf("%s with ignoreEffect*InTscExitCode %v keeps %d of %d diagnostics (%d Effect), want %d: %q", name, ignore, got, len(diagnostics), effects, want, exitCodeQuote)
+			}
+		}
+	}
 }

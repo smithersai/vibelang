@@ -102,6 +102,8 @@ vibelang -b -w packages/app
 
 The plugin also checks plain `.ts` projects, including schemas built with `Schema.optional` or `Schema.optionalKey`; no `.vibe` file is required.
 
+The plugin's `ignoreEffectErrorsInTscExitCode`, `ignoreEffectWarningsInTscExitCode` and `ignoreEffectSuggestionsInTscExitCode` options keep these rules' `EK38xx` diagnostics of that category out of a `vibelang` build's exit status and out of `noEmitOnError`; the diagnostics still print.
+
 `vibelang agents init` also teaches coding agents to run `vibelang lint` before finishing a change.
 
 `vibelang lint` accepts the compiler's options, including `-p`/`--project` and file arguments, and has no options of its own. Like the compiler, it reads the first of `vibe.config.json`, `tsconfig.json` and `jsconfig.json` in each directory. It reports the same diagnostics as the compiler and the language server. It exits with status `1` on an error. Warnings never change the exit status, so set a code to `"error"` in `vibe.severities` to fail CI. Invalid project settings report their compiler diagnostic and exit with status `2`.
