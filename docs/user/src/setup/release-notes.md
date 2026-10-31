@@ -159,6 +159,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - `vibelang --fix` changed `return value` to `{ value; return }` in the generator of `Effect.fn("name")(function* … , pipeline)` when a pipeline argument followed it, as if the generator were a Stream producer (`EK2128`), so the migrated function lost its result; it is now `EK1002` like the generator of `Effect.fn` alone, and `--fix` leaves it.
 
+- Appendix B linked the migration warnings `EK4853`, `EK4854` and `EK4855` to Functions and Services sections that never mention them, and `EK1306` to an error-declaration section that never mentions it. The rows now link the sections that define them.
+
 - In a `.vibe` file a member of an interface or an object type was readonly to the checker, so `options.minimum = 0` was `TS2540`, while its declaration printed the member writable; such a member is now writable unless written `readonly`, as in TypeScript, and the checker and the declaration agree. The fields of `data`, `schema` and `error` bodies keep their readonly default, and `mutable` is still accepted. The migrate flow's codemod no longer writes `mutable`.
 
 

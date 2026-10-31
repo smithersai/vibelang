@@ -969,7 +969,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK1303` | type parameters on an `error` or `schema error` declaration | 13 | [Failures](/spec/003-failures#error-declarations) |
 | `EK1304` | any other `RejectedElement` in an `error` or `schema error` body; an `implements` clause | 13 | [Failures](/spec/003-failures#error-declarations) |
 | `EK1305` | `export default error E` or `export default schema error E`; write `export { E as default }` | 13 | [Failures](/spec/003-failures#error-declarations) |
-| `EK1306` | two `error` or `schema error` body members with no separator between them; write `;` or a line break between them (quick fix: insert `;`) | 13 | [Failures](/spec/003-failures#error-declarations) |
+| `EK1306` | two `error` or `schema error` body members with no separator between them; write `;` or a line break between them (quick fix: insert `;`) | 13 | [Appendix A](/spec/900-appendices#separator) |
 | `EK1401` | a namespace name that two subpaths export, or a subpath and the root | 14 | [Services](/spec/005-services#the-platform-standard-library) |
 | `EK1501` | `export default schema S …`; write `export { S as default }` | 15 | [Data](/spec/006-data#schema-declarations) |
 | `EK1502` | type parameters on a `schema` declaration; use an ordinary generic TypeScript factory | 15 | [Data](/spec/006-data#schema-declarations) |
@@ -1054,9 +1054,9 @@ The existing migration warnings retain their emitted codes until the compiler an
 
 | Code | Rule | VIP | Chapter |
 | --- | --- | --- | --- |
-| `EK4853` | warning: migration of an omitted requirement slot: write the previously inferred requirements explicitly, or omit the whole return annotation to infer the contract | 3 | [Functions](/spec/001-functions#the-aer-type-shorthand) |
-| `EK4854` | warning: migration of the retired abstract-class service spelling to a `service` declaration, retaining its contract and key | 9 | [Services](/spec/005-services#service-declarations) |
-| `EK4855` | warning: migration of `static readonly default = shape` to `static readonly defaultValue = () => shape`, including the corresponding type and value reads | 9 | [Services](/spec/005-services#service-declarations) |
+| `EK4853` | warning: migration of an omitted requirement slot: write the previously inferred requirements explicitly, or omit the whole return annotation to infer the contract | 3 | [Configuration and tooling](/spec/007-tooling#compiler-and-tooling-requirements) |
+| `EK4854` | warning: migration of the retired abstract-class service spelling to a `service` declaration, retaining its contract and key | 9 | [Configuration and tooling](/spec/007-tooling#compiler-and-tooling-requirements) |
+| `EK4855` | warning: migration of `static readonly default = shape` to `static readonly defaultValue = () => shape`, including the corresponding type and value reads | 9 | [Configuration and tooling](/spec/007-tooling#compiler-and-tooling-requirements) |
 
 An abstract class retains ordinary TypeScript class semantics until explicitly migrated. A migrated service default is a factory of type `() => Shape`; these warnings use the existing safe codemod and its refusal rules ([Configuration and tooling](/spec/007-tooling#compiler-and-tooling-requirements)).
 
