@@ -311,6 +311,8 @@ function defaultBit(o: { x?: number }, b: boolean) {
 
 An `is` in a loop head uses the pinned loop-head/per-iteration scopes. Each complete `while` or `do…while` condition evaluation has fresh cells; the initial `do` body sees its uninitialized head cells. A match arm has its own lexical scope, so an `is` inside it does not export names to another arm.
 
+These bindings take part in TypeScript's definite-assignment and use-before-declaration checks, as a `let` assigned where the pattern runs would. A read on a path where the binding may not have run, because short-circuiting skipped it or the pattern failed before reaching it, is `TS2454`; a read before the binding's position in its scope is `TS2448`. A read those checks can't see, such as one inside a closure, throws `ReferenceError` while the cell is uninitialized.
+
 ```vibe es
 // compiler-gap: pending VIP-7
 function nameOf(value: { name: string } | undefined) {
@@ -322,9 +324,10 @@ function failedGuard() {
   return n // 5: the binding ran before the guard failed
 }
 effect function skippedBinding() {
+  // @ts-expect-error: TS2454, short-circuiting skipped the binding's initialization
   if (true || (1 is const n)) return n
   return 0
-} // Die(ReferenceError): short-circuiting skipped the binding's initialization
+} // Die(ReferenceError)
 ```
 
 The object counterpart specializes its stated subject type. Native lexical-cell witnesses check initialization before a failed guard and TDZ after a skipped initialization:
@@ -496,7 +499,51 @@ An `or` pattern shares one lexical cell for a name bound with the same keyword i
 
 Lexical `is` bindings in `while` and `do…while` have the pinned explainer's loop-head/per-iteration scope, rather than an enclosing block's scope. The loop head shadows outer names and does not leak outside the loop. Each complete condition evaluation starts with fresh uninitialized cells, including after `continue`; condition reads see TDZ until the matching pattern initializes them. A successful condition and its following body share those cells, so closures see that body's later `let` writes. Short-circuiting past a binding leaves it uninitialized even if the condition is true. Nested source blocks/functions retain their own scopes.
 
-The first `do…while` body runs with the initial uninitialized head cells. Its direct reads throw `ReferenceError`, and closures captured there keep those cells permanently in TDZ. Each subsequent condition gets new cells; its true result shares them with the following body. `continue` reaches a fresh condition set, and false/`break` exits without exporting names. The initial closures are never rebound to a later condition. `if` keeps its existing nearest-block scope; the within-one-`or` replacement above is unchanged.
+The first `do…while` body runs with the initial uninitialized head cells. Its direct reads precede the binding, so they are `TS2448`, and with the check suppressed they throw `ReferenceError`; closures captured there keep those cells permanently in TDZ. Each subsequent condition gets new cells; its true result shares them with the following body. `continue` reaches a fresh condition set, and false/`break` exits without exporting names. The initial closures are never rebound to a later condition. `if` keeps its existing nearest-block scope; the within-one-`or` replacement above is unchanged.
+
+Every other home follows the pinned explainer's rule that the usual binding scopes apply, with ECMAScript's environments:
+
+- In `for (init; test; update)`, a binding from `init` belongs to the loop head, as a name declared by a `let` or `const` declaration in `init` would, whether `init` is a declaration or an expression: CreatePerIterationEnvironment copies a `let` binding into each iteration, and a `const` binding stays in the loop scope. A binding from `test` or `update` is a fresh, uninitialized cell in each environment CreatePerIterationEnvironment creates, shared by the update, test and body that run there and never copied forward, as for a `while` condition.
+- In `for…in`, `for…of`, `for await`, `for concurrent` and `for try`, a binding from the head expression, which runs once in the head's own environment, is copied into each iteration's binding environment; a skipped binding is copied uninitialized. A binding from a default inside the head declaration belongs to that iteration's fresh binding environment.
+- In a concise arrow body, a binding belongs to the arrow body's scope, where the block-body form would declare it.
+- In a class field or static field initializer, a binding belongs to that initializer's own scope, because ECMAScript evaluates each initializer as a separate method-like body. A `static` block is a block.
+
+Each binding stays in TDZ until its pattern runs, under the checks in [`is` expressions](#is-expressions).
+
+```vibe es
+// compiler-gap: pending VIP-7
+function drain(it: Iterator<number>) {
+  const out: (() => number)[] = []
+  for (; it.next() is { done: false, value: let v }; ) out.push(() => v)
+  return out.map(g => g()) // [1, 2, 3] for [1, 2, 3]: a fresh v each iteration
+}
+function countdown(src: { n: number }) {
+  const seen: (() => number)[] = []
+  for (src.n is let n; n > 0; n--) seen.push(() => n)
+  return seen.map(g => g()) // [3, 2, 1] for n = 3: copied each iteration, as a let is
+}
+```
+
+```ts effect
+import { Effect } from "effect"
+
+function drain(it: Iterator<number>) {
+  const out: (() => number)[] = []
+  for (;;) {
+    const r = it.next()
+    if (!("done" in r && r.done === false && "value" in r)) break
+    const v = r.value
+    out.push(() => v)
+  }
+  return out.map(g => g())
+}
+function countdown(src: { n: number }) {
+  const seen: (() => number)[] = []
+  for (let n = src.n; n > 0; n--) seen.push(() => n)
+  return seen.map(g => g())
+}
+const loopHomesExit = Effect.runSyncExit(Effect.sync(() => [drain([1, 2, 3][Symbol.iterator]()), countdown({ n: 3 })])) // Success([[1, 2, 3], [3, 2, 1]])
+```
 
 ```vibe es
 // compiler-gap: pending VIP-7
@@ -509,8 +556,9 @@ function readLoop() {
   return [x, ...readers.map(f => f())] // [99, 11, 12]
 }
 effect function skipped() {
+  // @ts-expect-error: TS2454, the successful condition skipped initialization
   while (true || (1 is const x)) { return x }
-} // Die(ReferenceError): the successful condition skipped initialization
+} // Die(ReferenceError)
 ```
 
 Native lexical-cell witnesses for the per-iteration and initial-head rules:

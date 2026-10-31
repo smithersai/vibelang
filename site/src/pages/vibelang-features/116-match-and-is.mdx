@@ -214,7 +214,7 @@ function isRetryable(failure: Failure) {
 // Output: [true,true,false]
 ```
 
-`is` may bind names in any expression. The current compiler still reports an `is` with bindings outside an `if` or `while` condition as EK4703. A binding is visible in the nearest block, including an `if`'s `else` branch and the code after the statement. It stays in the temporal dead zone until its binding pattern executes. Reading it before then throws `ReferenceError`. A following `&&` condition can use initialized bindings:
+`is` may bind names in any expression. The current compiler still reports an `is` with bindings outside an `if` or `while` condition as EK4703. A binding is visible in the nearest block, including an `if`'s `else` branch and the code after the statement. It stays in the temporal dead zone until its binding pattern executes. A read where the pattern may not have run is TypeScript's `TS2454`, and a read before the binding's position is `TS2448`, as for a `let`; a read those checks can't see, such as one in a closure, throws `ReferenceError`. A following `&&` condition can use initialized bindings:
 
 ```vibe
 effect function firstFailure(id: string) {
