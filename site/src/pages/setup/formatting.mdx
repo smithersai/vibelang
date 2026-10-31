@@ -67,7 +67,7 @@ Support for the new forms arrives with the compiler's VIP implementation.
 
 A statement-level `match` keeps its boundary after a statement without a semicolon, including with `semiColons: "asi"`.
 
-Comments and JSDoc stay associated with their code, including compiler, linter and tool directives. Formatting is idempotent: a formatted file doesn't change when formatted again.
+Comments and JSDoc stay associated with their code, including compiler, linter and tool directives. Adding space between a contract and its initializer, such as `User!!= load()` becoming `User!! = load()`, preserves those associations elsewhere in the file. Formatting is idempotent: a formatted file doesn't change when formatted again.
 
 Under the same compiler/options, formatting preserves parsed program meaning, evaluation order, receivers, ordinary runtime values/effects and public types/declarations/throws contracts. Diagnostic codes, categories and occurrences stay the same; locations and quoted source follow the formatted file. Semantic migrations and diagnostic repairs belong to `vibelang --fix` or editor actions.
 

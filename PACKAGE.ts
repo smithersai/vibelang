@@ -49,6 +49,11 @@ const goVibelang = (summary: string, shell: string, data: ReadonlyArray<unknown>
 const specTests = [
   "TestFormatForHeadsQuoted",
   "TestSchemaDecodedKeyFlagsQuoted",
+  "TestFormatContractCommentQuote",
+  "TestFormatContractCommentNeighbors",
+  "TestFormatContractCommentNeighborhood",
+  "TestFormatContractCommentEqualityTokens",
+  "TestFormatContractCommentModules",
   "TestAsyncRefactorBridgesQuoted",
   "TestMigrationEffectOperandsQuoted",
   "TestMigrationEffectHeritageQuoted",

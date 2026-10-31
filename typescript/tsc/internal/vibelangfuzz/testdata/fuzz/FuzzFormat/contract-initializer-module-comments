@@ -1,0 +1,2 @@
+go test fuzz v1
+string("module labels { export const value = 1 }\nconst e: number!!= load()\ninterface Clock {\n  now(): number!! // clock\n  later(): number!!\n}\n")

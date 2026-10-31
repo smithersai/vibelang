@@ -332,6 +332,33 @@ func toolsFormatTree(name, text string) (string, error) {
 // a multiset of comment texts alone cannot detect relocation.
 func toolsCommentNeighbors(text string) []string {
 	tokens := toolsScan(text)
+	// TypeScript scans User!!= as ! followed by !=. The .vibe parser
+	// splits the latter into the second contract bang and the initializer's
+	// equals. Preserve those identities when formatting inserts a space;
+	// otherwise every later bang's occurrence number shifts and an unrelated
+	// comment appears to move. Use syntax ranges so expression != and !==
+	// retain their ordinary token identities.
+	_, forms := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, text)
+	contractEnds := map[int]bool{}
+	for _, form := range forms {
+		if form.Kind == parser.VibeSyntaxEffectType && form.Range.End() > 0 {
+			contractEnds[form.Range.End()-1] = true
+		}
+	}
+	var normalized []toolsToken
+	for _, token := range tokens {
+		if contractEnds[token.start] && (token.kind == ast.KindExclamationEqualsToken || token.kind == ast.KindExclamationEqualsEqualsToken) {
+			normalized = append(normalized, toolsToken{ast.KindExclamationToken, "!", token.start, token.start + 1})
+			kind := ast.KindEqualsToken
+			if token.kind == ast.KindExclamationEqualsEqualsToken {
+				kind = ast.KindEqualsEqualsToken
+			}
+			normalized = append(normalized, toolsToken{kind, token.text[1:], token.start + 1, token.end})
+		} else {
+			normalized = append(normalized, token)
+		}
+	}
+	tokens = normalized
 	// Distinguish repeated occurrences, so moving a comment between two
 	// identical statements does not retain a misleading text-only anchor.
 	identities := make([]string, len(tokens))
