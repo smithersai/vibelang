@@ -1457,6 +1457,8 @@ Upstream code needed four fixes for `.vibe` files in the server: auto-import pan
 
 ## Performance
 
+`compiler.sh` checks its workload before looking for a compiler, creating output or staging dependencies. `--modules`, `--runs` and every `--scale` entry must be positive decimal integers no larger than `9007199254740991`; `--shapes` accepts `chain`, `dense` and `single`. Separate list entries with spaces, tabs or newlines. An empty `--scale ""` or `--shapes ""` skips scaling. A missing option value or invalid workload names the option and exits with status `2`.
+
 Run the benchmarks on the build host, which is quieter and larger than a laptop; other suites running there at the same time add noise, so the tables report medians:
 
 ```sh

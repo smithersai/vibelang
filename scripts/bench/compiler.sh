@@ -32,6 +32,11 @@ shapes="chain dense single"
 out=""
 while [ $# -gt 0 ]; do
   case $1 in
+    --upstream|--modules|--runs|--scale|--shapes|--out)
+      [ $# -ge 2 ] || { echo "compiler.sh: $1 requires a value" >&2; exit 2; }
+      ;;
+  esac
+  case $1 in
     --upstream) upstream=$2; shift 2 ;;
     --modules) modules=$2; shift 2 ;;
     --runs) runs=$2; shift 2 ;;
@@ -41,6 +46,30 @@ while [ $# -gt 0 ]; do
     *) echo "compiler.sh: unknown argument $1" >&2; exit 2 ;;
   esac
 done
+# Reject malformed workloads before creating outputs or discovering dependencies.
+# Counts are decimal safe integers so the shell counter and JS generator agree.
+python3 - "$modules" "$runs" "$scale" "$shapes" <<'EOF_OPTIONS'
+import re, sys
+
+def count(flag, value):
+    # Limit the significant digit count before int(): enormous malformed argv
+    # should produce the same usage error, not Python's integer-string limit.
+    digits = value.lstrip("0")
+    if (not re.fullmatch(r"[0-9]+", value) or not digits or
+            len(digits) > 16 or int(digits) > 9007199254740991):
+        print(f"compiler.sh: {flag} requires a positive decimal safe integer (got {value!r})", file=sys.stderr)
+        sys.exit(2)
+
+count("--modules", sys.argv[1])
+count("--runs", sys.argv[2])
+for value in re.findall(r"[^ \t\n]+", sys.argv[3]):
+    count("--scale", value)
+for value in re.findall(r"[^ \t\n]+", sys.argv[4]):
+    if value not in ("chain", "dense", "single"):
+        print(f"compiler.sh: --shapes requires chain, dense or single (got {value!r})", file=sys.stderr)
+        sys.exit(2)
+EOF_OPTIONS
+
 [ -x "$vibelang" ] || { echo "compiler.sh: no compiler at $vibelang (build it or set VIBELANG)" >&2; exit 1; }
 out=${out:-$(mktemp -d "${TMPDIR:-/tmp}/vibelang-bench-XXXXXX")}
 mkdir -p "$out"
