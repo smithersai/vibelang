@@ -33,6 +33,8 @@ effect function stringify(value: unknown) {
 
 On this page, `Printer` depends on `Settings`, and `Reports` on both. `Layer.Layer<Out, E, In>` gives the services produced, construction failures, and construction requirements; the global `Layer` namespace holds the constructors and that type.
 
+Do not break immediately before or after a provider-separating comma (`EK1202`). Line breaks inside a provider expression remain allowed; use `Layer.mergeAll(...)` for multiline composition.
+
 A `provide` block takes layers and `Key = value` entries, separated by commas, and Effect's own `provide` types them. Any construction errors and requirements that `Effect.provide` leaves unsatisfied remain in the enclosing Effect's type. Provider expressions run once, in source order, before any layer builds; repeating the same layer value builds it once. Support for diagnostics on the new provider forms arrives with the compiler's VIP implementation.
 
 ## Preventing dependency leakage

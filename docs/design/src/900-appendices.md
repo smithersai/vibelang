@@ -114,7 +114,7 @@ Timeout                       then another
 | `effect` | `function`; an arrow head, as for `async`: `(` … `)` then `=>`, `<` type parameters of such an arrow, or an identifier then `=>`; in a class or object literal only: a method name (`ClassElementName`, `#m` included) then `(` or `<`, `*`, or `get` or `set` then a name ([EffectAccessor](#effectaccessor)), as TypeScript parses `async get x()`; at a statement start, a name other than `as`, `satisfies` or `is`, then `(` or `<` ([EffectShorthand](#effectshorthand)); `{` in an expression position only, so in a heritage clause (`class C extends effect { }`, `class C implements effect { }`, `interface I extends A, effect { }`) `effect` is an identifier and `{` starts the body, as in TypeScript. `effect * rate` is a multiplication; `effect(x)` with no `=>` is a call; `class C extends effect { }` extends a value named `effect`. `effect async` and `async effect` before any of these forms parse as an [EffectModifier](#effectmodifier), so `EK0105` reports them | [Functions](001-functions.md) |
 | `concurrent` | after `for` (line break allowed), then `(` | [Running Effects](002-running.md#for-concurrent) |
 | `uninterruptible`, `interruptible`, `restore` | `{` | [Running Effects](002-running.md#interruption-blocks) |
-| `provide` | only when the tokens from `provide` through the `{` on the line where the last provider ends parse as the head of a [ProvideStatement](#providestatement), everything before its Block's `StatementList`, as an arrow needs its whole head; otherwise an identifier, in effect code too | [Services](005-services.md#provide-blocks) |
+| `provide` | at a statement start when a valid [ProvideStatement](#providestatement) head parses, or bounded recovery relaxes only line breaks immediately before/after top-level provider commas; the ordinary provider grammar, no break after `provide` and same-line final `{` still apply; otherwise an identifier | [Services](005-services.md#provide-blocks) |
 | `match`, `when`, `is`, `and`, `or`, `not` | as TC39's pattern-matching proposal says; where both parses exist, prefix `not` wins syntactically over a member/extractor rooted at an identifier `not`, before early errors and without consulting bindings | [Pattern matching](004-match.md) |
 
 `try` and `catch` are reserved words already; VibeLang gives them expression forms under `[+Effect]`. At the start of a statement, `try` followed by `{`, on the same line or not, is TypeScript's `try` statement, as in JavaScript.
@@ -559,6 +559,9 @@ Interruptible = [+Effect] "interruptible" [no LineTerminator here] Block
 
 #### ProvideStatement
 
+A head violating only the comma-adjacent `LineTerminator` restrictions remains a recovered `provide` statement and receives `EK1202` on either side of a provider-list separator; the outside-Effect `EK1201` rule still applies. This recovery does not relax the ordinary provider grammar, the restriction after `provide` or the final provider's same-line body-opening `{`. Provider-internal newlines remain allowed. Ordinary calls, element access, subtraction and expression positions after `return` retain their existing readings.
+
+
 ```text
 ProvideStatement = [+Effect] "provide" [no LineTerminator here] Provider ([no LineTerminator here] "," [no LineTerminator here] Provider)* [no LineTerminator here] Block
 ```
@@ -910,7 +913,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK0904` | an `extends` or `implements` clause on a service: `service S extends Base { }` | 9 | [Services](005-services.md#static-rules) |
 | `EK0905` | `export default service S { }`; write `export { S as default }` | 9 | [Services](005-services.md#static-rules) |
 | `EK1201` | `provide` outside effect code | 12 | [Services](005-services.md#provide-blocks) |
-| `EK1202` | a line break after a provider-separating `,` | 12 | [Services](005-services.md#provide-blocks) |
+| `EK1202` | a line break immediately before or after a top-level provider-separating `,` | 12 | [Services](005-services.md#provide-blocks) |
 | `EK1301` | a constructor in an `error` or `schema error` body | 13 | [Failures](003-failures.md#error-declarations) |
 | `EK1302` | a user-written `static` member or setter in an `error` or `schema error` body | 13 | [Failures](003-failures.md#error-declarations) |
 | `EK1303` | type parameters on an `error` or `schema error` declaration | 13 | [Failures](003-failures.md#error-declarations) |

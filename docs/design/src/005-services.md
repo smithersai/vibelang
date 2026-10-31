@@ -250,7 +250,7 @@ class Users extends Context.Service<Users, {}>()("tools/Users") {}
 
 [ProvideStatement](900-appendices.md#providestatement), a list of [Provider](900-appendices.md#provider)s. A top-level comma separates providers. A top-level `=` whose left side is a `LeftHandSideExpression` makes `Key = value`; any other `=` belongs to the expression, so `provide flag ? A : B = x { }` provides `flag ? A : (B = x)`. Parentheses make anything else a Layer expression: `provide (a, b) { }` provides the comma expression's value. The parse never depends on types. Providers are evaluated once, left to right, when the statement runs.
 
-`provide` is a contextual keyword, and its providers and block are on one line, as with `async` (VIP-12): [ProvideStatement](900-appendices.md#providestatement) puts `[no LineTerminator here]` after `provide`, on both sides of each comma and before the block's `{`. `provide` is a keyword only when the tokens from `provide` through that `{` parse as the head of a [ProvideStatement](900-appendices.md#providestatement) (everything before its Block's `StatementList`), as an arrow needs its whole head; otherwise it is an identifier, in any code. When both readings parse, the provide statement wins, as an arrow head does: `provide / a / { }` provides the regex `/a/`, not TypeScript's `(provide / a) / {}`. Inside a provider, line breaks are free, as in any expression:
+`provide` is a contextual keyword, and its providers and block are on one line, as with `async` (VIP-12): [ProvideStatement](900-appendices.md#providestatement) puts `[no LineTerminator here]` after `provide`, on both sides of each comma and before the block's `{`. At a statement start, `provide` is a keyword when the tokens from `provide` through that `{` parse as a valid [ProvideStatement](900-appendices.md#providestatement) head, or the bounded provider-comma recovery below applies; otherwise it is an identifier, in any code. When both readings parse, the provide statement wins, as an arrow head does: `provide / a / { }` provides the regex `/a/`, not TypeScript's `(provide / a) / {}`. Inside a provider, line breaks are free, as in any expression:
 
 ```vibe es
 // compiler-gap: pending VIP-12
@@ -265,6 +265,55 @@ effect function test() {
     try a()
   }
 }
+```
+
+At a statement start, a head is recovered as `provide` when it otherwise parses through the body-opening `{` and only a line break immediately before or after one or more top-level provider-separating commas violates the grammar. Relax only those comma-adjacent restrictions for recognition; keep the no-line-break rule after `provide`, the ordinary provider grammar and the final provider's same-line `{`. The recovered statement remains invalid (`EK1202`), with the existing outside-Effect rule (`EK1201`) still applicable. This does not reserve `provide` globally or search ahead across other malformed heads. Calls without that body and expressions after `return` keep their TypeScript readings.
+
+Only actual provider-list separators use this recovery. Line breaks inside calls, arrays and object expressions remain ordinary expression trivia. The formatter does not introduce separator breaks; compose multiline providers inside parentheses, for example with `Layer.mergeAll(...)`. Invalid recovered heads have no lowering or runtime counterpart.
+
+```vibe es
+// compiler-gap: pending VIP-12
+effect function badAfter() {
+  provide A,
+  B { try work() } // EK1202
+}
+effect function badBefore() {
+  provide A
+  , B { try work() } // EK1202
+}
+function ordinary(provide: (x: number) => number) {
+  return provide(1) // ordinary expression, no statement head
+}
+```
+
+The admitted composition and ordinary identifier readings retain their native behavior:
+
+```ts effect
+import { Effect, Layer } from "effect"
+
+const A = Layer.empty, B = Layer.empty
+const tupleProvided = Effect.provide(Effect.succeed(7), [A, B])
+const composedProvided = Effect.provide(Effect.succeed(7), Layer.mergeAll(
+  A,
+  B))
+function ordinary(provide: (x: number) => number) { return provide(1) }
+function callThenBlock(provide: (x: number) => number) {
+  const first = provide
+  (1)
+  let body = 0
+  provide(2)
+  { body = 3 }
+  return [first, body]
+}
+function element(provide: number[]) { return provide[0] }
+function subtract(provide: number) { return provide - 1 }
+const providerRecoveryExit = Effect.runSyncExit(Effect.gen(function* () {
+  return [
+    yield* tupleProvided, yield* composedProvided, ordinary(x => x + 1),
+    callThenBlock(x => x + 1), element([9]), subtract(9)
+  ]
+}))
+console.log(providerRecoveryExit) // Success([7, 7, 2, [2, 3], 9, 8])
 ```
 
 `provide AppLive,` with `Users = testUsers {` on the next line is a syntax error (`EK1202`): the break follows a comma.
