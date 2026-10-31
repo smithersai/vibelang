@@ -1314,6 +1314,13 @@ typescript/vibelang/cases/ek4616-try-hatch.fail/main.vibe:10:17 lambda program t
 typescript/vibelang/cases/ek4616-try-hatch.fail/main.vibe:9:17 lambda plain fallback
 typescript/vibelang/cases/ek4616-try-hatch.fail/main.vibe:9:53 lambda plain fallback
 typescript/vibelang/cases/ek4617-await-effect.fail/main.vibe:9:24 lambda choice fallback
+typescript/vibelang/cases/ek4823-effect-block.fail/main.vibe:10:15 lambda plain annotation
+typescript/vibelang/cases/ek4823-effect-block.fail/main.vibe:13:26 lambda plain fallback
+typescript/vibelang/cases/ek4823-effect-block.fail/main.vibe:6:23 lambda plain fallback
+typescript/vibelang/cases/ek4823-effect-block.fail/main.vibe:7:23 lambda dual fallback
+typescript/vibelang/cases/ek4823-effect-block.fail/main.vibe:7:43 lambda program table
+typescript/vibelang/cases/ek4823-effect-block.fail/main.vibe:8:22 lambda plain annotation
+typescript/vibelang/cases/ek4823-effect-block.fail/main.vibe:9:23 lambda choice fallback
 typescript/vibelang/cases/entry-main-runner-names/main.vibe:3:27 lambda plain annotation
 typescript/vibelang/cases/entry-main-runner-variable/main.vibe:6:35 byname program table
 typescript/vibelang/cases/entry-main-runner/main.vibe:7:12 byname program table

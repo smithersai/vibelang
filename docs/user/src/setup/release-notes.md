@@ -325,6 +325,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The error-declaration chapter never named `EK1306`, the code for two `error` or `schema error` members on one line with no separator; it now states it beside the separator rule and in its static rules.
 
+- `vibelang lint` with `effecttsgo/unnecessaryArrowBlock` on reported every `effect { return x }` block as an unnecessary arrow block (EK4823), and its quick fix wrote `effect x`, which does not parse; an effect block's braces are its syntax, so only real arrows and effect arrows are reported now.
+
 - Fixes for the unpublished 0.0.11 candidate were listed under 0.0.12; they now appear together under 0.0.11, and the release check compares that section with npm's last published version.
 
 - The migrate flow's codemod and `revert` rewrote imports of a migrated module only inside the run's `--source` directories, so a test under `test/` kept `import … from "../src/Crypto.ts"` after `Crypto.ts` became `Crypto.vibe` and failed to load; they now rewrite every source file the repository tracks.

@@ -52,7 +52,10 @@ func checkStyleRules(c *checker.Checker, file *ast.SourceFile) {
 			case pipeChain:
 				report(c, node, EK4825)
 			}
-		case ast.IsArrowFunction(node):
+		case ast.IsArrowFunction(node) && !isEffectBlock(node):
+			// An effect block, effect { … }, parses as an arrow, but its braces
+			// are its syntax (Appendix A, EffectBlock): only a real arrow can
+			// drop them. Its body is still visited, for the arrows inside it.
 			if returnedValue(node) != nil {
 				report(c, node.Body(), EK4823)
 			}

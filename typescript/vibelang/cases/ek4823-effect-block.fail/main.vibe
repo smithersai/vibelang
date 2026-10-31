@@ -1,0 +1,13 @@
+// expect: EK38123
+// alchemy-27: an effect block's braces are its syntax (Appendix A,
+// EffectBlock: EffectModifier "{" FunctionBody "}"), so EK4823 never reports
+// one, nested blocks included. It still reports a real arrow, inside a block
+// too, and an effect arrow, which can drop its braces.
+export const single = effect { return 1 }
+export const nested = effect { return try effect { return 2 } }
+export const arrow = (n: number): number => { return n + 1 }
+export const inside = effect {
+  const add = (n: number): number => { return n + 1 }
+  return add(1)
+}
+export const increment = effect (n: number) => { return n + 1 }
