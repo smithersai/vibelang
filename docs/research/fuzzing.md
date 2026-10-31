@@ -709,3 +709,9 @@ The 58 keyed neighborhood files and two original migration archives retain the F
 `FuzzReviewExecutionDiagnostics` reads the [diagnostic catalog](../design/src/900-appendices.md) at test time. It varies fork owners and scope operands, aggregate names, concurrency limits, async-match jumps and retired aggregate spellings. Valid repairs are controls; an arbitrary rejection cannot satisfy a required diagnostic.
 
 The 118 keyed inputs vary spacing, comments and the line breaks the catalog explicitly allows. The 84 observed feature gaps retain separate corpus entries and the spec apply-lane owner. `TestReviewExecutionDiagnosticsQuoted` keeps every quoted code assignment and token-separation rule in the spec gate.
+
+### Implicit namespace meanings
+
+`FuzzReviewNamespaceMeanings` checks the [per-meaning precedence rule](../design/src/005-services.md) for `KeyFormat` and `Transferable`. Six type positions retain either the DOM type or a local type alias while the value or namespace position reads Effect's module. The control imports that module under a fresh explicit name.
+
+All 24 keyed inputs remain in the corpus. Twelve observed local-type shadowing gaps have precise feature and corpus entries owned by the spec apply lane. `TestReviewNamespaceMeaningsQuoted` keeps the precedence and fresh-import-name rules in the spec gate.
