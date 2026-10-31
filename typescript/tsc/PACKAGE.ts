@@ -44,6 +44,7 @@ export const Package = S.Package({
     "go-checker": goTest("Go tests of internal/checker.", "./internal/checker/...", "internal/checker"),
     "go-parser": goTest("Go tests of internal/parser.", "./internal/parser/...", "internal/parser"),
     "go-format": goTest("Go tests of internal/format.", "./internal/format/...", "internal/format"),
+    "go-vibelangfmt": goTest("Go tests of the VibeLang formatter.", "./internal/vibelangfmt/...", "internal/vibelangfmt"),
     "go-core": goTest("Go tests of internal/core.", "./internal/core/...", "internal/core")
   }
 })

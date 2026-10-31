@@ -17,7 +17,8 @@ root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 # The packages the graph's Go targets and scripts/check-forms-table.sh compile.
 # scripts/go-cache.test.mjs fails when a target names a package these miss.
 tests="./internal/vibelang/... ./internal/vibelangmapper/... ./internal/vibelangfuzz/... ./internal/checker/...
-./internal/effecttsgo/shim/checker/ ./internal/parser/... ./internal/format/... ./internal/core/..."
+./internal/effecttsgo/shim/checker/ ./internal/parser/... ./internal/format/... ./internal/core/...
+./internal/vibelangfmt/..."
 commands="./cmd/tsc ./cmd/vibelang-forms"
 
 if [ "${1:-}" = --print ]; then

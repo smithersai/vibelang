@@ -401,6 +401,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Remote contributor checks could pass using dependencies left over from an earlier checkout; `scripts/remote.sh` now checks owned installs against the synchronized lockfiles and stops on install errors.
 
+- Compiler checks could miss regressions in the VibeLang formatter; the compiler gate now runs the formatter’s Go tests.
+
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 
 - Migration setup could leave a native type exported through a TypeScript namespace barrel as an error type in project-aware linters; setup now enables source declaration redirects in owned configs and records those edits.

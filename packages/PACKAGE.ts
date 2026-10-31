@@ -1,6 +1,7 @@
 import { Smithers as S } from "@smthrs/targets"
 import { migrationSources } from "../migration-inputs.ts"
 import { Package as Typescript } from "../typescript/PACKAGE.ts"
+import { Package as Tsc } from "../typescript/tsc/PACKAGE.ts"
 
 // The npm packages. vibelang-runtime's targets are declared here rather than
 // in packages/runtime/PACKAGE.ts: smthrs refuses a declaration whose directory
@@ -52,7 +53,7 @@ const compilerTest = S.Shell.Test({
   shell: "cd packages/compiler && bun install --frozen-lockfile && node --test test/*.test.mjs",
   // Migration properties exercise the flow's package-export and Bun.build edits.
   // Their helpers and the TypeScript API install must enter the cache key too.
-  data: [compilerNative, runtimeDist, S.glob("compiler/**"), migrationSources, S.glob("//.smithers/flows/migrate/lib/**"), S.glob("//.smithers/flows/migrate/templates/**"),
+  data: [compilerNative, Tsc["go-vibelangfmt"], runtimeDist, S.glob("compiler/**"), migrationSources, S.glob("//.smithers/flows/migrate/lib/**"), S.glob("//.smithers/flows/migrate/templates/**"),
     S.file("//.smithers/flows/migrate/test/oxlint.test.mjs"),
     S.file("//.smithers/flows/migrate/test/oxlint.test.mjs"),
     S.file("//.smithers/flows/migrate/test/named-files.property.test.mjs"), S.file("//.smithers/flows/migrate/test/corpus/alchemy-default-entrypoint.json"), S.file("//.smithers/flows/migrate/test/onepass.test.mjs"), S.file("//.smithers/flows/migrate/test/onepass.test.mjs"),

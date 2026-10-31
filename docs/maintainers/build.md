@@ -1,5 +1,7 @@
 # The build graph
 
+The compiler package gate also runs `//typescript/tsc:go-vibelangfmt`, so formatter Go regressions run before a compiler change lands.
+
 VibeLang's checks run as targets of `smthrs`, Smithers' build tool. Each
 `PACKAGE.ts` declares targets; the files, tools and targets a target names are
 its inputs, and their content digests are its key. `smthrs ci` runs each
@@ -172,6 +174,7 @@ the recorded exit statuses and diagnostic count beside its measurements.
   :srcs                         Filegroup: what go build reads (no *_test.go, no testdata/)
   :go-checker :go-parser        go test, one target per Go package tree (merge gate,
   :go-format :go-core           when the change edits that tree)
+  :go-vibelangfmt               VibeLang formatter Go tests; required by :compiler-test
   :vibelang-files ...           Filegroups: one Go package's tests and testdata
 //typescript
   :compiler                     go build ./cmd/tsc -> typescript/built/local/tsc
