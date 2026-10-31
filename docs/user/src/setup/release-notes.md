@@ -2558,6 +2558,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Full validation skipped the Go regression suites for the ESLint exporter and formatter; it now runs both and checks that every VibeLang-owned Go test package has a graph selector.
 
+- Knip reported a public export as unused when its JSDoc followed a statement separated by CR, U+2028 or U+2029; these line terminators now keep the tag just as LF and CRLF do.
+
 ### Known bugs
 
 These bugs were found and confirmed and are being fixed; please don't re-report them, and each entry moves to the fixed list when its fix lands.

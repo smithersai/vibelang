@@ -49,7 +49,7 @@ export function compile(text, path = "file.vibe") {
     const first = comments.find((c) =>
       c.type === "Block" && c.value.startsWith("*") &&
       c.range[0] >= after && c.range[1] <= node.range[0] &&
-      (after === 0 || text.slice(after, c.range[0]).includes("\n")))
+      (after === 0 || /[\r\n\u2028\u2029]/.test(text.slice(after, c.range[0]))))
     // Preserve intervening comments as well: Knip's own TypeScript reader
     // treats an ordinary comment after a JSDoc tag as an attachment barrier.
     return first ? text.slice(first.range[0], node.range[0]) : ""

@@ -1,0 +1,13 @@
+{
+  "property": "KnipPublicJSDoc",
+  "rule": "Chapter0/7: native Knip keeps public tags after every JavaScript line terminator",
+  "input": {
+    "form": "interface",
+    "layout": "direct",
+    "name": "make",
+    "public": true,
+    "source": "const before = 0;\u2029/** @public */\nexport interface make { value: number }\nexport const layer = 1;\n",
+    "before": true,
+    "lineTerminator": "ps"
+  }
+}

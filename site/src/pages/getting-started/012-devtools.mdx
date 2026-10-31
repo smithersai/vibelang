@@ -451,7 +451,7 @@ export default {
 
 Knip then resolves `./x.vibe`, reports an unused export of a `.vibe` file at its line, and counts `vibelang-runtime`, which every compiled module imports, as used. The migrate flow writes this configuration, moving the settings of a `knip.json` into a `knip.config.ts`.
 
-An export keeps the JSDoc tags Knip reads, such as `/** @public */`. All names in one variable declaration share its tags, as in TypeScript: `/** @public */ export const first = 1, second = 2` keeps both exports public. The adapter also keeps intervening ordinary comments and their spacing, so a comment after a JSDoc tag affects Knip attachment exactly as it does in TypeScript.
+An export keeps the JSDoc tags Knip reads, such as `/** @public */`. All names in one variable declaration share its tags, as in TypeScript: `/** @public */ export const first = 1, second = 2` keeps both exports public. The adapter also keeps intervening ordinary comments and their spacing, so a comment after a JSDoc tag affects Knip attachment exactly as it does in TypeScript. A tag after an earlier statement recognizes every JavaScript line terminator, including CR, U+2028 and U+2029.
 
 Typed lint of `.ts` files needs the types of the `.vibe` modules they import. typescript-eslint builds its program with the `typescript` it installs, which cannot read a `.vibe` file, so a type from one, imported directly or through a `.ts` barrel, is unresolved there, and type-aware rules report code that `vibelang -p` accepts, such as a non-null assertion the compiler needs. Give typescript-eslint the program `typedProgram` builds instead of `project` or `projectService`:
 

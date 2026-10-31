@@ -65,7 +65,17 @@ function program(input) {
     type: "export type " + name + " = { value: number };",
     "multi-binding": "export const " + name + " = 1, " + name + "Other = 2;",
   }[form];
-  return prefix + declaration + "\nexport const layer = 1;\n";
+  const separators = {
+    lf: "\n",
+    cr: "\r",
+    crlf: "\r\n",
+    ls: "\u2028",
+    ps: "\u2029",
+  };
+  const before = input.before
+    ? "const before = 0;" + separators[input.lineTerminator]
+    : "";
+  return before + prefix + declaration + "\nexport const layer = 1;\n";
 }
 async function verify(input) {
   const root = mkdtempSync(join(tmpdir(), "vibelang-knip-public-"));
@@ -150,12 +160,14 @@ test("T3code: Knip preserves public JSDoc and its native attachment rules", asyn
     rule: "Chapter0/7: actual Knip analysis preserves public JSDoc using the native TypeScript attachment rule.",
     command: "node --test packages/compiler/test/knip-public.property.test.mjs",
     regressions,
-    numRuns: 180,
+    numRuns: 240,
     arbitrary: fc.record({
       form: fc.constantFrom(...forms),
       layout: fc.constantFrom(...layouts),
       name: fc.integer({ min: 0, max: 999 }).map((i) => "make" + i),
       public: fc.boolean(),
+      before: fc.boolean(),
+      lineTerminator: fc.constantFrom("lf", "cr", "crlf", "ls", "ps"),
     }),
     check: verify,
   });
