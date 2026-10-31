@@ -1217,8 +1217,8 @@ bun docs/tools/check-snippets.ts --root docs/design/src
 
 When the compiler implements VIP-N:
 
-1. Run the command above. A block whose marker is stale fails with "Stale compiler-gap marker; remove it": the compiler now accepts it.
-2. Delete that block's `// compiler-gap: pending VIP-N` line. If the block only names functions it doesn't declare (`fetchUser`), declare them in the block or a page fixture, or mark it `// fragment`.
+1. Run the command above. A block whose marker is stale fails with "Stale compiler-gap marker; remove it": the compiler reports no code beyond the block's `// expect-error:` header, apart from names the block doesn't declare. The checker reads expected codes only from that header, not from trailing comments, so a stale result alone proves nothing about the codes a block's comments promise: `effect function n(): number { return 1 }   // EK0106` reports stale while the compiler prints no diagnostic for it.
+2. Write every code the block's comments promise in an `// expect-error:` header, such as `// expect-error: EK0103, EK0106`, a syntax error's code included, and rerun. Delete the block's `// compiler-gap: pending VIP-N` line only if it still passes. If the block only names functions it doesn't declare (`fetchUser`), declare them in the block or a page fixture, or mark it `// fragment`.
 3. When a page has no `compiler-gap` markers left, add `docs/design/src` to the snippet step of the merge queue's gate (`//:snippets`), so the examples stay checked.
 4. To make an Effect TypeScript example checked, replace `// fragment` with the declarations it needs; the checker compiles ```` ```ts effect ```` blocks as comparisons.
 
