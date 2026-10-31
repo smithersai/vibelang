@@ -1,0 +1,15 @@
+{
+  "property": "cache-generated-sidecars",
+  "rule": "docs/design/vips/0027-declaration-output.md: Location; paired declaration sidecars are outputs",
+  "input": {
+    "stem": "main0",
+    "linked": false,
+    "mutations": [
+      {
+        "remove": false,
+        "text": ""
+      }
+    ]
+  },
+  "generatorVersion": 1
+}

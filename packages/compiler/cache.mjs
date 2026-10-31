@@ -30,7 +30,8 @@ import { basename, dirname, isAbsolute, join, resolve, sep } from "node:path"
 // its project's own files (vibelang --loader-root).
 // 3: loaders retain emission and select diagnostics per loaded source.
 // 4: source maps name sources by absolute path again, not file URL.
-const format = 4
+// 5: sidecars beside their sources are compiler outputs.
+const format = 5
 const version = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")).version
 
 // A file whose timestamp is this close to a compile's start may have changed
@@ -328,6 +329,11 @@ function listing(path) {
   }
   const names = []
   const directories = []
+  // A declaration sidecar beside its .vibe source is an output (VIP-27),
+  // excluded from the program just as it is by the compiler's resolver.
+  // An orphan sidecar remains a TypeScript input.
+  const sources = new Set(entries.filter((entry) => entry.name.endsWith(".vibe") &&
+    (entry.isFile() || entry.isSymbolicLink() && statOf(join(path, entry.name))?.isFile())).map((entry) => entry.name))
   for (const entry of entries) {
     if (entry.name.startsWith(".")) continue
     let directory = entry.isDirectory()
@@ -335,7 +341,10 @@ function listing(path) {
     if (directory) {
       names.push(`${entry.name}/`)
       directories.push(join(path, entry.name))
-    } else if (sourceName.test(entry.name)) names.push(entry.name)
+    } else if (sourceName.test(entry.name)) {
+      if (entry.name.endsWith(".d.vibe.ts") && sources.has(entry.name.slice(0, -".d.vibe.ts".length) + ".vibe")) continue
+      names.push(entry.name)
+    }
   }
   return { names: digest(names.sort().join("\n")), directories: directories.sort() }
 }
