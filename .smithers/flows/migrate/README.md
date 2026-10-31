@@ -33,6 +33,8 @@ Every install the flow runs also rewrites each other lockfile at the repository'
 
 Upgrade-effect, setup and record run the target's own formatter on the files they wrote or the batch changed, other than `.vibe` files, sidecars and lockfiles: the tool its root `package.json`'s format scripts run (`oxfmt`, `vp fmt`, `prettier`, `biome format`, `dprint fmt`), else one it installs. The target's format check then passes on them. Record then runs the target's `vibelang-format --write` on the batch's `.vibe` files, because `vibelang --fix` does not format what it rewrites and a format check covers them.
 
+Record resolves jj's compact rename summaries to destination paths before formatting. Literal braces in shared prefixes, suffixes and filenames stay intact; rename and copy records retain their original path as `from`.
+
 ## Run it
 
 Every batch lands on a jj bookmark, `vibe` unless `--bookmark` names another: upgrade-effect starts it on the default branch (`trunk()`, or `--base <branch>`, such as `dev`, which restarts a bookmark an earlier run left elsewhere), or continues an earlier run's `vibe`, and each recorded batch is one commit on top of the last. The first two commits are the Effect upgrade and VibeLang's setup, so a reviewer reads the dependency upgrade, and any test it breaks, apart from the migration. The flow never pushes. After each run, the orchestrator pushes `vibe` to the library's fork and opens a pull request from it there, so the migration's diff is reviewable.

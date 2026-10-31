@@ -23,19 +23,44 @@ export async function commitId(root, revision = "@-") {
  * is src/x.vibe.
  */
 export async function changedPaths(root) {
-  const { stdout } = await must("jj diff --summary -r @", { cwd: root })
-  return stdout.split("\n").filter(Boolean).map((line) => summaryEntry(line))
+  const { stdout } = await must("jj diff --summary --color never -r @", { cwd: root })
+  return parseChangedPaths(stdout)
 }
 
 /** One line of jj diff --summary as { status, path } and, for a rename or copy, from. */
 export function summaryEntry(line) {
   const status = line[0]
   const text = line.slice(2)
-  if (status !== "R" && status !== "C") return { status, path: text }
-  const braced = /^(.*?)\{(.*) => (.*)\}(.*)$/.exec(text)
-  const [prefix, from, to, suffix] = braced ? braced.slice(1) : ["", ...text.split(" => "), ""]
-  const join = (middle) => (prefix + middle + suffix).replace(/\/{2,}/g, "/").replace(/^\//, "")
-  return { status, path: join(to), from: join(from) }
+  const arrow = text.indexOf(" => ")
+  if ((status !== "R" && status !== "C") || arrow < 0) return { status, path: text }
+  // Only the unmatched brace enclosing the arrow belongs to jj's compact
+  // rename. Balanced braces in either filename, prefix or suffix are literal.
+  const opens = []
+  for (let i = 0; i < arrow; i++) {
+    if (text[i] === "{") opens.push(i)
+    else if (text[i] === "}") opens.pop()
+  }
+  const open = opens.at(-1)
+  let close
+  if (open !== undefined) {
+    let depth = 1
+    for (let i = arrow + 4; i < text.length; i++) {
+      if (text[i] === "{") depth++
+      else if (text[i] === "}" && --depth === 0) { close = i; break }
+    }
+  }
+  const compact = open !== undefined && close !== undefined
+  const prefix = compact ? text.slice(0, open) : ""
+  const suffix = compact ? text.slice(close + 1) : ""
+  const from = text.slice(compact ? open + 1 : 0, arrow)
+  const to = text.slice(arrow + 4, compact ? close : undefined)
+  const pathOf = middle => (prefix + middle + suffix).replace(/\/{2,}/g, "/").replace(/^\//, "")
+  return { status, path: pathOf(to), from: pathOf(from) }
+}
+
+/** Parse LF or CRLF summaries while retaining the original path of renames and copies. */
+export function parseChangedPaths(summary) {
+  return summary.split(/\r?\n/).filter(Boolean).map(summaryEntry)
 }
 
 /** The repository-relative paths of the files the working-copy commit tracks. */

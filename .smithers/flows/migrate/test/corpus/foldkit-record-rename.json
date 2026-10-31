@@ -1,0 +1,13 @@
+{
+  "key": "migrate-record:jj-rename-path",
+  "summary": "R {main.ts => main.vibe}\nR dir/{a => b}/x.vibe\n",
+  "paths": [
+    "main.vibe",
+    "dir/b/x.vibe"
+  ],
+  "literalBraces": {
+    "summary": "R {literal}/{old.ts => next.vibe}/{tail}/file",
+    "path": "{literal}/next.vibe/{tail}/file",
+    "from": "{literal}/old.ts/{tail}/file"
+  }
+}
