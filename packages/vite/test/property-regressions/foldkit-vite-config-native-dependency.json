@@ -1,0 +1,10 @@
+{
+  "property": "vite-config-native-dependency",
+  "rule": "docs/design/src/007-tooling.md: Existing tools work.",
+  "input": { "shape": "named", "barrels": 0, "extension": "ts", "quote": "'", "enabled": true, "loader": "bundle", "inherited": "--enable-source-maps" },
+  "files": {
+    "vite.config.ts": "import vibelang from 'vibelang-vite'\nimport { defineConfig } from 'vite'\nimport { enabled } from './leaf.vibe'\nexport default defineConfig({ plugins: [vibelang()], define: { __ENABLED__: JSON.stringify(enabled) }, build: { lib: { entry: 'entry.ts', formats: ['es'], fileName: 'entry' } } })\n",
+    "leaf.vibe": "export schema FeatureFlag { enabled: boolean }\nexport const enabled = true\n",
+    "entry.ts": "export const value = __ENABLED__\n"
+  }
+}

@@ -20,6 +20,38 @@ import vibelang from "vibelang-vite"
 export default defineConfig({ plugins: [vibelang()] })
 ```
 
+### When the Vite config imports a VibeLang module
+
+Vite loads `vite.config.ts` before creating its plugins. If that config, or a
+helper it imports, imports a `.vibe` module, start Vite with the Node source
+hook and select Vite's native config loader:
+
+```sh
+NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--import=vibelang/register" npx vite build --configLoader native
+```
+
+Use the same prefix and `--configLoader native` for the dev server and preview.
+Keep `vibelang()` in the config to compile application modules. The default
+`bundle` config loader parses native syntax before the plugin exists, and
+`runner` does not install the Node source hook. Setting `configLoader` inside
+the config is too late; the CLI flag (or an inline `configLoader: "native"`
+option passed to Vite's JavaScript API) selects how Vite first loads it.
+
+Native loading uses Node's ESM resolution and TypeScript support. Keep explicit
+source extensions in config helpers' relative imports and use package exports
+instead of `tsconfig.json` path aliases. The hook compiles each native module
+with its nearest `tsconfig.json`; if a config helper needs another project,
+set `VIBELANG_PROJECT=tsconfig.node.json` and include the helper there.
+On Vite versions without native dependency watching, restart the dev server
+after editing a config dependency. `VIBELANG_REGISTER_DEBUG=1` reports loader
+compiles and cache hits when diagnosing config startup.
+
+Migration setup detects runtime imports and re-exports into existing native
+modules or the selected source directories, including transitive config
+helpers, and wires the affected `vite` package scripts. Type-only imports
+do not need this path. Setup reports a config without a matching script so
+its caller can supply the same preload and flag.
+
 ## 2. Configure tsconfig.json
 
 Support for the new forms and configuration files arrives with the compiler's VIP implementation.

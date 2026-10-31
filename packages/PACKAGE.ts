@@ -67,7 +67,9 @@ const compilerTest = S.Shell.Test({
 const pluginTest = (name: string, summary: string, timeout: string) => S.Shell.Test({
   summary,
   shell: `VIBELANG_BINARY=$PWD/packages/compiler/native/vibelang sh packages/${name}/test/run.sh`,
-  data: [compilerNative, S.glob("compiler/**"), S.glob(`${name}/**`), ...install, S.file("runtime/tsconfig.json"), S.glob("runtime/src/**")],
+  data: [compilerNative, S.glob("compiler/**"), S.glob(`${name}/**`),
+    ...(name === "vite" ? [S.glob("//.smithers/flows/migrate/lib/**"), S.file("//scripts/testing/property.mjs"), S.file("//docs/design/src/007-tooling.md")] : []),
+    ...install, S.file("runtime/tsconfig.json"), S.glob("runtime/src/**")],
   tools: [S.Host.bin("node"), S.Host.bin("bun")],
   sandbox: "none",
   timeout

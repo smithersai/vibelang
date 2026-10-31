@@ -35,6 +35,19 @@ import vibelang from "vibelang-vite"
 export default defineConfig({ plugins: [vibelang()] })
 ```
 
+If the config itself imports a `.vibe` module, directly or through a helper,
+load it with Node before Vite creates its plugins:
+
+```sh
+NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--import=vibelang/register" npx vite build --configLoader native
+```
+
+Use the prefix and flag for dev and preview too. Keep `vibelang()` for the
+application. A `configLoader` property inside the config cannot select its
+own loader. Native config helpers use Node ESM resolution: use explicit source
+extensions and package exports, rather than TypeScript path aliases.
+See the [config-loading guide](https://vibelang.sh/setup/vite).
+
 Keep your normal `tsconfig.json` with the `.vibe` sources included; the plugin
 uses the same compiler options and diagnostics as `vibelang -p tsconfig.json`.
 Import local sources as `./welcome.vibe`; imports `vibelang` rewrites to

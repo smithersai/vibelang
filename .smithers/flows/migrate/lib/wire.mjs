@@ -12,6 +12,7 @@
 import { createHash } from "node:crypto"
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { join, posix } from "node:path"
+import { wireNativeViteConfigs } from "./vite-config.mjs"
 import { workspaceGlobs, workspaceManifests } from "./upgrade.mjs"
 import { must, quote } from "./util.mjs"
 
@@ -369,6 +370,14 @@ export function wireViteApps({ root, packages, ts, specsFor, wired = [] }) {
       warnings.push(`${file}: ${error.message}`)
     }
   }
+  const owns = ownedPaths(root)
+  const selected = path => packages.some(pkg => pkg.dir === "." || path.startsWith(pkg.dir + "/"))
+  const manifests = repositoryPackages(root).filter(pkg => owns(posix.join(pkg.dir, "package.json")) || selected(posix.join(pkg.dir, "package.json")))
+  const candidates = [...new Set([...wired, ...viteAppConfigs(root, manifests.map(pkg => pkg.dir))])]
+    .filter(file => owns(file) || selected(file))
+  const native = wireNativeViteConfigs({ root, packages, configs: candidates, manifests, ts, specsFor })
+  changed.push(...native.changed.filter(file => !changed.includes(file)))
+  warnings.push(...native.warnings)
   return { changed, warnings, configs }
 }
 

@@ -187,6 +187,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Migration rejected new private platform-adapter declarations; it now admits unreachable additions as `addedPrivate` while checking published declarations byte for byte.
 
+- Vite could fail with an unexpected token in a native dependency before evaluating its config; migration setup now preloads `vibelang/register` and selects `--configLoader native` for affected Vite scripts, with the supported config-loading path documented.
+
 - Installing `vibelang` alone did not declare the Effect version it supports; the compiler now requires the same exact `effect` peer as the runtime, and release packaging rejects a missing, optional, ranged or mismatched pin.
 
 - A fresh checkout failed the compiler package tests with `TS2883` on every `error` declaration, because `packages/runtime` installed its own Effect beneath the link each fixture uses; `scripts/ci.sh` now gives the runtime the `experiments` copy, and published installs were never affected.
