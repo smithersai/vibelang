@@ -368,6 +368,37 @@ func TestSchemaAliasIsAConstantOfItsWrittenType(t *testing.T) {
 	}
 }
 
+// A schema reads the value each field's type reference names, so the
+// projection writes that reference as typeof Name, a value reference to
+// scope analysis (foldkit-12); a reference with type arguments and a plain
+// error's field stay type references.
+func TestSchemaFieldReferencesReadTheirValues(t *testing.T) {
+	text := "const Names = Schema.Tuple([Schema.String, Schema.String])\n" +
+		"export schema Locale { names: Names; list: ReadonlyArray<Names>; nested: { inner: Lib.Codes }; kind: \"a\" | Names }\n" +
+		"schema Alias = Names\n" +
+		"schema error Bad { code: Names }\n" +
+		"error Plain { code: Names }\n"
+	program := parse(t, "/x.vibe", text)
+	queries := map[string]int{}
+	references := map[string]int{}
+	for _, node := range nodes(program) {
+		switch node["type"] {
+		case "TSTypeQuery":
+			start, end := rangeOf(node["exprName"].(map[string]any))
+			queries[text[start:end]]++
+		case "TSTypeReference":
+			start, end := rangeOf(node["typeName"].(map[string]any))
+			references[text[start:end]]++
+		}
+	}
+	if queries["Names"] != 5 || queries["Lib.Codes"] != 1 || len(queries) != 2 {
+		t.Errorf("value references %v, want Names 5 times (four schema fields and the alias) and Lib.Codes once", queries)
+	}
+	if references["ReadonlyArray"] != 1 || references["Names"] != 1 || len(references) != 2 {
+		t.Errorf("type references %v, want ReadonlyArray and the plain error's Names", references)
+	}
+}
+
 func TestSynthesizedNamesAreMarkedOrLeftOut(t *testing.T) {
 	for name, text := range forms {
 		for _, node := range nodes(parse(t, "/x.vibe", text)) {

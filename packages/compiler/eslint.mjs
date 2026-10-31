@@ -146,6 +146,7 @@ export function parseForESLint(code, options = {}) {
     sourceType: ast.sourceType
   }))
   hideSynthesized(scopeManager)
+  markSchemaReads(scopeManager)
   // As @typescript-eslint/parser reports for a file outside any TypeScript
   // program: a rule that needs type information says so instead of crashing.
   const services = {
@@ -206,6 +207,21 @@ function hideSynthesized(scopeManager) {
       }
     }
     scope.variables.splice(0, scope.variables.length, ...kept)
+  }
+}
+
+// markSchemaReads marks used each variable a schema reads. The tree writes a
+// schema field's type reference as typeof Name, whose first name carries
+// schemaValue (vibelangestree), since the schema's Schema.Struct reads the
+// value Name; typescript-eslint counts typeof in a type as a type use, so
+// without it no-unused-vars reports the codec that schema Locale { names:
+// Names } reads in const Names = Schema.Tuple(…). It is what a rule's
+// markVariableAsUsed does.
+function markSchemaReads(scopeManager) {
+  for (const scope of scopeManager.scopes) {
+    for (const reference of scope.references) {
+      if (reference.identifier.schemaValue === true && reference.resolved) reference.resolved.eslintUsed = true
+    }
   }
 }
 

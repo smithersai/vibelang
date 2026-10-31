@@ -115,6 +115,38 @@ test("names the parser writes are not variables a rule can report", () => {
   assert.ok(!names.some((name) => name.startsWith("$")), names.join(", "))
 })
 
+test("a codec that a schema field names is used, wherever the field names it", () => {
+  // foldkit-12: calendar/locale.vibe's twelveStrings and sevenStrings.
+  const unused = (code) =>
+    lint({ code, filename: "/locale.vibe" })
+      .filter((message) => message.ruleId === "@typescript-eslint/no-unused-vars")
+      .map((message) => `${message.line}:${message.message.match(/^'([^']+)'/)?.[1]}`)
+  assert.deepEqual(unused("const Names = Schema.Tuple([Schema.String, Schema.String])\nexport schema Locale { names: Names }\n"), [])
+  // Each place the schema mapping reads a reference, seeded so a failure names its program.
+  const places = [
+    (r) => `{ f: ${r} }`,
+    (r) => `{ f?: ${r} }`,
+    (r) => `{ readonly f: ${r} }`,
+    (r) => `{ f: ReadonlyArray<${r}> }`,
+    (r) => `{ f: Array<${r}> }`,
+    (r) => `{ f: ${r}[] }`,
+    (r) => `{ f: readonly [${r}, string] }`,
+    (r) => `{ f: Record<string, ${r}> }`,
+    (r) => `{ f: "a" | ${r} }`,
+    (r) => `{ f: ${r} | null }`,
+    (r) => `{ f: { g: ${r} } }`
+  ]
+  let seed = 12
+  const next = (n) => ((seed = (seed * 1103515245 + 12345) % 2147483648), seed % n)
+  for (let i = 0; i < 60; i++) {
+    let body = "Codec"
+    for (let depth = 1 + next(3); depth > 0; depth--) body = places[next(places.length)](body)
+    const form = [`export schema S ${body}`, `export schema S = ${body}`, `export schema error S ${body}`][next(3)]
+    const code = `const Codec = Schema.String\nconst Unused = Schema.Number\n${form}\n`
+    assert.deepEqual(unused(code), ["2:Unused"], code)
+  }
+})
+
 test("a module declaration's body lints as TypeScript, on the .vibe file's lines and columns", () => {
   const { code, filename } = fixture("modules.vibe")
   assert.deepEqual(problems(code, parseForESLint(code, { filePath: filename }).ast, keys), [])

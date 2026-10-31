@@ -223,6 +223,7 @@ func (c *converter) errorClass(n *ast.Node) *obj {
 		class.setRange(r)
 	}
 	fields := source.fields
+	schemaError := strings.HasPrefix(c.text[source.start:], "schema")
 	body, _ := class.get("body").(*obj)
 	if body != nil {
 		elements, _ := body.get("body").([]any)
@@ -232,8 +233,12 @@ func (c *converter) errorClass(n *ast.Node) *obj {
 				continue
 			}
 			if key, ok := property.get("key").(*obj); ok {
-				if readonly, ok := fields[key.rng().start]; ok && readonly {
+				readonly, field := fields[key.rng().start]
+				if field && readonly {
 					property.set("readonly", true)
+				}
+				if field && schemaError {
+					schemaValues(property.get("typeAnnotation")) // a schema error's field reads its codec (vibelang.go)
 				}
 			}
 		}

@@ -26,7 +26,9 @@ func (c *converter) schemaAlias(n *ast.Node) *obj {
 	}
 	id := c.convertChild(name, declaration)
 	if typeNode := c.reparseType(equals.end, declaration.End()); typeNode != nil {
-		id.set("typeAnnotation", c.nodeAt(c.rangeOf(typeNode), "TSTypeAnnotation").set("typeAnnotation", c.convertChild(typeNode, typeNode.Parent)))
+		annotation := c.convertChild(typeNode, typeNode.Parent)
+		schemaValues(annotation) // a reference reads its value (vibelang.go)
+		id.set("typeAnnotation", c.nodeAt(c.rangeOf(typeNode), "TSTypeAnnotation").set("typeAnnotation", annotation))
 	}
 	declarator := c.nodeAt(span{c.start(name), declaration.End()}, "VariableDeclarator").
 		set("definite", false).

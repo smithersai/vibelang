@@ -15,6 +15,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - With paired `moduleSuffixes` such as `["", ".d.vibe"]`, VibeLang read a stale declaration sidecar instead of its `.vibe` source and reported incorrect types; it now reads the source and keeps ordinary `.ts` and `.tsx` priority.
 
+- ESLint with `vibelang/eslint` reported `no-unused-vars` on a codec that only a `schema` field names, as in `const Names = Schema.Tuple([Schema.String, Schema.String])` and `schema Locale { names: Names }`; the ESLint tree now writes such a field's type as `typeof Names`, the value the schema reads, in `schema` and `schema error` bodies and `schema X = Type`.
+
 - The release rehearsal stopped at its Vite warning check because it expected a retired nondeterminism diagnostic and used deprecated configuration; it now checks the assigned `EK4833` warning and verifies that Vite emits the bundle with `noEmitOnError`.
 
 - In a project with no `declaration` setting, an export whose inferred type was too long to serialize (`TS7056`) got only a warning, and its declaration sidecar held `any` in place of the type, so a stock `tsc` consumer lost its types without an error; it is an error again, as it is where the project emits declarations.

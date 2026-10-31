@@ -25,7 +25,9 @@ import (
 //	provide L, K = v { }   VibeProvideStatement { providers, body },
 //	                       VibeServiceProvider { key, value }
 //	uninterruptible { }    VibeMaskStatement { kind, body }
-//	schema S { fields }    const S: { fields }, the fields as written
+//	schema S { fields }    const S: { fields }, the fields as written, except
+//	                       that a type reference without type arguments is
+//	                       typeof Name, the value the schema reads
 //	error E { fields }     class E { fields }
 //	module text { body }   VibeModuleDeclaration { id, body: TSModuleBlock }
 //	from text              Identifier { name, value }
@@ -393,7 +395,9 @@ func (c *converter) schemaDeclaration(n *ast.Node) *obj {
 	name := declarations[0].Name()
 	id := c.convertChild(name, declarations[0])
 	if literal := c.schemaBody(fields); literal != nil {
-		id.set("typeAnnotation", c.nodeAt(c.rangeOf(literal), "TSTypeAnnotation").set("typeAnnotation", c.convertChild(literal, literal.Parent)))
+		annotation := c.convertChild(literal, literal.Parent)
+		schemaValues(annotation)
+		id.set("typeAnnotation", c.nodeAt(c.rangeOf(literal), "TSTypeAnnotation").set("typeAnnotation", annotation))
 	}
 	declarator := c.nodeAt(span{c.start(name), n.End()}, "VariableDeclarator").
 		set("definite", false).
@@ -404,6 +408,48 @@ func (c *converter) schemaDeclaration(n *ast.Node) *obj {
 		set("declare", hasModifier(ast.KindDeclareKeyword, n)).
 		set("kind", "const")
 	return c.fixExports(n, result)
+}
+
+// schemaValues rewrites each type reference without type arguments in value,
+// the projection of a schema's field types, as a type query of the same name.
+// The parser maps such a reference to a read of the value it names
+// (vibelangSchemaOf), so for scope analysis it is a value reference, as
+// typeof Name is; without it no-unused-vars reports the codec a field names:
+//
+//	const Names = Schema.Tuple([Schema.String, Schema.String])
+//	schema Locale { names: Names }   // const Locale: { names: typeof Names }
+//
+// A reference with type arguments, Array<T> or Record<K, V>, stays a type
+// reference, and its arguments are mapped in turn. The query's first name
+// carries schemaValue, so eslint.mjs marks what it resolves to used:
+// typescript-eslint counts typeof in a type as a type use.
+func schemaValues(value any) {
+	switch v := value.(type) {
+	case *obj:
+		if v.typ() == "TSTypeReference" && v.get("typeArguments") == nil {
+			v.set("type", "TSTypeQuery")
+			for i, key := range v.keys {
+				if key == "typeName" {
+					v.keys[i] = "exprName"
+				}
+			}
+			name, _ := v.get("exprName").(*obj)
+			for name != nil && name.typ() == "TSQualifiedName" {
+				name, _ = name.get("left").(*obj)
+			}
+			if name != nil && name.typ() == "Identifier" {
+				name.set("schemaValue", true)
+			}
+			return
+		}
+		for _, child := range v.vals {
+			schemaValues(child)
+		}
+	case []any:
+		for _, child := range v {
+			schemaValues(child)
+		}
+	}
 }
 
 // schemaBody parses the braces of a schema declaration again as an object
