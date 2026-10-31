@@ -1,7 +1,7 @@
 // expect: TS4094
-// A sidecar is the compiler's own output, so a project that asks for no
-// declarations does not fail on what one cannot print: what declaration emit
-// reports is a warning there, and an error where the project emits them.
+// What a sidecar cannot print is an error even in a project that asks for no
+// declarations: emit would write any in its place, and stock TypeScript, which
+// reads the sidecar, would accept it without a word.
 export const value = new (class {
   private hidden = 1
   read() { return this.hidden }

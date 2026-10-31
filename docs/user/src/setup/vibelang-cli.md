@@ -204,7 +204,7 @@ In each project whose checker is not `vibelang`, set TypeScript's [`allowArbitra
 
 TypeScript then resolves `import { greet } from "./greet.vibe"` to `greet.d.vibe.ts`, as it resolves `./styles.css` to `styles.d.css.ts`. Without the option it reports `TS6263`. TypeScript never maps `./greet.js` or `./greet` to a sidecar, so a `.ts` file that such a checker reads names the `.vibe` module by its source. `vibelang` itself reads `greet.vibe` and never the sidecar, and a project's `include` leaves out a sidecar whose source is beside it.
 
-A project that asks for no declarations, with neither `declaration` nor `composite`, gets what a sidecar cannot print as a warning, such as `TS7056` for a type too long to serialize, and the sidecar holds what emit writes. With either option it stays an error.
+What a sidecar cannot print is an error, such as `TS7056` for an inferred type too long to serialize, even in a project with neither `declaration` nor `composite`: declaration emit writes `any` in its place, and a stock checker that reads the sidecar would accept that `any` silently. Annotate the export, or keep the module `.ts`.
 
 These checkers read only the sidecars: they do not type-check the `.vibe` files themselves. Run `vibelang` before them, in the same script, so a sidecar is current and a type error in a `.vibe` file fails the check:
 

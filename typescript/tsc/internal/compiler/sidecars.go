@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
-	tsdiagnostics "github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
@@ -76,19 +75,12 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 	if result == nil {
 		return nil
 	}
-	if p.Options().GetEmitDeclarations() {
-		return result.Diagnostics
-	}
-	// A project that asks for no declarations does not fail on what a sidecar
-	// cannot print: a sidecar holds what emit writes, and the checkers that
-	// read it report what they need.
-	var diagnostics []*ast.Diagnostic
-	for _, d := range result.Diagnostics {
-		warning := d.Clone()
-		warning.SetCategory(tsdiagnostics.CategoryWarning)
-		diagnostics = append(diagnostics, warning)
-	}
-	return diagnostics
+	// What a sidecar cannot print is an error whether or not the project asks
+	// for declarations: emit writes any in its place, such as TS7056's
+	// fallback for a type too long to serialize, and the stock checkers that
+	// read the sidecar accept that any without a word, so a consumer would
+	// lose the module's types.
+	return result.Diagnostics
 }
 
 // sidecarText turns the declaration text that declarationFile would hold for
