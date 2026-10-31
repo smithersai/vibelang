@@ -1371,6 +1371,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Host timer and object-URL methods could escape checks through aliases, interface augmentations, or static `globalThis` constructor keys; those reads now consistently report `EK4402` while pure helpers and local implementations remain valid.
 
+- `when undefined:` and a pattern naming a contextual keyword such as `of` or `type` failed with `pattern expected`; both now parse as the literal or name they spell, in `match` and in `is`.
+
 - Running the migrate flow's setup again left the earlier setup's `.vibelang-toolchain` tarballs on disk, where `jj` committed them with the new setup; setup now removes that directory before it returns to the Effect upgrade.
 
 - In the specification's region-body rules, a paragraph about `do` checks sat between the sentence ending "how it transports completions is its choice:" and the list it introduces, so it read as that list. The paragraph now follows the list.

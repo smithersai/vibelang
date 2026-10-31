@@ -1,0 +1,38 @@
+// expect-result: ["absent","found",true,false,"value","typed","number","miss"]
+// undefined is a literal pattern, and a contextual keyword is an ordinary name
+// in a pattern: the scanner gives them their own tokens, not an identifier.
+import { Effect } from "effect"
+
+error NotFound { id: string }
+
+function label(r: NotFound | undefined) {
+  return match (r) { when NotFound: "found"; when undefined: "absent"; }
+}
+
+function missing(v: string | undefined) {
+  return v is undefined
+}
+
+const type = (s: unknown): s is string => typeof s === "string"
+const of = (s: unknown): s is number => typeof s === "number"
+
+function named(s: unknown) {
+  return match (s) { when type: "typed"; when of: "number"; default: "miss"; }
+}
+
+function nested(o: { value: string | undefined }) {
+  return match (o) { when { value: undefined }: "missing"; default: "value"; }
+}
+
+export function main() {
+  return Effect.succeed([
+    label(undefined),
+    label(new NotFound({ id: "1" })),
+    missing(undefined),
+    missing("x"),
+    nested({ value: "x" }),
+    named("s"),
+    named(1),
+    named(true),
+  ])
+}

@@ -322,7 +322,7 @@ func (p *Parser) tokenStartsPattern() bool {
 		ast.KindLessThanEqualsToken, ast.KindGreaterThanEqualsToken:
 		return true
 	}
-	return false
+	return p.isIdentifier() // a contextual keyword, such as undefined or of
 }
 
 // parseMatchPrimaryPattern parses a parenthesized pattern, a binding, an
@@ -389,7 +389,9 @@ func (p *Parser) parseMatchPrimaryPattern() *pattern {
 		p.nextToken()
 		p.parseUnaryExpressionOrHigher()
 		return &pattern{kind: patternInvalid, anchor: anchor, code: 4704, detail: "Relational"}
-	case ast.KindIdentifier, ast.KindThisKeyword:
+	}
+	// A contextual keyword is a name here too, undefined and of among them.
+	if p.token == ast.KindThisKeyword || p.isIdentifier() {
 		expr := p.parseMatchValueExpression()
 		if p.token == ast.KindOpenParenToken && !p.hasPrecedingLineBreak() {
 			result := &pattern{kind: patternExtractor, anchor: anchor, expr: expr}
