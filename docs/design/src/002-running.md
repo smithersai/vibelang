@@ -109,7 +109,7 @@ Anything else after `catch` is a syntax error (`EK0509`): a name, a call, any ot
 | `x catch () => guest` | plain function | `guest` |
 | `x catch function (e) { return 7 }` | plain function | `7` |
 | `x catch effect (e) => 7`, `x catch (effect function (e) { return 7 })` | effect function | `7` |
-| `x catch (e) => { throw e }` | plain function | a defect; no `EK0507` or `EK0508`, since the result type is `never` |
+| `x catch (e) => { throw e }` | plain function | a defect, with lint warning `EK0511`; no `EK0507` or `EK0508`, since the result type is `never` |
 | `x catch guest` | syntax error | quick fix: `x catch () => guest` |
 | `x catch onErr` (`onErr` a function) | syntax error | quick fix: `x catch (e) => onErr(e)` |
 | `x catch effect { return 7 }` | syntax error | quick fix: `x catch effect () => { return 7 }` |
@@ -144,6 +144,7 @@ After a parenthesized handler or a function expression handler, another `catch` 
 | `e catch h` where `e` is not an Effect | `EK0506` |
 | a non-function handler, including a parameter list followed directly by a block, or an `async`, generator or `async` generator handler (table above) | `EK0509` |
 | a plain handler whose result type is a Promise or thenable (`x catch (e) => queryDb(e)`): the Promise is never run, as for an unwrapped Promise in effect code ([Failures](003-failures.md)) | `EK0507` |
+| an explicit `throw` that can complete a plain handler, not one caught inside it or in a nested function: the result dies | `EK0511` (lint warning) |
 
 For a malformed handler consisting of a parameter list followed directly by a block, as in `try x catch (e) { B }`, recovery reports `EK0509` and does not additionally report `EK0505` for that same expression. The handler has no admitted function literal yet; this priority does not suppress independent source-context or separate syntax diagnostics. A repaired, well-formed `try x catch (e) => B` still gets `EK0505`. Write `x catch effect (e) => { B }` for an Effect handler, or `x catch (e) => { B }` for a plain fallback. Their throw and result rules remain distinct. Offer a mechanical repair only when the recovered parameters, body and source jump targets form the selected valid function literal; do not move outward jumps, invent bindings or implicitly run a plain handler's returned Effect.
 
@@ -265,6 +266,17 @@ A plain handler whose result type is an Effect gets a VIP-38 lint warning (`EK05
 // fragment: inside an effect function
 fetchUser(id) catch (e) => fetchUser("guest")              // warning: the fallback is an unrun Effect
 fetchUser(id) catch effect (e) => try fetchUser("guest")   // the fix: Effect.catch(fetchUser(id), () => fetchUser("guest"))
+```
+
+A plain handler with an explicit `throw` that can complete it gets a VIP-38 lint warning (`EK0511`), with the quick fix `catch effect (e) => { … }`. The `throw` is a JavaScript exception inside the handler, so the result dies; an effect handler's `throw` fails, typed. A `throw` caught inside the handler, or written in a nested function, does not warn. A call that may throw keeps `EK0403`, and an implicit exception stays a silent defect. The warning changes no program's meaning:
+
+```vibe es
+// compiler-gap: pending VIP-38
+// fragment: inside an effect function
+fetchUser(id) catch (e) => { throw new Wrapped(e) }                          // EK0511: dies with Wrapped
+fetchUser(id) catch effect (e) => { throw new Wrapped(e) }                   // the fix: fails with Wrapped
+fetchUser(id) catch (e) => { try { throw e } catch { return 0 } }            // no warning: caught inside
+fetchUser(id) catch (e) => () => { throw e }                                 // no warning: a nested function
 ```
 
 ## `await`

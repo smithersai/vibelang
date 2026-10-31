@@ -22,6 +22,7 @@ var (
 	EK0506 = message(506, errorCategory, "E catch h where e is not an Effect. Run an Effect with try inside effect code; use a function literal as the catch handler.")
 	EK0507 = message(507, errorCategory, "A handler whose result is a Promise or thenable. Run an Effect with try inside effect code; use a function literal as the catch handler.")
 	EK0508 = message(508, warningCategory, "A plain handler whose result is an Effect; use catch effect. Run an Effect with try inside effect code; use a function literal as the catch handler.")
+	EK0511 = message(511, warningCategory, "An explicit throw that can complete a plain catch handler makes the result a defect; use catch effect for a typed failure.")
 	EK0801 = message(801, warningCategory, "Using in effect code; use acquireDisposable inside scoped. Use acquireDisposable inside scoped for an Effect resource.")
 	EK0901 = message(901, errorCategory, "A static key without readonly, or whose initializer is not a string literal. Declare service contracts only, and supply a static readonly string-literal key if no key can be derived.")
 	EK0902 = message(902, errorCategory, "A service member that is not a PropertySignature, MethodSignature, KeyMember or DefaultMember. Declare service contracts only, and supply a static readonly string-literal key if no key can be derived.")
@@ -45,7 +46,7 @@ var (
 )
 
 func init() {
-	for _, m := range []*Message{EK0101, EK0102, EK0104, EK0105, EK0106, EK0107, EK0301, EK0401, EK0402, EK0403, EK0404, EK0405, EK0501, EK0503, EK0504, EK0505, EK0506, EK0507, EK0508, EK0801, EK0901, EK0902, EK0903, EK1201, EK1401, EK1701, EK1901, EK1902, EK1905, EK2001, EK2002, EK2003, EK2004, EK2102, EK2103, EK2201, EK2202, EK2803, EK3006} {
+	for _, m := range []*Message{EK0101, EK0102, EK0104, EK0105, EK0106, EK0107, EK0301, EK0401, EK0402, EK0403, EK0404, EK0405, EK0501, EK0503, EK0504, EK0505, EK0506, EK0507, EK0508, EK0511, EK0801, EK0901, EK0902, EK0903, EK1201, EK1401, EK1701, EK1901, EK1902, EK1905, EK2001, EK2002, EK2003, EK2004, EK2102, EK2103, EK2201, EK2202, EK2803, EK3006} {
 		registry[m.Code] = m
 	}
 }
