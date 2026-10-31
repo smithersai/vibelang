@@ -393,11 +393,13 @@ func (a *analyzer) checkFactoryProgram(file *ast.SourceFile, fn, expr *ast.Node)
 		}
 	}
 	for _, escape := range escapes(c, errors, info.errorSources, channelType(c, declared, "_E")) {
-		report(c, escape.source, EK9201, c.TypeToString(escape.t), name, "its contract says E = "+c.TypeToString(channelType(c, declared, "_E")))
+		d := report(c, escape.source, EK9201, typeTextAt(c, escape.t, escape.source), name, "its contract says E = "+c.TypeToString(channelType(c, declared, "_E")))
+		noteAmbientNamesake(c, d, channelType(c, declared, "_E"), escape)
 		coverFactoryReturn(c, expr)
 	}
 	for _, escape := range escapes(c, requirements, info.requirementSources, channelType(c, declared, "_R")) {
-		report(c, escape.source, EK9202, name, c.TypeToString(escape.t), c.TypeToString(channelType(c, declared, "_R")))
+		d := report(c, escape.source, EK9202, name, typeTextAt(c, escape.t, escape.source), c.TypeToString(channelType(c, declared, "_R")))
+		noteAmbientNamesake(c, d, channelType(c, declared, "_R"), escape)
 		coverFactoryReturn(c, expr)
 	}
 }

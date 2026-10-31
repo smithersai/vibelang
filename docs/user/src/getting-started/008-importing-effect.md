@@ -126,7 +126,7 @@ These names have both an Effect namespace and an ambient global type. Value and 
 `Cache`, `Console`, `Event`, `FileSystem`, `Headers`, `Iterable`, `KeyFormat`, `Record`, `Request`, `Response`, `Scheduler`, `Transferable`, `Worker`.
 <!-- end D311 DOM types -->
 
-These meanings apply in value and namespace positions. In a type position, a name the DOM declares as a type keeps the DOM's meaning, as in `type HostConsole = Console`. Use a qualified member such as `FileSystem.FileSystem` for Effect's type.
+These meanings apply in value and namespace positions. In a type position, a name the DOM declares as a type keeps the DOM's meaning, as in `type HostConsole = Console`. Use a qualified member such as `FileSystem.FileSystem` for Effect's type. A contract that writes the DOM's `FileSystem` where its body reads Effect's service reports `EK9202`, and `vibelang --fix` writes `FileSystem.FileSystem` there.
 
 
 

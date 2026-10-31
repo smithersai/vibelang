@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nexport effect function both(): Effect<string, never, FileSystem | Path> {\n  const fs = try FileSystem()\n  const path = try Path()\n  return path.sep + String(typeof fs)\n}\nexport effect function onlyFs(): Effect<string, never, FileSystem> {\n  const fs = try FileSystem()\n  return String(typeof fs)\n}\n")

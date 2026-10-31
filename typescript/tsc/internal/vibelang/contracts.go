@@ -306,15 +306,18 @@ func (a *analyzer) checkContract(file *ast.SourceFile, fn *ast.Node) {
 	if !k.inferred(channelE) {
 		declared := channelType(c, contractType, "_E")
 		for _, escape := range errorEscapes {
-			d := report(c, escape.source, EK9201, c.TypeToString(escape.t), name, "its contract says E = "+c.TypeToString(declared))
-			note(d, "Catch it inside {0}, or change the contract to {1}.", name, contractText(c, contractType, channelE, escape.t))
+			d := report(c, escape.source, EK9201, typeTextAt(c, escape.t, escape.source), name, "its contract says E = "+c.TypeToString(declared))
+			noteAmbientNamesake(c, d, declared, escape)
+			note(d, "Catch it inside {0}, or change the contract to {1}.", name, contractTextAt(c, contractType, channelE, escape))
 		}
 	}
 	if !k.inferred(channelR) {
 		declared := channelType(c, contractType, "_R")
 		for _, escape := range requirementEscapes {
-			d := report(c, escape.source, EK9202, name, c.TypeToString(escape.t), c.TypeToString(declared))
-			note(d, "Provide {0} inside {1} with provide layer { … }, or add it to the contract: {2}.", c.TypeToString(escape.t), name, contractText(c, contractType, channelR, escape.t))
+			needed := typeTextAt(c, escape.t, escape.source)
+			d := report(c, escape.source, EK9202, name, needed, c.TypeToString(declared))
+			noteAmbientNamesake(c, d, declared, escape)
+			note(d, "Provide {0} inside {1} with provide layer { … }, or add it to the contract: {2}.", needed, name, contractTextAt(c, contractType, channelR, escape))
 		}
 	}
 }
@@ -384,6 +387,42 @@ func contractText(c *checker.Checker, contract *checker.Type, channel int, extra
 		texts[i] = c.TypeToString(t)
 	}
 	return bangText(texts...)
+}
+
+// contractTextAt is contractText for the contract escape breaks, written for
+// code at escape's source: a member of escape that its bare name does not
+// reach there is written through its module, and replaces the member of the
+// channel that only shares its name (VIP-14: a contract's bare FileSystem is
+// the DOM's when the DOM lib is loaded).
+func contractTextAt(c *checker.Checker, contract *checker.Type, channel int, escape escape) string {
+	channels := []*checker.Type{successType(c, contract), channelType(c, contract, "_E"), channelType(c, contract, "_R")}
+	if namesake := ambientNamesake(c, channels[channel], escape.t, escape.source); namesake != nil {
+		var kept []*checker.Type
+		for _, member := range unionMembers(channels[channel]) {
+			if member != namesake {
+				kept = append(kept, member)
+			}
+		}
+		channels[channel] = c.GetUnionType(kept)
+	}
+	channels[channel] = c.GetUnionType([]*checker.Type{channels[channel], escape.t})
+	texts := make([]string, len(channels))
+	for i, t := range channels {
+		texts[i] = typeTextAt(c, t, escape.source)
+	}
+	return bangText(texts...)
+}
+
+// noteAmbientNamesake explains d when the contract's channel declared names,
+// by the same bare name, an ambient type where escape needs Effect's: the
+// DOM's FileSystem in R where the body reads Effect's FileSystem service.
+func noteAmbientNamesake(c *checker.Checker, d *ast.Diagnostic, declared *checker.Type, escape escape) {
+	namesake := ambientNamesake(c, declared, escape.t, escape.source)
+	if namesake == nil {
+		return
+	}
+	name := namesake.Symbol().Name()
+	note(d, "In a type position the bare name {0} is the ambient {0} type, not Effect's (VIP-14); Effect's {0} type is {0}.{0}.", name)
 }
 
 // functionDisplayName names fn in a diagnostic: its name, the name of the

@@ -265,8 +265,9 @@ func declaredImports(ctx context.Context, program *compiler.Program, file *ast.S
 // module's export of the module's own name that the file imports by name,
 // meaning the export once the import is gone and name means the module: a
 // type, a member the module does not export, and a service call M() keep
-// their text, since D311 gives the module's name those meanings; any other
-// use is written name.name. It reports false when a use cannot be rewritten,
+// their text, since D311 gives the module's name those meanings, except a
+// type whose name an ambient type takes (VIP-14); any other use is written
+// name.name. It reports false when a use cannot be rewritten,
 // such as an export of the binding.
 func moduleExportUses(c *checker.Checker, file *ast.SourceFile, module *ast.Symbol, export *ast.Symbol, name string) ([]sourceEdit, bool) {
 	var edits []sourceEdit
@@ -288,7 +289,10 @@ func moduleExportUses(c *checker.Checker, file *ast.SourceFile, module *ast.Symb
 		}
 		parent := node.Parent
 		switch {
-		case ast.IsTypeReferenceNode(parent) && export.Flags()&ast.SymbolFlagsType != 0:
+		// A bare type keeps the import's meaning only where no ambient type
+		// takes the name (VIP-14): with the DOM lib, FileSystem is the DOM's,
+		// so the removed import's FileSystem is written FileSystem.FileSystem.
+		case ast.IsTypeReferenceNode(parent) && export.Flags()&ast.SymbolFlagsType != 0 && !isBuiltinGlobalType(c, name):
 		case ast.IsPropertyAccessExpression(parent) && parent.Expression() == node && !moduleExports(c, module, parent.Name().Text()):
 		case ast.IsCallExpression(parent) && parent.Expression() == node && isEffectValueCallSite(parent) && moduleServiceKeyOf(c, module, name) != nil:
 		case ast.IsShorthandPropertyAssignment(parent):
