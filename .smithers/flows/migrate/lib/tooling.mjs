@@ -59,7 +59,26 @@ function files(root, dir = "") {
     return entry.isDirectory() ? skipped.has(entry.name) ? [] : files(root, path) : [path]
   })
 }
-export function wireDeveloperTools({ root, specsFor }) {
+/** String extension allowlists need native sources too; report their literal's location without guessing a rewrite. */
+export function extensionAllowlistWarnings(ts, text, file) {
+  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.getScriptKindFromFileName(file))
+  const warnings = []
+  const visit = node => {
+    if (ts.isArrayLiteralExpression(node) && node.elements.length &&
+        node.elements.every(e => ts.isStringLiteralLike(e) && /^\.[a-zA-Z][a-zA-Z0-9.]*$/.test(e.text))) {
+      const literal = node.elements.find(e => e.text === ".ts")
+      if (literal && !node.elements.some(e => e.text === ".vibe")) {
+        const line = source.getLineAndCharacterOfPosition(literal.getStart(source)).line + 1
+        warnings.push(`${file}:${line}: source-extension allowlist includes ".ts" but omits ".vibe"; include ".vibe" and exclude generated ".d.vibe.ts" sidecars`)
+      }
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(source)
+  return warnings
+}
+
+export function wireDeveloperTools({ root, specsFor, ts }) {
   const changed = [], builds = [], warnings = []
   const write = (file, text) => {
     if (existsSync(join(root, file)) && readFileSync(join(root, file), "utf8") === text) return
@@ -68,6 +87,9 @@ export function wireDeveloperTools({ root, specsFor }) {
   }
   // Only the repository's own packages: a vendored tree keeps its scripts and configs.
   const all = files(root).filter(ownedPaths(root))
+  if (ts) for (const file of all.filter(f => /\.(?:[cm]?[jt]sx?|vibe|json)$/.test(f) && !/\.d\.(?:vibe\.)?[cm]?ts$/.test(f))) {
+    warnings.push(...extensionAllowlistWarnings(ts, readFileSync(join(root, file), "utf8"), file))
+  }
   const manifests = all.filter(file => posix.basename(file) === "package.json")
   // VibeLang's dprint plugin is an npm: specifier, which carries no checksum.
   // A dprint configuration that pins every plugin by checksum (Smithers'

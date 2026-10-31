@@ -19,6 +19,8 @@ upgrade-effect ──▶ setup ──▶ plan ──▶ for each batch: codemod 
 | record | none | Commits the batch with jj, naming its files, with o200k token counts before and after | `batches/NN/record.json` |
 | report | none | Batches, tests, declaration identity, tokens, codemod gaps, issues and idiom lessons | `report.md`, `report.json` |
 
+Setup warns with the file and line when a string source-extension allowlist includes `.ts` but omits `.vibe`. It checks arrays and `Set` initializers in the repository’s own source and configuration files; comments, code embedded in strings and vendored packages are excluded. Review the collector, include native sources and exclude generated `.d.vibe.ts` sidecars. These warnings appear in `setup.json` under `wired.warnings`; setup leaves the allowlists for the repository to configure.
+
 Each step reads and writes the run directory, so a step that already recorded its result returns it, and a stopped run resumes where it stopped.
 
 The diagnostic reader accepts compiler output with `LF`, `CRLF`, or mixed line endings, preserving diagnostic codes, source locations and repair notes. A nonzero compiler exit with ordinary diagnostics is an error result; a crash, signal, or failing exit without diagnostics stops the step.

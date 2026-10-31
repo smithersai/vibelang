@@ -1,0 +1,6 @@
+{
+  "key": "migrate:extension-allowlist",
+  "file": "packages/website/scripts/playgroundFilesPlugin.ts",
+  "source": "// minimized foldkit source collector\nconst INCLUDED_EXTENSIONS = new Set([\n  '.ts', '.js', '.tsx', '.json'\n])\n",
+  "line": 3
+}
