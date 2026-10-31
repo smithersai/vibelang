@@ -1,0 +1,19 @@
+// expect-result: 7
+interface Api {
+ value: number;
+ readonly self: this
+}
+class Impl implements Api {
+ value = 7
+ get self(): this { return this }
+ next(): this { return this }
+}
+service Recursive: Api {
+ static readonly key = "shape-this/valid"
+}
+export effect function main() {
+ provide Recursive = new Impl() {
+  const impl = try Effect.service(Recursive)
+  return impl.self.value
+ }
+}

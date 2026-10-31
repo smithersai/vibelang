@@ -1,0 +1,1 @@
+A service's members form an object type. Name the implementation type, or declare a separate interface for polymorphic this.

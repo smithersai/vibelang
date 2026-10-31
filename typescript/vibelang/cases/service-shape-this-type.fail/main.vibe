@@ -1,0 +1,14 @@
+// expect: TS2526
+import { Effect } from "effect"
+service Direct {
+ static readonly key = "shape-this/direct";
+ self: this
+}
+service Method {
+ static readonly key = "shape-this/method";
+ next(): this!!
+}
+service Nested {
+ static readonly key = "shape-this/nested";
+ nested: { self: this }
+}

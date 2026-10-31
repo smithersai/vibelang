@@ -63,6 +63,8 @@ A `defaultValue` initializer has ordinary class-field context, even when its ser
 
 A service's shape may have properties named `key` or `defaultValue`. They are ordinary implementation members and can coexist with the service's `static readonly key` and `static readonly defaultValue`. Read them from the implementation returned by `try Effect.service(ServiceName)`.
 
+Service members form an object type, so a written `this` type there gets TypeScript's `TS2526` rather than referring to a service instance. For recursive members, name the implementation type; a separately declared interface can use its ordinary polymorphic `this` type and become a service's shape. Ordinary classes keep their `this` types.
+
 ## Declaring a service of any shape
 
 ```vibe
