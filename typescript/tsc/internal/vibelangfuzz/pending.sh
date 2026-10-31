@@ -24,9 +24,9 @@ go test -c -trimpath -o "$bin" "./$dir/"
 alternation() { sed 's/[][\\.^$*+?(){}|]/\\&/g' | sort -u | paste -sd'|' -; }
 lines() { cat "$dir"/testdata/pending/*.txt; }
 # A subtest name never holds a slash, so a key with one names no input.
-names=$(lines | sed -nE 's#^[A-Za-z]+ (corpus|feature):([^ /]+) .*#\2#p' | alternation)
-named=$(lines | sed -nE 's/^([A-Za-z]+) (corpus|feature):.*/\1/p' | alternation)
-whole=$(lines | sed -nE 's/^([A-Za-z]+) (rule|control|reject|diagnostic):.*/\1/p' | alternation)
+names=$(lines | sed -nE 's#^[A-Za-z]+[[:space:]]+(corpus|feature):([^ /]+)[[:space:]].*#\2#p' | alternation)
+named=$(lines | sed -nE 's/^([A-Za-z]+)[[:space:]]+(corpus|feature):.*/\1/p' | alternation)
+whole=$(lines | sed -nE 's/^([A-Za-z]+)[[:space:]]+(rule|control|reject|diagnostic):.*/\1/p' | alternation)
 
 cd "$dir"
 status=0
