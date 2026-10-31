@@ -92,3 +92,5 @@ VibeLang has one formatter (VIP-34): the language server's formatting, `textDocu
 ## Prettier, Oxfmt and migration
 
 The compiler also ships `vibelang/prettier` and `vibelang-format`. See [Developer tools after migration](developer-tools.md) for the integrations, their shared formatter, and how migration extends existing checks.
+
+The Prettier plugin formats the supplied buffer even when its path matches an ignore rule, and reports syntax errors in unsaved input. File-scanning commands select files using their ignore rules.

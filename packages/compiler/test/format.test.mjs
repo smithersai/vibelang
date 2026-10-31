@@ -91,3 +91,46 @@ test("formatting keeps a long provider list on one line and adds no Layer.mergeA
     assert.equal(formatSource(source, "provide.vibe"), source)
   }
 })
+
+// An explicit buffer is still source when its path is excluded from file discovery.
+test("text formatting processes ignored paths and reports their syntax errors", () => {
+  const dir = repository({ ".gitignore": "generated/\n.cache/\nnode_modules/\n" })
+  try {
+    for (const folder of ["generated", ".cache", "node_modules"]) {
+      const file = join(dir, folder, "pkg", "buffer.vibe")
+      mkdirSync(dirname(file), { recursive: true })
+      writeFileSync(file, "export const stored = 99\n")
+      assert.equal(formatSource("export   const   value=1;\n", file), "export const value = 1\n")
+      assert.throws(() => formatSource("const broken = ;", file), /broken|Unexpected|Expression/)
+      assert.equal(readFileSync(file, "utf8"), "export const stored = 99\n")
+    }
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+})
+
+test("explicit text formatting preserves content across ignored-path and whitespace mutations", async () => {
+  const { default: fc } = await import("fast-check")
+  const dir = repository({ ".gitignore": "generated/\n.cache/\nnode_modules/\n" })
+  try {
+    fc.assert(fc.property(
+      fc.constantFrom("generated", ".cache", "node_modules"),
+      fc.integer({ min: -10000, max: 10000 }),
+      fc.integer({ min: 1, max: 8 }),
+      (folder, value, spaces) => {
+        const file = join(dir, folder, "pkg", "mutation.vibe")
+        const input = "export" + " ".repeat(spaces) + "const   value=" + value + ";\n"
+        assert.equal(formatSource(input, file), "export const value = " + value + "\n")
+      }
+    ), { numRuns: 24 })
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+})
+
+test("formatter file discovery respects ignored paths", () => {
+  const input = "export   const   value=1;\n"
+  const dir = repository({ ".gitignore": "generated/\n", "generated/ignored.vibe": input, "visible.vibe": input })
+  try {
+    const result = spawnSync(process.execPath, [cli, "--write"], { cwd: dir, encoding: "utf8" })
+    assert.equal(result.status, 0, result.stdout + result.stderr)
+    assert.equal(readFileSync(join(dir, "visible.vibe"), "utf8"), "export const value = 1\n")
+    assert.equal(readFileSync(join(dir, "generated/ignored.vibe"), "utf8"), input)
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+})

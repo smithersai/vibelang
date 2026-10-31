@@ -13,6 +13,8 @@ the same formatter used by `vibelang-format --write` and
 the quote style and line width; its other layout options do not alter the
 result.
 
+For editor integrations, `formatSource(text, filePath)` from `vibelang/format` formats the supplied buffer even when its path is ignored or under `node_modules`. The full path selects the repository's style; the caller selects which buffers to format. The Prettier plugin uses the same behavior and reports syntax errors in unsaved input. File-scanning commands apply their ignore rules when selecting files.
+
 `vibelang-format` reads the same two settings from the repository's formatter
 configuration, so `.vibe` files follow the style of its `.ts` files. It uses
 the nearest configuration from the file's directory up to the repository's

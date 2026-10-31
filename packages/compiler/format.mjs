@@ -99,7 +99,11 @@ function dprint(args, input) {
 // style's quote style and print width: the repository's (repositoryStyle)
 // unless the caller, such as Prettier, gives its own.
 export function formatSource(text, filePath = "file.vibe", style = repositoryStyle(filePath)) {
-  return withConfig(style, config => dprint(["fmt", "--config", config, "--stdin", resolve(filePath)], text))
+  // The caller supplied a buffer, so dprint must not filter it by its path.
+  return formatText(text, filePath, style, ["--no-gitignore", "--allow-node-modules"])
+}
+function formatText(text, filePath, style, flags = []) {
+  return withConfig(style, config => dprint(["fmt", ...flags, "--config", config, "--stdin", resolve(filePath)], text))
 }
 export function formatFiles(args) {
   const check = args.includes("--check")
@@ -111,7 +115,7 @@ export function formatFiles(args) {
   let failed = false
   for (const file of files) {
     const before = readFileSync(file, "utf8")
-    const after = formatSource(before, file)
+    const after = formatText(before, file, repositoryStyle(file))
     if (before === after) continue
     if (check) { console.error(file + ": needs formatting"); failed = true }
     else writeFileSync(file, after)
