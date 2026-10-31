@@ -718,6 +718,11 @@ func checkPlatformUse(c *checker.Checker, file *ast.SourceFile, id *ast.Node) {
 	members, top := accessChain(id)
 	d := report(c, use, EK4402, name)
 	notePlatformAPI(d, platformAPIOf(ref, members), hatchExample(file, top))
+	if call, method := consoleCall(use); call != nil {
+		if why := consoleFixRefusal(c, call, method); why != "" {
+			note(d, "No quick fix: {0}", why)
+		}
+	}
 	if ref.unresolved {
 		cover(c, id) // EK4402 explains TypeScript's "cannot find name"
 	}

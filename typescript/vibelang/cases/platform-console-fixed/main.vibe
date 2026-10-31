@@ -1,0 +1,14 @@
+// expect-result: 3
+// console in effect code draws EK4402 (D6). Its quick fix writes Effect's
+// Console, a default service that writes to the same console and adds no
+// failure or requirement, so report's type stays number!never!never:
+// platform-console-fixed is what vibelang --fix writes.
+export effect function report(name: string): number!never!never {
+  try Console.log("report", name)
+  try Console.error("failed:", name)
+  return name.length
+}
+
+export effect function main(): number!never!never {
+  return try report("Ada")
+}
