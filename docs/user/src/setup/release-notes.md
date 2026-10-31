@@ -312,6 +312,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - An optional tuple element in the error or requirement slot of an Effect type, such as `number!([string, boolean?])`, parsed wrongly and declared a malformed tuple; it now declares the same tuple as `Effect.Effect<number, [string, boolean?]>`.
 
 - Build entry globs could emit empty chunks from generated `.d.vibe.ts` files beside the source outputs; the Rolldown plugin now excludes those sidecars from single, array and named entries, including `tsdown` builds.
+
+- Knip marked later names in a `@public` variable declaration as unused; all bindings in that declaration now keep the marker.
 - The ESLint corpus check could report a missing identifier node for a name written with a Unicode escape; it now matches the decoded name at the same source position while still detecting missing nodes.
 - Nested schema alias rules still appeared as known gaps after their fix landed; those rules and their corpus inputs now run as strict checks of `EK2109`.
 

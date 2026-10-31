@@ -1,0 +1,10 @@
+{
+  "property": "KnipLocalTypeQueryUsage",
+  "input": {
+    "form": "optional",
+    "name": "sample",
+    "exported": true,
+    "source": "export const sample = { value: 1 };\nexport function read(input?: typeof sample): number { return input?.value ?? 0; }\n"
+  },
+  "rule": "T3code: Knip surface erases same-module typeof export use (optional); lane migfix-t3code"
+}

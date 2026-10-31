@@ -1,0 +1,12 @@
+{
+  "property": "KnipPublicJSDoc",
+  "rule": "Chapter0/7: keep the ordinary comment barrier after @public; lane fuzz-findings (follow-up fix)",
+  "knownFailure": true,
+  "input": {
+    "form": "variable",
+    "layout": "ordinary-after",
+    "name": "make",
+    "public": true,
+    "source": "/** @public */\n/* An adjacent comment. */\nexport const make = (): number => 1;\nexport const layer = 1;\n"
+  }
+}

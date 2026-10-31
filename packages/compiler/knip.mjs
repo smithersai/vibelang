@@ -75,7 +75,12 @@ function stubs(declaration, reads) {
   const types = reads.length ? `[${reads.join(", ")}]` : ""
   const value = types ? `0 as unknown as ${types}` : "0"
   switch (declaration.type) {
-    case "VariableDeclaration": return declaration.declarations.flatMap((d) => names(d.id)).map((n) => `export const ${n} = ${value}`)
+    case "VariableDeclaration": {
+      // Knip applies a variable statement's tags to all its exported names.
+      // Keep its bindings together so the JSDoc keeps that statement scope.
+      const bindings = declaration.declarations.flatMap((d) => names(d.id))
+      return bindings.length ? [`export const ${bindings.map((n) => `${n} = ${value}`).join(", ")}`] : []
+    }
     case "FunctionDeclaration":
     case "TSDeclareFunction": return name ? [`export function ${name}(${types ? `..._: ${types}` : ""}) {}`] : []
     case "ClassDeclaration": return name ? [`export class ${name} {${types ? ` _?: ${types} ` : ""}}`] : []

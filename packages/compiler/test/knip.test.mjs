@@ -47,9 +47,7 @@ test("a .vibe module compiles to its imports, export stubs, dynamic imports and 
     "export type Id = unknown",
     "export interface Box {}",
     "export function find(..._: [T]) {}",
-    "export const c = 0",
-    "export const d = 0",
-    "export const f = 0",
+    "export const c = 0, d = 0, f = 0",
     "export class K {}",
     'export { a as b } from "./a.vibe"',
     'export * from "./all.vibe"',
@@ -90,8 +88,8 @@ export interface Shape { s: typeof sample }
 // (drive-t3code: shared Net exports make with that marker and uses it only
 // for its own layer). Each stub carries the JSDoc comments written between the
 // export and the statement before it, as TypeScript attaches them: across a
-// blank line or a line comment, and to the first name a multi-binding export
-// declares only; not a comment that belongs to an earlier statement, such as
+// blank line or a line comment. A variable statement keeps its bindings together,
+// so Knip gives its tags the original statement scope; not a comment that belongs to an earlier statement, such as
 // one on the line where that statement ends.
 test("an export's stub keeps the JSDoc written before it, whose tags Knip reads", { skip }, () => {
   const text = `/** @public */
@@ -132,8 +130,7 @@ export { local as renamed }
     "/** @public */",
     "export class K {}",
     "/** @public */",
-    "export const a = 0",
-    "export const b = 0",
+    "export const a = 0, b = 0",
     "export const none = 0",
     "export const block = 0",
     "export const trailing = 0",
@@ -167,8 +164,8 @@ test("nested defaults and rest bindings preserve every exported name", { skip },
   `
   assert.equal(compile(text, "src/bindings.vibe"), [
     'import "vibelang-runtime"',
-    ...["plain", "alias", "value", "nestedRest", "first", "remaining", "objectRest", "head", "renamed", "tail"]
-      .map(name => `export const ${name} = 0`),
+    "export const plain = 0, alias = 0, value = 0, nestedRest = 0, first = 0, remaining = 0, objectRest = 0",
+    "export const head = 0, renamed = 0, tail = 0",
     ""
   ].join("\n"))
 })

@@ -1,0 +1,10 @@
+{
+  "property": "SchemaCodecValueReferences",
+  "rule": "Chapters0/6: codec references are runtime value reads; the TypeScript counterpart keeps native scope roles",
+  "input": {
+    "form": "bare",
+    "name": "Codec17",
+    "variant": 0,
+    "fixture": "foldkit-codec-reference.vibe"
+  }
+}

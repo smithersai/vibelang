@@ -1,0 +1,11 @@
+{
+  "property": "KnipPublicJSDoc",
+  "rule": "Chapter0/7: Knip preserves the TypeScript public-JSDoc attachment behavior; lane migfix-t3code",
+  "input": {
+    "form": "interface",
+    "layout": "ordinary-before",
+    "name": "make",
+    "public": true,
+    "source": "// Earlier comment\n/** @public */\nexport interface make { value: number }\nexport const layer = 1;\n"
+  }
+}

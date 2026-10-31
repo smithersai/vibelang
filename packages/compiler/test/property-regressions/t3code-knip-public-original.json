@@ -1,0 +1,12 @@
+{
+  "property": "KnipPublicJSDoc",
+  "rule": "Chapter0/7: Knip preserves the TypeScript public-JSDoc attachment behavior; lane migfix-t3code",
+  "input": {
+    "fixture": "t3code-knip-public-make",
+    "form": "variable",
+    "layout": "direct",
+    "name": "make",
+    "public": true,
+    "source": "/** @public */\nexport const make = (): number => 1;\nexport const layer = make();\n"
+  }
+}

@@ -1,0 +1,2 @@
+const Names = Schema.Tuple([Schema.String, Schema.String])
+export schema Locale { names: Names }
