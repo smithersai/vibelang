@@ -26,9 +26,28 @@ const uri = (file) => pathToFileURL(file).href
 // LSP_ARGS adds server arguments, such as "--pprofDir /tmp/prof".
 const extra = (process.env.LSP_ARGS ?? "").split(" ").filter(Boolean)
 const child = spawn(server, ["--lsp", "--stdio", ...extra], { cwd: project, stdio: ["pipe", "pipe", "pipe"] })
+const closed = new Promise(resolve => child.once("close", resolve))
 let buffer = Buffer.alloc(0)
 let nextId = 1
 const pending = new Map()
+let failure
+// Drain stderr even on success; retain only its tail for a failed request.
+let stderr = Buffer.alloc(0)
+child.stderr.on("data", chunk => { stderr = Buffer.concat([stderr, chunk]).subarray(-8_192) })
+child.stderr.on("error", error => fail("server stderr failed (" + (error.code ?? error.message) + ")"))
+function fail(reason) {
+  failure ??= reason
+  for (const [id, entry] of pending) {
+    clearTimeout(entry.timer)
+    entry.reject(new Error(`request ${id} (${entry.method}): ${reason}`))
+  }
+  pending.clear()
+}
+child.on("error", (error) => fail(`server spawn failed (${error.code ?? error.message})`))
+child.on("exit", (code, signal) => fail(`server exited (code ${code}, signal ${signal ?? "none"})`))
+child.stdout.on("end", () => fail("server stdout closed"))
+child.stdout.on("error", (error) => fail(`server stdout failed (${error.code ?? error.message})`))
+child.stdin.on("error", (error) => fail(`server stdin failed (${error.code ?? error.message})`))
 child.stdout.on("data", (chunk) => {
   buffer = Buffer.concat([buffer, chunk])
   for (;;) {
@@ -39,8 +58,11 @@ child.stdout.on("data", (chunk) => {
     const message = JSON.parse(buffer.subarray(end + 4, end + 4 + length).toString())
     buffer = buffer.subarray(end + 4 + length)
     if (message.method === undefined) {
-      pending.get(message.id)?.(message)
+      const entry = pending.get(message.id)
+      if (!entry) continue
       pending.delete(message.id)
+      clearTimeout(entry.timer)
+      message.error ? entry.reject(new Error(`request ${message.id} (${entry.method}): ${message.error.message}`)) : entry.resolve(message.result)
     } else if (message.id !== undefined) {
       const result = message.method === "workspace/configuration" ? message.params.items.map(() => null) : null
       send({ jsonrpc: "2.0", id: message.id, result })
@@ -48,18 +70,28 @@ child.stdout.on("data", (chunk) => {
   }
 })
 function send(message) {
+  if (failure) throw new Error(`server transport unavailable: ${failure}`)
   const body = Buffer.from(JSON.stringify(message))
   child.stdin.write(`Content-Length: ${body.length}\r\n\r\n`)
   child.stdin.write(body)
 }
 function request(method, params) {
   const id = nextId++
-  send({ jsonrpc: "2.0", id, method, params })
+  if (failure) return Promise.reject(new Error(`request ${id} (${method}): ${failure}`))
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`${method} timed out`)), 120_000)
-    pending.set(id, (message) => { clearTimeout(timer); message.error ? reject(new Error(message.error.message)) : resolve(message.result) })
+    const timer = setTimeout(() => {
+      pending.delete(id)
+      reject(new Error(`request ${id} (${method}) timed out`))
+    }, 120_000)
+    pending.set(id, { method, timer, resolve, reject })
+    try {
+      send({ jsonrpc: "2.0", id, method, params })
+    } catch (error) {
+      fail(error.message)
+    }
   })
 }
+
 const open = (file) => send({ jsonrpc: "2.0", method: "textDocument/didOpen", params: { textDocument: { uri: uri(file), languageId: ext === ".vibe" ? "vibelang" : "typescript", version: 1, text: readFileSync(file, "utf8") } } })
 async function timed(fn) {
   const start = performance.now()
@@ -108,5 +140,18 @@ try {
   await benchmark()
 } catch (error) {
   child.kill()
-  throw error
+  // Reap the owned server before reporting its final exit cause. A server that
+  // ignores SIGTERM still cannot keep a failed benchmark alive indefinitely.
+  const killTimer = setTimeout(() => child.kill("SIGKILL"), 1_000)
+  try {
+    await closed
+  } finally {
+    clearTimeout(killTimer)
+  }
+  const cause = child.pid ? `server exited (code ${child.exitCode}, signal ${child.signalCode ?? "none"})` : "server did not start"
+  console.error(`LSP benchmark: ${error.message}; ${cause}${stderr.length ? "\nserver stderr:\n" + stderr.toString("utf8") : ""}`)
+  process.exitCode = 1
+} finally {
+  for (const entry of pending.values()) clearTimeout(entry.timer)
+  pending.clear()
 }

@@ -1488,6 +1488,8 @@ Measured 2026-10-17 on the build server, VibeLang at `main` plus the plain-funct
 - **The fixed cost is the effect root.** A file that uses any effect root name (D146), even `log`, makes the program import `effect` itself, whose index loads every module: about 515 more declaration files. The examples load 738 files, spend about 0.10 s parsing them and 2 ms checking, and peak at 220 MiB; the single-file shape, which uses no root name, loads 241. Importing each used module implicitly (`effect/Console`, `effect/Effect` for the bare functions), as the emitted JavaScript already does, would remove most of that. Name resolution (`preludeSymbol`), completions (`completions.go`), and method syntax (`effectModuleNamespace`) read the root module's symbol today and would need the per-module symbols instead.
 - **The docs corpus** (684 VibeLang and TypeScript files as one program, 1594 files with dependencies) compiles in 0.57 s.
 
+The LSP benchmark reports a failed request's id and method when its server exits or its transport closes, then terminates and reaps the server. A server that ignores `SIGTERM` is killed with `SIGKILL` after one second. Failures include the server stderr tail (at most `8 KiB`); stderr is drained throughout the run. Requests to a live server retain their `120 s` deadline.
+
 Language server, `scripts/bench/lsp.mjs` on the chain shape (open the last module, pull its diagnostics, hover the call into the previous module):
 
 | | VibeLang, 200 modules | VibeLang, 400 modules | Effect TS (upstream), 200 or 400 |

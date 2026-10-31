@@ -6,9 +6,9 @@ import { join } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { test } from "node:test"
 
-const script = fileURLToPath(new URL("./bench/lsp.mjs", import.meta.url))
+const script = process.env.VIBELANG_BENCH_LSP_SCRIPT ?? fileURLToPath(new URL("./bench/lsp.mjs", import.meta.url))
 
-for (const mode of ["success", "initialize-error", "diagnostic-error"]) {
+for (const mode of ["success", "initialize-error", "diagnostic-error", "initialize-exit", "initialize-zero-exit", "initialize-noisy-exit", "initialize-slow-term", "initialize-ignore-term", "diagnostic-exit", "diagnostic-signal", "hover-exit", "stdout-close", "stdout-close-ignore-term", "stdin-close"]) {
   test("LSP benchmark owns its server: " + mode, async t => {
     const root = mkdtempSync(join(tmpdir(), "vibelang lsp bench-"))
     let peer
@@ -23,9 +23,12 @@ for (const mode of ["success", "initialize-error", "diagnostic-error"]) {
     for (let i = 0; i < 4; i++) writeFileSync(join(project, "src/m" + i + ".vibe"), "export function run" + i + "() { return run" + (i - 1) + "() }\n")
     const binary = join(root, "server")
     writeFileSync(binary, "#!" + process.execPath + "\n" + [
-      'import { appendFileSync, writeFileSync } from "node:fs"',
+      'import { appendFileSync, closeSync, writeFileSync, writeSync } from "node:fs"',
       'writeFileSync(process.env.BENCH_PEER_PID, String(process.pid))',
       'setInterval(() => {}, 1000)',
+      'if (process.env.BENCH_PEER_MODE === "stdout-close-ignore-term") process.on("SIGTERM", () => {})',
+      'if (process.env.BENCH_PEER_MODE === "initialize-slow-term") process.on("SIGTERM", () => setTimeout(() => process.exit(0), 500))',
+      'if (process.env.BENCH_PEER_MODE === "initialize-ignore-term") process.on("SIGTERM", () => {})',
       'let buffer = Buffer.alloc(0)',
       'const reply = body => { const text = JSON.stringify(body); process.stdout.write("Content-Length: " + Buffer.byteLength(text) + "\\r\\n\\r\\n" + text) }',
       'process.stdin.on("data", chunk => {',
@@ -36,9 +39,17 @@ for (const mode of ["success", "initialize-error", "diagnostic-error"]) {
       '    if (buffer.length < end + 4 + length) return',
       '    const message = JSON.parse(buffer.subarray(end + 4, end + 4 + length)); buffer = buffer.subarray(end + 4 + length)',
       '    appendFileSync(process.env.BENCH_PEER_TRACE, JSON.stringify(message) + "\\n")',
+      '    const mode = process.env.BENCH_PEER_MODE',
+      '    if (mode === "stdin-close" && message.method === "initialize") { process.stdin.destroy(); try { closeSync(0) } catch {}; reply({jsonrpc: "2.0", id: message.id, result: null}); return }',
+      '    if (mode === "initialize-noisy-exit" && message.method === "initialize") { process.stderr.write("NOISE_START" + "x".repeat(256 * 1024), () => { writeSync(2, "fixture server stopped during initialize\\n"); process.exit(23) }); return }',
+      '    if (mode === "initialize-zero-exit" && message.method === "initialize") { writeSync(2, "fixture server stopped during initialize\\n"); process.exit(0) }',
+      '    if ((mode === "initialize-exit" && message.method === "initialize") || (mode === "diagnostic-exit" && message.method === "textDocument/diagnostic")) process.exit(23)',
+      '    if (mode === "hover-exit" && message.method === "textDocument/hover") process.exit(23)',
+      '    if (mode === "diagnostic-signal" && message.method === "textDocument/diagnostic") process.kill(process.pid, "SIGTERM")',
+      '    if (mode.startsWith("stdout-close") && message.method === "textDocument/diagnostic") { process.stdout.end(); return }',
       '    if (message.method === "exit") process.exit(0)',
       '    if (message.id === undefined) continue',
-      '    const failing = process.env.BENCH_PEER_MODE === "initialize-error" ? "initialize" : process.env.BENCH_PEER_MODE === "diagnostic-error" ? "textDocument/diagnostic" : null',
+      '    const failing = process.env.BENCH_PEER_MODE.startsWith("initialize-") ? "initialize" : process.env.BENCH_PEER_MODE === "diagnostic-error" ? "textDocument/diagnostic" : null',
       '    if (message.method === failing) reply({jsonrpc: "2.0", id: message.id, error: {code: -32603, message: "fixture " + message.method + " failed"}})',
       '    else reply({jsonrpc: "2.0", id: message.id, result: message.method === "textDocument/diagnostic" ? {items: []} : message.method === "textDocument/hover" ? {contents: "fixture hover"} : null})',
       '  }',
@@ -70,8 +81,43 @@ for (const mode of ["success", "initialize-error", "diagnostic-error"]) {
       assert.ok(calls.some(call => call.method === "shutdown"))
     } else {
       assert.equal(result.status, 1, result.stdout + result.stderr)
-      assert.match(result.stderr, /fixture .* failed/)
+      if (mode.endsWith("-error") || mode === "initialize-slow-term" || mode === "initialize-ignore-term") assert.match(result.stderr, /fixture .* failed/)
+      else {
+        const method = mode.startsWith("initialize-") ? "initialize" : mode === "hover-exit" ? "textDocument/hover" : "textDocument/diagnostic"
+        assert.ok(result.stderr.includes(method), result.stderr)
+        assert.match(result.stderr, /request \d+/)
+        if (mode.endsWith("-exit")) assert.match(result.stderr, mode === "initialize-zero-exit" ? /code 0/ : /code 23/)
+        else if (mode.endsWith("-signal")) assert.match(result.stderr, /SIGTERM/)
+        else if (mode === "stdin-close") assert.match(result.stderr, /stdin failed \(EPIPE\)/)
+        else {
+          assert.match(result.stderr, /stdout closed/)
+          if (mode === "stdout-close-ignore-term") assert.match(result.stderr, /SIGKILL/)
+        }
+      }
+      if (["initialize-zero-exit", "initialize-noisy-exit"].includes(mode)) assert.match(result.stderr, /fixture server stopped during initialize/)
+      if (mode === "initialize-noisy-exit") {
+        assert.ok(result.stderr.length < 12_000, "stderr evidence must stay bounded")
+        assert.doesNotMatch(result.stderr, /NOISE_START/)
+      }
       assert.equal(result.stdout, "")
     }
   })
 }
+
+test("LSP benchmark reports a server spawn failure without waiting for its request deadline", () => {
+  const root = mkdtempSync(join(tmpdir(), "vibelang lsp missing-"))
+  try {
+    mkdirSync(join(root, "src"))
+    writeFileSync(join(root, "src/m0.vibe"), "export const value = 1\n")
+    const result = spawnSync(process.execPath, [script, join(root, "missing-server"), root, "2"], {
+      encoding: "utf8", timeout: 10_000, killSignal: "SIGKILL"
+    })
+    assert.equal(result.error, undefined, result.stderr)
+    assert.equal(result.status, 1, result.stdout + result.stderr)
+    assert.equal(result.stdout, "")
+    assert.match(result.stderr, /request 1.*initialize/)
+    assert.match(result.stderr, /ENOENT/)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
