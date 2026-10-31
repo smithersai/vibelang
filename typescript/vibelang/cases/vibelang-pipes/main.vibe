@@ -62,7 +62,7 @@ export effect function main() {
   const hot: string[] = []
   for try (const reading of readings() |> %.filter((c) => c > 25).map((c) => `${c} C`)) hot.push(reading)
   const odd = 7 |> % % 2
-  const signed = counted(-4) |> % > 0 ? % : 0
+  const signed = counted(-4) |> (% > 0 ? % : 0)
   const nested = 7 |> (`${%}` |> `<${%}>`)
   const hatched = try sync(() => "id" |> `${%}-1`)
   return { price, retried, label, hot, handlers: handlers(), odd, signed, evaluations, doubled, nested, forked: try forked(), hatched }

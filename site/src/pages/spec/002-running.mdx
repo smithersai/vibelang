@@ -1562,6 +1562,8 @@ const bad = 1 |> f()                       // syntax error: missing topic
 const outer = 1 |> (2 |> % + 1)            // syntax error: outer body has no topic
 ```
 
+An unparenthesized conditional at either end of a pipe is `EK2301`: `x |> % ? 1 : 2 // EK2301`; write `(x |> %) ? 1 : 2` or `x |> (% ? 1 : 2)`.
+
 The admitted controls have the following Effect TypeScript counterpart, with `Success([2, 4, 4, 1, 11, 7, true, 2, 2, 3])`:
 
 ```ts [Effect]

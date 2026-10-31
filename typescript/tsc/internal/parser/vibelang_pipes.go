@@ -3,6 +3,7 @@ package parser
 import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
 // The pipe operator (design D154) in a .vibe file, as in TC39's Hack-style
@@ -19,8 +20,9 @@ import (
 // as ordinary code; the checker gives it the body's type. A pipe binds
 // looser than every binary operator and the conditional operator, as an
 // assignment does, and associates to the left: a |> f(%) |> g(%) is
-// (a |> f(%)) |> g(%). A body is a conditional expression, so an arrow
-// function, an assignment, or a yield there needs parentheses.
+// (a |> f(%)) |> g(%). A body is a binary expression, so a conditional
+// (EK2301), an arrow function, an assignment, or a yield there needs
+// parentheses.
 //
 // % where an expression starts is the topic: an identifier named % flagged
 // NodeFlagsVibeLang, which the checker resolves to the topic of the innermost
@@ -56,6 +58,7 @@ func (p *Parser) parsePipeRest(left *ast.Expression, pos int) *ast.Expression {
 		bodyPos := p.nodePos()
 		body := p.parseBinaryExpressionOrHigher(ast.OperatorPrecedenceLowest)
 		body = p.parseVibeLangCatchRest(body, bodyPos) // x |> f(%) catch y catches inside the body (vibelang_catch.go)
+		p.rejectPipeConditional()
 		body = p.parseConditionalExpressionRest(body, bodyPos, false /*allowReturnTypeInArrowFunction*/)
 		p.recordVibeSyntax(VibeSyntax{Kind: VibeSyntaxPipe, Word: word, Left: p.sourceRange(left), Right: p.sourceRange(body), Range: core.NewTextRange(p.sourceRange(left).Pos(), body.End())})
 		if stage := curriedPipeStage(body); stage != nil && curried {
@@ -71,6 +74,22 @@ func (p *Parser) parsePipeRest(left *ast.Expression, pos int) *ast.Expression {
 		curried = false // the next stage's left side runs this body
 	}
 	return left
+}
+
+// PipeConditionalMessage is EK2301's text, for a ? after a pipe body.
+const PipeConditionalMessage = "A conditional cannot stand unparenthesized at either end of a pipe. Write (x |> f(%)) ? a : b to test the pipe's result, or x |> (f(%) ? a : b) to make the conditional the body."
+
+// rejectPipeConditional reports EK2301 when a ? follows a pipe body. The
+// pinned proposal rejects an unparenthesized conditional as a pipe body, and
+// Appendix A rejects a pipe as an unparenthesized conditional test, so
+// x |> f(%) ? a : b has no valid reading. The parser still reads the
+// conditional as the body, so the error stands alone.
+func (p *Parser) rejectPipeConditional() {
+	if p.token != ast.KindQuestionToken {
+		return
+	}
+	p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, p.tokenRange(), "EK", diagnostics.CategoryError, 2301, PipeConditionalMessage))
+	p.hasParseError = true
 }
 
 // isFunctionLiteral reports whether node, inside any parentheses, is an arrow

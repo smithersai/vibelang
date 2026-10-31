@@ -1,0 +1,12 @@
+// expect: EK2301 EK2301 EK2301 EK2301
+// An unparenthesized conditional at either end of a pipe has no reading
+// (Appendix A, ConditionalExpression; the pinned proposal's conditional-body
+// error): x |> f(%) ? a : b is EK2301 at the ?, not x |> (f(%) ? a : b).
+function f(n: number) { return n + 1 }
+export function rejected(x: number) {
+  const identity = x |> % ? 1 : 2
+  const called = x |> f(%) ? 1 : 2
+  const chained = x |> f(%) |> % > 1 ? "big" : "small"
+  const inBranch = true ? x |> % ? 1 : 2 : 3
+  return [identity, called, chained, inBranch]
+}

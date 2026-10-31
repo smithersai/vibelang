@@ -1,5 +1,7 @@
 package vibelang
 
+import "github.com/microsoft/TypeScript/tsc/internal/parser"
+
 // Appendix B assigns these identifiers ahead of their owning VIP implementations.
 // Registration alone never adds a checker or changes a diagnostic trigger.
 var (
@@ -37,12 +39,14 @@ var (
 	EK2103 = message(2103, errorCategory, "Yield* in a producer. Yield values from a producer and return without a value; its return type is a Stream.")
 	EK2201 = message(2201, errorCategory, "An interruption block outside effect code. Use interruption blocks inside effect code and restore inside the same uninterruptible region.")
 	EK2202 = message(2202, errorCategory, "Restore in an effect arrow or block nested in an uninterruptible block. Use interruption blocks inside effect code and restore inside the same uninterruptible region.")
+	// EK2301: a conditional at either end of a pipe; the parser reports it (parser.PipeConditionalMessage).
+	EK2301 = message(2301, errorCategory, parser.PipeConditionalMessage)
 	EK2803 = message(2803, errorCategory, "A default on a generic data type parameter. Use at most four unconstrained type parameters without defaults.")
 	EK3006 = message(3006, errorCategory, "An error code or an unknown code in vibe.severities; remove the entry. Remove the invalid entry from vibe.severities; only warning codes may be configured.")
 )
 
 func init() {
-	for _, m := range []*Message{EK0101, EK0102, EK0104, EK0105, EK0106, EK0107, EK0301, EK0401, EK0402, EK0403, EK0404, EK0405, EK0501, EK0503, EK0504, EK0505, EK0506, EK0507, EK0508, EK0511, EK0801, EK0901, EK0902, EK0903, EK1201, EK1401, EK1701, EK1901, EK1902, EK1905, EK2102, EK2103, EK2201, EK2202, EK2803, EK3006} {
+	for _, m := range []*Message{EK0101, EK0102, EK0104, EK0105, EK0106, EK0107, EK0301, EK0401, EK0402, EK0403, EK0404, EK0405, EK0501, EK0503, EK0504, EK0505, EK0506, EK0507, EK0508, EK0511, EK0801, EK0901, EK0902, EK0903, EK1201, EK1401, EK1701, EK1901, EK1902, EK1905, EK2102, EK2103, EK2201, EK2202, EK2301, EK2803, EK3006} {
 		registry[m.Code] = m
 	}
 }

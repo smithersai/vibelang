@@ -96,6 +96,7 @@ Registration reserves a code; it does not mean the compiler already implements e
 | `EK2126` | a constraint on a generic `data` type parameter |
 | `EK2201` | an interruption block outside effect code |
 | `EK2202` | `restore` in a `for concurrent` head binding initialization or body, or `restore` that captures an outer mask across an `effect` function, arrow, method, producer or block |
+| `EK2301` | an unparenthesized conditional at either end of a pipe, `x \|> f(%) ? a : b`; write `(x \|> f(%)) ? a : b` or `x \|> (f(%) ? a : b)`; `vibelang --fix` writes the second, the old reading |
 | `EK2801` | a `data` declaration with more than 4 type parameters |
 | `EK2803` | a default on a generic `data` type parameter |
 | `EK3001` | two services with the same key |

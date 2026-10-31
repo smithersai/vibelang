@@ -249,10 +249,36 @@ func unsafePipeStageArgument(c *checker.Checker, n *ast.Node) bool {
 	return n.ForEachChild(func(child *ast.Node) bool { return unsafePipeStageArgument(c, child) })
 }
 
+// pipeConditionalFixes parenthesizes the conditional body of each pipe that
+// EK2301 rejects. Through VibeLang 0.0.11, x |> f(%) ? a : b compiled as
+// x |> (f(%) ? a : b); the parser still reads it so (vibelang_pipes.go), and
+// the parentheses keep that meaning.
+func pipeConditionalFixes(file *ast.SourceFile, refused map[string]bool) []fileFix {
+	if !isVibeLangFile(file) || !slices.ContainsFunc(file.Diagnostics(), func(d *ast.Diagnostic) bool { return d.Source() == diagnosticSource && d.Code() == 2301 }) {
+		return nil
+	}
+	var fixes []fileFix
+	var visit func(node *ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if ast.IsBinaryExpression(node) && node.Flags&ast.NodeFlagsVibeLang != 0 && node.AsBinaryExpression().OperatorToken.Kind == ast.KindBarToken {
+			if body := node.AsBinaryExpression().Right; body.Kind == ast.KindConditionalExpression {
+				start := nodeStart(file, body)
+				key := fmt.Sprintf("pipeConditional:%d", start)
+				if !refused[key] {
+					fixes = append(fixes, fileFix{code: 2301, edits: []sourceEdit{{start, start, "("}, {body.End(), body.End(), ")"}}, key: key})
+				}
+			}
+		}
+		return node.ForEachChild(visit)
+	}
+	file.AsNode().ForEachChild(visit)
+	return fixes
+}
+
 func pipeMigrationFixes(ctx context.Context, program *compiler.Program, file *ast.SourceFile, refused map[string]bool, refuse func(FixRefusal, string)) proposal {
 	c, done := program.GetTypeCheckerForFile(ctx, file)
 	defer done()
-	var candidates []fileFix
+	candidates := pipeConditionalFixes(file, refused)
 	for _, site := range legacyPipeSites(c, file) {
 		if site.Kind != LegacyPipeLookAhead {
 			continue

@@ -1015,6 +1015,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK2128` | `return value` in a producer: a Stream has no return value; write a bare `return` to end the stream | 21 | [Running Effects](/spec/002-running#producers) |
 | `EK2201` | an interruption block outside effect code | 22 | [Running Effects](/spec/002-running#interruption-blocks) |
 | `EK2202` | `restore` that captures an outer mask across an independent `effect` function, arrow, method, producer or block, or `restore` in any `for concurrent` body | 22 | [Running Effects](/spec/002-running#interruption-blocks) |
+| `EK2301` | an unparenthesized conditional at either end of a pipe, `x \|> f(%) ? a : b`: the pinned proposal's conditional-body error and a pipe as a conditional's test; write `(x \|> f(%)) ? a : b` to test the result or `x \|> (f(%) ? a : b)` to pipe into the conditional | 23 | [Running Effects](/spec/002-running#the-pipe-operator) |
 | `EK2801` | a `data` declaration with more than 4 type parameters | 28 | [Data](/spec/006-data#generic-unions) |
 | `EK2803` | a default on a generic `data` type parameter | 28 | [Data](/spec/006-data#generic-unions) |
 | `EK3001` | two services with the same key | 9 | [Services](/spec/005-services#static-rules) |
