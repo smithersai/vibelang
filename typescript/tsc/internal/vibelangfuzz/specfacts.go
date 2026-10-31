@@ -1,11 +1,14 @@
 package vibelangfuzz
 
 import (
+	"fmt"
 	"regexp"
 	"slices"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/microsoft/TypeScript/tsc/internal/core"
 )
 
 // Chapter 28's facts about EK diagnostics, read from its text: each code's
@@ -267,11 +270,35 @@ func (f *SpecFacts) IsAdjustable(code int32) bool {
 	return slices.Contains(f.Adjustable, code)
 }
 
-// IsRegistered reports whether Chapter 28 names code: a row of its table or
-// a rule listed below it.
+// IsRegistered reports whether Chapter 28 names code: a row of its table, a
+// rule listed below it, or an imported lint rule's code (Appendix B).
 func (f *SpecFacts) IsRegistered(code int32) bool {
-	return SpecHasCode(code) || slices.Contains(f.Rules, code)
+	_, imported := ImportedLintCodes()[code]
+	return SpecHasCode(code) || slices.Contains(f.Rules, code) || imported
 }
+
+// ImportedLintCodes are the codes Appendix B's "Imported lint codes" assigns,
+// by rule name: "`EK3801` `floatingEffect` is the retained first
+// assignment"; "The other rules take ordinals 2 onward in ascending ASCII
+// order of their rule names"; "An ordinal past 99 extends the code: `EK3899`,
+// then `EK38100`." The appendix does not tabulate them yet ("it is not yet
+// published"), so the rule names are the pinned rules the compiler imports,
+// and TestImportedLintCodes holds the compiler's codes to this allocation.
+var ImportedLintCodes = sync.OnceValue(func() map[int32]string {
+	var names []string
+	for _, name := range core.VibeImportedLintCodes {
+		if name != "floatingEffect" {
+			names = append(names, name)
+		}
+	}
+	slices.Sort(names) // byte order, which is ASCII order for these names
+	codes := map[int32]string{3801: "floatingEffect"}
+	for i, name := range names {
+		code, _ := strconv.Atoi(fmt.Sprintf("38%02d", i+2))
+		codes[int32(code)] = name
+	}
+	return codes
+})
 
 // Default returns code's default category.
 func (f *SpecFacts) Default(code int32) DefaultCategory {
