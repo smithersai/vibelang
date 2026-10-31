@@ -16,10 +16,26 @@ export async function commitId(root, revision = "@-") {
   return stdout.trim()
 }
 
-/** The paths the working-copy change touches, with jj's status letter. */
+/**
+ * The paths the working-copy change touches, with jj's status letter. A
+ * rename (R) or copy (C) is the path it now has, with the old one as from:
+ * jj prints it as prefix{old => new}suffix, so a migrated src/{x.ts => x.vibe}
+ * is src/x.vibe.
+ */
 export async function changedPaths(root) {
   const { stdout } = await must("jj diff --summary -r @", { cwd: root })
-  return stdout.split("\n").filter(Boolean).map((line) => ({ status: line[0], path: line.slice(2) }))
+  return stdout.split("\n").filter(Boolean).map((line) => summaryEntry(line))
+}
+
+/** One line of jj diff --summary as { status, path } and, for a rename or copy, from. */
+export function summaryEntry(line) {
+  const status = line[0]
+  const text = line.slice(2)
+  if (status !== "R" && status !== "C") return { status, path: text }
+  const braced = /^(.*?)\{(.*) => (.*)\}(.*)$/.exec(text)
+  const [prefix, from, to, suffix] = braced ? braced.slice(1) : ["", ...text.split(" => "), ""]
+  const join = (middle) => (prefix + middle + suffix).replace(/\/{2,}/g, "/").replace(/^\//, "")
+  return { status, path: join(to), from: join(from) }
 }
 
 /** The repository-relative paths of the files the working-copy commit tracks. */

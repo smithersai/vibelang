@@ -1,0 +1,14 @@
+{
+  "finding": "smithers:record-skips-renamed-vibe",
+  "note": "Smithers batch 03: jj diff --summary printed the batch's Crypto.ts => Crypto.vibe as a rename, record read the line's text as the path, and vibelang-format never saw the .vibe file.",
+  "summary": [
+    { "line": "R packages/smithers/flows/crypto/src/{Crypto.ts => Crypto.vibe}", "entry": { "status": "R", "path": "packages/smithers/flows/crypto/src/Crypto.vibe", "from": "packages/smithers/flows/crypto/src/Crypto.ts" } },
+    { "line": "R packages/smithers/flows/crypto/src/{Uuid.ts => Uuid.vibe}", "entry": { "status": "R", "path": "packages/smithers/flows/crypto/src/Uuid.vibe", "from": "packages/smithers/flows/crypto/src/Uuid.ts" } },
+    { "line": "M packages/smithers/flows/crypto/src/WebCrypto.ts", "entry": { "status": "M", "path": "packages/smithers/flows/crypto/src/WebCrypto.ts" } },
+    { "line": "R {a/b/P.ts => P.vibe}", "entry": { "status": "R", "path": "P.vibe", "from": "a/b/P.ts" } },
+    { "line": "R {a => d/e}/Q.ts", "entry": { "status": "R", "path": "d/e/Q.ts", "from": "a/Q.ts" } },
+    { "line": "R a/{ => b}/R.ts", "entry": { "status": "R", "path": "a/b/R.ts", "from": "a/R.ts" } },
+    { "line": "C c/{T.ts => U.ts}", "entry": { "status": "C", "path": "c/U.ts", "from": "c/T.ts" } },
+    { "line": "D src/Gone.ts", "entry": { "status": "D", "path": "src/Gone.ts" } }
+  ]
+}
