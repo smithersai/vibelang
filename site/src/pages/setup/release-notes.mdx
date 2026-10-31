@@ -12,6 +12,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ## 0.0.11 (unreleased)
 - The migrate flow's codemod, which rewrites a renamed module's importers anywhere in the repository, also rewrote specifiers such as `../src/Command.ts` that name a module an earlier migration had already made `.vibe`, so a batch edited files it had nothing to do with; the codemod and `revert` now change only the imports of the modules the batch renames or puts back, and the imports inside them.
+- The migrate flow's `record` left a batch's `.vibe` files unformatted whenever jj saw the module as renamed, as Smithers' `src/{Crypto.ts => Crypto.vibe}`, so the repository's format check then failed on them; `record` now formats and refreshes the sidecars of every `.vibe` file the batch wrote, renamed or not.
 - The migrate flow pointed a renamed module's package `exports` and `types` at `x.vibe`, so stock TypeScript, reading the module through its declaration sidecar, reported `TS2883` where a consumer's inferred type named one of the module's types; a `types` field or condition now names `x.d.vibe.ts`, and a bare entry becomes `{ "types": "./x.d.vibe.ts", "default": "./x.vibe" }`.
 - The migrate flow's `verify` passed a batch whose declaration emit failed in a migrated file, such as `TS7056` for a type too long to serialize, when the baseline's emit failed the same way and the two fallbacks were equal; it now fails the batch on any declaration emit error in a migrated file.
 - Formatting an inline `@internal` or other JSDoc comment beside an error payload could silently change its declaration output; the formatter now refuses changes to comment attachment and leaves the file intact.
@@ -175,6 +176,22 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A browser crash during the site's contrast check reported only `Target crashed`; diagnostics now name the theme, page, audit state, failed requests and resource pressure.
 
+- Chapter 2 did not say where a `Cause` with both a failure and a defect comes from after dropping the wrong `try.any` example; it now names `Effect.failCause` in TypeScript code.
+
+- Chapter 1 showed an `effect` function binding its parameters before `Effect.gen`, as if a destructuring failure threw at the call; it now says the call returns an Effect that dies with the error, as an `async` call returns a rejected Promise.
+
+- The specification omitted the code for `try a ** b`, which ECMAScript-style parsing rejects as it rejects `await a ** b`; chapter 2 and Appendix B now name it `EK0510`, with the fix `(try a) ** b`.
+
+- The specification did not say that one `vibelang --fix` run reaches a fixed point, or how a missing `vibelang-runtime` is reported; chapter 7 now states both: a second run changes nothing, and a missing runtime is one `TS2307` error naming the package.
+
+- The specification gave no warning for an explicit `throw` in a plain `catch` handler, which turns the failure into a defect; it now names lint warning `EK0511` with the quick fix `catch effect`, and the compiler registers the code (reporting it is tracked by a pending acceptance case).
+
+- Migration rejected an `.mts` module after conversion because its identical declaration moved from `.d.mts` to `.d.ts`; verification now pairs those files while preserving published declaration bytes and rejecting collisions or changed public reachability.
+
+- Migration rejected new private platform-adapter declarations; it now admits unreachable additions as `addedPrivate` while checking published declarations byte for byte.
+
+- Vite could fail with an unexpected token in a native dependency before evaluating its config; migration setup now preloads `vibelang/register` and selects `--configLoader native` for affected Vite scripts, with the supported config-loading path documented.
+
 - Installing `vibelang` alone did not declare the Effect version it supports; the compiler now requires the same exact `effect` peer as the runtime, and release packaging rejects a missing, optional, ranged or mismatched pin.
 
 - Source collectors could silently omit migrated files because their extension allowlists named only TypeScript; migration setup now warns with the file and line when `.ts` appears without `.vibe`.
@@ -239,6 +256,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - After an edit, hovering a call passed by name as an argument, such as `greeting()` in `Effect.timeout(greeting(), "1 second")`, said `Runs here`, although the compiled code passes it to `Effect.timeout` as a program; the hover now says it is passed by name and runs when that program runs.
 
+- `vibelang --fix` built and checked the project twice for each round of fixes that passed, so a file with nested fixes, which take a round per level, took twice as long as it needed: 20 nested `Effect.Effect<…>` types took about 10 seconds on a busy machine. Each passing round is now checked once, and that file takes about 5 seconds.
 
 - In a project with no `declaration` setting, an export whose inferred type was too long to serialize (`TS7056`) got only a warning, and its declaration sidecar held `any` in place of the type, so a stock `tsc` consumer lost its types without an error; it is an error again, as it is where the project emits declarations.
 

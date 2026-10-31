@@ -19,9 +19,9 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,194 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 15,041 |
-| The skill and the user guide (139 pages) | 329,539 |
-| The user guide alone | 325,345 |
-| The specification (10 chapters) | 143,335 |
+| The skill and the user guide (139 pages) | 329,972 |
+| The user guide alone | 325,778 |
+| The specification (10 chapters) | 144,074 |
 | The decision log, `docs/design/history/DECISIONS.md` | 141,521 |
 
 ## Effect TypeScript beside VibeLang
@@ -113,9 +113,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Start a project** | **2,359** |
 | [New project](../setup/new-project.md) | 543 |
 | [Existing project](../setup/existing-project.md) | 1,816 |
-| **Build and test** | **7,408** |
+| **Build and test** | **7,800** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 5,620 |
-| [Vite and Vitest](../setup/vite.md) | 1,788 |
+| [Vite and Vitest](../setup/vite.md) | 2,180 |
 | **Format and lint** | **3,086** |
 | [Format with dprint](../setup/formatting.md) | 1,643 |
 | [Developer tools](../setup/developer-tools.md) | 1,443 |
@@ -130,9 +130,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Zed](../setup/zed.md) | 479 |
 | [Other editors](../setup/other-editors.md) | 492 |
 | [Coding agents](../setup/coding-agents.md) | 990 |
-| **Upgrade** | **60,587** |
-| [Release notes](../setup/release-notes.md) | 60,587 |
-| **All 18 pages** | **89,277** |
+| **Upgrade** | **60,628** |
+| [Release notes](../setup/release-notes.md) | 60,628 |
+| **All 18 pages** | **89,710** |
 
 ### Guides
 
@@ -277,17 +277,17 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | Page | Tokens |
 | --- | ---: |
 | [Introduction](../../../design/src/000-intro.md) | 2,539 |
-| **The language** | **111,157** |
-| [1. Functions and Effect types](../../../design/src/001-functions.md) | 11,762 |
-| [2. Running Effects](../../../design/src/002-running.md) | 26,037 |
+| **The language** | **111,764** |
+| [1. Functions and Effect types](../../../design/src/001-functions.md) | 11,843 |
+| [2. Running Effects](../../../design/src/002-running.md) | 26,402 |
 | [3. Failures](../../../design/src/003-failures.md) | 15,067 |
 | [4. Pattern matching](../../../design/src/004-match.md) | 20,839 |
 | [5. Services and the environment](../../../design/src/005-services.md) | 11,320 |
 | [6. Data](../../../design/src/006-data.md) | 7,797 |
-| [7. Configuration and tooling](../../../design/src/007-tooling.md) | 11,232 |
+| [7. Configuration and tooling](../../../design/src/007-tooling.md) | 11,393 |
 | [8. Runtime guarantees](../../../design/src/008-runtime.md) | 7,103 |
-| **Appendices** | **29,639** |
-| [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 29,639 |
-| **All 10 pages** | **143,335** |
+| **Appendices** | **29,771** |
+| [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 29,771 |
+| **All 10 pages** | **144,074** |
 
 <!-- token-counts: end -->
