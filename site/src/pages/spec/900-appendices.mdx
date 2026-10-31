@@ -322,6 +322,8 @@ PipeBody = AssignmentExpression
 
 These productions carry the enclosing `In`, `Yield`, `Await` and `Effect` grammar parameters consistently. Alongside the pinned covering-production restrictions on conditional, yield, assignment and arrow bodies, reject a body whose whole unparenthesized expression is a `PipeExpression`. Thus an unparenthesized chain has its unique sequential left-associated derivation; a parenthesized nested pipe remains valid with a separate topic scope. This restriction tests the whole body, not every nested occurrence of a pipe.
 
+It is a Syntax Error if the `ShortCircuitExpression` of a `PipeExpression` is a `CatchExpression` whose handler is an `ArrowHandler`; the `|>` then belongs to the arrow's body, as `?` does under [ConditionalExpression](/spec/900-appendices#conditionalexpression). So `a catch () => b |> % + 1` is `a catch (() => (b |> % + 1))`; write `(a catch () => b) |> % + 1` to pipe the recovered value.
+
 #### EffectType
 
 ```text

@@ -260,6 +260,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The migrate flow planned a file that the repository's own code finds by its name, such as `alchemy.run.ts`, so `alchemy dev` found no stack after the rename; such a file now stays `.ts`, and the plan says which file names it.
 
+- The specification's grammar gave `a catch () => b |> % + 1` two parses with different results: the pipe inside the arrow handler's body, or the pipe applied to the whole `catch`. It now has one, the handler's body, as the compiler already reads it; write `(a catch () => b) |> % + 1` to pipe the recovered value.
+
 - A pipe followed by a conditional, `x |> f(%) ? 1 : 2`, compiled as `x |> (f(%) ? 1 : 2)` without a word, although the pinned pipe proposal rejects a conditional at either end of a pipe; it is now `EK2301` at the `?`, which says to write `(x |> f(%)) ? 1 : 2` or `x |> (f(%) ? 1 : 2)`, and `vibelang --fix` writes `x |> (f(%) ? 1 : 2)`, the meaning it had.
 - A typed catch clause whose binding destructures, such as `catch ({ id }: NotFound)`, crashed the compiler and the editor with `Unhandled case in Node.Text`; it now reports `EK2112`, suggesting `catch (e)`, and its quick fix leaves the pattern alone.
 

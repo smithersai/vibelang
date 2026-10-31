@@ -1,0 +1,18 @@
+// expect-result: {"body":5,"caught":1,"outer":6,"outerCaught":1,"effectBody":5,"conditional":"c","twoPipes":2}
+// Appendix A, PipeExpression: the ShortCircuitExpression of a PipeExpression
+// is never a CatchExpression whose handler is an ArrowHandler; the |> belongs
+// to the arrow's body, as ? does under ConditionalExpression. Parentheses
+// around the catch pipe the recovered value.
+error Oops {}
+effect function five(): number!Oops { return 5 }
+effect function oops(): number!Oops { throw new Oops() }
+export effect function main() {
+  const body = five() catch () => 0 |> % + 1
+  const caught = oops() catch () => 0 |> % + 1
+  const outer = (five() catch () => 0) |> % + 1
+  const outerCaught = (oops() catch () => 0) |> % + 1
+  const effectBody = five() catch effect () => 0 |> % + 1
+  const conditional = oops() catch () => (true |> %) ? "c" : "d"
+  const twoPipes = oops() catch () => 0 |> % + 1 |> % * 2
+  return { body, caught, outer, outerCaught, effectBody, conditional, twoPipes }
+}
