@@ -78,6 +78,13 @@ output merges both passes in Oxlint's diagnostic shape, with the original
 `.vibe` filename and line. Warn rules remain warnings; a runner that rejects
 every problem, or `--deny-warnings`, rejects them too.
 
+Existing `oxlint-disable`, `oxlint-disable-line`,
+`oxlint-disable-next-line` and `oxlint-enable` comments keep their scope.
+The bridge also recognizes ESLint directives and the native core/TypeScript
+rule aliases they name. It adapts parsed comments without changing the user
+file, string literals or source locations; unused directives remain quiet,
+as in Oxlint by default.
+
 The ESLint configuration carries applicable core, TypeScript and JS plugin
 rules. It also supplies `oxc/no-accumulating-spread`, checked against upstream
 Oxlint's reducer and loop behavior. A file-list runner fails with the names of

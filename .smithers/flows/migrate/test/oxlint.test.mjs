@@ -338,3 +338,74 @@ test("native empty-file handling preserves command flags and is idempotent acros
     }
   ), { seed: 8311009, numRuns: 150 })
 })
+
+test("installed Oxlint disable and enable comments keep the same meaning in VibeLang", { skip: !installed && "set VIBELANG_OXLINT_NODE_MODULES", timeout: 180000 }, async t => {
+  const root = fixture(t, {
+    "package.json": '{"type":"module","scripts":{"lint":"oxlint"}}',
+    ".oxlintrc.json": '{"categories":{"correctness":"off"},"jsPlugins":[{"name":"anti-slop","specifier":"./plugin.mjs"}],"rules":{"no-unused-vars":"warn","no-debugger":"warn","typescript/no-explicit-any":"warn","anti-slop/no-unknown-parameters":"warn"}}',
+    "plugin.mjs": 'export default {rules:{"no-unknown-parameters":{meta:{schema:[]},create(context){return {TSUnknownKeyword(node){context.report({node,message:"Unknown parameter"})}}}}}}',
+  })
+  symlinkSync(installed, join(root, "node_modules"))
+  wireDeveloperTools({ root, specsFor, ts })
+  const { ESLint } = await import(join(installed, "eslint/lib/api.js"))
+  const config = (await import(join(root, ".vibelang/eslint.config.mjs"))).default
+  const eslint = new ESLint({ cwd: root, overrideConfigFile: true, overrideConfig: config })
+  const cases = [
+    "// oxlint-disable-next-line no-unused-vars -- native alias\nconst unused = 1\n",
+    "// oxlint-disable-next-line anti-slop/no-unknown-parameters -- custom plugin\nexport function seeded(value: unknown) { return value }\n",
+    "// oxlint-disable-next-line typescript/no-explicit-any -- native TS alias\nexport type Value = any\n",
+    "// eslint-disable-next-line @typescript-eslint/no-explicit-any -- ESLint TS alias\nexport type Value = any\n",
+    "const unused = 1 // oxlint-disable-line eslint/no-unused-vars -- native alias\n",
+    "/* oxlint-disable no-unused-vars */\nconst suppressed = 1\n/* oxlint-enable no-unused-vars */\nconst reported = 2\n",
+    "// oxlint-disable-next-line\ndebugger;\n",
+    "// oxlint-disable-next-line -- reason-only is not blanket in Oxlint 1.60\ndebugger;\n",
+    "// eslint-disable-next-line -- reason-only is not blanket in Oxlint 1.60\ndebugger;\n",
+    "/* oxlint-disable */\ndebugger;\n/* oxlint-enable */\ndebugger;\n",
+    "// eslint-disable-next-line eslint/no-debugger -- native core alias\ndebugger;\n",
+    "// oxlint-disable-next-line no-debugger -- unused suppression stays quiet\nexport const value = 1\n",
+  ]
+  for (const source of cases) {
+    writeFileSync(join(root, "main.ts"), source)
+    const native = spawnSync(process.execPath, [join(installed, "oxlint/bin/oxlint"), "--threads", "8", "--format", "json", "main.ts"], { cwd: root, encoding: "utf8" })
+    assert.equal(native.status, 0, native.stdout + native.stderr)
+    const expected = JSON.parse(native.stdout).diagnostics.map(diagnostic => [diagnostic.labels[0].span.line, diagnostic.labels[0].span.column]).sort()
+    const [result] = await eslint.lintText(source, { filePath: join(root, "main.vibe") })
+    assert.equal(result.messages.some(message => message.fatal), false, JSON.stringify(result.messages))
+    assert.deepEqual(result.messages.map(message => [message.line, message.column]).sort(), expected, source + JSON.stringify(result.messages))
+  }
+})
+
+import { withOxlintComments } from "../templates/oxlint-comments.mjs"
+test("directive mutations preserve source strings, scope identity, reasons and locations", () => {
+  const quote = "Oxlint disable and enable comments keep their original scope and source locations."
+  assert.ok(readFileSync(new URL("../README.md", import.meta.url), "utf8").includes(quote))
+  const aliases = new Map([
+    ["@typescript-eslint/no-unused-vars", "eslint/no-unused-vars"],
+    ["@typescript-eslint/no-explicit-any", "typescript/no-explicit-any"]
+  ])
+  const targets = { "no-unused-vars": "@typescript-eslint/no-unused-vars", "eslint/no-unused-vars": "@typescript-eslint/no-unused-vars", "eslint/no-debugger": "no-debugger", "typescript/no-explicit-any": "@typescript-eslint/no-explicit-any", "house/rule": "house/rule" }
+  fc.assert(fc.property(
+    fc.constantFrom("oxlint", "eslint"),
+    fc.constantFrom("disable", "disable-line", "disable-next-line", "enable"),
+    fc.array(fc.constantFrom(...Object.keys(targets)), { maxLength: 3 }),
+    fc.constantFrom("", " -- because café", " -- keep eslint/no-debugger unchanged"),
+    fc.boolean(),
+    (prefix, verb, names, reason, parseOnly) => {
+      const value = " " + prefix + "-" + verb + (names.length ? " " + names.join(", ") : "") + reason
+      const source = "const literal = 'oxlint-disable-next-line';\n//" + value
+      const location = { start: { line: 2, column: 0 }, end: { line: 2, column: value.length + 2 } }
+      const ast = { comments: [{ value, range: [41, 43 + value.length], loc: location }] }
+      const scopeManager = { scopes: [] }
+      const parser = parseOnly
+        ? { parse(text) { assert.equal(text, source); return ast } }
+        : { parseForESLint(text) { assert.equal(text, source); return { ast, scopeManager } } }
+      const result = withOxlintComments(parser, aliases).parseForESLint(source)
+      assert.equal(result.ast, ast)
+      assert.equal(result.scopeManager, parseOnly ? undefined : scopeManager)
+      assert.deepEqual(result.ast.comments[0].range, [41, 43 + value.length])
+      assert.equal(result.ast.comments[0].loc, location)
+      const expectedPrefix = !names.length && reason ? "oxlint" : "eslint"
+      assert.equal(result.ast.comments[0].value, " " + expectedPrefix + "-" + verb + (names.length ? " " + names.map(name => targets[name]).join(", ") : "") + reason)
+    }
+  ), { seed: 8311010, numRuns: 150 })
+})

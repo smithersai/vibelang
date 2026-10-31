@@ -297,6 +297,7 @@ export function wireDeveloperTools({ root, specsFor, ts }) {
 import parser from "vibelang/eslint"
 import { pathToFileURL } from "node:url"
 import oxc from "./oxlint-rules.mjs"
+import { withOxlintComments } from "./oxlint-comments.mjs"
 const aliases = new Map()
 export const oxlintRuleName = name => aliases.get(name) ?? (name.includes("/") ? name : "eslint/" + name)
 export async function configFor(configPath, strict = false) {
@@ -362,9 +363,12 @@ const rules = (settings = {}) => Object.fromEntries(Object.entries(settings).fla
   const plugin = name.includes("/") ? name.slice(0, name.lastIndexOf("/")) : ""
   const rule = name.slice(name.lastIndexOf("/") + 1)
   const typedName = "@typescript-eslint/" + rule
-  aliases.set(typedName, (plugin === "" || plugin === "eslint") ? "eslint/" + rule : "typescript/" + rule)
   // A core rule typescript-eslint extends for TypeScript, as Oxlint's does, is typescript-eslint's.
-  if (plugin === "typescript" || plugin === "@typescript-eslint" || ((plugin === "" || plugin === "eslint") && typed.has(rule))) return typed.has(rule) ? [["@typescript-eslint/" + rule, value]] : (levels[level] === "off" || missing.add(name), [])
+  if (plugin === "typescript" || plugin === "@typescript-eslint" || ((plugin === "" || plugin === "eslint") && typed.has(rule))) {
+    if (!typed.has(rule)) { if (levels[level] !== "off") missing.add(name); return [] }
+    aliases.set(typedName, (plugin === "" || plugin === "eslint") ? "eslint/" + rule : "typescript/" + rule)
+    return [[typedName, value]]
+  }
   if (plugin === "" || plugin === "eslint") return !core || core.has(rule) ? [[rule, value]] : (levels[level] === "off" || missing.add(name), [])
   if (plugin === "oxc" && oxc.rules[rule]) return [[name, value]]
   if (jsPlugins.get(plugin)?.rules[rule]) return [[name, value]]
@@ -381,7 +385,7 @@ const correctness = levels[oxlint.categories?.correctness] !== "off"
 const configs = [
   { ignores: [...ignores, "**/node_modules/**", "**/dist/**", "**/build/**", "**/*.d.vibe.ts"] },
   ...(correctness && tseslint ? tseslint.configs.recommended.map((config) => ({ ...config, files: ["**/*.vibe"] })) : []),
-  { files: ["**/*.vibe"], languageOptions: { parser }, plugins: { oxc, ...(tseslint ? { "@typescript-eslint": tseslint.plugin } : {}), ...Object.fromEntries(jsPlugins) }, rules: { ...(correctness ? { "no-debugger": "error" } : {}), ...rules(oxlint.rules) } },
+  { files: ["**/*.vibe"], linterOptions: { reportUnusedDisableDirectives: "off" }, languageOptions: { parser: withOxlintComments(parser, aliases) }, plugins: { oxc, ...(tseslint ? { "@typescript-eslint": tseslint.plugin } : {}), ...Object.fromEntries(jsPlugins) }, rules: { ...(correctness ? { "no-debugger": "error" } : {}), ...rules(oxlint.rules) } },
   ...overrides
 ]
 if (strict && missing.size) throw new Error("Oxlint rules unavailable under ESLint: " + [...missing].join(", "))
@@ -394,6 +398,7 @@ export default await configFor()
     chmodSync(join(root, ".vibelang/oxlint.mjs"), 0o755)
   }
   if (needsLint) {
+    write(".vibelang/oxlint-comments.mjs", readFileSync(new URL("../templates/oxlint-comments.mjs", import.meta.url), "utf8"))
     write(".vibelang/oxlint-rules.mjs", readFileSync(new URL("../templates/oxlint-rules.mjs", import.meta.url), "utf8"))
     write(".vibelang/eslint.config.mjs", eslintConfig(null))
   }

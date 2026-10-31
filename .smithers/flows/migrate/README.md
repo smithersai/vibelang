@@ -182,3 +182,5 @@ When a package script runs Oxlint directly or launches a JavaScript/TypeScript r
 The ESLint configuration preserves directory-wide overrides as well as extension globs. Its `oxc/no-accumulating-spread` counterpart is checked against upstream Oxlint; an enabled rule without a counterpart fails a file-list runner with the rule's name. This prevents silent rule loss when a repository adds another native rule.
 
 A directory containing only `.vibe` files still runs the ESLint pass. Setup adds `--no-error-on-unmatched-pattern` to the native Oxlint invocations, which have no TypeScript left to lint, and file-list adapters handle empty native directory scans the same way.
+
+Oxlint disable and enable comments keep their original scope and source locations. The generated parser bridge translates only parsed directive comments, including core and TypeScript rule aliases; it does not rewrite source strings or user files. Unused directives remain quiet, as in Oxlint's default configuration.
