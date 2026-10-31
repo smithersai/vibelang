@@ -25,6 +25,7 @@ export async function checkSiteContrast() {
       args: ['--disable-dev-shm-usage'],
     }))
     diagnostics.event('browser-ready', { version: browser.version() })
+    await diagnostics.watchBrowser(browser)
     browser.on('disconnected', () => { if (!closing) diagnostics.event('browser-disconnected') })
     for (const theme of ['light', 'dark']) {
       const context = await browser.newContext({ viewport: { width: 1366, height: 900 }, colorScheme: theme })

@@ -322,3 +322,13 @@ pages have no child frames; the audit checks that invariant before running,
 so adding frames requires an explicit frame-aware audit strategy. Shadow DOM
 remains covered. The browser regression checks both themes with readable and
 unreadable text, including shadow roots, and forbids opening a helper page.
+
+Contrast crash records include an `active` flag: a renderer can exit after
+the last reported stage completed. The browser protocol also reports the
+native termination `status` and `errorCode`, without target URLs or IDs.
+Resource snapshots include `MemAvailable`, allowed CPUs and memory nodes,
+cgroup anonymous/file/shared/kernel accounting, and aggregate RSS/counts for
+fixed executable classes. Executable paths, process names and arguments are
+never logged; unreadable or disappearing processes are counted and skipped.
+RSS sums can count shared pages more than once, so compare the classes with
+memory availability and cgroup accounting before choosing a resource bound.

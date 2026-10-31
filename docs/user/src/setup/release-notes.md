@@ -181,6 +181,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- Contrast diagnostics could identify an already completed audit as the operation that crashed; they now distinguish active work and report Chromium's native status, available memory and aggregate process memory without logging process names or arguments.
+
 - Formatting valid `for` heads with `is` patterns could fail with an internal parse error; they now format at narrow and normal widths while keeping `is` attached to its subject.
 
 - The site's contrast check could lose its Chromium renderer under build-host memory pressure; it now audits each single-document page in place instead of opening a second renderer to combine the results.
