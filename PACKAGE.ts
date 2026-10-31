@@ -98,6 +98,7 @@ const specTests = [
   "TestSpecRuleCoverage",
   "TestRuntimeFeatureCitations",
   "TestToolsFormatSemanticContract",
+  "TestFormatDeclarationRulesQuoted",
   "TestToolsHelpers",
   "TestCanonicalVIPExitRejectsInvalidReasonTags",
   "TestCanonicalVIPExitReasonTagControls",

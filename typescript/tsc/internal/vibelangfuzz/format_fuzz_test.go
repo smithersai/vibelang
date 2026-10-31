@@ -126,7 +126,7 @@ func FuzzFormat(f *testing.F) {
 			if moved := toolsMovedComments(source, once); len(moved) > 0 {
 				Gap(t, "FuzzFormat", "format:comment-neighbors", "D372: formatting moved comments %q:\n%s\nformatted:\n%s", moved, source, once)
 			}
-			// Chapter 28, "Idempotence": formatting a second time changes nothing.
+			// Chapter 7 / VIP-34: "formatting is idempotent."
 			var twice string
 			toolsRun(t, "FuzzFormat", "format", once, nil, func() { twice, err = vibelangfmt.Format("main.vibe", once, formatter) })
 			if err != nil {

@@ -1,0 +1,2 @@
+go test fuzz v1
+string("// compiler-gap: pending VIP-16\ndata Delivery\n{\n  Waiting;\n  Sent\n\n  { tracking: string };\n  Rejected { reason: string };\n}\n")

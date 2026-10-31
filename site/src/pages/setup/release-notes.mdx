@@ -192,6 +192,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The site's contrast check could lose its Chromium renderer under build-host memory pressure; it now audits each single-document page in place instead of opening a second renderer to combine the results.
 - VIP migration could remove `try` from calls returning tagged errors and turn their failures into success values; it now preserves execution of those Effects, while non-Effect Yieldables retain their `asEffect()` repair.
+
+- Formatting a `data`, `schema` or field-only `error` declaration whose opening brace was on the next line could require a second pass to settle its indentation; one pass now produces stable indentation.
 - Editor smoke validation rejected the safe `catch (cause: Cause)` migration; it now checks the replacement with `try exit(effect { ... })` and verifies that applying it adds no error.
 
 - The migrate flow planned a tool's config that uses Effect, such as `graphql.config.ts`, for `.vibe`, and the tool, which finds its config by name, then failed with `config file not found`. A `*.config.ts` file now stays `.ts`, and a plan that names one is refused.

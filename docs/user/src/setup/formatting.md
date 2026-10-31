@@ -53,7 +53,7 @@ Everything dprint's TypeScript plugin changes in a `.ts` file: indentation, line
 | `provide X { ... }`, `uninterruptible { ... }` | The block as a block statement |
 | `x catch (e) => y`, `x \|> f(%)` | Like a method call and the `\|\|` operator: a line break before `catch` or `\|>` stays |
 | `fork x`, `join x`, `throw x` | Like a prefix operator such as `void` |
-| `error`, `schema` | The body as an object type: one line when written on one line and it fits |
+| `error`, `schema`, `data` | The body as an object type: one line when written on one line and it fits |
 | `service` | The body as a class body, one member per line |
 
 Pattern expressions in classic `for (init; test; update)` heads, including bindings introduced by `is`, keep their original head position and parse when formatted. The formatter keeps `is` on the same line as its subject, including when a narrow print width wraps the loop head.
@@ -62,7 +62,7 @@ Support for the new forms arrives with the compiler's VIP implementation.
 
 A statement-level `match` keeps its boundary after a statement without a semicolon, including with `semiColons: "asi"`.
 
-Comments and JSDoc stay associated with their code, including compiler, linter and tool directives. Adding space between a contract and its initializer, such as `User!!= load()` becoming `User!! = load()`, preserves those associations elsewhere in the file. Formatting is idempotent: a formatted file doesn't change when formatted again.
+Comments and JSDoc stay associated with their code, including compiler, linter and tool directives. Adding space between a contract and its initializer, such as `User!!= load()` becoming `User!! = load()`, preserves those associations elsewhere in the file. Formatting is idempotent: a formatted file doesn't change when formatted again. This includes `data`, `schema` and field-only `error` declarations with an opening brace on the next line.
 
 Under the same compiler/options, formatting preserves parsed program meaning, evaluation order, receivers, ordinary runtime values/effects and public types/declarations/throws contracts. Diagnostic codes, categories and occurrences stay the same; locations and quoted source follow the formatted file. Semantic migrations and diagnostic repairs belong to `vibelang --fix` or editor actions.
 

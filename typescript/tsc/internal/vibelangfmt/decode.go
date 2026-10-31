@@ -358,7 +358,14 @@ func (d *decoder) node(node *ast.Node) error {
 		if holder.noBody {
 			d.replace(after, value.End(), "")
 		} else {
-			d.replace(after, d.start(value), " ")
+			// Keep the formatter's layout before the synthetic equals. Moving
+			// a next-line body onto the header after its indentation has been
+			// computed makes the next format pass change that indentation.
+			equals, _, ok := d.nextToken(after, '=')
+			if !ok {
+				return lost()
+			}
+			d.replace(equals, d.start(value), "")
 		}
 		if holder.data {
 			// A data declaration's variants (D307): drop the colon before a
