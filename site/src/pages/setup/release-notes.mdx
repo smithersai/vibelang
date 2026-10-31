@@ -36,7 +36,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A migrate run that switched to a new toolchain committed `upgrade Effect to <version>` although Effect did not change; that commit now says `switch to the toolchain of VibeLang <commit>`.
 
-- With `declarationSidecars`, a project that sets no `declaration` failed on declaration-only errors such as `TS7056` that its `tsc --noEmit` never reported; those are now warnings there, and stay errors in a project that emits declarations.
+- A project that sets no `declaration` failed on declaration-only errors such as `TS7056`, which its `tsc --noEmit` never reported, when the compiler wrote its declaration sidecars; those are now warnings there, and stay errors in a project that emits declarations.
 
 - Under `noImplicitOverride`, a service's `static readonly key` and `static readonly defaultValue` reported `TS4114`, though the spec and `--fix` write them that way; they now take no `override`.
 
