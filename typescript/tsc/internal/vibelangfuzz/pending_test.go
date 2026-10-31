@@ -182,6 +182,28 @@ func citesPendingKey(e PendingEntry) bool {
 // withinPanic is the panic of Within when a stage hangs.
 var withinPanic = regexp.MustCompile(`panic: hang: .+ took longer than`)
 
+// Only copy the harness's fixed phase metadata, never a reproduction's source
+// or other child output. A stage watchdog is stronger evidence than an outer
+// deadline that happened to expire while its panic was being collected.
+var probeProgressLine = regexp.MustCompile(`(?m)^[\t ]*compile_fuzz_test\.go:[0-9]+: probe-stage (start|done): (compile|recompile|reverse file order|emit first|outputs)[\t ]*$`)
+
+func hangProbeSummary(timedOut bool, output string) string {
+	cause := "exited"
+	if withinPanic.MatchString(output) {
+		cause = "stage-watchdog"
+	} else if timedOut {
+		cause = "outer-deadline"
+	}
+	var progress []string
+	for _, match := range probeProgressLine.FindAllStringSubmatch(output, -1) {
+		progress = append(progress, match[1]+":"+match[2])
+	}
+	if len(progress) > 8 {
+		progress = progress[len(progress)-8:]
+	}
+	return fmt.Sprintf("cause=%s progress=%q", cause, strings.Join(progress, " -> "))
+}
+
 func isHang(e PendingEntry) bool {
 	return strings.HasPrefix(e.Key, "corpus:") && strings.HasPrefix(e.Reason, "hang")
 }
@@ -231,16 +253,24 @@ func TestPendingHangs(t *testing.T) {
 		name := strings.TrimPrefix(e.Key, "corpus:")
 		t.Run(e.Target+"/"+name, func(t *testing.T) {
 			t.Parallel()
-			// Each reproduction outlasts the limit many times over while its
-			// bug stands, and a fixed compiler takes well under a second, so
-			// the verdict does not depend on the host's load.
+			// Bound each child independently of its per-stage watchdog. An
+			// outer deadline alone does not identify a slow compiler phase;
+			// the summary records which limit ended this probe.
 			limit := 15 * time.Second
 			ctx, cancel := context.WithTimeout(context.Background(), 2*limit)
 			defer cancel()
 			child := exec.CommandContext(ctx, binary, "-test.run", "^"+e.Target+"$/^"+regexp.QuoteMeta(name)+"$", "-test.v")
 			child.Env = append(os.Environ(), "VIBELANG_FUZZ_HANG_PROBE=1", "VIBELANG_FUZZ_HANG="+limit.String())
-			out, _ := child.CombinedOutput()
+			started := time.Now()
+			out, probeErr := child.CombinedOutput()
 			text := string(out)
+			exit := -1
+			if child.ProcessState != nil {
+				exit = child.ProcessState.ExitCode()
+			}
+			t.Logf("hang probe target=%s key=%s elapsed=%v exit=%d error=%v %s",
+				e.Target, e.Key, time.Since(started).Round(time.Millisecond), exit, probeErr,
+				hangProbeSummary(ctx.Err() != nil, text))
 			switch {
 			case ctx.Err() != nil || withinPanic.MatchString(text):
 				t.Logf("still hangs: %s", e.Reason)
@@ -249,7 +279,7 @@ func TestPendingHangs(t *testing.T) {
 			case strings.Contains(text, "--- SKIP: "+e.Target+"/"+name) && !strings.Contains(text, "pending ("):
 				t.Errorf("the probe skipped %s/%s, so it cannot tell whether the hang is fixed:\n%s", e.Target, name, lastBytes(text, 2000))
 			default:
-				t.Errorf("XPASS %s %s: it finishes within %v now; delete its hang line in testdata/pending/ (%s: %s)\n%s", e.Target, e.Key, limit, e.Owner, e.Reason, lastBytes(text, 2000))
+				t.Errorf("XPASS %s %s: the reproduction completes without a stage watchdog (per-stage limit %v); delete its hang line in testdata/pending/ (%s: %s)\n%s", e.Target, e.Key, limit, e.Owner, e.Reason, lastBytes(text, 2000))
 			}
 		})
 	}

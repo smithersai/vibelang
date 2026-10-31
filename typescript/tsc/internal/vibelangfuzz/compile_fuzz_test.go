@@ -296,8 +296,15 @@ func orderSlug(order Order) string { return strings.ReplaceAll(order.String(), "
 // within runs a stage under Within and logs one that takes longer than a
 // second, so a slow input is named before it becomes a hang.
 func within(t testing.TB, stage string, fn func()) {
+	probe := os.Getenv("VIBELANG_FUZZ_HANG_PROBE") == "1"
+	if probe {
+		t.Logf("probe-stage start: %s", stage)
+	}
 	start := time.Now()
 	Within(stage, fn)
+	if probe {
+		t.Logf("probe-stage done: %s", stage)
+	}
 	if elapsed := time.Since(start); elapsed > time.Second {
 		t.Logf("slow: %s took %v", stage, elapsed.Round(time.Millisecond))
 	}

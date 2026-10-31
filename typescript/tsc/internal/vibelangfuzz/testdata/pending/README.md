@@ -21,7 +21,9 @@ that part of the specification yet. See `pending.go`.
   key whose line does. A crash or a hang needs no citation.
 - A hang's reproduction (a reason that starts with `hang`) is skipped by its
   target. `TestPendingHangs` runs it in a child process with a deadline and
-  fails as XPASS when it finishes.
+  fails as XPASS when it finishes. The merge gate requires this check through
+  the separately cached `//:go-vibelangfuzz-hangs` target; selecting only the
+  named corpus would skip the hang.
 - A VIP can replace the rule an oracle checks. Then the owner is
   `superseded` and the reason starts with that VIP:
 

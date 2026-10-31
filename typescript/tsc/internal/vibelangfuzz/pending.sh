@@ -8,6 +8,9 @@
 #
 #   cd typescript/tsc && sh internal/vibelangfuzz/pending.sh
 #
+# Known hang inputs skip when selected by name. The build graph's pending
+# target also requires //:go-vibelangfuzz-hangs, which runs TestPendingHangs.
+#
 # A corpus input (corpus:<file>) runs by name in its target. A feature
 # (feature:<name>) is a probe in TestVIPConstructs or TestDataSpecRules, and
 # its line also covers every probe that requires it, so those two tests run

@@ -64,6 +64,21 @@ local `.smithers` installs run `bun install --frozen-lockfile`.
 
 Docs checks use `VIBELANG_BINARY` when set, otherwise the native checkout build at `packages/compiler/native/vibelang` (`vibelang.exe` on Windows), then `typescript/built/local/tsc`, then `vibelang` on `PATH`. Build the native compiler with `sh scripts/build-vibelang.sh`. Both `:snippets` and `:docs-tools` declare `:compiler-native` so its build and cache key cover the selected binary.
 
+### Pending hang probes
+
+The `//:go-vibelangfuzz-pending` merge-gate target requires the independently
+cached `//:go-vibelangfuzz-hangs` target. Named pending seeds skip known hangs;
+`TestPendingHangs` runs each reproduction in a child with a 15-second stage
+watchdog and a 30-second outer deadline, and fails if it completes. It runs
+probes in parallel. Its cache inputs include the source, saved corpus,
+documentation, cases and runtime that the child fuzz targets read during setup.
+
+Run only the bounded hang validation with:
+
+```sh
+sh scripts/ci.sh //:go-vibelangfuzz-hangs --jobs 8
+```
+
 ## Packages
 
 ```text
@@ -87,6 +102,7 @@ Docs checks use `VIBELANG_BINARY` when set, otherwise the native checkout build 
 //                              checks that read the whole repository
   :tree                         Filegroup: every file
   :go-vibelang :go-vibelang-race :go-vibelangmapper :go-vibelangfuzz
+  :go-vibelangfuzz-hangs        bounded child probes for stale hang markers (merge gate)
   :go-vibelangfuzz-pending      the inputs testdata/pending/ lists, which must still fail, and every VIP and data probe (merge gate)
   :go-vibelangfuzz-editor       the editor oracles over documentation examples and cases (merge gate)
   :release :snippets :tokens :forms :docs-tools :docs-check :site-spec-links

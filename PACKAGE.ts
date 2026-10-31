@@ -112,6 +112,17 @@ const fixCostTests = ["TestFixProjectBoundsChecks", "TestFixProgramsShareParsedF
 const narrowingCostTests = ["TestRemoveTypeRepeatAllocations", "TestLiteralPatternNarrowingAllocations"]
 const design = S.Filegroup({ srcs: [...S.glob(["docs/design/**"])] })
 
+// Named pending seeds skip known hangs; only TestPendingHangs can reject a
+// stale hang marker. Cache that bounded process check separately and require
+// it from the existing merge-gate label.
+const pendingHangs = goVibelang(
+  "Pending hang reproductions still time out instead of completing as XPASS.",
+  `CGO_ENABLED=0 GOMAXPROCS=8 GOFLAGS=-p=8 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG_PROBE=0 ${effect} ` +
+    "go test -v -short -count=1 -timeout=5m -trimpath -run '^(TestPendingHangs|TestHangProbeDiagnosticSummary)$' ./internal/vibelangfuzz/",
+  [Tsc["vibelangfuzz-files"]],
+  "30m"
+)
+
 // This check reads only the generated spec/VIP pages. Keep it independently
 // cached: an unrelated source edit must not rerun the link inventory.
 const siteSpecLinks = S.Shell.Test({
@@ -126,6 +137,7 @@ const siteSpecLinks = S.Shell.Test({
 })
 
 const targets = {
+  "go-vibelangfuzz-hangs": pendingHangs,
   "site-spec-links": siteSpecLinks,
   release: check(
     "The release and contributor scripts' node tests.",
@@ -192,7 +204,7 @@ const targets = {
   "go-vibelangfuzz-pending": goVibelang(
     "The inputs testdata/pending/ lists still fail, and every probe passes or is pending: a change that makes one pass deletes its line.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} sh internal/vibelangfuzz/pending.sh`,
-    [Tsc["vibelangfuzz-files"]],
+    [Tsc["vibelangfuzz-files"], pendingHangs],
     "30m"
   ),
   // The merge gate runs it for a change to the documentation or a case, which

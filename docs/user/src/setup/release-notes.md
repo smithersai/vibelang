@@ -181,6 +181,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Migration checks could miss errors and repair notes in compiler output with Windows line endings, or mistake a normal error exit for a compiler crash; they now read those diagnostics and notes correctly.
 
+- The merge gate skipped known hang reproductions, so a fixed compiler could leave a stale hang marker that failed only after merging; the gate now runs the bounded hang probes before accepting the change.
+
 - The release rehearsal stopped at its Vite warning check because it expected a retired nondeterminism diagnostic and used deprecated configuration; it now checks the assigned `EK4833` warning and verifies that Vite emits the bundle with `noEmitOnError`.
 
 - In a project with no `declaration` setting, an export whose inferred type was too long to serialize (`TS7056`) got only a warning, and its declaration sidecar held `any` in place of the type, so a stock `tsc` consumer lost its types without an error; it is an error again, as it is where the project emits declarations.
