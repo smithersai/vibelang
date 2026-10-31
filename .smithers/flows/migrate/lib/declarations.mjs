@@ -260,6 +260,59 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
 }
 
 /** Public files are compared byte for byte. Legacy trees without entry-point metadata keep the conservative canonical gate. */
+// The relative module specifiers a declaration file names: import and export
+// declarations, import types, and import-equals requires, each as
+// { text, start, end, line } with start and end inside the quotes.
+function moduleSpecifiers(ts, text) {
+  const source = ts.createSourceFile("x.d.ts", text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  const found = []
+  const visit = (node) => {
+    const parent = node.parent
+    if (ts.isStringLiteral(node) && parent && (
+      ((ts.isImportDeclaration(parent) || ts.isExportDeclaration(parent)) && parent.moduleSpecifier === node) ||
+      ts.isExternalModuleReference(parent) ||
+      (ts.isLiteralTypeNode(parent) && parent.parent && ts.isImportTypeNode(parent.parent)))) {
+      const start = node.getStart(source) + 1
+      found.push({ text: node.text, start, end: node.end - 1, line: source.getLineAndCharacterOfPosition(start).line + 1 })
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(source)
+  return found
+}
+
+/**
+ * Compares a published declaration file byte for byte, except a relative
+ * module specifier whose two spellings stock TypeScript resolves to the same
+ * listed declaration file in both trees, under Bundler and Node10 resolution:
+ * `./runtime` and `./runtime.js`, which a migrated module's importer declares
+ * once the codemod names it `./runtime.vibe` (VIP-27, D298). Returns the
+ * excused pairs, { line, before, after, declaration }, or null when anything
+ * else differs.
+ */
+function publishedEquivalent(ts, a, b, sides) {
+  if (a === b) return []
+  const left = moduleSpecifiers(ts, a)
+  const right = moduleSpecifiers(ts, b)
+  if (left.length !== right.length) return null
+  const masked = (text, specifiers) => {
+    let out = text
+    for (const { start, end } of [...specifiers].reverse()) out = out.slice(0, start) + out.slice(end)
+    return out
+  }
+  if (masked(a, left) !== masked(b, right)) return null
+  const excused = []
+  for (let i = 0; i < left.length; i++) {
+    const before = left[i].text, after = right[i].text
+    if (before === after) continue
+    if (!/^\.\.?\//.test(before) || !/^\.\.?\//.test(after)) return null
+    const targets = sides.flatMap((side) => [before, after].flatMap((name) => side.targets(name)))
+    if (targets.some((target) => target === undefined) || new Set(targets).size !== 1) return null
+    excused.push({ line: right[i].line, before, after, declaration: targets[0] })
+  }
+  return excused
+}
+
 export function compareDeclarations(ts, baselineDir, currentDir) {
   const before = listDeclarations(baselineDir)
   const after = listDeclarations(currentDir)
@@ -301,11 +354,28 @@ export function compareDeclarations(ts, baselineDir, currentDir) {
     const output = relative.startsWith("./") || relative.startsWith("../") ? relative : "./" + relative
     return select(output) === selected ? output : text
   }
+  // The listed declaration file a relative specifier in file selects, under each resolution mode.
+  const modes = [ts.ModuleResolutionKind.Bundler, ts.ModuleResolutionKind.Node10]
+  const side = (directory, file, declarations) => ({
+    targets: (name) => modes.map((moduleResolution) => {
+      const selected = ts.resolveModuleName(name, join(directory, file), { module: ts.ModuleKind.ESNext, moduleResolution }, ts.sys).resolvedModule?.resolvedFileName
+      const target = selected && rel(directory, selected)
+      return target && declarations.has(target) ? target : undefined
+    })
+  })
   const changed = []
+  const excused = []
   for (const file of before.filter(f => afterSet.has(f))) {
-    const text = dir => readFileSync(join(dir, dir === currentDir ? moved.get(file) ?? file : file), "utf8")
-    const a = publicFiles.has(file) ? text(baselineDir) : canonicalize(ts, text(baselineDir), file, modulePath(baselineDir, file, beforeSet))
-    const b = publicFiles.has(file) ? text(currentDir) : canonicalize(ts, text(currentDir), file, modulePath(currentDir, moved.get(file) ?? file, afterSet))
+    const current = moved.get(file) ?? file
+    const text = dir => readFileSync(join(dir, dir === currentDir ? current : file), "utf8")
+    if (publicFiles.has(file)) {
+      const pairs = publishedEquivalent(ts, text(baselineDir), text(currentDir), [side(baselineDir, file, beforeSet), side(currentDir, current, afterSet)])
+      if (pairs === null) changed.push({ file, diff: lineDiff(text(baselineDir), text(currentDir)) })
+      else for (const pair of pairs) excused.push({ file, ...pair })
+      continue
+    }
+    const a = canonicalize(ts, text(baselineDir), file, modulePath(baselineDir, file, beforeSet))
+    const b = canonicalize(ts, text(currentDir), file, modulePath(currentDir, current, afterSet))
     if (a !== b) changed.push({ file, diff: lineDiff(a, b) })
   }
   const removed = before.filter(f => !afterSet.has(f))
@@ -313,7 +383,7 @@ export function compareDeclarations(ts, baselineDir, currentDir) {
   const addedPrivate = resolved ? additions.filter(f => !publicFiles.has(f)) : []
   const added = additions.filter(f => !addedPrivate.includes(f))
   const rootsChanged = resolved && JSON.stringify(aSurface.roots) !== JSON.stringify(bSurface.roots.map(file => originalName.get(file) ?? file).sort())
-  return { identical: !changed.length && !removed.length && !added.length && !rootsChanged, files: before.length, added, addedPrivate, renamed: [...moved].map(([from, to]) => ({ from, to })), removed, changed,
+  return { identical: !changed.length && !removed.length && !added.length && !rootsChanged, files: before.length, added, addedPrivate, renamed: [...moved].map(([from, to]) => ({ from, to })), removed, changed, excused,
     ...(aSurface || bSurface ? { publicSurface: { before: aSurface, after: bSurface, rootsChanged: Boolean(rootsChanged) } } : {}) }
 }
 

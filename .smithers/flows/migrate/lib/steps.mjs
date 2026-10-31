@@ -988,6 +988,8 @@ export async function verify(options) {
     files,
     tests: { code: tests.code, total: tests.total, passed: tests.passed, failed: tests.failed.length, skipped: tests.skipped, ...testDiff },
     declarations,
+    // Each published specifier the gate excused, for the pull request's description.
+    excusedSpecifiers: Object.entries(declarations).flatMap(([dir, d]) => (d.excused ?? []).map((pair) => ({ package: dir, ...pair }))),
     compile: { batchErrors, newErrors: checked.newErrors, style, emitErrors },
     checks: {
       tests: testDiff.ok,

@@ -1,0 +1,23 @@
+{
+  "key": "opencode-19",
+  "note": "packages/stats/core's published barrel re-exports a migrated module through an extensionless import; once the codemod names it ./runtime.vibe, vibelang declares ./runtime.js (D298).",
+  "before": {
+    "index.d.ts": "export * as Runtime from \"./runtime\";\nexport { other } from \"./other.js\";\n",
+    "runtime.d.ts": "export declare const value: number;\n",
+    "other.d.ts": "export declare const other: number;\n"
+  },
+  "after": {
+    "index.d.ts": "export * as Runtime from \"./runtime.js\";\nexport { other } from \"./other.js\";\n",
+    "runtime.d.ts": "export declare const value: number;\n",
+    "other.d.ts": "export declare const other: number;\n"
+  },
+  "excused": [
+    {
+      "file": "index.d.ts",
+      "line": 1,
+      "before": "./runtime",
+      "after": "./runtime.js",
+      "declaration": "runtime.d.ts"
+    }
+  ]
+}
