@@ -46,8 +46,8 @@ process.exit(spawnSync(${JSON.stringify(native)}, args, { stdio: "inherit" }).st
     mkdirSync(dirname(join(root, path)), { recursive: true })
     writeFileSync(join(root, path), text)
   }
-  const bun = (args, env = {}) =>
-    spawnSync("bun", args, {
+  const bun = (args, env = {}, binary = "bun") =>
+    spawnSync(binary, args, {
       cwd: root, encoding: "utf8",
       env: { ...process.env, VIBELANG_BINARY: compiler, VIBELANG_PROJECT: "", VIBELANG_CACHE_DIR: join(root, ".cache"), NO_COLOR: "1", ...env }
     })
@@ -256,6 +256,21 @@ test("resolves an extensionless import to the .vibe file TypeScript resolves it 
   assert.equal(result.stdout, "archive mounted archive!\n")
 })
 
+
+// alchemy-30: Bun 1.3.13 drops a createRequire require's parent under a
+// CommonJS hook, so there the preload leaves the hook alone
+// (bun.property.test.mjs checks createRequire), and a CommonJS require of a
+// .vibe module names its extension. VIBELANG_TEST_BUN names such a Bun.
+const testBun = process.env.VIBELANG_TEST_BUN || "bun"
+test("a CommonJS require of a .vibe module by its extension loads on every Bun", { skip: skip || spawnSync(testBun, ["--version"]).status !== 0 && `${testBun} is not a Bun` }, (t) => {
+  const { bun } = project(t, {
+    "src/shout.vibe": "export function shout(text: string): string { return text.toUpperCase() }\n",
+    "src/main.cjs": "console.log(require(\"./shout.vibe\").shout(\"hello\"))\n"
+  })
+  const result = bun(["--preload", preload, "src/main.cjs"], {}, testBun)
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(result.stdout, "HELLO\n")
+})
 
 test("resolves a tsconfig paths alias to the .vibe module TypeScript resolves it to", { skip }, (t) => {
   // alchemy: "@/*": ["./src/*"] in each package, and 118 modules import through it.

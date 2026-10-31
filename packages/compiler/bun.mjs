@@ -1,4 +1,4 @@
-import Module from "node:module"
+import Module, { createRequire } from "node:module"
 import { extensionlessImport } from "./relative-imports.mjs"
 import { aliasImport } from "./paths-imports.mjs"
 import { diagnosticsForFile } from "./diagnostics.mjs"
@@ -48,13 +48,25 @@ function vibeImport(directory, specifier) {
 
 // Bun honors Node's CommonJS hook for extensionless require requests.
 const resolveFilename = Module._resolveFilename
-Module._resolveFilename = function (specifier, parent, ...args) {
+function resolveVibeFilename(specifier, parent, ...args) {
   if (typeof specifier === "string" && parent?.filename && !inDependency(parent.filename)) {
     const source = vibeImport(dirname(parent.filename), specifier)
     if (source !== undefined) return source
   }
   return resolveFilename.call(this, specifier, parent, ...args)
 }
+// Bun 1.3.13 calls a replaced hook without the parent for a require that
+// createRequire(url) made, so the request resolves from the working
+// directory instead of url, and Nuxt's createRequire(import.meta.url)
+// .resolve("srvx/node") fails (alchemy-30). Such a runtime keeps its own
+// hook: a CommonJS require of a .vibe module there names the extension.
+let parentless = false
+Module._resolveFilename = function (specifier, parent, ...args) {
+  if (parent === undefined) parentless = true
+  return resolveVibeFilename.call(this, specifier, parent, ...args)
+}
+try { createRequire(import.meta.url).resolve("./bun.mjs") } catch { /* The probe only watches the hook's arguments. */ }
+Module._resolveFilename = parentless ? resolveFilename : resolveVibeFilename
 
 const results = new Map()
 

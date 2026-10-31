@@ -111,3 +111,98 @@ test("Bun preload preserves generated dependency graphs without scanning them (o
   })
   t.diagnostic("ESM/CommonJS, JS/TS, nested packages, static/dynamic imports, depth and fan-out; no timing oracle")
 })
+
+// alchemy-30: under the preload, createRequire(base) resolves from base, as
+// Node documents it ("filename to be used to construct the require
+// function"), on every Bun: Bun 1.3.13 calls a replaced CommonJS hook
+// without the parent for such a require, so the preload must leave the hook
+// alone there. VIBELANG_TEST_BUN names another Bun to check, such as the
+// 1.3.13 alchemy pins. The layout varies where the importer sits, where Bun
+// runs, what createRequire receives, and what is resolved.
+const testBun = process.env.VIBELANG_TEST_BUN || "bun"
+const hasTestBun = spawnSync(testBun, ["--version"]).status === 0
+const originRule = "Node's createRequire(filename): resolution is relative to filename; alchemy-30: Bun 1.3.13 loses it under a CommonJS hook"
+const originLayout = fc.record({
+  depth: fc.integer({ min: 0, max: 3 }),
+  cwd: fc.constantFrom("root", "sibling", "importer"),
+  base: fc.constantFrom("import.meta.url", "url-string", "path", "other-file"),
+  request: fc.constantFrom("probe/node", "probe", "./local.cjs", "../up.cjs"),
+  call: fc.constantFrom("resolve", "require")
+})
+let originDiagnostics = ""
+
+// The importer's directory, and the directory createRequire's base names.
+function originDirs({ depth, base }) {
+  const importer = ["app", ...Array.from({ length: depth }, (_, i) => "d" + i)].join("/")
+  return { importer, from: base === "other-file" ? importer + "/other" : importer }
+}
+
+// Each file a request can reach holds its own path, which require prints.
+function originFiles(input) {
+  const { importer, from } = originDirs(input)
+  const up = dirname(from) === "." ? "up.cjs" : dirname(from) + "/up.cjs"
+  const files = {
+    "package.json": '{"type":"module"}\n',
+    "sibling/README.md": "Bun runs here, beside the importer's tree.\n",
+    "app/node_modules/probe/package.json": JSON.stringify({ name: "probe", main: "main.cjs", exports: { ".": "./main.cjs", "./node": "./node.cjs" } }) + "\n"
+  }
+  for (const file of ["app/node_modules/probe/main.cjs", "app/node_modules/probe/node.cjs", from + "/local.cjs", up]) {
+    files[file] = "module.exports = " + JSON.stringify(file) + "\n"
+  }
+  const base = {
+    "import.meta.url": "import.meta.url",
+    "url-string": "import.meta.url.toString()",
+    path: "fileURLToPath(import.meta.url)",
+    "other-file": 'new URL("./other/entry.mjs", import.meta.url)'
+  }[input.base]
+  const request = JSON.stringify(input.request)
+  files[importer + "/entry.mjs"] = [
+    'import { createRequire } from "node:module"',
+    'import { fileURLToPath } from "node:url"',
+    "const require = createRequire(" + base + ")",
+    "console.log(" + (input.call === "resolve" ? "require.resolve(" + request + ")" : "require(" + request + ")") + ")",
+    ""
+  ].join("\n")
+  return files
+}
+
+// What Node resolves: the file the layout puts there, from the base's directory.
+function originExpected(root, input) {
+  const { from } = originDirs(input)
+  const file = {
+    "probe/node": "app/node_modules/probe/node.cjs",
+    probe: "app/node_modules/probe/main.cjs",
+    "./local.cjs": from + "/local.cjs",
+    "../up.cjs": dirname(from) === "." ? "up.cjs" : dirname(from) + "/up.cjs"
+  }[input.request]
+  return input.call === "resolve" ? join(root, file) : file
+}
+
+function checkOrigin(input) {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-bun-origin-")))
+  try {
+    for (const [file, contents] of Object.entries(originFiles(input))) {
+      mkdirSync(dirname(join(root, file)), { recursive: true })
+      writeFileSync(join(root, file), contents)
+    }
+    const importer = join(root, originDirs(input).importer)
+    const cwd = input.cwd === "root" ? root : input.cwd === "sibling" ? join(root, "sibling") : importer
+    const result = spawnSync(testBun, ["--preload", preload, join(importer, "entry.mjs")], { cwd, encoding: "utf8", timeout: 20000, env: { ...process.env, NO_COLOR: "1" } })
+    originDiagnostics = JSON.stringify({ input, status: result.status, stdout: result.stdout, stderr: result.stderr }).replaceAll(root, "<project>")
+    assert.ifError(result.error)
+    assert.equal(result.status, 0, originDiagnostics)
+    assert.equal(result.stdout, originExpected(root, input) + "\n", originDiagnostics)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+}
+
+test("createRequire(base) resolves from base under the preload (alchemy-30)", {
+  skip: !hasTestBun && `${testBun} is not a Bun`
+}, async t => {
+  await checkProperty(fc, {
+    name: "bun-create-require-origin", rule: originRule,
+    command: "node --test test/bun.property.test.mjs",
+    arbitrary: originLayout, numRuns: 24, regressions, artifacts: originFiles,
+    diagnostics: () => originDiagnostics, check: checkOrigin
+  })
+  t.diagnostic(`${testBun}: importer depth, working directory, URL/string/path/other-file bases, subpath exports, main, relative and parent requests; resolve and require`)
+})
