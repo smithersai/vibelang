@@ -1,0 +1,2 @@
+FuzzDeclarationTypeParameterLineBreak data compiler Appendix A DataDeclaration: scanner still requires the generic angle on the name line; additional finding beyond error-only G1; lane vibex-1
+FuzzDeclarationTypeParameterLineBreak corpus:data compiler Appendix A: reproduces data; lane vibex-1

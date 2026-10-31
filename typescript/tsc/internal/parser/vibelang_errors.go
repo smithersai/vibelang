@@ -105,7 +105,10 @@ func (p *Parser) parseErrorDeclaration(pos int, jsdoc jsdocScannerInfo, modifier
 	}
 	p.nextToken() // error
 	d.name = p.parseBindingIdentifier()
-	d.typeParameters = p.parseTypeParameters()
+	// Appendix A: a bodyless error ends before a next-line generic arrow.
+	if !p.hasPrecedingLineBreak() {
+		d.typeParameters = p.parseTypeParameters()
+	}
 	form.Head = core.NewTextRange(d.word.Pos(), d.name.End())
 	d.abstract = modifiers != nil && core.Some(modifiers.Nodes, func(m *ast.Node) bool { return m.Kind == ast.KindAbstractKeyword })
 	if clauses := p.parseVibeLangErrorHeritage(); len(clauses) != 0 {

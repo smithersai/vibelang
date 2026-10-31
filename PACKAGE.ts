@@ -92,6 +92,7 @@ const specTests = [
   "TestFormatReturnTypesQuoted",
   "TestEffectArrowHeadsQuoted",
   "TestFormatPrefixOperandsQuoted",
+  "TestDeclarationLineBreakQuoted",
   "TestSchemaDecodedKeyFlagsQuoted",
   "TestFormatBlockHeaderRulesQuoted",
   "TestFormatContractCommentQuote",

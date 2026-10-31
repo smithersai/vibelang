@@ -1,0 +1,9 @@
+// expect-result: ["Timeout","SchemaTimeout",7]
+error Timeout
+<T,>(x: T) => x
+schema error SchemaTimeout
+<U,>(x: U) => x
+
+export effect function main() {
+ return [new Timeout()._tag, new SchemaTimeout()._tag, 7]
+}
