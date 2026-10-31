@@ -179,6 +179,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - With a `paths` alias such as `"@/*": ["./lib/*", "./src/*"]`, an import of `@/x.vibe` compiled against `lib/x.d.ts` but the loaders ran `src/x.vibe`; the loaders now resolve it as the compiler does, so both use `lib/x.d.ts`.
 - Compiler fuzz validation left selection modes around rare syntax untested; named splice fixtures now exercise every category and fuzz replay, source spans and donor choices.
 
+- The schema regression check rejected the two distinct `EK2109` messages for a reference with unproven required and readonly keys; it now checks both decoded-key promises.
+
 - Cross-platform compiler builds could fail without naming the affected platform or its exit status; each target now keeps a completion record and silent failures are identified.
 
 

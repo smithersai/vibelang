@@ -1,1 +1,2 @@
 A required schema field must use a schema whose decoded key is required.
+A readonly schema field must use a schema whose decoded key is readonly.
