@@ -1,0 +1,10 @@
+// A retained Effect error's one-binding extractor covers its case (chapter
+// 004, Coverage), as its bare pattern does, so this match needs no default.
+import { Cause } from "effect"
+export error Missing {}
+export function describe(x: Missing | Cause.TimeoutError) {
+  return match (x) {
+    when Missing: "missing";
+    when Cause.TimeoutError(let t): t._tag;
+  }
+}

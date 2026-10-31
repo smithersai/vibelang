@@ -40,7 +40,11 @@ func narrowExtractedError(c *checker.Checker, reference *ast.Node, t *checker.Ty
 		if ast.IsIdentifier(node) || ast.IsCallExpression(node) {
 			if call := extractionCall(c, node); call != nil && (c.IsMatchingReference(reference, call.Arguments()[1]) || readsThroughCapture(c, reference, call.Arguments()[1])) {
 				matcher := c.TypeOfPatternMatcher(call.Arguments()[0])
-				if symbol := matcher.Symbol(); symbol == nil || !isExtractedErrorClass(symbol.ValueDeclaration()) {
+				// A retained Effect error's extractor, Cause.TimeoutError(let t),
+				// extracts [s] behind its module guard as well (chapter 004,
+				// Retained fixed patterns), so its one binding covers its case.
+				retained := isRetainedErrorMatcher(c, call.Arguments()[0])
+				if symbol := matcher.Symbol(); !retained && (symbol == nil || !isExtractedErrorClass(symbol.ValueDeclaration())) {
 					return nil
 				}
 				signatures := c.GetConstructSignatures(matcher)
@@ -52,6 +56,10 @@ func narrowExtractedError(c *checker.Checker, reference *ast.Node, t *checker.Ty
 				if ast.IsBinaryExpression(parent) && parent == test {
 					binary := parent.AsBinaryExpression()
 					if binary.Left == node && binary.Right.Kind == ast.KindFalseKeyword && binary.OperatorToken.Kind == ast.KindExclamationEqualsEqualsToken {
+						if retained {
+							// The guard tests Effect's brand, not the tag alone.
+							return c.NarrowTypeTo(t, instance, assumeTrue)
+						}
 						return narrowByErrorTag(c, t, instance, assumeTrue)
 					}
 				}
@@ -141,4 +149,12 @@ func isExtractedErrorClass(decl *ast.Node) bool {
 	}
 	base := ast.GetClassExtendsHeritageElement(decl)
 	return base.Expression().Expression().Flags&ast.NodeFlagsReparsed != 0
+}
+
+// isRetainedErrorMatcher reports whether matcher names a retained Effect
+// error, Cause.TimeoutError, whose module guard the lowering tests
+// (match_builtins.go, fixedErrorGuards).
+func isRetainedErrorMatcher(c *checker.Checker, matcher *ast.Node) bool {
+	builtin, ok := builtinMatcherOf(c, matcher)
+	return ok && builtin.Guard != "" && fixedErrorGuards[builtin.Module] != nil
 }

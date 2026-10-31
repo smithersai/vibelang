@@ -810,6 +810,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Some unary or multiline top-level `await` expressions compiled into output incompatible with the selected target or CommonJS host; they now report `TS1378` or `TS1309`.
 
 
+- A retained Effect error's extractor, such as `when Cause.TimeoutError(let t):`, did not cover its case, so a `match` that handled every member still reported `EK4701`; its one-binding extractor now covers the case, as the bare pattern does.
+
 - In a `.vibe` file a member of an interface or an object type was readonly to the checker, so `options.minimum = 0` was `TS2540`, while its declaration printed the member writable; such a member is now writable unless written `readonly`, as in TypeScript, and the checker and the declaration agree. The fields of `data`, `schema` and `error` bodies keep their readonly default, and `mutable` is still accepted. The migrate flow's codemod no longer writes `mutable`.
 
 - `when NotFound:` and `when NotFound(let e):` narrowed the subject, and typed `e`, as the `NotFound` class alone, although the generated matcher also accepts a plain object or another package's copy with the tag `"NotFound"`; a `match` over such a member then reported `EK4701` after the arm. They now narrow as `Effect.catchTag` does, to the subject's members with that tag, and keep the class only when the subject has none, so a later arm for another class with the same tag sees `never`: that arm never runs.
