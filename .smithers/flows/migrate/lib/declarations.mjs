@@ -202,6 +202,37 @@ export function listDeclarations(dir) {
   return out.sort()
 }
 
+/**
+ * The declarations of modules an earlier run migrated, as that run's compiler
+ * committed them in their sidecars (x.d.vibe.ts beside x.vibe), compared with
+ * this toolchain's declarations of the same modules in outDir. sidecars maps
+ * each sidecar's repository path to its text. A sidecar whose module emits
+ * nothing in outDir is missing. Setup's baseline is emitted with the new
+ * toolchain, so without this a toolchain change to those declarations becomes
+ * the baseline every batch passes against (foldkit-11: mount/index lost its
+ * readonly members).
+ */
+export function sidecarChanges(ts, sidecars, outDir) {
+  const emitted = listDeclarations(outDir)
+  const changed = []
+  const missing = []
+  for (const [sidecar, text] of Object.entries(sidecars)) {
+    const declaration = sidecar.replace(/\.d\.vibe\.ts$/, ".d.ts")
+    // outDir mirrors the project's rootDir, with a subdirectory per project when there are several.
+    const match = emitted
+      .flatMap((file) => [file, file.split("/").slice(1).join("/")].filter((f) => f && (declaration === f || declaration.endsWith(`/${f}`))).map((f) => ({ file, length: f.length })))
+      .sort((a, b) => b.length - a.length)[0]
+    if (!match) {
+      missing.push(sidecar)
+      continue
+    }
+    const before = canonicalize(ts, text, declaration)
+    const after = canonicalize(ts, readFileSync(join(outDir, match.file), "utf8"), declaration)
+    if (before !== after) changed.push({ file: sidecar, declaration: match.file, diff: lineDiff(before, after) })
+  }
+  return { files: Object.keys(sidecars).length, changed, missing }
+}
+
 /** The first lines where two texts differ, as a short unified-style excerpt. */
 export function lineDiff(before, after, limit = 12) {
   const a = before.split("\n")

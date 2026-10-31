@@ -88,6 +88,12 @@ export async function fileAt(root, revision, path) {
   return result.code === 0 ? result.stdout : null
 }
 
+/** The repository-relative paths of the files a revision tracks under dir. */
+export async function filesAt(root, revision, dir = ".") {
+  const result = await run(`jj file list -r ${quote(revision)} ${quote(`root:${JSON.stringify(dir)}`)}`, { cwd: root })
+  return result.code === 0 ? result.stdout.split("\n").filter(Boolean) : []
+}
+
 /** The commit a bookmark points to, or null when it does not exist. */
 export async function bookmarkTarget(root, name) {
   const result = await run(`jj log -r ${quote(`bookmarks(exact:${JSON.stringify(name)})`)} --no-graph -T 'commit_id ++ "\\n"'`, { cwd: root })

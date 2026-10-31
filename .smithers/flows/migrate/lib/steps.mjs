@@ -17,7 +17,7 @@ import { checkSelectorEdits, restoreSourceLiterals, rewriteSourceLiterals } from
 import { splitBatchPlatform } from "./platform.mjs"
 import { check, newErrors, styleProblems, summarize } from "./diagnostics.mjs"
 import { preservedErrorAdvisories } from "./preserved-errors.mjs"
-import { compareDeclarations, recordDeclarationSurface, emitDeclarations, emitErrorsIn, loadTypeScript } from "./declarations.mjs"
+import { compareDeclarations, recordDeclarationSurface, emitDeclarations, emitErrorsIn, loadTypeScript, sidecarChanges } from "./declarations.mjs"
 import { compareTests, regressionIssue, runTests } from "./tests.mjs"
 import { verifyRepositoryTests } from "./test-diff-run.mjs"
 import { testDiffMarkdown } from "./test-diff.mjs"
@@ -273,6 +273,34 @@ async function checkPackage({ compiler, ts, t, pkg, log }) {
     diagnostics.push(...checked.diagnostics)
   }
   return { code, diagnostics }
+}
+
+/**
+ * The declaration sidecars of pkg's migrated modules at revision, the commit
+ * the run started from, compared with the declarations emitted into outDir.
+ */
+export async function earlierDeclarationChanges({ ts, t, revision, pkg, outDir }) {
+  const sidecars = {}
+  if (revision) {
+    for (const file of await Jj.filesAt(t, revision, pkg.dir)) {
+      if (!file.endsWith(".d.vibe.ts")) continue
+      const text = await Jj.fileAt(t, revision, file)
+      if (text !== null) sidecars[file] = text
+    }
+  }
+  return sidecarChanges(ts, sidecars, outDir)
+}
+
+/** The setup issue for a toolchain that changed the declarations of modules earlier runs migrated. */
+export function earlierDeclarationsIssue({ version, revision, outDir, changes }) {
+  return {
+    kind: "issue",
+    batch: "setup",
+    title: `${version} changes the declarations of ${changes.length} module${changes.length === 1 ? "" : "s"} an earlier run migrated`,
+    repro: `compare each sidecar at ${String(revision).slice(0, 12)} with this toolchain's declaration in ${outDir}: ${changes.map((c) => `${c.file} with ${c.declaration}`).join(", ")}`,
+    expected: "a new toolchain declares a migrated module as the toolchain that migrated it did",
+    actual: changes.map((c) => `${c.file}: ${c.diff.join(" ")}`).join("; ")
+  }
 }
 
 /** Emits the declarations of each project of pkg's declaration tsconfig into outDir, each into its own subdirectory when there are several. */
@@ -950,7 +978,12 @@ export async function setup(options) {
     writeJson(join(p.baseline, `compile-${slug(pkg.dir)}.json`), checked.diagnostics)
     compile[pkg.dir] = summarize(checked.diagnostics)
     assertBaselineSafe(p)
-    declarations[pkg.dir] = await emitPackageDeclarations({ compiler, ts, t, pkg, outDir: join(p.baseline, "dts", slug(pkg.dir)), log: join(logs, `dts-${slug(pkg.dir)}.log`) })
+    const outDir = join(p.baseline, "dts", slug(pkg.dir))
+    declarations[pkg.dir] = await emitPackageDeclarations({ compiler, ts, t, pkg, outDir, log: join(logs, `dts-${slug(pkg.dir)}.log`) })
+    // The modules earlier runs migrated keep the declarations their compiler committed.
+    const earlier = await earlierDeclarationChanges({ ts, t, revision: upgrade.jj.baseCommit, pkg, outDir })
+    declarations[pkg.dir].earlier = { files: earlier.files, changed: earlier.changed.map((c) => c.file), missing: earlier.missing }
+    if (earlier.changed.length) appendJsonl(p.issues, earlierDeclarationsIssue({ version: version.trim(), revision: upgrade.jj.baseCommit, outDir, changes: earlier.changed }))
   }
 
   const files = scopeFiles(config)

@@ -1,0 +1,8 @@
+{
+  "finding": "foldkit-11:setup-baseline-absorbs-toolchain-declaration-change",
+  "source": "foldkit packages/foldkit/src/mount/index: sidecar at round 3's last commit 0fa8d501491a (toolchain 695576acb44b) vs round 4 setup's baseline (toolchain 9a7f385aa855), minimized",
+  "sidecar": "packages/foldkit/src/mount/index.d.vibe.ts",
+  "declaration": "mount/index.d.ts",
+  "before": "import type { Stream } from 'effect';\ndeclare const MountDefinitionTypeId: unique symbol;\ntype MountDefinitionTypeId = typeof MountDefinitionTypeId;\n/** A Mount definition for a Mount with no declared args. */\nexport interface MountDefinitionNoArgs<Name extends string, ResultMessage> {\n    readonly [MountDefinitionTypeId]: MountDefinitionTypeId;\n    readonly name: Name;\n    (): Readonly<{\n        name: Name;\n        f: (element: Element) => Stream.Stream<ResultMessage>;\n    }>;\n}\nexport {};\n",
+  "after": "import type { Stream } from \"effect\";\ndeclare const MountDefinitionTypeId: unique symbol;\ntype MountDefinitionTypeId = typeof MountDefinitionTypeId;\n/** A Mount definition for a Mount with no declared args. */\nexport interface MountDefinitionNoArgs<Name extends string, ResultMessage> {\n    [MountDefinitionTypeId]: MountDefinitionTypeId;\n    name: Name;\n    (): Readonly<{\n        name: Name;\n        f: (element: Element) => Stream.Stream<ResultMessage>;\n    }>;\n}\nexport {};\n"
+}
