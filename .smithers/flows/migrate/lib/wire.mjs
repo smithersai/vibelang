@@ -568,15 +568,27 @@ export function packagesReaching(root, migrated) {
   const byName = new Map(all.filter((pkg) => pkg.manifest.name).map((pkg) => [pkg.manifest.name, pkg]))
   const local = (pkg) => Object.entries({ ...pkg.manifest.dependencies, ...pkg.manifest.devDependencies, ...pkg.manifest.peerDependencies })
     .filter(([name, spec]) => typeof spec === "string" && localSpec.test(spec) && byName.has(name)).map(([name]) => byName.get(name))
-  const reaches = new Map()
-  const reachesMigrated = (pkg) => {
-    if (reaches.has(pkg.dir)) return reaches.get(pkg.dir)
-    reaches.set(pkg.dir, migrated.includes(pkg.dir))
-    const result = migrated.includes(pkg.dir) || local(pkg).some(reachesMigrated)
-    reaches.set(pkg.dir, result)
-    return result
+  // Propagate from the migrated packages through reverse dependency edges.
+  // A recursive walk cannot memoize false while a dependency cycle is open:
+  // another branch may still connect the whole cycle to a migrated package.
+  const dependents = new Map()
+  for (const pkg of all) {
+    for (const dependency of local(pkg)) {
+      const consumers = dependents.get(dependency.dir) ?? []
+      consumers.push(pkg.dir)
+      dependents.set(dependency.dir, consumers)
+    }
   }
-  return all.filter(reachesMigrated)
+  const reached = new Set(migrated)
+  const queue = [...reached]
+  for (let i = 0; i < queue.length; i++) {
+    for (const dir of dependents.get(queue[i]) ?? []) {
+      if (reached.has(dir)) continue
+      reached.add(dir)
+      queue.push(dir)
+    }
+  }
+  return all.filter((pkg) => reached.has(pkg.dir))
 }
 
 /**

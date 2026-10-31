@@ -1,0 +1,26 @@
+{
+  "finding": "packagesReaching:workspace-cycle-order",
+  "origin": "Derived while widening Bun setup coverage; this is not claimed to be the original T3code graph.",
+  "input": {
+    "nodes": [
+      {
+        "migrated": false,
+        "deps": [
+          1,
+          2
+        ]
+      },
+      {
+        "migrated": false,
+        "deps": [
+          0
+        ]
+      },
+      {
+        "migrated": true,
+        "deps": []
+      }
+    ],
+    "rotation": 0
+  }
+}

@@ -2057,6 +2057,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Formatting a file twice could indent a line again when the first format moved a statement onto a line of its own and the statement continued on the next line: a call's arguments, as in `{{0!\n("")}}`, a binary operator, as in `{{x\n+ y}}`, or a `%` operand. The first format now gives the final indentation.
 - Abstract classes could silently become services, and service defaults used a different contract from Effect; services now use `service` declarations and `defaultValue` thunks checked as `() => Shape`.
 - The same `A!E` annotation meant different types on a function and a service member; omitted slots now mean `never` everywhere.
+
+- Workspace dependency cycles could make `setup` miss Bun preloads and Vite wiring for packages that imported migrated code. Every package that reaches the code is now wired.
+
 ### Known bugs
 
 These bugs were found and confirmed and are being fixed; please don't re-report them, and each entry moves to the fixed list when its fix lands.
