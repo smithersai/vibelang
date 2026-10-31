@@ -27,6 +27,8 @@ A service has no superclass or type parameters, and every instance member is abs
 
 `Users.Shape` names the written member object directly, so service contracts can refer to their own or another service's `.Shape`. A service cannot declare type parameters or capture an enclosing type parameter in a member contract (`EK3005`): different specializations would share one runtime key. Use a concrete contract or a member-local generic method independent of outer parameters.
 
+A service declaration takes no `extends` or `implements` clause (`EK0904`): its identity is its key. Compose shapes with types instead, such as `find: Base.Shape["find"]`.
+
 Services are nominal: the compiler derives the key from package, module path, and declaration name, so two services with identical members are different dependencies. To keep a key, such as one a `Context.Service` class wrote before migrating, write it in the body: `static readonly key = "app/Users"`. A `key` that is not `static readonly` with a string literal is `EK3008`. An `abstract class` is an ordinary TypeScript class; one written as a service draws `EK4854`, whose fix, which `vibelang --fix` applies, writes the `service` declaration with its members and key. Implement one with an object literal or a class that `implements` its `.Shape`; don't construct, extend, or use `instanceof` on it.
 
 An explicit string-literal key keeps its value, including `""`. It is used for runtime lookup, the emitted key type, and duplicate-key checks; an empty literal does not request a derived key.

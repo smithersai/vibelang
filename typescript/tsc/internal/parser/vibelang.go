@@ -335,6 +335,9 @@ func (p *Parser) parseServiceDeclaration(pos int, jsdoc jsdocScannerInfo, modifi
 	if !control && p.token == ast.KindColonToken {
 		return p.parseServiceShapeDeclaration(pos, jsdoc, modifiers, word, name, typeParameters) // D281
 	}
+	if !control {
+		p.skipVibeLangServiceHeritage() // EK0904
+	}
 	var heritage *ast.NodeList
 	if control {
 		base := p.vibelangIntrinsic("Control", word)

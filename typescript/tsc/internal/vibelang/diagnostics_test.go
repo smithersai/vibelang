@@ -73,7 +73,7 @@ const renumbering = "lane diag-renumber registers each VIP's hundred-block (deci
 var specAhead = map[int32]string{
 	1301: renumbering, 1302: renumbering, 1303: renumbering, 1304: renumbering,
 	// Assigned by the round-17 and round-18 spec (decided detail 60) for VibeLang syntax errors and decided details 67b, 82 and 88.
-	302: renumbering, 509: renumbering, 701: renumbering, 702: renumbering, 703: renumbering, 904: renumbering, 905: renumbering,
+	302: renumbering, 509: renumbering, 701: renumbering, 702: renumbering, 703: renumbering, 905: renumbering,
 	1202: renumbering, 1305: renumbering, 1601: renumbering, 1702: renumbering, 1703: renumbering, 1704: renumbering, 1906: renumbering,
 	// Assigned by the round-19 and round-20 spec for decided details 96 (a @throws tag on an effectful callable) and 100 (an extractor on a class without its own matcher).
 	406: renumbering, 704: renumbering,

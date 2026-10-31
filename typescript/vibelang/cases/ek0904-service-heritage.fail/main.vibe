@@ -1,0 +1,10 @@
+// expect: EK0904
+// A service's identity is its key, so a service declaration takes no extends
+// or implements clause (VIP-9). Compose shapes with types instead:
+// find: Base.Shape["find"]. The body after the clause still parses.
+class Base {}
+interface Shape { n: number }
+
+export service Extended extends Base { n: number }
+
+export service Implemented implements Shape { n: number }
