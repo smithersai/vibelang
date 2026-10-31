@@ -416,6 +416,16 @@ async function wireTarget(config, log) {
   return { manager, specs: Object.fromEntries(config.packages.map((pkg) => [pkg.dir, specsFor(pkg.dir)])), viteConfigs: vite.configs, viteAppConfigs: apps.configs, knipConfig: knip.config, formatted, changed, warnings, install }
 }
 
+/**
+ * Moves the working copy to the upgrade's commit. An earlier setup's toolchain
+ * directory is ignored only by that setup's .gitignore, so jj would snapshot
+ * its tarballs into this setup's commit; it goes first, and wiring copies it again.
+ */
+export async function returnToUpgrade(t, commit) {
+  rmSync(join(t, Wire.toolchainDirectory), { recursive: true, force: true })
+  await Jj.newAt(t, commit)
+}
+
 /** setup: on the Effect upgrade's commit, wire the toolchain, install, record the baseline tests, compile, declarations and inventory, and commit. */
 export async function setup(options) {
   const p = paths(options.run)
@@ -428,7 +438,7 @@ export async function setup(options) {
   // The working copy holds at most what the run's own installs changed since the upgrade's commit.
   if ((await Jj.commitId(t, "@-")) !== upgrade.jj.commit) {
     if ((await Jj.changedPaths(t)).length) throw new Error(`${t}'s working copy is not on the Effect upgrade's commit ${upgrade.jj.commit.slice(0, 12)}; commit or discard its changes first`)
-    await Jj.newAt(t, upgrade.jj.commit)
+    await returnToUpgrade(t, upgrade.jj.commit)
   }
   // The tests as the upgrade left them are what setting VibeLang up is compared with.
   const upstream = readJson(join(p.baseline, "upgraded-tests.json"))

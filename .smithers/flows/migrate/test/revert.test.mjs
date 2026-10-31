@@ -4,12 +4,34 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { renameBatch, rewriteImports } from "../lib/codemod.mjs"
-import { makeConfig, paths, revert } from "../lib/steps.mjs"
+import { makeConfig, paths, returnToUpgrade, revert } from "../lib/steps.mjs"
 import * as Jj from "../lib/jj.mjs"
 import { must, readJson, writeJson } from "../lib/util.mjs"
 
 // A real jj repository and run directory: the batch is renamed and its
 // consumers rewritten as codemod does, then one file goes back to .ts.
+// A real jj repository: an earlier setup's .gitignore goes with its commit, and
+// jj snapshots what that file kept out into the next setup's commit.
+test("returning to the upgrade leaves an earlier setup's toolchain out of the next commit", async () => {
+  const target = mkdtempSync(join(tmpdir(), "migrate-setup-again-"))
+  try {
+    await must("jj git init && jj config set --repo user.name test && jj config set --repo user.email test@localhost", { cwd: target })
+    writeFileSync(join(target, "package.json"), "{}\n")
+    const upgrade = await Jj.commit(target, "upgrade effect")
+    writeFileSync(join(target, ".gitignore"), ".vibelang-toolchain/\n")
+    mkdirSync(join(target, ".vibelang-toolchain"))
+    writeFileSync(join(target, ".vibelang-toolchain/vibelang-runtime-0.0.11.tgz"), "tarball\n")
+    await Jj.commit(target, "set up the old toolchain")
+
+    await returnToUpgrade(target, upgrade)
+    assert.equal(await Jj.commitId(target, "@-"), upgrade)
+    assert.deepEqual(await Jj.changedPaths(target), [])
+    assert.equal(existsSync(join(target, ".vibelang-toolchain")), false)
+  } finally {
+    rmSync(target, { recursive: true, force: true })
+  }
+})
+
 test("revert returns a file to .ts and points every import the codemod rewrote back at it", async () => {
   const root = mkdtempSync(join(tmpdir(), "migrate-revert-"))
   const target = join(root, "repo")
