@@ -1,0 +1,8 @@
+// expect: TS2702
+// Chapter 005 and VIP-9, decided detail 181 (loop round 3, OPUS-5): outside its
+// own shape a service declared in a function has no S.Shape.
+export function outside() {
+  service Local { static readonly key = "app/Local"; value: number }
+  const impl: Local.Shape = { value: 9 }
+  return impl.value
+}

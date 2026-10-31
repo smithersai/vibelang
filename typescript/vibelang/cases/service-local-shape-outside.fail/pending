@@ -1,0 +1,1 @@
+impl-hunt-svc a local service outside its own shape has no S.Shape (decided detail 181, loop round 3, OPUS-5): resolveServiceShapeName accepts the name in every position, so this compiles; the outside read should be TS2702

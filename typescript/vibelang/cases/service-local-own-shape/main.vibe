@@ -1,0 +1,18 @@
+// expect-result: {"local":10,"block":12}
+// Chapter 005 and VIP-9, decided detail 181 (loop round 3, OPUS-5): inside a
+// local service's own members S.Shape names the private member type.
+function local() {
+  service Local { static readonly key = "app/Local"; value: number; next?: Local.Shape }
+  const impl: Context.Service.Shape<typeof Local> = { value: 9, next: { value: 10 } }
+  return impl.next?.value
+}
+function block() {
+  {
+    service Inner { static readonly key = "app/Inner"; value: number; next?: Inner.Shape }
+    const impl: Context.Service.Shape<typeof Inner> = { value: 11, next: { value: 12 } }
+    return impl.next?.value
+  }
+}
+export effect function main() {
+  return { local: local(), block: block() }
+}

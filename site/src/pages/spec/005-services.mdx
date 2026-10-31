@@ -79,13 +79,18 @@ declare namespace Users { type Shape = $Users$Shape }
   ```
 
 - **Two types,** as in Effect. `Users` is the identifier, the type that appears in R. `Users.Shape` is the members, the type an implementation has; Effect writes it `Context.Service.Shape<typeof Users>`, and the compiler declares `Users.Shape` as a direct alias of the written member object, named by a fresh private type such as `$Users$Shape` above. It does not extract that alias through its own key while resolving the class base: self- and mutually recursive member types remain ordinary recursive object types. Private helper names are hygienic, including in declaration output; member modifiers and callable throw metadata are retained. A `Context.Reference` is a value, not a class, and never appears in R, so a service with a `defaultValue` has `Flags.Shape` and no identifier type. `EK3001` to `EK3004` apply to it unchanged: `when Flags:` is `EK3004`, as for any `service`. `EK0702` covers only a reference built with `Context.Reference(…)` directly ([chapter 004](/spec/004-match)). A member's throw contract is an interface member's: without `@throws` it admits only `never` ([Assignability](/spec/003-failures#assignability); decided detail 3).
-- **Inside a function or block** the counterpart is a private named member type and the class (or `const`), without a namespace, because TypeScript allows a `namespace` only at the top level of a module or namespace (TS1235). There `Users.Shape` is not declared; write `Context.Service.Shape<typeof Users>`:
+- **Inside a function or block** the counterpart is a private named member type and the class (or `const`), without a namespace, because TypeScript allows a `namespace` only at the top level of a module or namespace (TS1235). Inside the service's own members `Users.Shape` names that private type, by [VIP-9](/vips/0009-service-declarations)'s type-only hook, so recursive members work. Elsewhere `Users.Shape` is not declared; write `Context.Service.Shape<typeof Users>`:
 
   ```vibe [VibeLang]
   // compiler-gap: pending VIP-9
   effect function test() {
     service Users { static readonly key = "test/Users"; find(id: string): User!NotFound }
     const fake: Context.Service.Shape<typeof Users> = { find: (id) => succeed(user) }
+  }
+  function linked() {
+    service Local { static readonly key = "app/Local"; value: number; next?: Local.Shape }
+    const impl: Context.Service.Shape<typeof Local> = { value: 9, next: { value: 10 } }
+    return impl.next?.value // 10
   }
   ```
 
