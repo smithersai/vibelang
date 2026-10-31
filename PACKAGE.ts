@@ -361,6 +361,7 @@ const specTests = [
   "TestCyclicPlainCoverageQuoted",
   "TestForConcurrentBodyScopeQuoted",
   "TestCatchContextualArrowParametersQuoted",
+  "TestCatchParenthesizedHandlersQuoted",
   "TestEffectLintConfigurationQuoted",
   "TestProvideCommaRecoveryQuoted",
   "TestMissingRuntimeQuoted",

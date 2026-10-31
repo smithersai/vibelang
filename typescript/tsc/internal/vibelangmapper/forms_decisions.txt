@@ -446,6 +446,14 @@ typescript/vibelang/cases/catch-expression/main.vibe:82:18 lambda effectFn table
 typescript/vibelang/cases/catch-expression/main.vibe:82:40 lambda effectFn table
 typescript/vibelang/cases/catch-expression/main.vibe:84:14 lambda effectFn table
 typescript/vibelang/cases/catch-expression/main.vibe:84:36 lambda effectFn table
+typescript/vibelang/cases/catch-handler-parentheses/main.vibe:4:13 lambda effectFn table
+typescript/vibelang/cases/catch-handler-parentheses/main.vibe:4:38 lambda effectFn table
+typescript/vibelang/cases/catch-handler-parentheses/main.vibe:5:13 lambda effectFn table
+typescript/vibelang/cases/catch-handler-parentheses/main.vibe:5:41 lambda effectFn table
+typescript/vibelang/cases/catch-handler-parentheses/main.vibe:6:13 lambda effectFn table
+typescript/vibelang/cases/catch-handler-parentheses/main.vibe:6:50 lambda effectFn table
+typescript/vibelang/cases/catch-handler-parentheses/main.vibe:7:13 lambda effectFn table
+typescript/vibelang/cases/catch-handler-parentheses/main.vibe:7:38 lambda effectFn table
 typescript/vibelang/cases/catch-match/main.vibe:30:16 lambda dual fallback
 typescript/vibelang/cases/catch-match/main.vibe:49:26 byname program table
 typescript/vibelang/cases/catch-mixed-precedence.fail/main.vibe:10:17 lambda effectFn table

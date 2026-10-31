@@ -3,6 +3,7 @@ package parser
 import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
 // A catch expression (D236-D239), borrowed from Zig's inline catch, parses
@@ -34,13 +35,14 @@ func (p *Parser) parseVibeLangCatchRest(left *ast.Expression, pos int) *ast.Expr
 	for p.isVibeLangCatchExpression() {
 		keyword := p.tokenRange()
 		p.nextToken() // catch
+		handlerStart := p.nodePos()
 		handler := p.parseVibeLangCatchHandler()
 		if handler == nil {
 			fallback := p.parseBinaryExpressionOrHigher(ast.OperatorPrecedenceLowest)
 			p.recordVibeSyntax(VibeSyntax{Kind: VibeSyntaxCatch, Word: keyword, Left: p.sourceRange(left), Right: p.sourceRange(fallback), Range: core.NewTextRange(p.sourceRange(left).Pos(), fallback.End())})
 			handler = p.vibelangProgramArrow(nil, fallback, core.NewTextRange(fallback.Pos(), fallback.Pos()))
 		} else {
-			p.recordVibeSyntax(VibeSyntax{Kind: VibeSyntaxCatch, Word: keyword, Left: p.sourceRange(left), Right: p.sourceRange(handler), Range: core.NewTextRange(p.sourceRange(left).Pos(), handler.End())})
+			p.recordVibeSyntax(VibeSyntax{Kind: VibeSyntaxCatch, Word: keyword, Left: p.sourceRange(left), Right: core.NewTextRange(scanner.SkipTrivia(p.sourceText, handlerStart), p.nodePos()), Range: core.NewTextRange(p.sourceRange(left).Pos(), p.nodePos())})
 		}
 		self := p.vibelangProgramArrow(nil, left, core.NewTextRange(left.Pos(), left.Pos()))
 		callee := p.vibelangIntrinsic("$catchExpression", keyword)
@@ -51,10 +53,10 @@ func (p *Parser) parseVibeLangCatchRest(left *ast.Expression, pos int) *ast.Expr
 }
 
 // parseVibeLangCatchHandler parses the handler of `catch (e) => …`,
-// `catch e => …`, `catch effect (e) => …` or `catch async (e) => …`, or
-// returns nil when what follows catch is a fallback, which the checker
-// reports as EK0509 unless it is a parenthesized function literal or a
-// function expression.
+// `catch e => …`, `catch effect (e) => …` or `catch async (e) => …`,
+// parenthesized or not, or returns nil when what follows catch is a fallback,
+// which the checker reports as EK0509 unless it is a parenthesized function
+// literal or a function expression.
 func (p *Parser) parseVibeLangCatchHandler() *ast.Node {
 	if arrow := p.tryParseVibeLangEffectArrow(true /*allowReturnTypeInArrowFunction*/); arrow != nil {
 		return arrow // catch effect (e) => … (VIP-5)
@@ -63,7 +65,19 @@ func (p *Parser) parseVibeLangCatchHandler() *ast.Node {
 		return p.parseAssignmentExpressionOrHigher()
 	}
 	if p.token == ast.KindOpenParenToken || p.token == ast.KindLessThanToken {
-		return p.tryParseParenthesizedArrowFunctionExpression(true /*allowReturnTypeInArrowFunction*/)
+		if arrow := p.tryParseParenthesizedArrowFunctionExpression(true /*allowReturnTypeInArrowFunction*/); arrow != nil {
+			return arrow
+		}
+		// Parentheses keep an arrow's handler kind (VIP-5). Keep its
+		// original outer range in the recorded catch syntax, while the
+		// checker and lowering receive the arrow itself.
+		state := p.mark()
+		p.nextToken() // (
+		if handler := p.parseVibeLangCatchHandler(); handler != nil && p.token == ast.KindCloseParenToken {
+			p.nextToken() // )
+			return handler
+		}
+		p.rewind(state)
 	}
 	if p.token == ast.KindAsyncKeyword {
 		// catch async (e) => … and catch async e => … parse as the arrows

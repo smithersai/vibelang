@@ -606,6 +606,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The pattern-binding chapter cited unpublished decision numbers for binding homes and redeclarations. It now links a public VIP-7 amendment stating those same rules.
 
 - Native `await` warned about empty tuples, containers and objects with only a `Fiber` or `Deferred` marker; the warning now requires the corresponding interface, so these ordinary values compile even when the advisories are promoted to errors.
+
+- Parenthesized arrow handlers after `catch` could be returned as function values or lose their parameter types; they now receive the failure and run as handlers.
 - A typed catch clause whose binding destructures, such as `catch ({ id }: NotFound)`, crashed the compiler and the editor with `Unhandled case in Node.Text`; it now reports `EK2112`, suggesting `catch (e)`, and its quick fix leaves the pattern alone.
 
 - Bundling a package that mixed `.ts` and `.vibe` modules could include two copies of a shared service or schema, so a built CLI failed at startup although its tests passed. The bundler plugins now select the package's `vibelang-source` exports and preserve the bundler's existing conditions, keeping one source graph.

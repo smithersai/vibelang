@@ -1,0 +1,9 @@
+// expect-result: [2,7,8,9,["xx"]]
+export effect function main() {
+  const seen: string[] = []
+  const a = Effect.fail("xx") catch ((e) => { seen.push(e); return e.length })
+  const b = Effect.fail("bad") catch (((() => 7)))
+  const c = Effect.fail("bad") catch (/*before*/ effect () => { return 8 /*after*/ })
+  const d = Effect.succeed(9) catch (() => { seen.push("unexpected"); return 10 })
+  return [a, b, c, d, seen]
+}

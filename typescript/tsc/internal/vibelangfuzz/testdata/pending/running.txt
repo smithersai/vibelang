@@ -17,14 +17,6 @@ FuzzRunningRules corpus:try-finally compiler VIP-5: minimized reproduction of re
 FuzzRunningRules reject:try-statement compiler VIP-5: the forbidden form is accepted; lane core-catch
 FuzzRunningRules corpus:try-statement compiler VIP-5: minimized reproduction of reject:try-statement; lane core-catch
 FuzzVIPDifferential exit:value/vip02.lexical-receiver compiler VIP-2: main.vibe ends differently from its VIPs' Effect TS: want Exit {"_tag":"Success","value":7}; lane vip-core2
-FuzzVIPDifferential exit:value/vip05.catch-comma compiler VIP-5: main.vibe ends differently from its VIPs' Effect TS: want Exit {"_tag":"Success","value":16}; lane core-catch
-FuzzVIPDifferential corpus:fz-run-vip05-catch-comma compiler VIP-5: minimal named probe reproduces exit:value/vip05.catch-comma; lane core-catch
-FuzzVIPDifferential exit:value/vip05.catch-left-associative compiler VIP-5: main.vibe ends differently from its VIPs' Effect TS: want Exit {"_tag":"Success","value":7}; lane core-catch
-FuzzVIPDifferential corpus:fz-run-vip05-catch-left-associative compiler VIP-5: minimal named probe reproduces exit:value/vip05.catch-left-associative; lane core-catch
-FuzzVIPDifferential exit:value/vip05.catch-nested-effect-arrow compiler VIP-5: main.vibe ends differently from its VIPs' Effect TS: want Exit {"_tag":"Success","value":7}; lane core-catch
-FuzzVIPDifferential corpus:fz-run-vip05-catch-nested-effect-arrow compiler VIP-5: minimal named probe reproduces exit:value/vip05.catch-nested-effect-arrow; lane core-catch
-FuzzVIPDifferential exit:value/vip05.catch-parenthesized-arrow compiler VIP-5: main.vibe ends differently from its VIPs' Effect TS: want Exit {"_tag":"Success","value":7}; lane core-catch
-FuzzVIPDifferential corpus:fz-run-vip05-catch-parenthesized-arrow compiler VIP-5: minimal named probe reproduces exit:value/vip05.catch-parenthesized-arrow; lane core-catch
 FuzzVIPDifferential feature:vip05.try-composition compiler VIP-5: a newline after `try`, or `try` on a member call inside `+`, does not parse (TS1005, TS1109), and parse recovery reports unrelated codes elsewhere in the program; lane core-catch
 FuzzVIPDifferential corpus:fz-run-vip05-try-composition compiler VIP-5: minimal named probe reproduces feature:vip05.try-composition; lane core-catch
 FuzzVIPDifferential compile:TS2345/vip19.limit-unbounded compiler VIP-19: a program of accepted constructs does not compile: main.vibe 2345: Argument of type 'string' is not assignable to parameter of type 'number'. (line 5: { ev("0"); for concurrent((ev("limit"), "unbounded")) (const x of (ev("items"), [1, 2])) { for (let i = 0; i < 3; i++) { if (i === 0) continue; ev("inner" + x); break }; try Effect.sleep(x); ev("done" + x) }; ev("joined"); return 1 }); lane vip-core2

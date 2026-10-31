@@ -51,6 +51,8 @@ Saved issue
 
 `x catch effect () => …` runs the left-hand Effect and calls its handler only after an expected failure. The handler is always a function literal: an effect handler can name the error and run Effects before returning its value, and a plain arrow returns a success value, where a `throw` is a defect. A value, a name or an `effect { … }` block after `catch` is a syntax error.
 
+Parentheses keep an arrow as the handler: `latestTitle() catch ((error) => error._tag)` receives the failure, just as an unparenthesized arrow does. Its parameter keeps the failure type, and its body still runs only after a failure.
+
 `try Effect.catch(latestTitle(), () => cachedTitle())` also works, with the same rule as source catch: it leaves a cause with a defect alone and recovers an expected failure beside an interruption, dropping the interruption. When interruption must propagate intact, match on `exit(...)`. `Effect.catchTag`, `Effect.catchIf`, and `Effect.catchFilter` also select domain failures, under Effect's own recovery policy.
 
 ## Supplying a default success

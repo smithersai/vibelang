@@ -44,6 +44,11 @@ func (p *projector) catchExpression(call *ast.Node, e env) {
 	} else {
 		p.plan.replace(left.End(), p.tokenStart(handler), ", ")
 		p.effectLambda(handler)
+		if handler.End() < call.End() {
+			// The arrow keeps its handler kind; its source parentheses are
+			// outside its AST range and must not close the generated call.
+			p.plan.replace(handler.End(), call.End(), "")
+		}
 	}
 	p.plan.insert(call.End(), ")")
 	if e.effect {
