@@ -1,0 +1,17 @@
+const effect: unknown = 7
+const async: unknown = "ready"
+effect is (Number)
+async is (String)
+function plain(): boolean {
+  effect is (Number)
+  async is (String)
+  return effect is (Number) && async is (String)
+}
+effect function deferred() {
+  effect is (Number)
+  async is (String)
+  return effect is (Number) && async is (String)
+}
+export effect function main() {
+  return [plain(), try deferred()]
+}

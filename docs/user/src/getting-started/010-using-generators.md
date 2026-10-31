@@ -18,6 +18,8 @@ A class can extend a value named `effect`: in `class Derived extends effect { }`
 
 Comments do not supply a keyword: `export /* function */ effect load() { }` still needs `function` before `load`, and its quick fix preserves the comment.
 
+Pattern tests such as `effect is (Number)` and `async is (String)` keep their pattern meaning, including at the start of a statement. A method named `is` still uses `effect is(...) { ... }` or `async is(...) { ... }`.
+
 ## Sequence computations
 
 ```vibe
