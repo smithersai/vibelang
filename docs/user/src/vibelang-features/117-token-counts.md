@@ -19,8 +19,8 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,194 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 15,003 |
-| The skill and the user guide (139 pages) | 313,945 |
-| The user guide alone | 309,751 |
+| The skill and the user guide (139 pages) | 314,015 |
+| The user guide alone | 309,821 |
 | The specification (10 chapters) | 123,059 |
 | The decision log, `docs/design/history/DECISIONS.md` | 141,521 |
 
@@ -130,9 +130,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Zed](../setup/zed.md) | 479 |
 | [Other editors](../setup/other-editors.md) | 492 |
 | [Coding agents](../setup/coding-agents.md) | 990 |
-| **Upgrade** | **50,516** |
-| [Release notes](../setup/release-notes.md) | 50,516 |
-| **All 18 pages** | **77,460** |
+| **Upgrade** | **50,571** |
+| [Release notes](../setup/release-notes.md) | 50,571 |
+| **All 18 pages** | **77,515** |
 
 ### Guides
 
@@ -151,8 +151,8 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Error Channel Operations](../error-management/022-error-channel-operations.md) | 1,538 |
 | [Parallel and Sequential Errors](../error-management/023-parallel-and-sequential-errors.md) | 874 |
 | [Custom Error Classes](../error-management/024-yieldable-errors.md) | 1,215 |
-| **Requirements Management** | **7,868** |
-| [Managing Services](../requirements-management/025-services.md) | 2,729 |
+| **Requirements Management** | **7,883** |
+| [Managing Services](../requirements-management/025-services.md) | 2,744 |
 | [Default Services](../requirements-management/026-default-services.md) | 1,188 |
 | [Managing Layers](../requirements-management/027-layers.md) | 2,845 |
 | [Layer Memoization](../requirements-management/028-layer-memoization.md) | 1,106 |
@@ -256,7 +256,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Platform globals in VibeLang](../platform/platform-globals.md) | 5,094 |
 | [Cloudflare Workers](../platform/cloudflare-workers.md) | 790 |
 | [Alchemy](../platform/alchemy.md) | 2,519 |
-| **All 101 pages** | **168,638** |
+| **All 101 pages** | **168,653** |
 
 ### VibeLang features
 

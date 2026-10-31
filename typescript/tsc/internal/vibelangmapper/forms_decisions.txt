@@ -2955,6 +2955,8 @@ typescript/vibelang/cases/service-identity/main.vibe:83:82 lambda program table
 typescript/vibelang/cases/service-identity/main.vibe:85:31 lambda program table
 typescript/vibelang/cases/service-identity/main.vibe:85:66 lambda program table
 typescript/vibelang/cases/service-key-no-implicit-override/main.vibe:15:34 lambda plain fallback
+typescript/vibelang/cases/service-try-exported/main.vibe:7:26 lambda effectFn service
+typescript/vibelang/cases/service-try-exported/main.vibe:7:59 lambda effectFn service
 typescript/vibelang/cases/service-value-lambdas.fail/main.vibe:4:17 lambda plain table
 typescript/vibelang/cases/service-value-lambdas.fail/main.vibe:4:23 lambda effectFn service
 typescript/vibelang/cases/service-value-lambdas.fail/main.vibe:7:51 lambda effectFn service
