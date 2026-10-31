@@ -45,7 +45,7 @@ func init() {
 func afterCheckSourceFile(ctx context.Context, program checker.Program, c *checker.Checker, sf *ast.SourceFile) {
 	options := program.Options().Effect
 	if options == nil {
-		if program.Options().VibeLang == nil || len(program.Options().VibeLang.Severities) == 0 {
+		if !configuresImportedLint(program.Options().VibeLang) {
 			return
 		}
 		options = etscore.ParseFromPlugins([]any{map[string]any{"name": etscore.EffectPluginName}})
@@ -53,6 +53,21 @@ func afterCheckSourceFile(ctx context.Context, program checker.Program, c *check
 	for _, d := range run(ctx, program, c, sf, options) {
 		c.AddDiagnostic(d)
 	}
+}
+
+// configuresImportedLint reports whether vibe.severities names an imported
+// EK38xx lint code, which turns the Effect lints on in a project without the
+// Effect plugin. A VibeLang warning code such as EK4842 does not (foldkit-14).
+func configuresImportedLint(vibe *core.VibeLangOptions) bool {
+	if vibe == nil {
+		return false
+	}
+	for code := range vibe.Severities {
+		if _, ok := core.VibeImportedLintCodes[code]; ok {
+			return true
+		}
+	}
+	return false
 }
 
 // run reports the rules options enables for sf, leaving out on a .vibe file
