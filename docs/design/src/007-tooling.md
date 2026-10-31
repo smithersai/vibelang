@@ -102,7 +102,24 @@ Effect.runSync(Effect.succeed(42)) // 42
 
 The configured category controls reporting: an `"error"` makes both `vibelang` and `vibelang lint` exit non-zero and participates in `noEmitOnError`; a `"warning"` prints without changing exit status (decided detail 71). A `"suggestion"` is shown by the language server only; `"off"` reports nothing. To fail CI on a configurable warning, set it to `"error"`.
 
-The legacy `vibelang.diagnostics` key reports migration warning `EK3009`. `vibelang --fix` rewrites each map whose codes are all configurable to `vibe.severities`, including in extended configs, and retains existing modern entries. Maps with obsolete nonconfigurable codes stay in place until those entries are removed. Like other warnings, `EK3009` can be configured through `vibe.severities`.
+### Legacy severity maps
+
+Both historical paths, root `vibelang.diagnostics` and `compilerOptions.vibelang.diagnostics`, are recognized in `vibe.config.json`, `tsconfig.json`, `jsconfig.json` and extended configs. Each maps supported printed legacy diagnostic codes to `"error"`, `"warning"` or `"off"`; `"suggestion"` is a value of the modern map, not a legacy one. Legacy replacement and inheritance behavior remains: a child without a legacy section inherits the effective base section, and adding only modern settings leaves it active. An explicit child legacy section replaces the inherited legacy section as a whole, rather than merging diagnostic entries; even an empty object or `null` clears the inherited legacy settings. The modern `vibe.severities` map still merges entry by code.
+
+Until migrated, a supported legacy setting still controls its legacy diagnostic unless an effective modern entry for the same diagnostic or its explicitly mapped port overrides it. A reused numeric spelling alone does not establish that identity: newly assigned release errors cannot be disabled through an old map. A release-only code such as `EK0801` is not valid in a legacy map.
+
+Each legacy map reports migration warning `EK3009`. Setting `EK3009` to `"off"` hides only this warning; it does not validate, migrate or disable the supported legacy settings.
+
+```jsonc
+// A supported legacy setting keeps applying, while its migration warning is hidden.
+{ "vibelang": { "diagnostics": { /* old floating-Effect code */ "EK4801": "off" } }, "vibe": { "severities": { "EK3009": "off" } } }
+// The explicit modern floatingEffect port takes precedence over the old setting:
+{ "vibelang": { "diagnostics": { /* old floating-Effect code */ "EK4801": "off" } }, "vibe": { "severities": { "EK3801": "error" } } }
+// Alternative historical location, in a separate config:
+{ "compilerOptions": { "vibelang": { "diagnostics": { /* old floating-Effect code */ "EK4801": "warning" } } } }
+```
+
+`vibelang --fix` moves each eligible map to root `vibe.severities`, including in extended configs, preserving JSONC comments, unrelated settings and existing modern entries. A map containing obsolete or nonconfigurable codes remains in place until those entries are resolved. Plain `tsc` ignores the custom root keys, but reports `TS5023` for `compilerOptions.vibelang`; VibeLang's legacy compatibility does not change that.
 
 ## TypeScript spellings with VibeLang forms
 
@@ -183,6 +200,9 @@ These are VibeLang’s own configurable warnings, distinct from the imported `EK
 | Warning | Code | Suggested fix |
 | --- | --- | --- |
 | A plain `catch` handler returns an unrun Effect (decided detail 62) | `EK0508` | `catch effect (e) => try …` |
+| A legacy severity map remains in the config | `EK3009` | Run `vibelang --fix` after resolving obsolete entries. |
+| `using` in effect code | `EK0801` | Use `acquireDisposable` inside `scoped`. |
+| An extractor's argument count cannot match its extraction list | `EK0703` | Use a bare class test or the matching number of subpatterns. |
 | `await` on a `Fiber` (decided detail 28) | `EK4609` | `await runPromise(Fiber.join(fiber))` in `async` code; `join fiber` in effect code |
 | `await` on a `Deferred` (decided detail 29) | `EK4610` | `await runPromise(Deferred.await(deferred))` in `async` code; `try Deferred.await(deferred)` in effect code |
 

@@ -125,7 +125,7 @@ Each `.vibe` file keeps the settings of the package that owns it. When a project
 
 Only a warning's code or an assigned imported `EK38xx` lint code may appear in `vibe.severities`. Set it to `"error"`, `"warning"`, `"suggestion"` or `"off"`. Warnings do not fail CI or prevent emission under `noEmitOnError`; use `"error"` to fail CI. Suggestions appear only in the language server. Invalid entries report `EK3006`; unknown or wrong-typed `vibe` options report `EK3007`. `extends` merges severity entries by code.
 
-The legacy `vibelang.diagnostics` key reports `EK3009`. Run `vibelang --fix` to migrate configurable maps; remove obsolete nonconfigurable entries first. Other legacy options, including `vibelang.tracing` (`"none"`, `"exported"` or `"all"`), remain separate. See [Diagnostic severities](../setup/vibelang-cli.md#diagnostic-severities).
+Root `vibelang.diagnostics` and `compilerOptions.vibelang.diagnostics` are legacy maps in any supported config or extended config. Supported settings keep applying until migrated; modern entries for the same diagnostic or its explicitly mapped port win. Each map reports `EK3009`, and hiding that warning leaves its settings active. Run `vibelang --fix` to migrate eligible maps while preserving comments; resolve obsolete or nonconfigurable entries first. Other legacy options, including `vibelang.tracing` (`"none"`, `"exported"` or `"all"`), remain separate. See [Diagnostic severities](../setup/vibelang-cli.md#diagnostic-severities).
 
 For example, a legacy `EK4406` policy entry cannot appear in `vibe.severities`; remove it before migrating the map. `EK9100` is editor-only and warns by default; it requests a written type for the text-only projection and is not reported by the CLI.
 

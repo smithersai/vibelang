@@ -55,7 +55,9 @@ Invalid effective entries report `EK3006` individually and are ignored as overri
 
 Warnings print without failing the build or blocking `noEmitOnError`; set a warning to `"error"` to fail CI. `"suggestion"` is shown only by the language server, and `"off"` suppresses the diagnostic.
 
-The legacy `vibelang.diagnostics` setting reports migration warning `EK3009`. Run `vibelang -p tsconfig.json --fix` to move it to `vibe.severities`, including settings in extended config files. Existing `vibe.severities` entries take precedence. Legacy maps containing retired or nonconfigurable codes remain in place so the rewrite does not break a working project; remove those obsolete entries, then rerun `--fix`. JSONC comments, including comments containing braces, stay intact while the migrated settings remain active.
+Both legacy paths, root `vibelang.diagnostics` and `compilerOptions.vibelang.diagnostics`, are recognized in `vibe.config.json`, `tsconfig.json`, `jsconfig.json` and extended configs. Their supported legacy settings keep applying until migrated; an effective `vibe.severities` entry for the same diagnostic or its explicitly mapped port wins. The legacy validator still accepts only its own supported codes and values, so a release-only code such as `EK0801` does not belong there. Numeric code reuse does not make a release error configurable.
+
+Each map reports migration warning `EK3009`. Setting `EK3009` to `"off"` only hides the warning; it leaves the supported legacy settings active. Run `vibelang -p tsconfig.json --fix` to move eligible maps to root `vibe.severities`, including in extended configs, preserving JSONC comments, unrelated settings and existing modern entries. Maps containing retired or nonconfigurable codes remain in place; resolve those entries, then rerun `--fix`. Plain `tsc` ignores the custom root keys but rejects `compilerOptions.vibelang` with `TS5023`. JSONC comments, including comments containing braces, stay intact while the migrated settings remain active.
 
 
 ## 2. Replace tsc in the scripts
