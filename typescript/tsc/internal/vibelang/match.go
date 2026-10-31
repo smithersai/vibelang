@@ -294,6 +294,8 @@ func reportPatternError(c *checker.Checker, file *ast.SourceFile, call *ast.Node
 	}
 	at := call.Expression().Loc
 	switch code {
+	case 107:
+		note(reportAt(c, file, at, EK0107), "A pattern binds a name with let or const: write when let x: or when const x:. The quick fix and vibelang --fix replace this var with let.")
 	case 1017:
 		reportAt(c, file, at, EK1017)
 	case 4702:

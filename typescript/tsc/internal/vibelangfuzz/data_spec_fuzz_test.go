@@ -260,6 +260,7 @@ func dataRules() []dataRule {
 	rules = append(rules, dataTaggedMembersRules()...)
 	rules = append(rules, dataDeclarationRules()...)
 	rules = append(rules, dataNestedIsRules()...)
+	rules = append(rules, dataVarBindingRules()...)
 	rules = append(rules, unsettledIsBindingRules()...)
 	return append(rules, dataReadonlyRecordAliasRules()...)
 }

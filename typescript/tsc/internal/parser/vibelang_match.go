@@ -1144,7 +1144,16 @@ func (p *Parser) compilePattern(pat *pattern, path matchPath, steps *[]matchStep
 			test(p.patternErrorCall(4702, "", at))
 			return
 		}
-		*steps = append(*steps, matchStep{decl: p.mConst(pat.name, pat.bindFlags, path(), pat.name.Loc)})
+		flags := pat.bindFlags
+		value := path()
+		if flags == ast.NodeFlagsNone {
+			// when var x: is EK0107, as var is everywhere in a .vibe file. The
+			// recovery still binds x as let, so later references check.
+			// Coverage derives from the original binding pattern.
+			value = p.mParens(p.mBinary(p.patternErrorCall(107, "", at), ast.KindCommaToken, value, at), at)
+			flags = ast.NodeFlagsLet
+		}
+		*steps = append(*steps, matchStep{decl: p.mConst(pat.name, flags, value, pat.name.Loc)})
 	case patternGuard:
 		// The parentheses span the guard's expression, so that the language
 		// service finds its names.
