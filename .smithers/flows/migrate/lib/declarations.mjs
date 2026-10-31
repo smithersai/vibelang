@@ -274,9 +274,21 @@ export function compareDeclarations(ts, baselineDir, currentDir) {
   const publicFiles = new Set([...(aSurface?.reachable ?? []), ...(bSurface?.reachable ?? [])])
   const afterSet = new Set(after)
   const beforeSet = new Set(before)
+  // An .mts module emits .d.mts; its native .vibe replacement emits .d.ts.
+  // Pair only a missing source and a new destination, never a collision.
+  const moved = new Map(before.filter(file => file.endsWith(".d.mts") && !afterSet.has(file))
+    .map(file => [file, file.replace(/\.d\.mts$/, ".d.ts")])
+    .filter(([source, destination]) => afterSet.has(destination) && !beforeSet.has(destination) &&
+      (!aSurface || !bSurface || Boolean(aSurface.reachable?.includes(source)) === Boolean(bSurface.reachable?.includes(destination)))))
+  for (const [source, destination] of moved) {
+    afterSet.add(source)
+    beforeSet.add(destination)
+    if (publicFiles.has(destination)) publicFiles.add(source)
+  }
+  const originalName = new Map([...moved].map(([source, destination]) => [destination, source]))
   const changed = []
   for (const file of before.filter(f => afterSet.has(f))) {
-    const text = dir => readFileSync(join(dir, file), "utf8")
+    const text = dir => readFileSync(join(dir, dir === currentDir ? moved.get(file) ?? file : file), "utf8")
     const a = publicFiles.has(file) ? text(baselineDir) : canonicalize(ts, text(baselineDir), file)
     const b = publicFiles.has(file) ? text(currentDir) : canonicalize(ts, text(currentDir), file)
     if (a !== b) changed.push({ file, diff: lineDiff(a, b) })
@@ -285,8 +297,8 @@ export function compareDeclarations(ts, baselineDir, currentDir) {
   const additions = after.filter(f => !beforeSet.has(f))
   const addedPrivate = resolved ? additions.filter(f => !publicFiles.has(f)) : []
   const added = additions.filter(f => !addedPrivate.includes(f))
-  const rootsChanged = resolved && JSON.stringify(aSurface.roots) !== JSON.stringify(bSurface.roots)
-  return { identical: !changed.length && !removed.length && !added.length && !rootsChanged, files: before.length, added, addedPrivate, removed, changed,
+  const rootsChanged = resolved && JSON.stringify(aSurface.roots) !== JSON.stringify(bSurface.roots.map(file => originalName.get(file) ?? file).sort())
+  return { identical: !changed.length && !removed.length && !added.length && !rootsChanged, files: before.length, added, addedPrivate, renamed: [...moved].map(([from, to]) => ({ from, to })), removed, changed,
     ...(aSurface || bSurface ? { publicSurface: { before: aSurface, after: bSurface, rootsChanged: Boolean(rootsChanged) } } : {}) }
 }
 

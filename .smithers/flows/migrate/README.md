@@ -23,6 +23,8 @@ Setup warns with the file and line when a string source-extension allowlist incl
 
 Each step reads and writes the run directory, so a step that already recorded its result returns it, and a stopped run resumes where it stopped.
 
+For a migrated `.mts` module, declaration identity pairs a removed `x.d.mts` with its new `x.d.ts`, recorded under `renamed`. A destination already present in the baseline is a collision; a change in public reachability still fails. Published declarations remain byte-identical, including comments and quote spelling.
+
 Public declarations reachable from `exports` or `types` must remain byte-identical; unreachable new declarations pass as `addedPrivate`. The gate follows declaration imports, re-exports, import types and reference paths, including conditional and wildcard entry points. Removed declarations still fail. Setup snapshots the published roots and emit aliases; unresolved entry points and older baselines without a snapshot conservatively check every addition. Verification reports the roots and unresolved paths.
 
 The diagnostic reader accepts compiler output with `LF`, `CRLF`, or mixed line endings, preserving diagnostic codes, source locations and repair notes. A nonzero compiler exit with ordinary diagnostics is an error result; a crash, signal, or failing exit without diagnostics stops the step.

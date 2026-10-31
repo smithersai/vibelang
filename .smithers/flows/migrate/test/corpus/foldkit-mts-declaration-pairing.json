@@ -1,0 +1,7 @@
+{
+  "key": "migrate:mts-declaration-pairing",
+  "stem": "scripts/main",
+  "source": "export const answer = 42\n",
+  "before": "export declare const answer = 42;\n",
+  "after": "export declare const answer = 42;\n"
+}
