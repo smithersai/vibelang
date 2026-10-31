@@ -443,15 +443,13 @@ Emitted JavaScript and declaration sidecars preserve this classification, includ
 For example, these two source files do not share a global binding, even with `moduleDetection: "legacy"` and both prelude switches disabled:
 
 ```vibe
-// compiler-gap: pending VIP-26, VIP-30
 // a.vibe
 const policySecret = 1
 ```
 
 ```vibe
-// compiler-gap: pending VIP-26, VIP-30
 // b.vibe
-const reader = policySecret // TypeScript error: cannot find name
+const reader = policySecret // TS2304: cannot find name
 ```
 
 To share the value, `a.vibe` exports `policySecret` and `b.vibe` imports it. Adding or removing an implicit Effect use cannot change either file's scope.

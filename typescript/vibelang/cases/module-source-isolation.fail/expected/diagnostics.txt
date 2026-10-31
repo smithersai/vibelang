@@ -1,0 +1,1 @@
+b.vibe(1,16): error TS2304

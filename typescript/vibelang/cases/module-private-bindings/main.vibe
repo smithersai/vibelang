@@ -1,0 +1,5 @@
+import { Effect } from "effect"
+import "./a.vibe"
+import "./b.vibe"
+// expect-result: 0
+export effect function main() { return 0 }

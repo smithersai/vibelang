@@ -1,0 +1,3 @@
+// expect: TS2304
+import { Effect } from "effect"
+export effect function main() { return 0 }
