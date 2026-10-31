@@ -1,0 +1,8 @@
+// Spec 005, Effect's modules are in scope: typeof Effect.M, where M is a
+// module that a JavaScript or TypeScript global hides, is that module's type,
+// and the declaration file writes typeof import("effect/M").
+export type ArrayModule = typeof Effect.Array
+export type Head = typeof Effect.Array.head
+export const arrays: ArrayModule = Effect.Array
+export const strings: typeof Effect.String = Effect.String
+export const head: Head = Effect.Array.head

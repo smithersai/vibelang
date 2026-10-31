@@ -23,10 +23,16 @@ func init() {
 // Effect modules through Effect.M. Resolve by binding so a local Effect
 // object keeps its own meaning.
 func effectCollisionProperty(c *checker.Checker, node *ast.Node, receiver *checker.Type, name string) *ast.Symbol {
-	if !ast.IsPropertyAccessExpression(node) {
+	var left *ast.Node
+	switch {
+	case ast.IsPropertyAccessExpression(node):
+		left = node.Expression()
+	case ast.IsQualifiedName(node) && ast.IsPartOfTypeQuery(node):
+		left = node.AsQualifiedName().Left // typeof Effect.M
+	default:
 		return nil
 	}
-	actual := c.GetSymbolAtLocation(node.Expression())
+	actual := c.GetSymbolAtLocation(left)
 	if actual == nil {
 		return nil
 	}
@@ -35,8 +41,8 @@ func effectCollisionProperty(c *checker.Checker, node *ast.Node, receiver *check
 
 // effectCollisionNamespace is Effect.M on the left of a type name, as in
 // Effect.Array.NonEmptyReadonlyArray<number>, where namespace is the symbol
-// Effect resolved to. (typeof Effect.M checks a qualified name as a property
-// access, which the missing-property hook does not see.)
+// Effect resolved to. typeof Effect.M checks its qualified name as a property
+// access instead, which effectCollisionProperty answers.
 func effectCollisionNamespace(c *checker.Checker, name *ast.Node, namespace *ast.Symbol, right *ast.Node, meaning ast.SymbolFlags) *ast.Symbol {
 	if !ast.IsQualifiedName(name) || !ast.IsIdentifier(right) {
 		return nil
@@ -82,17 +88,28 @@ type effectCollisionTypes struct {
 
 func (tx *effectCollisionTypes) visit(node *ast.Node) *ast.Node {
 	node = tx.Visitor().VisitEachChild(node)
-	if !ast.IsTypeReferenceNode(node) {
-		return node
-	}
-	reference := node.AsTypeReferenceNode()
-	module, qualifier := tx.split(reference.TypeName)
-	if qualifier == nil {
-		return node
-	}
 	f := tx.Factory()
-	argument := f.NewLiteralTypeNode(f.NewStringLiteral(module, ast.TokenFlagsNone))
-	return f.NewImportTypeNode(false /*isTypeOf*/, argument, nil /*attributes*/, qualifier, reference.TypeArguments)
+	switch {
+	case ast.IsTypeReferenceNode(node):
+		reference := node.AsTypeReferenceNode()
+		module, qualifier := tx.split(reference.TypeName)
+		if qualifier == nil {
+			return node
+		}
+		argument := f.NewLiteralTypeNode(f.NewStringLiteral(module, ast.TokenFlagsNone))
+		return f.NewImportTypeNode(false /*isTypeOf*/, argument, nil /*attributes*/, qualifier, reference.TypeArguments)
+	case ast.IsTypeQueryNode(node):
+		// typeof Effect.M is typeof import("effect/M"), and typeof Effect.M.x
+		// is typeof import("effect/M").x.
+		query := node.AsTypeQueryNode()
+		module, qualifier := tx.split(query.ExprName)
+		if module == "" {
+			return node
+		}
+		argument := f.NewLiteralTypeNode(f.NewStringLiteral(module, ast.TokenFlagsNone))
+		return f.NewImportTypeNode(true /*isTypeOf*/, argument, nil /*attributes*/, qualifier, query.TypeArguments)
+	}
+	return node
 }
 
 // split finds the Effect.M that name starts with, and returns the module it

@@ -227,7 +227,7 @@ func moduleServiceMember(c *checker.Checker, node *ast.Node, receiver *checker.T
 // Snowflake.Snowflake.length. It records the access, so the lowering writes
 // the export.
 func moduleAliasProperty(c *checker.Checker, node *ast.Node, receiver *checker.Type, name string) *ast.Symbol {
-	if !isVibeLangFile(ast.GetSourceFileOfNode(node)) {
+	if !ast.IsPropertyAccessExpression(node) || !isVibeLangFile(ast.GetSourceFileOfNode(node)) {
 		return nil
 	}
 	module := moduleOfExpression(c, node.Expression(), receiver)

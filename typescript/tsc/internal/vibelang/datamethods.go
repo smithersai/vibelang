@@ -165,7 +165,7 @@ func effectModuleOfFile(file *ast.SourceFile) string {
 // optional chain gets none: its lowering would have to stop the whole chain
 // at a nullish receiver, not only the call.
 func moduleMethod(c *checker.Checker, node *ast.Node, receiver *checker.Type, name string) *ast.Symbol {
-	if !isVibeLangFile(ast.GetSourceFileOfNode(node)) || ast.IsOptionalChain(node) {
+	if !ast.IsPropertyAccessExpression(node) || !isVibeLangFile(ast.GetSourceFileOfNode(node)) || ast.IsOptionalChain(node) {
 		return nil
 	}
 	home := homeModule(receiver)

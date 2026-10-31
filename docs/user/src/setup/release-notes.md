@@ -996,6 +996,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A type under one of those modules, such as `Effect.Array.NonEmptyReadonlyArray<number>` or `Effect.Record.ReadonlyRecord<string, number>`, reported `TS2694`; it now names the module's type, and the declaration file writes it as `import("effect/Array").NonEmptyReadonlyArray<number>`.
 
+- A type query of one of those modules, such as `typeof Effect.Array` or `typeof Effect.Array.head`, reported `TS2339`; it now names the module, and the declaration file writes `typeof import("effect/Array")`.
+
 - The concurrent-loop ownership example passed a string to `sync`, which requires a thunk. Both calls now use valid thunks, with a matching Effect counterpart.
 
 

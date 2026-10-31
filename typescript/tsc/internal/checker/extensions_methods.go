@@ -3,8 +3,9 @@ package checker
 import "github.com/microsoft/TypeScript/tsc/internal/ast"
 
 // MissingPropertyHook can supply the property named name that receiver, the
-// apparent type of the left side of node, a property access expression,
-// does not have. The checker asks after its own lookup finds nothing, so a
+// apparent type of the left side of node, does not have. node is a property
+// access expression, or the qualified name of an expression in a type query
+// (typeof a.b). The checker asks after its own lookup finds nothing, so a
 // type's own members always win. It returns nil when it has nothing to say.
 type MissingPropertyHook func(c *Checker, node *ast.Node, receiver *Type, name string) *ast.Symbol
 
