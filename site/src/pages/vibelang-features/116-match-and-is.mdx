@@ -60,7 +60,7 @@ A function named `match` still works. Only `match (value) {` followed by `when`,
 
 | Pattern | Matches | Example |
 | --- | --- | --- |
-| Literal | An equal string, number, boolean, `null`, or `undefined` | `when 404:` |
+| Literal | An equal string, number, boolean, `null`, or `undefined`. `0` matches both zeros; `-0` and `+0` match only that zero | `when 404:` |
 | Binding | Anything, and names it with `let` or `const` | `when let other:` |
 | Array | An iterable of that length. `...` allows more | `when [let first, ...let rest]:` |
 | Object | A value with those properties; `{ let id }` binds `id` | `when { status: 200, let body }:` |

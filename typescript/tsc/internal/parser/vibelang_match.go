@@ -819,7 +819,14 @@ func (p *Parser) compilePattern(pat *pattern, path matchPath, steps *[]matchStep
 			test(p.patternErrorCall(pat.code, pat.detail, at))
 		}
 	case patternLiteral:
-		test(p.mBinary(path(), ast.KindEqualsEqualsEqualsToken, pat.expr, at))
+		if IsSignedNumberZero(pat.expr) {
+			// A signed zero tests SameValue, which tells -0 from +0, as the
+			// pinned TC39 draft does; TypeScript does not narrow Object.is,
+			// so the arm covers no zero case (decided detail 169).
+			test(p.mCall(p.mProperty(p.mIdent("Object", at), "is", at), []*ast.Node{path(), pat.expr}, at))
+		} else {
+			test(p.mBinary(path(), ast.KindEqualsEqualsEqualsToken, pat.expr, at))
+		}
 	case patternValue:
 		if pat.expr.Kind == ast.KindIdentifier && pat.expr.Text() == "undefined" {
 			test(p.mBinary(path(), ast.KindEqualsEqualsEqualsToken, pat.expr, at))
@@ -964,6 +971,26 @@ func (p *Parser) compilePattern(pat *pattern, path matchPath, steps *[]matchStep
 		inner := p.mParens(p.inlinePattern(pat.items[0], path, ctx), at)
 		test(p.vibelangSpanning(p.factory.NewPrefixUnaryExpression(ast.KindExclamationToken, inner), at))
 	}
+}
+
+// IsSignedNumberZero reports whether expr, a literal pattern, is a Number
+// literal whose value is zero written with a sign: -0, +0, -0.0, +0e0, -0x0
+// or -1e-400. Such a pattern matches by SameValue; unsigned 0 matches both
+// zeros by SameValueZero, and a bigint has no negative zero.
+func IsSignedNumberZero(expr *ast.Node) bool {
+	if expr == nil || expr.Kind != ast.KindPrefixUnaryExpression {
+		return false
+	}
+	unary := expr.AsPrefixUnaryExpression()
+	if unary.Operator != ast.KindMinusToken && unary.Operator != ast.KindPlusToken || unary.Operand.Kind != ast.KindNumericLiteral {
+		return false
+	}
+	text := strings.ToLower(strings.ReplaceAll(unary.Operand.Text(), "_", ""))
+	if len(text) > 2 && text[0] == '0' && strings.ContainsRune("xob", rune(text[1])) {
+		return strings.Trim(text[2:], "0") == ""
+	}
+	value, err := strconv.ParseFloat(text, 64)
+	return err == nil && value == 0
 }
 
 // enterSubject returns the path through which pat, the pattern of a part of a

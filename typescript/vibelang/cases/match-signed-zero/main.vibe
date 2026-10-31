@@ -1,0 +1,27 @@
+// Signed Number zero literal patterns match by SameValue (chapter 004,
+// decided detail 169): -0 and +0 tell the zeros apart, unsigned 0 matches
+// both, a signed nonzero literal matches its value, and -0n is 0n.
+export function negative(n: number) {
+  return match (n) { when -0: "negative zero"; default: "other"; }
+}
+export function positive(n: number) {
+  return match (n) { when +0: "positive zero"; default: "other"; }
+}
+export function spellings(n: number) {
+  return match (n) { when -0.0: "-0.0"; when +0e0: "+0e0"; default: "other"; }
+}
+export function underflow(n: number) {
+  return match (n) { when -1e-400: "negative zero"; default: "other"; }
+}
+export function unsigned(n: number) {
+  return match (n) { when 0: "zero"; default: "other"; }
+}
+export function negativeOne(n: number) {
+  return match (n) { when -1: "minus one"; default: "other"; }
+}
+export function big(n: bigint) {
+  return match (n) { when -0n: "zero"; default: "other"; }
+}
+export function isNegativeZero(n: number) {
+  return n is -0
+}

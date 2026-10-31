@@ -371,6 +371,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Producer documentation kept callback-owned `Scope` as an external requirement; it now shows only the other services that consumers must provide, while preserving checks on written annotations and emitted values.
 
+- A signed zero pattern, `when -0:` or `when +0:`, matched both zeros and counted as covering `0`; it now matches only that zero, as `Object.is` does, and a `match` without `default` whose only zero arm is signed reports `EK4701`.
+
 - Editor parsing rejected `for try` `Stream` loops; the tree-sitter grammar now recognizes the loop and its `continue` and `break` statements.
 
 - In a project that emits declarations, `vibelang --fix` removed an import such as `import * as DateTime from "effect/DateTime"` that the declaration file still printed, through a local type an export names (`type NonNull<V> = V extends DateTime.Utc ? …`), a conditional type or a written `keyof DateTime.Utc`, so the declaration imported `{ DateTime } from "effect"`; `--fix` now keeps every import the file's declaration keeps.
@@ -754,6 +756,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 | A setter in `error` or `schema error` | `EK1302`; run `vibelang --fix` to retain it in an equivalent Effect TypeScript class. |
 | Type parameters on `error` or `schema error` | `EK1303`; `vibelang --fix` converts a plain generic `error` to an Effect TypeScript class. A generic `schema error` needs concrete fields or a TypeScript schema factory; no class fix is offered because it would introduce `TS2562`. |
 
+| `when -0:` or `when +0:` written to match either zero | Write `when 0:`, which matches both zeros. A signed zero now matches only that zero, and `EK4701` reports a `match` that relied on it to cover `0`. |
 
 - EK4802's quick fix "Call it to run it" was offered in a function whose written contract rejects what the call runs, such as `return Exit.fail("data")` in an `unknown!!` function, and applying it added EK2001. It is now offered only where the contract accepts the call's failure, requirements and success.
 

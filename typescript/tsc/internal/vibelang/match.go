@@ -5,6 +5,7 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 )
 
 // Pattern matching (D206-D225). The parser writes `match (x) { when P: v; }`
@@ -113,11 +114,60 @@ func checkExhaustive(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
 	for _, why := range uncountedArmNotes(c, file, call) {
 		note(d, why)
 	}
+	if why := signedZeroArmNote(c, file, call, left); why != "" {
+		note(d, why)
+	}
 	if open {
 		note(d, "Add a default arm, or narrow the subject's declared type to the cases the match handles.")
 		return
 	}
 	note(d, "Add an arm for each case that is left, or a default arm.")
+}
+
+// signedZeroArmNote returns a note for EK4701 when the zero case is left and
+// an arm before call, the $noMatch call that ends the match, tests a signed
+// zero, `when -0:`: the parser writes Object.is($match1, -0), whose SameValue
+// test tells -0 from +0, so the arm covers no zero case of TypeScript's 0,
+// which admits both (decided detail 169). It returns "" otherwise.
+func signedZeroArmNote(c *checker.Checker, file *ast.SourceFile, call *ast.Node, left *checker.Type) string {
+	zeroLeft := false
+	for _, m := range members(left) {
+		if m.Flags()&checker.TypeFlagsNumberLiteral != 0 && c.TypeToString(m) == "0" {
+			zeroLeft = true
+		}
+	}
+	statement := call.Parent
+	for statement != nil && !ast.IsStatement(statement) {
+		statement = statement.Parent
+	}
+	if !zeroLeft || statement == nil || statement.Parent == nil || !ast.IsBlock(statement.Parent) {
+		return ""
+	}
+	written := ""
+	for _, arm := range statement.Parent.AsBlock().Statements.Nodes {
+		if arm == statement || written != "" {
+			break
+		}
+		var visit func(node *ast.Node) bool
+		visit = func(node *ast.Node) bool {
+			if ast.IsFunctionLike(node) || written != "" {
+				return written != ""
+			}
+			if ast.IsCallExpression(node) && ast.IsPropertyAccessExpression(node.Expression()) && len(node.Arguments()) == 2 {
+				callee := node.Expression()
+				if isSynthesizedName(callee.Expression(), "Object") && callee.Name().Text() == "is" && parser.IsSignedNumberZero(node.Arguments()[1]) {
+					written = nodeText(file, node.Arguments()[1])
+					return true
+				}
+			}
+			return node.ForEachChild(visit)
+		}
+		visit(arm)
+	}
+	if written == "" {
+		return ""
+	}
+	return "when " + written + ": covers no zero case: it matches by SameValue, which tells -0 from +0, and the type 0 admits both. Write when 0:, which matches both, or a default arm."
 }
 
 // hasUnconditionalArm reports whether an arm of the match that call, its

@@ -1,0 +1,22 @@
+// expect: EK4701
+// A signed Number zero literal covers no zero case: it matches by SameValue,
+// and TypeScript's 0 admits both zeros (chapter 004, decided detail 169).
+export function signedZero(n: 0 | 1) {
+  return match (n) { when -0: "negative"; when 1: "one"; }
+}
+export function bothSigns(n: 0 | 1) {
+  return match (n) { when -0: "negative"; when +0: "positive"; when 1: "one"; }
+}
+export function spelled(n: 0 | 1) {
+  return match (n) { when -0.0: "negative"; when 1: "one"; }
+}
+export function exponent(n: 0 | 1) {
+  return match (n) { when +0e0: "positive"; when 1: "one"; }
+}
+// Unsigned zero covers both zeros; a signed nonzero literal and a bigint zero cover their case.
+export function allZero(n: 0 | -1) {
+  return match (n) { when 0: "zero"; when -1: "negative one"; }
+}
+export function bigZero(n: 0n | 1n) {
+  return match (n) { when -0n: "zero"; when 1n: "one"; }
+}

@@ -1,0 +1,1 @@
+{"negative":["other","negative zero"],"positive":["positive zero","other"],"spellings":["+0e0","-0.0"],"underflow":["other","negative zero"],"unsigned":["zero","zero"],"negativeOne":["minus one","other"],"big":["zero","zero"],"isNegativeZero":[false,true]}
