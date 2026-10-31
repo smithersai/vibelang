@@ -151,6 +151,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Dynamic imports were implicit in the specification's Promise-call list and their failure phases were unclear. The bridge trigger now names runtime imports, distinguishes argument throws from Promise rejection, and leaves type queries erased.
 
+- The specification defined effect code as Appendix A's Effect-parameter code minus class field initializers, which that grammar never parses with the parameter, and said `fork(x)` and `join(x)` keep their TypeScript meaning everywhere outside effect code. The definition now follows Appendix A: class field and enum member initializers parse without the parameter, while a parameter list or `static` block keeps its reservation, so a `join(p)` parameter default is `EK1701`, as `await` there is a SyntaxError.
+
 - The `match` specification left constrained generic subjects ambiguous; it now checks their finite constraints, honors represented TypeScript flow refinements and preserves ordinary literal types.
 
 - Migration instructions omitted `--fix` from a scoped codemod command; both scope flags are now documented and tested with `--fix` in either argument order.
