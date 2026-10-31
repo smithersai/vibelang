@@ -380,6 +380,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `--fix` left `Match.when(String.startsWith("Core"), …)` and `Match.whenOr` groups mixing literals with prefix predicates with EK4839, saying the prefix call has no match pattern; it now writes a guarded arm, `when let value and if (value.startsWith("Core"))`, joining a group's alternatives in one guard.
 - `--fix` left a Match chain whose first stage is a hoisted `const withChoice = Match.withReturnType<T>()` with EK4839 ("withChoice has no match form"); a stable hoisted hint now converts like the inline one, keeping its type context and its read before the subject.
 - Pure `Option.gen` bodies could remain rejected after migration. `vibelang --fix` now converts supported eager generators to plain bodies with ordered reads, a `None` early exit, and fresh `Some` results.
+- A `.vibe` module whose inferred export type printed longer than TypeScript's serializer limit failed with `TS7056`, though its `.ts` original gave consumers that read the source the full type; t3code's large schema modules stayed TypeScript. A `.vibe` module's declarations, its sidecar, now print such a type in full. A `.ts` file keeps TypeScript's limit.
+
 - Formatting valid `for` heads with `is` patterns could fail with an internal parse error; they now format at narrow and normal widths while keeping `is` attached to its subject.
 - Formatting native `Option` control flow could reject parenthesized `return (match …)` expressions and binding `is` branches; these forms now format while preserving their parsed structure.
 - A dprint `operatorPosition` of `sameLine` or `maintain` could wrap an `is` pattern onto the next line at a narrow width and fail with `')' expected`; the pattern now stays on the line of `is`.

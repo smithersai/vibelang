@@ -221,6 +221,19 @@ const declarationEmitNodeBuilderFlags = nodebuilder.FlagsMultilineObjectLiterals
 
 const declarationEmitInternalNodeBuilderFlags = nodebuilder.InternalFlagsAllowUnresolvedNames | nodebuilder.InternalFlagsRewriteModuleSpecifiers
 
+// internalNodeBuilderFlags are the internal node builder flags for the file
+// being transformed. A .vibe module's declarations are its sidecar
+// (compiler/sidecars.go), which stock checkers read in place of the source:
+// its inferred types print in full, as the source gives them to a checker
+// that reads it, and TS7056 cannot replace one with any (t3code agent,
+// 2026-10-31: t3code's contracts read their sources' full types).
+func (tx *DeclarationTransformer) internalNodeBuilderFlags() nodebuilder.InternalFlags {
+	if tx.state.currentSourceFile != nil && tspath.FileExtensionIs(string(tx.state.currentSourceFile.FileName()), tspath.ExtensionVibe) {
+		return declarationEmitInternalNodeBuilderFlags | nodebuilder.InternalFlagsNoTruncationLimit
+	}
+	return declarationEmitInternalNodeBuilderFlags
+}
+
 // functions as both `visitDeclarationStatements` and `transformRoot`, utilitzing SyntaxList nodes
 func (tx *DeclarationTransformer) visit(node *ast.Node) *ast.Node {
 	if node == nil {
@@ -1702,7 +1715,7 @@ func (tx *DeclarationTransformer) ensureType(node *ast.Node, ignorePrivate bool)
 			if tx.inClassExpressionDeclaration {
 				jsFlags &^= nodebuilder.FlagsWriteClassExpressionAsTypeLiteral
 			}
-			res := tx.resolver.TryJSTypeNodeToTypeNode(node.Type(), tx.enclosingDeclaration, jsFlags, declarationEmitInternalNodeBuilderFlags, tx.tracker)
+			res := tx.resolver.TryJSTypeNodeToTypeNode(node.Type(), tx.enclosingDeclaration, jsFlags, tx.internalNodeBuilderFlags(), tx.tracker)
 			if res != nil {
 				return res
 			}
@@ -1728,9 +1741,9 @@ func (tx *DeclarationTransformer) ensureType(node *ast.Node, ignorePrivate bool)
 		flags &^= nodebuilder.FlagsWriteClassExpressionAsTypeLiteral
 	}
 	if ast.HasInferredType(node) {
-		typeNode = tx.resolver.CreateTypeOfDeclaration(node, tx.enclosingDeclaration, flags, declarationEmitInternalNodeBuilderFlags, tx.tracker)
+		typeNode = tx.resolver.CreateTypeOfDeclaration(node, tx.enclosingDeclaration, flags, tx.internalNodeBuilderFlags(), tx.tracker)
 	} else if ast.IsFunctionLike(node) {
-		typeNode = tx.resolver.CreateReturnTypeOfSignatureDeclaration(node, tx.enclosingDeclaration, flags, declarationEmitInternalNodeBuilderFlags, tx.tracker)
+		typeNode = tx.resolver.CreateReturnTypeOfSignatureDeclaration(node, tx.enclosingDeclaration, flags, tx.internalNodeBuilderFlags(), tx.tracker)
 	} else {
 		debug.AssertNever(node)
 	}
@@ -2033,7 +2046,7 @@ func (tx *DeclarationTransformer) buildClassMembers(classNode *ast.Node, extraMe
 		classNode,
 		tx.enclosingDeclaration,
 		declarationEmitNodeBuilderFlags,
-		declarationEmitInternalNodeBuilderFlags,
+		tx.internalNodeBuilderFlags(),
 		tx.tracker,
 	)
 
@@ -2091,7 +2104,7 @@ func (tx *DeclarationTransformer) transformClassDeclaration(input *ast.ClassDecl
 		varDecl := tx.Factory().NewVariableDeclaration(
 			newId,
 			nil,
-			tx.resolver.CreateTypeOfExpression(extendsClause.Expression(), input.AsNode(), declarationEmitNodeBuilderFlags, declarationEmitInternalNodeBuilderFlags, tx.tracker),
+			tx.resolver.CreateTypeOfExpression(extendsClause.Expression(), input.AsNode(), declarationEmitNodeBuilderFlags, tx.internalNodeBuilderFlags(), tx.tracker),
 			nil,
 		)
 		var mods *ast.ModifierList
@@ -2442,7 +2455,7 @@ func (tx *DeclarationTransformer) ensureTypeParams(node *ast.Node, params *ast.T
 	}
 
 	if data := node.FunctionLikeData(); data != nil && data.FullSignature != nil {
-		if nodes := tx.resolver.CreateTypeParametersOfSignatureDeclaration(node, tx.enclosingDeclaration, declarationEmitNodeBuilderFlags, declarationEmitInternalNodeBuilderFlags, tx.tracker); nodes != nil {
+		if nodes := tx.resolver.CreateTypeParametersOfSignatureDeclaration(node, tx.enclosingDeclaration, declarationEmitNodeBuilderFlags, tx.internalNodeBuilderFlags(), tx.tracker); nodes != nil {
 			typeParameters = &ast.TypeParameterList{
 				Loc:   node.Loc,
 				Nodes: nodes,

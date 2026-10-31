@@ -148,6 +148,9 @@ func (b *NodeBuilderImpl) checkTruncationLength() bool {
 	if b.ctx.truncating {
 		return b.ctx.truncating
 	}
+	if b.ctx.internalFlags&nodebuilder.InternalFlagsNoTruncationLimit != 0 {
+		return false
+	}
 	var maxLength int
 	if b.ctx.flags&nodebuilder.FlagsNoTruncation != 0 {
 		maxLength = noTruncationMaximumTruncationLength

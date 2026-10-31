@@ -76,4 +76,8 @@ const (
 	InternalFlagsDoNotIncludeSymbolChain InternalFlags = 1 << 2
 	InternalFlagsAllowUnresolvedNames    InternalFlags = 1 << 3
 	InternalFlagsRewriteModuleSpecifiers InternalFlags = 1 << 4
+	// InternalFlagsNoTruncationLimit (VibeLang) prints a type in full, however long:
+	// a .vibe module's declarations are its sidecar, which stock checkers read in
+	// place of the source, so a TS7056 fallback to any would lose its types.
+	InternalFlagsNoTruncationLimit InternalFlags = 1 << 5
 )
