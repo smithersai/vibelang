@@ -78,6 +78,16 @@ examples/vue-vite/src/todos.vibe:20:5 lambda effectFn service
 templates/app/src/greeting.test.vibe:4:28 block appended/effectFn table
 templates/app/src/greeting.test.vibe:8:42 block appended/effectFn table
 templates/app/src/main.vibe:8:3 lambda effectFn service
+typescript/vibelang/cases/acquire-function-resource/main.vibe:11:35 lambda program table
+typescript/vibelang/cases/acquire-function-resource/main.vibe:13:19 lambda plain table
+typescript/vibelang/cases/acquire-function-resource/main.vibe:13:7 byname program table
+typescript/vibelang/cases/acquire-function-resource/main.vibe:15:16 lambda plain annotation
+typescript/vibelang/cases/acquire-function-resource/main.vibe:17:32 lambda plain table
+typescript/vibelang/cases/acquire-function-resource/main.vibe:17:7 lambda effectFn table
+typescript/vibelang/cases/acquire-function-resource/main.vibe:21:26 byname program annotation
+typescript/vibelang/cases/acquire-function-resource/main.vibe:21:38 lambda plain table
+typescript/vibelang/cases/acquire-function-resource/main.vibe:21:60 lambda plain annotation
+typescript/vibelang/cases/acquire-function-resource/main.vibe:8:15 lambda factory annotation
 typescript/vibelang/cases/annotated-lambda-reads-its-variable/main.vibe:26:9 lambda plain annotation
 typescript/vibelang/cases/any-call-program-value.fail/main.vibe:16:116 lambda plain table
 typescript/vibelang/cases/any-call-program-value.fail/main.vibe:16:22 lambda plain fallback

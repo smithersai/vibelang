@@ -19,8 +19,8 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,194 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 15,041 |
-| The skill and the user guide (139 pages) | 324,908 |
-| The user guide alone | 320,714 |
+| The skill and the user guide (139 pages) | 325,723 |
+| The user guide alone | 321,529 |
 | The specification (10 chapters) | 141,600 |
 | The decision log, `docs/design/history/DECISIONS.md` | 141,521 |
 
@@ -116,8 +116,8 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Build and test** | **7,075** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 5,287 |
 | [Vite and Vitest](../setup/vite.md) | 1,788 |
-| **Format and lint** | **2,843** |
-| [Format with dprint](../setup/formatting.md) | 1,483 |
+| **Format and lint** | **2,926** |
+| [Format with dprint](../setup/formatting.md) | 1,566 |
 | [Developer tools](../setup/developer-tools.md) | 1,360 |
 | **Frameworks** | **9,544** |
 | [React](../setup/react.md) | 2,131 |
@@ -130,9 +130,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Zed](../setup/zed.md) | 479 |
 | [Other editors](../setup/other-editors.md) | 492 |
 | [Coding agents](../setup/coding-agents.md) | 990 |
-| **Upgrade** | **57,892** |
-| [Release notes](../setup/release-notes.md) | 57,892 |
-| **All 18 pages** | **85,986** |
+| **Upgrade** | **58,503** |
+| [Release notes](../setup/release-notes.md) | 58,503 |
+| **All 18 pages** | **86,680** |
 
 ### Guides
 
@@ -151,10 +151,10 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Error Channel Operations](../error-management/022-error-channel-operations.md) | 1,538 |
 | [Parallel and Sequential Errors](../error-management/023-parallel-and-sequential-errors.md) | 874 |
 | [Custom Error Classes](../error-management/024-yieldable-errors.md) | 1,239 |
-| **Requirements Management** | **8,000** |
+| **Requirements Management** | **8,036** |
 | [Managing Services](../requirements-management/025-services.md) | 2,744 |
 | [Default Services](../requirements-management/026-default-services.md) | 1,267 |
-| [Managing Layers](../requirements-management/027-layers.md) | 2,883 |
+| [Managing Layers](../requirements-management/027-layers.md) | 2,919 |
 | [Layer Memoization](../requirements-management/028-layer-memoization.md) | 1,106 |
 | **Resource Management** | **4,732** |
 | [Introduction](../resource-management/029-introduction.md) | 1,761 |
@@ -179,8 +179,8 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Caching** | **2,226** |
 | [Caching Effects](../caching/045-caching-effects.md) | 1,039 |
 | [Cache](../caching/046-cache.md) | 1,187 |
-| **Concurrency** | **8,530** |
-| [Fibers](../concurrency/047-fibers.md) | 2,988 |
+| **Concurrency** | **8,580** |
+| [Fibers](../concurrency/047-fibers.md) | 3,038 |
 | [Deferred](../concurrency/048-deferred.md) | 1,104 |
 | [Queue](../concurrency/049-queue.md) | 1,495 |
 | [PubSub](../concurrency/050-pubsub.md) | 1,362 |
@@ -256,7 +256,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Platform globals in VibeLang](../platform/platform-globals.md) | 5,131 |
 | [Cloudflare Workers](../platform/cloudflare-workers.md) | 790 |
 | [Alchemy](../platform/alchemy.md) | 2,527 |
-| **All 101 pages** | **169,394** |
+| **All 101 pages** | **169,480** |
 
 ### VibeLang features
 
@@ -267,10 +267,10 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Building an HTTP API](113-building-an-http-api.md) | 1,649 |
 | [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 5,773 |
 | [Cheat sheet](115-cheat-sheet.md) | 10,847 |
-| [Pattern matching with match and is](116-match-and-is.md) | 5,659 |
+| [Pattern matching with match and is](116-match-and-is.md) | 5,694 |
 | [Diagnostic code map](diagnostic-code-map.md) | 2,082 |
 | [Experimental platform APIs](118-experimental-platform-apis.md) | 3,813 |
-| **All 8 pages** | **32,286** |
+| **All 8 pages** | **32,321** |
 
 ### Specification
 

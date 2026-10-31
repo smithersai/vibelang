@@ -11,6 +11,10 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 
 ## 0.0.11 (unreleased)
+- Formatting an inline `@internal` or other JSDoc comment beside an error payload could silently change its declaration output; the formatter now refuses changes to comment attachment and leaves the file intact.
+- The runtime helper `$produce` required an external `Scope` even though its Stream callback supplies one; its result now removes that requirement and keeps other services.
+- Compiler validation treated an error name as a private binding during rename and reported false failures; it now accounts for the public `_tag` value while checking every reference and edit (VIP-13, VIP-29).
+
 
 Update `vibelang`, `vibelang-runtime` and your bundler plugin together to
 0.0.11. Use exactly `effect@4.1.0`, the earliest Effect version VibeLang
@@ -156,6 +160,10 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Import-free `.vibe` files could share globals or report false duplicate declarations with `moduleDetection: "legacy"` or `"auto"`; each source file now keeps its own module scope and emitted module markers.
 
 - The migrate flow's `upgrade-effect` reinstalled with pnpm only, leaving a `bun.lock` kept beside `pnpm-lock.yaml` on the old Effect and VibeLang, and wrote a new override such as `@effect/sql-pg` to `pnpm-workspace.yaml` alone, single-quoted, although Smithers mirrors it in `package.json` with double quotes; each install now also rewrites the other lockfiles, and a new override goes to every overrides table in the quoting beside it.
+
+- An Effect whose success is a function, written where an Effect is expected, was run and its function called as a thunk: `Effect.acquireRelease(Effect.sync(() => detach), (release) => Effect.sync(release))` acquired `void` and reported `TS2345`. Such an argument is now passed as the Effect, and the function is its result.
+
+- The migrate flow's `.vibe` ESLint pass used the root `.oxlintrc.json` for every lint script, over the whole tree, so a script such as foldkit's `oxlint --config .oxlintrc.app.json examples packages/website/src` linted `.vibe` files with other rules and in other directories. Each `oxlint` invocation now gets its own pass, with an ESLint configuration generated from the configuration it names with `-c` or `--config` (`.vibelang/eslint.app.config.mjs`) and the paths it lints.
 
 - The release rehearsal stopped at its Vite warning check because it expected a retired nondeterminism diagnostic and used deprecated configuration; it now checks the assigned `EK4833` warning and verifies that Vite emits the bundle with `noEmitOnError`.
 
@@ -671,6 +679,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - `vibe.effectModules: false` left implicit Effect names available; it now requires imports, filters implicit editor suggestions and keeps required imports during `--fix`.
 
+- A module-level `provide` block reported a generic top-level error and suggested implicit execution through `main`; `EK1201` now points to an `effect function` or `effect { }` block (VIP-12).
+
 - Config migration could put severity settings inside a JSONC comment containing `{`; it now keeps the settings active and the comment intact.
 
 - The specification left import-free `.vibe` files with conflicting scope rules. It now requires module scope before checking, preserves it in JavaScript and declarations, and states the `moduleDetection` exception and ordinary host behavior.
@@ -753,6 +763,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Nested `provide` hints falsely claimed separate builds and recommended removed `wire`. `EK4808` now suggests native composition that retains both layer outputs; the unsafe automatic merge is retired because it can change when provider expressions run and layers build.
 
 - Editor input quick fixes could introduce argument errors, and helper annotation fixes could leave a callback error unchanged; unsafe repairs are now withheld, and captured inputs keep their types.
+
+- Repository example staging now uses one local-package mapping for dependencies and overrides. The staged versions and published example manifests stay unchanged.
 
 - The native compiler regression suite could exhaust its budget on a busy build host while cases were still completing. It now allows 45 minutes of testing and 70 minutes for the target, including queued builds.
 
