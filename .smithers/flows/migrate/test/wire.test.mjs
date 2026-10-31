@@ -6,7 +6,7 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { loadTypeScript } from "../lib/declarations.mjs"
 import { projectsOf } from "../lib/wire.mjs"
-import { addBunBuildPlugin, addBunPreload, bunProgramDirs, wireBunBuilds, addBunTestPreload, wireBunTests, addCompilerOptions, addEffectLint, addOxlintIgnore, copyTarballs, formattable, formatterOf, addVibeLang, addVibeIncludes, addVitePlugin, initAgents, installCommand, packageManager, replaceTsc, rootTsconfigs, runsBunTest, setIgnoreLine, testConfigArgument, toolchainDirectory, toolchainSpecs, viteAppConfigs, wireKnip, wireVite, wireViteApps } from "../lib/wire.mjs"
+import { addEslintIgnore, addBunBuildPlugin, addBunPreload, bunProgramDirs, wireBunBuilds, addBunTestPreload, wireBunTests, addCompilerOptions, addEffectLint, addOxlintIgnore, copyTarballs, formattable, formatterOf, addVibeLang, addVibeIncludes, addVitePlugin, initAgents, installCommand, packageManager, replaceTsc, rootTsconfigs, runsBunTest, setIgnoreLine, testConfigArgument, toolchainDirectory, toolchainSpecs, viteAppConfigs, wireKnip, wireVite, wireViteApps } from "../lib/wire.mjs"
 import { setUpAgents } from "../lib/steps.mjs"
 import { must } from "../lib/util.mjs"
 
@@ -650,4 +650,17 @@ test("wireViteApps leaves an Astro app's Vite config alone and says where the pl
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
+})
+
+// foldkit-17: oxfmt requoted the ignore setup wrote; a rerun added it again.
+test("the sidecar ignores are found in any quotes and written in the file's", () => {
+  const quotes = ["'", '"', "`"]
+  for (const q of quotes) {
+    const eslint = `import js from 'x'\nexport default [\n  { ignores: [${q}**/*.d.vibe.ts${q}] },\n]\n`
+    assert.equal(addEslintIgnore(eslint), eslint)
+    const oxlint = `export default defineConfig({\n  ignorePatterns: [${q}**/*.d.vibe.ts${q}],\n})\n`
+    assert.equal(addOxlintIgnore(oxlint), oxlint)
+  }
+  assert.equal(addEslintIgnore("import js from '@eslint/js'\nexport default [\n  js.configs.recommended,\n]\n"), "import js from '@eslint/js'\nexport default [\n  { ignores: ['**/*.d.vibe.ts'] },\n  js.configs.recommended,\n]\n")
+  assert.equal(addOxlintIgnore("export default defineConfig({\n  plugins: ['import'],\n})\n"), "export default defineConfig({\n  ignorePatterns: ['**/*.d.vibe.ts'],\n  plugins: ['import'],\n})\n")
 })

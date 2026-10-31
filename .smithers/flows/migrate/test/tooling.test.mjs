@@ -323,3 +323,47 @@ test("the migrated Vite+ hook checks .vibe without node_modules/.bin on PATH", {
   assert.equal(result.status, 1, result.stdout + result.stderr)
   assert.match(result.stderr, /probe.vibe: needs formatting/)
 })
+
+// foldkit-17: foldkit's lint scripts ran Oxlint in parentheses, which setup
+// did not take for an Oxlint run, and an earlier run's pass named the default
+// configuration where the script names .oxlintrc.app.json.
+test("a tool run in parentheses gets its .vibe pass, and setup rewrites the passes an earlier run wrote", t => {
+  const corpus = JSON.parse(readFileSync(new URL("./corpus/foldkit-parenthesized-oxlint.json", import.meta.url), "utf8"))
+  const root = fixture(t, {
+    "package.json": JSON.stringify({ scripts: { ...corpus.scripts, fmt: "(oxfmt --check .)", pretty: "(prettier --check .)", both: "(oxfmt --check . && oxlint)" } }),
+    ".oxlintrc.json": "{}",
+    ".oxlintrc.app.json": "{}",
+    "src/main.vibe": ""
+  })
+  wireDeveloperTools({ root, specsFor })
+  const scripts = JSON.parse(readFileSync(join(root, "package.json"))).scripts
+  assert.equal(scripts.lint, corpus.wired.lint)
+  assert.equal(scripts["lint:applications"], corpus.wired["lint:applications"])
+  assert.equal(scripts.fmt, "(oxfmt --check .) && vibelang-format --check")
+  assert.equal(scripts.pretty, "(prettier --plugin vibelang/prettier --check .)")
+  assert.equal(scripts.both, '((oxfmt --check . && oxlint) && vibelang-format --check) && eslint --config .vibelang/eslint.config.mjs "**/*.vibe" --no-error-on-unmatched-pattern')
+  assert.deepEqual(wireDeveloperTools({ root, specsFor }).changed, [])
+})
+
+// foldkit-17 (drive-foldkit-examples): the old setup, run again, wrapped
+// lint:effect in another layer each time, and re-added the ESLint sidecar
+// ignore that oxfmt had requoted to single quotes.
+test("setup run again on foldkit's wiring leaves one layer of passes and one ignore entry", t => {
+  const pass = "eslint --config .vibelang/eslint.effect.config.mjs packages examples scripts --no-error-on-unmatched-pattern"
+  const inner = "effect-tsgo patch --no-typescript --oxlint && oxlint --config .oxlintrc.effect.json --disable-nested-config --deny-warnings packages examples scripts && vibelang lint -c .oxlintrc.effect.json --deny-warnings packages examples scripts"
+  const own = 'pnpm build && eslint --config .vibelang/eslint.config.mjs "**/*.vibe" --no-error-on-unmatched-pattern'
+  const root = fixture(t, {
+    "package.json": JSON.stringify({ scripts: { "lint:effect": `(((${inner}) && ${pass}) && ${pass}) && ${pass}`, own: `(pnpm build) && eslint --config .vibelang/eslint.config.mjs "**/*.vibe" --no-error-on-unmatched-pattern` } }),
+    ".oxlintrc.effect.json": "{}",
+    "packages/e2e/eslint.config.mjs": "import js from '@eslint/js'\n\nexport default [\n  { ignores: ['**/*.d.vibe.ts'] },\n  js.configs.recommended,\n]\n",
+    "eslint.config.mjs": "import js from '@eslint/js'\n\nexport default [\n  js.configs.recommended,\n]\n"
+  })
+  wireDeveloperTools({ root, specsFor })
+  const scripts = JSON.parse(readFileSync(join(root, "package.json"))).scripts
+  assert.equal(scripts["lint:effect"], `(${inner}) && ${pass}`)
+  assert.equal(scripts.own, `(pnpm build) && eslint --config .vibelang/eslint.config.mjs "**/*.vibe" --no-error-on-unmatched-pattern`)
+  assert.equal(readFileSync(join(root, "packages/e2e/eslint.config.mjs"), "utf8"), "import js from '@eslint/js'\n\nexport default [\n  { ignores: ['**/*.d.vibe.ts'] },\n  js.configs.recommended,\n]\n")
+  assert.equal(readFileSync(join(root, "eslint.config.mjs"), "utf8"), "import js from '@eslint/js'\n\nexport default [\n  { ignores: ['**/*.d.vibe.ts'] },\n  js.configs.recommended,\n]\n")
+  assert.deepEqual(wireDeveloperTools({ root, specsFor }).changed, [])
+  void own
+})

@@ -123,6 +123,27 @@ function nativeIgnorePatterns(patterns) {
   })
 }
 
+// commandAt matches a script that runs one of words: at its start, after a
+// separator, or opening a subshell, (oxlint --fix).
+const commandAt = (words) => new RegExp(String.raw`(?:^|[\s;&|(])(?:${words})\b`)
+// group parenthesizes a script once: (oxlint) stays (oxlint), but (a) && (b)
+// becomes ((a) && (b)).
+function group(script) {
+  if (script.startsWith("(") && script.endsWith(")")) {
+    let depth = 0
+    for (let i = 0; i < script.length; i++) {
+      depth += script[i] === "(" ? 1 : script[i] === ")" ? -1 : 0
+      if (depth === 0) { if (i === script.length - 1) return script; break }
+    }
+  }
+  return `(${script})`
+}
+// generatedPasses matches a lint script with the ESLint passes this function
+// appends, (script) && eslint --config .vibelang/eslint.config.mjs paths
+// --no-error-on-unmatched-pattern ...: a run on a new toolchain writes them
+// again from the scripts oxlint invocations, so an older runs passes follow
+// the configurations the script names with -c.
+const generatedPasses = /^\((.*)\)((?: && eslint --config \S*\.vibelang\/eslint\.(?:[\w-]+\.)?config\.mjs(?: (?!--no-error)[^\s;&|]+)* --no-error-on-unmatched-pattern)+)$/
 export function wireDeveloperTools({ root, specsFor, ts }) {
   const changed = [], builds = [], warnings = []
   const write = (file, text) => {
@@ -160,29 +181,34 @@ export function wireDeveloperTools({ root, specsFor, ts }) {
     const dir = posix.dirname(file)
     const up = dir === "." ? "" : "../".repeat(dir.split("/").length)
     for (const [name, command] of Object.entries(pkg.scripts ?? {})) {
+      // Every layer of passes a run wrote, (((oxlint) && pass) && pass) && pass
+      // after reruns of the old setup, comes off; a pass after a command that
+      // runs no oxlint is the repository's own and stays.
       let next = command
-      if (/(^|[\s;&|])(?:oxfmt\b|vp\s+fmt\b)/.test(command) && !command.includes("vibelang-format")) {
-        next = `(${command}) && vibelang-format ${/--check\b|--list-different\b/.test(command) ? "--check" : "--write"}`
+      for (let own; (own = generatedPasses.exec(next)) && commandAt(String.raw`oxlint|vp\s+lint`).test(own[1]); ) next = own[1]
+      if (commandAt(String.raw`oxfmt|vp\s+fmt`).test(next) && !next.includes("vibelang-format")) {
+        next = `${group(next)} && vibelang-format ${/--check\b|--list-different\b/.test(command) ? "--check" : "--write"}`
         needsCompiler = true
       }
-      if (/(^|[\s;&|])prettier\b/.test(command) && !command.includes("vibelang/prettier")) {
+      if (commandAt("prettier").test(next) && !next.includes("vibelang/prettier")) {
         next = next.replace(/\bprettier\b/, "prettier --plugin vibelang/prettier")
         needsCompiler = true
       }
-      if (/(^|[\s;&|])(?:oxlint\b|vp\s+lint\b)/.test(command)) {
+      if (commandAt(String.raw`oxlint|vp\s+lint`).test(next)) {
         // The config is the output of this flow, so a run on a new toolchain writes it again.
         needsCompiler = true; needsLint = true
-        const passes = oxlintPasses(command).map(({ config, paths }) => {
+        const passes = oxlintPasses(next).map(({ config, paths }) => {
           const rooted = config === null ? null : posix.normalize(posix.join(dir, config))
           const file = rooted === null || rooted === ".oxlintrc.json" ? "eslint.config.mjs" : eslintConfigName(rooted)
           if (file !== "eslint.config.mjs") lintConfigs.set(file, rooted)
           return `eslint --config ${up}.vibelang/${file} ${paths.length ? paths.join(" ") : '"**/*.vibe"'} --no-error-on-unmatched-pattern`
         })
-        if (!command.includes("eslint.config.mjs")) next = `(${next}) && ${[...new Set(passes)].join(" && ")}`
+        // A script that runs its own ESLint pass over .vibe keeps it.
+        if (!/\.vibelang\/eslint\./.test(next)) next = `${group(next)} && ${[...new Set(passes)].join(" && ")}`
       }
-      const dprint = /(?:^|[\s;&|(])dprint\s+(fmt|check)\b/.exec(command)
-      if (dprint && pinned.has(dprintConfigOf(dir)) && !command.includes("vibelang-format")) {
-        next = `(${next}) && vibelang-format ${dprint[1] === "check" ? "--check" : "--write"}`
+      const dprint = /(?:^|[\s;&|(])dprint\s+(fmt|check)\b/.exec(next)
+      if (dprint && pinned.has(dprintConfigOf(dir)) && !next.includes("vibelang-format")) {
+        next = `${group(next)} && vibelang-format ${dprint[1] === "check" ? "--check" : "--write"}`
         needsCompiler = true
       }
       if (next !== command) pkg.scripts[name] = next

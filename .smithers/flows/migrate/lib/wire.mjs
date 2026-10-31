@@ -567,13 +567,27 @@ export const oxlintConfigs = [".oxlintrc.json", ".oxlintrc.jsonc", "oxlint.confi
  * would lint vibelang's generated sidecars. Returns null for a shape it does
  * not know.
  */
+// hasString reports whether text writes pattern as a string literal, in any
+// quotes: a formatter may have requoted what setup wrote (foldkit's oxfmt
+// writes 'single'), and a rerun must not add it again (foldkit-17).
+function hasString(text, pattern) {
+  return [`"${pattern}"`, `'${pattern}'`, `\`${pattern}\``].some((literal) => text.includes(literal))
+}
+
+// stringIn writes value as a string literal in the quotes text's first string
+// literal uses, so a module keeps its style.
+function stringIn(text, value) {
+  return /(['"])(?:(?!\1)[^\\\n])*\1/.exec(text)?.[1] === "'" ? `'${value.replace(/[\\']/g, "\\$&")}'` : JSON.stringify(value)
+}
+
 export function addOxlintIgnore(text, pattern = `**/${sidecarIgnore}`) {
-  if (text.includes(JSON.stringify(pattern))) return text
+  if (hasString(text, pattern)) return text
   const list = /(["']?)ignorePatterns\1\s*:\s*\[/.exec(text)
   if (list) {
     const at = list.index + list[0].length
     const indent = /^\r?\n([ \t]*)/.exec(text.slice(at))
-    return indent ? `${text.slice(0, at)}\n${indent[1]}${JSON.stringify(pattern)},${text.slice(at)}` : `${text.slice(0, at)}${JSON.stringify(pattern)}, ${text.slice(at)}`
+    const literal = stringIn(text, pattern)
+    return indent ? `${text.slice(0, at)}\n${indent[1]}${literal},${text.slice(at)}` : `${text.slice(0, at)}${literal}, ${text.slice(at)}`
   }
   const json = /^\s*\{/.exec(text)
   const module = /(?:defineConfig\(\s*|export\s+default\s+)\{/.exec(text)
@@ -582,7 +596,7 @@ export function addOxlintIgnore(text, pattern = `**/${sidecarIgnore}`) {
   const at = open.index + open[0].length
   const indent = /^\r?\n([ \t]*)\S/.exec(text.slice(at))?.[1] ?? "  "
   const key = json ? `"ignorePatterns"` : "ignorePatterns"
-  return `${text.slice(0, at)}\n${indent}${key}: [${JSON.stringify(pattern)}],${text.slice(at)}`
+  return `${text.slice(0, at)}\n${indent}${key}: [${json ? JSON.stringify(pattern) : stringIn(text, pattern)}],${text.slice(at)}`
 }
 
 /**
@@ -593,11 +607,11 @@ export function addOxlintIgnore(text, pattern = `**/${sidecarIgnore}`) {
  * does not know, such as a configuration bound to a name first.
  */
 export function addEslintIgnore(text, pattern = `**/${sidecarIgnore}`) {
-  if (text.includes(JSON.stringify(pattern))) return text
+  if (hasString(text, pattern)) return text
   const open = /(?:export\s+default|module\.exports\s*=)\s*(?:[\w$.]+\((?:\s*\[)?|\[)/.exec(text)
   if (!open) return null
   const at = open.index + open[0].length
-  const entry = `{ ignores: [${JSON.stringify(pattern)}] },`
+  const entry = `{ ignores: [${stringIn(text, pattern)}] },`
   const indent = /^\r?\n([ \t]*)\S/.exec(text.slice(at))?.[1]
   return indent === undefined ? `${text.slice(0, at)}${entry} ${text.slice(at)}` : `${text.slice(0, at)}\n${indent}${entry}${text.slice(at)}`
 }

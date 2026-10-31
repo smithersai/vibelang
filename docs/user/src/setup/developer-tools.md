@@ -49,7 +49,10 @@ dispatches only Vue, Astro, and Svelte script regions. VibeLang is a language,
 not a container of JavaScript script tags, so that mechanism cannot parse it.
 
 Migration appends ESLint with the shipped `vibelang/eslint` parser to the
-existing Oxlint/Vite+ lint script. The generated
+existing Oxlint/Vite+ lint script: one pass for each `oxlint` invocation in it,
+including one in a subshell such as `(oxlint --disable-nested-config)`, over
+the paths it lints, with the configuration it names with `-c` or `--config`
+(`.vibelang/eslint.app.config.mjs` for `.oxlintrc.app.json`). The generated
 `.vibelang/eslint.config.mjs` reads the repository's `.oxlintrc.json` (or
 `.oxlintrc.jsonc`) on each run and applies its rules and overrides to `.vibe`
 files, a `*.ts` glob read as `*.vibe`, wherever ESLint, typescript-eslint or
@@ -65,9 +68,9 @@ source tree as they read a `.ts` file's, including rules written for Oxlint's
 default correctness rules unless the configuration turns that category off,
 and `no-debugger` is on unless it says otherwise. Locations are the original
 VibeLang ones. Rules of Oxlint's other built-in plugins, such as `unicorn` or
-`import`, type-aware rules, `extends`, and a configuration a script names with
-`-c` are not carried; the file is editable, and running setup again writes it
-anew. Raw Oxlint still skips VibeLang.
+`import`, type-aware rules and `extends` are not carried. The files are
+editable; running setup again writes them and the script's passes anew. Raw
+Oxlint still skips VibeLang.
 This is smaller and preserves source locations better than linting emitted
 TypeScript; a future Oxlint-only bridge would need emitted TS, source-map
 remapping, and filtering of diagnostics on compiler-generated code.

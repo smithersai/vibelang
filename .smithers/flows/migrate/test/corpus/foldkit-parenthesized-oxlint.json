@@ -1,0 +1,12 @@
+{
+  "finding": "migrate-tooling:parenthesized-oxlint-skip",
+  "source": "foldkit package.json lint scripts (drive-foldkit repro 19-parenthesized-oxlint)",
+  "scripts": {
+    "lint": "(oxlint --disable-nested-config)",
+    "lint:applications": "(oxlint --config .oxlintrc.app.json --disable-nested-config examples packages/website/src) && eslint --config .vibelang/eslint.config.mjs \"**/*.vibe\" --no-error-on-unmatched-pattern"
+  },
+  "wired": {
+    "lint": "(oxlint --disable-nested-config) && eslint --config .vibelang/eslint.config.mjs \"**/*.vibe\" --no-error-on-unmatched-pattern",
+    "lint:applications": "(oxlint --config .oxlintrc.app.json --disable-nested-config examples packages/website/src) && eslint --config .vibelang/eslint.app.config.mjs examples packages/website/src --no-error-on-unmatched-pattern"
+  }
+}
