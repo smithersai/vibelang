@@ -189,6 +189,9 @@ func readGeneratorCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 // planEffectGen plans EK1002's fix for call: the edits, or the note that says
 // why there are none. It returns nil for a call of no Effect generator API.
 func planEffectGen(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *formRewrite {
+	if rewrite := planOptionGen(c, file, call); rewrite != nil {
+		return rewrite
+	}
 	g, why := readGeneratorCall(c, file, call)
 	if g == nil {
 		return nil

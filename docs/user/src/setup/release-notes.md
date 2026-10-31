@@ -296,6 +296,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `vibelang --fix` removed the retired `declarationSidecars` setting but left an empty `"vibelang": {  }` object behind, which a repository's formatter then rewrote; a settings object that held only that setting now goes with it, and one with a comment keeps the comment.
 - The runtime package's two stock-TypeScript checks could time out at 30 s on a loaded build host; they now have the same 120 s compile budget as the acceptance harness.
 
+
+- Pure `Option.gen` bodies could remain rejected after migration. `vibelang --fix` now converts supported eager generators to plain bodies with ordered reads, a `None` early exit, and fresh `Some` results.
 - Formatting valid `for` heads with `is` patterns could fail with an internal parse error; they now format at narrow and normal widths while keeping `is` attached to its subject.
 - Formatting native `Option` control flow could reject parenthesized `return (match …)` expressions and binding `is` branches; these forms now format while preserving their parsed structure.
 - A dprint `operatorPosition` of `sameLine` or `maintain` could wrap an `is` pattern onto the next line at a narrow width and fail with `')' expected`; the pattern now stays on the line of `is`.
