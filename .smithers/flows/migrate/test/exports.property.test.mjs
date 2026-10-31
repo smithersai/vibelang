@@ -15,10 +15,11 @@ const stem = fc.array(part, { minLength: 1, maxLength: 3 }).map((parts) => "m-" 
 // Describe the expected mappings directly; the oracle does not implement the
 // codemod's recursive walk or wildcard matching algorithm.
 const shapes = [
-  (name, vibe) => "./src/" + name + (vibe ? ".vibe" : ".ts"),
+  (name, vibe) => vibe ? { types: "./src/" + name + ".d.vibe.ts", default: "./src/" + name + ".vibe" } : "./src/" + name + ".ts",
   (name, vibe) => ({ types: "./dist/" + name + ".d.ts", bun: "./src/" + name + (vibe ? ".vibe" : ".ts"), default: "./dist/" + name + ".js" }),
   (name, vibe) => ({ import: { types: "./dist/" + name + ".d.ts", default: "./src/" + name + (vibe ? ".vibe" : ".ts") }, require: ["./src/" + name + (vibe ? ".vibe" : ".ts"), "./fallback/" + name + ".cjs"] }),
-  (name, vibe) => ["./src/" + name + (vibe ? ".vibe" : ".ts"), { default: "./fallback/" + name + ".js" }]
+  (name, vibe) => ["./src/" + name + (vibe ? ".vibe" : ".ts"), { default: "./fallback/" + name + ".js" }],
+  (name, vibe) => ({ types: "./src/" + name + (vibe ? ".d.vibe.ts" : ".ts"), import: "./src/" + name + (vibe ? ".vibe" : ".ts") })
 ]
 
 function check(field, name, shape, corpus) {
@@ -48,8 +49,10 @@ function check(field, name, shape, corpus) {
 
 test("opencode-3: migrating a wildcard export keeps package resolution and revert intact", () => {
   assert.ok(readFileSync(new URL("../README.md", import.meta.url), "utf8").includes(quote), "update the quoted codemod contract")
-  const corpus = JSON.parse(readFileSync(new URL("./corpus/opencode-export-pattern.json", import.meta.url), "utf8"))
-  check(corpus.field, corpus.stem, shapes[corpus.shape], corpus)
+  for (const file of ["opencode-export-pattern.json", "t3code-types-condition.json"]) {
+    const corpus = JSON.parse(readFileSync(new URL("./corpus/" + file, import.meta.url), "utf8"))
+    check(corpus.field, corpus.stem, shapes[corpus.shape], corpus)
+  }
   fc.assert(fc.property(fc.constantFrom("exports", "imports"), stem,
     fc.integer({ min: 0, max: shapes.length - 1 }), (field, name, shape) => check(field, name, shapes[shape])),
     { seed: 350103, numRuns: 250 })

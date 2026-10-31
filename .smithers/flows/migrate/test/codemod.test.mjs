@@ -55,8 +55,8 @@ test("a pattern that matches a renamed module gains an exact entry, and other mo
     const edits = rewriteExports(root, renames)
     assert.deepEqual(read().exports, {
       "./effect/layer-node": "./src/effect/layer-node.ts",
-      "./bom": "./src/bom.vibe",
-      "./effect/deep": "./src/effect/deep.vibe",
+      "./bom": { types: "./src/bom.d.vibe.ts", default: "./src/bom.vibe" },
+      "./effect/deep": { types: "./src/effect/deep.d.vibe.ts", default: "./src/effect/deep.vibe" },
       "./*": "./src/*.ts"
     })
     assert.deepEqual(Object.keys(read().exports).at(-1), "./*")
@@ -92,6 +92,29 @@ test("a conditional pattern gives its other conditions the module's own targets"
   })
 })
 
+// Stock TypeScript names a type a consumer infers from a module only through a
+// target that is the module's declaration file: with ./model.vibe it reports
+// TS2883 (drive-t3code), with ./model.d.vibe.ts it does not.
+test("a types field or condition names the sidecar, and a bare entry gains one", () => {
+  const manifest = {
+    types: "./src/bom.ts",
+    exports: { "./bom": { types: "./src/bom.ts", import: "./src/bom.ts" }, "./plain": "./src/bom.ts", "./other": "./src/other.ts" }
+  }
+  withManifest(manifest, ["packages/util/src/bom.ts", "packages/util/src/other.ts"], (root, read) => {
+    const edits = rewriteExports(root, renameBatch(root, ["packages/util/src/bom.ts"]))
+    assert.deepEqual(read(), {
+      types: "./src/bom.d.vibe.ts",
+      exports: {
+        "./bom": { types: "./src/bom.d.vibe.ts", import: "./src/bom.vibe" },
+        "./plain": { types: "./src/bom.d.vibe.ts", default: "./src/bom.vibe" },
+        "./other": "./src/other.ts"
+      }
+    })
+    restoreExports(root, edits, "packages/util/src/bom.ts")
+    assert.deepEqual(read(), manifest)
+  })
+})
+
 test("a package that names no renamed module is not rewritten", () => {
   const manifest = { exports: { "./*": "./lib/*.js" } }
   withManifest(manifest, ["packages/util/src/bom.ts"], (root, read) => {
@@ -104,9 +127,12 @@ test("restoreExports undoes one module's entries and keeps the others'", () => {
   const manifest = { main: "src/bom.ts", exports: { ".": "./src/other.ts", "./*": "./src/*.ts" } }
   withManifest(manifest, ["packages/util/src/bom.ts", "packages/util/src/other.ts"], (root, read) => {
     const edits = rewriteExports(root, renameBatch(root, ["packages/util/src/bom.ts", "packages/util/src/other.ts"]))
-    assert.deepEqual(read(), { main: "src/bom.vibe", exports: { ".": "./src/other.vibe", "./bom": "./src/bom.vibe", "./other": "./src/other.vibe", "./*": "./src/*.ts" } })
+    const other = { types: "./src/other.d.vibe.ts", default: "./src/other.vibe" }
+    assert.deepEqual(read(), { main: "src/bom.vibe", exports: { ".": other, "./bom": { types: "./src/bom.d.vibe.ts", default: "./src/bom.vibe" }, "./other": other, "./*": "./src/*.ts" } })
     restoreExports(root, edits, "packages/util/src/bom.ts")
-    assert.deepEqual(read(), { main: "src/bom.ts", exports: { ".": "./src/other.vibe", "./other": "./src/other.vibe", "./*": "./src/*.ts" } })
+    assert.deepEqual(read(), { main: "src/bom.ts", exports: { ".": other, "./other": other, "./*": "./src/*.ts" } })
+    restoreExports(root, edits, "packages/util/src/other.ts")
+    assert.deepEqual(read(), { ...manifest, exports: { ".": "./src/other.ts", "./*": "./src/*.ts" } }, "both reverted, only the added entries are gone")
   })
 })
 

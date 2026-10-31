@@ -1,0 +1,20 @@
+{
+  "key": "t3code-TS2883",
+  "manifest": {
+    "exports": {
+      "./*": {
+        "types": "./src/*.ts",
+        "import": "./src/*.ts"
+      }
+    }
+  },
+  "renames": [
+    {
+      "from": "src/model.ts",
+      "to": "src/model.vibe"
+    }
+  ],
+  "field": "exports",
+  "stem": "model",
+  "shape": 4
+}

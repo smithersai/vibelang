@@ -63,15 +63,62 @@ function starOf(pattern, path) {
 // A subpath map has keys that start with . or #; any other object is conditions.
 const isSubpathMap = (value) => value !== null && typeof value === "object" && !Array.isArray(value) && Object.keys(value).some((key) => key.startsWith(".") || key.startsWith("#"))
 
+// The package.json conditions whose target TypeScript reads as a declaration file.
+const typeConditions = new Set(["types", "typings"])
+
 /**
- * Points each renamed module's package at its .vibe source: an entry of
- * `exports` or `imports`, at any depth of conditions, or a `main`, `module` or
- * `types` field that named the .ts file now names the .vibe file, and a
- * pattern that matches it (`"./*": "./src/*.ts"`) gains an exact entry, which
- * wins over the pattern, so the package's other modules keep it. vibelang,
- * stock TypeScript (through the sidecar) and the loaders all read a .vibe
- * target. Returns the edits, { manifest, field, key, added, module }, for
- * restoreExports.
+ * value with each target that names source, a package-relative .ts module,
+ * pointed at the module after its rename: a `types` condition at its
+ * declaration sidecar (x.d.vibe.ts), any other at its .vibe source, and an
+ * entry that is the bare path at both, `{ "types": "./x.d.vibe.ts", "default":
+ * "./x.vibe" }`. Stock TypeScript resolves a .vibe target to its sidecar, but
+ * names a type it reaches that way only through a target that is the sidecar
+ * itself: with ./x.vibe a consumer's inferred type that names one of the
+ * module's types is TS2883. vibelang, its loaders and its bundler plugins read
+ * the .vibe source in either case (Chapter 7's source preference).
+ */
+function pointAt(value, source, { condition, entry = false } = {}) {
+  if (typeof value === "string") {
+    if (posix.normalize(value) !== source) return value
+    const stem = value.slice(0, -".ts".length)
+    if (typeConditions.has(condition)) return stem + ".d.vibe.ts"
+    return entry ? { types: stem + ".d.vibe.ts", default: stem + ".vibe" } : stem + ".vibe"
+  }
+  if (Array.isArray(value)) return value.map((item) => pointAt(item, source))
+  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, pointAt(item, source, { condition: key })]))
+  return value
+}
+
+/**
+ * The inverse of pointAt for one module, now .ts again: each target naming its
+ * .vibe source or its sidecar names the .ts file, and an entry pointAt wrote
+ * from a bare path is that path again.
+ */
+function pointBack(value, vibe) {
+  const stem = vibe.slice(0, -".vibe".length)
+  const ts = (target) => {
+    if (posix.normalize(target) === vibe) return target.slice(0, -".vibe".length) + ".ts"
+    if (posix.normalize(target) === stem + ".d.vibe.ts") return target.slice(0, -".d.vibe.ts".length) + ".ts"
+    return target
+  }
+  if (typeof value === "string") return ts(value)
+  if (Array.isArray(value)) return value.map((item) => pointBack(item, vibe))
+  if (value && typeof value === "object") {
+    const keys = Object.keys(value)
+    if (keys.length === 2 && typeof value.types === "string" && typeof value.default === "string" && posix.normalize(value.types) === stem + ".d.vibe.ts" && posix.normalize(value.default) === vibe) return ts(value.default)
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, pointBack(item, vibe)]))
+  }
+  return value
+}
+
+/**
+ * Points each renamed module's package at it (pointAt): an entry of `exports`
+ * or `imports`, at any depth of conditions, or a `main` or `module` field that
+ * named the .ts file names the .vibe file, and a `types` or `typings` field or
+ * condition names the sidecar. A pattern that matches it (`"./*":
+ * "./src/*.ts"`) gains an exact entry, which wins over the pattern, so the
+ * package's other modules keep it. Returns the edits, { manifest, field, key,
+ * added, module }, for restoreExports.
  */
 export function rewriteExports(root, renames) {
   const edits = []
@@ -86,21 +133,20 @@ export function rewriteExports(root, renames) {
     let changed = false
     for (const { from, to } of moved) {
       const source = posix.relative(dir, from)
-      const swap = (target) => posix.normalize(target) === source ? target.slice(0, -".ts".length) + ".vibe" : target
       const record = (edit) => {
         edits.push({ manifest, ...edit, module: to })
         changed = true
       }
       for (const field of modulePaths) {
-        if (typeof pkg[field] !== "string" || swap(pkg[field]) === pkg[field]) continue
-        pkg[field] = swap(pkg[field])
+        if (typeof pkg[field] !== "string" || posix.normalize(pkg[field]) !== source) continue
+        pkg[field] = pointAt(pkg[field], source, { condition: field })
         record({ field })
       }
       for (const field of moduleMaps) {
         const map = pkg[field]
         if (!isSubpathMap(map)) {
-          if (targetsOf(map).some((target) => swap(target) !== target)) {
-            pkg[field] = mapTargets(map, swap)
+          if (targetsOf(map).some((target) => posix.normalize(target) === source)) {
+            pkg[field] = pointAt(map, source, { entry: true })
             record({ field })
           }
           continue
@@ -108,14 +154,14 @@ export function rewriteExports(root, renames) {
         const entries = []
         for (const [key, value] of Object.entries(map)) {
           if (!key.includes("*")) {
-            if (targetsOf(value).some((target) => swap(target) !== target)) record({ field, key })
-            entries.push([key, mapTargets(value, swap)])
+            if (targetsOf(value).some((target) => posix.normalize(target) === source)) record({ field, key })
+            entries.push([key, pointAt(value, source, { entry: true })])
             continue
           }
           const star = targetsOf(value).map((target) => starOf(target, `./${source}`)).find((match) => match !== undefined)
           const exact = star === undefined ? undefined : key.replace("*", star)
           if (exact !== undefined && !(exact in map) && !entries.some(([name]) => name === exact)) {
-            entries.push([exact, mapTargets(value, (target) => swap(target.replaceAll("*", star)))])
+            entries.push([exact, pointAt(mapTargets(value, (target) => target.replaceAll("*", star)), source, { entry: true })])
             record({ field, key: exact, added: true })
           }
           entries.push([key, value])
@@ -131,7 +177,7 @@ export function rewriteExports(root, renames) {
 /**
  * Undoes the edits of rewriteExports for one module that revert returns to
  * .ts (repository-relative, now .ts): an added entry goes, and a rewritten one
- * names the .ts file again. Returns the edits it undid.
+ * names the .ts file again (pointBack). Returns the edits it undid.
  */
 export function restoreExports(root, edits, module) {
   const vibe = module.replace(/\.ts$/, ".vibe")
@@ -141,10 +187,9 @@ export function restoreExports(root, edits, module) {
     if (!existsSync(path)) continue
     const pkg = JSON.parse(readFileSync(path, "utf8"))
     const source = posix.relative(posix.dirname(edit.manifest), vibe)
-    const swap = (target) => posix.normalize(target) === source ? target.slice(0, -".vibe".length) + ".ts" : target
     if (edit.added) delete pkg[edit.field][edit.key]
-    else if (edit.key !== undefined) pkg[edit.field][edit.key] = mapTargets(pkg[edit.field][edit.key], swap)
-    else pkg[edit.field] = mapTargets(pkg[edit.field], swap)
+    else if (edit.key !== undefined) pkg[edit.field][edit.key] = pointBack(pkg[edit.field][edit.key], source)
+    else pkg[edit.field] = pointBack(pkg[edit.field], source)
     writeFileSync(path, JSON.stringify(pkg, null, 2) + "\n")
   }
   return undone
