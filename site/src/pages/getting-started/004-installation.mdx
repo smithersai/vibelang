@@ -39,8 +39,10 @@ Install Node 22.22.3 (22.x) or Node 24.11.1 or later. If you use Bun, use Bun 1.
 | macOS on Intel | `vibelang-darwin-x64` | No |
 | Linux on x64 | `vibelang-linux-x64` | Yes |
 | Linux on arm64 | `vibelang-linux-arm64` | No |
+| Windows on x64 | `@vibelang/cli-win32-x64` | No |
+| Windows on arm64 | `@vibelang/cli-win32-arm64` | No |
 
-Version 0.0.11 publishes four native packages for macOS and Linux on arm64 and x64. Native Windows binaries are not available yet. Use WSL and follow the Linux instructions. The release rehearsal creates, starts and tests a starter with npm and Bun on Linux x64. The macOS and Linux arm64 binaries are cross-built but have not been rehearsed for this release.
+Version 0.0.11 publishes six native packages for macOS, Linux and Windows on arm64 and x64. The release rehearsal creates, starts and tests a starter with npm and Bun on Linux x64. The other five binaries are cross-built but have not been rehearsed on their target platforms for this release.
 
 Keep optional dependencies enabled: if an install skips them, as `npm install --omit=optional` does, `vibelang` cannot find its binary and exits with an error.
 

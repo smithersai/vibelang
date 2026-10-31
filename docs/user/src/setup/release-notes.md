@@ -13,6 +13,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - In a project with no `declaration` setting, an export whose inferred type was too long to serialize (`TS7056`) got only a warning, and its declaration sidecar held `any` in place of the type, so a stock `tsc` consumer lost its types without an error; it is an error again, as it is where the project emits declarations.
 
+- Installation guides still said native Windows was unavailable; they now list both Windows packages alongside the macOS and Linux packages, while identifying Linux x64 as the platform used for the npm and Bun starter rehearsal.
+
 - The migrate flow's declaration identity check failed a module whose declaration lost only redundant type parentheses, such as `() => (<A>(value: A) => A)` after `vibelang-format`; it now ignores redundant parentheses and still fails a change of precedence, such as `(A | B)[]` to `A | B[]`.
 
 - The migrate flow's `upgrade-effect` moved `vibelang` to the new release but kept the `patchedDependencies` entry for its old version, which pnpm refuses as unused (`ERR_PNPM_UNUSED_PATCH`), and left `vibelang-unplugin` on the old release, so Smithers' upgrade could not install; it now drops a patch the new release already contains, moves one that still applies, stops with the patch's name on one that does neither, and moves `vibelang-unplugin` with the other packages.

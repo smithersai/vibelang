@@ -7,7 +7,7 @@ test("alpha limitations are discoverable and link to current setup and resource 
   assert.ok(existsSync(page), "missing Known limitations page")
   const text = readFileSync(page, "utf8")
   const pin = JSON.parse(readFileSync(new URL("../../packages/runtime/package.json", import.meta.url), "utf8")).peerDependencies.effect
-  for (const phrase of ["macOS arm64/x64", "Linux arm64/x64", "Windows via WSL", "effect@" + pin, "VS Code", "Cursor", "VSIX", "Marketplace", "Open VSX", "v0: breaking changes expected", "TS2307", "vibelang-ts-mapper", "experimental and unpublished", "tsc --runExternalCode"]) {
+  for (const phrase of ["macOS arm64/x64", "Linux arm64/x64", "Windows arm64/x64", "effect@" + pin, "VS Code", "Cursor", "VSIX", "Marketplace", "Open VSX", "v0: breaking changes expected", "TS2307", "vibelang-ts-mapper", "experimental and unpublished", "tsc --runExternalCode"]) {
     assert.ok(text.includes(phrase), "missing limitation: " + phrase)
   }
   const bullets = text.split("\n").filter(line => line.startsWith("- "))

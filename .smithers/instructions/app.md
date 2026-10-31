@@ -22,7 +22,7 @@ cd my-app
 npm run start
 ```
 
-`npm create vibelang` installs the dependencies itself. VibeLang 0.0.11 publishes native packages for macOS and Linux on arm64 and x64. Native Windows binaries are not available yet. Use WSL and follow the Linux instructions. The npm and Bun release rehearsal runs on Linux x64. For VS Code or Cursor, after the install:
+`npm create vibelang` installs the dependencies itself. VibeLang 0.0.11 publishes native packages for macOS, Linux and Windows on arm64 and x64. The npm and Bun starter rehearsal runs on Linux x64; the other five binaries are cross-built. For VS Code or Cursor, after the install:
 
 ```sh
 code --install-extension node_modules/vibelang/editor/vibelang.vsix

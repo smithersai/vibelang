@@ -280,11 +280,12 @@ export default { compilers: { vibe: vibelang }, ignore: ["**/*.d.vibe.ts"] }
 
 ## How the package finds the native compiler
 
-`vibelang` is a small Node launcher. In 0.0.11, the native compiler comes from one of four
+`vibelang` is a small Node launcher. In 0.0.11, the native compiler comes from one of six
 optional dependencies, and npm installs the one that matches your platform:
 `vibelang-darwin-arm64`, `vibelang-darwin-x64`, `vibelang-linux-arm64`,
-`vibelang-linux-x64`. Native Windows binaries are not published yet; use WSL. The launcher
-runs `VIBELANG_BINARY` when set, then `native/vibelang` beside the package in a
+`vibelang-linux-x64`, `@vibelang/cli-win32-arm64`,
+`@vibelang/cli-win32-x64`. The launcher
+runs `VIBELANG_BINARY` when set, then `native/vibelang` (`native/vibelang.exe` on Windows) beside the package in a
 VibeLang checkout, then the platform package. If you installed with optional
 dependencies omitted, reinstall without that option. The launcher forwards
 arguments, standard streams, signals, and the exit status.
