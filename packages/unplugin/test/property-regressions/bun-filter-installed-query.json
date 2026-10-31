@@ -1,0 +1,40 @@
+{
+  "property": "bun-resolve-filter",
+  "rule": "packages/unplugin/README.md, Limitations: under Bun the plugin resolves `.vibe` names, extensionless relative names, and a relative `./x.js` only where an `x.vibe` exists",
+  "note": "A queried ./leaf.js?raw from an installed package without a project file serves its leaf.vibe?raw; the allowed difference must read the id without its query (found by the property on main after f42517eab38f landed).",
+  "input": {
+    "files": [
+      {
+        "directory": "node_modules/dep",
+        "name": "leaf",
+        "kind": ".vibe"
+      },
+      {
+        "directory": "src",
+        "name": "index",
+        "kind": ".vibe"
+      }
+    ],
+    "depProject": false,
+    "importers": [
+      {
+        "directory": "node_modules/dep",
+        "vibe": false
+      }
+    ],
+    "specifiers": [
+      {
+        "prefix": "./",
+        "name": "leaf",
+        "suffix": ".js",
+        "query": "?raw"
+      },
+      {
+        "prefix": "./",
+        "name": "index",
+        "suffix": "",
+        "query": ""
+      }
+    ]
+  }
+}

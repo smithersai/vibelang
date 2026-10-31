@@ -137,7 +137,7 @@ function checkLayout(input) {
         const served = resolve(specifier, from)
         if (filter.test(specifier)) continue
         // An installed package without a project file cannot compile its .vibe modules (workspaceProject).
-        if (served?.startsWith(join(root, "node_modules/dep/")) && served.endsWith(".vibe") && !input.depProject) continue
+        if (served?.startsWith(join(root, "node_modules/dep/")) && served.replace(/\?.*$/, "").endsWith(".vibe") && !input.depProject) continue
         if (served !== undefined) {
           // Only a compiled module's ./x.js for x.ts or x.tsx may bypass the hook.
           assert.ok(importer.vibe && /\.js(?:\?.*)?$/.test(specifier) && /\.tsx?(?:\?.*)?$/.test(served), `${specifier} from ${from} serves ${served}`)
