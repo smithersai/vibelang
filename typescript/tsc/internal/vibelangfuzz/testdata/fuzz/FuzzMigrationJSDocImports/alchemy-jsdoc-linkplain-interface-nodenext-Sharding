@@ -1,0 +1,3 @@
+go test fuzz v1
+string("linkplain:interface:nodenext:Sharding")
+string("export const Sharding = { id: \"\" }\n/** See {@linkplain Sharding.correlationId label}. */\nexport interface Meta {  readonly correlationId?: string }\nexport const entity = Entity\n")

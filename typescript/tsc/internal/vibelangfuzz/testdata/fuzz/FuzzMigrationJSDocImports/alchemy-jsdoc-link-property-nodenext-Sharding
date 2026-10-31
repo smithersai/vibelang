@@ -1,0 +1,3 @@
+go test fuzz v1
+string("link:property:nodenext:Sharding")
+string("export const Sharding = { id: \"\" }\nexport interface Meta { /** See {@link Sharding.correlationId}. */ readonly correlationId?: string }\nexport const entity = Entity\n")

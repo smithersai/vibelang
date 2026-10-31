@@ -1,0 +1,3 @@
+go test fuzz v1
+string("linkplain:property-multiline:nodenext:Envelope")
+string("export const Envelope = { id: \"\" }\nexport interface Meta {\n  /** See {@linkplain Envelope.correlationId label}. */\n  readonly correlationId?: string\n}\nexport const entity = Entity\n")

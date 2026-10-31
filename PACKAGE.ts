@@ -78,6 +78,7 @@ const specTests = [
   "TestMigrationDeclarationFixQuoted",
   "TestMigrationDeclarationCanonicalizationQuoted",
   "TestReviewDiagnosticTablesQuoted",
+  "TestMigrationJSDocImportsQuoted",
   "TestDataChapterWitnessesQuoted",
   "TestFailuresSpecQuotes",
   "TestSpecRuleFacts",
