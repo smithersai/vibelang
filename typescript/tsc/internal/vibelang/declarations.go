@@ -767,7 +767,7 @@ func withoutImplicitReadonly(f *printer.NodeFactory, member *ast.Node, original 
 // out, so its body supplies them: when they come to never, the declaration
 // leaves them out too. Effect's E and R default to never, so each type is
 // the one the source declares. A slot the source fills, never included,
-// stays.
+// stays. Parentheses that group a ! form, (A!E!R) | X, go with it.
 type emptySlots struct {
 	transformers.Transformer
 }
@@ -776,6 +776,11 @@ func (tx *emptySlots) visit(node *ast.Node) *ast.Node {
 	node = tx.Visitor().VisitEachChild(node)
 	original := tx.EmitContext().MostOriginal(node)
 	switch {
+	case ast.IsParenthesizedTypeNode(node) && ast.IsTypeReferenceNode(node.AsParenthesizedTypeNode().Type) && isBangType(tx.EmitContext().MostOriginal(node.AsParenthesizedTypeNode().Type)):
+		// (A!E!R) | X: the parentheses group the ! form, which the
+		// declaration writes as Effect.Effect<A, E, R>, a reference that no
+		// type position needs them around, as the TypeScript writes it.
+		return node.AsParenthesizedTypeNode().Type
 	case ast.IsTypeReferenceNode(node) && isBangType(original) && len(original.TypeArguments()) == 3:
 		keep := 3
 		for keep > 1 && isEmptySlot(original.TypeArguments()[keep-1]) {

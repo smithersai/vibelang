@@ -1,0 +1,8 @@
+// A contract in a union is written in parentheses, (A!E!R) | X, since the !
+// form would join the union's next member. The declaration writes it as
+// Effect.Effect<A, E, R>, which needs none, as typescript/main.ts does.
+import * as Effect from "effect/Effect"
+
+export type Maybe = (string!never!never) | number
+export type Programs = ReadonlyArray<(number!never!never) | undefined>
+export type Either = (string!never!never) | (number!Error!never)
