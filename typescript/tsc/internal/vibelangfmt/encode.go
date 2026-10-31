@@ -17,7 +17,7 @@
 //	x catch y                              x.$v3(y)
 //	x |> f(%)                              x || f($v4)
 //	fork x, join x, throw x, await.all x   void x
-//	x is P                                 x in $v5
+//	x is P                                 x >= $v5
 //	provide X { }, uninterruptible { }     $v6: { }
 //	error E { f: T }, schema S { f: T }    type $v7 = { f: T }
 //	schema S = T                           type $v7 = T
@@ -58,7 +58,7 @@ type placeholderKind int
 
 const (
 	placeholderText         placeholderKind = iota // the identifier is the text
-	placeholderIsPattern                           // a pattern; the in before it is is
+	placeholderIsPattern                           // a pattern; the >= before it is is
 	placeholderMatchHead                           // the property that holds a match's subject
 	placeholderMatchArm                            // when and a pattern, as an arm's property name
 	placeholderBlockHead                           // a label for a block statement's header
@@ -366,7 +366,10 @@ func (e *encoder) form(form parser.VibeSyntax) error {
 		}
 		e.add(edit{pos: form.Word.Pos(), end: form.Word.End(), text: "||", token: "||", stands: stands})
 	case parser.VibeSyntaxIs:
-		e.replace(form.Word.Pos(), form.Word.End(), "in")
+		// Use a relational operator permitted in a classic for initializer.
+		// "in" has the right precedence but NoIn makes it a for-in head.
+		// >= has the same precedence and two-character width as is.
+		e.replace(form.Word.Pos(), form.Word.End(), ">=")
 		e.opaque(placeholderIsPattern, form.Right, "", "", firstLineWidth(e.text(form.Right)))
 	case parser.VibeSyntaxMatch:
 		return e.match(form)

@@ -265,12 +265,37 @@ func (d *decoder) node(node *ast.Node) error {
 	case placeholderText:
 		d.replace(start, end, d.reindent(holder, start))
 	case placeholderIsPattern:
-		if parent.Kind != ast.KindBinaryExpression || parent.AsBinaryExpression().Right != node || parent.AsBinaryExpression().OperatorToken.Kind != ast.KindInKeyword {
+		if parent.Kind != ast.KindBinaryExpression || parent.AsBinaryExpression().Right != node || parent.AsBinaryExpression().OperatorToken.Kind != ast.KindGreaterThanEqualsToken {
 			return lost()
 		}
-		operator := d.start(parent.AsBinaryExpression().OperatorToken)
-		d.replace(operator, operator+len("in"), "is")
-		d.replace(start, end, d.reindent(holder, start))
+		binary := parent.AsBinaryExpression()
+		operator := d.start(binary.OperatorToken)
+		patternPos := start
+		// TC39's is production forbids a line terminator before is. The
+		// host formatter may wrap a relational operator before a long pattern.
+		// Join only whitespace, leaving intervening block comments intact.
+		for at := binary.Left.End(); at < operator; {
+			spaceEnd := scanner.SkipTriviaEx(d.text, at, &scanner.SkipTriviaOptions{StopAtComments: true})
+			if strings.ContainsAny(d.text[at:spaceEnd], "\r\n\u2028\u2029") {
+				d.replace(at, spaceEnd, " ")
+				// Multiline patterns now follow the subject's final line,
+				// rather than the temporary continuation line of the operator.
+				patternPos = binary.Left.End() - 1
+			}
+			if spaceEnd == operator {
+				break
+			}
+			if !strings.HasPrefix(d.text[spaceEnd:operator], "/*") {
+				return lost()
+			}
+			close := strings.Index(d.text[spaceEnd:operator], "*/")
+			if close < 0 {
+				return lost()
+			}
+			at = spaceEnd + close + len("*/")
+		}
+		d.replace(operator, operator+len(">="), "is")
+		d.replace(start, end, d.reindent(holder, patternPos))
 	case placeholderMutableIndex:
 		bracket := start - 1
 		for bracket >= 0 && isSpace(d.text[bracket]) {

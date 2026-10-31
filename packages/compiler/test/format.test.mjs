@@ -134,3 +134,35 @@ test("formatter file discovery respects ignored paths", () => {
     assert.equal(readFileSync(join(dir, "generated/ignored.vibe"), "utf8"), input)
   } finally { rmSync(dir, { recursive: true, force: true }) }
 })
+
+test("formatting preserves pattern expressions throughout for heads", () => {
+  for (const head of [
+    "src is let n; n > 0; n--",
+    "; it.next() is { done: false, value: let n }; ",
+    "; it.next() /* subject */ is /* pattern */ { done: false, value: let n }; ",
+    "; it.next() /* iteration */ is {\n  done: false,\n  value: let n\n}; ",
+    "src /* subject */ is let n; n > 0; n--",
+    "; ok; src is let n",
+    "const ok = src is let n; ok; ",
+    "const item of (src is let n) ? items : []",
+    "const item in (src is let n) ? object : {}",
+  ]) {
+    const source = `function f(src, it) { for (${head}) out.push(() => n) }\n`
+    for (const lineWidth of [40, 120]) {
+      const style = { quoteStyle: "alwaysDouble", lineWidth }
+      let once
+      try { once = formatSource(source, "for-head.vibe", style) }
+      catch (error) { throw new Error(`head ${head}, width ${lineWidth}: ${error.message}`, { cause: error }) }
+      assert.match(once, /\bis\b/)
+      for (const comment of source.match(/\/\*[\s\S]*?\*\//g) ?? []) assert.ok(once.includes(comment))
+      assert.equal(formatSource(once, "for-head.vibe", style), once)
+    }
+  }
+})
+
+test("an is projection keeps a fitting line within the configured print width", () => {
+  const source = "const matched = subject is let value\n"
+  assert.equal(formatSource(source, "is-width.vibe", {
+    quoteStyle: "alwaysDouble", lineWidth: source.trimEnd().length,
+  }), source)
+})

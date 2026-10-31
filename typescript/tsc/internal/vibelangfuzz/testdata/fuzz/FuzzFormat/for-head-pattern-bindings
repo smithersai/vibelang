@@ -1,0 +1,2 @@
+go test fuzz v1
+string("// compiler-gap: pending VIP-7\nfunction drain(it: Iterator<number>) {\n  const out: (() => number)[] = []\n  for (; it.next() is { done: false, value: let v }; ) out.push(() => v)\n  return out.map(g => g()) // [1, 2, 3] for [1, 2, 3]: a fresh v each iteration\n}\nfunction countdown(src: { n: number }) {\n  const seen: (() => number)[] = []\n  for (src.n is let n; n > 0; n--) seen.push(() => n)\n  return seen.map(g => g()) // [3, 2, 1] for n = 3: copied each iteration, as a let is\n}\n")

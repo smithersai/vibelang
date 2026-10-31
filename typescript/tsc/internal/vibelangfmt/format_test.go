@@ -21,6 +21,15 @@ var update = flag.Bool("update", false, "rewrite the golden files of TestFormatG
 // forms holds one source per VibeLang form, written as an author might, so
 // a test sees each form's TypeScript form and its round trip.
 var forms = map[string]string{
+	"for-head patterns": `function countdown(src: { n: number }) {
+  const seen: (() => number)[] = []
+  for (src.n is let n; n > 0; n--) seen.push(() => n)
+  for (; src.n is { value: let v }; ) seen.push(() => v)
+  for (; ok; src.n is let next) { if (next) break }
+  for (const ok = src.n is let first; ok; ) seen.push(() => first)
+  for (const x of (src.n is let value) ? values : []) seen.push(() => value)
+}
+`,
 	"effect": `effect function load(id: string) {   return try find(id) }
 export effect function save(user: User) { try write(user) }
 export default effect function () { return 1 }
@@ -788,5 +797,45 @@ func TestWindowsSingleLineModule(t *testing.T) {
 	}
 	if strings.Contains(strings.ReplaceAll(got, "\r\n", ""), "\n") {
 		t.Fatalf("mixed line endings: %q", got)
+	}
+}
+
+// The host formatter sees the source's print width, including the operator.
+// A longer relational keyword would make otherwise fitting lines wrap early.
+func TestEncodingIsProjectionWidth(t *testing.T) {
+	source := "const matched = subject is let value\n"
+	enc, err := encode("width.vibe", source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(enc.text) != len(source) {
+		t.Fatalf("the is projection changes the print width: %d became %d\n%s", len(source), len(enc.text), enc.text)
+	}
+}
+
+func TestFormatKeepsIsWithItsSubject(t *testing.T) {
+	for _, source := range []string{
+		"for (; subject is { value: let n };) use(n)\n",
+		"for (; subject /* subject */ is { value: let n };) use(n)\n",
+		"for (; subject is {\n  value: let n\n};) use(n)\n",
+		"for (; subject\u00a0is { value: let n };) use(n)\n",
+	} {
+		for _, newline := range []string{"\n", "\r\n", "\u2028", "\u2029"} {
+			// Model the host formatter's wrap before a relational operator.
+			wrap := func(text string) (string, error) {
+				return strings.ReplaceAll(text, " >= ", newline+"      >= "), nil
+			}
+			once, err := Format("is-line.vibe", source, wrap)
+			if err != nil {
+				t.Fatalf("%v\nsource: %s", err, source)
+			}
+			twice, err := Format("is-line.vibe", once, wrap)
+			if err != nil || once != twice {
+				t.Fatalf("unstable pattern indentation: %v\n%s\n%s", err, once, twice)
+			}
+			if hasComment(source) && !strings.Contains(once, "/* subject */") {
+				t.Fatal("lost subject comment")
+			}
+		}
 	}
 }
