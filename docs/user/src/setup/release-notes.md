@@ -83,6 +83,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Incomplete `service`, `schema` and `data` declarations, and a `service` in an ambient context (`declare service`, or one inside `declare namespace`, `declare module` or `declare global`), had no diagnostic codes in the specification; it now names their existing rejections `EK0906`, `EK1503`, `EK1604` and `EK0907`, and keeps valid empty bodies, schema aliases and bodyless errors.
 
+- The specification’s rule for marking a detail **Undecided (pending VIP)** still counted unpublished rulings and decided details as deciding sources. It now names only accepted VIPs, their public amendments and the TypeScript or pinned TC39 counterpart, as the specification’s opening does.
+
 - Editor parsing rejected `for try` `Stream` loops; the tree-sitter grammar now recognizes the loop and its `continue` and `break` statements.
 
 - In a project that emits declarations, `vibelang --fix` removed an import such as `import * as DateTime from "effect/DateTime"` that the declaration file still printed, through a local type an export names (`type NonNull<V> = V extends DateTime.Utc ? …`), a conditional type or a written `keyof DateTime.Utc`, so the declaration imported `{ DateTime } from "effect"`; `--fix` now keeps every import the file's declaration keeps.

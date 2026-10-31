@@ -21,3 +21,12 @@ test("the authority link resolves to public accepted VIPs and keeps history nonn
   }
   assert.match(chapter("000-intro"), /historical and not normative/)
 })
+
+test("the Undecided marker names only the published sources", () => {
+  const lines = chapter("000-intro").split("\n").filter(l => l.includes("**Undecided (pending VIP)**"))
+  assert.equal(lines.length, 1)
+  assert.match(lines[0], /accepted VIP/)
+  assert.match(lines[0], /public amendment/)
+  assert.match(lines[0], /TypeScript or pinned TC39 counterpart/)
+  assert.doesNotMatch(lines[0], /ruling|decided detail/i)
+})
