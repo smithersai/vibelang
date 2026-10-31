@@ -1,0 +1,20 @@
+// expect-result: "none"
+// VIP-9: a service's key and default are what the declaration declares, so
+// they take no override under noImplicitOverride, though the base the parser
+// writes holds them. The spec and vibelang --fix write them this way.
+export interface Shape {
+  readonly id: string
+}
+
+export service Keyed: Shape {
+  static readonly key = "t3/Keyed"
+}
+
+export service Flagged: Shape {
+  static readonly key = "t3/Flagged"
+  static readonly defaultValue = () => ({ id: "none" })
+}
+
+export effect function main() {
+  return Flagged().id
+}

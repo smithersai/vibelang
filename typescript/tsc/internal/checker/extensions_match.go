@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
@@ -16,6 +17,23 @@ func isVibeLangWrittenDeclaration(declaration *ast.Node) bool {
 	name := declaration.Name()
 	return name != nil && ast.IsIdentifier(name) && name.Flags&ast.NodeFlagsReparsed != 0 && strings.HasPrefix(name.Text(), "$") &&
 		ast.GetSourceFileOfNode(declaration).FileName().ExtensionIs(tspath.ExtensionVibe)
+}
+
+// isVibeLangServiceDeclaredMember reports whether member of class, a service
+// declaration of a .vibe file, is its key or default (VIP-9). The declaration
+// declares them; only the base the parser writes holds them too, so they
+// override nothing the source wrote.
+func isVibeLangServiceDeclaredMember(class *ast.Node, member *ast.Symbol) bool {
+	extends := ast.GetClassExtendsHeritageElement(class)
+	if extends == nil || !ast.GetSourceFileOfNode(class).FileName().ExtensionIs(tspath.ExtensionVibe) {
+		return false
+	}
+	base := extends.Expression()
+	if !ast.IsIdentifier(base) || base.Flags&ast.NodeFlagsReparsed == 0 || base.Text() != parser.ServiceShapeFactory {
+		return false
+	}
+	name := ast.SymbolName(member)
+	return name == "key" || name == "defaultValue"
 }
 
 // isVibeLangClassPattern reports whether call is the test the parser writes

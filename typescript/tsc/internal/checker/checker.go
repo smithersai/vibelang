@@ -4904,7 +4904,7 @@ func (c *Checker) checkMemberForOverrideModifierWorker(node *ast.Node, staticTyp
 			return MemberOverrideStatusHasInvalidOverride
 		}
 
-		if prop != nil && baseProp != nil && len(baseProp.Declarations()) > 0 && c.compilerOptions.NoImplicitOverride.IsTrue() && node.Flags&ast.NodeFlagsAmbient == 0 {
+		if prop != nil && baseProp != nil && len(baseProp.Declarations()) > 0 && c.compilerOptions.NoImplicitOverride.IsTrue() && node.Flags&ast.NodeFlagsAmbient == 0 && !(memberIsStatic && isVibeLangServiceDeclaredMember(node, member)) { // VibeLang (extensions_match.go)
 			baseHasAbstract := core.Some(baseProp.Declarations(), ast.HasAbstractModifier)
 			if memberHasOverrideModifier {
 				return MemberOverrideStatusNone
