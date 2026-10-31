@@ -2,4 +2,4 @@ onlyFs needs FileSystem.FileSystem, but its contract says R = FileSystem.
 withPath needs FileSystem.FileSystem, but its contract says R = FileSystem | Path.
 In a type position the bare name FileSystem is the ambient FileSystem type, not Effect
 or add it to the contract: string!!FileSystem.FileSystem.
-or add it to the contract: string!!FileSystem.FileSystem | Path.
+or add it to the contract: string!!(FileSystem.FileSystem | Path).

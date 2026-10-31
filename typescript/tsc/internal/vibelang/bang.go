@@ -44,11 +44,11 @@ func bangText(channels ...string) string {
 }
 
 // bangSlot parenthesizes a channel's text when it would not stay one slot: a
-// function, constructor, or conditional type, which would take the slots after
+// union, intersection, function, constructor, or conditional type, which would take the slots after
 // it, an Effect type in the ! form, or, after a !, an object type, whose {
 // would start a function body.
 func bangSlot(text string, afterBang bool) string {
-	if hasTopLevel(text, "=>") || hasTopLevel(text, "?") || hasTopLevel(text, "!") || afterBang && strings.HasPrefix(text, "{") {
+	if hasTopLevel(text, "=>") || hasTopLevel(text, "?") || hasTopLevel(text, "!") || hasTopLevel(text, "|") || hasTopLevel(text, "&") || afterBang && strings.HasPrefix(text, "{") {
 		return "(" + text + ")"
 	}
 	return text

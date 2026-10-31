@@ -1,5 +1,5 @@
 // expect:
 // 007 EK4833: use the equivalent A!E!R spelling, preserving required parentheses.
-// number | string!! means number | Effect<string>; the equivalent is (number | string)!!.
+// VIP-3 requires grouping the union success slot: (number | string)!!.
 export let u: Effect.Effect<number | string>;
 export let w: Effect.Effect<number | string, Error>;
