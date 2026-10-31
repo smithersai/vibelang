@@ -88,6 +88,9 @@ test("assembles every package in publish order with pinned versions, platform bi
   for (const path of ["src/options.d.ts", "src/index.d.ts", "src/deferred.d.ts"]) {
     assert.deepEqual(archive(root, "vibelang-unplugin", path), readFileSync(join(repo, "packages/unplugin", path)))
   }
+  const compilerPeer = JSON.parse(archive(root, "vibelang", "package.json")).peerDependencies
+  assert.equal(compilerPeer?.effect, json(join(root, "packages/runtime/package.json")).peerDependencies.effect,
+    "VIP-32: the packed compiler requires the runtime's exact Effect version")
   const plugin = JSON.parse(archive(root, "vibelang", "dprint-plugin.json"))
   assert.equal(plugin.kind, "process")
   assert.equal(plugin.name, "dprint-plugin-vibelang")

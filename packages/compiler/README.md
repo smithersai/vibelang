@@ -23,7 +23,8 @@ npm install --save-exact effect@4.1.0 vibelang-runtime
 npm install --save-dev vibelang
 ```
 
-Install exactly `effect@4.1.0`. The version is exact because the runtime reads
+The compiler and runtime declare the same exact `effect` peer dependency, so package
+managers can report an incompatible version during installation. Install exactly `effect@4.1.0`. The version is exact because the runtime reads
 fiber internals and rejects other versions at load. Keep `@effect/platform-node`
 and `@effect/vitest` at that same version when you use them. Existing projects
 also need the `@effect/platform-node-shared` override. Follow

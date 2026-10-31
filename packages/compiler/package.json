@@ -82,5 +82,8 @@
   },
   "dependencies": {
     "dprint": "0.64.3"
+  },
+  "peerDependencies": {
+    "effect": "4.1.0"
   }
 }

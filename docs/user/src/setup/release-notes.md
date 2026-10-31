@@ -168,6 +168,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- Installing `vibelang` alone did not declare the Effect version it supports; the compiler now requires the same exact `effect` peer as the runtime, and release packaging rejects a missing, optional, ranged or mismatched pin.
+
 - Release notes repeated fixes and included internal test results in an earlier unpublished section; the final check now covers all unpublished fixes and lists each user-visible change once.
 
 - Checking documentation examples with a symlinked `TMPDIR` could stop with `Compiler failed` instead of reporting an example's type error; diagnostics now stay attached to their examples and later pages are checked.

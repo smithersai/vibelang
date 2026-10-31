@@ -67,6 +67,12 @@ for (const [name, pin] of Object.entries(optional)) expect(pin === version, `vib
 expect(vite.peerDependencies?.vibelang === version, `vibelang-vite: peer vibelang ${vite.peerDependencies?.vibelang}, expected ${version}`)
 expect(unplugin.peerDependencies?.vibelang === version, `vibelang-unplugin: peer vibelang ${unplugin.peerDependencies?.vibelang}, expected ${version}`)
 const effect = runtime.peerDependencies?.effect
+expect(typeof effect === "string" && /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(effect),
+  "vibelang-runtime: effect peer must be an exact version")
+expect(compiler.peerDependencies?.effect === effect,
+  "vibelang: effect peer must match the runtime's exact pin " + effect)
+expect(compiler.peerDependenciesMeta?.effect?.optional !== true,
+  "vibelang: effect peer must be required")
 expect(template.dependencies?.effect === effect, `template: effect ${template.dependencies?.effect}, but the runtime requires ${effect}`)
 expect(template.dependencies?.["@effect/platform-node"] === effect, `template: @effect/platform-node must match effect ${effect}`)
 expect(template.devDependencies?.["@effect/vitest"] === effect, `template: @effect/vitest must match effect ${effect}`)
