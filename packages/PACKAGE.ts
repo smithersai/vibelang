@@ -53,7 +53,7 @@ const compilerTest = S.Shell.Test({
   // Their helpers and the TypeScript API install must enter the cache key too.
   data: [compilerNative, runtimeDist, S.glob("compiler/**"), S.glob("//.smithers/flows/migrate/lib/**"),
     S.file("//scripts/testing/property.mjs"), S.file("//docs/design/src/007-tooling.md"), S.file("//.smithers/flows/migrate/rules.md"),
-    S.file("vite/src/relative-imports.js"), S.file("unplugin/src/relative-imports.js"), ...install],
+    S.file("vite/src/relative-imports.js"), S.file("vite/src/paths-imports.js"), S.file("unplugin/src/relative-imports.js"), ...install],
   tools: [S.Host.bin("node"), S.Host.bin("bun")],
   sandbox: "none",
   timeout: "15m"

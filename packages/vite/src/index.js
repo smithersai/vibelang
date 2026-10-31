@@ -1,3 +1,4 @@
+import { aliasImport } from "./paths-imports.js"
 import { extensionlessImport } from "./relative-imports.js"
 import { existsSync } from "node:fs"
 import { createRequire } from "node:module"
@@ -37,6 +38,17 @@ function isModuleOutput(path) {
 }
 // A module whose JavaScript the plugin compiles: a .vibe module or one of its module declarations.
 const isCompiled = (path) => path.endsWith(".vibe") || isModuleOutput(path)
+
+// The tsconfig.json nearest above directory, whose paths apply to its modules.
+const configs = new Map()
+function nearestConfig(directory) {
+  if (!configs.has(directory)) {
+    const own = join(directory, "tsconfig.json")
+    const parent = dirname(directory)
+    configs.set(directory, existsSync(own) ? own : parent === directory ? undefined : nearestConfig(parent))
+  }
+  return configs.get(directory)
+}
 
 // Keep TypeScript's source priority when the bundler cannot find .vibe.
 function extensionlessVibe(directory, specifier) {
@@ -167,7 +179,16 @@ export default function vibelang(options = {}) {
       })
     },
     resolveId(source, importer) {
-      if (!importer || !source.startsWith(".")) return
+      if (!importer) return
+      // Vite's resolve.tsconfigPaths, like vite-tsconfig-paths, applies a
+      // path alias only in a TypeScript or JavaScript importer, so `~/value`
+      // in a .vibe module reached nothing. Resolve it as vibelang does: the
+      // file the nearest tsconfig's paths give.
+      if (!source.startsWith(".")) {
+        if (!isCompiled(cleanId(importer))) return
+        const target = aliasImport(nearestConfig(dirname(cleanId(importer))), cleanId(source))
+        return target === undefined ? undefined : slash(target) + source.slice(cleanId(source).length)
+      }
       const vibe = extensionlessVibe(dirname(cleanId(importer)), cleanId(source))
       if (vibe !== undefined) return slash(vibe) + source.slice(cleanId(source).length)
       // vibelang rewrites .vibe imports to .js. Keep the original source in Vite's graph.
