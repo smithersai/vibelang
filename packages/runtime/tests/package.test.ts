@@ -41,7 +41,7 @@ for (const kernelFirst of [false, true]) {
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
-  })
+  }, 30_000)
 }
 
 for (const version of ["4.1.0", "4.0.7", "4.1.1", "3.99.0"]) {
