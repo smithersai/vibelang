@@ -45,6 +45,8 @@ effect function inspectChild() {
 
 `Fiber.await` succeeds with an `Exit`, which also represents defects and interruption, so it doesn't rethrow the child's failure into the caller. Use `join child` to propagate failure and `try Fiber.await(child)` when the caller decides what the outcome means.
 
+Fiber operators compose with other unary expressions. `join fork task` starts the Effect `task` and waits for its result; `! join child` negates the child's completed value.
+
 ## Handling asynchronous interruption
 
 ```vibe

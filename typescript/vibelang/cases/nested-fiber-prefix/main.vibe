@@ -1,0 +1,5 @@
+// expect-result: [2,false]
+export effect function main() {
+  const child = fork Effect.succeed(3)
+  return [join fork Effect.succeed(2), ! join child]
+}

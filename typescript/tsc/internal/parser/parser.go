@@ -5308,6 +5308,12 @@ func (p *Parser) parseJsxClosingFragment(inExpressionContext bool) *ast.Node {
 }
 
 func (p *Parser) parseSimpleUnaryExpression() *ast.Expression {
+	if p.isStartOfVibeLangFork() {
+		return p.parseVibeLangFork()
+	}
+	if p.isStartOfVibeLangJoin() {
+		return p.parseVibeLangJoin()
+	}
 	switch p.token {
 	case ast.KindPlusToken, ast.KindMinusToken, ast.KindTildeToken, ast.KindExclamationToken:
 		return p.parsePrefixUnaryExpression()
