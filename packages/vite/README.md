@@ -117,7 +117,10 @@ runs a command-line program from `src/bin.ts`. The plugin adds `--import` of
 `vibelang/register`, by absolute URL, to the tests' `NODE_OPTIONS`, keeping any
 value the configuration or the environment already sets, so a child process
 imports `.vibe` modules from any working directory. A child given an
-environment of its own, without `NODE_OPTIONS`, does not inherit it.
+environment of its own, without `NODE_OPTIONS`, does not inherit it. A Bun
+process a test starts, such as `process.execPath` under `bun x --bun vitest`,
+reads `BUN_OPTIONS`, so the plugin adds `--preload` of `vibelang/bun`, by
+absolute path, there too, unless the path contains a space.
 
 By default, the plugin resolves `vibelang` from the application's root and runs
 the native compiler its Node launcher would run. Without a `compiler` option,

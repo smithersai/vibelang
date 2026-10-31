@@ -254,7 +254,13 @@ function registerCase(root, input) {
     assert.ok(value.startsWith(original))
     const flag = value.split(" ").filter(option => option.startsWith("--import="))
     assert.equal(flag.length, 1)
-    assert.equal(plugin.config({ ...config, test: { env: { NODE_OPTIONS: value } } }).test, undefined, "register is idempotent")
+    // A bun process a test starts reads BUN_OPTIONS: one --preload of vibelang/bun, after what the environment sets.
+    const bun = result.test.env.BUN_OPTIONS
+    assert.ok(bun.startsWith(process.env.BUN_OPTIONS ?? ""))
+    const preload = bun.split(" ").filter(option => option.startsWith("--preload="))
+    assert.equal(preload.length, 1)
+    assert.match(preload[0], /^--preload=.*[\\/]bun\.mjs$/)
+    assert.equal(plugin.config({ ...config, test: { env: { NODE_OPTIONS: value, BUN_OPTIONS: bun } } }).test, undefined, "register is idempotent")
   }
   const file = join(root, input.directory, "n0.vibe")
   const spawned = run(process.execPath, ["--input-type=module", "-e",

@@ -41,16 +41,24 @@ async function loadBackend(root) {
   throw new Error("vibelang-vite needs the vibelang package: npm install --save-dev vibelang")
 }
 
-// The Node loader's absolute URL, so a process started in any directory finds it.
-function registerUrl(root) {
+// The absolute path of a vibelang module, so a process started in any
+// directory finds it.
+function vibelangModule(root, name) {
   for (const base of [join(root, "package.json"), fileURLToPath(import.meta.url)]) {
     try {
-      return pathToFileURL(createRequire(base).resolve("vibelang/register")).href
+      return createRequire(base).resolve(name)
     } catch {
       continue
     }
   }
   throw new Error("vibelang-vite's register option needs the vibelang package: npm install --save-dev vibelang")
+}
+
+// Adds flag to the variable name of the tests' environment, keeping what the
+// config or the environment already sets; undefined when it is already there.
+function withOption(env, name, flag) {
+  const inherited = env?.[name] ?? process.env[name] ?? ""
+  return inherited.includes(flag) ? undefined : [inherited, flag].filter(Boolean).join(" ")
 }
 
 // VIBELANG_VITE_DEBUG=1 traces whole-project compiles and invalidations.
@@ -102,11 +110,18 @@ export default function vibelang(options = {}) {
       const extensions = config.resolve?.extensions
       const added = extensions?.includes(".vibe") ? {} : { resolve: { extensions: extensions ? [".vibe"] : [...viteExtensions, ".vibe"] } }
       if (!options.register) return added
-      // Vitest copies test.env into process.env, which the processes a test starts inherit.
-      const flag = `--import=${registerUrl(resolve(config.root || process.cwd()))}`
-      const inherited = config.test?.env?.NODE_OPTIONS ?? process.env.NODE_OPTIONS ?? ""
-      if (inherited.includes(flag)) return added
-      return { ...added, test: { env: { NODE_OPTIONS: [inherited, flag].filter(Boolean).join(" ") } } }
+      // Vitest copies test.env into process.env, which the processes a test
+      // starts inherit: node reads NODE_OPTIONS, and bun, such as
+      // process.execPath under bun x --bun vitest, reads BUN_OPTIONS, whose
+      // --preload takes a path without spaces.
+      const base = resolve(config.root || process.cwd())
+      const preload = vibelangModule(base, "vibelang/bun")
+      const env = {
+        NODE_OPTIONS: withOption(config.test?.env, "NODE_OPTIONS", `--import=${pathToFileURL(vibelangModule(base, "vibelang/register")).href}`),
+        BUN_OPTIONS: /\s/.test(preload) ? undefined : withOption(config.test?.env, "BUN_OPTIONS", `--preload=${preload}`)
+      }
+      for (const name of Object.keys(env)) if (env[name] === undefined) delete env[name]
+      return Object.keys(env).length ? { ...added, test: { env } } : added
     },
     // Vitest's fsModuleCache keys a transform by the module's own text, but a
     // .vibe module's JavaScript also depends on the compiler and on the

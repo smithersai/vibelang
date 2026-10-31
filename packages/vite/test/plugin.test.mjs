@@ -124,7 +124,7 @@ it.effect("reads its dependency") {
   console.log("PASS Vitest rerun: a changed import's contract recompiles its importer")
 })
 
-test("register: true lets a Node process a test starts import .vibe source, from any directory", async (t) => {
+test("register: true lets a Node or Bun process a test starts import .vibe source, from any directory", async (t) => {
   const root = await fixture(t)
   await writeFile(join(root, "plain.vibe"), "export function triple(value: number): number {\n  return value * 3\n}\n")
   await writeFile(join(root, "spawn.test.ts"), `import { execFileSync } from "node:child_process"
@@ -137,6 +137,15 @@ it("starts a Node process that imports a .vibe module", () => {
   const output = execFileSync(process.execPath, ["--input-type=module", "-e", program], { cwd: tmpdir(), encoding: "utf8" })
   expect(output.trim()).toBe("42 true")
 }, 60_000) // The child compiles the project; Vitest's 5s default fails on a loaded host.
+
+// Smithers' capability tests under bun x --bun vitest start process.execPath,
+// which is then bun: it reads BUN_OPTIONS, not NODE_OPTIONS.
+it("starts a Bun process that imports a .vibe module", () => {
+  const plain = new URL("./plain.vibe", import.meta.url).href
+  const program = \`const { triple } = await import(\${JSON.stringify(plain)}); console.log(triple(5))\`
+  const output = execFileSync(process.env.VIBELANG_TEST_BUN ?? "bun", ["-e", program], { cwd: tmpdir(), encoding: "utf8" })
+  expect(output.trim()).toBe("15")
+}, 60_000)
 `)
   const config = (register) => `
 import { defineConfig } from "vitest/config"
@@ -149,10 +158,11 @@ export default defineConfig({
   await writeFile(join(root, "vitest.config.ts"), config(true))
   const registered = await runVitest(root)
   assert.equal(registered.code, 0, registered.output)
-  assert.match(registered.output, /1 passed/)
+  assert.match(registered.output, /2 passed/)
   await writeFile(join(root, "vitest.config.ts"), config(false))
   const plain = await runVitest(root)
   assert.equal(plain.code, 1, plain.output)
+  assert.match(plain.output, /2 failed/)
   assert.match(plain.output, /ERR_UNKNOWN_FILE_EXTENSION|Unknown file extension "\.vibe"/)
 })
 
