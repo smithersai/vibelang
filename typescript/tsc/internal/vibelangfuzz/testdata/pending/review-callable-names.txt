@@ -1,0 +1,16 @@
+FuzzReviewCallableNames name:function:expression:fork compiler VIP-17/detail242: callable name context must mirror async and report EK1702; lane sl1-apply
+FuzzReviewCallableNames corpus:r1-astra6-function-expression-fork compiler VIP-17/detail242: callable name context must mirror async and report EK1702; lane sl1-apply
+FuzzReviewCallableNames name:function:nested-declaration:fork compiler VIP-17/detail242: callable name context must mirror async and report EK1702; lane sl1-apply
+FuzzReviewCallableNames corpus:r1-astra6-function-nested-declaration-fork compiler VIP-17/detail242: callable name context must mirror async and report EK1702; lane sl1-apply
+FuzzReviewCallableNames name:producer:expression:fork compiler VIP-17/detail242: callable name context must mirror async and report EK1702; lane sl1-apply
+FuzzReviewCallableNames corpus:r1-astra6-producer-expression-fork compiler VIP-17/detail242: callable name context must mirror async and report EK1702; lane sl1-apply
+FuzzReviewCallableNames name:producer:nested-declaration:fork compiler VIP-17/detail242: callable name context must mirror async and report EK1702; lane sl1-apply
+FuzzReviewCallableNames corpus:r1-astra6-producer-nested-declaration-fork compiler VIP-17/detail242: callable name context must mirror async and report EK1702; lane sl1-apply
+FuzzReviewCallableNames name:function:expression:join compiler VIP-17/detail242: callable name context must mirror async and report EK1702; lane sl1-apply
+FuzzReviewCallableNames corpus:r1-astra6-function-expression-join compiler VIP-17/detail242: callable name context must mirror async and report EK1702; lane sl1-apply
+FuzzReviewCallableNames name:function:nested-declaration:join compiler VIP-17/detail242: callable name context must mirror async and report EK1702; lane sl1-apply
+FuzzReviewCallableNames corpus:r1-astra6-function-nested-declaration-join compiler VIP-17/detail242: callable name context must mirror async and report EK1702; lane sl1-apply
+FuzzReviewCallableNames name:producer:expression:join compiler VIP-17/detail242: callable name context must mirror async and report EK1702; lane sl1-apply
+FuzzReviewCallableNames corpus:r1-astra6-producer-expression-join compiler VIP-17/detail242: callable name context must mirror async and report EK1702; lane sl1-apply
+FuzzReviewCallableNames name:producer:nested-declaration:join compiler VIP-17/detail242: callable name context must mirror async and report EK1702; lane sl1-apply
+FuzzReviewCallableNames corpus:r1-astra6-producer-nested-declaration-join compiler VIP-17/detail242: callable name context must mirror async and report EK1702; lane sl1-apply

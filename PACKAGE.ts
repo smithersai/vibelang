@@ -65,6 +65,10 @@ const specTests = [
   "TestDoForTryDiagnosticOwnerQuoted",
   "TestDoDeclarationBytesQuoted",
   "TestDoContextualResultFuzzQuoted",
+  "TestReviewPipeGrammarQuoted",
+  "TestReviewCallableNamesQuoted",
+  "TestReviewProvideRecoveryQuoted",
+  "TestReviewCompactContractsQuoted",
   "TestSpecifierWrittenJSX",
 
   "TestStockConsumerResolutionQuoted",
