@@ -230,7 +230,7 @@ effect function firstFailure(id: string) {
 // Output: true
 ```
 
-Loop bindings follow the pinned TC39 loop scopes. A `for` head scopes its bindings to the head and body, with per-iteration copies for `for-of`. The proposal gives `while` and `do-while` a head scope and per-iteration body scopes. Bindings are in the temporal dead zone on the first `do-while` iteration.
+Loop bindings follow the pinned TC39 loop scopes. A `for` head scopes its bindings to the head and body: `for (;;)` copies an initializer's `let` binding into each iteration, as for a `let` declared there, and `for-of` copies a head expression's bindings into each item. The proposal gives `while` and `do-while` a head scope and per-iteration body scopes. Bindings are in the temporal dead zone on the first `do-while` iteration.
 
 A template pattern such as `` `ready` `` has no substitutions and compares without coercion. For interpolation use a guard, ``when let value and if (value === `tag-${kind}`): ...;``; an interpolated primitive pattern is `EK0707`.
 

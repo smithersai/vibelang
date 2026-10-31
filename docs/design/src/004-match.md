@@ -509,6 +509,7 @@ Every other home follows the pinned explainer's rule that the usual binding scop
 - In `for…in`, `for…of`, `for await`, `for concurrent` and `for try`, a binding from the head expression, which runs once in the head's own environment, is copied into each iteration's binding environment; a skipped binding is copied uninitialized. A binding from a default inside the head declaration belongs to that iteration's fresh binding environment.
 - In a concise arrow body, a binding belongs to the arrow body's scope, where the block-body form would declare it.
 - In a class field or static field initializer, a binding belongs to that initializer's own scope, because ECMAScript evaluates each initializer as a separate method-like body. A `static` block is a block.
+- An `enum` member initializer has no lexical home in ECMAScript or the pinned explainer, so a binding introduced there is `EK0705`, as for a formal parameter: `enum E { A = (1 is let one) ? 1 : 0 }` is `EK0705`.
 
 Each binding stays in TDZ until its pattern runs, under the checks in [`is` expressions](#is-expressions).
 

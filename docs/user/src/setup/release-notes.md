@@ -191,6 +191,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The tooling specification linked to private numbered decisions for configuration, diagnostics, and lint rules; it now links to the accepted public VIP amendments.
 
+- The specification gave no home for an `is` binding in an `enum` member initializer, and the match guide said only `for-of` heads copy bindings per iteration; such a binding is now `EK0705`, as in a parameter default, and the guide states the `for (;;)` copies too.
+
 
 - In a project with no `declaration` setting, an export whose inferred type was too long to serialize (`TS7056`) got only a warning, and its declaration sidecar held `any` in place of the type, so a stock `tsc` consumer lost its types without an error; it is an error again, as it is where the project emits declarations.
 
