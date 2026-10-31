@@ -53,15 +53,15 @@ mkdir -p "$out/bin"
 # the manifest records, the same in every checkout.
 echo "parity: go build ./cmd/tsc ./cmd/vibelang-mapper" >&2
 (cd "$root/typescript/tsc" &&
-  CGO_ENABLED=0 go build -trimpath -buildvcs=false -gcflags=all=-dwarf=false -o "$out/bin/tsc" ./cmd/tsc &&
-  CGO_ENABLED=0 go build -trimpath -buildvcs=false -gcflags=all=-dwarf=false -o "$out/bin/vibelang-mapper" ./cmd/vibelang-mapper)
+  CGO_ENABLED=0 sh "$root/scripts/native-output.sh" build "$out/bin/tsc" -trimpath -buildvcs=false -gcflags=all=-dwarf=false ./cmd/tsc &&
+  CGO_ENABLED=0 sh "$root/scripts/native-output.sh" build "$out/bin/vibelang-mapper" -trimpath -buildvcs=false -gcflags=all=-dwarf=false ./cmd/vibelang-mapper)
 
 # The production --emit entry does not accept mapper-entry options yet.
 # Build a test-only entry against the same package with a Go source overlay;
 # the overlay and binary stay in out/, and production sources stay intact.
 bun -e 'console.log(JSON.stringify({ Replace: { [process.argv[1]]: process.argv[2] } }))' \
   "$root/typescript/tsc/cmd/vibelang-mapper/main.go" "$here/emit-main.go" > "$out/emit-overlay.json"
-(cd "$root/typescript/tsc" && CGO_ENABLED=0 go build -overlay "$out/emit-overlay.json" -trimpath -buildvcs=false -gcflags=all=-dwarf=false -o "$out/bin/vibelang-emit-options" ./cmd/vibelang-mapper)
+(cd "$root/typescript/tsc" && CGO_ENABLED=0 sh "$root/scripts/native-output.sh" build "$out/bin/vibelang-emit-options" -overlay "$out/emit-overlay.json" -trimpath -buildvcs=false -gcflags=all=-dwarf=false ./cmd/vibelang-mapper)
 
 effect_modules="${EFFECT_NODE_MODULES:-}"
 if [ -z "$effect_modules" ]; then

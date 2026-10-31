@@ -9,8 +9,8 @@ import { Package as Tsc } from "./tsc/PACKAGE.ts"
 const compiler = S.Shell.Build({
   summary: "Build the VibeLang compiler, typescript/built/local/tsc.",
   shell: "cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 GOFLAGS=-trimpath " +
-    "go build -o ../built/local/tsc ./cmd/tsc",
-  data: [Tsc.srcs, S.file("go.work")],
+    "sh ../../scripts/native-output.sh build ../built/local/tsc ./cmd/tsc",
+  data: [Tsc.srcs, S.file("go.work"), S.file("//scripts/native-output.sh")],
   tools: [S.Host.bin("go")],
   outFiles: ["built/local/tsc"],
   sandbox: "none",
@@ -22,8 +22,8 @@ const compiler = S.Shell.Build({
 const formsGenerator = S.Shell.Build({
   summary: "Build the forms-table generator independently of its data inputs.",
   shell: "cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 " +
-    "go build -p 8 -trimpath -o ../built/local/vibelang-forms ./cmd/vibelang-forms",
-  data: [Tsc.srcs, S.file("go.work")],
+    "sh ../../scripts/native-output.sh build ../built/local/vibelang-forms -p 8 -trimpath ./cmd/vibelang-forms",
+  data: [Tsc.srcs, S.file("go.work"), S.file("//scripts/native-output.sh")],
   tools: [S.Host.bin("go")],
   outFiles: ["built/local/vibelang-forms"],
   sandbox: "none",

@@ -37,9 +37,9 @@ const runtimePublished = S.Filegroup({ srcs: [S.file("runtime/package.json"), S.
 // scripts/build-vibelang.sh makes them: the compiler binary, copied.
 const compilerNative = S.Shell.Build({
   summary: "Place the compiler binary and dprint plugin in packages/compiler.",
-  shell: "mkdir -p packages/compiler/native && cp typescript/built/local/tsc packages/compiler/native/vibelang && " +
+  shell: "sh scripts/native-output.sh copy packages/compiler/native/vibelang typescript/built/local/tsc && " +
     "packages/compiler/native/vibelang --write-dprint-plugin packages/compiler >/dev/null",
-  data: [Typescript.compiler],
+  data: [Typescript.compiler, S.file("//scripts/native-output.sh")],
   outDirs: ["compiler/native"],
   outFiles: ["compiler/dprint-plugin.json"],
   sandbox: "none",

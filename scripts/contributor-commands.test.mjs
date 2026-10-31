@@ -29,15 +29,17 @@ test("the starter test command discovers individual test files on Node 22.22.3",
 
 test("smoke gives the Go suite an explicit timeout with headroom", t => {
   const root = fixture(t)
-  for (const dir of ["typescript/vibelang", "typescript/tsc", "packages/runtime", "bin", "modules/effect"]) {
+  for (const dir of ["typescript/vibelang", "typescript/tsc", "packages/runtime", "scripts", "bin", "modules/effect"]) {
     mkdirSync(join(root, dir), { recursive: true })
   }
   const smoke = join(root, "typescript/vibelang/smoke.sh")
   copyFileSync(join(repo, "typescript/vibelang/smoke.sh"), smoke)
+  copyFileSync(join(repo, "scripts/native-output.sh"), join(root, "scripts/native-output.sh"))
   const log = join(root, "commands")
   for (const name of ["go", "node"]) {
     const path = join(root, "bin", name)
-    writeFileSync(path, '#!/bin/sh\nprintf "%s\\n" "$*" >> "$TEST_COMMAND_LOG"\n')
+    writeFileSync(path, '#!/bin/sh\nprintf "%s\\n" "$*" >> "$TEST_COMMAND_LOG"\n' +
+      (name === "go" ? 'if [ "$1" = build ]; then printf "#!/bin/sh\\nexit 0\\n" > "$3"; chmod +x "$3"; fi\n' : ""))
     chmodSync(path, 0o755)
   }
   const result = spawnSync("sh", [smoke], {

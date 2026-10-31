@@ -11,7 +11,7 @@ const require = createRequire(new URL("../../packages/compiler/package.json", im
 const fc = require("fast-check")
 
 // A malformed stub must fail closed rather than falling through to the host Go.
-const commands = Object.fromEntries(["sh", "dirname", "mkdir", "rm", "date", "uname", "wc", "tr", "cat"]
+const commands = Object.fromEntries(["sh", "dirname", "basename", "mkdir", "mktemp", "mv", "rm", "date", "uname", "wc", "tr", "cat"]
   .map(name => [name, execFileSync("sh", ["-c", "command -v " + name], { encoding: "utf8" }).trim()]))
 
 const platforms = ["darwin-arm64", "darwin-x64", "linux-arm64", "linux-x64", "win32-arm64", "win32-x64"]
@@ -21,6 +21,7 @@ function fixture(t, failures = {}, missing = []) {
   for (const dir of ["scripts/release", "packages/compiler", "typescript/tsc", "fake-bin"]) mkdirSync(join(root, dir), { recursive: true })
   const script = join(root, "scripts/release/build-binaries.sh")
   copyFileSync(fileURLToPath(new URL("./build-binaries.sh", import.meta.url)), script)
+  copyFileSync(fileURLToPath(new URL("../native-output.sh", import.meta.url)), join(root, "scripts/native-output.sh"))
   writeFileSync(join(root, "packages/compiler/package.json"), JSON.stringify({ version: "0.0.11" }))
   const fakeGo = join(root, "fake-bin/go")
   writeFileSync(fakeGo, "#!" + process.execPath + String.fromCharCode(10) + [

@@ -159,7 +159,7 @@ const targets = {
   release: check(
     "The release and contributor scripts' node tests.",
     "node --test scripts/release/*.test.mjs scripts/*.test.mjs typescript/vibelang/harness.test.mjs",
-    [],
+    [Packages["compiler-native"], Packages["runtime-dist"]],
     [node, gofmt]
   ),
   snippets: check(

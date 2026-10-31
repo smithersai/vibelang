@@ -32,7 +32,7 @@ runtime=$(cd "$runtime" && pwd)
 # The same flags as smoke.sh, so both builds share Go build cache entries.
 if ! "$no_build"; then
 	echo "build: go build -trimpath -gcflags=all=-dwarf=false -o built/local/vibelang ./cmd/tsc"
-	(cd "$root/tsc" && CGO_ENABLED=0 go build -trimpath -gcflags=all=-dwarf=false -o "$vibelang" ./cmd/tsc)
+	(cd "$root/tsc" && CGO_ENABLED=0 sh "$root/../scripts/native-output.sh" build "$vibelang" -trimpath -gcflags=all=-dwarf=false ./cmd/tsc)
 fi
 
 # The binary names itself, and the TypeScript version it is built on.

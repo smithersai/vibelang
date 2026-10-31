@@ -34,8 +34,8 @@ if [ "${1:-}" != "--local" ] && [ -n "${ES_REMOTE_HOST:-}" ]; then
     "$ES_REMOTE_HOST:es-remote/$(basename "$root")/dist-npm/bin/" "$out/"
 else
   command -v go >/dev/null 2>&1 || { echo "build-binaries: Go is required." >&2; exit 1; }
-  rm -rf "$out"
   mkdir -p "$out"
+  rm -f "$out"/*.log "$out"/*.status
   pids=""
   for platform in $platforms; do
     os=${platform%-*}
@@ -48,7 +48,7 @@ else
     mkdir -p "$out/$platform"
     echo "build-binaries: GOOS=$goos GOARCH=$goarch go build ./cmd/tsc -> dist-npm/bin/$platform/$exe"
     (cd "$root/typescript/tsc" && CGO_ENABLED=0 GOOS=$goos GOARCH=$goarch \
-      go build -trimpath -ldflags="-s -w" -o "$out/$platform/$exe" ./cmd/tsc) >"$out/$platform.log" 2>&1 &
+      sh "$root/scripts/native-output.sh" build "$out/$platform/$exe" -trimpath -ldflags="-s -w" ./cmd/tsc) >"$out/$platform.log" 2>&1 &
     pids="$pids $platform:$!"
   done
   failed=0

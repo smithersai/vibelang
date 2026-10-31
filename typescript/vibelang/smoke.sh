@@ -45,7 +45,7 @@ fi
 # every jj workspace shares one set of cache entries. Without DWARF the cache
 # entries are smaller; panics still print stack traces.
 echo "build: go build -trimpath -gcflags=all=-dwarf=false -o built/local/tsc ./cmd/tsc"
-(cd "$root/tsc" && CGO_ENABLED=0 go build -trimpath -gcflags=all=-dwarf=false -o "$tsc" ./cmd/tsc)
+(cd "$root/tsc" && CGO_ENABLED=0 sh "$root/../scripts/native-output.sh" build "$tsc" -trimpath -gcflags=all=-dwarf=false ./cmd/tsc)
 # The runtime's dist/ is not checked in, and the Go tests compile cases
 # against it, so build it before they run. Build it from source with this tsc, so
 # a commit that changes the compiler and the runtime is tested as one. The

@@ -66,7 +66,7 @@ step "forms table matches its generator"
 bash "$root/scripts/check-forms-table.sh"
 
 step "build bin/vibelang-mapper"
-(cd "$root/typescript/tsc" && CGO_ENABLED=0 go build -trimpath -gcflags=all=-dwarf=false -o "$package/bin/vibelang-mapper" ./cmd/vibelang-mapper)
+(cd "$root/typescript/tsc" && CGO_ENABLED=0 sh "$root/scripts/native-output.sh" build "$package/bin/vibelang-mapper" -trimpath -gcflags=all=-dwarf=false ./cmd/vibelang-mapper)
 
 step "assemble the fixture"
 [ -f "$effect_dir/package.json" ] || { echo "e2e: no effect at $effect_dir; set EFFECT_DIR" >&2; exit 1; }
@@ -109,12 +109,12 @@ node "$here/lsp-hover.mjs" "$native" "$work"
 step "mapper protocol properties: projections, UTF-8/UTF-16 positions and source maps"
 if [ -z "${VIBELANG_BINARY:-}" ]; then
   VIBELANG_BINARY="$work/vibelang"
-  (cd "$root/typescript/tsc" && CGO_ENABLED=0 go build -trimpath -gcflags=all=-dwarf=false -o "$VIBELANG_BINARY" ./cmd/tsc)
+  (cd "$root/typescript/tsc" && CGO_ENABLED=0 sh "$root/scripts/native-output.sh" build "$VIBELANG_BINARY" -trimpath -gcflags=all=-dwarf=false ./cmd/tsc)
 fi
 # Reuse parity's test-only adapter: the production --emit CLI has no tracing option.
 node -e 'require("node:fs").writeFileSync(process.argv[1], JSON.stringify({ Replace: { [process.argv[2]]: process.argv[3] } }))' \
   "$work/emit-overlay.json" "$root/typescript/tsc/cmd/vibelang-mapper/main.go" "$here/parity/emit-main.go"
-(cd "$root/typescript/tsc" && CGO_ENABLED=0 go build -overlay "$work/emit-overlay.json" -trimpath -gcflags=all=-dwarf=false -o "$work/emit-options" ./cmd/vibelang-mapper)
+(cd "$root/typescript/tsc" && CGO_ENABLED=0 sh "$root/scripts/native-output.sh" build "$work/emit-options" -overlay "$work/emit-overlay.json" -trimpath -gcflags=all=-dwarf=false ./cmd/vibelang-mapper)
 (cd "$package" && M1_WORK="$work" M1_MAPPER="$package/bin/vibelang-mapper" M1_STOCK="$native" \
   M1_TRACING_MAPPER="$work/emit-options" VIBELANG_BINARY="$VIBELANG_BINARY" node --test "$here/protocol.property.test.mjs")
 

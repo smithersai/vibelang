@@ -8,6 +8,8 @@ node_modules
 # through (docs/maintainers/build.md). A jj snapshot must never track either.
 .flows/
 .smthrs-*
+# Native build/copy staging directories are unpublished executable outputs.
+.native-output-*
 docs/user/site/
 *.tgz
 packages/compiler/native/
