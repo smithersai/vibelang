@@ -104,13 +104,8 @@ func transformDeclarations(resolver printer.EmitResolver, sourceFile *ast.Source
 			visit = func(n *ast.Node) bool {
 				// An inferred arrow may load Effect only through its callee,
 				// without any prelude import in this source file.
-				if rewriter.effectPath == "" && isLowerable(n) && n.Body() != nil {
-					for _, signature := range c.GetSignaturesOfType(c.GetTypeAtLocation(n), checker.SignatureKindCall) {
-						if path := effectModulePath(c, c.GetReturnTypeOfSignature(signature)); path != "" {
-							rewriter.effectPath = path
-							break
-						}
-					}
+				if rewriter.effectPath == "" {
+					rewriter.effectPath = effectFunctionPath(c, n)
 				}
 				if ast.IsComputedPropertyName(n) {
 					keys.add(c, sourceFile, n.Expression())
@@ -402,7 +397,7 @@ func preludeNameUnwritten(c *checker.Checker, file *ast.SourceFile, name string,
 		return false
 	}
 	state := preludeStateOf(c)
-	if writtenPreludeNames(state, file)[name] {
+	if writtenPreludeNames(c, state, file)[name] {
 		return false
 	}
 	prelude := preludeSymbol(c, state, file, name)
@@ -413,21 +408,27 @@ func preludeNameUnwritten(c *checker.Checker, file *ast.SourceFile, name string,
 }
 
 // writtenPreludeNames returns the prelude names that a declaration of file may
-// write: Effect, which a .vibe file drops where its Effect TypeScript imports
-// it, and each one file writes. The schema, error and data forms write theirs
-// as intrinsics.
-func writtenPreludeNames(state *preludeState, file *ast.SourceFile) map[string]bool {
+// write: each one file writes, and Effect where file has an Effect form, whose
+// Effect TypeScript imports it. The schema, error and data forms write theirs
+// as intrinsics, as an A!E!R annotation and try write theirs.
+func writtenPreludeNames(c *checker.Checker, state *preludeState, file *ast.SourceFile) map[string]bool {
 	if written, ok := state.written[file]; ok {
 		return written
 	}
-	written := map[string]bool{"Effect": true}
+	written := map[string]bool{}
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		if ast.IsIdentifier(node) {
 			if !isMemberNameOf(node) && isPreludeName(node.Text()) {
 				written[node.Text()] = true
+				if isEffectGlobal(c, state, file, node) {
+					written["Effect"] = true
+				}
 			}
 			return false
+		}
+		if !written["Effect"] && effectFunctionPath(c, node) != "" {
+			written["Effect"] = true
 		}
 		return node.ForEachChild(visit)
 	}
@@ -436,8 +437,35 @@ func writtenPreludeNames(state *preludeState, file *ast.SourceFile) map[string]b
 	return written
 }
 
+// isEffectGlobal reports whether identifier, in file, is a bare Effect
+// function, hatch or runner of the prelude, not a local of the same name:
+// sleep is Effect.sleep in Effect TypeScript.
+func isEffectGlobal(c *checker.Checker, state *preludeState, file *ast.SourceFile, identifier *ast.Node) bool {
+	name := identifier.Text()
+	if !effectFunctionNames[name] && !hatchNames[name] && !slices.Contains(effectRootRunners, name) {
+		return false
+	}
+	prelude := preludeSymbol(c, state, file, name)
+	return prelude != nil && resolvedAlias(c, c.GetSymbolAtLocation(identifier)) == resolvedAlias(c, prelude)
+}
+
+// effectFunctionPath returns the path of the module that defines Effect when
+// node is a function that returns an Effect, an Effect function or one that
+// makes an Effect, or "".
+func effectFunctionPath(c *checker.Checker, node *ast.Node) string {
+	if !isLowerable(node) || node.Body() == nil {
+		return ""
+	}
+	for _, signature := range c.GetSignaturesOfType(c.GetTypeAtLocation(node), checker.SignatureKindCall) {
+		if path := effectModulePath(c, c.GetReturnTypeOfSignature(signature)); path != "" {
+			return path
+		}
+	}
+	return ""
+}
+
 // modulesInScope returns the modules the declaration file of file may name,
-// by their names: Effect's, and each one whose name file writes and does not
+// by their names: each one writtenPreludeNames gives that file does not
 // declare.
 func modulesInScope(c *checker.Checker, state *preludeState, file *ast.SourceFile) map[*ast.Symbol]string {
 	if scope, ok := state.scopes[file]; ok {
@@ -447,7 +475,7 @@ func modulesInScope(c *checker.Checker, state *preludeState, file *ast.SourceFil
 	for _, statement := range file.Statements.Nodes {
 		forEachTopLevelName(statement, func(name string) { declared[name] = true })
 	}
-	written := writtenPreludeNames(state, file)
+	written := writtenPreludeNames(c, state, file)
 	names := make([]string, 0, len(written))
 	for name := range written {
 		names = append(names, name)

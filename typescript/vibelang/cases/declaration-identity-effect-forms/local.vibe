@@ -1,0 +1,4 @@
+// A local named log is not Effect.log, so nothing here names Effect.
+const log = (text: string): string => text
+export const decode = Schema.decodeUnknownEffect(Schema.String)
+export const said = log("hi")

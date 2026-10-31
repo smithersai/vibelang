@@ -1,0 +1,3 @@
+// A bare Effect global is Effect.sleep in Effect TypeScript, so its copied
+// signature names Effect.
+export const wait = sleep

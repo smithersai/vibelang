@@ -1,0 +1,3 @@
+// An Effect function names Effect, so the copied signature does too.
+export const decode = Schema.decodeUnknownEffect(Schema.String)
+export const run = (n: number): number! => n

@@ -1,0 +1,6 @@
+// Values typed by Effect, in a file with no Effect form: Effect stays an import type.
+import { Clock as EffectClock, type DateTime, Random } from "effect"
+
+export const roll = Random.nextInt
+export const millis = EffectClock.currentTimeMillis
+export type Stamp = DateTime.Utc

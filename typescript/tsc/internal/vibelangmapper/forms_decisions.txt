@@ -922,6 +922,8 @@ typescript/vibelang/cases/decl-service/main.vibe:9:11 lambda effectFn service
 typescript/vibelang/cases/declaration-arrow-contract/main.vibe:14:32 lambda effectFn annotation
 typescript/vibelang/cases/declaration-arrow-contract/main.vibe:19:3 lambda effectFn annotation
 typescript/vibelang/cases/declaration-arrow-contract/main.vibe:9:22 lambda effectFn annotation
+typescript/vibelang/cases/declaration-identity-effect-forms/function.vibe:3:20 lambda effectFn annotation
+typescript/vibelang/cases/declaration-identity-effect-forms/local.vibe:2:13 lambda plain annotation
 typescript/vibelang/cases/declaration-identity-effect-slots/main.vibe:22:21 lambda effectFn annotation
 typescript/vibelang/cases/declaration-identity-effect-slots/main.vibe:28:27 lambda effectFn table
 typescript/vibelang/cases/declaration-identity-inferred-modules/main.vibe:11:34 lambda choice fallback
