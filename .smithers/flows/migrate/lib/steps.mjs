@@ -344,7 +344,7 @@ async function wireTarget(config, log) {
   const tarballs = toolchain ? Wire.copyTarballs(toolchain.dir, toolchain.packages, local) : {}
   const specsFor = (dir) => (toolchain
     ? Wire.toolchainSpecs(dir, tarballs)
-    : { vibelang: config.toolchain.version, "vibelang-runtime": config.toolchain.version, "vibelang-vite": config.toolchain.version })
+    : { vibelang: config.toolchain.version, "vibelang-runtime": config.toolchain.version, "vibelang-vite": config.toolchain.version, "vibelang-unplugin": config.toolchain.version })
 
   const writeIfChanged = (path, before, after) => {
     if (before === after) return
@@ -413,6 +413,10 @@ async function wireTarget(config, log) {
   const apps = Wire.wireViteApps({ root: t, packages: config.packages, ts, specsFor, wired: vite.configs })
   changed.push(...apps.changed.filter((file) => !changed.includes(file)))
   warnings.push(...apps.warnings)
+  // A bundle reaches .vibe modules through vibelang-unplugin/bun: vibelang/bun's runtime plugin does not apply to Bun.build.
+  const bunBuilds = Wire.wireBunBuilds({ root: t, packages: config.packages, ts, specsFor })
+  changed.push(...bunBuilds.changed.filter((file) => !changed.includes(file)))
+  warnings.push(...bunBuilds.warnings)
   // Knip reads .vibe files through vibelang/knip.
   const knip = Wire.wireKnip({ root: t, specs: specsFor(".") })
   changed.push(...knip.changed.filter((file) => !changed.includes(file)))

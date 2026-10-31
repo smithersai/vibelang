@@ -1,6 +1,7 @@
 // The edits that set up VibeLang in an existing project, as text-in,
 // text-out functions: the package's dependencies, tsc replaced by vibelang
 // in scripts, the vibelang-vite plugin in the Vitest or Vite config, the
+// vibelang-unplugin plugin in each Bun.build, the
 // compiler option that lets .vibe files import local modules by their source
 // names, and the settings that let every TypeScript checker read a .vibe
 // module through its declaration sidecar. Each keeps the file's own
@@ -126,27 +127,61 @@ export function addVitePlugin(text, ts) {
   }
   find(source)
   if (!config) throw new Error("the config does not call defineConfig({ ... }) or defineConfig(() => ({ ... })); add vibelang() from vibelang-vite to its plugins by hand")
+  return applyPluginEdits(text, [importEdit(text, source, ts, "vibelang-vite"), pluginEdit(text, source, config, ts, "the config's plugins is not an array literal; add vibelang() to it by hand")])
+}
+
+/** The edit that puts vibelang() first in config's own plugins, or gives it plugins; throws `refusal` when they are not an array literal. */
+function pluginEdit(text, source, config, ts, refusal) {
   const plugins = config.properties.find((p) => p.name && (ts.isIdentifier(p.name) || ts.isStringLiteral(p.name)) && p.name.text === "plugins")
-  let plugin
   if (plugins) {
-    if (!ts.isPropertyAssignment(plugins) || !ts.isArrayLiteralExpression(plugins.initializer)) throw new Error("the config's plugins is not an array literal; add vibelang() from vibelang-vite to it by hand")
+    if (!ts.isPropertyAssignment(plugins) || !ts.isArrayLiteralExpression(plugins.initializer)) throw new Error(refusal)
     const list = plugins.initializer
-    plugin = list.elements.length ? { at: list.elements[0].getStart(source), text: "vibelang(), " } : { at: list.getStart(source) + 1, text: "vibelang()" }
-  } else {
-    const at = config.getStart(source) + 1
-    const indent = /\n([ \t]+)\S/.exec(text.slice(at))?.[1] ?? "  "
-    plugin = { at, text: `\n${indent}plugins: [vibelang()],` }
+    return list.elements.length ? { at: list.elements[0].getStart(source), text: "vibelang(), " } : { at: list.getStart(source) + 1, text: "vibelang()" }
   }
-  // The import goes on the line after the last import, in the file's quote and semicolon style.
+  const at = config.getStart(source) + 1
+  const indent = /\n([ \t]+)\S/.exec(text.slice(at))?.[1]
+  return indent ? { at, text: `\n${indent}plugins: [vibelang()],` } : { at, text: " plugins: [vibelang()]," }
+}
+
+/** The edit that imports vibelang from module on the line after the last import, in the file's quote and semicolon style. */
+function importEdit(text, source, ts, module) {
   const lastImport = source.statements.filter((s) => ts.isImportDeclaration(s)).at(-1)
   const quote = /from\s+'/.test(text) ? "'" : '"'
   const semicolon = lastImport && text.slice(lastImport.getStart(source), lastImport.end).trimEnd().endsWith(";") ? ";" : ""
   const lineEnd = lastImport ? text.indexOf("\n", lastImport.end) : -1
-  const importAt = lastImport ? (lineEnd < 0 ? text.length : lineEnd + 1) : 0
-  const line = `${lastImport && lineEnd < 0 ? "\n" : ""}import vibelang from ${quote}vibelang-vite${quote}${semicolon}\n`
+  const at = lastImport ? (lineEnd < 0 ? text.length : lineEnd + 1) : 0
+  return { at, text: `${lastImport && lineEnd < 0 ? "\n" : ""}import vibelang from ${quote}${module}${quote}${semicolon}\n` }
+}
+
+/** text with the edits applied, the last first, so each position holds. */
+function applyPluginEdits(text, edits) {
   let out = text
-  for (const edit of [{ at: importAt, text: line }, plugin].sort((a, b) => b.at - a.at)) out = out.slice(0, edit.at) + edit.text + out.slice(edit.at)
+  for (const edit of [...edits].sort((a, b) => b.at - a.at)) out = out.slice(0, edit.at) + edit.text + out.slice(edit.at)
   return out
+}
+
+/**
+ * Adds `vibelang()` from vibelang-unplugin/bun first in the plugins of each
+ * `Bun.build({ ... })` in a script: `vibelang/bun` registers a runtime plugin,
+ * which a bundle does not use. ts is TypeScript's compiler API. Returns the
+ * text unchanged when the plugin is already there or nothing calls Bun.build;
+ * throws when a call has a shape this edit does not know, so a person wires it.
+ */
+export function addBunBuildPlugin(text, ts) {
+  if (/from\s+['"]vibelang-unplugin\/bun['"]/.test(text)) return text
+  const source = ts.createSourceFile("build.ts", text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  const refusal = "Bun.build does not take an object literal with an array of plugins; add vibelang() from vibelang-unplugin/bun to it by hand"
+  const edits = []
+  const find = (node) => {
+    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && ts.isIdentifier(node.expression.expression) && node.expression.expression.text === "Bun" && node.expression.name.text === "build") {
+      const options = node.arguments[0]
+      if (!options || !ts.isObjectLiteralExpression(options)) throw new Error(refusal)
+      edits.push(pluginEdit(text, source, options, ts, refusal))
+    }
+    ts.forEachChild(node, find)
+  }
+  find(source)
+  return edits.length ? applyPluginEdits(text, [importEdit(text, source, ts, "vibelang-unplugin/bun"), ...edits]) : text
 }
 
 const viteConfigNames = ["vitest.config.ts", "vitest.config.mts", "vitest.config.js", "vitest.config.mjs", "vite.config.ts", "vite.config.mts", "vite.config.js", "vite.config.mjs"]
@@ -514,6 +549,72 @@ export function wireBunTests({ root, packages, specsFor }) {
     if (!compiler) write(manifest, before, JSON.stringify({ ...pkg.manifest, devDependencies: { ...pkg.manifest.devDependencies, vibelang: specsFor(pkg.dir).vibelang } }, null, 2) + "\n")
   }
   return { changed, warnings }
+}
+
+// A script that calls Bun.build, and a test, which this flow never edits.
+const bunBuild = /\bBun\.build\s*\(/
+const scriptFile = /\.(?:ts|mts|js|mjs)$/
+const testFile = /(?:^|\/)(?:tests?|__tests__)\/|\.(?:test|spec)\.[^/]+$/
+
+/** The scripts of a package that call Bun.build: its files outside nested packages, dependencies and output. */
+function bunBuildFiles(root, dir) {
+  const files = []
+  const walk = (at) => {
+    for (const entry of readdirSync(join(root, at), { withFileTypes: true })) {
+      const path = at === "." ? entry.name : posix.join(at, entry.name)
+      if (entry.isDirectory()) {
+        if (!skippedDirectory(entry.name) && entry.name !== "dist" && !existsSync(join(root, path, "package.json"))) walk(path)
+      } else if (scriptFile.test(entry.name) && !entry.name.endsWith(".d.ts") && bunBuild.test(readFileSync(join(root, path), "utf8"))) files.push(path)
+    }
+  }
+  walk(dir)
+  return files
+}
+
+/**
+ * Adds vibelang-unplugin/bun to each Bun.build in a package that reaches
+ * migrated sources (packagesReaching), and gives the package the plugin and
+ * the compiler it needs. A test is left as it is, as a call whose shape
+ * addBunBuildPlugin does not know is, with a warning. Returns the files
+ * changed, the warnings and the scripts wired.
+ */
+export function wireBunBuilds({ root, packages, ts, specsFor }) {
+  const changed = []
+  const warnings = []
+  const builds = []
+  const write = (file, after) => {
+    writeFileSync(join(root, file), after)
+    changed.push(file)
+  }
+  for (const pkg of packagesReaching(root, packages.map((migrated) => migrated.dir))) {
+    const specs = specsFor(pkg.dir)
+    for (const file of bunBuildFiles(root, pkg.dir)) {
+      if (testFile.test(file)) {
+        warnings.push(`${file}: a test bundles with Bun.build, which needs vibelang() from vibelang-unplugin/bun to reach a .vibe module; add it by hand`)
+        continue
+      }
+      if (!specs["vibelang-unplugin"]) {
+        warnings.push(`${file}: this toolchain has no vibelang-unplugin; rebuild the toolchain to wire Bun.build`)
+        continue
+      }
+      const text = readFileSync(join(root, file), "utf8")
+      try {
+        const next = addBunBuildPlugin(text, ts)
+        if (next === text) continue
+        write(file, next)
+        builds.push(file)
+      } catch (error) {
+        warnings.push(`${file}: ${error.message}`)
+        continue
+      }
+      const manifest = posix.join(pkg.dir, "package.json")
+      const current = JSON.parse(readFileSync(join(root, manifest), "utf8"))
+      const devDependencies = { ...current.devDependencies, "vibelang-unplugin": specs["vibelang-unplugin"] }
+      if (!current.dependencies?.vibelang) devDependencies.vibelang ??= specs.vibelang
+      if (JSON.stringify(devDependencies) !== JSON.stringify(current.devDependencies)) write(manifest, JSON.stringify({ ...current, devDependencies }, null, 2) + "\n")
+    }
+  }
+  return { changed: [...new Set(changed)], warnings, builds: builds.sort() }
 }
 
 // Where Knip looks for its configuration, in its order (knip 6, KNIP_CONFIG_LOCATIONS).

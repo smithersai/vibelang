@@ -1,6 +1,6 @@
 // A toolchain is one VibeLang build staged for targets to install: the native
 // compiler, npm tarballs of vibelang (with that compiler inside),
-// vibelang-runtime and vibelang-vite, and a TypeScript compiler API for
+// vibelang-runtime, vibelang-vite and vibelang-unplugin, and a TypeScript compiler API for
 // reading declarations. Staging it from a checkout lets a run use the
 // compiler on main before it is published; a published version needs no
 // staging (setup takes --vibelang-version instead).
@@ -85,6 +85,7 @@ export async function stageToolchain({ vibelang, out }) {
   }
   const runtimeTgz = await packWith(join(repo, "packages/runtime"), licenses.mit, out)
   const viteTgz = await packWith(join(repo, "packages/vite"), licenses.mit, out)
+  const unpluginTgz = await packWith(join(repo, "packages/unplugin"), licenses.mit, out)
 
   const typescript = join(repo, "packages/runtime/node_modules/typescript")
   if (!existsSync(join(typescript, "package.json"))) throw new Error(`${typescript} is missing: run bun install in packages/runtime`)
@@ -101,7 +102,8 @@ export async function stageToolchain({ vibelang, out }) {
     packages: {
       vibelang: compilerTgz.slice(out.length + 1),
       "vibelang-runtime": runtimeTgz.slice(out.length + 1),
-      "vibelang-vite": viteTgz.slice(out.length + 1)
+      "vibelang-vite": viteTgz.slice(out.length + 1),
+      "vibelang-unplugin": unpluginTgz.slice(out.length + 1)
     },
     typescript: readJson(join(typescript, "package.json")).version
   }
