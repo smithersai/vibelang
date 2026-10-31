@@ -80,6 +80,7 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `indexedDB` | `try (try KeyValueStore.KeyValueStore).get(key)` |
 | `localStorage` | `try (try KeyValueStore.KeyValueStore).get(key)` |
 | `location` | escape to TypeScript for now: Effect has no service for the DOM; UI code belongs in a .ts or .tsx file, such as a React component's. |
+| `matchMedia` | `try (try Experimental.MediaQuery.MediaQuery).matches(query)` |
 | `module` | `export const name = value` |
 | `navigator` | escape to TypeScript for now: Effect has no service for the browser's navigator; navigator.clipboard, geolocation, permissions, and locks have services. |
 | `navigator.clipboard` | `try (try Clipboard.Clipboard).readString` |
@@ -212,11 +213,11 @@ effect function browser() {
 }
 ```
 
-VibeLang's experimental services fill what Effect lacks, provided by `ExperimentalNodeServices.layer` from `vibelang-runtime/experimental/platform-node` or Bun's, and `Locks` by `ExperimentalBrowserServices.layer` from `vibelang-runtime/experimental/platform-browser`; [Experimental platform APIs](../vibelang-features/118-experimental-platform-apis.md) has the details:
+VibeLang's experimental services fill what Effect lacks, provided by `ExperimentalNodeServices.layer` from `vibelang-runtime/experimental/platform-node` or Bun's, and `Locks` and `MediaQuery` by `ExperimentalBrowserServices.layer` from `vibelang-runtime/experimental/platform-browser`; [Experimental platform APIs](../vibelang-features/118-experimental-platform-apis.md) has the details:
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14, VIP-33
-effect function experimental(path: string, pid: number, killSignal: ChildProcess.Signal, name: string, macKey: Mac.Key, aeadKey: Aead.Key, privateKey: Signature.PrivateKey, publicKey: Signature.PublicKey, signature: Uint8Array, data: Uint8Array, plaintext: Uint8Array, ciphertext: Uint8Array, nonce: Uint8Array) {
+effect function experimental(path: string, pid: number, killSignal: ChildProcess.Signal, name: string, query: string, macKey: Mac.Key, aeadKey: Aead.Key, privateKey: Signature.PrivateKey, publicKey: Signature.PublicKey, signature: Uint8Array, data: Uint8Array, plaintext: Uint8Array, ciphertext: Uint8Array, nonce: Uint8Array) {
   const fs = try Experimental.FileSystem.FileSystem
   const id = try (try Experimental.Process.Process).pid
   const platform = try (try Experimental.Process.Process).platform
@@ -238,7 +239,8 @@ effect function experimental(path: string, pid: number, killSignal: ChildProcess
   const opened = try (try Aead.Aead).decrypt(aeadKey, ciphertext, { nonce })
   const pair = try (try Signature.Signature).generateKeyPair(Signature.ed25519)
   const lock = try (try Experimental.Locks.Locks).hold(name)
-  return { id, platform, arch, executable, versions, memory, host, cores, origin, running, file, mac, signed, valid, sealed, opened, pair, lock }
+  const reducedMotion = try (try Experimental.MediaQuery.MediaQuery).matches(query)
+  return { id, platform, arch, executable, versions, memory, host, cores, origin, running, file, mac, signed, valid, sealed, opened, pair, lock, reducedMotion }
 }
 ```
 

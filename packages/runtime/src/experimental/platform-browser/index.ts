@@ -8,4 +8,5 @@
  */
 export * as ExperimentalBrowserCrypto from "./ExperimentalBrowserCrypto.js"
 export * as ExperimentalBrowserLocks from "./ExperimentalBrowserLocks.js"
+export * as ExperimentalBrowserMediaQuery from "./ExperimentalBrowserMediaQuery.js"
 export * as ExperimentalBrowserServices from "./ExperimentalBrowserServices.js"

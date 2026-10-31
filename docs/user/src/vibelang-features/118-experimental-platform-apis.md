@@ -8,6 +8,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.Crypto` | `hmac`, `sign`, `verify`, beside the members of Effect 4.0's `Crypto` | Node, Bun, browser |
 | `Experimental.Process` | the process id, platform, host name and other facts; `kill`, `isRunning` | Node, Bun |
 | `Experimental.Locks` | `hold`, `tryHold`, `query` over Web Locks | browser; Node within one process |
+| `Experimental.MediaQuery` | `matches`, `changes` over `window.matchMedia` | browser |
 
 `Experimental` is in scope in every `.vibe` file without an import, as Effect's modules are. A local declaration or an import named `Experimental` shadows it. TypeScript imports the same modules from `vibelang-runtime/experimental`, or one module from its subpath, such as `vibelang-runtime/experimental/FileSystem`.
 
@@ -15,7 +16,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 
 Each experimental service has its own key, such as `Experimental.FileSystem.FileSystem`. Look up its implementation with `const fs = try Experimental.FileSystem.FileSystem`, then run a member with `try fs.access(path, { executable: true })`. A contract names the key type in its requirements: `boolean!PlatformError.PlatformError!Experimental.FileSystem.FileSystem`.
 
-The experimental `FileSystem` and `Crypto` keys are class services, as Effect declares them. `Experimental.FileSystem.Service` is Effect's interface plus the new members, and the service itself is not Effect's. Effect 4.1 removed its `Crypto` service for the family services of `effect/crypto`; `Experimental.Crypto.Service` keeps the members Effect 4.0's had, such as `randomBytes`, `digest` and `randomUUIDv4`, beside `hmac`, `sign` and `verify`. A layer of Effect's `FileSystem` therefore never provides the experimental one, in VibeLang and in stock TypeScript alike, because at run time it provides a different key. Type an implementation as `Experimental.FileSystem.Service`. `Process` and `Locks` extend nothing, so `Experimental.Process.Process` and `Experimental.Locks.Locks` each name both the service and its implementation type, as Effect's `FileSystem` is. The module's own exports keep their meaning, as `Experimental.FileSystem.layerNoop` does. An import by name from the subpath, `import { FileSystem } from "vibelang-runtime/experimental/FileSystem"`, works too, and shadows the prelude's `FileSystem`.
+The experimental `FileSystem` and `Crypto` keys are class services, as Effect declares them. `Experimental.FileSystem.Service` is Effect's interface plus the new members, and the service itself is not Effect's. Effect 4.1 removed its `Crypto` service for the family services of `effect/crypto`; `Experimental.Crypto.Service` keeps the members Effect 4.0's had, such as `randomBytes`, `digest` and `randomUUIDv4`, beside `hmac`, `sign` and `verify`. A layer of Effect's `FileSystem` therefore never provides the experimental one, in VibeLang and in stock TypeScript alike, because at run time it provides a different key. Type an implementation as `Experimental.FileSystem.Service`. `Process`, `Locks` and `MediaQuery` extend nothing, so `Experimental.Process.Process`, `Experimental.Locks.Locks` and `Experimental.MediaQuery.MediaQuery` each name both the service and its implementation type, as Effect's `FileSystem` is. The module's own exports keep their meaning, as `Experimental.FileSystem.layerNoop` does. An import by name from the subpath, `import { FileSystem } from "vibelang-runtime/experimental/FileSystem"`, works too, and shadows the prelude's `FileSystem`.
 
 Provide a platform layer at the application boundary. The layers live beside Effect's platform packages. A layer of a service that extends Effect's provides the experimental service and Effect's service of the same name from one implementation, so code that uses Effect's `FileSystem` and code that uses the additions share it:
 
@@ -23,7 +24,7 @@ Provide a platform layer at the application boundary. The layers live beside Eff
 | --- | --- |
 | `vibelang-runtime/experimental/platform-node` | `ExperimentalNodeServices.layer`: `@effect/platform-node`'s bundle plus `FileSystem`, `Crypto` and `Process`; `ExperimentalNodeFileSystem.layer`, `ExperimentalNodeCrypto.layer`, `ExperimentalNodeProcess.layer`; `ExperimentalNodeLocks.layer`, within one process |
 | `vibelang-runtime/experimental/platform-bun` | `ExperimentalBunServices.layer`: `@effect/platform-bun`'s bundle plus `FileSystem`, `Crypto` and `Process`; `ExperimentalBunFileSystem.layer`, `ExperimentalBunCrypto.layer`, `ExperimentalBunProcess.layer` |
-| `vibelang-runtime/experimental/platform-browser` | `ExperimentalBrowserServices.layer`: `Crypto`, `@effect/platform-browser`'s crypto services and `Locks`; `ExperimentalBrowserCrypto.layer`, `ExperimentalBrowserLocks.layer` |
+| `vibelang-runtime/experimental/platform-browser` | `ExperimentalBrowserServices.layer`: `Crypto`, `@effect/platform-browser`'s crypto services, `Locks` and `MediaQuery`; `ExperimentalBrowserCrypto.layer`, `ExperimentalBrowserLocks.layer`, `ExperimentalBrowserMediaQuery.layer` |
 
 `ExperimentalNodeServices.layer` replaces `@effect/platform-node`'s `NodeServices.layer`: it provides every service Effect's does. Each `Crypto` layer, such as `ExperimentalNodeCrypto.layer`, provides the experimental `Crypto` and the platform's Effect crypto services, such as `SecureRandom` and `Digest`; the bundles for Node and Bun, like Effect's, hold none of Effect's crypto services. The runtime lists `@effect/platform-node`, `@effect/platform-bun` and `@effect/platform-browser` as optional peer dependencies: install the one your program runs on. Failures are Effect's `PlatformError`, as for Effect's services.
 
@@ -221,6 +222,31 @@ export effect function lead(name: string) {
 A held lock belongs to the current Effect Scope: `scoped(effect { ... })` releases it when the Effect ends, and a closed or crashed tab releases its locks, which hands each to the next tab waiting. Interrupting a wait withdraws the request. `try held.lost` completes when another context steals the lock. A lock manager that refuses a request fails it with a `PlatformError`: `BadArgument` for a name that starts with `-`, `PermissionDenied` where the page is not a secure context.
 
 `ExperimentalBrowserLocks.layer`, also in `ExperimentalBrowserServices.layer`, uses `navigator.locks`. Node.js has Web Locks too, but they coordinate the main thread and the worker threads of one process, never two processes, so `ExperimentalNodeLocks.layer` is not in the Node.js bundle: provide it only for locks within one process. Bun has no Web Locks and no layer. `Experimental.Locks.layerTest()` grants every request at once and never loses a lock; pass the members a test needs, as above.
+
+## MediaQuery
+
+```vibe
+// reduced-motion.vibe
+// run: provide Experimental.MediaQuery.layerTest({ matches: effect (query) => query === "(prefers-reduced-motion: reduce)" }) { try Console.log(try reducedMotion()) }
+export effect function reducedMotion() {
+  const mediaQuery = try Experimental.MediaQuery.MediaQuery
+  return try mediaQuery.matches("(prefers-reduced-motion: reduce)")
+}
+// Output: true
+```
+
+| Expression | Gives | Replaces |
+| --- | --- | --- |
+| `try mediaQuery.matches(query)` | whether `query` matches now | `window.matchMedia(query).matches` |
+| `mediaQuery.changes(query)` | a `Stream` of the current answer, then each change | a `change` listener on a `MediaQueryList` |
+
+Neither fails: a browser reads a malformed query as `not all`, which never matches. `changes` reads the query when the Stream starts, so each run sees the answer of that moment, and ending the Stream removes its listener.
+
+`ExperimentalBrowserMediaQuery.layer`, also in `ExperimentalBrowserServices.layer`, uses `window.matchMedia`. It reads the host only when a member runs, so a server can build a `Stream` and a worker can provide the bundle. Running a member on a host without `window.matchMedia` is a defect.
+
+A library whose published type has no requirement provides the layer at the call: `Stream.provide(stream, ExperimentalBrowserMediaQuery.layer)`.
+
+`Experimental.MediaQuery.layerTest()` answers `false`, and `changes` stays open after its first value. Pass `matches`, which `changes` follows, or `changes` for a Stream of your own.
 
 ## When Effect ships them
 

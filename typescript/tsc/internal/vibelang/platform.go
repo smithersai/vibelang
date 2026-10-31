@@ -61,6 +61,7 @@ const cryptoLayers = `NodeCrypto.layer from "@effect/platform-node", BunCrypto.l
 const (
 	experimentalNodeBundle = `ExperimentalNodeServices.layer from "vibelang-runtime/experimental/platform-node"`
 	experimentalServices   = experimentalNodeBundle + `, or ExperimentalBunServices.layer from "vibelang-runtime/experimental/platform-bun"`
+	experimentalBrowser    = `ExperimentalBrowserServices.layer from "vibelang-runtime/experimental/platform-browser"`
 )
 
 // platformServices are the Effect APIs that replace platform APIs (Chapter 11), by
@@ -120,8 +121,9 @@ var platformServices = map[string]*platformService{
 	"ExperimentalProcess":    {"the experimental Process service", "Experimental.Process.pid()", "", experimentalServices},
 	"ExperimentalLocks": {"the experimental Locks service", "Experimental.Locks.hold(name)", "",
 		`ExperimentalBrowserLocks.layer from "vibelang-runtime/experimental/platform-browser"; ExperimentalNodeLocks.layer from "vibelang-runtime/experimental/platform-node" locks only within one Node.js process`},
-	"import": {"an import declaration", `import { name } from "./module.ts"`, "", ""},
-	"export": {"an export declaration", "export const name = value", "", ""},
+	"ExperimentalMediaQuery": {"the experimental MediaQuery service", "try (try Experimental.MediaQuery.MediaQuery).matches(query)", "", experimentalBrowser},
+	"import":                 {"an import declaration", `import { name } from "./module.ts"`, "", ""},
+	"export":                 {"an export declaration", "export const name = value", "", ""},
 }
 
 // serviceKeys are the platformServices keys of the services whose names
@@ -204,7 +206,7 @@ var platformGlobals = map[string]string{
 	"localStorage": "KeyValueStore", "sessionStorage": "KeyValueStore", "indexedDB": "KeyValueStore",
 	"Worker": "Worker", "SharedWorker": "Worker", "importScripts": "Worker", "postMessage": "Worker",
 	"document": "", "window": "", "self": "", "navigator": "", "location": "", "history": "",
-	"alert": "", "confirm": "", "prompt": "",
+	"alert": "", "confirm": "", "prompt": "", "matchMedia": "ExperimentalMediaQuery",
 	"addEventListener": "PubSub", "removeEventListener": "PubSub", "dispatchEvent": "PubSub",
 	"require": "import", "module": "export", "exports": "export", "__dirname": "Path", "__filename": "Path",
 	"Buffer": "Bytes", "Bun": "", "Deno": "", "global": "", "caches": "", "BroadcastChannel": "",
@@ -307,6 +309,7 @@ var platformAPIs = map[string]platformAPI{
 	"Deno":                          {note: runtimeGap},
 	"performance.now":               {"Clock", "Clock.monotonicTimeNanos()", "Clock.monotonicTimeNanos() is a bigint of nanoseconds, and performance.now() a number of milliseconds."},
 	"performance.timeOrigin":        {"ExperimentalProcess", "Experimental.Process.timeOrigin()", "Clock reads the time now; it has no time origin."},
+	"window.matchMedia":             {service: "ExperimentalMediaQuery"},
 	"window.addEventListener":       {"BrowserStream", `BrowserStream.fromEventListenerWindow("resize")`, ""},
 	"document.addEventListener":     {"BrowserStream", `BrowserStream.fromEventListenerDocument("visibilitychange")`, ""},
 	"Buffer.from":                   {"Bytes", "new TextEncoder().encode(text)", "Base64.decode(text) and Hex.decode(text) read encoded bytes."},

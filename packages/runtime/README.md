@@ -232,20 +232,21 @@ platform API (D313), one module per service, each also a subpath:
 `access` with `executable`, `open` with `nonBlocking` and `File.chmod`),
 `vibelang-runtime/experimental/Crypto` (the members of Effect 4.0's `Crypto`,
 which Effect 4.1 removed, plus `hmac`, `sign` and `verify`), `vibelang-runtime/experimental/Process` (the process id,
-platform, host name and other facts, `kill` and `isRunning`) and
+platform, host name and other facts, `kill` and `isRunning`),
 `vibelang-runtime/experimental/Locks` (Web Locks: `hold`, `tryHold` and
-`query`). Each service has its own key; `FileSystem` is a superset of
+`query`) and `vibelang-runtime/experimental/MediaQuery` (`matches` and
+`changes` over `window.matchMedia`). Each service has its own key; `FileSystem` is a superset of
 Effect's interface. The layers are in
 `vibelang-runtime/experimental/platform-node` (`ExperimentalNodeServices`,
 `ExperimentalNodeFileSystem`, `ExperimentalNodeCrypto`, `ExperimentalNodeProcess`, `ExperimentalNodeLocks`), `-bun`
 (`ExperimentalBunServices`, `ExperimentalBunFileSystem`, `ExperimentalBunCrypto`, `ExperimentalBunProcess`) and `-browser`
-(`ExperimentalBrowserServices`, `ExperimentalBrowserCrypto`, `ExperimentalBrowserLocks`). A layer of a service
+(`ExperimentalBrowserServices`, `ExperimentalBrowserCrypto`, `ExperimentalBrowserLocks`, `ExperimentalBrowserMediaQuery`). A layer of a service
 that extends Effect's provides the experimental service and Effect's service
 of the same name from one implementation; a `Crypto` layer provides the
 experimental `Crypto` and the platform's Effect crypto services, such as
 `SecureRandom` and `Digest`. `ExperimentalNodeServices` and `ExperimentalBunServices`
 are Effect's bundles plus `FileSystem`, `Crypto` and `Process`;
-`ExperimentalBrowserServices` provides `Crypto`, Effect's crypto services and `Locks`; `ExperimentalNodeLocks`, which requires Node 24.5 or later and locks
+`ExperimentalBrowserServices` provides `Crypto`, Effect's crypto services, `Locks` and `MediaQuery`; `ExperimentalNodeLocks`, which requires Node 24.5 or later and locks
 within one process only, is in no bundle. Install the matching
 `@effect/platform-*` package, an optional peer dependency. The
 platform-neutral modules import only `effect`, and the service keys are pure,

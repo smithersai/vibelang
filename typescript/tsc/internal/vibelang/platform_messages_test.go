@@ -23,14 +23,17 @@ declare module "node:fs" { export const constants: { X_OK: number; O_NONBLOCK: n
 declare module "node:crypto" { export function createHmac(algorithm: string, key: Uint8Array): unknown }
 declare var process: { cwd(): string; env: Record<string, string | undefined>; pid: number; argv: string[]; kill(pid: number, signal?: string | number): true; umask(): number }
 declare var Buffer: { from(text: string): Uint8Array }
-declare var document: { title: string }`
+declare var document: { title: string }
+declare var window: { matchMedia(query: string): { matches: boolean } }
+declare var matchMedia: typeof window.matchMedia`
 
 const (
-	provideNodeServices = `Provide it in main with NodeServices.layer from "@effect/platform-node", or BunServices.layer from "@effect/platform-bun".`
-	provideCrypto       = `Provide it in main with NodeCrypto.layer from "@effect/platform-node", BunCrypto.layer from "@effect/platform-bun", or BrowserCrypto.layer from "@effect/platform-browser".`
-	provideExperimental = `Provide it in main with ExperimentalNodeServices.layer from "vibelang-runtime/experimental/platform-node", or ExperimentalBunServices.layer from "vibelang-runtime/experimental/platform-bun".`
-	noServiceYet        = "Effect, VibeLang's standard library, has no service for it yet, so escape to TypeScript for now."
-	allowEK4403         = `To allow it, set "EK4403": "warning" or "off" in "vibelang": { "diagnostics": { ... } } at the top level of tsconfig.json.`
+	provideNodeServices        = `Provide it in main with NodeServices.layer from "@effect/platform-node", or BunServices.layer from "@effect/platform-bun".`
+	provideCrypto              = `Provide it in main with NodeCrypto.layer from "@effect/platform-node", BunCrypto.layer from "@effect/platform-bun", or BrowserCrypto.layer from "@effect/platform-browser".`
+	provideExperimental        = `Provide it in main with ExperimentalNodeServices.layer from "vibelang-runtime/experimental/platform-node", or ExperimentalBunServices.layer from "vibelang-runtime/experimental/platform-bun".`
+	provideExperimentalBrowser = `Provide it in main with ExperimentalBrowserServices.layer from "vibelang-runtime/experimental/platform-browser".`
+	noServiceYet               = "Effect, VibeLang's standard library, has no service for it yet, so escape to TypeScript for now."
+	allowEK4403                = `To allow it, set "EK4403": "warning" or "off" in "vibelang": { "diagnostics": { ... } } at the top level of tsconfig.json.`
 )
 
 // EK4402 and EK4403 name the Effect API that replaces a platform API and
@@ -191,6 +194,14 @@ export const run = (key: Uint8Array) => createHmac("sha256", key)`, []string{
 		{"experimental property", `export const run = () => process.pid`, []string{
 			"process.pid is platform code, which VibeLang code does not use directly.",
 			"Use the experimental Process service:   Experimental.Process.pid()", provideExperimental,
+		}},
+		{"experimental browser global", `export const run = (query: string) => matchMedia(query)`, []string{
+			"matchMedia is platform code, which VibeLang code does not use directly.",
+			"Use the experimental MediaQuery service:   try (try Experimental.MediaQuery.MediaQuery).matches(query)", provideExperimentalBrowser,
+		}},
+		{"experimental browser member of window", `export const run = (query: string) => window.matchMedia(query)`, []string{
+			"window.matchMedia is platform code, which VibeLang code does not use directly.",
+			"Use the experimental MediaQuery service:   try (try Experimental.MediaQuery.MediaQuery).matches(query)", provideExperimentalBrowser,
 		}},
 		{"gap", `export const run = () => document.title`, []string{
 			"document.title is platform code, which VibeLang code does not use directly.",

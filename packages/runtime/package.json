@@ -57,6 +57,11 @@
       "import": "./dist/experimental/Locks.js",
       "default": "./dist/experimental/Locks.js"
     },
+    "./experimental/MediaQuery": {
+      "types": "./dist/experimental/MediaQuery.d.ts",
+      "import": "./dist/experimental/MediaQuery.js",
+      "default": "./dist/experimental/MediaQuery.js"
+    },
     "./experimental/Process": {
       "types": "./dist/experimental/Process.d.ts",
       "import": "./dist/experimental/Process.js",

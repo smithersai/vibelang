@@ -177,7 +177,7 @@ The entry provides `BunServices.layer` from `@effect/platform-bun`. The same `gr
 
 ## Starting `main` in a browser
 
-Use `@effect/platform-browser`'s `BrowserRuntime.runMain` to start the browser program; the compiled module imports nothing of Node's. A `main` that needs `Experimental.Crypto` or `Experimental.Locks` uses `ExperimentalBrowserServices.layer` from `vibelang-runtime/experimental/platform-browser`. Keep the browser program separate from the module that starts it:
+Use `@effect/platform-browser`'s `BrowserRuntime.runMain` to start the browser program; the compiled module imports nothing of Node's. A `main` that needs `Experimental.Crypto`, `Experimental.Locks` or `Experimental.MediaQuery` uses `ExperimentalBrowserServices.layer` from `vibelang-runtime/experimental/platform-browser`. Keep the browser program separate from the module that starts it:
 
 ```vibe
 // app.vibe

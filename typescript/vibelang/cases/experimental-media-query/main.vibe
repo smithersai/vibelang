@@ -1,0 +1,18 @@
+// expect-result: {"read":true,"streamed":[true]}
+// The module of foldkit's dom/streamFromMediaQuery.ts: its platform code goes through the injected service, so the
+// module has no EK4402 and no adapter file.
+export function streamFromMediaQuery<Output>(config: { query: string, mapMatches: (isMatching: boolean) => Output }) {
+  return Stream.unwrap(effect {
+    const mediaQuery = try Experimental.MediaQuery.MediaQuery
+    return Stream.map(mediaQuery.changes(config.query), config.mapMatches)
+  })
+}
+
+export effect function main() {
+  provide Experimental.MediaQuery.layerTest({ matches: effect (query) => query === "print" }) {
+    return {
+      read: try (try Experimental.MediaQuery.MediaQuery).matches("print"),
+      streamed: try Stream.runCollect(Stream.take(streamFromMediaQuery({ query: "print", mapMatches: (isMatching) => isMatching }), 1))
+    }
+  }
+}

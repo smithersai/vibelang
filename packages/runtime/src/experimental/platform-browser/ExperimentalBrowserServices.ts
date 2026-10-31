@@ -10,22 +10,33 @@
 import * as Layer from "effect/Layer"
 import type * as Crypto from "../Crypto.js"
 import type * as Locks from "../Locks.js"
+import type * as MediaQuery from "../MediaQuery.js"
 import * as ExperimentalBrowserCrypto from "./ExperimentalBrowserCrypto.js"
 import * as ExperimentalBrowserLocks from "./ExperimentalBrowserLocks.js"
+import * as ExperimentalBrowserMediaQuery from "./ExperimentalBrowserMediaQuery.js"
 
 /**
  * The services of the browser bundle: the experimental `Crypto`, Effect's
- * crypto services from `@effect/platform-browser`, and `Locks`.
+ * crypto services from `@effect/platform-browser`, `Locks` and `MediaQuery`.
  *
  * @since 0.0.11
  */
-export type ExperimentalBrowserServices = Crypto.Crypto | Layer.Success<typeof ExperimentalBrowserCrypto.layer> | Locks.Locks
+export type ExperimentalBrowserServices =
+  | Crypto.Crypto
+  | Layer.Success<typeof ExperimentalBrowserCrypto.layer>
+  | Locks.Locks
+  | MediaQuery.MediaQuery
 
 /**
  * `ExperimentalBrowserCrypto.layer`, which provides the experimental `Crypto` and
- * `@effect/platform-browser`'s Effect crypto services, and `ExperimentalBrowserLocks.layer`.
+ * `@effect/platform-browser`'s Effect crypto services, `ExperimentalBrowserLocks.layer` and
+ * `ExperimentalBrowserMediaQuery.layer`.
  *
  * @category layers
  * @since 0.0.11
  */
-export const layer: Layer.Layer<ExperimentalBrowserServices> = Layer.mergeAll(ExperimentalBrowserCrypto.layer, ExperimentalBrowserLocks.layer)
+export const layer: Layer.Layer<ExperimentalBrowserServices> = Layer.mergeAll(
+  ExperimentalBrowserCrypto.layer,
+  ExperimentalBrowserLocks.layer,
+  ExperimentalBrowserMediaQuery.layer
+)
