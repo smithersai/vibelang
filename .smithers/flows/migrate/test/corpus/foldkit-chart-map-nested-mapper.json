@@ -1,0 +1,9 @@
+{
+  "key": "migrate:nested-acquire-error-mapper",
+  "before": "import { Effect } from \"effect\";\nconst toChartMountError = (error: unknown): Error => error instanceof Error ? error : new Error(\"mount\");\nexport const observeChart = () => Effect.acquireRelease(Effect.try({ try: () => 1, catch: toChartMountError }), () => Effect.void);",
+  "after": "const toChartMountError = (error: unknown): Error => error instanceof Error ? error : new Error(\"mount\");\nexport const observeChart = effect () => {\n  const observer = try Effect.acquireRelease(Effect.try({ try: (): number => 1, catch: toChartMountError }), effect () => {});\n  return (effect {\n    const registered = try Effect.try({ try: (): number => observer, catch: toChartMountError });\n    return registered;\n  }) catch effect (error) => {\n    try sync((): void => {});\n    throw error;\n  };\n};",
+  "markers": [
+    "catch: toChartMountError",
+    "throw "
+  ]
+}

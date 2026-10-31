@@ -1,0 +1,6 @@
+{
+  "key": "migrate:nested-acquire-error-mapper",
+  "before": "import { Effect, Stream } from \"effect\"\nconst toMapMountError = (error: unknown): Error => error instanceof Error ? error : new Error(\"mount\");\nexport const mountMap = (): Stream.Stream<number> => Stream.callback<number>(queue =>\n  Effect.gen(function* () {\n    const { value } = yield* Effect.acquireRelease(\n      Effect.gen(function* () {\n        const value = yield* Effect.try({ try: () => 1, catch: toMapMountError });\n        return { value };\n      }), () => Effect.void);\n    return yield* Effect.never;\n  }).pipe(Effect.catch(() => Effect.void)));\n",
+  "after": "const toMapMountError = (error: unknown): Error => error instanceof Error ? error : new Error(\"mount\");\nexport const mountMap = (): Stream.Stream<number> => Stream.callback<number>(effect (queue) => {\n  return (effect {\n    const resource = try Effect.acquireRelease(\n      effect {\n        const value = try Effect.try({ try: (): number => 1, catch: toMapMountError });\n        return { value };\n      }, effect () => {});\n    const { value } = resource;\n    return try Effect.never;\n  }) catch effect (error) => {};\n});\n",
+  "marker": "toMapMountError });"
+}

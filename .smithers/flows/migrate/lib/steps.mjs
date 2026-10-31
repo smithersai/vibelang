@@ -13,6 +13,7 @@ import { fixToFixedPoint, pathAliases, restoreExports, restoreSpecifiers, rewrit
 import { applyState, durableWrite, prepareState, saveState } from "./codemod-state.mjs"
 import { splitBatchPlatform } from "./platform.mjs"
 import { check, newErrors, styleProblems, summarize } from "./diagnostics.mjs"
+import { preservedErrorAdvisories } from "./preserved-errors.mjs"
 import { compareDeclarations, recordDeclarationSurface, emitDeclarations, emitErrorsIn, loadTypeScript } from "./declarations.mjs"
 import { compareTests, regressionIssue, runTests } from "./tests.mjs"
 import { verifyRepositoryTests } from "./test-diff-run.mjs"
@@ -972,6 +973,15 @@ export async function codemod(options) {
   return result
 }
 
+/** A migrated module's TypeScript source as the codemod journaled it, from whichever batch renamed it; null for runs that kept no state. */
+function originalSourceOf(p, plan, file) {
+  for (let i = 0; i < (plan?.batches.length ?? 0); i++) {
+    const retained = readJsonIf(p.codemodState(batchName(i)))?.originals?.find(o => o.to === file)
+    if (retained) return { path: retained.from, text: Buffer.from(retained.bytes, "base64").toString("utf8") }
+  }
+  return null
+}
+
 /** compile: check each package with the batch's files; record their diagnostics and any error new against the baseline. */
 export async function compile(options) {
   const { p, config, plan: thePlan } = loadRun(options.run)
@@ -986,7 +996,12 @@ export async function compile(options) {
     diagnostics.push(...checked.diagnostics)
     added.push(...newErrors(readJson(join(p.baseline, `compile-${slug(pkg.dir)}.json`)), checked.diagnostics))
   }
-  const result = { batch: b, at: new Date().toISOString(), files, summary: summarize(diagnostics, files), style: styleProblems(diagnostics, files), newErrors: added, diagnostics: diagnostics.filter((d) => files.includes(d.file) || added.includes(d)) }
+  const preserved = await preservedErrorAdvisories({
+    compiler, target: config.target, packages: config.packages,
+    baseline: pkg => join(p.baseline, "dts", slug(pkg.dir)), files, diagnostics,
+    original: file => originalSourceOf(p, thePlan, file)
+  })
+  const result = { batch: b, at: new Date().toISOString(), files, summary: summarize(diagnostics, files), style: styleProblems(diagnostics, files, preserved.accepted), styleExemptions: preserved.decisions, newErrors: added, diagnostics: diagnostics.filter((d) => files.includes(d.file) || added.includes(d)) }
   if (!options.noRecord) writeJson(p.compile(b), result)
   return result
 }

@@ -1,0 +1,30 @@
+{
+  "key": "migrate:preserved-error-arrows-factories",
+  "source": "drive-foldkit-examples integration-3, 2026-11-01T03:55Z: Charting fetchJson curried arrows and named toChartMountError/toMapMountError; Map and WebSocket explicit Effect.callback<T, Error>",
+  "cases": [
+    {
+      "name": "curried-arrow-handler",
+      "before": "import { Effect } from \"effect\"\nexport const load = (prefix: string) => (n: number): Effect.Effect<number, Error> => Effect.mapError(Effect.fail(new Error(prefix)), error => new Error(String(error)))",
+      "after": "export const load = (prefix: string): infer _ => effect (n: number): number!Error => { return (effect { throw new Error(prefix) }) catch effect (error) => { throw new Error(String(error)) } }",
+      "at": "throw new Error(String(error))"
+    },
+    {
+      "name": "named-error-mapper",
+      "before": "import { Effect } from \"effect\"\nconst toError = (e: unknown): Error => new Error(String(e))\nexport const load = () => Effect.try({ try: () => 1, catch: toError })",
+      "after": "const toError = (e: unknown): Error => new Error(String(e))\nexport const load = effect (): number!Error => { return try Effect.try({ try: (): number => 1, catch: toError }) }",
+      "at": "toError })"
+    },
+    {
+      "name": "callback-error-type",
+      "before": "import { Effect } from \"effect\"\nexport const load = () => Effect.callback<number, Error>(resume => { resume(Effect.fail(new Error(\"x\"))) })",
+      "after": "export const load = effect (): number!Error => { return try Effect.callback<number, Error>((resume): void => { resume(effect { throw new Error(\"x\") }) }) }",
+      "at": "throw new Error"
+    },
+    {
+      "name": "typed-try-error",
+      "before": "import { Effect } from \"effect\"\nexport const load = () => Effect.try<number, Error>({ try: () => 1, catch: (cause) => new Error(String(cause)) })",
+      "after": "export const load = effect (): number!Error => { return try Effect.try<number, Error>({ try: (): number => 1, catch: (cause) => new Error(String(cause)) }) }",
+      "at": "(cause) =>"
+    }
+  ]
+}

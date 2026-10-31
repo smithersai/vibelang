@@ -1,0 +1,5 @@
+{
+  "key": "migrate:native-global-error-style-gate",
+  "before": "import * as Effect from \"effect/Effect\";\nexport declare const fail: () => Effect.Effect<number, Error>;\n",
+  "after": "export const fail = effect (): number!Error => { throw new Error(\"invalid origin\") }\n"
+}

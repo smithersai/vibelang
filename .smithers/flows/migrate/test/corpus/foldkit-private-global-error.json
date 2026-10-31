@@ -1,0 +1,18 @@
+{
+  "key": "migrate:native-global-error-private-producer",
+  "source": "drive-foldkit-examples 2026-10-31T23:15Z, probes/foldkit-map-private-global-error and inline-catch-neighbourhood: a private load declares Effect.Effect<number, Error>; public work catches it, so the emitted declaration omits load and the declaration oracle refused its EK4804",
+  "before": "import { Effect } from 'effect'\nconst toError = (cause: unknown): Error => cause instanceof Error ? cause : new Error(String(cause))\nconst load = (fail: boolean): Effect.Effect<number, Error> =>\n  Effect.try({\n    try: (): number => { if (fail) throw new Error('original'); return 7 },\n    catch: toError,\n  })\nexport const work = (fail: boolean): Effect.Effect<number> =>\n  Effect.catch(load(fail), () => Effect.succeed(0))\n",
+  "declaration": "import { Effect } from 'effect';\nexport declare const work: (fail: boolean) => Effect.Effect<number>;\n",
+  "after": "const toError = (cause: unknown): Error => cause instanceof Error ? cause : new Error(String(cause))\nconst load = effect (fail: boolean): number!Error => {\n  return try Effect.try({\n    try: (): number => { if (fail) throw new Error('original'); return 7 },\n    catch: toError,\n  })\n}\nexport const work = effect (fail: boolean): number!! => {\n  return load(fail) catch () => 0\n}\n",
+  "advisory": {
+    "note": "the compiler reports EK4804 at the catch callback; tests locate `catch: ` in the text",
+    "line": 5,
+    "column": 12
+  },
+  "inlineBefore": "import { Effect } from 'effect'\nconst load = (fail: boolean): Effect.Effect<number, Error> =>\n  Effect.try({\n    try: (): number => { if (fail) throw new Error('original'); return 7 },\n    catch: (cause): Error => cause instanceof Error ? cause : new Error(String(cause)),\n  })\nexport const work = (fail: boolean): Effect.Effect<number> =>\n  Effect.catch(load(fail), () => Effect.succeed(0))\n",
+  "inlineAfter": "const load = effect (fail: boolean): number!Error => {\n  return try Effect.try({\n    try: (): number => { if (fail) throw new Error('original'); return 7 },\n    catch: (cause): Error => cause instanceof Error ? cause : new Error(String(cause)),\n  })\n}\nexport const work = effect (fail: boolean): number!! => {\n  return load(fail) catch () => 0\n}\n",
+  "inlineAdvisory": {
+    "line": 4,
+    "column": 12
+  }
+}

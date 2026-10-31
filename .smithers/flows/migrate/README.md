@@ -135,6 +135,8 @@ The run retains raw per-side logs, normalized receipts and `comparison.json`.
 `record` repeats verification after formatting and regeneration; `--force`
 cannot bypass this whole-scope gate.
 
+The style gate retains advisory `EK4804` when the compiler identifies the global `Error` and the enclosing native function writes `!Error` matching that function’s original declaration. `compile.json` records each decision under `styleExemptions`, with the declaration path and reason. Missing or ambiguous declarations, unwritten or changed failure types and shadowed `Error` names retain the warning as a style problem; real TypeScript-style Effect forms remain rejected.
+
 ## Run it
 
 Every batch lands on a jj bookmark, `vibe` unless `--bookmark` names another: upgrade-effect starts it on the default branch (`trunk()`, or `--base <branch>`, such as `dev`, which restarts a bookmark an earlier run left elsewhere), or continues an earlier run's `vibe`, and each recorded batch is one commit on top of the last. The first two commits are the Effect upgrade and VibeLang's setup, so a reviewer reads the dependency upgrade, and any test it breaks, apart from the migration. The flow never pushes. After each run, the orchestrator pushes `vibe` to the library's fork and opens a pull request from it there, so the migration's diff is reviewable.

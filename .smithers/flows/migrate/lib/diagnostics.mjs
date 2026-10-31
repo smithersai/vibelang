@@ -78,13 +78,13 @@ export function summarize(diagnostics, files = []) {
  * a kept Schema.TaggedError class keeps its constructor too, which EK4814
  * warns about: an EK4814 on a class whose EK4837 has no quick fix stays out.
  */
-export function styleProblems(diagnostics, files) {
+export function styleProblems(diagnostics, files, preservedErrors = new Set()) {
   const inFiles = new Set(files)
   const refused = (d) => ["EK4805", "EK4831", "EK4837"].includes(d.code) && d.notes.some((note) => note.startsWith("No quick fix"))
   // The class a diagnostic names first: `E extends …`, `E overrides …`.
   const className = (d) => /^(\S+) (?:extends|overrides) /.exec(d.message)?.[1]
   const keptClasses = new Set(diagnostics.filter((d) => d.code === "EK4837" && refused(d)).map((d) => `${d.file}\0${className(d)}`))
-  const kept = (d) => d.code === "EK4832" || refused(d) || (d.code === "EK4814" && d.category !== "error" && keptClasses.has(`${d.file}\0${className(d)}`))
+  const kept = (d) => d.code === "EK4832" || refused(d) || (d.code === "EK4804" && preservedErrors.has(d)) || (d.code === "EK4814" && d.category !== "error" && keptClasses.has(`${d.file}\0${className(d)}`))
   return diagnostics.filter((d) => inFiles.has(d.file) && ((/^EK48\d\d$/.test(d.code) && !kept(d)) || d.code === "EK4402" || d.code === "EK9204"))
 }
 
