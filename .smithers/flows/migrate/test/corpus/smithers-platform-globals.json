@@ -1,0 +1,20 @@
+{
+  "finding": "smithers:ek4402-platform-split-globals",
+  "note": "Minimized from Smithers packages/smithers/flows/platform-node/src/HostLiveness.ts, returned to TypeScript by `EK4402: process.kill is platform code` after vibelang --fix (drive-smithers conversion-reverted.json). Effect.sync is dropped so the in-memory program needs no effect package; hostOf is added as a declaration that must stay.",
+  "modules": [
+    {
+      "file": "src/HostLiveness.ts",
+      "text": "/**\n * Answers whether a recorded run owner is still alive on this host.\n *\n * @since 0.1.0\n */\n\n/** The owner identity fields liveness is decided from. */\nexport interface Owner {\n  readonly hostId: string\n  readonly pid: number\n}\n\n/** Liveness configuration. */\nexport interface Options {\n  readonly hostId: string\n  readonly signal?: ((pid: number, signal: 0) => void) | undefined\n}\n\nconst signalable = (send: (pid: number, signal: 0) => void, pid: number): boolean => {\n  try {\n    send(pid, 0)\n    return true\n  } catch (cause) {\n    return (cause as { readonly code?: string } | null | undefined)?.code !== \"ESRCH\"\n  }\n}\n\n/** Builds the liveness probe `EngineStore` consults before it steals a run. */\nexport const isAlive = (options: Options): (owner: Owner) => boolean => {\n  const send = options.signal ?? ((pid, signal) => {\n    process.kill(pid, signal)\n  })\n  return (owner) => owner.hostId !== options.hostId || signalable(send, owner.pid)\n}\n\n/** The host this probe answers for. */\nexport const hostOf = (options: Options): string => options.hostId\n",
+      "messages": [
+        "EK4402: process.kill is platform code, which VibeLang code does not use directly."
+      ],
+      "moved": [
+        "signalable",
+        "isAlive"
+      ],
+      "wrapped": [
+        "isAlive"
+      ]
+    }
+  ]
+}

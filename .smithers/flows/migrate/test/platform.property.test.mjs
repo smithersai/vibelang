@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { test } from "node:test"
-import { isPlatformModule, platformPath, splitPlatform } from "../lib/platform.mjs"
+import { isPlatformModule, platformGlobalsOf, platformPath, splitPlatform } from "../lib/platform.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const fc = require("fast-check")
@@ -15,6 +15,7 @@ const quote = "The quick fix and the codemod move the code into a sibling `.ts` 
 const ambient = `declare module "node:fs" { export function readFileSync(path: string): string; export function closeSync(fd: number): void }
 declare module "node:crypto" { export function createHash(algorithm: string): { update(data: string): { digest(encoding: "hex"): string } } }
 declare module "node:path" { export function resolve(...paths: string[]): string; export function basename(path: string): string }
+declare var process: { readonly env: Record<string, string | undefined>; kill(pid: number, signal: number): void }
 `
 
 // Stock TypeScript's declaration of each file and the errors of the program, from in-memory files.
@@ -121,4 +122,71 @@ test("splitPlatform keeps the declarations of any module of written functions", 
     assert.equal(after.out["m.d.ts"], before.out["m.d.ts"], result.module)
     assert.ok(!/from "node:/.test(result.module.split("\n").filter((l) => !l.startsWith("import type")).join("\n")), result.module)
   }), { seed: 31108, numRuns: 40 })
+})
+
+// The hand-off with migfix-t3code-2's services quick fix: vibelang --fix
+// rewrites the host globals an Effect service covers, and each EK4402 site it
+// leaves sends the module back with its message. The next pass moves only
+// the declarations that read the globals those messages name.
+test("platformGlobalsOf names the host globals that EK4402 messages report", () => {
+  assert.deepEqual(platformGlobalsOf([
+    "EK4402: process.kill is platform code, which VibeLang code does not use directly.",
+    "EK4402: globalThis.process?.env is platform code, which VibeLang code does not use directly.",
+    "error EK4402: globalThis[\"setTimeout\"] is platform code, which VibeLang code does not use directly.",
+    "process.env is platform code, which VibeLang code does not use directly.",
+    "EK4402: createHash from node:crypto is platform code, which a .vibe file does not import as a value.",
+    "EK4402: import.meta.dirname is platform code, which VibeLang code does not use directly.",
+    "EK4401: Dialect.integer is a plain TypeScript function, and nothing says what its exceptions mean.",
+  ]), ["globalThis", "process"])
+})
+
+test("smithers platform-node HostLiveness: a host global a pass left moves with the declarations that read it", () => {
+  const corpus = JSON.parse(readFileSync(new URL("./corpus/smithers-platform-globals.json", import.meta.url), "utf8"))
+  for (const { file, text, messages, moved, wrapped } of corpus.modules) {
+    assert.equal(splitPlatform(text, file, ts), null, `${file}: no builtin import, and no global named`)
+    const before = emit({ [file]: text })
+    assert.deepEqual(before.errors, [], file)
+    const result = splitPlatform(text, file, ts, { globals: platformGlobalsOf(messages) })
+    assert.ok(result && !result.refused, result?.refused)
+    assert.deepEqual(result.moved.sort(), moved.sort(), file)
+    assert.deepEqual(result.wrapped.sort(), wrapped.sort(), file)
+    const after = emit({ [file]: result.module, [platformPath(file)]: result.platform })
+    assert.deepEqual(after.errors, [], result.module + "\n----\n" + result.platform)
+    const dts = file.replace(/\.ts$/, ".d.ts").replace(/^.*\//, "")
+    assert.equal(after.out[dts], before.out[dts], file)
+    assert.ok(!/\bprocess\b/.test(result.module.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "")), result.module)
+  }
+})
+
+// Modules of written functions, some reading process.env or process.kill:
+// with process named, exactly the readers and the private helpers they read
+// move, the rest stay, the declarations are stock TypeScript's of the
+// original, and the module reads no process.
+test("splitPlatform moves only the declarations that read a named host global", () => {
+  const body = fc.constantFrom('process.env["HOME"] ?? ""', "String(process.kill(1, 0))", "String(1)", "s.trim()")
+  const fn = fc.record({ exported: fc.boolean(), body, arrow: fc.boolean() })
+  fc.assert(fc.property(fc.array(fn, { minLength: 1, maxLength: 6 }), (fns) => {
+    const lines = []
+    fns.forEach((f, i) => {
+      const name = (f.exported ? "fn" : "helper") + i
+      const exp = f.exported ? "export " : ""
+      lines.push(f.arrow ? `${exp}const ${name} = (s: string): string => ${f.body} + s` : `${exp}function ${name}(s: string): string {\n  return ${f.body} + s\n}`)
+    })
+    lines.push(`export const all = (s: string): string => [${fns.map((f, i) => (f.exported ? "fn" : "helper") + i + "(s)").join(", ")}].join("")`)
+    const text = lines.join("\n") + "\n"
+    const before = emit({ "m.ts": text })
+    fc.pre(before.errors.length === 0)
+    const readers = fns.flatMap((f, i) => (f.body.includes("process") ? [(f.exported ? "fn" : "helper") + i] : []))
+    const result = splitPlatform(text, "m.ts", ts, { globals: ["process"] })
+    if (!readers.length) {
+      assert.equal(result, null)
+      return
+    }
+    assert.ok(result && !result.refused, result?.refused)
+    assert.deepEqual(result.moved.sort(), readers.sort(), result.module)
+    const after = emit({ "m.ts": result.module, "m.platform.ts": result.platform })
+    assert.deepEqual(after.errors, [], result.module + "\n----\n" + result.platform)
+    assert.equal(after.out["m.d.ts"], before.out["m.d.ts"], result.module)
+    assert.ok(!/\bprocess\b/.test(result.module), result.module)
+  }), { seed: 31109, numRuns: 40 })
 })

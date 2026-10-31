@@ -8,6 +8,13 @@
 // written signature that calls the moved one, so the module's declarations
 // are unchanged. A module whose moved exports are not such functions keeps
 // its platform code, and EK4402 sends it back to TypeScript as before.
+//
+// A host global (process.env, globalThis.fetch) is moved only when the
+// caller names it: vibelang --fix first rewrites what an Effect service
+// covers (Config, Console, Clock), and the EK4402 sites it leaves send the
+// module back with their messages. platformGlobalsOf reads the globals from
+// those messages, and the next pass splits only the declarations that read
+// them (the hand-off agreed with migfix-t3code-2, inbox migfix-smithers.md).
 import { builtinModules } from "node:module"
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { join, posix } from "node:path"
@@ -20,6 +27,24 @@ export function isPlatformModule(specifier) {
   return builtins.has(specifier) || builtins.has(specifier.split("/")[0])
 }
 
+/**
+ * The host globals that EK4402 messages name, as the identifiers a
+ * declaration reads: "process.env is platform code" names process,
+ * "globalThis.crypto.subtle is platform code" names globalThis. A builtin
+ * import ("createHash from node:crypto is platform code") is split without
+ * being named, and a message about anything else names nothing.
+ */
+export function platformGlobalsOf(messages) {
+  const names = new Set()
+  for (const message of messages) {
+    const text = String(message).replace(/^\s*(?:error\s+)?EK4402:\s*/, "")
+    if (/^\S+ from \S+ is platform code/.test(text)) continue
+    const m = /^([A-Za-z_$][\w$]*)(?:\??\.[\w$.?]*|\[[^\]]*\])* is platform code/.exec(text)
+    if (m && m[1] !== "import") names.add(m[1])
+  }
+  return [...names].sort()
+}
+
 /** The sibling module a split writes for file, src/Open.ts: src/Open.platform.ts. */
 export const platformPath = (file) => file.replace(/\.(m?ts)$/, ".platform.$1")
 
@@ -27,16 +52,23 @@ export const platformPath = (file) => file.replace(/\.(m?ts)$/, ".platform.$1")
  * Splits the TypeScript module text of file (repository-relative). Returns
  * { module, platform, moved, wrapped } with the two texts, or { refused }
  * saying why the module keeps its platform code, or null when it imports no
- * builtin as a value.
+ * builtin as a value and reads none of globals, the host globals to move
+ * (platformGlobalsOf).
  */
-export function splitPlatform(text, file, ts) {
+export function splitPlatform(text, file, ts, { globals = [] } = {}) {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
   const imports = source.statements.filter((s) => ts.isImportDeclaration(s))
   const platform = new Set()
+  const imported = new Set()
   for (const i of imports) {
-    if (!ts.isStringLiteral(i.moduleSpecifier) || !isPlatformModule(i.moduleSpecifier.text)) continue
-    for (const b of bindingsOf(i, ts)) if (!b.type) platform.add(b.name)
+    const builtin = ts.isStringLiteral(i.moduleSpecifier) && isPlatformModule(i.moduleSpecifier.text)
+    for (const b of bindingsOf(i, ts)) {
+      imported.add(b.name)
+      if (builtin && !b.type) platform.add(b.name)
+    }
   }
+  const declaredAtTop = new Set(source.statements.flatMap((s) => (ts.isImportDeclaration(s) ? [] : [...declaredNames(s, ts)])))
+  for (const name of globals) if (!imported.has(name) && !declaredAtTop.has(name)) platform.add(name)
   if (!platform.size) return null
   // Each top-level declaration: the names it declares and the names it reads.
   const declarations = []
@@ -115,18 +147,19 @@ export function splitPlatform(text, file, ts) {
 }
 
 /**
- * Splits each batch file that imports a builtin as a value, writing
- * <Name>.platform.ts beside it. Returns { splits, refused }: the files
- * written, and why each other file keeps its platform code.
+ * Splits each batch file that imports a builtin as a value, or reads a host
+ * global globalsOf(file) names, writing <Name>.platform.ts beside it.
+ * Returns { splits, refused }: the files written, and why each other file
+ * keeps its platform code.
  */
-export function splitBatchPlatform(root, files, ts) {
+export function splitBatchPlatform(root, files, ts, { globalsOf = () => [] } = {}) {
   const splits = []
   const refused = []
   for (const file of files) {
     if (!/\.m?ts$/.test(file) || /\.d\.m?ts$/.test(file)) continue
     const sibling = platformPath(file)
     if (existsSync(join(root, sibling))) { refused.push(`${file}: ${sibling} already exists`); continue }
-    const result = splitPlatform(readFileSync(join(root, file), "utf8"), file, ts)
+    const result = splitPlatform(readFileSync(join(root, file), "utf8"), file, ts, { globals: globalsOf(file) })
     if (!result) continue
     if (result.refused) { refused.push(result.refused); continue }
     writeFileSync(join(root, file), result.module)
