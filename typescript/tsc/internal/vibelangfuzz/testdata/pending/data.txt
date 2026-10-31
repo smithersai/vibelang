@@ -87,8 +87,6 @@ FuzzDataSpecRules feature:tagged-other-discriminant-disabled compiler VIP-7: the
 FuzzDataSpecRules corpus:data-tagged-other-discriminant-disabled compiler VIP-7: minimized tagged-other-discriminant-disabled witness; lane vip-match
 FuzzVIPDifferential compile:TS2339/vip07.custom-match-type-plain compiler VIP-7: Symbol.customMatcher is missing from SymbolConstructor, so the specified matcher protocol cannot be used in typed code; lane vip-match
 FuzzVIPDifferential corpus:data-vip07-custom-match-type-plain compiler VIP-7: minimized vip07.custom-match-type-plain probe; lane vip-match
-FuzzVIPDifferential exit:value/vip07.error-cross-copy-plain compiler VIP-7: a copied object with the error's _tag does not match, although the matcher must test _tag across package copies; lane vip-match
-FuzzVIPDifferential corpus:data-vip07-error-cross-copy-plain compiler VIP-7: minimized vip07.error-cross-copy-plain probe; lane vip-match
 FuzzVIPDifferential exit:exit-tag/vip07.exhaustive-runtime-plain compiler VIP-7: ordinary try/catch does not catch the no-match TypeError; match must stay in its enclosing plain activation; lane vip-core2
 FuzzVIPDifferential corpus:data-vip07-exhaustive-runtime-plain compiler VIP-7: minimized vip07.exhaustive-runtime-plain probe; lane vip-core2
 FuzzVIPDifferential compile:TS2551/vip07.intrinsic-alias-plain compiler VIP-7: resolved Option aliases are treated as missing Some/None value exports instead of intrinsic pattern syntax; lane vip-match

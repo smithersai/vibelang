@@ -19,16 +19,29 @@ export type Effect<A, E = never, R = never> = EffectModule.Effect<A, E, R>
 export type Scope = ScopeModule.Scope
 
 /**
+ * VIP-13: the custom matcher installed on made, the class TaggedError or
+ * $errorSubclass returns. The error declaration's class, made's direct
+ * subclass, matches a subject tagged with its name, so `when NotFound`
+ * accepts a NotFound from another copy of its package. Every class matches
+ * its instances, so a family's base matches its subclasses' errors (D278),
+ * and a class that extends the declaration's class tests only instanceof.
+ */
+const errorMatcher = (made: object, tag: string) =>
+  function(this: abstract new(...args: any) => any, subject: unknown, hint?: MatchHint) {
+    const tagged = Object.getPrototypeOf(this) === made && subject !== null && (typeof subject === "object" || typeof subject === "function") && (subject as { _tag?: unknown })._tag === tag
+    if (!tagged && !(subject instanceof this)) return false
+    return hint?.matchType === "extractor" ? [subject] : true
+  }
+
+/**
  * D3: `TaggedError` is Effect's `Data.TaggedError`, with the pattern matching
  * proposal's custom matcher (D215): `when NotFound` tests that the subject is
- * tagged with the same name, and the extractor `NotFound(let error)` binds it.
+ * tagged with the same name or is an instance, and the extractor
+ * `NotFound(let error)` binds it.
  */
 export const TaggedError: typeof Data.TaggedError = ((tag: string) => {
   const Base: any = Data.TaggedError(tag)
-  Base[customMatcher] = function(this: abstract new(...args: any) => any, subject: unknown, hint?: MatchHint) {
-    if (subject === null || (typeof subject !== "object" && typeof subject !== "function") || (subject as { _tag?: unknown })._tag !== tag) return false
-    return hint?.matchType === "extractor" ? [subject] : true
-  }
+  Base[customMatcher] = errorMatcher(Base, tag)
   return Base
 }) as any
 
@@ -49,13 +62,7 @@ export const $errorSubclass = <B extends abstract new(...args: any) => { readonl
       this._tag = tag
     }
   }
-  Object.defineProperty(Tagged, customMatcher, {
-    value(subject: unknown, hint?: MatchHint) {
-      if (subject === null || (typeof subject !== "object" && typeof subject !== "function") || (subject as { _tag?: unknown })._tag !== tag) return false
-      return hint?.matchType === "extractor" ? [subject] : true
-    },
-    configurable: true
-  })
+  Object.defineProperty(Tagged, customMatcher, { value: errorMatcher(Tagged, tag), configurable: true })
   ;(Tagged.prototype as unknown as { name: string }).name = tag
   return Tagged as unknown as B
 }

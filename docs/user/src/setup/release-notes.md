@@ -95,7 +95,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The specification omitted shipped throwing-call contracts; a generated inventory now records each pinned library overload, its callbacks and any returned callable.
 
-- A plain `error` pattern rejected errors from another copy of a package; it now matches the same `_tag` and its extractor binds the original value.
+- A plain `error` pattern rejected errors from another copy of a package; it now matches the same `_tag`, an error family's base still matches its subclasses' errors, and its extractor binds the original value.
 
 - A `data` declaration with more than four type parameters reported `EK2126`, the constraint diagnostic; it now reports `EK2801` and constraints keep `EK2126`.
 
