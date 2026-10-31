@@ -298,7 +298,7 @@ func (e *serviceEmitter) service(declared, class *ast.Node, emit *serviceEmit, a
 	name := declared.Name().Text()
 	isDefault := ast.HasSyntacticModifier(declared, ast.ModifierFlagsDefault)
 	exported = exported && !isDefault
-	instance, statics := splitMembers(f, declared)
+	instance, statics := splitMembers(e.ec, declared)
 	statics = withoutStatic(statics, serviceKeyName)
 	shape := writtenShape(declared, class)
 	if shape == nil {
@@ -358,7 +358,7 @@ func (e *serviceEmitter) control(declared *ast.Node, key string, ambient, export
 	name := declared.Name().Text()
 	isDefault := ast.HasSyntacticModifier(declared, ast.ModifierFlagsDefault)
 	exported = exported && !isDefault
-	instance, statics := splitMembers(f, declared)
+	instance, statics := splitMembers(e.ec, declared)
 	instance = append(instance, f.NewPropertySignatureDeclaration(
 		f.NewModifierList([]*ast.Node{f.NewModifier(ast.KindReadonlyKeyword)}),
 		f.NewStringLiteral(serviceBrandProperty, ast.TokenFlagsNone),
@@ -377,21 +377,31 @@ func (e *serviceEmitter) control(declared *ast.Node, key string, ambient, export
 }
 
 // splitMembers returns the instance members of declared as interface
-// members, and its static members as they are.
-func splitMembers(f *printer.NodeFactory, declared *ast.Node) (instance, statics []*ast.Node) {
+// members, and its static members as they are. Each member's comments,
+// such as its JSDoc, come before the whole signature: written on the name,
+// they would follow a readonly the signature adds, and `readonly /** … */
+// items: T` declares a property named readonly beside a mutable items.
+func splitMembers(ec *printer.EmitContext, declared *ast.Node) (instance, statics []*ast.Node) {
+	f := ec.Factory
 	for _, member := range declared.Members() {
+		var signature *ast.Node
 		switch {
 		case ast.IsStatic(member):
 			statics = append(statics, member)
+			continue
 		case ast.IsMethodDeclaration(member):
-			instance = append(instance, f.NewMethodSignatureDeclaration(nil /*modifiers*/, member.Name(), member.PostfixToken(), member.TypeParameterList(), member.ParameterList(), member.Type()))
+			signature = f.NewMethodSignatureDeclaration(nil /*modifiers*/, f.DeepCloneNode(member.Name()), member.PostfixToken(), member.TypeParameterList(), member.ParameterList(), member.Type())
 		case ast.IsPropertyDeclaration(member):
 			var modifiers *ast.ModifierList
 			if ast.HasSyntacticModifier(member, ast.ModifierFlagsReadonly) {
 				modifiers = f.NewModifierList([]*ast.Node{f.NewModifier(ast.KindReadonlyKeyword)})
 			}
-			instance = append(instance, f.NewPropertySignatureDeclaration(modifiers, member.Name(), member.PostfixToken(), member.Type(), nil /*initializer*/))
+			signature = f.NewPropertySignatureDeclaration(modifiers, f.DeepCloneNode(member.Name()), member.PostfixToken(), member.Type(), nil /*initializer*/)
+		default:
+			continue
 		}
+		ec.SetCommentRange(signature, member.Loc)
+		instance = append(instance, signature)
 	}
 	return instance, statics
 }

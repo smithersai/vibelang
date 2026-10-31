@@ -13,3 +13,18 @@ export class Dispatch extends Context.Service<
 // alchemy: Domain/Telemetry, which imports Context from effect/Context; the
 // migrate gate reads both import forms as one.
 export class Correlation extends Context.Service<Correlation, { readonly id: string }>()("alchemy/Domain/Correlation") {}
+
+// alchemy: Domain/Model.
+export class Store extends Context.Service<
+  Store,
+  {
+    /** The stored values. */
+    readonly items: ReadonlyArray<string>
+    // A line comment.
+    readonly count: number
+    /* A block comment. */
+    readonly cursor: number
+    /** Reads the first value. */
+    readonly first: () => Effect.Effect<string>
+  }
+>()("alchemy/Domain/Store") {}

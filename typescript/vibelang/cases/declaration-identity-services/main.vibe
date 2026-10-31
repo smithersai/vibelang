@@ -15,3 +15,18 @@ export service Correlation {
   static readonly key = "alchemy/Domain/Correlation"
   id: string
 }
+
+// alchemy: Domain/Model documents its Internals service fields. A member
+// comment stays before its whole signature, never between the readonly
+// the signature adds and the name.
+export service Store {
+  static readonly key = "alchemy/Domain/Store"
+  /** The stored values. */
+  items: ReadonlyArray<string>
+  // A line comment.
+  count: number
+  /* A block comment. */
+  cursor: number
+  /** Reads the first value. */
+  first: () => string!!
+}

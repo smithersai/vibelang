@@ -205,6 +205,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Running `go vet` on the fuzz suite reported a copied compiler-options lock guard; lint severity checks now clone options without copying that guard.
 
+- A documented field of a `service` declared `readonly` as a property of its own before the field (`readonly: any` and a mutable field), so consumers of the service shape failed with TS2741; the comment now precedes the whole `readonly` field.
+
 
 - Checking documentation examples with a symlinked `TMPDIR` could stop with `Compiler failed` instead of reporting an example's type error; diagnostics now stay attached to their examples and later pages are checked.
 
