@@ -4,7 +4,7 @@
 // wrote a coverage summary.
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs"
 import { join, posix } from "node:path"
-import { effectUse, isEffectSpecifier, parseImports, resolveRelative } from "./imports.mjs"
+import { effectUse, isEffectSpecifier, parseImports, resolveAlias, resolveRelative } from "./imports.mjs"
 import { isDeclarationFile, readJson, rel } from "./util.mjs"
 
 const skipDirectories = new Set(["node_modules", "dist", "build", "coverage", ".git", ".jj", ".turbo", ".vite", ".cache"])
@@ -41,9 +41,12 @@ export function readCoverage(root, packages) {
 
 /**
  * Builds the inventory from the packages' sources. tokens maps an absolute
- * path to its count; coverage maps a repository-relative path to a percent.
+ * path to its count; coverage maps a repository-relative path to a percent;
+ * paths maps a package's directory to its tsconfig's `paths`, with
+ * repository-relative substitutions (tsconfigPaths), so an import through an
+ * alias, `~/main`, is a local import as a relative one is.
  */
-export function buildInventory({ root, packages, tokens = {}, coverage = {} }) {
+export function buildInventory({ root, packages, tokens = {}, coverage = {}, paths = {} }) {
   const files = []
   for (const pkg of packages) for (const dir of pkg.sources) for (const path of listSources(root, posix.join(pkg.dir, dir))) files.push({ path, package: pkg.dir })
   const known = new Set(files.map((f) => f.path))
@@ -53,7 +56,7 @@ export function buildInventory({ root, packages, tokens = {}, coverage = {} }) {
     const local = []
     const external = []
     for (const i of imports) {
-      const target = resolveRelative(path, i.specifier, known)
+      const target = resolveRelative(path, i.specifier, known) ?? resolveAlias(i.specifier, paths[pkg], known)
       if (target) local.push(target)
       else if (!i.specifier.startsWith(".")) external.push(i.specifier)
     }
@@ -98,4 +101,26 @@ export function buildInventory({ root, packages, tokens = {}, coverage = {} }) {
     },
     files: records
   }
+}
+
+/**
+ * A package's `paths`, from each project its tsconfig compiles (a solution's
+ * references included, the first to map a pattern winning), with each
+ * substitution made repository-relative from the directory TypeScript reads it
+ * from: baseUrl, or the tsconfig that sets `paths`. projects are absolute
+ * tsconfig paths; ts is TypeScript's compiler API.
+ */
+export function tsconfigPaths(ts, root, projects) {
+  const paths = {}
+  const host = { ...ts.sys, onUnRecoverableConfigFileDiagnostic: () => {} }
+  for (const tsconfig of projects) {
+    if (!existsSync(tsconfig)) continue
+    const options = ts.getParsedCommandLineOfConfigFile(tsconfig, {}, host)?.options
+    if (!options?.paths) continue
+    const base = options.baseUrl ?? options.pathsBasePath ?? posix.dirname(tsconfig)
+    for (const [pattern, substitutions] of Object.entries(options.paths)) {
+      paths[pattern] ??= substitutions.map((s) => rel(root, posix.resolve(base, s)))
+    }
+  }
+  return paths
 }

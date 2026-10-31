@@ -118,7 +118,17 @@ const jsToSource = { ".js": [".ts", ".tsx", ".vibe"], ".jsx": [".tsx"], ".mjs": 
  */
 export function resolveRelative(from, specifier, files) {
   if (!specifier.startsWith(".")) return undefined
-  const target = posix.normalize(posix.join(posix.dirname(from), specifier))
+  return resolveFile(posix.normalize(posix.join(posix.dirname(from), specifier)), files)
+}
+
+/**
+ * The repository-relative file among files that target, a repository-relative
+ * path as a specifier spells it, names: with its own source extension or
+ * another (the module may have moved between .ts and .vibe), a JavaScript
+ * extension standing for its source, or none, the file or its directory's
+ * index. Or undefined.
+ */
+export function resolveFile(target, files) {
   const ext = posix.extname(target)
   const candidates = []
   if (sourceExtensions.includes(ext)) {
@@ -132,6 +142,37 @@ export function resolveRelative(from, specifier, files) {
     candidates.push(...sourceExtensions.map((e) => target + e), ...sourceExtensions.map((e) => target + "/index" + e), target)
   }
   return candidates.map((candidate) => posix.normalize(candidate)).find((candidate) => files.has(candidate))
+}
+
+/**
+ * The repository-relative file a `paths` alias names, `~/main` or
+ * `@app/config`, as TypeScript resolves it, or undefined. paths maps each
+ * pattern, with at most one `*`, to its substitutions, repository-relative
+ * paths with the same `*`, as tsconfigPaths gives them: a pattern without `*`
+ * that equals the specifier wins, else the matching pattern with the longest
+ * prefix, and its substitutions are tried in order (TypeScript's
+ * tryLoadModuleUsingPaths).
+ */
+export function resolveAlias(specifier, paths, files) {
+  if (!paths || specifier.startsWith(".")) return undefined
+  let best = paths[specifier] && !specifier.includes("*") ? { substitutions: paths[specifier], matched: "" } : undefined
+  if (!best) {
+    for (const [pattern, substitutions] of Object.entries(paths)) {
+      const star = pattern.indexOf("*")
+      if (star < 0) continue
+      const prefix = pattern.slice(0, star)
+      const suffix = pattern.slice(star + 1)
+      if (specifier.length < prefix.length + suffix.length || !specifier.startsWith(prefix) || !specifier.endsWith(suffix)) continue
+      if (!best || prefix.length > best.prefix.length) best = { substitutions, prefix, matched: specifier.slice(prefix.length, specifier.length - suffix.length) }
+    }
+  }
+  if (!best) return undefined
+  for (const substitution of best.substitutions) {
+    // As TypeScript does, an empty match leaves the substitution as written, `*` and all.
+    const found = resolveFile(posix.normalize(best.matched ? substitution.replace("*", best.matched) : substitution), files)
+    if (found) return found
+  }
+  return undefined
 }
 
 /** Replaces the specifiers at the given offsets; edits are { start, end, text }. */

@@ -1,0 +1,39 @@
+{
+  "key": "migrate-flow:path-alias-dependency-inventory",
+  "repo": "t3code",
+  "package": "apps/web",
+  "note": "apps/web/src/browser/BrowserProfileReporter.ts had imports: [] despite five first-party ~/ imports (drive-t3code-apps 21:00Z)",
+  "files": {
+    "tsconfig.base.json": {
+      "compilerOptions": {
+        "strict": true,
+        "moduleResolution": "NodeNext",
+        "module": "NodeNext"
+      }
+    },
+    "apps/web/package.json": {
+      "name": "@t3tools/web",
+      "type": "module"
+    },
+    "apps/web/tsconfig.json": "{\n  \"extends\": \"../../tsconfig.base.json\",\n  \"compilerOptions\": {\n    \"module\": \"Preserve\",\n    \"moduleResolution\": \"Bundler\",\n    // as t3code writes it\n    \"paths\": {\n      \"~/*\": [\"./src/*\"]\n    }\n  },\n  \"include\": [\"src\"]\n}\n",
+    "apps/web/src/browser/BrowserProfileReporter.ts": "import { useSettings } from \"~/hooks/useSettings\";\nimport { appAtomRegistry } from \"~/rpc/atomRegistry\";\nimport { previewEnvironment } from \"~/state/preview\";\nimport \"~/index.css\";\nexport const reporter = () => [useSettings, appAtomRegistry, previewEnvironment];\n",
+    "apps/web/src/hooks/useSettings.ts": "export const useSettings = 1;\n",
+    "apps/web/src/rpc/atomRegistry.vibe": "export const appAtomRegistry = 2;\n",
+    "apps/web/src/state/preview.ts": "import { useSettings } from \"../hooks/useSettings\";\nexport const previewEnvironment = useSettings;\n"
+  },
+  "paths": {
+    "~/*": [
+      "apps/web/src/*"
+    ]
+  },
+  "imports": {
+    "apps/web/src/browser/BrowserProfileReporter.ts": [
+      "apps/web/src/hooks/useSettings.ts",
+      "apps/web/src/rpc/atomRegistry.vibe",
+      "apps/web/src/state/preview.ts"
+    ],
+    "apps/web/src/state/preview.ts": [
+      "apps/web/src/hooks/useSettings.ts"
+    ]
+  }
+}

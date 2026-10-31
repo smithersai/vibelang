@@ -6,7 +6,7 @@ import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync 
 import { dirname, join, posix, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { assertBaselineSafe } from "./baseline.mjs"
-import { buildInventory, listSources, readCoverage } from "./inventory.mjs"
+import { buildInventory, listSources, readCoverage, tsconfigPaths } from "./inventory.mjs"
 import { defaultLimits, draftPlan, planPrompt, validatePlan } from "./plan.mjs"
 import { fixToFixedPoint, renameBatch, restoreExports, restoreSpecifiers, rewriteExports, rewriteImports, rewriteTotals } from "./codemod.mjs"
 import { splitBatchPlatform } from "./platform.mjs"
@@ -753,7 +753,9 @@ export async function setup(options) {
 
   const files = scopeFiles(config)
   const tokens = await countTokens(files.map((f) => join(t, f)))
-  const inventory = buildInventory({ root: t, packages: config.packages, tokens, coverage: readCoverage(t, config.packages) })
+  // An import through a tsconfig `paths` alias, ~/main, is a dependency edge as ./main is.
+  const aliasPaths = Object.fromEntries(config.packages.map((pkg) => [pkg.dir, tsconfigPaths(ts, t, Wire.projectsOf(ts, join(t, pkg.dir), pkg.tsconfig).map((tsconfig) => join(t, pkg.dir, tsconfig)))]))
+  const inventory = buildInventory({ root: t, packages: config.packages, tokens, coverage: readCoverage(t, config.packages), paths: aliasPaths })
   writeJson(p.inventory, inventory)
 
   // The target's coding agents get the skill, the language server and a check after each edit.
