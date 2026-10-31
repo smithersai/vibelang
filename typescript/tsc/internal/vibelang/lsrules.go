@@ -801,7 +801,7 @@ func (r *ruleCheck) checkMergeAll(call *ast.Node) {
 			}
 			if len(services) > 0 {
 				d := report(r.c, argument, EK4807, messageText(argument, "This layer"), strings.Join(services, " and "), messageText(provider, "another layer"))
-				note(d, "Compose them with wire, which provides each layer's services to the layers that need them.")
+				note(d, "Use Layer.provide or Layer.provideMerge to supply construction dependencies; Layer.mergeAll builds its layers independently.")
 				break
 			}
 		}

@@ -106,6 +106,7 @@ const specTests = [
   "TestFormatContractCommentModules",
   "TestDataCounterpartQuoted",
   "TestAsyncRefactorBridgesQuoted",
+  "TestLayerMergeAdviceQuoted",
   "TestMigrationEffectOperandsQuoted",
   "TestProvideServiceFixScopeQuoted",
   "TestMigrationEffectHeritageQuoted",
