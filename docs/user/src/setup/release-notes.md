@@ -58,6 +58,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Malformed cause tags could crash differential comparisons; they now report an encoding error, including in nested runtime values.
 
+- The migrate flow judged a test runner without Vitest's JSON report by its exit status, so a baseline with failing tests stopped `upgrade-effect`; `--test-report <pattern>` now reads each test's printed line, and the run compares test by test.
+
 - The migrate flow failed a batch on `EK4832` for an exported `Schema.Struct` constant with no type export, which `--fix` must leave because a `schema` declaration would add a public type; `verify` no longer counts it.
 
 - The ESLint configuration the migrate flow writes for `.vibe` files enabled typescript-eslint's recommended rules whatever the repository's Oxlint configuration chose, so a rule the repository turns off, such as foldkit's `no-explicit-any` under `packages/foldkit/src`, failed its lint on migrated files, and the rules it enables never ran on them; the configuration now reads `.oxlintrc.json` on each run and applies its rules and overrides wherever ESLint or typescript-eslint has the rule.

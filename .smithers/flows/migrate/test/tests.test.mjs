@@ -4,7 +4,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { validateIssue } from "../lib/issues.mjs"
-import { compareTests, parseVitestJson, regressionIssue, runTests, tally, withJsonReporter } from "../lib/tests.mjs"
+import { compareTests, parseReport, parseVitestJson, regressionIssue, runTests, tally, withJsonReporter } from "../lib/tests.mjs"
 
 test("withJsonReporter adds Vitest's JSON reporter only to a Vitest command", () => {
   assert.equal(withJsonReporter("pnpm exec vitest run", "/run/v.json"), "pnpm exec vitest run --reporter=default --reporter=json --outputFile.json='/run/v.json'")
@@ -92,6 +92,32 @@ test("a runner without per-test results runs again after a nonzero exit, and the
     assert.equal(failing.code, 3)
     const passing = await runTests({ command: "true", cwd: root, root, jsonFile: join(root, "report.json") })
     assert.equal(passing.rerun, undefined)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test("a runner's printed lines give per-test results through the run's report pattern, so a failing baseline compares test by test", async () => {
+  const pattern = String.raw`^\[[^\]]*\] (?<status>[✓✗↓]) (?<name>.+?)(?: \(\d[\d.]*m?s\))?$`
+  const printed = [
+    "\x1b[32m[ 1/3 ✓ 1 ✗ 0] ✓ Domain > commits (12ms)\x1b[0m",
+    "[ 2/3 ✓ 1 ✗ 1] ✗ Cloud > deploys (3.2s)",
+    "[ 3/3 ✓ 1 ✗ 1] ↓ Cloud > skipped",
+    "  ✗ Cloud > deploys",
+    "noise"
+  ].join("\n")
+  assert.deepEqual(parseReport(printed, pattern), { "Domain > commits": "passed", "Cloud > deploys": "failed", "Cloud > skipped": "skipped" })
+  const root = mkdtempSync(join(tmpdir(), "migrate-report-"))
+  try {
+    writeFileSync(join(root, "out.txt"), printed + "\n")
+    // Exits 1 for the test that needs an account, as alchemy's runner does.
+    const result = await runTests({ command: "cat out.txt; exit 1", report: pattern, cwd: root, root, jsonFile: join(root, "report.json"), log: join(root, "tests.log") })
+    assert.equal(result.code, 1)
+    assert.equal(result.rerun, undefined)
+    assert.deepEqual(result.failed, ["Cloud > deploys"])
+    assert.equal(compareTests(result, result).ok, true)
+    const silent = await runTests({ command: "exit 2", report: pattern, cwd: root, root, jsonFile: join(root, "report.json") })
+    assert.equal(silent.tests, null)
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

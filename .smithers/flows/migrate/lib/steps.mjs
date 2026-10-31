@@ -131,7 +131,7 @@ export function makeConfig(options) {
     version: 1,
     target,
     packages,
-    test: { command: options.test, cwd: options.testCwd ?? "." },
+    test: { command: options.test, cwd: options.testCwd ?? ".", ...(options.testReport ? { report: options.testReport } : {}) },
     install: options.install ?? null,
     wire: options.wire !== false,
     toolchain: options.toolchain ? { kind: "staged", dir: resolve(options.toolchain) } : { kind: "npm", version: options.vibelangVersion },
@@ -225,7 +225,7 @@ export async function upgradeEffect(options) {
 
   const manager = Wire.packageManager(readdirSync(t))
   const install = (name) => must(config.install ?? Wire.installCommand(manager), { cwd: t, log: join(logs, `${name}-install.log`) })
-  const testRun = (name) => runTests({ command: config.test.command, cwd: join(t, config.test.cwd), root: t, jsonFile: join(p.baseline, `${name}.vitest.json`), log: join(logs, `${name}-tests.log`) })
+  const testRun = (name) => runTests({ command: config.test.command, report: config.test.report, cwd: join(t, config.test.cwd), root: t, jsonFile: join(p.baseline, `${name}.vitest.json`), log: join(logs, `${name}-tests.log`) })
   // The target's own tests first, as it is: what fails here fails before the migration touches anything.
   await install("upstream")
   const before = await testRun("upstream")
@@ -463,7 +463,7 @@ export async function setup(options) {
 
   // The baseline every batch is compared with: the tests with VibeLang set up and nothing migrated.
   const tests = wired
-    ? await runTests({ command: config.test.command, cwd: join(t, config.test.cwd), root: t, jsonFile: join(p.baseline, "baseline.vitest.json"), log: join(logs, "baseline-tests.log") })
+    ? await runTests({ command: config.test.command, report: config.test.report, cwd: join(t, config.test.cwd), root: t, jsonFile: join(p.baseline, "baseline.vitest.json"), log: join(logs, "baseline-tests.log") })
     : { ...upgrade.tests, tests: upstream.tests }
   writeJson(join(p.baseline, "tests.json"), { code: tests.code, tests: tests.tests })
   const wiring = wired ? compareTests(upstream, tests) : null
@@ -661,7 +661,7 @@ export async function verify(options) {
 
   const checked = await compile({ run: options.run, batch: b, noRecord: true })
   const baselineTests = readJson(join(p.baseline, "tests.json"))
-  const tests = await runTests({ command: config.test.command, cwd: join(t, config.test.cwd), root: t, jsonFile: join(p.batch(b), "vitest.json"), log: join(logs, "tests.log") })
+  const tests = await runTests({ command: config.test.command, report: config.test.report, cwd: join(t, config.test.cwd), root: t, jsonFile: join(p.batch(b), "vitest.json"), log: join(logs, "tests.log") })
   const testDiff = compareTests(baselineTests, tests)
   const ts = typeScriptOf(config)
   const declarations = {}

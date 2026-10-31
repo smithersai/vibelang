@@ -38,6 +38,7 @@ async function main(argv) {
     sources: many(options.source),
     test: options.test,
     testCwd: options["test-cwd"],
+    testReport: options["test-report"],
     toolchain: options.toolchain,
     vibelangVersion: options["vibelang-version"],
     tsconfig: options.tsconfig,

@@ -109,6 +109,7 @@ test("makeConfig requires the test command and a toolchain, and finds the build 
     const config = makeConfig({ target: root, packages: ["pkg"], test: "pnpm test", toolchain: "/t" })
     assert.deepEqual(config.packages, [{ dir: "pkg", tsconfig: "tsconfig.json", dtsTsconfig: "tsconfig.build.json", sources: ["src"] }])
     assert.deepEqual(config.toolchain, { kind: "staged", dir: "/t" })
+    assert.equal(makeConfig({ target: root, test: "bun alchemy-test", testReport: "(?<status>.) (?<name>.+)", toolchain: "/t" }).test.report, "(?<status>.) (?<name>.+)")
     assert.deepEqual(config.limits, { maxFiles: 6, maxLines: 900 })
     assert.deepEqual([config.bookmark, config.base], ["vibe", null])
     assert.deepEqual([makeConfig({ target: root, test: "t", toolchain: "/t", bookmark: "b", base: "dev" })].map((c) => [c.bookmark, c.base]), [["b", "dev"]])

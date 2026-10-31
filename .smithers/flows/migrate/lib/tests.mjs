@@ -1,5 +1,6 @@
 // The target's tests, run with its own command. A Vitest command also writes
 // Vitest's JSON report, so each test is compared by name with the baseline;
+// so is a command whose printed lines the run's --test-report pattern reads;
 // any other command is compared by its exit status alone.
 import { existsSync } from "node:fs"
 import { posix } from "node:path"
@@ -42,6 +43,28 @@ export function parseVitestJson(report, root) {
   return tests
 }
 
+/**
+ * Reads the per-test lines a runner prints into one status per test name:
+ * pattern, a regular expression, matches one test's line (color codes
+ * removed) with the named groups name and status. A status ✓, ✔, pass,
+ * passed or ok is passed; ✗, ✘, ×, fail, failed or not ok is failed; any
+ * other is skipped. alchemy's runner prints
+ * `[ 3/9 ✓ 2 ✗ 1] ✓ Domain > commits (12ms)`, which
+ * `^\[[^\]]*\] (?<status>[✓✗↓]) (?<name>.+?)(?: \(\d[\d.]*m?s\))?$` reads.
+ */
+export function parseReport(output, pattern) {
+  const line = new RegExp(pattern)
+  const tests = {}
+  for (const raw of output.split("\n")) {
+    const m = line.exec(raw.replace(/\x1b\[[0-9;]*m/g, "").replace(/\r$/, ""))
+    const name = m?.groups?.name?.trim()
+    if (!name) continue
+    const status = (m.groups.status ?? "").trim()
+    tests[name] = /^(?:✓|✔|pass|passed|ok)$/i.test(status) ? "passed" : /^(?:✗|✘|×|fail|failed|not ok)$/i.test(status) ? "failed" : "skipped"
+  }
+  return tests
+}
+
 /** Counts of a test map, and the failing tests' names. */
 export function tally(tests) {
   const names = Object.keys(tests)
@@ -55,15 +78,18 @@ export function tally(tests) {
 }
 
 /**
- * Runs the tests and reads what they report. A run with no per-test report is
+ * Runs the tests and reads what they report: Vitest's JSON, or the lines the
+ * report pattern reads (parseReport). A run with no per-test report is
  * judged by its exit status alone, which cannot tell a flaky test from a
  * failing one, so a nonzero exit runs the tests once more and the second
  * run's status counts; rerun holds the first exit status.
  */
-export async function runTests({ command, cwd, root, jsonFile, log, env }) {
+export async function runTests({ command, report, cwd, root, jsonFile, log, env }) {
   const once = async (log) => {
     const result = await run(withJsonReporter(command, jsonFile), { cwd, log, env })
-    return { result, tests: isVitest(command) && existsSync(jsonFile) ? parseVitestJson(readJson(jsonFile), root) : null }
+    if (isVitest(command) && existsSync(jsonFile)) return { result, tests: parseVitestJson(readJson(jsonFile), root) }
+    const printed = report ? parseReport(result.stdout + result.stderr, report) : {}
+    return { result, tests: Object.keys(printed).length ? printed : null }
   }
   let { result, tests } = await once(log)
   let rerun
