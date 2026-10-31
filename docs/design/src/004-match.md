@@ -596,6 +596,7 @@ VibeLang adds these checks to TC39's proposal; `EK4701` is the exhaustiveness ch
 | a class pattern naming a `data` declaration or variant, a `schema`, or a directly constructed `Context.Reference`; a call-only callee whose return type fails detail 94, or a callee with neither signature (services use `EK3004`; [Class patterns](#class-patterns)) | `EK0702` |
 | an ordinary-class extractor without an own matcher (detail 100) | `EK0704` |
 | lint warning: an extractor whose argument count can never match its pattern's list ([Class patterns](#class-patterns)) | `EK0703` |
+| a `return`, `break` or `continue` that leaves an `async match` ([Async jumps](#async-match-jumps)) | `EK0706` |
 
 `EK4701` applies equally to `match` and `async match`, which have the same arms. The check only reports errors. It never changes what runs: a `match` that passes the check compiles to the same tests as one that doesn't need it.
 
@@ -834,6 +835,59 @@ function bit(b: boolean) {
 <a id="async-match"></a>
 
 [AsyncMatchExpression](900-appendices.md#asyncmatchexpression) is a primary expression; no line terminator may separate `async` and `match`. `async match (s) { … }` has the async-function behavior `(async () => match (s) { … })()`: subject evaluation, tests and the selected arm run inside the async function. `await` is allowed there; a thrown exception, including the no-match `TypeError`, rejects the resulting `Promise`. The explicit [VIP-7 reconciliation](../vips/tc39-pattern-matching/README.md#reconciliations-with-the-drafts-text) gives the subject, tests and arms `[~Yield, +Await, ~Return, ~Effect]` contexts, even inside a plain function. Under VIP-7, a `return` in it, and a `break` or `continue` whose target is outside it, are syntax errors. Nested source callables retain their own grammar contexts.
+
+<a id="async-match-jumps"></a>`EK0706` reports a jump out of an `async match`: a `return` that belongs to the `async match`, or a `break` or `continue` whose target is outside it. The rule covers the subject, patterns, guards and arm expressions, including a `do` expression in them. A `return` in a nested function belongs to that function, and a `break` or `continue` whose target is inside the `async match` follows the ordinary rules. Ownership and targets come from the source, not from the generated async function; a `break` or `continue` with no target anywhere keeps TypeScript's own error. No quick fix rewrites the jump, because no jump can cross the `Promise` boundary.
+
+```vibe es
+// compiler-gap: pending VIP-7
+function outward(xs: number[]) {
+  for (const x of xs) {
+    const early = async match (x) { when 0: do { return 1 }; default: 0; } // EK0706: the return belongs to the async match
+    const stop = async match (x) { when 0: do { break }; default: 0; } // EK0706: the loop is outside the async match
+  }
+}
+function inward() {
+  return async match (0) {
+    when 0: (() => {
+      let value = 0
+      local: for (let i = 0; i < 3; i++) {
+        if (i === 0) continue local
+        value = i
+        break local
+      }
+      return value
+    })();
+    default: 0;
+  } // ok: the arrow owns its return, and the loop is inside it
+}
+```
+
+The rejected jumps have no counterpart. `inward` has the ordinary async counterpart:
+
+```ts effect
+import { Effect } from "effect"
+
+function inward() {
+  return (async () => {
+    const subject = 0
+    if (subject === 0) {
+      return (() => {
+        let value = 0
+        local: for (let i = 0; i < 3; i++) {
+          if (i === 0) continue local
+          value = i
+          break local
+        }
+        return value
+      })()
+    }
+    return 0
+  })()
+}
+const inwardExit = await Effect.runPromiseExit(Effect.promise(inward)) // Success(1)
+```
+
+`asyncLabel` shows the async-function behavior:
 
 ```vibe es
 // compiler-gap: pending VIP-7
