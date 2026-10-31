@@ -157,13 +157,13 @@ const targets = {
     [bun, node]
   ),
   tokens: check("Token counts in the docs match a fresh count.", "bun docs/tools/token-counts.ts --check", [], [bun]),
-  // The Go cache the compiler and Go test targets fill: with Go's default
-  // cache, this check compiled the whole module a second time.
+  // The executable is source-keyed; generation still reads the entire tree.
   forms: check(
     "The forms table and its decisions match a fresh generation.",
-    "GOCACHE=$HOME/.cache/go-build-smthrs bash scripts/check-forms-table.sh",
-    [],
-    [go, bun, node]
+    "FORMS_BINARY=$PWD/typescript/built/local/vibelang-forms " +
+      "GOCACHE=$HOME/.cache/go-build-smthrs bash scripts/check-forms-table.sh",
+    [Typescript["forms-generator"]],
+    [bun, node]
   ),
   "docs-tools": check(
     "docs/tools' bun tests, with cached specification links and without site contrast.",

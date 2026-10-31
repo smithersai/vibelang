@@ -21,6 +21,8 @@
 #
 # Environment:
 #   FORMS_NODE_MODULES   effect and @effect/* to read (default docs/tools/node_modules, pinned by docs/tools/bun.lock)
+#   FORMS_BINARY       absolute path to a prepared cmd/vibelang-forms executable
+#                      (the graph keys it on compiler sources); unset uses go run
 #   VIBELANG_FORMS_EXPORT  a file that defines vibelang.FormsOfType, mapped into internal/vibelang with
 #                        go build -overlay, for a tree that does not have it yet
 set -euo pipefail
@@ -40,6 +42,17 @@ esac
 tmp="$(mktemp -d "${TMPDIR:-/tmp}/vibelang-forms.XXXXXX")"
 trap 'rm -rf "$tmp"' EXIT
 
+if [ -n "${FORMS_BINARY:-}" ]; then
+  if [ -n "${VIBELANG_FORMS_EXPORT:-}" ]; then
+    echo "check-forms-table: FORMS_BINARY cannot be used with VIBELANG_FORMS_EXPORT; unset it to rebuild with the overlay" >&2
+    exit 2
+  fi
+  if [[ "$FORMS_BINARY" != /* ]] || [ ! -x "$FORMS_BINARY" ] || [ -d "$FORMS_BINARY" ]; then
+    echo "check-forms-table: FORMS_BINARY must name an absolute executable file: $FORMS_BINARY" >&2
+    exit 2
+  fi
+fi
+
 overlay=()
 if [ -z "${VIBELANG_FORMS_EXPORT:-}" ] && ! grep -qs '^func FormsOfType' "$root"/typescript/tsc/internal/vibelang/*.go; then
   echo "check-forms-table: internal/vibelang does not define FormsOfType, which cmd/vibelang-forms needs; set VIBELANG_FORMS_EXPORT to a file that does" >&2
@@ -58,7 +71,11 @@ gate=()
 if [ "$write" = 1 ]; then
   gate=(-previous "$decisions" -approved "$approved")
 fi
-(cd "$root/typescript/tsc" && CGO_ENABLED=0 go run -trimpath ${overlay[@]+"${overlay[@]}"} ./cmd/vibelang-forms -repo "$root" ${modules[@]+"${modules[@]}"} \
+generator=(go run -trimpath ${overlay[@]+"${overlay[@]}"} ./cmd/vibelang-forms)
+if [ -n "${FORMS_BINARY:-}" ]; then
+  generator=("$FORMS_BINARY")
+fi
+(cd "$root/typescript/tsc" && CGO_ENABLED=0 "${generator[@]}" -repo "$root" ${modules[@]+"${modules[@]}"} \
   -o "$tmp/forms_table.jsonl" -decisions "$tmp/forms_decisions.txt" ${gate[@]+"${gate[@]}"})
 
 if [ "$write" = 1 ]; then

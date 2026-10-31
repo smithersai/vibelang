@@ -49,7 +49,7 @@ flags, and saves the cache as `go-<commit>`. The pre-gate restores the newest
 cache is content-addressed, so the two merge, and a run before the first `go-`
 save, or after GitHub evicts every `go-` cache, starts from the day-old build. With one cache saved a day, the hosted `//typescript:compiler` build
 took 41 s an hour after the save and 393 s by the next morning (2026-10-31).
-Every Go target, `//:forms` included, uses `GOCACHE=$HOME/.cache/go-build-smthrs`,
+Every Go build and test target, including `//typescript:forms-generator`, uses `GOCACHE=$HOME/.cache/go-build-smthrs`,
 so one cache serves them all. `scripts/go-cache.test.mjs` fails when a target
 compiles a package the script misses, or when the two workflows' cache paths
 differ.
@@ -79,6 +79,35 @@ Run only the bounded hang validation with:
 sh scripts/ci.sh //:go-vibelangfuzz-hangs --jobs 8
 ```
 
+## Forms-table checks
+
+`//typescript:forms-generator` builds `typescript/built/local/vibelang-forms`
+from the compiler build inputs, `go.work`, and the Go launcher. The executable
+is cached separately from `//:forms`: documentation and test edits still rerun
+the check without entering Go build admission again. Compiler source and module
+changes rebuild the executable.
+
+`//:forms` passes that executable to `scripts/check-forms-table.sh` through the
+absolute `FORMS_BINARY` path. Every check freshly generates the table and the
+repository decision snapshot and checks the data-method declarations; those
+results still depend on the whole tree, including the pinned package lockfiles.
+The executable cache never replaces the table comparison or decision approvals.
+
+A standalone `bash scripts/check-forms-table.sh` retains `go run`. To use a
+prepared executable for local regeneration:
+
+```sh
+.smithers/node_modules/.bin/smthrs build //typescript:forms-generator --jobs 8
+FORMS_BINARY="$PWD/typescript/built/local/vibelang-forms" \
+  bash scripts/check-forms-table.sh --write
+```
+
+`--write` still requires a line in `forms_decisions_approved.txt` for each moved
+decision. An invalid `FORMS_BINARY` fails immediately. It cannot be combined
+with `VIBELANG_FORMS_EXPORT`: unset `FORMS_BINARY` to compile an overlay with
+`go run`. The graph manages executable freshness; when supplying a path by
+hand, rebuild it after changing compiler sources.
+
 ## Packages
 
 ```text
@@ -90,6 +119,7 @@ sh scripts/ci.sh //:go-vibelangfuzz-hangs --jobs 8
   :vibelang-files ...           Filegroups: one Go package's tests and testdata
 //typescript
   :compiler                     go build ./cmd/tsc -> typescript/built/local/tsc
+  :forms-generator              cached go build ./cmd/vibelang-forms -> typescript/built/local/vibelang-forms
 //typescript/vibelang
   :<case>                       harness.mjs <case>, one target per case (809)
   :lsp-smoke                    headless language-server editor checks
@@ -117,6 +147,7 @@ sh scripts/ci.sh //:go-vibelangfuzz-hangs --jobs 8
                     ├─► :lsp-smoke ◄─ :runtime-dist
                     └─► :snippets, :docs-tools
 :tree ─► :release :snippets :tokens :forms :docs-tools :docs-check :go-vibelang*
+:srcs ─► :forms-generator ─► :forms
 :design-files, :srcs, :vibelang-files, :vibelangfuzz-files ─► :spec-tests
 ```
 

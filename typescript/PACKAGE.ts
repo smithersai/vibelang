@@ -17,7 +17,20 @@ const compiler = S.Shell.Build({
   timeout: "30m"
 })
 
+// Generation reads declarations and .vibe files at execution time, but this
+// executable reads only compiler build inputs. Docs and tests must not rebuild it.
+const formsGenerator = S.Shell.Build({
+  summary: "Build the forms-table generator independently of its data inputs.",
+  shell: "cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 " +
+    "go build -p 8 -trimpath -o ../built/local/vibelang-forms ./cmd/vibelang-forms",
+  data: [Tsc.srcs, S.file("go.work")],
+  tools: [S.Host.bin("go")],
+  outFiles: ["built/local/vibelang-forms"],
+  sandbox: "none",
+  timeout: "30m"
+})
+
 /** Every file in typescript/ outside its subpackages, for the repository-wide checks. */
 const tree = S.Filegroup({ srcs: [...S.glob(["**"])] })
 
-export const Package = S.Package({ targets: { compiler, tree } })
+export const Package = S.Package({ targets: { compiler, tree, "forms-generator": formsGenerator } })

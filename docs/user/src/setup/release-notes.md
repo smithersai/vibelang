@@ -192,6 +192,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Some unary or multiline top-level `await` expressions compiled into output incompatible with the selected target or CommonJS host; they now report `TS1378` or `TS1309`.
 
+- A contributor changing only documentation or tests could wait for another Go build slot during the forms-table check; the build graph now reuses a generator keyed on compiler sources while still freshly checking the table, decision snapshot and data-method declarations.
+
 - In a `.vibe` file a member of an interface or an object type was readonly to the checker, so `options.minimum = 0` was `TS2540`, while its declaration printed the member writable; such a member is now writable unless written `readonly`, as in TypeScript, and the checker and the declaration agree. The fields of `data`, `schema` and `error` bodies keep their readonly default, and `mutable` is still accepted. The migrate flow's codemod no longer writes `mutable`.
 
 
