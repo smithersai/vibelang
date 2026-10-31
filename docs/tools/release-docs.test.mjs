@@ -311,7 +311,7 @@ test("current release notes describe user fixes without internal CI or fuzz book
   assert.doesNotMatch(publicationNotes, /Compiler\s+validation\s+treated\s+an?\s+error\s+name|CI\s+reused\s+an?\s+older/i)
   const bullets = bugs.split("\n").filter(line => line.startsWith("- "))
   assert.equal(new Set(bullets).size, bullets.length, "each user-facing fix appears once")
-  for (const symptom of ["Editor parsing rejected `for try` `Stream` loops", "A tool that reads a `.vibe` file through the TypeScript mapper"]) {
+  for (const symptom of ["Editor parsing rejected `for try` `Stream` loops", "A tool that reads a `.vibe` file through the TypeScript mapper", "compiler output with Windows line endings"]) {
     assert.equal(bullets.filter(line => line.includes(symptom)).length, 1, "retain the user fix once: " + symptom)
   }
 })

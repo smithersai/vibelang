@@ -294,7 +294,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The migrate flow missed directory imports such as `./runtime/` and could rewrite one as `./runtime/.vibe`; it now keeps the selected index module and writes `./runtime/index.vibe`.
 
-- Migration checks could miss errors and repair notes in compiler output with Windows line endings, or mistake a normal error exit for a compiler crash; they now read those diagnostics and notes correctly.
+- The migrate flow could miss errors and repair notes in compiler output with Windows line endings, or mistake a normal error exit for a compiler crash; it now reads those diagnostics and notes correctly.
 
 
 - The tooling specification linked to private numbered decisions for configuration, diagnostics, and lint rules; it now links to the accepted public VIP amendments.
