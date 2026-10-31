@@ -154,6 +154,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - `service S extends Base { }` and `service S implements I { }` failed with a parse error, `TS1005: '{' expected`; they now report `EK0904`, which says a service's identity is its key and to compose shapes with types.
 
+- The specification's list of where `try` differs from `await` compared `for try` only with an assignment head, though `for await` also accepts `var`, `using` and `await using` heads. The row now says `for try` rejects every head other than a `const` or `let` declaration (`EK2005`).
+
 - A migrated package whose script runs a program under Bun, such as `bun alchemy-test`, failed with `Export named ... not found` on each `.vibe` module, because setup wrote only the `[test]` preload, which `bun test` alone reads; setup now also writes the top-level `preload` in that package's `bunfig.toml`.
 
 - A `Bun.build` script in a project the migrate flow moved failed to bundle any `.vibe` module, because setup wired only `vibelang/bun`, a runtime plugin that bundles do not use; setup now adds `vibelang()` from `vibelang-unplugin/bun` to each such script and warns about a build it can't edit.

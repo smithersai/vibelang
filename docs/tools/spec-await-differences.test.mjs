@@ -61,3 +61,13 @@ console.log("native operands, statement, assignment head and handled result pass
   const result = run(source)
   assert.equal(result.status, 0, result.stderr)
 })
+
+test("the for try head row names every head for await accepts and for try rejects", () => {
+  const row = running().split("\n").find(line => line.startsWith("| `for await (x of values)`"))
+  assert.ok(row, "the for try head row")
+  assert.match(row, /`for await` accepts `var`, `using` and `await using` heads/)
+  assert.match(row, /`for try` with any head other than a `const` or `let` declaration is `EK2005`/)
+  for (const head of ["var x", "using x", "await using x"]) {
+    assert.doesNotThrow(() => new Function(`return async function f(y) { for await (${head} of y) {} }`), head)
+  }
+})
