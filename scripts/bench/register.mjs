@@ -49,9 +49,17 @@ for (let i = 2; i < process.argv.length; i += 2) {
     console.error(usage)
     process.exit(2)
   }
-  options[name] = typeof options[name] === "number" ? Number(value) : path.resolve(value)
+  options[name] = typeof options[name] === "number" ? (value.trim() === "" ? NaN : Number(value)) : path.resolve(value)
 }
-if (!(options.packages >= 2 && options.modules >= 1 && options.runs >= 1)) {
+for (const [name, minimum] of [["packages", 2], ["modules", 1], ["runs", 1]]) {
+  if (!Number.isSafeInteger(options[name]) || options[name] < minimum) {
+    console.error(`register.mjs: --${name} must be a safe integer >= ${minimum}`)
+    console.error(usage)
+    process.exit(2)
+  }
+}
+if (!Number.isFinite(options.budget) || options.budget < 0) {
+  console.error("register.mjs: --budget must be a finite nonnegative number")
   console.error(usage)
   process.exit(2)
 }

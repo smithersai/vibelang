@@ -1522,6 +1522,8 @@ node scripts/bench/register.mjs --runs 3
 
 It writes 12 packages of 24 `.vibe` modules, each beside an Effect TypeScript module, where each package calls the one below it through its package name, and times one `vibelang -p --noEmit` of the top package (`check`, every package checked once), a one-module package's compile (`start`), and `node --import vibelang/register` with an empty cache (`cold`) and again with that cache (`warm`). It fails when (cold - warm - 12 * start) / (check - start), the hook's compile time in checks of the workspace, exceeds 4.5.
 
+`--packages` must be a safe integer of at least `2`; `--modules` and `--runs` must be safe integers of at least `1`. `--budget` must be finite and nonnegative; `0` is allowed. Invalid numeric options exit with status `2` before setup creates the output directory, so a fractional count cannot generate a mismatched workspace and `NaN` cannot silently disable the budget check.
+
 Measured 2026-10-28 on the build server under a load of 22 to 33 (medians of 3 runs, two rounds each):
 
 | | cold | warm | ratio |

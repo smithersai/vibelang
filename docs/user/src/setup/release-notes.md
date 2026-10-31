@@ -898,6 +898,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Oxlint suppression comments stopped working when the migrate flow checked a converted file through ESLint; the generated parser now honors the same disable/enable scopes and rule aliases while preserving source lines.
 
 - The LSP benchmark counted declaration sidecars and other generated files as extra modules, then failed to open nonexistent source files; it now selects only the project's numbered source files.
+
+- The loader benchmark accepted fractional or infinite workload counts and silently disabled its timing guard with `--budget NaN`; it now reports invalid numeric options before creating a workspace.
 - Editor smoke validation rejected the safe `catch (cause: Cause)` migration; it now checks the replacement with `try exit(effect { ... })` and verifies that applying it adds no error.
 
 - The migrate flow planned a tool's config that uses Effect, such as `graphql.config.ts`, for `.vibe`, and the tool, which finds its config by name, then failed with `config file not found`. A `*.config.ts` file now stays `.ts`, and a plan that names one is refused.
