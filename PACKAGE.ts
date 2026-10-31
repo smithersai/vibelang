@@ -56,6 +56,7 @@ const goVibelang = (summary: string, shell: string, data: ReadonlyArray<unknown>
 // so either specification or comparator edits rerun them before landing.
 const specTests = [
   "TestInferredEffectDefaultsQuoted",
+  "TestAsyncCleanupRefactorQuoted",
   "TestDoLoopHeadQuoted",
   "TestSidecarEscapesQuoted",
   "TestSidecarSourceIdentityQuoted",

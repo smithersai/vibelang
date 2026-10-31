@@ -216,6 +216,8 @@ npx vibelang -p tsconfig.json --fix --noEmit
 
 A service-class fix requires a literal key. A dynamic key stays as written, including its evaluation during class initialization.
 
+Async conversion is not offered for a body containing a JavaScript `try` statement, `using` or `await using`. Rewrite its handlers and cleanup explicitly with Effect before converting; nested functions keep their own completion and disposal rules.
+
 Async conversion requires each `await` operand to contain no further `await` from the same function. Simplify code such as `return await await input` before converting; nested functions keep their own `await` expressions.
 
 When a fix removes the last value imported from another module, it keeps a side-effect import in the same position. Removing an unused binding must not remove that module's initialization.

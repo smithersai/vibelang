@@ -195,14 +195,16 @@ func (rc *refactorContext) asyncRefactors(fn *ast.Node) []*ls.CodeAction {
 			nested = nested || containsAwait(n.Expression())
 			return false
 		}
-		if n.Kind == ast.KindForOfStatement && n.AsForInOrOfStatement().AwaitModifier != nil {
+		if n.Kind == ast.KindForOfStatement && n.AsForInOrOfStatement().AwaitModifier != nil ||
+			n.Kind == ast.KindTryStatement ||
+			n.Kind == ast.KindVariableDeclarationList && n.Flags&ast.NodeFlagsUsing != 0 {
 			nested = true
 		}
 		return n.ForEachChild(visit)
 	}
 	visit(fn.Body())
 	if nested {
-		return nil // for await, or an await inside an awaited expression
+		return nil // JavaScript completion/disposal and nested awaits need a separate rewrite.
 	}
 	text := rc.file.Text()
 	var asyncModifier *ast.Node
