@@ -929,6 +929,7 @@ typescript/vibelang/cases/declaration-identity-inferred-modules/main.vibe:12:40 
 typescript/vibelang/cases/declaration-identity-inferred-modules/main.vibe:16:22 lambda plain fallback
 typescript/vibelang/cases/declaration-identity-inferred-modules/main.vibe:6:48 lambda plain table
 typescript/vibelang/cases/declaration-identity-kept-import/main.vibe:6:21 lambda effectFn annotation
+typescript/vibelang/cases/declaration-identity-namespace-imports/used.vibe:5:75 lambda plain table
 typescript/vibelang/cases/declaration-linked-esm.fail/main.vibe:3:19 lambda choice fallback
 typescript/vibelang/cases/declaration-linked-esm/main.vibe:2:19 lambda choice fallback
 typescript/vibelang/cases/declaration-linked-esm/main.vibe:3:25 lambda choice fallback
