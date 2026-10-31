@@ -152,18 +152,23 @@ export function splitPlatform(text, file, ts, { globals = [] } = {}) {
  * Returns { splits, refused }: the files written, and why each other file
  * keeps its platform code.
  */
-export function splitBatchPlatform(root, files, ts, { globalsOf = () => [] } = {}) {
+export function splitBatchPlatform(root, files, ts, {
+  globalsOf = () => [],
+  exists = file => existsSync(join(root, file)),
+  read = file => readFileSync(join(root, file), "utf8"),
+  write = (file, text) => writeFileSync(join(root, file), text)
+} = {}) {
   const splits = []
   const refused = []
   for (const file of files) {
     if (!/\.m?ts$/.test(file) || /\.d\.m?ts$/.test(file)) continue
     const sibling = platformPath(file)
-    if (existsSync(join(root, sibling))) { refused.push(`${file}: ${sibling} already exists`); continue }
-    const result = splitPlatform(readFileSync(join(root, file), "utf8"), file, ts, { globals: globalsOf(file) })
+    if (exists(sibling)) { refused.push(`${file}: ${sibling} already exists`); continue }
+    const result = splitPlatform(read(file), file, ts, { globals: globalsOf(file) })
     if (!result) continue
     if (result.refused) { refused.push(result.refused); continue }
-    writeFileSync(join(root, file), result.module)
-    writeFileSync(join(root, sibling), result.platform)
+    write(file, result.module)
+    write(sibling, result.platform)
     splits.push({ file, platform: sibling, moved: result.moved, wrapped: result.wrapped })
   }
   return { splits, refused }

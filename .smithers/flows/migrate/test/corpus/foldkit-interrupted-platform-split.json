@@ -1,0 +1,4 @@
+{
+  "key": "migrate:durable-platform-split",
+  "source": "import { sep } from \"node:path\"\nexport function delimiter(): string { return sep }\nexport const value = 1\n"
+}

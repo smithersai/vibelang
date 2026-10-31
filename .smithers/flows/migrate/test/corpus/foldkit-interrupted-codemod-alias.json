@@ -1,0 +1,17 @@
+{
+  "specifier": "@/value.js",
+  "tsconfig": {
+    "compilerOptions": {
+      "baseUrl": ".",
+      "paths": {
+        "@/*": [
+          "src/*"
+        ]
+      }
+    },
+    "include": [
+      "src/**/*",
+      "test/**/*"
+    ]
+  }
+}

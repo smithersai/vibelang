@@ -64,15 +64,15 @@ export function pathReadDeferrals(root, modules, files) {
 
 const escape = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 
-export function rewriteReferences(root, renames, files) {
+export function rewriteReferences(root, renames, files, { read = file => existsSync(join(root,file)) ? readFileSync(join(root,file),"utf8") : null, write = (file,text) => writeFileSync(join(root,file),text) } = {}) {
   const moved = new Set(renames.map(r => r.from))
   const all = new Set(files.map(f => f.endsWith(".vibe") && moved.has(f.replace(/\.vibe$/, ".ts")) ? f.replace(/\.vibe$/, ".ts") : f))
   const edits = []
   for (const file of files) {
     if (!eligible.test(file) || isDeclarationFile(file) || /(^|\/)node_modules\//.test(file)) continue
     const path = join(root, file)
-    if (!existsSync(path)) continue
-    const source = readFileSync(path, "utf8")
+    const source = read(file)
+    if (source === null) continue
     const imports = parseImports(source)
     const comments = commentsOf(file,source)
     const changes = []
@@ -108,7 +108,7 @@ export function rewriteReferences(root, renames, files) {
     })
     let next = source
     for (const edit of changes.sort((a,b)=>b.start-a.start)) next = next.slice(0,edit.start)+edit.text+next.slice(edit.end)
-    if (next !== source) writeFileSync(path, next)
+    if (next !== source) write(file, next)
   }
   return edits
 }

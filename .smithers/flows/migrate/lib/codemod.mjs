@@ -157,7 +157,7 @@ function pointBack(value, vibe) {
  * package's other modules keep it. Returns the edits, { manifest, field, key,
  * added, module }, for restoreExports.
  */
-export function rewriteExports(root, renames) {
+export function rewriteExports(root, renames, { write = (file, text) => writeFileSync(join(root, file), text) } = {}) {
   const edits = []
   const owners = new Map()
   for (const rename of renames) {
@@ -206,7 +206,7 @@ export function rewriteExports(root, renames) {
         pkg[field] = Object.fromEntries(entries)
       }
     }
-    if (changed) writeFileSync(join(root, manifest), JSON.stringify(pkg, null, 2) + "\n")
+    if (changed) write(manifest, JSON.stringify(pkg, null, 2) + "\n")
   }
   return edits
 }
@@ -310,14 +310,14 @@ export function restoreSpecifiers(root, edits, module, aliases) {
  * names an earlier migration's .vibe module by its .ts name stays as the
  * repository wrote it. Returns the edits made: { file, from, to }.
  */
-export function rewriteImports(root, scope, moved, aliases) {
+export function rewriteImports(root, scope, moved, aliases, { read = (file) => readFileSync(join(root, file), "utf8"), write = (file, text) => writeFileSync(join(root, file), text) } = {}) {
   const files = new Set(scope)
   const only = moved && new Set(moved)
   const edits = []
   for (const file of scope) {
     if (!/\.(?:ts|tsx|mts|cts|vibe)$/.test(file)) continue
     const path = join(root, file)
-    const text = readFileSync(path, "utf8")
+    const text = read(file)
     const changes = []
     for (const i of parseImports(text)) {
       // A tsconfig paths alias (`@/x`) names a module as a relative specifier does (opencode-39).
@@ -330,7 +330,7 @@ export function rewriteImports(root, scope, moved, aliases) {
         edits.push({ file, from: i.specifier, to: next })
       }
     }
-    if (changes.length) writeFileSync(path, applyEdits(text, changes))
+    if (changes.length) write(file, applyEdits(text, changes))
   }
   return edits
 }

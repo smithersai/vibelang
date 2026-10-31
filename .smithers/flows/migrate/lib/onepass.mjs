@@ -1,4 +1,5 @@
 // Repository-independent whole-scope conversion. The run directory owns every receipt.
+import { applyState, prepareState, saveState, durableWrite } from "./codemod-state.mjs"
 import { createHash } from "node:crypto"
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join, posix, resolve } from "node:path"
@@ -422,27 +423,32 @@ export async function onePassStep(step, options) {
   const plan = readJson(p.plan)
   if (plan.mode !== "one-pass") throw new Error("run plan --scope <scope.txt> first")
   if (step === "rename") {
-    if (existsSync(p.codemod("01"))) {
-      const cm = readJson(p.codemod("01"))
-      if (!cm.renameComplete) throw new Error("rename was interrupted; inspect codemod.json and restore the recorded renames before retrying")
-      return cm
-    }
-    // All configured projects, including script-only projects, have a baseline before any rename.
-    const baseline = await checkProjects(config, p, options)
-    if (baseline.some(p => p.crash)) throw new Error("baseline compiler did not finish: " + baseline.filter(p => p.crash).map(p => p.file + ": " + p.crash).join("; "))
-    writeJson(join(p.run, "onepass-baseline.json"), baseline)
+    const existing = readJsonIf(p.codemod("01"))
+    if (existing?.renameComplete) return existing
+    let state = readJsonIf(p.codemodState("01"))
     const files = plan.batches[0].files
-    // Persist the original graph so aliases and bare imports in the inventory survive later reverts.
-    const renames = renameBatch(config.target, files)
-    const cm = { batch: "01", at: new Date().toISOString(), files, renames, exportEdits: [], importEdits: [], refEdits: [], fix: { settled: false, rounds: [], byFile: {}, totals: {}, refused: [] } }
-    writeJson(p.codemod("01"), cm)
-    cm.exportEdits = rewriteExports(config.target, renames)
-    writeJson(p.codemod("01"), cm)
-    cm.importEdits = rewriteImports(config.target, await importers(config.target), renames.map(r => r.to), aliasesOf(config))
-    writeJson(p.codemod("01"), cm)
-    cm.refEdits = rewriteReferences(config.target, renames, await Jj.trackedFiles(config.target))
-    cm.renameComplete = true
-    writeJson(p.codemod("01"), cm)
+    if (!state) {
+      if (existing) throw new Error("legacy interrupted rename has no durable journal; restore its recorded renames before retrying")
+      const baseline = await checkProjects(config, p, options)
+      if (baseline.some(p => p.crash)) throw new Error("baseline compiler did not finish: " + baseline.filter(p => p.crash).map(p => p.file + ": " + p.crash).join("; "))
+      writeJson(join(p.run, "onepass-baseline.json"), baseline)
+      const ts = loadTypeScript([
+        ...(config.toolchain.kind === "staged" ? [config.toolchain.dir] : []),
+        config.target, ...config.packages.map(pkg => join(config.target, pkg.dir)),
+        fileURLToPath(new URL("../../../../packages/runtime", import.meta.url))
+      ])
+      state = prepareState(config.target, files, await importers(config.target), { ts, aliases: aliasesOf(config), referenceFiles: await Jj.trackedFiles(config.target) })
+      saveState(p.codemodState("01"), state)
+    }
+    if (state.target !== config.target || JSON.stringify(state.files) !== JSON.stringify(files)) throw new Error("rename journal does not match target and scope")
+    if (state.phase === "prepared") {
+      applyState(config.target, state)
+      state.phase = "fixing"
+      saveState(p.codemodState("01"), state)
+    }
+    const { renames, exportEdits, importEdits, refEdits = [], platform } = state
+    const cm = { batch: "01", at: new Date().toISOString(), files, renames, exportEdits, importEdits, refEdits, platform, renameComplete: true, fix: { settled: false, rounds: [], byFile: {}, totals: {}, refused: [] } }
+    durableWrite(p.codemod("01"), JSON.stringify(cm, null, 2) + "\n")
     return cm
   }
   const cm = readJson(p.codemod("01"))

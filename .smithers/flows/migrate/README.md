@@ -48,6 +48,20 @@ Declaration identity applies only to published packages. `verify` reports a pack
 
 Each step reads and writes the run directory, so a step that already recorded its result returns it, and a stopped run resumes where it stopped.
 
+Before changing the target, `codemod` atomically writes and flushes
+`batches/NN/codemod-state.json`: original source bytes, planned renames,
+package exports and import edits. It replays interrupted mechanical edits
+without overwriting a conflicting file. Before starting the compiler it
+records the `fixing` phase, then each compiler attempt and project progress;
+attempt logs have distinct names. Retrying the same run preserves already
+renamed modules and checked hand repairs and runs the current compiler to a
+fixed point. Only the completed `codemod.json` advances the flow. `revert`
+can use the saved original and import/export bookkeeping before the compiler
+finishes, even if the parent commit no longer contains the TypeScript source.
+Keep the run directory private: its journal contains original source bytes.
+Runs interrupted by an older flow before any journal was written still need
+a fresh run from their saved TypeScript sources; no receipt is inferred.
+
 For a migrated `.mts` module, declaration identity pairs a removed `x.d.mts` with its new `x.d.ts`, recorded under `renamed`. A destination already present in the baseline is a collision; a change in public reachability still fails. Published declarations remain byte-identical, including comments and quote spelling.
 
 Public declarations reachable from `exports` or `types` must remain byte-identical; unreachable new declarations pass as `addedPrivate`. One difference is excused: a relative module specifier whose two spellings stock TypeScript resolves, under Bundler and Node10 resolution and in both trees, to the same listed declaration file, such as `export * as Runtime from "./runtime"` declared as `"./runtime.js"` once the codemod names the migrated module `./runtime.vibe`. `verify.json` lists each excused pair under `excusedSpecifiers` (package, file, line, before, after); copy the list into the pull request's description. Shipped hand-written `.d.ts` roots outside the compiler output are copied into each run's declaration snapshot and resolved through the package's actual output aliases. Their bytes, transitive reachability and resolved dependency edges stay part of the public comparison; a new file that shadows a directory index is public. Legacy runs recover those roots from their committed setup tree, never from candidate files. An unresolved root remains conservative even if it is unresolved on both sides. The gate follows declaration imports, re-exports, import types and reference paths, including conditional and wildcard entry points. Removed declarations still fail. Setup snapshots the published roots and emit aliases; unresolved entry points and older baselines without a snapshot conservatively check every addition. Verification reports the roots and unresolved paths.
@@ -373,3 +387,7 @@ Staged VibeLang tarballs replace only entries in `dependencies` and `devDependen
 Upgrade test fixtures provide both predecessor and staged compiler checks. Only the predecessor’s VIP-only invocation mutates the original source; failed baseline checks retain the original manifest and sources.
 
 Shipped-root resolution checks retain the exact declaration graph, including each target. A published specifier spelling may use only the existing `D298` same-declaration proof; it cannot excuse a retargeted edge or another changed byte.
+
+The write-ahead codemod journal also includes platform siblings: it keeps the unsplit original module and plans sibling creation before any rename, write or compiler child. Replay completes a partial split, and per-file revert restores the unsplit source and removes only its recorded sibling. An existing companion is preserved.
+
+The same durable rename journal covers whole-scope mode: an interrupted rename resumes before compiler work, and bulk reverts restore the original source bytes.

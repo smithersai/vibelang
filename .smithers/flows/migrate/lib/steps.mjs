@@ -9,7 +9,8 @@ import { fileURLToPath } from "node:url"
 import { assertBaselineSafe } from "./baseline.mjs"
 import { buildInventory, listSources, readCoverage, tsconfigPaths } from "./inventory.mjs"
 import { defaultLimits, draftPlan, migrationScope, planPrompt, validatePlan } from "./plan.mjs"
-import { fixToFixedPoint, pathAliases, renameBatch, restoreExports, restoreSpecifiers, rewriteExports, rewriteImports, rewriteTotals } from "./codemod.mjs"
+import { fixToFixedPoint, pathAliases, restoreExports, restoreSpecifiers, rewriteImports, rewriteTotals } from "./codemod.mjs"
+import { applyState, durableWrite, prepareState, saveState } from "./codemod-state.mjs"
 import { splitBatchPlatform } from "./platform.mjs"
 import { check, newErrors, styleProblems, summarize } from "./diagnostics.mjs"
 import { compareDeclarations, recordDeclarationSurface, emitDeclarations, emitErrorsIn, loadTypeScript } from "./declarations.mjs"
@@ -60,6 +61,7 @@ export function paths(runDir) {
     baseline: join(r, "baseline"),
     batch,
     codemod: (b) => join(batch(b), "codemod.json"),
+    codemodState: (b) => join(batch(b), "codemod-state.json"),
     compile: (b) => join(batch(b), "compile.json"),
     repairPrompt: (b) => join(batch(b), "repair.prompt.md"),
     repair: (b) => join(batch(b), "repair.json"),
@@ -925,11 +927,24 @@ export async function codemod(options) {
   if (existsSync(p.codemod(b))) return readJson(p.codemod(b))
   const t = config.target
   const files = thePlan.batches[Number(b) - 1].files
-  // Platform code moves to <Name>.platform.ts first, so the .vibe module imports no builtin (EK4402).
-  const platform = splitBatchPlatform(t, files, typeScriptOf(config))
-  const renames = renameBatch(t, files)
-  const exportEdits = rewriteExports(t, renames)
-  const importEdits = rewriteImports(t, await importers(t), renames.map((r) => r.to), aliasesOf(config))
+  let state = readJsonIf(p.codemodState(b))
+  if (!state) {
+    state = prepareState(t, files, await importers(t), { ts: typeScriptOf(config), aliases: aliasesOf(config) })
+    saveState(p.codemodState(b), state)
+  }
+  if (state.version !== 1 || state.target !== t || JSON.stringify(state.files) !== JSON.stringify(files)) {
+    throw new Error(`batch ${b}: codemod state does not match this target and plan`)
+  }
+  if (state.phase === "prepared") {
+    applyState(t, state)
+    state.phase = "fixing"
+    saveState(p.codemodState(b), state)
+  }
+  const { renames, exportEdits, importEdits, refEdits = [] } = state
+  const platform = state.platform ?? { splits: [], refused: [] }
+  const attempt = state.attempts.length + 1
+  state.attempts.push({ attempt, compiler: compilerOf(config), startedAt: new Date().toISOString(), projects: [] })
+  saveState(p.codemodState(b), state)
   const compiler = compilerOf(config)
   const byFile = {}
   const refused = []
@@ -938,15 +953,22 @@ export async function codemod(options) {
   for (const pkg of config.packages.filter((pkg) => files.some((f) => packageOf(config, f) === pkg))) {
     const projects = Wire.projectsOf(typeScriptOf(config), join(t, pkg.dir), pkg.tsconfig)
     for (const tsconfig of projects) {
-      const fixed = await fixToFixedPoint({ compiler, tsconfig, cwd: join(t, pkg.dir), root: t, only: renames.map((r) => r.to), log: join(p.batch(b), "logs", `fix-${slug(pkg.dir)}${projects.length > 1 ? `-${slug(tsconfig)}` : ""}`) })
+      const progress = { package: pkg.dir, project: tsconfig, startedAt: new Date().toISOString() }
+      state.attempts.at(-1).projects.push(progress)
+      saveState(p.codemodState(b), state)
+      const fixed = await fixToFixedPoint({ compiler, tsconfig, cwd: join(t, pkg.dir), root: t, only: renames.map((r) => r.to), log: join(p.batch(b), "logs", `fix-attempt-${attempt}-${slug(pkg.dir)}${projects.length > 1 ? `-${slug(tsconfig)}` : ""}`) })
       for (const [file, kinds] of Object.entries(fixed.byFile)) byFile[file] = kinds
       refused.push(...fixed.refused)
       rounds.push(...fixed.rounds.map((r) => ({ package: pkg.dir, ...(projects.length > 1 ? { project: tsconfig } : {}), ...r })))
       settled &&= fixed.settled
+      Object.assign(progress, { finishedAt: new Date().toISOString(), settled: fixed.settled, rounds: fixed.rounds.length })
+      saveState(p.codemodState(b), state)
     }
   }
-  const result = { batch: b, at: new Date().toISOString(), files, platform, renames, exportEdits, importEdits, fix: { settled, rounds, byFile, totals: rewriteTotals(byFile), refused } }
-  writeJson(p.codemod(b), result)
+  state.attempts.at(-1).finishedAt = new Date().toISOString()
+  saveState(p.codemodState(b), state)
+  const result = { batch: b, at: new Date().toISOString(), files, platform, renames, exportEdits, importEdits, refEdits, fix: { settled, rounds, byFile, totals: rewriteTotals(byFile), refused } }
+  durableWrite(p.codemod(b), JSON.stringify(result, null, 2) + "\n")
   return result
 }
 
@@ -1034,12 +1056,17 @@ export async function revertMany(options) {
     seen.add(ts)
     if (!existsSync(join(config.target, vibe))) throw new Error("missing .vibe module (already reverted?): " + vibe)
     const source = await revertSource(config.target, p, plan, b, ts, vibe)
-    const original = await Jj.fileAt(config.target, source.revision, ts)
+    const original = source.original ? Buffer.from(source.original.bytes, "base64") : await Jj.fileAt(config.target, source.revision, ts)
     if (original === null) throw new Error("missing revert source: " + ts)
     prepared.push({ ts, vibe, reason, source, original })
   }
   const groups = new Map()
   for (const item of prepared) {
+    if (item.source.original) {
+      durableWrite(join(config.target, item.ts), item.original, item.source.original.mode)
+      rmSync(join(config.target, item.vibe), { force: true })
+      continue
+    }
     const list = groups.get(item.source.revision) ?? []
     list.push(item)
     groups.set(item.source.revision, list)
@@ -1049,12 +1076,12 @@ export async function revertMany(options) {
   }
   // Check before rewriting: jj may exit successfully without restoring a missing path.
   for (const { ts, vibe, original } of prepared) {
-    if (existsSync(join(config.target, vibe)) || !existsSync(join(config.target, ts)) || readFileSync(join(config.target, ts), "utf8") !== original) throw new Error("revert did not restore " + vibe)
+    if (existsSync(join(config.target, vibe)) || !existsSync(join(config.target, ts)) || !readFileSync(join(config.target, ts)).equals(Buffer.from(original))) throw new Error("revert did not restore " + vibe)
     rmSync(join(config.target, vibe.replace(/\.vibe$/, ".d.vibe.ts")), { force: true })
   }
   const results = []
   for (const { ts, reason, source } of prepared) {
-    const cm = readJsonIf(p.codemod(source.batch), {})
+    const cm = readJsonIf(p.codemod(source.batch)) ?? readJsonIf(p.codemodState(source.batch)) ?? {}
     const split = cm.platform?.splits?.find(s => s.file === ts)
     if (split) rmSync(join(config.target, split.platform), { force: true })
     const exportEdits = restoreExports(config.target, cm.exportEdits ?? [], ts)
@@ -1077,6 +1104,11 @@ export async function revertMany(options) {
  * migrated the module, whose codemod made the import and export edits to undo.
  */
 async function revertSource(t, p, plan, b, ts, vibe) {
+  for (let i = Number(b) - 1; i >= 0; i--) {
+    const batch = batchName(i)
+    const original = readJsonIf(p.codemodState(batch))?.originals?.find(o => o.from === ts && o.to === vibe)
+    if (original) return { batch, original }
+  }
   if ((await Jj.fileAt(t, "@-", ts)) !== null) return { revision: "@-", batch: b }
   for (let i = (plan?.batches?.length ?? 0) - 1; i >= 0; i--) {
     const record = readJsonIf(p.record(batchName(i)))

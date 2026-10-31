@@ -1,0 +1,9 @@
+{
+  "key": "migrate:codemod-interrupted-before-receipt",
+  "files": {
+    "src/meta.ts": "import { value } from './value.js'\nexport const meta = value\n",
+    "src/value.ts": "export const value = 1\n",
+    "test/meta.test.ts": "import { meta } from '../src/meta.js'\n"
+  },
+  "batch": ["src/meta.ts", "src/value.ts"]
+}
