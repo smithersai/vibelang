@@ -35,7 +35,7 @@ effect function thrown(p0: number): number!! {
 
 effect function beside(p0: number): number!! {
   try {
-    return p0 < 0 ? throw new E1({ n: 0 }) : match (p0) { when 0: 1; default: 2 }
+    return p0 < 0 ? throw new E1({ n: 0 }) : match (p0) { when 0: 1; default: 2; }
   } catch (e) {
     return e.n
   }

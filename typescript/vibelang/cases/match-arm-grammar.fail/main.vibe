@@ -1,0 +1,46 @@
+// expect: EK0701 EK0707
+// Each arm ends in ;, the last one included; a new line is not a separator
+// (EK0701). Other arm grammar is EK0707 (chapter 004, Syntax and meaning).
+export function newline(b: boolean) {
+  return match (b) {
+    when true: 1
+    default: 0;
+  }
+}
+export function lastArm(b: boolean) {
+  return match (b) { when true: 1; default: 0 }
+}
+export function comma(b: boolean) {
+  return match (b) { when true: 1, default: 0; }
+}
+export function noArms(b: boolean) {
+  return match (b) { }
+}
+export function twoDefaults(b: boolean) {
+  return match (b) { default: 0; default: 1; }
+}
+export function armAfterDefault(b: boolean) {
+  return match (b) { default: 0; when true: 1; }
+}
+export function noColon(b: boolean) {
+  return match (b) { when true 1; default: 0; }
+}
+export function interpolated(s: string, kind: string) {
+  return match (s) { when `tag-${kind}`: 1; default: 0; }
+}
+export function interpolatedIs(s: string, kind: string) {
+  return s is `tag-${kind}`
+}
+export function noPattern(s: string) {
+  return match (s) { when : 1; default: 0; }
+}
+// The valid forms beside them report nothing.
+export function separated(b: boolean) {
+  return match (b) {
+    when true: 1;
+    default: 0;
+  }
+}
+export function guarded(s: string, kind: string) {
+  return match (s) { when `tag-A`: 1; when let v and if (v === `tag-${kind}`): 2; default: 0; }
+}

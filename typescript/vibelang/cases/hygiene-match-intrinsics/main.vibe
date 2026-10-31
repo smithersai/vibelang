@@ -13,17 +13,17 @@ const $assertMatch = (_: unknown, __: unknown): void => {}
 error Bad { id: string }
 
 function classOf(value: unknown) {
-  return match (value) { when Bad: "bad"; default: "other" }
+  return match (value) { when Bad: "bad"; default: "other"; }
 }
 
 function classify(n: 1): string {
-  return match (n) { when 1: "one" }
+  return match (n) { when 1: "one"; }
 }
 
 function nested(n: 1): string {
   const $noMatch = (_: unknown): string => "captured"
   const $assertMatch = (_: unknown, __: unknown): void => {}
-  return match (n) { when 1: "one" }
+  return match (n) { when 1: "one"; }
 }
 
 // The unmatched subject is a defect; a hatch reads its message.

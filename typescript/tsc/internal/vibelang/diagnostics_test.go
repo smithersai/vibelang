@@ -76,12 +76,10 @@ var specAhead = map[int32]string{
 	// Jumps out of an async match (VIP-7) have an assigned code before compiler registration.
 	706: renumbering,
 	// Assigned by the round-17 and round-18 spec (decided detail 60) for VibeLang syntax errors and decided details 67b, 82 and 88.
-	302: renumbering, 701: renumbering, 702: renumbering, 703: renumbering, 905: renumbering,
+	302: renumbering, 702: renumbering, 703: renumbering, 905: renumbering,
 	1305: renumbering, 1601: renumbering, 1702: renumbering, 1704: renumbering, 1906: renumbering,
 	// Assigned by the round-19 and round-20 spec for decided details 96 (a @throws tag on an effectful callable) and 100 (an extractor on a class without its own matcher).
 	406: renumbering, 704: renumbering,
-	// Remaining VIP-7 syntax identity is assigned before parser registration.
-	707: renumbering,
 	// Incomplete custom declaration forms have assigned diagnostics before compiler registration.
 	906: renumbering, 907: renumbering, 1503: renumbering, 1604: renumbering,
 	// Missing member separators in VibeLang declaration bodies have assigned diagnostics before compiler registration.

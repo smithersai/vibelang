@@ -1234,6 +1234,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Editor completion was empty inside the iterable expression of a `for concurrent` loop; it now offers in-scope names there while preserving completion behavior in function parameter lists.
 
+- A `match` arm without its `;`, or with `,`, compiled when a new line or `}` followed it, and `match (b) { }` reported a missing case or nothing; a missing separator is now `EK0701`, with a quick fix and `vibelang --fix`, and `match (b) { }`, a second or early `default`, a missing `:` and an interpolated template pattern are `EK0707`.
+
 - Editor parsing rejected `for try` `Stream` loops; the tree-sitter grammar now recognizes the loop and its `continue` and `break` statements.
 
 - In a project that emits declarations, `vibelang --fix` removed an import such as `import * as DateTime from "effect/DateTime"` that the declaration file still printed, through a local type an export names (`type NonNull<V> = V extends DateTime.Utc ? …`), a conditional type or a written `keyof DateTime.Utc`, so the declaration imported `{ DateTime } from "effect"`; `--fix` now keeps every import the file's declaration keeps.
@@ -1643,6 +1645,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 | `when -0:` or `when +0:` written to match either zero | Write `when 0:`, which matches both zeros. A signed zero now matches only that zero, and `EK4701` reports a `match` that relied on it to cover `0`. |
 | An explicitly `readonly` schema field referencing mutable or uncertain decoded key flags | `EK2109`: run `vibelang --fix` to retain the existing codec as an explicit `Schema.Struct` value. Nested value mutability is unchanged. |
+| A `match` arm that ends in a new line, in `,`, or at `}` without `;` | `EK0701`: run `vibelang --fix` to write the `;`. |
 
 - EK4802's quick fix "Call it to run it" was offered in a function whose written contract rejects what the call runs, such as `return Exit.fail("data")` in an `unknown!!` function, and applying it added EK2001. It is now offered only where the contract accepts the call's failure, requirements and success.
 

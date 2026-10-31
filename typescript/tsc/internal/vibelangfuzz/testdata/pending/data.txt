@@ -1,8 +1,4 @@
 # Chapter-backed match/data/schema gaps. Delete feature and corpus lines when XPASS.
-FuzzDataSpecRules feature:final-semicolon compiler VIP-7: match accepts a missing final semicolon; lane vip-match
-FuzzDataSpecRules corpus:data-final-semicolon compiler VIP-7: match accepts a missing final semicolon; lane vip-match; reproduction of feature:final-semicolon
-FuzzDataSpecRules feature:newline-separator compiler VIP-7: match accepts a newline instead of an arm semicolon; lane vip-match
-FuzzDataSpecRules corpus:data-newline-separator compiler VIP-7: match accepts a newline instead of an arm semicolon; lane vip-match; reproduction of feature:newline-separator
 FuzzDataSpecRules feature:empty-data compiler VIP-16: empty data is rejected with EK2122 (decided detail 25); lane vip-core2
 FuzzDataSpecRules corpus:data-empty-data compiler VIP-16: empty data is rejected with EK2122 (decided detail 25); lane vip-core2; reproduction of feature:empty-data
 FuzzDataSpecRules feature:schema-writable compiler VIP-15: writable fields, arrays, tuples and records are inferred readonly; lane ifix-data-r3
@@ -66,6 +62,8 @@ FuzzVIPDifferential compile:TS2339/vip07.local-option-plain compiler VIP-7: Symb
 FuzzVIPDifferential corpus:data-vip07-local-option-plain compiler VIP-7: minimized vip07.local-option-plain probe; lane vip-match
 FuzzVIPDifferential exit:value/vip07.no-match-plain compiler VIP-7: chapter 004 throws new TypeError() with an empty message, but $noMatch throws TypeError("No match arm matched …"); under VIP-1 the witness is plain, so its catch sees that message (before VIP-1 it was an Effect function, and the no-match defect escaped its catch: vip07.exhaustive-runtime-plain); lane vip-core2
 FuzzVIPDifferential corpus:data-vip07-no-match-plain compiler VIP-7: minimized vip07.no-match-plain probe; lane vip-match
+FuzzVIPDifferential compile:EK0707/vip07.regex-relational-plain compiler VIP-7: RegExp-value and relational patterns are rejected by the retained subset parser; lane vip-match
+FuzzVIPDifferential compile:EK0701/vip07.regex-relational-plain compiler VIP-7: RegExp-value and relational patterns are rejected by the retained subset parser; lane vip-match
 FuzzVIPDifferential compile:EK4704/vip07.regex-relational-plain compiler VIP-7: RegExp-value and relational patterns are rejected by the retained subset parser; lane vip-match
 FuzzVIPDifferential compile:TS1005/vip07.regex-relational-plain compiler VIP-7: RegExp-value and relational patterns are rejected by the retained subset parser; lane vip-match
 FuzzVIPDifferential compile:TS1109/vip07.regex-relational-plain compiler VIP-7: RegExp-value and relational patterns are rejected by the retained subset parser; lane vip-match
@@ -327,7 +325,10 @@ FuzzDataSpecRules corpus:data-tagged-enum-complete compiler VIP-7: minimized tag
 FuzzDataSpecRules feature:tagged-undefined-complete compiler VIP-7: the undefined literal pattern is rejected, so its tag case cannot be covered; lane vip-match
 FuzzDataSpecRules corpus:data-tagged-undefined-complete compiler VIP-7: minimized tagged-undefined-complete witness; lane vip-match
 FuzzVIPDifferential exit:value/vip07.empty-iterables-plain compiler VIP-7: an array pattern tests arrays only, not any iterable; lane vip-match
+FuzzVIPDifferential compile:EK0707/vip07.elision-width-plain compiler VIP-7: an elision in an array pattern does not parse; lane vip-match
 FuzzVIPDifferential compile:TS1005/vip07.elision-width-plain compiler VIP-7: an elision in an array pattern does not parse; lane vip-match
+FuzzVIPDifferential compile:EK0707/vip07.optional-absence-plain compiler VIP-7: an optional array element pattern does not parse; lane vip-match
+FuzzVIPDifferential compile:EK0701/vip07.optional-absence-plain compiler VIP-7: an optional array element pattern does not parse; lane vip-match
 FuzzVIPDifferential compile:TS1005/vip07.optional-absence-plain compiler VIP-7: an optional array element pattern does not parse; lane vip-match
 FuzzVIPDifferential compile:TS1109/vip07.optional-absence-plain compiler VIP-7: an optional array element pattern does not parse; lane vip-match
 FuzzVIPDifferential exit:value/vip07.object-property-order-plain compiler VIP-7: a cached property is read again by a later arm; lane vip-match

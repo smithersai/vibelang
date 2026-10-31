@@ -7,7 +7,6 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
-	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
@@ -111,6 +110,16 @@ type matchInfo struct {
 	subject *ast.Node
 	arms    []matchArm
 	pos     int
+	errors  []matchError // arm separators and arm grammar, in source order
+}
+
+// matchError is a mistake in the arms of a match, which holds no pattern to
+// carry it: EK0701 for an arm's separator, EK0707 for the rest of the arm
+// grammar. matchStatements writes each as a $patternError statement.
+type matchError struct {
+	code   int
+	detail string
+	at     core.TextRange
 }
 
 // isInfo is an is expression whose pattern binds names, kept so the if or
@@ -181,40 +190,56 @@ func (p *Parser) parseVibeLangMatch() *ast.Node {
 	}
 	p.parseExpected(ast.KindOpenBraceToken)
 	sawDefault := false
+	armError := func(detail string) {
+		info.errors = append(info.errors, matchError{707, detail, p.tokenRange()})
+	}
 	for p.token != ast.KindCloseBraceToken && p.token != ast.KindEndOfFile {
 		arm := matchArm{anchor: p.tokenRange()}
 		armForm := VibeSyntaxArm{}
 		switch {
 		case p.token == ast.KindDefaultKeyword:
 			if sawDefault {
-				p.parseErrorAtCurrentToken(diagnostics.X_0_expected, "}")
+				armError("A match has one default arm. Remove this one.")
 			}
 			sawDefault = true
 			p.nextToken()
 		case p.isMatchWord("when"):
 			if sawDefault {
-				p.parseErrorAtCurrentToken(diagnostics.X_0_expected, "}")
+				armError("The default arm comes last. Move this arm before it.")
 			}
 			p.nextToken()
 			arm.pattern = p.parseMatchPattern()
 		default:
-			p.parseErrorAtCurrentToken(diagnostics.X_0_expected, "when")
+			armError("An arm starts with when or default.")
 			p.nextToken()
 			continue
 		}
 		armForm.Head = core.NewTextRange(arm.anchor.Pos(), p.nodePos())
-		p.parseExpected(ast.KindColonToken)
+		if p.token == ast.KindColonToken {
+			p.nextToken()
+		} else {
+			armError("Write : after the pattern, when P: value;.")
+		}
 		arm.value = p.parseAssignmentExpressionOrHigher()
 		arm.end = p.nodePos()
 		armForm.Value = p.sourceRange(arm.value)
-		if p.token == ast.KindSemicolonToken {
+		switch p.token {
+		case ast.KindSemicolonToken:
 			armForm.Semicolon = p.tokenRange()
+			p.nextToken()
+		case ast.KindCommaToken:
+			info.errors = append(info.errors, matchError{701, "", p.tokenRange()})
+			p.nextToken()
+		default:
+			info.errors = append(info.errors, matchError{701, "", core.NewTextRange(arm.end, arm.end)})
 		}
-		p.parseSemicolon()
 		info.arms = append(info.arms, arm)
 		form.Arms = append(form.Arms, armForm)
 	}
 	if p.token == ast.KindCloseBraceToken {
+		if len(info.arms) == 0 {
+			info.errors = append(info.errors, matchError{707, "A match has at least one arm. Add a when or default arm.", info.anchor})
+		}
 		form.Close = p.tokenRange()
 	}
 	p.parseExpected(ast.KindCloseBraceToken)
@@ -291,7 +316,7 @@ func (p *Parser) tokenStartsPattern() bool {
 	switch p.token {
 	case ast.KindIdentifier, ast.KindThisKeyword, ast.KindLetKeyword, ast.KindConstKeyword, ast.KindVarKeyword,
 		ast.KindOpenBracketToken, ast.KindOpenBraceToken, ast.KindOpenParenToken, ast.KindIfKeyword,
-		ast.KindStringLiteral, ast.KindNumericLiteral, ast.KindBigIntLiteral, ast.KindNoSubstitutionTemplateLiteral,
+		ast.KindStringLiteral, ast.KindNumericLiteral, ast.KindBigIntLiteral, ast.KindNoSubstitutionTemplateLiteral, ast.KindTemplateHead,
 		ast.KindTrueKeyword, ast.KindFalseKeyword, ast.KindNullKeyword, ast.KindMinusToken, ast.KindPlusToken,
 		ast.KindSlashToken, ast.KindSlashEqualsToken, ast.KindLessThanToken, ast.KindGreaterThanToken,
 		ast.KindLessThanEqualsToken, ast.KindGreaterThanEqualsToken:
@@ -339,6 +364,9 @@ func (p *Parser) parseMatchPrimaryPattern() *pattern {
 			p.reScanTemplateToken(false /*isTaggedTemplate*/)
 		}
 		return &pattern{kind: patternLiteral, anchor: anchor, expr: p.parseLiteralExpression()}
+	case ast.KindTemplateHead:
+		p.parseTemplateExpression(false /*isTaggedTemplate*/)
+		return &pattern{kind: patternInvalid, anchor: anchor, code: 707, detail: "A template pattern cannot interpolate. Bind the value and compare it in a guard: when let v and if (v === `…`): …."}
 	case ast.KindStringLiteral, ast.KindNumericLiteral, ast.KindBigIntLiteral:
 		return &pattern{kind: patternLiteral, anchor: anchor, expr: p.parseLiteralExpression()}
 	case ast.KindTrueKeyword, ast.KindFalseKeyword, ast.KindNullKeyword:
@@ -378,8 +406,7 @@ func (p *Parser) parseMatchPrimaryPattern() *pattern {
 		}
 		return &pattern{kind: patternValue, anchor: anchor, expr: expr}
 	}
-	p.parseErrorAtCurrentToken(diagnostics.X_0_expected, "pattern")
-	return &pattern{kind: patternInvalid, anchor: anchor}
+	return &pattern{kind: patternInvalid, anchor: anchor, code: 707, detail: "A pattern goes here: a literal, a binding, a name, or an array or object pattern."}
 }
 
 // parseMatchValueExpression parses the identifier expression of a variable
@@ -1530,6 +1557,9 @@ func (p *Parser) isExpression(info *isInfo, pos int) *ast.Node {
 func (p *Parser) matchStatements(info *matchInfo, success func(value *ast.Node, at core.TextRange) []*ast.Node, unmatched func(subject *ast.Node, at core.TextRange) *ast.Node) []*ast.Node {
 	path, decl := p.subjectPath(info.subject, info.anchor, "$match")
 	out := []*ast.Node{decl}
+	for _, e := range info.errors {
+		out = append(out, p.vibelangSpanning(p.factory.NewExpressionStatement(p.patternErrorCall(e.code, e.detail, e.at)), info.anchor))
+	}
 	defaulted := false
 	for i := range info.arms {
 		arm := &info.arms[i]
@@ -1565,7 +1595,7 @@ func (p *Parser) matchStatements(info *matchInfo, success func(value *ast.Node, 
 		}
 		out = append(out, p.mBlock(append(slices.Clone(arm.hoists), p.emitSteps(steps, success(arm.value, span), arm.anchor)...), span))
 	}
-	if !defaulted {
+	if !defaulted && len(info.arms) > 0 {
 		noMatch := p.mCall(p.vibelangIntrinsic("$noMatch", info.anchor), []*ast.Node{path()}, info.anchor)
 		out = append(out, unmatched(noMatch, info.anchor))
 	}
