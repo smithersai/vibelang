@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport * as DateTime from \"effect/DateTime\"\ntype NonNull<V> = V extends DateTime.Utc ? string : V\nexport type FieldFilter<V> = { eq: NonNull<V> }\n")

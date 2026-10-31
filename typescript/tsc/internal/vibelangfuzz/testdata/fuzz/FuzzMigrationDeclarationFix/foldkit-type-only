@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport type { Duration, Scope } from \"effect\"\nexport interface Options { readonly duration: Duration.Duration; readonly scope: Scope.Scope }\n")

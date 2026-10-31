@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport * as Metric from \"effect/Metric\"\nexport interface Tracked<M extends Metric.Metric<number, any>> { readonly metric: M }\n")

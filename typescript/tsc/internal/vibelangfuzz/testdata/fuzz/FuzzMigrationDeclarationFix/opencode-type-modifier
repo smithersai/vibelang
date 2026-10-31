@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport type { HttpClientResponse } from \"effect/http\"\nexport interface Options { readonly response: HttpClientResponse.HttpClientResponse }\n")

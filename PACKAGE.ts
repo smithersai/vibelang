@@ -64,6 +64,7 @@ const specTests = [
   "TestSuperseded",
   "TestDataGeneratedMatchSeparators",
   "TestDataSpecRulesQuoted",
+  "TestMigrationDeclarationFixQuoted",
   "TestDataChapterWitnessesQuoted",
   "TestFailuresSpecQuotes",
   "TestSpecRuleFacts",
