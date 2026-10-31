@@ -19,7 +19,15 @@ const implicitExtensions = [".ts", ".tsx", ".vibe", ".d.ts", ".js", ".jsx"]
 export function extensionlessImport(directory, specifier) {
   if (namedExtension.test(specifier)) return undefined
   const target = resolve(directory, specifier)
-  const isFile = (path) => statSync(path, { throwIfNoEntry: false })?.isFile() === true
+  const isFile = (path) => {
+    try {
+      return statSync(path, { throwIfNoEntry: false })?.isFile() === true
+    } catch (error) {
+      // Bun throws where a parent is a file, as in a.txt/index.ts; Node returns undefined.
+      if (error.code === "ENOTDIR") return false
+      throw error
+    }
+  }
   const stems = /(?:^|[\\/])\.{0,2}$/.test(specifier) ? [] : [target]
   if (!existsSync(join(target, "package.json"))) stems.push(join(target, "index"))
   for (const stem of stems) {

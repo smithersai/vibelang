@@ -289,3 +289,17 @@ test("extensionless imports keep native CommonJS .js interop through nested Type
     assert.equal(result.stdout, expected)
   }
 })
+
+// ./prompt.txt names no script extension, so the resolvers look for
+// prompt.txt/index.ts, and Bun throws ENOTDIR where Node returns undefined.
+test("the resolvers pass over a relative import of a file that is not a script", { skip: !hasBun && "bun is not on PATH" }, (t) => {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-bun-text-")))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  writeFileSync(join(root, "prompt.txt"), "hello\n")
+  for (const module of ["packages/compiler/relative-imports.mjs", "packages/unplugin/src/relative-imports.js", "packages/vite/src/relative-imports.js"]) {
+    const script = `import { extensionlessImport } from ${JSON.stringify(join(repo, module))}\nconsole.log(String(extensionlessImport(${JSON.stringify(root)}, "./prompt.txt")))`
+    const result = spawnSync("bun", ["-e", script], { encoding: "utf8" })
+    assert.equal(result.status, 0, `${module}: ${result.stderr}`)
+    assert.equal(result.stdout, "undefined\n", module)
+  }
+})
