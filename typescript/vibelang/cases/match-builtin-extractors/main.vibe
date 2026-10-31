@@ -1,0 +1,45 @@
+// Built-in and call-only extractors (chapter 004, Class patterns): Array and
+// typed arrays list the subject's elements, Map and Set give the collection,
+// and a function that is no class is called with the subject and a hint.
+export function first(s: number[]) {
+  return match (s) { when Array(let n): n.toFixed(0); default: "other"; }
+}
+export function second(s: unknown) {
+  return match (s) { when Array(let a, let n, ...): typeof n; default: "none"; }
+}
+export function bytes(s: Uint8Array) {
+  return match (s) { when Uint8Array(let a, let b): a + b; default: -1; }
+}
+export function map(s: unknown) {
+  return match (s) { when Map(let m): m.size; default: -1; }
+}
+function pair(s: unknown, hint: { matchType: string }): false | [number, string] {
+  return typeof s === "number" ? [s, hint.matchType] : false
+}
+function* values(s: unknown): Generator<number> {
+  yield 1
+  yield 2
+}
+function spread(s: unknown): false | Generator<number> {
+  return s === "go" ? values(s) : false
+}
+function isText(s: unknown, hint: { matchType: string }): s is string {
+  return typeof s === "string" && hint.matchType === "boolean"
+}
+export function extracted(s: unknown) {
+  return match (s) { when pair(let n, let hint): n.toFixed(0) + hint; default: "other"; }
+}
+export function iterated(s: unknown) {
+  return match (s) { when spread(let a, let b): a + b; default: 0; }
+}
+export function predicate(s: unknown) {
+  return match (s) { when isText: s.toUpperCase(); default: "other"; }
+}
+class Numeric {
+  static [customMatcher](s: unknown, _options: { matchType: "extractor" }): false | [number] {
+    return typeof s === "number" ? [s] : false
+  }
+}
+export function custom(s: unknown) {
+  return match (s) { when Numeric(let n): n.toFixed(0); default: "other"; }
+}

@@ -183,6 +183,8 @@ function parity(n: number) {
 
 For an extractor, the method receives `{ matchType: "extractor" }` as its second argument and returns `false` or the values to match against the list. Any other value matches when it is equal, with `NaN` matching `NaN`.
 
+Built-in classes extract as the proposal says: `when Array(let first, let second):` matches an array of exactly two elements, a typed array such as `Uint8Array(0x89, 0x50, ...)` lists its elements, and any other built-in, such as `Map(let m)`, gives the value itself. A function that is not a class can extract too: `when pair(let a, let b):` calls `pair(value, { matchType: "extractor" })`, which returns `false` or the values to match.
+
 ## Combining patterns
 
 Same-keyword bindings in `or` alternatives share one cell. A later alternative can replace initialization from a failed earlier alternative; saved closures see the replacement. This does not permit an ordinary assignment to a `const`.

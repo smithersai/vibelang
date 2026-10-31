@@ -22,9 +22,13 @@ export interface MatchHint {
   readonly matchType: "boolean" | "extractor"
 }
 
-/** A value with a custom matcher whose extraction yields R. */
+/**
+ * A value with a custom matcher whose extraction yields R. The matcher is a
+ * method, so one that declares only the hint it handles, such as
+ * `{ matchType: "extractor" }`, still counts.
+ */
 export interface CustomMatcher<R = unknown> {
-  readonly [customMatcher]: (subject: any, hint: MatchHint) => R
+  [customMatcher](subject: any, hint: MatchHint): R
 }
 
 const primitiveTypes = new Map<unknown, string>([
@@ -66,8 +70,8 @@ function sameValue(pattern: unknown, subject: unknown): boolean {
  * function is called as a predicate; any other value matches by SameValue.
  */
 export function $is<C extends abstract new(...args: any) => any>(matcher: C, subject: unknown): subject is InstanceType<C>
-export function $is<T>(matcher: (subject: any) => subject is T, subject: unknown): subject is T
-export function $is(matcher: CustomMatcher | ((subject: any) => unknown), subject: unknown): boolean
+export function $is<T>(matcher: (subject: any, hint: MatchHint) => subject is T, subject: unknown): subject is T
+export function $is(matcher: CustomMatcher | ((subject: any, hint: MatchHint) => unknown), subject: unknown): boolean
 export function $is<const T>(matcher: T, subject: unknown): subject is T
 export function $is(matcher: unknown, subject: unknown): boolean {
   if (matcher !== null && (typeof matcher === "object" || typeof matcher === "function")) {
@@ -77,7 +81,7 @@ export function $is(matcher: unknown, subject: unknown): boolean {
       const primitive = primitiveTypes.get(matcher)
       if (primitive !== undefined) return typeof subject === primitive
       if (matcher === Date) return dateMatches(subject)
-      return isClass(matcher) ? subject instanceof (matcher as any) : !!(matcher as Function)(subject)
+      return isClass(matcher) ? subject instanceof (matcher as any) : !!(matcher as Function)(subject, { matchType: "boolean" })
     }
   }
   return sameValue(matcher, subject)
@@ -90,29 +94,49 @@ export type Extracted<R> = R extends false ? false
   : R extends Iterable<infer X> ? ReadonlyArray<X>
   : ReadonlyArray<unknown>
 
+/** The list `Array(...)` matches against: the array members of the subject's type. */
+export type ArrayExtraction<S> = unknown extends S ? ReadonlyArray<unknown> : Extract<S, ReadonlyArray<unknown>>
+
+/** A typed array's constructor. */
+interface TypedArrayClass<T> {
+  readonly BYTES_PER_ELEMENT: number
+  new(...args: Array<any>): T
+}
+
+const typedArray = Object.getPrototypeOf(Uint8Array)
+
+/** The list a matcher or a call-only extractor returned, or false. */
+function extractedList(result: unknown): ReadonlyArray<any> | false {
+  if (result === false) return false
+  if (result === true) return []
+  if (Array.isArray(result)) return result
+  if (result !== null && typeof result === "object" && Symbol.iterator in result) return [...result as Iterable<unknown>]
+  throw new TypeError("A matcher used as an extractor must return true, false, an array, or an iterable")
+}
+
 /**
  * Runs an extractor pattern's matcher: its values, or false when it does not
- * match. A class without a custom matcher extracts the instance itself, so
- * `NotFound(let error)` binds the error.
+ * match. `Array` and a typed array list the subject's elements; another class
+ * without a custom matcher extracts the instance itself, so `Map(let m)` binds
+ * the map; a function that is no class is called with the matcher's hint.
  */
-export function $extract<C extends abstract new(...args: any) => any>(matcher: C, subject: unknown): readonly [InstanceType<C>] | false
+export function $extract<S>(matcher: ArrayConstructor, subject: S): ArrayExtraction<S> | false
+export function $extract<T>(matcher: TypedArrayClass<T>, subject: unknown): T | false
 export function $extract<R>(matcher: CustomMatcher<R>, subject: unknown): Extracted<R> | false
+export function $extract<C extends abstract new(...args: any) => any>(matcher: C, subject: unknown): readonly [InstanceType<C>] | false
+export function $extract<R>(matcher: (subject: any, hint: MatchHint) => R, subject: unknown): Extracted<R> | false
 export function $extract(matcher: unknown, subject: unknown): ReadonlyArray<any> | false
-export function $extract(matcher: unknown, subject: unknown): ReadonlyArray<any> | false {
+export function $extract(matcher: unknown, subject: unknown): unknown {
   const custom = matcher === null || matcher === undefined ? undefined : (matcher as any)[customMatcher]
-  if (typeof custom === "function") {
-    const result = custom.call(matcher, subject, { matchType: "extractor" })
-    if (result === false) return false
-    if (result === true) return []
-    if (Array.isArray(result)) return result
-    if (result !== null && typeof result === "object" && Symbol.iterator in result) return [...result as Iterable<unknown>]
-    throw new TypeError("A custom matcher used as an extractor must return true, false, an array, or an iterable")
-  }
+  if (typeof custom === "function") return extractedList(custom.call(matcher, subject, { matchType: "extractor" }))
   if (typeof matcher === "function") {
     const primitive = primitiveTypes.get(matcher)
     if (primitive !== undefined) return typeof subject === primitive ? [subject] : false
     if (matcher === Date) return dateMatches(subject) ? [subject] : false
+    if (matcher === Array) return Array.isArray(subject) ? subject : false
+    if (Object.getPrototypeOf(matcher) === typedArray) return subject instanceof (matcher as any) ? subject : false
     if (isClass(matcher)) return subject instanceof (matcher as any) ? [subject] : false
+    return extractedList((matcher as Function)(subject, { matchType: "extractor" }))
   }
   throw new TypeError("An extractor pattern needs a class or a value with a Symbol.customMatcher method")
 }
