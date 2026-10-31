@@ -619,6 +619,7 @@ func (p *Parser) parseVibeLangProvideStatement() *ast.Node {
 		saveNoBlockParams := p.vibelangNoBlockParams
 		p.vibelangNoBlockParams = true // the { after the providers opens the block (vibelang_blocks.go)
 		providers = p.parseExpression()
+		p.checkVibeLangProviderLineBreaks(providers)
 		p.vibelangNoBlockParams = saveNoBlockParams
 	}
 	form.Head = core.NewTextRange(form.Word.Pos(), p.nodePos())

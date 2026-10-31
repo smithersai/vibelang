@@ -172,6 +172,7 @@ const specTests = [
   "TestMatchBindingTypesQuoted",
   "TestPreludeAmbientDeclarationsQuoted",
   "TestEffectLintConfigurationQuoted",
+  "TestProvideCommaRecoveryQuoted",
   "TestServicesRulesQuoted",
   "TestProducerBindingQuoted",
   "TestEffectTypeSpacingQuoted",

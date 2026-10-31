@@ -1,0 +1,9 @@
+// expect: EK1202 EK1202 EK1202
+export effect function f() {
+  provide Layer.empty,
+    Layer.empty {}
+  provide Layer.empty, /* separator
+    comment */ Layer.empty {}
+  provide Layer.empty
+    , Layer.empty {}
+}

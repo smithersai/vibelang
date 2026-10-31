@@ -10,6 +10,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
@@ -87,6 +88,8 @@ var (
 	EK1012 = message(1012, warningCategory, "{0} runs here and never succeeds, so {1} never holds a value.")
 	// EK1023: a legacy decision would silently change meaning (D382). Not adjustable.
 	EK1023 = message(1023, errorCategory, "pipe now passes its first argument as the value it is, but through VibeLang 0.0.10 this pipe passed it as a program.")
+	// EK1202: a line break beside a provider-list separator (VIP-12, detail 237).
+	EK1202 = message(1202, errorCategory, parser.VibeLangProvideCommaMessage)
 	// EK9201: an expected failure escapes the written contract. {0} is the failure, {1} the function, {2} what the contract allows.
 	EK9201 = message(9201, errorCategory, "{0} can escape {1}, but {2}.")
 	// EK9202: a requirement escapes the written contract. {0} is the function, {1} the requirement, {2} the contract's R.
@@ -196,6 +199,7 @@ var registry = map[int32]*Message{}
 func init() {
 	for _, m := range []*Message{
 		EK0108,
+		EK1202,
 		EK1001, EK1002, EK1003, EK1005, EK1006, EK1007, EK1008, EK1010, EK1011, EK1012, EK1023,
 		EK9201, EK9202, EK9203, EK9204, EK2005, EK2006, EK9205, EK9206, EK9207, EK2104, EK2105, EK2106, EK2107, EK2108, EK2109, EK2112, EK2113, EK2115, EK2116, EK2117, EK2118,
 		EK3001, EK3002, EK3003, EK3004, EK3005, EK9208, EK3101, EK3201, EK3202, EK3203, EK3204, EK3205, EK3206, EK3207,

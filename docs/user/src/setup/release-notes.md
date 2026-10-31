@@ -416,6 +416,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The migrate flow's setup left a build script that only runs `tsc` through Bun's shell, such as opencode's codemode `` $`bun tsc -p tsconfig.build.json` ``, on stock `tsc`, so the published `dist/index.js` imported `./codemode.vibe` and failed to load once installed; setup now runs `vibelang` there too, which writes `dist/codemode.js`, and adds `vibelang` to the package's `devDependencies`.
 
 - Adding a host interface augmentation in a `.ts` file disabled platform diagnostics for constructors such as `XMLHttpRequest`; those references now keep `EK4402`, while local and imported bindings still shadow globals.
+
+- A provider list split beside a comma could compile silently; both comma-adjacent breaks now report `EK1202`, with a safe fix when comments permit joining the lines.
 - Reading `Effect`, `Layer`, `Schema` or `Scope`, or writing an Effect type contract, reported missing names without `vibelang-runtime`; code that only needs native Effect namespaces now resolves with `effect` alone.
 - `FuzzCommandLine` could fail with `the compilation rewrote the source main.d.vibe.ts` in a checkout where an earlier compile had left that sidecar in an acceptance case; the fuzz seeds now skip these generated files.
 

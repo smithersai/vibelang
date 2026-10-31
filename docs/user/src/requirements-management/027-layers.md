@@ -258,3 +258,5 @@ Replace a dependency to exercise the real factory, or the service itself to isol
 ## Coming from Effect
 
 `service` declarations, with layer constants beside them, replace hand-written key classes, and `effect { ... }` replaces generator-based factories. The Layer graph, memoization, and resource semantics stay Effect 4's. `Effect.provide` wrappers currently draw `EK4836` and have a quick fix to write a `provide` block. `Effect.provideService` retains its native call: `provide Key = value` builds a `Layer`, changing `Scope` and `Layer.CurrentMemoMap`. `EK4836` explains why the service call has no automatic block rewrite.
+
+A line break before or after a provider-separating comma keeps the `provide` reading and reports `EK1202`. Keep the providers on one line, or compose them inside `Layer.mergeAll(…)`, where line breaks remain allowed.
