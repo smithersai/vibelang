@@ -37,14 +37,14 @@ func (h editorTestHost) GetPreferences(string) lsutil.UserPreferences {
 	return lsutil.UserPreferences{}
 }
 
-func editorProgram(t *testing.T, source string) (*compiler.Program, *ast.SourceFile, *ls.LanguageService, *lsconv.Converters) {
+func editorProgram(t testing.TB, source string) (*compiler.Program, *ast.SourceFile, *ls.LanguageService, *lsconv.Converters) {
 	t.Helper()
 	return editorProgramWith(t, source, map[string]string{"effect": "packages/runtime/node_modules/effect", "vibelang-runtime": "packages/runtime"})
 }
 
 // editorProgramWith is editorProgram with only packages, each a name and its
 // directory under the repository root, installed in node_modules.
-func editorProgramWith(t *testing.T, source string, packages map[string]string) (*compiler.Program, *ast.SourceFile, *ls.LanguageService, *lsconv.Converters) {
+func editorProgramWith(t testing.TB, source string, packages map[string]string) (*compiler.Program, *ast.SourceFile, *ls.LanguageService, *lsconv.Converters) {
 	t.Helper()
 	dir := t.TempDir()
 	root, err := filepath.Abs("../../../..")

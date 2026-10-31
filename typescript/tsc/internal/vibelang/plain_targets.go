@@ -100,6 +100,9 @@ func (a *analyzer) checkPlainTarget(file *ast.SourceFile, source *ast.Node, targ
 		return
 	}
 	text, owner := nodeText(file, source), c.TypeToString(e.owner)
+	if label := stableFactoryResultLabel(file, source); label != "" {
+		text = label
+	}
 	var d *ast.Diagnostic
 	switch {
 	case e.member == "" && !e.held:

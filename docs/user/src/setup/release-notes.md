@@ -541,6 +541,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A helper return-type quick fix could write an imported type name that was out of scope and be refused by `--fix`. It now qualifies the type through its import, or uses `infer _` when a type cannot be written there.
 
+- `vibelang --fix` could refuse a safe rewrite inside `Effect.catchTags` because an existing error quoted its old arguments. It now keeps that diagnostic's identity while applying the rewrite.
+
 - Running the migrate flow's setup again left the earlier setup's `.vibelang-toolchain` tarballs on disk, where `jj` committed them with the new setup; setup now removes that directory before it returns to the Effect upgrade.
 
 - In the specification's region-body rules, a paragraph about `do` checks sat between the sentence ending "how it transports completions is its choice:" and the list it introduces, so it read as that list. The paragraph now follows the list.

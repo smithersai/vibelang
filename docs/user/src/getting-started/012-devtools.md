@@ -205,6 +205,8 @@ A helper's return-type quick fix writes imported names in the helper's scope: fo
 
 When annotating helpers also changes a collected callback result, the fix writes `: infer _` so the return type follows the corrected helpers.
 
+An existing callback error on a factory result does not prevent safe rewrites inside its arguments. For a unique named call, the diagnostic keeps a label such as `Effect.catchTags(…)`; repeated or computed calls retain their source text.
+
 Fixes retain field comments and comments before unwrapped succeed/fail arguments. If a proposed rewrite cannot retain its comments, neither the editor nor --fix applies it.
 
 When `vibe.effectModules` is `false`, `--fix` keeps the explicit Effect imports the program needs. The editor offers those bindings through imports and local declarations.
