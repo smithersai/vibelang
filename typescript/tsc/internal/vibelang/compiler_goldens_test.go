@@ -299,6 +299,8 @@ func commandLineDiagnostics(t *testing.T, configErrors []*ast.Diagnostic, progra
 	if len(syntactic) == 0 {
 		all = append(all, program.GetGlobalDiagnostics(t.Context())...)
 		all = append(all, program.GetSemanticDiagnostics(t.Context(), nil)...)
+		// What a sidecar cannot print, which vibelang reports from its emit.
+		all = append(all, program.EmitDeclarationSidecars(t.Context(), func(string, string) error { return nil })...)
 	}
 	return all
 }
