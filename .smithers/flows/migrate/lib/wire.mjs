@@ -428,6 +428,46 @@ export function addCompilerOptions(text, options) {
 }
 
 /**
+ * Removes a retired VibeLang setting from a tsconfig (JSON with comments):
+ * key in its top-level `vibelang` or `vibe` object or in
+ * `compilerOptions.vibelang` or `compilerOptions.vibe`, the places
+ * `vibelang --fix` removes it from, and the object itself when key was all it
+ * held. Earlier setups wrote `"vibelang": { "declarationSidecars": true }`,
+ * which the compiler now rejects (TS5023). Comments and the rest of the file
+ * are left as they are. ts is TypeScript's compiler API.
+ */
+export function removeVibeLangSetting(text, ts, key) {
+  const file = ts.parseJsonText("tsconfig.json", text)
+  const root = file.statements[0]?.expression
+  if (!root || !ts.isObjectLiteralExpression(root)) return text
+  const nameOf = (p) => ts.isPropertyAssignment(p) && p.name && (ts.isStringLiteral(p.name) || ts.isIdentifier(p.name)) ? p.name.text : undefined
+  const objectOf = (p) => p && ts.isObjectLiteralExpression(p.initializer) ? p.initializer : undefined
+  // The span that removes property from object: with the comma after it, or the one before the last.
+  const removal = (object, property) => {
+    const list = object.properties
+    const index = list.indexOf(property)
+    if (index < list.length - 1) return { from: property.getFullStart(), to: list[index + 1].getFullStart() }
+    if (index > 0) return { from: list[index - 1].end, to: property.end }
+    return { from: object.getStart(file) + 1, to: object.end - 1 }
+  }
+  const edits = []
+  const sections = [root, objectOf(root.properties.find((p) => nameOf(p) === "compilerOptions"))].filter(Boolean)
+  for (const section of sections) {
+    for (const holder of section.properties.filter((p) => nameOf(p) === "vibelang" || nameOf(p) === "vibe")) {
+      const settings = objectOf(holder)
+      if (!settings) continue
+      const retired = settings.properties.filter((p) => nameOf(p) === key)
+      if (!retired.length) continue
+      if (retired.length === settings.properties.length) edits.push(removal(section, holder))
+      else for (const property of retired) edits.push(removal(settings, property))
+    }
+  }
+  let out = text
+  for (const { from, to } of edits.sort((a, b) => b.from - a.from)) out = out.slice(0, from) + out.slice(to)
+  return out
+}
+
+/**
  * Adds to a tsconfig's include (JSON with comments) the .vibe pattern of each
  * pattern that names .ts or .tsx files, src/**\/*.vibe beside src/**\/*.ts: a
  * composite project must list every file it compiles (TS6307), and a migrated

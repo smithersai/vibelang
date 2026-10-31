@@ -512,8 +512,10 @@ async function wireTarget(config, log) {
       const file = join(dir, tsconfig)
       const text = readFileSync(file, "utf8")
       // Each compile writes x.d.vibe.ts beside x.vibe, which every other TypeScript checker reads,
-      // and the project lists .vibe files where it lists .ts files.
-      writeIfChanged(file, text, Wire.addCompilerOptions(Wire.addVibeIncludes(text, ts), { rewriteRelativeImportExtensions: true }))
+      // and the project lists .vibe files where it lists .ts files. An earlier setup's
+      // declarationSidecars setting is retired: the compiler rejects it (TS5023).
+      const current = Wire.removeVibeLangSetting(text, ts, "declarationSidecars")
+      writeIfChanged(file, text, Wire.addCompilerOptions(Wire.addVibeIncludes(current, ts), { rewriteRelativeImportExtensions: true }))
     }
   }
   // Effect's lint rules run on .vibe files where the root's scripts run them on .ts files (VIP-38).
@@ -528,7 +530,8 @@ async function wireTarget(config, log) {
   // Every project resolves an import of ./x.vibe to its sidecar, as stock TypeScript does under this option.
   for (const tsconfig of Wire.rootTsconfigs(t, ts)) {
     const file = join(t, tsconfig)
-    writeIfChanged(file, readFileSync(file, "utf8"), Wire.addCompilerOptions(readFileSync(file, "utf8"), { allowArbitraryExtensions: true }))
+    const text = readFileSync(file, "utf8")
+    writeIfChanged(file, text, Wire.addCompilerOptions(Wire.removeVibeLangSetting(text, ts, "declarationSidecars"), { allowArbitraryExtensions: true }))
   }
   // The sidecars are vibelang's output, in its format; formatters leave them alone.
   const formatIgnore = join(t, ".prettierignore")
