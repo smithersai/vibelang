@@ -192,6 +192,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Source collectors could silently omit migrated files because their extension allowlists named only TypeScript; migration setup now warns with the file and line when `.ts` appears without `.vibe`.
 
 - Release notes repeated fixes and mixed maintainer validation entries with user-facing changes; the publication check now covers introductory bullets and every unpublished bug list while retaining each product fix once.
+- A `Bun.build` with `vibelang-unplugin/bun` could produce a program that failed at startup with a `ReferenceError` inside a CommonJS dependency such as `ws` (Bun 1.4.4), because the plugin's resolve hook matched every relative `.js` import; it now matches a `.js` import only where a `.vibe` module of that name exists.
+
 
 - Checking documentation examples with a symlinked `TMPDIR` could stop with `Compiler failed` instead of reporting an example's type error; diagnostics now stay attached to their examples and later pages are checked.
 

@@ -1,0 +1,76 @@
+{
+  "property": "bun-resolve-filter",
+  "rule": "packages/unplugin/README.md, Limitations: under Bun the plugin resolves `.vibe` names, extensionless relative names, and a relative `./x.js` only where an `x.vibe` exists",
+  "note": "opencode-20, minimized: packages/ai's protocols/utils/fal-queue.vibe is imported as ./utils/fal-queue.js from a .ts module, beside an installed CommonJS package (ws) and an ESM package (@effect/platform-node) whose own relative .js imports must not reach the hook.",
+  "input": {
+    "files": [
+      {
+        "directory": "src/util",
+        "name": "leaf",
+        "kind": ".vibe"
+      },
+      {
+        "directory": "src",
+        "name": "index",
+        "kind": ".ts"
+      },
+      {
+        "directory": "node_modules/dep/lib",
+        "name": "index",
+        "kind": ".js"
+      },
+      {
+        "directory": "node_modules/dep",
+        "name": "Effect",
+        "kind": ".js"
+      }
+    ],
+    "depProject": false,
+    "importers": [
+      {
+        "directory": "src",
+        "vibe": false
+      },
+      {
+        "directory": "node_modules/dep",
+        "vibe": false
+      },
+      {
+        "directory": "src",
+        "vibe": true
+      }
+    ],
+    "specifiers": [
+      {
+        "prefix": "./util/",
+        "name": "leaf",
+        "suffix": ".js",
+        "query": ""
+      },
+      {
+        "prefix": "./lib/",
+        "name": "index",
+        "suffix": ".js",
+        "query": ""
+      },
+      {
+        "prefix": "./",
+        "name": "Effect",
+        "suffix": ".js",
+        "query": ""
+      },
+      {
+        "prefix": "./",
+        "name": "index",
+        "suffix": ".js",
+        "query": ""
+      },
+      {
+        "prefix": "./util/",
+        "name": "leaf",
+        "suffix": "",
+        "query": ""
+      }
+    ]
+  }
+}

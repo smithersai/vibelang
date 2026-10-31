@@ -136,9 +136,15 @@ as `file:line:column - error TS2322: text`.
   no watch API for plugins. Bun 1.4.2 stops resolving `Bun.build`'s in-memory
   `files` once a plugin's resolve hook matches their names, and crashes on a
   `with { type: "file" }` import once a plugin's load hook matches every file,
-  so under Bun the plugin registers its own hooks: resolve for `.vibe` and
-  relative `.js` specifiers, load for `.vibe` modules and their module
-  declarations' outputs.
+  so under Bun the plugin registers its own hooks: resolve for `.vibe` names,
+  extensionless relative names, and a relative `./x.js` only where an `x.vibe`
+  exists in the repository, in a package it links, or in an installed package
+  with its own `tsconfig.json`; load for `.vibe` modules and their module
+  declarations' outputs. Bun 1.4.4 miscompiles a CommonJS dependency, such as
+  `ws` under `@effect/platform-node`, once a resolve hook matches the `.js`
+  imports inside the packages a build bundles. Bun maps a compiled module's
+  `./x.js` to `x.ts` or `x.tsx` itself. A `.vibe` file added during a build
+  is reached by its `.vibe` or extensionless name until the next build.
 - **webpack and Rspack:** the error carries its position in the message only;
   unplugin doesn't pass a location to webpack. webpack before 5.112.0 can miss
   a save made as a watch build finishes
