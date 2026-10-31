@@ -1,0 +1,12 @@
+{
+  "source": "migrate-smithers upgrade-effect stale bun.lock",
+  "input": {
+    "files": [
+      "pnpm-lock.yaml",
+      "bun.lock",
+      "nested/bun.lock"
+    ],
+    "version": "4.1.0",
+    "seedManager": "pnpm"
+  }
+}

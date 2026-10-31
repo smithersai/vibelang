@@ -1,0 +1,16 @@
+{
+  "finding": "t3code:codemod-gap:bun-script-loader",
+  "input": {
+    "depth": 0,
+    "form": "direct",
+    "script": "bun entry.ts",
+    "dependencyKind": "dependencies",
+    "range": "workspace:*",
+    "initialTest": false,
+    "hasCompiler": false,
+    "files": {
+      "apps/server/leaf.vibe": "export effect function answer() { return 42 }\n",
+      "apps/server/entry.ts": "import { Effect } from \"effect\";\nimport { answer } from \"./leaf.vibe\";\nif (Effect.runSync(answer()) !== 42) throw new Error(\"unexpected answer\");\n"
+    }
+  }
+}

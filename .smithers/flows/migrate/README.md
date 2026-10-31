@@ -381,6 +381,8 @@ node --test .smithers/flows/migrate/test/*.test.mjs
 node --test packages/compiler/test/migrate-test-diff.test.mjs
 ```
 
+The migration properties replay the Alchemy batch-scope, Smithers dual-lockfile and T3code Bun-program witnesses. Generated cases vary selected files and fix rounds, root and nested lockfiles, and workspace dependency paths; they check preserved files and configuration as well as the intended edits.
+
 The deterministic steps are tested against fixtures: import parsing and rewriting, `--fix` output, diagnostics, the plan's draft and validation, the setup edits, test-report comparison, declaration canonicalization (it needs `bun install` in `packages/runtime`, whose TypeScript has the compiler API), the run's state machine, issue validation and the generated context.
 
 `Option.match` quick fixes preserve statement and expression contexts, including conditional bodies and line breaks; the flow still reports genuine stable refusals.

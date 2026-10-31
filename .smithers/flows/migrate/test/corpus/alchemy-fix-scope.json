@@ -1,0 +1,19 @@
+{
+  "source": "migrate-alchemy alchemy-5",
+  "input": {
+    "directory": "packages/domain",
+    "maxRounds": 4,
+    "files": [
+      {
+        "kept": false,
+        "stages": 2,
+        "source": "import * as DateTime from \"effect/DateTime\"\nexport type Field = DateTime.Utc\n"
+      },
+      {
+        "kept": true,
+        "stages": 2,
+        "source": "export const batch = 2\n"
+      }
+    ]
+  }
+}
