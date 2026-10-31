@@ -1,0 +1,17 @@
+{
+  "property": "paths-imports",
+  "rule": "packages/compiler/paths-imports.mjs: aliasImport resolves a tsconfig paths alias as TypeScript does",
+  "input": {
+    "files": [
+      "src/x.vibe"
+    ],
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ]
+    },
+    "inherited": false,
+    "specifier": "@/x"
+  },
+  "reason": "The alchemy migration: each package maps \"@/*\" to \"./src/*\", and Bun could not load a .vibe module imported as @/x."
+}

@@ -257,6 +257,41 @@ test("resolves an extensionless import to the .vibe file TypeScript resolves it 
 })
 
 
+test("resolves a tsconfig paths alias to the .vibe module TypeScript resolves it to", { skip }, (t) => {
+  // alchemy: "@/*": ["./src/*"] in each package, and 118 modules import through it.
+  const { bun } = project(t, {
+    "tsconfig.json": JSON.stringify({ extends: "./config/base.json", include: ["src/**/*", "main.ts"] }),
+    "config/base.json": [
+      "{",
+      "  // TypeScript reads a substitution from the directory of the config that writes it",
+      "  \"compilerOptions\": {",
+      "    \"target\": \"ESNext\", \"module\": \"ESNext\", \"moduleResolution\": \"Bundler\", \"types\": [], \"skipLibCheck\": true, \"noEmit\": true,",
+      "    \"paths\": { \"@/*\": [\"../src/*\"], \"~lib\": [\"../src/lib/index\"] },",
+      "  },",
+      "}",
+      ""
+    ].join("\n"),
+    "src/a.vibe": "export const a: string = \"a\"\n",
+    "src/b.vibe": "import { a } from \"@/a\"\nexport const b: string = a + \"b\"\n",
+    "src/lib/index.vibe": "export const lib: string = \"lib\"\n",
+    "src/chosen.ts": "export const chosen = \"typescript\"\n",
+    "src/chosen.vibe": "export const chosen: string = \"wrong\"\n",
+    "main.ts": [
+      "import { a } from \"@/a\"",
+      "import { a as same } from \"@/a.js\"",
+      "import { b } from \"@/b\"",
+      "import { lib } from \"~lib\"",
+      "import { chosen } from \"@/chosen\"",
+      "const { b: later } = await import(\"@/b\")",
+      "console.log([a, same, b, lib, chosen, later].join(\" \"))",
+      ""
+    ].join("\n")
+  })
+  const result = bun(["--preload", preload, "main.ts"])
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(result.stdout, "a a ab lib typescript ab\n")
+})
+
 test("extensionless imports preserve TypeScript priority, dynamic imports and CommonJS dependencies", { skip }, (t) => {
   const { bun } = project(t, {
     "tsconfig.json": JSON.stringify({ compilerOptions: { target: "ESNext", module: "ESNext", moduleResolution: "Bundler", types: [], skipLibCheck: true, noEmit: true }, include: ["src/**/*"] }),

@@ -1,5 +1,6 @@
 import Module from "node:module"
 import { extensionlessImport } from "./relative-imports.mjs"
+import { aliasImport } from "./paths-imports.mjs"
 import { diagnosticsForFile } from "./diagnostics.mjs"
 // bun --preload vibelang/bun: Bun loads .vibe modules from source.
 //
@@ -14,20 +15,43 @@ import { diagnosticsForFile } from "./diagnostics.mjs"
 // own, main.vibe.text.js beside main.vibe for module text (D403), which is not
 // on disk; its JavaScript comes from the same compile.
 import { existsSync, readFileSync, realpathSync } from "node:fs"
-import { dirname, resolve, isAbsolute } from "node:path"
+import { dirname, join, resolve, isAbsolute } from "node:path"
 import { compileProjectSync, formatDiagnostic, moduleDeclarationSource, nearestProject, workspaceProject } from "./project.mjs"
 
 if (typeof Bun === "undefined") {
   throw new Error("vibelang/bun is a Bun preload; under Node, use node --import vibelang/register")
 }
 
+const isRelative = (specifier) => specifier.startsWith("./") || specifier.startsWith("../")
+// Only a relative import or a tsconfig paths alias can name a .vibe module,
+// and a dependency has none: a workspace package's real path is outside
+// node_modules. Scanning dependencies, or resolving their imports twice, is
+// what would make a preload slow.
+const inDependency = (path) => /[\\/]node_modules[\\/]/.test(path)
+
+// The tsconfig whose paths apply to a module in directory: the nearest one,
+// which also compiles it.
+const configs = new Map()
+function configOf(directory) {
+  if (!configs.has(directory)) configs.set(directory, nearestProject(join(directory, "index.ts")))
+  return configs.get(directory)
+}
+
+// The .vibe module that TypeScript resolves specifier, written in directory,
+// to: a relative import by extensionlessImport, and an alias of the nearest
+// tsconfig's paths (`@/x` for `"@/*": ["./src/*"]`) by aliasImport. Bun
+// resolves an alias itself, but never to a .vibe file.
+function vibeImport(directory, specifier) {
+  const source = isRelative(specifier) ? extensionlessImport(directory, specifier) : aliasImport(configOf(directory), specifier)
+  return source?.endsWith(".vibe") ? source : undefined
+}
+
 // Bun honors Node's CommonJS hook for extensionless require requests.
 const resolveFilename = Module._resolveFilename
 Module._resolveFilename = function (specifier, parent, ...args) {
-  if (typeof specifier === "string" && parent?.filename &&
-      (specifier.startsWith("./") || specifier.startsWith("../"))) {
-    const source = extensionlessImport(dirname(parent.filename), specifier)
-    if (source?.endsWith(".vibe")) return source
+  if (typeof specifier === "string" && parent?.filename && !inDependency(parent.filename)) {
+    const source = vibeImport(dirname(parent.filename), specifier)
+    if (source !== undefined) return source
   }
   return resolveFilename.call(this, specifier, parent, ...args)
 }
@@ -76,14 +100,14 @@ const pathOf = (importer) => importer?.startsWith(`${moduleNamespace}:`) ? impor
 
 // Bun runtime resolution does not call onResolve for an extensionless
 // import. Let Bun parse the importing source, externalizing every import
-// and replacing only the relative names that TypeScript resolves to .vibe.
+// and replacing only the relative names and paths aliases that TypeScript
+// resolves to .vibe.
 // The common path needs only a scan; dependencies keep Bun's own loader.
 async function resolveImports(path, contents, loader) {
   const replacements = new Map()
   for (const entry of new Bun.Transpiler({ loader }).scanImports(contents)) {
-    if (!entry.path.startsWith("./") && !entry.path.startsWith("../")) continue
-    const source = extensionlessImport(dirname(path), entry.path)
-    if (source?.endsWith(".vibe")) replacements.set(entry.path, source)
+    const source = vibeImport(dirname(path), entry.path)
+    if (source !== undefined) replacements.set(entry.path, source)
   }
   if (replacements.size === 0) return { contents, loader }
   const result = await Bun.build({
@@ -98,11 +122,6 @@ async function resolveImports(path, contents, loader) {
   if (!result.success) throw new AggregateError(result.logs, `vibelang/bun: cannot load ${path}`)
   return { contents: await result.outputs[0].text(), loader: "js" }
 }
-
-// Only a relative import can name a .vibe module, and a dependency has none: a
-// workspace package's real path is outside node_modules. Scanning dependencies,
-// or resolving their imports twice, is what would make a preload slow.
-const inDependency = (path) => /[\\/]node_modules[\\/]/.test(path)
 
 Bun.plugin({
   name: "vibelang",
@@ -128,9 +147,7 @@ Bun.plugin({
         imports = new Bun.Transpiler({ loader }).scanImports(code)
       } catch { return }
       const needsRewrite = imports.some((entry) =>
-        entry.kind !== "require-call" &&
-        (entry.path.startsWith("./") || entry.path.startsWith("../")) &&
-        extensionlessImport(dirname(file), entry.path)?.endsWith(".vibe"))
+        entry.kind !== "require-call" && vibeImport(dirname(file), entry.path) !== undefined)
       if (needsRewrite && !emittedSource && !/\.(?:cjs|cts)$/.test(file) &&
           !/\bmodule\s*(?:\.\s*exports|\[\s*["']exports["']\s*\])|\bexports\s*[.[]/.test(code)) {
         const escape = (value) => value.replace(/[.*+?^{}$()|[\]\\]/g, "\\$&")
@@ -139,8 +156,7 @@ Bun.plugin({
       }
       for (const entry of imports) {
         try {
-          const relative = entry.path.startsWith("./") || entry.path.startsWith("../")
-          const target = relative ? extensionlessImport(dirname(file), entry.path) : undefined
+          const target = isRelative(entry.path) ? extensionlessImport(dirname(file), entry.path) : vibeImport(dirname(file), entry.path)
           discover(target ?? Bun.resolveSync(entry.path, dirname(file)))
         } catch { /* Builtins, assets and unresolved imports keep native handling. */ }
       }
