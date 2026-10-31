@@ -310,7 +310,8 @@ export async function upgradeEffect(options) {
   const to = await runtimeEffect(config)
   const workspaceFile = join(t, "pnpm-workspace.yaml")
   const globs = Upgrade.workspaceGlobs(readFileSync(join(t, "package.json"), "utf8"), existsSync(workspaceFile) ? readFileSync(workspaceFile, "utf8") : "")
-  const manifests = Upgrade.workspaceManifests((await Jj.trackedFiles(t)).filter((f) => /(?:^|\/)package\.json$/.test(f) || f === "pnpm-workspace.yaml"), globs)
+  const submodules = Wire.submodulePaths(t)
+  const manifests = Upgrade.workspaceManifests((await Jj.trackedFiles(t)).filter((f) => (/(?:^|\/)package\.json$/.test(f) || f === "pnpm-workspace.yaml") && !Wire.inSubmodule(submodules, f)), globs)
     .sort((a, b) => (a === "package.json" ? -1 : b === "package.json" ? 1 : a === "pnpm-workspace.yaml" ? -1 : b === "pnpm-workspace.yaml" ? 1 : a < b ? -1 : 1))
   const upgrade = Upgrade.planUpgrade(manifests.map((path) => ({ path, text: readFileSync(join(t, path), "utf8") })), to, manager)
   for (const f of upgrade.files) writeFileSync(join(t, f.path), f.text)
@@ -469,6 +470,13 @@ function carryVibeLangPatches(t, moved, version, release) {
 async function wireTarget(config, log) {
   const t = config.target
   const changed = []
+  const warnings = []
+  // A Git submodule's packages stay as its own repository has them (alchemy-31).
+  const submodules = Wire.submodulePaths(t)
+  const packages = config.packages.filter((pkg) => !Wire.inSubmodule(submodules, pkg.dir))
+  for (const pkg of config.packages) {
+    if (!packages.includes(pkg)) warnings.push(`setup leaves ${pkg.dir} as it is: it is inside a Git submodule, ${submodules.find((dir) => Wire.inSubmodule([dir], pkg.dir))}, whose files a commit of this repository cannot hold`)
+  }
   const toolchain = config.toolchain.kind === "staged" ? readToolchain(config.toolchain.dir) : null
   // A staged toolchain's tarballs go into an ignored directory at the target's
   // root, named relatively by each package; a published version is an exact
@@ -492,9 +500,8 @@ async function wireTarget(config, log) {
     writeFileSync(path, after)
     changed.push(posix.relative(t, path))
   }
-  const warnings = []
   const ts = typeScriptOf(config)
-  for (const pkg of config.packages) {
+  for (const pkg of packages) {
     const path = join(t, pkg.dir, "package.json")
     const next = Wire.addVibeLang(readJson(path), specsFor(pkg.dir))
     next.scripts = Wire.replaceTsc(next.scripts)
@@ -549,22 +556,22 @@ async function wireTarget(config, log) {
     writeIfChanged(bunfig, text, Wire.addBunTestPreload(text))
   }
   // And in every package that runs bun test and reaches migrated sources: a workspace import loads them too.
-  const bunTests = Wire.wireBunTests({ root: t, packages: config.packages, specsFor })
+  const bunTests = Wire.wireBunTests({ root: t, packages: packages, specsFor })
   changed.push(...bunTests.changed.filter((file) => !changed.includes(file)))
   warnings.push(...bunTests.warnings)
   // The plugin goes into the config the tests load: the shared one the test command names, else each package's.
-  const vite = Wire.wireVite({ root: t, packages: config.packages, test: config.test, ts, specsFor })
+  const vite = Wire.wireVite({ root: t, packages: packages, test: config.test, ts, specsFor })
   changed.push(...vite.changed.filter((file) => !changed.includes(file)))
   warnings.push(...vite.warnings)
   const tooling = wireDeveloperTools({ root: t, specsFor, ts })
   changed.push(...tooling.changed.filter(file => !changed.includes(file)))
   warnings.push(...tooling.warnings)
   // And into every other config that bundles migrated sources: apps, examples and websites build and serve them too.
-  const apps = Wire.wireViteApps({ root: t, packages: config.packages, ts, specsFor, wired: vite.configs })
+  const apps = Wire.wireViteApps({ root: t, packages: packages, ts, specsFor, wired: vite.configs })
   changed.push(...apps.changed.filter((file) => !changed.includes(file)))
   warnings.push(...apps.warnings)
   // A bundle reaches .vibe modules through vibelang-unplugin/bun: vibelang/bun's runtime plugin does not apply to Bun.build.
-  const bunBuilds = Wire.wireBunBuilds({ root: t, packages: config.packages, ts, specsFor })
+  const bunBuilds = Wire.wireBunBuilds({ root: t, packages: packages, ts, specsFor })
   changed.push(...bunBuilds.changed.filter((file) => !changed.includes(file)))
   warnings.push(...bunBuilds.warnings)
   // Knip reads .vibe files through vibelang/knip.
@@ -580,7 +587,7 @@ async function wireTarget(config, log) {
   for (const build of tooling.builds) await must(build.command, { cwd: join(t, build.cwd), log: join(log, "ast-grep-build.log") })
   const existingVibe = await formatExistingVibe(config, join(log, "setup-format-vibe.log"))
   if (existingVibe.code !== 0) warnings.push(`vibelang-format exited ${existingVibe.code} on the repository's .vibe files; see ${join(log, "setup-format-vibe.log")}`)
-  return { manager, formattedVibe: existingVibe.files, specs: Object.fromEntries(config.packages.map((pkg) => [pkg.dir, specsFor(pkg.dir)])), viteConfigs: vite.configs, viteAppConfigs: apps.configs, knipConfig: knip.config, formatted, changed, warnings, install }
+  return { manager, formattedVibe: existingVibe.files, specs: Object.fromEntries(packages.map((pkg) => [pkg.dir, specsFor(pkg.dir)])), viteConfigs: vite.configs, viteAppConfigs: apps.configs, knipConfig: knip.config, formatted, changed, warnings, install }
 }
 
 /**

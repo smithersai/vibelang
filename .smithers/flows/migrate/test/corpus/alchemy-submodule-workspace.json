@@ -1,0 +1,8 @@
+{
+  "reason": "alchemy-31: alchemy's pnpm-workspace.yaml names submodules/distilled/packages/*, a Git submodule pinned at dde8f025ee1d; setup edited its manifests, the lockfile recorded them, and a fresh frozen install at the gitlink failed.",
+  "input": {
+    "own": ["alchemy", "aws", "cloudflare"],
+    "submodules": [{ "dir": "submodules/distilled", "packages": ["aws", "core", "cloudflare"] }],
+    "style": "pnpm"
+  }
+}

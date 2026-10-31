@@ -228,6 +228,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A documented field of a `service` declared `readonly` as a property of its own before the field (`readonly: any` and a mutable field), so consumers of the service shape failed with TS2741; the comment now precedes the whole `readonly` field.
 
+- The migrate flow's setup and Effect upgrade edited the manifests and tsconfigs of packages inside a Git submodule that the workspace named, so the lockfile recorded edits no commit of the parent could hold and a fresh `pnpm install --frozen-lockfile` at the submodule's gitlink failed; setup now leaves every submodule as it is, with a warning for a package the run names inside one.
+
 
 - Checking documentation examples with a symlinked `TMPDIR` could stop with `Compiler failed` instead of reporting an example's type error; diagnostics now stay attached to their examples and later pages are checked.
 

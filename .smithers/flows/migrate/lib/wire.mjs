@@ -25,6 +25,7 @@ import { must, quote } from "./util.mjs"
  * it is, as the Effect upgrade does.
  */
 export function ownedPaths(root) {
+  const submodules = submodulePaths(root)
   const read = (file) => (existsSync(join(root, file)) ? readFileSync(join(root, file), "utf8") : "")
   const manifest = read("package.json")
   const globs = manifest ? workspaceGlobs(manifest, read("pnpm-workspace.yaml")) : []
@@ -37,7 +38,27 @@ export function ownedPaths(root) {
     }
     return owned.get(dir)
   }
-  return (path) => ownerOwned(posix.dirname(path))
+  return (path) => !inSubmodule(submodules, path) && ownerOwned(posix.dirname(path))
+}
+
+/**
+ * The directories of the repository's Git submodules, from its .gitmodules:
+ * each is another repository at the revision its gitlink records, so a
+ * commit of this one cannot hold edits to it. Setup and the Effect upgrade
+ * leave them as they are, even where a workspace or the run names packages
+ * inside them, as alchemy's pnpm-workspace.yaml names
+ * submodules/distilled/packages/* (alchemy-31).
+ */
+export function submodulePaths(root) {
+  const file = join(root, ".gitmodules")
+  if (!existsSync(file)) return []
+  return [...readFileSync(file, "utf8").matchAll(/^\s*path\s*=\s*(.+?)\s*$/gm)].map((m) => posix.normalize(m[1]).replace(/\/$/, ""))
+}
+
+/** Whether a repository-relative path is a submodule's directory or inside one. */
+export function inSubmodule(submodules, path) {
+  const normal = posix.normalize(path)
+  return submodules.some((dir) => normal === dir || normal.startsWith(dir + "/"))
 }
 
 /** Replaces tsc with vibelang in package scripts: `tsc -b x` becomes `vibelang -b x`. */
