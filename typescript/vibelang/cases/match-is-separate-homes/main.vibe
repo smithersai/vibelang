@@ -1,0 +1,23 @@
+// expect-result: {"first":1,"second":2,"arms":3,"names":5}
+// Chapter 004, decided detail 245 (loop round 3, OPUS-1): separate blocks and
+// match arms are separate homes, and distinct names never collide.
+function pick(a: unknown, b: unknown) {
+  { if (a is { id: let id }) return id }
+  { if (b is { id: let id }) return id }
+  return 0
+}
+function arms(x: { a: number } | { b: number }) {
+  return match (x) {
+    when { a: let n }: n;
+    when { b: let n }: n;
+    default: 0;
+  }
+}
+function names(a: unknown, b: unknown) {
+  if (a is { id: let first }) return first
+  if (b is { id: let second }) return second
+  return 0
+}
+export effect function main() {
+  return { first: pick({ id: 1 }, {}), second: pick({}, { id: 2 }), arms: arms({ b: 3 }), names: names({}, { id: 5 }) }
+}
