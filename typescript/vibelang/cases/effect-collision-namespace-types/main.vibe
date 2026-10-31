@@ -1,0 +1,7 @@
+// Spec 005, Effect's modules are in scope: Effect.M, where M is a module
+// that a JavaScript or TypeScript global hides, is that module in a type
+// too, and the declaration file names the module.
+export const first: Effect.Array.NonEmptyReadonlyArray<number> = [1, 2]
+export const counts: Effect.Record.ReadonlyRecord<string, number> = { a: 3 }
+export type Pair = Effect.Array.NonEmptyReadonlyArray<string>
+export const pair: Pair = ["p", "q"]

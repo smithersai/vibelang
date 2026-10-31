@@ -1214,6 +1214,7 @@
 {"alias":"prelude#Reducer","to":"effect/Reducer"}
 {"alias":"prelude#Ref","to":"effect/Ref"}
 {"alias":"prelude#References","to":"effect/References"}
+{"alias":"prelude#Request","to":"effect/Request"}
 {"alias":"prelude#RequestResolver","to":"effect/RequestResolver"}
 {"alias":"prelude#Resource","to":"effect/Resource"}
 {"alias":"prelude#Result","to":"effect/Result"}
@@ -1261,7 +1262,6 @@
 {"alias":"prelude#Types","to":"effect/Types"}
 {"alias":"prelude#UndefinedOr","to":"effect/UndefinedOr"}
 {"alias":"prelude#Unify","to":"effect/Unify"}
-{"alias":"prelude#Utils","to":"effect/Utils"}
 {"alias":"prelude#Version","to":"effect/Version"}
 {"alias":"prelude#abandon","to":"vibelang-runtime#abandon"}
 {"alias":"prelude#absurd","to":"effect/Function#absurd"}

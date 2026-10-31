@@ -89,7 +89,7 @@ func newLowering(opts *transformers.TransformOptions, file *ast.SourceFile) *tra
 }
 
 func (tx *lowering) visit(node *ast.Node) *ast.Node {
-	if module := tx.plan.collisionModules[node]; module != "" {
+	if module := tx.plan.collisionModules[node]; module != "" && ast.IsPropertyAccessExpression(node) {
 		return tx.moduleNamespace(module)
 	}
 	if isFunctionBoundary(node) {

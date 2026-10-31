@@ -56,6 +56,11 @@ func preludeNameVisible(c *checker.Checker, entityName *ast.Node, symbol *ast.Sy
 		// declarations replace (services_declarations.go), so it imports nothing.
 		return true
 	}
+	if parent := first.Parent; parent != nil && ast.IsQualifiedName(parent) && collisionModules(c)[parent] != "" {
+		// Effect.Array.T, which effectCollisionTypes writes as an import
+		// type of effect/Array, so it imports nothing.
+		return true
+	}
 	recordTypeUse(state, file, first)
 	return true
 }
@@ -116,12 +121,19 @@ func transformDeclarations(resolver printer.EmitResolver, sourceFile *ast.Source
 		})
 		rewriter.NewTransformer(rewriter.visit, resolver.EmitContext())
 		declarations = rewriter.TransformSourceFile(declarations)
+		var collisions map[*ast.Node]string
 		r.WithChecker(func(c *checker.Checker) {
 			state := preludeStateOf(c)
 			aliases := &runtimeAliasTypes{record: func(identifier *ast.Node) { recordTypeUse(state, sourceFile, identifier) }}
 			aliases.NewTransformer(aliases.visit, resolver.EmitContext())
 			declarations = aliases.TransformSourceFile(declarations)
+			collisions = lockedCopy(collisionModules(c))
 		})
+		if len(collisions) > 0 {
+			types := &effectCollisionTypes{modules: collisions}
+			types.NewTransformer(types.visit, resolver.EmitContext())
+			declarations = types.TransformSourceFile(declarations)
+		}
 		members := &sourcePropertyModifiers{}
 		members.NewTransformer(members.visit, resolver.EmitContext())
 		declarations = members.TransformSourceFile(declarations)

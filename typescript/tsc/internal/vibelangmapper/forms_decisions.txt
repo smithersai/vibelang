@@ -1025,6 +1025,7 @@ typescript/vibelang/cases/effect-loaded-by-throw/lib.vibe:5:21 lambda choice fal
 typescript/vibelang/cases/effect-method-super/main.vibe:50:12 lambda choice fallback
 typescript/vibelang/cases/effect-method-super/main.vibe:90:15 lambda effectFn fallback
 typescript/vibelang/cases/effect-method-super/main.vibe:91:17 lambda dual fallback
+typescript/vibelang/cases/effect-modules-explicit/main.vibe:3:168 lambda plain table
 typescript/vibelang/cases/effect-platform-name-meanings/main.vibe:22:15 lambda plain annotation
 typescript/vibelang/cases/effect-subtype-returns.fail/main.vibe:7:24 lambda choice fallback
 typescript/vibelang/cases/effect-subtype-returns/main.vibe:10:53 lambda effectFn annotation
