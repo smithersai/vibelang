@@ -1,0 +1,6 @@
+// expect: EK0908
+// Two members on one line need ; or a line break between them; each pair
+// gets one EK0908 and the next member still parses.
+export service Users { static readonly key = "sep/users"; region: string find(id: string): number!! }
+export service Flags { a: number b: string }
+export service Methods { first(): number second(): string }

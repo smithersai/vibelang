@@ -17,6 +17,10 @@ import (
 // of the service-member reports: a service is a key whose members are
 // signatures, as in an interface.
 var servicesRules = []struct{ key, quote, good, bad string }{
+	{"missing-body", "a recognized service declaration missing its required body", "export service Users { n: number }", "export service Users"},
+	{"ambient-explicit", "a custom `service` declaration in an ambient source context, explicit or inherited", "export service Users { n: number }", "declare service Users { n: number }"},
+	{"ambient-inherited", "a custom `service` declaration in an ambient source context, explicit or inherited", "namespace Tools { export const n = 1 }", "declare namespace Tools { namespace Nested { export service Users { static readonly key = \"ambient/Users\"; n: number } } }"},
+	{"ambient-missing-body-priority", "a custom `service` declaration in an ambient source context, explicit or inherited", "export service Users { n: number }", "declare service Users"},
 	{"comma-methods", "two members on one line with no separator", "export service Users { a(): number, b(): string, }", "export service Users { a(): number b(): string }"},
 	{"comma-properties", "two members on one line with no separator", "export service Users { readonly a: number, b?: string, }", "export service Users { a: number b: string }"},
 	{"new-service", "`new Users()`", "export service Users { n: number }\nexport function f(): number { return 1 }", "export service Users { n: number }\nexport const u = new Users()"},

@@ -80,7 +80,7 @@ var specAhead = map[int32]string{
 	// Assigned by the round-19 and round-20 spec for decided details 96 (a @throws tag on an effectful callable) and 100 (an extractor on a class without its own matcher).
 	406: renumbering, 704: renumbering,
 	// Incomplete custom declaration forms have assigned diagnostics before compiler registration.
-	906: renumbering, 907: renumbering, 1503: renumbering, 1604: renumbering,
+	1503: renumbering, 1604: renumbering,
 	// Missing member separators in VibeLang declaration bodies have assigned diagnostics before compiler registration.
 	1504: renumbering,
 	// VIP-15 and VIP-16 catalog existing named/nongeneric declaration rejections.

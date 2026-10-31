@@ -1,0 +1,1 @@
+The members of a declaration need a separator

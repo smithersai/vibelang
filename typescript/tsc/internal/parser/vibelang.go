@@ -399,6 +399,10 @@ func (p *Parser) parseServiceDeclaration(pos int, jsdoc jsdocScannerInfo, modifi
 	p.parseOptional(ast.KindClassKeyword)
 	name := p.parseBindingIdentifier()
 	typeParameters := p.parseTypeParameters()
+	ambient := !control && p.isVibeLangAmbientService(modifiers)
+	if ambient {
+		p.vibelangServiceError(core.NewTextRange(scanner.SkipTrivia(p.sourceText, word.Pos()), word.End()), 907, VibeLangAmbientServiceMessage) // EK0907, ahead of EK0906
+	}
 	if !control && p.token == ast.KindColonToken {
 		return p.parseServiceShapeDeclaration(pos, jsdoc, modifiers, word, name, typeParameters) // D281
 	}
@@ -420,8 +424,10 @@ func (p *Parser) parseServiceDeclaration(pos int, jsdoc jsdocScannerInfo, modifi
 	form := VibeSyntax{Kind: VibeSyntaxDeclaration, Name: formName, Head: core.NewTextRange(word.Pos(), name.End())}
 	if p.token == ast.KindOpenBraceToken {
 		form.Open = p.tokenRange()
+	} else if !control && !ambient {
+		p.vibelangServiceError(core.NewTextRange(scanner.SkipTrivia(p.sourceText, word.Pos()), name.End()), 906, VibeLangServiceBodyMessage) // EK0906
 	}
-	if p.parseExpected(ast.KindOpenBraceToken) {
+	if control && p.parseExpected(ast.KindOpenBraceToken) || !control && p.parseOptional(ast.KindOpenBraceToken) {
 		saveAbstract, saveFieldBody, saveService, saveControl := p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangServiceMembers, p.vibelangControlMembers
 		p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangServiceMembers, p.vibelangControlMembers = true, true, !control, control
 		members = p.parseList(PCClassMembers, (*Parser).parseClassElement)

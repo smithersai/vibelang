@@ -1,0 +1,8 @@
+// expect: EK0907
+// A service creates a run-time key, so it cannot be ambient: neither after
+// declare nor inside a declare namespace, and with or without a body.
+declare service Users { find(id: string): number!! }
+declare namespace Tools {
+  service Clock { now(): number!! }
+}
+declare service Bare

@@ -1,0 +1,4 @@
+// expect: EK0906
+// A service declaration needs its body; the parse goes on after it.
+export service Users
+export const after = 1

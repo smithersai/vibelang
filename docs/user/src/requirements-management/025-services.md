@@ -48,6 +48,10 @@ Construct signatures directly in a service body, such as `new(): T!!` and `new<T
 
 A call signature directly in a service body, such as `(value: string): string`, is `EK0902`: declare a named method, or a property whose type is a function, such as `format: (value: string) => string`.
 
+A service needs its body, even an empty one: `service Users` alone is `EK0906`. A service creates a run-time key, so it cannot be ambient: `declare service Users { … }`, or a service inside a `declare namespace` or `declare module`, is `EK0907`. Two members on one line need a separator, `;` or a line break: `a: number b: string` is `EK0908`, and its quick fix inserts `;`.
+
+The `EK0908` repair inserts `;` before the following member's comments and JSDoc, retaining its `@throws` contract.
+
 Services are nominal: the compiler derives the key from package, module path, and declaration name, so two services with identical members are different dependencies. To keep a key, such as one a `Context.Service` class wrote before migrating, write it in the body: `static readonly key = "app/Users"`. A `key` that is not `static readonly` with a quoted string literal is `EK0901`. A type annotation is allowed, as in `static readonly key: string = "app/Users"`; a template literal or computed initializer is not. An `abstract class` is an ordinary TypeScript class; one written as a service draws `EK4854`, whose fix, which `vibelang --fix` applies, writes the `service` declaration with its members and key. Implement one with an object literal or a class that `implements` its `.Shape`; don't construct, extend, or use `instanceof` on it.
 
 When migrating, preserve every original explicit key; deriving a new key can break providers across package boundaries or persisted identities.
