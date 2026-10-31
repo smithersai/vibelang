@@ -209,6 +209,34 @@ export async function setUpAgents(t, packageDir, logs) {
   return { ...agents, formatted: await formatWritten(t, agents.files, join(logs, "agents-format.log")) }
 }
 
+/** A log path for one project of several: compile-x.log becomes compile-x-tsconfig.node.log. */
+const projectLog = (log, tsconfig, projects) => (projects.length > 1 ? log.replace(/(\.log)?$/, `-${slug(tsconfig)}$1`) : log)
+
+/** Checks each project of pkg's tsconfig (Wire.projectsOf) and joins their diagnostics. */
+async function checkPackage({ compiler, ts, t, pkg, log }) {
+  const cwd = join(t, pkg.dir)
+  const projects = Wire.projectsOf(ts, cwd, pkg.tsconfig)
+  const diagnostics = []
+  for (const tsconfig of projects) diagnostics.push(...(await check({ compiler, tsconfig, cwd, root: t, log: projectLog(log, tsconfig, projects) })).diagnostics)
+  return { diagnostics }
+}
+
+/** Emits the declarations of each project of pkg's declaration tsconfig into outDir, each into its own subdirectory when there are several. */
+async function emitPackageDeclarations({ compiler, ts, t, pkg, outDir, log }) {
+  const cwd = join(t, pkg.dir)
+  const projects = Wire.projectsOf(ts, cwd, pkg.dtsTsconfig)
+  if (projects.length === 1) return emitDeclarations({ compiler, tsconfig: projects[0], cwd, outDir, log })
+  rmSync(outDir, { recursive: true, force: true })
+  let code = 0
+  let files = 0
+  for (const tsconfig of projects) {
+    const emitted = await emitDeclarations({ compiler, tsconfig, cwd, outDir: join(outDir, slug(tsconfig)), log: projectLog(log, tsconfig, projects) })
+    code ||= emitted.code
+    files += emitted.files
+  }
+  return { code, files }
+}
+
 const testsOf = (r) => ({ code: r.code, total: r.total, passed: r.passed, failed: r.failed, skipped: r.skipped, ms: r.ms })
 
 /**
@@ -377,7 +405,8 @@ async function wireTarget(config, log) {
     next.scripts = Wire.replaceTsc(next.scripts)
     writeIfChanged(path, readFileSync(path, "utf8"), JSON.stringify(next, null, 2) + "\n")
     const dir = join(t, pkg.dir)
-    for (const tsconfig of new Set([pkg.tsconfig, pkg.dtsTsconfig])) {
+    // A solution-style tsconfig's referenced projects compile the sources, so they are wired too.
+    for (const tsconfig of new Set([pkg.tsconfig, pkg.dtsTsconfig, ...Wire.projectsOf(ts, dir, pkg.tsconfig), ...Wire.projectsOf(ts, dir, pkg.dtsTsconfig)])) {
       const file = join(dir, tsconfig)
       const text = readFileSync(file, "utf8")
       // Each compile writes x.d.vibe.ts beside x.vibe, which every other TypeScript checker reads,
@@ -496,12 +525,12 @@ export async function setup(options) {
 
   const compile = {}
   const declarations = {}
+  const ts = typeScriptOf(config)
   for (const pkg of config.packages) {
-    const cwd = join(t, pkg.dir)
-    const checked = await check({ compiler, tsconfig: pkg.tsconfig, cwd, root: t, log: join(logs, `compile-${slug(pkg.dir)}.log`) })
+    const checked = await checkPackage({ compiler, ts, t, pkg, log: join(logs, `compile-${slug(pkg.dir)}.log`) })
     writeJson(join(p.baseline, `compile-${slug(pkg.dir)}.json`), checked.diagnostics)
     compile[pkg.dir] = summarize(checked.diagnostics)
-    declarations[pkg.dir] = await emitDeclarations({ compiler, tsconfig: pkg.dtsTsconfig, cwd, outDir: join(p.baseline, "dts", slug(pkg.dir)), log: join(logs, `dts-${slug(pkg.dir)}.log`) })
+    declarations[pkg.dir] = await emitPackageDeclarations({ compiler, ts, t, pkg, outDir: join(p.baseline, "dts", slug(pkg.dir)), log: join(logs, `dts-${slug(pkg.dir)}.log`) })
   }
 
   const files = scopeFiles(config)
@@ -583,11 +612,14 @@ export async function codemod(options) {
   const rounds = []
   let settled = true
   for (const pkg of config.packages.filter((pkg) => files.some((f) => packageOf(config, f) === pkg))) {
-    const fixed = await fixToFixedPoint({ compiler, tsconfig: pkg.tsconfig, cwd: join(t, pkg.dir), root: t, only: renames.map((r) => r.to), log: join(p.batch(b), "logs", `fix-${slug(pkg.dir)}`) })
-    for (const [file, kinds] of Object.entries(fixed.byFile)) byFile[file] = kinds
-    refused.push(...fixed.refused)
-    rounds.push(...fixed.rounds.map((r) => ({ package: pkg.dir, ...r })))
-    settled &&= fixed.settled
+    const projects = Wire.projectsOf(typeScriptOf(config), join(t, pkg.dir), pkg.tsconfig)
+    for (const tsconfig of projects) {
+      const fixed = await fixToFixedPoint({ compiler, tsconfig, cwd: join(t, pkg.dir), root: t, only: renames.map((r) => r.to), log: join(p.batch(b), "logs", `fix-${slug(pkg.dir)}${projects.length > 1 ? `-${slug(tsconfig)}` : ""}`) })
+      for (const [file, kinds] of Object.entries(fixed.byFile)) byFile[file] = kinds
+      refused.push(...fixed.refused)
+      rounds.push(...fixed.rounds.map((r) => ({ package: pkg.dir, ...(projects.length > 1 ? { project: tsconfig } : {}), ...r })))
+      settled &&= fixed.settled
+    }
   }
   const result = { batch: b, at: new Date().toISOString(), files, mutable, renames, exportEdits, importEdits, fix: { settled, rounds, byFile, totals: rewriteTotals(byFile), refused } }
   writeJson(p.codemod(b), result)
@@ -602,8 +634,9 @@ export async function compile(options) {
   const compiler = compilerOf(config)
   const diagnostics = []
   const added = []
+  const ts = typeScriptOf(config)
   for (const pkg of config.packages) {
-    const checked = await check({ compiler, tsconfig: pkg.tsconfig, cwd: join(config.target, pkg.dir), root: config.target, log: join(p.batch(b), "logs", `compile-${slug(pkg.dir)}.log`) })
+    const checked = await checkPackage({ compiler, ts, t: config.target, pkg, log: join(p.batch(b), "logs", `compile-${slug(pkg.dir)}.log`) })
     diagnostics.push(...checked.diagnostics)
     added.push(...newErrors(readJson(join(p.baseline, `compile-${slug(pkg.dir)}.json`)), checked.diagnostics))
   }
@@ -700,7 +733,7 @@ export async function verify(options) {
   const declarations = {}
   for (const pkg of config.packages) {
     const outDir = join(p.batch(b), "dts", slug(pkg.dir))
-    await emitDeclarations({ compiler, tsconfig: pkg.dtsTsconfig, cwd: join(t, pkg.dir), outDir, log: join(logs, `dts-${slug(pkg.dir)}.log`) })
+    await emitPackageDeclarations({ compiler, ts, t, pkg, outDir, log: join(logs, `dts-${slug(pkg.dir)}.log`) })
     declarations[pkg.dir] = compareDeclarations(ts, join(p.baseline, "dts", slug(pkg.dir)), outDir)
   }
   const batchErrors = checked.diagnostics.filter((d) => migrated.includes(d.file) && d.category === "error")

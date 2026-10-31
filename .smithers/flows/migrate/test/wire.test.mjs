@@ -5,6 +5,7 @@ import { join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { loadTypeScript } from "../lib/declarations.mjs"
+import { projectsOf } from "../lib/wire.mjs"
 import { addBunBuildPlugin, addBunPreload, bunProgramDirs, wireBunBuilds, addBunTestPreload, wireBunTests, addCompilerOptions, addEffectLint, copyTarballs, formattable, formatterOf, addVibeLang, addVibeIncludes, addVibeLangSetting, addVitePlugin, initAgents, installCommand, packageManager, replaceTsc, rootTsconfigs, runsBunTest, setIgnoreLine, testConfigArgument, toolchainDirectory, toolchainSpecs, viteAppConfigs, wireKnip, wireVite, wireViteApps } from "../lib/wire.mjs"
 import { setUpAgents } from "../lib/steps.mjs"
 import { must } from "../lib/util.mjs"
@@ -525,6 +526,22 @@ test("a rebuilt toolchain of the same version installs: each tarball's name foll
   const after = await install(second)
   assert.ok(existsSync(join(target, "node_modules/.bin/vibelang-format")), "the second build's new command is linked")
   assert.equal(await install(second), after, "the same build keeps its name")
+})
+
+test("projectsOf reads a solution-style tsconfig as the projects it references", () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-projects-"))
+  try {
+    mkdirSync(join(root, "node"))
+    writeFileSync(join(root, "tsconfig.json"), '{\n  // the build graph\n  "files": [],\n  "references": [{ "path": "./tsconfig.runtime.json" }, { "path": "./node" }]\n}\n')
+    writeFileSync(join(root, "tsconfig.runtime.json"), '{ "include": ["src"] }')
+    writeFileSync(join(root, "node/tsconfig.json"), '{ "include": ["../scripts"] }')
+    writeFileSync(join(root, "tsconfig.build.json"), '{ "include": ["src"], "references": [{ "path": "./node" }] }')
+    assert.deepEqual(projectsOf(ts, root, "tsconfig.json"), ["tsconfig.runtime.json", "node/tsconfig.json"])
+    assert.deepEqual(projectsOf(ts, root, "tsconfig.build.json"), ["tsconfig.build.json"])
+    assert.deepEqual(projectsOf(ts, root, "tsconfig.runtime.json"), ["tsconfig.runtime.json"])
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
 })
 
 test("setIgnoreLine adds the toolchain directory once and removes it for a published version", () => {

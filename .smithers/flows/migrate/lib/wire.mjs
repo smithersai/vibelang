@@ -10,7 +10,7 @@
 // Effect upgrade before setup is upgrade.mjs. initAgents sets the target's
 // coding agents up with the vibelang it installed.
 import { createHash } from "node:crypto"
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { join, posix } from "node:path"
 import { workspaceGlobs, workspaceManifests } from "./upgrade.mjs"
 import { must, quote } from "./util.mjs"
@@ -785,6 +785,22 @@ export function packageManager(files) {
   if (files.includes("bun.lock") || files.includes("bun.lockb")) return "bun"
   if (files.includes("yarn.lock")) return "yarn"
   return "npm"
+}
+
+/**
+ * The projects a package's tsconfig stands for, relative to the package: the
+ * tsconfig itself, or, for a solution-style one that lists no files of its
+ * own ("files": [] with references), each project it references, as tsc -b
+ * builds them; a reference to a directory names its tsconfig.json. ts is
+ * TypeScript's compiler API.
+ */
+export function projectsOf(ts, dir, tsconfig) {
+  const { config } = ts.readConfigFile(join(dir, tsconfig), (path) => (existsSync(path) ? readFileSync(path, "utf8") : undefined))
+  if (!config || !Array.isArray(config.files) || config.files.length || !Array.isArray(config.references) || !config.references.length) return [tsconfig]
+  return config.references.map((reference) => {
+    const target = posix.normalize(posix.join(posix.dirname(tsconfig), reference.path))
+    return existsSync(join(dir, target)) && statSync(join(dir, target)).isDirectory() ? posix.join(target, "tsconfig.json") : target
+  })
 }
 
 /** The command that installs after the edits, letting the lockfile change. */
