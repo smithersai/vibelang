@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "strict": true,
+    "types": [],
+    "skipLibCheck": true,
+    "declaration": true,
+    "outDir": "out"
+  },
+  "include": [
+    "*.vibe"
+  ]
+}

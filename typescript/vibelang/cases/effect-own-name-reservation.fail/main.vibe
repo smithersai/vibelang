@@ -1,0 +1,22 @@
+// expect: EK1702
+export const named = effect function join() { return 1 }
+export const produced = (effect function* fork() { yield 1 })
+export effect function enclosing() {
+  effect function join(value: number): number!!
+  effect function join(value: number) { return value }
+  return 1
+}
+// Declaration and property names keep their own source contexts.
+export effect function fork(value: number): number!!
+export effect function fork(value: number) { return value }
+export default effect function join() { return 1 }
+export const methods = { effect join() { return 1 }, effect *fork() { yield 1 } }
+export class Methods { effect join() { return 1 }; effect *fork() { yield 1 } }
+export effect function boundaries() {
+  function plain() { effect function join() { return 1 }; return join }
+  async function asynchronous() { effect function fork() { return 1 }; return 0 }
+  const arrow = () => { effect function join() { return 1 }; return join }
+  return 1
+}
+
+export effect function enclosingDo() { const value = do { function join() { return 1 }; 0 }; return 0 }

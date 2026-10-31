@@ -2050,6 +2050,11 @@ typescript/vibelang/cases/effect-modules-explicit/main.vibe:3:168 lambda plain t
 typescript/vibelang/cases/effect-operation-operands/main.vibe:9:46 lambda effectFn table
 typescript/vibelang/cases/effect-operation-operands/main.vibe:9:59 lambda effectFn table
 typescript/vibelang/cases/effect-optional-method.fail/main.vibe:2:19 lambda dual fallback
+typescript/vibelang/cases/effect-own-name-reservation.fail/main.vibe:13:26 lambda plain fallback
+typescript/vibelang/cases/effect-own-name-reservation.fail/main.vibe:13:54 lambda plain fallback
+typescript/vibelang/cases/effect-own-name-reservation.fail/main.vibe:18:17 lambda plain fallback
+typescript/vibelang/cases/effect-own-name-reservation.fail/main.vibe:2:22 lambda plain fallback
+typescript/vibelang/cases/effect-own-name-reservation.fail/main.vibe:3:26 lambda plain fallback
 typescript/vibelang/cases/effect-platform-name-meanings/main.vibe:22:15 lambda plain annotation
 typescript/vibelang/cases/effect-subtype-as-data-suspended.fail/main.vibe:10:34 lambda program annotation
 typescript/vibelang/cases/effect-subtype-as-data-suspended.fail/main.vibe:11:22 lambda effectFn table

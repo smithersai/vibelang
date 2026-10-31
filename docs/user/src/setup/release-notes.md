@@ -25,6 +25,7 @@ failure rules from 0.0.10 still apply.
 
 - The old bare `Effect<number>` alias was accepted without its migration warning; it now reports `EK4856`. The migration fix preserves comments and explicit default slots, uses shorthand when it needs no new parentheses, and retains a qualified type in other positions. Local and imported types named `Effect` keep their meaning. Later style passes keep the qualified spelling when an automatic shorthand edit would change grouping or declaration output.
 - A comment containing `function` before an `effect` or `async` modifier could hide a missing-keyword error; the compiler now reports it and the quick fix preserves the comment.
+- Effect function expressions could name themselves `fork` or `join`; these names now report `EK1702`, while declaration names follow their enclosing context and method names remain allowed.
 - `data` payload readonlyness is shallow. To preserve the old implicit readonly modifiers on nested fields, run `vibelang --fix --fix-migration-only`; ordinary `--fix` keeps valid writable payloads unchanged.
 
 This release changes platform access and name resolution in `.vibe`.
