@@ -45,6 +45,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The region-body example wrapped one bound provider in an array despite the single-provider rule. Its counterpart now passes that layer directly.
 
+- Constructor docs promised that typed payloads could not throw. They now distinguish the static `never` contract from native getter, `Proxy` and property-copy failures, which remain defects in effect code.
+
 - Editor parsing rejected `for try` `Stream` loops; the tree-sitter grammar now recognizes the loop and its `continue` and `break` statements.
 
 - In a project that emits declarations, `vibelang --fix` removed an import such as `import * as DateTime from "effect/DateTime"` that the declaration file still printed, through a local type an export names (`type NonNull<V> = V extends DateTime.Utc ? …`), a conditional type or a written `keyof DateTime.Utc`, so the declaration imported `{ DateTime } from "effect"`; `--fix` now keeps every import the file's declaration keeps.
