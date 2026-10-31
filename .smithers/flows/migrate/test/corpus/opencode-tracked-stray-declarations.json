@@ -1,0 +1,13 @@
+{
+  "key": "opencode-22",
+  "note": "packages/app's project reaches packages/stories/playwright/{config,story}.ts outside its rootDir; vibelang writes config.d.ts and story.d.ts beside them, which opencode tracks, and ten packages/tui .d.ts files nobody tracks.",
+  "tracked": {
+    "packages/stories/playwright/config.d.ts": "export declare const config: { readonly baseURL: string };\n",
+    "packages/stories/playwright/story.d.ts": "export declare function story(name: string): void;\n"
+  },
+  "created": [
+    "packages/tui/src/theme.d.ts",
+    "packages/tui/src/keys.d.ts"
+  ],
+  "emitted": "export {};\n"
+}

@@ -302,20 +302,56 @@ export function compareDeclarations(ts, baselineDir, currentDir) {
     ...(aSurface || bSurface ? { publicSurface: { before: aSurface, after: bSurface, rootsChanged: Boolean(rootsChanged) } } : {}) }
 }
 
+// The files a declaration emit can write outside outDir: x.d.ts, x.d.mts,
+// x.d.cts beside a source outside the project's rootDir, and the x.d.vibe.ts
+// sidecar every compile writes beside x.vibe.
+const declarationOutput = /\.d\.(?:vibe\.)?[cm]?ts$/
+
+// The contents of each declaration file under directory, outside node_modules,
+// dot directories and skip, by absolute path.
+function declarationFiles(directory, skip) {
+  const files = new Map()
+  const walk = (path) => {
+    let entries
+    try {
+      entries = readdirSync(path, { withFileTypes: true })
+    } catch {
+      return
+    }
+    for (const entry of entries) {
+      const child = join(path, entry.name)
+      if (entry.isDirectory()) {
+        if (entry.name !== "node_modules" && !entry.name.startsWith(".") && child !== skip) walk(child)
+      } else if (entry.isFile() && declarationOutput.test(entry.name)) files.set(child, readFileSync(child))
+    }
+  }
+  walk(directory)
+  return files
+}
+
 /**
  * Emits a project's declarations, and only them, into outDir with vibelang.
  * Returns the exit code, the number of files and the diagnostics, each file
- * repository-relative when root is given.
+ * repository-relative when root is given. A file the emit writes outside
+ * outDir, beside a source outside the project's rootDir, is removed again when
+ * the emit created it, and put back as it was when it existed: opencode tracks
+ * packages/stories/playwright/config.d.ts, which packages/app's emit rewrites.
  */
 export async function emitDeclarations({ compiler, tsconfig, cwd, outDir, log, root }) {
   rmSync(outDir, { recursive: true, force: true })
+  const existing = declarationFiles(resolve(root ?? cwd), resolve(outDir))
   mkdirSync(outDir, { recursive: true })
   const flags = "--noEmit false --declaration --emitDeclarationOnly --declarationMap false --sourceMap false --composite false --incremental false --noEmitOnError false --pretty false --listEmittedFiles"
   const result = await run(`${quote(compiler)} -p ${quote(tsconfig)} ${flags} --outDir ${quote(outDir)}`, { cwd, log })
   assertFinished(result, log)
   // A file outside the project's rootDir emits beside its source, where a batch's commit would pick it up.
   const inside = `${resolve(outDir)}${sep}`
-  for (const [, file] of result.stdout.matchAll(/^TSFILE: (.+)$/gm)) if (!file.startsWith(inside)) rmSync(file, { force: true })
+  for (const [, file] of result.stdout.matchAll(/^TSFILE: (.+)$/gm)) {
+    if (file.startsWith(inside)) continue
+    const before = existing.get(resolve(file))
+    if (before === undefined) rmSync(file, { force: true })
+    else writeFileSync(file, before)
+  }
   const files = listDeclarations(outDir)
   if (!files.length) throw new Error(`vibelang emitted no declarations for ${tsconfig} (exit ${result.code}${log ? `, log ${log}` : ""})`)
   return { code: result.code, files: files.length, diagnostics: parseDiagnostics(result.stdout + result.stderr, { cwd, root }) }

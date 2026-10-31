@@ -184,6 +184,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Migration could lose literal braces from renamed paths and skip formatting the real file; rename summaries now preserve those braces and retain both the original and destination paths.
 
+- The migrate flow's declaration emit deleted every `.d.ts` file it wrote outside its output directory, so setup and verify deleted a tracked declaration file beside a source outside a project's `rootDir`; the emit now removes only the files it created and puts back the ones that existed.
+
 - Cross-platform compiler builds could fail without naming the affected platform or its exit status; each target now keeps a completion record and silent failures are identified.
 
 
