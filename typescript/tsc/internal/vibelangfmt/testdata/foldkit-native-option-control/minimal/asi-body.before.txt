@@ -1,0 +1,5 @@
+declare function consume(value: number): void;
+export function read(input: Option<number>): number {
+ if (input is Option.Some(let value)) (consume(value)); else (consume(0));
+ return 0;
+}

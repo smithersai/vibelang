@@ -61,11 +61,11 @@ Everything dprint's TypeScript plugin changes in a `.ts` file: indentation, line
 | `error`, `schema`, `data` | The body as an object type: one line when written on one line and it fits |
 | `service` | The body as a class body, one member per line |
 
-Pattern expressions in classic `for (init; test; update)` heads, including bindings introduced by `is`, keep their original head position and parse when formatted. The formatter keeps `is` on the same line as its subject, including when a narrow print width wraps the loop head.
+Pattern expressions in classic `for (init; test; update)` heads, including bindings introduced by `is`, keep their original head position and parse when formatted. The formatter keeps `is` on the same line as its subject and the start of its pattern, including when a narrow print width or the `operatorPosition` setting wraps the condition.
 
 Support for the new forms arrives with the compiler's VIP implementation.
 
-A statement-level `match` keeps its boundary after a statement without a semicolon, including with `semiColons: "asi"`.
+A statement-level `match` keeps its boundary after a statement without a semicolon, including with `semiColons: "asi"`. Parenthesized `return (match …)` expressions and binding `is` branches keep the grouping and braces needed to preserve their parsed structure. When a host writes a braced single-statement body of a binding `is` without braces, the formatter restores the block on its own lines.
 
 Comments and JSDoc stay associated with their code, including compiler, linter and tool directives. Adding space between a contract and its initializer, such as `User!!= load()` becoming `User!! = load()`, preserves those associations elsewhere in the file. Formatting is idempotent: a formatted file doesn't change when formatted again. This includes `data`, `schema` and field-only `error` declarations with an opening brace on the next line.
 

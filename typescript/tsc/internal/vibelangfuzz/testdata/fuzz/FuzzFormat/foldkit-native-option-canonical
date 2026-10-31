@@ -1,0 +1,2 @@
+go test fuzz v1
+string("export const read = (input: Option<number>): number => { return match (input) { when Option.None: 0; when Option.Some(let value): value; } }\n")

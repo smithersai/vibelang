@@ -1,0 +1,63 @@
+import { Array, Number as Num } from 'effect'
+import { modifyFields } from 'foldkit/struct'
+
+import { CartItem, Item } from './item.vibe'
+
+export schema Cart = ReadonlyArray<CartItem>
+
+const hasItemId =
+  (itemId: string): (cartItem: CartItem) => boolean =>
+  (cartItem: CartItem): boolean => cartItem.item.id === itemId
+
+const mapCartItem = (
+  itemId: string,
+  f: (cartItem: CartItem) => CartItem,
+): infer _ =>
+  Array.map<Cart, CartItem>(cartItem =>
+    hasItemId(itemId)(cartItem) ? f(cartItem) : cartItem
+  )
+
+export const addItem = (item: Item): infer _ => (cart: Cart): Cart => {
+  const existingCartItem = Array.findFirst(cart, hasItemId(item.id))
+
+  return (match (existingCartItem) { when Option.None: ([...cart, { item, quantity: 1 }]); when Option.Some: (mapCartItem(
+        item.id,
+        modifyFields({
+          quantity: Num.increment,
+        }),
+      )(cart)); })
+}
+
+export const removeItem = (itemId: string): infer _ => (cart: Cart): Cart =>
+  Array.filter(cart, Predicate.not(hasItemId(itemId)))
+
+export const changeQuantity = (itemId: string, quantity: number): infer _ =>
+  quantity <= 0
+    ? removeItem(itemId)
+    : mapCartItem(
+      itemId,
+      modifyFields({
+        quantity: () => quantity,
+      }),
+    )
+
+export const incrementQuantity = (itemId: string): infer _ =>
+  mapCartItem(
+    itemId,
+    modifyFields({
+      quantity: Num.increment,
+    }),
+  )
+
+export const decrementQuantity =
+  (itemId: string): infer _ => (cart: Cart): Cart =>
+    changeQuantity(itemId, itemQuantity(itemId)(cart) - 1)(cart)
+
+export const itemQuantity = (itemId: string): infer _ => (cart: Cart): number =>
+  match (Array.findFirst(cart, hasItemId(itemId))) {
+    when Option.None: 0;
+    when Option.Some(let item): item.quantity;
+  }
+
+export const totalItems = (cart: Cart): infer _ =>
+  Array.reduce(cart, 0, (total, { quantity }) => total + quantity)

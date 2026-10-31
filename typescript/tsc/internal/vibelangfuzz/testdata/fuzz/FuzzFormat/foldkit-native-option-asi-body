@@ -1,0 +1,2 @@
+go test fuzz v1
+string("declare function consume(value: number): void;\nexport function read(input: Option<number>): number {\n if (input is Option.Some(let value)) (consume(value)); else (consume(0));\n return 0;\n}\n")

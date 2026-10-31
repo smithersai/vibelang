@@ -53,9 +53,16 @@ func FuzzFormat(f *testing.F) {
 			}
 		}
 	}
+	for _, data := range []string{"", "\x00\x07\x02\x01", "\x02\x03\x01\x00"} {
+		f.Add(formatFoldkitKey + data)
+	}
+	for _, data := range []string{"\x2c\x02\x03\x00", "\x20\x00\x00\x01", "\x04\x01\x01\x00"} {
+		f.Add(formatIsLineKey + data)
+	}
 	w := NewWorkspace(f)
 	formatter := toolsFormatter(f)
 	f.Fuzz(func(t *testing.T, source string) {
+		source = formatIsLineSource(formatFoldkitSource(source))
 		toolsGuard(t, "FuzzFormat", func() {
 			if len(source) > 24<<10 || toolsLeftOut("FuzzFormat", map[string]string{"main.vibe": source}) {
 				return

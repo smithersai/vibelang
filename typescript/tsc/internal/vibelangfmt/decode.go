@@ -270,32 +270,32 @@ func (d *decoder) node(node *ast.Node) error {
 		}
 		binary := parent.AsBinaryExpression()
 		operator := d.start(binary.OperatorToken)
+		// The is production forbids a line terminator before is and before
+		// its pattern (parser.nextTokenStartsPattern). A host formatter may
+		// wrap a relational operator on either side at narrow widths. Join only
+		// that whitespace, leaving intervening block comments intact.
+		joinedBefore, err := d.joinIsLine(binary.Left.End(), operator, lost)
+		if err != nil {
+			return err
+		}
+		joinedAfter, err := d.joinIsLine(operator+len(">="), start, lost)
+		if err != nil {
+			return err
+		}
+		// Multiline patterns follow the line the pattern now starts on: the
+		// subject's final line after a join before is, the operator's line
+		// after a join before the pattern, otherwise their own.
 		patternPos := start
-		// TC39's is production forbids a line terminator before is. The
-		// host formatter may wrap a relational operator before a long pattern.
-		// Join only whitespace, leaving intervening block comments intact.
-		for at := binary.Left.End(); at < operator; {
-			spaceEnd := scanner.SkipTriviaEx(d.text, at, &scanner.SkipTriviaOptions{StopAtComments: true})
-			if strings.ContainsAny(d.text[at:spaceEnd], "\r\n\u2028\u2029") {
-				d.replace(at, spaceEnd, " ")
-				// Multiline patterns now follow the subject's final line,
-				// rather than the temporary continuation line of the operator.
-				patternPos = binary.Left.End() - 1
-			}
-			if spaceEnd == operator {
-				break
-			}
-			if !strings.HasPrefix(d.text[spaceEnd:operator], "/*") {
-				return lost()
-			}
-			close := strings.Index(d.text[spaceEnd:operator], "*/")
-			if close < 0 {
-				return lost()
-			}
-			at = spaceEnd + close + len("*/")
+		if joinedBefore {
+			patternPos = binary.Left.End() - 1
+		} else if joinedAfter {
+			patternPos = operator
 		}
 		d.replace(operator, operator+len(">="), "is")
 		d.replace(start, end, d.reindent(holder, patternPos))
+		if err := d.restorePatternBodies(node, holder.bodyKinds); err != nil {
+			return err
+		}
 	case placeholderMutableIndex:
 		bracket := start - 1
 		for bracket >= 0 && isSpace(d.text[bracket]) {
@@ -306,7 +306,7 @@ func (d *decoder) node(node *ast.Node) error {
 		}
 		d.replace(bracket, end, d.reindent(holder, start))
 	case placeholderMatchHead:
-		return d.match(node, holder.text != "", lost)
+		return d.match(node, holder.text == "statement match", holder.text == "grouped match", lost)
 	case placeholderMatchArm:
 		d.replace(start, end, d.reindent(holder, start))
 	case placeholderBlockHead, placeholderClauseHead:
@@ -476,7 +476,7 @@ func (d *decoder) previousStatement(statement *ast.Node) *ast.Node {
 
 // match decodes the object literal ({ $v: subject, arms }) that stands for a
 // match, whose subject property's name is head.
-func (d *decoder) match(head *ast.Node, statement bool, lost func() error) error {
+func (d *decoder) match(head *ast.Node, statement, groupedMatch bool, lost func() error) error {
 	property := head.Parent
 	if property.Kind != ast.KindPropertyAssignment || property.Name() != head || property.Parent.Kind != ast.KindObjectLiteralExpression {
 		return lost()
@@ -497,13 +497,17 @@ func (d *decoder) match(head *ast.Node, statement bool, lost func() error) error
 		outer = outer.Parent
 	}
 	outerStart := d.start(outer)
-	if outerStart > 0 && d.text[outerStart-1] == ';' && (outerStart == 1 || isSpace(d.text[outerStart-2])) {
+	if !groupedMatch && outerStart > 0 && d.text[outerStart-1] == ';' && (outerStart == 1 || isSpace(d.text[outerStart-2])) {
 		outerStart-- // the semicolon a formatter writes before ( at the start of a statement
 	}
 	subject := property.Initializer()
-	d.replace(outerStart, d.start(subject), "match (")
+	prefix, suffix := "match (", "}"
+	if groupedMatch && outer.Parent.Kind != ast.KindParenthesizedExpression {
+		prefix, suffix = "(match (", "})"
+	}
+	d.replace(outerStart, d.start(subject), prefix)
 	if len(properties) == 1 {
-		d.replace(subject.End(), outer.End(), ") {}")
+		d.replace(subject.End(), outer.End(), ") {"+suffix)
 		return nil
 	}
 	_, comma, ok := d.nextToken(subject.End(), ',')
@@ -526,8 +530,33 @@ func (d *decoder) match(head *ast.Node, statement bool, lost func() error) error
 			return lost()
 		}
 	}
-	d.replace(object.End()-1, outer.End(), "}")
+	d.replace(object.End()-1, outer.End(), suffix)
 	return nil
+}
+
+// joinIsLine replaces the whitespace between from and to, the trivia on one
+// side of an is surrogate, with a single space when it contains a line
+// terminator. Block comments stay in place; any other token is lost.
+func (d *decoder) joinIsLine(from, to int, lost func() error) (joined bool, err error) {
+	for at := from; at < to; {
+		spaceEnd := scanner.SkipTriviaEx(d.text, at, &scanner.SkipTriviaOptions{StopAtComments: true})
+		if strings.ContainsAny(d.text[at:spaceEnd], "\r\n\u2028\u2029") {
+			d.replace(at, spaceEnd, " ")
+			joined = true
+		}
+		if spaceEnd >= to {
+			break
+		}
+		if !strings.HasPrefix(d.text[spaceEnd:to], "/*") {
+			return joined, lost()
+		}
+		close := strings.Index(d.text[spaceEnd:to], "*/")
+		if close < 0 {
+			return joined, lost()
+		}
+		at = spaceEnd + close + len("*/")
+	}
+	return joined, nil
 }
 
 // reindent returns holder's text, whose lines after the first move with the

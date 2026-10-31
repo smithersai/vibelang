@@ -1,0 +1,258 @@
+import { Array as Arr, String as Str, pipe } from 'effect'
+import { type Html, inertHtml as ih } from 'foldkit/html'
+
+import type { Model } from '../model.vibe'
+import type { Education, Skills, WorkHistory } from '../step/index.ts'
+import { employmentRange } from './format.vibe'
+
+const COVER_LETTER_PREVIEW_MAX_CHARS = 200
+
+const truncate = (value: string, max: number): string =>
+  value.length > max ? `${value.slice(0, max)}...` : value
+
+const sectionHeading = (title: string): Html =>
+  ih.h3(
+    [
+      ih.Class(
+        'text-xs font-bold uppercase tracking-wider text-gray-400 border-b border-gray-200 pb-1 mb-2',
+      ),
+    ],
+    [title],
+  )
+
+const headerSection = (
+  fullName: string,
+  pronounLabel: string,
+  email: string,
+  phone: string,
+  portfolio: string,
+): Html => {
+  const contacts = Arr.filter([email, phone, portfolio], Str.isNonEmpty)
+  return ih.div(
+    [ih.Class('text-center mb-4 pb-4 border-b border-gray-200')],
+    [
+      ih.h2([ih.Class('text-xl font-bold text-gray-900')], [fullName]),
+      ...(Str.isNonEmpty(pronounLabel)
+        ? [ih.p([ih.Class('text-xs text-gray-500 italic')], [pronounLabel])]
+        : []),
+      ...(Arr.isReadonlyArrayNonEmpty(contacts)
+        ? [
+          ih.p(
+            [ih.Class('text-xs text-gray-500 mt-1 break-words')],
+            [contacts.join(' · ')],
+          ),
+        ]
+        : []),
+    ],
+  )
+}
+
+const workEntryView = (entry: WorkHistory.Entry.Model): Html =>
+  ih.keyed('div')(
+    `work-${entry.id}`,
+    [ih.Class('mb-3')],
+    [
+      ...(Str.isNonEmpty(entry.title.value)
+        ? [
+          ih.strong(
+            [ih.Class('block text-sm text-gray-900')],
+            [entry.title.value],
+          ),
+        ]
+        : []),
+      ...(Str.isNonEmpty(entry.company.value)
+        ? [ih.p([ih.Class('text-xs text-gray-600')], [entry.company.value])]
+        : []),
+      ...(match (entry.maybeStartDate) { when Option.None: ([]); when Option.Some(let start): ([
+          ih.p(
+            [ih.Class('text-xs text-gray-400 mt-0.5')],
+            [
+              employmentRange(
+                start,
+                entry.isCurrentlyEmployed,
+                entry.maybeEndDate,
+              ),
+            ],
+          ),
+        ]); }),
+      ...(Str.isNonEmpty(entry.description)
+        ? [ih.p([ih.Class('text-xs text-gray-600 mt-1')], [entry.description])]
+        : []),
+    ],
+  )
+
+const experienceSection = (workHistory: WorkHistory.Model): Html =>
+  ih.section(
+    [ih.Class('mb-4')],
+    [
+      sectionHeading('Experience'),
+      ...Arr.filter(
+        workHistory.entries,
+        entry =>
+          Str.isNonEmpty(entry.company.value)
+          || Str.isNonEmpty(entry.title.value),
+      ).map(entry => workEntryView(entry)),
+    ],
+  )
+
+const educationTimelineLine = (
+  entry: Education.Entry.Model,
+): ReadonlyArray<Html> => {
+  if (entry.isCurrentlyEnrolled) {
+    return [
+      ih.p([ih.Class('text-xs text-gray-400 mt-0.5')], ['Currently enrolled']),
+    ]
+  }
+  return (match (entry.maybeGraduationYear) { when Option.None: ([]); when Option.Some(let graduationYear): ([
+      ih.p(
+        [ih.Class('text-xs text-gray-400 mt-0.5')],
+        [`Class of ${graduationYear}`],
+      ),
+    ]); })
+}
+
+const educationEntryView = (entry: Education.Entry.Model): Html => {
+  const degreeLine = Arr.filter(
+    [entry.degree.value, entry.fieldOfStudy.value],
+    Str.isNonEmpty,
+  ).join(', ')
+  return ih.keyed('div')(
+    `education-${entry.id}`,
+    [ih.Class('mb-3')],
+    [
+      ...(Str.isNonEmpty(degreeLine)
+        ? [ih.strong([ih.Class('block text-sm text-gray-900')], [degreeLine])]
+        : []),
+      ...(Str.isNonEmpty(entry.school.value)
+        ? [ih.p([ih.Class('text-xs text-gray-600')], [entry.school.value])]
+        : []),
+      ...educationTimelineLine(entry),
+    ],
+  )
+}
+
+const educationSection = (education: Education.Model): Html =>
+  ih.section(
+    [ih.Class('mb-4')],
+    [
+      sectionHeading('Education'),
+      ...Arr.filter(education.entries, entry =>
+        Str.isNonEmpty(entry.school.value)).map(entry =>
+          educationEntryView(entry)
+        ),
+    ],
+  )
+
+type SkillsByProficiency = ReadonlyArray<
+  Readonly<{ level: string; names: ReadonlyArray<string> }>
+>
+
+const PROFICIENCY_ORDER = ['Expert', 'Advanced', 'Intermediate', 'Beginner']
+
+const proficiencyRank = (level: string): number =>
+  pipe(
+    PROFICIENCY_ORDER,
+    Arr.findFirstIndex(Equal.equals(level)),
+    Option.getOrElse(() => PROFICIENCY_ORDER.length),
+  )
+
+const proficiencyOrder = Order.mapInput(
+  Order.Number,
+  ([level]: readonly [string, unknown]) => proficiencyRank(level),
+)
+
+const groupSkillsByProficiency = (
+  entries: ReadonlyArray<Skills.Entry.Model>,
+): SkillsByProficiency =>
+  pipe(
+    entries,
+    Arr.filter(entry => Str.isNonEmpty(entry.name.value)),
+    Arr.groupBy<Skills.Entry.Model, string>(entry => entry.proficiency),
+    Record.toEntries,
+    Arr.sort(proficiencyOrder),
+    Arr.map(([level, grouped]) => ({
+      level,
+      names: Arr.map(grouped, entry => entry.name.value),
+    })),
+  )
+
+const skillGroupView = (
+  group: Readonly<{ level: string; names: ReadonlyArray<string> }>,
+): Html =>
+  ih.p(
+    [ih.Class('text-xs text-gray-700 mb-1')],
+    [
+      ih.strong([ih.Class('text-gray-900')], [`${group.level}:`]),
+      ` ${group.names.join(', ')}`,
+    ],
+  )
+
+const skillsSection = (skills: Skills.Model): Html => {
+  const grouped = groupSkillsByProficiency(skills.entries)
+  return ih.section(
+    [ih.Class('mb-4')],
+    [sectionHeading('Skills'), ...grouped.map(group => skillGroupView(group))],
+  )
+}
+
+const coverLetterSection = (content: string): Html =>
+  ih.section(
+    [],
+    [
+      sectionHeading('Cover Letter'),
+      ih.p(
+        [ih.Class('text-xs text-gray-600 whitespace-pre-wrap')],
+        [truncate(content, COVER_LETTER_PREVIEW_MAX_CHARS)],
+      ),
+    ],
+  )
+
+export const preview = ({
+  personalInfo: {
+    firstName: { value: firstName },
+    lastName: { value: lastName },
+    email: { value: email },
+    phone: { value: phone },
+    portfolioUrl: { value: portfolio },
+    maybeSelectedPronoun,
+    customPronouns,
+  },
+  workHistory,
+  education,
+  skills,
+  coverLetter,
+}: Model): Html => {
+  const fullName = Str.isNonEmpty(firstName) || Str.isNonEmpty(lastName)
+    ? `${firstName} ${lastName}`.trim()
+    : 'Your Name'
+
+  const pronounLabel = (match (maybeSelectedPronoun) { when Option.None: (''); when Option.Some(let value): ((value === 'Other' ? customPronouns : value)); })
+
+  const hasExperience = Arr.some(
+    workHistory.entries,
+    entry =>
+      Str.isNonEmpty(entry.company.value)
+      || Str.isNonEmpty(entry.title.value),
+  )
+  const hasEducation = Arr.some(
+    education.entries,
+    entry => Str.isNonEmpty(entry.school.value),
+  )
+  const hasSkills = Arr.some(
+    skills.entries,
+    entry => Str.isNonEmpty(entry.name.value),
+  )
+
+  return ih.div(
+    [ih.Class('font-serif')],
+    [
+      headerSection(fullName, pronounLabel, email, phone, portfolio),
+      ...(hasExperience ? [experienceSection(workHistory)] : []),
+      ...(hasEducation ? [educationSection(education)] : []),
+      ...(hasSkills ? [skillsSection(skills)] : []),
+      ...(Str.isNonEmpty(coverLetter.content)
+        ? [coverLetterSection(coverLetter.content)]
+        : []),
+    ],
+  )
+}

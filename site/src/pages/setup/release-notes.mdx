@@ -266,6 +266,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The runtime package's two stock-TypeScript checks could time out at 30 s on a loaded build host; they now have the same 120 s compile budget as the acceptance harness.
 
 - Formatting valid `for` heads with `is` patterns could fail with an internal parse error; they now format at narrow and normal widths while keeping `is` attached to its subject.
+- Formatting native `Option` control flow could reject parenthesized `return (match …)` expressions and binding `is` branches; these forms now format while preserving their parsed structure.
+- A dprint `operatorPosition` of `sameLine` or `maintain` could wrap an `is` pattern onto the next line at a narrow width and fail with `')' expected`; the pattern now stays on the line of `is`.
 - With the DOM lib loaded, a contract such as `Effect<string, never, FileSystem>` around `try FileSystem()` failed with `EK9202` "needs FileSystem, but its contract says R = FileSystem" and suggested `FileSystem | FileSystem`; the error now names Effect's type `FileSystem.FileSystem`, explains that the bare type is the DOM's (VIP-14), and `vibelang --fix` writes `FileSystem.FileSystem` in the contract.
 
 - Compiler fuzz checks could stop before finishing their seed corpus; the build target now uses the documented 40-minute deadline and allows separate build time.

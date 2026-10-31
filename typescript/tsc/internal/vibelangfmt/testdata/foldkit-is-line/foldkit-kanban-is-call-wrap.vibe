@@ -1,0 +1,6 @@
+declare const DragAndDrop: {
+  maybeDraggedItemId(value: Option<string>): Option<string>
+}
+export function read(model: { dragAndDrop: Option<string> }): string {
+  if (DragAndDrop.maybeDraggedItemId(model.dragAndDrop) is Option.Some(let draggedId)) { return draggedId } else { return "" }
+}

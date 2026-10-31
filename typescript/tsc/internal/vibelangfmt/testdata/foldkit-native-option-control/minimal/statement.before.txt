@@ -1,0 +1,1 @@
+export function read(input: Option<number>): number { (match (input) { when Option.None: 0; when Option.Some(let value): value; }); return 0; }

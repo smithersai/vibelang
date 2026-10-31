@@ -87,6 +87,8 @@ type placeholder struct {
 	// data marks a data declaration (D307), whose variants with fields the
 	// type literal writes with a colon before the fields.
 	data bool
+	// bodyKinds records the source bodies of an is condition before lowering.
+	bodyKinds []ast.Kind
 	// nested marks a placeholder whose edit an opaque edit swallowed, such as
 	// an Effect type in the shape of service Format: (s: string) => string!!:
 	// the enclosing placeholder keeps its text, so decoding never sees it.
@@ -553,9 +555,21 @@ func (e *encoder) match(form parser.VibeSyntax) error {
 	// unary head so an ASI boundary before match cannot become a call of
 	// the preceding expression. Unlike a leading semicolon, void also works
 	// when the match is the unbraced body of an if or loop.
-	statement := false
+	statement, groupedMatch := false, false
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
+		if node.Kind == ast.KindCallExpression && scanner.SkipTrivia(e.source, node.Pos()) == form.Word.Pos() {
+			parent := node.Parent
+			grouped := false
+			for parent != nil && parent.Kind == ast.KindParenthesizedExpression {
+				grouped = true
+				parent = parent.Parent
+			}
+			// Removing the last group at a statement or after return changes
+			// match lowering from an expression call to a statement block.
+			groupedMatch = grouped && parent != nil && (parent.Kind == ast.KindReturnStatement || parent.Kind == ast.KindExpressionStatement)
+			return true
+		}
 		if (node.Kind == ast.KindLabeledStatement || node.Kind == ast.KindBlock) && scanner.SkipTrivia(e.source, node.Pos()) == form.Word.Pos() {
 			statement = true
 			return true
@@ -564,6 +578,9 @@ func (e *encoder) match(form parser.VibeSyntax) error {
 	}
 	e.file.AsNode().ForEachChild(visit)
 	prefix, marker := "", ""
+	if groupedMatch {
+		marker = "grouped match"
+	}
 	if statement {
 		prefix, marker = "void ", "statement match"
 	}
@@ -724,6 +741,7 @@ func (e *encoder) finish() (*encoding, error) {
 		// Only the line that does not parse: the whole form is the file again.
 		return nil, fmt.Errorf("vibelang format: internal error: the TypeScript form does not parse at %d:%d: %s\n%s", line, column, diagnostics[0].String(), sourceLine(result.text, diagnostics[0].Pos()))
 	}
+	result.recordPatternBodies(file)
 	tokens := collectTokens(file, result.text)
 	found := map[string]int{}
 	match := func(token string, positions []int) []string {

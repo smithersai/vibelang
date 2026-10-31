@@ -1,0 +1,2 @@
+go test fuzz v1
+string("declare const DragAndDrop: {\n  maybeDraggedItemId(value: Option<string>): Option<string>\n}\nexport function read(model: { dragAndDrop: Option<string> }): string {\n  if (DragAndDrop.maybeDraggedItemId(model.dragAndDrop) is Option.Some(let draggedId)) { return draggedId } else { return \"\" }\n}\n")

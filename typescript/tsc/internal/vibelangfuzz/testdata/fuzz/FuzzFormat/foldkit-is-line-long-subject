@@ -1,0 +1,2 @@
+go test fuzz v1
+string("key:foldkit-is-line\n\x2c\x02\x03\x00")

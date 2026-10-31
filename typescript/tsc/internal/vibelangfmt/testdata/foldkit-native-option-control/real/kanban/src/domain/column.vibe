@@ -1,0 +1,107 @@
+import { Array as Arr, pipe } from 'effect'
+import { modifyFields } from 'foldkit/struct'
+import { generateKeyBetween } from 'fractional-indexing'
+
+import type { Card } from './card.vibe'
+import { Card as CardSchema } from './card.vibe'
+
+export schema Column {
+  id: string
+  name: string
+  cards: ReadonlyArray<CardSchema>
+}
+
+const generateSortKeyAtIndex = (
+  cards: ReadonlyArray<Card>,
+  targetIndex: number,
+): string => {
+  const maybeBefore = Arr.get(cards, targetIndex - 1)
+  const maybeAfter = Arr.get(cards, targetIndex)
+  return generateKeyBetween(
+    (match (maybeBefore) { when Option.None: (null); when Option.Some(let matchedOptionValue): do { const { sortKey } = matchedOptionValue; (sortKey) }; }),
+    (match (maybeAfter) { when Option.None: (null); when Option.Some(let matchedOptionValue): do { const { sortKey } = matchedOptionValue; (sortKey) }; }),
+  )
+}
+
+export const removeCard = (
+  column: Column,
+  cardId: string,
+): { readonly column: Column; readonly maybeCard: Option<Card> } => {
+  const maybeCard = Arr.findFirst(column.cards, ({ id }) => id === cardId)
+  return {
+    column: modifyFields(column, {
+      cards: () => Arr.filter(column.cards, ({ id }) => id !== cardId),
+    }),
+    maybeCard,
+  }
+}
+
+export const insertCard = (
+  column: Column,
+  card: Card,
+  targetIndex: number,
+): Column => {
+  const sortKey = generateSortKeyAtIndex(column.cards, targetIndex)
+  const updatedCard = modifyFields(card, { sortKey: () => sortKey })
+  return modifyFields(column, {
+    cards: () =>
+      pipe(
+        column.cards,
+        Arr.insertAt(targetIndex, updatedCard),
+        Option.getOrElse(() => [...column.cards, updatedCard]),
+      ),
+  })
+}
+
+export const appendCard = (column: Column, card: Card): Column => {
+  const sortKey = generateSortKeyAtIndex(column.cards, column.cards.length)
+  return modifyFields(column, {
+    cards: () => [
+      ...column.cards,
+      modifyFields(card, { sortKey: () => sortKey }),
+    ],
+  })
+}
+
+const findCard = (
+  columns: ReadonlyArray<Column>,
+  containerId: string,
+  cardId: string,
+): Option<Card> =>
+  pipe(
+    columns,
+    Arr.findFirst(({ id }) => id === containerId),
+    Option.flatMap(({ cards }) =>
+      Arr.findFirst(cards, ({ id }) => id === cardId)
+    ),
+  )
+
+export const reorder = (
+  columns: ReadonlyArray<Column>,
+  itemId: string,
+  fromContainerId: string,
+  toContainerId: string,
+  toIndex: number,
+): ReadonlyArray<Column> => {
+  if (fromContainerId === toContainerId) {
+    return Arr.map(columns, column => {
+      if (column.id !== fromContainerId) {
+        return column
+      }
+      const { column: withoutCard, maybeCard } = removeCard(column, itemId)
+      return (match (maybeCard) { when Option.None: (column); when Option.Some(let card): (insertCard(withoutCard, card, toIndex)); })
+    })
+  }
+
+  return (match (findCard(columns, fromContainerId, itemId)) { when Option.None: columns; when Option.Some(let card):
+      Arr.map(columns, column => match (column.id) {
+        when let id and if (id === fromContainerId):
+          removeCard(column, itemId).column;
+        when let id and if (id === toContainerId): insertCard(
+          column,
+          card,
+          toIndex,
+        );
+        default: column;
+      }); })
+}

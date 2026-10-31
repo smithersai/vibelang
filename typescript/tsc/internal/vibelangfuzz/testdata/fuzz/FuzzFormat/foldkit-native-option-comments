@@ -1,0 +1,2 @@
+go test fuzz v1
+string("export function read(input: Option<number>): number {\n if (input is Option.Some(let value)) {\n  // Bound value.\n  return value // Kept with the successful branch.\n } else {\n  /* The empty case. */\n  return 0 // Kept with the fallback.\n }\n}\n")

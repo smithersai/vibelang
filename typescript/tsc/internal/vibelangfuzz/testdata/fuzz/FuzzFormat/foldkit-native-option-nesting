@@ -1,0 +1,2 @@
+go test fuzz v1
+string("key:foldkit-native-option-control\n\x02\x07\x02\x01")

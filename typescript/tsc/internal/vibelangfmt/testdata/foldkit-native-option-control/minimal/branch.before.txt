@@ -1,0 +1,1 @@
+export const read = (input: Option<number>): number => { if (input is Option.Some(let value)) { return value } else { return 0 } }
