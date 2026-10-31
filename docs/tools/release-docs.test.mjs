@@ -288,13 +288,25 @@ test("current release notes describe user fixes without internal CI or fuzz book
   skip: !process.env.VIBELANG_RELEASE_NOTES_FINAL
 }, () => {
   const notes = readFileSync(new URL("../user/src/setup/release-notes.md", import.meta.url), "utf8")
-  const current = notes.split(/^## /m).slice(1)[0]
-  const bugs = current.split(/^### Bugs fixed since .+$/m)[1]?.split(/^### /m)[0]
-  assert.ok(bugs, "current release needs a bug list")
+  const version = JSON.parse(readFileSync(new URL("../../packages/compiler/package.json", import.meta.url), "utf8")).version
+  const releases = notes.split(/^## /m).slice(1)
+  const candidate = releases.findIndex(release => release.split("\n")[0].replace(/ \(unreleased\)$/, "") === version)
+  assert.ok(candidate >= 0, "release notes include the compiler candidate")
+  const bugs = releases.slice(0, candidate + 1).map(release => {
+    const fixes = release.split(/^### Bugs fixed since .+$/m)[1]?.split(/^### /m)[0]
+    assert.ok(fixes, "every unpublished section needs a bug list")
+    return fixes
+  }).join("\n")
   assert.doesNotMatch(bugs, /\bfuzz\b|go-vibelangfuzz|pre-merge|post-merge|grammar test engine|editor syntax property tests|test cache/i)
   assert.doesNotMatch(bugs, /regression checks|migration checks|diagnostic golden|fixtures now verify|grammar tooling now sees/i)
+  assert.doesNotMatch(bugs, /scripts\/ci\.sh|differential (?:checks|comparisons)|AST layout regression test|Repository validation|Arrow-body and heartbeat checks|named-region runtime checks/i)
+  assert.doesNotMatch(bugs, /Docs checks could use|The docs check read|Specification checks could mistake|A docs check could confuse|Generating documentation could hang|Spec-derived checks could confuse|The documented debugging recipe check|Differential .Exit. checks/i)
+  assert.doesNotMatch(bugs, /The release rehearsal stopped at its Vite warning check|A registry rehearsal could inherit/i)
   const bullets = bugs.split("\n").filter(line => line.startsWith("- "))
   assert.equal(new Set(bullets).size, bullets.length, "each user-facing fix appears once")
+  for (const symptom of ["Editor parsing rejected `for try` `Stream` loops", "A tool that reads a `.vibe` file through the TypeScript mapper"]) {
+    assert.equal(bullets.filter(line => line.includes(symptom)).length, 1, "retain the user fix once: " + symptom)
+  }
 })
 
 // Release time supplies the registry snapshot; ordinary tests never query npm.
