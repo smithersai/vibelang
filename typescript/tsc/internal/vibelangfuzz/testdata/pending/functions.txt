@@ -1,6 +1,4 @@
 FuzzFunctionsSpec corpus:fz-func-arguments compiler VIP-1: minimized arguments violation; lane vip-core2
-FuzzFunctionsSpec rule:var compiler VIP-1: chapter 1 requires the specified EK diagnostic for var; lane vip-core2
-FuzzFunctionsSpec corpus:fz-func-var compiler VIP-1: minimized var violation; lane vip-core2
 FuzzFunctionsSpec corpus:fz-func-eval compiler VIP-1: minimized eval violation; lane vip-core2
 FuzzFunctionsSpec corpus:fz-func-function-alias compiler VIP-1: minimized function-alias violation; lane vip-core2
 FuzzFunctionsSpec corpus:fz-func-with compiler VIP-1: minimized with violation; lane vip-core2
@@ -15,8 +13,6 @@ FuzzFunctionEffectInference corpus:fz-func-inference-2 compiler VIP-1: minimized
 FuzzFunctionEffectInference corpus:fz-func-inference-4 compiler VIP-1: minimized Effect type-slot probe; lane vip-core2
 FuzzFunctionEffectInference corpus:fz-func-inference-5 compiler VIP-1: minimized Effect type-slot probe; lane vip-core2
 FuzzFunctionEffectInference corpus:fz-func-inference-6 compiler VIP-1: minimized Effect type-slot probe; lane vip-core2
-FuzzFunctionsSpec rule:var-loop compiler VIP-1: var declarations in loop heads must be rejected with EK0107; lane vip-core2
-FuzzFunctionsSpec corpus:fz-func-var-loop compiler VIP-1: minimized var-loop ban; lane vip-core2
 FuzzFunctionBoundaries corpus:fz-func-arguments-default compiler VIP-1: minimized default binding ban; lane vip-core2
 FuzzFunctionBoundaries rule:await-effect-union compiler VIP-1: `await` on a union with an Effect member must report EK0103 by the Result test; lane vip-core2
 FuzzFunctionBoundaries corpus:fz-func-await-effect-union compiler VIP-1: minimized await-effect-union violation; lane vip-core2

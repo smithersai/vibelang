@@ -1,0 +1,14 @@
+// expect: EK0107
+export var top = 1
+export function ordinary(): number { var local = 1; return local }
+export async function asynchronous() { var local = 1; return local }
+export const arrow = () => { var local = 1; return local }
+export class Methods { method(): number { var local = 1; return local } }
+export function loops(): number {
+  for (var i = 0; i < 2; i++) {}
+  for (var name in { item: 1 }) {}
+  for (var item of [1]) {}
+  return 1
+}
+export function multiple(): number { var first = 1, second = 2; return first + second }
+export effect function marked() { var local = 1; return local }

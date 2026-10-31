@@ -9,6 +9,7 @@ Diagnostic codes follow Appendix B of the specification: `EK`, the two-digit VIP
 | `TS2708` (module name as a value) | `EK4004` | Import the module's exports with a static identifier import. |
 | `EK4618` | `EK0101` | A declaration such as `effect load() {}` or `async load() {}` needs `function`. The quick fix and `vibelang --fix` insert it. |
 | `EK4617` | `EK0103` | `await` does not run an Effect in an `async` function. Use `await runPromise(program)`. |
+| `EK1019` for `var` | `EK0107` | `var` inside `do` uses the global declaration restriction. `do` control-flow diagnostics use `EK0201` through `EK0205`. |
 
 The language server keeps the numeric code (`103`) with source `EK`; the terminal and diagnostic references write `EK0103`.
 

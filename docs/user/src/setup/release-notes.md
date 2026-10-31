@@ -179,6 +179,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Throw-expression checks previously had regression coverage focused on grammar and runtime behavior. The fuzz suite now also checks `EK0401` placement across plain callbacks, caught throws, eager defaults and `.vibex`, with async and effect controls; compiler disagreements remain explicitly tracked.
 
 - Bun emitted-source forwarding preserves live bindings and native TypeScript export erasure; its export inspection now has independent native-namespace regression coverage without executing source modules.
+- `var` declarations silently compiled despite the language restriction; every source `var` now reports `EK0107`, while ordinary property names and strings remain valid. Rewrite the declaration with its scope in mind; there is no blanket `var` to `let` quick fix.
 - A service with a written shape annotation gained an extra public `Shape` namespace in its declarations. It now keeps the written shape directly and exposes no implicit namespace outside its own body.
 - Migration setup could add source-loader helpers to JavaScript CLI launches merely because later arguments were dynamic, introducing unnecessary install-time dependencies. Proven JavaScript entrypoints now keep their native launch; unknown and typed source entrypoints retain loader handling.
 - Reverting converted Mobile dependencies keeps the original import spellings in converted consumers; a named T3code corpus now protects this across both migration record formats.

@@ -5,7 +5,8 @@ function early() {
   return 99
 }
 function hoist() {
-  identity(do { var n = 3; n })
+  let n = 0
+  identity(do { n = 3; n })
   return n
 }
 class Base {

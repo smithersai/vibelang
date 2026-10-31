@@ -18,7 +18,7 @@ export class Counter {
     return result
   }
   effect redeclared(n: number): Effect<number, never, never> {
-    var n = n + 1
+    n = n + 1
     return n
   }
   effect argumentsRead(...args: [number]): Effect<number, never, never> {

@@ -78,11 +78,13 @@ effect function shapes(flag: boolean) {
   return out
 }
 
-// A var declared in a region belongs to the whole function.
+// Explicit outer bindings retain values after the region.
 effect function hoisted() {
+  let first: number | undefined
+  let i: number | undefined
   try {
-    var first = try risky(1)
-    for (var i = 0; i < 2; i++) first += i
+    first = try risky(1)
+    for (i = 0; i < 2; i++) first += i
   } finally {
     events.push("hoisted")
   }

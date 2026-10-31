@@ -1,4 +1,4 @@
-// expect: TS2454 TS2448 EK4703
+// expect: TS2454 TS2448 EK4703 EK0107
 // Chapter 004, decided detail 240 (loop round 2 OPUS-6): a test binding read
 // in the update is always uninitialized (TS2454); an update binding read in
 // the update before its pattern is a read before the binding (TS2448); a var

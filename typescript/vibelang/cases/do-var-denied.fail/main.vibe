@@ -1,0 +1,20 @@
+// expect: EK0107
+// var in a do expression hoists to the enclosing function, as TC39
+// specifies (VIP-2), so the code after the do expression sees it.
+import "vibelang/platform/node"
+export effect function main() {
+  const n = do { var leaked = 42; leaked }
+  try Console.log(n)
+  const nestedBlock = do { { var inner = 1; } inner }
+  const nestedDo = do { const value = do { var deeper = 3; deeper }; value }
+  const loop = do { for (var i = 0; i < 4; i++) {} i }
+  const keys = do { for (var key in { a: 1 }) {} 5 }
+  const values = do { for (var item of [1, 2]) {} 6 }
+  return [n, leaked, nestedBlock, deeper, loop, keys, values, inner]
+}
+
+function identity(n: number): number { return n }
+export function hoist(): number {
+ identity(do { var n = 3; n })
+ return n
+}

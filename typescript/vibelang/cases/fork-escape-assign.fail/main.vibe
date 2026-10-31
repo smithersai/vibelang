@@ -1,4 +1,4 @@
-// expect: EK4838
+// expect: EK4838 EK0107
 // A fiber assigned to a binding or property declared outside the region
 // that owns it outlives that region, which interrupts it on exit (D409).
 effect function heartbeat() {

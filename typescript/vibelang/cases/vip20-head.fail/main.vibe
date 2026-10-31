@@ -1,4 +1,4 @@
-// expect: EK2005
+// expect: EK2005 EK0107
 import { Stream } from "effect"
 export effect function main() {
   let last = 0

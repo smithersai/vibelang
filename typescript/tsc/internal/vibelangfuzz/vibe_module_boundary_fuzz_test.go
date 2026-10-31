@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -40,6 +41,7 @@ func FuzzVibeModuleBoundary(f *testing.F) {
 	// Chapter 001: file-local module bindings across prelude switches and explicit import/export control (FuzzVibeModuleBoundary).
 
 	startShortBudget(f)
+	requireVarDenialQuotes(f)
 	text, err := os.ReadFile(SpecPath("007-tooling.md"))
 	if err != nil {
 		f.Fatal(err)
@@ -79,8 +81,15 @@ func FuzzVibeModuleBoundary(f *testing.F) {
 		for _, diagnostic := range result.Diagnostics {
 			codes = append(codes, int(diagnostic.Code()))
 		}
-		if len(codes) != 1 || codes[0] != 2304 {
-			Gap(t, "FuzzVibeModuleBoundary", gapKey, "stage=checking: private source binding visible or unexpected diagnostic: got %v, want [2304]", codes)
+		want := []int{2304}
+		if witness.key == "var" {
+			// VIP-1 bans the declaration without making its binding visible
+			// to the other source module. Both exact errors must remain.
+			want = []int{107, 2304}
+		}
+		slices.Sort(codes)
+		if !slices.Equal(codes, want) {
+			Gap(t, "FuzzVibeModuleBoundary", gapKey, "stage=checking: private source binding visible or unexpected diagnostic: got %v, want %v", codes, want)
 		}
 		for _, file := range result.Program.SourceFiles() {
 			if strings.HasSuffix(file.FileName().AsString(), ".vibe") && !file.IsDeclarationFile && file.ExternalModuleIndicator == nil {

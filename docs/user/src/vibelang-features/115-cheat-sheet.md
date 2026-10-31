@@ -1182,3 +1182,5 @@ effect function logAll(ids: string[]) {
 // Output: Ada
 ```
 
+
+Source `var` declarations are `EK0107` everywhere in a `.vibe` file, including `do` expressions and plain functions. Use `const` or `let` and preserve the original scope when rewriting. The `do` rules above describe completion and scope; they do not exempt `var` from that source restriction.

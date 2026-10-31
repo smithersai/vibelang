@@ -350,3 +350,5 @@ A package import or `paths` alias that selects a compatibility sidecar outside `
 A value or call result typed `unknown` must be narrowed to an Effect before `try`; it reports `EK0502` otherwise. An Effect may still succeed with an `unknown` value. The explicit escape hatch `any` remains unchecked.
 
 The function `constructor` restriction applies to reading its value. Assigning or deleting the property does not read it, including through parentheses and TypeScript assertions; ordinary TypeScript assignment and `delete` checks still apply.
+
+`var` is rejected everywhere in `.vibe` files, including plain and `async` functions (`EK0107`). Use `let` or `const` with explicit scope and initialization. A function-scoped binding used after a region needs an explicit outer declaration. Check hoisting and module cycles before changing legacy code; keep code that needs JavaScript `var` semantics in a `.ts` file. The editor offers no automatic replacement because that could change the declaration scope.
