@@ -447,6 +447,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Pure `Option.gen` bodies could remain rejected after migration. `vibelang --fix` now converts supported eager generators to plain bodies with ordered reads, a `None` early exit, and fresh `Some` results.
 - A `.vibe` module whose inferred export type printed longer than TypeScript's serializer limit failed with `TS7056`, though its `.ts` original gave consumers that read the source the full type; t3code's large schema modules stayed TypeScript. A `.vibe` module's declarations, its sidecar, now print such a type in full. A `.ts` file keeps TypeScript's limit.
 
+- A function returning `{ status: 2 }` or `{}` could declare `readonly status?: never` or `status?: never` depending on which unrelated function the checker reached first, so a package's declarations changed between runs with no source change. The added property now follows the function's own literal. TypeScript 5.9 has the same bug.
+
 - Formatting valid `for` heads with `is` patterns could fail with an internal parse error; they now format at narrow and normal widths while keeping `is` attached to its subject.
 - Formatting native `Option` control flow could reject parenthesized `return (match …)` expressions and binding `is` branches; these forms now format while preserving their parsed structure.
 - A dprint `operatorPosition` of `sameLine` or `maintain` could wrap an `is` pattern onto the next line at a narrow width and fail with `')' expected`; the pattern now stays on the line of `is`.

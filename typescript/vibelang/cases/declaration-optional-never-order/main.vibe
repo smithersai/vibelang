@@ -1,0 +1,12 @@
+// A union that adds a missing property, status?: never, copies whether
+// that property is readonly from the property it stands for. Each
+// function's declaration is the same in either order (t3code's
+// AttachmentUpload, drive-t3code-server 22:53Z).
+export function seed(b: boolean): infer _ {
+  if (b) return { status: 1 } as const
+  return {}
+}
+export function read(b: boolean): infer _ {
+  if (b) return { status: 2 }
+  return {}
+}

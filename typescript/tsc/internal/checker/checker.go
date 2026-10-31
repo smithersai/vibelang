@@ -673,7 +673,7 @@ type Checker struct {
 	subtypeReductionCache                       map[CacheHashKey][]*Type
 	cachedTypes                                 map[CachedTypeKey]*Type
 	cachedSignatures                            map[CachedSignatureKey]*Signature
-	undefinedProperties                         map[string]*ast.Symbol
+	undefinedProperties                         map[undefinedPropertyKey]*ast.Symbol
 	narrowedTypes                               map[NarrowedTypeKey]*Type
 	assignmentReducedTypes                      map[AssignmentReducedKey]*Type
 	discriminatedContextualTypes                map[DiscriminatedContextualTypeKey]*Type
@@ -1013,7 +1013,7 @@ func NewChecker(program Program, tracer *Tracer) (*Checker, *sync.Mutex) {
 	c.subtypeReductionCache = make(map[CacheHashKey][]*Type)
 	c.cachedTypes = make(map[CachedTypeKey]*Type)
 	c.cachedSignatures = make(map[CachedSignatureKey]*Signature)
-	c.undefinedProperties = make(map[string]*ast.Symbol)
+	c.undefinedProperties = make(map[undefinedPropertyKey]*ast.Symbol)
 	c.narrowedTypes = make(map[NarrowedTypeKey]*Type)
 	c.assignmentReducedTypes = make(map[AssignmentReducedKey]*Type)
 	c.discriminatedContextualTypes = make(map[DiscriminatedContextualTypeKey]*Type)
@@ -19073,13 +19073,27 @@ func (c *Checker) getSiblingsOfContext(context *WideningContext) []*Type {
 	return context.siblings
 }
 
+// undefinedPropertyKey keys getUndefinedProperty's cache: the property's name
+// and whether it is readonly, which the added `name?: never` property copies
+// from it (createSymbolWithType).
+type undefinedPropertyKey struct {
+	name     string
+	readonly bool
+}
+
 func (c *Checker) getUndefinedProperty(prop *ast.Symbol) *ast.Symbol {
-	if cached := c.undefinedProperties[prop.Name()]; cached != nil {
+	// VibeLang: keyed by name alone, the first property of a name decided
+	// whether every later union's added property was readonly, so
+	// `{ status: 2 } | {}` declared `readonly status?: never` after an
+	// unrelated `{ status: 1 } as const` was checked, and a declaration depended
+	// on check order (t3code's AttachmentUpload, drive-t3code-server 22:53Z).
+	key := undefinedPropertyKey{name: prop.Name(), readonly: prop.CheckFlags()&ast.CheckFlagsReadonly != 0}
+	if cached := c.undefinedProperties[key]; cached != nil {
 		return cached
 	}
 	result := c.createSymbolWithType(prop, c.undefinedOrMissingType)
 	result.SetFlags(result.Flags() | ast.SymbolFlagsOptional)
-	c.undefinedProperties[prop.Name()] = result
+	c.undefinedProperties[key] = result
 	return result
 }
 
