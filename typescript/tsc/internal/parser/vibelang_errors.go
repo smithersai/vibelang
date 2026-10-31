@@ -178,7 +178,9 @@ func (p *Parser) parseErrorDeclaration(pos int, jsdoc jsdocScannerInfo, modifier
 			if element.Kind == ast.KindConstructor {
 				d.hasConstructor = true
 			}
-			if element.Kind != ast.KindSemicolonClassElement {
+			// Empty class elements need a class-shaped formatting form.
+			// A flagged comma remains a payload separator in a type literal.
+			if element.Kind != ast.KindSemicolonClassElement || element.Flags&ast.NodeFlagsVibeLang == 0 {
 				form.Class = true
 			}
 			d.members = append(d.members, element)

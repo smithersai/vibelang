@@ -305,6 +305,12 @@ func (d *decoder) node(node *ast.Node) error {
 	switch holder.kind {
 	case placeholderText:
 		d.replace(start, end, d.reindent(holder, start))
+	case placeholderEmptyClassElement:
+		if parent.Kind != ast.KindPropertyDeclaration || parent.Name() != node ||
+			parent.Initializer() != nil || parent.Type() != nil || parent.PostfixToken() != nil || parent.Modifiers() != nil {
+			return lost()
+		}
+		d.replace(start, parent.End(), ";")
 	case placeholderIsPattern:
 		if parent.Kind != ast.KindBinaryExpression || parent.AsBinaryExpression().Right != node || parent.AsBinaryExpression().OperatorToken.Kind != ast.KindGreaterThanEqualsToken {
 			return lost()

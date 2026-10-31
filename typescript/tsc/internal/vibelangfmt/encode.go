@@ -57,17 +57,18 @@ import (
 type placeholderKind int
 
 const (
-	placeholderText         placeholderKind = iota // the identifier is the text
-	placeholderIsPattern                           // a pattern; the >= before it is is
-	placeholderMatchHead                           // the property that holds a match's subject
-	placeholderMatchArm                            // when and a pattern, as an arm's property name
-	placeholderBlockHead                           // a label for a block statement's header
-	placeholderClauseHead                          // a label for a try clause after the first
-	placeholderHandleHead                          // a catch variable for a handle clause
-	placeholderTypeHead                            // a type alias name for an error or schema header
-	placeholderClassHead                           // a class name for a service or control header
-	placeholderCatch                               // a method name for catch
-	placeholderMutableIndex                        // [ and the key name after mutable
+	placeholderText              placeholderKind = iota // the identifier is the text
+	placeholderIsPattern                                // a pattern; the >= before it is is
+	placeholderMatchHead                                // the property that holds a match's subject
+	placeholderMatchArm                                 // when and a pattern, as an arm's property name
+	placeholderBlockHead                                // a label for a block statement's header
+	placeholderClauseHead                               // a label for a try clause after the first
+	placeholderHandleHead                               // a catch variable for a handle clause
+	placeholderTypeHead                                 // a type alias name for an error or schema header
+	placeholderClassHead                                // a class name for a service or control header
+	placeholderCatch                                    // a method name for catch
+	placeholderMutableIndex                             // [ and the key name after mutable
+	placeholderEmptyClassElement                        // a JSDoc-owning empty class element
 )
 
 type placeholder struct {
@@ -204,6 +205,7 @@ func encode(fileName, source string) (*encoding, error) {
 	}
 	e := &encoder{file: file, source: source, sentinel: sentinel}
 	e.normalizeErrorFieldCommas()
+	e.keepJSDocEmptyClassElements()
 	forms = uniqueForms(forms)
 	for _, form := range forms {
 		if err := e.form(form); err != nil {
@@ -258,6 +260,22 @@ func missingSeparator(file *ast.SourceFile, source string) error {
 	}
 	line, column := lineColumn(source, scanner.SkipTrivia(source, gap.Pos()))
 	return fmt.Errorf("vibelang format: %d:%d: two members need a separator: write ; or a line break before this one", line, column)
+}
+
+// keepJSDocEmptyClassElements protects comment attachment. Removing such
+// an element can move @internal or @throws onto the following member.
+// A temporary property survives the TypeScript formatter; decode restores ;.
+func (e *encoder) keepJSDocEmptyClassElements() {
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if node.Kind == ast.KindSemicolonClassElement && node.Flags&ast.NodeFlagsHasJSDoc != 0 {
+			start := scanner.SkipTrivia(e.source, node.Pos())
+			name := e.hold(placeholderEmptyClassElement, ";", start, 0)
+			e.add(edit{pos: start, end: node.End(), text: name + ";"})
+		}
+		return node.ForEachChild(visit)
+	}
+	e.file.AsNode().ForEachChild(visit)
 }
 
 // syntaxError reports a parse diagnostic with its line and column.

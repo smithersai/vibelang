@@ -116,8 +116,8 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Build and test** | **13,000** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 9,600 |
 | [Vite and Vitest](../setup/vite.md) | 3,000 |
-| **Format and lint** | **6,400** |
-| [Format with dprint](../setup/formatting.md) | 2,300 |
+| **Format and lint** | **6,500** |
+| [Format with dprint](../setup/formatting.md) | 2,400 |
 | [Developer tools](../setup/developer-tools.md) | 4,100 |
 | **Frameworks** | **12,000** |
 | [React](../setup/react.md) | 2,100 |
@@ -141,7 +141,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | --- | ---: |
 | [Getting Started](../013-getting-started.md) | 1,100 |
 | **Error Management** | **17,000** |
-| [Expected Errors](../error-management/014-expected-errors.md) | 6,300 |
+| [Expected Errors](../error-management/014-expected-errors.md) | 6,400 |
 | [Unexpected Errors](../error-management/015-unexpected-errors.md) | 1,600 |
 | [Fallback](../error-management/016-fallback.md) | 1,600 |
 | [Matching](../error-management/017-matching.md) | 850 |

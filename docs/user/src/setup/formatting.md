@@ -70,6 +70,8 @@ A label on an arrow expression keeps that expression as its body, including with
 
 An empty statement inserted before an expression inside `do`, such as the `;` in `;[1]` under `semiColons: "asi"`, preserves the block's completion value and is accepted by the program-preservation check.
 
+Formatting may remove empty `;` members from native `class`, `error` and `schema error` bodies. A member with JSDoc keeps its `;`, so `@internal` and `@throws` remain attached to the same member.
+
 Comments and JSDoc stay associated with their code, including compiler, linter and tool directives. Adding space between a contract and its initializer, such as `User!!= load()` becoming `User!! = load()`, preserves those associations elsewhere in the file. Formatting is idempotent: a formatted file doesn't change when formatted again. This includes `data`, `schema` and field-only `error` declarations with an opening brace on the next line. This includes `data`, `schema` and `error` declarations whose opening brace starts on the next line.
 
 Under the same compiler/options, formatting preserves parsed program meaning, evaluation order, receivers, ordinary runtime values/effects and public types/declarations/throws contracts. Diagnostic codes, categories and occurrences stay the same; locations and quoted source follow the formatted file. Semantic migrations and diagnostic repairs belong to `vibelang --fix` or editor actions.

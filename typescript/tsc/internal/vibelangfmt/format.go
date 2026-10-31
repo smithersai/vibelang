@@ -219,14 +219,20 @@ func children(node *ast.Node) []*ast.Node {
 // statement list: dprint's "asi" setting writes one before a statement that
 // starts with a parenthesis or a bracket, as in ;(() => { ... })(), and it
 // changes nothing. An empty statement that is the body of an if or a loop is
-// that statement's child, not a list's, and stays.
+// that statement's child, not a list's, and stays. Empty class elements
+// likewise have no effect, but a JSDoc-owning element must stay so its
+// comment does not become the following member's contract.
 func statements(node *ast.Node, nodes []*ast.Node) []*ast.Node {
 	switch node.Kind {
-	case ast.KindBlock, ast.KindSourceFile, ast.KindModuleBlock, ast.KindCaseClause, ast.KindDefaultClause:
+	case ast.KindBlock, ast.KindSourceFile, ast.KindModuleBlock, ast.KindCaseClause, ast.KindDefaultClause,
+		ast.KindClassDeclaration, ast.KindClassExpression:
 	default:
 		return nodes
 	}
-	return slices.DeleteFunc(slices.Clone(nodes), func(child *ast.Node) bool { return child.Kind == ast.KindEmptyStatement })
+	return slices.DeleteFunc(slices.Clone(nodes), func(child *ast.Node) bool {
+		return child.Kind == ast.KindEmptyStatement ||
+			child.Kind == ast.KindSemicolonClassElement && child.Flags&ast.NodeFlagsHasJSDoc == 0
+	})
 }
 
 // unbraced returns the children of node, replacing a block that holds one

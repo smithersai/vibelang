@@ -1,0 +1,2 @@
+go test fuzz v1
+string("class E {\n/** @throws {Error} */ ;\nvisible(): number { return 1 }\n}\n")
