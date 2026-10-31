@@ -95,9 +95,27 @@ test("setYamlMap allows a build beside the repository's own decisions and create
   assert.equal(setYamlMap("", "allowBuilds", { dprint: true }), "allowBuilds:\n  dprint: true\n")
 })
 
-test("setJsonOverrides adds missing pins under pnpm for pnpm, at the top level otherwise", () => {
-  assert.deepEqual(setJsonOverrides({ name: "x" }, { effect: "4.0.6" }, "pnpm"), { name: "x", pnpm: { overrides: { effect: "4.0.6" } } })
-  assert.deepEqual(setJsonOverrides({ overrides: { a: "1", effect: "catalog:" } }, { effect: "4.0.6", "@effect/sql": "4.0.6" }, "npm"), { overrides: { a: "1", effect: "catalog:", "@effect/sql": "4.0.6" } })
+test("setJsonOverrides adds missing pins to each table it names, creating it", () => {
+  assert.deepEqual(setJsonOverrides({ name: "x" }, { effect: "4.0.6" }, ["pnpm.overrides"]), { name: "x", pnpm: { overrides: { effect: "4.0.6" } } })
+  assert.deepEqual(setJsonOverrides({ overrides: { a: "1", effect: "catalog:" } }, { effect: "4.0.6", "@effect/sql": "4.0.6" }, ["overrides"]), { overrides: { a: "1", effect: "catalog:", "@effect/sql": "4.0.6" } })
+  assert.deepEqual(setJsonOverrides({ overrides: {}, pnpm: { overrides: {} } }, { effect: "4.0.6" }, ["overrides", "pnpm.overrides"]), { overrides: { effect: "4.0.6" }, pnpm: { overrides: { effect: "4.0.6" } } })
+})
+
+// smithers: pnpm-workspace.yaml's overrides and package.json's, which Bun
+// reads, are kept identical, both with double-quoted entries. The upgrade
+// wrote a new pin only to the YAML, single-quoted, and the repository's
+// packageContract check failed.
+test("planUpgrade writes a new pin to every overrides table, in each one's quoting", () => {
+  const yaml = 'packages:\n  - "packages/*"\n\nallowBuilds:\n  "esbuild": false\n\noverrides:\n  "@types/bun": "1.4.4"\n  "effect": "4.0.5"\n'
+  const root = '{\n  "name": "fixture",\n  "overrides": {\n    "@types/bun": "1.4.4",\n    "effect": "4.0.5"\n  }\n}\n'
+  const core = '{ "name": "core", "dependencies": { "effect": "4.0.5", "@effect/sql-pg": "4.0.5" } }\n'
+  const plan = planUpgrade([{ path: "package.json", text: root }, { path: "pnpm-workspace.yaml", text: yaml }, { path: "packages/core/package.json", text: core }], "4.1.0", "pnpm")
+  const written = Object.fromEntries(plan.files.map((f) => [f.path, f.text]))
+  assert.equal(written["pnpm-workspace.yaml"], yaml.replace('"effect": "4.0.5"', '"effect": "4.1.0"') + '  "@effect/sql-pg": "4.1.0"\n')
+  assert.deepEqual(JSON.parse(written["package.json"]).overrides, { "@types/bun": "1.4.4", effect: "4.1.0", "@effect/sql-pg": "4.1.0" })
+  assert.equal(written["package.json"], '{\n  "name": "fixture",\n  "overrides": {\n    "@types/bun": "1.4.4",\n    "effect": "4.1.0",\n    "@effect/sql-pg": "4.1.0"\n  }\n}\n')
+  // A build the setup step allows follows the quoting too, and stays a boolean.
+  assert.equal(setYamlMap(yaml, "allowBuilds", { dprint: true }), yaml.replace('  "esbuild": false\n', '  "esbuild": false\n  "dprint": true\n'))
 })
 
 test("planUpgrade moves Effect and its major line wherever a pnpm workspace declares them, keeping formatting and references", () => {

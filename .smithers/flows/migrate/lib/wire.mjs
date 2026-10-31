@@ -831,13 +831,30 @@ export function projectsOf(ts, dir, tsconfig) {
   })
 }
 
-/** The command that installs after the edits, letting the lockfile change. */
-export const installCommand = (manager) => ({
+const installs = {
   pnpm: "pnpm install --no-frozen-lockfile",
   bun: "bun install",
   yarn: "yarn install",
   npm: "npm install"
-})[manager]
+}
+
+/** Each lockfile a repository may keep beside its package manager's, with the manager that owns it and the command that rewrites it without installing. */
+const lockfileRefreshes = [
+  ["bun.lock", "bun", "bun install --lockfile-only"],
+  ["bun.lockb", "bun", "bun install --lockfile-only"],
+  ["package-lock.json", "npm", "npm install --package-lock-only --ignore-scripts"]
+]
+
+/**
+ * The command that installs after the edits, letting the lockfile change,
+ * then rewrites each other lockfile among files, the repository root's
+ * entries, which the install leaves stale: Smithers keeps bun.lock beside
+ * pnpm-lock.yaml and gates their parity.
+ */
+export function installCommand(manager, files = []) {
+  const refreshes = lockfileRefreshes.filter(([file, owner]) => owner !== manager && files.includes(file)).map(([, , command]) => command)
+  return [installs[manager], ...new Set(refreshes)].join(" && ")
+}
 
 /** Where a staged toolchain's tarballs live in the target: at its root, ignored, so no commit names the machine's own paths. */
 export const toolchainDirectory = ".vibelang-toolchain"

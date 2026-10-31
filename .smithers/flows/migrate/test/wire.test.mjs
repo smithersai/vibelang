@@ -485,6 +485,10 @@ test("packageManager reads the lockfile", () => {
   assert.equal(packageManager(["bun.lock"]), "bun")
   assert.equal(packageManager(["package.json"]), "npm")
   assert.equal(installCommand("pnpm"), "pnpm install --no-frozen-lockfile")
+  // smithers keeps bun.lock beside pnpm-lock.yaml; the install refreshes it too.
+  assert.equal(installCommand("pnpm", ["package.json", "pnpm-lock.yaml", "bun.lock"]), "pnpm install --no-frozen-lockfile && bun install --lockfile-only")
+  assert.equal(installCommand("bun", ["bun.lock", "bun.lockb", "package-lock.json"]), "bun install && npm install --package-lock-only --ignore-scripts")
+  assert.equal(installCommand("npm", ["package-lock.json", "bun.lockb"]), "npm install && bun install --lockfile-only")
 })
 
 test("a staged toolchain's specifiers are relative to each package, into the ignored root directory", () => {

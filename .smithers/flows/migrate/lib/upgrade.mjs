@@ -167,7 +167,10 @@ const yamlKey = (name) => (/^[A-Za-z0-9_-]+$/.test(name) ? name : `'${name}'`)
  * Adds the entries a top-level block map of a pnpm-workspace.yaml lacks,
  * inside the block, adding the block when there is none. An entry already
  * there keeps its value: the upgrade moved its version, a `catalog:` entry
- * follows the catalog, and a build the repository denied stays denied.
+ * follows the catalog, and a build the repository denied stays denied. A new
+ * entry quotes its key, and a string value, as every entry beside it does
+ * (Smithers writes `"effect": "4.0.5"`); otherwise a key is quoted only when
+ * it must be, and a value never.
  */
 export function setYamlMap(text, key, entries) {
   const lines = text.split("\n")
@@ -180,20 +183,29 @@ export function setYamlMap(text, key, entries) {
   while (end < lines.length && (/^\s+\S/.test(lines[end]) || lines[end].trim() === "")) end++
   while (end > start + 1 && lines[end - 1].trim() === "") end--
   const seen = new Set()
+  const quotes = []
   for (let i = start + 1; i < end; i++) {
-    const m = /^\s+(['"]?)([^'":]+)\1:/.exec(lines[i])
-    if (m) seen.add(m[2])
+    const m = /^\s+(?!#)(['"]?)([^'":]+)\1\s*:\s*(['"]?)/.exec(lines[i])
+    if (m) {
+      seen.add(m[2])
+      quotes.push([m[1], m[3]])
+    }
   }
-  lines.splice(end, 0, ...Object.entries(entries).filter(([k]) => !seen.has(k)).map(([k, v]) => `  ${yamlKey(k)}: ${v}`))
+  const shared = (i) => (quotes.length && quotes.every((q) => q[i] === quotes[0][i]) ? quotes[0][i] : "")
+  const [keyQuote, valueQuote] = [shared(0), shared(1)]
+  const entry = ([k, v]) => `  ${keyQuote ? `${keyQuote}${k}${keyQuote}` : yamlKey(k)}: ${typeof v === "string" && valueQuote ? `${valueQuote}${v}${valueQuote}` : v}`
+  lines.splice(end, 0, ...Object.entries(entries).filter(([k]) => !seen.has(k)).map(entry))
   return lines.join("\n")
 }
 
-/** Adds the pins a package.json's `overrides` (npm, Bun) or `pnpm.overrides` lacks; an entry already there keeps its value. */
-export function setJsonOverrides(pkg, pins, manager) {
+/** Adds the pins each named overrides table of a package.json lacks, `overrides` (npm, Bun) or `pnpm.overrides`, creating it; an entry already there keeps its value. */
+export function setJsonOverrides(pkg, pins, tables) {
   const next = structuredClone(pkg)
-  const holder = manager === "pnpm" ? (next.pnpm ??= {}) : next
-  holder.overrides ??= {}
-  for (const [name, version] of Object.entries(pins)) if (!Object.keys(holder.overrides).some((k) => selectorTarget(k) === name && !k.includes(">"))) holder.overrides[name] = version
+  for (const table of tables) {
+    const holder = table === "pnpm.overrides" ? (next.pnpm ??= {}) : next
+    holder.overrides ??= {}
+    for (const [name, version] of Object.entries(pins)) if (!Object.keys(holder.overrides).some((k) => selectorTarget(k) === name && !k.includes(">"))) holder.overrides[name] = version
+  }
   return next
 }
 
@@ -289,20 +301,31 @@ export function planUpgrade(files, to, manager) {
     for (const patch of carried.patches) patches.push({ ...patch, versions: [...new Set([...patch.versions, from])] })
     if (carried.text !== f.text) next.set(f.path, carried.text)
   }
-  // Overrides keep one copy of each pinned package however a dependency's range reads.
+  // Overrides keep one copy of each pinned package however a dependency's
+  // range reads, in every overrides table the repository declares (Smithers
+  // keeps pnpm-workspace.yaml's and package.json's identical, for pnpm and
+  // Bun), or, with none, in its package manager's.
   if (bumped.length) {
     const yaml = files.find((f) => f.path === "pnpm-workspace.yaml")
-    const holder = manager === "pnpm" && yaml ? yaml : files.find((f) => f.path === "package.json")
-    if (holder) {
-      const text = next.get(holder.path) ?? holder.text
-      const after = holder === yaml
-        ? setYamlMap(text, "overrides", pins)
-        : (() => {
-          const pkg = JSON.parse(text)
-          const withPins = setJsonOverrides(pkg, pins, manager)
-          return JSON.stringify(withPins) === JSON.stringify(pkg) ? text : JSON.stringify(withPins, null, indentOf(text)) + (text.endsWith("\n") ? "\n" : "")
-        })()
-      if (after !== holder.text) next.set(holder.path, after)
+    const root = files.find((f) => f.path === "package.json")
+    const yamlText = yaml && (next.get(yaml.path) ?? yaml.text)
+    const rootText = root && (next.get(root.path) ?? root.text)
+    const pkg = root && JSON.parse(rootText)
+    const tables = [
+      ...(yaml && yamlBlock(yamlText.split("\n"), "overrides") ? ["yaml"] : []),
+      ...(pkg?.overrides ? ["overrides"] : []),
+      ...(pkg?.pnpm?.overrides ? ["pnpm.overrides"] : [])
+    ]
+    if (!tables.length) tables.push(manager === "pnpm" ? (yaml ? "yaml" : "pnpm.overrides") : "overrides")
+    if (tables.includes("yaml")) {
+      const after = setYamlMap(yamlText, "overrides", pins)
+      if (after !== yaml.text) next.set(yaml.path, after)
+    }
+    const json = tables.filter((t) => t !== "yaml")
+    if (root && json.length) {
+      const withPins = setJsonOverrides(pkg, pins, json)
+      const after = JSON.stringify(withPins) === JSON.stringify(pkg) ? rootText : JSON.stringify(withPins, null, indentOf(rootText)) + (rootText.endsWith("\n") ? "\n" : "")
+      if (after !== root.text) next.set(root.path, after)
     }
   }
   return { from, to, pins, bumped, selectors, patches, files: files.filter((f) => next.has(f.path)).map((f) => ({ path: f.path, text: next.get(f.path) })) }

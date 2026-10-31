@@ -270,7 +270,7 @@ export async function upgradeEffect(options) {
   }
 
   const manager = Wire.packageManager(readdirSync(t))
-  const install = (name) => must(config.install ?? Wire.installCommand(manager), { cwd: t, log: join(logs, `${name}-install.log`) })
+  const install = (name) => must(config.install ?? Wire.installCommand(manager, readdirSync(t)), { cwd: t, log: join(logs, `${name}-install.log`) })
   const testRun = (name) => runTests({ command: config.test.command, report: config.test.report, cwd: join(t, config.test.cwd), root: t, jsonFile: join(p.baseline, `${name}.vitest.json`), log: join(logs, `${name}-tests.log`) })
   // The target's own tests first, as it is: what fails here fails before the migration touches anything.
   await install("upstream")
@@ -545,7 +545,7 @@ async function wireTarget(config, log) {
   const formatted = await formatWritten(t, changed, join(log, "setup-format.log"))
   if (formatted.code !== 0) warnings.push(`${formatted.formatter} exited ${formatted.code} on the files setup wrote; see ${join(log, "setup-format.log")}`)
   const manager = Wire.packageManager(readdirSync(t))
-  const install = config.install ?? Wire.installCommand(manager)
+  const install = config.install ?? Wire.installCommand(manager, readdirSync(t))
   await must(install, { cwd: t, log: join(log, "install.log") })
   for (const build of tooling.builds) await must(build.command, { cwd: join(t, build.cwd), log: join(log, "ast-grep-build.log") })
   return { manager, specs: Object.fromEntries(config.packages.map((pkg) => [pkg.dir, specsFor(pkg.dir)])), viteConfigs: vite.configs, viteAppConfigs: apps.configs, knipConfig: knip.config, formatted, changed, warnings, install }
