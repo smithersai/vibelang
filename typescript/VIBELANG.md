@@ -11,7 +11,7 @@ It is a first prototype. It lowers `.vibe` files with checker types, runs the ou
 | Upstream commit | `257e87406c6a8be277cb8cd5ef8d7b458a650390`, "[api] Fix named pipe / UDS creation (#64818)", 2026-10-14 |
 | Why that commit | It is the `gitHead` of npm `typescript@next` 7.1.0-dev.20261015.1 (`npm view typescript@next gitHead version`) |
 | Go | `tsc/go.mod` says `go 1.27`; with Go 1.26 installed, `GOTOOLCHAIN=auto` downloads go1.27.0 |
-| History | `typescript/` is upstream's tree at that commit without `tsc/testdata` (61,721 test baselines, 349 MB), imported by one commit of the VibeLang repository. The compiler commits below follow it. To move to a newer upstream commit, replace `typescript/` with that tree, again without `tsc/testdata`, and rebase the compiler commits onto it. |
+| History | `typescript/` is upstream's tree at that commit without `tsc/testdata` (61,721 test baselines, 349 MB), imported by one commit of the VibeLang repository. The compiler commits below follow it. The compiler commits are interleaved with the rest of the repository's history, so a move to a newer upstream commit merges instead of rebasing: the ts-bump flow merges upstream's changes since this commit three ways and moves this row (`docs/maintainers/typescript-upgrade.md`). |
 
 ## Build and test
 
@@ -479,7 +479,7 @@ VibeLang code lives in `tsc/internal/vibelang/`, which may import any internal p
 | Effect-TS/tsgo `_patches/typescript/` 002-009, 013, 014, 023, 025, 028, 031-033 | The patches `patches.txt` names: the after-check, expression-checked and relation-error hooks, `CompilerOptions.Effect` from the `@effect/language-service` plugin, the rules' messages in `diagnostics/generate.go`, and the exit-code filter. `effecttsgo/_patches/` holds each as applied here: 002 drops Effect's `AddDiagnostic` and `Program`, which VibeLang has; 007, 028 add `Effect` beside `VibeLang` in the option tables; 009 filters before VibeLang's error-only exit status; 031's flag is bit 31, since VibeLang uses 29 and 30 | about +400 |
 | `tsc/internal/ls/autoimport/effectlint.go` (new) | `aliasResolver.IsSourceFileFromExternalLibrary`, which patch 002's `checker.Program` needs (from Effect's patch 018) | +10 |
 
-A rebase onto a newer nightly can conflict only in the existing files above. If upstream regenerates the option tables, add the `vibelang` lines again; `tsoptions/vibelang.go` lists where they go.
+A merge of a newer nightly (the ts-bump flow) can conflict only in the existing files above; its report names each conflict's row. If upstream regenerates the option tables, add the `vibelang` lines again; `tsoptions/vibelang.go` lists where they go.
 
 ## Behavior that differs from upstream
 

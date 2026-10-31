@@ -223,11 +223,11 @@ const targets = {
   "go-vibelangfuzz-hangs": pendingHangs,
   "site-spec-links": siteSpecLinks,
   release: check(
-    "The release and contributor scripts' node tests, and the effect-bump flow's steps.",
+    "The release and contributor scripts' node tests, and the effect-bump and ts-bump flows' steps.",
     "node --test scripts/release/*.test.mjs scripts/*.test.mjs typescript/vibelang/harness.test.mjs docs/redirect/*.test.mjs " +
-      ".smithers/flows/effect-bump/test/*.test.mjs",
+      ".smithers/flows/effect-bump/test/*.test.mjs .smithers/flows/ts-bump/test/*.test.mjs",
     [Packages["compiler-native"], Packages["runtime-dist"]],
-    [node, gofmt]
+    [node, gofmt, S.Host.bin("diff3")]
   ),
   snippets: check(
     "Compile every code block in the docs.",

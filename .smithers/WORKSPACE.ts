@@ -17,7 +17,7 @@ export const Workspace = S.Workspace("vibelang", {
   runtime,
   packageManager: S.PackageManager.Pnpm({ version: "11.25.0", runtime }),
   nodeModules: S.Npm.NodeModules({ packageJson: S.file("//.smithers/package.json") }),
-  host: S.Host({ bins: ["go", "gofmt", "node", "bun", "jj"] }),
+  host: S.Host({ bins: ["go", "gofmt", "node", "bun", "jj", "diff3"] }),
   // Gitignored trees with no CACHEDIR.TAG: discovery would walk each one on
   // every smthrs command.
   discovery: { prune: [".cache", "typescript/built", "typescript/.cache", "typescript/vibelang/cases",
