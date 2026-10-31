@@ -2112,7 +2112,7 @@ typescript/vibelang/cases/method-plain-annotation-effect.fail/main.vibe:26:3 lam
 typescript/vibelang/cases/methods-optional-chain.fail/main.vibe:5:21 lambda plain fallback
 typescript/vibelang/cases/migrate-effect-gen-fixed/lib.vibe:31:22 lambda choice fallback
 typescript/vibelang/cases/migrate-effect-gen-fixed/lib.vibe:37:26 lambda plain fallback
-typescript/vibelang/cases/migrate-effect-gen-fixed/lib.vibe:38:29 lambda effectFn table
+typescript/vibelang/cases/migrate-effect-gen-fixed/lib.vibe:38:33 lambda effectFn table
 typescript/vibelang/cases/migrate-effect-gen-fixed/lib.vibe:42:25 lambda choice fallback
 typescript/vibelang/cases/migrate-effect-gen-fixed/lib.vibe:51:3 lambda program table
 typescript/vibelang/cases/migrate-effect-gen-fixed/lib.vibe:53:20 lambda plain fallback

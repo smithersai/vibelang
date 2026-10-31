@@ -1,7 +1,7 @@
-// vibelang --fix writes Effect.gen programs in direct style (D470). The
-// migration renames this file to lib.vibe; migrate-effect-gen-fixed holds
-// what --fix then writes, which main.ts runs with the same result, and
-// whose declarations are the same (expected/lib.d.ts).
+// vibelang --fix writes Effect.gen programs with effect and try (D470, VIP-1,
+// VIP-5). The migration renames this file to lib.vibe;
+// migrate-effect-gen-fixed holds what --fix then writes, which main.ts runs
+// with the same result, and whose declarations are the same (expected/lib.d.ts).
 import { Effect, Layer } from "effect"
 import { Gone, Users } from "./services.js"
 

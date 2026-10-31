@@ -240,6 +240,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The specification omitted the code for `try a ** b`, which ECMAScript-style parsing rejects as it rejects `await a ** b`; chapter 2 and Appendix B now name it `EK0510`, with the fix `(try a) ** b`.
 
+- `vibelang --fix` left `Effect.fn` programs, and `Effect.gen` used as a value, for you to rewrite by hand, and wrote the rest in a direct style that an effect function would not keep (EK1002). It now writes each as an `effect` function or an `effect { … }` block with `try`, keeping `Effect.fn`'s name as a span.
+- `vibelang --fix` left `f(x).pipe(Effect.map(g))`, which is EK4502 in a `.vibe` file. It now writes a `.pipe` of an Effect with `|>`, such as `f(x) |> Effect.map(%, g)`.
 - The specification did not say that one `vibelang --fix` run reaches a fixed point, or how a missing `vibelang-runtime` is reported; chapter 7 now states both: a second run changes nothing, and a missing runtime is one `TS2307` error naming the package.
 
 - The specification gave no warning for an explicit `throw` in a plain `catch` handler, which turns the failure into a defect; it now names lint warning `EK0511` with the quick fix `catch effect`, and the compiler registers the code (reporting it is tracked by a pending acceptance case).

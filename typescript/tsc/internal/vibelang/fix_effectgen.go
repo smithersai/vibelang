@@ -11,43 +11,43 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
-// EK1002's quick fix (D470) writes an Effect.gen program in VibeLang's direct
-// style, the rewrite a migration from Effect TypeScript makes most often:
+// EK1002's quick fix (D470) writes Effect.gen and Effect.fn programs with
+// effect and try, the rewrites a migration from Effect TypeScript makes most
+// often:
 //
-//	const greet = (id: string) =>          const greet = (id: string) => {
-//	  Effect.gen(function* () {              const users = Users()
-//	    const users = yield* Users           const name = users.find(id)
-//	    const name = yield* users.find(id)   return `Hello, ${name}`
-//	    return `Hello, ${name}`            }
-//	  })
+//	Effect.gen(function* () { B })            effect { B }
+//	(a) => Effect.gen(function* () { B })     effect (a) => { B }
+//	function f(a) { return Effect.gen(…) }    effect function f(a) { B }
+//	Effect.fn(function* (a) { B })            effect (a) => { B }
+//	Effect.fn("n")(function* (a) { B })       effect (a) => try Effect.withSpan(effect { B }, "n")
+//	Effect.fn(function* (a) { B }, stage)     effect (a) => try (effect { B } |> stage(%))
 //
-// Each yield* e becomes what runs e where it stands (Chapter 13, rule R): the
-// call e itself when it runs, e() for an Effect value such as a service key
-// or a Config, and throw e for an error instance in a statement. It rewrites
-// Effect.gen(function* () { … }) and Effect.gen({ self: this }, function* () { … })
-// in two places:
+// In B, each yield* e becomes what runs e where it stands: try e;
+// x for Effect.succeed(x); try e.asEffect() for an Effect.Yieldable that is no
+// Effect; throw e for an error or Effect.fail(e) in a statement, and
+// try Effect.fail(e) elsewhere. A
+// program B holds, const p = load(id), stays a program: const p = effect
+// { return try load(id) }. A throw is a JavaScript exception in a generator
+// and a defect in Effect, so it becomes return try Effect.die(e).
 //
-//   - the whole body of a function: an arrow's expression body, or the one
-//     return statement of a function, arrow, or method. The function's body
-//     becomes the generator's, so a call of it runs the body as calling the
-//     function and running its Effect did.
-//   - a destination that takes only a program: an argument, a field, a typed
-//     const, or an element whose declared type is an Effect. The call becomes
-//     () => { … }, which converts to a program that runs the body each time.
+// A parameter that a default or a pattern binds is bound when an Effect.gen
+// function is called, so that function stays plain and returns the block:
+// ({ id }): infer _ => effect { B }. Effect.fn binds its parameters when the
+// program runs, as an effect function does. An effect function is untraced:
+// Effect.fn's stack frames, which only a failure's trace reads, go, and its
+// name stays as the span.
 //
 // The fix keeps the program's meaning (Chapter 28), so it refuses, with a
-// note that says why, a generator whose direct-style body would mean something
-// else: a call that builds a program the generator never yields, which would
-// run (rule R); a yield* of a value that is not definitely an Effect, or whose
-// success value is itself a program; a callback whose program-building call is
-// not the value it returns; throw and try, which mean a JavaScript exception
-// in a generator and an expected failure in VibeLang; this without
-// { self: this }, arguments, new.target, super, and a nested function*; a
-// parameter that a default or a pattern binds, which TypeScript binds at the
-// call and VibeLang when the program runs; and a body that runs no Effect, so
-// that the function would compile to plain JavaScript and change its type.
+// note that says why, a generator whose rewrite would mean something else: a
+// call that builds a program the generator neither yields nor holds in a
+// const, which would run (rule R); a yield* whose success value is itself a
+// program; a callback whose program-building call is not the value it
+// returns; a try statement, which catches JavaScript exceptions in a
+// generator and is no effect code in VibeLang; this without { self: this }
+// in Effect.gen, arguments, new.target, super, and a nested function*.
 // What stays type-checks only where the gate of vibelang --fix (fix.go) finds
 // no new error.
 
@@ -67,7 +67,7 @@ var effectGenFix = &ls.CodeFixProvider{
 		}
 		c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
 		defer done()
-		rewrite := planEffectGen(c, fix.SourceFile, callee.Parent)
+		rewrite := planEffectGen(c, fix.SourceFile, generatorCallOf(callee))
 		if !rewrite.fixable() {
 			return nil, nil
 		}
@@ -86,10 +86,26 @@ func fixKey(file *ast.SourceFile, d *ast.Diagnostic) string {
 	span := file.Text()[d.Pos():d.End()]
 	if d.Code() == EK1002.Code {
 		if callee := tsFormNodeAt(file, core.NewTextRange(d.Pos(), d.End()), isCallee); callee != nil {
-			span = nodeText(file, callee.Parent)
+			span = nodeText(file, generatorCallOf(callee))
 		}
 	}
 	return diagnosticSource + strconv.Itoa(int(d.Code())) + ":" + span
+}
+
+// generatorCallOf returns the call that callee, the API EK1002 names, leads
+// to and that passes the generator: Effect.fn("n")(function* …) for the
+// Effect.fn of that text.
+func generatorCallOf(callee *ast.Node) *ast.Node {
+	call := callee.Parent
+	for !slices.ContainsFunc(call.Arguments(), isGeneratorExpression) && call.Parent != nil && ast.IsCallExpression(call.Parent) && call.Parent.Expression() == call {
+		call = call.Parent
+	}
+	return call
+}
+
+// isGeneratorExpression reports whether node is a function* written in place.
+func isGeneratorExpression(node *ast.Node) bool {
+	return ast.IsFunctionExpression(node) && node.BodyData().AsteriskToken != nil
 }
 
 // isCallee reports whether node is the callee of a call.
@@ -97,8 +113,8 @@ func isCallee(node *ast.Node) bool {
 	return node.Parent != nil && ast.IsCallExpression(node.Parent) && node.Parent.Expression() == node
 }
 
-// noteEffectGenFix adds to d, EK1002 at call, whether its quick fix writes
-// the body in direct style, or why it does not.
+// noteEffectGenFix adds to d, EK1002 at call, what its quick fix writes, or
+// why it does not.
 func noteEffectGenFix(c *checker.Checker, file *ast.SourceFile, d *ast.Diagnostic, call *ast.Node) {
 	if d == nil {
 		return
@@ -112,121 +128,336 @@ func noteEffectGenFix(c *checker.Checker, file *ast.SourceFile, d *ast.Diagnosti
 	}
 }
 
-// effectGenPlace is where an Effect.gen call stands, for its rewrite.
-type effectGenPlace uint8
+// A generatorCall is an Effect.gen or Effect.fn call, as EK1002's fix reads it.
+type generatorCall struct {
+	generator  *ast.Node
+	isFn       bool        // Effect.fn or Effect.fnUntraced, not Effect.gen
+	span       []*ast.Node // Effect.fn("n", options)'s arguments
+	stages     []*ast.Node // the stages after an Effect.fn's generator
+	module     string      // the text that names Effect at the call
+	selfIsThis bool        // Effect.gen({ self: this }, …)
+}
 
-const (
-	genArrowBody effectGenPlace = iota + 1 // an arrow function's expression body
-	genReturn                              // the only statement of a function's body, a return
-	genProgram                             // a destination that takes only a program
-)
+// readGeneratorCall reads call. It returns nil for a call of another API,
+// such as Option.gen, and why it cannot be rewritten as the second result.
+func readGeneratorCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node) (*generatorCall, string) {
+	if !ast.IsCallExpression(call) {
+		return nil, ""
+	}
+	callee := call.Expression()
+	arguments := call.Arguments()
+	g := &generatorCall{}
+	switch {
+	case isEffectFunction(c, callee, "Effect", "gen"):
+		if call.TypeArguments() != nil || len(arguments) == 0 || len(arguments) > 2 {
+			return g, "the call has type arguments or an unusual argument list"
+		}
+		g.generator = arguments[len(arguments)-1]
+		if len(arguments) == 2 {
+			if !isSelfThisOption(arguments[0]) {
+				return g, "its self option is not { self: this }"
+			}
+			g.selfIsThis = true
+		}
+	case isEffectFunction(c, callee, "Effect", "fn", "fnUntraced"):
+		if call.TypeArguments() != nil || len(arguments) == 0 {
+			return g, "the call has type arguments"
+		}
+		g.isFn, g.generator, g.stages = true, arguments[0], arguments[1:]
+	case ast.IsCallExpression(callee) && isEffectFunction(c, callee.Expression(), "Effect", "fn"):
+		if callee.TypeArguments() != nil || call.TypeArguments() != nil || len(arguments) == 0 || len(callee.Arguments()) == 0 {
+			return g, "the call has type arguments"
+		}
+		g.isFn, g.generator, g.stages, g.span = true, arguments[0], arguments[1:], callee.Arguments()
+		callee = callee.Expression()
+	default:
+		return nil, ""
+	}
+	if ast.IsPropertyAccessExpression(callee) {
+		g.module = nodeText(file, callee.Expression())
+	} else {
+		g.module = "Effect" // Effect's own function, named by a bare global
+	}
+	generator := g.generator
+	if !isGeneratorExpression(generator) || ast.GetFunctionFlags(generator)&ast.FunctionFlagsAsync != 0 || generator.Type() != nil || generator.Body() == nil ||
+		!g.isFn && (len(generator.Parameters()) > 0 || generator.TypeParameters() != nil) {
+		return g, "its generator is not a function* () { … } written in place"
+	}
+	return g, ""
+}
 
-// planEffectGen plans EK1002's fix for call, an Effect.gen call: the edits, or
-// the note that says why there are none. It returns nil for a call that is not
-// Effect.gen, such as Effect.fn, which has no direct style of its own.
+// planEffectGen plans EK1002's fix for call: the edits, or the note that says
+// why there are none. It returns nil for a call of no Effect generator API.
 func planEffectGen(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *formRewrite {
-	if !ast.IsCallExpression(call) || !isEffectFunction(c, call.Expression(), "Effect", "gen") {
+	g, why := readGeneratorCall(c, file, call)
+	if g == nil {
 		return nil
 	}
 	refuse := func(why string) *formRewrite {
 		return &formRewrite{why: "No quick fix: " + why + "."}
 	}
-	arguments := call.Arguments()
-	if call.TypeArguments() != nil || len(arguments) == 0 || len(arguments) > 2 {
-		return refuse("the call has type arguments or an unusual argument list")
-	}
-	generator := arguments[len(arguments)-1]
-	if !ast.IsFunctionExpression(generator) || generator.BodyData().AsteriskToken == nil || ast.GetFunctionFlags(generator)&ast.FunctionFlagsAsync != 0 ||
-		len(generator.Parameters()) > 0 || generator.TypeParameters() != nil || generator.Type() != nil || generator.Body() == nil {
-		return refuse("its generator is not a function* () { … } written in place")
-	}
-	selfIsThis := false
-	if len(arguments) == 2 {
-		if !isSelfThisOption(arguments[0]) {
-			return refuse("its self option is not { self: this }")
-		}
-		selfIsThis = true
+	if why != "" {
+		return refuse(why)
 	}
 	a := analyzerFor(c)
 	text := file.Text()
+	generator := g.generator
 	block := generator.Body()
 	blockStart, blockEnd := nodeStart(file, block), block.End()
-
-	// Where the call stands decides what replaces it.
 	outer := call
 	for ast.IsParenthesizedExpression(outer.Parent) {
 		outer = outer.Parent
 	}
-	var place effectGenPlace
-	var fn *ast.Node
-	parent := outer.Parent
-	switch {
-	case ast.IsArrowFunction(parent) && parent.Body() == outer:
-		place, fn = genArrowBody, parent
-	case ast.IsReturnStatement(parent) && ast.IsBlock(parent.Parent) && len(parent.Parent.Statements()) == 1 && isFunctionOfBody(parent.Parent.Parent, parent.Parent):
-		place, fn = genReturn, parent.Parent.Parent
-	case isEffectGenProgramPosition(a, outer):
-		place = genProgram
-	default:
-		return refuse("Effect.gen here is a program value, not the body of a function or an argument that takes a program; write it as a function, () => { … }, where it is used")
-	}
-	if fn != nil && !isEffectGenFunction(fn) {
-		return refuse("the function around it is async, a generator, an accessor, or a constructor")
-	}
 
-	// What the body holds decides whether its direct style means the same.
-	scan := scanEffectGenBody(c, a, file, generator, fn)
+	// What the body holds decides whether its rewrite means the same.
+	scan := scanEffectGenBody(c, a, file, generator)
 	if scan.why != "" {
 		return refuse(scan.why)
 	}
-	if scan.usesThis && !selfIsThis {
-		return refuse("the generator reads this, which Effect.gen leaves undefined, but the function's body would read the function's own this")
+	if scan.usesThis && !g.isFn && !g.selfIsThis {
+		return refuse("the generator reads this, which Effect.gen leaves undefined, but the block would read the function's own this")
 	}
-	if fn != nil {
-		for _, parameter := range fn.Parameters() {
-			if parameter.Initializer() != nil || ast.IsBindingPattern(parameter.Name()) {
-				return refuse("a parameter has a default or a pattern, which TypeScript binds when the function is called and VibeLang when its program runs")
-			}
-			if ast.IsIdentifier(parameter.Name()) && scan.declared[parameter.Name().Text()] {
-				return refuse("the generator declares " + parameter.Name().Text() + ", a name the function's parameter has")
-			}
-		}
-		if len(scan.yields) == 0 && !keepsEffectGenForm(a, fn) {
-			return refuse("the body runs no Effect, so the function would compile to plain JavaScript and its type would change")
-		}
-	}
-
-	// The rewritten body.
 	var edits []sourceEdit
 	for _, y := range scan.yields {
-		edit, why := effectGenYieldEdit(c, a, file, y)
+		edit, why := effectGenTryEdit(c, file, y)
 		if why != "" {
 			return refuse(why)
 		}
 		edits = append(edits, edit...)
 	}
-	var start, end int
-	var opening int // where the rewritten block's { stands
-	var prefix string
-	switch place {
-	case genArrowBody:
-		start, end, prefix = fn.AsArrowFunction().EqualsGreaterThanToken.End(), fn.Body().End(), " "
-		opening = start
-	case genReturn:
-		start, end = nodeStart(file, fn.Body()), fn.Body().End()
-		opening = start
-	case genProgram:
-		start, end, prefix = nodeStart(file, outer), outer.End(), "() => "
-		opening = blockStart
+	// A .pipe in the body changes with it: try f().pipe(g) is EK4502.
+	for _, pipe := range scan.pipes {
+		if rewrite := planEffectPipe(c, file, pipe); rewrite.fixable() {
+			edits = append(edits, rewrite.edits...)
+		}
 	}
-	// Only Effect.gen, its generator's head, a return and the braces stand
+	for _, statement := range scan.throws {
+		start := nodeStart(file, statement)
+		operand := statement.Expression()
+		if hasComment(text[start:nodeStart(file, operand)]) {
+			return refuse("a comment stands inside a throw")
+		}
+		edits = append(edits, sourceEdit{start, nodeStart(file, operand), "return try " + g.module + ".die("}, sourceEdit{operand.End(), operand.End(), ")"})
+	}
+	for _, held := range scan.held {
+		open, close := "effect { return try ", " }"
+		if (isPipe(ast.SkipParentheses(held)) || isPipeCall(held)) && !ast.IsParenthesizedExpression(held) {
+			open, close = "effect { return try (", ") }"
+		}
+		start := nodeStart(file, held)
+		edits = append(edits, sourceEdit{start, start, open}, sourceEdit{held.End(), held.End(), close})
+	}
+
+	opening := nodeStart(file, outer)
+	var fn *ast.Node
+	parent := outer.Parent
+	switch {
+	case g.isFn:
+	case ast.IsArrowFunction(parent) && parent.Body() == outer:
+		fn = parent
+	case ast.IsReturnStatement(parent) && ast.IsBlock(parent.Parent) && len(parent.Parent.Statements()) == 1 && isFunctionOfBody(parent.Parent.Parent, parent.Parent):
+		fn = parent.Parent.Parent
+	}
+	bound := fn != nil && slices.ContainsFunc(fn.Parameters(), func(parameter *ast.Node) bool {
+		return parameter.Initializer() != nil || ast.IsBindingPattern(parameter.Name())
+	})
+	if fn != nil && (bound || !isEffectGenFunction(fn)) {
+		fn = nil
+	}
+	if fn != nil {
+		opening = nodeStart(file, fn.Body())
+		if ast.IsArrowFunction(fn) {
+			opening = fn.AsArrowFunction().EqualsGreaterThanToken.End()
+		}
+	}
+	// Only the call, its generator's head, a return and the braces stand
 	// outside the generator's block: a comment there would have no place.
-	if hasComment(text[start:blockStart]) || hasComment(text[blockEnd:end]) {
-		return refuse("a comment stands between Effect.gen and its generator's body")
+	start, end := nodeStart(file, outer), outer.End()
+	if fn != nil {
+		start, end = opening, fn.Body().End()
 	}
+	if hasComment(text[start:blockStart]) || hasComment(text[blockEnd:end]) {
+		return refuse("a comment stands between " + nodeText(file, apiName(call)) + " and its generator's body")
+	}
+	edits = joinEditsAt(edits)
 	edits = append(edits, dedentEdits(file, block, len(lineIndent(text, blockStart))-len(lineIndent(text, opening)), edits)...)
+	edits = joinEditsAt(edits)
 	body := applyEdits(text[:blockEnd], edits)[blockStart:]
-	return &formRewrite{edits: []sourceEdit{{start, end, prefix + body}}, description: "the body in direct style"}
+
+	switch {
+	case g.isFn:
+		program, why := effectFnText(file, g, body)
+		if why != "" {
+			return refuse(why)
+		}
+		return &formRewrite{edits: []sourceEdit{{start, end, effectValueParentheses(outer, program)}}, description: "an effect function"}
+	case fn != nil && ast.IsArrowFunction(fn):
+		at := nodeStart(file, fn)
+		return &formRewrite{edits: []sourceEdit{{at, at, "effect "}, {start, end, " " + body}}, description: "an effect function"}
+	case fn != nil:
+		at := functionKeywordStart(file, fn)
+		return &formRewrite{edits: []sourceEdit{{at, at, "effect "}, {start, end, body}}, description: "an effect function"}
+	}
+	rewrite := &formRewrite{edits: []sourceEdit{{start, end, effectValueParentheses(outer, "effect "+body)}}, description: "an effect block"}
+	if edit, ok := plainReturnEdit(file, outer); ok {
+		rewrite.edits = append(rewrite.edits, edit)
+	}
+	return rewrite
+}
+
+// functionKeywordStart returns where fn's text starts past its modifiers:
+// its function keyword, or a method's name.
+func functionKeywordStart(file *ast.SourceFile, fn *ast.Node) int {
+	if modifiers := fn.Modifiers(); modifiers != nil {
+		return scanner.SkipTrivia(file.Text(), modifiers.End())
+	}
+	return nodeStart(file, fn)
+}
+
+// effectValueParentheses returns text, an effect block or function that
+// replaces node, in parentheses where its parent reads a primary expression
+// or a statement would read it as a declaration.
+func effectValueParentheses(node *ast.Node, text string) string {
+	parent := node.Parent
+	switch {
+	case ast.IsAsExpression(parent), ast.IsSatisfiesExpression(parent), ast.IsNonNullExpression(parent), ast.IsExpressionStatement(parent),
+		ast.IsPropertyAccessExpression(parent), ast.IsElementAccessExpression(parent), ast.IsTaggedTemplateExpression(parent),
+		ast.IsCallExpression(parent) && parent.Expression() == node:
+		return "(" + text + ")"
+	}
+	return text
+}
+
+// plainReturnEdit returns the edit that keeps the function around node, a
+// program it returns, plain: an unannotated .vibe function that returns an
+// effect block would be read as an Effect function that runs it, so it
+// writes its return type as inferred. It reports false where node is not
+// what a plain, unannotated function returns.
+func plainReturnEdit(file *ast.SourceFile, node *ast.Node) (sourceEdit, bool) {
+	parent := node.Parent
+	var fn *ast.Node
+	switch {
+	case ast.IsArrowFunction(parent) && parent.Body() == node:
+		fn = parent
+	case ast.IsReturnStatement(parent):
+		fn = ast.GetContainingFunction(parent)
+	}
+	if fn == nil || fn.Type() != nil || fn.Body() == nil || ast.GetFunctionFlags(fn)&(ast.FunctionFlagsAsync|ast.FunctionFlagsGenerator) != 0 || fn.Flags&ast.NodeFlagsVibeLangEffect != 0 {
+		return sourceEdit{}, false
+	}
+	close := parametersEnd(file, fn)
+	if close < 0 {
+		return sourceEdit{}, false
+	}
+	return sourceEdit{close, close, ": infer _"}, true
+}
+
+// parametersEnd returns the offset just past the ) of fn's parameters, or -1
+// for an arrow with no parentheses.
+func parametersEnd(file *ast.SourceFile, fn *ast.Node) int {
+	text := file.Text()
+	at := scanner.SkipTrivia(text, fn.ParameterList().End())
+	if at < len(text) && text[at] == ',' {
+		at = scanner.SkipTrivia(text, at+1)
+	}
+	if at >= len(text) || text[at] != ')' {
+		return -1
+	}
+	return at + 1
+}
+
+// effectFnText returns the effect function that replaces g, an Effect.fn
+// whose rewritten block is body, or why there is none.
+func effectFnText(file *ast.SourceFile, g *generatorCall, body string) (string, string) {
+	generator := g.generator
+	text := file.Text()
+	open := generator.ParameterList().Pos() - 1
+	if generator.TypeParameterList() != nil {
+		open = generator.TypeParameterList().Pos() - 1
+	}
+	close := parametersEnd(file, generator)
+	if close < 0 || open < 0 {
+		return "", "its parameters could not be read"
+	}
+	var head []sourceEdit
+	for _, parameter := range generator.Parameters() {
+		// Effect.fn's signature comes from its generator's parameter tuple,
+		// which prints an optional parameter with undefined.
+		if parameter.QuestionToken() != nil && parameter.Type() != nil && !strings.Contains(nodeText(file, parameter.Type()), "undefined") {
+			head = append(head, sourceEdit{parameter.Type().End(), parameter.Type().End(), " | undefined"})
+		}
+	}
+	signature := applyEdits(text[:close], head)[open:]
+	keepsThis := generator.Name() != nil || usesFunctionThis(generator)
+	if g.span == nil && len(g.stages) == 0 {
+		if keepsThis {
+			return "effect function " + nameOf(generator) + signature + " " + body, ""
+		}
+		return "effect " + signature + " => " + body, ""
+	}
+	program := "effect " + body
+	for _, stage := range g.stages {
+		if arrow := ast.SkipParentheses(stage); ast.IsSpreadElement(stage) || ast.IsFunctionExpressionOrArrowFunction(arrow) && len(arrow.Parameters()) > 1 {
+			return "", "a stage is a spread or reads the function's arguments, which a pipe's stage has no access to"
+		}
+		program += " |> " + pipeStageText(g, file, stage)
+	}
+	running := "try (" + program + ")"
+	if g.span != nil {
+		arguments := []string{program}
+		for _, argument := range g.span {
+			arguments = append(arguments, nodeText(file, argument))
+		}
+		running = "try " + g.module + ".withSpan(" + strings.Join(arguments, ", ") + ")"
+	}
+	if keepsThis {
+		return "effect function " + nameOf(generator) + signature + " { return " + running + " }", ""
+	}
+	return "effect " + signature + " => " + running, ""
+}
+
+// nameOf returns generator's name, or "".
+func nameOf(generator *ast.Node) string {
+	if generator.Name() != nil {
+		return generator.Name().Text()
+	}
+	return ""
+}
+
+// usesFunctionThis reports whether generator declares this or reads it.
+func usesFunctionThis(generator *ast.Node) bool {
+	for _, parameter := range generator.Parameters() {
+		if ast.IsIdentifier(parameter.Name()) && parameter.Name().Text() == "this" {
+			return true
+		}
+	}
+	var visit func(node *ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if node.Kind == ast.KindThisKeyword {
+			return true
+		}
+		if isFunctionBoundary(node) && !ast.IsArrowFunction(node) {
+			return false
+		}
+		return node.ForEachChild(visit)
+	}
+	return generator.Body().ForEachChild(visit)
+}
+
+// pipeStageText returns stage, an Effect.fn's stage, as a pipe's body.
+func pipeStageText(g *generatorCall, file *ast.SourceFile, stage *ast.Node) string {
+	text := nodeText(file, stage)
+	if ast.IsCallExpression(stage) && ast.IsPropertyAccessExpression(stage.Expression()) && nodeText(file, stage.Expression().Expression()) == g.module {
+		arguments := []string{"%"}
+		for _, argument := range stage.Arguments() {
+			arguments = append(arguments, nodeText(file, argument))
+		}
+		return nodeText(file, stage.Expression()) + "(" + strings.Join(arguments, ", ") + ")"
+	}
+	if ast.IsIdentifier(stage) || ast.IsPropertyAccessExpression(stage) || ast.IsCallExpression(stage) || ast.IsParenthesizedExpression(stage) {
+		return text + "(%)"
+	}
+	return "(" + text + ")(%)"
 }
 
 // isFunctionOfBody reports whether fn is a function, arrow, or method whose
@@ -266,58 +497,71 @@ func isEffectGenFunction(fn *ast.Node) bool {
 	return fn.Body() != nil && flags&(ast.FunctionFlagsAsync|ast.FunctionFlagsGenerator|ast.FunctionFlagsInvalid) == 0
 }
 
-// isEffectGenProgramPosition reports whether node stands where its declared
-// type takes only a program (Chapter 13, rule F): an argument, an object
-// literal's field, an array literal's element, or the initializer of a
-// variable whose type is written, whose expected type is an Effect and no
-// function. A function with no parameters converts to a program there.
-func isEffectGenProgramPosition(a *analyzer, node *ast.Node) bool {
-	parent := node.Parent
-	switch {
-	case ast.IsCallExpression(parent) && parent.Expression() != node,
-		ast.IsPropertyAssignment(parent) && parent.Initializer() == node,
-		ast.IsArrayLiteralExpression(parent),
-		ast.IsVariableDeclaration(parent) && parent.Initializer() == node && parent.Type() != nil:
-	default:
-		return false
-	}
-	e := a.classify(a.contextualTypes(node))
-	return e.program && !e.effectFn && !e.plainFn
-}
-
-// keepsEffectGenForm reports whether fn stays an Effect function whatever its
-// body runs: one with a written contract, or a lambda or method whose expected
-// type asks for an Effect function only. A function declaration does not: its
-// TypeScript callers would still receive an Effect (D10), but a VibeLang
-// caller's call of it would give the value where it gave the program.
-func keepsEffectGenForm(a *analyzer, fn *ast.Node) bool {
-	if fn.Type() != nil {
-		return true
-	}
-	if ast.IsMethodDeclaration(fn) {
-		return a.expectsEffect(fn)
-	}
-	e := a.classify(a.contextualTypes(fn))
-	return e.effectFn && !e.plainFn && !e.program
-}
-
 // effectGenScan is what a generator's body holds that its rewrite depends on.
 type effectGenScan struct {
-	yields   []*ast.Node     // the body's yield* expressions, outermost first
-	declared map[string]bool // names the body's own code declares
-	usesThis bool            // the body reads this, its own or through an arrow
-	why      string          // the first construct whose direct style would mean something else
+	yields   []*ast.Node // the body's yield* expressions, outermost first
+	pipes    []*ast.Node // the .pipe calls of an Effect in it, which the rewrite writes as pipes
+	throws   []*ast.Node // the throw statements of its own code
+	held     []*ast.Node // const initializers that build a program
+	usesThis bool        // the body reads this, its own or through an arrow
+	why      string      // the first construct whose rewrite would mean something else
 }
 
-// scanEffectGenBody reads generator's body for its rewrite in fn, or in a
-// program when fn is nil.
-func scanEffectGenBody(c *checker.Checker, a *analyzer, file *ast.SourceFile, generator, fn *ast.Node) *effectGenScan {
-	s := &effectGenScan{declared: map[string]bool{}}
+// heldProgram returns the initializer of node, a variable declaration, when
+// it builds a program that a later statement runs: a call or a pipe of an
+// Effect, with no yield* in it, in a declaration with no type.
+func heldProgram(c *checker.Checker, node *ast.Node) *ast.Node {
+	initializer := node.Initializer()
+	if initializer == nil || node.Type() != nil {
+		return nil
+	}
+	inner := ast.SkipParentheses(initializer)
+	if !isPipe(inner) && !(isPipeCall(inner) && isEffectPipeline(c, inner)) && !(isInvocation(inner) && callReturnsEffect(c, inner)) {
+		return nil
+	}
+	var holdsYield func(n *ast.Node) bool
+	holdsYield = func(n *ast.Node) bool {
+		if isFunctionBoundary(n) {
+			return false
+		}
+		return ast.IsYieldExpression(n) || n.ForEachChild(holdsYield)
+	}
+	if holdsYield(inner) {
+		return nil
+	}
+	return initializer
+}
+
+// markPipeCalls adds to operands each call of node's pipeline, |> or .pipe,
+// which the pipeline holds or which stands in a stage that it applies.
+func markPipeCalls(node *ast.Node, operands map[*ast.Node]bool) {
+	for node = ast.SkipParentheses(node); ; {
+		switch {
+		case isPipe(node):
+			operands[ast.SkipParentheses(node.AsBinaryExpression().Right)] = true
+			node = ast.SkipParentheses(node.AsBinaryExpression().Left)
+		case isPipeCall(node):
+			for _, stage := range node.Arguments() {
+				operands[ast.SkipParentheses(stage)] = true
+			}
+			node = ast.SkipParentheses(node.Expression().Expression())
+		default:
+			operands[node] = true
+			return
+		}
+		operands[node] = true
+	}
+}
+
+// scanEffectGenBody reads generator's body for its rewrite.
+func scanEffectGenBody(c *checker.Checker, a *analyzer, file *ast.SourceFile, generator *ast.Node) *effectGenScan {
+	s := &effectGenScan{}
 	name := ""
 	if generator.Name() != nil {
 		name = generator.Name().Text()
 	}
-	operands := map[*ast.Node]bool{} // the calls that yield* runs
+	operands := map[*ast.Node]bool{} // the calls that yield* runs or a program holds
+	effectCode := 0                  // depth of effect functions and blocks, an earlier fix's, which run with try
 	var visit func(node *ast.Node, own, lexical bool, callback *ast.Node) bool
 	visit = func(node *ast.Node, own, lexical bool, callback *ast.Node) bool {
 		if s.why != "" {
@@ -325,9 +569,6 @@ func scanEffectGenBody(c *checker.Checker, a *analyzer, file *ast.SourceFile, ge
 		}
 		switch {
 		case isFunctionBoundary(node):
-			if own && (ast.IsFunctionDeclaration(node) || ast.IsClassDeclaration(node)) && node.Name() != nil {
-				s.declared[node.Name().Text()] = true
-			}
 			if ast.IsFunctionLike(node) && node.BodyData() != nil && node.BodyData().AsteriskToken != nil {
 				s.why = "it holds another function*; its Effect.gen is fixed first, when it can be"
 				return true
@@ -336,6 +577,10 @@ func scanEffectGenBody(c *checker.Checker, a *analyzer, file *ast.SourceFile, ge
 			inner := callback
 			if ast.IsFunctionLike(node) {
 				inner = node
+			}
+			if node.Flags&ast.NodeFlagsVibeLangEffect != 0 {
+				effectCode++
+				defer func() { effectCode-- }()
 			}
 			return node.ForEachChild(func(child *ast.Node) bool { return visit(child, false, lexical && arrow, inner) })
 		case node.Kind == ast.KindThisKeyword:
@@ -352,7 +597,7 @@ func scanEffectGenBody(c *checker.Checker, a *analyzer, file *ast.SourceFile, ge
 			}
 		case ast.IsIdentifier(node) && node.Text() == "arguments" && lexical && ast.IsExpressionNode(node):
 			s.why = "the generator reads its own arguments"
-		case ast.IsIdentifier(node) && name != "" && node.Text() == name && node != generator.Name() && ast.IsExpressionNode(node):
+		case ast.IsIdentifier(node) && name != "" && node.Text() == name && node != generator.Name() && ast.IsExpressionNode(node) && !generatorKeepsName(generator):
 			s.why = "the generator refers to itself by its name, " + name
 		case ast.IsYieldExpression(node):
 			if node.AsYieldExpression().AsteriskToken == nil || node.Expression() == nil {
@@ -364,18 +609,39 @@ func scanEffectGenBody(c *checker.Checker, a *analyzer, file *ast.SourceFile, ge
 				return true
 			}
 			s.yields = append(s.yields, node)
-			if operand := ast.SkipParentheses(node.Expression()); isInvocation(operand) {
+			operand := ast.SkipParentheses(node.Expression())
+			if isInvocation(operand) {
 				operands[operand] = true
 			}
+			if isPipe(operand) || isPipeCall(operand) && isEffectPipeline(c, operand) {
+				markPipeCalls(operand, operands)
+			}
 		case ast.IsThrowStatement(node):
-			s.why = "a throw in a generator throws a JavaScript exception, which in VibeLang would be an expected failure"
+			if own {
+				s.throws = append(s.throws, node)
+			}
 		case ast.IsTryStatement(node):
-			s.why = "a try statement in a generator catches JavaScript exceptions, which in VibeLang it would not, and catches expected failures"
+			if own {
+				s.why = "a try statement in a generator catches JavaScript exceptions, which in VibeLang it would not, and catches expected failures"
+			}
 		case ast.IsVariableDeclarationList(node) && node.Flags&ast.NodeFlagsUsing != 0:
 			s.why = "a using declaration in a generator disposes as JavaScript does, which in VibeLang would hold a scope"
 		case ast.IsVariableDeclaration(node) && own:
-			declareNames(node.Name(), s.declared)
-		case isInvocation(node) && !operands[node]:
+			if held := heldProgram(c, node); held != nil {
+				s.held = append(s.held, held)
+				inner := ast.SkipParentheses(held)
+				operands[inner] = true
+				if isPipeCall(inner) {
+					s.pipes = append(s.pipes, inner)
+				}
+				markPipeCalls(inner, operands)
+			}
+		case isPipe(node) || isPipeCall(node) && isEffectPipeline(c, node):
+			if isPipeCall(node) {
+				s.pipes = append(s.pipes, node)
+			}
+			markPipeCalls(node, operands)
+		case isInvocation(node) && !operands[node] && effectCode == 0:
 			if why := effectGenCallMeaning(c, a, file, node, own, callback); why != "" {
 				s.why = why
 				return true
@@ -387,23 +653,15 @@ func scanEffectGenBody(c *checker.Checker, a *analyzer, file *ast.SourceFile, ge
 	return s
 }
 
-// declareNames records the names a binding name declares.
-func declareNames(name *ast.Node, names map[string]bool) {
-	switch {
-	case name == nil:
-	case ast.IsIdentifier(name):
-		names[name.Text()] = true
-	case ast.IsBindingPattern(name):
-		for _, element := range name.AsBindingPattern().Elements.Nodes {
-			if ast.IsBindingElement(element) {
-				declareNames(element.Name(), names)
-			}
-		}
-	}
+// generatorKeepsName reports whether generator's rewrite keeps its name: an
+// Effect.fn's keeps it, as effect function name.
+func generatorKeepsName(generator *ast.Node) bool {
+	parent := generator.Parent
+	return parent != nil && ast.IsCallExpression(parent) && (len(parent.Arguments()) > 0 && parent.Arguments()[0] == generator)
 }
 
 // effectGenCallMeaning returns why call, which no yield* runs, would mean
-// something else in direct style, or "". In the generator's own code a call
+// something else in the rewrite, or "". In the generator's own code a call
 // that builds a program builds it; in VibeLang it would run. In a callback,
 // such as forEach's, a call that builds the program the callback returns keeps
 // its meaning: the callback becomes an Effect function that runs it.
@@ -425,80 +683,100 @@ func effectGenCallMeaning(c *checker.Checker, a *analyzer, file *ast.SourceFile,
 	return "in a callback, " + label + " builds a program that the callback does not return, and in VibeLang it would run where it stands"
 }
 
-// effectGenYieldEdit returns the edits that write y, a yield* of the body, as
+// effectGenTryEdit returns the edits that write y, a yield* of the body, as
 // what runs its operand where it stands, or why there is none.
-func effectGenYieldEdit(c *checker.Checker, a *analyzer, file *ast.SourceFile, y *ast.Node) ([]sourceEdit, string) {
+func effectGenTryEdit(c *checker.Checker, file *ast.SourceFile, y *ast.Node) ([]sourceEdit, string) {
 	text := file.Text()
 	operand := y.Expression()
 	inner := ast.SkipParentheses(operand)
 	label := shortText("yield* "+expressionText(file, operand), "a yield*")
-	if ast.IsYieldExpression(inner) {
-		return nil, label + " yields a yield"
-	}
-	givesProgram := func(effect *checker.Type) bool {
-		success := successType(c, effect)
-		if success == nil && effect != nil {
-			success = varianceChannel(c, effect, "_A")
-		}
-		return success != nil && holdsEffectValue(c, success) || holdsEffectValue(c, c.GetTypeAtLocation(y))
-	}
-	const programValue = " gives a program as its value, which VibeLang would run or hold by its declared type"
 	start := nodeStart(file, y)
 	asterisk := y.AsYieldExpression().AsteriskToken.End()
 	operandStart := nodeStart(file, operand)
 	gap := text[asterisk:operandStart]
-	// yield* and the space after it go; a comment after it stays, on its line.
-	keyword := sourceEdit{start, operandStart, ""}
+	// try takes yield*'s place; a comment after it stays, on its line.
+	keyword := sourceEdit{start, operandStart, "try "}
 	if strings.TrimSpace(gap) != "" {
 		if strings.ContainsAny(gap, "\r\n") {
 			return nil, label + " has a comment and a line break between yield* and its operand"
 		}
-		keyword = sourceEdit{start, asterisk, ""}
+		keyword = sourceEdit{start, asterisk, "try"}
 	}
-	// An error fails as throw fails with it: yield* new E() and yield* toError(id)
-	// are throw, which only a statement writes; dropping yield* would make
-	// the error the program's value.
-	if t := c.GetTypeAtLocation(operand); t != nil && failsAsError(c, t) {
+	t := c.GetTypeAtLocation(operand)
+	// Effect.succeed(x) gives x.
+	if ast.IsCallExpression(inner) && len(inner.Arguments()) == 1 && isEffectFunction(c, inner.Expression(), "Effect", "succeed") && strings.TrimSpace(gap) == "" {
+		argument := inner.Arguments()[0]
+		return []sourceEdit{{start, nodeStart(file, argument), ""}, {argument.End(), operand.End(), ""}}, ""
+	}
+	// Effect.fail(e) in a statement is throw e. An error instance fails as
+	// throw fails with it, which only a statement writes: elsewhere it is
+	// Effect.fail(e), since try e would give a value of the error.
+	if ast.IsCallExpression(inner) && len(inner.Arguments()) == 1 && isEffectFunction(c, inner.Expression(), "Effect", "fail") {
+		argument := inner.Arguments()[0]
+		if edits := throwEdits(file, y, start, nodeStart(file, argument)); edits != nil {
+			return append(edits, sourceEdit{argument.End(), operand.End(), ""}), ""
+		}
+	}
+	if t != nil && failsAsError(c, t) {
 		if edits := throwEdits(file, y, start, operandStart); edits != nil {
 			return edits, ""
 		}
-		return nil, label + " fails with an error, which only a throw statement writes"
+		return []sourceEdit{keyword, {operandStart, operandStart, "Effect.fail("}, {operand.End(), operand.End(), ")"}}, ""
 	}
-	if isInvocation(inner) {
-		if ast.IsOptionalChain(inner) {
-			return nil, label + " runs an optional call, which yield* would fail on when it is undefined"
-		}
-		signature := c.GetResolvedSignature(inner)
-		// A .vibe function may construct a structured Effect (D24), such as
-		// a SQL query. Its call still returns data: the yielded result must
-		// be called too, even though its implementation is VibeLang.
-		structured := signature != nil && isStructuredEffectResult(c, c.GetReturnTypeOfSignature(signature))
-		if !structured && (a.runs(inner) || a.callsVibeLangFunction(inner)) {
-			if signature != nil && givesProgram(c.GetReturnTypeOfSignature(signature)) {
-				return nil, label + programValue
+	if t != nil {
+		effect := t
+		if isInvocation(inner) {
+			if signature := c.GetResolvedSignature(inner); signature != nil {
+				effect = c.GetReturnTypeOfSignature(signature)
 			}
-			return []sourceEdit{keyword}, ""
+		}
+		success := successType(c, effect)
+		if success == nil {
+			success = varianceChannel(c, effect, "_A")
+		}
+		if !runsYield(y) && (success != nil && holdsEffectValue(c, success) || holdsEffectValue(c, c.GetTypeAtLocation(y))) {
+			return nil, label + " gives a program as its value, which VibeLang would run or hold by its declared type"
+		}
+		// A structured Effect result (D24), an interface that extends Effect,
+		// is no operand of try yet: a function gives its program.
+		if isInvocation(inner) && isStructuredEffectResult(c, effect) {
+			return []sourceEdit{keyword, {operandStart, operandStart, "Effect.suspend(() => "}, {operand.End(), operand.End(), ")"}}, ""
+		}
+		// An Effect.Yieldable that is no Effect runs through asEffect().
+		if !isEffectValueType(c, t) && !isEffectType(c, t) && yieldsEffect(c, t) {
+			if needsOperandParentheses(operand) {
+				return []sourceEdit{keyword, {operandStart, operandStart, "("}, {operand.End(), operand.End(), ").asEffect()"}}, ""
+			}
+			return []sourceEdit{keyword, {operand.End(), operand.End(), ".asEffect()"}}, ""
 		}
 	}
-	t := c.GetTypeAtLocation(operand)
-	if t == nil || len(c.GetSignaturesOfType(c.GetApparentType(t), checker.SignatureKindCall)) != 0 || effectOfValue(c, t) == nil {
-		return nil, label + " runs a value that is not definitely an Effect"
+	if tryOperandNeedsParentheses(c, operand) {
+		return []sourceEdit{keyword, {operandStart, operandStart, "("}, {operand.End(), operand.End(), ")"}}, ""
 	}
-	if givesProgram(effectOfValue(c, t)) {
-		return nil, label + programValue
+	return []sourceEdit{keyword}, ""
+}
+
+// runsYield reports whether y is the operand of a yield*, which runs the
+// program y gives: yield* yield* Service.
+func runsYield(y *ast.Node) bool {
+	parent := y.Parent
+	for ast.IsParenthesizedExpression(parent) {
+		parent = parent.Parent
 	}
-	open, close := "", "()"
-	if needsOperandParentheses(operand) && !ast.IsParenthesizedExpression(operand) {
-		open, close = "(", ")()"
+	return ast.IsYieldExpression(parent)
+}
+
+// tryOperandNeedsParentheses reports whether operand, once a yield*'s, must
+// be parenthesized after try, which takes a unary expression.
+func tryOperandNeedsParentheses(c *checker.Checker, operand *ast.Node) bool {
+	if isPipeCall(operand) && isEffectPipeline(c, operand) {
+		return true // it becomes a pipe
 	}
-	if keyword.end == operandStart {
-		return []sourceEdit{{keyword.start, keyword.end, open}, {operand.End(), operand.End(), close}}, ""
+	switch operand.Kind {
+	case ast.KindBinaryExpression, ast.KindConditionalExpression, ast.KindArrowFunction, ast.KindFunctionExpression, ast.KindAsExpression, ast.KindSatisfiesExpression:
+		return true
 	}
-	edits := []sourceEdit{keyword}
-	if open != "" {
-		edits = append(edits, sourceEdit{operandStart, operandStart, open})
-	}
-	return append(edits, sourceEdit{operand.End(), operand.End(), close}), ""
+	return false
 }
 
 // throwEdits writes throw for node, a yield* or a try, that stands alone as

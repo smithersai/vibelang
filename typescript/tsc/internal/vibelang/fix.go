@@ -305,6 +305,11 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			p = p.withFixes(ambiguousRootMigrationFixes(ctx, program, file, g.refused))
 			if len(p.fixes) == 0 && !options.MigrationOnly {
 				p = fileFixes(ctx, program, file, g.refused, tsFormFixCodes)
+				// A .pipe waits for the rules that read it, and for its
+				// generator, whose fix writes the .pipes it holds.
+				if len(p.fixes) == 0 {
+					p = effectPipeFixes(ctx, program, file, g.refused, refuse)
+				}
 			} else if len(p.fixes) == 0 {
 				p = fileFixes(ctx, program, file, g.refused, vipMigrationFixCodes)
 			}

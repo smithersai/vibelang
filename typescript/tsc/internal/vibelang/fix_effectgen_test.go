@@ -22,8 +22,9 @@ import (
 
 const effectGenUsers = "export class Users extends Context.Service<Users, { readonly find: (id: string) => Effect.Effect<string> }>()(\"app/Users\") {}\n"
 
-// D470: EK1002's quick fix writes an Effect.gen program in direct style, so a
-// yield* e becomes what runs e where it stands, and the result compiles.
+// D470: EK1002's quick fix writes Effect.gen and Effect.fn with effect and
+// try, each yield* e becomes what runs e where it stands, and the result
+// compiles.
 func TestEffectGenQuickFixes(t *testing.T) {
 	for _, test := range []struct{ name, source, want string }{
 		{"arrow body", effectGenUsers + `export const greet = (id: string) =>
@@ -33,15 +34,15 @@ func TestEffectGenQuickFixes(t *testing.T) {
     const name = yield* users.find(id)
     return ` + "`Hello, ${name}`" + `
   })
-`, effectGenUsers + `export const greet = (id: string) => {
-  const users = Users()
+`, effectGenUsers + `export const greet = effect (id: string) => {
+  const users = try Users
   // the user's name
-  const name = users.find(id)
+  const name = try users.find(id)
   return ` + "`Hello, ${name}`" + `
 }
 `},
 		{"arrow body on its line", "export const two = () => Effect.gen(function* () {\n  const n = yield* Effect.succeed(1)\n  return n + 1\n})\n",
-			"export const two = () => {\n  const n = Effect.succeed(1)\n  return n + 1\n}\n"},
+			"export const two = effect () => {\n  const n = 1\n  return n + 1\n}\n"},
 		{"function's only return", `export function count(n: number) {
   return Effect.gen(function* () {
     let total = 0
@@ -49,13 +50,14 @@ func TestEffectGenQuickFixes(t *testing.T) {
     return total
   })
 }
-`, `export function count(n: number) {
+`, `export effect function count(n: number) {
   let total = 0
-  for (let i = 0; i < n; i++) total += Effect.succeed(i)
+  for (let i = 0; i < n; i++) total += i
   return total
 }
 `},
-		{"function with a contract and no Effect", "export function two(): Effect.Effect<number> {\n  return Effect.gen(function* () {\n    return 2\n  })\n}\n", "export function two(): Effect.Effect<number> {\n  return 2\n}\n"},
+		{"function with a contract and no Effect", "export function two(): Effect.Effect<number> {\n  return Effect.gen(function* () {\n    return 2\n  })\n}\n", "export effect function two(): Effect.Effect<number> {\n  return 2\n}\n"},
+		{"no Effect", "export const one = () => Effect.gen(function* () {\n  return 1\n})\n", "export const one = effect () => {\n  return 1\n}\n"},
 		{"method with self this", `export class Box {
   constructor(readonly v: number) {}
   read() {
@@ -67,8 +69,8 @@ func TestEffectGenQuickFixes(t *testing.T) {
 }
 `, `export class Box {
   constructor(readonly v: number) {}
-  read() {
-    const x = Effect.succeed(this.v)
+  effect read() {
+    const x = this.v
     return x
   }
 }
@@ -77,21 +79,63 @@ func TestEffectGenQuickFixes(t *testing.T) {
   const prefix = yield* Effect.succeed("user-")
   return { find: (id: string) => Effect.succeed(prefix + id) }
 }))
-`, effectGenUsers + `export const UsersLive = Layer.effect(Users, () => {
-  const prefix = Effect.succeed("user-")
+`, effectGenUsers + `export const UsersLive = Layer.effect(Users, effect {
+  const prefix = "user-"
   return { find: (id: string) => Effect.succeed(prefix + id) }
 })
 `},
+		{"a program value", "export const program = Effect.gen(function* () {\n  return yield* Effect.succeed(1)\n})\n", "export const program = effect {\n  return 1\n}\n"},
+		{"a receiver", "export const f = () => Effect.gen(function* () {\n  return yield* Effect.succeed(1)\n}).pipe(Effect.asVoid)\n",
+			"export const f = () => (effect {\n  return 1\n}).pipe(Effect.asVoid)\n"},
+		{"a destructured parameter stays bound at the call", "export const f = ({ id }: { id: string }) => Effect.gen(function* () {\n  return yield* Effect.succeed(id)\n})\n",
+			"export const f = ({ id }: { id: string }): infer _ => effect {\n  return id\n}\n"},
+		{"a default parameter stays bound at the call", "export function f(id = \"a\") {\n  return Effect.gen(function* () {\n    return yield* Effect.succeed(id)\n  })\n}\n",
+			"export function f(id = \"a\"): infer _ {\n  return effect {\n    return id\n  }\n}\n"},
+		{"a program held in a const", "export const f = () => Effect.gen(function* () {\n  const p = Effect.succeed(1)\n  return yield* p\n})\n",
+			"export const f = effect () => {\n  const p = effect { return try Effect.succeed(1) }\n  return try p\n}\n"},
+		{"a throw is a defect", "export const f = (n: number) => Effect.gen(function* () {\n  if (n < 0) throw new Error(\"negative\")\n  return yield* Effect.succeed(n)\n})\n",
+			"export const f = effect (n: number) => {\n  if (n < 0) return try Effect.die(new Error(\"negative\"))\n  return n\n}\n"},
+		{"Effect.fn", "export const f = Effect.fn(function* (n: number) {\n  return yield* Effect.succeed(n)\n})\n",
+			"export const f = effect (n: number) => {\n  return n\n}\n"},
+		{"Effect.fnUntraced with a default", "export const f = Effect.fnUntraced(function* (n = 1) {\n  return yield* Effect.succeed(n)\n})\n",
+			"export const f = effect (n = 1) => {\n  return n\n}\n"},
+		{"Effect.fn with a name", "export const f = Effect.fn(\"f\")(function* (n: number) {\n  return yield* Effect.succeed(n)\n})\n",
+			"export const f = effect (n: number) => try Effect.withSpan(effect {\n  return n\n}, \"f\")\n"},
+		{"Effect.fn with span options", "export const f = Effect.fn(\"f\", { kind: \"client\" })(function* () {\n  return yield* Effect.succeed(1)\n})\n",
+			"export const f = effect () => try Effect.withSpan(effect {\n  return 1\n}, \"f\", { kind: \"client\" })\n"},
+		{"Effect.fn with stages", `export const f = Effect.fn("f")(
+  function* (n: number) {
+    return yield* Effect.succeed(n)
+  },
+  Effect.orElseSucceed(() => 0),
+  Effect.asVoid,
+)
+`, `export const f = effect (n: number) => try Effect.withSpan(effect {
+  return n
+} |> Effect.orElseSucceed(%, () => 0) |> Effect.asVoid(%), "f")
+`},
+		{"Effect.fn reading this", "export class Box {\n  v = 1\n  read = Effect.fn(function* (this: Box) {\n    return yield* Effect.succeed(this.v)\n  })\n}\n",
+			"export class Box {\n  v = 1\n  read = effect function (this: Box) {\n    return this.v\n  }\n}\n"},
+		{"Effect.fn with an optional parameter", "export const f = Effect.fn(function* (n?: number) {\n  return yield* Effect.succeed(n)\n})\n",
+			"export const f = effect (n?: number | undefined) => {\n  return n\n}\n"},
+		{"Effect.fn on its own lines", "export const f = Effect.fn(\"f\")(\n  function* (n: number) {\n    return n\n  },\n)\n",
+			"export const f = effect (n: number) => try Effect.withSpan(effect {\n  return n\n}, \"f\")\n"},
 		{"Effect value", "export const run = (one: Effect.Effect<number>) => Effect.gen(function* () { return (yield* one) + 1 })\n",
-			"export const run = (one: Effect.Effect<number>) => { return (one()) + 1 }\n"},
+			"export const run = effect (one: Effect.Effect<number>) => { return (try one) + 1 }\n"},
+		{"a compound operand", "export const run = (a: Effect.Effect<number>, b: Effect.Effect<number>, c: boolean) => Effect.gen(function* () {\n  return yield* c ? a : b\n})\n",
+			"export const run = effect (a: Effect.Effect<number>, b: Effect.Effect<number>, c: boolean) => {\n  return try (c ? a : b)\n}\n"},
 		{"error instance", "export class Gone extends Data.TaggedError(\"Gone\")<{}> {}\nexport const check = (n: number) => Effect.gen(function* () {\n  if (n < 0) yield* new Gone()\n  if (n > 9) return yield* new Gone()\n  return yield* Effect.succeed(n)\n})\n",
-			"export class Gone extends Data.TaggedError(\"Gone\")<{}> {}\nexport const check = (n: number) => {\n  if (n < 0) throw new Gone()\n  if (n > 9) throw new Gone()\n  return Effect.succeed(n)\n}\n"},
+			"export class Gone extends Data.TaggedError(\"Gone\")<{}> {}\nexport const check = effect (n: number) => {\n  if (n < 0) throw new Gone()\n  if (n > 9) throw new Gone()\n  return n\n}\n"},
+		{"Effect.fail", "export class Gone extends Data.TaggedError(\"Gone\")<{}> {}\nexport const check = (n: number) => Effect.gen(function* () {\n  if (n < 0) yield* Effect.fail(new Gone())\n  return n\n})\n",
+			"export class Gone extends Data.TaggedError(\"Gone\")<{}> {}\nexport const check = effect (n: number) => {\n  if (n < 0) throw new Gone()\n  return n\n}\n"},
+		{"error instance in an expression", "export class Gone extends Data.TaggedError(\"Gone\")<{}> {}\nexport const check = (n: number) => Effect.gen(function* () {\n  const v = n < 0 ? 1 : yield* new Gone()\n  return v\n})\n",
+			"export class Gone extends Data.TaggedError(\"Gone\")<{}> {}\nexport const check = effect (n: number) => {\n  const v = n < 0 ? 1 : try Effect.fail(new Gone())\n  return v\n}\n"},
 		{"error a call gives", "export class Gone extends Data.TaggedError(\"Gone\")<{}> {}\nconst gone = (): Gone => new Gone()\nexport const check = (n: number) => Effect.gen(function* () {\n  if (n < 0) yield* gone()\n  if (n > 9) return yield* gone()\n  return yield* Effect.succeed(n)\n})\n",
-			"export class Gone extends Data.TaggedError(\"Gone\")<{}> {}\nconst gone = (): Gone => new Gone()\nexport const check = (n: number) => {\n  if (n < 0) throw gone()\n  if (n > 9) throw gone()\n  return Effect.succeed(n)\n}\n"},
+			"export class Gone extends Data.TaggedError(\"Gone\")<{}> {}\nconst gone = (): Gone => new Gone()\nexport const check = effect (n: number) => {\n  if (n < 0) throw gone()\n  if (n > 9) throw gone()\n  return n\n}\n"},
 		{"callback that returns its program", "const double = (n: number) => Effect.succeed(n * 2)\nexport const all = (xs: ReadonlyArray<number>) => Effect.gen(function* () {\n  return yield* Effect.forEach(xs, (x) => double(x))\n})\n",
-			"const double = (n: number) => Effect.succeed(n * 2)\nexport const all = (xs: ReadonlyArray<number>) => {\n  return Effect.forEach(xs, (x) => double(x))\n}\n"},
+			"const double = (n: number) => Effect.succeed(n * 2)\nexport const all = effect (xs: ReadonlyArray<number>) => {\n  return try Effect.forEach(xs, (x) => double(x))\n}\n"},
 		{"template literal keeps its lines", "export const text = () =>\n    Effect.gen(function* () {\n      const n = yield* Effect.succeed(1)\n      return `a\n      ${n}`\n    })\n",
-			"export const text = () => {\n  const n = Effect.succeed(1)\n  return `a\n      ${n}`\n}\n"},
+			"export const text = effect () => {\n  const n = 1\n  return `a\n      ${n}`\n}\n"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			got, ok := effectGenQuickFix(t, test.source)
@@ -114,27 +158,19 @@ func TestEffectGenQuickFixes(t *testing.T) {
 	}
 }
 
-// Where the direct style would mean something else, EK1002 has no quick fix,
-// and its note says why.
+// Where the rewrite would mean something else, EK1002 has no quick fix, and
+// its note says why.
 func TestEffectGenRefusals(t *testing.T) {
 	for _, test := range []struct{ name, source, why string }{
-		{"a program built and not yielded", "export const f = () => Effect.gen(function* () {\n  const p = Effect.succeed(1)\n  return yield* p\n})\n", "Effect.succeed(1) builds a program that no yield* runs"},
+		{"a program built and dropped", "export const f = () => Effect.gen(function* () {\n  Effect.log(\"x\")\n  return yield* Effect.succeed(1)\n})\n", "Effect.log(\"x\") builds a program that no yield* runs"},
 		{"a callback that drops a program", "export const f = () => Effect.gen(function* () {\n  return yield* Effect.forEach([1], (x) => { Effect.log(\"x\"); return Effect.succeed(x) })\n})\n", "in a callback, Effect.log(\"x\") builds a program"},
-		{"throw", "export const f = (n: number) => Effect.gen(function* () {\n  if (n < 0) throw new Error(\"negative\")\n  return yield* Effect.succeed(n)\n})\n", "a throw in a generator"},
 		{"try", "export const f = (n: number) => Effect.gen(function* () {\n  try { return yield* Effect.succeed(n) } finally { n++ }\n})\n", "a try statement"},
 		{"this without self", "export class Box {\n  v = 1\n  read() {\n    return Effect.gen(function* (this: any) {\n      return yield* Effect.succeed(1)\n    })\n  }\n}\n", "not a function* () { … } written in place"},
 		{"arguments", "export function f(n: number) {\n  return Effect.gen(function* () {\n    return yield* Effect.succeed(arguments.length)\n  })\n}\n", "its own arguments"},
-		{"a destructured parameter", "export const f = ({ id }: { id: string }) => Effect.gen(function* () {\n  return yield* Effect.succeed(id)\n})\n", "a parameter has a default or a pattern"},
-		{"a default parameter", "export const f = (id = \"a\") => Effect.gen(function* () {\n  return yield* Effect.succeed(id)\n})\n", "a parameter has a default or a pattern"},
-		{"a program value", "export const program = Effect.gen(function* () {\n  return yield* Effect.succeed(1)\n})\n", "Effect.gen here is a program value"},
-		{"a receiver", "export const f = () => Effect.gen(function* () {\n  return yield* Effect.succeed(1)\n}).pipe(Effect.map((n) => n + 1))\n", "Effect.gen here is a program value"},
-		{"no Effect", "export const one = () => Effect.gen(function* () {\n  return 1\n})\n", "the body runs no Effect"},
-		{"no Effect in a function declaration", "export function one() {\n  return Effect.gen(function* () {\n    return 1\n  })\n}\n", "the body runs no Effect"},
-		{"a plain helper is not a program", "function required<T>(x: T | undefined): T { return x as T }\nexport const f = (n?: number) => Effect.gen(function* () {\n  const p = Effect.succeed(required(n))\n  return yield* p\n})\n", "Effect.succeed(required(n)) builds a program"},
 		{"a nested function*", "export const f = (xs: ReadonlyArray<number>) => Effect.gen(function* () {\n  return yield* Effect.forEach(xs, (x) => Effect.gen(function* () { return yield* Effect.succeed(x) }))\n})\n", "another function*"},
 		{"a program as the value", "export const f = (make: () => Effect.Effect<Effect.Effect<number>>) => Effect.gen(function* () {\n  const inner = yield* make()\n  return yield* inner\n})\n", "gives a program as its value"},
-		{"a var named as a parameter", "export const f = (x: number) => Effect.gen(function* () {\n  var x = 2\n  return yield* Effect.succeed(x)\n})\n", "the generator declares x"},
 		{"a comment outside the body", "export const f = () => Effect.gen(/* why */ function* () {\n  return yield* Effect.succeed(1)\n})\n", "a comment stands between"},
+		{"an Effect.fn stage that reads the arguments", "export const f = Effect.fn(function* (n: number) {\n  return yield* Effect.succeed(n)\n}, (e, n) => Effect.map(e, (x) => x + n))\n", "reads the function's arguments"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			if got, ok := effectGenQuickFix(t, test.source); ok {
@@ -145,15 +181,6 @@ func TestEffectGenRefusals(t *testing.T) {
 				t.Fatalf("EK1002's notes %q do not say %q", notes, test.why)
 			}
 		})
-	}
-}
-
-// Effect.fn adds a span and stack frames that a direct-style body does not,
-// so its EK1002 has no quick fix.
-func TestEffectGenLeavesEffectFn(t *testing.T) {
-	source := "export const f = Effect.fn(\"f\")(function* (n: number) {\n  return yield* Effect.succeed(n)\n})\n"
-	if got, ok := effectGenQuickFix(t, source); ok {
-		t.Fatalf("unexpected quick fix:\n%s", got)
 	}
 }
 
@@ -178,7 +205,7 @@ func TestEffectGenLeavesEffectFnPipeline(t *testing.T) {
 		t.Fatalf("codes %v; want EK1002 and no EK2128", codes)
 	}
 	result := fixCase(t, filepath.Dir(file.FileName().AsString()))
-	if fixed := result.Files[file.FileName()]; fixed != nil && (fixed.Counts[EK2128.Code] != 0 || !strings.Contains(fixed.Text, "return n ? Option.some(n)")) {
+	if fixed := result.Files[file.FileName()]; fixed == nil || fixed.Counts[EK2128.Code] != 0 || !strings.Contains(fixed.Text, "return n ? Option.some(n)") {
 		t.Fatalf("--fix wrote\n%s\ncounts %v", fixed.Text, fixed.Counts)
 	}
 }
@@ -208,8 +235,8 @@ export const refused = () =>
 	if fixed == nil {
 		t.Fatalf("nothing fixed; refused %+v", result.Refused)
 	}
-	want := `export const outer = (xs: ReadonlyArray<number>) => {
-  return Effect.forEach(xs, (x) => {
+	want := `export const outer = effect (xs: ReadonlyArray<number>) => {
+  return try Effect.forEach(xs, effect (x) => {
     return x + 1
   })
 }
@@ -254,7 +281,7 @@ func effectGenDiagnostic(t *testing.T, source string) (*ast.Diagnostic, func() (
 		}
 		if response.CommandOrCodeActionArray != nil {
 			for _, action := range *response.CommandOrCodeActionArray {
-				if action.CodeAction != nil && action.CodeAction.Title == "Write the body in direct style" && action.CodeAction.Edit != nil && action.CodeAction.Edit.Changes != nil {
+				if action.CodeAction != nil && strings.HasPrefix(action.CodeAction.Title, "Write an effect") && action.CodeAction.Edit != nil && action.CodeAction.Edit.Changes != nil {
 					changes := *action.CodeAction.Edit.Changes
 					return applyEditorEdits(t, file, converters, changes[lsconv.FileNameToDocumentURI(file.FileName())]), true
 				}
@@ -415,11 +442,11 @@ func migrationRuleDeclarations(t *testing.T, dir string, codes []int32) map[stri
 }
 
 // D24: a VibeLang function returning an Effect subtype constructs data.
-// Removing yield* must still call that result, including in a statement.
+// Writing try for yield* still runs that result, including in a statement.
 func TestEffectGenRunsStructuredVibeResults(t *testing.T) {
 	const prefix = "interface Query extends Effect.Effect<number> { readonly sql: string }\nfunction query(): Query { return null as any }\n"
 	source := prefix + "export const run = () => Effect.gen(function* () {\n  const n = yield* query()\n  yield* query()\n  return n\n})\n"
-	want := prefix + "export const run = () => {\n  const n = query()()\n  query()()\n  return n\n}\n"
+	want := prefix + "export const run = effect () => {\n  const n = try Effect.suspend(() => query())\n  try Effect.suspend(() => query())\n  return n\n}\n"
 	got, ok := effectGenQuickFix(t, source)
 	if !ok {
 		t.Fatalf("no quick fix: %s", effectGenNotes(t, source))

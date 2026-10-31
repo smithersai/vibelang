@@ -135,7 +135,7 @@ Unknown or retired warning codes cannot be configured. Remove an `EK1016` entry:
 
 ## TypeScript-style Effect code
 
-Effect declarations and combinator calls written in TypeScript's style use the same library APIs in `.vibe`. The table shows declaration forms and their existing diagnostics. Quick fixes for new VIP forms arrive with the compiler's VIP implementation; [Effect.gen in direct style](#effectgen-in-direct-style) shows the conversion.
+Effect declarations and combinator calls written in TypeScript's style use the same library APIs in `.vibe`. The table shows declaration forms and their existing diagnostics. Quick fixes for new VIP forms arrive with the compiler's VIP implementation; [Effect.gen in direct style](#effectgen-and-effectfn) shows the conversion.
 
 | Code | TypeScript style | VibeLang form | Quick fix |
 | --- | --- | --- | --- |
@@ -153,9 +153,9 @@ Effect declarations and combinator calls written in TypeScript's style use the s
 
 `EK4833` omits an unused requirements slot: `Effect.Effect<User, NotFound>` becomes `User!NotFound`, whose requirements default to `never`.
 
-### Effect.gen in direct style
+### Effect.gen and Effect.fn
 
-An effect function expresses an `Effect.gen` program directly: each `yield* e` becomes `try e`, including an Effect value such as a service key or a `Config` descriptor:
+`--fix` writes an `Effect.gen` or `Effect.fn` program as an effect function or an `effect { … }` block, and a `.pipe` of an Effect with `|>`. Each `yield* e` becomes `try e`, including an Effect value such as a service key or a `Config` descriptor:
 
 ```ts
 // fragment
@@ -177,7 +177,7 @@ export const greet = effect (id: string) => {
 
 Use an effect function for a sequence with parameters, and `effect { … }` for an Effect argument, such as `Layer.effect`'s second argument. Keep unrun Effect values intact. A `throw` in effect code fails the Effect with a typed error; plain and `async` callbacks keep JavaScript's exception semantics.
 
-When migrating `yield*`, `--fix` also runs structured Effect results, such as SQL queries returned by `.vibe` helpers. Calling the helper constructs the query; the rewrite calls that result to run it.
+`Effect.fn("name")` keeps its name as a span, `try Effect.withSpan(effect { … }, "name")`. An effect function records no `Effect.fn` stack frame in a failure's trace. A parameter with a default or a pattern, bound when an `Effect.gen` function is called, keeps the function plain: `({ id }): infer _ => effect { … }`. A generator's `throw`, a defect in Effect, becomes `return try Effect.die(e)`.
 
 Async conversion requires every `await` operand to be statically `PromiseLike`. JavaScript also permits `await` on a scalar, an unknown value or a mixed union. Normalize those operands explicitly, for example with `await Promise.resolve(value)`, before requesting the refactor.
 

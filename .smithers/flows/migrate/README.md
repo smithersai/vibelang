@@ -132,7 +132,8 @@ A run's `issues.jsonl` is the input to the loop that improves the flow. The repa
 
 | Effect TypeScript | `--fix` writes | Code |
 | --- | --- | --- |
-| `Effect.gen(function* () { … })`, or with `{ self: this }`, as the whole body of an arrow, a function or a method, or where the declared type takes a program, such as `Layer.effect`'s | The body in direct style: `yield* e` becomes the call `e`, `e()` for an Effect value such as a service key, or `throw e` for an error instance; `() => { … }` where a program is expected | EK1002 (D470) |
+| `Effect.gen(function* () { … })`, as a value or the whole body of an arrow, a function or a method; `Effect.fn(function* (…) { … })`, `Effect.fn("name")(…)`, `Effect.fnUntraced(…)` | `effect { … }`, `effect (a) => { … }`, `effect function f(a) { … }`; a span as `try Effect.withSpan(effect { … }, "name")`. `yield* e` becomes `try e`, `try e.asEffect()` for a Yieldable, or `throw e` for an error in a statement; a held program `const p = load()` becomes `const p = effect { return try load() }`; a generator's `throw` becomes `return try Effect.die(e)` | EK1002 (D470) |
+| `x.pipe(Effect.map(f), Effect.asVoid, stage)` whose receiver is an Effect or with a stage of `Effect` | `x \|> Effect.map(%, f) \|> Effect.asVoid(%) \|> stage(%)` | EK4502 (VIP-23) |
 | `Match.value(x).pipe(Match.when(…), …, Match.exhaustive)`, `pipe(Match.value(x), …)`, `Match.type<T>().pipe(…)` | `match (x) { when …: …; default: …; }` | EK4839 (D472) |
 | `pipe(x, Option.map(f), Option.getOrElse(g))`, `x.pipe(Option.…)` | `x.map(f).getOrElse(g)`, or `Option.fromNullishOr(x).map(f)` for a value that is not an Option | EK4840 (D473) |
 | `type X = typeof X.Type` just before `const X = Schema.Literals([…])`, or another schema other than a struct whose every part has a type | `schema X = <type>` | EK4841 (D474) |
@@ -147,11 +148,7 @@ These patterns have no `--fix` rule yet. The counts are from the four first targ
 
 | Pattern | Count | Why there is no rule |
 | --- | --- | --- |
-| `Effect.gen(…).pipe(stage, …)` | 11,397 `Effect.gen` sites (26%) | Each stage has its own form, `provide L { … }`, `withSpan(() => { … }, "name")`, `x catch (e) => …`, `retry(() => …, policy)`; a generic rewrite would nest `() =>` per stage |
-| `Effect.fn("name")(function* (…) { … })` and `Effect.fnUntraced(…)` | 120 of 338 EK1002 sites in the sampled files | `Effect.fn` records a span and the call site's stack frame, which `withSpan(() => { … }, "name")` does not |
-| `const p = Effect.gen(…)`, `return Effect.gen(…)` after other statements, `yield* Effect.gen(…)` | 2,135 `Effect.gen` sites (5%) | A program value: what replaces it depends on every use |
-| A parameter with a default or a pattern, `({ id }) => Effect.gen(…)` | 1,361 (3%) | TypeScript binds it when the function is called, VibeLang when its program runs |
-| A call that builds a program no `yield*` runs, as `yield* load(id).pipe(Effect.retry(policy))` or `Effect.all([a(), b()])` | most of the rest | The call would run where it stands; the call-rule migration (EK1018, EK1023) writes `() =>` |
+| A call that builds a program no `yield*` runs and no `const` holds, as `Effect.log("x")` alone in a statement | | It would run where it stands |
 | `Match.when` with a predicate or an array pattern, `Match.discriminator`, a handler that builds a program | | No pattern tests the same, or the arm's call would run |
 | An Option stage whose argument is a call, `Option.getOrElse(makeDefault())` | | The chain would evaluate it after the stage before it runs |
 | `Option.match(x, { onNone, onSome })` | 3 (foldkit) | EK4840 rewrites Option pipelines only; a `match` over `Option.None` and `Option.Some(let v)` is the target |
