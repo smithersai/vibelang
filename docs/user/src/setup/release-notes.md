@@ -941,6 +941,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - `when Array(let n):` bound the whole array, a typed-array extractor bound the whole value, `when pair(let a, let b):` threw at run time when `pair` was a plain function, and a class whose matcher declared its hint as `{ matchType: "extractor" }` typed its bindings as the class instance. `Array` and typed arrays now list their elements, as the proposal says, a plain function is called with the value and `{ matchType: "extractor" }` and returns `false` or the values, and the matcher's declared return type types the bindings.
 
+- `export default schema S` and `export default data D` reported a TypeScript syntax error that named no repair, and `schema S<A>` reported `TS2304`; they now report `EK1501`, `EK1603` and `EK1502`, each with its repair.
+
 - `vibelang-format` and the `vibelang/prettier` plugin wrote double quotes and wrapped at 120 columns whatever the repository's formatter settings said, so in a repository such as foldkit (Oxfmt, `singleQuote`, `printWidth: 80`) `.vibe` files differed in style from its `.ts` files. They now take the quote style and print width from the repository's Oxfmt, Prettier or dprint configuration, or from Prettier's options.
 
 - Under Bun, the loader and bundler plugins failed with `ENOTDIR` on a relative import of a file that is not a script, such as `./prompt.txt`, which broke `Bun.build` in a project that imports text; they now leave that import to Bun.

@@ -2740,6 +2740,13 @@ func (p *Parser) parseExportAssignment(pos int, jsdoc jsdocScannerInfo, modifier
 	} else {
 		p.parseExpected(ast.KindDefaultKeyword)
 	}
+	if !isExportEquals {
+		if declaration := p.parseVibeLangDefaultDataExport(pos, jsdoc, modifiers); declaration != nil {
+			p.contextFlags = saveContextFlags
+			p.statementHasAwaitIdentifier = saveHasAwaitIdentifier
+			return declaration
+		}
+	}
 	expression := p.parseAssignmentExpressionOrHigher()
 	p.parseSemicolon()
 	p.contextFlags = saveContextFlags
