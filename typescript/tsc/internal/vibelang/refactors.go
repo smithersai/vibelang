@@ -229,7 +229,7 @@ func (rc *refactorContext) asyncRefactors(fn *ast.Node) []*ls.CodeAction {
 	// The removed shorthand `async f()` (EK0101) has no function keyword after
 	// async to keep, so the declaration gets one with its effect modifier.
 	replacement := "effect"
-	if afterAsync := scanner.SkipTrivia(text, asyncModifier.End()); ast.IsFunctionDeclaration(fn) && !strings.HasPrefix(text[afterAsync:], "function") {
+	if afterAsync := scanner.SkipTrivia(text, asyncModifier.End()); ast.IsFunctionDeclaration(fn) && fn.Name() != nil && afterAsync == nodeStart(rc.file, fn.Name()) {
 		replacement = "effect function"
 	}
 	common := []*lsproto.TextEdit{rc.textEdit(nodeStart(rc.file, asyncModifier), asyncModifier.End(), replacement)}
