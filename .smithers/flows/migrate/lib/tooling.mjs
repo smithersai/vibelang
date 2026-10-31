@@ -19,6 +19,39 @@ function vibeSelectors(text) {
   }).join("\n")
 }
 
+// oxlintPasses reads each oxlint invocation in a script: the configuration it
+// names with -c or --config (null for the default, .oxlintrc.json) and the
+// paths it lints (none for the working directory). vp lint reads the default.
+//
+//   oxlint --config .oxlintrc.app.json --disable-nested-config examples src
+//   -> [{ config: ".oxlintrc.app.json", paths: ["examples", "src"] }]
+const oxlintValueFlags = new Set(["-c", "--config", "--tsconfig", "-A", "--allow", "-W", "--warn", "-D", "--deny", "--ignore-path", "--ignore-pattern", "-f", "--format", "--max-warnings", "--threads", "--report-unused-disable-directives-severity"])
+export function oxlintPasses(command) {
+  const passes = []
+  for (const match of command.matchAll(/(?:^|[\s;&|(])(oxlint|vp\s+lint)\b((?:[ \t]+(?!&&|\|\||;)[^\s;&|()]+)*)/g)) {
+    let config = null
+    const paths = []
+    const words = match[1] === "oxlint" ? match[2].trim().split(/\s+/).filter(Boolean) : []
+    for (let i = 0; i < words.length; i++) {
+      const word = words[i]
+      if (word === "-c" || word === "--config") config = words[++i] ?? null
+      else if (word.startsWith("--config=")) config = word.slice("--config=".length)
+      else if (oxlintValueFlags.has(word)) i++
+      else if (!word.startsWith("-")) paths.push(word)
+    }
+    passes.push({ config, paths })
+  }
+  return passes
+}
+
+// eslintConfigName is the .vibelang file of the ESLint configuration that
+// carries the Oxlint configuration at path: .oxlintrc.app.json is
+// eslint.app.config.mjs.
+export function eslintConfigName(path) {
+  const name = path.replace(/(^|\/)\.?oxlintrc\.?/, "$1").replace(/\.jsonc?$/, "")
+  return "eslint." + (name.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "") || "default") + ".config.mjs"
+}
+
 const skipped = new Set(["node_modules", ".git", ".jj", "dist", "build", ".vibelang-toolchain", ".vibelang", ".repos", ".cache", ".turbo"])
 function files(root, dir = "") {
   return readdirSync(join(root, dir), { withFileTypes: true }).flatMap(entry => {
@@ -37,6 +70,7 @@ export function wireDeveloperTools({ root, specsFor }) {
   const all = files(root).filter(ownedPaths(root))
   const manifests = all.filter(file => posix.basename(file) === "package.json")
   let needsCompiler = false, needsLint = false
+  const lintConfigs = new Map() // .vibelang file -> the Oxlint configuration a script names with -c
   for (const file of manifests) {
     const before = readFileSync(join(root, file), "utf8")
     const pkg = JSON.parse(before)
@@ -56,7 +90,13 @@ export function wireDeveloperTools({ root, specsFor }) {
       if (/(^|[\s;&|])(?:oxlint\b|vp\s+lint\b)/.test(command)) {
         // The config is the output of this flow, so a run on a new toolchain writes it again.
         needsCompiler = true; needsLint = true
-        if (!command.includes("eslint.config.mjs")) next = `(${next}) && eslint --config ${up}.vibelang/eslint.config.mjs "**/*.vibe" --no-error-on-unmatched-pattern`
+        const passes = oxlintPasses(command).map(({ config, paths }) => {
+          const rooted = config === null ? null : posix.normalize(posix.join(dir, config))
+          const file = rooted === null || rooted === ".oxlintrc.json" ? "eslint.config.mjs" : eslintConfigName(rooted)
+          if (file !== "eslint.config.mjs") lintConfigs.set(file, rooted)
+          return `eslint --config ${up}.vibelang/${file} ${paths.length ? paths.join(" ") : '"**/*.vibe"'} --no-error-on-unmatched-pattern`
+        })
+        if (!command.includes("eslint.config.mjs")) next = `(${next}) && ${[...new Set(passes)].join(" && ")}`
       }
       if (next !== command) pkg.scripts[name] = next
     }
@@ -93,9 +133,9 @@ export function wireDeveloperTools({ root, specsFor }) {
       needsCompiler = true
     }
   }
-  if (needsLint) write(".vibelang/eslint.config.mjs", `import { existsSync, readFileSync } from "node:fs"
+  const eslintConfig = (oxlintrc) => `import { existsSync, readFileSync } from "node:fs"
 import parser from "vibelang/eslint"
-// The repository's Oxlint configuration, read on each run: its rules and its
+// ${oxlintrc ? "The Oxlint configuration " + oxlintrc + ", which a lint script names with -c," : "The repository's Oxlint configuration,"} read on each run: its rules and its
 // overrides (a *.ts glob read as *.vibe) apply to .vibe files wherever ESLint,
 // typescript-eslint or one of the configuration's JS plugins has the rule.
 // typescript-eslint's recommended rules stand in for Oxlint's default
@@ -105,7 +145,8 @@ const read = (name) => {
   const url = new URL("../" + name, import.meta.url)
   return existsSync(url) ? readFileSync(url, "utf8") : null
 }
-const text = read(".oxlintrc.json") ?? read(".oxlintrc.jsonc")
+const text = ${oxlintrc ? "read(" + JSON.stringify(oxlintrc) + ")" : 'read(".oxlintrc.json") ?? read(".oxlintrc.jsonc")'}
+const base = new URL("../" + ${JSON.stringify(oxlintrc && posix.dirname(oxlintrc) !== "." ? posix.dirname(oxlintrc) + "/" : "")}, import.meta.url)
 const oxlint = text ? JSON.parse(text.replace(/("(?:\\\\.|[^"\\\\])*")|\\/\\*[\\s\\S]*?\\*\\/|\\/\\/[^\\n]*/g, (all, string) => string ?? "").replace(/,(\\s*[}\\]])/g, "$1")) : {}
 // An Oxlint JS plugin is an ESLint plugin. Each loads as Oxlint loads it: a
 // path from the configuration's directory, else a package, named by its alias,
@@ -137,7 +178,7 @@ const eslintRule = (rule) => rule.create || !rule.createOnce ? rule : {
 const jsPlugins = new Map(await Promise.all((oxlint.jsPlugins ?? []).map(async (entry) => {
   const { name, specifier } = typeof entry === "string" ? { specifier: entry } : entry
   const local = /^(?:\\.\\.?)?\\//.test(specifier)
-  const module = await import(local ? new URL(specifier, new URL("../", import.meta.url)).href : specifier)
+  const module = await import(local ? new URL(specifier, base).href : specifier)
   const plugin = module.default ?? module
   const packageName = local ? undefined : specifier.split("/").slice(0, specifier.startsWith("@") ? 2 : 1).join("/")
   const rules = Object.fromEntries(Object.entries(plugin.rules ?? {}).map(([rule, definition]) => [rule, eslintRule(definition)]))
@@ -169,7 +210,9 @@ export default [
   { files: ["**/*.vibe"], languageOptions: { parser }, plugins: { ...(tseslint ? { "@typescript-eslint": tseslint.plugin } : {}), ...Object.fromEntries(jsPlugins) }, rules: { "no-debugger": "error", ...rules(oxlint.rules) } },
   ...overrides
 ]
-`)
+`
+  if (needsLint) write(".vibelang/eslint.config.mjs", eslintConfig(null))
+  for (const [file, oxlintrc] of lintConfigs) write(".vibelang/" + file, eslintConfig(oxlintrc))
   for (const file of all.filter(f => /(^|\/)sgconfig\.ya?ml$/.test(f))) {
     let config = readFileSync(join(root, file), "utf8")
     const dir = posix.dirname(file)

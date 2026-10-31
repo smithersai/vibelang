@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, symlinkSyn
 import { join, resolve, dirname } from "node:path"
 import { tmpdir } from "node:os"
 import { spawnSync } from "node:child_process"
-import { wireDeveloperTools } from "../lib/tooling.mjs"
+import { eslintConfigName, oxlintPasses, wireDeveloperTools } from "../lib/tooling.mjs"
 const specsFor = () => ({ vibelang: "0.0.11" })
 function fixture(t, entries) {
   const root = mkdtempSync(join(tmpdir(), "vibe-tooling-"))
@@ -88,6 +88,52 @@ test("the lint config applies the repository's Oxlint rules and overrides to .vi
   assert.deepEqual(vibe.rules, { "no-debugger": ["warn"], "@typescript-eslint/no-explicit-any": ["error"], "sort-imports": ["error", { ignoreCase: false }], "@typescript-eslint/no-unused-vars": ["error"] })
   assert.deepEqual(config.at(-1), { files: ["src/**/*.vibe"], rules: { "@typescript-eslint/no-explicit-any": ["off"] } })
 })
+// foldkit: lint:applications runs oxlint --config .oxlintrc.app.json on examples and
+// the website, and lint:effect runs oxlint -c .oxlintrc.effect.json; their .vibe
+// files got the root .oxlintrc.json's rules over the whole tree instead.
+test("each oxlint invocation's .vibe pass uses the configuration it names with -c and the paths it lints", async t => {
+  const root = fixture(t, {
+    "package.json": JSON.stringify({ workspaces: ["packages/*"], scripts: {
+      lint: "oxlint",
+      "lint:applications": "oxlint --config .oxlintrc.app.json --disable-nested-config examples packages/website/src",
+      "lint:both": "oxlint -D no-debugger && oxlint -c .oxlintrc.effect.json --deny-warnings packages scripts",
+      "lint:root": "oxlint --config=.oxlintrc.json src"
+    } }),
+    "packages/x/package.json": JSON.stringify({ scripts: { lint: "oxlint -c ../../.oxlintrc.app.json src" } }),
+    ".oxlintrc.json": JSON.stringify({ categories: { correctness: "off" }, rules: { "no-debugger": "error" } }),
+    ".oxlintrc.app.json": JSON.stringify({ categories: { correctness: "off" }, rules: { "sort-imports": "error" }, jsPlugins: ["./plugin.mjs"] }),
+    ".oxlintrc.effect.json": JSON.stringify({ categories: { correctness: "off" }, rules: { "no-unused-vars": "warn" } }),
+    "plugin.mjs": 'export default { meta: { name: "app" }, rules: { only: { create: () => ({}) } } }\n',
+    "node_modules/vibelang/package.json": '{"name":"vibelang","type":"module","exports":{"./eslint":"./eslint.mjs"}}',
+    "node_modules/vibelang/eslint.mjs": "export default { parseForESLint() {} }\n",
+    "node_modules/eslint/package.json": '{"name":"eslint","type":"module","exports":{"./use-at-your-own-risk":"./risk.mjs"}}',
+    "node_modules/eslint/risk.mjs": 'export const builtinRules = new Map([["no-debugger", {}], ["sort-imports", {}], ["no-unused-vars", {}]])\n'
+  })
+  wireDeveloperTools({ root, specsFor })
+  const scripts = JSON.parse(readFileSync(join(root, "package.json"))).scripts
+  const pass = (config, paths) => `eslint --config .vibelang/${config} ${paths} --no-error-on-unmatched-pattern`
+  assert.equal(scripts.lint, `(oxlint) && ${pass("eslint.config.mjs", '"**/*.vibe"')}`)
+  assert.equal(scripts["lint:applications"], `(oxlint --config .oxlintrc.app.json --disable-nested-config examples packages/website/src) && ${pass("eslint.app.config.mjs", "examples packages/website/src")}`)
+  assert.equal(scripts["lint:both"], `(oxlint -D no-debugger && oxlint -c .oxlintrc.effect.json --deny-warnings packages scripts) && ${pass("eslint.config.mjs", '"**/*.vibe"')} && ${pass("eslint.effect.config.mjs", "packages scripts")}`)
+  assert.equal(scripts["lint:root"], `(oxlint --config=.oxlintrc.json src) && ${pass("eslint.config.mjs", "src")}`)
+  assert.equal(JSON.parse(readFileSync(join(root, "packages/x/package.json"))).scripts.lint, "(oxlint -c ../../.oxlintrc.app.json src) && eslint --config ../../.vibelang/eslint.app.config.mjs src --no-error-on-unmatched-pattern")
+  const rulesOf = async (file) => (await import(join(root, ".vibelang", file))).default.find(entry => entry.languageOptions?.parser).rules
+  assert.deepEqual(await rulesOf("eslint.config.mjs"), { "no-debugger": ["error"] })
+  assert.deepEqual(await rulesOf("eslint.app.config.mjs"), { "no-debugger": "error", "sort-imports": ["error"] })
+  assert.deepEqual(await rulesOf("eslint.effect.config.mjs"), { "no-debugger": "error", "no-unused-vars": ["warn"] })
+  // The app configuration's JS plugin loads from that configuration's directory.
+  assert.ok((await import(join(root, ".vibelang/eslint.app.config.mjs"))).default.some(entry => entry.plugins?.app))
+  assert.deepEqual(wireDeveloperTools({ root, specsFor }).changed, [])
+})
+
+test("oxlintPasses reads each invocation's configuration and paths", () => {
+  assert.deepEqual(oxlintPasses("oxlint"), [{ config: null, paths: [] }])
+  assert.deepEqual(oxlintPasses("pnpm build && oxlint -c a.json --tsconfig tsconfig.json -A no-console --fix src lib; echo"), [{ config: "a.json", paths: ["src", "lib"] }])
+  assert.deepEqual(oxlintPasses("(cd x && oxlint src) && vp lint"), [{ config: null, paths: ["src"] }, { config: null, paths: [] }])
+  assert.equal(eslintConfigName(".oxlintrc.app.json"), "eslint.app.config.mjs")
+  assert.equal(eslintConfigName("config/lint.json"), "eslint.config-lint.config.mjs")
+})
+
 test("setup regenerates the .vibe lint config where the lint script already runs it", t => {
   const step = "oxlint && eslint --config .vibelang/eslint.config.mjs \"**/*.vibe\" --no-error-on-unmatched-pattern"
   const root = fixture(t, { "package.json": JSON.stringify({ scripts: { lint: step } }), ".vibelang/eslint.config.mjs": "export default []\n" })

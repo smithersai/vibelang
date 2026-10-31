@@ -152,6 +152,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - An Effect whose success is a function, written where an Effect is expected, was run and its function called as a thunk: `Effect.acquireRelease(Effect.sync(() => detach), (release) => Effect.sync(release))` acquired `void` and reported `TS2345`. Such an argument is now passed as the Effect, and the function is its result.
 
+- The migrate flow's `.vibe` ESLint pass used the root `.oxlintrc.json` for every lint script, over the whole tree, so a script such as foldkit's `oxlint --config .oxlintrc.app.json examples packages/website/src` linted `.vibe` files with other rules and in other directories. Each `oxlint` invocation now gets its own pass, with an ESLint configuration generated from the configuration it names with `-c` or `--config` (`.vibelang/eslint.app.config.mjs`) and the paths it lints.
+
 - The release rehearsal stopped at its Vite warning check because it expected a retired nondeterminism diagnostic and used deprecated configuration; it now checks the assigned `EK4833` warning and verifies that Vite emits the bundle with `noEmitOnError`.
 
 - In a project with no `declaration` setting, an export whose inferred type was too long to serialize (`TS7056`) got only a warning, and its declaration sidecar held `any` in place of the type, so a stock `tsc` consumer lost its types without an error; it is an error again, as it is where the project emits declarations.
