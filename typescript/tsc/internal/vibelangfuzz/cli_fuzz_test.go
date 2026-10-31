@@ -152,8 +152,8 @@ var cliFlags = sync.OnceValue(func() []cliFlag {
 	flags := []cliFlag{
 		{"", []string{"main.vibe", "main.ts", "missing.vibe", "tsconfig.json"}, "Chapter 27: files named on the command line"},
 		{"--fix", cliBareOnly, "Chapter 28, Diagnostics (D291)"},
-		{"--fix-migration-only", cliBareOnly, "D382; internal/vibelang/fix.go"},
-		{"--fix-vip-only", cliBareOnly, "internal/vibelang/fix.go: the VIP-1 and VIP-2 codemod's scope (fix_effect.go)"},
+		{"--fix-migration-only", cliBareOnly, "007-tooling.md, Compiler and tooling requirements; requires --fix"},
+		{"--fix-vip-only", cliBareOnly, "007-tooling.md, Compiler and tooling requirements; requires --fix"},
 		{"--loader-root", []string{".", "sub", "missing"}, "Chapter 28, Building and testing; internal/vibelang/loaderroot.go"},
 		{"--lsp", cliBareOnly, "Chapter 28, The editor (D32)"},
 		{"--stdio", cliBareOnly, "Chapter 28, The editor (D32)"},
@@ -303,6 +303,7 @@ func cliSeeds() []cliSeed {
 		{"--estree", "main.vibe"},
 		{"--ignoreConfig", "main.vibe"},
 		{"--fix", "--fix-migration-only", "--noEmit", "--pretty", "false", "-p", "tsconfig.json"},
+		{"--fix-vip-only", "--fix", "--noEmit", "--pretty", "false", "-p", "tsconfig.json"},
 	}
 	var cases []Seed
 	for _, seed := range CaseSeeds() {

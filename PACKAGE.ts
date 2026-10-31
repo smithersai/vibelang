@@ -57,6 +57,7 @@ const specTests = [
   "TestConfigOracleMatchesCompiler",
   "TestRegistryRowsSuggestRepairs",
   "TestCommandLineFlagsCoverSpec",
+  "TestCommandLineFixScopes",
   "TestSpecFacts",
   "TestPendingLines",
   "TestSuperseded",

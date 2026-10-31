@@ -312,4 +312,19 @@ Imported rules from `@effect/tsgo@0.57.0` (commit `999942fa41462eb46dfcb2d718e76
 
 Tools that only analyze code, such as cycle checkers (madge) and dependency graphs, may run on VibeLang's compiled output. Formatters cannot; they read `.vibe` itself.
 
-`vibelang lint` accepts the compiler’s options, including `-p`/`--project` and file arguments, with no lint-specific options (decided detail 58). `vibelang --fix` remains the codemod entry point. These commands have no Effect TypeScript runtime translation.
+`vibelang lint` accepts the compiler’s options, including `-p`/`--project` and file arguments, with no lint-specific options (decided detail 58). `vibelang --fix` remains the codemod entry point. Two flags scope that invocation:
+
+| Flag | Scope when used with `--fix` |
+| --- | --- |
+| `--fix-migration-only` | Migration fixes, excluding TypeScript-form teaching rewrites and prelude/import cleanup. |
+| `--fix-vip-only` | The existing VIP migration passes, including the VIP-1/VIP-2 function-kind and `try` migration, excluding prelude/import cleanup. |
+
+Either scope flag requires `--fix` somewhere in the argument list, before or after it; alone, each is an unknown compiler option (`TS5023`). The ordinary `--fix` invocation and its project options keep their existing meaning.
+
+```sh
+vibelang --fix --fix-migration-only -p tsconfig.json
+vibelang --fix-vip-only --fix -p tsconfig.json
+vibelang --fix-vip-only # TS5023: add --fix
+```
+
+These commands have no Effect TypeScript runtime translation.
