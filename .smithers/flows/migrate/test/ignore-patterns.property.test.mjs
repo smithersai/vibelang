@@ -27,7 +27,7 @@ async function compare(patterns, stems, { nestedConfig = false, childCwd = false
     put(root, "node_modules/vibelang/eslint.mjs", 'import * as espree from "espree"; export default { parse(text) { return espree.parse(text, { ecmaVersion: "latest", sourceType: "module", range: true, loc: true, tokens: true, comment: true }) } }\n')
     for (const pkg of ["eslint", "espree", "@eslint"]) symlinkSync(resolve(deps, pkg), join(root, "node_modules", pkg), "dir")
     for (const stem of stems) for (const extension of [sourceExtension, ".vibe"]) put(cwd, stem + extension, corpus.source)
-    const stock = spawnSync(join(deps, ".bin/oxlint"), ["--threads", "8", "--ignore-pattern", "node_modules/", "-c", join(root, config), "--format", "json", "."], { cwd, encoding: "utf8" })
+    const stock = spawnSync(join(deps, ".bin/oxlint"), ["--threads", "8", "--no-error-on-unmatched-pattern", "--ignore-pattern", "node_modules/", "-c", join(root, config), "--format", "json", "."], { cwd, encoding: "utf8" })
     assert.ok(stock.status === 0 || stock.status === 1, stock.stderr)
     const expected = JSON.parse(stock.stdout).diagnostics.map(d => d.filename.replace(/\.(?:ts|mts|tsx)$/, ".vibe")).sort()
     const wired = wireDeveloperTools({ root, specsFor: () => ({ vibelang: "0.0.11" }) })
@@ -92,10 +92,10 @@ test("native ignore translation preserves directory, rooted, extension and negat
 test("generated native lint scopes agree with the original linter over varied ignore graphs", oracle, async () => {
   await fc.assert(fc.asyncProperty(
     fc.constantFrom("ignored", "with space", "café", "a.b", "prefix-long"),
-    fc.constantFrom("directory", "rooted", "extension", "negation"),
-    fc.boolean(), fc.boolean(), fc.constantFrom(...corpus.sourceExtensions),
-    async (dir, kind, nestedConfig, childCwd, sourceExtension) => {
-      const patterns = kind === "directory" ? [dir + "/"] :
+    fc.constantFrom("directory", "rooted", "extension", "negation", "all"),
+    fc.boolean(), fc.boolean(), fc.constantFrom(...corpus.sourceExtensions), fc.constantFrom("**", "/**", "**/"),
+    async (dir, kind, nestedConfig, childCwd, sourceExtension, wildcard) => {
+      const patterns = kind === "all" ? [wildcard] : kind === "directory" ? [dir + "/"] :
         kind === "rooted" ? ["/" + dir + "/"] :
         kind === "extension" ? [dir + "/**/*" + sourceExtension] :
         [dir + "/**", "!" + dir + "/**/keep" + sourceExtension]

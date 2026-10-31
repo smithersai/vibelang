@@ -38,6 +38,7 @@ const directory = path => statSync(path, { throwIfNoEntry: false })?.isDirectory
 const vibeGlob = path => path.replace(/\.\{([^}]+)\}/g, (all, parts) => parts.split(",").some(ext => /^[cm]?tsx?$/.test(ext)) ? ".vibe" : all).replace(/\.[cm]?tsx?$/, ".vibe")
 const vibePaths = suppliedPaths ? paths.flatMap(path => vibe(path) || directory(path) ? [resolve(path)] : /[*?{]/.test(path) ? [resolve(vibeGlob(path))] : []) : [process.cwd()]
 const nativePaths = paths.filter(path => !vibe(path))
+if (vibePaths.length && (!suppliedPaths || nativePaths.some(path => directory(path) || /[*?{]/.test(path))) && !native.includes("--no-error-on-unmatched-pattern")) native.push("--no-error-on-unmatched-pattern")
 let output = { diagnostics: [], number_of_files: 0, number_of_rules: 0, threads_count: 8 }
 let nativeStatus = 0
 if (!suppliedPaths || nativePaths.length) {

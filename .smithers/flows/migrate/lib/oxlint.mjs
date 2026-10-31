@@ -6,6 +6,13 @@ import { posix } from "node:path"
 const command = /(?:^|[\s;&|(])(?:bunx\s+|npx\s+|pnpm\s+(?:exec\s+)?|yarn\s+)?oxlint(?:$|[\s;&|)])/m
 const scriptFile = /(?:^|[\s"'=])((?:\.?\.?\/)?[\w@./-]+\.(?:[cm]?[jt]sx?))(?=$|[\s"'])/g
 
+// An all-Vibe directory leaves no native files. Let the subsequent ESLint
+// pass own that case, including when setup is rerun on an older wrapped script.
+export function allowEmptyOxlint(text) {
+  return text.replace(/((?:^|[\s;&|(])(?:(?:bunx|npx|pnpm(?:\s+exec)?|yarn)\s+)?oxlint)([^;&|)]*)/gm,
+    (all, invocation, flags) => flags.includes("--no-error-on-unmatched-pattern") ? all : invocation + " --no-error-on-unmatched-pattern" + flags)
+}
+
 function editsOf(text, edits) {
   for (const edit of edits.sort((a, b) => b.start - a.start)) text = text.slice(0, edit.start) + edit.text + text.slice(edit.end)
   return text
@@ -153,6 +160,11 @@ export function wireOxlint({ root, all, manifests, ts, write }) {
       warnings.push(...next.warnings.map(warning => file + ": " + warning))
     }
     if (!found) continue
+    for (const [name, script] of Object.entries(pkg.scripts ?? {})) {
+      const next = allowEmptyOxlint(script)
+      if (next !== script) pkg.scripts[name] = next
+    }
+    write(manifest, JSON.stringify(pkg, null, 2) + "\n")
     packages.push(dir)
   }
   return { warnings, packages }

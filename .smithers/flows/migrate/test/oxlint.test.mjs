@@ -56,7 +56,7 @@ test("plain oxlint src and nested runners keep the upstream dependency", t => {
   const rootPkg = JSON.parse(readFileSync(join(root, "package.json")))
   const nested = JSON.parse(readFileSync(join(root, "packages/a/package.json")))
   assert.equal(rootPkg.devDependencies.oxlint, undefined)
-  assert.ok(rootPkg.scripts.lint.startsWith("(oxlint src)"))
+  assert.ok(rootPkg.scripts.lint.startsWith("(oxlint --no-error-on-unmatched-pattern src)"))
   assert.match(rootPkg.scripts.glob, /\{ts,tsx\}/)
   assert.match(rootPkg.scripts.glob, /eslint.*src\/\*\*\/\*\.vibe/)
   assert.equal(nested.dependencies.oxlint, "1.60.0")
@@ -211,7 +211,9 @@ test("installed upstream Oxlint and ESLint run opencode-shaped lists and a plain
   assert.equal(diagnostic.code, "anti-slop(no-unknown-parameters)")
   assert.equal(diagnostic.severity, "warning")
   assert.equal(diagnostic.labels[0].span.line, 2)
-  // Plain directory commands run exactly the same JS plugin on source trees.
+  // Once every source is migrated, the native pass has no TS files left.
+  rmSync(join(root, "src/plain.ts"))
+  // Plain directory commands still run the same JS plugin on source trees.
   const plain = run("run", "lint")
   assert.equal(plain.status, 0, plain.stdout + plain.stderr)
   assert.match(plain.stdout, /anti-slop\/no-unknown-parameters/)
@@ -315,4 +317,24 @@ test("generated Oxlint passes refresh their configuration and current warning bu
       assert.deepEqual(wireDeveloperTools({ root, specsFor, ts }).changed, [])
     }
   ), { seed: 8311037, numRuns: 90 })
+})
+
+import { allowEmptyOxlint } from "../lib/oxlint.mjs"
+test("native empty-file handling preserves command flags and is idempotent across launcher forms", () => {
+  const quote = "A directory containing only `.vibe` files still runs the ESLint pass."
+  assert.ok(readFileSync(new URL("../README.md", import.meta.url), "utf8").includes(quote))
+  fc.assert(fc.property(
+    fc.array(fc.record({ launcher: fc.constantFrom("", "bunx ", "npx ", "pnpm exec ", "yarn "), wrapped: fc.boolean(), already: fc.boolean() }), { minLength: 1, maxLength: 4 }),
+    entries => {
+      const command = entries.map(({ launcher, wrapped, already }) => {
+        const text = launcher + "oxlint" + (already ? " --no-error-on-unmatched-pattern" : "") + " --threads 8 --format json src"
+        return wrapped ? "(" + text + ")" : text
+      }).join(" && ")
+      const actual = allowEmptyOxlint(command)
+      assert.equal(actual.split("--no-error-on-unmatched-pattern").length - 1, entries.length)
+      assert.equal(allowEmptyOxlint(actual), actual)
+      const strip = text => text.replaceAll(" --no-error-on-unmatched-pattern", "")
+      assert.equal(strip(actual), strip(command))
+    }
+  ), { seed: 8311009, numRuns: 150 })
 })

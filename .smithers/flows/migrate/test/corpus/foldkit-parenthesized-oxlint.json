@@ -6,7 +6,7 @@
     "lint:applications": "(oxlint --config .oxlintrc.app.json --disable-nested-config examples packages/website/src) && eslint --config .vibelang/eslint.config.mjs \"**/*.vibe\" --no-error-on-unmatched-pattern"
   },
   "wired": {
-    "lint": "(oxlint --disable-nested-config) && eslint --config .vibelang/eslint.config.mjs \"**/*.vibe\" --no-error-on-unmatched-pattern",
-    "lint:applications": "(oxlint --config .oxlintrc.app.json --disable-nested-config examples packages/website/src) && eslint --config .vibelang/eslint.app.config.mjs examples packages/website/src --no-error-on-unmatched-pattern"
+    "lint": "(oxlint --no-error-on-unmatched-pattern --disable-nested-config) && eslint --config .vibelang/eslint.config.mjs \"**/*.vibe\" --no-error-on-unmatched-pattern",
+    "lint:applications": "(oxlint --no-error-on-unmatched-pattern --config .oxlintrc.app.json --disable-nested-config examples packages/website/src) && eslint --config .vibelang/eslint.app.config.mjs examples packages/website/src --no-error-on-unmatched-pattern"
   }
 }

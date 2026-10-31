@@ -60,6 +60,8 @@ the same paths with the configuration named by `-c` or `--config`. ESLint
 checks `.vibe` through `vibelang/eslint`. Each generated pass retains its
 invocation's `--deny-warnings` or `--max-warnings 0` policy. Running setup
 again refreshes its generated configurations and passes.
+Setup adds `--no-error-on-unmatched-pattern` to the native invocation so a
+directory containing only `.vibe` files still reaches ESLint.
 It also follows local JavaScript and TypeScript runners launched by package
 scripts, including their relative imports. In runners that invoke Oxlint it
 extends TypeScript extension filters to `.vibe`, keeps directory and package

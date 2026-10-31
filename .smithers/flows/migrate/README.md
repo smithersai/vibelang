@@ -164,6 +164,13 @@ These patterns have no `--fix` rule yet. The counts are from the four first targ
 
 ## Tests
 
+The optional lint-engine checks use `VIBELANG_OXLINT_NODE_MODULES` for an
+installation of `eslint`, `typescript-eslint`, `oxlint` and `@oxlint/plugins`.
+Set `VIBELANG_LINT_ORACLE_NODE_MODULES` to the same installation, including
+`espree`, to compare ignore scopes against Oxlint. Those native comparisons
+use `--no-error-on-unmatched-pattern`, so an all-ignored project still
+produces JSON with an empty diagnostic list.
+
 ```sh
 node --test .smithers/flows/migrate/test/*.test.mjs
 ```
@@ -173,3 +180,5 @@ The deterministic steps are tested against fixtures: import parsing and rewritin
 When a package script runs Oxlint directly or launches a JavaScript/TypeScript runner that does, setup keeps upstream `oxlint` and includes `.vibe` in extension selectors. It follows local imports of runners, retains their package and directory filters, and excludes `.d.vibe.ts` sidecars. Plain commands such as `oxlint src` retain their ESLint pass. File-list runners invoke `.vibelang/oxlint.mjs`: upstream Oxlint checks their TypeScript files and the generated ESLint configuration checks their VibeLang files with the repository's JS plugins, rule names, severities and override globs. JSON output merges both passes in Oxlint's diagnostic shape, preserving `.vibe` source lines and warning severity. `--deny-warnings` fails on warnings in either pass. No patch or fork is installed. An invocation that denies warnings keeps that policy when setup refreshes its generated ESLint pass; removing the native option removes that pass's warning limit.
 
 The ESLint configuration preserves directory-wide overrides as well as extension globs. Its `oxc/no-accumulating-spread` counterpart is checked against upstream Oxlint; an enabled rule without a counterpart fails a file-list runner with the rule's name. This prevents silent rule loss when a repository adds another native rule.
+
+A directory containing only `.vibe` files still runs the ESLint pass. Setup adds `--no-error-on-unmatched-pattern` to the native Oxlint invocations, which have no TypeScript left to lint, and file-list adapters handle empty native directory scans the same way.
