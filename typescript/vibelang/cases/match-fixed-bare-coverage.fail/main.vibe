@@ -1,0 +1,18 @@
+// expect: EK4701 EK4701 EK4701 EK4701 EK4701
+// Chapter 004, decided detail 78 (loop round 3, OPUS-6): a bare pattern covers
+// only its own case, and a written argument list keeps the length rule.
+export function some(o: Option.Option<number>) {
+  return match (o) { when Option.Some: 1; }
+}
+export function success(e: Exit.Exit<number, string>) {
+  return match (e) { when Exit.Success: 1; }
+}
+export function failure(r: Result.Result<number, string>) {
+  return match (r) { when Result.Failure: 1; }
+}
+export function empty(o: Option.Option<number>) {
+  return match (o) { when Option.Some(): 1; when Option.None: 2; }
+}
+export function literal(o: Option.Option<number>) {
+  return match (o) { when Option.Some(1): 1; when Option.None: 2; }
+}

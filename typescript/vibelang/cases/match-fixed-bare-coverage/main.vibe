@@ -1,0 +1,18 @@
+// expect-result: [1,1,1,2]
+// Chapter 004, decided detail 78 (loop round 3, OPUS-6): a bare fixed pattern
+// has no argument list, so it covers its case. Every match below is exhaustive.
+export function option(o: Option.Option<number>) {
+  return match (o) { when Option.Some: 1; when Option.None: 2; }
+}
+export function exit(e: Exit.Exit<number, string>) {
+  return match (e) { when Exit.Success: 1; when Exit.Failure: 2; }
+}
+export function result(r: Result.Result<number, string>) {
+  return match (r) { when Result.Success: 1; when Result.Failure: 2; }
+}
+export function mixed(o: Option.Option<number>) {
+  return match (o) { when Option.Some(let v): v; when Option.None: 2; }
+}
+export effect function main() {
+  return [option(Option.some(1)), exit(Exit.succeed(1)), result(Result.succeed(1)), mixed(Option.none())]
+}

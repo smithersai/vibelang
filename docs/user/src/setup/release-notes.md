@@ -694,6 +694,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 - The Foldkit guide showed only the small example app inline; it now also compares four excerpts from Foldkit's own migrated source with their originals.
+- The spec gave `when Option.Some:` two readings in an exhaustiveness check. It now says a bare fixed pattern covers its case, which is what the compiler does.
+
 - The compiler package's tests could fail with a missing `packages/runtime/dist/index.js`, or skip their cache checks, when the runtime rebuilt at the same time; `//packages:compiler-test` now declares that build and runs after it.
 - Sharded Go test discovery dropped the run's flags, so test setup that required custom flags could fail before any test ran; discovery now retains the original arguments, including `-short` and custom values with spaces.
 

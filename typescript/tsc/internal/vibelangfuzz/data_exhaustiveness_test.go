@@ -64,8 +64,8 @@ func dataExhaustivenessRules() []dataRule {
 		// Null literal covers its member
 		{name: "exhaustive-error-null-complete", chapter: "004-match.md", quote: "literal type, `true`, `false`, `null`, `undefined`, an enum member, a `data` variant, an `error` or `schema error` instance", source: "error E;function f(x:E|null){return match(x){when E:1;when null:0;}}", code: "", owner: "vip-match"},
 		// Retained Effect errors remain finite alongside declared errors
-		{name: "exhaustive-retained-error-missing", chapter: "004-match.md", quote: "a retained error's bare or one-binding extractor cover their case", source: "error E;function f(x:E|Cause.TimeoutError){return match(x){when E:1;}}", code: "EK4701", owner: "vip-match"},
+		{name: "exhaustive-retained-error-missing", chapter: "004-match.md", quote: "a retained error covers its case when it is bare", source: "error E;function f(x:E|Cause.TimeoutError){return match(x){when E:1;}}", code: "EK4701", owner: "vip-match"},
 		// Bare binding extractor covers retained error
-		{name: "exhaustive-retained-error-complete", chapter: "004-match.md", quote: "a retained error's bare or one-binding extractor cover their case", source: "error E;function f(x:E|Cause.TimeoutError){return match(x){when E:1;when Cause.TimeoutError(let e):0;}}", code: "", owner: "vip-match"},
+		{name: "exhaustive-retained-error-complete", chapter: "004-match.md", quote: "a retained error covers its case when it is bare", source: "error E;function f(x:E|Cause.TimeoutError){return match(x){when E:1;when Cause.TimeoutError(let e):0;}}", code: "", owner: "vip-match"},
 	}
 }

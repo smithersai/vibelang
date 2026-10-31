@@ -7,7 +7,7 @@ test("tag coverage counts recognized member cases without inventing uniform-tag 
   assert.ok(!match.includes("treats it exactly as TypeScript treats"))
   assert.ok(match.includes("Coverage is per normalized member and tag case"))
   assert.ok(match.includes("including a plain object with that tag; other tag cases on that member remain"))
-  assert.ok(match.includes("only when their argument list has the required length"))
+  assert.ok(match.includes("when its argument list has the required length"))
   assert.ok(match.includes("bare `let` or `const` binding"))
   assert.ok(read("docs/design/vips/0007-match.md").includes("even when TypeScript does not narrow the whole subject"))
   assert.ok(read("docs/user/src/vibelang-features/116-match-and-is.md").includes("Members sharing a literal `_tag` are covered"))
