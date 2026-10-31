@@ -84,6 +84,21 @@ func (p *projector) schemaDeclaration(node *ast.Node) {
 	p.plan.replace(start, node.End(), "const "+name.Text()+" = "+value+";")
 }
 
+// schemaPropertyKey prints the compiler-created own __proto__ field key,
+// while retaining source spans and existing diagnostics for written names.
+func (p *projector) schemaPropertyKey(name *ast.Node) string {
+	if name.Kind == ast.KindComputedPropertyName {
+		expression := name.Expression()
+		if name.Flags&ast.NodeFlagsVibeLang != 0 && expression.Kind == ast.KindStringLiteral && expression.Text() == "__proto__" {
+			return `["__proto__"]`
+		}
+	}
+	if name.Flags&ast.NodeFlagsReparsed == 0 {
+		return p.text[p.tokenStart(name):name.End()]
+	}
+	return "\"\""
+}
+
 // schemaExpression serializes only expressions the schema parser creates.
 // Unsupported forms and undecidable names are diagnosed at their source span.
 func (p *projector) schemaExpression(node *ast.Node, schema string) string {
@@ -107,13 +122,10 @@ func (p *projector) schemaExpression(node *ast.Node, schema string) string {
 		var fields []string
 		for _, field := range node.AsObjectLiteralExpression().Properties.Nodes {
 			name := field.Name()
-			if name.Kind == ast.KindComputedPropertyName {
+			if name.Kind == ast.KindComputedPropertyName && name.Flags&ast.NodeFlagsVibeLang == 0 {
 				p.schemaDiagnostic(name, "A computed schema key requires an explicit Schema value.")
 			}
-			key := "\"\""
-			if name.Flags&ast.NodeFlagsReparsed == 0 {
-				key = p.text[p.tokenStart(name):name.End()]
-			}
+			key := p.schemaPropertyKey(name)
 			fields = append(fields, key+": "+p.schemaExpression(field.Initializer(), schema))
 		}
 		return "{ " + strings.Join(fields, ", ") + " }"

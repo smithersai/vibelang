@@ -1,0 +1,13 @@
+// Decided detail 111: schema fields named __proto__ are own data keys.
+// Cover identifier, quoted and escaped names at every schema-field boundary.
+export schema Identifier { readonly __proto__: string }
+export schema Quoted { readonly "__proto__": string }
+export schema Escaped { readonly "__pro\u0074o__": string }
+export schema EscapedIdentifier { readonly __pro\u0074o__: string }
+export schema Nested { readonly value: { readonly __proto__: string } }
+export schema NestedQuoted { readonly value: { readonly "__proto__": string } }
+export schema NestedEscaped { readonly value: { readonly "__pro\u0074o__": string } }
+export schema error IdentifierError { __proto__: string }
+export schema error QuotedError { "__proto__": string }
+export schema error EscapedError { "__pro\u0074o__": string }
+export schema error EscapedIdentifierError { __pro\u0074o__: string }

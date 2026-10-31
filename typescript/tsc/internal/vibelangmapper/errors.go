@@ -288,7 +288,7 @@ func (p *projector) errorClassDeclaration(node *ast.Node) {
 			if key.Flags&ast.NodeFlagsReparsed != 0 {
 				continue // a subclass's _tag
 			}
-			schemas = append(schemas, p.text[p.tokenStart(key):key.End()]+": "+p.schemaExpression(property.Initializer(), schema))
+			schemas = append(schemas, p.schemaPropertyKey(key)+": "+p.schemaExpression(property.Initializer(), schema))
 			p.errorField(key)
 		}
 		fields := "{ " + strings.Join(schemas, ", ") + " }"

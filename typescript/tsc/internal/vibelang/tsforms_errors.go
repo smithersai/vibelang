@@ -329,6 +329,9 @@ func schemaErrorRewrite(c *checker.Checker, file *ast.SourceFile, class *ast.Nod
 // object, as a schema error's field, and the constant that names its codec
 // when it has no type form, or why it cannot be written.
 func schemaErrorField(c *checker.Checker, file *ast.SourceFile, property *ast.Node, class string) (field string, constant string, why string) {
+	if isNativeProtoSetter(property) {
+		return "", "", "the native __proto__ property sets the fields object's prototype, but a schema error field creates an own key."
+	}
 	if field, ok := structFieldType(c, file, property, "  "); ok {
 		return field, "", ""
 	}

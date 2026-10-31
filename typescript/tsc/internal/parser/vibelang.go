@@ -1229,6 +1229,19 @@ func (p *Parser) vibelangSchemaFields(members []*ast.Node, body core.TextRange) 
 	return call
 }
 
+// vibelangSchemaPropertyName prevents JavaScript object-literal __proto__
+// setter semantics in a schema-fields object (decided detail 111).
+// Keep the written span for diagnostics and declaration members.
+func (p *Parser) vibelangSchemaPropertyName(name *ast.Node) *ast.Node {
+	if (name.Kind != ast.KindIdentifier && name.Kind != ast.KindStringLiteral) || name.Text() != "__proto__" {
+		return name
+	}
+	literal := p.vibelangSynthesized(p.factory.NewStringLiteral("__proto__", ast.TokenFlagsNone), name.Loc)
+	computed := p.vibelangSpanning(p.factory.NewComputedPropertyName(literal), name.Loc)
+	computed.Flags |= ast.NodeFlagsVibeLang
+	return computed
+}
+
 // vibelangSchemaProperties returns the property assignments of a struct's
 // field schemas, one for each of members, the members of a type literal.
 func (p *Parser) vibelangSchemaProperties(members []*ast.Node) []*ast.Node {
@@ -1251,6 +1264,7 @@ func (p *Parser) vibelangSchemaProperties(members []*ast.Node) []*ast.Node {
 			// Written mutable (D134): the field's key is mutable.
 			value = p.vibelangSchemaCall("mutableKey", name.Loc, value)
 		}
+		name = p.vibelangSchemaPropertyName(name)
 		property := p.vibelangSpanning(p.factory.NewPropertyAssignment(nil /*modifiers*/, name, nil /*postfixToken*/, nil /*typeNode*/, value), core.NewTextRange(name.Pos(), value.End()))
 		// Preserve a written comma for the schema-body separator diagnostic.
 		if member.End() > 0 && p.sourceText[member.End()-1] == ',' {

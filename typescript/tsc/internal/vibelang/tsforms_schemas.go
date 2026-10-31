@@ -208,6 +208,17 @@ func structFieldsType(c *checker.Checker, file *ast.SourceFile, call *ast.Node, 
 	return "{\n" + indent + "  " + strings.Join(fields, "\n"+indent+"  ") + "\n" + indent + "}", true
 }
 
+// A noncomputed __proto__: value sets a native object's prototype. A
+// schema field creates an own key instead (detail 111). Shorthand and
+// computed property definitions retain their ordinary own-key meaning.
+func isNativeProtoSetter(property *ast.Node) bool {
+	if !ast.IsPropertyAssignment(property) {
+		return false
+	}
+	name := property.Name()
+	return (ast.IsIdentifier(name) || ast.IsStringLiteral(name)) && name.Text() == "__proto__"
+}
+
 // structFieldType returns property, a field of a Schema.Struct's object, as
 // a member of an object type.
 func structFieldType(c *checker.Checker, file *ast.SourceFile, property *ast.Node, indent string) (string, bool) {
@@ -216,6 +227,9 @@ func structFieldType(c *checker.Checker, file *ast.SourceFile, property *ast.Nod
 	switch {
 	case ast.IsPropertyAssignment(property):
 		name := property.Name()
+		if isNativeProtoSetter(property) {
+			return "", false
+		}
 		if !ast.IsIdentifier(name) && !ast.IsStringLiteral(name) && !ast.IsNumericLiteral(name) {
 			return "", false
 		}
