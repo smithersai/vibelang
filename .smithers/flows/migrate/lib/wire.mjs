@@ -288,6 +288,9 @@ export function repositoryPackages(root) {
   return found
 }
 
+// A config a build can load: vite.config.ts, or a named one such as vite.node.config.ts.
+const viteConfigFile = /^vite(?:st)?(?:\.[\w-]+)?\.config\.m?[jt]s$/
+
 // A dependency on a workspace package by its source: workspace:, file:, link: or *.
 const localSpec = /^(?:workspace:|file:|link:|\*$)/
 
@@ -326,7 +329,7 @@ export function viteAppConfigs(root, migrated) {
       const path = dir ? posix.join(dir, entry.name) : entry.name
       if (entry.isDirectory()) {
         if (!skippedDirectory(entry.name) && !testDirectory(entry.name)) walk(path)
-      } else if (viteConfigNames.includes(entry.name)) configs.push(path)
+      } else if (viteConfigFile.test(entry.name)) configs.push(path)
     }
   }
   walk("")

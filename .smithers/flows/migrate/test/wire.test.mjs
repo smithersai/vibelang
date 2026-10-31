@@ -258,6 +258,25 @@ test("rootTsconfigs lists the tsconfig files that extend no other of the reposit
   }
 })
 
+// opencode: script/build-node.ts calls build(mainConfig(input)) from vite.node.config.ts.
+test("wireViteApps wires a named Vite config that a build script loads", () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-vite-named-"))
+  try {
+    mkdirSync(join(root, "packages/theme"), { recursive: true })
+    mkdirSync(join(root, "packages/cli"), { recursive: true })
+    writeFileSync(join(root, "packages/theme/package.json"), JSON.stringify({ name: "theme" }))
+    writeFileSync(join(root, "packages/cli/package.json"), JSON.stringify({ name: "cli", dependencies: { theme: "workspace:*" } }))
+    writeFileSync(join(root, "packages/cli/vite.node.config.ts"), "import { defineConfig } from \"vite\"\n\nexport const mainConfig = () => defineConfig({ plugins: [solid()] })\n")
+    writeFileSync(join(root, "packages/cli/vite.config.backup.ts.txt"), "not a config\n")
+    const wired = wireViteApps({ root, packages: [{ dir: "packages/theme" }], ts, specsFor: () => ({ vibelang: "file:/t/v.tgz", "vibelang-vite": "file:/t/p.tgz" }) })
+    assert.deepEqual(wired.warnings, [])
+    assert.deepEqual(wired.configs, ["packages/cli/vite.node.config.ts"])
+    assert.match(readFileSync(join(root, "packages/cli/vite.node.config.ts"), "utf8"), /plugins: \[vibelang\(\), solid\(\)\]/)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
 test("wireBunTests preloads vibelang/bun in every package that runs bun test and reaches migrated sources", () => {
   const root = mkdtempSync(join(tmpdir(), "migrate-bun-tests-"))
   try {

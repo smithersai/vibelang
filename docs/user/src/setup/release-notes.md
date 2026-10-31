@@ -15,6 +15,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Running the migrate flow setup again kept an existing `.vibelang/eslint.config.mjs` where the lint script already ran it, so a project kept the rules of the older config; setup now writes the config again.
 
+- The migrate flow skipped a named Vite config such as `vite.node.config.ts`, with no warning, so a build that loads one failed on the first `.vibe` module; setup now adds `vibelang-vite` to it, or warns where it cannot.
+
 - Editor parsing rejected `for try` `Stream` loops; the tree-sitter grammar now recognizes the loop and its `continue` and `break` statements.
 
 - In a project that emits declarations, `vibelang --fix` removed an import such as `import * as DateTime from "effect/DateTime"` that the declaration file still printed, through a local type an export names (`type NonNull<V> = V extends DateTime.Utc ? …`), a conditional type or a written `keyof DateTime.Utc`, so the declaration imported `{ DateTime } from "effect"`; `--fix` now keeps every import the file's declaration keeps.
