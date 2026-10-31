@@ -495,9 +495,8 @@ available for diagnosis. Only successful generation is used for measurement.
   installs its own. Its targets are declared in `packages/PACKAGE.ts`.
 - **`:tree` is coarse.** Any change reruns the repository-wide checks. Naming
   what each one reads would let a case change skip the docs checks.
-- **Not yet in the graph.** ts-mapper, create-vibelang, the
-  editors, the examples, `scripts/e2e.sh` and the LSP smoke test run outside
-  it.
+- **Not yet in the graph.** `ts-mapper`, `create-vibelang`, the
+  editors, the examples and `scripts/e2e.sh` run outside it.
 
 `//:spec-lint` runs `docs/tools/spec-lint.ts`, the specification linters. Each rule is one class of inconsistency a specification review found, such as a resolution claim VIP-39's table does not list, and `docs/tools/spec-lint.test.ts` shows each rule failing on the defect it was written for. `//:docs-tools` depends on it, so the pre-merge gate runs it. Its inputs are `docs/design/**` and the linter's two files. Run it alone with `bun docs/tools/spec-lint.ts`. A new class of inconsistency gets a rule and a failing-defect test in the commit that fixes it.
 

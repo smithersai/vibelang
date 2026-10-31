@@ -860,6 +860,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Runtime entry tests could fail with only a missing exit code; they now report the child host, signal, elapsed time and timeout flag without recording source or output content.
 
+- The build guide incorrectly listed the LSP smoke test as outside the graph; it now consistently identifies `//typescript/vibelang:lsp-smoke` as a cached target.
+
 - Formatting valid `for` heads with `is` patterns could fail with an internal parse error; they now format at narrow and normal widths while keeping `is` attached to its subject.
 - Formatting native `Option` control flow could reject parenthesized `return (match …)` expressions and binding `is` branches; these forms now format while preserving their parsed structure.
 - A dprint `operatorPosition` of `sameLine` or `maintain` could wrap an `is` pattern onto the next line at a narrow width and fail with `')' expected`; the pattern now stays on the line of `is`.

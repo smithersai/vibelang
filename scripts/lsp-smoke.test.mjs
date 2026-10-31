@@ -35,6 +35,11 @@ test("LSP smoke is a cached compiler-suite target with editor and fixture inputs
   assert.match(target.shell, /sh typescript\/vibelang\/lsp-smoke\.sh --no-build/)
   assert.equal(target.sandbox, "none")
   assert.ok(target.tools.includes("node"))
+  const guide = read("docs/maintainers/build.md")
+  assert.ok(guide.includes("//typescript/vibelang:lsp-smoke"), "the guide must name the registered target")
+  const manualOnly = guide.match(/- \*\*Not yet in the graph\.\*\*([\s\S]*?)(?=\n\n|$)/)?.[1] ?? ""
+  assert.doesNotMatch(manualOnly, /\bLSP smoke\b|\blsp-smoke\b/i,
+    "the registered editor smoke must not also be documented as outside the graph")
 })
 
 test("the graph's no-build smoke path uses prepared outputs without rebuilding the runtime", () => {
