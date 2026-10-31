@@ -42,6 +42,10 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Ordinary formatter styling could be rejected for changing emitted token spellings; preservation checks now compare parsed meaning and declarations while retaining diagnostic, directive and source-map checks.
 
+- The specification’s Functions chapter cited thirteen rules by their numbers in a private decision log. It now cites the VIP amendments that record them (VIP-1, VIP-3, VIP-4, VIP-5, VIP-27, VIP-28 and VIP-33).
+
+- The specification’s introduction cited three rules by their numbers in a private decision log, which a reader of the repository cannot look up. It now cites the VIP-7 and VIP-38 amendments that record them.
+
 - `vibelang-format` and the `vibelang/prettier` plugin wrote double quotes and wrapped at 120 columns whatever the repository's formatter settings said, so in a repository such as foldkit (Oxfmt, `singleQuote`, `printWidth: 80`) `.vibe` files differed in style from its `.ts` files. They now take the quote style and print width from the repository's Oxfmt, Prettier or dprint configuration, or from Prettier's options.
 
 - Under Bun, the loader and bundler plugins failed with `ENOTDIR` on a relative import of a file that is not a script, such as `./prompt.txt`, which broke `Bun.build` in a project that imports text; they now leave that import to Bun.
@@ -109,6 +113,14 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Duplicate data variants reported a legacy error only on the repeated name; they now report TypeScript’s `TS2300` on both source names, matching duplicate fields.
 
 - An Effect TypeScript counterpart in the pattern-matching chapter did not compile under `tsc --strict`: it used `Symbol.customMatcher`, which TypeScript does not declare. It now uses the chapter's stand-in key, and a docs test type-checks every counterpart in the specification and the VIPs.
+
+- The diagnostic appendix omitted historical code changes and left a retired code unmarked; it now lists the changed meanings and keeps the old bodyless-declaration code retired.
+
+- Safe-looking built-in calls had unclear throw contracts, and padding counts were treated like `repeat` counts. The spec now uses each selected signature’s full contract, follows JavaScript’s padding rules, and wraps affected examples and their callers.
+
+- Schema `Record` types could lose required or readonly keys through a referenced value schema; conflicting or uncertain decoded key flags now report `EK2109`, and `vibelang --fix` retains explicit Effect codecs with the same declarations and decoding.
+
+- Empty type argument lists on schema references, such as `Address<>`, were silently ignored; they now report `EK2109`, and `vibelang --fix` removes them while preserving comments and decoded values.
 
 - Editor parsing rejected `for try` `Stream` loops; the tree-sitter grammar now recognizes the loop and its `continue` and `break` statements.
 
@@ -485,6 +497,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 | Before | Now |
 | --- | --- |
 | A required schema field whose referenced codec has optional or uncertain decoded key flags | `EK2109`: run `vibelang --fix` to keep the existing codec as an explicit `Schema.Struct` value. Written optional fields keep their optional behavior. |
+| A `Record` value referenced optional decoded keys or a readonly `Record` referenced mutable decoded keys | `EK2109`; `vibelang --fix` preserves the existing codecs, declarations and decoding. Schema-error declarations retain their constructors and matchers. |
+| A schema reference with an empty type argument list, such as `schema Name = Address<>` | `EK2109`: run `vibelang --fix` to remove the empty list. The codec, decoded values and declaration types stay the same. |
 | `vibelang.diagnostics` | Run `vibelang --fix` to move configurable warning settings to `vibe.severities`. Remove obsolete legacy policy entries before rerunning `--fix`. |
 
 ### Diagnostic codes
@@ -717,6 +731,14 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A tool that reads a `.vibe` file through the TypeScript mapper, such as Oxlint through the Oxc fork's VibeLang hook, reported `TS1338: 'infer' declarations are only permitted in the 'extends' clause of a conditional type` at each `: infer _` return annotation, because the mapper kept it in the TypeScript it returns. The mapper now drops the annotation, and TypeScript infers the return type from the body, as `infer _` means.
 
 - The deployed-release check mixed fetching pages with checking their release claims; page validation is now separate, preserving the same version and platform diagnostics.
+
+- A failed register benchmark left its temporary workspace on disk; it now removes that workspace on setup or compiler failure while preserving an explicit `--out` directory for inspection.
+
+- Knip export collection duplicated rest-binding handling between object and array patterns; both now use one traversal, preserving nested defaults, omitted elements and exported names.
+
+- Published Markdown now has explicit checks for links around quoted, nested and unclosed code fences, keeping code intact while rewriting prose links.
+
+- Built-site validation now has explicit checks for repeated broken links and embedded images, preserving its diagnostics while simplifying page reading.
 
 - The `alchemy-stack` example failed on `effect@4.1.0`: importing `@alchemy.run/cloudflare` failed with `Cannot find module .../effect/dist/Crypto.js`, because `alchemy@2.0.0-beta.84` imports the removed `effect/Crypto`. The example now patches `alchemy` with Alchemy's own Effect 4.1 port on install, and the Alchemy page shows how to apply the patch.
 
