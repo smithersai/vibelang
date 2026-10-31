@@ -424,3 +424,40 @@ if (visit(1) !== "99" || iteratorCalls !== 1) throw new Error("sequential array 
 iteratorCalls = 0
 if (visit(2) !== "1,2" || iteratorCalls !== 0) throw new Error("parallel array reuse changed")
 ```
+
+<a id="for-try-fiber-owner"></a>A plain `fork` in a `for try` item belongs to the current consuming fiber ([Running Effects](/spec/002-running#for-try)), not to the item. This witness waits for the child to start, lets the item and loop finish, then releases and joins it from the continuing owner. The gates establish this trace without promising scheduling order for unrelated fibers.
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-20
+effect function consume(items: Stream.Stream<number>) {
+  for try (const item of items) { fork work(item) }
+  try parentWork() // plain children may still run while this consuming fiber continues
+}
+```
+
+```ts [Effect]
+// Stream consuming-fiber witness: VIP-17, VIP-20, VIP-31
+import { Deferred, Effect, Exit, Fiber, Stream } from "effect"
+
+const trace: string[] = []
+const result = await Effect.runPromiseExit(Effect.gen(function* () {
+  const started = yield* Deferred.make<void>()
+  const release = yield* Deferred.make<void>()
+  const children: Array<Fiber.Fiber<void>> = []
+  yield* Stream.runForEachWhile(Stream.make(1), () => Effect.gen(function* () {
+    children.push(yield* Effect.forkChild(Effect.gen(function* () {
+      yield* Deferred.succeed(started, undefined)
+      yield* Deferred.await(release)
+      trace.push("child")
+    })))
+    yield* Deferred.await(started)
+    trace.push("item")
+    return true
+  }))
+  trace.push("loop")
+  yield* Deferred.succeed(release, undefined)
+  yield* Fiber.join(children[0])
+  trace.push("joined")
+}))
+if (!Exit.isSuccess(result) || trace.join() !== "item,loop,child,joined") throw new Error("consuming-fiber ownership changed")
+```
