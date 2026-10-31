@@ -167,3 +167,69 @@ test("bun-resolve-filter", async () => {
     arbitrary: layout, numRuns: 200, regressions, check: checkLayout
   })
 })
+
+const claimRule = 'docs/design/src/007-tooling.md: "Bundler plugins use the same names"; packages/unplugin/README.md: "Bun maps a compiled module\'s"'
+test("Bun leaves a rewritten TypeScript import to Bun even when another directory has the same .vibe basename", () => {
+  const root = mkdtempSync(join(tmpdir(), "vibelang-bun-claims-"))
+  try {
+    write(root, {
+      ".jj/repo": "", "package.json": "{}",
+      "src/main.vibe": 'import { value } from "./helper.js"\n',
+      "src/helper.ts": "export const value = 42\n",
+      "other/helper.vibe": "export const value = 7\n"
+    })
+    const hook = bunHook(root)
+    assert.ok(hook.filter.test("./helper.js"), "another directory contributes the basename")
+    assert.equal(hook.resolve("./helper.js", join(root, "src/main.vibe")), undefined,
+      "the Bun hook serves .vibe and module outputs; Bun resolves .ts itself")
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+// The regex receives no importer, so matching is a necessary precondition,
+// not a claim. A claim is a filtered callback returning a path. Compare that
+// complete hook with an independent filesystem model, including basename
+// collisions that necessarily match in multiple importer directories.
+test("bun-served-layouts", async () => {
+  const spec = readFileSync(new URL("../../../docs/design/src/007-tooling.md", import.meta.url), "utf8")
+  assert.ok(spec.includes("Bundler plugins use the same names"))
+  const arbitrary = fc.record({
+    name: fc.constantFrom("leaf", "x+y", "a.b", "(p)", "$"),
+    local: fc.constantFrom("missing", ".vibe", ".ts", ".tsx", ".js"),
+    otherVibe: fc.boolean(), collision: fc.boolean(),
+    importer: fc.constantFrom(".ts", ".vibe"),
+    form: fc.constantFrom("explicit", "rewritten", "extensionless", "declaration", "missing-declaration", "bare"),
+    query: fc.constantFrom("", "?raw")
+  })
+  await checkProperty(fc, {
+    name: "bun-served-layouts", rule: claimRule,
+    command: "node --test test/bun-filter.test.mjs",
+    arbitrary, numRuns: 300, regressions,
+    check(input) {
+      const root = mkdtempSync(join(tmpdir(), "vibelang-bun-claims-"))
+      try {
+        const { name, local, otherVibe, collision, importer, form, query } = input
+        const files = { ".jj/repo": "", "package.json": "{}" }
+        if (local !== "missing") files["src/" + name + local] = "export const value = 42\n"
+        if (collision) files["src/" + name + ".js"] = "export const value = 1\n"
+        if (otherVibe) files["other/" + name + ".vibe"] = "export const value = 7\n"
+        const suffix = { explicit: ".vibe", rewritten: ".js", extensionless: "",
+          declaration: ".vibe.text.js", "missing-declaration": ".vibe.absent.js", bare: ".vibe" }[form]
+        // Both module-output spellings can be served only if their source exists;
+        // whether the declaration exists is diagnosed by the compiler at load.
+        const specifier = (form === "bare" ? "pkg/" : "./") + name + suffix + query
+        write(root, files)
+        const hook = bunHook(root)
+        const actual = hook.filter.test(specifier) ? hook.resolve(specifier, join(root, "src/main" + importer)) : undefined
+        const hasVibe = local === ".vibe"
+        let expected
+        if (form !== "bare" && hasVibe) {
+          if (form === "explicit" || form === "extensionless" || form === "rewritten" && !collision) expected = join(root, "src/" + name + ".vibe") + query
+          if (form === "declaration" || form === "missing-declaration") expected = join(root, "src/" + name + suffix) + query
+        }
+        assert.equal(actual, expected, JSON.stringify(input))
+        if (expected) assert.ok(hook.filter.test(specifier), "every served specifier passes the filter")
+        if (form === "rewritten" && !otherVibe && !hasVibe) assert.ok(!hook.filter.test(specifier), "unrelated .js names bypass the filter")
+      } finally { rmSync(root, { recursive: true, force: true }) }
+    }
+  })
+})

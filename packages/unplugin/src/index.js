@@ -263,7 +263,8 @@ export const unplugin = createUnplugin((options = {}, meta) => {
     const stem = target.slice(0, -3)
     // Only a compiled module has rewritten .ts imports. esbuild maps those itself,
     // and a plugin result would load the .ts file in the vibelang namespace.
-    const sources = isCompiled(importer) && meta.framework !== "esbuild"
+    // Bun also maps these itself; its hook serves only .vibe and module outputs.
+    const sources = isCompiled(importer) && meta.framework !== "esbuild" && meta.framework !== "bun"
       ? [".vibe", ".ts", ".tsx"] : [".vibe"]
     for (const extension of sources) if (existsSync(stem + extension)) return stem + extension + query
   }

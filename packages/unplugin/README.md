@@ -145,7 +145,11 @@ as `file:line:column - error TS2322: text`.
   declarations' outputs. Bun 1.4.4 miscompiles a CommonJS dependency, such as
   `ws` under `@effect/platform-node`, once a resolve hook matches the `.js`
   imports inside the packages a build bundles. Bun maps a compiled module's
-  `./x.js` to `x.ts` or `x.tsx` itself. A `.vibe` file added during a build
+  `./x.js` to `x.ts` or `x.tsx` itself, even when another directory has
+  an `x.vibe` with the same basename; the plugin leaves that import to Bun.
+  A filter sees only the specifier, so matching it is a precondition:
+  the resolve callback claims a path only when it serves the resolved module.
+  A `.vibe` file added during a build
   is reached by its `.vibe` or extensionless name until the next build.
 - **webpack and Rspack:** the error carries its position in the message only;
   unplugin doesn't pass a location to webpack. webpack before 5.112.0 can miss

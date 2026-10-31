@@ -1,0 +1,13 @@
+{
+  "property": "bun-served-layouts",
+  "rule": "docs/design/src/007-tooling.md: \"Bundler plugins use the same names\"",
+  "input": {
+    "name": "helper",
+    "local": ".ts",
+    "otherVibe": true,
+    "collision": false,
+    "importer": ".vibe",
+    "form": "rewritten",
+    "query": ""
+  }
+}
