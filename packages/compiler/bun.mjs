@@ -99,6 +99,11 @@ async function resolveImports(path, contents, loader) {
   return { contents: await result.outputs[0].text(), loader: "js" }
 }
 
+// Only a relative import can name a .vibe module, and a dependency has none: a
+// workspace package's real path is outside node_modules. Scanning dependencies,
+// or resolving their imports twice, is what would make a preload slow.
+const inDependency = (path) => /[\\/]node_modules[\\/]/.test(path)
+
 Bun.plugin({
   name: "vibelang",
   setup(build) {
@@ -116,6 +121,7 @@ Bun.plugin({
       try { physical = realpathSync(file) } catch { if (!emittedSource) return }
       if (discovered.has(physical)) return
       discovered.add(physical)
+      if (inDependency(physical)) return
       let imports
       try {
         code ??= readFileSync(file, "utf8")
@@ -140,7 +146,7 @@ Bun.plugin({
       }
     }
     build.onResolve({ filter: /.*/ }, ({ path, importer }) => {
-      if (discovering) return undefined
+      if (discovering || inDependency(importer ?? "")) return undefined
       discovering = true
       try {
         const from = pathOf(importer)

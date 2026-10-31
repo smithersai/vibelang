@@ -303,3 +303,43 @@ test("the resolvers pass over a relative import of a file that is not a script",
     assert.equal(result.stdout, "undefined\n", module)
   }
 })
+
+// A preload pays for what it scans, and a large package's tests time out if that
+// is every module of every dependency. Only a relative import can name a .vibe
+// module, so the walk stops at node_modules; a workspace package's real path
+// does not, so its extensionless imports still reach .vibe.
+test("the preload scans a project's modules, no dependency's, and still reaches a workspace package", { skip }, (t) => {
+  const tsconfig = JSON.stringify({
+    compilerOptions: { target: "ESNext", module: "ESNext", moduleResolution: "Bundler", strict: true, types: [], skipLibCheck: true, noEmit: true },
+    include: ["**/*"]
+  })
+  const { root, bun } = project(t, {
+    "tsconfig.json": tsconfig,
+    "node_modules/dep/package.json": "{\"name\":\"dep\",\"type\":\"module\",\"main\":\"index.js\"}",
+    "node_modules/dep/index.js": "// dep-marker\nexport { inner } from \"./inner.js\"\n",
+    "node_modules/dep/inner.js": "// dep-marker\nexport const inner = 1\n",
+    "packages/lib/package.json": "{\"name\":\"lib\",\"type\":\"module\",\"main\":\"index.ts\"}",
+    "packages/lib/tsconfig.json": tsconfig,
+    "packages/lib/index.ts": "export { value } from \"./value\"\n",
+    "packages/lib/value.vibe": "export const value: number = 41\n",
+    "scan.mjs": [
+      "const Original = Bun.Transpiler",
+      "let dependency = 0",
+      "Bun.Transpiler = function (options) {",
+      "  const transpiler = new Original(options)",
+      "  const scan = transpiler.scanImports.bind(transpiler)",
+      "  transpiler.scanImports = (code, ...rest) => { if (code.includes(\"dep-marker\")) dependency++; return scan(code, ...rest) }",
+      "  return transpiler",
+      "}",
+      "await import(process.env.VIBELANG_TEST_PRELOAD)",
+      "process.on(\"exit\", () => console.error(`dependency modules scanned: ${dependency}`))",
+      ""
+    ].join("\n"),
+    "main.ts": "import { inner } from \"dep\"\nimport { value } from \"lib\"\nconsole.log(inner + value)\n"
+  })
+  symlinkSync("../packages/lib", join(root, "node_modules/lib"))
+  const result = bun(["--preload", "./scan.mjs", "main.ts"], { VIBELANG_TEST_PRELOAD: preload })
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(result.stdout, "42\n")
+  assert.match(result.stderr, /dependency modules scanned: 0\n/)
+})
