@@ -205,6 +205,17 @@ func syntaxError(source string, diagnostic *ast.Diagnostic) error {
 	return fmt.Errorf("vibelang format: %d:%d: %s", line, column, diagnostic.String())
 }
 
+// sourceLine returns the line of text that holds pos.
+func sourceLine(text string, pos int) string {
+	pos = min(max(pos, 0), len(text))
+	start := strings.LastIndexByte(text[:pos], '\n') + 1
+	end := strings.IndexByte(text[pos:], '\n')
+	if end < 0 {
+		return text[start:]
+	}
+	return text[start : pos+end]
+}
+
 // lineColumn returns the one-based line and column of pos.
 func lineColumn(text string, pos int) (int, int) {
 	pos = min(max(pos, 0), len(text))
@@ -266,6 +277,18 @@ func lineIndent(text string, pos int) string {
 	return text[start:end]
 }
 
+// parenthesized returns r, a contract's range, with the parentheses written
+// right around it, which its placeholder then keeps as written. A contract
+// alone in parentheses would otherwise become ($v1), which TypeScript reads
+// as a parameter list before =>: in (ok): (void!never!never) | (never!E!never)
+// => …, the return type ($v1) | ($v2) => … does not parse.
+func (e *encoder) parenthesized(r core.TextRange) core.TextRange {
+	for r.Pos() > 0 && r.End() < len(e.source) && e.source[r.Pos()-1] == '(' && e.source[r.End()] == ')' {
+		r = core.NewTextRange(r.Pos()-1, r.End()+1)
+	}
+	return r
+}
+
 // opaque replaces r with a placeholder of kind for its text.
 func (e *encoder) opaque(kind placeholderKind, r core.TextRange, prefix, suffix string, width int) {
 	text := e.text(r)
@@ -298,6 +321,9 @@ func (e *encoder) form(form parser.VibeSyntax) error {
 	switch form.Kind {
 	case parser.VibeSyntaxEffectType, parser.VibeSyntaxTopic:
 		r := form.Range
+		if form.Kind == parser.VibeSyntaxEffectType {
+			r = e.parenthesized(r)
+		}
 		e.opaque(placeholderText, r, "", "", firstLineWidth(e.text(r)))
 	case parser.VibeSyntaxMutable:
 		if form.Index {
@@ -692,7 +718,8 @@ func (e *encoder) finish() (*encoding, error) {
 	file := parser.ParseSourceFile(typeScriptOptions, result.text, core.ScriptKindTS)
 	if diagnostics := file.Diagnostics(); len(diagnostics) != 0 {
 		line, column := lineColumn(result.text, diagnostics[0].Pos())
-		return nil, fmt.Errorf("vibelang format: internal error: the TypeScript form does not parse at %d:%d: %s\n%s", line, column, diagnostics[0].String(), result.text)
+		// Only the line that does not parse: the whole form is the file again.
+		return nil, fmt.Errorf("vibelang format: internal error: the TypeScript form does not parse at %d:%d: %s\n%s", line, column, diagnostics[0].String(), sourceLine(result.text, diagnostics[0].Pos()))
 	}
 	tokens := collectTokens(file, result.text)
 	found := map[string]int{}

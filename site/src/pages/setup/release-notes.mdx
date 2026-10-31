@@ -186,6 +186,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The editor action "Convert to a VibeLang function with an error per await" on an `async function` declaration without `export` produced overlapping edits, which editors reject; the inserted error declaration now comes before the edit that removes `async`.
 
+- `vibelang-format` failed with `internal error: the TypeScript form does not parse` on a valid return type that is a union of parenthesized contracts, such as `(ok: boolean): (void!never!never) | (never!Missing!never) => …`, and printed the whole file's TypeScript form; it now formats the file, and such an error shows only the line that does not parse.
+
 - Under Bun, `vibelang/bun` loaded a `.vibe` module only through a relative import, so an import through a tsconfig `paths` alias, such as `@/x` with `"@/*": ["./src/*"]`, failed with `Cannot find module '@/x'` once `x.ts` became `x.vibe`; the preload now resolves the alias to the `.vibe` module TypeScript resolves it to.
 
 - Compiler fuzz checks sometimes failed on a faster host after long literal `match` checks had been fixed, because a pending test still expected them to hang; they now run as active regressions, with string and numeric arm-order mutations and a separate 3,000-arm stress test.

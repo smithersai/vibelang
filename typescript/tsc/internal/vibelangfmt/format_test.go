@@ -51,6 +51,15 @@ function hello(id: string): string!NotFound!Users {
   return getUser(id).name
 }
 `,
+	// alchemy-24: a contract alone in parentheses is a parenthesized type,
+	// which a function type's parameter list must not swallow.
+	"parenthesized effect types": `error Missing { message: string }
+export const validate = effect (ok: boolean): (void!never!never) | (never!Missing!never) => (ok ? try Effect.void : throw new Missing({ message: "bad" }))
+type Either = (string!!) | (number!Missing)
+type Both = (string!Missing) & (number!!)
+type Many = ((string!!))[]
+type Pick = (ok: boolean) => (string!!) | (never!Missing)
+`,
 	"declarations": `/** A missing user. */
 export error NotFound { id: string }
 error Timeout

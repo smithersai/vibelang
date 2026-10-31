@@ -1,0 +1,2 @@
+go test fuzz v1
+string("error Missing { message: string }\nexport const validate = effect (ok: boolean): (void!never!never) | (never!Missing!never) => (ok ? try Effect.void : throw new Missing({ message: \"bad\" }))\n")
