@@ -1,0 +1,9 @@
+{
+  "key": "migrate:private-adapter-declaration-addition",
+  "manifest": { "exports": { ".": { "types": "./main.d.ts" } } },
+  "before": { "main.d.ts": "export declare function waitForAnimation(): void;\n" },
+  "after": {
+    "main.d.ts": "export declare function waitForAnimation(): void;\n",
+    "platform.d.ts": "export declare function animations(): Animation[];\n"
+  }
+}

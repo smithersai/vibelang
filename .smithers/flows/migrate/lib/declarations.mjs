@@ -9,9 +9,9 @@
 // it that way (D298) and TypeScript resolves both spellings to the same
 // x.d.ts; and an import or export list sorts, because vibelang-format sorts
 // the source's and the declaration prints that order.
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs"
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
-import { join, resolve, sep } from "node:path"
+import { join, posix, resolve, sep } from "node:path"
 import { assertFinished, parseDiagnostics } from "./diagnostics.mjs"
 import { quote, rel, run } from "./util.mjs"
 
@@ -132,21 +132,162 @@ export function lineDiff(before, after, limit = 12) {
   return out
 }
 
-/** Compares two declaration trees after canonicalizing every file. */
+/** Published declaration roots, resolved through the aliases recorded by the emit. Unknown paths fail closed. */
+export function declarationSurface(ts, dir, manifest, aliases = {}) {
+  const files = listDeclarations(dir)
+  const known = new Set(files)
+  const resolveName = (name, from = ".") => {
+    const path = posix.normalize(posix.join(from, name))
+    if (aliases[path]) return aliases[path]
+    if (known.has(path)) return path
+    const stem = path.replace(/(?:\.d\.vibe\.ts|\.[cm]?[jt]s|\.vibe)$/, "")
+    return [stem + ".d.ts", stem + ".d.mts", stem + ".d.cts", path + ".d.ts", path + "/index.d.ts"].find(f => known.has(f))
+  }
+  const targets = []
+  const strings = value => {
+    if (typeof value === "string") targets.push(value)
+    else if (Array.isArray(value)) value.forEach(strings)
+    else if (value && typeof value === "object") Object.values(value).forEach(strings)
+  }
+  if (manifest.exports !== undefined) strings(manifest.exports)
+  strings(manifest.types ?? manifest.typings)
+  if (!targets.length) strings(manifest.main ?? manifest.module)
+  if (!targets.length) return { roots: files, unresolved: ["no published entry points"] }
+  const roots = new Set()
+  const unresolved = []
+  for (const target of targets) {
+    if (target.includes("*")) {
+      const [head, tail] = posix.normalize(target).split("*")
+      const names = new Set([...files, ...Object.keys(aliases)])
+      // Also expose declaration equivalents of runtime wildcard targets.
+      const patternTail = tail.replace(/\.[cm]?[jt]s$/, ".d.ts")
+      const matches = [...names].filter(name => name.startsWith(head) && (name.endsWith(tail) || name.endsWith(patternTail)))
+      for (const name of matches) {
+        const file = resolveName(name)
+        if (file) roots.add(file)
+      }
+      if (!matches.length) unresolved.push(target)
+    } else {
+      const file = resolveName(target)
+      if (file) roots.add(file)
+      else unresolved.push(target)
+    }
+  }
+  // Every referenced declaration is public, including imports used only in types.
+  const reachable = new Set()
+  const visit = file => {
+    if (reachable.has(file)) return
+    reachable.add(file)
+    const text = readFileSync(join(dir, file), "utf8")
+    const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true)
+    const follow = (name, base = posix.dirname(file), seen = new Set()) => {
+      const self = manifest.name && (name === manifest.name || name.startsWith(manifest.name + "/"))
+      if (name.startsWith("#") || self) {
+        if (seen.has(name)) { unresolved.push(file + ": cyclic package alias " + name); return }
+        const map = self ? manifest.exports : manifest.imports
+        const key = self ? "." + name.slice(manifest.name.length) : name
+        let value = map?.[key] ?? (self && key === "." && (typeof map === "string" || !Object.keys(map ?? {}).some(k => k.startsWith("."))) ? map : undefined)
+        if (value === undefined) {
+          const pattern = Object.keys(map ?? {}).filter(k => k.includes("*")).sort((a, b) => b.length - a.length).find(k => {
+            const [head, tail] = k.split("*")
+            return key.startsWith(head) && key.endsWith(tail)
+          })
+          if (pattern) {
+            const [head, tail] = pattern.split("*")
+            const star = key.slice(head.length, tail.length ? -tail.length : undefined)
+            const substitute = v => typeof v === "string" ? v.replaceAll("*", star) : Array.isArray(v) ? v.map(substitute) : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, substitute(x)])) : v
+            value = substitute(map[pattern])
+          }
+        }
+        const names = []
+        const collect = v => {
+          if (typeof v === "string") names.push(v)
+          else if (Array.isArray(v)) v.forEach(collect)
+          else if (v && typeof v === "object") Object.values(v).forEach(collect)
+        }
+        collect(value)
+        if (!names.length) unresolved.push(file + ": unresolved package alias " + name)
+        else for (const target of names) follow(target, ".", new Set([...seen, name]))
+        return
+      }
+      if (!name.startsWith(".")) return // external dependency
+      const dependency = resolveName(name, base)
+      if (dependency) visit(dependency)
+      else unresolved.push(file + ": " + name)
+    }
+    const walk = node => {
+      if (ts.isStringLiteral(node) && isModuleName(ts, node)) follow(node.text)
+      ts.forEachChild(node, walk)
+    }
+    walk(source)
+    for (const ref of source.typeReferenceDirectives.filter(ref => ref.fileName.startsWith("."))) follow(ref.fileName)
+    for (const ref of source.referencedFiles) follow(ref.fileName.startsWith(".") ? ref.fileName : "./" + ref.fileName)
+  }
+  for (const file of roots) visit(file)
+  return { roots: [...roots].sort(), reachable: [...reachable].sort(), unresolved }
+}
+
+/** Snapshot entry-point aliases while the original package manifest and tsconfigs still exist. */
+export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest = JSON.parse(readFileSync(join(packageDir, "package.json"), "utf8"))) {
+  const aliases = {}
+  for (const { tsconfig, prefix } of projects) {
+    const path = resolve(packageDir, tsconfig)
+    const config = ts.readConfigFile(path, ts.sys.readFile)
+    if (config.error) throw new Error("cannot read declaration project " + tsconfig)
+    const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, posix.dirname(path), { allowNonTsExtensions: true }, path,
+      undefined, [{ extension: ".vibe", isMixedContent: false, scriptKind: ts.ScriptKind.Deferred }])
+    const emitted = { ...parsed, options: { ...parsed.options, outDir: resolve(dir, prefix), declarationDir: undefined, composite: false, declaration: true, emitDeclarationOnly: true } }
+    for (const source of parsed.fileNames.filter(f => !/\.d\.(?:vibe\.)?[cm]?ts$/.test(f))) {
+      // Stock TypeScript does not know .vibe; its output layout is that of .ts.
+      const outputNames = options => ts.getOutputFileNames({ ...parsed, fileNames: parsed.fileNames.map(f => f.replace(/\.vibe$/, ".ts")), options }, source.replace(/\.vibe$/, ".ts"), false)
+      const output = outputNames(emitted.options).find(f => /\.d\.[cm]?ts$/.test(f))
+      if (!output) continue
+      const declaration = rel(dir, output)
+      if (!existsSync(join(dir, declaration))) continue
+      aliases[rel(packageDir, source)] = declaration
+      if (/\.(ts|vibe)$/.test(source)) {
+        for (const ext of [".ts", ".vibe", ".d.vibe.ts"]) aliases[rel(packageDir, source).replace(/\.(ts|vibe)$/, ext)] = declaration
+      }
+      for (const original of outputNames({ ...parsed.options, declaration: true, emitDeclarationOnly: true })) {
+        aliases[rel(packageDir, original)] = declaration
+        aliases[rel(packageDir, original).replace(/\.d\.ts$/, ".js").replace(/\.d\.mts$/, ".mjs").replace(/\.d\.cts$/, ".cjs")] = declaration
+      }
+    }
+  }
+  const surface = declarationSurface(ts, dir, manifest, aliases)
+  writeFileSync(join(dir, "public-surface.json"), JSON.stringify(surface, null, 2) + "\n")
+  return surface
+}
+
+/** Public files are compared byte for byte. Legacy trees without entry-point metadata keep the conservative canonical gate. */
 export function compareDeclarations(ts, baselineDir, currentDir) {
   const before = listDeclarations(baselineDir)
   const after = listDeclarations(currentDir)
+  const surface = dir => {
+    if (existsSync(join(dir, "public-surface.json"))) return JSON.parse(readFileSync(join(dir, "public-surface.json"), "utf8"))
+    if (existsSync(join(dir, "package.json"))) return declarationSurface(ts, dir, JSON.parse(readFileSync(join(dir, "package.json"), "utf8")))
+    return null
+  }
+  const aSurface = surface(baselineDir)
+  const bSurface = surface(currentDir)
+  const resolved = aSurface && bSurface && !aSurface.unresolved.length && !bSurface.unresolved.length
+  const publicFiles = new Set([...(aSurface?.reachable ?? []), ...(bSurface?.reachable ?? [])])
   const afterSet = new Set(after)
   const beforeSet = new Set(before)
   const changed = []
-  for (const file of before.filter((f) => afterSet.has(f))) {
-    const a = canonicalize(ts, readFileSync(join(baselineDir, file), "utf8"), file)
-    const b = canonicalize(ts, readFileSync(join(currentDir, file), "utf8"), file)
+  for (const file of before.filter(f => afterSet.has(f))) {
+    const text = dir => readFileSync(join(dir, file), "utf8")
+    const a = publicFiles.has(file) ? text(baselineDir) : canonicalize(ts, text(baselineDir), file)
+    const b = publicFiles.has(file) ? text(currentDir) : canonicalize(ts, text(currentDir), file)
     if (a !== b) changed.push({ file, diff: lineDiff(a, b) })
   }
-  const removed = before.filter((f) => !afterSet.has(f))
-  const added = after.filter((f) => !beforeSet.has(f))
-  return { identical: !changed.length && !removed.length && !added.length, files: before.length, added, removed, changed }
+  const removed = before.filter(f => !afterSet.has(f))
+  const additions = after.filter(f => !beforeSet.has(f))
+  const addedPrivate = resolved ? additions.filter(f => !publicFiles.has(f)) : []
+  const added = additions.filter(f => !addedPrivate.includes(f))
+  const rootsChanged = resolved && JSON.stringify(aSurface.roots) !== JSON.stringify(bSurface.roots)
+  return { identical: !changed.length && !removed.length && !added.length && !rootsChanged, files: before.length, added, addedPrivate, removed, changed,
+    ...(aSurface || bSurface ? { publicSurface: { before: aSurface, after: bSurface, rootsChanged: Boolean(rootsChanged) } } : {}) }
 }
 
 /**

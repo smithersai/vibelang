@@ -183,6 +183,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The specification gave no warning for an explicit `throw` in a plain `catch` handler, which turns the failure into a defect; it now names lint warning `EK0511` with the quick fix `catch effect`, and the compiler registers the code (reporting it is tracked by a pending acceptance case).
 
+- Migration rejected new private platform-adapter declarations; it now admits unreachable additions as `addedPrivate` while checking published declarations byte for byte.
+
 - Installing `vibelang` alone did not declare the Effect version it supports; the compiler now requires the same exact `effect` peer as the runtime, and release packaging rejects a missing, optional, ranged or mismatched pin.
 
 - A fresh checkout failed the compiler package tests with `TS2883` on every `error` declaration, because `packages/runtime` installed its own Effect beneath the link each fixture uses; `scripts/ci.sh` now gives the runtime the `experiments` copy, and published installs were never affected.

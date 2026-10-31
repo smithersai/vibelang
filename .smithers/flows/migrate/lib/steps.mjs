@@ -9,7 +9,7 @@ import { buildInventory, listSources, readCoverage } from "./inventory.mjs"
 import { defaultLimits, draftPlan, planPrompt, validatePlan } from "./plan.mjs"
 import { fixToFixedPoint, renameBatch, restoreExports, restoreSpecifiers, rewriteExports, rewriteImports, rewriteTotals } from "./codemod.mjs"
 import { check, newErrors, styleProblems, summarize } from "./diagnostics.mjs"
-import { compareDeclarations, emitDeclarations, emitErrorsIn, loadTypeScript } from "./declarations.mjs"
+import { compareDeclarations, recordDeclarationSurface, emitDeclarations, emitErrorsIn, loadTypeScript } from "./declarations.mjs"
 import { compareTests, regressionIssue, runTests } from "./tests.mjs"
 import { countTokens } from "./tokens.mjs"
 import { readIssues } from "./issues.mjs"
@@ -247,7 +247,11 @@ async function checkPackage({ compiler, ts, t, pkg, log }) {
 async function emitPackageDeclarations({ compiler, ts, t, pkg, outDir, log }) {
   const cwd = join(t, pkg.dir)
   const projects = Wire.projectsOf(ts, cwd, pkg.dtsTsconfig)
-  if (projects.length === 1) return emitDeclarations({ compiler, tsconfig: projects[0], cwd, outDir, log, root: t })
+  if (projects.length === 1) {
+    const result = await emitDeclarations({ compiler, tsconfig: projects[0], cwd, outDir, log, root: t })
+    recordDeclarationSurface(ts, outDir, cwd, [{ tsconfig: projects[0], prefix: "." }])
+    return result
+  }
   rmSync(outDir, { recursive: true, force: true })
   let code = 0
   let files = 0
@@ -258,6 +262,7 @@ async function emitPackageDeclarations({ compiler, ts, t, pkg, outDir, log }) {
     files += emitted.files
     diagnostics.push(...emitted.diagnostics)
   }
+  recordDeclarationSurface(ts, outDir, cwd, projects.map(tsconfig => ({ tsconfig, prefix: slug(tsconfig) })))
   return { code, files, diagnostics }
 }
 
@@ -834,7 +839,18 @@ export async function verify(options) {
   for (const pkg of config.packages) {
     const outDir = join(p.batch(b), "dts", slug(pkg.dir))
     const emitted = await emitPackageDeclarations({ compiler, ts, t, pkg, outDir, log: join(logs, `dts-${slug(pkg.dir)}.log`) })
-    declarations[pkg.dir] = compareDeclarations(ts, join(p.baseline, "dts", slug(pkg.dir)), outDir)
+    const baselineDir = join(p.baseline, "dts", slug(pkg.dir))
+    if (!existsSync(join(baselineDir, "public-surface.json"))) {
+      // Upgrade an older run's metadata from its committed baseline manifest.
+      const setup = readJson(p.setup)
+      const original = await Jj.fileAt(t, setup.jj.setupCommit, posix.join(pkg.dir, "package.json"))
+      if (original !== null) {
+        const projects = Wire.projectsOf(ts, join(t, pkg.dir), pkg.dtsTsconfig)
+        recordDeclarationSurface(ts, baselineDir, join(t, pkg.dir),
+          projects.map(tsconfig => ({ tsconfig, prefix: projects.length === 1 ? "." : slug(tsconfig) })), JSON.parse(original))
+      }
+    }
+    declarations[pkg.dir] = compareDeclarations(ts, baselineDir, outDir)
     emitErrors.push(...emitErrorsIn(emitted.diagnostics, migrated))
   }
   const batchErrors = checked.diagnostics.filter((d) => migrated.includes(d.file) && d.category === "error")
