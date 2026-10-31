@@ -187,6 +187,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The migrate flow planned a tool's config that uses Effect, such as `graphql.config.ts`, for `.vibe`, and the tool, which finds its config by name, then failed with `config file not found`. A `*.config.ts` file now stays `.ts`, and a plan that names one is refused.
 
+- Migration setup could lint native files excluded by the original Oxlint policy; its ESLint bridge now preserves `ignorePatterns`, source-extension globs and ordered negations.
 - With a `paths` alias such as `"@/*": ["./lib/*", "./src/*"]`, an import of `@/x.vibe` compiled against `lib/x.d.ts` but the loaders ran `src/x.vibe`; the loaders now resolve it as the compiler does, so both use `lib/x.d.ts`.
 - Compiler fuzz validation left selection modes around rare syntax untested; named splice fixtures now exercise every category and fuzz replay, source spans and donor choices.
 

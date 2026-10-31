@@ -78,6 +78,51 @@ export function extensionAllowlistWarnings(ts, text, file) {
   return warnings
 }
 
+// Keep Oxlint's ordered patterns and each migrated source counterpart.
+// Oxlint supports brace globs and permits negations below ignored directories;
+// ESLint needs descendant patterns and explicit traversal to do the same.
+function nativeIgnorePatterns(patterns) {
+  const convert = value => {
+    const negative = value.startsWith("!")
+    let pattern = negative ? value.slice(1) : value
+    const slash = pattern.indexOf("/")
+    if (slash < 0 || slash === pattern.length - 1) pattern = "**/" + pattern
+    else if (slash === 0) pattern = pattern.slice(1)
+    // Parentheses are literal in Oxlint, not minimatch extglobs.
+    let escaped = ""
+    for (let i = 0; i < pattern.length; i++) {
+      const char = pattern[i]
+      if (char === "\\" && i + 1 < pattern.length) escaped += char + pattern[++i]
+      else escaped += char === "(" ? "\\(" : char
+    }
+    if (escaped.endsWith("/")) escaped += "**/*"
+    else if (escaped.endsWith("/**")) escaped += "/*"
+    const prefix = negative ? "!" : ""
+    return [prefix + escaped, prefix + escaped + "/**/*"]
+  }
+  return patterns.flatMap(pattern => {
+    if (pattern === "") return []
+    const native = pattern
+      .replace(/\.\{([^{}]+)\}$/, (whole, list) => {
+        const parts = list.split(",")
+        if (!parts.some(part => /^(?:[cm]?ts|tsx)$/.test(part))) return whole
+        const mapped = [...new Set(parts.map(part => /^(?:[cm]?ts|tsx)$/.test(part) ? "vibe" : part))]
+        return mapped.length === 1 ? "." + mapped[0] : ".{" + mapped.join(",") + "}"
+      })
+      .replace(/\.(?:[cm]?ts|tsx)$/, ".vibe")
+    const mapped = [...new Set([pattern, native])].flatMap(convert)
+    if (!pattern.startsWith("!")) return mapped
+    // Reopen only ancestors the negated glob can reach. A fixed prefix
+    // must not force traversal through every unrelated ignored directory.
+    const ancestors = []
+    for (const value of mapped) {
+      const parts = value.slice(1).split("/")
+      for (let i = 1; i < parts.length; i++) ancestors.push("!" + parts.slice(0, i).join("/") + "/")
+    }
+    return [...new Set(ancestors), ...mapped]
+  })
+}
+
 export function wireDeveloperTools({ root, specsFor, ts }) {
   const changed = [], builds = [], warnings = []
   const write = (file, text) => {
@@ -257,9 +302,11 @@ const vibe = (glob) => glob.replace(/\\.\\{([^}]*)\\}$/, (all, list) => list.spl
 const overrides = (oxlint.overrides ?? [])
   .map((override) => ({ files: [override.files].flat().filter((glob) => vibe(glob) !== glob).map(vibe), rules: rules(override.rules) }))
   .filter((override) => override.files.length && Object.keys(override.rules).length)
+// Like Oxlint, ignorePatterns are relative to the lint invocation's cwd.
+const ignores = (${nativeIgnorePatterns.toString()})(oxlint.ignorePatterns ?? [])
 const correctness = levels[oxlint.categories?.correctness] !== "off"
 export default [
-  { ignores: ["**/node_modules/**", "**/dist/**", "**/build/**"] },
+  { ignores: [...ignores, "**/node_modules/**", "**/dist/**", "**/build/**"] },
   ...(correctness && tseslint ? tseslint.configs.recommended.map((config) => ({ ...config, files: ["**/*.vibe"] })) : []),
   { files: ["**/*.vibe"], languageOptions: { parser }, plugins: { ...(tseslint ? { "@typescript-eslint": tseslint.plugin } : {}), ...Object.fromEntries(jsPlugins) }, rules: { "no-debugger": "error", ...rules(oxlint.rules) } },
   ...overrides

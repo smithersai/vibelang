@@ -1,0 +1,25 @@
+{
+  "ignorePatterns": [
+    "ignored/"
+  ],
+  "files": [
+    "ignored/main",
+    "visible/main",
+    "ignored-sibling/main",
+    "nested/ignored/main"
+  ],
+  "rule": "no-debugger",
+  "source": "debugger;\n",
+  "emptyPatterns": [
+    ""
+  ],
+  "resetPatterns": [
+    "ignored/",
+    "!"
+  ],
+  "sourceExtensions": [
+    ".ts",
+    ".mts",
+    ".tsx"
+  ]
+}

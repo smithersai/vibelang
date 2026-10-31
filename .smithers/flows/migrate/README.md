@@ -37,6 +37,8 @@ Upgrade-effect, setup and record run the target's own formatter on the files the
 
 Record resolves jj's compact rename summaries to destination paths before formatting. Literal braces in shared prefixes, suffixes and filenames stay intact; rename and copy records retain their original path as `from`.
 
+The ESLint bridge retains Oxlint `ignorePatterns` in their original order, including directory patterns, rooted paths, brace and source-extension globs, and negations. Patterns remain relative to the lint command's working directory. A `.ts`, `.mts` or `.tsx` file pattern also covers its migrated `.vibe` counterpart; ignored modules stay ignored and visible siblings stay checked. Set `VIBELANG_LINT_ORACLE_NODE_MODULES` to a directory containing `eslint`, `oxlint` and `espree` to run the real-linter property comparisons.
+
 ## Run it
 
 Every batch lands on a jj bookmark, `vibe` unless `--bookmark` names another: upgrade-effect starts it on the default branch (`trunk()`, or `--base <branch>`, such as `dev`, which restarts a bookmark an earlier run left elsewhere), or continues an earlier run's `vibe`, and each recorded batch is one commit on top of the last. The first two commits are the Effect upgrade and VibeLang's setup, so a reviewer reads the dependency upgrade, and any test it breaks, apart from the migration. The flow never pushes. After each run, the orchestrator pushes `vibe` to the library's fork and opens a pull request from it there, so the migration's diff is reviewable.
