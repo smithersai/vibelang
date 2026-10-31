@@ -221,7 +221,8 @@ func children(node *ast.Node) []*ast.Node {
 // changes nothing. An empty statement that is the body of an if or a loop is
 // that statement's child, not a list's, and stays. Empty class elements
 // likewise have no effect, but a JSDoc-owning element must stay so its
-// comment does not become the following member's contract.
+// comment does not become the following member's contract. The same
+// requirement keeps a JSDoc-owning empty statement in its statement list.
 func statements(node *ast.Node, nodes []*ast.Node) []*ast.Node {
 	switch node.Kind {
 	case ast.KindBlock, ast.KindSourceFile, ast.KindModuleBlock, ast.KindCaseClause, ast.KindDefaultClause,
@@ -230,8 +231,8 @@ func statements(node *ast.Node, nodes []*ast.Node) []*ast.Node {
 		return nodes
 	}
 	return slices.DeleteFunc(slices.Clone(nodes), func(child *ast.Node) bool {
-		return child.Kind == ast.KindEmptyStatement ||
-			child.Kind == ast.KindSemicolonClassElement && child.Flags&ast.NodeFlagsHasJSDoc == 0
+		return (child.Kind == ast.KindEmptyStatement || child.Kind == ast.KindSemicolonClassElement) &&
+			child.Flags&ast.NodeFlagsHasJSDoc == 0
 	})
 }
 

@@ -69,6 +69,7 @@ const (
 	placeholderCatch                                    // a method name for catch
 	placeholderMutableIndex                             // [ and the key name after mutable
 	placeholderEmptyClassElement                        // a JSDoc-owning empty class element
+	placeholderEmptyStatement                           // a JSDoc-owning empty statement
 )
 
 type placeholder struct {
@@ -205,6 +206,7 @@ func encode(fileName, source string) (*encoding, error) {
 	}
 	e := &encoder{file: file, source: source, sentinel: sentinel}
 	e.normalizeErrorFieldCommas()
+	e.keepJSDocEmptyStatements()
 	e.keepJSDocEmptyClassElements()
 	forms = uniqueForms(forms)
 	for _, form := range forms {
@@ -272,6 +274,22 @@ func (e *encoder) keepJSDocEmptyClassElements() {
 			start := scanner.SkipTrivia(e.source, node.Pos())
 			name := e.hold(placeholderEmptyClassElement, ";", start, 0)
 			e.add(edit{pos: start, end: node.End(), text: name + ";"})
+		}
+		return node.ForEachChild(visit)
+	}
+	e.file.AsNode().ForEachChild(visit)
+}
+
+// keepJSDocEmptyStatements retains the target of a standalone JSDoc
+// comment. A label keeps a required empty body through formatting;
+// decoding removes the label and leaves the original semicolon.
+func (e *encoder) keepJSDocEmptyStatements() {
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if node.Kind == ast.KindEmptyStatement && node.Flags&ast.NodeFlagsHasJSDoc != 0 {
+			start := scanner.SkipTrivia(e.source, node.Pos())
+			name := e.hold(placeholderEmptyStatement, "", start, 0)
+			e.add(edit{pos: start, end: node.End(), text: name + ":;"})
 		}
 		return node.ForEachChild(visit)
 	}

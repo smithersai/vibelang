@@ -715,6 +715,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `vibelang --fix` refused old VibeLang's `x catch throw e`, as in Smithers' `FileRouter.vibe` `catch throw readFailure()`: the `EK0509` repair wrote `x catch effect () => try throw e`, which does not parse. It now writes `x catch effect () => throw e`, which fails with `e`, typed, as the old fallback did.
 - Narrow hosted CI checks installed Chromium even when none of their targets used a browser; reviewed selections now skip browser setup after verifying their complete dependency plan, while browser and unfamiliar selections keep it.
 - Two members on the same line without a separator in `error`, `schema error` or `service` bodies produced unrelated TypeScript syntax errors; they now report `EK1306` or `EK0908` at the next member, with a quick fix that inserts `;` before its comments.
+- Formatting JSDoc such as `@internal` on an empty statement could attach it to the following declaration or refuse the file; formatting now keeps the statement and its comment together.
+
 - Formatting an `error` or `schema error` with empty `;` members could fail or move JSDoc to the next member; formatting now preserves the comment attachment and removes only empty members with no attached JSDoc.
 
 

@@ -74,6 +74,8 @@ Formatting may remove empty `;` members from native `class`, `error` and `schema
 
 Comments and JSDoc stay associated with their code, including compiler, linter and tool directives. Adding space between a contract and its initializer, such as `User!!= load()` becoming `User!! = load()`, preserves those associations elsewhere in the file. Formatting is idempotent: a formatted file doesn't change when formatted again. This includes `data`, `schema` and field-only `error` declarations with an opening brace on the next line. This includes `data`, `schema` and `error` declarations whose opening brace starts on the next line.
 
+A standalone `;` with JSDoc keeps its semicolon, so `@internal`, `@throws` and other tags retain their original target.
+
 Under the same compiler/options, formatting preserves parsed program meaning, evaluation order, receivers, ordinary runtime values/effects and public types/declarations/throws contracts. Diagnostic codes, categories and occurrences stay the same; locations and quoted source follow the formatted file. Semantic migrations and diagnostic repairs belong to `vibelang --fix` or editor actions.
 
 Normal quote, grouping, comma and layout styling may change emitted JavaScript bytes. `Function.prototype.toString`, generated source text, offsets and stack presentation may reflect the formatted text. Ordinary strings/data, tagged-template raw/cooked values, regex meaning, function names/lengths, property names and directive semantics must stay the same: an escaped string must not become an actual `use strict` directive. Compiler-generated source-map and declaration-map provenance, including `sourcesContent`, is refreshed for the formatted file.

@@ -305,6 +305,15 @@ func (d *decoder) node(node *ast.Node) error {
 	switch holder.kind {
 	case placeholderText:
 		d.replace(start, end, d.reindent(holder, start))
+	case placeholderEmptyStatement:
+		if parent.Kind != ast.KindLabeledStatement || parent.AsLabeledStatement().Label != node ||
+			parent.AsLabeledStatement().Statement.Kind != ast.KindEmptyStatement {
+			return lost()
+		}
+		// The TypeScript formatter inserts a space after the label's colon.
+		// Remove its whole prefix, including that trivia, or every pass adds
+		// a space before the original semicolon.
+		d.replace(start, d.start(parent.AsLabeledStatement().Statement), "")
 	case placeholderEmptyClassElement:
 		if parent.Kind != ast.KindPropertyDeclaration || parent.Name() != node ||
 			parent.Initializer() != nil || parent.Type() != nil || parent.PostfixToken() != nil || parent.Modifiers() != nil {
