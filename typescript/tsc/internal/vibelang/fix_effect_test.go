@@ -106,11 +106,10 @@ export effect function main() {
 	}
 }
 
-// A plain function's call loses its try under --fix-vip-only, unless the
-// call gives an error or a Yieldable: try of a yieldable error fails the
-// Effect, as yield* did, so it becomes throw, or keeps its try where no
-// statement can throw; a Yieldable runs as try x.asEffect(). Dropping the try
-// would make the error or the Yieldable the program's value.
+// VIP-5 and Chapter 2's structural operand test admit tagged errors as
+// Effects: try toError(id) fails like throw, including in expression positions.
+// Keep those valid tries under --fix-vip-only. Only the non-Effect Yieldable
+// needs EK0502's asEffect repair; dropping a try would return the error as data.
 func TestFixVIPKeepsAnErrorsFailure(t *testing.T) {
 	source := `error NotFound { id: string }
 interface Output { readonly name: string; asEffect(): string!! }
@@ -129,8 +128,8 @@ interface Output { readonly name: string; asEffect(): string!! }
 const toError = (id: string): NotFound => new NotFound({ id })
 const output = (name: string): Output => ({ name, asEffect: effect () => name })
 export const f = effect (id: string) => {
-  if (id === "") { throw toError(id) }
-  if (id === "?") { throw toError(id) }
+  if (id === "") { return try toError(id) }
+  if (id === "?") { try toError(id) }
   const held = [try toError(id)]
   const name = try output(id).asEffect()
   return held.length > 1 ? "" : name
@@ -138,15 +137,17 @@ export const f = effect (id: string) => {
 `
 	program, file, _, _ := editorProgram(t, source)
 	note := ""
+	nonEffectOperands := 0
 	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
 		if d.Code() == EK0502.Code {
+			nonEffectOperands++
 			for _, chained := range d.MessageChain() {
 				note += chained.String()
 			}
 		}
 	}
-	if !strings.Contains(note, "write throw toError(id)") || !strings.Contains(note, "write try output(id).asEffect()") {
-		t.Errorf("EK0502 does not say throw or asEffect: %q", note)
+	if nonEffectOperands != 1 || !strings.Contains(note, "write try output(id).asEffect()") {
+		t.Errorf("want only Output to report EK0502 with its asEffect repair, got %d: %q", nonEffectOperands, note)
 	}
 	dir := filepath.Dir(file.FileName().AsString())
 	if err := os.WriteFile(filepath.Join(dir, "tsconfig.json"), []byte(`{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"noEmit":true},"files":["main.vibe"]}`), 0o600); err != nil {

@@ -149,10 +149,14 @@ func (a *analyzer) effectEditsIn(file *ast.SourceFile, node *ast.Node) ([]source
 				for end < len(text) && (text[end] == ' ' || text[end] == '\t') {
 					end++
 				}
-				// An error the call gives fails the Effect under try, as
-				// yield* did: it becomes throw, or keeps its try (EK0502),
-				// never the program's value; a Yieldable keeps its try.
-				switch t := a.checker.GetTypeAtLocation(node); {
+				// A tried call has its executed success type at the call site.
+				// Inspect the signature's returned value instead: an Effect
+				// subtype (including a tagged error) must keep its try, or the
+				// migration turns execution and failure into success data (VIP-5).
+				signature := a.checker.GetResolvedSignature(node) // plainCallee resolved it
+				switch t := a.checker.GetReturnTypeOfSignature(signature); {
+				case t != nil && effectOfValue(a.checker, t) != nil:
+					// Already a valid Effect operand; keep the written execution.
 				case t != nil && failsAsError(a.checker, t):
 					edits = append(edits, throwEdits(file, node, keyword.Pos(), end)...)
 				case t != nil && yieldsEffect(a.checker, t):

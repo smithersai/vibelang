@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\ninterface Sub extends Effect.Effect<number> { readonly label: string }\nconst make = (): Sub => (effect { return 7 }) as Sub\nexport effect function main() { return try make() }\n")

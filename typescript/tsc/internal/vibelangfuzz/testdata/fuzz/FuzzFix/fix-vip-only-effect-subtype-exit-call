@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nconst make = (): Exit.Exit<number, string> => Exit.succeed(7)\nexport effect function main() { return try make() }\n")

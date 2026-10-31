@@ -369,4 +369,6 @@ vibelang --fix-vip-only --fix -p tsconfig.json
 vibelang --fix-vip-only # TS5023: add --fix
 ```
 
+The VIP migration keeps a valid `try` whose operand is structurally an Effect, including a call returning an `error` or `schema error` instance. It propagates that error as a failure, as `yield* e` does; it does not turn the error into success data. A non-Effect Yieldable still needs its explicit `asEffect()` conversion ([operand test](002-running.md#operand-test), [VIP-5](../vips/0005-try-runs-effects.md)).
+
 These commands have no Effect TypeScript runtime translation.

@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nschema error Missing { id: string }\nconst toError = (id: string): Missing => new Missing({ id })\nexport effect function main() {\n  // VIP-5: this is a failure, never a returned error value.\n  if (false) { try toError(\"statement\") }\n  const held = [try toError(\"array\")]\n  return try toError(\"return\")\n}\n")

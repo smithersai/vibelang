@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nconst make = (): Config.Config<string> => Config.succeed(\"ok\")\nexport effect function main() { return try make() }\n")

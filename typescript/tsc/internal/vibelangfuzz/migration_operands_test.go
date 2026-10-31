@@ -33,6 +33,7 @@ func migrationOperandRules() []migrationOperandRule {
 		{"callable", "type Operation = ((id:string) => Effect.Effect<number, string>) & Effect.Effect<(id:string) => Effect.Effect<number, string>>; declare const input: Operation;", true},
 		{"generic", "type Wrapped<T> = Effect.Effect<T, string>; declare const input: Wrapped<number>;", true},
 		{"tagged-error", "error Missing { id:string }; const input = new Missing({id:\"x\"});", true},
+		{"schema-tagged-error", "schema error Missing { id:string }; const input = new Missing({id:\"x\"});", true},
 		{"any", "declare const input: any;", true},
 		{"never", "declare const input: never;", true},
 		{"unknown", "declare const input: unknown;", false},
@@ -103,6 +104,8 @@ func FuzzMigrationEffectOperands(f *testing.F) {
 	// Other operators and call operands enter the short seeds too.
 	for _, variant := range []uint8{1, 2, 3, 4, 5, 6, 7} {
 		f.Add("branded", variant)
+		f.Add("tagged-error", variant)
+		f.Add("schema-tagged-error", variant)
 	}
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, key string, variant uint8) {
