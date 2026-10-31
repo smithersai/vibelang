@@ -7,6 +7,7 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/printer"
 	"github.com/microsoft/TypeScript/tsc/internal/transformers"
@@ -100,6 +101,7 @@ func transformDeclarations(resolver printer.EmitResolver, sourceFile *ast.Source
 		rewriter := &specifierRewriter{sourceDirectory: tspath.GetDirectoryPath(string(sourceFile.FileName()))}
 		keys := &computedKeyRewriter{keys: map[string]computedKey{}, bound: map[string]bool{}}
 		r.WithChecker(func(c *checker.Checker) {
+			rewriter.style = c.CompilerOptions().VibeLang
 			if namespace := preludeSymbol(c, preludeStateOf(c), sourceFile, "Effect"); namespace != nil {
 				if effect := effectInterfaceOfModule(c, namespace); effect != nil {
 					rewriter.effectPath = effectModulePath(c, effect)
@@ -262,7 +264,7 @@ func transformDeclarations(resolver printer.EmitResolver, sourceFile *ast.Source
 				continue
 			}
 			clause := f.NewImportClause(ast.KindUnknown, nil /*name*/, f.NewNamedImports(f.NewNodeList(specifiers)))
-			imports = append(imports, f.NewImportDeclaration(nil /*modifiers*/, clause, f.NewStringLiteral(module, ast.TokenFlagsNone), nil /*attributes*/))
+			imports = append(imports, f.NewImportDeclaration(nil /*modifiers*/, clause, f.NewStringLiteral(module, sourceQuote(sourceFile)), nil /*attributes*/))
 		}
 		// The list keeps the source range, so the printer still emits the
 		// comments before the file's first statement, such as its header, first.
@@ -270,6 +272,20 @@ func transformDeclarations(resolver printer.EmitResolver, sourceFile *ast.Source
 		statements.Loc = declarations.Statements.Loc
 		return f.UpdateSourceFile(declarations, statements, declarations.EndOfFileToken).AsSourceFile()
 	}
+}
+
+// sourceQuote returns ast.TokenFlagsSingleQuote when source's first written
+// import or export specifier is in single quotes, and no flag otherwise, so an
+// import the declaration file adds, `import { Effect } from 'effect'`, follows
+// the file's quote style, as an import the TypeScript language service adds
+// does (lsutil.GetQuotePreference). A file without one gets double quotes.
+func sourceQuote(source *ast.SourceFile) ast.TokenFlags {
+	for _, specifier := range source.Imports() {
+		if ast.IsStringLiteral(specifier) && !ast.NodeIsSynthesized(specifier.Parent) {
+			return specifier.AsStringLiteral().TokenFlags & ast.TokenFlagsSingleQuote
+		}
+	}
+	return ast.TokenFlagsNone
 }
 
 // namespaceImportOfModule returns M when statement is import * as M from the
@@ -312,7 +328,7 @@ func sourceNamespaceImports(ec *printer.EmitContext, source *ast.SourceFile, dec
 			}
 		}
 		clause := f.NewImportClause(statement.ImportClause().AsImportClause().PhaseModifier, nil /*name*/, f.NewNamespaceImport(f.NewIdentifier(name)))
-		statements = slices.Insert(statements, at, f.NewImportDeclaration(nil /*modifiers*/, clause, f.NewStringLiteral(statement.ModuleSpecifier().Text(), ast.TokenFlagsNone), nil /*attributes*/))
+		statements = slices.Insert(statements, at, f.NewImportDeclaration(nil /*modifiers*/, clause, f.NewStringLiteral(statement.ModuleSpecifier().Text(), statement.ModuleSpecifier().AsStringLiteral().TokenFlags&ast.TokenFlagsSingleQuote), nil /*attributes*/))
 		changed = true
 	}
 	if !changed {
@@ -1035,6 +1051,9 @@ type specifierRewriter struct {
 	transformers.Transformer
 	sourceDirectory string
 	effectPath      string // extensionless path of the resolved Effect interface's module
+	// style is the project's VibeLang settings, whose declarationImportStyle
+	// spells a relative import of a .vibe module.
+	style *core.VibeLangOptions
 }
 
 func (tx *specifierRewriter) visit(node *ast.Node) *ast.Node {
@@ -1045,13 +1064,13 @@ func (tx *specifierRewriter) visit(node *ast.Node) *ast.Node {
 			return nil // a platform import loads nothing (D312, entry.go)
 		}
 		d := node.AsImportDeclaration()
-		if specifier, changed := outputSpecifier(f, d.ModuleSpecifier); changed {
+		if specifier, changed := tx.outputSpecifier(f, d.ModuleSpecifier); changed {
 			return f.UpdateImportDeclaration(d, d.Modifiers(), d.ImportClause, specifier, d.Attributes)
 		}
 		return node
 	case ast.KindExportDeclaration:
 		d := node.AsExportDeclaration()
-		if specifier, changed := outputSpecifier(f, d.ModuleSpecifier); changed {
+		if specifier, changed := tx.outputSpecifier(f, d.ModuleSpecifier); changed {
 			return f.UpdateExportDeclaration(d, d.Modifiers(), d.IsTypeOnly, d.ExportClause, specifier, d.Attributes)
 		}
 		return node
@@ -1065,7 +1084,7 @@ func (tx *specifierRewriter) visit(node *ast.Node) *ast.Node {
 				specifier := f.NewStringLiteral("effect/Effect", ast.TokenFlagsNone)
 				return f.UpdateImportTypeNode(visited, visited.IsTypeOf, f.UpdateLiteralTypeNode(argument.AsLiteralTypeNode(), specifier), visited.Attributes, visited.Qualifier, visited.TypeArguments)
 			}
-			if specifier, changed := outputSpecifier(f, literal); changed {
+			if specifier, changed := tx.outputSpecifier(f, literal); changed {
 				return f.UpdateImportTypeNode(visited, visited.IsTypeOf, f.UpdateLiteralTypeNode(argument.AsLiteralTypeNode(), specifier), visited.Attributes, visited.Qualifier, visited.TypeArguments)
 			}
 		}
@@ -1075,10 +1094,21 @@ func (tx *specifierRewriter) visit(node *ast.Node) *ast.Node {
 }
 
 // outputSpecifier returns a string literal that names the output of the
-// source specifier names, and whether it differs from specifier.
-func outputSpecifier(f *printer.NodeFactory, specifier *ast.Node) (*ast.Node, bool) {
+// source specifier names, and whether it differs from specifier. Under
+// vibelang.declarationImportStyle "extensionless" or ".ts", a declaration
+// keeps a package's own spelling: ./users.vibe is ./users or ./users.ts, and
+// every other specifier stays as the source wrote it, as tsc keeps it in the
+// declaration of a .ts file.
+func (tx *specifierRewriter) outputSpecifier(f *printer.NodeFactory, specifier *ast.Node) (*ast.Node, bool) {
 	if specifier == nil || !ast.IsStringLiteral(specifier) {
 		return specifier, false
+	}
+	if extension := tx.style.DeclarationImportExtension(); extension != tspath.ExtensionJs {
+		rewritten, changed := tspath.ToModuleSpecifier(specifier.Text()).RewriteVibeExtension(extension)
+		if !changed {
+			return specifier, false
+		}
+		return f.NewStringLiteral(rewritten.AsString(), specifier.AsStringLiteral().TokenFlags), true
 	}
 	text, changed := outputSpecifierText(specifier.Text())
 	if !changed {

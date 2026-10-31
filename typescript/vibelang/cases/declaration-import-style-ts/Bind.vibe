@@ -1,0 +1,9 @@
+// Smithers' Bind.vibe declared "./Contribution.js" where its published .d.ts says "./Contribution.ts".
+import { refuse } from "./Contribution.vibe"
+import type { Refusal } from './Contribution.vibe'
+import type { Helper } from "./helper.ts"
+
+export * from "./Contribution.vibe"
+export * as C from './Contribution.vibe'
+export const bind = (x: Helper): Refusal => refuse(String(x.n))
+export type Later = typeof import("./Contribution.vibe")

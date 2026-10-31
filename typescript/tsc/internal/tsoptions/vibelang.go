@@ -19,7 +19,8 @@ import (
 //	"vibelang": {
 //	  "diagnostics": { "EK9204": "off", "EK4403": "warning" },
 //	  "tracing": "exported",
-//	  "trustedPackages": ["@smthrs/*"]
+//	  "trustedPackages": ["@smthrs/*"],
+//	  "declarationImportStyle": ".ts"
 //	}
 //
 // It is added by hand to the generated option tables: its declaration in
@@ -32,6 +33,7 @@ var (
 	vibeLangAdjustableCodes = core.VibeLangAdjustableCodes
 	vibeLangCategories      = []string{"error", "warning", "off"}
 	vibeLangTracing         = []string{"none", "exported", "all"}
+	vibeLangImportStyles    = []string{".js", "extensionless", ".ts"}
 )
 
 // parseVibeLangOptions reads a compilerOptions.vibelang value that
@@ -54,6 +56,9 @@ func parseVibeLangOptions(value any) *core.VibeLangOptions {
 	}
 	if tracing, ok := object.GetOrZero("tracing").(string); ok && slices.Contains(vibeLangTracing, tracing) {
 		options.Tracing = tracing
+	}
+	if style, ok := object.GetOrZero("declarationImportStyle").(string); ok && slices.Contains(vibeLangImportStyles, style) {
+		options.DeclarationImportStyle = style
 	}
 	if packages, ok := object.GetOrZero("trustedPackages").([]any); ok {
 		for _, entry := range packages {
@@ -137,6 +142,10 @@ func validateVibeLangOptions(value any, valueExpression *ast.Expression, sourceF
 			if tracing, ok := v.(string); !ok || !slices.Contains(vibeLangTracing, tracing) {
 				report(jsonInitializer(property), diagnostics.Argument_for_0_option_must_be_Colon_1, "vibelang.tracing", quoteList(vibeLangTracing))
 			}
+		case "declarationImportStyle":
+			if style, ok := v.(string); !ok || !slices.Contains(vibeLangImportStyles, style) {
+				report(jsonInitializer(property), diagnostics.Argument_for_0_option_must_be_Colon_1, "vibelang.declarationImportStyle", quoteList(vibeLangImportStyles))
+			}
 		default:
 			report(jsonName(property), diagnostics.Unknown_compiler_option_0, "vibelang."+key)
 		}
@@ -169,6 +178,9 @@ func serializeVibeLangOptions(options *core.VibeLangOptions) *collections.Ordere
 	}
 	if options.Tracing != "" {
 		result.Set("tracing", options.Tracing)
+	}
+	if options.DeclarationImportStyle != "" {
+		result.Set("declarationImportStyle", options.DeclarationImportStyle)
 	}
 	return result
 }

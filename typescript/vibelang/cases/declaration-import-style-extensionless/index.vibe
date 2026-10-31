@@ -1,0 +1,7 @@
+// opencode's stats/core declared "./runtime.js" where its sources and published .d.ts say "./runtime".
+export * as Runtime from "./runtime.vibe"
+export * as Plain from './plain'
+export { find } from './runtime.vibe'
+export type { NotFound } from "./runtime.vibe"
+export type Missing = import("./runtime.vibe").NotFound
+export type Lazy = typeof import('./runtime.vibe')

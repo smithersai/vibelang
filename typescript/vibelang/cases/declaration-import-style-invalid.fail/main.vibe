@@ -1,0 +1,3 @@
+// expect: TS6046
+// vibelang.declarationImportStyle is ".js", "extensionless" or ".ts"; "ts" is none of them.
+export const one = 1

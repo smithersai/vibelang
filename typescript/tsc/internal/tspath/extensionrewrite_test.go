@@ -78,24 +78,32 @@ func TestModuleSpecifierShouldRewriteExtension(t *testing.T) {
 	}
 }
 
-// D298: a declaration names a relative .vibe module by its emitted .js name,
-// and keeps every other specifier as written.
+// D298: a declaration names a relative .vibe module by the spelling its
+// project's vibelang.declarationImportStyle picks, .js by default, and keeps
+// every other specifier as written.
 func TestModuleSpecifierRewriteVibeExtension(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
 		specifier string
+		extension string
 		expected  string
 		changed   bool
 	}{
-		{"./lookup.vibe", "./lookup.js", true},
-		{"../errors/SmithersError.vibe", "../errors/SmithersError.js", true},
-		{"./Card.astro", "./Card.astro", false},
-		{"./file.ts", "./file.ts", false},
-		{"./file.js", "./file.js", false},
-		{"package.vibe", "package.vibe", false},
+		{"./lookup.vibe", ".js", "./lookup.js", true},
+		{"../errors/SmithersError.vibe", ".js", "../errors/SmithersError.js", true},
+		{"./lookup.vibe", "", "./lookup", true},
+		{"./lookup.vibe", ".ts", "./lookup.ts", true},
+		{"./a.b.vibe", "", "./a.b", true},
+		{"./dir/index.vibe", "", "./dir/index", true},
+		{"../Contribution.vibe", ".ts", "../Contribution.ts", true},
+		{"./Card.astro", ".ts", "./Card.astro", false},
+		{"./file.ts", ".js", "./file.ts", false},
+		{"./file.js", ".ts", "./file.js", false},
+		{"./file", ".ts", "./file", false},
+		{"package.vibe", "", "package.vibe", false},
 	} {
-		rewritten, changed := tspath.ToModuleSpecifier(test.specifier).RewriteVibeExtension()
-		assert.Equal(t, rewritten.AsString(), test.expected)
-		assert.Equal(t, changed, test.changed)
+		rewritten, changed := tspath.ToModuleSpecifier(test.specifier).RewriteVibeExtension(test.extension)
+		assert.Equal(t, rewritten.AsString(), test.expected, test.specifier+" "+test.extension)
+		assert.Equal(t, changed, test.changed, test.specifier+" "+test.extension)
 	}
 }

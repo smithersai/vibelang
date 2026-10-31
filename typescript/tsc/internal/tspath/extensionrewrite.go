@@ -1,5 +1,7 @@
 package tspath
 
+import "strings"
+
 type ExtensionRewrite struct {
 	Source string
 	Target string
@@ -56,12 +58,15 @@ func (s ModuleSpecifier) ShouldRewriteExtension(rewrites []ExtensionRewrite, cas
 
 // RewriteVibeExtension returns the specifier a declaration file uses for a
 // relative import of a VibeLang module, and whether it differs: ./user.vibe
-// becomes ./user.js, as it does in emitted JavaScript (D31, D298). A
-// declaration has no .vibe sibling, and TypeScript resolves ./user.js to the
-// module's declaration, user.d.ts.
-func (s ModuleSpecifier) RewriteVibeExtension() (ModuleSpecifier, bool) {
+// becomes ./user plus extension, which the project's
+// vibelang.declarationImportStyle picks (D298). With ".js", the default,
+// ./user.js names the module as emitted JavaScript does; "" and ".ts" keep a
+// package's own spelling, ./user or ./user.ts. A declaration has no .vibe
+// sibling, and TypeScript resolves each spelling to the module's declaration,
+// user.d.ts.
+func (s ModuleSpecifier) RewriteVibeExtension(extension string) (ModuleSpecifier, bool) {
 	if !s.IsRelative() || !FileExtensionIs(s.AsString(), ExtensionVibe) {
 		return s, false
 	}
-	return ToModuleSpecifier(ChangeExtension(s.AsString(), ExtensionJs)), true
+	return ToModuleSpecifier(strings.TrimSuffix(s.AsString(), ExtensionVibe) + extension), true
 }

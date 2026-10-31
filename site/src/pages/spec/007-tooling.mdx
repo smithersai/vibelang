@@ -106,6 +106,10 @@ Effect.runSync(Effect.succeed(42)) // 42
 
 The configured category controls reporting: an `"error"` makes both `vibelang` and `vibelang lint` exit non-zero and participates in `noEmitOnError`; a `"warning"` prints without changing exit status ([VIP-34](/vips/0034-compiler-and-tooling#decision)). A `"suggestion"` is shown by the language server only; `"off"` reports nothing. To fail CI on a configurable warning, set it to `"error"`.
 
+### Declaration import spelling
+
+Root `vibelang.declarationImportStyle`, or `compilerOptions.vibelang.declarationImportStyle`, is `".js"` (the default), `"extensionless"` or `".ts"`. It decides how an emitted declaration spells a relative import of a `.vibe` module ([Declaration output](/spec/001-functions#declaration-output)). Any other value is a configuration error (`TS6046`). It sits in the legacy `vibelang` section with `trustedPackages` and `tracing`, so a child config's own `vibelang` section replaces an inherited one as a whole.
+
 ### Legacy severity maps
 
 Both historical paths, root `vibelang.diagnostics` and `compilerOptions.vibelang.diagnostics`, are recognized in `vibe.config.json`, `tsconfig.json`, `jsconfig.json` and extended configs. Each maps supported printed legacy diagnostic codes to `"error"`, `"warning"` or `"off"`; `"suggestion"` is a value of the modern map, not a legacy one. Legacy replacement and inheritance behavior remains: a child without a legacy section inherits the effective base section, and adding only modern settings leaves it active. An explicit child legacy section replaces the inherited legacy section as a whole, rather than merging diagnostic entries; even an empty object or `null` clears the inherited legacy settings. The modern `vibe.severities` map still merges entry by code.

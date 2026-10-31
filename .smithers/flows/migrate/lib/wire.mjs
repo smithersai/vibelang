@@ -473,6 +473,66 @@ export function addCompilerOptions(text, options) {
 }
 
 /**
+ * How a package's sources spell a relative import of a module, from their
+ * texts: ".js" for `./x.js`, ".ts" for `./x.ts`, "extensionless" for `./x`.
+ * `style` is the one spelling every such import uses, the
+ * `vibelang.declarationImportStyle` that keeps it in the declarations of
+ * migrated modules (C′), or null when the sources use none or mix them.
+ * `./x.vibe`, a module already migrated, and specifiers with any other
+ * extension, `./styles.css` or `./data.json`, say nothing; nor does
+ * moduleResolution, which opencode's packages write `.js` and `./x` under
+ * alike.
+ */
+export function importSpelling(texts) {
+  const counts = { ".js": 0, extensionless: 0, ".ts": 0 }
+  const spellings = { ".js": ".js", ".mjs": ".js", ".cjs": ".js", ".jsx": ".js", ".ts": ".ts", ".mts": ".ts", ".cts": ".ts", ".tsx": ".ts", "": "extensionless" }
+  const specifier = /(?:\bfrom\s*|\bimport\s*\(\s*|^\s*import\s*|\brequire\s*\(\s*)(["'])(\.\.?\/[^"'\n]*)\1/gm
+  for (const text of texts) {
+    for (const match of text.matchAll(specifier)) {
+      const name = match[2].split("/").at(-1)
+      if (name === "" || name === "." || name === ".." || /\.d\.[mc]?ts$/.test(name)) continue
+      const dot = name.lastIndexOf(".")
+      const spelling = spellings[dot > 0 ? name.slice(dot) : ""]
+      if (spelling) counts[spelling]++
+    }
+  }
+  const used = Object.keys(counts).filter((key) => counts[key] > 0)
+  return { style: used.length === 1 ? used[0] : null, counts }
+}
+
+/**
+ * Sets key to value in a tsconfig's VibeLang settings (JSON with comments):
+ * in its top-level `vibelang` object, else its `compilerOptions.vibelang`,
+ * else a new top-level `"vibelang": { … }`, which stock TypeScript ignores
+ * (D275). A key already there takes the new value. Comments and the rest of
+ * the file are left as they are. ts is TypeScript's compiler API.
+ */
+export function addVibeLangSetting(text, ts, key, value) {
+  const file = ts.parseJsonText("tsconfig.json", text)
+  const root = file.statements[0]?.expression
+  if (!root || !ts.isObjectLiteralExpression(root)) throw new Error("not a tsconfig object")
+  const property = (object, name) => object.properties.find((p) => ts.isPropertyAssignment(p) && p.name && (ts.isStringLiteral(p.name) || ts.isIdentifier(p.name)) && p.name.text === name)
+  const options = property(root, "compilerOptions")
+  const settings = property(root, "vibelang") ?? (options && ts.isObjectLiteralExpression(options.initializer) ? property(options.initializer, "vibelang") : undefined)
+  const entry = `"${key}": ${JSON.stringify(value)}`
+  if (settings) {
+    const object = settings.initializer
+    if (!ts.isObjectLiteralExpression(object)) throw new Error("the tsconfig's vibelang setting is not an object")
+    const existing = property(object, key)
+    if (existing) return text.slice(0, existing.initializer.getStart(file)) + JSON.stringify(value) + text.slice(existing.initializer.end)
+    const at = object.getStart(file) + 1
+    return text.slice(0, at) + (object.properties.length ? ` ${entry},` : ` ${entry} `) + text.slice(at)
+  }
+  const indent = /\n([ \t]+)\S/.exec(text.slice(root.getStart(file) + 1))?.[1] ?? "  "
+  const last = root.properties.at(-1)
+  if (!last) {
+    const at = root.getStart(file) + 1
+    return text.slice(0, at) + `\n${indent}"vibelang": { ${entry} }\n` + text.slice(at)
+  }
+  return text.slice(0, last.end) + `,\n${indent}"vibelang": { ${entry} }` + text.slice(last.end)
+}
+
+/**
  * Removes a retired VibeLang setting from a tsconfig (JSON with comments):
  * key in its top-level `vibelang` or `vibe` object or in
  * `compilerOptions.vibelang` or `compilerOptions.vibe`, the places

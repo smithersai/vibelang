@@ -103,13 +103,16 @@ func sidecarText(text string, declarationFile string, source string, exists func
 }
 
 // vibeSpecifier names a .vibe module by its source, ./y.vibe, where a
-// relative specifier, ./y.js or ./y, reaches y.vibe and no TypeScript file
-// that stock TypeScript would resolve first.
+// relative specifier, ./y.js, ./y or ./y.ts (each a
+// vibelang.declarationImportStyle), reaches y.vibe and no TypeScript file that
+// stock TypeScript would resolve first.
 func vibeSpecifier(specifier string, directory string, exists func(string) bool) string {
 	stem := specifier
 	switch {
 	case strings.HasSuffix(specifier, ".js"):
 		stem = strings.TrimSuffix(specifier, ".js")
+	case strings.HasSuffix(specifier, tspath.ExtensionTs) && !tspath.IsDeclarationFileName(specifier):
+		stem = strings.TrimSuffix(specifier, tspath.ExtensionTs)
 	case strings.HasSuffix(specifier, tspath.ExtensionVibe):
 		return specifier
 	case tspath.TryGetExtensionFromPath(specifier) != "":

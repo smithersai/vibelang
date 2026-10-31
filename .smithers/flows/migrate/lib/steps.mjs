@@ -620,6 +620,13 @@ export async function wireTarget(config, log) {
   const ts = typeScriptOf(config)
   for (const pkg of packages) {
     const path = join(t, pkg.dir, "package.json")
+    // A migrated module's declarations spell a relative import as the package's sources do (C′).
+    const sources = pkg.sources.flatMap((dir) => listSources(t, posix.join(pkg.dir, dir)))
+    const spelling = Wire.importSpelling(sources.map((file) => readFileSync(join(t, file), "utf8")))
+    if (!spelling.style && Object.values(spelling.counts).some(Boolean)) {
+      const counts = Object.entries(spelling.counts).filter(([, n]) => n).map(([style, n]) => `${n} ${style}`).join(", ")
+      warnings.push(`setup leaves ${pkg.dir}'s declarations importing migrated modules as ./x.js: its sources mix relative import spellings (${counts}), so no vibelang.declarationImportStyle fits; make them one spelling and run setup again`)
+    }
     const next = Wire.addVibeLang(readJson(path), specsFor(pkg.dir))
     next.scripts = Wire.replaceTsc(next.scripts)
     writeIfChanged(path, readFileSync(path, "utf8"), JSON.stringify(next, null, 2) + "\n")
@@ -632,7 +639,11 @@ export async function wireTarget(config, log) {
       // and the project lists .vibe files where it lists .ts files. An earlier setup's
       // declarationSidecars setting is retired: the compiler rejects it (TS5023).
       const current = Wire.removeVibeLangSetting(text, ts, "declarationSidecars")
-      writeIfChanged(file, text, Wire.addCompilerOptions(Wire.addVibeIncludes(current, ts), { rewriteRelativeImportExtensions: true }))
+      // ".js" is the default, so an earlier setup's other spelling goes; mixed sources keep what the file says.
+      const styled = !spelling.style ? current
+        : spelling.style === ".js" ? Wire.removeVibeLangSetting(current, ts, "declarationImportStyle")
+        : Wire.addVibeLangSetting(current, ts, "declarationImportStyle", spelling.style)
+      writeIfChanged(file, text, Wire.addCompilerOptions(Wire.addVibeIncludes(styled, ts), { rewriteRelativeImportExtensions: true }))
     }
   }
   // Effect's lint rules run on .vibe files where the root's scripts run them on .ts files (VIP-38).
