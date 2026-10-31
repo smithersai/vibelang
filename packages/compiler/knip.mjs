@@ -48,11 +48,13 @@ export function compile(text, path = "file.vibe") {
   const docs = (node, after) => {
     const first = comments.find((c) =>
       c.type === "Block" && c.value.startsWith("*") &&
-      c.range[0] >= after && c.range[1] <= node.range[0] &&
-      (after === 0 || /[\r\n\u2028\u2029]/.test(text.slice(after, c.range[0]))))
-    // Preserve intervening comments as well: Knip's own TypeScript reader
-    // treats an ordinary comment after a JSDoc tag as an attachment barrier.
-    return first ? text.slice(first.range[0], node.range[0]) : ""
+      c.range[0] >= after && c.range[1] <= node.range[0])
+    if (!first) return ""
+    const leading = text.slice(after, first.range[0])
+    // A non-exported placeholder keeps a trailing comment trailing for
+    // TypeScript while leaving Knip's own public-tag lookup unchanged.
+    const previous = after > 0 && !/[\r\n\u2028\u2029]/.test(leading) ? "0;" + leading : ""
+    return previous + text.slice(first.range[0], node.range[0])
   }
   program.body.forEach((node, i) => {
     const doc = docs(node, i ? program.body[i - 1].range[1] : 0)

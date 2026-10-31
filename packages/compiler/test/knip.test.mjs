@@ -135,6 +135,7 @@ export { local as renamed }
     "export const a = 0, b = 0",
     "export const none = 0",
     "export const block = 0",
+    "0; /** @public */",
     "export const trailing = 0",
     "/** @public */",
     "export const User = 0 as unknown as [typeof String]",

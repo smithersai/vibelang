@@ -1,0 +1,13 @@
+{
+  "property": "KnipPublicJSDoc",
+  "rule": "Chapter0/7: keep TypeScript trailing JSDoc metadata and actual Knip public-tag lookup",
+  "input": {
+    "form": "class",
+    "layout": "direct",
+    "name": "make",
+    "public": true,
+    "source": "export const prior = 0; /** @public */\nexport class make { value = 1 }\nexport const layer = 1;\n",
+    "before": "export",
+    "lineTerminator": "same-line"
+  }
+}

@@ -71,9 +71,12 @@ function program(input) {
     crlf: "\r\n",
     ls: "\u2028",
     ps: "\u2029",
+    "same-line": " ",
   };
   const before = input.before
-    ? "const before = 0;" + separators[input.lineTerminator]
+    ? (input.before === "export"
+        ? "export const prior = 0;"
+        : "const before = 0;") + separators[input.lineTerminator]
     : "";
   return before + prefix + declaration + "\nexport const layer = 1;\n";
 }
@@ -160,14 +163,21 @@ test("T3code: Knip preserves public JSDoc and its native attachment rules", asyn
     rule: "Chapter0/7: actual Knip analysis preserves public JSDoc using the native TypeScript attachment rule.",
     command: "node --test packages/compiler/test/knip-public.property.test.mjs",
     regressions,
-    numRuns: 240,
+    numRuns: 300,
     arbitrary: fc.record({
       form: fc.constantFrom(...forms),
       layout: fc.constantFrom(...layouts),
       name: fc.integer({ min: 0, max: 999 }).map((i) => "make" + i),
       public: fc.boolean(),
-      before: fc.boolean(),
-      lineTerminator: fc.constantFrom("lf", "cr", "crlf", "ls", "ps"),
+      before: fc.constantFrom(false, true, "export"),
+      lineTerminator: fc.constantFrom(
+        "lf",
+        "cr",
+        "crlf",
+        "ls",
+        "ps",
+        "same-line",
+      ),
     }),
     check: verify,
   });
