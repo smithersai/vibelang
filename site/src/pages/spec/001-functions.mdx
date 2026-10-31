@@ -299,7 +299,7 @@ An `effect` function's return type is an Effect, as an `async` function's is a P
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-1
-effect function load(id: string): Effect.Effect<User, NotFound, Users> { return try fetchUser(id) }   // written
+effect function load(id: string): User!NotFound!Users { return try fetchUser(id) }             // written
 effect function load2(id: string) { return try fetchUser(id) }                                 // inferred: the same type
 async function get(q: string): Promise<Row[]> { return await queryDb(q) }                      // as in TypeScript
 ```
@@ -494,7 +494,7 @@ For each `x.vibe`, the compiler writes `x.d.vibe.ts` beside it (VIP-27). TypeScr
 // compiler-gap: pending VIP-4, VIP-27
 function choose(mode: true): number!!;
 function choose(mode: false): number;
-function choose(mode: boolean): Effect.Effect<number> | number { throw "boom" }
+function choose(mode: boolean): (number!!) | number { throw "boom" }
 // EK0401: the true overload promises never to throw synchronously.
 /** @rethrows f */
 export function later(f: () => number) { return () => f() }
@@ -534,7 +534,7 @@ Ordinary nongenerator `async` callables use the [normalized async contract](/spe
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-4
 export function bad(id: string) { if (!id) throw new BadInput(); return fetchUser(id) }   // error: can't throw
-export function load(id: string): Effect.Effect<User, NotFound | BadInput> { return id ? fetchUser(id) : fail(new BadInput()) }
+export function load(id: string): User!(NotFound | BadInput) { return id ? fetchUser(id) : fail(new BadInput()) }
 ```
 
 ```ts [Effect]
