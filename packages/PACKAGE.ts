@@ -49,7 +49,10 @@ const compilerNative = S.Shell.Build({
 const compilerTest = S.Shell.Test({
   summary: "The compiler package's node tests.",
   shell: "cd packages/compiler && bun install --frozen-lockfile && node --test test/*.test.mjs",
-  data: [compilerNative, S.glob("compiler/**")],
+  // Migration properties exercise the flow's package-export and Bun.build edits.
+  // Their helpers and the TypeScript API install must enter the cache key too.
+  data: [compilerNative, S.glob("compiler/**"), S.glob("//.smithers/flows/migrate/lib/**"),
+    S.file("//scripts/testing/property.mjs"), S.file("//docs/design/src/007-tooling.md"), ...install],
   tools: [S.Host.bin("node"), S.Host.bin("bun")],
   sandbox: "none",
   timeout: "15m"

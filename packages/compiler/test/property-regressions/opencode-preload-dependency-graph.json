@@ -1,0 +1,14 @@
+{
+  "property": "bun-dependency-discovery",
+  "rule": "opencode-18: a test can reach a migrated package statically without loading its .vibe modules; dependency parsing must not scale with the runtime dependency graph",
+  "input": {
+    "depth": 1,
+    "width": 1,
+    "format": "esm",
+    "extension": "js",
+    "nested": false,
+    "dynamic": false,
+    "value": 42
+  },
+  "reason": "Minimized opencode TUI preload timeout: main.ts imports a dependency barrel, with an unrelated migrated module present."
+}

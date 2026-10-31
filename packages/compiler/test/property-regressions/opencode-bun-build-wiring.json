@@ -1,0 +1,6 @@
+{
+  "property": "migrate-bun-build",
+  "rule": "opencode-5: Bun.build needs the bundler plugin when its graph reaches a migrated module",
+  "input": { "builds": 1, "plugins": 0, "singleQuote": false, "multiline": false, "semicolons": false, "minify": false },
+  "reason": "Minimized CLI build: Bun.build with one TypeScript entrypoint importing leaf.vibe."
+}

@@ -1,0 +1,6 @@
+{
+  "property": "migrate-package-exports",
+  "rule": "opencode-3: renaming a source must preserve package-subpath reachability",
+  "input": { "count": 2, "moved": 1, "nested": false, "style": "plain" },
+  "reason": "Minimized @opencode/util pattern: exports ./src/*.ts; bom.ts migrates while other.ts stays."
+}
