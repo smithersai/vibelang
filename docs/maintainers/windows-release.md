@@ -23,3 +23,6 @@ The `vibelang` tarball must include these optional dependencies at the same vers
 Its dprint manifest must use `npm:@vibelang/cli-win32-arm64@<VERSION>/bin/vibelang.exe` and the x64 equivalent, with the packed tarballs' SHA-256 checksums; `make-packages.mjs` generates both. Existing checksum mismatch protection stays enabled. After publication, update the installation pages that currently describe Windows as unpublished and verify both registry installs.
 
 `scripts/release/windows-smoke.mjs <installed-project>` exercises local tarballs, compilation, emitted tests, Node's source loader, source-map file URLs, the runtime entry point and an actual idempotent `--fix` edit. Use a project path containing spaces, `#` and `%`.
+
+For per-platform build completion records and silent failure diagnostics, see
+[Cross-platform compiler builds](release-builds.md).

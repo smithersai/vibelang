@@ -49,13 +49,34 @@ else
     echo "build-binaries: GOOS=$goos GOARCH=$goarch go build ./cmd/tsc -> dist-npm/bin/$platform/$exe"
     (cd "$root/typescript/tsc" && CGO_ENABLED=0 GOOS=$goos GOARCH=$goarch \
       go build -trimpath -ldflags="-s -w" -o "$out/$platform/$exe" ./cmd/tsc) >"$out/$platform.log" 2>&1 &
-    pids="$pids $!"
+    pids="$pids $platform:$!"
   done
   failed=0
-  for pid in $pids; do wait "$pid" || failed=1; done
+  for job in $pids; do
+    platform=${job%:*}
+    pid=${job##*:}
+    rc=0
+    wait "$pid" || rc=$?
+    exe=vibelang
+    case $platform in win32-*) exe=vibelang.exe ;; esac
+    if [ "$rc" -eq 0 ] && [ ! -s "$out/$platform/$exe" ]; then
+      echo "build-binaries: $platform returned success without a nonempty binary" >&2
+      rc=1
+    fi
+    # Keep one receipt per target, including silent failures or killed children.
+    printf 'platform=%s\ncompleted=%s\nexit=%s\n' "$platform" "$(date -u +%FT%TZ)" "$rc" > "$out/$platform.status"
+    if [ "$rc" -ne 0 ]; then
+      failed=1
+      echo "build-binaries: $platform failed (exit $rc); log: $out/$platform.log" >&2
+      if [ -s "$out/$platform.log" ]; then
+        cat "$out/$platform.log" >&2
+      else
+        echo "build-binaries: $platform failed without diagnostic output" >&2
+      fi
+    fi
+  done
   if [ "$failed" -ne 0 ]; then
-    for platform in $platforms; do cat "$out/$platform.log" >&2; done
-    echo "build-binaries: a build failed" >&2
+    echo "build-binaries: a build failed; per-target receipts: $out/*.status" >&2
     exit 1
   fi
   rm -f "$out"/*.log
