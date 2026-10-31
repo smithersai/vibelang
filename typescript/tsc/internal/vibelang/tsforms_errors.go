@@ -138,7 +138,7 @@ func errorClassShape(file *ast.SourceFile, class *ast.Node) bool {
 // a named class declaration, exported or not, with no other modifiers and no
 // implements clause.
 func errorClassHead(class *ast.Node) bool {
-	if class.Name() == nil || len(ast.GetImplementsHeritageClauseElements(class)) != 0 {
+	if class.Name() == nil || class.Flags&ast.NodeFlagsAmbient != 0 || len(ast.GetImplementsHeritageClauseElements(class)) != 0 {
 		return false
 	}
 	return !slices.ContainsFunc(class.ModifierNodes(), func(modifier *ast.Node) bool { return modifier.Kind != ast.KindExportKeyword })

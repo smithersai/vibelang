@@ -68,6 +68,7 @@ Registration reserves a code; it does not mean the compiler already implements e
 | `EK1302` | a user-written `static` member or setter in an `error` or `schema error` body |
 | `EK1303` | type parameters on an `error` or `schema error` declaration |
 | `EK1304` | any other `RejectedElement` in an `error` or `schema error` body; an `implements` clause |
+| `EK1307` | an `error` or `schema error` declaration in a native TypeScript ambient context; use a native ambient class for an erased declaration |
 | `EK1401` | a namespace name that two subpaths export, or a subpath and the root |
 | `EK1501` | `export default schema S …`; write `export { S as default }` |
 | `EK1502` | type parameters on a `schema` declaration; use an ordinary generic TypeScript factory |

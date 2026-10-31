@@ -1,0 +1,7 @@
+// expect: EK1307 EK1307 EK1307 EK1307 EK1307 EK1307
+declare error Bodyless
+declare error Fields { id: string }
+declare schema error SchemaFields { id: string }
+declare namespace API { export error Nested { id: string } }
+declare namespace API { export schema error NestedSchema { id: string } }
+export declare error Exported

@@ -871,6 +871,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Schemas and schema errors with a `__proto__` field could lose the field or throw while being declared; the field now validates, constructs and encodes as an own data property. Native `Schema.Struct` prototype setters keep their JavaScript meaning during `vibelang --fix`.
 
 - The first-run guide check could end at a shared 30 s deadline on a loaded build host without saying which of its five commands was slow; each command now has its own deadline, timed-out POSIX command groups are stopped even when children hold their output pipes open, and the failure names the command.
+- Ambient `error` and `schema error` declarations compiled without constructing a runtime value and could be suggested as replacements for native ambient classes; they now report `EK1307`, and native ambient classes retain their erased form.
 
 - Compiler fuzz checks could stop before finishing their seed corpus; the build target now uses the documented 40-minute deadline and allows separate build time.
 
