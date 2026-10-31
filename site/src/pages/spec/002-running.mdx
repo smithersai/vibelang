@@ -311,7 +311,7 @@ const observed = await Effect.runPromiseExit(Effect.promise(async () => [
 | Position | `await` | `try` |
 | --- | --- | --- |
 | the body of the corresponding function (`async` for `await`, `effect` for `try`), and a `do`, `match` arm/guard or parentheses inside that context | allowed | allowed |
-| a computed class key, an `extends` clause | allowed | allowed |
+| a computed class key, an `extends` clause, a decorator expression such as `@(try d)` | allowed | allowed |
 | a parameter default, a class field initializer, a `static` block | SyntaxError | error |
 | a nested plain function | SyntaxError | error |
 | the module top level | allowed | error: the top level is not effect code, and nothing runs an Effect implicitly (VIP-26). Write `await runPromise(e)` |

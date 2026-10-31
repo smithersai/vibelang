@@ -9,7 +9,7 @@ test("initializer resets, inherited heads and static reservation have one source
   const section = chapter("900-appendices").split("### The `[Effect]` parameter")[1].split("### Contextual keywords")[0]
   assert.match(section, /initializers.*`\[~Effect\]`/)
   assert.match(section, /static.*`\[\?Effect\]`/i)
-  assert.match(section, /Class heritage and computed class element names/)
+  assert.match(section, /Class heritage, decorator expressions and computed class element names/)
   assert.match(section, /body of any source callable without an `effect` modifier/)
   assert.match(section, /nested explicit Effect callable or block/)
 })

@@ -328,6 +328,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A writable interface or object-type property became `readonly` in emitted declarations, preventing TypeScript consumers from assigning to it; declarations now keep the source's property and index-signature modifiers, including optional and nested members.
 
+- The specification's table of where `try` may run, like `await`, had no row for decorator expressions. A decorator expression such as `@(try d)` now runs in its enclosing context, as a computed class key does, matching TypeScript, which admits `@(await d)` in an `async` function and reports `TS1308` in a plain one.
+
 - Severity settings for TypeScript-form lint warnings reported `EK3006` and were ignored; every warning listed in Appendix B now accepts `vibe.severities` overrides.
 
 - `EK4837` told you to replace a `Schema.TaggedError` class with `error`, which drops its Schema, and had no fix; it now names `schema error`, also reports a class with accessors, and `vibelang --fix` writes the declaration.
