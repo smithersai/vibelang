@@ -180,6 +180,11 @@ func (rc *refactorContext) schemaRefactor(declaration *ast.Node) []*ls.CodeActio
 // Each await bridges a Promise through Effect.tryPromise; the mapped action
 // declares a distinct error for each awaited rejection.
 func (rc *refactorContext) asyncRefactors(fn *ast.Node) []*ls.CodeAction {
+	// Async generators expose an AsyncIterable and a terminal return value.
+	// Converting them to a Stream requires a separate migration (VIP-21).
+	if ast.GetFunctionFlags(fn)&ast.FunctionFlagsGenerator != 0 {
+		return nil
+	}
 	if asyncReturnsPromiseValue(rc.c, fn.Body()) {
 		return nil
 	}

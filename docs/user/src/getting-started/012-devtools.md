@@ -41,6 +41,8 @@ Ordinary `async` functions in `.vibe` files return `Promise<T>`, as in TypeScrip
 
 Converting an `async` function writes a qualified `Effect.tryPromise(() => promise)` bridge for each `await`. Both actions write the explicit `effect` modifier, preserve its surrounding comments, remove the Promise return annotation so the Effect contract is inferred, and convert an arrow's expression body too. The action with an error per await uses `Effect.tryPromise({ try: () => promise, catch: (cause) => new PromiseFailed({ cause }) })`; the generated error name follows the awaited call. Recovered `async name()` shorthands gain `function`, including names beginning with `function`.
 
+The Promise conversion refactors apply to ordinary `async` functions. For an async generator, write an Effect producer and handle its terminal result and Promise yields explicitly.
+
 ## Inspect inferred information
 
 ```vibe
