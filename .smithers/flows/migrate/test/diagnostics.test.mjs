@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
@@ -118,6 +118,30 @@ test("styleProblems leaves an exported Error class no error declaration can writ
     ""
   ].join("\n"))
   assert.deepEqual(styleProblems(diagnostics, ["src/a.vibe", "src/b.vibe"]).map((d) => d.file), ["src/b.vibe"])
+})
+
+// drive-t3code 18:31Z: packages/contracts/src/filesystem.ts keeps
+// FilesystemBrowseError as a Schema.TaggedError class (its EK4837 has no quick
+// fix), constructor included, so its EK4814 is no style failure.
+test("t3code: the style gate accepts a kept Schema.TaggedError class with its constructor", () => {
+  const corpus = JSON.parse(readFileSync(new URL("./corpus/t3code-schema-constructor-gate.json", import.meta.url), "utf8"))
+  assert.deepEqual(styleProblems(parseDiagnostics(corpus.output), ["main.vibe"]), corpus.styleProblems, corpus.key)
+})
+
+test("styleProblems leaves EK4814 on a Schema.TaggedError class it keeps, and rejects it on any other class", () => {
+  const diagnostics = parseDiagnostics([
+    "src/a.vibe(2,14): warning EK4837: E extends Schema.TaggedError; a schema error declaration, schema error E { … }, writes the same failure with its Schema.",
+    "  No quick fix: a schema error's body keeps accessors and annotated methods.",
+    "src/a.vibe(3,3): warning EK4814: E overrides the constructor of a Schema class, which decoding does not call.",
+    "src/a.vibe(9,3): warning EK4814: Other overrides the constructor of a Schema class, which decoding does not call.",
+    "src/b.vibe(3,3): warning EK4814: E overrides the constructor of a Schema class, which decoding does not call.",
+    "src/c.vibe(2,14): warning EK4837: F extends Schema.TaggedError; a schema error declaration, schema error F { … }, writes the same failure with its Schema.",
+    "  Its quick fix writes schema error F { … }; vibelang --fix applies every such fix in the project.",
+    "src/c.vibe(3,3): warning EK4814: F overrides the constructor of a Schema class, which decoding does not call.",
+    ""
+  ].join("\n"))
+  const kept = styleProblems(diagnostics, ["src/a.vibe", "src/b.vibe", "src/c.vibe"]).map((d) => `${d.file}:${d.line}:${d.code}`)
+  assert.deepEqual(kept, ["src/a.vibe:9:EK4814", "src/b.vibe:3:EK4814", "src/c.vibe:2:EK4837", "src/c.vibe:3:EK4814"])
 })
 
 test("styleProblems leaves the Struct constant --fix must keep: a schema declaration would add a public type", () => {

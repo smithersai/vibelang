@@ -1,0 +1,7 @@
+{
+  "key": "t3code-schema-constructor-gate",
+  "source": "t3code packages/contracts/src/filesystem.ts FilesystemBrowseError (drive-t3code 18:31Z), native 773bddb1d57f output",
+  "vibe": "import * as Schema from \"effect/Schema\";\nexport class E extends Schema.TaggedError<E>()(\"E\", { message: Schema.String }) {\n  constructor(fields: { readonly message: string }) { super(fields); }\n}\n",
+  "output": "main.vibe(2,14): warning EK4837: E extends Schema.TaggedError; a schema error declaration, schema error E { … }, writes the same failure with its Schema.\n  No quick fix: a schema error’s body keeps accessors and annotated methods.\nmain.vibe(3,3): warning EK4814: E overrides the constructor of a Schema class, which decoding does not call.\n  Decoding builds instances without calling it. Add a static function that makes an instance instead.\n",
+  "styleProblems": []
+}
