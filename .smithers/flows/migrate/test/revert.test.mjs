@@ -100,3 +100,46 @@ test("revert returns a file to .ts and points every import the codemod rewrote b
     rmSync(root, { recursive: true, force: true })
   }
 })
+
+// foldkit, round 3: a lint crash found in batch 06 sent modules of batches 02
+// and 03 back to TypeScript, and revert restored from @-, which already had
+// them as .vibe.
+test("revert returns a module an earlier batch migrated, undoing that batch's import edits", async () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-revert-earlier-"))
+  const target = join(root, "repo")
+  const run = join(root, "run")
+  try {
+    mkdirSync(join(target, "src"), { recursive: true })
+    await must("jj git init && jj config set --repo user.name test && jj config set --repo user.email test@localhost", { cwd: target })
+    writeFileSync(join(target, "package.json"), "{}\n")
+    writeFileSync(join(target, "src/a.ts"), 'import { b } from "./b.ts"\nexport const a = b\n')
+    writeFileSync(join(target, "src/b.ts"), "export const b = 1\n")
+    writeFileSync(join(target, "src/d.ts"), 'import { b } from "./b.js"\nexport const d = b\n')
+    writeFileSync(join(target, "src/e.ts"), "export const e = 2\n")
+    await Jj.commit(target, "base")
+
+    writeJson(paths(run).config, makeConfig({ target, test: "true", toolchain: join(root, "toolchain") }))
+    writeJson(paths(run).plan, { batches: [{ files: ["src/b.ts"] }, { files: ["src/e.ts"] }] })
+    // Batch 01 migrates b and is recorded.
+    renameBatch(target, ["src/b.ts"])
+    writeFileSync(join(target, "src/b.d.vibe.ts"), "export declare const b = 1;\n")
+    writeJson(paths(run).codemod("01"), { importEdits: rewriteImports(target, ["src/a.ts", "src/b.vibe", "src/d.ts", "src/e.ts"]) })
+    const commit = await Jj.commit(target, "batch 01")
+    writeJson(paths(run).record("01"), { batch: "01", commit, files: [{ planned: "src/b.ts", path: "src/b.vibe", migrated: true }] })
+    // Batch 02 is in progress when b turns out to be blocked.
+    renameBatch(target, ["src/e.ts"])
+
+    const reverted = await revert({ run, batch: "02", file: "src/b.vibe", reason: "blocked on a lint crash" })
+    assert.equal(readFileSync(join(target, "src/b.ts"), "utf8"), "export const b = 1\n")
+    assert.equal(existsSync(join(target, "src/b.vibe")), false)
+    assert.equal(existsSync(join(target, "src/b.d.vibe.ts")), false)
+    assert.equal(readFileSync(join(target, "src/a.ts"), "utf8"), 'import { b } from "./b.ts"\nexport const a = b\n')
+    assert.equal(readFileSync(join(target, "src/d.ts"), "utf8"), 'import { b } from "./b.js"\nexport const d = b\n')
+    // The batch in progress keeps its own module.
+    assert.equal(existsSync(join(target, "src/e.vibe")), true)
+    assert.equal(reverted.from, "01")
+    assert.deepEqual(readJson(paths(run).reverted("02")).map((r) => [r.file, r.reason]), [["src/b.ts", "blocked on a lint crash"]])
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})

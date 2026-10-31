@@ -650,21 +650,36 @@ export async function repair(options) {
 
 /** revert: return one migrated file of the current batch to its .ts source, with a reason. */
 export async function revert(options) {
-  const { p, config } = loadRun(options.run)
+  const { p, config, plan } = loadRun(options.run)
   const b = currentBatch(options.run, options.batch)
   if (!options.file || !options.reason) throw new Error("revert needs --file <path.vibe> and --reason <text>")
   const vibe = options.file.replace(/\.ts$/, ".vibe")
   const ts = vibe.replace(/\.vibe$/, ".ts")
-  await Jj.restore(config.target, "@-", [ts, vibe])
+  const source = await revertSource(config.target, p, plan, b, ts, vibe)
+  await Jj.restore(config.target, source.revision, [ts, vibe])
   rmSync(join(config.target, vibe.replace(/\.vibe$/, ".d.vibe.ts")), { force: true }) // its declaration sidecar
   // A TypeScript importer gets the specifier it had before the codemod; a .vibe importer names the .ts source.
-  const codemodResult = readJsonIf(p.codemod(b))
+  const codemodResult = readJsonIf(p.codemod(source.batch))
   const exportEdits = restoreExports(config.target, codemodResult?.exportEdits ?? [], ts)
   const importEdits = [...restoreSpecifiers(config.target, codemodResult?.importEdits ?? [], ts), ...rewriteImports(config.target, scopeFiles(config))]
   const reverted = readJsonIf(p.reverted(b), [])
-  reverted.push({ file: ts, reason: options.reason, at: new Date().toISOString(), exportEdits, importEdits })
+  reverted.push({ file: ts, reason: options.reason, at: new Date().toISOString(), ...(source.batch === b ? {} : { from: source.batch }), exportEdits, importEdits })
   writeJson(p.reverted(b), reverted)
   return reverted.at(-1)
+}
+
+/**
+ * Where revert brings a module back from: the batch's parent while it still
+ * has the TypeScript, else the commit before the latest recorded batch that
+ * migrated the module, whose codemod made the import and export edits to undo.
+ */
+async function revertSource(t, p, plan, b, ts, vibe) {
+  if ((await Jj.fileAt(t, "@-", ts)) !== null) return { revision: "@-", batch: b }
+  for (let i = (plan?.batches?.length ?? 0) - 1; i >= 0; i--) {
+    const record = readJsonIf(p.record(batchName(i)))
+    if (record?.commit && record.files?.some((f) => f.path === vibe && f.migrated)) return { revision: `${record.commit}-`, batch: batchName(i) }
+  }
+  throw new Error(`${ts} is not in the batch's parent, and no recorded batch migrated ${vibe}`)
 }
 
 /** verify: tests against the baseline, declaration identity, and no TypeScript-style form or platform global in the batch. */
