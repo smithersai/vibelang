@@ -322,9 +322,12 @@ signatures in both error forms, `async` contracts and computed `schema error` ke
 
 ## How to run
 
-`FuzzCommandLine` builds its compiler with `-trimpath`, matching the build
-graph seed check. Their compiler packages share Go build-cache entries, so
-a fresh mirror does not compile them twice in different build modes.
+`FuzzCommandLine` matches its compiler's `-trimpath` setting to the running
+test binary's build metadata. This shares compiler package cache entries for
+both direct `go test` runs and the trimmed build graph seed check. Setup logs
+record the mode, build wall time and child CPU; each seed also logs library
+compilation and command wall times, so setup overhead can be distinguished
+from oracle execution without weakening the CPU budget.
 
 The build-graph seed target declares `GOMAXPROCS` capped at the smaller of `24` and the machine CPU count and `GOFLAGS=-p=6`
 inside its shell. The outer runner's environment is deliberately filtered,

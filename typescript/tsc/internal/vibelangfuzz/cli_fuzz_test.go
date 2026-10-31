@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"runtime/debug"
 	"slices"
 	"strconv"
 	"strings"
@@ -85,6 +86,7 @@ func FuzzCommandLine(f *testing.F) {
 			g.Input = "testdata/fuzz/" + cliTarget + "/" + strings.TrimPrefix(key, "corpus:") + ": " + g.Input
 		}
 		var r *Result
+		compileStarted := time.Now()
 		Within("compile", func() {
 			var err error
 			r, err = w.Compile(t.Context(), project)
@@ -92,10 +94,13 @@ func FuzzCommandLine(f *testing.F) {
 				t.Fatal(err)
 			}
 		})
+		compileWall := time.Since(compileStarted)
 		defer r.Remove()
+		commandStarted := time.Now()
 		Within("command line", func() {
 			cliCheck(t, g, w, binary, r, project, args)
 		})
+		t.Logf("CLI stages: library_compile_wall=%s commands_wall=%s", compileWall, time.Since(commandStarted))
 		g.FinishInput(t, key)
 	})
 }
@@ -363,12 +368,30 @@ func cliBuild(tb testing.TB, dir string) string {
 		tb.Skipf("go is not on PATH, so the vibelang binary cannot be built: %v", err)
 	}
 	binary := filepath.Join(dir, "vibelang")
-	// Match the outer seed target: a fresh mirror reuses its trimmed
-	// compiler packages instead of rebuilding them in a second mode.
-	cmd := exec.Command(gocmd, "build", "-trimpath", "-o", binary, "./cmd/tsc")
+	// Match the running test binary, including direct untrimmed go-test
+	// invocations. A different mode recompiles the compiler's dependencies
+	// inside this target and charges that work to its seed CPU budget.
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		tb.Fatal("test build metadata unavailable")
+	}
+	trimpath := false
+	for _, setting := range info.Settings {
+		if setting.Key == "-trimpath" {
+			trimpath = setting.Value == "true"
+		}
+	}
+	cmd := exec.Command(gocmd, "build", "-trimpath="+strconv.FormatBool(trimpath), "-o", binary, "./cmd/tsc")
 	cmd.Dir = filepath.Join(Root(), "typescript/tsc")
 	cliIsolate(cmd)
-	if out, err := cmd.CombinedOutput(); err != nil {
+	buildStarted := time.Now()
+	out, err := cmd.CombinedOutput()
+	var buildCPU time.Duration
+	if cmd.ProcessState != nil {
+		buildCPU = cmd.ProcessState.UserTime() + cmd.ProcessState.SystemTime()
+	}
+	tb.Logf("CLI setup: stage=build trimpath=%t wall=%s child_cpu=%s", trimpath, time.Since(buildStarted), buildCPU)
+	if err != nil {
 		tb.Fatalf("go build ./cmd/tsc: %v\n%s", err, out)
 	}
 	return binary

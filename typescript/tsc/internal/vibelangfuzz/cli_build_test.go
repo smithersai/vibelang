@@ -3,7 +3,7 @@ package vibelangfuzz
 import (
 	"os"
 	"path/filepath"
-	"slices"
+	"runtime/debug"
 	"strings"
 	"testing"
 )
@@ -12,6 +12,16 @@ import (
 // Keep their build mode identical so a fresh validation mirror does not
 // compile the entire compiler a second time in FuzzCommandLine setup.
 func TestCLITrimpath(t *testing.T) {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		t.Fatal("test build metadata unavailable")
+	}
+	wantTrimpath := false
+	for _, setting := range info.Settings {
+		if setting.Key == "-trimpath" {
+			wantTrimpath = setting.Value == "true"
+		}
+	}
 	dir := t.TempDir()
 	args := filepath.Join(dir, "args")
 	fake := "#!/bin/sh\nprintf \"%s\\n\" \"$@\" > \"$VIBELANG_FUZZ_BUILD_ARGS\"\n"
@@ -25,7 +35,13 @@ func TestCLITrimpath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Contains(strings.Fields(string(data)), "-trimpath") {
-		t.Fatalf("nested compiler build cannot share the trimmed test build cache: %s", data)
+	gotTrimpath := false
+	for _, arg := range strings.Fields(string(data)) {
+		if arg == "-trimpath" || arg == "-trimpath=true" {
+			gotTrimpath = true
+		}
+	}
+	if gotTrimpath != wantTrimpath {
+		t.Fatalf("nested compiler trimpath=%t, test binary trimpath=%t; cannot share compiler build cache: %s", gotTrimpath, wantTrimpath, data)
 	}
 }
