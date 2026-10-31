@@ -5272,7 +5272,16 @@ func isSolelyIdentifierDefinitionLocation(
 	case ast.KindOpenBracketToken:
 		return containingNodeKind == ast.KindArrayBindingPattern // var [x|
 	case ast.KindOpenParenToken:
-		return containingNodeKind == ast.KindCatchClause || isFunctionLikeButNotConstructor(containingNodeKind)
+		if containingNodeKind == ast.KindCatchClause {
+			return true
+		}
+		if isFunctionLikeButNotConstructor(containingNodeKind) {
+			// A synthesized function can span a loop operand after its parameters.
+			// Only the opening parenthesis before its parameter list defines names.
+			parameters := parent.ParameterList()
+			return parameters != nil && contextToken.Pos() < parameters.Pos()
+		}
+		return false
 	case ast.KindOpenBraceToken:
 		return containingNodeKind == ast.KindEnumDeclaration // enum a { |
 	case ast.KindLessThanToken:

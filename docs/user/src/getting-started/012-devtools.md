@@ -16,7 +16,7 @@ effect function sample() {
 // Output: sample
 ```
 
-Install `vibelang` as a dev dependency. `vibelang --lsp --stdio` starts the language server from the project's compiler, one server for `.vibe` and `.ts` files.
+Install `vibelang` as a dev dependency. `vibelang --lsp --stdio` starts the language server from the project's compiler, one server for `.vibe` and `.ts` files. Completion also works inside the iterable expression of a `for concurrent` loop.
 
 For VS Code and Cursor, install the extension that ships in `vibelang`, then open the application directory:
 
