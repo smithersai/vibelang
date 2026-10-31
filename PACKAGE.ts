@@ -241,14 +241,11 @@ const targets = {
   "go-vibelangfuzz": goVibelang(
     "The fuzz oracles over the seed corpus: cases, snippets and saved reproductions.",
     `CGO_ENABLED=0 GOMAXPROCS=$(n=$(getconf _NPROCESSORS_ONLN); [ "$n" -lt 24 ] && echo "$n" || echo 24) GOFLAGS=-p=6 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} ` +
-      "go test -short -count=1 -timeout=20m -trimpath ./internal/vibelangfuzz/...",
+      "go test -short -count=1 -timeout=40m -trimpath ./internal/vibelangfuzz/...",
     [Tsc["vibelangfuzz-files"]],
-    // go test bounds the run at 20m and names a stuck test; the budget
-    // adds the build of the test binaries. Under the post-merge suite's
-    // load the target took 17m to 29m, and 30m killed it with no output;
-    // most of that was Go's test cache hashing the files the tests opened,
-    // which -count=1 skips (18m to 4m on an idle 48-core host).
-    "45m"
+    // Match the documented 40m corpus deadline; admission and compilation
+    // retain their separate 25m allowance before the task's 65m limit.
+    "65m"
   ),
   "spec-tests": S.Shell.Test({
     summary: "The Go tests that read docs/design (the registry, the VIP citations and coverage, the pending lines) and the cost guards of --fix and flow narrowing.",

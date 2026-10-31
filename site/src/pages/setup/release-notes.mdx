@@ -191,6 +191,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Formatting valid `for` heads with `is` patterns could fail with an internal parse error; they now format at narrow and normal widths while keeping `is` attached to its subject.
 
+- Compiler fuzz checks could stop before finishing their seed corpus; the build target now uses the documented 40-minute deadline and allows separate build time.
+
 - The site's contrast check could lose its Chromium renderer under build-host memory pressure; it now audits each single-document page in place instead of opening a second renderer to combine the results.
 - VIP migration could remove `try` from calls returning tagged errors and turn their failures into success values; it now preserves execution of those Effects, while non-Effect Yieldables retain their `asEffect()` repair.
 

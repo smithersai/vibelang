@@ -50,3 +50,25 @@ func TestExternalOracle(t *testing.T) {
     rmSync(root, { recursive: true, force: true })
   }
 })
+
+// A whole seed run reached the old 20m deadline before completing. Keep the
+// graph's test and task budgets consistent with the documented full run.
+test("the fuzz seed target honors its documented deadline and build allowance", () => {
+  const seconds = text => {
+    const hit = /^(\d+)([smh])$/.exec(text)
+    assert.ok(hit, "invalid deadline " + text)
+    return Number(hit[1]) * ({ s: 1, m: 60, h: 3600 })[hit[2]]
+  }
+  const documented = /go test -short -count=1 -p 8 -timeout=([0-9]+[smh])/.exec(read("docs/research/fuzzing.md"))
+  assert.ok(documented, "the corpus command must declare its deadline")
+  const source = read("PACKAGE.ts")
+  const start = source.indexOf('"go-vibelangfuzz": goVibelang(')
+  const end = source.indexOf('"spec-tests":', start)
+  assert.ok(start >= 0 && end > start)
+  const target = source.slice(start, end)
+  const testLimit = /go test [^"\n]*-timeout=([0-9]+[smh])/.exec(target)
+  const taskLimit = /\n\s*"([0-9]+[smh])"\s*\n\s*\)/.exec(target)
+  assert.ok(testLimit && taskLimit, "the seed target must declare both deadlines")
+  assert.ok(seconds(testLimit[1]) >= seconds(documented[1]), "the graph truncates the documented seed run")
+  assert.ok(seconds(taskLimit[1]) >= seconds(testLimit[1]) + 25 * 60, "the task deadline must leave the test its admission/build allowance")
+})

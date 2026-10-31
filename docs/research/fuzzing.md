@@ -8,6 +8,15 @@ Fuzz VibeLang with Go's native fuzzer, and take every oracle from the specificat
 
 The compiler is a Go fork of TypeScript 7, so the engine is `go test -fuzz`: coverage-guided, in-process, with failing inputs kept as regression tests in `testdata/fuzz/`. The engine is the easy part. Compiler-fuzzing research finds bugs through oracles: a program the generator knows is valid must compile, two programs the specification calls equivalent must behave the same, and a program with one injected rule violation must draw exactly the diagnostic the specification assigns. `internal/vibelangfuzz` implements those oracles in the targets below, reads its facts from `docs/design/src` at test time, and records each place the specification is ahead of the compiler as a pending gap instead of encoding today's behavior.
 
+## Running the seed corpus
+
+The complete short corpus has a 40-minute test deadline. The graph target `//:go-vibelangfuzz` adds 25 minutes for admission and compilation, so its task deadline cannot cancel a test that still has time left. The per-process hang watchdog stays at 120 seconds.
+
+```sh
+cd typescript/tsc
+VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s go test -short -count=1 -p 8 -timeout=40m ./internal/vibelangfuzz/...
+```
+
 ## Question 1: how to fuzz TypeScript code
 
 | Tool | Engine | Status | Use it for |
