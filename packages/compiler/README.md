@@ -401,7 +401,7 @@ Apache-2.0. The compiler is a modified version of the TypeScript 7 compiler
 From the VibeLang repository root:
 
 ```sh
-sh scripts/build-vibelang.sh      # writes packages/compiler/native/vibelang and dprint-plugin.json
+sh scripts/build-vibelang.sh      # writes packages/compiler/native/vibelang, typescript/built/local/tsc and dprint-plugin.json
 packages/compiler/bin/vibelang --version
 node --test packages/compiler/test/*.test.mjs
 ```

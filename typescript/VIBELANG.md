@@ -27,7 +27,7 @@ vibelang/lsp-smoke.sh             # builds vibelang and the runtime, then runs t
 ./built/local/tsc -p vibelang/cases/ts-hello
 ```
 
-The binary is VibeLang's compiler, `vibelang`, under any file name; `vibelang/lsp-smoke.sh` builds it as `built/local/vibelang`, and `../scripts/build-vibelang.sh` as `../packages/compiler/native/vibelang`.
+The binary is VibeLang's compiler, `vibelang`, under any file name; `vibelang/lsp-smoke.sh` builds it as `built/local/vibelang`, and `../scripts/build-vibelang.sh` as `../packages/compiler/native/vibelang`, then installs the same binary as `built/local/tsc`, the one `vibelang/harness.mjs`, `vibelang/smoke.sh` and `vibelang/lsp-smoke.sh --no-build` run. The harness warns when `built/local/tsc` is older than a file it is built from.
 
 The build embeds the `lib.*.d.ts` files; Herebyfile's `-tags=noembed` build copies them next to the binary instead. A cold build takes about 75 s and fills about 1.7 GB of Go build cache. Always pass `-trimpath`: without it, Go keys each package's cache entry by its absolute directory, so every jj workspace cold-builds and adds its own copy. Use no other compile flags: Go keys entries on them too, and the build graph, `scripts/build-vibelang.sh` and the test scripts all build with `-trimpath` alone, so they share one copy of each package (`scripts/go-build-flags.test.mjs`).
 

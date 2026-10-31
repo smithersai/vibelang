@@ -73,6 +73,36 @@ import { fileURLToPath } from "node:url"
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const casesDir = path.join(root, "vibelang", "cases")
 const tsc = path.join(root, "built", "local", "tsc")
+// scripts/build-vibelang.sh and the //typescript:compiler target write tsc. One older than a file that target builds
+// from (typescript/tsc without its tests and testdata) is an earlier compiler: the cases then say nothing about the
+// checkout's change (2026-10-31: 21 lane reports had run cases against an earlier compiler).
+const staleCompiler = (() => {
+  let built
+  try {
+    built = fs.statSync(tsc).mtimeMs
+  } catch {
+    return undefined
+  }
+  const newer = (dir) => {
+    let entries
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true })
+    } catch {
+      return undefined
+    }
+    for (const entry of entries) {
+      const at = path.join(dir, entry.name)
+      if (entry.isDirectory()) {
+        const found = entry.name === "testdata" ? undefined : newer(at)
+        if (found) return found
+      } else if (!entry.name.endsWith("_test.go") && fs.statSync(at).mtimeMs > built) return at
+    }
+  }
+  const source = newer(path.join(root, "tsc"))
+  return source &&
+    `warning: ${path.relative(root, tsc)} is older than ${path.relative(root, source)}, so these cases run an earlier ` +
+      "compiler; rebuild it with sh scripts/build-vibelang.sh"
+})()
 const effectModules = process.env.EFFECT_NODE_MODULES
 const runtimeDir = process.env.VIBELANG_RUNTIME
 // A new directory per invocation preserves intermittent failures across reruns.
@@ -488,6 +518,7 @@ async function main() {
   console.log(
     `\n${results.length} cases: ${count("ok")} ok, ${count("FAIL")} FAIL, ${count("pending")} pending, ${count("XPASS")} XPASS`,
   )
+  if (staleCompiler) console.log(staleCompiler)
   const xpass = results.filter((r) => r.status === "XPASS")
   if (xpass.length > 0) console.log(`XPASS: delete the pending file of ${xpass.map((r) => r.name).join(", ")}`)
   // Piped console output may still be buffered; let it drain before exiting.

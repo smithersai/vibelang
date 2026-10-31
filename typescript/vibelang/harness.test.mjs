@@ -430,3 +430,29 @@ fs.writeFileSync("out/main.js", 'console.log("expected")')
   }
   assert.equal(fs.readdirSync(path.join(root, "vibelang")).some((name) => name.startsWith(".smthrs-harness-")), false)
 })
+
+// A compiler older than a file //typescript:compiler builds from is an earlier compiler; tests and testdata are
+// not its inputs (typescript/tsc/PACKAGE.ts `srcs`).
+test("the summary warns when the compiler is older than a source it builds from", (t) => {
+  const { root, harness, compiler } = fixture(t)
+  const env = { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") }
+  const now = Date.now() / 1000
+  const write = (file, at) => {
+    const full = path.join(root, file)
+    fs.mkdirSync(path.dirname(full), { recursive: true })
+    fs.writeFileSync(full, "package vibelang\n")
+    fs.utimesSync(full, at, at)
+  }
+  write("tsc/internal/vibelang/checker.go", now - 120)
+  write("tsc/internal/vibelang/checker_test.go", now)
+  write("tsc/internal/vibelang/testdata/fuzz/seed", now)
+  fs.utimesSync(compiler, now - 60, now - 60)
+  const run = () => spawnSync(process.execPath, [harness, "runtime"], { env, encoding: "utf8", timeout: 10_000 })
+  const fresh = run()
+  assert.equal(fresh.status, 1, fresh.stdout + fresh.stderr)
+  assert.doesNotMatch(fresh.stdout + fresh.stderr, /older than/)
+  write("tsc/internal/vibelang/checker.go", now)
+  const stale = run()
+  assert.equal(stale.status, 1, "the warning leaves the exit status to the cases")
+  assert.match(stale.stdout, /^warning: built\/local\/tsc is older than tsc\/internal\/vibelang\/checker\.go, so these cases run an earlier compiler; rebuild it with sh scripts\/build-vibelang\.sh$/m)
+})
