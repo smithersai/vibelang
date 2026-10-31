@@ -176,6 +176,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Installing `vibelang` alone did not declare the Effect version it supports; the compiler now requires the same exact `effect` peer as the runtime, and release packaging rejects a missing, optional, ranged or mismatched pin.
 
 - A fresh checkout failed the compiler package tests with `TS2883` on every `error` declaration, because `packages/runtime` installed its own Effect beneath the link each fixture uses; `scripts/ci.sh` now gives the runtime the `experiments` copy, and published installs were never affected.
+- Source collectors could silently omit migrated files because their extension allowlists named only TypeScript; migration setup now warns with the file and line when `.ts` appears without `.vibe`.
+
 - Release notes repeated fixes and included internal test results in an earlier unpublished section; the final check now covers all unpublished fixes and lists each user-visible change once.
 
 - Checking documentation examples with a symlinked `TMPDIR` could stop with `Compiler failed` instead of reporting an example's type error; diagnostics now stay attached to their examples and later pages are checked.
