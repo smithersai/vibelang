@@ -46,11 +46,12 @@ Registration reserves a code; it does not mean the compiler already implements e
 | `EK0105` | `effect` and `async` on one function |
 | `EK0106` | an `effect` function whose written return type is not an Effect |
 | `EK0107` | `eval`, `Function`, `arguments`, `var` or `with` in a `.vibe` file |
+| `EK0108` | a recognized `effect` modifier on an `abstract` declaration, in an ambient `declare` context, or on an `interface` or type literal member |
 | `EK0301` | `!` beside a union, an intersection, a function type or a conditional type without parentheses |
-| `EK0401` | a `throw`, a call that may throw, or a parameter default that may throw, in an effectful function |
+| `EK0401` | a `throw` or a call that may throw in a plain function whose return type is effectful, or a parameter default that may throw in any effectful function, or a local implementation whose tracked throws exceed an exposed effectful overload's implicit `never` bound |
 | `EK0402` | a function that may throw where a function type doesn't admit its thrown type |
 | `EK0403` | an unwrapped call, `new` expression or tagged template that may throw, in effect code or a plain `catch` handler |
-| `EK0404` | an unwrapped Promise-producing call, `new` expression or `async match` in effect code |
+| `EK0404` | an unwrapped Promise-producing call, `new` expression, tagged template or `async match` in effect code |
 | `EK0405` | a body that throws more than its written `@throws {T}` |
 | `EK0501` | `try` outside effect code, the top level included |
 | `EK0502` | `try` on a value that is not an Effect |
@@ -70,6 +71,9 @@ Registration reserves a code; it does not mean the compiler already implements e
 | `EK1303` | type parameters on an `error` or `schema error` declaration |
 | `EK1304` | any other `RejectedElement` in an `error` or `schema error` body; an `implements` clause |
 | `EK1401` | a namespace name that two subpaths export, or a subpath and the root |
+| `EK1501` | `export default schema S …`; write `export { S as default }` |
+| `EK1502` | type parameters on a `schema` declaration; use an ordinary generic TypeScript factory |
+| `EK1603` | `export default data D { … }`; write `export { D as default }` |
 | `EK1701` | `fork` or `join` outside effect code |
 | `EK1801` | a `try.all` operand that is not an array of Effects |
 | `EK1901` | a `for concurrent` operand that is not an `Iterable` |
@@ -85,7 +89,7 @@ Registration reserves a code; it does not mean the compiler already implements e
 | `EK2103` | `yield*` in a producer |
 | `EK2109` | a `schema` field type outside the mapping |
 | `EK2111` | `restore` outside an `uninterruptible` block |
-| `EK2117` | an `extends` clause or a `_tag` member in an `error` or `schema error` body |
+| `EK2117` | an `extends` clause or a `_tag` member in an `error` or `schema error` body, or a computed `schema error` key whose runtime domain cannot be proved to exclude `"_tag"` |
 | `EK2126` | a constraint on a generic `data` type parameter |
 | `EK2201` | an interruption block outside effect code |
 | `EK2202` | `restore` in an `effect` arrow or block nested in an `uninterruptible` block |

@@ -85,7 +85,7 @@ Each entry gives the condition and the repair. The examples and language-service
 | EK3002 | A class extends a service key. | Implement the service's shape instead of extending its key. |
 | EK3003 | `new` tries to construct a service key. | Read the provided implementation with `try Service`; create implementations as objects or classes implementing its shape. |
 | EK3004 | `instanceof` tests a service key, which is no base class. | Test the implementation's data or a concrete implementation class instead. |
-| EK4838 | A fiber escapes the region that owns it: it is returned, stored outside the region or in a collection, passed to another call, or captured, and the region interrupts it on exit. An error no setting lowers. | Use `fork.scoped p()` for the caller's scope, `fork.in(scope) p()` for a scope you hold, or `fork.detached p()` for a fiber nothing owns. |
+| EK4838 | An obsolete check from the old language, which tied a fiber to the region that forked it. Returning, storing or passing a `Fiber` is not a VibeLang error, and a plain `fork` child is still interrupted when its parent ends. | Use `fork.scoped p()` for the caller's scope, `fork.in(scope) p()` for a scope you hold, or `fork.detached p()` for a fiber nothing owns. |
 | EK4611 | `join` receives something other than a Fiber. | Join one fiber at a time; run Effects with `try`, use `try Deferred.await(deferred)`, or wrap Promises with `tryPromise`. See [fiber lifetimes](../concurrency/047-fibers.md) for ownership forms. |
 | EK4819 | Registered for `yield effect` in a TypeScript Effect generator; currently not emitted in `.ts` files. | In TypeScript use `yield* effect`; in VibeLang write an effect function with `try`. |
 | EK4820 | Registered for a non-returning `yield* effect` whose success type is `never`; currently not emitted in `.ts` files. | In TypeScript write `return yield* effect` so control flow narrows; in VibeLang run the Effect with `try`. |
@@ -103,7 +103,7 @@ effect function checked(value: number): number!Rejected {
 // Output: 3
 ```
 
-A contract gives the compiler a promise to check. Write all three channels, such as `Effect.Effect<number, Rejected, never>`, or omit the return annotation to infer all three. An omitted slot is `never`, so `Effect.Effect<number>` is `number!!`. VibeLang reads `vibe.config.json`, `tsconfig.json`, or `jsconfig.json`, in that order within a directory. `vibe.config.json` is a strict superset of `tsconfig.json`. Put VibeLang's settings under the top-level `"vibe"` key:
+A contract gives the compiler a promise to check. Write all three channels, such as `Effect.Effect<number, Rejected, never>`, or omit the return annotation to infer all three. An omitted slot is `never`, so `Effect.Effect<number>` is `number!!`. VibeLang reads `vibe.config.json`, `tsconfig.json`, or `jsconfig.json`, in that order within a directory. `vibe.config.json` accepts every `tsconfig.json` field with its TypeScript meaning, except that every `.vibe` file is a module whatever `moduleDetection` says. Put VibeLang's settings under the top-level `"vibe"` key:
 
 ```json
 {
@@ -135,13 +135,13 @@ Effect declarations and combinator calls written in TypeScript's style use the s
 
 | Code | TypeScript style | VibeLang form | Quick fix |
 | --- | --- | --- | --- |
-| EK4830 | `class NotFound extends Data.TaggedError("NotFound")<{ readonly id: string }> {}` | `error NotFound { id: string }` | When the tag is the class name and the base is a TaggedError; a different tag or `Data.Error` keeps the warning without one |
+| EK4830 | `class NotFound extends Data.TaggedError("NotFound")<{ readonly id: string }> {}` | `error NotFound { id: string }` | When the tag is the class name and the base is `Data.TaggedError`; a different tag keeps the warning without one. A class extending untagged `Data.Error` draws no EK4830: keep its library form |
 | EK4831 | `class Users extends Context.Service<Users, { find(id: string): Effect.Effect<User> }>()("app/Users") {}` | `service Users { static readonly key = "app/Users"; find(id: string): User!! }` | When the members are written in the type argument; the class's key stays, written as `static readonly key` unless it is the one the compiler derives |
-| EK4832 | `const User = Schema.Struct({ id: Schema.String })` | `schema User { readonly id: string }` | When every field has a declaration form; `Schema.optionalKey` or a check keeps the constant, without a warning. In a project that emits declarations, an exported constant keeps its form unless the file also declares its type, `export type User = typeof User.Type`: the declaration would add that type to the declaration file |
+| EK4832 | `const User = Schema.Struct({ id: Schema.String })` | `schema User { readonly id: string }` | When every field has a declaration form. With `Schema.optionalKey` or a check, the warning stays but offers no quick fix, and says why. In a project that emits declarations, an exported constant keeps its form unless the file also declares its type, `export type User = typeof User.Type`: the declaration would add that type to the declaration file |
 | EK4833 | `Effect.Effect<User, NotFound, Db>` | `User!NotFound!Db` | There is no global `Effect<…>` type: `Effect` is the module |
 | EK4834 | `return try Effect.succeed(user)`, `try Effect.fail(error)` | `return user`, `throw error` | Pending VIP implementation |
 | EK4835 | `Effect.catchTag(find(id), "NotFound", (e) => …)` | `find(id) catch effect (e) => match (e) { when { _tag: "NotFound" }: …; default: throw e; }` | Pending VIP implementation |
-| EK4836 | `Effect.withSpan(load(), "load")`, `Effect.provide(main(), AppLive)` | `withSpan(load(), "load")`, `provide AppLive { return try main() }` | Pending VIP implementation |
+| EK4836 | `Effect.provide(main(), AppLive)`, `Effect.provideService(main(), Users, users)` | `provide AppLive { return try main() }`, `provide Users = users { return try main() }` | Pending VIP implementation |
 | EK4837 | `class Failed extends Schema.TaggedError<Failed>()("Failed", { … }) {}` | `schema error Failed { … }` | When the tag is the class's name and the body holds accessors and annotated methods; a field with no type form is named by a constant. `Schema.optionalKey`, an annotations argument or a constructor keeps the class |
 | EK4839 | `Match.value(status).pipe(Match.when("idle", () => "Idle"), Match.orElse(() => "Busy"))` | `match (status) { when "idle": "Idle"; default: "Busy"; }` | When each pattern is a literal, an object of patterns, a `Match` refinement such as `Match.string`, or `Match.instanceOf`, and each handler an arrow function that runs no program; a predicate or an array pattern keeps the warning without one. A type the arms do not share is written: `withReturnType`'s or the handlers' type, or a primitive one |
 | EK4841 | `export const Tags = Schema.Array(Schema.String)` just before `export type Tags = typeof Tags.Type` | `export schema Tags = readonly string[]` | When the type alias is the statement just after the constant, with the same export and no JSDoc, and every part of the schema has a type; a type written before its constant keeps its form, because the alias's declaration file lists the constant first |
@@ -222,7 +222,7 @@ effect function discard() {
 | Correctness | `outdatedApi` | EK4813, error, in place of TS2339, with a quick fix; the same fix on TS2339 in `.ts` files | `Effect.catchAll`; the fix writes `Effect.catch` |
 | Correctness | `outdatedEffectCodegen` | Not adopted: no codegen comments | None |
 | Correctness | `overriddenSchemaConstructor` | EK4814, warning | `class Person extends Schema.Class<Person>("Person")({ … }) { constructor() { … } }` |
-| Anti-pattern | `catchUnfailableEffect` | Covered: `EK9204` (interim), warning | `succeed(1) catch (e) => fallback`; a catch expression receives typed failures only |
+| Anti-pattern | `catchUnfailableEffect` | Covered: `EK9204` (interim), warning. Appendix B assigns the imported rule `EK3818` | `succeed(1) catch (e) => fallback`; a catch expression receives typed failures only |
 | Anti-pattern | `effectFnIife` | An effect function call returns an Effect | `(() => load())()` |
 | Anti-pattern | `effectGenUsesAdapter` | Effect functions use `try` | None |
 | Anti-pattern | `effectInFailure` | EK4815, warning | `throw program`; run it: `try program` |

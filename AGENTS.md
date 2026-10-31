@@ -2,7 +2,7 @@
 
 # VibeLang repository
 
-Before writing or reviewing a `.vibe` file, read packages/compiler/skills/vibelang/SKILL.md (4,238 tokens): every form beside the Effect code it replaces, the rules with their EK codes, and the idiomatic choice for each job. The full docs are https://vibelang.sh/llms.txt.
+Before writing or reviewing a `.vibe` file, read packages/compiler/skills/vibelang/SKILL.md (4,194 tokens): every form beside the Effect code it replaces, the rules with their EK codes, and the idiomatic choice for each job. The full docs are https://vibelang.sh/llms.txt.
 
 Specification: `docs/design/src/`. Process: CONTRIBUTING.md.
 

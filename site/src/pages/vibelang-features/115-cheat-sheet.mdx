@@ -765,7 +765,7 @@ const findUser = (users: Map<string, User>, id: string) =>
 
 `throw` is a statement. In an effect function, it fails the Effect with a typed error.
 
-**Blocks as values** ([do expressions](https://github.com/tc39/proposal-do-expressions)). The value is the last statement's.
+**Blocks as values** ([do expressions](https://github.com/tc39/proposal-do-expressions)). The value is the block's normal completion value: an empty last statement keeps the earlier value, so `do { 7; {} }` is `7`.
 
 :::code-group
 
