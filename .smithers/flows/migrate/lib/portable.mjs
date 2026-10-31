@@ -9,7 +9,8 @@ import { must } from "./util.mjs"
 /** The machine's absolute paths that a committed line must not contain. */
 export const machineRoots = (...roots) => [...new Set([...roots, homedir()].filter((r) => r && r !== "/"))]
 
-const absoluteSpecifier = /\b(?:file|link|portal):\/[^\s"',]*/g
+// A path after the slashes: file:/home/x and file:///home/x, not a bare file:// in prose.
+const absoluteSpecifier = /\b(?:file|link|portal):\/+[^\s"',/][^\s"',]*/g
 
 /** The absolute paths in text: any of the roots, and a file:, link: or portal: specifier with an absolute path. */
 export function absolutePaths(text, roots) {

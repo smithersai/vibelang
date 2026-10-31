@@ -11,6 +11,8 @@ test("absolutePaths finds the machine's roots and absolute file: specifiers", ()
   const roots = ["/srv/run", "/srv/run/toolchain"]
   assert.deepEqual(absolutePaths('"vibelang": "file:/srv/run/toolchain/vibelang-0.0.11.tgz"', roots), ["/srv/run/toolchain", "/srv/run", "file:/srv/run/toolchain/vibelang-0.0.11.tgz"])
   assert.deepEqual(absolutePaths('"vibelang": "file:../../.vibelang-toolchain/vibelang-0.0.11.tgz"', roots), [])
+  assert.deepEqual(absolutePaths("/** Absolute file:// preload URL; null requires disabling element picking. */", roots), [])
+  assert.deepEqual(absolutePaths('"file:///srv/other/x.tgz"', roots), ["file:///srv/other/x.tgz"])
   assert.deepEqual(absolutePaths("link:/opt/vibelang/packages/compiler", []), ["link:/opt/vibelang/packages/compiler"])
   assert.ok(machineRoots("/a", undefined).includes(homedir()))
 })
