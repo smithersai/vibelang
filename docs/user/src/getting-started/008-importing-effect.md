@@ -10,6 +10,8 @@ npm install effect@4.1.0
 
 The core package supplies Effect's data types, schedules, concurrency tools, and other modules. See [Installation](004-installation.md) for platform packages, `vibelang`, and `vibelang-runtime`.
 
+`Effect`, `Layer`, `Schema` and `Scope` also resolve when only `effect` is installed. Language forms whose generated code imports `vibelang-runtime` still require that package.
+
 ## Module and namespace imports
 
 ```vibe

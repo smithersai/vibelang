@@ -178,6 +178,8 @@ const specTests = [
   "TestPipeEdgesQuoted",
   "TestPlatformGlobalAugmentationQuoted",
   "TestPlatformRulesQuoted",
+  "TestNativePreludeWithoutRuntimeQuoted",
+  "TestPlatformGlobalAugmentationQuoted",
   "TestCLISpecCommandFlags",
   "TestVIPFiberIDNumberEquality",
   "TestErrorDeclarationTwinQuoted",

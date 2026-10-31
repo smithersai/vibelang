@@ -200,8 +200,11 @@ func mayUsePrelude(file *ast.SourceFile) (prelude bool, root bool, barrels []str
 			if declared[name] && node.Flags&ast.NodeFlagsVibeLangIntrinsic == 0 {
 				return false
 			}
-			if _, ok := preludeModules[name]; ok {
+			if module, ok := preludeModules[name]; ok {
 				prelude = true
+				// The native namespaces also resolve directly from Effect
+				// when this file has no runtime package (VIP-14).
+				root = root || strings.HasPrefix(module, "effect/")
 			} else if _, ok := effectRootNames[name]; ok || effectFunctionNames[name] {
 				root = true
 			} else if subpath, ok := effectSubpathNames[name]; ok && !loaded[subpath.barrel] && !isMemberNameOf(node) {
@@ -583,9 +586,15 @@ func preludeSymbol(c *checker.Checker, state *preludeState, file *ast.SourceFile
 	if len(effectSubpathShared[name]) > 0 {
 		return nil
 	}
-	if _, ok := preludeModules[name]; ok {
+	if path, ok := preludeModules[name]; ok {
 		if module := runtimeModuleSymbol(c, state, file); module != nil {
 			return c.TryGetMemberInModuleExports(name, module)
+		}
+		// Effect, Layer, Schema and Scope are native Effect namespaces.
+		// Their emitted imports and type-only contracts do not need the
+		// runtime's compatibility re-exports.
+		if strings.HasPrefix(path, "effect/") {
+			return effectExportSymbol(c, state, file, name)
 		}
 		return nil
 	}
