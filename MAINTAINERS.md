@@ -57,7 +57,7 @@ The release contains six platform binaries (macOS, Linux and Windows on arm64 an
 1. **Align versions.** Every package version must equal the compiler's, in `typescript/tsc/internal/vibelang/identity.go`; `make-packages.mjs` refuses a mismatch. Review breaking changes.
 2. **Check.** Run setup, `sh scripts/e2e.sh`, the compiler cases, affected package tests, editor tests and `bun docs/tools/check-snippets.ts`. Record commands, toolchain versions and results. A skipped platform is untested.
 3. **Build.** `sh scripts/release/build-binaries.sh` cross-compiles the candidate platform binaries. `node scripts/release/make-packages.mjs` assembles the candidate packages and their tarballs in `dist-npm/`. Check manifests, the bundled extension, licenses and notices.
-4. **Rehearse.** `sh scripts/release/rehearse.sh` publishes the tarballs to a throwaway registry, then scaffolds, builds, starts and tests an app with npm and with Bun. It runs on one host, so it can't prove the other platforms' binaries work.
+4. **Rehearse.** `sh scripts/release/rehearse.sh` publishes the tarballs to a throwaway registry, then scaffolds, builds, starts and tests an app with npm and with Bun. It clears checkout compiler and runtime overrides so the app uses its installed packages. It runs on one host, so it can't prove the other platforms' binaries work.
 5. **Publish.** A person runs `sh scripts/release/publish.sh --dry-run`, then `sh scripts/release/publish.sh --otp <one-time-password>`. It publishes the platform packages first and skips versions already published, so a rerun resumes. Keep credentials out of recordings and logs.
 6. **Verify.** `sh scripts/release/verify-published.sh <version>` scaffolds, installs, builds, starts and tests an app from the public registry. Publish release notes with exact versions, breaking changes and known limitations.
 
@@ -71,4 +71,4 @@ Reports arrive through GitHub's private vulnerability reporting; see [SECURITY.m
 
 Publish a performance or token claim only with a public, reproducible method: pinned versions, inputs, units, results and limits. The README's [token comparison](.smithers/token-compare/README.md) is the model. Keep held-out tasks, hidden tests and transcripts private; a private benchmark is not public evidence.
 
-<sub>1,396 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
+<sub>1,411 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>

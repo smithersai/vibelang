@@ -12,6 +12,8 @@ set -eu
 registry=$1
 version=$2
 shift 2
+# A registry rehearsal must run the compiler and runtime installed in its app.
+unset VIBELANG_BINARY VIBELANG_RUNTIME VIBELANG_RUNTIME_DIR EFFECT_NODE_MODULES
 scratch=$(mktemp -d "${TMPDIR:-/tmp}/vibelang-check.XXXXXX")
 trap '[ -n "${KEEP:-}" ] && echo "check-app: kept $scratch" || rm -rf "$scratch"' EXIT
 
