@@ -694,6 +694,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 - The Foldkit guide showed only the small example app inline; it now also compares four excerpts from Foldkit's own migrated source with their originals.
+- An `is` binding in a `for concurrent` limit or a catch parameter had no home in the spec. A limit binding belongs to the home around the loop, and a catch-parameter binding is `EK0705`.
+
 - Two `is` tests that bind one name in one block had two readings. The spec now makes them a redeclaration, `TS2451`, with a `vibelang --fix` rename; the compiler still accepts them until that work lands.
 
 - The spec put an `is` binding in an unbraced loop body in the enclosing block, which would initialize one cell once per iteration. An unbraced statement body is now its own home, so braces never change a result.

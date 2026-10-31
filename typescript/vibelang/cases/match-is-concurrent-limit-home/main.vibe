@@ -1,0 +1,8 @@
+// expect-result: {"limit":2,"sum":3}
+// Chapter 004, decided detail 249 (loop round 3, OPUS-8): a binding in a for
+// concurrent limit belongs to the home that encloses the loop.
+export effect function main() {
+  let sum = 0
+  for concurrent ((2 is let n) ? n : 1) (const x of [1, 2]) { sum += x }
+  return { limit: n, sum }
+}

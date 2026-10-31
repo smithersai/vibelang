@@ -1,0 +1,13 @@
+// expect: EK0705 EK0705 EK0705
+// Chapter 004, decided detail 249 (loop round 3, OPUS-8): a catch parameter's
+// environment is distinct from the catch Block, and no reconciliation gives it
+// a binding home.
+export function direct() {
+  try { throw {} } catch ({ code = (1 is let c) }: any) {}
+}
+export function nested() {
+  try { throw {} } catch ({ a: { code = (1 is const c) } }: any) {}
+}
+export function key() {
+  try { throw {} } catch ({ [(1 is let c) ? "x" : "y"]: value }: any) {}
+}
