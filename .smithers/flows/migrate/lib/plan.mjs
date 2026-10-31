@@ -6,9 +6,18 @@ import { posix } from "node:path"
 
 export const defaultLimits = { maxFiles: 6, maxLines: 900 }
 
-/** The files a migration may move to .vibe: sources that use Effect values. Tests stay .ts unless asked. */
+/**
+ * A tool's config, which the tool finds by its name and loads with its own
+ * TypeScript loader: `graphql.config.ts`, `vitest.config.ts`,
+ * `drizzle.config.ts`. Renamed to .vibe, the tool finds no config.
+ */
+export function isToolConfig(path) {
+  return /\.config\.ts$/.test(posix.basename(path))
+}
+
+/** The files a migration may move to .vibe: sources that use Effect values, but no tool's config. Tests stay .ts unless asked. */
 export function candidates(inventory, { includeTests = false } = {}) {
-  return inventory.files.filter((f) => f.effect === "values" && (includeTests || !f.test) && f.path.endsWith(".ts"))
+  return inventory.files.filter((f) => f.effect === "values" && (includeTests || !f.test) && f.path.endsWith(".ts") && !isToolConfig(f.path))
 }
 
 /**
@@ -95,6 +104,7 @@ export function validatePlan(plan, inventory, limits = defaultLimits) {
       batchOf.set(path, index)
       if (!path.endsWith(".ts")) errors.push(`${name}: ${path} is not a .ts module; only .ts files become .vibe`)
       if (f.effect === "none") errors.push(`${name}: ${path} has no Effect code, so it stays .ts`)
+      if (isToolConfig(path)) errors.push(`${name}: ${path} is a tool's config, which the tool finds by its name, so it stays .ts`)
       else if (f.effect === "types") warnings.push(`${name}: ${path} imports only Effect types`)
       lines += f.lines
     }
@@ -139,7 +149,7 @@ You order the migration of ${inventory.packages.join(", ")} from Effect TypeScri
 
 - Small batches: at most ${limits.maxFiles} files and ${limits.maxLines} lines each, small enough to finish, test and review in one pass.
 - Leaves and well-tested modules first: a file whose own Effect imports are already migrated, or stay .ts, and that tests cover. An untested file goes after the files whose tests exercise it.
-- Files with no Effect code stay .ts; they are not candidates. Tests stay .ts unless a test file is itself Effect code (\`it.effect\`); put such a test in its module's batch.
+- Files with no Effect code stay .ts; they are not candidates. Neither is a tool's config, \`graphql.config.ts\`, which the tool finds by its name. Tests stay .ts unless a test file is itself Effect code (\`it.effect\`); put such a test in its module's batch.
 - Keep a directory's files together when the limits allow, so one review reads one module.
 - Defer a file that cannot become idiomatic VibeLang yet (for example, it is mostly a Promise or callback library, or it needs a TypeScript-only construct), with the reason.
 - Give each batch one sentence of reason: why it comes at this point in the order.

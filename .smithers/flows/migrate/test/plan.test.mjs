@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
-import { candidates, draftPlan, levels, planPrompt, validatePlan } from "../lib/plan.mjs"
+import { candidates, draftPlan, isToolConfig, levels, planPrompt, validatePlan } from "../lib/plan.mjs"
 
 const file = (path, extra = {}) => ({ path, package: ".", test: false, lines: 10, tokens: 50, effect: "values", effectImports: ["effect"], imports: [], dependents: [], testedBy: [], coverage: null, ...extra })
 
@@ -22,6 +22,23 @@ const inventory = {
 test("candidates are .ts sources that use Effect values; tests stay unless asked", () => {
   assert.deepEqual(candidates(inventory).map((f) => f.path), ["src/leaf.ts", "src/mid.ts", "src/top.ts", "src/cycle-a.ts", "src/cycle-b.ts"])
   assert.ok(candidates(inventory, { includeTests: true }).some((f) => f.path === "src/leaf.test.ts"))
+})
+
+// drive-t3code-server 17:30Z: apps/server/graphql.config.ts uses Effect and
+// was renamed, so `graphqlgen --check`, which looks for graphql.config.ts,
+// failed with "config file not found".
+test("t3code: a tool's config stays .ts, in the draft and in a plan that names it", () => {
+  const files = [
+    { path: "apps/server/graphql.config.ts", effect: "values", test: false, imports: [], testedBy: [], lines: 3 },
+    { path: "apps/server/vitest.config.ts", effect: "values", test: false, imports: [], testedBy: [], lines: 3 },
+    { path: "apps/server/src/config.ts", effect: "values", test: false, imports: [], testedBy: [], lines: 3 },
+    { path: "apps/server/src/app.config.loader.ts", effect: "values", test: false, imports: [], testedBy: [], lines: 3 },
+  ]
+  assert.deepEqual(candidates({ files }).map((f) => f.path), ["apps/server/src/config.ts", "apps/server/src/app.config.loader.ts"])
+  assert.equal(isToolConfig("graphql.config.ts"), true)
+  assert.equal(isToolConfig("src/config.ts"), false)
+  const { errors } = validatePlan({ batches: [{ files: ["apps/server/graphql.config.ts"], reason: "the server's GraphQL config" }] }, { files })
+  assert.ok(errors.some((e) => e.includes("graphql.config.ts is a tool's config")), errors.join("\n"))
 })
 
 test("levels put leaves first and an import cycle on one level", () => {
