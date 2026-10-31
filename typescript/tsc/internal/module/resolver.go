@@ -1816,8 +1816,20 @@ func (r *resolutionState) tryFile(fileName resolutionCandidate) (tspath.RootedFi
 
 	ext := tspath.RootedFilePathFromPath(fileName.path).Extension()
 	fileNameNoExtension := fileName.RemoveExtension(ext)
-	for _, suffix := range r.compilerOptions.ModuleSuffixes {
+	for suffixIndex, suffix := range r.compilerOptions.ModuleSuffixes {
 		path := fileNameNoExtension.AppendSuffix(suffix + ext)
+		// A paired .d.vibe suffix is the compatibility declaration of a
+		// source suffix when it follows that suffix. Do not let it win during
+		// the .ts lookup before
+		// the normal .tsx/.vibe priority is considered (VIP-27).
+		if ext == tspath.ExtensionTs && strings.HasSuffix(suffix, ".d.vibe") {
+			sourceSuffix := strings.TrimSuffix(suffix, ".d.vibe")
+			sourceIndex := slices.Index(r.compilerOptions.ModuleSuffixes, sourceSuffix)
+			if sourceIndex >= 0 && sourceIndex < suffixIndex &&
+				r.resolver.fs.FileExists(fileNameNoExtension.AppendSuffix(sourceSuffix+tspath.ExtensionVibe)) {
+				continue
+			}
+		}
 		if r.tryFileLookup(path) {
 			return path, true
 		}

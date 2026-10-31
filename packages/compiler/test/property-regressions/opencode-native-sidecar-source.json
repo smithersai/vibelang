@@ -1,0 +1,6 @@
+{
+  "property": "sidecar-module-suffix-source",
+  "rule": "VIP-27: a paired compatibility suffix must not hide its existing .vibe source",
+  "input": { "kind": "js", "native": true, "fallback": false, "sibling": "none" },
+  "reason": "The opencode module pattern with a platform-only suffix and no empty suffix fallback."
+}

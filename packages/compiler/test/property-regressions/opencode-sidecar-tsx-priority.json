@@ -1,0 +1,6 @@
+{
+  "property": "sidecar-module-suffix-source",
+  "rule": "Chapter 7 source preference retains normal TypeScript file priority when adding compatibility declaration fallbacks",
+  "input": { "kind": "extensionless", "native": false, "sibling": "tsx" },
+  "reason": "Neighbourhood control: a stale sidecar must not jump ahead of a real TypeScript JSX source."
+}

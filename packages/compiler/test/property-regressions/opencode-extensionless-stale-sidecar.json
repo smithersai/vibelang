@@ -1,0 +1,6 @@
+{
+  "property": "sidecar-module-suffix-source",
+  "rule": "VIP-27: VibeLang uses the source when it and its compatibility declaration are selected",
+  "input": { "kind": "extensionless", "native": false, "sibling": "none" },
+  "reason": "Minimized opencode stats/core re-export: a moduleSuffixes sidecar fallback must not hide the changed .vibe source."
+}
