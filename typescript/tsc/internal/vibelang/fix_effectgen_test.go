@@ -86,6 +86,8 @@ func TestEffectGenQuickFixes(t *testing.T) {
 			"export const run = (one: Effect.Effect<number>) => { return (one()) + 1 }\n"},
 		{"error instance", "export class Gone extends Data.TaggedError(\"Gone\")<{}> {}\nexport const check = (n: number) => Effect.gen(function* () {\n  if (n < 0) yield* new Gone()\n  if (n > 9) return yield* new Gone()\n  return yield* Effect.succeed(n)\n})\n",
 			"export class Gone extends Data.TaggedError(\"Gone\")<{}> {}\nexport const check = (n: number) => {\n  if (n < 0) throw new Gone()\n  if (n > 9) throw new Gone()\n  return Effect.succeed(n)\n}\n"},
+		{"error a call gives", "export class Gone extends Data.TaggedError(\"Gone\")<{}> {}\nconst gone = (): Gone => new Gone()\nexport const check = (n: number) => Effect.gen(function* () {\n  if (n < 0) yield* gone()\n  if (n > 9) return yield* gone()\n  return yield* Effect.succeed(n)\n})\n",
+			"export class Gone extends Data.TaggedError(\"Gone\")<{}> {}\nconst gone = (): Gone => new Gone()\nexport const check = (n: number) => {\n  if (n < 0) throw gone()\n  if (n > 9) throw gone()\n  return Effect.succeed(n)\n}\n"},
 		{"callback that returns its program", "const double = (n: number) => Effect.succeed(n * 2)\nexport const all = (xs: ReadonlyArray<number>) => Effect.gen(function* () {\n  return yield* Effect.forEach(xs, (x) => double(x))\n})\n",
 			"const double = (n: number) => Effect.succeed(n * 2)\nexport const all = (xs: ReadonlyArray<number>) => {\n  return Effect.forEach(xs, (x) => double(x))\n}\n"},
 		{"template literal keeps its lines", "export const text = () =>\n    Effect.gen(function* () {\n      const n = yield* Effect.succeed(1)\n      return `a\n      ${n}`\n    })\n",

@@ -37,6 +37,10 @@ const x = do { const a = 1; a + 1 }                // TC39 do expression: runs n
 
 - **Amended 2026-10-30: source completion types.** `do` uses the source block's normal completion values and `UpdateEmpty` flow, including locally consumed jumps. Only a final empty completion becomes `undefined`; paths leaving outward contribute no result, and no normal path means `never`. Its fresh literals and contextual typing follow ordinary expressions: `const x = do { 1 }` keeps `1`, `let x = do { 1 }` widens to `number`, and annotations/const assertions follow TypeScript. Context reaches result alternatives, while discarded expressions and outward returns retain their own contexts. Generated functions and temporaries never choose source overloads or declaration types.
 
+## Amendment: mixed block modifier recovery
+
+The mixed heads `effect async { B }` and `async effect { B }` parse for recovery and report `EK0105` (VIP-1). Remove `async` to recover the ordinary cold Effect block. A bare `async { B }` is not a language form; the recovery adds no accepted syntax or runtime counterpart.
+
 ## Prior art
 
 - Rust: `async fn` is a function, and `async { }` is the value.

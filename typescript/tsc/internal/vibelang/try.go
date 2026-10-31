@@ -106,6 +106,10 @@ func checkTry(c *checker.Checker, file *ast.SourceFile, call, operand *ast.Node)
 	text := shortText(expressionText(file, operand), "the operand")
 	d := report(c, operand, EK0502, text, "not an Effect: "+c.TypeToString(t))
 	switch {
+	case failsAsError(c, t):
+		note(d, "To fail with the error, as yield* {0} does, write throw {0}.", expressionText(file, operand))
+	case yieldsEffect(c, t):
+		note(d, "To run it as yield* {0} does, write try {0}.asEffect().", expressionText(file, operand))
 	case c.GetPromisedTypeOfPromise(t) != nil:
 		note(d, "Wrap the promise: try Effect.tryPromise(() => {0}).", expressionText(file, operand))
 	case ast.IsCallExpression(ast.SkipParentheses(operand)):
@@ -163,9 +167,14 @@ func checkTriedCall(c *checker.Checker, file *ast.SourceFile, operand *ast.Node)
 		return
 	}
 	d := reportAt(c, file, keyword, EK0502, text, "not an Effect: "+c.TypeToString(t))
-	if c.GetPromisedTypeOfPromise(t) != nil {
+	switch {
+	case failsAsError(c, t):
+		note(d, "To fail with the error, as yield* {0} does, write throw {0}.", text)
+	case yieldsEffect(c, t):
+		note(d, "To run it as yield* {0} does, write try {0}.asEffect().", text)
+	case c.GetPromisedTypeOfPromise(t) != nil:
 		note(d, "Wrap the promise: try Effect.tryPromise(() => {0}).", text)
-	} else {
+	default:
 		note(d, "Call it without try, or wrap a call that may throw: try Effect.try(() => {0}).", text)
 	}
 }

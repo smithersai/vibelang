@@ -264,6 +264,24 @@ if ((typeof d === "object" || typeof d === "function") && d !== null && "_tag" i
 }
 ```
 
+`$is` and `$match` are reserved variant names in every `data` declaration, generic or not (`EK1602`): Effect's `Data.taggedEnum` uses those properties as helpers, so calling them does not construct the named variant. Rename the variant and its resolved references, for example to a fresh `Is` or `Match`. Other names retain the same constructors and nonthrowing contract.
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-16
+// data Invalid { $is; $match; Normal } // EK1602 on each reserved name
+// data InvalidGeneric<A> { $match { value: A } } // EK1602
+data SafeNames { Is; Match; Normal }
+```
+
+```ts [Effect]
+import { Data, Effect } from "effect"
+
+type SafeNames = Data.TaggedEnum<{ Is: {}; Match: {}; Normal: {} }>
+const SafeNames = Data.taggedEnum<SafeNames>()
+const safeNameExit = Effect.runSyncExit(Effect.sync(() => [SafeNames.Is(), SafeNames.Match(), SafeNames.Normal()]))
+// Success([{ _tag: "Is" }, { _tag: "Match" }, { _tag: "Normal" }])
+```
+
 A generated variant constructor has the static contract `@throws {never}` (decided detail 42), independently of the foreign-callable default in VIP-4. Calling `Delivery.Sent({ tracking: "1Z" })` constructs the value directly; no `Effect.try` wrapper is needed. This adds no runtime validation or wrapping to `Data.taggedEnum`. Variant payload properties are readonly in the resulting type, even without a written `readonly`, as in Effect's `Data.TaggedEnum`.
 
 The object-pattern test first checks for an ECMAScript object (including functions) and property presence, then reads the tag; see [Pattern matching](/spec/004-match).
@@ -287,6 +305,7 @@ const D = Data.taggedEnum<D>()
 export { D as default }
 const namedDataExit = Effect.runSyncExit(Effect.sync(() => D.A())) // Success({ _tag: "A" })
 ```
+| a variant named `$is` or `$match`, generic data included; rename it and its resolved references to a fresh name | `EK1602` |
 
 ### Generic unions
 

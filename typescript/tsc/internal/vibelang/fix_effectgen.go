@@ -455,6 +455,15 @@ func effectGenYieldEdit(c *checker.Checker, a *analyzer, file *ast.SourceFile, y
 		}
 		keyword = sourceEdit{start, asterisk, ""}
 	}
+	// An error fails as throw fails with it: yield* new E() and yield* toError(id)
+	// are throw, which only a statement writes; dropping yield* would make
+	// the error the program's value.
+	if t := c.GetTypeAtLocation(operand); t != nil && failsAsError(c, t) {
+		if edits := throwEdits(file, y, start, operandStart); edits != nil {
+			return edits, ""
+		}
+		return nil, label + " fails with an error, which only a throw statement writes"
+	}
 	if isInvocation(inner) {
 		if ast.IsOptionalChain(inner) {
 			return nil, label + " runs an optional call, which yield* would fail on when it is undefined"
@@ -473,16 +482,6 @@ func effectGenYieldEdit(c *checker.Checker, a *analyzer, file *ast.SourceFile, y
 	if givesProgram(effectOfValue(c, t)) {
 		return nil, label + programValue
 	}
-	// An error instance fails as throw fails with it: yield* new E() is throw new E().
-	if ast.IsNewExpression(inner) && isYieldableError(c, t) {
-		statement := y.Parent
-		switch {
-		case ast.IsExpressionStatement(statement) && statement.Expression() == y:
-			return []sourceEdit{{start, operandStart, "throw "}}, ""
-		case ast.IsReturnStatement(statement) && statement.Expression() == y:
-			return []sourceEdit{{nodeStart(file, statement), operandStart, "throw "}}, ""
-		}
-	}
 	open, close := "", "()"
 	if needsOperandParentheses(operand) && !ast.IsParenthesizedExpression(operand) {
 		open, close = "(", ")()"
@@ -495,6 +494,24 @@ func effectGenYieldEdit(c *checker.Checker, a *analyzer, file *ast.SourceFile, y
 		edits = append(edits, sourceEdit{operandStart, operandStart, open})
 	}
 	return append(edits, sourceEdit{operand.End(), operand.End(), close}), ""
+}
+
+// throwEdits writes throw for node, a yield* or a try, that stands alone as
+// an expression statement or as what a return statement returns: the text
+// from start, or from the return, to operandStart becomes "throw ". It
+// returns nil where node stands elsewhere.
+func throwEdits(file *ast.SourceFile, node *ast.Node, start, operandStart int) []sourceEdit {
+	n := node
+	for n.Parent != nil && ast.IsParenthesizedExpression(n.Parent) {
+		n = n.Parent
+	}
+	switch statement := n.Parent; {
+	case statement != nil && ast.IsExpressionStatement(statement) && statement.Expression() == n && n == node:
+		return []sourceEdit{{start, operandStart, "throw "}}
+	case statement != nil && ast.IsReturnStatement(statement) && statement.Expression() == n && n == node:
+		return []sourceEdit{{nodeStart(file, statement), operandStart, "throw "}}
+	}
+	return nil
 }
 
 // holdsEffectValue reports whether t, or a member of its union, is an Effect value.
@@ -511,6 +528,30 @@ func isYieldableError(c *checker.Checker, t *checker.Type) bool {
 	}
 	success := successType(c, effect)
 	return success != nil && success.Flags()&checker.TypeFlagsNever != 0
+}
+
+// failsAsError reports whether t is an error that yield* fails with: an
+// Effect error instance (isYieldableError), or, while the checker has not
+// resolved its Effect channels yet, a class that extends effect's
+// YieldableError.
+func failsAsError(c *checker.Checker, t *checker.Type) bool {
+	return isYieldableError(c, t) || extendsYieldableError(c, t, 0)
+}
+
+// yieldsEffect reports whether t is an Effect.Yieldable that is no Effect:
+// a value whose asEffect() gives the Effect yield* runs, as alchemy's Output
+// does. try x of one runs it as try x.asEffect().
+func yieldsEffect(c *checker.Checker, t *checker.Type) bool {
+	property := c.GetPropertyOfType(t, "asEffect")
+	if property == nil {
+		return false
+	}
+	for _, signature := range c.GetSignaturesOfType(c.GetTypeOfSymbol(property), checker.SignatureKindCall) {
+		if len(signature.Parameters()) == 0 && isEffectType(c, c.GetReturnTypeOfSignature(signature)) {
+			return true
+		}
+	}
+	return false
 }
 
 // hasComment reports whether text, source between tokens, holds a comment.

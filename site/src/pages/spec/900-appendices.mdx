@@ -775,6 +775,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK1502` | type parameters on a `schema` declaration; use an ordinary generic TypeScript factory | 15 | [Data](/spec/006-data#schema-declarations) |
 | `EK1601` | a `data` variant field named `_tag` | 16 | [Data](/spec/006-data#data-declarations) |
 | `EK1603` | `export default data D { … }`; write `export { D as default }` | 16 | [Data](/spec/006-data#data-declarations) |
+| `EK1602` | a `data` variant named `$is` or `$match`; rename it and its resolved references | 16, 28 | [Data](/spec/006-data#data-declarations) |
 | `EK1701` | `fork` or `join` outside effect code | 17 | [Running Effects](/spec/002-running#fork-and-join) |
 | `EK1702` | `fork` or `join` as a variable, parameter or label name in effect code, in the parameters of an `effect` function, arrow, method or producer, or in the parameters of a plain arrow written in effect code | 17 | [Running Effects](/spec/002-running#fork-and-join) |
 | `EK1703` | a `fork`, `fork.in(s)`, `fork.scoped` or `fork.detached` operand that fails the operand test of `try` | 5, 17 | [Running Effects](/spec/002-running#fork-and-join) |

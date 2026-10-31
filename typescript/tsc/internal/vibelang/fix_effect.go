@@ -137,7 +137,18 @@ func (a *analyzer) effectEditsIn(file *ast.SourceFile, node *ast.Node) ([]source
 				for end < len(text) && (text[end] == ' ' || text[end] == '\t') {
 					end++
 				}
-				edits = append(edits, sourceEdit{keyword.Pos(), end, ""})
+				// An error the call gives fails the Effect under try, as
+				// yield* did: it becomes throw, or keeps its try (EK0502),
+				// never the program's value; a Yieldable keeps its try.
+				switch t := a.checker.GetTypeAtLocation(node); {
+				case t != nil && failsAsError(a.checker, t):
+					edits = append(edits, throwEdits(file, node, keyword.Pos(), end)...)
+				case t != nil && yieldsEffect(a.checker, t):
+					// A Yieldable runs as its Effect, as yield* ran it.
+					edits = append(edits, sourceEdit{node.End(), node.End(), ".asEffect()"})
+				default:
+					edits = append(edits, sourceEdit{keyword.Pos(), end, ""})
+				}
 			}
 		case ast.IsFunctionLike(node) && node.Body() != nil && !isMarkedEffect(node) && isLowerable(node) && !isProducer(node) && !isProgramArrow(node):
 			switch a.effectRewriteOf(node) {

@@ -30,14 +30,16 @@ A function's kind is decided by a keyword on the function, never by its body or 
 - A decorator list precedes the class modifiers, as for `async` methods; object-literal methods have no decorators. An `effect` function declaration or class method may have bodyless overload signatures wherever TypeScript admits the corresponding `async` signatures, with its ordering, adjacent-implementation, compatibility and semicolon rules. Function expressions, object-literal methods and arrows require bodies. Starred overload signatures, `abstract effect` methods and ambient `effect` declarations are rejected as their `async` counterparts are.
 - `effect function*` declares a producer ([Running Effects](/spec/002-running#producers)).
 
-`effect` and `async` on one function, in either order, is a compile error, with quick fixes that remove one modifier (decided detail 46). Both orders parse as an [EffectModifier](/spec/900-appendices#effectmodifier), so the error is `EK0105`, not a generic syntax error. No Effect TypeScript function is both an `Effect.gen` and a Promise-returning `async` function.
+`effect` and `async` on one function or block, in either order, is a compile error (`EK0105`; VIP-1/VIP-2). Both orders parse as an [EffectModifier](/spec/900-appendices#effectmodifier), so this code is reported instead of a generic syntax error. A function’s quick fixes remove one modifier. A block’s quick fix removes `async`, retaining `effect { B }`; `async { B }` is not admitted. No Effect TypeScript counterpart combines an `Effect.gen` with a Promise-returning `async` function.
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-1
+// compiler-gap: pending VIP-1, VIP-2
 effect async function f() { }   // EK0105: pick effect or async
 async effect function g() { }   // EK0105
 const h = async effect () => 1  // EK0105
 class K { async effect get x() { return 1 } }   // EK0104 and EK0105
+const a = effect async { return 7 } // EK0105: remove async
+const b = async effect { return 7 } // EK0105: remove async
 ```
 
 
@@ -102,7 +104,7 @@ class OrdinaryValue { effect(): number { return 1 } }   // a method named effect
 | `await`, `for await` or `await using` in effect code: an `effect` function, a producer or an `effect` block | `EK0102` |
 | `await` on an Effect, by the [Result test](/spec/002-running#result-tests) (decided detail 89: not `never`, `any` or `unknown`, and at least one union member an Effect), in an `async` function or at the module top level (VIP-5); write `await runPromise(e)` | `EK0103` |
 | `effect` on a getter, setter or constructor | `EK0104` |
-| `effect` and `async` on one function | `EK0105` |
+| `effect` and `async` on one function or block | `EK0105` |
 | a recognized `effect` modifier on an `abstract` declaration, in an ambient `declare` context, or on an `interface` or type literal member | `EK0108` |
 | A written return type of an `effect` function that does not resolve to `Effect.Effect<A, E, R>`, an alias included, as TS1064 requires `Promise<T>` for `async` (`any`, `unknown` and `never` are errors) | `EK0106` |
 | A banned use of `eval`, `Function`, `arguments`, `var` or `with` anywhere in a `.vibe` file, plain functions included, as [Legacy JavaScript](/spec/001-functions#direct-eval) defines it | `EK0107` |

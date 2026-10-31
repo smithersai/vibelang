@@ -49,6 +49,10 @@ const c = (id) => fetchUser(id)   // neither keyword: plain JavaScript; returns 
 
 A recognized `effect` modifier follows the valid and diagnostic recovery positions of TypeScript’s `async`. On an `abstract` declaration, in an ambient `declare` context, or on an `interface` or type literal member, it is `EK0108`. Valid function/class overload signatures follow ordinary TypeScript admission and compatibility; the code does not reject a valid overload or admit a generator overload. Recognition is syntactic: an identifier-named method such as `interface Ordinary { effect(): number }` has no Effect modifier. Ordinary TypeScript syntax retains its native diagnostics. The existing getter/setter/constructor rejection is `EK0104`, and combining `async` and `effect` is `EK0105`; both may apply to one accessor. An error or schema-error member retains these applicable diagnostics without an extra member-category error (VIP-13).
 
+## Amendment: mixed block modifier recovery
+
+`effect async { B }` and `async effect { B }` remain rejected, with `EK0105`, as mixed function modifiers are. The parser recognizes both block heads for that diagnostic. A function repair can remove either modifier; the block repair removes `async`, keeping VIP-2’s `effect { B }`. No `async { B }` or runtime hybrid is added.
+
 ## Prior art
 
 - JavaScript and TypeScript `async function`, C# `async`, Rust `async fn`, Kotlin `suspend fun`. In each, a keyword on the function, never its body, decides its kind.
