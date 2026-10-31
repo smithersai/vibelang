@@ -6,7 +6,8 @@ import { test } from "node:test"
 import { parseArgs, many, one } from "../lib/args.mjs"
 import { readIssues, validateIssue, ofKind } from "../lib/issues.mjs"
 import { buildInventory, isTestFile } from "../lib/inventory.mjs"
-import { formatRecorded, formatVibe, makeConfig, nextStep, paths } from "../lib/steps.mjs"
+import { formatExistingVibe, formatRecorded, formatVibe, makeConfig, nextStep, paths } from "../lib/steps.mjs"
+import { must } from "../lib/util.mjs"
 import { parseTokenCounts } from "../lib/tokens.mjs"
 import { repairPrompt } from "../lib/repair.mjs"
 
@@ -158,6 +159,32 @@ test("formatRecorded compiles a package again when formatting changed one of its
     // Already formatted: nothing changed, so no compile.
     await formatRecorded(config, ["packages/core/src/a.vibe"], root)
     assert.equal(readFileSync(compiled, "utf8"), `${join(root, "packages/core")}\n`)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+// smithers: 30 .vibe files from VibeLang 0.0.8, which its dprint never read,
+// failed the agent/fs package's dprint check once setup wired the plugin.
+test("setup formats the .vibe files the repository already has in its own packages, and no vendored ones", async () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-format-existing-"))
+  try {
+    const recorded = join(root, "formatted.txt")
+    mkdirSync(join(root, "node_modules/.bin"), { recursive: true })
+    mkdirSync(join(root, "packages/fs/src"), { recursive: true })
+    mkdirSync(join(root, "vendor/lib/src"), { recursive: true })
+    writeFileSync(join(root, ".gitignore"), "node_modules/\nformatted.txt\n")
+    writeFileSync(join(root, "package.json"), JSON.stringify({ name: "root", workspaces: ["packages/*"] }))
+    writeFileSync(join(root, "packages/fs/package.json"), JSON.stringify({ name: "fs" }))
+    writeFileSync(join(root, "packages/fs/src/Route.vibe"), "export const a=1\n")
+    writeFileSync(join(root, "packages/fs/src/b.ts"), "export const b = 2\n")
+    writeFileSync(join(root, "vendor/lib/package.json"), JSON.stringify({ name: "vendored" }))
+    writeFileSync(join(root, "vendor/lib/src/c.vibe"), "export const c=1\n")
+    writeFileSync(join(root, "node_modules/.bin/vibelang-format"), `#!/bin/sh\necho "$@" >> ${recorded}\n`, { mode: 0o755 })
+    await must("jj git init && jj config set --repo user.name test && jj config set --repo user.email test@localhost", { cwd: root })
+    const config = { target: root, packages: [{ dir: "packages/fs" }] }
+    assert.deepEqual(await formatExistingVibe(config), { files: ["packages/fs/src/Route.vibe"], code: 0 })
+    assert.equal(readFileSync(recorded, "utf8"), "--write packages/fs/src/Route.vibe\n")
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

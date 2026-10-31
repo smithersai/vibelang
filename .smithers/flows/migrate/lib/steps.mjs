@@ -191,6 +191,18 @@ export async function formatVibe(config, files, log) {
 }
 
 /**
+ * Formats the .vibe files the repository already has in its own packages:
+ * setup wires the formatter its format check then runs on them, and Smithers
+ * had 30 from VibeLang 0.0.8 that its dprint never read. A vendored tree
+ * keeps its files as they are.
+ */
+export async function formatExistingVibe(config, log) {
+  const owned = Wire.ownedPaths(config.target)
+  const files = (await Jj.trackedFiles(config.target)).filter((file) => file.endsWith(".vibe") && owned(file))
+  return formatVibe(config, files, log)
+}
+
+/**
  * Formats the .vibe files a batch recorded and compiles each package whose
  * files that changed: vibelang-format sorts import specifiers, which a
  * declaration prints, so the sidecar from the last compile no longer matches
@@ -559,7 +571,9 @@ async function wireTarget(config, log) {
   const install = config.install ?? Wire.installCommand(manager, readdirSync(t))
   await must(install, { cwd: t, log: join(log, "install.log") })
   for (const build of tooling.builds) await must(build.command, { cwd: join(t, build.cwd), log: join(log, "ast-grep-build.log") })
-  return { manager, specs: Object.fromEntries(config.packages.map((pkg) => [pkg.dir, specsFor(pkg.dir)])), viteConfigs: vite.configs, viteAppConfigs: apps.configs, knipConfig: knip.config, formatted, changed, warnings, install }
+  const existingVibe = await formatExistingVibe(config, join(log, "setup-format-vibe.log"))
+  if (existingVibe.code !== 0) warnings.push(`vibelang-format exited ${existingVibe.code} on the repository's .vibe files; see ${join(log, "setup-format-vibe.log")}`)
+  return { manager, formattedVibe: existingVibe.files, specs: Object.fromEntries(config.packages.map((pkg) => [pkg.dir, specsFor(pkg.dir)])), viteConfigs: vite.configs, viteAppConfigs: apps.configs, knipConfig: knip.config, formatted, changed, warnings, install }
 }
 
 /**
