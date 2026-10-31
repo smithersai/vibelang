@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- a.vibe --\nexport const invalid = (): () => Effect.Effect<number, never, never> => {\n  Effect.succeed(1)\n  return effect (): Effect.Effect<number, never, never> => 1\n}\n-- package.json --\n{\"type\":\"module\"}\n-- tsconfig.json --\n{\"compilerOptions\":{\"target\":\"ES2022\",\"module\":\"NodeNext\",\"moduleResolution\":\"NodeNext\",\"strict\":true,\"declaration\":true,\"outDir\":\"out\",\"skipLibCheck\":true,\"types\":[]},\"include\":[\"*.vibe\",\"*.ts\"]}\n")

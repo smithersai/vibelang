@@ -31,8 +31,9 @@ import (
 //     original did not" (D291): the fixed project reports no error, by file
 //     and code, more often than the original.
 //   - Comments survive every rewrite (D372).
-//   - "Applying a fix ... a second time changes nothing": --fix on the fixed
-//     project changes no file.
+//   - "One `vibelang --fix` run applies fixes until none applies; running it
+//     again changes nothing" (Chapter 7, decided 2026-10-31): --fix on the
+//     fixed project changes no file.
 //   - "--fix applies every such fix, and the quick fixes of the retired
 //     spellings": after fixing, no diagnostic remains whose code that
 //     sentence names, unless a refusal states the new error or the change in
@@ -112,7 +113,8 @@ func FuzzFix(f *testing.F) {
 					Gap(t, "FuzzFix", "fix:new-error", "the fixed program reports errors the original does not: %s\n%s\nfixed:\n%s", strings.Join(added, "\n"), archive, Archive(fixed))
 				}
 			}
-			// Chapter 28, "Idempotence": a second --fix changes nothing. When
+			// Chapter 7 (decided 2026-10-31): "One `vibelang --fix` run applies
+			// fixes until none applies; running it again changes nothing." When
 			// the first changed nothing, it was the second.
 			second := result
 			if len(result.Files) > 0 {
@@ -141,8 +143,12 @@ func FuzzFix(f *testing.F) {
 			// error class becomes an error declaration, D284-D290), so the
 			// contracts are compared by assignability in both directions.
 			if toolsErrorFree(r) && toolsErrorFree(after) {
-				if mismatch := toolsContractMismatch(t, w, r, after); mismatch != "" {
-					Gap(t, "FuzzFix", "fix:types", "--fix changed a contract: %s\nsource:\n%s\nfixed:\n%s", mismatch, archive, Archive(fixed))
+				if mismatch := toolsContractMismatch(t, w, r, after, false); mismatch != "" {
+					key := "fix:types"
+					if toolsContractMismatch(t, w, r, after, true) == "" {
+						key = "fix:types:directory-service-key"
+					}
+					Gap(t, "FuzzFix", key, "--fix changed a contract: %s\nsource:\n%s\nfixed:\n%s", mismatch, archive, Archive(fixed))
 				}
 			}
 			// D372: compare every callable exported Effect, not only main fixtures
@@ -507,8 +513,17 @@ func toolsContracts(dts string) []string {
 	for _, statement := range file.Statements.Nodes {
 		switch statement.Kind {
 		case ast.KindFunctionDeclaration:
-			if name := statement.Name(); name != nil && !slices.Contains(names, name.Text()) {
-				names = append(names, name.Text())
+			name := ""
+			if id := statement.Name(); id != nil {
+				name = id.Text()
+			}
+			// `export default function main` binds `default`, which is what
+			// an importer reads (typeof A0.default), not `main`.
+			if ast.HasSyntacticModifier(statement, ast.ModifierFlagsDefault) {
+				name = "default"
+			}
+			if name != "" && !slices.Contains(names, name) {
+				names = append(names, name)
 			}
 		case ast.KindVariableStatement:
 			for _, declaration := range statement.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes {
@@ -525,12 +540,20 @@ func toolsContracts(dts string) []string {
 // declaration files declare is mutually assignable with the fixed program's:
 // a TypeScript file imports both declaration sets and assigns each function
 // to the other's type. It returns the first error, or "".
+//
+// With sameDirectory, each program's directory name at the start of a string
+// literal becomes one name, as if both had compiled in one directory. Chapter
+// 5 gives a service in a package whose package.json has no string `name` "no
+// derived key" (EK0903), but the compiler derives one from the project
+// directory, so the two compiles declare different keys; a mismatch that this
+// removes is that gap (fix:types:directory-service-key), not a changed
+// contract.
 // nominalMember is the private member that makes an error declaration's
 // class nominal (D407). Two copies of one declaration differ only by it, so
 // the copies compare structurally without it.
 var nominalMember = regexp.MustCompile(`(?m)^[ \t]*#private;\n`)
 
-func toolsContractMismatch(t *testing.T, w *Workspace, before, after *Result) string {
+func toolsContractMismatch(t *testing.T, w *Workspace, before, after *Result, sameDirectory bool) string {
 	t.Helper()
 	files := map[string]string{}
 	var check strings.Builder
@@ -543,6 +566,10 @@ func toolsContractMismatch(t *testing.T, w *Workspace, before, after *Result) st
 		fixed, ok := after.Outputs[name]
 		if !ok {
 			return name + " is gone"
+		}
+		if sameDirectory {
+			text = strings.ReplaceAll(text, `"`+filepath.Base(before.Dir)+"/", `"project/`)
+			fixed = strings.ReplaceAll(fixed, `"`+filepath.Base(after.Dir)+"/", `"project/`)
 		}
 		files["a/"+module+".d.ts"], files["b/"+module+".d.ts"] = nominalMember.ReplaceAllString(text, ""), nominalMember.ReplaceAllString(fixed, "")
 		names := toolsContracts(text)

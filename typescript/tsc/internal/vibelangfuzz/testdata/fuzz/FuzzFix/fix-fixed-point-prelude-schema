@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport { Schema } from \"effect\"\nexport const Shape = Schema.Union([Schema.String, Schema.Number])\nexport type Shape = typeof Shape.Type\n")
