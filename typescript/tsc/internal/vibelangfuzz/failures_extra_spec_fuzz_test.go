@@ -26,12 +26,13 @@ func failuresExtraCases() []*failCase {
 	const methods = "[ClassMethod](900-appendices.md#classmethod) (ordinary TypeScript class methods, including plain and `async` overload signatures, generator and `async` generator implementations, getters, setters and private names), with TypeScript's class modifiers, decorators, overload ordering, adjacent-implementation and compatibility checks, plus [effect methods](900-appendices.md#effectmethod) and [producer methods](900-appendices.md#producermethod), as any class can have (VIP-13)."
 	const rejected = "| any other member that is not a [Field](900-appendices.md#field), a method, a getter or an empty `;` class element, in either error form (for example `id = 1`, `private id: string`, `#id = 1`, `declare id: string`, `accessor id = 1`, or an index signature); an `implements` clause | `EK1304` |"
 	const priority = "A member rejected by [Functions](001-functions.md#static-rules) for `effect` on a getter, setter or constructor gets the applicable Functions diagnostics and no redundant error-body category diagnostic, including in either error form."
-	const keyRule = "Field keys follow TypeScript object types, as in [Schema declarations](006-data.md#schema-declarations): an identifier, a string or numeric literal, or a computed name, emitted as written."
+	const keyRule = "In a plain `error`, fields are type-only payload members whose keys use TypeScript's `TypeLiteral` member admission, matching `Data.TaggedError`'s payload type."
+	const schemaKeyRule = "`schema error` field keys instead use the runtime object literal admission of `Schema.TaggedError`'s fields object ([Schema declarations](006-data.md#schema-declarations)), together with the existing `_tag` exclusion checks."
 	const greedy = "The field type is parsed greedily as a TypeScript type member: a line break separates members only after the type is complete."
 	for _, form := range []struct {
-		name, syntax string
-		vip          int
-	}{{"error", "error", 13}, {"schema-error", "schema error", 29}} {
+		name, syntax, keyRule string
+		vip                   int
+	}{{"error", "error", keyRule, 13}, {"schema-error", "schema error", schemaKeyRule, 29}} {
 		for _, method := range []struct{ name, code string }{
 			{"plain-method", "value() { return this.id }"},
 			{"async-method", "async value() { return this.id }"},
@@ -58,7 +59,7 @@ func failuresExtraCases() []*failCase {
 		} {
 			add(&failCase{Name: form.name + "-" + member.name + "-priority", Quote: priority, VIP: form.vip, Owner: "core-land", Host: "none", Code: 104, NotCodes: []int{1301, 1302, 1303, 1304, 2117}, Decls: "⟦export " + form.syntax + " Entry { " + member.code + " }⟧"})
 		}
-		add(&failCase{Name: form.name + "-literal-computed-keys", Quote: keyRule, VIP: form.vip, Owner: "fix-vip-decls", Host: "none", Decls: "const key = \"computed\" as const\nexport " + form.syntax + " Entry { \"quoted\": number; 7: number; [key]: number }\nexport const entry = new Entry({ quoted: 1, 7: 2, computed: 3 })"})
+		add(&failCase{Name: form.name + "-literal-computed-keys", Quote: form.keyRule, VIP: form.vip, Owner: "fix-vip-decls", Host: "none", Decls: "const key = \"computed\" as const\nexport " + form.syntax + " Entry { \"quoted\": number; 7: number; [key]: number }\nexport const entry = new Entry({ quoted: 1, 7: 2, computed: 3 })"})
 		add(&failCase{Name: form.name + "-multiline-type", Quote: greedy, VIP: form.vip, Owner: "fix-vip-decls", Host: "none", Decls: "export " + form.syntax + " Entry { role:\n | \"admin\"\n | \"member\"\n get message() { return this.role }\n}"})
 	}
 
