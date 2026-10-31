@@ -203,6 +203,8 @@ A direct `extends` or `implements` entry retains its named type, such as `Effect
 
 A helper's return-type quick fix writes imported names in the helper's scope: for a namespace import such as `foreign`, it writes `foreign.Thing`. If the inferred type cannot be written there, the annotation is `infer _`.
 
+When annotating helpers also changes a collected callback result, the fix writes `: infer _` so the return type follows the corrected helpers.
+
 Fixes retain field comments and comments before unwrapped succeed/fail arguments. If a proposed rewrite cannot retain its comments, neither the editor nor --fix applies it.
 
 When `vibe.effectModules` is `false`, `--fix` keeps the explicit Effect imports the program needs. The editor offers those bindings through imports and local declarations.

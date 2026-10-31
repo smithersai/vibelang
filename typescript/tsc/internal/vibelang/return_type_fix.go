@@ -191,6 +191,12 @@ func (a *analyzer) returnTypeText(fn *ast.Node) string {
 	if len(typeTokens.FindAllString(text, -1)) > maxReturnTypeTokens || containsAny(text, "import(", "typeof ", "...", "{") {
 		return "infer _"
 	}
+	// Another helper may become plain in this round. Infer after that edit
+	// instead of retaining its old Effect element in this collection type.
+	if helperContainerHoldsEffect(c, t) {
+		return "infer _"
+	}
+
 	return text
 }
 
@@ -208,4 +214,34 @@ func returnTypeEdits(fix *ls.CodeFixContext, fn *ast.Node, text string) []*lspro
 		return nil
 	}
 	return replaceRange(fix, after+1, after+1, ": "+text)
+}
+
+func helperContainerHoldsEffect(c *checker.Checker, t *checker.Type) bool {
+	seen := map[*checker.Type]bool{}
+	var visit func(*checker.Type) bool
+	visit = func(t *checker.Type) bool {
+		if t == nil || seen[t] {
+			return false
+		}
+		seen[t] = true
+		if isEffectType(c, t) {
+			return true
+		}
+		if t.Flags()&(checker.TypeFlagsUnion|checker.TypeFlagsIntersection) != 0 {
+			for _, part := range t.Types() {
+				if visit(part) {
+					return true
+				}
+			}
+		}
+		if t.Flags()&checker.TypeFlagsObject != 0 && t.ObjectFlags()&checker.ObjectFlagsReference != 0 {
+			for _, part := range c.GetTypeArguments(t) {
+				if visit(part) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	return visit(t)
 }
