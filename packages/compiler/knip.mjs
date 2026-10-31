@@ -8,7 +8,8 @@
 // and exports. This one returns a .vibe module's surface: each import and
 // re-export as the file writes it, which is TypeScript syntax; a stub for
 // each exported declaration under its name (an `error` is a class, a
-// `schema` a constant, as in the compiler's ESTree); each dynamic import of a
+// `schema` a constant, as in the compiler's ESTree), after the JSDoc written
+// before it, whose tags Knip reads; each dynamic import of a
 // literal path; each member a namespace import reads (`Users.find`), so Knip
 // sees which of that module's exports are used; and vibelang-runtime, which
 // the module's JavaScript imports. Bodies are left out: no
@@ -39,11 +40,23 @@ export function compile(text, path = "file.vibe") {
     }
   }
   imports(program.body)
-  for (const node of program.body) {
-    if (node.type === "ExportAllDeclaration" || (node.type === "ExportNamedDeclaration" && !node.declaration)) lines.push(source(node))
-    else if (node.type === "ExportNamedDeclaration") lines.push(...stubs(node.declaration, typeReads(node.declaration)))
-    else if (node.type === "ExportDefaultDeclaration") lines.push("export default 0")
-  }
+  // The JSDoc comments written before an export, between it and the statement
+  // before it, as TypeScript attaches them: Knip reads their tags, such as
+  // `/** @public */`, which keeps an export no other module imports. A comment
+  // on the line where the statement before ends is that statement's.
+  const comments = program.comments ?? []
+  const docs = (node, after) => comments
+    .filter((c) => c.type === "Block" && c.value.startsWith("*") && c.range[0] >= after && c.range[1] <= node.range[0])
+    .filter((c) => after === 0 || text.slice(after, c.range[0]).includes("\n"))
+    .map((c) => source(c) + "\n")
+    .join("")
+  program.body.forEach((node, i) => {
+    const doc = docs(node, i ? program.body[i - 1].range[1] : 0)
+    if (node.type === "ExportAllDeclaration" || (node.type === "ExportNamedDeclaration" && !node.declaration)) lines.push(doc + source(node))
+    // TypeScript gives a statement's JSDoc to its first declaration only.
+    else if (node.type === "ExportNamedDeclaration") lines.push(...stubs(node.declaration, typeReads(node.declaration)).map((stub, i) => (i ? "" : doc) + stub))
+    else if (node.type === "ExportDefaultDeclaration") lines.push(doc + "export default 0")
+  })
   const reads = new Set()
   visit(program, (node) => {
     if (node.type === "ImportExpression" && node.source?.type === "Literal" && typeof node.source.value === "string") reads.add(`import(${JSON.stringify(node.source.value)})`)

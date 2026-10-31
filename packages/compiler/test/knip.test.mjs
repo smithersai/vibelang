@@ -86,6 +86,65 @@ export interface Shape { s: typeof sample }
   ].join("\n"))
 })
 
+// Knip keeps an export no module imports when its JSDoc says `@public`
+// (drive-t3code: shared Net exports make with that marker and uses it only
+// for its own layer). Each stub carries the JSDoc comments written between the
+// export and the statement before it, as TypeScript attaches them: across a
+// blank line or a line comment, and to the first name a multi-binding export
+// declares only; not a comment that belongs to an earlier statement, such as
+// one on the line where that statement ends.
+test("an export's stub keeps the JSDoc written before it, whose tags Knip reads", { skip }, () => {
+  const text = `/** @public */
+export const make = (): number => 1
+export const layer = make()
+/**
+ * Two lines.
+ * @internal
+ */
+export function f() {}
+/** @public */
+
+// a line comment between
+export class K {}
+/** @public */
+export const a = 1, b = 2
+/** @public */
+const local = 1
+export const none = local
+/* @public, not JSDoc */
+export const block = 1 /** @public */
+export const trailing = 1
+/** @public */
+export schema User { name: String }
+/** @public */
+export { local as renamed }
+`
+  assert.equal(compile(text, "src/docs.vibe"), [
+    'import "vibelang-runtime"',
+    "/** @public */",
+    "export const make = 0",
+    "export const layer = 0",
+    "/**",
+    " * Two lines.",
+    " * @internal",
+    " */",
+    "export function f() {}",
+    "/** @public */",
+    "export class K {}",
+    "/** @public */",
+    "export const a = 0",
+    "export const b = 0",
+    "export const none = 0",
+    "export const block = 0",
+    "export const trailing = 0",
+    "/** @public */",
+    "export const User = 0 as unknown as [typeof String]",
+    "/** @public */",
+    "export { local as renamed }",
+    ""
+  ].join("\n"))
+})
+
 test("the output is TypeScript that TypeScript parses without a syntax error", { skip }, () => {
   const ts = createRequire(join(modules, "typescript/package.json"))("typescript")
   const file = ts.createSourceFile("module.ts", compile(source, "src/module.vibe"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
