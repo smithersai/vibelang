@@ -1,0 +1,13 @@
+// expect-result: {"kind":"thing"}
+// A union target whose member with no call signature takes the value takes
+// it as data (alchemy's Provider.effect(Resource, …)): the union's other,
+// callable member never reaches it, so D430 does not apply and an
+// Effect-returning resource class is no EK4301 there.
+import { Res, register } from "./lib.ts"
+
+export const Thing = Res<number>("thing", 1)
+const kind = register(Thing)
+
+export effect function main() {
+  return { kind }
+}

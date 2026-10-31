@@ -189,12 +189,51 @@ type valuePosition struct {
 func (a *analyzer) classifyValuePosition(call *ast.Node, signature *checker.Signature, path []pathStep, node *ast.Node, t *checker.Type) valuePosition {
 	expected := a.expectedAt(call, signature, path, node)
 	position := valuePosition{expectation: a.classify(expected)}
+	if position.plainFn && !position.effectFn && a.takenAsData(expected, t) {
+		position.plainFn = false
+	}
 	if !position.any() {
 		elements := a.stepInto(expected, pathStep{element: true})
 		elements = append(elements, a.stepInto(expected, pathStep{property: "\x00"})...) // string index signatures
 		position.elements = a.classify(elements)
 	}
 	return position
+}
+
+// takenAsData reports whether t is assignable to a member of the expected
+// types that has no call signature, and to none that has one: the target
+// takes the value as data, as alchemy's ResourceClassLike | Platform takes a
+// resource class, so no call signature of the target reaches it (D430).
+func (a *analyzer) takenAsData(expected []*checker.Type, t *checker.Type) bool {
+	if t == nil {
+		return false
+	}
+	data, callable := false, false
+	var visit func(e *checker.Type, depth int)
+	visit = func(e *checker.Type, depth int) {
+		e = unwrapSubstitution(e)
+		if depth > 4 {
+			return
+		}
+		if e.Flags()&checker.TypeFlagsUnion != 0 {
+			for _, member := range e.Types() {
+				visit(member, depth+1)
+			}
+			return
+		}
+		if e.Flags()&checker.TypeFlagsObject == 0 || !a.checker.IsTypeAssignableTo(t, e) {
+			return
+		}
+		if len(a.checker.GetSignaturesOfType(e, checker.SignatureKindCall)) == 0 {
+			data = true
+		} else {
+			callable = true
+		}
+	}
+	for _, e := range expected {
+		visit(e, 0)
+	}
+	return data && !callable
 }
 
 // convert decides what value of type t converts to at a position.
