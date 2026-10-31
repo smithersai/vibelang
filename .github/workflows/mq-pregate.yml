@@ -101,7 +101,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/pre"
           printf '{"entries":[]}\n' > "$RUNNER_TEMP/known-red.json"
           rc=0
-          EFFECT_NODE_MODULES=$PWD/experiments/node_modules CI_RESULTS="$RUNNER_TEMP/pre/$PRE_TAG-graph.json" \
+          CI_GATE_BASE="$PRE_BASE" EFFECT_NODE_MODULES=$PWD/experiments/node_modules CI_RESULTS="$RUNNER_TEMP/pre/$PRE_TAG-graph.json" \
             sh scripts/ci.sh $PRE_TARGETS --verbose --jobs "$(nproc)" --known-red "$RUNNER_TEMP/known-red.json" \
             > "$RUNNER_TEMP/pre/$PRE_TAG-graph.log" 2>&1 || rc=$?
           echo "$rc" > "$RUNNER_TEMP/pre/$PRE_TAG.rc"

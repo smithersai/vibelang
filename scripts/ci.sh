@@ -7,6 +7,8 @@
 # Usage: scripts/ci.sh [smthrs ci arguments]   (default: //... --jobs 8)
 #
 # Environment:
+#   CI_GATE_BASE append changed-path seed targets relative to this jj revision
+#   CI_CHANGED_PATHS append seed targets from a paths file (for mirrors without jj)
 #   CI_RESULTS   also write one status per target, as JSON, to this new file
 set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
@@ -30,4 +32,16 @@ ts7_cache="packages/ts-mapper/test/.cache/typescript-$ts7_version"
 	npm install --prefix "$ts7_cache" --no-audit --no-fund --silent "typescript@$ts7_version"
 
 [ $# -gt 0 ] || set -- //... --jobs 8
+# A supplied empty paths file is meaningful; a failed lookup must stop the gate.
+ci_paths=$(printenv CI_CHANGED_PATHS || true)
+ci_base=$(printenv CI_GATE_BASE || true)
+if [ -n "$ci_paths" ]; then
+  seeds=$(node scripts/fuzz-gate/select.mjs --paths "$ci_paths")
+elif [ -n "$ci_base" ]; then
+  seeds=$(node scripts/fuzz-gate/select.mjs --base "$ci_base")
+else
+  seeds=""
+fi
+# Labels come only from the checked-in map, never from path text.
+[ -z "$seeds" ] || set -- "$@" $seeds
 exec .smithers/node_modules/.bin/smthrs ci "$@" --workspace "$root" --ui plain ${CI_RESULTS:+--results-file "$CI_RESULTS"}

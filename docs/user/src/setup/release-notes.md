@@ -973,6 +973,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Fuzz checks could count a diagnostic twice when `noEmitOnError` stopped emit; the harness now matches the compiler's diagnostic list and keeps errors at distinct locations.
 
+- Hosted merge gates could miss related fuzz regressions after formatter, parser or specification edits; they now select bounded saved-seed checks from the changed paths.
+
 - Installing `vibelang` alone did not declare the Effect version it supports; the compiler now requires the same exact `effect` peer as the runtime, and release packaging rejects a missing, optional, ranged or mismatched pin.
 
 - Source collectors could silently omit migrated files because their extension allowlists named only TypeScript; migration setup now warns with the file and line when `.ts` appears without `.vibe`.

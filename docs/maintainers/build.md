@@ -100,6 +100,41 @@ Docs checks use `VIBELANG_BINARY` when set, otherwise the native checkout build 
 
 Every native build and copy uses `scripts/native-output.sh`: it writes a private sibling temporary output, closes the writer, then renames the executable into place. Concurrent readers keep executing the previous binary until the complete replacement is published, avoiding `ETXTBSY`. Failed builds leave the previous executable intact and clean up their temporary output. This applies to the compiler, forms generator, mapper, standalone test builds and release platform binaries; release rebuilds retain existing binaries while compiling replacements. Remote release transfers use `rsync` without `--inplace`, which also replaces completed files by rename.
 
+### Changed-path fuzz seeds
+
+Hosted pre-gates set `CI_GATE_BASE` to their tested base. Before running the
+graph, `scripts/ci.sh` asks `scripts/fuzz-gate/select.mjs` for the additional
+targets selected by the changed paths. The selector uses Jujutsu and stops
+the gate if the base revision cannot be read. A mirror without Jujutsu can
+supply `CI_CHANGED_PATHS`, a file containing one repository-relative changed
+path per line; an empty file selects no additional targets.
+
+The reviewed map is `scripts/fuzz-gate/map.json`. Formatter changes select
+`FuzzFormat`; VibeLang parser changes select `FuzzParse`, `FuzzSplice` and
+`TestSpliceMutation`; mapped specification chapters select their quote,
+coverage and static-rule checks; editor changes select editor fuzz seeds.
+The map deliberately does not claim coverage of every compiler change.
+Changing the map or selector selects every mapped family.
+
+Each family has an explicit `//scripts/fuzz-gate:<family>` target. It runs
+saved seeds with `-short -count=1` and a `90s` Go test deadline, eight Go
+build jobs and eight processors. Admission and compilation have a separate
+`30m` target budget. These targets are exclusive, so ordinary wildcard
+runs do not repeat the post-merge fuzz suite; explicit labels always run.
+They use the repository inputs and runtime that the seed oracles read.
+
+Run the same selection locally, or inspect the labels without running tests:
+
+```sh
+CI_GATE_BASE=main@github sh scripts/ci.sh //packages:compiler-test --jobs 8
+printf '%s\n' docs/design/src/003-failures.md | node scripts/fuzz-gate/select.mjs
+```
+
+The build-host queue adapter must pass `CI_GATE_BASE` or `CI_CHANGED_PATHS`
+when invoking `scripts/ci.sh`, or append the selector's labels to its existing
+changed-case list. A graph result from one of these families is a seed check,
+not a fuzz campaign. The full fuzz suite and editor smoke remain required.
+
 ### Pending hang probes
 
 The `//:go-vibelangfuzz-pending` merge-gate target requires the independently
