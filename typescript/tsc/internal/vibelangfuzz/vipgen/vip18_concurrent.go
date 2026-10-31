@@ -284,13 +284,15 @@ func init() {
 func init() {
 	Register(&Construct{
 		Key: "vip18.any-catch-first", VIP: 18,
-		Requires: []string{"vip01.effect-function", "vip05.try", "vip18.any"},
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip18.any", "vip02.effect-block"},
 		Citations: []Citation{{VIP: 18, Template: "Effect.raceAll(‹args›)", Quote: "Each is exact sugar for an Effect function.",
 			Reading: "The reference uses the VIP's Effect operation, preserving the enclosing JavaScript evaluation order and completion."}},
+		// The elements are effect blocks; bare Effect calls there add VIP-1's
+		// unrun call, a gap of its own.
 		Focus: func(g *Gen, s *Scope) []Stmt {
 			g.UseEffect()
 
-			return []Stmt{&catchEdge{vibe: "const xs = [Effect.andThen(Effect.sleep(2), Effect.fail(10)), Effect.andThen(Effect.sleep(1), Effect.fail(20))]; return (effect { return try.any xs }) catch (e) => e", ref: "const xs = [Effect.andThen(Effect.sleep(2), Effect.fail(10)), Effect.andThen(Effect.sleep(1), Effect.fail(20))]; return yield* Effect.catch(Effect.raceAll(xs), (e) => Effect.succeed(e))"}}
+			return []Stmt{&catchEdge{vibe: "const xs = [effect { return try Effect.andThen(Effect.sleep(2), Effect.fail(10)) }, effect { return try Effect.andThen(Effect.sleep(1), Effect.fail(20)) }]; return (effect { return try.any xs }) catch (e) => e", ref: "const xs = [Effect.gen(function* () { return yield* Effect.andThen(Effect.sleep(2), Effect.fail(10)) }), Effect.gen(function* () { return yield* Effect.andThen(Effect.sleep(1), Effect.fail(20)) })]; return yield* Effect.catch(Effect.raceAll(xs), (e) => Effect.succeed(e))"}}
 		},
 	})
 }
@@ -298,13 +300,16 @@ func init() {
 func init() {
 	Register(&Construct{
 		Key: "vip18.mapped-array", VIP: 18,
-		Requires: []string{"vip01.effect-function", "vip05.try", "vip18.all"},
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip18.all", "vip02.effect-block"},
 		Citations: []Citation{{VIP: 18, Template: "Effect.all(‹args›)", Quote: "Each is exact sugar for an Effect function.",
 			Reading: "The reference uses the VIP's Effect operation, preserving the enclosing JavaScript evaluation order and completion."}},
+		// The callback returns an effect block, an Effect the operation runs;
+		// a bare Effect.succeed call there adds VIP-1's unrun call, a gap of
+		// its own.
 		Focus: func(g *Gen, s *Scope) []Stmt {
 			g.UseEffect()
 
-			return []Stmt{&catchEdge{vibe: "return try.all [1, 2, 3].map(x => (ev(String(x)), Effect.succeed(x * 2)))", ref: "return yield* Effect.all([1, 2, 3].map(x => (ev(String(x)), Effect.succeed(x * 2))), { concurrency: \"unbounded\" })"}}
+			return []Stmt{&catchEdge{vibe: "return try.all [1, 2, 3].map(x => (ev(String(x)), effect { return x * 2 }))", ref: "return yield* Effect.all([1, 2, 3].map(x => (ev(String(x)), Effect.gen(function* () { return x * 2 }))), { concurrency: \"unbounded\" })"}}
 		},
 	})
 }
@@ -326,13 +331,15 @@ func init() {
 func init() {
 	Register(&Construct{
 		Key: "vip18.readonly-arrays", VIP: 18,
-		Requires: []string{"vip01.effect-function", "vip05.try", "vip18.all", "vip18.race", "vip18.any", "vip18.all-settled"},
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip18.all", "vip18.race", "vip18.any", "vip18.all-settled", "vip02.effect-block"},
 		Citations: []Citation{{VIP: 18, Template: "Effect.all(‹args›)", Quote: "Each is exact sugar for an Effect function.",
 			Reading: "The reference uses the VIP's Effect operation and chapter 2's enclosing-statement, lexical-capture and JavaScript evaluation-order rules; no operand is read again after a later operand runs."}},
+		// The elements are effect blocks; bare Effect calls there add VIP-1's
+		// unrun call, a gap of its own.
 		Focus: func(g *Gen, s *Scope) []Stmt {
 			g.UseEffect()
 
-			return []Stmt{&catchEdge{vibe: "const xs: ReadonlyArray<Effect.Effect<number>> = [Effect.andThen(Effect.sleep(2), Effect.succeed(1)), Effect.andThen(Effect.sleep(1), Effect.succeed(2))]; const a = try.all xs; const r = try.race xs; const n = try.any xs; const s = try.allSettled xs; return [a, r, n, s.map(x => [Effect.isEffect(x), x._tag === \"Success\" ? x.value : 0])]", ref: "const xs = [Effect.andThen(Effect.sleep(2), Effect.succeed(1)), Effect.andThen(Effect.sleep(1), Effect.succeed(2))]; const a = yield* Effect.all(xs, { concurrency: \"unbounded\" }); const r = yield* Effect.raceAllFirst(xs); const n = yield* Effect.raceAll(xs); const s = yield* Effect.all(xs.map(Effect.exit), { concurrency: \"unbounded\" }); return [a, r, n, s.map(x => [Effect.isEffect(x), x._tag === \"Success\" ? x.value : 0])]"}}
+			return []Stmt{&catchEdge{vibe: "const xs: ReadonlyArray<Effect.Effect<number>> = [effect { return try Effect.andThen(Effect.sleep(2), Effect.succeed(1)) }, effect { return try Effect.andThen(Effect.sleep(1), Effect.succeed(2)) }]; const a = try.all xs; const r = try.race xs; const n = try.any xs; const s = try.allSettled xs; return [a, r, n, s.map(x => [Effect.isEffect(x), x._tag === \"Success\" ? x.value : 0])]", ref: "const xs = [Effect.gen(function* () { return yield* Effect.andThen(Effect.sleep(2), Effect.succeed(1)) }), Effect.gen(function* () { return yield* Effect.andThen(Effect.sleep(1), Effect.succeed(2)) })]; const a = yield* Effect.all(xs, { concurrency: \"unbounded\" }); const r = yield* Effect.raceAllFirst(xs); const n = yield* Effect.raceAll(xs); const s = yield* Effect.all(xs.map(Effect.exit), { concurrency: \"unbounded\" }); return [a, r, n, s.map(x => [Effect.isEffect(x), x._tag === \"Success\" ? x.value : 0])]"}}
 		},
 	})
 }
