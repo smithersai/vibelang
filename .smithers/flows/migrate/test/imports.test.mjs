@@ -57,3 +57,9 @@ test("resolveRelative follows .js to a .ts or .vibe source, and extensionless to
 test("applyEdits replaces from the end so offsets stay valid", () => {
   assert.equal(applyEdits("ab cd ef", [{ start: 0, end: 2, text: "AAAA" }, { start: 6, end: 8, text: "F" }]), "AAAA cd F")
 })
+
+test("directory slash imports use canonical repository keys", () => {
+  assert.equal(resolveRelative("pkg/a.vibe", "./runtime/", new Set(["pkg/runtime/index.vibe"])), "pkg/runtime/index.vibe")
+  assert.equal(resolveRelative("pkg/a.vibe", "./", new Set(["pkg/index.vibe"])), "pkg/index.vibe")
+  assert.equal(resolveRelative("pkg/a.vibe", "../", new Set(["index.ts"])), "index.ts")
+})

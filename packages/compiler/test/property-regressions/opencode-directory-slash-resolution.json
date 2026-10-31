@@ -1,0 +1,1 @@
+{"property":"migrate-relative-source-resolution","input":{"name":"runtime","relation":"local","extension":".vibe"},"reason":"Directory-slash mutation of the opencode namespace re-export pattern."}

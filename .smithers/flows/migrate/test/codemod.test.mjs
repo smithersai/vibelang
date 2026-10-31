@@ -230,3 +230,9 @@ test("the fix loop asks for declarations, so --fix keeps what they print under a
     rmSync(root, { recursive: true, force: true })
   }
 })
+
+test("directory slash specifiers keep the selected index source", () => {
+  assert.equal(rewriteSpecifier("pkg/a.vibe", "./runtime/", "pkg/runtime/index.vibe"), "./runtime/index.vibe")
+  assert.equal(rewriteSpecifier("pkg/a.vibe", "./", "pkg/index.ts"), "./index.ts")
+  assert.equal(rewriteSpecifier("pkg/a.vibe", "../", "index.vibe"), "../index.vibe")
+})

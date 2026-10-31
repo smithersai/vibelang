@@ -69,7 +69,7 @@ export function resolveRelative(from, specifier, files) {
   } else {
     candidates.push(...sourceExtensions.map((e) => target + e), ...sourceExtensions.map((e) => target + "/index" + e), target)
   }
-  return candidates.find((candidate) => files.has(candidate))
+  return candidates.map((candidate) => posix.normalize(candidate)).find((candidate) => files.has(candidate))
 }
 
 /** Replaces the specifiers at the given offsets; edits are { start, end, text }. */

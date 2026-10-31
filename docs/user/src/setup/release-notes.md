@@ -175,6 +175,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - With the `@effect/language-service` plugin's `ignoreEffectErrorsInTscExitCode` or `ignoreEffectWarningsInTscExitCode` set, an Effect lint diagnostic such as `EK3801 floatingEffect` still made `vibelang` exit 2 and blocked emit under `noEmitOnError`, because the options recognized only Effect's own diagnostic codes, not the `EK38xx` codes VibeLang prints; they now cover every imported rule again, as in 0.0.8.
 
+- The migrate flow missed directory imports such as `./runtime/` and could rewrite one as `./runtime/.vibe`; it now keeps the selected index module and writes `./runtime/index.vibe`.
+
 - The release rehearsal stopped at its Vite warning check because it expected a retired nondeterminism diagnostic and used deprecated configuration; it now checks the assigned `EK4833` warning and verifies that Vite emits the bundle with `noEmitOnError`.
 
 - In a project with no `declaration` setting, an export whose inferred type was too long to serialize (`TS7056`) got only a warning, and its declaration sidecar held `any` in place of the type, so a stock `tsc` consumer lost its types without an error; it is an error again, as it is where the project emits declarations.

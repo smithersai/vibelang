@@ -173,7 +173,7 @@ export function rewriteSpecifier(importer, specifier, target, { mock = false } =
     if ([".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts", ".vibe"].includes(ext)) return specifier.slice(0, -ext.length) + targetExt
     // Extensionless: name the file, or the directory's index file.
     const base = posix.normalize(posix.join(posix.dirname(importer), specifier))
-    if (target === `${base}/index${targetExt}`) return `${specifier.replace(/\/$/, "")}/index${targetExt}`
+    if (target === posix.normalize(`${base}/index${targetExt}`)) return `${specifier.replace(/\/$/, "")}/index${targetExt}`
     return specifier + targetExt
   }
   if (ext === ".vibe") return specifier.slice(0, -ext.length) + targetExt
