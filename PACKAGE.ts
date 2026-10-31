@@ -195,13 +195,14 @@ const targets = {
     timeout: "30m"
   }),
   "docs-check": check("Generated docs and tracked-leak checks.", "cd .smithers && bun run docs:check", [], [bun, node, gofmt]),
+  // The compiler corpus runs as `//typescript/vibelang/...`, one cached target
+  // per case, through the binary users run.
   "go-vibelang": goVibelang(
     "Go tests of internal/vibelang and its subpackages.",
     `CGO_ENABLED=0 ${effect} go test -count=1 -p 8 -timeout 45m -trimpath ./internal/vibelang/...`,
     [Tsc["vibelang-files"]],
-    // The native corpus took 15m alone and exhausted 25m under shared load
-    // while cases were still advancing. Go bounds the suite at 45m; the
-    // outer budget also covers admission and compilation, as for fuzz.
+    // Go bounds the tests; the outer budget also covers admission and a cold
+    // compile, which took 30m under load on 2026-10-31.
     "70m"
   ),
   "go-vibelang-race": goVibelang(

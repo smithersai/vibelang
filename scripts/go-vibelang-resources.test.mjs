@@ -14,10 +14,9 @@ const minutes = text => {
   return Number(match[1])
 }
 
-// The complete native corpus took about 15 minutes alone; a busy shared host
-// exhausted 25 minutes while runtime cases were still advancing. Keep enough
-// time for a threefold slowdown, without extending individual case deadlines.
-test("the native Go suite allows shared-host slowdown", () => {
+// Without the corpus the package takes about 4 minutes on a quiet host, and it
+// outran 25 minutes at load 200 on 2026-10-31. Keep room for that.
+test("the Go package suite allows shared-host slowdown", () => {
   const dir = mkdtempSync(join(tmpdir(), "go-vibelang-budget-"))
   try {
     const output = join(dir, "args")
@@ -31,7 +30,7 @@ test("the native Go suite allows shared-host slowdown", () => {
     assert.equal(args[0], "test")
     const index = args.indexOf("-timeout")
     assert.ok(index >= 0, args.join(" "))
-    assert.ok(minutes(args[index + 1]) >= 3 * 15, "native corpus needs at least three times its 15-minute isolated run")
+    assert.ok(minutes(args[index + 1]) > 25, "the package outran 25 minutes under load")
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }

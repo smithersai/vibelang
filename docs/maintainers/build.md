@@ -203,14 +203,12 @@ To reproduce child-start races without a busy host, run the acceptance harness
 with `--late-start` (or set `VIBELANG_LATE_START=1`). It delays queued
 scheduler tasks by `100 ms` after the caller suspends, while timers can resume
 the parent. A pause between the fork and sleep cannot consume this delay. The same
-environment switch applies to `TestCompilerRuntimeCases` and runnable documentation
-examples checked by `bun docs/tools/check-snippets.ts --run`. For example:
+environment switch applies to runnable documentation examples checked by
+`bun docs/tools/check-snippets.ts --run`. For example:
 
 ```sh
 cd typescript
 EFFECT_NODE_MODULES=$PWD/../experiments/node_modules VIBELANG_RUNTIME=$PWD/../packages/runtime node vibelang/harness.mjs --late-start uninterruptible-using fork-named-region
-cd tsc
-VIBELANG_LATE_START=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -count=1 -p 8 ./internal/vibelang -run 'TestCompilerRuntimeCases/(uninterruptible-using|fork-named-region)$'
 ```
 
 A child must signal a `Deferred` after it enters its protected region or
@@ -230,10 +228,12 @@ They run `go test -count=1`: the graph caches their results, and Go's own test
 cache would first hash every file the tests opened. `:go-vibelangfuzz` opens
 about 25 million, which took 14 minutes on one core after its tests passed.
 
-The native compiler corpus, `:go-vibelang`, runs Go with `-timeout 45m`.
-Its shell target allows 70 minutes, including waiting for a Go build slot and
-compiling the test binary. Each native runtime case has a 20-second Node
-execution deadline.
+The compiler corpus runs through `harness.mjs` only, as one target per case in
+`//typescript/vibelang/...`. `:go-vibelang` does not rerun it: three Go tests did
+until 2026-10-31, took 700 s of the package's 900 s, and over 114 red post-merge
+runs reported no product failure the case targets missed. `:go-vibelang` runs Go
+with `-timeout 45m`, and its shell target allows 70 minutes, including waiting
+for a Go build slot and compiling the test binary.
 
 The fuzz shell caps `GOMAXPROCS` at the smaller of `24` and the machine CPU count and declares `GOFLAGS=-p=6`, matching the
 post-merge shard allocation. Smithers withholds ambient Go variables, so
