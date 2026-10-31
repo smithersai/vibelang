@@ -2,7 +2,6 @@
 # Each minimized input in testdata/fuzz/<target>/ has a corpus line; the key of the
 # oracle it breaks has a line too, so other inputs that meet the same gap skip.
 # target              key                                        owner     what is missing
-FuzzCompile           corpus:match-flow-limit-cubic              compiler  hang: a match of N literal arms over an N-literal union checks in O(N^3) (500 arms: 0.7 s, 1000: 5.7 s, 2000: 48 s; the same TypeScript switch: 10 ms); the reproduction is case match-flow-limit.fail grown to 3,000 arms, so it outlasts the probe on any host until the check is fixed
 FuzzCompile           ek:EK3205                                  compiler  D420: EK3205 is an error by default; the compiler reports it as a warning (32 seeds)
 FuzzCompile           ek:EK4802                                  compiler  Chapter 28 (D241, D321): EK4802 is an error by default; the compiler reports it as a warning
 FuzzCompile           ek:EK4409                                  compiler  D321 (history Chapter 28, which the oracle reads until it moves to Appendix B): EK4409 is an error by default; the compiler reports it as a warning; no Appendix B has listed EK4409 and no decided detail retires it, so decide-live decides whether it keeps a row or the compiler retires it (live/findings.md; fuzz-hunt campaign 20261030T1208)

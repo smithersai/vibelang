@@ -59,6 +59,9 @@ var CompileSeeds = sync.OnceValue(func() []string {
 			seedNames.Store(archive, name)
 		}
 	}
+	for i, seed := range literalMatchSeeds() {
+		add(seed, fmt.Sprintf("literal match neighbourhood %d", i))
+	}
 	for _, seed := range shortWitnessSeeds(CaseSeeds(), 32) {
 		files := map[string]string{}
 		for name, text := range seed.Files {
@@ -148,10 +151,9 @@ func Admissible(project Project) string {
 			sources++
 		}
 	}
-	// Every acceptance case but one is under 24 KB. The one above,
-	// match-flow-limit.fail, takes the compiler most of a minute (see the
-	// pending corpus:match-flow-limit-cubic); its mutations would end every
-	// campaign as hangs of the same bug.
+	// Bound mutations to small projects. Wide literal matches also run as
+	// ordinary regression seeds below this cap; TestCompileLargeLiteralMatch
+	// retains the original 3,000-arm stress reproduction separately.
 	if size > 32<<10 && os.Getenv("VIBELANG_FUZZ_HANG_PROBE") != "1" {
 		return "too large"
 	}

@@ -97,6 +97,8 @@ Completeness is checked, not claimed. Each of these tests reads the specificatio
 
 A pending line skips only the disagreement its own key names. A reproduction's `corpus:` line marks it for XPASS and never excuses a new failure. `typescript/vibelang/smoke.sh`, which the merge queue's gate runs before anything lands on `main`, runs the seed corpus with `-short`, and a missing dependency fails there instead of skipping.
 
+A fixed hang graduates to an active regression instead of retaining a time-dependent pending expectation. The literal `match` regression keeps its keyed corpus below the mutation size cap, generates string and numeric unions in both arm orders, and retains the original 3,000-arm workload in `TestCompileLargeLiteralMatch`. `TestLiteralMatchCorpusActive` runs in the gate so that a pending line or size skip cannot silently disable that coverage. The checker allocation guards detect repeated union-removal work independently of host load.
+
 ## Results
 
 Campaigns ran on the shared build host (48 cores, load average 70 to 110) at `-parallel 6`, so the counts are low for Go fuzzing. A compilation with a type check and emit costs about 20 ms on an idle core.
