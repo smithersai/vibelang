@@ -100,19 +100,49 @@ export async function runTests({ command, report, cwd, root, jsonFile, log, env 
   return { code: result.code, ms: result.ms, tests, ...(rerun ? { rerun } : {}), ...(tests ? tally(tests) : { total: null, passed: null, failed: [], skipped: null }) }
 }
 
+// A date a test's name prints, such as it.each([[new Date()]])("... %s"),
+// differs on every run: JavaScript's Date#toString and #toUTCString, and an
+// ISO timestamp.
+const day = "(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)"
+const month = "(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"
+const clock = "\\d{2}:\\d{2}:\\d{2}"
+const runDates = new RegExp([
+  `\\b${day} ${month} \\d{2} -?\\d{4,6} ${clock} GMT[+-]\\d{4}(?: \\([^)]*\\))?`,
+  `\\b${day}, \\d{2} ${month} -?\\d{4,6} ${clock} GMT`,
+  `[+-]?\\d{4,6}-\\d{2}-\\d{2}T${clock}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})`
+].join("|"), "g")
+
+/** A test's name with the dates a run prints in it as <date>, so one test keeps its name across runs. */
+export const stableName = (name) => name.replace(runDates, "<date>")
+
+/** tests keyed by stableName; names that become one are numbered in order, as parseVitestJson numbers repeats. */
+function byStableName(tests) {
+  const out = {}
+  const seen = new Map()
+  for (const [name, status] of Object.entries(tests)) {
+    const key = stableName(name)
+    const n = (seen.get(key) ?? 0) + 1
+    seen.set(key, n)
+    out[n === 1 || key === name ? key : `${key} [${n}]`] = status
+  }
+  return out
+}
+
 /**
  * What changed against the baseline: tests that now fail and did not, tests
  * that passed and are gone, and an exit status that turned nonzero when no
- * per-test report says why.
+ * per-test report says why. Tests are matched by stableName.
  */
 export function compareTests(baseline, current) {
   if (!baseline.tests || !current.tests) {
     const regressed = baseline.code === 0 && current.code !== 0
     return { ok: !regressed, newFailures: regressed ? ["(exit status)"] : [], missing: [], fixed: [] }
   }
-  const newFailures = Object.keys(current.tests).filter((n) => current.tests[n] === "failed" && baseline.tests[n] !== "failed").sort()
-  const missing = Object.keys(baseline.tests).filter((n) => baseline.tests[n] === "passed" && !(n in current.tests)).sort()
-  const fixed = Object.keys(baseline.tests).filter((n) => baseline.tests[n] === "failed" && current.tests[n] === "passed").sort()
+  const before = byStableName(baseline.tests)
+  const after = byStableName(current.tests)
+  const newFailures = Object.keys(after).filter((n) => after[n] === "failed" && before[n] !== "failed").sort()
+  const missing = Object.keys(before).filter((n) => before[n] === "passed" && !(n in after)).sort()
+  const fixed = Object.keys(before).filter((n) => before[n] === "failed" && after[n] === "passed").sort()
   return { ok: !newFailures.length && !missing.length, newFailures, missing, fixed }
 }
 

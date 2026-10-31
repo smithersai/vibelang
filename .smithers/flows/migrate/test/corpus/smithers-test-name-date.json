@@ -1,0 +1,16 @@
+{
+  "finding": "smithers:verify-missing-date-test-name",
+  "note": "Smithers run 2, packages/smithers/flows/capability batch 01: test/Permission.test.ts:426 it.each([[null], [[]], [new Date()], [\"text\"]])(\"rejects non-record metadata roots: %s\"). Baseline and batch runs differ only in the printed Date.",
+  "baseline": {
+    "packages/smithers/flows/capability/test/Permission.test > Permission > rejects non-record metadata roots: null": "passed",
+    "packages/smithers/flows/capability/test/Permission.test > Permission > rejects non-record metadata roots: []": "passed",
+    "packages/smithers/flows/capability/test/Permission.test > Permission > rejects non-record metadata roots: Sat Oct 31 2026 16:22:47 GMT+0000 (Coordinated Universal Time)": "passed",
+    "packages/smithers/flows/capability/test/Permission.test > Permission > rejects non-record metadata roots: 'text'": "passed"
+  },
+  "current": {
+    "packages/smithers/flows/capability/test/Permission.test > Permission > rejects non-record metadata roots: null": "passed",
+    "packages/smithers/flows/capability/test/Permission.test > Permission > rejects non-record metadata roots: []": "passed",
+    "packages/smithers/flows/capability/test/Permission.test > Permission > rejects non-record metadata roots: Sat Oct 31 2026 16:29:01 GMT+0000 (Coordinated Universal Time)": "passed",
+    "packages/smithers/flows/capability/test/Permission.test > Permission > rejects non-record metadata roots: 'text'": "passed"
+  }
+}
