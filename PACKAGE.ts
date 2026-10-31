@@ -72,6 +72,7 @@ const specTests = [
   "TestCanonicalVIPExitReasonTagControls",
   "TestVIPTemplatesCited",
   "TestRunningRulesQuoted",
+  "TestFunctionsSpecQuotes",
   "TestVIPCoverage",
   "TestSpecProductionsOnlyInAppendixA",
   "TestSpecCitedProductionsExist",

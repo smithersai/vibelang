@@ -48,22 +48,93 @@ func chapterCode(f *testing.F, chapter []byte, needle string) int32 {
 
 // FuzzFunctionsSpec reads the current chapter, rather than a retired rules
 // table. Each input selects one violation and one source function kind.
+// functionsSpecRules are FuzzFunctionsSpec's rules, each with the chapter 1
+// text it cites (TestFunctionsSpecQuotes).
+var functionsSpecRules = []struct{ key, quote, source string }{
+	{"arguments", "every `IdentifierReference` named `arguments`", "return arguments.length"},
+	{"var", "every `var` declaration", "var x = 1; return x"},
+	{"eval", "every `IdentifierReference` named `eval`", "return (0, eval)(\"1\")"},
+	{"function-alias", "every `IdentifierReference` resolving to the global `Function` constructor", "const F = Function; return F"},
+	{"with", "every `with` statement", "with ({x: 1}) { x }"},
+	{"await", "`await`, `for await` or `await using` in effect code: an `effect` function, a producer or an `effect` block", "await Promise.resolve(1)"},
+	{"var-loop", "`for (var …)` included", "for (var x of [1, 2]) {} return 0"},
+}
+
+// functionBoundaryCases are FuzzFunctionBoundaries' cases, each with the
+// chapter 1 text it cites (TestFunctionsSpecQuotes).
+var functionBoundaryCases = []struct{ key, quote, source string }{
+	{"shorthand", "There is no top-level shorthand", "effect load() {}"},
+	{"async-shorthand", "There is no top-level shorthand", "async load() {}"},
+	{"await-using", "`await`, `for await` or `await using` in effect code: an `effect` function, a producer or an `effect` block", "effect function f() { await using r = { [Symbol.asyncDispose]: async () => {} } }"},
+	{"for-await", "`await`, `for await` or `await using` in effect code: an `effect` function, a producer or an `effect` block", "effect function f() { for await (const x of []) {} }"},
+	{"await-effect", "`await` on an Effect, by the [Result test](002-running.md#result-tests)", "async function f() { await Effect.succeed(1) }"},
+	{"getter", "`effect` on a getter, setter or constructor", "class C { effect get x() { return 1 } }"},
+	{"setter", "`effect` on a getter, setter or constructor", "class C { effect set x(v: number) {} }"},
+	{"constructor", "`effect` on a getter, setter or constructor", "class C { effect constructor() {} }"},
+	{"both", "`effect` and `async` on one function", "effect async function f() {}"},
+	{"return-type", "A written return type of an `effect` function that does not resolve to `Effect.Effect<A, E, R>`", "effect function f(): number { return 1 }"},
+	{"arguments-default", "every `IdentifierReference` named `arguments`", "function f(p = arguments.length) {}"},
+	{"await-effect-top", "`await` on an Effect, by the [Result test](002-running.md#result-tests)", "await Effect.succeed(1)"},
+	{"await-effect-union", "`await` on an Effect, by the [Result test](002-running.md#result-tests)", "async function f(x: number | (number!!)) { await x }"},
+	{"return-type-any", "A written return type of an `effect` function that does not resolve to `Effect.Effect<A, E, R>`", "effect function f(): any { return 1 }"},
+	{"return-type-unknown", "A written return type of an `effect` function that does not resolve to `Effect.Effect<A, E, R>`", "effect function f(): unknown { return 1 }"},
+}
+
+// The sentences the function targets cite outside their tables: chapter 1
+// (functionSyntaxQuote, recursiveInferenceQuote, effectInferenceQuote),
+// chapter 2 (restoreBoundaryQuote) and VIP-1 (constructionErrorQuote).
+const (
+	functionSyntaxQuote     = "`effect` and the function, name or parameters it modifies are on one line, and an arrow's `=>` is on the line its parameters end"
+	recursiveInferenceQuote = "A recursive function whose type can't be inferred gets TypeScript's own TS7022, TS7023 or TS7024, and no VibeLang diagnostic"
+	effectInferenceQuote    = "An inferred type takes its success from what the function returns, a `return` in a parameter default included, and its errors and requirements from the Effects its body runs"
+	restoreBoundaryQuote    = "the nested Effect, or each item's Effect, is outside the enclosing mask's control"
+	constructionErrorQuote  = "TypeScript's own error only, with no stricter VibeLang check"
+)
+
+// TestFunctionsSpecQuotes checks every sentence the function targets cite.
+// It runs in the spec-tests step, which the merge gate runs whenever
+// docs/design changes, so a spec edit that rewrites a cited sentence fails
+// there, naming the quote, instead of stopping a target in post-merge.
+func TestFunctionsSpecQuotes(t *testing.T) {
+	read := func(chapter string) string {
+		data, err := os.ReadFile(filepath.Join(Root(), "docs/design/src", chapter))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(data)
+	}
+	functions, running := read("001-functions.md"), read("002-running.md")
+	vip, err := vipText(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	quotes := []string{functionSyntaxQuote, recursiveInferenceQuote, effectInferenceQuote}
+	for _, r := range functionsSpecRules {
+		quotes = append(quotes, r.quote)
+	}
+	for _, c := range functionBoundaryCases {
+		quotes = append(quotes, c.quote)
+	}
+	for _, quote := range quotes {
+		if !strings.Contains(functions, quote) {
+			t.Errorf("chapter 1 no longer says %q; update the function targets' quote", quote)
+		}
+	}
+	if !strings.Contains(running, restoreBoundaryQuote) {
+		t.Errorf("chapter 2 no longer says %q; update FuzzRestoreFunctionBoundary's quote", restoreBoundaryQuote)
+	}
+	if !strings.Contains(vip, constructionErrorQuote) {
+		t.Errorf("VIP-1 no longer says %q; update FuzzFunctionTypeScriptRules' quote", constructionErrorQuote)
+	}
+}
+
 func FuzzFunctionsSpec(f *testing.F) {
 	startShortBudget(f)
 	chapter, err := os.ReadFile(filepath.Join(Root(), "docs/design/src/001-functions.md"))
 	if err != nil {
 		f.Fatal(err)
 	}
-	type rule struct{ key, quote, source string }
-	rules := []rule{
-		{"arguments", "every `IdentifierReference` named `arguments`", "return arguments.length"},
-		{"var", "every `var` declaration", "var x = 1; return x"},
-		{"eval", "every `IdentifierReference` named `eval`", "return (0, eval)(\"1\")"},
-		{"function-alias", "every `IdentifierReference` resolving to the global `Function` constructor", "const F = Function; return F"},
-		{"with", "every `with` statement", "with ({x: 1}) { x }"},
-		{"await", "`await`, `for await` or `await using` in effect code: an `effect` function, a producer or an `effect` block", "await Promise.resolve(1)"},
-		{"var-loop", "`for (var …)` included", "for (var x of [1, 2]) {} return 0"},
-	}
+	rules := functionsSpecRules
 	codes := map[string]int32{}
 	for _, r := range rules {
 		if !strings.Contains(string(chapter), r.quote) {
@@ -131,23 +202,7 @@ func FuzzFunctionBoundaries(f *testing.F) {
 	if err != nil {
 		f.Fatal(err)
 	}
-	cases := []struct{ key, quote, source string }{
-		{"shorthand", "There is no top-level shorthand", "effect load() {}"},
-		{"async-shorthand", "There is no top-level shorthand", "async load() {}"},
-		{"await-using", "`await`, `for await` or `await using` in effect code: an `effect` function, a producer or an `effect` block", "effect function f() { await using r = { [Symbol.asyncDispose]: async () => {} } }"},
-		{"for-await", "`await`, `for await` or `await using` in effect code: an `effect` function, a producer or an `effect` block", "effect function f() { for await (const x of []) {} }"},
-		{"await-effect", "`await` on an Effect, by the [Result test](002-running.md#result-tests)", "async function f() { await Effect.succeed(1) }"},
-		{"getter", "`effect` on a getter, setter or constructor", "class C { effect get x() { return 1 } }"},
-		{"setter", "`effect` on a getter, setter or constructor", "class C { effect set x(v: number) {} }"},
-		{"constructor", "`effect` on a getter, setter or constructor", "class C { effect constructor() {} }"},
-		{"both", "`effect` and `async` on one function", "effect async function f() {}"},
-		{"return-type", "A written return type of an `effect` function that does not resolve to `Effect.Effect<A, E, R>`", "effect function f(): number { return 1 }"},
-		{"arguments-default", "every `IdentifierReference` named `arguments`", "function f(p = arguments.length) {}"},
-		{"await-effect-top", "`await` on an Effect, by the [Result test](002-running.md#result-tests)", "await Effect.succeed(1)"},
-		{"await-effect-union", "`await` on an Effect, by the [Result test](002-running.md#result-tests)", "async function f(x: number | (number!!)) { await x }"},
-		{"return-type-any", "A written return type of an `effect` function that does not resolve to `Effect.Effect<A, E, R>`", "effect function f(): any { return 1 }"},
-		{"return-type-unknown", "A written return type of an `effect` function that does not resolve to `Effect.Effect<A, E, R>`", "effect function f(): unknown { return 1 }"},
-	}
+	cases := functionBoundaryCases
 	codes := map[string]int32{}
 	for _, c := range cases {
 		if !strings.Contains(string(chapter), c.quote) {
@@ -193,7 +248,7 @@ func FuzzFunctionSyntax(f *testing.F) {
 	if err != nil {
 		f.Fatal(err)
 	}
-	const quote = "`effect` and the function, name or parameters it modifies are on one line, and an arrow's `=>` is on the line its parameters end"
+	const quote = functionSyntaxQuote
 	if !strings.Contains(string(chapter), quote) {
 		f.Fatalf("stale chapter 1 citation: %s", quote)
 	}
@@ -254,7 +309,7 @@ func FuzzFunctionTypeScriptRules(f *testing.F) {
 	if err != nil {
 		f.Fatal(err)
 	}
-	const quote = "A recursive function whose type can't be inferred gets TypeScript's own TS7022, TS7023 or TS7024, and no VibeLang diagnostic"
+	const quote = recursiveInferenceQuote
 	if !strings.Contains(string(chapter), quote) {
 		f.Fatal("stale recursive-inference quote")
 	}
@@ -262,7 +317,7 @@ func FuzzFunctionTypeScriptRules(f *testing.F) {
 	if err != nil {
 		f.Fatal(err)
 	}
-	if !strings.Contains(vip, "TypeScript's own error only, with no stricter VibeLang check") {
+	if !strings.Contains(vip, constructionErrorQuote) {
 		f.Fatal("stale VIP-1 construction-error citation")
 	}
 	w := NewWorkspace(f)
@@ -316,7 +371,7 @@ func FuzzRestoreFunctionBoundary(f *testing.F) {
 	if err != nil {
 		f.Fatal(err)
 	}
-	const quote = "the nested Effect, or each item's Effect, is outside the enclosing mask's control"
+	const quote = restoreBoundaryQuote
 	if !strings.Contains(string(chapter), quote) {
 		f.Fatal("stale restore boundary citation")
 	}
@@ -373,7 +428,7 @@ func FuzzFunctionEffectInference(f *testing.F) {
 	if err != nil {
 		f.Fatal(err)
 	}
-	const quote = "An inferred type takes its success from what the function returns, a `return` in a parameter default included, and its errors and requirements from the Effects its body runs"
+	const quote = effectInferenceQuote
 	if !strings.Contains(string(chapter), quote) {
 		f.Fatal("stale Effect inference citation")
 	}
