@@ -156,6 +156,17 @@ export function addVibeLangPlugin(pkg, specs) {
 }
 
 /**
+ * The expression under the parentheses, `as` and `<T>` assertions,
+ * `satisfies` clauses and `!` that wrap node, none of which changes the value
+ * a config or Bun.build reads: opencode's packages/app writes
+ * `plugins: [desktopPlugin, ...] as any`.
+ */
+function unwrapped(node, ts) {
+  while (node && (ts.isParenthesizedExpression(node) || ts.isAsExpression(node) || ts.isTypeAssertionExpression(node) || ts.isSatisfiesExpression(node) || ts.isNonNullExpression(node))) node = node.expression
+  return node
+}
+
+/**
  * Adds `vibelang()` from vibelang-vite to a Vite or Vitest config that calls
  * defineConfig with an object literal, or with a function that returns one
  * (`defineConfig(() => ({ ... }))`, or a body whose last top-level return
@@ -176,7 +187,7 @@ export function addVitePlugin(text, ts, { register = false } = {}) {
   let config
   // The object a defineConfig argument gives: the literal, or what its function returns.
   const objectOf = (node) => {
-    while (node && ts.isParenthesizedExpression(node)) node = node.expression
+    node = unwrapped(node, ts)
     if (!node) return undefined
     if (ts.isObjectLiteralExpression(node)) return node
     if (!ts.isArrowFunction(node) && !ts.isFunctionExpression(node)) return undefined
@@ -224,8 +235,8 @@ export function addRegister(text, ts, name) {
 function pluginEdit(text, source, config, ts, refusal, call = "vibelang()") {
   const plugins = config.properties.find((p) => p.name && (ts.isIdentifier(p.name) || ts.isStringLiteral(p.name)) && p.name.text === "plugins")
   if (plugins) {
-    if (!ts.isPropertyAssignment(plugins) || !ts.isArrayLiteralExpression(plugins.initializer)) throw new Error(refusal)
-    const list = plugins.initializer
+    const list = ts.isPropertyAssignment(plugins) ? unwrapped(plugins.initializer, ts) : undefined
+    if (!list || !ts.isArrayLiteralExpression(list)) throw new Error(refusal)
     return list.elements.length ? { at: list.elements[0].getStart(source), text: `${call}, ` } : { at: list.getStart(source) + 1, text: call }
   }
   const at = config.getStart(source) + 1
@@ -265,7 +276,7 @@ export function addBunBuildPlugin(text, ts) {
     if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && ts.isIdentifier(node.expression.expression) && node.expression.expression.text === "Bun" && node.expression.name.text === "build") {
       const line = source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1
       const refusal = `line ${line}: Bun.build does not take an object literal with an array of plugins; add vibelang() from vibelang-unplugin/bun to it by hand`
-      const options = node.arguments[0]
+      const options = unwrapped(node.arguments[0], ts)
       if (!options || !ts.isObjectLiteralExpression(options)) throw new Error(refusal)
       edits.push(pluginEdit(text, source, options, ts, refusal))
     }
@@ -300,12 +311,20 @@ export function testConfigArgument(command, scripts = {}) {
  * specifiers. The package that owns the config, the nearest one above it,
  * gets the compiler and the plugin as dev dependencies, so the config's
  * import resolves. Returns the repository-relative files changed and the
- * warnings for packages whose tests load no config.
+ * warnings for packages whose tests load no config and for configs whose
+ * shape addVitePlugin does not know, which it leaves as they are.
  */
 export function wireVite({ root, packages, test, ts, specsFor }) {
   const changed = []
   const warnings = []
-  const wire = (file) => wireViteConfig({ root, file, ts, specsFor, changed, register: true })
+  // A config whose shape addVitePlugin does not know is named in a warning and left as it is.
+  const wire = (file) => {
+    try {
+      wireViteConfig({ root, file, ts, specsFor, changed, register: true })
+    } catch (error) {
+      warnings.push(`${file}: ${error.message}`)
+    }
+  }
   const testCwd = join(root, test.cwd)
   const scripts = existsSync(join(testCwd, "package.json")) ? JSON.parse(readFileSync(join(testCwd, "package.json"), "utf8")).scripts : undefined
   const named = testConfigArgument(test.command, scripts)

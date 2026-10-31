@@ -473,6 +473,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The migrate flow's verify refused a batch whose published declaration changed only `./runtime` to `./runtime.js`, which the migrated module's importer declares; it now excuses a relative specifier whose two spellings resolve to the same declaration file and lists each such pair in `verify.json`.
 
+- The migrate flow's setup stopped with `the config's plugins is not an array literal` on a Vite config whose `plugins` array carries `as any`, and stopped on any test config it could not wire; it now looks through `as`, `satisfies`, `!` and parentheses, and names a config it cannot wire in its warnings and goes on.
+
 - Cross-platform compiler builds could fail without naming the affected platform or its exit status; each target now keeps a completion record and silent failures are identified.
 
 - Chapter 2 did not say where a `Cause` with both a failure and a defect comes from after dropping the wrong `try.any` example; it now names `Effect.failCause` in TypeScript code.

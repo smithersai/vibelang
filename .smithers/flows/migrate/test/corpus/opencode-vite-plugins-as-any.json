@@ -1,0 +1,8 @@
+{
+  "key": "opencode-21",
+  "file": "packages/app/vite.config.ts",
+  "before": "import { defineConfig } from \"vite\"\nimport desktopPlugin from \"./vite.js\"\n\nconst channel = process.env.OPENCODE_CHANNEL\n\nexport default defineConfig({\n  plugins: [desktopPlugin, icons(channel)] as any,\n  server: { port: 3000 },\n})\n",
+  "after": "import { defineConfig } from \"vite\"\nimport desktopPlugin from \"./vite.js\"\nimport vibelang from \"vibelang-vite\"\n\nconst channel = process.env.OPENCODE_CHANNEL\n\nexport default defineConfig({\n  plugins: [vibelang(), desktopPlugin, icons(channel)] as any,\n  server: { port: 3000 },\n})\n",
+  "unwired": "packages/desktop/electron.vite.config.test.ts",
+  "unwiredText": "import { resolve } from \"node:path\"\n\nexport default {\n  main: { build: { outDir: resolve(\"out/main\") } },\n}\n"
+}
