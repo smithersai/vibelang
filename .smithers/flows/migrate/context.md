@@ -81,9 +81,6 @@ Use only `service Name { … }` for services; abstract classes remain ordinary c
 ## Required schema field references (VIP-15, detail 132)
 
 A source-required struct field cannot reference a codec with optional or unprovable decoded key flags. For `EK2109`, preserve existing decoding by expanding the enclosing schema declaration to explicit codecs with `vibelang --fix`. Keep optionalKey omission distinct from accepting undefined; adding a question token is not a preserving upgrade. Nested struct codecs in schema-error fields may be named before the error declaration while retaining its constructor, methods and matcher. Explicit optional-key Struct calls stay explicit; do not suggest an inverse rewrite that makes a required field optional.
-## VIP-15: Preserve referenced readonly-key codecs
-
-An explicitly `readonly` schema field requires known readonly decoded-key flags on its referenced codec (detail132), including aliases and nested structs. For `EK2109` conflicts, run `vibelang --fix` to keep the existing codec through explicit `Schema.Struct` values. Preserve emitted declarations, decode Exits/Causes, constructor/matcher behavior, getter order and directives. Do not replace a `mutableKey` codec with `readonlyKey` or confuse shallow key mutability with nested value mutability. Direct schema-error fields follow a separate effective-readonly rule (detail167).
 
 ## Empty schema type arguments (VIP-15)
 
@@ -94,6 +91,9 @@ Remove an empty type argument list from a schema value reference: `schema Alias 
 - Keep setters on the original Effect error class; `error` and `schema error` declarations allow getters, but not setters (`EK1302`).
 
 - Keep generic Effect error classes in TypeScript; `error` and `schema error` declarations cannot have type parameters (`EK1303`). A generic schema needs concrete fields or a TypeScript schema factory, not a class whose base refers to its type parameters (`TS2562`).
+## VIP-15: Preserve referenced readonly-key codecs
+
+An explicitly `readonly` schema field requires known readonly decoded-key flags on its referenced codec (detail132), including aliases and nested structs. For `EK2109` conflicts, run `vibelang --fix` to keep the existing codec through explicit `Schema.Struct` values. Preserve emitted declarations, decode Exits/Causes, constructor/matcher behavior, getter order and directives. Do not replace a `mutableKey` codec with `readonlyKey` or confuse shallow key mutability with nested value mutability. Direct schema-error fields follow a separate effective-readonly rule (detail167).
 
 ## The language
 
