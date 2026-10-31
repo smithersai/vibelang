@@ -774,8 +774,8 @@ effect function syncAll(ids: string[]) {
   for concurrent("unbounded") (const id of ids) { try syncOne(id) }
 }
 effect function run(ids: string[]) {
-  for concurrent(1) (const id of ids) { fork sync(id) }   // each child is owned by run's fiber
-  for concurrent(2) (const id of ids) { fork sync(id) }   // each child is interrupted when its item ends
+  for concurrent(1) (const id of ids) { fork sync(() => id) }   // each child is owned by run's fiber
+  for concurrent(2) (const id of ids) { fork sync(() => id) }   // each child is interrupted when its item ends
 }
 ```
 
@@ -789,6 +789,14 @@ function syncAll(ids: string[]) {
     yield* Effect.forEach(ids, ($item) => Effect.gen(function* () { const id = $item; { yield* syncOne(id) } }), { concurrency: "unbounded", discard: true })
   })
 }
+
+function run(ids: string[]) {
+  return Effect.gen(function* () {
+    yield* Effect.forEach(ids, id => Effect.gen(function* () { yield* Effect.forkChild(Effect.sync(() => id)) }), { concurrency: 1, discard: true })
+    yield* Effect.forEach(ids, id => Effect.gen(function* () { yield* Effect.forkChild(Effect.sync(() => id)) }), { concurrency: 2, discard: true })
+  })
+}
+// run succeeds with undefined; the limits keep their existing child ownership.
 ```
 
 The head is a `const` or `let` declaration, destructuring included: ECMAScript's `ForDeclaration`, `LetOrConst ForBinding` (VIP-19, amended). `var` and an assignment head, `for concurrent (x of xs)`, are syntax errors (`EK1906`). In both `for concurrent` and `for try`, head bindings are uninitialized in a separate lexical environment while evaluating the right-hand operand, as in ECMA-262's [ForIn/OfHeadEvaluation](https://tc39.es/ecma262/2025/multipage/ecmascript-language-statements-and-declarations.html#sec-runtime-semantics-forinofheadevaluation). In `for concurrent(n)`, the limit is evaluated before entering this head environment. A closure created there captures those uninitialized cells, which are distinct from the bindings initialized for each item; calling it after the loop still encounters their temporal dead zone. The item arrives under a fresh parameter, and the head's declaration runs first in the item's generator, so a default or computed key in it may run Effects and a failure there fails that item. The body keeps its own block scope:
