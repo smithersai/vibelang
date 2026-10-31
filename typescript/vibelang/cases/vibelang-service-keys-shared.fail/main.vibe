@@ -1,7 +1,9 @@
-// expect: EK3001 TS4058
+// expect: EK3001
 // Two services with the same key would share one slot in a Context (D1). The
 // key is the package, the module path, and the class name, so two classes
 // named Local in one module collide.
+// Its project emits no declarations, so the sidecar cannot name Local (TS4058)
+// only where a .ts file imports the module, and none does (foldkit-33).
 import { Effect } from "effect"
 
 export function first() {

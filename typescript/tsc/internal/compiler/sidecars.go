@@ -7,6 +7,7 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/printer"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
@@ -101,12 +102,57 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 	if result == nil {
 		return nil
 	}
-	// What a sidecar cannot print is an error whether or not the project asks
-	// for declarations: emit writes any in its place, such as TS7056's
-	// fallback for a type too long to serialize, and the stock checkers that
-	// read the sidecar accept that any without a word, so a consumer would
-	// lose the module's types.
-	return result.Diagnostics
+	// What a sidecar cannot print is an error where the project declares its
+	// modules: emit writes any in its place, such as TS7056's fallback for a
+	// type too long to serialize, and the stock checkers that read the sidecar
+	// accept that any without a word, so a consumer would lose the module's
+	// types.
+	if p.Options().GetEmitDeclarations() {
+		return result.Diagnostics
+	}
+	return p.sidecarReaderDiagnostics(result.Diagnostics, sources)
+}
+
+// sidecarReaderDiagnostics keeps, of what the sidecars of a project with no
+// declaration output cannot print, what a reader sees. That project's
+// TypeScript, compiled with tsc, reports no TS2883 for an export whose type
+// it cannot name (foldkit-33: an app's AppTabs = Tabs.create<…>()), since
+// only declaration emit names it, so its .vibe version must not fail either.
+// The one reader of such a sidecar is a .ts file of the project that imports
+// the module, through the sidecar, under every checker but VibeLang's: each
+// diagnostic is reported at each such import, with the export it concerns as
+// related information, and dropped when there is none.
+func (p *Program) sidecarReaderDiagnostics(reported []*ast.Diagnostic, sources []*ast.SourceFile) []*ast.Diagnostic {
+	vibe := map[*ast.SourceFile]bool{}
+	for _, source := range sources {
+		vibe[source] = true
+	}
+	imports := map[*ast.SourceFile][]*ast.Diagnostic{} // a .vibe module -> where .ts files import it
+	for _, file := range p.GetSourceFiles() {
+		if file.IsDeclarationFile || vibe[file] || tspath.FileExtensionIs(string(file.FileName()), tspath.ExtensionVibe) {
+			continue
+		}
+		for _, specifier := range file.Imports() {
+			resolved := p.GetResolvedModuleFromModuleSpecifier(file, specifier)
+			if !resolved.IsResolved() {
+				continue
+			}
+			if target := p.GetSourceFile(resolved.ResolvedFileName); target != nil && vibe[target] {
+				imports[target] = append(imports[target], ast.NewDiagnostic(file, scanner.GetRangeOfTokenAtPosition(file, specifier.Pos()), diagnostics.X_0_was_imported_here, specifier.Text()))
+			}
+		}
+	}
+	var kept []*ast.Diagnostic
+	for _, d := range reported {
+		if d.File() == nil || !vibe[d.File()] {
+			kept = append(kept, d)
+			continue
+		}
+		for _, at := range imports[d.File()] {
+			kept = append(kept, ast.NewDiagnosticFromSerialized(at.File(), at.Loc(), d.Code(), d.Category(), d.MessageKey(), d.MessageArgs(), d.MessageChain(), append([]*ast.Diagnostic{d}, d.RelatedInformation()...), d.ReportsUnnecessary(), d.ReportsDeprecated(), d.SkippedOnNoEmit()))
+		}
+	}
+	return kept
 }
 
 // pruneSidecarDirectories removes directory and its ancestors while they are

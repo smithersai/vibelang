@@ -157,7 +157,7 @@ for (const placement of ["first", "last", "only", "extends", "compilerOptions", 
   })
 }
 
-test("unconditional sidecars retain declaration errors with or without declaration", { skip }, (t) => {
+test("a sidecar's declaration error fails a declaration project, and a no-declaration project only at a .ts importer", { skip }, (t) => {
   const root = project(t, {
     "package.json": '{"type":"module"}',
     "tsconfig.json": JSON.stringify({ compilerOptions: { ...options, noEmit: true }, files: ["main.vibe"] }),
@@ -166,13 +166,17 @@ test("unconditional sidecars retain declaration errors with or without declarati
   })
   const nativeResult = run(native, ["-p", "tsconfig.json", "--pretty", "false"], root)
   const stockResult = run(process.execPath, [stockTsc, "--target", "es2022", "--module", "nodenext", "--strict", "--skipLibCheck", "--declaration", "--emitDeclarationOnly", "--outDir", "types", "reference.ts"], root)
+  const stockPlain = run(process.execPath, [stockTsc, "--target", "es2022", "--module", "nodenext", "--strict", "--skipLibCheck", "--noEmit", "reference.ts"], root)
   const errors = (result) => [...new Set([...result.stdout.matchAll(/error (TS\d+):/g)].map((match) => match[1]))].sort()
   assert.notEqual(stockResult.status, 0, stockResult.stdout + stockResult.stderr)
   assert.deepEqual(errors(stockResult), ["TS4058"], stockResult.stdout + stockResult.stderr)
-  // Main's current policy: sidecars are declarations, so their errors
-  // stay errors even when the project did not request ordinary declarations.
-  assert.notEqual(nativeResult.status, 0, nativeResult.stdout + nativeResult.stderr)
-  assert.deepEqual(errors(nativeResult), errors(stockResult), nativeResult.stdout + nativeResult.stderr)
+  assert.equal(stockPlain.status, 0, stockPlain.stdout + stockPlain.stderr)
+  // As the same TypeScript under tsc: a project with neither declaration nor
+  // composite publishes nothing, so a sidecar's error fails it only where a
+  // .ts file imports the module (foldkit-33 ruling, 2026-10-31T18:55Z; the
+  // Go test TestSidecarReaders covers the importer side).
+  assert.equal(nativeResult.status, 0, nativeResult.stdout + nativeResult.stderr)
+  assert.deepEqual(errors(nativeResult), errors(stockPlain), nativeResult.stdout + nativeResult.stderr)
   writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ compilerOptions: { ...options, noEmit: true, declaration: true }, files: ["main.vibe"] }))
   const declared = run(native, ["-p", "tsconfig.json", "--pretty", "false"], root)
   assert.notEqual(declared.status, 0, declared.stdout + declared.stderr)

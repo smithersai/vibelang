@@ -1,0 +1,4 @@
+export const value = new (class {
+  private hidden = 1
+  read() { return this.hidden }
+})()

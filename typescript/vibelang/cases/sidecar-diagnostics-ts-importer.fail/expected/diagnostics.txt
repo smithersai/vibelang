@@ -1,0 +1,1 @@
+consumer.ts(2,23): error TS4094
