@@ -1203,6 +1203,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - An explicit empty service key, `static readonly key = ""`, was replaced with a derived name; `""` now keeps its identity at runtime, in declarations and in duplicate-key checks.
 - `Effect.Array`, `Effect.String`, `Effect.Record` and the other Effect modules named like a JavaScript or TypeScript global reported `TS2339` in a `.vibe` file, so the specification's `Effect.Array.head(xs)` did not compile; each now names Effect's module, and the emitted code imports it.
 - A type under one of those modules, such as `Effect.Array.NonEmptyReadonlyArray<number>` or `Effect.Record.ReadonlyRecord<string, number>`, reported `TS2694`; it now names the module's type, and the declaration file writes it as `import("effect/Array").NonEmptyReadonlyArray<number>`.
+
+- A service with `static readonly defaultValue` could be written as a type, `let flags: Flags`, and the declaration file then used the `Context.Reference` constant as a type, which broke TypeScript consumers; that type now reports `TS2749` (`TS2694` in an import type), and `Flags.Shape` and `typeof Flags` still work.
+
 - A type query of one of those modules, such as `typeof Effect.Array` or `typeof Effect.Array.head`, reported `TS2339`; it now names the module, and the declaration file writes `typeof import("effect/Array")`.
 - The concurrent-loop ownership example passed a string to `sync`, which requires a thunk. Both calls now use valid thunks, with a matching Effect counterpart.
 - Computed field names appeared interchangeable between `error` and `schema error`. The specification now uses each native counterpart's key checks and retains TypeScript's `TS1170` for rejected payload key forms.

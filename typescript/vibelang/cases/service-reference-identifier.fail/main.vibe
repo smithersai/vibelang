@@ -1,0 +1,19 @@
+// expect: TS2694 TS2749
+service Flags {
+  static readonly key = "test/reference-identifier"
+  static readonly defaultValue = () => ({ n: 1 })
+  n: number
+}
+export let invalid: Flags
+export let valid: Flags.Shape
+export type Value = typeof Flags
+service Required { static readonly key = "test/required-identifier"; n: number }
+export let identifier: Required
+import { ImportedFlags as Alias } from "./flags.vibe"
+import * as references from "./flags.vibe"
+export let invalidAlias: Alias
+export let invalidQualified: references.ImportedFlags
+export let validAlias: Alias.Shape
+export let validQualified: references.ImportedFlags.Shape
+export type InvalidImport = import("./flags.vibe").ImportedFlags
+export type ImportedKey = typeof import("./flags.vibe").ImportedFlags

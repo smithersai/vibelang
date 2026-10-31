@@ -1,0 +1,5 @@
+export service ImportedFlags {
+  static readonly key = "test/imported-reference"
+  static readonly defaultValue = () => ({ n: 2 })
+  n: number
+}

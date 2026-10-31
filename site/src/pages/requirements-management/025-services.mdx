@@ -112,6 +112,8 @@ effect function readImplementation() {
 
 A service can declare `static readonly defaultValue = () => implementation` to supply an implementation without a provider. It compiles to a `Context.Reference`. The returned implementation is checked against the service shape, as with `Layer.succeed`. For `Layer.succeed`, the compiler reports a shape mismatch as a TypeScript error, an excess member failure as `EK9201`, and an undeclared call-time requirement as `EK3101`. Support for the new `defaultValue` form arrives with the compiler's VIP implementation.
 
+A reference has `Flags.Shape` for its implementation and `typeof Flags` for its key value, but no `Flags` identifier type. Writing `let value: Flags` reports `TS2749`, as for Effect's `Context.Reference`; references do not appear in `R`. An import type such as `import("./flags.vibe").Flags` reports `TS2694`; use `typeof import("./flags.vibe").Flags` for the key value.
+
 `try Sequence` looks up the implementation, to capture it or read value members; `try sequence.next()` runs its Effect-returning method. Supply every requirement before running the program.
 
 ```vibe
