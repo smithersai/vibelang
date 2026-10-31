@@ -1,0 +1,19 @@
+{
+  "property": "paths-imports",
+  "rule": "packages/compiler/paths-imports.mjs: aliasImport resolves a tsconfig paths alias as TypeScript does",
+  "input": {
+    "files": [
+      "src/x.vibe",
+      "lib/x.d.ts"
+    ],
+    "paths": {
+      "@/*": [
+        "./lib/*",
+        "./src/*"
+      ]
+    },
+    "inherited": false,
+    "specifier": "@/x.vibe"
+  },
+  "reason": "The compiler takes the declaration at the first substitution; a loader that went on to src/x.vibe ran a module the program never compiled."
+}

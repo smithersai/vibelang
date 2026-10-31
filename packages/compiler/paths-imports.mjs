@@ -96,10 +96,12 @@ function matchingPattern(paths, specifier) {
 }
 
 // The file TypeScript loads for path, a substitution made absolute: the file
-// itself when it names a .vibe or .ts-family extension, the .vibe or
+// itself when it names a .vibe or .ts-family extension, the declaration file
+// of a .vibe name with no source, as in a published package, the .vibe or
 // TypeScript source of a .js name (D298), else extensionlessImport's rule.
 function loadFile(path) {
-  if (/\.(?:vibe|d\.[cm]?ts|[cm]?ts|tsx|json)$/.test(path)) return isFile(path) ? path : undefined
+  if (path.endsWith(".vibe")) return [path, path.slice(0, -".vibe".length) + ".d.ts"].find(isFile)
+  if (/\.(?:d\.[cm]?ts|[cm]?ts|tsx|json)$/.test(path)) return isFile(path) ? path : undefined
   if (/\.js$/.test(path)) {
     const stem = path.slice(0, -".js".length)
     return [".ts", ".tsx", ".vibe", ".d.ts", ".js"].map((extension) => stem + extension).find(isFile)
