@@ -32,6 +32,8 @@ Class field and enum member initializers reset the enclosing Effect context, so 
 
 Static blocks cannot execute Effects. They inherit the enclosing Effect reservation: inside that reserved context, bare `fork`/`join` are recognized operations and receive `EK1701`. A plain class’s static block keeps ordinary identifier calls under the outside-code identifier promise. This is deliberately contextual, unlike ECMAScript’s unconditional `[+Await]` static-block grammar; module status does not globally reserve VibeLang’s two words. Appendix A states reservation and execution permission separately.
 
+- **Amended 2026-10-30: ordinary arrow heads inherit the source reservation.** A plain or `async` arrow head inherits the enclosing `fork`/`join` reservation through bindings, defaults and destructuring, including in an Effect callable's parameters. Its body has its own callable context; an ordinary `async` body uses native `await` and does not reserve `fork`/`join`. A nested ordinary function resets its head too. Outside an enclosing Effect reservation these names remain ordinary identifiers, including ordinary `async` parameters: native async's own `await` reservation adds no global ban on them. See [the source grammar](https://github.com/smithersai/vibelang/blob/main/docs/design/src/900-appendices.md#the-effect-parameter).
+
 ## Prior art
 
 | Language | child of current | given scope | detached |

@@ -29,6 +29,12 @@ interface Users { find(id: string): User!NotFound }
 
 - **Amended 2026-10-30: migration warning.** The transitional compiler reports `EK4853` when `--fix` can preserve requirements that the retired omitted-slot rule inferred by writing them explicitly. An omitted slot still means `never`; omitting the whole return annotation instead infers the complete contract. The warning retains its emitted compatibility code until a coordinated compiler/documentation renumber.
 
+## Amendment: ordinary source operand boundaries
+
+An Effect slot accepts ordinary TypeScript source types at the type-operator level. At the optional slot after `!!`, prefer the present `R` when those same-line tokens start such an operand, retaining the existing exclusion of an unparenthesized `{`. Negative literal types remain admitted: `number!!-1` means `Effect.Effect<number, never, -1>`, and `x as number!! - 1` consumes that requirement. Parenthesize the whole assertion, `(x as number!!) - 1`, to select subtraction; its operands still receive ordinary TypeScript checking. This is syntax-based, independent of symbol lookup and spacing. Parser-only JSDoc forms (`?T`, `T?`, `!T`, `*`) are not source type operands, even inside parentheses: `?` and `*` at an optional-slot boundary remain expression operators where admitted, while an additional `!` follows the existing bang/non-null rules. Existing line-break and type-operator restrictions remain.
+
+- **Amended 2026-10-30: surrounding type and expression punctuation.** Only optional `R` after `!!` excludes an unparenthesized object type; required slots admit it. An optional tuple element marks the completed Effect type, keeping omission and indexed `undefined`. At the optional-`R` boundary, `<` continues a comparison and `[` starts a tuple requirement; a generic function requirement needs parentheses. Existing `as`/`satisfies` expression continuations and contextual type aliases keep their ordinary roles. Prefer present `R` between complete source parses, with no symbol lookup; a recovery tree that strands the rest of the expression does not compete. [Appendix A](https://github.com/smithersai/vibelang/blob/main/docs/design/src/900-appendices.md#effectoperand) states these boundaries and their checked examples.
+
 ## Prior art
 
 Zig's error unions write `NotFound!User`, error first. VibeLang writes the success type first because `Effect<A, E, R>` lists it first.

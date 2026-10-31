@@ -65,6 +65,10 @@ effect function load(id) {
 
 - **Amended 2026-10-30: diagnose the missing handler function first.** A parameter list followed directly by a block after `catch`, as in `try x catch (e) { B }`, is the existing `EK0509` malformed-handler error. Do not also report `EK0505` for that same incomplete handler. Once a function literal is present, the ordinary head check applies; independent context and separate syntax errors remain. Repair explicitly to `x catch effect (e) => { B }` or a plain fallback `x catch (e) => { B }` under their distinct existing throw/result rules. A mechanical repair must preserve valid parameters, bindings and source jump targets; it does not create block-handler syntax or auto-run a plain handler's returned Effect. See [the handler rule](https://github.com/smithersai/vibelang/blob/main/docs/design/src/002-running.md#catch).
 
+- **Clarified 2026-10-30: warning repairs keep the source callable's context.** The `await fiber` and `await deferred` amendments above preserve native `await` behavior. In an ordinary `async` function, the explicit-bridge rule of VIP-1 and this VIP gives `await runPromise(Fiber.join(fiber))` and `await runPromise(Deferred.await(deferred))` when the author wants the completion value. Their Effect-body forms, `join fiber` and `try Deferred.await(deferred)`, are outside-effect errors in that `async` body. This corrects the repair wording, not warning severity or execution: reporting a warning does not start either value, and a repair does not silently change the enclosing function's kind.
+
+- **Amended 2026-10-30: return values stay unflattened.** An `effect` function returns its body value as `Effect.gen` success data. A returned inner Effect stays unrun: `return e` keeps it, while `return try e` runs it and returns its success. A successful `try` and a plain `catch` handler result likewise keep their immediate value as data, without recursive execution or thenable assimilation. An `async` return instead assimilates its returned Promise or thenable. This records the existing VIP-1 counterpart rather than adding implicit execution.
+
 ## Prior art
 
 - Zig's `try` and `catch`.
