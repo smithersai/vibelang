@@ -366,6 +366,8 @@ effect function discard() {
 
 When enabled, `strictEffectProvide` reports providing a layer in every function, including one named `main`. Compose layers at the application entry point and disable the diagnostic at that site, as for Effect TypeScript.
 
+The `async` conversion keeps returns only when their values are known to be primitive, including primitive-constrained type parameters. It declines `any`, `unknown` and object-valued returns, including records, arrays and callable objects, whose types can hide a `then` method. A `void`-typed call or type parameter can also hide an object, so its return is declined. An `async` return adopts its result even after `await`, so `return await` needs the same primitive-value guarantee. Empty returns and existing explicit `void` expressions already return `undefined` and remain eligible. Convert functions with other result types by hand.
+
 ## Debug stack traces
 
 Build with `"sourceMap": true` in `compilerOptions`, then run `node --enable-source-maps dist/main.js`. Source maps translate JavaScript locations to `.vibe` locations. They do not record the logical caller chain.

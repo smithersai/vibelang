@@ -229,6 +229,9 @@ func (rc *refactorContext) asyncRefactors(fn *ast.Node) []*ls.CodeAction {
 	if annotation := fn.Type(); annotation != nil {
 		common = append(common, rc.textEdit(strings.LastIndexByte(text[:annotation.Pos()], ':'), annotation.End(), ""))
 	}
+	if asyncReturnsUncertainValue(rc.c, fn.Body()) {
+		return nil
+	}
 	plain := slices.Clone(common)
 	mapped := slices.Clone(common)
 	var errorNames []string

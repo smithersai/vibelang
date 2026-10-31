@@ -19,7 +19,7 @@ func TestEditorAsyncRefactorsNestedAwaitOperands(t *testing.T) {
 		{"parenthesized", "async function /*cursor*/load(input: Promise<number>) { return await (await input) }", false},
 		{"triple", "async function /*cursor*/load(input: Promise<number>) { return await await await input }", false},
 		{"single", "async function /*cursor*/load(input: Promise<number>) { return await input }", true},
-		{"nested-function", "async function /*cursor*/load(input: Promise<number>) { return await Promise.resolve(async () => await await input) }", true},
+		{"nested-function", "async function /*cursor*/load(input: Promise<number>) { const nested = await Promise.resolve(async () => await await input); return 1 }", true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			pos := strings.Index(test.source, "/*cursor*/")

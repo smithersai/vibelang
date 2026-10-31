@@ -1010,6 +1010,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Migrating a module could leave extensionless TypeScript imports unresolved; the migration now names the `.vibe` source and accepts its emitted declaration spelling only when both names resolve to the same module.
 
+- The `async` function refactor could keep an object as data instead of adopting its result, even after `return await` or through a `void` return type; it now declines uncertain returns and keeps existing value-discarding returns eligible.
+
 - Fixes for the unpublished 0.0.11 candidate were listed under 0.0.12; they now appear together under 0.0.11, and the release check compares that section with npm's last published version.
 
 - The migrate flow's codemod and `revert` rewrote imports of a migrated module only inside the run's `--source` directories, so a test under `test/` kept `import … from "../src/Crypto.ts"` after `Crypto.ts` became `Crypto.vibe` and failed to load; they now rewrite every source file the repository tracks.

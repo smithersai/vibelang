@@ -1,0 +1,3 @@
+go test fuzz v1
+string("record")
+uint8(7)
