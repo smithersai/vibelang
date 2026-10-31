@@ -28,7 +28,8 @@ declare var window: { matchMedia(query: string): { matches: boolean } }
 declare var matchMedia: typeof window.matchMedia
 declare var requestAnimationFrame: (callback: (time: number) => void) => number
 declare var cancelAnimationFrame: (id: number) => void
-declare var FileReader: { new(): unknown }`
+declare var FileReader: { new(): unknown }
+declare var ResizeObserver: { new(callback: () => void): unknown }`
 
 const (
 	provideNodeServices        = `Provide it in main with NodeServices.layer from "@effect/platform-node", or BunServices.layer from "@effect/platform-bun".`
@@ -218,6 +219,10 @@ export const run = (key: Uint8Array) => createHmac("sha256", key)`, []string{
 		{"file reader", `export const run = () => new FileReader()`, []string{
 			"FileReader is platform code, which VibeLang code does not use directly.",
 			"Use the experimental FileReader service:   try (try Experimental.FileReader.FileReader).readAsText(blob)", provideExperimentalBrowser,
+		}},
+		{"resize observer", `export const run = () => new ResizeObserver(() => {})`, []string{
+			"ResizeObserver is platform code, which VibeLang code does not use directly.",
+			"Use the experimental ResizeObserver service:   try (try Experimental.ResizeObserver.ResizeObserver).observe(element, onResize)", provideExperimentalBrowser,
 		}},
 		{"gap", `export const run = () => document.title`, []string{
 			"document.title is platform code, which VibeLang code does not use directly.",

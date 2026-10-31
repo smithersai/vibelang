@@ -9,6 +9,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.Process` | the process id, platform, host name and other facts; `kill`, `isRunning` | Node, Bun |
 | `Experimental.Locks` | `hold`, `tryHold`, `query` over Web Locks | browser; Node within one process |
 | `Experimental.MediaQuery` | `matches`, `changes` over `window.matchMedia` | browser |
+| `Experimental.ResizeObserver` | `observe` of an element, until the Scope closes | browser |
 | `Experimental.FileReader` | `readAsText`, `readAsDataUrl`, `readAsArrayBuffer` of a `Blob` or a `File` | browser |
 | `Experimental.Animations` | `nextFrame`, `onNextFrame`, `frameDeltas`, `settled` over animation frames and the Web Animations API | browser |
 
@@ -26,7 +27,7 @@ Provide a platform layer at the application boundary. The layers live beside Eff
 | --- | --- |
 | `vibelang-runtime/experimental/platform-node` | `ExperimentalNodeServices.layer`: `@effect/platform-node`'s bundle plus `FileSystem`, `Crypto` and `Process`; `ExperimentalNodeFileSystem.layer`, `ExperimentalNodeCrypto.layer`, `ExperimentalNodeProcess.layer`; `ExperimentalNodeLocks.layer`, within one process |
 | `vibelang-runtime/experimental/platform-bun` | `ExperimentalBunServices.layer`: `@effect/platform-bun`'s bundle plus `FileSystem`, `Crypto` and `Process`; `ExperimentalBunFileSystem.layer`, `ExperimentalBunCrypto.layer`, `ExperimentalBunProcess.layer` |
-| `vibelang-runtime/experimental/platform-browser` | `ExperimentalBrowserServices.layer`: `Crypto`, `@effect/platform-browser`'s crypto services and the browser services; `ExperimentalBrowserCrypto.layer`, `ExperimentalBrowserLocks.layer`, `ExperimentalBrowserMediaQuery.layer`, `ExperimentalBrowserFileReader.layer`, `ExperimentalBrowserAnimations.layer` |
+| `vibelang-runtime/experimental/platform-browser` | `ExperimentalBrowserServices.layer`: `Crypto`, `@effect/platform-browser`'s crypto services and the browser services; `ExperimentalBrowserCrypto.layer`, `ExperimentalBrowserLocks.layer`, `ExperimentalBrowserMediaQuery.layer`, `ExperimentalBrowserResizeObserver.layer`, `ExperimentalBrowserFileReader.layer`, `ExperimentalBrowserAnimations.layer` |
 
 `ExperimentalNodeServices.layer` replaces `@effect/platform-node`'s `NodeServices.layer`: it provides every service Effect's does. Each `Crypto` layer, such as `ExperimentalNodeCrypto.layer`, provides the experimental `Crypto` and the platform's Effect crypto services, such as `SecureRandom` and `Digest`; the bundles for Node and Bun, like Effect's, hold none of Effect's crypto services. The runtime lists `@effect/platform-node`, `@effect/platform-bun` and `@effect/platform-browser` as optional peer dependencies: install the one your program runs on. Failures are Effect's `PlatformError`, as for Effect's services.
 
@@ -330,6 +331,26 @@ Each takes a `Blob` or a `File`. For a file on disk, a path, use Effect's `FileS
 Every reason but `BadArgument` comes from the reader's `error` event, so `error.reason._tag === "BadArgument"` tells a refused call from a failed read.
 
 `ExperimentalBrowserFileReader.layer`, also in `ExperimentalBrowserServices.layer`, uses the host's `FileReader`. `Experimental.FileReader.layerTest()` needs no host: each member reads the `Blob` itself. Pass the members a test needs, such as one that fails.
+
+## ResizeObserver
+
+```vibe
+// chart.vibe
+// run: provide Experimental.ResizeObserver.layerTest({ observe: effect (_element, onResize) => onResize([]) }) { try Console.log(try Effect.scoped(follow({} as Element))) }
+export effect function follow(element: Element) {
+  const observer = try Experimental.ResizeObserver.ResizeObserver
+  let resizes = 0
+  try observer.observe(element, () => {
+    resizes += 1
+  })
+  return resizes
+}
+// Output: 1
+```
+
+`try observer.observe(element, onResize)` runs `onResize` when `element` changes size, and once when it starts, until the Scope closes. `onResize` runs synchronously, before the browser paints, so a layout it changes shows in the same frame; a `Stream` would run after the paint. For the window's size, use `BrowserStream.fromEventListenerWindow("resize")`.
+
+`ExperimentalBrowserResizeObserver.layer`, also in `ExperimentalBrowserServices.layer`, uses the host's `ResizeObserver`. `Experimental.ResizeObserver.layerTest()` never fires. Pass `observe` to fire it, as above.
 
 ## When Effect ships them
 

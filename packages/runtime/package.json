@@ -77,6 +77,11 @@
       "import": "./dist/experimental/Process.js",
       "default": "./dist/experimental/Process.js"
     },
+    "./experimental/ResizeObserver": {
+      "types": "./dist/experimental/ResizeObserver.d.ts",
+      "import": "./dist/experimental/ResizeObserver.js",
+      "default": "./dist/experimental/ResizeObserver.js"
+    },
     "./experimental/platform-browser": {
       "types": "./dist/experimental/platform-browser/index.d.ts",
       "import": "./dist/experimental/platform-browser/index.js",

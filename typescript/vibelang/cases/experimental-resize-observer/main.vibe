@@ -1,0 +1,25 @@
+// expect-result: {"observed":["chart"],"resized":1}
+// foldkit's examples/charting/src/view/chart.ts: the observer lives in the chart's Scope, and its callback runs in the
+// host's frame, so the chart redraws before the paint.
+effect function followSize(element: Element, resize: () => void) {
+  const observer = try Experimental.ResizeObserver.ResizeObserver
+  try observer.observe(element, () => resize())
+}
+
+export effect function main() {
+  const observed: Array<string> = []
+  let resized = 0
+  const element = { id: "chart" } as Element
+  const fake = Experimental.ResizeObserver.layerTest({
+    observe: effect (target, onResize) => {
+      observed.push(target.id)
+      onResize([])
+    }
+  })
+  provide fake {
+    try Effect.scoped(followSize(element, () => {
+      resized += 1
+    }))
+  }
+  return { observed, resized }
+}

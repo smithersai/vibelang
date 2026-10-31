@@ -213,7 +213,7 @@ VibeLang is TypeScript with syntax for Effect. An `effect` function returns an E
 ### Rules
 
 1. `try` runs only Effects, and only inside an `effect` function or block. A module's top level is ordinary JavaScript: top-level `await` of a Promise works there, and `try` does not.
-2. Platform access goes through Effect's services, provided by a per-platform layer: `FileSystem`, `Path`, `HttpClient`, `ChildProcess`. A `.vibe` file has no `node:*` value imports and no Node globals such as `process` or `Buffer`; code that needs them lives in a `.ts` file, including platform calls inside `Effect.try` and `tryPromise` arrows. What Effect lacks lives under `Experimental`: `Experimental.Process`, `Experimental.FileSystem` and `Experimental.Crypto`, which `ExperimentalNodeServices.layer` from `vibelang-runtime/experimental/platform-node` (or Bun's) provides, and and `Experimental.Animations`, `Experimental.FileReader`, `Experimental.Locks` and `Experimental.MediaQuery`, which `ExperimentalBrowserServices.layer` from `vibelang-runtime/experimental/platform-browser` provides.
+2. Platform access goes through Effect's services, provided by a per-platform layer: `FileSystem`, `Path`, `HttpClient`, `ChildProcess`. A `.vibe` file has no `node:*` value imports and no Node globals such as `process` or `Buffer`; code that needs them lives in a `.ts` file, including platform calls inside `Effect.try` and `tryPromise` arrows. What Effect lacks lives under `Experimental`: `Experimental.Process`, `Experimental.FileSystem` and `Experimental.Crypto`, which `ExperimentalNodeServices.layer` from `vibelang-runtime/experimental/platform-node` (or Bun's) provides, and and and `Experimental.Animations`, `Experimental.FileReader`, `Experimental.Locks`, `Experimental.MediaQuery` and `Experimental.ResizeObserver`, which `ExperimentalBrowserServices.layer` from `vibelang-runtime/experimental/platform-browser` provides.
 3. A service is a key, not a class to use: `class X extends Users` (EK3002), `new Users()` (EK3003), `x instanceof Users` (EK3004) and `service Repo<T>` (EK3005) are errors, and keys are unique (EK3001). `Users` is the type in R; `Users.Shape` is the members an implementation has.
 4. An `error` is a `Data.TaggedError` class: its tag is its name and its fields are readonly. Its body may hold methods and getters, not a constructor, an `extends` clause or a `_tag` override; group errors with a union. `when NotFound:` matches by `_tag`, across copies of a package.
 5. `match` is TC39 pattern matching. A `match` without `default` over a finite union that misses a case is a compile error; the check never changes what runs.
@@ -700,6 +700,7 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `Deno` | escape to TypeScript for now: A runtime's own API belongs to its platform package's layers, such as @effect/platform-bun's, or to a .ts file. |
 | `EventSource` | `try HttpClient.get(url)` |
 | `FileReader` | `try (try Experimental.FileReader.FileReader).readAsText(file)` |
+| `ResizeObserver` | `try (try Experimental.ResizeObserver.ResizeObserver).observe(element, onResize)` |
 | `SharedWorker` | `effect/workers`: `import { Worker as EffectWorker }` and `WorkerRunner` |
 | `WebSocket` | `try Socket.makeWebSocket(url)` |
 | `Worker` | `effect/workers`: `import { Worker as EffectWorker }` and `WorkerRunner`. Bare `Worker` is Effect's `effect/workers` namespace, and `globalThis.Worker` is EK4402 |
@@ -804,6 +805,7 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `setTimeout` | `try sleep("1 second")` |
 | `window` | escape to TypeScript for now: Effect has no service for the DOM; UI code belongs in a .ts or .tsx file, such as a React component's. |
 | `window.FileReader` | `try (try Experimental.FileReader.FileReader).readAsText(file)` |
+| `window.ResizeObserver` | `try (try Experimental.ResizeObserver.ResizeObserver).observe(element, onResize)` |
 | `window.addEventListener` | `BrowserStream.fromEventListenerWindow("resize")` |
 | `window.cancelAnimationFrame` | `(try Experimental.Animations.Animations).onNextFrame(callback)` |
 | `window.matchMedia` | `try (try Experimental.MediaQuery.MediaQuery).matches(query)` |
