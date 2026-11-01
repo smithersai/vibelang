@@ -1,0 +1,3 @@
+go test fuzz v1
+string("-- main.vibe --\nimport type { Deferred } from \"effect\"\ndeclare const value: Deferred.Deferred<number>\nexport effect function wait() { const Deferred = 0; const Deferred$1 = 1; return await /* keep 😀 */ value }\n-- package.json --\n{\"type\":\"module\"}\n-- tsconfig.json --\n{\"compilerOptions\": {\"target\": \"ES2022\", \"module\": \"NodeNext\", \"moduleResolution\": \"NodeNext\", \"strict\": true, \"skipLibCheck\": true, \"noEmit\": true}}\n")
+[]byte("\x00\xa7")

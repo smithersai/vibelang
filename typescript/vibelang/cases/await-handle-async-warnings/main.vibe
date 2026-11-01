@@ -1,0 +1,3 @@
+import type { Fiber, Deferred } from "effect"
+export async function waitFiber(value: Fiber.Fiber<number>) { return await value }
+export async function waitDeferred(value: Deferred.Deferred<number>) { return await value }

@@ -312,25 +312,27 @@ try {
     assert(shown.includes("Promise<number>"), "ordinary async hover: " + JSON.stringify(shown))
   })
 
-  await check("code action: await on a fiber is EK4609, and its quick fix writes join; on a Deferred, EK4610 writes d.await()", async () => {
+  await check("code action: EK0102 repairs effect await with join or try Deferred.await", async () => {
     open("src/old-await.vibe", "vibe")
     const items = await diagnostics("src/old-await.vibe")
-    const codes = items.map((d) => `${d.source}${d.code}`).sort()
-    assert(JSON.stringify(codes) === JSON.stringify(["EK4609", "EK4610"]), `codes ${JSON.stringify(codes)}`)
+    assert(items.length === 2 && items.every((d) => d.source === "EK" && d.code === 102 && d.severity === 1),
+      "placement diagnostics " + JSON.stringify(items))
     const uri = fileUri("src/old-await.vibe")
     const fixFor = async (item, title) => {
       const actions = (await connection.request("textDocument/codeAction", { textDocument: { uri }, range: item.range, context: { diagnostics: [item], only: ["quickfix"] } })) ?? []
       const fix = actions.find((a) => a.title === title)
-      assert(fix, `no quick fix ${title} among ${JSON.stringify(actions.map((a) => a.title))}`)
+      assert(fix, "no quick fix " + title + " among " + JSON.stringify(actions.map((a) => a.title)))
       return fix.edit?.changes?.[uri] ?? []
     }
-    const fiber = items.find((d) => d.code === 4609)
+    const fiber = items.find((d) => d.range.start.line === at("src/old-await.vibe", "await f").line)
     const fiberEdits = await fixFor(fiber, "Join the fiber with join")
-    assert(fiberEdits.length === 1 && fiberEdits[0].newText === "join" && JSON.stringify(fiberEdits[0].range) === JSON.stringify(fiber.range), `edits ${JSON.stringify(fiberEdits)}`)
-    const deferred = items.find((d) => d.code === 4610)
-    const deferredEdits = await fixFor(deferred, "Wait for the Deferred with .await()")
+    assert(fiberEdits.length === 1 && fiberEdits[0].newText === "join" && JSON.stringify(fiberEdits[0].range) === JSON.stringify(fiber.range),
+      "fiber edits " + JSON.stringify(fiberEdits))
+    const deferred = items.find((d) => d.range.start.line === at("src/old-await.vibe", "await d").line)
+    const deferredEdits = await fixFor(deferred, "Wait for the Deferred with try Deferred.await")
     const start = at("src/old-await.vibe", "await d")
-    assert(deferredEdits.length === 1 && deferredEdits[0].newText === "d.await()" && deferredEdits[0].range.start.line === start.line && deferredEdits[0].range.start.character === start.character && deferredEdits[0].range.end.character === start.character + "await d".length, `edits ${JSON.stringify(deferredEdits)}`)
+    assert(deferredEdits.length === 1 && deferredEdits[0].newText === "try Deferred.await(d)" && deferredEdits[0].range.start.line === start.line && deferredEdits[0].range.start.character === start.character && deferredEdits[0].range.end.character === start.character + "await d".length,
+      "deferred edits " + JSON.stringify(deferredEdits))
   })
 
   await check("code action: EK2120 and EK2121 warn at the old service and layer spellings, and their quick fixes write the current ones", async () => {

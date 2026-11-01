@@ -1,8 +1,4 @@
 main.vibe(5,45): error EK0102
-main.vibe(5,45): warning EK4609
 main.vibe(6,51): error EK0102
-main.vibe(6,51): warning EK4610
 main.vibe(7,42): error EK0102
-main.vibe(7,42): warning EK4609
 main.vibe(8,48): error EK0102
-main.vibe(8,48): warning EK4610

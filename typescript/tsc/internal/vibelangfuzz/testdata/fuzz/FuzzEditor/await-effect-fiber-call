@@ -1,0 +1,3 @@
+go test fuzz v1
+string("-- main.vibe --\nimport type { Fiber } from \"effect\"\n/** @throws {never} */ declare function get(): Fiber.Fiber<number>\nexport effect function wait() { return await get() }\n-- package.json --\n{\"type\":\"module\"}\n-- tsconfig.json --\n{\"compilerOptions\": {\"target\": \"ES2022\", \"module\": \"NodeNext\", \"moduleResolution\": \"NodeNext\", \"strict\": true, \"skipLibCheck\": true, \"noEmit\": true}}\n")
+[]byte("\x00\x8e")

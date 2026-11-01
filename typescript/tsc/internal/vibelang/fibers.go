@@ -2,6 +2,7 @@ package vibelang
 
 import (
 	"context"
+	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
@@ -37,9 +38,9 @@ var (
 	// EK4607: a select statement, replaced by try.race (D197, VIP-18).
 	EK4607 = message(4607, errorCategory, "select was replaced by try.race.")
 	// EK4609: await on a fiber, or an array or object of fibers (D226). {0} is the operand.
-	EK4609 = message(4609, errorCategory, "await waits for a promise in JavaScript; join the fiber with join {0}.")
+	EK4609 = message(4609, warningCategory, "await waits for a promise in JavaScript; join the fiber with join {0}.")
 	// EK4610: await on a Deferred (D226). {0} is the operand.
-	EK4610 = message(4610, errorCategory, "await waits for a promise in JavaScript; wait for the Deferred with {0}.await().")
+	EK4610 = message(4610, warningCategory, "await does not wait for this Deferred; use try Deferred.await({0}) in effect code.")
 	// EK4611: join on something that is not a Fiber or an array or object of them. {0} is the operand's type.
 	EK4611 = message(4611, errorCategory, "join takes a Fiber or an array or object of fibers, but this is {0}.")
 	// EK4612: join inside a hatch body, which is plain TypeScript.
@@ -87,15 +88,10 @@ func checkFiberForms(c *checker.Checker, file *ast.SourceFile) {
 			if t != nil {
 				var m *Message
 				if isJoinable(c, t, 0) {
-					copy := *EK4609
-					copy.Category = warningCategory
-					m = &copy
+					m = EK4609
 				}
 				if isDeferred(c, t) {
-					copy := *EK4610
-					copy.Category = warningCategory
-					copy.Text = "await does not wait for this Deferred; use try Deferred.await({0}) in effect code."
-					m = &copy
+					m = EK4610
 				}
 				if m != nil {
 					reportAt(c, file, scanner.GetRangeOfTokenAtPosition(file, node.Pos()), m, nodeText(file, operand))
@@ -152,9 +148,9 @@ func checkAwait(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
 	}
 	switch {
 	case isJoinable(c, t, 0):
-		reportAwaitValue(c, file, call, keyword, EK4609, operand)
+		note(reportAt(c, file, keyword, EK0102), "Join the fiber with join {0}.", nodeText(file, operand))
 	case isDeferred(c, t):
-		reportAwaitValue(c, file, call, keyword, EK4610, operand)
+		note(reportAt(c, file, keyword, EK0102), "Wait for the Deferred with try Deferred.await({0}).", nodeText(file, operand))
 	default:
 		d := reportAt(c, file, keyword, EK4603, c.TypeToString(t))
 		if isEffectType(c, t) {
@@ -166,19 +162,6 @@ func checkAwait(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
 		}
 	}
 	cover(c, call)
-}
-
-// reportAwaitValue keeps VIP-1 placement errors independent of configurable
-// VIP-5 advisories. Disabling an advisory never admits await in effect code.
-func reportAwaitValue(c *checker.Checker, file *ast.SourceFile, call *ast.Node, keyword core.TextRange, message *Message, operand *ast.Node) {
-	if isMarkedEffect(ast.GetContainingFunction(call)) {
-		advisory := *message
-		advisory.Category = warningCategory
-		reportAt(c, file, keyword, &advisory, nodeText(file, operand))
-		reportAt(c, file, keyword, EK0102)
-		return
-	}
-	reportAt(c, file, keyword, message, nodeText(file, operand))
 }
 
 // checkJoin reports a join that is in a hatch body or whose operand is not a
@@ -283,14 +266,37 @@ func awaitCallAt(file *ast.SourceFile, pos int) *ast.Node {
 	return found
 }
 
-// awaitFiberFix is EK4609's quick fix: it writes join for await.
+// awaitFiberFix repairs EK4609 and the Fiber form of EK0102 with join.
 var awaitFiberFix = &ls.CodeFixProvider{
 	Source:     diagnosticSource,
-	ErrorCodes: []int32{EK4609.Code},
-	GetCodeActions: func(_ context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
+	ErrorCodes: []int32{EK4609.Code, EK0102.Code},
+	GetCodeActions: func(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
 		text := fix.SourceFile.Text()
 		if fix.Diagnostic == nil || fix.Span.End() > len(text) || text[fix.Span.Pos():fix.Span.End()] != "await" {
 			return nil, nil
+		}
+		if fix.ErrorCode == EK0102.Code {
+			call := awaitCallAt(fix.SourceFile, fix.Span.Pos())
+			if call == nil || len(call.Arguments()) != 1 {
+				return nil, nil
+			}
+			c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
+			defer done()
+			if typ := c.GetTypeAtLocation(call.Arguments()[0]); typ == nil || !isJoinable(c, typ, 0) {
+				return nil, nil
+			}
+			operand := call.Arguments()[0]
+			if ast.IsCallExpression(ast.SkipParentheses(operand)) {
+				// Parentheses also handle contextual keyword callees such as get.
+				operandText := strings.TrimSpace(text[fix.Span.End():operand.End()])
+				return []*ls.CodeAction{{
+					Description: "Join the fiber with join",
+					Changes: []*lsproto.TextEdit{{
+						Range:   fix.LS.ToLSPRange(fix.SourceFile, core.NewTextRange(fix.Span.Pos(), operand.End())),
+						NewText: "join (" + operandText + ")",
+					}},
+				}}, nil
+			}
 		}
 		return []*ls.CodeAction{{
 			Description: "Join the fiber with join",
@@ -299,11 +305,11 @@ var awaitFiberFix = &ls.CodeFixProvider{
 	},
 }
 
-// awaitDeferredFix is EK4610's quick fix: it writes `await d` as d.await().
+// awaitDeferredFix repairs EK4610 and the Deferred form of EK0102.
 var awaitDeferredFix = &ls.CodeFixProvider{
 	Source:     diagnosticSource,
-	ErrorCodes: []int32{EK4610.Code},
-	GetCodeActions: func(_ context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
+	ErrorCodes: []int32{EK4610.Code, EK0102.Code},
+	GetCodeActions: func(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
 		if fix.Diagnostic == nil || fix.LS == nil {
 			return nil, nil
 		}
@@ -312,19 +318,33 @@ var awaitDeferredFix = &ls.CodeFixProvider{
 			return nil, nil
 		}
 		operand := call.Arguments()[0]
-		operandText := nodeText(fix.SourceFile, operand)
-		switch ast.SkipParentheses(operand).Kind {
-		case ast.KindIdentifier, ast.KindPropertyAccessExpression, ast.KindElementAccessExpression, ast.KindCallExpression, ast.KindThisKeyword:
-		default:
-			operandText = "(" + operandText + ")"
+		c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
+		defer done()
+		if typ := c.GetTypeAtLocation(operand); typ == nil || !isDeferred(c, typ) {
+			return nil, nil
+		}
+		// Keep comments between await and its operand inside the replacement.
+		operandText := strings.TrimSpace(fix.SourceFile.Text()[fix.Span.End():operand.End()])
+		namespace := "Deferred"
+		var imports []*lsproto.TextEdit
+		symbol := c.ResolveName(namespace, operand, ast.SymbolFlagsValue|ast.SymbolFlagsNamespace, false)
+		available := symbol != nil && c.GetTypeOnlyAliasDeclaration(symbol) == nil
+		if available && symbol.Flags()&ast.SymbolFlagsAlias != 0 {
+			symbol = c.GetAliasedSymbol(symbol)
+		}
+		if !available || symbol != effectModuleNamespace(c, fix.SourceFile, "Deferred") {
+			namespace = (&freshNames{file: fix.SourceFile}).freshName("Deferred")
+			imports = schemaFlagHeader(fix, "import { Deferred as "+namespace+" } from \"effect\";\n")
 		}
 		start := fix.Span.Pos()
+		edits := []*lsproto.TextEdit{{
+			Range:   fix.LS.ToLSPRange(fix.SourceFile, core.NewTextRange(start, operand.End())),
+			NewText: "try " + namespace + ".await(" + operandText + ")",
+		}}
+		edits = append(edits, imports...)
 		return []*ls.CodeAction{{
-			Description: "Wait for the Deferred with .await()",
-			Changes: []*lsproto.TextEdit{{
-				Range:   fix.LS.ToLSPRange(fix.SourceFile, core.NewTextRange(start, operand.End())),
-				NewText: operandText + ".await()",
-			}},
+			Description: "Wait for the Deferred with try Deferred.await",
+			Changes:     edits,
 		}}, nil
 	},
 }

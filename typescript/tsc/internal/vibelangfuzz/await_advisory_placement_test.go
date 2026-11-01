@@ -16,6 +16,11 @@ func TestAwaitAdvisoryPlacementQuoted(t *testing.T) {
 		t.Fatalf("VIP-1 no longer says %q", awaitPlacementQuote)
 	}
 	TestCurrentDiagnosticPolicyQuoted(t)
+	for _, quote := range []string{"| `EK4609` | lint warning: `await` on a `Fiber` in an `async` function;", "| `EK4610` | lint warning: `await` on a `Deferred` in an `async` function;"} {
+		if !strings.Contains(SpecText(grammarAppendix), quote) {
+			t.Fatalf("Appendix B no longer says %q", quote)
+		}
+	}
 }
 
 var awaitAdvisoryKeys = []string{"fiber-function", "deferred-arrow", "fiber-block", "deferred-method", "fiber-async", "deferred-async"}
@@ -85,7 +90,7 @@ func checkAwaitAdvisoryPlacement(t *testing.T, w *Workspace, key string, variant
 		wantCategory = diagnostics.CategorySuggestion
 	}
 	valid := len(categories) == 1 && categories[0] == wantCategory
-	if severity == "off" {
+	if severity == "off" || wantPlacement != 0 {
 		valid = len(categories) == 0
 	}
 	if !valid || placement != wantPlacement {
