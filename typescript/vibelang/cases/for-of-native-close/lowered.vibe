@@ -1,0 +1,9 @@
+import { boom, make } from "./helpers.js"
+export function lowered(e: string[], errors: unknown[], close: string): number {
+  outer: middle: for (const x of make(e, "a", errors[1], close)) {
+    const n = do { e.push("lowered"); 1 }
+    if (n === 1) boom(errors[0])
+    continue middle
+  }
+  return 0
+}

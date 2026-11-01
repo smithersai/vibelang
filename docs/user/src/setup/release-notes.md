@@ -235,6 +235,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The migrate flow could borrow a callback's `Error` channel from an `async` function or generator, even though that function returns a `Promise` or iterator containing the Effect; only a plain function returning the Effect directly now supplies that proof.
 
+- A plain function's `for…of` combined a body error with an error from the iterator's `return`, changing the caught value; it now keeps the original thrown value by identity, as TypeScript does. A close error still replaces a normal `break` or `return`.
+
 - Migration could break a plugin host that derives virtual module names from a resolved package entry and source-file extension; scope planning now keeps the observed packages native and records the source-enumeration cause, preserving the unchanged host.
 
 - The migrate flow rejected a native acquisition's unchanged `!Error` contract when its original function returned `Effect.callback<A, Error>`, as in foldkit's WebSocket example; it now recognizes that explicit returned channel when the callback becomes a platform service, while nested callbacks and changed contracts remain rejected.

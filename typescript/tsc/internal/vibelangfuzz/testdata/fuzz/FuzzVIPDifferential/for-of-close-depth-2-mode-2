@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:vip31.for-of-close-plain\u0000\u0000\u0000\u0001\u0002\u0002\u0002\u0000\u0002\u0000\u0002\u0000\u0000")

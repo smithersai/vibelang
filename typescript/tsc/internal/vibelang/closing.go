@@ -2,41 +2,20 @@ package vibelang
 
 import "github.com/microsoft/TypeScript/tsc/internal/ast"
 
-// JavaScript's own for...of keeps both failures (D404, D424). When a loop's
-// body, or its head's destructuring or defaults, fails while the iterator is
-// open and the iterator's return() then throws too, ECMAScript's
-// IteratorClose keeps the first exception and drops the second, where
-// Chapter 17's iterator rule adds the second to the first. So every native
-// for...of the lowering emits, in plain code and in frames alike, catches a
-// failure of its body and head inside the loop and leaves the loop by break,
-// so that IteratorClose runs with a normal completion and a return() that
-// throws reaches the runtime's combining form, $finallyFailure, as a failing
-// finally block's exception does (D340):
+// Plain-function for...of keeps native IteratorClose behavior (effectscript-75,
+// RC-23): an incoming body or binding throw wins unchanged over a close
+// failure. A close failure replaces a normal break or return. Leaving these
+// loops native also preserves that precedence after expression lowering,
+// including nested loops and every consecutive label.
 //
-//	for (const [a, b] of pairs) body
-//
-// becomes
-//
-//	let pending_1 = runtime.$normal;
-//	try {
-//	  for (const value_1 of pairs) {
-//	    try { const [a, b] = value_1; body }
-//	    catch (thrown_1) { pending_1 = thrown_1; break; }
-//	  }
-//	} catch (thrown_2) { throw runtime.$finallyFailure(pending_1, thrown_2) }
-//	if (pending_1 !== runtime.$normal) throw pending_1;
-//
-// JavaScript itself looks the iterator's return method up when it closes the
-// iterator, once per close, and never at the loop's entry; nothing here reads
-// the iterator, and an array keeps its native iteration. A loop that only a
-// jump leaves closes as before, and a return() that throws then is the
-// loop's exception, as in JavaScript. Effect abandons a frame without
-// resuming it, so a loop whose body can pause is also unwound by
-// $iteratorFrame (iterators_lower.go), which this catch does not change: the
-// return completion that unwinding resumes the frame with passes through it.
+// Effect-code loops retain their existing failure-combining policy here:
+// catch a body or binding failure, break to close with a normal completion,
+// then combine a failing close with the pending failure via $finallyFailure.
+// $iteratorFrame separately handles frames whose bodies can pause
+// (iterators_lower.go); plain-loop closing does not change that path.
 
-// closeLoops rewrites each native for...of of a .vibe function's body that
-// the lowering emitted, as above. Every consecutive label stays on its loop,
+// closeLoops rewrites native for...of loops emitted from Effect code. Every
+// consecutive label stays on its loop,
 // inside the block the rewrite makes, so continue still targets an iteration.
 func (tx *lowering) closeLoops(node *ast.Node) *ast.Node {
 	visitor := tx.EmitContext().NewNodeVisitor(nil)
@@ -109,8 +88,8 @@ func (tx *lowering) closeLoop(labels []*ast.Node, loop *ast.Node) *ast.Node {
 }
 
 // isClosedLoop reports whether node, an emitted statement, is a native
-// for...of that came from a for...of of a .vibe function's body: plain code,
-// a frame, or a plain generator, outside hatches and module bodies.
+// for...of that came from Effect code, outside hatches and module bodies.
+// Plain functions and plain generators keep JavaScript's native closing.
 func (tx *lowering) isClosedLoop(node *ast.Node) bool {
 	if node == nil || node.Kind != ast.KindForOfStatement || node.AsForInOrOfStatement().AwaitModifier != nil {
 		return false
@@ -122,7 +101,11 @@ func (tx *lowering) isClosedLoop(node *ast.Node) bool {
 	if initializer := original.AsForInOrOfStatement().Initializer; ast.IsVariableDeclarationList(initializer) && (isUsingList(initializer) || len(initializer.AsVariableDeclarationList().Declarations.Nodes) != 1) {
 		return false // for (using r of rs) is a Scope region's (scopes_lower.go)
 	}
-	return inLowerableBody(original) || inPlainGeneratorBody(original)
+	if !inLowerableBody(original) {
+		return false
+	}
+	fn := enclosingFunction(original)
+	return tx.plan.isEffect(fn) || tx.plan.isProgram(fn)
 }
 
 // bindsOneName reports whether a for...of head, a declaration list or an

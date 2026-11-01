@@ -1,9 +1,8 @@
-// JavaScript's own for...of keeps both failures (D404, D424): when the body,
-// or the head's destructuring, fails and the iterator's return() then throws
-// too, the loop fails with both, in order, as the iterator rule and a frame
-// give, in plain code and in frames alike, where ECMAScript's IteratorClose
-// drops the second. return is looked up once per close and never at the
-// loop's entry, even when the iterator gains it while the loop runs.
+// Plain loops keep ECMAScript IteratorClose: a pending body or binding
+// exception wins over a close failure by identity (effectscript-75, RC-23).
+// Effect frames retain their existing failure-combining behavior. In either
+// path, return is looked up once per close and never at loop entry, including
+// when the iterator gains it while the loop runs.
 let lookups = 0
 
 function crash(label: string): number {
@@ -87,7 +86,7 @@ function reasons(outcome: Exit<unknown, unknown>): string {
   return outcome.cause.reasons.map((reason) => reason._tag === "Die" ? `Die(${name(reason.defect)})` : reason._tag).join("+")
 }
 
-// expect-result: {"body":"Die(body)+Die(close)","head":"Die(type)+Die(close)","late":"Die(body)+Die(close)","break":"Die(close)","ok":"ok(3)","framed":"Die(body)+Die(close)","lookups":5}
+// expect-result: {"body":"Die(body)","head":"Die(type)","late":"Die(body)","break":"Die(close)","ok":"ok(3)","framed":"Die(body)+Die(close)","lookups":5}
 export effect function main() {
   const result = {
     body: reasons(try exit(plainBody())),

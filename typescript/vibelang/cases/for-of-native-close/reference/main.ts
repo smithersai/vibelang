@@ -1,0 +1,62 @@
+import { boom, make } from "./helpers.js"
+export function bodyClose(e: string[], errors: unknown[], close: string): number {
+  for (const x of make(e, "a", errors[1], close)) { boom(errors[0]) }
+  return 0
+}
+export function bodyOnly(e: string[], errors: unknown[], close: string): number {
+  for (const x of make(e, "a", errors[1], "ok")) { boom(errors[0]) }
+  return 0
+}
+export function closeOnly(e: string[], errors: unknown[], close: string): number {
+  for (const x of make(e, "a", errors[1], close)) { break }
+  return 0
+}
+export function nestedBody(e: string[], errors: unknown[], close: string): number {
+  outer: middle: for (const x of make(e, "a", errors[2], close)) { inner: for (const y of make(e, "b", errors[1], close)) { boom(errors[0]) } }
+  return 0
+}
+export function nestedClose(e: string[], errors: unknown[], close: string): number {
+  outer: middle: for (const x of make(e, "a", errors[2], close)) { inner: for (const y of make(e, "b", errors[1], close)) { break outer } }
+  return 0
+}
+export function breakOuter(e: string[], errors: unknown[], close: string): number {
+  outer: middle: for (const x of make(e, "a", errors[2], "ok")) { inner: for (const y of make(e, "b", errors[1], "ok")) { e.push("body"); break outer } }
+  return 0
+}
+export function continueOuter(e: string[], errors: unknown[], close: string): number {
+  outer: middle: for (const x of make(e, "a", errors[2], "ok")) { inner: for (const y of make(e, "b", errors[1], "ok")) { e.push("body"); continue middle } }
+  return 0
+}
+export function continueInner(e: string[], errors: unknown[], close: string): number {
+  outer: middle: for (const x of make(e, "a", errors[1], "ok")) { e.push("body"); continue outer }
+  return 0
+}
+export function returnNormal(e: string[], errors: unknown[], close: string): number {
+  outer: middle: for (const x of make(e, "a", errors[1], "ok")) { e.push("body"); return 7 }
+  return 0
+}
+export function returnClose(e: string[], errors: unknown[], close: string): number {
+  outer: middle: for (const x of make(e, "a", errors[1], close)) { e.push("body"); return 7 }
+  return 0
+}
+export function exhaust(e: string[], errors: unknown[], close: string): number {
+  for (const x of make(e, "a", errors[1], close)) { e.push("body") }
+  return 0
+}
+export function headClose(e: string[], errors: unknown[], close: string): number {
+  for (const [x = boom(errors[0])] of { [Symbol.iterator]: () => make(e, "a", errors[1], close)[Symbol.iterator]() } as Iterable<any>) { e.push("unreached") }
+  return 0
+}
+export function headDefaultClose(e: string[], errors: unknown[], close: string): number {
+  for (const [x = boom(errors[0])] of { [Symbol.iterator](): Iterator<any> { const it = make(e, "a", errors[1], close)[Symbol.iterator](); return { next(): IteratorResult<any> { const n = it.next(); return { done: n.done, value: [n.value] } }, return: it.return!.bind(it) } } }) { e.push("unreached") }
+  return 0
+}
+export function lowered(e: string[], errors: unknown[], close: string): number {
+  outer: middle: for (const x of make(e, "a", errors[1], close)) {
+    e.push("lowered")
+    const n = 1
+    if (n === 1) boom(errors[0])
+    continue middle
+  }
+  return 0
+}

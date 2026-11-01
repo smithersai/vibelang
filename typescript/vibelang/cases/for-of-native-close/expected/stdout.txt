@@ -1,0 +1,1 @@
+native for-of close: 224 comparisons passed
