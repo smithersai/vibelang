@@ -1,0 +1,5 @@
+import { token } from "./token.tsx"
+export { Token } from "./token.tsx"
+export const value = token
+export type Shape = import("./token.tsx").Token
+export const load = () => import("./token.tsx")

@@ -28,6 +28,7 @@ import (
 //	  }).apply(this, arguments)
 //	}
 type lowering struct {
+	jsx core.JsxEmit // native .tsx output names follow the project JSX mode
 	transformers.Transformer
 	plan         *plan
 	effect       *ast.IdentifierNode // local name for effect's Effect module, imported on first use
@@ -81,6 +82,7 @@ func newLowering(opts *transformers.TransformOptions, file *ast.SourceFile) *tra
 	}
 	tx := &lowering{
 		plan:     planFile(opts.EmitResolver, file),
+		jsx:      opts.CompilerOptions.Jsx,
 		frames:   findFrameReferences(file),
 		fresh:    freshNames{file: file},
 		commonJS: opts.GetEmitModuleFormatOfFile != nil && opts.GetEmitModuleFormatOfFile(file) == core.ModuleKindCommonJS,

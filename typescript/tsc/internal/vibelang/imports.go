@@ -39,7 +39,7 @@ func (tx *lowering) outputSpecifier(specifier *ast.Node) *ast.Node {
 	if specifier == nil || !ast.IsStringLiteral(specifier) {
 		return specifier
 	}
-	text, changed := outputSpecifierText(specifier.Text())
+	text, changed := outputSpecifierTextWithJSX(specifier.Text(), tx.jsx)
 	if !changed {
 		return specifier
 	}
@@ -53,10 +53,15 @@ func (tx *lowering) outputSpecifier(specifier *ast.Node) *ast.Node {
 // whether it differs from text: a relative specifier that names a TypeScript
 // or VibeLang source, ./users.vibe, names its output, ./users.js.
 func outputSpecifierText(text string) (string, bool) {
+	return outputSpecifierTextWithJSX(text, core.JsxEmitNone)
+}
+
+// outputSpecifierTextWithJSX uses the native output extension selected by jsx.
+func outputSpecifierTextWithJSX(text string, jsx core.JsxEmit) (string, bool) {
 	if !tspath.ToModuleSpecifier(text).ShouldRewriteExtension(nil /*rewrites*/, tspath.CaseSensitive) {
 		return text, false
 	}
-	output := tspath.ChangeExtension(text, outputpaths.GetOutputExtension(text, core.JsxEmitNone))
+	output := tspath.ChangeExtension(text, outputpaths.GetOutputExtension(text, jsx))
 	// Source specifiers name filesystem paths; emitted ESM specifiers are URLs.
 	// Escape each segment separately so separators retain their meaning, and
 	// literal percent sequences cannot be interpreted as already encoded URLs.
