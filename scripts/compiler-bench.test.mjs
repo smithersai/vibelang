@@ -6,6 +6,7 @@ import { delimiter, dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { test } from "node:test"
 
+// Docs-corpus traces and failures are covered in compiler-bench-corpus.test.mjs.
 const source = process.env.VIBELANG_COMPILER_BENCH_ROOT ?? fileURLToPath(new URL("../", import.meta.url))
 const quote = value => "'" + value.replaceAll("'", "'\\''") + "'"
 

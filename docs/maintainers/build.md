@@ -371,6 +371,13 @@ The command-line fuzz target builds its nested compiler with `-trimpath`,
 matching the outer Go test build. This lets the two builds share compiler
 package artifacts in the Go build cache on a fresh validation mirror.
 
+## Benchmark corpus generation
+
+The compiler benchmark stops if docs corpus generation fails, returns the
+generator's exit status and prints its diagnostics. Its output directory keeps
+`docs-corpus.log` and `docs-corpus.stderr.log`; the failed corpus remains
+available for diagnosis. Only successful generation is used for measurement.
+
 ## Known gaps
 
 - **Sandboxing.** The targets run with `sandbox: "none"`: the harness writes

@@ -108,7 +108,17 @@ done
 
 # The docs corpus as one program: check-snippets writes one project per page;
 # a root tsconfig lists every page's files.
-corpus=$(VIBELANG_BINARY="$vibelang" bun "$root/docs/tools/check-snippets.ts" --keep | sed -n 's/^Temporary projects: //p')
+# Keep generation separate from discovery: a pipeline would report sed's
+# success even when Bun failed and left a partial corpus.
+if VIBELANG_BINARY="$vibelang" bun "$root/docs/tools/check-snippets.ts" --keep > "$out/docs-corpus.log" 2> "$out/docs-corpus.stderr.log"; then
+  cat "$out/docs-corpus.stderr.log" >&2
+else
+  status=$?
+  cat "$out/docs-corpus.log" "$out/docs-corpus.stderr.log" >&2
+  echo "compiler.sh: docs corpus generation failed (exit $status); logs: $out/docs-corpus.log and $out/docs-corpus.stderr.log" >&2
+  exit "$status"
+fi
+corpus=$(sed -n 's/^Temporary projects: //p' "$out/docs-corpus.log")
 if [ -n "$corpus" ]; then
   python3 - "$corpus" <<'EOF'
 import json, os, sys
