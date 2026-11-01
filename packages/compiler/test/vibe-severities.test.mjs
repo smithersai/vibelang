@@ -168,3 +168,51 @@ export function pause() { Effect.sleep(0); return 1 }
   assert.doesNotMatch(result.stdout, /error EK3833:/)
  }
 })
+
+const legacyCommentShapes = {
+ wrapper: '{ /* KEEP_WRAPPER */ "diagnostics":{"EK4830":"off"}}',
+ tail: '{"diagnostics":{"EK4830":"off" /* KEEP_TAIL */}}',
+ empty: '{"diagnostics":{/* KEEP_EMPTY */}}',
+ superseded: '{"diagnostics":{/* KEEP_SUPERSEDED */ "EK4831":"error"}}',
+ trailing: '{"diagnostics":{"EK4830":"off", // KEEP_TRAILING\n}}',
+ retained: '{"tracing":"all", /* KEEP_PROPERTY */ "diagnostics":{"EK4830":"off" /* KEEP_MAP_TAIL */} // KEEP_WRAPPER_TAIL\n}',
+}
+for (const [shape, legacy] of Object.entries(legacyCommentShapes)) {
+ for (const nested of [false, true]) {
+  for (const inherited of [false, true]) {
+   test(`--fix retains legacy comments ${shape}, nested=${nested}, extends=${inherited}`, { skip }, t => {
+    const dir = project(t, inherited ? { extends: "./base.json" } : {}, "export const value=1")
+    const file = join(dir, inherited ? "base.json" : "tsconfig.json")
+    const original = inherited ? {} : JSON.parse(readFileSync(file, "utf8"))
+    // Keep the valid project options when testing the compilerOptions path.
+    const options = JSON.stringify(original.compilerOptions || {}).slice(0, -1)
+    delete original.compilerOptions
+    const prefix = JSON.stringify(original).slice(0, -1)
+    const text = prefix + (prefix.length > 1 ? "," : "") +
+     (nested ? `"compilerOptions":${options}${options.length > 1 ? "," : ""}"vibelang":${legacy}}` :
+      `"compilerOptions":${options}},"vibelang":${legacy}`) +
+     ',"vibe":{"effectModules":false,"severities":{"EK4831":"off"}}}'
+    writeFileSync(file, text)
+    const shownBefore = run(dir, "--showConfig")
+    assert.equal(shownBefore.status, 0, shownBefore.stdout + shownBefore.stderr)
+    const first = run(dir, "--fix")
+    assert.equal(first.status, 0, first.stdout + first.stderr)
+    const fixed = readFileSync(file, "utf8")
+    for (const marker of text.match(/\/\* KEEP_[A-Z_]+ \*\/|\/\/ KEEP_[A-Z_]+/g)) {
+     assert.equal(fixed.split(marker).length, text.split(marker).length, fixed)
+    }
+    assert.doesNotMatch(fixed, /"diagnostics"/)
+    const shown = run(dir, "--showConfig")
+    assert.equal(shown.status, 0, shown.stdout + shown.stderr)
+    const modern = JSON.parse(shown.stdout).vibe
+    assert.equal(modern.effectModules, false)
+    assert.equal(modern.severities.EK4831, "off")
+    if (shape !== "empty" && shape !== "superseded") assert.equal(modern.severities.EK4830, "off")
+    const second = run(dir, "--fix")
+    assert.equal(second.status, 0, second.stdout + second.stderr)
+    assert.equal(readFileSync(file, "utf8"), fixed)
+    assert.equal(readFileSync(join(dir, "main.vibe"), "utf8"), "export const value=1")
+   })
+  }
+ }
+}

@@ -211,6 +211,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 | Old diagnostic numbers, including `EK4617` | Appendix B numbering, including `EK0103`. Diagnostic triggers are unchanged. See the [old-to-new map](../vibelang-features/diagnostic-code-map.md). |
 
 ### Bugs fixed since 0.0.10
+
+- `vibelang --fix` deleted comments from legacy diagnostic maps, including empty maps and entries superseded by modern settings; it now keeps every comment in direct and extended configs, with the same settings and a stable second run.
 - A typed catch clause whose binding destructures, such as `catch ({ id }: NotFound)`, crashed the compiler and the editor with `Unhandled case in Node.Text`; it now reports `EK2112`, suggesting `catch (e)`, and its quick fix leaves the pattern alone.
 
 - Bundling a package that mixed `.ts` and `.vibe` modules could include two copies of a shared service or schema, so a built CLI failed at startup although its tests passed. The bundler plugins now select the package's `vibelang-source` exports and preserve the bundler's existing conditions, keeping one source graph.

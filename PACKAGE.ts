@@ -50,6 +50,7 @@ const goVibelang = (summary: string, shell: string, data: ReadonlyArray<unknown>
 const specTests = [
   "TestDeclarationPreludeModesQuoted",
   "TestNativeOutputSpecifierRulesQuoted",
+  "TestLegacyConfigCommentsQuoted",
   "TestSeverityScopeQuoted",
   "TestUnrelatedSeverityKeepsDiagnosticDefaults",
   "TestDiagnosticSeverityScopeRegression",

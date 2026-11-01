@@ -67,7 +67,7 @@ func MigrateLegacySeverities(name tspath.RootedFilePath, text string) (string, b
 	if vibe != nil && !ast.IsObjectLiteralExpression(vibe) || severities != nil && !ast.IsObjectLiteralExpression(severities) {
 		return text, false
 	}
-	entries := map[string]string{}
+	entries := map[string]*ast.Node{}
 	var edits []configEdit
 	for _, property := range properties {
 		value := property.Initializer()
@@ -92,7 +92,7 @@ func MigrateLegacySeverities(name tspath.RootedFilePath, text string) (string, b
 			}
 			key := entry.Name().Text()
 			if jsonProperty(severities, key) == nil {
-				entries[key] = strings.TrimSpace(text[entry.Pos():entry.End()])
+				entries[key] = entry
 			}
 		}
 		// Remove diagnostics; retain other legacy options. Remove an empty wrapper.
@@ -122,7 +122,8 @@ func MigrateLegacySeverities(name tspath.RootedFilePath, text string) (string, b
 	}
 	var values []string
 	for _, key := range slices.Sorted(maps.Keys(entries)) {
-		values = append(values, entries[key])
+		entry := entries[key]
+		values = append(values, strings.TrimSpace(text[entry.Pos():entry.End()]))
 	}
 	if len(values) > 0 {
 		insertion := strings.Join(values, ", ")
@@ -142,6 +143,37 @@ func MigrateLegacySeverities(name tspath.RootedFilePath, text string) (string, b
 		start := scanner.GetRangeOfTokenAtPosition(file, object.Pos()).End()
 		edits = append(edits, configEdit{start, start, insertion})
 	}
+	// Entry ranges carry their own comments. Keep every other comment from a
+	// deleted range at that range's surviving position, even for empty maps,
+	// superseded entries, and entries replaced by another legacy map.
+	for i, edit := range edits {
+		if edit.start == edit.end {
+			continue
+		}
+		s := scanner.NewScanner()
+		s.SetText(file.Text()[edit.start:edit.end])
+		s.SetSkipTrivia(false)
+		var comments strings.Builder
+		for token := s.Scan(); token != ast.KindEndOfFile; token = s.Scan() {
+			if token != ast.KindSingleLineCommentTrivia && token != ast.KindMultiLineCommentTrivia {
+				continue
+			}
+			carried := false
+			for _, entry := range entries {
+				if entry.Pos() <= edit.start+s.TokenStart() && edit.start+s.TokenEnd() <= entry.End() {
+					carried = true
+					break
+				}
+			}
+			if !carried {
+				comments.WriteString(s.TokenText())
+				// A line comment must not consume the next surviving JSON token.
+				comments.WriteByte('\n')
+			}
+		}
+		edits[i].text = comments.String()
+	}
+
 	slices.SortFunc(edits, func(a, b configEdit) int { return b.start - a.start })
 	for _, edit := range edits {
 		text = text[:edit.start] + edit.text + text[edit.end:]
