@@ -7,7 +7,7 @@ Disposable, one-command experiments behind `docs/design/src/`. They test two dif
 
 ```sh
 bun install                 # effect is pinned to exactly 4.1.0
-bun test                    # tests/: 148 tests, about a second
+bun run test                # tests/: 183 tests, 30 s each; a bare `bun test` gives the stress laws 5 s
 bun bench/perform.ts        # operation costs
 cd reference-machine && bun install && bun test   # independent strategy-B machine, ~17 s
 ```

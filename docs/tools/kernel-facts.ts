@@ -10,6 +10,8 @@ export function kernelFacts(): Record<string, string> {
   const experiments = join(repo, "experiments")
   const deadline = kernelSuiteDeadline
   const started = Date.now()
+  // The same --timeout as experiments/package.json's test script (scripts/kernel-budget.test.mjs keeps them equal):
+  // Bun ignores bunfig's timeout key and resets a preload's default for every file after the first.
   const suite = Bun.spawnSync(["bun", "test", "--timeout=30000"], { cwd: experiments, stdout: "pipe", stderr: "pipe", timeout: deadline })
   const suiteOutput = suite.stdout.toString() + suite.stderr.toString()
   const ran = /Ran (\d+) tests? across (\d+) files?/.exec(suiteOutput)

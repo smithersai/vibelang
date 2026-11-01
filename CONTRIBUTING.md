@@ -57,7 +57,7 @@ node scripts/share-effect.mjs
 | Compiler package | `(cd packages/compiler && node --test test/*.test.mjs)` |
 | Doc code blocks | `bun docs/tools/check-snippets.ts` |
 | Examples | `sh scripts/check-examples.sh` |
-| Continuation kernel | `(cd experiments && bun test)` |
+| Continuation kernel | `(cd experiments && bun run test)` |
 | These docs | `(cd .smithers && bun install && bun run docs:check)` |
 
 The Go suites run from `typescript/tsc/`. Install Effect with `(cd experiments && bun install)` (or set `EFFECT_NODE_MODULES` to its `node_modules` directory), and install the stock compiler that `packages/ts-mapper/package.json` pins in `devDependencies` with `v=$(node -p 'require("./packages/ts-mapper/package.json").devDependencies.typescript') && npm install --prefix packages/ts-mapper/test/.cache/typescript-$v --no-audit --no-fund typescript@$v` from the repository root. Mapper tests build their own compiler and runtime scope. Root discovery supports Go's `-trimpath`; when running a moved test binary outside the checkout, set `TYPESCRIPT_REPO_ROOT` to the absolute `typescript/tsc/` directory. Upstream parser, formatter and tsoptions fixture checks additionally use `typescript/tsc/testdata/fixtures/` (including `compiler/` and `typescript/tests/baselines/reference/config/commandLineParsing/`) and `typescript/tsc/testdata/baselines/reference/`, which this checkout omits; restore the matching upstream testdata checkout to run them. A test missing these optional fixtures or dependencies skips with the exact missing path and setup instruction.
@@ -91,4 +91,4 @@ Start with [good first issues](https://github.com/smithersai/vibelang/issues?q=i
 
 Ask with the [question form](https://github.com/smithersai/vibelang/issues/new?template=question.yml). Report a vulnerability privately, never in an issue: see [SECURITY.md](.github/SECURITY.md).
 
-<sub>2,391 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
+<sub>2,392 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>

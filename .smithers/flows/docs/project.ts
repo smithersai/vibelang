@@ -48,7 +48,7 @@ export const tests: readonly (readonly [change: string, command: string])[] = [
   ["Compiler package", "`(cd packages/compiler && node --test test/*.test.mjs)`"],
   ["Doc code blocks", "`bun docs/tools/check-snippets.ts`"],
   ["Examples", "`sh scripts/check-examples.sh`"],
-  ["Continuation kernel", "`(cd experiments && bun test)`"],
+  ["Continuation kernel", "`(cd experiments && bun run test)`"],
   ["These docs", "`(cd .smithers && bun install && bun run docs:check)`"]
 ];
 

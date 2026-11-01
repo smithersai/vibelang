@@ -2,11 +2,12 @@
 // file ends, and its per-test timeout cannot interrupt synchronous code, so a spinning test would
 // otherwise hang the suite with no output. The main thread records the test it starts; a worker
 // thread, which the spin cannot block, watches it.
-import { afterEach, beforeEach, setDefaultTimeout } from "bun:test"
+import { afterEach, beforeEach } from "bun:test"
 
-// Stress laws execute 100,000 operations while compiler lanes build in parallel.
-// bunfig.toml has no timeout setting: Bun ignores the key and stays at 5 s.
-setDefaultTimeout(30_000)
+// The stress laws execute 100,000 operations while compiler lanes build in parallel, so the suite
+// needs more than Bun's 5 s default. bunfig.toml has no timeout key, and a setDefaultTimeout here
+// reaches the first test file only: Bun resets the default when each file starts. The budget is
+// the --timeout flag in package.json's test script: run `bun run test`.
 
 const seconds = Number(process.env.KERNEL_TEST_STALL_SECONDS ?? "120")
 const state = new Int32Array(new SharedArrayBuffer(4 * Int32Array.BYTES_PER_ELEMENT))
