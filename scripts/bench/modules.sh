@@ -12,6 +12,14 @@ modules="$dir/node_modules"
 mkdir -p "$modules"
 modules=$(CDPATH= cd -- "$modules" && pwd)
 [ -f "$root/packages/runtime/dist/index.js" ] || { echo "modules.sh: build packages/runtime first" >&2; exit 1; }
+# ln -sfn follows an existing real directory and creates a nested link,
+# leaving its installed package in use. Check both names before changing either.
+for name in effect vibelang-runtime; do
+  if [ -e "$modules/$name" ] && [ ! -L "$modules/$name" ]; then
+    echo "modules.sh: existing non-symlink at $modules/$name; use a fresh benchmark output directory" >&2
+    exit 1
+  fi
+done
 ln -sfn "$(cd "$root/packages/runtime/node_modules/effect" && pwd -P)" "$modules/effect"
 ln -sfn "$root/packages/runtime" "$modules/vibelang-runtime"
 # Merge scopes package by package: the two installations may share a scope
