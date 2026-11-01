@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nconst authorize = <A, E>(operation: A!E): A!E => effect { return try operation }\nconst direct = effect () => authorize(Effect.succeed(5))\nconst span = effect (k: string): number!! => withSpan(effect { return k.length }, \"name\")\nexport effect function main() { return (try direct()) + (try span(\"abc\")) }\n")

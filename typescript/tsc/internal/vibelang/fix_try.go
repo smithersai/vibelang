@@ -23,7 +23,9 @@ import (
 // or field, a hatch body, a module's top level, or a plain function; nor
 // before fork(x), the keyword form fork x written as a call; nor before the
 // left side of x catch y or a call in it, which the catch runs; nor in a function literal whose body
-// is the call alone, () => f(), which returns the call's program. A call
+// is the call alone, () => f(), which returns the call's program. An effect
+// arrow whose body is a call it runs, effect () => f(), gets try: VIP-5
+// returns e unrun from effect () => e, so try keeps the run. A call
 // whose value a chain continues, as f() in f().name, is written
 // (try f()).name; one that an optional chain continues, a?.f().g(), keeps
 // its chain and gets no try.
@@ -84,7 +86,7 @@ func triesHere(a *analyzer, file *ast.SourceFile, call *ast.Node) bool {
 			return false // the call's text does not start with its callee
 		}
 	}
-	if isArrowBodyCall(call) || inCatchLeft(call) {
+	if isArrowBodyCall(call) && !isMarkedEffect(arrowOfBody(call)) || inCatchLeft(call) {
 		return false
 	}
 	if ast.IsCallExpression(call) && isRuntimeExport(a.checker, ast.SkipParentheses(call.Expression()), "fork") {
@@ -110,11 +112,20 @@ func tried(call *ast.Node) bool {
 // isArrowBodyCall reports whether call is the expression body of a function
 // literal, as in () => f(), parentheses aside.
 func isArrowBodyCall(call *ast.Node) bool {
-	n := call
+	return arrowOfBody(call) != nil
+}
+
+// arrowOfBody returns the arrow whose expression body is node, parentheses
+// aside, or nil.
+func arrowOfBody(node *ast.Node) *ast.Node {
+	n := node
 	for n.Parent != nil && ast.IsParenthesizedExpression(n.Parent) {
 		n = n.Parent
 	}
-	return n.Parent != nil && ast.IsArrowFunction(n.Parent) && n.Parent.Body() == n
+	if n.Parent != nil && ast.IsArrowFunction(n.Parent) && n.Parent.Body() == n {
+		return n.Parent
+	}
+	return nil
 }
 
 // isCatchLeft reports whether node, parentheses aside, is the left side of

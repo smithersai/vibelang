@@ -192,6 +192,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The runtime's `main` tests, which start Node and Bun child processes, could fail at Bun's 5 s default on a loaded host; the runtime suite and every other `bun test` the build graph runs now pass an explicit `--timeout`, and a check keeps the flag in place.
 
+- `vibelang --fix --fix-vip-only` left an `effect` arrow whose body is a call without `try`, as in `effect (k) => withSpan(program, "load")`, although the call runs today; once a function's `effect` mark alone decides, that arrow returns the call's Effect unrun. The codemod now writes `effect (k) => try withSpan(program, "load")`, as it already did for `return f()` in a block body.
 - Contrast diagnostics could identify an already completed audit as the operation that crashed; they now distinguish active work and report Chromium's native status, available memory and aggregate process memory without logging process names or arguments.
 
 - Formatting valid `for` heads with `is` patterns could fail with an internal parse error; they now format at narrow and normal widths while keeping `is` attached to its subject.

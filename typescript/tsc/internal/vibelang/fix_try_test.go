@@ -133,6 +133,55 @@ export effect function main() {
 	}
 }
 
+// t3code's pullRequestStatsPersistence.vibe and alchemy's BucketBinding.vibe
+// (VIP-1 flip acceptance cases 8 and 10): an effect arrow whose body is a
+// call runs that call today, and VIP-5 returns it unrun once the mark alone
+// decides (`effect () => e` keeps e), so --fix-vip-only writes try before
+// it, as it does before a block body's return.
+func TestFixVIPTriesAnEffectArrowsBodyCall(t *testing.T) {
+	source := `const authorize = <A, E>(operation: A!E): A!E => effect { return try operation }
+
+export const direct = effect () => authorize(Effect.succeed(5))
+export const span = effect (k: string): number!! =>
+  withSpan(effect { return k.length }, "name")
+export const block = effect () => { return authorize(Effect.succeed(1)) }
+`
+	want := `const authorize = <A, E>(operation: A!E): A!E => effect { return try operation }
+
+export const direct = effect () => try authorize(Effect.succeed(5))
+export const span = effect (k: string): number!! =>
+  try withSpan(effect { return k.length }, "name")
+export const block = effect () => { return try authorize(Effect.succeed(1)) }
+`
+	_, file, _, _ := editorProgram(t, source)
+	dir := filepath.Dir(file.FileName().AsString())
+	if err := os.WriteFile(filepath.Join(dir, "tsconfig.json"), []byte(`{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"noEmit":true},"files":["main.vibe"]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	fs := bundled.WrapFS(osvfs.FS())
+	configPath := tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(dir, "tsconfig.json")))
+	config, errors := tsoptions.GetParsedCommandLineOfConfigFile(configPath, &core.CompilerOptions{}, nil, fs, nil)
+	if len(errors) != 0 {
+		t.Fatalf("config: %v", errors)
+	}
+	result := FixProjectWithOptions(t.Context(), fs, bundled.LibPath(), config, FixOptions{VIPOnly: true})
+	fixed := result.Files[file.FileName()]
+	if fixed == nil || fixed.Text != want {
+		got := ""
+		if fixed != nil {
+			got = fixed.Text
+		}
+		t.Fatalf("--fix-vip-only wrote\n%s\nwant\n%s\nrefused %+v", got, want, result.Refused)
+	}
+	if err := os.WriteFile(file.FileName().AsString(), []byte(want), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	again := FixProjectWithOptions(t.Context(), fs, bundled.LibPath(), config, FixOptions{VIPOnly: true})
+	if len(again.Files) != 0 {
+		t.Errorf("a second run wrote %+v", again.Files[file.FileName()])
+	}
+}
+
 // smithers' agent/fs (SchemaBridge.vibe, Route.vibe), on VibeLang 0.0.8: a
 // retired try hatch with a handler by name. The second argument is the
 // mapper whatever its form (D330), so EK4616's fix makes it the catch, and
