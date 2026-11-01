@@ -44,10 +44,10 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `console.trace` | `try Console.trace(message)` |
 | `console.warn` | `try Console.warn(message)` |
 | `crypto` | `try (try SecureRandom.SecureRandom).randomBytes(size)` |
-| `crypto.createCipheriv` | `try (try Aead.Aead).encrypt(key, plaintext, { nonce })` |
-| `crypto.createDecipheriv` | `try (try Aead.Aead).decrypt(key, ciphertext, { nonce })` |
+| `crypto.createCipheriv` | `try (try Aead.Aead).encrypt(aeadKey, plaintext, { nonce })` |
+| `crypto.createDecipheriv` | `try (try Aead.Aead).decrypt(aeadKey, ciphertext, { nonce })` |
 | `crypto.createHash` | `try (try Digest.Digest).digest(Digest.sha256, bytes)` |
-| `crypto.createHmac` | `try (try Mac.Mac).sign(key, data)` |
+| `crypto.createHmac` | `try (try Mac.Mac).sign(macKey, data)` |
 | `crypto.createSign` | `try (try Signature.Signature).sign(privateKey, data)` |
 | `crypto.createVerify` | `try (try Signature.Signature).verify(publicKey, signature, data)` |
 | `crypto.generateKeyPair` | `try (try Signature.Signature).generateKeyPair(Signature.ed25519)` |
@@ -57,12 +57,12 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `crypto.randomInt` | `try (try SecureRandom.SecureRandom).intBetween(min, max)` |
 | `crypto.randomUUID` | `try (try SecureRandom.SecureRandom).uuidV4()` |
 | `crypto.sign` | `try (try Signature.Signature).sign(privateKey, data)` |
-| `crypto.subtle` | `try (try Mac.Mac).sign(key, data)` |
+| `crypto.subtle` | `try (try Mac.Mac).sign(macKey, data)` |
 | `crypto.subtle.digest` | `try (try Digest.Digest).digest(Digest.sha256, bytes)` |
 | `crypto.subtle.sign` | `try (try Signature.Signature).sign(privateKey, data)` |
 | `crypto.subtle.verify` | `try (try Signature.Signature).verify(publicKey, signature, data)` |
 | `crypto.verify` | `try (try Signature.Signature).verify(publicKey, signature, data)` |
-| `crypto.webcrypto` | `try (try Mac.Mac).sign(key, data)` |
+| `crypto.webcrypto` | `try (try Mac.Mac).sign(macKey, data)` |
 | `dispatchEvent` | `Stream.fromEventListener(target, "message")` |
 | `document` | escape to TypeScript for now: Effect has no service for the DOM; UI code belongs in a .ts or .tsx file, such as a React component's. |
 | `document.addEventListener` | `BrowserStream.fromEventListenerDocument("visibilitychange")` |
@@ -197,7 +197,7 @@ VibeLang's experimental services fill what Effect lacks, provided by `Experiment
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-14, VIP-33
-effect function experimental(path: string, pid: number, killSignal: ChildProcess.Signal, name: string, key: Redacted.Redacted<Uint8Array>, privateKey: Redacted.Redacted<Uint8Array>, publicKey: Uint8Array, signature: Uint8Array, data: Uint8Array) {
+effect function experimental(path: string, pid: number, killSignal: ChildProcess.Signal, name: string, macKey: Mac.Key, aeadKey: Aead.Key, privateKey: Signature.PrivateKey, publicKey: Signature.PublicKey, signature: Uint8Array, data: Uint8Array, plaintext: Uint8Array, ciphertext: Uint8Array, nonce: Uint8Array) {
   const fs = try Experimental.FileSystem.FileSystem
   const id = try (try Experimental.Process.Process).pid
   const platform = try (try Experimental.Process.Process).platform
@@ -212,11 +212,11 @@ effect function experimental(path: string, pid: number, killSignal: ChildProcess
   const running = try (try Experimental.Process.Process).isRunning(pid)
   try fs.access(path, { executable: true })
   const file = try fs.open(path, { nonBlocking: true })
-  const mac = try (try Mac.Mac).sign(key, data)
+  const mac = try (try Mac.Mac).sign(macKey, data)
   const signed = try (try Signature.Signature).sign(privateKey, data)
   const valid = try (try Signature.Signature).verify(publicKey, signature, data)
-  const sealed = try (try Aead.Aead).encrypt(key, plaintext, { nonce })
-  const opened = try (try Aead.Aead).decrypt(key, ciphertext, { nonce })
+  const sealed = try (try Aead.Aead).encrypt(aeadKey, plaintext, { nonce })
+  const opened = try (try Aead.Aead).decrypt(aeadKey, ciphertext, { nonce })
   const pair = try (try Signature.Signature).generateKeyPair(Signature.ed25519)
   const lock = try (try Experimental.Locks.Locks).hold(name)
   return { id, platform, arch, executable, versions, memory, host, cores, origin, running, file, mac, signed, valid, sealed, opened, pair, lock }
