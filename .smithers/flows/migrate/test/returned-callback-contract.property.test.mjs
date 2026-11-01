@@ -65,6 +65,31 @@ test("returned callback contracts never borrow nested, nonreturned, ambiguous or
   }
 })
 
+test("callback return proofs refuse Promise and iterator wrappers", native, async () => {
+  const wrapped = JSON.parse(readFileSync(new URL("./corpus/foldkit-websocket-wrapped-callback.json", import.meta.url)))
+  for (const c of wrapped.cases) {
+    const result = await decision(c.before, c.after)
+    assert.equal(result.accepted.size, 0, JSON.stringify({ kind: c.kind, decisions: result.decisions }))
+  }
+})
+
+test("generated return wrappers keep the callback channel inside the returned Effect", native, async () => {
+  // The accepted ruling concerns a function returning Effect.callback<A, E>;
+  // an async function returns a Promise, and a generator returns an iterator.
+  await fc.assert(fc.asyncProperty(fc.constantFrom("plain", "async", "generator", "async-generator"),
+    fc.constantFrom("Error", "Error | TypeError"), fc.constantFrom("acquire", "connect", "open"),
+    async (kind, channel, name) => {
+      const call = "Effect.callback<number, " + channel + ">(resume => { resume(Effect.fail(new Error('Failed to connect to WebSocket'))) })"
+      const producer = kind === "plain" ? "() => " + call : kind === "async" ? "async () => " + call
+        : (kind === "generator" ? "function*" : "async function*") + " () { return " + call + " }"
+      const oldCall = "Effect.callback<number, Error>(resume => { resume(Effect.fail(new Error('Failed to connect to WebSocket'))) })"
+      const before = corpus.before.replace("() => " + oldCall, producer).replace("acquire:", name + ":")
+      const after = corpus.after.replace("number!Error", "number!" + channel).replace("acquire:", name + ":")
+      const result = await decision(before, after)
+      assert.equal(result.accepted.size, kind === "plain" ? 1 : 0, JSON.stringify({ kind, channel, name, decisions: result.decisions }))
+    }), { seed: 11717065, numRuns: 100 })
+})
+
 test("generated callback channels, owner names and requirements preserve only the original written failure", native, async () => {
   // foldkit agent 22:20Z ruling: "a function returning Effect.callback<T, E> declares channel E";
   // 18:45Z global-Error ruling still requires the same written channel, count and owner.

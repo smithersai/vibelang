@@ -1,0 +1,21 @@
+{
+  "key": "preserved-errors:wrapped-return-callback-contract",
+  "source": "Spec-neighborhood mutations of the minimized foldkit-117 WebSocket callback contract; these wrapped producers are controls, not an additional original Foldkit witness. Plain and async functions keep TypeScript semantics. Promise/iterator wrappers do not declare the returned Effect value's failure channel.",
+  "cases": [
+    {
+      "kind": "async",
+      "before": "import { Effect } from 'effect'\nexport const managedResources = () => ({ chatSocket: { acquire: async () => Effect.callback<number, Error>(resume => { resume(Effect.fail(new Error('Failed to connect to WebSocket'))) }) } })",
+      "after": "export const managedResources = () => ({ chatSocket: { acquire: effect (): number!Error => (effect { throw new Error('connect'); }) catch effect (error) => { throw new Error('Failed to connect to WebSocket'); } } })"
+    },
+    {
+      "kind": "generator",
+      "before": "import { Effect } from 'effect'\nexport const managedResources = () => ({ chatSocket: { acquire: function* () { return Effect.callback<number, Error>(resume => { resume(Effect.fail(new Error('Failed to connect to WebSocket'))) }) } } })",
+      "after": "export const managedResources = () => ({ chatSocket: { acquire: effect (): number!Error => (effect { throw new Error('connect'); }) catch effect (error) => { throw new Error('Failed to connect to WebSocket'); } } })"
+    },
+    {
+      "kind": "async-generator",
+      "before": "import { Effect } from 'effect'\nexport const managedResources = () => ({ chatSocket: { acquire: async function* () { return Effect.callback<number, Error>(resume => { resume(Effect.fail(new Error('Failed to connect to WebSocket'))) }) } } })",
+      "after": "export const managedResources = () => ({ chatSocket: { acquire: effect (): number!Error => (effect { throw new Error('connect'); }) catch effect (error) => { throw new Error('Failed to connect to WebSocket'); } } })"
+    }
+  ]
+}

@@ -108,7 +108,7 @@ function contracts(ast, source = "") {
   // when migration replaces the raw callback with a platform service. Do not
   // search inside nested callbacks or borrow a call whose result is discarded.
   const returnedCallback = fn => {
-    if (fn.returnType) return null
+    if (fn.returnType || fn.async || fn.generator) return null
     const body = fn.body?.type === "BlockStatement" && fn.body.body.length === 1 &&
       fn.body.body[0].type === "ReturnStatement" ? fn.body.body[0].argument : fn.body
     return body?.type === "CallExpression" && api(body.callee) === "callback"
