@@ -1,0 +1,7 @@
+{
+  "finding": "foldkit-114 (reported as foldkit-17063)",
+  "source": "import { writeFileSync } from \"node:fs\"\nconst fixture = `import { Effect } from \"effect\"\nexport const program = Effect.succeed(1)\n`\nwriteFileSync(\"fixture.ts\", fixture)\n",
+  "path": "scripts/check-create-foldkit-app-smoke.ts",
+  "expected": "none",
+  "oracle": "TypeScript's meaning outside Effect code"
+}
