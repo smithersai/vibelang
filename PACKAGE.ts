@@ -113,6 +113,7 @@ const specTests = [
   "TestPlatformBoundaryHomesQuoted",
   "TestServiceNativeMemberTypesQuoted",
   "TestPlatformConstructorBindingsQuoted",
+  "TestOxlintNamespaceContractQuoted",
   "TestDoForTryDiagnosticOwnerQuoted",
   "TestDoDeclarationBytesQuoted",
   "TestDoContextualResultFuzzQuoted",
