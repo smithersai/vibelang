@@ -77,10 +77,11 @@ differ.
 A `node_modules` symlink in any of these directories, including `.smithers`,
 is provisioned by whoever made the link. `scripts/ci.sh` uses it as is and never
 runs `bun install` through it. The link owner must keep that install current.
-For other existing installs outside `.smithers`, the script checks the installed
-Effect version against the package's exact pin, including `devDependencies` and
-`peerDependencies`, and reuses a matching tree. Stale or missing local trees and
-local `.smithers` installs run `bun install --frozen-lockfile`.
+For every ordinary dependency tree, including an existing one, the script runs
+`bun install --frozen-lockfile` before starting the graph. An unchanged Effect
+version does not prove that the other dependencies match the current manifest
+and lockfile. Bun verifies unchanged trees too. Provisioned `node_modules`
+symlinks retain the separate owner responsibility above.
 
 `scripts/ci.sh` then runs `scripts/share-effect.mjs`, which links the Effect
 packages in `packages/runtime/node_modules` to the copies in `experiments`. A

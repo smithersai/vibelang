@@ -14,7 +14,10 @@ function fixture(t) {
   const write = (name, text) => { fs.mkdirSync(path.dirname(name), { recursive: true }); fs.writeFileSync(name, text) }
   const executable = (name, text) => { write(name, text); fs.chmodSync(name, 0o755) }
   const installed = (dir, version) => write(path.join(dir, "effect/package.json"), JSON.stringify({ version }))
-  for (const file of ["ci.sh", "check-effect-install.mjs", "share-effect.mjs"]) {
+  // Keep the old helper when testing the regression against an older checkout.
+  const files = ["ci.sh", "share-effect.mjs"]
+  if (fs.existsSync(new URL("./check-effect-install.mjs", import.meta.url))) files.push("check-effect-install.mjs")
+  for (const file of files) {
     write(path.join(root, "scripts", file), fs.readFileSync(new URL("./" + file, import.meta.url)))
   }
   for (const dir of directories) {
@@ -70,7 +73,7 @@ for (const kind of ["shared symlink", "local install", "missing install"]) {
     } else if (kind === "missing install") fs.rmSync(modules, { recursive: true })
     const calls = f.run()
     assert.ok(calls.every(call => call.modules !== shared), "bun install must never write into the shared install")
-    assert.deepEqual(calls.map(call => call.dir), kind === "shared symlink" ? [] : [path.join(f.root, ".smithers")])
+    assert.deepEqual(calls.map(call => call.dir), directories.filter(dir => kind !== "shared symlink" || dir !== ".smithers").map(dir => path.join(f.root, dir)))
     for (const call of calls) assert.deepEqual(call.args, ["install", "--frozen-lockfile"])
     if (kind === "shared symlink") assert.equal(fs.readlinkSync(modules), shared)
   })
@@ -84,21 +87,105 @@ for (const dir of directories.slice(1)) {
     f.installed(shared, "4.0.6")
     fs.rmSync(modules, { recursive: true })
     fs.symlinkSync(shared, modules, "dir")
-    assert.deepEqual(f.run().map(call => call.dir), [path.join(f.root, ".smithers")])
+    assert.deepEqual(f.run().map(call => call.dir), directories.filter(candidate => candidate !== dir).map(candidate => path.join(f.root, candidate)))
     assert.equal(fs.readlinkSync(modules), shared)
     assert.equal(JSON.parse(fs.readFileSync(path.join(shared, "effect/package.json"))).version, "4.0.6")
   })
 }
 
 for (const kind of ["stale", "matching", "missing"]) {
-  test("CI checks the Effect pin of a local install: " + kind, t => {
+  test("CI frozen-verifies a local install, including a matching Effect pin: " + kind, t => {
     const f = fixture(t)
     const modules = path.join(f.root, "packages/runtime/node_modules")
     if (kind === "missing") fs.rmSync(modules, { recursive: true })
     else f.installed(modules, kind === "stale" ? "4.0.6" : "4.1.1")
-    const expected = [path.join(f.root, ".smithers")]
-    if (kind !== "matching") expected.push(path.join(f.root, "packages/runtime"))
+    const expected = directories.map(dir => path.join(f.root, dir))
     assert.deepEqual(f.run().map(call => call.dir), expected)
     assert.equal(JSON.parse(fs.readFileSync(path.join(modules, "effect/package.json"))).version, "4.1.1")
   })
 }
+
+
+test("CI verifies a changed non-Effect dependency even when the Effect pin matches", t => {
+  const f = fixture(t)
+  const dir = path.join(f.root, "experiments")
+  const manifest = path.join(dir, "package.json")
+  const data = JSON.parse(fs.readFileSync(manifest, "utf8"))
+  data.devDependencies["fixture-tool"] = "2.0.0"
+  fs.writeFileSync(manifest, JSON.stringify(data))
+  fs.writeFileSync(path.join(dir, "bun.lock"), "updated-lockfile")
+  const calls = f.run()
+  assert.ok(calls.some(call => call.dir === dir), "an Effect version match does not prove a lockfile match")
+  assert.deepEqual(calls.find(call => call.dir === dir).args, ["install", "--frozen-lockfile"])
+})
+
+test("CI never runs an installer through provisioned shared trees", t => {
+  const f = fixture(t)
+  for (const dir of directories) {
+    const modules = path.join(f.root, dir, "node_modules")
+    const shared = path.join(f.temp, "shared", dir, "node_modules")
+    fs.mkdirSync(path.dirname(shared), { recursive: true })
+    fs.renameSync(modules, shared)
+    fs.symlinkSync(shared, modules, "dir")
+  }
+  assert.deepEqual(f.run(), [])
+  for (const dir of directories) assert.ok(fs.lstatSync(path.join(f.root, dir, "node_modules")).isSymbolicLink())
+})
+
+test("real Bun repairs a stale non-Effect package and rechecks an unchanged tree", t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "vibe ci real install-"))
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }))
+  const put = (name, data) => {
+    const target = path.join(root, name)
+    fs.mkdirSync(path.dirname(target), { recursive: true })
+    fs.writeFileSync(target, data)
+    return target
+  }
+  const manifest = (name, data) => put(name + "/package.json", JSON.stringify(data) + "\n")
+  for (const name of ["ci.sh", "share-effect.mjs", "check-effect-install.mjs"]) {
+    const source = new URL("./" + name, import.meta.url)
+    if (fs.existsSync(source)) put("scripts/" + name, fs.readFileSync(source))
+  }
+  for (const [name, version] of [["effect", "4.1.0"], ["tool-v1", "1.0.0"], ["tool-v2", "2.0.0"]]) {
+    manifest("deps/" + name, { name: name === "effect" ? name : "fixture-tool", version })
+  }
+  manifest("deps/smthrs", { name: "fixture-smthrs", version: "1.0.0", bin: { smthrs: "cli.cjs" } })
+  fs.chmodSync(put("deps/smthrs/cli.cjs", "#!" + process.execPath + "\n" +
+    'require("node:fs").appendFileSync(process.env.CI_REAL_TRACE, JSON.stringify(process.argv.slice(2)) + "\\n")\n'), 0o755)
+  const manifests = new Map()
+  for (const dir of directories) {
+    const dependencies = { effect: "file:" + path.join(root, "deps/effect") }
+    if (dir === ".smithers") dependencies["fixture-smthrs"] = "file:" + path.join(root, "deps/smthrs")
+    if (dir === "experiments") dependencies["fixture-tool"] = "file:" + path.join(root, "deps/tool-v1")
+    manifests.set(dir, { private: true, dependencies })
+    manifest(dir, manifests.get(dir))
+    const installed = spawnSync("bun", ["install", "--no-cache"], {
+      cwd: path.join(root, dir), encoding: "utf8", timeout: 30_000
+    })
+    assert.equal(installed.status, 0, installed.stdout + installed.stderr)
+  }
+  manifest("packages/ts-mapper", { devDependencies: { typescript: "7.1.0-fixture" } })
+  fs.chmodSync(put("packages/ts-mapper/test/.cache/typescript-7.1.0-fixture/node_modules/.bin/tsc", "#!/bin/sh\nexit 0\n"), 0o755)
+  const installedVersion = name => JSON.parse(fs.readFileSync(path.join(root, "experiments/node_modules", name, "package.json"), "utf8")).version
+  manifests.get("experiments").dependencies["fixture-tool"] = "file:" + path.join(root, "deps/tool-v2")
+  manifest("experiments", manifests.get("experiments"))
+  const lock = spawnSync("bun", ["install", "--lockfile-only", "--no-cache"], {
+    cwd: path.join(root, "experiments"), encoding: "utf8", timeout: 30_000
+  })
+  assert.equal(lock.status, 0, lock.stdout + lock.stderr)
+  assert.equal(installedVersion("fixture-tool"), "1.0.0", "fixture must retain the old installation after the lockfile update")
+  const trace = path.join(root, "graph.jsonl")
+  for (const phase of ["repair", "unchanged"]) {
+    const start = performance.now()
+    const result = spawnSync("sh", ["scripts/ci.sh", "//fixture", "--jobs", "8"], {
+      cwd: root, encoding: "utf8", timeout: 30_000,
+      env: { ...process.env, CI_REAL_TRACE: trace }
+    })
+    t.diagnostic(phase + " CI: " + (performance.now() - start).toFixed(0) + " ms (local fixture packages)")
+    assert.equal(result.status, 0, result.stdout + result.stderr)
+    assert.equal(installedVersion("effect"), "4.1.0")
+    assert.equal(installedVersion("fixture-tool"), "2.0.0", "CI must install the current lockfile before running the graph")
+  }
+  assert.deepEqual(fs.readFileSync(trace, "utf8").trim().split("\n").map(line => JSON.parse(line)),
+    Array.from({ length: 2 }, () => ["ci", "//fixture", "--jobs", "8", "--workspace", root, "--ui", "plain"]))
+})

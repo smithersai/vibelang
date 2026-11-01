@@ -16,10 +16,10 @@ cd "$root"
 
 # Installs are not targets: their lockfiles are the identity each target keys
 # on. A node_modules symlink is provisioned by its owner: use it as is, without
-# installing through it. Reuse other existing Effect trees only at the exact pin.
+# installing through it. Every ordinary install is verified against its lockfile;
+# an unchanged Effect version says nothing about the other dependencies.
 install() {
 	[ ! -L "$1/node_modules" ] || return 0
-	if [ "$1" != .smithers ] && [ -e "$1/node_modules" ] && node scripts/check-effect-install.mjs "$1"; then return; fi
 	(cd "$1" && bun install --frozen-lockfile >/dev/null)
 }
 for dir in .smithers packages/runtime packages/compiler experiments docs/tools; do install "$dir"; done
