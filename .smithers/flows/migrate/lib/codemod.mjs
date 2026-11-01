@@ -17,6 +17,7 @@ import { isDeclarationFile, quote, run } from "./util.mjs"
  */
 export function pathAliases(ts, root) {
   const byConfig = new Map()
+  const rewriteByConfig = new Map()
   const host = { ...ts.sys, onUnRecoverableConfigFileDiagnostic() {} }
   // TypeScript tries an exact pattern first, then the longest prefix before the *.
   const rank = (pattern) => pattern.includes("*") ? pattern.indexOf("*") : Number.MAX_SAFE_INTEGER
@@ -26,13 +27,14 @@ export function pathAliases(ts, root) {
       if (dir === "." || dir === "/") return undefined
     }
   }
-  return (file) => {
+  const aliasesFor = (file) => {
     const config = nearest(file)
     if (config === undefined) return []
     if (!byConfig.has(config)) {
       let aliases = []
       try {
         const parsed = ts.getParsedCommandLineOfConfigFile(join(root, config), {}, host)
+        rewriteByConfig.set(config, parsed?.options.rewriteRelativeImportExtensions === true)
         const paths = parsed?.options.paths ?? {}
         const base = parsed?.options.pathsBasePath ?? parsed?.options.baseUrl ?? posix.dirname(join(root, config))
         aliases = Object.entries(paths)
@@ -43,6 +45,11 @@ export function pathAliases(ts, root) {
     }
     return byConfig.get(config)
   }
+  aliasesFor.rewriteRelativeImportExtensions = (file) => {
+    aliasesFor(file)
+    return rewriteByConfig.get(nearest(file)) === true
+  }
+  return aliasesFor
 }
 
 /** .ts and .mts source modules become .vibe. Declaration files stay put. */
@@ -339,7 +346,13 @@ export function rewriteImports(root, scope, moved, aliases, { read = (file) => r
       const aliased = resolveRelative(file, i.specifier, files) === undefined ? resolveAliased(file, i.specifier, files, aliases) : undefined
       const target = aliased?.target ?? resolveRelative(file, i.specifier, files)
       if (!target || (only && !only.has(file) && !only.has(target))) continue
-      const next = rewriteSpecifier(file, i.specifier, target, { mock: i.kind === "mock", base: aliased?.base })
+      let next = rewriteSpecifier(file, i.specifier, target, { mock: i.kind === "mock", base: aliased?.base })
+      if (aliased && target.endsWith(".vibe") && aliases?.rewriteRelativeImportExtensions?.(file)) {
+        // Native TS2877 rejects non-relative source names under this option.
+        // Use the same resolved source through a name the compiler can emit.
+        next = posix.relative(posix.dirname(file), target)
+        if (!next.startsWith(".")) next = "./" + next
+      }
       if (next !== i.specifier) {
         changes.push({ start: i.start, end: i.end, text: next })
         edits.push({ file, from: i.specifier, to: next })

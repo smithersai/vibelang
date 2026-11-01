@@ -1,0 +1,10 @@
+{
+  "repo": "opencode",
+  "pattern": "TS2877 after alias source-name rewrite under rewriteRelativeImportExtensions",
+  "files": {
+    "package.json": "{\"type\":\"module\"}",
+    "tsconfig.json": "{\"compilerOptions\":{\"module\":\"Preserve\",\"moduleResolution\":\"Bundler\",\"target\":\"ES2022\",\"rootDir\":\".\",\"allowArbitraryExtensions\":true,\"allowImportingTsExtensions\":true,\"rewriteRelativeImportExtensions\":true,\"paths\":{\"@/*\":[\"./src/*\"]}},\"include\":[\"src/**/*\"]}",
+    "src/a.ts": "export const x = 42\n",
+    "src/b.ts": "import { x } from \"@/a\"; console.log(x)\n"
+  }
+}
