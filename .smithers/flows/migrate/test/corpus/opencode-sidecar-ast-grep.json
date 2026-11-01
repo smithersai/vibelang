@@ -1,0 +1,16 @@
+{
+  "issue": "opencode-34: a TypeScript lint rule inspects both a Vibe source and its declaration",
+  "input": {
+    "directory": "src/effect",
+    "name": "delete",
+    "quoted": true
+  },
+  "source": "export type Payload = string",
+  "rule": {
+    "language": "TypeScript",
+    "files": [
+      "src/effect/**/*.ts"
+    ],
+    "kind": "type_alias_declaration"
+  }
+}

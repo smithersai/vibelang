@@ -4,7 +4,10 @@
 // nothing more to fix, recording each rewrite it applied and each it refused.
 import { spawnSync } from "node:child_process"
 import { existsSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs"
-import { join, posix } from "node:path"
+import { join, posix, relative, resolve } from "node:path"
+import { fileURLToPath } from "node:url"
+import { loadTypeScript } from "./declarations.mjs"
+import { sidecarConfigIn, sidecarPath, sidecarSettings } from "./sidecar-config.mjs"
 import { applyEdits, parseImports, resolveAliased, resolveRelative } from "./imports.mjs"
 import { assertFinished, parseDiagnostics } from "./diagnostics.mjs"
 import { isDeclarationFile, quote, run } from "./util.mjs"
@@ -160,18 +163,38 @@ const emittedOf = (stem) => "./.vibelang/js/" + posix.normalize(stem).replace(/^
  * with ./x.vibe a consumer's inferred type that names one of the module's
  * types is TS2883.
  */
-function pointAt(value, source, { condition, entry = false, bare = false } = {}) {
+function pointAt(value, source, { condition, entry = false, bare = false, sidecar = besideSidecar } = {}) {
   if (typeof value === "string") {
     if (posix.normalize(value) !== source) return value
     const stem = value.replace(/\.(?:ts|mts)$/, "")
-    if (typeConditions.has(condition)) return stem + ".d.vibe.ts"
+    if (typeConditions.has(condition)) return sidecar(stem)
     if (condition === "main" || condition === "module" || condition === "vibelang-source" || bare) return stem + ".vibe"
     const runtime = { "vibelang-source": stem + ".vibe", default: emittedOf(stem) }
-    return entry ? { types: stem + ".d.vibe.ts", ...runtime } : runtime
+    return entry ? { types: sidecar(stem), ...runtime } : runtime
   }
-  if (Array.isArray(value)) return value.map((item) => pointAt(item, source, { condition, bare }))
-  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, pointAt(item, source, { condition: key, bare })]))
+  if (Array.isArray(value)) return value.map((item) => pointAt(item, source, { condition, bare, sidecar }))
+  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, pointAt(item, source, { condition: key, bare, sidecar })]))
   return value
+}
+
+const besideSidecar = (stem) => stem + ".d.vibe.ts"
+
+/**
+ * The sidecar path of a package-relative module stem, ./src/x: beside it,
+ * ./src/x.d.vibe.ts, or under the vibe.sidecarDir the package's tsconfig.json
+ * names, ./.vibe/declarations/src/x.d.vibe.ts (decided detail 268).
+ */
+export function sidecarOf(root, dir) {
+  const home = resolve(root, dir)
+  const config = sidecarConfigIn(home)
+  if (!config) return besideSidecar
+  const ts = loadTypeScript([root, fileURLToPath(new URL("../../../", import.meta.url))])
+  const settings = sidecarSettings(config, ts)
+  if (!settings) return besideSidecar
+  return stem => {
+    const path = relative(home, sidecarPath(resolve(home, stem + ".vibe"), settings)).replaceAll("\\", "/")
+    return path.startsWith("./") || path.startsWith("../") ? path : "./" + path
+  }
 }
 
 /**
@@ -179,25 +202,27 @@ function pointAt(value, source, { condition, entry = false, bare = false } = {})
  * .vibe source or its sidecar names the .ts file, and an entry pointAt wrote
  * from a bare path is that path again.
  */
-function pointBack(value, vibe, extension = ".ts") {
+function pointBack(value, vibe, extension = ".ts", sidecar = besideSidecar) {
   const stem = vibe.slice(0, -".vibe".length)
+  const sidecars = [stem + ".d.vibe.ts", posix.normalize(sidecar(stem))]
   const ts = (target) => {
     if (posix.normalize(target) === vibe) return target.slice(0, -".vibe".length) + extension
     if (posix.normalize(target) === stem + ".d.vibe.ts") return target.slice(0, -".d.vibe.ts".length) + extension
+    if (sidecars.includes(posix.normalize(target))) return "./" + stem + extension
     return target
   }
   const is = (target, path) => typeof target === "string" && posix.normalize(target) === path
   if (typeof value === "string") return ts(value)
-  if (Array.isArray(value)) return value.map((item) => pointBack(item, vibe, extension))
+  if (Array.isArray(value)) return value.map((item) => pointBack(item, vibe, extension, sidecar))
   if (value && typeof value === "object") {
     const keys = Object.keys(value).sort().join(",")
     const emitted = posix.normalize(emittedOf(stem))
     // What pointAt wrote, the source condition naming the .ts file's spelling.
     if (keys === "default,vibelang-source" && is(value["vibelang-source"], vibe) && is(value.default, emitted)) return ts(value["vibelang-source"])
-    if (keys === "default,types,vibelang-source" && is(value.types, stem + ".d.vibe.ts") && is(value["vibelang-source"], vibe) && is(value.default, emitted)) return ts(value["vibelang-source"])
+    if (keys === "default,types,vibelang-source" && typeof value.types === "string" && sidecars.includes(posix.normalize(value.types)) && is(value["vibelang-source"], vibe) && is(value.default, emitted)) return ts(value["vibelang-source"])
     // An earlier toolchain's entry, { types, default: ./x.vibe }.
-    if (keys === "default,types" && is(value.types, stem + ".d.vibe.ts") && is(value.default, vibe)) return ts(value.default)
-    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, pointBack(item, vibe, extension)]))
+    if (keys === "default,types" && typeof value.types === "string" && sidecars.includes(posix.normalize(value.types)) && is(value.default, vibe)) return ts(value.default)
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, pointBack(item, vibe, extension, sidecar)]))
   }
   return value
 }
@@ -243,6 +268,7 @@ export function rewriteExports(root, renames, { write = (file, text) => writeFil
   for (const [dir, moved] of owners) {
     const manifest = posix.join(dir, "package.json")
     const pkg = JSON.parse(readFileSync(join(root, manifest), "utf8"))
+    const sidecar = sidecarOf(root, dir)
     let changed = false
     for (const { from, to } of moved) {
       const source = posix.relative(dir, from)
@@ -252,14 +278,14 @@ export function rewriteExports(root, renames, { write = (file, text) => writeFil
       }
       for (const field of modulePaths) {
         if (typeof pkg[field] !== "string" || posix.normalize(pkg[field]) !== source) continue
-        pkg[field] = pointAt(pkg[field], source, { condition: field })
+        pkg[field] = pointAt(pkg[field], source, { condition: field, sidecar })
         record({ field })
       }
       for (const field of moduleMaps) {
         const map = pkg[field]
         if (!isSubpathMap(map)) {
           if (targetsOf(map).some((target) => posix.normalize(target) === source)) {
-            pkg[field] = pointAt(map, source, { entry: !bareEntries, bare: bareEntries })
+            pkg[field] = pointAt(map, source, { entry: !bareEntries, bare: bareEntries, sidecar })
             record({ field })
           }
           continue
@@ -268,13 +294,13 @@ export function rewriteExports(root, renames, { write = (file, text) => writeFil
         for (const [key, value] of Object.entries(map)) {
           if (!key.includes("*")) {
             if (targetsOf(value).some((target) => posix.normalize(target) === source)) record({ field, key })
-            entries.push([key, pointAt(value, source, { entry: !bareEntries, bare: bareEntries })])
+            entries.push([key, pointAt(value, source, { entry: !bareEntries, bare: bareEntries, sidecar })])
             continue
           }
           const star = targetsOf(value).map((target) => starOf(target, `./${source}`)).find((match) => match !== undefined)
           const exact = star === undefined ? undefined : key.replace("*", star)
           if (exact !== undefined && !(exact in map) && !entries.some(([name]) => name === exact)) {
-            entries.push([exact, pointAt(mapTargets(value, (target) => target.replaceAll("*", star)), source, { entry: !bareEntries, bare: bareEntries })])
+            entries.push([exact, pointAt(mapTargets(value, (target) => target.replaceAll("*", star)), source, { entry: !bareEntries, bare: bareEntries, sidecar })])
             record({ field, key: exact, added: true })
           }
           entries.push([key, value])
@@ -300,9 +326,10 @@ export function restoreExports(root, edits, module) {
     if (!existsSync(path)) continue
     const pkg = JSON.parse(readFileSync(path, "utf8"))
     const source = posix.relative(posix.dirname(edit.manifest), vibe)
+    const sidecar = sidecarOf(root, posix.dirname(edit.manifest))
     if (edit.added) delete pkg[edit.field][edit.key]
-    else if (edit.key !== undefined) pkg[edit.field][edit.key] = pointBack(pkg[edit.field][edit.key], source, posix.extname(module))
-    else pkg[edit.field] = pointBack(pkg[edit.field], source, posix.extname(module))
+    else if (edit.key !== undefined) pkg[edit.field][edit.key] = pointBack(pkg[edit.field][edit.key], source, posix.extname(module), sidecar)
+    else pkg[edit.field] = pointBack(pkg[edit.field], source, posix.extname(module), sidecar)
     writeFileSync(path, JSON.stringify(pkg, null, 2) + "\n")
   }
   return undone

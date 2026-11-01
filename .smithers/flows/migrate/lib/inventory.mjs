@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url"
 import { loadTypeScript } from "./declarations.mjs"
 import { testBundleDeferrals } from "./test-bundles.mjs"
 import { effectUse, isEffectSpecifier, parseImports, resolveAlias, resolveRelative } from "./imports.mjs"
+import { describe, enumerates } from "./enumerations.mjs"
 import { isDeclarationFile, readJson, rel } from "./util.mjs"
 
 const skipDirectories = new Set(["node_modules", "dist", "build", "coverage", ".git", ".jj", ".turbo", ".vite", ".cache"])
@@ -81,8 +82,10 @@ export function readCoverage(root, packages) {
  * paths maps a package's directory to its tsconfig's `paths`, with
  * repository-relative substitutions (tsconfigPaths), so an import through an
  * alias, `~/main`, is a local import as a relative one is.
+ * enumerations are setup's findings of code that lists *.ts files: a file
+ * under one records each in enumeratedBy, and stays .ts (decided detail 268).
  */
-export function buildInventory({ root, packages, tokens = {}, coverage = {}, paths = {} }) {
+export function buildInventory({ root, packages, tokens = {}, coverage = {}, paths = {}, enumerations = [] }) {
   const files = []
   for (const pkg of packages) for (const dir of pkg.sources) for (const path of listSources(root, posix.join(pkg.dir, dir))) files.push({ path, package: pkg.dir })
   const known = new Set(files.map((f) => f.path))
@@ -98,9 +101,11 @@ export function buildInventory({ root, packages, tokens = {}, coverage = {}, pat
       if (target) local.push(target)
       else if (!i.specifier.startsWith(".")) external.push(i.specifier)
     }
+    const enumeratedBy = enumerations.filter((finding) => finding.file !== path && enumerates(finding, path)).map(describe)
     return {
       path,
       package: pkg,
+      ...(enumeratedBy.length ? { enumeratedBy } : {}),
       test: isTestFile(path) || isFixtureFile(path),
       namedBy: namedBy.get(posix.basename(path)) ?? null,
       bytes: statSync(join(root, path)).size,

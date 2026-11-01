@@ -252,7 +252,10 @@ test("ast-grep scan applies the migrated TS rule to .vibe and VibeLang syntax", 
   wireDeveloperTools({ root, specsFor })
   const build = spawnSync(process.execPath, [new URL("../../../../packages/compiler/bin/vibelang-ast-grep", import.meta.url).pathname, join(root, ".vibelang/vibelang-parser")], { encoding: "utf8" })
   assert.equal(build.status, 0, build.stderr)
-  const run = () => spawnSync(join(deps, ".bin/ast-grep"), ["scan", "--config", "sgconfig.yml", "."], { cwd: root, encoding: "utf8" })
+  const cli = join(deps, ".bin/ast-grep")
+  const help = spawnSync(cli, ["scan", "--help"], { encoding: "utf8" })
+  const custom = help.stdout?.includes("--custom-languages") ? ["--custom-languages", "allow"] : []
+  const run = () => spawnSync(cli, ["scan", ...custom, "--config", "sgconfig.yml", "."], { cwd: root, encoding: "utf8" })
   const bad = run()
   assert.equal(bad.status, 1, bad.stdout + bad.stderr)
   assert.match(bad.stdout + bad.stderr, /no-debugger-vibelang/)

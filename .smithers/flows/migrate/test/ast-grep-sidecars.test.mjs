@@ -74,7 +74,13 @@ test("ast-grep scan reports a .vibe module's finding once, not again in its side
   wireDeveloperTools({ root, specsFor })
   const build = spawnSync(process.execPath, [new URL("../../../../packages/compiler/bin/vibelang-ast-grep", import.meta.url).pathname, join(root, ".vibelang/vibelang-parser")], { encoding: "utf8" })
   assert.equal(build.status, 0, build.stderr)
-  const scan = spawnSync(join(deps, ".bin/ast-grep"), ["scan", "--config", "sgconfig.yml", "--json=compact", "."], { cwd: root, encoding: "utf8" })
+  const cli = join(deps, ".bin/ast-grep")
+  // Current ast-grep requires explicit permission for the native parser
+  // this test just built; older supported versions have no such flag.
+  const help = spawnSync(cli, ["scan", "--help"], { encoding: "utf8" })
+  const custom = help.stdout?.includes("--custom-languages") ? ["--custom-languages", "allow"] : []
+  const scan = spawnSync(cli, ["scan", ...custom, "--config", "sgconfig.yml", "--json=compact", "."], { cwd: root, encoding: "utf8" })
+  assert.ok(scan.stdout?.trim(), `ast-grep scan exited ${scan.status} (${scan.signal ?? "no signal"}): ${scan.error?.message ?? ""}\n${scan.stderr}`)
   const files = JSON.parse(scan.stdout).map((m) => `${m.ruleId} ${m.file}`).sort()
   assert.deepEqual(files, ["no-debugger src/plain.ts", "no-debugger-vibelang src/delete.vibe"])
 })

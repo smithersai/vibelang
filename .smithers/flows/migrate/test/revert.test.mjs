@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
+import { createRequire } from "node:module"
 import { join } from "node:path"
 import { test } from "node:test"
 import { renameBatch, rewriteExports, rewriteImports } from "../lib/codemod.mjs"
@@ -212,4 +213,31 @@ test("revert removes the platform sibling the codemod split a module into", asyn
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
+})
+
+test("revert removes the selected inherited sidecar without changing another output", async () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-revert-relocated-"))
+  const target = join(root, "repo"), run = join(root, "run")
+  try {
+    mkdirSync(join(target, "node_modules"), { recursive: true })
+    const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
+    symlinkSync(require.resolve("typescript/package.json").replace(/\/package.json$/, ""), join(target, "node_modules/typescript"))
+    mkdirSync(join(target, "src"), { recursive: true })
+    await must("jj git init && jj config set --repo user.name test && jj config set --repo user.email test@localhost", { cwd: target })
+    writeFileSync(join(target, "package.json"), "{}\n")
+    writeFileSync(join(target, "base.json"), JSON.stringify({ vibe: { sidecarDir: "types" } }))
+    writeFileSync(join(target, "tsconfig.json"), JSON.stringify({ extends: "./base.json", include: ["src"] }))
+    writeFileSync(join(target, "src/b.ts"), "export const b = 1\n")
+    await Jj.commit(target, "base")
+    writeJson(paths(run).config, makeConfig({ target, test: "true", toolchain: join(root, "toolchain") }))
+    writeJson(paths(run).plan, { batches: [{ files: ["src/b.ts"] }] })
+    renameBatch(target, ["src/b.ts"])
+    mkdirSync(join(target, "types/src"), { recursive: true })
+    writeFileSync(join(target, "types/src/b.d.vibe.ts"), "export declare const b = 1;\n")
+    writeFileSync(join(target, "types/src/orphan.d.vibe.ts"), "// standalone\n")
+    await revert({ run, batch: "01", file: "src/b.vibe", reason: "fixture cause" })
+    assert.equal(existsSync(join(target, "types/src/b.d.vibe.ts")), false)
+    assert.equal(readFileSync(join(target, "types/src/orphan.d.vibe.ts"), "utf8"), "// standalone\n")
+    assert.equal(readFileSync(join(target, "src/b.ts"), "utf8"), "export const b = 1\n")
+  } finally { rmSync(root, { recursive: true, force: true }) }
 })

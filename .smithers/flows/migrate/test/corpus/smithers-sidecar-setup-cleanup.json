@@ -1,0 +1,12 @@
+{
+  "input": {
+    "output": ".vibe/declarations",
+    "module": "step",
+    "reverse": false
+  },
+  "pattern": "setup selects a hidden mirror while src/step.d.vibe.ts remains tracked",
+  "files": {
+    "src/step.vibe": "export const step = 1",
+    "src/step.d.vibe.ts": "export declare const step = 1;"
+  }
+}

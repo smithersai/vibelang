@@ -19,9 +19,9 @@ export function isToolConfig(path) {
   return /\.config\.(?:ts|mts)$/.test(posix.basename(path))
 }
 
-/** The files a migration may move to .vibe: sources that use Effect values, but no tool's config unless setup wired its native loader. Tests stay .ts unless asked. */
+/** Sources with Effect values may migrate unless a selector needs their TypeScript filename. Tool configs require setup's native-loader proof. */
 export function candidates(inventory, { includeTests = false, nativeConfigs = [] } = {}) {
-  return inventory.files.filter((f) => f.effect === "values" && (includeTests || !f.test) && /\.(?:ts|mts)$/.test(f.path) && !isDeclarationFile(f.path) && (!isToolConfig(f.path) || nativeConfigs.includes(f.path)) && !f.namedBy && !f.bundledBy?.length)
+  return inventory.files.filter((f) => f.effect === "values" && (includeTests || !f.test) && /\.(?:ts|mts)$/.test(f.path) && !isDeclarationFile(f.path) && (!isToolConfig(f.path) || nativeConfigs.includes(f.path)) && !f.namedBy && !f.bundledBy?.length && !f.enumeratedBy?.length)
 }
 
 /** Report the full owned inventory separately from automatic and explicit selections (detail 279). */
@@ -133,6 +133,7 @@ export function validatePlan(plan, inventory, limits = defaultLimits, { nativeCo
       if (!/\.(?:ts|mts)$/.test(path) || isDeclarationFile(path)) errors.push(`${name}: ${path} is not a .ts module or .mts source module; only those files become .vibe`)
       if (f.effect === "none") errors.push(`${name}: ${path} has no Effect code, so it keeps its TypeScript filename`)
       if (f.bundledBy?.length) errors.push(name + ": " + path + " belongs to a test-owned bundle graph and stays TypeScript: " + (f.bundleReason ?? "decided detail 272"))
+      if (f.enumeratedBy?.length) errors.push(`${name}: ${path} stays ${posix.extname(path)}: ${f.enumeratedBy[0]}, and would no longer select it as ${path.replace(/\.(?:ts|mts)$/, ".vibe")}`)
       if (isToolConfig(path) && !nativeConfigs.includes(path)) errors.push(`${name}: ${path} is a tool's config, which the tool finds by its name, so it keeps its TypeScript filename`)
       else if (f.namedBy) errors.push(`${name}: ${path} is a file ${f.namedBy} finds by its name, so it keeps its TypeScript filename`)
       else if (f.effect === "types") warnings.push(`${name}: ${path} imports only Effect types`)
@@ -180,7 +181,7 @@ You order the migration of ${inventory.packages.join(", ")} from Effect TypeScri
 - Small batches: at most ${limits.maxFiles} files and ${limits.maxLines} lines each, small enough to finish, test and review in one pass.
 - Leaves and well-tested modules first: a file whose own Effect imports are already migrated, or stay .ts, and that tests cover. An untested file goes after the files whose tests exercise it.
 - Files whose Effect imports are all types stay TypeScript in the default draft; they remain in the owned inventory. Explicit selection is allowed with its existing warning and every compilation, declaration, runtime, tool and protected-test gate. Type-only import spelling alone does not prove the original program is valid.
-- Files with no Effect code stay .ts; they are not candidates. Neither is a tool's config, \`graphql.config.ts\`, which the tool finds by its name${nativeConfigs.length ? `, except a Vite config whose scripts setup wired with the native config loader (${nativeConfigs.map((f) => `\`${f}\``).join(", ")}): the codemod names it with \`--config\`` : ""}, or a file whose name the repository writes as a string, such as \`alchemy.run.ts\`. Tests stay .ts unless a test file is itself Effect code (\`it.effect\`); put such a test in its module's batch.
+- Files with no Effect code stay .ts; they are not candidates. Neither is a tool's config, \`graphql.config.ts\`, which the tool finds by its name${nativeConfigs.length ? `, except a Vite config whose scripts setup wired with the native config loader (${nativeConfigs.map((f) => `\`${f}\``).join(", ")}): the codemod names it with \`--config\`` : ""}, or a file whose name the repository writes as a string, such as \`alchemy.run.ts\`. A module that code lists by \`*.ts\` keeps its TypeScript filename: as \`.vibe\` the listing would no longer select it. Tests stay .ts unless a test file is itself Effect code (\`it.effect\`); put such a test in its module's batch.
 - A module with \`bundledBy\` is reached by an unchanged test-owned bundle. Keep its runtime source graph TypeScript (decided detail 272); an explicit or stale plan cannot override the boundary. The draft names each retaining test and entry.
 - Keep a directory's files together when the limits allow, so one review reads one module.
 - Defer a file that cannot become idiomatic VibeLang yet (for example, it is mostly a Promise or callback library, or it needs a TypeScript-only construct), with the reason.

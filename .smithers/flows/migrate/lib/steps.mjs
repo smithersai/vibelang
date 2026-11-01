@@ -7,11 +7,13 @@ import { ownedToolConfigs } from "./tool-config-references.mjs"
 import { wireTestProjects } from "./test-projects.mjs"
 import { wireDeclarationRedirects } from "./declaration-redirects.mjs"
 import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
-import { dirname, join, posix, resolve } from "node:path"
+import { dirname, join, posix, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { assertBaselineSafe } from "./baseline.mjs"
 import { assertNoTestBundleRename } from "./test-bundles.mjs"
 import { buildInventory, listSources, readCoverage, tsconfigPaths } from "./inventory.mjs"
+import * as Enumerations from "./enumerations.mjs"
+import { sidecarPath } from "./sidecar-config.mjs"
 import { defaultLimits, draftPlan, migrationScope, planPrompt, validatePlan } from "./plan.mjs"
 import { bareVibeExports, fixToFixedPoint, importerFile, pathAliases, restoreExports, restoreSpecifiers, rewriteImports, rewriteTotals, vibePath } from "./codemod.mjs"
 import { restoreViteScripts } from "./vite-config.mjs"
@@ -725,7 +727,20 @@ function carryVibeLangPatches(t, moved, version, release) {
  * Wires each of packages: the runtime and compiler dependencies and vibelang
  * for tsc in its package.json, and .vibe sources in its tsconfigs.
  */
-function wirePackages({ t, ts, packages, specsFor, writeIfChanged, warnings }) {
+async function prepareSidecarLayout(t) {
+  // Code that lists a folder's *.ts files, such as a test that imports every
+  // *.ts but *.d.ts, would select the x.d.vibe.ts beside each x.vibe there:
+  // vibe.sidecarDir moves the sidecars into one hidden directory, which
+  // rootDirs merges with the sources for stock TypeScript (decided detail 268).
+  const tracked = existsSync(join(t, ".jj")) ? await Jj.trackedFiles(t) : []
+  const readTracked = Enumerations.reader(t)
+  const enumerations = Enumerations.relevantEnumerations(Enumerations.tsEnumerations(tracked.filter(Wire.ownedPaths(t)), readTracked), tracked, readTracked)
+  const wiredTsconfigs = new Set()
+  return { tracked, enumerations, wiredTsconfigs }
+}
+
+function wirePackages({ t, ts, packages, specsFor, writeIfChanged, warnings, layout }) {
+  const { enumerations, wiredTsconfigs } = layout
   for (const pkg of packages) {
     const path = join(t, pkg.dir, "package.json")
     // A migrated module's declarations spell a relative import as the package's sources do (C′).
@@ -751,9 +766,29 @@ function wirePackages({ t, ts, packages, specsFor, writeIfChanged, warnings }) {
       const styled = !spelling.style ? current
         : spelling.style === ".js" ? Wire.removeVibeLangSetting(current, ts, "declarationImportStyle")
         : Wire.addVibeLangSetting(current, ts, "declarationImportStyle", spelling.style)
-      writeIfChanged(file, text, Wire.addCompilerOptions(Wire.addVibeIncludes(styled, ts), { rewriteRelativeImportExtensions: true }))
+      const next = Wire.addCompilerOptions(Wire.addVibeIncludes(styled, ts), { rewriteRelativeImportExtensions: true })
+      writeIfChanged(file, text, enumerations.length ? Enumerations.addSidecarDir(next, ts, Enumerations.sidecarDirectory, file) : next)
+      wiredTsconfigs.add(posix.join(pkg.dir, tsconfig))
     }
   }
+}
+
+function finishSidecarLayout({ t, ts, layout, changed, warnings, log }) {
+  const { tracked, enumerations, wiredTsconfigs } = layout
+  const sidecarProjects = enumerations.length ? [...wiredTsconfigs].map(file => {
+    const settings = Enumerations.sidecarSettings(join(t, file), ts)
+    return settings && {
+      config: file,
+      directory: relative(dirname(join(t, file)), settings.directory).replaceAll("\\", "/") || ".",
+      declaredIn: relative(t, settings.declaringFile).replaceAll("\\", "/")
+    }
+  }).filter(Boolean) : []
+  const directories = [...new Set(sidecarProjects.map(project => project.directory))]
+  for (const finding of enumerations) warnings.push("vibe.sidecarDir uses the configured project output directory, and that folder's .ts modules stay .ts: " + Enumerations.describe(finding))
+  const supersededSidecars = enumerations.length ? Enumerations.removeSupersededSidecars(t, tracked, wiredTsconfigs, ts) : []
+  changed.push(...supersededSidecars.filter(file => !changed.includes(file)))
+  appendJsonl(join(log, "sidecar-layout.jsonl"), { at: new Date().toISOString(), projects: sidecarProjects, removed: supersededSidecars })
+  return enumerations.length ? { directory: directories.length === 1 ? directories[0] : null, projects: sidecarProjects, reasons: enumerations.map(Enumerations.describe), findings: enumerations, removed: supersededSidecars } : null
 }
 
 /**
@@ -785,13 +820,16 @@ export async function wireNewPackages(config, log) {
     changed.push(posix.relative(t, path))
   }
   const warnings = []
-  wirePackages({ t, ts: typeScriptOf(config), packages: added, specsFor, writeIfChanged, warnings })
+  const ts = typeScriptOf(config)
+  const layout = await prepareSidecarLayout(t)
+  wirePackages({ t, ts, packages: added, specsFor, writeIfChanged, warnings, layout })
+  const sidecarDir = finishSidecarLayout({ t, ts, layout, changed, warnings, log })
   const formatted = await formatWritten(t, changed, join(log, "setup-format.log"))
   if (formatted.code !== 0) warnings.push(`${formatted.formatter} exited ${formatted.code} on the files setup wrote; see ${join(log, "setup-format.log")}`)
   const manager = Wire.packageManager(readdirSync(t))
   const install = config.install ?? Wire.installCommand(manager, readdirSync(t))
   await must(install, { cwd: t, log: join(log, "install.log") })
-  return { manager, added: added.map((pkg) => pkg.dir), specs: Object.fromEntries(added.map((pkg) => [pkg.dir, specsFor(pkg.dir)])), formatted, changed, warnings, install }
+  return { manager, sidecarDir, added: added.map((pkg) => pkg.dir), specs: Object.fromEntries(added.map((pkg) => [pkg.dir, specsFor(pkg.dir)])), formatted, changed, warnings, install }
 }
 
 /** Sets VibeLang up in the target: dependencies, scripts, the Vite plugin, tsconfigs and the declaration sidecars' format ignore. Returns what it changed. */
@@ -829,7 +867,9 @@ export async function wireTarget(config, log) {
     changed.push(posix.relative(t, path))
   }
   const ts = typeScriptOf(config)
-  wirePackages({ t, ts, packages, specsFor, writeIfChanged, warnings })
+  const layout = await prepareSidecarLayout(t)
+  wirePackages({ t, ts, packages, specsFor, writeIfChanged, warnings, layout })
+  const sidecarDir = finishSidecarLayout({ t, ts, layout, changed, warnings, log })
   // Effect's lint rules run on .vibe files where the root's scripts run them on .ts files (VIP-38).
   const rootPackage = join(t, "package.json")
   if (existsSync(rootPackage)) {
@@ -854,6 +894,8 @@ export async function wireTarget(config, log) {
     const file = join(t, tsconfig)
     const text = readFileSync(file, "utf8")
     writeIfChanged(file, text, Wire.addCompilerOptions(Wire.removeVibeLangSetting(text, ts, "declarationSidecars"), { allowArbitraryExtensions: true }))
+    // rootDirs maps one tree; a checker config above the packages needs each package's pair.
+    if (layout.enumerations.length && !layout.wiredTsconfigs.has(posix.normalize(tsconfig))) warnings.push(`${tsconfig}: if stock TypeScript checks a migrated package's sources through it, add that package's folder and its ${Enumerations.sidecarDirectory} to its rootDirs by hand`)
   }
   const declarationRedirects = wireDeclarationRedirects({ root: t, ts,
     configs: Wire.ownedTsconfigs(t).filter(file => !isProtectedFile(file)) })
@@ -939,7 +981,7 @@ export async function wireTarget(config, log) {
   changed.push(...emittedImports.changed.filter(file => !changed.includes(file)))
   const existingVibe = await formatExistingVibe(config, join(log, "setup-format-vibe.log"))
   if (existingVibe.code !== 0) warnings.push(`vibelang-format exited ${existingVibe.code} on the repository's .vibe files; see ${join(log, "setup-format-vibe.log")}`)
-  return { manager, typecheck, declarationRedirects, emittedImports, formattedVibe: existingVibe.files, specs: Object.fromEntries(packages.map((pkg) => [pkg.dir, specsFor(pkg.dir)])), viteConfigs: vite.configs, viteAppConfigs: apps.configs, nativeViteConfigs: apps.nativeConfigs ?? [], knipConfig: knip.config, formatted, changed, warnings, install }
+  return { manager, typecheck, declarationRedirects, emittedImports, sidecarDir, formattedVibe: existingVibe.files, specs: Object.fromEntries(packages.map((pkg) => [pkg.dir, specsFor(pkg.dir)])), viteConfigs: vite.configs, viteAppConfigs: apps.configs, nativeViteConfigs: apps.nativeConfigs ?? [], knipConfig: knip.config, formatted, changed, warnings, install }
 }
 
 /**
@@ -1053,7 +1095,7 @@ export async function setup(options) {
   const tokens = await countTokens(files.map((f) => join(t, f)))
   // An import through a tsconfig `paths` alias, ~/main, is a dependency edge as ./main is.
   const aliasPaths = Object.fromEntries(config.packages.map((pkg) => [pkg.dir, tsconfigPaths(ts, t, Wire.projectsOf(ts, join(t, pkg.dir), pkg.tsconfig).map((tsconfig) => join(t, pkg.dir, tsconfig)))]))
-  const inventory = buildInventory({ root: t, packages: config.packages, tokens, coverage: readCoverage(t, config.packages), paths: aliasPaths })
+  const inventory = buildInventory({ root: t, packages: config.packages, tokens, coverage: readCoverage(t, config.packages), paths: aliasPaths, enumerations: wired?.sidecarDir?.findings ?? [] })
   if (wired) wired.warnings.push(...(inventory.bundleWarnings ?? []))
   writeJson(p.inventory, inventory)
 
@@ -1401,6 +1443,12 @@ export async function revertMany(options) {
   for (const { ts, vibe, original } of prepared) {
     if (existsSync(join(config.target, vibe)) || !existsSync(join(config.target, ts)) || !readFileSync(join(config.target, ts)).equals(Buffer.from(original))) throw new Error("revert did not restore " + vibe)
     rmSync(join(config.target, vibe.replace(/\.vibe$/, ".d.vibe.ts")), { force: true })
+    const owner = config.packages.filter(pkg => pkg.dir === "." || vibe.startsWith(pkg.dir + "/")).sort((a, b) => b.dir.length - a.dir.length)[0]
+    const file = owner && join(config.target, owner.dir, owner.tsconfig)
+    if (file && existsSync(file)) {
+      const settings = Enumerations.sidecarSettings(file, loadTypeScript([config.target, fileURLToPath(new URL("../../../", import.meta.url))]))
+      if (settings) rmSync(sidecarPath(join(config.target, vibe), settings), { force: true })
+    }
   }
   const priorFiles = new Map()
   for (const revision of groups.keys()) priorFiles.set(revision, new Set(await Jj.trackedFiles(config.target, revision)))
