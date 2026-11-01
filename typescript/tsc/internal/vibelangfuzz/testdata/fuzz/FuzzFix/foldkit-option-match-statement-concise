@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport { Option } from \"effect\";\nconst values: number[] = [];\nexport function consume(subject: Option.Option<number>): void { Option.match(subject, { onNone: () => 0, onSome: value => value + 1 }); }\n")

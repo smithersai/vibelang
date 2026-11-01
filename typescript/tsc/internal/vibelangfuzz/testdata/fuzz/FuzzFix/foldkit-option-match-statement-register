@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport { Option } from \"effect\";\nconst holders = new Map<string, Set<number>>();\nexport function register(key: string, fiber: number): void {\n  Option.match(Option.fromNullishOr(holders.get(key)), {\n    onNone: () => { holders.set(key, new Set([fiber])); },\n    onSome: fibers => { fibers.add(fiber); },\n  });\n}\n")

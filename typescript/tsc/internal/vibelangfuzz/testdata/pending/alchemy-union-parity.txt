@@ -1,0 +1,7 @@
+FuzzAlchemyUnionPipeRequirements feature:d266-diagnostics compiler Chapter 7 TypeScript compatibility: Alchemy union pipe inference omits stock TS2345 and changes declaration requirements; lane impl-hunt-data
+FuzzAlchemyUnionPipeRequirements feature:d266-diagnostic-spans compiler Chapter 7 TypeScript compatibility: Alchemy union pipe inference omits stock TS2345 and changes declaration requirements; lane impl-hunt-data
+FuzzAlchemyUnionPipeRequirements feature:d266-emit compiler Chapter 7 TypeScript compatibility: Alchemy union pipe inference omits stock TS2345 and changes declaration requirements; lane impl-hunt-data
+FuzzAlchemyUnionPipeRequirements corpus:alchemy-union-pipe-original compiler Chapter 7 TypeScript compatibility: Alchemy union pipe inference omits stock TS2345 and changes declaration requirements; lane impl-hunt-data
+FuzzAlchemyUnionPipeRequirements corpus:alchemy-union-pipe-renamed-parameter compiler Chapter 7 TypeScript compatibility: Alchemy union pipe inference omits stock TS2345 and changes declaration requirements; lane impl-hunt-data
+FuzzAlchemyUnionPipeRequirements corpus:alchemy-union-pipe-renamed-provider compiler Chapter 7 TypeScript compatibility: Alchemy union pipe inference omits stock TS2345 and changes declaration requirements; lane impl-hunt-data
+FuzzAlchemyUnionPipeRequirements corpus:alchemy-union-pipe-requirements compiler Chapter 7 TypeScript compatibility: retained exact migration archive; lane impl-hunt-data
