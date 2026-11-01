@@ -16,6 +16,12 @@ type ResolutionHost interface {
 	GetCurrentDirectory() tspath.RootedDirectoryPath
 }
 
+// VibeSidecarSourceHost supplies the owning project's final sidecar layout
+// without making module resolution depend on the config parser.
+type VibeSidecarSourceHost interface {
+	ResolveVibeSidecarSource(sidecar tspath.RootedFilePath, packageDirectory tspath.RootedDirectoryPath) tspath.RootedFilePath
+}
+
 type Resolver interface {
 	BaseDirectory() tspath.RootedDirectoryPath
 	ResolveModuleName(

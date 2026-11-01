@@ -433,3 +433,23 @@ test("Vite hot updates ignore diagnostics in unserved TypeScript sources", async
   assert.deepEqual(messages, [], "an unrelated watched source must not raise an overlay")
   assert.deepEqual(affected, [loaded], "loaded modules still recompile against changed contracts")
 })
+
+// VIP-27 directory amendment: Vite/Vitest compiles the same implementation
+// while compatibility declarations stay in the selected output layout.
+for (const sidecarDir of [undefined, ".vibe/declarations"]) {
+  test("Vitest resolves VibeLang modules with sidecarDir " + JSON.stringify(sidecarDir), async (t) => {
+    const root = await fixture(t)
+    const path = join(root, "tsconfig.json")
+    const config = JSON.parse(await readFile(path, "utf8"))
+    if (sidecarDir !== undefined) {
+      config.vibe = { sidecarDir }
+      config.compilerOptions.rootDirs = [".", sidecarDir]
+    }
+    await writeFile(path, JSON.stringify(config))
+    const result = await runVitest(root)
+    assert.equal(result.code, 0, result.output)
+    assert.match(result.output, /2 passed/)
+    assert.match(await readFile(join(root, sidecarDir ?? "", "main.d.vibe.ts"), "utf8"), /export/)
+    if (sidecarDir !== undefined) await assert.rejects(readFile(join(root, "main.d.vibe.ts")), { code: "ENOENT" })
+  })
+}

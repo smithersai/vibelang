@@ -21,18 +21,20 @@
 // into place, so a reader sees a whole entry or none, and any number of
 // processes can share one directory.
 import { createHash, randomBytes } from "node:crypto"
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs"
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readSync, readdirSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { userInfo } from "node:os"
 import { temporaryRoot } from "./temporary.mjs"
-import { basename, dirname, isAbsolute, join, resolve, sep } from "node:path"
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path"
 
 // Bump when an entry's shape or meaning changes. 2: a compile checks only
 // its project's own files (vibelang --loader-root).
 // 3: loaders retain emission and select diagnostics per loaded source.
 // 4: source maps name sources by absolute path again, not file URL.
 // 5: sidecars beside their sources are compiler outputs.
-const format = 5
+// 6: a directory record names the vibe.sidecarDir children its listing omits.
+// 7: configured sidecar layouts fingerprint inputs, including overlapping roots.
+const format = 7
 const version = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")).version
 
 // A file whose timestamp is this close to a compile's start may have changed
@@ -322,13 +324,16 @@ function scannedDirectories(main) {
       if (found !== undefined) skip.add(expand(found.value, found.base))
     }
   }
-  return { roots, skip }
+  const sidecars = setting(main, (json) => typeof json.vibe?.sidecarDir === "string" ? json.vibe.sidecarDir : undefined)
+  return { roots, skip, home, sidecarDir: sidecars === undefined ? undefined : expand(sidecars.value, sidecars.base) }
 }
 
 // What a directory holds that could become part of a program: its source
 // files and subdirectories, without the dotted names TypeScript's globs skip.
 const sourceName = /\.(?:[cm]?[jt]sx?|vibe|json)$/i
-function listing(path) {
+// omitted names excluded child directories, such as outDir, so creating
+// or removing one is no change.
+function listing(path, omitted = []) {
   let entries
   try {
     entries = readdirSync(path, { withFileTypes: true })
@@ -347,6 +352,7 @@ function listing(path) {
     let directory = entry.isDirectory()
     if (entry.isSymbolicLink()) directory = statOf(join(path, entry.name))?.isDirectory() ?? false
     if (directory) {
+      if (omitted.includes(entry.name)) continue
       names.push(`${entry.name}/`)
       directories.push(join(path, entry.name))
     } else if (sourceName.test(entry.name)) {
@@ -359,16 +365,61 @@ function listing(path) {
 
 const ignoredDirectories = new Set(["node_modules", "bower_components", "jspm_packages"])
 
+// An opt-in output tree can overlap inputs. Fingerprint genuine file names
+// throughout each scanned root, omitting paired outputs and empty directories.
+// This sees a new source even in a previously output-only directory, while
+// creating a nested sidecar directory does not invalidate a successful compile.
+function sidecarInputNames(root, { recursive, excluded, sidecarDir, home }) {
+  if (!statOf(root)?.isDirectory()) return null
+  const names = []
+  const ancestors = new Set()
+  let unreadable = false
+  const paired = (path) => {
+    const suffix = ".d.vibe.ts"
+    if (!path.endsWith(suffix)) return false
+    if (statOf(path.slice(0, -suffix.length) + ".vibe")?.isFile()) return true
+    const mirrored = relative(sidecarDir, path)
+    if (mirrored === ".." || mirrored.startsWith(".." + sep) || isAbsolute(mirrored)) return false
+    return statOf(join(home, mirrored.slice(0, -suffix.length) + ".vibe"))?.isFile() ?? false
+  }
+  const walk = (path, depth) => {
+    if (excluded.includes(path)) return
+    let canonical, entries
+    try {
+      canonical = realpathSync(path)
+      if (ancestors.has(canonical)) return
+      entries = readdirSync(path, { withFileTypes: true })
+    } catch { unreadable = true; return }
+    ancestors.add(canonical)
+    for (const entry of entries) {
+      if (entry.name.startsWith(".")) continue
+      const child = join(path, entry.name)
+      const directory = entry.isDirectory() || entry.isSymbolicLink() && statOf(child)?.isDirectory()
+      if (directory) {
+        if (recursive && depth < 64 && !ignoredDirectories.has(entry.name)) walk(child, depth + 1)
+      } else if (sourceName.test(entry.name) && (entry.isFile() || statOf(child)?.isFile()) && !paired(child)) names.push(child)
+    }
+    ancestors.delete(canonical)
+  }
+  walk(root, 0)
+  return unreadable ? null : digest(names.sort().join("\n"))
+}
+
 // Records each scanned directory's stamp and listing before the compile, so a
 // file added or removed while the compiler runs shows up as a change.
 function snapshotDirectories(main) {
-  const { roots, skip } = scannedDirectories(main)
+  const { roots, skip, home, sidecarDir } = scannedDirectories(main)
+  if (sidecarDir !== undefined) return roots.map(({ path, recursive }) => {
+    const options = { recursive, excluded: [...skip], sidecarDir, home }
+    return [path, null, sidecarInputNames(path, options), [], options]
+  })
   const records = new Map()
   const visit = (path, recursive, depth) => {
     if (records.has(path) || skip.has(path)) return
     const stat = statOf(path)
-    const { names, directories } = listing(path)
-    records.set(path, [path, stat === undefined ? null : [stat.mtimeMs, stat.ino], names])
+    const omitted = [...skip].filter((skipped) => dirname(skipped) === path).map((skipped) => basename(skipped))
+    const { names, directories } = listing(path, omitted)
+    records.set(path, [path, stat === undefined ? null : [stat.mtimeMs, stat.ino], names, omitted])
     if (!recursive || depth > 64) return
     for (const child of directories) if (!ignoredDirectories.has(basename(child))) visit(child, true, depth + 1)
   }
@@ -376,10 +427,11 @@ function snapshotDirectories(main) {
   return [...records.values()]
 }
 
-function directoryHolds([path, stamp, names]) {
+function directoryHolds([path, stamp, names, omitted = [], sidecarOptions]) {
+  if (sidecarOptions !== undefined) return sidecarInputNames(path, sidecarOptions) === names
   const stat = statOf(path)
   if (stat !== undefined && stamp !== null && stat.mtimeMs === stamp[0] && stat.ino === stamp[1]) return true
-  return listing(path).names === names
+  return listing(path, omitted).names === names
 }
 
 const installFiles = [

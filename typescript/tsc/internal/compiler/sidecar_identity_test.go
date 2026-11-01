@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/core"
@@ -96,6 +97,41 @@ func TestPackageSidecarExportIsTheSource(t *testing.T) {
 		files["/lib/src/Use.ts"] = `import { Stage } from "./Stage.d.vibe.ts"; export const use = (s: Stage): string => s.name;`
 		p := program(t, files)
 		assert.Assert(t, p.GetSourceFile("/lib/src/Stage.d.vibe.ts") != nil)
+	})
+	for _, test := range []struct{ name, directory, config string }{
+		{"conventional mirror", "/lib/.vibe/declarations", "tsconfig.json"},
+		{"custom mirror", "/lib/types", "vibe.config.json"},
+		{"external mirror", "/declarations/lib", "tsconfig.build.json"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			files := alchemy()
+			sidecar := test.directory + "/src/Stage.d.vibe.ts"
+			files[sidecar] = files["/lib/src/Stage.d.vibe.ts"]
+			delete(files, "/lib/src/Stage.d.vibe.ts")
+			files["/lib/"+test.config] = `{"vibe":{"sidecarDir":"` + test.directory + `"}}`
+			files["/lib/package.json"] = `{"name":"lib","type":"module","types":"` + sidecar + `","main":"./src/Stage.vibe"}`
+			files["/app/src/a.ts"] = `import { Stage } from "lib"; import { use } from "../../lib/src/Use.ts"; export const run = (s: Stage): string => use(s);`
+			p := program(t, files)
+			assert.Assert(t, p.GetSourceFile("/lib/src/Stage.vibe") != nil)
+			assert.Assert(t, p.GetSourceFile(tspath.RootedFilePathFromNormalized(sidecar)) == nil, "a relocated sidecar stands in for its source")
+			for _, diagnostic := range p.GetSemanticDiagnostics(t.Context(), nil) {
+				t.Error(diagnostic.String())
+			}
+		})
+	}
+
+	t.Run("preserveSymlinks keeps the logical dependency declaration", func(t *testing.T) {
+		t.Parallel()
+		files := alchemy()
+		files["/app/tsconfig.json"] = strings.Replace(files["/app/tsconfig.json"].(string), `"noLib":true`, `"noLib":true,"preserveSymlinks":true`, 1)
+		files["/lib/tsconfig.json"] = `{"vibe":{"sidecarDir":".vibe/declarations"}}`
+		files["/lib/.vibe/declarations/src/Stage.d.vibe.ts"] = files["/lib/src/Stage.d.vibe.ts"]
+		delete(files, "/lib/src/Stage.d.vibe.ts")
+		files["/lib/package.json"] = `{"name":"lib","type":"module","exports":{"./Stage":{"types":"./.vibe/declarations/src/Stage.d.vibe.ts"},"./Use":"./src/Use.ts"}}`
+		p := program(t, files)
+		assert.Assert(t, p.GetSourceFile("/app/node_modules/lib/.vibe/declarations/src/Stage.d.vibe.ts") != nil)
+		assert.Assert(t, len(p.GetSemanticDiagnostics(t.Context(), nil)) > 0, "native logical source and declaration identities stay separate (detail 285)")
 	})
 	t.Run("a published package keeps its declarations", func(t *testing.T) {
 		t.Parallel()

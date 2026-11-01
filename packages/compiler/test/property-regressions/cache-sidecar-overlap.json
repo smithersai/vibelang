@@ -1,0 +1,9 @@
+{
+  "property": "cache-relocated-sidecars",
+  "rule": "VIP-27 outputs do not invalidate the cache, but new inputs in overlapping roots do",
+  "input": {
+    "directory": "src",
+    "module": "a"
+  },
+  "generatorVersion": 1
+}

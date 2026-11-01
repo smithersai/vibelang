@@ -6,7 +6,7 @@
 // browser IIFE, stdin with a resolveDir, packages external, a bundle: false
 // build, and an existing plugin ahead of vibelang(). Run test/run.sh first.
 import assert from "node:assert/strict"
-import { cp, mkdir, mkdtemp, readdir, rm, symlink, writeFile } from "node:fs/promises"
+import { cp, mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { describe, it } from "node:test"
@@ -159,3 +159,23 @@ console.log("done")
     assert.match(stdout, /done/)
   })
 })
+
+
+// VIP-27 directory amendment: a TypeScript consumer bundles the source in
+// both layouts, and the compiler writes only the selected declaration.
+for (const sidecarDir of [undefined, ".vibe/declarations"]) {
+  it("embedded esbuild resolves VibeLang modules with sidecarDir " + JSON.stringify(sidecarDir), async (t) => {
+    const root = await project(t)
+    const path = join(root, "tsconfig.json")
+    const config = JSON.parse(await readFile(path, "utf8"))
+    if (sidecarDir !== undefined) {
+      config.vibe = { sidecarDir }
+      config.compilerOptions.rootDirs = [".", sidecarDir]
+    }
+    await writeFile(path, JSON.stringify(config))
+    const result = await build({ entryPoints: [join(root, "src/viaVibe.ts")], bundle: true, write: false, logLevel: "silent", platform: "browser", plugins: [vibelang({ root })] })
+    assert.match(text(result), compiled)
+    assert.match(await readFile(join(root, sidecarDir ?? "", "src/lib.d.vibe.ts"), "utf8"), /export declare function twice/)
+    if (sidecarDir !== undefined) await assert.rejects(readFile(join(root, "src/lib.d.vibe.ts")), { code: "ENOENT" })
+  })
+}

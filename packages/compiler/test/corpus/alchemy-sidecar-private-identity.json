@@ -1,0 +1,10 @@
+{
+  "key": "alchemy-36:relocated-private-class-identity",
+  "spec": "VIP-27 compatibility declarations; detail 268 opt-in location and detail 281 declaration parity",
+  "input": {
+    "output": ".vibe/declarations",
+    "config": "vibe.config.json",
+    "preserveSymlinks": false,
+    "external": false
+  }
+}

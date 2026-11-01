@@ -18,6 +18,7 @@ import (
 )
 
 type resolved struct {
+	packageDirectory             tspath.RootedDirectoryPath
 	path                         tspath.RootedFilePath
 	extension                    string
 	packageId                    PackageId
@@ -333,6 +334,7 @@ func GetCompilerOptionsWithRedirect(compilerOptions *core.CompilerOptions, redir
 }
 
 type DefaultResolver struct {
+	vibeSidecarSource VibeSidecarSourceHost
 	*ResolutionData
 	fs            vfs.FS
 	baseDirectory tspath.RootedDirectoryPath
@@ -377,10 +379,12 @@ func (d *ResolutionData) NewResolver(host ResolutionHost) *DefaultResolver {
 	if d.packageJsonInfoCache.CaseSensitivity() != fs.CaseSensitivity() {
 		panic("package JSON cache and resolver must use the same case sensitivity")
 	}
+	sidecarHost, _ := host.(VibeSidecarSourceHost)
 	return &DefaultResolver{
-		ResolutionData: d,
-		fs:             fs,
-		baseDirectory:  baseDirectory,
+		vibeSidecarSource: sidecarHost,
+		ResolutionData:    d,
+		fs:                fs,
+		baseDirectory:     baseDirectory,
 	}
 }
 
@@ -624,7 +628,7 @@ func (r *resolutionState) resolveTypeReferenceDirective(typeRoots []tspath.Roote
 					if resolvedFromFile := r.loadModuleFromFile(extensionsDeclaration, candidate); !resolvedFromFile.shouldContinueSearching() {
 						packageDirectory := NodeModulePackageRootForFile(resolvedFromFile.path)
 						if packageDirectory != "" {
-							resolvedFromFile.packageId = r.getPackageId(resolvedFromFile.path, r.getPackageJsonInfo(r.packageDirectory(packageDirectory)))
+							resolvedFromFile.packageId = r.getPackageIdForResult(resolvedFromFile, r.getPackageJsonInfo(r.packageDirectory(packageDirectory)))
 						}
 						return r.createResolvedTypeReferenceDirective(resolvedFromFile, true /*primary*/)
 					}
@@ -692,7 +696,7 @@ func (r *resolutionState) resolveFromTypeRoot() *resolved {
 			if resolvedFromFile := r.loadModuleFromFile(extensionsDeclaration, candidate); !resolvedFromFile.shouldContinueSearching() {
 				packageDirectory := NodeModulePackageRootForFile(resolvedFromFile.path)
 				if packageDirectory != "" {
-					resolvedFromFile.packageId = r.getPackageId(resolvedFromFile.path, r.getPackageJsonInfo(r.packageDirectory(packageDirectory)))
+					resolvedFromFile.packageId = r.getPackageIdForResult(resolvedFromFile, r.getPackageJsonInfo(r.packageDirectory(packageDirectory)))
 				}
 				return resolvedFromFile
 			}
@@ -1025,11 +1029,11 @@ func (r *resolutionState) loadModuleFromTargetExportOrImport(extensions extensio
 		}
 		finalPath := resolutionCandidateFromDirectoryPath(scope.PackageDirectory.AsDirectoryPath(), targetPath)
 		if inputLink := r.tryLoadInputFileForPath(finalPath, subpath, scope.PackageDirectory.ResolveFile("package.json"), isImports); !inputLink.shouldContinueSearching() {
-			inputLink.packageId = r.getPackageId(inputLink.path, scope)
+			inputLink.packageId = r.getPackageIdForResult(inputLink, scope)
 			return inputLink
 		}
 		if result := r.loadFileNameFromPackageJSONField(extensions, finalPath, targetString); !result.shouldContinueSearching() {
-			result.packageId = r.getPackageId(result.path, scope)
+			result.packageId = r.getPackageIdForResult(result, scope)
 			return result
 		}
 		return continueSearching()
@@ -1288,7 +1292,7 @@ func (r *resolutionState) loadModuleFromSpecificNodeModulesDirectory(ext extensi
 			}
 
 			if fromDirectory := r.loadNodeModuleFromDirectoryWorker(ext, candidateDirectory, packageInfo); !fromDirectory.shouldContinueSearching() {
-				fromDirectory.packageId = r.getPackageId(fromDirectory.path, packageInfo)
+				fromDirectory.packageId = r.getPackageIdForResult(fromDirectory, packageInfo)
 				return fromDirectory
 			}
 		}
@@ -1297,12 +1301,12 @@ func (r *resolutionState) loadModuleFromSpecificNodeModulesDirectory(ext extensi
 	loader := func(extensions extensions, candidate resolutionCandidate) *resolved {
 		if rest != "" || !r.esmMode {
 			if fromFile := r.loadModuleFromFile(extensions, candidate); !fromFile.shouldContinueSearching() {
-				fromFile.packageId = r.getPackageId(fromFile.path, packageInfo)
+				fromFile.packageId = r.getPackageIdForResult(fromFile, packageInfo)
 				return fromFile
 			}
 		}
 		if fromDirectory := r.loadNodeModuleFromDirectoryWorker(extensions, candidate.AsDirectoryPath(), packageInfo); !fromDirectory.shouldContinueSearching() {
-			fromDirectory.packageId = r.getPackageId(fromDirectory.path, packageInfo)
+			fromDirectory.packageId = r.getPackageIdForResult(fromDirectory, packageInfo)
 			return fromDirectory
 		}
 		if rest == "" && packageInfo.Exists() &&
@@ -1312,7 +1316,7 @@ func (r *resolutionState) loadModuleFromSpecificNodeModulesDirectory(ext extensi
 			// a default `index.js` entrypoint if no `main` or `exports` are present
 			indexCandidate := resolutionCandidateFromDirectoryPath(candidate.AsDirectoryPath(), "index.js")
 			if indexResult := r.loadModuleFromFile(extensions, indexCandidate); !indexResult.shouldContinueSearching() {
-				indexResult.packageId = r.getPackageId(indexResult.path, packageInfo)
+				indexResult.packageId = r.getPackageIdForResult(indexResult, packageInfo)
 				return indexResult
 			}
 		}
@@ -1383,10 +1387,33 @@ func (r *resolutionState) preferVibeSource(resolved *resolved) {
 		return
 	}
 	sidecar := string(resolved.path)
-	if !strings.HasSuffix(sidecar, ".d"+tspath.ExtensionVibe+".ts") || resolved.path.ContainsLowercaseDirectorySequence("/node_modules/") {
+	if !strings.HasSuffix(sidecar, ".d"+tspath.ExtensionVibe+".ts") {
 		return
 	}
-	source := tspath.RootedFilePath(strings.TrimSuffix(sidecar, ".d"+tspath.ExtensionVibe+".ts") + tspath.ExtensionVibe)
+	// createResolvedModuleHandlingSymlink has already applied TypeScript's
+	// realpath/preserveSymlinks policy. Detail 285 classifies that final path.
+	physical := resolved.path
+	if physical.ContainsLowercaseDirectorySequence("/node_modules/") {
+		return // published and retained logical dependency paths keep declarations
+	}
+	var source tspath.RootedFilePath
+	if r.resolver.vibeSidecarSource != nil {
+		owner := resolved.packageDirectory
+		if owner != "" {
+			owner = tspath.RootedDirectoryPathFromPath(r.resolver.fs.Realpath(owner.AsPath()))
+		}
+		source = r.resolver.vibeSidecarSource.ResolveVibeSidecarSource(physical, owner)
+
+	}
+	if source == "" && r.compilerOptions.VibeLang != nil && r.compilerOptions.VibeLang.SidecarDir != "" {
+		candidate := r.compilerOptions.VibeSidecarSource(sidecar, r.resolver.fs.CaseSensitivity())
+		if r.resolver.fs.FileExists(tspath.RootedFilePathFromNormalized(candidate)) {
+			source = tspath.RootedFilePathFromNormalized(candidate)
+		}
+	}
+	if source == "" {
+		source = tspath.RootedFilePath(strings.TrimSuffix(sidecar, ".d"+tspath.ExtensionVibe+".ts") + tspath.ExtensionVibe)
+	}
 	if !r.resolver.fs.FileExists(source) {
 		return
 	}
@@ -1628,7 +1655,7 @@ func (r *resolutionState) nodeLoadModuleByRelativeName(extensions extensions, ca
 		if resolvedFromFile != nil {
 			if considerPackageJson {
 				if packageDirectory := NodeModulePackageRootForFile(resolvedFromFile.path); packageDirectory != "" {
-					resolvedFromFile.packageId = r.getPackageId(resolvedFromFile.path, r.getPackageJsonInfo(r.packageDirectory(packageDirectory)))
+					resolvedFromFile.packageId = r.getPackageIdForResult(resolvedFromFile, r.getPackageJsonInfo(r.packageDirectory(packageDirectory)))
 				}
 			}
 			return resolvedFromFile
@@ -2090,6 +2117,13 @@ func (r *resolutionState) getPackageJsonInfo(packageDirectory packagejson.Packag
 
 func (r *resolutionState) packageDirectory(directory tspath.RootedDirectoryPath) packagejson.PackageDirectory {
 	return r.resolver.packageJsonInfoCache.PackageDirectory(directory)
+}
+
+func (r *resolutionState) getPackageIdForResult(result *resolved, info *packagejson.InfoCacheEntry) PackageId {
+	if info != nil && info.Exists() {
+		result.packageDirectory = info.PackageDirectory.AsDirectoryPath()
+	}
+	return r.getPackageId(result.path, info)
 }
 
 func (r *resolutionState) getPackageId(resolvedFileName tspath.RootedFilePath, packageInfo *packagejson.InfoCacheEntry) PackageId {

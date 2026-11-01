@@ -146,8 +146,9 @@ type processedFiles struct {
 }
 
 type compilerResolutionHost struct {
-	host          CompilerHost
-	baseDirectory tspath.RootedDirectoryPath
+	sidecarConfigs collections.SyncMap[tspath.PathKey, *tsoptions.ParsedCommandLine]
+	host           CompilerHost
+	baseDirectory  tspath.RootedDirectoryPath
 }
 
 func (h *compilerResolutionHost) FS() vfs.FS {

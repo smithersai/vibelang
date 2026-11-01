@@ -12,6 +12,7 @@ import (
 )
 
 type projectReferenceDtsFakingHost struct {
+	host             module.ResolutionHost
 	currentDirectory tspath.RootedDirectoryPath
 	fs               *cachedvfs.FS
 }
@@ -21,6 +22,7 @@ var _ module.ResolutionHost = (*projectReferenceDtsFakingHost)(nil)
 func newProjectReferenceDtsFakingHost(host module.ResolutionHost, references *projectReferenceFileMapper) module.ResolutionHost {
 	// Create a new host that will fake the dts files
 	return &projectReferenceDtsFakingHost{
+		host:             host,
 		currentDirectory: host.GetCurrentDirectory(),
 		fs: cachedvfs.From(&projectReferenceDtsFakingVfs{
 			host:                       host,
@@ -248,4 +250,11 @@ func (fs *projectReferenceDtsFakingVfs) directoryExistsIfProjectReferenceDeclDir
 		}
 	}
 	return core.TSUnknown
+}
+
+func (h *projectReferenceDtsFakingHost) ResolveVibeSidecarSource(sidecar tspath.RootedFilePath, directory tspath.RootedDirectoryPath) tspath.RootedFilePath {
+	if host, ok := h.host.(module.VibeSidecarSourceHost); ok {
+		return host.ResolveVibeSidecarSource(sidecar, directory)
+	}
+	return ""
 }
