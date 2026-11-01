@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport { Effect } from \"effect\";\nconst parse = (s: string) => s === \"\" ? Effect.fail(\"bad\" as const) : Effect.succeed(s.length);\nexport const run = (s: string, strict: boolean) => parse(s).pipe(\n  Effect.map((n) => n + 1),\n  Effect.catch((error) => (strict ? Effect.fail(error) : Effect.succeed(error.length)) as Effect.Effect<number, \"bad\">),\n);\nexport effect function main() { return try run(\"\", true); }\n-- package.json --\n{\"type\":\"module\"}\n")
