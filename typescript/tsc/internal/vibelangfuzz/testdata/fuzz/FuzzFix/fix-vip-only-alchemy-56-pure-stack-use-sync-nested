@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nconst Stack = { useSync<T>(f: (stack: { id: string }) => T): T { return f({ id: \"aws\" }) } };\nexport effect function main() { return try sync((Stack) => Stack.useSync((item) => ({ item: { id: item.id } })), Stack); }\n\n-- package.json --\n{\"type\":\"module\"}\n-- tsconfig.json --\n{\"compilerOptions\": {\"target\": \"ES2022\", \"module\": \"NodeNext\", \"moduleResolution\": \"NodeNext\", \"strict\": true, \"skipLibCheck\": true, \"outDir\": \"out\", \"declaration\": true}, \"files\": [\"main.vibe\"]}\n")
