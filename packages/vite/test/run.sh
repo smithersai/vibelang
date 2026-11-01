@@ -17,7 +17,7 @@ runtime=$repo/packages/runtime
 if [ -z "${VIBELANG_BINARY:-}" ]; then
 	VIBELANG_BINARY=$repo/packages/compiler/native/vibelang
 	echo "build: go build -o packages/compiler/native/vibelang ./cmd/tsc"
-	(cd "$repo/typescript/tsc" && CGO_ENABLED=0 sh "$repo/scripts/native-output.sh" build "$VIBELANG_BINARY" -trimpath -gcflags=all=-dwarf=false ./cmd/tsc)
+	(cd "$repo/typescript/tsc" && CGO_ENABLED=0 sh "$repo/scripts/native-output.sh" build "$VIBELANG_BINARY" -trimpath ./cmd/tsc)
 fi
 export VIBELANG_BINARY
 

@@ -44,8 +44,8 @@ fi
 # -trimpath keys the Go build cache by module path instead of directory, so
 # every jj workspace shares one set of cache entries. Without DWARF the cache
 # entries are smaller; panics still print stack traces.
-echo "build: go build -trimpath -gcflags=all=-dwarf=false -o built/local/tsc ./cmd/tsc"
-(cd "$root/tsc" && CGO_ENABLED=0 sh "$root/../scripts/native-output.sh" build "$tsc" -trimpath -gcflags=all=-dwarf=false ./cmd/tsc)
+echo "build: go build -trimpath -o built/local/tsc ./cmd/tsc"
+(cd "$root/tsc" && CGO_ENABLED=0 sh "$root/../scripts/native-output.sh" build "$tsc" -trimpath ./cmd/tsc)
 # The runtime's dist/ is not checked in, and the Go tests compile cases
 # against it, so build it before they run. Build it from source with this tsc, so
 # a commit that changes the compiler and the runtime is tested as one. The
@@ -64,8 +64,8 @@ if [ -f "$runtime/tsconfig.json" ]; then
 fi
 
 echo "test: go test -timeout=20m ./internal/vibelang/"
-(cd "$root/tsc" && CGO_ENABLED=0 go test -timeout=20m -trimpath -gcflags=all=-dwarf=false ./internal/vibelang/ >/dev/null) ||
-	(cd "$root/tsc" && CGO_ENABLED=0 go test -timeout=20m -trimpath -gcflags=all=-dwarf=false ./internal/vibelang/; exit 1)
+(cd "$root/tsc" && CGO_ENABLED=0 go test -timeout=20m -trimpath ./internal/vibelang/ >/dev/null) ||
+	(cd "$root/tsc" && CGO_ENABLED=0 go test -timeout=20m -trimpath ./internal/vibelang/; exit 1)
 
 # The fuzz targets' seed corpus: every oracle runs on the cases, the snippets
 # and the saved reproductions, a pending gap skips, and a fixed one fails as
@@ -89,7 +89,7 @@ fi
 # longer than the campaigns' 10 s for an ordinary compile, so a stage here
 # fails as a hang only after 120 s.
 echo "test: go test -short ./internal/vibelangfuzz/..."
-(cd "$root/tsc" && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s EFFECT_NODE_MODULES=$effect_modules go test -short -timeout=20m -trimpath -gcflags=all=-dwarf=false ./internal/vibelangfuzz/... >/dev/null) ||
-	(cd "$root/tsc" && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s EFFECT_NODE_MODULES=$effect_modules go test -short -timeout=20m -trimpath -gcflags=all=-dwarf=false ./internal/vibelangfuzz/...; exit 1)
+(cd "$root/tsc" && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s EFFECT_NODE_MODULES=$effect_modules go test -short -timeout=20m -trimpath ./internal/vibelangfuzz/... >/dev/null) ||
+	(cd "$root/tsc" && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s EFFECT_NODE_MODULES=$effect_modules go test -short -timeout=20m -trimpath ./internal/vibelangfuzz/...; exit 1)
 
 EFFECT_NODE_MODULES=$effect_modules VIBELANG_RUNTIME=$runtime exec node "$root/vibelang/harness.mjs" "$@"

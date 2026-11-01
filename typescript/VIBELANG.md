@@ -18,7 +18,7 @@ It is a first prototype. It lowers `.vibe` files with checker types, runs the ou
 Run these from `typescript/`:
 
 ```sh
-cd tsc && CGO_ENABLED=0 go build -trimpath -gcflags=all=-dwarf=false -o ../built/local/tsc ./cmd/tsc
+cd tsc && CGO_ENABLED=0 go build -trimpath -o ../built/local/tsc ./cmd/tsc
 vibelang/smoke.sh                 # builds tsc and the runtime, then runs every case
 vibelang/smoke.sh --status        # one line per case: name, owner, and status
 vibelang/smoke.sh ch04 ref2       # the cases whose names contain ch04 or ref2
@@ -29,7 +29,7 @@ vibelang/lsp-smoke.sh             # builds vibelang and the runtime, then runs t
 
 The binary is VibeLang's compiler, `vibelang`, under any file name; `vibelang/lsp-smoke.sh` builds it as `built/local/vibelang`, and `../scripts/build-vibelang.sh` as `../packages/compiler/native/vibelang`.
 
-The build embeds the `lib.*.d.ts` files; Herebyfile's `-tags=noembed` build copies them next to the binary instead. A cold build takes about 75 s and fills about 1.7 GB of Go build cache. Always pass `-trimpath`: without it, Go keys each package's cache entry by its absolute directory, so every jj workspace cold-builds and adds its own copy. `-gcflags=all=-dwarf=false` shrinks the entries; panics still print stack traces.
+The build embeds the `lib.*.d.ts` files; Herebyfile's `-tags=noembed` build copies them next to the binary instead. A cold build takes about 75 s and fills about 1.7 GB of Go build cache. Always pass `-trimpath`: without it, Go keys each package's cache entry by its absolute directory, so every jj workspace cold-builds and adds its own copy. Use no other compile flags: Go keys entries on them too, and the build graph, `scripts/build-vibelang.sh` and the test scripts all build with `-trimpath` alone, so they share one copy of each package (`scripts/go-build-flags.test.mjs`).
 
 Tagged templates follow the call rule (D267): `sql` followed by a template runs its Effect in a program, including as an expression statement, and an expression receives its success value. Plain tags keep JavaScript behavior. Program arguments pass Effectful templates by name (D147); hatches keep TypeScript and top-level running templates report EK1001.
 
@@ -1468,9 +1468,9 @@ Run the benchmarks on the build host, which is quieter and larger than a laptop;
 ```sh
 # Run from the repository root, using a sibling upstream workspace.
 jj workspace add ../upstream --name upstream -r 0c804b2f
-(cd ../upstream/typescript/tsc && go build -o ../built/local/tsc ./cmd/tsc)
+(cd ../upstream/typescript/tsc && go build -trimpath -o ../built/local/tsc ./cmd/tsc)
 # The compiler benchmark, then the language server benchmark.
-(cd typescript/tsc && go build -o ../built/local/tsc ./cmd/tsc)
+(cd typescript/tsc && go build -trimpath -o ../built/local/tsc ./cmd/tsc)
 sh scripts/bench/compiler.sh --upstream ../upstream/typescript/built/local/tsc --runs 5
 node scripts/bench/gen-synthetic.mjs .cache/lsp 400
 node scripts/bench/lsp.mjs typescript/built/local/tsc .cache/lsp/vibelang

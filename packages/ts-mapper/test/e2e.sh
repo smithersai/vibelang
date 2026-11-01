@@ -59,14 +59,14 @@ step "install locked property-test dependencies"
 (cd "$package" && bun install --frozen-lockfile --ignore-scripts --no-cache --omit peer)
 
 step "go test ./internal/vibelangmapper"
-(cd "$root/typescript/tsc" && TS7_VERSION="$ts7_version" VIBELANG_REQUIRE_STOCK_TYPESCRIPT=1 CGO_ENABLED=0 go test -trimpath -gcflags=all=-dwarf=false ./internal/vibelangmapper/)
+(cd "$root/typescript/tsc" && TS7_VERSION="$ts7_version" VIBELANG_REQUIRE_STOCK_TYPESCRIPT=1 CGO_ENABLED=0 go test -trimpath ./internal/vibelangmapper/)
 
 step "forms table matches its generator"
 [ -d "$root/docs/tools/node_modules" ] || (cd "$root/docs/tools" && bun install --silent)
 bash "$root/scripts/check-forms-table.sh"
 
 step "build bin/vibelang-mapper"
-(cd "$root/typescript/tsc" && CGO_ENABLED=0 sh "$root/scripts/native-output.sh" build "$package/bin/vibelang-mapper" -trimpath -gcflags=all=-dwarf=false ./cmd/vibelang-mapper)
+(cd "$root/typescript/tsc" && CGO_ENABLED=0 sh "$root/scripts/native-output.sh" build "$package/bin/vibelang-mapper" -trimpath ./cmd/vibelang-mapper)
 
 step "assemble the fixture"
 [ -f "$effect_dir/package.json" ] || { echo "e2e: no effect at $effect_dir; set EFFECT_DIR" >&2; exit 1; }
@@ -109,12 +109,12 @@ node "$here/lsp-hover.mjs" "$native" "$work"
 step "mapper protocol properties: projections, UTF-8/UTF-16 positions and source maps"
 if [ -z "${VIBELANG_BINARY:-}" ]; then
   VIBELANG_BINARY="$work/vibelang"
-  (cd "$root/typescript/tsc" && CGO_ENABLED=0 sh "$root/scripts/native-output.sh" build "$VIBELANG_BINARY" -trimpath -gcflags=all=-dwarf=false ./cmd/tsc)
+  (cd "$root/typescript/tsc" && CGO_ENABLED=0 sh "$root/scripts/native-output.sh" build "$VIBELANG_BINARY" -trimpath ./cmd/tsc)
 fi
 # Reuse parity's test-only adapter: the production --emit CLI has no tracing option.
 node -e 'require("node:fs").writeFileSync(process.argv[1], JSON.stringify({ Replace: { [process.argv[2]]: process.argv[3] } }))' \
   "$work/emit-overlay.json" "$root/typescript/tsc/cmd/vibelang-mapper/main.go" "$here/parity/emit-main.go"
-(cd "$root/typescript/tsc" && CGO_ENABLED=0 sh "$root/scripts/native-output.sh" build "$work/emit-options" -overlay "$work/emit-overlay.json" -trimpath -gcflags=all=-dwarf=false ./cmd/vibelang-mapper)
+(cd "$root/typescript/tsc" && CGO_ENABLED=0 sh "$root/scripts/native-output.sh" build "$work/emit-options" -overlay "$work/emit-overlay.json" -trimpath ./cmd/vibelang-mapper)
 (cd "$package" && M1_WORK="$work" M1_MAPPER="$package/bin/vibelang-mapper" M1_STOCK="$native" \
   VIBELANG_BINARY="$VIBELANG_BINARY" node --test "$here/protocol.property.test.mjs")
 

@@ -932,7 +932,7 @@ function revisionsNow(stockVersion: string): Record<string, unknown> {
     mapper: { source: process.env.PARITY_REVISION ?? "unknown", binarySha256: sha256(fs.readFileSync(mapperBin)) },
     stock: { typescript: stockVersion },
     go: process.env.PARITY_GO_VERSION ?? "unknown",
-    build: "CGO_ENABLED=0 go build -trimpath -buildvcs=false -gcflags=all=-dwarf=false",
+    build: "CGO_ENABLED=0 go build -trimpath -buildvcs=false",
   }
 }
 
