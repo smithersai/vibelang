@@ -59,7 +59,7 @@ measure() { # label binary tsconfig
     check=$(sed -n 's/^Check time: *\([0-9.]*\)s/\1/p' "$out/run.log")
     total=$(sed -n 's/^Total time: *\([0-9.]*\)s/\1/p' "$out/run.log")
     errors=$(grep -c ' error ' "$out/run.log" || true)
-    sed -n 's/^MEASURE wall_s=\([0-9.]*\) rss_mb=\([0-9.]*\) exit=\([0-9]*\)/\1 \2 \3/p' "$out/run.log" | while read -r wall rss code; do
+    sed -n 's/^MEASURE wall_s=\([0-9.]*\) rss_mb=\([0-9.]*\) exit=\(-\{0,1\}[0-9][0-9]*\)/\1 \2 \3/p' "$out/run.log" | while read -r wall rss code; do
       echo "$wall $rss $code ${check:-0} ${total:-0} ${files:-0} $errors" >> "$out/runs.txt"
     done
     i=$((i + 1))

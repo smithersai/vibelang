@@ -17,4 +17,7 @@ wall = time.perf_counter() - start
 rss = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss
 rss_mb = rss / (1024 * 1024) if sys.platform == "darwin" else rss / 1024
 sys.stdout.write(proc.stdout.decode(errors="replace"))
+# A killed process can leave a partial diagnostic; keep the record parseable.
+if proc.stdout and not proc.stdout.endswith(b"\n"):
+    sys.stdout.write("\n")
 print(f"MEASURE wall_s={wall:.3f} rss_mb={rss_mb:.1f} exit={proc.returncode}")
