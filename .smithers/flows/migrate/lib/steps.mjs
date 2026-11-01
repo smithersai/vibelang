@@ -3,8 +3,9 @@
 // an earlier one recorded. A step that has already recorded its result returns
 // it without running again.
 import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
-import { join, posix, resolve } from "node:path"
+import { dirname, join, posix, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { assertBaselineSafe } from "./baseline.mjs"
 import { buildInventory, listSources, readCoverage } from "./inventory.mjs"
 import { defaultLimits, draftPlan, planPrompt, validatePlan } from "./plan.mjs"
 import { fixToFixedPoint, renameBatch, restoreExports, restoreSpecifiers, rewriteExports, rewriteImports, rewriteTotals } from "./codemod.mjs"
@@ -243,8 +244,13 @@ async function checkPackage({ compiler, ts, t, pkg, log }) {
   const cwd = join(t, pkg.dir)
   const projects = Wire.projectsOf(ts, cwd, pkg.tsconfig)
   const diagnostics = []
-  for (const tsconfig of projects) diagnostics.push(...(await check({ compiler, tsconfig, cwd, root: t, log: projectLog(log, tsconfig, projects) })).diagnostics)
-  return { diagnostics }
+  let code = 0
+  for (const tsconfig of projects) {
+    const checked = await check({ compiler, tsconfig, cwd, root: t, log: projectLog(log, tsconfig, projects) })
+    code ||= checked.code
+    diagnostics.push(...checked.diagnostics)
+  }
+  return { code, diagnostics }
 }
 
 /** Emits the declarations of each project of pkg's declaration tsconfig into outDir, each into its own subdirectory when there are several. */
@@ -270,6 +276,44 @@ async function emitPackageDeclarations({ compiler, ts, t, pkg, outDir, log }) {
   return { code, files, diagnostics }
 }
 
+// Compare an existing native package with its installed predecessor before any repin.
+async function previousCompilerChecks(config, logs) {
+  const checks = {}, t = config.target
+  const tracked = await Jj.trackedFiles(t)
+  let ts
+  for (const pkg of config.packages) {
+    const prefix = posix.normalize(pkg.dir) === "." ? "" : posix.normalize(pkg.dir) + "/"
+    if (!tracked.some(file => file.startsWith(prefix) && file.endsWith(".vibe"))) continue
+    let directory = resolve(t, pkg.dir), compiler
+    for (;;) {
+      const candidate = join(directory, "node_modules/.bin/vibelang")
+      if (existsSync(candidate)) { compiler = candidate; break }
+      if (directory === resolve(t)) break
+      const parent = dirname(directory)
+      if (parent === directory || !parent.startsWith(resolve(t))) break
+      directory = parent
+    }
+    if (!compiler) throw new Error("cannot establish the previous native compiler for " + pkg.dir + "; keep the installed predecessor before switching toolchains")
+    ts ??= typeScriptOf(config)
+    const { stdout: version } = await must(quote(compiler) + " --version", { cwd: join(t, pkg.dir) })
+    checks[pkg.dir] = { compiler: { path: compiler, version: version.trim() },
+      ...await checkPackage({ compiler, ts, t, pkg, log: join(logs, "upstream-check-" + slug(pkg.dir) + ".log") }) }
+  }
+  return checks
+}
+
+async function upgradedCompilerChecks(config, logs, previous) {
+  if (!Object.keys(previous).length) return {}
+  const compiler = compilerOf(config), ts = typeScriptOf(config)
+  const { stdout: version } = await must(quote(compiler) + " --version", { cwd: config.target })
+  const checks = {}
+  for (const pkg of config.packages.filter(pkg => previous[pkg.dir])) checks[pkg.dir] = {
+    compiler: { path: compiler, version: version.trim() },
+    ...await checkPackage({ compiler, ts, t: config.target, pkg, log: join(logs, "upgraded-check-" + slug(pkg.dir) + ".log") })
+  }
+  return checks
+}
+
 const testsOf = (r) => ({ code: r.code, total: r.total, passed: r.passed, failed: r.failed, skipped: r.skipped, ms: r.ms })
 
 /**
@@ -277,14 +321,13 @@ const testsOf = (r) => ({ code: r.code, total: r.total, passed: r.passed, failed
  * the target's tests as they are, moves every Effect version on Effect's major
  * line to the exact one the VibeLang runtime requires (with the overrides that
  * keep one copy installed), installs, runs the tests again, and commits the
- * upgrade on its own, before any VibeLang change. A test the upgrade breaks is
- * recorded as a setup issue and the step still finishes, so setup and every
- * batch are compared with the upgraded tests.
+ * upgrade on its own, before any VibeLang change. New failures or compiler
+ * errors reject the run before setup can accept them as its baseline.
  */
 export async function upgradeEffect(options) {
   const p = paths(options.run)
-  if (existsSync(p.upgrade)) return readJson(p.upgrade)
-  if (existsSync(p.setup)) return { skipped: "this run was set up before upgrade-effect was a step" }
+  if (existsSync(p.upgrade)) { assertBaselineSafe(p, { includeSetup: false }); return readJson(p.upgrade) }
+  if (existsSync(p.setup)) { assertBaselineSafe(p); return { skipped: "this run was set up before upgrade-effect was a step" } }
   const config = existsSync(p.config) ? readJson(p.config) : makeConfig(options)
   writeJson(p.config, config)
   const t = config.target
@@ -307,6 +350,8 @@ export async function upgradeEffect(options) {
   const testRun = (name) => runTests({ command: config.test.command, report: config.test.report, cwd: join(t, config.test.cwd), root: t, jsonFile: join(p.baseline, `${name}.vitest.json`), log: join(logs, `${name}-tests.log`) })
   // The target's own tests first, as it is: what fails here fails before the migration touches anything.
   await install("upstream")
+  const priorChecks = await previousCompilerChecks(config, logs)
+  writeJson(join(p.baseline, "upstream-checks.json"), priorChecks)
   const before = await testRun("upstream")
   if (before.code !== 0 && !before.tests) throw new Error(`the target's tests do not run (exit ${before.code}); see ${join(logs, "upstream-tests.log")}`)
   writeJson(join(p.baseline, "upstream-tests.json"), { code: before.code, tests: before.tests })
@@ -346,6 +391,7 @@ export async function upgradeEffect(options) {
     commit = await Jj.commit(t, moved ? `migrate(vibelang): upgrade Effect to ${to}\n\nThe VibeLang runtime requires exactly effect ${to}. Moves effect and every\n@effect/* package on its major line from ${upgrade.from} to ${to}, with overrides\nthat keep one copy installed.${vibelang.manifests.length ? " The VibeLang packages it already uses move\nto this run's release, which requires that Effect." : ""} No source file changes;\nVibeLang comes next.` : switchMessage(config))
   }
   writeJson(join(p.baseline, "upgraded-tests.json"), { code: after.code, tests: after.tests })
+  writeJson(join(p.baseline, "upgraded-checks.json"), await upgradedCompilerChecks(config, logs, priorChecks))
   // A --base names where the run starts, so the bookmark restarts there even when an earlier run left it elsewhere.
   await Jj.setBookmark(t, config.bookmark, commit ?? baseCommit, { restart: Boolean(config.base) })
   const result = {
@@ -365,6 +411,7 @@ export async function upgradeEffect(options) {
     regressions: comparison && { newFailures: comparison.newFailures, missing: comparison.missing, exit: { before: before.code, after: after.code } }
   }
   writeJson(p.upgrade, result)
+  assertBaselineSafe(p, { includeSetup: false })
   return result
 }
 
@@ -661,6 +708,7 @@ export async function returnToUpgrade(t, commit) {
 /** setup: on the Effect upgrade's commit, wire the toolchain, install, record the baseline tests, compile, declarations and inventory, and commit. */
 export async function setup(options) {
   const p = paths(options.run)
+  assertBaselineSafe(p, { includeSetup: existsSync(p.setup) })
   if (existsSync(p.setup)) return readJson(p.setup)
   const upgrade = readJsonIf(p.upgrade)
   if (!upgrade) throw new Error("upgrade-effect has not run: it is the first step, and setup continues from its commit")
@@ -679,10 +727,9 @@ export async function setup(options) {
   const { stdout: version } = await must(`${JSON.stringify(compiler)} --version`)
 
   // The baseline every batch is compared with: the tests with VibeLang set up and nothing migrated.
-  const tests = wired
-    ? await runTests({ command: config.test.command, report: config.test.report, cwd: join(t, config.test.cwd), root: t, jsonFile: join(p.baseline, "baseline.vitest.json"), log: join(logs, "baseline-tests.log") })
-    : { ...upgrade.tests, tests: upstream.tests }
+  const tests = await runTests({ command: config.test.command, report: config.test.report, cwd: join(t, config.test.cwd), root: t, jsonFile: join(p.baseline, "baseline.vitest.json"), log: join(logs, "baseline-tests.log") })
   writeJson(join(p.baseline, "tests.json"), { code: tests.code, tests: tests.tests })
+  assertBaselineSafe(p)
   const wiring = wired ? compareTests(upstream, tests) : null
   // Setting VibeLang up broke tests before any file moved: record it, so it is
   // not mistaken for a batch's regression, and finish setup with its evidence.
@@ -700,6 +747,7 @@ export async function setup(options) {
     const checked = await checkPackage({ compiler, ts, t, pkg, log: join(logs, `compile-${slug(pkg.dir)}.log`) })
     writeJson(join(p.baseline, `compile-${slug(pkg.dir)}.json`), checked.diagnostics)
     compile[pkg.dir] = summarize(checked.diagnostics)
+    assertBaselineSafe(p)
     declarations[pkg.dir] = await emitPackageDeclarations({ compiler, ts, t, pkg, outDir: join(p.baseline, "dts", slug(pkg.dir)), log: join(logs, `dts-${slug(pkg.dir)}.log`) })
   }
 
@@ -744,6 +792,7 @@ async function runAgent(agent, { prompt, cwd, env, log }) {
  * (--accept file, or the file the agent wrote), validate it, and persist it.
  */
 export async function plan(options) {
+  assertBaselineSafe(paths(options.run))
   const { p, config, inventory } = loadRun(options.run)
   if (existsSync(p.plan)) return { plan: readJson(p.plan), accepted: true }
   if (!inventory) throw new Error("setup has not run")
@@ -766,6 +815,7 @@ export async function plan(options) {
 
 /** codemod: rename the batch to .vibe, rewrite imports, and run vibelang --fix to a fixed point. */
 export async function codemod(options) {
+  assertBaselineSafe(paths(options.run))
   const { p, config, plan: thePlan } = loadRun(options.run)
   if (!thePlan) throw new Error("plan has not been accepted")
   const b = currentBatch(options.run, options.batch)
@@ -891,6 +941,7 @@ async function revertSource(t, p, plan, b, ts, vibe) {
 
 /** verify: tests against the baseline, declaration identity, and no TypeScript-style form or platform global in the batch. */
 export async function verify(options) {
+  assertBaselineSafe(paths(options.run))
   const { p, config, plan: thePlan } = loadRun(options.run)
   const b = currentBatch(options.run, options.batch)
   const t = config.target
@@ -953,6 +1004,7 @@ export async function verify(options) {
 
 /** record: commit the batch with jj and record its tokens before and after. */
 export async function record(options) {
+  assertBaselineSafe(paths(options.run))
   const { p, config, plan: thePlan, inventory } = loadRun(options.run)
   const b = currentBatch(options.run, options.batch)
   if (existsSync(p.record(b))) return readJson(p.record(b))

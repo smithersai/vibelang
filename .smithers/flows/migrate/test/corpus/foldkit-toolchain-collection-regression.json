@@ -1,0 +1,11 @@
+{
+  "key": "migrate:toolchain-switch-regressions",
+  "symptom": "38 previously passing test files fail collection after a toolchain switch",
+  "files": [
+    "dom/dom.test.ts",
+    "runtime/documentMetadata.test.ts"
+  ],
+  "diagnostic": "EK4402",
+  "beforeCode": 0,
+  "afterCode": 2
+}

@@ -208,8 +208,8 @@ test("planUpgrade changes nothing at the runtime's version, and needs an effect 
 
 // The step itself on a real jj repository with a real Bun suite that the
 // upgrade breaks: the upgrade is committed on the base alone, and the broken
-// test becomes a setup issue instead of stopping the run.
-test("upgrade-effect commits the Effect upgrade on the base and records the tests it breaks as a setup issue", async () => {
+// test is retained as evidence and stops the run before a new baseline.
+test("upgrade-effect retains the Effect upgrade evidence and rejects new test failures", async () => {
   const root = mkdtempSync(join(tmpdir(), "migrate-upgrade-"))
   const target = join(root, "repo")
   const run = join(root, "run")
@@ -231,7 +231,8 @@ test("upgrade-effect commits the Effect upgrade on the base and records the test
     writeJson(join(toolchain, "toolchain.json"), { version: "0.0.11", effect: "4.0.6", compiler: "native/vibelang", packages: {} })
 
     const options = { run, target, packages: ["packages/core"], test: "bun test", testCwd: "packages/core", toolchain, install: "true", base }
-    const result = await upgradeEffect(options)
+    await assert.rejects(upgradeEffect(options), /toolchain baseline regression/)
+    const result = readJson(paths(run).upgrade)
     assert.deepEqual(result.effect, { from: "4.0.5", to: "4.0.6" })
     assert.deepEqual(result.changed, ["pnpm-workspace.yaml", "packages/core/package.json"])
     // What the upgrade wrote went through the repository's own formatter.
@@ -252,8 +253,8 @@ test("upgrade-effect commits the Effect upgrade on the base and records the test
     assert.deepEqual(issues.map((i) => [i.entry.batch, i.entry.title, i.problems.length]), [["setup", "Upgrading Effect from 4.0.5 to 4.0.6 makes the target's tests exit 1", 0]])
     assert.equal(readJson(join(paths(run).baseline, "upgraded-tests.json")).code, 1)
     assert.deepEqual(nextStep(run), { step: "setup" })
-    assert.deepEqual(await upgradeEffect(options), result)
-    assert.deepEqual(await flowStep("upgrade-effect", options), { step: "upgrade-effect", batch: "", summary: "Effect 4.0.5 -> 4.0.6 in 2 files; tests regressed (a setup issue)" })
+    await assert.rejects(upgradeEffect(options), /toolchain baseline regression/)
+    await assert.rejects(flowStep("upgrade-effect", options), /toolchain baseline regression/)
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
