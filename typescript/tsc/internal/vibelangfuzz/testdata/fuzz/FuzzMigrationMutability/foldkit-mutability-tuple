@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.ts --\nexport function widen(options: [number, number]): void { options[0] = 0 }\n")

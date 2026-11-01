@@ -322,6 +322,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Migration regression checks now replay annotated and ordinary `Effect.fn` bodies, `import.meta` reads and default parameters against their original TypeScript programs.
 
+
 - Outward returns from `do` expressions in callable bodies now keep strict migration regression checks after their compiler gaps were resolved; parameter defaults retain their own pending checks.
 - The ESLint corpus check could report a missing identifier node for a name written with a Unicode escape; it now matches the decoded name at the same source position while still detecting missing nodes.
 - Nested schema alias rules still appeared as known gaps after their fix landed; those rules and their corpus inputs now run as strict checks of `EK2109`.

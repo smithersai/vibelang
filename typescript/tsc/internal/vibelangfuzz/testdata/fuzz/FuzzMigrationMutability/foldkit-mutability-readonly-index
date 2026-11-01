@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.ts --\nexport function widen(options: { readonly [key: string]: number }): void { options.minimum = 0 }\n")

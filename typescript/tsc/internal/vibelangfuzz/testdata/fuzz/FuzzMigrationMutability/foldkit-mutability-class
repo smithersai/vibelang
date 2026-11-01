@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.ts --\nexport class Box { value = 1; write(): void { this.value = 0 } }\n")

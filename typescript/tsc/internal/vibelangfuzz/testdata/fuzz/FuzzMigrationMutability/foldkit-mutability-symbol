@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.ts --\ndeclare const key: unique symbol; export function widen(options: { [key]: number }): void { options[key] = 0 }\n")
