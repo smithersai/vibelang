@@ -495,7 +495,7 @@ The references use each VIP's Effect operation with ordinary JavaScript
 statements or the chapter's completion-record expansion. Pending dependencies
 are recorded as compiler gaps, never treated as proof that a construct works.
 
-`TestRunningRulesQuoted` also checks the citations in the spec gate, so a chapter edit updates its affected oracle before landing. The target reads chapters through `SpecPath`.
+`TestRunningRulesQuoted` also checks the citations in the spec gate, so a chapter edit updates its affected oracle before landing. The target reads chapters through `SpecPath`. R11 adds eighteen keyed plain catch-handler pairs across concise arrows, block arrows and function expressions, with `Promise`, `PromiseLike`, alias, optional, union and intersection result types. The controls cover the spec-exempt `any`, `unknown` and `never` types alongside ordinary values. These are static `EK0507` tests; they do not assume native `Promise` work is cold.
 
 ## Declaration identity (Chapter 1)
 
