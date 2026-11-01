@@ -84,13 +84,13 @@ effect function slow(): number!! {
 // expect-result: {"results":[-1,-1,-1,1,2,15,-1],"events":["throw","throw after an effect","throw","failing call","break","return","interrupted"]}
 export effect function main() {
   const results = [
-    throwing() catch -1,
-    throwingAfterEffect() catch -1,
-    failingCall() catch -1,
+    throwing() catch () => -1,
+    throwingAfterEffect() catch () => -1,
+    failingCall() catch () => -1,
     try breaking(),
     try returning(),
     try exhausted(),
-    timeout(slow(), "10 millis") catch -1
+    timeout(slow(), "10 millis") catch () => -1
   ]
   return { results, events }
 }

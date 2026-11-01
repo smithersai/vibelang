@@ -1,4 +1,4 @@
-// Catch expressions (D236): a fallback, and a handler that matches the failure.
+// Catch expressions (D236): a handler that gives a value, and one that matches the failure.
 error Missing { id: string }
 error Late
 
@@ -9,7 +9,7 @@ function findUser(id: string): string!Missing | Late! {
 }
 
 export function userOrGuest(id: string) {
-  return findUser(id) catch "guest"
+  return findUser(id) catch () => "guest"
 }
 
 export function describeUser(id: string) {

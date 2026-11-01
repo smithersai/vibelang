@@ -3,11 +3,11 @@ type Read = () => Effect.Effect<number, string, never>
 interface Source { readonly read?: Read }
 
 export effect function unguarded(source: Source): number!! {
-  return source.read() catch 0
+  return source.read() catch () => 0
 }
 
 export effect function wrongBranch(source: Source): number!! {
-  return source.read === undefined ? (source.read() catch 0) : 1
+  return source.read === undefined ? (source.read() catch () => 0) : 1
 }
 
 // An actual callback remains a closure boundary, even inside a catch operand.
@@ -16,7 +16,7 @@ export effect function nested(source: Source): number!! {
     return (do {
       const later = effect (): Effect.Effect<number, string, never> => try source.read()
       try later()
-    }) catch 0
+    }) catch () => 0
   }
   return 0
 }
@@ -24,7 +24,7 @@ export effect function nested(source: Source): number!! {
 // Failure can change a property; neither fallback nor handler inherits it.
 effect function failed(): number!string! { throw "failed" }
 export effect function fallback(source: Source): number!string! {
-  return source.read === undefined ? 0 : (failed() catch source.read())
+  return source.read === undefined ? 0 : (failed() catch () => source.read())
 }
 export effect function handler(source: Source): number!string! {
   return source.read === undefined ? 0 : (failed() catch effect (error) => try source.read())
@@ -33,5 +33,5 @@ export effect function handler(source: Source): number!string! {
 // A property assigned undefined inside the operand must not reuse its guard.
 interface MutableSource { mutable read?: Read }
 export effect function reassigned(source: MutableSource): number!! {
-  return source.read === undefined ? 0 : ((source.read = undefined, source.read()) catch 0)
+  return source.read === undefined ? 0 : ((source.read = undefined, source.read()) catch () => 0)
 }

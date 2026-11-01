@@ -58,7 +58,7 @@ export function seat(ids: ReadonlyArray<string>) {
     const any = try.any [Seats.take("h"), Seats.take("i")]
     const settled = try.allSettled [Seats.take("j")]
     for concurrent(2) (const id of ids) log(id)
-    const name = Seats.take("k") catch "guest"
+    const name = Seats.take("k") catch () => "guest"
     const reason = Seats.take("l") catch (e) => match (e) {
       when Gone: `gone ${e.id}`;
     }

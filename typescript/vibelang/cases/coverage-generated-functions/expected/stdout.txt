@@ -7,9 +7,11 @@ main.vibe:29:1 mapped uncovered
 main.vibe:33:1 load covered
 main.vibe:34:27 (anonymous) uncovered
 main.vibe:38:1 orZero covered
+main.vibe:39:24 (anonymous) uncovered
 main.vibe:42:1 timed covered
 main.vibe:46:1 pair covered
 main.vibe:51:1 nameOf covered
+main.vibe:52:31 (anonymous) uncovered
 main.vibe:55:7 label covered
 main.vibe:60:1 guarded covered
 main.vibe:68:1 block covered

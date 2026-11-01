@@ -36,7 +36,7 @@ export effect function load(n: number): number!Bad! {
 }
 
 export effect function orZero(n: number): number!! {
-  return step(n) catch 0
+  return step(n) catch () => 0
 }
 
 export effect function timed(n: number) {
@@ -49,7 +49,7 @@ export effect function pair(n: number): number!Oops! {
 }
 
 export effect function nameOf(id: string): string!!Users {
-  return Users.find(id) catch "missing"
+  return Users.find(id) catch () => "missing"
 }
 
 export function label(n: number): string {

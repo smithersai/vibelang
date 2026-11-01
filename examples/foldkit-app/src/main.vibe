@@ -40,7 +40,7 @@ function loadQuote() {
 }
 
 export function fetchQuote() {
-  return loadQuote() catch Message.FailedFetchQuote({ error: "Could not load a quote" })
+  return loadQuote() catch () => Message.FailedFetchQuote({ error: "Could not load a quote" })
 }
 
 export const FetchQuote = Command.define("FetchQuote", {

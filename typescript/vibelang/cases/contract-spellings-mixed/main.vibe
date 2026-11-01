@@ -32,7 +32,7 @@ export effect function spelled(id: string): Effect<string, NotFound, Users> {
 }
 
 export effect function guest(lookup: Lookup, id: string): string!!Users {
-  return lookup(id) catch "guest"
+  return lookup(id) catch () => "guest"
 }
 
 export effect function add(program: Counted, extra: Effect<number>): Effect<number, never, Users> {

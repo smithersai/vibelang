@@ -45,7 +45,7 @@ export effect function main() {
   const literalOptional = try sync(async (a: number, b?: number) => typeof b, 1)
   const literalSignal = try Effect.tryPromise((signal) => (async (n: number, signal: AbortSignal) => signal instanceof AbortSignal)(3, signal))
   const literalNone = try sync(async () => 1)
-  const timedOut = timeout(sync(untilAborted, events), "10 millis") catch "timed out"
+  const timedOut = timeout(sync(untilAborted, events), "10 millis") catch () => "timed out"
   return {
     rest, triedRest, mappedRest, unknownRest, optional, triedOptional, defaulted: sum, input, tried,
     literalRest, literalOptional, literalSignal, literalNone, timedOut, events

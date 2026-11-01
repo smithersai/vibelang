@@ -19,7 +19,7 @@ effect function double(n: number) {
 
 export effect function main() {
   const a = try double(1)
-  const b = find("missing") catch "guest"
+  const b = find("missing") catch () => "guest"
   const program: number!! = effect { return try double(1.5) }
   const c = try program
   const parsed = try Effect.try(() => JSON.parse("{\"x\":1}"))

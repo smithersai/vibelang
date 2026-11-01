@@ -49,7 +49,7 @@ type Maybe = Effect<number> | undefined
 type Nested = Effect<Effect<number>, NotFound>
 
 effect function find(finder: Finder, id: string): Effect<string> {
-  return finder(id) catch "none"
+  return finder(id) catch () => "none"
 }
 
 effect function either(program: Maybe): Effect<number> {

@@ -6,7 +6,7 @@ export function submit(job: string) {
   return enqueue(job)
     |> retry(%, Schedule.recurs(4))
     |> timeout(%, "750 millis")
-    catch "pending"
+    catch () => "pending"
 }
 
 export const heartbeat = effect {

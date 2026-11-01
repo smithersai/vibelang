@@ -14,5 +14,5 @@ effect function wrongHandler(n: number): Outcome!! {
 }
 
 effect function wrongFallback(n: number): "fast" | "slow"!! {
-  return (find(n) > 10 ? "fast" : "slow") catch "stopped"
+  return (find(n) > 10 ? "fast" : "slow") catch () => "stopped"
 }

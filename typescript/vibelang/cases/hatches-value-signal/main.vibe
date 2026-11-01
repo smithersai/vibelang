@@ -41,6 +41,6 @@ import { hasSignal, value, input, rest, sum, waiting } from foreign
 export effect function main() {
   const events: string[] = []
   const direct = try sync(hasSignal)
-  const timedOut = timeout(waiting(events), "10 millis") catch "timed out"
+  const timedOut = timeout(waiting(events), "10 millis") catch () => "timed out"
   return { direct, value: try value(), input: try input(), rest: try rest(), defaulted: try sum(), timedOut, events }
 }

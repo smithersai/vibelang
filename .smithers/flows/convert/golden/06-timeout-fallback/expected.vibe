@@ -4,5 +4,5 @@ function slow() {
 }
 
 export function quick() {
-  return slow() |> timeout(%, "1 second") catch "too slow"
+  return slow() |> timeout(%, "1 second") catch () => "too slow"
 }

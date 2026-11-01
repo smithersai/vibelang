@@ -51,7 +51,10 @@ func (p *Parser) parseVibeLangCatchRest(left *ast.Expression, pos int) *ast.Expr
 }
 
 // parseVibeLangCatchHandler parses the handler of `catch (e) => …`,
-// `catch e => …`, or `catch effect (e) => …`, or returns nil when what follows catch is a fallback.
+// `catch e => …`, `catch effect (e) => …` or `catch async (e) => …`, or
+// returns nil when what follows catch is a fallback, which the checker
+// reports as EK0509 unless it is a parenthesized function literal or a
+// function expression.
 func (p *Parser) parseVibeLangCatchHandler() *ast.Node {
 	if arrow := p.tryParseVibeLangEffectArrow(true /*allowReturnTypeInArrowFunction*/); arrow != nil {
 		return arrow // catch effect (e) => … (VIP-5)
@@ -61,6 +64,15 @@ func (p *Parser) parseVibeLangCatchHandler() *ast.Node {
 	}
 	if p.token == ast.KindOpenParenToken {
 		return p.tryParseParenthesizedArrowFunctionExpression(true /*allowReturnTypeInArrowFunction*/)
+	}
+	if p.token == ast.KindAsyncKeyword {
+		// catch async (e) => … and catch async e => … parse as the arrows
+		// they are, so the checker reports EK0509 and its fix removes async,
+		// rather than a call of async followed by a stray =>.
+		if arrow := p.tryParseParenthesizedArrowFunctionExpression(true /*allowReturnTypeInArrowFunction*/); arrow != nil {
+			return arrow
+		}
+		return p.tryParseAsyncSimpleArrowFunctionExpression(true /*allowReturnTypeInArrowFunction*/)
 	}
 	return nil
 }

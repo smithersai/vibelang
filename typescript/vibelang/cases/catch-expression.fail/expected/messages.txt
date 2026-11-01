@@ -1,1 +1,1 @@
-find("1") catch "guest" runs a program
+find("1") catch () => "guest" runs a program

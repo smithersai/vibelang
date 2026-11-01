@@ -229,7 +229,7 @@ effect function viaCatchMatch(src: () => unknown!E | E2) {
 }
 
 effect function viaCatchValue(src: () => unknown!E | E2) {
-  return src() catch "fallback"
+  return src() catch () => "fallback"
 }
 
 effect function viaRetry(src: () => unknown!E | E2) {

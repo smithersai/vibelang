@@ -50,7 +50,7 @@ type Maybe = (number!!) | undefined
 type Nested = (number!!)!NotFound!
 
 effect function find(finder: Finder, id: string): string!! {
-  return finder(id) catch "none"
+  return finder(id) catch () => "none"
 }
 
 effect function either(program: Maybe): number!! {

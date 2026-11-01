@@ -17,7 +17,7 @@ effect function select(n: number): Outcome!! {
 }
 
 effect function fallback(n: number): Maybe!! {
-  return { _tag: "Some", value: find(n) } catch ({ _tag: "None" })
+  return { _tag: "Some", value: find(n) } catch () => ({ _tag: "None" })
 }
 
 effect function declared(n: number) {
@@ -42,11 +42,11 @@ effect function step(label: "first" | "second", n: number): "first" | "second"!M
 }
 
 effect function chained(a: number, b: number): "first" | "second" | "last"!! {
-  return step("first", a) catch step("second", b) catch "last"
+  return (step("first", a) catch () => step("second", b)) catch () => "last"
 }
 
 effect function mode(n: number): Mode!! {
-  return (find(n) > 10 ? "fast" : "slow") catch "slow"
+  return (find(n) > 10 ? "fast" : "slow") catch () => "slow"
 }
 
 export effect function main() {

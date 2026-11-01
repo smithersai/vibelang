@@ -105,7 +105,7 @@ builds.
    `Runtime.makeApplication({ Model })` takes the declaration as the schema.
 2. **A command body as direct calls, with a `catch` fallback.** `loadQuote()`
    calls `HttpClient.get` and `Schema.decodeUnknownEffect(Quote)(response.json())`
-   in order; `loadQuote() catch Message.FailedFetchQuote({...})` replaces
+   in order; `loadQuote() catch () => Message.FailedFetchQuote({...})` replaces
    `Effect.gen` plus `Effect.catch(() => Effect.succeed(...))`.
 3. **`provide` inside the command.** `execute: () => { provide Http.layer { return fetchQuote() } }`
    replaces `Effect.provide(fetchQuote(), Http.layer)`.

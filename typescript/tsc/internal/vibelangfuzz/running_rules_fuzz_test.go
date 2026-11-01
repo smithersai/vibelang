@@ -66,6 +66,11 @@ var runningRules = []struct{ key, quote, good, bad string }{
 	{"catch-bare-call", "Anything else after `catch` is a syntax error", "function make() { return 7 }; effect function f() { return Effect.fail(1) catch () => make() }", "function make() { return 7 }; effect function f() { return Effect.fail(1) catch make() }"},
 	{"catch-effect-block", "Anything else after `catch` is a syntax error", "effect function f() { return Effect.fail(1) catch effect () => { return 7 } }", "effect function f() { return Effect.fail(1) catch effect { return 7 } }"},
 	{"catch-class", "Anything else after `catch` is a syntax error", "effect function f() { return Effect.fail(1) catch () => class C {} }", "effect function f() { return Effect.fail(1) catch class C {} }"},
+	// t3code's value handlers: an Effect, a parenthesized value, a property and an async simple arrow.
+	{"catch-effect-value", "Anything else after `catch` is a syntax error", "effect function f() { return Effect.fail(1) catch effect () => try Effect.succeed(7) }", "effect function f() { return Effect.fail(1) catch Effect.succeed(7) }"},
+	{"catch-parenthesized-value", "Anything else after `catch` is a syntax error", "effect function f() { return Effect.fail(1) catch () => (7) }", "effect function f() { return Effect.fail(1) catch (7) }"},
+	{"catch-property", "Anything else after `catch` is a syntax error", "const config = { fallback: 7 }; effect function f() { return Effect.fail(1) catch () => config.fallback }", "const config = { fallback: 7 }; effect function f() { return Effect.fail(1) catch config.fallback }"},
+	{"catch-async-simple-arrow", "an `async`, generator or `async` generator handler", "effect function f() { return Effect.fail(1) catch e => 7 }", "effect function f() { return Effect.fail(1) catch async e => 7 }"},
 	{"mask-name-newline", "contextual keywords followed by `{` on the same line", "function f(): number { const uninterruptible = 1, interruptible = 2, restore = 3; uninterruptible\n{ const x = 1 }; interruptible\n{ const x = 2 }; restore\n{ const x = 3 }; return uninterruptible + interruptible + restore }", "function f() { uninterruptible { } }"},
 	{"mask-qualified", "Effect's functions are written `Effect.uninterruptible` and `Effect.interruptible`", "effect function f() { return try Effect.uninterruptible(Effect.succeed(1)) }", "effect function f() { return try uninterruptible(Effect.succeed(1)) }"},
 	{"interruptible-qualified", "Effect's functions are written `Effect.uninterruptible` and `Effect.interruptible`", "effect function f() { return try Effect.interruptible(Effect.succeed(1)) }", "effect function f() { return try interruptible(Effect.succeed(1)) }"},
@@ -151,7 +156,18 @@ func FuzzRunningRules(f *testing.F) {
 			Gap(t, "FuzzRunningRules", "reject:"+rule.key, "chapter 2: %s; forbidden form compiled:\n%s", rule.quote, rule.bad)
 			return
 		}
-		if expected := runningRuleDiagnostic(chapter, rule.key, rule.quote); expected != 0 && !errorCodes[expected] {
+		expected := runningRuleDiagnostic(chapter, rule.key, rule.quote)
+		if expected == 0 && strings.HasPrefix(rule.key, "catch-") {
+			// "Anything else after `catch` is a syntax error (`EK0509`)" is
+			// prose, not a table row.
+			for _, line := range strings.Split(chapter, "\n") {
+				if match := regexp.MustCompile("^" + regexp.QuoteMeta(rule.quote) + " \\(`EK([0-9]{4})`\\)").FindStringSubmatch(line); match != nil {
+					code, _ := strconv.Atoi(match[1])
+					expected = int32(code)
+				}
+			}
+		}
+		if expected != 0 && !errorCodes[expected] {
 			Gap(t, "FuzzRunningRules", "diagnostic:"+rule.key, "chapter 2 requires EK%04d for %s; got:\n%s", expected, rule.key, strings.Join(compileErrors, "\n"))
 			return
 		}

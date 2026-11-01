@@ -8,7 +8,7 @@ function nameOf(id: string) {
   return Users.name(id)
     |> retry(%, Schedule.exponential("100 millis"))
     |> timeout(%, "2 seconds")
-    catch "unknown"
+    catch () => "unknown"
 }
 
 export function names(ids: ReadonlyArray<string>) {

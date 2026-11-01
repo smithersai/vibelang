@@ -12,5 +12,5 @@ export function route(tracking: string) {
 }
 
 export function destinationOrDepot(tracking: string) {
-  return destination(tracking) catch "depot"
+  return destination(tracking) catch () => "depot"
 }

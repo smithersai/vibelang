@@ -18,7 +18,7 @@ const compiler = join(packageRoot, "../compiler/bin/vibelang")
 const vitest = join(dirname(createRequire(import.meta.url).resolve("vitest/package.json")), "vitest.mjs")
 
 // The functions each .vibe module's author wrote.
-const authored = { byname: 5, callbacks: 7, catches: 9, matches: 4, services: 4 }
+const authored = { byname: 5, callbacks: 7, catches: 10, matches: 4, services: 5 }
 
 async function coverageRun(t) {
   const base = join(packageRoot, "test/.fixtures")

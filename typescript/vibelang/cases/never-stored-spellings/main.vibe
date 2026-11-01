@@ -6,7 +6,7 @@ error Missing { id: string }
 export effect function main() {
   const missing: never!Missing! = Effect.fail(new Missing({ id: "a" }))
   const stored = { fail: effect () => throw new Missing({ id: "b" }) }
-  const first = missing() catch "held"
+  const first = missing() catch () => "held"
   const second = stored.fail() catch (e) => e.id.length
   return [first, second, Effect.isEffect(missing)]
 }

@@ -11,7 +11,7 @@ effect function find(id: string): string!NotFound | Timeout! {
 
 // A fallback value, as Effect.orElseSucceed.
 effect function orGuest(id: string): string!! {
-  return find(id) catch "guest"
+  return find(id) catch () => "guest"
 }
 
 // A handler whose match handles every failure removes them all from E.
@@ -32,7 +32,7 @@ effect function partial(id: string): string!Timeout! {
 
 // catch associates to the left: try b after a fails, then fall back.
 effect function firstOf(a: string, b: string): string!! {
-  return find(a) catch find(b) catch "none"
+  return (find(a) catch () => find(b)) catch () => "none"
 }
 
 // A throw expression replaces the failure.
@@ -42,7 +42,7 @@ effect function wrapped(id: string): string!Wrapped! {
 
 // catch binds tighter than ? :.
 effect function precedence(id: string, quick: boolean): string!! {
-  return quick ? find(id) catch "fast" : "slow"
+  return quick ? find(id) catch () => "fast" : "slow"
 }
 
 effect function lookupNickname(id: string) {
@@ -52,7 +52,7 @@ effect function lookupNickname(id: string) {
 
 // catch binds looser than ??, so the default is inside the catch.
 effect function nickname(id: string): string!! {
-  return lookupNickname(id) ?? "unknown" catch "failed"
+  return lookupNickname(id) ?? "unknown" catch () => "failed"
 }
 
 effect function crash(): string!Timeout! {
@@ -61,7 +61,7 @@ effect function crash(): string!Timeout! {
 
 // Defects pass through a catch expression.
 effect function defect(): string!! {
-  return match (try exit(crash() catch "caught")) {
+  return match (try exit(crash() catch () => "caught")) {
     when Exit.Success(let value): value;
     when Exit.Failure(let cause): Cause.hasDies(cause) ? "died" : "other";
   }
@@ -69,12 +69,12 @@ effect function defect(): string!! {
 
 // A pipe's body holds the catch.
 effect function piped(id: string): string!! {
-  return id |> find(%) catch "none"
+  return id |> find(%) catch () => "none"
 }
 
 export effect function main() {
   let ran = false
-  const quick = find("1") catch do { ran = true; "guest" }
+  const quick = find("1") catch () => do { ran = true; "guest" }
   return {
     orGuest: [try orGuest("1"), try orGuest("missing")],
     describe: [try describe("1"), try describe("missing"), try describe("slow")],

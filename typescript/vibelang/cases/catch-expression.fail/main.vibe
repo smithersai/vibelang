@@ -22,7 +22,7 @@ export effect function parsed() {
 
 // The left side cannot fail, so the catch never runs (EK9204, a warning).
 export effect function constant() {
-  return 1 catch 2
+  return 1 catch () => 2
 }
 
 // default: throw e keeps Timeout in E, which the contract leaves out.
@@ -34,4 +34,4 @@ export effect function strict(id: string): string!! {
 }
 
 // At a module's top level a catch expression runs a program (EK1001).
-export const top = find("1") catch "guest"
+export const top = find("1") catch () => "guest"

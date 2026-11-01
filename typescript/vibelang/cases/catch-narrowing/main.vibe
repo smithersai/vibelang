@@ -3,28 +3,28 @@ type Read = () => Effect.Effect<number, string, never>
 interface Source { readonly read?: Read }
 
 export effect function ternary(source: Source): number!! {
-  return source.read === undefined ? 0 : (source.read() catch -1)
+  return source.read === undefined ? 0 : (source.read() catch () => -1)
 }
 
 export effect function and(source: Source): number | false!! {
-  return source.read !== undefined && (source.read() catch -1)
+  return source.read !== undefined && (source.read() catch () => -1)
 }
 
 export effect function guardedIf(source: Source): number!! {
-  if (source.read !== undefined) return source.read() catch -1
+  if (source.read !== undefined) return source.read() catch () => -1
   return 0
 }
 
 export effect function guardedTypeof(source: Source): number!! {
-  return typeof source.read === "function" ? (source.read() catch -1) : 0
+  return typeof source.read === "function" ? (source.read() catch () => -1) : 0
 }
 
 export effect function bracket(source: Source): number!! {
-  return source["read"] === undefined ? 0 : (source["read"]() catch -1)
+  return source["read"] === undefined ? 0 : (source["read"]() catch () => -1)
 }
 
 export effect function nested(source: Source): number!! {
-  return source.read === undefined ? 0 : ((source.read() catch effect (error) => (throw error)) catch -1)
+  return source.read === undefined ? 0 : ((source.read() catch effect (error) => (throw error)) catch () => -1)
 }
 
 // The original Smithers repro uses an arrow and a rethrowing handler.
@@ -49,7 +49,7 @@ export effect function main() {
     typeof: [try guardedTypeof(absent), try guardedTypeof(present), try guardedTypeof(failure)],
     bracket: [try bracket(absent), try bracket(present), try bracket(failure)],
     nested: [try nested(absent), try nested(present), try nested(failure)],
-    rethrow: rethrow(present) catch -1,
+    rethrow: rethrow(present) catch () => -1,
     getter: [getterValue, reads]
   }
 }

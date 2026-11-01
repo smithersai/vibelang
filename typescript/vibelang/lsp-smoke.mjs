@@ -431,7 +431,7 @@ try {
     }
   })
 
-  await check("diagnostics: catch-expression.vibe, with a fallback and a handler, checks clean", async () => {
+  await check("diagnostics: catch-expression.vibe, with a value handler and a matching handler, checks clean", async () => {
     open("src/catch-expression.vibe", "vibe")
     const items = await diagnostics("src/catch-expression.vibe")
     assert(items.length === 0, `expected no diagnostics, got ${JSON.stringify(items.map((d) => d.message))}`)
@@ -916,8 +916,8 @@ try {
   })
 
   await check("hover: the catch keyword names the Effect function and the value", async () => {
-    const fallback = await hover("src/catch-expression.vibe", "catch \"guest\"")
-    assert(fallback.includes("Effect.orElseSucceed") && fallback.includes("Returns `string`") && /`(Late \| Missing|Missing \| Late)`/.test(fallback), `got ${JSON.stringify(fallback)}`)
+    const value = await hover("src/catch-expression.vibe", "catch () => \"guest\"")
+    assert(value.includes("Effect.catch") && value.includes("Returns `string`") && /`(Late \| Missing|Missing \| Late)`/.test(value), `got ${JSON.stringify(value)}`)
     const handler = await hover("src/catch-expression.vibe", "catch (failure)")
     assert(handler.includes("Effect.catch") && !handler.includes("propagate"), `got ${JSON.stringify(handler)}`)
   })

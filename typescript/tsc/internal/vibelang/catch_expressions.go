@@ -109,6 +109,7 @@ func checkCatchExpressions(c *checker.Checker, file *ast.SourceFile) {
 			if ast.NodeIsMissing(left) || fallback != nil && ast.NodeIsMissing(fallback) {
 				return false // the parser already reports the missing operand
 			}
+			checkCatchHandler(c, file, call, fallback)
 			if inLowerableBody(call) && analyzerFor(c).caughtErrors(call).Flags()&checker.TypeFlagsNever != 0 {
 				d := reportAt(c, file, keyword, deadCatchExpression, nodeText(file, left))
 				note(d, "Use a form that can fail, such as Option.getOrElse or Schema.decodeUnknownEffect, or remove the catch.")

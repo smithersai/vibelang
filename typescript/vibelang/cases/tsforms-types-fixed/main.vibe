@@ -12,7 +12,7 @@ function load(id: string): number!Missing {
 }
 
 function checked(program: number!Missing): Effect.Effect<string, never, infer R> {
-  const n = program() catch -1
+  const n = program() catch () => -1
   return n >= 0 ? "ok" : "missing"
 }
 

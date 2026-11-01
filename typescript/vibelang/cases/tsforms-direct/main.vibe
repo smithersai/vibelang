@@ -32,7 +32,7 @@ function record(): Effect.Effect<{ ok: boolean }, never, never> {
 }
 
 export function main() {
-  const stubbed = store.gone() catch "gone"
+  const stubbed = store.gone() catch () => "gone"
   const free = { run: () => Effect.succeed("program") } as unknown as { run: () => Effect.Effect<string> }
   return {
     found: find(1),

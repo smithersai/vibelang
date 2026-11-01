@@ -41,7 +41,7 @@ export effect function found(id: string): Effect<string, Gone, Users> {
 }
 
 export effect function guest(id: string): Effect<string, never, Users> {
-  return Users.find(id) catch "guest"
+  return Users.find(id) catch () => "guest"
 }
 
 export effect function inferred(id: string): Effect<string, Gone, infer R> {

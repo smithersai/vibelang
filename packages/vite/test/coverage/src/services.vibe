@@ -12,7 +12,7 @@ export const UsersLive = Layer.succeed(Users, {
 })
 
 export function nameOf(id: string): string!!Users {
-  return Users.find(id) catch "missing"
+  return Users.find(id) catch () => "missing"
 }
 
 export function greet(id: string): string!Bad!Users {

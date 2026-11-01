@@ -11,24 +11,6 @@ FuzzRunningRules diagnostic:join-plain compiler VIP-17: the rejection does not r
 FuzzRunningRules corpus:join-plain compiler VIP-17: minimized reproduction of diagnostic:join-plain; lane vip-core2
 FuzzRunningRules diagnostic:restore-plain compiler VIP-22: the rejection does not report the diagnostic assigned to this rule; lane vip-core2
 FuzzRunningRules corpus:restore-plain compiler VIP-22: minimized reproduction of diagnostic:restore-plain; lane vip-core2
-FuzzRunningRules reject:catch-bare-call compiler VIP-5: the forbidden form is accepted; lane core-catch
-FuzzRunningRules corpus:catch-bare-call compiler VIP-5: minimized reproduction of reject:catch-bare-call; lane core-catch
-FuzzRunningRules reject:catch-bare-name compiler VIP-5: the forbidden form is accepted; lane core-catch
-FuzzRunningRules corpus:catch-bare-name compiler VIP-5: minimized reproduction of reject:catch-bare-name; lane core-catch
-FuzzRunningRules reject:catch-bare-value compiler VIP-5: the forbidden form is accepted; lane core-catch
-FuzzRunningRules corpus:catch-bare-value compiler VIP-5: minimized reproduction of reject:catch-bare-value; lane core-catch
-FuzzRunningRules diagnostic:catch-async-arrow compiler VIP-5: an `async` arrow handler fails to parse (TS1005, TS2552) and draws no EK0509; lane core-catch
-FuzzRunningRules corpus:catch-async-arrow compiler VIP-5: minimal reproduction of diagnostic:catch-async-arrow; lane core-catch
-FuzzRunningRules reject:catch-async-function compiler VIP-5: an `async` function expression handler is accepted; lane core-catch
-FuzzRunningRules corpus:catch-async-function compiler VIP-5: minimal reproduction of reject:catch-async-function; lane core-catch
-FuzzRunningRules diagnostic:catch-generator-function compiler VIP-5: a generator handler compiles as a producer and draws EK2128, not EK0509; lane core-catch
-FuzzRunningRules corpus:catch-generator-function compiler VIP-5: minimal reproduction of diagnostic:catch-generator-function; lane core-catch
-FuzzRunningRules reject:catch-async-generator-function compiler VIP-5: an `async` generator handler is accepted; lane core-catch
-FuzzRunningRules corpus:catch-async-generator-function compiler VIP-5: minimal reproduction of reject:catch-async-generator-function; lane core-catch
-FuzzRunningRules reject:catch-class compiler VIP-5: the forbidden form is accepted; lane core-catch
-FuzzRunningRules corpus:catch-class compiler VIP-5: minimized reproduction of reject:catch-class; lane core-catch
-FuzzRunningRules reject:catch-effect-block compiler VIP-5: the forbidden form is accepted; lane core-catch
-FuzzRunningRules corpus:catch-effect-block compiler VIP-5: minimized reproduction of reject:catch-effect-block; lane core-catch
 FuzzRunningRules reject:catch-number compiler VIP-5: the forbidden form is accepted; lane core-catch
 FuzzRunningRules corpus:catch-number compiler VIP-5: minimized reproduction of reject:catch-number; lane core-catch
 FuzzRunningRules reject:concurrent-plain compiler VIP-19: the forbidden form is accepted; lane vip-core2

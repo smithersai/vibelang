@@ -100,6 +100,7 @@ The fixes keep a rewrite only when it adds no compiler error.
 | Before | After and repair |
 | --- | --- |
 | `effect@4.0.6` and `@effect/*@4.0.6` | Effect 4.1.0 is now the minimum supported version, pinned exactly: install `effect@4.1.0` and `@effect/*@4.1.0`; the runtime refuses any other version. Effect 4.1 removed `effect/Crypto` and `TestCrypto`, so `Crypto` in a `.vibe` file is the DOM's again. Use `effect/crypto`'s services: `SecureRandom.randomBytes(16)`, `SecureRandom.uuidV4()` and `SecureRandom.intBetween(min, max)` for `Crypto.randomBytes`, `Crypto.randomUUIDv4()` and `Crypto.randomIntBetween`; `Digest.digest(Digest.sha256, bytes)` for `Crypto.digest("SHA-256", bytes)`; `Mac` and `Signature` for HMAC and signatures. `NodeServices.layer` and `BunServices.layer` no longer provide a crypto service: provide `NodeCrypto.layer`, `BunCrypto.layer` or `BrowserCrypto.layer`. `Experimental.Crypto` keeps its members, and its platform layers provide Effect's crypto services too. Node.js 22.19.0 is the minimum for `@effect/platform-node`. A test terminal built with `Terminal.make` must now supply `size`, a scoped queue of resizes, such as `size: Queue.unbounded<Terminal.Size, Cause.Done>()`. |
+| A value after `catch`: `x catch "guest"`, `x catch onErr`, `x catch effect { … }`, `x catch async (e) => 7` | A `catch` handler is a function literal (VIP-5, amended 2026-10-29); anything else is `EK0509`. `vibelang --fix` writes `x catch () => "guest"`, `x catch (e) => onErr(e)`, `x catch effect () => { … }` and `x catch (e) => 7`; a value that is an Effect, such as `x catch Effect.succeed(1)`, becomes `x catch effect () => try Effect.succeed(1)`, which runs it as the old fallback did. In a chain or a conditional's test it parenthesizes the inner `catch`: `(a catch () => b) catch () => c`. |
 | Commas between `schema` declaration fields | Separate fields with `;` or a new line. `vibelang --fix` replaces commas with semicolons (`EK1013`). |
 | `import { Path } from "effect"`; `Path.Path.join("a", "b")` | Every unambiguous Effect module is global; write `Path.join("a", "b")`. Existing imports still work. `--fix` removes redundant imports and shortens the module's same-named export. |
 | The type `Option.Option<number>` | Write `Option<number>`; the long form remains valid. A module's own exports still win over its same-named export. |
@@ -2419,7 +2420,7 @@ function stopped() {
 }
 
 function recover() {
-  return stopped() catch "recovered"
+  return stopped() catch () => "recovered"
 }
 ```
 

@@ -20,7 +20,7 @@ export function loadDirect(n: number): number!Bad! {
 }
 
 export function orZero(n: number): number!! {
-  return step(n) catch 0
+  return step(n) catch () => 0
 }
 
 export function neverLoaded(n: number): number!Bad! {
