@@ -227,6 +227,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The migrate flow rejected a native acquisition's unchanged `!Error` contract when its original function returned `Effect.callback<A, Error>`, as in foldkit's WebSocket example; it now recognizes that explicit returned channel when the callback becomes a platform service, while nested callbacks and changed contracts remain rejected.
 
+- Switching between two pre-VIP-1 toolchains ran the earlier compiler's `--fix-vip-only` and changed pure `.map` callbacks into Effect functions; the migrate flow now probes both compilers and runs that migration only from pre-flip to post-flip, recording why it skips a switch or a failed probe in `vipFixes`.
+
 - `vibelang --fix` deleted comments from legacy diagnostic maps, including empty maps and entries superseded by modern settings; it now keeps every comment in direct and extended configs, with the same settings and a stable second run.
 
 - A `continue` to an earlier label in a chained `for...of`, such as `outer: inner: for (...)`, compiled to JavaScript that Node rejected; every label now stays on the loop, so labeled `continue` and `break` keep their TypeScript behavior.

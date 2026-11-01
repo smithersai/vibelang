@@ -39,6 +39,7 @@ import { wireDeveloperTools } from "./tooling.mjs"
 import { planEmittedImports, applyEmittedImports } from "./emitted-imports.mjs"
 import { wireOxlintPlugins } from "./oxlint-plugins.mjs"
 import { readToolchain } from "./toolchain.mjs"
+import { probeVip1, probeTargetVip1 } from "./vip-flip.mjs"
 import { assertPortable, machineRoots } from "./portable.mjs"
 import { appendJsonl, batchName, isDeclarationFile, must, quote, readJson, readJsonIf, run as sh, slug, writeJson, writeText } from "./util.mjs"
 
@@ -392,7 +393,7 @@ export async function upgradeEffect(options) {
   if (before.code !== 0 && !before.tests) throw new Error(`the target's tests do not run (exit ${before.code}); see ${join(logs, "upstream-tests.log")}`)
   writeJson(join(p.baseline, "upstream-tests.json"), { code: before.code, tests: before.tests })
   // The installed compiler migrates its own .vibe modules before the new one replaces it.
-  const vip = await applyEarlierVipFixes(t, logs)
+  const vip = await applyEarlierVipFixes(config, logs)
 
   const to = await runtimeEffect(config)
   const workspaceFile = join(t, "pnpm-workspace.yaml")
@@ -459,31 +460,58 @@ export async function upgradeEffect(options) {
 
 /**
  * Applies the installed compiler's VIP migrations to the .vibe modules an
- * earlier run migrated, before upgrade-effect repins VibeLang:
+ * earlier run migrated, only across the VIP-1 flip, before repinning VibeLang:
  * `vibelang -p <tsconfig> --fix --fix-vip-only` with the `vibelang` installed
  * nearest each project that holds a tracked .vibe file. Only that compiler can
  * still make them: once VIP-1's rules apply, a later one cannot tell which
  * unmarked helpers were Effect functions (opencode: 187 errors in ai's 15
  * modules, none after the earlier compiler's 165 fixes). Returns the .vibe
- * files it changed, the projects it ran on, and those it could not finish.
+ * files it changed, projects run, failures, probe declarations and skip reasons.
  */
-async function applyEarlierVipFixes(t, logs) {
+async function applyEarlierVipFixes(config, logs) {
+  const t = config.target
   const vibe = (await Jj.trackedFiles(t)).filter((f) => f.endsWith(".vibe") && !f.split("/").includes("node_modules"))
-  if (!vibe.length) return { changed: [], projects: [], failed: [] }
+  const empty = { changed: [], projects: [], failed: [] }
+  if (!vibe.length) return empty
   const plan = earlierVipProjects(t, vibe)
-  const projects = plan.map((entry) => entry.project)
+  let ts
+  try { ts = typeScriptOf(config) }
+  catch (error) { return { ...empty, skipped: `VIP-1 probe failed: ${error.message}` } }
+  const first = plan.find(entry => entry.compiler)
+  const target = await probeTargetVip1({ toolchain: config.toolchain, readToolchain,
+    nodeModules: first && dirname(dirname(join(t, first.compiler))), directory: logs,
+    log: join(logs, "vip-probe-target.log"), ts })
+  const probes = { target, installed: [] }
+  if (target.error) return { ...empty, skipped: target.error, probes }
   const before = new Map(vibe.map((f) => [f, readFileSync(join(t, f), "utf8")]))
-  const failed = []
+  const failed = [], projects = [], skippedProjects = [], installed = new Map()
   for (const { project, compiler } of plan) {
     if (!compiler) {
-      failed.push({ project, reason: "no installed vibelang" })
+      skippedProjects.push({ project, reason: "no installed vibelang" })
       continue
     }
+    if (!installed.has(compiler)) {
+      const result = await probeVip1({ compiler: join(t, compiler),
+        nodeModules: dirname(dirname(join(t, compiler))), directory: logs,
+        log: join(logs, `vip-probe-installed-${slug(compiler)}.log`), ts })
+      installed.set(compiler, result)
+      probes.installed.push({ compiler, ...result })
+    }
+    const previous = installed.get(compiler)
+    const reason = previous.error ?? (previous.side === target.side ? "same side of the flip"
+      : previous.side !== "pre" || target.side !== "post" ? "switch does not cross from pre-flip to post-flip" : null)
+    if (reason) {
+      skippedProjects.push({ project, reason })
+      continue
+    }
+    projects.push(project)
     const result = await sh(`${quote(join(t, compiler))} -p ${quote(join(t, project))} --fix --fix-vip-only --noEmit --pretty false`,
       { cwd: join(t, posix.dirname(project)), log: join(logs, `vip-fix-${slug(posix.dirname(project))}.log`) })
     if (result.code !== 0) failed.push({ project, code: result.code })
   }
-  return { changed: vibe.filter((f) => readFileSync(join(t, f), "utf8") !== before.get(f)), projects, failed }
+  return { changed: vibe.filter((f) => readFileSync(join(t, f), "utf8") !== before.get(f)), projects, failed, probes,
+    ...(skippedProjects.length ? { skippedProjects } : {}),
+    ...(!projects.length ? { skipped: [...new Set(skippedProjects.map(p => p.reason))].join("; ") || "no project with a tracked .vibe file" } : {}) }
 }
 
 /**

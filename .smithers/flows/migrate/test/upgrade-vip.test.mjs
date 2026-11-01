@@ -1,12 +1,13 @@
 // opencode agent, 2026-11-01T01:00Z: a repository with .vibe modules that
-// moves to a newer toolchain needs the earlier compiler's VIP migrations
+// crosses from a pre-flip to a post-flip toolchain needs the earlier compiler's VIP migrations
 // first, which only that compiler can make (VIP-1's unmarked Effect helpers).
 import assert from "node:assert/strict"
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { test } from "node:test"
+import { probeVip1, probeTargetVip1 } from "../lib/vip-flip.mjs"
 import { upgradeEffect } from "../lib/steps.mjs"
 import * as Jj from "../lib/jj.mjs"
 import { must, writeJson } from "../lib/util.mjs"
@@ -15,6 +16,38 @@ const require = createRequire(new URL("../../../../packages/runtime/package.json
 const fc = require("fast-check")
 
 const quote = "it first runs the installed `vibelang --fix --fix-vip-only` on each project with a tracked `.vibe` file"
+
+function fakeCompiler(bin, { side, target, calls, fixCode = 0, probeCode = 0, declaration, version = "0.0.11" }) {
+  writeFileSync(bin, `#!/usr/bin/env node
+const fs = require("node:fs"), path = require("node:path")
+const args = process.argv.slice(2)
+if (args[0] === "--version") { console.log(${JSON.stringify(version)}); process.exit(0) }
+const project = args[args.indexOf("-p") + 1]
+if (args.includes("--emitDeclarationOnly") && project && fs.readFileSync(project, "utf8").includes("probe.vibe")) {
+  const config = JSON.parse(fs.readFileSync(project, "utf8"))
+  const source = path.join(path.dirname(project), "probe.vibe")
+  if (config.files.join() !== "probe.vibe" || fs.readFileSync(source, "utf8") !== ${JSON.stringify("export const f = (n: number) => n + 1\n")}) process.exit(99)
+  if (${probeCode}) process.exit(${probeCode})
+  const out = args[args.indexOf("--outDir") + 1]
+  fs.mkdirSync(out, { recursive: true })
+  if (${declaration !== null}) fs.writeFileSync(path.join(out, "probe.d.ts"), ${JSON.stringify(declaration ?? (side === "pre" ? "export declare const f: (n: number) => Effect.Effect<number, never, never>;\n" : "export declare const f: (n: number) => number;\n"))})
+  process.exit(0)
+}
+if (!args.includes("--fix-vip-only")) process.exit(0)
+if (${fixCode}) process.exit(${fixCode})
+const target = ${JSON.stringify(target)}, calls = ${JSON.stringify(calls)}
+if (calls) fs.appendFileSync(calls, process.cwd() + "|" + args.join(" ") + "|" + fs.readFileSync(path.join(target, "package.json"), "utf8").match(/vibelang-[a-z]*\\.tgz/)[0] + ${JSON.stringify("\n")})
+function walk(dir) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name === "node_modules" || entry.name.startsWith(".")) continue
+    const file = path.join(dir, entry.name)
+    if (entry.isDirectory()) walk(file)
+    else if (file.endsWith(".vibe")) fs.writeFileSync(file, fs.readFileSync(file, "utf8").replace(/^export function unwrap/m, "export effect function unwrap").replace(/\\.map\\(\\(/g, ".map(effect ("))
+  }
+}
+walk(process.cwd())
+`, { mode: 0o755 })
+}
 
 // A target set up by an earlier toolchain, its installed vibelang a stand-in
 // that records each call, the manifest it sees, and marks the helper it fixes.
@@ -34,20 +67,11 @@ async function fixture(root, files) {
   const calls = join(root, "calls.log")
   const bin = join(target, "node_modules/.bin/vibelang")
   mkdirSync(join(bin, ".."), { recursive: true })
-  writeFileSync(bin, `#!/bin/sh
-if [ "$1" = "--version" ]; then echo 0.0.11; exit 0; fi
-case " $* " in *" --fix --fix-vip-only "*) ;; *) exit 0;; esac
-printf '%s|%s|%s\\n' "$PWD" "$*" "$(grep -o 'vibelang-[a-z]*\\.tgz' ${join(target, "package.json")})" >> ${calls}
-for f in $(find . -name '*.vibe' -not -path '*/node_modules/*'); do
-  sed -i 's/^export function unwrap/export effect function unwrap/' "$f"
-done
-exit 0
-`)
-  chmodSync(bin, 0o755)
+  fakeCompiler(bin, { side: "pre", target, calls })
   // Existing native projects are checked before repinning, and with the staged compiler afterward.
   symlinkSync(dirname(require.resolve("typescript/package.json")), join(target, "node_modules/typescript"))
   mkdirSync(join(toolchain, "native"), { recursive: true })
-  writeFileSync(join(toolchain, "native/vibelang"), "#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then echo 0.0.12; fi\nexit 0\n", { mode: 0o755 })
+  fakeCompiler(join(toolchain, "native/vibelang"), { side: "post" })
   const base = await Jj.commit(target, "base")
   writeFileSync(join(toolchain, "vibelang-new.tgz"), "tarball\n")
   writeJson(join(toolchain, "toolchain.json"), { version: "0.0.12", commit: "fedcba9876543210fedc", effect: "4.0.6", compiler: "native/vibelang", packages: { vibelang: "vibelang-new.tgz" } })
@@ -72,7 +96,10 @@ test("upgrade-effect runs the installed compiler's VIP migrations on the earlier
     // Once, for the one project with a .vibe file, before the manifest names the new tarball.
     assert.deepEqual(readFileSync(calls, "utf8").trim().split("\n"),
       [`${join(target, "packages/ai")}|-p ${join(target, "packages/ai/tsconfig.json")} --fix --fix-vip-only --noEmit --pretty false|vibelang-old.tgz`])
-    assert.deepEqual(result.vipFixes, { changed: ["packages/ai/src/helper.vibe"], projects: ["packages/ai/tsconfig.json"], failed: [] })
+    const { probes, ...vipFixes } = result.vipFixes
+    assert.deepEqual(vipFixes, { changed: ["packages/ai/src/helper.vibe"], projects: ["packages/ai/tsconfig.json"], failed: [] })
+    assert.equal(probes.target.side, "post")
+    assert.equal(probes.installed[0].side, "pre")
     assert.deepEqual(result.changed.sort(), ["package.json", "packages/ai/src/helper.vibe"])
     assert.equal(readFileSync(join(target, "packages/ai/src/helper.vibe"), "utf8"), corpus.after)
     const { stdout } = await must(`jj log -r ${result.jj.commit} --no-graph -T description`, { cwd: target })
@@ -103,9 +130,11 @@ test("a project whose installed compiler is missing or fails is named, and the s
   const root = mkdtempSync(join(tmpdir(), "migrate-vip-switch-"))
   try {
     const { target, toolchain, base } = await fixture(root, { "packages/ai/tsconfig.json": "{}\n", "packages/ai/src/helper.vibe": "export const v = 1\n" })
-    writeFileSync(join(target, "node_modules/.bin/vibelang"), "#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then echo 0.0.11; exit 0; fi\ncase \" $* \" in *\" --fix --fix-vip-only \"*) exit 2;; *) exit 0;; esac\n")
+    fakeCompiler(join(target, "node_modules/.bin/vibelang"), { side: "pre", fixCode: 2 })
     const result = await upgradeEffect({ run: join(root, "run"), target, packages: ["."], test: "true", testCwd: ".", toolchain, install: "true", base })
-    assert.deepEqual(result.vipFixes, { changed: [], projects: ["packages/ai/tsconfig.json"], failed: [{ project: "packages/ai/tsconfig.json", code: 2 }] })
+    const { probes, ...vipFixes } = result.vipFixes
+    assert.deepEqual(vipFixes, { changed: [], projects: ["packages/ai/tsconfig.json"], failed: [{ project: "packages/ai/tsconfig.json", code: 2 }] })
+    assert.equal(probes.target.side, "post")
     assert.deepEqual(result.changed, ["package.json"])
   } finally {
     rmSync(root, { recursive: true, force: true })
@@ -126,4 +155,159 @@ test("a predecessor baseline failure never repins an existing native project", a
       assert.equal(readFileSync(join(target, "src/helper.vibe"), "utf8"), "export const v = 1\n")
     } finally { rmSync(root, { recursive: true, force: true }) }
   }), { seed: 1049759, numRuns: 12 })
+})
+
+
+// alchemy-56: a same-era switch must never run the destructive predecessor fixer.
+test("pre-flip to pre-flip preserves alchemy's pure map callbacks byte for byte", async () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-vip-alchemy-"))
+  try {
+    const corpus = JSON.parse(readFileSync(new URL("./corpus/alchemy-preflip-map-callback.json", import.meta.url), "utf8"))
+    const { target, toolchain, base, calls } = await fixture(root, { "tsconfig.json": "{}\n", "src/api.vibe": corpus.before })
+    fakeCompiler(join(toolchain, "native/vibelang"), { side: "pre", version: "0.0.12" })
+    const result = await upgradeEffect({ run: join(root, "run"), target, packages: ["."], test: "true", toolchain, install: "true", base })
+    assert.equal(existsSync(calls), false, "same-side switches must not invoke --fix-vip-only")
+    assert.equal(readFileSync(join(target, "src/api.vibe"), "utf8"), corpus.before)
+    assert.equal(result.vipFixes.skipped, "same side of the flip")
+    assert.deepEqual(result.vipFixes.changed, [])
+    assert.deepEqual(JSON.parse(readFileSync(join(root, "run/upgrade-effect.json"), "utf8")).vipFixes, result.vipFixes)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+
+// VIP-1 (docs/design/src/001-functions.md): "A function's kind is decided by a
+// keyword on the function, never by its body or by a type."
+// The transition oracle comes from the upgrade-effect rule quoted above;
+// callback spelling, release versions and module count cannot select a migration.
+test("VIP-1 transition property across compiler sides and callback shapes", async () => {
+  await fc.assert(fc.asyncProperty(fc.constantFrom(["pre", "pre"], ["pre", "post"], ["post", "post"], ["post", "pre"]),
+    fc.integer({ min: -1000, max: 1000 }), fc.constantFrom("0.0.11", "0.0.12", "99.0.0"),
+    async ([previous, next], offset, version) => {
+      const root = mkdtempSync(join(tmpdir(), "migrate-vip-sides-"))
+      try {
+        const before = `export const orders = [{ id: ${offset} }].map((item) => ({ id: item.id + ${offset} }))\n`
+        const { target, toolchain, base, calls } = await fixture(root, { "tsconfig.json": "{}\n", "src/api.vibe": before })
+        fakeCompiler(join(target, "node_modules/.bin/vibelang"), { side: previous, target, calls, version })
+        fakeCompiler(join(toolchain, "native/vibelang"), { side: next, version })
+        const result = await upgradeEffect({ run: join(root, "run"), target, packages: ["."], test: "true", toolchain, install: "true", base })
+        const crosses = previous === "pre" && next === "post"
+        assert.equal(existsSync(calls), crosses)
+        assert.equal(readFileSync(join(target, "src/api.vibe"), "utf8"), crosses ? before.replace(".map((", ".map(effect (") : before)
+        assert.equal(result.vipFixes.probes.target.side, next)
+        assert.equal(result.vipFixes.probes.installed[0].side, previous)
+        assert.deepEqual(result.vipFixes.projects, crosses ? ["tsconfig.json"] : [])
+      } finally { rmSync(root, { recursive: true, force: true }) }
+    }), { seed: 560101, numRuns: 24 })
+})
+
+for (const which of ["installed", "target"]) {
+  test(`a failed ${which} probe skips the migration and records the error`, async () => {
+    const root = mkdtempSync(join(tmpdir(), "migrate-vip-probe-error-"))
+    try {
+      const before = "export const ids = items.map((item) => item.id)\n"
+      const { target, toolchain, base, calls } = await fixture(root, { "tsconfig.json": "{}\n", "src/api.vibe": before })
+      const bin = which === "installed" ? join(target, "node_modules/.bin/vibelang") : join(toolchain, "native/vibelang")
+      fakeCompiler(bin, { side: which === "installed" ? "pre" : "post", target, calls, probeCode: 2 })
+      const result = await upgradeEffect({ run: join(root, "run"), target, packages: ["."], test: "true", toolchain, install: "true", base })
+      assert.equal(existsSync(calls), false)
+      assert.equal(readFileSync(join(target, "src/api.vibe"), "utf8"), before)
+      assert.match(result.vipFixes.skipped, /VIP-1 probe exited 2/)
+      assert.deepEqual(result.vipFixes.changed, [])
+      const recorded = JSON.parse(readFileSync(join(root, "run/upgrade-effect.json"), "utf8"))
+      assert.equal(recorded.vipFixes.skipped, result.vipFixes.skipped)
+    } finally { rmSync(root, { recursive: true, force: true }) }
+  })
+}
+
+test("the probe reads declarations, including imported Effect types and misleading comments", async () => {
+  const ts = require("typescript")
+  const root = mkdtempSync(join(tmpdir(), "migrate-vip-probe-"))
+  try {
+    const bin = join(root, "vibelang")
+    for (const [declaration, expected] of [
+      ["export declare const f: (n: number) => Effect.Effect<number, never, never>;\n", "pre"],
+      ['export declare const f: (n: number) => import("effect").Effect.Effect<number, never, never>;\n', "pre"],
+      ["/** Effect.Effect<number> */\nexport declare const f: (n: number) => number;\n", "post"],
+      ["export declare const f: (n: number) => any;\n", undefined],
+      ["export declare const f: (n: number) => unknown;\n", undefined],
+      ["export declare const f: (n: number) => number | Effect.Effect<number>;\n", undefined],
+      ["export declare const g: (n: number) => number;\n", undefined],
+      ["// export declare const f: (n: number) => number;\n", undefined],
+      [null, undefined],
+    ]) {
+      fakeCompiler(bin, { declaration })
+      const result = await probeVip1({ compiler: bin, directory: root, log: join(root, "probe.log"), ts })
+      assert.equal(result.side, expected, declaration)
+      assert.equal(Boolean(result.error), expected === undefined)
+    }
+    for (const probeCode of [1, 2, 137]) {
+      fakeCompiler(bin, { probeCode })
+      const result = await probeVip1({ compiler: bin, directory: root, log: join(root, "probe.log"), ts })
+      assert.equal(result.error, `VIP-1 probe exited ${probeCode}`)
+      assert.match(readFileSync(result.log, "utf8"), new RegExp("# exit " + probeCode))
+    }
+    assert.deepEqual(readdirSync(root).filter(name => name.startsWith("vip1-probe-")), [])
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+test("the probe records a missing compiler and a timeout without guessing the flip side", async () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-vip-probe-refusal-"))
+  const ts = require("typescript")
+  try {
+    const bin = join(root, "missing")
+    const missing = await probeVip1({ compiler: bin, directory: root, ts })
+    assert.equal(missing.error, "VIP-1 probe exited 127")
+    writeFileSync(bin, "#!/bin/sh\nsleep 10\n", { mode: 0o755 })
+    const timeout = await probeVip1({ compiler: bin, directory: root, ts, timeoutMs: 30 })
+    assert.equal(timeout.error, "VIP-1 probe exited 124 (timed out)")
+    assert.deepEqual(readdirSync(root).filter(name => name.startsWith("vip1-probe-")), [])
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+test("projects with different installed compilers are gated independently", async () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-vip-mixed-"))
+  try {
+    const before = "export function unwrap(id: string) { return try load(id) }\n"
+    const { target, toolchain, base, calls } = await fixture(root, {
+      "packages/ai/tsconfig.json": "{}\n", "packages/ai/src/helper.vibe": before,
+      "packages/core/tsconfig.json": "{}\n", "packages/core/src/helper.vibe": before
+    })
+    const coreCompiler = join(target, "packages/core/node_modules/.bin/vibelang")
+    mkdirSync(dirname(coreCompiler), { recursive: true })
+    fakeCompiler(coreCompiler, { side: "post", target, calls })
+    const result = await upgradeEffect({ run: join(root, "run"), target, packages: ["."], test: "true", toolchain, install: "true", base })
+    assert.deepEqual(result.vipFixes.changed, ["packages/ai/src/helper.vibe"])
+    assert.deepEqual(result.vipFixes.projects, ["packages/ai/tsconfig.json"])
+    assert.deepEqual(result.vipFixes.skippedProjects, [{ project: "packages/core/tsconfig.json", reason: "same side of the flip" }])
+    assert.equal(readFileSync(join(target, "packages/core/src/helper.vibe"), "utf8"), before)
+    assert.equal(result.vipFixes.probes.installed.length, 2)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+test("an npm target probes its requested release in isolation, not the installed predecessor", async () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-vip-npm-"))
+  const originalPath = process.env.PATH
+  try {
+    const requested = join(root, "requested")
+    fakeCompiler(requested, { side: "post", version: "0.0.11" })
+    const npm = join(root, "npm")
+    writeFileSync(npm, `#!/usr/bin/env node
+const fs = require("node:fs"), path = require("node:path")
+const args = process.argv.slice(2)
+if (!args.includes("vibelang@0.0.11")) process.exit(99)
+const prefix = args[args.indexOf("--prefix") + 1]
+const bin = path.join(prefix, "node_modules/.bin/vibelang")
+fs.mkdirSync(path.dirname(bin), { recursive: true })
+fs.copyFileSync(${JSON.stringify(requested)}, bin)
+fs.chmodSync(bin, 0o755)
+`, { mode: 0o755 })
+    process.env.PATH = root + ":" + originalPath
+    const result = await probeTargetVip1({ toolchain: { kind: "npm", version: "0.0.11" },
+      directory: root, log: join(root, "npm-probe.log"), ts: require("typescript") })
+    assert.equal(result.side, "post")
+    assert.deepEqual(readdirSync(root).filter(name => /^vip1-(target|probe)-/.test(name)), [])
+  } finally {
+    process.env.PATH = originalPath
+    rmSync(root, { recursive: true, force: true })
+  }
 })

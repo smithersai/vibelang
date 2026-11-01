@@ -1,0 +1,5 @@
+{
+  "key": "alchemy-56-preflip-map-callback",
+  "note": "Minimized alchemy examples/aws-ecs/src/Api.vibe pattern: tc4 to pre-flip main 9759 must preserve a pure map callback; --fix-vip-only changed its values into Effects.",
+  "before": "export const orders = (result.Items ?? []).map((item) => ({ id: item.id }))\n"
+}
