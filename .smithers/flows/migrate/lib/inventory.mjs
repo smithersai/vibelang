@@ -6,6 +6,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs"
 import { join, posix } from "node:path"
 import { fileURLToPath } from "node:url"
 import { loadTypeScript } from "./declarations.mjs"
+import { testBundleDeferrals } from "./test-bundles.mjs"
 import { effectUse, isEffectSpecifier, parseImports, resolveAlias, resolveRelative } from "./imports.mjs"
 import { isDeclarationFile, readJson, rel } from "./util.mjs"
 
@@ -123,9 +124,16 @@ export function buildInventory({ root, packages, tokens = {}, coverage = {}, pat
       if (r.test) t.testedBy.push(r.path)
     }
   }
+  const bundleWarnings = []
+  for (const deferred of testBundleDeferrals(root, records.map(r => r.path), { paths, onWarning: warning => bundleWarnings.push(warning) })) {
+    const record = byPath.get(deferred.file)
+    record.bundledBy = deferred.bundledBy
+    record.bundleReason = deferred.reason
+  }
   const effectful = records.filter((r) => r.effect !== "none")
   return {
     version: 1,
+    ...(bundleWarnings.length ? { bundleWarnings } : {}),
     root,
     packages: packages.map((p) => p.dir),
     summary: {

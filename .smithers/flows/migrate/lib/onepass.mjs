@@ -10,6 +10,7 @@ import { parseImports, resolveRelative, resolveFile, resolveAliased } from "./im
 import { pathReadDeferrals, rewriteReferences } from "./references.mjs"
 import { isToolConfig } from "./plan.mjs"
 import { assertBaselineSafe } from "./baseline.mjs"
+import { assertNoTestBundleRename, testBundleDeferrals } from "./test-bundles.mjs"
 import { loadTypeScript } from "./declarations.mjs"
 import { projectsOf } from "./wire.mjs"
 import { readToolchain } from "./toolchain.mjs"
@@ -35,7 +36,11 @@ export function planScope(root, scope, { nativeConfigs = [] } = {}) {
     else if (/\.(?:ts|mts)$/.test(file) && !isDeclarationFile(file)) files.push(file)
     else deferred.push({ file, reason: file.endsWith(".tsx") ? "JSX source is not supported in .vibe; keep .tsx" : file.endsWith(".vibe") ? "already .vibe; no rename needed" : "not a .ts or .mts source module; keep its source format" })
   }
-  if (!files.length) throw new Error("scope contains no .ts or .mts modules to migrate")
+  const bundled = testBundleDeferrals(root, files)
+  const retained = new Set(bundled.map(d => d.file))
+  deferred.push(...bundled)
+  for (let i = files.length - 1; i >= 0; i--) if (retained.has(files[i])) files.splice(i, 1)
+  if (!files.length) throw new Error("scope contains no .ts or .mts modules to migrate; " + deferred.map(d => d.reason).join("; "))
   return { version: 1, mode: "one-pass", batches: [{ files, reason: "One whole-scope pass; settle returns failing modules by diagnostic cause, dependency roots first." }], deferred }
 }
 
@@ -431,6 +436,7 @@ export async function onePassStep(step, options) {
     if (existing?.renameComplete) return existing
     let state = readJsonIf(p.codemodState("01"))
     const files = plan.batches[0].files
+    assertNoTestBundleRename(config.target, files)
     if (!state) {
       if (existing) throw new Error("legacy interrupted rename has no durable journal; restore its recorded renames before retrying")
       const baseline = await checkProjects(config, p, options)

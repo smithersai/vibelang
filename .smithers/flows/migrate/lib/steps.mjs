@@ -8,6 +8,7 @@ import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync 
 import { dirname, join, posix, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { assertBaselineSafe } from "./baseline.mjs"
+import { assertNoTestBundleRename } from "./test-bundles.mjs"
 import { buildInventory, listSources, readCoverage, tsconfigPaths } from "./inventory.mjs"
 import { defaultLimits, draftPlan, migrationScope, planPrompt, validatePlan } from "./plan.mjs"
 import { bareVibeExports, fixToFixedPoint, importerFile, pathAliases, restoreExports, restoreSpecifiers, rewriteImports, rewriteTotals, vibePath } from "./codemod.mjs"
@@ -998,6 +999,7 @@ export async function setup(options) {
   // An import through a tsconfig `paths` alias, ~/main, is a dependency edge as ./main is.
   const aliasPaths = Object.fromEntries(config.packages.map((pkg) => [pkg.dir, tsconfigPaths(ts, t, Wire.projectsOf(ts, join(t, pkg.dir), pkg.tsconfig).map((tsconfig) => join(t, pkg.dir, tsconfig)))]))
   const inventory = buildInventory({ root: t, packages: config.packages, tokens, coverage: readCoverage(t, config.packages), paths: aliasPaths })
+  if (wired) wired.warnings.push(...(inventory.bundleWarnings ?? []))
   writeJson(p.inventory, inventory)
 
   // The target's coding agents get the skill, the language server and a check after each edit.
@@ -1084,6 +1086,7 @@ export async function codemod(options) {
   if (existsSync(p.codemod(b))) return readJson(p.codemod(b))
   const t = config.target
   const files = thePlan.batches[Number(b) - 1].files
+  assertNoTestBundleRename(t, files)
   // Setup's source inventory is the scan boundary; older runs without one
   // use the configured source directories, never all tracked text files.
   const references = () => [...new Set(inventory?.files.map(f => {

@@ -1,0 +1,17 @@
+{
+  "finding": "alchemy-37:test-owned-bundle-graph",
+  "note": "Minimized SqlMigrations.unit.test.ts: a source URL passes through Path.fromFileUrl and a test-owned Rolldown call reaches cross-package TypeScript sources.",
+  "test": "packages/integration-tests/test/SqlMigrations.unit.test.ts",
+  "source": "import {Effect} from \"effect\";\nexport const check = Effect.gen(function* () {\nconst path = yield* Path.Path;\nconst input = yield* path.fromFileUrl(new URL(\"../../cloudflare/src/Workers/SqlMigrationsApply.ts\", import.meta.url));\nconst {rolldown} = yield* Effect.promise(() => import(\"rolldown\"));\nreturn yield* Effect.promise(() => rolldown({input,plugins:[{name:\"test-oracle\"}]}));\n});\n",
+  "files": {
+    "packages/cloudflare/src/Workers/SqlMigrationsApply.ts": "import {Effect} from \"effect\";\nimport {provider} from \"../Providers.js\";\nexport const apply = Effect.succeed(provider);\n",
+    "packages/cloudflare/src/Providers.ts": "import {Effect} from \"effect\";\nimport {registry} from \"@alchemy.run/sql/Registry\";\nexport const provider = Effect.succeed(registry);\n",
+    "packages/sql/src/Registry.ts": "import {Effect} from \"effect\";\nexport const registry = Effect.succeed(1);\n",
+    "packages/sql/src/Free.ts": "import {Effect} from \"effect\";\nexport const free = Effect.succeed(2);\n"
+  },
+  "retained": [
+    "packages/cloudflare/src/Providers.ts",
+    "packages/cloudflare/src/Workers/SqlMigrationsApply.ts",
+    "packages/sql/src/Registry.ts"
+  ]
+}
