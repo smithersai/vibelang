@@ -159,7 +159,7 @@ func configCodeAdjustable(code int32) bool {
 }
 
 // settingProblems returns why settings are invalid by Chapter 28's options
-// table and D261, which adds trustedPackages: package-name globs.
+// table, D261, which adds trustedPackages: package-name globs, and 007-tooling's declarationImportStyle.
 func settingProblems(settings map[string]any) []string {
 	facts := Facts()
 	var problems []string
@@ -179,6 +179,11 @@ func settingProblems(settings map[string]any) []string {
 				if s, ok := severity.(string); !ok || !slices.Contains(facts.Severities, s) {
 					problems = append(problems, fmt.Sprintf("diagnostics.%s is %v", code, severity))
 				}
+			}
+		case "declarationImportStyle":
+			// 007-tooling: ".js" (the default), "extensionless" or ".ts".
+			if v, ok := value.(string); !ok || !slices.Contains([]string{".js", "extensionless", ".ts"}, v) {
+				problems = append(problems, fmt.Sprintf("declarationImportStyle is %v", value))
 			}
 		case "tracing":
 			if s, ok := value.(string); !ok || !slices.Contains(facts.Tracing, s) {
