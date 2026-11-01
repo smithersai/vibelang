@@ -23,7 +23,7 @@ npm install --save-dev --save-exact happy-dom@20.14.6 @testing-library/react@16.
 
 ## 2. Configure tsconfig.json
 
-Support for the new forms and adjacent `.d.vibe.ts` declarations arrives with the compiler's VIP implementation.
+Run `vibelang` to write adjacent `.d.vibe.ts` declarations, even with `--noEmit`; [configure TypeScript tools to read them](/setup/vibelang-cli#let-typescript-tools-read-vibe-modules).
 
 Find the configuration that includes `src`. In an app from Vite's `react-ts` template, `tsconfig.json` has `"files": []` and lists `tsconfig.app.json` and `tsconfig.node.json` as `references`; `tsconfig.app.json` includes `src`. Check that `include` selects the `.vibe` files. The template's `"include": ["src"]` does.
 

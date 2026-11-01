@@ -229,6 +229,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The schema declaration rules left unclear which emitted declaration owns its documentation; JSDoc and visibility tags now explicitly belong to the schema constant, and the generated type alias stays bare.
 
 - The migrate flow's declaration-emission tests could fail before reaching the emit guard; fixtures now establish the same repository baseline as a real migration.
+- Seven setup guides described adjacent `.d.vibe.ts` declarations as a future feature; they now link the current sidecar workflow, including emission under `--noEmit` and TypeScript's `allowArbitraryExtensions`.
+
 - The matching guide said every other `is` binding reported `EK4703`; it now keeps the precise unsupported-home list and the per-iteration `while` scope rule.
 
 - Awaiting a Fiber or Deferred in effect code reported an error using the configurable warning codes `EK4609` and `EK4610`; it now reports the fixed placement error `EK0102` separately, so advisory severity settings keep their meaning without allowing `await` in effect code.

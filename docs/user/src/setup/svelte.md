@@ -18,7 +18,7 @@ npm install --save-dev --save-exact happy-dom@20.14.6 @testing-library/svelte@5.
 
 ## 2. Configure tsconfig.json
 
-Support for the new forms and adjacent `.d.vibe.ts` declarations arrives with the compiler's VIP implementation.
+Run `vibelang` to write adjacent `.d.vibe.ts` declarations, even with `--noEmit`; [configure TypeScript tools to read them](vibelang-cli.md#let-typescript-tools-read-vibe-modules).
 
 Find the configuration that includes `src`. In an app from Vite's `svelte-ts` template, `tsconfig.json` has `"files": []` and lists `tsconfig.app.json` and `tsconfig.node.json` as `references`; `tsconfig.app.json` includes `src`. Make two changes there:
 
