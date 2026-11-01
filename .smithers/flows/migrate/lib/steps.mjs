@@ -589,6 +589,52 @@ function carryVibeLangPatches(t, moved, version, release) {
   return { written, patchFiles, patches }
 }
 
+/**
+ * Wires each of packages: the runtime and compiler dependencies and vibelang
+ * for tsc in its package.json, and .vibe sources in its tsconfigs.
+ */
+function wirePackages({ t, ts, packages, specsFor, writeIfChanged }) {
+  wirePackages({ t, ts, packages, specsFor, writeIfChanged })
+}
+
+/**
+ * setup under --no-wire: the target already has VibeLang, and setup leaves its
+ * wiring as it is, except for a package of the run that has none yet, such as
+ * a directory added to --package after an earlier setup wired the others
+ * (t3code's oxlint-plugin-t3code, scripts and evals). Each such package is
+ * wired as wireTarget wires a package, with the specifiers a wired package of
+ * the run already names, rebased to its directory, so it installs the same
+ * tarballs or version; then the target installs. Returns null when every
+ * package has VibeLang or none does, else what changed.
+ */
+export async function wireNewPackages(config, log) {
+  const t = config.target
+  const submodules = Wire.submodulePaths(t)
+  const packages = config.packages.filter((pkg) => !Wire.inSubmodule(submodules, pkg.dir) && existsSync(join(t, pkg.dir, "package.json")))
+  const isWired = (pkg) => Wire.hasVibeLang(readJson(join(t, pkg.dir, "package.json")))
+  const added = packages.filter((pkg) => !isWired(pkg))
+  if (!added.length) return null
+  const wired = packages.find(isWired)
+  // No wired package to take specifiers from: wire nothing, as --no-wire says, rather than guess them.
+  if (!wired) return null
+  const from = readJson(join(t, wired.dir, "package.json"))
+  const specsFor = (dir) => Wire.specsFrom(from, wired.dir, dir)
+  const changed = []
+  const writeIfChanged = (path, before, after) => {
+    if (before === after) return
+    writeFileSync(path, after)
+    changed.push(posix.relative(t, path))
+  }
+  wirePackages({ t, ts: typeScriptOf(config), packages: added, specsFor, writeIfChanged })
+  const warnings = []
+  const formatted = await formatWritten(t, changed, join(log, "setup-format.log"))
+  if (formatted.code !== 0) warnings.push(`${formatted.formatter} exited ${formatted.code} on the files setup wrote; see ${join(log, "setup-format.log")}`)
+  const manager = Wire.packageManager(readdirSync(t))
+  const install = config.install ?? Wire.installCommand(manager, readdirSync(t))
+  await must(install, { cwd: t, log: join(log, "install.log") })
+  return { manager, added: added.map((pkg) => pkg.dir), specs: Object.fromEntries(added.map((pkg) => [pkg.dir, specsFor(pkg.dir)])), formatted, changed, warnings, install }
+}
+
 /** Sets VibeLang up in the target: dependencies, scripts, the Vite plugin, tsconfigs and the declaration sidecars' format ignore. Returns what it changed. */
 export async function wireTarget(config, log) {
   const t = config.target
@@ -811,7 +857,8 @@ export async function setup(options) {
   }
   // The tests as the upgrade left them are what setting VibeLang up is compared with.
   const upstream = readJson(join(p.baseline, "upgraded-tests.json"))
-  const wired = config.wire ? await wireTarget(config, logs) : null
+  // Under --no-wire, only a package of the run that has no VibeLang yet is wired.
+  const wired = config.wire ? await wireTarget(config, logs) : await wireNewPackages(config, logs)
   const compiler = compilerOf(config)
   const { stdout: version } = await must(`${JSON.stringify(compiler)} --version`)
 
@@ -848,7 +895,7 @@ export async function setup(options) {
   writeJson(p.inventory, inventory)
 
   // The target's coding agents get the skill, the language server and a check after each edit.
-  const agents = wired ? await setUpAgents(t, config.packages[0].dir, logs) : null
+  const agents = config.wire ? await setUpAgents(t, config.packages[0].dir, logs) : null
 
   await assertPortable(t, machineRoots(t, p.run, config.toolchain.dir))
   const setupCommit = await Jj.commit(t, `migrate(vibelang): set up ${version.trim()}\n\nAdds the compiler, the runtime and the Vite plugin, replaces tsc with vibelang\nin scripts, lets .vibe files import modules by source name, and sets coding\nagents up for .vibe files (vibelang agents init). Effect\n${upgrade.effect.to} came in the commit before.`)

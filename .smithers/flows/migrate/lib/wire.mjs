@@ -123,6 +123,31 @@ export function addVibeLang(pkg, specs) {
   return next
 }
 
+/** Whether a package.json already depends on the VibeLang runtime: an earlier setup wired it. */
+export function hasVibeLang(pkg) {
+  return Boolean(pkg.dependencies?.["vibelang-runtime"] ?? pkg.devDependencies?.["vibelang-runtime"])
+}
+
+/**
+ * The VibeLang specifiers (vibelang-runtime, vibelang, vibelang-vite,
+ * vibelang-unplugin) the package.json pkg at fromDir names, for a package at
+ * toDir, both repository-relative: a relative file: specifier is rebased so
+ * it names the same file from toDir (file:../.vibelang-toolchain/x.tgz from
+ * tools for file:../../.vibelang-toolchain/x.tgz from packages/a); any other
+ * is kept.
+ */
+export function specsFrom(pkg, fromDir, toDir) {
+  const names = ["vibelang-runtime", "vibelang", "vibelang-vite", "vibelang-unplugin"]
+  const all = { ...pkg.devDependencies, ...pkg.dependencies }
+  return Object.fromEntries(names.filter((name) => all[name] !== undefined).map((name) => {
+    const spec = all[name]
+    const relative = /^file:(?!\/)(.*)$/.exec(spec)
+    if (!relative) return [name, spec]
+    const path = posix.relative(posix.normalize(toDir || "."), posix.join(fromDir || ".", relative[1]))
+    return [name, `file:${path.startsWith(".") ? path : `./${path}`}`]
+  }))
+}
+
 /** Adds the compiler and the Vite plugin, which needs it, as dev dependencies: what a package that owns a Vite config needs. */
 export function addVibeLangPlugin(pkg, specs) {
   const next = structuredClone(pkg)
