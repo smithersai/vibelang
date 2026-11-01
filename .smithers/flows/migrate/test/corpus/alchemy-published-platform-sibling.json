@@ -1,0 +1,20 @@
+{
+  "finding": "alchemy-60:published-platform-sibling",
+  "note": "Minimized from packages/aws/src/EventBridge/ToLambda.ts: a new platform sibling is exposed by the package wildcard.",
+  "manifest": {
+    "name": "@alchemy.run/aws",
+    "files": [
+      "lib",
+      "src"
+    ],
+    "exports": {
+      "./Bootstrap/*": "./lib/Bootstrap/*.js",
+      "./*": {
+        "types": "./lib/*.d.ts",
+        "default": "./lib/*.js"
+      }
+    }
+  },
+  "file": "packages/aws/src/EventBridge/ToLambda.ts",
+  "text": "import { randomUUID } from \"node:crypto\"\nexport const createRouteId = (): string => randomUUID()\nexport const retained = 1\n"
+}

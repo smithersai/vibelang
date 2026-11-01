@@ -17,7 +17,7 @@
 // them (the hand-off agreed with migfix-t3code-2, inbox migfix-smithers.md).
 import { builtinModules } from "node:module"
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
-import { join, posix } from "node:path"
+import { dirname, join, posix, resolve } from "node:path"
 
 const builtins = new Set(builtinModules)
 
@@ -149,6 +149,36 @@ export function splitPlatform(text, file, ts, { globals = [] } = {}) {
   return { module: moduleText, platform: platformText, moved: movedList.filter((d) => moved.has(d)).map((d) => [...d.names]).flat(), wrapped: wrappers.map((w) => w.name) }
 }
 
+// A sibling is a new public entry point when a published package admits
+// arbitrary subpaths. Do not create that API accidentally. Explicit export
+// maps still go through the declaration graph gate, which rejects any new
+// reachable declaration. An unknown wildcard mapping is deliberately refused
+// rather than guessed from one tsconfig: packages may publish multiple builds.
+function publishedSiblingRisk(root, file, { exists, read }) {
+  const boundary = resolve(root)
+  let dir = dirname(resolve(root, file))
+  while (dir === boundary || dir.startsWith(boundary + "/")) {
+    const path = posix.relative(boundary, join(dir, "package.json"))
+    if (exists(path)) {
+      let manifest
+      try { manifest = JSON.parse(read(path)) }
+      catch { return "cannot establish the package's published module surface" }
+      if (manifest.private === true) return null
+      const open = value => typeof value === "string"
+        ? value.includes("*") || value.endsWith("/")
+        : Array.isArray(value) ? value.some(open)
+        : value && typeof value === "object" ? Object.values(value).some(open) : false
+      if (manifest.exports === undefined || open(manifest.exports)) {
+        return "a new published module could be exposed by the package's wildcard exports or open subpaths"
+      }
+      return null
+    }
+    if (dir === boundary) break
+    dir = dirname(dir)
+  }
+  return null
+}
+
 /**
  * Splits each batch file that imports a builtin as a value, or reads a host
  * global globalsOf(file) names, writing <Name>.platform.ts beside it.
@@ -170,6 +200,8 @@ export function splitBatchPlatform(root, files, ts, {
     const result = splitPlatform(read(file), file, ts, { globals: globalsOf(file) })
     if (!result) continue
     if (result.refused) { refused.push(result.refused); continue }
+    const risk = publishedSiblingRisk(root, file, { exists, read })
+    if (risk) { refused.push(file + ": refusing " + sibling + ": " + risk + "; keep the platform code in TypeScript"); continue }
     write(file, result.module)
     write(sibling, result.platform)
     splits.push({ file, platform: sibling, moved: result.moved, wrapped: result.wrapped })

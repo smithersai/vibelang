@@ -17,12 +17,12 @@ const corpus = readJson(new URL("./corpus/foldkit-interrupted-codemod.json", imp
 const step = new URL("../step.mjs", import.meta.url).pathname
 const ts = require.resolve("typescript/package.json").replace(/\/package.json$/, "")
 
-async function fixture(files = corpus.files, batch = corpus.batch) {
+async function fixture(files = corpus.files, batch = corpus.batch, manifest = { exports: { "./*": "./src/*.ts" } }) {
   const root = mkdtempSync(join(tmpdir(), "migrate-interrupted-"))
   const target = join(root, "repo"), run = join(root, "run")
   const put = (file, text) => { mkdirSync(join(target, file, ".."), { recursive: true }); writeFileSync(join(target, file), text) }
   for (const [file, text] of Object.entries(files)) put(file, text)
-  put("package.json", JSON.stringify({ exports: { "./*": "./src/*.ts" } }))
+  put("package.json", JSON.stringify(manifest))
   put("tsconfig.json", '{"include":["src/**/*"]}')
   await must("jj git init && jj config set --repo user.name test && jj config set --repo user.email test@localhost", { cwd: target })
   await Jj.commit(target, "original sources")
@@ -162,7 +162,7 @@ test("foldkit-74: per-file revert works before the compiler completes", async ()
 
 test("foldkit-74: SIGKILL preserves planned platform siblings and the original unsplit source", { timeout: 30000 }, async () => {
   const sample = readJson(new URL("./corpus/foldkit-interrupted-platform-split.json", import.meta.url))
-  const f = await fixture({ "src/main.ts": sample.source }, ["src/main.ts"])
+  const f = await fixture({ "src/main.ts": sample.source }, ["src/main.ts"], { private: true })
   let child
   try {
     child = spawn(process.execPath, [step, "codemod", "--run", f.run], { detached: true, stdio: "ignore" })
