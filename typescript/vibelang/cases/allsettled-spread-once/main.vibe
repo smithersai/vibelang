@@ -1,0 +1,18 @@
+// expect-result: {"setCount":["Success:count","Success:1","Success:2","Success:restore"],"setCalls":0,"arrCount":["Success:count","Success:1","Success:2","Success:restore"],"arrCalls":1,"arrReverse":["Success:reverse","Success:2","Success:1","Success:restore"],"setReverse":["Success:reverse","Success:1","Success:2","Success:restore"],"edges":["Success:reverse","Success:0","Success:1","Success:2","Success:3","Success:restore"],"edgeCalls":0,"order":["install","p","set","s","restore"]}
+// 002-running.md, try.allSettled (loop round 5 OPUS-3 and ASTRA-2, decided
+// detail 252): a literal with a spread is built once, natively, and wrapped by
+// index, so a patched Array.prototype[Symbol.iterator] sees exactly the calls
+// [a(), ...xs, b()] makes: none for a Set, one for an array. The old
+// counterpart, ...[...xs].map(Effect.exit), made one more and reversed again.
+import { arr12, at, calls, install, order, restore, set12, tag } from "./patch.ts"
+export effect function main() {
+  const sc = try.allSettled [install("count"), ...set12(), restore()]
+  const setCalls = calls()
+  const ac = try.allSettled [install("count"), ...arr12(), restore()]
+  const arrCalls = calls()
+  const ar = try.allSettled [install("reverse"), ...arr12(), restore()]
+  const sr = try.allSettled [install("reverse"), ...set12(), restore()]
+  const ed = try.allSettled [install("reverse"), at("p", 0), ...set12(), at("s", 3), restore()]
+  const edgeCalls = calls()
+  return { setCount: sc.map(tag), setCalls, arrCount: ac.map(tag), arrCalls, arrReverse: ar.map(tag), setReverse: sr.map(tag), edges: ed.map(tag), edgeCalls, order: [...order] }
+}

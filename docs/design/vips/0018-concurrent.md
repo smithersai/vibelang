@@ -20,6 +20,7 @@ const rs     = try.allSettled [a(), b()]                 // yield* Effect.all([â
 - **Ambiguity: none.** `try` is a reserved word, so `try.` can't start anything else.
 
 - **Amended 2026-10-30: shared static rules.** `try.all`, `try.race`, `try.any` and `try.allSettled` all run Effects under VIP-5: outside effect code they receive `EK0501`. Each takes an array of Effects under the operand rule; an invalid operand receives `EK1801`. These are the existing context and operand checks for the complete family, not new accepted contexts or operand forms.
+- **Amended 2026-10-31: spreads in a `try.allSettled` literal.** A literal containing a spread is evaluated once, in native element order, with each spread using its value's own iterator; the counterpart wraps that array by index (`source.map(Effect.exit)`) and adds no iteration of a compiler-created array, so a changed `Array.prototype[Symbol.iterator]` sees exactly the calls native `[a(), ...xs, b()]` makes. Literal tuple typing, spread-as-array typing and the non-literal heterogeneous-tuple rule are unchanged. Decided by the agent on 2026-10-31 from the exact-sugar contract (decided detail 252; loop round 5 OPUS-3 and ASTRA-2).
 
 ## History
 
