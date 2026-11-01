@@ -304,6 +304,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 - Resolved schema-binding regressions still appeared as pending gaps; namespace, function and escaped-name coverage now checks `EK2109` strictly while keeping every keyed corpus.
+
+
+- Schema library-alias checks now compare array decoding and mutability with native TypeScript and explicit Schema controls; remaining decoder gaps keep precise pending records.
 - The specification still listed `EK2007` for a legacy `for...of` or `for await` over a `Stream`, though the compiler keeps those loops native and reports `EK0102` for a `for await` in effect code; the specification and the diagnostic registry no longer list it.
 - The editor declined to convert an `async` function that returns an object whose `then` is not callable, such as `{ then: 7 }`, as though Promise adoption could change the result; it now offers the conversion, and still declines when `then` may be callable.
 - In `(a catch h) catch k`, when `h` gave an Effect, the outer `catch` kept that Effect as a value instead of running it, so `Effect.fail(0) catch (() => Effect.fail(1)) catch () => 7` succeeded with an unrun Effect; the outer `catch` now runs what the inner one gives and the result is `7`.
