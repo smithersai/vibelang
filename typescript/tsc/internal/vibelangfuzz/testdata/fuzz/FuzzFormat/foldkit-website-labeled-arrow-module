@@ -1,0 +1,2 @@
+go test fuzz v1
+string("module handlers { const a = 1; ChangedUrl: (x: number) => x + a }\n")

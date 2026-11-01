@@ -145,6 +145,7 @@ type encoding struct {
 	modules     []moduleBody
 	references  int
 	returnTypes []returnTypeShape
+	labels      []labelBody
 }
 
 // sentinels are the prefixes placeholders may take; a file uses the first one
@@ -743,6 +744,7 @@ func (e *encoder) finish() (*encoding, error) {
 		return nil, fmt.Errorf("vibelang format: internal error: the TypeScript form does not parse at %d:%d: %s\n%s", line, column, diagnostics[0].String(), sourceLine(result.text, diagnostics[0].Pos()))
 	}
 	result.recordPatternBodies(file)
+	result.recordLabels(file)
 	result.recordReturnTypes(file)
 	tokens := collectTokens(file, result.text)
 	found := map[string]int{}

@@ -92,6 +92,9 @@ func (enc *encoding) decode(formatted string) (string, error) {
 	if err := d.restoreReturnTypes(); err != nil {
 		return "", err
 	}
+	if err := d.restoreLabels(); err != nil {
+		return "", err
+	}
 	if err := d.ordered(); err != nil {
 		return "", err
 	}

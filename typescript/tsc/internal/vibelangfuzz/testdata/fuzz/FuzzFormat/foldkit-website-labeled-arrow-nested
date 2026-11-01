@@ -1,0 +1,2 @@
+go test fuzz v1
+string("key:foldkit-labeled-arrow\n\u0007\u0002\u0003")

@@ -54,6 +54,7 @@ const specTests = [
   "TestCompileCurrentDiagnosticPolicy",
   "TestFormatForHeadsQuoted",
   "TestFormatFoldkitQuoted",
+  "TestFormatLabelQuoted",
   "TestFormatReturnTypesQuoted",
   "TestSchemaDecodedKeyFlagsQuoted",
   "TestFormatContractCommentQuote",

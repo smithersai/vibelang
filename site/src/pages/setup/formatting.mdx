@@ -69,6 +69,8 @@ A statement-level `match` keeps its boundary after a statement without a semicol
 
 Written parentheses and their enclosed comments in return-type annotations stay in place, including nested and generic function types. For example, `(): (() => string)` keeps that return-type grouping in its `.d.ts` output.
 
+A label on an arrow expression keeps that expression as its body, including with `semiColons: "asi"`.
+
 Comments and JSDoc stay associated with their code, including compiler, linter and tool directives. Adding space between a contract and its initializer, such as `User!!= load()` becoming `User!! = load()`, preserves those associations elsewhere in the file. Formatting is idempotent: a formatted file doesn't change when formatted again. This includes `data`, `schema` and field-only `error` declarations with an opening brace on the next line.
 
 Under the same compiler/options, formatting preserves parsed program meaning, evaluation order, receivers, ordinary runtime values/effects and public types/declarations/throws contracts. Diagnostic codes, categories and occurrences stay the same; locations and quoted source follow the formatted file. Semantic migrations and diagnostic repairs belong to `vibelang --fix` or editor actions.
