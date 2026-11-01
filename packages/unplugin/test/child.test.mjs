@@ -2,7 +2,8 @@ import assert from "node:assert/strict"
 import { once } from "node:events"
 import { createServer } from "node:net"
 import test from "node:test"
-import { runChild } from "./child.mjs"
+import { spawn } from "node:child_process"
+import { runChild, stopGroup } from "./child.mjs"
 
 test("a child that never exits is killed at its limit and named", async () => {
   const started = Date.now()
@@ -32,6 +33,29 @@ const socket = connect(${server.address().port}, "127.0.0.1", () => {
   held.resume()
   await once(held, "close")
   server.close()
+})
+
+test("stopGroup stops a parent that replaces its child as it dies", { timeout: 20_000 }, async () => {
+  // Each holder inherits the output, and "close" waits for every writer of it to
+  // die. The parent starts a new holder the moment one exits, as a bundler starts
+  // a new compile when one fails.
+  const script = `
+const { spawn } = require("node:child_process")
+const start = () => spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { stdio: "inherit" }).on("exit", start)
+start()
+console.log("ready")
+`
+  const child = spawn(process.execPath, ["-e", script], { detached: true, stdio: ["ignore", "pipe", "inherit"] })
+  await once(child.stdout, "data")
+  child.stdout.resume()
+  await stopGroup(child)
+  assert.equal(child.signalCode, "SIGKILL")
+})
+
+test("stopGroup is safe on a child that has already exited", async () => {
+  const child = spawn(process.execPath, ["-e", ""], { detached: true, stdio: "ignore" })
+  await once(child, "close")
+  await stopGroup(child)
 })
 
 test("a child that exits normally resolves with its code and output", async () => {

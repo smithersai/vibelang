@@ -1,4 +1,5 @@
 import { execFileSync, spawn } from "node:child_process"
+import { once } from "node:events"
 
 // runChild runs a command to its end and resolves with its exit code, its
 // stdout and stderr, and both interleaved as output. The child leads a
@@ -40,6 +41,17 @@ export function runChild(command, args, { limit = 120_000, ...options } = {}) {
     })
     child.on("close", (code) => settle(() => accept({ code, stdout, stderr, output })))
   })
+}
+
+// stopGroup kills a detached child and everything in its process group with
+// one signal, and resolves when the child has closed. Killing the processes one
+// at a time leaves a window: a bundler whose compile just died starts another,
+// which outlives it and writes into a fixture that is being removed (ENOTEMPTY,
+// 14 hosted gates in 24 hours on 2026-11-01).
+export async function stopGroup(child) {
+  const closed = child.exitCode === null && child.signalCode === null ? once(child, "close") : null
+  kill(child.pid)
+  await closed
 }
 
 // group lists the processes of a process group, one per line.

@@ -4,7 +4,6 @@
 // runtime and links the fixtures' node_modules first.
 import assert from "node:assert/strict"
 import { spawn, spawnSync } from "node:child_process"
-import { once } from "node:events"
 import { cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises"
 import { SourceMap } from "node:module"
 import { availableParallelism, tmpdir } from "node:os"
@@ -12,7 +11,7 @@ import { join, resolve } from "node:path"
 import { createInterface } from "node:readline"
 import { after, describe, it } from "node:test"
 import { fileURLToPath } from "node:url"
-import { runChild } from "./child.mjs"
+import { runChild, stopGroup } from "./child.mjs"
 
 const here = fileURLToPath(new URL(".", import.meta.url))
 const build = join(here, "build.mjs")
@@ -83,7 +82,7 @@ async function printsEventually(bundler, root, text) {
 }
 
 function watchBundle(bundler, root, env = {}) {
-  // close() checks ownership and stops the bundler and its compiler individually.
+  // The bundler leads a process group, so close() can stop it and every compile at once.
   const child = spawn(process.execPath, ["--no-warnings", build, bundler, "--watch"], {
     cwd: root, detached: true, env: { ...process.env, VIBELANG_UNPLUGIN_DEBUG: "1", ...env }
   })
@@ -123,23 +122,7 @@ function watchBundle(bundler, root, env = {}) {
     log,
     // Stops the bundler and any compile it started before the fixture is removed.
     async close() {
-      if (child.exitCode === null && child.signalCode === null) {
-        const exited = once(child, "close")
-        const parentOf = (pid) => Number(spawnSync("ps", ["-o", "ppid=", "-p", String(pid)], { encoding: "utf8" }).stdout?.trim())
-        const stop = (pid, parent) => {
-          if (parentOf(pid) !== parent) return
-          const listing = spawnSync("ps", ["-eo", "pid=,ppid="], { encoding: "utf8" }).stdout || ""
-          for (const line of listing.trim().split("\n")) {
-            const [descendant, owner] = line.trim().split(/\s+/).map(Number)
-            if (owner === pid) stop(descendant, pid)
-          }
-          if (parentOf(pid) === parent) {
-            try { process.kill(pid) } catch (error) { if (error.code !== "ESRCH") throw error }
-          }
-        }
-        stop(child.pid, process.pid)
-        await exited
-      }
+      await stopGroup(child)
       output.close()
       errors.close()
       child.stdout.destroy()
