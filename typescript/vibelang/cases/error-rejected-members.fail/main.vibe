@@ -19,6 +19,8 @@ schema error S4 { accessor id = 1 }
 schema error S5 { [key: string]: unknown }
 schema error S6 { private count: number }
 schema error S7 { public count: number }
+error E9 { private message: string }
+schema error S8 { protected name: string }
 interface Contract { readonly id: string }
 error Implemented implements Contract { id: string }
 schema error SchemaImplemented implements Contract { id: string }

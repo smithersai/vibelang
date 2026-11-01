@@ -11,7 +11,9 @@ func TestErrorRejectedMembers(t *testing.T) {
 	for _, form := range []string{"error", "schema error"} {
 		for _, member := range []string{"id = 1", "private id?: string", "#id = 1", "declare id: string", "accessor id = 1", "[key: string]: unknown",
 			// TypeScript's own errors inside the member (TS2564, TS2411, TS4113) are dropped: one diagnostic.
-			"private id: string", "protected id: number", "public id: string", "[key: string]: number", "override id: string"} {
+			"private id: string", "protected id: number", "public id: string", "[key: string]: number", "override id: string",
+			// TS2415 at the name: the member hides a base member's visibility.
+			"private message: string", "protected name: string", "private readonly stack: string"} {
 			source := form + " E { " + member + " }\n"
 			t.Run(source, func(t *testing.T) {
 				program, file, _, _ := editorProgram(t, source)

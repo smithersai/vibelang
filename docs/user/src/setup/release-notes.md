@@ -325,6 +325,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Concurrent migration batches could restore another package's files to their old bytes after it reported successful fixes; restoration now stays inside each compiler source graph, and overlapping graphs take turns.
 
+- A `private` or `protected` member named like a member of the error base, such as `private message: string`, in an `error` or `schema error` body reported TypeScript's `TS2415` at the declaration's name beside `EK1304`. It now reports `EK1304` alone.
 - Migrating an Effect pipeline could change its public declaration from an expanded intersection to a named alias, as in opencode's reconnect service; the quick fix now keeps the native `.pipe(...)` when uncurrying a stage would change inferred type names.
 - After VIP-1, a `catch` passed where an Effect is expected, as in `FiberMap.run(map, key, (effect { … }) catch effect (e) => …)`, ran instead of being passed, and `vibelang --fix --fix-vip-only` left it; the migration now writes it as `effect { return … catch … }`, the program the old compiler passed.
 
@@ -654,6 +655,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Diagnostic validation still treated `EK0202` as unimplemented after the compiler registered it; the registry checks and jump fuzz corpus now validate the implemented diagnostic directly.
 
 - Compiler validation could fail to build when two independent `restore` fuzz suites used the same Go test names; both suites now retain their coverage under distinct names.
+
 - Awaiting a Fiber or Deferred in effect code reported an error using the configurable warning codes `EK4609` and `EK4610`; it now reports the fixed placement error `EK0102` separately, so advisory severity settings keep their meaning without allowing `await` in effect code.
 
 - `vibelang agents check` could report `no errors` and succeed when its compiler failed or was terminated; checks and hooks now fail with the compiler's status, signal or spawn error and standard error output, including failures caused by errors outside the selected files.

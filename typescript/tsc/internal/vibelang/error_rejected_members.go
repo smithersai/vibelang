@@ -29,6 +29,12 @@ func checkErrorRejectedMembers(c *checker.Checker, file *ast.SourceFile) {
 	for _, member := range errorRejectedMembers(file) {
 		d := report(c, member, ek1304Member, rejectedMemberKind(member))
 		note(d, "Keep it in an Effect TypeScript class: the quick fix rewrites the declaration as one.")
+		if ast.HasSyntacticModifier(member, ast.ModifierFlagsPrivate|ast.ModifierFlagsProtected) {
+			// A private or protected member named like a base member, such
+			// as message, makes the generated class incorrectly extend its
+			// base (TS2415 at the name): the same member's error.
+			coverCodes(c, member.Parent.Name(), 2415)
+		}
 	}
 }
 
