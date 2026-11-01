@@ -1,0 +1,19 @@
+// expect-result: [0,0,1,1,0,1,1]
+// Chapter 004, Class patterns: an extractor whose argument count can never
+// match the list its matcher extracts is the lint warning EK0703. An error
+// declaration and Effect's retained errors extract [subject]; Option.Some
+// extracts one value; Option.None extracts []. A rest pattern admits any
+// longer list. The arms still compile and never match.
+import * as Option from "effect/Option"
+error NotFound { id: string }
+function zeroArgs(e: unknown) { return match (e) { when NotFound(): 1; default: 0; } }
+function twoArgs(e: unknown) { return match (e) { when NotFound(let a, let b): 1; default: 0; } }
+function restAfterOne(e: unknown) { return match (e) { when NotFound(let a, ...let rest): 1; default: 0; } }
+function noneEmpty(o: Option.Option<number>) { return match (o) { when Option.None(): 1; default: 0; } }
+function noneOne(o: Option.Option<number>) { return match (o) { when Option.None(let a): 1; default: 0; } }
+function someOne(o: Option.Option<number>) { return match (o) { when Option.Some(let v): v; default: -1; } }
+function restOnly(e: unknown) { return match (e) { when NotFound(...let all): all.length; default: 0; } }
+export function main() {
+  const missing = new NotFound({ id: "1" })
+  return [zeroArgs(missing), twoArgs(missing), restAfterOne(missing), noneEmpty(Option.none()), noneOne(Option.none()), someOne(Option.some(1)), restOnly(missing)]
+}

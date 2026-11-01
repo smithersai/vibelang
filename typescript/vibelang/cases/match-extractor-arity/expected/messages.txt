@@ -1,0 +1,3 @@
+This pattern never matches: NotFound extracts one value, and the pattern lists exactly 0.
+This pattern never matches: NotFound extracts one value, and the pattern lists exactly 2.
+This pattern never matches: Option.None extracts no values ([]), and the pattern lists exactly 1.

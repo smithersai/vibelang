@@ -1,1 +1,2 @@
 B is left.
+This pattern never matches: B extracts one value, and the pattern lists exactly 0.
