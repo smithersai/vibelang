@@ -242,9 +242,11 @@ const targets = {
   "go-vibelangfuzz": goVibelang(
     "The fuzz oracles over the seed corpus: cases, snippets and saved reproductions.",
     `CGO_ENABLED=0 GOMAXPROCS=$(n=$(getconf _NPROCESSORS_ONLN); [ "$n" -lt 24 ] && echo "$n" || echo 24) GOFLAGS=-p=6 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} ` +
-      "go test -short -count=1 -timeout=40m -trimpath ./internal/vibelangfuzz/...",
-    [Tsc["vibelangfuzz-files"]],
-    // Match the documented 40m corpus deadline; admission and compilation
+      `go test -short -count=1 -timeout=40m -trimpath -exec "$PWD/../../scripts/go-test-shards.sh" ./internal/vibelangfuzz/...`,
+    [Tsc["vibelangfuzz-files"], S.file("//scripts/go-test-shards.sh")],
+    // The package's tests and seed corpora run one after another, so the
+    // binary runs as six processes at once (scripts/go-test-shards.sh); each
+    // keeps the documented 40m corpus deadline. Admission and compilation
     // retain their separate 25m allowance before the task's 65m limit.
     "65m"
   ),

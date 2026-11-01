@@ -1,0 +1,36 @@
+# Seconds each test or fuzz target took in one quiet-host run (2026-10-31, package 686 s), for
+# scripts/go-test-shards.sh, which spreads the slowest across its processes. Names not listed count 1 s; a stale
+# line only unbalances the processes. Refresh from a go test -json run: the Elapsed of each top-level pass.
+91 TestVIPConstructs
+61 FuzzVIPDifferential
+53 FuzzIncremental
+49 FuzzEditor
+36 FuzzEditorConsistency
+32 FuzzCommandLine
+28 FuzzFix
+27 TestCompileLargeLiteralMatch
+27 TestFailuresSpec
+21 TestDataSpecRules
+19 FuzzFailuresSpec
+18 FuzzFormat
+12 FuzzParse
+10 TestDeclarationIdentityAdmission
+8 FuzzDataSpecRules
+8 FuzzMigrationJSDocImports
+7 FuzzRunningRules
+7 TestMigrationDeclarationFixWitnesses
+7 TestVIP26RetiredEntryDiagnosticConfig
+6 TestOutputsStockSpans
+6 TestToolsFreshOutcomes
+5 FuzzErrorDeclarationTwin
+5 FuzzMigrationDeclarationFix
+5 FuzzUnaryPow
+4 FuzzFunctionsSpec
+4 FuzzPlainHandlerThrow
+4 TestConsistencyImplicitErrorTag
+4 TestDeclarationIdentityCanonicalization
+4 TestDeclarationIdentityRejectsStockErrors
+3 TestDeclarationIdentityRename
+3 TestRuntimeOutcomes
+2 FuzzMigrationEffectOperands
+2 FuzzServicesRules

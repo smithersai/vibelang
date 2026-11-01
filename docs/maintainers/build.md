@@ -235,6 +235,22 @@ runs reported no product failure the case targets missed. `:go-vibelang` runs Go
 with `-timeout 45m`, and its shell target allows 70 minutes, including waiting
 for a Go build slot and compiling the test binary.
 
+`:go-vibelangfuzz` runs its test binary through `scripts/go-test-shards.sh`
+(`go test -exec`): six processes at once, each with its own `-run` list and the
+40-minute deadline. Go runs a package's tests and each seed corpus one after
+another unless they call `t.Parallel`, so the package was one chain: 686 s on a
+quiet host, and it hit its 40-minute deadline on the loaded post-merges of
+`1180893af776` and `42c771e16b1c`. The script puts the slowest names, by
+`internal/vibelangfuzz/testdata/shard-seconds.txt`, in different processes. To
+run the suite the same way by hand, from `typescript/tsc`:
+
+```sh
+go test -short -count=1 -exec "$PWD/../../scripts/go-test-shards.sh" ./internal/vibelangfuzz/
+```
+
+A run with `-run`, `-fuzz` or `-json`, or with `GO_TEST_SHARDS=1`, runs the
+binary once, as before.
+
 The fuzz shell caps `GOMAXPROCS` at the smaller of `24` and the machine CPU count and declares `GOFLAGS=-p=6`, matching the
 post-merge shard allocation. Smithers withholds ambient Go variables, so
 setting them only on the outer CI process does not constrain the test.
