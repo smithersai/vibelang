@@ -95,6 +95,10 @@ func formatModules(source string, modules []moduleBody, formatter TypeScriptForm
 		if err != nil {
 			return "", fmt.Errorf("vibelang format: the TypeScript formatter failed on module %s: %w", module.name, err)
 		}
+		formatted, err = preserveTypeScript(source[module.body.Pos():module.body.End()], formatted)
+		if err != nil {
+			return "", fmt.Errorf("vibelang format: module %s: %w", module.name, err)
+		}
 		// The body starts on the line after the open brace, which is written
 		// here, so its own leading line breaks go: a formatter that answers
 		// "unchanged", as a dprint host without a TypeScript plugin does,

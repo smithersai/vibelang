@@ -142,8 +142,9 @@ type encoding struct {
 	functions []string
 	// modules are the file's module bodies, and references the number of
 	// identifier module specifiers text writes as strings.
-	modules    []moduleBody
-	references int
+	modules     []moduleBody
+	references  int
+	returnTypes []returnTypeShape
 }
 
 // sentinels are the prefixes placeholders may take; a file uses the first one
@@ -742,6 +743,7 @@ func (e *encoder) finish() (*encoding, error) {
 		return nil, fmt.Errorf("vibelang format: internal error: the TypeScript form does not parse at %d:%d: %s\n%s", line, column, diagnostics[0].String(), sourceLine(result.text, diagnostics[0].Pos()))
 	}
 	result.recordPatternBodies(file)
+	result.recordReturnTypes(file)
 	tokens := collectTokens(file, result.text)
 	found := map[string]int{}
 	match := func(token string, positions []int) []string {

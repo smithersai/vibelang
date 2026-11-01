@@ -1,0 +1,1 @@
+module publicApi { export const make = (): (() => string) => () => 'ok' }

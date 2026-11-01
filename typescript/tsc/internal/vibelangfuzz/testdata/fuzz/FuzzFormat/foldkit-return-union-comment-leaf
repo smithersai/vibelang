@@ -1,0 +1,2 @@
+go test fuzz v1
+string("key:foldkit-written-return-types\nunion\n@\u0001")

@@ -89,6 +89,9 @@ func (enc *encoding) decode(formatted string) (string, error) {
 		return "", fmt.Errorf("vibelang format: internal error: the formatted TypeScript form does not parse at %d:%d: %s", line, column, diagnostics[0].String())
 	}
 	d := &decoder{enc: enc, text: formatted, file: file, seen: make([]bool, len(enc.placeholders))}
+	if err := d.restoreReturnTypes(); err != nil {
+		return "", err
+	}
 	if err := d.ordered(); err != nil {
 		return "", err
 	}

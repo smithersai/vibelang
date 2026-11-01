@@ -1,0 +1,2 @@
+go test fuzz v1
+string("export function make(): ((/* public */ (() => string) | undefined /* result */)) { return undefined }\n")

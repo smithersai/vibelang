@@ -1,0 +1,2 @@
+go test fuzz v1
+string("key:foldkit-written-return-types\nnested\n\u0004\u0001")

@@ -1,0 +1,1 @@
+export function make(): ((/* public */ (() => string) | undefined /* result */)) { return undefined }

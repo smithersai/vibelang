@@ -1,0 +1,2 @@
+go test fuzz v1
+string("export const make = (): (() => string) => (): infer _ => 'ok'\n")
