@@ -207,6 +207,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 | Old diagnostic numbers, including `EK4617` | Appendix B numbering, including `EK0103`. Diagnostic triggers are unchanged. See the [old-to-new map](../vibelang-features/diagnostic-code-map.md). |
 
 ### Bugs fixed since 0.0.10
+- A typed catch clause whose binding destructures, such as `catch ({ id }: NotFound)`, crashed the compiler and the editor with `Unhandled case in Node.Text`; it now reports `EK2112`, suggesting `catch (e)`, and its quick fix leaves the pattern alone.
 - Configuring one diagnostic severity disabled fuzz validation of unrelated warning categories; validation now checks each code against its own effective `vibe.severities` entry and keeps other defaults enforced.
 
 - Awaiting a `Fiber` or `Deferred` in effect code showed extra configurable warnings; it now reports only `EK0102`, with a working `join` or `Deferred.await` repair.

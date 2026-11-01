@@ -1,0 +1,14 @@
+// expect-result: "7"
+// A typed catch clause whose binding destructures, catch ({ id }: NotFound),
+// panicked the compiler (Node.Text of a binding pattern). It is the retired
+// typed clause, EK2112, which names catch (e); its quick fix leaves the
+// pattern alone.
+error NotFound { id: string }
+
+export effect function main() {
+  try {
+    throw new NotFound({ id: "7" })
+  } catch ({ id }: NotFound) {
+    return id
+  }
+}

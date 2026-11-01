@@ -217,8 +217,8 @@ func checkRetiredCatches(c *checker.Checker, file *ast.SourceFile) {
 					case clause.cause && clause.name != nil:
 						reportAt(c, file, annotationRange(text, clause.name), EK2113)
 					case clause.typeNode != nil:
-						name := "e"
-						if clause.name != nil {
+						name := "e" // a destructured binding is no name to test
+						if clause.name != nil && ast.IsIdentifier(clause.name) {
 							name = clause.name.Text()
 						}
 						reportAt(c, file, core.NewTextRange(scanner.SkipTrivia(text, clause.typeNode.Pos()), clause.typeNode.End()), EK2112, name)
@@ -336,6 +336,11 @@ func (r *retiredCatch) rewrite(c *checker.Checker, file *ast.SourceFile) (string
 	text := file.Text()
 	if r.causes {
 		return r.rewriteCause(text)
+	}
+	for _, clause := range r.clauses {
+		if clause.name != nil && !ast.IsIdentifier(clause.name) {
+			return "", 0, "", false // a destructured binding has no name for match to test
+		}
 	}
 	main := "e"
 	for _, clause := range r.clauses {

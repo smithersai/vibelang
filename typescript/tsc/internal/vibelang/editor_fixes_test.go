@@ -190,3 +190,47 @@ func TestEditorQuickFixSkipsMissingCatchType(t *testing.T) {
 		})
 	}
 }
+
+// TestEditorQuickFixSkipsDestructuredCatch checks that a typed catch binding
+// that destructures, catch ({ code }: any), reports EK2112 naming catch (e)
+// and offers no rewrite, where reading the pattern as a name panicked the
+// compiler (Node.Text of a binding pattern).
+func TestEditorQuickFixSkipsDestructuredCatch(t *testing.T) {
+	for _, source := range []string{
+		"export function r() { try { throw { code: 7 } } catch ({ code }: any) { return code } }",
+		"export function r() { try { throw [7] } catch ([first]: any) { return first } }",
+	} {
+		t.Run(source, func(t *testing.T) {
+			program, file, service, converters := editorProgram(t, source)
+			found := false
+			for _, diagnostic := range program.GetSemanticDiagnostics(t.Context(), file) {
+				if diagnostic.Code() != EK2112.Code {
+					continue
+				}
+				found = true
+				if !strings.Contains(diagnostic.String(), "write catch (e)") {
+					t.Fatalf("EK2112 names the pattern: %s", diagnostic.String())
+				}
+				d := lsconv.DiagnosticToLSPPush(t.Context(), converters, diagnostic)
+				only := []lsproto.CodeActionKind{lsproto.CodeActionKindQuickFix}
+				response, err := service.ProvideCodeActions(t.Context(), &lsproto.CodeActionParams{
+					TextDocument: lsproto.TextDocumentIdentifier{Uri: lsconv.FileNameToDocumentURI(file.FileName())},
+					Range:        d.Range, Context: &lsproto.CodeActionContext{Diagnostics: []*lsproto.Diagnostic{d}, Only: &only},
+				})
+				if err != nil {
+					t.Fatal(err)
+				}
+				if response.CommandOrCodeActionArray != nil {
+					for _, action := range *response.CommandOrCodeActionArray {
+						if action.CodeAction != nil && strings.HasPrefix(action.CodeAction.Title, "Test the failure") {
+							t.Fatalf("quick fix rewrites a destructured binding: %s", action.CodeAction.Title)
+						}
+					}
+				}
+			}
+			if !found {
+				t.Fatal("missing EK2112")
+			}
+		})
+	}
+}
