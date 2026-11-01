@@ -734,6 +734,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The contributor example check could fail after a native-only build or use an older global compiler; `sh scripts/check-examples.sh` now prefers the compiler built in this checkout while keeping explicit `VIBELANG` overrides.
 
 - CI setup could delete package content through a shared `@effect` scope symlink or fail on a dangling one; `scripts/share-effect.mjs` now leaves these provisioned scopes intact while sharing packages in private directories.
+- Bundler lifecycle tests could lose their compiler handle when the parent was delayed; a delayed-parent regression now checks ownership and verifies that teardown stays pending until the controlled compiler is released.
+
 
 - `vibelang --fix` could remove an explicit `<{}>` payload from a fieldless `Data.TaggedError` class, changing its published declaration. Projects that emit declarations now keep the class and receive an explanation instead.
 - Reverting a migration importer before its dependency could replace an original `.js` import with `.ts`; either revert order now restores the original specifier.

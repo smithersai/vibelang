@@ -57,6 +57,8 @@ writeFileSync(${JSON.stringify(ready)}, String(process.pid))
           if (!pid) await delay(10)
         }
         assert.ok(pid, "the compile started")
+        // Retain ownership even when the parent outlasts the former auto-exit timer.
+        if (mode === "finishes") await delay(350)
         child = process._getActiveHandles().find(handle => handle.pid === pid)
         assert.ok(child, "the test owns the compiler child")
         // The compiler used to sleep for 200 ms and race the real 500 ms
@@ -66,10 +68,13 @@ writeFileSync(${JSON.stringify(ready)}, String(process.pid))
         if (mode === "finishes") t.mock.timers.enable({ apis: ["setTimeout"] })
         let guard
         try {
-          const closing = plugin[hook]?.()
+          const closing = Promise.resolve(plugin[hook]?.())
           if (mode === "finishes") {
+            let settled = false
+            closing.then(() => { settled = true }, () => { settled = true })
             // Let the plugin enter backend.close() before releasing the child.
             await new Promise(resolve => setImmediate(resolve))
+            assert.equal(settled, false, "teardown waits until the compiler is released")
             assert.equal(child.exitCode, null, "the compile is active during teardown")
             child.kill("SIGUSR2")
           }

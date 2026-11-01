@@ -297,6 +297,13 @@ gate applies on both attempts.
 :design-files, :srcs, :vibelang-files, :vibelangfuzz-files ─► :spec-tests
 ```
 
+The bundler lifecycle probes hold their short compiler until the parent has
+retained its process handle and called `closeBundle` or `closeWatcher`.
+A delayed-parent regression outlasts the former `200` ms exit timer. The close
+promise must remain pending until the compiler is released by `SIGUSR2`; the
+finishing probe holds the backend grace clock with Node mock timers. All
+process, pipe, grace-period and hang-guard checks still run.
+
 The runtime entry tests start up to three host processes in sequence. Each
 child has a `10_000` ms deadline; the whole test allows `35_000` ms so the
 outer deadline covers all three on a busy build host.
