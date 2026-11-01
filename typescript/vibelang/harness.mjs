@@ -235,6 +235,7 @@ function readPending(dir) {
   const file = path.join(dir, "pending")
   if (!fs.existsSync(file)) return undefined
   const text = fs.readFileSync(file, "utf8").trim()
+  if (!text) throw new Error("pending file must name its owner as the first word")
   const space = text.indexOf(" ")
   return space < 0 ? { owner: text, reason: "" } : { owner: text.slice(0, space), reason: text.slice(space + 1) }
 }
@@ -419,11 +420,12 @@ async function main() {
     while (next < selected.length) {
       const index = next++
       const name = selected[index]
-      const pending = readPending(path.join(casesDir, name))
+      let pending
       const started = Date.now()
       let result
       const commands = new CaseCommands()
       try {
+        pending = readPending(path.join(casesDir, name))
         result = await check(name, commands)
       } catch (e) {
         result = { ok: false, detail: `harness error: ${e.message}`, log: e.stack }

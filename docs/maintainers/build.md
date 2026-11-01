@@ -480,6 +480,13 @@ It runs its test binary through `scripts/go-test-shards.sh` like
 `internal/vibelang/testdata/shard-seconds.txt`: 339 s as one process, 153 s as
 six, on the same host at load 75 (2026-11-01).
 
+A compiler case's `pending` file must start with its owner's lane. An empty or
+whitespace-only file fails that case before installing dependencies or compiling;
+its retained log names the metadata error and has no command records. A valid
+owned marker keeps the existing `pending` and `XPASS` behavior.
+`scripts/harness-pending.test.mjs` checks both paths, including generated
+whitespace markers.
+
 `:go-vibelangfuzz` runs its test binary through `scripts/go-test-shards.sh`
 (`go test -exec`): six processes at once, each with its own `-run` list and the
 40-minute deadline. Go runs a package's tests and each seed corpus one after
