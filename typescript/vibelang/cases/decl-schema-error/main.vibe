@@ -3,11 +3,16 @@
 // encodes and decodes. D278's class rules apply: a subclass extends it with
 // its own tag, and the body may hold methods.
 
+import { $schemaErrorFamily as $ErrorSchemaFamily } from "vibelang-runtime"
+
 /** The base of a family of file system failures. */
-export schema error FsError {
-  _tag: string
-  method: string
-  path?: string
+export class FsError extends Schema.TaggedError<FsError>()("FsError" as string, {
+    method: Schema.String,
+    path: Schema.optional(Schema.String),
+}) {
+  static {
+    $ErrorSchemaFamily(this);
+  }
 }
 
 export schema error NotFound extends FsError { attempts: number }

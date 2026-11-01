@@ -1,9 +1,15 @@
 // Chapter 007 / generated tag, custom matcher and retained fixed guard distinction: docs/design/src/007-tooling.md#6a91c4b25b602d72
 // A class arm over a closed class removes its class and every class below it
 // (D407, D428): an error declaration, a schema error, a family's base, and an
+
+import { TaggedError as $ErrorTaggedError } from "vibelang-runtime"
 // error class of effect cover a match with no default arm.
 error Gone { id: string }
-error AppError { _tag: string; code: string }
+class AppError extends $ErrorTaggedError("AppError" as string)<{
+    readonly _tag: string;
+    readonly code: string;
+}> {
+}
 error Missing extends AppError { path: string }
 error Expired extends AppError {}
 schema error Bad { reason: string }

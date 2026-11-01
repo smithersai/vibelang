@@ -1,13 +1,16 @@
 // expect: EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117
+import { TaggedError, $schemaErrorFamily } from "vibelang-runtime"
 // A concrete error is tagged with its own name (D304), a subclass included,
 // whatever its _tag field says: a _tag field whose type leaves the name out
 // declares a tag the error never carries, so catchTag on it never matches.
-export error Base { _tag: string; code: number }
+export class Base extends TaggedError("Base" as string)<{ readonly _tag: string; readonly code: number }> {}
 export error Sub extends Base { _tag: "Other"; path: string }
 export error Quoted extends Base { readonly "_tag": "Q" }
 export error Typed<T extends string> extends Base { _tag: T }
 
-export schema error SchemaBase { _tag: string; code: number }
+export class SchemaBase extends Schema.TaggedError<SchemaBase>()("SchemaBase" as string, { code: Schema.Number }) {
+  static { $schemaErrorFamily(this) }
+}
 export schema error SchemaSub extends SchemaBase { _tag: "Other" }
 export schema error SchemaNarrow { _tag: "A" }
 

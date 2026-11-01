@@ -11,12 +11,18 @@
 // class arm to reach an Option arm, each throw the proposal's TypeError
 // instead of taking the last arm (D405). A class with a custom matcher is not
 // closed, so its arm covers nothing and its match needs a default arm (D407,
+
+import { TaggedError as $ErrorTaggedError } from "vibelang-runtime"
 // D428).
 import * as A from "./a.vibe"
 import * as B from "./b.vibe"
 
 error Timeout { ms: number }
-error AppError { _tag: string; code: string }
+class AppError extends $ErrorTaggedError("AppError" as string)<{
+    readonly _tag: string;
+    readonly code: string;
+}> {
+}
 error Missing extends AppError { path: string }
 error Other { code: string }
 

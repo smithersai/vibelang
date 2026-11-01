@@ -230,6 +230,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Editor rename checks falsely reported a failure when TypeScript repaired duplicate declarations; checks now accept those repairs while still catching added collisions and unrelated diagnostic changes.
 
 - Renaming a symbol in a file with an unfinished `module { ... }` declaration could crash the editor. Rename now skips the missing module name and still updates other bindings.
+| A typed `_tag` payload field in an `error` or `schema error` | `EK2117` reserves the generated tag name, including when the written type accepts it. Rename the field, or use `vibelang --fix` to retain a compatible contract in an explicit class. Fieldless plain bases with generated subclasses need a manual class migration. |
 | An initialized `_tag` field, accessor or static member in an `error` or `schema error` | `EK2117` reserves the name; `--fix` retains previously valid members in explicit Effect classes. |
 - Loading a `.vibe` module through `vibelang/register`, `vibelang/bun` or a bundler plugin failed with `TS6305: Output file '…/lib/x.d.ts' has not been built from source file '…/src/x.ts'` when its tsconfig `references` a project that was not built yet, as in a fresh clone before `vibelang -b`; the loader's compile now reads a referenced project's types from its sources, as the editor does, and a relative import into that project no longer reports `TS2878`.
 
@@ -525,6 +526,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Knip marked later names in a `@public` variable declaration as unused; all bindings in that declaration now keep the marker.
 
 - Initialized `_tag` fields, accessors and static members in an `error` or `schema error` could compile or report duplicate or unrelated diagnostics; they now report `EK2117`, and `--fix` retains previously valid implementations in explicit Effect classes.
+- A typed `_tag` field in an `error` or `schema error` could override the generated tag contract or report unrelated TypeScript errors; it now reports `EK2117` at the field name, and `vibelang --fix` retains compatible contracts and schema-family registration in an explicit class.
+
 - Invalid TypeScript `module` forms reported broad or misleading errors. They now report the specific `EK4001`–`EK4004`, `EK4006` or `EK4008` diagnostic; TypeScript namespace spellings keep `TS1540` alone (VIP-40).
 - The editor refused renames and import organization in files with TypeScript `module` bodies. These operations now work across the body boundary and preserve identifier specifiers (VIP-40).
 - Published declaration checks rejected harmless formatting, quote, import-order and member-order differences; `scripts/api-identity.mjs` now compares exported names, their types through `tsc`, and their doc comments.

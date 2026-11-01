@@ -61,6 +61,27 @@ var errorMemberClassFix = &ls.CodeFixProvider{
 		c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
 		defer done()
 		c.GetDiagnostics(ctx, fix.SourceFile)
+		// The native TaggedError factory requires a string tag contract.
+		// Do not turn the reserved-field error into a new native type error.
+		form, _ := errorFormOf(class)
+		payloadTags := errorReservedPayloadFields(class, form)
+		// Duplicate payloads have no valid native class contract. A fieldless
+		// plain root also has a DSL-only subclass constructor adaptation;
+		// replacing just that base could break a subclass in another file.
+		if len(payloadTags) > 1 || (len(payloadTags) > 0 && form == errorFormRoot && fieldlessGeneratedErrorBase(c, class.Name())) {
+			return nil, nil
+		}
+		for _, field := range payloadTags {
+			typeNode := field
+			if ast.IsPropertySignatureDeclaration(field) {
+				typeNode = field.Type()
+			} else if ast.IsPropertyAssignment(field) {
+				return nil, nil
+			}
+			if typeNode == nil || !c.IsTypeAssignableTo(c.GetTypeAtLocation(typeNode), c.GetStringType()) {
+				return nil, nil
+			}
+		}
 		if fix.ErrorCode == EK2117.Code {
 			// Actual class members can retain their native implementation.
 			// Payload/family errors retain their own fixes.
@@ -68,6 +89,14 @@ var errorMemberClassFix = &ls.CodeFixProvider{
 			for _, member := range class.Members() {
 				if member.Pos() <= fix.Span.Pos() && fix.Span.End() <= member.End() &&
 					errorMemberIsReservedTag(c, member) {
+					eligible = true
+				}
+			}
+			// A written _tag payload field is lowered into the base's type
+			// argument or tag, and the explicit class keeps it there.
+			for _, field := range payloadTags {
+				name := errorPayloadTagName(fix.SourceFile, class, field)
+				if name.Pos() <= fix.Span.Pos() && fix.Span.End() <= name.End() {
 					eligible = true
 				}
 			}
@@ -122,10 +151,10 @@ var errorMemberClassFix = &ls.CodeFixProvider{
 				}
 			}
 		}
-		// An abstract schema error currently installs its family registration
+		// A schema error family base installs its registration
 		// before user static initializers. Keep it in the explicit class too.
 		familyAlias := ""
-		if fix.ErrorCode == EK2117.Code && module == "Schema" && ast.HasSyntacticModifier(class, ast.ModifierFlagsAbstract) {
+		if module == "Schema" && errorHasSchemaFamilyRegistration(class) {
 			familyAlias = "$ErrorSchemaFamily"
 			for i := 2; c.ResolveName(familyAlias, class, ast.SymbolFlagsAll, false) != nil; i++ {
 				familyAlias = "$ErrorSchemaFamily" + strconv.Itoa(i)
@@ -137,7 +166,7 @@ var errorMemberClassFix = &ls.CodeFixProvider{
 			if member.Flags&ast.NodeFlagsReparsed == 0 {
 				members = append(members, text[member.Pos():member.End()])
 			} else if familyAlias != "" && member.Kind == ast.KindClassStaticBlockDeclaration {
-				members = append(members, strings.Replace(p.Emit(member, fix.SourceFile), "$schemaErrorFamily(", familyAlias+"(", 1))
+				members = append(members, "\n"+strings.Replace(p.Emit(member, fix.SourceFile), "$schemaErrorFamily(", familyAlias+"(", 1))
 			}
 		}
 		replacement := head + " extends " + base + " {" + strings.Join(members, "\n") + "\n}"
@@ -200,4 +229,27 @@ func errorDeclarationClassPrefix(text string, class *ast.Node) (int, string, boo
 		trivia = text[schemaEnd:errorStart] + trivia
 	}
 	return start, "class " + strings.TrimLeftFunc(trivia, unicode.IsSpace), true
+}
+
+// errorHasSchemaFamilyRegistration keeps the exact old registration, including
+// concrete family bases whose written _tag is now rejected.
+func errorHasSchemaFamilyRegistration(class *ast.Node) bool {
+	for _, member := range class.Members() {
+		if member.Flags&ast.NodeFlagsReparsed == 0 || member.Kind != ast.KindClassStaticBlockDeclaration {
+			continue
+		}
+		found := false
+		var visit func(*ast.Node) bool
+		visit = func(node *ast.Node) bool {
+			if ast.IsCallExpression(node) && isSynthesizedName(node.Expression(), "$schemaErrorFamily") {
+				found = true
+			}
+			return node.ForEachChild(visit)
+		}
+		member.ForEachChild(visit)
+		if found {
+			return true
+		}
+	}
+	return false
 }

@@ -1,0 +1,14 @@
+// expect: EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117
+// VIP-13/29 reserve the name for payload fields too, whatever type they write.
+export error Bad0E { _tag: "Bad0E"; id: string }
+export schema error Bad0S { _tag: "Bad0S"; id: string }
+export error Bad1E { _tag: string; id: string }
+export schema error Bad1S { _tag: string; id: string }
+export error Bad2E { readonly _tag?: "Bad2E" }
+export schema error Bad2S { readonly _tag?: "Bad2S" }
+export error Bad3E { "_tag": "Bad3E" | "Other" }
+export schema error Bad3S { "_tag": "Bad3S" | "Other" }
+export abstract error Bad4E { _tag: "Other"; id: string }
+export abstract schema error Bad4S { _tag: "Other"; id: string }
+export error Bad5E { _tag: never }
+export schema error Bad5S { _tag: never }

@@ -1,13 +1,16 @@
 // expect: EK4701
-// An error class's arm covers each member with its tag (chapter 004,
-// Coverage): its generated matcher tests _tag, so an arm for one of two
-// error classes that share a name covers the other. A family's base leaves
-// an unrelated error with the same fields.
+// An error class arm covers each member with its tag; a family base
+// still leaves an unrelated error with the same fields.
+import { TaggedError as $ErrorTaggedError } from "vibelang-runtime"
 import * as A from "./a.vibe"
 import * as B from "./b.vibe"
 
 error Timeout { ms: number }
-error AppError { _tag: string; code: string }
+class AppError extends $ErrorTaggedError("AppError" as string)<{
+    readonly _tag: string;
+    readonly code: string;
+}> {
+}
 error Missing extends AppError { path: string }
 error Other { code: string }
 

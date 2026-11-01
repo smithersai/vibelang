@@ -2,9 +2,14 @@
 // D304: a value of a family base's type may be any of its subclasses, so the
 // base's schema encodes and decodes each of them, as well as its own instances.
 
-export schema error StoreError {
-  _tag: string
-  key: string
+import { $schemaErrorFamily as $ErrorSchemaFamily } from "vibelang-runtime"
+
+export class StoreError extends Schema.TaggedError<StoreError>()("StoreError" as string, {
+    key: Schema.String,
+}) {
+  static {
+    $ErrorSchemaFamily(this);
+  }
 }
 
 export schema error NotStored extends StoreError {

@@ -120,8 +120,22 @@ func checkErrorDeclarations(c *checker.Checker, file *ast.SourceFile) {
 }
 
 func checkErrorDeclaration(c *checker.Checker, class *ast.Node, form errorForm, base *ast.Node) {
-	if (form == errorFormRoot || form == errorFormSchemaRoot) && checkErrorReservedMembers(c, class) {
-		return
+	if form == errorFormRoot || form == errorFormSchemaRoot {
+		reserved := checkErrorReservedMembers(c, class)
+		file := ast.GetSourceFileOfNode(class)
+		for _, field := range errorReservedPayloadFields(class, form) {
+			if ast.IsPropertySignatureDeclaration(field) || ast.IsPropertyAssignment(field) {
+				coverCodes(c, field.Name(), 2300, 2717)
+			}
+			reportAt(c, file, errorPayloadTagName(file, class, field), EK2117.With("The member name _tag is reserved for the error's generated tag. Rename the field, or write the explicit Effect TypeScript class to keep its contract."))
+			// Cover only the synthetic tag cast/base-call failures. Keep errors
+			// inside the user's type, including unknown or duplicate type names.
+			coverCodes(c, field, 2345, 2352, 2769)
+			reserved = true
+		}
+		if reserved {
+			return
+		}
 	}
 	name := class.Name()
 	symbol := c.GetSymbolAtLocation(name)
@@ -399,4 +413,66 @@ func fieldlessGeneratedErrorBase(c *checker.Checker, base *ast.Node) bool {
 		return true
 	}
 	return false
+}
+
+// errorPayloadTagName is the span of a reserved payload field's written
+// name. A schema error's _tag field is lowered to the type of its tag
+// argument, "E" as T, so its name is the property name written before that
+// type's colon; the type itself is the fallback.
+func errorPayloadTagName(file *ast.SourceFile, class, field *ast.Node) core.TextRange {
+	text := file.Text()
+	if ast.IsPropertySignatureDeclaration(field) || ast.IsPropertyAssignment(field) {
+		name := field.Name()
+		return core.NewTextRange(scanner.SkipTrivia(text, name.Pos()), name.End())
+	}
+	start := scanner.SkipTrivia(text, field.Pos())
+	lower := max(0, class.Pos())
+	if lower > start {
+		return core.NewTextRange(start, field.End())
+	}
+	lex := scanner.NewScanner()
+	lex.SetText(text[lower:start])
+	var name core.TextRange
+	found := false
+	for lex.Scan() != ast.KindEndOfFile {
+		if (lex.Token() == ast.KindIdentifier || lex.Token() == ast.KindStringLiteral) && lex.TokenValue() == "_tag" {
+			name = core.NewTextRange(lower+lex.TokenStart(), lower+lex.TokenEnd())
+			found = true
+		}
+	}
+	if found {
+		return name
+	}
+	return core.NewTextRange(start, field.End())
+}
+
+// errorReservedPayloadFields finds the written fields even after lowering
+// moves them into the base's type argument or schema-fields object.
+func errorReservedPayloadFields(class *ast.Node, form errorForm) []*ast.Node {
+	var fields []*ast.Node
+	base := ast.GetClassExtendsHeritageElement(class)
+	switch form {
+	case errorFormRoot:
+		arguments := base.TypeArguments()
+		if len(arguments) == 1 && ast.IsTypeLiteralNode(arguments[0]) {
+			for _, field := range arguments[0].Members() {
+				if errorMemberIsTag(field) {
+					fields = append(fields, field)
+				}
+			}
+		}
+	case errorFormSchemaRoot:
+		if tag := errorTagField(class, form); tag != class.Name() {
+			fields = append(fields, tag)
+		}
+		arguments := base.Expression().Arguments()
+		if len(arguments) > 1 && ast.IsObjectLiteralExpression(arguments[1]) {
+			for _, field := range arguments[1].AsObjectLiteralExpression().Properties.Nodes {
+				if field.Name() != nil && field.Name().Flags&ast.NodeFlagsReparsed == 0 && errorMemberIsTag(field) {
+					fields = append(fields, field)
+				}
+			}
+		}
+	}
+	return fields
 }

@@ -2,8 +2,14 @@
 // its type, or by an arm that always matches. `when String:` tests typeof,
 // so it matches every string; a closed class's arm matches every value of
 // an open family's base; a bind-only arm `when let other:` matches whatever
+
+import { TaggedError as $ErrorTaggedError } from "vibelang-runtime"
 // is left, as default does.
-error AppError { _tag: string; code: string }
+class AppError extends $ErrorTaggedError("AppError" as string)<{
+    readonly _tag: string;
+    readonly code: string;
+}> {
+}
 error Missing extends AppError { path: string }
 
 function text(x: string): string {

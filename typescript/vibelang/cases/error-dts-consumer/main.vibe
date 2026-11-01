@@ -2,10 +2,16 @@
 // (D501). A VibeLang consumer of the declarations counts its arms toward
 // exhaustiveness, as a consumer of the source does, because the class extends
 // effect's YieldableError. consumer/src does both; run.mjs compiles and
+
+import { TaggedError as $ErrorTaggedError } from "vibelang-runtime"
 // runs it.
 export error NotFound { id: string }
 export error Timeout { ms: number }
-export error AppError { _tag: string; code: string }
+export class AppError extends $ErrorTaggedError("AppError" as string)<{
+    readonly _tag: string;
+    readonly code: string;
+}> {
+}
 export error Denied extends AppError { user: string }
 
 export function describe(e: NotFound | Timeout): string {

@@ -1,6 +1,16 @@
 // expect-result: ["Sub","x","Sub","x","Sub","y",7]
-abstract error Base { _tag: string }
-error Sub extends Base { who: string; count?: number }
+import { TaggedError, $errorSubclass, type $ErrorArgs } from "vibelang-runtime"
+abstract class Base extends TaggedError("Base" as string)<{ readonly _tag: string }> {}
+class Sub extends $errorSubclass(Base, "Sub") {
+    declare readonly _tag: "Sub"
+    declare readonly who: string
+    declare readonly count?: number
+  constructor(args: $ErrorArgs<typeof Base, Pick<Sub, "who" | "count">>) {
+    super()
+    this["who"] = args["who"]
+    this["count"] = args["count"]
+  }
+}
 effect function fail(): never!Sub { throw new Sub({ who: "x" }) }
 export effect function main() {
   const sub = new Sub({ who: "x" })

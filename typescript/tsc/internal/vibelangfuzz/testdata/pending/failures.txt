@@ -42,8 +42,6 @@ FuzzFailuresSpec  feature:promise-reject  compiler  VIP-4: 003-failures.md rejec
 FuzzFailuresSpec  feature:promise-reject-wrapped  compiler  VIP-4: 003-failures.md accepts the program for "`Promise.reject(e)`, like every Promise-producing call, must be inside a `tryPromise` or `promise` thunk in…"; lane w2-throw
 FuzzFailuresSpec  feature:declaration-throws  compiler  VIP-27, VIP-4: a constructor that throws draws EK2003 (decided detail 5 tracks new X() instead), so Id's declaration cannot carry @throws {BadInput}; lane w2-throw
 FuzzFailuresSpec  feature:declaration-rethrows  compiler  VIP-27: an exported function that passes its parameter f to forEach carries no `@throws {never} @rethrows f`; lane w2-throw
-FuzzFailuresSpec  feature:error-tag  compiler  VIP-13 (decided detail 24): a `_tag` member in an error body draws no error; lane fix-vip-decls
-FuzzFailuresSpec  feature:schema-error-tag  compiler  VIP-29 (decided detail 24): a `_tag` member in a schema error body draws no error; lane fix-vip-decls
 FuzzFailuresSpec  feature:effect-decoder-call  compiler  VIP-4: 003-failures.md rejects calling the decoder Schema.decodeUnknownSync returns in effect code (it throws SchemaError); lane w2-throw
 FuzzFailuresSpec  feature:default-throwing  compiler  VIP-4: 003-failures.md rejects a default initializer that may throw in an effect function's parameter list; lane w2-throw
 FuzzFailuresSpec  feature:effectful-body-throw  compiler  VIP-4 (001-functions.md Declaration output, 003-failures.md): a plain function returning Effect.succeed(id) may not throw, but draws no error; lane w2-throw
@@ -52,8 +50,6 @@ FuzzFailuresSpec  feature:effectful-body-fail  compiler  VIP-6: the global `fail
 FuzzFailuresSpec  corpus:direct-local  compiler  the minimal reproduction of feature:direct-local
 FuzzFailuresSpec  corpus:declaration-throws  compiler  the minimal reproduction of feature:declaration-throws
 FuzzFailuresSpec  corpus:declaration-rethrows  compiler  the minimal reproduction of feature:declaration-rethrows
-FuzzFailuresSpec  corpus:error-tag  compiler  the minimal reproduction of feature:error-tag
-FuzzFailuresSpec  corpus:schema-error-tag  compiler  the minimal reproduction of feature:schema-error-tag
 FuzzFailuresSpec  corpus:effectful-body-throw  compiler  the minimal reproduction of feature:effectful-body-throw
 FuzzFailuresSpec  corpus:effectful-body-call  compiler  the minimal reproduction of feature:effectful-body-call
 FuzzFailuresSpec  corpus:effectful-body-fail  compiler  the minimal reproduction of feature:effectful-body-fail

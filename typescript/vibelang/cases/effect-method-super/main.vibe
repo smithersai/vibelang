@@ -3,10 +3,13 @@
 // afresh in a generator, so the lowering reads the enclosing method's own:
 // super keeps the method's receiver, and arguments its call's arguments.
 
+import { TaggedError as $ErrorTaggedError } from "vibelang-runtime"
+
 // An error family (D278, D304) whose subclass calls its base's method.
-error Base {
-  _tag: string
-  code: number
+class Base extends $ErrorTaggedError("Base" as string)<{
+    readonly _tag: string;
+    readonly code: number;
+}> {
   effect describe() {
     try Console.log("base describe")
     return `code ${this.code}`
