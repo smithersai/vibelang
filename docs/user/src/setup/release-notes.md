@@ -1388,6 +1388,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The `catchTag` and `catchTags` quick fixes wrote a class test, `when Gone:`, so a failure that carries the tag without the class's prototype, such as a copied error object, failed at run time with `No match arm matched`. The fixes now write the structural test the call made, `when { _tag: "Gone" }:`.
 - The `catchTags` quick fix gave the merged handlers one shared `catch (e)` parameter, so a handler that read an outer variable named `e` read the caught failure instead and returned the wrong value. Handlers now keep their own bindings: the shared variable is renamed when a handler's own name would be captured.
 
+- Migration could record formatted sources whose public declarations no longer matched the bytes verified earlier; verification now covers formatted sources, and recording rechecks any later formatting change. Protected test edits are rejected before verification runs again after formatting.
+
 #### Compiler and diagnostics
 
 - The compiler crashed on a service declaration with a static member whose name is computed, such as `static [Symbol.iterator] = 1`, while looking for the service's `key`. It now treats only a member named `key` as the key.
@@ -2259,6 +2261,7 @@ listed with an upgrade step.
 | Before | After and repair |
 | --- | --- |
 | Two `is` patterns binding one name in one block, such as `if (a is { id: let id }) …` twice in a function body | Each `if` head was its own scope; the bindings now live in the block that holds the `if` (chapter 004, decided detail 245), so the second pattern redeclares the name: `TS2451`, or `TS2300` beside a parameter. The diagnostic offers to rename the later binding and its uses, and `vibelang --fix` applies the rename (`id` becomes `id2`). |
+
 
 ## 0.0.10
 

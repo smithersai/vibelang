@@ -1,0 +1,24 @@
+{
+  "key": "foldkit-13-record",
+  "before": "export const createLazy = (x: number): (() => void) => () => {}\n",
+  "formatted": "export const createLazy = (x: number): () => void => () => {}\n",
+  "beforeDeclaration": "export declare const createLazy: (x: number) => (() => void);\n",
+  "formattedDeclaration": "export declare const createLazy: (x: number) => () => void;\n",
+  "neighbours": [
+    {
+      "before": "export const createLazy = (): (<A>(a: A) => A) => a => a\n",
+      "formatted": "export const createLazy = (): <A>(a: A) => A => a => a\n",
+      "beforeDeclaration": "export declare const createLazy: () => (<A>(a: A) => A);\n",
+      "formattedDeclaration": "export declare const createLazy: () => <A>(a: A) => A;\n"
+    }
+  ],
+  "formatterAssertions": {
+    "file": "test/check.test.ts",
+    "before": "expect(1).toBe(1)\n",
+    "replacements": [
+      2,
+      7,
+      31
+    ]
+  }
+}

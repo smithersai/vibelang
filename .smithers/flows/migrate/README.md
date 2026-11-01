@@ -439,3 +439,11 @@ Detail 272 still keeps source-text assertion modules in TypeScript. Literal path
 Native config proof and rename/revert also recognize explicit `node --import vibelang/register ./node_modules/vite/bin/vite.js` launchers. Existing native loader flags and preload spelling are preserved.
 
 Whole-scope planning uses the same native-loader receipt for Vite configs as batch planning. A config without that receipt stays TypeScript with a recorded cause.
+Before checking a batch, `verify` formats its migrated sources so declaration
+identity covers their committed spelling. If `record` changes any tracked file
+while formatting, it reruns verification and refuses a failed result before
+committing. `verificationRefreshed` records that extra check, and token counts
+come from the final formatted sources.
+
+
+After formatting, `record` rejects protected test edits before rerunning verification, then checks again before committing.

@@ -1201,6 +1201,8 @@ export async function verify(options) {
   const logs = join(p.batch(b), "logs")
 
   const hooks = await regenerate(config,p,"verify-" + b)
+  // Certify the generated and formatted text that record will commit.
+  const formatted = await formatVibe(config, migrated, join(logs, "verify-format-vibe.log"))
   const checked = await compile({ run: options.run, batch: b, noRecord: true })
   const codemodReceipt = readJsonIf(p.codemod(b))
   const hasSelectorEdits = codemodReceipt?.referenceEdits?.some(edit => edit.selectorKind || ["source-reference", "source-glob", "source-extensions"].includes(edit.kind))
@@ -1251,6 +1253,7 @@ export async function verify(options) {
     batch: b,
     at: new Date().toISOString(),
     files,
+    formatted,
     tests: { code: tests.code, total: tests.total, passed: tests.passed, failed: tests.failed.length, skipped: tests.skipped, ...testResults },
     declarations,
     measurement, hooks,
@@ -1286,6 +1289,25 @@ export async function record(options) {
   if (!verified?.ok && !options.force) throw new Error(`batch ${b} has not passed verify; run verify, or record with --force <reason>`)
   const t = config.target
   const files = batchFiles(config, thePlan, b)
+  // Legacy verify receipts and other formatters can still change the tree.
+  // Re-certify that exact tree before counting its tokens or committing it.
+  const beforeFormat = await Jj.commitId(t, "@")
+  const written = (await Jj.changedPaths(t)).filter((c) => c.status !== "D").map((c) => c.path)
+  const formatted = await formatWritten(t, written, join(p.batch(b), "logs", "format.log"))
+  const vibeFormatted = await formatRecorded(config, written, join(p.batch(b), "logs"))
+  const afterFormat = await Jj.commitId(t, "@")
+  if (thePlan.mode === "one-pass" && (formatted.code !== 0 || vibeFormatted.code !== 0)) throw new Error("record refused: formatter failed")
+  const verificationRefreshed = beforeFormat !== afterFormat || thePlan.mode === "one-pass"
+  if (verificationRefreshed) {
+    // Reject protected edits before verification can run the tests again.
+    const testDiffBeforeCertification = await testEdits(config, p, thePlan, b, typeScriptOf(config))
+    if (!testDiffBeforeCertification.ok) throw new Error(`batch ${b}: forbidden test/fixture edits; see ${join(p.batch(b), "test-diff.md")}; revert the edit or leave its module TypeScript`)
+    verified = await verify({ run: options.run, batch: b })
+    if (thePlan.mode === "one-pass" && (!verified.ok || !verified.measurement?.ok)) throw new Error("record refused: final candidate fails tests against main/previous or another verify gate")
+    if (!verified.ok && !options.force) {
+      throw new Error(`batch ${b} failed verify after formatting; inspect ${p.verify(b)} before recording`)
+    }
+  }
   const reverted = readJsonIf(p.reverted(b), [])
   const byPath = new Map(inventory.files.map((f) => [f.path, f]))
   const after = await countTokens(files.map((f) => join(t, f.path)))
@@ -1302,16 +1324,6 @@ export async function record(options) {
     `Tokens (o200k) of the migrated files: ${before} -> ${now} (${tokens.percent ?? 0}%).`,
     `Verify: ${verified?.ok ? "tests, declarations and style pass" : `forced: ${options.force}`}.`
   ]
-  // The batch's other files, such as a test or config the repair edited, are in the repository's own format.
-  const written = (await Jj.changedPaths(t)).filter((c) => c.status !== "D").map((c) => c.path)
-  const formatted = await formatWritten(t, written, join(p.batch(b), "logs", "format.log"))
-  const vibeFormatted = await formatRecorded(config, written, join(p.batch(b), "logs"))
-  if (thePlan.mode === "one-pass") {
-    if (formatted.code !== 0 || vibeFormatted.code !== 0) throw new Error("record refused: formatter failed")
-    // Formatting or regeneration can affect generated sources. Gate the final bytes.
-    verified = await verify({run:options.run,batch:b})
-    if (!verified.ok || !verified.measurement?.ok) throw new Error("record refused: final candidate fails tests against main/previous or another verify gate")
-  }
   await assertPortable(t, machineRoots(t, p.run, config.toolchain.dir))
   // Formatters and sidecar emission run after verify. Recheck the exact tree
   // being committed; --force cannot waive the test-oracle contract.
@@ -1319,7 +1331,7 @@ export async function record(options) {
   if (!testDiff.ok) throw new Error(`batch ${b}: forbidden test/fixture edits; see ${join(p.batch(b), "test-diff.md")}; revert the edit or leave its module TypeScript`)
   const commit = await Jj.commit(t, lines.join("\n"))
   if (commit) await Jj.setBookmark(t, config.bookmark, commit)
-  const result = { batch: b, at: new Date().toISOString(), commit, bookmark: config.bookmark, files: rows, tokens, formatted, vibeFormatted, testDiff, forced: verified?.ok ? null : options.force }
+  const result = { batch: b, at: new Date().toISOString(), commit, bookmark: config.bookmark, files: rows, tokens, formatted, vibeFormatted, verificationRefreshed, testDiff, forced: verified?.ok ? null : options.force }
   writeJson(p.record(b), result)
   return result
 }
