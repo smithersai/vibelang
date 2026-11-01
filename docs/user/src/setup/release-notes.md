@@ -226,6 +226,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - JSX attribute diagnostic `EK0402` lacked its VIP-39 cross-reference; the catalog now attributes the rule to both VIP-4 and VIP-39.
 
 
+- Release checks for offline `--dry-run` publishing could fail with a missing exit status on busy machines; their child probes now have a bounded load budget and explicit timeout diagnostics.
+
 - The formatter's round-trip and Windows line-ending tests failed after `with` provider blocks were retired; their coverage now uses VIP-12's supported `provide` syntax.
 
 - Formatting a file containing Unicode line separators in the editor could add indentation that disappeared on the next format; `U+2028` and `U+2029` now give stable indentation in one pass.

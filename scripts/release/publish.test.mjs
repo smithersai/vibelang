@@ -36,6 +36,8 @@ import { appendFileSync, readFileSync } from "node:fs"
 import { createHash } from "node:crypto"
 const args = process.argv.slice(2)
 appendFileSync(${JSON.stringify(calls)}, JSON.stringify(args) + "\\n")
+const startupDelay = Number(process.env.TEST_NPM_DELAY_MS || 0)
+if (startupDelay > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, startupDelay)
 if (args[0] === "whoami") { if(process.env.TEST_LOGGED_IN) console.log("test-user"); process.exit(process.env.TEST_LOGGED_IN ? 0 : 1) }
 if (args[0] === "view") {
   if (!args[1].startsWith(process.env.TEST_EXISTING || "NO_MATCH")) process.exit(1)
@@ -51,12 +53,21 @@ console.error("unexpected npm command"); process.exit(98)
 `, { mode: 0o755 })
   return { root, tarballs, calls, bin }
 }
-function run(f, env = {}, args = ["--dry-run"]) {
+// The offline child chain needs room to start under load; a stalled probe
+// still fails with process state and recorded command stages.
+function run(f, env = {}, args = ["--dry-run"], timeout = 60_000) {
+  const started = performance.now()
   const result = spawnSync("sh", [join(f.root, "scripts/release/publish.sh"), ...args], {
-    encoding: "utf8", timeout: 15_000, input: "",
+    encoding: "utf8", timeout, input: "",
     env: { PATH: `${f.bin}:${process.env.PATH}`, VIBELANG_REGISTRY: "http://127.0.0.1:1/unused/", ...env }
   })
   const calls = readFileSync(f.calls, "utf8").trim().split("\n").filter(Boolean).map((line) => JSON.parse(line))
+  if (result.error || result.signal || result.status === null) {
+    throw new Error("offline publish probe failed: " + JSON.stringify({
+      code: result.error?.code ?? "NO_EXIT_STATUS", status: result.status, signal: result.signal,
+      elapsedMs: Math.round(performance.now() - started), commands: calls.map(([command]) => command)
+    }))
+  }
   return { ...result, calls, publishes: calls.filter((args) => args[0] === "publish") }
 }
 
@@ -118,4 +129,23 @@ test("invalid arguments stop before npm or archive processing", (t) => {
     assert.match(result.stderr, /usage:.*publish.sh/)
     assert.equal(result.calls.length, 0)
   }
+})
+
+
+test("slow offline probes still stop at the first failed publish", (t) => {
+  const started = performance.now()
+  const result = run(fixture(t), { TEST_FAIL_PUBLISH: "1", TEST_NPM_DELAY_MS: "5500" })
+  const diagnostic = JSON.stringify({
+    error: result.error?.code, signal: result.signal, elapsedMs: Math.round(performance.now() - started),
+    commands: result.calls.map(([command]) => command)
+  })
+  assert.equal(result.status, 1, diagnostic)
+  assert.equal(result.publishes.length, 1)
+  assert.doesNotMatch(result.stdout, /Enter a new one-time password|dry run passed/)
+})
+
+test("an offline probe timeout reports process failure and recorded stages", (t) => {
+  const f = fixture(t)
+  assert.throws(() => run(f, { TEST_NPM_DELAY_MS: "250" }, ["--dry-run"], 100),
+    /offline publish probe failed: .*ETIMEDOUT.*commands/)
 })
