@@ -18,7 +18,7 @@ const publicFix = "- A valid arithmetic expression was rejected; the compiler no
 function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), "vibelang-publication-"))
   t.after(() => rmSync(root, { recursive: true, force: true }))
-  for (const file of ["docs/tools/release-docs.test.mjs", "docs/tools/release-docs.mjs"]) {
+  for (const file of ["docs/tools/release-docs.test.mjs", "docs/tools/release-docs.mjs", "docs/tools/release-publication-checks.mjs"]) {
     const destination = join(root, file)
     mkdirSync(dirname(destination), { recursive: true })
     copyFileSync(fileURLToPath(new URL("../../" + file, import.meta.url)), destination)

@@ -1,3 +1,4 @@
+import { assertReleasePublication, assertReleaseContrast } from "./release-publication-checks.mjs"
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
@@ -291,31 +292,7 @@ test("current release notes describe user fixes without internal CI or fuzz book
 }, () => {
   const notes = readFileSync(new URL("../user/src/setup/release-notes.md", import.meta.url), "utf8")
   const version = JSON.parse(readFileSync(new URL("../../packages/compiler/package.json", import.meta.url), "utf8")).version
-  const releases = notes.split(/^## /m).slice(1)
-  const candidate = releases.findIndex(release => release.split("\n")[0].replace(/ \(unreleased\)$/, "") === version)
-  assert.ok(candidate >= 0, "release notes include the compiler candidate")
-  const bugs = releases.slice(0, candidate + 1).map(release => {
-    const fixes = release.split(/^### Bugs fixed since .+$/m)[1]?.split(/^### /m)[0]
-    assert.ok(fixes, "every unpublished section needs a bug list")
-    return fixes
-  }).join("\n")
-  const publicationNotes = releases.slice(0, candidate + 1).flatMap(release =>
-    release.match(/^- .*(?:\n(?!\n|[-*] |#{1,6} ).+)*/gm) ?? []
-  ).join("\n")
-  assert.doesNotMatch(publicationNotes, /\bfuzz\b|go-vibelangfuzz|pre-merge|post-merge|grammar test engine|editor syntax property tests|test cache/i)
-  assert.doesNotMatch(publicationNotes, /merge\s+gate|bounded\s+hang\s+probes|stale\s+hang\s+marker/i)
-  assert.doesNotMatch(publicationNotes, /regression checks|migration checks|diagnostic golden|fixtures now verify|grammar tooling now sees/i)
-  assert.doesNotMatch(publicationNotes, /scripts\/ci\.sh|differential (?:checks|comparisons)|AST layout regression test|Repository validation|Arrow-body and heartbeat checks|named-region runtime checks/i)
-  assert.doesNotMatch(publicationNotes, /Docs checks could use|The docs check read|Specification checks could mistake|A docs check could confuse|Generating documentation could hang|Spec-derived checks could confuse|The documented debugging recipe check|Differential .Exit. checks/i)
-  assert.doesNotMatch(publicationNotes, /The release rehearsal stopped at its Vite warning check|A registry rehearsal could inherit/i)
-  assert.doesNotMatch(publicationNotes, /forms[- ]table\s+check|Go\s+build\s+slot/i)
-  assert.doesNotMatch(publicationNotes, /(?:mask|LSP|editor)\s+smoke\s+test|fork\s+startup\s+checks/i)
-  assert.doesNotMatch(publicationNotes, /Compiler\s+validation\s+treated\s+an?\s+error\s+name|CI\s+reused\s+an?\s+older/i)
-  const bullets = bugs.split("\n").filter(line => line.startsWith("- "))
-  assert.equal(new Set(bullets).size, bullets.length, "each user-facing fix appears once")
-  for (const symptom of ["Editor parsing rejected `for try` `Stream` loops", "A tool that reads a `.vibe` file through the TypeScript mapper", "compiler output with Windows line endings"]) {
-    assert.equal(bullets.filter(line => line.includes(symptom)).length, 1, "retain the user fix once: " + symptom)
-  }
+  assertReleasePublication(notes, version)
 })
 
 // Release time supplies the registry snapshot; ordinary tests never query npm.
@@ -334,13 +311,7 @@ test("current publication notes omit internal contrast audit records", {
 }, () => {
   const notes = readFileSync(new URL("../user/src/setup/release-notes.md", import.meta.url), "utf8")
   const version = JSON.parse(readFileSync(new URL("../../packages/compiler/package.json", import.meta.url), "utf8")).version
-  const releases = notes.split(/^## /m).slice(1)
-  const candidate = releases.findIndex(release => releaseVersion(release) === version)
-  assert.ok(candidate >= 0)
-  const bullets = releases.slice(0, candidate + 1).flatMap(release =>
-    release.match(/^- .*(?:\n(?!\n|[-*] |#{1,6} ).+)*/gm) ?? []
-  ).join("\n")
-  assert.doesNotMatch(bullets, /site(?:['’]s)?\s+contrast\s+check|contrast\s+audit\s+(?:state|diagnostics?|failure)/i)
+  assertReleaseContrast(notes, version)
 })
 
 // Release notes omit development-only vet and compiler-options guard records.
