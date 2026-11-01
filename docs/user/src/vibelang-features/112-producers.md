@@ -100,7 +100,6 @@ When Stream operators consume a producer, `Stream.callback` runs it on its own f
 ## Iterate any Stream
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14, VIP-20
 // run: try Console.log(try sumStream())
 effect function sumStream() {
   let total = 0

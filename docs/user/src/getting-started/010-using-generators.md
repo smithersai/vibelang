@@ -119,7 +119,6 @@ Method calls preserve `this` and evaluate the receiver once: the compiler passes
 ## Generators produce values and streams
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-20, VIP-21
 // run: { const jsonValue = try firstTwo(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function* ticks() {
   for (let n = 0; n < 3; n += 1) {

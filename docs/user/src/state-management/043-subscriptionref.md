@@ -58,7 +58,6 @@ effect function currentSnapshot() {
 ## Coordinating concurrent subscribers
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14, VIP-17, VIP-20
 // run: try observeTwoClients()
 effect function observeTwoClients() {
   const count = try SubscriptionRef.make(0)

@@ -222,7 +222,6 @@ effect function browser() {
 VibeLang's experimental services fill what Effect lacks, provided by `ExperimentalNodeServices.layer` from `vibelang-runtime/experimental/platform-node` or Bun's, and `Locks` and `MediaQuery` by `ExperimentalBrowserServices.layer` from `vibelang-runtime/experimental/platform-browser`; [Experimental platform APIs](../vibelang-features/118-experimental-platform-apis.md) has the details:
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14, VIP-33
 effect function experimental(path: string, pid: number, killSignal: ChildProcess.Signal, name: string, query: string, callback: (time: number) => void, blob: Blob, element: Element, onResize: () => void, macKey: Mac.Key, aeadKey: Aead.Key, privateKey: Signature.PrivateKey, publicKey: Signature.PublicKey, signature: Uint8Array, data: Uint8Array, plaintext: Uint8Array, ciphertext: Uint8Array, nonce: Uint8Array) {
   const fs = try Experimental.FileSystem.FileSystem
   const id = try (try Experimental.Process.Process).pid
