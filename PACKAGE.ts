@@ -302,6 +302,7 @@ const specTests = [
   "TestTryOperationNamesQuoted",
   "TestRegistryMatchesSpec",
   "TestSeverityCodesMatchAppendixB",
+  "TestRegistryCategoriesMatchAppendixB",
   "TestAppendixBSeveritySettingsTakeEffect",
   "TestCompilerRegistryIsSpecified",
   "TestConfigOracleMatchesCompiler",
