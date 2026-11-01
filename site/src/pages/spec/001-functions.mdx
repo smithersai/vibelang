@@ -438,7 +438,7 @@ interface Store { find(id: string): Effect.Effect<User, NotFound> }
 
 ## Modules and the top level
 
-A module's top level is ordinary JavaScript (VIP-26). Every source `.vibe` file is classified as an external module before binding and checking, whether or not it has a written `import` or `export`. Its declarations are module-scoped and its source is checked as strict module code. This classification is independent of required prelude imports, `vibe.effectGlobals` and `vibe.effectModules`; no `moduleDetection` value opts it into shared script globals.
+A module's top level is ordinary JavaScript (VIP-26). Every source `.vibe` or `.vibex` file is classified as an external module before binding and checking, whether or not it has a written `import` or `export`. Its declarations are module-scoped and its source is checked as strict module code. This classification is independent of required prelude imports, `vibe.effectGlobals` and `vibe.effectModules`; no `moduleDetection` value opts it into shared script globals.
 
 Emitted JavaScript and declaration sidecars preserve this classification, including an effective empty module marker when needed. The ordinary TypeScript module emission and host rules still apply, including diagnostics for incompatible options. Top-level `await` requires a supported module and target configuration; top-level `this` is `undefined` under an ECMAScript-module host, while other output formats retain their ordinary host behavior. Unary and multiline operands keep those configuration checks: with `module: "NodeNext"`, a CommonJS package receives `TS1309`; an ECMAScript-module package with `target: "ES2016"` receives `TS1378`. The deliberate `moduleDetection` exception is stated in [Configuration](/spec/007-tooling#config-files).
 
@@ -479,7 +479,7 @@ await main()                    // EK0103: the Effect would never run
 
 ## Declaration output
 
-For each `x.vibe`, the compiler writes `x.d.vibe.ts` beside it (VIP-27). TypeScript's `allowArbitraryExtensions` resolves it, so plain `tsc` and TypeDoc understand imports of `.vibe` files. A package build also writes ordinary `.d.ts` files to its output directory.
+For each `x.vibe`, the compiler writes `x.d.vibe.ts` beside it, and for each `x.vibex`, `x.d.vibex.ts` (VIP-27, VIP-39). TypeScript's `allowArbitraryExtensions` resolves it, so plain `tsc` and TypeDoc understand imports of `.vibe` files. A package build also writes ordinary `.d.ts` files to its output directory.
 
 `bun check` runs the project's `check` script; a script that invokes a TypeScript checker uses that checker's sidecar resolution.
 

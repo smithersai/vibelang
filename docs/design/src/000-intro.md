@@ -37,6 +37,7 @@ VibeLang is TypeScript with a small set of constructs for writing Effect program
 | `retry`, `sleep`, `Schema`, `Layer`, … | Effect's exports and modules, in scope without an import | 6, 14, 33 | [Services](005-services.md) |
 | `schema S { fields }` | `const S = Schema.Struct({ … }); type S = typeof S.Type` | 15 | [Data](006-data.md) |
 | `data D { V; W { f: T } }` | `Data.TaggedEnum` and `Data.taggedEnum` | 16, 28 | [Data](006-data.md) |
+| `x.vibex` | a `.vibe` file read with `.tsx`'s JSX language variant | 39 | [Configuration and tooling](007-tooling.md#vibex) |
 
 The table abbreviates the full translations: preserve [source function bindings](001-functions.md#meaning), dispatch [outward jumps](002-running.md#region-bodies) after `provide` and interruption blocks, and add the [custom matcher](004-match.md#class-patterns) to error classes. All Effect TypeScript meanings use the [pinned `effect` 4.1.0](007-tooling.md#the-effect-version).
 
@@ -67,6 +68,6 @@ The compiler is being changed to match the VIPs. Until it does, every VibeLang e
 4. [Pattern matching](004-match.md): VIP-7.
 5. [Services and the environment](005-services.md): VIP-9, VIP-12, VIP-6, VIP-14, VIP-33.
 6. [Data](006-data.md): VIP-15, VIP-16, VIP-28.
-7. [Configuration and tooling](007-tooling.md): VIP-30, VIP-32, VIP-34, VIP-38.
+7. [Configuration and tooling](007-tooling.md): VIP-30, VIP-32, VIP-34, VIP-38, VIP-39.
 8. [Runtime guarantees](008-runtime.md): VIP-31.
 9. [Appendices](900-appendices.md): the grammar, the diagnostics, the denied and open VIPs, and flipping pending examples.

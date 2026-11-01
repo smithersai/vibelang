@@ -1,6 +1,6 @@
 # Configuration and tooling
 
-Sources: [VIP-30](../vips/0030-config-files.md), [VIP-32](../vips/0032-effect-version.md), [VIP-34](../vips/0034-compiler-and-tooling.md), [VIP-38](../vips/0038-effect-lint-built-in.md). Declaration output (VIP-27) is in [Functions](001-functions.md#declaration-output).
+Sources: [VIP-30](../vips/0030-config-files.md), [VIP-32](../vips/0032-effect-version.md), [VIP-34](../vips/0034-compiler-and-tooling.md), [VIP-38](../vips/0038-effect-lint-built-in.md), [VIP-39](../vips/0039-vibex.md). Declaration output (VIP-27) is in [Functions](001-functions.md#declaration-output).
 
 ## Config files
 
@@ -35,7 +35,7 @@ For example, TypeScript’s [`${configDir}` substitution](https://www.typescript
 // Effective paths: outDir is app/dist; rootDir is configs/src.
 ```
 
-`.vibe` is a supported source extension: `files` may list it, and `include`, `exclude` and the default `**/*` treat it as they treat `.ts`. When both `x.vibe` and its compatibility declaration `x.d.vibe.ts` are selected, VibeLang uses the source and resolves `./x.vibe` to it; plain `tsc` uses the declaration. A package specifier that lands on `x.d.vibe.ts`, as a `types` export does, resolves to `x.vibe` when the source is beside it outside `node_modules`, so the sidecar and the source are one module; a published package keeps its declarations.
+`.vibe` and `.vibex` are supported source extensions: `files` may list them, and `include`, `exclude` and the default `**/*` treat `.vibe` as they treat `.ts` and `.vibex` as they treat `.tsx` ([below](#vibex)). When both `x.vibe` and its compatibility declaration `x.d.vibe.ts` are selected, VibeLang uses the source and resolves `./x.vibe` to it; plain `tsc` uses the declaration. A package specifier that lands on `x.d.vibe.ts`, as a `types` export does, resolves to `x.vibe` when the source is beside it outside `node_modules`, so the sidecar and the source are one module; a published package keeps its declarations.
 
 ```json
 { "include": ["src"] }
@@ -125,6 +125,23 @@ Each legacy map reports migration warning `EK3009`. Setting `EK3009` to `"off"` 
 
 `vibelang --fix` moves each eligible map to root `vibe.severities`, including in extended configs, preserving JSONC comments, unrelated settings and existing modern entries. A map containing obsolete or nonconfigurable codes remains in place until those entries are resolved. Plain `tsc` ignores the custom root keys, but reports `TS5023` for `compilerOptions.vibelang`; VibeLang's legacy compatibility does not change that.
 
+<a id="vibex"></a>
+
+## JSX source files: `.vibex`
+
+A `.vibex` file is a `.vibe` file read with TypeScript's JSX language variant ([VIP-39](../vips/0039-vibex.md)). Every JSX production, and its scanning, checking and emit, is `.tsx`'s; every VibeLang production is `.vibe`'s; where they compete for `<` in expression position, `.tsx`'s reading wins. The source-visible differences from `.vibe` are VIP-39's clash rows 1–5 and 39: write `x as T` for `<T>x`, `<T,>` for a generic arrow (`effect <T,>`, `async <T,>`, `catch <E,>`), and a space in `a < /re/`.
+
+The `jsx` options and pragmas mean what they mean for `.tsx`, read through the configuration discovery above. A project without `jsx` gets `TS17004` at an element and `TS6142` at an import of a `.vibex` file. Under `react`, `react-jsx` and `react-jsxdev`, TypeScript transforms the element; under `preserve` and `react-native` the element stays in the output for the framework's compiler.
+
+Relative specifiers resolve as follows, after TypeScript's `exports`, `imports`, `paths`, `moduleSuffixes` and resolution-mode rules select a lookup; NodeNext still requires extensions where `.ts` and `.tsx` do:
+
+| Specifier | Tries, in order |
+| --- | --- |
+| `./App`, `./App.js` | `App.ts`, `App.tsx`, `App.vibe`, `App.vibex`, `App.d.ts`, then JavaScript |
+| `./App.jsx` | `App.tsx`, `App.ts`, `App.vibex`, `App.vibe`, `App.d.ts`, `App.jsx`, `App.js` |
+| `./App.vibe` | `App.vibe`, `App.d.ts` |
+| `./App.vibex` | `App.vibex`, `App.d.ts` |
+
 ## TypeScript spellings with VibeLang forms
 
 These built-in warnings suggest an accepted VibeLang form without changing the meaning of TypeScript-style source. They are warnings by default and use `vibe.severities`, independently of the imported Effect lint table. A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output; otherwise the diagnostic explains why it has no automatic fix. A warning does not itself rewrite code, and a warning-only run exits zero. Untagged `Data.Error` has no equivalent tagged declaration: keep its library form rather than adding a tag. An unsupported legacy repair is retired, rather than treated as a language requirement.
@@ -178,7 +195,7 @@ VibeLang declares an exact `effect` peer dependency. The compiler reads the reso
 
    Ordinary layout and lexical-spelling normalization may change emitted JavaScript bytes. `Function.prototype.toString`, generated source text, source offsets, line/column and stack presentation may reflect the formatted text. This source-text boundary never permits changes to ordinary strings/data, tagged-template raw or cooked values, regex meaning, function names or lengths, property names or directive semantics. For example, changing an escaped string into an actual `use strict` directive changes meaning. Regenerate compiler-generated source-map and declaration-map provenance, including `sourcesContent`, for the formatted file; never retain stale maps. Preservation tests compare parsed source/emit structure, runtime behavior, types/declarations, diagnostics, comments/directives and maps; arbitrary regex stripping is unsound, and a finite structural oracle is not a proof of all program equivalence. Exact-byte tests remain useful where equality is expected, without restricting advertised native formatter style settings.
 4. **Existing tools work.** Type checkers work through `.d.vibe.ts`, and linters, Knip, bundlers and test runners each read `.vibe`. A repository's Oxlint JS-plugin rules run on `.vibe` files wherever the rule applies to the source or emitted forms. Every tool is tested against the dogfood repositories. The language server also resolves `./x.vibe` to the source whenever it is in the program, ignoring its stale `x.d.vibe.ts`.
-5. **Emit names.** `x.vibe` emits `x.js` beside `x.d.ts` in `outDir`; relative `./x.vibe` specifiers become `./x.js`, as TypeScript’s `rewriteRelativeImportExtensions` does for `.ts`. Bundler plugins use the same names ([VIP-34](../vips/0034-compiler-and-tooling.md#decision)). The `.d.vibe.ts` compatibility route above remains for tools reading `.vibe` specifiers.
+5. **Emit names.** `x.vibe` emits `x.js` beside `x.d.ts` in `outDir`; relative `./x.vibe` specifiers become `./x.js`, as TypeScript’s `rewriteRelativeImportExtensions` does for `.ts`. `x.vibex` emits `x.jsx` under `"jsx": "preserve"` and `x.js` otherwise, as `x.tsx` does, and a relative `./x.vibex` specifier becomes the target file's actual output name (VIP-39). Bundler plugins use the same names ([VIP-34](../vips/0034-compiler-and-tooling.md#decision)). The `.d.vibe.ts` compatibility route above remains for tools reading `.vibe` specifiers.
 6. **Severities.** Only VibeLang's own warning codes and all imported `EK38xx` lint codes can be configured in `vibe.severities`. Entries for VibeLang's own error codes or unknown codes are config errors (`EK3006`), even if the requested severity is `"error"`.
 
 The transitional compiler also emits three migration warnings: `EK4853` writes previously inferred requirements explicitly under VIP-3; `EK4854` changes the retired abstract-class service spelling to `service`; and `EK4855` changes a service's `default` value to a `defaultValue` factory under VIP-9. Their [compatibility inventory](900-appendices.md#transitional-compiler-diagnostics) records the emitted codes. `vibelang --fix` keeps the existing safe-fix checks and refusal rules. These repairs do not run Effects or change the normative omitted-slot and service semantics.
