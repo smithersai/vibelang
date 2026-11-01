@@ -1,0 +1,19 @@
+import * as Schema from "effect/Schema"
+
+/** Wire message. */
+export schema S0 { readonly id: string }
+
+/** First line.
+ * Second line.
+ */
+export schema S1 { readonly id: string }
+
+/** @internal */
+export schema S2 { readonly id: string }
+
+/** @deprecated Use another schema. */
+export schema S3 { readonly id: string }
+
+/** @public */
+export schema S4 { readonly id: string }
+

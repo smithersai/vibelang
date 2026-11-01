@@ -1,0 +1,1 @@
+impl-hunt-data VIP-27: stripInternal must preserve the bare schema type alias, as the native Effect TypeScript pair does.

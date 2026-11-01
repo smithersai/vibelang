@@ -1,0 +1,2 @@
+FuzzSchemaDeclarationComments schema-doc:internal:stripInternal compiler VIP-27: stripInternal removes the whole schema declaration instead of only its constant, losing the bare typeof type alias; lane impl-hunt-data
+FuzzSchemaDeclarationComments corpus:schema-doc-internal-strip compiler VIP-27: same stripInternal declaration ownership gap; lane impl-hunt-data

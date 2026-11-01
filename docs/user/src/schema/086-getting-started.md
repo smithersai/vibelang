@@ -69,6 +69,8 @@ Schema references keep TypeScript’s declaration order and temporal dead zone. 
 
 Separate `schema` declaration fields with `;`, `,` or a new line. The current compiler still reports a comma as `EK1013`, and `vibelang --fix` replaces it with `;`. Nested object types and alias types retain TypeScript’s comma separators.
 
+A JSDoc comment on a `schema` declaration documents the emitted constant only; its generated type alias has no comment. Tags such as `@deprecated` and `@internal` follow the constant, as on the ordinary Effect TypeScript pair. Keep that pair when the constant and its type need different comments.
+
 ## Declaring a schema for any type
 
 ```vibe
