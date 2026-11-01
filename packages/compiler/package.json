@@ -95,6 +95,16 @@
     "dprint": "0.64.3"
   },
   "peerDependencies": {
-    "effect": "4.1.0"
+    "@babel/core": "^7.29.0",
+    "effect": "4.1.0",
+    "metro": ">=0.87.0"
+  },
+  "peerDependenciesMeta": {
+    "@babel/core": {
+      "optional": true
+    },
+    "metro": {
+      "optional": true
+    }
   }
 }

@@ -147,3 +147,37 @@ wiring and requires identical bytes. An alias that would leak into the
 published declarations causes setup to restore every planned edit and
 report the changed declaration paths. The migration's later declaration
 and test gates still apply.
+
+## Metro, Babel and the React Compiler
+
+Tools that read one file at a time, such as Metro, Babel and Oxc, cannot parse
+a `.vibe` module. Three entry points hand them the module's JavaScript from
+the project's compile and move the parsed syntax tree back to `.vibe`
+positions, so diagnostics and source maps name `.vibe` lines:
+
+- `vibelang/metro`: `withVibeLang(config)` around the config that
+  `metro.config.js` exports. Metro resolves `.vibe` modules, and the app's
+  own Babel transformer receives their JavaScript. See
+  [React Native and Metro](react-native.md).
+- `vibelang/babel`: a Babel preset, listed last, for a tool that runs Babel
+  on a file itself, such as babel-jest or a React Compiler coverage test.
+- `toolArguments(filename, text, options)` from `vibelang/emit`: the
+  arguments for a `transform(filename, text, options)` API such as
+  oxc-transform-react.
+
+The React Compiler sees JavaScript. On a `.vibe` module's JavaScript it
+reports the same diagnostics and writes the same output as on the module's
+`.ts` twin.
+
+Migration setup wires each package that reaches a migrated module: it wraps
+the `metro.config` export in `withVibeLang`, adds `vibelang/babel` to the
+Babel presets, and adds `.vibe` to the `include` of each
+`@vitejs/plugin-react` call that turns the React Compiler on, whose default
+filter `/\.[tj]sx?$/` skips `.vibe` modules. Under pnpm or Bun it writes
+`patches/oxc-transform-react@<version>.patch` and a `patchedDependencies`
+entry, so an unchanged test that calls oxc-transform-react's `transform` on a
+`.vibe` module's text checks the module's JavaScript. Under npm or Yarn,
+setup warns instead.
+
+`vibelang` declares Metro and Babel as optional peer dependencies: an app
+without them installs nothing extra.
