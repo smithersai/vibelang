@@ -617,6 +617,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - An Effect type ending in `!!` that touched the next token failed or changed meaning: `const d: number!!= load()` and `effect (x: number): number!!=> x` were syntax errors, and `e as number!!== e` compiled as `e !== e`. The `!` that completes `A!!` is now always its own token, so these read as `A!! = v`, `A!! => e` and `A!! == v`, as the specification says.
 
+- VIP-2's first example of a cold `effect` block called `console.log("hi")`, which VIP-33 bans in VibeLang code (`EK4402`) inside an `effect` block too; it now runs `try log("hi")`, Effect's logger, once per run.
+
 - TypeScript tools could not resolve a `.vibe` import unless its project opted into declaration sidecars; every compile now writes `x.d.vibe.ts`, and `vibelang --fix` removes the obsolete `declarationSidecars` setting from the project and its local inherited configs.
 
 - The Node and Bun loaders compiled a project again when its declaration sidecars appeared; generated sidecars beside their sources now preserve the cached compile, while standalone declarations and source changes still invalidate it.

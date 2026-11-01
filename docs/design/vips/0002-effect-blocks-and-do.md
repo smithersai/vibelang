@@ -5,11 +5,12 @@
 ## Decision
 
 - **Amended 2026-10-30: call references.** Expressions retain ECMAScript's native call-reference and argument evaluation behavior, including receiver binding and non-callable errors. Compiler invocation machinery introduces no observable helper lookup; see [Evaluation order](../src/002-running.md#evaluation-order).
+- **Corrected 2026-10-31: the first example logs with `log`.** It wrote `console.log("hi")`, a host global that VIP-33 bans in every `.vibe` context, an `effect` block included. `try log("hi")` runs Effect's `log` global (VIP-6) once per run of `p`, so the example still shows a cold block that reruns. Loop round 5 ASTRA-3.
 
 ```ts
-const p = effect { console.log("hi"); return 1 }   // an Effect, not yet run
-try p                                              // prints "hi", gives 1
-try p                                              // prints "hi" again: each run reruns the block
+const p = effect { try log("hi"); return 1 }       // an Effect, not yet run
+try p                                              // logs "hi", gives 1
+try p                                              // logs "hi" again: each run reruns the block
 
 try retry(effect { try save(try fetchUser(id)) }, policy)
 Layer.effect(Users, effect { … })

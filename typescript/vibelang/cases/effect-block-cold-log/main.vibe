@@ -1,0 +1,11 @@
+// expect-result: {"before":0,"results":[1,1],"after":2}
+// VIP-2's first example (loop round 5 ASTRA-3): an effect block that logs with
+// Effect's log global is an Effect, not yet run; each run reruns the block.
+let runs = 0
+export effect function main() {
+  const p = effect { runs++; try log("hi"); return 1 }
+  const before = runs
+  const a = try p
+  const b = try p
+  return { before, results: [a, b], after: runs }
+}

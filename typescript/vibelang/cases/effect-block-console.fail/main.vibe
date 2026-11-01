@@ -1,0 +1,10 @@
+// expect: EK4402
+// VIP-2's old example (loop round 5 ASTRA-3): the host console is banned in an
+// effect block as everywhere in VibeLang code (VIP-33, EK4402); Effect's log
+// and Console are the replacements.
+export effect function main() {
+  const p = effect { console.log("hi"); return 1 }
+  const q = effect { try log("hi"); return 1 }
+  const r = effect { try Console.log("hi"); return 1 }
+  return [try p, try q, try r]
+}
