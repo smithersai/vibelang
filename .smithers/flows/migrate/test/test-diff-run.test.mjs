@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
+import { fileURLToPath } from "node:url"
 import { dirname, join } from "node:path"
 import { test } from "node:test"
 import * as Jj from "../lib/jj.mjs"
@@ -164,4 +165,32 @@ test("dependency assertion proof reads both pinned manifests and reaches the PR 
   const noGain = await verifyRepositoryTests({ ts, target, base: unchanged, renames: [], scratch: join(root, "dependency-proof") })
   assert.equal(noGain.ok, false)
   assert.match(JSON.stringify(noGain), /did not gain/)
+}))
+
+test("baseline VibeLang formatting survives pinned trees, record and the PR body; token changes do not", async () => fixture(async ({ target, run, p }) => {
+  const old = "effect function check(){return try load()}\n// keep this comment\nexpect(1).toBe(1);\n"
+  const next = "effect function check() {\n  return try load()\n}\n  // keep   this comment\nexpect(1).toBe(1)\n"
+  put(target, "test/existing.test.vibe", old)
+  const base = await Jj.commit(target, "baseline already contains VibeLang test")
+  writeJson(p.setup, { jj: { upgradeCommit: base } })
+  const config = readJson(p.config)
+  config.packages = [{dir: "."}]
+  writeJson(p.config, config)
+  mkdirSync(join(target, "node_modules/.bin"), {recursive: true})
+  symlinkSync(fileURLToPath(new URL("../../../../packages/compiler/native/vibelang", import.meta.url)), join(target, "node_modules/.bin/vibelang"))
+  put(target, "test/existing.test.vibe", next)
+  const recorded = await record({run, batch: "01", force: "no other checks in this fixture"})
+  assert.equal(recorded.testDiff.ok, true, JSON.stringify(recorded.testDiff))
+  assert.equal(recorded.testDiff.from, base)
+  assert.equal(recorded.testDiff.files[0].hunks[0].kind, "formatter-only")
+  await report({run})
+  assert.match(readFileSync(p.prBody, "utf8"), /#### formatter-only/)
+  assert.match(readFileSync(p.prBody, "utf8"), /existing\.test\.vibe/)
+  assert.match(readFileSync(p.prBody, "utf8"), /AST: PASS; tokens: PASS/)
+  rmSync(p.record("01"))
+  put(target, "test/existing.test.vibe", next.replace("try load()", "(try load())"))
+  const parent = await Jj.commitId(target, "@-")
+  await assert.rejects(record({run, batch:"01", force:"green tests cannot waive tokens"}), /forbidden test\/fixture edits/)
+  assert.equal(await Jj.commitId(target, "@-"), parent)
+  assert.match(readFileSync(join(p.batch("01"), "test-diff.md"), "utf8"), /token stream differs/)
 }))

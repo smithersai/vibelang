@@ -15,6 +15,7 @@ import { compareDeclarations, recordDeclarationSurface, emitDeclarations, emitEr
 import { compareTests, regressionIssue, runTests } from "./tests.mjs"
 import { verifyRepositoryTests } from "./test-diff-run.mjs"
 import { testDiffMarkdown } from "./test-diff.mjs"
+import { vibeParser } from "./test-diff-format.mjs"
 import { countTokens } from "./tokens.mjs"
 import { readIssues } from "./issues.mjs"
 import { repairPrompt } from "./repair.mjs"
@@ -1018,7 +1019,8 @@ export async function testEdits(config, p, plan, b, ts) {
     ts, target: config.target,
     base: setup?.jj?.upgradeCommit ?? setup?.jj?.setupCommit ?? "@-",
     renames, directories: [config.target, ...config.packages.map(pkg => join(config.target, pkg.dir))],
-    scratch: p.batch(b), cwd: config.test.cwd, globRoot: config.test.globRoot
+    scratch: p.batch(b), cwd: config.test.cwd, globRoot: config.test.globRoot,
+    parseVibe: vibeParser(() => compilerOf(config))
   })
 }
 

@@ -223,6 +223,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Switching migration toolchains could absorb newly failing tests or compiler errors into a passing baseline; the flow now rejects the switch and retains its before-and-after evidence.
 
+- The migrate flow rejected harmless formatting of existing `.vibe` tests; it now accepts it only when both the parsed AST and token stream preserve the test, and lists these files under `formatter-only` in the PR proof.
+
 - Migration checks rejected a package test’s expected dependency list after setup added `vibelang-runtime`; they now allow exactly that addition when the pinned package manifests prove the dependency was gained, and disclose each assertion edit separately.
 
 - Migration checks rejected test path strings that only followed a source-file rename; they now prove the path resolves to the migrated file, including static path builders, while keeping modules as TypeScript when tests assert on their source text.

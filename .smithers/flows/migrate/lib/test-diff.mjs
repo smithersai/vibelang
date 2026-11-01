@@ -6,6 +6,7 @@ import { createRequire } from "node:module"
 import { dirname, join, posix } from "node:path"
 import { isTestFile, isFixtureFile } from "./inventory.mjs"
 import { pathCandidate, provePathRename } from "./test-diff-paths.mjs"
+import { proveFormatterOnly } from "./test-diff-format.mjs"
 import { dependencyCandidate, proveDependencyAddition } from "./test-diff-dependencies.mjs"
 
 export const isProtectedFile = path => isTestFile(path) || isFixtureFile(path)
@@ -422,7 +423,7 @@ function selectGlob(glob, pats, root, file, options, globRoot) {
     ignore: options.exhaustive ? [] : ["**/node_modules/**"], ...glob.options })).filter(p => p !== file)
 }
 
-export function verifyTestDiff({ ts, before, after, renames, declarationImportStyle = "vibe", glob, scratch, cwd = ".", globRoot }) {
+export function verifyTestDiff({ ts, before, after, renames, declarationImportStyle = "vibe", glob, scratch, cwd = ".", globRoot, parseVibe }) {
   renames = renames.filter(r => samePathRename(r) && Object.hasOwn(before, r.from) && !Object.hasOwn(after, r.from) && Object.hasOwn(after, r.to) && !Object.hasOwn(before, r.to))
   const result = { ok: true, files: [] }
   let trees
@@ -445,6 +446,10 @@ export function verifyTestDiff({ ts, before, after, renames, declarationImportSt
       try {
         if (Buffer.isBuffer(before[file]) || Buffer.isBuffer(after[file])) throw new Error("binary test or fixture edits are forbidden")
         if (typeof before[file] !== "string" || typeof after[file] !== "string") throw new Error("missing test snapshot")
+        if (file.endsWith(".vibe") && isTestFile(file) && !isFixtureFile(file)) {
+          entry.hunks.push(proveFormatterOnly({file, before: before[file], after: after[file], parseVibe}))
+          continue
+        }
         const a = parsed(ts, before[file], file)
         const b = parsed(ts, after[file], file)
         const ac = candidates(ts, a.source, a.bindings), bc = candidates(ts, b.source, b.bindings)
@@ -540,7 +545,7 @@ export function testDiffMarkdown(result) {
     "",
     ...result.files.flatMap(f => [
       "- " + code(f.file) + ": " + (f.ok ? "PASS" : "FAIL"),
-      ...f.hunks.filter(h => h.kind !== "assertion").flatMap(h => [
+      ...f.hunks.filter(h => !["assertion", "formatter-only"].includes(h.kind)).flatMap(h => [
         "  - " + h.kind + (h.beforeLine ? " at line " + h.beforeLine : "") + ": " + (h.reason ?? (code(h.before) + " → " + code(h.after))),
         ...(h.setCheck ? [
           "    - Before (" + h.setCheck.beforeCount + "): " + h.setCheck.before.map(code).join(", "),
@@ -549,6 +554,14 @@ export function testDiffMarkdown(result) {
       ])
     ]),
     ...(result.files.length ? [] : ["No test or fixture changed."]),
+    "",
+    "#### formatter-only",
+    "",
+    ...(() => {
+      const edits = result.files.flatMap(f => f.hunks.filter(h => h.kind === "formatter-only").map(h =>
+        "- " + code(f.file) + ": " + h.reason + "; AST: PASS; tokens: PASS."))
+      return edits.length ? edits : ["None."]
+    })(),
     "",
     "#### assertion edits",
     "",
