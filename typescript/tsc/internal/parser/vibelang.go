@@ -295,6 +295,12 @@ func (p *Parser) parseVibeLangEffectType(result *ast.TypeNode) *ast.TypeNode {
 		// stay in source order and the list does not seem to end in a comma.
 		last := core.NewTextRange(errors.End()-1, errors.End())
 		dependencies = p.vibelangSynthesized(p.factory.NewKeywordTypeNode(ast.KindNeverKeyword), last)
+	} else if errors.End() == bang.End() && p.lookAhead((*Parser).nextVibeLangRequirementIsComparison) {
+		// A relational < continues the enclosing expression (detail 211).
+		// Keep complete legacy generic heads recoverable for EK0301 migration.
+		last := p.scanner.TokenRange()
+		p.nextToken()
+		dependencies = p.vibelangSynthesized(p.factory.NewKeywordTypeNode(ast.KindNeverKeyword), last)
 	} else {
 		dependencies = p.parseVibeLangSlot(false)
 	}

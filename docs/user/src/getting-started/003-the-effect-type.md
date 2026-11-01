@@ -60,6 +60,8 @@ effect function anyRate(currency: string) {
 
 Unparenthesized combinations report `EK0301`. The quick fix and `vibelang --fix` insert parentheses around the grouping the compiler previously used. For example, the old `number!! | null` becomes `number!!(| null)`, preserving its `null` requirement. To describe an Effect or `null`, write `(number!!) | null` instead. The same rule applies in aliases, parameter types, service contracts and return annotations; parentheses inside a type argument or object member already delimit their types.
 
+After an assertion, `x as A!! < 3` leaves `R` omitted and continues with a comparison; ordinary operand checks still apply. Parenthesize a generic function requirement, such as `A!!(<T>() => T)`. A tuple still fills the requirement slot: `x as A!![0]` has `R = [0]`; write `(x as A!!)[0]` for a later element access.
+
 Hovers show contracts this way, and declaration files keep `Effect.Effect<A, E, R>` for TypeScript callers. `Effect.Effect<A, E, R>` is accepted anywhere a type is.
 
 ## Check selected channels

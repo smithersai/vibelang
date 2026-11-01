@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "nodenext",
+    "strict": true,
+    "noCheck": true,
+    "skipLibCheck": true,
+    "outDir": "out",
+    "types": [],
+    "declaration": true
+  },
+  "files": [
+    "main.vibe",
+    "foreign.ts"
+  ]
+}

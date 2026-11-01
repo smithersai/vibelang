@@ -1,0 +1,4 @@
+// expect: TS2365
+// Detail 211: < continues the comparison; native operand checking applies.
+declare const value: unknown
+export const result = value as number!! < 3
