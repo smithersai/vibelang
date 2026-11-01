@@ -23,7 +23,7 @@ func TestBugBashImportURLCharacters(t *testing.T) {
 func TestImportSpecifierJSXModes(t *testing.T) {
 	for _, mode := range []core.JsxEmit{core.JsxEmitNone, core.JsxEmitPreserve, core.JsxEmitReact, core.JsxEmitReactNative, core.JsxEmitReactJSX, core.JsxEmitReactJSXDev} {
 		suffix := ".js"
-		if mode == core.JsxEmitPreserve || mode == core.JsxEmitReactNative {
+		if mode == core.JsxEmitPreserve { // react-native emits .js, as outputpaths.GetOutputExtension and tsc do
 			suffix = ".jsx"
 		}
 		for _, source := range []string{"./token.tsx", "../a b/token.tsx"} {
