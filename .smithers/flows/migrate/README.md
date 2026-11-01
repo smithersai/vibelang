@@ -447,3 +447,5 @@ come from the final formatted sources.
 
 
 After formatting, `record` rejects protected test edits before rerunning verification, then checks again before committing.
+
+Declaration guard regression fixtures create a Jujutsu baseline before calling `verify`, matching the repository precondition of a migration run.

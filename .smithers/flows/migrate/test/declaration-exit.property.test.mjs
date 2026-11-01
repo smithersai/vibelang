@@ -6,7 +6,8 @@ import { join } from "node:path"
 import { test } from "node:test"
 import { makeConfig, paths, verify, report } from "../lib/steps.mjs"
 import { emitErrorsIn } from "../lib/declarations.mjs"
-import { slug, writeJson } from "../lib/util.mjs"
+import { must, slug, writeJson } from "../lib/util.mjs"
+import * as Jj from "../lib/jj.mjs"
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const fc = require("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/foldkit-ui-declaration-exit.json", import.meta.url)))
@@ -29,6 +30,9 @@ async function check(code, diagnostic) {
       "fs.writeFileSync(path.join(out, 'main.d.ts'), " + JSON.stringify(declaration) + ");",
       "if (" + JSON.stringify(diagnostic) + ") console.log(" + JSON.stringify(diagnostic) + "); process.exit(" + code + "); }",
     ].join("\n"), { mode: 0o755 })
+    writeFileSync(join(target, ".gitignore"), "node_modules/\n")
+    await must("jj git init && jj config set --repo user.name test && jj config set --repo user.email test@localhost", { cwd: target })
+    await Jj.commit(target, "original declaration input")
     const p = paths(run)
     writeJson(p.config, makeConfig({ target, test: "true", vibelangVersion: "0.0.11" }))
     writeJson(p.plan, { batches: [{ files: ["main.ts"] }] })
