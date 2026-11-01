@@ -1,0 +1,12 @@
+{
+  "key": "opencode-53:escaped-sidecar-module-literal",
+  "spec": "VIP-27: \"Declarations are exactly what idiomatic Effect TypeScript would declare\"; detail268 moves their compatibility location without changing referenced module identity.",
+  "input": {
+    "output": ".vibe/declarations",
+    "nested": "src",
+    "helper": "Ω",
+    "nativeKind": "file",
+    "vibeKind": "file",
+    "tag": "Ω-tag"
+  }
+}

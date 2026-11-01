@@ -38,3 +38,7 @@ ts-node's top-level `"ts-node"` key in tsconfig; `deno.json`; VS Code's `jsconfi
 > "There should be a proposal towards end about accepting tsconfig.json jsconfig.json and vibe.config.json with vibe config being a strict superset of a tsconfig."
 
 - **Amended 2026-11-01: interim severity codes.** Interim `EK92xx` codes are not configurable through `vibe.severities`, even when printed as warnings; an entry is `EK3006`. Historical legacy maps retain their existing behavior.
+
+### Declaration-directory setting amendment (2026-11-01)
+
+The top-level `vibe` object accepts `sidecarDir?: string` in every accepted config. An absent effective entry keeps compatibility declarations beside their sources. A relative value is based on the declaring config; a leading `${configDir}` uses the selected project's directory. A present child value, including an empty string naming the declaring directory, overrides inheritance. Wrong types use `EK3007`. The setting changes compatibility-sidecar location; native public `declarationDir` and `outDir` are independent. [VIP-27](/vips/0027-declaration-output) defines the mirrored layout and its matching `rootDirs`. This records decided details 268 and 271, without a new flag or disabling alias.

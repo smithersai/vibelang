@@ -1,0 +1,10 @@
+{
+  "property": "sidecar-overlap-cleanup",
+  "rule": "VIP-27 mirrored paths and cleanup preserve all selected outputs despite overlap and emit order",
+  "input": {
+    "directory": "src/deep",
+    "module": "name",
+    "reverse": false
+  },
+  "generatorVersion": 1
+}

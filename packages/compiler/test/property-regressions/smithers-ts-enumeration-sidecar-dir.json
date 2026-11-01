@@ -1,0 +1,10 @@
+{
+  "property": "sidecar-directory",
+  "rule": "docs/design/vips/0027-declaration-output.md: Amendment: an opt-in sidecar directory (decided detail 268); Smithers .smithers/flows/test/coding-stable-plan.test.ts:57 lists coding/*.ts, so coding/metered-steps.d.vibe.ts must leave coding/",
+  "input": {
+    "paths": ["coding/metered-steps", "coding/prototype/flow-steps", "Ω"],
+    "imports": [[], [0], [0, 1]],
+    "modes": ["beside", "conventional", "beside", "custom"]
+  },
+  "generatorVersion": 1
+}

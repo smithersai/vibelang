@@ -1,0 +1,23 @@
+{
+  "property": "sidecar-directory",
+  "rule": "VIP-27 directory amendment and decided detail 271: an empty string is the declaring config directory",
+  "input": {
+    "paths": [
+      "main",
+      "deep/name"
+    ],
+    "imports": [
+      [],
+      [
+        0
+      ]
+    ],
+    "modes": [
+      "beside",
+      "root",
+      "conventional",
+      "root"
+    ]
+  },
+  "generatorVersion": 1
+}

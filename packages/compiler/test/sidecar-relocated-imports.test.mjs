@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
+import { createRequire } from "node:module"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
@@ -11,9 +12,10 @@ const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const native = process.env.VIBELANG_BINARY || join(repo, "packages/compiler/native/vibelang")
 const modules = process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules")
 const stock = join(modules, "typescript/bin/tsc")
+const ts = createRequire(import.meta.url)(join(modules, "typescript/lib/typescript.js"))
 const options = { target: "ES2022", module: "NodeNext", moduleResolution: "NodeNext", strict: true, types: [], noEmit: true, allowArbitraryExtensions: true, rewriteRelativeImportExtensions: true }
 
-function crossPackage({ output = ".vibe/declarations", nested = "src", helper = "helper", nativeKind = "file", vibeKind = "file" } = {}) {
+function crossPackage({ output = ".vibe/declarations", nested = "src", helper = "helper", tag = "tag", nativeKind = "file", vibeKind = "file" } = {}) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "sidecar-cross-package-")))
   const put = (file, text) => { mkdirSync(dirname(join(root, file)), { recursive: true }); writeFileSync(join(root, file), text) }
   const run = (binary, args, cwd) => spawnSync(binary, args, { cwd: join(root, cwd), encoding: "utf8" })
@@ -22,8 +24,8 @@ function crossPackage({ output = ".vibe/declarations", nested = "src", helper = 
     const projectOptions = nativeKind === "file" && vibeKind === "file" ? options : { ...options, module: "ESNext", moduleResolution: "Bundler" }
     const helperFile = nativeKind === "dot" ? "index.ts" : nativeKind === "directory" ? helper + "/index.ts" : helper + ".ts"
     const helperSpecifier = nativeKind === "dot" ? "." : "./" + helper + (nativeKind === "file" ? ".ts" : "")
-    const tagFile = vibeKind === "directory" ? "tag/index.vibe" : "tag.vibe"
-    const tagSpecifier = vibeKind === "directory" ? "./tag" : "./tag.vibe"
+    const tagFile = vibeKind === "directory" ? tag + "/index.vibe" : tag + ".vibe"
+    const tagSpecifier = vibeKind === "directory" ? "./" + tag : "./" + tag + ".vibe"
     put("a/package.json", JSON.stringify({ name: "producer", type: "module", types: `./${output}/${nested}/${entry}.d.vibe.ts` }))
     put("a/tsconfig.json", JSON.stringify({ compilerOptions: { ...projectOptions, rootDirs: [".", output] }, include: [nested], vibe: { sidecarDir: output } }))
     put(`a/${nested}/${helperFile}`, "export interface Helper { readonly n: number }\n")
@@ -52,16 +54,18 @@ test("opencode-53: a different project's stock compiler resolves every relocated
 })
 
 test("property: relocated declarations preserve cross-package native and Vibe sibling types", { timeout: 600000 }, () => {
-  // VIP-27 compatibility declarations must let stock TypeScript read a module's types.
+  // VIP-27: "Declarations are exactly what idiomatic Effect TypeScript would declare."
   // The importing project never inherits the producer's rootDirs (detail 268/271).
   const corpus = JSON.parse(readFileSync(new URL("./corpus/opencode-sidecar-relocated-imports.json", import.meta.url), "utf8"))
+  const unicode = JSON.parse(readFileSync(new URL("./corpus/opencode-sidecar-unicode-import.json", import.meta.url), "utf8"))
   fc.assert(fc.property(fc.record({
     output: fc.constantFrom(".vibe/declarations", "types", "gen/decl"),
     nested: fc.constantFrom("src", "src/deep", "lib/more"),
-    helper: fc.constantFrom("helper", "native-types"),
+    helper: fc.constantFrom("helper", "native-types", "Ω", "%CE%A9", "with space", "hash#name"),
     nativeKind: fc.constantFrom("file", "directory", "dot"),
-    vibeKind: fc.constantFrom("file", "directory")
-  }), input => { crossPackage(input) }), { examples: [[corpus.input]], seed: 530268, numRuns: Number(process.env.FC_RUNS || 6) })
+    vibeKind: fc.constantFrom("file", "directory"),
+    tag: fc.constantFrom("tag", "Ω-tag", "%CE%A9-tag", "hash#tag", "space tag")
+  }), input => { crossPackage(input) }), { examples: [[corpus.input], [unicode.input]], seed: 530268, numRuns: Number(process.env.FC_RUNS || 6) })
 })
 
 test("compatibility sidecarDir is independent of native public declarationDir and outDir", () => {
@@ -83,3 +87,33 @@ test("compatibility sidecarDir is independent of native public declarationDir an
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
 
+test("declarations keep filesystem spellings while emitted JavaScript escapes ESM URLs", () => {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "sidecar-url-spellings-")))
+  const put = (file, text) => { mkdirSync(dirname(join(root, file)), { recursive: true }); writeFileSync(join(root, file), text) }
+  try {
+    put("package.json", '{"type":"module"}')
+    const names = ["Ω", "%CE%A9", "with space", "hash#name"]
+    for (const [i, name] of names.entries()) put("src/" + name + ".ts", `export interface T${i} { readonly n${i}: number }; export const v${i} = ${i}\n`)
+    put("src/main.vibe", names.map((name, i) => `export { type T${i}, v${i} } from "./${name}.ts"`).join("\n"))
+    put("tsconfig.json", JSON.stringify({ compilerOptions: {
+      ...options, noEmit: false, declaration: true, rootDir: ".", outDir: "js", declarationDir: "public",
+      rewriteRelativeImportExtensions: false
+    }, include: ["src"] }))
+    const emitted = spawnSync(native, ["-p", "tsconfig.json", "--pretty", "false"], { cwd: root, encoding: "utf8" })
+    assert.equal(emitted.status, 0, emitted.stdout + emitted.stderr)
+    const declarations = readFileSync(join(root, "public/src/main.d.ts"), "utf8")
+    const js = readFileSync(join(root, "js/src/main.js"), "utf8")
+    const specifiers = text => ts.createSourceFile("main.ts", text, ts.ScriptTarget.Latest, true).statements
+      .filter(ts.isExportDeclaration).map(statement => statement.moduleSpecifier.text)
+    for (const name of names) {
+      assert.ok(specifiers(declarations).includes("./" + name + ".ts"), declarations)
+      assert.ok(specifiers(js).includes("./" + encodeURIComponent(name) + ".js"), js)
+    }
+    put("consumer.ts", 'import { v0, v1, v2, v3 } from "./public/src/main.js"; const values: number[] = [v0, v1, v2, v3];')
+    put("consumer.config.json", JSON.stringify({ compilerOptions: options, files: ["consumer.ts"] }))
+    const isolated = spawnSync(process.execPath, [stock, "-p", "consumer.config.json", "--pretty", "false"], { cwd: root, encoding: "utf8" })
+    assert.equal(isolated.status, 0, isolated.stdout + isolated.stderr)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+test("relocated sidecars decode escaped Unicode module names", () => { crossPackage({ tag: "Ω-tag" }) })
