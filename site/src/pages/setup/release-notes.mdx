@@ -280,6 +280,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Typed lint could lose native-module types for tests outside the main TypeScript project; migration setup now connects those tests to their existing complete test project without editing tests.
 - Switching migration toolchains could replace a published package's VibeLang peer range with a local tarball; peer ranges and optional metadata now stay intact while installed dependencies update.
 
+- Migration rejected private adapter declarations when a package exported a hand-written `.d.ts` outside its build output; the flow now snapshots and resolves those shipped roots, admitting private additions while rejecting changed public bytes or resolution.
+
 - The compiler package's tests could fail with a missing `packages/runtime/dist/index.js`, or skip their cache checks, when the runtime rebuilt at the same time; `//packages:compiler-test` now declares that build and runs after it.
 
 - Migration setup left root `tsrs` and `tsgo` typechecks on their old compiler, so converted files could be skipped or require an extra check of unrelated projects; it now runs `vibelang` with the original project arguments, including separate test projects.
