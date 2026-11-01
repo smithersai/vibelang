@@ -223,6 +223,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Switching migration toolchains could absorb newly failing tests or compiler errors into a passing baseline; the flow now rejects the switch and retains its before-and-after evidence.
 
+- Migration checks rejected test path strings that only followed a source-file rename; they now prove the path resolves to the migrated file, including static path builders, while keeping modules as TypeScript when tests assert on their source text.
+
 - A migration batch could pass after changing its tests or fixtures, hiding a regression; the migrate flow now rejects every edit except a same-module specifier rename or a synchronous selector widening proven to select the same file identities under the target tool's glob rules, refuses `async` or generator filters that would select extra files, checks again before committing, and reports the proof for the pull request.
 - `FuzzCommandLine` could fail with `the compilation rewrote the source main.d.vibe.ts` in a checkout where an earlier compile had left that sidecar in an acceptance case; the fuzz seeds now skip these generated files.
 

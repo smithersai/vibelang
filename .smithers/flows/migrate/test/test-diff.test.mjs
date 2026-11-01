@@ -58,8 +58,8 @@ test("foldkit docPage selector widens without selecting sidecars", () => {
 })
 for (const [name, a, b] of [
   ["assertion", "expect(f()).toBe(1)", "expect(f()).toBe(2)"],
-  ["fs path", 'readFileSync("../src/X.ts")', 'readFileSync("../src/X.vibe")'],
-  ["template fs path", 'readFileSync(`../src/X.ts`)', 'readFileSync(`../src/X.vibe`)'],
+  ["fs path whose text is asserted", 'expect(readFileSync("../src/X.ts")).toBe("text")', 'expect(readFileSync("../src/X.vibe")).toBe("text")'],
+  ["template fs path whose text is asserted", 'expect(readFileSync(`../src/X.ts`)).toBe("text")', 'expect(readFileSync(`../src/X.vibe`)).toBe("text")'],
   ["interpolated module path", 'require(`../src/${name}.ts`)', 'require(`../src/${name}.vibe`)'],
   ["embedded config", 'const cfg = "include: *.ts"', 'const cfg = "include: *.vibe"'],
   ["fake module text", 'const cfg = `import "../src/X.ts"`', 'const cfg = `import "../src/X.vibe"`'],
@@ -194,7 +194,7 @@ test("property: specifier permission never absorbs random fixture, config or set
         return [
           forms[i % forms.length].replace("X.ts", after ? "X.vibe" : "X.ts"),
           "expect(f()).toBe(" + (e.value + (change && e.kind === "assertion" ? 1 : 0)) + ")",
-          'readFileSync("../src/X.' + (change && e.kind === "fs" ? "vibe" : "ts") + '")',
+          'expect(readFileSync("../src/X.' + (change && e.kind === "fs" ? "vibe" : "ts") + '")).toBe("text")',
           'const config' + i + ' = { include: "*. ' + (change && e.kind === "config" ? "vibe" : "ts") + '" }',
           "// " + (change && e.kind === "comment" ? "changed" : "original"),
           "beforeEach(() => setup(" + (e.value + (change && e.kind === "setup" ? 1 : 0)) + "))"
