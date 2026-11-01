@@ -74,6 +74,7 @@ const specTests = [
   "TestImportedLintCodes",
 
   "TestOptionMatchFixQuoted",
+  "TestDeclarationUnnameableFormQuoted",
   "TestDeclarationPreludeModesQuoted",
   "TestNativeOutputSpecifierRulesQuoted",
   "TestLegacyConfigCommentsQuoted",
