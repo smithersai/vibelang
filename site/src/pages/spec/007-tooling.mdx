@@ -157,15 +157,17 @@ Relative specifiers resolve as follows, after TypeScript's `exports`, `imports`,
 
 These built-in warnings suggest an accepted VibeLang form without changing the meaning of TypeScript-style source. They are warnings by default and use `vibe.severities`, independently of the imported Effect lint table. A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output; otherwise the diagnostic explains why it has no automatic fix. A warning does not itself rewrite code, and a warning-only run exits zero. Untagged `Data.Error` has no equivalent tagged declaration: keep its library form rather than adding a tag. An unsupported legacy repair is retired, rather than treated as a language requirement.
 
+In the `EK4834`, `EK4835` and `EK4836` rows, the call is the direct operand of bare `try` in effect code. Parentheses and erased TypeScript expression forms (`as`, `satisfies`, `!`) around it still leave it the direct operand; the call is recognized by its resolved symbol, so an import alias counts and a local binding that shadows `Effect` does not. An operand of `fork` in any form, of `join`, of `try.all`, `try.race`, `try.any` or `try.allSettled` or one of its elements, an argument of an Effect API, the head of a `catch`, and a stored or returned Effect are not direct operands, and these rows do not warn on them: `fork Effect.catch(e, h)` keeps recovery in the child ([`fork` and `join`](/spec/002-running#fork-and-join)), and `fork Effect.fail(e)` fails the child, not the caller.
+
 | Code | Trigger | Repair |
 | --- | --- | --- |
 | `EK4830` | A class written with `Data.TaggedError("Name")` | Use `error Name { … }` only when its tag and class behavior are preserved. |
 | `EK4831` | A class written with `Context.Service` | Use `service Name { … }`, preserving the key with `static readonly key`. |
 | `EK4832` | A `const` holding `Schema.Struct({ … })` | Use `schema Name { … }` where the field mapping and associated type are preserved. In a declaration-emitting project, preserve an own type written as `Schema.Schema.Type<typeof Name>`, private or exported, because a `schema` declaration prints `typeof Name.Type`. |
 | `EK4833` | A written `Effect.Effect<A, E, R>` type, except an interface's `extends` element, which `A!E!R` cannot spell | Use the equivalent `A!E!R` spelling, preserving `never` slots and required parentheses. |
-| `EK4834` | An explicitly run `Effect.succeed(v)` or `Effect.fail(e)` in effect code | Use the value `v` or `throw e`; do not apply this to an unrun Effect value. |
-| `EK4835` | An explicitly run `Effect.catch`, `Effect.catchTag`, or `Effect.catchTags` in effect code | Use a `catch effect` handler, with `match` on the failure for tag cases and a typed `throw` for unmatched failures. |
-| `EK4836` | An explicitly run `Effect.provide` or `Effect.provideService` in effect code | Use a `provide` statement with Layers or `Key = value`, preserving operand evaluation order. |
+| `EK4834` | `Effect.succeed(v)` or `Effect.fail(e)` as the direct operand of bare `try` in effect code | Use the value `v` or `throw e`. |
+| `EK4835` | `Effect.catch`, `Effect.catchTag`, or `Effect.catchTags` as the direct operand of bare `try` in effect code | Use a `catch effect` handler, with `match` on the failure for tag cases and a typed `throw` for unmatched failures. |
+| `EK4836` | `Effect.provide` or `Effect.provideService` as the direct operand of bare `try` in effect code | Use a `provide` statement with Layers or `Key = value`, preserving operand evaluation order. |
 | `EK4837` | A class written with `Schema.TaggedError` | Use `schema error Name { … }` when the schema and tag are preserved; an ordinary `error` would lose the schema. |
 | `EK4839` | An Effect `Match` chain with a supported finisher, or a direct `Option.match(value, handlers)` call | Use `match`, or a function returning `match` for `Match.type`, only for patterns and handlers whose tests and results are preserved. Direct `Option.match` keeps subject evaluation, handler construction, property reads and the selected callback in their original order. The fix refuses a choice returning a program or comments between its arguments; `Match` chains also keep refusals for unsupported patterns, handlers or return types. |
 | `EK4841` | A schema `const` immediately followed by its matching `typeof Name.Type` alias | Use the corresponding `schema Name = …` declaration where the schema mapping preserves both exports. |
@@ -188,6 +190,36 @@ if (Exit.isSuccess(result)) throw new Error("expected a failure")
 const reason = result.cause.reasons[0]
 if (reason._tag !== "Fail") throw new Error("expected a typed failure")
 console.log(JSON.stringify([reason._tag, reason.error._tag, reason.error.id]))
+```
+
+Only the first line of `demo` warns. The other three run their Effect in a child fiber or as an element, where the suggested form would change meaning: a `throw` in place of `fork Effect.fail("boom")` would fail `demo` itself, while the child's failure lets `demo` go on and inspect it.
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-34
+effect function demo(e: number!string, h: (x: string) => number!!) {
+  const one = try Effect.succeed(1)              // EK4834
+  const child = fork Effect.catch(e, h)          // no EK4835: recovery stays in the child
+  const failedChild = fork Effect.fail("boom")   // no EK4834: it fails the child, not demo
+  const both = try.all [Effect.succeed(one), e]  // no EK4834 on an element
+  return [child, failedChild, both]
+}
+```
+
+```ts [Effect]
+// TypeScript-form advisory reference
+import { Effect, Exit, Fiber } from "effect"
+const e: Effect.Effect<number, string> = Effect.fail("e")
+const h = (_: string) => Effect.succeed(7)
+const demo = Effect.gen(function* () {
+  const one = yield* Effect.succeed(1)
+  const child = yield* Effect.forkChild(Effect.catch(e, h))
+  const failedChild = yield* Effect.forkChild(Effect.fail("boom"))
+  const both = yield* Effect.all([Effect.succeed(one), Effect.succeed(2)], { concurrency: "unbounded" })
+  return [yield* Fiber.join(child), Exit.isFailure(yield* Fiber.await(failedChild)), both]
+})
+const result = await Effect.runPromiseExit(demo)
+if (!Exit.isSuccess(result)) throw new Error("expected demo to succeed")
+console.log(JSON.stringify(result.value))
 ```
 
 ## The Effect version
