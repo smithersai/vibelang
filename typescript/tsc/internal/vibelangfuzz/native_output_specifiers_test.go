@@ -83,6 +83,9 @@ func FuzzNativeOutputSpecifiers(f *testing.F) {
 			Gap(t, "FuzzNativeOutputSpecifiers", key, "native module emitted no JavaScript")
 			return
 		}
+		if !specifierWritten(native, map[string]bool{specifier: true}) {
+			Gap(t, "FuzzNativeOutputSpecifiers", "provenance:"+key, "current tooling preserves native output spelling: %s must remain attributable to written %s", native, specifier)
+		}
 		for _, suffix := range []string{"/main.js"} {
 			found := false
 			for name, text := range result.Outputs {

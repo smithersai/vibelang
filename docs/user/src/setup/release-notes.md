@@ -237,6 +237,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Schema declarations rejected named, optional and rest tuples, including rest arrays written as `readonly T[]`, with `EK2109`; they now preserve their written positions using Effect's tuple schemas, optional positions accept explicit `undefined`, and invalid element order keeps TypeScript's diagnostics.
 
+- Compiler fuzz validation rejected native JSX output imports under `preserve` and `react-native`; it now recognizes the `.jsx` spelling derived from a written `.tsx` import.
+
 - Compiler fuzz validation rejected valid extensionless declaration imports from bundler projects; its stock TypeScript consumer now keeps the project’s native module resolution settings.
 
 - Fuzz checks rejected current diagnostic codes and applied retired severity rules; they now read the registry and severity rules from Appendix B and the current tooling chapter, including imported `EK38xx` diagnostics in `.ts` files.

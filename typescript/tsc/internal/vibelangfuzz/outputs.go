@@ -234,9 +234,11 @@ func sourceSpecifiers(name, text string) map[string]bool {
 // sourceExtensions maps an output's extension to the source extensions it
 // is emitted from: D31, D63 and D365 write a relative specifier of a .vibe
 // or .ts source with the output's .js name, and TypeScript writes .mts and
-// .cts sources as .mjs and .cjs.
+// .cts sources as .mjs and .cjs. Current tooling keeps native JSX options:
+// preserve/react-native can write a native .tsx source as .jsx.
 var sourceExtensions = map[string][]string{
 	".js":  {".vibe", ".ts", ".tsx", ".jsx", ".js"},
+	".jsx": {".tsx", ".jsx"},
 	".mjs": {".mts", ".mjs"},
 	".cjs": {".cts", ".cjs"},
 }
