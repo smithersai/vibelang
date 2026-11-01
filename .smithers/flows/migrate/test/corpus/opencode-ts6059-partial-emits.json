@@ -1,0 +1,14 @@
+{
+  "repo": "opencode",
+  "pattern": "package tests import a sibling fixture outside rootDir; package-owned JS is still emitted",
+  "files": {
+    "package.json": "{\"private\":true,\"type\":\"module\"}",
+    "packages/cli/package.json": "{\"name\":\"@demo/cli\",\"type\":\"module\",\"exports\":{\".\":\"./src/index.ts\",\"./missing\":\"./src/missing.ts\"}}",
+    "packages/cli/tsconfig.json": "{\"compilerOptions\":{\"target\":\"ES2022\",\"module\":\"Preserve\",\"moduleResolution\":\"Bundler\",\"skipLibCheck\":true,\"singleThreaded\":true},\"include\":[\"src/**/*\",\"test/**/*\"]}",
+    "packages/cli/src/index.ts": "export const answer = 42\n",
+    "packages/cli/src/private.vibe": "export const hidden = 1\n",
+    "packages/cli/src/missing.ts": "export const missing = 0\n",
+    "packages/cli/test/index.ts": "import { fixture } from \"../../core/test/fixture/git.ts\"; export const result = fixture\n",
+    "packages/core/test/fixture/git.ts": "export const fixture = 1\n"
+  }
+}

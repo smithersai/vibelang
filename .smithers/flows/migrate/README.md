@@ -515,3 +515,5 @@ Import rewrites accept recorded `preserve` names together with injected `read` a
 
 
 Native source runtime exports in a mixed package use that package's actual emitted graph, including native `.ts` entries and wildcard exports that share an output mapping. Their `types` and `vibelang-source` conditions retain the native source path; `default` names its emitted JavaScript. Source loaders keep relative and package imports on one instance. A package whose only `.vibe` file is private still receives the same routing; reverting its last source module restores the native export entries.
+
+Native runtime entries route only to package-owned JavaScript files the emit actually wrote, even when the compiler reports errors. A nonzero emit such as `TS6059` on a sibling package's fixture does not discard those outputs. Each `emittedJs` receipt retains the compiler's `code` and `diagnostics`, and records `exportsChanged`. Compiler checks and tests still gate the batch; a missing output never gains an emitted route.

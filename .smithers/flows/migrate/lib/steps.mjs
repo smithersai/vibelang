@@ -1125,7 +1125,7 @@ export function aliasesOf(config) {
  * Writes again the emitted JavaScript (.vibelang/js/) of each package of the
  * run whose package.json names it (rewriteExports), after a step that can
  * change a .vibe module: codemod, verify before its tests, record before its
- * commit. Returns { package, files, code } for each.
+ * commit. Returns the output count, exit code, diagnostics and export-change receipt for each.
  */
 async function emitMigratedJs(config, t, logs) {
   const emitted = []
@@ -1140,8 +1140,9 @@ async function emitMigratedJs(config, t, logs) {
     if (!packageText.includes("./.vibelang/js/") && !hasNativeRuntimeExport(JSON.parse(packageText).exports)) continue
     const tsconfigs = Wire.projectsOf(typeScriptOf(config), join(t, pkg.dir), pkg.tsconfig)
     const result = await emitPackageJs({ compiler: compilerOf(config), tsconfigs, packageDir: join(t, pkg.dir), root: t, log: join(logs, `js-${slug(pkg.dir)}.log`) })
-    if (result.code === 0) routeEmittedExports(join(t, pkg.dir), result.outputs)
-    emitted.push({ package: pkg.dir, files: result.files, code: result.code })
+    // Nonzero emits can still write valid package-owned files (for example TS6059).
+    const exportsChanged = routeEmittedExports(join(t, pkg.dir), result.outputs)
+    emitted.push({ package: pkg.dir, files: result.files, code: result.code, exportsChanged, diagnostics: result.diagnostics })
   }
   return emitted
 }
