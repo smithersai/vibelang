@@ -1,0 +1,25 @@
+{
+  "key": "alchemy-30:pnpm-node-path-namespace-capture:rename-revert",
+  "repo": "alchemy",
+  "spec": "docs/design/src/007-tooling.md",
+  "quote": "Every tool is tested against the dogfood repositories.",
+  "depth": 1,
+  "scoped": false,
+  "parallel": true,
+  "config": true,
+  "nodePath": true,
+  "value": 42,
+  "pattern": {
+    "Leaf": "export const make = (): number => 42; export const Layer = 7",
+    "Use": "import * as Leaf from './Leaf.ts'; const captured = Leaf.make; export const run = (): number => captured()",
+    "stages": [
+      "ts",
+      "vibe",
+      "ts"
+    ],
+    "cache": "same Bun transpiler cache in all three processes",
+    "unchangedImporter": "Use.vibe source bytes and modification time stay unchanged while Leaf switches .ts/.vibe/.ts"
+  },
+  "boundary": "Coverage only. Historical full InMemory failure is not reproduced by the old one-state minimized fixture.",
+  "stableImporter": true
+}
