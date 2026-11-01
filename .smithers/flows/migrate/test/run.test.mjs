@@ -6,7 +6,7 @@ import { test } from "node:test"
 import { parseArgs, many, one } from "../lib/args.mjs"
 import { readIssues, validateIssue, ofKind } from "../lib/issues.mjs"
 import { buildInventory, isTestFile } from "../lib/inventory.mjs"
-import { formatExistingVibe, formatRecorded, formatVibe, makeConfig, nextStep, paths } from "../lib/steps.mjs"
+import { formatExistingVibe, formatRecorded, formatVibe, makeConfig, nextStep, paths, vibeDprintConfig } from "../lib/steps.mjs"
 import { must } from "../lib/util.mjs"
 import { parseTokenCounts } from "../lib/tokens.mjs"
 import { repairPrompt } from "../lib/repair.mjs"
@@ -208,6 +208,45 @@ test("formatVibe runs the package's vibelang-format on the .vibe files that exis
     assert.deepEqual(await formatVibe(config, ["packages/core/src/a.vibe"]), { files: ["packages/core/src/a.vibe"], code: 3 })
     rmSync(tool)
     assert.deepEqual(await formatVibe(config, ["packages/core/src/a.vibe"]), { files: [], code: 127 })
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+// smithers: each package's dprint.json loads VibeLang's dprint plugin, so its
+// dprint check formats .vibe files with the whole TypeScript configuration;
+// record's vibelang-format wrote them without trailingCommas and
+// arrowFunction.useParentheses, and dprint check failed on 258 files.
+test("formatVibe formats with the repository's dprint where the nearest dprint configuration loads VibeLang's plugin", async () => {
+  const corpus = JSON.parse(readFileSync(new URL("./corpus/smithers-record-dprint-config.json", import.meta.url), "utf8"))
+  const root = mkdtempSync(join(tmpdir(), "migrate-format-"))
+  try {
+    const put = (file, text, mode) => {
+      mkdirSync(join(root, file, ".."), { recursive: true })
+      writeFileSync(join(root, file), text, mode ? { mode } : undefined)
+    }
+    const recorded = join(root, "formatted.txt")
+    const record = (name) => `#!/bin/sh\necho "${name} $(pwd) $@" >> ${recorded}\n`
+    put("packages/kernel/dprint.json", JSON.stringify(corpus["dprint.json"], null, 2))
+    put("packages/kernel/src/a.vibe", "export const a = 1\n")
+    put("packages/kernel/src/deep/b.vibe", "export const b = 2\n")
+    // A pinned configuration without the plugin: its scripts run vibelang-format.
+    put("packages/pinned/dprint.json", '{\n  // pinned\n  "plugins": ["https://plugins.dprint.dev/typescript-0.93.4.wasm@cdbf74066391bdb11ddaef9ea95299636a97d637f5a9bf7f121d584875647c7a"],\n}\n')
+    put("packages/pinned/src/c.vibe", "export const c = 3\n")
+    put("packages/plain/src/d.vibe", "export const d = 4\n")
+    put("node_modules/.bin/dprint", record("dprint"), 0o755)
+    put("node_modules/.bin/vibelang-format", record("vibelang-format"), 0o755)
+    assert.equal(vibeDprintConfig(root, "packages/kernel/src/deep/b.vibe"), "packages/kernel/dprint.json")
+    assert.equal(vibeDprintConfig(root, "packages/pinned/src/c.vibe"), null)
+    assert.equal(vibeDprintConfig(root, "packages/plain/src/d.vibe"), null)
+    const config = { target: root, packages: [{ dir: "packages/kernel" }, { dir: "packages/pinned" }, { dir: "packages/plain" }] }
+    const files = ["packages/kernel/src/a.vibe", "packages/pinned/src/c.vibe", "packages/kernel/src/deep/b.vibe", "packages/plain/src/d.vibe"]
+    assert.deepEqual(await formatVibe(config, files), { files, code: 0 })
+    assert.equal(readFileSync(recorded, "utf8"), [
+      `dprint ${join(root, "packages/kernel")} fmt --config dprint.json src/a.vibe src/deep/b.vibe`,
+      `vibelang-format ${root} --write packages/pinned/src/c.vibe packages/plain/src/d.vibe`,
+      ""
+    ].join("\n"))
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

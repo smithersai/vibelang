@@ -207,19 +207,65 @@ async function formatWritten(t, files, log) {
 }
 
 /**
- * Formats the .vibe files a batch wrote with vibelang-format, the formatter a
- * target's format check runs on them, which neither `vibelang --fix` nor the
- * repository's own formatter does. A formatter that fails leaves the files as
+ * The dprint configuration nearest to file (target-relative), the one a
+ * `dprint check` in its package reads, when its plugins include VibeLang's
+ * dprint plugin; null otherwise. dprint then formats the file with the whole
+ * of that configuration's TypeScript settings, not only the quote style and
+ * width vibelang-format takes from it.
+ */
+export function vibeDprintConfig(t, file) {
+  for (let dir = posix.dirname(file); ; dir = posix.dirname(dir)) {
+    for (const name of ["dprint.json", ".dprint.json", "dprint.jsonc", ".dprint.jsonc"]) {
+      const path = join(t, dir, name)
+      if (!existsSync(path)) continue
+      const text = readFileSync(path, "utf8")
+      let parsed
+      try { parsed = JSON.parse(text) } catch { try { parsed = JSON.parse(text.replace(/^\s*\/\/.*$/gm, "").replace(/,(\s*[}\]])/g, "$1")) } catch { return null } }
+      return (parsed.plugins ?? []).some((plugin) => /(?:^|[/:])vibelang\/dprint-plugin\.json(?:@|$)/.test(plugin)) ? posix.join(dir, name) : null
+    }
+    if (dir === "." || dir === "/") return null
+  }
+}
+
+/**
+ * Formats the .vibe files a batch wrote with the formatter the target's
+ * format check runs on them, which `vibelang --fix` does not: the
+ * repository's dprint where the nearest dprint configuration loads VibeLang's
+ * plugin (smithers: dprint check failed on 258 files vibelang-format had
+ * written without its trailingCommas and arrowFunction settings), and
+ * vibelang-format elsewhere. A formatter that fails leaves the files as
  * written and returns its exit code.
  */
 export async function formatVibe(config, files, log) {
   const t = config.target
   const targets = files.filter((file) => file.endsWith(".vibe") && existsSync(join(t, file)))
   if (!targets.length) return { files: [], code: 0 }
-  const tool = [".", ...config.packages.map((pkg) => pkg.dir)].map((dir) => join(t, dir, "node_modules/.bin/vibelang-format")).find((path) => existsSync(path))
-  if (!tool) return { files: [], code: 127 }
-  const { code } = await sh([tool, "--write", ...targets].map(quote).join(" "), { cwd: t, log })
-  return { files: targets, code }
+  const binary = (name, dirs) => dirs.map((dir) => join(t, dir, "node_modules/.bin", name)).find((path) => existsSync(path))
+  const packageDirs = [".", ...config.packages.map((pkg) => pkg.dir)]
+  const byConfig = new Map()
+  const rest = []
+  for (const file of targets) {
+    const dprintConfig = vibeDprintConfig(t, file)
+    const dir = dprintConfig && posix.dirname(dprintConfig)
+    const dprint = dprintConfig && binary("dprint", [dir, ...packageDirs])
+    if (dprint) byConfig.set(dprintConfig, { dprint, files: [...(byConfig.get(dprintConfig)?.files ?? []), posix.relative(dir, file)] })
+    else rest.push(file)
+  }
+  const done = []
+  let code = 0
+  for (const [dprintConfig, group] of byConfig) {
+    const result = await sh([group.dprint, "fmt", "--config", posix.basename(dprintConfig), ...group.files].map(quote).join(" "), { cwd: join(t, posix.dirname(dprintConfig)), log })
+    code ||= result.code
+    done.push(...group.files.map((file) => posix.join(posix.dirname(dprintConfig), file)))
+  }
+  if (rest.length) {
+    const tool = binary("vibelang-format", packageDirs)
+    if (!tool) return { files: done, code: code || 127 }
+    const result = await sh([tool, "--write", ...rest].map(quote).join(" "), { cwd: t, log })
+    code ||= result.code
+    done.push(...rest)
+  }
+  return { files: targets.filter((file) => done.includes(file)), code }
 }
 
 /**

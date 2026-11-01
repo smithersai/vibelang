@@ -1,0 +1,27 @@
+{
+  "finding": "smithers:record-formats-without-repo-dprint",
+  "note": "Smithers' package dprint.json loads npm:vibelang/dprint-plugin.json with trailingCommas never, operatorPosition maintain and arrowFunction.useParentheses force. record formatted each batch's .vibe files with vibelang-format, which takes only the quote style and width from that file, so dprint check failed on the recorded files until the drive ran dprint over 258 of them (a68ca2b6eb1c).",
+  "dprint.json": {
+    "incremental": false,
+    "includes": [
+      "**/*.{ts,tsx,js,jsx,json,md}",
+      "**/*.vibe"
+    ],
+    "lineWidth": 120,
+    "typescript": {
+      "semiColons": "asi",
+      "quoteStyle": "alwaysDouble",
+      "trailingCommas": "never",
+      "operatorPosition": "maintain",
+      "arrowFunction.useParentheses": "force"
+    },
+    "excludes": [
+      "**/dist",
+      "**/*.d.vibe.ts"
+    ],
+    "plugins": [
+      "https://plugins.dprint.dev/typescript-0.93.4.wasm@cdbf74066391bdb11ddaef9ea95299636a97d637f5a9bf7f121d584875647c7a",
+      "npm:vibelang/dprint-plugin.json"
+    ]
+  }
+}

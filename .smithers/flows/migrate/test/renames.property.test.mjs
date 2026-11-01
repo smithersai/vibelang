@@ -12,7 +12,7 @@ const fc = require("fast-check")
 const contract = readFileSync(new URL("../README.md", import.meta.url), "utf8")
 // The README's promise that a batch's renamed module is formatted: the files the
 // batch wrote reach the formatter by the path they have now.
-const quote = "Record then runs the target's `vibelang-format --write` on the batch's `.vibe` files"
+const quote = "Record then formats the batch's `.vibe` files"
 
 const init = (root) => must("jj git init && jj config set --repo user.name test && jj config set --repo user.email test@localhost", { cwd: root })
 const body = (seed) => Array.from({ length: 40 }, (_, i) => `export const v${i} = ${JSON.stringify(seed + ":" + i)}`).join("\n") + "\n"
