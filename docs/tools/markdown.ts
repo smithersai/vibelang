@@ -1,3 +1,4 @@
+import { renderSiteRelease } from "./published-site.mjs"
 import { stripRunDirectives, stripDecisionReferences } from "../../site/scripts/user-docs.mjs"
 // Markdown copies and llms.txt for the single Vocs site. Extracted from the former renderer.
 import { Marked, type Tokens } from "marked"
@@ -27,7 +28,7 @@ function rewriteProse(markdown: string, transform: (prose: string) => string): s
   return out.join("\n")
 }
 
-export function buildMarkdown(site: string, facts: Record<string, string>) {
+export function buildMarkdown(site: string, facts: Record<string, string>, release?: any) {
   const repo = resolve(import.meta.dir, "../..")
   const root = join(repo, "docs/user")
   const { src, design, fileOf, keyOf } = pageKeys(repo)
@@ -41,7 +42,8 @@ export function buildMarkdown(site: string, facts: Record<string, string>) {
       entry.isDirectory() ? files(join(dir, entry.name)) : entry.isFile() && entry.name.endsWith(".md") ? [relative(src, join(dir, entry.name))] : [])
   }
   // Read a snapshot: writers can keep working, and validation and rendering use the same bytes.
-  const sources = new Map(files(src).map(path => [path, stripDecisionReferences(stripRunDirectives(readFileSync(join(src, path), "utf8")))]))
+  const sourceEffect = release ? JSON.parse(readFileSync(join(repo, "packages/runtime/package.json"), "utf8")).peerDependencies.effect : undefined
+  const sources = new Map(files(src).map(path => [path, renderSiteRelease(path, stripDecisionReferences(stripRunDirectives(readFileSync(join(src, path), "utf8"))), release, sourceEffect)]))
   const errors: string[] = []
   for (const name of readdirSync(design).filter(f => f.endsWith(".md")).sort()) {
     const markdown = readFileSync(join(design, name), "utf8").replace(/\{\{(\w+)\}\}/g, (match, fact: string) => {

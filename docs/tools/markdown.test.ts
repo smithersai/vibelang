@@ -56,7 +56,7 @@ test("Markdown rewrites prose links around fenced and inline code without rewrit
     ].join("\n")
     put("docs/user/src/page.md", page)
     mkdirSync(join(root, "docs/tools"), { recursive: true })
-    for (const file of ["markdown.ts", "sidebar.ts"]) copyFileSync(join(import.meta.dir, file), join(root, "docs/tools", file))
+    for (const file of ["markdown.ts", "sidebar.ts", "published-site.mjs", "release-docs.mjs"]) copyFileSync(join(import.meta.dir, file), join(root, "docs/tools", file))
     mkdirSync(join(root, "site/scripts"), { recursive: true })
     copyFileSync(resolve(import.meta.dir, "../../site/scripts/user-docs.mjs"), join(root, "site/scripts/user-docs.mjs"))
     symlinkSync(join(import.meta.dir, "node_modules"), join(root, "docs/tools/node_modules"), "dir")

@@ -2,6 +2,7 @@
 // Check what readers receive, independently of the source/build checks.
 // npm's published optional dependencies are authoritative: release repacking
 // can omit platforms that remain in the source compiler manifest.
+import { resolveSiteRelease } from "./published-site.mjs"
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -135,7 +136,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     console.error("usage: node docs/tools/deployed-release.mjs [https://vibelang.sh]")
     process.exitCode = 2
   } else {
-    const manifest = JSON.parse(readFileSync(new URL("../../packages/compiler/package.json", import.meta.url), "utf8"))
+    const manifest = resolveSiteRelease({ env: { ...process.env, VIBELANG_SITE_RELEASE_FILE: "" }, requirePublished: true }).compiler
     const core = readFileSync(new URL("../../typescript/tsc/internal/core/version.go", import.meta.url), "utf8")
     const typescriptVersion = /var version = "([^"]+)"/.exec(core)?.[1]
     const problems = await deployedReleaseProblems({ baseUrl: process.argv[2], manifest, typescriptVersion })

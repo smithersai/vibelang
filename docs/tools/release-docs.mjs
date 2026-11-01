@@ -15,7 +15,7 @@ export function renderReleasePage(path, text, version, effect) {
     .replace(new RegExp(String.raw`\b(vibelang(?:-[a-z0-9-]+)?@)` + semver, "g"), (_, prefix) => prefix + version)
     .replace(new RegExp(String.raw`\b((?:VibeLang|vibelang|[Vv]ersion|Rehearsed for|In) )` + semver, "g"), (_, prefix) => prefix + version)
     .replace(new RegExp('(vibelang@' + semver + ' version\\x60? and expect \\x60)' + semver + '(\\x60)', "g"), (_, prefix, suffix) => prefix + version + suffix)
-  if (path === "site/src/pages/index.mdx") {
+  if (["site/src/pages/index.mdx", "site/src/index.mdx"].includes(path)) {
     output = output.replace(new RegExp("(<strong>)" + semver + "(</strong>)", "g"), (_, prefix, suffix) => prefix + version + suffix)
   }
   if (effect) output = output.replace(new RegExp('("@effect/platform-node-shared": ")' + semver + '(")', "g"), (_, prefix, suffix) => prefix + effect + suffix)
@@ -29,7 +29,7 @@ export function renderReleasePage(path, text, version, effect) {
       "Use " + code("vibelang") + " to check " + code(".vibe") + " source. Stock " + code("tsc") + " and " + code("vue-tsc") + " see only the " + code("x.d.vibe.ts") + " declarations the compiler writes, which resolve " + code(".vibe") + " imports when " + code("allowArbitraryExtensions") + " is on.",
       "For mixed editing in VS Code, let the VibeLang server own TypeScript files: disable the built-in TypeScript and JavaScript Language Features extension for this workspace.",
     ]
-    const install = path === "site/src/pages/index.mdx"
+    const install = ["site/src/pages/index.mdx", "site/src/index.mdx"].includes(path)
       ? "[Setup details](/setup/existing-project) · [Editor setup](/getting-started/012-devtools)"
       : "[Setup details](https://vibelang.sh/setup/existing-project) · [Editor setup](https://vibelang.sh/getting-started/012-devtools)"
     output = output.replace(/(<!-- compatibility:start -->)[\s\S]*?(<!-- compatibility:end -->)/,
@@ -50,7 +50,7 @@ export function releasePaths(repository) {
   const packages = join(repository, "packages")
   return [...new Set([
     ...["docs/user", "docs/design/src", "site/src/pages"].flatMap(path => walk(join(repository, path))),
-    ...["README.md", ".smithers/instructions/app.md"].map(path => join(repository, path)),
+    ...["README.md", ".smithers/instructions/app.md", "site/src/index.mdx"].map(path => join(repository, path)),
     ...(existsSync(packages) ? readdirSync(packages).map(name => join(packages, name, "README.md")) : [])
   ])].filter(existsSync).map(path => relative(repository, path).replaceAll("\\", "/")).sort()
 }

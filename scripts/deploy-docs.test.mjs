@@ -21,7 +21,10 @@ test("release docs checks can load all runtime platform peers from an extracted 
       mkdirSync(join(dir, path), { recursive: true })
     }
     copyFileSync(join(root, "scripts/deploy-docs.sh"), join(dir, "scripts/deploy-docs.sh"))
-    put("packages/compiler/package.json", JSON.stringify({ version: "0.0.11" }))
+    for (const file of ["published-site.mjs", "release-docs.mjs"]) copyFileSync(join(root, "docs/tools", file), join(dir, "docs/tools", file))
+    const nativePlatform = `${process.platform}-${process.arch === "arm64" ? "arm64" : "x64"}`
+    put("packages/compiler/package.json", JSON.stringify({ version: "0.0.11", optionalDependencies: { ["vibelang-" + nativePlatform]: "0.0.11" } }))
+    put("packages/runtime/package.json", JSON.stringify({ version: "0.0.11", peerDependencies: { effect: "4.1.0" } }))
     put("compiler/package/bin/vibelang", "#!/bin/sh\nexit 0\n", 0o755)
     for (const name of packages) {
       put(`packages/runtime/node_modules/${name}/package.json`, JSON.stringify({ name, type: "module", exports: "./index.js" }))
@@ -44,7 +47,6 @@ exit 0
 `, 0o755)
     put("bin/npm", "#!/bin/sh\nprintf 'site npm %s\\n' \"$*\"\n", 0o755)
     put("scripts/brand-gate.mjs", "")
-    const nativePlatform = `${process.platform}-${process.arch === "arm64" ? "arm64" : "x64"}`
     for (const [source, name] of [["compiler", "vibelang-" + nativePlatform], ["runtime", "vibelang-runtime"]]) {
       const tar = spawnSync("tar", ["czf", join(dir, "tarballs", name + "-0.0.11.tgz"), "-C", join(dir, source), "package"], { encoding: "utf8" })
       assert.equal(tar.status, 0, tar.stderr)

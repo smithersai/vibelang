@@ -75,7 +75,7 @@ The end-to-end check runs setup, then scaffolds, installs, builds, runs and test
 3. Describe the behavior before and after, any syntax or API break, and the commands you ran with their results.
 4. Open a draft for early feedback. Maintainers land their own work directly on `main`. Outside contributions arrive as pull requests that a maintainer reviews and merges. Agents never approve or merge.
 
-After publishing, start a `## <next version> (unreleased)` section in [the release notes](docs/user/src/setup/release-notes.md), with a `### Bugs fixed since <last published version>` heading. Keep install pins and other version-derived text on the compiler manifest's published version until the next release version bump.
+After publishing, start a `## <next version> (unreleased)` section in [the release notes](docs/user/src/setup/release-notes.md), with a `### Bugs fixed since <last published version>` heading. Repository release pins follow the compiler manifest. Website builds use npm latest, its published platforms and its runtime's Effect pin; an explicit release-version override supports rehearsals.
 
 ## Style
 
@@ -91,4 +91,4 @@ Start with [good first issues](https://github.com/smithersai/vibelang/issues?q=i
 
 Ask with the [question form](https://github.com/smithersai/vibelang/issues/new?template=question.yml). Report a vulnerability privately, never in an issue: see [SECURITY.md](.github/SECURITY.md).
 
-<sub>2,392 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
+<sub>2,403 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>

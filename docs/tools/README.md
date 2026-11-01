@@ -154,7 +154,7 @@ against a Cloudflare account; `KEEP=1` keeps the project.
 
 ## Compiler hovers
 
-scripts/deploy-docs.sh checks hover generation by default with the 0.0.2 release compiler. Vocs uses its own code highlighting; the hover cache remains available to tools. `VIBELANG_DOCS_HOVERS=0` skips hover generation.
+`scripts/deploy-docs.sh` checks hover generation by default with the selected npm release compiler. Vocs uses its own code highlighting; the hover cache remains available to tools. `VIBELANG_DOCS_HOVERS=0` skips hover generation.
 
 `hovers.ts` asks the VibeLang language server for the hovers and diagnostics of
 the same blocks and caches them for a renderer:
@@ -266,7 +266,7 @@ Every `npm run deploy` in `site/` (including `scripts/deploy-docs.sh`) runs
 `node docs/tools/deployed-release.mjs` through npm's postdeploy hook. It fetches
 the public homepage, setup Markdown, installation HTML and Markdown, llms.txt,
 and release notes in both formats, bypassing caches. It compares release pins
-and CLI output with the compiler manifest and TypeScript version, and platform
+and CLI output with npm latest and the TypeScript version, and platform
 claims with npm's published `vibelang@latest` metadata. Historical release notes
 keep their versions. Every mismatch or failed fetch is printed and exits nonzero.
 
@@ -299,3 +299,33 @@ Built-in argument validation quantifies over each selected declaration's complet
 Selected overloads remain distinct: `String.normalize`'s closed union of valid normalization forms is `never`, while its open `string` overload is `RangeError` (detail 205).
 
 Regenerate the normative imported lint inventory and both spec tables with `node docs/tools/lint-codes.mjs --write`; check staleness with `node docs/tools/lint-codes.mjs --check` or `node --test docs/tools/lint-codes.test.mjs`. The assignment registry reserves removed names; new names append in sorted order.
+
+
+## Published install metadata
+
+Site builds resolve the install version with `npm view vibelang version`, then
+read that version's compiler, runtime and platform manifests from npm. A failed
+registry query stops the build. Main's compiler manifest can name an unpublished
+candidate. The site hides newer release-note sections until publication; the
+repository retains them.
+
+`VIBELANG_RELEASE_VERSION` overrides the version for release rehearsals. When it
+matches the compiler candidate, local manifests supply its platforms and Effect
+pin, and `VIBELANG_RELEASE_TARBALLS` supplies its binaries. The pre-upload and
+post-deploy checks still require that version to be npm latest. An explicit
+`--dry-run` builds the rehearsal without the live pre-upload check; an upload always checks npm latest. Normal builds
+use the published runtime's Effect pin. Generated MDX and Markdown share the
+same build snapshot. Edit the home page in `site/src/index.mdx`.
+
+`scripts/deploy-docs.sh` checks every built install command and platform package
+against a fresh registry snapshot before upload. Historical install commands
+keep their versions, and each version must exist in npm’s version history.
+Platform names in installation commands and tables are checked; a note about
+a rehearsal package is not an installation claim. Run the check independently:
+
+```sh
+node docs/tools/published-site.mjs --check site/dist/public
+bun test docs/tools/published-site.test.ts
+```
+
+The test uses `testdata/npm-0.0.10.json`; it never contacts npm.

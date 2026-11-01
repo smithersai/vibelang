@@ -13,19 +13,26 @@ case "${1:-}" in
 	*) echo "usage: sh scripts/deploy-docs.sh [--dry-run]" >&2; exit 2 ;;
 esac
 
+# Resolve npm latest before building or uploading. An explicit release override
+# supports candidate tarball rehearsals; network failures never use main's version.
+mkdir -p "$root/.cache"
+node "$root/docs/tools/published-site.mjs" --snapshot "$root/.cache/site-release.json"
+export VIBELANG_SITE_RELEASE_FILE="$root/.cache/site-release.json"
+release=$(node -p 'require(process.argv[1]).compiler.version' "$VIBELANG_SITE_RELEASE_FILE")
+
 # The site build runs the kernel's law suite first, which needs these installs.
 for dir in docs/tools experiments packages/runtime; do
 	(cd "$root/$dir" && bun install --silent --frozen-lockfile)
 done
 # The docs are checked and annotated with the release that
-# `npm create vibelang@latest` installs: the native compiler and runtime of the version packages/compiler declares, from
+# `npm create vibelang@latest` installs: the native compiler and runtime npm latest declares (or the explicit rehearsal version), from
 # the release tarballs (VIBELANG_RELEASE_TARBALLS, else dist-npm/tarballs, else the
 # registry's own files through npm pack), not this checkout's build.
 # - Every docs example must compile with it. VIBELANG_SKIP_RELEASE_SNIPPETS=1 skips
 #   that check, and needs VIBELANG_SKIP_RELEASE_SNIPPETS_REASON, which is printed.
 # - Code blocks get its hovers (docs/tools/hovers.ts). VIBELANG_DOCS_HOVERS=0 turns
 #   them off; the default is on, so every redeploy ships the same site.
-release=${VIBELANG_RELEASE_VERSION:-$(node -p 'require(process.argv[1]).version' "$root/packages/compiler/package.json")}
+
 tarballs=${VIBELANG_RELEASE_TARBALLS:-$root/dist-npm/tarballs}
 hovers=${VIBELANG_DOCS_HOVERS:-1}
 case "$hovers" in
@@ -103,8 +110,11 @@ if $dry_run; then
     echo "deploy-docs: built site/dist; nothing deployed"
     exit 0
 fi
+# Independently query npm and inspect the assembled HTML and Markdown before upload.
+node "$root/docs/tools/published-site.mjs" --check "$site/public"
+
 : "${CLOUDFLARE_API_TOKEN:?deploy-docs: set CLOUDFLARE_API_TOKEN to deploy}"
 : "${CLOUDFLARE_ACCOUNT_ID:?deploy-docs: set CLOUDFLARE_ACCOUNT_ID to deploy}"
 cd "$root/site"
-# npm postdeploy checks the served pages against this manifest and npm latest.
+# npm postdeploy checks the served pages against npm latest (or the rehearsal version).
 CI=1 npm run deploy -- --yes

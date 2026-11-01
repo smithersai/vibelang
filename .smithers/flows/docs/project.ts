@@ -128,7 +128,7 @@ The end-to-end check runs setup, then scaffolds, installs, builds, runs and test
 3. Describe the behavior before and after, any syntax or API break, and the commands you ran with their results.
 4. Open a draft for early feedback. {{merge}}
 
-After publishing, start a \`## <next version> (unreleased)\` section in [the release notes](docs/user/src/setup/release-notes.md), with a \`### Bugs fixed since <last published version>\` heading. Keep install pins and other version-derived text on the compiler manifest's published version until the next release version bump.`
+After publishing, start a \`## <next version> (unreleased)\` section in [the release notes](docs/user/src/setup/release-notes.md), with a \`### Bugs fixed since <last published version>\` heading. Repository release pins follow the compiler manifest. Website builds use npm latest, its published platforms and its runtime's Effect pin; an explicit release-version override supports rehearsals.`
     },
     {
       heading: "Style",
