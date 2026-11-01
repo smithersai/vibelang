@@ -17,7 +17,7 @@ export const DirectoryLive = Layer.succeed(Directory, {
   lookup(id) { return id === "42" ? { id, name: "Ada" } : undefined }
 })
 
-export const UsersLive = Layer.effect(Users) {
+export const UsersLive = Layer.effect(Users, effect {
   const directory = Directory()
   return {
     find(id) {
@@ -26,7 +26,7 @@ export const UsersLive = Layer.effect(Users) {
       return user
     }
   }
-}
+})
 
 export const UsersTest = Layer.succeed(Users, {
   find(id) { return ({ id, name: "Grace" }) }

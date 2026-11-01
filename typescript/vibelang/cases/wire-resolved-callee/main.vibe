@@ -10,9 +10,9 @@ service A { value: string }
 service B { value: string }
 
 const LA = Layer.succeed(A, { value: "a" })
-const LB = Layer.effect(B) {
+const LB = Layer.effect(B, effect {
   return { value: (try A()).value + "b" }
-}
+})
 const pair = [LA, LB] as const
 
 const Direct = wire(LA, LB)

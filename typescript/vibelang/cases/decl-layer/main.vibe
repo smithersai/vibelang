@@ -23,7 +23,7 @@ const DirectoryLive = Layer.succeed(Directory, {
 })
 
 // Setup runs once, when the layer builds: Layer.effect.
-export const UsersLive = Layer.effect(Users) {
+export const UsersLive = Layer.effect(Users, effect {
   const directory = try Directory()
   const stats = try Stats()
   return {
@@ -35,9 +35,9 @@ export const UsersLive = Layer.effect(Users) {
     },
     region: "eu"
   }
-}
+})
 
-const StatsLive = Layer.effect(Stats) {
+const StatsLive = Layer.effect(Stats, effect {
   const lookups = try Ref.make(0)
   return {
     effect count() {
@@ -47,7 +47,7 @@ const StatsLive = Layer.effect(Stats) {
       try Ref.update(lookups, (n) => n + 1)
     }
   }
-}
+})
 
 effect function greet(id: string) {
   try {

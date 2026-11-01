@@ -11,8 +11,8 @@ const pending: Promise<{ left: number; right: number }> = Effect.runPromise(Effe
   right: Effect.succeed(2)
 }))
 
-Effect.runPromise {
+Effect.runPromise(effect {
   try Console.log(typeof try Fiber.join(running))
   try Console.log(total)
   try Console.log(JSON.stringify(try sync((value: Promise<{ left: number; right: number }>) => value, pending)))
-}
+})

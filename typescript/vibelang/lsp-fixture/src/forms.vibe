@@ -18,7 +18,7 @@ export control Gate {
   open(request: string): boolean!!
 }
 
-export const SeatsLive = Layer.effect(Seats) {
+export const SeatsLive = Layer.effect(Seats, effect {
   const taken = new Set<string>()
   return {
     take(id) {
@@ -27,7 +27,7 @@ export const SeatsLive = Layer.effect(Seats) {
       return id
     }
   }
-}
+})
 
 export function admit(id: string) {
   return Gate.open(`admit ${id}`) ? id : "closed"

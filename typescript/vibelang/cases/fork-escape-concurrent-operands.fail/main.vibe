@@ -51,7 +51,7 @@ export effect function forkArray() {
 
 export effect function forkBlockParam() {
   const f = fork sleep("1 minute")
-  const g = fork within { try Fiber.interrupt(f) }
+  const g = fork within(effect () => { try Fiber.interrupt(f) })
   join g
 }
 
@@ -75,5 +75,5 @@ export effect function concurrentCapture() {
 
 export effect function concurrentBlockParam() {
   const f = fork sleep("1 minute")
-  for concurrent (const n of [1]) { try within { try Fiber.interrupt(f) } }
+  for concurrent (const n of [1]) { try within(effect () => { try Fiber.interrupt(f) }) }
 }

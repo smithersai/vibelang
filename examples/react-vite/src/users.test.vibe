@@ -1,12 +1,12 @@
 import { assert, it } from "@effect/vitest"
 import { greet, UserNotFound, Users, UsersLive } from "./users.vibe"
 
-it.effect("greets a known user") {
+it.effect("greets a known user", effect () => {
   const message = Effect.provide(() => greet("42"), UsersLive)
   assert.strictEqual(message, "Welcome, Ada Lovelace")
-}
+})
 
-it.effect("fails a lookup with UserNotFound") {
+it.effect("fails a lookup with UserNotFound", effect () => {
   provide UsersLive {
     try {
       Users.find("404")
@@ -16,9 +16,9 @@ it.effect("fails a lookup with UserNotFound") {
       assert.strictEqual(error.id, "404")
     }
   }
-}
+})
 
-it.effect("recovers UserNotFound in greet") {
+it.effect("recovers UserNotFound in greet", effect () => {
   const message = Effect.provide(() => greet("404"), UsersLive)
   assert.strictEqual(message, "No user 404")
-}
+})

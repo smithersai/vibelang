@@ -9,7 +9,7 @@ export service Todos {
 
 // The setup runs once, when the layer builds, so the list lives as long as
 // the runtime that built it.
-export const TodosLive = Layer.effect(Todos) {
+export const TodosLive = Layer.effect(Todos, effect {
   const items = new Map<number, Todo>([
     [1, { id: 1, title: "Declare the schema", done: true }],
     [2, { id: 2, title: "Write the service", done: false }],
@@ -25,7 +25,7 @@ export const TodosLive = Layer.effect(Todos) {
       return done
     }
   }
-}
+})
 
 export function completeTodo(id: number) {
   try {

@@ -13,36 +13,36 @@ service Files { open(name: string): string!! }
 effect function stamp(): number!!Clock2 { return try Clock2.now() }
 effect function helper(name: string) { return `hi ${name} at ${try Clock2.now()}` }
 
-export const Lookup = Layer.effect(Greeter) {
+export const Lookup = Layer.effect(Greeter, effect {
   return {
     effect greet(name) { return `hi ${name} at ${try Clock2.now()}` }
   }
-}
+})
 
-export const ArrowHelper = Layer.effect(Greeter) { return { greet: effect (name) => `hi ${name} ${try stamp()}` } }
+export const ArrowHelper = Layer.effect(Greeter, effect { return { greet: effect (name) => `hi ${name} ${try stamp()}` } })
 
-export const Variable = Layer.effect(Greeter) {
+export const Variable = Layer.effect(Greeter, effect {
   const impl = { effect greet(name: string) { return try helper(name) } }
   return impl
-}
+})
 
 export const VariableArrow = Layer.effect(Greeter, effect {
   const impl = { greet: effect (name: string) => try helper(name) }
   return impl
 })
 
-export const Acquires = Layer.effect(Files) {
+export const Acquires = Layer.effect(Files, effect {
   return {
     effect open(name) {
       return try Effect.acquireRelease(sync((name) => `handle:${name}`, name), effect (h) => try Console.log("closed", h))
     }
   }
-}
+})
 
-export const Fails = Layer.effect(Greeter) {
+export const Fails = Layer.effect(Greeter, effect {
   return { effect greet(name) { if (name === "") throw new Oops({ n: 0 }); return name } }
-}
+})
 
-export const Missing = Layer.effect(Greeter) {
+export const Missing = Layer.effect(Greeter, effect {
   return {}
-}
+})

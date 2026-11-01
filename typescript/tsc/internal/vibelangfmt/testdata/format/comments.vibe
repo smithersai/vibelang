@@ -3,10 +3,10 @@
 /** Finds a user. */
 export function find(id: string): User!NotFound /* the failure */ {
   // before the block
-  return withSpan("find") {
+  return withSpan("find", effect () => {
     // inside the block
     return getUser(id) // trailing
-  }
+  })
 }
 
 function arms(x: number) {

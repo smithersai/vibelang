@@ -32,9 +32,9 @@ effect function twice(label: string, program: () => number!!) {
 }
 
 effect function appended() {
-  return try twice("abcd") {
+  return try twice("abcd", effect () => {
     return 19
-  }
+  })
 }
 
 class Runner {
@@ -45,9 +45,9 @@ class Runner {
 
 effect function method() {
   const runner = new Runner()
-  return try runner.run("job") {
+  return try runner.run("job", effect () => {
     return "done"
-  }
+  })
 }
 
 // A name followed by a block passes the block as the only argument.
@@ -56,15 +56,15 @@ effect function once(program: () => string!!) {
 }
 
 effect function bare() {
-  return try once {
+  return try once(effect () => {
     return "once"
-  }
+  })
 }
 
 effect function nested() {
-  return try (runnerOf()).run("outer") {
-    return try once { return "inner" }
-  }
+  return try (runnerOf()).run("outer", effect () => {
+    return try once(effect () => { return "inner" })
+  })
 }
 
 function runnerOf() {

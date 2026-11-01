@@ -175,7 +175,7 @@ export schema Reason = "missing" | "denied"
  * @category layers
  * @since 0.0.2
  */
-export const UsersLive = Layer.effect(Users) {
+export const UsersLive = Layer.effect(Users, effect {
   const seen = new Set<string>()
   return {
     find(id) {
@@ -184,7 +184,7 @@ export const UsersLive = Layer.effect(Users) {
     },
     region: "eu"
   }
-}
+})
 
 /**
  * The same layer, declared.
@@ -626,7 +626,7 @@ export function main() {
   log("Hello")
 }
 
-it.live("finds a user") {
+it.live("finds a user", effect () => {
   const user = getUser("1")
   assert.strictEqual(user.name, "Ada")
-}
+})

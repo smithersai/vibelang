@@ -1,7 +1,7 @@
 import { assert, it } from "@effect/vitest"
 import { fetchWithRetry, Timeout } from "./fetch.vibe"
 
-it.effect("retries a Timeout twice") {
+it.effect("retries a Timeout twice", effect () => {
   let calls = 0
   const result = fetchWithRetry(() => {
     calls += 1
@@ -10,9 +10,9 @@ it.effect("retries a Timeout twice") {
   })
   assert.strictEqual(result, "OK")
   assert.strictEqual(calls, 3)
-}
+})
 
-it.effect("fails after the third Timeout") {
+it.effect("fails after the third Timeout", effect () => {
   let calls = 0
   try {
     fetchWithRetry(() => {
@@ -24,4 +24,4 @@ it.effect("fails after the third Timeout") {
     assert.instanceOf(error, Timeout)
   }
   assert.strictEqual(calls, 3)
-}
+})

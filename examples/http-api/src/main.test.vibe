@@ -7,12 +7,12 @@ function request(body: unknown) {
   return HttpServerRequest.fromClientRequest(client)
 }
 
-it.effect("routes a validated request without opening a socket") {
-  Effect.scoped {
+it.effect("routes a validated request without opening a socket", effect () => {
+  Effect.scoped(effect {
     const app = HttpRouter.toHttpEffect(App)
     const created = Effect.provideService(app, HttpServerRequest.HttpServerRequest, request({ name: "Ada" }))
     const conflict = Effect.provideService(app, HttpServerRequest.HttpServerRequest, request({ name: "Ada" }))
     const bad = Effect.provideService(app, HttpServerRequest.HttpServerRequest, request({ name: 123 }))
     assert.deepStrictEqual([created.status, conflict.status, bad.status], [201, 409, 400])
-  }
-}
+  })
+})

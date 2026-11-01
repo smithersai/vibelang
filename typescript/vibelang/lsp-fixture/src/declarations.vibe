@@ -13,14 +13,14 @@ export function total(id: string) {
   return Accounts.balance(id)
 }
 
-export const AccountsLive = Layer.effect(Accounts) {
+export const AccountsLive = Layer.effect(Accounts, effect {
   const rate = 2
   return {
     balance(id) {
       return id.length * rate
     }
   }
-}
+})
 
 export function balanceWith(id: string) {
   provide AccountsLive {

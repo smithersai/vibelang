@@ -174,13 +174,13 @@ service Banner {
   text(topic: string): string!!
 }
 
-export const BannerLive = Layer.effect(Banner) {
+export const BannerLive = Layer.effect(Banner, effect {
   const edition = Config.String("EDITION")()
   log(`Preparing ${edition}`)
   return {
     text(topic) { return `${edition}: ${topic}` }
   }
-}
+})
 ```
 
 ### 04-delivery-policy

@@ -2,23 +2,23 @@ import { describe, it } from '@effect/vitest'
 import * as Route from "./Route.vibe"
 
 export function greetUser(id: string): string!NotFound {
-    return withSpan('greetUser') {
+    return withSpan('greetUser', effect () => {
       const user = getUser(id)
       Console.log(`Hello, ${user.name}`)
       return user.name
-    }
+    })
 }
 
-const UsersLive = Layer.effect(Users) {
+const UsersLive = Layer.effect(Users, effect () => {
   const seen = new Set<string>()
   return { find(id) { return getUser(id) }, region: "eu" }
-}
+})
 
 describe("Users", () => {
-  it.effect('finds a user') {
+  it.effect('finds a user', effect () => {
     const user = getUser("1")
     assert.strictEqual(user.name, "Ada")
-  }
+  })
 })
 
 function describeFailure(failure: NotFound | Timeout) {
@@ -71,11 +71,11 @@ function hatches(text: string) {
   return parsed ?? throw new BadJson({ error: "empty" })
 }
 
-const failingRender = () => exit(withSpan("render-report") {
+const failingRender = () => exit(withSpan("render-report", effect () => {
   throw new RenderFailed({ format: "unknown" })
-})
+}))
 
 function sign(n: number): number!! {
   if (n < 0) { return -1 }
-  return withSpan("sign") { return n === 0 ? 0 : 1 }
+  return withSpan("sign", effect () => { return n === 0 ? 0 : 1 })
 }

@@ -4,9 +4,9 @@
 // S, as Decorated does, so a block that provides it alone needs S.
 service S { value: string }
 
-const Decorated = Layer.effect(S) {
+const Decorated = Layer.effect(S, effect {
   return { value: (try S()).value + "!" }
-}
+})
 const Wrapped = wire(Decorated)
 const kept: Layer.Layer<S, never, S> = Wrapped
 

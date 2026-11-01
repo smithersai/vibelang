@@ -16,7 +16,7 @@ const NamesLive = Layer.succeed(Names, {
   }
 })
 
-const CounterLive = Layer.effect(Counter) {
+const CounterLive = Layer.effect(Counter, effect {
   const count = try Ref.make(0)
   return {
     effect next() {
@@ -24,7 +24,7 @@ const CounterLive = Layer.effect(Counter) {
       return try Ref.get(count)
     }
   }
-}
+})
 
 // The block provides Names, so the function needs no services.
 effect function greeting(id: string): string!NotFound! {

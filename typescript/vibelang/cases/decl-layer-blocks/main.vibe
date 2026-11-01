@@ -1,6 +1,6 @@
 // expect-result: {"found":"Ada","missing":"No user 7","region":"eu","stats":"2 lookups","log":["open","close"]}
 // Layers are calls (D221): Layer.succeed(Service, { ... }) without setup, and
-// Layer.effect(Service) { setup; return { ... } } through block params, where
+// Layer.effect(Service, effect { setup; return { ... } }), where
 // the block is the layer's effect and its members are typed by the service.
 error UserNotFound { id: string }
 
@@ -24,7 +24,7 @@ const DirectoryLive = Layer.succeed(Directory, {
   }
 })
 
-export const UsersLive = Layer.effect(Users) {
+export const UsersLive = Layer.effect(Users, effect {
   const directory = try Directory()
   const stats = try Stats()
   return {
@@ -36,11 +36,11 @@ export const UsersLive = Layer.effect(Users) {
     },
     region: "eu"
   }
-}
+})
 
 const log: string[] = []
 
-const StatsLive = Layer.effect(Stats) {
+const StatsLive = Layer.effect(Stats, effect {
   const lookups = try Ref.make(0)
   return {
     effect count() {
@@ -50,14 +50,14 @@ const StatsLive = Layer.effect(Stats) {
       try Ref.update(lookups, (n) => n + 1)
     }
   }
-}
+})
 
 service Session {
   name(): string!!
 }
 
 // Setup that acquires a resource with using: the layer releases it when its scope closes.
-const SessionLive = Layer.effect(Session) {
+const SessionLive = Layer.effect(Session, effect {
   using _ = try Effect.acquireRelease(
     effect { log.push("open"); return "session" },
     effect () => { log.push("close") }
@@ -67,7 +67,7 @@ const SessionLive = Layer.effect(Session) {
       return "session"
     }
   }
-}
+})
 
 effect function greet(id: string) {
   try {

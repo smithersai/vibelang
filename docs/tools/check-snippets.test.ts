@@ -262,13 +262,13 @@ test.skipIf(!existsSync(compiler))("runs Effect Vitest snippets, shared assertio
     writeFileSync(join(root, "pass.md"), [
       "```vibe", 'import { assert, it } from "@effect/vitest"', 'import { TestClock } from "effect/testing"',
       'function check(value: number) { assert.strictEqual(value, 42) }',
-      'it.effect("virtual sleep") { const worker = fork { sleep("1 hour"); return 42 }; TestClock.adjust("1 hour"); check(join worker) }',
+      'it.effect("virtual sleep", effect () => { const worker = fork { sleep("1 hour"); return 42 }; TestClock.adjust("1 hour"); check(join worker) })',
       '// Output:', "```",
       "```vibe", '// run: check(42); Console.log("checked")', 'function example() { return 42 }', '// Output: checked', "```"
     ].join("\n"))
     writeFileSync(join(root, "failure.md"), [
       "```vibe", 'import { assert, it } from "@effect/vitest"',
-      'it.effect("reports assertion failures") { assert.strictEqual(1, 2) }', '// Output:', "```"
+      'it.effect("reports assertion failures", effect () => { assert.strictEqual(1, 2) })', '// Output:', "```"
     ].join("\n"))
     writeFileSync(join(root, "literal.md"), [
       "```ts", "// TypeScript (.ts)", "// literal.ts", 'console.log("@effect/vitest")', '// Output: @effect/vitest', "```"

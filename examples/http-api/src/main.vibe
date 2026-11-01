@@ -9,7 +9,7 @@ export service Users {
 }
 
 // The layer owns its state; each test builds an isolated directory.
-export const UsersLive = Layer.effect(Users) {
+export const UsersLive = Layer.effect(Users, effect {
   const names = new Set<string>()
   let nextId = 0
   return {
@@ -20,7 +20,7 @@ export const UsersLive = Layer.effect(Users) {
       return { id: String(nextId), name }
     }
   }
-}
+})
 
 export function createUser() {
   try {

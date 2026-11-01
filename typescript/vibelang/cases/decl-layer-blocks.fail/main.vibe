@@ -6,11 +6,11 @@ service Users {
   find(id: string): string!!
 }
 
-export const UsersLive = Layer.effect(Users) {
+export const UsersLive = Layer.effect(Users, effect {
   const prefix = "user "
   return {
     effect find(id) {
       return id.length
     }
   }
-}
+})

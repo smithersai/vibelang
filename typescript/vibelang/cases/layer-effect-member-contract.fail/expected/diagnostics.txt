@@ -1,5 +1,5 @@
 main.vibe(18,50): error EK3101
-main.vibe(22,61): error EK3101
+main.vibe(22,68): error EK3101
 main.vibe(25,25): error EK3101
 main.vibe(30,18): error EK3101
 main.vibe(36,12): error EK3101

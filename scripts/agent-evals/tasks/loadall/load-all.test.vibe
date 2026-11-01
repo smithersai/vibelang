@@ -17,18 +17,18 @@ function countingStore(state: { mutable running: number; mutable peak: number })
   })
 }
 
-it.live("loads every id in order, skipping Missing ones") {
+it.live("loads every id in order, skipping Missing ones", effect () => {
   const state = { running: 0, peak: 0 }
   provide countingStore(state) {
     assert.deepStrictEqual(loadAll(["ada", "xeno", "bob"]), ["ADA", "BOB"])
   }
-}
+})
 
-it.live("loads at most 4 ids at once") {
+it.live("loads at most 4 ids at once", effect () => {
   const state = { running: 0, peak: 0 }
   const ids = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]
   provide countingStore(state) {
     assert.strictEqual(loadAll(ids).length, 10)
   }
   assert.strictEqual(state.peak, 4)
-}
+})

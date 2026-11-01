@@ -5,9 +5,9 @@ effect function getName(): string!! {
 
 // getName takes no program, so it cannot take a block.
 function wrong() {
-  return try getName() {
+  return try getName(effect () => {
     return 1
-  }
+  })
 }
 
 export function main() {

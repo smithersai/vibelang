@@ -33,7 +33,7 @@ effect function context(): number!! {
 
 export effect function main() {
   const events: string[] = []
-  const live = Layer.effect(Left) { events.push("build"); return { left: 2 } }
+  const live = Layer.effect(Left, effect { events.push("build"); return { left: 2 } })
   function layer() { events.push("eval:layer"); return live }
   function value() { events.push("eval:value"); return { right: 4 } }
   let provided = 0

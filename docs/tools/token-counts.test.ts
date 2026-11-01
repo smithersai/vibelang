@@ -33,14 +33,14 @@ test("pairs each cheat-sheet entry's Effect blocks with its VibeLang blocks", ()
     "",
     fence("vibe es", "// run: Console.log(hatch())\nfunction hatch() { return sync(() => 1) }\n// Output: 1"),
     "",
-    fence("vibe", "// hatch.test.vibe\nit.live(\"runs\") { }")
+    fence("vibe", "// hatch.test.vibe\nit.live(\"runs\", effect () => { })")
   ].join("\n")
   expect(cheatSheetPairs(markdown)).toEqual([
     { label: "Errors", effect: ["class Missing extends Data.TaggedError(\"Missing\") {}"], vibe: ["error Missing"] },
     {
       label: "Plain TypeScript in hatches",
       effect: ["const id = Effect.sync(() => 1)"],
-      vibe: ["// run: Console.log(hatch())\nfunction hatch() { return sync(() => 1) }\n// Output: 1", "// hatch.test.vibe\nit.live(\"runs\") { }"]
+      vibe: ["// run: Console.log(hatch())\nfunction hatch() { return sync(() => 1) }\n// Output: 1", "// hatch.test.vibe\nit.live(\"runs\", effect () => { })"]
     }
   ])
 })

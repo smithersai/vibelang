@@ -13,14 +13,14 @@ const NameLive = Layer.succeed(Name, {
   }
 })
 
-const GreetingLive = Layer.effect(Greeting) {
+const GreetingLive = Layer.effect(Greeting, effect {
   const name = Name()
   return {
     text() {
       return `Hello, ${name.value()}`
     }
   }
-}
+})
 
 export function discard(program: Effect.Effect<number>) {
   program

@@ -15,7 +15,7 @@ function a(): Layer.Layer<A> {
 
 function b(): Layer.Layer<B, never, A> {
   made.push("b")
-  return Layer.effect(B) { return { value: (try A()).value + "b" } }
+  return Layer.effect(B, effect { return { value: (try A()).value + "b" } })
 }
 
 effect function read(layer: Layer.Layer<B>): string!! {

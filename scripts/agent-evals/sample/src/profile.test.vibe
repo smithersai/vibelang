@@ -14,23 +14,23 @@ function flakyStore(failures: number, calls: { mutable count: number }) {
   })
 }
 
-it.effect("loads a name") {
+it.effect("loads a name", effect () => {
   const calls = { count: 0 }
   provide flakyStore(0, calls) {
     assert.strictEqual(load("ada"), "ADA")
   }
   assert.strictEqual(calls.count, 1)
-}
+})
 
-it.effect("retries Unavailable") {
+it.effect("retries Unavailable", effect () => {
   const calls = { count: 0 }
   provide flakyStore(2, calls) {
     assert.strictEqual(load("ada"), "ADA")
   }
   assert.strictEqual(calls.count, 3)
-}
+})
 
-it.effect("gives up after 3 retries") {
+it.effect("gives up after 3 retries", effect () => {
   const calls = { count: 0 }
   provide flakyStore(10, calls) {
     try {
@@ -41,9 +41,9 @@ it.effect("gives up after 3 retries") {
     }
   }
   assert.strictEqual(calls.count, 4)
-}
+})
 
-it.effect("does not retry Missing") {
+it.effect("does not retry Missing", effect () => {
   const calls = { count: 0 }
   provide flakyStore(0, calls) {
     try {
@@ -54,4 +54,4 @@ it.effect("does not retry Missing") {
     }
   }
   assert.strictEqual(calls.count, 1)
-}
+})

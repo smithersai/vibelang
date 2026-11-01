@@ -6,13 +6,13 @@
 effect function restored() {
   const started = try Deferred.make<string>()
   const fiber = fork {
-    return try uninterruptible {
+    return try uninterruptible(effect {
       restore {
         try Deferred.succeed(started, "started")
         try sleep("1 second")
       }
       return "finished"
-    }
+    })
   }
   try started.await()
   try fiber.interrupt()
@@ -22,12 +22,12 @@ effect function restored() {
 // The restore block runs where it stands, inside the region.
 effect function value(): number!! {
   let ran = 0
-  return try uninterruptible {
+  return try uninterruptible(effect {
     restore {
       ran = 1
     }
     return ran + 2
-  }
+  })
 }
 
 export effect function main() {

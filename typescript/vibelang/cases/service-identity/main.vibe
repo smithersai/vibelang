@@ -59,9 +59,9 @@ effect function search(query: string) {
 
 const UsersLive = Layer.succeed(Users, new UsersInMemory())
 
-const UsersEffect = Layer.effect(Users) {
+const UsersEffect = Layer.effect(Users, effect {
   return { region: "effect", find: effect (id) => `effect ${id}` }
-}
+})
 
 effect function provided(id: string) {
   provide Users = shaped {

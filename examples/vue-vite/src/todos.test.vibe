@@ -1,12 +1,12 @@
 import { assert, it } from "@effect/vitest"
 import { completeTodo, loadBoard, type Todo, TodoNotFound, Todos, TodosLive } from "./todos.vibe"
 
-it.effect("completes a todo") {
+it.effect("completes a todo", effect () => {
   const message = Effect.provide(() => completeTodo(2), TodosLive)
   assert.strictEqual(message, "Completed: Write the service")
-}
+})
 
-it.effect("fails with TodoNotFound for an unknown id") {
+it.effect("fails with TodoNotFound for an unknown id", effect () => {
   provide TodosLive {
     try {
       Todos.complete(99)
@@ -16,18 +16,18 @@ it.effect("fails with TodoNotFound for an unknown id") {
       assert.strictEqual(error.id, 99)
     }
   }
-}
+})
 
-it.effect("recovers TodoNotFound in completeTodo") {
+it.effect("recovers TodoNotFound in completeTodo", effect () => {
   const message = Effect.provide(() => completeTodo(99), TodosLive)
   assert.strictEqual(message, "No todo #99")
-}
+})
 
-it.effect("loads the board after both completions") {
+it.effect("loads the board after both completions", effect () => {
   const board = Effect.provide(() => loadBoard(), TodosLive)
   assert.deepStrictEqual(board.messages, ["Completed: Write the service", "No todo #99"])
   // map and done are also Effect data methods. The written types say these are
   // the array's map and the todo's field (EK9101).
   const todos: ReadonlyArray<Todo> = board.todos
   assert.deepStrictEqual(todos.map((todo: Todo) => todo.done), [true, true, false])
-}
+})

@@ -244,6 +244,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Moving a repository the migrate flow had partly migrated onto a newer toolchain left its `.vibe` modules for the new compiler alone, which cannot recover a VIP migration only the earlier compiler knows (VIP-1's unmarked Effect helpers); `upgrade-effect` now runs the installed compiler's `vibelang --fix --fix-vip-only` first and commits its edits with the switch.
 
+- The examples, the app template, the Vite plugin's README and the style guide wrote trailing blocks such as `it.effect("loads") { … }`, which VIP-11 denied; they now pass the block as an argument, `it.effect("loads", effect () => { … })` and `Layer.effect(Users, effect { … })`.
 - VIP-11 denied trailing blocks, yet `Layer.effect(Users) { … }` and `it.effect("loads") { … }` still compiled silently as calls with an arrow argument; each trailing block is now `EK1101`, and `vibelang --fix` writes the block as the call's last argument with the same runtime behavior.
 - Release checks could fail with `ETXTBSY` while a parallel build overwrote the native compiler; native binaries now replace completed builds atomically, and release checks wait for the compiler and runtime builds.
 
@@ -1913,9 +1914,9 @@ listed with an upgrade step.
 
   ```vibe
   // fragment
-  timeout("10 millis") {
+  timeout(() => {
     try { sleep("1 hour") } finally { throw new CleanupError() }
-  } // parent can report only TimeoutError
+  }, "10 millis") // parent can report only TimeoutError
   ```
 
 - **Effect member lookup depends on declaration conventions.** Synthesized
@@ -2466,7 +2467,7 @@ This release has no breaking changes.
 - The starter treats EK3205 as an error: an entry module's `main` that
   needs services without providers stops the build and emits no JavaScript.
   Provide those services before running the entry program.
-- Members returned by `Layer.effect(Service) { ... }` must fit the
+- Members returned by `Layer.effect(Service, effect { ... })` must fit the
   service's contract, as in `Layer.succeed`. EK3101 rejects a member that
   looks up services its contract does not allow at call time; failures
   outside the member's contract are EK2001.

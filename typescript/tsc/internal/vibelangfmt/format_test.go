@@ -147,21 +147,21 @@ schema error Missing extends FsError {
 }
 export schema error Plain extends FsError
 `,
-	"block params": `const UsersLive = Layer.effect(Users) {
+	"explicit block arguments": `const UsersLive = Layer.effect(Users, effect () => {
   const seen = new Set<string>()
   return { find(id) { return getUser(id) }, region: "eu" }
-}
+})
 function greetUser(id: string) {
-  return withSpan("greetUser") {
+  return withSpan(() => {
     const user = getUser(id)
     return user.name
-  }
+  }, "greetUser")
 }
-it.live("finds a user") {
+it.live("finds a user", effect () => {
   assert.strictEqual(getUser("1").name, "Ada")
-}
-const traced = (id: string) => withSpan("traced") { return id }
-const fresh = Layer.unwrap { return Layer.empty }
+})
+const traced = (id: string) => withSpan(() => { return id }, "traced")
+const fresh = Layer.unwrap(effect () => { return Layer.empty })
 `,
 	"match and is": `function describe(e: NotFound | Timeout) {
   return match (e) {

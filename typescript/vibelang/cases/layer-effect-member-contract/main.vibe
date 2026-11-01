@@ -9,20 +9,20 @@ service Builder { greet(name: string): string!! }
 
 const Clock2Live = Layer.succeed(Clock2, { effect now() { return 42 } })
 
-const GreeterLive = Layer.effect(Greeter) {
+const GreeterLive = Layer.effect(Greeter, effect {
   const clock = try Clock2()
   return { effect greet(name) { return `hi ${name} at ${try clock.now()}` } }
-}
+})
 
-const StampedLive = Layer.effect(Stamped) {
+const StampedLive = Layer.effect(Stamped, effect {
   return { effect greet(name) { return `hi ${name} at ${try Clock2.now()}` } }
-}
+})
 
-const BuilderLive = Layer.effect(Builder) {
+const BuilderLive = Layer.effect(Builder, effect {
   const clock = try Clock2()
   const impl = { effect greet(name: string) { return `built ${name} at ${try clock.now()}` } }
   return impl
-}
+})
 
 // expect-result: ["hi a at 42","hi b at 42","built c at 42"]
 export effect function main() {

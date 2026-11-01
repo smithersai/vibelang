@@ -6,9 +6,9 @@ service A { value: string }
 service B { value: string }
 
 const LA = Layer.succeed(A, { value: "a" })
-const LB = Layer.effect(B) {
+const LB = Layer.effect(B, effect {
   return { value: (try A()).value + "b" }
-}
+})
 
 function layers(): readonly [typeof LA, typeof LB] {
   return [LA, LB]

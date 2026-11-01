@@ -110,9 +110,9 @@ test("a Vitest rerun recompiles a .vibe module whose import changed its contract
   await writeFile(join(root, "passing.test.vibe"), `import { assert, it } from "@effect/vitest"
 import { value } from "./dep.vibe"
 
-it.effect("reads its dependency") {
+it.effect("reads its dependency", effect () => {
   assert.strictEqual(value(), 7)
-}
+})
 `)
   await writeFile(join(root, "dep.vibe"), "export function value(): number {\n  return 7\n}\n")
   let result = await runVitest(root)
@@ -396,7 +396,7 @@ test("documented Vitest setup includes tests excluded by the app project", async
   await writeFile(join(root, "src/greet.vibe"), 'export function greet(name: string) { return `Hello, ${name}!` }\n')
   await writeFile(join(root, "src/greet.test.vibe"), `import { assert, it } from "@effect/vitest"
 import { greet } from "./greet.vibe"
-it.effect("greets") { assert.strictEqual(greet("Vite"), "Hello, Vite!") }
+it.effect("greets", effect () => { assert.strictEqual(greet("Vite"), "Hello, Vite!") })
 `)
   const result = await runVitest(root)
   assert.equal(result.code, 0, result.output)

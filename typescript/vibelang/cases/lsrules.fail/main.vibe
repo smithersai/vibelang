@@ -17,14 +17,14 @@ const DirectoryLive = Layer.succeed(Directory, {
   }
 })
 
-const UsersLive = Layer.effect(Users) {
+const UsersLive = Layer.effect(Users, effect {
   const directory = try Directory()
   return {
     effect find(id) {
       return try directory.lookup(id)
     }
   }
-}
+})
 
 // EK4801: a statement that discards an Effect value, in VibeLang code and in a hatch.
 export function floating(program: Effect.Effect<number>) {
