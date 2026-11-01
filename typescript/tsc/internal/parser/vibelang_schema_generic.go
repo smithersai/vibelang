@@ -28,8 +28,8 @@ func (p *Parser) vibelangArraySchemaReference(name, value, visible *ast.Node, mu
 	// Codec construction reparents its arguments. Restore the visible tree
 	// before the binder sees it; detached alternatives share only the argument.
 	ast.SetParentInChildren(visible)
-	clonedName := p.factory.DeepCloneReparse(name)
-	clonedName.Parent = visible
+	clonedName := p.vibelangSchemaGenericName(name)
+	clonedName.Parent.Parent = visible
 	p.vibelangSchemaGenerics = append(p.vibelangSchemaGenerics, ast.SchemaGenericReference{
 		Arity: 1, Name: clonedName, Expression: visible, MutableArray: mutableValue, ReadonlyArray: readonly,
 		DefaultMutable: mutable, Legacy: legacy,
@@ -48,7 +48,7 @@ func (p *Parser) attachVibeLangSchemaGenericScopes(file *ast.SourceFile) {
 		if scope == nil {
 			continue
 		} // a discarded speculative parse
-		ref.Name.Parent = scope
+		ref.Name.Parent.Parent = scope
 		if ref.MutableArray != nil {
 			ref.MutableArray.Parent = scope
 		}
@@ -61,10 +61,19 @@ func (p *Parser) attachVibeLangSchemaGenericScopes(file *ast.SourceFile) {
 // A two-argument candidate is a Record only when its source name resolves to
 // the library's type alias. Unknown spellings have no previous codec to keep.
 func (p *Parser) vibelangRecordSchemaReference(name, value *ast.Node, legacy bool) *ast.Node {
-	clonedName := p.factory.DeepCloneReparse(name)
-	clonedName.Parent = value
+	clonedName := p.vibelangSchemaGenericName(name)
+	clonedName.Parent.Parent = value
 	p.vibelangSchemaGenerics = append(p.vibelangSchemaGenerics, ast.SchemaGenericReference{
 		Arity: 2, Name: clonedName, Expression: value, Legacy: legacy,
 	})
 	return value
+}
+
+// A detached name still has ordinary type-reference context for editor
+// symbol lookup. The holder is metadata only and is never bound or emitted.
+func (p *Parser) vibelangSchemaGenericName(name *ast.Node) *ast.Node {
+	cloned := p.factory.DeepCloneReparse(name)
+	holder := p.vibelangSpanning(p.factory.NewTypeReferenceNode(cloned, nil), name.Loc)
+	ast.SetParentInChildren(holder)
+	return cloned
 }

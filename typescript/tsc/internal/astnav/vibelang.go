@@ -34,6 +34,31 @@ func isVibeLangSourceFile(sourceFile *ast.SourceFile) bool {
 // order rather than searching by position, and never descends into a
 // synthesized node, so the node it returns has only source nodes above it.
 func vibelangSourceToken(sourceFile *ast.SourceFile, current *ast.Node, start int, end int) *ast.Node {
+	// The source name of a mapped schema generic survives as detached
+	// metadata. Return its actual type-context token before searching the
+	// lowered codec, which contains no corresponding source reference.
+	for _, reference := range sourceFile.VibeLangSchemaGenerics {
+		if reference.Name == nil || ast.GetSourceFileOfNode(reference.Name) != sourceFile {
+			continue
+		}
+		var nameToken func(*ast.Node) *ast.Node
+		nameToken = func(name *ast.Node) *ast.Node {
+			if ast.IsIdentifier(name) && name.End() == end &&
+				scanner.GetTokenPosOfNode(name, sourceFile, false) == start {
+				return name
+			}
+			if ast.IsQualifiedName(name) {
+				if found := nameToken(name.AsQualifiedName().Left); found != nil {
+					return found
+				}
+				return nameToken(name.AsQualifiedName().Right)
+			}
+			return nil
+		}
+		if found := nameToken(reference.Name); found != nil {
+			return found
+		}
+	}
 	var found *ast.Node
 	var visit ast.Visitor
 	visit = func(node *ast.Node) bool {

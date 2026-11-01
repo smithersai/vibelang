@@ -515,6 +515,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - ESLint reported `no-constant-binary-expression` on a valid `is` pattern with bindings, such as `outcome is Exit.Failure(let cause)`; generated binding steps no longer look like constant expressions, and constants written in source still get the rule.
 - Overlapping native builds could fail while writing the dprint plugin because they shared one temporary zip file; each build now prepares its own archive before publishing it.
+- Renaming a type binding could leave its generic schema uses unchanged, selecting a different decoder; Rename and Find References now include those uses in their original type scope.
+
 - Organizing imports deleted type-only schema bindings, producing or hiding `EK2109`; organize-imports and remove-unused actions now keep the necessary bindings and remove aliases unused in that scope.
 
 - Renamed or qualified `Record` schema types were rejected with `EK2109`; they now use the resolved library record decoder and preserve writable decoded keys.
