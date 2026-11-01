@@ -70,6 +70,44 @@ export function replaceTsc(scripts = {}) {
   return next
 }
 
+// tsc in command position: at the start, or after a separator, alone or run
+// through a package runner (bunx, npx, pnpm exec, bun x, yarn).
+const tscCommand = /(^|[\s;&|(`}])((?:bunx|npx|pnpm\s+exec|bun\s+x|yarn)\s+)?tsc(?=\s|$|`)/g
+
+/**
+ * A build script's text with each `tsc` its Bun shell runs (`$\`bunx tsc
+ * --emitDeclarationOnly\``) replaced by `vibelang`, which compiles the
+ * package's .vibe modules too: stock tsc reads no .vibe file, so opencode's
+ * http-recorder build found no dist/index.d.ts once src/index.ts became .vibe
+ * (opencode-42). Only the literal text of a `$` template changes; an
+ * interpolation, another string or a comment stays. ts is TypeScript's API.
+ */
+export function replaceTscInScript(text, ts) {
+  const source = ts.createSourceFile("script.ts", text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  const edits = []
+  const literal = (node) => {
+    const start = node.getStart(source)
+    const raw = text.slice(start, node.end)
+    const next = raw.replace(tscCommand, "$1$2vibelang")
+    if (next !== raw) edits.push({ at: start, end: node.end, text: next })
+  }
+  const visit = (node) => {
+    if (ts.isTaggedTemplateExpression(node) && ts.isIdentifier(node.tag) && node.tag.text === "$") {
+      const template = node.template
+      if (ts.isNoSubstitutionTemplateLiteral(template)) literal(template)
+      else {
+        literal(template.head)
+        for (const span of template.templateSpans) literal(span.literal)
+      }
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(source)
+  let out = text
+  for (const edit of edits.sort((a, b) => b.at - a.at)) out = out.slice(0, edit.at) + edit.text + out.slice(edit.end)
+  return out
+}
+
 /**
  * The root owns solution builds even when only leaf packages are migrated.
  * Replace the checker in place: a shared base config is not an extra project.
@@ -1009,7 +1047,10 @@ export function wireBunBuilds({ root, packages, ts, specsFor }) {
         warnings.push(`${file}: this toolchain has no vibelang-unplugin; rebuild the toolchain to wire Bun.build`)
         continue
       }
-      const text = readFileSync(join(root, file), "utf8")
+      const original = readFileSync(join(root, file), "utf8")
+      // The script's own tsc runs compile its .vibe modules too, whether or not its Bun.build is wired yet.
+      const text = replaceTscInScript(original, ts)
+      if (text !== original) write(file, text)
       try {
         const next = addBunBuildPlugin(text, ts)
         if (next === text) continue

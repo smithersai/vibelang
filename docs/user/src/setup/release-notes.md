@@ -363,6 +363,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Unchanged tests that bundle package sources through Rolldown or Vite's bundled config loader could not load migrated `.vibe` dependencies. Migration setup now supports `--emitted-project` to generate exact private import conditions for JavaScript produced by the package's existing build, while preserving test commands, consumer exports and published declaration bytes.
 - A `.vibe` module that imported or declared a name the prelude gives an Effect module, such as sst's `Resource`, and read it in an Effect function compiled, then failed at load with `Identifier 'Resource' has already been declared`: the emit also imported `effect/Resource` under that name. A local declaration or import now shadows the module there too.
 
+- A build script that ran `` $`bunx tsc --emitDeclarationOnly` `` before its `Bun.build` wrote no declaration for a module the migrate flow had made `.vibe`, so opencode's http-recorder build failed `ENOENT … dist/index.d.ts`; setup now runs `vibelang` there, as it already did in package.json scripts.
+
 - The migrate flow's setup left an electron-vite config's `main`, `preload` and `renderer` builds, and a Vite app's worker build (`new Worker(new URL(...))`), without `vibelang()`, so those builds failed on a `.vibe` module (`PARSE_ERROR`); setup now adds the plugin to each of them.
 
 - The kernel law suite could still fail at 5 s on a loaded host after its 30 s budget moved into the test preload, because Bun applies a preload's default timeout to the first test file only; `bun run test` in `experiments` now passes the budget to every file, and the docs build uses the same flag.
