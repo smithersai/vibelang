@@ -15,7 +15,7 @@ import (
 // optional unary prefix of the whole expression. Oracle: the program reports
 // exactly one EK0510 and no other error when the bare head is the left operand
 // of `**`, and compiles without errors otherwise.
-const unaryPowQuote = "| `EK0510` | an unparenthesized `try`, `fork` or `join` expression on the left of `**`"
+const unaryPowQuote = "| `EK0510` | an unparenthesized `try`, `try.all`, `try.race`, `try.any`, `try.allSettled`, `fork`, `fork.in(s)`, `fork.scoped`, `fork.detached` or `join` expression on the left of `**`"
 
 type unaryPowShape struct {
 	head, op string

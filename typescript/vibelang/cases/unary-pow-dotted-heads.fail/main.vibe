@@ -1,0 +1,17 @@
+// expect: EK0510 EK0510
+// Loop round 4, OPUS-7: EK0510 covers every execution head whose operand is a
+// UnaryExpression, the dotted try forms included. These two give a number, so
+// the parenthesized forms below compile and EK0510 is the only error.
+declare const a: Effect.Effect<number>
+
+export effect function bad() {
+  const r = try.race [a] ** 2
+  const n = try.any [a] ** 2
+  return [r, n]
+}
+
+export effect function good() {
+  const r = (try.race [a]) ** 2
+  const n = (try . any [a]) ** 2
+  return [r, n, 2 ** try.race [a]]
+}
