@@ -244,6 +244,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A migrated workspace could check the same projects repeatedly while missing a `.vibe` file outside its original build graph; migration setup now combines the authored roots and every uncovered source owner into one build, and rejects an unowned source file.
 
+- Repository Node loaders could receive raw `.vibe` modules before VibeLang compiled them; migration setup now registers VibeLang after the repository's ESM loader hooks so native compilation runs first.
+
 - Migration could break a plugin host that derives virtual module names from a resolved package entry and source-file extension; scope planning now keeps the observed packages native and records the source-enumeration cause, preserving the unchanged host.
 
 - The migrate flow rejected a native acquisition's unchanged `!Error` contract when its original function returned `Effect.callback<A, Error>`, as in foldkit's WebSocket example; it now recognizes that explicit returned channel when the callback becomes a platform service, while nested callbacks and changed contracts remain rejected.

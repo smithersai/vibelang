@@ -1,0 +1,6 @@
+{
+  "repo": "alchemy",
+  "pattern": "bin/register-dev-mode.js installs source conditions then Oxc",
+  "file": "bin/register-dev-mode.js",
+  "source": "import { registerHooks } from \"node:module\";\nimport { registerOxc } from \"./register-oxc.mjs\";\nregisterHooks({ resolve(specifier, context, nextResolve) { return nextResolve(specifier, { ...context, conditions: [\"bun\", ...context.conditions] }); } });\nregisterOxc({ conditions: [\"bun\"] });\n"
+}
