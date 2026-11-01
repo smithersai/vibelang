@@ -433,6 +433,8 @@ the region. Neither `sleep` nor `yieldNow` proves readiness.
 
 The case harness accepts a positive safe integer for `--jobs`. It starts no more workers than there are selected cases. Invalid, missing, zero, negative or fractional counts exit with status `2` before any case is read or modified; a zero-worker run cannot report success.
 
+The harness gives each command a private process group on Unix and terminates that group when the command finishes or reaches its deadline. At the deadline it also closes inherited output pipes, so a descendant outside that group cannot keep the harness waiting for EOF. A timeout fails the command even if its parent already exited with status `0`. Receipts retain the process and group IDs, the timeout flag, the parent's actual exit or signal, and separate output tails. On Windows the harness kills the direct child and bounds pipe waiting; Unix process-group cleanup is unavailable.
+
 A case's key is the compiler's key, the runtime's `dist/` key, the Effect
 install's lockfiles, the harness files and the digests of the files in that
 case's directory. The compiler's key is the Go module's sources and the `go`

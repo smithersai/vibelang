@@ -14,14 +14,34 @@ export class CaseCommands {
         exitCode: null, signal: null, timedOut: false,
       }
       this.records.push(record)
-      const child = spawn(command, argv, { ...options, stdio: ["ignore", "pipe", "pipe"] })
+      // Own a process group so a runner's subprocesses share its deadline.
+      const grouped = process.platform !== "win32"
+      const child = spawn(command, argv, { ...options, detached: grouped, stdio: ["ignore", "pipe", "pipe"] })
+      record.pid = child.pid ?? null
+      record.processGroup = grouped ? child.pid ?? null : null
+      const terminate = () => {
+        if (!child.pid) return
+        if (grouped) {
+          try { process.kill(-child.pid, "SIGKILL") }
+          catch (error) {
+            if (error.code !== "ESRCH") {
+              record.terminationError = error.message
+              child.kill("SIGKILL")
+            }
+          }
+        } else child.kill("SIGKILL")
+      }
       let stdout = ""
       let stderr = ""
       child.stdout.on("data", (d) => (stdout += d))
       child.stderr.on("data", (d) => (stderr += d))
       const timer = setTimeout(() => {
         record.timedOut = true
-        child.kill("SIGKILL")
+        terminate()
+        // A descendant can escape the group or inherit these pipes on Windows.
+        // Stop waiting for its EOF once the command's deadline has expired.
+        child.stdout.destroy()
+        child.stderr.destroy()
       }, timeout)
       child.on("error", (error) => {
         record.error = error.message
@@ -29,12 +49,13 @@ export class CaseCommands {
       })
       child.on("close", (code, signal) => {
         clearTimeout(timer)
+        terminate()
         Object.assign(record, {
           finishedAt: new Date().toISOString(),
           exitCode: record.error ? null : code, signal,
           stdoutTail: stdout.slice(-16_384), stderrTail: stderr.slice(-16_384),
         })
-        resolve({ code: record.errorCode ?? (signal ? `killed by ${signal}` : code), stdout, stderr })
+        resolve({ code: record.errorCode ?? (signal ? `killed by ${signal}` : record.timedOut ? `timed out after ${timeout} ms` : code), stdout, stderr })
       })
     })
   }

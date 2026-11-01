@@ -659,6 +659,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 - A compiler case could pass after compilation exited with `1` or `2` without printing an error; the harness now fails it before running or comparing outputs and retains the compiler's exit status and diagnostics.
+
+- A compiler case could hang past its deadline when a subprocess kept output pipes open after its parent exited; the harness now stops waiting at the deadline, records the timeout and parent exit separately, and cleans up its process group on Unix.
 - Awaiting a Fiber or Deferred in effect code reported an error using the configurable warning codes `EK4609` and `EK4610`; it now reports the fixed placement error `EK0102` separately, so advisory severity settings keep their meaning without allowing `await` in effect code.
 
 - `vibelang agents check` could report `no errors` and succeed when its compiler failed or was terminated; checks and hooks now fail with the compiler's status, signal or spawn error and standard error output, including failures caused by errors outside the selected files.
