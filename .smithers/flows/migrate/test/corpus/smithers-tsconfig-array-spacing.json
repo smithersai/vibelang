@@ -1,0 +1,12 @@
+{
+  "finding": "smithers:tsconfig-array-spacing",
+  "note": "Smithers setup wrote \"moduleSuffixes\": [\"\",\".d.vibe\"] into package tsconfigs; dprint's JSON check wanted [\"\", \".d.vibe\"], so fmt failed in about 60 packages until the drive ran dprint over them (a68ca2b6eb1c).",
+  "tsconfig": "{\n  \"extends\": \"../../../../tsconfig.base.json\",\n  \"compilerOptions\": {\n    \"rootDir\": \"src\",\n    \"outDir\": \"dist/esm\"\n  },\n  \"include\": [\"src\"]\n}\n",
+  "options": {
+    "moduleSuffixes": [
+      "",
+      ".d.vibe"
+    ]
+  },
+  "expected": "{\n  \"extends\": \"../../../../tsconfig.base.json\",\n  \"compilerOptions\": {\n    \"moduleSuffixes\": [\"\", \".d.vibe\"],\n    \"rootDir\": \"src\",\n    \"outDir\": \"dist/esm\"\n  },\n  \"include\": [\"src\"]\n}\n"
+}

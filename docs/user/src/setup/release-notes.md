@@ -6,6 +6,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 
 ## 0.0.11 (unreleased)
+- The migrate flow's setup wrote an array compiler option without spaces, such as `"customConditions": ["vibelang","bun"]`, so a repository's dprint or Prettier check failed on every tsconfig it edited (Smithers: about 60 packages, for `moduleSuffixes`); it now writes `["vibelang", "bun"]`, as those formatters do.
 - The formatter refused a file with `try x as T catch h`, `try x satisfies T catch h` or `try f<T> catch h`, or with `x as T catch h` outside parentheses, with an internal error (its TypeScript form did not parse), so `vibelang format` and the editor could not format it; it now formats the file and writes the parentheses the operand needs, `(try x as T) catch h`.
 - In the editor, Find References and Go to Definition on the subject of an `is` pattern that binds names, such as `x` in `(x is { id: let id })`, found nothing, because the test the parser writes for the subject started at the `is` keyword; they now find the subject and its other references.
 - The migrate flow's codemod wrote each renamed module's bare package export as `{ "types": "./x.d.vibe.ts", "default": "./x.vibe" }` even in a repository that already exports its `.vibe` modules as `"./src/X.vibe"` and checks that form, such as Smithers' export-map contracts; where any of the repository's manifests maps a subpath to a `.vibe` file by a bare path, the codemod now writes the bare path.

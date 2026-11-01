@@ -6,7 +6,7 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { loadTypeScript } from "../lib/declarations.mjs"
 import { projectsOf } from "../lib/wire.mjs"
-import { addEslintIgnore, addEslintImportParsers, addBunBuildPlugin, addBunPreload, bunProgramDirs, wireBunBuilds, addBunTestPreload, wireBunTests, addCompilerOptions, addEffectLint, addOxlintIgnore, copyTarballs, formattable, formatterOf, addVibeLang, addVibeIncludes, addVitePlugin, initAgents, installCommand, packageManager, replaceTsc, rootTsconfigs, runsBunTest, setIgnoreLine, testConfigArgument, toolchainDirectory, toolchainSpecs, viteAppConfigs, wireKnip, wireVite, wireViteApps } from "../lib/wire.mjs"
+import { addEslintIgnore, addEslintImportParsers, addBunBuildPlugin, addBunPreload, bunProgramDirs, wireBunBuilds, addBunTestPreload, wireBunTests, addCompilerOptions, inlineJson, addEffectLint, addOxlintIgnore, copyTarballs, formattable, formatterOf, addVibeLang, addVibeIncludes, addVitePlugin, initAgents, installCommand, packageManager, replaceTsc, rootTsconfigs, runsBunTest, setIgnoreLine, testConfigArgument, toolchainDirectory, toolchainSpecs, viteAppConfigs, wireKnip, wireVite, wireViteApps } from "../lib/wire.mjs"
 import { setUpAgents } from "../lib/steps.mjs"
 import { must } from "../lib/util.mjs"
 
@@ -711,4 +711,18 @@ test("setup puts its ESLint entries before an array method's result, not into it
   assert.equal(addEslintIgnore(tricky), 'export default [{ ignores: ["**/*.d.vibe.ts"] }, ...base.map((e) => ({ ...e, name: ")" /* ) */ + `)${")"}` }))]\n')
   // eslint-plugin-import's entry goes to the same place.
   assert.match(addEslintImportParsers('import i from "eslint-plugin-import"\nexport default base.concat([i.flatConfigs.recommended])\n'), /^export default \[\{ settings: \{ "import\/parsers": \{ "vibelang\/eslint": \[".vibe"\] \} \} \}, \.\.\.base\.concat\(\[i\.flatConfigs\.recommended\]\)\]$/m)
+})
+
+// smithers: setup wrote "moduleSuffixes": ["",".d.vibe"], and dprint's check
+// failed in about 60 packages until each read ["", ".d.vibe"].
+test("addCompilerOptions writes arrays and objects as dprint and Prettier format JSON", () => {
+  const text = '{\n  "compilerOptions": {\n    "strict": true\n  }\n}\n'
+  assert.equal(addCompilerOptions(text, { moduleSuffixes: ["", ".d.vibe"], customConditions: ["vibelang", "bun"] }), '{\n  "compilerOptions": {\n    "moduleSuffixes": ["", ".d.vibe"],\n    "customConditions": ["vibelang", "bun"],\n    "strict": true\n  }\n}\n')
+  assert.equal(inlineJson({ vibe: { sidecarDir: ".vibe/declarations" }, rootDirs: [".", ".vibe/declarations"], none: {}, empty: [] }), '{ "vibe": { "sidecarDir": ".vibe/declarations" }, "rootDirs": [".", ".vibe/declarations"], "none": {}, "empty": [] }')
+  const corpus = JSON.parse(readFileSync(new URL("./corpus/smithers-tsconfig-array-spacing.json", import.meta.url), "utf8"))
+  assert.equal(addCompilerOptions(corpus.tsconfig, corpus.options), corpus.expected)
+  // Whatever it writes, JSON reads back as the value.
+  for (const value of [["", ".d.vibe"], { a: [1, { b: "c,d" }] }, 'quote " and \\ slash', 0, null, true]) {
+    assert.deepEqual(JSON.parse(inlineJson(value)), value)
+  }
 })

@@ -649,10 +649,23 @@ export function wireViteApps({ root, packages, ts, specsFor, wired = [] }) {
  * compilerOptions when it has them, else as a new compilerOptions object.
  * Options already set are left as they are.
  */
+// inlineJson writes value on one line as dprint and Prettier format JSON: a
+// space after each comma and colon and inside an object's braces, so
+// ["", ".d.vibe"] rather than JSON.stringify's ["",".d.vibe"], which a
+// repository's format check reports (smithers: fmt in about 60 packages).
+export function inlineJson(value) {
+  if (Array.isArray(value)) return `[${value.map(inlineJson).join(", ")}]`
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value)
+    return entries.length ? `{ ${entries.map(([k, v]) => `${JSON.stringify(k)}: ${inlineJson(v)}`).join(", ")} }` : "{}"
+  }
+  return JSON.stringify(value)
+}
+
 export function addCompilerOptions(text, options) {
   const entries = Object.entries(options).filter(([k]) => !new RegExp(`"${k}"\\s*:`).test(text))
   if (!entries.length) return text
-  const body = (indent) => entries.map(([k, v]) => `${indent}"${k}": ${JSON.stringify(v)}`).join(",\n")
+  const body = (indent) => entries.map(([k, v]) => `${indent}"${k}": ${inlineJson(v)}`).join(",\n")
   const existing = /"compilerOptions"\s*:\s*\{/.exec(text)
   if (existing) {
     const after = existing.index + existing[0].length
