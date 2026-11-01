@@ -29,7 +29,7 @@ export function durableWrite(path, data, mode = 0o600) {
 export const saveState = (path, state) => durableWrite(path, JSON.stringify(state, null, 2) + "\n")
 
 /** Plan all edits without changing the target; original source bytes live in the journal. */
-export function prepareState(target, files, scope, { ts, aliases, referenceFiles = scope, references = [], catalog = scope } = {}) {
+export function prepareState(target, files, scope, { ts, aliases, referenceFiles = scope, references = [], catalog = scope, bareEntries = false } = {}) {
   for (const from of files) assertModuleBoundary(target, from)
   const deferred = pathReadDeferrals(target, files, referenceFiles)
   if (deferred.length) throw new Error("source text test requires .ts: " + deferred.map(d => d.file).join(", "))
@@ -51,7 +51,7 @@ export function prepareState(target, files, scope, { ts, aliases, referenceFiles
     else writes.push({ file, before: disk(file), after, mode: existsSync(join(target, fromOf.get(file) ?? file)) ? statSync(join(target, fromOf.get(file) ?? file)).mode & 0o777 : 0o644 })
   }
   const platform = ts ? splitBatchPlatform(target, files, ts, { read, write }) : { splits: [], refused: [] }
-  const exportEdits = rewriteExports(target, renames, { write })
+  const exportEdits = rewriteExports(target, renames, { write, bareEntries })
   const scriptEdits = rewriteViteScripts(target, renames, { read, write })
   const refEdits = rewriteReferences(target, renames, referenceFiles.map(file => toOf.get(file) ?? file), { read, write, literals: !ts })
   const importEdits = rewriteImports(target, [...scope, ...platform.splits.map(s => s.platform)].map(file => toOf.get(file) ?? file), renames.map(r => r.to), aliases, { read, write })

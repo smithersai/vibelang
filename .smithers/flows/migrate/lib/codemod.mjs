@@ -185,15 +185,37 @@ function pointBack(value, vibe, extension = ".ts") {
 }
 
 /**
+ * Whether one of manifests (repository-relative package.json paths) maps a
+ * subpath of its `exports` or `imports` to a .vibe file by a bare path, as
+ * Smithers exports the modules it migrated before ("./Route":
+ * "./src/Route.vibe"), which its export-map contracts read. The codemod then
+ * writes a renamed module's entry the same way.
+ */
+export function bareVibeExports(root, manifests) {
+  return manifests.some((manifest) => {
+    let pkg
+    try { pkg = JSON.parse(readFileSync(join(root, manifest), "utf8")) } catch { return false }
+    return moduleMaps.some((field) => {
+      const map = pkg[field]
+      const values = isSubpathMap(map) ? Object.values(map) : [map]
+      return values.some((value) => typeof value === "string" && value.endsWith(".vibe"))
+    })
+  })
+}
+
+/**
  * Points each renamed module's package at it (pointAt): an entry of `exports`
  * or `imports`, at any depth of conditions, or a `main` or `module` field that
  * named the .ts file names the .vibe file, and a `types` or `typings` field or
  * condition names the sidecar. A pattern that matches it (`"./*":
  * "./src/*.ts"`) gains an exact entry, which wins over the pattern, so the
- * package's other modules keep it. Returns the edits, { manifest, field, key,
- * added, module }, for restoreExports.
+ * package's other modules keep it. A bare entry becomes { types, default }
+ * (TS2883, t3code), or stays a bare path to the .vibe file with bareEntries,
+ * where the repository already exports its .vibe modules that way
+ * (bareVibeExports). Returns the edits, { manifest, field, key, added,
+ * module }, for restoreExports.
  */
-export function rewriteExports(root, renames, { write = (file, text) => writeFileSync(join(root, file), text) } = {}) {
+export function rewriteExports(root, renames, { write = (file, text) => writeFileSync(join(root, file), text), bareEntries = false } = {}) {
   const edits = []
   const owners = new Map()
   for (const rename of renames) {
@@ -219,7 +241,7 @@ export function rewriteExports(root, renames, { write = (file, text) => writeFil
         const map = pkg[field]
         if (!isSubpathMap(map)) {
           if (targetsOf(map).some((target) => posix.normalize(target) === source)) {
-            pkg[field] = pointAt(map, source, { entry: true })
+            pkg[field] = pointAt(map, source, { entry: !bareEntries })
             record({ field })
           }
           continue
@@ -228,13 +250,13 @@ export function rewriteExports(root, renames, { write = (file, text) => writeFil
         for (const [key, value] of Object.entries(map)) {
           if (!key.includes("*")) {
             if (targetsOf(value).some((target) => posix.normalize(target) === source)) record({ field, key })
-            entries.push([key, pointAt(value, source, { entry: true })])
+            entries.push([key, pointAt(value, source, { entry: !bareEntries })])
             continue
           }
           const star = targetsOf(value).map((target) => starOf(target, `./${source}`)).find((match) => match !== undefined)
           const exact = star === undefined ? undefined : key.replace("*", star)
           if (exact !== undefined && !(exact in map) && !entries.some(([name]) => name === exact)) {
-            entries.push([exact, pointAt(mapTargets(value, (target) => target.replaceAll("*", star)), source, { entry: true })])
+            entries.push([exact, pointAt(mapTargets(value, (target) => target.replaceAll("*", star)), source, { entry: !bareEntries })])
             record({ field, key: exact, added: true })
           }
           entries.push([key, value])

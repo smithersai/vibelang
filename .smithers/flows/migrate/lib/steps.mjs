@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url"
 import { assertBaselineSafe } from "./baseline.mjs"
 import { buildInventory, listSources, readCoverage, tsconfigPaths } from "./inventory.mjs"
 import { defaultLimits, draftPlan, migrationScope, planPrompt, validatePlan } from "./plan.mjs"
-import { fixToFixedPoint, importerFile, pathAliases, restoreExports, restoreSpecifiers, rewriteImports, rewriteTotals, vibePath } from "./codemod.mjs"
+import { bareVibeExports, fixToFixedPoint, importerFile, pathAliases, restoreExports, restoreSpecifiers, rewriteImports, rewriteTotals, vibePath } from "./codemod.mjs"
 import { restoreViteScripts } from "./vite-config.mjs"
 import { applyState, durableWrite, prepareReferences, prepareState, saveState } from "./codemod-state.mjs"
 import { checkSelectorEdits, restoreSourceLiterals, rewriteSourceLiterals } from "./source-paths.mjs"
@@ -1086,7 +1086,10 @@ export async function codemod(options) {
   }).filter(Boolean) ?? scopeFiles(config))]
   let state = readJsonIf(p.codemodState(b))
   if (!state) {
-    state = prepareState(t, files, await importers(t), { ts: typeScriptOf(config), aliases: aliasesOf(config), references: references(), catalog: [...new Set([...(await Jj.trackedFiles(t)), ...references()])] })
+    // A repository that exports its .vibe modules by bare paths gets its new ones that way too.
+    const owned = Wire.ownedPaths(t)
+    const manifests = (await Jj.trackedFiles(t)).filter((file) => /(?:^|\/)package\.json$/.test(file) && !/(?:^|\/)node_modules\//.test(file) && owned(file))
+    state = prepareState(t, files, await importers(t), { ts: typeScriptOf(config), aliases: aliasesOf(config), references: references(), catalog: [...new Set([...(await Jj.trackedFiles(t)), ...references()])], bareEntries: bareVibeExports(t, manifests) })
     saveState(p.codemodState(b), state)
   }
   if (state.version !== 1 || state.target !== t || JSON.stringify(state.files) !== JSON.stringify(files)) {

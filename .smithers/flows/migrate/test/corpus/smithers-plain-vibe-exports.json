@@ -1,0 +1,24 @@
+{
+  "finding": "smithers:plain-vibe-export-paths",
+  "note": "Smithers main exports the modules it migrated to VibeLang 0.0.8 as bare paths (\"./Route\": \"./src/Route.vibe\" in agent/fs), and repo-targets:barrels and publicExportMaps read that form. The codemod wrote { \"types\": \"./src/X.d.vibe.ts\", \"default\": \"./src/X.vibe\" } for 100 entries in 24 manifests, and those contracts failed until the drive rewrote them (df91c15abb32).",
+  "files": {
+    "package.json": "{ \"private\": true, \"workspaces\": [\"packages/*\"] }\n",
+    "packages/fs/package.json": "{\n  \"name\": \"@smthrs/fs\",\n  \"exports\": {\n    \"./Route\": \"./src/Route.vibe\",\n    \"./Path\": \"./src/Path.ts\"\n  }\n}\n",
+    "packages/fs/src/Route.vibe": "export const route = 1\n",
+    "packages/fs/src/Path.ts": "export const path = 1\n",
+    "packages/kernel/package.json": "{\n  \"name\": \"@smthrs/kernel\",\n  \"exports\": {\n    \".\": \"./src/index.ts\",\n    \"./Batch\": \"./src/Batch.ts\",\n    \"./*\": \"./src/*.ts\"\n  }\n}\n",
+    "packages/kernel/src/index.ts": "export const index = 1\n",
+    "packages/kernel/src/Batch.ts": "export const batch = 1\n",
+    "packages/kernel/src/Rooted.ts": "export const rooted = 1\n"
+  },
+  "batch": [
+    "packages/kernel/src/Batch.ts",
+    "packages/kernel/src/Rooted.ts"
+  ],
+  "expected": {
+    ".": "./src/index.ts",
+    "./Batch": "./src/Batch.vibe",
+    "./Rooted": "./src/Rooted.vibe",
+    "./*": "./src/*.ts"
+  }
+}
