@@ -338,42 +338,54 @@ func importedModuleType(c *checker.Checker, file *ast.SourceFile, location *ast.
 	return export
 }
 
-// moduleImportDeclarations returns type-only imports of the Effect modules
-// whose types file writes by the module's name through its own imports
-// (importedModuleType), for its declaration file, sorted by name, leaving out
-// the names declarations already binds.
+// moduleImportDeclarations returns imports of the Effect modules whose types
+// file writes by the module's name through its own imports
+// (importedModuleType), for its declaration file, leaving out the names
+// declarations already binds. The names one written import binds stay in one
+// import, in its order and with its quotes, as the declaration of the
+// TypeScript twin keeps `import { HashMap, Option } from 'effect'`
+// (foldkit-91); a namespace import stays its own.
 func moduleImportDeclarations(f *printer.NodeFactory, imports map[string]*ast.Node, declarations *ast.SourceFile) []*ast.Node {
 	bound := map[string]bool{}
 	for _, statement := range declarations.Statements.Nodes {
 		forEachTopLevelName(statement, func(name string) { bound[name] = true })
 	}
-	var names []string
-	for name := range imports {
+	var bindings []*ast.Node
+	for name, binding := range imports {
 		if !bound[name] {
-			names = append(names, name)
+			bindings = append(bindings, binding)
 		}
 	}
-	slices.Sort(names)
+	slices.SortFunc(bindings, func(a, b *ast.Node) int { return a.Pos() - b.Pos() })
 	var statements []*ast.Node
-	for _, name := range names {
-		binding := imports[name]
+	named := map[*ast.Node]int{} // a written import declaration: the index of its statement
+	for _, binding := range bindings {
 		var declaration *ast.Node
 		for declaration = binding; declaration != nil && !ast.IsImportDeclaration(declaration); declaration = declaration.Parent {
 		}
 		if declaration == nil {
 			continue
 		}
-		var bindings *ast.Node
+		name := binding.Name().Text()
+		var clause *ast.Node
 		if ast.IsNamespaceImport(binding) {
-			bindings = f.NewNamespaceImport(f.NewIdentifier(name))
+			clause = f.NewImportClause(ast.KindUnknown, nil /*name*/, f.NewNamespaceImport(f.NewIdentifier(name)))
 		} else {
 			var property *ast.Node
 			if ast.IsImportSpecifier(binding) && binding.PropertyName() != nil {
 				property = f.NewIdentifier(binding.PropertyName().Text())
 			}
-			bindings = f.NewNamedImports(f.NewNodeList([]*ast.Node{f.NewImportSpecifier(false /*isTypeOnly*/, property, f.NewIdentifier(name))}))
+			specifier := f.NewImportSpecifier(false /*isTypeOnly*/, property, f.NewIdentifier(name))
+			if at, ok := named[declaration]; ok {
+				statement := statements[at].AsImportDeclaration()
+				elements := statement.ImportClause.AsImportClause().NamedBindings.AsNamedImports().Elements.Nodes
+				clause = f.NewImportClause(ast.KindUnknown, nil /*name*/, f.NewNamedImports(f.NewNodeList(append(slices.Clone(elements), specifier))))
+				statements[at] = f.NewImportDeclaration(nil /*modifiers*/, clause, statement.ModuleSpecifier, nil /*attributes*/)
+				continue
+			}
+			named[declaration] = len(statements)
+			clause = f.NewImportClause(ast.KindUnknown, nil /*name*/, f.NewNamedImports(f.NewNodeList([]*ast.Node{specifier})))
 		}
-		clause := f.NewImportClause(ast.KindUnknown, nil /*name*/, bindings)
 		statement := f.NewImportDeclaration(nil /*modifiers*/, clause, f.NewStringLiteral(declaration.ModuleSpecifier().Text(), declaration.ModuleSpecifier().AsStringLiteral().TokenFlags&ast.TokenFlagsSingleQuote), nil /*attributes*/)
 		statements = append(statements, statement)
 	}

@@ -78,9 +78,9 @@ A `.d.ts` file names another VibeLang module through its output, `./user.js` for
 | `"extensionless"` | `import { find } from "./user"` |
 | `".ts"` | `import { find } from "./user.ts"` |
 
-With `"extensionless"` or `".ts"`, every other specifier keeps the source's spelling, as `tsc` keeps it, so a `.vibe` file's `./plain.ts` stays `./plain.ts`. Any other value is a configuration error. The migrate flow's setup sets it for each package from the spelling its relative imports already use. Plain `tsc` ignores the top-level `vibelang` key.
+With `"extensionless"` or `".ts"`, every other specifier keeps the source's spelling, as `tsc` keeps it, so a `.vibe` file's `./plain.ts` stays `./plain.ts`. A type the compiler infers from a VibeLang module that the file does not import by name, `import("./user.ts").User`, takes the same spelling, in `.vibe` and `.ts` files alike. Any other value is a configuration error. The migrate flow's setup sets it for each package from the spelling its relative imports already use. Plain `tsc` ignores the top-level `vibelang` key.
 
-An import a declaration file adds, such as `import { Effect } from 'effect'` for a file that writes `number!!`, uses the quotes of the file's first import.
+An import a declaration file adds, such as `import { Effect } from 'effect'` for a file that writes `number!!`, uses the quotes of the file's first import. Module types written through the file's own import, `HashSet<string>` through `import { HashSet, Option } from 'effect'`, keep that one import, and an added `Effect` joins it.
 
 ## 2. Replace tsc in the scripts
 

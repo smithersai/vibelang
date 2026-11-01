@@ -1021,6 +1021,10 @@ typescript/vibelang/cases/declaration-identity-inferred-modules/main.vibe:16:22 
 typescript/vibelang/cases/declaration-identity-inferred-modules/main.vibe:6:48 lambda plain table
 typescript/vibelang/cases/declaration-identity-kept-import/main.vibe:6:21 lambda effectFn annotation
 typescript/vibelang/cases/declaration-identity-namespace-imports/used.vibe:5:75 lambda plain table
+typescript/vibelang/cases/declaration-import-style-extensionless/runtime.vibe:7:21 lambda plain annotation
+typescript/vibelang/cases/declaration-import-style-inferred/schema/index.vibe:2:28 lambda plain annotation
+typescript/vibelang/cases/declaration-import-style-ts/Bind.vibe:8:21 lambda plain annotation
+typescript/vibelang/cases/declaration-import-style-ts/Contribution.vibe:3:23 lambda plain annotation
 typescript/vibelang/cases/declaration-linked-esm.fail/main.vibe:3:19 lambda choice fallback
 typescript/vibelang/cases/declaration-linked-esm/main.vibe:2:19 lambda choice fallback
 typescript/vibelang/cases/declaration-linked-esm/main.vibe:3:25 lambda choice fallback

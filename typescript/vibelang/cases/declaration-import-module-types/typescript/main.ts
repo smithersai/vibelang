@@ -1,0 +1,17 @@
+// foldkit-91: devTools/store declared import { HashMap } from "effect" and one
+// more import per name; its TypeScript declared them in its one written import.
+import {
+  Array as EffectArray,
+  Effect,
+  HashMap,
+  HashSet,
+  Option,
+  pipe,
+  SubscriptionRef,
+} from 'effect'
+
+export type DiffResult = Readonly<{ changedPaths: HashSet.HashSet<string> }>
+export type StoreState = Readonly<{ keyframes: HashMap.HashMap<number, unknown>; maybeInitModel: Option.Option<unknown> }>
+export type Store = Readonly<{ stateRef: SubscriptionRef.SubscriptionRef<StoreState> }>
+export const count: number = pipe([1, 2], EffectArray.length)
+export type Program = Effect.Effect<Store>
