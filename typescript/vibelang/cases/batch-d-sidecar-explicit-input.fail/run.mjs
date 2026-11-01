@@ -9,6 +9,7 @@ const binary=fileURLToPath(new URL("../../../built/local/tsc",import.meta.url))
 const dir=mkdtempSync(join(tmpdir(),"explicit-sidecar-"))
 try {
  symlinkSync(join(here,"node_modules"),join(dir,"node_modules"),"dir")
+ writeFileSync(join(dir,"package.json"),'{"type":"module"}')
  writeFileSync(join(dir,"main.vibe"),"export const answer=1")
  const original="export declare const answer: string; // preserve\\n"
  writeFileSync(join(dir,"main.d.vibe.ts"),original)

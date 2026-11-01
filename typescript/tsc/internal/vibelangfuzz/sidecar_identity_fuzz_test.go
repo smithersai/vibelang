@@ -11,11 +11,15 @@ import (
 
 // sidecarIdentityQuote and sidecarExportQuote are Chapter 7's rule.
 const (
+	sidecarRealpathQuote      = "Classify the path after TypeScript's own `realpath` step, not the written name: a linked workspace package normally reads its source."
+	sidecarSymlinkQuote       = "With `preserveSymlinks: true` the logical path keeps its `node_modules` segment and therefore its declarations, as a published package does; TypeScript may then distinguish the source and declaration modules."
+	sidecarMapQuote           = "For relocated sidecars, follow the source that the sidecar map names rather than guessing from basenames."
+	sidecarRedirectInputQuote = "An explicitly listed sidecar remains an input even when another import redirects to its source, and its attempted overwrite keeps `TS5055` protection."
 	sidecarDiscoveryQuote     = "A compatibility sidecar is an emit output: when `include` or default discovery selects both `x.vibe` and `x.d.vibe.ts`, the source wins and the sidecar leaves the program, as discovery selects `x.ts` ahead of `x.d.ts`."
 	sidecarExplicitInputQuote = "A sidecar explicitly listed in `files` remains an input."
 	sidecarOverwriteQuote     = "If the compatibility write would overwrite it, the compiler reports native `TS5055` (`Cannot write file … because it would overwrite input file`), exits `1` and leaves its bytes unchanged."
 	sidecarIdentityQuote      = "VibeLang resolves a relative `./x.vibe` to source; plain `tsc` reads the compatibility declaration."
-	sidecarExportQuote        = "A package specifier that lands on `x.d.vibe.ts`, as a `types` export does, resolves to `x.vibe` when the source is beside it outside `node_modules`, so the sidecar and the source are one module"
+	sidecarExportQuote        = "A non-relative specifier that TypeScript resolves to `x.d.vibe.ts` or `x.d.vibex.ts`, through a package `types` export, a `paths` entry or package `#imports`, resolves to the available `x.vibe` or `x.vibex` source when the final resolved path is outside `node_modules`."
 )
 
 // FuzzSidecarIdentity enforces sidecarExportQuote: a consumer that reaches a
@@ -57,7 +61,7 @@ func sidecarIdentityRule(tb testing.TB) {
 	if err != nil {
 		tb.Fatal(err)
 	}
-	for _, quote := range []string{sidecarDiscoveryQuote, sidecarExplicitInputQuote, sidecarOverwriteQuote, sidecarIdentityQuote, sidecarExportQuote} {
+	for _, quote := range []string{sidecarDiscoveryQuote, sidecarExplicitInputQuote, sidecarOverwriteQuote, sidecarIdentityQuote, sidecarExportQuote, sidecarRealpathQuote, sidecarSymlinkQuote, sidecarMapQuote, sidecarRedirectInputQuote} {
 		if !strings.Contains(string(text), quote) {
 			tb.Fatalf("Chapter 7 no longer says %q", quote)
 		}
