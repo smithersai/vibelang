@@ -163,6 +163,14 @@ The runtime entry tests start up to three host processes in sequence. Each
 child has a `10_000` ms deadline; the whole test allows `35_000` ms so the
 outer deadline covers all three on a busy build host.
 
+Bun gives a test 5 seconds unless the command says otherwise: `bunfig.toml`
+has no timeout key, and a `setDefaultTimeout` in a preload reaches the first
+test file only. Every `bun test` the graph or a package script runs therefore
+passes `--timeout` (the runtime 30 s, which covers two 10 s children per test;
+`docs/tools` 60 s; the kernel laws 30 s). `scripts/bun-test-budgets.test.mjs`
+fails a `PACKAGE.ts` shell or a package script that drops the flag, and a
+`main.test.ts` child deadline the runtime budget cannot cover twice.
+
 The documented debugging recipe test compiles an application and then starts
 Node.js to check its failing source-mapped exit. Its test deadline is
 `30_000` ms so both host processes can finish on a busy build host; it still

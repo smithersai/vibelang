@@ -9,7 +9,7 @@ for version in ${NODE_TEST_VERSIONS:-22.22.3 24.11.1 24}; do
     set -eu
     node --version
     node --test packages/runtime/tests/node-compat.mjs
-    (cd packages/runtime && bun test)
+    (cd packages/runtime && bun test --timeout 30000)
     (cd packages/compiler && npm test)
   '
 done

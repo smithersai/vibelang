@@ -38,7 +38,7 @@ for (const executable of ["node", process.execPath]) {
       const source = `import { $runMain, Effect } from "vibelang-runtime";
         import { Runtime } from "effect";
         $runMain(${effect}, { disableErrorReporting: true });`
-      const result = Bun.spawnSync([executable, "--input-type=module", "--eval", source], { cwd: import.meta.dir + "/.." })
+      const result = Bun.spawnSync([executable, "--input-type=module", "--eval", source], { cwd: import.meta.dir + "/..", timeout: 10_000 })
       expect(result.exitCode).toBe(code)
       expect(result.stderr.toString()).toBe("")
     }
@@ -64,7 +64,7 @@ test("main can finish successfully without a host process (browser fallback)", (
     $runMain(Effect.succeed(42), { teardown: (exit, finish) => {
       console.log(exit.value); finish(0);
     }});`
-  const result = Bun.spawnSync(["node", "--input-type=module", "--eval", source], { cwd: import.meta.dir + "/.." })
+  const result = Bun.spawnSync(["node", "--input-type=module", "--eval", source], { cwd: import.meta.dir + "/..", timeout: 10_000 })
   expect(result.exitCode).toBe(0)
   expect(result.stdout.toString().trim()).toBe("42")
   expect(result.stderr.toString()).toBe("")
@@ -73,7 +73,7 @@ test("main can finish successfully without a host process (browser fallback)", (
 for (const executable of ["node", process.execPath]) {
   test("main reports typed error fields on " + (executable === "node" ? "Node" : "Bun"), () => {
     const source = 'import { $runMain, Effect, TaggedError } from "vibelang-runtime"; class Fatal extends TaggedError("Fatal") {} const error = new Fatal({ why: "boom", count: 3 }); $runMain(Effect.fail(error));'
-    const result = Bun.spawnSync([executable, "--input-type=module", "--eval", source], { cwd: import.meta.dir + "/.." })
+    const result = Bun.spawnSync([executable, "--input-type=module", "--eval", source], { cwd: import.meta.dir + "/..", timeout: 10_000 })
     expect(result.exitCode).toBe(1)
     const report = result.stdout.toString() + result.stderr.toString()
     expect(report).toContain("Fatal")
@@ -88,7 +88,7 @@ for (const executable of ["node", process.execPath]) {
   test("main preserves curried reporting opt-outs on " + (executable === "node" ? "Node" : "Bun"), () => {
     for (const marker of ["", 'error[Runtime.errorReported] = false;']) {
       const source = 'import { $runMain, Effect, TaggedError } from "vibelang-runtime"; import { Runtime } from "effect"; class Fatal extends TaggedError("Fatal") {} const error = new Fatal({ why: "boom" }); ' + marker + ' $runMain(' + (marker ? '{}' : '{ disableErrorReporting: true }') + ')(Effect.fail(error));'
-      const result = Bun.spawnSync([executable, "--input-type=module", "--eval", source], { cwd: import.meta.dir + "/.." })
+      const result = Bun.spawnSync([executable, "--input-type=module", "--eval", source], { cwd: import.meta.dir + "/..", timeout: 10_000 })
       expect(result.exitCode).toBe(1)
       expect(result.stdout.toString() + result.stderr.toString()).toBe("")
     }
@@ -96,7 +96,7 @@ for (const executable of ["node", process.execPath]) {
 
   test("main reports circular error fields on " + (executable === "node" ? "Node" : "Bun"), () => {
     const source = 'import { $runMain, Effect, TaggedError } from "vibelang-runtime"; class Fatal extends TaggedError("Fatal") {} const circular = {}; circular.self = circular; const error = new Fatal({ why: "boom", circular }); $runMain(Effect.fail(error));'
-    const result = Bun.spawnSync([executable, "--input-type=module", "--eval", source], { cwd: import.meta.dir + "/.." })
+    const result = Bun.spawnSync([executable, "--input-type=module", "--eval", source], { cwd: import.meta.dir + "/..", timeout: 10_000 })
     expect(result.exitCode).toBe(1)
     const report = result.stdout.toString() + result.stderr.toString()
     expect(report).toContain("boom")

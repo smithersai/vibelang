@@ -23,7 +23,7 @@ const runtimeDist = S.Shell.Build({
 
 const runtimeTest = S.Shell.Test({
   summary: "Run the runtime's bun tests against dist/.",
-  shell: "cd packages/runtime && bun test",
+  shell: "cd packages/runtime && bun test --timeout 30000",
   data: [runtimeDist, ...install, S.file("runtime/tsconfig.json"), S.glob("runtime/src/**"), S.glob("runtime/tests/**")],
   tools: [S.Host.bin("bun"), S.Host.bin("node")],
   sandbox: "none",

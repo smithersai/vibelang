@@ -144,7 +144,7 @@ const pendingHangs = goVibelang(
 // cached: an unrelated source edit must not rerun the link inventory.
 const siteSpecLinks = S.Shell.Test({
   summary: "Generated specification and VIP links resolve to site pages and anchors.",
-  shell: "cd docs/tools && bun test site-spec-links.test.ts",
+  shell: "cd docs/tools && bun test --timeout 60000 site-spec-links.test.ts",
   data: [S.Filegroup({ srcs: [...S.glob([
     "site/src/pages/spec/**", "site/src/pages/vips/**", "docs/tools/site-spec-links.test.ts"
   ])] })],
@@ -187,7 +187,7 @@ const targets = {
   // selected: `smthrs test //... --include-exclusive` (the post-merge suite).
   "site-contrast": S.Shell.Test({
     summary: "The built site's pages have no contrast violations in either theme.",
-    shell: "cd docs/tools && bun test site-contrast.test.ts",
+    shell: "cd docs/tools && bun test --timeout 60000 site-contrast.test.ts",
     data: [tree],
     tools: [bun, node],
     sandbox: "none",

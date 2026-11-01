@@ -85,7 +85,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "bun run build && bun test"
+    "test": "bun run build && bun test --timeout 30000"
   },
   "peerDependencies": {
     "@effect/platform-browser": "4.1.0",

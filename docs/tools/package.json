@@ -4,11 +4,11 @@
   "type": "module",
   "description": "Checks documentation and builds Markdown copies and llms.txt for vibelang.sh.",
   "scripts": {
-    "check:snippets": "bun test first-run.test.ts && bun check-snippets.ts --run",
+    "check:snippets": "bun test --timeout 60000 first-run.test.ts && bun check-snippets.ts --run",
     "check:diagnostics": "bun check-diagnostic-docs.ts",
     "check:content": "bun check-smithers-content.ts",
     "check:tokens": "bun token-counts.ts --check",
-    "test": "bun test",
+    "test": "bun test --timeout 60000",
     "check:release": "node release-docs.mjs --check"
   },
   "devDependencies": {
