@@ -361,6 +361,13 @@ being killed as a whole. Under the 60-second default, post-merge killed healthy
 runs after four compiles on loaded hosts (medians of 13 to 20 seconds, maxima of
 86 to 115 seconds over 214 runs).
 
+The Chapter 15 failure case uses `TestClock.layer()` and advances virtual time
+with `TestClock.adjust` before joining its scenario. This checks timeout,
+uninterruptible debit/credit and cleanup ordering without racing host timers.
+The release check runs `scripts/chapter-failures-clock.test.mjs` against the
+real compiler and the case's exact expected result, including seven schedules
+that pause the host while registering a timer.
+
 To reproduce child-start races without a busy host, run the acceptance harness
 with `--late-start` (or set `VIBELANG_LATE_START=1`). It delays queued
 scheduler tasks by `100 ms` after the caller suspends, while timers can resume

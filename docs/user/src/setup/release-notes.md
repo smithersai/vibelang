@@ -837,6 +837,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 - The diagnostic reference could make an emitted `EK3008` look unknown; it now explains that this static service-key error corresponds to the specification's `EK0901` until compiler renumbering.
+
+- The Chapter 15 compiler regression could fail with `moved: "none"` on a busy host; its deadlines now run on `TestClock`, preserving timeout and cleanup ordering independently of host timer dispatch.
 - The kernel law suite could still fail at 5 s on a loaded host after its 30 s budget moved into the test preload, because Bun applies a preload's default timeout to the first test file only; `bun run test` in `experiments` now passes the budget to every file, and the docs build uses the same flag.
 
 - After the migrate flow's setup, an ast-grep rule for TypeScript also scanned each `.vibe` module's `x.d.vibe.ts` sidecar, so a finding in a `.vibe` module was reported twice; setup now adds `**/*.d.vibe.ts` to the `ignores` of each TypeScript rule it extends to `.vibe`.

@@ -1,5 +1,6 @@
 // Chapter 15. Failures, defects, interruption, and cleanup.
 import { Exit, Scope } from "effect"
+import { TestClock } from "effect/testing"
 
 class UploadError extends TaggedError("UploadError")<{ readonly file: string }> {}
 class Expected extends TaggedError("Expected")<{}> {}
@@ -190,7 +191,12 @@ effect function scenario() {
 // expect-result: {"first":"uploaded tmp1","second":"queued r2","third":"TimeoutError","deadline":"uploaded tmp4","defect":["Die"],"mixed":["Die","Die"],"moved":"TimeoutError","events":["create tmp1","write tmp1 a","upload tmp1","metric exports","remove tmp1","create tmp2","write tmp2 a","queue r2","metric exports","remove tmp2","create tmp3","write tmp3 a","metric exports","remove tmp3","create tmp4","write tmp4 a","upload tmp4","metric exports","remove tmp4","debit a 10","credit b 10"]}
 export effect function main() {
   return try Effect.provide(
-    effect { return try scenario() },
-    Layer.mergeAll(TempFilesTest, ReportsTest, StorageTest, MetricsTest, LedgerTest)
+    effect {
+      // Drive both deadlines and operations in timestamp order, even when the host pauses.
+      const running = try Effect.forkChild(effect { return try scenario() })
+      try TestClock.adjust("1 minute")
+      return try Fiber.join(running)
+    },
+    Layer.mergeAll(TempFilesTest, ReportsTest, StorageTest, MetricsTest, LedgerTest, TestClock.layer())
   )
 }
