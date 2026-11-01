@@ -551,6 +551,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The specification left cyclic declaration output ambiguous; it now defines the retained `/*elided*/ any` output and keeps ordinary recursive-inference errors.
 
+- Compiler validation still skipped implemented `restore` placement rules as known gaps; the placement matrix now runs as active regressions, and the remaining computed-key case records its actual type-checking failure.
+
 - Diagnostic validation still treated `EK0202` as unimplemented after the compiler registered it; the registry checks and jump fuzz corpus now validate the implemented diagnostic directly.
 
 - Compiler validation could fail to build when two independent `restore` fuzz suites used the same Go test names; both suites now retain their coverage under distinct names.

@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:plain-for-of-head/interruptible-outside")

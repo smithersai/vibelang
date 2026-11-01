@@ -1,13 +1,10 @@
 # Gaps found by the fuzz targets of spec loop round 3 (loop_r3_fuzz_test.go).
-FuzzRestoreItemPlacement missing:EK2202 compiler VIP-22: EK2202 has no checker, so restore in a for concurrent item region or across an independent effect callable reports EK2111 or nothing (loop r3 OPUS-4); lane impl-hunt-run
 FuzzIsHomePositions catch:EK0705 compiler VIP-7: an is binding in a catch parameter reports EK4703, not EK0705 (decided detail 249); lane impl-hunt-data
 FuzzIsHomePositions limit:home compiler VIP-7: a binding in a for concurrent limit reports EK4703; it belongs to the home around the loop (decided detail 249); lane impl-hunt-data
 FuzzOwnerSyntaxCodes missing:EK0109 compiler VIP-1: EK0109 is unregistered, an invalid effect arrow head reports TS1005 (decided detail 247); lane impl-hunt-func
 FuzzOwnerSyntaxCodes missing:EK0512 compiler VIP-5: EK0512 is unregistered, the parser accepts catch mixed with ?? || && and a suffix after a function-expression handler (decided detail 247); lane impl-hunt-run
 FuzzOwnerSyntaxCodes missing:EK1505 compiler VIP-15: EK1505 is unregistered, a non-field schema member reports EK2109 (decided detail 247); lane impl-hunt-data
 FuzzOwnerSyntaxCodes missing:EK1606 compiler VIP-16: EK1606 is unregistered, a malformed data variant reports TS1005 or EK2125 (decided detail 247); lane impl-hunt-data
-FuzzRestoreItemPlacement valid:do-block compiler VIP-22: restore in a do block under uninterruptible reports EK2111, though a do block is not a function and keeps the mask (loop r3 OPUS-4); lane impl-hunt-run
-FuzzRestoreItemPlacement valid:plain-for-of-head compiler VIP-22: restore in a do block in a plain for head default reports EK2111, the same do-block gap (loop r3 OPUS-4); lane impl-hunt-run
 FuzzIsHomePositions catch:free compiler VIP-5: a typed catch parameter in plain code reports EK2105 and EK9203, though decided detail 249's examples use that native form; lane impl-hunt-data
 FuzzIsHomePositions catch:body compiler VIP-5: a typed catch parameter in plain code reports EK2105 and EK9203, though decided detail 249's examples use that native form; lane impl-hunt-data
 FuzzPipeRightEdge accepted:closed-handler compiler VIP-5: x catch function () { return 1 } succeeds with the function, so the following pipe reports TS2365 (claim vip05.catch-function); lane impl-hunt-run
