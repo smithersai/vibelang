@@ -604,10 +604,11 @@ const targets = {
     fuzzBudgetEnv
   ),
   // Shell targets do not inherit ambient Go controls. Declare the
-  // post-merge fuzz budget: 24 seed workers and six build jobs.
+  // fuzz budget: at most 24 seed workers within the process CPU affinity,
+  // and six build jobs. Node is already a declared tool of goVibelang.
   "go-vibelangfuzz": goVibelang(
     "The fuzz oracles over the seed corpus: cases, snippets and saved reproductions.",
-    `CGO_ENABLED=0 GOMAXPROCS=$(n=$(getconf _NPROCESSORS_ONLN); [ "$n" -lt 24 ] && echo "$n" || echo 24) GOFLAGS=-p=6 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} ` +
+    `CGO_ENABLED=0 GOMAXPROCS=$(n=$(node -p 'require("node:os").availableParallelism()'); [ "$n" -lt 24 ] && echo "$n" || echo 24) GOFLAGS=-p=6 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} ` +
       `go test -short -count=1 -timeout=40m -trimpath -exec "$PWD/../../scripts/go-test-shards.sh" ./internal/vibelangfuzz/...`,
     [Tsc["vibelangfuzz-files"], S.file("//scripts/go-test-shards.sh")],
     // The package's tests and seed corpora run one after another, so the

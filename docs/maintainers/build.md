@@ -434,8 +434,11 @@ returning `143`. This also covers cancellation while listing test names, when
 the package's `TestMain` can already be running. Discovery keeps the original
 test flags.
 
-The fuzz shell caps `GOMAXPROCS` at the smaller of `24` and the machine CPU count and declares `GOFLAGS=-p=6`, matching the
-post-merge shard allocation. Smithers withholds ambient Go variables, so
+The fuzz shell caps `GOMAXPROCS` at the smaller of `24` and the CPUs allowed
+by the process affinity, using Node's `os.availableParallelism()`. A lane
+restricted to four CPUs therefore starts four seed workers, rather than sizing
+workers from every CPU on the host. It declares `GOFLAGS=-p=6`, matching the
+post-merge build allocation. Smithers withholds ambient Go variables, so
 setting them only on the outer CI process does not constrain the test.
 These declared values also enter the target cache key.
 
