@@ -667,6 +667,7 @@ func matchHandlerArm(c *checker.Checker, a *analyzer, file *ast.SourceFile, hand
 		return matchArm{}, label + " takes more than the value"
 	}
 	binding := ""
+	destructure := ""
 	if len(parameters) == 1 {
 		parameter := parameters[0]
 		if parameter.Type() != nil || parameter.Initializer() != nil || parameter.AsParameterDeclaration().DotDotDotToken != nil {
@@ -679,6 +680,14 @@ func matchHandlerArm(c *checker.Checker, a *analyzer, file *ast.SourceFile, hand
 				binding = "let " + name.Text()
 			}
 		case ast.IsObjectBindingPattern(name):
+			if isDefault {
+				// Destructure only after choosing the fallback: matching an object
+				// pattern first would add tests and duplicate observable getter reads.
+				capture := (&freshNames{file: file}).freshName("$matchDefault")
+				binding = "let " + capture
+				destructure = "const " + nodeText(file, name) + " = " + capture + "; "
+				break
+			}
 			var fields []string
 			for _, element := range name.AsBindingPattern().Elements.Nodes {
 				if element.Initializer() != nil || element.AsBindingElement().DotDotDotToken != nil || !ast.IsIdentifier(element.Name()) {
@@ -737,6 +746,9 @@ func matchHandlerArm(c *checker.Checker, a *analyzer, file *ast.SourceFile, hand
 	} else {
 		value = body
 		text = expressionText(file, body)
+	}
+	if destructure != "" {
+		text = "do { " + destructure + "(" + text + "); }"
 	}
 	if binding != "" {
 		switch {

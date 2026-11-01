@@ -1,0 +1,11 @@
+type Event = { readonly _tag: "A"; readonly value?: number } | { readonly _tag: "B"; readonly value?: number }
+function fallback(trace: string[], value: number): number { trace.push("fallback"); return value }
+export function choose(event: Event, trace: string[], value: number): string {
+  return Match.value(event).pipe(
+    Match.tag("A", (): string => "special"),
+    Match.orElse(({ _tag, value: selected = fallback(trace, value), ...rest }): string => {
+      trace.push("body")
+      return _tag + ":" + selected + ":" + Object.keys(rest).join(",")
+    })
+  )
+}

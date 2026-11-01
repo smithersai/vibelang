@@ -108,6 +108,7 @@ export function kind(config: Config): string {
 
 // Where a match would choose differently, run what the chain only built, or
 // have another type, EK4839 has no quick fix and its note says why.
+// Destructuring fallbacks are positive cases in TestMatchDefaultDestructureFoldkit.
 func TestMatchChainRefusals(t *testing.T) {
 	for _, test := range []struct{ name, source, why string }{
 		{"a predicate", "export const f = (n: number) => Match.value(n).pipe(Match.when((x) => x > 1, () => \"big\"), Match.orElse(() => \"small\"))\n", "has no match pattern"},
@@ -116,7 +117,6 @@ func TestMatchChainRefusals(t *testing.T) {
 		{"a handler that is not an arrow", "function one() { return \"one\" }\nexport const f = (n: 1 | 2): string => Match.value(n).pipe(Match.when(1, one), Match.orElse(() => \"two\"))\n", "is not an arrow function"},
 		{"a handler with early returns", "export const f = (n: 1 | 2): string => Match.value(n).pipe(Match.when(1, () => { if (n) return \"a\"; return \"b\" }), Match.orElse(() => \"two\"))\n", "does not end in its only return"},
 		{"a type no name writes", "type Box = { readonly n: number }\nexport const f = (n: 1 | 2) => Match.value(n).pipe(Match.when(1, (): Box => ({ n: 1 })), Match.orElse((): Box | undefined => undefined))\n", "the match's type would be its arms'"},
-		{"a destructuring default", "export const f = (v: { a: number } | null): number => Match.value(v).pipe(Match.when(null, () => 0), Match.orElse(({ a }) => a))\n", "a default arm"},
 		{"a comment in a stage", "export const f = (n: 1 | 2): string => Match.value(n).pipe(Match.when(1, /* one */ () => \"one\"), Match.orElse(() => \"two\"))\n", "a comment stands in a stage"},
 	} {
 		t.Run(test.name, func(t *testing.T) {

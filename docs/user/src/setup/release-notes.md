@@ -299,6 +299,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Migration left a plain `Option.match(value, { onNone, onSome })` in native sources and `--fix` offered nothing, so Foldkit's nine pure choices were rewritten by hand; `--fix` now writes a native `match` over `Option.Some`, reading the subject and the handler object once in their original order.
 - `--fix` refused an Option pipe whose stage argument is a callback factory, such as `pipe(value, Option.map(EffectArray.append(1)))`, because the factory's evaluation could move; it now caches the subject and every argument in pipe order inside a `do` block and then applies the native methods.
+- `--fix` left a Match chain whose default handler destructures its parameter, `Match.orElse(({ _tag }) => _tag)`, with EK4839; it now writes a catch-all `let` arm whose `do` block destructures the bound value, so defaults and getter reads run only when the default arm does.
 - Pure `Option.gen` bodies could remain rejected after migration. `vibelang --fix` now converts supported eager generators to plain bodies with ordered reads, a `None` early exit, and fresh `Some` results.
 - Formatting valid `for` heads with `is` patterns could fail with an internal parse error; they now format at narrow and normal widths while keeping `is` attached to its subject.
 - Formatting native `Option` control flow could reject parenthesized `return (match …)` expressions and binding `is` branches; these forms now format while preserving their parsed structure.
