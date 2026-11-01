@@ -19,8 +19,9 @@ import (
 // 20 levels checked its project twice per round and outlasted its 30 s limit
 // on a busy host (2026-10-30 and 31).
 func TestFixProjectChecksAPassingRoundOnce(t *testing.T) {
+	// Array boundaries keep every rewrite legal without fresh parentheses (260).
 	const depth = 6
-	source := "export type Deep = " + strings.Repeat("Effect.Effect<", depth) + "number" + strings.Repeat(">", depth) + "\n"
+	source := "export type Deep = " + strings.Repeat("Effect.Effect<Array<", depth) + "number" + strings.Repeat(">>", depth) + "\n"
 	_, file, _, _ := editorProgram(t, source)
 	dir := filepath.Dir(file.FileName().AsString())
 	for name, text := range map[string]string{

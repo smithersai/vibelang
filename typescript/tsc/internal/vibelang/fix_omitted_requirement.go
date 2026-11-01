@@ -118,7 +118,7 @@ func vipTypeMigrationFixes(ctx context.Context, program *compiler.Program, file 
 	c, done := program.GetTypeCheckerForFile(ctx, file)
 	defer done()
 	p := proposal{file: file}
-	for _, code := range []int32{EK4853.Code, EK4854.Code, EK4855.Code} {
+	for _, code := range []int32{EK4853.Code, EK4854.Code, EK4855.Code, EK4856.Code} {
 		rule := tsFormRules[code]
 		rule.find(c, file, func(at *ast.Node, r *formRewrite, _ ...any) {
 			key := fmt.Sprintf("vip-types:%d:%d:%s", code, at.Pos(), expressionText(file, at))

@@ -483,7 +483,7 @@ try {
     const brands = await labels("brand(\"UserId\")", 7)
     assert(JSON.stringify(brands) === JSON.stringify(["UserId"]), `brands ${JSON.stringify(brands)}`)
     const codes = await labels("EK4823:warning", 4)
-    assert(codes.includes("EK4801:off") && codes.includes("*:off"), `codes ${JSON.stringify(codes.slice(0, 5))}`)
+    assert(codes.includes("EK4801:off") && codes.includes("EK4856:off") && codes.includes("*:off"), `codes ${JSON.stringify(codes.slice(0, 5))}`)
   })
 
   await check("code action: a comment turns EK4823 on, and its quick fix writes the value as the body", async () => {
@@ -520,7 +520,12 @@ try {
     assert(spelled.includes("function spelled(id: string): string!Missing!"), `got ${JSON.stringify(spelled)}`)
     const terse = await hover("src/spellings.vibe", "terse(id: string)")
     assert(terse.includes("function terse(id: string): string!Missing!"), `got ${JSON.stringify(terse)}`)
-    assert((await diagnostics("src/spellings.vibe")).length === 0, "both spellings check without diagnostics")
+    const items = await diagnostics("src/spellings.vibe")
+    assert(items.length === 1 && items[0].source === "EK" && items[0].code === 4856 && items[0].severity === 2,
+      "expected the bare alias migration warning only: " + JSON.stringify(items))
+    const start = at("src/spellings.vibe", "Effect<string, Missing>")
+    assert(items[0].range.start.line === start.line && items[0].range.start.character === start.character,
+      "alias diagnostic span " + JSON.stringify(items[0].range))
   })
 
   await check("hover: a hatch's callee says its TypeScript is self-contained and lists its inputs", async () => {
@@ -771,9 +776,15 @@ try {
   open("src/services.vibe", "vibe")
   open("src/report.ts", "typescript")
 
-  await check("diagnostics: services.vibe, with the prelude and a service, checks clean", async () => {
+  await check("diagnostics: services.vibe retains its two bare-alias migration warnings without errors", async () => {
     const items = await diagnostics("src/services.vibe")
-    assert(items.length === 0, `expected none, got ${JSON.stringify(items.map((d) => d.message))}`)
+    assert(items.length === 2 && items.every((d) => d.source === "EK" && d.code === 4856 && d.severity === 2),
+      "expected exactly two alias warnings: " + JSON.stringify(items))
+    for (const needle of ["Effect<string, Missing, never>", "Effect<string>"]) {
+      const start = at("src/services.vibe", needle)
+      assert(items.some((d) => d.range.start.line === start.line && d.range.start.character === start.character),
+        "missing alias warning at " + needle + ": " + JSON.stringify(items))
+    }
   })
 
   await check("diagnostics: declarations.vibe, with an error declaration and a ! contract, checks clean", async () => {

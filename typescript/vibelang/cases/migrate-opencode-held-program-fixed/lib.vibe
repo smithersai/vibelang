@@ -1,7 +1,7 @@
 
 export const log: Array<string> = []
 
-const listen = effect (): (void!!)!! =>
+const listen = effect (): Effect.Effect<void>!! =>
   {
     log.push("listen")
     return Effect.sync(() => {
@@ -9,7 +9,7 @@ const listen = effect (): (void!!)!! =>
     })
   }
 
-const nested = (): (number!!)!! =>
+const nested = (): Effect.Effect<number>!! =>
   Effect.succeed(
     effect {
       log.push("inner")

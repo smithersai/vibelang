@@ -316,6 +316,8 @@ Inside an Effect function, `throw` adds an expected failure to the function's er
 
 `A!E!R` means exactly `Effect.Effect<A, E, R>`. Every omitted slot is `never`, including on a function with a body. Leave out the whole annotation to infer success, errors, and requirements. A line break ends the type: each `!` and its slot stay on one line, `A!!` may end a line, and a slot in parentheses may span lines; a `!` with no slot on its line is `TS17019`.
 
+The transitional bare `Effect<A, E, R>` alias reports `EK4856`. Its migration fix uses `A!E!R` only when the existing position and channels need no new parentheses; otherwise it retains the position and writes `Effect.Effect<A, E, R>`. Existing parentheses, explicit default slots and comments are preserved. It retains the qualified spelling when shorthand would change declaration bytes, including existing grouping that declaration output would otherwise remove. Local and imported types named `Effect` keep their meaning.
+
 See [Control operations and handlers](/vibelang-features/111-control-operations-and-handlers) for the proposal's status.
 
 Inferred parameter types of retained SDK error constructors keep their Effect namespace spelling in declarations. For example, exporting `AsyncFiberError` writes its inferred fiber parameter as `Fiber.Fiber<unknown, unknown>` with an import from `effect`, independently of nearby matching code. Explicit import types and local or generic `Fiber` bindings retain their written scope.

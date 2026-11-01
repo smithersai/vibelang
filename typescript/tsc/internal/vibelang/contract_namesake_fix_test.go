@@ -19,11 +19,11 @@ import (
 func TestContractAmbientNamesake(t *testing.T) {
 	body := "  const fs = try FileSystem.FileSystem\n  return String(typeof fs)\n}\n"
 	for _, test := range []struct {
-		name, contract, want string
+		name, contract, want, fullWant string
 	}{
-		{"alone", "Effect<string, never, FileSystem>", "Effect<string, never, FileSystem.FileSystem>"},
-		{"union", "Effect<string, never, FileSystem | Path>", "Effect<string, never, FileSystem.FileSystem | Path>"},
-		{"bang form", "string!!FileSystem", "string!!FileSystem.FileSystem"},
+		{"alone", "Effect<string, never, FileSystem>", "Effect<string, never, FileSystem.FileSystem>", "string!never!FileSystem.FileSystem"},
+		{"union", "Effect<string, never, FileSystem | Path>", "Effect<string, never, FileSystem.FileSystem | Path>", "Effect.Effect<string, never, FileSystem.FileSystem | Path>"},
+		{"bang form", "string!!FileSystem", "string!!FileSystem.FileSystem", "string!!FileSystem.FileSystem"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			source := "export effect function read(): " + test.contract + " {\n" + body
@@ -54,17 +54,21 @@ func TestContractAmbientNamesake(t *testing.T) {
 				if fixed == nil {
 					t.Fatalf("%+v: --fix left the contract %s", options, test.contract)
 				}
-				if want := "export effect function read(): " + test.want + " {\n" + body; fixed.Text != want {
+				wantType := test.want
+				if !options.VIPOnly {
+					wantType = test.fullWant // ordinary --fix also migrates EK4856 (detail260)
+				}
+				if want := "export effect function read(): " + wantType + " {\n" + body; fixed.Text != want {
 					t.Errorf("%+v: --fix wrote\n%s\nwant\n%s", options, fixed.Text, want)
 				}
 			}
 		})
 	}
-	for _, control := range []struct{ name, source string }{
+	for _, control := range []struct{ name, source, want string }{
 		// The DOM's FileSystem in a contract whose body needs no Effect FileSystem.
-		{"no escape", "export effect function name(fs: FileSystem): Effect<string> {\n  return fs.name\n}\n"},
+		{"no escape", "export effect function name(fs: FileSystem): Effect<string> {\n  return fs.name\n}\n", "export effect function name(fs: FileSystem): string!! {\n  return fs.name\n}\n"},
 		// Effect's type written through its module already.
-		{"qualified", "export effect function read(): Effect<string, never, FileSystem.FileSystem> {\n" + body},
+		{"qualified", "export effect function read(): Effect<string, never, FileSystem.FileSystem> {\n" + body, "export effect function read(): string!never!FileSystem.FileSystem {\n" + body},
 	} {
 		t.Run(control.name, func(t *testing.T) {
 			program, file, _, _ := editorProgram(t, control.source)
@@ -73,8 +77,9 @@ func TestContractAmbientNamesake(t *testing.T) {
 					t.Fatalf("unexpected error %d: %s", d.Code(), diagnosticChainText(d))
 				}
 			}
-			if fixed := FixProject(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), program.CommandLine()).Files[file.FileName()]; fixed != nil {
-				t.Fatalf("--fix rewrote\n%s", fixed.Text)
+			fixed := FixProject(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), program.CommandLine()).Files[file.FileName()]
+			if fixed == nil || fixed.Text != control.want {
+				t.Fatalf("--fix must migrate the alias while retaining the native FileSystem binding: %+v; want\n%s", fixed, control.want)
 			}
 		})
 	}
@@ -90,7 +95,7 @@ func TestContractAmbientNamesake(t *testing.T) {
 func TestFixPreludeImportAmbientType(t *testing.T) {
 	for _, test := range []struct{ name, source, want string }{
 		{"parameter", "import { FileSystem } from \"effect/FileSystem\"\n\nexport const size = (fs: FileSystem): number => 1\n", "(fs: FileSystem.FileSystem): number"},
-		{"contract", "import { FileSystem } from \"effect/FileSystem\"\n\nexport effect function read(): Effect<string, never, FileSystem> {\n  const fs = try FileSystem\n  return String(typeof fs)\n}\n", "Effect<string, never, FileSystem.FileSystem>"},
+		{"contract", "import { FileSystem } from \"effect/FileSystem\"\n\nexport effect function read(): Effect<string, never, FileSystem> {\n  const fs = try FileSystem\n  return String(typeof fs)\n}\n", "string!never!FileSystem.FileSystem"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			program, file, _, _ := editorProgram(t, test.source)

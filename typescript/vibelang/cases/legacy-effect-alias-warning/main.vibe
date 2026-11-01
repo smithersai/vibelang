@@ -1,0 +1,6 @@
+export type Bare = Effect<number>
+export type Nested = Array<Effect<string>>
+export type Shorthand = number!!
+import type { Effect as Native } from "effect/Effect"
+export type Imported = Native<number>
+export const value = 7

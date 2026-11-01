@@ -72,7 +72,7 @@ func findEffectTypes(c *checker.Checker, file *ast.SourceFile, report func(at *a
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		if ast.IsTypeReferenceNode(node) && ast.IsQualifiedName(node.AsTypeReferenceNode().TypeName) && isEffectTypeName(c, node) {
-			if rewrite := effectTypeRewrite(c, file, node); rewrite.fixable() {
+			if rewrite := effectTypeRewrite(c, file, node); rewrite != nil {
 				report(node, rewrite, messageText(node, "This Effect type"), rewrite.description)
 			}
 		}
@@ -106,6 +106,15 @@ func effectTypeRewrite(c *checker.Checker, file *ast.SourceFile, reference *ast.
 		}
 		if ast.IsInferTypeNode(argument) {
 			return nil
+		}
+	}
+	// Details260/277 apply through the full --fix fixed point: a later
+	// style pass must not undo the migration's grouping or declarations.
+	// Keep the style advisory while withholding an unsafe automatic edit.
+	if !effectShorthandKeepsGrouping(file, reference) {
+		return &formRewrite{
+			description: "the A!E!R shorthand with its required grouping",
+			why:         "No quick fix: keep the qualified Effect type here to preserve grouping and declaration output.",
 		}
 	}
 	keepNever := c.CompilerOptions().GetEmitDeclarations() && isExportedStatementPart(reference)
@@ -164,4 +173,27 @@ func needsBangParentheses(reference *ast.Node) bool {
 		return parent.AsTypeReferenceNode().TypeName.Flags&ast.NodeFlagsReparsed != 0
 	}
 	return false
+}
+
+// Detail260's deterministic trigger does not add grouping to migrate a legacy
+// alias. Existing source parentheses remain available; an enclosing position
+// or channel that needs new parentheses instead retains the qualified type.
+func effectShorthandKeepsGrouping(file *ast.SourceFile, node *ast.Node) bool {
+	if needsBangParentheses(node) || node.Parent != nil &&
+		(ast.IsHeritageClause(node.Parent) || ast.IsParenthesizedTypeNode(node.Parent)) {
+		return false
+	}
+	for i, argument := range node.TypeArguments() {
+		// emptySlots deliberately removes bang grouping from declarations.
+		// Qualification retains the source's existing parentheses and exact
+		// declaration bytes, as the migration contract requires (detail277).
+		if ast.IsParenthesizedTypeNode(argument) {
+			return false
+		}
+		text := expressionText(file, argument)
+		if hasTopLevel(text, "|") || hasTopLevel(text, "&") || bangSlot(text, i > 0) != text {
+			return false
+		}
+	}
+	return true
 }

@@ -266,7 +266,18 @@ func TestFixRunThatFinishesReports(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, "plain.ts")); err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(vibeFiles(t, dir)["main.vibe"], "Effect.Effect") {
-		t.Fatalf("main.vibe: %q", vibeFiles(t, dir)["main.vibe"])
+	// Retain the original directly nested Effect witness. Detail260 may keep
+	// a qualified inner type rather than introduce new parentheses; completion
+	// means the next ordinary --fix is a fixed point, not forced spelling.
+	before := vibeFiles(t, dir)
+	if !strings.Contains(before["main.vibe"], "export type B = number!!") {
+		t.Fatalf("main.vibe did not finish its safe fixes: %q", before["main.vibe"])
+	}
+	again := &fixSys{fs: bundled.WrapFS(osvfs.FS()), cwd: dir}
+	if status := FixWithOptions(t.Context(), again, []string{"-p", dir}, FixOptions{ProgressEvery: time.Hour}); status != 0 {
+		t.Fatalf("second --fix: status %d, %s", status, again.stderr.String())
+	}
+	if after := vibeFiles(t, dir); !stdmaps.Equal(before, after) {
+		t.Fatalf("completed run was not idempotent: before %v, after %v", before, after)
 	}
 }
