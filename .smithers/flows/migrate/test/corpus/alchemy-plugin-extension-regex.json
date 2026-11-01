@@ -1,0 +1,10 @@
+{
+  "repo": "alchemy",
+  "pattern": "PurePlugin/NamespaceImportPlugin native transform filter",
+  "files": [
+    "src/PurePlugin.ts",
+    "src/NamespaceImportPlugin.ts"
+  ],
+  "source": "import type { Plugin } from \"rolldown\"\nconst SUPPORTED_FILE_RE = /\\.(?:m?[jt]sx?|cjs|cts)$/;\nexport const PurePlugin = (): Plugin => ({ name: \"pure\", transform: { filter: { id: SUPPORTED_FILE_RE }, handler(code) { return code } } });\n",
+  "line": 2
+}

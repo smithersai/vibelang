@@ -105,6 +105,23 @@ export function extensionAllowlistWarnings(ts, text, file) {
         warnings.push(`${file}:${line}: source-extension allowlist includes ".ts" but omits ".vibe"; include ".vibe" and exclude generated ".d.vibe.ts" sidecars`)
       }
     }
+    if (node.kind === ts.SyntaxKind.RegularExpressionLiteral) {
+      const literal = node.getText(source)
+      const slash = literal.lastIndexOf("/")
+      const pattern = literal.slice(1, slash)
+      // Probe only literal extension patterns. Remove stateful flags so one test
+      // cannot influence the next. This never evaluates repository JavaScript.
+      if (pattern.includes("\\.") || pattern.includes("[.]")) {
+        try {
+          const re = new RegExp(pattern, literal.slice(slash + 1).replace(/[gy]/g, ""))
+          const extensions = ["ts", "tsx", "mts", "cts", "mtsx", "ctsx"]
+          if (extensions.some(ext => re.test("x." + ext)) && !re.test("x.vibe")) {
+            const line = source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1
+            warnings.push(file + ":" + line + ': source-extension regex accepts TypeScript but omits ".vibe"; include ".vibe" and exclude generated ".d.vibe.ts" sidecars')
+          }
+        } catch { /* Malformed regexes belong to the source parser's diagnostics. */ }
+      }
+    }
     ts.forEachChild(node, visit)
   }
   visit(source)
