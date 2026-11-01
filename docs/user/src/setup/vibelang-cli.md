@@ -233,7 +233,7 @@ Stock `tsc`, `tsrs`, TypeDoc and other checkers built on TypeScript cannot read 
 
 A `schema` declaration's JSDoc is emitted on its constant only; the generated `typeof Name.Type` alias has no comment. This includes visibility and deprecation tags, following ordinary TypeScript declaration emit.
 
-The Node and Bun loaders reuse a cached compile when generated sidecars beside their sources appear, change or disappear. They still recompile when a source or a standalone declaration file changes.
+The Node and Bun loaders reuse a cached compile when generated sidecars beside their sources, or anywhere under `vibe.sidecarDir`, appear, change or disappear. They still recompile when a source or a standalone declaration file changes.
 
 No VibeLang setting is needed. The retired `declarationSidecars` option is an error. Run `vibelang -p tsconfig.json --fix` to remove it from the project and its local inherited configs. This also removes the obsolete key from the top-level `vibe` section in `tsconfig.json` or `vibe.config.json`, preserving other settings, comments and a UTF-8 BOM.
 
@@ -252,6 +252,21 @@ A workspace package can expose a module through its `x.d.vibe.ts` declaration un
 This source preference also applies when `moduleSuffixes` places a paired `.d.vibe` fallback after its original suffix. Stock TypeScript keeps its own suffix order, which can select the sidecar before a `.tsx` sibling.
 
 What a sidecar cannot print is an error, such as `TS7056` for an inferred type too long to serialize, even in a project with neither `declaration` nor `composite`: declaration emit writes `any` in its place, and a stock checker that reads the sidecar would accept that `any` silently. Annotate the export, or keep the module `.ts`.
+
+### Keep the sidecars in one directory
+
+Code that lists a folder's `*.ts` files and skips `*.d.ts`, such as a test that imports every module in a folder, also picks up `greet.d.vibe.ts`. Set `vibe.sidecarDir` to move every sidecar into one hidden directory, and add it to `rootDirs` so stock TypeScript still finds them:
+
+```jsonc
+{
+  "compilerOptions": { "allowArbitraryExtensions": true, "rootDirs": [".", ".vibe/declarations"] },
+  "vibe": { "sidecarDir": ".vibe/declarations" }
+}
+```
+
+`src/greet.vibe` then gets `.vibe/declarations/src/greet.d.vibe.ts`: the path under the config's directory, mirrored. The sidecar's text doesn't change, because `rootDirs` resolves its relative imports from either tree. An empty `sidecarDir` string names the declaring config directory and overrides an inherited path; omitting the entry inherits it. A directory that overlaps the source tree, such as `src`, or an ancestor such as `..`, still mirrors each source's config-relative path; cleanup keeps outputs selected for other modules. A relative `sidecarDir` resolves from the config that declares it; in a shared base config, write `${configDir}/.vibe/declarations` in both settings. A `.vibe` file outside the config's directory keeps its sidecar beside it. Turning the setting on removes the sidecars beside the sources; turning it off removes those under `.vibe/declarations`, and the folder once it is empty. Remove a sidecar directory with any other name by hand. `vibelang --watch` writes each changed sidecar to the chosen place and settles, and the language server reads a `.ts` file's `./greet.vibe` import from `greet.vibe` itself in either mode. A bare import in a sidecar resolves from the sidecar's folder upward, so keep the directory inside the package whose `node_modules` it needs.
+
+For stock TypeScript consumers, choose a separate directory such as `.vibe/declarations`. When a source is inside the chosen directory, native `rootDirs` longest-prefix resolution can shadow or miss its mirrored declaration. The compiler still emits each source at its mirrored path and preserves every selected output during cleanup.
 
 These checkers read only the sidecars: they do not type-check the `.vibe` files themselves. Run `vibelang` before them, in the same script, so a sidecar is current and a type error in a `.vibe` file fails the check:
 

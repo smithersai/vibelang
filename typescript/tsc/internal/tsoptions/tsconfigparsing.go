@@ -181,7 +181,7 @@ func parseOwnConfigOfJsonSourceFile(
 			} else if option == nil {
 				if keyText == "vibe" {
 					var vibeErrors []*ast.Diagnostic
-					vibeOptions, vibeErrors = parseVibeSettings(value, propertyAssignment.Initializer, sourceFile)
+					vibeOptions, vibeErrors = parseVibeSettings(value, propertyAssignment.Initializer, sourceFile, basePath)
 					propertySetErrors = append(propertySetErrors, vibeErrors...)
 				}
 				if keyText == "excludes" {
@@ -881,7 +881,7 @@ func parseOwnConfigOfJson(
 	}
 	options, err := convertCompilerOptionsFromJsonWorker(json.GetOrZero("compilerOptions"), basePath, configFileName)
 	if value, exists := json.Get("vibe"); exists {
-		vibeOptions, vibeErrors := parseVibeSettings(value, nil, nil)
+		vibeOptions, vibeErrors := parseVibeSettings(value, nil, nil, basePath)
 		options.VibeLang = core.MergeVibeSettings(vibeOptions, options.VibeLang)
 		errors = append(errors, vibeErrors...)
 	}
@@ -1180,6 +1180,11 @@ func parseJsonConfigFileContentWorker(
 	parsedConfig, errors := parseConfig(json, sourceFile, fs, baseDirectory, configFileName, resolutionStack, extendedConfigCache)
 	mergeParsedCompilerOptions(parsedConfig.options, &parsedCompilerOptions{CompilerOptions: existingOptions}, existingOptionsRaw, configFileName.AsString(), baseDirectory.AsString())
 	handleOptionConfigDirTemplateSubstitution(parsedConfig.options, basePathForFileNames)
+	if options := parsedConfig.options; options != nil && options.CompilerOptions != nil && options.VibeLang != nil && startsWithConfigDirTemplate(options.VibeLang.SidecarDir) {
+		vibe := *options.VibeLang
+		vibe.SidecarDir = getSubstitutedPathWithConfigDirTemplate(vibe.SidecarDir, basePathForFileNames)
+		options.VibeLang = &vibe
+	}
 	rawConfig := parseJsonToStringKey(parsedConfig.raw)
 	if configFileName != "" && parsedConfig.options != nil {
 		parsedConfig.options.ConfigFilePath = configFileName
@@ -1923,7 +1928,9 @@ func getFileNamesFromConfigSpecs(
 			// VibeLang: x.d.vibe.ts beside x.vibe is the declaration sidecar the
 			// compiler writes for it, an
 			// output of the source rather than an input of its project.
-			if name := file.AsString(); strings.HasSuffix(name, ".d.vibe.ts") && host.FileExists(tspath.RootedFilePathFromNormalized(strings.TrimSuffix(name, ".d.vibe.ts")+tspath.ExtensionVibe)) {
+			// With vibe.sidecarDir, a sidecar there mirrors its source's path
+			// under the config's directory (decided detail 268).
+			if name := file.AsString(); strings.HasSuffix(name, ".d.vibe.ts") && (host.FileExists(tspath.RootedFilePathFromNormalized(strings.TrimSuffix(name, ".d.vibe.ts")+tspath.ExtensionVibe)) || host.FileExists(tspath.RootedFilePathFromNormalized(options.VibeSidecarSource(name, host.CaseSensitivity())))) {
 				continue
 			}
 			// If we have already included a literal or wildcard path with a

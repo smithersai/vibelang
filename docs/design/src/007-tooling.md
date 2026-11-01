@@ -41,7 +41,7 @@ For example, TypeScript’s [`${configDir}` substitution](https://www.typescript
 { "include": ["src"] }
 ```
 
-This includes `src/user.vibe` without also checking its stale `src/user.d.vibe.ts`.
+This includes `src/user.vibe` without also checking its stale `src/user.d.vibe.ts`. With `vibe.sidecarDir`, a sidecar under that directory whose source exists at the mirrored path is left out the same way.
 
 ```jsonc
 // base.json
@@ -60,6 +60,7 @@ The decided keys (VIP-30, amended) are:
 | --- | --- |
 | `vibe.effectGlobals` | Boolean switch, default `true`, for Effect's function globals ([VIP-6](../vips/0006-effect-globals.md)); `false` turns them off. |
 | `vibe.effectModules` | Boolean switch, default `true`, for Effect's modules in scope ([VIP-14](../vips/0014-effect-modules-in-scope.md)); `false` turns them off. |
+| `vibe.sidecarDir` | Directory, default unset, that holds every declaration sidecar at its source's path under the config's directory, instead of `x.d.vibe.ts` beside `x.vibe` ([VIP-27](../vips/0027-declaration-output.md#decision), amended). Conventionally `.vibe/declarations`; pair it with `"rootDirs": [".", ".vibe/declarations"]` so stock TypeScript resolves `./x.vibe`. A relative path resolves from the config that declares it; a leading `${configDir}` from the selected config. An empty string names the declaring directory and overrides an inherited path; only an absent entry inherits. Wrong types report `EK3007`. |
 | `vibe.severities` | Maps VibeLang's own warning codes and all imported `EK38xx` lint codes to `"error"`, `"warning"`, `"suggestion"` or `"off"` ([VIP-30](../vips/0030-config-files.md#decision), [VIP-34](../vips/0034-compiler-and-tooling.md#decision), [VIP-38](../vips/0038-effect-lint-built-in.md#decision)). |
 
 An unknown `vibe` key or a value of the wrong type is a config error (`EK3007`), as for TypeScript’s `compilerOptions`; remove the key or supply its declared type. Exception: a `severities` entry whose value is not one of the four strings, whatever its JSON type, is `EK3006`; replace it with one of them. `EK3007` covers every other wrong-typed `vibe` value, including a `severities` value that is not an object.

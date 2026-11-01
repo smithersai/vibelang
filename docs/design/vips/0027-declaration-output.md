@@ -36,6 +36,19 @@ export declare function add(a: number, b: number): number
 
 - **Amended 2026-11-01: documented schemas.** A JSDoc comment on a `schema` declaration is emitted on its `declare const` only; its `typeof Name.Type` alias has no comment. This includes `@internal`, `@public` and `@deprecated`, as on the ordinary Effect TypeScript pair. Native `removeComments` and `stripInternal` behavior is unchanged. A separate type-comment form is not introduced.
 
+### Amendment: an opt-in sidecar directory (2026-11-01)
+
+The Location bullet stays the default: `x.d.vibe.ts` beside `x.vibe`, with no configuration. `vibe.sidecarDir` moves every sidecar of the project into one directory, conventionally `.vibe/declarations`, at the path the source has under the config's directory, so `src/x.vibe` gets `.vibe/declarations/src/x.d.vibe.ts`. The project's tsconfig adds the directory to `rootDirs` beside `.`, so stock `tsc`, TypeDoc and editors still resolve `import "./x.vibe"` under `allowArbitraryExtensions`:
+
+```jsonc
+{
+  "compilerOptions": { "allowArbitraryExtensions": true, "rootDirs": [".", ".vibe/declarations"] },
+  "vibe": { "sidecarDir": ".vibe/declarations" }
+}
+```
+
+The hidden directory keeps sidecars out of code that enumerates a source folder's `*.ts` files, such as a test that imports every `*.ts` but `*.d.ts`. Switching the setting on or off removes each module's sidecar from the other place. The migrate flow's setup turns it on where tracked code enumerates `*.ts` files in a folder that will hold `.vibe` files. Decided detail 268 (spec agent, 2026-11-01, common sense and precedent: TypeScript's `declarationDir` and `rootDirs`); it reverses nothing.
+
 ## Prior art
 
 Svelte's and Vue's TypeScript tooling; CSS modules' `.d.css.ts`; TypeScript's `allowArbitraryExtensions`.
@@ -45,3 +58,8 @@ Svelte's and Vue's TypeScript tooling; CSS modules' `.d.css.ts`; TypeScript's `a
 - **Amended 2026-11-01: sidecars reached by non-relative names.** After native resolution and `realpath`/`preserveSymlinks` handling, a non-relative export, `paths` or `#imports` resolution to a known `.d.vibe.ts`/`.d.vibex.ts` sidecar uses its available source only when the final path is outside `node_modules`. With relocated sidecars, follow the recorded source map, never a guessed basename. A retained logical `node_modules` path under `preserveSymlinks` keeps declarations. This Vibe-aware source preference changes which file is read, not native discovery or explicit-input overwrite protection; an explicitly listed declaration remains an input. Ordinary TypeScript source/declaration resolution is unchanged.
 
 - **Amended 2026-11-02: declaration import spelling.** `vibelang.declarationImportStyle` ([VIP-30](0030-config-files.md)) spells a relative reference the source writes as `./x.vibe` in package declarations, the `.d.ts` files in the output directory: `./x.js` by default, `./x` for `"extensionless"` and `./x.ts` for `".ts"`. A source-adjacent sidecar, `x.d.vibe.ts` or `x.d.vibex.ts`, keeps `./x.vibe` under every setting, so plain `tsc` resolves it through `allowArbitraryExtensions`; JavaScript output keeps `./x.js`. A `./x.vibex` reference is declared through its JavaScript output by default, `./x.jsx` under `"jsx": "preserve"` and `./x.js` otherwise ([VIP-39](0039-vibex.md#options-output-and-declarations)); what `"extensionless"` and `".ts"` declare for it is not yet decided. Every other written specifier, `./helper.ts` included, stays as written. Recorded from decided detail 263 (C-prime, Will via proxy, 2026-10-31): "an opt-in package declaration spelling policy" ... "source-adjacent sidecars retain their existing VibeLang-source reference rules".
+
+An empty `vibe.sidecarDir` string names the directory of its declaring config, as an empty TypeScript path does. A present child value overrides an inherited path; an absent child value inherits. Non-string values report `EK3007`. This is the path-inheritance contract of the directory setting.
+
+Directory paths may overlap the source tree; emit still mirrors config-relative paths, and stale cleanup preserves every module's selected output. Stock TypeScript keeps its native `rootDirs` longest-prefix resolution. A separate sidecar directory avoids virtual-path collisions with sources inside that directory.
+

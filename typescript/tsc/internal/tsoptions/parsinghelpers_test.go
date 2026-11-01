@@ -55,7 +55,9 @@ func TestMergeCompilerOptions(t *testing.T) {
 							t.Fatalf("Merge differs for target=%v, source=%v, explicitNull=%v", targetValue, sourceValue, explicitNull)
 						}
 						actualField := reflect.ValueOf(target).Elem().FieldByIndex(field.Index)
-						if (field.Type.Kind() == reflect.Pointer || field.Type.Kind() == reflect.Slice) && actualField.Pointer() != expectedField.Pointer() {
+						// VIP-30 merges nested Vibe settings by key and isolates their maps;
+						// ordinary compiler-option pointers retain shallow replacement.
+						if field.Name != "VibeLang" && (field.Type.Kind() == reflect.Pointer || field.Type.Kind() == reflect.Slice) && actualField.Pointer() != expectedField.Pointer() {
 							t.Fatal("Merge must preserve shallow sharing")
 						}
 						if !reflect.DeepEqual(reflect.ValueOf(source).Elem().FieldByIndex(field.Index).Interface(), sourceValue.Interface()) {
@@ -123,5 +125,36 @@ func TestParseCompilerOptionNoMissingFields(t *testing.T) {
 	if len(missingKeys) > 0 {
 		t.Errorf("The following keys are missing entries in the ParseCompilerOptions"+
 			" switch statement:\n%v", missingKeys)
+	}
+}
+
+func TestMergeVibeSettingsSidecarPathAndMapIsolation(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		name, childPath, wantPath string
+	}{
+		{"inherit", "", "/base/declarations"},
+		{"override", "/child/types", "/child/types"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			base := &core.VibeLangOptions{VibeOnly: true, SidecarDir: "/base/declarations", Severities: map[string]string{"EK4802": "warning"}}
+			child := &core.VibeLangOptions{VibeOnly: true, SidecarDir: tt.childPath, Severities: map[string]string{"EK4831": "error"}}
+			target := &core.CompilerOptions{VibeLang: base}
+			source := &core.CompilerOptions{VibeLang: child}
+			mergeCompilerOptions(target, source, nil, "", "")
+			got := target.VibeLang
+			if got.SidecarDir != tt.wantPath || got.Severities["EK4802"] != "warning" || got.Severities["EK4831"] != "error" {
+				t.Fatalf("inherited settings differ: %#v", got)
+			}
+			got.Severities["EK4802"] = "off"
+			got.Severities["EK4831"] = "off"
+			if base.Severities["EK4802"] != "warning" || child.Severities["EK4831"] != "error" {
+				t.Fatal("a merged config must not mutate either extended config's severity map")
+			}
+			if base.SidecarDir != "/base/declarations" || child.SidecarDir != tt.childPath {
+				t.Fatal("merging a sidecar path must not mutate an extended config")
+			}
+		})
 	}
 }

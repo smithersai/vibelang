@@ -18,6 +18,11 @@ type VibeLangOptions struct {
 	Severities    map[string]string `json:"severities,omitzero"`
 	EffectGlobals Tristate          `json:"effectGlobals,omitzero"`
 	EffectModules Tristate          `json:"effectModules,omitzero"`
+	// SidecarDir is vibe.sidecarDir, the absolute directory that holds the
+	// project's declaration sidecars, or "" for x.d.vibe.ts beside x.vibe
+	// (VIP-27, decided detail 268). It may still begin with ${configDir}
+	// until the selected config's directory substitutes it.
+	SidecarDir string `json:"sidecarDir,omitzero"`
 
 	// TrustedPackages are package-name globs granted D22 trust (D261).
 	TrustedPackages []string `json:"trustedPackages,omitzero"`
@@ -66,7 +71,7 @@ func (o *VibeLangOptions) Equals(other *VibeLangOptions) bool {
 	if o == nil || other == nil {
 		return o == other
 	}
-	return o.VibeOnly == other.VibeOnly && maps.Equal(o.Severities, other.Severities) && maps.Equal(o.InvalidSeverities, other.InvalidSeverities) && o.EffectGlobals == other.EffectGlobals && o.EffectModules == other.EffectModules && o.DeclarationImportStyle == other.DeclarationImportStyle && slices.Equal(o.TrustedPackages, other.TrustedPackages) && maps.Equal(o.Diagnostics, other.Diagnostics)
+	return o.VibeOnly == other.VibeOnly && maps.Equal(o.Severities, other.Severities) && maps.Equal(o.InvalidSeverities, other.InvalidSeverities) && o.EffectGlobals == other.EffectGlobals && o.EffectModules == other.EffectModules && o.SidecarDir == other.SidecarDir && o.DeclarationImportStyle == other.DeclarationImportStyle && slices.Equal(o.TrustedPackages, other.TrustedPackages) && maps.Equal(o.Diagnostics, other.Diagnostics)
 }
 
 // VibeSeverityCode implements VIP-30/34/38, details 57 and 77. Legacy
@@ -125,6 +130,9 @@ func MergeVibeSettings(base, child *VibeLangOptions) *VibeLangOptions {
 	}
 	if result.EffectModules == TSUnknown {
 		result.EffectModules = base.EffectModules
+	}
+	if result.SidecarDir == "" {
+		result.SidecarDir = base.SidecarDir
 	}
 	return &result
 }

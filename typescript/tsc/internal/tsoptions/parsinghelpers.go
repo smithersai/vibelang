@@ -401,7 +401,7 @@ func mergeCompilerOptions(targetOptions, sourceOptions *core.CompilerOptions, ra
 		if explicitNullFields.Has("vibelang") {
 			// A legacy reset clears legacy fields, independently of inherited vibe.
 			modern := core.MergeVibeSettings(previousVibe, &core.VibeLangOptions{})
-			if modern.Severities != nil || modern.EffectGlobals != core.TSUnknown || modern.EffectModules != core.TSUnknown {
+			if modern.Severities != nil || modern.EffectGlobals != core.TSUnknown || modern.EffectModules != core.TSUnknown || modern.SidecarDir != "" {
 				modern.VibeOnly = true
 				targetOptions.VibeLang = modern
 			}

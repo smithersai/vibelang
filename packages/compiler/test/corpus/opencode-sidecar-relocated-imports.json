@@ -1,0 +1,12 @@
+{
+  "issue": "opencode-53: a consumer does not inherit the producer rootDirs",
+  "input": {
+    "output": ".vibe/declarations",
+    "nested": "src",
+    "helper": "helper"
+  },
+  "files": {
+    "src/helper.ts": "export interface Helper { readonly n: number }",
+    "src/index.vibe": "import type { Helper } from \"./helper.ts\"; export function make(n: number): Helper { return { n } }"
+  }
+}

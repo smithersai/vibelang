@@ -2,13 +2,12 @@ package compiler
 
 import (
 	"fmt"
-	"strings"
-	"testing"
-
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 	"github.com/microsoft/TypeScript/tsc/internal/vfs/vfstest"
+	"strings"
+	"testing"
 )
 
 func TestSidecarTextNamesVibeModuleEverywhereADeclarationNamesOne(t *testing.T) {
@@ -76,5 +75,74 @@ func TestSidecarExplicitVibeSpecifierWithNativeSiblings(t *testing.T) {
 				})
 			}
 		}
+	}
+}
+
+func TestRelocatedSidecarTextNamesVibeModuleEverywhereADeclarationNamesOne(t *testing.T) {
+	t.Parallel()
+	resolve := func(specifier string) string {
+		if specifier == "./Ω.js" {
+			return "/src/Ω.js"
+		}
+		if specifier == "./user.js" {
+			return "/src/user.vibe"
+		}
+		return tspath.ResolvePath("/src", specifier)
+	}
+	for _, test := range []struct{ name, declaration, want string }{
+		{"import", `import { User } from "./user.js";`, `import { User } from "./user.vibe";`},
+		{"re-export", `export * from "./user.js";`, `export * from "./user.vibe";`},
+		{"import type", `export type U = import("./user.js").User;`, `export type U = import("./user.vibe").User;`},
+		{"require", `import user = require("./user.js");`, `import user = require("./user.vibe");`},
+		{"augmentation", "declare module \"./user.js\" {\n}", "declare module \"./user.vibe\" {\n}"},
+		{"a TypeScript module stays", `export * from "./other.js";`, `export * from "./other.js";`},
+
+		{"escaped Unicode", `export * from "./\u03A9.js";`, `export * from "./\u03A9.js";`},
+		{"single quote", `export * from './user.js';`, `export * from './user.vibe';`},
+		{"comment stays", `// export * from "./user.js";`, `// export * from "./user.js";`},
+		{"a string type stays", `export declare const path: "./user.js";`, `export declare const path: "./user.js";`},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			got := relocatedSidecarText(test.declaration, "/out/index.d.ts", "/src", resolve, tspath.CaseSensitive)
+			if got != test.want {
+				t.Fatalf("relocatedSidecarText(%q) = %q, want %q", test.declaration, got, test.want)
+			}
+		})
+	}
+}
+
+func TestSidecarTextResolvesFromFinalOutput(t *testing.T) {
+	t.Parallel()
+	resolve := func(specifier string) string {
+		switch specifier {
+		case "./tag":
+			return "/pkg/generated/src/tag/index.vibe"
+		case ".", "./":
+			return "/pkg/src"
+		case "..", "../":
+			return "/pkg"
+		case "./hidden":
+			return "/pkg/generated/src/.hidden.vibe"
+		default:
+			return "/pkg/src/helper.js"
+		}
+	}
+	for _, test := range []struct{ name, declaration, want string }{
+		{"native", `import type { Helper } from "./helper.js";`, `import type { Helper } from "../../src/helper.js";`},
+		{"Vibe directory", `export type T = import("./tag").Tag;`, `export type T = import("./tag/index.vibe").Tag;`},
+		{"hidden name", `export * from "./hidden";`, `export * from "./.hidden.vibe";`},
+		{"directory root", `export * from ".";`, `export * from "../../src";`},
+		{"directory root slash", `export * from "./";`, `export * from "../../src";`},
+		{"parent root", `export * from "..";`, `export * from "../..";`},
+		{"parent root slash", `export * from "../";`, `export * from "../..";`},
+		{"reference", `/// <reference path="../shared.d.ts" />`, `/// <reference path="../../../public/shared.d.ts" />`},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			got := relocatedSidecarText(test.declaration, "/public/src/index.d.ts", "/pkg/generated/src", resolve, tspath.CaseSensitive)
+			if got != test.want {
+				t.Fatalf("got %q, want %q", got, test.want)
+			}
+		})
 	}
 }

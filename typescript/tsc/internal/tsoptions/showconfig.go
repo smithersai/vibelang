@@ -94,7 +94,7 @@ func ConvertToTSConfig(configParseResult *ParsedCommandLine, configFileName tspa
 	}
 
 	if options := configParseResult.CompilerOptions().VibeLang; options != nil {
-		config.Vibe = serializeVibeSettings(options)
+		config.Vibe = serializeVibeSettings(options, configFileName, caseSensitivity)
 		if options.VibeOnly && config.Vibe != nil {
 			optionMap.Delete("vibelang")
 		}

@@ -11,23 +11,17 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/printer"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
+	"github.com/microsoft/TypeScript/tsc/internal/vfs"
 )
 
-// VibeLang: declaration sidecars. Each .vibe module of the program gets its
-// declarations beside its source, x.d.vibe.ts for x.vibe. Stock TypeScript
-// resolves an import of ./x.vibe to that file under allowArbitraryExtensions,
-// as it resolves ./styles.css to styles.d.css.ts, so tsc, TypeDoc and every
-// other checker built on TypeScript reads a .vibe module's types without
-// VibeLang. The text is the declaration file the module emits, x.d.ts, with
-// two changes that keep it right beside the source: a relative import of
-// another .vibe module names its source, ./y.vibe, which resolves to
-// y.d.vibe.ts, and a reference path is relative to the source's directory.
-// VibeLang's own resolver prefers x.vibe to its sidecar, and a project's
-// include leaves out a sidecar whose source is on disk, so the sidecars never
-// stand in for the sources they describe.
+// VibeLang compatibility declarations use TypeScript's .d.<ext>.ts naming.
+// Default output is beside each source; vibe.sidecarDir mirrors the source
+// tree under one output directory (268/271). Relative module specifiers and
+// reference paths resolve from the final sidecar location, independently of
+// a consumer's config. VibeLang's resolver still prefers the matching source.
 
-// SidecarPath returns the declaration sidecar of a .vibe file: x.d.vibe.ts
-// for x.vibe.
+// SidecarPath returns the declaration sidecar of a .vibe file beside it:
+// x.d.vibe.ts for x.vibe.
 func SidecarPath(fileName string) string {
 	return strings.TrimSuffix(fileName, tspath.ExtensionVibe) + ".d" + tspath.ExtensionVibe + ".ts"
 }
@@ -40,8 +34,15 @@ var (
 // EmitDeclarationSidecars writes the declaration sidecar of each of the
 // program's .vibe modules whose text changed, with write, and returns the
 // declaration emit's diagnostics. A sidecar whose text is unchanged is not
-// written, so a watch that includes it does not rebuild.
-func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileName string, text string) error) []*ast.Diagnostic {
+// written, so a watch that includes it does not rebuild. With output, the
+// file system the sidecars go to, it also deletes each module's sidecar from
+// the place the other layout puts it, so switching vibe.sidecarDir on or off
+// leaves one sidecar per module.
+func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileName string, text string) error, outputs ...vfs.FS) []*ast.Diagnostic {
+	var output vfs.FS
+	if len(outputs) != 0 {
+		output = outputs[0]
+	}
 	var sources []*ast.SourceFile
 	for _, file := range p.getSourceFilesToEmit(nil, true /*forceDtsEmit*/, false /*forceJsEmit*/) {
 		if file.IsDeclarationFile || file.EmbeddedModule() != nil || !tspath.FileExtensionIs(string(file.FileName()), tspath.ExtensionVibe) {
@@ -52,10 +53,19 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 	if len(sources) == 0 {
 		return nil
 	}
+	// Overlapping roots can make one module's old colocated sidecar another
+	// module's selected output. Cleanup must not remove any selected output,
+	// regardless of the order in which the sources emit.
+	selected := make(map[tspath.PathKey]bool, len(sources))
+	for _, file := range sources {
+		sidecar, _ := p.Options().VibeSidecarPaths(string(file.FileName()), p.caseSensitivity)
+		selected[p.PathKeyForFileName(tspath.RootedFilePathFromNormalized(sidecar))] = true
+	}
 	fs := p.Host().FS()
+	resolver := p.newResolver()
 	result := p.Emit(ctx, EmitOptions{
-		TargetSourceFiles:      sources,
 		VibeDeclarationSidecar: true,
+		TargetSourceFiles:      sources,
 		EmitOnly:               EmitOnlyDts,
 		ForceEmit:              true,
 		WriteFile: func(fileName tspath.RootedFilePath, text string, data *WriteFileData) error {
@@ -63,8 +73,25 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 				return nil // the declaration map
 			}
 			source := string(data.SourceFile.FileName())
-			sidecar := SidecarPath(source)
-			text = sidecarText(text, string(fileName), source, func(path string) bool { return fs.FileExists(tspath.RootedFilePathFromNormalized(path)) }, p.caseSensitivity)
+			sidecar, stale := p.Options().VibeSidecarPaths(source, p.caseSensitivity)
+			if output != nil && stale != "" && !selected[p.PathKeyForFileName(tspath.RootedFilePathFromNormalized(stale))] && output.FileExists(tspath.RootedFilePathFromNormalized(stale)) {
+				if err := output.Remove(tspath.RootedPathFromNormalized(stale)); err != nil {
+					return err
+				}
+				p.pruneSidecarDirectories(tspath.GetDirectoryPath(stale), output)
+			}
+			// Resolve from the source using the real module resolver, then write
+			// relative to the final compatibility output. Another project's
+			// checker never inherits this project's rootDirs (opencode-53).
+			resolve := func(specifier string) string {
+				resolved, _, _ := resolver.ResolveModuleName(specifier, data.SourceFile.FileName(), p.GetDefaultResolutionModeForFile(data.SourceFile), nil)
+				if resolved != nil && resolved.Extension == tspath.ExtensionVibe {
+					target, _ := p.Options().VibeSidecarPaths(string(resolved.ResolvedFileName), p.caseSensitivity)
+					return strings.TrimSuffix(target, ".d"+tspath.ExtensionVibe+".ts") + tspath.ExtensionVibe
+				}
+				return tspath.ResolvePath(tspath.GetDirectoryPath(source), specifier)
+			}
+			text = relocatedSidecarText(text, string(fileName), tspath.GetDirectoryPath(sidecar), resolve, p.caseSensitivity)
 			if existing, ok := fs.ReadFile(tspath.RootedFilePathFromNormalized(sidecar)); ok && existing == text {
 				return nil
 			}
@@ -80,6 +107,55 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 	// read the sidecar accept that any without a word, so a consumer would
 	// lose the module's types.
 	return result.Diagnostics
+}
+
+// pruneSidecarDirectories removes directory and its ancestors while they are
+// empty, inside the conventional sidecar directory's .vibe folder only, after
+// a mode switch removed the last stale sidecar there.
+func (p *Program) pruneSidecarDirectories(directory string, output vfs.FS) {
+	configFile := p.Options().ConfigFilePath
+	if configFile == "" {
+		return
+	}
+	hidden := tspath.GetDirectoryPath(tspath.CombinePaths(configFile.Directory().AsString(), core.VibeConventionalSidecarDir))
+	for tspath.ContainsPath(hidden, directory, p.caseSensitivity) {
+		entries := output.GetAccessibleEntries(tspath.RootedDirectoryPathFromNormalized(directory))
+		if len(entries.Files) != 0 || len(entries.Directories) != 0 || output.Remove(tspath.RootedPathFromNormalized(directory)) != nil || directory == hidden {
+			return
+		}
+		directory = tspath.GetDirectoryPath(directory)
+	}
+}
+
+// relocatedSidecarText writes every relative module reference from the final sidecar
+// directory, using resolve's absolute logical target. Triple-slash paths are
+// rebased from the public declaration output; source-map comments are removed.
+func relocatedSidecarText(text string, declarationFile string, sidecarDirectory string, resolve func(string) string, caseSensitivity tspath.CaseSensitivity) string {
+	text = sourceMapComment.ReplaceAllString(text, "")
+	text = rewriteSidecarSpecifiers(text, func(specifier string) string {
+		if !tspath.IsExternalModuleNameRelative(specifier) {
+			return specifier
+		}
+		target := resolve(specifier)
+		relative := tspath.GetRelativePathFromDirectory(sidecarDirectory, target, caseSensitivity)
+		if !tspath.IsExternalModuleNameRelative(relative) {
+			relative = "./" + relative
+		}
+		return relative
+	})
+	declarationDirectory := tspath.GetDirectoryPath(declarationFile)
+	if declarationDirectory != sidecarDirectory {
+		text = sidecarReference.ReplaceAllStringFunc(text, func(match string) string {
+			parts := sidecarReference.FindStringSubmatch(match)
+			target := tspath.ResolvePath(declarationDirectory, parts[3])
+			relative := tspath.GetRelativePathFromDirectory(sidecarDirectory, target, caseSensitivity)
+			if !tspath.IsExternalModuleNameRelative(relative) {
+				relative = "./" + relative
+			}
+			return parts[1] + parts[2] + relative + parts[4]
+		})
+	}
+	return text
 }
 
 // sidecarText turns the declaration text that declarationFile would hold for
@@ -161,7 +237,7 @@ func rewriteSidecarSpecifiers(text string, rewrite func(string) string) string {
 		case ast.KindModuleDeclaration:
 			specifier = node.Name()
 		}
-		if specifier != nil && ast.IsStringLiteral(specifier) && (strings.HasPrefix(specifier.Text(), "./") || strings.HasPrefix(specifier.Text(), "../")) {
+		if specifier != nil && ast.IsStringLiteral(specifier) && tspath.IsExternalModuleNameRelative(specifier.Text()) {
 			value := specifier.Text()
 			if rewritten := rewrite(value); rewritten != value {
 				start := scanner.GetTokenPosOfNode(specifier, file, false /*includeJSDoc*/)

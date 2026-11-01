@@ -139,10 +139,11 @@ func EmitFilesAndReportErrors(input EmitInput) (result CompileAndEmitResult) {
 			WriteFile: input.WriteFile,
 		})
 		if input.Program != nil {
-			// VibeLang: each .vibe module always gets x.d.vibe.ts (VIP-27).
+			// VibeLang: each .vibe module always gets x.d.vibe.ts, beside it
+			// or under vibe.sidecarDir (VIP-27, decided detail 268).
 			sidecars := input.Program.EmitDeclarationSidecars(ctx, func(fileName string, text string) error {
 				return input.Sys.FS().WriteFile(tspath.RootedFilePathFromNormalized(fileName), text)
-			})
+			}, input.Sys.FS())
 			if emitResult != nil {
 				emitResult.Diagnostics = append(emitResult.Diagnostics, sidecars...)
 			}
