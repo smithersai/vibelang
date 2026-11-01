@@ -24,7 +24,13 @@ import (
 // the migration identity gate's canonicalization, as FuzzDeclarationIdentity
 // compares them. alchemy declares 171 fieldless Data.TaggedError classes, so
 // `--fix` writing them as `error X` must keep their declarations (corpus
-// alchemy-fieldless-tagged-error).
+// alchemy-fieldless-tagged-error). The `schema` key picks the other form:
+// "`schema error Name { fields }` combines `error` and the field mapping of
+// `schema` declarations", whose twin is `Schema.TaggedError<Name>()("Name",
+// { fields })` with each field type mapped by Chapter 6's table; "Every field
+// is readonly, as in `error`", so no field gets `Schema.mutableKey`
+// (foldkit-90's fieldless declaration and decide-live's request for schema
+// error cases, 2026-11-01).
 func FuzzErrorDeclarationTwin(f *testing.F) {
 	startShortBudget(f)
 	errorTwinChapters(f)
@@ -37,6 +43,10 @@ func FuzzErrorDeclarationTwin(f *testing.F) {
 		"error-twin:getter",
 		"error-twin:id;count?",
 		"error-twin:id;count?;getter;method",
+		"error-twin:schema",
+		"error-twin:schema;braces",
+		"error-twin:schema;id",
+		"error-twin:schema;id;count?;tags;getter;method",
 	} {
 		f.Add([]byte(seed))
 	}
@@ -53,6 +63,15 @@ var errorTwinQuotes = map[string][]string{
 	"003-failures.md": {
 		"`error Name { fields }` declares exactly Effect's `Data.TaggedError` class. The tag is always the name, and every field is readonly. Optional `id?: T` maps to `readonly id?: T`, as in a TypeScript type literal. Fields, methods and getters may be interleaved, as in a TypeScript class.",
 		`class Timeout extends Data.TaggedError("Timeout")`,
+		"`schema error Name { fields }` combines `error` and the field mapping of `schema` declarations",
+		"Every field is readonly, as in `error`, so no field gets `Schema.mutableKey",
+		`class Timeout extends Schema.TaggedError<Timeout>()("Timeout", {})`,
+	},
+	"006-data.md": {
+		"| `string`, `number`, `boolean`, `bigint`, `symbol` | `Schema.String`, `Schema.Number`, `Schema.Boolean`, `Schema.BigInt`, `Schema.Symbol` |",
+		"| `readonly T[]`, `ReadonlyArray<T>` | `Schema.Array(S)` |",
+		"| readonly field `readonly name: T` | `name: S` |",
+		"| readonly optional field `readonly name?: T` | `name: Schema.optional(S)` |",
 	},
 	"001-functions.md": {"Declarations are exactly what idiomatic Effect TypeScript would declare."},
 }
@@ -78,6 +97,7 @@ type errorTwin struct {
 	braces bool // a fieldless, memberless declaration writes `{}`
 	getter bool
 	method bool
+	schema bool // `schema error`, whose twin is Schema.TaggedError
 }
 
 type errorTwinField struct {
@@ -88,6 +108,14 @@ type errorTwinField struct {
 
 var errorTwinFieldNames = []string{"id", "count", "tags", "cause"}
 var errorTwinTypes = []string{"string", "number", "boolean", "ReadonlyArray<string>"}
+
+// errorTwinSchemas maps each field type as Chapter 6's table does.
+var errorTwinSchemas = map[string]string{
+	"string":                "Schema.String",
+	"number":                "Schema.Number",
+	"boolean":               "Schema.Boolean",
+	"ReadonlyArray<string>": "Schema.Array(Schema.String)",
+}
 
 // parseErrorTwin reads the keyed form, `error-twin:` then `;`-separated
 // parts (a field name, `?` for optional; `getter`; `method`; `braces`), so a
@@ -105,6 +133,8 @@ func parseErrorTwin(data []byte) errorTwin {
 				e.method = true
 			case "braces":
 				e.braces = true
+			case "schema":
+				e.schema = true
 			default:
 				name, optional := strings.CutSuffix(part, "?")
 				for i, known := range errorTwinFieldNames {
@@ -128,8 +158,33 @@ func parseErrorTwin(data []byte) errorTwin {
 		e.fields = append(e.fields, errorTwinField{errorTwinFieldNames[i], b&1 != 0, errorTwinTypes[int(b>>1)%len(errorTwinTypes)]})
 	}
 	flags := at(1 + len(errorTwinFieldNames))
-	e.getter, e.method, e.braces = flags&1 != 0, flags&2 != 0, flags&4 != 0
+	e.getter, e.method, e.braces, e.schema = flags&1 != 0, flags&2 != 0, flags&4 != 0, flags&8 != 0
 	return e
+}
+
+// form names the declaration's keyword for a gap key.
+func (e errorTwin) form() string {
+	if e.schema {
+		return "schema-error"
+	}
+	return "error"
+}
+
+func (e errorTwin) shapeKey() string {
+	parts := []string{e.form()}
+	if e.braces {
+		parts = append(parts, "braces")
+	}
+	for _, field := range e.fields {
+		parts = append(parts, field.name+optionalMark(field.optional)+"="+field.typ)
+	}
+	if e.getter {
+		parts = append(parts, "getter")
+	}
+	if e.method {
+		parts = append(parts, "method")
+	}
+	return strings.Join(parts, ";")
 }
 
 func (e errorTwin) hasField(name string) bool {
@@ -159,17 +214,24 @@ func (e errorTwin) vibe() string {
 		parts = append(parts, field.name+optionalMark(field.optional)+": "+field.typ)
 	}
 	parts = append(parts, e.members()...)
+	keyword := "error"
+	if e.schema {
+		keyword = "schema error"
+	}
 	if len(parts) == 0 {
 		if e.braces {
-			return "export error Failure {}\n"
+			return "export " + keyword + " Failure {}\n"
 		}
-		return "export error Failure\n"
+		return "export " + keyword + " Failure\n"
 	}
-	return "export error Failure {\n  " + strings.Join(parts, "\n  ") + "\n}\n"
+	return "export " + keyword + " Failure {\n  " + strings.Join(parts, "\n  ") + "\n}\n"
 }
 
 // twin prints the Data.TaggedError class Chapter 3 says the declaration is.
 func (e errorTwin) twin() string {
+	if e.schema {
+		return e.schemaTwin()
+	}
 	base := `Data.TaggedError("Failure")`
 	if len(e.fields) != 0 {
 		var fields []string
@@ -183,6 +245,28 @@ func (e errorTwin) twin() string {
 		body = "{\n  " + strings.Join(members, "\n  ") + "\n}"
 	}
 	return "import { Data } from \"effect\"\n\nexport class Failure extends " + base + " " + body + "\n"
+}
+
+// schemaTwin prints the Schema.TaggedError class Chapter 3 says a `schema
+// error` is: every field readonly, so `name: S` or `name: Schema.optional(S)`.
+func (e errorTwin) schemaTwin() string {
+	var fields []string
+	for _, field := range e.fields {
+		schema := errorTwinSchemas[field.typ]
+		if field.optional {
+			schema = "Schema.optional(" + schema + ")"
+		}
+		fields = append(fields, field.name+": "+schema)
+	}
+	base := `Schema.TaggedError<Failure>()("Failure", {` + strings.Join(fields, ", ") + `})`
+	if len(fields) != 0 {
+		base = `Schema.TaggedError<Failure>()("Failure", { ` + strings.Join(fields, ", ") + ` })`
+	}
+	body := "{}"
+	if members := e.members(); len(members) != 0 {
+		body = "{\n  " + strings.Join(members, "\n  ") + "\n}"
+	}
+	return "import { Schema } from \"effect\"\n\nexport class Failure extends " + base + " " + body + "\n"
 }
 
 func optionalMark(optional bool) string {
@@ -215,7 +299,7 @@ func CheckErrorDeclarationTwin(t *testing.T, w *Workspace, tsc, api string, e er
 	}
 	defer c.Remove()
 	if c.Program == nil || HasError(c.Diagnostics) {
-		g.Add("feature:error-declaration-compiles", "Chapter 3: an error declaration of fields, methods and getters is valid; the compiler reports %v for:\n%s", SortedKeys(Keys(c.Dir, c.Diagnostics)), e.vibe())
+		g.Add("feature:"+e.shapeKey()+"-declaration-compiles", "Chapter 3: an error declaration of fields, methods and getters is valid; the compiler reports %v for:\n%s", SortedKeys(Keys(c.Dir, c.Diagnostics)), e.vibe())
 		g.FinishInput(t, key)
 		return
 	}
@@ -239,7 +323,7 @@ func CheckErrorDeclarationTwin(t *testing.T, w *Workspace, tsc, api string, e er
 		t.Fatal(err)
 	}
 	if diff != "" {
-		g.Add("feature:error-declaration-twin", "Chapter 3: \"`error Name { fields }` declares exactly Effect's `Data.TaggedError` class.\" The twin's (-) and the error declaration's (+) canonical declarations differ:\n%s\nerror declaration:\n%s\ntwin:\n%s", diff, e.vibe(), e.twin())
+		g.Add("feature:"+e.shapeKey()+"-declaration-twin", "Chapter 3: \"`error Name { fields }` declares exactly Effect's `Data.TaggedError` class.\" The twin's (-) and the error declaration's (+) canonical declarations differ:\n%s\nerror declaration:\n%s\ntwin:\n%s", diff, e.vibe(), e.twin())
 	}
 	g.FinishInput(t, key)
 }
