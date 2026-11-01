@@ -9,22 +9,17 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
-// Chapter 4 gives each binding its type in the table of pattern types, and a
-// tsconfig option is no pattern. Each pattern below binds v, and each program
-// returns v where the table's type is required, so every compilation, whichever
-// option checks index signatures, must accept it (Smithers,
-// `when Exit.Success(let value)`: TS2322, A | undefined). Comparing compilations
-// across options is this target's oracle: decided detail 79 and the sentence
-// under the table say the options do not change a binding.
+// Chapter 4's generated reads follow established extraction presence. Only
+// the two access options preserve these types across settings; project typing
+// options apply normally to the counterpart and are tested differentially.
 const matchBindingElementQuote = "the element type of the subject's iterable (tuple element types for a tuple)"
 
 const matchBindingObjectQuote = "`tracking`: the narrowed subject's property type"
 
 // matchBindingOptions are the compiler options a program must not depend on.
-var matchBindingOptions = []string{
+var matchBindingAccessOptions = []string{
 	"noUncheckedIndexedAccess",
 	"noPropertyAccessFromIndexSignature",
-	"exactOptionalPropertyTypes",
 }
 
 var matchBindingPatterns = []struct {
@@ -62,7 +57,7 @@ var matchBindingPatterns = []struct {
 }
 
 // The element types. A generic element cannot reach a declaration's own T.
-var matchBindingTypes = []string{"number", "A", "string | null", "{ readonly n: number }", "readonly string[]"}
+var matchBindingTypes = []string{"number", "A", "string | null", "{ readonly n: number }", "readonly string[]", "number | undefined"}
 
 func matchBindingProgram(i, j int) string {
 	p := matchBindingPatterns[i]
@@ -100,7 +95,12 @@ func matchBindingsChapter(f testing.TB) string {
 	return string(chapter)
 }
 
-func TestMatchBindingTypesQuoted(t *testing.T) { matchBindingsChapter(t) }
+func TestMatchBindingTypesQuoted(t *testing.T) {
+	text := matchBindingsChapter(t)
+	if strings.Contains(text, "These types hold under every compiler option") || !strings.Contains(text, "Other options change a binding as they change its counterpart's value") {
+		t.Fatal("pattern option rule changed")
+	}
+}
 
 func FuzzMatchBindingTypes(f *testing.F) {
 	startShortBudget(f)
@@ -145,7 +145,7 @@ func FuzzMatchBindingTypes(f *testing.F) {
 			Gap(t, "FuzzMatchBindingTypes", "control:"+p.key, "chapter 4: %s; the binding's type is rejected:\n%s\n%s", p.quote, source, strings.Join(found, "\n"))
 			return
 		}
-		for _, option := range matchBindingOptions {
+		for _, option := range matchBindingAccessOptions {
 			if found := errorsOf(t, source, option); len(found) != 0 {
 				Gap(t, "FuzzMatchBindingTypes", option+":"+p.key, "chapter 4: %s; %s under %s:\n%s\n%s", p.quote, key, option, source, strings.Join(found, "\n"))
 				return

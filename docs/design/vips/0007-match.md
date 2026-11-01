@@ -231,3 +231,5 @@ Old VibeLang is a reference only; nothing in it is part of the language unless a
 
 
 D207's subset. D206, D209, D515 and D531 are restated here on TC39's terms.
+
+- **Amended 2026-11-01: project options and extraction presence.** Pattern bindings have their specified TypeScript counterpart's types under the project's options; the strict examples do not freeze those types under `exactOptionalPropertyTypes` or `strictNullChecks`. Proven element/key presence prevents `noUncheckedIndexedAccess` from adding artificial `undefined`; it does not remove actual payload `undefined`. Pattern keys are not dotted reads under `noPropertyAccessFromIndexSignature`. Written indexed and dotted reads keep those options. A printed counterpart carries extraction presence in its types, for example with a checked iterator result; a raw array-length guard alone is not that proof.

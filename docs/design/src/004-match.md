@@ -247,7 +247,10 @@ import { Effect } from "effect"
 function* two() { yield 1; yield 2 }
 function pairCacheWitness() {
   const values = [...two()]
-  return values.length === 2 ? values[0] + values[1] : 0
+  const iterator: Iterator<number, undefined> = values[Symbol.iterator]()
+  const a = iterator.next()
+  const b = iterator.next()
+  return !a.done && !b.done && iterator.next().done ? a.value + b.value : 0
 }
 const pairCacheExit = Effect.runSyncExit(Effect.sync(pairCacheWitness)) // Success(3)
 ```
@@ -360,7 +363,7 @@ const skippedBindingCellExit = Effect.runSyncExit(Effect.sync(skippedBindingCell
 
 ## Typing
 
-Patterns type as the TypeScript counterpart this chapter shows for them, so every rule below is what `tsc --strict` gives that counterpart (VIP-7, amended; decided detail 79).
+Patterns type as the TypeScript counterpart this chapter shows for them, under the project's compiler options; the table below illustrates `tsc --strict` ([VIP-7](../vips/0007-match.md#decision), amended).
 
 - **Result.** A `match` expression has the union of its arm types; a `throw` arm contributes `never`. A `match` with no `default` whose subject passes `EK4701` ([Exhaustiveness](#exhaustiveness)) adds nothing for the no-match path. For arm-type union `U`, `async match` has type `Promise<Awaited<U>>`, with TypeScript's async-return resolution and Promise-like/thenable checks: a returned Promise is adopted, not nested. `x is P` has type `boolean` and narrows `x` as a type predicate where `P` narrows.
 - **Subject narrowing.** Inside an arm the subject narrows as the arm's test narrows in TypeScript; a `default` arm follows TypeScript control flow after every preceding ordered pattern and guard test has failed, including cached reads and source mutations. This is independent of exhaustiveness coverage: a predicate false branch may exclude a type even though the predicate covers no `EK4701` case; failure of a guard does not establish that its positive predicate failed. A guard `and if (c)` narrows further, as `if (c)` would.
@@ -388,7 +391,7 @@ Patterns type as the TypeScript counterpart this chapter shows for them, so ever
 | `P or Q` | the union of each side's narrowing | a name bound in every alternative gets the union of its types |
 | `P and Q` | both narrowings in order | both sides' bindings |
 
-These types hold under every compiler option. A pattern's reads of its subject follow the tests that those parts exist, so `noUncheckedIndexedAccess` adds no `undefined` to a binding and `noPropertyAccessFromIndexSignature` does not apply to a pattern's key (detail 79).
+The table shows `tsc --strict` types. Other options change a binding as they change its counterpart's value: with `exactOptionalPropertyTypes`, `{ let x }` on `{ x?: number }` binds `number`; `strictNullChecks: false` removes the strict null distinctions. A pattern reads an element or key only after proving it exists, so `noUncheckedIndexedAccess` adds no `undefined` to that generated read. Actual payload `undefined` remains: `[let v]` on `(number | undefined)[]` binds `number | undefined`. A pattern key is not dotted property access, so `noPropertyAccessFromIndexSignature` reports no `TS4111` at it. Written reads such as `s[0]` or `s.a` in an arm or guard keep both options ([VIP-7](../vips/0007-match.md#decision), amended).
 
 ```vibe es
 // compiler-gap: pending VIP-7
@@ -470,6 +473,8 @@ function numeric(s: unknown) {
 // first([1]) is "1"; numeric(7) is "7", although 7 is not a Numeric instance.
 ```
 
+The following is a local typing witness for one `Array(let n)` arm and a tuple-returning custom matcher. The native loop preserves the element type, and its tagged result carries the fact that one element was obtained before the binding read; an array-length comparison alone does not carry it in TypeScript. Tuple extraction keeps its positional types. A payload that includes `undefined` keeps that type after the presence test. This witness does not replace the general cached Iterator Record, failed-extraction, ordered-arm or `FinishMatch` algorithms.
+
 ```ts effect
 const numericMatcher: unique symbol = Symbol.for("Symbol.customMatcher")
 class Numeric {
@@ -479,8 +484,13 @@ class Numeric {
 }
 function first(s: number[]) {
   const extracted = s // Array adapter, after Array.isArray(s)
-  if (extracted.length === 1) {
-    const [n] = extracted
+  let selected: IteratorResult<number, undefined> = { done: true, value: undefined }
+  for (const value of extracted) {
+    if (!selected.done) return "other" // a second element: native for-of closes
+    selected = { done: false, value }
+  }
+  if (!selected.done) {
+    const n = selected.value
     return n.toFixed(0)
   }
   return "other"
@@ -1045,9 +1055,9 @@ function digits(s: string) {
   const regexp = /(\d+)-(\d+)/
   const result = regexp[Symbol.match](s)
   if (result !== null) {
-    const extracted = [result]
+    const extracted: [RegExpMatchArray] = [result]
     const [m] = extracted
-    return m[1] + m[2]
+    return m[1] + m[2] // reads the source writes keep noUncheckedIndexedAccess
   }
   return "none"
 }
