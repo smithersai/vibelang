@@ -2,9 +2,11 @@
 // Vitest's JSON report, so each test is compared by name with the baseline;
 // so is a command whose printed lines the run's --test-report pattern reads;
 // any other command is compared by its exit status alone.
-import { existsSync } from "node:fs"
-import { posix } from "node:path"
-import { quote, readJson, run } from "./util.mjs"
+import { existsSync, rmSync } from "node:fs"
+import { join, posix } from "node:path"
+import { quote, readJson, readJsonIf, run } from "./util.mjs"
+
+import { readTestRun } from "./test-receipts.mjs"
 
 export const isVitest = (command) => /\bvitest\b/.test(command)
 
@@ -84,14 +86,27 @@ export function tally(tests) {
  * failing one, so a nonzero exit runs the tests once more and the second
  * run's status counts; rerun holds the first exit status.
  */
-export async function runTests({ command, report, cwd, root, jsonFile, log, env }) {
+export async function runTests({ command, report, cwd, root, jsonFile, log, env, strict = false }) {
+  let observed = command
+  if (strict) {
+    const script = /(?:^|\s)(?:(?:pnpm|npm|yarn)\s+(?:run\s+)?|bun\s+run\s+)([\w:-]+)(?:\s|$)/.exec(command)?.[1]
+    observed = readJsonIf(join(cwd,"package.json"),{}).scripts?.[script] ?? command
+  }
   const once = async (log) => {
-    const result = await run(withJsonReporter(command, jsonFile), { cwd, log, env })
+    const vitest = isVitest(observed)
+    if (vitest) rmSync(jsonFile, { force: true })
+    let invocation = withJsonReporter(command, jsonFile)
+    if (vitest && !isVitest(command)) invocation = withJsonReporter("vitest",jsonFile).replace(/^vitest/,command + (/\bnpm\s+run\s/.test(command) ? " --" : ""))
+    const result = await run(invocation, { cwd, log, env: { ...env, NODE_TEST_CONTEXT: undefined } })
+    if (strict) return { result, receipt: readTestRun({ command: observed, report, root, output: result.stdout + "\n" + result.stderr, code: result.code,
+      json: vitest && existsSync(jsonFile) ? readJson(jsonFile) : undefined }) }
     if (isVitest(command) && existsSync(jsonFile)) return { result, tests: parseVitestJson(readJson(jsonFile), root) }
     const printed = report ? parseReport(result.stdout + result.stderr, report) : {}
     return { result, tests: Object.keys(printed).length ? printed : null }
   }
-  let { result, tests } = await once(log)
+  const first = await once(log)
+  if (strict) return { ...first.receipt, ms: first.result.ms }
+  let { result, tests } = first
   let rerun
   if (!tests && result.code !== 0) {
     rerun = { code: result.code }

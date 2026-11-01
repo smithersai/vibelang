@@ -17,6 +17,8 @@ import { compareTests, regressionIssue, runTests } from "./tests.mjs"
 import { verifyRepositoryTests } from "./test-diff-run.mjs"
 import { testDiffMarkdown } from "./test-diff.mjs"
 import { vibeParser } from "./test-diff-format.mjs"
+import { measureTests } from "./measurement.mjs"
+import { regenerate } from "./hooks.mjs"
 import { countTokens } from "./tokens.mjs"
 import { readIssues } from "./issues.mjs"
 import { repairPrompt } from "./repair.mjs"
@@ -160,6 +162,9 @@ export function makeConfig(options) {
     // Each recorded batch goes on this bookmark, one commit on top of the last.
     bookmark: options.bookmark ?? "vibe",
     base: options.base ?? null,
+    main: options.main ?? null,
+    ...(options.afterConvert?.length ? { afterConvert: options.afterConvert } : {}),
+    ...(options.measureCommand ? { measureCommand: options.measureCommand } : {}),
     limits: { maxFiles: Number(options.maxFiles ?? defaultLimits.maxFiles), maxLines: Number(options.maxLines ?? defaultLimits.maxLines) }
   }
 }
@@ -1091,9 +1096,11 @@ export async function verify(options) {
   const compiler = compilerOf(config)
   const logs = join(p.batch(b), "logs")
 
+  const hooks = await regenerate(config,p,"verify-" + b)
   const checked = await compile({ run: options.run, batch: b, noRecord: true })
   const baselineTests = readJson(join(p.baseline, "tests.json"))
-  const tests = await runTests({ command: config.test.command, report: config.test.report, cwd: join(t, config.test.cwd), root: t, jsonFile: join(p.batch(b), "vitest.json"), log: join(logs, "tests.log") })
+  const measurement = thePlan.mode === "one-pass" ? await measureTests(config,{run:p.run,batch:b}) : null
+  const tests = measurement?.receipts.candidate ?? await runTests({ command: config.test.command, report: config.test.report, cwd: join(t, config.test.cwd), root: t, jsonFile: join(p.batch(b), "vitest.json"), log: join(logs, "tests.log") })
   const testResults = compareTests(baselineTests, tests)
   const ts = typeScriptOf(config)
   const testDiff = await testEdits(config, p, thePlan, b, ts)
@@ -1139,13 +1146,14 @@ export async function verify(options) {
     files,
     tests: { code: tests.code, total: tests.total, passed: tests.passed, failed: tests.failed.length, skipped: tests.skipped, ...testResults },
     declarations,
+    measurement, hooks,
     // Each published specifier the gate excused, for the pull request's description.
     excusedSpecifiers: Object.entries(declarations).flatMap(([dir, d]) => (d.excused ?? []).map((pair) => ({ package: dir, ...pair }))),
     testDiff,
     compile: { batchErrors, newErrors: checked.newErrors, style, emitErrors },
     checks: {
       tests: testResults.ok,
-      testEdits: testDiff.ok,
+      testEdits: testDiff.ok && (measurement?.ok ?? true),
       declarations: Object.values(declarations).every((d) => d === "not published" || d.identical),
       declarationEmit: emitErrors.length === 0,
       batchErrors: batchErrors.length === 0,
@@ -1165,7 +1173,7 @@ export async function record(options) {
   const { p, config, plan: thePlan, inventory } = loadRun(options.run)
   const b = currentBatch(options.run, options.batch)
   if (existsSync(p.record(b))) return readJson(p.record(b))
-  const verified = readJsonIf(p.verify(b))
+  let verified = readJsonIf(p.verify(b))
   if (!verified?.ok && !options.force) throw new Error(`batch ${b} has not passed verify; run verify, or record with --force <reason>`)
   const t = config.target
   const files = batchFiles(config, thePlan, b)
@@ -1189,6 +1197,12 @@ export async function record(options) {
   const written = (await Jj.changedPaths(t)).filter((c) => c.status !== "D").map((c) => c.path)
   const formatted = await formatWritten(t, written, join(p.batch(b), "logs", "format.log"))
   const vibeFormatted = await formatRecorded(config, written, join(p.batch(b), "logs"))
+  if (thePlan.mode === "one-pass") {
+    if (formatted.code !== 0 || vibeFormatted.code !== 0) throw new Error("record refused: formatter failed")
+    // Formatting or regeneration can affect generated sources. Gate the final bytes.
+    verified = await verify({run:options.run,batch:b})
+    if (!verified.ok || !verified.measurement?.ok) throw new Error("record refused: final candidate fails tests against main/previous or another verify gate")
+  }
   await assertPortable(t, machineRoots(t, p.run, config.toolchain.dir))
   // Formatters and sidecar emission run after verify. Recheck the exact tree
   // being committed; --force cannot waive the test-oracle contract.

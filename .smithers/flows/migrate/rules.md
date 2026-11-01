@@ -129,3 +129,12 @@ An explicitly `readonly` schema field requires known readonly decoded-key flags 
 For `Stream` iteration, write `for try (const x of stream)` in effect code. Rewrite legacy `for await` over a `Stream` to `for try`; keep `for await` over `AsyncIterable` values in `async` code. `continue` skips an element and `break` stops consuming. A body `return` is `EK2002`: use `break` and return after the loop. `EK2007` offers the loop spelling migration through `vibelang --fix`.
 
 An `is` binding without a defined lexical home in a formal-parameter, catch-parameter or enum-member initializer is `EK0705` (VIP-7, details214/240/249). Do not automatically move it into a function body: preserve initializer evaluation order and parameter/body environments. Use an explicit local block only when its returned result preserves the source behavior.
+
+## Whole-scope driver receipts
+
+- Bank completed packages and their source digests; skip unchanged banks on restart, with dependency packages first and large ready packages last. A config whose `--fix` timed out receives no retry in the same pass.
+- Own `EK` diagnostics blame only their file. For ordinary importer errors, try reachable modules with changed declarations before widening; return dependency roots first and check every return.
+- Emit both sides of every declaration comparison with `--singleThreaded`, including sidecars.
+- Under detail 272 addendum 4, rewrite only statically resolved path strings. Bare names require the module's own directory. Comments and prose stay as written; `vi.mock` and `require.resolve` are specifiers. Keep a module `.ts` when a test reads its source text.
+- Whole-scope record requires readable, nonempty per-test receipts against the setup baseline, previous commit and main. Reject inconsistent summaries, unexplained exits, missing tests and newly skipped passing tests. Measure all sides in one provider job; never compare separate box jobs.
+- Repository-generated bundles and build-graph paths belong in recorded `--after-convert` hooks. Run them before settle checks and final verification; stop on failure. Record formats first and verifies the final bytes again. Its whole-scope test gate cannot be forced.

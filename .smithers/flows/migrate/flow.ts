@@ -22,6 +22,9 @@ const SetupPayload = {
   packages: Schema.Array(Schema.String),
   emittedProjects: Schema.optional(Schema.Array(Schema.String)),
   test: Schema.String,
+  main: Schema.optional(Schema.String),
+  afterConvert: Schema.optional(Schema.Array(Schema.String)),
+  measureCommand: Schema.optional(Schema.String),
   testCwd: Schema.String,
   toolchain: Schema.String
 };

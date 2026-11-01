@@ -105,7 +105,7 @@ export function newErrors(baseline, current) {
 
 /** Checks a project with vibelang and parses what it reports. */
 export async function check({ compiler, tsconfig, cwd, root, log }) {
-  const result = await run(`${quote(compiler)} -p ${quote(tsconfig)} --noEmit --pretty false`, { cwd, log })
+  const result = await run(`${quote(compiler)} -p ${quote(tsconfig)} --singleThreaded --noEmit --pretty false`, { cwd, log })
   assertFinished(result, log)
   return { code: result.code, diagnostics: parseDiagnostics(result.stdout + result.stderr, { cwd, root }) }
 }

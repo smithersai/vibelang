@@ -68,6 +68,59 @@ For tests that bundle a package's sources through Rolldown or Vite's bundled con
 
 Reverting an importer and its dependency restores their original TypeScript specifiers in either order. Recorded import edits follow a restored importer back from its `.vibe` path; a still-native importer continues to name the explicit source file.
 
+### Restart and measurement rules for a whole-scope pass
+
+The pass banks each completed package in `fix-bank.json` and skips it after a
+restart when its source digest still matches. Dependency packages run first;
+among ready packages, smaller packages run first. A successful wide settle
+banks package outcomes, kept modules and return causes in `done.json`.
+A config whose `--fix` timed out is recorded in the bank and receives no more
+`--fix` in that pass, including after a restart. Start a new run to retry it.
+
+Own `EK` diagnostics blame only their own module. Ordinary type errors first
+blame reachable migrated modules whose declaration differs from the baseline;
+when none can be distinguished, settle widens to the reachable set. Dependency
+roots are returned first and every return is checked. Missing declaration
+evidence is treated as suspect. Both baseline and candidate declaration emits,
+including sidecar checks, use `--singleThreaded`.
+
+A statically resolved path string follows its renamed module in tests and
+sources (detail 272 addendum 4). Relative paths, package-relative paths and
+`new URL("x.ts", import.meta.url)` are resolved; bare names are resolved only
+with `__dirname` or `import.meta.dirname`. An unknown directory or URL base
+does not identify a module. Comments and prose strings stay as written.
+`vi.mock` and `require.resolve` name modules. A module whose source text a
+test reads stays `.ts`, with the reader recorded as its deferral cause.
+
+Pass `--after-convert "<command>"` to `upgrade-effect` (repeat per hook).
+The run stores these repository adapters in `config.json` and runs them before
+every settle check and verification, including the final verification after
+record formats the files. Use hooks for generated bundles and repository
+build-graph paths; the flow contains no repository-specific adapter.
+A failed hook stops the step and preserves its log in the run.
+
+Whole-scope verification measures the candidate against both the previous
+commit and the repository's main, in one measurement job. Main resolves from
+`main@origin`, `main@github` or `main`; `--main <revision>` selects it
+explicitly. Temporary jj workspaces use each revision's dependencies and are
+removed afterward. The candidate must also pass the setup baseline.
+Vitest JSON, Node's spec reporter and Bun's per-test output are read and
+checked against their summaries. Zero tests, missing reports, contradictory
+counts, unexplained exits, newly skipped passing tests and missing tests fail
+admission. No exit-only fallback or automatic flaky rerun is used here.
+Custom `--test-report` output must also print
+`SUMMARY total=N passed=N failed=N skipped=N`.
+
+For a box provider, set `--measure-command "<adapter>"`. The adapter receives
+`VIBELANG_MEASURE_MANIFEST` and `VIBELANG_MEASURE_COMMAND`; it must run all
+three sides in one box job, remapping paths as needed, and return
+`receipts.json` to the manifest's output directory with the same job ID.
+The manifest includes each side's target, revision and install command.
+Separate jobs for different sides do not measure comparable green results.
+The run retains raw per-side logs, normalized receipts and `comparison.json`.
+`record` repeats verification after formatting and regeneration; `--force`
+cannot bypass this whole-scope gate.
+
 ## Run it
 
 Every batch lands on a jj bookmark, `vibe` unless `--bookmark` names another: upgrade-effect starts it on the default branch (`trunk()`, or `--base <branch>`, such as `dev`, which restarts a bookmark an earlier run left elsewhere), or continues an earlier run's `vibe`, and each recorded batch is one commit on top of the last. The first two commits are the Effect upgrade and VibeLang's setup, so a reviewer reads the dependency upgrade, and any test it breaks, apart from the migration. The flow never pushes. After each run, the orchestrator pushes `vibe` to the library's fork and opens a pull request from it there, so the migration's diff is reviewable.

@@ -1,16 +1,18 @@
 // Repository-independent whole-scope conversion. The run directory owns every receipt.
+import { createHash } from "node:crypto"
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join, posix, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { fixToFixedPoint, mergeFixes, renameBatch, rewriteExports, rewriteImports, rewriteTotals } from "./codemod.mjs"
 import { assertFinished, newErrors, parseDiagnostics, styleProblems } from "./diagnostics.mjs"
 import { parseImports, resolveRelative, resolveFile, resolveAliased } from "./imports.mjs"
-import { rewriteReferences } from "./references.mjs"
+import { pathReadDeferrals, rewriteReferences } from "./references.mjs"
 import { assertBaselineSafe } from "./baseline.mjs"
 import { loadTypeScript } from "./declarations.mjs"
 import { projectsOf } from "./wire.mjs"
 import { readToolchain } from "./toolchain.mjs"
 import { aliasesOf, paths, importers, revertMany } from "./steps.mjs"
+import { regenerate } from "./hooks.mjs"
 import * as Jj from "./jj.mjs"
 import { appendJsonl, isDeclarationFile, quote, readJson, readJsonIf, run, slug, writeJson } from "./util.mjs"
 
@@ -82,6 +84,16 @@ async function mapLimit(items, jobs, fn) {
     for (;;) { const i = next++; if (i >= items.length) return; result[i] = await fn(items[i], i) }
   }))
   return result
+}
+
+function packageDigest(config, dir, files) {
+  const hash = createHash("sha256")
+  for (const file of [...files].filter(f => owner(config,f) === dir).sort()) {
+    hash.update(file)
+    if (existsSync(join(config.target,file))) hash.update(readFileSync(join(config.target,file)))
+    else hash.update("<missing>")
+  }
+  return hash.digest("hex")
 }
 
 function compilerOf(config) {
@@ -170,7 +182,7 @@ async function checkProjects(config, p, options, projects = projectList(config))
   return mapLimit(projects, positive(options.jobs, 8, "jobs", 8), async task => {
     const cwd = join(config.target, task.package)
     const log = join(p.batch("01"), "logs", `check-${slug(task.file)}.log`)
-    const result = await run(`${quote(compiler)} --noEmit --pretty false -p ${quote(task.project)}`, { cwd, log, timeoutMs: positive(options.timeout, 3600, "timeout") * 1000 })
+    const result = await run(`${quote(compiler)} --singleThreaded --noEmit --pretty false -p ${quote(task.project)}`, { cwd, log, timeoutMs: positive(options.timeout, 3600, "timeout") * 1000 })
     const diagnostics = parseDiagnostics(result.stdout + result.stderr, { cwd, root: config.target })
     let crash = null
     try { assertFinished(result, log) } catch (error) { crash = error.message }
@@ -190,12 +202,46 @@ function family(d) {
   return d.message.includes("Effect<") ? "Effect value used as a plain value" : "TypeScript error after conversion"
 }
 
+/** Own EK diagnostics only blame their file. Ordinary fallout first tries changed declarations. */
+export function blameCandidates(graph, diagnostic, live, same = new Set()) {
+  if (/^EK/.test(diagnostic.code ?? "")) return live.has(diagnostic.file) ? [diagnostic.file] : []
+  const hits = [...reachable(graph, diagnostic.file)].filter(f => live.has(f))
+  const changed = hits.filter(f => !same.has(f))
+  return changed.length ? changed : live.has(diagnostic.file) ? [diagnostic.file] : hits
+}
+
+function identicalDeclarations(config, p, cm) {
+  const same = new Set()
+  for (const r of cm.renames) {
+    const dir = owner(config, r.from), pkg = config.packages.find(p => p.dir === dir)
+    if (!pkg || !existsSync(join(config.target, r.to))) continue
+    // Unknown roots/outputs are suspects. Never excuse a module on missing evidence.
+    let ts
+    try { ts = loadTypeScript([config.target, config.toolchain.dir, fileURLToPath(new URL("../../../../packages/runtime", import.meta.url))].filter(Boolean)) } catch { continue }
+    const configPath = join(config.target, dir, pkg.dtsTsconfig ?? pkg.tsconfig ?? "tsconfig.json")
+    const raw = ts.readConfigFile(configPath, ts.sys.readFile)
+    if (raw.error) continue
+    const parsed = ts.parseJsonConfigFileContent(raw.config, ts.sys, posix.dirname(configPath))
+    const root = parsed.options.rootDir
+    if (!root) continue
+    const rel = posix.relative(root, join(config.target,r.from)).replace(/\.ts$/, ".d.ts")
+    if (rel.startsWith("../")) continue
+    const base = join(p.baseline,"dts",slug(dir),rel)
+    const side = join(config.target,r.to.replace(/\.vibe$/, ".d.vibe.ts"))
+    if (!existsSync(base) || !existsSync(side)) continue
+    const normalize = text => text.replace(/(["'])(\.\.?\/[^"'\n]+?)\.(?:ts|vibe|js)\1/g,"$1$2.js$1")
+    if (normalize(readFileSync(base,"utf8")) === normalize(readFileSync(side,"utf8"))) same.add(r.to)
+  }
+  return same
+}
+
 async function settle(config, p, cm, options) {
   const baseline = readJson(join(p.run, "onepass-baseline.json"))
   const maxRounds = positive(options.rounds, 12, "rounds")
   const causes = readJsonIf(join(p.batch("01"), "settle-causes.json"), {})
   const history = [], reverted = new Set()
   for (let round = 1; round <= maxRounds; round++) {
+    await regenerate(config, p, "settle-" + round)
     const checks = await checkProjects(config, p, options)
     writeJson(join(p.batch("01"), `check-${round}.json`), checks)
     const added = checks.flatMap(c => {
@@ -206,12 +252,11 @@ async function settle(config, p, cm, options) {
     })
     const live = new Set(cm.renames.map(r => r.to).filter(f => existsSync(join(config.target, f))))
     const graph = await moduleGraph(config, p)
-    const bad = new Map()
-    for (const d of added) if (live.has(d.file)) bad.set(d.file, [...(bad.get(d.file) ?? []), d])
-    // An own error gets retried before speculating about its importers' errors.
-    if (!bad.size) for (const d of added) if (d.file) {
-      const hits = [...reachable(graph, d.file)].filter(f => live.has(f))
-      for (const file of dependencyRoots(graph, new Set(hits))) bad.set(file, [...(bad.get(file) ?? []), d])
+    const bad = new Map(), own = added.filter(d => live.has(d.file) && /^EK/.test(d.code))
+    const same = identicalDeclarations(config, p, cm)
+    // Own language failures are handled before inferring responsibility for TS fallout.
+    for (const d of own.length ? own : added) for (const file of blameCandidates(graph,d,live,same)) {
+      bad.set(file,[...(bad.get(file) ?? []),d])
     }
     const roots = dependencyRoots(graph, new Set(bad.keys()))
     const receipt = { round, errors: added.length, own: bad.size, reverting: roots }
@@ -220,6 +265,10 @@ async function settle(config, p, cm, options) {
     if (!added.length || !roots.length || round === maxRounds) {
       const result = { settled: !added.length, rounds: history, causes, remaining: added }
       writeJson(join(p.batch("01"), "settle.json"), result)
+      if (result.settled) writeJson(join(p.run,"done.json"), Object.fromEntries(config.packages.map(pkg => [pkg.dir,{
+        digest: packageDigest(config,pkg.dir,cm.renames.map(r=>r.to)), at: new Date().toISOString(), kept: [...live].filter(f => owner(config,f) === pkg.dir),
+        reverted: Object.entries(causes).filter(([f]) => owner(config,f) === pkg.dir), checked: checks.map(c => c.file)
+      }])))
       return result
     }
     const requests = []
@@ -260,13 +309,25 @@ async function fix(config, p, cm, options) {
   }
   const closure = new Map(packages.map(dir => [dir, reachable(deps, dir)]))
   const related = (a, b) => closure.get(a).has(b) || closure.get(b).has(a)
-  const pending = new Set(packages), done = new Set(), running = new Map(), failures = []
-  cm.fix = { settled: false, rounds: [], byFile: {}, totals: {}, refused: [], projects: [] }
+  const bankFile = join(p.run,"fix-bank.json"), bank = readJsonIf(bankFile,{ packages: {}, timedOut: [] })
+  const settledBank = readJsonIf(join(p.run,"done.json"),{})
+  const pending = new Set(packages.sort((a,b) => cm.renames.filter(r=>owner(config,r.to)===a).length - cm.renames.filter(r=>owner(config,r.to)===b).length))
+  const done = new Set(), running = new Map(), failures = []
+  const timedOut = new Set(bank.timedOut)
+  const saveBank = () => { bank.timedOut = [...timedOut]; writeJson(bankFile,bank) }
+  cm.fix ??= { rounds: [], byFile: {}, totals: {}, refused: [] }
+  cm.fix.projects ??= []
+  cm.fix.settled = false
   writeJson(p.codemod("01"), cm)
   const save = () => { cm.fix.totals = rewriteTotals(cm.fix.byFile); writeJson(p.codemod("01"), cm) }
   async function fixPackage(dir) {
     const only = new Set(cm.renames.filter(r => owner(config, r.to) === dir && existsSync(join(config.target, r.to))).map(r => r.to))
-    if (!only.size) return
+    const digest = packageDigest(config,dir,cm.renames.map(r=>r.to))
+    if (!only.size || bank.packages[dir]?.digest === digest || settledBank[dir]?.digest === digest) {
+      appendJsonl(join(p.batch("01"),"progress.jsonl"),{stage:"fix-skip-banked",package:dir})
+      return
+    }
+    cm.fix.projects = cm.fix.projects.filter(p => p.package !== dir)
     for (const project of projects.filter(p => p.package === dir)) {
       const started = Date.now()
       const receipt = { ...project, startedAt: new Date().toISOString(), settled: false }
@@ -274,7 +335,9 @@ async function fix(config, p, cm, options) {
       appendJsonl(join(p.batch("01"), "progress.jsonl"), { stage: "fix-start", ...receipt })
       let temporary
       try {
+        if (timedOut.has(project.file)) throw new Error("timeout earlier in this pass; no retry: " + project.file)
         const shown = await run(`${quote(compiler)} --showConfig -p ${quote(project.project)}`, { cwd: join(config.target, dir), timeoutMs })
+        if (shown.timedOut) { timedOut.add(project.file); saveBank() }
         if (shown.code !== 0) throw new Error("showConfig failed: " + shown.stdout + shown.stderr)
         const membership = JSON.parse(shown.stdout).files
         if (!Array.isArray(membership)) throw new Error("showConfig did not return project files")
@@ -310,12 +373,17 @@ async function fix(config, p, cm, options) {
         receipt.settled = true
       } catch (error) {
         receipt.error = error.message
+        if (/timed out|exit(?:ed)? 124|interrupted|timeout earlier/.test(error.message)) { timedOut.add(project.file); saveBank() }
         failures.push(receipt)
       } finally {
         receipt.ms = Date.now() - started
         appendJsonl(join(p.batch("01"), "progress.jsonl"), { stage: "fix-end", ...receipt })
         save()
       }
+    }
+    if (!failures.some(f => f.package === dir)) {
+      bank.packages[dir] = { at: new Date().toISOString(), files: [...only], digest: packageDigest(config,dir,cm.renames.map(r=>r.to)) }
+      saveBank()
     }
   }
   while (pending.size || running.size) {
@@ -342,6 +410,11 @@ export async function onePassStep(step, options) {
   if (["plan", "rename", "fix"].includes(step)) assertBaselineSafe(p)
   if (step === "plan") {
     const plan = planScope(config.target, readFileSync(resolve(options.scope), "utf8").split(/\r?\n/))
+    const deferred = pathReadDeferrals(config.target, plan.batches[0].files, await Jj.trackedFiles(config.target))
+    const keep = new Set(deferred.map(d=>d.file))
+    plan.batches[0].files = plan.batches[0].files.filter(f=>!keep.has(f))
+    plan.deferred.push(...deferred)
+    if (!plan.batches[0].files.length) throw new Error("all scope modules are source-text assertions; keep .ts")
     if (existsSync(p.codemod("01"))) throw new Error("cannot replace a plan after rename")
     writeJson(p.plan, { ...plan, source: "scope list", acceptedAt: new Date().toISOString() })
     return { accepted: true, plan }

@@ -233,6 +233,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The platform crypto example passed raw bytes as algorithm-bearing keys and omitted its encryption inputs; it now uses native Effect key types and declares every input.
 
+- A restarted whole-scope migration repeated completed work and could record a misleading green result; it now banks packages, retains timeout and root-cause receipts, follows resolved path strings, regenerates through repository hooks, emits declarations with `--singleThreaded`, and checks nonempty test results against main and the previous commit in one job.
+
 - The migrate flow could refuse a small scope because an unrelated source imported more than `240` modules; bounded fix shards now contain only selected sources and their dependencies, and full-project checks still cover the other files.
 
 - Whole-repository migrations needed local drivers and could report success after a failed rollback; the migrate flow now plans one scope batch, fixes bounded dependency-ordered shards, and reverts by cause until every project is clean against its baseline.

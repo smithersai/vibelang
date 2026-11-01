@@ -20,6 +20,9 @@ export function payloadFrom(argv: ReadonlyArray<string>) {
     packages: many(options.package) as Array<string>,
     ...(options["emitted-project"] ? { emittedProjects: many(options["emitted-project"]) as Array<string> } : {}),
     test: one(options, "test"),
+    ...(options.main ? { main: one(options, "main") } : {}),
+    ...(options["after-convert"] ? { afterConvert: many(options["after-convert"]) as Array<string> } : {}),
+    ...(options["measure-command"] ? { measureCommand: one(options, "measure-command") } : {}),
     testCwd: typeof options["test-cwd"] === "string" ? options["test-cwd"] : ".",
     toolchain: one(options, "toolchain")
   };

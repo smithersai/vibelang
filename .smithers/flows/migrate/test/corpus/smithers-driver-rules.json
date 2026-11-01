@@ -1,0 +1,9 @@
+{
+  "finding": "smithers-driver-rules-2026-11-01",
+  "spec": "Decided detail 272 addendum 4: path strings follow a migrated module only when statically resolved; source-text assertions keep the module TypeScript.",
+  "pathSource": "const unknown = join(directory, \"a.ts\"); const known = join(import.meta.dirname, \"a.ts\"); const url = new URL(\"a.ts\", import.meta.url); vi.mock(\"./a.ts\"); require.resolve(\"./a.ts\");",
+  "textAssertion": "assert.match(readFileSync(new URL(\"../src/a.ts\", import.meta.url), \"utf8\"), /export/)",
+  "testRegression": {"main": {"contract": "passed"}, "previous": {"contract": "failed"}, "candidate": {"contract": "failed"}},
+  "timeout": "A config whose --fix timed out receives no further --fix in the same pass.",
+  "declaration": "Every baseline and candidate declaration emit uses --singleThreaded."
+}

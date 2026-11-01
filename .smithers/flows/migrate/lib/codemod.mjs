@@ -409,7 +409,7 @@ export async function fixToFixedPoint({ compiler, tsconfig, cwd, root, maxRounds
   let last
   for (let round = 1; round <= maxRounds; round++) {
     // --declaration: what --fix keeps for a declaration file it keeps under a tsconfig that says noEmit too.
-    const result = await run(`${quote(compiler)} -p ${quote(tsconfig)} --fix --noEmit --declaration --pretty false`, { cwd, log: log && `${log}.${round}.log`, timeoutMs })
+    const result = await run(`${quote(compiler)} -p ${quote(tsconfig)} --fix --noEmit --declaration --pretty false --singleThreaded`, { cwd, log: log && `${log}.${round}.log`, timeoutMs })
     const parsed = parseFixOutput(result.stdout, { cwd, root })
     if (kept) {
       for (const file of Object.keys(parsed.files)) {
