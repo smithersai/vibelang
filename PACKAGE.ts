@@ -265,6 +265,19 @@ const targets = {
     [Tsc["vibelangfuzz-files"]],
     "30m"
   ),
+  // The merge gate runs it for a change to a case, the documentation or the
+  // fuzz oracles, which seed its sample or judge it, where //:go-vibelangfuzz
+  // runs only post-merge. Seven new cases in e63e99956706 moved FuzzCompile's
+  // short sample onto vibe-severities, and 9759d61e40ed went RED post-merge on
+  // an oracle bug the sample had skipped; the oracle fix c19c6f98fb79 then
+  // turned cd8d8fb8ca22 RED on fibers-await.fail.
+  "go-vibelangfuzz-compile": goVibelang(
+    "The compile oracles over their short sample of cases and documentation examples.",
+    `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} ` +
+      "go test -short -count=1 -timeout=15m -trimpath -run '^FuzzCompile$' ./internal/vibelangfuzz/",
+    [Tsc["vibelangfuzz-files"]],
+    "30m"
+  ),
   // Shell targets do not inherit ambient Go controls. Declare the
   // post-merge fuzz budget: 24 seed workers and six build jobs.
   "go-vibelangfuzz": goVibelang(
