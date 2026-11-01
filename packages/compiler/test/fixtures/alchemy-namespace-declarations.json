@@ -1,0 +1,10 @@
+{
+  "repo": "alchemy",
+  "finding": "alchemy-57: TypeScript namespace barrels reach a migrated source through emitted declarations",
+  "files": {
+    "src/index.ts": "export * as RDS from \"./RDS/index.ts\";\n",
+    "src/RDS/index.ts": "export * from \"./DBInstance.vibe\";\n",
+    "src/RDS/DBInstance.vibe": "export interface DBInstance { readonly id: string }\n",
+    "consumer.ts": "import * as AWS from \"./lib/index.js\";\nimport type { DBInstance } from \"./lib/RDS/DBInstance.js\";\nexport type Namespace = AWS.RDS.DBInstance | string;\nexport type Direct = DBInstance | string;\n"
+  }
+}

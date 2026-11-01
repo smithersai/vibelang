@@ -209,3 +209,38 @@ func FuzzDeclarationWrittenSpecifiers(f *testing.F) {
 		}
 	})
 }
+
+// Chapter 1 Declaration output / D263: "A relative import of a VibeLang
+// module, ./user.vibe, is declared through its .js output, ./user.js, by
+// default". Alchemy-57 keeps index.ts barrels while migrating their leaves;
+// a .vibe string in lib/index.d.ts cannot resolve the emitted leaf.d.ts.
+func TestTypeScriptDeclarationRewritesNativeBarrels(t *testing.T) {
+	t.Parallel()
+	for _, style := range []struct{ name, ending string }{{".js", ".js"}, {"extensionless", ""}, {".ts", ".ts"}} {
+		for _, quote := range []string{`"`, `'`} {
+			for _, form := range []string{
+				"export * as People from %s\n",
+				"export * from %s\n",
+				"import type { User } from %s\nexport type Chosen = User | undefined\n",
+				"export type Chosen = import(%s).User\n",
+			} {
+				t.Run(fmt.Sprintf("%s/%q/%s", style.name, quote, strings.Split(form, "\n")[0]), func(t *testing.T) {
+					specifier := quote + "./users.vibe" + quote
+					source := fmt.Sprintf(form, specifier) + "export { helper } from " + quote + "./helper.ts" + quote + "\n"
+					options := `,"allowImportingTsExtensions":true,"allowArbitraryExtensions":true,"rewriteRelativeImportExtensions":true,"vibelang":{"declarationImportStyle":` + fmt.Sprintf("%q", style.name) + `}`
+					files, _ := specifierFiles("ts", source, options)
+					dts, _, errors := emitSpecifierProject(t, files)
+					if len(errors) != 0 {
+						t.Fatalf("unexpected diagnostics: %v", errors)
+					}
+					if strings.Contains(dts, "./users.vibe") || !strings.Contains(dts, "./users"+style.ending) {
+						t.Fatalf("TypeScript barrel must name emitted native declaration under %s:\n%s", style.name, dts)
+					}
+					if !strings.Contains(dts, "./helper.ts") {
+						t.Fatalf("unrelated TypeScript specifier changed:\n%s", dts)
+					}
+				})
+			}
+		}
+	}
+}
