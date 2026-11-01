@@ -33,6 +33,12 @@ that an install matches the synchronized lockfile. An install error reports
 Bun's diagnostic and stops before the requested command. A provisioned
 `node_modules` symlink stays untouched; its owner must keep it current.
 
+For remote checks, `scripts/remote.sh` restores tracked fixtures under
+`node_modules/` and `dist/` after the initial source sync. It checks
+`jj file list` and the fixture filter separately; a failed discovery or
+filter stops the check with its diagnostics and exit status. An empty fixture
+list is valid. Temporary discovery files are removed on success and failure.
+
 ## The merge queue's pre-gate
 
 The merge queue tests every queued change alone on current `main`, and a landing

@@ -55,11 +55,25 @@ rsync -a --delete -e "$SSH" \
 # node_modules or dist (symlinked packages, for one). Send every tracked file
 # those excludes would drop, keeping symlinks as symlinks.
 (
-	tracked=$(mktemp)
-	trap 'rm -f "$tracked"' 0
-	(cd "$root" && jj file list) | grep -E '(^|/)(node_modules|dist)(/|$)' > "$tracked" || true
-	if [ -s "$tracked" ]; then
-		rsync -a -e "$SSH" --files-from="$tracked" "$root/" "$HOST:$dest/"
+	scratch=$(mktemp -d)
+	trap 'rm -rf "$scratch"' 0
+	# Check each stage separately: a pipeline can hide a failed jj snapshot,
+	# and grep's status 1 means no fixtures while other statuses are errors.
+	if (cd "$root" && jj file list) > "$scratch/all"; then
+		:
+	else
+		status=$?
+		echo "remote.sh: tracked-file discovery failed (exit $status)" >&2
+		exit "$status"
+	fi
+	if grep -E '(^|/)(node_modules|dist)(/|$)' "$scratch/all" > "$scratch/tracked"; then
+		rsync -a -e "$SSH" --files-from="$scratch/tracked" "$root/" "$HOST:$dest/"
+	else
+		status=$?
+		[ "$status" -eq 1 ] || {
+			echo "remote.sh: tracked-file filter failed (exit $status)" >&2
+			exit "$status"
+		}
 	fi
 )
 
