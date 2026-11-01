@@ -1,0 +1,15 @@
+{
+  "finding": "inbox/migrate-t3code.md#migration-runner:boxed-plain-preparation-typescript-api",
+  "nativeVersion": "7.1.0-beta",
+  "reportedVersion": "7.1.0-dev",
+  "versionNote": "The incident used 7.1.0-dev. The installed pinned 7.1.0-beta CLI package is the same missing-JS-API boundary control, not the exact original installation.",
+  "sourceText": "The boxed preparation step needs TypeScript's compiler API, rather than a native CLI package.",
+  "source": "export declare const answer: 42;\n",
+  "changedSource": "export declare const answer: 43;\n",
+  "orders": [
+    ["native"],
+    ["native", "api"],
+    ["missing", "native", "api"],
+    ["api", "native"]
+  ]
+}
