@@ -112,8 +112,13 @@ header() {
   echo "| --- | ---: | ---: | ---: | ---: | ---: |"
 }
 
-echo "compiler: $("$vibelang" --version)"
-[ -z "$upstream" ] || echo "upstream: $("$upstream" --version)"
+# Assign first so set -e sees a failed probe before printing a header.
+compiler_version=$("$vibelang" --version)
+echo "compiler: $compiler_version"
+if [ -n "$upstream" ]; then
+  upstream_version=$("$upstream" --version)
+  echo "upstream: $upstream_version"
+fi
 echo "runs per row: $runs (medians; peak RSS is the largest)"
 
 # Synthetic project at the headline size.
