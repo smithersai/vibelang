@@ -115,9 +115,11 @@ for (const [why, args, env] of [
   })
 }
 
-test("//:go-vibelangfuzz runs its binary through this script, and the script is a declared input", () => {
-  const source = readFileSync(new URL("../PACKAGE.ts", import.meta.url), "utf8")
-  const target = source.split("\"go-vibelangfuzz\": goVibelang(")[1].split("\"spec-tests\":")[0]
-  assert.match(target, /go test [^`"]*-exec "\$PWD\/\.\.\/\.\.\/scripts\/go-test-shards\.sh"/)
-  assert.match(target, /S\.file\("\/\/scripts\/go-test-shards\.sh"\)/)
-})
+for (const [name, end] of [["go-vibelangfuzz", "\"spec-tests\":"], ["go-vibelang", "\"go-vibelang-race\":"]]) {
+  test("//:" + name + " runs its binary through this script, and the script is a declared input", () => {
+    const source = readFileSync(new URL("../PACKAGE.ts", import.meta.url), "utf8")
+    const target = source.split("\"" + name + "\": goVibelang(")[1].split(end)[0]
+    assert.match(target, /go test [^`"]*-exec "\$PWD\/\.\.\/\.\.\/scripts\/go-test-shards\.sh"/)
+    assert.match(target, /S\.file\("\/\/scripts\/go-test-shards\.sh"\)/)
+  })
+}

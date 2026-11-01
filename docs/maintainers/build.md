@@ -242,6 +242,10 @@ until 2026-10-31, took 700 s of the package's 900 s, and over 114 red post-merge
 runs reported no product failure the case targets missed. `:go-vibelang` runs Go
 with `-timeout 45m`, and its shell target allows 70 minutes, including waiting
 for a Go build slot and compiling the test binary.
+It runs its test binary through `scripts/go-test-shards.sh` like
+`:go-vibelangfuzz` (below), with weights in
+`internal/vibelang/testdata/shard-seconds.txt`: 339 s as one process, 153 s as
+six, on the same host at load 75 (2026-11-01).
 
 `:go-vibelangfuzz` runs its test binary through `scripts/go-test-shards.sh`
 (`go test -exec`): six processes at once, each with its own `-run` list and the

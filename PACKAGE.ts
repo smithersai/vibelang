@@ -199,8 +199,8 @@ const targets = {
   // per case, through the binary users run.
   "go-vibelang": goVibelang(
     "Go tests of internal/vibelang and its subpackages.",
-    `CGO_ENABLED=0 ${effect} go test -count=1 -p 8 -timeout 45m -trimpath ./internal/vibelang/...`,
-    [Tsc["vibelang-files"]],
+    `CGO_ENABLED=0 ${effect} go test -count=1 -p 8 -timeout 45m -trimpath -exec "$PWD/../../scripts/go-test-shards.sh" ./internal/vibelang/...`,
+    [Tsc["vibelang-files"], S.file("//scripts/go-test-shards.sh")],
     // Go bounds the tests; the outer budget also covers admission and a cold
     // compile, which took 30m under load on 2026-10-31.
     "70m"
