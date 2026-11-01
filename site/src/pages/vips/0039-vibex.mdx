@@ -119,7 +119,7 @@ export function Row(id: string) {
 ### Types and patterns stay VibeLang's
 
 - **Every type is a VibeLang type,** JSX type arguments included. `<Task<User!NotFound> run={load} />` passes `Effect.Effect<User, NotFound>`; `.tsx` reads that `!` as JSDoc's non-null type and fails. VIP-3's optional-slot rule ends a type before `>`, `}`, `/` and a line break.
-- **Pattern position is not expression position.** After `when`, `is`, `and`, `or` and `not`, `<` is TC39's relational pattern, as in `.vibe`. A JSX value goes after the arm's `:`.
+- **Pattern position is not expression position.** After `when`, `is`, `and`, `or` and `not`, `<` is TC39's relational pattern, as in `.vibe`, except that `</` is one token in every `.vibex` context (row 39): write `when < /re/:`. A JSX value goes after the arm's `:`.
 
 ```vibex
 const view = <Task<User!NotFound> run={load} />
@@ -213,7 +213,7 @@ import { format } from "./format.js"         // format.ts
 
 ## Clashes
 
-Every place any panelist found where the same tokens could read two ways, or where JSX meets a VibeLang rule. Deduplicated to **38 rows**. Parser functions are in `typescript/tsc/internal/parser/parser.go` unless a file is named. "Agrees" means both readings give the same result. **Gap** means main's compiler is wrong today, independent of JSX, and must be fixed in VibeLang first. Rows 1–5 are the only places where `.vibe` text changes meaning in `.vibex`.
+Every place any panelist found where the same tokens could read two ways, or where JSX meets a VibeLang rule. Deduplicated to **39 rows**. Parser functions are in `typescript/tsc/internal/parser/parser.go` unless a file is named. "Agrees" means both readings give the same result. **Gap** means main's compiler is wrong today, independent of JSX, and must be fixed in VibeLang first. Rows 1–5 and 39 are the only places where `.vibe` text changes meaning in `.vibex`.
 
 ### `<`: angle brackets
 
@@ -231,6 +231,7 @@ Every place any panelist found where the same tokens could read two ways, or whe
 | 10 | `<a:b c:d="1"/>`, `<Foo.Bar/>`, `<a:b.c/>` | member access, type colon | namespaced and member tags | `parseJsxTagName`, `parseJsxElementName`; `<a:b.c/>` is TS1003 | `.tsx`'s. Babel's React transform may reject namespaces downstream (`throwIfNamespace`); that is the framework's error | all four |
 | 11 | `match (n) { when <b/>: 1; default: 2; }`, `x is <b/>` | relational pattern `< b` | element `<b/>` | no patterns in TS | `.vibe`'s: pattern position never starts JSX. Probe `q10`: `< b` then a syntax error at `/`. `when < 5` keeps working | Opus, Sol |
 | 12 | `error Timeout`⏎`<App />` | Appendix A: `<` continues an `error` only on its name's line, so a declaration then a statement | a JSX statement | n/a | Appendix A's. **Gap:** `parseErrorDeclaration` (`vibelang_errors.go`) reads type parameters across the line break; probe `q07x`: `<App />` is eaten (TS1005), and `<T,>(x: T) => x` gives EK1303 | Opus |
+| 39 | `a </b/.source.length`, `match (s) { when </b/: 1; default: 2; }` | `<`, then a regular expression | `</`, a closing-tag token | `scanner.Scan` returns `LessThanSlashToken` for `</` under `LanguageVariantJSX` in any context, unless `/*` starts a comment. TS 5.9: TS1005 twice | `.tsx`'s, in patterns too: write a space, `a < /b/`, `when < /b/:`. No pattern-only scanner exception | Opus |
 
 ### `!`: Effect types and bangs
 
