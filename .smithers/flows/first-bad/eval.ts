@@ -32,6 +32,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execute } from "./run.ts";
+import { stepKey } from "../step-key.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, "../../..");
@@ -117,7 +118,7 @@ const executor = CaseExecutor.make((suiteCase) =>
     const started = Date.now();
     const output = await answer(suiteCase.input as Input);
     console.log(`first-bad eval: ${suiteCase.name}: ${JSON.stringify(output)}`);
-    return { output, stepKey: suiteCase.name, latencyMs: Date.now() - started, target };
+    return { output, stepKey: stepKey(suiteCase.name, here, join(here, "../ci-health")), latencyMs: Date.now() - started, target };
   })
 );
 

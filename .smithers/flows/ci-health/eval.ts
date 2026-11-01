@@ -22,6 +22,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execute } from "./run.ts";
+import { stepKey } from "../step-key.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const baselineFile = join(here, "baseline.json");
@@ -86,7 +87,7 @@ const executor = CaseExecutor.make((suiteCase) =>
     const started = Date.now();
     const output = await report();
     console.log(`ci-health eval: ${suiteCase.name}: ${JSON.stringify(output)}`);
-    return { output, stepKey: suiteCase.name, latencyMs: Date.now() - started, target };
+    return { output, stepKey: stepKey(suiteCase.name, here), latencyMs: Date.now() - started, target };
   })
 );
 

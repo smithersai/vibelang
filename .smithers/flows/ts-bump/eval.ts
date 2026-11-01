@@ -32,6 +32,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { pinned } from "./lib/steps.mjs";
 import { execute } from "./run.ts";
+import { stepKey } from "../step-key.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repository = join(here, "../../..");
@@ -140,7 +141,7 @@ const executor = CaseExecutor.make((suiteCase) =>
     const output = await bumpFresh(suiteCase.input as Input);
     console.log(`ts-bump eval: ${suiteCase.name}: ${JSON.stringify(output)}`);
     if (output.error !== undefined) throw new Error(output.error);
-    return { output, stepKey: suiteCase.name, latencyMs: Date.now() - started, target };
+    return { output, stepKey: stepKey(suiteCase.name, here), latencyMs: Date.now() - started, target };
   })
 );
 
