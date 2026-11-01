@@ -355,8 +355,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Packing a migrated package could leave its installed exports pointing at `src/*.vibe` or `.vibelang/js` even though the package shipped only `dist`. Setup now adapts publication helpers that map TypeScript source exports to built paths, preserving their existing `dist/*.js` and `dist/*.d.ts` exports for migrated entries.
 
-- On a loaded host, the bundler teardown tests could kill their finishing compiler and fail with `null !== 0`; they now control the grace timer and release the compiler explicitly, with a `30 s` hang guard.
-
 - Passing an Effect function to a `Function` destination could bypass `EK4301` after generic union matching; callable destinations now keep the synchronous-callback check.
 
 - Migration codemods could stall on brace-heavy literals or broaden a test selector; source-name wiring now scans source inventories with cached, bounded matchers and proves the final selected filenames and counts unchanged.
