@@ -1,0 +1,11 @@
+{
+  "origin": "t3code contracts private workspace API, consumed by apps",
+  "manifest": {
+    "name": "contracts",
+    "private": true,
+    "types": "./main.d.ts"
+  },
+  "before": "export declare const contract: number;\n",
+  "changed": "export declare const contract: string;\n",
+  "emitDiagnostic": "main.vibe(1,1): error TS7056: Declaration is too large."
+}

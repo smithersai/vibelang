@@ -621,6 +621,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The LSP benchmark could wait two minutes after its server exited or leave the server running after an error; it now rejects the active request, reports the exit and server diagnostics, and waits for cleanup.
 
 - Grammar audits missed undefined forms accepted by parser and lowering paths; a checked admission inventory and `FuzzGrammarAdmission` now track those paths against the specification, with known gaps kept pending.
+- Migrations could accept changed APIs in private workspace packages; `--include-private-declarations` now checks their declarations and emit errors too.
+
 
 - Passing an Effect function to a `Function` destination could bypass `EK4301` after generic union matching; callable destinations now keep the synchronous-callback check.
 

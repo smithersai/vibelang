@@ -195,6 +195,8 @@ export function makeConfig(options) {
     ...(options.typecheckRetire?.length ? { typecheckRetire: options.typecheckRetire } : {}),
     ...(options.typecheckPrepare?.length ? { typecheckPrepare: options.typecheckPrepare } : {}),
     ...(options.typecheckSourceRoots?.length ? { typecheckSourceRoots: options.typecheckSourceRoots } : {}),
+    // A private workspace package other packages consume has an API too; a run opts in to holding it to identity.
+    ...(options.includePrivateDeclarations ? { declarations: { includePrivate: true } } : {}),
     toolchain: options.toolchain ? { kind: "staged", dir: resolve(options.toolchain) } : { kind: "npm", version: options.vibelangVersion },
     // Each recorded batch goes on this bookmark, one commit on top of the last.
     bookmark: options.bookmark ?? "vibe",
@@ -1681,7 +1683,7 @@ export async function verify(options) {
   const oracle = readJsonIf(join(p.baseline, "declaration-oracle.json"))
   const unproven = []
   for (const pkg of config.packages) {
-    if (readJson(join(t, pkg.dir, "package.json")).private === true) {
+    if (config.declarations?.includePrivate !== true && readJson(join(t, pkg.dir, "package.json")).private === true) {
       declarations[pkg.dir] = "not published"
       continue
     }
