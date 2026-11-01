@@ -888,6 +888,23 @@ export function addEslintImportParsers(text) {
   return firstConfiguration(text, `{ settings: { ${stringIn(text, setting)}: { ${stringIn(text, "vibelang/eslint")}: [${stringIn(text, ".vibe")}] } } },`)
 }
 
+// closingParen returns the index of the parenthesis that closes the one at
+// open in text, a module, past strings, template literals and comments; -1
+// when there is none.
+function closingParen(text, open) {
+  let depth = 0
+  for (let i = open; i < text.length; i++) {
+    const c = text[i]
+    if (c === "/" && text[i + 1] === "/") i = text.indexOf("\n", i) < 0 ? text.length : text.indexOf("\n", i)
+    else if (c === "/" && text[i + 1] === "*") i = text.indexOf("*/", i + 2) < 0 ? text.length : text.indexOf("*/", i + 2) + 1
+    else if (c === '"' || c === "'" || c === "`") {
+      for (i++; i < text.length && text[i] !== c; i++) if (text[i] === "\\") i++
+    } else if (c === "(") depth++
+    else if (c === ")" && --depth === 0) return i
+  }
+  return -1
+}
+
 // firstConfiguration writes entry first in what an ESLint flat configuration
 // exports, `export default [`, or a call such as `tseslint.config(` or
 // `defineConfig([`, on a line of its own when the entries are; null for a
@@ -895,6 +912,16 @@ export function addEslintImportParsers(text) {
 function firstConfiguration(text, entry) {
   const open = /(?:export\s+default|module\.exports\s*=)\s*(?:[\w$.]+\((?:\s*\[)?|\[)/.exec(text)
   if (!open) return null
+  // An array method's result, such as config.flatMap(...), is the list:
+  // the entry goes before its spread, not into the method's arguments
+  // (smithers flows/database: "TypeError: object is not a function").
+  const method = /^((?:export\s+default|module\.exports\s*=)\s*)([\w$.]+\.(?:flatMap|map|filter|concat|slice|flat|toSorted|toReversed)\()/.exec(text.slice(open.index))
+  if (method) {
+    const call = open.index + method[1].length
+    const close = closingParen(text, call + method[2].length - 1)
+    if (close < 0) return null
+    return `${text.slice(0, call)}[${entry} ...${text.slice(call, close + 1)}]${text.slice(close + 1)}`
+  }
   const at = open.index + open[0].length
   const indent = /^\r?\n([ \t]*)\S/.exec(text.slice(at))?.[1]
   return indent === undefined ? `${text.slice(0, at)}${entry} ${text.slice(at)}` : `${text.slice(0, at)}\n${indent}${entry}${text.slice(at)}`

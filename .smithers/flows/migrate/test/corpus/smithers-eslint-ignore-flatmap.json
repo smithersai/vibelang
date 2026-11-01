@@ -1,0 +1,6 @@
+{
+  "finding": "smithers:eslint-ignore-in-flatmap-arguments",
+  "note": "Smithers flows/database eslint.config.js exports config.flatMap(...). Setup put { ignores: [\"**/*.d.vibe.ts\"] } in front of flatMap's callback, ESLint failed to load the config (TypeError: object is not a function) and the lint target could not run; the drive moved the entry before ...config.flatMap(...) by hand (dc296ccd8cf1).",
+  "config": "import { packageConfig } from \"../../../../eslint.package.js\"\n\n// The shared config types and lints `src` only.\nconst config = await packageConfig({ tsconfigRootDir: import.meta.dirname, bun: true })\n\nexport default config.flatMap((entry) =>\n  entry.files?.length === 1 && entry.files[0] === \"src/**/*.ts\"\n    ? [entry, { ...entry, files: [\"examples/**/*.ts\"] }]\n    : [entry]\n)\n",
+  "expected": "import { packageConfig } from \"../../../../eslint.package.js\"\n\n// The shared config types and lints `src` only.\nconst config = await packageConfig({ tsconfigRootDir: import.meta.dirname, bun: true })\n\nexport default [{ ignores: [\"**/*.d.vibe.ts\"] }, ...config.flatMap((entry) =>\n  entry.files?.length === 1 && entry.files[0] === \"src/**/*.ts\"\n    ? [entry, { ...entry, files: [\"examples/**/*.ts\"] }]\n    : [entry]\n)]\n"
+}

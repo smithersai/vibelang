@@ -694,3 +694,21 @@ test("setup maps .vibe to vibelang/eslint for eslint-plugin-import, once, in the
   assert.equal(addEslintImportParsers(plain), plain)
   assert.equal(addEslintImportParsers("import i from 'eslint-plugin-import'\nconst config = [i.flatConfigs.recommended]\nexport default config\n"), null)
 })
+
+test("setup puts its ESLint entries before an array method's result, not into its arguments", async (t) => {
+  const corpus = JSON.parse(readFileSync(new URL("./corpus/smithers-eslint-ignore-flatmap.json", import.meta.url), "utf8"))
+  const once = addEslintIgnore(corpus.config)
+  assert.equal(once, corpus.expected)
+  assert.equal(addEslintIgnore(once), once)
+  // The result still loads as a list whose first entry is the ignore.
+  const root = mkdtempSync(join(tmpdir(), "vibe-eslint-flatmap-"))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  writeFileSync(join(root, "eslint.config.mjs"), once.replace(/^import .*\n/, "").replace(/await packageConfig\([^)]*\)/, '[{ files: ["src/**/*.ts"] }, { files: ["test/**/*.ts"] }]'))
+  const loaded = (await import(join(root, "eslint.config.mjs"))).default
+  assert.deepEqual(loaded, [{ ignores: ["**/*.d.vibe.ts"] }, { files: ["src/**/*.ts"] }, { files: ["examples/**/*.ts"] }, { files: ["test/**/*.ts"] }])
+  // A parenthesis in a string, a comment or a template does not end the call.
+  const tricky = 'export default base.map((e) => ({ ...e, name: ")" /* ) */ + `)${")"}` }))\n'
+  assert.equal(addEslintIgnore(tricky), 'export default [{ ignores: ["**/*.d.vibe.ts"] }, ...base.map((e) => ({ ...e, name: ")" /* ) */ + `)${")"}` }))]\n')
+  // eslint-plugin-import's entry goes to the same place.
+  assert.match(addEslintImportParsers('import i from "eslint-plugin-import"\nexport default base.concat([i.flatConfigs.recommended])\n'), /^export default \[\{ settings: \{ "import\/parsers": \{ "vibelang\/eslint": \[".vibe"\] \} \} \}, \.\.\.base\.concat\(\[i\.flatConfigs\.recommended\]\)\]$/m)
+})
