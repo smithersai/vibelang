@@ -1,0 +1,5 @@
+{
+  "finding": "alchemy-58",
+  "rule": "VIP-27/VIP-34/Chapter 7: workspace package TypeScript barrels and relative VibeLang modules retain the native TypeScript result through the documented Bun and Rolldown adapters",
+  "input": { "name": "binding-layer", "depth": 1, "value": 19, "text": "worker" }
+}
