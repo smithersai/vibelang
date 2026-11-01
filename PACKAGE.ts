@@ -80,6 +80,7 @@ const specTests = [
   "TestDeclarationPreludeModesQuoted",
   "TestNativeOutputSpecifierRulesQuoted",
   "TestLegacyConfigCommentsQuoted",
+  "TestSchemaLibraryBindingQuoted",
   "TestSeverityScopeQuoted",
   "TestUnrelatedSeverityKeepsDiagnosticDefaults",
   "TestDiagnosticSeverityScopeRegression",
