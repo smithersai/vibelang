@@ -219,6 +219,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A `.vibe` module that imported a native `.tsx` sibling under `jsx: preserve` named a missing `.js` file in its emitted JavaScript; imports and re-exports now name the sibling’s actual `.jsx` output.
 
+- Migration test measurements now rebuild package outputs for all three sides, so missing or stale distributions cannot become accepted test controls.
+
 - Directory-import validation quoted a stale `.vibe` extension sentence; its oracle now follows the published `.vibe` and `.vibex` rule.
 
 - JSX attribute diagnostic `EK0402` lacked its VIP-39 cross-reference; the catalog now attributes the rule to both VIP-4 and VIP-39.
@@ -347,6 +349,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The migrate flow's planner refused a Vite config, `packages/website/vite.config.ts`, even after setup had wired the package's Vite scripts with the native config loader, so the config stayed TypeScript; a config wired that way is now a candidate, the codemod points the scripts at `vite.config.vibe` with `--config`, and revert restores them.
 
 - Migration plans rejected `.mts` sources; ESM packages can now migrate them to `.vibe` and revert them with their original imports and entry points. Unsafe CommonJS boundaries are reported before files move, also when an interrupted codemod resumes from its saved state.
+
+- Migration could record missing build outputs as pre-existing test failures and later test stale distributions; upgrade, setup and verification now run declared build prerequisites, retain their source and dependency evidence, and refuse an unprepared failing baseline.
 
 - The compiler package's tests could fail with a missing `packages/runtime/dist/index.js`, or skip their cache checks, when the runtime rebuilt at the same time; `//packages:compiler-test` now declares that build and runs after it.
 

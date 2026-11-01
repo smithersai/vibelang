@@ -1,0 +1,38 @@
+{
+  "key": "migrate:baseline-build-prerequisites",
+  "source": "foldkit devtools-mcp fresh workspace: dependency entry and dist/server.js were missing before baseline; the reported 97 pass/5 skip post-build result belongs only to the drive's control",
+  "root": {
+    "name": "foldkit-build-corpus",
+    "private": true,
+    "workspaces": [
+      "packages/*"
+    ]
+  },
+  "packages": {
+    "packages/core": {
+      "name": "@foldkit/vite-plugin",
+      "scripts": {
+        "build": "node build.mjs"
+      }
+    },
+    "packages/mcp": {
+      "name": "@foldkit/devtools-mcp",
+      "dependencies": {
+        "@foldkit/vite-plugin": "workspace:*",
+        "effect": "4.0.5"
+      },
+      "scripts": {
+        "build": "node build.mjs"
+      }
+    }
+  },
+  "measurement": {
+    "sides": [
+      "main",
+      "previous",
+      "candidate"
+    ],
+    "stale": "old-server",
+    "fresh": "original-server"
+  }
+}

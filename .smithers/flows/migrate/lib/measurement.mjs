@@ -1,4 +1,5 @@
 // One job owns all three measurements, so provider and load cannot differ by side.
+import { prepareBuilds } from "./builds.mjs"
 import { existsSync, mkdirSync, rmSync, cpSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -10,14 +11,15 @@ import { assertReadableTests } from "./test-receipts.mjs"
 import { must, quote, readJson, writeJson } from "./util.mjs"
 
 export async function runMeasurementJob(manifest) {
-  const receipts = {}
+  const receipts = {}, builds = {}
   for (const side of manifest.sides) {
     if (side.install) await must(side.install, { cwd: side.target, log: join(manifest.out, side.name + "-install.log") })
+    if (manifest.build) builds[side.name] = await prepareBuilds({ ...manifest.build, target: side.target }, manifest.out, side.name)
     receipts[side.name] = await runTests({ command: manifest.test.command, report: manifest.test.report,
       cwd: join(side.target, manifest.test.cwd ?? "."), root: side.target,
       jsonFile: join(manifest.out, side.name + "-vitest.json"), log: join(manifest.out, side.name + "-tests.log"), strict: true })
   }
-  writeJson(join(manifest.out, "receipts.json"), { job: manifest.job, receipts })
+  writeJson(join(manifest.out, "receipts.json"), { job: manifest.job, receipts, builds })
 }
 
 async function mainRevision(config) {
@@ -43,7 +45,7 @@ export async function measureTests(config, { run, batch }) {
       sides.push({name,target,revision,install:config.install ?? Wire.installCommand(Wire.packageManager(readdirSync(target)),readdirSync(target))})
     }
     sides.push({name:"candidate",target:config.target,revision:await Jj.commitId(config.target,"@"),install:config.install ?? Wire.installCommand(Wire.packageManager(readdirSync(config.target)),readdirSync(config.target))})
-    const manifest = { job, out, test:config.test, sides }
+    const manifest = { job, out, test:config.test, sides, build: { packages: config.packages ?? [{ dir: "." }], toolchain: config.toolchain ?? { kind: "registry" } } }
     const manifestPath = join(out,"manifest.json")
     writeJson(manifestPath,manifest)
     const command = [process.execPath,fileURLToPath(import.meta.url),manifestPath].map(quote).join(" ")
@@ -60,7 +62,7 @@ export async function measureTests(config, { run, batch }) {
       return { ...diff, skipped, ok:diff.ok && !skipped.length }
     }
     const previousDiff = compared(result.receipts.previous), mainDiff = compared(result.receipts.main)
-    const receipt = { job, mainRevision:main, previousRevision:previous, receipts:result.receipts,
+    const receipt = { job, mainRevision:main, previousRevision:previous, receipts:result.receipts, builds:result.builds,
       previous:previousDiff,main:mainDiff,ok:previousDiff.ok && mainDiff.ok }
     writeJson(join(out,"comparison.json"),receipt)
     return receipt

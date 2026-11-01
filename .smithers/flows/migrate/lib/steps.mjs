@@ -1,3 +1,4 @@
+import { prepareBuilds } from "./builds.mjs"
 // The migrate flow's steps. Each reads and writes the run directory, so it can
 // run as a step of flow.ts or alone from step.mjs, and a later step reads what
 // an earlier one recorded. A step that has already recorded its result returns
@@ -370,6 +371,7 @@ export async function upgradeEffect(options) {
   await install("upstream")
   const priorChecks = await previousCompilerChecks(config, logs)
   writeJson(join(p.baseline, "upstream-checks.json"), priorChecks)
+  const upstreamBuild = await prepareBuilds(config, logs, "upstream")
   const before = await testRun("upstream")
   if (before.code !== 0 && !before.tests) throw new Error(`the target's tests do not run (exit ${before.code}); see ${join(logs, "upstream-tests.log")}`)
   writeJson(join(p.baseline, "upstream-tests.json"), { code: before.code, tests: before.tests })
@@ -395,10 +397,12 @@ export async function upgradeEffect(options) {
   const formatted = await formatWritten(t, written, join(logs, "upgrade-format.log"))
 
   let after = before
+  let upgradedBuild = upstreamBuild
   let comparison = null
   let commit = null
   if (changed.length) {
     await install("upgraded")
+    upgradedBuild = await prepareBuilds(config, logs, "upgraded")
     after = await testRun("upgraded")
     comparison = compareTests(before, after)
     const issue = regressionIssue({
@@ -418,6 +422,7 @@ export async function upgradeEffect(options) {
     at: new Date().toISOString(),
     jj: { initialized: repo.initialized, base, baseCommit, commit: commit ?? baseCommit, bookmark: config.bookmark },
     effect: { from: upgrade.from, to },
+    builds: { upstream: upstreamBuild, upgraded: upgradedBuild },
     pins: upgrade.pins,
     bumped: upgrade.bumped,
     selectors: upgrade.selectors,
@@ -863,8 +868,9 @@ export async function setup(options) {
   const { stdout: version } = await must(`${JSON.stringify(compiler)} --version`)
 
   // The baseline every batch is compared with: the tests with VibeLang set up and nothing migrated.
+  const baselineBuild = await prepareBuilds(config, logs, "baseline")
   const tests = await runTests({ command: config.test.command, report: config.test.report, cwd: join(t, config.test.cwd), root: t, jsonFile: join(p.baseline, "baseline.vitest.json"), log: join(logs, "baseline-tests.log") })
-  writeJson(join(p.baseline, "tests.json"), { code: tests.code, tests: tests.tests })
+  writeJson(join(p.baseline, "tests.json"), { code: tests.code, tests: tests.tests, build: baselineBuild })
   assertBaselineSafe(p)
   const wiring = wired ? compareTests(upstream, tests) : null
   // Setting VibeLang up broke tests before any file moved: record it, so it is
@@ -1255,6 +1261,7 @@ export async function verify(options) {
   const hasSelectorEdits = codemodReceipt?.referenceEdits?.some(edit => edit.selectorKind || ["source-reference", "source-glob", "source-extensions"].includes(edit.kind))
   const selectorChecks = hasSelectorEdits ? checkSelectorEdits(codemodReceipt, [...new Set([...(await Jj.trackedFiles(t)), ...scopeFiles(config)])], { ts: typeScriptOf(config), read: file => readFileSync(join(t, file), "utf8") }) : []
   const baselineTests = readJson(join(p.baseline, "tests.json"))
+  const candidateBuild = thePlan.mode === "one-pass" ? null : await prepareBuilds(config, logs, "candidate")
   const measurement = thePlan.mode === "one-pass" ? await measureTests(config,{run:p.run,batch:b}) : null
   const tests = measurement?.receipts.candidate ?? await runTests({ command: config.test.command, report: config.test.report, cwd: join(t, config.test.cwd), root: t, jsonFile: join(p.batch(b), "vitest.json"), log: join(logs, "tests.log") })
   const testResults = compareTests(baselineTests, tests)
@@ -1301,7 +1308,9 @@ export async function verify(options) {
     at: new Date().toISOString(),
     files,
     formatted,
-    tests: { code: tests.code, total: tests.total, passed: tests.passed, failed: tests.failed.length, skipped: tests.skipped, ...testResults },
+    tests: { code: tests.code, total: tests.total, passed: tests.passed, failed: tests.failed.length, skipped: tests.skipped,
+      status: tests.code === 0 ? "passed" : "failing", baseline: { code: baselineTests.code, failed: baselineTests.tests ? Object.keys(baselineTests.tests).filter(name => baselineTests.tests[name] === "failed") : [] }, ...testResults },
+    build: measurement?.builds?.candidate ?? candidateBuild,
     declarations,
     measurement, hooks,
     // Each published specifier the gate excused, for the pull request's description.
@@ -1313,6 +1322,7 @@ export async function verify(options) {
       tests: testResults.ok,
       testEdits: testDiff.ok && (measurement?.ok ?? true),
       selectors: selectorChecks.every(proof => proof.pass),
+      baselinePrepared: baselineTests.code === 0 || baselineTests.build?.state === "complete",
       declarations: Object.values(declarations).every((d) => d === "not published" || d.identical),
       declarationEmit: emitErrors.length === 0,
       batchErrors: batchErrors.length === 0,
