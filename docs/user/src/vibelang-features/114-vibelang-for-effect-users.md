@@ -23,6 +23,8 @@ Calling `greet("Ada")` returns an Effect. `try greet("Ada")` runs it and returns
 
 A recognized `effect` modifier on an `abstract` declaration, in an ambient `declare` context, or on an `interface` or type literal member is `EK0108`. Remove the modifier from the signature, or put the implementation in an ordinary function or method. A method named `effect`, such as `interface Ordinary { effect(): number }`, keeps its ordinary TypeScript meaning.
 
+When migrating an exported Effect value, keep it as a value: `export const stocked = effect { return try available("TEA") }`. A function such as `export effect function stocked()` exports a callable API and requires consumers to add a call. Compare the emitted declarations to keep the original export type and lazy behavior.
+
 ## Call VibeLang from TypeScript
 
 Compile both files with `vibelang`, rather than ordinary `tsc`. In a `.ts` source, import the relative `.vibe` path **with its extension**:

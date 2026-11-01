@@ -9,6 +9,6 @@ export function submit(job: string) {
     catch "pending"
 }
 
-export function heartbeat() {
-  return log("queue alive") |> repeat(%, Schedule.recurs(5))
+export const heartbeat = effect {
+  return try repeat(log("queue alive"), Schedule.recurs(5))
 }

@@ -1,11 +1,11 @@
-function measure(name: string) {
-  sleep("3 millis")
+effect function measure(name: string) {
+  try sleep("3 millis")
   return name.length
 }
 
-export function metrics() {
+export const metrics = effect {
   const [cpu, memory] = try.all [measure("cpu"), measure("memory")]
-  const disks = forEach(["root", "data", "backup"], measure, { concurrency: 8 })
-  log(`Measured ${disks.length} disks`)
+  const disks = try forEach(["root", "data", "backup"], measure, { concurrency: 8 })
+  try log(`Measured ${disks.length} disks`)
   return { cpu, memory, disks }
 }

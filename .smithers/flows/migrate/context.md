@@ -341,16 +341,17 @@ service Stock {
 }
 
 const StockLive = Layer.succeed(Stock, {
-  count(sku) { return sku.length * 6 }
+  effect count(sku) { return sku.length * 6 }
 })
 
-export function available(sku: string): boolean!!Stock {
-  return Stock.count(sku) >= 12
+export effect function available(sku: string): boolean!!Stock {
+  const stock = try Stock
+  return (try stock.count(sku)) >= 12
 }
 
-export function stocked() {
+export const stocked = effect {
   provide StockLive {
-    return available("TEA")
+    return try available("TEA")
   }
 }
 ```
@@ -424,8 +425,8 @@ export function submit(job: string) {
     catch "pending"
 }
 
-export function heartbeat() {
-  return log("queue alive") |> repeat(%, Schedule.recurs(5))
+export const heartbeat = effect {
+  return try repeat(log("queue alive"), Schedule.recurs(5))
 }
 ```
 
@@ -449,15 +450,15 @@ export const metrics = Effect.gen(function* () {
 VibeLang:
 
 ```vibe
-function measure(name: string) {
-  sleep("3 millis")
+effect function measure(name: string) {
+  try sleep("3 millis")
   return name.length
 }
 
-export function metrics() {
+export const metrics = effect {
   const [cpu, memory] = try.all [measure("cpu"), measure("memory")]
-  const disks = forEach(["root", "data", "backup"], measure, { concurrency: 8 })
-  log(`Measured ${disks.length} disks`)
+  const disks = try forEach(["root", "data", "backup"], measure, { concurrency: 8 })
+  try log(`Measured ${disks.length} disks`)
   return { cpu, memory, disks }
 }
 ```
@@ -548,12 +549,12 @@ export const closest = Effect.gen(function* () {
 VibeLang:
 
 ```vibe
-function probe(region: string, delay: number) {
-  sleep(delay)
+effect function probe(region: string, delay: number) {
+  try sleep(delay)
   return region
 }
 
-export function closest() {
+export const closest = effect {
   const audit = fork log("probe started")
   const winner = try.race [probe("west", 7), probe("east", 12)]
   join audit
@@ -585,20 +586,20 @@ export const inspect = Effect.scoped(Effect.gen(function* () {
 VibeLang:
 
 ```vibe
-export function inspect() {
-  using lease = Effect.acquireRelease(
-    () => "batch-17",
-    (name) => log(`Released ${name}`)
-  )
-  const visits = Ref.make(10)
-  Ref.update(visits, (n) => n + 3)
-  try {
-    const count = Ref.get(visits)
-    Console.log(lease, count)
-    return count
-  } finally {
-    log("inspection finished")
-  }
+export const inspect = effect {
+  return try Effect.scoped(effect {
+    const lease = try Effect.acquireRelease(
+      effect { return "batch-17" },
+      (name) => log(`Released ${name}`)
+    )
+    const visits = try Ref.make(10)
+    try Ref.update(visits, (n) => n + 3)
+    return try Effect.ensuring(effect {
+      const count = try Ref.get(visits)
+      try Console.log(lease, count)
+      return count
+    }, log("inspection finished"))
+  })
 }
 ```
 

@@ -4,15 +4,16 @@ service Stock {
 }
 
 const StockLive = Layer.succeed(Stock, {
-  count(sku) { return sku.length * 6 }
+  effect count(sku) { return sku.length * 6 }
 })
 
-export function available(sku: string): boolean!!Stock {
-  return Stock.count(sku) >= 12
+export effect function available(sku: string): boolean!!Stock {
+  const stock = try Stock
+  return (try stock.count(sku)) >= 12
 }
 
-export function stocked() {
+export const stocked = effect {
   provide StockLive {
-    return available("TEA")
+    return try available("TEA")
   }
 }

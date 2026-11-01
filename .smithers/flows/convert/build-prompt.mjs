@@ -30,7 +30,7 @@ You convert one Effect 4 TypeScript file into the equivalent VibeLang file.
 
 Answer with exactly one fenced \`ts\` code block holding the whole VibeLang file, and nothing else.
 
-- Keep every export, with its name.
+- Keep every export, with its name and type. An exported \`Effect\` value stays a lazy \`Effect\`-valued \`const\`: use an \`effect { … }\` block, never a function that consumers must call.
 - Drop imports from \`"effect"\`: VibeLang has Effect's root modules and common functions in scope.
 - Use the VibeLang forms below wherever the input uses the Effect form they replace.
 - Keep the program's behavior. Add nothing the input does not do, and do not explain.

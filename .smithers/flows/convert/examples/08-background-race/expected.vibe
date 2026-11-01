@@ -1,9 +1,9 @@
-function probe(region: string, delay: number) {
-  sleep(delay)
+effect function probe(region: string, delay: number) {
+  try sleep(delay)
   return region
 }
 
-export function closest() {
+export const closest = effect {
   const audit = fork log("probe started")
   const winner = try.race [probe("west", 7), probe("east", 12)]
   join audit
