@@ -4,6 +4,10 @@ import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import { defaultCompiler, linkModules, normalizeOutput } from "./check-snippets"
 import { sectionBlocks } from "./check-smithers-content"
+import { STAGE_MS, stage } from "./first-run-stage"
+
+// The commands the check runs, each with its own STAGE_MS deadline (first-run-stage.ts).
+const STAGES = 5
 
 const repo = resolve(import.meta.dir, "../..")
 const compiler = defaultCompiler()
@@ -11,12 +15,10 @@ const compiler = defaultCompiler()
 test.skipIf(!existsSync(compiler))("the local starter runs and its stdout matches the first-run guides", async () => {
   const temp = mkdtempSync(join(tmpdir(), "docs-first-run-"))
   const command = async (args: string[], cwd = temp) => {
-    const child = Bun.spawn(args, { cwd, env: { ...process.env, VIBELANG_BINARY: compiler }, stdout: "pipe", stderr: "pipe" })
-    const [stdout, stderr, exitCode] = await Promise.all([
-      new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited
-    ])
-    expect({ args, exitCode, failure: exitCode ? stdout + stderr : "" }).toEqual({ args, exitCode: 0, failure: "" })
-    return stdout
+    const result = await stage(args, { cwd, env: { ...process.env, VIBELANG_BINARY: compiler } })
+    const { exitCode, signalCode, failure } = result
+    expect({ args, exitCode, signalCode, failure }).toEqual({ args, exitCode: 0, signalCode: null, failure: "" })
+    return result.stdout
   }
   try {
     // Generate the same files as npm/bun create, without registry installs.
@@ -47,4 +49,4 @@ test.skipIf(!existsSync(compiler))("the local starter runs and its stdout matche
     const summary = tests.replace(/\x1b\[[0-9;]*m/g, "").match(/ Test Files[^\n]+\n[^\n]*Tests[^\n]+/)?.[0]
     expect(summary?.trimStart()).toBe(expectedTests[0])
   } finally { rmSync(temp, { recursive: true, force: true }) }
-}, 30000)
+}, STAGES * STAGE_MS)

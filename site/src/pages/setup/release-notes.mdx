@@ -641,6 +641,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - With the DOM lib loaded, a contract such as `Effect<string, never, FileSystem>` around `try FileSystem()` failed with `EK9202` "needs FileSystem, but its contract says R = FileSystem" and suggested `FileSystem | FileSystem`; the error now names Effect's type `FileSystem.FileSystem`, explains that the bare type is the DOM's (VIP-14), and `vibelang --fix` writes `FileSystem.FileSystem` in the contract.
 - Schemas and schema errors with a `__proto__` field could lose the field or throw while being declared; the field now validates, constructs and encodes as an own data property. Native `Schema.Struct` prototype setters keep their JavaScript meaning during `vibelang --fix`.
 
+- The first-run guide check could end at a shared 30 s deadline on a loaded build host without saying which of its five commands was slow; each command now has its own deadline, timed-out POSIX command groups are stopped even when children hold their output pipes open, and the failure names the command.
+
 - Compiler fuzz checks could stop before finishing their seed corpus; the build target now uses the documented 40-minute deadline and allows separate build time.
 
 - In Vite, a `.vibe` module's `tsconfig` path alias such as `import { value } from "~/value"` resolved to nothing, though the same import from a `.ts` module resolved under `resolve.tsconfigPaths`; `vibelang-vite` now resolves it to the file the nearest `tsconfig.json`'s `paths` give, as `vibelang` does.

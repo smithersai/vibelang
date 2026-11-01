@@ -193,6 +193,17 @@ Node.js to check its failing source-mapped exit. Its test deadline is
 `30_000` ms so both host processes can finish on a busy build host; it still
 checks the compiler result, failure marker and original source location.
 
+The first-run guide check (`docs/tools/first-run.test.ts`) runs five commands in
+sequence: scaffold, `vitest run`, `--version`, compile, run. Each is a stage with
+its own `60_000` ms deadline (`first-run-stage.ts`), and the test's deadline is
+the sum, so a slow stage is killed and named with its signal and deadline instead
+of the whole test ending at a shared 30 s, as it did in 9 of 184 post-merge runs.
+On POSIX, a deadline kills the command's process group, including children that
+keep its output pipes open after it exits. Captured output and the kill reason
+remain in the stage result.
+`first-run-stage.test.ts` checks the kill, pipe-holding descendants, the plain exit and that the test's
+deadline covers every stage it runs.
+
 The `//typescript/vibelang:lsp-smoke` target runs `lsp-smoke.sh --no-build`
 against the graph's compiler and runtime outputs. Its inputs cover the Go
 language service through `:compiler`, the runtime, the Effect lockfiles,
