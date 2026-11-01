@@ -1,6 +1,4 @@
 [test]
 root = "./tests"
-# Stress laws execute 100,000 operations while compiler lanes build in parallel.
-timeout = 30000
 # Names a test that spins past KERNEL_TEST_STALL_SECONDS (120 by default) and ends the run.
 preload = ["./scripts/test-watchdog.ts"]
