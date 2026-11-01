@@ -3384,8 +3384,8 @@ typescript/vibelang/cases/trust-levels/main.vibe:51:66 lambda plain table
 typescript/vibelang/cases/trust-levels/main.vibe:98:18 lambda effectFn annotation
 typescript/vibelang/cases/trusted-value/main.vibe:11:34 lambda program table
 typescript/vibelang/cases/trusted-value/main.vibe:14:36 lambda program table
-typescript/vibelang/cases/try-effect-subtype-calls/main.vibe:20:10 lambda effectFn table
-typescript/vibelang/cases/try-effect-subtype-calls/main.vibe:20:50 lambda effectFn table
+typescript/vibelang/cases/try-effect-subtype-calls/main.vibe:29:10 lambda effectFn table
+typescript/vibelang/cases/try-effect-subtype-calls/main.vibe:29:50 lambda effectFn table
 typescript/vibelang/cases/try-nested-value.fail/main.vibe:6:17 byname program table
 typescript/vibelang/cases/try-nested-value.fail/main.vibe:6:18 byname program table
 typescript/vibelang/cases/try-nested/main.vibe:10:20 byname program table
