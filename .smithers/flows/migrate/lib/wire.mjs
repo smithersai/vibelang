@@ -179,11 +179,28 @@ function unwrapped(node, ts) {
  * unchanged when the plugin is already there; throws when the config has a
  * shape this edit does not know, so a person wires it instead.
  */
-export function addVitePlugin(text, ts, { register = false } = {}) {
+export function addVitePlugin(text, ts, { register = false, worker = false } = {}) {
   const imported = /import\s+([\w$]+)\s+from\s+['"]vibelang-vite['"]/.exec(text)
-  if (imported) return register ? addRegister(text, ts, imported[1]) : text
+  if (imported) {
+    const registered = register ? addRegister(text, ts, imported[1]) : text
+    return worker ? addWorkerPlugin(registered, ts, `${imported[1]}()`) : registered
+  }
   if (/from\s+['"]vibelang-vite['"]/.test(text)) return text
   const source = ts.createSourceFile("vite.config.ts", text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  const config = defineConfigObject(source, ts)
+  if (!config) throw new Error("the config does not call defineConfig({ ... }) or defineConfig(() => ({ ... })); add vibelang() from vibelang-vite to its plugins by hand")
+  const call = register ? "vibelang({ register: true })" : "vibelang()"
+  const edits = [importEdit(text, source, ts, "vibelang-vite"), pluginEdit(text, source, config, ts, "the config's plugins is not an array literal; add vibelang() to it by hand", call)]
+  if (worker) edits.push(workerEdit(text, source, config, ts, "vibelang()"))
+  return applyPluginEdits(text, edits)
+}
+
+/**
+ * The object a config's `defineConfig(...)` gives: its argument, or what an
+ * arrow or function argument returns (the last top-level return of a body),
+ * through parentheses and type assertions; undefined when there is none.
+ */
+function defineConfigObject(source, ts) {
   let config
   // The object a defineConfig argument gives: the literal, or what its function returns.
   const objectOf = (node) => {
@@ -201,9 +218,93 @@ export function addVitePlugin(text, ts, { register = false } = {}) {
     else ts.forEachChild(node, find)
   }
   find(source)
-  if (!config) throw new Error("the config does not call defineConfig({ ... }) or defineConfig(() => ({ ... })); add vibelang() from vibelang-vite to its plugins by hand")
-  const call = register ? "vibelang({ register: true })" : "vibelang()"
-  return applyPluginEdits(text, [importEdit(text, source, ts, "vibelang-vite"), pluginEdit(text, source, config, ts, "the config's plugins is not an array literal; add vibelang() to it by hand", call)])
+  return config
+}
+
+// A property of object by name, through an identifier or a string key.
+const propertyOf = (object, name, ts) => object.properties.find((p) => p.name && (ts.isIdentifier(p.name) || ts.isStringLiteral(p.name)) && p.name.text === name)
+
+/**
+ * The edit that puts call first in the plugins Vite builds a worker with
+ * (opencode's `new Worker(new URL("./x", import.meta.url))`, whose build
+ * applies `worker.plugins`, not the config's plugins): `worker: { plugins: ()
+ * => [...] }` as Vite 5 and later write it, or an array as earlier Vite does;
+ * a config with neither gains `worker: { plugins: () => [call] }`.
+ */
+function workerEdit(text, source, config, ts, call) {
+  const refusal = "the config's worker.plugins is neither an array nor a function returning one; add vibelang() to it by hand"
+  const worker = propertyOf(config, "worker", ts)
+  if (!worker) {
+    const at = config.getStart(source) + 1
+    const indent = /\n([ \t]+)\S/.exec(text.slice(at))?.[1]
+    return indent ? { at, text: `\n${indent}worker: { plugins: () => [${call}] },` } : { at, text: ` worker: { plugins: () => [${call}] },` }
+  }
+  const object = ts.isPropertyAssignment(worker) ? unwrapped(worker.initializer, ts) : undefined
+  if (!object || !ts.isObjectLiteralExpression(object)) throw new Error(refusal)
+  const plugins = propertyOf(object, "plugins", ts)
+  if (!plugins) return { at: object.getStart(source) + 1, text: ` plugins: () => [${call}],` }
+  let list = ts.isPropertyAssignment(plugins) ? unwrapped(plugins.initializer, ts) : undefined
+  if (list && (ts.isArrowFunction(list) || ts.isFunctionExpression(list))) {
+    const body = ts.isBlock(list.body) ? list.body.statements.filter((s) => ts.isReturnStatement(s)).at(-1)?.expression : list.body
+    list = unwrapped(body, ts)
+  }
+  if (!list || !ts.isArrayLiteralExpression(list)) throw new Error(refusal)
+  return list.elements.length ? { at: list.elements[0].getStart(source), text: `${call}, ` } : { at: list.getStart(source) + 1, text: call }
+}
+
+/** text with call in its config's worker.plugins (workerEdit), unless a call of the same plugin is there. */
+function addWorkerPlugin(text, ts, call) {
+  const source = ts.createSourceFile("vite.config.ts", text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  const config = defineConfigObject(source, ts)
+  if (!config) return text
+  const worker = propertyOf(config, "worker", ts)
+  const name = call.slice(0, call.indexOf("("))
+  if (worker && new RegExp(`\\b${name}\\(`).test(text.slice(worker.getStart(source), worker.end))) return text
+  return applyPluginEdits(text, [workerEdit(text, source, config, ts, call)])
+}
+
+/**
+ * Adds `vibelang()` from vibelang-vite to an electron-vite config
+ * (`defineConfig` from electron-vite), first in the plugins of each of its
+ * `main`, `preload` and `renderer` builds, each a Vite build of its own
+ * (opencode's packages/desktop: the main and preload builds loaded `.vibe`
+ * modules with no plugin). Returns the text unchanged when the plugin is
+ * already imported; throws for a shape this edit does not know.
+ */
+export function addElectronVitePlugin(text, ts) {
+  if (/from\s+['"]vibelang-vite['"]/.test(text)) return text
+  const source = ts.createSourceFile("electron.vite.config.ts", text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  const config = defineConfigObject(source, ts)
+  if (!config) throw new Error("the electron-vite config does not call defineConfig({ ... }) or defineConfig(() => ({ ... })); add vibelang() from vibelang-vite to its main, preload and renderer plugins by hand")
+  const sections = ["main", "preload", "renderer"].map((name) => propertyOf(config, name, ts)).filter(Boolean)
+  if (!sections.length) throw new Error("the electron-vite config has no main, preload or renderer build; add vibelang() from vibelang-vite to its builds by hand")
+  const edits = [importEdit(text, source, ts, "vibelang-vite")]
+  for (const section of sections) {
+    const object = ts.isPropertyAssignment(section) ? unwrapped(section.initializer, ts) : undefined
+    if (!object || !ts.isObjectLiteralExpression(object)) throw new Error(`the electron-vite config's ${section.name.text} build is not an object literal; add vibelang() to its plugins by hand`)
+    edits.push(pluginEdit(text, source, object, ts, `the electron-vite config's ${section.name.text}.plugins is not an array literal; add vibelang() to it by hand`))
+  }
+  return applyPluginEdits(text, edits)
+}
+
+// Whether a package's sources start a Vite worker build: `new Worker(new
+// URL(...))`, `new SharedWorker(new URL(...))` or a `?worker` import.
+export function startsWorkers(root, dir) {
+  const walk = (path) => {
+    let entries = []
+    try { entries = readdirSync(join(root, path), { withFileTypes: true }) } catch { return false }
+    for (const entry of entries) {
+      const child = path ? posix.join(path, entry.name) : entry.name
+      if (entry.isDirectory()) {
+        if (!skippedDirectory(entry.name) && walk(child)) return true
+      } else if (/\.(?:[cm]?[jt]sx?|vibe)$/.test(entry.name)) {
+        const text = readFileSync(join(root, child), "utf8")
+        if (/new\s+(?:Shared)?Worker\s*\(\s*new\s+URL\s*\(/.test(text) || /['"][^'"]+\?worker(?:&[^'"]*)?['"]/.test(text)) return true
+      }
+    }
+    return false
+  }
+  return walk(dir === "." ? "" : dir)
 }
 
 /**
@@ -362,9 +463,10 @@ function wireViteConfig({ root, file, ts, specsFor, changed, register = false })
     if (!changed.includes(path)) changed.push(path)
   }
   const text = readFileSync(join(root, file), "utf8")
-  write(file, text, addVitePlugin(text, ts, { register }))
   let owner = posix.dirname(file)
   while (owner !== "." && !existsSync(join(root, owner, "package.json"))) owner = posix.dirname(owner)
+  // electron-vite builds main, preload and renderer with a plugin list each; a Vite app's workers build with worker.plugins.
+  write(file, text, electronViteConfigFile.test(posix.basename(file)) ? addElectronVitePlugin(text, ts) : addVitePlugin(text, ts, { register, worker: startsWorkers(root, owner) }))
   const manifest = posix.join(owner, "package.json")
   const before = readFileSync(join(root, manifest), "utf8")
   write(manifest, before, JSON.stringify(addVibeLangPlugin(JSON.parse(before), specsFor(owner)), null, 2) + "\n")
@@ -400,7 +502,8 @@ export function repositoryPackages(root) {
 }
 
 // A config a build can load: vite.config.ts, or a named one such as vite.node.config.ts.
-const viteConfigFile = /^vite(?:st)?(?:\.[\w-]+)?\.config\.m?[jt]s$/
+const viteConfigFile = /^(?:vite(?:st)?(?:\.[\w-]+)?|electron\.vite)\.config\.m?[jt]s$/
+const electronViteConfigFile = /^electron\.vite\.config\.m?[jt]s$/
 
 // A dependency on a workspace package by its source: workspace:, file:, link: or *.
 const localSpec = /^(?:workspace:|file:|link:|\*$)/
