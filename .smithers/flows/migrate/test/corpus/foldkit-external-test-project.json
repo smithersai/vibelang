@@ -1,0 +1,25 @@
+{
+  "repo": "foldkit-devtools-mcp",
+  "main": {
+    "compilerOptions": {
+      "strict": true,
+      "allowArbitraryExtensions": true,
+      "module": "ESNext",
+      "moduleResolution": "Bundler",
+      "resolveJsonModule": true,
+      "skipLibCheck": true
+    },
+    "include": [
+      "src"
+    ]
+  },
+  "tests": {
+    "extends": "./tsconfig.json",
+    "include": [
+      "src",
+      "test"
+    ]
+  },
+  "testSource": "import { program } from '../src/relay.vibe'\nconst result: number = program\nexport { result }\n",
+  "sidecar": "export declare const program: number\n"
+}

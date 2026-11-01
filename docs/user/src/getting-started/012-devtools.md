@@ -440,6 +440,8 @@ Without `project`, `typedProgram()` discovers the nearest config starting at `ts
 
 `typedProgram` returns the project's TypeScript program, from the `typescript` the project resolves, in which each `.vibe` module reads as the declaration `vibelang` writes for it. A module of another workspace package compiles with that package's `tsconfig.json`, as the loaders compile it. It runs `vibelang` once per project, the first time the program reads one of its modules, and throws when a project does not compile, since typed lint would then have no types for its modules.
 
+Typed lint tools that discover `tsconfig.json` from each `.ts` file need a project that includes that file. If tests are outside the main project’s `include`, a `test/tsconfig.json` containing `{ "extends": "../tsconfig.test.json" }` can point to the existing test project. Keep its original options and file list, and inherit `allowArbitraryExtensions: true` so imports of `.vibe` read their sidecars. The migration flow prepares named test directories when an existing complete project is unambiguous.
+
 Forms whose TypeScript long form would mislead a rule have their own node types, which rules and `no-restricted-syntax` selectors can name:
 
 | Form | ESTree node |

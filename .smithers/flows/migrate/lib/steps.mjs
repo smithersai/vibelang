@@ -2,6 +2,7 @@
 // run as a step of flow.ts or alone from step.mjs, and a later step reads what
 // an earlier one recorded. A step that has already recorded its result returns
 // it without running again.
+import { wireTestProjects } from "./test-projects.mjs"
 import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { dirname, join, posix, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -644,6 +645,10 @@ export async function wireTarget(config, log) {
     const text = readFileSync(file, "utf8")
     writeIfChanged(file, text, Wire.addCompilerOptions(Wire.removeVibeLangSetting(text, ts, "declarationSidecars"), { allowArbitraryExtensions: true }))
   }
+  const testProjects = wireTestProjects({ root: t, packages, ts })
+  changed.push(...testProjects.changed.filter(file => !changed.includes(file)))
+  warnings.push(...testProjects.warnings)
+  appendJsonl(join(log, "test-projects.jsonl"), { at: new Date().toISOString(), ...testProjects })
   // The sidecars are vibelang's output, in its format; formatters leave them alone.
   const formatIgnore = join(t, ".prettierignore")
   const formatIgnoreText = existsSync(formatIgnore) ? readFileSync(formatIgnore, "utf8") : ""

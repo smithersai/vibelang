@@ -223,3 +223,5 @@ Detail 279 keeps modules whose Effect imports are only types in TypeScript by de
 Declaration verification requires a zero compiler exit as well as identical public bytes. Global option diagnostics and nonzero exits remain in the verification receipt even when files were emitted or the diagnostic names an unmigrated source.
 
 A failed declaration command is labelled `EMIT FAILED` in the report even if its raw files compare equal.
+
+When tests live in `test`, `tests` or `__tests__` outside their nearest `tsconfig.json`, setup can write that test directory’s `tsconfig.json` extending the existing complete test project. It checks the original options and complete file membership and records the selected project, prior configuration, files and identity hashes in `baseline/logs/test-projects.jsonl`. Existing local configs and submodules remain unchanged. Missing or ambiguous project evidence produces a warning instead of a guessed configuration. Test bodies remain byte-identical.
