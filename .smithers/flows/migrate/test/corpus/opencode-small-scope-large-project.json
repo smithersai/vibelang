@@ -1,0 +1,10 @@
+{
+  "key": "onepass:shard-unselected-roots",
+  "repo": "opencode",
+  "plainModules": 245,
+  "selected": [
+    "core/src/index.ts",
+    "app/src/index.ts"
+  ],
+  "symptom": "An unselected root reaches 245 plain helpers; fixing the small selected scope must still use a capped temporary project."
+}

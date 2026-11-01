@@ -11,8 +11,10 @@ of all listed `.ts` modules; defer `.tsx` with its JSX cause. Never substitute
 a repository-specific driver or paths.
 
 Fix packages in dependency order with a bounded job count and compiler timeout.
-Split a large project by directory only into import-closed groups of at most
-`240` modules; stop and explain an indivisible closure above the cap. Keep the
+Split a large project by directory into the selected modules and their import
+closures, in groups of at most `240` modules; keep unselected roots in the full
+project checks. Use a temporary project even when only one selected shard is
+needed; stop and explain an indivisible closure above the cap. Keep the
 project's compiler options and always check the full projects after fixing.
 
 A failing dependency is retried before its importers: select the sink components

@@ -116,9 +116,12 @@ configuration) in `batches/01/codemod.json`.
 `fix` processes dependency packages first, with at most `--jobs` concurrent
 packages (maximum `8`); related packages never fix concurrently, and dependency
 cycles run serially. Each project runs `--fix` to a fixed point. Projects above
-`240` modules are grouped by directory into transitive import-closed shards,
+`240` modules fix the selected sources and their dependencies in directory-packed,
+transitive import-closed shards,
 each at most `240` modules, using temporary projects that extend the original
-options. A closure larger than that cap stops with its file and size instead of
+options. Unselected roots remain in the full-project checks. Even a single
+selected shard uses a temporary project when the full program is above the cap.
+A closure larger than that cap stops with its file and size instead of
 running an unsafe shard. Temporary projects are removed after failure too.
 `--timeout` bounds each compiler invocation in seconds. A timeout, compiler
 crash or exhausted fix limit fails the command and keeps timing, project, shard

@@ -7,7 +7,7 @@ import { tmpdir } from "node:os"
 import { test } from "node:test"
 import { rewriteReferences, restoreReferences } from "../lib/references.mjs"
 import { renameBatch } from "../lib/codemod.mjs"
-import { planScope, dependencyRoots, shardModules, onePassStep } from "../lib/onepass.mjs"
+import { planScope, dependencyRoots, shardModules, fixShards, onePassStep } from "../lib/onepass.mjs"
 import { revertMany, paths, flowStep, nextStep } from "../lib/steps.mjs"
 import { must, quote, run, writeJson, readJson } from "../lib/util.mjs"
 import * as Jj from "../lib/jj.mjs"
@@ -339,5 +339,48 @@ test("one-pass rename, root attribution and bulk revert preserve main's paths-al
     assert.deepEqual(Object.keys(result.causes), ["core/src/index.vibe"])
     assert.match(text(f.target, "app/src/index.vibe"), /@core\/index.ts/)
   } finally { rmSync(f.root, { recursive: true, force: true }) }
+})
+
+
+
+test("large unselected roots do not prevent a small scope from using one capped temporary project", async () => {
+  const f = await fixture()
+  try {
+    const corpus = readJson(fileURLToPath(new URL("./corpus/opencode-small-scope-large-project.json", import.meta.url)))
+    for (let i = 0; i < corpus.plainModules; i++) put(f.target, `core/src/unused${i}.ts`, `export const value${i} = ${i}\n`)
+    put(f.target, "core/src/unselected.ts", Array.from({ length: corpus.plainModules }, (_, i) => `import { value${i} } from "./unused${i}.ts"`).join("\n"))
+    await Jj.commit(f.target, "large outside-scope roots")
+    await onePassStep("plan", { run: f.run, scope: f.scope })
+    await onePassStep("rename", { run: f.run })
+    const result = await onePassStep("fix", { run: f.run, jobs: 2 })
+    assert.equal(result.settled, true)
+    const project = result.projects.find(p => p.package === "core")
+    assert.deepEqual(project.shards.map(s => s.files), [["core/src/index.vibe"]])
+    const calls = text(f.target, "checks.log").trim().split("\n").map(JSON.parse).filter(c => c.pkg === "core" && c.args.includes("--fix"))
+    assert.ok(calls.length && calls.every(c => c.project.startsWith("tsconfig.vibelang-fix-")))
+    assert.match(text(f.target, "core/src/unselected.ts"), /unused244.ts/)
+    assert.ok(existsSync(join(f.target, "core/src/unused244.ts")))
+  } finally { rmSync(f.root, { recursive: true, force: true }) }
+})
+
+
+test("unselected import graphs cannot enlarge selected fix shards", () => {
+  const contract = readFileSync(new URL("../README.md", import.meta.url), "utf8")
+  assert.ok(contract.includes("Unselected roots remain in the full-project checks."))
+  fc.assert(fc.property(
+    fc.array(fc.array(fc.nat(29), { maxLength: 3 }), { minLength: 1, maxLength: 30 }),
+    fc.integer({ min: 241, max: 280 }),
+    (edges, outsideCount) => {
+      const selected = edges.map((_, i) => `src/selected/m${i}.vibe`)
+      const outside = Array.from({ length: outsideCount }, (_, i) => `tests/unselected/m${i}.ts`)
+      const graph = new Map(selected.map((f, i) => [f, edges[i].map(n => selected[n % selected.length])]))
+      for (const file of outside) graph.set(file, outside.filter(f => f !== file))
+      const result = fixShards([...selected, ...outside], graph, new Set(selected))
+      assert.equal(result.sharded, true)
+      assert.deepEqual(new Set(result.groups.flat()), new Set(selected))
+      assert.ok(result.groups.every(group => group.length <= 240))
+      for (const group of result.groups) for (const file of group) for (const dependency of graph.get(file)) assert.ok(group.includes(dependency))
+    }
+  ), { seed: 1146, numRuns: 100 })
 })
 

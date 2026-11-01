@@ -68,6 +68,13 @@ export function shardModules(files, graph, cap = 240) {
   return result
 }
 
+/** A large program fixes selected roots and their dependencies; unrelated roots stay for the wide check. */
+export function fixShards(files, graph, selected, cap = 240) {
+  const sharded = files.length > cap
+  const work = sharded ? [...new Set(files.filter(f => selected.has(f)).flatMap(f => [f, ...reachable(graph, f)]))] : files
+  return { sharded, groups: sharded ? shardModules(work, graph, cap) : [files] }
+}
+
 async function mapLimit(items, jobs, fn) {
   const result = new Array(items.length)
   let next = 0
@@ -273,7 +280,7 @@ async function fix(config, p, cm, options) {
         if (!Array.isArray(membership)) throw new Error("showConfig did not return project files")
         const roots = membership.map(f => posix.normalize(posix.join(dir, f))).filter(sourceModule)
         const files = [...new Set(roots.flatMap(f => [f, ...reachable(graph, f)]))]
-        const groups = files.length <= 240 ? [files] : shardModules(files, graph)
+        const { sharded, groups } = fixShards(files, graph, only)
         receipt.shards = groups.map(g => ({ modules: g.length, files: g }))
         for (let sweep = 1; sweep <= maxRounds; sweep++) {
           let sweepFixes = 0
@@ -282,7 +289,7 @@ async function fix(config, p, cm, options) {
             const keep = group.filter(f => only.has(f))
             if (!keep.length) continue
             let tsconfig = project.project
-            if (groups.length > 1) {
+            if (sharded) {
               temporary = join(config.target, dir, `tsconfig.vibelang-fix-${process.pid}-${i}.json`)
               if (existsSync(temporary)) throw new Error("temporary project already exists: " + temporary)
               writeJson(temporary, { extends: "./" + project.project, files: group.map(f => "./" + posix.relative(dir, f)), include: [], exclude: [] })

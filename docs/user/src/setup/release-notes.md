@@ -233,6 +233,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The platform crypto example passed raw bytes as algorithm-bearing keys and omitted its encryption inputs; it now uses native Effect key types and declares every input.
 
+- The migrate flow could refuse a small scope because an unrelated source imported more than `240` modules; bounded fix shards now contain only selected sources and their dependencies, and full-project checks still cover the other files.
+
 - Whole-repository migrations needed local drivers and could report success after a failed rollback; the migrate flow now plans one scope batch, fixes bounded dependency-ordered shards, and reverts by cause until every project is clean against its baseline.
 - After the migrate flow renamed a module to `.vibe`, an importer that named it through a tsconfig `paths` alias, `@/composer/schema`, kept that spelling, which the project’s `bun check` script invoking stock TypeScript cannot resolve (`TS2307`); the codemod now writes `@/composer/schema.vibe` there too, as for a relative import, and `revert` puts it back.
 
