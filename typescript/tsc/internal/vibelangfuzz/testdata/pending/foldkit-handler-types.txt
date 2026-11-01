@@ -1,0 +1,13 @@
+# Chapter 28: every automatic change keeps the program (D291, D372); VIP-27 safe quick fixes.
+FuzzEditor editor:quickfix-error:EK4839:TS2304 compiler VIP-27: Option.match handler annotation prints unimported Utc for DateTime.Utc; lane codemod-alchemy (foldkit-109)
+FuzzEditor editor:quickfix-error:EK4839:TS2554 compiler VIP-27: a zero-parameter Some handler is annotated as nullary but called with the payload; lane codemod-alchemy (foldkit-109)
+FuzzEditor editor:parse:EK4839 compiler VIP-27: a wide anonymous handler payload is printed as an abbreviated diagnostic display with ... instead of valid source; lane codemod-alchemy (foldkit-109)
+FuzzEditor corpus:foldkit-109-optionmatch-date compiler VIP-27: keyed foldkit handler-type source for the precise EK4839 annotation gap above; lane codemod-alchemy (foldkit-109)
+FuzzEditor corpus:foldkit-109-optionmatch-ignored compiler VIP-27: keyed foldkit handler-type source for the precise EK4839 annotation gap above; lane codemod-alchemy (foldkit-109)
+FuzzEditor corpus:foldkit-109-optionmatch-wide-23 compiler VIP-27: keyed foldkit handler-type source for the precise EK4839 annotation gap above; lane codemod-alchemy (foldkit-109)
+FuzzEditor corpus:foldkit-109-optionmatch-wide-24 compiler VIP-27: keyed foldkit handler-type source for the precise EK4839 annotation gap above; lane codemod-alchemy (foldkit-109)
+FuzzEditor corpus:foldkit-109-optionmatch-wide-25 compiler VIP-27: keyed foldkit handler-type source for the precise EK4839 annotation gap above; lane codemod-alchemy (foldkit-109)
+FuzzEditor corpus:foldkit-109-optionmatch-wide-32 compiler VIP-27: keyed foldkit handler-type source for the precise EK4839 annotation gap above; lane codemod-alchemy (foldkit-109)
+FuzzEditor corpus:foldkit-109-optionmatch-date-qualified compiler VIP-27: keyed foldkit handler-type source for the precise EK4839 annotation gap above; lane codemod-alchemy (foldkit-109)
+FuzzEditor corpus:foldkit-109-optionmatch-ignored-block compiler VIP-27: keyed foldkit handler-type source for the precise EK4839 annotation gap above; lane codemod-alchemy (foldkit-109)
+FuzzEditor corpus:foldkit-109-optionmatch-ignored-method compiler VIP-27: keyed foldkit handler-type source for the precise EK4839 annotation gap above; lane codemod-alchemy (foldkit-109)

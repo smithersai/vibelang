@@ -1,0 +1,3 @@
+go test fuzz v1
+string("-- main.vibe --\nimport * as Clock from \"effect/DateTime\";\nexport const formatDate = (date: string): string =>\n  Option.match(Clock.make(date), {\n    onNone: (): string => date,\n    onSome: (time): string => Clock.toDateUtc(time).toUTCString(),\n  })\n-- tsconfig.json --\n{\"compilerOptions\":{\"target\":\"es2022\",\"strict\":true,\"module\":\"nodenext\",\"moduleResolution\":\"nodenext\",\"skipLibCheck\":true,\"outDir\":\"out\"},\"files\":[\"main.vibe\"]}\n")
+[]byte("\x00\x1f\x00\x60\x00\x67\x00\x85\x00\xa5\x00\x3a\x00\x74\x00\xae")

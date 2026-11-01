@@ -1,0 +1,3 @@
+go test fuzz v1
+string("-- main.vibe --\nexport const label = (value: Option<number>): string =>\n  Option.match(value, {\n    onNone: (): string => \"none\",\n    onSome(): string { return \"some\" },\n  })\n-- tsconfig.json --\n{\"compilerOptions\":{\"target\":\"es2022\",\"strict\":true,\"module\":\"nodenext\",\"moduleResolution\":\"nodenext\",\"skipLibCheck\":true,\"outDir\":\"out\"},\"files\":[\"main.vibe\"]}\n")
+[]byte("\x00\x1d\x00\x3a\x00\x41\x00\x54\x00\x76\x00\x27\x00\x4f\x00\x77")

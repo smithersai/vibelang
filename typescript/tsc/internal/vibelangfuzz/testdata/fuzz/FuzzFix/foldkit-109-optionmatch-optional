@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nexport const label = (value: Option<number>): string =>\n  Option.match(value, {\n    onNone: (): string => \"none\",\n    onSome: (item?: number): string => String(item),\n  })\n-- tsconfig.json --\n{\"compilerOptions\":{\"target\":\"es2022\",\"strict\":true,\"module\":\"nodenext\",\"moduleResolution\":\"nodenext\",\"skipLibCheck\":true,\"outDir\":\"out\"},\"files\":[\"main.vibe\"]}\n")
