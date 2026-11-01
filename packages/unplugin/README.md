@@ -108,7 +108,9 @@ vibelang({
 
 Without a `compiler` option, the plugin runs `VIBELANG_BINARY`, else the native
 compiler that the launcher of the `vibelang` package resolved from the root
-would run. Set `VIBELANG_UNPLUGIN_DEBUG=1` to
+would run, else the one of the `vibelang` package beside the plugin, so a build
+that starts from a directory without its own install, such as a test run from a
+monorepo's root, still compiles. Set `VIBELANG_UNPLUGIN_DEBUG=1` to
 trace each build start, compile, and module load on stderr.
 
 ## How it works

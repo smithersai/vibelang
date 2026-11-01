@@ -197,10 +197,22 @@ export const unplugin = createUnplugin((options = {}, meta) => {
     configure()
     modules ??= Promise.resolve(closing).then(() => loadBackend(root)).then((value) => {
       backend = value
-      current = backend.projects({ root, project, compiler: backend.findCompiler(root, options.compiler), debug })
+      current = backend.projects({ root, project, compiler: compilerPath(), debug })
       return current
     })
     return modules
+  }
+
+  // The compiler: the compiler option, VIBELANG_BINARY, or root's vibelang
+  // install; else the vibelang package whose backend loaded, beside this
+  // plugin. A build that runs from a directory without its own install, such
+  // as a test under a monorepo's root, still compiles.
+  function compilerPath() {
+    try {
+      return backend.findCompiler(root, options.compiler)
+    } catch {
+      return join(dirname(backend.backendPath), "bin/vibelang")
+    }
   }
 
   function close() {
@@ -208,7 +220,8 @@ export const unplugin = createUnplugin((options = {}, meta) => {
     modules = undefined
     current = undefined
     const work = Promise.resolve(closing).then(async () => {
-      const projects = await pending
+      // A backend that failed to load failed its build already; it has nothing to close.
+      const projects = await pending?.catch(() => undefined)
       await projects?.close()
     })
     closing = work
@@ -222,17 +235,27 @@ export const unplugin = createUnplugin((options = {}, meta) => {
     return result
   }
 
-  // The module the plugin serves for a specifier, or undefined to leave it to the bundler.
+  // The module the plugin serves for a specifier, or undefined to leave it to
+  // the bundler. directory is where a relative specifier resolves from, when
+  // the bundler says (esbuild's resolveDir: an entry point's absWorkingDir, or
+  // stdin's resolveDir, whose importer is "<stdin>"); else the importer's, or
+  // the root for an entry point. unplugin's resolveId hook passes its own
+  // options third, so the hook is resolveId and only esbuild passes a directory.
   function resolveId(source, importer) {
+    return resolveFrom(source, importer)
+  }
+
+  function resolveFrom(source, importer, directory) {
     const path = cleanId(source)
     const query = source.slice(path.length)
     // An absolute id is resolved; webpack sends each result back through this hook.
     if (isAbsolute(path) || (importer && !path.startsWith("."))) return
-    const target = resolve(importer ? dirname(cleanId(importer)) : root || process.cwd(), path)
+    const base = directory || (importer ? dirname(cleanId(importer)) : root || process.cwd())
+    const target = resolve(base, path)
     // Resolve .vibe here too, so esbuild loads every .vibe module in one namespace.
     if (path.endsWith(".vibe")) return existsSync(target) ? target + query : undefined
     // TypeScript resolves `./x` to `x.vibe` when there is no `x.ts` or `x.tsx`.
-    const vibe = importer ? extensionlessVibe(dirname(cleanId(importer)), path) : undefined
+    const vibe = importer ? extensionlessVibe(base, path) : undefined
     if (vibe !== undefined) return vibe + query
     // vibelang rewrites `./x.vibe` and `./x.ts` imports to `./x.js`. Map them back to the source.
     if (!importer || !path.endsWith(".js") || existsSync(target)) return
@@ -317,7 +340,7 @@ export const unplugin = createUnplugin((options = {}, meta) => {
       compiler.hooks.thisCompilation.tap("vibelang-backend", (compilation) => {
         // The backend is selected from the app, so record the actual files
         // rather than a static dependency on the plugin's fallback install.
-        for (const file of [backend.backendPath, backend.findCompiler(root, options.compiler), join(dirname(backend.backendPath), "native/vibelang")]) {
+        for (const file of [backend.backendPath, compilerPath(), join(dirname(backend.backendPath), "native/vibelang")]) {
           if (existsSync(file)) compilation.buildDependencies.add(file)
         }
       })
@@ -335,7 +358,7 @@ export const unplugin = createUnplugin((options = {}, meta) => {
       setup(build) {
         build.onDispose?.(close)
         build.onResolve({ filter: /^\.\.?(?:\/|$)|\.vibe(?:\?.*)?$/ }, (args) => {
-          const id = resolveId(args.path, args.kind === "entry-point" ? undefined : args.importer)
+          const id = resolveFrom(args.path, args.kind === "entry-point" ? undefined : args.importer, args.resolveDir)
           if (id === undefined) return
           // Without this, esbuild keeps every .vibe module of a package that declares
           // none has side effects, and tree shaking drops nothing it imports.

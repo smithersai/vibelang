@@ -7,6 +7,6 @@ export interface VibeLangOptions {
    * absWorkingDir, or process.cwd().
    */
   root?: string
-  /** Native vibelang binary or Node launcher path. Defaults to VIBELANG_BINARY, then the vibelang package. */
+  /** Native vibelang binary or Node launcher path. Defaults to VIBELANG_BINARY, then the root's vibelang package, then the one beside the plugin. */
   compiler?: string
 }

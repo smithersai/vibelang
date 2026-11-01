@@ -2,7 +2,8 @@
 # Builds the vibelang compiler and vibelang-runtime from this checkout, then
 # bundles test/fixture with webpack, Rspack, Rollup, Rolldown, esbuild, Bun,
 # and Vite through vibelang-unplugin and checks each bundle, and bundles the
-# compiler's output of test/entry with each of them (entry.test.mjs).
+# compiler's output of test/entry with each of them (entry.test.mjs), and
+# bundles the esbuild configurations repositories embed (embedded.test.mjs).
 #
 # Usage: sh packages/unplugin/test/run.sh [node --test options]
 #
@@ -67,4 +68,4 @@ ln -s "$repo/packages/compiler" "$package/node_modules/vibelang"
 
 cd "$package"
 # A test that runs past five minutes fails with its name; none takes a minute.
-exec node --test --test-timeout=300000 "$@" test/child.test.mjs test/lifecycle.test.mjs test/backend-cache.test.mjs test/bundlers.test.mjs test/bundlers.property.test.mjs test/deferred.test.mjs test/deferred-types.test.mjs test/entry.test.mjs test/bun-filter.test.mjs
+exec node --test --test-timeout=300000 "$@" test/child.test.mjs test/lifecycle.test.mjs test/backend-cache.test.mjs test/bundlers.test.mjs test/bundlers.property.test.mjs test/deferred.test.mjs test/deferred-types.test.mjs test/entry.test.mjs test/bun-filter.test.mjs test/embedded.test.mjs
