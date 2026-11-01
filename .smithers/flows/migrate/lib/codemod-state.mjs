@@ -4,6 +4,7 @@ import { closeSync, existsSync, fsyncSync, lstatSync, mkdirSync, openSync, readF
 import { dirname, join } from "node:path"
 import { pathReadDeferrals, rewriteReferences } from "./references.mjs"
 import { splitBatchPlatform } from "./platform.mjs"
+import { rewriteViteScripts } from "./vite-config.mjs"
 import { rewriteSourceLiterals } from "./source-paths.mjs"
 import { assertModuleBoundary, rewriteExports, rewriteImports, vibePath } from "./codemod.mjs"
 
@@ -51,6 +52,7 @@ export function prepareState(target, files, scope, { ts, aliases, referenceFiles
   }
   const platform = ts ? splitBatchPlatform(target, files, ts, { read, write }) : { splits: [], refused: [] }
   const exportEdits = rewriteExports(target, renames, { write })
+  const scriptEdits = rewriteViteScripts(target, renames, { read, write })
   const refEdits = rewriteReferences(target, renames, referenceFiles.map(file => toOf.get(file) ?? file), { read, write, literals: !ts })
   const importEdits = rewriteImports(target, [...scope, ...platform.splits.map(s => s.platform)].map(file => toOf.get(file) ?? file), renames.map(r => r.to), aliases, { read, write })
   const referenceEdits = [], referenceWarnings = [], selectorChecks = [], matcherCache = new Map()
@@ -70,7 +72,7 @@ export function prepareState(target, files, scope, { ts, aliases, referenceFiles
     selectorChecks.push(...(changed.selectorChecks ?? []))
     if (changed.edits.length) write(file, changed.text)
   }
-  return { version: 1, target, files, phase: "prepared", referenceVersion: 1, referencePending: false, referenceScan: { files: references.length, patterns: matcherCache.size, durationMs: Math.round(performance.now() - started) }, referenceEdits, referenceWarnings, selectorChecks, platform, renames, originals, writes, exportEdits, importEdits, refEdits, attempts: [] }
+  return { version: 1, target, files, phase: "prepared", referenceVersion: 1, referencePending: false, referenceScan: { files: references.length, patterns: matcherCache.size, durationMs: Math.round(performance.now() - started) }, referenceEdits, referenceWarnings, selectorChecks, platform, renames, originals, writes, exportEdits, importEdits, refEdits, scriptEdits, attempts: [] }
 }
 
 /** Replay a prepared transaction, accepting each operation before or after its atomic write. */

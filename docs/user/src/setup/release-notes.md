@@ -299,6 +299,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Migration rejected native `throw new Error(...)` even when a function preserved its original global `Error` failure channel; the style gate now keeps `EK4804` as an advisory for that written contract, while rejecting TypeScript-style Effect forms.
 
+- The migrate flow's planner refused a Vite config, `packages/website/vite.config.ts`, even after setup had wired the package's Vite scripts with the native config loader, so the config stayed TypeScript; a config wired that way is now a candidate, the codemod points the scripts at `vite.config.vibe` with `--config`, and revert restores them.
+
 - Migration plans rejected `.mts` sources; ESM packages can now migrate them to `.vibe` and revert them with their original imports and entry points. Unsafe CommonJS boundaries are reported before files move, also when an interrupted codemod resumes from its saved state.
 
 - The compiler package's tests could fail with a missing `packages/runtime/dist/index.js`, or skip their cache checks, when the runtime rebuilt at the same time; `//packages:compiler-test` now declares that build and runs after it.

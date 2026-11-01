@@ -444,7 +444,7 @@ export function wireViteApps({ root, packages, ts, specsFor, wired = [] }) {
   const native = wireNativeViteConfigs({ root, packages, configs: candidates, manifests, ts, specsFor })
   changed.push(...native.changed.filter(file => !changed.includes(file)))
   warnings.push(...native.warnings)
-  return { changed, warnings, configs }
+  return { changed, warnings, configs, nativeConfigs: native.wired }
 }
 
 /**

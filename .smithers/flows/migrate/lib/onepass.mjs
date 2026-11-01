@@ -8,6 +8,7 @@ import { fixToFixedPoint, mergeFixes, renameBatch, rewriteExports, rewriteImport
 import { assertFinished, newErrors, parseDiagnostics, styleProblems } from "./diagnostics.mjs"
 import { parseImports, resolveRelative, resolveFile, resolveAliased } from "./imports.mjs"
 import { pathReadDeferrals, rewriteReferences } from "./references.mjs"
+import { isToolConfig } from "./plan.mjs"
 import { assertBaselineSafe } from "./baseline.mjs"
 import { loadTypeScript } from "./declarations.mjs"
 import { projectsOf } from "./wire.mjs"
@@ -25,12 +26,13 @@ const positive = (v, fallback, name, max = Infinity) => {
   return n
 }
 
-export function planScope(root, scope) {
+export function planScope(root, scope, { nativeConfigs = [] } = {}) {
   const files = [], deferred = []
   for (const file of new Set(scope.map(f => f.trim()).filter(Boolean))) {
     if (posix.isAbsolute(file) || file.split("/").includes("..") || file !== posix.normalize(file)) throw new Error("scope paths must be repository-relative: " + file)
     if (!existsSync(join(root, file))) throw new Error("scope module missing: " + file)
-    if (/\.(?:ts|mts)$/.test(file) && !isDeclarationFile(file)) files.push(file)
+    if (isToolConfig(file) && !nativeConfigs.includes(file)) deferred.push({ file, reason: "tool config has no supported native loader; keep its TypeScript filename" })
+    else if (/\.(?:ts|mts)$/.test(file) && !isDeclarationFile(file)) files.push(file)
     else deferred.push({ file, reason: file.endsWith(".tsx") ? "JSX source is not supported in .vibe; keep .tsx" : file.endsWith(".vibe") ? "already .vibe; no rename needed" : "not a .ts or .mts source module; keep its source format" })
   }
   if (!files.length) throw new Error("scope contains no .ts or .mts modules to migrate")
@@ -410,7 +412,9 @@ export async function onePassStep(step, options) {
   if (batch !== "01") throw new Error("one-pass conversion uses batch 01")
   if (["plan", "rename", "fix"].includes(step)) assertBaselineSafe(p)
   if (step === "plan") {
-    const plan = planScope(config.target, readFileSync(resolve(options.scope), "utf8").split(/\r?\n/))
+    const setup = readJsonIf(p.setup, {})
+    const nativeConfigs = setup.wired?.nativeViteConfigs ?? setup.nativeViteConfigs ?? []
+    const plan = planScope(config.target, readFileSync(resolve(options.scope), "utf8").split(/\r?\n/), { nativeConfigs })
     const deferred = pathReadDeferrals(config.target, plan.batches[0].files, await Jj.trackedFiles(config.target))
     const keep = new Set(deferred.map(d=>d.file))
     plan.batches[0].files = plan.batches[0].files.filter(f=>!keep.has(f))
@@ -448,7 +452,7 @@ export async function onePassStep(step, options) {
       saveState(p.codemodState("01"), state)
     }
     const { renames, exportEdits, importEdits, refEdits = [], platform } = state
-    const cm = { batch: "01", at: new Date().toISOString(), files, renames, exportEdits, importEdits, refEdits, platform, referenceEdits: state.referenceEdits, referenceWarnings: state.referenceWarnings, selectorChecks: state.selectorChecks, referenceScan: state.referenceScan, renameComplete: true, fix: { settled: false, rounds: [], byFile: {}, totals: {}, refused: [] } }
+    const cm = { batch: "01", at: new Date().toISOString(), files, renames, exportEdits, importEdits, refEdits, platform, scriptEdits: state.scriptEdits, referenceEdits: state.referenceEdits, referenceWarnings: state.referenceWarnings, selectorChecks: state.selectorChecks, referenceScan: state.referenceScan, renameComplete: true, fix: { settled: false, rounds: [], byFile: {}, totals: {}, refused: [] } }
     durableWrite(p.codemod("01"), JSON.stringify(cm, null, 2) + "\n")
     return cm
   }

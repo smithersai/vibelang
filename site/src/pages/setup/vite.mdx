@@ -36,6 +36,8 @@ NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--import=vibelang/register" npx vit
 ```
 
 Use the same prefix and `--configLoader native` for the dev server and preview.
+The config file itself can be VibeLang too: name it, `vite build --configLoader
+native --config vite.config.vibe`, since Vite discovers no `.vibe` config by name.
 Keep `vibelang()` in the config to compile application modules. The default
 `bundle` config loader parses native syntax before the plugin exists, and
 `runner` does not install the Node source hook. Setting `configLoader` inside

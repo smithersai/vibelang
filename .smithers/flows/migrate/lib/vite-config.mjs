@@ -4,9 +4,16 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { join, posix } from "node:path"
 import { listSources, isTestFile } from "./inventory.mjs"
 import { resolveRelative } from "./imports.mjs"
+import { repositoryPackages } from "./wire.mjs"
+import { vibePath } from "./codemod.mjs"
 
 const preload = 'NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--import=vibelang/register" '
 const configNames = ["vite.config.ts", "vite.config.mts", "vite.config.js", "vite.config.mjs"]
+// A Vite invocation in a package script, after any environment assignments and launcher.
+const viteCall = /^(\s*\(?\s*(?:[A-Za-z_]\w*=(?:"[^"]*"|'[^']*'|[^\s]+)\s+)*)(?:(?:(?:pnpm|npm)\s+exec\s+|npx\s+|bunx\s+|bun\s+x\s+)?vite|node(?:\s+--import(?:=|\s+)(?:"[^"]*"|'[^']*'|[^\s]+))*\s+(?:"(?:\.\.?\/)*node_modules\/vite\/bin\/vite\.js"|'(?:\.\.?\/)*node_modules\/vite\/bin\/vite\.js'|(?:\.\.?\/)*node_modules\/vite\/bin\/vite\.js))(?=\s|[)]|$)/
+const namedConfig = /(?:^|\s)(?:--config|-c)(?:=|\s+)(?:"([^"]+)"|'([^']+)'|([^\s)]+))/
+/** A Vite config the migration may rename: setup wires its scripts with the native loader (foldkit-41), so Vite can load it as .vibe when named explicitly. */
+export const viteConfigSource = /^vite(?:\.[\w-]+)?\.config\.m?ts$/
 
 // Type-only imports, import types and commented examples are not runtime edges.
 function runtimeImports(text, file, ts) {
@@ -72,20 +79,21 @@ export function nativeViteScripts(scripts = {}, { root, dir, configs }) {
       const cd = /^\s*cd\s+([\w./-]+)\s*$/.exec(part)
       if (cd) { cwd = posix.normalize(posix.join(cwd, cd[1])); return part }
       // The assignment belongs before the package-manager launcher.
-      const call = /^(\s*\(?\s*(?:[A-Za-z_]\w*=(?:"[^"]*"|'[^']*'|[^\s]+)\s+)*)(?:(?:pnpm|npm)\s+exec\s+|npx\s+|bunx\s+|bun\s+x\s+)?vite(?=\s|[)]|$)/.exec(part)
+      const call = viteCall.exec(part)
       if (!call) return part
       const args = part.slice(call.index + call[0].length)
-      const named = /(?:^|\s)(?:--config|-c)(?:=|\s+)(?:"([^"]+)"|'([^']+)'|([^\s)]+))/.exec(args)
+      const named = namedConfig.exec(args)
       const file = named ? posix.normalize(posix.join(cwd, named[1] ?? named[2] ?? named[3])) :
         configNames.map(f => posix.join(cwd, f)).find(f => existsSync(join(root, f)))
       if (!configs.includes(file)) return part
       wired.add(file)
       const at = call.index + call[1].length
       let after = part.slice(at)
-      if (/--configLoader(?:=|\s+)\S+/.test(after)) after = after.replace(/--configLoader(?:=|\s+)\S+/, "--configLoader native")
-      else after = after.replace(/\bvite\b/, "vite --configLoader native")
+      const loader = /--configLoader(?:=|\s+)([^\s)]+)/.exec(after)
+      if (loader && loader[1] !== "native") after = after.slice(0, loader.index) + "--configLoader native" + after.slice(loader.index + loader[0].length)
+      else if (!loader) { const end = call[0].length - at; after = after.slice(0, end) + " --configLoader native" + after.slice(end) }
       const before = part.slice(0, at)
-      if (/--import(?:=|\s+)vibelang\/register(?=["'\s]|$)/.test(before)) return before + after
+      if (/--import(?:=|\s+)vibelang\/register(?=["'\s]|$)/.test(call[0])) return before + after
       const assigned = /\bNODE_OPTIONS=(?:"([^"]*)"|'([^']*)'|([^\s]+))(?=\s|$)/.exec(before)
       if (assigned) {
         const value = (assigned[1] ?? assigned[2] ?? assigned[3]) + " --import=vibelang/register"
@@ -115,5 +123,76 @@ export function wireNativeViteConfigs({ root, packages, configs, manifests, ts, 
     changed.push(file)
   }
   for (const file of needed) if (!wired.has(file)) warnings.push(`${file}: config imports migrated sources before plugins exist; run Vite with ${preload.trim()} and --configLoader native (Node ESM resolution applies)`)
-  return { changed, warnings, configs: needed }
+  return { changed, warnings, configs: needed, wired: [...wired] }
+}
+
+/**
+ * Point each Vite invocation of scripts at a renamed config (foldkit-78): a
+ * named --config follows the rename in the form it was written, and a config
+ * Vite would discover by name is named explicitly, since Vite never looks for
+ * vite.config.vibe. Returns the scripts and one edit per changed script.
+ */
+export function nativeConfigScripts(scripts = {}, { root, dir, renames }) {
+  const toOf = new Map(renames.map(r => [r.from, r.to]))
+  const edits = []
+  const next = Object.fromEntries(Object.entries(scripts).map(([name, command]) => {
+    let cwd = dir
+    let module
+    const text = command.split(/(&&|\|\||;)/).map(part => {
+      const cd = /^\s*cd\s+([\w./-]+)\s*$/.exec(part)
+      if (cd) { cwd = posix.normalize(posix.join(cwd, cd[1])); return part }
+      const call = viteCall.exec(part)
+      if (!call) return part
+      const at = call.index + call[0].length
+      const named = namedConfig.exec(part.slice(at))
+      if (named) {
+        const value = named[1] ?? named[2] ?? named[3]
+        const to = toOf.get(posix.normalize(posix.join(cwd, value)))
+        if (!to) return part
+        module = to
+        const start = at + named.index + named[0].lastIndexOf(value)
+        return part.slice(0, start) + value.replace(/\.m?ts$/, ".vibe") + part.slice(start + value.length)
+      }
+      const file = configNames.map(f => posix.join(cwd, f)).find(f => toOf.has(f) || existsSync(join(root, f)))
+      const to = file && toOf.get(file)
+      if (!to) return part
+      module = to
+      return part.slice(0, at) + " --config " + posix.relative(cwd, to) + part.slice(at)
+    }).join("")
+    if (text !== command) edits.push({ script: name, before: command, after: text, module })
+    return [name, text]
+  }))
+  return { scripts: next, edits }
+}
+
+/** The codemod's part: every package manifest whose scripts run Vite on a renamed config names the .vibe file. */
+export function rewriteViteScripts(root, renames, { read = file => readFileSync(join(root, file), "utf8"), write = (file, text) => writeFileSync(join(root, file), text) } = {}) {
+  const configs = renames.filter(r => viteConfigSource.test(posix.basename(r.from)))
+  if (!configs.length) return []
+  const edits = []
+  const manifests = [...new Set(["package.json", ...repositoryPackages(root).map(pkg => posix.join(pkg.dir, "package.json"))])].filter(file => existsSync(join(root, file)))
+  for (const manifest of manifests) {
+    const pkg = JSON.parse(read(manifest))
+    const result = nativeConfigScripts(pkg.scripts, { root, dir: posix.dirname(manifest), renames: configs })
+    if (!result.edits.length) continue
+    pkg.scripts = result.scripts
+    write(manifest, JSON.stringify(pkg, null, 2) + "\n")
+    edits.push(...result.edits.map(edit => ({ manifest, ...edit })))
+  }
+  return edits
+}
+
+/** Revert's part: each script the codemod pointed at module's .vibe config names its original config again. Returns the edits undone. */
+export function restoreViteScripts(root, edits, module) {
+  const vibe = vibePath(module)
+  const undone = edits.filter(edit => edit.module === vibe)
+  for (const edit of undone) {
+    const path = join(root, edit.manifest)
+    if (!existsSync(path)) continue
+    const pkg = JSON.parse(readFileSync(path, "utf8"))
+    if (pkg.scripts?.[edit.script] !== edit.after) continue
+    pkg.scripts[edit.script] = edit.before
+    writeFileSync(path, JSON.stringify(pkg, null, 2) + "\n")
+  }
+  return undone
 }

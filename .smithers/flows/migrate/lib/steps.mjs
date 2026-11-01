@@ -10,6 +10,7 @@ import { assertBaselineSafe } from "./baseline.mjs"
 import { buildInventory, listSources, readCoverage, tsconfigPaths } from "./inventory.mjs"
 import { defaultLimits, draftPlan, migrationScope, planPrompt, validatePlan } from "./plan.mjs"
 import { fixToFixedPoint, pathAliases, restoreExports, restoreSpecifiers, rewriteImports, rewriteTotals, vibePath } from "./codemod.mjs"
+import { restoreViteScripts } from "./vite-config.mjs"
 import { applyState, durableWrite, prepareReferences, prepareState, saveState } from "./codemod-state.mjs"
 import { checkSelectorEdits, restoreSourceLiterals, rewriteSourceLiterals } from "./source-paths.mjs"
 import { splitBatchPlatform } from "./platform.mjs"
@@ -737,7 +738,7 @@ export async function wireTarget(config, log) {
   changed.push(...emittedImports.changed.filter(file => !changed.includes(file)))
   const existingVibe = await formatExistingVibe(config, join(log, "setup-format-vibe.log"))
   if (existingVibe.code !== 0) warnings.push(`vibelang-format exited ${existingVibe.code} on the repository's .vibe files; see ${join(log, "setup-format-vibe.log")}`)
-  return { manager, emittedImports, formattedVibe: existingVibe.files, specs: Object.fromEntries(packages.map((pkg) => [pkg.dir, specsFor(pkg.dir)])), viteConfigs: vite.configs, viteAppConfigs: apps.configs, knipConfig: knip.config, formatted, changed, warnings, install }
+  return { manager, emittedImports, formattedVibe: existingVibe.files, specs: Object.fromEntries(packages.map((pkg) => [pkg.dir, specsFor(pkg.dir)])), viteConfigs: vite.configs, viteAppConfigs: apps.configs, nativeViteConfigs: apps.nativeConfigs ?? [], knipConfig: knip.config, formatted, changed, warnings, install }
 }
 
 /**
@@ -884,12 +885,13 @@ async function runAgent(agent, { prompt, cwd, env, log }) {
 export async function plan(options) {
   if (options.scope) return (await import("./onepass.mjs")).onePassStep("plan", options)
   assertBaselineSafe(paths(options.run))
-  const { p, config, inventory } = loadRun(options.run)
+  const { p, config, inventory, setup } = loadRun(options.run)
   if (existsSync(p.plan)) return { plan: readJson(p.plan), accepted: true }
   if (!inventory) throw new Error("setup has not run")
-  const draft = draftPlan(inventory, config.limits)
+  const nativeConfigs = setup?.wired?.nativeViteConfigs ?? setup?.nativeViteConfigs ?? []
+  const draft = draftPlan(inventory, config.limits, { nativeConfigs })
   writeJson(p.planDraft, draft)
-  writeText(p.planPrompt, planPrompt({ inventory, draft, limits: config.limits, output: p.planAnswer }))
+  writeText(p.planPrompt, planPrompt({ inventory, draft, limits: config.limits, output: p.planAnswer, nativeConfigs }))
   let answer = options.accept ? resolve(options.accept) : options.acceptDraft ? p.planDraft : null
   if (!answer && options.agent) {
     await runAgent(options.agent, { prompt: p.planPrompt, cwd: config.target, env: { MIGRATE_OUTPUT: p.planAnswer, MIGRATE_RUN: p.run }, log: join(p.run, "logs", "plan-agent.log") })
@@ -897,7 +899,7 @@ export async function plan(options) {
   }
   if (!answer) return { accepted: false, prompt: p.planPrompt, output: p.planAnswer, draft: p.planDraft }
   const proposed = readJson(answer)
-  const { errors, warnings } = validatePlan(proposed, inventory, config.limits)
+  const { errors, warnings } = validatePlan(proposed, inventory, config.limits, { nativeConfigs })
   if (errors.length) throw new Error(`the plan is not valid:\n${errors.map((e) => `- ${e}`).join("\n")}`)
   const accepted = { ...proposed, source: options.acceptDraft ? "draft" : answer === p.planAnswer ? "agent" : `accepted ${answer}`, warnings, acceptedAt: new Date().toISOString() }
   writeJson(p.plan, accepted)
@@ -1117,6 +1119,7 @@ export async function revertMany(options) {
     const split = cm.platform?.splits?.find(s => s.file === ts)
     if (split) rmSync(join(config.target, split.platform), { force: true })
     const exportEdits = restoreExports(config.target, cm.exportEdits ?? [], ts)
+    const scriptEdits = restoreViteScripts(config.target, cm.scriptEdits ?? [], ts)
     const importEdits = restoreSpecifiers(config.target, cm.importEdits ?? [], ts, aliases)
     const refEdits = restoreReferences(config.target, cm.refEdits ?? [], ts)
     const referenceEdits = []
@@ -1142,7 +1145,7 @@ export async function revertMany(options) {
       if (rewired.edits.length) writeFileSync(join(config.target, ts), rewired.text)
       referenceEdits.push(...rewired.edits)
     }
-    results.push({ file: ts, reason, at: new Date().toISOString(), ...(source.batch === b ? {} : { from: source.batch }), exportEdits, importEdits, referenceEdits, ...(cm.refEdits ? { refEdits } : {}) })
+    results.push({ file: ts, reason, at: new Date().toISOString(), ...(source.batch === b ? {} : { from: source.batch }), exportEdits, importEdits, scriptEdits, referenceEdits, ...(cm.refEdits ? { refEdits } : {}) })
   }
   const importEdits = rewriteImports(config.target, await importers(config.target), prepared.map(x => x.ts), aliases)
   for (const result of results) result.importEdits.push(...importEdits.filter(e => {

@@ -1,0 +1,8 @@
+{
+  "repo": "foldkit",
+  "pattern": "website explicitly preloaded Node Vite launcher",
+  "dir": "packages/website",
+  "config": "packages/website/vite.config.ts",
+  "command": "node --import vibelang/register ./node_modules/vite/bin/vite.js --configLoader native --config vite.config.ts",
+  "source_manifest": "packages/website/package.json"
+}

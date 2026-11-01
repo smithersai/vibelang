@@ -1,0 +1,14 @@
+{
+  "key": "migrate:plan-vite-config-explicit-native-loader",
+  "source": "drive-foldkit-web 2026-10-31T23:03Z: step plan rejected packages/website/vite.config.ts although setup had wired the website's vite scripts with --import=vibelang/register and --configLoader native (foldkit-41)",
+  "path": "packages/website/vite.config.ts",
+  "scripts": {
+    "build": "NODE_OPTIONS=\"${NODE_OPTIONS:+$NODE_OPTIONS }--import=vibelang/register\" vite build --configLoader native",
+    "dev": "NODE_OPTIONS=\"${NODE_OPTIONS:+$NODE_OPTIONS }--import=vibelang/register\" vite --configLoader native --host",
+    "preview": "NODE_OPTIONS=\"${NODE_OPTIONS:+$NODE_OPTIONS }--import=vibelang/register\" vite preview --configLoader native"
+  },
+  "rootScripts": {
+    "web": "cd packages/website && vite build --configLoader native"
+  },
+  "refusal": "is a tool's config"
+}
