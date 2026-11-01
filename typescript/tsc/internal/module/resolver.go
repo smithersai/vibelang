@@ -1364,7 +1364,34 @@ func (r *resolutionState) createResolvedModuleHandlingSymlink(resolved *resolved
 			resolved.originalPath = originalPath
 		}
 	}
+	r.preferVibeSource(resolved)
 	return r.createResolvedModule(resolved, isExternalLibraryImport)
+}
+
+// preferVibeSource resolves a bare specifier that lands on a .vibe module's
+// declaration sidecar, x.d.vibe.ts, as a package's types export does, to the
+// module itself, x.vibe, when the
+// source is beside it outside node_modules, as in a workspace package: a
+// relative import of ./x.vibe in the same package resolves to the source, and
+// two files for one module are two types to the checker (alchemy-36, TS2345
+// "separate declarations of a private property"). Stock TypeScript reads the
+// sidecar both ways, so it sees one module too. A published package keeps its
+// declarations, and a relative import or a module suffix that names the
+// sidecar keeps it.
+func (r *resolutionState) preferVibeSource(resolved *resolved) {
+	if resolved == nil || !resolved.isResolved() || tspath.IsExternalModuleNameRelative(r.name) {
+		return
+	}
+	sidecar := string(resolved.path)
+	if !strings.HasSuffix(sidecar, ".d"+tspath.ExtensionVibe+".ts") || resolved.path.ContainsLowercaseDirectorySequence("/node_modules/") {
+		return
+	}
+	source := tspath.RootedFilePath(strings.TrimSuffix(sidecar, ".d"+tspath.ExtensionVibe+".ts") + tspath.ExtensionVibe)
+	if !r.resolver.fs.FileExists(source) {
+		return
+	}
+	resolved.path = source
+	resolved.extension = tspath.ExtensionVibe
 }
 
 func (r *resolutionState) createResolvedModule(resolved *resolved, isExternalLibraryImport bool) *ResolvedModule {
