@@ -19,9 +19,9 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,286 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 15,192 |
-| The skill and the user guide (140 pages) | 354,799 |
-| The user guide alone | 350,513 |
-| The specification (10 chapters) | 146,942 |
+| The skill and the user guide (140 pages) | 355,773 |
+| The user guide alone | 351,487 |
+| The specification (10 chapters) | 146,979 |
 | The decision log, `docs/design/history/DECISIONS.md` | 141,629 |
 
 ## Effect TypeScript beside VibeLang
@@ -96,13 +96,13 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Creating Effects](../getting-started/005-creating-effects.md) | 3,158 |
 | [Two Types of Errors](../error-management/006-two-error-types.md) | 699 |
 | [Basic Concurrency](../concurrency/007-basic-concurrency.md) | 2,454 |
-| **Core Concepts** | **21,294** |
+| **Core Concepts** | **21,495** |
 | [Effect's Modules](../getting-started/008-importing-effect.md) | 2,883 |
 | [Running Effects](../getting-started/009-running-effects.md) | 1,770 |
 | [Sequencing Effects](../getting-started/010-using-generators.md) | 1,710 |
 | [Building Pipelines](../getting-started/011-building-pipelines.md) | 2,012 |
-| [Devtools](../getting-started/012-devtools.md) | 12,919 |
-| **All 12 pages** | **35,225** |
+| [Devtools](../getting-started/012-devtools.md) | 13,120 |
+| **All 12 pages** | **35,426** |
 
 ### Setup
 
@@ -131,9 +131,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Zed](../setup/zed.md) | 479 |
 | [Other editors](../setup/other-editors.md) | 492 |
 | [Coding agents](../setup/coding-agents.md) | 1,062 |
-| **Upgrade** | **77,302** |
-| [Release notes](../setup/release-notes.md) | 77,302 |
-| **All 19 pages** | **110,178** |
+| **Upgrade** | **78,075** |
+| [Release notes](../setup/release-notes.md) | 78,075 |
+| **All 19 pages** | **110,951** |
 
 ### Guides
 
@@ -278,17 +278,17 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | Page | Tokens |
 | --- | ---: |
 | [Introduction](../../../design/src/000-intro.md) | 2,586 |
-| **The language** | **114,284** |
+| **The language** | **114,321** |
 | [1. Functions and Effect types](../../../design/src/001-functions.md) | 12,356 |
 | [2. Running Effects](../../../design/src/002-running.md) | 26,648 |
 | [3. Failures](../../../design/src/003-failures.md) | 15,067 |
 | [4. Pattern matching](../../../design/src/004-match.md) | 20,899 |
 | [5. Services and the environment](../../../design/src/005-services.md) | 11,320 |
 | [6. Data](../../../design/src/006-data.md) | 8,314 |
-| [7. Configuration and tooling](../../../design/src/007-tooling.md) | 12,577 |
+| [7. Configuration and tooling](../../../design/src/007-tooling.md) | 12,614 |
 | [8. Runtime guarantees](../../../design/src/008-runtime.md) | 7,103 |
 | **Appendices** | **30,072** |
 | [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 30,072 |
-| **All 10 pages** | **146,942** |
+| **All 10 pages** | **146,979** |
 
 <!-- token-counts: end -->
