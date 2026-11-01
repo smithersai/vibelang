@@ -209,6 +209,9 @@ for (const slice of ["0/2", "3/2", "a/2", "1/", "/2", "1/2/3", "2"]) {
 for (const [why, args, env] of [
   ["a run that selects tests", ["-test.run=^TestB$"], {}],
   ["go test -json", ["-test.v=test2json"], {}],
+  ["a benchmark selection", ["-test.bench=BenchmarkE", "-test.benchtime=1x"], {}],
+  ["a separated benchmark selection", ["-test.bench", "BenchmarkE"], {}],
+  ["an empty benchmark selection", ["-test.bench=^$"], {}],
   ["active fuzzing", ["-test.fuzz=FuzzD"], {}],
   ["GO_TEST_SHARDS=1", [], { GO_TEST_SHARDS: "1" }]
 ]) {

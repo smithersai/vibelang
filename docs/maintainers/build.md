@@ -421,8 +421,9 @@ run the suite the same way by hand, from `typescript/tsc`:
 go test -short -count=1 -exec "$PWD/../../scripts/go-test-shards.sh" ./internal/vibelangfuzz/
 ```
 
-A run with `-run`, `-fuzz` or `-json`, or with `GO_TEST_SHARDS=1`, runs the
-binary once, as before.
+A run with `-run`, `-bench`, `-fuzz` or `-json`, or with `GO_TEST_SHARDS=1`,
+runs the binary once, as before. In particular, benchmark selections pass
+through unchanged so a benchmark runs once, rather than once in every shard.
 
 Discovery and execution both receive the original test arguments, including
 `-short`, `-timeout` and custom test flags. A `TestMain` that reads them sees

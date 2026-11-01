@@ -843,6 +843,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The Chapter 15 compiler regression could fail with `moved: "none"` on a busy host; its deadlines now run on `TestClock`, preserving timeout and cleanup ordering independently of host timer dispatch.
 
 - The fuzz suite started up to 24 seed workers even in a lane restricted to fewer CPUs; it now sizes workers from the process CPU affinity, with the same cap of 24.
+
+- Running benchmarks through the Go test shard launcher repeated each benchmark in every shard; a benchmark selection now runs the binary once with its original arguments.
 - The kernel law suite could still fail at 5 s on a loaded host after its 30 s budget moved into the test preload, because Bun applies a preload's default timeout to the first test file only; `bun run test` in `experiments` now passes the budget to every file, and the docs build uses the same flag.
 
 - After the migrate flow's setup, an ast-grep rule for TypeScript also scanned each `.vibe` module's `x.d.vibe.ts` sidecar, so a finding in a `.vibe` module was reported twice; setup now adds `**/*.d.vibe.ts` to the `ignores` of each TypeScript rule it extends to `.vibe`.

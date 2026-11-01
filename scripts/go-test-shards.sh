@@ -11,7 +11,7 @@
 # Names are split longest first onto the least-loaded process, with seconds from testdata/shard-seconds.txt in the
 # package directory ("<seconds> <name>" lines; a name it does not list counts 1 s). A stale file only unbalances the
 # processes. A run that already selects tests (-test.run, -test.list), fuzzes (-test.fuzz) or reports JSON (go test
-# -json) runs the binary unchanged.
+# -json) or selects benchmarks (-test.bench) runs the binary unchanged.
 #
 # GO_TEST_SLICE=i/n (1 <= i <= n) runs only the i-th of n slices of each package's names, dealt the same way, so n
 # runs of the same command on n hosts run every name exactly once between them. A package that lists no names runs
@@ -49,7 +49,7 @@ if [ -n "$slice" ]; then
 fi
 for arg in "$@"; do
   case $arg in
-    -test.run|-test.run=*|-test.list|-test.list=*|-test.fuzz=*|-test.v=test2json) exec "$bin" "$@" ;;
+    -test.run|-test.run=*|-test.list|-test.list=*|-test.fuzz=*|-test.bench|-test.bench=*|-test.v=test2json) exec "$bin" "$@" ;;
   esac
 done
 [ "$shards" -gt 1 ] || [ "$sn" -gt 1 ] || exec "$bin" "$@"
