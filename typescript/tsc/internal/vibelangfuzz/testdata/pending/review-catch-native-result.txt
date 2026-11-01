@@ -1,0 +1,4 @@
+FuzzVIPDifferential feature:vip05.catch-native-result-function compiler VIP-5: plain function-expression catch handlers must execute once and retain their immediate Promise or thenable result as data; lane impl-hunt-run
+FuzzVIPDifferential corpus:catch-native-result-function-1 compiler VIP-5: plain function-expression catch handlers must execute once and retain their immediate Promise or thenable result as data; lane impl-hunt-run
+FuzzVIPDifferential corpus:catch-native-result-function-2 compiler VIP-5: plain function-expression catch handlers must execute once and retain their immediate Promise or thenable result as data; lane impl-hunt-run
+FuzzVIPDifferential corpus:catch-native-result-function-0 compiler VIP-5: plain function-expression catch handlers must execute once and retain their immediate Promise or thenable result as data; lane impl-hunt-run
