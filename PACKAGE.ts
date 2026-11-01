@@ -482,7 +482,7 @@ const targets = {
       ".smithers/flows/effect-bump/test/*.test.mjs .smithers/flows/ts-bump/test/*.test.mjs .smithers/flows/ci-health/test/*.test.mjs .smithers/flows/first-bad/test/*.test.mjs " +
       ".smithers/flows/test/*.test.mjs",
     [Packages["compiler-native"], Packages["runtime-dist"]],
-    [node, gofmt, S.Host.bin("diff3")]
+    [node, gofmt, bun, S.Host.bin("diff3")]
   ),
   snippets: check(
     "Compile every code block in the docs.",

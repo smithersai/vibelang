@@ -19,6 +19,18 @@ compiler package, `experiments`, `docs/tools`) from their lockfiles, then runs
 `smthrs ci`, which runs build and test targets alike. `explain` prints a
 target's inputs, its key and whether the cache holds a result for it.
 
+## Remote contributor checks
+
+`scripts/remote.sh <command...>` synchronizes the current workspace to a
+Linux build host and runs the command there, in the same relative directory.
+Set `ES_REMOTE_HOST` and, if needed, `ES_REMOTE_KEY` as its header describes.
+After synchronization, it runs `bun install --frozen-lockfile` in
+`experiments`, `docs/tools` and `packages/runtime` before preparing the
+runtime output. Existing directories and source timestamps do not establish
+that an install matches the synchronized lockfile. An install error reports
+Bun's diagnostic and stops before the requested command. A provisioned
+`node_modules` symlink stays untouched; its owner must keep it current.
+
 ## The merge queue's pre-gate
 
 The merge queue tests every queued change alone on current `main`, and a landing

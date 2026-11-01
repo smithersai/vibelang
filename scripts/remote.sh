@@ -11,9 +11,11 @@
 # It syncs the workspace's source tree (no .jj, node_modules, or build
 # outputs) to ~/es-remote/<workspace dir name>/ on the host, prepares
 # experiments/node_modules, docs/tools/node_modules, and
-# packages/runtime/dist there when missing or stale, then runs the command in
-# the same relative directory. The exit code is the command's. Binaries built
-# there are Linux x64; build locally when you need one on this machine.
+# packages/runtime/dist there, then runs the command in
+# the same relative directory. Owned dependency trees are checked against their
+# lockfiles on each run; provisioned node_modules symlinks stay untouched. An
+# install failure stops before the command. The exit code is the command's.
+# Binaries built there are Linux x64; build locally when you need one on this machine.
 #
 # The host needs Go 1.27, Node 22.22.3, and Bun 1.4 under ~/es-tools:
 #   mkdir -p ~/es-tools && cd ~/es-tools
@@ -71,14 +73,15 @@ done
 $SSH "$HOST" "export PATH=\$HOME/es-tools/go/bin:\$HOME/es-tools/node/bin:\$HOME/es-tools/bun/bin:\$PATH GOFLAGS=-trimpath CGO_ENABLED=0 EFFECT_NODE_MODULES=\$HOME/$dest/experiments/node_modules
 set -e
 cd ~/$dest
-if [ -f experiments/package.json ] && { [ ! -d experiments/node_modules ] || [ experiments/package.json -nt experiments/node_modules ]; }; then
-	(cd experiments && bun install --silent) >&2
-fi
-if [ -f docs/tools/package.json ] && { [ ! -d docs/tools/node_modules ] || [ docs/tools/package.json -nt docs/tools/node_modules ]; }; then
-	(cd docs/tools && bun install --silent) >&2
-fi
+# rsync preserves source mtimes; neither a manifest's timestamp nor an
+# existing node_modules proves that the synchronized lockfile is installed.
+install() {
+	if [ -f \"\$1/package.json\" ] && [ ! -L \"\$1/node_modules\" ]; then
+		(cd \"\$1\" && bun install --frozen-lockfile) >&2
+	fi
+}
+for dir in experiments docs/tools packages/runtime; do install \"\$dir\"; done
 if [ -f packages/runtime/package.json ]; then
-	if [ ! -d packages/runtime/node_modules ]; then (cd packages/runtime && bun install --silent) >&2; fi
 	if [ ! -f packages/runtime/dist/index.js ] || [ -n \"\$(find packages/runtime/src packages/runtime/package.json -newer packages/runtime/dist/index.js 2>/dev/null | head -1)\" ]; then
 		(cd packages/runtime && bun run build) >&2
 	fi
