@@ -148,6 +148,14 @@ Bun first resolves it by path (the entry, a relative or absolute import), and
 leaves a bare specifier to Bun; `VIBELANG_BUN_DEBUG=1` prints how many
 resolutions reached it.
 
+A package that the migrate flow migrated may name its emitted JavaScript,
+committed under `.vibelang/js/`, as its `default` export, for consumers that
+load no plugin, such as the `bun build` CLI and plain `node`. Both loaders run
+the `.vibe` source instead: `vibelang/register` resolves
+`<package>/.vibelang/js/<path>.js` to `<package>/<path>.vibe` when that exists,
+and `vibelang/bun` loads that file as a re-export of the source, so the source
+module has one instance whichever way it is imported.
+
 ## Bundle .vibe modules with Metro
 
 ```js

@@ -57,6 +57,7 @@
     "knip.mjs",
     "project.mjs",
     "relative-imports.mjs",
+    "emitted-js.mjs",
     "paths-imports.mjs",
     "project.d.mts",
     "emit.mjs",

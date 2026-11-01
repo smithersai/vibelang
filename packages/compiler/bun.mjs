@@ -1,5 +1,6 @@
 import Module, { createRequire } from "node:module"
 import { extensionlessImport, pathSpecifier } from "./relative-imports.mjs"
+import { reexportOf, sourceOfEmitted } from "./emitted-js.mjs"
 import { aliasImport } from "./paths-imports.mjs"
 import { diagnosticsForFile } from "./diagnostics.mjs"
 // bun --preload vibelang/bun: Bun loads .vibe modules from source.
@@ -212,6 +213,12 @@ Bun.plugin({
         if (existsSync(source)) return { path: source }
       }
       return undefined
+    })
+    // A migrated package's emitted JavaScript, which its `default` export names
+    // for consumers without a loader, runs from its .vibe source (emitted-js.mjs).
+    build.onLoad({ filter: /[\\/]\.vibelang[\\/]js[\\/].*\.js$/ }, ({ path }) => {
+      const source = sourceOfEmitted(path)
+      return source === undefined ? undefined : { contents: reexportOf(source), loader: "js" }
     })
     // Bun 1.4.2 ignores a plugin's source maps, so the module is its JavaScript alone.
     build.onLoad({ filter: /\.vibe$/ }, ({ path }) => { const code = emitted(path).code; discover(path, code, "js"); return resolveImports(path, code, "js") })

@@ -1,4 +1,5 @@
 import { extensionlessImport } from "./relative-imports.mjs"
+import { sourceOfEmitted } from "./emitted-js.mjs"
 import { diagnosticsForFile } from "./diagnostics.mjs"
 // node --import vibelang/register: Node loads .vibe modules from source.
 //
@@ -125,11 +126,19 @@ function moduleOutput(url) {
 // A module whose imports vibelang rewrote: a .vibe module or a module declaration's.
 const compiled = (url) => url.startsWith("file:") && (clean(url).endsWith(".vibe") || moduleOutput(url) !== undefined)
 
+// A migrated package's emitted JavaScript, which its `default` export names
+// for consumers without a loader, runs here from its .vibe source.
+function toSource(result, context, nextResolve) {
+  if (!result?.url?.startsWith("file:")) return result
+  const source = sourceOfEmitted(fileURLToPath(clean(result.url)))
+  return source === undefined ? result : nextResolve(pathToFileURL(source).href, context)
+}
+
 registerHooks({
   resolve(specifier, context, nextResolve) {
     const started = performance.now()
     try {
-      return nextResolve(specifier, context)
+      return toSource(nextResolve(specifier, context), context, nextResolve)
     } catch (error) {
       const parent = context.parentURL
       const missing = ["ERR_MODULE_NOT_FOUND", "ERR_UNSUPPORTED_DIR_IMPORT", "MODULE_NOT_FOUND"].includes(error?.code)
