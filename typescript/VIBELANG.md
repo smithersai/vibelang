@@ -1476,6 +1476,8 @@ Docs extraction must finish successfully before the corpus is measured. If it fa
 
 The `MEASURE wall_s=... rss_mb=... exit=...` record starts on its own line, even when the compiler's last diagnostic has no final newline. A compiler killed by a signal retains a measurement row with Python's negative signal status, such as `exit -9` for `SIGKILL` or `exit -15` for `SIGTERM`; ordinary nonzero exits are recorded too. These rows describe failed compilations, not passing benchmark workloads.
 
+The `MEASURE wall_s=... rss_mb=... exit=...` record starts on its own line, even when the compiler's last diagnostic has no final newline. A compiler killed by a signal retains a measurement row with Python's negative signal status, such as `exit -9` for `SIGKILL` or `exit -15` for `SIGTERM`; ordinary nonzero exits are recorded too. These rows describe failed compilations, not passing benchmark workloads.
+
 Measured 2026-10-17 on the build server, VibeLang at `main` plus the plain-function fix below, against upstream tsgo 7.1.0-dev at 257e874 (medians of 5 runs; seconds and MiB):
 
 | Project | VibeLang wall | VibeLang check | Effect TS wall (upstream) | Effect TS check | Peak RSS, VibeLang / Effect TS |
