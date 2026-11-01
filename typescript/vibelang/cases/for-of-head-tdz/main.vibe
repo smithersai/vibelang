@@ -1,0 +1,677 @@
+// Native lexical heads capture a permanently uninitialized RHS cell.
+// Assignment and var heads share their outer cell instead.
+// The simple let control writes then reads: stock TypeScript reports TS2454
+// for a direct read in this head, while a write still observes the same TDZ.
+
+export function let_simple(count:number, jump:string):unknown {
+  let x=7;
+  let read:()=>number=():number=>x;
+  const trace:string[]=[];
+  const cells:Array<()=>number>=[];
+  function observe(label:string, f:()=>number):void {
+    try { trace.push(label+":"+f()) } catch(e) { trace.push(label+":"+(e as Error).name) }
+  }
+  function items(f:()=>number):Iterable<number> {
+    read=f;
+    observe("rhs",f);
+    let index=0;
+    return {
+      [Symbol.iterator]():Iterator<number> {
+        observe("iterator",f);
+        return {
+          next():IteratorResult<number> {
+            observe("next"+index,f);
+            return index++<count ? {done:false,value:index} : {done:true,value:undefined};
+          },
+          return():IteratorResult<number> {
+            observe("close",f);
+            return {done:true,value:undefined};
+          }
+        };
+      }
+    };
+  }
+  for (let x of items(():number=>{x=5;return x})) {
+    observe("body",read);
+    cells.push(():number=>x);
+    x+=10;
+
+    if(jump==="break") break;
+    if(jump==="continue") continue;
+    trace.push("fallthrough");
+  }
+  observe("after",read);
+  x=99;
+  observe("mutated",read);
+  return {trace,cells:cells.map((f):number=>f()),outer:x};
+}
+
+export function let_array(count:number, jump:string):unknown {
+  let x=7;
+  let read:()=>number=():number=>x;
+  const trace:string[]=[];
+  const cells:Array<()=>number>=[];
+  function observe(label:string, f:()=>number):void {
+    try { trace.push(label+":"+f()) } catch(e) { trace.push(label+":"+(e as Error).name) }
+  }
+  function items(f:()=>number):Iterable<[number]> {
+    read=f;
+    observe("rhs",f);
+    let index=0;
+    return {
+      [Symbol.iterator]():Iterator<[number]> {
+        observe("iterator",f);
+        return {
+          next():IteratorResult<[number]> {
+            observe("next"+index,f);
+            return index++<count ? {done:false,value:[index]} : {done:true,value:undefined};
+          },
+          return():IteratorResult<[number]> {
+            observe("close",f);
+            return {done:true,value:undefined};
+          }
+        };
+      }
+    };
+  }
+  for (let [x] of items(():number=>x)) {
+    observe("body",read);
+    cells.push(():number=>x);
+    x+=10;
+    if(jump==="break") break;
+    if(jump==="continue") continue;
+    trace.push("fallthrough");
+  }
+  observe("after",read);
+  x=99;
+  observe("mutated",read);
+  return {trace,cells:cells.map((f):number=>f()),outer:x};
+}
+
+export function let_object(count:number, jump:string):unknown {
+  let x=7;
+  let read:()=>number=():number=>x;
+  const trace:string[]=[];
+  const cells:Array<()=>number>=[];
+  function observe(label:string, f:()=>number):void {
+    try { trace.push(label+":"+f()) } catch(e) { trace.push(label+":"+(e as Error).name) }
+  }
+  function items(f:()=>number):Iterable<{x:number}> {
+    read=f;
+    observe("rhs",f);
+    let index=0;
+    return {
+      [Symbol.iterator]():Iterator<{x:number}> {
+        observe("iterator",f);
+        return {
+          next():IteratorResult<{x:number}> {
+            observe("next"+index,f);
+            return index++<count ? {done:false,value:{x:index}} : {done:true,value:undefined};
+          },
+          return():IteratorResult<{x:number}> {
+            observe("close",f);
+            return {done:true,value:undefined};
+          }
+        };
+      }
+    };
+  }
+  for (let {x} of items(():number=>x)) {
+    observe("body",read);
+    cells.push(():number=>x);
+    x+=10;
+    if(jump==="break") break;
+    if(jump==="continue") continue;
+    trace.push("fallthrough");
+  }
+  observe("after",read);
+  x=99;
+  observe("mutated",read);
+  return {trace,cells:cells.map((f):number=>f()),outer:x};
+}
+
+export function let_nested(count:number, jump:string):unknown {
+  let x=7;
+  let read:()=>number=():number=>x;
+  const trace:string[]=[];
+  const cells:Array<()=>number>=[];
+  function observe(label:string, f:()=>number):void {
+    try { trace.push(label+":"+f()) } catch(e) { trace.push(label+":"+(e as Error).name) }
+  }
+  function items(f:()=>number):Iterable<{pair:[number]}> {
+    read=f;
+    observe("rhs",f);
+    let index=0;
+    return {
+      [Symbol.iterator]():Iterator<{pair:[number]}> {
+        observe("iterator",f);
+        return {
+          next():IteratorResult<{pair:[number]}> {
+            observe("next"+index,f);
+            return index++<count ? {done:false,value:{pair:[index]}} : {done:true,value:undefined};
+          },
+          return():IteratorResult<{pair:[number]}> {
+            observe("close",f);
+            return {done:true,value:undefined};
+          }
+        };
+      }
+    };
+  }
+  for (let {pair:[x]} of items(():number=>x)) {
+    observe("body",read);
+    cells.push(():number=>x);
+    x+=10;
+    if(jump==="break") break;
+    if(jump==="continue") continue;
+    trace.push("fallthrough");
+  }
+  observe("after",read);
+  x=99;
+  observe("mutated",read);
+  return {trace,cells:cells.map((f):number=>f()),outer:x};
+}
+
+export function let_multiple(count:number, jump:string):unknown {
+  let x=7;
+  let read:()=>number=():number=>x;
+  const trace:string[]=[];
+  const cells:Array<()=>number>=[];
+  function observe(label:string, f:()=>number):void {
+    try { trace.push(label+":"+f()) } catch(e) { trace.push(label+":"+(e as Error).name) }
+  }
+  function items(f:()=>number):Iterable<[number,number]> {
+    read=f;
+    observe("rhs",f);
+    let index=0;
+    return {
+      [Symbol.iterator]():Iterator<[number,number]> {
+        observe("iterator",f);
+        return {
+          next():IteratorResult<[number,number]> {
+            observe("next"+index,f);
+            return index++<count ? {done:false,value:[index,index+10]} : {done:true,value:undefined};
+          },
+          return():IteratorResult<[number,number]> {
+            observe("close",f);
+            return {done:true,value:undefined};
+          }
+        };
+      }
+    };
+  }
+  for (let [x,y] of items(():number=>x)) {
+    observe("body",read);
+    cells.push(():number=>x);
+    x+=10;
+    if(jump==="break") break;
+    if(jump==="continue") continue;
+    trace.push("fallthrough");
+  }
+  observe("after",read);
+  x=99;
+  observe("mutated",read);
+  return {trace,cells:cells.map((f):number=>f()),outer:x};
+}
+
+export function const_simple(count:number, jump:string):unknown {
+  let x=7;
+  let read:()=>number=():number=>x;
+  const trace:string[]=[];
+  const cells:Array<()=>number>=[];
+  function observe(label:string, f:()=>number):void {
+    try { trace.push(label+":"+f()) } catch(e) { trace.push(label+":"+(e as Error).name) }
+  }
+  function items(f:()=>number):Iterable<number> {
+    read=f;
+    observe("rhs",f);
+    let index=0;
+    return {
+      [Symbol.iterator]():Iterator<number> {
+        observe("iterator",f);
+        return {
+          next():IteratorResult<number> {
+            observe("next"+index,f);
+            return index++<count ? {done:false,value:index} : {done:true,value:undefined};
+          },
+          return():IteratorResult<number> {
+            observe("close",f);
+            return {done:true,value:undefined};
+          }
+        };
+      }
+    };
+  }
+  for (const x of items(():number=>x)) {
+    observe("body",read);
+    cells.push(():number=>x);
+    
+    if(jump==="break") break;
+    if(jump==="continue") continue;
+    trace.push("fallthrough");
+  }
+  observe("after",read);
+  x=99;
+  observe("mutated",read);
+  return {trace,cells:cells.map((f):number=>f()),outer:x};
+}
+
+export function const_array(count:number, jump:string):unknown {
+  let x=7;
+  let read:()=>number=():number=>x;
+  const trace:string[]=[];
+  const cells:Array<()=>number>=[];
+  function observe(label:string, f:()=>number):void {
+    try { trace.push(label+":"+f()) } catch(e) { trace.push(label+":"+(e as Error).name) }
+  }
+  function items(f:()=>number):Iterable<[number]> {
+    read=f;
+    observe("rhs",f);
+    let index=0;
+    return {
+      [Symbol.iterator]():Iterator<[number]> {
+        observe("iterator",f);
+        return {
+          next():IteratorResult<[number]> {
+            observe("next"+index,f);
+            return index++<count ? {done:false,value:[index]} : {done:true,value:undefined};
+          },
+          return():IteratorResult<[number]> {
+            observe("close",f);
+            return {done:true,value:undefined};
+          }
+        };
+      }
+    };
+  }
+  for (const [x] of items(():number=>x)) {
+    observe("body",read);
+    cells.push(():number=>x);
+    
+    if(jump==="break") break;
+    if(jump==="continue") continue;
+    trace.push("fallthrough");
+  }
+  observe("after",read);
+  x=99;
+  observe("mutated",read);
+  return {trace,cells:cells.map((f):number=>f()),outer:x};
+}
+
+export function const_object(count:number, jump:string):unknown {
+  let x=7;
+  let read:()=>number=():number=>x;
+  const trace:string[]=[];
+  const cells:Array<()=>number>=[];
+  function observe(label:string, f:()=>number):void {
+    try { trace.push(label+":"+f()) } catch(e) { trace.push(label+":"+(e as Error).name) }
+  }
+  function items(f:()=>number):Iterable<{x:number}> {
+    read=f;
+    observe("rhs",f);
+    let index=0;
+    return {
+      [Symbol.iterator]():Iterator<{x:number}> {
+        observe("iterator",f);
+        return {
+          next():IteratorResult<{x:number}> {
+            observe("next"+index,f);
+            return index++<count ? {done:false,value:{x:index}} : {done:true,value:undefined};
+          },
+          return():IteratorResult<{x:number}> {
+            observe("close",f);
+            return {done:true,value:undefined};
+          }
+        };
+      }
+    };
+  }
+  for (const {x} of items(():number=>x)) {
+    observe("body",read);
+    cells.push(():number=>x);
+    
+    if(jump==="break") break;
+    if(jump==="continue") continue;
+    trace.push("fallthrough");
+  }
+  observe("after",read);
+  x=99;
+  observe("mutated",read);
+  return {trace,cells:cells.map((f):number=>f()),outer:x};
+}
+
+export function const_nested(count:number, jump:string):unknown {
+  let x=7;
+  let read:()=>number=():number=>x;
+  const trace:string[]=[];
+  const cells:Array<()=>number>=[];
+  function observe(label:string, f:()=>number):void {
+    try { trace.push(label+":"+f()) } catch(e) { trace.push(label+":"+(e as Error).name) }
+  }
+  function items(f:()=>number):Iterable<{pair:[number]}> {
+    read=f;
+    observe("rhs",f);
+    let index=0;
+    return {
+      [Symbol.iterator]():Iterator<{pair:[number]}> {
+        observe("iterator",f);
+        return {
+          next():IteratorResult<{pair:[number]}> {
+            observe("next"+index,f);
+            return index++<count ? {done:false,value:{pair:[index]}} : {done:true,value:undefined};
+          },
+          return():IteratorResult<{pair:[number]}> {
+            observe("close",f);
+            return {done:true,value:undefined};
+          }
+        };
+      }
+    };
+  }
+  for (const {pair:[x]} of items(():number=>x)) {
+    observe("body",read);
+    cells.push(():number=>x);
+    
+    if(jump==="break") break;
+    if(jump==="continue") continue;
+    trace.push("fallthrough");
+  }
+  observe("after",read);
+  x=99;
+  observe("mutated",read);
+  return {trace,cells:cells.map((f):number=>f()),outer:x};
+}
+
+export function const_multiple(count:number, jump:string):unknown {
+  let x=7;
+  let read:()=>number=():number=>x;
+  const trace:string[]=[];
+  const cells:Array<()=>number>=[];
+  function observe(label:string, f:()=>number):void {
+    try { trace.push(label+":"+f()) } catch(e) { trace.push(label+":"+(e as Error).name) }
+  }
+  function items(f:()=>number):Iterable<[number,number]> {
+    read=f;
+    observe("rhs",f);
+    let index=0;
+    return {
+      [Symbol.iterator]():Iterator<[number,number]> {
+        observe("iterator",f);
+        return {
+          next():IteratorResult<[number,number]> {
+            observe("next"+index,f);
+            return index++<count ? {done:false,value:[index,index+10]} : {done:true,value:undefined};
+          },
+          return():IteratorResult<[number,number]> {
+            observe("close",f);
+            return {done:true,value:undefined};
+          }
+        };
+      }
+    };
+  }
+  for (const [x,y] of items(():number=>x)) {
+    observe("body",read);
+    cells.push(():number=>x);
+    
+    if(jump==="break") break;
+    if(jump==="continue") continue;
+    trace.push("fallthrough");
+  }
+  observe("after",read);
+  x=99;
+  observe("mutated",read);
+  return {trace,cells:cells.map((f):number=>f()),outer:x};
+}
+
+export function var_simple(count:number, jump:string):unknown {
+  var x=7;
+  let read:()=>number=():number=>x;
+  const trace:string[]=[];
+  const cells:Array<()=>number>=[];
+  function observe(label:string, f:()=>number):void {
+    try { trace.push(label+":"+f()) } catch(e) { trace.push(label+":"+(e as Error).name) }
+  }
+  function items(f:()=>number):Iterable<number> {
+    read=f;
+    observe("rhs",f);
+    let index=0;
+    return {
+      [Symbol.iterator]():Iterator<number> {
+        observe("iterator",f);
+        return {
+          next():IteratorResult<number> {
+            observe("next"+index,f);
+            return index++<count ? {done:false,value:index} : {done:true,value:undefined};
+          },
+          return():IteratorResult<number> {
+            observe("close",f);
+            return {done:true,value:undefined};
+          }
+        };
+      }
+    };
+  }
+  for (var x of items(():number=>x)) {
+    observe("body",read);
+    cells.push(():number=>x);
+    x+=10;
+    if(jump==="break") break;
+    if(jump==="continue") continue;
+    trace.push("fallthrough");
+  }
+  observe("after",read);
+  x=99;
+  observe("mutated",read);
+  return {trace,cells:cells.map((f):number=>f()),outer:x};
+}
+
+export function var_array(count:number, jump:string):unknown {
+  var x=7;
+  let read:()=>number=():number=>x;
+  const trace:string[]=[];
+  const cells:Array<()=>number>=[];
+  function observe(label:string, f:()=>number):void {
+    try { trace.push(label+":"+f()) } catch(e) { trace.push(label+":"+(e as Error).name) }
+  }
+  function items(f:()=>number):Iterable<[number]> {
+    read=f;
+    observe("rhs",f);
+    let index=0;
+    return {
+      [Symbol.iterator]():Iterator<[number]> {
+        observe("iterator",f);
+        return {
+          next():IteratorResult<[number]> {
+            observe("next"+index,f);
+            return index++<count ? {done:false,value:[index]} : {done:true,value:undefined};
+          },
+          return():IteratorResult<[number]> {
+            observe("close",f);
+            return {done:true,value:undefined};
+          }
+        };
+      }
+    };
+  }
+  for (var [x] of items(():number=>x)) {
+    observe("body",read);
+    cells.push(():number=>x);
+    x+=10;
+    if(jump==="break") break;
+    if(jump==="continue") continue;
+    trace.push("fallthrough");
+  }
+  observe("after",read);
+  x=99;
+  observe("mutated",read);
+  return {trace,cells:cells.map((f):number=>f()),outer:x};
+}
+
+export function var_object(count:number, jump:string):unknown {
+  var x=7;
+  let read:()=>number=():number=>x;
+  const trace:string[]=[];
+  const cells:Array<()=>number>=[];
+  function observe(label:string, f:()=>number):void {
+    try { trace.push(label+":"+f()) } catch(e) { trace.push(label+":"+(e as Error).name) }
+  }
+  function items(f:()=>number):Iterable<{x:number}> {
+    read=f;
+    observe("rhs",f);
+    let index=0;
+    return {
+      [Symbol.iterator]():Iterator<{x:number}> {
+        observe("iterator",f);
+        return {
+          next():IteratorResult<{x:number}> {
+            observe("next"+index,f);
+            return index++<count ? {done:false,value:{x:index}} : {done:true,value:undefined};
+          },
+          return():IteratorResult<{x:number}> {
+            observe("close",f);
+            return {done:true,value:undefined};
+          }
+        };
+      }
+    };
+  }
+  for (var {x} of items(():number=>x)) {
+    observe("body",read);
+    cells.push(():number=>x);
+    x+=10;
+    if(jump==="break") break;
+    if(jump==="continue") continue;
+    trace.push("fallthrough");
+  }
+  observe("after",read);
+  x=99;
+  observe("mutated",read);
+  return {trace,cells:cells.map((f):number=>f()),outer:x};
+}
+
+export function assignment_simple(count:number, jump:string):unknown {
+  let x=7;
+  let read:()=>number=():number=>x;
+  const trace:string[]=[];
+  const cells:Array<()=>number>=[];
+  function observe(label:string, f:()=>number):void {
+    try { trace.push(label+":"+f()) } catch(e) { trace.push(label+":"+(e as Error).name) }
+  }
+  function items(f:()=>number):Iterable<number> {
+    read=f;
+    observe("rhs",f);
+    let index=0;
+    return {
+      [Symbol.iterator]():Iterator<number> {
+        observe("iterator",f);
+        return {
+          next():IteratorResult<number> {
+            observe("next"+index,f);
+            return index++<count ? {done:false,value:index} : {done:true,value:undefined};
+          },
+          return():IteratorResult<number> {
+            observe("close",f);
+            return {done:true,value:undefined};
+          }
+        };
+      }
+    };
+  }
+  for (x of items(():number=>x)) {
+    observe("body",read);
+    cells.push(():number=>x);
+    x+=10;
+    if(jump==="break") break;
+    if(jump==="continue") continue;
+    trace.push("fallthrough");
+  }
+  observe("after",read);
+  x=99;
+  observe("mutated",read);
+  return {trace,cells:cells.map((f):number=>f()),outer:x};
+}
+
+export function assignment_array(count:number, jump:string):unknown {
+  let x=7;
+  let read:()=>number=():number=>x;
+  const trace:string[]=[];
+  const cells:Array<()=>number>=[];
+  function observe(label:string, f:()=>number):void {
+    try { trace.push(label+":"+f()) } catch(e) { trace.push(label+":"+(e as Error).name) }
+  }
+  function items(f:()=>number):Iterable<[number]> {
+    read=f;
+    observe("rhs",f);
+    let index=0;
+    return {
+      [Symbol.iterator]():Iterator<[number]> {
+        observe("iterator",f);
+        return {
+          next():IteratorResult<[number]> {
+            observe("next"+index,f);
+            return index++<count ? {done:false,value:[index]} : {done:true,value:undefined};
+          },
+          return():IteratorResult<[number]> {
+            observe("close",f);
+            return {done:true,value:undefined};
+          }
+        };
+      }
+    };
+  }
+  for ([x] of items(():number=>x)) {
+    observe("body",read);
+    cells.push(():number=>x);
+    x+=10;
+    if(jump==="break") break;
+    if(jump==="continue") continue;
+    trace.push("fallthrough");
+  }
+  observe("after",read);
+  x=99;
+  observe("mutated",read);
+  return {trace,cells:cells.map((f):number=>f()),outer:x};
+}
+
+export function assignment_object(count:number, jump:string):unknown {
+  let x=7;
+  let read:()=>number=():number=>x;
+  const trace:string[]=[];
+  const cells:Array<()=>number>=[];
+  function observe(label:string, f:()=>number):void {
+    try { trace.push(label+":"+f()) } catch(e) { trace.push(label+":"+(e as Error).name) }
+  }
+  function items(f:()=>number):Iterable<{x:number}> {
+    read=f;
+    observe("rhs",f);
+    let index=0;
+    return {
+      [Symbol.iterator]():Iterator<{x:number}> {
+        observe("iterator",f);
+        return {
+          next():IteratorResult<{x:number}> {
+            observe("next"+index,f);
+            return index++<count ? {done:false,value:{x:index}} : {done:true,value:undefined};
+          },
+          return():IteratorResult<{x:number}> {
+            observe("close",f);
+            return {done:true,value:undefined};
+          }
+        };
+      }
+    };
+  }
+  for ({x} of items(():number=>x)) {
+    observe("body",read);
+    cells.push(():number=>x);
+    x+=10;
+    if(jump==="break") break;
+    if(jump==="continue") continue;
+    trace.push("fallthrough");
+  }
+  observe("after",read);
+  x=99;
+  observe("mutated",read);
+  return {trace,cells:cells.map((f):number=>f()),outer:x};
+}
