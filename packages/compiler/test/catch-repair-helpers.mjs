@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { spawn, spawnSync } from "node:child_process"
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { pathToFileURL } from "node:url"
@@ -15,7 +15,14 @@ export function project(t, source) {
   t.after(() => rmSync(dir, {recursive:true, force:true}))
   mkdirSync(join(dir, "node_modules"))
   symlinkSync(realpathSync(join(process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules"), "effect")), join(dir, "node_modules/effect"))
-  symlinkSync(join(repo, "packages/runtime"), join(dir, "node_modules/vibelang-runtime"))
+  // Model the published package, as the acceptance harness does. Linking the
+  // workspace runtime also exposes its devDependencies as a second Effect
+  // instance when an offload runner dereferences package links.
+  const runtime=join(dir,"node_modules/vibelang-runtime")
+  mkdirSync(runtime)
+  cpSync(join(repo,"packages/runtime/package.json"),join(runtime,"package.json"))
+  cpSync(join(repo,"packages/runtime/dist"),join(runtime,"dist"),{recursive:true})
+
   writeFileSync(join(dir, "package.json"), '{"type":"module"}')
   writeFileSync(join(dir, "tsconfig.json"), JSON.stringify({compilerOptions:{target:"esnext",module:"nodenext",moduleResolution:"nodenext",strict:true,skipLibCheck:true,types:[],outDir:"out"},include:["*.vibe"]}))
   writeFileSync(join(dir, "main.vibe"), source)
@@ -79,7 +86,7 @@ function exit(dir) {
   assert.equal(r.status,0,r.stdout+r.stderr)
   return JSON.parse(r.stdout)
 }
-export async function checkRepair(t, source, manual, {refuse=false}={}) {
+export async function checkRepair(t, source, manual, {refuse=false,sole=false}={}) {
   const chapter=readFileSync(join(repo,"docs/design/src/002-running.md"),"utf8")
   assert.ok(chapter.includes("The quick fix wraps a value in a function literal, so the handler's kind stays visible in the source"))
 
@@ -87,6 +94,9 @@ export async function checkRepair(t, source, manual, {refuse=false}={}) {
   const original=compile(cli)
   assert.notEqual(original.status,0)
   assert.match(original.stdout,/EK0509/)
+  const codes=[...new Set([...original.stdout.matchAll(/\berror ([A-Z]+\d+):/g)].map(m=>m[1]))]
+  if(sole) assert.deepEqual(codes,["EK0509"],"fixture has unrelated errors: "+original.stdout)
+
   const repaired=compile(cli,"--fix")
   const cliText=readFileSync(join(cli,"main.vibe"),"utf8")
   const editorText=await editor(lsp,source)

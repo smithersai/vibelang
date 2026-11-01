@@ -71,20 +71,25 @@ func checkCatchHandler(c *checker.Checker, file *ast.SourceFile, call, fallback 
 		return
 	}
 	d := reportAt(c, file, core.NewTextRange(scanner.SkipTrivia(file.Text(), handler.Pos()), handler.End()), EK0509)
-	if _, text := catchHandlerRepair(c, file, call, handler); text != "" {
+	if catchHandlerNeedsConversion(handler) {
+		note(d, "This handler uses await or yield at its own function level; an explicit body conversion is needed before removing async or *.")
+	} else if _, text := catchHandlerRepair(c, file, call, handler); text != "" {
 		note(d, "Write it as a function literal: {0}.", text)
 	}
 }
 
 // catchHandlerRepair returns the edits that make handler a function literal
 // and the repaired handler's text, or nil when there is no mechanical repair
-// (a class expression).
+// (a class expression or an async/generator body needing conversion).
 func catchHandlerRepair(c *checker.Checker, file *ast.SourceFile, call, handler *ast.Node) ([]core.TextChange, string) {
 	text := file.Text()
 	start := scanner.SkipTrivia(text, handler.Pos())
 	source := text[start:handler.End()]
 	inner := ast.SkipParentheses(handler)
 	if isAsyncOrGenerator(inner) {
+		if catchHandlerNeedsConversion(handler) {
+			return nil, ""
+		}
 		var edits []core.TextChange
 		for _, modifier := range inner.ModifierNodes() {
 			if modifier.Kind == ast.KindAsyncKeyword {
@@ -132,6 +137,38 @@ func catchHandlerRepair(c *checker.Checker, file *ast.SourceFile, call, handler 
 		edits[1].NewText += ")"
 	}
 	return edits, repaired
+}
+
+// Removing async and/or * cannot leave their own await/yield operations.
+// Nested function bodies keep their modifiers; computed method names still
+// execute at the enclosing function level.
+func catchHandlerNeedsConversion(handler *ast.Node) bool {
+	fn := ast.SkipParentheses(handler)
+	if !isAsyncOrGenerator(fn) || fn.Body() == nil {
+		return false
+	}
+	var visit func(*ast.Node) bool
+	visit = func(n *ast.Node) bool {
+		if ast.IsFunctionLike(n) {
+			// Names and decorators execute before a method's body boundary.
+			if name := n.Name(); name != nil && ast.IsComputedPropertyName(name) && visit(name) {
+				return true
+			}
+			for _, modifier := range n.ModifierNodes() {
+				if ast.IsDecorator(modifier) && visit(modifier) {
+					return true
+				}
+			}
+			return false
+		}
+		if ast.IsAwaitExpression(n) || ast.IsYieldExpression(n) ||
+			n.Kind == ast.KindForOfStatement && n.AsForInOrOfStatement().AwaitModifier != nil ||
+			ast.IsVariableDeclarationList(n) && ast.IsVarAwaitUsing(n) {
+			return true
+		}
+		return n.ForEachChild(visit)
+	}
+	return visit(fn.Body())
 }
 
 func removedLength(edits []core.TextChange) int {

@@ -121,3 +121,40 @@ func TestCatchHandlerFreshParameterScope(t *testing.T) {
 		})
 	}
 }
+
+// RC-20: a modifier-only repair must not introduce illegal await/yield.
+func TestCatchHandlerModifierBodySafety(t *testing.T) {
+	const prefix = "export effect function f() { return Effect.fail(\"bad\") catch "
+	for _, handler := range []string{
+		"async function(e:string){return await Promise.resolve(7)}",
+		"function*(e:string){yield 1}",
+		"async (e:string) => await Promise.resolve(7)",
+		"async function*(e:string){yield await Promise.resolve(7)}",
+		"async function(e:string){for await (const x of [7]) { return x }}",
+		"async () => ({[await Promise.resolve(\"key\")](){return 7}})",
+		"async () => { class C { @(await Promise.resolve(() => undefined)) m() {} }; return 7 }",
+		"async () => { await using r = { async [Symbol.asyncDispose]() {} }; return 7 }",
+	} {
+		t.Run(handler, func(t *testing.T) {
+			checkCatchHandlerFix(t, prefix+handler+" }\n", handler, "", false)
+			p, file, _, _ := editorProgram(t, prefix+handler+" }\n")
+			for _, d := range p.GetSemanticDiagnostics(t.Context(), file) {
+				if d.Source() == "EK" && d.Code() == EK0509.Code {
+					if !strings.Contains(diagnosticWithNotes(d), "explicit body conversion") || strings.Contains(diagnosticWithNotes(d), "Write it as a function literal") {
+						t.Fatalf("unsafe diagnostic advice: %s", diagnosticWithNotes(d))
+					}
+				}
+			}
+		})
+	}
+	for _, body := range []string{
+		"{ const note = \"await yield\"; /* await yield */ return 7 }",
+		"{ const inner=async () => await Promise.resolve(1); return 7 }",
+		"{ const inner=function*(){yield 1}; return 7 }",
+		"{ const o={async m(){return await Promise.resolve(1)}}; return 7 }",
+		"{ class C { async m(){return await Promise.resolve(1)} }; return 7 }",
+	} {
+		handler := "async (e:string) => " + body
+		checkCatchHandlerFix(t, prefix+handler+" }\n", handler, prefix+"(e:string) => "+body+" }\n", true)
+	}
+}
