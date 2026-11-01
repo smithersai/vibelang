@@ -254,6 +254,11 @@ func (a *analyzer) takenAsData(expected []*checker.Type, t *checker.Type) bool {
 
 // convert decides what value of type t converts to at a position.
 func (a *analyzer) convert(node *ast.Node, t *checker.Type, position valuePosition) (conversion, *checker.Type) {
+	// try (try p) runs p, then the program p gave (VIP-5): the inner try runs
+	// where it stands, and no try takes it by name.
+	if call, _ := ownerCall(node); isTryCall(call) && isTry(ast.SkipParentheses(node)) {
+		return convertNone, t
+	}
 	// A try operation's operand elements are Effects already, callable ones
 	// included (VIP-18): only by-name deferral applies, never function adoption.
 	if call, _ := ownerCall(node); tryOperationName(call) != "" && (tryOperationEffectType(a.checker, t) || tryOperationArrayType(a.checker, t)) {

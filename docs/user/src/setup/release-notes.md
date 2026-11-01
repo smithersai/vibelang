@@ -248,6 +248,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `--fix` could leave statement-position `Option.match` calls unchanged after a parser refusal; it now writes a valid block and preserves callback order.
 - Migrating a Match return-type hint could insert an `as` assertion that the repository's lint rejected; the quick fix now preserves checked type annotations, including destructured bindings.
 - Migration staging could put a local tarball in optional package contracts; only direct runtime and development dependencies now receive the staged tarball.
+
+- `try (try e)` ran one Effect: the parser read the outer `try` away, so `try (try Env)`, for a service whose value is a program, gave the inner program unrun, and its fields were TS2339. Each `try` now runs one Effect, since `try e` is `yield* e`. This changes existing code: `try (try load())` where `load()` gives no program used to compile and run `load()` once, and is now EK0502.
+
 - `FuzzCommandLine` could fail with `the compilation rewrote the source main.d.vibe.ts` in a checkout where an earlier compile had left that sidecar in an acceptance case; the fuzz seeds now skip these generated files.
 
 - On a loaded machine, the child-process tests of `vibelang-vite` and `vibelang-unplugin` failed with `Missing expected exception` because a killed process stays visible as a zombie until it is reaped; they now wait for the process's inherited connection to close.

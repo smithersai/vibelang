@@ -69,6 +69,7 @@ const specTests = [
   "TestAsyncRefactorBridgesQuoted",
   "TestMigrationEffectOperandsQuoted",
   "TestMigrationEffectHeritageQuoted",
+  "TestTryNestedQuoted",
   "TestMigrationGeneratorReturnsQuoted",
   "TestUnionDataMemberQuoted",
   "TestCheckerLayout",

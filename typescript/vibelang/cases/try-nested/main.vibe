@@ -1,0 +1,13 @@
+// expect-result: {"account":"a-1","call":2,"bare":2,"value":3}
+// "`try e` is `yield* e`. It runs `e` and gives its success value" (Chapter 2):
+// try (try e) is yield* (yield* e), which alchemy writes for a service whose
+// value is a program. An outer try once parsed away and ran one layer.
+import { creds, Env, held, live } from "./lib.ts"
+
+export effect function main() {
+  const { accountId } = try (Effect.provideService(effect { return try (try Env) }, Env, live))
+  const call = try (try creds())
+  const bare = try try creds()
+  const value = try (try held)
+  return { account: accountId, call, bare, value }
+}

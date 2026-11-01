@@ -18,6 +18,7 @@ import (
 //
 //	const user = try fetchUser(id)    const user = fetchUser(id), flagged
 //	const n = try program             const n = $try(program)
+//	const c = try (try f())           const c = $try(f(), flagged)
 //
 // Its operand binds as await's does: try f().name runs f().name, so a
 // member of the result is (try f()).name. A try statement starts with a
@@ -45,13 +46,26 @@ func (p *Parser) parseVibeLangTry() *ast.Node {
 	p.nextToken() // try
 	operand := p.parseSimpleUnaryExpression()
 	p.recordVibeSyntax(VibeSyntax{Kind: VibeSyntaxPrefix, Word: anchor, Range: core.NewTextRange(anchor.Pos(), operand.End())})
-	if inner := ast.SkipParentheses(operand); ast.IsCallExpression(inner) || ast.IsTaggedTemplateExpression(inner) {
+	if inner := ast.SkipParentheses(operand); (ast.IsCallExpression(inner) || ast.IsTaggedTemplateExpression(inner)) && !isVibeLangTry(inner) {
 		operand.Flags |= ast.NodeFlagsVibeLangTry
 		operand.Loc = core.NewTextRange(pos, operand.End())
 		return operand
 	}
 	callee := p.vibelangIntrinsic("$try", anchor)
 	return p.finishNode(p.factory.NewCallExpression(callee, nil, nil, p.newNodeList(operand.Loc, []*ast.Node{operand}), ast.NodeFlagsNone), pos)
+}
+
+// isVibeLangTry reports whether node is itself a try expression, which
+// try (try p) runs in turn: a call has one flag, so it stays $try's operand.
+func isVibeLangTry(node *ast.Node) bool {
+	if node.Flags&ast.NodeFlagsVibeLangTry != 0 {
+		return true
+	}
+	if !ast.IsCallExpression(node) {
+		return false
+	}
+	callee := node.Expression()
+	return callee.Kind == ast.KindIdentifier && callee.Flags&ast.NodeFlagsReparsed != 0 && callee.Text() == "$try"
 }
 
 // triedChainOperand returns expression, or, when it is parentheses that hold

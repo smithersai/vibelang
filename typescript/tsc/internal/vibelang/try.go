@@ -61,6 +61,11 @@ func isTryCall(node *ast.Node) bool {
 	return callee.Kind == ast.KindIdentifier && callee.Flags&ast.NodeFlagsReparsed != 0 && callee.Text() == "$try"
 }
 
+// isTry reports whether node is try e, of a call or of anything else.
+func isTry(node *ast.Node) bool {
+	return isTryCall(node) || node.Flags&ast.NodeFlagsVibeLangTry != 0
+}
+
 // tryOperand returns e of $try(e), or nil.
 func tryOperand(node *ast.Node) *ast.Node {
 	if !isTryCall(node) {

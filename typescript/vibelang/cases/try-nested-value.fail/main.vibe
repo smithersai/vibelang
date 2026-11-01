@@ -1,0 +1,8 @@
+// expect: EK0502
+// A try's value that is no program has nothing to run: EK0502.
+function load(): number!! { return 1 }
+
+export effect function main() {
+  const n = try (try load())
+  return n
+}
