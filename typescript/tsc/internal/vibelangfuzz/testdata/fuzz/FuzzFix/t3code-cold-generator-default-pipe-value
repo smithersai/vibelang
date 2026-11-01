@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport { Effect } from \"effect\";\nexport default Effect.gen(function* () {\n  return 1;\n}).pipe(Effect.map((n) => n + 1));\n")

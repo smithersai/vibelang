@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport { Effect } from \"effect\";\nexport const load = Effect.fn(\"load\")(function* (x: number) {\n  yield* Effect.sleep(\"1 millis\");\n  return x + 1;\n});\n")

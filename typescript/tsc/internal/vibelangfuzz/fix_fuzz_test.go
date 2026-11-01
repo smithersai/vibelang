@@ -1,6 +1,7 @@
 package vibelangfuzz
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"maps"
@@ -159,12 +160,14 @@ func FuzzFix(f *testing.F) {
 					second = vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), again, options)
 				})
 			}
+			// A pending convergence defect belongs to one exact input and mode;
+			// it must not excuse another project or another --fix invocation.
 			if second.Err != nil || len(second.Files) > 0 {
 				var changed []string
 				for name, file := range second.Files {
 					changed = append(changed, fmt.Sprintf("-- %s --\n%s", filepath.Base(name.AsString()), file.Text))
 				}
-				Gap(t, "FuzzFix", "fix:idempotence", "a second --fix changes the fixed project (%v):\n%s\nfixed:\n%s\nthen:\n%s", second.Err, archive, Archive(fixed), strings.Join(changed, "\n"))
+				Gap(t, "FuzzFix", fmt.Sprintf("fix:idempotence:%t:%x", options.VIPOnly, sha256.Sum256([]byte(archive))), "a second --fix changes the fixed project (%v):\n%s\nfixed:\n%s\nthen:\n%s", second.Err, archive, Archive(fixed), strings.Join(changed, "\n"))
 			}
 			// Current tooling explicitly names this codemod, independently of
 			// implementation action availability. Keep main's VIP-only scope;
