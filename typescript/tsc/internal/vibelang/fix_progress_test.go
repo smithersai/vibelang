@@ -12,7 +12,7 @@ import (
 )
 
 // fixProgressLine is a line fixProgress prints.
-var fixProgressLine = regexp.MustCompile(`^vibelang --fix: [0-9hms]+: (start|round [0-9]+|try|effect|prelude|imports): [0-9]+ fix(es)? applied, [0-9]+ pending(, [0-9]+ refused)?; [0-9]+ checks?; (reading the project|finding fixes|finding rewrites|removing unused imports|checking the project|checking [0-9]+ fix(es)? in [0-9]+ files?|checking the rewrites of [0-9]+ files?) for [0-9hms]+$`)
+var fixProgressLine = regexp.MustCompile(`^vibelang --fix: [0-9hms]+: (start|round [0-9]+|try|effect|prelude|imports): [0-9]+ fix(es)? applied, [0-9]+ pending(, [0-9]+ refused)?; [0-9]+ checks?, [0-9]+ this (round|phase) \([0-9]+ whole, [0-9]+ partial\); (reading the project|finding fixes|finding rewrites|removing unused imports|checking the project|checking [0-9]+ fix(es)? in [0-9]+ files?|checking the rewrites of [0-9]+ files?) for [0-9hms]+$`)
 
 // A --fix run says on stderr what it is doing, at most once each
 // ProgressEvery: its phase and round, the fixes applied and pending, the
@@ -51,6 +51,7 @@ func TestFixPrintsProgressOnStderr(t *testing.T) {
 		regexp.MustCompile(`: round [2-9]: [1-9][0-9]* fix(es)? applied`),
 		regexp.MustCompile(`; checking [0-9]+ fix(es)? in [0-9]+ files? for `),
 		regexp.MustCompile(`, 1 refused; `),
+		regexp.MustCompile(`: round 1: .* checks?, [1-9][0-9]* this round \([1-9][0-9]* whole, `),
 	} {
 		if !want.MatchString(stderr) {
 			t.Errorf("no progress line matches %s; stderr:\n%s", want, stderr)
@@ -77,4 +78,37 @@ func TestFixProgressQuietForAShortRun(t *testing.T) {
 	nilProgress.checkFixes(1, 1)
 	nilProgress.building()
 	nilProgress.close()
+}
+
+// A progress line counts the checks of its round, whole and of some files,
+// apart from those of the run.
+func TestFixProgressCountsTheChecksOfARound(t *testing.T) {
+	var out strings.Builder
+	p := newFixProgress(&out, time.Hour)
+	defer p.close()
+	p.building() // the baseline
+	p.enter("round", 2, 5, 1, "finding fixes")
+	p.checkFixes(4, 2)
+	p.building()
+	p.checkFixes(1, 1)
+	p.partial()
+	p.building()
+	p.partial()
+	p.building()
+	p.mu.Lock()
+	line := p.line(time.Now())
+	p.mu.Unlock()
+	if want := "; 4 checks, 3 this round (1 whole, 2 partial); "; !strings.Contains(line, want) {
+		t.Fatalf("line %q does not say %q", line, want)
+	}
+	if !fixProgressLine.MatchString(line) {
+		t.Fatalf("line %q is not a progress line", line)
+	}
+	p.enter("prelude", 0, 9, 1, "finding rewrites")
+	p.mu.Lock()
+	line = p.line(time.Now())
+	p.mu.Unlock()
+	if want := "; 4 checks, 0 this phase (0 whole, 0 partial); "; !strings.Contains(line, want) {
+		t.Fatalf("line %q does not say %q", line, want)
+	}
 }

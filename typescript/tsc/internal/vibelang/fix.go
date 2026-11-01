@@ -499,36 +499,38 @@ func fixState(program *compiler.Program) [32]byte {
 
 // rewritePrelude applies the prelude rewrites of program's files
 // (fix_prelude.go) that add no error to g's baseline: all of them when they
-// pass together, else each file's that passes on its own. It records them in
-// result and texts.
+// pass together, else each file's that adds none to those kept before it,
+// as fixGate.accept keeps a round's fixes. It records them in result and
+// texts.
 func rewritePrelude(g *fixGate, fs vfs.FS, program *compiler.Program, texts map[tspath.RootedFilePath]string, result *FixResult) {
 	rewrites := preludeRewriteProject(g.ctx, program)
 	if len(rewrites) == 0 {
 		return
 	}
-	candidates := map[tspath.RootedFilePath]string{}
 	var names []tspath.RootedFilePath
 	for name, r := range rewrites {
-		if !editsPreserveComments(program.GetSourceFile(name).Text(), r.edits) {
-			continue
+		if editsPreserveComments(program.GetSourceFile(name).Text(), r.edits) {
+			names = append(names, name)
 		}
-		candidates[name] = applyEdits(program.GetSourceFile(name).Text(), r.edits)
-		names = append(names, name)
 	}
 	slices.SortFunc(names, tspath.RootedFilePath.Compare)
+	// The gate keeps the files' rewrites that add no error, as it keeps a
+	// round's fixes: a rewrite is one fix, and one that adds an error is
+	// left out, unreported. Checking the program once for each file when
+	// the rewrites together added an error took about a minute a file on
+	// a 60-module slice of t3code's apps/server, and both the files and
+	// the check grow with the project (2026-11-01).
+	proposals := make([]proposal, 0, len(names))
+	for _, name := range names {
+		proposals = append(proposals, proposal{file: program.GetSourceFile(name), fixes: []fileFix{{edits: rewrites[name].edits, key: "prelude: " + name.AsString()}}})
+	}
+	g.progress.offered(len(proposals))
 	kept := map[tspath.RootedFilePath]string{}
-	if _, ok := g.passes(texts, candidates); ok {
-		kept = candidates
-	} else {
-		for _, name := range names {
-			if g.done.Err() != nil {
-				return
-			}
-			trial := maps(kept, map[tspath.RootedFilePath]string{name: candidates[name]})
-			if _, ok := g.passes(texts, trial); ok {
-				kept = trial
-			}
-		}
+	for _, p := range g.accept(texts, proposals, func(FixRefusal, string) {}) {
+		kept[p.file.FileName()] = p.text()
+	}
+	if g.done.Err() != nil {
+		return
 	}
 	for _, name := range names {
 		text, ok := kept[name]

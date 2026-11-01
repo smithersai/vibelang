@@ -19,7 +19,7 @@ import (
 // aside and the rest checked again, until the rest passes and is kept;
 // then the fixes set aside are checked on top of it the same way, and
 // refused when each holds the errors they add. An error in no fix's text
-// is traced to the fix it reads a declaration of (gateRound.culprit). A fix
+// is traced to the fix it reads a declaration of (gateRound.culprits). A fix
 // an earlier round refused on its own is refused again without a check
 // when this round offers it to the same texts (fixGate.alone). A round so
 // costs a few checks of the program, however many fixes it refuses, where
@@ -178,6 +178,9 @@ func (r *gateRound) trial(parts []part, files []tspath.RootedFilePath) checked {
 		size += len(fs)
 	}
 	r.g.progress.checkFixes(size, len(overlay))
+	if files != nil {
+		r.g.progress.partial()
+	}
 	program := r.g.build(maps(r.texts, overlay))
 	r.g.progress.label("")
 	var errors []*ast.Diagnostic
@@ -304,8 +307,9 @@ func split(parts []part, named func([2]int) bool) (in, out []part) {
 // same way until it passes; then it peels the fixes set aside on top of
 // it. When each fix left holds the errors its trial adds, as many as it
 // adds, each is refused, named by the first. When no fix's text holds one,
-// the fix that an added error traces to (culprit) is refused, and when none
-// does, parts are halved.
+// the fixes that the added errors trace to (culprits) are refused, found
+// again in the files that report the errors until those report none, and
+// when none does, parts are halved.
 func (r *gateRound) peel(parts []part, t checked) {
 	for len(t.added) > 0 && r.g.done.Err() == nil {
 		if len(parts) == 1 && len(parts[0].fixes) == 1 {
@@ -321,14 +325,42 @@ func (r *gateRound) peel(parts []part, t checked) {
 		}
 		held, unexplained := r.held(t, inParts)
 		if len(held) == 0 {
-			at, added, ok := r.culprit(parts, t)
-			if !ok {
+			found := r.culprits(parts, t)
+			if len(found) == 0 {
 				r.halve(parts, &t)
 				return
 			}
-			r.refuse(at, added)
-			_, parts = split(parts, func(h [2]int) bool { return h == at })
-			if len(parts) == 0 {
+			// The files that report the errors are checked again without
+			// the culprits, and searched again while they report one, before
+			// the whole program is: on a 240-module slice of t3code's
+			// apps/server a check of them took 10 to 20 s, and one of the
+			// program 6 minutes (2026-11-01).
+			var files []tspath.RootedFilePath
+			for _, d := range t.errors {
+				if d.File() != nil && unexplained[errorKey(d)] > 0 && !slices.Contains(files, d.File().FileName()) {
+					files = append(files, d.File().FileName())
+				}
+			}
+			for len(found) > 0 && r.g.done.Err() == nil {
+				refused := map[[2]int]bool{}
+				for _, c := range found {
+					r.refuse(c.at, c.added)
+					refused[c.at] = true
+				}
+				_, parts = split(parts, func(h [2]int) bool { return refused[h] })
+				if len(parts) == 0 {
+					return
+				}
+				again := r.trial(parts, files)
+				if len(again.added) == 0 {
+					break
+				}
+				if held, _ := r.held(again, everyFixOf(parts)); len(held) > 0 {
+					break // the whole program's trial sets them aside
+				}
+				found = r.culprits(parts, again)
+			}
+			if r.g.done.Err() != nil {
 				return
 			}
 			t = r.trial(parts, nil)
@@ -361,6 +393,17 @@ func (r *gateRound) peel(parts []part, t checked) {
 	if r.g.done.Err() == nil {
 		r.keep(parts...)
 	}
+}
+
+// everyFixOf returns the fixes of parts.
+func everyFixOf(parts []part) map[[2]int]bool {
+	fixes := map[[2]int]bool{}
+	for _, pt := range parts {
+		for _, f := range pt.fixes {
+			fixes[[2]int{pt.p, f}] = true
+		}
+	}
+	return fixes
 }
 
 // held returns the added errors of t that lie in the text a fix of named
@@ -403,14 +446,24 @@ func (r *gateRound) held(t checked, named map[[2]int]bool) (map[[2]int][]string,
 	return held, unexplained
 }
 
-// culprit finds the fix of parts that brings an error t adds outside every
-// fix's text: of the fixes whose text holds a declaration such an error
-// reads (blameReads), in the order it reaches them, the first whose
-// addition to the other fixes of parts brings one back. It checks only the
-// files that report those errors, adding the fixes it reaches in steps that
-// double, then halving the last step. It returns the errors of those files
-// the fix brings back.
-func (r *gateRound) culprit(parts []part, t checked) ([2]int, map[string]int, bool) {
+// culprits finds the fixes of parts that bring the errors t adds outside
+// every fix's text. The errors of each file are a group: the fixes whose
+// text holds a declaration they read (blameReads), in the order it reaches
+// them, and the first whose addition to the other fixes of parts brings one
+// back is the group's culprit. The groups whose fixes and files touch no
+// other group's are searched together: each trial adds, for each group,
+// the fixes it reaches in steps that double, then halves the last step,
+// and checks only the files of the groups. A round with many fixes that
+// add errors to other files so costs a few checks, where finding one
+// culprit at a time cost a check of the whole program each, and the
+// refusals and the cost of a check both grow with the project: 24 such
+// fixes in 240 modules took 27 whole checks (TestFixScalesWithTheProject).
+// A group that touches another is left to the next search. When there
+// are not two groups, or they find no culprit, the fixes the errors of
+// every file reach are searched as one group, with the files of every
+// error. It returns, by culprit, the errors of its group's files the fix
+// brings back.
+func (r *gateRound) culprits(parts []part, t checked) []gateCulprit {
 	everyFix := map[[2]int]bool{}
 	for p, fixes := range t.fixes {
 		for _, f := range fixes {
@@ -418,85 +471,243 @@ func (r *gateRound) culprit(parts []part, t checked) ([2]int, map[string]int, bo
 		}
 	}
 	_, unexplained := r.held(t, everyFix)
-	var files []tspath.RootedFilePath
-	for _, d := range t.errors {
-		if d.File() != nil && unexplained[errorKey(d)] > 0 && !slices.Contains(files, d.File().FileName()) {
-			files = append(files, d.File().FileName())
-		}
-	}
 	inParts := map[[2]int]bool{}
 	for _, pt := range parts {
 		for _, f := range pt.fixes {
 			inParts[[2]int{pt.p, f}] = true
 		}
 	}
-	var reached [][2]int
-	for _, h := range blameReads(r.g.ctx, t.program, t.errors, unexplained, r.spans(t)) {
-		if inParts[h] {
-			reached = append(reached, h)
+	// The errors of each file, in the order t reports them.
+	var order []tspath.RootedFilePath
+	byFile := map[tspath.RootedFilePath][]*ast.Diagnostic{}
+	for _, d := range t.errors {
+		if d.File() == nil || unexplained[errorKey(d)] == 0 {
+			continue
 		}
-	}
-	if len(reached) == 0 || len(files) == 0 {
-		return [2]int{}, nil, false
-	}
-	_, base := split(parts, func(h [2]int) bool { return slices.Contains(reached, h) })
-	with := func(n int) []part {
-		ps := slices.Clone(base)
-		for _, h := range reached[:n] {
-			ps = append(ps, part{h[0], []int{h[1]}})
+		name := d.File().FileName()
+		if byFile[name] == nil {
+			order = append(order, name)
 		}
-		return ps
+		byFile[name] = append(byFile[name], d)
 	}
-	brings := func(c checked) bool {
-		for key := range unexplained {
-			if c.added[key] > 0 {
-				return true
-			}
-		}
-		return false
-	}
-	low := checked{added: map[string]int{}} // the kept fixes pass
-	if len(base) > 0 {
-		if low = r.trial(with(0), files); brings(low) {
-			return [2]int{}, nil, false
-		}
-	}
-	// The fixes it reaches first are the likeliest: try 1, 2, 4, … of
-	// them, then halve the last step.
-	lo, hi := 0, 0
-	var high checked
-	for step := 1; r.g.done.Err() == nil; step *= 2 {
-		hi = min(lo+step, len(reached))
-		c := r.trial(with(hi), files)
-		if brings(c) {
-			high = c
+	spans := r.spans(t)
+	budget := newBlameBudget() // the groups' walks share one search's
+	var groups []*culpritGroup
+	taken := map[[2]int]bool{}                  // the fixes of the groups
+	touched := map[tspath.RootedFilePath]bool{} // their files and the files of their fixes
+	for _, name := range order {
+		if len(groups) == culpritGroupLimit {
 			break
 		}
-		if hi == len(reached) {
-			return [2]int{}, nil, false
+		g := &culpritGroup{files: []tspath.RootedFilePath{name}, keys: map[string]bool{}, step: 1}
+		for _, d := range byFile[name] {
+			g.keys[errorKey(d)] = true
 		}
-		lo, low = hi, c
+		// A file walks a few of its errors, so that one with many leaves
+		// the budget to the others.
+		share := &blameBudget{errors: min(budget.errors, 4), names: min(budget.names, 2500)}
+		walk := *share
+		for _, h := range blameReads(r.g.ctx, t.program, byFile[name], unexplained, spans, share) {
+			if inParts[h] {
+				g.reached = append(g.reached, h)
+			}
+		}
+		budget.errors -= walk.errors - share.errors
+		budget.names -= walk.names - share.names
+		independent := len(g.reached) > 0 && !touched[name]
+		for _, h := range g.reached {
+			independent = independent && !taken[h] && !touched[r.proposals[h[0]].file.FileName()]
+		}
+		if !independent {
+			continue // searched once this search's culprits are refused
+		}
+		touched[name] = true
+		for _, h := range g.reached {
+			taken[h] = true
+			touched[r.proposals[h[0]].file.FileName()] = true
+		}
+		groups = append(groups, g)
 	}
-	for hi-lo > 1 && r.g.done.Err() == nil {
-		mid := (lo + hi) / 2
-		if c := r.trial(with(mid), files); brings(c) {
-			hi, high = mid, c
-		} else {
-			lo, low = mid, c
+	if len(groups) > 1 {
+		if found := r.search(parts, groups); len(found) > 0 || r.g.done.Err() != nil {
+			return found
 		}
 	}
-	if r.g.done.Err() != nil || hi == 0 {
-		// Interrupted before it found the fix: a stopped run keeps what
-		// was kept before (fixKeeper).
-		return [2]int{}, nil, false
+	// One search: the fixes the errors of every file reach, checked with
+	// the files of every error.
+	g := &culpritGroup{files: order, keys: map[string]bool{}, step: 1}
+	for key := range unexplained {
+		g.keys[key] = true
 	}
-	added := map[string]int{}
-	for key, n := range high.added {
-		if n > low.added[key] {
-			added[key] = n - low.added[key]
+	for _, h := range blameReads(r.g.ctx, t.program, t.errors, unexplained, spans, newBlameBudget()) {
+		if inParts[h] {
+			g.reached = append(g.reached, h)
 		}
 	}
-	return reached[hi-1], added, len(added) > 0
+	if len(g.reached) == 0 || len(order) == 0 {
+		return nil
+	}
+	return r.search(parts, []*culpritGroup{g})
+}
+
+// search finds the culprit of each of groups, whose fixes are of parts and
+// touch no other group's files or fixes, in trials that check only the
+// groups' files.
+func (r *gateRound) search(parts []part, groups []*culpritGroup) []gateCulprit {
+	taken := map[[2]int]bool{}
+	for _, g := range groups {
+		for _, h := range g.reached {
+			taken[h] = true
+		}
+	}
+	_, base := split(parts, func(h [2]int) bool { return taken[h] })
+	var files []tspath.RootedFilePath
+	for _, g := range groups {
+		files = append(files, g.files...)
+	}
+	// trial checks base with the first n fixes each group reaches.
+	trial := func(n func(*culpritGroup) int) checked {
+		ps := slices.Clone(base)
+		for _, g := range groups {
+			for _, h := range g.reached[:n(g)] {
+				ps = append(ps, part{h[0], []int{h[1]}})
+			}
+		}
+		return r.trial(ps, files)
+	}
+	if len(base) > 0 {
+		low := trial(func(*culpritGroup) int { return 0 })
+		for _, g := range groups {
+			if g.low = g.of(low.added); g.brings(g.low) {
+				g.failed = true // the kept fixes and the others bring it
+			}
+		}
+	}
+	for r.g.done.Err() == nil {
+		searching := false
+		for _, g := range groups {
+			searching = searching || g.searching()
+		}
+		if !searching {
+			break
+		}
+		next := map[*culpritGroup]int{}
+		for _, g := range groups {
+			next[g] = g.next()
+		}
+		c := trial(func(g *culpritGroup) int { return next[g] })
+		for _, g := range groups {
+			if g.searching() {
+				g.observe(next[g], c.added)
+			}
+		}
+	}
+	if r.g.done.Err() != nil {
+		// Interrupted before it found them: a stopped run keeps what was
+		// kept before (fixKeeper).
+		return nil
+	}
+	var found []gateCulprit
+	for _, g := range groups {
+		if g.failed || g.hi == 0 {
+			continue
+		}
+		added := map[string]int{}
+		for key, n := range g.high {
+			if n > g.low[key] {
+				added[key] = n - g.low[key]
+			}
+		}
+		if len(added) > 0 {
+			found = append(found, gateCulprit{g.reached[g.hi-1], added})
+		}
+	}
+	return found
+}
+
+// culpritGroupLimit bounds the groups one search of culprits holds.
+const culpritGroupLimit = 64
+
+// A gateCulprit is a fix that brings errors to other files, and the errors.
+type gateCulprit struct {
+	at    [2]int
+	added map[string]int
+}
+
+// A culpritGroup is the search for the fix that brings the errors of
+// files: of the fixes reached, the first lo bring none of them, and the
+// first hi, once found, bring one, with the errors of the files each
+// adds.
+type culpritGroup struct {
+	files     []tspath.RootedFilePath
+	keys      map[string]bool // the errors of files t adds outside every fix's text
+	reached   [][2]int
+	lo, hi    int
+	step      int
+	halving   bool
+	failed    bool
+	low, high map[string]int
+}
+
+func (g *culpritGroup) searching() bool {
+	return !g.failed && !(g.halving && g.hi-g.lo <= 1)
+}
+
+// next is the number of reached fixes the next trial adds: the next step
+// that doubles, then the middle of the last.
+func (g *culpritGroup) next() int {
+	if !g.searching() {
+		if g.halving {
+			return g.lo
+		}
+		return 0
+	}
+	if g.halving {
+		return (g.lo + g.hi) / 2
+	}
+	return min(g.lo+g.step, len(g.reached))
+}
+
+// observe takes the errors a trial of the first n reached fixes adds.
+func (g *culpritGroup) observe(n int, added map[string]int) {
+	mine := g.of(added)
+	switch {
+	case g.halving && g.brings(mine):
+		g.hi, g.high = n, mine
+	case g.halving:
+		g.lo, g.low = n, mine
+	case g.brings(mine):
+		g.hi, g.high, g.halving = n, mine, true
+	case n == len(g.reached):
+		g.failed = true
+	default:
+		g.lo, g.low = n, mine
+		g.step *= 2
+	}
+}
+
+// of returns the errors of added in the group's files.
+func (g *culpritGroup) of(added map[string]int) map[string]int {
+	mine := map[string]int{}
+	for key, n := range added {
+		for _, name := range g.files {
+			if strings.HasPrefix(key, name.AsString()+": ") {
+				mine[key] = n
+				break
+			}
+		}
+	}
+	return mine
+}
+
+// brings reports whether added holds an error the group searches for.
+func (g *culpritGroup) brings(added map[string]int) bool {
+	for key := range g.keys {
+		if added[key] > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // fixSpanSet is where the fixes of a trial wrote, by file.

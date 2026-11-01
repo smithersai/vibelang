@@ -48,6 +48,7 @@ func FuzzFixGate(f *testing.F) {
 		"cross,cross,good",
 		"twice,syntax,good",
 		"moved,match,cross",
+		"cross,match,cross,cross,good",
 	} {
 		f.Add(seed)
 	}

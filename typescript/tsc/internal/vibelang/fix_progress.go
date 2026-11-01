@@ -18,9 +18,14 @@ const fixProgressEvery = 5 * time.Second
 // hours, and it printed nothing before its report, so a driver could not
 // tell it from a hang. A line names the time since the start, the phase
 // and its round, the fixes applied, pending and refused, the checks of the
-// program begun, and what the run is doing and for how long:
+// program begun, in all and in this round or phase, whole or of only the
+// files that report an error, and what the run is doing and for how long:
 //
-//	vibelang --fix: 4m10s: round 3: 41 fixes applied, 20 pending, 3 refused; 17 checks; checking 23 fixes in 9 files for 6s
+//	vibelang --fix: 4m10s: round 3: 41 fixes applied, 20 pending, 3 refused; 17 checks, 6 this round (2 whole, 4 partial); checking 23 fixes in 9 files for 6s
+//
+// The checks of a round should not grow with the project: a round that
+// checks the whole program once for each fix it refuses grows with the
+// square of it.
 //
 // A ticker prints during a long check. The report on stdout is as it was.
 // A nil fixProgress prints nothing.
@@ -30,18 +35,22 @@ type fixProgress struct {
 	stop  chan struct{}
 	done  sync.WaitGroup
 
-	mu       sync.Mutex
-	start    time.Time
-	printed  time.Time
-	phase    string
-	round    int
-	applied  int
-	pending  int
-	refused  int
-	checks   int
-	next     string // what the next program built is for
-	activity string
-	since    time.Time
+	mu      sync.Mutex
+	start   time.Time
+	printed time.Time
+	phase   string
+	round   int
+	applied int
+	pending int
+	refused int
+	checks  int
+	// The checks begun in this round or phase, and those of some files.
+	phaseChecks  int
+	phasePartial int
+	next         string // what the next program built is for
+	nextPartial  bool   // the next program built is checked in some files
+	activity     string
+	since        time.Time
 }
 
 // newFixProgress returns the progress of a run that prints to w each
@@ -114,7 +123,11 @@ func (p *fixProgress) line(now time.Time) string {
 	if p.refused > 0 {
 		fmt.Fprintf(&b, ", %d refused", p.refused)
 	}
-	fmt.Fprintf(&b, "; %d %s; %s for %s", p.checks, plural(p.checks, "check", "checks"), p.activity, now.Sub(p.since).Round(time.Second))
+	this := "phase"
+	if p.round > 0 {
+		this = "round"
+	}
+	fmt.Fprintf(&b, "; %d %s, %d this %s (%d whole, %d partial); %s for %s", p.checks, plural(p.checks, "check", "checks"), p.phaseChecks, this, p.phaseChecks-p.phasePartial, p.phasePartial, p.activity, now.Sub(p.since).Round(time.Second))
 	return b.String()
 }
 
@@ -127,6 +140,7 @@ func (p *fixProgress) doing(activity string) {
 func (p *fixProgress) enter(phase string, round, applied, refused int, activity string) {
 	p.update(func() {
 		p.phase, p.round, p.applied, p.pending, p.refused = phase, round, applied, 0, refused
+		p.phaseChecks, p.phasePartial = 0, 0
 		p.doing(activity)
 	})
 }
@@ -155,6 +169,16 @@ func (p *fixProgress) checkFiles(files int) {
 	p.label(fmt.Sprintf("checking the rewrites of %d %s", files, plural(files, "file", "files")))
 }
 
+// partial says the next program built is checked only in the files that
+// report an error.
+func (p *fixProgress) partial() {
+	if p != nil {
+		p.mu.Lock()
+		p.nextPartial = true
+		p.mu.Unlock()
+	}
+}
+
 // label names the next program built, or clears the name when it is "".
 func (p *fixProgress) label(next string) {
 	if p != nil {
@@ -169,6 +193,11 @@ func (p *fixProgress) label(next string) {
 func (p *fixProgress) building() {
 	p.update(func() {
 		p.checks++
+		p.phaseChecks++
+		if p.nextPartial {
+			p.phasePartial++
+		}
+		p.nextPartial = false
 		if p.next == "" {
 			p.next = "checking the project"
 		}

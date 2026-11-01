@@ -95,25 +95,25 @@ func programErrors(ctx context.Context, program *compiler.Program) []*ast.Diagno
 // that an error of errors whose key is in keys reads: a name in the
 // statement of the error resolves to it, or to a declaration of the project
 // that reads it, and so on. The fixes come in the order it reaches them, nearest first.
-func blameReads(ctx context.Context, program *compiler.Program, errors []*ast.Diagnostic, keys map[string]int, spans fixSpanSet) [][2]int {
+// It walks at most budget's errors and names, and takes what it walks from
+// budget, so that the walks of several groups of errors cost no more than
+// one walk of them all.
+func blameReads(ctx context.Context, program *compiler.Program, errors []*ast.Diagnostic, keys map[string]int, spans fixSpanSet, budget *blameBudget) [][2]int {
 	var reached [][2]int
 	c, done := program.GetTypeChecker(ctx)
 	defer done()
 	own := func(file *ast.SourceFile) bool {
 		return file != nil && !file.IsDeclarationFile && !strings.Contains(file.FileName().AsString(), "/node_modules/") && !program.IsSourceFileFromExternalLibrary(file)
 	}
-	const errorLimit, nameLimit = 64, 20000
-	walked := 0
-	names := 0
 	seen := map[*ast.Node]bool{}
 	for _, d := range errors {
-		if walked == errorLimit || names >= nameLimit {
+		if budget.errors <= 0 || budget.names <= 0 {
 			break
 		}
 		if d.File() == nil || keys[errorKey(d)] == 0 {
 			continue
 		}
-		walked++
+		budget.errors--
 		// The statement that holds the error names what it reads, where
 		// the node of the error may be a literal that names nothing.
 		node := nodeCovering(d.File().AsNode(), d.Pos(), d.End())
@@ -121,17 +121,17 @@ func blameReads(ctx context.Context, program *compiler.Program, errors []*ast.Di
 			node = node.Parent
 		}
 		level := []*ast.Node{node}
-		for len(level) > 0 && names < nameLimit {
+		for len(level) > 0 && budget.names > 0 {
 			var next []*ast.Node
 			var visit func(*ast.Node) bool
 			visit = func(n *ast.Node) bool {
-				if names >= nameLimit {
+				if budget.names <= 0 {
 					return true
 				}
 				if !ast.IsIdentifier(n) {
 					return n.ForEachChild(visit)
 				}
-				names++
+				budget.names--
 				symbol := c.GetSymbolAtLocation(n)
 				if symbol != nil && symbol.Flags()&ast.SymbolFlagsAlias != 0 {
 					symbol = c.GetAliasedSymbol(symbol)
@@ -164,6 +164,16 @@ func blameReads(ctx context.Context, program *compiler.Program, errors []*ast.Di
 		}
 	}
 	return reached
+}
+
+// A blameBudget is the errors and names blameReads may still walk.
+type blameBudget struct {
+	errors, names int
+}
+
+// newBlameBudget is the budget of one search for the fixes behind errors.
+func newBlameBudget() *blameBudget {
+	return &blameBudget{errors: 64, names: 20000}
 }
 
 // nodeCovering returns the deepest node under root whose range holds pos to
