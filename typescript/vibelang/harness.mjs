@@ -315,7 +315,9 @@ async function check(name, commands) {
   const output = compiled.stdout + compiled.stderr
   const diagnostics = parseDiagnostics(output)
   const errors = diagnostics.filter((d) => d.category === "error")
-  if (compiled.code !== 0 && compiled.code !== 1 && compiled.code !== 2) {
+  // Exit 1/2 can accompany expected diagnostics; they cannot establish a
+  // successful compilation when the compiler reported no errors.
+  if (compiled.code !== 0 && (errors.length === 0 || (compiled.code !== 1 && compiled.code !== 2))) {
     return { ok: false, detail: `tsc exited with ${compiled.code}`, log: output }
   }
 

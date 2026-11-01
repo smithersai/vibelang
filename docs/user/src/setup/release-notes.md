@@ -657,6 +657,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Compiler validation could fail to build when two independent `restore` fuzz suites used the same Go test names; both suites now retain their coverage under distinct names.
 
+
+- A compiler case could pass after compilation exited with `1` or `2` without printing an error; the harness now fails it before running or comparing outputs and retains the compiler's exit status and diagnostics.
 - Awaiting a Fiber or Deferred in effect code reported an error using the configurable warning codes `EK4609` and `EK4610`; it now reports the fixed placement error `EK0102` separately, so advisory severity settings keep their meaning without allowing `await` in effect code.
 
 - `vibelang agents check` could report `no errors` and succeed when its compiler failed or was terminated; checks and hooks now fail with the compiler's status, signal or spawn error and standard error output, including failures caused by errors outside the selected files.

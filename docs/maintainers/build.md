@@ -446,6 +446,8 @@ They run `go test -count=1`: the graph caches their results, and Go's own test
 cache would first hash every file the tests opened. `:go-vibelangfuzz` opens
 about 25 million, which took 14 minutes on one core after its tests passed.
 
+The case harness requires compilation to exit with status `0` when no error diagnostic was reported. Status `1` or `2` is accepted only with error diagnostics that the case expects; a nonzero status without errors fails before declaration comparison or execution. The failure receipt retains the compiler's status and output, including under `--status` and for pending cases.
+
 The compiler corpus runs through `harness.mjs` only, as one target per case in
 `//typescript/vibelang/...`. `:go-vibelang` does not rerun it: three Go tests did
 until 2026-10-31, took 700 s of the package's 900 s, and over 114 red post-merge
