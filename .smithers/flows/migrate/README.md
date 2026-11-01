@@ -46,6 +46,8 @@ Declaration-only snapshots disable `sourceMap`, `inlineSourceMap`, `inlineSource
 
 Declaration identity applies only to published packages. `verify` reports a package marked `"private": true` as `declarations: "not published"` and skips its declaration emit and comparison; its tests, compiler errors and style checks still gate the batch. The repository’s build, workspace typecheck, lint, format and Knip gates still apply.
 
+The codemod refuses a batch whose `.vibe` path the repository ignores, as a tracked module under an ignored `lib/` directory is: a commit would delete the `.ts` and record no `.vibe`.
+
 Each step reads and writes the run directory, so a step that already recorded its result returns it, and a stopped run resumes where it stopped.
 
 Before changing the target, `codemod` atomically writes and flushes

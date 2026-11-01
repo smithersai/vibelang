@@ -2,6 +2,7 @@
 // modules to .vibe, point their packages' exports at them, rewrite the imports
 // that name them by VibeLang's rules, then run `vibelang --fix` until it finds
 // nothing more to fix, recording each rewrite it applied and each it refused.
+import { spawnSync } from "node:child_process"
 import { existsSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs"
 import { join, posix } from "node:path"
 import { applyEdits, parseImports, resolveAliased, resolveRelative } from "./imports.mjs"
@@ -81,7 +82,20 @@ export function renameBatch(root, files) {
     if (existsSync(join(root, to))) throw new Error(`${to} already exists`)
   }
   for (const { from, to } of renames) renameSync(join(root, from), join(root, to))
+  const ignored = ignoredTargets(root, renames.map((r) => r.to))
+  if (ignored.length) {
+    for (const { from, to } of renames) renameSync(join(root, to), join(root, from))
+    throw new Error(`${ignored.join(", ")}: the repository ignores this path, so a commit would drop the module; keep it .ts or track the path`)
+  }
   return renames
+}
+
+/** The paths jj does not track once they exist, as a tracked module under an ignored directory is not tracked under its new name. Outside a jj repository, none. */
+function ignoredTargets(root, paths) {
+  const listed = spawnSync("jj", ["file", "list", ...paths.map((path) => `root:${path}`)], { cwd: root, encoding: "utf8" })
+  if (listed.status !== 0) return []
+  const tracked = new Set(listed.stdout.split("\n"))
+  return paths.filter((path) => !tracked.has(path))
 }
 
 /** The directory of the package that owns file: the nearest with a package.json, or the root. */

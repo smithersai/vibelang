@@ -1,0 +1,11 @@
+{
+  "finding": "alchemy-45",
+  "pattern": "A tracked source in a directory ignored by lib/ becomes an untracked .vibe on rename. The code body is immaterial to this filesystem-only minimized pattern.",
+  "input": {
+    "directory": "packages/cloudflare-runtime/src/internal/workflows-shared/lib",
+    "stem": "validators",
+    "ignore": "directory",
+    "ignored": true,
+    "body": "export const value = 1\\n"
+  }
+}

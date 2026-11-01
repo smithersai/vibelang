@@ -423,6 +423,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The migrate flow's setup left an electron-vite config's `main`, `preload` and `renderer` builds, and a Vite app's worker build (`new Worker(new URL(...))`), without `vibelang()`, so those builds failed on a `.vibe` module (`PARSE_ERROR`); setup now adds the plugin to each of them.
 
+
+- The migrate flow's codemod renamed a tracked module under a `.gitignore`d directory, so the batch's commit deleted the `.ts` and recorded no `.vibe`, and a revert left the `.vibe` behind; the codemod now refuses that batch before it changes anything.
+
 - The kernel law suite could still fail at 5 s on a loaded host after its 30 s budget moved into the test preload, because Bun applies a preload's default timeout to the first test file only; `bun run test` in `experiments` now passes the budget to every file, and the docs build uses the same flag.
 
 - After the migrate flow's setup, an ast-grep rule for TypeScript also scanned each `.vibe` module's `x.d.vibe.ts` sidecar, so a finding in a `.vibe` module was reported twice; setup now adds `**/*.d.vibe.ts` to the `ignores` of each TypeScript rule it extends to `.vibe`.
