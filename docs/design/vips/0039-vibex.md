@@ -52,7 +52,7 @@ export function ProfileCard(props: { name: string; role: "admin" | "member" }) {
 ### The file kind
 
 - **`.vibex` = `ScriptKindTSX` plus VibeLang.** The compiler gives `.vibex` TypeScript's `ScriptKindTSX` (so `LanguageVariantJSX`) and treats it as a VibeLang source exactly as it treats `.vibe`. No new `ScriptKind`, `LanguageVariant`, scanner mode or JSX parser. `.vibe` stays non-JSX; `.ts` and `.tsx` are unchanged. A `.vibex` with no JSX is legal.
-- **Renaming is safe both ways.** Renaming `x.vibe` to `x.vibex` changes nothing unless the file has `<` in expression position (rule below). Renaming `x.tsx` to `x.vibex` changes nothing in its JSX; the rest of the file follows `.vibe`'s rules, as it would in `x.vibe`.
+- **Renaming parses the same both ways.** Renaming `x.vibe` to `x.vibex` changes how the file parses only where it has `<` in expression position or `</` (rows 1–5 and 39). The project still needs `.tsx`'s settings: without `jsx`, an import of `x.vibex` is TS6142, and under `preserve` the output is `x.jsx` ([Options, output and declarations](#options-output-and-declarations)). Renaming `x.tsx` to `x.vibex` changes nothing in its JSX; the rest of the file follows `.vibe`'s rules, as it would in `x.vibe`.
 - **Every `.vibe` rule applies.** VIP-30 (every source file is a module), VIP-33 (platform code), VIP-14 and VIP-6 (Effect names in scope), VIP-38 (built-in Effect lint) and every other accepted VIP apply to `.vibex` as to `.vibe`. A file extension waives nothing.
 - **No stricter mode.** `.vibex` implies no option, check or lint that `.tsx` and `.vibe` don't already imply.
 
@@ -311,7 +311,7 @@ Yes, and each shaped a rule here:
 
 ## Recommendation
 
-Accept. `.vibex` is one extension that selects `.tsx`'s language variant plus VibeLang's forms, with no grammar of its own and no new diagnostic. Its only source-visible cost is `.tsx`'s (`as`, `<T,>`). Every real witness from opencode, t3code and foldkit (15 files across the panel) compiles as `.vibex` with zero JSX errors; their remaining errors are VibeLang rules (VIP-33 platform code, the VIP-1 gap) and missing dependencies. Ship it after VIP-1's plain functions and the four parser gaps, then land it on t3code's web modules (React, Vite) and opencode's app (Solid, Vite) first; t3code's 78 mobile modules wait for a Metro adapter, which `.vibe` lacks too.
+Accept. `.vibex` is one extension that selects `.tsx`'s language variant plus VibeLang's forms, with no grammar of its own and no new diagnostic. Its only source-visible cost is `.tsx`'s (`as`, `<T,>`, a space in `< /re/`). Every real witness from opencode, t3code and foldkit (15 files across the panel) compiles as `.vibex` with zero JSX errors; their remaining errors are VibeLang rules (VIP-33 platform code, the VIP-1 gap) and missing dependencies. Ship it after VIP-1's plain functions and the four parser gaps, then land it on t3code's web modules (React, Vite) and opencode's app (Solid, Vite) first; t3code's 78 mobile modules wait for a Metro adapter, which `.vibe` lacks too.
 
 ## Credits
 
