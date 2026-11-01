@@ -1,0 +1,16 @@
+{
+  "finding": "alchemy-46:source-child-preloads",
+  "note": "Minimized frontend-frameworks BuildChild/DevChild select Bun run or Node flags, a source or built runner, and a foreign cwd.",
+  "modules": [
+    {
+      "file": "src/core/BuildChild.ts",
+      "source": "import * as ChildProcess from \"effect/process/ChildProcess\";\nexport function launch(executable: string, entry: string, cwd: string, isBun: boolean): unknown {\n  const args = [...(isBun ? [\"run\"] : [\"--experimental-transform-types\", \"--no-warnings=ExperimentalWarning\"]), entry, JSON.stringify({ ready: true })];\n  return ChildProcess.make(executable, args, { cwd, stdin: \"ignore\" });\n}\n",
+      "method": "make"
+    },
+    {
+      "file": "src/core/DevChild.ts",
+      "source": "import * as NodeChildProcess from \"node:child_process\";\nexport function launch(executable: string, entry: string, cwd: string, isBun: boolean): unknown {\n  const args = [...(isBun ? [\"run\"] : []), entry, JSON.stringify({ ready: true })];\n  return NodeChildProcess.spawn(executable, args, { cwd, stdio: \"inherit\" });\n}\n",
+      "method": "spawn"
+    }
+  ]
+}
