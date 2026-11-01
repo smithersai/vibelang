@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert"
 import { spawnSync } from "node:child_process"
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { dirname, join } from "node:path"
+import { dirname, join, posix } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import fc from "fast-check"
@@ -205,4 +205,117 @@ test("createRequire(base) resolves from base under the preload (alchemy-30)", {
     diagnostics: () => originDiagnostics, check: checkOrigin
   })
   t.diagnostic(`${testBun}: importer depth, working directory, URL/string/path/other-file bases, subpath exports, main, relative and parent requests; resolve and require`)
+})
+
+// tests-opencode: the preload's CommonJS hook asks vibeImport for every
+// require, and vibeImport reads the nearest tsconfig's paths through its
+// extends chain, resolving a package-named config ("@tsconfig/bun/...")
+// with require.resolve, which calls the hook again before the first read is
+// cached. Each nested call read the same config again until the stack ran
+// out: one require("fs") in opencode's packages/core made 2,459 hook calls
+// (210 ms; 22 s across a TUI plugin's graph). A resolution the preload starts
+// itself is never a .vibe import, so hook calls per require stay bounded by
+// the configs' extends references, and every answer stays the same.
+const extendsRule = "docs/design/src/007-tooling.md: Existing tools work; a require costs one lookup per tsconfig extends reference, not a re-entrant walk"
+const extendsLayout = fc.record({
+  links: fc.array(fc.constantFrom("package", "relative", "array"), { minLength: 1, maxLength: 3 }),
+  paths: fc.constantFrom("none", "own", "inherited"),
+  request: fc.constantFrom("fs", "node:fs", "probe", "@/x", "./local.cjs"),
+  call: fc.constantFrom("resolve", "require")
+})
+let extendsDiagnostics = ""
+
+// Link i is one more config: a package's tsconfig.json in node_modules, a
+// relative file, or both named by an extends array. Each extends link i + 1;
+// the last link sets paths when paths is "inherited", the project's own
+// tsconfig when "own".
+function extendsFiles(input) {
+  const files = {
+    "package.json": '{"type":"module"}\n',
+    "node_modules/probe/package.json": '{"name":"probe","main":"main.cjs"}\n',
+    "node_modules/probe/main.cjs": 'module.exports = "probe"\n',
+    "src/x.vibe": "export const x = 1\n",
+    "local.cjs": 'module.exports = "local"\n'
+  }
+  const { links } = input
+  const packageFile = (i) => "node_modules/base" + i + "/tsconfig.json"
+  const relativeFile = (i) => "configs/base" + i + ".json"
+  const filesOfLink = (i) => links[i] === "package" ? [packageFile(i)] : links[i] === "relative" ? [relativeFile(i)] : [packageFile(i), relativeFile(i)]
+  // How a config at `from` names link i.
+  const reference = (from, i) => {
+    const relativeName = posix.relative(posix.dirname(from), relativeFile(i))
+    const names = { package: ["base" + i + "/tsconfig.json"], relative: [relativeName.startsWith(".") ? relativeName : "./" + relativeName] }
+    const all = links[i] === "array" ? [...names.package, ...names.relative] : names[links[i]]
+    return all.length === 1 ? all[0] : all
+  }
+  const config = (from, i, own) => JSON.stringify({
+    ...(i < links.length ? { extends: reference(from, i) } : {}),
+    compilerOptions: { strict: true, ...(own ? { paths: { "@/*": ["./src/*"] } } : {}) }
+  }) + "\n"
+  links.forEach((_, i) => {
+    files["node_modules/base" + i + "/package.json"] = JSON.stringify({ name: "base" + i }) + "\n"
+    for (const file of filesOfLink(i)) files[file] = config(file, i + 1, i === links.length - 1 && input.paths === "inherited")
+  })
+  files["tsconfig.json"] = config("tsconfig.json", 0, input.paths === "own")
+  const request = JSON.stringify(input.request)
+  files["main.cjs"] = (input.call === "resolve"
+    ? "console.log(require.resolve(" + request + "))"
+    : "const value = require(" + request + "); console.log(typeof value === \"string\" ? value : typeof value)") + "\n"
+  files["count.mjs"] = [
+    "await import(process.env.VIBELANG_TEST_PRELOAD)",
+    'const Module = (await import("node:module")).default',
+    "const hook = Module._resolveFilename",
+    "let calls = 0",
+    "Module._resolveFilename = function (...args) { calls++; return hook.apply(this, args) }",
+    'process.on("exit", () => console.error("hook calls: " + calls))',
+    ""
+  ].join("\n")
+  return files
+}
+
+// Config references the hook may resolve: one per package name in a chain
+// link, each tried as name, name.json and name/tsconfig.json.
+const extendsBound = (input) => 1 + 3 * input.links.filter((kind) => kind !== "relative").length
+
+function checkExtends(input) {
+  // Loading x.vibe needs the compiler, and an inherited alias's base is the
+  // config that wrote it; resolving against the project's own paths covers the alias.
+  if (input.request === "@/x" && (input.call === "require" || input.paths !== "own")) return
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-bun-extends-")))
+  try {
+    for (const [file, contents] of Object.entries(extendsFiles(input))) {
+      mkdirSync(dirname(join(root, file)), { recursive: true })
+      writeFileSync(join(root, file), contents)
+    }
+    const run = (args) => spawnSync("bun", args, {
+      cwd: root, encoding: "utf8", timeout: 20000, maxBuffer: 1 << 20,
+      env: { ...process.env, VIBELANG_TEST_PRELOAD: preload, NO_COLOR: "1" }
+    })
+    const loaded = run(["--preload", "./count.mjs", "main.cjs"])
+    extendsDiagnostics = JSON.stringify({ input, status: loaded.status, stdout: loaded.stdout, stderr: loaded.stderr.slice(-4000) }).replaceAll(root, "<project>")
+    assert.ifError(loaded.error)
+    assert.equal(loaded.status, 0, extendsDiagnostics)
+    const expected = {
+      fs: input.call === "resolve" ? "fs" : "object",
+      "node:fs": input.call === "resolve" ? "node:fs" : "object",
+      probe: input.call === "resolve" ? join(root, "node_modules/probe/main.cjs") : "probe",
+      "./local.cjs": input.call === "resolve" ? join(root, "local.cjs") : "local",
+      "@/x": join(root, "src/x.vibe")
+    }[input.request]
+    assert.equal(loaded.stdout, expected + "\n", extendsDiagnostics)
+    const calls = Number(/hook calls: (\d+)/.exec(loaded.stderr)?.[1])
+    assert.ok(calls <= extendsBound(input), `hook calls ${calls} > ${extendsBound(input)}: ` + extendsDiagnostics)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+}
+
+test("a require under the preload reads each tsconfig of the extends chain once (tests-opencode)", {
+  skip: !hasBun && "bun is not on PATH"
+}, async t => {
+  await checkProperty(fc, {
+    name: "bun-tsconfig-extends-reentry", rule: extendsRule,
+    command: "node --test test/bun.property.test.mjs",
+    arbitrary: extendsLayout, numRuns: 40, regressions, artifacts: extendsFiles,
+    diagnostics: () => extendsDiagnostics, check: checkExtends
+  })
+  t.diagnostic("package, relative and array extends chains of 1-3 links; paths own, inherited or none; builtin, node:, bare, relative and alias requests; resolve and require; counts hook calls, no timing oracle")
 })

@@ -1,0 +1,13 @@
+{
+  "property": "bun-tsconfig-extends-reentry",
+  "rule": "docs/design/src/007-tooling.md: Existing tools work; a require costs one lookup per tsconfig extends reference, not a re-entrant walk",
+  "input": {
+    "links": [
+      "package"
+    ],
+    "paths": "none",
+    "request": "fs",
+    "call": "require"
+  },
+  "reason": "The opencode migration: packages/core/tsconfig.json extends \"@tsconfig/bun/tsconfig.json\"; under the vibelang/bun preload one require(\"fs\") made 2,459 nested hook calls (210 ms), which made AppProcess's 250 ms child timeout fire before the child's SIGTERM handler, and a TUI plugin test's child took 22 s instead of 0.5 s."
+}

@@ -43,9 +43,21 @@ function configOf(directory) {
 // to: a relative import by extensionlessImport, and an alias of the nearest
 // tsconfig's paths (`@/x` for `"@/*": ["./src/*"]`) by aliasImport. Bun
 // resolves an alias itself, but never to a .vibe file.
+//
+// Reading a tsconfig's paths resolves a package it extends
+// ("@tsconfig/bun/tsconfig.json") with require.resolve, which calls the
+// CommonJS hook below before those paths are cached. A resolution the lookup
+// starts itself is never a .vibe import, so it goes to Bun alone; otherwise
+// each nested call reads the same config again until the stack runs out
+// (2,653 hook calls for one require("fs")).
+let looking = false
 function vibeImport(directory, specifier) {
-  const source = isRelative(specifier) ? extensionlessImport(directory, specifier) : aliasImport(configOf(directory), specifier)
-  return source?.endsWith(".vibe") ? source : undefined
+  if (looking) return undefined
+  looking = true
+  try {
+    const source = isRelative(specifier) ? extensionlessImport(directory, specifier) : aliasImport(configOf(directory), specifier)
+    return source?.endsWith(".vibe") ? source : undefined
+  } finally { looking = false }
 }
 
 // Bun honors Node's CommonJS hook for extensionless require requests.
