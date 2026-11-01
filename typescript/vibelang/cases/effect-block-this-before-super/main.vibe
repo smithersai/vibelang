@@ -1,0 +1,48 @@
+// Functions, "Bindings" (VIP-1, VIP-2): an effect body reads this, super and
+// new.target exactly as the same body reads them in an async function.
+// Building the Effect reads none of them, and each run reads them where the
+// body does. So an effect block built in a derived constructor before super()
+// is fine to build; running it before super() dies with the ReferenceError at
+// the read, and a run that never reaches the read succeeds.
+import { runExit } from "./runner.ts"
+
+function shape(outcome: Exit<unknown, unknown>): string {
+  if (outcome is Exit.Success(let value)) return "Success(" + (typeof value === "object" && value !== null ? "instance" : JSON.stringify(value)) + ")"
+  return outcome.cause.reasons.map((reason) => reason._tag === "Die" ? "Die(" + (reason.defect instanceof ReferenceError ? "ReferenceError" : String(reason.defect)) + ")" : reason._tag).join("+")
+}
+let keyCalls = 0
+function key(): "value" { keyCalls++; return "value" }
+
+class Base {
+  static value = 7
+  value = 7
+}
+class After extends Base {
+  p: Effect.Effect<unknown>
+  constructor() {
+    const p = effect { return this }   // building p reads nothing
+    super()
+    this.p = p
+  }
+}
+class Before extends Base {
+  constructor(run: (e: Effect.Effect<unknown>) => string, out: string[], flag: boolean) {
+    out.push(run(effect { return this }))                     // Die(ReferenceError): reading this before super()
+    out.push(run(effect { if (flag) return this; return 7 }))  // Success(7): an unreached read checks nothing
+    out.push(run(effect { return super[key()] }))             // Die(ReferenceError) before key() runs
+    super()
+  }
+}
+class Static extends Base {
+  static program: Effect.Effect<unknown>
+  static { this.program = effect { return super.value } }   // a static block has its own super
+}
+const runner = (e: Effect.Effect<unknown>): string => shape(runExit(e))
+const before: string[] = []
+new Before(runner, before, false)
+
+// expect-result: {"after":"Success(instance)","before":["Die(ReferenceError)","Success(7)","Die(ReferenceError)"],"keyCalls":0,"static":"Success(7)"}
+export effect function main() {
+  const after = shape(try exit(new After().p))
+  return { after, before, keyCalls, static: shape(try exit(Static.program)) }
+}

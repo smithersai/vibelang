@@ -1,0 +1,27 @@
+// Functions, "Bindings" (VIP-1): `effect go() { return super.offset() }`,
+// where offset has an own `call` property, runs the method with the instance
+// as this, and `call` is never read. A generator body must not reach the
+// method through .call(this); the sync fast path already calls it directly.
+import { poison, state } from "./poison.ts"
+
+class Base {
+  offset(): number { return 30 }
+}
+;(Base.prototype.offset as any).call = poison
+
+class Counter extends Base {
+  n = 7
+  // A generator body: the try keeps this method off the sync fast path.
+  effect go() {
+    const bonus = try Effect.succeed(1)
+    return super.offset() + bonus
+  }
+  // The sync fast path, as a control.
+  effect direct() { return super.offset() }
+}
+
+// expect-result: {"go":31,"direct":30,"poisonCalls":0}
+export effect function main() {
+  const c = new Counter()
+  return { go: try c.go(), direct: try c.direct(), poisonCalls: state.calls }
+}
