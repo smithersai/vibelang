@@ -1,0 +1,14 @@
+{
+  "key": "alchemy-53:solution-config-checks-referenced-implementations",
+  "repo": "alchemy",
+  "pattern": "frontend-frameworks files:[] root with node/runtime projects whose original include patterns name only TypeScript",
+  "input": {
+    "leaves": [
+      { "name": "node", "directory": false, "strict": true },
+      { "name": "runtime", "directory": true, "strict": true }
+    ],
+    "reverse": false,
+    "pretty": true,
+    "comments": true
+  }
+}
