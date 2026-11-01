@@ -38,3 +38,19 @@ func TestImportSpecifierJSXModes(t *testing.T) {
 		}
 	}
 }
+
+func TestImportSpecifierNativeFileKinds(t *testing.T) {
+	for _, mode := range []core.JsxEmit{core.JsxEmitNone, core.JsxEmitPreserve, core.JsxEmitReact, core.JsxEmitReactNative, core.JsxEmitReactJSX, core.JsxEmitReactJSXDev} {
+		for _, row := range []struct{ source, want string }{
+			{"./token.vibe", "./token.js"},
+			{"./token.ts", "./token.js"},
+			{"./token.mts", "./token.mjs"},
+			{"./token.cts", "./token.cjs"},
+		} {
+			got, changed := outputSpecifierTextWithJSX(row.source, mode)
+			if !changed || got != row.want {
+				t.Errorf("mode %v, %s: got %s (%v), want %s", mode, row.source, got, changed, row.want)
+			}
+		}
+	}
+}
