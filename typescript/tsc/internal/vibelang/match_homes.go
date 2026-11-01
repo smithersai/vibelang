@@ -7,7 +7,8 @@ import (
 
 func init() { checker.RegisterDeclaredTypeHook(hoistedBindingType) }
 
-// hoistedBindingType types a let the parser hoisted for an is binding home
+// hoistedBindingType types a let the parser hoisted for a pattern binding or
+// its subject/extractor capture
 // (hoistVibeLangIs in internal/parser): the declaration has no initializer,
 // and the pattern assigns it, `(name = value, true)`, inside the condition
 // the binding belongs to. The declared type is the value's type at that
@@ -15,9 +16,10 @@ func init() { checker.RegisterDeclaredTypeHook(hoistedBindingType) }
 // widened as a let initializer is. A read after the assignment keeps the
 // assigned type by control flow; a read the pattern may not have reached is
 // TS2454, the temporal dead zone of chapter 004. A let the source wrote keeps
-// TypeScript's control-flow tracked type: its assignments are not reparsed.
+// TypeScript's control-flow tracked type. Other parser temporaries, such as a
+// do completion reset to undefined before a branch, evolve by that flow too.
 func hoistedBindingType(c *checker.Checker, declaration *ast.Node) *checker.Type {
-	if declaration.Initializer() != nil || declaration.Name() == nil || !ast.IsIdentifier(declaration.Name()) {
+	if declaration.Flags&ast.NodeFlagsVibeLangPatternHoist == 0 || declaration.Initializer() != nil || declaration.Name() == nil || !ast.IsIdentifier(declaration.Name()) {
 		return nil
 	}
 	value := hoistedValue(declaration)

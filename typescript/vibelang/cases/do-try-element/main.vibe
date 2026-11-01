@@ -1,0 +1,18 @@
+// expect-result: [["a","c","ran b"],[1,2,3],"left"]
+// A do element of try.all runs where it stands, as every do expression
+// does (VIP-2): its block runs before the operation starts the other
+// elements, its value is the element, and a return inside it leaves the
+// enclosing function.
+effect function leave(early: boolean) {
+  const values = try.all [do { if (early) return "left"; effect { return 0 } }]
+  return "stayed"
+}
+export effect function main() {
+  const order: string[] = []
+  const values = try.all [
+    do { order.push("a"); effect { return 1 } },
+    effect { order.push("ran b"); return 2 },
+    do { order.push("c"); effect { return 3 } },
+  ]
+  return [order, values, try leave(true)]
+}

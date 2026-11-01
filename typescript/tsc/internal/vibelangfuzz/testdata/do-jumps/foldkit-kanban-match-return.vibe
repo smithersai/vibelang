@@ -1,0 +1,1 @@
+export const update = (n: number): number => match (n) { when 1: do { return 7 }; default: 9; }

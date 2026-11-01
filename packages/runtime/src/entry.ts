@@ -13,6 +13,7 @@ export const {
   $tryAny,
   $tryAllSettled,
   $bind,
+  $bindMethod,
   $catch,
   $catchCause,
   $catchExpression,

@@ -51,10 +51,12 @@ func TestVibeLangFiberUnaryOperands(t *testing.T) {
 					t.Fatalf("want one function declaration: %v", ss)
 				}
 				body := ss[0].Body().AsBlock().Statements.Nodes
-				if len(body) != 1 || body[0].Kind != ast.KindVariableStatement {
-					t.Fatalf("want one variable statement: %v", body)
+				// A do operand is lowered to statements before the declaration
+				// (VIP-2, vibelang_do.go), so the declaration is the last statement.
+				if len(body) == 0 || body[len(body)-1].Kind != ast.KindVariableStatement {
+					t.Fatalf("want a variable statement last: %v", body)
 				}
-				call := body[0].AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0].Initializer()
+				call := body[len(body)-1].AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0].Initializer()
 				if call.Kind != ast.KindCallExpression || call.Expression().Flags&ast.NodeFlagsVibeLangIntrinsic == 0 {
 					t.Fatalf("operand parsed as %v, want intrinsic fiber call", call.Kind)
 				}

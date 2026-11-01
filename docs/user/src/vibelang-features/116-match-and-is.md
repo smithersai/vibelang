@@ -32,7 +32,7 @@ Each arm, `when pattern: expression;`, is tried in order; the first match gives 
 
 A synchronous `match` introduces no function or Effect boundary in any expression position. An arm may `yield` in an enclosing generator or use `try` in effect code.
 
-An arm is one expression. Use `do { }` for several statements. It gives the block's normal completion value, retaining an earlier value when a later empty block inherits it. Inside `do`, declare variables with `const` or `let`: `var` is `EK1019`, with a quick fix to `let`. `do` introduces no function boundary. A `return`, `break` or `continue` reaches the enclosing function, loop or label. An unlabeled `break` or `continue` in a `do` in a loop head is an error. These rules also apply in nested blocks. A nested function keeps its own declarations and control flow. For example:
+An arm is one expression. Use `do { }` for several statements. It gives the block's normal completion value, retaining an earlier value when a later empty block inherits it. `do` introduces no function boundary. A `return`, `break` or `continue` reaches the enclosing function, loop or label, and `var` declares in the enclosing function. Its result follows the chosen branch's value type, including `undefined` when that completion is empty. The block cannot end with a lexical declaration, a loop or an `if` without `else` (`EK0201`). A `break` or `continue` from a `do` in a loop head cannot be unlabeled or target that loop (`EK0205`). These rules also apply in nested blocks. A `do` in a match arm retains that enclosing function and loop too. A nested function keeps its own declarations and control flow. For example:
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-7, VIP-14
@@ -52,6 +52,8 @@ effect function retryDelay(failure: Failure) {
 ```
 
 A function named `match` still works. Only `match (value) {` followed by `when`, `default`, or `}` starts a match.
+
+A `return` or an outer labeled jump in `for try` head binding initialization still violates the Stream loop rule (`EK2002` or `EK2003`), even when written inside `do`.
 
 ## Patterns
 

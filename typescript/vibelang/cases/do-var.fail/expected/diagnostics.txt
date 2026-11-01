@@ -1,6 +1,0 @@
-main.vibe(4,18): error EK1019
-main.vibe(6,30): error EK1019
-main.vibe(7,44): error EK1019
-main.vibe(8,26): error EK1019
-main.vibe(9,26): error EK1019
-main.vibe(10,28): error EK1019

@@ -1,0 +1,22 @@
+// expect-result: [8,[0,7,1,7,0,7,7,7],["left","body","call","and","or","nullish","then","else"]]
+// VIP-2: do runs at its operand position in the enclosing function.
+export effect function main() {
+  const events: string[] = []
+  const ev = (s: string) => { events.push(s) }
+  const receiver = { n: 3, f(x: number, y: number) { ev("call"); return this.n + x + y } }
+  const out = receiver.f((ev("left"), 1), do { ev("body"); try Effect.succeed(4) })
+  const xs = [0, 1, null] as const
+  const zero = xs[0], one = xs[1], nil = xs[2]
+  const yes = one > zero
+  const values = [
+    zero && do { ev("wrong-and"); try Effect.succeed(9) },
+    one && do { ev("and"); try Effect.succeed(7) },
+    one || do { ev("wrong-or"); try Effect.succeed(9) },
+    zero || do { ev("or"); try Effect.succeed(7) },
+    zero ?? do { ev("wrong-nullish"); try Effect.succeed(9) },
+    nil ?? do { ev("nullish"); try Effect.succeed(7) },
+    yes ? do { ev("then"); try Effect.succeed(7) } : do { ev("wrong-else"); try Effect.succeed(9) },
+    !yes ? do { ev("wrong-then"); try Effect.succeed(9) } : do { ev("else"); try Effect.succeed(7) }
+  ]
+  return [out, values, events]
+}

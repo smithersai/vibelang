@@ -48,6 +48,9 @@ func (p *exhaustivePlan) planExhaustiveMatch(c *checker.Checker, node *ast.Node)
 		return
 	}
 	statement := node.Parent
+	for statement != nil && !ast.IsStatement(statement) {
+		statement = statement.Parent
+	}
 	if !provenExhaustive(c, node) || statement == nil || statement.Parent == nil || statement.Parent.Kind != ast.KindBlock ||
 		statement.Kind != ast.KindReturnStatement && statement.Kind != ast.KindExpressionStatement {
 		p.kept = true

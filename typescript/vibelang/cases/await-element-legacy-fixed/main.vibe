@@ -17,7 +17,7 @@ export effect function main() {
   try Deferred.succeed(ready, 3)
   const exited = Exit.succeed(5)
   const values = (try.all [effect { return try program() }, $tryJoinFiber(fiber), effect { return try ready.await() }, effect { return try work(4) }, effect { return try exited() }])
-  const raced = (try.race [effect { return try do {
+  const raced = (try.race [effect { return do {
     try sleep("1 millis")
     "block"
   } }])

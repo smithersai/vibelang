@@ -511,6 +511,15 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 		// The rewrites after the rounds, on program, the last round's.
 		before := maps(texts, nil)
 		beforeState := fixState(program)
+		// VIP-2: old program-building do expressions become explicit Effects
+		// (rewriteDoPrograms, fix_effect.go), before the rewrites that read program.
+		if done.Err() == nil {
+			rewriteDoPrograms(g, fs, program, texts, result)
+			verified(texts)
+			if !sameTexts(before, texts) {
+				program = build(texts)
+			}
+		}
 		if options.VIPOnly {
 			// try before each call that runs where it stands (VIP-5, fix_try.go).
 			if done.Err() == nil {

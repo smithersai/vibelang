@@ -29,8 +29,6 @@ FuzzRunningRules reject:try-finally compiler VIP-5: the forbidden form is accept
 FuzzRunningRules corpus:try-finally compiler VIP-5: minimized reproduction of reject:try-finally; lane core-catch
 FuzzRunningRules reject:try-statement compiler VIP-5: the forbidden form is accepted; lane core-catch
 FuzzRunningRules corpus:try-statement compiler VIP-5: minimized reproduction of reject:try-statement; lane core-catch
-FuzzVIPDifferential compile:EK1019/vip02.do-enclosing compiler VIP-2: a program of accepted constructs does not compile: main.vibe 1019: continue cannot leave or hoist out of a do expression. Use let instead of var, and keep break and continue inside the do expression. (line 5: { ev("0"); let sum = 0, seen = 0; outer: for (const x of [1, 2, 3]) { const v = do { seen = x; if (x === 1) continue outer; if (x === 3) break outer; try Effect.succeed(x + 5) }; sum += v }; return sum + seen }); lane del-1
-FuzzVIPDifferential corpus:fz-run-vip02-do-enclosing compiler VIP-2: minimal named probe reproduces compile:EK1019/vip02.do-enclosing; lane del-1
 FuzzVIPDifferential exit:value/vip02.lexical-receiver compiler VIP-2: main.vibe ends differently from its VIPs' Effect TS: want Exit {"_tag":"Success","value":7}; lane vip-core2
 FuzzVIPDifferential corpus:fz-run-vip02-lexical-receiver compiler VIP-2: minimal named probe reproduces exit:value/vip02.lexical-receiver; lane vip-core2
 FuzzVIPDifferential exit:value/vip05.catch-comma compiler VIP-5: main.vibe ends differently from its VIPs' Effect TS: want Exit {"_tag":"Success","value":16}; lane core-catch
@@ -95,10 +93,19 @@ FuzzRunningRules corpus:concurrent-head-continue-outer compiler VIP-19: minimal 
 FuzzVIPDifferential compile:TS2464/vip19.head-initialization-item compiler VIP-19: a `try` in a head computed key's `do` is not run on the item (TS2464, TS2538); lane impl-hunt-run
 FuzzVIPDifferential corpus:fz-run-vip19-head-initialization-item compiler VIP-19: minimal named probe reproduces compile:TS2464/vip19.head-initialization-item; lane impl-hunt-run
 FuzzVIPDifferential compile:TS2538/vip19.head-initialization-item compiler VIP-19: a `try` in a head computed key's `do` is not run on the item (TS2464, TS2538); lane impl-hunt-run
-FuzzVIPDifferential compile:TS1108/vip19.limit-return compiler VIP-19: a `return` in the limit's `do` draws TS1108 instead of leaving the enclosing function; lane impl-hunt-run
-FuzzVIPDifferential corpus:fz-run-vip19-limit-return compiler VIP-19: minimal named probe reproduces compile:TS1108/vip19.limit-return; lane impl-hunt-run
-FuzzVIPDifferential compile:TS1108/vip19.rhs-return compiler VIP-19: a `return` in the RHS `do` draws TS1108 instead of leaving the enclosing function; lane impl-hunt-run
-FuzzVIPDifferential corpus:fz-run-vip19-rhs-return compiler VIP-19: minimal named probe reproduces compile:TS1108/vip19.rhs-return; lane impl-hunt-run
-FuzzVIPDifferential compile:TS2345/vip19.rhs-return compiler VIP-19: a `return` in the RHS `do` draws TS1108 and leaves the `do`'s type as `7 | number[]` (TS2345); lane impl-hunt-run
+FuzzVIPDifferential compile:EK0204/vip19.limit-return compiler VIP-19: a `return` in the limit's `do` is still blocked by EK0204 at the compiler intrinsic boundary instead of leaving the enclosing function; lane impl-hunt-run
+FuzzVIPDifferential corpus:fz-run-vip19-limit-return compiler VIP-19: minimal named probe reproduces compile:EK0204/vip19.limit-return; lane impl-hunt-run
+FuzzVIPDifferential compile:EK0204/vip19.rhs-return compiler VIP-19: a `return` in the RHS `do` is still blocked by EK0204 at the compiler intrinsic boundary instead of leaving the enclosing function; lane impl-hunt-run
+FuzzVIPDifferential corpus:fz-run-vip19-rhs-return compiler VIP-19: minimal named probe reproduces compile:EK0204/vip19.rhs-return; lane impl-hunt-run
+FuzzVIPDifferential compile:TS2345/vip19.rhs-return compiler VIP-19: a `return` in the RHS `do` is still blocked at the compiler intrinsic boundary and leaves the `do`'s type as `7 | number[]` (TS2345); lane impl-hunt-run
 FuzzVIPDifferential compile:TS2304/vip19.rhs-tdz compiler VIP-19: an RHS closure cannot name the head binding (TS2304); ECMAScript's head environment holds it uninitialized; lane impl-hunt-run
 FuzzVIPDifferential corpus:fz-run-vip19-rhs-tdz compiler VIP-19: minimal named probe reproduces compile:TS2304/vip19.rhs-tdz; lane impl-hunt-run
+
+FuzzDoDeclarationBytes bytes:inferred-return:depth-0 compiler VIP-1, VIP-27: unannotated plain functions still infer Effect even without do, changing their public signature; lane vip-core2
+FuzzDoDeclarationBytes bytes:inferred-return:depth-1 compiler VIP-1, VIP-27: unannotated plain functions still infer Effect even without do, changing their public signature; lane vip-core2
+FuzzDoDeclarationBytes bytes:inferred-return:depth-2 compiler VIP-1, VIP-27: unannotated plain functions still infer Effect even without do, changing their public signature; lane vip-core2
+FuzzDoDeclarationBytes bytes:inferred-return:depth-3 compiler VIP-1, VIP-27: unannotated plain functions still infer Effect even without do, changing their public signature; lane vip-core2
+FuzzDoDeclarationBytes bytes:inferred-return:depth-4 compiler VIP-1, VIP-27: unannotated plain functions still infer Effect even without do, changing their public signature; lane vip-core2
+FuzzDoDeclarationBytes bytes:inferred-return:depth-5 compiler VIP-1, VIP-27: unannotated plain functions still infer Effect even without do, changing their public signature; lane vip-core2
+FuzzDoDeclarationBytes corpus:foldkit-kanban-inferred-return-depth-0 compiler VIP-1, VIP-27: minimized raw-byte witness for the existing plain-function form-inference gap; lane vip-core2
+FuzzDoDeclarationBytes corpus:foldkit-kanban-inferred-return-depth-5 compiler VIP-1, VIP-27: minimized raw-byte witness for the existing plain-function form-inference gap; lane vip-core2

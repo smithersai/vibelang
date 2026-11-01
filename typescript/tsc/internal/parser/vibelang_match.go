@@ -583,6 +583,7 @@ func (p *Parser) hoistDeclaration(decl *ast.Node, at core.TextRange) *ast.Node {
 	declaration := decl.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0]
 	name, value := declaration.Name(), declaration.Initializer()
 	hoisted := p.mConst(name, ast.NodeFlagsLet, nil, name.Loc)
+	hoisted.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0].Flags |= ast.NodeFlagsVibeLangPatternHoist
 	if !strings.HasPrefix(name.Text(), "$") {
 		// A named binding: when another declaration of its home already
 		// declares the name, the rename quick fix finds it by this mark

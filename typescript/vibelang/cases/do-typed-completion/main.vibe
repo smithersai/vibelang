@@ -1,0 +1,21 @@
+// expect-result: [7,3,4,0,true,true,9,0]
+// Do result temporaries evolve by ordinary flow; only marked pattern hoists
+// take their declared type from the pattern's assignment.
+import { Option } from "effect"
+
+export function branch(flag: boolean): number {
+  return do { if (flag) return 3; 7 }
+}
+export function empty(flag: boolean): number | undefined {
+  return do { if (flag) { 7 } else {} }
+}
+export function pattern(x: { n: number } | null): number {
+  return x is { n: let n } ? n : 0
+}
+export function captured(flag: boolean): number {
+  const subject = flag ? Option.some(9) : Option.none<number>()
+  return do { if (subject is Option.Some(let value)) return value; 0 }
+}
+export effect function main() {
+  return [branch(false), branch(true), pattern({ n: 4 }), pattern(null), empty(false) === undefined, empty(true) === 7, captured(true), captured(false)]
+}

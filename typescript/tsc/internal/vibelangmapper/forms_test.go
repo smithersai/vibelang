@@ -852,3 +852,28 @@ export const background = () => fork(() => Audit.record("background"))`)
 		t.Errorf("() => fork(…) = %+v, want the dual with no choice", d)
 	}
 }
+
+func TestResolverImmediateDoBodyCalls(t *testing.T) {
+	// VIP-2's do has no function boundary. Its ordinary body calls must
+	// reach the same conservative fallback as calls in a written block.
+	// An explicit plain return contract still supplies the chosen form.
+	r := resolve(t, `const text = (x: string) => do { const trimmed = x.trim(); trimmed; }
+function five(): number { return 5 }
+const sum = (x: number) => do { const step = five(); x + step; }
+const typed = (x: string): string => do { const trimmed = x.trim(); trimmed; }
+const pure = (x: number) => do { x + 1; }`)
+	for _, c := range []struct {
+		prefix     string
+		form       Form
+		provenance Provenance
+	}{
+		{"(x: string) =>", FormEffectFn, FromFallback},
+		{"(x: number) => do { const step", FormEffectFn, FromFallback},
+		{"(x: string): string =>", FormPlain, FromAnnotation},
+		{"(x: number) => do { x + 1", FormPlain, FromFallback},
+	} {
+		if d := r.lambda(t, c.prefix); d.Form != c.form || d.Provenance != c.provenance {
+			t.Errorf("%s = %v from %v, want %v from %v", c.prefix, d.Form, d.Provenance, c.form, c.provenance)
+		}
+	}
+}

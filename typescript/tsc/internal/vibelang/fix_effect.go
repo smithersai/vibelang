@@ -41,6 +41,8 @@ const effectLabel = "effect"
 // compile to Effects, and the number of functions marked.
 func effectEdits(c *checker.Checker, file *ast.SourceFile) ([]sourceEdit, int) {
 	edits, marked := analyzerFor(c).effectEditsIn(file, file.AsNode())
+	dos, blocks := doProgramEdits(c, file)
+	edits, marked = append(edits, dos...), marked+blocks
 	name := (&freshNames{file: file}).freshName("$effectPrograms")
 	if slices.ContainsFunc(edits, func(e sourceEdit) bool {
 		return strings.Contains(e.text, name+".suspend(") || strings.Contains(e.text, name+".sync(")
@@ -58,6 +60,33 @@ func effectEdits(c *checker.Checker, file *ast.SourceFile) ([]sourceEdit, int) {
 		edits = append([]sourceEdit{{at, at, "import * as " + name + " from \"effect/Effect\"\n"}}, edits...)
 	}
 	return edits, marked
+}
+
+// doProgramEdits migrates a do expression at an Effect destination. Keep
+// the do expression inside the new Effect: this preserves every TC39
+// completion (including branches and switches) without guessing a tail.
+func doProgramEdits(c *checker.Checker, file *ast.SourceFile) ([]sourceEdit, int) {
+	text := file.Text()
+	var edits []sourceEdit
+	seen := map[int]bool{}
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if ast.IsIdentifier(node) || ast.IsCallExpression(node) {
+			start := scanner.SkipTrivia(text, node.Pos())
+			end := node.End()
+			if start >= 0 && start+2 < len(text) && end <= len(text) && end > start+2 && text[start:start+2] == "do" && !seen[start] {
+				open := scanner.SkipTrivia(text, start+2)
+				if open < end && text[open:open+1] == "{" && isEffectType(c, c.GetContextualType(node, checker.ContextFlagsNone)) && !isEffectType(c, c.GetTypeAtLocation(node)) {
+					seen[start] = true
+					edits = append(edits, sourceEdit{start, start, "effect { return "}, sourceEdit{end, end, " }"})
+					return false
+				}
+			}
+		}
+		return node.ForEachChild(visit)
+	}
+	file.AsNode().ForEachChild(visit)
+	return edits, len(seen)
 }
 
 // effectEditsIn returns the effect edits of the nodes under node.
@@ -577,6 +606,26 @@ func mergeInsertions(edits []sourceEdit) []sourceEdit {
 // no error, as rewriteTries does, and records them in result and texts.
 func rewriteEffects(g *fixGate, fs vfs.FS, program *compiler.Program, texts map[tspath.RootedFilePath]string, result *FixResult) {
 	rewrites, counts := effectRewriteProject(g.ctx, program)
+	rewriteEffectSet(g, fs, program, texts, result, rewrites, counts)
+}
+
+func rewriteDoPrograms(g *fixGate, fs vfs.FS, program *compiler.Program, texts map[tspath.RootedFilePath]string, result *FixResult) {
+	rewrites := map[tspath.RootedFilePath][]sourceEdit{}
+	counts := map[tspath.RootedFilePath]int{}
+	for _, file := range fixableFiles(program) {
+		program.GetSemanticDiagnostics(g.ctx, file)
+		c, done := program.GetTypeCheckerForFile(g.ctx, file)
+		edits, count := doProgramEdits(c, file)
+		done()
+		if len(edits) != 0 {
+			rewrites[file.FileName()] = mergeInsertions(edits)
+			counts[file.FileName()] = count
+		}
+	}
+	rewriteEffectSet(g, fs, program, texts, result, rewrites, counts)
+}
+
+func rewriteEffectSet(g *fixGate, fs vfs.FS, program *compiler.Program, texts map[tspath.RootedFilePath]string, result *FixResult, rewrites map[tspath.RootedFilePath][]sourceEdit, counts map[tspath.RootedFilePath]int) {
 	if len(rewrites) == 0 {
 		return
 	}

@@ -1,0 +1,34 @@
+// expect-result: [["a1","b1","a2"],-3,"x",[0,1]]
+// A do expression's break, continue and return mean what they mean around
+// it, as TC39 specifies (VIP-2): they reach the enclosing loop or function.
+import "vibelang/platform/node"
+
+function firstNegative(xs: number[]) {
+  for (const x of xs) {
+    const doubled = do { if (x < 0) { return x } x * 2 }
+    if (doubled > 100) break
+  }
+  return 0
+}
+
+function labeled() {
+  const v = do { found: { if (true) { break found } "never" } "x" }
+  return v
+}
+
+export effect function main() {
+  const seen: string[] = []
+  outer: for (let i = 0; i < 3; i++) {
+    const a = do { if (i === 0) { continue } "a" + i }
+    seen.push(a)
+    const b = do { if (i === 2) { break outer } "b" + i }
+    seen.push(b)
+  }
+  const kept: number[] = []
+  for (let i = 0; i < 4; i++) {
+    const inner = do { const n = do { if (i > 1) { break } i }; n }
+    kept.push(inner)
+  }
+  try Console.log("done")
+  return [seen, firstNegative([1, 2, -3, 4]), labeled(), kept]
+}

@@ -9,6 +9,11 @@ type SourceFileParseOptions struct {
 	FileName                       tspath.RootedFilePath
 	PathKey                        tspath.PathKey
 	ExternalModuleIndicatorOptions ExternalModuleIndicatorOptions
+	// VibeLangDoAsFunction keeps each do expression of a .vibe file as the
+	// function the parser first writes for it, (() => { … })(), rather than
+	// lowering it to the statements around it. The TS7 mapper, which prints
+	// the tree in source order, reads do expressions so.
+	VibeLangDoAsFunction bool
 }
 
 type ExternalModuleIndicatorOptions struct {

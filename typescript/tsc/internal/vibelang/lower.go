@@ -183,6 +183,11 @@ func (tx *lowering) visitNode(node *ast.Node) *ast.Node {
 		return tx.visitGuardedChain(node, link) // a ?. before a yield (chains_lower.go)
 	}
 	switch {
+	case doBindingMethod(node) != nil:
+		bound := tx.generated(tx.runtimeCall("$bindMethod", tx.visit(doBindingMethod(node)), tx.visit(node.Arguments()[0])))
+		tx.EmitContext().SetOriginal(bound, node)
+		bound.Loc = node.Loc
+		return bound
 	case tx.plan.fieldlessErrorConstructors[node]:
 		f := tx.Factory()
 		super := f.NewExpressionStatement(f.NewCallExpression(f.NewKeywordExpression(ast.KindSuperKeyword), nil, nil, f.NewNodeList(nil), ast.NodeFlagsNone))

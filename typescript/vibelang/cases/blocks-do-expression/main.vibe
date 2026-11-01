@@ -48,13 +48,13 @@ function plain() {
   return do { const a = 3; a + 4 }
 }
 
-// Where a parameter expects a program, a do expression is passed, not run.
+// Only an effect block builds a program; do always runs where it stands.
 effect function raced() {
-  return try race(do { try sleep("1 millis"); "fast" }, slow())
+  return try race(effect { try sleep("1 millis"); return "fast" }, slow())
 }
 
 effect function exited() {
-  return (try Effect.exit(do { try getName() }))._tag
+  return (try Effect.exit(effect { return try getName() }))._tag
 }
 
 export effect function main() {

@@ -177,6 +177,10 @@ func provenExhaustive(c *checker.Checker, call *ast.Node) bool {
 // type, not never, though no case is left.
 func afterIrrefutableArm(call *ast.Node) bool {
 	statement := call.Parent
+	// Immediate do completion wraps the call in an assignment before checking.
+	for statement != nil && !ast.IsStatement(statement) {
+		statement = statement.Parent
+	}
 	if statement == nil || statement.Parent == nil || !ast.IsBlock(statement.Parent) {
 		return false
 	}

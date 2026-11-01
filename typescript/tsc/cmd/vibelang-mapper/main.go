@@ -62,7 +62,7 @@ func printProjection(path string) int {
 		fmt.Printf("// [%d, %d) <- [%d, %d)\n", s.VirtualStart, s.VirtualEnd, s.OriginalStart, s.OriginalEnd)
 	}
 	for _, d := range projection.Diagnostics {
-		fmt.Printf("// %s%d at [%d, %d): %s\n", vibelangmapper.DiagnosticSource, d.Code, d.Start, d.Start+d.Length, d.Message)
+		fmt.Printf("// %s%04d at [%d, %d): %s\n", vibelangmapper.DiagnosticSource, d.Code, d.Start, d.Start+d.Length, d.Message)
 	}
 	return 0
 }
@@ -87,7 +87,7 @@ func emit(path string, out string) int {
 	js, sourceMap, diagnostics := vibelangmapper.Emit(string(text), vibelangmapper.FileContextOf(filepath.ToSlash(absolute)))
 	for _, d := range diagnostics {
 		line, column := lineAndColumn(string(text), d.Start)
-		fmt.Fprintf(os.Stderr, "%s(%d,%d): error %s%d: %s\n", path, line, column, vibelangmapper.DiagnosticSource, d.Code, d.Message)
+		fmt.Fprintf(os.Stderr, "%s(%d,%d): error %s%04d: %s\n", path, line, column, vibelangmapper.DiagnosticSource, d.Code, d.Message)
 	}
 	status := 0
 	if len(diagnostics) > 0 {

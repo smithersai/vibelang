@@ -1,0 +1,2 @@
+// expect: TS1009
+export function invalid(): number { const first = 1, second = do { first + 1 },; return second }

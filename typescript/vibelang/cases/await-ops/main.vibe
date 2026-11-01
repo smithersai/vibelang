@@ -77,11 +77,11 @@ effect function raceFailure() {
 
 effect function raceBlocks() {
   return (try.race [
-    effect { return try do {
+    effect { return do {
       try sleep("1 second")
       "timeout"
     } },
-    effect { return try do {
+    effect { return do {
       const user = try getUser("4");
       `got ${user}`
     } }
@@ -104,14 +104,15 @@ effect function tie() {
   return (try.race [effect { return try Effect.succeed("a") }, effect { return try Effect.succeed("b") }])
 }
 
-// A do expression gives an element statements; it is passed by name.
+// An effect block gives an element statements; the do inside it runs when
+// the operation runs the element (VIP-2).
 effect function raceDo() {
   return (try.race [
-    effect { return try do {
+    effect { return do {
       try sleep("1 second")
       "timeout"
     } },
-    effect { return try do {
+    effect { return do {
       const user = try getUser("5")
       "got " + user
     } }

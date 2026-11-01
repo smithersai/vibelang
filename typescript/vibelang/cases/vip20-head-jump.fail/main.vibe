@@ -1,5 +1,6 @@
-// expect: EK1019 EK2003 EK1019 EK2003
+// expect: EK2003 EK2003 EK2002
 import { Stream } from "effect"
 const rows: { n?: number }[] = [{}]
 export effect function breaks() { outer: for (const m of [1]) { for try (const { n = do { if (m) break outer; 7 } } of Stream.fromIterable(rows)) { } } }
 export effect function continues() { outer: for (const m of [1]) { for try (const { n = do { if (m) continue outer; 7 } } of Stream.fromIterable(rows)) { } } }
+export effect function returns() { for try (const { n = do { return 7 } } of Stream.fromIterable(rows)) { } }

@@ -90,6 +90,18 @@ var (
 	EK1023 = message(1023, errorCategory, "pipe now passes its first argument as the value it is, but through VibeLang 0.0.10 this pipe passed it as a program.")
 	// EK1202: a line break beside a provider-list separator (VIP-12, detail 237).
 	EK1202 = message(1202, errorCategory, parser.VibeLangProvideCommaMessage)
+	// VIP-2's block diagnostics and TC39's do expression (VIP-2), reported by the parser,
+	// which writes these texts (parser/vibelang_do.go).
+	// EK0201: the block ends in a declaration, a loop or an if without else. {0} names it, {1} the fix.
+	EK0201 = message(201, errorCategory, parser.DoEndsMessage)
+	// EK0202: a jump leaves an effect block's callable boundary (detail 247).
+	EK0202 = message(202, errorCategory, "{0} cannot leave an effect block: the block builds its own Effect, which runs later, so a loop or switch outside it is not in reach. Move the loop into the block, or return a value from the block and jump outside it.")
+	// EK0205: a jump leaves a do expression in a loop head or targets that loop.
+	EK0205 = message(205, errorCategory, parser.DoLoopHeadMessage)
+	// EK0203: var in a do expression in a parameter list.
+	EK0203 = message(203, errorCategory, parser.DoParameterVarMessage)
+	// EK0204: return, var, a jump, await or yield would leave a do expression VibeLang still compiles to a function. {0} is the keyword, {1} the form.
+	EK0204 = message(204, errorCategory, parser.DoBoundaryMessage)
 	// EK9201: an expected failure escapes the written contract. {0} is the failure, {1} the function, {2} what the contract allows.
 	EK9201 = message(9201, errorCategory, "{0} can escape {1}, but {2}.")
 	// EK9202: a requirement escapes the written contract. {0} is the function, {1} the requirement, {2} the contract's R.
@@ -201,6 +213,7 @@ func init() {
 		EK0108,
 		EK1202,
 		EK1001, EK1002, EK1003, EK1005, EK1006, EK1007, EK1008, EK1010, EK1011, EK1012, EK1023,
+		EK0201, EK0202, EK0203, EK0204, EK0205,
 		EK9201, EK9202, EK9203, EK9204, EK2005, EK2006, EK9205, EK9206, EK9207, EK2104, EK2105, EK2106, EK2107, EK2108, EK2109, EK2112, EK2113, EK2115, EK2116, EK2117, EK2118,
 		EK3001, EK3002, EK3003, EK3004, EK3005, EK9208, EK3101, EK3201, EK3202, EK3203, EK3204, EK3205, EK3206, EK3207,
 		EK4201, EK4202, EK4301, EK4401, EK4402, EK4403, EK4405, EK4406, EK4407, EK4408, EK4409, EK4501,

@@ -1,0 +1,33 @@
+// expect-result: [7,9,7,9,11,13,3]
+// foldkit-44: Kanban update uses a concise arrow whose match arms return early.
+export const concise = (n: number): number => match (n) {
+  when 1: do { return 7 };
+  default: 9;
+}
+export function block(n: number): number {
+  const x = match (n) { when 1: do { return 7 }; default: 9; }
+  return x
+}
+export function nested(): number {
+  const x = match (1) { when 1: do { match (2) { when 2: do { return 11 }; default: 12; } }; default: 9; }
+  return x
+}
+export function argument(): number {
+  const id = (x: number): number => x
+  return id(match (1) { when 1: do { return 13 }; default: 9; })
+}
+export function jumps(): number {
+  let sum = 0
+  outer: for (const n of [1, 2, 3, 4]) {
+    const x = match (n) {
+      when 1: do { continue outer };
+      when 3: do { break outer };
+      default: n;
+    }
+    sum += x
+  }
+  return sum + 1
+}
+export effect function main() {
+  return [concise(1), concise(2), block(1), block(2), nested(), argument(), jumps()]
+}

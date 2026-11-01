@@ -1,0 +1,3 @@
+go test fuzz v1
+string("bind-only-fallback")
+byte(0)

@@ -29,6 +29,7 @@ func TestVIP18LegacyRewriteDraft(t *testing.T) {
 		{"shadowed all", "function all(...args: any[]) { return 0 } function f() { return await.all { a: Effect.succeed(1) } }", "import { all as $tryAllEffects } from \"effect/Effect\""},
 		{"shadowed globals", "function f() { const Object = 0; const Array = 0; return await.all { a: Effect.succeed(1) } }", "$tryGlobals.Object.fromEntries("},
 		{"directives", "// @ts-nocheck\n\"use client\";\nfunction f() { return await.allSettled [Effect.succeed(1)] }", "// @ts-nocheck\n\"use client\";\nimport { all as $tryAllEffects }"},
+		{"do element runs in its block", "export effect function main() { return await.race [do { try sleep(\"1 millis\"); \"late\" }] }", "(try.race [effect { return do { try sleep(\"1 millis\"); \"late\" } }])"},
 		{"catch left", "function f() { return await.all [Effect.fail(\"bad\") catch 2] }", "effect { return Effect.fail(\"bad\") catch 2 }"},
 	} {
 		t.Run(test.name, func(t *testing.T) {

@@ -29,7 +29,7 @@ func TestLegacySitesObserveCheckedDecisions(t *testing.T) {
 		{LegacyByNameArgument, `function work(): number!! { sleep(1); return 1 }; export function use() { return retry(work(), Schedule.recurs(1)) }`, "work()"},
 		{LegacyByNameElement, `function work(): number!! { sleep(1); return 1 }; export function use() { return all([work()]) }`, "work()"},
 		{LegacyByNameField, `declare function accept(x: { value: number!! }): number; export function use() { return accept({ value: (sleep(1), 1) }) }`, "sleep(1), 1"},
-		{LegacyByNameDo, `export function use() { return retry(do { sleep(1); 1 }, Schedule.recurs(1)) }`, "do { sleep(1); 1 }"},
+		{LegacyByNameDo, `declare const o: { accept(x: number!!): number } | undefined; export function use() { return o?.accept(do { sleep(1); 1 }) }`, "do { sleep(1); 1 }"},
 		{LegacyByNameTopic, `function work(): number!! { sleep(1); return 1 }; export function use() { return work() |> retry(%, Schedule.recurs(1)) }`, "%"},
 		{LegacyHeldConst, `function work(): number!! { return 1 }; export const held: number!! = work()`, "work()"},
 		{LegacyHeldField, `function work(): number!! { return 1 }; export const held: { value: number!! } = { value: work() }`, "work()"},

@@ -100,22 +100,24 @@ type Parser struct {
 	setParentFromContext ast.Visitor
 	reparsedClones       []*ast.Node
 
-	vibelangMutableMember    bool                     // the type member being parsed was written with mutable (vibelang.go)
-	vibelangImplicitReadonly bool                     // inside a data, schema or error body, whose type members are readonly unless written mutable (vibelang.go)
-	vibelangAbstractMembers  bool                     // bodiless class members become abstract: a service or control body (vibelang.go)
-	vibelangFieldBody        bool                     // the class body is an error, service, or control body, whose fields a comma cannot separate (vibelang_errors.go)
-	vibelangFieldComma       bool                     // a comma follows the field just parsed in such a body (vibelang_errors.go)
-	vibelangSelects          int                      // select statements parsed so far, which number their labels (vibelang_fibers.go)
-	vibelangNoBlockParams    bool                     // a { after an expression is not a block param here: heritage clauses and provide's providers (vibelang_blocks.go)
-	vibelangMatchTemps       int                      // names written for match and is, numbered per file (vibelang_match.go)
-	vibelangTemps            []*ast.Node              // the identifiers of those names, which freshenVibeLangTemps renames when the file spells them (vibelang_match.go)
-	vibelangMatches          map[*ast.Node]*matchInfo // match expressions as written, by their call or statement (vibelang_match.go)
-	vibelangIsBindings       map[*ast.Node]*isInfo    // is expressions whose patterns bind names, by their markers (vibelang_match.go)
-	vibelangIsHolders        map[*ast.Node]*ast.Node  // the parenthesized expression written around each such marker, which hoistVibeLangIs fills (vibelang_match.go)
-	vibelangHoists           map[*ast.Node]bool       // the let statements hoistVibeLangIs put on reparseList, which an unbraced statement body keeps as its own home (vibelang_match.go)
-	vibelangSyntax           *[]VibeSyntax            // the forms recorded for ParseVibeLangSyntax, or nil (vibelang_syntax.go)
-	vibelangFiberContext     bool                     // fork/join reservation inherited by source grammar
-	vibelangTypeScript       bool                     // reading a module declaration's body, which is TypeScript (vibelang_modules.go)
+	vibelangMutableMember    bool                        // the type member being parsed was written with mutable (vibelang.go)
+	vibelangImplicitReadonly bool                        // inside a data, schema or error body, whose type members are readonly unless written mutable (vibelang.go)
+	vibelangAbstractMembers  bool                        // bodiless class members become abstract: a service or control body (vibelang.go)
+	vibelangFieldBody        bool                        // the class body is an error, service, or control body, whose fields a comma cannot separate (vibelang_errors.go)
+	vibelangFieldComma       bool                        // a comma follows the field just parsed in such a body (vibelang_errors.go)
+	vibelangSelects          int                         // select statements parsed so far, which number their labels (vibelang_fibers.go)
+	vibelangNoBlockParams    bool                        // a { after an expression is not a block param here: heritage clauses and provide's providers (vibelang_blocks.go)
+	vibelangMatchTemps       int                         // names written for match and is, numbered per file (vibelang_match.go)
+	vibelangTemps            []*ast.Node                 // the identifiers of those names, which freshenVibeLangTemps renames when the file spells them (vibelang_match.go)
+	vibelangMatches          map[*ast.Node]*matchInfo    // match expressions as written, by their call or statement (vibelang_match.go)
+	vibelangIsBindings       map[*ast.Node]*isInfo       // is expressions whose patterns bind names, by their markers (vibelang_match.go)
+	vibelangIsHolders        map[*ast.Node]*ast.Node     // the parenthesized expression written around each such marker, which hoistVibeLangIs fills (vibelang_match.go)
+	vibelangHoists           map[*ast.Node]bool          // the let statements hoistVibeLangIs put on reparseList, which an unbraced statement body keeps as its own home (vibelang_match.go)
+	vibelangSyntax           *[]VibeSyntax               // the forms recorded for ParseVibeLangSyntax, or nil (vibelang_syntax.go)
+	vibelangFiberContext     bool                        // fork/join reservation inherited by source grammar
+	vibelangTypeScript       bool                        // reading a module declaration's body, which is TypeScript (vibelang_modules.go)
+	vibelangDos              map[*ast.Node]*doExpression // do expressions as written, by their call (vibelang_do.go)
+	vibelangDoOrder          []*doExpression             // the same, in source order
 }
 
 func newParser() *Parser {
@@ -487,7 +489,8 @@ func (p *Parser) parseSourceFileWorker() *ast.SourceFile {
 		result.SetJSDiagnostics(attachFileToDiagnostics(p.jsDiagnostics, result))
 	}
 	if p.isVibeLangFile() {
-		p.freshenVibeLangTemps(result)  // the names written for match and is (vibelang_match.go)
+		p.parseVibeLangDos(result)      // do expressions, lowered to statements (vibelang_do.go)
+		p.freshenVibeLangTemps(result)  // the names written for match, is and do (vibelang_match.go)
 		p.attachVibeLangModules(result) // module declarations' bodies (vibelang_modules.go)
 	}
 	return result
@@ -5889,8 +5892,11 @@ func (p *Parser) parsePrimaryExpression() *ast.Expression {
 	if p.isStartOfVibeLangMatch() {
 		return p.parseVibeLangMatch() // match (subject) { when ...: ...; } (vibelang_match.go)
 	}
+	if p.isStartOfVibeLangEffectBlock() {
+		return p.parseVibeLangEffectBlock()
+	}
 	if p.isStartOfVibeLangEffectExpression() {
-		return p.parseVibeLangEffectExpression() // effect function () { … }, effect { … } (vibelang_effect.go)
+		return p.parseVibeLangEffectExpression() // effect function () { … } (vibelang_effect.go)
 	}
 	switch p.token {
 	case ast.KindNoSubstitutionTemplateLiteral:

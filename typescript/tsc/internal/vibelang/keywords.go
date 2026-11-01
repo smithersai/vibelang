@@ -570,7 +570,7 @@ func startsForkOperand(expression *ast.Node) bool {
 // doBlockText writes body, an arrow's block, as a do expression whose value
 // is what the arrow returned: its last statement, return e, becomes e. It
 // returns why when no do expression means the same: another return, a var
-// declaration (EK1019), or a block that does not end in return.
+// declaration (EK0204), or a block that does not end in return.
 func doBlockText(file *ast.SourceFile, body *ast.Node) (string, string) {
 	statements := body.AsBlock().Statements.Nodes
 	if len(statements) == 0 {
@@ -590,7 +590,7 @@ func doBlockText(file *ast.SourceFile, body *ast.Node) (string, string) {
 			why = "This block returns before its end, which a do { … } element cannot; write the element yourself."
 			return true
 		case node.Kind == ast.KindVariableDeclarationList && node.Flags&(ast.NodeFlagsLet|ast.NodeFlagsConst|ast.NodeFlagsUsing) == 0:
-			why = "A var declaration cannot stand in a do { … } element (EK1019); declare it with let or const."
+			why = "A var declaration cannot stand in a do { … } element (EK0204); declare it with let or const."
 			return true
 		}
 		return node.ForEachChild(visit)

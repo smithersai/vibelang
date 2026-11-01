@@ -26,7 +26,6 @@ var legacyDeclared = map[int32]string{
 	1013: "lane del-rest",                                                                                                                    // fieldcommas.go
 	1015: "lane del-rest",                                                                                                                    // syntax.go
 	1017: "lane del-rest",                                                                                                                    // syntax.go
-	1019: "lane del-rest",                                                                                                                    // do_blocks.go
 	1020: "lane del-rest",                                                                                                                    // constructors.go
 	1023: "lane del-rest",                                                                                                                    // diagnostics.go
 	2006: "lane del-2",                                                                                                                       // diagnostics.go

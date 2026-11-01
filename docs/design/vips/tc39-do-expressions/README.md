@@ -16,6 +16,12 @@ VIP-2 makes VibeLang's `do { … }` exactly the TC39 do-expressions proposal, pi
 | [`explainer.md`](explainer.md) | `README.md`, the explainer |
 | [`spec.emu`](spec.emu) | `spec.emu`, the draft specification text |
 
+## What VibeLang takes from it
+
+- The block runs where the do expression stands. `return`, `break`, `continue`, `var`, `await` and `yield` inside it mean what they mean around it, and so does `try` in effect code.
+- The value is the block's completion value, `undefined` for an empty block.
+- The early errors: the block cannot end in a declaration, a loop or an `if` without `else` (`EndsInIterationOrBareIfOrDeclaration`, `EK0201`); an unlabeled `break` or `continue` cannot leave a do expression in a loop's head, nor can a jump target that loop (`EK0205`); a do expression in a parameter list cannot declare `var` (`EK0203`). A statement cannot start with `do {`, which is the `do`-`while` statement.
+
 VibeLang retains the proposal's completion behavior, with the reconciliations below. A `do` gives an expression completions no other expression has: `return`, `break` and `continue`. ECMA-262 says "abrupt" in steps written when an expression could only throw, and the proposal never reconciled them. VibeLang keeps the jump a jump. The draft text stays as vendored.
 
 | Step | ECMA-262 | VibeLang |
@@ -30,3 +36,7 @@ VibeLang retains the proposal's completion behavior, with the reconciliations be
 For `EndsInIterationOrBareIfOrDeclaration`, `CaseBlock : { }` returns `false` for either value of `isLast` and any `labelSet`, including when the switch is nonfinal. Every `ForTry` and `ForConcurrent` production, with or without a concurrency limit, uses the native iteration rule: `isLast` equal to `true` gives `true`; otherwise a body passing `IsBreak` with that label set gives `true`; otherwise apply the predicate to the body with the same `labelSet` and `isLast`. The loop statement itself has `IsEmpty` and `IsBreak` equal to `false`. Thus nonfinal loop bodies are still visited, and a final added loop is rejected like a final native loop. Ordinary switch completion and loop jump restrictions stay unchanged.
 
 The upstream `spec.emu` stays unchanged. These are the missing empty case-block base case and the native iteration classification for the added loops, not a blanket fallback for unrecognized syntax. [Appendix A](../../src/900-appendices.md#notes-on-the-productions) records the effective rules; [Running Effects](../../src/002-running.md#do-expressions) gives checked examples.
+
+## Where VibeLang falls short of it
+
+The compiler lowers a do expression to the statements around it. Where no statement surrounds it, as in a parameter default, a declaration in a for-loop initializer, a class member, a `case` test, an optional chain, or a VibeLang form the compiler still writes as a function (`catch` and `throw` expressions, `fork`), it keeps a function. There a `return`, `var`, a jump out, `await` or `yield` inside the block is `EK0204`, rather than meaning what the snapshot says. In particular the snapshot lets `function f(x = do { return null }) {}` return from `f`; VibeLang rejects it.

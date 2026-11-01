@@ -6,6 +6,7 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
 // retiredAwaitOperationRewrite preserves the old operation's evaluation
@@ -237,8 +238,35 @@ func retiredAwaitRunningCall(a *analyzer, node, element *ast.Node) bool {
 	if ast.IsCallExpression(node) && node.Expression().Flags&ast.NodeFlagsReparsed != 0 {
 		return false
 	}
+	if isDoExpressionCall(node) {
+		// A do element was a program (D322). In the effect block the
+		// rewrite writes around it, its block runs when the operation runs
+		// the element, as before, and gives its value (VIP-2): try would run
+		// that value instead.
+		return false
+	}
 	owner := a.byNameOf(node)
 	return owner == nil || owner == element
+}
+
+// isDoExpressionCall reports whether node is the call the parser writes for a
+// do expression it keeps as its function, (() => { … })(), whose source is
+// do { … }.
+func isDoExpressionCall(node *ast.Node) bool {
+	if !ast.IsCallExpression(node) || !ast.IsArrowFunction(ast.SkipParentheses(node.Expression())) {
+		return false
+	}
+	file := ast.GetSourceFileOfNode(node)
+	if file == nil {
+		return false
+	}
+	text := file.Text()
+	start := scanner.SkipTrivia(text, node.Pos())
+	if start+2 > len(text) || text[start:start+2] != "do" {
+		return false
+	}
+	open := scanner.SkipTrivia(text, start+2)
+	return open < len(text) && text[open] == '{'
 }
 
 func retiredAwaitExpression(c *checker.Checker, file *ast.SourceFile, node, element *ast.Node) string {

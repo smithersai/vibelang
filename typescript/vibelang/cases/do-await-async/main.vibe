@@ -1,0 +1,5 @@
+// expect-result: 3
+// await inside a do expression belongs to the enclosing async function, as
+// TC39 specifies (VIP-2); it waited for nothing when do was a function.
+async function f() { return do { await Promise.resolve(3) } }
+export effect function main() { return try Effect.promise(f) }

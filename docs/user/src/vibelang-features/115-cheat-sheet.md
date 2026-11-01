@@ -721,7 +721,9 @@ effect function label(id: string) {
 // Output: short
 ```
 
-A `do` expression uses `const` or `let`, never `var` (`EK1019`; quick fix: `let`). Its `return`, `break` and `continue` act on the enclosing function or loop, as TC39 specifies. Its block must end in a statement with a value: ending it in a declaration, a loop or an `if` without an `else` is `EK0201`. A `break` or `continue` that would leave an `effect { }` block is `EK0202`.
+A `do` expression is TC39's: `return`, `break`, `continue` and `var` inside it mean what they mean around it. Its block cannot end with a declaration, a loop or an `if` without `else` (`EK0201`); a jump cannot leave a `do` expression in a loop's head (`EK0205`), nor a `var` stand in one in a parameter list (`EK0203`); and where VibeLang still writes a function around it, such as a parameter default, none of them can leave it (`EK0204`).
+
+A `break` or `continue` whose target is outside an `effect { }` block is `EK0202`; the block runs as its own Effect.
 
 **Effect blocks as arguments**. Pass `effect { ... }` as an ordinary argument. A test API takes a callback that returns the Effect, such as `it.live("name", () => effect { ... })`.
 

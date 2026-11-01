@@ -64,7 +64,9 @@ func statementIdentity(n *ast.Node) string {
 // weaker stated guarantee is checked: existing mappings name original .vibe
 // statement positions; no one-to-one lowering correspondence is invented.
 func (oc *OutputChecker) checkStatementMappings(name, generated, source string, sourceIndex int, m SourceMap) {
-	original, forms := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/source/main.vibe", PathKey: "/source/main.vibe"}, source)
+	// Read source forms before native do statement lifting. The oracle must
+	// recognize a do value even when a backend emits it as a return.
+	original, forms := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/source/main.vibe", PathKey: "/source/main.vibe", VibeLangDoAsFunction: true}, source)
 	emitted := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: tspath.RootedFilePath("/emitted/" + name), PathKey: tspath.PathKey("/emitted/" + name)}, generated, core.ScriptKindJS)
 	var spans []statementSpan
 	byKey := map[string][]statementSpan{}

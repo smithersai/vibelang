@@ -164,13 +164,54 @@ func signatureDeclaration(c *checker.Checker, node *ast.Node) *ast.Node {
 	if signature == nil {
 		return nil
 	}
+	if ast.IsCallExpression(node) {
+		// bind drops a this parameter from the method's type, and with it
+		// the method's declaration: ask the method itself.
+		if method := doBoundMethod(c, node.Expression()); method != nil {
+			if signatures := c.GetSignaturesOfType(c.GetTypeAtLocation(method), checker.SignatureKindCall); len(signatures) == 1 {
+				return signatures[0].Declaration()
+			}
+		}
+	}
 	return signature.Declaration()
+}
+
+// doBoundMethod returns o.m for f, the callee the do lowering writes for a
+// method call with a do argument, const f = o.m.bind(o); f(…)
+// (parser/vibelang_do.go), or nil for any other callee.
+func doBoundMethod(c *checker.Checker, callee *ast.Node) *ast.Node {
+	callee = ast.SkipParentheses(callee)
+	if !ast.IsIdentifier(callee) || callee.Flags&ast.NodeFlagsReparsed == 0 {
+		return nil
+	}
+	symbol := c.GetSymbolAtLocation(callee)
+	if symbol == nil || symbol.ValueDeclaration() == nil || !ast.IsVariableDeclaration(symbol.ValueDeclaration()) {
+		return nil
+	}
+	return doBindingMethod(symbol.ValueDeclaration().Initializer())
+}
+
+// doBindingMethod identifies only the parser's virtual binding call. The
+// checker uses its bind signature for generics and explicit this parameters;
+// the emitter uses the runtime's captured invocation intrinsic.
+func doBindingMethod(bind *ast.Node) *ast.Node {
+	if bind == nil || !ast.IsCallExpression(bind) || len(bind.Arguments()) != 1 || !ast.IsPropertyAccessExpression(bind.Expression()) {
+		return nil
+	}
+	name := bind.Expression().Name()
+	if name.Flags&ast.NodeFlagsReparsed == 0 || name.Text() != "bind" {
+		return nil
+	}
+	return bind.Expression().Expression()
 }
 
 // calleeSymbol returns the symbol that the callee of call names, with
 // aliases resolved, or nil: f for f(x) and f`x`, and m for o.m(x).
 func calleeSymbol(c *checker.Checker, call *ast.Node) *ast.Symbol {
 	callee := ast.SkipParentheses(ast.GetInvokedExpression(call))
+	if method := doBoundMethod(c, callee); method != nil {
+		callee = ast.SkipParentheses(method)
+	}
 	var name *ast.Node
 	switch {
 	case ast.IsIdentifier(callee):

@@ -1,0 +1,16 @@
+// expect-result: [0,11,12,2,7]
+class Counter {
+  n = 0
+  build(offset: number) {
+    return effect { this.n++; try yieldNow(); return offset + this.n }
+  }
+}
+export effect function main() {
+  const counter = new Counter()
+  const p = counter.build(10)
+  const before = counter.n
+  const first = try p
+  const second = try p
+  const effect = (n: number) => n + 1
+  return [before, first, second, counter.n, effect(6)]
+}

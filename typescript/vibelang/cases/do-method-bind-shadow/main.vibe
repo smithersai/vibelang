@@ -1,0 +1,14 @@
+// expect-result: [7,["argument","call"]]
+// VIP-2: compiler invocation machinery performs no observable helper lookup.
+export effect function main() {
+  const events: string[] = []
+  const receiver = {
+    n: 3,
+    f(x: number): number { events.push("call"); return this.n + x }
+  }
+  Object.defineProperty(receiver.f, "bind", {
+    get(): (self: unknown) => (x: number) => number { events.push("wrong-bind"); return (_self: unknown): ((x: number) => number) => (_x: number): number => 99 }
+  })
+  const value = receiver.f(do { events.push("argument"); 4 })
+  return [value, events]
+}

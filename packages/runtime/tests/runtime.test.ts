@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
 import { Cause, Context, Deferred, Fiber, Stream } from "effect"
 import {
-  $bind, $catch, $caught, $control, $expected, $finally, $finallyFailure, $joinedFrame, $plainOf, $plainSync, $fork, $forOf, $normal, acquireRelease,
+  $bind, $bindMethod, $catch, $caught, $control, $expected, $finally, $finallyFailure, $joinedFrame, $plainOf, $plainSync, $fork, $forOf, $normal, acquireRelease,
   $produce, $program, $programs, $reference, $region, $service, $tailResume,
   $tailResumeWith, $trusted, $trustedPlain, $using, $yield, $yieldAll, abandon, Control,
   $direct, Effect, Exit, fork, handle, handoff, Layer, pipe, resume,
@@ -18,6 +18,28 @@ test("calls: programs are lazy and rerunnable; bind accepts data and Effects", a
   expect(await Effect.runPromise(Effect.all(record))).toEqual({ a: 2, b: "b" })
   expect(await Effect.runPromise($bind(program))).toBe(3)
   expect(await runMain(Effect.fail("expected"))).toEqual(Exit.fail("expected"))
+})
+
+
+test("calls: generated method references ignore helper properties and defer invocation", () => {
+  const events: string[] = []
+  const self = { n: 3 }
+  const method = function(this: typeof self, x: number) {
+    events.push("call")
+    return this.n + x
+  }
+  for (const key of ["bind", "call", "apply"]) {
+    Object.defineProperty(method, key, { get() { events.push("wrong-" + key); throw new Error(key) } })
+  }
+  const reference = $bindMethod(method, self)
+  expect(events).toEqual([])
+  const operand = () => { events.push("argument"); return 4 }
+  expect(reference(operand())).toBe(7)
+  expect(events).toEqual(["argument", "call"])
+  const missing = $bindMethod(undefined as any, self)
+  events.length = 0
+  expect(() => missing(operand())).toThrow(TypeError)
+  expect(events).toEqual(["argument"])
 })
 
 // A failure beside a defect passes as a defect, as Effect 4.1.0's typed

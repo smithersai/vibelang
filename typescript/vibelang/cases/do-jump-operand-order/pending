@@ -1,1 +1,0 @@
-migfix-foldkit a return out of a do expression reports TS1108 (VIP-2 amended; core-block stack c6e04d919278, landing as migfix-foldkit-do); the order rule is loop round 4 OPUS-5, decided detail 198

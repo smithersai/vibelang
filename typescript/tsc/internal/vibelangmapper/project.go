@@ -197,12 +197,12 @@ func Project(text string, ctx FileContext) Projection {
 // executable rendering (emit) renders the same plan. It is the one place the
 // walk is set up, so the two renderings never see different plans.
 func lower(text string, ctx FileContext) *projector {
-	file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: projectedFileName}, text, core.ScriptKindTS)
+	file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: projectedFileName, VibeLangDoAsFunction: true}, text, core.ScriptKindTS)
 	operandTries := tryOperandMarks(file, text)
 	keywords := vipKeywords(file, text)
 	if len(keywords) > 0 {
 		text = blank(text, keywords)
-		file = parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: projectedFileName}, text, core.ScriptKindTS)
+		file = parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: projectedFileName, VibeLangDoAsFunction: true}, text, core.ScriptKindTS)
 	}
 	restoreTryOperandMarks(file, text, operandTries)
 	p := &projector{

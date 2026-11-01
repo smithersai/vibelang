@@ -771,12 +771,15 @@ func TestEmitDoControlFlowCLI(t *testing.T) {
 		source string
 		code   string
 	}{
-		{"function f() { return do { return 1; 2 } }", "EK1108"},
-		{"function f() { while (true) { const x = do { break; 1 } } }", "EK1107"},
-		{"function f() { while (true) { const x = do { continue; 1 } } }", "EK1107"},
+		{"function f() { return do { return 1; 2 } }", "EK0204"},
+		{"function f() { while (true) { const x = do { break; 1 } } }", "EK0204"},
+		{"function f() { while (true) { const x = do { continue; 1 } } }", "EK0204"},
 	} {
 		source := filepath.Join(dir, "main.vibe")
 		assert.NilError(t, os.WriteFile(source, []byte(c.source), 0600))
+		printed, printErr := exec.Command(binary, "--print", source).CombinedOutput()
+		assert.NilError(t, printErr, "%s", printed)
+		assert.Assert(t, strings.Contains(string(printed), "// "+c.code+" at "), "%s", printed)
 		for _, file := range []bool{false, true} {
 			args := []string{"--emit", source}
 			if file {

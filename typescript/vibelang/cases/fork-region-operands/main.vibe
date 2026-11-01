@@ -15,7 +15,7 @@ export effect function main() {
   const all = (try.all [$tryJoinFiber(f), $tryJoinFiber(g)])
   const record = (try $tryMapResults($tryAllEffects({ f: $tryJoinFiber(f), g: $tryJoinFiber(g) }, { concurrency: "unbounded" }), ($tryResults) => $tryGlobals.Object.fromEntries(["f","g"].map(($tryKey) => [$tryKey, $tryResults[$tryKey as keyof typeof $tryResults]])) as unknown as typeof $tryResults))
   const settled = (try $tryAllEffects([$tryJoinFiber(f), $tryJoinFiber(g)], { concurrency: "unbounded", mode: "result" }))
-  const raced = (try.race [$tryJoinFiber(f), effect { return try do { try sleep("1 second"); 0 } }])
+  const raced = (try.race [$tryJoinFiber(f), effect { return do { try sleep("1 second"); 0 } }])
   const any = (try.any [$tryJoinFiber(f)])
   const waiter = fork (join f)
   const forked = join waiter

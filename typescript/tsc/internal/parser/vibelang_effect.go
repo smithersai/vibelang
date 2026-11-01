@@ -199,27 +199,38 @@ func (p *Parser) tryParseVibeLangBareEffectArrow(allowReturnTypeInArrowFunction 
 }
 
 // isStartOfVibeLangEffectExpression reports whether the current token, effect,
-// starts an effect function expression or an effect block: effect followed
-// on the same line by function or {.
+// starts an effect function expression: effect followed by function on
+// the same line. Blocks have their own entry point below.
 func (p *Parser) isStartOfVibeLangEffectExpression() bool {
 	return p.isVibeLangEffectWord() && p.lookAhead(func(p *Parser) bool {
 		p.nextToken()
-		return !p.hasPrecedingLineBreak() && (p.token == ast.KindFunctionKeyword || p.token == ast.KindOpenBraceToken)
+		return !p.hasPrecedingLineBreak() && p.token == ast.KindFunctionKeyword
 	})
 }
 
-// parseVibeLangEffectExpression parses effect function (…) { … } or
-// effect { … }. The block is the body of an arrow with no parameters whose
-// => stands on effect, as do's does on do (vibelangProgramArrow).
+// parseVibeLangEffectExpression parses effect function expressions (VIP-1).
 func (p *Parser) parseVibeLangEffectExpression() *ast.Node {
 	pos := p.nodePos()
 	word := p.tokenRange()
 	p.nextToken() // effect
-	if p.token == ast.KindFunctionKeyword {
-		fn := p.parseFunctionExpression(true /*effect*/)
-		fn.Loc = core.NewTextRange(pos, fn.End())
-		return p.markEffect(fn, word)
-	}
+	fn := p.parseFunctionExpression(true /*effect*/)
+	fn.Loc = core.NewTextRange(pos, fn.End())
+	return p.markEffect(fn, word)
+}
+
+// isStartOfVibeLangEffectBlock is separate from VIP-1's function entry point.
+func (p *Parser) isStartOfVibeLangEffectBlock() bool {
+	return p.isVibeLangEffectWord() && p.lookAhead(func(p *Parser) bool {
+		p.nextToken()
+		return !p.hasPrecedingLineBreak() && p.token == ast.KindOpenBraceToken
+	})
+}
+
+// parseVibeLangEffectBlock builds an Effect inheriting the lexical scope.
+func (p *Parser) parseVibeLangEffectBlock() *ast.Node {
+	pos := p.nodePos()
+	word := p.tokenRange()
+	p.nextToken() // effect
 	defer p.setVibeLangFiberContext(true)()
 	saveContextFlags := p.contextFlags
 	p.setContextFlags(ast.NodeFlagsAwaitContext|ast.NodeFlagsYieldContext, false)

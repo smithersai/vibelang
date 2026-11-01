@@ -1,0 +1,6 @@
+// expect: EK0502
+// try do { … } runs the do expression's value (VIP-2, VIP-5), so a do whose
+// value is not an Effect has nothing for try to run.
+export effect function main() {
+  return try do { const n = 1; n + 1 }
+}

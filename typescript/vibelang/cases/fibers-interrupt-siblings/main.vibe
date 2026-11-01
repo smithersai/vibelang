@@ -33,15 +33,15 @@ effect function all(log: string[]) {
   const releasedB = try Deferred.make<void>()
   try {
     (try.all [
-      effect { return try do {
+      effect { return do {
         try { try Deferred.succeed(startedA, undefined); try Effect.never() }
         finally { log.push("A waits"); try releasedB.await(); log.push("A done") }
       } },
-      effect { return try do {
+      effect { return do {
         try { try Deferred.succeed(startedB, undefined); try Effect.never() }
         finally { log.push("B done"); try Deferred.succeed(releasedB, undefined) }
       } },
-      effect { return try do {
+      effect { return do {
         try startedA.await()
         try startedB.await()
         throw new Bad()
@@ -53,11 +53,11 @@ effect function all(log: string[]) {
 effect function racePrograms(log: string[]) {
   const releasedB = try Deferred.make<void>()
   log.push((try.race [
-    effect { return try do {
+    effect { return do {
       try { try Effect.never() }
       finally { log.push("A waits"); try releasedB.await(); log.push("A done") }
     } },
-    effect { return try do {
+    effect { return do {
       try { try Effect.never() }
       finally { log.push("B done"); try Deferred.succeed(releasedB, undefined) }
     } },

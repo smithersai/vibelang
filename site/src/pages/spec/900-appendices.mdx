@@ -931,6 +931,11 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK0106` | an `effect` function whose written return type is not an Effect | 1 | [Functions](/spec/001-functions#static-rules) |
 | `EK0107` | `eval`, `Function`, `arguments`, `var` or `with` in a `.vibe` file; `globalThis` other than as the object of a statically named member; `.constructor` of a function; a `data:` or `blob:` import specifier; `var` in a pattern binding | 1, 4, 33 | [Functions](/spec/001-functions#direct-eval) |
 | `EK0108` | a recognized `effect` modifier on an `abstract` declaration, in an ambient `declare` context, or on an `interface` or type literal member | 1 | [Functions](/spec/001-functions#static-rules) |
+| `EK0201` | a `do` block whose last statement violates TC39's `EndsInIterationOrBareIfOrDeclaration` early error | 2 | [Running Effects](/spec/002-running#do-expressions) |
+| `EK0202` | a `break` or `continue` whose target is outside the block of an `effect { … }` expression | 2 | [Functions](/spec/001-functions) |
+| `EK0203` | `var` in a `do` expression in a parameter list | 2 | [Running Effects](/spec/002-running#do-expressions) |
+| `EK0204` | current compiler implementation limitation: an outward source completion cannot yet cross a generated function boundary in this position; this is not a TC39 early error | 2 | [Running Effects](/spec/002-running#do-expressions) |
+| `EK0205` | a `break` or `continue` in a loop head's `do` that leaves it unlabeled or targets that loop | 2 | [Running Effects](/spec/002-running#do-expressions) |
 | `EK0301` | `!` beside a union, an intersection, a conditional type, or a function or constructor type in a slot, without parentheses: `A \| B!E`, `() => A!E \| B`, `A!() => B` (write `A!(() => B)`) | 3 | [Functions](/spec/001-functions#the-aer-type-shorthand) |
 | `EK0302` | `A!!B!C`: write `(A!!B)!C` or `A!(B!C)` | 3 | [Appendix A](/spec/900-appendices#notes-on-the-productions) |
 | `EK0401` | a `throw` or a call that may throw in a plain function whose return type is effectful, or a parameter default that may throw in any effectful function, or a local implementation whose tracked throws exceed an exposed effectful overload's implicit `never` bound | 4 | [Failures](/spec/003-failures#effectful-callables) |

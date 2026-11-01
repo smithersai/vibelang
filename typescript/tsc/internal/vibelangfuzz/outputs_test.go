@@ -225,6 +225,11 @@ func TestOutputsDoValueMapping(t *testing.T) {
 	if g.Any() {
 		t.Fatalf("D187 do-value mapping rejected: %v", g.found)
 	}
+	wrong := &Gaps{}
+	(&OutputChecker{G: wrong}).checkStatementMappings("main.js", "return 1;\n", source, 0, SourceMap{Mappings: "AAGA"})
+	if !wrong.Any() {
+		t.Fatal("an unchanged return borrowed an unrelated function's mapping")
+	}
 }
 
 // This checks the end-position reader against an already-installed stock

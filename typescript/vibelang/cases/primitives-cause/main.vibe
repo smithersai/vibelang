@@ -14,9 +14,9 @@ effect function boom() {
 
 // Catch expected failures inside exit; defects remain in its Failure case.
 effect function typed() {
-  const outcome = try exit(do {
+  const outcome = try exit(effect { return do {
     try { try find("missing") } catch (e) { e._tag }
-  })
+  } })
   if (outcome._tag === "Success") return outcome.value
   return "cause"
 }
@@ -44,9 +44,9 @@ effect function onlyCause() {
 }
 
 effect function untyped() {
-  const outcome = try exit(do {
+  const outcome = try exit(effect { return do {
     try { try boom(); "no" } catch (e) { "Expected" }
-  })
+  } })
   if (outcome._tag === "Success") return outcome.value
   return "cause"
 }

@@ -69,6 +69,9 @@ func checkForTry(c *checker.Checker, file *ast.SourceFile) {
 					own := target != nil && target.Kind == ast.KindLabeledStatement && labeledLoop(target) == n
 					if target != nil && !contains(n, target) && !own {
 						report(c, x, EK2003)
+						// A retained do IIFE is an implementation boundary, not
+						// an additional source-function error (VIP-34).
+						coverCodes(c, x, 1107)
 					}
 				}
 				// The completion of a do expression is a synthesized return

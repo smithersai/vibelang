@@ -1,6 +1,10 @@
 package vipgen
 
-import "slices"
+import (
+	"fmt"
+	"slices"
+	"strings"
+)
 
 // VIP-2: `effect { … }` blocks. "`effect { … }` is an expression. It builds
 // an Effect from the block without running it, and each time the Effect
@@ -203,7 +207,7 @@ func init() {
 		Focus: func(g *Gen, s *Scope) []Stmt {
 			g.UseEffect()
 
-			return []Stmt{&catchEdge{vibe: "let o = { n: 1, f(x: number) { return this.n + x } }; Object.defineProperty(o.f, \"call\", { get() { ev(\"wrong-get-call\"); return (...xs: any[]) => 99 } }); Object.defineProperty(o.f, \"apply\", { get() { ev(\"wrong-get-apply\"); return (...xs: any[]) => 99 } }); const out = o.f(do { ev(\"argument\"); o = { n: 99, f(x: number) { return this.n + x } }; try Effect.succeed(2) }); return out", ref: "let o = { n: 1, f(x) { return this.n + x } }; Object.defineProperty(o.f, \"call\", { get() { ev(\"wrong-get-call\"); return (...xs) => 99 } }); Object.defineProperty(o.f, \"apply\", { get() { ev(\"wrong-get-apply\"); return (...xs) => 99 } }); const self = o, fn = self.f; ev(\"argument\"); o = { n: 99, f(x) { return this.n + x } }; const arg = yield* Effect.succeed(2); const out = Reflect.apply(fn, self, [arg]); return out"}}
+			return []Stmt{&catchEdge{vibe: "let o = { n: 1, f(x: number) { return this.n + x } }; Object.defineProperty(o.f, \"call\", { get() { ev(\"wrong-get-call\"); return (...xs: any[]) => 99 } }); Object.defineProperty(o.f, \"apply\", { get() { ev(\"wrong-get-apply\"); return (...xs: any[]) => 99 } }); Object.defineProperty(o.f, \"bind\", { get() { ev(\"wrong-get-bind\"); return (...xs: any[]): number => 99 } }); const out = o.f(do { ev(\"argument\"); o = { n: 99, f(x: number) { return this.n + x } }; try Effect.succeed(2) }); return out", ref: "let o = { n: 1, f(x) { return this.n + x } }; Object.defineProperty(o.f, \"call\", { get() { ev(\"wrong-get-call\"); return (...xs) => 99 } }); Object.defineProperty(o.f, \"apply\", { get() { ev(\"wrong-get-apply\"); return (...xs) => 99 } }); Object.defineProperty(o.f, \"bind\", { get() { ev(\"wrong-get-bind\"); return (...xs) => 99 } }); const self = o, fn = self.f; ev(\"argument\"); o = { n: 99, f(x) { return this.n + x } }; const arg = yield* Effect.succeed(2); const out = Reflect.apply(fn, self, [arg]); return out"}}
 		},
 	})
 }
@@ -232,6 +236,44 @@ func init() {
 			g.UseEffect()
 
 			return []Stmt{&catchEdge{vibe: "let value: number | null = 1; const box = { get x() { ev(\"get\"); return value }, set x(v: number | null) { ev(\"set\"); value = v } }; box.x ||= do { ev(\"skip-or\"); try Effect.succeed(9) }; box.x &&= do { ev(\"and\"); try Effect.succeed(7) }; box.x ??= do { ev(\"skip-nullish\"); try Effect.succeed(9) }; value = 0; box.x &&= do { ev(\"skip-and\"); try Effect.succeed(9) }; value = 0; box.x ||= do { ev(\"or\"); try Effect.succeed(6) }; value = null; box.x ??= do { ev(\"nullish\"); try Effect.succeed(8) }; return value", ref: "let value = 1; const box = { get x() { ev(\"get\"); return value }, set x(v) { ev(\"set\"); value = v } }; const old0 = box.x; if (!old0) { ev(\"skip-or\"); const next0 = yield* Effect.succeed(9); box.x = next0 }; const old1 = box.x; if (old1) { ev(\"and\"); const next1 = yield* Effect.succeed(7); box.x = next1 }; const old2 = box.x; if (old2 == null) { ev(\"skip-nullish\"); const next2 = yield* Effect.succeed(9); box.x = next2 }; value = 0; const old3 = box.x; if (old3) { ev(\"skip-and\"); const next3 = yield* Effect.succeed(9); box.x = next3 }; value = 0; const old4 = box.x; if (!old4) { ev(\"or\"); const next4 = yield* Effect.succeed(6); box.x = next4 }; value = null; const old5 = box.x; if (old5 == null) { ev(\"nullish\"); const next5 = yield* Effect.succeed(8); box.x = next5 }; return value"}}
+		},
+	})
+}
+
+// Foldkit's Kanban update returns from a do expression in a concise match
+// arrow. Mutate the number of enclosing do blocks and test all three outward
+// completions at each depth, against enclosing statements in Effect TypeScript.
+func init() {
+	Register(&Construct{
+		Key: "vip02.do-jump-depth", VIP: 2,
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip07.match-plain"},
+		Citations: []Citation{{
+			VIP: 2, Template: "yield* Effect.succeed(‹n›)",
+			Quote:   "A `do` or `match` inside a larger expression runs where JavaScript evaluates that expression, and how the compiler keeps that is its choice.",
+			Reading: "Outward return, break and continue keep their enclosing activation through nested do blocks and match arms; the reference uses the same enclosing statements without a callable wrapper.",
+		}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+			depth := g.Intn(6)
+			var marks []string
+			for i := 0; i <= depth; i++ {
+				marks = append(marks, fmt.Sprintf("ev(\"depth-%d\"); ", i))
+			}
+			prefix := strings.Join(marks, "")
+			wrap := func(body string) string {
+				for i := depth; i >= 0; i-- {
+					body = fmt.Sprintf("(do { ev(\"depth-%d\"); %s })", i, body)
+				}
+				return body
+			}
+			loop := wrap("if (before === 1) continue outer; if (before === 3) break outer; try Effect.succeed(before)")
+			returned := wrap("return sum + 5")
+			vibe := "let sum = 0; outer: for (const x of [1, 2, 3, 4]) { const before = x, v = " + loop + "; sum += v }; " +
+				"const foldkit = (n: number): number => match (n) { when 1: " + returned + "; default: 0; }; return foldkit(1)"
+			ref := "let sum = 0; outer: for (const x of [1, 2, 3, 4]) { const before = x; " + prefix +
+				"if (before === 1) continue outer; if (before === 3) break outer; const v = yield* Effect.succeed(before); sum += v }; " +
+				"const foldkit = (n) => { if (n === 1) { " + prefix + "return sum + 5 }; return 0 }; return foldkit(1)"
+			return []Stmt{&catchEdge{vibe: vibe, ref: ref}}
 		},
 	})
 }

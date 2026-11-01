@@ -146,6 +146,7 @@ JavaScript value. Decisions are in [`docs/design/history/DECISIONS.md`](../../do
 | `uninterruptible` | Run a program with interruption masked | — |
 | `yieldNow` | Yield to the scheduler | — |
 | `$bind` | Run an Effect result or lift an ordinary value during prototype call lowering | D24 |
+| `$bindMethod` | Internal compiler adapter: capture a method and receiver without reading its `bind`, `call` or `apply` properties; invoke after the arguments | VIP-2 |
 | `Bind` (type) | Keep `$bind`'s success, failure, and requirement types | D24 |
 | `$program` | Convert a zero-argument function to a lazy, rerunnable Effect | D7 |
 | `$programs` | Convert an iterable of zero-argument functions to an array of Effects, or a record of them to a record of Effects | D49 |

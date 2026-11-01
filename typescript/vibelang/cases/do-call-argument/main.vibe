@@ -1,0 +1,29 @@
+// expect-result: [7,3,13,24,["callee","arg","do","call"],"Success"]
+function identity(n: number) { return n }
+function early() {
+  identity(do { return 7; 0 })
+  return 99
+}
+function hoist() {
+  identity(do { var n = 3; n })
+  return n
+}
+class Base {
+  constructor(readonly base: number) {}
+  add(n: number): number { return this.base + n }
+}
+class Derived extends Base {
+  constructor() { super(do { 20 }) }
+  calculate(): number { return super.add(do { 4 }) }
+}
+export effect function main() {
+  const seen: string[] = []
+  const obj = {
+    base: 10,
+    get f() { seen.push("callee"); return function(this: { base: number }, a: number, b: number): number { seen.push("call"); return a + b + this.base } }
+  }
+  const value = obj.f((seen.push("arg"), 1), do { seen.push("do"); 2 })
+  const held = effect { return 5 }
+  const exit = try Effect.exit(do { held })
+  return [early(), hoist(), value, new Derived().calculate(), seen, exit._tag]
+}

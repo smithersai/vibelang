@@ -1,0 +1,17 @@
+// expect-result: [2,5,4]
+export function ordinary(): number {
+  const first = 1, second = do { first + 1 };
+  return second
+}
+export function guarded(): number {
+  let first = 4, second = do { if (first === 4) { return first + 1 }; 0 };
+  return second
+}
+export function loop(): number {
+  let n = 0
+  for (let first = 2, second = do { first + 1 }; n < 1; n++) {
+    n += second
+  }
+  return n
+}
+export effect function main() { return [ordinary(), guarded(), loop()] }

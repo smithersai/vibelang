@@ -447,6 +447,8 @@ An `effect { … }` statement builds an Effect and discards it, as a call statem
 
 No other syntax builds an Effect. A function literal never becomes an Effect because the parameter it's passed to expects one.
 
+**Jumps.** A `break` or `continue` inside an `effect { … }` block whose target lies outside the block is `EK0202` (decided detail 247): the block builds its own Effect, which runs later, so a loop or `switch` outside it is not in reach. A jump to a target inside the block, and a `return` from the block, remain allowed.
+
 ## `do` expressions
 
 `do { … }` is exactly TC39's do expression, pinned to a dated snapshot of the proposal, everywhere, with no exceptions. It runs now and gives its source block's normal completion value. Its type is the union of the values reaching normal completion under ECMAScript's `UpdateEmpty` flow, including consumed local jumps. Only a final empty normal completion becomes `undefined`; an empty completion that inherits an earlier value keeps that value. Paths leaving outward by `return`, `break`, `continue` or `throw` supply no normal result, and a do expression with no normal path has type `never`. Their outward returns and typed failures are still checked at the enclosing activation.
@@ -644,6 +646,8 @@ Each row runs the function with the iterable `xs` described; unless the row says
 | `j` | `return` returns `1` | `Die(TypeError)` with native IteratorClose's message |
 | `j` | `xs` is empty | `Success(9)`; `return` is not called |
 | `i` | `return` returns an object | `Failure("f")`; `return` is not called: the generator is abandoned |
+
+**Diagnostics.** A `do` block whose last statement violates TC39's `EndsInIterationOrBareIfOrDeclaration` early error, ending in a declaration, a loop or an `if` without an `else`, is `EK0201` (decided detail 247). `var` in a `do` expression in a parameter list is `EK0203`. A `break` or `continue` in a loop head's `do` that leaves it unlabeled or targets that loop is `EK0205`. `EK0204` names a current compiler limitation, not a TC39 early error: an outward completion (`return`, `var`, a jump, `await` or `yield`) that would leave a `do` the compiler still compiles to a function in that position.
 
 ## `fork` and `join`
 

@@ -66,7 +66,6 @@ FuzzVIPDifferential exit:called/vip05.async-forms-plain compiler VIP-1: a plain 
 FuzzVIPDifferential corpus:fz-func-vip05-async-forms-plain compiler VIP-1: minimized plain async-forms probe; lane vip-core2
 FuzzVIPDifferential feature:vip12.concurrent-own-label compiler VIP-12: a labeled `continue` naming the `for concurrent` itself reports TS1107 instead of ending the item, as chapter 2 requires; lane impl-hunt-run (queued 8d1bd3ad7a4c)
 FuzzVIPDifferential corpus:fz-func-vip12-concurrent-own-label compiler VIP-12: minimized own-label continue probe; lane impl-hunt-run
-FuzzVIPDifferential feature:vip20.rhs-return compiler VIP-20: a `return` inside a `do` in the `for try` operand is TS1108, because the `do` parser rejects every `return` (VIP-2's `do` return is not implemented); lane unassigned
 FuzzVIPDifferential feature:vip20.rhs-tdz compiler VIP-20: the operand's closure over the head name is TS7022, and the lowering evaluates the operand outside the head's uninitialized bindings (spec compiler-gap pending VIP-19, VIP-20); lane core-fortry
 FuzzVIPDifferential feature:vip22.concurrent-own-label compiler VIP-22: a labeled `continue` naming the `for concurrent` itself reports TS1107 instead of ending the item, as chapter 2 requires; lane impl-hunt-run (queued 8d1bd3ad7a4c)
 FuzzVIPDifferential corpus:fz-func-vip22-concurrent-own-label compiler VIP-22: minimized own-label continue probe; lane impl-hunt-run

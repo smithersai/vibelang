@@ -1,0 +1,21 @@
+// expect-result: [7,9,7,9,"early",4,7]
+// foldkit-44: Kanban's update returns early from inside a do expression. A
+// do expression introduces no function boundary (VIP-2), so its return
+// returns from the enclosing function: a concise arrow, a block arrow, a
+// function declaration and a call argument.
+export const concise = (n: number): number => do { if (n === 1) { return 7 } 9 }
+export const block = (n: number): number => {
+  const x = do { if (n === 1) { return 7 } 9 }
+  return x
+}
+export function declared(n: number): number | string {
+  const label = do { if (n === 3) { return "early" } n }
+  return label
+}
+const id = (value: number): number => value
+export function argument(n: number): number {
+  return id(do { if (n > 5) { return 7 } n })
+}
+export effect function main(): readonly [number, number, number, number, number | string, number | string, number]!never {
+  return [concise(1), concise(2), block(1), block(2), declared(3), declared(4), argument(6)] as const
+}

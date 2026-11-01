@@ -59,7 +59,7 @@ effect function operand() {
 
 effect function raced() {
   const fiber = fork slow()
-  return (try.race [$tryJoinFiber(fiber), effect { return try do { try sleep("1 second"); 0 } }])
+  return (try.race [$tryJoinFiber(fiber), effect { return do { try sleep("1 second"); 0 } }])
 }
 
 effect function loop() {
