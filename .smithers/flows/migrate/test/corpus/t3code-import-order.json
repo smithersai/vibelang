@@ -1,0 +1,8 @@
+{
+  "key": "declaration-gate:import-statement-order",
+  "repo": "t3code",
+  "file": "apps/server/src/mcp/toolkits/attachment/tools.d.ts",
+  "note": "drive-t3code-server 03:25Z: 10 MCP toolkit modules whose declarations differ only in import order",
+  "before": "import { OrchestratorMcpFailure } from \"@t3tools/contracts\";\nimport * as Crypto from \"@t3tools/shared/Crypto\";\nimport * as FileSystem from \"effect/FileSystem\";\nimport * as Schema from \"effect/Schema\";\nimport { Tool, Toolkit } from \"effect/ai\";\nexport declare const AttachmentTools: Toolkit.Toolkit<{\n    readonly read: Tool.Tool<\"read\", { readonly parameters: Schema.Struct<{ readonly id: Schema.String }>; readonly success: Schema.String; readonly failure: typeof OrchestratorMcpFailure }, FileSystem.FileSystem | Crypto.Crypto>;\n}>;\n",
+  "after": "import { Tool, Toolkit } from \"effect/ai\";\nimport { OrchestratorMcpFailure } from \"@t3tools/contracts\";\nimport * as Crypto from \"@t3tools/shared/Crypto\";\nimport * as FileSystem from \"effect/FileSystem\";\nimport * as Schema from \"effect/Schema\";\nexport declare const AttachmentTools: Toolkit.Toolkit<{\n    readonly read: Tool.Tool<\"read\", { readonly parameters: Schema.Struct<{ readonly id: Schema.String }>; readonly success: Schema.String; readonly failure: typeof OrchestratorMcpFailure }, FileSystem.FileSystem | Crypto.Crypto>;\n}>;\n"
+}

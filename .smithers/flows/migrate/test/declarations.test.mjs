@@ -140,7 +140,8 @@ test("canonical text sorts an import or export list, and keeps what the list hol
   assert.equal(a, b)
   assert.notEqual(canonicalize(ts, `import { a } from "m";\n`), canonicalize(ts, `import { a, b } from "m";\n`))
   assert.notEqual(canonicalize(ts, `import { a } from "m";\n`), canonicalize(ts, `import { type a } from "m";\n`))
-  assert.notEqual(canonicalize(ts, `import { a } from "m";\nimport { b } from "n";\n`), canonicalize(ts, `import { b } from "n";\nimport { a } from "m";\n`))
+  // The order of import statements is no change (t3code agent, 2026-11-01 03:40Z; t3code-import-order).
+  assert.equal(canonicalize(ts, `import { a } from "m";\nimport { b } from "n";\n`), canonicalize(ts, `import { b } from "n";\nimport { a } from "m";\n`))
 })
 
 test("compareDeclarations reports changed, added and removed files", () => {

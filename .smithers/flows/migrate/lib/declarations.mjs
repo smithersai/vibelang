@@ -89,6 +89,24 @@ export function privateUnusedTypes(ts, source) {
   return new Set([...candidates.keys()].filter((i) => !kept.has(i)))
 }
 
+/**
+ * printed, the printed statements, with the import declarations that bind
+ * names first, then the export declarations that re-export from a module,
+ * each sorted by module specifier, then text, and the rest after them in
+ * their order: where an import or a re-export stands means nothing to a
+ * declaration file's API (t3code's MCP toolkits: the codemod's
+ * `import { Tool, Toolkit } from "effect/ai"` moved ahead of unchanged
+ * imports). An import for its side effects keeps its place among the rest.
+ */
+function inModuleOrder(ts, statements, printed) {
+  const specifier = (s) => (s.moduleSpecifier && ts.isStringLiteral(s.moduleSpecifier) ? s.moduleSpecifier.text : "")
+  const imports = (s) => ts.isImportDeclaration(s) && s.importClause
+  const reexports = (s) => ts.isExportDeclaration(s) && s.moduleSpecifier
+  const sorted = (kind) => statements.flatMap((s, i) => (kind(s) ? [[specifier(s), printed[i]]] : []))
+    .sort((a, b) => compare(a[0], b[0]) || compare(a[1], b[1])).map(([, text]) => text)
+  return [...sorted(imports), ...sorted(reexports), ...printed.filter((_, i) => !imports(statements[i]) && !reexports(statements[i]))]
+}
+
 /** A declaration file's canonical text. */
 export function canonicalize(ts, text, fileName = "file.d.ts", modulePath = (text) => text) {
   const source = ts.createSourceFile(fileName, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
@@ -152,7 +170,8 @@ export function canonicalize(ts, text, fileName = "file.d.ts", modulePath = (tex
   const unused = privateUnusedTypes(ts, source)
   const out = ts.transform(source, [normalize])
   try {
-    return out.transformed[0].statements.filter((_, i) => !unused.has(i)).map((statement) => print(statement)).join("\n") + "\n"
+    const kept = out.transformed[0].statements.filter((_, i) => !unused.has(i))
+    return inModuleOrder(ts, kept, kept.map((statement) => print(statement))).join("\n") + "\n"
   } finally {
     out.dispose()
   }

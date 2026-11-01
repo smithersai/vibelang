@@ -67,3 +67,29 @@ test("property: private aliases nothing names never change a module's canonical 
     assert.ok(!same(module, aliases + module.replace("export {};", `export type Uses = ${named};\nexport {};`)), named)
   }), { numRuns: 200 })
 })
+
+// t3code apps/server MCP toolkits (drive-t3code-server 03:25Z): ten modules
+// whose declarations differ only in where `import { Tool, Toolkit } from
+// "effect/ai"` stands.
+test("corpus: declarations that differ only in the order of their imports are identical", () => {
+  const corpus = JSON.parse(readFileSync(new URL("./corpus/t3code-import-order.json", import.meta.url), "utf8"))
+  assert.ok(same(corpus.before, corpus.after), corpus.key)
+})
+
+test("import order is no change, but what an import brings in, a re-export's module and a side-effect import's place are", () => {
+  const a = 'import { A } from "a";\nimport { B } from "b";\nexport { C } from "c";\nexport { D } from "d";\nexport declare const x: A | B;\n'
+  assert.ok(same(a, 'import { B } from "b";\nimport { A } from "a";\nexport { D } from "d";\nexport { C } from "c";\nexport declare const x: A | B;\n'))
+  assert.ok(!same(a, a.replace('import { B } from "b"', 'import { B } from "bb"')))
+  assert.ok(!same(a, a.replace('export { C } from "c"', 'export { C } from "cc"')))
+  const effects = 'import "./setup-a";\nimport "./setup-b";\nexport {};\n'
+  assert.ok(!same(effects, 'import "./setup-b";\nimport "./setup-a";\nexport {};\n'))
+})
+
+test("property: any order of a module's imports and re-exports canonicalizes the same", () => {
+  const lines = ['import { A } from "a";', 'import * as B from "b";', 'import type { C } from "c";', 'export { D } from "d";', 'export * from "e";', 'import { F as G } from "a";']
+  fc.assert(fc.property(fc.shuffledSubarray(lines, { minLength: 1 }), (chosen) => {
+    const text = (order) => order.join("\n") + "\nexport declare const x: number;\n"
+    const reversed = [...chosen].reverse()
+    assert.equal(canonicalize(ts, text(chosen)), canonicalize(ts, text(reversed)))
+  }), { numRuns: 200 })
+})
