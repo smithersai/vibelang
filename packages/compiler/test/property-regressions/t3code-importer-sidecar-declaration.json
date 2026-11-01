@@ -1,0 +1,27 @@
+{
+  "source": "t3code batch08 importer declaration pattern",
+  "input": {
+    "route": "relative",
+    "generic": false,
+    "alias": "Provider",
+    "shape": "interface"
+  },
+  "files": {
+    "package.json": "{\"type\":\"module\"}",
+    "lib/package.json": "{\"name\":\"lib\",\"type\":\"module\",\"exports\":{\"./Provider\":{\"types\":\"./src/Provider.d.vibe.ts\",\"default\":\"./src/Provider.vibe\"},\"./Driver\":\"./src/Driver.ts\"}}",
+    "lib/src/Provider.vibe": "export interface Ctx { readonly provider: string }\n",
+    "lib/src/Provider.d.vibe.ts": "export interface Ctx { readonly provider: string }\n",
+    "lib/src/Driver.ts": "import type * as P from \"./Provider.vibe\";\nexport interface Driver { readonly remote: (c: P.Ctx) => string }\n",
+    "src/a.ts": "import * as Provider from \"lib/Provider\";\nimport type { Driver } from \"lib/Driver\";\nexport const make = (): Driver => ({ remote: ({ provider }: Provider.Ctx) => provider });\nexport const remoteOf = (d: Driver) => d.remote;\nexport const call = (d: Driver, ctx: Provider.Ctx) => d.remote(ctx);\n",
+    "tsconfig.json": "{\"compilerOptions\":{\"strict\":true,\"target\":\"ES2022\",\"module\":\"NodeNext\",\"moduleResolution\":\"NodeNext\",\"allowArbitraryExtensions\":true,\"allowImportingTsExtensions\":true,\"declaration\":true,\"emitDeclarationOnly\":true,\"skipLibCheck\":true,\"types\":[],\"rootDir\":\".\",\"outDir\":\"out\"},\"files\":[\"src/a.ts\"]}"
+  },
+  "hashes": {
+    "package.json": "6dc1b06d6b093e9cccb20bee06a93836eee0420ae26803ca2ce4065d82f070d1",
+    "lib/package.json": "182c5178bd72a146e1c027bcd768d3a1d2013bf5f9aefe221d3bc1c31d3aaf5d",
+    "lib/src/Provider.vibe": "57b9479c57276a08750afb2a0db334b459b3c82b988e96a2400d1e5e5b83399c",
+    "lib/src/Provider.d.vibe.ts": "57b9479c57276a08750afb2a0db334b459b3c82b988e96a2400d1e5e5b83399c",
+    "lib/src/Driver.ts": "bd6366642478ddbe3bab9df64851a984959fc99f6d16aa586acfc899219d7028",
+    "src/a.ts": "c3da05e62072ad4c54df82242bc464f8eed001483eb1bab5409eea9f73e06994",
+    "tsconfig.json": "7ece0c83597044bad33fea1785e9fdc72686e95dd1faa38cf2fe63da2a007125"
+  }
+}
