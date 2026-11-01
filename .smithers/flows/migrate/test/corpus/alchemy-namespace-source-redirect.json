@@ -1,0 +1,28 @@
+{
+  "key": "alchemy-57:namespace:project-reference:disable-source-redirect",
+  "repo": "alchemy",
+  "spec": "docs/design/src/007-tooling.md",
+  "quote": "VibeLang resolves a relative `./x.vibe` to source; plain `tsc` reads the compatibility declaration.",
+  "name": "DBInstance",
+  "namespace": "RDS",
+  "depth": 0,
+  "option": "disableSourceOfProjectReferenceRedirect",
+  "before": true,
+  "after": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./resource": "./src/RDS/DBInstance.vibe"
+  },
+  "controls": [
+    "TypeScript leaf",
+    "without project reference",
+    "direct source subpath",
+    "independent any union still warns"
+  ],
+  "depthDefinition": "additional nested directories beneath the namespace",
+  "verifiedTools": {
+    "oxlint": "1.89.0",
+    "oxlint-tsgolint": "7.0.2005",
+    "typescript": "5.9.3"
+  }
+}

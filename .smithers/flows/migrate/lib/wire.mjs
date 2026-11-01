@@ -808,14 +808,12 @@ export function addVibeIncludes(text, ts) {
 
 /**
  * The repository's tsconfig files (tsconfig*.json, outside node_modules,
- * hidden directories, fixtures, templates, tests and trees it does not own)
- * that extend none of the others, as repository-relative paths: a compiler
- * option set in each is set in every project. A tsconfig under a test or a
- * fixture is a test's input, which setup never edits (detail 272; smithers
- * platform-node's test/fixtures/lsp/ts/tsconfig.json, which an LSP test
- * type-checks as data). ts is TypeScript's compiler API.
+ * hidden directories, fixtures, templates, tests and trees it does not own),
+ * as repository-relative paths. A tsconfig under a test or a fixture is a
+ * test's input, which setup never edits (detail 272; smithers platform-node's
+ * test/fixtures/lsp/ts/tsconfig.json, which an LSP test type-checks as data).
  */
-export function rootTsconfigs(root, ts) {
+export function ownedTsconfigs(root) {
   const files = []
   const walk = (dir) => {
     for (const entry of readdirSync(join(root, dir), { withFileTypes: true })) {
@@ -827,7 +825,15 @@ export function rootTsconfigs(root, ts) {
   }
   walk("")
   const own = ownedPaths(root)
-  files.splice(0, files.length, ...files.filter(own))
+  return files.filter(own)
+}
+
+/**
+ * The owned tsconfigs that extend none of the others: a compiler option set
+ * in each is set in every project. ts is TypeScript's compiler API.
+ */
+export function rootTsconfigs(root, ts) {
+  const files = ownedTsconfigs(root)
   const all = new Set(files)
   const local = (file, extended) => {
     const path = posix.normalize(posix.join(posix.dirname(file), extended))

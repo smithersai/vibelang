@@ -470,6 +470,8 @@ Without `project`, `typedProgram()` discovers the nearest config starting at `ts
 
 Typed lint tools that discover `tsconfig.json` from each `.ts` file need a project that includes that file. If tests are outside the main project’s `include`, a `test/tsconfig.json` containing `{ "extends": "../tsconfig.test.json" }` can point to the existing test project. Keep its original options and file list, and inherit `allowArbitraryExtensions: true` so imports of `.vibe` read their sidecars. The migration flow prepares named test directories when an existing complete project is unambiguous.
 
+When a typed tool uses project references across source-exporting workspace packages, keep `disableSourceOfProjectReferenceRedirect` absent or `false`. Disabling source redirects can leave a native type behind a TypeScript namespace barrel, such as `AWS.RDS.DBInstance`, as an error type even when a direct subpath import is typed. Source redirects let the tool read `x.d.vibe.ts`. Migration setup updates owned configs and records each change in `wired.declarationRedirects`; external presets stay unchanged and receive a local override.
+
 Forms whose TypeScript long form would mislead a rule have their own node types, which rules and `no-restricted-syntax` selectors can name:
 
 | Form | ESTree node |

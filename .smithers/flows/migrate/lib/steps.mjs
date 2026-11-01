@@ -5,6 +5,7 @@ import { ownedToolConfigs } from "./tool-config-references.mjs"
 // an earlier one recorded. A step that has already recorded its result returns
 // it without running again.
 import { wireTestProjects } from "./test-projects.mjs"
+import { wireDeclarationRedirects } from "./declaration-redirects.mjs"
 import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { dirname, join, posix, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -853,6 +854,9 @@ export async function wireTarget(config, log) {
     const text = readFileSync(file, "utf8")
     writeIfChanged(file, text, Wire.addCompilerOptions(Wire.removeVibeLangSetting(text, ts, "declarationSidecars"), { allowArbitraryExtensions: true }))
   }
+  const declarationRedirects = wireDeclarationRedirects({ root: t, ts,
+    configs: Wire.ownedTsconfigs(t).filter(file => !isProtectedFile(file)) })
+  changed.push(...declarationRedirects.changed.filter(file => !changed.includes(file)))
   const testProjects = wireTestProjects({ root: t, packages, ts })
   changed.push(...testProjects.changed.filter(file => !changed.includes(file)))
   warnings.push(...testProjects.warnings)
@@ -934,7 +938,7 @@ export async function wireTarget(config, log) {
   changed.push(...emittedImports.changed.filter(file => !changed.includes(file)))
   const existingVibe = await formatExistingVibe(config, join(log, "setup-format-vibe.log"))
   if (existingVibe.code !== 0) warnings.push(`vibelang-format exited ${existingVibe.code} on the repository's .vibe files; see ${join(log, "setup-format-vibe.log")}`)
-  return { manager, typecheck, emittedImports, formattedVibe: existingVibe.files, specs: Object.fromEntries(packages.map((pkg) => [pkg.dir, specsFor(pkg.dir)])), viteConfigs: vite.configs, viteAppConfigs: apps.configs, nativeViteConfigs: apps.nativeConfigs ?? [], knipConfig: knip.config, formatted, changed, warnings, install }
+  return { manager, typecheck, declarationRedirects, emittedImports, formattedVibe: existingVibe.files, specs: Object.fromEntries(packages.map((pkg) => [pkg.dir, specsFor(pkg.dir)])), viteConfigs: vite.configs, viteAppConfigs: apps.configs, nativeViteConfigs: apps.nativeConfigs ?? [], knipConfig: knip.config, formatted, changed, warnings, install }
 }
 
 /**
