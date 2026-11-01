@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert"
 import { spawnSync } from "node:child_process"
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from "node:fs"
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { test } from "node:test"
@@ -16,7 +16,7 @@ const effect = join(process.env.EFFECT_NODE_MODULES || join(repo, "experiments/n
 const rule = "docs/design/history/src/428-part4-ch28-tooling.md: Packages and versions (D299), Building and testing (D297)"
 const regressions = new URL("./property-regressions/", import.meta.url)
 const action = fc.record({
-  kind: fc.constantFrom("source", "same-stamp", "create", "delete", "rename", "config", "workspace-config", "package", "dependency", "compiler"),
+  kind: fc.constantFrom("source", "same-stamp", "create", "delete", "rename", "config", "workspace-config", "package", "dependency", "compiler", "compiler-metadata"),
   slot: fc.integer({ min: 0, max: 2 }), value: fc.integer({ min: 0, max: 9 })
 })
 const history = fc.record({ width: fc.integer({ min: 1, max: 3 }), actions: fc.array(action, { minLength: 1, maxLength: 2 }) })
@@ -63,6 +63,8 @@ function revisions(input) {
       case "package": selected = edit.value % 2; break
       case "dependency": dependency = edit.value; break
       case "compiler": binary = edit.value; break
+      // A chmod and a rewrite with the same bytes: the compiler is unchanged (drive-t3code-apps 22:30Z).
+      case "compiler-metadata": break
     }
     result.push({ ...snapshot(), edit })
   }
@@ -125,6 +127,7 @@ async function checkHistory(input, loaders = false) {
     const app = join(root, "app"), project = join(app, "tsconfig.json"), source = join(app, "src/main.vibe")
     const binary = join(root, "compiler.mjs"), directory = join(root, "cache")
     let previous = { files: {}, binary: undefined }
+    let previousCached = false
     const trace = line => { diagnostics = (diagnostics + line + "\n").slice(-12000) }
     const options = { root: app, project, compiler: binary, cache: { directory }, debug: trace }
     const modules = projects(options)
@@ -139,10 +142,17 @@ async function checkHistory(input, loaders = false) {
         if (stamp) utimesSync(path, stamp.atime, stamp.mtime)
       }
       if (revision.binary !== previous.binary) writeFileSync(binary, wrapper(root, revision.binary))
+      if (revision.edit?.kind === "compiler-metadata" && existsSync(binary)) {
+        writeFileSync(binary, readFileSync(binary))
+        chmodSync(binary, statSync(binary).mode & 0o777)
+      }
       await sleep(120) // Existing cache timestamp safety window; concurrency itself uses barriers below.
       modules.invalidate()
       const beforeLoad = calls(root)
       const [loaded, concurrent] = await Promise.all([modules.load(source), modules.load(source)])
+      if (revision.edit?.kind === "compiler-metadata" && previousCached) {
+        assert.equal(calls(root), beforeLoad, "D299: a compiler whose bytes are unchanged keeps the cache")
+      }
       if (previous.files["dep/tsconfig.json"] !== revision.files["dep/tsconfig.json"]) {
         assert.ok(calls(root) > beforeLoad, "D297/D299: changed workspace package settings require a new compile")
       }
@@ -181,6 +191,7 @@ async function checkHistory(input, loaders = false) {
         else assert.notEqual(cached.status, 0)
       }
       previous = revision
+      previousCached = !fresh.errors.length
     }
   } finally { rmSync(root, { recursive: true, force: true }) }
 }

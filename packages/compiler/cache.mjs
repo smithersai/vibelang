@@ -194,6 +194,13 @@ const compilerIdentity = (compiler) =>
     return [path, stat === undefined ? null : stampOf(stat)]
   })
 
+// The compiler files' contents, read only when their stamps differ from an
+// entry's: a chmod, a hard link or a copy with the same bytes changes a stamp
+// (its ctime, its mtime) but not what the compiler emits, and every Vite run
+// recompiled every package after one (drive-t3code-apps, 2026-10-31).
+const compilerDigests = (identity) =>
+  identity.map(([path, stamp]) => (stamp === null ? null : digest(readFileSync(path))))
+
 // tsconfig files are JSON with comments and trailing commas.
 export function parseJsonc(text) {
   let out = ""
@@ -445,7 +452,12 @@ export function projectCache({ project, root, compiler, cache, debug = () => {} 
       return { miss: "entry for another version" }
     }
     const identity = compilerIdentity(compiler)
-    if (JSON.stringify(entry.compiler) !== JSON.stringify(identity)) return { miss: "compiler changed" }
+    if (JSON.stringify(entry.compiler) !== JSON.stringify(identity)) {
+      const same = entry.compilerDigests !== undefined && entry.compiler.length === identity.length &&
+        entry.compiler.every(([path], i) => path === identity[i][0]) &&
+        JSON.stringify(entry.compilerDigests) === JSON.stringify(compilerDigests(identity))
+      if (!same) return { miss: "compiler changed" }
+    }
     const config = entry.configs.find((record) => !fileHolds(record))
     if (config) return { miss: `${config.path} changed` }
     const directory = entry.directories.find((record) => !directoryHolds(record))
@@ -468,9 +480,11 @@ export function projectCache({ project, root, compiler, cache, debug = () => {} 
     const started = Date.now()
     try {
       const configs = readConfigs(project)
+      const identity = compilerIdentity(compiler)
       return {
         started,
-        compiler: compilerIdentity(compiler),
+        compiler: identity,
+        compilerDigests: compilerDigests(identity),
         configs: configs.files.map(snapshotFile),
         directories: snapshotDirectories(configs.main),
         installs: snapshotInstalls(project)
@@ -531,6 +545,7 @@ export function projectCache({ project, root, compiler, cache, debug = () => {} 
     const entry = {
       format, version, project, root,
       compiler: snapshot.compiler,
+      compilerDigests: snapshot.compilerDigests,
       configs: [...snapshot.configs, ...settings.values()],
       directories: snapshot.directories,
       installs: snapshot.installs,

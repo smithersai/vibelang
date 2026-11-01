@@ -291,6 +291,22 @@ test("a different or rebuilt compiler recompiles", { skip }, async (t) => {
   assert.equal(compiles(), 3)
 })
 
+// drive-t3code-apps 22:30Z: a chmod changes a compiler's ctime, not its bytes,
+// and every Vite run then recompiled each package ("compiler changed").
+test("a compiler whose stamp changed but whose bytes did not keeps the cache", { skip }, async (t) => {
+  const { run, compiles, compiler, calls } = await fixture(t)
+  ok(run())
+  chmodSync(compiler, statSync(compiler).mode & 0o777)
+  ok(run())
+  assert.equal(compiles(), 1)
+  writeFileSync(compiler, readFileSync(compiler))
+  ok(run())
+  assert.equal(compiles(), 1)
+  writeFileSync(compiler, recorder(calls, "// rebuilt"))
+  ok(run())
+  assert.equal(compiles(), 2)
+})
+
 test("a failed compile is not cached", { skip }, async (t) => {
   const { run, compiles } = await fixture(t, {
     "src/bad.vibe": "export const count: number = \"three\"\n",
