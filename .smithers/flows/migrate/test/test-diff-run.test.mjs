@@ -1,0 +1,122 @@
+import assert from "node:assert/strict"
+import { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
+import { createRequire } from "node:module"
+import { tmpdir } from "node:os"
+import { dirname, join } from "node:path"
+import { test } from "node:test"
+import * as Jj from "../lib/jj.mjs"
+import { verifyRepositoryTests } from "../lib/test-diff-run.mjs"
+import { paths, record, report, verify } from "../lib/steps.mjs"
+import { must, readJson, writeJson } from "../lib/util.mjs"
+
+const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
+const ts = require("typescript")
+const put = (root, file, text) => {
+  mkdirSync(dirname(join(root, file)), { recursive: true })
+  writeFileSync(join(root, file), text)
+}
+async function fixture(body) {
+  const root = mkdtempSync(join(tmpdir(), "test-diff-repo-"))
+  const target = join(root, "repo"), run = join(root, "run"), p = paths(run)
+  try {
+    mkdirSync(target)
+    await must("jj git init && jj config set --repo user.name test && jj config set --repo user.email test@localhost", { cwd: target })
+    put(target, ".gitignore", "node_modules/\n")
+    put(target, "package.json", "{}\n")
+    put(target, "src/X.ts", "export const f = () => 1\n")
+    put(target, "test/x.test.ts", 'import { f } from "../src/X.ts"\nexpect(f()).toBe(1)\n')
+    const base = await Jj.commit(target, "unmodified baseline")
+    mkdirSync(join(target, "node_modules"))
+    symlinkSync(dirname(require.resolve("typescript/package.json")), join(target, "node_modules/typescript"))
+    renameSync(join(target, "src/X.ts"), join(target, "src/X.vibe"))
+    put(target, "test/x.test.ts", 'import { f } from "../src/X.vibe"\nexpect(f()).toBe(1)\n')
+    const renames = [{ from: "src/X.ts", to: "src/X.vibe" }]
+    writeJson(p.config, { target, toolchain: { kind: "registry" }, packages: [], test: { cwd: "." }, bookmark: "vibe" })
+    writeJson(p.inventory, { files: [{ path: "src/X.ts", tokens: 7 }] })
+    writeJson(p.plan, { batches: [{ files: ["src/X.ts"], reason: "regression" }] })
+    writeJson(p.codemod("01"), { renames, fix: { totals: {}, refused: [] } })
+    await body({ root, target, run, p, base, renames })
+  } finally { rmSync(root, { recursive: true, force: true }) }
+}
+test("real jj snapshots report permitted imports and every changed test/fixture", async () => fixture(async ({ root, target, base, renames }) => {
+  const result = await verifyRepositoryTests({ ts, target, base, renames, scratch: join(root, "snapshots") })
+  assert.equal(result.ok, true)
+  assert.deepEqual(result.files.map(f => f.file), ["test/x.test.ts"])
+  assert.equal(result.from, base)
+  assert.match(result.to, /^[0-9a-f]+$/)
+  assert.equal(readJson(join(root, "snapshots/test-diff.json")).ok, true)
+  put(target, "fixtures/config.json", '{"include":["src/*.vibe"]}')
+  put(target, "test/x.test.ts", 'import { f } from "../src/X.vibe"\nexpect(f()).toBe(2)\n')
+  const bad = await verifyRepositoryTests({ ts, target, base, renames, scratch: join(root, "snapshots") })
+  assert.equal(bad.ok, false)
+  assert.deepEqual(bad.files.map(f => f.file), ["fixtures/config.json", "test/x.test.ts"])
+}))
+test("record --force cannot commit an edited assertion, and writes its reason", async () => fixture(async ({ target, run, p, base }) => {
+  put(target, "test/x.test.ts", 'import { f } from "../src/X.vibe"\nexpect(f()).toBe(2)\n')
+  await assert.rejects(record({ run, batch: "01", force: "tests were green" }), /forbidden test\/fixture edits/)
+  assert.equal(await Jj.commitId(target, "@-"), base)
+  assert.equal(readJson(join(p.batch("01"), "test-diff.json")).ok, false)
+  assert.match(readFileSync(join(p.batch("01"), "test-diff.md"), "utf8"), /forbidden/)
+}))
+test("record rechecks after a formatter edits a previously verified test", async () => fixture(async ({ target, run, p, base }) => {
+  writeJson(p.verify("01"), { ok: true })
+  put(target, "package.json", '{"scripts":{"format":"prettier --write"}}')
+  put(target, "node_modules/.bin/prettier", '#!/bin/sh\nsed -i "s/toBe(1)/toBe(2)/" test/x.test.ts\n')
+  await must("chmod +x node_modules/.bin/prettier", { cwd: target })
+  await assert.rejects(record({ run, batch: "01" }), /forbidden test\/fixture edits/)
+  assert.equal(await Jj.commitId(target, "@-"), base)
+}))
+test("recorded selector/import proof is included in the PR body artifact", async () => fixture(async ({ run, p }) => {
+  const result = await record({ run, batch: "01", force: "no other checks in this fixture" })
+  assert.equal(result.testDiff.ok, true)
+  assert.equal(result.testDiff.files[0].hunks[0].kind, "specifier")
+  const data = await report({ run })
+  assert.equal(data.testDiffs.length, 1)
+  assert.match(readFileSync(p.prBody, "utf8"), /test\/x.test.ts/)
+  assert.match(readFileSync(p.prBody, "utf8"), /specifier/)
+}))
+
+test("verify fails a batch even when all target tests and compiler checks pass", async () => fixture(async ({ target, run, p }) => {
+  const config = readJson(p.config)
+  config.packages = [{ dir: ".", sources: ["src"], tsconfig: "tsconfig.json" }]
+  config.test.command = "true"
+  writeJson(p.config, config)
+  put(target, "package.json", '{"private":true}')
+  put(target, "tsconfig.json", '{"include":["src/**/*"]}')
+  put(target, "node_modules/.bin/vibelang", "#!/bin/sh\nexit 0\n")
+  await must("chmod +x node_modules/.bin/vibelang", { cwd: target })
+  writeJson(join(p.baseline, "compile-root.json"), [])
+  writeJson(join(p.baseline, "tests.json"), { code: 0, tests: null })
+  const good = await verify({ run, batch: "01" })
+  assert.equal(good.ok, true)
+  put(target, "test/x.test.ts", 'import { f } from "../src/X.vibe"\nexpect(f()).toBe(2)\n')
+  const bad = await verify({ run, batch: "01" })
+  assert.equal(bad.checks.tests, true)
+  assert.equal(bad.ok, false)
+  assert.equal(bad.checks.testEdits, false)
+}))
+test("specifier proof reads declarationImportStyle from the importer's inherited config", async () => fixture(async ({ root, target, base, renames }) => {
+  put(target, "tsconfig.base.json", '{"compilerOptions":{"declarationImportStyle":"js"}}')
+  put(target, "tsconfig.json", '{"extends":"./tsconfig.base.json"}')
+  put(target, "test/x.test.ts", 'import { f } from "../src/X.js"\nexpect(f()).toBe(1)\n')
+  const result = await verifyRepositoryTests({ ts, target, base, renames, scratch: join(root, "style-proof") })
+  assert.equal(result.ok, true, JSON.stringify(result))
+  put(target, "test/x.test.ts", 'import { f } from "../src/X.vibe"\nexpect(f()).toBe(1)\n')
+  const wrong = await verifyRepositoryTests({ ts, target, base, renames, scratch: join(root, "style-proof") })
+  assert.equal(wrong.ok, false)
+}))
+test("changed binary fixtures cannot compare equal through UTF-8 replacement characters", async () => fixture(async ({ root, target, renames }) => {
+  put(target, "fixtures/data.bin", Buffer.from([255]))
+  const base = await Jj.commit(target, "binary baseline")
+  put(target, "fixtures/data.bin", Buffer.from([254]))
+  const result = await verifyRepositoryTests({ ts, target, base, renames, scratch: join(root, "binary-proof") })
+  assert.equal(result.ok, false)
+  assert.equal(result.files[0].file, "fixtures/data.bin")
+}))
+test("removing a test's UTF-8 BOM is an edit outside permitted literals", async () => fixture(async ({ root, target, renames }) => {
+  put(target, "test/x.test.ts", '\ufeffimport { f } from "../src/X.vibe"\nexpect(f()).toBe(1)\n')
+  const base = await Jj.commit(target, "BOM baseline")
+  put(target, "test/x.test.ts", 'import { f } from "../src/X.vibe"\nexpect(f()).toBe(1)\n')
+  const result = await verifyRepositoryTests({ ts, target, base, renames, scratch: join(root, "bom-proof") })
+  assert.equal(result.ok, false)
+}))

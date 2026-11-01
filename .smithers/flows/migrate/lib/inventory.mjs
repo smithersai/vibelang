@@ -9,7 +9,9 @@ import { isDeclarationFile, readJson, rel } from "./util.mjs"
 
 const skipDirectories = new Set(["node_modules", "dist", "build", "coverage", ".git", ".jj", ".turbo", ".vite", ".cache"])
 const sourceFile = /\.(?:ts|tsx|mts|cts|vibe)$/
-export const isTestFile = (path) => /\.(?:test|spec)\.(?:ts|tsx|mts|vibe)$/.test(path) || /(?:^|\/)(?:test|tests|__tests__)\//.test(path)
+export const isTestFile = (path) => /\.(?:test|spec)\.(?:[cm]?[jt]sx?|vibe|vibex)$/.test(path) || /(?:^|\/)(?:test|tests|__tests__)\//.test(path)
+
+export const isFixtureFile = path => /(?:^|\/)(?:[^/]*fixtures?[^/]*|__snapshots__|snapshots|testdata)(?:\/|$)/i.test(path) || /\.snap$/.test(path)
 
 /** Repository-relative source files under dir, sorted. Declaration files are not sources. */
 export function listSources(root, dir) {
@@ -63,7 +65,7 @@ export function buildInventory({ root, packages, tokens = {}, coverage = {}, pat
     return {
       path,
       package: pkg,
-      test: isTestFile(path),
+      test: isTestFile(path) || isFixtureFile(path),
       bytes: statSync(join(root, path)).size,
       lines: text.split("\n").length,
       tokens: tokens[join(root, path)] ?? null,

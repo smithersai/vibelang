@@ -1,4 +1,5 @@
 import { Smithers as S } from "@smthrs/targets"
+import { migrationSources } from "./migration-inputs.ts"
 import { Package as Packages } from "./packages/PACKAGE.ts"
 import { Package as Typescript } from "./typescript/PACKAGE.ts"
 import { Package as Tsc } from "./typescript/tsc/PACKAGE.ts"
@@ -288,4 +289,5 @@ const targets = {
   })
 }
 
-export const Package = S.Package({ targets: { tree, "design-files": design, ...targets } })
+export const Package = S.Package({ targets: {
+    "migration-sources": migrationSources, tree, "design-files": design, ...targets } })

@@ -5,7 +5,8 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { makeConfig, paths, verify } from "../lib/steps.mjs"
-import { slug, writeJson } from "../lib/util.mjs"
+import * as Jj from "../lib/jj.mjs"
+import { must, slug, writeJson } from "../lib/util.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const fc = require("fast-check")
@@ -49,6 +50,10 @@ async function fixture(manifest, { before = corpus.before, after = corpus.after,
     writeFileSync(join(baseline, "main.d.ts"), before)
     // Also usable with the public-surface gate, without manufacturing a setup commit.
     writeJson(join(baseline, "public-surface.json"), { roots: ["main.d.ts"], reachable: ["main.d.ts"], unresolved: [] })
+    // verify now proves test identity against real pinned jj trees as well.
+    writeFileSync(join(target, ".gitignore"), "node_modules/\n")
+    await must("jj git init && jj config set --repo user.name test && jj config set --repo user.email test@localhost", { cwd: target })
+    await Jj.commit(target, "declaration fixture baseline")
     const result = await verify({ run, batch: "01" })
     assert.deepEqual(JSON.parse(readFileSync(p.verify("01"), "utf8")), result)
     return result

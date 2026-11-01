@@ -10,6 +10,7 @@ function targets() {
     .replace("export const Package", "globalThis.result")
   const group = prefix => new Proxy({}, { get: (_, name) => prefix + "." + name })
   const context = {
+    migrationSources: { migrationSources: true },
     S: { Filegroup: spec => spec, glob: glob => glob, file: file => file,
       Shell: { Test: spec => spec }, Host: { bin: bin => bin }, Package: spec => spec },
     Tsc: group("tsc"), Packages: group("packages"), Typescript: group("typescript"), Vibelang: group("vibelang")

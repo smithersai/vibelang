@@ -64,8 +64,8 @@ export function parseChangedPaths(summary) {
 }
 
 /** The repository-relative paths of the files the working-copy commit tracks. */
-export async function trackedFiles(root) {
-  const { stdout } = await must("jj file list -r @", { cwd: root })
+export async function trackedFiles(root, revision = "@") {
+  const { stdout } = await must(`jj file list -r ${quote(revision)}`, { cwd: root })
   return stdout.split("\n").filter(Boolean)
 }
 

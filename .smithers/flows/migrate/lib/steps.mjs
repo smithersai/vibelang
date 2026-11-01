@@ -13,6 +13,8 @@ import { splitBatchPlatform } from "./platform.mjs"
 import { check, newErrors, styleProblems, summarize } from "./diagnostics.mjs"
 import { compareDeclarations, recordDeclarationSurface, emitDeclarations, emitErrorsIn, loadTypeScript } from "./declarations.mjs"
 import { compareTests, regressionIssue, runTests } from "./tests.mjs"
+import { verifyRepositoryTests } from "./test-diff-run.mjs"
+import { testDiffMarkdown } from "./test-diff.mjs"
 import { countTokens } from "./tokens.mjs"
 import { readIssues } from "./issues.mjs"
 import { repairPrompt } from "./repair.mjs"
@@ -47,6 +49,7 @@ export function paths(runDir) {
     issues: join(r, "issues.jsonl"),
     report: join(r, "report.md"),
     reportJson: join(r, "report.json"),
+    prBody: join(r, "pr-body.md"),
     baseline: join(r, "baseline"),
     batch,
     codemod: (b) => join(batch(b), "codemod.json"),
@@ -1006,6 +1009,19 @@ async function revertSource(t, p, plan, b, ts, vibe) {
   throw new Error(`${ts} is not in the batch's parent, and no recorded batch migrated ${vibe}`)
 }
 
+/** Cumulative test identity, from before setup through this batch. */
+export async function testEdits(config, p, plan, b, ts) {
+  const setup = readJsonIf(p.setup)
+  const renames = (plan?.batches ?? []).slice(0, Number(b)).flatMap((_, i) =>
+    readJsonIf(p.codemod(batchName(i)))?.renames ?? [])
+  return verifyRepositoryTests({
+    ts, target: config.target,
+    base: setup?.jj?.upgradeCommit ?? setup?.jj?.setupCommit ?? "@-",
+    renames, directories: [config.target, ...config.packages.map(pkg => join(config.target, pkg.dir))],
+    scratch: p.batch(b), cwd: config.test.cwd, globRoot: config.test.globRoot
+  })
+}
+
 /** verify: tests against the baseline, declaration identity, and no TypeScript-style form or platform global in the batch. */
 export async function verify(options) {
   assertBaselineSafe(paths(options.run))
@@ -1020,8 +1036,9 @@ export async function verify(options) {
   const checked = await compile({ run: options.run, batch: b, noRecord: true })
   const baselineTests = readJson(join(p.baseline, "tests.json"))
   const tests = await runTests({ command: config.test.command, report: config.test.report, cwd: join(t, config.test.cwd), root: t, jsonFile: join(p.batch(b), "vitest.json"), log: join(logs, "tests.log") })
-  const testDiff = compareTests(baselineTests, tests)
+  const testResults = compareTests(baselineTests, tests)
   const ts = typeScriptOf(config)
+  const testDiff = await testEdits(config, p, thePlan, b, ts)
   const declarations = {}
   const emitErrors = []
   for (const pkg of config.packages) {
@@ -1051,13 +1068,15 @@ export async function verify(options) {
     batch: b,
     at: new Date().toISOString(),
     files,
-    tests: { code: tests.code, total: tests.total, passed: tests.passed, failed: tests.failed.length, skipped: tests.skipped, ...testDiff },
+    tests: { code: tests.code, total: tests.total, passed: tests.passed, failed: tests.failed.length, skipped: tests.skipped, ...testResults },
     declarations,
     // Each published specifier the gate excused, for the pull request's description.
     excusedSpecifiers: Object.entries(declarations).flatMap(([dir, d]) => (d.excused ?? []).map((pair) => ({ package: dir, ...pair }))),
+    testDiff,
     compile: { batchErrors, newErrors: checked.newErrors, style, emitErrors },
     checks: {
-      tests: testDiff.ok,
+      tests: testResults.ok,
+      testEdits: testDiff.ok,
       declarations: Object.values(declarations).every((d) => d === "not published" || d.identical),
       declarationEmit: emitErrors.length === 0,
       batchErrors: batchErrors.length === 0,
@@ -1102,9 +1121,13 @@ export async function record(options) {
   const formatted = await formatWritten(t, written, join(p.batch(b), "logs", "format.log"))
   const vibeFormatted = await formatRecorded(config, written, join(p.batch(b), "logs"))
   await assertPortable(t, machineRoots(t, p.run, config.toolchain.dir))
+  // Formatters and sidecar emission run after verify. Recheck the exact tree
+  // being committed; --force cannot waive the test-oracle contract.
+  const testDiff = await testEdits(config, p, thePlan, b, typeScriptOf(config))
+  if (!testDiff.ok) throw new Error(`batch ${b}: forbidden test/fixture edits; see ${join(p.batch(b), "test-diff.md")}; revert the edit or leave its module TypeScript`)
   const commit = await Jj.commit(t, lines.join("\n"))
   if (commit) await Jj.setBookmark(t, config.bookmark, commit)
-  const result = { batch: b, at: new Date().toISOString(), commit, bookmark: config.bookmark, files: rows, tokens, formatted, vibeFormatted, forced: verified?.ok ? null : options.force }
+  const result = { batch: b, at: new Date().toISOString(), commit, bookmark: config.bookmark, files: rows, tokens, formatted, vibeFormatted, testDiff, forced: verified?.ok ? null : options.force }
   writeJson(p.record(b), result)
   return result
 }
@@ -1131,6 +1154,7 @@ export async function report(options) {
     issues: issues.filter((i) => i.kind === "issue"),
     codemodGaps: issues.filter((i) => i.kind === "codemod-gap"),
     idioms: issues.filter((i) => i.kind === "idiom"),
+    testDiffs: batches.map(b => ({ batch: b.batch, result: b.record?.testDiff ?? b.verify?.testDiff })).filter(b => b.result),
     fixRefusals: batches.flatMap((b) => b.codemod?.fix.refused ?? [])
   }
   const rewrites = {}
@@ -1152,6 +1176,10 @@ export async function report(options) {
       return `| ${b.batch} | ${b.files.length} | ${v ? v.files.filter((f) => f.migrated).length : "-"} | ${v ? (v.checks.tests ? `pass (${v.tests.passed}/${v.tests.total})` : `FAIL: ${v.tests.newFailures.length} new, ${v.tests.missing.length} missing`) : "-"} | ${v ? (v.checks.declarations ? (Object.values(v.declarations ?? {}).every(d => d === "not published") ? "not published" : "identical") : "CHANGED") : "-"} | ${v ? (v.checks.style ? "clean" : `${v.compile.style.length} EK48xx/EK4402`) : "-"} | ${b.record ? `${b.record.tokens.before} -> ${b.record.tokens.after}` : "-"} | ${b.record?.commit?.slice(0, 12) ?? "-"} |`
     }),
     "",
+    "## Test and fixture edits",
+    "",
+    ...data.testDiffs.flatMap(b => [`Batch ${b.batch}`, "", testDiffMarkdown(b.result)]),
+    "",
     "## Rewrites vibelang --fix applied",
     "",
     ...(Object.keys(rewrites).length ? Object.entries(rewrites).map(([k, n]) => `- ${k}: ${n}`) : ["- none"]),
@@ -1169,6 +1197,8 @@ export async function report(options) {
     ...(data.idioms.length ? data.idioms.map((i) => `- ${i.lesson} (batch ${i.batch})`) : ["- none"]),
     ""
   ].join("\n")
+  writeText(p.prBody, ["# Migration test and fixture verification", "",
+    ...data.testDiffs.flatMap(b => [`Batch ${b.batch}`, "", testDiffMarkdown(b.result)])].join("\n"))
   writeText(p.report, md)
   writeJson(p.reportJson, data)
   return data

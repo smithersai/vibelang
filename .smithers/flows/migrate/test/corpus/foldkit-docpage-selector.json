@@ -1,0 +1,19 @@
+{
+  "file": "website/src/docPage.test.ts",
+  "before": "const pages = import.meta.glob(\"../docs/**/*.ts\", { eager: true })\nexpect(Object.keys(pages).length).toBe(2)\n",
+  "after": "const pages = import.meta.glob([\"../docs/**/*.{ts,vibe}\", \"!../docs/**/*.d.vibe.ts\"], { eager: true })\nexpect(Object.keys(pages).length).toBe(2)\n",
+  "files": {
+    "website/docs/a.ts": "",
+    "website/docs/nested/b.ts": ""
+  },
+  "renames": [
+    {
+      "from": "website/docs/a.ts",
+      "to": "website/docs/a.vibe"
+    },
+    {
+      "from": "website/docs/nested/b.ts",
+      "to": "website/docs/nested/b.vibe"
+    }
+  ]
+}

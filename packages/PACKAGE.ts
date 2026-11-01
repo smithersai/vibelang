@@ -1,4 +1,5 @@
 import { Smithers as S } from "@smthrs/targets"
+import { migrationSources } from "../migration-inputs.ts"
 import { Package as Typescript } from "../typescript/PACKAGE.ts"
 
 // The npm packages. vibelang-runtime's targets are declared here rather than
@@ -51,12 +52,13 @@ const compilerTest = S.Shell.Test({
   shell: "cd packages/compiler && bun install --frozen-lockfile && node --test test/*.test.mjs",
   // Migration properties exercise the flow's package-export and Bun.build edits.
   // Their helpers and the TypeScript API install must enter the cache key too.
-  data: [compilerNative, runtimeDist, S.glob("compiler/**"), S.glob("//.smithers/flows/migrate/lib/**"), S.glob("//.smithers/flows/migrate/templates/**"),
+  data: [compilerNative, runtimeDist, S.glob("compiler/**"), migrationSources, S.glob("//.smithers/flows/migrate/lib/**"), S.glob("//.smithers/flows/migrate/templates/**"),
     S.file("//.smithers/flows/migrate/test/oxlint.test.mjs"),
     S.file("//.smithers/flows/migrate/test/corpus/opencode-oxlint-changed.json"), S.file("//.smithers/flows/migrate/README.md"),
+    S.file("//docs/tools/package.json"), S.file("//docs/tools/bun.lock"),
     S.file("//scripts/testing/property.mjs"), S.file("//docs/design/src/007-tooling.md"), S.file("//.smithers/flows/migrate/rules.md"),
     S.file("vite/src/relative-imports.js"), S.file("vite/src/paths-imports.js"), S.file("unplugin/src/relative-imports.js"), ...install],
-  tools: [S.Host.bin("node"), S.Host.bin("bun")],
+  tools: [S.Host.bin("node"), S.Host.bin("bun"), S.Host.bin("jj")],
   sandbox: "none",
   timeout: "15m"
 })
@@ -70,7 +72,7 @@ const pluginTest = (name: string, summary: string, timeout: string) => S.Shell.T
   summary,
   shell: `VIBELANG_BINARY=$PWD/packages/compiler/native/vibelang sh packages/${name}/test/run.sh`,
   data: [compilerNative, S.glob("compiler/**"), S.glob(`${name}/**`),
-    ...(name === "vite" ? [S.glob("//.smithers/flows/migrate/lib/**"), S.file("//scripts/testing/property.mjs"), S.file("//docs/design/src/007-tooling.md")] : []),
+    ...(name === "vite" ? [migrationSources, S.file("//scripts/testing/property.mjs"), S.file("//docs/design/src/007-tooling.md")] : []),
     ...install, S.file("runtime/tsconfig.json"), S.glob("runtime/src/**")],
   tools: [S.Host.bin("node"), S.Host.bin("bun")],
   sandbox: "none",

@@ -295,6 +295,9 @@ earlier run already proved.
 
 ## Cache contracts
 
+The compiler and Vite package tests consume `//:migration-sources`, a root-owned filegroup for the migrate flow's helpers and verifier tests. A `//` prefix roots a glob's path but does not change its package scope: a glob declared in `packages/PACKAGE.ts` cannot select the root-owned `.smithers/flows/migrate/` files. `migration-inputs.ts` defines the shared group without a declaration-module import cycle. The compiler package's cache-contract tests use `smthrs explain` to check the real dependency, every source path and its current content digest.
+
+
 A cached result is only as correct as its key is complete. Each target names:
 
 - **Its toolchain.** Every program a target spawns is a declared host binary
@@ -315,7 +318,11 @@ A cached result is only as correct as its key is complete. Each target names:
   an output by writing a sibling `.smthrs-*` tree and renaming it into place,
   and `jj file list`, which the docs check runs while other targets restore
   their outputs, snapshots the working copy: an unignored temporary tree is
-  tracked, then vanishes before the check reads it.
+  tracked, then vanishes before the check reads it. Discovery prunes the Vite
+  and unplugin test `.fixtures/` trees and the compiler case directory, which
+  has no package declarations: their generated outputs may change while the
+  compiler tests explain their migration-source cache inputs. This excludes
+  declaration discovery only; case sources still enter their declared inputs.
 
 The command-line fuzz target builds its nested compiler with `-trimpath`,
 matching the outer Go test build. This lets the two builds share compiler
