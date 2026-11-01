@@ -291,6 +291,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Interrupted migration codemods could lose their rename, import or platform-split bookkeeping; the flow now journals every mechanical write before it starts and safely resumes or restores the original source.
 - `FuzzCommandLine` could fail with `the compilation rewrote the source main.d.vibe.ts` in a checkout where an earlier compile had left that sidecar in an acceptance case; the fuzz seeds now skip these generated files.
 
+- `vibelang --fix` refused to annotate the first of two `Config` helpers that a plain function calls, so neither helper was fixed: the function's one `EK9203` moved with the edit and named the second call, which the gate read as a new error; a span after or before a fix's edits in the file it edits is now compared where it lay before them.
+
 - On a loaded machine, the child-process tests of `vibelang-vite` and `vibelang-unplugin` failed with `Missing expected exception` because a killed process stays visible as a zombie until it is reaped; they now wait for the process's inherited connection to close.
 
 - Vite could invalidate a module immediately after serving it when the compiler wrote a generated `.d.vibe.ts` declaration; those output events now leave the served module and its importers cached, while real source edits still trigger hot updates.

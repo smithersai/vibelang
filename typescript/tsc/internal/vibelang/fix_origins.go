@@ -51,8 +51,9 @@ func (g *fixGate) errorSources(ps []proposal) map[tspath.RootedFilePath]bool {
 	editedScores := map[tspath.RootedFilePath]int{}
 	direct := map[tspath.RootedFilePath]bool{}
 	budget := 2048
+	spanKey := g.baseline.spanKeys()
 	for _, d := range compiler.GetDiagnosticsOfAnyProgram(g.ctx, program, nil, false, program.GetBindDiagnostics, program.GetSemanticDiagnostics) {
-		if d.Category() != diagnostics.CategoryError || d.File() == nil || (d.Code() != 2322 && d.Code() != 2345) || g.baseline.messages[errorKey(d)] > 0 || g.baseline.spans[errorSpanKey(d)] > 0 {
+		if d.Category() != diagnostics.CategoryError || d.File() == nil || (d.Code() != 2322 && d.Code() != 2345) || g.baseline.messages[errorKey(d)] > 0 || g.baseline.spans[spanKey(d)] > 0 {
 			continue
 		}
 		file := d.File()

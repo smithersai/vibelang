@@ -42,7 +42,8 @@ import (
 // overlaps one taken waits for the next round, which rechecks the edited
 // program. A round's fixes are kept only when the edited program reports no
 // error the original did not, by file, code, and message, or by file, code,
-// and span (an error whose message a fix makes more precise is not new); when the
+// and span, a span after or before a fix's edits taken where it lay before
+// them (an error whose message a fix makes more precise is not new); when the
 // round as a whole would add one, the errors say which fixes add them: a
 // fix whose own text holds an added error is set aside, an error elsewhere
 // is traced to the fix whose text holds a declaration it reads, and the
@@ -681,29 +682,44 @@ func errorCode(d *ast.Diagnostic) string {
 	return source + strconv.Itoa(int(d.Code()))
 }
 
-// errorSpanKey names d by its file, code, and span, which a fix leaves as
-// they were in every file it does not edit, and before its first edit in a
-// file it does; "" for an error with no file.
+// errorSpanKey names d by its file, code, and span; "" for an error with no
+// file.
 func errorSpanKey(d *ast.Diagnostic) string {
 	if d.File() == nil {
 		return ""
 	}
-	return fmt.Sprintf("%s: %s at %d+%d", d.File().FileName().AsString(), errorCode(d), d.Pos(), d.Len())
+	return spanKeyAt(d, d.Pos())
+}
+
+func spanKeyAt(d *ast.Diagnostic, pos int) string {
+	return fmt.Sprintf("%s: %s at %d+%d", d.File().FileName().AsString(), errorCode(d), pos, d.Len())
 }
 
 // An errorBaseline holds the errors a fix may not add to: the program's
-// errors counted by errorKey, and by errorSpanKey.
-type errorBaseline struct{ messages, spans map[string]int }
-
-func baselineOf(ctx context.Context, program *compiler.Program) errorBaseline {
-	return countErrors(programErrors(ctx, program))
+// errors counted by errorKey and by errorSpanKey, and the text of each file
+// that reports one, against which spanKeys places a later program's errors.
+type errorBaseline struct {
+	messages, spans map[string]int
+	texts           map[string]string
 }
 
-func countErrors(errors []*ast.Diagnostic) errorBaseline {
+func baselineOf(ctx context.Context, program *compiler.Program) errorBaseline {
+	errors := programErrors(ctx, program)
+	b := countErrors(errors, errorSpanKey)
+	b.texts = map[string]string{}
+	for _, d := range errors {
+		if d.File() != nil {
+			b.texts[d.File().FileName().AsString()] = d.File().Text()
+		}
+	}
+	return b
+}
+
+func countErrors(errors []*ast.Diagnostic, spanKey func(*ast.Diagnostic) string) errorBaseline {
 	b := errorBaseline{messages: map[string]int{}, spans: map[string]int{}}
 	for _, d := range errors {
 		b.messages[errorKey(d)]++
-		if key := errorSpanKey(d); key != "" {
+		if key := spanKey(d); key != "" {
 			b.spans[key]++
 		}
 	}
@@ -716,16 +732,18 @@ func countErrors(errors []*ast.Diagnostic) errorBaseline {
 // of an error the program already reported at the same place, and adds no
 // error. In t3code, writing a schema helper's plain return type turns
 // Effect<brand<…>> into brand<…> in a test's existing TS2345, which an
-// unrelated helper causes.
+// unrelated helper causes. A span in a file a fix edits is compared where it
+// lay before the edits (spanKeys).
 func addedCounts(errors []*ast.Diagnostic, baseline errorBaseline) map[string]int {
-	now := countErrors(errors)
+	spanKey := baseline.spanKeys()
+	now := countErrors(errors, spanKey)
 	added := map[string]int{}
 	for _, d := range errors {
 		key := errorKey(d)
 		if now.messages[key] <= baseline.messages[key] {
 			continue
 		}
-		if span := errorSpanKey(d); span != "" && now.spans[span] <= baseline.spans[span] {
+		if span := spanKey(d); span != "" && now.spans[span] <= baseline.spans[span] {
 			continue
 		}
 		added[key]++
@@ -736,6 +754,53 @@ func addedCounts(errors []*ast.Diagnostic, baseline errorBaseline) map[string]in
 		}
 	}
 	return added
+}
+
+// spanKeys returns errorSpanKey with each span moved back to where it lay in
+// b's text of its file. A fix's edits move every span after them, so an
+// error the edited program reports after the edits, or before them, keeps
+// its baseline place: in t3code, annotating the first of two Config helpers
+// a plain function calls moves the function's one EK9203, which now names
+// the second call. A span inside the edited text has no baseline place: "".
+func (b errorBaseline) spanKeys() func(*ast.Diagnostic) string {
+	type ends struct{ prefix, suffix int }
+	edited := map[string]ends{}
+	return func(d *ast.Diagnostic) string {
+		if d.File() == nil {
+			return ""
+		}
+		name := d.File().FileName().AsString()
+		before, ok := b.texts[name]
+		now := d.File().Text()
+		if !ok || before == now {
+			return errorSpanKey(d)
+		}
+		e, ok := edited[name]
+		if !ok {
+			e.prefix, e.suffix = unchangedEnds(before, now)
+			edited[name] = e
+		}
+		switch {
+		case d.Pos()+d.Len() <= e.prefix:
+			return errorSpanKey(d)
+		case d.Pos() >= len(now)-e.suffix:
+			return spanKeyAt(d, d.Pos()-len(now)+len(before))
+		}
+		return ""
+	}
+}
+
+// unchangedEnds returns the lengths of the longest common prefix of a and b
+// and of the longest common suffix of what follows it.
+func unchangedEnds(a, b string) (prefix, suffix int) {
+	n := min(len(a), len(b))
+	for prefix < n && a[prefix] == b[prefix] {
+		prefix++
+	}
+	for suffix < n-prefix && a[len(a)-1-suffix] == b[len(b)-1-suffix] {
+		suffix++
+	}
+	return prefix, suffix
 }
 
 // newError returns an error program reports that baseline does not hold, as
