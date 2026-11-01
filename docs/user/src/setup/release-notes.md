@@ -353,6 +353,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `vibelang --fix` left `yield* Effect.gen(…)` half converted: it rewrote the inner generator, then refused the outer one with EK4616, because it wrote `try (effect { … })`. It now writes `try effect { … }`.
 
 
+- Formatter validation rejected unchanged output from a program with an existing error; it now accepts identical emitted bytes while retaining diagnostic, file and parsed-structure checks.
+
 - The tooling emit-name rule promised only `.js` declaration imports even for packages selecting another style; it now separates runtime JavaScript from the approved declaration spelling.
 
 - The resolver reference left linked packages and `preserveSymlinks` ambiguous; it now classifies TypeScript's final path and includes aliases, JSX sources and mapped sidecars.

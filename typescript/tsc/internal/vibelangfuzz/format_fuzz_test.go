@@ -215,6 +215,12 @@ func toolsFormatDifference(before, after *Result) string {
 		if !ok {
 			return fmt.Sprintf("formatting removed emitted %s", name)
 		}
+		// Exact bytes already preserve the output, including output from an
+		// erroneous program that is itself not parseable. Changed bytes still
+		// require the independent structural comparison below.
+		if text == other {
+			continue
+		}
 		left, err := toolsFormatTree(name, text)
 		if err != nil {
 			return fmt.Sprintf("cannot compare original %s: %v", name, err)

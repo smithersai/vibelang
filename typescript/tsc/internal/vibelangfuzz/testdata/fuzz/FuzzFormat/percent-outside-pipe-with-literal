@@ -1,0 +1,2 @@
+go test fuzz v1
+string("export const label = \"keep\";\nexport function half(n: number) {\n  return % / 2\n}\n")
