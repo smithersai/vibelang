@@ -1,0 +1,16 @@
+{
+  "finding": "smithers:codemod-skips-mjs-importers",
+  "note": "Smithers swebench: three .mjs scripts imported ../../../src/Monitor.ts; the codemod read only .ts/.tsx/.mts/.cts/.vibe importers, so they kept the .ts name after Monitor became .vibe and swebench:lint failed import/no-unresolved (drive fixed by hand, 7120bea3cc7e).",
+  "batch": [
+    "packages/swebench/src/Monitor.ts"
+  ],
+  "files": {
+    "packages/swebench/src/Monitor.ts": "export const monitor = 1\n",
+    "packages/swebench/src/Report.ts": "export const report = 2\n",
+    "packages/swebench/scripts/eval/run.mjs": "import { monitor } from \"../../src/Monitor.ts\"\nimport { report } from \"../../src/Report.ts\"\nimport { helper } from \"./helper.js\"\nconsole.log(monitor, report, helper)\n",
+    "packages/swebench/scripts/eval/helper.js": "export const helper = 3\n"
+  },
+  "expected": [
+    "packages/swebench/scripts/eval/run.mjs: ../../src/Monitor.ts -> ../../src/Monitor.vibe"
+  ]
+}

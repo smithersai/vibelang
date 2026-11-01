@@ -347,23 +347,35 @@ export function restoreSpecifiers(root, edits, module, aliases) {
 }
 
 /**
+ * The files whose imports the codemod reads: TypeScript, VibeLang, and
+ * JavaScript, such as a script that imports ../src/Monitor.ts (smithers
+ * swebench: three .mjs scripts kept the .ts name and failed
+ * import/no-unresolved).
+ */
+export const importerFile = /\.(?:ts|tsx|mts|cts|vibe|js|jsx|mjs|cjs)$/
+
+/**
  * Rewrites the relative imports of every file in scope (repository-relative
  * paths after the renames) so each names its target as VibeLang reads it.
  * With moved, the modules a batch renamed (or revert put back), only the
  * imports of those modules and the imports in them change: a specifier that
  * names an earlier migration's .vibe module by its .ts name stays as the
- * repository wrote it. Returns the edits made: { file, from, to }.
+ * repository wrote it. A JavaScript file's import changes only when it names
+ * the module's source file, ../src/Monitor.ts, since ./x.js there names a
+ * JavaScript file. Returns the edits made: { file, from, to }.
  */
 export function rewriteImports(root, scope, moved, aliases, { read = (file) => readFileSync(join(root, file), "utf8"), write = (file, text) => writeFileSync(join(root, file), text) } = {}) {
   const files = new Set(scope)
   const only = moved && new Set(moved)
   const edits = []
   for (const file of scope) {
-    if (!/\.(?:ts|tsx|mts|cts|vibe)$/.test(file)) continue
+    if (!importerFile.test(file)) continue
+    const javascript = /\.[cm]?jsx?$/.test(file)
     const path = join(root, file)
     const text = read(file)
     const changes = []
     for (const i of parseImports(text)) {
+      if (javascript && !/\.(?:[cm]?tsx?|vibe)$/.test(i.specifier)) continue
       // A tsconfig paths alias (`@/x`) names a module as a relative specifier does (opencode-39).
       const aliased = resolveRelative(file, i.specifier, files) === undefined ? resolveAliased(file, i.specifier, files, aliases) : undefined
       const target = aliased?.target ?? resolveRelative(file, i.specifier, files)

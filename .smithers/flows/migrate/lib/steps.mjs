@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url"
 import { assertBaselineSafe } from "./baseline.mjs"
 import { buildInventory, listSources, readCoverage, tsconfigPaths } from "./inventory.mjs"
 import { defaultLimits, draftPlan, migrationScope, planPrompt, validatePlan } from "./plan.mjs"
-import { fixToFixedPoint, pathAliases, restoreExports, restoreSpecifiers, rewriteImports, rewriteTotals, vibePath } from "./codemod.mjs"
+import { fixToFixedPoint, importerFile, pathAliases, restoreExports, restoreSpecifiers, rewriteImports, rewriteTotals, vibePath } from "./codemod.mjs"
 import { restoreViteScripts } from "./vite-config.mjs"
 import { applyState, durableWrite, prepareReferences, prepareState, saveState } from "./codemod-state.mjs"
 import { checkSelectorEdits, restoreSourceLiterals, rewriteSourceLiterals } from "./source-paths.mjs"
@@ -135,7 +135,7 @@ const scopeFiles = (config) => config.packages.flatMap((pkg) => pkg.sources.flat
  * ../src/Crypto.ts). A declaration file has no import to rewrite.
  */
 export async function importers(t) {
-  return (await Jj.trackedFiles(t)).filter((f) => /\.(?:ts|tsx|mts|cts|vibe)$/.test(f) && !isDeclarationFile(f))
+  return (await Jj.trackedFiles(t)).filter((f) => importerFile.test(f) && !isDeclarationFile(f))
 }
 
 /** A batch's files as they are now: each plan path, as .vibe when migrated. */
