@@ -228,7 +228,13 @@ for (let run = 0; run < options.runs; run++) {
     if (phase === "cold") summary = result.stderr.trim().split("\n").at(-1)
   }
   rmSync(cache, { recursive: true, force: true })
-  sample.ratio = (sample.cold - sample.warm - options.packages * sample.start) / (sample.check - sample.start)
+  const baseline = sample.check - sample.start
+  const adjusted = sample.cold - sample.warm - options.packages * sample.start
+  sample.ratio = adjusted / baseline
+  if (baseline <= 0 || adjusted < 0 || !Number.isFinite(sample.ratio)) {
+    console.error("register.mjs: inconclusive timing sample " + (run + 1) + ": start=" + sample.start + " ms, check=" + sample.check + " ms, cold=" + sample.cold + " ms, warm=" + sample.warm + " ms; need check > start and cold - warm >= packages * start; rerun on a quiet host")
+    process.exit(1)
+  }
   for (const key of Object.keys(samples)) samples[key].push(sample[key])
 }
 
