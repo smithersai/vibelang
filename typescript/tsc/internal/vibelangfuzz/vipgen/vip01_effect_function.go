@@ -571,3 +571,56 @@ func functionWitness(key, template, reading, vibe, reference, call string) {
 		},
 	})
 }
+
+// Recursion follows VIP-1's ordinary function model and Effect.gen reading.
+// Vary the call form, base value, increment and bounded depth; the deep stack
+// boundary is kept in recursion-effect-depth rather than every fuzz worker.
+func init() {
+	for _, shape := range []string{"direct", "mutual", "arrow", "method"} {
+		Register(&Construct{
+			Key:      "vip01.recursion-" + shape,
+			VIP:      1,
+			Requires: []string{"vip01.effect-function", "vip05.try"},
+			Citations: []Citation{{
+				VIP:      1,
+				Template: "Effect.gen(function* () { return n === 0 ? ‹base› : ‹step› + (yield* ‹call›(n - 1)) })",
+				Quote:    "Running a recursive Effect with `try` uses Effect's stack-safe execution, as `yield*` does inside `Effect.gen`.",
+				Reading:  "The recursion-depth amendment states the Effect.gen reading. The two printers preserve the same recursive calls, base case and arithmetic; no direct JavaScript recursion is substituted for a run recursive Effect.",
+			}},
+			Focus: func(g *Gen, s *Scope) []Stmt {
+				name, value := g.Name("recur"), g.Name("value")
+				depth, base, step := 1+g.Intn(24), g.Intn(8), 1+g.Intn(5)
+				body := func(call, run string) string {
+					return fmt.Sprintf("return n === 0 ? %d : %d + (%s%s(n - 1))", base, step, run, call)
+				}
+				vibeFn := func(fn, call string) string {
+					return "effect function " + fn + "(n: number): number!! { " + body(call, "try ") + " }"
+				}
+				nativeFn := func(fn, call string) string {
+					return "function " + fn + "(n) { return Effect.gen(function* () { " + body(call, "yield* ") + " }) }"
+				}
+				var vibe, native, call string
+				switch shape {
+				case "direct":
+					vibe, native, call = vibeFn(name, name), nativeFn(name, name), name
+				case "mutual":
+					other := name + "Next"
+					vibe = vibeFn(name, other) + "\n" + vibeFn(other, name)
+					native = nativeFn(name, other) + "\n" + nativeFn(other, name)
+					call = name
+				case "arrow":
+					vibe = "const " + name + ": (n: number) => number!! = effect (n: number): number!! => { " + body(name, "try ") + " }"
+					native = "const " + name + " = (n) => Effect.gen(function* () { " + body(name, "yield* ") + " })"
+					call = name
+				case "method":
+					vibe = "const " + name + " = { effect run(n: number): number!! { " + body("this.run", "try ") + " } }"
+					native = "const " + name + " = { run(n) { return Effect.gen({ self: this }, function* () { " + body("this.run", "yield* ") + " }) } }"
+					call = name + ".run"
+				}
+				g.AddDecl(&Code{V: vibe, E: native})
+				s.Locals = append(s.Locals, value)
+				return []Stmt{&Const{Name: value, Type: "number", Value: &Try{X: &Lit{Text: fmt.Sprintf("%s(%d)", call, depth)}}}}
+			},
+		})
+	}
+}

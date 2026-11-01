@@ -319,6 +319,26 @@ function down2(n: number): Effect.Effect<number> { return Effect.gen(function* (
 
 `down2(3)` succeeds with 0.
 
+Plain functions have JavaScript's stack limit; recursion that must be stack-safe is written as an `effect` function. Running a recursive Effect with `try` uses Effect's stack-safe execution, as `yield*` does inside `Effect.gen` (VIP-1, amended). A plain recursion's stack overflow is an implicit `RangeError`, untracked and a defect when it occurs in effect code. The exact failing depth depends on the runtime.
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-1
+function depth(n: number): number { return n === 0 ? 0 : 1 + depth(n - 1) }
+effect function depthE(n: number): number!! {
+  return n === 0 ? 0 : 1 + (try depthE(n - 1))
+}
+```
+
+```ts [Effect]
+import { Effect } from "effect"
+function depth(n: number): number { return n === 0 ? 0 : 1 + depth(n - 1) }
+function depthE(n: number): Effect.Effect<number> {
+  return Effect.gen(function* () {
+    return n === 0 ? 0 : 1 + (yield* depthE(n - 1))
+  })
+}
+```
+
 ### Crossing between Promises and Effects
 
 No construct converts between the two. Effect's own functions do, as [VIP-6](/vips/0006-effect-globals) globals:

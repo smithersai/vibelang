@@ -1,0 +1,1 @@
+impl-hunt-func VIP-1: plain recursion still uses the retired trampoline; native JavaScript overflows while this compiler reports completed

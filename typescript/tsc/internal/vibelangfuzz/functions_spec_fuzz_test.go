@@ -108,7 +108,7 @@ func TestFunctionsSpecQuotes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	quotes := []string{functionSyntaxQuote, recursiveInferenceQuote, effectInferenceQuote}
+	quotes := []string{functionSyntaxQuote, recursiveInferenceQuote, effectInferenceQuote, "Plain functions have JavaScript's stack limit"}
 	for _, r := range functionsSpecRules {
 		quotes = append(quotes, r.quote)
 	}

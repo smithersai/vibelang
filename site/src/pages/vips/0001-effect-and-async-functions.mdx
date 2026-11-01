@@ -97,3 +97,7 @@ D550 (a function's kind inferred from `await` in its body), D541, the form rules
 
 - What `using` and Stream iteration mean inside an `effect` function. (`throw` is VIP-4, and `try`/`catch` is VIP-5.)
 - Top-level `await` and `main`.
+
+### Amendment: recursion depth (2026-11-01)
+
+Plain functions have JavaScript's stack limit; recursion that must be stack-safe is written as an `effect` function. Running a recursive Effect with `try` uses Effect's stack-safe execution, as `yield*` does inside `Effect.gen`. A plain recursion's stack overflow is an implicit `RangeError`; its exact failing depth depends on the runtime. This clarifies VIP-1's ordinary-JavaScript function model and adds no explicit-throw permission.

@@ -96,7 +96,7 @@ A return annotation checks the complete Effect type. Leave it out to infer all t
 
 The `effect` keyword decides the function's kind. Plain functions and `async` functions keep TypeScript's meaning, regardless of their return annotations. A plain callback can return an Effect without running it, so `xs.map((x) => work(x))` builds an array of Effects. A callback that must run Effects uses `effect`, as in `forEach(xs, effect (x) => { return try work(x) })`.
 
-Recursion is as stack-safe as it is with `Effect.gen`. `effect function sumTo(n: number): number!! { return n === 0 ? 0 : n + (try sumTo(n - 1)) }` runs each recursive Effect with `try`; `try sumTo(100000)` succeeds. Plain JavaScript recursion retains JavaScript's stack limit. Recursion through a synchronous callback recurses as JavaScript does: past roughly 10,000 calls on Node it fails with a `RangeError` defect.
+Recursion is as stack-safe as it is with `Effect.gen`. `effect function sumTo(n: number): number!! { return n === 0 ? 0 : n + (try sumTo(n - 1)) }` runs each recursive Effect with `try`; `try sumTo(100000)` succeeds. Plain JavaScript recursion retains JavaScript's stack limit. Recursion through a synchronous callback retains JavaScript's stack limit; the exact failing depth depends on the runtime.
 
 The shorthand has the same meaning in parameter types, aliases, service members, and return annotations. A callback parameter type means what TypeScript means: `(n: number) => string` is a plain callback, and one returning an Effect is `(n: number) => string!E!R`, with `E` and `R` declared as the function's type parameters.
 

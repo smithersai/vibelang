@@ -1,0 +1,7 @@
+// expect-result: "RangeError"
+// The fixed test runtime has a finite stack; the spec gives no portable depth.
+import { observe } from "./observe.ts"
+function depth(n: number): number { return n === 0 ? 0 : 1 + depth(n - 1) }
+export effect function main() {
+  return try Effect.try(() => observe(() => depth(100000)))
+}

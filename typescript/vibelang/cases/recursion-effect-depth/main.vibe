@@ -1,0 +1,13 @@
+// expect-result: {"direct":100000,"mutual":100000}
+effect function depth(n: number): number!! {
+  return n === 0 ? 0 : 1 + (try depth(n - 1))
+}
+effect function evenDepth(n: number): number!! {
+  return n === 0 ? 0 : 1 + (try oddDepth(n - 1))
+}
+effect function oddDepth(n: number): number!! {
+  return n === 0 ? 0 : 1 + (try evenDepth(n - 1))
+}
+export effect function main() {
+  return { direct: try depth(100000), mutual: try evenDepth(100000) }
+}

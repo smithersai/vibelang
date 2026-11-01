@@ -3034,6 +3034,8 @@ typescript/vibelang/cases/recursion-hybrid/lib.vibe:12:22 lambda plain table
 typescript/vibelang/cases/recursion-hybrid/main.vibe:8:18 lambda program table
 typescript/vibelang/cases/recursion-hybrid/main.vibe:9:18 lambda program table
 typescript/vibelang/cases/recursion-hybrid/receiver-a.vibe:6:22 lambda plain table
+typescript/vibelang/cases/recursion-plain-stack-limit/main.vibe:6:25 lambda plain table
+typescript/vibelang/cases/recursion-plain-stack-limit/main.vibe:6:39 lambda choice fallback
 typescript/vibelang/cases/recursive-annotated-program.fail/main.vibe:4:21 lambda effectFn annotation
 typescript/vibelang/cases/recursive-annotated-program/main.vibe:10:18 lambda effectFn annotation
 typescript/vibelang/cases/recursive-annotated-program/main.vibe:26:21 lambda effectFn annotation
