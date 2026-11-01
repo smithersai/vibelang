@@ -1,4 +1,4 @@
-// expect: EK4301 TS2322
+// expect: EK4301 TS2322 EK4801
 class Counter {
   n = 5
   effect reset() { try log("reset ran"); this.n = 0 }
@@ -27,11 +27,13 @@ export function main() {
 interface Slot<T> { mutable run: () => T }
 export function genericTargets(slot: Slot<void!!>) {
   slot.run = effect () => { try sleep("1 millis") }
+  // A literal never becomes an Effect function from its destination (VIP-2):
+  // these plain functions don't fit (TS2322) and drop sleep's Effect (EK4801).
   const literal: Source<void!!> = { get() { sleep("1 millis") } }
   const field: Source<void!!> = { get: () => { sleep("1 millis") } }
   return [literal, field]
 }
-function tick() {}
+effect function tick() {}
 export function heldPlainForms() {
   const fs = [tick]
   const callbacks: ReadonlyArray<() => void> = fs

@@ -1,0 +1,50 @@
+// expect-result: ["Invalid()","a","x",["z","Invalid(z)"]]
+// A JavaScript generator's throw is JavaScript's (VIP-1, VIP-4). A throw
+// that escapes it reaches the code that drives it; one its own catch handles
+// stays inside.
+error Invalid { value: string }
+
+export function* steps(value: string): Generator<string> {
+  if (value === "") throw new Invalid({ value })
+  yield value
+}
+
+export async function* later(value: string): AsyncGenerator<string> {
+  yield value
+  throw new Invalid({ value })
+}
+
+export function* kept(): Iterator<string> {
+  try {
+    throw new Invalid({ value: "x" })
+  } catch (e) {
+    yield e instanceof Invalid ? e.value : "?"
+  }
+}
+
+function named(e: unknown): string {
+  return e instanceof Invalid ? `Invalid(${e.value})` : `other: ${String(e)}`
+}
+
+function drained(value: string): string {
+  try {
+    return [...steps(value)].join(",")
+  } catch (e) {
+    return named(e)
+  }
+}
+
+async function drainedLater(value: string): Promise<string[]> {
+  const seen: string[] = []
+  try {
+    for await (const item of later(value)) seen.push(item)
+  } catch (e) {
+    seen.push(named(e))
+  }
+  return seen
+}
+
+export effect function main() {
+  const late = try Effect.promise(() => drainedLater("z"))
+  return [drained(""), drained("a"), kept().next().value, late]
+}

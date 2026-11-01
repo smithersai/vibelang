@@ -26,6 +26,6 @@ function describe(shape: Shape) {
   }
 }
 
-export function main() {
+export effect function main() {
   return [label("idle"), label("busy"), size("busy"), describe({ _tag: "Circle", radius: 2 })]
 }

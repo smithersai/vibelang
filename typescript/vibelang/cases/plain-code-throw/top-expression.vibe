@@ -1,0 +1,4 @@
+import { Bad } from "./bad.vibe"
+
+const missing: string | undefined = undefined
+export const name = missing ?? throw new Bad({ why: "expression" })

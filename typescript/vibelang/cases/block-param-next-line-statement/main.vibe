@@ -2,7 +2,7 @@
 const events: string[] = [];
 { events.push("before") }
 
-export function main() {
+export effect function main() {
   const label = String("inner");
   {
     const scoped = label

@@ -29,9 +29,9 @@ import (
 //	(a) => Effect.sync(() => { B })               effect (a) => { B }
 //	try Effect.void; in a block, return try Effect.void    nothing, return
 //
-// A stage rewrites only where its pipeline runs: under try, or as what a
-// function returns. A catch expression runs its left side, so a pipeline held
-// as a value stays one, and so does a stage with stages after it, which take
+// A stage rewrites only where its pipeline runs, under try; a returned
+// pipeline is the function's value (VIP-1, EK4802). A catch expression runs
+// its left side, so a pipeline held as a value stays one, and so does a stage with stages after it, which take
 // the program. The handler keeps its parameter and its text. A thunk that
 // throws, awaits, or reads this or arguments means something else in a block,
 // and an Effect.sync whose value is itself a program would run it, so those
@@ -64,9 +64,9 @@ func stagePipe(call *ast.Node) *ast.Node {
 	return pipe
 }
 
-// runningSite returns the expression that stands for node where node runs:
-// the try around it, or node itself as what a function returns. It returns nil
-// where node is a value.
+// runningSite returns the try around node, where node runs, or nil where
+// node is a value. Under VIP-1 a function that returns a program returns it,
+// so a returned pipeline is a value: return try (x |> stage) runs it.
 func runningSite(node *ast.Node) *ast.Node {
 	top := node
 	for ast.IsParenthesizedExpression(top.Parent) {
@@ -75,14 +75,8 @@ func runningSite(node *ast.Node) *ast.Node {
 			return top
 		}
 	}
-	parent := top.Parent
-	switch {
-	case isTryCall(parent):
-		return parent
-	case isSynthesizedPosition(parent):
-		return nil
-	case ast.IsReturnStatement(parent), ast.IsArrowFunction(parent) && parent.Body() == top:
-		return top
+	if isTryCall(top.Parent) {
+		return top.Parent
 	}
 	return nil
 }
@@ -149,14 +143,8 @@ func wrapperStageRewrite(c *checker.Checker, file *ast.SourceFile, site, pipe *a
 		if shadowed(pipe, "withSpan") {
 			return nil
 		}
-		text := "withSpan(() => " + program + ", " + expressionText(file, argument) + ")"
-		if site != pipe {
-			text = "try " + text
-		}
+		text := "try withSpan(() => " + program + ", " + expressionText(file, argument) + ")"
 		return siteRewrite(c, file, site, text, "withSpan with an arrow")
-	}
-	if site == pipe {
-		return nil // a block runs what it holds: only try says this one runs
 	}
 	elements := []*ast.Node{argument}
 	if ast.IsArrayLiteralExpression(argument) {
@@ -378,7 +366,8 @@ func thunkRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *for
 		} else if strings.HasPrefix(text, "{") {
 			text = "(" + text + ")"
 		}
-		if parent.Type() == nil && parent.Flags&ast.NodeFlagsVibeLangEffect == 0 {
+		if parent.Flags&ast.NodeFlagsVibeLangEffect == 0 {
+			// A function is an Effect function only when marked (VIP-1).
 			start := nodeStart(file, parent)
 			edits = append(edits, sourceEdit{start, start, "effect "})
 		}

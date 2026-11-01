@@ -1,0 +1,18 @@
+// expect-result: {"zero":"done","three":"done","type":"string","tree":"ab","pipeline":"abc"}
+import { pipelineTree, scalar, tree, type Tree } from "./lib.vibe"
+
+const sample: Tree = {
+  _tag: "Branch",
+  children: [{ _tag: "Leaf", text: "a" }, { _tag: "Branch", children: [{ _tag: "Leaf", text: "b" }] }],
+}
+
+export effect function main() {
+  const zero = scalar(0)
+  return {
+    zero,
+    three: scalar(3),
+    type: typeof zero,
+    tree: tree(sample),
+    pipeline: pipelineTree([sample, { _tag: "Leaf", text: "c" }]),
+  }
+}

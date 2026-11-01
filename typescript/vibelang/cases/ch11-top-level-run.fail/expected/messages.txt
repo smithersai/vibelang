@@ -1,1 +1,2 @@
-Hold the program as a function, and call it inside one: const config = () => loadConfig()
+try runs an Effect only in effect code, but this try is at the top level of the module.
+  Run it inside an effect function, such as export effect function main().

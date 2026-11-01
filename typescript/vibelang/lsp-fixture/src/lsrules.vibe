@@ -8,31 +8,31 @@ service Greeting {
 }
 
 const NameLive = Layer.succeed(Name, {
-  value() {
+  effect value() {
     return "Ada"
   }
 })
 
 const GreetingLive = Layer.effect(Greeting, effect {
-  const name = Name()
+  const name = try Name
   return {
-    text() {
-      return `Hello, ${name.value()}`
+    effect text() {
+      return `Hello, ${try name.value()}`
     }
   }
 })
 
-export function discard(program: Effect.Effect<number>) {
+export effect function discard(program: Effect.Effect<number>) {
   program
   // @vibelang-diagnostics-next-line EK4801:off
   program
   return 0
 }
 
-export function greet() {
+export effect function greet() {
   provide NameLive {
     provide GreetingLive {
-      return Greeting.text()
+      return try (try Greeting).text()
     }
   }
 }

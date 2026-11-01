@@ -27,7 +27,7 @@ func (a *analyzer) flowOf(node *ast.Node) *effectInfo {
 	visit = func(n *ast.Node) bool {
 		switch {
 		case isFunctionBoundary(n):
-		case n != node && a.isByName(n):
+		case n != node && false:
 			// Passed as a program (D147): it runs where the callee runs it.
 		case isHatchArgument(n):
 			// TypeScript inside a boundary hatch (D148): nothing there runs.
@@ -40,6 +40,10 @@ func (a *analyzer) flowOf(node *ast.Node) *effectInfo {
 		case n.Kind == ast.KindThrowStatement:
 			n.ForEachChild(visit)
 			info.addError(a.thrownType(n), n.Expression()) // a typed failure everywhere outside a hatch (D282)
+		case catchHeadUntyped(a.checker, n):
+			// TypeScript already reported the head; its unknown channels
+			// are no failure or requirement of the program (no EK9201 or
+			// EK9202 after TS2722).
 		case n.Kind == ast.KindCallExpression && a.resolvingProgramCall(n) != nil:
 			// A do or throw expression being typed: it looks up no service
 			// and has no trusted failures (callSignature).
@@ -208,7 +212,7 @@ func (a *analyzer) addCall(info *effectInfo, call *ast.Node) {
 	// them, so it reads its instantiated return type; the callee's own body
 	// knows only its type parameters. A callee with a contract adds what the
 	// contract says.
-	if callee := implementationOf(sig.Declaration()); callee != nil && isLowerable(callee) && sig.Target() == nil && !a.isFactory(callee) && (a.isSplittable(callee) || a.isEffect(callee)) {
+	if callee := implementationOf(sig.Declaration()); callee != nil && isLowerable(callee) && sig.Target() == nil && (a.isEffect(callee)) {
 		if e, r, ok := a.calleeContract(callee, call, sig); ok {
 			info.addError(e, call)
 			info.addRequirement(r, call)
@@ -244,15 +248,19 @@ func catchVariableType(c *checker.Checker, declaration *ast.Node) *checker.Type 
 		return t // catch (cause: Cause) (primitives.go)
 	}
 	clause := declaration.Parent
-	if clause == nil || clause.Kind != ast.KindCatchClause || !inLowerableBody(clause.Parent) && !inPlainGeneratorBody(clause.Parent) || isHandleStatement(clause.Parent) {
+	if clause == nil || clause.Kind != ast.KindCatchClause || !inLowerableBody(clause.Parent) || isHandleStatement(clause.Parent) {
 		return nil
 	}
 	a := analyzerFor(c)
 	info := a.tryBlockFlow(clause.Parent.AsTryStatement().TryBlock)
-	if fn := ast.GetContainingFunction(clause.Parent); len(info.errors) == 0 && fn != nil && !isMarkedEffect(fn) && (!isWrittenForm(fn) || a.hasPlainContract(fn)) {
+	errors := c.GetUnionType(info.errors)
+	// A block whose flow fails with nothing, never included (a match's
+	// no-match arm), leaves plain code's variable to TypeScript (VIP-1: a
+	// function without effect is plain, whatever its annotation).
+	if fn := ast.GetContainingFunction(clause.Parent); errors.Flags()&checker.TypeFlagsNever != 0 && fn != nil && markedForm(fn) == formNone {
 		return nil
 	}
-	return c.GetUnionType(info.errors)
+	return errors
 }
 
 // isNativeTry reports whether try, a try statement in a .vibe function, is
@@ -260,9 +268,6 @@ func catchVariableType(c *checker.Checker, declaration *ast.Node) *checker.Type 
 // reaches it, tracked or not (detail 205). Effect code bans the statement, so
 // one there is the retired form, which catches typed failures.
 func (a *analyzer) isNativeTry(try *ast.Node) bool {
-	if inPlainGeneratorBody(try) {
-		return true
-	}
 	fn := ast.GetContainingFunction(try)
 	return fn == nil || !a.isEffect(fn)
 }
@@ -278,7 +283,7 @@ func init() {
 func (a *analyzer) blockRunsEffects(block *ast.Node) bool {
 	var visit func(*ast.Node) bool
 	visit = func(n *ast.Node) bool {
-		if isFunctionBoundary(n) || isHatchArgument(n) || n != block && a.isByName(n) {
+		if isFunctionBoundary(n) || isHatchArgument(n) || n != block && false {
 			return false
 		}
 		if a.returnedProgram(n) != nil || isInvocation(n) && a.performs(n) ||

@@ -25,7 +25,7 @@ m.label(0)
 await run(m.guarded(1))
 await run(m.block(1))
 await run(m.traced(1))
-await run(m.double(2))
+m.double(2) // double is plain (VIP-1)
 
 const { result } = await session.post("Profiler.takePreciseCoverage")
 const script = result.find((entry) => entry.url.endsWith("/out/main.js"))

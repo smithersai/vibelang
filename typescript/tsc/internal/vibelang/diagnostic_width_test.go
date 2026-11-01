@@ -35,9 +35,9 @@ func TestWideDiagnosticLists(t *testing.T) {
 		for i := 0; i < 300; i++ {
 			fmt.Fprintf(&source, "service Need%03d { value: number }\n", i)
 		}
-		source.WriteString("export function main() { ")
+		source.WriteString("export effect function main() { ")
 		for i := 0; i < 300; i++ {
-			fmt.Fprintf(&source, "Need%03d(); ", i)
+			fmt.Fprintf(&source, "try Need%03d; ", i)
 		}
 		source.WriteString("}")
 		program, file, _, _ := editorProgram(t, source.String())

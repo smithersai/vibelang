@@ -1,28 +1,21 @@
 package vibelang
 
 import (
-	"slices"
-
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
 )
 
-// The pipe operator (design D154, D155). In a .vibe file,
+// The pipe operator (VIP-23). In a .vibe file,
 //
 //	fetchUser(id) |> retry(%, policy) |> timeout(%, "1 second")
 //
 // evaluates each body with the topic % standing for the expression before
 // the |>. The parser reads a pipe as a binary expression flagged
 // NodeFlagsVibeLang and the topic as an identifier named % (parser/
-// vibelang_pipes.go); the checker gives a pipe its body's type.
-//
-// The topic follows the by-name rule (D147). Where % stands for an argument
-// whose parameter expects a program, and the left side runs an Effect, the
-// left side is passed by name: each such % is a program that evaluates the
-// left side when it runs, and the left side does not run before the body.
-// Elsewhere the left side runs once, before the body, and % is its value.
-// A pipe does one or the other (EK1008).
+// vibelang_pipes.go); the checker gives a pipe its body's type. As in TC39's
+// Hack pipes, the left side evaluates once, before the body, and % is its
+// value wherever it stands.
 
 func init() {
 	checker.RegisterNameResolutionHook(resolveTopic)
@@ -121,20 +114,12 @@ func resolveTopic(c *checker.Checker, location *ast.Node, name string, meaning a
 	return symbol
 }
 
-// pipeIsByName reports whether pipe passes its left side by name: whether a
-// topic of its body stands where a program is expected (D155).
-func (a *analyzer) pipeIsByName(pipe *ast.Node) bool {
-	return slices.ContainsFunc(topicsOf(pipe), a.isByName)
-}
-
-// checkPipes reports a pipe without a topic (EK1006), a % in no pipe's body
-// (EK1007), and a pipe that passes its left side by name and also uses it as
-// a value (EK1008).
+// checkPipes reports a pipe without a topic (EK1006) and a % in no pipe's body
+// (EK1007).
 func checkPipes(c *checker.Checker, file *ast.SourceFile) {
 	if !isVibeLangFile(file) {
 		return
 	}
-	a := analyzerFor(c)
 	var visit func(n *ast.Node) bool
 	visit = func(n *ast.Node) bool {
 		switch {
@@ -147,19 +132,9 @@ func checkPipes(c *checker.Checker, file *ast.SourceFile) {
 			if ast.NodeIsMissing(n.AsBinaryExpression().Left) || ast.NodeIsMissing(body) {
 				break // the parser already reports the missing operand
 			}
-			topics := topicsOf(n)
-			if len(topics) == 0 {
+			if len(topicsOf(n)) == 0 {
 				d := report(c, body, EK1006)
 				note(d, "Write % where the value goes:   {0} |> {1}", nodeText(file, n.AsBinaryExpression().Left), "f(%)")
-			} else if a.pipeIsByName(n) {
-				for _, topic := range topics {
-					if !a.isByName(topic) {
-						left := nodeText(file, n.AsBinaryExpression().Left)
-						d := report(c, topic, EK1008, left)
-						note(d, "Bind the value first,   const value = {0},   or pass it by name everywhere.", left)
-						break
-					}
-				}
 			}
 		}
 		n.ForEachChild(visit)
@@ -169,7 +144,7 @@ func checkPipes(c *checker.Checker, file *ast.SourceFile) {
 }
 
 // topicQuickInfo tells a hover on % what it stands for: the value of the
-// pipe's left side, or, passed by name, a program that evaluates it.
+// pipe's left side.
 func topicQuickInfo(c *checker.Checker, node *ast.Node) (string, string) {
 	if !isTopic(node) {
 		return "", ""
@@ -180,12 +155,6 @@ func topicQuickInfo(c *checker.Checker, node *ast.Node) (string, string) {
 	}
 	file := ast.GetSourceFileOfNode(node)
 	left := nodeText(file, pipe.AsBinaryExpression().Left)
-	a := analyzerFor(c)
 	t := c.TypeToStringEx(c.GetTypeAtLocation(node), node, hoverTypeFlags, nil)
-	if a.isByName(node) {
-		if owner, _ := ownerCall(node); owner != nil {
-			return "(topic) %: " + t, "Passed by name to `" + calleeText(owner) + "` as a program: `" + left + "` runs when that program runs, not here."
-		}
-	}
 	return "(topic) %: " + t, "The value of `" + left + "`, which runs once, before the pipe's body."
 }

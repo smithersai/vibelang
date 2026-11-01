@@ -11,7 +11,6 @@ import (
 // so editor features stay in this file and completions.go.
 func init() {
 	ls.RegisterQuickInfoHook(factoryQuickInfo)
-	ls.RegisterQuickInfoHook(plainFunctionQuickInfo)
 	ls.RegisterQuickInfoHook(runningCallQuickInfo)
 	ls.RegisterCompletionScopeHook(preludeCompletions)
 	ls.RegisterMemberCompletionHook(serviceMemberCompletions)
@@ -38,16 +37,6 @@ func runningCallQuickInfo(c *checker.Checker, node *ast.Node) (string, string) {
 		return "", ""
 	}
 	returns := "`" + c.TypeToStringEx(success, call, hoverTypeFlags, nil) + "`"
-	a := analyzerFor(c)
-	a.resolveByNameOwners(call)
-	if a.byNameOf(call) != nil {
-		if form := a.keywordFormOf(a.byNameOf(call)); form != nil && a.keywordOperand(a.byNameOf(call)) {
-			return "", "The operand of `fork`, a program by syntax: it runs on the new fiber, not here, and returns " + returns + "."
-		}
-		if owner := a.byNameOwner(a.byNameOf(call)); owner != nil {
-			return "", "Passed by name to `" + calleeText(owner) + "` as a program: it runs when that program runs, not here, and returns " + returns + "."
-		}
-	}
 	return "", "Runs here and returns " + returns + "."
 }
 
@@ -91,45 +80,11 @@ func runsInLoweredBody(c *checker.Checker, call *ast.Node) bool {
 	return false
 }
 
-// plainFunctionQuickInfo shows a function that compiles to plain JavaScript
-// the way VibeLang calls it. TypeScript sees `function add(a: number,
-// b: number)` as returning Effect<number, never, never>, its one calling
-// convention (Chapter 15), but VibeLang code calls add$direct and gets
-// the number. So a hover on add, or on a call to it, in a .vibe file shows
-// `function add(a: number, b: number): number` and says what TypeScript
-// callers see. A hover in a .ts file keeps TypeScript's view.
-func plainFunctionQuickInfo(c *checker.Checker, node *ast.Node) (string, string) {
-	if !ast.IsIdentifier(node) || !isVibeLangFile(ast.GetSourceFileOfNode(node)) {
-		return "", ""
-	}
-	symbol := c.GetSymbolAtLocation(node)
-	if symbol != nil && symbol.Flags()&ast.SymbolFlagsAlias != 0 {
-		symbol = c.GetAliasedSymbol(symbol)
-	}
-	if symbol == nil || symbol.Flags()&ast.SymbolFlagsFunction == 0 || len(symbol.Declarations()) != 1 {
-		return "", ""
-	}
-	fn := symbol.Declarations()[0]
-	a := analyzerFor(c)
-	if !a.isSplittable(fn) || !a.isPlainFunction(fn) {
-		return "", ""
-	}
-	signature := c.GetSignatureFromDeclaration(fn)
-	effect := c.GetReturnTypeOfSignature(signature)
-	success := successType(c, effect)
-	if success == nil {
-		return "", ""
-	}
-	text := "function " + symbol.Name() + c.SignatureToStringEx(c.SignatureWithReturnType(signature, success), node, hoverTypeFlags, nil)
-	return text, "Plain JavaScript: VibeLang code calls it directly. TypeScript callers see `" + c.TypeToStringEx(effect, node, hoverTypeFlags, nil) + "`."
-}
-
 // factoryQuickInfo describes D269's two distinct evaluation phases.
 func factoryQuickInfo(c *checker.Checker, node *ast.Node) (string, string) {
 	if !isVibeLangFile(ast.GetSourceFileOfNode(node)) {
 		return "", ""
 	}
-	a := analyzerFor(c)
 	if call := callOfCallee(node); call != nil && holdsProgram(c, call) {
 		return "", "Holds `" + calleeText(call) + "`'s program: called here, not run."
 	}
@@ -142,9 +97,6 @@ func factoryQuickInfo(c *checker.Checker, node *ast.Node) (string, string) {
 				}
 			}
 		}
-	}
-	if fn := esFunctionOf(c, node); fn != nil && a.isFactory(fn) {
-		return "", "Returns a program: its body runs when called; the program runs each time its caller runs it."
 	}
 	return "", ""
 }

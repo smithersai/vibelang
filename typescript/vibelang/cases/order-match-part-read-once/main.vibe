@@ -46,6 +46,6 @@ function element() {
   return [n, reads]
 }
 
-export function main() {
+export effect function main() {
   return { bound: bound(), option: option(), element: element() }
 }

@@ -1,0 +1,15 @@
+// expect-result: [1,2,3,4,5,6]
+// Parentheses around try's operand change nothing (VIP-5): try (e) runs e,
+// whether e is a call, a value, a member, a nested group or a type assertion.
+const held = Effect.succeed(2)
+const box = { value: Effect.succeed(3) }
+const make = () => Effect.succeed(5)
+export effect function main() {
+  const call = try (Effect.succeed(1))
+  const value = try (held)
+  const member = try (box.value)
+  const nested = try ((Effect.succeed(4)))
+  const called = try (make())
+  const asserted = try (Effect.succeed(6) as Effect.Effect<number>)
+  return [call + 0, value + 0, member + 0, nested + 0, called + 0, asserted + 0]
+}

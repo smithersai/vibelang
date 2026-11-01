@@ -13,18 +13,16 @@ const stageHeader = "const p = (n: number): Effect.Effect<number, string> => Eff
 // and says what the source said, in VibeLang's form.
 func TestEffectStageFixes(t *testing.T) {
 	for _, test := range []struct{ name, source, want string }{
-		{"orElseSucceed returned", "export const f = (n: number) => p(n).pipe(Effect.orElseSucceed(() => 0))\n",
-			"export const f = (n: number) => p(n) catch () => 0\n"},
 		{"orElseSucceed under try", "export const f = (n: number) => Effect.gen(function* () {\n  const v = yield* p(n).pipe(Effect.orElseSucceed(() => 0))\n  return v\n})\n",
 			"export const f = effect (n: number) => {\n  const v = p(n) catch () => 0\n  return v\n}\n"},
-		{"an object fallback", "export const f = (n: number) => p(n).pipe(Effect.orElseSucceed(() => ({ n })))\n",
-			"export const f = (n: number) => p(n) catch () => ({ n })\n"},
-		{"mapError literal", "export const f = (n: number) => p(n).pipe(Effect.mapError((e) => e.length))\n",
-			"export const f = (n: number) => p(n) catch effect (e) => { throw e.length }\n"},
-		{"mapError by name", "const size = (e: string) => e.length\nexport const f = (n: number) => p(n).pipe(Effect.mapError(size))\n",
-			"const size = (e: string): number => e.length\nexport const f = (n: number) => p(n) catch effect (e) => { throw size(e) }\n"},
-		{"stages before it stay", "export const f = (n: number) => p(n).pipe(Effect.map((x) => x + 1), Effect.catch((e) => Effect.succeed(e.length)))\n",
-			"export const f = (n: number) => (p(n) |> Effect.map(%, (x) => x + 1)) catch (e) => e.length\n"},
+		{"an object fallback", "export const f = (n: number) => Effect.gen(function* () {\n  const v = yield* p(n).pipe(Effect.orElseSucceed(() => ({ n })))\n  return v\n})\n",
+			"export const f = effect (n: number) => {\n  const v = p(n) catch () => ({ n })\n  return v\n}\n"},
+		{"mapError literal", "export const f = (n: number) => Effect.gen(function* () {\n  const v = yield* p(n).pipe(Effect.mapError((e) => e.length))\n  return v\n})\n",
+			"export const f = effect (n: number) => {\n  const v = p(n) catch effect (e) => { throw e.length }\n  return v\n}\n"},
+		{"mapError by name", "const size = (e: string) => e.length\nexport const f = (n: number) => Effect.gen(function* () {\n  const v = yield* p(n).pipe(Effect.mapError(size))\n  return v\n})\n",
+			"const size = (e: string) => e.length\nexport const f = effect (n: number) => {\n  const v = p(n) catch effect (e) => { throw size(e) }\n  return v\n}\n"},
+		{"stages before it stay", "export const f = (n: number) => Effect.gen(function* () {\n  const v = yield* p(n).pipe(Effect.map((x) => x + 1), Effect.catch((e) => Effect.succeed(e.length)))\n  return v\n})\n",
+			"export const f = effect (n: number) => {\n  const v = (p(n) |> Effect.map(%, (x) => x + 1)) catch (e) => e.length\n  return v\n}\n"},
 		{"catch under try drops the try", "export const f = (n: number) => Effect.gen(function* () {\n  const v = yield* Effect.catch(p(n), (e) => Effect.succeed(e.length))\n  return v\n})\n",
 			"export const f = effect (n: number) => {\n  const v = p(n) catch (e) => e.length\n  return v\n}\n"},
 		{"a generator yields one with a body", "export const f = (n: number) => Effect.gen(function* () {\n  const v = yield* Effect.gen(function* () {\n    const k = yield* p(n)\n    return k + 1\n  })\n  return v\n})\n",
@@ -41,10 +39,8 @@ func TestEffectStageFixes(t *testing.T) {
 		{"suspend returned", "export const f = (n: number) => Effect.suspend(() => p(n))\n", "export const f = effect (n: number) => try p(n)\n"},
 		{"suspend run", "export const f = (n: number) => Effect.gen(function* () {\n  const v = yield* Effect.suspend(() => p(n))\n  return v\n})\n",
 			"export const f = effect (n: number) => {\n  const v = try p(n)\n  return v\n}\n"},
-		{"withSpan returned", "export const f = (n: number) => p(n).pipe(Effect.withSpan(\"load\"))\n",
-			"export const f = (n: number) => withSpan(() => p(n), \"load\")\n"},
 		{"withSpan run", "export const f = (n: number) => Effect.gen(function* () {\n  const v = yield* p(n).pipe(Effect.withSpan(\"load\"))\n  return v\n})\n",
-			"export const f = effect (n: number) => {\n  const v = try withSpan(() => p(n), \"load\")\n  return v\n}\n"},
+			"export const f = effect (n: number) => {\n  const v = try (p(n) |> withSpan(%, \"load\"))\n  return v\n}\n"},
 		{"provide run", "export const f = (n: number) => Effect.gen(function* () {\n  const v = yield* p(n).pipe(Effect.provide(Layer.empty))\n  return v\n})\n",
 			"export const f = effect (n: number) => {\n  const v = try effect { provide Layer.empty { return try p(n) } }\n  return v\n}\n"},
 		{"void statement", "export const f = (n: number) => Effect.gen(function* () {\n  yield* Effect.void\n  return n\n})\n",
@@ -54,7 +50,7 @@ func TestEffectStageFixes(t *testing.T) {
 		{"suspend held", "export const v = Effect.suspend(() => p(1))\n", "export const v = effect { return try p(1) }\n"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			source, want := stageHeader+test.source, "const p = (n: number): number!string => n\n"+test.want
+			source, want := stageHeader+test.source, "const p = effect (n: number): number!string => n\n"+test.want
 			got, result := fixedPipe(t, source)
 			if got != want {
 				t.Fatalf("--fix writes\n%s\nwant\n%s\nrefused %+v", got, want, result.Refused)
@@ -75,7 +71,10 @@ func TestEffectStageFixesRefuse(t *testing.T) {
 		{"a pipeline passed", "export const f = (n: number) => Effect.all([p(n) |> Effect.orElseSucceed(%, () => 0)])\n", "Effect.orElseSucceed(%"},
 		{"a fallback that is a program", "export const f = (n: number) => p(n).pipe(Effect.orElseSucceed(() => Effect.succeed(1)))\n", "Effect.orElseSucceed(%"},
 		{"a handler with a default", "export const f = (n: number) => p(n).pipe(Effect.mapError((e = \"x\") => e))\n", "Effect.mapError(%"},
-		{"a span with options", "export const f = (n: number) => p(n).pipe(Effect.withSpan(\"load\", { attributes: { n } }))\n", "Effect.withSpan(%"},
+		{"a span with options", "export const f = (n: number) => p(n).pipe(Effect.withSpan(\"load\", { attributes: { n } }))\n", "withSpan(%"},
+		{"a returned pipeline is a value", "export const f = (n: number) => p(n).pipe(Effect.orElseSucceed(() => 0))\n", "Effect.orElseSucceed(%"},
+		{"a returned mapError is a value", "export const f = (n: number) => p(n).pipe(Effect.mapError((e) => e.length))\n", "Effect.mapError(%"},
+		{"a span a plain function returns", "export const f = (n: number) => p(n).pipe(Effect.withSpan(\"load\"))\n", "withSpan(%"},
 		{"a provide no try runs", "export const f = (n: number) => p(n).pipe(Effect.provide(Layer.empty))\n", "Effect.provide(%"},
 		{"a sync a statement returns", "export function f(n: number) {\n  return Effect.sync(() => n)\n}\n", "Effect.sync("},
 		{"a sync of a program", "export const f = (n: number) => Effect.sync(() => p(n))\n", "Effect.sync("},

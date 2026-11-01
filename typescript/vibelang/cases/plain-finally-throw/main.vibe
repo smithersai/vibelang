@@ -52,6 +52,6 @@ export effect function main() {
     overCatchThrow: overCatchThrow(),
     overReturn: overReturn(),
     alone: alone(),
-    defect: reasons(try exit(defect()))
+    defect: reasons(try exit(effect { return defect() }))
   }
 }

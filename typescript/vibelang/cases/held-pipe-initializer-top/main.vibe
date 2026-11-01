@@ -1,0 +1,6 @@
+// expect-result: 2
+// A top-level pipe builds its Effect and runs nothing (VIP-1, VIP-26; D262
+// superseded: this was EK1001). try runs it in effect code.
+const make = effect (n: number): number!! => n
+export const unheld = make(1) |> Effect.map(%, (n) => n + 1)
+export effect function main() { return try unheld }

@@ -7,7 +7,7 @@ export class Counter {
 }
 export const shadowed = effect (n: number): Effect<number, never, never> => [n].map((n) => ++n)[0]!
 export const property = effect (value: { mutable n: number }): Effect<number, never, never> => ++value.n
-// Plain exports bind parameters inside their delayed $direct call.
+// Plain exports are plain JavaScript functions (VIP-1).
 export function plain(n: number) { return ++n }
 export function plainRest(...values: number[]) { return values.pop() }
 export const hatch = effect (n: number): Effect<number, never, never> => try sync((n: number) => ++n, n)

@@ -27,6 +27,6 @@ export function checked(text: string): unknown {
   }
 }
 
-export function main() {
+export effect function main() {
   return [host("https://a.b/c"), host("nope"), decoded("\"x\""), decoded("{}"), checked(""), checked("bad")]
 }

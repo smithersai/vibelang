@@ -1,12 +1,12 @@
 error EmptyName { name: string }
 
-function shout(text: string): string!! {
+effect function shout(text: string): string!! {
   return text.toUpperCase()
 }
 
-export function greet(name: string) {
+export effect function greet(name: string) {
   if (name.length === 0) throw new EmptyName({ name })
-  const loud = shout(name)
+  const loud = try shout(name)
   console.log(loud)
   const count: number = loud
   return `Hello, ${loud}!`

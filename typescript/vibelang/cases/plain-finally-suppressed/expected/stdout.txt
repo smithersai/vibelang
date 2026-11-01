@@ -1,4 +1,4 @@
 second
 third
 Die(second)
-{"both":"Die(second)","nested":"Die(third)","direct":"Die(second)","mixed":"Die(cleanup)","framed":"Die(first)+Die(second)"}
+{"both":"Die(second)","nested":"Die(third)","direct":"Die(second)","mixed":"ok","framed":"Die(first)+Die(second)"}

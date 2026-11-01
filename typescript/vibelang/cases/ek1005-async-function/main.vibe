@@ -8,19 +8,19 @@ effect function load(id: string) {
 }
 
 export async function one(id: string): Promise<string> {
-  return await runPromise(() => load(id))
+  return await runPromise(effect { return try load(id) })
 }
 
-export const two = async (id: string) => await runPromise(() => load(id))
+export const two = async (id: string) => await runPromise(effect { return try load(id) })
 
 export class Repo {
   async three(id: string) {
-    return await runPromise(() => load(id))
+    return await runPromise(effect { return try load(id) })
   }
 }
 
 export async function many(ids: ReadonlyArray<string>) {
-  return await Promise.all(ids.map((id) => runPromise(() => load(id))))
+  return await Promise.all(ids.map((id) => runPromise(effect { return try load(id) })))
 }
 
 export effect function main() {

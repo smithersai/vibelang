@@ -5,7 +5,7 @@
 // began with, as it does inside the statement form (D180).
 effect function restored() {
   const started = try Deferred.make<string>()
-  const fiber = fork {
+  const fiber = fork effect {
     return try uninterruptible(effect {
       restore {
         try Deferred.succeed(started, "started")

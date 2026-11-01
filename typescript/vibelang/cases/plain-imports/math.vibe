@@ -1,6 +1,5 @@
-// Pure helpers in their own module. Each compiles to a $direct variant, which
-// other .vibe modules import and call inline, and an Effect form, which
-// TypeScript modules import.
+// Pure helpers in their own module: plain functions, because neither is
+// marked effect (VIP-1).
 export function double(n: number) {
   return n * 2
 }

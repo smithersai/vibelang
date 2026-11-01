@@ -23,7 +23,7 @@ function describe(e: NotFound): string {
   }
 }
 
-export function main() {
+export effect function main() {
   return {
     vibe: fromVibe(new OtherNotFound({ id: "1" })) instanceof NotFound,
     ts: fromTs(new TsNotFound({ id: "2" })) instanceof NotFound,

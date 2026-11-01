@@ -1,3 +1,1 @@
-greet can't run Console.log(`hello, ${name}`), an Effect: its return annotation, number, makes it a plain function, which runs no Effects.
-  Make it an Effect function: number!!
-  Or remove the annotation to infer the whole contract.
+try runs an Effect only in effect code, but greet is a plain function.

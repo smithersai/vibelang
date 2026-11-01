@@ -18,12 +18,12 @@ effect function observe(): string!! {
  const memo = try Effect.serviceOption(Layer.CurrentMemoMap)
  return memo._tag
 }
-export function main() {
- return Effect.provideService(observe(), Key, { value: 1 })
+export effect function main() {
+ return try Effect.provideService(observe(), Key, { value: 1 })
 }
 `
 
-// The native call sees no Layer memo map; the former block rewrite sees Some.
+// main runs the call (VIP-1, VIP-5). The native call sees no Layer memo map; the former block rewrite sees Some.
 // VIP-34's meaning-preservation rule requires an explanation without edits.
 func TestProvideServiceScopeHasNoQuickFix(t *testing.T) {
 	program, file, service, converters := editorProgram(t, provideServiceScopeSource)

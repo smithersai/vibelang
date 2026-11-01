@@ -5,8 +5,8 @@ import Api from "./api.vibe"
 export default Alchemy.Stack(
   "NotesStack",
   { providers: Cloudflare.providers(), state: Cloudflare.state() },
-  () => {
-    const api = Api()
+  effect {
+    const api = try Api
     return { url: api.url }
   }
 )

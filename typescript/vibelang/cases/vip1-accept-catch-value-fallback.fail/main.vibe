@@ -1,0 +1,10 @@
+// expect: EK0509
+// VIP-1 flip acceptance case 11, second half (t3code queryPersistence.vibe:32;
+// spec ruling 2026-11-01 00:50Z). VIP-5 amendment 2026-10-29 15:57 (decided
+// detail 31a): the handler is always a function literal, so a value after
+// catch is EK0509, with the quick fix catch () => value.
+const parse = (s: string): number!string => s === "" ? Effect.fail("empty") : Effect.succeed(s.length)
+
+export const load = effect (s: string) => {
+  return Effect.asSome(parse(s)) catch Effect.succeedNone()
+}

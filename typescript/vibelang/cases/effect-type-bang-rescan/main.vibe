@@ -12,5 +12,5 @@ export effect function main() {
   const spaced = seven as number!! != null
   const different = seven as number!! !== seven
   const r: number!!never= seven
-  return [try d, loose, strict, arrow(7), spaced, different, try r]
+  return [try d, loose, strict, try arrow(7), spaced, different, try r]
 }

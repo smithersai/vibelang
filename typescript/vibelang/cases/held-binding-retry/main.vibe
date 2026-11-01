@@ -4,7 +4,10 @@ export const make = (state: { mutable setups: number, mutable runs: number }): E
   state.setups++
   return effect { state.runs++; throw new Again() }
 }
-// expect-result: [1,4,4,4]
+// make(namedState) is evaluated once, as JavaScript evaluates an argument
+// (VIP-1 retires D147's by-name arguments): one setup each; retry reruns the
+// Effect, so each runs four times.
+// expect-result: [1,1,4,4]
 export effect function main() {
   const heldState = { setups: 0, runs: 0 }
   const namedState = { setups: 0, runs: 0 }

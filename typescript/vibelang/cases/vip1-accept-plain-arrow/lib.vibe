@@ -1,0 +1,4 @@
+// VIP-1 flip acceptance case 2 (foldkit-3, repro 02-plain-arrow): an arrow
+// with neither keyword is plain JavaScript, so its declaration returns
+// number, not an Effect.
+export const inc = (x: number) => x + 1

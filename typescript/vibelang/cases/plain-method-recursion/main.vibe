@@ -28,7 +28,7 @@ class Chain {
   }
 }
 
-export function main() {
+export effect function main() {
   const chain = new Chain(1, new Chain(2, new Chain(3)))
   return {
     size: chain.size(),

@@ -43,9 +43,9 @@ import { Effect } from "effect"
 const top = parse("1")
 const callback = ["1"].map(text => parse(text))
 export function boundary() { return Effect.sync(() => parse("boundary")) }
-export function f() { return parse("2") + clean(3) }
+export effect function f() { return parse("2") + clean(3) }
 export function g() { return JSON.parse("1") }
-export function method(ports: Ports) { return ports.offset() }
+export effect function method(ports: Ports) { return ports.offset() }
 export function mapped(values: ReadonlyArray<string>) {
   return values.map((v) => parse(v))
 }
@@ -120,7 +120,7 @@ func TestTrustedWorkspacePackageNames(t *testing.T) {
 				"/workspace/keys/package.json": `{"name":"@smthrs/keys"}`,
 				"/workspace/keys/index.ts":     `export { key } from "../../foreign"`,
 				"/foreign.ts":                  `export function key() { return 42 }`,
-				"/main.vibe":                   `import { key } from "@smthrs/keys"; export function use() { return key() }`,
+				"/main.vibe":                   `import { key } from "@smthrs/keys"; export effect function use() { return key() }`,
 				"/tsconfig.json":               fmt.Sprintf(`{"compilerOptions":{"strict":true,"paths":{"@smthrs/keys":["./workspace/keys/index.ts"]},"vibelang":{"trustedPackages":%s}},"files":["main.vibe"]}`, test.patterns),
 			}
 			fs := bundled.WrapFS(vfstest.FromMap(fixtureRuntime(files), tspath.CaseSensitive))
@@ -163,7 +163,7 @@ func TestTrustedPackageNameSkipsNamelessManifests(t *testing.T) {
 				"/node_modules/zodlike/v4/classic/package.json": `{"type":"module"}`,
 				"/node_modules/zodlike/v4/classic/schemas.d.ts": `export interface Schema { safeParse(value: unknown): { success: boolean } }
 export declare function make(): Schema`,
-				"/main.vibe":     `import { make } from "zodlike"; export function use(value: unknown) { const schema = make(); return schema.safeParse(value).success }`,
+				"/main.vibe":     `import { make } from "zodlike"; export effect function use(value: unknown) { const schema = make(); return schema.safeParse(value).success }`,
 				"/tsconfig.json": fmt.Sprintf(`{"compilerOptions":{"strict":true,"vibelang":{"trustedPackages":%s}},"files":["main.vibe"]}`, test.patterns),
 			}
 			fs := bundled.WrapFS(vfstest.FromMap(fixtureRuntime(files), tspath.CaseSensitive))
@@ -207,7 +207,7 @@ func TestTrustedValueHeldInConst(t *testing.T) {
 				"/node_modules/vitest/package.json":         `{"name":"vitest","types":"index.d.ts"}`,
 				"/node_modules/vitest/index.d.ts": `export interface Spy { mockRestore(): void }
 export declare const vi: { spyOn(target: object, name: string): Spy }`,
-				"/main.vibe":     `import { vi } from "@effect/vitest"; const target = { f: (): number => 1 }; export function use() { ` + test.body + ` }`,
+				"/main.vibe":     `import { vi } from "@effect/vitest"; const target = { f: (): number => 1 }; export effect function use() { ` + test.body + ` }`,
 				"/tsconfig.json": `{"compilerOptions":{"strict":true},"files":["main.vibe"]}`,
 			}
 			fs := bundled.WrapFS(vfstest.FromMap(fixtureRuntime(files), tspath.CaseSensitive))
@@ -243,18 +243,18 @@ func TestEK4401SuggestionCompiles(t *testing.T) {
 		"  export class Box { constructor(readonly v: string) {} show(prefix: string): string { return prefix + this.v } }\n" +
 		"}\n" +
 		"import { shout, Box } from util\n" +
-		"function hello(name: string) { return `hello ${name}` }\n" +
-		"function box() { return new Box(\"b\") }\n" +
-		"export function main(s: string) {\n  return "
+		"effect function hello(name: string) { return `hello ${name}` }\n" +
+		"effect function box() { return new Box(\"b\") }\n" +
+		"export effect function main(s: string) {\n  return "
 	suggestion := regexp.MustCompile(`Call it through (.*?\)\)), or `)
 	for _, test := range []struct{ call, want string }{
-		{`shout(hello("VibeLang"))`, `const s2 = try hello("VibeLang"); try Effect.try(() => shout(s2))`},
-		{`shout(s + hello(s))`, `const s2 = s + hello(s); try Effect.try(() => shout(s2))`},
+		{`shout(try hello("VibeLang"))`, `const s2 = try hello("VibeLang"); try Effect.try(() => shout(s2))`},
+		{`shout(s + (try hello(s)))`, `const s2 = s + (try hello(s)); try Effect.try(() => shout(s2))`},
 		{`shout(s)`, `try Effect.try(() => shout(s))`},
 		{`new Box(s).show(s)`, `try Effect.try(() => new Box(s).show(s))`},
-		{`box().show(s + hello(s))`, `const box2 = try box(); const prefix = s + hello(s); try Effect.try(() => box2.show(prefix))`},
+		{`(try box()).show(s + (try hello(s)))`, `const box2 = try box(); const prefix = s + (try hello(s)); try Effect.try(() => box2.show(prefix))`},
 		{`shout("hi")`, `try Effect.try(() => shout("hi"))`},
-		{`box().show(hello(s))`, `const box2 = try box(); const prefix = try hello(s); try Effect.try(() => box2.show(prefix))`},
+		{`(try box()).show(try hello(s))`, `const box2 = try box(); const prefix = try hello(s); try Effect.try(() => box2.show(prefix))`},
 	} {
 		t.Run(test.call, func(t *testing.T) {
 			program, file, _, _ := editorProgram(t, prefix+test.call+"\n}\n")

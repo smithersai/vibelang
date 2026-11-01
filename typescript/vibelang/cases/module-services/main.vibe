@@ -18,7 +18,7 @@ export effect function read(path: string) {
 export const id = effect () => try SecureRandom.uuidV4()
 export const token = effect () => try SecureRandom.randomBytes(16)
 export const status = effect () => try ChildProcessSpawner.string(ChildProcess.make("git", ["status"]))
-export const line = effect () => try Terminal.readLine()
+export const line = effect () => try (try Terminal.Terminal).readLine
 
 const Files = FileSystem.layerNoop({
   readFileString: effect (path) => `read ${path}`,
@@ -30,7 +30,7 @@ const Args = Stdio.layerTest({ args: Effect.succeed(["--verbose"]) })
 export effect function main() {
   provide Path.layer, Files, Args {
     const [file, text] = try notes("/srv")
-    const fs = try FileSystem()
-    return [file, text, try exists(fs, file), try Stdio.args()]
+    const fs = try FileSystem.FileSystem
+    return [file, text, try exists(fs, file), try (try Stdio.Stdio).args]
   }
 }

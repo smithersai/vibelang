@@ -12,7 +12,7 @@ export effect function healthy(index: number): Effect<number, unknown, infer R> 
 
 export effect function wrap(body: number!unknown): number!unknown {
   const layer = effect (index: number): Effect<number, unknown, infer R> => {
-    if (index < 0) return try body()
+    if (index < 0) return try body
     return try guarded(layer(index - 1))
   }
   return try layer(3)

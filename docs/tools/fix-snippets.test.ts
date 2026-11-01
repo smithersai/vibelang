@@ -56,22 +56,20 @@ test("refuses a type-correct fix whose expected stdout changes", async () => {
     writeFileSync(wrapper, `#!/usr/bin/env bun\nimport { readFileSync, writeFileSync } from "node:fs";\nimport { dirname, join } from "node:path";\nconst args = process.argv.slice(2);\nif (args.includes("--fix")) { const dir = dirname(args[args.indexOf("-p") + 1]); const path = join(dir, "block-1.vibe"); writeFileSync(path, readFileSync(path, "utf8").replace('Console.log("before")', 'Console.log("after")')); }\nconst child = Bun.spawn([${JSON.stringify(defaultCompiler())}, ...args.filter(arg => arg !== "--fix")], { stdout: "inherit", stderr: "inherit" }); process.exit(await child.exited);\n`, { mode: 0o755 })
     const dir = join(temp, "page")
     mkdirSync(dir)
-    const markdown = '```vibe\nexport function main() { Console.log("before") }\n// Output: before\n```\n'
+    const markdown = '```vibe\nexport effect function main() { try Console.log("before") }\n// Output: before\n```\n'
     await expect(fixPage(markdown, dir, wrapper, 10000, true)).rejects.toThrow("expected output changed")
     expect(readFileSync(join(dir, "fix/block-1.vibe"), "utf8")).toContain('Console.log("after")')
   } finally { rmSync(temp, { recursive: true, force: true }) }
 }, 60000)
 
-test("migrates pipe look-ahead and checks its marked output, idempotently", async () => {
+test("leaves a data-first pipe alone and checks its marked output", async () => {
   const temp = mkdtempSync(join(tmpdir(), "fix-snippets-pipe-"))
   try {
     linkModules(temp)
-    const markdown = '```vibe\n// run: Console.log(value())\nfunction value() { return pipe(() => 5, Effect.map(n => n + 1)) }\n// Output: 6\n```\n'
+    const markdown = '```vibe\n// run: try Console.log(try value())\nfunction value() { return pipe(Effect.succeed(5), Effect.map(n => n + 1)) }\n// Output: 6\n```\n'
     const result = await fixPage(markdown, join(temp, "first"), defaultCompiler())
-    expect(result.changed).toBe(1)
-    expect(result.markdown).not.toContain("pipe(")
-    expect((await fixPage(result.markdown, join(temp, "second"), defaultCompiler())).changed).toBe(0)
-    await expect(fixPage(markdown.replace("Output: 6", "Output: 7"), join(temp, "wrong"), defaultCompiler())).rejects.toThrow("expected output changed")
+    // A pipe's topic is the Effect value (VIP-23), so a data-first pipe needs no rewrite.
+    expect(result.changed).toBe(0)
   } finally { rmSync(temp, { recursive: true, force: true }) }
 }, 60000)
 
@@ -79,10 +77,10 @@ test("moves a block after an Effect dual to its program parameter, idempotently"
   const temp = mkdtempSync(join(tmpdir(), "fix-snippets-dual-"))
   try {
     linkModules(temp)
-    const markdown = '```vibe\n// run: Console.log(traced())\nfunction traced() {\n  return withSpan("load") {\n    return "done"\n  }\n}\n// Output: done\n```\n'
+    const markdown = '```vibe\n// run: try Console.log(try traced())\neffect function traced() {\n  return try withSpan("load") {\n    return "done"\n  }\n}\n// Output: done\n```\n'
     const result = await fixPage(markdown, join(temp, "first"), defaultCompiler())
     expect(result.changed).toBe(1)
-    expect(result.markdown).toContain('return withSpan(() => {\n    return "done"\n  }, "load")')
+    expect(result.markdown).toContain('return try withSpan(effect {\n    return "done"\n  }, "load")')
     expect((await fixPage(result.markdown, join(temp, "second"), defaultCompiler())).changed).toBe(0)
   } finally { rmSync(temp, { recursive: true, force: true }) }
 }, 60000)
@@ -91,7 +89,7 @@ test("migrates a fork of a function literal and checks its marked output, idempo
   const temp = mkdtempSync(join(tmpdir(), "fix-snippets-fork-"))
   try {
     linkModules(temp)
-    const markdown = '```vibe\n// run: Console.log(value())\nfunction value() {\n  const f = fork(() => Effect.succeed(5))\n  return join f\n}\n// Output: 5\n```\n'
+    const markdown = '```vibe\n// run: try Console.log(try value())\neffect function value() {\n  const f = fork(() => Effect.succeed(5))\n  return join f\n}\n// Output: 5\n```\n'
     const result = await fixPage(markdown, join(temp, "first"), defaultCompiler())
     expect(result.changed).toBe(1)
     expect(result.markdown).toContain("const f = fork Effect.succeed(5)")
@@ -104,10 +102,10 @@ test("migrates a run marker's fork beside its block, on one line", async () => {
   const temp = mkdtempSync(join(tmpdir(), "fix-snippets-run-"))
   try {
     linkModules(temp)
-    const markdown = '```vibe\n// run: const f = fork(() => value()); Console.log(join f)\nfunction value() { return 5 }\n// Output: 5\n```\n'
+    const markdown = '```vibe\n// run: const f = fork(() => value()); try Console.log(join f)\neffect function value() { return 5 }\n// Output: 5\n```\n'
     const result = await fixPage(markdown, join(temp, "first"), defaultCompiler())
     expect(result.changed).toBe(1)
-    expect(result.markdown).toContain("// run: const f = fork value(); Console.log(join f)\n")
+    expect(result.markdown).toContain("// run: const f = fork value(); try Console.log(join f)\n")
     expect((await fixPage(result.markdown, join(temp, "second"), defaultCompiler())).changed).toBe(0)
   } finally { rmSync(temp, { recursive: true, force: true }) }
 }, 60000)

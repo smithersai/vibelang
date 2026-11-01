@@ -26,8 +26,8 @@ effect function broad(value: Exit.Exit<number>): unknown!! { return value }
 effect function broadConstructed(): unknown!! { return Exit.fail("data") }
 effect function objectValue(): object!! { return Exit.succeed(6) }
 effect function unionValue(): Exit.Exit<number> | string!! { return Exit.succeed(7) }
-// S5-1 still delegates when the declared A rejects the subtype.
-effect function run(): number!! { return Exit.succeed(8) }
+// A returned subtype stays data (VIP-5, return values stay unflattened): try runs it.
+effect function run(): number!! { return try Exit.succeed(8) }
 export effect function main() {
   // Construct data in a sync hatch to isolate the return-boundary rule in (B).
   const command = try sync((): ChildProcess.StandardCommand => ChildProcess.make("s22-3-must-never-spawn"))

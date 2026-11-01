@@ -1,8 +1,9 @@
-error EK1001: now() runs a program, but a class field's initializer runs as plain JavaScript, outside any program.
-  Compute the value in an Effect function and pass it to the constructor, or make created a method.
-error EK1001: now() runs a program, but the constructor of Box runs as plain JavaScript, outside any program.
-error EK1001: now() runs a program, but get age runs as plain JavaScript, outside any program.
-  Write a method instead, which runs as an Effect: age() { … }.
-error EK1001: now() runs a program, but the static block of Box runs as plain JavaScript, outside any program.
-error EK1001: now() runs a program, but a default parameter value is plain JavaScript, so the call does not run.
-  Make id optional and compute the default in the body: id ?? now().
+error EK0501: try runs an Effect only in effect code, but a class field's initializer is plain JavaScript.
+  Run it in an effect function and pass the value to the constructor, or make created an effect method.
+error EK0501: try runs an Effect only in effect code, but the constructor of Box is plain JavaScript, and can't be an effect function.
+  Run it in an effect function before constructing, and pass the result to the constructor.
+error EK0501: try runs an Effect only in effect code, but get age is an accessor, which can't be an effect function.
+  Write an effect method instead: effect age() { … }.
+error EK0501: try runs an Effect only in effect code, but the static block of Box is plain JavaScript.
+error EK0501: try runs an Effect only in effect code, but a parameter default runs when label is called, outside any Effect.
+  Make id optional and run the default in the body of an effect function: id ?? (try now()).

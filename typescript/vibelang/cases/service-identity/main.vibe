@@ -47,13 +47,13 @@ function regionOf(users: Users.Shape) {
 }
 
 effect function lookup(id: string) {
-  const users = try Users()
-  return `${try Users.find(id)} in ${regionOf(users)}, beta ${(try Flags()).beta}`
+  const users = try Users
+  return `${try Users.find(id)} in ${regionOf(users)}, beta ${(try Flags).beta}`
 }
 
 effect function search(query: string) {
-  const engine: SearchApi = try Search()
-  const prefix: string = try Prefix()
+  const engine: SearchApi = try Search
+  const prefix: string = try Prefix
   return `${prefix}${try engine.find(query)}`
 }
 

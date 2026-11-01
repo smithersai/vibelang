@@ -1,4 +1,4 @@
-error EK4503: Path.sep belongs to the service implementation; read it with Path().sep.
-error EK4503: Terminal.columns belongs to the service implementation; read it with Terminal().columns.
-Terminal().columns is a program, as the service declares it; Terminal.columns() runs it.
-error EK4503: Path.Path.sep belongs to the service implementation; read it with Path.Path().sep.
+error EK4503: Path.sep belongs to the service implementation; read it with (try Path.Path).sep.
+error EK4503: Terminal.columns belongs to the service implementation; read it with (try Terminal.Terminal).columns.
+(try Terminal.Terminal).columns is a program, as the service declares it; try (try Terminal.Terminal).columns runs it.
+error EK4503: Path.Path.sep belongs to the service implementation; read it with (try Path.Path).sep.

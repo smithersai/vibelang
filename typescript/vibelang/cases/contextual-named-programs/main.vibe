@@ -1,31 +1,33 @@
+import * as $effectPrograms from "effect/Effect"
 // expect-result: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,15,true,true]
 import { Config, Effect, Exit } from "effect"
 error Refused { reason: string }
 interface Service { version: Effect.Effect<number, Refused, never> }
 let runs = 0
 const shared = effect () => ++runs
-const sharedRecord: Service = { version: shared }
+const sharedRecord: Service = { version: $effectPrograms.suspend(shared) }
 const named = (): Service => {
   const version = effect () => ++runs
-  return { version }
+  return { version: $effectPrograms.suspend(version) }
 }
 const explicit = (): Service => {
   const version = effect () => ++runs
-  return { version: version }
+  return { version: $effectPrograms.suspend(version) }
 }
 const frozenInline = (): Service => Object.freeze({ version: effect { return ++runs } })
 const frozenNamed = (): Service => {
   const version = effect () => ++runs
-  return Object.freeze({ version })
+  return Object.freeze({ version: $effectPrograms.suspend(version) })
 }
 const satisfies = (): Service => {
   const version = effect () => ++runs
-  return { version } satisfies Service
+  return { version: $effectPrograms.suspend(version) } satisfies Service
 }
 effect function effectful() { return try Effect.sync(() => ++runs) }
 function plainDeclaration() { return ++runs }
-const annotated: Service = { version: effectful }
-const declared: Service = { version: plainDeclaration }
+const annotated: Service = { version: $effectPrograms.suspend(effectful) }
+// plainDeclaration is plain (VIP-1): Effect.sync makes its call a program.
+const declared: Service = { version: $effectPrograms.sync(plainDeclaration) }
 const generic = <T>(value: T): T => value
 const identity = (): Service => generic({ version: effect { return ++runs } })
 const frozenCall = (): Service => Object.freeze({ version: Effect.sync(() => ++runs) })
@@ -40,7 +42,7 @@ interface DataPrograms {
 const dataPrograms = (): DataPrograms => {
   const readConfig = (): Config.Config<number> => Config.succeed(42)
   const readExit = (): Exit.Exit<number, never> => Exit.succeed(9)
-  return Object.freeze({ config: readConfig, snapshot: readExit })
+  return Object.freeze({ config: $effectPrograms.sync(readConfig), snapshot: $effectPrograms.sync(readExit) })
 }
 export effect function main() {
   const a = named()
@@ -55,7 +57,7 @@ export effect function main() {
   const constrainedValue = constrainedRecord()
   const data = dataPrograms()
   const before = runs
-  const config = try data.config()
-  const snapshot = try data.snapshot()
-  return [before, try a.version(), try a.version(), try b.version(), try c.version(), try d.version(), try e.version(), try annotated.version(), try declared.version(), try f.version(), try g.version(), try h.version(), try i.version(), try sharedRecord.version(), try shared(), try constrainedValue.version(), runs, Config.isConfig(config), Exit.isSuccess(snapshot) && snapshot.value === 9]
+  const config = try data.config
+  const snapshot = try data.snapshot
+  return [before, try a.version, try a.version, try b.version, try c.version, try d.version, try e.version, try annotated.version, try declared.version, try f.version, try g.version, try h.version, try i.version, try sharedRecord.version, try shared(), try constrainedValue.version, runs, Config.isConfig(config), Exit.isSuccess(snapshot) && snapshot.value === 9]
 }

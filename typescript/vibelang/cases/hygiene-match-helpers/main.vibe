@@ -15,6 +15,6 @@ function helper(x: number) {
   return match (x) { when expected: true; default: false; }
 }
 
-export function main() {
+export effect function main() {
   return [captured("a"), [helper(42), helper(7)]]
 }

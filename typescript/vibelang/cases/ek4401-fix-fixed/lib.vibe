@@ -3,7 +3,7 @@
 import { box, double, guarded, label, program, project, refuse } from "./plain.ts"
 
 const one = effect (): number!! => 1
-const text = (parts: TemplateStringsArray, ...values: ReadonlyArray<number>): string!! =>
+const text = effect (parts: TemplateStringsArray, ...values: ReadonlyArray<number>): string!! =>
   parts.join("?") + values.join(",")
 
 // A const and a return.
@@ -48,5 +48,5 @@ export const projected = project({
 
 // A function that runs no Effect stays plain, also where @throws names a class
 // this module can't reach.
-export const shout = (name: string): infer _ => label(name, double(1)).toUpperCase()
-export const hidden = (n: number): infer _ => guarded(n)
+export const shout = (name: string) => label(name, double(1)).toUpperCase()
+export const hidden = (n: number) => guarded(n)

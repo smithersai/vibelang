@@ -1,5 +1,6 @@
-// expect: EK9203
-// Returning an Effect function is plain; actually running one is not.
+// expect: EK4801
+// Returning an Effect function is plain; discarding an Effect is not: a plain
+// function runs no Effect (VIP-1), so the statement drops it (EK4801).
 export const invalid = (): () => Effect.Effect<number, never, never> => {
   Effect.succeed(1)
   return effect (): Effect.Effect<number, never, never> => 1

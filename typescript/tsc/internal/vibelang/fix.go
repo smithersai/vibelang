@@ -291,7 +291,7 @@ func (r *FixResult) Report(w io.Writer, name func(tspath.RootedFilePath) string)
 		for _, code := range codes {
 			parts = append(parts, fmt.Sprintf("EK%04d ×%d", code, fixed.Counts[code]))
 		}
-		kinds := []string{tryLabel, effectLabel, preludeImportLabel, preludeKeyLabel, isBindingRenameLabel}
+		kinds := []string{tryLabel, preludeImportLabel, preludeKeyLabel, isBindingRenameLabel}
 		var otherKinds []string
 		for kind := range fixed.Rewrites {
 			if !slices.Contains(kinds, kind) {
@@ -411,9 +411,8 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			if options.VIPOnly {
 				p = fileFixes(ctx, program, file, g.refused, vipMigrationFixCodes)
 			} else {
-				p = pipeMigrationFixes(ctx, program, file, g.refused, refuse)
+				p = pipeConditionalFixes(file, g.refused)
 				p = p.withFixes(dualBlockMigrationFixes(ctx, program, file, g.refused, refuse))
-				p = p.withFixes(keywordMigrationFixes(ctx, program, file, g.refused, refuse))
 				p = p.withFixes(vipTypeMigrationFixes(ctx, program, file, g.refused))
 				p = p.withFixes(ambiguousRootMigrationFixes(ctx, program, file, g.refused))
 				p = p.withFixes(bindingRenameMigrationFixes(ctx, program, file, g.refused))
@@ -525,12 +524,6 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			if done.Err() == nil {
 				progress.enter("try", 0, fixesApplied(result), len(result.Refused), "finding rewrites")
 				rewriteTries(g, fs, program, texts, result)
-				verified(texts)
-			}
-			// effect where a function compiles to an Effect (VIP-1, VIP-2, fix_effect.go).
-			if done.Err() == nil {
-				progress.enter("effect", 0, fixesApplied(result), len(result.Refused), "finding rewrites")
-				rewriteEffects(g, fs, build(texts), texts, result)
 				verified(texts)
 			}
 		} else {
@@ -1147,9 +1140,6 @@ func fileFixes(ctx context.Context, program *compiler.Program, file *ast.SourceF
 		for _, action := range *response.CommandOrCodeActionArray {
 			if action.CodeAction == nil || action.CodeAction.Edit == nil || action.CodeAction.Edit.Changes == nil {
 				continue
-			}
-			if slices.Contains(writtenFormCodes, d.Code()) && !strings.HasPrefix(action.CodeAction.Title, returnTypeFixTitle) && action.CodeAction.Title != holdProgramFixTitle {
-				continue // of these codes' fixes, --fix writes only a helper's return type (D500) and a held program (VIP-2)
 			}
 			changes := *action.CodeAction.Edit.Changes
 			if len(changes) != 1 || changes[uri] == nil {

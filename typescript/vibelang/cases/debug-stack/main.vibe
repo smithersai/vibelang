@@ -8,21 +8,21 @@ interface Account {
 }
 
 effect function ownerName(account: Account) {
-  try Effect.yieldNow()
+  try Effect.yieldNow
   return account.owner!.name
 }
 
 effect function lookup(id: number) {
-  try Effect.yieldNow()
+  try Effect.yieldNow
   throw new NotFound({ id })
 }
 
 effect function audited(account: Account) {
   try {
-    try Effect.yieldNow()
+    try Effect.yieldNow
     return account.owner!.name.length
   } finally {
-    try Effect.yieldNow()
+    try Effect.yieldNow
   }
 }
 
@@ -30,7 +30,7 @@ effect function audited(account: Account) {
 // literal's method, which binds no name: countdown(n - 1, seen) still calls
 // the Effect function.
 effect function countdown(n: number, seen: number[]): Effect<number[], never, never> {
-  try Effect.yieldNow()
+  try Effect.yieldNow
   seen.push(n)
   if (n > 0) try countdown(n - 1, seen)
   return seen

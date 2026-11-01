@@ -10,18 +10,27 @@ effect function find(n: number): number!Missing {
   return n
 }
 
-// D293: both sides of a catch expression take the expression's contextual
-// type, as both branches of a conditional do, so literal tags stay literal.
+effect function found(n: number): { _tag: "Found"; value: number }!Missing {
+  return { _tag: "Found", value: try find(n) }
+}
+
+effect function some(n: number): { _tag: "Some"; value: number }!Missing {
+  return { _tag: "Some", value: try find(n) }
+}
+
+// D293: a catch expression's handler takes the expression's contextual type,
+// as a conditional's branches do, so literal tags stay literal. The left side
+// is an Effect (VIP-5), whose success type its function declares.
 effect function select(n: number): Outcome!! {
-  return { _tag: "Found", value: find(n) } catch (error) => ({ _tag: "Error", error })
+  return found(n) catch (error) => ({ _tag: "Error", error })
 }
 
 effect function fallback(n: number): Maybe!! {
-  return { _tag: "Some", value: find(n) } catch () => ({ _tag: "None" })
+  return some(n) catch () => ({ _tag: "None" })
 }
 
 effect function declared(n: number) {
-  const outcome: Outcome = { _tag: "Found", value: find(n) } catch (error) => ({ _tag: "Error", error })
+  const outcome: Outcome = found(n) catch (error) => ({ _tag: "Error", error })
   return outcome._tag
 }
 
@@ -30,7 +39,7 @@ function report(outcome: Outcome): string {
 }
 
 effect function block(n: number): Outcome!! {
-  return { _tag: "Found", value: find(n) } catch (error) => {
+  return found(n) catch (error) => {
     const failed: Missing = error
     return { _tag: "Error", error: failed }
   }
@@ -42,11 +51,11 @@ effect function step(label: "first" | "second", n: number): "first" | "second"!M
 }
 
 effect function chained(a: number, b: number): "first" | "second" | "last"!! {
-  return (step("first", a) catch () => step("second", b)) catch () => "last"
+  return (step("first", a) catch effect () => try step("second", b)) catch () => "last"
 }
 
 effect function mode(n: number): Mode!! {
-  return (find(n) > 10 ? "fast" : "slow") catch () => "slow"
+  return (effect { return (try find(n)) > 10 ? "fast" : "slow" }) catch () => "slow"
 }
 
 export effect function main() {
@@ -54,7 +63,7 @@ export effect function main() {
     select: [(try select(1))._tag, (try select(-1))._tag],
     fallback: [(try fallback(1))._tag, (try fallback(-1))._tag],
     declared: try declared(-1),
-    argument: report({ _tag: "Found", value: find(2) } catch (error) => ({ _tag: "Error", error })),
+    argument: report(found(2) catch (error) => ({ _tag: "Error", error })),
     block: (try block(-1))._tag,
     chained: [try chained(1, 1), try chained(-1, 1), try chained(-1, -1)],
     mode: try mode(-1)

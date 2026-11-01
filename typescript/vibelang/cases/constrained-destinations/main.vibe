@@ -8,7 +8,7 @@ let n = 0
 let m = 0
 let k = 0
 
-export function main() {
+export effect function main() {
   const init = once(() => {
     n++
   })

@@ -2,30 +2,30 @@ import * as Cloudflare from "@alchemy.run/cloudflare"
 import { HttpServerRequest, HttpServerResponse } from "effect/http"
 
 // An R2 bucket of notes, keyed by the request path. Alchemy declares a
-// resource as an Effect; a .vibe module holds one as a function (EK1001).
-export const Notes = () => Cloudflare.R2.Bucket("Notes", { forceDestroy: true })
+// resource as an Effect, which a module's top level holds unrun (VIP-26).
+export const Notes = Cloudflare.R2.Bucket("Notes", { forceDestroy: true })
 
 export error MissingNote { key: string }
 
 // The Worker's init: binds the bucket, then returns the request handler.
-export function makeApi() {
-  const bucket = Cloudflare.R2.ReadWriteBucket(Notes())
+export effect function makeApi() {
+  const bucket = try Cloudflare.R2.ReadWriteBucket(try Notes)
 
-  function read(key: string) {
-    const note = bucket.get(key)
+  effect function read(key: string) {
+    const note = try bucket.get(key)
     if (note === null) throw new MissingNote({ key })
-    return note.text()
+    return try note.text()
   }
 
-  function handle() {
-    const request = HttpServerRequest()
+  effect function handle() {
+    const request = try HttpServerRequest.HttpServerRequest
     const key = new URL(request.url, "http://worker").pathname.slice(1)
     try {
       if (request.method === "PUT") {
-        bucket.put(key, request.text())
+        try bucket.put(key, try request.text)
         return HttpServerResponse.empty({ status: 204 })
       }
-      return HttpServerResponse.text(read(key))
+      return HttpServerResponse.text(try read(key))
     } catch (error) {
       return match (error) {
         when MissingNote: HttpServerResponse.text(`No note at ${error.key}`, { status: 404 });
@@ -35,13 +35,13 @@ export function makeApi() {
     }
   }
 
-  // Alchemy reads fetch as an Effect: the declared type makes handle one.
-  const api: Cloudflare.WorkerShape = { fetch: handle }
+  // Alchemy reads fetch as an Effect: calling handle gives it unrun (VIP-1).
+  const api: Cloudflare.WorkerShape = { fetch: handle() }
   return api
 }
 
-export default Cloudflare.Worker("Api", { main: import.meta.url }, () => {
+export default Cloudflare.Worker("Api", { main: import.meta.url }, effect {
   provide Cloudflare.R2.ReadWriteBucketBinding {
-    return makeApi()
+    return try makeApi()
   }
 })

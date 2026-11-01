@@ -5,7 +5,7 @@ export effect function values() {
 export effect function mapped() { return try Effect.forEach([3, 100000], down) }
 export function nested(n: number) { return tree(n) }
 export effect function concurrent() {
-  const a = fork { try yieldNow(); return try down(100000) }
-  const b = fork { try yieldNow(); return try down(100001) }
+  const a = fork effect { try yieldNow(); return try down(100000) }
+  const b = fork effect { try yieldNow(); return try down(100001) }
   return join [a, b]
 }

@@ -1,6 +1,6 @@
 // expect-result: [1,2,3,4,5]
-// What vibelang --fix writes for fork-operand-legacy.fail: each fork keeps
-// its 0.0.10 meaning with an operand that is a program by syntax (D433).
+// fork-operand-legacy.fail written for VIP-17: each fork keeps its 0.0.10
+// meaning with an operand that is an Effect (fork e forks the Effect e).
 effect function work(n: number) {
   try sleep("1 millis")
   return n
@@ -10,13 +10,13 @@ export effect function main() {
   const program: number!! = Effect.succeed(1)
   const job = effect () => try work(2)
   const exited = Exit.succeed(5)
-  const a = fork program()
+  const a = fork program
   const b = fork job()
   const c = fork work(3)
-  const d = fork {
+  const d = fork effect {
     try sleep("1 millis")
     return 4
   }
-  const e = fork exited()
+  const e = fork effect { return try exited }
   return [join a, join b, join c, join d, join e]
 }

@@ -10,7 +10,7 @@ effect function later(program = effect () => try seven()) {
 }
 
 effect function typed(program: number!! = effect { return try seven() }) {
-  return try program()
+  return try program
 }
 
 // expect-result: [7,7,7,7]

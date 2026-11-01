@@ -1,45 +1,45 @@
 export error Unavailable { attempt: number }
 
-export function fetchReport() {
+export effect function fetchReport() {
   let attempts = 0
-  return retry(() => {
+  return try retry(effect {
     attempts++
     if (attempts < 3) throw new Unavailable({ attempt: attempts })
     return `report after ${attempts} attempts`
   }, { schedule: Schedule.spaced("10 millis"), times: 2 })
 }
 
-export function cachedReport() {
-  sleep("5 millis")
+export effect function cachedReport() {
+  try sleep("5 millis")
   return "cached report"
 }
 
-export function slowReport() {
-  sleep("1 second")
+export effect function slowReport() {
+  try sleep("1 second")
   return "remote report"
 }
 
-export function deadline() {
+export effect function deadline() {
   try {
-    return timeout(slowReport(), "20 millis")
+    return try timeout(slowReport(), "20 millis")
   } catch (error) {
     return error._tag
   }
 }
 
-export function scenario() {
+export effect function scenario() {
   const pending = fork fetchReport()
-  const fastest = race(cachedReport(), slowReport())
-  const timed = deadline()
+  const fastest = try race(cachedReport(), slowReport())
+  const timed = try deadline()
   const report = join pending
   return { fastest, timed, report }
 }
 
-export function main() {
+export effect function main() {
   // timed is also an Effect data method. The written type says it is this
   // object's field (EK9101).
-  const result: { fastest: string; timed: string; report: string } = scenario()
-  Console.log(result.fastest)
-  Console.log(result.timed)
-  Console.log(result.report)
+  const result: { fastest: string; timed: string; report: string } = try scenario()
+  try Console.log(result.fastest)
+  try Console.log(result.timed)
+  try Console.log(result.report)
 }

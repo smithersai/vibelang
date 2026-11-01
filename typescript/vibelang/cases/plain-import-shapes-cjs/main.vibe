@@ -27,7 +27,7 @@ export effect function program() {
     other: other("other"),
     renamed: renamed("renamed"),
     quoted: quoted("quoted"),
-    tagged: try tag`a${"b"}c`,
+    tagged: tag`a${"b"}c`,
     mapped: ["mapped"].map(other),
     logged: try logged("logged"),
     withNamespace: c,

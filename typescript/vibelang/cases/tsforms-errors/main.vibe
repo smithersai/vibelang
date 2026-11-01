@@ -10,12 +10,12 @@ class Renamed extends Data.TaggedError("app/Renamed")<{ readonly id: string }> {
 class Untagged extends Data.Error<{ readonly id: string }> {}
 class SchemaFail extends Schema.TaggedError<SchemaFail>()("SchemaFail", { id: Schema.String }) {}
 
-function find(id: string): never!NotFound | Timeout {
+effect function find(id: string): never!NotFound | Timeout {
   if (id === "slow") throw new Timeout()
   throw new NotFound({ id, count: 2 })
 }
 
-function describe(id: string) {
+effect function describe(id: string) {
   return find(id) catch (e) => match (e) {
     when NotFound: `missing ${e.id}`;
     when Timeout: "slow";
@@ -24,7 +24,7 @@ function describe(id: string) {
   }
 }
 
-export function main() {
+export effect function main() {
   return {
     found: find("7") catch (e) => e,
     slow: find("slow") catch (e) => e,
@@ -32,6 +32,6 @@ export function main() {
     renamed: new Renamed({ id: "r" }),
     untagged: new Untagged({ id: "u" }),
     schema: new SchemaFail({ id: "s" }),
-    described: [describe("7"), describe("slow")]
+    described: [try describe("7"), try describe("slow")]
   }
 }

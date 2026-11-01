@@ -623,7 +623,7 @@ func TestCatchExpressionOutsideEffect(t *testing.T) {
 // the runnable fixture, including its throw handler and lazy fallback.
 func TestCatchExpressionCorpus(t *testing.T) {
 	t.Parallel()
-	data, err := os.ReadFile("../../../vibelang/cases/catch-expression/main.vibe")
+	data, err := os.ReadFile(preVIP1("catch-expression", "../../../vibelang/cases/catch-expression/main.vibe"))
 	assert.NilError(t, err)
 	source := string(data)
 	projection := Project(source, testContext)

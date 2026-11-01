@@ -3,7 +3,7 @@ service Left { left: number }
 service Right { right: number }
 const LeftLive = Layer.succeed(Left, { left: 1 })
 const RightLive = Layer.succeed(Right, { right: 2 })
-effect function read() { return (try Left()).left + (try Right()).right }
+effect function read() { return (try Left).left + (try Right).right }
 effect function direct(flag: boolean) {
   const providers: [Layer.Layer<Left>] | [Layer.Layer<Right>] = flag ? [LeftLive] : [RightLive]
   return try Effect.provide(effect { return try read() }, providers)

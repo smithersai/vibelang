@@ -32,19 +32,19 @@ effect function mixed(): string!! {
 // An effect module stands for its key of the same name: Random is Random.Random.
 effect function module(): number!! {
   provide Random = fixedRandom {
-    return try Random.nextInt()
+    return try Random.nextInt
   }
 }
 
 effect function qualified(): number!! {
   provide Random.Random = fixedRandom {
-    return try Random.nextInt()
+    return try Random.nextInt
   }
 }
 
 effect function both(): string!! {
   provide NamesLive, Random = fixedRandom {
-    return `${try Names.name()} ${try Random.nextInt()}`
+    return `${try Names.name()} ${try Random.nextInt}`
   }
 }
 

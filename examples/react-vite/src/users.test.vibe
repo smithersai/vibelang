@@ -2,14 +2,14 @@ import { assert, it } from "@effect/vitest"
 import { greet, UserNotFound, Users, UsersLive } from "./users.vibe"
 
 it.effect("greets a known user", effect () => {
-  const message = Effect.provide(() => greet("42"), UsersLive)
+  const message = try Effect.provide(effect { return try greet("42") }, UsersLive)
   assert.strictEqual(message, "Welcome, Ada Lovelace")
 })
 
 it.effect("fails a lookup with UserNotFound", effect () => {
   provide UsersLive {
     try {
-      Users.find("404")
+      try Users.find("404")
       assert.fail("expected UserNotFound")
     } catch (error) {
       assert.instanceOf(error, UserNotFound)
@@ -19,6 +19,6 @@ it.effect("fails a lookup with UserNotFound", effect () => {
 })
 
 it.effect("recovers UserNotFound in greet", effect () => {
-  const message = Effect.provide(() => greet("404"), UsersLive)
+  const message = try Effect.provide(effect { return try greet("404") }, UsersLive)
   assert.strictEqual(message, "No user 404")
 })

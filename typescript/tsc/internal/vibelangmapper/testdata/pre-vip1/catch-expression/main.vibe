@@ -1,0 +1,91 @@
+// expect-result: {"orGuest":["user 1","guest"],"describe":["user 1","no user missing","retry"],"partial":"missing","partialSlow":"Timeout","firstOf":["user 1","user 2","none"],"wrapped":"Timeout","precedence":["fast","slow"],"nickname":["unknown","failed","x"],"defect":"died","piped":"none","lazy":["user 1",false]}
+error NotFound { id: string }
+error Timeout
+error Wrapped { reason: string }
+
+effect function find(id: string): string!NotFound | Timeout! {
+  if (id === "missing") throw new NotFound({ id })
+  if (id === "slow") throw new Timeout()
+  return `user ${id}`
+}
+
+// A fallback value, as Effect.orElseSucceed.
+effect function orGuest(id: string): string!! {
+  return find(id) catch "guest"
+}
+
+// A handler whose match handles every failure removes them all from E.
+effect function describe(id: string): string!! {
+  return find(id) catch (e) => match (e) {
+    when NotFound: `no user ${e.id}`;
+    when Timeout: "retry";
+  }
+}
+
+// default: throw e passes the other failures on.
+effect function partial(id: string): string!Timeout! {
+  return find(id) catch effect (e) => match (e) {
+    when NotFound: "missing";
+    default: throw e;
+  }
+}
+
+// catch associates to the left: try b after a fails, then fall back.
+effect function firstOf(a: string, b: string): string!! {
+  return find(a) catch find(b) catch "none"
+}
+
+// A throw expression replaces the failure.
+effect function wrapped(id: string): string!Wrapped! {
+  return find(id) catch effect (e) => throw new Wrapped({ reason: e._tag })
+}
+
+// catch binds tighter than ? :.
+effect function precedence(id: string, quick: boolean): string!! {
+  return quick ? find(id) catch "fast" : "slow"
+}
+
+effect function lookupNickname(id: string) {
+  if (id === "missing") throw new NotFound({ id })
+  return id === "anon" ? undefined : id
+}
+
+// catch binds looser than ??, so the default is inside the catch.
+effect function nickname(id: string): string!! {
+  return lookupNickname(id) ?? "unknown" catch "failed"
+}
+
+effect function crash(): string!Timeout! {
+  return try Effect.die("boom")
+}
+
+// Defects pass through a catch expression.
+effect function defect(): string!! {
+  return match (try exit(crash() catch "caught")) {
+    when Exit.Success(let value): value;
+    when Exit.Failure(let cause): Cause.hasDies(cause) ? "died" : "other";
+  }
+}
+
+// A pipe's body holds the catch.
+effect function piped(id: string): string!! {
+  return id |> find(%) catch "none"
+}
+
+export effect function main() {
+  let ran = false
+  const quick = find("1") catch do { ran = true; "guest" }
+  return {
+    orGuest: [try orGuest("1"), try orGuest("missing")],
+    describe: [try describe("1"), try describe("missing"), try describe("slow")],
+    partial: try partial("missing"),
+    partialSlow: partial("slow") catch (e) => e._tag,
+    firstOf: [try firstOf("1", "2"), try firstOf("missing", "2"), try firstOf("missing", "slow")],
+    wrapped: wrapped("slow") catch (e) => e.reason,
+    precedence: [try precedence("missing", true), try precedence("1", false)],
+    nickname: [try nickname("anon"), try nickname("missing"), try nickname("x")],
+    defect: try defect(),
+    piped: try piped("missing"),
+    lazy: [quick, ran]
+  }
+}

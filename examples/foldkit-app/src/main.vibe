@@ -33,22 +33,22 @@ export type Message = typeof Message.Type
 export const QUOTE_URL = "https://example.com/quote.json"
 schema Quote { text: string }
 
-function loadQuote() {
-  const response = HttpClient.get(QUOTE_URL)
-  const quote = Schema.decodeUnknownEffect(Quote)(response.json())
+effect function loadQuote() {
+  const response = try HttpClient.get(QUOTE_URL)
+  const quote = try Schema.decodeUnknownEffect(Quote)(try response.json)
   return Message.SucceededFetchQuote({ text: quote.text })
 }
 
-export function fetchQuote() {
+export effect function fetchQuote() {
   return loadQuote() catch () => Message.FailedFetchQuote({ error: "Could not load a quote" })
 }
 
 export const FetchQuote = Command.define("FetchQuote", {
   args: {},
   messages: [Message.SucceededFetchQuote, Message.FailedFetchQuote],
-  execute: () => {
+  execute: effect () => {
     provide Http.layer {
-      return fetchQuote()
+      return try fetchQuote()
     }
   }
 })

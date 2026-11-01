@@ -4,12 +4,12 @@ effect function getName(): string!! {
 }
 
 // getName takes no program, so it cannot take a block.
-function wrong() {
+effect function wrong() {
   return try getName(effect () => {
     return 1
   })
 }
 
-export function main() {
-  return wrong()
+export effect function main() {
+  return try wrong()
 }

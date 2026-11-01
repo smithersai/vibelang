@@ -72,7 +72,7 @@ func contractNamesakeEdits(c *checker.Checker, file *ast.SourceFile, pos, end in
 		return false
 	}
 	file.AsNode().ForEachChild(visit)
-	if fn == nil || a.contractOf(fn) == nil || a.isFactory(fn) {
+	if fn == nil || a.contractOf(fn) == nil {
 		return nil
 	}
 	info := a.effectOf(fn)

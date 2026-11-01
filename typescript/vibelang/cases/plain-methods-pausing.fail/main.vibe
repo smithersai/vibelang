@@ -1,13 +1,15 @@
-// expect: EK4301
+// expect: TS2416
 // [Equal.symbol] implements a plain function member that Equal.equals calls
-// synchronously, so it cannot pause (D55).
+// synchronously and reads as a boolean, so an effect method there, whose
+// call gives an Effect (VIP-1), does not implement it: TypeScript reports
+// TS2416. Before VIP-1 a method that paused here was EK4301 (D55).
 import { Equal, Hash } from "effect"
 
 class Account implements Equal.Equal {
   constructor(readonly id: string) {}
 
-  [Equal.symbol](that: Equal.Equal): boolean {
-    Effect.sleep("1 millis")
+  effect [Equal.symbol](that: Equal.Equal): boolean!! {
+    try Effect.sleep("1 millis")
     return that instanceof Account && that.id === this.id
   }
 

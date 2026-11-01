@@ -4,4 +4,4 @@ module impl {
   export const value = Object
 }
 import { value } from impl
-export function main() { return value }
+export effect function main() { return value }

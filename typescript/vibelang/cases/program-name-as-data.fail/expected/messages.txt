@@ -1,2 +1,2 @@
 listFlows is a program, and this function's success type, void, names no value, so this function succeeds with the function instead of running it.
-Call it to run it: listFlows(). To return the function itself, write its type as the success type: (() => void!!)!E!R.
+Run it with try: try listFlows(). To return the function itself, write its type as the success type: (() => void!!)!E!R.

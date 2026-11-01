@@ -1,14 +1,14 @@
 // expect: TS2339 TS2304 EK4409
 import * as Effect from "effect/Effect"
 export effect function missingMember(value: { present: number }) {
-  try Effect.yieldNow()
+  try Effect.yieldNow
   return value.missing()
 }
 export effect function missingName() {
-  try Effect.yieldNow()
+  try Effect.yieldNow
   return notDeclared()
 }
 export effect function genuineAny(value: any) {
-  try Effect.yieldNow()
+  try Effect.yieldNow
   return value()
 }

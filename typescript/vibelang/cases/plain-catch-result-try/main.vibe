@@ -9,6 +9,6 @@ const document = (schema: unknown): unknown =>
 const decoded = (text: string): unknown =>
   Result.try(() => Schema.decodeUnknownSync(Schema.String)(JSON.parse(text))).getOrElse(() => "caught")
 
-export function main() {
+export effect function main() {
   return [document("ok") === "ok", document("bad"), decoded("\"x\"") === "x", decoded("{}")]
 }

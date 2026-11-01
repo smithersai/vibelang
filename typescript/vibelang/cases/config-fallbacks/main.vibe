@@ -13,7 +13,7 @@ function withFallback(name: string) {
 }
 
 effect function read() {
-  return { host: try host(), missing: try (withFallback("MISSING"))() }
+  return { host: try host, missing: try withFallback("MISSING") }
 }
 
 // expect-result: {"host":"backup.example.com","missing":"no MISSING"}

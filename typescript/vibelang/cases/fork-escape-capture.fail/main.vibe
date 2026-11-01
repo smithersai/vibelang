@@ -1,5 +1,5 @@
 // expect: EK4838
-// A function that refers to an owned fiber captures it, and
+// A function or effect block that refers to an owned fiber captures it, and
 // nothing in the source shows that the function finishes before the region
 // does, so every such capture is an error (D409).
 effect function heartbeat() {
@@ -44,14 +44,14 @@ export effect function local() {
 
 export effect function blockParam() {
   const fiber = fork heartbeat()
-  return try within("watch", effect () => {
+  return try within("watch", effect {
     return try Fiber.interrupt(fiber)
   })
 }
 
-// A function passed as a call's last argument captures the owned fiber as
-// any other function does.
-effect function within(name: string, body: () => void!!) {
+// An effect block passed as a call's last argument captures the owned fiber
+// as a function does.
+effect function within(name: string, body: void!!) {
   try log(name)
-  return try body()
+  return try body
 }

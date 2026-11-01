@@ -11,14 +11,14 @@ service Todos {
 }
 
 export effect function sorted() {
-  return sortTitles(Todos.list())
+  return sortTitles(try Todos.list())
 }
 
 export effect function shelved() {
-  return Todos.shelf().titles()
+  return (try Todos.shelf()).titles()
 }
 
 export effect function plain(titles: ReadonlyArray<{ title: string }>) {
-  Effect.sleep("1 millis")
+  try Effect.sleep("1 millis")
   return sortTitles(titles)
 }

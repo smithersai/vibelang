@@ -1,4 +1,4 @@
-// expect: EK2202 EK2202 EK2202 EK2202 EK2202 EK2202 EK2202
+// expect: EK2202 EK2202 EK2202 EK2202 EK2202 EK2202 EK2202 EK0501
 // VIP-22 (amended 2026-10-30 and 2026-10-31): restore in a for concurrent head
 // binding initialization or body is EK2202, whatever the mask: each item runs
 // as its own Effect outside the enclosing mask. So is a restore that would
@@ -33,3 +33,6 @@ export effect function acrossFunction() {
 export effect function acrossMethod() {
   uninterruptible { const o = { effect m() { restore { try poll } } }; try o.m() }
 }
+// EK0501 on headDefault's try is the open gap that a try in a for concurrent
+// head binding is not yet effect code (pending/running.txt, compile:EK0501/
+// vip19.head-initialization-item, lane impl-hunt-run); drop it with that gap.

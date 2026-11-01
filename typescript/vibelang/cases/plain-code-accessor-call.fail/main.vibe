@@ -1,10 +1,17 @@
-// expect: EK1001 EK1001
+// expect: EK0501
+// An accessor is plain JavaScript and can't be marked effect (VIP-1, EK0104),
+// so try there runs nothing: EK0501 (VIP-5). A call without try gives the
+// Effect unrun, as any plain code's call does.
 effect function work() { try sleep("1 millis"); return 1 }
 
 class Getter {
-  get value() { return work() }
+  get value() { return try work() }
 }
 
 class Setter {
-  set value(_value: number) { const result = work() }
+  set value(_value: number) { const result = try work() }
+}
+
+class Unrun {
+  get value() { return work() }
 }

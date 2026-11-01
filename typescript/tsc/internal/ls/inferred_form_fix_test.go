@@ -100,8 +100,10 @@ func inferredActions(t *testing.T, files map[string]string) ([]*lsproto.CodeActi
 type inferredEmit struct{ JS, DTS string }
 
 // normalizeEffectHelper ignores only the local generated Effect namespace
-// binding, which a newly written bang contract can reserve in the parser.
+// binding, which a newly written bang contract can reserve in the parser, and
+// the parentheses an annotation adds around a lone arrow parameter.
 func normalizeEffectHelper(js string) string {
+	js = regexp.MustCompile(`\((\w+) => `).ReplaceAllString(js, "(($1) => ")
 	re := regexp.MustCompile(`import \* as (\w+) from "effect/Effect";`)
 	match := re.FindStringSubmatchIndex(js)
 	if match == nil {
@@ -120,14 +122,14 @@ func TestInferredFormFix(t *testing.T) {
 		choices      int
 	}{
 		{"named method contract", `export class C { f(): ReadonlyArray<string>!! { return ["x"] } }`, 0},
-		{"program argument", `import { takesProgram } from "./host"; export function run() { return takesProgram(() => { return work(1) }) }`, 1},
-		{"program block", `import { takesProgram } from "./host"; export function run() { return takesProgram { return work(1) } }`, 1},
+		{"program argument", `import { takesProgram } from "./host"; export function run() { return takesProgram(effect { return try work(1) }) }`, 1},
+		{"program block", `import { takesProgram } from "./host"; export function run() { return takesProgram { return try work(1) } }`, 1},
 		{"cross-file Effect callback", `import { takesFn } from "./host"; export function run() { return takesFn((x: number) => { const n=work(x); return n }) }`, 1},
 		{"symlinked named function", `export function fn(x: number) { const y=work(x); return y }`, 0},
 		{"symlinked exported arrow", `export const fn = (x: number) => { const y=work(x); return y }`, 1},
 		{"symlinked property", `export const obj = { f: (x: number) => { work(x); return x } }`, 1},
 		{"exported arrow", `export const fn = (x: number) => { const y=work(x); return y }`, 1},
-		{"block", `declare const host: any; host { work(1); return 1 }`, 1},
+		{"program host block", `declare const host: any; host { try work(1); return 1 }`, 1},
 		{"failure and requirement", `interface Bad { bad: true }; interface Env { env: true }; declare function fail(): number!Bad!Env; export const obj = { f: () => { const x = fail(); return x } }`, 1},
 		{"object method", `export const obj = { f(x: number) { work(x); return x } }`, 1},
 		{"function expression", `declare const host: any; host(function(x: number) { work(x); return x })`, 1},
@@ -283,7 +285,7 @@ func TestInferredFormFixDeclinesPausingPlainCallback(t *testing.T) {
 	files := map[string]string{
 		"/src/tsconfig.json": `{"compilerOptions":{"strict":true,"target":"ESNext","declaration":true},"files":["main.vibe","host.ts"]}`,
 		"/src/host.ts":       `import type { Effect } from "effect/Effect"; export declare function work(x: number): Effect<number,never,never>; export declare function takesPlain(f: (x: number) => number): number`,
-		"/src/main.vibe":     `import { work, takesPlain } from "./host"; export function run() { return takesPlain((x: number) => { work(x); return x }) }`,
+		"/src/main.vibe":     `import { work, takesPlain } from "./host"; export function run() { return takesPlain((x: number) => { try work(x); return x }) }`,
 		"/src/node_modules/vibelang-runtime/package.json": `{"name":"vibelang-runtime","types":"index.d.ts"}`,
 		"/src/node_modules/vibelang-runtime/index.d.ts":   `export * as Effect from "effect/Effect"`,
 		"/src/node_modules/effect/package.json":           `{"name":"effect","types":"index.d.ts"}`,

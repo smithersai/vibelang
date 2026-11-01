@@ -6,7 +6,7 @@ effect function masked() {
   const started = try Deferred.make<void>()
   const done = try Deferred.make<string>()
   const released = try Deferred.make<boolean>()
-  const fiber = fork {
+  const fiber = fork effect {
     uninterruptible {
       using lease = try Effect.acquireRelease(Effect.succeed("lease"), effect () => try Deferred.succeed(released, true))
       try Deferred.succeed(started, undefined)
@@ -22,7 +22,7 @@ effect function masked() {
 // restore inside such a block brings back the interruptibility the block began with.
 effect function restored() {
   const started = try Deferred.make<string>()
-  const fiber = fork {
+  const fiber = fork effect {
     uninterruptible {
       using lease = try Effect.acquireRelease(Effect.succeed("lease"), effect () => Effect.void)
       restore {

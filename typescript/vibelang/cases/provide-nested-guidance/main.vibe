@@ -11,8 +11,8 @@ export effect function main(): number!! {
   }
   let total = 0
   provide Layer.provideMerge(OuterLive)(InnerLive) {
-    const outer = try Outer()
-    const inner = try Inner()
+    const outer = try Outer
+    const inner = try Inner
     total = outer.n + inner.n
   }
   return total - 21

@@ -248,6 +248,11 @@ func (a *analyzer) isExpectedEffect(t *checker.Type) bool {
 		constraint := a.checker.GetBaseConstraintOfType(t)
 		return constraint != nil && constraint != t && a.isExpectedEffect(constraint)
 	}
+	// Effect.fn's body returns Effect<A, E, R> & Effect<A, any, any>: an
+	// intersection of Effects is an Effect.
+	if t.Flags()&checker.TypeFlagsIntersection != 0 {
+		return !slices.ContainsFunc(t.Types(), func(member *checker.Type) bool { return !a.isExpectedEffect(member) })
+	}
 	// Expected program positions retain constrained union members (D147);
 	// ordinary running calls require exact-Effect members instead (D24/D270).
 	if t.Flags()&checker.TypeFlagsUnion != 0 {

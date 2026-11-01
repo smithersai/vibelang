@@ -9,7 +9,7 @@
 // From alchemy's AWS and acme providers (160 errors in AWS batch 02).
 import { Thing, Certificate, S, register, operation, collection } from "./lib.ts"
 
-export const provider = (): infer _!!S => register(Thing, effect {
+export const provider = effect (): infer _!!S => try register(Thing, effect {
   return { run: effect (n) => { return try operation(n) } }
 })
 

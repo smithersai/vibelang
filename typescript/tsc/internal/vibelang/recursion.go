@@ -33,7 +33,7 @@ import (
 //
 // A is TypeScript's to infer. When A depends on the function's own result, as
 // it would above without the annotations, TypeScript gives up (TS7023), and
-// the function needs a written contract: EK9206.
+// that error is the only one (VIP-1, recursive inference).
 
 func init() {
 	fileChecks = append(fileChecks, checkRecursion)
@@ -52,7 +52,7 @@ func (a *analyzer) bodyCallees(fn *ast.Node) []*ast.Node {
 		sig := a.checker.GetResolvedSignature(call)
 		callee := implementationOf(sig.Declaration())
 		// D269 excludes factory bodies; S3-3 keeps plain returned programs out of body cycles.
-		if callee == nil || !isLowerable(callee) || a.isFactory(callee) || sig.Target() != nil || !a.isSplittable(callee) && !a.isEffect(callee) || slices.Contains(callees, callee) {
+		if callee == nil || !isLowerable(callee) || sig.Target() != nil || !a.isEffect(callee) || slices.Contains(callees, callee) {
 			return false
 		}
 		if k := a.contractOf(callee); k != nil && !k.inferredAny() {
@@ -176,7 +176,7 @@ func selfCallType(c *checker.Checker, call *ast.Node, signature *checker.Signatu
 	}
 	a := analyzerFor(c)
 	k := a.contractOf(fn)
-	if k == nil || k.reference == nil || k.inferred(channelA) || !k.inferredAny() || a.isFactory(fn) {
+	if k == nil || k.reference == nil || k.inferred(channelA) || !k.inferredAny() {
 		return nil
 	}
 	t := c.GetTypeFromTypeNode(k.annotation)
@@ -247,7 +247,7 @@ func takesSuccess(c *checker.Checker, call *ast.Node) bool {
 // fn holds less than its cycle's fixpoint, so a caller read it too early.
 func (a *analyzer) checkRecursiveContract(fn *ast.Node) {
 	k := a.contractOf(fn)
-	if k == nil || k.reference == nil || k.inferred(channelA) || !k.inferredAny() || a.isFactory(fn) || a.reentered[fn] {
+	if k == nil || k.reference == nil || k.inferred(channelA) || !k.inferredAny() || a.reentered[fn] {
 		return
 	}
 	c := a.checker
@@ -299,24 +299,6 @@ func (a *analyzer) wholeContract(fn *ast.Node) string {
 	return bangText(channels...)
 }
 
-// readsInferredContract reports whether a contract that writes fn's A and
-// infers E and R can be read: fn is not generic, and every call in its body
-// of a function on a call cycle stands where only its value is used
-// (selfCallType). Otherwise the contract must write every channel.
-func (a *analyzer) readsInferredContract(fn *ast.Node) bool {
-	if len(fn.TypeParameters()) > 0 {
-		return false
-	}
-	return !forEachCallInBody(fn, func(call *ast.Node) bool {
-		sig := a.checker.GetResolvedSignature(call)
-		if sig == nil {
-			return false
-		}
-		callee := implementationOf(sig.Declaration())
-		return callee != nil && (callee == fn || a.recursive[callee]) && !takesSuccess(a.checker, call)
-	})
-}
-
 // checkRecursion reports EK9206 for each function on a call cycle in file
 // whose A TypeScript could not infer because it depends on the function's own
 // result, and covers TypeScript's TS7022, TS7023, or TS7024 there. It also
@@ -360,17 +342,7 @@ func (a *analyzer) checkRecursiveFunction(fn *ast.Node) {
 		at = parent.Name()
 	}
 	if t.Flags()&checker.TypeFlagsAny != 0 {
-		d := report(c, at, EK9206, name)
-		if a.readsInferredContract(fn) {
-			note(d, "Write its contract with its success type as A, such as Effect<number, infer E, infer R>, which still infers E and R.")
-		} else {
-			note(d, "Write every channel of its contract with its success type as A: {0}.", a.wholeContract(fn))
-		}
-		cover(c, at)
-		if parent := fn.Parent; parent.Kind == ast.KindVariableDeclaration {
-			cover(c, parent.Name())
-		}
-		return
+		return // TypeScript's own TS7022, TS7023 or TS7024 (VIP-1, recursive inference)
 	}
 	info := a.effectOf(fn)
 	if channelType(c, t, "_E") != c.GetUnionType(info.errors) || channelType(c, t, "_R") != c.GetUnionType(info.requirements) {

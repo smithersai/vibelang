@@ -1,6 +1,6 @@
 // expect-result: {"all":[1,2],"race":3,"any":4,"settled":["Success"]}
 control Ask { ask(): number!! }
-function answered(n: number) {
+effect function answered(n: number) {
   try { return try Ask.ask() }
   handle Ask.ask() { try resume(n) }
 }

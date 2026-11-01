@@ -69,7 +69,7 @@ for (const [group, entries] of Object.entries(late)) {
 test("upgrade repairs cover plain methods, renamed experimental layers and conflicting platforms", () => {
   const upgrade = notes.split("### Upgrade from 0.0.10")[1]?.split("### Bugs fixed")[0] || ""
   const rows = upgrade.split("\n").filter(line => line.startsWith("| "))
-  expect(rows.some(row => row.includes("EK2003") && row.includes("number!!"))).toBe(true)
+  expect(rows.some(row => row.includes("EK0501") && row.includes("effect function"))).toBe(true)
   expect(rows.some(row => row.includes("ExperimentalNodeServices") && row.includes("NodeCrypto") && row.includes("ExperimentalNodeCrypto"))).toBe(true)
   expect(rows.some(row => row.includes("EK3206") && row.includes("one platform"))).toBe(true)
 })

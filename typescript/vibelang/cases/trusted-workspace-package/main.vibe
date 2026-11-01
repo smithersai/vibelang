@@ -1,4 +1,4 @@
 // D261: workspace package names, not node_modules paths, establish trust.
 import { data, explode, program } from "@smthrs/twin"
 export effect function succeeds() { return [data(), try program()] }
-export function defects() { return explode() }
+export effect function defects() { return explode() } // a trusted package's exception is a defect of the Effect (VIP-1)

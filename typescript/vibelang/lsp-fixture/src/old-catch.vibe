@@ -2,15 +2,15 @@
 error Missing { id: string }
 error Late
 
-function lookupUser(id: string): string!Missing | Late! {
+effect function lookupUser(id: string): string!Missing | Late! {
   if (id === "") throw new Missing({ id })
   if (id === "late") throw new Late()
   return id
 }
 
-export function label(id: string) {
+export effect function label(id: string) {
   try {
-    return lookupUser(id)
+    return try lookupUser(id)
   } catch (e: Missing) {
     return `missing ${e.id}`
   } catch (e: Late) {
@@ -18,9 +18,9 @@ export function label(id: string) {
   }
 }
 
-export function whole(id: string) {
+export effect function whole(id: string) {
   try {
-    return lookupUser(id)
+    return try lookupUser(id)
   } catch (cause: Cause) {
     return "fallback"
   }

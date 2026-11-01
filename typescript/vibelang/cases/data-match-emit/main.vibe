@@ -19,6 +19,6 @@ function isSent(value: unknown): boolean {
   return value is Delivery.Sent
 }
 
-export function main() {
+export effect function main() {
   return [describe(Delivery.Waiting()), describe(Delivery.Sent({ tracking: "parcel-8" })), isSent(Delivery.Sent({ tracking: "x" })), isSent({ tracking: "x" })]
 }

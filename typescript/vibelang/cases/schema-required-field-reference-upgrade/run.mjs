@@ -17,8 +17,9 @@ for (const [name, values] of Object.entries(inputs)) {
   }
 }
 assert.deepEqual(actual.events, events)
-const run = value => Effect.isEffect(value) ? Effect.runPromise(value) : Promise.resolve(value)
-const made = await run(actual.make())
+// make and matches are plain functions (VIP-1); the schema error instance
+// make returns is yieldable, so it is used as it is, never run.
+const made = actual.make()
 assert.equal(made.label, "kept")
-assert.equal(await run(actual.matches(made)), true)
+assert.equal(actual.matches(made), true)
 console.log("ok")

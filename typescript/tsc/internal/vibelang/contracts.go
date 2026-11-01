@@ -89,9 +89,6 @@ func (a *analyzer) hasContract(fn *ast.Node) bool {
 // method or one implementing a plain member (D397), or a literal whose
 // destination gives the plain form.
 func (a *analyzer) hasPlainContract(fn *ast.Node) bool {
-	if isPlainGenerator(fn) {
-		return true // D296: a JavaScript iterator annotation is a plain contract
-	}
 	if fn == nil || !isLowerable(fn) || isProducer(fn) {
 		return false
 	}
@@ -99,7 +96,7 @@ func (a *analyzer) hasPlainContract(fn *ast.Node) bool {
 		return !a.isEffectAnnotation(annotation)
 	}
 	if fn.Kind == ast.KindMethodDeclaration {
-		return a.plainMemberOwner(fn) != ""
+		return false
 	}
 	if isLambda(fn) {
 		e := a.classify(a.contextualTypes(fn))
@@ -162,7 +159,7 @@ func inferredReturnInference(c *checker.Checker, fn *ast.Node, t *checker.Type) 
 // against the contract's A, as TypeScript checks what an async function
 // returns against the type its Promise wraps.
 func unwrappedReturnType(c *checker.Checker, fn *ast.Node, t *checker.Type) *checker.Type {
-	if !isLowerable(fn) || analyzerFor(c).contractOf(fn) == nil || analyzerFor(c).isFactory(fn) {
+	if !isLowerable(fn) || !analyzerFor(c).isEffect(fn) || analyzerFor(c).contractOf(fn) == nil {
 		return t
 	}
 	if success := successType(c, c.GetReturnTypeOfSignature(c.GetSignatureFromDeclaration(fn))); success != nil {
@@ -193,12 +190,7 @@ func annotatedReturnType(c *checker.Checker, fn *ast.Node, t *checker.Type) *che
 		channels[channelA] = c.GetReturnTypeFromBody(fn)
 	}
 	if k.inferred(channelE) || k.inferred(channelR) {
-		var info *effectInfo
-		if a.isFactory(fn) {
-			info = a.factoryInfo(fn)
-		} else {
-			info = a.effectOf(fn)
-		}
+		info := a.effectOf(fn)
 		if info == nil {
 			info = &effectInfo{} // fn's body is being collected
 		}
@@ -273,23 +265,7 @@ func (a *analyzer) checkContract(file *ast.SourceFile, fn *ast.Node) {
 	k := a.contractOf(fn)
 	switch {
 	case k == nil:
-		if a.reportFailingPlainContract(fn) {
-			return // D282: a plain function never fails
-		}
-		// A plain annotation keeps its type on a function that compiles to
-		// plain JavaScript (D67). On one whose body runs an Effect it is not
-		// what the function returns, and a method is no exception: its
-		// declaration file and every caller that reaches it through a type
-		// would see the annotation (D74). A method that implements a
-		// plain-function member, such as Equal.symbol, is checked against
-		// that member instead (EK4301, D55).
-		if !a.canBePlain(fn) && (fn.Kind != ast.KindMethodDeclaration || a.plainMemberOwner(fn) == "") {
-			a.reportRunningPlainContract(fn)
-		}
-		return
-	}
-	if a.isFactory(fn) {
-		return // checkFactories checks the returned programs' channels
+		return // a plain function's annotation is TypeScript's (VIP-1)
 	}
 	info := a.effectOf(fn)
 	if info == nil {

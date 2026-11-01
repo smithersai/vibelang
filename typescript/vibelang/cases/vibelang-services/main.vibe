@@ -36,7 +36,7 @@ const DirectoryLive = Layer.succeed(Directory, {
 // The provider captures Directory when the layer is built, so Directory is a
 // requirement of the layer, not of Users.find.
 effect function makeUsers() {
-  const directory = try Directory()
+  const directory = try Directory
   const impl: Users.Shape = {
     effect find(id) {
       const user = try directory.lookup(id)
@@ -76,11 +76,11 @@ const UsersGrace = Layer.succeed(Users, {
 
 export effect function greet(id: string) {
   const user = try Users.find(id)
-  return try Settings.shout(`${(try Settings()).greeting}, ${user.name}`)
+  return try Settings.shout(`${(try Settings).greeting}, ${user.name}`)
 }
 
 export effect function lookupBoth(id: string) {
-  const first = try (try Users()).find(id)
+  const first = try (try Users).find(id)
   return first.name
 }
 

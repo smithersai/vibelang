@@ -1,13 +1,12 @@
-// Calling a value whose type is an Effect runs it (D24, Chapter 13). An
-// Exit, a union of two Effects, replays its outcome, and a tagged error
-// instance, whose class declares the Effect variance itself, fails with
-// itself. A call that returns such a value returns data; calling it runs it.
+// try runs a value whose type is an Effect (VIP-5). An Exit, a union of two
+// Effects, replays its outcome, and throw fails with a tagged error instance
+// (VIP-4). A plain call that returns such a value returns data.
 import { Data, Effect, Exit } from "effect"
 
 class EmptyDocument extends Data.TaggedError("EmptyDocument")<{ readonly documentId: string }> {}
 
 export effect function replay<A, E>(outcome: Exit.Exit<A, E>) {
-  return try outcome()
+  return try outcome
 }
 
 function emptyDocumentError(documentId: string) {
@@ -16,7 +15,7 @@ function emptyDocumentError(documentId: string) {
 
 export effect function rejectDocument(documentId: string) {
   const error = emptyDocumentError(documentId) // data, not a failure
-  return try error() // calling the error fails with it
+  throw error // throw fails with it
 }
 
 type Equals<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false

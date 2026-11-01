@@ -26,11 +26,8 @@ FuzzFunctionBoundaries rule:constructor compiler VIP-1: chapter 1 requires the s
 FuzzFunctionBoundaries corpus:fz-func-constructor compiler VIP-1: minimized constructor violation; lane vip-core2
 FuzzFunctionBoundaries rule:both compiler VIP-1: chapter 1 requires the specified EK diagnostic for both; lane vip-core2
 FuzzFunctionBoundaries corpus:fz-func-both compiler VIP-1: minimized both violation; lane vip-core2
-FuzzFunctionBoundaries rule:return-type compiler VIP-1: chapter 1 requires the specified EK diagnostic for return-type; lane vip-core2
 FuzzFunctionBoundaries corpus:fz-func-return-type compiler VIP-1: minimized return-type violation; lane vip-core2
-FuzzFunctionSyntax syntax:identifier compiler VIP-1: a plain arrow named effect is misclassified as a program; calling it at module scope reports EK1001; lane vip-core2
 FuzzFunctionSyntax corpus:fz-func-syntax-identifier compiler VIP-1: minimized syntax probe; lane vip-core2
-FuzzFunctionSyntax syntax:method-name compiler VIP-1: an ordinary method named effect is misclassified as a program; module-scope call reports EK1001; lane vip-core2
 FuzzFunctionSyntax corpus:fz-func-syntax-method-name compiler VIP-1: minimized syntax probe; lane vip-core2
 FuzzFunctionTypeScriptRules typescript:new compiler VIP-1: new of a .vibe function still reports the forbidden additional EK1020; lane vip-core2 (coordinate deletion lane)
 FuzzFunctionTypeScriptRules corpus:fz-func-typescript-new compiler VIP-1: minimized new-function diagnostic probe; lane vip-core2
@@ -54,3 +51,13 @@ FuzzFunctionBoundaries rule:return-type-unknown compiler VIP-1: a written `unkno
 FuzzFunctionBoundaries corpus:fz-func-return-type-unknown compiler VIP-1: minimized return-type-unknown violation; lane vip-core2
 FuzzLegacyEffectAlias legacy-global compiler VIP-3: missing identity-selected EK4856 transition warning; lane impl-hunt-func
 FuzzLegacyEffectAlias corpus:legacy-global compiler VIP-3: minimized old global alias; lane impl-hunt-func
+FuzzFunctionPlainRunners plain-runner:declaration:runSyncExit compiler VIP-1: a plain function is plain JavaScript, but its statement Effect.runSyncExit(e) gets EK4301 (D24 structured result discarded, calltypes.go checkInvocationRuns) for the Exit it returns; lane core-land
+FuzzFunctionPlainRunners plain-runner:arrow:runSyncExit compiler VIP-1: a plain function is plain JavaScript, but its statement Effect.runSyncExit(e) gets EK4301 (D24 structured result discarded, calltypes.go checkInvocationRuns) for the Exit it returns; lane core-land
+FuzzFunctionPlainRunners plain-runner:function-expression:runSyncExit compiler VIP-1: a plain function is plain JavaScript, but its statement Effect.runSyncExit(e) gets EK4301 (D24 structured result discarded, calltypes.go checkInvocationRuns) for the Exit it returns; lane core-land
+FuzzFunctionPlainRunners plain-runner:method:runSyncExit compiler VIP-1: a plain function is plain JavaScript, but its statement Effect.runSyncExit(e) gets EK4301 (D24 structured result discarded, calltypes.go checkInvocationRuns) for the Exit it returns; lane core-land
+FuzzFunctionPlainRunners plain-runner:object-method:runSyncExit compiler VIP-1: a plain function is plain JavaScript, but its statement Effect.runSyncExit(e) gets EK4301 (D24 structured result discarded, calltypes.go checkInvocationRuns) for the Exit it returns; lane core-land
+FuzzFunctionPlainRunners plain-runner:constructor:runSyncExit compiler VIP-1: a plain function is plain JavaScript, but its statement Effect.runSyncExit(e) gets EK4301 (D24 structured result discarded, calltypes.go checkInvocationRuns) for the Exit it returns; lane core-land
+FuzzFunctionPlainRunners plain-runner:returned-arrow:runSyncExit compiler VIP-1: a plain function is plain JavaScript, but its statement Effect.runSyncExit(e) gets EK4301 (D24 structured result discarded, calltypes.go checkInvocationRuns) for the Exit it returns; lane core-land
+FuzzFunctionPlainRunners plain-runner:array-callback:runSyncExit compiler VIP-1: a plain function is plain JavaScript, but its statement Effect.runSyncExit(e) gets EK4301 (D24 structured result discarded, calltypes.go checkInvocationRuns) for the Exit it returns; lane core-land
+FuzzFunctionPlainRunners plain-runner:plain-callee-callback:runSyncExit compiler VIP-1: a plain function is plain JavaScript, but its statement Effect.runSyncExit(e) gets EK4301 (D24 structured result discarded, calltypes.go checkInvocationRuns) for the Exit it returns; lane core-land
+FuzzFunctionPlainRunners corpus:fz-plain-runner-runsyncexit compiler VIP-1: minimized plain-function runSyncExit statement (EK4301); lane core-land

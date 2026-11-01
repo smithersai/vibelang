@@ -3,11 +3,11 @@ service Count { value: number }
 
 export effect function arrayProvider() {
   const providers: Layer.Layer<Count>[] = []
-  provide providers { return (try Count()).value }
+  provide providers { return (try Count).value }
 }
 
 export effect function readonlyArrayProvider(providers: ReadonlyArray<Layer.Layer<Count>>) {
-  provide providers { return (try Count()).value }
+  provide providers { return (try Count).value }
 }
 
 export effect function emptyList() {
@@ -15,17 +15,17 @@ export effect function emptyList() {
 }
 
 export effect function spreadOnly(providers: Layer.Layer<Count>[]) {
-  provide [...providers] { return (try Count()).value }
+  provide [...providers] { return (try Count).value }
 }
 
 export effect function optionalOnly(providers: [Layer.Layer<Count>?]) {
-  provide providers { return (try Count()).value }
+  provide providers { return (try Count).value }
 }
 
 export effect function contextList() {
-  provide [Context.make(Count, { value: 1 })] { return (try Count()).value }
+  provide [Context.make(Count, { value: 1 })] { return (try Count).value }
 }
 
 export effect function nestedList() {
-  provide [[Layer.succeed(Count, { value: 1 })]] { return (try Count()).value }
+  provide [[Layer.succeed(Count, { value: 1 })]] { return (try Count).value }
 }

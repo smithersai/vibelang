@@ -11,4 +11,4 @@ module impl {
 module second { export const value = 7 }
 import { value } from impl
 import { value as secondValue } from second
-export function main() { return [value, secondValue, Object + moduleRuntime_1] }
+export effect function main() { return [value, secondValue, Object + moduleRuntime_1] }

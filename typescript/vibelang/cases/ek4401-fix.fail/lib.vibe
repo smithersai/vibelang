@@ -4,7 +4,7 @@
 import { box, double, guarded, label, program, project, refuse } from "./plain.ts"
 
 const one = effect (): number!! => 1
-const text = (parts: TemplateStringsArray, ...values: ReadonlyArray<number>): string!! =>
+const text = effect (parts: TemplateStringsArray, ...values: ReadonlyArray<number>): string!! =>
   parts.join("?") + values.join(",")
 
 // A const and a return.
@@ -39,7 +39,7 @@ export const held = effect (n: number) => {
 
 // A destination that takes a program.
 export const projected = project({
-  reduce: (state: number) => {
+  reduce: effect (state: number) => {
     if (state < 0) return state
     return double(state)
   },

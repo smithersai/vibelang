@@ -1,8 +1,8 @@
-// A by-name program (D147) evaluates the expression written before a pipe's
-// topic each time it runs. The comment written before the statement stays
-// before the statement: printed again inside the generated program, between
-// its return and the expression, a line comment would end the return, and
-// the program would return undefined instead of the journal's receipt.
+// The comment written before a statement stays before the statement: printed
+// again inside generated code, between a return and the expression, a line
+// comment would end the return, and the program would return undefined
+// instead of the journal's receipt. make is an Effect function, so try runs
+// it (VIP-5); before VIP-1 its call ran as a by-name operand (D147).
 interface Journal { emit: (input: { value: number }) => number!string }
 const recorded: Array<number> = []
 const journal: Journal = {
@@ -20,8 +20,8 @@ const make = effect (state: { mutable runs: number }): number!! => {
 export effect function main() {
   const state = { runs: 0 }
   // A comment on the statement: the left side runs a call, so the program is a generator.
-  journal.emit({ value: make(state) }) |> try Effect.orDie(%)
+  journal.emit({ value: try make(state) }) |> try Effect.orDie(%)
   // A comment on the second statement.
-  journal.emit({ value: make(state) }) |> try Effect.orDie(%)
+  journal.emit({ value: try make(state) }) |> try Effect.orDie(%)
   return [recorded, state.runs]
 }

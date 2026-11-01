@@ -9,26 +9,26 @@ service Inventory {
 }
 
 const InventoryLive = Layer.succeed(Inventory, {
-  stock(item) {
+  effect stock(item) {
     if (item === "tea") return teaStock
     throw new OutOfStock({ item })
   }
 })
 
-function place(order: Order) {
+effect function place(order: Order) {
   try {
-    const available = Inventory.stock(order.item)
-    if (order.quantity > available) return receipt("only", available, order.item)
-    return receipt("ordered", order.quantity, order.item)
+    const available = try Inventory.stock(order.item)
+    if (order.quantity > available) return try receipt("only", available, order.item)
+    return try receipt("ordered", order.quantity, order.item)
   } catch (error) {
     return `no ${error.item}`
   }
 }
 
-export function shop() {
-  return Effect.provide(() => [
-    place({ item: "tea", quantity: 2 }),
-    place({ item: "tea", quantity: 5 }),
-    place({ item: "coffee", quantity: 1 })
-  ], InventoryLive)
+export effect function shop() {
+  return try Effect.provide(effect { return [
+    try place({ item: "tea", quantity: 2 }),
+    try place({ item: "tea", quantity: 5 }),
+    try place({ item: "coffee", quantity: 1 })
+  ] }, InventoryLive)
 }

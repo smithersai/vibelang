@@ -1,7 +1,8 @@
-// expect: EK4301
+// expect: EK0501
 // A literal at Function, or at a function-constrained type parameter, is
-// plain (D513), so a body that runs an Effect there is EK4301; so is an
-// Effect function passed there (D430).
+// plain (D513, VIP-1), so try in its body is EK0501. An effect function passed
+// there is a function value like any other: once and useCallback return it,
+// and a caller gets its Effect (VIP-1; D430's rejection is retired).
 import { once, useCallback } from "./helpers.ts"
 
 effect function fetchUser() {
@@ -9,7 +10,7 @@ effect function fetchUser() {
 }
 
 export function literal() {
-  return useCallback((e: string) => Console.log(e), [])
+  return useCallback((e: string) => try Console.log(e), [])
 }
 
 export function value() {

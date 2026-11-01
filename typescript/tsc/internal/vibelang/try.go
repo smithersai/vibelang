@@ -61,11 +61,6 @@ func isTryCall(node *ast.Node) bool {
 	return callee.Kind == ast.KindIdentifier && callee.Flags&ast.NodeFlagsReparsed != 0 && callee.Text() == "$try"
 }
 
-// isTry reports whether node is try e, of a call or of anything else.
-func isTry(node *ast.Node) bool {
-	return isTryCall(node) || node.Flags&ast.NodeFlagsVibeLangTry != 0
-}
-
 // tryOperand returns e of $try(e), or nil.
 func tryOperand(node *ast.Node) *ast.Node {
 	if !isTryCall(node) {
@@ -80,6 +75,9 @@ func tryOperand(node *ast.Node) *ast.Node {
 func checkTries(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
+		if isTry(ast.SkipParentheses(node)) && !inEffectCode(node) {
+			return node.ForEachChild(visit) // EK0501 (try_outside.go), also for try (f())
+		}
 		if node.Flags&ast.NodeFlagsVibeLangTry != 0 {
 			checkTriedCall(c, file, node)
 		}
@@ -144,12 +142,10 @@ func triedText(file *ast.SourceFile, operand *ast.Node) string {
 	return strings.TrimSpace(file.Text()[tryKeyword(file, operand).End():operand.End()])
 }
 
-// checkTriedCall checks `try f()`, which parses as the call f() flagged
-// NodeFlagsVibeLangTry. The try is accepted where the call runs where it
-// stands (runsWhereItStands): it means what the call means without it.
-// Where an Effect call cannot run at all, at a module's top level or in a
-// plain function, the error that the call draws without try stands alone.
-// A call this position passes by name or holds as a program, or one that
+// checkTriedCall checks `try f()` in effect code, which parses as the call
+// f() flagged NodeFlagsVibeLangTry: the try runs the Effect the call returns
+// (runsWhereItStands). Outside effect code it is EK0501 (try_outside.go). A
+// call this position holds as a program, or one that
 // returns anything but an Effect, is EK0502.
 func checkTriedCall(c *checker.Checker, file *ast.SourceFile, operand *ast.Node) {
 	keyword := tryKeyword(file, operand)
@@ -159,18 +155,11 @@ func checkTriedCall(c *checker.Checker, file *ast.SourceFile, operand *ast.Node)
 		return
 	}
 	text := shortText(triedText(file, operand), "the call")
-	if a.performs(call) && a.byNameOf(call) == nil && !inHatch(call) {
-		return // EK1001, EK9203, or EK4301 already reports the call
+	if inEffectCode(call) && serviceLookup(c, call) != nil {
+		return // try S.member(…) runs the service lookup (D41)
 	}
-	if isInvocation(call) && (a.performs(call) || callReturnsEffect(c, call)) {
-		switch {
-		case a.byNameOf(call) != nil:
-			note(reportAt(c, file, keyword, EK0502, text, "a program this position passes by name without running it"), "Remove try to pass the program, or run it first: const value = try {0}.", text)
-		case holdsProgram(c, call):
-			note(reportAt(c, file, keyword, EK0502, text, "a program this position holds without running it"), "Remove try to hold the program, or run it first: const value = try {0}.", text)
-		default:
-			note(reportAt(c, file, keyword, EK0502, text, "a call of a function that compiles to plain JavaScript, which runs no Effect"), "Remove try: the call gives its value.")
-		}
+	if isInvocation(call) && callReturnsEffect(c, call) && holdsProgram(c, call) {
+		note(reportAt(c, file, keyword, EK0502, text, "a program this position holds without running it"), "Remove try to hold the program, or run it first: const value = try {0}.", text)
 		return
 	}
 	t := c.GetTypeAtLocation(operand)
@@ -321,7 +310,7 @@ func retiredTryMapper(c *checker.Checker, rest []*ast.Node) (*ast.Node, []*ast.N
 // any expression passed by name or held. Its operand's type no longer
 // says what it ran, so the position alone decides.
 func hatchRan(a *analyzer, call *ast.Node) bool {
-	if !inLowerableBody(call) || inHatch(call) || a.byNameOf(call) != nil || holdsProgram(a.checker, call) || isCatchLeft(call) {
+	if !inLowerableBody(call) || inHatch(call) || holdsProgram(a.checker, call) || isCatchLeft(call) {
 		return false
 	}
 	fn := enclosingFunction(call)
@@ -349,13 +338,15 @@ func isStableInput(input *ast.Node) bool {
 // any expression passed by name, such as an await operation's element or
 // fork's operand.
 func runsWhereItStands(a *analyzer, call *ast.Node) bool {
-	if !inLowerableBody(call) || inHatch(call) || a.byNameOf(call) != nil {
+	if !a.runs(call) {
 		return false
 	}
-	if fn := enclosingFunction(call); fn == nil || !a.isEffect(fn) {
-		return false
+	signature := a.checker.GetResolvedSignature(call)
+	if signature == nil {
+		return true
 	}
-	return a.performs(call)
+	t := a.checker.GetReturnTypeOfSignature(signature)
+	return t.Flags()&checker.TypeFlagsAnyOrUnknown != 0 || callRunsResult(a.checker, call, t)
 }
 
 // visitTry lowers $try(e) where it does not run, as where it is passed by

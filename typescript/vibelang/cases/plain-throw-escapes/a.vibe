@@ -1,0 +1,74 @@
+// expect-result: ["Invalid()","Invalid(missing)","Invalid(b)","Invalid(-1)","Invalid()","Invalid()","Invalid()",["a"]]
+// VIP-4: a plain function may throw, and its throw is JavaScript's. Each
+// throw below escapes its plain function, whatever form the throw takes, and
+// the plain caller's catch (JavaScript's) catches it.
+error Invalid { value: string }
+
+export const validate = (value: string): string => {
+  if (value === "") throw new Invalid({ value })
+  return value
+}
+
+export function orThrow(value: string | undefined): string {
+  return value ?? throw new Invalid({ value: "missing" })
+}
+
+export function pick(tag: string): number {
+  return match (tag) {
+    when "a": 1;
+    default: throw new Invalid({ value: tag });
+  }
+}
+
+export function viaDo(n: number): number {
+  return do {
+    if (n < 0) throw new Invalid({ value: String(n) })
+    n * 2
+  }
+}
+
+export class Router {
+  route(tag: string): string {
+    if (tag === "") throw new Invalid({ value: tag })
+    return "/"
+  }
+}
+
+// A throw inside a try that rethrows still escapes.
+export function rethrows(value: string): string {
+  try {
+    if (value === "") throw new Invalid({ value })
+    return value
+  } catch (e) {
+    throw e
+  }
+}
+
+// A plain callback that throws: map calls it synchronously and rethrows.
+export function checked(values: ReadonlyArray<string>) {
+  return values.map((value) => {
+    if (value === "") throw new Invalid({ value })
+    return value
+  })
+}
+
+function caught(f: () => unknown): unknown {
+  try {
+    return f()
+  } catch (e) {
+    return e instanceof Invalid ? `Invalid(${e.value})` : `other: ${String(e)}`
+  }
+}
+
+export effect function main() {
+  return [
+    caught(() => validate("")),
+    caught(() => orThrow(undefined)),
+    caught(() => pick("b")),
+    caught(() => viaDo(-1)),
+    caught(() => new Router().route("")),
+    caught(() => rethrows("")),
+    caught(() => checked(["a", ""])),
+    caught(() => checked(["a"]))
+  ]
+}

@@ -1,9 +1,8 @@
 // Runs each match of main.vibe with both zeros and prints what it chose.
-import * as Effect from "effect/Effect"
 import * as m from "./out/main.js"
 
 const zeros = [0, -0]
-const run = (f, values) => values.map((n) => Effect.runSync(f(n)))
+const run = (f, values) => values.map((n) => f(n))
 console.log(JSON.stringify({
   negative: run(m.negative, zeros),
   positive: run(m.positive, zeros),

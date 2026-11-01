@@ -42,8 +42,8 @@ test("--fix retains an existing factory callback diagnostic across body rewrites
  assert.match(result.stdout,/EK4301/)
  assert.doesNotMatch(result.stdout,/not fixed|refused/)
  const text=readFileSync(join(root,"main.vibe"),"utf8")
- assert.match(text,/throw 1/)
- assert.doesNotMatch(text,/Effect.fail/)
+ // No try runs the handler's Effect.fail, so no fix writes a throw (VIP-1, VIP-5).
+ assert.match(text,/Effect\.fail\(1\)/)
  const second=vibelang(root,"--fix","--pretty","false")
  assert.equal(second.status,2,second.stdout+second.stderr)
  assert.match(second.stdout,/0 fixes in 0 files/)

@@ -134,7 +134,8 @@ func checkEffectRules(c *checker.Checker, file *ast.SourceFile) {
 // as `interrupt` or a function of no arguments that runs Effects: naming
 // one runs nothing (D24), so a program went on past `interrupt`. A call
 // that returns a program stays quiet; a call at a module's top level is
-// EK1001's, as is a running call in code that stays plain JavaScript.
+// EK1001's. A constructor, an accessor and a class static block are plain
+// JavaScript (VIP-1), so a call there that gives an Effect discards it.
 func (r *ruleCheck) checkFloating(statement *ast.Node) {
 	expression := statement.Expression()
 	if isProvideLayer(statement) || isDiscardingForm(expression) || isHelperCall(expression) {
@@ -144,9 +145,11 @@ func (r *ruleCheck) checkFloating(statement *ast.Node) {
 	if invocation := ast.SkipParentheses(expression); ast.IsTaggedTemplateExpression(invocation) && r.a.runs(invocation) {
 		return
 	}
-	body := inLowerableBody(statement)
+	body := inEffectCode(statement) // plain code runs no Effect (VIP-1)
 	if invocation := ast.SkipParentheses(expression); !body && ast.IsCallExpression(invocation) {
-		fn := ast.GetContainingFunction(statement)
+		fn := ast.FindAncestor(statement.Parent, func(n *ast.Node) bool {
+			return ast.IsFunctionLike(n) || n.Kind == ast.KindClassStaticBlockDeclaration
+		})
 		if fn == nil {
 			return
 		}
@@ -166,12 +169,12 @@ func (r *ruleCheck) checkFloating(statement *ast.Node) {
 	}
 	d := report(r.c, expression, message, messageText(expression, "This expression"))
 	switch {
-	case body:
-		note(d, "Call it to run it: {0}.", callText(expression))
+	case body && inEffectCode(statement):
+		note(d, "Run it with try: {0}.", r.runText(expression))
 	case inHatch(statement):
 		note(d, "A hatch body is TypeScript, where an Effect runs only through a runner. Run it outside the hatch.")
 	default:
-		note(d, "Call it inside a VibeLang function to run it.")
+		note(d, "Plain JavaScript runs no Effect: run it with try inside an effect function, or return it.")
 	}
 }
 
@@ -230,7 +233,7 @@ func (r *ruleCheck) checkReturnedEffect(fn *ast.Node, value *ast.Node) {
 		// A written contract says what fn succeeds with, unless its success
 		// names no value; then a plain variant's Effect form returns the
 		// value as data too.
-		if r.a.successNamesNoValue(fn) == nil || !r.a.isEffect(fn) && !r.a.isSplittable(fn) {
+		if r.a.successNamesNoValue(fn) == nil || !r.a.isEffect(fn) {
 			return
 		}
 	} else if !r.a.isEffect(fn) {
@@ -260,7 +263,7 @@ func (r *ruleCheck) checkReturnedValue(fn *ast.Node, value *ast.Node) {
 			// with the function and ran none of it.
 			if success := r.a.successNamesNoValue(fn); success != nil {
 				d := report(r.c, value, returnedProgramAsValue, messageText(value, "This value"), functionDisplayName(fn), r.c.TypeToString(success))
-				note(d, "Call it to run it: {0}. To return the function itself, write its type as the success type: ({1})!E!R.", callText(value), bangTypes(r.c.TypeToString(valueType)))
+				note(d, "Run it with try: {0}. To return the function itself, write its type as the success type: ({1})!E!R.", r.runText(value), bangTypes(r.c.TypeToString(valueType)))
 			}
 			return
 		}
@@ -286,15 +289,32 @@ func (r *ruleCheck) checkReturnedValue(fn *ast.Node, value *ast.Node) {
 	if declared == nil || accepted {
 		if named := r.a.successNamesNoValue(fn); named != nil {
 			d := report(r.c, value, returnedEffectAsValue, messageText(value, "This value"), functionDisplayName(fn), r.c.TypeToString(named))
-			note(d, "Call it to run it: {0}. To return the program itself, write its type as the success type: ({1})!E!R.", callText(value), bangTypes(r.c.TypeToString(valueType)))
+			note(d, "Run it with try: {0}. To return the program itself, write its type as the success type: ({1})!E!R.", r.runText(value), bangTypes(r.c.TypeToString(valueType)))
 			return
 		}
 	}
-	if accepted || fn.Type() != nil {
+	if accepted || fn.Type() != nil || r.blockDeclaresEffectSuccess(fn, valueType) {
 		return // TypeScript reports a value the written contract rejects
 	}
 	d := report(r.c, value, EK4802, messageText(value, "This value"), functionDisplayName(fn))
-	note(d, "Call it to return its result: {0}. To return the program itself, write the contract.", callText(value))
+	note(d, "Run it with try to return its result: {0}. To return the program itself, write the contract.", r.runText(value))
+}
+
+// blockDeclaresEffectSuccess reports whether fn is an effect block whose
+// declared type, such as const load: Effect<Effect<void>> = effect { return
+// migration }, succeeds with valueType: that type is the block's contract,
+// so it returns the program unrun as written (VIP-5, return values stay
+// unflattened).
+func (r *ruleCheck) blockDeclaresEffectSuccess(fn *ast.Node, valueType *checker.Type) bool {
+	if !isEffectBlock(fn) {
+		return false
+	}
+	declared := r.c.GetContextualType(fn, checker.ContextFlagsNone)
+	if declared == nil || !isEffectType(r.c, declared) {
+		return false
+	}
+	success := successType(r.c, declared)
+	return success != nil && isEffectType(r.c, success) && r.c.IsTypeAssignableTo(valueType, success)
 }
 
 // checkReturnedSubtype reports EK4802 where fn returns value, an Effect
@@ -314,7 +334,7 @@ func (r *ruleCheck) checkReturnedSubtype(fn *ast.Node, value *ast.Node, valueTyp
 		return // the boundary runs it
 	}
 	d := report(r.c, value, returnedEffectAsValue, messageText(value, "This value"), functionDisplayName(fn), r.c.TypeToString(named))
-	note(d, "Call it to run it: {0}. To return it itself, write its type as the success type: ({1})!E!R.", callText(value), bangTypes(r.c.TypeToString(valueType)))
+	note(d, "Run it with try: {0}. To return it itself, write its type as the success type: ({1})!E!R.", r.runText(value), bangTypes(r.c.TypeToString(valueType)))
 }
 
 // checkReturnedUnion reports EK4802 where fn returns value, whose type is a
@@ -379,7 +399,7 @@ func (a *analyzer) successNamesNoValue(fn *ast.Node) *checker.Type {
 	case fn.Type() != nil:
 		expected = []*checker.Type{a.checker.GetTypeFromTypeNode(fn.Type())}
 	case call != nil:
-		signature := a.candidateOf(call)
+		signature := a.checker.GetResolvedSignature(call)
 		if signature == nil {
 			return nil
 		}
@@ -456,7 +476,7 @@ func (r *ruleCheck) checkThrow(statement *ast.Node) {
 	t := r.c.GetTypeAtLocation(value)
 	switch {
 	case isEffectType(r.c, t):
-		note(report(r.c, value, EK4815, messageText(value, "This value")), "Run it instead: {0}.", callText(value))
+		note(report(r.c, value, EK4815, messageText(value, "This value")), "Run it instead: {0}.", r.runText(value))
 	case t.Flags()&(checker.TypeFlagsAny|checker.TypeFlagsUnknown) != 0:
 		note(report(r.c, value, EK4811, "This throw", r.c.TypeToString(t), "E"), "Throw an error declaration's instance.")
 	default:
@@ -1007,14 +1027,23 @@ func messageText(node *ast.Node, otherwise string) string {
 	return text
 }
 
-// callText returns the text that calls expression: e() for e, and (e)()
-// for an expression that needs parentheses first.
-func callText(expression *ast.Node) string {
+// runText spells running expression with try (VIP-5): try e for an Effect
+// value, try f() for a program named by reference, a function of no
+// arguments that returns one, and parentheses around an operand that needs
+// them: try (a ?? b).
+func (r *ruleCheck) runText(expression *ast.Node) string {
+	return runSpelling(r.c, expression)
+}
+
+func runSpelling(c *checker.Checker, expression *ast.Node) string {
 	text := messageText(expression, "the expression")
 	if needsParentheses(expression) {
-		return "(" + text + ")()"
+		text = "(" + text + ")"
 	}
-	return text + "()"
+	if analyzerFor(c).programOf(c.GetTypeAtLocation(expression)) != nil {
+		text += "()"
+	}
+	return "try " + text
 }
 
 // needsParentheses reports whether expression needs parentheses before a

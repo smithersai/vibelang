@@ -1,0 +1,2 @@
+main.vibe(4,29): error EK0106
+main.vibe(8,38): error EK0106

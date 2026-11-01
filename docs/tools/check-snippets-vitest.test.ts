@@ -12,7 +12,7 @@ test.skipIf(!existsSync(compiler))("runs marked Vitest examples and fails test a
     writeFileSync(join(root, "pass.md"), [
       "```vibe",
       'import { assert, it } from "@effect/vitest"',
-      'it.live("prints the result", effect () => { Console.log("checked") })',
+      'it.live("prints the result", effect () => { try Console.log("checked") })',
       'it.effect("checks the result", effect () => { assert.strictEqual(7, 7) })',
       '// Output: checked',
       '```'
@@ -26,9 +26,9 @@ test.skipIf(!existsSync(compiler))("runs marked Vitest examples and fails test a
     ].join("\n"))
     writeFileSync(join(root, "clock.md"), [
       "```vibe", 'import { assert, it } from "@effect/vitest"',
-      'function delayed() { sleep("1 millis"); return "ready" }',
+      'effect function delayed() { try sleep("1 millis"); return "ready" }',
       'it.effect("registered assertion", effect () => { assert.strictEqual(7, 7) })', "```",
-      "```vibe", '// run: Console.log(delayed())', 'const label = "excerpt"',
+      "```vibe", '// run: try Console.log(try delayed())', 'const label = "excerpt"',
       '// Output: ready', "```"
     ].join("\n"))
     const report = join(root, "report.json")

@@ -1,1 +1,0 @@
-refuse returns a program, so its body runs as plain JavaScript when refuse is called, and can't throw.

@@ -18,7 +18,7 @@ export class Counter {
     return 42
   }
   effect read(): number!!Count {
-    return (try Count()).n
+    return (try Count).n
   }
   label(): string {
     return "counter"

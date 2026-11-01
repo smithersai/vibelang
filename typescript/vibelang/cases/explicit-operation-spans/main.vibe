@@ -1,7 +1,7 @@
 // VIP-31: function boundaries add no spans; Effect.withSpan is explicit.
-effect function inner() { return (try Effect.currentSpan()).name }
-const viaArrow = effect () => (try Effect.currentSpan()).name
-class Hello { effect greet() { return (try Effect.currentSpan()).name } }
+effect function inner() { return (try Effect.currentSpan).name }
+const viaArrow = effect () => (try Effect.currentSpan).name
+class Hello { effect greet() { return (try Effect.currentSpan).name } }
 // expect-result: ["root","root","root","operation"]
 export effect function main() {
   return try Effect.withSpan(effect {

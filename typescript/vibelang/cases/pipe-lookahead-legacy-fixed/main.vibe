@@ -6,7 +6,7 @@ function inspect(value: unknown): string {
   return Effect.isEffect(value) ? "program" : "function"
 }
 
-export function main() {
+export effect function main() {
   return do {
     const $pipe0: (number)!! = effect { return 5 }
     const $pipe1 = inspect

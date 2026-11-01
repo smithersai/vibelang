@@ -8,7 +8,7 @@ import namespace from "./namespace.vibe"
 import forwarded from "./forwarded.vibe"
 
 // expect-result: {"local":"local#","imported":"imported!","renamed":"renamed?","namespace":"namespace?","forwarded":"forwarded!","mapped":["mapped!"]}
-export function main() {
+export effect function main() {
   const a: string = local("local")
   const b: string = imported("imported")
   const c: string = renamed("renamed")

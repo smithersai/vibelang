@@ -1,2 +1,0 @@
-go test fuzz v1
-string("-- main.vibe --\nfunction inspect(value: number!!): string\nfunction inspect(value: unknown): string\n  return pipe(effect () => 5, inspect)\n")

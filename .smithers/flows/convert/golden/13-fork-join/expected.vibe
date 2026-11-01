@@ -1,9 +1,9 @@
-function work(n: number) {
-  sleep("10 millis")
+effect function work(n: number) {
+  try sleep("10 millis")
   return n
 }
 
-export function both() {
+export effect function both() {
   const a = fork work(1)
   const b = fork work(2)
   return [join a, join b]

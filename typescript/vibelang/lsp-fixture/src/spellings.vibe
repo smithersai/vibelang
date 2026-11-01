@@ -1,11 +1,11 @@
 // Both spellings of a contract. Hovers write the ! form for either (D309).
 export error Missing { id: string }
 
-export function spelled(id: string): Effect<string, Missing> {
+export effect function spelled(id: string): Effect<string, Missing> {
   if (id === "") throw new Missing({ id })
   return id
 }
 
-export function terse(id: string): string!Missing! {
-  return spelled(id)
+export effect function terse(id: string): string!Missing! {
+  return try spelled(id)
 }

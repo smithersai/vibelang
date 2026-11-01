@@ -1,0 +1,11 @@
+// expect-result: "Missing"
+// A yieldable error is an Effect that fails (chapter 2: e is an Effect when
+// its type is assignable to Effect.Effect<any, any, any>), so fork takes it
+// as try does (VIP-17, VIP-5).
+error Missing { id: string }
+const failure = new Missing({ id: "x" })
+export effect function main() {
+  const fiber = fork failure
+  const exit = try Fiber.await(fiber)
+  return Exit.isFailure(exit) ? "Missing" : "none"
+}

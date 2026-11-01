@@ -1,4 +1,4 @@
-import { Data, Effect } from "effect";
+import { Data } from "effect";
 export type Shape = Data.TaggedEnum<{
     Circle: {
         radius: number;
@@ -30,4 +30,4 @@ export interface TreeDefinition extends Data.TaggedEnum.WithGenerics<1> {
     readonly taggedEnum: Tree<this["A"]>;
 }
 export declare const Tree: Data.TaggedEnum.GenericConstructor<TreeDefinition>;
-export declare function area(shape: Shape): Effect.Effect<number, never, never>;
+export declare function area(shape: Shape): number;

@@ -1,30 +1,29 @@
-// expect: EK9203
-// A method's plain return annotation is its type in the declaration file and
-// through any interface its class satisfies, so a method that runs an Effect
-// under one is EK9203, as a function is (D74). Each method below would return
-// an unrun Effect where its annotation promises a number, and read would hide
-// its requirement, Count. method-effect-contract-dts writes their contracts.
+// expect: EK0501 EK4801 TS2339
+// A method without the effect modifier is plain (VIP-1), whatever its
+// annotation, so a method that runs an Effect with try is EK0501, as a
+// function is. Its quick fix marks the method effect; method-effect-contract-dts
+// writes their contracts.
 service Count { n: number }
 
 interface CounterApi { count(): number }
 
 export class Counter {
   count(): number {
-    sleep("1 millis")
+    try sleep("1 millis")
     return 42
   }
   read(): number {
-    return Count().n
+    return (try Count).n
   }
   static make(): number {
-    sleep("1 millis")
+    try sleep("1 millis")
     return 1
   }
 }
 
 export const tally = {
   next(): number {
-    sleep("1 millis")
+    try sleep("1 millis")
     return 1
   }
 }

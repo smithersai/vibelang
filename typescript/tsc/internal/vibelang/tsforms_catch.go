@@ -7,37 +7,43 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
 )
 
-// EK4835 (D289): Effect's catch combinators in a VibeLang function, which a
-// catch expression (D236) and a match (D206, D216) write:
+// EK4835 (D289): Effect's catch combinators that try runs, which a catch
+// expression (VIP-5) and a match (VIP-7) write:
 //
-//	Effect.catchTag(find(id), "NotFound", (e) => `no user ${e.id}`)
-//	find(id) catch (e) => match (e) { when NotFound: `no user ${e.id}`; default: throw e; }
+//	try Effect.catchTag(find(id), "NotFound", (e) => Effect.succeed(`no user ${e.id}`))
+//	find(id) catch effect (e) => match (e) { when { _tag: "NotFound" }: `no user ${e.id}`; default: throw e; }
 //
-//	Effect.catch(find(id), (e) => describe(e))
+//	try Effect.catch(find(id), (e) => Effect.succeed(describe(e)))
 //	find(id) catch (e) => describe(e)
 //
-// Effect.catchTag(self, "Tag", handler) and Effect.catchTags(self, { Tag:
-// handler, … }) become one arm per tag and rethrow only unhandled failures. An arm
-// tests the failure's _tag with an object pattern, { _tag: "Tag" }, which is
-// what catchTag tests. Static class types are structural and do not prove a
-// runtime prototype. Effect.catch(self, handler) becomes
-// the catch expression with the handler. The left side runs inside the catch
-// as the program argument did (D147); an Effect value is called to run it.
+//	try Effect.catch(find(id), (e) => recover(e))
+//	find(id) catch effect (e) => try recover(e)
+//
+// A catch expression runs its left side, so a combinator no try runs builds a
+// program and stays. Effect.catchTag(self, "Tag", handler) and
+// Effect.catchTags(self, { Tag: handler, … }) become one arm per tag and
+// rethrow only unhandled failures. An arm tests the failure's _tag with an
+// object pattern, { _tag: "Tag" }, which is what catchTag tests. Static class
+// types are structural and do not prove a runtime prototype.
+// Effect.catch(self, handler) becomes the catch expression with the handler.
 // A handler must be an arrow function with at most one plain parameter and an
 // expression body, or a block that only returns one; the catch expression's
-// variable takes its parameter's name. A handler whose value is an Effect
-// value is called, since catchTag runs what its handler returns. Every
-// failure in the program's E must have a literal _tag for catchTag and
-// catchTags, so that the match removes exactly the failures catchTag would.
-// One difference is VibeLang's by design (D13, D236): a cause that mixes an
-// expected failure with a defect or an interruption passes through a catch
-// expression, while Effect's combinators recover from the failure and drop
-// the rest. The last stage of a pipeline that runs, x |> Effect.catch(%, h),
-// is the same catch expression. Refused: the data-last forms inside pipe, a
-// stage with stages after it, type arguments, a tag
-// that is not a string literal, and anything outside a VibeLang function body.
+// variable takes its parameter's name. A handler returns an Effect: of
+// Effect.succeed(v) its value is v, of Effect.fail(x) a throw, and of any other
+// Effect a try. A plain handler holds only values; a throw or a try needs an
+// effect handler, in which throw fails again, typed (VIP-5). Every failure in
+// the program's E must have a literal _tag for catchTag and catchTags, so that
+// the match removes exactly the failures catchTag would. One difference is
+// VibeLang's by design (D13, D236): a cause that mixes an expected failure with
+// a defect or an interruption passes through a catch expression, while
+// Effect's combinators recover from the failure and drop the rest. The last
+// stage of a pipeline that try runs, try (x |> Effect.catch(%, h)), is the same
+// catch expression. Refused: the data-last forms inside pipe, a stage with
+// stages after it, type arguments, a tag that is not a string literal, and
+// anything outside a function body.
 
 // catchHandlerMessage is EK4835's text for Effect.catch, whose handler the
 // catch expression keeps.
@@ -54,19 +60,19 @@ func init() {
 
 // catchCombinatorOf returns the name of the Effect catch combinator that call
 // calls in its data-first form, or "".
-// methodCatchParts accepts a single Effect catch operator on a running call.
-// A real pipe member and multi-operator pipelines keep their own meaning.
+// methodCatchParts accepts x.pipe(op), one Effect catch operator on x, an Effect.
+// A pipeline of several operators keeps its form.
 func methodCatchParts(c *checker.Checker, call *ast.Node) (*ast.Node, *ast.Node) {
 	if !ast.IsCallExpression(call) || call.TypeArguments() != nil || ast.IsOptionalChain(call) || len(call.Arguments()) != 1 {
 		return nil, nil
 	}
 	access := call.Expression()
-	if !ast.IsPropertyAccessExpression(access) || ast.IsOptionalChain(access) {
+	if !ast.IsPropertyAccessExpression(access) || ast.IsOptionalChain(access) || access.Name().Text() != "pipe" {
 		return nil, nil
 	}
-	self := missingCallPipe(c, access)
+	self := ast.SkipParentheses(access.Expression())
 	operator := ast.SkipParentheses(call.Arguments()[0])
-	if self == nil || !ast.IsCallExpression(operator) || operator.TypeArguments() != nil || ast.IsOptionalChain(operator) {
+	if !isEffectType(c, c.GetTypeAtLocation(self)) || !ast.IsCallExpression(operator) || operator.TypeArguments() != nil || ast.IsOptionalChain(operator) {
 		return nil, nil
 	}
 	return self, operator
@@ -105,9 +111,6 @@ func findCatchCombinators(c *checker.Checker, file *ast.SourceFile, report func(
 		if name := catchCombinatorOf(c, node); name != "" {
 			if rewrite := catchCombinatorRewrite(c, file, node); rewrite.fixable() {
 				report(node, rewrite, "Effect."+name)
-				if self, _ := methodCatchParts(c, node); self != nil {
-					cover(c, node)
-				}
 			}
 		}
 		return node.ForEachChild(visit)
@@ -166,7 +169,7 @@ func catchCombinatorRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.
 		arguments = append([]*ast.Node{self}, inner.Arguments()...)
 	}
 	// The site is what the catch expression replaces: call, or for the last
-	// stage of a pipeline that runs, the pipeline.
+	// stage of a pipeline that try runs, the try and the pipeline.
 	site := call
 	var left string
 	if isTopic(arguments[0]) {
@@ -177,14 +180,21 @@ func catchCombinatorRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.
 		if site = runningSite(pipe); site == nil {
 			return nil
 		}
-		left = catchLeftText(file, pipe.AsBinaryExpression().Left)
-	} else {
-		self := thunkBody(arguments[0])
-		var runs bool
-		if left, runs = runningText(c, file, self); !runs {
+		self := pipe.AsBinaryExpression().Left
+		if !isEffectType(c, c.GetTypeAtLocation(self)) {
 			return nil
 		}
-		if needsOperandParentheses(self) && isInvocation(ast.SkipParentheses(self)) || isHelperCall(self) || isLowPrecedence(self) {
+		left = catchLeftText(file, self)
+	} else {
+		if !analyzerFor(c).runs(call) {
+			return nil
+		}
+		self := arguments[0]
+		if !isEffectType(c, c.GetTypeAtLocation(self)) {
+			return nil
+		}
+		left = expressionText(file, self)
+		if needsOperandParentheses(self) && isInvocation(ast.SkipParentheses(self)) || isHelperCall(self) || isLowPrecedence(self) || isTry(self) {
 			left = "(" + left + ")"
 		}
 	}
@@ -247,36 +257,22 @@ func catchCombinatorRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.
 		variable = freshCatchName(handlers)
 	}
 	values := make([]string, len(handlers))
+	effectHandler := false
 	for i, h := range handlers {
-		// The handler runs in the new arm. Strip safe succeed wrappers now:
-		// the parser represents match arms with synthesized returns, where
-		// the general direct-form fixer cannot replace a value afterward.
-		valueNode := h.value
-		for ast.IsCallExpression(valueNode) && valueNode.TypeArguments() == nil && !ast.IsOptionalChain(valueNode) && len(valueNode.Arguments()) == 1 && !ast.IsSpreadElement(valueNode.Arguments()[0]) && isEffectFunction(c, valueNode.Expression(), "Effect", "succeed") {
-			argument := valueNode.Arguments()[0]
-			t := c.GetTypeAtLocation(argument)
-			if isEffectType(c, t) || isEffectValueType(c, t) {
-				break // succeed can hold a cold program as data
-			}
-			valueNode = argument
-		}
-		valueText, ok := catchValueText(c, file, valueNode, h, variable)
+		value, plain, ok := catchArmValue(c, file, h, variable)
 		if !ok {
 			return nil
 		}
-		value, _ := runningExpressionText(c, valueNode, valueText)
-		if strings.HasPrefix(value, "{") || isLowPrecedence(valueNode) {
-			value = "(" + value + ")"
-		}
+		effectHandler = effectHandler || !plain
 		values[i] = value
 	}
 	var text string
 	if name == "catch" {
+		parameter := variable
 		if handlers[0].parameter == "" {
-			text = left + " catch () => " + values[0]
-		} else {
-			text = left + " catch (" + variable + ") => " + values[0]
+			parameter = "" // a handler that ignores the failure (VIP-5)
 		}
+		text = left + " catch " + core.IfElse(effectHandler, "effect ", "") + "(" + parameter + ") => " + values[0]
 	} else {
 		failures := catchFailures(c, call)
 		if failures == nil {
@@ -298,19 +294,21 @@ func catchCombinatorRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.
 		})
 		if unhandled {
 			arms = append(arms, "default: throw "+variable+";")
+			effectHandler = true // a plain handler's throw would be a defect (VIP-5)
 		}
-		text = left + " catch (" + variable + ") => match (" + variable + ") { " + strings.Join(arms, " ") + " }"
+		head := left + " catch " + core.IfElse(effectHandler, "effect ", "") + "(" + variable + ") => match (" + variable + ") {"
+		text = head + " " + strings.Join(arms, " ") + " }"
 		if len(text) > 100 || strings.ContainsAny(expressionText(file, site), "\r\n") {
 			// One arm per line, as a match is written when it does not fit one.
 			indent := lineIndent(file.Text(), nodeStart(file, site))
-			text = left + " catch (" + variable + ") => match (" + variable + ") {\n" + indent + "  " + strings.Join(arms, "\n"+indent+"  ") + "\n" + indent + "}"
+			text = head + "\n" + indent + "  " + strings.Join(arms, "\n"+indent+"  ") + "\n" + indent + "}"
 		}
 	}
 	if catchNeedsParentheses(site) {
 		text = "(" + text + ")"
 	}
 	start := nodeStart(file, site)
-	if site.Flags&ast.NodeFlagsVibeLangTry != 0 {
+	if site != call && site.Flags&ast.NodeFlagsVibeLangTry != 0 {
 		start = tryKeyword(file, site).Pos() // a catch expression runs its left side
 	}
 	rewrite := withImportRemovals(c, file, &formRewrite{
@@ -321,6 +319,46 @@ func catchCombinatorRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.
 		rewrite.message = catchHandlerMessage
 	}
 	return rewrite
+}
+
+// catchArmValue returns what handler's Effect gives, as a catch handler's
+// value, and whether a plain handler can hold it: the value of Effect.succeed,
+// a throw of Effect.fail's argument, and a try of any other Effect.
+func catchArmValue(c *checker.Checker, file *ast.SourceFile, handler catchHandler, variable string) (string, bool, bool) {
+	node := handler.value
+	if !isEffectType(c, c.GetTypeAtLocation(node)) {
+		return "", false, false // not a handler for a combinator that needs an Effect
+	}
+	callee := ""
+	if ast.IsCallExpression(node) && node.TypeArguments() == nil && !ast.IsOptionalChain(node) && len(node.Arguments()) == 1 && !ast.IsSpreadElement(node.Arguments()[0]) && isEffectFunction(c, node.Expression(), "Effect", "succeed", "fail") {
+		_, callee = effectMember(c, node.Expression())
+	}
+	if callee == "succeed" {
+		t := c.GetTypeAtLocation(node.Arguments()[0])
+		if isEffectType(c, t) || isEffectValueType(c, t) {
+			callee = "" // succeed holds a cold program as data
+		}
+	}
+	if callee != "" {
+		node = node.Arguments()[0]
+	}
+	text, ok := catchValueText(c, file, node, handler, variable)
+	if !ok {
+		return "", false, false
+	}
+	switch callee {
+	case "succeed":
+		if strings.HasPrefix(text, "{") || isLowPrecedence(node) {
+			text = "(" + text + ")"
+		}
+		return text, true, true
+	case "fail":
+		if needsOperandParentheses(node) {
+			text = "(" + text + ")"
+		}
+		return "throw " + text, false, true
+	}
+	return tryText(node, text), false, true
 }
 
 // catchValueText preserves identifier identity when independent handler scopes
@@ -381,11 +419,7 @@ func containsIdentifier(node *ast.Node, name string) bool {
 func catchFailures(c *checker.Checker, call *ast.Node) []*checker.Type {
 	var t *checker.Type
 	if self, _ := methodCatchParts(c, call); self != nil {
-		signature := c.GetResolvedSignature(self)
-		if signature == nil {
-			return nil
-		}
-		t = c.GetReturnTypeOfSignature(signature)
+		t = c.GetTypeAtLocation(self)
 	} else {
 		signature := c.GetResolvedSignature(call)
 		if signature == nil || len(signature.Parameters()) == 0 {

@@ -318,8 +318,8 @@ export const first = (value: Option.Option<number>): number => Option.getOrElse(
 export const get = (url: string) => HttpClient.get(url)
 export const command = ChildProcess.make("ls")
 export const two = Arr.take([1, 2, 3], 2)
-export function implementation() {
-  return [FileSystem(), Path.Path()]
+export effect function implementation() {
+  return [try FileSystem, try Path.Path]
 }
 export const host = () => Experimental.Process.Process.hostname()
 export const running = (process: Experimental.Process.Process, pid: number) => process.isRunning(pid)
@@ -332,8 +332,8 @@ export const first = (value: Option<number>): number => Option.getOrElse(value, 
 export const get = (url: string) => HttpClient.get(url)
 export const command = ChildProcess.make("ls")
 export const two = Arr.take([1, 2, 3], 2)
-export function implementation() {
-  return [FileSystem(), Path()]
+export effect function implementation() {
+  return [try FileSystem.FileSystem, try Path.Path]
 }
 export const host = () => Experimental.Process.hostname()
 export const running = (process: Experimental.Process, pid: number) => process.isRunning(pid)
@@ -357,12 +357,12 @@ export const running = (process: Experimental.Process, pid: number) => process.i
 		}
 		t.Fatalf("--fix wrote\n%s\nwant\n%s\nrefused %+v", got, want, result.Refused)
 	}
-	if fixed.Rewrites[preludeImportLabel] != 5 || fixed.Rewrites[preludeKeyLabel] != 5 {
-		t.Errorf("rewrites %v; want 5 imports and 5 module exports", fixed.Rewrites)
+	if fixed.Rewrites[preludeImportLabel] != 5 || fixed.Rewrites[preludeKeyLabel] != 4 {
+		t.Errorf("rewrites %v; want 5 imports and 4 module exports", fixed.Rewrites)
 	}
 	var report strings.Builder
 	result.Report(&report, func(name tspath.RootedFilePath) string { return filepath.Base(name.AsString()) })
-	if !strings.Contains(report.String(), "main.vibe: 10 fixes (prelude import ×5, module export ×5)") {
+	if !strings.Contains(report.String(), "main.vibe: 9 fixes (prelude import ×5, module export ×4)") {
 		t.Errorf("report:\n%s", report.String())
 	}
 	if err := os.WriteFile(file.FileName().AsString(), []byte(want), 0o600); err != nil {

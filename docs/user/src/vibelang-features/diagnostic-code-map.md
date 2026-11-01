@@ -73,6 +73,7 @@ Registration reserves a code; it does not mean the compiler already implements e
 | `EK1502` | type parameters on a `schema` declaration; use an ordinary generic TypeScript factory |
 | `EK1603` | `export default data D { … }`; write `export { D as default }` |
 | `EK1701` | `fork` or `join` outside effect code |
+| `EK1703` | a `fork` operand that is not an Effect |
 | `EK1801` | a `try.all` operand that is not an array of Effects |
 | `EK1901` | a `for concurrent` operand that is not an `Iterable` |
 | `EK1902` | `for concurrent` outside effect code |

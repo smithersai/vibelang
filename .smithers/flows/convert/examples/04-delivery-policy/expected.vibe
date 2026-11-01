@@ -2,7 +2,7 @@ error QueueBusy { queue: string }
 
 declare function enqueue(job: string): string!QueueBusy
 
-export function submit(job: string) {
+export effect function submit(job: string) {
   return enqueue(job)
     |> retry(%, Schedule.recurs(4))
     |> timeout(%, "750 millis")

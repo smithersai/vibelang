@@ -1,0 +1,15 @@
+// expect: EK0501
+// VIP-1, VIP-5: try runs an Effect only inside an effect function or block.
+// The innermost function decides, so a plain function nested in an effect
+// function is plain, and try in it is an error.
+export function f() { return try Effect.succeed(7) }
+
+export function g(): number {
+  const h = () => try Effect.succeed(7)
+  return 7
+}
+
+export effect function main() {
+  function k() { return try Effect.succeed(1) }
+  return 1
+}

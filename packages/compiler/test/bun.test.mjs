@@ -63,7 +63,7 @@ const greeting = {
     "import { shout } from \"./shout.vibe\"",
     "import { suffix } from \"./suffix.ts\"",
     "",
-    "export function greet(name: string) {",
+    "export effect function greet(name: string) {",
     "  return shout(`Hello, ${name}${suffix}`)",
     "}",
     ""

@@ -3,33 +3,33 @@ export control Approval {
 }
 
 // The business program knows neither the reviewer nor the approval policy.
-export function release(version: string) {
-  if (!Approval.approve(`deploy ${version} to staging`)) return "staging declined"
-  if (!Approval.approve(`deploy ${version} to production`)) return "production declined"
+export effect function release(version: string) {
+  if (!try Approval.approve(`deploy ${version} to staging`)) return "staging declined"
+  if (!try Approval.approve(`deploy ${version} to production`)) return "production declined"
   return `released ${version}`
 }
 
-export function autoApprove(version: string) {
+export effect function autoApprove(version: string) {
   try {
-    return release(version)
+    return try release(version)
   } handle Approval.approve(_request) {
-    resume(true)
+    try resume(true)
   }
 }
 
-export function scriptedReview(version: string, decisions: ReadonlyArray<boolean>) {
+export effect function scriptedReview(version: string, decisions: ReadonlyArray<boolean>) {
   let next = 0
   try {
-    return release(version)
+    return try release(version)
   } handle Approval.approve(request) {
     const approved = decisions[next] ?? false
     next++
-    Console.log(`review: ${request}: ${approved ? "yes" : "no"}`)
-    resume(approved)
+    try Console.log(`review: ${request}: ${approved ? "yes" : "no"}`)
+    try resume(approved)
   }
 }
 
-export function main() {
-  Console.log(`automatic: ${autoApprove("v1")}`)
-  Console.log(`scripted: ${scriptedReview("v1", [true, false])}`)
+export effect function main() {
+  try Console.log(`automatic: ${try autoApprove("v1")}`)
+  try Console.log(`scripted: ${try scriptedReview("v1", [true, false])}`)
 }

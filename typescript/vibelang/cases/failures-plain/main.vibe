@@ -1,7 +1,7 @@
-// A function that runs no Effect and whose throws are all caught inside it
-// compiles to plain JavaScript, and its try, catch, and finally stay
-// JavaScript's (D54). Its catch still sees expected failures only: anything
-// else, a defect, is rethrown (D13).
+// A function without the effect modifier is plain JavaScript (VIP-1), and its
+// try, catch, and finally are JavaScript's: its catch sees every exception,
+// a TypeError included. (Before VIP-1, D13 rethrew anything but an expected
+// failure, so length(undefined) was a defect.)
 import { Data, Effect, Exit } from "effect"
 
 class Invalid extends Data.TaggedError("Invalid")<{ readonly n: number }> {}
@@ -15,7 +15,7 @@ export function clamp(n: number) {
   }
 }
 
-// A destructured catch, and a TypeError that passes through it.
+// A destructured catch, which catches a TypeError too and binds n undefined.
 export function length(value: any) {
   try {
     if (value === 0) throw new Invalid({ n: 0 })
@@ -43,9 +43,9 @@ export function rethrown(n: number) {
 
 const steps: string[] = []
 
-// expect-result: {"clamp":[5,-10,-100],"length":[0,3],"defect":["Die"],"rethrown":["negative",2],"steps":["finally -1","finally 2"]}
+// expect-result: {"clamp":[5,-10,-100],"length":[0,3],"defect":["Success"],"rethrown":["negative",2],"steps":["finally -1","finally 2"]}
 export effect function main() {
-  const defect = try Effect.exit(effect { return try Effect.suspend(effect () => try length(undefined)) })
+  const defect = try Effect.exit(effect { return try Effect.suspend(effect () => length(undefined)) })
   return {
     clamp: [clamp(5), clamp(50), clamp(500)],
     length: [length(0), length("abc")],

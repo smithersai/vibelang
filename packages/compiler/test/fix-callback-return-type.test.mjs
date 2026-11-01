@@ -48,7 +48,9 @@ export { output }
   assert.equal(first.status, 0, first.stdout + first.stderr)
   assert.doesNotMatch(first.stdout, /not fixed|refused/)
   const fixed = readFileSync(join(root, "main.vibe"), "utf8")
-  assert.match(fixed, /function modalities\([^)]*\): infer _/)
+  // Both helpers are plain whatever their bodies hold, so neither needs an
+  // annotation to keep its meaning (VIP-1).
+  assert.equal(fixed, source.replace(prefix, ""))
   const second = vibelang(root, "-p", "tsconfig.json", "--fix", "--pretty", "false")
   assert.equal(second.status, 0, second.stdout + second.stderr)
   assert.match(second.stdout, /0 fixes in 0 files/)

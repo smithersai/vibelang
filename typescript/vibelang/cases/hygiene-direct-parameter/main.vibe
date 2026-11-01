@@ -11,6 +11,6 @@ function shadowed(original$direct: Getter) { return original() }
 function ordinary() { return 1 }
 function ordinary$direct() { return 2 }
 
-export function main() {
+export effect function main() {
   return [[plain(() => 99), shadowed(() => 99)], [ordinary(), ordinary$direct()]]
 }

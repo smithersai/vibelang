@@ -1,6 +1,7 @@
-// expect: EK1008 TS2352
+// expect: TS2352
 import { Effect } from "effect"
 effect function load(): Effect.Effect<unknown, never, never> { return 1 }
+// % is one value, so a topic may be a program and the value of another (VIP-23).
 export effect function main() {
   return (load() as Effect.Effect<number>) |> try Effect.race(%, Effect.succeed(%))
 }

@@ -1,0 +1,10 @@
+// expect-result: {"record":"undefined","before":0,"after":1}
+import { forkedCount, record, recordCounted } from "./lib.vibe"
+
+export effect function main() {
+  const r = record()
+  const before = forkedCount()
+  recordCounted()
+  try yieldNow()
+  return { record: typeof r, before, after: forkedCount() }
+}

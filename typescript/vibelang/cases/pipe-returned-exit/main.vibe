@@ -1,8 +1,8 @@
 // expect-result: [true,true,7,true,9,5]
 // More shapes beside returned-pipe-exit-data: a pipe returned from a block
-// under a by-name restore, a pipe of two stages, and a body that does not run
-// under a written number success. A pipe's value is its body's (D154): an
-// Exit a running body succeeds with is data, as for the call without the pipe.
+// under restore, a pipe of two stages, and a plain callback under a written
+// number success. A pipe's value is its body's (VIP-23): an Exit a running body
+// succeeds with is data, as for the call without the pipe.
 const settled = effect (effect: number!string!): Exit.Exit<number, string>!! =>
   try Effect.suspend(effect () => Effect.exit(effect) |> try Effect.ensuring(%, Effect.void))
 
@@ -14,9 +14,9 @@ const masked = effect (effect: number!string!): Exit.Exit<number, string>!! =>
 const chained = effect (effect: number!string!): Exit.Exit<number, string>!! =>
   try Effect.suspend(effect () => Effect.exit(effect) |> Effect.ensuring(%, Effect.void) |> try Effect.tap(%, effect () => try Console.log("settled")))
 
-// A body that does not run, such as a call that returns an Exit, stays the
-// program the callback returns, as Effect.suspend(() => Exit.succeed(n)) does.
-const fromValue = effect (n: number): number!! => try Effect.suspend(effect () => n |> Exit.succeed(%))
+// A plain callback returns what it evaluates to: the Exit stays the program
+// suspend runs, as Effect.suspend(() => Exit.succeed(n)) does (VIP-1).
+const fromValue = effect (n: number): number!! => try Effect.suspend(() => n |> Exit.succeed(%))
 
 export effect function main() {
   const failed = try settled(Effect.fail("boom"))

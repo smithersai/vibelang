@@ -742,25 +742,9 @@ func matchHandlerArm(c *checker.Checker, a *analyzer, file *ast.SourceFile, hand
 			return matchArm{}, label + " destructures an array"
 		}
 	}
-	// The handler runs no program: a call that would build one in the
-	// handler would run in the arm.
-	why := ""
-	var visit func(node *ast.Node) bool
-	visit = func(node *ast.Node) bool {
-		if isFunctionBoundary(node) {
-			return false
-		}
-		if isInvocation(node) && a.performs(node) {
-			why = label + " builds a program with " + shortText(expressionText(file, node), "a call") + ", which in a match arm would run"
-			return true
-		}
-		return node.ForEachChild(visit)
-	}
+	// A call in the handler stays a call in the arm: neither runs an Effect
+	// it builds (VIP-1, VIP-5).
 	body := handler.Body()
-	visit(body)
-	if why != "" {
-		return matchArm{}, why
-	}
 	text := ""
 	var value *ast.Node
 	if ast.IsBlock(body) {

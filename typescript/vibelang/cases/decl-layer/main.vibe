@@ -24,8 +24,8 @@ const DirectoryLive = Layer.succeed(Directory, {
 
 // Setup runs once, when the layer builds: Layer.effect.
 export const UsersLive = Layer.effect(Users, effect {
-  const directory = try Directory()
-  const stats = try Stats()
+  const directory = try Directory
+  const stats = try Stats
   return {
     effect find(id) {
       try stats.record()
@@ -61,6 +61,6 @@ export effect function main() {
   return try Effect.provide(effect {
     const found = try greet("42")
     const missing = try greet("7")
-    return { found, missing, region: (try Users()).region, stats: `${try Stats.count()} lookups` }
+    return { found, missing, region: (try Users).region, stats: `${try Stats.count()} lookups` }
   }, wire(UsersLive, DirectoryLive, StatsLive))
 }

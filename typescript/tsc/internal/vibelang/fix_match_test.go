@@ -88,6 +88,8 @@ export function kind(config: Config): string {
   }
 }
 `},
+		// A handler's program stays a value in the arm: by-name runs retired (VIP-1, VIP-5).
+		{"a handler that builds a program", "export const f = (n: 1 | 2) => Match.value(n).pipe(Match.when(1, () => Effect.log(\"one\")), Match.orElse(() => Effect.void))\n", "export const f = (n: 1 | 2) => match (n) { when 1: Effect.log(\"one\"); default: Effect.void; }\n"},
 		{"pipe and Match.type", "export const size = pipe(\n  Match.type<number | string>(),\n  Match.when(Match.number, (n) => n),\n  Match.when(Match.string, (s) => s.length),\n  Match.exhaustive\n)\n",
 			"export const size = (u: string | number): number => match (u) {\n  when Number and let n: n;\n  when String and let s: s.length;\n}\n"},
 	} {
@@ -113,7 +115,6 @@ func TestMatchChainRefusals(t *testing.T) {
 	for _, test := range []struct{ name, source, why string }{
 		{"a predicate", "export const f = (n: number) => Match.value(n).pipe(Match.when((x) => x > 1, () => \"big\"), Match.orElse(() => \"small\"))\n", "has no match pattern"},
 		{"an array pattern", "export const f = (xs: ReadonlyArray<number>) => Match.value(xs).pipe(Match.when([1], () => \"one\"), Match.orElse(() => \"other\"))\n", "has no match pattern"},
-		{"a handler that builds a program", "export const f = (n: 1 | 2) => Match.value(n).pipe(Match.when(1, () => Effect.log(\"one\")), Match.orElse(() => Effect.void))\n", "which in a match arm would run"},
 		{"a handler that is not an arrow", "function one() { return \"one\" }\nexport const f = (n: 1 | 2): string => Match.value(n).pipe(Match.when(1, one), Match.orElse(() => \"two\"))\n", "is not an arrow function"},
 		{"a handler with early returns", "export const f = (n: 1 | 2): string => Match.value(n).pipe(Match.when(1, () => { if (n) return \"a\"; return \"b\" }), Match.orElse(() => \"two\"))\n", "does not end in its only return"},
 		{"a type no name writes", "type Box = { readonly n: number }\nexport const f = (n: 1 | 2) => Match.value(n).pipe(Match.when(1, (): Box => ({ n: 1 })), Match.orElse((): Box | undefined => undefined))\n", "the match's type would be its arms'"},

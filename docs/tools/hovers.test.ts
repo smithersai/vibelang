@@ -92,7 +92,7 @@ test.skipIf(!existsSync(compiler))("no cached text contains a forbidden string",
   // node_modules; the link's text remains.
   const hover = entry().blocks[0].nodes.find(n => n.type === "hover" && n.target === "increment" && n.line === 3)
   expect(hover?.type === "hover" && hover.docs).toBe(
-    "Plain JavaScript: VibeLang code calls it directly. TypeScript callers see `Effect.Effect<number, never, never>`.\n\nWraps Effect.succeed for the docs.")
+    "Wraps Effect.succeed for the docs.")
 })
 
 test("another runtime directory changes every page's key", () => {

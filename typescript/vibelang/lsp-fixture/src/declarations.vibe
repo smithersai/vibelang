@@ -1,6 +1,6 @@
 export error MissingUser { id: string }
 
-export function findUser(id: string): string!MissingUser! {
+export effect function findUser(id: string): string!MissingUser! {
   if (id === "") throw new MissingUser({ id })
   return id
 }
@@ -9,32 +9,28 @@ export service Accounts {
   balance(id: string): number!MissingUser
 }
 
-export function total(id: string) {
-  return Accounts.balance(id)
+export effect function total(id: string) {
+  return try (try Accounts).balance(id)
 }
 
 export const AccountsLive = Layer.effect(Accounts, effect {
   const rate = 2
   return {
-    balance(id) {
+    effect balance(id) {
       return id.length * rate
     }
   }
 })
 
-export function balanceWith(id: string) {
+export effect function balanceWith(id: string) {
   provide AccountsLive {
-    return Accounts.balance(id)
+    return try (try Accounts).balance(id)
   }
 }
 
-export function recover(id: string) {
-  try {
-    return findUser(id)
-  } catch (e) {
-    return match (e) {
-      when MissingUser: e.id;
-    }
+export effect function recover(id: string) {
+  return findUser(id) catch (e) => match (e) {
+    when MissingUser: e.id;
   }
 }
 
@@ -42,11 +38,11 @@ export control Approval {
   approve(request: string): boolean!!
 }
 
-export function approved(version: string) {
+export effect function approved(version: string) {
   try {
-    return Approval.approve(version) ? "approved" : "declined"
+    return (try Approval.approve(version)) ? "approved" : "declined"
   } handle Approval.approve(request) {
-    resume(request.startsWith("v"))
+    try resume(request.startsWith("v"))
   }
 }
 

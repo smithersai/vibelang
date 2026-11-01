@@ -6,7 +6,7 @@
 service Prefix: string
 service Suffix: string
 
-const decorated = Stream.mapEffect(Stream.make("a", "b"), effect (word) => `${try Prefix()}${word}${try Suffix()}`)
+const decorated = Stream.mapEffect(Stream.make("a", "b"), effect (word) => `${try Prefix}${word}${try Suffix}`)
 
 export effect function collect() {
   const seen: Array<string> = []

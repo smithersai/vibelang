@@ -99,6 +99,7 @@ const specTests = [
   "TestPlatformDerivedGlobalsQuoted",
   "TestSidecarIdentityQuoted",
   "TestFormatForHeadsQuoted",
+  "TestPlainRunnersQuoted",
   "TestFormatFoldkitQuoted",
   "TestFormatLabelQuoted",
   "TestFormatReturnTypesQuoted",

@@ -17,7 +17,7 @@ effect function yielded() {
 }
 
 effect function interrupted() {
-  const fiber = fork {
+  const fiber = fork effect {
     try interrupt()
   }
   return (try exit(fiber.join()))._tag === "Failure"

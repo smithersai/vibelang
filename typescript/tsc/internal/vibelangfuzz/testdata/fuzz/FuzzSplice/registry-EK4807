@@ -1,2 +1,2 @@
 go test fuzz v1
-string("-- main.vibe --\nservice Directory {\n}\nconst DirectoryLive = Layer.succeed(Directory, {\n})\nconst UsersLive = Layer.effect(Users) {\n  const directory = try Directory()\n  return {\n  }\n}\nexport const AppLive = Layer.mergeAll(DirectoryLive, UsersLive)\nexport effect function lookUp() {\n")
+string("-- main.vibe --\nservice Directory {\n}\nconst DirectoryLive = Layer.succeed(Directory, {\n})\nconst UsersLive = Layer.effect(Users, effect {\n  const directory = try Directory\n  return {\n  }\n})\nexport const AppLive = Layer.mergeAll(DirectoryLive, UsersLive)\nexport effect function lookUp() {\n")

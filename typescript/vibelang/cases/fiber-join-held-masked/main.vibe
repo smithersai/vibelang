@@ -14,7 +14,7 @@ effect function bad(n: number) {
 effect function hold(ready: Deferred.Deferred<void>, trace: string[]) {
   try {
     try Deferred.succeed(ready, undefined)
-    try Effect.never()
+    try Effect.never
   } finally {
     trace.push("hold")
   }
@@ -56,11 +56,11 @@ effect function record() {
 effect function held() {
   const trace: string[] = []
   const ready = try Deferred.make<void>()
-  const fiber = fork {
+  const fiber = fork effect {
     try {
       uninterruptible {
         try Deferred.succeed(ready, undefined)
-        restore { try Effect.never() }
+        restore { try Effect.never }
         trace.push("not interrupted")
       }
     } finally {

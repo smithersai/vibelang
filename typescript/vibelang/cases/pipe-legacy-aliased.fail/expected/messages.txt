@@ -1,1 +1,0 @@
-To keep that meaning, hold the first argument as a program with its type written

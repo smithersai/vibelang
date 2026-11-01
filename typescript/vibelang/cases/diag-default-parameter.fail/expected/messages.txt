@@ -1,2 +1,1 @@
-a default parameter value is plain JavaScript
-compute the default in the body
+parameter default

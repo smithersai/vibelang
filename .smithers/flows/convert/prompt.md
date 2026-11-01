@@ -21,7 +21,7 @@ Each row is one Effect form and the VibeLang that replaces it.
 | `Effect.Effect<User, NotFound, Users>` | `User!NotFound!Users` (empty slot: never) |
 | `yield* Effect.fail(new NotFound({ id }))` | `throw new NotFound({ id })` |
 | `const user = yield* users.find(id)` | `const user = Users.find(id)` |
-| `x.pipe(Effect.orElseSucceed(() => "guest"))` | `x catch () => "guest"` |
+| `x.pipe(Effect.orElseSucceed(() => "guest"))` | `x catch "guest"` |
 | `x.pipe(Effect.catchTag("NotFound", (e) => …))` | `x catch (e) => match (e) { when NotFound: …; }` |
 | `x.pipe(Effect.retry(Schedule.recurs(3)), Effect.timeout("1 second"))` | `x \|> retry(%, Schedule.recurs(3)) \|> timeout(%, "1 second")` |
 | `Effect.forEach(ids, f, { concurrency: 8 })` | `forEach(ids, f, { concurrency: 8 })` |
@@ -50,7 +50,7 @@ function nameOf(id: string) {
   return Users.find(id).name
     |> retry(%, Schedule.recurs(3))
     |> timeout(%, "1 second")
-    catch () => "guest"
+    catch "guest"
 }
 
 export function main() {
@@ -90,18 +90,18 @@ Output:
 ```ts
 error MissingParcel { tracking: string }
 
-function destination(tracking: string): string!MissingParcel {
+effect function destination(tracking: string): string!MissingParcel {
   if (tracking !== "PK-9") throw new MissingParcel({ tracking })
   return "Oslo"
 }
 
-export function route(tracking: string) {
-  return `Ship to ${destination(tracking)}` catch (e) => match (e) {
+export effect function route(tracking: string) {
+  return `Ship to ${try destination(tracking)}` catch (e) => match (e) {
     when MissingParcel: `Investigate ${e.tracking}`;
   }
 }
 
-export function destinationOrDepot(tracking: string) {
+export effect function destinationOrDepot(tracking: string) {
   return destination(tracking) catch () => "depot"
 }
 ```
@@ -178,10 +178,10 @@ service Banner {
 }
 
 export const BannerLive = Layer.effect(Banner, effect {
-  const edition = Config.String("EDITION")()
-  log(`Preparing ${edition}`)
+  const edition = try Config.String("EDITION")
+  try log(`Preparing ${edition}`)
   return {
-    text(topic) { return `${edition}: ${topic}` }
+    effect text(topic) { return `${edition}: ${topic}` }
   }
 })
 ```
@@ -213,7 +213,7 @@ error QueueBusy { queue: string }
 
 declare function enqueue(job: string): string!QueueBusy
 
-export function submit(job: string) {
+export effect function submit(job: string) {
   return enqueue(job)
     |> retry(%, Schedule.recurs(4))
     |> timeout(%, "750 millis")
@@ -317,9 +317,9 @@ export const summary = (prefix: Option.Option<string>) => Effect.gen(function* (
 Output:
 
 ```ts
-export function summary(prefix: Option.Option<string>) {
+export effect function summary(prefix: Option.Option<string>) {
   const heading = prefix.map((s) => s.toUpperCase()).getOrElse(() => "READINGS")
-  const readings = Stream.make(3, 8, 13, 21).filter((n) => n > 5).map((n) => n * 10).take(2).runCollect()
+  const readings = try Stream.make(3, 8, 13, 21).filter((n) => n > 5).map((n) => n * 10).take(2).runCollect()
   return `${heading}: ${Array.from(readings).join(", ")}`
 }
 ```
@@ -420,7 +420,7 @@ Output:
 ```ts
 error InvalidAddress { reason: unknown }
 
-export function hostname(address: string) {
+export effect function hostname(address: string) {
   return try Effect.try({ try: () => new URL(address).hostname, catch: (reason) => new InvalidAddress({ reason }) })
 }
 

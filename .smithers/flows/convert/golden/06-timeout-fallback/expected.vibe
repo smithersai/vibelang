@@ -1,8 +1,8 @@
-function slow() {
-  sleep("5 seconds")
+effect function slow() {
+  try sleep("5 seconds")
   return "done"
 }
 
-export function quick() {
+export effect function quick() {
   return slow() |> timeout(%, "1 second") catch () => "too slow"
 }

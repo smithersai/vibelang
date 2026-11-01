@@ -26,6 +26,6 @@ module unused {
 }
 
 // expect-result: ["first","dependency","second"]
-export function main() {
+export effect function main() {
   return order
 }

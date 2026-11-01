@@ -84,7 +84,7 @@ func (p *joinPlan) planJoins(a *analyzer, node *ast.Node) {
 // compiles to plain JavaScript: a plain function, or an Effect function with
 // a plain variant (D421).
 func (a *analyzer) compilesToPlain(fn *ast.Node) bool {
-	return isLowerable(fn) && (!a.isEffect(fn) || a.isSplittable(fn) && a.isPlainFunction(fn))
+	return isLowerable(fn) && (!a.isEffect(fn))
 }
 
 // callJoinsFailures reports whether call calls a .vibe function that

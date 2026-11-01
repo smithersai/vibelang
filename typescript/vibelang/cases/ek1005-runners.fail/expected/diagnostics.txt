@@ -1,7 +1,2 @@
-main.vibe(16,25): error EK1005
-main.vibe(22,10): error EK1005
-main.vibe(26,10): error EK1005
-main.vibe(30,3): error EK1005
-main.vibe(40,3): error EK1005
 main.vibe(44,3): error EK1005
 main.vibe(57,10): error EK1005

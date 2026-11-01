@@ -10,21 +10,21 @@ function note() {
   return evaluated
 }
 
-function* upTo(n: number) {
+effect function* upTo(n: number) {
   let i = 0
   while (true) {
-    if (i >= n) { try note(); return }
+    if (i >= n) { note(); return }
     yield i
     i++
   }
 }
 
-function* one() {
+effect function* one() {
   yield 1
   return
 }
 
-export function main() {
+export effect function main() {
   const values = try Stream.runCollect(upTo(3))
   const ones = try Stream.runCollect(one())
   return { values, ones, evaluated }

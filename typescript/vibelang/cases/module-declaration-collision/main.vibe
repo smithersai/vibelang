@@ -14,4 +14,4 @@ import { value as boundValue } from Bound
 import { other as Imported } from "./other.ts"
 module Imported { export const value = 5 }
 import { value as importedValue } from Imported
-export function main() { return [x, n, other, boundValue, importedValue] }
+export effect function main() { return [x, n, other, boundValue, importedValue] }

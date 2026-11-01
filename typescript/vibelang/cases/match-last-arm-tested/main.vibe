@@ -28,5 +28,5 @@ effect function outcome(program: unknown!unknown) {
 // expect-result: {"only":"one","reads":1,"published":"Published","outside":"Die"}
 export effect function main() {
   const result = only(counted)
-  return { only: result, reads, published: phase("published"), outside: try outcome(phase("archived" as any)) }
+  return { only: result, reads, published: phase("published"), outside: try outcome(Effect.sync(() => phase("archived" as any))) }
 }

@@ -38,6 +38,6 @@ export function constKept(xs: number[]) {
   for (const it = iter(xs); it.next() is { done: false, value: let v }; it = iter(xs)) return "const"
   return "none"
 }
-export function main() {
+export effect function main() {
   return [drain(iter([1, 2, 3])), countdown({ n: 3 }), constInit([1, 2, 3]), letInit([1, 2, 3]), updateBinding([1, 2, 3]), constKept([1])]
 }
