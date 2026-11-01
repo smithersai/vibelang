@@ -225,6 +225,23 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Under `module: Preserve`, a declaration printed inferred prelude types as `import("effect/Layer").Layer` even when the source used `Layer`; it now imports the written module names as the equivalent TypeScript does, including when the package leaves its module type implicit.
 
 - A `.vibe` module that imported a native `.tsx` sibling under `jsx: preserve` named a missing `.js` file in its emitted JavaScript; imports and re-exports now name the sibling’s actual `.jsx` output.
+
+- Migration test measurements now rebuild package outputs for all three sides, so missing or stale distributions cannot become accepted test controls.
+
+- Directory-import validation quoted a stale `.vibe` extension sentence; its oracle now follows the published `.vibe` and `.vibex` rule.
+
+- JSX attribute diagnostic `EK0402` lacked its VIP-39 cross-reference; the catalog now attributes the rule to both VIP-4 and VIP-39.
+
+
+- Release checks for offline `--dry-run` publishing could fail with a missing exit status on busy machines; their child probes now have a bounded load budget and explicit timeout diagnostics.
+
+- The formatter's round-trip and Windows line-ending tests failed after `with` provider blocks were retired; their coverage now uses VIP-12's supported `provide` syntax.
+
+- Formatting a file containing Unicode line separators in the editor could add indentation that disappeared on the next format; `U+2028` and `U+2029` now give stable indentation in one pass.
+
+- Formatting `effect` or `do` blocks with comments before `{` could fail; their header comments and the line breaks needed to parse the block now survive formatting.
+- The CLI guide described added declaration imports as following only the first import's quotes; it now includes an earlier export specifier and the double-quote default when neither exists.
+- A `.vibe` or `.ts` file that kept its `./target.ts` import after `target.ts` became `target.vibe` failed with `TS2876` under `rewriteRelativeImportExtensions`, and rewriting the import to `./target.vibe` changed the published declaration; the written `./target.ts` now compiles, emits `./target.js`, and stays `./target.ts` in the declaration.
 - Configuring one diagnostic severity disabled fuzz validation of unrelated warning categories; validation now checks each code against its own effective `vibe.severities` entry and keeps other defaults enforced.
 
 - Awaiting a `Fiber` or `Deferred` in effect code showed extra configurable warnings; it now reports only `EK0102`, with a working `join` or `Deferred.await` repair.
@@ -242,6 +259,10 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The matching guide said every other `is` binding reported `EK4703`; it now keeps the precise unsupported-home list and the per-iteration `while` scope rule.
 
+
+- Package verification could crash when a migrated private import became a condition object; setup now unwraps migration targets before the existing publication path mapping.
+
+- Aliased imports of migrated modules failed with `TS2877` when extension rewriting was enabled; migration now uses a relative source name for the same module and preserves the configured option and original alias for revert.
 - Awaiting a Fiber or Deferred in effect code reported an error using the configurable warning codes `EK4609` and `EK4610`; it now reports the fixed placement error `EK0102` separately, so advisory severity settings keep their meaning without allowing `await` in effect code.
 
 - `vibelang agents check` could report `no errors` and succeed when its compiler failed or was terminated; checks and hooks now fail with the compiler's status, signal or spawn error and standard error output, including failures caused by errors outside the selected files.
@@ -282,6 +303,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Migration verification could call declarations identical after their compiler failed; it now rejects every nonzero declaration emit and retains option-level errors.
 - A `.ts` declaration that named a type it reached through a package's `.vibe` module wrote a relative path into the package, `../../lib/src/x.js`, or failed with `TS2883`, once the bare specifier resolved to the `.vibe` source: the declaration emitter matched the module only against an export's emitted JavaScript. It now names the module by the export that selects it, `import("lib/x")`, when that export lists the source under `vibelang-source` or its `x.d.vibe.ts` sidecar under any condition, in exact and pattern entries (opencode's core: 1,478 `TS2883` in 110 files).
 
+- Packing a migrated package could leave its installed exports pointing at `src/*.vibe` or `.vibelang/js` even though the package shipped only `dist`. Setup now adapts publication helpers that map TypeScript source exports to built paths, preserving their existing `dist/*.js` and `dist/*.d.ts` exports for migrated entries.
+
 - On a loaded host, the bundler teardown tests could kill their finishing compiler and fail with `null !== 0`; they now control the grace timer and release the compiler explicitly, with a `30 s` hang guard.
 
 - Passing an Effect function to a `Function` destination could bypass `EK4301` after generic union matching; callable destinations now keep the synchronous-callback check.
@@ -311,6 +334,23 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 - Interrupted migration codemods could lose their rename, import or platform-split bookkeeping; the flow now journals every mechanical write before it starts and safely resumes or restores the original source.
+- The spec chapters never mentioned the accepted `.vibex` file kind (VIP-39), nor that `./x.js` resolves to `x.vibe` after `x.ts` and `x.tsx`. Chapter 7 now has a `.vibex` section with the resolution table, and the intro, chapter 1 and Appendix A name `.vibex`.
+
+- VIP-39 didn't say whether a JSX attribute or tag is checked against VIP-4's thrown-type rule for function types. It now says an attribute is an object member, so a foreign handler with `@throws {Error}` is `EK0402` against an untagged `onClick`, and a tag's check against `JSX.ElementType` is not such a site.
+
+- The spec's `EK0510` row named only `try`, `fork` and `join`, so `try.all [a] ** 2` and `fork.scoped e ** 2` had no code. Chapter 2 and Appendix B now name all ten execution heads.
+
+- VIP-39 didn't say what runs first when a `do` that `return`s sits in a JSX attribute after other attributes. It now says the tag and everything before the `do` are evaluated first, once, in source order, as for any other operand.
+
+- VIP-39 promised that renaming a `.vibe` file to `.vibex` changes nothing unless it has `<` in expression position, but a project without a `jsx` setting reports `TS6142` at every import of a `.vibex` file, and `preserve` writes `x.jsx`. The promise is now about parsing, and names both settings.
+
+- VIP-39 said only `<` in expression position reads differently in `.vibex`, but TypeScript's JSX scanner also reads `</` as a closing-tag token, so `a </b/.source.length` and `when </b/:` don't parse there. A new clash row says to write a space: `a < /b/`.
+
+- VIP-39 grouped `react-native` with the JSX modes TypeScript transforms, though `react-native` keeps the element in its output. It now groups `react-native` with `preserve`: the framework's compiler decides when a `try` inside the element runs.
+
+- VIP-39's JSX clash table showed `x ?? throw <E/>`, a throw expression that no VIP adds and TypeScript rejects. The row now shows the `throw` statement and `x ?? do { throw <E/> }`.
+
+- The migrate flow's setup left a build script that only runs `tsc` through Bun's shell, such as opencode's codemode `` $`bun tsc -p tsconfig.build.json` ``, on stock `tsc`, so the published `dist/index.js` imported `./codemode.vibe` and failed to load once installed; setup now runs `vibelang` there too, which writes `dist/codemode.js`, and adds `vibelang` to the package's `devDependencies`.
 - `FuzzCommandLine` could fail with `the compilation rewrote the source main.d.vibe.ts` in a checkout where an earlier compile had left that sidecar in an acceptance case; the fuzz seeds now skip these generated files.
 
 - `vibelang --fix` refused to annotate the first of two `Config` helpers that a plain function calls, so neither helper was fixed: the function's one `EK9203` moved with the edit and named the second call, which the gate read as a new error; a span after or before a fix's edits in the file it edits is now compared where it lay before them.
@@ -334,6 +374,10 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Migration plans rejected `.mts` sources; ESM packages can now migrate them to `.vibe` and revert them with their original imports and entry points. Unsafe CommonJS boundaries are reported before files move, also when an interrupted codemod resumes from its saved state.
 
+- Migration reports could call an unchanged failing test baseline a pass; reports and commit summaries now retain the actual failing status and test names.
+
+- Migration could record missing build outputs as pre-existing test failures and later test stale distributions; upgrade, setup and verification now run declared build prerequisites, retain their source and dependency evidence, and refuse an unprepared failing baseline.
+
 - The compiler package's tests could fail with a missing `packages/runtime/dist/index.js`, or skip their cache checks, when the runtime rebuilt at the same time; `//packages:compiler-test` now declares that build and runs after it.
 
 - Migration setup left root `tsrs` and `tsgo` typechecks on their old compiler, so converted files could be skipped or require an extra check of unrelated projects; it now runs `vibelang` with the original project arguments, including separate test projects.
@@ -342,6 +386,14 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Unchanged tests that bundle package sources through Rolldown or Vite's bundled config loader could not load migrated `.vibe` dependencies. Migration setup now supports `--emitted-project` to generate exact private import conditions for JavaScript produced by the package's existing build, while preserving test commands, consumer exports and published declaration bytes.
 - A `.vibe` module that imported or declared a name the prelude gives an Effect module, such as sst's `Resource`, and read it in an Effect function compiled, then failed at load with `Identifier 'Resource' has already been declared`: the emit also imported `effect/Resource` under that name. A local declaration or import now shadows the module there too.
+
+- A build script that ran `` $`bunx tsc --emitDeclarationOnly` `` before its `Bun.build` wrote no declaration for a module the migrate flow had made `.vibe`, so opencode's http-recorder build failed `ENOENT … dist/index.d.ts`; setup now runs `vibelang` there, as it already did in package.json scripts.
+
+- The migrate flow's setup left an electron-vite config's `main`, `preload` and `renderer` builds, and a Vite app's worker build (`new Worker(new URL(...))`), without `vibelang()`, so those builds failed on a `.vibe` module (`PARSE_ERROR`); setup now adds the plugin to each of them.
+
+- A build script that ran `` $`bunx tsc --emitDeclarationOnly` `` before its `Bun.build` wrote no declaration for a module the migrate flow had made `.vibe`, so opencode's http-recorder build failed `ENOENT … dist/index.d.ts`; setup now runs `vibelang` there, as it already did in package.json scripts.
+
+- The migrate flow's setup left an electron-vite config's `main`, `preload` and `renderer` builds, and a Vite app's worker build (`new Worker(new URL(...))`), without `vibelang()`, so those builds failed on a `.vibe` module (`PARSE_ERROR`); setup now adds the plugin to each of them.
 
 - The kernel law suite could still fail at 5 s on a loaded host after its 30 s budget moved into the test preload, because Bun applies a preload's default timeout to the first test file only; `bun run test` in `experiments` now passes the budget to every file, and the docs build uses the same flag.
 
@@ -452,6 +504,10 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `EK4805` told an exported class that extends `Error` to become an `error` declaration, whose constructor takes one object, so following it broke callers of `new X(message, options)`, and the migrate flow refused the file. For an exported class it now says there is no quick fix, and the migrate flow keeps the class.
 
 - The migrate flow's verify refused a batch whose published declaration changed only `./runtime` to `./runtime.js`, which the migrated module's importer declares; it now excuses a relative specifier whose two spellings resolve to the same declaration file and lists each such pair in `verify.json`.
+
+- The migrate flow's setup stopped with `the config's plugins is not an array literal` on a Vite config whose `plugins` array carries `as any`, and stopped on any test config it could not wire; it now looks through `as`, `satisfies`, `!` and parentheses, and names a config it cannot wire in its warnings and goes on.
+
+- The migrate flow's setup stopped with `the config's plugins is not an array literal` on a Vite config whose `plugins` array carries `as any`, and stopped on any test config it could not wire; it now looks through `as`, `satisfies`, `!` and parentheses, and names a config it cannot wire in its warnings and goes on.
 
 - Cross-platform compiler builds could fail without naming the affected platform or its exit status; each target now keeps a completion record and silent failures are identified.
 

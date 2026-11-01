@@ -19,9 +19,9 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,286 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 15,192 |
-| The skill and the user guide (139 pages) | 349,909 |
-| The user guide alone | 345,623 |
-| The specification (10 chapters) | 146,104 |
+| The skill and the user guide (139 pages) | 351,885 |
+| The user guide alone | 347,599 |
+| The specification (10 chapters) | 146,942 |
 | The decision log, `docs/design/history/DECISIONS.md` | 141,629 |
 
 ## Effect TypeScript beside VibeLang
@@ -96,13 +96,13 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Creating Effects](../getting-started/005-creating-effects.md) | 3,158 |
 | [Two Types of Errors](../error-management/006-two-error-types.md) | 699 |
 | [Basic Concurrency](../concurrency/007-basic-concurrency.md) | 2,454 |
-| **Core Concepts** | **21,249** |
+| **Core Concepts** | **21,268** |
 | [Effect's Modules](../getting-started/008-importing-effect.md) | 2,857 |
 | [Running Effects](../getting-started/009-running-effects.md) | 1,770 |
 | [Sequencing Effects](../getting-started/010-using-generators.md) | 1,710 |
 | [Building Pipelines](../getting-started/011-building-pipelines.md) | 2,012 |
-| [Devtools](../getting-started/012-devtools.md) | 12,900 |
-| **All 12 pages** | **35,180** |
+| [Devtools](../getting-started/012-devtools.md) | 12,919 |
+| **All 12 pages** | **35,199** |
 
 ### Setup
 
@@ -113,11 +113,11 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Start a project** | **2,405** |
 | [New project](../setup/new-project.md) | 543 |
 | [Existing project](../setup/existing-project.md) | 1,862 |
-| **Build and test** | **9,319** |
-| [vibelang CLI](../setup/vibelang-cli.md) | 6,688 |
+| **Build and test** | **9,450** |
+| [vibelang CLI](../setup/vibelang-cli.md) | 6,819 |
 | [Vite and Vitest](../setup/vite.md) | 2,631 |
-| **Format and lint** | **3,952** |
-| [Format with dprint](../setup/formatting.md) | 1,897 |
+| **Format and lint** | **4,056** |
+| [Format with dprint](../setup/formatting.md) | 2,001 |
 | [Developer tools](../setup/developer-tools.md) | 2,055 |
 | **Frameworks** | **9,652** |
 | [React](../setup/react.md) | 2,158 |
@@ -130,9 +130,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Zed](../setup/zed.md) | 479 |
 | [Other editors](../setup/other-editors.md) | 492 |
 | [Coding agents](../setup/coding-agents.md) | 1,062 |
-| **Upgrade** | **74,157** |
-| [Release notes](../setup/release-notes.md) | 74,157 |
-| **All 18 pages** | **105,890** |
+| **Upgrade** | **75,879** |
+| [Release notes](../setup/release-notes.md) | 75,879 |
+| **All 18 pages** | **107,847** |
 
 ### Guides
 
@@ -276,18 +276,18 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 
 | Page | Tokens |
 | --- | ---: |
-| [Introduction](../../../design/src/000-intro.md) | 2,539 |
-| **The language** | **113,575** |
-| [1. Functions and Effect types](../../../design/src/001-functions.md) | 12,328 |
-| [2. Running Effects](../../../design/src/002-running.md) | 26,604 |
+| [Introduction](../../../design/src/000-intro.md) | 2,586 |
+| **The language** | **114,284** |
+| [1. Functions and Effect types](../../../design/src/001-functions.md) | 12,356 |
+| [2. Running Effects](../../../design/src/002-running.md) | 26,648 |
 | [3. Failures](../../../design/src/003-failures.md) | 15,067 |
 | [4. Pattern matching](../../../design/src/004-match.md) | 20,899 |
 | [5. Services and the environment](../../../design/src/005-services.md) | 11,320 |
 | [6. Data](../../../design/src/006-data.md) | 8,314 |
-| [7. Configuration and tooling](../../../design/src/007-tooling.md) | 11,940 |
+| [7. Configuration and tooling](../../../design/src/007-tooling.md) | 12,577 |
 | [8. Runtime guarantees](../../../design/src/008-runtime.md) | 7,103 |
-| **Appendices** | **29,990** |
-| [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 29,990 |
-| **All 10 pages** | **146,104** |
+| **Appendices** | **30,072** |
+| [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 30,072 |
+| **All 10 pages** | **146,942** |
 
 <!-- token-counts: end -->

@@ -1043,6 +1043,9 @@ typescript/vibelang/cases/declaration-module-shadows-ambient/main.vibe:3:27 lamb
 typescript/vibelang/cases/declaration-prelude-library-types/main.vibe:5:21 lambda plain annotation
 typescript/vibelang/cases/declaration-recursive-inferred/main.vibe:6:34 lambda plain table
 typescript/vibelang/cases/declaration-recursive-inferred/main.vibe:7:32 lambda plain table
+typescript/vibelang/cases/declaration-written-ts-import-vibe-target/consumer.vibe:6:23 lambda plain annotation
+typescript/vibelang/cases/declaration-written-ts-import-vibe-target/consumer.vibe:8:22 lambda plain annotation
+typescript/vibelang/cases/declaration-written-ts-import-vibe-target/target.vibe:3:25 lambda plain annotation
 typescript/vibelang/cases/default-effect-block/program.vibe:4:22 lambda plain fallback
 typescript/vibelang/cases/default-effect-block/program.vibe:5:16 lambda plain fallback
 typescript/vibelang/cases/diag-any-contracted.fail/main.vibe:10:18 lambda plain fallback
