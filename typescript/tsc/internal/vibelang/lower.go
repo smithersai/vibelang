@@ -91,6 +91,9 @@ func newLowering(opts *transformers.TransformOptions, file *ast.SourceFile) *tra
 }
 
 func (tx *lowering) visit(node *ast.Node) *ast.Node {
+	if replacement := tx.plan.schemaGenerics[node]; replacement != nil {
+		return tx.visit(replacement)
+	}
 	if module := tx.plan.collisionModules[node]; module != "" && ast.IsPropertyAccessExpression(node) {
 		return tx.moduleNamespace(module)
 	}

@@ -102,6 +102,12 @@ func (p *projector) schemaPropertyKey(name *ast.Node) string {
 // schemaExpression serializes only expressions the schema parser creates.
 // Unsupported forms and undecidable names are diagnosed at their source span.
 func (p *projector) schemaExpression(node *ast.Node, schema string) string {
+	for _, reference := range p.file.VibeLangSchemaGenerics {
+		if reference.Expression == node && !reference.Legacy {
+			p.schemaDiagnostic(node, "This generic schema needs project type bindings; compile it with vibelang.")
+			return schema + ".Unknown"
+		}
+	}
 	if node.Kind == ast.KindPropertyAccessExpression && node.Flags&ast.NodeFlagsVibeLang != 0 {
 		p.schemaDiagnostic(node, "This field type has no schema form (EK2109); use an explicit Schema value.")
 	}

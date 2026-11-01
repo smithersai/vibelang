@@ -1391,7 +1391,11 @@ func (p *Parser) vibelangSchemaOf(typeNode *ast.Node) *ast.Node {
 			if name.Text() == "Array" {
 				value = p.vibelangSchemaCall("mutable", name.Loc, value)
 			}
-			return value
+			return p.vibelangArraySchemaReference(name, value, value, name.Text() == "Array", true)
+		case len(arguments) == 1 && (!ast.IsIdentifier(name) || name.Text() != "Readonly"):
+			argument := p.vibelangSchemaOf(arguments[0])
+			value := p.vibelangSchemaCall("Array", name.Loc, argument)
+			return p.vibelangArraySchemaReference(name, value, value, false, false)
 		case ast.IsIdentifier(name) && name.Text() == "Readonly" && len(arguments) == 1:
 			innerType := arguments[0]
 			for innerType.Kind == ast.KindParenthesizedType {

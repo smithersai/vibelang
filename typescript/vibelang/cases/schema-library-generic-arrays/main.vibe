@@ -1,0 +1,27 @@
+// expect-result: [[1,2],[3,4],[5],[6],[7],[8]]
+import type { Sequence, FrozenSequence, Array, ReadonlyArray } from "./library-types.js"
+export schema Mutable = Sequence<number>
+export schema Frozen = FrozenSequence<number>
+export schema CrossFrozen = Array<number>
+export schema CrossMutable = ReadonlyArray<number>
+export schema QualifiedMutable = globalThis.Array<number>
+export schema QualifiedFrozen = globalThis.ReadonlyArray<number>
+
+function typeChecks(a: Mutable, b: Frozen, c: CrossFrozen, d: CrossMutable): void {
+  a.push(1)
+  d.push(1)
+  // @ts-expect-error readonly arrays have no push
+  b.push(1)
+  // @ts-expect-error the imported Array binding is ReadonlyArray
+  c.push(1)
+}
+
+export effect function main() {
+  const a = try sync((codec) => Schema.decodeUnknownSync(codec)([1,2]), Mutable)
+  const b = try sync((codec) => Schema.decodeUnknownSync(codec)([3,4]), Frozen)
+  const c = try sync((codec) => Schema.decodeUnknownSync(codec)([5]), CrossFrozen)
+  const d = try sync((codec) => Schema.decodeUnknownSync(codec)([6]), CrossMutable)
+  const e = try sync((codec) => Schema.decodeUnknownSync(codec)([7]), QualifiedMutable)
+  const f = try sync((codec) => Schema.decodeUnknownSync(codec)([8]), QualifiedFrozen)
+  return [a,b,c,d,e,f]
+}

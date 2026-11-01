@@ -354,11 +354,14 @@ func schemaTypeText(c *checker.Checker, file *ast.SourceFile, schema *ast.Node, 
 			return "", false
 		}
 		if strings.HasPrefix(inner, "ReadonlyArray<") {
+			if !schemaLibraryArrayName(c, schema, "Array") {
+				return "", false
+			}
 			return "Array<" + strings.TrimPrefix(inner, "ReadonlyArray<"), true
 		}
 		return strings.TrimPrefix(inner, "readonly "), true
 	case "Array":
-		if len(arguments) != 1 {
+		if len(arguments) != 1 || !schemaLibraryArrayName(c, schema, "ReadonlyArray") {
 			return "", false
 		}
 		element, ok := schemaTypeText(c, file, arguments[0], indent)

@@ -13,6 +13,7 @@ const effectTypeID = "~effect/Effect"
 
 // plan records what the lowering does to one .vibe file.
 type plan struct {
+	schemaGenerics   map[*ast.Node]*ast.Node
 	collisionModules map[*ast.Node]string
 
 	parameterWrites map[*ast.Node]bool // Effect functions whose body writes a parameter binding
@@ -60,6 +61,7 @@ func planFile(resolver printer.EmitResolver, file *ast.SourceFile) *plan {
 
 func newFilePlan() *plan {
 	p := &plan{effects: map[*ast.Node]bool{}, programs: map[*ast.Node]bool{}, runs: map[*ast.Node]bool{}, servicePlan: newServicePlan(), trustedPlan: newTrustedPlan(), scopePlan: newScopePlan()}
+	p.schemaGenerics = map[*ast.Node]*ast.Node{}
 	p.parameterWrites = map[*ast.Node]bool{}
 	p.returns = map[*ast.Node]bool{}
 	p.fieldlessErrorConstructors = map[*ast.Node]bool{}
@@ -84,6 +86,9 @@ func populateFilePlan(c *checker.Checker, file *ast.SourceFile, p *plan) {
 	a := analyzerFor(c)
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
+		if replacement := schemaGenericReplacement(c, node); replacement != nil {
+			p.schemaGenerics[node] = replacement
+		}
 		if form, base := errorFormOf(node); form == errorFormSubclass && fieldlessGeneratedErrorBase(c, base) {
 			for _, member := range node.Members() {
 				if ast.IsConstructorDeclaration(member) && member.Flags&ast.NodeFlagsReparsed != 0 {

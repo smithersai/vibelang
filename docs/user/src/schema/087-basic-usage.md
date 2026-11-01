@@ -14,6 +14,10 @@ A VibeLang `schema` reference must preserve its written decoded-key modifiers (`
 
 JSDoc on a `schema` declaration belongs to its constant. Its companion type alias stays bare; `stripInternal` removes an `@internal` constant while retaining the alias, as TypeScript does for the equivalent Effect Schema pair.
 
+Mapped array schemas follow the resolved TypeScript-library type. `globalThis.Array<number>` and a renamed library import map to a mutable array; a binding to `ReadonlyArray` maps to a readonly array even when imported as `Array`. Value-only bindings do not hide the separate library type. Ordinary generic type aliases and interfaces are not expanded into schemas.
+
+Earlier compilers selected array mutability from the written name. If an imported `Array` actually names the library `ReadonlyArray`, or the reverse, `vibelang --fix --fix-migration-only` writes the previous decoder explicitly and preserves its public type. Ordinary compilation uses the resolved library meaning. This compatibility rewrite only covers previously supported canonical spellings; it does not invent old decoders for new qualified or renamed forms.
+
 ## Modeling primitives, symbols, literals, enums, and template strings
 
 ```vibe

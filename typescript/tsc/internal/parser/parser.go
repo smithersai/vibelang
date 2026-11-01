@@ -122,6 +122,7 @@ type Parser struct {
 	vibelangDos              map[*ast.Node]*doExpression // do expressions as written, by their call (vibelang_do.go)
 	vibelangDoOrder          []*doExpression             // the same, in source order
 	vibelangDoSites          map[*ast.Node]*ast.Node     // each do completion temporary's declaration to the reference at the do's site (vibelang_do.go)
+	vibelangSchemaGenerics   []ast.SchemaGenericReference
 }
 
 func newParser() *Parser {
@@ -497,6 +498,8 @@ func (p *Parser) parseSourceFileWorker() *ast.SourceFile {
 			p.finishSourceFile(result, isDeclarationFile)
 		}
 	}
+	result.VibeLangSchemaGenerics = p.vibelangSchemaGenerics
+	p.attachVibeLangSchemaGenericScopes(result)
 	collectExternalModuleReferences(result)
 	if ast.IsInJSFile(node) {
 		result.SetJSDiagnostics(attachFileToDiagnostics(p.jsDiagnostics, result))

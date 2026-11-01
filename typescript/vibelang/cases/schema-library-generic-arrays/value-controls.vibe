@@ -1,0 +1,3 @@
+import { Array, ReadonlyArray } from "./value-types.js"
+export schema MutableValueControl = Array<number>
+export schema FrozenValueControl = ReadonlyArray<number>

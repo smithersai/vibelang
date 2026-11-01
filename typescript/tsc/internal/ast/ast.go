@@ -2368,6 +2368,17 @@ type TokenCacheKey struct {
 	loc    core.TextRange
 }
 
+// SchemaGenericReference retains candidate codecs until the checker resolves
+// a mapped generic's TypeScript type binding (VIP-15, detail 286).
+type SchemaGenericReference struct {
+	Name           *Node
+	Expression     *Node
+	MutableArray   *Node
+	ReadonlyArray  *Node
+	DefaultMutable bool
+	Legacy         bool
+}
+
 type SourceFile struct {
 	NodeBase
 	DeclarationBase
@@ -2387,6 +2398,7 @@ type SourceFile struct {
 	data   map[sourceFileDataKey]any
 
 	// Fields set by parser
+	VibeLangSchemaGenerics      []SchemaGenericReference
 	diagnostics                 []*Diagnostic
 	jsDiagnostics               []*Diagnostic
 	jsdocDiagnostics            []*Diagnostic
@@ -2729,6 +2741,7 @@ func (node *SourceFile) copyFrom(other *SourceFile) {
 	}
 	node.LanguageVariant = other.LanguageVariant
 	node.ScriptKind = other.ScriptKind
+	node.VibeLangSchemaGenerics = other.VibeLangSchemaGenerics
 	node.IsDeclarationFile = other.IsDeclarationFile
 	node.UsesUriStyleNodeCoreModules = other.UsesUriStyleNodeCoreModules
 	node.imports = other.imports

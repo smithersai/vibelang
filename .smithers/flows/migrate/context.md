@@ -154,6 +154,8 @@ A schema field accepts `readonly` once, as TypeScript does. For `TS1030` on repe
 
 Runtime helper consumers must handle the primitive branch of `$extract(C, value)` when a structural constructor type can hold `String`, `Number`, `Boolean`, `BigInt` or `Symbol` (VIP-7/detail87). Use the primitive/boxed union instead of promising `object`. This SDK type rule does not admit an ordinary-class extractor without an own `Symbol.customMatcher` (detail100).
 
+For generic schema arrays, resolve the TypeScript-library type binding instead of guessing from its written name (VIP-15, detail286). Canonical `Array<T>` and `ReadonlyArray<T>` imports that refer to the opposite library type can preserve the old decoder and declarations through `vibelang --fix --fix-migration-only`. Keep ordinary compilation on the resolved meaning. Do not invent previous codecs for newly supported qualified or renamed generic forms.
+
 ## The language
 
 The VibeLang skill follows: every form beside the Effect code it replaces, and the rules with their EK codes. Accepted VIPs and the call rule above take precedence over older examples.

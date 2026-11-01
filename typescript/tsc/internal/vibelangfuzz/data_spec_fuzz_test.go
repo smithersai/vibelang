@@ -295,6 +295,7 @@ func dataRules() []dataRule {
 	rules = append(rules, dataTaggedMembersRules()...)
 	rules = append(rules, dataDeclarationRules()...)
 	rules = append(rules, unsettledIsBindingRules()...)
+	rules = append(rules, dataSchemaLibraryArrayRules()...)
 	return append(rules, dataReadonlyRecordAliasRules()...)
 }
 
@@ -304,6 +305,9 @@ func checkDataRule(t *testing.T, w *Workspace, c dataRule, trivia uint8) {
 	t.Helper()
 	if !strings.Contains(SpecText(c.chapter), c.quote) {
 		t.Fatalf("stale oracle %s: chapter %s no longer says %q", c.name, c.chapter, c.quote)
+	}
+	if strings.HasPrefix(c.name, "schema-library-array-") {
+		c.source = mutateSchemaLibraryArray(c.source, trivia)
 	}
 	source := strings.Repeat("/* trivia */\n", int(trivia)%4) + c.source + "\nexport {}\n"
 	files := map[string]string{"main.vibe": source}

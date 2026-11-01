@@ -108,7 +108,7 @@ var schemaRequiredFieldExpansionFix = &ls.CodeFixProvider{
 				}
 				start := nodeStart(fix.SourceFile, statement)
 				alias, scopeEdits := schemaFlagNamespace(c, fix, node, start)
-				expression := schemaFlagExpression(fix.SourceFile, node.Initializer(), alias, start, statement.End())
+				expression := schemaFlagExpression(c, fix.SourceFile, node.Initializer(), alias, start, statement.End())
 				indent := lineIndent(fix.SourceFile.Text(), start)
 				name := node.Name().Text()
 				text := prefix + "const " + name + " = " + expression + ";\n" + indent + prefix + "type " + name + " = typeof " + name + ".Type;"

@@ -47,45 +47,53 @@ var schemaFlagExpansionFix = &ls.CodeFixProvider{
 		if value == nil {
 			return nil, nil
 		}
-		c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
-		defer done()
-		var fields *ast.Node
-		for node := value; node != nil; node = node.Parent {
-			if isSchemaErrorFields(node) {
-				fields = node
-			}
-			if ast.IsVariableDeclaration(node) && node.Initializer() != nil && (isSchemaAlias(node) || isSchemaStruct(node.Initializer())) {
-				statement := node.Parent.Parent
-				if !ast.IsVariableStatement(statement) {
-					return nil, nil
-				}
-				prefix := ""
-				for _, m := range statement.ModifierNodes() {
-					if m.Kind != ast.KindExportKeyword {
-						return nil, nil
-					}
-					prefix = "export "
-				}
-				start := nodeStart(fix.SourceFile, statement)
-				alias, scopeEdits := schemaFlagNamespace(c, fix, node, start)
-				expression := schemaFlagExpression(fix.SourceFile, node.Initializer(), alias, start, statement.End())
-				indent := lineIndent(fix.SourceFile.Text(), start)
-				name := node.Name().Text()
-				text := prefix + "const " + name + " = " + expression + ";\n" + indent + prefix + "type " + name + " = typeof " + name + ".Type;"
-				edits := replaceRange(fix, start, statement.End(), text)
-				edits = append(edits, scopeEdits...)
-				return []*ls.CodeAction{{Description: "Write the schema with explicit Effect codecs", Changes: edits}}, nil
-			}
-			if fields != nil && ast.IsClassDeclaration(node) {
-				edits := schemaErrorFlagExpansion(c, fix, node, fields)
-				if len(edits) == 0 {
-					return nil, nil
-				}
-				return []*ls.CodeAction{{Description: "Write the schema with explicit Effect codecs", Changes: edits}}, nil
-			}
-		}
-		return nil, nil
+		return schemaFlagExpansionAt(ctx, fix, value)
 	},
+}
+
+func schemaFlagExpansionAt(ctx context.Context, fix *ls.CodeFixContext, value *ast.Node) ([]*ls.CodeAction, error) {
+	return schemaFlagExpansionModeAt(ctx, fix, value, true)
+}
+
+func schemaFlagExpansionModeAt(ctx context.Context, fix *ls.CodeFixContext, value *ast.Node, resolveGenerics bool) ([]*ls.CodeAction, error) {
+	c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
+	defer done()
+	var fields *ast.Node
+	for node := value; node != nil; node = node.Parent {
+		if isSchemaErrorFields(node) {
+			fields = node
+		}
+		if ast.IsVariableDeclaration(node) && node.Initializer() != nil && (isSchemaAlias(node) || isSchemaStruct(node.Initializer())) {
+			statement := node.Parent.Parent
+			if !ast.IsVariableStatement(statement) {
+				return nil, nil
+			}
+			prefix := ""
+			for _, m := range statement.ModifierNodes() {
+				if m.Kind != ast.KindExportKeyword {
+					return nil, nil
+				}
+				prefix = "export "
+			}
+			start := nodeStart(fix.SourceFile, statement)
+			alias, scopeEdits := schemaFlagNamespace(c, fix, node, start)
+			expression := schemaFlagExpressionMode(c, fix.SourceFile, node.Initializer(), alias, start, statement.End(), resolveGenerics)
+			indent := lineIndent(fix.SourceFile.Text(), start)
+			name := node.Name().Text()
+			text := prefix + "const " + name + " = " + expression + ";\n" + indent + prefix + "type " + name + " = typeof " + name + ".Type;"
+			edits := replaceRange(fix, start, statement.End(), text)
+			edits = append(edits, scopeEdits...)
+			return []*ls.CodeAction{{Description: "Write the schema with explicit Effect codecs", Changes: edits}}, nil
+		}
+		if fields != nil && ast.IsClassDeclaration(node) {
+			edits := schemaErrorFlagExpansionMode(c, fix, node, fields, resolveGenerics)
+			if len(edits) == 0 {
+				return nil, nil
+			}
+			return []*ls.CodeAction{{Description: "Write the schema with explicit Effect codecs", Changes: edits}}, nil
+		}
+	}
+	return nil, nil
 }
 
 var schemaFlagIdentifierEscapePattern = regexp.MustCompile(`\\u(?:\{[0-9a-fA-F]+\}|[0-9a-fA-F]{4})`)
@@ -183,9 +191,22 @@ func schemaFlagHeader(fix *ls.CodeFixContext, statement string) []*lsproto.TextE
 	return replaceRange(fix, pos, pos, statement)
 }
 
-func schemaFlagExpression(file *ast.SourceFile, value *ast.Node, name string, start, end int) string {
+func schemaFlagExpression(c *checker.Checker, file *ast.SourceFile, value *ast.Node, name string, start, end int) string {
+	return schemaFlagExpressionMode(c, file, value, name, start, end, true)
+}
+
+func schemaFlagExpressionMode(c *checker.Checker, file *ast.SourceFile, value *ast.Node, name string, start, end int, resolveGenerics bool) string {
 	f := &ast.NodeFactory{}
-	clone := f.DeepCloneReparse(value)
+	// A checker-selected library alias can have a different codec from the
+	// parser's provisional expression. Preserve the selected decoder in fixes.
+	var selected *ast.NodeVisitor
+	selected = ast.NewNodeVisitor(func(node *ast.Node) *ast.Node {
+		if replacement := schemaGenericReplacement(c, node); resolveGenerics && replacement != nil {
+			node = replacement
+		}
+		return node.VisitEachChild(selected)
+	}, f, ast.NodeVisitorHooks{})
+	clone := f.DeepCloneReparse(selected.VisitNode(value))
 	var visit func(*ast.Node) bool
 	visit = func(n *ast.Node) bool {
 		if ast.IsIdentifier(n) && n.Flags&ast.NodeFlagsVibeLangIntrinsic != 0 && n.Text() == "Schema" {
@@ -209,6 +230,10 @@ func schemaFlagExpression(file *ast.SourceFile, value *ast.Node, name string, st
 }
 
 func schemaErrorFlagExpansion(c *checker.Checker, fix *ls.CodeFixContext, class, fields *ast.Node) []*lsproto.TextEdit {
+	return schemaErrorFlagExpansionMode(c, fix, class, fields, true)
+}
+
+func schemaErrorFlagExpansionMode(c *checker.Checker, fix *ls.CodeFixContext, class, fields *ast.Node, resolveGenerics bool) []*lsproto.TextEdit {
 	file := fix.SourceFile
 	start := nodeStart(file, class)
 	original := file.Text()[start:class.End()]
@@ -267,7 +292,7 @@ func schemaErrorFlagExpansion(c *checker.Checker, fix *ls.CodeFixContext, class,
 		name := freshSchemaFlagName(file.Text(), "$codec"+strconv.Itoa(start)+"_"+strconv.Itoa(i))
 		bindings = append(bindings, name)
 		factory := freshSchemaFlagName(file.Text(), "$makeCodec"+strconv.Itoa(start)+"_"+strconv.Itoa(i))
-		factories = append(factories, factory+" = (): infer _ => "+schemaFlagExpression(file, value, alias, start+nodeStart(raw, member.Type()), start+member.Type().End()))
+		factories = append(factories, factory+" = (): infer _ => "+schemaFlagExpressionMode(c, file, value, alias, start+nodeStart(raw, member.Type()), start+member.Type().End(), resolveGenerics))
 		values = append(values, "get "+name+"() { return "+factory+"(); }")
 		edits = append(edits, replaceRange(fix, start+nodeStart(raw, member.Type()), start+member.Type().End(), holder+"."+name)...)
 	}
