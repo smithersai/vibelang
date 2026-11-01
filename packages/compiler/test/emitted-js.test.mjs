@@ -45,7 +45,10 @@ function workspace(t) {
     "packages/app/package.json": JSON.stringify({ name: "app", type: "module" }),
     "packages/app/main.mjs": 'import { Skill } from "@demo/schema/skill"\nconsole.log(Skill)\n',
     "packages/app/main.cjs": 'console.log(require("@demo/schema/skill").Skill)\n',
-    "packages/app/same.mjs": 'import { id } from "@demo/schema/skill"\nimport { id as relative } from "../schema/src/skill.vibe"\nconsole.log(id === relative)\n'
+    "packages/app/same.mjs": 'import { id } from "@demo/schema/skill"\nimport { id as relative } from "../schema/src/skill.vibe"\nconsole.log(id === relative)\n',
+    // opencode-46: protocol's script, a .ts file, reads one schema module by
+    // its package export and by its path; m5 lost this carry and had two.
+    "packages/app/same.ts": `import { id } from "@demo/schema/skill"\nimport { id as absolute } from "${join(root, "packages/schema/src/skill.vibe")}"\nconsole.log(id === absolute, require.resolve("@demo/schema/skill").includes(".vibelang/js"))\n`
   })
   mkdirSync(join(root, "node_modules/@demo"), { recursive: true })
   symlinkSync(join(root, "packages/schema"), join(root, "node_modules/@demo/schema"))
@@ -113,6 +116,8 @@ test("bun build reads the emitted JavaScript, and the vibelang/bun preload runs 
   assert.equal(required.out, "from-vibe-source", required.err)
   const same = run("bun", ["--preload", "vibelang/bun", "same.mjs"])
   assert.equal(same.out, "true", same.err)
+  const script = run("bun", ["run", "--preload", "vibelang/bun", "same.ts"])
+  assert.equal(script.out, "true true", script.err)
   const built = run("bun", ["build", "main.mjs", "--target=bun", "--packages=bundle", `--outdir=${join(root, "out")}`])
   assert.equal(built.status, 0, built.err)
   const bundle = readFileSync(join(root, "out/main.js"), "utf8")
