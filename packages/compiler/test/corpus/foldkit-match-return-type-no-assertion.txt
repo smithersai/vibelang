@@ -1,0 +1,38 @@
+type View = { readonly model: number; readonly commands?: ReadonlyArray<string> }
+type Status = "Valid" | "Invalid"
+
+export function typed(value: Status, trace: string[], input: number): View {
+  return Match.value((trace.push("subject"), value)).pipe(
+    Match.withReturnType<View>(),
+    Match.when("Valid", () => ({ model: input, commands: ["valid"] })),
+    Match.orElse(() => ({ model: -input, commands: undefined })),
+  )
+}
+
+export const arrow = (value: Status, trace: string[], input: number): View =>
+  Match.value((trace.push("subject"), value)).pipe(
+    Match.withReturnType<View>(),
+    Match.when("Valid", () => ({ model: input, commands: ["valid"] })),
+    Match.orElse(() => ({ model: -input, commands: undefined })),
+  )
+
+export function destructured(value: Status, trace: string[], input: number): View {
+  const { model, commands } = Match.value((trace.push("subject"), value)).pipe(
+    Match.withReturnType<View>(),
+    Match.when("Valid", () => ({ model: input, commands: ["valid"] })),
+    Match.orElse(() => ({ model: -input, commands: undefined })),
+  )
+  return { model, commands }
+}
+
+export function hygiene(value: Status, input: number): ReadonlyArray<View> {
+  const $matchResult = { model: 9 }
+  return [
+    $matchResult,
+    Match.value(value).pipe(
+      Match.withReturnType<View>(),
+      Match.when("Valid", () => ({ model: input, commands: ["valid"] })),
+      Match.orElse(() => ({ model: -input, commands: undefined })),
+    ),
+  ]
+}

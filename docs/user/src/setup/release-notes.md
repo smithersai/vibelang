@@ -241,6 +241,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A migration batch could pass after changing its tests or fixtures, hiding a regression; the migrate flow now verifies every edit against detail 272's exceptions, with same-module and filesystem-path rename proofs, exact-set selector checks under the target tool's glob rules, and separately disclosed dependency assertions, refuses `async` or generator filters that would select extra files, checks again before committing, and reports the proof for the pull request.
 
 - The migrate flow's declaration snapshots failed with `TS5051` for valid projects using `inlineSources`; declaration-only emission now disables all source and declaration map options together, including inherited settings.
+
+- Migrating a Match return-type hint could insert an `as` assertion that the repository's lint rejected; the quick fix now preserves checked type annotations, including destructured bindings.
 - `FuzzCommandLine` could fail with `the compilation rewrote the source main.d.vibe.ts` in a checkout where an earlier compile had left that sidecar in an acceptance case; the fuzz seeds now skip these generated files.
 
 - On a loaded machine, the child-process tests of `vibelang-vite` and `vibelang-unplugin` failed with `Missing expected exception` because a killed process stays visible as a zombie until it is reaped; they now wait for the process's inherited connection to close.

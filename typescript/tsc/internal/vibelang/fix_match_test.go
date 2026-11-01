@@ -28,7 +28,7 @@ func TestMatchChainQuickFixes(t *testing.T) {
 }
 `},
 		{"a primitive type keeps its name", "export const label = (n: 1 | 2) => Match.value(n).pipe(Match.when(1, () => \"one\"), Match.when(2, () => \"two\"), Match.exhaustive)\n",
-			"export const label = (n: 1 | 2) => (match (n) { when 1: \"one\"; when 2: \"two\"; } as string)\n"},
+			"export const label = (n: 1 | 2) => do { const $matchResult: string = match (n) { when 1: \"one\"; when 2: \"two\"; }; $matchResult; }\n"},
 		{"a const takes the type", "export function kind(n: 1 | 2) {\n  const k = Match.value(n).pipe(Match.when(1, () => \"one\"), Match.orElse(() => \"many\"))\n  return k\n}\n",
 			"export function kind(n: 1 | 2) {\n  const k: string = match (n) { when 1: \"one\"; default: \"many\"; }\n  return k\n}\n"},
 		{"tags with fields", `type Shape = { readonly _tag: "Circle"; readonly radius: number } | { readonly _tag: "Square"; readonly side: number }
@@ -61,13 +61,13 @@ export const describe = (event: Event) =>
   )
 `, `type Event = { readonly _tag: "Opened" } | { readonly _tag: "Closed"; readonly reason: string }
 export const describe = (event: Event) =>
-  (match (event) {
+  do { const $matchResult: string = match (event) {
     when { _tag: "Opened" }: "open";
     when { _tag: "Closed", let reason }: do {
       const text = reason.trim()
       "closed: " + text
     };
-  } as string)
+  }; $matchResult; }
 `},
 		{"objects, or, not and refinements", `type Config = { readonly method: "token" | "oauth" | "none"; readonly value: string | number }
 export function kind(config: Config): string {

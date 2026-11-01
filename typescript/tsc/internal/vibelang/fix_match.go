@@ -403,10 +403,18 @@ func matchChainRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 	replacement := b.String()
 	edits := []sourceEdit{}
 	if typeText != "" {
-		if declaration := call.Parent; ast.IsVariableDeclaration(declaration) && declaration.Initializer() == call && declaration.Type() == nil && ast.IsIdentifier(declaration.Name()) {
+		// The hint is a checked result contract. An assertion would hide
+		// an incompatible arm and violate a consumer's no-assertions lint.
+		// Destructured bindings take the same annotation as identifiers.
+		whole := call
+		for ast.IsParenthesizedExpression(whole.Parent) {
+			whole = whole.Parent
+		}
+		if declaration := whole.Parent; ast.IsVariableDeclaration(declaration) && declaration.Initializer() == whole && declaration.Type() == nil {
 			edits = append(edits, sourceEdit{declaration.Name().End(), declaration.Name().End(), ": " + typeText})
 		} else {
-			replacement = "(" + replacement + " as " + typeText + ")"
+			name := (&freshNames{file: file}).freshName("$matchResult")
+			replacement = "do { const " + name + ": " + typeText + " = " + replacement + "; " + name + "; }"
 		}
 	}
 	if hintRead != "" && chain.subject == nil {

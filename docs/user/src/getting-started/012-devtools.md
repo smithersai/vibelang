@@ -510,3 +510,8 @@ Library debugging concepts still apply; VibeLang's effect functions, service dec
 | TS2304 (`Model`, `Prompt`) | Two of effect's subpath packages have a module of this name, so neither is in scope. The note names both imports; write the one you mean, such as `import { Model } from "effect/schema"`. |
 
 An `EK4405` input fix preserves captured values' types and is withheld when existing inputs lack matching parameters. The `EK4301` return annotation fix is withheld for a callback with `using`, since annotating its helper cannot remove the callback's resource requirement.
+
+The `EK4839` quick fix preserves a Match return-type hint with a checked
+annotation on its binding, including destructuring, or a typed local binding
+inside a `do` expression. It uses existing written context when available
+and does not introduce an `as` assertion.

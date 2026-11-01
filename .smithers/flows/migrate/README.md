@@ -182,7 +182,12 @@ A run's `issues.jsonl` is the input to the loop that improves the flow. The repa
 
 Each rewrite keeps the program's meaning and type, or it is not made: the diagnostic it leaves says why in a note that starts `No quick fix:`.
 
-### Known codemod gaps
+#Match return-type hints keep checked type context: an untyped binding, including
+a destructured binding, gains an annotation. In another expression position,
+a local typed binding inside `do` preserves the result contract. The quick fix
+never inserts an `as` assertion for the hint.
+
+## Known codemod gaps
 
 These patterns have no `--fix` rule yet. The counts are from the four first targets (foldkit, t3code, alchemy and opencode: 44,235 `Effect.gen` sites). A repair records a `codemod-gap` only for a pattern not listed here.
 
