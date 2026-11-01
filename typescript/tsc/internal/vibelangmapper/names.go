@@ -32,7 +32,7 @@ import (
 var preludeNames = func() map[string]bool {
 	names := map[string]bool{}
 	for _, list := range []string{
-		// effect's root modules (effect@4.1.0 dist/index.d.ts).
+		// effect's root modules (effect@4.1.1 dist/index.d.ts).
 		`Arbitrary Array BigDecimal BigInt Boolean Brand Bytes ByteSize Cache Cause Channel ChannelSchema Chunk Clock Combiner
 		Config ConfigProvider Console Context Cron Data DateTime Deferred Differ Duration Effect Effectable Equal
 		Equivalence ErrorReporter ExecutionPlan Exit Fiber FiberHandle FiberMap FiberSet FileSystem Filter Formatter

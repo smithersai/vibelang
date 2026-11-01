@@ -19,7 +19,7 @@ type Input = { providers: Provider[]; fail: boolean }
 
 function verifyRule() {
   assert.ok(readFileSync(new URL("../../../docs/design/src/005-services.md", import.meta.url), "utf8").includes(quote))
-  assert.equal(JSON.parse(readFileSync(new URL("../package.json", import.meta.resolve("effect")), "utf8")).version, "4.1.0")
+  assert.equal(JSON.parse(readFileSync(new URL("../package.json", import.meta.resolve("effect")), "utf8")).version, "4.1.1")
 }
 
 async function run(input: Input, runtime: boolean) {

@@ -5,7 +5,7 @@ In `.vibe` files, Effect's modules are already in scope: the prelude, every modu
 ## Install the core package
 
 ```sh
-npm install effect@4.1.0
+npm install effect@4.1.1
 ```
 
 The core package supplies Effect's data types, schedules, concurrency tools, and other modules. See [Installation](004-installation.md) for platform packages, `vibelang`, and `vibelang-runtime`.
@@ -61,7 +61,7 @@ function hexOf(text: string) {
 // Output: 6869
 ```
 
-Four rules settle a name that two globals share, in order: a JavaScript global that is not platform-specific wins in its meaning; a name exported by both the root and a subpath needs an explicit import; when two subpath packages have a module of the same name, neither is in scope, so import the one you mean; and an import or local declaration shadows any of them. Ambient types keep their names independently. `EK1401` names every exporter of an ambiguous name and offers an import for each. For a previously bare `Utils`, `vibelang --fix` adds `import { Utils } from "effect"` to preserve the root module. In value and namespace positions, `Headers` is `effect/http/Headers`, `Response` is `effect/ai/Response`, `Event` is `effect/eventlog/Event` and `Worker` is `effect/workers/Worker`. So `Response.json(body)` is `TS2339`, and its note names the Fetch API's `globalThis.Response.json`. These are the names they settle for `effect@4.1.0`:
+Four rules settle a name that two globals share, in order: a JavaScript global that is not platform-specific wins in its meaning; a name exported by both the root and a subpath needs an explicit import; when two subpath packages have a module of the same name, neither is in scope, so import the one you mean; and an import or local declaration shadows any of them. Ambient types keep their names independently. `EK1401` names every exporter of an ambiguous name and offers an import for each. For a previously bare `Utils`, `vibelang --fix` adds `import { Utils } from "effect"` to preserve the root module. In value and namespace positions, `Headers` is `effect/http/Headers`, `Response` is `effect/ai/Response`, `Event` is `effect/eventlog/Event` and `Worker` is `effect/workers/Worker`. So `Response.json(body)` is `TS2339`, and its note names the Fetch API's `globalThis.Response.json`. These are the names they settle for `effect@4.1.1`:
 
 <!-- D310 collisions: TestEffectNameCollisionsDocumented checks this table -->
 | Name | Modules | Without an import |
@@ -119,7 +119,7 @@ function firstOr(values: Chunk.Chunk<number>, fallback: number): number {
 Read a service before calling its implementation methods. These modules name a service:
 
 <!-- D311 services: TestModuleServicesDocumented checks this list -->
-`AddressResolver`, `Aead`, `AtomRegistry`, `Chat`, `ChildProcessSpawner`, `Cipher`, `CircuitBreaker`, `CliConfig`, `Clock`, `ConfigProvider`, `Console`, `DatagramSocket`, `DecisionModel`, `DevToolsClient`, `Digest`, `Dns`, `EmbeddingModel`, `EventJournal`, `EventLog`, `EventLogEncryption`, `EventLogRemote`, `EventLogServerUnencrypted`, `FileSystem`, `GraphQLProtocol`, `HttpClient`, `HttpPlatform`, `HttpRouter`, `HttpServer`, `HttpServerRequest`, `IdGenerator`, `K8sHttpClient`, `Kdf`, `KeyAgreement`, `KeyValueStore`, `KeyWrap`, `LanguageModel`, `Mac`, `McpClient`, `McpServer`, `MessageStorage`, `OtlpSerialization`, `Path`, `Persistence`, `Random`, `RateLimiter`, `Reactivity`, `Redis`, `ResponseIdTracker`, `RpcSerialization`, `RunnerHealth`, `RunnerStorage`, `Runners`, `Scheduler`, `SecureRandom`, `Sharding`, `ShardingConfig`, `Signature`, `Socket`, `SocketServer`, `SqlClient`, `Stdio`, `Terminal`, `TerminalCapabilities`, `Tokenizer`, `Tracer`, `UserDirectories`, `WorkflowEngine`.
+`AddressResolver`, `Aead`, `AtomRegistry`, `Chat`, `ChildProcessSpawner`, `Cipher`, `CircuitBreaker`, `CliConfig`, `Clock`, `ConfigProvider`, `Console`, `DatagramSocket`, `DecisionModel`, `DevToolsClient`, `Digest`, `Dns`, `EmbeddingModel`, `EventJournal`, `EventLog`, `EventLogEncryption`, `EventLogRemote`, `EventLogServerUnencrypted`, `FileSystem`, `GraphQLProtocol`, `HttpClient`, `HttpPlatform`, `HttpRouter`, `HttpServer`, `HttpServerRequest`, `IdGenerator`, `Jwks`, `K8sHttpClient`, `Kdf`, `KeyAgreement`, `KeyValueStore`, `KeyWrap`, `LanguageModel`, `Mac`, `McpClient`, `McpServer`, `MessageStorage`, `OtlpSerialization`, `Path`, `Persistence`, `Random`, `RateLimiter`, `Reactivity`, `Redis`, `ResponseIdTracker`, `RpcSerialization`, `RunnerHealth`, `RunnerStorage`, `Runners`, `Scheduler`, `SecureRandom`, `Sharding`, `ShardingConfig`, `Signature`, `Socket`, `SocketServer`, `SqlClient`, `Stdio`, `Terminal`, `TerminalCapabilities`, `Tokenizer`, `Tracer`, `UserDirectories`, `WorkflowEngine`.
 <!-- end D311 services -->
 
 These names have both an Effect namespace and an ambient global type. Value and namespace positions use Effect; bare type positions keep the ambient type:

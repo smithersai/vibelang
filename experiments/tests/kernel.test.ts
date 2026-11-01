@@ -1,4 +1,4 @@
-// Laws of the continuation kernel, tested directly against effect@4.1.0.
+// Laws of the continuation kernel, tested directly against effect@4.1.1.
 import { describe, expect, test } from "bun:test"
 import { Cause, Context, Effect, Exit, Fiber, Scope } from "effect"
 import {

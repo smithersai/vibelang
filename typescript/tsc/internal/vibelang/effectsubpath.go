@@ -23,7 +23,7 @@ package vibelang
 // file imports it from its package (import type { HttpRouter } from
 // "effect/http").
 //
-// The tables are generated from effect@4.1.0's package.json exports and
+// The tables are generated from effect@4.1.1's package.json exports and
 // each subpath's dist/<subpath>/index.d.ts, the version VibeLang pins (D1);
 // Regenerate with node scripts/generate-effect-subpaths.mjs --write.
 // TestEffectSubpathNamesMatchEffect checks them against the installed
@@ -177,6 +177,12 @@ var effectSubpathNames = map[string]effectSubpathExport{
 	"IpInterface":                  {barrel: "effect/net", module: "effect/net/IpInterface"},
 	"IpNetwork":                    {barrel: "effect/net", module: "effect/net/IpNetwork"},
 	"JsonArray":                    {barrel: "effect/encoding", module: "effect/encoding/JsonArray"},
+	"JoseError":                    {barrel: "effect/jose", module: "effect/jose/JoseError"},
+	"Jwe":                          {barrel: "effect/jose", module: "effect/jose/Jwe"},
+	"Jwk":                          {barrel: "effect/jose", module: "effect/jose/Jwk"},
+	"Jwks":                         {barrel: "effect/jose", module: "effect/jose/Jwks"},
+	"Jws":                          {barrel: "effect/jose", module: "effect/jose/Jws"},
+	"Jwt":                          {barrel: "effect/jose", module: "effect/jose/Jwt"},
 	"K8sHttpClient":                {barrel: "effect/cluster", module: "effect/cluster/K8sHttpClient"},
 	"K8sTypes":                     {barrel: "effect/cluster", module: "effect/cluster/K8sTypes"},
 	"Kdf":                          {barrel: "effect/crypto", module: "effect/crypto/Kdf"},

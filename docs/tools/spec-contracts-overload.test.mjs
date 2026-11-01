@@ -16,7 +16,7 @@ test("the contracts example uses the Effect.try overload its counterpart runs", 
   assert.ok(source.includes("try passEffect(succeed(2))"), "constrainedContract needs its VibeLang source")
 })
 
-test("Effect 4.1.0's thunk overload fails with UnknownError; the object overload keeps the thrown value", () => {
+test("Effect 4.1.1's thunk overload fails with UnknownError; the object overload keeps the thrown value", () => {
   const keep = () => { throw "boom" }
   const thunk = Effect.runSyncExit(Effect.try(() => keep()))
   const object = Effect.runSyncExit(Effect.try({ try: () => keep(), catch: (error) => error }))

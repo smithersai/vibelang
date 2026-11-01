@@ -378,7 +378,7 @@ function witness() {
 }
 
 func init() {
-	registerWitness(29, ChapterWitness{Key: "vip29.constructor-validation-defect", Chapter: "003-failures.md", Quote: "invalid input can throw a plain `Error`, which becomes a defect inside `Effect.gen`.", Vibe: "schema error E { n:number }; effect function witness(){return new E({n:\"unchecked\"} as any)}", Effect: "class E extends Schema.TaggedError()(\"E\",{n:Schema.Number}){}; function witness(){return Effect.gen(function*(){return new E({n:\"unchecked\"})})}", Modules: []string{"Schema"}, Requires: []string{"vip01.effect-function", "vip05.try"}, Cite: Citation{VIP: 29, Template: "new E", Quote: "A validation failure at construction (effect 4.1.0 throws a plain `Error`) is a defect, as any implicit throw inside `Effect.gen` is."}})
+	registerWitness(29, ChapterWitness{Key: "vip29.constructor-validation-defect", Chapter: "003-failures.md", Quote: "invalid input can throw a plain `Error`, which becomes a defect inside `Effect.gen`.", Vibe: "schema error E { n:number }; effect function witness(){return new E({n:\"unchecked\"} as any)}", Effect: "class E extends Schema.TaggedError()(\"E\",{n:Schema.Number}){}; function witness(){return Effect.gen(function*(){return new E({n:\"unchecked\"})})}", Modules: []string{"Schema"}, Requires: []string{"vip01.effect-function", "vip05.try"}, Cite: Citation{VIP: 29, Template: "new E", Quote: "A validation failure at construction (effect 4.1.1 throws a plain `Error`) is a defect, as any implicit throw inside `Effect.gen` is."}})
 }
 
 func init() {

@@ -1,4 +1,4 @@
-// @effect/platform-node 4.1.0's NodeServices.d.ts.
+// @effect/platform-node 4.1.1's NodeServices.d.ts.
 import type { FileSystem } from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import type { Path } from "effect/Path"

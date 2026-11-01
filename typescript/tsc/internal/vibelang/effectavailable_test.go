@@ -68,7 +68,7 @@ func TestUnsupportedEffectReportsInstalledVersion(t *testing.T) {
 				}
 				found = true
 				text := diagnosticWithNotes(d)
-				for _, want := range []string{"effect@3.19.0", "effect@4.1.0"} {
+				for _, want := range []string{"effect@3.19.0", "effect@4.1.1"} {
 					if !strings.Contains(text, want) {
 						t.Errorf("missing %s in diagnostic: %s", want, text)
 					}

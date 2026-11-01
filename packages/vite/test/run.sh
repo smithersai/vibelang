@@ -6,7 +6,7 @@
 #
 # Environment:
 #   VIBELANG_BINARY        a native vibelang compiler; skips the Go build
-#   EFFECT_NODE_MODULES  a node_modules directory that holds effect 4.1.0
+#   EFFECT_NODE_MODULES  a node_modules directory that holds effect 4.1.1
 #                        (default: experiments/node_modules)
 set -eu
 

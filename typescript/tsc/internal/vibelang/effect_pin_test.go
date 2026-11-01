@@ -36,8 +36,9 @@ func TestEffectPinMismatch(t *testing.T) {
 		name, fixture, version string
 	}{
 		{"older minor", "testdata/effect-pin/effect-4.0.3", "4.0.3"},
-		{"newer patch", "testdata/effect-pin/effect-4.1.1", "4.1.1"},
-		{"prerelease of the pin", "testdata/effect-pin/effect-4.1.0-next.1", "4.1.0-next.1"},
+		{"previous patch", "testdata/effect-pin/effect-4.1.0", "4.1.0"},
+		{"newer patch", "testdata/effect-pin/effect-4.1.2", "4.1.2"},
+		{"prerelease of the pin", "testdata/effect-pin/effect-4.1.1-next.1", "4.1.1-next.1"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			packages := map[string]string{"effect": "typescript/tsc/internal/vibelang/" + test.fixture}

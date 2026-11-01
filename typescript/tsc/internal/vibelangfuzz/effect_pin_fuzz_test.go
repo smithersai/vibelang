@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-const effectPinQuote = "any version other than `4.1.0` is `EK3201` in the CLI and editor"
+const effectPinQuote = "any version other than `4.1.1` is `EK3201` in the CLI and editor"
 
 func TestEffectPinQuoted(t *testing.T) { effectPinQuoted(t) }
 func effectPinQuoted(t testing.TB) {
@@ -24,7 +24,7 @@ func effectPinQuoted(t testing.TB) {
 func FuzzEffectPin(f *testing.F) {
 	startShortBudget(f)
 	effectPinQuoted(f)
-	for _, key := range []string{"older", "patch", "prerelease", "pinned", "nested"} {
+	for _, key := range []string{"older", "previous-patch", "patch", "prerelease", "pinned", "nested"} {
 		f.Add([]byte(key))
 		f.Add([]byte(key + "\x00\x03"))
 	}
@@ -34,14 +34,16 @@ func FuzzEffectPin(f *testing.F) {
 		key := parts[0]
 		version, want := "4.0.3", 1
 		switch key {
-		case "patch":
-			version = "4.1.1"
-		case "prerelease":
-			version = "4.1.0-next.1"
-		case "pinned":
-			version, want = "4.1.0", 0
-		case "nested":
+		case "previous-patch":
 			version = "4.1.0"
+		case "patch":
+			version = "4.1.2"
+		case "prerelease":
+			version = "4.1.1-next.1"
+		case "pinned":
+			version, want = "4.1.1", 0
+		case "nested":
+			version = "4.1.1"
 		}
 		pkg, _ := json.Marshal(map[string]string{"name": "effect", "version": version, "types": "index.d.ts"})
 		source := "export const value: number = 1\n"
@@ -76,7 +78,7 @@ func FuzzEffectPin(f *testing.F) {
 						return "4.0.3"
 					}
 					return version
-				}()) || !strings.Contains(d.String(), "4.1.0") {
+				}()) || !strings.Contains(d.String(), "4.1.1") {
 					t.Fatal(d.String())
 				}
 			} else {

@@ -41,7 +41,7 @@ const vipMaxSteps = 10000
 // {"$cause": [reasons]} or {"$reason": …}, so its fiber ids are tagged and
 // renamed with the top-level ones (CanonicalVIPExit). It is recognized by
 // Effect's own type ids, the properties "~effect/Exit", "~effect/Cause" and
-// "~effect/Cause/Reason" in effect 4.1.0 (strings, not symbols), through
+// "~effect/Cause/Reason" in effect 4.1.1 (strings, not symbols), through
 // Exit.isExit, Cause.isCause and Cause.isReason; an object that only has a
 // _tag of "Success" stays an object. Events are labels, which ev turns into
 // strings, so they hold no Exit.

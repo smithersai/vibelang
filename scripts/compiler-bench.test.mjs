@@ -32,7 +32,7 @@ for (const mode of ["native", "windows-native", "legacy", "override"]) {
     }
     put("package.json", '{"type":"module"}')
     put("packages/runtime/dist/index.js", "")
-    put("packages/runtime/node_modules/effect/package.json", '{"name":"effect","version":"4.1.0"}')
+    put("packages/runtime/node_modules/effect/package.json", '{"name":"effect","version":"4.1.1"}')
     const core = put("compiler.mjs", [
       'import { appendFileSync } from "node:fs"',
       'const args = process.argv.slice(3)',

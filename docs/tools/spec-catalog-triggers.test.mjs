@@ -48,7 +48,7 @@ test("EK1906 and EK2005 name every head other than const and let", () => {
   }
 })
 
-test("the type triggers use Effect 4.1.0's own parameter types", () => {
+test("the type triggers use Effect 4.1.1's own parameter types", () => {
   assert.match(effectTypes("Types.d.ts"), /export type Concurrency = number \| "unbounded";/)
   const forkIn = effectTypes("Effect.d.ts").split("export declare const forkIn:")[1].split("};")[0]
   assert.match(forkIn, /self: Effect<A, E, R>, scope: Scope,/)

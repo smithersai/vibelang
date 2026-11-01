@@ -11,7 +11,7 @@ package vibelang
 // emitted JavaScript imports each used name from its own module, never from
 // the root, which would load every module.
 //
-// effectRootNames is generated from effect@4.1.0's dist/index.d.ts, the
+// effectRootNames is generated from effect@4.1.1's dist/index.d.ts, the
 // version VibeLang pins (D1); TestEffectRootNamesMatchEffect checks it against
 // the installed package.
 

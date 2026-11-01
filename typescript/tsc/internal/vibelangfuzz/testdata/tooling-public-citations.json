@@ -53,7 +53,7 @@
   },
   {
     "key": "effect-pin",
-    "claim": "any version other than `4.1.0` is `EK3201`",
+    "claim": "any version other than `4.1.1` is `EK3201`",
     "sources": [
       {
         "file": "0032-effect-version.md",

@@ -1,0 +1,8 @@
+// VIP-14: each unambiguous namespace of effect/jose is implicit.
+// expect-result: ["object","object","object","object","object","object"]
+export effect function main() {
+  return [typeof JoseError, typeof Jwe, typeof Jwk, typeof Jwks, typeof Jws, typeof Jwt]
+}
+export const encryption = Jwe
+export const signing = Jws
+export const tokens = Jwt

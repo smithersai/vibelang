@@ -27,7 +27,7 @@ for (const [limit, maximum] of [
   assert.equal(result.status, 0, result.stderr)
 })
 
-// Effect 4.1.0's forEach resolves a numeric limit with Math.max(1, n) and runs sequentially only when that is 1.
+// Effect 4.1.1's forEach resolves a numeric limit with Math.max(1, n) and runs sequentially only when that is 1.
 function pulls(limit) {
   const trace = []
   function* items() {

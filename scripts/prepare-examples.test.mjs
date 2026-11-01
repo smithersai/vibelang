@@ -93,13 +93,13 @@ for (const dependencies of [
       vibelang: relative(process.cwd(), compiler),
       "vibelang-runtime": relative(process.cwd(), runtime)
     }
-    prepareExample(source, destination, packages, "4.1.0")
+    prepareExample(source, destination, packages, "4.1.1")
     const result = JSON.parse(readFileSync(join(destination, "package.json"), "utf8"))
     const expected = {
       ...manifest,
       overrides: {
         retained: "3.2.1", vibelang: "file:" + compiler,
-        "@effect/platform-node-shared": "4.1.0", "vibelang-runtime": "file:" + runtime
+        "@effect/platform-node-shared": "4.1.1", "vibelang-runtime": "file:" + runtime
       }
     }
     for (const section of ["dependencies", "devDependencies"]) {

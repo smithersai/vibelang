@@ -24,7 +24,7 @@ const fixture = (version: string) => {
 
 for (const kernelFirst of [false, true]) {
   test(`package: static runtime and kernel imports (${kernelFirst ? "kernel first" : "runtime first"})`, () => {
-    const dir = fixture("4.1.0")
+    const dir = fixture("4.1.1")
     try {
       const imports = [
         'import { Effect, $bind } from "vibelang-runtime";',
@@ -44,7 +44,7 @@ for (const kernelFirst of [false, true]) {
   }, 30_000)
 }
 
-for (const version of ["4.1.0", "4.0.7", "4.1.1", "3.99.0"]) {
+for (const version of ["4.1.1", "4.1.0", "4.1.2", "3.99.0"]) {
   test(`package: Node, Bun, and browser bundles check effect@${version}`, async () => {
     const dir = fixture(version)
     try {
@@ -62,14 +62,14 @@ for (const version of ["4.1.0", "4.0.7", "4.1.1", "3.99.0"]) {
       for (const command of commands) {
         const result = Bun.spawnSync(command, { cwd: dir, stdout: "pipe", stderr: "pipe" })
         const output = result.stdout.toString() + result.stderr.toString()
-        if (version === "4.1.0") {
+        if (version === "4.1.1") {
           expect(result.exitCode).toBe(0)
           expect(output.trim()).toBe("42")
         } else {
           expect(result.exitCode).not.toBe(0)
-          expect(output).toContain("vibelang-runtime@0.0.11 requires effect@4.1.0")
+          expect(output).toContain("vibelang-runtime@0.0.11 requires effect@4.1.1")
           expect(output).toContain(`found effect@${version}`)
-          expect(output).toContain("npm install effect@4.1.0")
+          expect(output).toContain("npm install effect@4.1.1")
         }
       }
     } finally {
@@ -109,8 +109,8 @@ test("package: a missing Effect 3 export cannot hide the version mismatch", asyn
       const result = Bun.spawnSync(command, { cwd: dir, stdout: "pipe", stderr: "pipe" })
       const output = result.stdout.toString() + result.stderr.toString()
       expect(result.exitCode).not.toBe(0)
-      expect(output).toContain("requires effect@4.1.0; found effect@3.19.0")
-      expect(output).toContain("npm install effect@4.1.0")
+      expect(output).toContain("requires effect@4.1.1; found effect@3.19.0")
+      expect(output).toContain("npm install effect@4.1.1")
       expect(output).not.toContain("does not provide an export")
       expect(output).not.toContain("Export named")
     }
@@ -141,8 +141,8 @@ test("package: the version check does not resolve an incompatible Effect graph",
       const result = Bun.spawnSync(command, { cwd: dir, stdout: "pipe", stderr: "pipe" })
       const output = result.stdout.toString() + result.stderr.toString()
       expect(result.exitCode).not.toBe(0)
-      expect(output).toContain("requires effect@4.1.0; found effect@3.19.0")
-      expect(output).toContain("npm install effect@4.1.0")
+      expect(output).toContain("requires effect@4.1.1; found effect@3.19.0")
+      expect(output).toContain("npm install effect@4.1.1")
       expect(output).not.toContain("ERR_PACKAGE_PATH_NOT_EXPORTED")
     }
   } finally {

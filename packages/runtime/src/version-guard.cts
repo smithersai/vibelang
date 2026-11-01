@@ -1,4 +1,4 @@
-const PINNED_EFFECT_VERSION = "4.1.0"
+const PINNED_EFFECT_VERSION = "4.1.1"
 
 function checkEffectVersion(version: string): void {
   if (version !== PINNED_EFFECT_VERSION) {

@@ -16,10 +16,10 @@ function fixture(t, packages) {
 }
 
 const copies = {
-  "experiments/node_modules/effect": "4.1.0",
-  "experiments/node_modules/@effect/platform-node": "4.1.0",
-  "packages/runtime/node_modules/effect": "4.1.0",
-  "packages/runtime/node_modules/@effect/platform-node": "4.1.0",
+  "experiments/node_modules/effect": "4.1.1",
+  "experiments/node_modules/@effect/platform-node": "4.1.1",
+  "packages/runtime/node_modules/effect": "4.1.1",
+  "packages/runtime/node_modules/@effect/platform-node": "4.1.1",
   "packages/runtime/node_modules/fast-check": "4.0.0"
 }
 
@@ -48,9 +48,9 @@ test("a package at another version stays", (t) => {
 })
 
 test("a shared install and a missing install are left alone", (t) => {
-  const shared = fixture(t, { "experiments/node_modules/effect": "4.1.0", "store/node_modules/effect": "4.1.0", "packages/runtime/keep": "1" })
+  const shared = fixture(t, { "experiments/node_modules/effect": "4.1.1", "store/node_modules/effect": "4.1.1", "packages/runtime/keep": "1" })
   symlinkSync(path.join(shared, "store/node_modules"), path.join(shared, "packages/runtime/node_modules"))
   assert.deepEqual(share(shared), [])
   assert.ok(lstatSync(path.join(shared, "store/node_modules/effect")).isDirectory())
-  assert.deepEqual(share(fixture(t, { "packages/runtime/node_modules/effect": "4.1.0" })), [])
+  assert.deepEqual(share(fixture(t, { "packages/runtime/node_modules/effect": "4.1.1" })), [])
 })

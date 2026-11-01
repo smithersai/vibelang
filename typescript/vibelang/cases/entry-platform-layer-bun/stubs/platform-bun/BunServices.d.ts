@@ -1,4 +1,4 @@
-// @effect/platform-bun 4.1.0's BunServices.d.ts.
+// @effect/platform-bun 4.1.1's BunServices.d.ts.
 import type { FileSystem } from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import type { Path } from "effect/Path"

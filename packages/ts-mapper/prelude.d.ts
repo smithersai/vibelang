@@ -1,5 +1,5 @@
 /// <reference lib="esnext.disposable" />
-// Effect 4.1.0 exposes disposal protocols even when the source uses no using.
+// Effect 4.1.1 exposes disposal protocols even when the source uses no using.
 // The prelude of VibeLang's TypeScript 7 content mapper. Every file the mapper
 // projects starts with one import from this module:
 //
@@ -376,7 +376,7 @@ type Unresolved<T> = [T] extends [{ readonly "~vibelang-ts-mapper/unresolved": t
  */
 export type $PreludeLoaded =
   Unresolved<typeof EffectModule.gen> extends true
-    ? "vibelang-ts-mapper: the prelude cannot resolve effect from its own location; install effect 4.1.0 beside vibelang-ts-mapper"
+    ? "vibelang-ts-mapper: the prelude cannot resolve effect from its own location; install effect 4.1.1 beside vibelang-ts-mapper"
     : Unresolved<typeof Runtime.$service> extends true
       ? "vibelang-ts-mapper: the prelude cannot resolve vibelang-runtime from its own location; install vibelang-runtime beside vibelang-ts-mapper"
       : true

@@ -1,4 +1,4 @@
-// Nanoseconds per pass through provider helpers and their Effect 4.1.0
+// Nanoseconds per pass through provider helpers and their Effect 4.1.1
 // counterparts, best of 15 rounds of 20,000 passes. VIP-12 service entries
 // use ordinary Layer.succeed providers, including native Scope and MemoMap.
 // Run from packages/runtime: bun run build && node tests/provide-bench.mjs

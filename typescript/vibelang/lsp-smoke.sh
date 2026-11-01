@@ -6,7 +6,7 @@
 #   --no-build uses the build graph's built/local/tsc and runtime dist/.
 #
 # Environment:
-#   EFFECT_NODE_MODULES    a node_modules directory that holds effect 4.1.0
+#   EFFECT_NODE_MODULES    a node_modules directory that holds effect 4.1.1
 #                          (default: ../experiments/node_modules)
 #   VIBELANG_RUNTIME   the vibelang-runtime package directory
 #                          (default: ../packages/runtime, built here with vibelang)

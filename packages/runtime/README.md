@@ -9,12 +9,12 @@ Effect 4's fibers, scopes, and services.
 ## Install
 
 ```sh
-npm install vibelang-runtime effect@4.1.0
+npm install vibelang-runtime effect@4.1.1
 ```
 
 JavaScript compiled by `vibelang` imports `effect` and `vibelang-runtime`, so an
 application lists both as dependencies; `create-vibelang` apps already do. The
-runtime requires **effect@4.1.0 exactly**: the kernel accesses that version's
+runtime requires **effect@4.1.1 exactly**: the kernel accesses that version's
 fiber continuation stack. Install one copy of `effect`; with two, a Scope can
 miss fibers it must stop.
 
@@ -83,7 +83,7 @@ At module load, `version.js` statically imports the public `effect/package.json`
 export with the JSON import attribute and checks its version. This works in Node
 and Bun, and bundlers inline the same metadata without a Node module loader or
 file-system access. A mismatch throws an error naming the runtime version, the
-installed and required Effect versions, and the command `npm install effect@4.1.0`.
+installed and required Effect versions, and the command `npm install effect@4.1.1`.
 Package metadata keeps module side effects, so browser tree shaking can't drop
 the guard when a caller imports only a helper. The mismatch tests cover a
 different patch version and Effect 3.
@@ -301,7 +301,7 @@ would be unsound because its side effects may already have run. The tests run
 100,000-deep recursion on Bun and Node, including Node bodies with 0, 80, and
 200 live locals.
 
-The run check also recognizes cross-realm YieldableErrors, whose Effect 4.1.0
+The run check also recognizes cross-realm YieldableErrors, whose Effect 4.1.1
 string key `"~effect/Effect/identifier"` is `"YieldableError"`, so they stay
 data even when `instanceof Error` is false.
 

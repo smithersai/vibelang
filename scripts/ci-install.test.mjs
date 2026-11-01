@@ -18,11 +18,11 @@ function fixture(t) {
     write(path.join(root, "scripts", file), fs.readFileSync(new URL("./" + file, import.meta.url)))
   }
   for (const dir of directories) {
-    write(path.join(root, dir, "package.json"), JSON.stringify({ devDependencies: { effect: "4.1.0" } }))
-    installed(path.join(root, dir, "node_modules"), "4.1.0")
+    write(path.join(root, dir, "package.json"), JSON.stringify({ devDependencies: { effect: "4.1.1" } }))
+    installed(path.join(root, dir, "node_modules"), "4.1.1")
   }
   write(path.join(root, ".smithers/package.json"), "{}")
-  write(path.join(root, "packages/runtime/package.json"), JSON.stringify({ peerDependencies: { effect: "4.1.0" } }))
+  write(path.join(root, "packages/runtime/package.json"), JSON.stringify({ peerDependencies: { effect: "4.1.1" } }))
   write(path.join(root, "packages/ts-mapper/package.json"), JSON.stringify({ devDependencies: { typescript: "7.1.0-beta" } }))
   executable(path.join(root, "packages/ts-mapper/test/.cache/typescript-7.1.0-beta/node_modules/.bin/tsc"), "#!/bin/sh\nexit 0\n")
   const smthrs = "#!/usr/bin/env node\nrequire(\"node:fs\").writeFileSync(process.env.CI_LOG, JSON.stringify(process.argv.slice(2)))\n"
@@ -41,7 +41,7 @@ if (dir.endsWith("/.smithers")) {
   fs.writeFileSync("node_modules/.bin/smthrs", ${JSON.stringify(smthrs)}, { mode: 0o755 })
 } else {
   fs.mkdirSync("node_modules/effect", { recursive: true })
-  fs.writeFileSync("node_modules/effect/package.json", JSON.stringify({ version: "4.1.0" }))
+  fs.writeFileSync("node_modules/effect/package.json", JSON.stringify({ version: "4.1.1" }))
 }
 `)
   return {
@@ -95,10 +95,10 @@ for (const kind of ["stale", "matching", "missing"]) {
     const f = fixture(t)
     const modules = path.join(f.root, "packages/runtime/node_modules")
     if (kind === "missing") fs.rmSync(modules, { recursive: true })
-    else f.installed(modules, kind === "stale" ? "4.0.6" : "4.1.0")
+    else f.installed(modules, kind === "stale" ? "4.0.6" : "4.1.1")
     const expected = [path.join(f.root, ".smithers")]
     if (kind !== "matching") expected.push(path.join(f.root, "packages/runtime"))
     assert.deepEqual(f.run().map(call => call.dir), expected)
-    assert.equal(JSON.parse(fs.readFileSync(path.join(modules, "effect/package.json"))).version, "4.1.0")
+    assert.equal(JSON.parse(fs.readFileSync(path.join(modules, "effect/package.json"))).version, "4.1.1")
   })
 }

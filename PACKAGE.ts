@@ -299,6 +299,7 @@ const specTests = [
   "TestPlatformGlobalAugmentationQuoted",
   "TestEffectCollisionTypeofQuoted",
   "TestEffectPinQuoted",
+  "TestEffectJoseQuoted",
   "TestCLISpecCommandFlags",
   "TestVIPFiberIDNumberEquality",
   "TestErrorDeclarationTwinQuoted",

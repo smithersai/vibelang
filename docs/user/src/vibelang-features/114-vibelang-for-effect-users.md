@@ -280,7 +280,7 @@ Use `try withSpan(effect { ... }, "checkout")` for a named operation, as you wou
 
 VibeLang forms compile to their Effect equivalents. They preserve the same `Exit` and finalizer order.
 
-These are single-machine observations from the 0.0.9 alpha review on Linux x64, Node 26 and Effect 4.1.0. They are not a performance guarantee. The benchmark timed sequential loops with `Clock.currentTimeMillis`, with 200,000 calls for the success-only comparison and 1,000,000 for recovery and plain functions. The step increments a number and fails every 250,000th value; recovery resets it to zero. The success-only loop ends before that failure.
+These are single-machine observations from the 0.0.9 alpha review on Linux x64, Node 26 and Effect 4.1.1. They are not a performance guarantee. The benchmark timed sequential loops with `Clock.currentTimeMillis`, with 200,000 calls for the success-only comparison and 1,000,000 for recovery and plain functions. The step increments a number and fails every 250,000th value; recovery resets it to zero. The success-only loop ends before that failure.
 
 | Loop | Observed time |
 | --- | ---: |

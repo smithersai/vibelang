@@ -20,7 +20,7 @@ test("the normative throws inventory is current for the exact pinned inputs", { 
 
 test("direct calls, callbacks, validation and returned decoders have separate contracts", () => {
   const { entries, inputs } = JSON.parse(readFileSync(resolve(root, artifactPath), "utf8"))
-  assert.equal(inputs.effect.version, "4.1.0")
+  assert.equal(inputs.effect.version, "4.1.1")
   assert.ok(inputs.typescript.files.length > 100)
   assert.ok(inputs.effect.sources.some(f => f.file === "effect/dist/internal/option.js"))
   const find = (module, declaration) => {

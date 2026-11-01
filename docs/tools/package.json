@@ -16,12 +16,12 @@
   },
   "devDependencies": {
     "marked": "18.0.12",
-    "@effect/platform-node": "4.1.0",
-    "@effect/vitest": "4.1.0",
+    "@effect/platform-node": "4.1.1",
+    "@effect/vitest": "4.1.1",
     "vitest": "5.0.5",
-    "effect": "4.1.0",
-    "@effect/platform-bun": "4.1.0",
-    "@effect/platform-browser": "4.1.0",
+    "effect": "4.1.1",
+    "@effect/platform-bun": "4.1.1",
+    "@effect/platform-browser": "4.1.1",
     "js-tiktoken": "1.0.21",
     "typescript": "5.9.3"
   }

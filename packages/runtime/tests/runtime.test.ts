@@ -73,7 +73,7 @@ test("$spreadItems spreads its items without the array iterator", () => {
   }
 })
 
-// A failure beside a defect passes as a defect, as Effect 4.1.0's typed
+// A failure beside a defect passes as a defect, as Effect 4.1.1's typed
 // recovery passes it (Effect-TS/effect#9516, D305).
 test("regions: catch handles expected failures and leaves defects alone, with a failure beside one as a defect", async () => {
   let caught = 0
