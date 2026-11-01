@@ -1,0 +1,3 @@
+go test fuzz v1
+string("import:Resource:arrow:member")
+string("import { Resource } from \"./dep.js\"\nexport const read = () => Resource.App.stage\n")

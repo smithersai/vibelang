@@ -116,6 +116,7 @@ const specTests = [
   "TestMigrationDeclarationCanonicalizationQuoted",
   "TestReviewDiagnosticTablesQuoted",
   "TestMigrationJSDocImportsQuoted",
+  "TestPreludeShadowedQuoted",
   "TestDataChapterWitnessesQuoted",
   "TestFailuresSpecQuotes",
   "TestFailuresSpecCoverage",

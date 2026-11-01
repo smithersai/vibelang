@@ -435,6 +435,23 @@ func resolvePreludeName(c *checker.Checker, location *ast.Node, name string, mea
 	if !isPreludeName(name) {
 		return nil
 	}
+	// A namespace lookup of a name written in an expression, such as the
+	// Resource of `Resource.App.stage` in an Effect body, which VibeLang asks
+	// for and TypeScript never does, reaches here when a scope declares the
+	// name only as a value or a type: `import { Resource } from
+	// "sst/resource"`, `const Option = { … }`. That binding is the name's
+	// meaning (Chapter 5: a local declaration or import shadows one), so the
+	// prelude's module does not stand in for it; otherwise the emit imports
+	// effect/Resource as Resource beside the source's import, which fails at
+	// load (opencode-43). In a type, a namespace lookup passes a value as
+	// TypeScript's does (`maybe: Option.Option<number>` beside `const Option`),
+	// and the compiler's own references, which the lowering writes and flags,
+	// still reach the prelude: data's Data.TaggedEnum beside a const Data.
+	if meaning&ast.SymbolFlagsNamespaceModule != 0 && meaning&ast.SymbolFlagsVariable == 0 &&
+		ast.IsIdentifier(location) && location.Text() == name && !inTypeNode(location) &&
+		location.Flags&(ast.NodeFlagsVibeLangIntrinsic|ast.NodeFlagsReparsed) == 0 && shadowed(location, name) {
+		return nil
+	}
 	// VIP-14 resolves each meaning independently: ambient types survive
 	// even when an Effect namespace takes the same spelling as a value.
 	if meaning&ast.SymbolFlagsType == ast.SymbolFlagsType && meaning&ast.SymbolFlagsVariable == 0 && c.GlobalSymbol(name, ast.SymbolFlagsType) != nil {

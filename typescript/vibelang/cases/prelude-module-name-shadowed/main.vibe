@@ -1,0 +1,17 @@
+// opencode-43: packages/stats/core imports `Resource` from sst/resource, a
+// name the prelude also gives effect's Resource module. A value lookup finds
+// the import, but a namespace lookup in an Effect body fell through to the
+// prelude, so the emit imported effect/Resource as Resource too, and the
+// module failed at load ("Resource" has already been declared). The import,
+// or a const of the name, is the only binding.
+import { Resource } from "./res.js"
+
+// expect-result: ["dev","dev","prod"]
+const Option = { stage: "prod" }
+
+effect function stage() { return Resource.App.stage }
+const later = () => Resource.App.stage
+
+export effect function main() {
+  return [try stage(), try later(), Option.stage]
+}
