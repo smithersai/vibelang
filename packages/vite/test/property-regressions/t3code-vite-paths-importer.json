@@ -1,0 +1,19 @@
+{
+  "finding": "inbox/migrate-t3code.md#vite:tsconfig-paths-ignores-vibe-importer",
+  "input": {
+    "prefix": "~",
+    "depth": 0,
+    "query": ""
+  },
+  "files": {
+    "src/main.vibe": "import { value } from \"~/value\";\nexport const result = value;\n",
+    "src/value.ts": "export const value = 1;\n"
+  },
+  "pending": {
+    "owner": "migfix-t3code",
+    "commit": "8308dc5b",
+    "reason": "Native Vite resolves the same alias from a .ts importer while the .vibe importer returns null. Only CLI-proven keys belong here; raw mode enforces the contract and XPASS fails.",
+    "keys": [],
+    "observedResolvedOn": "4dfd9a19cad2"
+  }
+}
