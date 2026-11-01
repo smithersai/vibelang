@@ -3,9 +3,11 @@ package vibelang
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
+	"sync"
 
 	"github.com/microsoft/TypeScript/tsc/internal/execute/tsc"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
@@ -20,6 +22,10 @@ import (
 // when its text changed: a stopped run's files hold the last set verified,
 // and a run that finishes writes each changed file a few times at most.
 type fixKeeper struct {
+	// mu holds the fields below while a set is written; closed ends the
+	// writes and the progress lines of a run that stopped (keeperWriter).
+	mu       sync.Mutex
+	closed   bool
 	sys      tsc.System
 	config   map[tspath.RootedFilePath]string // sidecar config fixes the fixes were checked under
 	stop     context.CancelFunc               // stops the run when a write fails
@@ -31,7 +37,9 @@ type fixKeeper struct {
 
 // keep writes the files of texts whose text is not on disk.
 func (k *fixKeeper) keep(texts map[tspath.RootedFilePath]string) {
-	if k.err != nil {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	if k.err != nil || k.closed {
 		return
 	}
 	names := make([]tspath.RootedFilePath, 0, len(texts))
@@ -66,6 +74,35 @@ func (k *fixKeeper) keep(texts map[tspath.RootedFilePath]string) {
 		k.last[name] = texts[name]
 	}
 }
+
+// close waits for a write under way, ends the keeper's writes and says
+// what the run kept.
+func (k *fixKeeper) close() string {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	k.closed = true
+	return k.kept()
+}
+
+// A keeperWriter writes to w until its keeper closes, so a stopped run's
+// gate prints no progress after the run's last line.
+type keeperWriter struct {
+	k *fixKeeper
+	w io.Writer
+}
+
+func (w keeperWriter) Write(p []byte) (int, error) {
+	w.k.mu.Lock()
+	defer w.k.mu.Unlock()
+	if w.k.closed {
+		return len(p), nil
+	}
+	return w.w.Write(p)
+}
+
+// fixRuns counts the gates FixWithOptions started that are still running,
+// with those a stopped run left, so a test can wait for them.
+var fixRuns sync.WaitGroup
 
 // writeConfig writes the sidecar config fixes once.
 func (k *fixKeeper) writeConfig() {

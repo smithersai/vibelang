@@ -61,7 +61,8 @@ import (
 // the fixes left unused is removed. Each time the gate verifies a set of
 // fixes, the command writes the files they change (fix_keep.go), so a run
 // stopped by SIGINT or SIGTERM keeps every fix it verified and none it did
-// not, and a second run finishes the work; after a run that finishes, a
+// not, stopping at once rather than after the check under way, and a second
+// run finishes the work; after a run that finishes, a
 // second run finds nothing to fix. The fix of the retired try(…) hatch
 // (EK4616, VIP-5) runs under --fix-migration-only too. --fix-vip-only applies only the VIP
 // migrations: that fix, then try before each call that runs where it stands
@@ -168,7 +169,26 @@ func FixWithOptions(ctx context.Context, sys tsc.System, args []string, options 
 	if options.Progress == nil {
 		options.Progress = sys.ErrorWriter()
 	}
-	result := FixProjectWithOptions(run, configFS, sys.DefaultLibraryPath(), config, options)
+	options.Progress = keeperWriter{keeper, options.Progress}
+	// A check runs to its end once it starts (FixProjectWithOptions), and
+	// on a large package one takes an hour: t3code's server ignored SIGTERM
+	// that long, and its driver killed it. The fixes it verified are on
+	// disk, so a stopped run returns at once, after a write under way; the
+	// gate it leaves writes nothing more and ends with the process.
+	finished := make(chan *FixResult, 1)
+	fixRuns.Add(1)
+	go func() {
+		defer fixRuns.Done()
+		finished <- FixProjectWithOptions(run, configFS, sys.DefaultLibraryPath(), config, options)
+	}()
+	var result *FixResult
+	select {
+	case result = <-finished:
+	case <-ctx.Done():
+		kept := keeper.close()
+		fmt.Fprintf(sys.ErrorWriter(), "vibelang --fix: interrupted; %s.\n", kept)
+		return int(tsc.ExitStatusInvalidProject_OutputsSkipped)
+	}
 	if keeper.err != nil {
 		fmt.Fprintf(sys.ErrorWriter(), "vibelang --fix: %v\n", keeper.err)
 		return int(tsc.ExitStatusInvalidProject_OutputsSkipped)

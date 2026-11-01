@@ -148,6 +148,7 @@ func TestFixKeepsVerifiedFixesWhenSignaled(t *testing.T) {
 			sys := &fixSys{fs: fs, cwd: dir}
 			status := FixWithOptions(ctx, sys, []string{"-p", dir}, FixOptions{})
 			stop()
+			fixRuns.Wait()
 			if status == 0 || !strings.Contains(sys.stderr.String(), "interrupted; kept the fixes it verified") || sys.stdout.Len() != 0 {
 				t.Fatalf("status %d, stdout %q, stderr %q; want the run stopped, keeping its fixes", status, sys.stdout.String(), sys.stderr.String())
 			}
@@ -177,6 +178,64 @@ func TestFixKeepsVerifiedFixesWhenSignaled(t *testing.T) {
 				t.Fatalf("the second run wrote %v; a run never stopped writes %v", again, final)
 			}
 		})
+	}
+}
+
+// A run signaled during a check returns at once, not when the check
+// ends: a check of t3code's server took an hour, so SIGTERM looked like a
+// hang and its driver killed the run (2026-11-01). It keeps the fixes it
+// verified, and the gate it leaves writes no file and no progress after.
+func TestFixStopsDuringACheck(t *testing.T) {
+	dir := keepProject(t)
+	original := vibeFiles(t, dir)
+	ctx, stop := signal.NotifyContext(t.Context(), syscall.SIGTERM)
+	defer stop()
+	// The first program built after a set was written signals the process,
+	// then blocks until released: a check that outlasts any grace period.
+	release := make(chan struct{})
+	signaled := false
+	_, fs := countingFS(dir, func(int) {
+		if signaled || stdmaps.Equal(vibeFiles(t, dir), original) {
+			return
+		}
+		signaled = true
+		if err := syscall.Kill(os.Getpid(), syscall.SIGTERM); err != nil {
+			t.Error(err)
+		}
+		<-release
+	})
+	sys := &fixSys{fs: fs, cwd: dir}
+	returned := make(chan int, 1)
+	go func() {
+		returned <- FixWithOptions(ctx, sys, []string{"-p", dir}, FixOptions{ProgressEvery: time.Millisecond})
+	}()
+	var status int
+	select {
+	case status = <-returned:
+	case <-time.After(30 * time.Second):
+		close(release)
+		fixRuns.Wait()
+		t.Fatalf("the run waited for its check after SIGTERM; stderr %q", sys.stderr.String())
+	}
+	stderr := sys.stderr.String()
+	kept := vibeFiles(t, dir)
+	close(release)
+	fixRuns.Wait()
+	stop()
+	if status == 0 || !strings.Contains(stderr, "interrupted; kept the fixes it verified, in ") || sys.stdout.Len() != 0 {
+		t.Fatalf("status %d, stdout %q, stderr %q; want the run stopped, keeping its fixes", status, sys.stdout.String(), stderr)
+	}
+	if stdmaps.Equal(kept, original) {
+		t.Fatal("the run kept no fix")
+	}
+	if after := vibeFiles(t, dir); !stdmaps.Equal(after, kept) {
+		t.Fatalf("the files changed after the run stopped: %v, then %v", kept, after)
+	}
+	if sys.stderr.String() != stderr {
+		t.Fatalf("the gate printed after the run stopped: %q", strings.TrimPrefix(sys.stderr.String(), stderr))
+	}
+	if matches, _ := filepath.Glob(filepath.Join(dir, ".*.fix-*")); len(matches) > 0 {
+		t.Fatalf("left %v", matches)
 	}
 }
 
