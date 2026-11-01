@@ -236,6 +236,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A `.vibe` module that imported a native `.tsx` sibling under `jsx: preserve` named a missing `.js` file in its emitted JavaScript; imports and re-exports now name the sibling’s actual `.jsx` output.
 
+- Interrupted migration fix passes could leave changes in earlier modules. They now restore sources outside the selected batch before reporting failure.
+
 - Migration test measurements now rebuild package outputs for all three sides, so missing or stale distributions cannot become accepted test controls.
 
 - Directory-import validation quoted a stale `.vibe` extension sentence; its oracle now follows the published `.vibe` and `.vibex` rule.

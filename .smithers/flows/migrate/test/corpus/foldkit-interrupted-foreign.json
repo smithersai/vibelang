@@ -1,0 +1,10 @@
+{
+  "key": "fixToFixedPoint:interrupted-foreign-restore",
+  "selected": "src/selected.vibe",
+  "foreign": "src/earlier.vibe",
+  "selectedBefore": "export const selected: number = 1\n",
+  "selectedAfter": "export const selected: number = 2\n",
+  "foreignBefore": "export const earlier: number = 2\n",
+  "foreignAfter": "export const earlier: number = 999\n",
+  "exit": 3
+}

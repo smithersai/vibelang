@@ -431,18 +431,27 @@ export async function fixToFixedPoint({ compiler, tsconfig, cwd, root, maxRounds
     // batch's .vibe module in another package, which --fix rewrites too.
     for (const path of vibeFilesUnder(root)) {
       const file = posix.relative(root, path)
-      if (!kept.has(file)) others.set(file, readFileSync(path, "utf8"))
+      if (!kept.has(file)) others.set(file, readFileSync(path))
     }
   }
   let last
   for (let round = 1; round <= maxRounds; round++) {
     // --declaration: what --fix keeps for a declaration file it keeps under a tsconfig that says noEmit too.
-    const result = await run(`${quote(compiler)} -p ${quote(tsconfig)} --fix --noEmit --declaration --pretty false --singleThreaded`, { cwd, log: log && `${log}.${round}.log`, timeoutMs })
+    let result
+    try {
+      result = await run(`${quote(compiler)} -p ${quote(tsconfig)} --fix --noEmit --declaration --pretty false --singleThreaded`, { cwd, log: log && `${log}.${round}.log`, timeoutMs })
+    } finally {
+      // An interrupted compiler may keep verified writes without printing
+      // per-file statistics. Restore the whole nonselected byte snapshot.
+      for (const [file, original] of others) {
+        const path = join(root, file)
+        if (!existsSync(path) || !readFileSync(path).equals(original)) writeFileSync(path, original)
+      }
+    }
     const parsed = parseFixOutput(result.stdout, { cwd, root })
     if (kept) {
       for (const file of Object.keys(parsed.files)) {
         if (kept.has(file)) continue
-        if (others.has(file)) writeFileSync(join(root, file), others.get(file))
         delete parsed.files[file]
       }
       parsed.total = Object.values(parsed.files).reduce((n, kinds) => n + Object.values(kinds).reduce((a, b) => a + b, 0), 0)
