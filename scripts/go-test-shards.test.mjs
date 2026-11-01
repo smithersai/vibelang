@@ -2,7 +2,9 @@ import assert from "node:assert/strict"
 import { mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { spawnSync } from "node:child_process"
+import { spawn, spawnSync } from "node:child_process"
+import { once } from "node:events"
+import { setTimeout } from "node:timers/promises"
 import test from "node:test"
 
 const script = new URL("./go-test-shards.sh", import.meta.url).pathname
@@ -249,6 +251,62 @@ for (const args of [
       for (const argv of r.runs) assert.deepEqual(argv.slice(0, 2 + args.length), ["-test.timeout=40m0s", "-test.short=true", ...args])
     } finally {
       t.done()
+    }
+  })
+}
+
+for (const phase of ["listing", "running"]) for (const signal of ["SIGTERM", "SIGINT", "SIGHUP"]) {
+  test(signal + " while " + phase + " reaps every active test binary before returning", { timeout: 20_000 }, async t => {
+    const dir = mkdtempSync(join(tmpdir(), "go-test-shards-cancel-"))
+    const fixture = join(dir, "worker.mjs")
+    const runs = join(dir, "runs")
+    mkdirSync(runs)
+    writeFileSync(fixture, `#!/usr/bin/env node
+import { writeFileSync } from "node:fs"
+if (process.argv.includes("-test.list") && !process.env.BLOCK_LIST) {
+  console.log("TestA\\nTestB")
+  process.exit(0)
+}
+const path = process.env.RUNS + "/" + process.pid
+process.on("SIGTERM", () => {
+  writeFileSync(path + ".stopped", "")
+  process.exit(0)
+})
+writeFileSync(path, "")
+setInterval(() => {}, 1000)
+`, { mode: 0o700 })
+    const child = spawn("/bin/sh", [script, fixture], {
+      cwd: dir, detached: true, stdio: ["ignore", "pipe", "pipe"],
+      env: { ...process.env, GO_TEST_SHARDS: "2", RUNS: runs, TMPDIR: dir, BLOCK_LIST: phase === "listing" ? "1" : "" },
+      timeout: 15_000, killSignal: "SIGKILL",
+    })
+    let output = ""
+    child.stdout.on("data", chunk => { output += chunk })
+    child.stderr.on("data", chunk => { output += chunk })
+    const exited = once(child, "exit")
+    t.after(() => {
+      // On the unfixed script the workers survive their launcher. Always clean
+      // this fixture's entire process group, including when an assertion fails.
+      try { process.kill(-child.pid, "SIGKILL") } catch (error) {
+        if (error.code !== "ESRCH") throw error
+      }
+      rmSync(dir, { recursive: true, force: true })
+    })
+    const count = phase === "listing" ? 1 : 2
+    const deadline = Date.now() + 10_000
+    while (readdirSync(runs).length < count && Date.now() < deadline && child.exitCode === null) {
+      await setTimeout(10)
+    }
+    const pids = readdirSync(runs).filter(name => /^\d+$/.test(name))
+    assert.equal(pids.length, count, "test binaries must start: " + output)
+    child.kill(signal)
+    const [code, killedBy] = await exited
+    assert.equal(killedBy, null, output)
+    assert.equal(code, 143, output)
+    assert.deepEqual(readdirSync(dir).filter(name => name.startsWith("go-test-shards.")), [], "cancellation must remove temporary shard output")
+    for (const pid of pids) {
+      assert.ok(readdirSync(runs).includes(pid + ".stopped"), "test binary " + pid + " did not receive cancellation")
+      assert.throws(() => process.kill(Number(pid), 0), { code: "ESRCH" }, "test binary " + pid + " was not reaped")
     }
   })
 }

@@ -56,11 +56,25 @@ done
 
 dir=$(mktemp -d "${TMPDIR:-/tmp}/go-test-shards.XXXXXX") || exit 1
 pids=
-trap 'kill $pids 2>/dev/null; rm -rf "$dir"' EXIT
+cleanup() {
+  trap '' HUP INT TERM
+  if [ -n "$pids" ]; then
+    kill $pids 2>/dev/null || true
+    for pid in $pids; do wait "$pid" 2>/dev/null || true; done
+  fi
+  rm -rf "$dir"
+}
+trap cleanup EXIT
 trap 'exit 143' HUP INT TERM
 
-# TestMain and custom test flags apply during listing as well as execution.
-if ! "$bin" "$@" -test.list '.*' > "$dir/listed" 2>&1; then
+# Listing can run TestMain too. Keep its PID so cancellation reaps it just
+# like the shard processes below.
+"$bin" "$@" -test.list '.*' > "$dir/listed" 2>&1 &
+pids=$!
+wait "$pids"
+listed_status=$?
+pids=
+if [ "$listed_status" -ne 0 ]; then
   cat "$dir/listed"
   exit 1
 fi
@@ -80,8 +94,22 @@ for list in "$dir"/names*; do
   [ -f "$list" ] || continue
   i=${list##*/names}
   run="^($(paste -sd '|' "$list"))\$"
-  ( start=$(date +%s)
-    "$bin" "$@" "-test.run=$run" > "$dir/out$i" 2>&1
+  ( child=
+    cancel() {
+      trap '' HUP INT TERM
+      if [ -n "$child" ]; then
+        kill "$child" 2>/dev/null || true
+        wait "$child" 2>/dev/null || true
+      fi
+      exit 143
+    }
+    # The launcher owns this shell, and this shell owns the test binary.
+    # Killing only the shell leaves the binary running after cancellation.
+    trap cancel HUP INT TERM
+    start=$(date +%s)
+    "$bin" "$@" "-test.run=$run" > "$dir/out$i" 2>&1 &
+    child=$!
+    wait "$child"
     status=$?
     echo "go-test-shards: process $i: $(wc -l < "$list") tests, exit $status, $(( $(date +%s) - start ))s" >> "$dir/out$i"
     echo $status > "$dir/status$i" ) &

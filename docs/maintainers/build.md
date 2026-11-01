@@ -406,6 +406,12 @@ Discovery and execution both receive the original test arguments, including
 `-short`, `-timeout` and custom test flags. A `TestMain` that reads them sees
 the same configuration before the script assigns tests to shards.
 
+Cancelling the shard launcher with `SIGTERM`, `SIGINT` or `SIGHUP` stops and
+reaps its active test binaries before removing temporary shard output and
+returning `143`. This also covers cancellation while listing test names, when
+the package's `TestMain` can already be running. Discovery keeps the original
+test flags.
+
 The fuzz shell caps `GOMAXPROCS` at the smaller of `24` and the machine CPU count and declares `GOFLAGS=-p=6`, matching the
 post-merge shard allocation. Smithers withholds ambient Go variables, so
 setting them only on the outer CI process does not constrain the test.
