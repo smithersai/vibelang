@@ -146,6 +146,7 @@ const specTests = [
   "TestTrailingBlockBoundariesQuoted",
   "TestReviewBindingContractsQuoted",
   "TestSidecarResolvedPathViewQuoted",
+  "TestAlchemyUnionPipeRequirementsQuoted",
   "TestSpecifierWrittenJSX",
 
   "TestStockConsumerResolutionQuoted",
