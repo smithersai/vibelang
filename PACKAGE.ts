@@ -223,9 +223,9 @@ const targets = {
   "go-vibelangfuzz-hangs": pendingHangs,
   "site-spec-links": siteSpecLinks,
   release: check(
-    "The release and contributor scripts' node tests, and the effect-bump, ts-bump and ci-health flows' steps.",
+    "The release and contributor scripts' node tests, and the effect-bump, ts-bump, ci-health and first-bad flows' steps.",
     "node --test scripts/release/*.test.mjs scripts/*.test.mjs typescript/vibelang/harness.test.mjs docs/redirect/*.test.mjs " +
-      ".smithers/flows/effect-bump/test/*.test.mjs .smithers/flows/ts-bump/test/*.test.mjs .smithers/flows/ci-health/test/*.test.mjs",
+      ".smithers/flows/effect-bump/test/*.test.mjs .smithers/flows/ts-bump/test/*.test.mjs .smithers/flows/ci-health/test/*.test.mjs .smithers/flows/first-bad/test/*.test.mjs",
     [Packages["compiler-native"], Packages["runtime-dist"]],
     [node, gofmt, S.Host.bin("diff3")]
   ),

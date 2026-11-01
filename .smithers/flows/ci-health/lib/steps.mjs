@@ -99,13 +99,15 @@ export function flakes(runs) {
 }
 
 // failedTests names what failed in one target's output lines, across the
-// runners the graph uses: bun, node --test and go test.
+// runners the graph uses: bun, node --test, go test and the compiler case
+// harness (typescript/vibelang/harness.mjs).
 export function failedTests(lines) {
   const out = new Set()
   for (const line of lines) {
     const m = /^\s*\(fail\) (.+?)(?: \[[\d.]+m?s\])?$/.exec(line)
       ?? /^\s*✖ (?!failing tests)(.+?)(?: \([\d.]+m?s\))?$/.exec(line)
       ?? /^\s*--- FAIL: (\S+)/.exec(line)
+      ?? /^FAIL {4}(\S+): /.exec(line)
     if (m) out.add(m[1])
   }
   return [...out]

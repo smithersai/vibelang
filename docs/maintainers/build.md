@@ -286,6 +286,12 @@ These declared values also enter the target cache key.
 The ci-health flow ranks them from `CI_RESULTS` files and graph logs, with the
 tests and causes behind each flaky target: `.smithers/flows/ci-health/README.md`.
 
+## Finding the commit that broke a target
+
+The first-bad flow reruns targets that fail at a bad commit, to separate breaks
+from flakes, and bisects each break to the first commit after a good one that
+fails it: `.smithers/flows/first-bad/README.md`.
+
 ## What a change reruns
 
 | Change | Reruns | Replays |

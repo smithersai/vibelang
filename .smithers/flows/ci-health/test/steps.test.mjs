@@ -22,14 +22,15 @@ test("a replay proves its key passed, but its time is not a run", () => {
   assert.deepEqual(slow(runs), [{ label: "//x", runs: 1, medianS: 1, p90S: 1, totalS: 1 }])
 })
 
-test("failedTests names failures from bun, node --test and go test", () => {
+test("failedTests names failures from bun, node --test, go test and the compiler case harness", () => {
   assert.deepEqual(failedTests([
     "(pass) fine [1.00ms]",
     "(fail) package: static imports [5106.40ms]",
     "✖ a node test (20.5ms)",
     "✖ failing tests:",
-    "    --- FAIL: TestVIPConstructs/vip18 (0.01s)"
-  ]), ["package: static imports", "a node test", "TestVIPConstructs/vip18"])
+    "    --- FAIL: TestVIPConstructs/vip18 (0.01s)",
+    "FAIL    decl-error-family: out/run.mjs printed {\"tags\":[\"Timeout\"]} (1.3 s)"
+  ]), ["package: static imports", "a node test", "TestVIPConstructs/vip18", "decl-error-family"])
 })
 
 test("cause prefers what a code change cannot explain", () => {
