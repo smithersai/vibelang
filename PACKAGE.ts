@@ -123,6 +123,7 @@ const specTests = [
   "TestDataGeneratedMatchSeparators",
   "TestDataSpecRulesQuoted",
   "TestLabelChainRulesQuoted",
+  "TestBindingRenameOwnershipQuoted",
   "TestMigrationDeclarationFixQuoted",
   "TestMigrationDeclarationCanonicalizationQuoted",
   "TestReviewDiagnosticTablesQuoted",

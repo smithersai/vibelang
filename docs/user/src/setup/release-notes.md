@@ -217,6 +217,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A `continue` to an earlier label in a chained `for...of`, such as `outer: inner: for (...)`, compiled to JavaScript that Node rejected; every label now stays on the loop, so labeled `continue` and `break` keep their TypeScript behavior.
 - Migration setup could rewrite an `oxlint` package name in release dependency data. It now redirects executable lint commands while preserving package data.
 
+
+- Renaming a repeated `is` binding could also change reads of an outer parameter or local after a failed pattern; the quick fix and `vibelang --fix` now preserve those fallback reads.
 - A typed catch clause whose binding destructures, such as `catch ({ id }: NotFound)`, crashed the compiler and the editor with `Unhandled case in Node.Text`; it now reports `EK2112`, suggesting `catch (e)`, and its quick fix leaves the pattern alone.
 
 - Bundling a package that mixed `.ts` and `.vibe` modules could include two copies of a shared service or schema, so a built CLI failed at startup although its tests passed. The bundler plugins now select the package's `vibelang-source` exports and preserve the bundler's existing conditions, keeping one source graph.

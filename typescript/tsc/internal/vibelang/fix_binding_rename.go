@@ -24,10 +24,11 @@ import (
 // under the previous release each if head was its own scope, so code written
 // for it migrates mechanically (007 Codemods).
 //
-// The later binding's uses are the reads of the name after the later pattern
-// in its home: TypeScript resolves every read of the name to the first
-// declaration, so a read between the two patterns keeps the first binding and
-// the reads after the later pattern follow it. A shorthand binding, { let id },
+// A positive if head used to own a statement-local binding: its condition
+// tail and then branch read that binding, while its else branch and following
+// statements still read an outer parameter or local. Recover that ownership
+// before renaming; current symbol resolution alone sees the duplicate home
+// declarations and cannot distinguish these reads. A shorthand binding, { let id },
 // keeps its key: it becomes { id: let id2 }. The new name is the name with the
 // smallest number that no identifier of the file uses.
 
@@ -171,8 +172,9 @@ func bindingRenames(c *checker.Checker, file *ast.SourceFile) []bindingRename {
 }
 
 // bindingRenameEdits writes newName for the binding declaration declares and
-// for each read of its name after it and before limit in its home that
-// resolves to visible.
+// for each owned read after it and before limit that resolves to visible.
+// Positive if heads retain their previous statement-local ownership so a
+// migration never captures an outer fallback (VIP-7, decided detail 245).
 func bindingRenameEdits(c *checker.Checker, file *ast.SourceFile, declaration *ast.Node, visible *ast.Symbol, newName string, limit int) []sourceEdit {
 	text := file.Text()
 	name := declaration.Name()
@@ -202,7 +204,12 @@ func bindingRenameEdits(c *checker.Checker, file *ast.SourceFile, declaration *a
 		}
 		return node.ForEachChild(uses)
 	}
-	home.ForEachChild(uses)
+	if condition, then := legacyBindingRenameScope(home, name); condition != nil {
+		uses(condition)
+		uses(then)
+	} else {
+		home.ForEachChild(uses)
+	}
 	slices.SortStableFunc(edits, func(a, b sourceEdit) int { return a.start - b.start })
 	var distinct []sourceEdit
 	for _, e := range edits {
@@ -211,6 +218,50 @@ func bindingRenameEdits(c *checker.Checker, file *ast.SourceFile, declaration *a
 		}
 	}
 	return distinct
+}
+
+// legacyBindingRenameScope recognizes the old positive if/&& form. The
+// parser retains the source range of its is holder after lowering its tests.
+// A negation, disjunction or another expression wrapper is not this old form;
+// newly admitted homes continue to use their normal lexical ownership.
+func legacyBindingRenameScope(home, name *ast.Node) (condition, then *ast.Node) {
+	var positive func(*ast.Node) bool
+	positive = func(node *ast.Node) bool {
+		if node == nil {
+			return false
+		}
+		node = ast.SkipParentheses(node)
+		if !ast.IsBinaryExpression(node) {
+			return false
+		}
+		binary := node.AsBinaryExpression()
+		if binary.OperatorToken.Kind == ast.KindAmpersandAmpersandToken {
+			return positive(binary.Left) || positive(binary.Right)
+		}
+		// The holder and its structural tests use vibelangSpanning, not
+		// Reparsed, and inner ranges cover only the is token. Recognize the
+		// generated (binding = value, true) step by its synthetic target,
+		// whose range identifies this exact pattern declaration.
+		if binary.OperatorToken.Kind != ast.KindCommaToken || binary.Right.Kind != ast.KindTrueKeyword || binary.Right.Flags&ast.NodeFlagsReparsed == 0 {
+			return false
+		}
+		assignment := ast.SkipParentheses(binary.Left)
+		if !ast.IsBinaryExpression(assignment) || assignment.AsBinaryExpression().OperatorToken.Kind != ast.KindEqualsToken {
+			return false
+		}
+		target := assignment.AsBinaryExpression().Left
+		return ast.IsIdentifier(target) && target.Flags&ast.NodeFlagsReparsed != 0 && target.Text() == name.Text() && target.Loc == name.Loc
+	}
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if ast.IsIfStatement(node) && node.Flags&ast.NodeFlagsReparsed == 0 && positive(node.Expression()) {
+			condition, then = node.Expression(), node.AsIfStatement().ThenStatement
+			return true
+		}
+		return node.ForEachChild(visit)
+	}
+	home.ForEachChild(visit)
+	return condition, then
 }
 
 // shorthandBindingKeyword returns where the let or const keyword before the

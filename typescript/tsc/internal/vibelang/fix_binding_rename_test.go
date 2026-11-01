@@ -71,8 +71,26 @@ var bindingRenameTests = []struct{ name, source, want string }{
 }
 `, `export function pick(a: unknown, id: number) {
   if (a is { id: let id2 }) return id2
-  return id2
+  return id
 }
+`},
+	{"local fallback", `export function pick(a:unknown):unknown { const id=7; if (a is { id:let id }) return id; return id; }
+`, `export function pick(a:unknown):unknown { const id=7; if (a is { id:let id2 }) return id2; return id; }
+`},
+	{"closure fallback", `export function pick(a:unknown,id:number):unknown { const fallback=():number=>id; if (a is { id:let id }) return id; return fallback(); }
+`, `export function pick(a:unknown,id:number):unknown { const fallback=():number=>id; if (a is { id:let id2 }) return id2; return fallback(); }
+`},
+	{"later closure fallback", `export function pick(a:unknown,id:number):unknown { if (a is { id:let id }) return ()=>id; return ()=>id; }
+`, `export function pick(a:unknown,id:number):unknown { if (a is { id:let id2 }) return ()=>id2; return ()=>id; }
+`},
+	{"else fallback", `export function pick(a:unknown,id:number):unknown { if (a is { id:let id }) return id; else return id; }
+`, `export function pick(a:unknown,id:number):unknown { if (a is { id:let id2 }) return id2; else return id; }
+`},
+	{"conjunction and fallback", `export function pick(a:unknown,id:number):unknown { if (id===7 && a is { id:let id } && id===5) return id; return id; }
+`, `export function pick(a:unknown,id:number):unknown { if (id===7 && a is { id:let id2 } && id2===5) return id2; return id; }
+`},
+	{"then shorthand and else shorthand", `export function pick(a:unknown,id:number):unknown { if (a is { id:let id }) return {id}; else return {id}; }
+`, `export function pick(a:unknown,id:number):unknown { if (a is { id:let id2 }) return {id: id2}; else return {id}; }
 `},
 	{"the next free number", `export function pick(a: unknown, b: { id: number }) {
   const id2 = 2
@@ -209,5 +227,40 @@ func TestBindingRenameFix(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+// The parser deliberately leaves structural is holders unmarked and anchors
+// their inner tests on the is token. Keep a direct metadata regression so a
+// parser change cannot silently broaden migration ownership back to the home.
+func TestBindingRenameLegacyScopeMetadata(t *testing.T) {
+	for _, tc := range []struct {
+		name, condition string
+		positive        bool
+	}{
+		{"direct", "a is {id:let id}", true},
+		{"conjunction", "true && (a is {id:let id}) && id!==undefined", true},
+		{"negation", "!(a is {id:let id})", false},
+		{"disjunction", "false || (a is {id:let id})", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, file, _, _ := editorProgram(t, "export function f(a:unknown,id:number):unknown { if ("+tc.condition+") return id; return id; }")
+			found := false
+			var visit func(*ast.Node) bool
+			visit = func(node *ast.Node) bool {
+				if ast.IsVariableDeclaration(node) && node.Flags&ast.NodeFlagsVibeLangIsBinding != 0 {
+					found = true
+					condition, then := legacyBindingRenameScope(node.Parent.Parent.Parent, node.Name())
+					if (condition != nil) != tc.positive || (then != nil) != tc.positive {
+						t.Fatalf("legacy positive scope=%t, want%t; binding range=%v, home kind=%v", condition != nil, tc.positive, node.Name().Loc, node.Parent.Parent.Parent.Kind)
+					}
+				}
+				return node.ForEachChild(visit)
+			}
+			file.AsNode().ForEachChild(visit)
+			if !found {
+				t.Fatal("parser did not retain an is binding declaration")
+			}
+		})
 	}
 }
