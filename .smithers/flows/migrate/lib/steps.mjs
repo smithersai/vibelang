@@ -1062,7 +1062,7 @@ export async function verify(options) {
       }
     }
     declarations[pkg.dir] = compareDeclarations(ts, baselineDir, outDir)
-    emitErrors.push(...emitErrorsIn(emitted.diagnostics, migrated))
+    emitErrors.push(...emitErrorsIn(emitted.diagnostics, migrated, { code: emitted.code, log: join(logs, "dts-" + slug(pkg.dir) + ".log") }))
   }
   const batchErrors = checked.diagnostics.filter((d) => migrated.includes(d.file) && d.category === "error")
   const style = checked.style.filter((d) => migrated.includes(d.file))
@@ -1183,7 +1183,7 @@ export async function report(options) {
     "| --- | ---: | ---: | --- | --- | --- | --- | --- |",
     ...batches.map((b) => {
       const v = b.verify
-      return `| ${b.batch} | ${b.files.length} | ${v ? v.files.filter((f) => f.migrated).length : "-"} | ${v ? (v.checks.tests ? `pass (${v.tests.passed}/${v.tests.total})` : `FAIL: ${v.tests.newFailures.length} new, ${v.tests.missing.length} missing`) : "-"} | ${v ? (v.checks.declarations ? (Object.values(v.declarations ?? {}).every(d => d === "not published") ? "not published" : "identical") : "CHANGED") : "-"} | ${v ? (v.checks.style ? "clean" : `${v.compile.style.length} EK48xx/EK4402`) : "-"} | ${b.record ? `${b.record.tokens.before} -> ${b.record.tokens.after}` : "-"} | ${b.record?.commit?.slice(0, 12) ?? "-"} |`
+      return `| ${b.batch} | ${b.files.length} | ${v ? v.files.filter((f) => f.migrated).length : "-"} | ${v ? (v.checks.tests ? `pass (${v.tests.passed}/${v.tests.total})` : `FAIL: ${v.tests.newFailures.length} new, ${v.tests.missing.length} missing`) : "-"} | ${v ? (v.checks.declarationEmit === false ? "EMIT FAILED" : v.checks.declarations ? (Object.values(v.declarations ?? {}).every(d => d === "not published") ? "not published" : "identical") : "CHANGED") : "-"} | ${v ? (v.checks.style ? "clean" : `${v.compile.style.length} EK48xx/EK4402`) : "-"} | ${b.record ? `${b.record.tokens.before} -> ${b.record.tokens.after}` : "-"} | ${b.record?.commit?.slice(0, 12) ?? "-"} |`
     }),
     "",
     "## Test and fixture edits",

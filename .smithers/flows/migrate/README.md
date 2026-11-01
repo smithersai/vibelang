@@ -219,3 +219,7 @@ Oxlint disable and enable comments keep their original scope and source location
 A toolchain switch must not turn new test failures or compiler errors into the next baseline. The flow compares the unchanged native sources with the installed predecessor and candidate compilers, saves raw test reports and compiler identities in `baseline/`, and rejects new failures, missing passing tests or a newly failing command. Setup repeats the test comparison after wiring. A rejected `baseline/admission.json` also blocks replay, planning, codemod, verification and recording; repair the toolchain and start a fresh run from the original source. Existing upstream failures remain visible.
 
 Detail 279 keeps modules whose Effect imports are only types in TypeScript by default. The inventory and `report.json` keep every owned source and test, count automatic candidates separately, and name each retained type-only file and reason. Explicit selection still warns and must pass every original compile, declaration, runtime, tool and protected-test check; import spelling does not establish the validity of a source program. Existing plain `.vibe` modules remain legal.
+
+Declaration verification requires a zero compiler exit as well as identical public bytes. Global option diagnostics and nonzero exits remain in the verification receipt even when files were emitted or the diagnostic names an unmigrated source.
+
+A failed declaration command is labelled `EMIT FAILED` in the report even if its raw files compare equal.

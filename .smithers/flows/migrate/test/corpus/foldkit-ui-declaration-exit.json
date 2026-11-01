@@ -1,0 +1,5 @@
+{
+  "repo": "foldkit-ui",
+  "diagnostic": "error TS5051: Option 'inlineSources' can only be used when either option '--inlineSourceMap' or option '--sourceMap' is provided.",
+  "pattern": "declaration artifacts match but the native declaration compiler exits nonzero"
+}

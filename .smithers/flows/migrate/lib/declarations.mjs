@@ -448,6 +448,12 @@ export async function emitDeclarations({ compiler, tsconfig, cwd, outDir, log, r
  * fallback, the baseline's emit may fail the same way, so equal declarations
  * prove nothing about that module: such a migrated file fails verify.
  */
-export function emitErrorsIn(diagnostics, files) {
-  return diagnostics.filter((d) => d.category === "error" && files.includes(d.file))
+export function emitErrorsIn(diagnostics, files, { code = 0, log } = {}) {
+  const errors = diagnostics.filter((d) => d.category === "error" && (!d.file || files.includes(d.file)))
+  if (code !== 0) errors.push({
+    category: "error", file: null, code: "emit-exit",
+    message: "Declaration emit exited with status " + code + "; matching artifacts do not certify successful emission.",
+    emitCode: code, ...(log ? { log } : {})
+  })
+  return errors
 }

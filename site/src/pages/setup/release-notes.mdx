@@ -220,6 +220,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Compiler fuzz validation rejected configured `await` warnings such as `EK4609` according to a retired diagnostic policy; it now uses current Appendix B categories and warning overrides.
 
+- Migration verification could call declarations identical after their compiler failed; it now rejects every nonzero declaration emit and retains option-level errors.
 - On a loaded host, the bundler teardown tests could kill their finishing compiler and fail with `null !== 0`; they now control the grace timer and release the compiler explicitly, with a `30 s` hang guard.
 
 - Passing an Effect function to a `Function` destination could bypass `EK4301` after generic union matching; callable destinations now keep the synchronous-callback check.
