@@ -426,7 +426,7 @@ export async function emitDeclarations({ compiler, tsconfig, cwd, outDir, log, r
   rmSync(outDir, { recursive: true, force: true })
   const existing = declarationFiles(resolve(root ?? cwd), resolve(outDir))
   mkdirSync(outDir, { recursive: true })
-  const flags = "--noEmit false --declaration --emitDeclarationOnly --declarationMap false --sourceMap false --composite false --incremental false --noEmitOnError false --pretty false --listEmittedFiles"
+  const flags = "--noEmit false --declaration --emitDeclarationOnly --declarationMap false --sourceMap false --inlineSourceMap false --inlineSources false --composite false --incremental false --noEmitOnError false --pretty false --listEmittedFiles"
   const result = await run(`${quote(compiler)} -p ${quote(tsconfig)} ${flags} --outDir ${quote(outDir)}`, { cwd, log })
   assertFinished(result, log)
   // A file outside the project's rootDir emits beside its source, where a batch's commit would pick it up.
