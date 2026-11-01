@@ -2,6 +2,7 @@ package tsoptions
 
 import (
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
@@ -209,4 +210,56 @@ func applyConfigSeverities(ds []*ast.Diagnostic, options *core.VibeLangOptions) 
 		result = append(result, d)
 	}
 	return result
+}
+
+// SetVibeSeverity sets code to severity in the root vibe.severities map of
+// the JSONC config text, with a comment line, why, before the entry, and
+// keeps every other setting and comment. It reports false when text already
+// sets it, or when the config can't take the entry (a parse error, or a vibe
+// or severities value that is not an object).
+func SetVibeSeverity(name tspath.RootedFilePath, text, code, severity, why string) (string, bool) {
+	file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: name, PathKey: tspath.PathKey(name)}, text, core.ScriptKindJSON)
+	if len(file.Diagnostics()) != 0 {
+		return text, false
+	}
+	root := configObject(file)
+	if root == nil || !ast.IsObjectLiteralExpression(root) {
+		return text, false
+	}
+	vibe := jsonInitializer(jsonProperty(root, "vibe"))
+	severities := jsonInitializer(jsonProperty(vibe, "severities"))
+	if vibe != nil && !ast.IsObjectLiteralExpression(vibe) || severities != nil && !ast.IsObjectLiteralExpression(severities) {
+		return text, false
+	}
+	entry := strconv.Quote(code) + ": " + strconv.Quote(severity)
+	var edit configEdit
+	if existing := jsonProperty(severities, code); existing != nil {
+		if initializer := existing.Initializer(); ast.IsStringLiteral(initializer) && initializer.Text() == severity {
+			return text, false
+		}
+		start := scanner.GetRangeOfTokenAtPosition(file, existing.Pos()).Pos()
+		edit = configEdit{start, existing.End(), "// " + why + "\n" + entry}
+	} else {
+		insertion := entry
+		object := severities
+		if object == nil {
+			insertion = "\"severities\": {" + insertion + "}"
+			object = vibe
+		}
+		if object == nil {
+			insertion = "\"vibe\": {" + insertion + "}"
+			object = root
+		}
+		insertion = "\n  // " + why + "\n  " + insertion
+		if len(object.AsObjectLiteralExpression().Properties.Nodes) > 0 {
+			insertion += ","
+		}
+		start := scanner.GetRangeOfTokenAtPosition(file, object.Pos()).End()
+		edit = configEdit{start, start, insertion}
+	}
+	text = text[:edit.start] + edit.text + text[edit.end:]
+	if _, errors := ParseConfigFileTextToJson(name, tspath.PathKey(name), text); len(errors) != 0 {
+		return file.Text(), false
+	}
+	return text, true
 }

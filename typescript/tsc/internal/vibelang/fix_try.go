@@ -13,34 +13,45 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vfs"
 )
 
-// vibelang --fix writes try before each call that runs where it stands
-// (VIP-5; runsWhereItStands in try.go): every call the analyzer performs, as
-// an Effect, through an Effect function's direct variant, or as a service
-// lookup, in the body of an Effect function, outside any expression passed
-// by name. `try f()` means what f() means there, so the program keeps its
-// meaning. It writes none where a call is passed or held unrun: an await
-// operation's element, the operand of fork, a by-name argument, a held const
-// or field, a hatch body, a module's top level, or a plain function; nor
-// before fork(x), the keyword form fork x written as a call; nor before the
-// left side of x catch y or a call in it, which the catch runs; nor in a function literal whose body
-// is the call alone, () => f(), which returns the call's program. An effect
-// arrow whose body is a call it runs, effect () => f(), gets try: VIP-5
-// returns e unrun from effect () => e, so try keeps the run. A call
-// whose value a chain continues, as f() in f().name, is written
+// vibelang --fix-vip-only writes try before each call that ran where it
+// stood before VIP-1 (legacyRunOf, fix_legacy_runs.go): a call in effect
+// code whose result is an Effect, in any position that ran it, a match or
+// conditional arm, either side of ?? or ||, a do expression's result or an
+// effect arrow's expression body as much as a statement. `try f()` means
+// what f() meant there, so the program keeps its meaning (decided detail
+// 274). It writes none where a call was passed or held unrun: an await
+// operation's element, the operand of fork, an argument passed by name, a
+// held const or field, a hatch body, a module's top level, or a function
+// literal whose body is the call alone, () => f(), which returns the call's
+// program; nor before fork(x), the keyword form fork x written as a call;
+// nor before the left side of x catch y or a call in it, which the catch
+// runs. Where the model can't tell whether a call ran, as in a function
+// whose form the old compiler inferred, it writes nothing and reports the
+// site. A call whose value a chain continues, as f() in f().name, is written
 // (try f()).name; one that an optional chain continues, a?.f().g(), keeps
 // its chain and gets no try.
 
-// tryLabel is the kind of rewrite, as the --fix report names it.
-const tryLabel = "try"
+// tryLabel, effectLabel and untriedLabel are the kinds of rewrite, as the
+// --fix report names them: a try written before a call, an effect mark
+// written on a function that the old compiler made an Effect function, and a
+// try removed before a legacy wrapper's call (wrapperTry).
+const (
+	tryLabel     = "try"
+	effectLabel  = "effect"
+	untriedLabel = "try removed"
+)
 
 // tryEdits returns the edits that write try before each call of file that
-// runs where it stands, and rewrite each call of an Effect value
-// (effectValueCallEdits). Calls that start at one offset, as f() and f().g()
-// do, get one edit there, the outer call's try first: try (try f()).g().
-func tryEdits(c *checker.Checker, file *ast.SourceFile) []sourceEdit {
+// ran where it stood, and rewrite each call of an Effect value
+// (effectValueCallEdits), with the calls the legacy model can't decide.
+// Calls that start at one offset, as f() and f().g() do, get one edit
+// there, the outer call's try first: try (try f()).g().
+func tryEdits(c *checker.Checker, file *ast.SourceFile, unmatched map[int]bool) ([]sourceEdit, []tryRefusal) {
 	a := analyzerFor(c)
 	text := file.Text()
 	var edits []sourceEdit
+	var refusals []tryRefusal
+	m := newLegacyModel(a, unmatched)
 	opens := map[int]int{} // offset -> index in edits
 	insert := func(at int, s string) {
 		if i, ok := opens[at]; ok {
@@ -57,9 +68,38 @@ func tryEdits(c *checker.Checker, file *ast.SourceFile) []sourceEdit {
 				insert(at, open)
 			}
 			edits = append(edits, rest...)
+			// A call that gives the Effect value, as pick(flag) in
+			// (pick(flag))(), is what that try runs: it gets none of its own.
+			if inner := ast.SkipParentheses(node.Expression()); isInvocation(inner) {
+				return inner.ForEachChild(visit)
+			}
 			return node.ForEachChild(visit)
 		}
-		if isInvocation(node) && triesHere(a, file, node) {
+		if m.byNameBlock(node) {
+			edits = append(edits, sourceEdit{scanner.SkipTrivia(text, node.Pos()), node.End(), m.blockText(file, node)})
+			return false
+		}
+		if isFunctionBoundary(node) && m.marked(node) {
+			if legacyProgramLiteral(a, node) {
+				edits = append(edits, programLiteralEdits(file, node)...)
+			} else {
+				edit, _, _ := effectMarkerEdit(file, node)
+				insert(edit.start, edit.text)
+			}
+		}
+		if !isInvocation(node) {
+			return node.ForEachChild(visit)
+		}
+		if m.wrapperTry(node) {
+			at := scanner.SkipTrivia(text, node.Pos())
+			edits = append(edits, sourceEdit{at, scanner.SkipTrivia(text, at+len("try")), ""})
+			return node.ForEachChild(visit)
+		}
+		write, reason := triesHere(m, file, node)
+		if reason != "" {
+			refusals = append(refusals, tryRefusal{scanner.SkipTrivia(text, node.Pos()), reason})
+		}
+		if write {
 			start := scanner.SkipTrivia(text, node.Pos())
 			if tryNeedsParentheses(node) {
 				open := "(try "
@@ -75,16 +115,36 @@ func tryEdits(c *checker.Checker, file *ast.SourceFile) []sourceEdit {
 		return node.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
-	return edits
+	return edits, refusals
 }
 
-// triesHere reports whether --fix writes try before call: a call written in
-// the source, without try, that the analyzer runs in the body of an Effect
-// function.
-func triesHere(a *analyzer, file *ast.SourceFile, call *ast.Node) bool {
-	if call.Flags&(ast.NodeFlagsReparsed|ast.NodeFlagsVibeLang|ast.NodeFlagsVibeLangTry) != 0 || isTryCall(call) || tried(call) {
-		return false
+// tryRefusal is a call where the legacy model can't tell whether it ran: its
+// offset, and why.
+type tryRefusal struct {
+	at     int
+	reason string
+}
+
+// triesHere reports whether --fix-vip-only writes try before call: a call
+// written in the source, without try, that ran where it stood before VIP-1
+// (legacyModel). When the legacy model can't tell, it reports why instead.
+func triesHere(m *legacyModel, file *ast.SourceFile, call *ast.Node) (bool, string) {
+	if call.Flags&(ast.NodeFlagsReparsed|ast.NodeFlagsVibeLang|ast.NodeFlagsVibeLangTry) != 0 || isTryCall(call) || tried(call) || !triesSyntax(m.a, file, call) {
+		return false, ""
 	}
+	switch run, reason := m.runOf(call); run {
+	case legacyRan:
+		return true, ""
+	case legacyUnknown:
+		return false, reason
+	}
+	return false, ""
+}
+
+// triesSyntax reports whether try can stand before call as written: not a
+// form the parser writes as a call, fork(x), or a link an optional chain
+// continues.
+func triesSyntax(a *analyzer, file *ast.SourceFile, call *ast.Node) bool {
 	if ast.IsCallExpression(call) {
 		callee := call.Expression()
 		if callee.Flags&(ast.NodeFlagsReparsed|ast.NodeFlagsVibeLangIntrinsic) != 0 || fiberHelper(call) != "" || catchExpressionOf(call) != nil || isInvokedForm(file, call) {
@@ -94,16 +154,13 @@ func triesHere(a *analyzer, file *ast.SourceFile, call *ast.Node) bool {
 			return false // the call's text does not start with its callee
 		}
 	}
-	if isArrowBodyCall(call) && !isMarkedEffect(arrowOfBody(call)) || inCatchLeft(call) {
-		return false
-	}
 	if ast.IsCallExpression(call) && isRuntimeExport(a.checker, ast.SkipParentheses(call.Expression()), "fork") {
 		return false // fork(x) is the keyword form fork x
 	}
 	if parent := call.Parent; parent != nil && ast.IsOptionalChain(parent) && parent.Expression() == call && ast.IsOptionalChain(call) {
 		return false // a?.f().g(): parentheses would end the chain
 	}
-	return runsWhereItStands(a, call)
+	return true
 }
 
 // tried reports whether call is already the operand of a try, written
@@ -115,25 +172,6 @@ func tried(call *ast.Node) bool {
 		}
 	}
 	return false
-}
-
-// isArrowBodyCall reports whether call is the expression body of a function
-// literal, as in () => f(), parentheses aside.
-func isArrowBodyCall(call *ast.Node) bool {
-	return arrowOfBody(call) != nil
-}
-
-// arrowOfBody returns the arrow whose expression body is node, parentheses
-// aside, or nil.
-func arrowOfBody(node *ast.Node) *ast.Node {
-	n := node
-	for n.Parent != nil && ast.IsParenthesizedExpression(n.Parent) {
-		n = n.Parent
-	}
-	if n.Parent != nil && ast.IsArrowFunction(n.Parent) && n.Parent.Body() == n {
-		return n.Parent
-	}
-	return nil
 }
 
 // isCatchLeft reports whether node, parentheses aside, is the left side of
@@ -203,39 +241,64 @@ func continuesStatement(text string, call *ast.Node, start int) bool {
 }
 
 // tryRewriteProject returns the try edits of each of program's .vibe files
-// that has any.
-func tryRewriteProject(ctx context.Context, program *compiler.Program) map[tspath.RootedFilePath][]sourceEdit {
+// that has any, and the calls of each that the legacy model can't decide.
+func tryRewriteProject(ctx context.Context, program *compiler.Program) (map[tspath.RootedFilePath][]sourceEdit, map[tspath.RootedFilePath][]tryRefusal) {
 	rewrites := map[tspath.RootedFilePath][]sourceEdit{}
+	refusals := map[tspath.RootedFilePath][]tryRefusal{}
 	for _, file := range fixableFiles(program) {
-		program.GetSemanticDiagnostics(ctx, file)
+		unmatched := map[int]bool{}
+		for _, d := range program.GetSemanticDiagnostics(ctx, file) {
+			if d.Code() == 2769 && d.File() == file {
+				unmatched[d.Pos()] = true
+			}
+		}
 		c, done := program.GetTypeCheckerForFile(ctx, file)
-		edits := tryEdits(c, file)
+		edits, refused := tryEdits(c, file, unmatched)
 		done()
 		if len(edits) > 0 {
 			rewrites[file.FileName()] = edits
 		}
+		if len(refused) > 0 {
+			refusals[file.FileName()] = refused
+		}
 	}
-	return rewrites
+	return rewrites, refusals
 }
 
-// rewriteTries writes try before the running calls of program's files
-// (tryEdits) where that adds no error to program's: in every file when they
-// pass together, else in each file that passes on its own. An error whose
-// message quotes a call with try, try f(), is the error that quoted f(). It
-// records them in result and texts.
-func rewriteTries(g *fixGate, fs vfs.FS, program *compiler.Program, texts map[tspath.RootedFilePath]string, result *FixResult) {
-	rewrites := tryRewriteProject(g.ctx, program)
+// rewriteTries writes try before the calls of program's files that ran
+// before VIP-1 (tryEdits) where that adds no error to program's: in every
+// file when they pass together, else in each file that passes on its own. An
+// error whose message quotes a call with try, try f(), is the error that
+// quoted f(). It records them in result and texts, and reports each call the
+// legacy model can't decide, and each file whose tries would add an error,
+// as refused: such a file keeps calls that no longer run.
+func rewriteTries(g *fixGate, fs vfs.FS, program *compiler.Program, texts map[tspath.RootedFilePath]string, result *FixResult) (wrote bool, refused []FixRefusal) {
+	rewrites, refusals := tryRewriteProject(g.ctx, program)
+	var refusing []tspath.RootedFilePath
+	for name := range refusals {
+		refusing = append(refusing, name)
+	}
+	slices.SortFunc(refusing, tspath.RootedFilePath.Compare)
+	for _, name := range refusing {
+		file := program.GetSourceFile(name)
+		for _, r := range refusals[name] {
+			line, _ := scanner.GetECMALineAndUTF16CharacterOfPosition(file, r.at)
+			refused = append(refused, FixRefusal{File: name, Line: line + 1, Rewrite: tryLabel, Error: r.reason})
+		}
+	}
 	if len(rewrites) == 0 {
-		return
+		return false, refused
 	}
 	base := tryless(errorCounts(g.ctx, program))
-	passes := func(overlay map[tspath.RootedFilePath]string) bool {
+	// added returns the first error overlay adds to program's, or "".
+	added := func(overlay map[tspath.RootedFilePath]string) string {
+		var first string
 		for key, n := range tryless(errorCounts(g.ctx, g.build(maps(texts, overlay)))) {
-			if n > base[key] {
-				return false
+			if n > base[key] && (first == "" || key < first) {
+				first = key
 			}
 		}
-		return true
+		return first
 	}
 	candidates := map[tspath.RootedFilePath]string{}
 	var names []tspath.RootedFilePath
@@ -245,16 +308,19 @@ func rewriteTries(g *fixGate, fs vfs.FS, program *compiler.Program, texts map[ts
 	}
 	slices.SortFunc(names, tspath.RootedFilePath.Compare)
 	kept := map[tspath.RootedFilePath]string{}
-	if passes(candidates) {
+	if added(candidates) == "" {
 		kept = candidates
 	} else {
 		for _, name := range names {
 			if g.done.Err() != nil {
-				return
+				return false, refused
 			}
 			trial := maps(kept, map[tspath.RootedFilePath]string{name: candidates[name]})
-			if passes(trial) {
+			if why := added(trial); why == "" {
 				kept = trial
+			} else {
+				line, _ := scanner.GetECMALineAndUTF16CharacterOfPosition(program.GetSourceFile(name), rewrites[name][0].start)
+				refused = append(refused, FixRefusal{File: name, Line: line + 1, Rewrite: tryLabel, Error: "the file's tries would add " + why})
 			}
 		}
 	}
@@ -275,10 +341,16 @@ func rewriteTries(g *fixGate, fs vfs.FS, program *compiler.Program, texts map[ts
 		}
 		for _, e := range rewrites[name] {
 			fixed.Rewrites[tryLabel] += strings.Count(e.text, "try ")
+			fixed.Rewrites[effectLabel] += strings.Count(e.text, "effect ")
+			if e.text == "" && e.end > e.start {
+				fixed.Rewrites[untriedLabel]++
+			}
 		}
 		fixed.Text = text
 		texts[name] = text
+		wrote = true
 	}
+	return wrote, refused
 }
 
 // tryless returns counts with try removed from each error's key.

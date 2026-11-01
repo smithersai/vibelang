@@ -52,10 +52,15 @@ func runMain() int {
 		fmt.Fprintln(os.Stderr, "vibelang:", err)
 		return 1
 	}
+	refused := false
 	if rest, fix := vibelang.FixArguments(args); fix {
 		rest, options := vibelang.FixOptionsArguments(rest)
 		// vibelang --fix applies the safe quick fixes, then compiles (D291).
-		if status := vibelang.FixWithOptions(ctx, sys, rest, options); status != 0 {
+		// When the VIP-1 migration refused a call, the compile still runs,
+		// so each refused site shows its error, and the command fails.
+		status := vibelang.FixWithOptions(ctx, sys, rest, options)
+		refused = status == vibelang.FixStatusRefused
+		if status != 0 && !refused {
 			return status
 		}
 		args = rest
@@ -63,5 +68,8 @@ func runMain() int {
 	// After --fix, whose own compile checks the whole project.
 	compiler.SetLoaderRoot(loaderRoot)
 	result := execute.CommandLine(ctx, sys, args, nil)
+	if refused && result.Status == 0 {
+		return vibelang.FixRefusedExit
+	}
 	return int(result.Status)
 }
