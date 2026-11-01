@@ -2,7 +2,7 @@
 import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join, posix } from "node:path"
 import { wireOxlint } from "./oxlint.mjs"
-import { addEslintIgnore, ownedPaths, sidecarIgnore } from "./wire.mjs"
+import { addEslintIgnore, addEslintImportParsers, ownedPaths, sidecarIgnore } from "./wire.mjs"
 
 // An ast-grep rule's ignores gain the declaration sidecars, x.d.vibe.ts, which
 // a TypeScript rule otherwise scans as TypeScript, reporting each finding of a
@@ -282,9 +282,13 @@ export function wireDeveloperTools({ root, specsFor, ts }) {
   // ESLint lints x.d.vibe.ts as TypeScript wherever a files glob takes *.ts.
   for (const file of all.filter(f => /(^|\/)eslint\.config\.[cm]?[jt]s$/.test(f))) {
     const text = readFileSync(join(root, file), "utf8")
-    const next = addEslintIgnore(text)
-    if (next === null) warnings.push(`${file}: add { ignores: ["**/${sidecarIgnore}"] } as its first configuration by hand`)
-    else write(file, next)
+    const ignored = addEslintIgnore(text)
+    if (ignored === null) warnings.push(`${file}: add { ignores: ["**/${sidecarIgnore}"] } as its first configuration by hand`)
+    // eslint-plugin-import reads a .vibe module's exports through vibelang/eslint.
+    const next = addEslintImportParsers(ignored ?? text)
+    if (next === null) {
+      if (/["'`]eslint-plugin-import(-x)?["'`]/.test(text)) warnings.push(`${file}: add { settings: { "import/parsers": { "vibelang/eslint": [".vibe"] } } } as its first configuration by hand`)
+    } else if (next !== text) write(file, next)
   }
   for (const file of all.filter(f => /(?:^|\/)(?:\.vite-hooks|\.husky)\/pre-commit$/.test(f))) {
     const text = readFileSync(join(root, file), "utf8")

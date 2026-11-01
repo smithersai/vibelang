@@ -866,10 +866,36 @@ export function addOxlintIgnore(text, pattern = `**/${sidecarIgnore}`) {
  */
 export function addEslintIgnore(text, pattern = `**/${sidecarIgnore}`) {
   if (hasString(text, pattern)) return text
+  return firstConfiguration(text, `{ ignores: [${stringIn(text, pattern)}] },`)
+}
+
+/**
+ * An ESLint flat configuration's text with eslint-plugin-import's (or
+ * eslint-plugin-import-x's) parser setting for .vibe first in what it exports.
+ * The plugin parses an imported module with the parser its extension maps to;
+ * without one it finds no exports in a .vibe module, so import/namespace,
+ * import/named and import/default report every name a .ts file imports from
+ * one (smithers: kernel, platform-node, sandbox). The text is unchanged when
+ * it loads neither plugin or already maps .vibe to vibelang/eslint; null for
+ * a shape addEslintIgnore does not know.
+ */
+export function addEslintImportParsers(text) {
+  const plugin = /["'`]eslint-plugin-import(-x)?["'`]/.exec(text)
+  if (!plugin) return text
+  const setting = plugin[1] ? "import-x/parsers" : "import/parsers"
+  const mapped = new RegExp(`["'\`]${setting}["'\`]\\s*:\\s*\\{[^}]*["'\`]vibelang/eslint["'\`]`)
+  if (mapped.test(text)) return text
+  return firstConfiguration(text, `{ settings: { ${stringIn(text, setting)}: { ${stringIn(text, "vibelang/eslint")}: [${stringIn(text, ".vibe")}] } } },`)
+}
+
+// firstConfiguration writes entry first in what an ESLint flat configuration
+// exports, `export default [`, or a call such as `tseslint.config(` or
+// `defineConfig([`, on a line of its own when the entries are; null for a
+// shape it does not know.
+function firstConfiguration(text, entry) {
   const open = /(?:export\s+default|module\.exports\s*=)\s*(?:[\w$.]+\((?:\s*\[)?|\[)/.exec(text)
   if (!open) return null
   const at = open.index + open[0].length
-  const entry = `{ ignores: [${stringIn(text, pattern)}] },`
   const indent = /^\r?\n([ \t]*)\S/.exec(text.slice(at))?.[1]
   return indent === undefined ? `${text.slice(0, at)}${entry} ${text.slice(at)}` : `${text.slice(0, at)}\n${indent}${entry}${text.slice(at)}`
 }

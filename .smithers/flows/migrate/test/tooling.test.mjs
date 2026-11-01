@@ -48,7 +48,9 @@ test("setup leaves a pinned dprint configuration's plugins alone and keeps dprin
     "packages/open/dprint.json": JSON.stringify({ plugins: ["https://plugins.dprint.dev/typescript-0.93.4.wasm"] }),
     "packages/open/eslint.config.mjs": "export default [\n  { files: [\"**/*.ts\"] },\n]\n",
     "packages/named/package.json": JSON.stringify({ name: "named" }),
-    "packages/named/eslint.config.js": "const config = [{ files: [\"**/*.ts\"] }]\nexport default config\n"
+    "packages/named/eslint.config.js": "const config = [{ files: [\"**/*.ts\"] }]\nexport default config\n",
+    "packages/imports/package.json": JSON.stringify({ name: "imports" }),
+    "packages/imports/eslint.config.js": 'import importPlugin from "eslint-plugin-import"\n\nexport default [\n  importPlugin.flatConfigs.recommended,\n]\n'
   })
   const result = wireDeveloperTools({ root, specsFor })
   const read = file => readFileSync(join(root, file), "utf8")
@@ -63,6 +65,7 @@ test("setup leaves a pinned dprint configuration's plugins alone and keeps dprin
   assert.equal(read("packages/pinned/eslint.config.js"), 'import tseslint from "typescript-eslint"\n\nexport default tseslint.config(\n  { ignores: ["**/*.d.vibe.ts"] },\n  { ignores: ["**/dist"] },\n  { files: ["src/**/*.ts"] }\n)\n')
   assert.equal(read("packages/open/eslint.config.mjs"), 'export default [\n  { ignores: ["**/*.d.vibe.ts"] },\n  { files: ["**/*.ts"] },\n]\n')
   assert.equal(read("packages/named/eslint.config.js"), "const config = [{ files: [\"**/*.ts\"] }]\nexport default config\n")
+  assert.equal(read("packages/imports/eslint.config.js"), 'import importPlugin from "eslint-plugin-import"\n\nexport default [\n  { settings: { "import/parsers": { "vibelang/eslint": [".vibe"] } } },\n  { ignores: ["**/*.d.vibe.ts"] },\n  importPlugin.flatConfigs.recommended,\n]\n')
   assert.equal(result.warnings.length, 2)
   assert.match(result.warnings[0], /^1 dprint configuration pins every plugin by checksum \(packages\/pinned\/dprint\.json\)/)
   assert.match(result.warnings[1], /^packages\/named\/eslint\.config\.js: add \{ ignores/)

@@ -6,7 +6,7 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { loadTypeScript } from "../lib/declarations.mjs"
 import { projectsOf } from "../lib/wire.mjs"
-import { addEslintIgnore, addBunBuildPlugin, addBunPreload, bunProgramDirs, wireBunBuilds, addBunTestPreload, wireBunTests, addCompilerOptions, addEffectLint, addOxlintIgnore, copyTarballs, formattable, formatterOf, addVibeLang, addVibeIncludes, addVitePlugin, initAgents, installCommand, packageManager, replaceTsc, rootTsconfigs, runsBunTest, setIgnoreLine, testConfigArgument, toolchainDirectory, toolchainSpecs, viteAppConfigs, wireKnip, wireVite, wireViteApps } from "../lib/wire.mjs"
+import { addEslintIgnore, addEslintImportParsers, addBunBuildPlugin, addBunPreload, bunProgramDirs, wireBunBuilds, addBunTestPreload, wireBunTests, addCompilerOptions, addEffectLint, addOxlintIgnore, copyTarballs, formattable, formatterOf, addVibeLang, addVibeIncludes, addVitePlugin, initAgents, installCommand, packageManager, replaceTsc, rootTsconfigs, runsBunTest, setIgnoreLine, testConfigArgument, toolchainDirectory, toolchainSpecs, viteAppConfigs, wireKnip, wireVite, wireViteApps } from "../lib/wire.mjs"
 import { setUpAgents } from "../lib/steps.mjs"
 import { must } from "../lib/util.mjs"
 
@@ -671,4 +671,26 @@ test("the sidecar ignores are found in any quotes and written in the file's", ()
   }
   assert.equal(addEslintIgnore("import js from '@eslint/js'\nexport default [\n  js.configs.recommended,\n]\n"), "import js from '@eslint/js'\nexport default [\n  { ignores: ['**/*.d.vibe.ts'] },\n  js.configs.recommended,\n]\n")
   assert.equal(addOxlintIgnore("export default defineConfig({\n  plugins: ['import'],\n})\n"), "export default defineConfig({\n  ignorePatterns: ['**/*.d.vibe.ts'],\n  plugins: ['import'],\n})\n")
+})
+
+// smithers kernel, platform-node, sandbox: eslint-plugin-import parsed a .vibe
+// module with no parser for .vibe, found no exports, and import/namespace
+// reported each name a .ts file imported from it.
+test("setup maps .vibe to vibelang/eslint for eslint-plugin-import, once, in the file's quotes", () => {
+  const corpus = JSON.parse(readFileSync(new URL("./corpus/smithers-eslint-import-namespace-vibe.json", import.meta.url), "utf8"))
+  const once = addEslintImportParsers(addEslintIgnore(corpus.config))
+  assert.equal(once, corpus.expected)
+  assert.equal(addEslintImportParsers(once), once)
+  const single = "import importPlugin from 'eslint-plugin-import'\nexport default [\n  importPlugin.flatConfigs.recommended,\n]\n"
+  assert.equal(addEslintImportParsers(single), "import importPlugin from 'eslint-plugin-import'\nexport default [\n  { settings: { 'import/parsers': { 'vibelang/eslint': ['.vibe'] } } },\n  importPlugin.flatConfigs.recommended,\n]\n")
+  const x = 'import importX from "eslint-plugin-import-x"\nexport default [importX.flatConfigs.recommended]\n'
+  assert.equal(addEslintImportParsers(x), 'import importX from "eslint-plugin-import-x"\nexport default [{ settings: { "import-x/parsers": { "vibelang/eslint": [".vibe"] } } }, importX.flatConfigs.recommended]\n')
+  const cjs = 'const importPlugin = require("eslint-plugin-import")\nmodule.exports = [importPlugin.flatConfigs.recommended]\n'
+  assert.match(addEslintImportParsers(cjs), /^module\.exports = \[\{ settings: \{ "import\/parsers"/m)
+  // A configuration that already maps .vibe, or loads no import plugin, stays as written.
+  const mapped = "import i from 'eslint-plugin-import'\nexport default [{ settings: { 'import/parsers': { '@typescript-eslint/parser': ['.ts'], 'vibelang/eslint': ['.vibe'] } } }]\n"
+  assert.equal(addEslintImportParsers(mapped), mapped)
+  const plain = "import js from '@eslint/js'\nexport default [js.configs.recommended]\n"
+  assert.equal(addEslintImportParsers(plain), plain)
+  assert.equal(addEslintImportParsers("import i from 'eslint-plugin-import'\nconst config = [i.flatConfigs.recommended]\nexport default config\n"), null)
 })
