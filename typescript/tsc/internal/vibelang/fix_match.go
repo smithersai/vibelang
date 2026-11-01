@@ -129,6 +129,9 @@ func matchStage(c *checker.Checker, stage *ast.Node) (*ast.Node, string) {
 func findMatchChains(c *checker.Checker, file *ast.SourceFile, report func(at *ast.Node, rewrite *formRewrite, args ...any)) {
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
+		if optionMatchOf(c, node) && !inGeneratorBody(node) {
+			report(node, optionMatchRewrite(c, file, node), "Option.match", shortText(expressionText(file, node.Arguments()[0]), "value"))
+		}
 		if chain := matchChainOf(c, node); chain != nil && !inGeneratorBody(node) {
 			subject := "value"
 			if chain.subject != nil {
@@ -163,6 +166,9 @@ type matchArm struct {
 
 // matchChainRewrite plans EK4839's fix for call.
 func matchChainRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *formRewrite {
+	if optionMatchOf(c, call) {
+		return optionMatchRewrite(c, file, call)
+	}
 	chain := matchChainOf(c, call)
 	if chain == nil {
 		return nil

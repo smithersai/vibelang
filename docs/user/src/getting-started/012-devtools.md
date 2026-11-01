@@ -160,6 +160,8 @@ completion in a fresh `Some`. A fallthrough or void return, nested expression yi
 generator receiver, or `try`/`finally` keeps the diagnostic and its refusal
 reason; those shapes need a manual rewrite.
 
+A plain `Option.match(value, { onNone, onSome })` has a native quick fix: the subject and the handler object are read once, in their original order, then a `match` chooses `when Option.Some(let value)` or the default. A choice whose arms return programs keeps the diagnostic and its reason.
+
 ### Effect.gen and Effect.fn
 
 `--fix` writes an `Effect.gen` or `Effect.fn` program as an effect function or an `effect { … }` block, and a `.pipe` of an Effect with `|>`. The last stage of a pipeline that runs becomes a catch expression: `Effect.catch`, `Effect.catchTag`, `Effect.catchTags`, `Effect.orElseSucceed(x, () => v)` as `x catch () => v`, and `Effect.mapError(x, (e) => f(e))` as `x catch effect (e) => { throw f(e) }`. A stage with stages after it stays a call, and so does a pipeline held as a value. `Effect.withSpan(x, name)` as a last stage becomes `withSpan(() => x, name)`, and under `try`, `Effect.provide(x, L)` becomes `try effect { provide L { return try x } }`. `try Effect.void` goes. `Effect.sync(() => v)` becomes `effect { return v }`, or `v` where it runs, and `Effect.suspend(() => p)` becomes `effect { return try p }`, or `try p` where it runs. A thunk that throws, awaits, or reads `this`, and a `sync` whose value is a program, stay as written. Each `yield* e` becomes `try e`, including an Effect value such as a service key or a `Config` descriptor:

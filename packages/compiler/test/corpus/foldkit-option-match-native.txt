@@ -1,0 +1,25 @@
+import * as O from "effect/Option"
+export function choose(input: Option.Option<number>, trace: string[], bias: number): number {
+  const handlers = {
+    get onNone() {
+      trace.push("get:none")
+      return (): number => { trace.push("none"); return bias }
+    },
+    get onSome() {
+      trace.push("get:some")
+      return (n: number): number => { trace.push("some"); if (n < 0) return bias; return n + bias }
+    }
+  }
+  return Option.match((trace.push("input"), input), handlers)
+}
+export function destructure(input: Option.Option<{readonly n?: number}>, trace: string[], bias: number): number {
+  return Option.match(input, {
+    onNone: (): number => { trace.push("none"); return bias },
+    onSome: ({ n = bias }): number => { trace.push("some"); return n }
+  })
+}
+
+export function alias(input: O.Option<number>): number {
+  const Option = 0
+  return O.match(input, { onNone: (): number => Option, onSome: (n): number => n })
+}
