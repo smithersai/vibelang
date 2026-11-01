@@ -77,6 +77,9 @@ type placeholder struct {
 	// indent is the indentation of the source line where text starts, so
 	// text that spans lines can be indented as its new line is.
 	indent string
+	// parenthesized marks a catch whose left side the encoding parenthesized
+	// for the property access it projects to; decoding removes them.
+	parenthesized bool
 	// noBody marks an error declaration written without fields or, for one
 	// written as a class, without a body, and a service of any shape (D281)
 	// written without a body.
@@ -532,11 +535,26 @@ func (e *encoder) expressionBlock(form parser.VibeSyntax, block string) {
 // last token cannot take a property access gets parentheses.
 func (e *encoder) catch(form parser.VibeSyntax) error {
 	left := e.nodeAt(form.Left)
-	if left != nil && needsParenthesesForAccess(left) {
-		e.insert(form.Left.Pos(), "(", -1)
+	// The parser passes the left side as the body of an arrow that spans
+	// it, () => left (vibelangProgramArrow): the left side itself decides.
+	if left != nil && left.Kind == ast.KindArrowFunction && left.AsArrowFunction().Body != nil && left.AsArrowFunction().Body.Loc == left.Loc {
+		left = left.AsArrowFunction().Body
+	}
+	parenthesized := left != nil && needsParenthesesForAccess(left)
+	if parenthesized {
+		open := form.Left.Pos()
+		// A try that starts the left side projects to void, and void takes
+		// the access: the parentheses go around try's operand,
+		// void (x as T).$v(h), so a statement keeps its keyword start (a (
+		// would continue the previous line).
+		if operand := leadingTriedOperand(left); operand != nil {
+			open = scanner.SkipTrivia(e.source, operand.Pos())
+		}
+		e.insert(open, "(", -1)
 		e.insert(form.Left.End(), ")", -1)
 	}
 	name := e.hold(placeholderCatch, "catch", form.Word.Pos(), 0)
+	e.holders[len(e.holders)-1].parenthesized = parenthesized
 	e.replace(form.Word.Pos(), form.Word.End(), "."+name+"(")
 	e.insert(form.Right.End(), ")", 1)
 	return nil
@@ -918,7 +936,7 @@ func (e *encoder) nodeAt(r core.TextRange) *ast.Node {
 func needsParenthesesForAccess(node *ast.Node) bool {
 	for {
 		switch node.Kind {
-		case ast.KindAsExpression, ast.KindSatisfiesExpression, ast.KindPostfixUnaryExpression:
+		case ast.KindAsExpression, ast.KindSatisfiesExpression, ast.KindPostfixUnaryExpression, ast.KindExpressionWithTypeArguments:
 			return true
 		case ast.KindBinaryExpression:
 			node = node.AsBinaryExpression().Right
@@ -926,8 +944,49 @@ func needsParenthesesForAccess(node *ast.Node) bool {
 			node = node.AsPrefixUnaryExpression().Operand
 		case ast.KindTypeOfExpression, ast.KindVoidExpression, ast.KindDeleteExpression, ast.KindAwaitExpression:
 			node = node.Expression()
+		case ast.KindCallExpression:
+			// try x, for an x that is not a call, parses to $try(x)
+			// (parser/vibelang_try.go) and projects to void x: x decides.
+			operand := triedOperand(node)
+			if operand == nil {
+				return false
+			}
+			node = operand
 		default:
 			return false
 		}
 	}
+}
+
+// leadingTriedOperand returns x when node starts with try x, for an x that
+// is not a call (triedOperand), looking down node's leftmost operands, or nil.
+func leadingTriedOperand(node *ast.Node) *ast.Node {
+	for node != nil {
+		switch node.Kind {
+		case ast.KindBinaryExpression:
+			node = node.AsBinaryExpression().Left
+		case ast.KindAsExpression, ast.KindSatisfiesExpression, ast.KindNonNullExpression, ast.KindExpressionWithTypeArguments, ast.KindPropertyAccessExpression, ast.KindElementAccessExpression:
+			node = node.Expression()
+		case ast.KindPostfixUnaryExpression:
+			node = node.AsPostfixUnaryExpression().Operand
+		case ast.KindCallExpression:
+			if operand := triedOperand(node); operand != nil {
+				return operand
+			}
+			node = node.Expression()
+		default:
+			return nil
+		}
+	}
+	return nil
+}
+
+// triedOperand returns x for $try(x), the call the parser writes for try x
+// when x is not itself a call, or nil for any other call.
+func triedOperand(call *ast.Node) *ast.Node {
+	callee := call.Expression()
+	if callee.Kind == ast.KindIdentifier && callee.Flags&ast.NodeFlagsReparsed != 0 && callee.Text() == "$try" && len(call.Arguments()) == 1 {
+		return call.Arguments()[0]
+	}
+	return nil
 }

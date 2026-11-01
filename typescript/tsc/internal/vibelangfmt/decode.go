@@ -456,6 +456,16 @@ func (d *decoder) node(node *ast.Node) error {
 		}
 		d.replace(dot, end, head)
 		d.replace(arguments[0].End(), call.End(), "")
+		if holder.parenthesized {
+			// The encoding parenthesized the left side for the access.
+			left := access.Expression()
+			if left.Kind != ast.KindParenthesizedExpression {
+				return fmt.Errorf("vibelang format: internal error: the formatter removed the parentheses around a catch's left side")
+			}
+			open := d.start(left)
+			d.replace(open, open+1, "")
+			d.replace(left.End()-1, left.End(), "")
+		}
 	default:
 		return lost()
 	}

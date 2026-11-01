@@ -181,6 +181,22 @@ function statement(x: number) {
   }
 }
 `,
+	"typed catch operands": `import { Effect } from "effect"
+type Nested = Effect.Effect<Effect.Effect<number, string>, string>
+effect function typedHeads(nested: Nested, generic: (<T>() => T) & Nested, n: number) {
+  try nested as Effect.Effect<number, string> catch () => 7
+  try nested satisfies Effect.Effect<number, string> catch () => 7
+  try nested! catch () => 7
+  try generic<number> catch () => 7
+  return (try nested) as Effect.Effect<number, string> catch () => 7
+}
+function plainHeads(x: unknown, n: number) {
+  const a = x as number catch 0
+  const b = x satisfies unknown catch 0
+  const c = n++ catch 0
+  return a + b + c
+}
+`,
 	"catch and throw": `function nameOrGuest(id: string) {
   return getUser(id).name catch "guest"
 }
