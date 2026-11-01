@@ -1,0 +1,17 @@
+{
+  "property": "sdk-conditional-imports",
+  "input": {
+    "name": "database/v1-migration.noop",
+    "package": "core",
+    "conditions": [
+      "node",
+      "workerd",
+      "default"
+    ],
+    "shape": "emitted"
+  },
+  "source": "export function packImports(pkg, name = \"core\") {\n  if (pkg.exports) {\n    pkg.exports = Object.fromEntries(\n      Object.entries(pkg.exports).map(([key, value]) => {\n        if (typeof value !== \"string\") return [key, value]\n        return [key, { import: output(name, value), types: output(name, value, true) }]\n      }),\n    )\n  }\n  if (pkg.imports) {\n    pkg.imports = Object.fromEntries(\n      Object.entries(pkg.imports).map(([key, conditions]) => [\n        key,\n        Object.fromEntries(\n          Object.entries(conditions).map(([condition, value]) => [\n            condition,\n            output(name, value, condition === \"types\"),\n          ]),\n        ),\n      ]),\n    )\n  }\n  return pkg\n}\nfunction output(name: string, value: string, types = false) {\n  const root = name === \"core\" && types ? \"./dist/types/\" : \"./dist/\"\n  return value.replace(\"./src/\", root).replace(/\\.ts$/, types ? \".d.ts\" : \".js\")\n}\n",
+  "repo": "opencode",
+  "file": "packages/sdk/script/verify-package.ts",
+  "snapshot": "225419d6120c"
+}

@@ -5,12 +5,11 @@ import { packageScripts, testOnlyScripts } from "./test-files.mjs"
 import { repositoryPackages } from "./wire.mjs"
 
 /**
- * Recognize a publication helper that maps Object.entries(pkg.exports), guards
- * a string export with /\.tsx?$/, and replaces that suffix with .js/.d.ts.
- * Its migrated entries carry vibelang-source or a paired sidecar/default source.
- * Unwrap only those entries, and
- * teach the same suffix operations about .vibe. Existing condition maps stay
- * untouched. A second run is a no-op.
+ * Publication helpers map exports or nested imports conditions to built paths.
+ * Recognize guarded suffix maps and named src/dist output functions, unwrap only
+ * migration-marked targets, and add .vibe to the original suffix set. Native
+ * condition maps and the helper's own JavaScript/declaration policy stay intact.
+ * A second setup is a no-op.
  */
 export function rewritePublishingScript(text, ts, fileName = "pack.ts") {
   const source = ts.createSourceFile(fileName, text, ts.ScriptTarget.Latest, true)
@@ -34,9 +33,74 @@ export function rewritePublishingScript(text, ts, fileName = "pack.ts") {
   const edits = []
   const literals = []
   const maps = []
-  const suffix = (node) => node?.kind === ts.SyntaxKind.RegularExpressionLiteral && node.text === "/\\.tsx?$/"
+  const suffix = (node) => node?.kind === ts.SyntaxKind.RegularExpressionLiteral && ["/\\.tsx?$/", "/\\.ts$/"].includes(node.text)
   const property = (node, name) => ts.isPropertyAccessExpression(node) && node.name.text === name
   const qualified = (node) => ts.isIdentifier(node) || (ts.isPropertyAccessExpression(node) && qualified(node.expression))
+  // A publication mapper keeps the repository's own src/dist and declaration
+  // policy. Only recognize a named function with the actual path-replace shape.
+  const functions = new Map()
+  const functionNode = (node) => ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node) || ts.isArrowFunction(node) || ts.isMethodDeclaration(node)
+  const collectFunctions = (node) => {
+    if (ts.isFunctionDeclaration(node) && node.name) {
+      const named = functions.get(node.name.text) || []
+      named.push(node)
+      functions.set(node.name.text, named)
+    }
+    ts.forEachChild(node, collectFunctions)
+  }
+  collectFunctions(source)
+  const pathMappers = new Map()
+  const outputSuffix = (node) => ts.isStringLiteral(node) ? [".js", ".d.ts"].includes(node.text)
+    : ts.isConditionalExpression(node) && outputSuffix(node.whenTrue) && outputSuffix(node.whenFalse)
+  for (const [name, declarations] of functions) {
+    if (declarations.length !== 1 || !declarations[0].body) continue
+    const fn = declarations[0]
+    let rebound = false
+    const checkName = (node) => {
+      if (node !== fn && node.name && ts.isIdentifier(node.name) && node.name.text === name &&
+          (ts.isVariableDeclaration(node) || ts.isParameter(node) || ts.isImportSpecifier(node) ||
+           ts.isImportClause(node) || ts.isNamespaceImport(node) || ts.isBindingElement(node) || ts.isClassDeclaration(node))) rebound = true
+      if (ts.isBinaryExpression(node) && ts.isIdentifier(node.left) && node.left.text === name &&
+          node.operatorToken.kind >= ts.SyntaxKind.FirstAssignment && node.operatorToken.kind <= ts.SyntaxKind.LastAssignment) rebound = true
+      ts.forEachChild(node, checkName)
+    }
+    checkName(source)
+    if (rebound) continue
+    const outputs = []
+    const scanReturns = (node) => {
+      if (node !== fn.body && functionNode(node)) return
+      if (ts.isReturnStatement(node) && node.expression && ts.isCallExpression(node.expression)) {
+        const call = node.expression
+        const prefix = property(call.expression, "replace") && call.expression.expression
+        if (prefix && ts.isCallExpression(prefix) && property(prefix.expression, "replace") &&
+            prefix.arguments.length === 2 && ts.isStringLiteral(prefix.arguments[0]) && prefix.arguments[0].text === "./src/" &&
+            ts.isIdentifier(prefix.expression.expression) && call.arguments.length === 2 && suffix(call.arguments[0]) && outputSuffix(call.arguments[1])) {
+          const parameter = fn.parameters.findIndex((p) => ts.isIdentifier(p.name) && p.name.text === prefix.expression.expression.text)
+          if (parameter >= 0) outputs.push({ parameter, literal: call.arguments[0] })
+        }
+      }
+      ts.forEachChild(node, scanReturns)
+    }
+    scanReturns(fn.body)
+    if (outputs.length === 1) pathMappers.set(name, outputs[0])
+  }
+  const importsConditions = (argument) => {
+    if (!ts.isIdentifier(argument)) return false
+    let parent = argument.parent
+    while (parent && !functionNode(parent)) parent = parent.parent
+    if (!parent || !ts.isArrowFunction(parent) || parent.parameters.length !== 1) return false
+    const binding = parent.parameters[0].name
+    if (!ts.isArrayBindingPattern(binding) || binding.elements.length !== 2 ||
+        !binding.elements[1].name || !ts.isIdentifier(binding.elements[1].name) ||
+        binding.elements[1].name.text !== argument.text) return false
+    const map = parent.parent
+    if (!ts.isCallExpression(map) || !property(map.expression, "map") || map.arguments[0] !== parent) return false
+    const entries = map.expression.expression
+    return ts.isCallExpression(entries) && entries.arguments.length === 1 &&
+      property(entries.expression, "entries") && ts.isIdentifier(entries.expression.expression) &&
+      entries.expression.expression.text === "Object" &&
+      property(entries.arguments[0], "imports") && qualified(entries.arguments[0])
+  }
   const visit = (node) => {
     if (ts.isCallExpression(node) && property(node.expression, "replace") && node.arguments.length === 2 &&
         suffix(node.arguments[0]) && ts.isStringLiteral(node.arguments[1]) &&
@@ -46,19 +110,28 @@ export function rewritePublishingScript(text, ts, fileName = "pack.ts") {
       const callback = node.arguments[0]
       if (ts.isCallExpression(entries) && entries.arguments.length === 1 &&
           property(entries.expression, "entries") && ts.isIdentifier(entries.expression.expression) &&
-          entries.expression.expression.text === "Object" && property(entries.arguments[0], "exports") && qualified(entries.arguments[0]) &&
+          entries.expression.expression.text === "Object" && ((property(entries.arguments[0], "exports") && qualified(entries.arguments[0])) || importsConditions(entries.arguments[0])) &&
           ts.isArrowFunction(callback) && callback.parameters.length === 1) {
         const binding = callback.parameters[0].name
         if (ts.isArrayBindingPattern(binding) && binding.elements.length === 2 && binding.elements[0].name && binding.elements[1].name && ts.isIdentifier(binding.elements[0].name) && ts.isIdentifier(binding.elements[1].name)) {
           const value = binding.elements[1].name.text
           const guards = []
+          const outputs = []
           const scan = (child) => {
+            if (ts.isCallExpression(child) && ts.isIdentifier(child.expression)) {
+              const mapper = pathMappers.get(child.expression.text)
+              const argument = mapper && child.arguments[mapper.parameter]
+              if (argument && ts.isIdentifier(argument) && argument.text === value) outputs.push(mapper.literal)
+            }
             if (ts.isCallExpression(child) && property(child.expression, "test") && suffix(child.expression.expression) &&
                 child.arguments.length === 1 && ts.isIdentifier(child.arguments[0]) && child.arguments[0].text === value) guards.push(child.expression.expression)
             ts.forEachChild(child, scan)
           }
           scan(callback.body)
-          if (guards.length) maps.push({ argument: entries.arguments[0], guards })
+          if (guards.length || outputs.length) {
+            maps.push({ argument: entries.arguments[0], guards })
+            literals.push(...outputs)
+          }
         }
       }
     }
@@ -76,7 +149,10 @@ export function rewritePublishingScript(text, ts, fileName = "pack.ts") {
     edits.push({ start: argument.getStart(source), end: argument.end, text: isJS ? normalized : `(${normalized} as typeof ${expression})` })
     literals.push(...guards)
   }
-  for (const literal of new Set(literals)) edits.push({ start: literal.getStart(source), end: literal.end, text: "/\\.(?:tsx?|vibe)$/" })
+  for (const literal of new Set(literals)) {
+    const expanded = literal.text === "/\\.ts$/" ? "/\\.(?:ts|vibe)$/" : "/\\.(?:tsx?|vibe)$/"
+    edits.push({ start: literal.getStart(source), end: literal.end, text: expanded })
+  }
   edits.sort((a, b) => b.start - a.start)
   for (const edit of edits) text = text.slice(0, edit.start) + edit.text + text.slice(edit.end)
   return { text, changed: true }
@@ -94,7 +170,7 @@ export function wirePublishingScripts({ root, ts }) {
       const after = rewritePublishingScript(before, ts, file)
       if (!after.changed) continue
       if (tests.has(file)) {
-        warnings.push(`${file}: publication helper handles only TypeScript export paths; setup leaves tests as they are (decided detail 272)`)
+        warnings.push(`${file}: publication helper handles only TypeScript source paths; setup leaves tests as they are (decided detail 272)`)
         continue
       }
       writeFileSync(posix.join(root, file), after.text)
