@@ -155,7 +155,7 @@ func dataRules() []dataRule {
 	for _, c := range []struct{ name, decl string }{
 		{"alias", "type T = string"}, {"interface", "interface T { x:string }"}, {"class", "class T {}"}, {"enum", "enum T { A }"},
 	} {
-		add("schema-nonvalue-"+c.name, data, "a reference without a Schema value is `EK2109`", c.decl+`; schema S { x:T }`, "EK2109", "vip-decls")
+		add("schema-nonvalue-"+c.name, data, "A reference with no suitable Schema value is `EK2109`", c.decl+`; schema S { x:T }`, "EK2109", "vip-decls")
 	}
 	add("schema-key-types", data, "string, numeric or computed field key", `const key:unique symbol=Symbol(); schema S { "text":string; 7:number; [key]:boolean }; const s:S={"text":"ok",7:1,[key]:true}`, "", "vip-decls")
 	add("data-variant-newline", data, "A variant's `{` starts its field body even after line breaks", "data D { V\n\n{ n:number }; W }; const d:D=D.V({n:1})", "", "vip-core2")

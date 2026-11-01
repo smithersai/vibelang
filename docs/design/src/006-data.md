@@ -85,7 +85,7 @@ const Code = Schema.Literals(["root_missing", "read_failed"])
 type Code = typeof Code.Type
 ```
 
-In this table, `S`, `A` and `B` are the recursively mapped schemas of the corresponding type syntax. A reference names a Schema value, not an expanded TypeScript type alias, interface, enum or class. Apart from the mapped built-ins below, a reference without a Schema value is `EK2109`: declare it with `schema`.
+In this table, `S`, `A` and `B` are the recursively mapped schemas of the corresponding type syntax. A reference names a Schema value, not an expanded TypeScript type alias, interface, enum or class. The generic built-ins `Array<T>`, `ReadonlyArray<T>`, `Record<K, V>` and `Readonly<T>` in the table mean the corresponding TypeScript-library type bindings, selected by ordinary type lookup and alias resolution, not by spelling. A local or imported type binding can shadow a library type; a value-only binding does not by itself replace the separate library type binding. When the resolved binding is not a mapped built-in, apply the existing Schema-value lookup and arity rules. A reference with no suitable Schema value is `EK2109`: declare a schema or name a Schema value. This does not expand arbitrary user type aliases or introduce generic Schema declarations. The generic rows require these resolved library bindings; `T[]` and `readonly T[]` are syntax mappings independent of a written `Array` name.
 
 | Type or field | Effect 4.1.0 schema |
 | --- | --- |
@@ -274,7 +274,7 @@ const jsonRoundTripExit = Schema.decodeUnknownExit(JsonCount)(JSON.parse(JSON.st
 // Success(JsonCount({ count: 1n })); the encoded count was "1"
 ```
 
-Refinements and transformations stay Schema constants. In a schema type, an identifier or qualified name is looked up as a value and must satisfy Effect's `Schema.Top`; a type of the same name is not expanded. Imports and shadowing follow TypeScript value lookup. `typeof Name.Type` is the declared type.
+Refinements and transformations stay Schema constants. In a schema type, an identifier or qualified name is looked up as a value and must satisfy Effect's `Schema.Top`; a type of the same name is not expanded. Imports and shadowing follow TypeScript value lookup. The generic built-in rows first identify the library type binding as specified above. `typeof Name.Type` is the declared type.
 
 ```vibe es
 // compiler-gap: pending VIP-15
@@ -337,7 +337,7 @@ The generated constants keep TypeScript declaration order and temporal dead zone
 | type parameters on a `schema` declaration; use an ordinary generic TypeScript factory returning a Schema value | `EK1502` |
 | a recognized ordinary schema declaration missing its required body or admitted alias form | `EK1503` |
 | two fields on one line with no separator, `{ a: string b: number }`; write `;` or a line break between them (quick fix: insert `;`) | `EK1504` |
-| a field type outside the mapping, or a referenced schema with conflicting or unprovable decoded-key flags at a required or effectively readonly position; use an unmodified value schema and write the modifiers on the declaration (for `Date`, use `Schema.Date`) | `EK2109` |
+| a field type outside the mapping (including a shadowing type without a suitable Schema value), or a referenced schema with conflicting or unprovable decoded-key flags at a required or effectively readonly position; use an unmodified value schema and write the modifiers on the declaration (for `Date`, use `Schema.Date`) | `EK2109` |
 
 
 A `schema error` keeps the error-declaration diagnostic `EK1305`; it does not use `EK1501`. A schema's named default export and an ordinary generic factory are normal TypeScript:
@@ -548,6 +548,32 @@ interface $Box$Definition extends Data.TaggedEnum.WithGenerics<1> {
 const Box = Data.taggedEnum<$Box$Definition>()
 type StringBox<A = string> = Box<A>
 const boxed: StringBox = Box.Value({ value: "hello" })
+```
+
+### Shadowing mapped built-ins
+
+```vibe es
+// fragment
+// compiler-gap: pending VIP-15
+export {}
+type Record<K, V> = { k: K; v: V }
+schema S { a: Record<string, number> } // EK2109: no Schema value for the local type
+```
+
+A repair supplies the actual decoder instead of silently selecting the library's dictionary mapping:
+
+```vibe es
+schema Entry { readonly k: string; readonly v: number }
+schema S { readonly a: Entry }
+```
+
+```ts effect
+import * as Schema from "effect/Schema"
+
+const Entry = Schema.Struct({ k: Schema.String, v: Schema.Number })
+type Entry = typeof Entry.Type
+const S = Schema.Struct({ a: Entry })
+type S = typeof S.Type
 ```
 
 ### Declaration output

@@ -1,0 +1,4 @@
+// expect: EK2109
+export {}
+type Array<T> = { own: T }
+schema S { readonly a: Array<number> }

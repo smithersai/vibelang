@@ -1,0 +1,4 @@
+// expect: EK2109
+export {}
+type Record<K, V> = { k: K; v: V }
+schema S { readonly a: Record<string, number> }

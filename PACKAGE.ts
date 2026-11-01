@@ -53,6 +53,7 @@ const specTests = [
   "TestDiagnosticSeverityScopeRegression",
   "TestCompileSeverityOverridesByCode",
   "TestAwaitPlacementQuickFixes",
+  "TestSchemaBuiltinBindingsQuoted",
   "TestSchemaDeclarationCommentsQuoted",
   "TestAwaitAdvisoryPlacementQuoted",
   "TestAwaitAdvisoryPlacementRegression",

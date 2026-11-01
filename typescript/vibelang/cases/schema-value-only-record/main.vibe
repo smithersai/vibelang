@@ -1,0 +1,3 @@
+import * as Schema from "effect/Schema"
+const Record = 1
+export schema S { readonly a: Record<string, number> }

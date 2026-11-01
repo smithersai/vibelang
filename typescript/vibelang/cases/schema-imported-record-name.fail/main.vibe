@@ -1,0 +1,3 @@
+// expect: EK2109
+import type { Entry as Record } from "./binding.js"
+schema S { readonly a: Record<string, number> }

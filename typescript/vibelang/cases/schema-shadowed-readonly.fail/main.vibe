@@ -1,0 +1,4 @@
+// expect: EK2109
+export {}
+type Readonly<T> = { own: T }
+schema S { readonly a: Readonly<Record<string, number>> }

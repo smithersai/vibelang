@@ -79,7 +79,7 @@ VibeLang is TypeScript with syntax for Effect. An `effect` function returns an E
 - Retries and timeouts: pass the Effect to `retry` and `timeout`, or pipe it: `error-management/018-retrying`, `error-management/019-timing-out`.
 - Concurrency: `try.all` and its siblings take arrays; for an object use `try all({ user: load() }, { concurrency: "unbounded" })`; the `fork` forms and `join`, `for concurrent`: `concurrency/007-basic-concurrency`, `concurrency/047-fibers`.
 - Resources: `scoped` and `acquireRelease`: `resource-management/029-introduction`.
-- Data: `schema` declarations, fields of any schema (`Schema.NumberFromString`), and `Schema.Struct` for struct checks and `optionalKey`: `schema/087-basic-usage`. Tagged unions: `data`, `data-types/073-data`.
+- Data: mapped generic collections use resolved TypeScript-library bindings; a shadowing type alias supplies no decoder (`EK2109`). `schema` declarations, fields of any schema (`Schema.NumberFromString`), and `Schema.Struct` for struct checks and `optionalKey`: `schema/087-basic-usage`. Tagged unions: `data`, `data-types/073-data`.
 - Matching: `vibelang-features/116-match-and-is`. Producers: `vibelang-features/112-producers`. Handlers are an open proposal, not a feature: `vibelang-features/111-control-operations-and-handlers`.
 - Platform services: `platform/105-introduction`; each Node.js or web global's replacement: `platform/platform-globals`.
 - TypeScript at the edges: `Effect.try`, `tryPromise`, `runPromise`: `vibelang-features/114-vibelang-for-effect-users`.

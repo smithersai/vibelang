@@ -72,3 +72,6 @@ Effect's `Schema.Struct`; Zod's `z.object`; Pydantic models.
 ## Will's words
 
 > "Yup I'm accepting this"
+
+
+- **Amended 2026-11-01: mapped generic bindings.** The generic built-ins `Array<T>`, `ReadonlyArray<T>`, `Record<K, V>` and `Readonly<T>` in the table mean the corresponding TypeScript-library type bindings, selected by ordinary type lookup and alias resolution, not by spelling. A local or imported type binding can shadow a library type; a value-only binding does not by itself replace the separate library type binding. When the resolved binding is not a mapped built-in, apply the existing Schema-value lookup and arity rules. A reference with no suitable Schema value is `EK2109`: declare a schema or name a Schema value. This does not expand arbitrary user type aliases or introduce generic Schema declarations. The array syntax `T[]` and `readonly T[]` remains independent of any written `Array` binding. See [Shadowing mapped built-ins](../src/006-data.md#shadowing-mapped-built-ins).

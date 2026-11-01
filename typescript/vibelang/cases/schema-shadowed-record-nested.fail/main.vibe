@@ -1,0 +1,4 @@
+// expect: EK2109 EK2109 EK2109
+export {}
+type Record<K,V> = { k: K; v: V }
+schema S { readonly union: Record<string,number> | null; readonly tuple: readonly [Record<string,number>]; readonly array: readonly Record<string,number>[] }
