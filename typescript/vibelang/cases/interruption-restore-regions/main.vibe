@@ -1,0 +1,14 @@
+// expect-result: [1,2]
+// Chapter 2, "Interruption blocks", Meaning: restore inside a provide block or an
+// interruptible block applies, because those run on the masked fiber.
+import { Effect, Layer } from "effect"
+service Svc { n: number }
+effect function viaProvide() {
+  uninterruptible {
+    provide (Layer.succeed(Svc, { n: 1 })) { restore { return (try Svc()).n } }
+  }
+}
+effect function viaInterruptible() {
+  uninterruptible { interruptible { restore { return 2 } } }
+}
+export effect function main() { return [try viaProvide(), try viaInterruptible()] }

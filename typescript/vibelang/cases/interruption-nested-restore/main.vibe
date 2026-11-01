@@ -1,0 +1,21 @@
+// expect-result: [true,["inner","after inner"],7]
+// Chapter 2, "Interruption blocks", Meaning: ownMask and nestedRestore examples.
+import { Effect, Exit, Fiber } from "effect"
+effect function ownMask() { uninterruptible { restore { return 7 } } }
+effect function nestedRestore(events: string[]) {
+  const self = try Effect.withFiberSucceed(fiber => fiber)
+  uninterruptible {
+    uninterruptible {
+      try Effect.orDie(Effect.try(() => { self.interruptUnsafe() }))
+      restore { events.push("inner") }
+    }
+    events.push("after inner")
+  }
+  events.push("after outer")
+}
+export effect function main() {
+  const events: string[] = []
+  const fiber = try Effect.forkChild(nestedRestore(events))
+  const exit = try Effect.exit(Fiber.join(fiber))
+  return [Exit.hasInterrupts(exit), events, try ownMask()]
+}
