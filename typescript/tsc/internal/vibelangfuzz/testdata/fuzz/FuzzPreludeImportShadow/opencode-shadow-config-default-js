@@ -1,0 +1,4 @@
+go test fuzz v1
+string("Config")
+string("default")
+bool(false)

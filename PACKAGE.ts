@@ -69,6 +69,8 @@ const specTests = [
   "TestReviewCallableNamesQuoted",
   "TestReviewProvideRecoveryQuoted",
   "TestReviewCompactContractsQuoted",
+  "TestPreludeImportShadowQuoted",
+  "TestPreludeModuleClashQuoted",
   "TestSpecifierWrittenJSX",
 
   "TestStockConsumerResolutionQuoted",
