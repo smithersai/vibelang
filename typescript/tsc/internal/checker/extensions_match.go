@@ -19,6 +19,14 @@ func isVibeLangWrittenDeclaration(declaration *ast.Node) bool {
 		ast.GetSourceFileOfNode(declaration).FileName().ExtensionIs(tspath.ExtensionVibe)
 }
 
+// isVibeLangPatternRead reports whether accessNode is the VibeLang parser's read
+// of a part of a pattern's subject, which follows the test that the part exists
+// (Parser.mPatternRead). The test proves what the index-signature options exist
+// to make a program check, and the source has no access to rewrite.
+func isVibeLangPatternRead(accessNode *ast.Node) bool {
+	return accessNode != nil && accessNode.Flags&ast.NodeFlagsVibeLangPatternRead != 0
+}
+
 // isVibeLangServiceDeclaredMember reports whether member of class, a service
 // declaration of a .vibe file, is its key or default (VIP-9). The declaration
 // declares them; only the base the parser writes holds them too, so they

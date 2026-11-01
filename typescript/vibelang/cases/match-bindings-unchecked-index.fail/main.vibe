@@ -1,0 +1,9 @@
+// expect: TS2532 TS4111
+// The options still govern a read the source writes: only a pattern's own
+// reads follow its test.
+export function written(s: number[]): number {
+  return match (s) { when [let a]: a + s[0]; default: -1; }
+}
+export function writtenKey(s: Record<string, number>): number | undefined {
+  return match (s) { when { let a }: s.a; default: -1; }
+}

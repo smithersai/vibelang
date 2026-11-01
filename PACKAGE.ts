@@ -108,6 +108,7 @@ const specTests = [
   "TestRunningRulesQuoted",
   "TestMigrationForeignCallQuoted",
   "TestBangSlotGroupingQuoted",
+  "TestMatchBindingTypesQuoted",
   "TestEffectLintConfigurationQuoted",
   "TestServicesRulesQuoted",
   "TestProducerBindingQuoted",

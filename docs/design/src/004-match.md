@@ -388,6 +388,8 @@ Patterns type as the TypeScript counterpart this chapter shows for them, so ever
 | `P or Q` | the union of each side's narrowing | a name bound in every alternative gets the union of its types |
 | `P and Q` | both narrowings in order | both sides' bindings |
 
+These types hold under every compiler option. A pattern's reads of its subject follow the tests that those parts exist, so `noUncheckedIndexedAccess` adds no `undefined` to a binding and `noPropertyAccessFromIndexSignature` does not apply to a pattern's key (detail 79).
+
 ```vibe es
 // compiler-gap: pending VIP-7
 function isText(s: string | number): s is string { return typeof s === "string" }

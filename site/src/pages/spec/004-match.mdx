@@ -392,6 +392,8 @@ Patterns type as the TypeScript counterpart this chapter shows for them, so ever
 | `P or Q` | the union of each side's narrowing | a name bound in every alternative gets the union of its types |
 | `P and Q` | both narrowings in order | both sides' bindings |
 
+These types hold under every compiler option. A list pattern's element reads follow its length test, so `noUncheckedIndexedAccess` adds no `undefined` to a binding.
+
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-7
 function isText(s: string | number): s is string { return typeof s === "string" }

@@ -621,6 +621,17 @@ func (p *Parser) mElement(expr *ast.Node, argument *ast.Node, at core.TextRange)
 	return p.vibelangSpanning(p.factory.NewElementAccessExpression(expr, nil, argument, ast.NodeFlagsNone), at)
 }
 
+// mPatternRead marks read, the access a pattern writes to reach a part of its
+// subject, after the test that the part exists: a list's length test or an
+// object pattern's in test. The source does not spell the access, and the test
+// proves what an index signature leaves open, so the checker holds the read to
+// neither noUncheckedIndexedAccess nor noPropertyAccessFromIndexSignature
+// (isVibeLangPatternRead).
+func (p *Parser) mPatternRead(read *ast.Node) *ast.Node {
+	read.Flags |= ast.NodeFlagsVibeLangPatternRead
+	return read
+}
+
 func (p *Parser) mNumber(n int, at core.TextRange) *ast.Node {
 	return p.vibelangSynthesized(p.factory.NewNumericLiteral(strconv.Itoa(n), ast.TokenFlagsNone), at)
 }
@@ -709,13 +720,13 @@ func (p *Parser) propertyPath(base matchPath, clause objectClause) matchPath {
 	return func() *ast.Node {
 		switch {
 		case !clause.computed && key.Kind == ast.KindIdentifier:
-			return p.mProperty(base(), key.Text(), key.Loc)
+			return p.mPatternRead(p.mProperty(base(), key.Text(), key.Loc))
 		case !clause.computed && key.Kind == ast.KindStringLiteral:
-			return p.mElement(base(), p.mString(key.Text(), key.Loc), key.Loc)
+			return p.mPatternRead(p.mElement(base(), p.mString(key.Text(), key.Loc), key.Loc))
 		case !clause.computed && key.Kind == ast.KindNumericLiteral:
-			return p.mElement(base(), p.vibelangSynthesized(p.factory.NewNumericLiteral(key.Text(), ast.TokenFlagsNone), key.Loc), key.Loc)
+			return p.mPatternRead(p.mElement(base(), p.vibelangSynthesized(p.factory.NewNumericLiteral(key.Text(), ast.TokenFlagsNone), key.Loc), key.Loc))
 		}
-		return p.mElement(base(), p.cloneIdentExpression(key), key.Loc)
+		return p.mPatternRead(p.mElement(base(), p.cloneIdentExpression(key), key.Loc))
 	}
 }
 
@@ -846,7 +857,7 @@ func (p *Parser) compilePattern(pat *pattern, path matchPath, steps *[]matchStep
 	case patternArray:
 		test(p.mCall(p.mProperty(p.mIdent("Array", at), "isArray", at), []*ast.Node{path()}, at))
 		p.compileList(pat, path, len(pat.items), func(i int) matchPath {
-			return func() *ast.Node { return p.mElement(path(), p.mNumber(i, at), at) }
+			return func() *ast.Node { return p.mPatternRead(p.mElement(path(), p.mNumber(i, at), at)) }
 		}, func(n int) *ast.Node {
 			return p.mCall(p.mProperty(path(), "slice", at), []*ast.Node{p.mNumber(n, at)}, at)
 		}, func() *ast.Node { return p.mProperty(path(), "length", at) }, steps, ctx)
@@ -953,7 +964,7 @@ func (p *Parser) compilePattern(pat *pattern, path matchPath, steps *[]matchStep
 		}
 		test(p.mBinary(extracted(), ast.KindExclamationEqualsEqualsToken, p.mKeyword(ast.KindFalseKeyword, at), at))
 		p.compileList(pat, extracted, len(pat.items), func(i int) matchPath {
-			return func() *ast.Node { return p.mElement(extracted(), p.mNumber(i, at), at) }
+			return func() *ast.Node { return p.mPatternRead(p.mElement(extracted(), p.mNumber(i, at), at)) }
 		}, func(n int) *ast.Node {
 			return p.mCall(p.mProperty(extracted(), "slice", at), []*ast.Node{p.mNumber(n, at)}, at)
 		}, func() *ast.Node { return p.mProperty(extracted(), "length", at) }, steps, ctx)

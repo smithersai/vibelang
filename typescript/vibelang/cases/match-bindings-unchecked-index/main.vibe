@@ -1,0 +1,94 @@
+// A pattern has tested that what it binds exists, so a binding has the type
+// chapter 004 gives it, whichever option checks index signatures. Each return
+// type below fails to check if a binding widens to T | undefined, and a key
+// below fails with TS4111 if a pattern's read counts as a written one.
+export function exitValue<A>(e: Exit.Exit<A, string>, fallback: A): A {
+  return match (e) { when Exit.Success(let value): value; default: fallback; }
+}
+export function exitCause<A>(e: Exit.Exit<A, string>): Cause.Cause<string> | null {
+  return match (e) { when Exit.Failure(let cause): cause; default: null; }
+}
+export function optionValue<A>(o: Option.Option<A>, fallback: A): A {
+  return match (o) { when Option.Some(let value): value; default: fallback; }
+}
+export function resultSuccess<A>(r: Result.Result<A, string>, fallback: A): A {
+  return match (r) { when Result.Success(let value): value; default: fallback; }
+}
+export function resultFailure<A>(r: Result.Result<A, string>): string {
+  return match (r) { when Result.Failure(let e): e; default: "none"; }
+}
+export function arrayExtractor(s: number[]): string {
+  return match (s) { when Array(let n): n.toFixed(0); default: "other"; }
+}
+export function arrayRest(s: number[]): number {
+  return match (s) { when Array(let a, let b, ...): a + b; default: -1; }
+}
+export function typedArray(s: Uint8Array): number {
+  return match (s) { when Uint8Array(let a, let b): a + b; default: -1; }
+}
+export function arrayPattern(s: number[]): number {
+  return match (s) { when [let a, let b]: a + b; default: -1; }
+}
+export function arrayPatternRest(s: readonly number[]): number {
+  return match (s) { when [let a, ...let rest]: a + rest.length; default: -1; }
+}
+export function nested(s: number[][]): number {
+  return match (s) { when [[let a], [let b]]: a + b; default: -1; }
+}
+function* values(s: unknown): Generator<number> {
+  yield 1
+  yield 2
+}
+function spread(s: unknown): false | Generator<number> {
+  return s === "go" ? values(s) : false
+}
+export function iterated(s: unknown): number {
+  return match (s) { when spread(let a, let b): a + b; default: 0; }
+}
+export error Missing { id: number }
+export function taggedField(e: Missing | string): number {
+  return match (e) { when Missing({ id: let n }): n; default: -1; }
+}
+export function taggedBinding(e: Missing | string): Missing | null {
+  return match (e) { when Missing(let m): m; default: null; }
+}
+export function objectNested(s: Record<string, Record<string, number>>): number {
+  return match (s) { when { a: { b: let x } }: x; default: -1; }
+}
+export function objectBesideTest(s: Record<string, number>): number {
+  return match (s) { when { kind: 1, let a }: a; default: -1; }
+}
+export function objectRest(s: Record<string, number>): number {
+  return match (s) { when { a: let x, ...let others }: x + Object.keys(others).length; default: -1; }
+}
+export function isObject(s: Record<string, number>): number {
+  if (s is { let a }) return a
+  return -1
+}
+export function objectIndex(s: Record<string, number>): number {
+  return match (s) { when { a: let x }: x; default: -1; }
+}
+export function objectShorthand(s: Record<string, number>): number {
+  return match (s) { when { let a }: a; default: -1; }
+}
+export function tuple(s: readonly [number, string]): string {
+  return match (s) { when [let n, let t]: t + n.toFixed(0); default: "other"; }
+}
+export function variadicTuple(s: readonly [number, ...string[]]): string {
+  return match (s) { when [let n, let t]: t + n.toFixed(0); default: "other"; }
+}
+// What the element type itself holds stays: an optional element and an
+// element type with undefined are undefined here too.
+export function optionalElement(s: readonly [number, string?]): string | undefined {
+  return match (s) { when [let n, let t]: t; default: "other"; }
+}
+export function holdsUndefined(s: (number | undefined)[]): number | undefined {
+  return match (s) { when [let a]: a; default: -1; }
+}
+export function literalElement(s: readonly number[]): number {
+  return match (s) { when [1, let b]: b; default: -1; }
+}
+export function isPattern(s: string[]): number {
+  if (s is [let a, let b]) return a.length + b.length
+  return -1
+}

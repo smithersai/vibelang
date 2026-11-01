@@ -50,6 +50,7 @@ const (
 	NodeFlagsPossiblyContainsStabilityTag  NodeFlags = 1 << 31 // Set during parse if comment text contains @stability; must confirm via JSDoc lookup (effect-tsgo)
 	NodeFlagsVibeLangTry                   NodeFlags = 1 << 32 // If node is the operand of a VibeLang try written before a call, as f() in `try f()`: the parser returns the operand itself, so the call keeps its node and runs where it stands
 	NodeFlagsVibeLangEffect                NodeFlags = 1 << 33 // If node is a function marked effect (VIP-1, VIP-39), as in `effect function f()`, `effect (x) => …`, or a method `effect m()`, or the arrow the parser writes for an effect block, `effect { … }` (VIP-2)
+	NodeFlagsVibeLangPatternRead           NodeFlags = 1 << 34 // If node is the VibeLang parser's read of a part of a pattern's subject, after the test that the part exists
 
 	NodeFlagsBlockScoped = NodeFlagsLet | NodeFlagsConst | NodeFlagsUsing
 	NodeFlagsConstant    = NodeFlagsConst | NodeFlagsUsing

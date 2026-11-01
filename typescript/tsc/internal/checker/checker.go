@@ -11708,10 +11708,10 @@ func (c *Checker) checkPropertyAccessExpressionOrQualifiedName(node *ast.Node, l
 			c.error(node, diagnostics.Index_signature_in_type_0_only_permits_reading, c.TypeToString(apparentType))
 		}
 		propType = indexInfo.valueType
-		if c.compilerOptions.NoUncheckedIndexedAccess == core.TSTrue && getAssignmentTargetKind(node) != AssignmentKindDefinite {
+		if c.compilerOptions.NoUncheckedIndexedAccess == core.TSTrue && getAssignmentTargetKind(node) != AssignmentKindDefinite && !isVibeLangPatternRead(node) {
 			propType = c.getUnionType([]*Type{propType, c.missingType})
 		}
-		if c.compilerOptions.NoPropertyAccessFromIndexSignature == core.TSTrue && ast.IsPropertyAccessExpression(node) {
+		if c.compilerOptions.NoPropertyAccessFromIndexSignature == core.TSTrue && ast.IsPropertyAccessExpression(node) && !isVibeLangPatternRead(node) {
 			c.error(right, diagnostics.Property_0_comes_from_an_index_signature_so_it_must_be_accessed_with_0, right.Text())
 		}
 		if indexInfo.declaration != nil && c.IsDeprecatedDeclaration(indexInfo.declaration) {
@@ -27750,7 +27750,7 @@ func (c *Checker) getIndexedAccessTypeOrUndefined(objectType *Type, indexType *T
 	}
 	// In noUncheckedIndexedAccess mode, indexed access operations that occur in an expression in a read position and resolve to
 	// an index signature have 'undefined' included in their type.
-	if c.compilerOptions.NoUncheckedIndexedAccess == core.TSTrue && accessFlags&AccessFlagsExpressionPosition != 0 {
+	if c.compilerOptions.NoUncheckedIndexedAccess == core.TSTrue && accessFlags&AccessFlagsExpressionPosition != 0 && !isVibeLangPatternRead(accessNode) {
 		accessFlags |= AccessFlagsIncludeUndefined
 	}
 	// If the index type is generic, or if the object type is generic and doesn't originate in an expression and
