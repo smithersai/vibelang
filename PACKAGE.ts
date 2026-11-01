@@ -111,6 +111,8 @@ const specTests = [
   "TestPreludeGlobalMemberQuoted",
   "TestPlatformDerivedGlobalsQuoted",
   "TestSidecarIdentityQuoted",
+
+  "TestDirectTryAdvisoriesQuoted",
   "TestFormatForHeadsQuoted",
   "TestPlainRunnersQuoted",
   "TestFormatFoldkitQuoted",
