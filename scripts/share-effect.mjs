@@ -10,9 +10,9 @@
 //
 //   node scripts/share-effect.mjs [root]
 //
-// A symlinked packages/runtime/node_modules is a shared install its owner
-// provisioned, so this leaves it alone. A package at another version stays:
-// scripts/effect-pin.mjs reports that.
+// A symlinked packages/runtime/node_modules or scope beneath it is a shared
+// install its owner provisioned, so this leaves it alone. A package at another
+// version stays: scripts/effect-pin.mjs reports that.
 import { existsSync, lstatSync, readdirSync, readFileSync, rmSync, symlinkSync } from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
@@ -20,11 +20,15 @@ import { fileURLToPath } from "node:url"
 const pinned = (name) => name === "effect" || (name.startsWith("@effect/") && name !== "@effect/language-service")
 const version = (dir) => JSON.parse(readFileSync(path.join(dir, "package.json"), "utf8")).version
 
-// installed lists the packages directly under modules, scopes included.
+// installed lists packages in private directories, excluding provisioned scopes.
 function installed(modules) {
-  return readdirSync(modules).flatMap((name) =>
-    name.startsWith("@") ? readdirSync(path.join(modules, name)).map((scoped) => `${name}/${scoped}`) : [name]
-  )
+  return readdirSync(modules).flatMap((name) => {
+    if (!name.startsWith("@")) return [name]
+    const scope = path.join(modules, name)
+    // Do not traverse a provisioned scope and replace packages in its owner.
+    if (lstatSync(scope).isSymbolicLink()) return []
+    return readdirSync(scope).map((scoped) => name + "/" + scoped)
+  })
 }
 
 // share links each Effect package of packages/runtime to the copy in

@@ -87,7 +87,7 @@ symlinks retain the separate owner responsibility above.
 packages in `packages/runtime/node_modules` to the copies in `experiments`. A
 fixture links `vibelang-runtime` to `packages/runtime`, so a separate copy lies
 beneath that link, and a declaration sidecar can name its types only by that
-path (`TS2883`). A symlinked `packages/runtime/node_modules` stays as it is.
+path (`TS2883`). A symlinked `packages/runtime/node_modules` or a symlinked scope beneath it stays as its owner provisioned it; the script never replaces packages through a shared scope alias. A private runtime scope can still read packages from an aliased input installation.
 
 Migration alias properties also use the built checkout compiler at `packages/compiler/native/vibelang` (`vibelang.exe` on Windows), or the explicit `VIBELANG_BINARY` override. Build it first with `sh scripts/build-vibelang.sh`. Their compiler-discovery regression runs the minimized alias witness with both environments and requires an invalid override to fail instead of falling back or skipping.
 
