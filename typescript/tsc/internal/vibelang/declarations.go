@@ -809,7 +809,8 @@ func withoutImplicitReadonly(f *printer.NodeFactory, member *ast.Node, original 
 // out, so its body supplies them: when they come to never, the declaration
 // leaves them out too. Effect's E and R default to never, so each type is
 // the one the source declares. A slot the source fills, never included,
-// stays. Parentheses that group a ! form, (A!E!R) | X, go with it.
+// stays. Parentheses that group a ! form, (A!E!R) | X, go with it, and so do
+// the ones that group a slot for the !, (A | B)!E.
 type emptySlots struct {
 	transformers.Transformer
 }
@@ -828,7 +829,7 @@ func (tx *emptySlots) visit(node *ast.Node) *ast.Node {
 		for keep > 1 && isEmptySlot(original.TypeArguments()[keep-1]) {
 			keep--
 		}
-		return tx.withArguments(node, keep)
+		return tx.withArguments(tx.withoutSlotGrouping(node), keep)
 	case ast.IsFunctionDeclaration(node) || ast.IsMethodDeclaration(node):
 		if node.Type() != nil && ast.IsFunctionLike(original) && infersOmittedDependencies(original) {
 			return tx.withReturnType(node, tx.withoutNeverDependencies(node.Type()))
@@ -847,6 +848,27 @@ func (tx *emptySlots) visit(node *ast.Node) *ast.Node {
 		}
 	}
 	return node
+}
+
+// withoutSlotGrouping returns reference, the Effect type of a ! form, without
+// the parentheses around its slots: (A | B)!E needs them for the !, and
+// Effect.Effect<A | B, E> does not. Parentheses inside a slot stay.
+func (tx *emptySlots) withoutSlotGrouping(reference *ast.Node) *ast.Node {
+	arguments := reference.AsTypeReferenceNode().TypeArguments
+	if arguments == nil || !slices.ContainsFunc(arguments.Nodes, ast.IsParenthesizedTypeNode) {
+		return reference
+	}
+	nodes := slices.Clone(arguments.Nodes)
+	for i, slot := range nodes {
+		for ast.IsParenthesizedTypeNode(slot) {
+			slot = slot.AsParenthesizedTypeNode().Type
+		}
+		nodes[i] = slot
+	}
+	f := tx.Factory()
+	list := f.NewNodeList(nodes)
+	list.Loc = arguments.Loc
+	return f.UpdateTypeReferenceNode(reference.AsTypeReferenceNode(), reference.AsTypeReferenceNode().TypeName, list)
 }
 
 // withArguments returns reference, an Effect type with three type arguments,

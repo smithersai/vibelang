@@ -1,0 +1,13 @@
+// Parentheses a slot needs only for the ! are gone from the type argument, as
+// the TypeScript writes it (Smithers' Crypto bytes); a written Effect.Effect and
+// parentheses inside a slot keep theirs.
+export declare function bytes<Format extends "bytes" | "hex">(options: { readonly format: Format }): (Format extends "bytes" ? Uint8Array : string)!string
+export type Success = (string | number)!boolean
+export type Failure = string!(number | boolean)
+export type Requirement = string!boolean!(Path | Clock)
+export type Callback = (() => void)!string
+export type Nested = (string!number)!boolean
+export type Inside = (keyof (A | B))[]!string
+export type Written = Effect.Effect<(string | number), boolean>
+type A = { a: 1 }
+type B = { b: 2 }

@@ -105,6 +105,7 @@ const specTests = [
   "TestVIPTemplatesCited",
   "TestRunningRulesQuoted",
   "TestMigrationForeignCallQuoted",
+  "TestBangSlotGroupingQuoted",
   "TestEffectLintConfigurationQuoted",
   "TestServicesRulesQuoted",
   "TestCLISpecCommandFlags",
