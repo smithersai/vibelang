@@ -679,3 +679,5 @@ Inferred Effect default properties retain T3code's typed-provider corpus and com
 Vite alias-neighbourhood properties start servers through `devServer`, the shared fixture helper that disables dependency optimization during cleanup. Native TypeScript importer resolution remains the paired control across prefixes, nesting and query suffixes.
 
 The tools property `react-emitted-phi.property.test.mjs` feeds the native emit adapter's actual JavaScript to the pinned Oxc React Compiler, against untouched TypeScript controls. The minimized T3code nested-loop/IIFE corpus and generated local-name, guard and comment mutations must pass the actual React check. The corpus records the historical phi invariant; the existing clean-hook control must optimize identically.
+
+The docs-tools gate inventories every static-rule quote test against the root build gate. Its generated-name property checks that comments, formatting and unrelated lists cannot hide an omitted test. A spec edit therefore checks all registered static-rule quotations before merge.
