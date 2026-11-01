@@ -17,15 +17,17 @@ import (
 // package whose sources spell relative imports another way keeps that
 // spelling with the project setting vibelang.declarationImportStyle:
 // "extensionless" declares ./user, ".ts" declares ./user.ts, and ".js" is the
-// default. Under either of the other two, every other specifier stays as the
-// source wrote it, ./plain.ts included, as tsc keeps it in the declaration of
-// a .ts file." and "An import the declaration file adds ... takes the quotes
-// of the file's first written import or export specifier".
+// default. Every other specifier stays as the source wrote it, ./plain.ts
+// included, under every setting, as tsc keeps it in the declaration of a .ts
+// file." (detail 263) and "An import the declaration file adds ... takes the
+// quotes of the file's first written import or export specifier".
 //
-// Oracle: for each setting × quote × written specifier × import form, a .vibe
-// module's declaration equals, byte for byte, stock tsc's declaration of its
-// .ts twin, which spells each ./leaf.vibe import as the setting does (and,
-// under the default, a written ./plain.ts as ./plain.js, D365). Witnesses:
+// Oracle: for each module mode × setting × quote × written specifier × import
+// form, a .vibe module's declaration equals, byte for byte, stock tsc's
+// declaration of its untouched .ts twin, which writes each ./leaf.vibe import
+// in the setting's spelling and every other specifier as the .vibe file does.
+// Module nodenext has no extensionless relative import, so it skips those
+// cells. Witnesses:
 // Smithers' Bind.vibe declared "./Contribution.js" for "./Contribution.ts",
 // opencode's "./runtime.vibe" declared "./runtime.js" for "./runtime", and
 // foldkit's added import { Effect } from "effect" in single-quoted files
@@ -33,6 +35,7 @@ import (
 func TestDeclarationImportStyleMatrix(t *testing.T) {
 	tsc := StockTypeScript(t)
 	w := NewWorkspace(t)
+	modes := []string{"bundler", "nodenext"}
 	styles := []struct{ name, extension string }{{".js", ".js"}, {"extensionless", ""}, {".ts", ".ts"}}
 	quotes := []string{`"`, `'`}
 	// Each written specifier: the .vibe source's text, and the twin's under each style extension.
@@ -56,41 +59,43 @@ func TestDeclarationImportStyleMatrix(t *testing.T) {
 		{"added-effect", "import type { T } from %s\nexport type W = T!!\n"},
 	}
 	leaf := "export type T = { readonly n: number }\nexport const value: number = 1\nexport const make = (): T => ({ n: value })\n"
-	for _, style := range styles {
-		for _, quote := range quotes {
-			for _, specifier := range specifiers {
-				for _, form := range forms {
-					name := fmt.Sprintf("%s/%s/%s/%s", style.name, map[string]string{`"`: "double", `'`: "single"}[quote], specifier.name, form.name)
-					t.Run(name, func(t *testing.T) {
-						t.Parallel()
-						twinSpecifier := specifier.written
-						switch {
-						case specifier.vibe:
-							twinSpecifier = "./leaf" + style.extension
-						case style.name == ".js" && specifier.name == "ts":
-							twinSpecifier = "./plain.js" // D365: the default declares a written .ts source by its output
+	for _, mode := range modes {
+		for _, style := range styles {
+			for _, quote := range quotes {
+				for _, specifier := range specifiers {
+					for _, form := range forms {
+						if mode == "nodenext" && (style.name == "extensionless" || specifier.name == "extensionless") {
+							continue
 						}
-						source := fmt.Sprintf(form.source, quote+specifier.written+quote)
-						twin := fmt.Sprintf(form.source, quote+twinSpecifier+quote)
-						if form.name == "added-effect" {
-							twin = "import { Effect } from " + quote + "effect" + quote + "\n" + strings.Replace(twin, "T!!", "Effect.Effect<T>", 1)
-						}
-						vibeFiles := map[string]string{"main.vibe": source, "leaf.vibe": leaf, "plain.ts": leaf}
-						twinFiles := map[string]string{"main.ts": twin, "leaf.ts": leaf, "plain.ts": leaf}
-						cfg := declarationStyleConfig(style.name)
-						vibe, err := w.Compile(t.Context(), Project{Files: vibeFiles, Config: cfg})
-						if err != nil {
-							t.Fatal(err)
-						}
-						if HasError(vibe.Diagnostics) {
-							t.Fatalf("the .vibe project has errors: %v\n%s", SortedKeys(Keys(vibe.Dir, vibe.Diagnostics)), source)
-						}
-						got := vibe.Outputs["out/main.d.ts"]
-						want := stockDeclaration(t, w, tsc, Project{Files: twinFiles, Config: cfg}, "out/main.d.ts")
-						if got != want {
-							t.Errorf("main.vibe:\n%s\ndeclares:\n%s\nstock tsc declares main.ts:\n%s\nfrom:\n%s", source, got, want, twin)
-						}
-					})
+						name := fmt.Sprintf("%s/%s/%s/%s/%s", mode, style.name, map[string]string{`"`: "double", `'`: "single"}[quote], specifier.name, form.name)
+						t.Run(name, func(t *testing.T) {
+							t.Parallel()
+							twinSpecifier := specifier.written
+							if specifier.vibe {
+								twinSpecifier = "./leaf" + style.extension
+							}
+							source := fmt.Sprintf(form.source, quote+specifier.written+quote)
+							twin := fmt.Sprintf(form.source, quote+twinSpecifier+quote)
+							if form.name == "added-effect" {
+								twin = "import { Effect } from " + quote + "effect" + quote + "\n" + strings.Replace(twin, "T!!", "Effect.Effect<T>", 1)
+							}
+							vibeFiles := declarationModeFiles(mode, map[string]string{"main.vibe": source, "leaf.vibe": leaf, "plain.ts": leaf})
+							twinFiles := declarationModeFiles(mode, map[string]string{"main.ts": twin, "leaf.ts": leaf, "plain.ts": leaf})
+							cfg := declarationModeConfig(mode, style.name)
+							vibe, err := w.Compile(t.Context(), Project{Files: vibeFiles, Config: cfg})
+							if err != nil {
+								t.Fatal(err)
+							}
+							if HasError(vibe.Diagnostics) {
+								t.Fatalf("the .vibe project has errors: %v\n%s", SortedKeys(Keys(vibe.Dir, vibe.Diagnostics)), source)
+							}
+							got := vibe.Outputs["out/main.d.ts"]
+							want := stockDeclaration(t, w, tsc, Project{Files: twinFiles, Config: cfg}, "out/main.d.ts")
+							if got != want {
+								t.Errorf("main.vibe:\n%s\ndeclares:\n%s\nstock tsc declares main.ts:\n%s\nfrom:\n%s", source, got, want, twin)
+							}
+						})
+					}
 				}
 			}
 		}
@@ -122,87 +127,106 @@ func stockDeclaration(t *testing.T, w *Workspace, tsc string, project Project, n
 // TestDeclarationImportStyleInferredImportType enforces Chapter 1,
 // docs/design/src/001-functions.md, Declaration output, Specifiers, for the
 // specifier the compiler writes itself: an inferred type that names a
-// VibeLang module the file never imports by that name,
-// import("../schema/index.vibe").MessageUnion, is spelled as
-// vibelang.declarationImportStyle spells a written import, in a .ts file's
-// declaration as in a .vibe file's.
+// VibeLang module, import("../schema/index.ts").MessageUnion, is spelled as
+// stock tsc spells it for the file's TypeScript twin. A specifier the file
+// writes keeps the setting's spelling; one the compiler generates for a module
+// the file never imports follows tsc's own choice for the twin, which under
+// module nodenext with .ts imports allowed is .ts whatever the file writes.
 //
-// Oracle: for each setting × importer quote × importer spelling, a .ts file
-// that imports the .vibe module declares what stock tsc declares for the
-// project whose schema/index.vibe is schema/index.ts, because the type reuses
-// the file's written specifier, which stays as written. A .ts file that
-// reaches the module only through the first does too, unless it writes .ts:
-// then the specifier generator names the module ./x.vibe and the setting
-// spells it, under the default, ".js", as index.js, as D365 declares a written
-// ./x.ts. A .vibe importer that writes ./x.vibe declares the setting's spelling
-// either way. Witnesses: foldkit's experimental/query/keyedQuery.d.ts printed
-// import("../../schema/index.js") where the baseline printed index.ts
-// (foldkit-92), and 14 Smithers declarations printed import("./StdError.js")
-// for import("./StdError.ts") (pass3/dtsdiff, packages/smithers/agent/std).
+// Oracle: raw byte equality, no normalization. For each module mode × setting
+// × quote × spelling, the project whose importers are .ts files and whose
+// schema/index is .vibe declares what stock tsc declares when schema/index is
+// .ts; and the project whose importers are .vibe files writing ./x.vibe
+// declares what stock tsc declares for their twins, which write each ./x.vibe
+// in the setting's spelling (the spelling setup records, detail 263). The
+// .vibe importers infer through constants, not arrows: an unannotated .vibe
+// arrow is an effect function, whose declaration returns an Effect. Module
+// nodenext has no extensionless relative import, so it skips those cells, and
+// it skips .ts importers that write ../schema/index.ts, which report TS2876
+// under rewriteRelativeImportExtensions (inbox/migrate-alchemy.md, not
+// declaration spelling).
+// Witnesses: foldkit's experimental/query/keyedQuery.ts, which writes
+// '../../message/index.js' under module nodenext and
+// rewriteRelativeImportExtensions, declared import("../../schema/index.js")
+// where the baseline printed index.ts (foldkit-92, 2026-11-01T08:05Z), and 14
+// Smithers declarations printed import("./StdError.js") for
+// import("./StdError.ts") (pass3/dtsdiff, packages/smithers/agent/std).
 func TestDeclarationImportStyleInferredImportType(t *testing.T) {
 	tsc := StockTypeScript(t)
 	w := NewWorkspace(t)
 	schema := "export type MessageUnion<A> = { readonly _tag: \"m\"; readonly value: A }\nexport const makeMessage = <A>(value: A): MessageUnion<A> => ({ _tag: \"m\", value })\n"
-	for _, style := range []string{".js", "extensionless", ".ts"} {
-		for _, quote := range []string{`"`, `'`} {
-			for _, spelling := range []string{".ts", ".js", ""} {
-				name := fmt.Sprintf("%s/%s/%q", style, map[string]string{`"`: "double", `'`: "single"}[quote], spelling)
-				t.Run(name, func(t *testing.T) {
-					t.Parallel()
-					files := func(schemaFile string) map[string]string {
-						return map[string]string{
-							schemaFile:            schema,
-							"query/other.ts":      "export const other = 1\n",
-							"query/keyedQuery.ts": "import { makeMessage } from " + quote + "../schema/index" + spelling + quote + "\nimport { other } from " + quote + "./other" + spelling + quote + "\nexport const makeKeyed = <A>(a: A) => makeMessage({ a, other })\n",
-							"query/indirect.ts":   "import { makeKeyed } from " + quote + "./keyedQuery" + spelling + quote + "\nexport const wrap = <A>(a: A) => makeKeyed(a)\n",
-						}
+	outputs := []string{"out/query/keyedQuery.d.ts", "out/query/indirect.d.ts", "out/query/viaMessage.d.ts"}
+	for _, mode := range []string{"bundler", "nodenext"} {
+		for _, style := range []string{".js", "extensionless", ".ts"} {
+			for _, quote := range []string{`"`, `'`} {
+				quoteName := map[string]string{`"`: "double", `'`: "single"}[quote]
+				// files is the project whose schema/index is schemaFile and whose
+				// importers have extension importer and write relative imports
+				// with extension spelling. With constants, the importers infer
+				// through constants instead of arrows.
+				files := func(schemaFile, importer, spelling string, constants bool) map[string]string {
+					q := func(specifier string) string { return quote + specifier + quote }
+					bodies := []string{
+						"export const makeKeyed = <A>(a: A) => makeMessage({ a, other })\n",
+						"import { makeKeyed } from " + q("./keyedQuery"+spelling) + "\nexport const wrap = <A>(a: A) => makeKeyed(a)\n",
+						"const make = <A>(a: A) => makeMessage({ a })\nexport type Made<A> = ReturnType<typeof make<A>>\nexport const made = <A>(a: A) => make(a)\n",
 					}
-					cfg := declarationStyleConfig(style)
-					vibe, err := w.Compile(t.Context(), Project{Files: files("schema/index.vibe"), Config: cfg})
+					otherSpelling := spelling
+					if constants {
+						bodies = []string{
+							"export const keyed = makeMessage({ a: 1, other })\n",
+							"import { keyed } from " + q("./keyedQuery"+spelling) + "\nexport const wrapped = { keyed }\n",
+							"export const made = makeMessage({ a: \"m\" })\n",
+						}
+						otherSpelling = declarationStyleExtension(style)
+					}
+					return declarationModeFiles(mode, map[string]string{
+						schemaFile:                    schema,
+						"query/other.ts":              "export const other = 1\n",
+						"message/index" + importer:    "export { makeMessage } from " + q("../schema/index"+spelling) + "\nexport type { MessageUnion } from " + q("../schema/index"+spelling) + "\n",
+						"query/keyedQuery" + importer: "import { makeMessage } from " + q("../schema/index"+spelling) + "\nimport { other } from " + q("./other"+otherSpelling) + "\n" + bodies[0],
+						"query/indirect" + importer:   bodies[1],
+						"query/viaMessage" + importer: "import { makeMessage } from " + q("../message/index"+spelling) + "\n" + bodies[2],
+					})
+				}
+				check := func(t *testing.T, vibeFiles, twinFiles map[string]string) {
+					cfg := declarationModeConfig(mode, style)
+					vibe, err := w.Compile(t.Context(), Project{Files: vibeFiles, Config: cfg})
 					if err != nil {
 						t.Fatal(err)
 					}
 					if HasError(vibe.Diagnostics) {
 						t.Fatalf("the .vibe project has errors: %v", SortedKeys(Keys(vibe.Dir, vibe.Diagnostics)))
 					}
-					twin, err := w.writeProject(Project{Files: files("schema/index.ts"), Config: cfg})
+					twin, err := w.writeProject(Project{Files: twinFiles, Config: cfg})
 					if err != nil {
 						t.Fatal(err)
 					}
-					stock := stockDeclarations(t, tsc, twin, "out/query/keyedQuery.d.ts", "out/query/indirect.d.ts")
-					for i, output := range []string{"out/query/keyedQuery.d.ts", "out/query/indirect.d.ts"} {
-						want := stock[i]
-						if output == "out/query/indirect.d.ts" && spelling == ".ts" {
-							want = strings.ReplaceAll(want, `import("../schema/index.ts")`, `import("../schema/index`+declarationStyleExtension(style)+`")`)
-						}
-						if got := vibe.Outputs[output]; got != want {
-							t.Errorf("%s declares:\n%s\nwant, from stock tsc with schema/index.ts:\n%s", output, got, want)
+					stock := stockDeclarations(t, tsc, twin, outputs...)
+					for i, output := range outputs {
+						if got := vibe.Outputs[output]; got != stock[i] {
+							t.Errorf("%s declares:\n%s\nwant, from stock tsc for the twin:\n%s", output, got, stock[i])
 						}
 					}
+				}
+				for _, spelling := range []string{".ts", ".js", ""} {
+					if mode == "nodenext" && (spelling == "" || spelling == ".ts") {
+						continue
+					}
+					t.Run(fmt.Sprintf("%s/%s/%s/ts-importers/%q", mode, style, quoteName, spelling), func(t *testing.T) {
+						t.Parallel()
+						check(t, files("schema/index.vibe", ".ts", spelling, false), files("schema/index.ts", ".ts", spelling, false))
+					})
+				}
+				if mode == "nodenext" && style == "extensionless" {
+					continue
+				}
+				// The Smithers shape: migrated importers, which write ./x.vibe.
+				t.Run(fmt.Sprintf("%s/%s/%s/vibe-importers", mode, style, quoteName), func(t *testing.T) {
+					t.Parallel()
+					check(t, files("schema/index.vibe", ".vibe", ".vibe", true), files("schema/index.ts", ".ts", declarationStyleExtension(style), true))
 				})
 			}
-			// The Smithers shape: migrated importers, which write ./x.vibe.
-			t.Run(fmt.Sprintf("%s/%s/vibe-importers", style, map[string]string{`"`: "double", `'`: "single"}[quote]), func(t *testing.T) {
-				t.Parallel()
-				vibe, err := w.Compile(t.Context(), Project{Files: map[string]string{
-					"schema/index.vibe":     schema,
-					"query/other.ts":        "export const other = 1\n",
-					"query/keyedQuery.vibe": "import { makeMessage } from " + quote + "../schema/index.vibe" + quote + "\nimport { other } from " + quote + "./other.ts" + quote + "\nexport const makeKeyed = <A>(a: A) => makeMessage({ a, other })\n",
-					"query/indirect.vibe":   "import { makeKeyed } from " + quote + "./keyedQuery.vibe" + quote + "\nexport const wrap = <A>(a: A) => makeKeyed(a)\n",
-				}, Config: declarationStyleConfig(style)})
-				if err != nil {
-					t.Fatal(err)
-				}
-				if HasError(vibe.Diagnostics) {
-					t.Fatalf("the .vibe project has errors: %v", SortedKeys(Keys(vibe.Dir, vibe.Diagnostics)))
-				}
-				want := `import("../schema/index` + declarationStyleExtension(style) + `")`
-				for _, output := range []string{"out/query/keyedQuery.d.ts", "out/query/indirect.d.ts"} {
-					if got := vibe.Outputs[output]; !strings.Contains(got, want) {
-						t.Errorf("%s does not name %s:\n%s", output, want, got)
-					}
-				}
-			})
 		}
 	}
 }
@@ -303,18 +327,39 @@ func TestDeclarationEffectModuleImports(t *testing.T) {
 	}
 }
 
-// declarationStyleConfig is the tsconfig of a declaration-only project under
-// vibelang.declarationImportStyle style.
+// declarationStyleConfig is the tsconfig of a declaration-only bundler
+// project under vibelang.declarationImportStyle style.
 func declarationStyleConfig(style string) string {
+	return declarationModeConfig("bundler", style)
+}
+
+// declarationModeConfig is the tsconfig of a declaration-only project under
+// vibelang.declarationImportStyle style: "bundler" (module preserve,
+// allowImportingTsExtensions) or "nodenext" (module nodenext,
+// rewriteRelativeImportExtensions, foldkit's settings).
+func declarationModeConfig(mode, style string) string {
 	vibelang := ""
 	if style != ".js" {
 		vibelang = fmt.Sprintf(",\n  \"vibelang\": { \"declarationImportStyle\": %q }", style)
 	}
+	options := `"module": "preserve", "moduleResolution": "bundler", "allowImportingTsExtensions": true`
+	if mode == "nodenext" {
+		options = `"module": "nodenext", "moduleResolution": "nodenext", "rewriteRelativeImportExtensions": true`
+	}
 	return `{
   "compilerOptions": {
-    "target": "ES2022", "module": "preserve", "moduleResolution": "bundler", "strict": true, "skipLibCheck": true,
-    "allowImportingTsExtensions": true, "declaration": true, "emitDeclarationOnly": true, "outDir": "out", "rootDir": ".", "types": []
+    "target": "ES2022", ` + options + `, "strict": true, "skipLibCheck": true,
+    "declaration": true, "emitDeclarationOnly": true, "outDir": "out", "rootDir": ".", "types": []
   }` + vibelang + "\n}"
+}
+
+// declarationModeFiles adds the package.json a "nodenext" project needs for
+// ES modules to files.
+func declarationModeFiles(mode string, files map[string]string) map[string]string {
+	if mode == "nodenext" {
+		files["package.json"] = `{ "type": "module" }` + "\n"
+	}
+	return files
 }
 
 // stockDeclarations returns the declaration files stock tsc writes at names

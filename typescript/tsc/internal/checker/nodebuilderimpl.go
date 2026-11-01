@@ -1380,9 +1380,7 @@ func (b *NodeBuilderImpl) moduleSpecifierResultForSymbol(result moduleSpecifierR
 
 func (b *NodeBuilderImpl) rewriteContentMappedModuleSpecifier(specifier tspath.ModuleSpecifier) tspath.ModuleSpecifier {
 	if b.ctx.internalFlags&nodebuilder.InternalFlagsRewriteModuleSpecifiers != 0 {
-		// A declaration names a VibeLang module through its .js output, or the
-		// spelling vibelang.declarationImportStyle names (D298).
-		if rewritten, ok := specifier.RewriteVibeExtension(b.ch.compilerOptions.VibeLang.DeclarationImportExtension()); ok {
+		if rewritten, ok := b.vibeDeclarationSpecifier(specifier); ok {
 			return rewritten
 		}
 	}
@@ -1395,6 +1393,41 @@ func (b *NodeBuilderImpl) rewriteContentMappedModuleSpecifier(specifier tspath.M
 		}
 	}
 	return specifier
+}
+
+// vibeDeclarationSpecifier spells specifier, a relative ./x.vibe, as a
+// declaration names the module, and reports whether specifier is one (D298).
+// A specifier the enclosing file writes takes vibelang.declarationImportStyle's
+// spelling, ./x.js (the default), ./x or ./x.ts, as the file's written imports
+// do. One the generator reached on its own, for a type the file never imports,
+// is spelled as stock tsc spells it for the file's TypeScript twin, which
+// writes each ./y.vibe in the setting's spelling: under module nodenext with
+// .ts imports allowed that is ./x.ts whatever the file writes (foldkit-92).
+func (b *NodeBuilderImpl) vibeDeclarationSpecifier(specifier tspath.ModuleSpecifier) (tspath.ModuleSpecifier, bool) {
+	extension := b.ch.compilerOptions.VibeLang.DeclarationImportExtension()
+	rewritten, ok := specifier.RewriteVibeExtension(extension)
+	file := b.ctx.enclosingFile
+	if !ok || file == nil || slices.ContainsFunc(file.Imports(), func(written *ast.StringLiteralLike) bool { return written.Text() == specifier.AsString() }) {
+		return rewritten, ok
+	}
+	prefs := modulespecifiers.UserPreferences{ImportModuleSpecifierPreference: modulespecifiers.ImportModuleSpecifierPreferenceProjectRelative}
+	if b.ch.program.GetDefaultResolutionModeForFile(file) == core.ResolutionModeESM {
+		prefs.ImportModuleSpecifierEnding = modulespecifiers.ImportModuleSpecifierEndingPreferenceJs // as getSpecifierForModuleSymbol asks
+	}
+	endings := modulespecifiers.TwinAllowedEndings(prefs, b.ctx.host, b.ch.compilerOptions, file, func(written string) string {
+		twin, _ := tspath.ToModuleSpecifier(written).RewriteVibeExtension(extension)
+		return twin.AsString()
+	})
+	noExtension := strings.TrimSuffix(specifier.AsString(), tspath.ExtensionVibe)
+	switch endings[0] {
+	case modulespecifiers.ModuleSpecifierEndingTsExtension:
+		return tspath.ToModuleSpecifier(noExtension + tspath.ExtensionTs), true
+	case modulespecifiers.ModuleSpecifierEndingJsExtension:
+		return tspath.ToModuleSpecifier(noExtension + tspath.ExtensionJs), true
+	case modulespecifiers.ModuleSpecifierEndingMinimal:
+		return tspath.ToModuleSpecifier(strings.TrimSuffix(noExtension, "/index")), true
+	}
+	return tspath.ToModuleSpecifier(noExtension), true
 }
 
 func (b *NodeBuilderImpl) moduleSpecifierResolvesToSymbol(specifier tspath.ModuleSpecifier, importAttributesType *Type, symbol *ast.Symbol) bool {

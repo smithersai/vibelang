@@ -254,3 +254,36 @@ func getModuleSpecifierPreferences(
 		getAllowedEndingsInPreferredOrder: getAllowedEndingsInPreferredOrder,
 	}
 }
+
+// TwinAllowedEndings returns the endings GetAllowedEndingsInPreferredOrder
+// allows, in preferred order, for importingSourceFile's TypeScript twin: the
+// file as its package wrote it before migration, which spells each relative
+// import the file writes as ./x.vibe as twinSpecifier returns it (D298). A
+// declaration names a VibeLang module the generator reached on its own by the
+// first of these, as stock tsc names the twin's module.
+func TwinAllowedEndings(prefs UserPreferences, host ModuleSpecifierGenerationHost, compilerOptions *core.CompilerOptions, importingSourceFile SourceFileForSpecifierGeneration, twinSpecifier func(string) string) []ModuleSpecifierEnding {
+	return GetAllowedEndingsInPreferredOrder(prefs, host, compilerOptions, twinSourceFile{importingSourceFile, twinSpecifier}, "", core.ResolutionModeNone)
+}
+
+// twinSourceFile is a source file whose relative ./x.vibe imports read as
+// twinSpecifier spells them.
+type twinSourceFile struct {
+	SourceFileForSpecifierGeneration
+	twinSpecifier func(string) string
+}
+
+func (f twinSourceFile) Imports() []*ast.StringLiteralLike {
+	imports := f.SourceFileForSpecifierGeneration.Imports()
+	var factory *ast.NodeFactory
+	result := make([]*ast.StringLiteralLike, len(imports))
+	for i, specifier := range imports {
+		result[i] = specifier
+		if text := specifier.Text(); tspath.PathIsRelative(text) && tspath.FileExtensionIs(text, tspath.ExtensionVibe) {
+			if factory == nil {
+				factory = ast.NewNodeFactory(ast.NodeFactoryHooks{})
+			}
+			result[i] = factory.NewStringLiteral(f.twinSpecifier(text), ast.TokenFlagsNone)
+		}
+	}
+	return result
+}

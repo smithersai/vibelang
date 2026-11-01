@@ -1094,13 +1094,13 @@ func (tx *specifierRewriter) visit(node *ast.Node) *ast.Node {
 }
 
 // outputSpecifier returns a string literal that names the output of the
-// source specifier names, and whether it differs from specifier. Under
-// vibelang.declarationImportStyle "extensionless" or ".ts", a declaration
-// keeps a package's own spelling: ./users.vibe is ./users or ./users.ts, and
-// every other specifier stays as the source wrote it, as tsc keeps it in the
-// declaration of a .ts file.
+// source specifier names, and whether it differs from specifier. Only a
+// relative ./users.vibe changes: vibelang.declarationImportStyle spells it
+// ./users.js (the default), ./users or ./users.ts. Every other specifier,
+// ./plain.ts included, stays as the source wrote it under every setting, as
+// tsc keeps it in the declaration of a .ts file (detail 263).
 func (tx *specifierRewriter) outputSpecifier(f *printer.NodeFactory, specifier *ast.Node) (*ast.Node, bool) {
-	if specifier == nil || !ast.IsStringLiteral(specifier) {
+	if specifier == nil || !ast.IsStringLiteral(specifier) || !tspath.FileExtensionIs(specifier.Text(), tspath.ExtensionVibe) {
 		return specifier, false
 	}
 	if extension := tx.style.DeclarationImportExtension(); extension != tspath.ExtensionJs {
