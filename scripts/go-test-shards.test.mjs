@@ -10,7 +10,7 @@ const script = new URL("./go-test-shards.sh", import.meta.url).pathname
 // A stand-in test binary. -test.list prints NAMES; a run records its arguments under runs/, waits until BARRIER runs
 // have started (so passing proves the processes overlap), prints each selected name and fails if TestFails ran.
 const binary = `#!/bin/sh
-for a in "$@"; do case $a in -test.list) printf '%s\\n' $NAMES; exit 0 ;; esac; done
+for a in "$@"; do case $a in -test.list) printf '%s\\n' "$@" > "$RUNS/../listed-args"; printf '%s\\n' $NAMES; exit 0 ;; esac; done
 me=$$
 printf '%s\\n' "$@" > "$RUNS/$me"
 run=
@@ -121,5 +121,26 @@ for (const [name, end] of [["go-vibelangfuzz", "\"spec-tests\":"], ["go-vibelang
     const target = source.split("\"" + name + "\": goVibelang(")[1].split(end)[0]
     assert.match(target, /go test [^`"]*-exec "\$PWD\/\.\.\/\.\.\/scripts\/go-test-shards\.sh"/)
     assert.match(target, /S\.file\("\/\/scripts\/go-test-shards\.sh"\)/)
+  })
+}
+
+for (const args of [
+  [],
+  ["-suite-mode=fixture with spaces"],
+  ["-test.short=false", "-test.parallel=2", "-test.count=3"],
+]) {
+  test("test discovery retains the complete original flags: " + JSON.stringify(args), () => {
+    const t = setup(["TestA", "TestB", "TestC"])
+    try {
+      const r = t.run(args, { GO_TEST_SHARDS: "3", BARRIER: "3" })
+      assert.equal(r.status, 0, r.stdout + r.stderr)
+      assert.equal(r.runs.length, 3)
+      assert.deepEqual(ran(r.stdout), ["TestA", "TestB", "TestC"])
+      const listed = readFileSync(join(t.dir, "listed-args"), "utf8").trim().split("\n")
+      assert.deepEqual(listed, ["-test.timeout=40m0s", "-test.short=true", ...args, "-test.list", ".*"])
+      for (const argv of r.runs) assert.deepEqual(argv.slice(0, 2 + args.length), ["-test.timeout=40m0s", "-test.short=true", ...args])
+    } finally {
+      t.done()
+    }
   })
 }

@@ -301,6 +301,10 @@ go test -short -count=1 -exec "$PWD/../../scripts/go-test-shards.sh" ./internal/
 A run with `-run`, `-fuzz` or `-json`, or with `GO_TEST_SHARDS=1`, runs the
 binary once, as before.
 
+Discovery and execution both receive the original test arguments, including
+`-short`, `-timeout` and custom test flags. A `TestMain` that reads them sees
+the same configuration before the script assigns tests to shards.
+
 The fuzz shell caps `GOMAXPROCS` at the smaller of `24` and the machine CPU count and declares `GOFLAGS=-p=6`, matching the
 post-merge shard allocation. Smithers withholds ambient Go variables, so
 setting them only on the outer CI process does not constrain the test.

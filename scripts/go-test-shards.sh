@@ -30,7 +30,8 @@ pids=
 trap 'kill $pids 2>/dev/null; rm -rf "$dir"' EXIT
 trap 'exit 143' HUP INT TERM
 
-if ! "$bin" -test.list '.*' > "$dir/listed" 2>&1; then
+# TestMain and custom test flags apply during listing as well as execution.
+if ! "$bin" "$@" -test.list '.*' > "$dir/listed" 2>&1; then
   cat "$dir/listed"
   exit 1
 fi
