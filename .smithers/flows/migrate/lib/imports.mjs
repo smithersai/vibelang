@@ -8,7 +8,68 @@ const bare = /(?<=^|[;\n}])[ \t]*import\s*(['"])([^'"\n]+)\1/dg
 const dynamic = /\bimport\(\s*(['"])([^'"\n]+)\1\s*\)/dg
 const mocked = /\bmock\.module\(\s*(['"])([^'"\n]+)\1/dg
 
-/** Every import and re-export specifier of text, in source order. */
+// Where a string or template ends, from just after its opening quote.
+const stringEnd = (text, at, quote) => {
+  for (let i = at; i < text.length && text[i] !== "\n"; i++) {
+    if (text[i] === "\\") i++
+    else if (text[i] === quote) return i + 1
+  }
+  return at
+}
+
+/**
+ * The ranges of text's comments. A string, template text and an unterminated
+ * block comment hold none; a regular expression is read as code, so one that
+ * looks like a comment hides at most the rest of its line.
+ */
+function commentRanges(text) {
+  const ranges = []
+  const holes = [] // the brace depth at each open template hole, ${
+  let depth = 0
+  // Returns the index after a template's closing backtick or a hole's ${.
+  const template = (at) => {
+    for (let i = at; i < text.length; i++) {
+      if (text[i] === "\\") i++
+      else if (text[i] === "`") return i + 1
+      else if (text[i] === "$" && text[i + 1] === "{") {
+        holes.push(depth)
+        return i + 2
+      }
+    }
+    return text.length
+  }
+  for (let i = 0; i < text.length;) {
+    const c = text[i]
+    if (c === "/" && text[i + 1] === "/") {
+      const end = text.indexOf("\n", i)
+      ranges.push([i, end < 0 ? text.length : end])
+      i = end < 0 ? text.length : end
+    } else if (c === "/" && text[i + 1] === "*") {
+      const end = text.indexOf("*/", i + 2)
+      if (end < 0) i += 2
+      else {
+        ranges.push([i, end + 2])
+        i = end + 2
+      }
+    } else if (c === "'" || c === '"') i = stringEnd(text, i + 1, c)
+    else if (c === "`") i = template(i + 1)
+    else if (c === "}" && holes.at(-1) === depth) {
+      holes.pop()
+      i = template(i + 1)
+    } else {
+      if (c === "{") depth++
+      if (c === "}") depth--
+      i++
+    }
+  }
+  return ranges
+}
+
+/**
+ * Every import and re-export specifier of text, in source order. A specifier
+ * in a comment is prose, such as `{@link import("./x.ts").X}`, and declaration
+ * emit copies a doc comment, so it is no import.
+ */
 export function parseImports(text) {
   const found = []
   for (const m of text.matchAll(fromClause)) {
@@ -28,7 +89,8 @@ export function parseImports(text) {
   for (const m of text.matchAll(bare)) found.push({ kind: "import", specifier: m[2], typeOnly: false, clause: "", start: m.indices[2][0], end: m.indices[2][1] })
   for (const m of text.matchAll(dynamic)) found.push({ kind: "dynamic", specifier: m[2], typeOnly: false, clause: "", start: m.indices[2][0], end: m.indices[2][1] })
   for (const m of text.matchAll(mocked)) found.push({ kind: "mock", specifier: m[2], typeOnly: false, clause: "", start: m.indices[2][0], end: m.indices[2][1] })
-  return found.sort((a, b) => a.start - b.start)
+  const comments = commentRanges(text)
+  return found.filter((i) => !comments.some(([start, end]) => start <= i.start && i.start < end)).sort((a, b) => a.start - b.start)
 }
 
 /** Whether a specifier names Effect or one of its packages. */

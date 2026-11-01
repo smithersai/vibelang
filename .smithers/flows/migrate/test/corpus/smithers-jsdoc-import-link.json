@@ -1,0 +1,17 @@
+{
+  "finding": "smithers:codemod-rewrites-jsdoc-import",
+  "note": "Smithers build/targets ToolRun.ts: a doc comment's {@link import(\"./x.ts\").X} became ./x.vibe, and declaration emit copied the comment, so ToolRun.d.ts changed although ToolRun.ts stayed .ts.",
+  "batch": [
+    "packages/build/targets/src/internal/Lane.ts"
+  ],
+  "files": {
+    "packages/build/targets/src/internal/Lane.ts": "export type Lane = \"fast\"\n",
+    "packages/build/targets/src/ToolRun.ts": "import type { Lane } from \"./internal/Lane.ts\"\n/** Prefer {@link import(\"./internal/Lane.ts\").Lane} over a string. */\nexport const lane: Lane = \"fast\"\n"
+  },
+  "expected": [
+    "packages/build/targets/src/ToolRun.ts: ./internal/Lane.ts -> ./internal/Lane.vibe"
+  ],
+  "kept": {
+    "packages/build/targets/src/ToolRun.ts": "/** Prefer {@link import(\"./internal/Lane.ts\").Lane} over a string. */"
+  }
+}
