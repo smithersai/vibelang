@@ -4,9 +4,46 @@
 // nothing more to fix, recording each rewrite it applied and each it refused.
 import { existsSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs"
 import { join, posix } from "node:path"
-import { applyEdits, parseImports, resolveRelative } from "./imports.mjs"
+import { applyEdits, parseImports, resolveAliased, resolveRelative } from "./imports.mjs"
 import { assertFinished, parseDiagnostics } from "./diagnostics.mjs"
 import { isDeclarationFile, quote, run } from "./util.mjs"
+
+/**
+ * The tsconfig `paths` of each file's project, for rewriteImports and
+ * restoreSpecifiers: aliases(file) reads the nearest tsconfig.json at or
+ * above the file with TypeScript's own config reader (so `extends` and
+ * `baseUrl` apply) and gives [{ pattern, targets }] with repository-relative
+ * targets, longest pattern prefix first, as TypeScript tries them.
+ */
+export function pathAliases(ts, root) {
+  const byConfig = new Map()
+  const host = { ...ts.sys, onUnRecoverableConfigFileDiagnostic() {} }
+  // TypeScript tries an exact pattern first, then the longest prefix before the *.
+  const rank = (pattern) => pattern.includes("*") ? pattern.indexOf("*") : Number.MAX_SAFE_INTEGER
+  const nearest = (file) => {
+    for (let dir = posix.dirname(file); ; dir = posix.dirname(dir)) {
+      if (existsSync(join(root, dir, "tsconfig.json"))) return posix.join(dir, "tsconfig.json")
+      if (dir === "." || dir === "/") return undefined
+    }
+  }
+  return (file) => {
+    const config = nearest(file)
+    if (config === undefined) return []
+    if (!byConfig.has(config)) {
+      let aliases = []
+      try {
+        const parsed = ts.getParsedCommandLineOfConfigFile(join(root, config), {}, host)
+        const paths = parsed?.options.paths ?? {}
+        const base = parsed?.options.pathsBasePath ?? parsed?.options.baseUrl ?? posix.dirname(join(root, config))
+        aliases = Object.entries(paths)
+          .map(([pattern, targets]) => ({ pattern, targets: targets.map((target) => posix.relative(root, posix.resolve(base, target))) }))
+          .sort((a, b) => rank(b.pattern) - rank(a.pattern))
+      } catch {}
+      byConfig.set(config, aliases)
+    }
+    return byConfig.get(config)
+  }
+}
 
 /** x.ts becomes x.vibe. Only .ts modules are renamed. */
 export function vibePath(path) {
@@ -207,7 +244,7 @@ export function restoreExports(root, edits, module) {
  * ./user.js (D298). A .vibe specifier of a module that revert returned to .ts
  * names its .ts source again.
  */
-export function rewriteSpecifier(importer, specifier, target, { mock = false } = {}) {
+export function rewriteSpecifier(importer, specifier, target, { mock = false, base: aliased } = {}) {
   const targetExt = posix.extname(target)
   const ext = posix.extname(specifier)
   const vibeImporter = importer.endsWith(".vibe") || (mock && targetExt === ".vibe")
@@ -215,7 +252,7 @@ export function rewriteSpecifier(importer, specifier, target, { mock = false } =
     if (ext === targetExt) return specifier
     if ([".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts", ".vibe"].includes(ext)) return specifier.slice(0, -ext.length) + targetExt
     // Extensionless: name the file, or the directory's index file.
-    const base = posix.normalize(posix.join(posix.dirname(importer), specifier))
+    const base = aliased ?? posix.normalize(posix.join(posix.dirname(importer), specifier))
     if (target === posix.normalize(`${base}/index${targetExt}`)) return `${specifier.replace(/\/$/, "")}/index${targetExt}`
     return specifier + targetExt
   }
@@ -229,12 +266,13 @@ export function rewriteSpecifier(importer, specifier, target, { mock = false } =
  * `to` names `module` (repository-relative, now .ts) gets its `from` again,
  * so ./user.js stays ./user.js. Returns the edits made.
  */
-export function restoreSpecifiers(root, edits, module) {
+export function restoreSpecifiers(root, edits, module, aliases) {
   const vibe = module.replace(/\.ts$/, ".vibe")
   const restored = []
   const byFile = new Map()
   for (const edit of edits) {
-    if (edit.file.endsWith(".vibe") || resolveRelative(edit.file, edit.to, new Set([vibe])) !== vibe) continue
+    const named = resolveRelative(edit.file, edit.to, new Set([vibe])) ?? resolveAliased(edit.file, edit.to, new Set([vibe]), aliases)?.target
+    if (edit.file.endsWith(".vibe") || named !== vibe) continue
     byFile.set(edit.file, [...(byFile.get(edit.file) ?? []), edit])
   }
   for (const [file, fileEdits] of byFile) {
@@ -261,7 +299,7 @@ export function restoreSpecifiers(root, edits, module) {
  * names an earlier migration's .vibe module by its .ts name stays as the
  * repository wrote it. Returns the edits made: { file, from, to }.
  */
-export function rewriteImports(root, scope, moved) {
+export function rewriteImports(root, scope, moved, aliases) {
   const files = new Set(scope)
   const only = moved && new Set(moved)
   const edits = []
@@ -271,9 +309,11 @@ export function rewriteImports(root, scope, moved) {
     const text = readFileSync(path, "utf8")
     const changes = []
     for (const i of parseImports(text)) {
-      const target = resolveRelative(file, i.specifier, files)
+      // A tsconfig paths alias (`@/x`) names a module as a relative specifier does (opencode-39).
+      const aliased = resolveRelative(file, i.specifier, files) === undefined ? resolveAliased(file, i.specifier, files, aliases) : undefined
+      const target = aliased?.target ?? resolveRelative(file, i.specifier, files)
       if (!target || (only && !only.has(file) && !only.has(target))) continue
-      const next = rewriteSpecifier(file, i.specifier, target, { mock: i.kind === "mock" })
+      const next = rewriteSpecifier(file, i.specifier, target, { mock: i.kind === "mock", base: aliased?.base })
       if (next !== i.specifier) {
         changes.push({ start: i.start, end: i.end, text: next })
         edits.push({ file, from: i.specifier, to: next })

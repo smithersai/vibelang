@@ -175,6 +175,38 @@ export function resolveAlias(specifier, paths, files) {
   return undefined
 }
 
+/**
+ * The file a tsconfig `paths` alias names from file, by the substitutions
+ * aliases(file) gives for the importer's project ([{ pattern: "@/*",
+ * targets: ["packages/app/src/*"] }], repository-relative), with
+ * resolveRelative's rules for extensions and directory indexes: `@/x` and
+ * `@/x.js` name packages/app/src/x.vibe. Returns { target, base }, base the
+ * aliased path before those rules, or undefined.
+ */
+export function resolveAliased(from, specifier, files, aliases) {
+  if (!aliases || specifier.startsWith(".")) return undefined
+  for (const { pattern, targets } of aliases(from)) {
+    const star = pattern.indexOf("*")
+    let rest = ""
+    if (star < 0) {
+      if (specifier !== pattern) continue
+    } else {
+      const head = pattern.slice(0, star)
+      const tail = pattern.slice(star + 1)
+      if (!specifier.startsWith(head) || !specifier.endsWith(tail) || specifier.length < head.length + tail.length) continue
+      rest = specifier.slice(head.length, specifier.length - tail.length)
+    }
+    for (const target of targets) {
+      const base = posix.normalize(target.replace("*", rest))
+      let relative = posix.relative(posix.dirname(from), base) || "."
+      if (!relative.startsWith(".")) relative = "./" + relative
+      const found = resolveRelative(from, relative + (specifier.endsWith("/") && !relative.endsWith("/") ? "/" : ""), files)
+      if (found) return { target: found, base }
+    }
+  }
+  return undefined
+}
+
 /** Replaces the specifiers at the given offsets; edits are { start, end, text }. */
 export function applyEdits(text, edits) {
   let out = text

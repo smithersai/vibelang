@@ -1,0 +1,26 @@
+{
+  "key": "opencode-39",
+  "note": "packages/app's tsconfig maps @/* to ./src/*; app has 1,353 @/ imports. After src/composer/schema.ts became .vibe, stock bun check reported TS2307 for @/composer/schema.",
+  "project": "packages/app/tsconfig.json",
+  "files": {
+    "packages/app/tsconfig.json": "{\"compilerOptions\": {\"paths\": {\"@/*\": [\"./src/*\"]}}, \"include\": [\"src\"]}",
+    "packages/app/src/composer/schema.ts": "export const X = 1\n",
+    "packages/app/src/view.ts": "import { X } from \"@/composer/schema\"\nexport const v = X\n",
+    "packages/app/src/other.ts": "import { X } from \"@/composer/schema.js\"\nimport { v } from \"./view\"\nexport const w = X + v\n"
+  },
+  "renames": [
+    "packages/app/src/composer/schema.ts"
+  ],
+  "edits": [
+    {
+      "file": "packages/app/src/view.ts",
+      "from": "@/composer/schema",
+      "to": "@/composer/schema.vibe"
+    },
+    {
+      "file": "packages/app/src/other.ts",
+      "from": "@/composer/schema.js",
+      "to": "@/composer/schema.vibe"
+    }
+  ]
+}

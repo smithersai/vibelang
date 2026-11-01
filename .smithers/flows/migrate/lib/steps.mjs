@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url"
 import { assertBaselineSafe } from "./baseline.mjs"
 import { buildInventory, listSources, readCoverage, tsconfigPaths } from "./inventory.mjs"
 import { defaultLimits, draftPlan, planPrompt, validatePlan } from "./plan.mjs"
-import { fixToFixedPoint, renameBatch, restoreExports, restoreSpecifiers, rewriteExports, rewriteImports, rewriteTotals } from "./codemod.mjs"
+import { fixToFixedPoint, pathAliases, renameBatch, restoreExports, restoreSpecifiers, rewriteExports, rewriteImports, rewriteTotals } from "./codemod.mjs"
 import { splitBatchPlatform } from "./platform.mjs"
 import { check, newErrors, styleProblems, summarize } from "./diagnostics.mjs"
 import { compareDeclarations, recordDeclarationSurface, emitDeclarations, emitErrorsIn, loadTypeScript } from "./declarations.mjs"
@@ -815,6 +815,16 @@ export async function plan(options) {
   return { plan: accepted, accepted: true }
 }
 
+// The tsconfig paths aliases of the target's projects (pathAliases), or none
+// where no TypeScript compiler API is installed to read them.
+function aliasesOf(config) {
+  try {
+    return pathAliases(typeScriptOf(config), config.target)
+  } catch {
+    return undefined
+  }
+}
+
 /** codemod: rename the batch to .vibe, rewrite imports, and run vibelang --fix to a fixed point. */
 export async function codemod(options) {
   assertBaselineSafe(paths(options.run))
@@ -828,7 +838,7 @@ export async function codemod(options) {
   const platform = splitBatchPlatform(t, files, typeScriptOf(config))
   const renames = renameBatch(t, files)
   const exportEdits = rewriteExports(t, renames)
-  const importEdits = rewriteImports(t, await importers(t), renames.map((r) => r.to))
+  const importEdits = rewriteImports(t, await importers(t), renames.map((r) => r.to), aliasesOf(config))
   const compiler = compilerOf(config)
   const byFile = {}
   const refused = []
@@ -920,7 +930,8 @@ export async function revert(options) {
   const split = codemodResult?.platform?.splits?.find((s) => s.file === ts)
   if (split) rmSync(join(config.target, split.platform), { force: true })
   const exportEdits = restoreExports(config.target, codemodResult?.exportEdits ?? [], ts)
-  const importEdits = [...restoreSpecifiers(config.target, codemodResult?.importEdits ?? [], ts), ...rewriteImports(config.target, await importers(config.target), [ts])]
+  const aliases = aliasesOf(config)
+  const importEdits = [...restoreSpecifiers(config.target, codemodResult?.importEdits ?? [], ts, aliases), ...rewriteImports(config.target, await importers(config.target), [ts], aliases)]
   const reverted = readJsonIf(p.reverted(b), [])
   reverted.push({ file: ts, reason: options.reason, at: new Date().toISOString(), ...(source.batch === b ? {} : { from: source.batch }), exportEdits, importEdits })
   writeJson(p.reverted(b), reverted)
