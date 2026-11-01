@@ -732,9 +732,10 @@ func spanKeyAt(d *ast.Diagnostic, pos int) string {
 }
 
 // An errorBaseline holds the errors a fix may not add to: the program's
-// errors counted by errorKey and by errorSpanKey, and the text of each file
+// occurrences, counts by errorKey and errorSpanKey, and the text of each file
 // that reports one, against which spanKeys places a later program's errors.
 type errorBaseline struct {
+	errors          []*ast.Diagnostic
 	messages, spans map[string]int
 	texts           map[string]string
 }
@@ -752,7 +753,7 @@ func baselineOf(ctx context.Context, program *compiler.Program) errorBaseline {
 }
 
 func countErrors(errors []*ast.Diagnostic, spanKey func(*ast.Diagnostic) string) errorBaseline {
-	b := errorBaseline{messages: map[string]int{}, spans: map[string]int{}}
+	b := errorBaseline{errors: errors, messages: map[string]int{}, spans: map[string]int{}}
 	for _, d := range errors {
 		b.messages[errorKey(d)]++
 		if key := spanKey(d); key != "" {
@@ -772,21 +773,43 @@ func countErrors(errors []*ast.Diagnostic, spanKey func(*ast.Diagnostic) string)
 // lay before the edits (spanKeys).
 func addedCounts(errors []*ast.Diagnostic, baseline errorBaseline) map[string]int {
 	spanKey := baseline.spanKeys()
-	now := countErrors(errors, spanKey)
-	added := map[string]int{}
-	for _, d := range errors {
-		key := errorKey(d)
-		if now.messages[key] <= baseline.messages[key] {
-			continue
+	// Each baseline occurrence has one owner, even when both its keys match.
+	byMessage, bySpan := map[string][]int{}, map[string][]int{}
+	owners := make([]int, len(baseline.errors))
+	for i, d := range baseline.errors {
+		byMessage[errorKey(d)] = append(byMessage[errorKey(d)], i)
+		if span := errorSpanKey(d); span != "" {
+			bySpan[span] = append(bySpan[span], i)
 		}
-		if span := spanKey(d); span != "" && now.spans[span] <= baseline.spans[span] {
-			continue
-		}
-		added[key]++
+		owners[i] = -1
 	}
-	for key, n := range added {
-		if excess := now.messages[key] - baseline.messages[key]; n > excess {
-			added[key] = excess
+	messages, spans := make([]string, len(errors)), make([]string, len(errors))
+	for i, d := range errors {
+		messages[i], spans[i] = errorKey(d), spanKey(d)
+	}
+	// An augmenting path can move an earlier message match to a span match
+	// (or vice versa), so a greedy choice cannot refuse a valid repair.
+	seen := make([]int, len(baseline.errors))
+	var match func(int, int) bool
+	match = func(current, visit int) bool {
+		for _, candidates := range [][]int{bySpan[spans[current]], byMessage[messages[current]]} {
+			for _, old := range candidates {
+				if seen[old] == visit {
+					continue
+				}
+				seen[old] = visit
+				if owners[old] < 0 || match(owners[old], visit) {
+					owners[old] = current
+					return true
+				}
+			}
+		}
+		return false
+	}
+	added := map[string]int{}
+	for i := range errors {
+		if !match(i, i+1) {
+			added[messages[i]]++
 		}
 	}
 	return added
