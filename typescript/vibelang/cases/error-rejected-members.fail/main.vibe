@@ -1,0 +1,24 @@
+// expect: EK1304
+// Chapter 3 static rules, last row: a member that is not a field, a method, a
+// getter or an empty ; element is EK1304, in either error form, and gets that
+// one diagnostic (no TypeScript error for the member).
+error E0 { id = 1 }
+error E1 { private id?: string }
+error E2 { #id = 1 }
+error E3 { declare id: string }
+error E4 { accessor id = 1 }
+error E5 { [key: string]: unknown }
+error E6 { private count: number }
+error E7 { protected count: number; get twice() { return this.count * 2 } }
+error E8 { [key: string]: number }
+schema error S0 { id = 1 }
+schema error S1 { private id?: string }
+schema error S2 { #id = 1 }
+schema error S3 { declare id: string }
+schema error S4 { accessor id = 1 }
+schema error S5 { [key: string]: unknown }
+schema error S6 { private count: number }
+schema error S7 { public count: number }
+interface Contract { readonly id: string }
+error Implemented implements Contract { id: string }
+schema error SchemaImplemented implements Contract { id: string }

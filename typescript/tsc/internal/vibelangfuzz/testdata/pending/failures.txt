@@ -83,12 +83,6 @@ FuzzFailuresSpec feature:recursive-throw compiler VIP-4: 003-failures.md contrac
 FuzzFailuresSpec feature:mutual-recursive-throw compiler VIP-4: 003-failures.md contract mutual-recursive-throw disagrees on unmodified main c9327b36 (error EK2003, error TS1128, error TS1434, error TS2304); lane vip-core2
 FuzzFailuresSpec feature:throws-upper-bound compiler VIP-4: 003-failures.md contract throws-upper-bound disagrees on unmodified main c9327b36 (required diagnostic is missing); lane w2-throw
 FuzzFailuresSpec feature:constructor-field-throw compiler VIP-4: 003-failures.md contract constructor-field-throw disagrees on unmodified main c9327b36 (error EK1001, error TS1128, error TS1434, error TS2304); lane vip-core2
-FuzzFailuresSpec feature:error-rejected-initializer compiler VIP-13: 003-failures.md contract error-rejected-initializer disagrees on unmodified main c9327b36 (required diagnostic is missing); lane fix-vip-decls
-FuzzFailuresSpec feature:error-rejected-private-field compiler VIP-13: 003-failures.md contract error-rejected-private-field disagrees on unmodified main c9327b36 (error TS2564); lane fix-vip-decls
-FuzzFailuresSpec feature:error-rejected-index-signature compiler VIP-13: 003-failures.md contract error-rejected-index-signature disagrees on unmodified main c9327b36 (error TS2411); lane fix-vip-decls
-FuzzFailuresSpec feature:schema-error-rejected-initializer compiler VIP-29: 003-failures.md contract schema-error-rejected-initializer disagrees on unmodified main c9327b36 (required diagnostic is missing); lane fix-vip-decls
-FuzzFailuresSpec feature:schema-error-rejected-private-field compiler VIP-29: 003-failures.md contract schema-error-rejected-private-field disagrees on unmodified main c9327b36 (error TS2564); lane fix-vip-decls
-FuzzFailuresSpec feature:schema-error-rejected-index-signature compiler VIP-29: 003-failures.md contract schema-error-rejected-index-signature disagrees on unmodified main c9327b36 (error TS2411); lane fix-vip-decls
 FuzzFailuresSpec feature:tagged-template-throw compiler VIP-4: 003-failures.md contract tagged-template-throw disagrees on unmodified main c9327b36 (error TS1128, error TS1434, error TS2304); lane vip-core2
 FuzzFailuresSpec feature:callable-union-throw compiler VIP-4: 003-failures.md contract callable-union-throw disagrees on unmodified main c9327b36 (error TS1128, error TS1434, error TS2304); lane vip-core2
 FuzzFailuresSpec feature:written-throws-caller compiler VIP-4: 003-failures.md contract written-throws-caller disagrees on unmodified main c9327b36 (error TS1128, error TS1434, error TS2304); lane vip-core2
@@ -149,12 +143,6 @@ FuzzFailuresSpec corpus:recursive-throw compiler VIP-4: minimized reproduction o
 FuzzFailuresSpec corpus:mutual-recursive-throw compiler VIP-4: minimized reproduction of feature:mutual-recursive-throw; lane w2-throw
 FuzzFailuresSpec corpus:throws-upper-bound compiler VIP-4: minimized reproduction of feature:throws-upper-bound; lane w2-throw
 FuzzFailuresSpec corpus:constructor-field-throw compiler VIP-4: minimized reproduction of feature:constructor-field-throw; lane w2-throw
-FuzzFailuresSpec corpus:error-rejected-initializer compiler VIP-4: minimized reproduction of feature:error-rejected-initializer; lane fix-vip-decls
-FuzzFailuresSpec corpus:error-rejected-private-field compiler VIP-4: minimized reproduction of feature:error-rejected-private-field; lane fix-vip-decls
-FuzzFailuresSpec corpus:error-rejected-index-signature compiler VIP-4: minimized reproduction of feature:error-rejected-index-signature; lane fix-vip-decls
-FuzzFailuresSpec corpus:schema-error-rejected-initializer compiler VIP-4: minimized reproduction of feature:schema-error-rejected-initializer; lane fix-vip-decls
-FuzzFailuresSpec corpus:schema-error-rejected-private-field compiler VIP-4: minimized reproduction of feature:schema-error-rejected-private-field; lane fix-vip-decls
-FuzzFailuresSpec corpus:schema-error-rejected-index-signature compiler VIP-4: minimized reproduction of feature:schema-error-rejected-index-signature; lane fix-vip-decls
 FuzzFailuresSpec corpus:tagged-template-throw compiler VIP-4: minimized reproduction of feature:tagged-template-throw; lane w2-throw
 FuzzFailuresSpec corpus:callable-union-throw compiler VIP-4: minimized reproduction of feature:callable-union-throw; lane w2-throw
 FuzzFailuresSpec corpus:written-throws-caller compiler VIP-4: minimized reproduction of feature:written-throws-caller; lane w2-throw
@@ -187,12 +175,6 @@ FuzzFailuresSpec feature:effectful-service-key-throw compiler VIP-4: chapter 3 c
 FuzzFailuresSpec corpus:effectful-service-key-throw compiler VIP-4: minimized reproduction of feature:effectful-service-key-throw; lane w2-throw
 FuzzFailuresSpec feature:effectful-service-reference-throw compiler VIP-4: chapter 3 contract effectful-service-reference-throw fails on main 405bac96 (initial probe: EK2003); lane w2-throw
 FuzzFailuresSpec corpus:effectful-service-reference-throw compiler VIP-4: minimized reproduction of feature:effectful-service-reference-throw; lane w2-throw
-FuzzFailuresSpec feature:error-rejected-private-modifier compiler VIP-13: chapter 3 contract error-rejected-private-modifier fails on main 405bac96 (initial probe: TS2564); lane fix-vip-decls
-FuzzFailuresSpec corpus:error-rejected-private-modifier compiler VIP-13: minimized reproduction of feature:error-rejected-private-modifier; lane fix-vip-decls
-FuzzFailuresSpec feature:error-rejected-declare-field compiler VIP-13: chapter 3 contract error-rejected-declare-field fails on main 405bac96 (initial probe: no required diagnostic); lane fix-vip-decls
-FuzzFailuresSpec corpus:error-rejected-declare-field compiler VIP-13: minimized reproduction of feature:error-rejected-declare-field; lane fix-vip-decls
-FuzzFailuresSpec feature:error-rejected-accessor-field compiler VIP-13: chapter 3 contract error-rejected-accessor-field fails on main 405bac96 (initial probe: no required diagnostic); lane fix-vip-decls
-FuzzFailuresSpec corpus:error-rejected-accessor-field compiler VIP-13: minimized reproduction of feature:error-rejected-accessor-field; lane fix-vip-decls
 FuzzFailuresSpec feature:error-effect-getter-priority compiler VIP-13: chapter 3 contract error-effect-getter-priority fails on main 405bac96 (initial probe: TS1434, TS7008); lane core-land
 FuzzFailuresSpec corpus:error-effect-getter-priority compiler VIP-13: minimized reproduction of feature:error-effect-getter-priority; lane core-land
 FuzzFailuresSpec feature:error-effect-setter-priority compiler VIP-13: chapter 3 contract error-effect-setter-priority fails on main 405bac96 (initial probe: TS1434, TS7008); lane core-land
@@ -201,12 +183,6 @@ FuzzFailuresSpec feature:error-effect-constructor-priority compiler VIP-13: chap
 FuzzFailuresSpec corpus:error-effect-constructor-priority compiler VIP-13: minimized reproduction of feature:error-effect-constructor-priority; lane core-land
 FuzzFailuresSpec feature:error-literal-computed-keys compiler VIP-13: chapter 3 contract error-literal-computed-keys fails on main 405bac96 (initial probe: TS2353, TS2564); lane fix-fz-fail
 FuzzFailuresSpec corpus:error-literal-computed-keys compiler VIP-13: minimized reproduction of feature:error-literal-computed-keys; lane fix-fz-fail
-FuzzFailuresSpec feature:schema-error-rejected-private-modifier compiler VIP-29: chapter 3 contract schema-error-rejected-private-modifier fails on main 405bac96 (initial probe: TS2564); lane fix-vip-decls
-FuzzFailuresSpec corpus:schema-error-rejected-private-modifier compiler VIP-29: minimized reproduction of feature:schema-error-rejected-private-modifier; lane fix-vip-decls
-FuzzFailuresSpec feature:schema-error-rejected-declare-field compiler VIP-29: chapter 3 contract schema-error-rejected-declare-field fails on main 405bac96 (initial probe: no required diagnostic); lane fix-vip-decls
-FuzzFailuresSpec corpus:schema-error-rejected-declare-field compiler VIP-29: minimized reproduction of feature:schema-error-rejected-declare-field; lane fix-vip-decls
-FuzzFailuresSpec feature:schema-error-rejected-accessor-field compiler VIP-29: chapter 3 contract schema-error-rejected-accessor-field fails on main 405bac96 (initial probe: no required diagnostic); lane fix-vip-decls
-FuzzFailuresSpec corpus:schema-error-rejected-accessor-field compiler VIP-29: minimized reproduction of feature:schema-error-rejected-accessor-field; lane fix-vip-decls
 FuzzFailuresSpec feature:schema-error-effect-getter-priority compiler VIP-29: chapter 3 contract schema-error-effect-getter-priority fails on main 405bac96 (initial probe: TS1434, TS7008); lane core-land
 FuzzFailuresSpec corpus:schema-error-effect-getter-priority compiler VIP-29: minimized reproduction of feature:schema-error-effect-getter-priority; lane core-land
 FuzzFailuresSpec feature:schema-error-effect-setter-priority compiler VIP-29: chapter 3 contract schema-error-effect-setter-priority fails on main 405bac96 (initial probe: TS1434, TS7008); lane core-land
