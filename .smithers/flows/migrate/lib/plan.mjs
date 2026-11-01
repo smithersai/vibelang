@@ -20,6 +20,30 @@ export function candidates(inventory, { includeTests = false } = {}) {
   return inventory.files.filter((f) => f.effect === "values" && (includeTests || !f.test) && f.path.endsWith(".ts") && !isToolConfig(f.path))
 }
 
+/** Report the full owned inventory separately from automatic and explicit selections (detail 279). */
+export function migrationScope(inventory, plan, options = {}) {
+  if (!inventory) return null
+  const owned = [...new Map(inventory.files.map(file => [file.path, {
+    path: file.path, effect: file.effect, test: Boolean(file.test)
+  }])).values()].sort((a, b) => a.path.localeCompare(b.path))
+  const automaticCandidates = [...new Set(candidates(inventory, options).map(file => file.path))].sort()
+  const planned = [...new Set((plan?.batches ?? []).flatMap(batch => batch.files))].sort()
+  const selected = new Set(planned)
+  const typeOnly = owned.filter(file => file.effect === "types" && /\.(?:ts|mts|cts|tsx)$/.test(file.path))
+  const retainedTypeOnly = typeOnly.filter(file => !selected.has(file.path)).map(file => ({
+    path: file.path, reason: "only Effect type imports; retained as TypeScript by the default plan"
+  }))
+  const explicitTypeOnly = typeOnly.filter(file => selected.has(file.path)).map(file => file.path)
+  return {
+    owned, automaticCandidates, planned, retainedTypeOnly, explicitTypeOnly,
+    counts: {
+      owned: owned.length, effectImports: owned.filter(file => file.effect === "values" || file.effect === "types").length,
+      automaticCandidates: automaticCandidates.length, planned: planned.length,
+      retainedTypeOnly: retainedTypeOnly.length, explicitTypeOnly: explicitTypeOnly.length
+    }
+  }
+}
+
 /**
  * Dependency levels among the candidates: a file that imports no other
  * candidate is level 0 (a leaf), else one more than its deepest candidate
@@ -149,6 +173,7 @@ You order the migration of ${inventory.packages.join(", ")} from Effect TypeScri
 
 - Small batches: at most ${limits.maxFiles} files and ${limits.maxLines} lines each, small enough to finish, test and review in one pass.
 - Leaves and well-tested modules first: a file whose own Effect imports are already migrated, or stay .ts, and that tests cover. An untested file goes after the files whose tests exercise it.
+- Files whose Effect imports are all types stay TypeScript in the default draft; they remain in the owned inventory. Explicit selection is allowed with its existing warning and every compilation, declaration, runtime, tool and protected-test gate. Type-only import spelling alone does not prove the original program is valid.
 - Files with no Effect code stay .ts; they are not candidates. Neither is a tool's config, \`graphql.config.ts\`, which the tool finds by its name. Tests stay .ts unless a test file is itself Effect code (\`it.effect\`); put such a test in its module's batch.
 - Keep a directory's files together when the limits allow, so one review reads one module.
 - Defer a file that cannot become idiomatic VibeLang yet (for example, it is mostly a Promise or callback library, or it needs a TypeScript-only construct), with the reason.

@@ -7,7 +7,7 @@ import { dirname, join, posix, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { assertBaselineSafe } from "./baseline.mjs"
 import { buildInventory, listSources, readCoverage, tsconfigPaths } from "./inventory.mjs"
-import { defaultLimits, draftPlan, planPrompt, validatePlan } from "./plan.mjs"
+import { defaultLimits, draftPlan, migrationScope, planPrompt, validatePlan } from "./plan.mjs"
 import { fixToFixedPoint, pathAliases, renameBatch, restoreExports, restoreSpecifiers, rewriteExports, rewriteImports, rewriteTotals } from "./codemod.mjs"
 import { splitBatchPlatform } from "./platform.mjs"
 import { check, newErrors, styleProblems, summarize } from "./diagnostics.mjs"
@@ -1136,7 +1136,7 @@ export async function record(options) {
 
 /** report: every batch's outcome, the token totals and the run's issues, as Markdown and JSON. */
 export async function report(options) {
-  const { p, config, setup: setupResult, plan: thePlan } = loadRun(options.run)
+  const { p, config, setup: setupResult, plan: thePlan, inventory } = loadRun(options.run)
   const upgrade = readJsonIf(p.upgrade)
   const batches = (thePlan?.batches ?? []).map((batch, i) => {
     const b = batchName(i)
@@ -1151,6 +1151,7 @@ export async function report(options) {
     compiler: setupResult?.compiler?.version ?? null,
     effect: upgrade && !upgrade.skipped ? { ...upgrade.effect, commit: upgrade.jj.commit, changed: upgrade.changed.length, regressions: upgrade.regressions } : null,
     baseline: setupResult?.tests ?? null,
+    scope: migrationScope(inventory, thePlan, { nativeConfigs: setupResult?.wired?.nativeViteConfigs ?? setupResult?.nativeViteConfigs ?? [] }),
     batches: { planned: batches.length, recorded: done.length },
     tokens: { ...tokens, percent: tokens.before ? Number((100 * (tokens.after - tokens.before) / tokens.before).toFixed(1)) : null },
     issues: issues.filter((i) => i.kind === "issue"),
@@ -1171,6 +1172,13 @@ export async function report(options) {
       : `Effect was already ${data.effect.to}.`, ""] : []),
     `${data.batches.recorded} of ${data.batches.planned} batches recorded. Tokens of migrated files: ${tokens.before} -> ${tokens.after} (${data.tokens.percent ?? 0}%).`,
     "",
+    ...(data.scope ? [
+      "Scope: " + data.scope.counts.owned + " owned source files; " + data.scope.counts.effectImports + " import Effect; " +
+      data.scope.counts.automaticCandidates + " automatic candidates; " + data.scope.counts.planned + " explicitly or automatically selected files; " +
+      data.scope.counts.retainedTypeOnly + " type-only files deliberately retained as TypeScript. The complete ownership list, including tests, is in " + "`" + "report.json" + "`" + ".", "",
+      ...data.scope.retainedTypeOnly.map(file => "- " + "`" + file.path + "`" + ": " + file.reason),
+      ""
+    ] : []),
     "| Batch | Files | Migrated | Tests | Declarations | Style | Tokens | Commit |",
     "| --- | ---: | ---: | --- | --- | --- | --- | --- |",
     ...batches.map((b) => {

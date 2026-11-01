@@ -1,0 +1,6 @@
+{
+  "path": "src/html/runtimeSingleton.ts",
+  "source": "import type { Context } from 'effect'\nexport type Frame = Readonly<{ runtimeContext: Context.Context<never> }>\nconst frames: Frame[] = []\nexport const setRuntime = (runtimeContext: Context.Context<never>): void => { frames.push({ runtimeContext }) }\nexport const requireRuntimeContext = (): Context.Context<never> => frames[frames.length - 1].runtimeContext\n",
+  "decision": "279",
+  "retainedReason": "only Effect type imports; retained as TypeScript by the default plan"
+}
