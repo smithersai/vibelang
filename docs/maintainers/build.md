@@ -99,6 +99,8 @@ Native compiler property tests use the built checkout compiler at `packages/comp
 
 Docs checks use `VIBELANG_BINARY` when set, otherwise the native checkout build at `packages/compiler/native/vibelang` (`vibelang.exe` on Windows), then `typescript/built/local/tsc`, then `vibelang` on `PATH`. Build the native compiler with `sh scripts/build-vibelang.sh`. The `:release`, `:snippets` and `:docs-tools` targets declare `:compiler-native` so its build and cache key cover the selected binary. The release warning fixture also declares `:runtime-dist`.
 
+The direct compile steps in `sh scripts/check-examples.sh` use `VIBELANG` when set, otherwise the native build in this checkout (`vibelang.exe` on Windows), then `vibelang` on `PATH`, then the legacy `typescript/built/local/tsc`. This keeps a native-only build usable even without a global launcher and avoids checking against a stale global compiler. Set `VIBELANG_BINARY` as well when selecting the compiler for nested package scripts, Vite and Vitest.
+
 Every native build and copy uses `scripts/native-output.sh`: it writes a private sibling temporary output, closes the writer, then renames the executable into place. Concurrent readers keep executing the previous binary until the complete replacement is published, avoiding `ETXTBSY`. Failed builds leave the previous executable intact and clean up their temporary output. This applies to the compiler, forms generator, mapper, standalone test builds and release platform binaries; release rebuilds retain existing binaries while compiling replacements. Remote release transfers use `rsync` without `--inplace`, which also replaces completed files by rename.
 
 ### Changed-path fuzz seeds

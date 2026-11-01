@@ -5,6 +5,8 @@
 #   VIBELANG_BINARY=/absolute/path/to/native/vibelang sh scripts/check-examples.sh
 # VIBELANG selects the direct checks; VIBELANG_BINARY also selects the native
 # compiler used by example package scripts, Vite and Vitest.
+# Without VIBELANG, use the native build in this checkout, then PATH, then the legacy
+# typescript/built/local/tsc build.
 # Detailed diagnostics and output remain in .cache/check-examples/.
 set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
@@ -12,7 +14,11 @@ logs="$root/.cache/check-examples"
 mkdir -p "$logs"
 compiler=${VIBELANG:-}
 if [ -z "$compiler" ]; then
-  if command -v vibelang >/dev/null 2>&1; then
+  native=vibelang
+  case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) native=vibelang.exe ;; esac
+  if [ -x "$root/packages/compiler/native/$native" ]; then
+    compiler="$root/packages/compiler/native/$native"
+  elif command -v vibelang >/dev/null 2>&1; then
     compiler=$(command -v vibelang)
   else
     compiler="$root/typescript/built/local/tsc"
