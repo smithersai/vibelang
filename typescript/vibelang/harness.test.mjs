@@ -98,7 +98,10 @@ test("command evidence records deadline kills, spawn errors, and bounded tails",
   const missing = await commands.run(path.join(os.tmpdir(), "missing-vibelang-command", "tsc"), [], { phase: "compile", timeout: 1000 })
   assert.equal(missing.code, "ENOENT")
   assert.match(commands.records[1].error, /ENOENT/)
-  await commands.run(process.execPath, ["-e", 'console.log("x".repeat(50000) + "stdout end"); console.error("y".repeat(50000) + "stderr end")'], { phase: "run", timeout: 1000 })
+  // The deadline is a hang guard. The child sleeps past one second, so a guard tight enough to fire on a loaded host
+  // (at load 150 a plain node start outran 1000 ms, was killed, and left an empty tail) fails here every time.
+  await commands.run(process.execPath, ["-e", 'setTimeout(() => { console.log("x".repeat(50000) + "stdout end"); console.error("y".repeat(50000) + "stderr end") }, 1200)'], { phase: "run", timeout: 60_000 })
+  assert.equal(commands.records[2].timedOut, false, "the bounded-tail child must finish before its deadline")
   assert.ok(commands.records[2].stdoutTail.length <= 16_384)
   assert.ok(commands.records[2].stderrTail.length <= 16_384)
   assert.match(commands.records[2].stdoutTail, /stdout end\n$/)
