@@ -504,3 +504,5 @@ VIP-5 Effect TypeScript counterpart. A bare `yield*` followed by the function's
 end infers `void` even when the operation cannot succeed. Void helpers keep the
 bare operation. The `vip05-try-fatal-result` differential corpus preserves
 the minimized typed-helper witness; the runtime Exit and event-log oracle is unchanged.
+
+The `FuzzTryNested` corpus also varies native Effect calls, stored native arrows and member aliases over zero to three held Effect layers. The written-forms arrow has one `try` for one layer; an extra `try` must report `EK0502` under Chapter 2.

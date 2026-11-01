@@ -24,8 +24,9 @@ func TestTryNestedQuoted(t *testing.T) {
 }
 
 // tryNestedOperands are the operand spellings, each giving the same nested
-// Effect from a .ts module: a value, a call, and a member of an object.
-var tryNestedOperands = []string{"value", "call", "member"}
+// Effect from a .ts module or a native effect function. Native arrows pin the
+// written-forms probe: one try runs its one Effect layer, not two.
+var tryNestedOperands = []string{"value", "call", "member", "native-call", "native-arrow", "native-member"}
 
 // tryNestedKey is the keyed corpus spelling: operand:depth:nesting:form.
 func tryNestedKey(operand string, depth, nesting int, bare bool) string {
@@ -54,12 +55,37 @@ func FuzzTryNested(f *testing.F) {
 			operand = tryNestedOperands[int(b[0])%len(tryNestedOperands)]
 			depth, nesting, bare = 1+int(b[len(b)-1])%3, int(b[len(b)/2])%4, b[0]&1 != 0
 		}
+		native := strings.HasPrefix(operand, "native-")
+		heldNesting := nesting
+		if native && heldNesting > 0 {
+			heldNesting-- // nativeWork supplies the outer Effect layer.
+		}
 		typ, value := "number", "1"
-		for range nesting {
+		for range heldNesting {
 			typ, value = "Effect.Effect<"+typ+">", "Effect.succeed("+value+")"
 		}
 		lib := fmt.Sprintf("import { Effect } from \"effect\"\nexport const held: %s = %s\nexport const make = (): %s => %s\nexport const box = { held }\n", typ, value, typ, value)
 		x := map[string]string{"value": "held", "call": "make()", "member": "box.held"}[operand]
+		helper, setup := "", ""
+		if native {
+			helper = "effect function nativeWork() { return held }\n"
+			if nesting == 0 {
+				helper = "function nativeWork(): number { return held }\n"
+			}
+			switch operand {
+			case "native-call":
+				x = "nativeWork()"
+			case "native-member":
+				helper += "const api = { nativeWork }\n"
+				x = "api.nativeWork()"
+			case "native-arrow":
+				setup = "  const p = effect () => try nativeWork()\n"
+				if nesting == 0 {
+					setup = "  const p = (): number => nativeWork()\n"
+				}
+				x = "p()"
+			}
+		}
 		expression := strings.Repeat("try ", depth) + x
 		if !bare {
 			expression = "try " + x
@@ -67,7 +93,7 @@ func FuzzTryNested(f *testing.F) {
 				expression = "try (" + expression + ")"
 			}
 		}
-		source := "import { held, make, box } from \"./lib.ts\"\nexport effect function main() {\n  const v = " + expression + "\n  return v\n}\n"
+		source := "import { held, make, box } from \"./lib.ts\"\n" + helper + "export effect function main() {\n" + setup + "  const v = " + expression + "\n  return v\n}\n"
 		var result *Result
 		var err error
 		within(t, "compile", func() {
