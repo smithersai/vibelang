@@ -215,6 +215,25 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Formatting a labeled arrow statement failed with `formatting changed the program`; labels now keep their arrow body under semicolon-free formatting, and written empty labels stay intact.
 
 - Formatting a returned function type removed written parentheses and changed published `.d.ts` files; the formatter now keeps those parentheses and their enclosed comments, including nested and generic function types.
+
+- An `is` that binds names in a `for (init; test; update)` head reported `EK4703`; the bindings now live in the head as chapter 004 states (decided detail 240): a binding from `init` is copied into each iteration like a `let` declared there, and a binding from `test` or `update` is a cell of each iteration, which a read in `update` cannot see initialized (`TS2454`). A `var` or `using` initializer still keeps `EK4703`.
+- An `is` that binds names in a `match` arm or in a class field initializer reported `EK4703`; the bindings now live in the arm, which is its own scope, or in the initializer's own scope, as chapter 004 states.
+- Code with two `is` patterns binding one name in one block compiled when each `if` head was its own scope; it now reports `TS2451` (or `TS2300` beside a parameter), and the diagnostic offers to rename the later binding and its uses, and `vibelang --fix` applies the rename (chapter 004, decided detail 245).
+- An `is` binding in an `if` head was scoped to that `if` alone, so `if (!(x is { id: let id })) return; use(id)` reported `EK4703` and `||` or nested conditions could not bind; the bindings now live in the block that holds the `if` (chapter 004, decided detail 245), an unbraced body is its own block, a `for concurrent` limit may bind, and two patterns binding one name in one block report TypeScript's `TS2451`. A binding written `const` keeps const immutability: an assignment to it is TypeScript's `TS2588`.
+- An `is` that binds names in a variable statement, an expression statement, a `return`, a `throw` or a concise arrow body reported `EK4703`; its bindings now live in the block that holds the statement, or in the arrow body (chapter 004). Unsupported homes retain `EK4703`; formal-parameter and enum initialization use `EK0705`.
+
+- The migration's ESLint bridge rejected `declare const` symbol brands used only through `typeof`, which Oxlint accepted; the mapped `no-unused-vars` rule now counts those reads and retains configured options and unused-declaration reports.
+- Migration upgrade self-tests failed before exercising an installed compiler; fixtures now model baseline checks and VIP-only fixes separately.
+
+- Conversion examples changed exported Effect values into functions, breaking callers that passed them directly to runners; all five affected examples now keep lazy Effect-valued `const` exports.
+
+- Conversion examples dropped explicit service keys, so existing providers could no longer satisfy migrated programs; examples and migration prompts now preserve the original runtime identities.
+
+- Migration instructions still avoided service-key lookup and native time/randomness calls after their blockers were fixed; they now teach the supported forms and keep the injected-service testing recommendation.
+
+- The known-limitations page incorrectly said stock TypeScript could not resolve `.vibe` imports; it now explains the implemented declaration-sidecar route with `allowArbitraryExtensions`.
+
+- The platform crypto example passed raw bytes as algorithm-bearing keys and omitted its encryption inputs; it now uses native Effect key types and declares every input.
 - After the migrate flow renamed a module to `.vibe`, an importer that named it through a tsconfig `paths` alias, `@/composer/schema`, kept that spelling, which the project’s `bun check` script invoking stock TypeScript cannot resolve (`TS2307`); the codemod now writes `@/composer/schema.vibe` there too, as for a relative import, and `revert` puts it back.
 
 
@@ -238,6 +257,15 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Migration checks rejected test path strings that only followed a source-file rename; they now prove the path resolves to the migrated file, including static path builders, while keeping modules as TypeScript when tests assert on their source text.
 
 - A migration batch could pass after changing its tests or fixtures, hiding a regression; the migrate flow now verifies every edit against detail 272's exceptions, with same-module and filesystem-path rename proofs, exact-set selector checks under the target tool's glob rules, and separately disclosed dependency assertions, refuses `async` or generator filters that would select extra files, checks again before committing, and reports the proof for the pull request.
+
+- The migrate flow's declaration snapshots failed with `TS5051` for valid projects using `inlineSources`; declaration-only emission now disables all source and declaration map options together, including inherited settings.
+
+- `--fix` could leave statement-position `Option.match` calls unchanged after a parser refusal; it now writes a valid block and preserves callback order.
+- Migrating a Match return-type hint could insert an `as` assertion that the repository's lint rejected; the quick fix now preserves checked type annotations, including destructured bindings.
+- Migration staging could put a local tarball in optional package contracts; only direct runtime and development dependencies now receive the staged tarball.
+
+- `try (try e)` ran one Effect: the parser read the outer `try` away, so `try (try Env)`, for a service whose value is a program, gave the inner program unrun, and its fields were TS2339. Each `try` now runs one Effect, since `try e` is `yield* e`. This changes existing code: `try (try load())` where `load()` gives no program used to compile and run `load()` once, and is now EK0502.
+
 - `FuzzCommandLine` could fail with `the compilation rewrote the source main.d.vibe.ts` in a checkout where an earlier compile had left that sidecar in an acceptance case; the fuzz seeds now skip these generated files.
 
 - On a loaded machine, the child-process tests of `vibelang-vite` and `vibelang-unplugin` failed with `Missing expected exception` because a killed process stays visible as a zombie until it is reaped; they now wait for the process's inherited connection to close.
@@ -247,6 +275,10 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 - Migration reports omitted deliberately retained type-only Effect modules; reports now list them and keep the full ownership and test inventory beside the automatic candidate count.
+
+- Typed lint could lose native-module types for tests outside the main TypeScript project; migration setup now connects those tests to their existing complete test project without editing tests.
+- Switching migration toolchains could replace a published package's VibeLang peer range with a local tarball; peer ranges and optional metadata now stay intact while installed dependencies update.
+
 - The compiler package's tests could fail with a missing `packages/runtime/dist/index.js`, or skip their cache checks, when the runtime rebuilt at the same time; `//packages:compiler-test` now declares that build and runs after it.
 
 - Migration setup left root `tsrs` and `tsgo` typechecks on their old compiler, so converted files could be skipped or require an extra check of unrelated projects; it now runs `vibelang` with the original project arguments, including separate test projects.
@@ -291,6 +323,13 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `vibelang --fix` removed the retired `declarationSidecars` setting but left an empty `"vibelang": {  }` object behind, which a repository's formatter then rewrote; a settings object that held only that setting now goes with it, and one with a comment keeps the comment.
 - The runtime package's two stock-TypeScript checks could time out at 30 s on a loaded build host; they now have the same 120 s compile budget as the acceptance harness.
 
+
+- Migration left a plain `Option.match(value, { onNone, onSome })` in native sources and `--fix` offered nothing, so Foldkit's nine pure choices were rewritten by hand; `--fix` now writes a native `match` over `Option.Some`, reading the subject and the handler object once in their original order.
+- `--fix` refused an Option pipe whose stage argument is a callback factory, such as `pipe(value, Option.map(EffectArray.append(1)))`, because the factory's evaluation could move; it now caches the subject and every argument in pipe order inside a `do` block and then applies the native methods.
+- `--fix` left a Match chain whose default handler destructures its parameter, `Match.orElse(({ _tag }) => _tag)`, with EK4839; it now writes a catch-all `let` arm whose `do` block destructures the bound value, so defaults and getter reads run only when the default arm does.
+- `--fix` left `Match.when(String.startsWith("Core"), …)` and `Match.whenOr` groups mixing literals with prefix predicates with EK4839, saying the prefix call has no match pattern; it now writes a guarded arm, `when let value and if (value.startsWith("Core"))`, joining a group's alternatives in one guard.
+- `--fix` left a Match chain whose first stage is a hoisted `const withChoice = Match.withReturnType<T>()` with EK4839 ("withChoice has no match form"); a stable hoisted hint now converts like the inline one, keeping its type context and its read before the subject.
+- Pure `Option.gen` bodies could remain rejected after migration. `vibelang --fix` now converts supported eager generators to plain bodies with ordered reads, a `None` early exit, and fresh `Some` results.
 - Formatting valid `for` heads with `is` patterns could fail with an internal parse error; they now format at narrow and normal widths while keeping `is` attached to its subject.
 - Formatting native `Option` control flow could reject parenthesized `return (match …)` expressions and binding `is` branches; these forms now format while preserving their parsed structure.
 - A dprint `operatorPosition` of `sameLine` or `maintain` could wrap an `is` pattern onto the next line at a narrow width and fail with `')' expected`; the pattern now stays on the line of `is`.
@@ -2189,6 +2228,13 @@ listed with an upgrade step.
   | `Buffer.from(text)` | `new TextEncoder().encode(text)`, or `Base64` and `Hex` |
   | a Node.js value an Effect API takes, such as `createServer` | a `module` block that imports it: `module node { export { createServer } from "node:http" }`, then `import { createServer } from node` |
   | a Node.js API nothing covers yet | the same `module` block or a `.ts` file, called through a hatch |
+
+
+### Repeated is binding names
+
+| Before | After and repair |
+| --- | --- |
+| Two `is` patterns binding one name in one block, such as `if (a is { id: let id }) …` twice in a function body | Each `if` head was its own scope; the bindings now live in the block that holds the `if` (chapter 004, decided detail 245), so the second pattern redeclares the name: `TS2451`, or `TS2300` beside a parameter. The diagnostic offers to rename the later binding and its uses, and `vibelang --fix` applies the rename (`id` becomes `id2`). |
 
 ## 0.0.10
 
