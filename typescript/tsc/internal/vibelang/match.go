@@ -29,10 +29,16 @@ var (
 	EK4704 = message(4704, errorCategory, "{0} patterns are not supported yet.")
 	// EK4705: and, or, and not combined at one level without parentheses.
 	EK4705 = message(4705, errorCategory, "Patterns joined by and, or, or not cannot share a level; add parentheses.")
+	// EK0702: a class pattern whose expression names a VibeLang value that is not a class (D67b). {0} is the expression.
+	EK0702 = message(702, errorCategory, "{0} is not a class, so it cannot be a class pattern: under the draft it would be called with the subject and match almost anything.")
+
+	ek0702Data      = EK0702.With("{0} is a data type, not a class: match one of its variants, when {0}.Variant, or a tag, when { _tag: \"Variant\" }.")
+	ek0702Schema    = EK0702.With("{0} is a schema, not a class: test it in a guard, when let value and if (Schema.is({0})(value)).")
+	ek0702Reference = EK0702.With("{0} is a Context.Reference, not a class: read its value in effect code and match that value.")
 )
 
 func init() {
-	for _, m := range []*Message{EK4701, EK4702, EK4703, EK4704, EK4705} {
+	for _, m := range []*Message{EK4701, EK4702, EK4703, EK4704, EK4705, EK0702} {
 		registry[m.Code] = m
 	}
 	fileChecks = append(fileChecks, checkPatterns)

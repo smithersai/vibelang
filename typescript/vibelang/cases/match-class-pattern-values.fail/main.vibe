@@ -1,0 +1,20 @@
+// expect: EK0702 EK0702 EK0702 EK0702 EK0702
+// Chapter 004, decided detail 67b: a class pattern whose expression resolves to
+// a data declaration, a schema declaration or a directly constructed
+// Context.Reference is EK0702; under the draft such a value would be called
+// with the subject and match almost anything. A variant pattern and a
+// Schema.is guard are the admitted forms (match-class-pattern-values).
+import * as Context from "effect/Context"
+data Delivery { Sent { tracking: string }; Lost }
+schema Address { street: string }
+const Limit = Context.Reference<number>("Limit", { defaultValue: () => 1 })
+export function describe(x: unknown) {
+  return match (x) {
+    when Delivery: "data type";
+    when Address: "schema";
+    when Delivery(let d): d;
+    when Address { let street }: street;
+    when Limit: "reference";
+    default: "other";
+  }
+}

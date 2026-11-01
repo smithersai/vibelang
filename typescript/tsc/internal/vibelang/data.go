@@ -290,8 +290,13 @@ func checkData(c *checker.Checker, file *ast.SourceFile) {
 		case ast.IsPropertyAccessExpression(node):
 			checkDataVariantName(c, node)
 		case isPatternCall(node, "$is"):
-			checkVariantPattern(c, file, node)
+			if !reportValuePattern(c, node.Arguments()[0]) {
+				checkVariantPattern(c, file, node)
+			}
 		case isPatternCall(node, "$extract"):
+			if reportValuePattern(c, node.Arguments()[0]) {
+				break
+			}
 			if _, _, ok := dataVariantOf(c, node.Arguments()[0]); ok {
 				matcher := node.Arguments()[0]
 				report(c, matcher, ek4706Extractor, scanner.GetTextOfNode(matcher))
@@ -483,6 +488,35 @@ func joinNames(names []string) string {
 		return names[0] + " and " + names[1]
 	}
 	return strings.Join(names[:len(names)-1], ", ") + ", and " + names[len(names)-1]
+}
+
+// reportValuePattern reports EK0702 at matcher, a class pattern's expression,
+// when it names a data declaration (its constructors object) or a schema
+// declaration (D67b): neither is a class, and the draft would call it with the
+// subject. A variant, Name.Variant, is the admitted variant pattern instead.
+func reportValuePattern(c *checker.Checker, matcher *ast.Node) bool {
+	if matcher == nil || !(ast.IsIdentifier(matcher) || ast.IsPropertyAccessExpression(matcher)) {
+		return false
+	}
+	switch {
+	case isDataConstructors(c, c.TypeOfPatternMatcher(matcher)):
+		report(c, matcher, ek0702Data, scanner.GetTextOfNode(matcher))
+	case isDeclaredSchemaReference(c, matcher):
+		report(c, matcher, ek0702Schema, scanner.GetTextOfNode(matcher))
+	case isContextReference(c, matcher):
+		report(c, matcher, ek0702Reference, scanner.GetTextOfNode(matcher))
+	default:
+		return false
+	}
+	cover(c, matcher)
+	return true
+}
+
+// isContextReference reports whether matcher's type is Effect's
+// Context.Reference, which carries the "~effect/Context/Reference" key.
+func isContextReference(c *checker.Checker, matcher *ast.Node) bool {
+	t := c.TypeOfPatternMatcher(matcher)
+	return t != nil && c.GetPropertyOfType(c.GetApparentType(t), "~effect/Context/Reference") != nil
 }
 
 // checkVariantPattern checks call, a pattern's $is call: a field list after

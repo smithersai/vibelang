@@ -49,6 +49,19 @@ func dataRules() []dataRule {
 		add("exhaustive-"+c.name, match, "into a union of members", c.decl+"\nfunction f(x: "+c.typ+") { return match(x) { "+c.arms+" } }", "EK4701", "vip-match")
 	}
 	add("guard-not-cover", match, "Only an unguarded arm covers anything.", `function f(x:boolean) { return match(x) { when true and if (true): 1; when false: 0; } }`, "EK4701", "vip-match")
+	// Decided detail 67b: a class pattern naming a data declaration or a schema is EK0702.
+	for _, c := range []struct{ name, source string }{
+		{"data-type", "data D { A; B { n: number } }\nfunction f(x: unknown) { return match (x) { when D: 1; default: 0; } }"},
+		{"data-type-extractor", "data D { A; B { n: number } }\nfunction f(x: unknown) { return match (x) { when D(let d): 1; default: 0; } }"},
+		{"data-type-is", "data D { A; B { n: number } }\nfunction f(x: unknown) { return x is D }"},
+		{"schema", "schema S { n: number }\nfunction f(x: unknown) { return match (x) { when S: 1; default: 0; } }"},
+		{"schema-fields", "schema S { n: number }\nfunction f(x: unknown) { return match (x) { when S { let n }: n; default: 0; } }"},
+		{"schema-alias", "schema S = string | number\nfunction f(x: unknown) { return match (x) { when S: 1; default: 0; } }"},
+		{"context-reference", "import * as Context from \"effect/Context\"\nconst R = Context.Reference<number>(\"R\", { defaultValue: () => 1 })\nfunction f(x: unknown) { return match (x) { when R: 1; default: 0; } }"},
+	} {
+		add("class-pattern-"+c.name, match, "a class pattern naming a `data` declaration or variant, a `schema`, or a directly constructed `Context.Reference`", c.source, "EK0702", "impl-hunt-data")
+	}
+	add("class-pattern-variant-control", match, "a class pattern naming a `data` declaration or variant, a `schema`", "data D { A; B { n: number } }\nfunction f(x: unknown) { return match (x) { when D.A: 1; when D.B { let n }: n; default: 0; } }", "", "impl-hunt-data")
 	// Decided detail 25: data Empty {} with zero variants is allowed:
 	// an exact empty Data.TaggedEnum (delete EK2122).
 	add("empty-data", data, "Zero variants are allowed", `data Empty {}; const empty: Empty = null as never`, "", "vip-core2")

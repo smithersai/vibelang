@@ -1,0 +1,15 @@
+// expect-result: ["box-1","1 Main St","other"]
+// The admitted forms beside EK0702 (match-class-pattern-values.fail): a variant
+// pattern narrows by tag, and a schema is tested in a guard with Schema.is.
+data Delivery { Sent { tracking: string }; Lost }
+schema Address { street: string }
+function describe(x: unknown) {
+  return match (x) {
+    when Delivery.Sent { let tracking }: tracking;
+    when let v and if (Schema.is(Address)(v)): v.street;
+    default: "other";
+  }
+}
+export function main() {
+  return [describe(Delivery.Sent({ tracking: "box-1" })), describe({ street: "1 Main St" }), describe(Delivery.Lost())]
+}
