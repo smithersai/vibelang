@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { cheatSheetPairs, count, program } from "./token-counts"
+import { cheatSheetPairs, count, program, rounded } from "./token-counts"
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 
@@ -94,4 +94,8 @@ test("long-form alternatives do not contribute to a paired entry or its token to
   ].join("\n")
   expect(cheatSheetPairs(alternatives)).toEqual(cheatSheetPairs(paired))
   expect(measurePairs(alternatives)).toEqual(measurePairs(paired))
+})
+
+test("a page's size keeps two significant figures, so one edit rarely moves it", () => {
+  expect([7, 99, 1_250, 9_949, 63_108, 63_175, 329_066].map(rounded)).toEqual(["7", "99", "1,300", "9,900", "63,000", "63,000", "330,000"])
 })

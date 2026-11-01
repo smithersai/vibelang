@@ -92,6 +92,14 @@ const percentFewer = (effect: number, vibe: number) => `${(100 * (1 - vibe / eff
 const read = (path: string) => readFileSync(resolve(repo, path), "utf8")
 const link = (from: string, to: string) => relative(resolve(from, ".."), to).replaceAll("\\", "/")
 
+// A page's size to two significant figures. Nearly every commit edits the
+// release notes, and exact sizes made each one rewrite this page, its site
+// copy and a conflict for every lane rebasing past it.
+export function rounded(tokens: number): string {
+  const unit = 10 ** Math.max(0, String(tokens).length - 2)
+  return (Math.round(tokens / unit) * unit).toLocaleString("en-US")
+}
+
 // The generated part of the page: what an agent loads, the cheat-sheet pairs,
 // and every page in sidebar order. Links reach only docs pages, which the
 // vibelang.sh sync (site/scripts/sync-user-docs.mjs) can resolve; repository
@@ -117,10 +125,10 @@ export function generate(): string {
     "| --- | ---: |",
     `| The VibeLang skill, \`${SKILL}\` | ${skill.toLocaleString("en-US")} |`,
     `| The skill and the [cheat sheet](${link(pagePath, fileOf(CHEAT_SHEET))}) | ${(skill + cheat).toLocaleString("en-US")} |`,
-    `| The skill and the user guide (${guide.length} pages) | ${(skill + sum(guide)).toLocaleString("en-US")} |`,
-    `| The user guide alone | ${sum(guide).toLocaleString("en-US")} |`,
-    `| The specification (${spec.length} chapters) | ${sum(spec).toLocaleString("en-US")} |`,
-    `| The decision log, \`docs/design/history/DECISIONS.md\` | ${decisions.toLocaleString("en-US")} |`,
+    `| The skill and the user guide (${guide.length} pages) | ${rounded(skill + sum(guide))} |`,
+    `| The user guide alone | ${rounded(sum(guide))} |`,
+    `| The specification (${spec.length} chapters) | ${rounded(sum(spec))} |`,
+    `| The decision log, \`docs/design/history/DECISIONS.md\` | ${rounded(decisions)} |`,
     ""
   )
   const measured = measurePairs(readFileSync(fileOf(CHEAT_SHEET), "utf8"))
@@ -148,7 +156,7 @@ export function generate(): string {
   const flush = () => {
     if (view !== undefined && viewPages.length) {
       out.push(`### ${view}`, "", "| Page | Tokens |", "| --- | ---: |", ...rows)
-      out.push(`| **All ${viewPages.length} pages** | **${sum(viewPages).toLocaleString("en-US")}** |`, "")
+      out.push(`| **All ${viewPages.length} pages** | **${rounded(sum(viewPages))}** |`, "")
     }
     rows = []
     viewPages = []
@@ -159,10 +167,10 @@ export function generate(): string {
       view = item.label
     } else if (item.kind === "group") {
       const members = pages.filter(p => p.view === view && p.group === item.label)
-      if (members.length) rows.push(`| **${item.label}** | **${sum(members).toLocaleString("en-US")}** |`)
+      if (members.length) rows.push(`| **${item.label}** | **${rounded(sum(members))}** |`)
     } else if (item.page.path !== PAGE) {
       viewPages.push(item.page)
-      rows.push(`| [${item.page.label}](${link(pagePath, fileOf(item.page.path))}) | ${tokens.get(item.page.path)!.toLocaleString("en-US")} |`)
+      rows.push(`| [${item.page.label}](${link(pagePath, fileOf(item.page.path))}) | ${rounded(tokens.get(item.page.path)!)} |`)
     }
   }
   flush()
