@@ -1,0 +1,26 @@
+import * as EffectArray from "effect/Array"
+function factory(trace: string[], label: string, delta: number): (n: number) => number {
+  trace.push("factory:" + label)
+  return (n: number): number => { trace.push("map:" + label); return n + delta }
+}
+function input(value: Option.Option<number>, trace: string[]): Option.Option<number> {
+  trace.push("input")
+  return value
+}
+export function choose(value: Option.Option<number>, trace: string[], delta: number): Option.Option<number> {
+  return pipe(input(value, trace), Option.map(factory(trace, "first", delta)), Option.map(factory(trace, "second", -delta)))
+}
+export function methods(value: Option.Option<number>, trace: string[], delta: number): Option.Option<number> {
+  return input(value, trace).pipe(Option.map(factory(trace, "first", delta)), Option.map(factory(trace, "second", -delta)))
+}
+export function getter(value: Option.Option<number>, trace: string[], delta: number): Option.Option<number> {
+  const callbacks = {
+    get map() { trace.push("get:map"); return factory(trace, "property", delta) }
+  }
+  return pipe(input(value, trace), Option.map(factory(trace, "first", delta)), Option.map(callbacks.map))
+}
+
+export function append(value: Option.Option<ReadonlyArray<number>>, trace: string[], delta: number): Option.Option<ReadonlyArray<number>> {
+  trace.push("input:" + delta)
+  return pipe(value, Option.map(EffectArray.append(1)))
+}

@@ -1,6 +1,7 @@
 package vibelang
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
@@ -157,8 +158,29 @@ func optionPipeRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 		return refuse("a comment stands outside the pipe's stages")
 	}
 	multiline := strings.ContainsAny(text[start:end], "\n")
+	// Every factory is an eager pipe argument: cache the subject and all
+	// arguments before executing the first stage. A do expression preserves
+	// the enclosing activation, including await, throws and lexical bindings.
+	cache := false
+	for _, stage := range stages {
+		if ast.IsCallExpression(stage) {
+			for _, arg := range stage.Arguments() {
+				if !isInertOperand(arg) || (ast.IsIdentifier(arg) && !stableOptionName(c, arg)) || ast.IsPropertyAccessExpression(arg) || ast.IsObjectLiteralExpression(arg) {
+					cache = true
+				}
+			}
+		}
+	}
+	names := &freshNames{file: file}
+	var eager []string
+	argIndex := 0
 	value := expressionText(file, subject)
-	if needsOperandParentheses(subject) {
+	if cache {
+		input := names.freshName("$optionInput")
+		eager = append(eager, "const "+input+" = "+value+";")
+		value = input
+	}
+	if !cache && needsOperandParentheses(subject) {
 		value = "(" + value + ")"
 	}
 	isOption := isOptionType(c, c.GetTypeAtLocation(subject))
@@ -174,10 +196,21 @@ func optionPipeRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 		var args []string
 		if ast.IsCallExpression(stage) {
 			for _, arg := range stage.Arguments() {
-				if !isInertOperand(arg) {
-					return refuse(label + " has an argument whose evaluation, after the stage before it runs, a program could tell apart")
+				argument := expressionText(file, arg)
+				if cache {
+					if ast.IsSpreadElement(arg) {
+						return refuse(label + " spreads its arguments")
+					}
+					name := names.freshName("$optionArg" + strconv.Itoa(argIndex))
+					argIndex++
+					annotation := ""
+					if ast.IsArrowFunction(arg) || ast.IsFunctionExpression(arg) || ast.IsObjectLiteralExpression(arg) {
+						annotation = ": " + c.TypeToString(c.GetTypeAtLocation(arg))
+					}
+					eager = append(eager, "const "+name+annotation+" = "+argument+";")
+					argument = name
 				}
-				args = append(args, expressionText(file, arg))
+				args = append(args, argument)
 			}
 		}
 		if !hasDataFirstOverload(c, callee, len(args)+1, isOption) {
@@ -199,6 +232,9 @@ func optionPipeRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 		return refuse("a comment stands after the pipe's last stage")
 	}
 	replacement := value
+	if cache {
+		replacement = "do { " + strings.Join(eager, " ") + " " + value + "; }"
+	}
 	if ast.IsNewExpression(call.Parent) && call.Parent.Expression() == call {
 		replacement = "(" + replacement + ")"
 	}
@@ -256,4 +292,22 @@ func isInertOperand(expression *ast.Node) bool {
 		return true
 	}
 	return false
+}
+
+// A const/import binding keeps its reference while earlier stages execute;
+// mutable names and properties must be captured with the other eager args.
+func stableOptionName(c *checker.Checker, node *ast.Node) bool {
+	symbol := c.GetSymbolAtLocation(node)
+	if symbol == nil {
+		return false
+	}
+	if symbol.Flags()&ast.SymbolFlagsAlias != 0 {
+		return true
+	}
+	declaration := symbol.ValueDeclaration()
+	if declaration == nil || !ast.IsVariableDeclaration(declaration) {
+		return false
+	}
+	list := declaration.Parent
+	return list != nil && ast.IsVariableDeclarationList(list) && list.Flags&ast.NodeFlagsBlockScoped == ast.NodeFlagsConst
 }
