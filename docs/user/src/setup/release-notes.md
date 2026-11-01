@@ -305,6 +305,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A direct `Option.match` call reported `EK4839` as a choice made with Effect's `Match` functions, and the diagnostic tables omitted it; the message now names `Option`'s own `match` API, and the tables include direct calls and explain when their fix is refused.
 
+- A declaration sidecar left imports unresolved when a relative filename contained quotes or Unicode escapes; sidecar imports now resolve the decoded filename and keep valid escaping and the declaration's quote style.
+
 - An explicit `./model.vibe` import or re-export could make stock TypeScript read an unrelated `model.ts` or `model.d.ts` sibling and report `TS2322`; declaration sidecars now keep the explicit `.vibe` target, while native imports keep their native target.
 
 - `vibelang --fix` deleted comments from legacy diagnostic maps, including empty maps and entries superseded by modern settings; it now keeps every comment in direct and extended configs, with the same settings and a stable second run.

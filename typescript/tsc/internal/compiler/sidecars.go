@@ -6,6 +6,10 @@ import (
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
+	"github.com/microsoft/TypeScript/tsc/internal/printer"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
@@ -29,7 +33,6 @@ func SidecarPath(fileName string) string {
 }
 
 var (
-	sidecarSpecifier = regexp.MustCompile(`(?m)((?:\bfrom|^import|\bimport\(|\brequire\(|\bdeclare module)\s*)(["'])(\.\.?/[^"'\n]*)(["'])`)
 	sidecarReference = regexp.MustCompile(`(?m)^(/// <reference path=)(["'])([^"']+)(["'])`)
 	sourceMapComment = regexp.MustCompile(`(?m)^//# sourceMappingURL=.*\n?`)
 )
@@ -84,9 +87,8 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 func sidecarText(text string, declarationFile string, source string, exists func(string) bool, caseSensitivity tspath.CaseSensitivity) string {
 	text = sourceMapComment.ReplaceAllString(text, "")
 	sourceDirectory := tspath.GetDirectoryPath(source)
-	text = sidecarSpecifier.ReplaceAllStringFunc(text, func(match string) string {
-		parts := sidecarSpecifier.FindStringSubmatch(match)
-		return parts[1] + parts[2] + vibeSpecifier(parts[3], sourceDirectory, exists) + parts[4]
+	text = rewriteSidecarSpecifiers(text, func(specifier string) string {
+		return vibeSpecifier(specifier, sourceDirectory, exists)
 	})
 	declarationDirectory := tspath.GetDirectoryPath(declarationFile)
 	if declarationDirectory != sourceDirectory {
@@ -130,4 +132,53 @@ func vibeSpecifier(specifier string, directory string, exists func(string) bool)
 		}
 	}
 	return stem + tspath.ExtensionVibe
+}
+
+// rewriteSidecarSpecifiers reads declaration module names as TypeScript
+// string values. Keep all other declaration bytes, including quote style;
+// only a rewritten path needs to be printed and escaped again.
+func rewriteSidecarSpecifiers(text string, rewrite func(string) string) string {
+	file := parser.ParseSourceFile(ast.SourceFileParseOptions{
+		FileName: "/sidecar.d.ts",
+		PathKey:  "/sidecar.d.ts",
+	}, text, core.ScriptKindTS)
+	var result strings.Builder
+	end := 0
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		var specifier *ast.Node
+		switch node.Kind {
+		case ast.KindImportDeclaration:
+			specifier = node.AsImportDeclaration().ModuleSpecifier
+		case ast.KindExportDeclaration:
+			specifier = node.AsExportDeclaration().ModuleSpecifier
+		case ast.KindExternalModuleReference:
+			specifier = node.AsExternalModuleReference().Expression
+		case ast.KindImportType:
+			if argument := node.AsImportTypeNode().Argument; argument != nil && ast.IsLiteralTypeNode(argument) {
+				specifier = argument.AsLiteralTypeNode().Literal
+			}
+		case ast.KindModuleDeclaration:
+			specifier = node.Name()
+		}
+		if specifier != nil && ast.IsStringLiteral(specifier) && (strings.HasPrefix(specifier.Text(), "./") || strings.HasPrefix(specifier.Text(), "../")) {
+			value := specifier.Text()
+			if rewritten := rewrite(value); rewritten != value {
+				start := scanner.GetTokenPosOfNode(specifier, file, false /*includeJSDoc*/)
+				quote := text[start]
+				result.WriteString(text[end:start])
+				result.WriteByte(quote)
+				result.WriteString(printer.EscapeString(rewritten, printer.QuoteChar(quote)))
+				result.WriteByte(quote)
+				end = specifier.End()
+			}
+		}
+		return node.ForEachChild(visit)
+	}
+	visit(file.AsNode())
+	if end == 0 {
+		return text
+	}
+	result.WriteString(text[end:])
+	return result.String()
 }

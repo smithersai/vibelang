@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("apostrophe/reexport/vibe/single/.js/0000")
