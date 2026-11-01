@@ -38,9 +38,43 @@ func init() {
 					return &Return{Value: &Try{X: g.Operand(s, true)}}
 				}
 			}
-			x := g.Operand(s, false)
-			call, ok := x.(*EffectCall)
-			return &ExprStmt{X: &Try{X: x}, EndsBlock: ok && (call.Fn == "fail" || call.Fn == "die")}
+			return tryOperationStatement(s, g.Operand(s, false))
+		},
+	})
+}
+
+// tryOperationStatement preserves the numeric helper contract even when a
+// failure or defect cannot return at runtime. A bare terminal yield has void
+// return type in Effect.gen; returning the never-valued yield does not.
+func tryOperationStatement(s *Scope, x Expr) Stmt {
+	call, ok := x.(*EffectCall)
+	fatal := ok && (call.Fn == "fail" || call.Fn == "die")
+	if fatal && !s.Fn.Void {
+		return &Return{Value: &Try{X: x}}
+	}
+	return &ExprStmt{X: &Try{X: x}, EndsBlock: fatal}
+}
+
+func init() {
+	Register(&Construct{
+		Key: "vip05.try-fatal-result", VIP: 5,
+		Requires: []string{"vip01.effect-function", "vip05.try"},
+		Citations: []Citation{{
+			VIP: 5, Template: "yield* ‹e›",
+			Quote:   "`try e` runs the Effect `e` inside an `effect` function or block and gives its success value. A failure propagates to the enclosing Effect",
+			Reading: "A generated numeric helper returns that success value. A terminal fail or die is never-valued; returning its yield preserves the numeric operand contract, while a bare terminal yield infers void in TypeScript. This tests generator validity without changing the Exit oracle.",
+		}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+			fn := "fail"
+			if g.Intn(2) != 0 {
+				fn = "die"
+			}
+			h := &Func{Name: g.Name("fatal")}
+			h.Body = []Stmt{&Event{Label: g.Label()}, tryOperationStatement(&Scope{Fn: h}, &EffectCall{Fn: fn, Arg: &Num{Value: 1}})}
+			v := g.Name("value")
+			s.Locals = append(s.Locals, v)
+			return []Stmt{&LocalFunc{Func: h}, &Const{Name: v, Type: "number", Value: &Try{X: &Call{Name: h.Name}}}}
 		},
 	})
 }

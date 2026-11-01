@@ -495,3 +495,12 @@ Unresolved saved compiler witnesses are listed in `testdata/pending/compile.txt`
 The `readonly-property` corpus now passes without a pending entry. Ordinary interface and object-type members keep their source modifiers in declarations, including optional properties, index signatures and nested types. Explicit `readonly`, class fields and generated `data`, schema and error forms retain their contracts. `declaration-identity-property-modifiers` compares a fixed stock TypeScript declaration and a TypeScript twin, then checks assignments from a TypeScript consumer.
 
 The opencode corpus was run without pending entries and failed with the SchemaAST canonical diff, then passed as a pending skip with its entries present. Canonicalization controls cover comments, unions, member ordering, module spelling, changed lines and added/removed declaration files. A two-module positive control resolves the unchanged `./other.js` importer to `other.vibe` and compares both declarations.
+
+
+A generated helper used as a numeric operand must have a numeric or never-valued
+return in both prints. A terminal `try Effect.fail(e)` or `try Effect.die(e)`
+therefore uses `return try` in a non-void helper, and `return yield*` in its
+VIP-5 Effect TypeScript counterpart. A bare `yield*` followed by the function's
+end infers `void` even when the operation cannot succeed. Void helpers keep the
+bare operation. The `vip05-try-fatal-result` differential corpus preserves
+the minimized typed-helper witness; the runtime Exit and event-log oracle is unchanged.
