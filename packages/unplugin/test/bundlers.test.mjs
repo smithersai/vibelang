@@ -4,7 +4,7 @@
 // runtime and links the fixtures' node_modules first.
 import assert from "node:assert/strict"
 import { spawn, spawnSync } from "node:child_process"
-import { cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises"
+import { cp, mkdir, mkdtemp, readFile, rename, rm, symlink, writeFile } from "node:fs/promises"
 import { SourceMap } from "node:module"
 import { availableParallelism, tmpdir } from "node:os"
 import { join, resolve } from "node:path"
@@ -42,11 +42,20 @@ async function fixture(t, name) {
   return root
 }
 
-async function edit(file, from, to, watcher) {
+async function edit(file, from, to, watcher, write = writeFile) {
   const source = await readFile(file, "utf8")
   assert.ok(source.includes(from), `${file} has no ${from}`)
-  await writeFile(file, source.replace(from, to))
+  await write(file, source.replace(from, to))
   watcher?.log(`edit ${file.split("/").at(-1)}: ${from} -> ${to}`)
+}
+
+// Replaces a file in one step, as an editor's save does. esbuild reads
+// tsconfig.json itself: a read between writeFile's truncate and its write
+// failed the build with "Unexpected end of file in JSON", and no rebuild
+// followed (7 gates in 24 hours on 2026-11-01).
+async function replaceFile(file, text) {
+  await writeFile(`${file}.next`, text)
+  await rename(`${file}.next`, file)
 }
 
 async function spawned(command, args, cwd) {
@@ -157,11 +166,11 @@ async function watchEdits(bundler, root, watcher) {
 
   const tsconfig = join(root, "tsconfig.json")
   await settle()
-  await edit(tsconfig, '"types": []', '"types": ["missing-types"]', watcher)
+  await edit(tsconfig, '"types": []', '"types": ["missing-types"]', watcher, replaceFile)
   const broken = await watcher.next("failure after the tsconfig edit", (event) => !event.ok)
   assert.match(broken.message, /error TS2688: Cannot find type definition file for 'missing-types'/)
   await settle()
-  await edit(tsconfig, '"types": ["missing-types"]', '"types": []', watcher)
+  await edit(tsconfig, '"types": ["missing-types"]', '"types": []', watcher, replaceFile)
   await watcher.next("success after the tsconfig fix", (event) => event.ok && printsEventually(bundler, root, "booked 2 tea"))
 }
 
