@@ -421,6 +421,12 @@ The release check runs `scripts/chapter-failures-clock.test.mjs` against the
 real compiler and the case's exact expected result, including seven schedules
 that pause the host while registering a timer.
 
+The harness sets its final exit status and lets stdout drain before it exits.
+Piped failure reports and verbose compiler logs retain their final lines and
+the case summary, including large lines with Unicode text.
+`scripts/harness-report.test.mjs` covers successful, failed and pending cases,
+with quiet and `--status` controls.
+
 To reproduce child-start races without a busy host, run the acceptance harness
 with `--late-start` (or set `VIBELANG_LATE_START=1`). It delays queued
 scheduler tasks by `100 ms` after the caller suspends, while timers can resume

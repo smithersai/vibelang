@@ -451,7 +451,8 @@ async function main() {
   )
   const xpass = results.filter((r) => r.status === "XPASS")
   if (xpass.length > 0) console.log(`XPASS: delete the pending file of ${xpass.map((r) => r.name).join(", ")}`)
-  process.exit(count("FAIL") > 0 ? 1 : 0)
+  // Piped console output may still be buffered; let it drain before exiting.
+  process.exitCode = count("FAIL") > 0 ? 1 : 0
 }
 
 function report(r) {
