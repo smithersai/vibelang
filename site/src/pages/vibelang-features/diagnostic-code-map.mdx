@@ -33,7 +33,7 @@ The language server keeps the numeric code (`103`) with source `EK`; the termina
 | `EK2126` (parameter count) | `EK2801` | More than four generic `data` parameters |
 | `EK2126` (constraint) | `EK2126` | A constrained generic `data` parameter |
 
-The temporary `EK92xx` codes preserve older checks whose numbers Appendix B reassigns to different rules. They are not new language rules. Their owning VIP implementations retire them. Other older codes keep their existing numbers until their VIP implementation removes or replaces the check.
+The temporary `EK92xx` codes preserve older checks whose numbers Appendix B reassigns to different rules. They are not new language rules. Interim `EK92xx` codes cannot be configured in `vibe.severities`: an entry is `EK3006`. An infallible `catch` expression stays valid when its interim `EK9204` report retires; the separate imported lint is `EK3818`. Their owning VIP implementations retire them. Other older codes keep their existing numbers until their VIP implementation removes or replaces the check.
 
 ## Appendix B reference
 

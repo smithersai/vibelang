@@ -29,7 +29,7 @@
   },
   {
     "key": "severity-code-admission",
-    "claim": "a VibeLang error code or an unknown code is a config error",
+    "claim": "an interim `EK92xx` code, even one printed as a warning, or an unknown code is a config error",
     "sources": [
       {
         "file": "0030-config-files.md",
