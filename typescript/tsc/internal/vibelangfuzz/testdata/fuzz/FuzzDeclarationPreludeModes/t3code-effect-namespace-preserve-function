@@ -1,0 +1,4 @@
+go test fuzz v1
+string("Preserve")
+string("function")
+byte(0)

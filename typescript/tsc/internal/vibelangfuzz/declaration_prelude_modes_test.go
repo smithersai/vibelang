@@ -31,7 +31,7 @@ func TestDeclarationPreludeModesQuoted(t *testing.T) { requireDeclarationPrelude
 func FuzzDeclarationPreludeModes(f *testing.F) {
 	startShortBudget(f)
 	requireDeclarationPreludeModesQuote(f)
-	keys := []string{"layer", "context", "option", "schema", "pair", "shadow"}
+	keys := []string{"layer", "context", "option", "schema", "pair", "shadow", "block", "block-try", "block-service", "function", "function-sleep", "layer-block"}
 	for _, mode := range []string{"Preserve", "ESNext", "NodeNext"} {
 		for _, key := range keys {
 			f.Add(mode, key, uint8(0))
@@ -52,7 +52,12 @@ func FuzzDeclarationPreludeModes(f *testing.F) {
 		default:
 			return
 		}
-		imports, source := "", ""
+		// twin is the Effect TypeScript body when it differs from the VibeLang
+		// source. Chapter 1: "A form that stands for a module writes its name:
+		// an Effect function, ... or a bare Effect global such as sleep writes
+		// Effect, which its Effect TypeScript imports." An effect block is
+		// Effect.gen (VIP-2), so each twin declares Effect.Effect<...>.
+		imports, source, twin := "", "", ""
 		switch key {
 		case "layer":
 			imports = "Layer"
@@ -69,6 +74,36 @@ func FuzzDeclarationPreludeModes(f *testing.F) {
 		case "pair":
 			imports = "Layer, Option"
 			source = "export const value = [Layer.empty, Option.some(1)] as const\n"
+		case "block":
+			// t3code PullRequestProviderRegistry.ts: an exported Effect.gen value
+			// declared import("effect/Effect").Effect after migration.
+			imports = "Effect"
+			source = "export const value = effect { return 1 }\n"
+			twin = "export const value = Effect.gen(function* () { return 1 })\n"
+		case "block-try":
+			imports = "Effect"
+			source = "export const value = effect { const n = try Effect.succeed(1); return n + 1 }\n"
+			twin = "export const value = Effect.gen(function* () { const n = yield* Effect.succeed(1); return n + 1 })\n"
+		case "block-service":
+			imports = "Context, Effect"
+			service := "export class Drivers extends Context.Service<Drivers, { readonly kinds: ReadonlyArray<string> }>()(\"Drivers\") {}\n"
+			source = service + "export const value = effect { const drivers = try Drivers; return drivers.kinds.length }\n"
+			twin = service + "export const value = Effect.gen(function* () { const drivers = yield* Drivers; return drivers.kinds.length })\n"
+		case "function":
+			imports = "Effect"
+			source = "export effect function value() { return 1 }\n"
+			twin = "export function value() { return Effect.gen(function* () { return 1 }) }\n"
+		case "function-sleep":
+			// A bare Effect global runs only inside a program, so it sits in
+			// an Effect function body here.
+			imports = "Effect"
+			source = "export effect function value() { try sleep(\"1 second\"); return 1 }\n"
+			twin = "export function value() { return Effect.gen(function* () { yield* Effect.sleep(\"1 second\"); return 1 }) }\n"
+		case "layer-block":
+			imports = "Context, Effect, Layer"
+			service := "export class Drivers extends Context.Service<Drivers, { readonly n: number }>()(\"Drivers\") {}\n"
+			source = service + "export const value = Layer.effect(Drivers, effect { return { n: 1 } })\n"
+			twin = service + "export const value = Layer.effect(Drivers, Effect.gen(function* () { return { n: 1 } }))\n"
 		case "shadow":
 			source = "const Layer = { empty: 1 }; export const value = Layer.empty\n"
 		default:
@@ -76,8 +111,11 @@ func FuzzDeclarationPreludeModes(f *testing.F) {
 		}
 		packageText := []string{`{"type":"module"}`, `{"type":"commonjs"}`, `{}`}[int(pkg)%3]
 		original := source
+		if twin != "" {
+			original = twin
+		}
 		if imports != "" {
-			original = "import { " + imports + " } from \"effect\"\n" + source
+			original = "import { " + imports + " } from \"effect\"\n" + original
 		}
 		compile := func(name, text string) *Result {
 			config := fmt.Sprintf(`{"compilerOptions":{"target":"ES2022","singleThreaded":true,"module":%q,"moduleResolution":%q,"strict":true,"types":[],"skipLibCheck":true,"declaration":true,"outDir":"out"},"files":[%q]}`, mode, resolution, name)
