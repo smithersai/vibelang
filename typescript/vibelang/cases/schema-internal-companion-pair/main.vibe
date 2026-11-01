@@ -1,0 +1,12 @@
+/** @internal */
+export schema Message { readonly id:string }
+/** Internal code.
+ * @internal
+ */
+export schema Code=string;
+export namespace N {
+  /** @internal */
+  export schema Nested { readonly n:number }
+}
+/** Public schema. */
+export schema Public { readonly value:string }

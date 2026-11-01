@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "skipLibCheck": true,
+    "target": "ES2022",
+    "module": "NodeNext",
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "stripInternal": true,
+    "outDir": "out"
+  },
+  "files": [
+    "main.ts"
+  ]
+}

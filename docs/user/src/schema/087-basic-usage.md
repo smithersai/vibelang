@@ -12,6 +12,8 @@ The specification assigns `EK1501` to a direct default `schema` declaration and 
 
 A VibeLang `schema` reference must preserve its written decoded-key modifiers (`EK2109`). Required fields, required fixed tuple slots and record values need a required value schema; readonly fields and readonly record values need readonly key flags. This includes every `schema error` payload field, whose readonlyness is implicit. Checks follow aliases and nested positions. Use the unmodified value schema and write optionality or mutability on the declaration; `number | undefined` allows a present `undefined` without allowing a missing required field or slot.
 
+JSDoc on a `schema` declaration belongs to its constant. Its companion type alias stays bare; `stripInternal` removes an `@internal` constant while retaining the alias, as TypeScript does for the equivalent Effect Schema pair.
+
 ## Modeling primitives, symbols, literals, enums, and template strings
 
 ```vibe

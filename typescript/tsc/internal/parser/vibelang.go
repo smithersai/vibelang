@@ -1160,7 +1160,7 @@ func (p *Parser) parseSchemaDeclaration(pos int, jsdoc jsdocScannerInfo, modifie
 	p.withJSDoc(statement, jsdoc)
 
 	// type User = typeof User.Type (D501), as schema Name = Type writes it
-	p.reparseList = append(p.reparseList, p.vibelangSchemaType(pos, keyword, name, modifiers))
+	p.reparseList = append(p.reparseList, p.vibelangSchemaType(keyword, name, modifiers))
 	return statement
 }
 

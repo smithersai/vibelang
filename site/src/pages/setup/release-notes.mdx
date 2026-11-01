@@ -235,6 +235,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 | Old diagnostic numbers, including `EK4617` | Appendix B numbering, including `EK0103`. Diagnostic triggers are unchanged. See the [old-to-new map](/vibelang-features/diagnostic-code-map). |
 
 ### Bugs fixed since 0.0.10
+- With `stripInternal`, an `@internal` schema lost both its constant and type alias from declarations; it now drops only the constant, matching the equivalent Effect TypeScript pair.
 
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 - Schema fuzzing could miss readonly-record alias regressions outside one spelling; keyed checks now cover the alias, mutability and required-key combinations while keeping unresolved compiler gaps explicit.

@@ -46,7 +46,17 @@ func schemaTypesAfterConstants(ec *printer.EmitContext, statements []*ast.Node) 
 	changed := false
 	result := make([]*ast.Node, 0, len(statements))
 	pending := map[string]*ast.Node{} // schema types waiting for their constants, by name
-	for _, statement := range statements {
+	constants := map[string]int{}
+	for i, statement := range statements {
+		if ast.IsVariableStatement(statement) {
+			for _, declaration := range statement.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes {
+				if name := declaration.Name(); ast.IsIdentifier(name) {
+					constants[name.Text()] = i
+				}
+			}
+		}
+	}
+	for i, statement := range statements {
 		if ast.IsModuleDeclaration(statement) {
 			if body := statement.Body(); body != nil && ast.IsModuleBlock(body) {
 				if inner, ok := schemaTypesAfterConstants(ec, body.Statements()); ok {
@@ -59,8 +69,14 @@ func schemaTypesAfterConstants(ec *printer.EmitContext, statements []*ast.Node) 
 			}
 		}
 		if name := schemaTypeName(ec, statement); name != "" {
-			pending[name] = statement
-			continue
+			ec.AddEmitFlags(statement, printer.EFNoComments)
+			changed = true
+			if constant, ok := constants[name]; ok && constant > i {
+				pending[name] = statement
+				continue
+			}
+			// stripInternal can remove the constant alone. Keep its bare
+			// alias here without cancelling moves of unrelated public types.
 		}
 		result = append(result, statement)
 		if ast.IsVariableStatement(statement) {
@@ -73,12 +89,6 @@ func schemaTypesAfterConstants(ec *printer.EmitContext, statements []*ast.Node) 
 					changed = true
 				}
 			}
-		}
-	}
-	for _, statement := range statements {
-		// A type whose constant never came stays where it was.
-		if name := schemaTypeName(ec, statement); name != "" && pending[name] == statement {
-			return statements, false
 		}
 	}
 	return result, changed

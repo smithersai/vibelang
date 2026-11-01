@@ -73,14 +73,17 @@ func (p *Parser) parseSchemaAliasDeclaration(pos int, jsdoc jsdocScannerInfo, mo
 	p.withJSDoc(statement, jsdoc)
 
 	// type Code = typeof Code.Type
-	p.reparseList = append(p.reparseList, p.vibelangSchemaType(pos, keyword, name, modifiers))
+	p.reparseList = append(p.reparseList, p.vibelangSchemaType(keyword, name, modifiers))
 	return statement
 }
 
 // vibelangSchemaType makes the type that a schema declaration declares beside
 // its constant, type Name = typeof Name.Type (D280, D501), exported as the
-// constant is, on vibelangCompanionLoc.
-func (p *Parser) vibelangSchemaType(pos int, keyword core.TextRange, name *ast.Node, modifiers *ast.ModifierList) *ast.Node {
+// constant is. Its range starts after leading JSDoc: the constant alone owns
+// that documentation and its visibility tags (VIP-27, decided detail 256).
+// stripInternal reads original ranges before the declaration-printing hook
+// can suppress companion comments, so EFNoComments alone is too late.
+func (p *Parser) vibelangSchemaType(keyword core.TextRange, name *ast.Node, modifiers *ast.ModifierList) *ast.Node {
 	var aliasModifiers *ast.ModifierList
 	if modifiers != nil {
 		var copies []*ast.Node
@@ -94,7 +97,7 @@ func (p *Parser) vibelangSchemaType(pos int, keyword core.TextRange, name *ast.N
 	right := p.vibelangSynthesized(p.factory.NewIdentifier("Type"), name.Loc)
 	query := p.vibelangSynthesized(p.factory.NewTypeQueryNode(p.vibelangSynthesized(p.factory.NewQualifiedName(left, right), name.Loc), nil /*typeArguments*/), name.Loc)
 	alias := p.factory.NewTypeAliasDeclaration(aliasModifiers, typeName, nil /*typeParameters*/, query)
-	return p.vibelangSynthesized(alias, p.vibelangCompanionLoc(pos, keyword))
+	return p.vibelangSynthesized(alias, keyword)
 }
 
 // vibelangCompanionLoc is the range of the declaration a schema form adds
