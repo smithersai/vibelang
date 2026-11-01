@@ -170,6 +170,16 @@ In `package.json`, replace `tsc` in the build script with `vibelang` so it check
 
 Run `npm run build`, or `bun run build`; then run `npm run test`, or `bun run test`. The build exits with status 0, and its last line starts with `✓ built in`. Review the files you added before committing them.
 
+## Generated declarations
+
+While serving a `.vibe` module, the compiler can write its `.d.vibe.ts`
+declaration beside it. The plugin ignores watcher events for that generated
+file while its owning `.vibe` source exists, keeping the served module and its
+importers cached. Changes to the source still trigger hot updates. An authored
+TypeScript declaration without a companion `.vibe` source remains an input.
+Set `VIBELANG_VITE_DEBUG=1` to trace ignored generated declaration events along
+with project compiles and invalidations.
+
 ## Next
 
 Set up the editor: [VS Code and Cursor](/setup/vscode), [Neovim](/setup/neovim), [Zed](/setup/zed), or [other editors](/setup/other-editors). Then verify with step 4 of [Set up VibeLang](/setup).

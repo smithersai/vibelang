@@ -141,10 +141,14 @@ source text intact for later requests, including inline module outputs.
 
 The Vite root must contain the project's source files; the plugin overrides
 `rootDir` to that root so emitted paths are predictable. Normal application
-`dist/` output stays separate. Each change invalidates all loaded `.vibe`
+`dist/` output stays separate. Each source change invalidates all loaded `.vibe`
 modules and their transitive importers, a conservative rule
 that covers exported contract and control changes without duplicating compiler
-logic. Direct HTTP requests for `.vibe` files enter Vite's module transform pipeline.
+logic. Generated `.d.vibe.ts` declaration events are ignored while their
+companion `.vibe` source exists, so compiler output does not invalidate the
+module just served. Authored declarations without a companion remain inputs.
+`VIBELANG_VITE_DEBUG=1` traces ignored declaration events.
+Direct HTTP requests for `.vibe` files enter Vite's module transform pipeline.
 Vitest keeps transforms between runs (`fsModuleCache`), keyed by a module's own
 text; the plugin keeps `.vibe` modules out of that cache, since their JavaScript
 also depends on the compiler and on the modules they import.

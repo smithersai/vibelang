@@ -50,6 +50,14 @@ function nearestConfig(directory) {
   return configs.get(directory)
 }
 
+// The compiler writes this declaration beside its owning source while serving
+// JavaScript. It is output, not a new input that should invalidate that compile.
+// A hand-written declaration without a companion remains a TypeScript input.
+function isGeneratedDeclaration(path) {
+  const suffix = ".d.vibe.ts"
+  return path.endsWith(suffix) && existsSync(path.slice(0, -suffix.length) + ".vibe")
+}
+
 // Keep TypeScript's source priority when the bundler cannot find .vibe.
 function extensionlessVibe(directory, specifier) {
   const source = extensionlessImport(directory, specifier)
@@ -224,9 +232,11 @@ export default function vibelang(options = {}) {
       return { code, map: structuredClone(map) }
     },
     watchChange(id) {
+      if (isGeneratedDeclaration(id)) { debug(`ignore generated declaration ${id}`); return }
       if (/\.(?:vibe|[cm]?tsx?|json)$/.test(id)) current?.invalidate()
     },
     async handleHotUpdate(context) {
+      if (isGeneratedDeclaration(context.file)) { debug(`ignore generated declaration ${context.file}`); return [] }
       if (!/\.(?:vibe|[cm]?tsx?)$/.test(context.file) && !context.file.endsWith(".json")) return
       const projects = await loaded()
       projects.invalidate()
