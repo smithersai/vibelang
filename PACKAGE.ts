@@ -187,6 +187,7 @@ const specTests = [
   "TestNativePreludeWithoutRuntimeQuoted",
   "TestPlatformGlobalAugmentationQuoted",
   "TestEffectCollisionTypeofQuoted",
+  "TestEffectPinQuoted",
   "TestCLISpecCommandFlags",
   "TestVIPFiberIDNumberEquality",
   "TestErrorDeclarationTwinQuoted",
