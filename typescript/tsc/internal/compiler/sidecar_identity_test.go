@@ -58,6 +58,37 @@ func TestPackageSidecarExportIsTheSource(t *testing.T) {
 			t.Error(d.String())
 		}
 	})
+	// t3code batch 08 (SourceControlProvider): lib's Driver.ts reaches
+	// Provider through ./Provider.vibe and the app through the package's types
+	// export. With two modules, the app's declaration could not name Ctx
+	// through its own namespace import: it printed import("lib/Provider").Ctx
+	// and dropped the import, a declaration change against the original.
+	t.Run("an importer's declaration names the type through its namespace import", func(t *testing.T) {
+		t.Parallel()
+		fs := vfstest.FromMap(map[string]any{
+			"/app/package.json":           `{"type":"module"}`,
+			"/app/tsconfig.json":          `{"compilerOptions":{"noLib":true,"strict":true,"module":"nodenext","allowArbitraryExtensions":true,"allowImportingTsExtensions":true,"declaration":true,"emitDeclarationOnly":true},"files":["src/a.ts"]}`,
+			"/app/src/a.ts":               "import * as Provider from \"lib/Provider\";\nimport type { Driver } from \"lib/Driver\";\nexport const make = (): Driver => ({ remote: ({ provider }: Provider.Ctx) => provider });\nexport const remoteOf = (d: Driver) => d.remote;\n",
+			"/app/node_modules/lib":       vfstest.Symlink("/lib"),
+			"/lib/package.json":           `{"name":"lib","type":"module","exports":{"./Provider":{"types":"./src/Provider.d.vibe.ts","default":"./src/Provider.vibe"},"./Driver":"./src/Driver.ts"}}`,
+			"/lib/src/Provider.vibe":      `export interface Ctx { readonly provider: string }`,
+			"/lib/src/Provider.d.vibe.ts": `export interface Ctx { readonly provider: string; }`,
+			"/lib/src/Driver.ts":          `import type * as Provider from "./Provider.vibe"; export interface Driver { readonly remote: (c: Provider.Ctx) => string }`,
+		}, tspath.CaseSensitive)
+		config, diagnostics := tsoptions.GetParsedCommandLineOfConfigFile("/app/tsconfig.json", &core.CompilerOptions{}, nil, fs, nil)
+		assert.Equal(t, len(diagnostics), 0)
+		p := NewProgram(ProgramOptions{Config: config, Host: NewCompilerHost(fs, "/", nil, nil, nil)})
+		assert.Equal(t, len(p.GetSemanticDiagnostics(t.Context(), nil)), 0)
+		var dts string
+		result := p.Emit(t.Context(), EmitOptions{WriteFile: func(path tspath.RootedFilePath, text string, _ *WriteFileData) error {
+			if path == "/app/src/a.d.ts" {
+				dts = text
+			}
+			return nil
+		}})
+		assert.Equal(t, len(result.Diagnostics), 0)
+		assert.Equal(t, dts, "import * as Provider from \"lib/Provider\";\nimport type { Driver } from \"lib/Driver\";\nexport declare const make: () => Driver;\nexport declare const remoteOf: (d: Driver) => (c: Provider.Ctx) => string;\n")
+	})
 	t.Run("without its source the sidecar is the module", func(t *testing.T) {
 		t.Parallel()
 		files := alchemy()
