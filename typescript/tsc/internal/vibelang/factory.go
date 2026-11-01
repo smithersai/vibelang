@@ -392,6 +392,12 @@ func (a *analyzer) checkFactoryProgram(file *ast.SourceFile, fn, expr *ast.Node)
 			requirements = nil
 		}
 	}
+	if a.callInfers(fn, channelType(c, declared, "_E")) {
+		errors = nil
+	}
+	if a.callInfers(fn, channelType(c, declared, "_R")) {
+		requirements = nil
+	}
 	for _, escape := range escapes(c, errors, info.errorSources, channelType(c, declared, "_E")) {
 		d := report(c, escape.source, EK9201, typeTextAt(c, escape.t, escape.source), name, "its contract says E = "+c.TypeToString(channelType(c, declared, "_E")))
 		noteAmbientNamesake(c, d, channelType(c, declared, "_E"), escape)
@@ -453,4 +459,26 @@ func conditionalRunsArm(node *ast.Node) bool {
 		}
 	}
 	return false
+}
+
+// callInfers reports whether t, a channel of the program type that fn's call
+// declares for fn, names a type parameter that the call infers. The call
+// infers it from fn's own program, as TypeScript infers R in
+// run(() => program) for run<R>(f: () => Effect<void, never, R>), so it is no
+// contract that fn's program can escape. A channel the call fixes, such as
+// never, stays fn's contract.
+func (a *analyzer) callInfers(fn *ast.Node, t *checker.Type) bool {
+	if fn.Type() != nil {
+		return false // fn writes its own contract
+	}
+	call, _ := ownerCall(fn)
+	if call == nil || len(call.TypeArguments()) > 0 {
+		return false
+	}
+	candidate := a.candidateOf(call)
+	if candidate == nil {
+		return false
+	}
+	declared := a.declaredSignature(candidate)
+	return declared != nil && factoryHasInferenceParameter(a.checker, t, declared.TypeParameters(), 0)
 }
