@@ -556,6 +556,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The specification left cyclic declaration output ambiguous; it now defines the retained `/*elided*/ any` output and keeps ordinary recursive-inference errors.
 
+- The spec integration checks still treated invalid `effect` arrow heads as missing `EK0109` support after the compiler implemented it; they now require the registered diagnostic and keep both typed and generic arrow-head regressions active.
+
 - Compiler validation still skipped implemented `restore` placement rules as known gaps; the placement matrix now runs as active regressions, and the remaining computed-key case records its actual type-checking failure.
 
 - Diagnostic validation still treated `EK0202` as unimplemented after the compiler registered it; the registry checks and jump fuzz corpus now validate the implemented diagnostic directly.
