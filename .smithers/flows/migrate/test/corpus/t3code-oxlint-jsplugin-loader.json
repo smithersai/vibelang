@@ -1,0 +1,44 @@
+{
+  "key": "codemod-gap:oxlint-jsplugin-loader",
+  "repo": "t3code",
+  "migrated": [
+    "oxlint-plugin-t3code"
+  ],
+  "files": {
+    "package.json": {
+      "name": "t3code",
+      "private": true,
+      "scripts": {
+        "lint": "vp lint --report-unused-disable-directives && eslint .",
+        "test": "vp test run",
+        "fmt": "vp fmt"
+      }
+    },
+    ".oxlintrc.json": "{\n  // the repository's own rules\n  \"jsPlugins\": [\"oxlint-plugin-t3code\"],\n  \"rules\": {}\n}\n",
+    "oxlint-plugin-t3code/package.json": {
+      "name": "oxlint-plugin-t3code",
+      "type": "module",
+      "scripts": {
+        "test": "vp test run --config ../vite.config.ts --dir .",
+        "build": "tsc -p ."
+      }
+    },
+    "packages/other/package.json": {
+      "name": "other",
+      "scripts": {
+        "test": "vp test run"
+      }
+    }
+  },
+  "after": {
+    "package.json": {
+      "lint": "NODE_OPTIONS=\"${NODE_OPTIONS:+$NODE_OPTIONS }--import=vibelang/register\" vp lint --report-unused-disable-directives && eslint .",
+      "test": "vp test run",
+      "fmt": "vp fmt"
+    },
+    "oxlint-plugin-t3code/package.json": {
+      "test": "NODE_OPTIONS=\"${NODE_OPTIONS:+$NODE_OPTIONS }--import=vibelang/register\" vp test run --config ../vite.config.ts --dir .",
+      "build": "tsc -p ."
+    }
+  }
+}

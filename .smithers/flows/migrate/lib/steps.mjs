@@ -30,6 +30,7 @@ import * as Wire from "./wire.mjs"
 import { wireEsbuildBuilds } from "./esbuild-builds.mjs"
 import { wireDeveloperTools } from "./tooling.mjs"
 import { planEmittedImports, applyEmittedImports } from "./emitted-imports.mjs"
+import { wireOxlintPlugins } from "./oxlint-plugins.mjs"
 import { readToolchain } from "./toolchain.mjs"
 import { assertPortable, machineRoots } from "./portable.mjs"
 import { appendJsonl, batchName, isDeclarationFile, must, quote, readJson, readJsonIf, run as sh, slug, writeJson, writeText } from "./util.mjs"
@@ -678,6 +679,8 @@ export async function wireTarget(config, log) {
     if (next === null) warnings.push(`${name}: add "**/${Wire.sidecarIgnore}" to its ignorePatterns by hand`)
     else writeIfChanged(join(t, name), text, next)
   }
+  // Oxlint's plugin host is Node: a JS plugin the migration moves to VibeLang loads through vibelang/register.
+  for (const file of wireOxlintPlugins({ root: t, migrated: config.packages.map((pkg) => pkg.dir), ts })) if (!changed.includes(file)) changed.push(file)
   // pnpm 11 and later fail an install that leaves a build script undecided, and vibelang's dprint has one that links its binary.
   if (Wire.packageManager(readdirSync(t)) === "pnpm") {
     const workspace = join(t, "pnpm-workspace.yaml")
