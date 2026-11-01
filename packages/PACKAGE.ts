@@ -82,6 +82,17 @@ const pluginTest = (name: string, summary: string, timeout: string) => S.Shell.T
   sandbox: "none",
   timeout
 })
+// vibelang/metro, vibelang/babel and vibelang/emit against the tools they
+// adapt, at the versions test/tools/package.json pins.
+const compilerToolsTest = S.Shell.Test({
+  summary: "vibelang/metro, vibelang/babel and vibelang/emit against Metro, Babel, the React Compiler and Oxc.",
+  shell: "VIBELANG_BINARY=$PWD/packages/compiler/native/vibelang sh packages/compiler/test/tools/run.sh",
+  // The migrate flow patches oxc-transform-react with lib/react-tools.mjs; one test applies it to the real package.
+  data: [compilerNative, S.glob("compiler/**"), S.glob("vite/src/**"), S.glob("//.smithers/flows/migrate/lib/**"), S.file("//experiments/package.json"), S.file("//experiments/bun.lock")],
+  tools: [S.Host.bin("node"), S.Host.bin("bun")],
+  sandbox: "none",
+  timeout: "10m"
+})
 const viteTest = pluginTest("vite", "vibelang-vite's node tests: Vite and Vitest builds, source maps and watch.", "15m")
 const unpluginTest = pluginTest("unplugin", "vibelang-unplugin's node tests: each bundler's build, source maps and watch.", "20m")
 
@@ -95,6 +106,7 @@ export const Package = S.Package({
     "runtime-published": runtimePublished,
     "compiler-native": compilerNative,
     "compiler-test": compilerTest,
+    "compiler-tools-test": compilerToolsTest,
     "vite-test": viteTest,
     "unplugin-test": unpluginTest,
     tree

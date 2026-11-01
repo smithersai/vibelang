@@ -34,6 +34,7 @@ import * as Upgrade from "./upgrade.mjs"
 import * as Wire from "./wire.mjs"
 import { wireEsbuildBuilds } from "./esbuild-builds.mjs"
 import { wirePublishingScripts } from "./publishing.mjs"
+import { wireReactTools } from "./react-tools.mjs"
 import { wireDeveloperTools } from "./tooling.mjs"
 import { planEmittedImports, applyEmittedImports } from "./emitted-imports.mjs"
 import { wireOxlintPlugins } from "./oxlint-plugins.mjs"
@@ -781,6 +782,10 @@ export async function wireTarget(config, log) {
   const apps = Wire.wireViteApps({ root: t, packages: packages, ts, specsFor, wired: vite.configs })
   changed.push(...apps.changed.filter((file) => !changed.includes(file)))
   warnings.push(...apps.warnings)
+  // Metro, Babel and oxc-transform-react read a module's source themselves; each gets vibelang's adapter (lib/react-tools.mjs).
+  const reactTools = wireReactTools({ root: t, packages: packages, ts, specsFor })
+  changed.push(...reactTools.changed.filter((file) => !changed.includes(file)))
+  warnings.push(...reactTools.warnings)
   // A bundle reaches .vibe modules through vibelang-unplugin/bun: vibelang/bun's runtime plugin does not apply to Bun.build.
   const bunBuilds = Wire.wireBunBuilds({ root: t, packages: packages, ts, specsFor })
   changed.push(...bunBuilds.changed.filter((file) => !changed.includes(file)))

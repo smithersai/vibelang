@@ -48,6 +48,7 @@ Code example count: one example per fenced code block in the source body, includ
   - [Developer tools](src/setup/developer-tools.md)
 - **Frameworks**
   - [React](src/setup/react.md)
+  - [React Native and Metro](src/setup/react-native.md)
   - [Vue](src/setup/vue.md)
   - [Svelte](src/setup/svelte.md)
   - [Foldkit](src/setup/foldkit.md)

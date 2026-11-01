@@ -23,6 +23,7 @@ Read the project's root directory and record:
 | | `pnpm-lock.yaml` or `yarn.lock` | pnpm or Yarn: install the npm commands' packages with `pnpm add` or `yarn add` |
 | Build | `vite` or `vitest` in `package.json`, or a `vite.config.*` or `vitest.config.*` file | Vite |
 | | `webpack`, `rollup`, `esbuild`, or `@rspack/core` in `package.json`, or `bun build` in a script | Another bundler: `vibelang-unplugin` |
+| | `metro` or `expo` in `package.json`, or a `metro.config.*` file | Metro |
 | | None of these | The `vibelang` CLI |
 | Framework | `next` or `astro` in `package.json` | Follow Next.js or Astro below |
 | | `wrangler` in `package.json`, or a `wrangler.toml` or `wrangler.jsonc` file | Cloudflare Workers |
@@ -42,6 +43,7 @@ Follow each matching page, in this order: project, build or framework, editor.
 | Build with the `vibelang` CLI, as with `tsc` | [Build with the vibelang CLI](setup/vibelang-cli.md) |
 | Vite or Vitest, without React, Vue, or Svelte | [Vite and Vitest](setup/vite.md) |
 | React, Vue, or Svelte with Vite | [React](setup/react.md), [Vue](setup/vue.md), or [Svelte](setup/svelte.md), instead of the Vite page |
+| React Native or Expo, bundled with Metro | [React Native and Metro](setup/react-native.md) |
 | Next.js with webpack, or Astro | [Framework setup](#framework-setup) below |
 | Cloudflare Workers | [Cloudflare Workers](platform/cloudflare-workers.md), instead of the bundler's page |
 | Format with dprint, or a `dprint.json` in the project | [Format with dprint](setup/formatting.md) |

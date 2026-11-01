@@ -146,6 +146,46 @@ Bun first resolves it by path (the entry, a relative or absolute import), and
 leaves a bare specifier to Bun; `VIBELANG_BUN_DEBUG=1` prints how many
 resolutions reached it.
 
+## Bundle .vibe modules with Metro
+
+```js
+// metro.config.js
+const { getDefaultConfig } = require("expo/metro-config") // or @react-native/metro-config
+const { withVibeLang } = require("vibelang/metro")
+
+module.exports = withVibeLang(getDefaultConfig(__dirname))
+```
+
+`withVibeLang` takes a Metro config, a promise of one, or a function that
+returns either. It adds `vibe` to `resolver.sourceExts`, after TypeScript's
+extensions, and sets `vibelang/metro` as `transformer.babelTransformerPath`. The
+app's own Babel transformer, the one the config named or Metro's default, still
+transforms every module: for a `.vibe` module it receives the module's
+JavaScript from the project's compile, and the syntax tree it returns is moved
+back to `.vibe` positions, so the bundle's source maps name `.vibe` lines.
+Metro's transform cache keys a module by its own text, but a `.vibe` module's
+JavaScript also depends on the modules it imports: after a change that alters
+how an importer compiles, restart Metro with `--reset-cache`.
+
+## Read .vibe modules from Babel and other one-file tools
+
+A tool that parses one file at a time cannot read a `.vibe` module's source.
+Babel reads it through the `vibelang/babel` preset:
+
+```js
+// babel.config.js
+module.exports = { presets: ["babel-preset-expo", "vibelang/babel"] }
+```
+
+The preset parses a `.vibe` module from its project's JavaScript and moves the
+syntax tree back to `.vibe` positions, so the React Compiler checks and
+memoizes the module, and its diagnostics name `.vibe` lines. A tool called as
+`transform(filename, text, options)`, such as oxc-transform-react, takes
+`toolArguments(filename, text, options)` from `vibelang/emit`, which replaces a
+`.vibe` module's source with its JavaScript. Both read the module's source from
+disk: text that differs, such as JavaScript a bundler plugin already compiled,
+passes through unchanged.
+
 ## Compile projects from a tool
 
 `vibelang/project` is the whole-project compile that `vibelang-vite`,

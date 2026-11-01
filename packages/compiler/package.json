@@ -26,10 +26,16 @@
       "types": "./project.d.mts",
       "default": "./project.mjs"
     },
+    "./emit": {
+      "types": "./emit.d.mts",
+      "default": "./emit.mjs"
+    },
     "./register": "./register.mjs",
     "./eslint": "./eslint.mjs",
     "./knip": "./knip.mjs",
     "./bun": "./bun.mjs",
+    "./metro": "./metro.cjs",
+    "./babel": "./babel.cjs",
     "./prettier": "./prettier.mjs",
     "./format": "./format.mjs",
     "./ast-grep": "./ast-grep.mjs"
@@ -52,6 +58,10 @@
     "relative-imports.mjs",
     "paths-imports.mjs",
     "project.d.mts",
+    "emit.mjs",
+    "emit.d.mts",
+    "metro.cjs",
+    "babel.cjs",
     "register.mjs",
     "bun.mjs",
     "README.md",

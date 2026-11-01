@@ -136,6 +136,10 @@ export const sidebar = [
             "link": "/setup/react"
           },
           {
+            "text": "React Native and Metro",
+            "link": "/setup/react-native"
+          },
+          {
             "text": "Vue",
             "link": "/setup/vue"
           },
