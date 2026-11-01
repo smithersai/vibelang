@@ -1,6 +1,8 @@
 package vibelang
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -83,6 +85,39 @@ func TestEffectStageFixesRefuse(t *testing.T) {
 			got, _ := fixedPipe(t, stageHeader+test.source)
 			if !strings.Contains(got, test.kept) {
 				t.Fatalf("--fix writes\n%s\nwant it to keep %s", got, test.kept)
+			}
+		})
+	}
+}
+
+// Effect.sync is the boundary of a TypeScript call: its exceptions are defects
+// there, and EK4401 reports the call in a block (opencode m7 r1).
+func TestThunkKeepsTypeScriptCall(t *testing.T) {
+	for _, test := range []struct{ name, source, want string }{
+		{"a call", "export const v = Effect.sync(() => label())\n", "Effect.sync(() => label())"},
+		{"a call in a block", "export const v = Effect.sync(() => {\n  const a = label()\n  return a\n})\n", "const a = label()\n  return a\n})"},
+		{"an argument", "export const v = Effect.sync(() => [label()])\n", "Effect.sync(() => [label()])"},
+		{"a built-in that lists its failures", "export const f = (s: string) => Effect.sync(() => JSON.parse(s))\n", "Effect.sync(() => JSON.parse(s))"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			source := "import { label } from \"./lib.ts\"\n" + test.source
+			_, file, _, _ := editorProgram(t, source)
+			dir := filepath.Dir(file.FileName().AsString())
+			if err := os.WriteFile(filepath.Join(dir, "lib.ts"), []byte("export const label = (): string => \"x\"\n"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			result := fixCase(t, dir)
+			got := source
+			if fixed := result.Files[file.FileName()]; fixed != nil {
+				got = fixed.Text
+			}
+			if !strings.Contains(got, test.want) {
+				t.Fatalf("--fix writes\n%s\nwant it to hold %s\nrefused %+v", got, test.want, result.Refused)
+			}
+			for _, refused := range result.Refused {
+				if refused.Code == 4834 {
+					t.Fatalf("the rule proposed what the gate refused: %+v", refused)
+				}
 			}
 		})
 	}

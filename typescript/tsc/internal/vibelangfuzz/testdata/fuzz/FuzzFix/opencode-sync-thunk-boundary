@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport { Effect } from \"effect\"\nimport { label } from \"./lib.ts\"\nexport const v = Effect.sync(() => label())\nexport const w = (s: string) => Effect.sync(() => JSON.parse(s))\n-- lib.ts --\nexport const label = (): string => \"x\"\n")

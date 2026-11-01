@@ -272,8 +272,11 @@ func thunkValue(arrow *ast.Node) *ast.Node {
 // thunkMovesToBlock reports whether body, a thunk's, means the same in an
 // effect block: a throw is a defect in a thunk and a failure in a block, effect
 // code has no try statements, and await, yield, this and arguments belong to
-// the function around them.
-func thunkMovesToBlock(body *ast.Node) bool {
+// the function around them. A thunk is also the boundary a TypeScript call
+// needs: its exceptions are defects there, and EK4401 or E would have to say
+// what they mean in a block (see callNeedsBoundary).
+func thunkMovesToBlock(c *checker.Checker, body *ast.Node) bool {
+	a := analyzerFor(c)
 	var stays func(node *ast.Node) bool
 	stays = func(node *ast.Node) bool {
 		switch node.Kind {
@@ -285,10 +288,29 @@ func thunkMovesToBlock(body *ast.Node) bool {
 			}
 		case ast.KindFunctionDeclaration, ast.KindFunctionExpression, ast.KindClassDeclaration, ast.KindClassExpression:
 			return false
+		case ast.KindCallExpression:
+			if callNeedsBoundary(c, a, node) {
+				return true
+			}
 		}
 		return node.ForEachChild(stays)
 	}
 	return !stays(body)
+}
+
+// callNeedsBoundary reports whether call means something else in effect code
+// than in Effect.sync's thunk: a foreign, tagged or platform callee draws
+// EK4401, EK4402 or a contract, and a built-in with listed failures, such as
+// JSON.parse, puts them in E where the thunk made them defects.
+func callNeedsBoundary(c *checker.Checker, a *analyzer, call *ast.Node) bool {
+	if ast.IsSuperCall(call) || ast.IsImportCall(call) || a.performs(call) || returnsEffectful(c, call) {
+		return false
+	}
+	if isPlatformCallee(c, call) {
+		return true
+	}
+	t := callTrust(c, call)
+	return t.kind == trustForeign || t.kind == trustTagged || t.kind == trustPlatform || len(t.failures) > 0
 }
 
 // thunkRewrite plans the rewrite of call, an Effect.sync or an Effect.suspend
@@ -300,7 +322,7 @@ func thunkRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *for
 	}
 	arrow := ast.SkipParentheses(call.Arguments()[0])
 	if !ast.IsArrowFunction(arrow) || arrow.Flags&ast.NodeFlagsVibeLangEffect != 0 || ast.HasSyntacticModifier(arrow, ast.ModifierFlagsAsync) ||
-		len(arrow.Parameters()) > 0 || arrow.TypeParameters() != nil || arrow.Type() != nil || !thunkMovesToBlock(arrow.Body()) {
+		len(arrow.Parameters()) > 0 || arrow.TypeParameters() != nil || arrow.Type() != nil || !thunkMovesToBlock(c, arrow.Body()) {
 		return nil
 	}
 	_, name := effectMember(c, call.Expression())
