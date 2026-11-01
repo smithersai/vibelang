@@ -95,12 +95,16 @@ func callCandidate(c *checker.Checker, call *ast.Node, candidate *checker.Signat
 // plain form when that lambda can pause: a plain function cannot run an
 // Effect, so the candidate does not accept the lambda in the form it expects
 // (D56), and overload resolution moves on to the next candidate.
-func filterCandidate(c *checker.Checker, call *ast.Node, candidate *checker.Signature, arguments []checker.CheckedArgument) bool {
+func filterCandidate(c *checker.Checker, call *ast.Node, candidate *checker.Signature, arguments []checker.CheckedArgument, complete bool) bool {
 	if !isVibeLangFile(ast.GetSourceFileOfNode(call)) {
 		return true
 	}
 	a := analyzerFor(c)
-	if a.rejected[call][keyOf(candidate)] {
+	dataAccepted := true
+	if complete {
+		dataAccepted = a.checkDataArguments(call, candidate, arguments)
+	}
+	if a.rejected[call][keyOf(candidate)] || !dataAccepted {
 		return false
 	}
 	if !ast.IsCallExpression(call) && !ast.IsNewExpression(call) {

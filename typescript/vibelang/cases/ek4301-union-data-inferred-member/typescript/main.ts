@@ -1,0 +1,7 @@
+import { OnlyData, Incompatible, take, array, constrained, late, boxed } from "../lib.js"
+export const inferred = take(Incompatible)
+export const explicit = take<number>(Incompatible)
+export const arrayInferred = array([Incompatible])
+export const constraintData = constrained([OnlyData])
+export const later = late(Incompatible, () => 42)
+export const boxedValue = boxed({ item: Incompatible })

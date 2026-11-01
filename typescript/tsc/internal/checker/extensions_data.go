@@ -17,6 +17,16 @@ func (c *Checker) GetPermissiveInstantiation(t *Type) *Type {
 	return c.getPermissiveInstantiation(t)
 }
 
+// GetTypeInSignatureInstantiation applies the candidate's inferred type
+// arguments to a declared member or constraint. The caller keeps the
+// declaration's function form; only structural member compatibility changes.
+func (c *Checker) GetTypeInSignatureInstantiation(t *Type, signature *Signature) *Type {
+	if signature == nil || signature.mapper == nil {
+		return t
+	}
+	return c.instantiateType(t, signature.mapper)
+}
+
 // FilterType returns the members of t, a union, for which f holds, as a
 // union, or, for any other type, t when f holds and never when it does not.
 func (c *Checker) FilterType(t *Type, f func(*Type) bool) *Type {

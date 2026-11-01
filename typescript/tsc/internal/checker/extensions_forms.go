@@ -52,7 +52,9 @@ type CheckedArgument struct {
 // CandidateFilterHook can reject candidate for call after every argument
 // type-checked against it. Overload resolution then treats candidate as if an
 // argument did not match and tries the next one. It returns true to accept.
-type CandidateFilterHook func(c *Checker, call *ast.Node, candidate *Signature, arguments []CheckedArgument) bool
+// complete is false while context-sensitive or generic arguments are skipped;
+// a decision that depends on their inferences must wait for a complete check.
+type CandidateFilterHook func(c *Checker, call *ast.Node, candidate *Signature, arguments []CheckedArgument, complete bool) bool
 
 var candidateFilterHooks []CandidateFilterHook
 
@@ -63,9 +65,9 @@ func RegisterCandidateFilterHook(hook CandidateFilterHook) {
 	candidateFilterHooks = append(candidateFilterHooks, hook)
 }
 
-func (c *Checker) acceptCandidateByHooks(call *ast.Node, candidate *Signature, arguments []CheckedArgument) bool {
+func (c *Checker) acceptCandidateByHooks(call *ast.Node, candidate *Signature, arguments []CheckedArgument, complete bool) bool {
 	for _, hook := range candidateFilterHooks {
-		if !hook(c, call, candidate, arguments) {
+		if !hook(c, call, candidate, arguments, complete) {
 			return false
 		}
 	}

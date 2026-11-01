@@ -42,6 +42,15 @@ func FuzzUnionDataMember(f *testing.F) {
 			f.Add([]byte("union-data:" + data.name + "/plat-generic/" + holder.name + "/resource"))
 		}
 	}
+	// A required or optional witness infers number. The generic callable's
+	// platform: number cannot take platform: true, even though its permissive
+	// instantiation could (alchemy-28). Explicit and later-fixed arguments
+	// make the same distinction.
+	for _, data := range unionDataForms {
+		for _, holder := range unionHolders {
+			f.Add([]byte("union-data:" + data.name + "/plat-generic/" + holder.name + "/platform-resource"))
+		}
+	}
 	f.Add([]byte("union-data:plain/plat/direct/record"))
 	for _, holder := range unionHolders {
 		f.Add([]byte("union-data:generic/function/" + holder.name + "/resource"))
@@ -102,6 +111,10 @@ var unionHolders = []unionChoice{
 	{"constrained", "export const take = <T extends P<any>>(cls: T): number => 1"},
 	{"array", "export const take = <W>(all: P<W>[]): number => all.length"},
 	{"constrained-array", "export const take = <T extends P<any>>(all: T[]): number => all.length"},
+	{"explicit", "export const take = <W>(cls: P<W>): number => 1"},
+	{"explicit-array", "export const take = <W>(all: P<W>[]): number => all.length"},
+	{"later", "export const take = <W>(cls: P<NoInfer<W>>, output: () => W): number => 1"},
+	{"later-array", "export const take = <W>(all: P<NoInfer<W>>[], output: () => W): number => all.length"},
 }
 
 var unionValues = []unionChoice{
@@ -149,6 +162,12 @@ func (in unionDataInput) project(union bool) map[string]string {
 	if strings.HasSuffix(in.holder.name, "array") {
 		call = "take([Thing, Thing])"
 	}
+	if strings.HasPrefix(in.holder.name, "explicit") {
+		call = strings.Replace(call, "take(", "take<number>(", 1)
+	}
+	if strings.HasPrefix(in.holder.name, "later") {
+		call = strings.TrimSuffix(call, ")") + ", () => 1)"
+	}
 	lib := []string{
 		`import * as Effect from "effect/Effect"`,
 		"export interface Res<R> { (id: string): Effect.Effect<R>; readonly kind: string; readonly witness: R }",
@@ -169,9 +188,10 @@ const unionDataConfig = `{"compilerOptions":{"target":"ES2022","module":"NodeNex
 
 // CheckUnionDataMember compares the codes of the union program with those of
 // the data-member program. A value the callable member also takes meets that
-// member's call signature, which returns any, so where the parameter names
-// the union itself D430 requires EK4301; through a type parameter the target
-// is the instantiated value type, and no oracle applies.
+// member's call signature, which returns any, so D430 requires EK4301,
+// including through a type parameter's declared constraint (D513). A generic
+// callable whose marker is incompatible with the inferred witness is instead
+// excluded by the completed call's instantiation.
 func CheckUnionDataMember(t *testing.T, w *Workspace, in unionDataInput) {
 	const target = "FuzzUnionDataMember"
 	defer recoverCompilerPanic(t, target)
@@ -207,8 +227,14 @@ func CheckUnionDataMember(t *testing.T, w *Workspace, in unionDataInput) {
 		g.FinishInput(t, key)
 		return
 	}
-	if in.value.name == "platform-resource" && in.callable.text != "" {
-		if !strings.HasPrefix(in.holder.name, "constrained") && !slices.Contains(union, "EK4301") {
+	// A direct generic callable matches the inferred marker only when W
+	// comes solely from platform (the phantom/plain data member). Witnesses,
+	// explicit number, and the later callback fix W to number instead.
+	markerMismatch := in.callable.name == "plat-generic" &&
+		!strings.HasPrefix(in.holder.name, "constrained") &&
+		(in.data.name != "plain" || strings.HasPrefix(in.holder.name, "explicit") || strings.HasPrefix(in.holder.name, "later"))
+	if in.value.name == "platform-resource" && in.callable.text != "" && !markerMismatch {
+		if !slices.Contains(union, "EK4301") {
 			g.Add("feature:union-callable-member", "D430: %q; the union's callable member takes %s, and its call signature returns any, so the Effect-returning value is EK4301.\nunion: %v\n%s\n%s", unionDataMemberQuote, in.value.name, union, unionFiles["lib.ts"], unionFiles["main.vibe"])
 		}
 		g.FinishInput(t, key)

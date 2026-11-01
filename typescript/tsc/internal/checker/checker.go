@@ -9645,7 +9645,7 @@ func (c *Checker) isSignatureApplicable(node *ast.Node, args []*ast.Node, signat
 			return false
 		}
 	}
-	return c.acceptCandidateByHooks(node, signature, checkedArguments)
+	return c.acceptCandidateByHooks(node, signature, checkedArguments, checkMode&(CheckModeSkipContextSensitive|CheckModeSkipGenericFunctions) == 0)
 }
 
 func (c *Checker) maybeAddMissingAwaitInfo(errorNode *ast.Node, source *Type, target *Type, relation *Relation, reportErrors bool, diagnosticOutput *[]*ast.Diagnostic) {

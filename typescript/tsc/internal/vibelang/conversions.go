@@ -34,10 +34,13 @@ const (
 // valueState records, for one argument expression, the conversion each
 // candidate asked for.
 type valueState struct {
-	byCandidate map[candidateKey]conversion
-	first       conversion // what the first candidate to check the value asked for
-	checked     bool       // a candidate has checked the value
-	types       map[candidateKey]*checker.Type
+	byCandidate  map[candidateKey]conversion
+	first        conversion // what the first candidate to check the value asked for
+	checked      bool       // a candidate has checked the value
+	types        map[candidateKey]*checker.Type
+	firstKey     candidateKey
+	data         map[candidateKey]bool // a data-union decision; true after a complete check
+	checkingData bool
 }
 
 // expressionType gives an argument expression the type of the conversion the
@@ -85,6 +88,14 @@ func expressionType(c *checker.Checker, node *ast.Node, t *checker.Type) *checke
 		s = &valueState{byCandidate: map[candidateKey]conversion{}, types: map[candidateKey]*checker.Type{}}
 		a.conversions[node] = s
 	}
+	if position.dataCheck {
+		if s.data == nil {
+			s.data = map[candidateKey]bool{}
+		}
+		if _, exists := s.data[key]; !exists || call != nil && len(a.current[call]) > 0 {
+			s.data[key] = false
+		}
+	}
 	if conv, ok := s.byCandidate[key]; ok {
 		switch conv {
 		case convertByName:
@@ -110,9 +121,9 @@ func expressionType(c *checker.Checker, node *ast.Node, t *checker.Type) *checke
 	s.byCandidate[key] = conv
 	s.types[key] = converted
 	if !s.checked {
-		s.first, s.checked = conv, true
+		s.first, s.firstKey, s.checked = conv, key, true
 	}
-	if conv == convertRejected && call != nil {
+	if conv == convertRejected && call != nil && !position.dataCheck {
 		a.reject(call, key)
 	}
 	return converted
@@ -184,13 +195,18 @@ func mayConvert(c *checker.Checker, node *ast.Node, t *checker.Type) bool {
 type valuePosition struct {
 	expectation             // the value itself
 	elements    expectation // the elements or property values of a container
+	dataCheck   bool        // a data-union decision waits for complete candidate inference
 }
 
 func (a *analyzer) classifyValuePosition(call *ast.Node, signature *checker.Signature, path []pathStep, node *ast.Node, t *checker.Type) valuePosition {
 	expected := a.expectedAt(call, signature, path, node)
 	position := valuePosition{expectation: a.classify(expected)}
-	if position.plainFn && !position.effectFn && a.takenAsData(expected, t) {
-		position.plainFn = false
+	if position.plainFn && !position.effectFn {
+		data, callable, hasData := a.unionDataMembers(expected, t, nil, true)
+		position.dataCheck = hasData && !position.program
+		if data && !callable {
+			position.plainFn = false
+		}
 	}
 	if !position.any() {
 		elements := a.stepInto(expected, pathStep{element: true})
@@ -200,16 +216,12 @@ func (a *analyzer) classifyValuePosition(call *ast.Node, signature *checker.Sign
 	return position
 }
 
-// takenAsData reports whether t is assignable to a member of the expected
-// types that has no call signature, and to none that has one: the target
-// takes the value as data, as alchemy's ResourceClassLike | Platform takes a
-// resource class, so no call signature of the target reaches it (D430).
-func (a *analyzer) takenAsData(expected []*checker.Type, t *checker.Type) bool {
-	if t == nil {
-		return false
-	}
-	data, callable := false, false
-	var visit func(e *checker.Type, depth int)
+// unionDataMembers compares a value with each union member. Before inference,
+// the permissive comparison permits a generic data alternative. The complete
+// candidate check uses its actual instantiation for compatibility, while the
+// declared signature still determines the function form (D44, D430, D513).
+func (a *analyzer) unionDataMembers(expected []*checker.Type, t *checker.Type, signature *checker.Signature, permissive bool) (data, callable, hasData bool) {
+	var visit func(*checker.Type, int)
 	visit = func(e *checker.Type, depth int) {
 		e = unwrapSubstitution(e)
 		if depth > 4 {
@@ -221,35 +233,43 @@ func (a *analyzer) takenAsData(expected []*checker.Type, t *checker.Type) bool {
 			}
 			return
 		}
-		// A type parameter takes what its constraint takes, as T of
-		// collection<T extends Like<any> | Plat<any>>(resources: T[]) does.
+		// Keep a type parameter's declared constraint instead of replacing T
+		// by the callable value it inferred. D513 checks that constraint.
 		if e.Flags()&checker.TypeFlagsTypeParameter != 0 {
 			if constraint := a.checker.GetBaseConstraintOfType(e); constraint != nil && constraint != e && constraint.Flags()&checker.TypeFlagsUnknown == 0 {
 				visit(constraint, depth+1)
 			}
 			return
 		}
-		// Function has no call signature but takes a function, as React's
-		// useCallback<T extends Function> does (D513), so it is callable.
 		if e == a.checker.GetGlobalFunctionType() {
 			callable = true
 			return
 		}
-		// The declared signature keeps its type parameters, as Like<W> of
-		// register<W>(cls: Like<W> | Plat) does, so W matches anything here.
-		if e.Flags()&checker.TypeFlagsObject == 0 || !a.checker.IsTypeAssignableTo(t, a.checker.GetPermissiveInstantiation(e)) {
+		if e.Flags()&checker.TypeFlagsObject == 0 {
 			return
 		}
-		if len(a.checker.GetSignaturesOfType(e, checker.SignatureKindCall)) == 0 {
-			data = true
-		} else {
+		calls := len(a.checker.GetSignaturesOfType(e, checker.SignatureKindCall)) != 0
+		hasData = hasData || !calls
+		if t == nil {
+			return
+		}
+		member := a.checker.GetTypeInSignatureInstantiation(e, signature)
+		if permissive {
+			member = a.checker.GetPermissiveInstantiation(member)
+		}
+		if !a.checker.IsTypeAssignableTo(t, member) {
+			return
+		}
+		if calls {
 			callable = true
+		} else {
+			data = true
 		}
 	}
 	for _, e := range expected {
 		visit(e, 0)
 	}
-	return data && !callable
+	return
 }
 
 // convert decides what value of type t converts to at a position.
@@ -719,7 +739,11 @@ func (a *analyzer) finalConversion(node *ast.Node) conversion {
 		return s.first
 	}
 	if signature := a.candidateOf(call); signature != nil {
-		if conv, ok := s.byCandidate[keyOf(signature)]; ok {
+		key := keyOf(signature)
+		if done, exists := s.data[key]; exists && !done && len(a.current[call]) == 0 {
+			a.checkDataValue(node, call, signature, s)
+		}
+		if conv, ok := s.byCandidate[key]; ok {
 			return conv
 		}
 	}
@@ -786,4 +810,63 @@ func assertionOperandType(c *checker.Checker, node *ast.Node, t *checker.Type) *
 		return program
 	}
 	return t
+}
+
+// checkDataArguments changes no argument type: None and Rejected both keep the
+// original value. Only the complete applicability check may use the inferred
+// member choice; literal forms continue to obey D44.
+func (a *analyzer) checkDataArguments(call *ast.Node, signature *checker.Signature, arguments []checker.CheckedArgument) bool {
+	accepted := true
+	key := keyOf(signature)
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if isFunctionBoundary(node) {
+			return false
+		}
+		if state := a.conversions[node]; state != nil {
+			if _, exists := state.data[key]; exists {
+				if owner, _ := ownerCall(node); owner == call {
+					if a.checkDataValue(node, call, signature, state) == convertRejected {
+						accepted = false
+					}
+				}
+			}
+		}
+		return node.ForEachChild(visit)
+	}
+	for _, argument := range arguments {
+		visit(argument.Node)
+	}
+	return accepted
+}
+
+func (a *analyzer) checkDataValue(node, call *ast.Node, signature *checker.Signature, state *valueState) conversion {
+	key := keyOf(signature)
+	previous := state.byCandidate[key]
+	if state.checkingData || previous != convertNone && previous != convertRejected {
+		return previous
+	}
+	state.checkingData = true
+	defer func() { state.checkingData = false }()
+	_, path := ownerCall(node)
+	saved := a.valueTyping[node]
+	a.valueTyping[node] = true
+	t := a.checker.GetTypeAtLocation(node)
+	if !saved {
+		delete(a.valueTyping, node)
+	}
+	if t == nil {
+		t = state.types[key]
+	}
+	expected := a.expectedAt(call, signature, path, node)
+	data, callable, _ := a.unionDataMembers(expected, t, signature, false)
+	conv := convertNone
+	if !data || callable {
+		conv, _ = a.convert(node, t, valuePosition{expectation: a.classify(expected)})
+	}
+	state.byCandidate[key], state.types[key], state.data[key] = conv, t, true
+	if key == state.firstKey {
+		state.first = conv
+	}
+	return conv
 }

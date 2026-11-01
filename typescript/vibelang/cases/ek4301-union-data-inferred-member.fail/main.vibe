@@ -1,0 +1,6 @@
+// expect: EK4301
+// In these calls the instantiated callable member still takes the value.
+import { Incompatible, Compatible, take, array, constrained } from "./lib.js"
+export const direct = take(Compatible)
+export const arrayMatch = array([Compatible])
+export const constraintMatch = constrained([Incompatible])
