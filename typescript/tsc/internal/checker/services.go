@@ -579,6 +579,26 @@ func (c *Checker) IsSymbolReferencedInFile(
 			}
 		}
 	}
+	// Schema generic names select a type binding even though lowering replaced
+	// the written type reference with a codec. Keep the exact lexical import,
+	// without confusing a shadow or another alias of the same library symbol.
+	for _, reference := range sourceFile.VibeLangSchemaGenerics {
+		if reference.Name == nil || ast.GetSourceFileOfNode(reference.Name) != sourceFile {
+			continue
+		}
+		root := reference.Name
+		meaning := ast.SymbolFlagsType
+		if ast.IsQualifiedName(root) {
+			meaning |= ast.SymbolFlagsNamespace
+			for ast.IsQualifiedName(root) {
+				root = root.AsQualifiedName().Left
+			}
+		}
+		if ast.IsIdentifier(root) && root.Text() == identifierText &&
+			c.ResolveName(identifierText, reference.Name, meaning, false) == symbol {
+			return true
+		}
+	}
 	return false
 }
 
