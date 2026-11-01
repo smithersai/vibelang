@@ -33,6 +33,7 @@ import { restoreReferences } from "./references.mjs"
 import * as Upgrade from "./upgrade.mjs"
 import * as Wire from "./wire.mjs"
 import { wireEsbuildBuilds } from "./esbuild-builds.mjs"
+import { wirePublishingScripts } from "./publishing.mjs"
 import { wireDeveloperTools } from "./tooling.mjs"
 import { planEmittedImports, applyEmittedImports } from "./emitted-imports.mjs"
 import { wireOxlintPlugins } from "./oxlint-plugins.mjs"
@@ -788,6 +789,10 @@ export async function wireTarget(config, log) {
   const esbuildBuilds = wireEsbuildBuilds({ root: t, packages: packages, ts, specsFor })
   changed.push(...esbuildBuilds.changed.filter((file) => !changed.includes(file)))
   warnings.push(...esbuildBuilds.warnings)
+  // Publication helpers may live in a shared scripts package rather than a migrated package.
+  const publishing = wirePublishingScripts({ root: t, ts })
+  changed.push(...publishing.changed.filter((file) => !changed.includes(file)))
+  warnings.push(...publishing.warnings)
   // Knip reads .vibe files through vibelang/knip.
   const knip = Wire.wireKnip({ root: t, specs: specsFor(".") })
   changed.push(...knip.changed.filter((file) => !changed.includes(file)))

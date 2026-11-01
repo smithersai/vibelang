@@ -458,3 +458,5 @@ Reports, verification summaries and recorded commit messages distinguish a match
 
 
 The single measurement job installs and builds each of `main`, `previous`, and `candidate` before its tests. Each side retains its own build receipt; a failed build stops measurement before tests can establish a misleading baseline.
+
+Setup adapts publication helpers that map `Object.entries(pkg.exports)` and TypeScript source suffixes to built JavaScript and declaration paths. Migration-generated `vibelang-source` entries and earlier paired sidecar/default source entries use the same existing `dist` mapping, so a package that ships only `dist` retains working installed exports. Shared script packages are included; tests, fixtures and helpers only tests import stay as written.

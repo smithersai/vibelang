@@ -1,0 +1,9 @@
+{
+  "property": "published-migrated-entry",
+  "input": {
+    "name": "index",
+    "nested": false,
+    "extension": "ts"
+  },
+  "source": "export function packExports(pkg) { const declaration = (value) => value.replace('./src/', './dist/').replace(/\\.tsx?$/, '.d.ts'); const output = (value) => value.replace('./src/', './dist/').replace(/\\.tsx?$/, '.js'); return Object.fromEntries(Object.entries(pkg.exports).map(([key, value]) => { if (value === null) return [key, null]; if (!/\\.tsx?$/.test(value)) return [key, value]; return [key, { import: output(value), types: declaration(value) }]; })); }"
+}
