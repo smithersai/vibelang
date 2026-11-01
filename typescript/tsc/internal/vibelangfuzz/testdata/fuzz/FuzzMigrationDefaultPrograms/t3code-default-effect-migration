@@ -1,0 +1,4 @@
+go test fuzz v1
+string("block")
+string("yield* Effect.sleep(\"1 millis\")")
+bool(false)

@@ -1297,6 +1297,17 @@ func (tx *DeclarationTransformer) transformExportAssignment(input *ast.Node, ass
 		}
 		fullSignatureType := assignment.Type()
 		funcDecl := tx.transformFunctionLikeToDeclaration(unwrapped, newId, tx.Factory().NewModifierList(mods), fullSignatureType)
+		if unwrapped.Flags&ast.NodeFlagsVibeLangEffect != 0 && funcDecl.Kind == ast.KindFunctionDeclaration {
+			// An effect arrow or function expression returns an Effect, but
+			// its signature declaration reads the body's return, so `export
+			// default effect (n: number) => { … }` declared `: void`. Its
+			// value's type, `(n: number) => Effect<…>`, gives the return
+			// type that `export default (n: number) => Effect.gen(…)` declares.
+			if whole := tx.ensureType(assignment, false); whole != nil && whole.Kind == ast.KindFunctionType && whole.Type() != nil {
+				f := funcDecl.AsFunctionDeclaration()
+				funcDecl = tx.Factory().UpdateFunctionDeclaration(f, funcDecl.Modifiers(), f.AsteriskToken, funcDecl.Name(), f.TypeParameters, f.Parameters, whole.Type(), nil /*fullSignature*/, f.Body)
+			}
+		}
 		tx.tracker.PopErrorFallbackNode()
 		tx.preserveJsDoc(funcDecl, input)
 		// Reuse the same name node for the export so unique names resolve consistently
