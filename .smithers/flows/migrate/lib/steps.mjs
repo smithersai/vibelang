@@ -36,6 +36,7 @@ import { wireEsbuildBuilds } from "./esbuild-builds.mjs"
 import { wirePublishingScripts } from "./publishing.mjs"
 import { wireReactTools } from "./react-tools.mjs"
 import { wireDeveloperTools } from "./tooling.mjs"
+import { wireTypecheckBuild } from "./typecheck-build.mjs"
 import { planEmittedImports, applyEmittedImports } from "./emitted-imports.mjs"
 import { wireOxlintPlugins } from "./oxlint-plugins.mjs"
 import { readToolchain } from "./toolchain.mjs"
@@ -168,6 +169,9 @@ export function makeConfig(options) {
     install: options.install ?? null,
     wire: options.wire !== false,
     ...(options.emittedProjects?.length ? { emittedProjects: options.emittedProjects } : {}),
+    ...(options.typecheckRetire?.length ? { typecheckRetire: options.typecheckRetire } : {}),
+    ...(options.typecheckPrepare?.length ? { typecheckPrepare: options.typecheckPrepare } : {}),
+    ...(options.typecheckSourceRoots?.length ? { typecheckSourceRoots: options.typecheckSourceRoots } : {}),
     toolchain: options.toolchain ? { kind: "staged", dir: resolve(options.toolchain) } : { kind: "npm", version: options.vibelangVersion },
     // Each recorded batch goes on this bookmark, one commit on top of the last.
     bookmark: options.bookmark ?? "vibe",
@@ -866,6 +870,9 @@ export async function wireTarget(config, log) {
   const knip = Wire.wireKnip({ root: t, specs: specsFor(".") })
   changed.push(...knip.changed.filter((file) => !changed.includes(file)))
   warnings.push(...knip.warnings)
+  const typecheck = wireTypecheckBuild(config)
+  changed.push(...typecheck.changed.filter(file => !changed.includes(file)))
+  warnings.push(...typecheck.warnings)
   // What setup wrote is in the repository's own format.
   const formatted = await formatWritten(t, changed, join(log, "setup-format.log"))
   if (formatted.code !== 0) warnings.push(`${formatted.formatter} exited ${formatted.code} on the files setup wrote; see ${join(log, "setup-format.log")}`)
@@ -877,7 +884,7 @@ export async function wireTarget(config, log) {
   changed.push(...emittedImports.changed.filter(file => !changed.includes(file)))
   const existingVibe = await formatExistingVibe(config, join(log, "setup-format-vibe.log"))
   if (existingVibe.code !== 0) warnings.push(`vibelang-format exited ${existingVibe.code} on the repository's .vibe files; see ${join(log, "setup-format-vibe.log")}`)
-  return { manager, emittedImports, formattedVibe: existingVibe.files, specs: Object.fromEntries(packages.map((pkg) => [pkg.dir, specsFor(pkg.dir)])), viteConfigs: vite.configs, viteAppConfigs: apps.configs, nativeViteConfigs: apps.nativeConfigs ?? [], knipConfig: knip.config, formatted, changed, warnings, install }
+  return { manager, typecheck, emittedImports, formattedVibe: existingVibe.files, specs: Object.fromEntries(packages.map((pkg) => [pkg.dir, specsFor(pkg.dir)])), viteConfigs: vite.configs, viteAppConfigs: apps.configs, nativeViteConfigs: apps.nativeConfigs ?? [], knipConfig: knip.config, formatted, changed, warnings, install }
 }
 
 /**

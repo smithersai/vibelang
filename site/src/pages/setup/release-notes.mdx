@@ -245,6 +245,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Registry fuzz checks could report stale failures after native top-level `await` was fixed; independent witnesses now verify their named diagnostic, and the fuzzing guide shows the resolved current oracle table.
 
+- A migrated workspace could check the same projects repeatedly while missing a `.vibe` file outside its original build graph; migration setup now combines the authored roots and every uncovered source owner into one build, and rejects an unowned source file.
+
 - Migration could break a plugin host that derives virtual module names from a resolved package entry and source-file extension; scope planning now keeps the observed packages native and records the source-enumeration cause, preserving the unchanged host.
 
 - The migrate flow rejected a native acquisition's unchanged `!Error` contract when its original function returned `Effect.callback<A, Error>`, as in foldkit's WebSocket example; it now recognizes that explicit returned channel when the callback becomes a platform service, while nested callbacks and changed contracts remain rejected.

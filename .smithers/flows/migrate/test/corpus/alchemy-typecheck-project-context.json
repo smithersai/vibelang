@@ -1,0 +1,10 @@
+{
+  "reason": "Alchemy's uncovered projects resolve these type directives from their own node_modules, not the repository root.",
+  "libraries": [
+    { "name": "project-env", "file": "node_modules/@types/project-env/index.d.ts" },
+    { "name": "@cloudflare/workers-types", "file": "node_modules/@cloudflare/workers-types/index.d.ts" },
+    { "name": "vite/client", "file": "node_modules/vite/client.d.ts" }
+  ],
+  "declaration": "declare const fixtureProjectNumber: number;\n",
+  "source": "export const n: number = fixtureProjectNumber\n"
+}

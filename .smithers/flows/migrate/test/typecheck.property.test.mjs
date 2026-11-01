@@ -30,7 +30,7 @@ test("compiler rewiring preserves the shell's project arguments and command orde
     return result.stdout
   }
   try {
-    const rule = "Each command keeps its working directory, project arguments, flags and surrounding commands"
+    const rule = "Surrounding preparation and follow-up commands keep their order"
     assert.ok(readFileSync(new URL("../README.md", import.meta.url), "utf8").includes(rule))
     fc.assert(fc.property(
       fc.constantFrom("tsc", "tsrs", "tsgo"),

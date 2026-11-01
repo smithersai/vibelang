@@ -1,0 +1,14 @@
+{
+  "key": "typecheck:serial-check-vibe-before-build",
+  "script": "pnpm ensure:built && node scripts/check-vibe.mjs && vibelang -b && pnpm -C packages/frontend-frameworks exec tsrs --noEmit -p tsconfig.test.json",
+  "retire": ["scripts/check-vibe.mjs"],
+  "projects": [{"path":"tsconfig.json"},{"path":"packages/frontend-frameworks/tsconfig.test.json","noEmit":true}],
+  "miniScript": "node scripts/check-vibe.mjs && tsrs -b && tsrs --noEmit -p packages/b/tsconfig.json",
+  "files": {
+    "tsconfig.json": {"files":[],"references":[{"path":"./packages/a"}]},
+    "packages/a/tsconfig.json": {"compilerOptions":{"composite":true,"rootDir":"src","outDir":"lib","types":[],"skipLibCheck":true},"include":["src/**/*.vibe"]},
+    "packages/a/src/main.vibe": "export const n: number = 1\n",
+    "packages/b/tsconfig.json": {"compilerOptions":{"composite":true,"rootDir":"src","outDir":"lib","types":[],"skipLibCheck":true},"include":["src/**/*.vibe"]},
+    "packages/b/src/main.vibe": "export const n: number = \"seeded-alchemy-error\"\n"
+  }
+}
