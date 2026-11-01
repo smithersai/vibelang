@@ -1,0 +1,2 @@
+go test fuzz v1
+string("foldkit-cli-process-kill-concise-linux")

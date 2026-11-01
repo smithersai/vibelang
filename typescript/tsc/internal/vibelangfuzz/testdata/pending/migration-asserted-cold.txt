@@ -73,3 +73,31 @@ FuzzMigrationAssertedCold foldkit-generic-schema-function-array-string compiler 
 FuzzMigrationAssertedCold corpus:foldkit-generic-schema-function-array-string compiler VIP-1 Chapter 1: unmarked generic Schema factories keep native ReturnType instantiation results (foldkit-102); lane core-land
 FuzzMigrationAssertedCold foldkit-generic-schema-function-array-number compiler VIP-1 Chapter 1: unmarked generic Schema factories keep native ReturnType instantiation results (foldkit-102); lane core-land
 FuzzMigrationAssertedCold corpus:foldkit-generic-schema-function-array-number compiler VIP-1 Chapter 1: unmarked generic Schema factories keep native ReturnType instantiation results (foldkit-102); lane core-land
+
+# T3Code mapped callbacks; native controls validated independently.
+FuzzMigrationAssertedCold t3code-all-mapped-from-length-random-0 compiler VIP-1 Chapter 1: an unmarked synchronous array mapper builds its Effect value without running it; lane core-land
+FuzzMigrationAssertedCold corpus:t3code-all-mapped-from-length-random-0 compiler VIP-1 Chapter 1: an unmarked synchronous array mapper builds its Effect value without running it; lane core-land
+FuzzMigrationAssertedCold t3code-all-mapped-from-length-random-3 compiler VIP-1 Chapter 1: an unmarked synchronous array mapper builds its Effect value without running it; lane core-land
+FuzzMigrationAssertedCold corpus:t3code-all-mapped-from-length-random-3 compiler VIP-1 Chapter 1: an unmarked synchronous array mapper builds its Effect value without running it; lane core-land
+FuzzMigrationAssertedCold t3code-all-mapped-from-length-succeed-0 compiler VIP-1 Chapter 1: an unmarked synchronous array mapper builds its Effect value without running it; lane core-land
+FuzzMigrationAssertedCold corpus:t3code-all-mapped-from-length-succeed-0 compiler VIP-1 Chapter 1: an unmarked synchronous array mapper builds its Effect value without running it; lane core-land
+FuzzMigrationAssertedCold t3code-all-mapped-from-length-succeed-3 compiler VIP-1 Chapter 1: an unmarked synchronous array mapper builds its Effect value without running it; lane core-land
+FuzzMigrationAssertedCold corpus:t3code-all-mapped-from-length-succeed-3 compiler VIP-1 Chapter 1: an unmarked synchronous array mapper builds its Effect value without running it; lane core-land
+FuzzMigrationAssertedCold t3code-all-mapped-map-array-random-0 compiler VIP-1 Chapter 1: an unmarked synchronous array mapper builds its Effect value without running it; lane core-land
+FuzzMigrationAssertedCold corpus:t3code-all-mapped-map-array-random-0 compiler VIP-1 Chapter 1: an unmarked synchronous array mapper builds its Effect value without running it; lane core-land
+FuzzMigrationAssertedCold t3code-all-mapped-map-array-random-3 compiler VIP-1 Chapter 1: an unmarked synchronous array mapper builds its Effect value without running it; lane core-land
+FuzzMigrationAssertedCold corpus:t3code-all-mapped-map-array-random-3 compiler VIP-1 Chapter 1: an unmarked synchronous array mapper builds its Effect value without running it; lane core-land
+FuzzMigrationAssertedCold t3code-all-mapped-map-array-succeed-0 compiler VIP-1 Chapter 1: an unmarked synchronous array mapper builds its Effect value without running it; lane core-land
+FuzzMigrationAssertedCold corpus:t3code-all-mapped-map-array-succeed-0 compiler VIP-1 Chapter 1: an unmarked synchronous array mapper builds its Effect value without running it; lane core-land
+FuzzMigrationAssertedCold t3code-all-mapped-map-array-succeed-3 compiler VIP-1 Chapter 1: an unmarked synchronous array mapper builds its Effect value without running it; lane core-land
+FuzzMigrationAssertedCold corpus:t3code-all-mapped-map-array-succeed-3 compiler VIP-1 Chapter 1: an unmarked synchronous array mapper builds its Effect value without running it; lane core-land
+FuzzMigrationAssertedCold t3code-all-mapped-from-iterable-random-0 compiler VIP-1 Chapter 1: an unmarked synchronous array mapper builds its Effect value without running it; lane core-land
+FuzzMigrationAssertedCold corpus:t3code-all-mapped-from-iterable-random-0 compiler VIP-1 Chapter 1: an unmarked synchronous array mapper builds its Effect value without running it; lane core-land
+FuzzMigrationAssertedCold t3code-all-mapped-from-iterable-random-3 compiler VIP-1 Chapter 1: an unmarked synchronous array mapper builds its Effect value without running it; lane core-land
+FuzzMigrationAssertedCold corpus:t3code-all-mapped-from-iterable-random-3 compiler VIP-1 Chapter 1: an unmarked synchronous array mapper builds its Effect value without running it; lane core-land
+FuzzMigrationAssertedCold t3code-all-mapped-from-iterable-succeed-0 compiler VIP-1 Chapter 1: an unmarked synchronous array mapper builds its Effect value without running it; lane core-land
+FuzzMigrationAssertedCold corpus:t3code-all-mapped-from-iterable-succeed-0 compiler VIP-1 Chapter 1: an unmarked synchronous array mapper builds its Effect value without running it; lane core-land
+FuzzMigrationAssertedCold t3code-all-mapped-from-iterable-succeed-3 compiler VIP-1 Chapter 1: an unmarked synchronous array mapper builds its Effect value without running it; lane core-land
+FuzzMigrationAssertedCold corpus:t3code-all-mapped-from-iterable-succeed-3 compiler VIP-1 Chapter 1: an unmarked synchronous array mapper builds its Effect value without running it; lane core-land
+FuzzMigrationAssertedCold t3code-all-mapped-array-from-random-literal compiler VIP-1 Chapter 1: an unmarked synchronous array mapper builds its Effect value without running it; lane core-land
+FuzzMigrationAssertedCold corpus:t3code-all-mapped-array-from-random-literal compiler VIP-1 Chapter 1: an unmarked synchronous array mapper builds its Effect value without running it; lane core-land
