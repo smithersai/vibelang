@@ -14,6 +14,10 @@ func failuresReservedMemberCases() []*failCase {
 		"get _tag(): \"Bad\" { return \"Bad\" }",
 		"set _tag(value: string) {}",
 		"static [\"_tag\"] = 1",
+		"private _tag: \"Bad\"",
+		"protected _tag: \"Bad\"",
+		"public _tag: string",
+		"_tag!: \"Bad\"",
 	}
 	var cases []*failCase
 	for _, form := range []struct {

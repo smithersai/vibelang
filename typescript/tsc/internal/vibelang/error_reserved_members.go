@@ -33,7 +33,12 @@ func checkErrorReservedMembers(c *checker.Checker, class *ast.Node) bool {
 		}
 		found = true
 		report(c, member.Name(), EK2117.With("The member name _tag is reserved for the error's generated tag. Rename the member, or write the explicit Effect TypeScript class to keep it."))
-		coverCodes(c, member.Name(), 2416, 2425, 2610, 2611, 4114)
+		coverCodes(c, member.Name(), 2416, 2425, 2564, 2610, 2611, 2612, 4114)
+	}
+	if found {
+		// A private or protected _tag makes the generated class incorrectly
+		// extend its base; that is the same member's error, at the name.
+		coverCodes(c, class.Name(), 2415)
 	}
 	return found
 }

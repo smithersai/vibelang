@@ -1,0 +1,10 @@
+// expect: EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117
+// A _tag member gets the EK2117 row alone, with no TypeScript errors from its modifiers.
+export error Bad0E { id: string; private _tag: "Bad0E" }
+export schema error Bad0S { id: string; private _tag: "Bad0S" }
+export error Bad1E { id: string; protected _tag: "Bad1E" }
+export schema error Bad1S { id: string; protected _tag: "Bad1S" }
+export error Bad2E { id: string; public _tag: string }
+export schema error Bad2S { id: string; public _tag: string }
+export error Bad3E { id: string; _tag!: "Bad3E" }
+export schema error Bad3S { id: string; _tag!: "Bad3S" }
