@@ -30,9 +30,10 @@ env:
   PRE_BASE: ${{ github.event.client_payload.base || inputs.base }}
   PRE_TARGETS: ${{ github.event.client_payload.targets || inputs.targets }}
   PRE_PATCH: ${{ github.event.client_payload.patch || inputs.patch }}
+  # The graph's Go build, ~/.cache/go-build-smthrs, comes only from the go- cache below, which go-cache.yml trims on
+  # each push. The day's cache restores yesterday's and saves it again, so a Go build in it only grew.
   CACHE_PATHS: |
     ~/.cache/go-build
-    ~/.cache/go-build-smthrs
     ~/go/pkg/mod
     ~/.bun/install/cache
     ~/.cache/ms-playwright
@@ -63,6 +64,14 @@ jobs:
           tool: jj-cli@0.39.0
       - name: Track the tree for docs:check
         run: jj git init --colocate
+      # 17 of the 26 hosted runs that left no results on 2026-10-31/11-01 died with "No space left on device" while
+      # restoring the day's cache. The image's .NET, Haskell, Swift and CodeQL toolchains, which no target uses, take
+      # about 10 GB. The free space before and after is in the step's log.
+      - name: Free disk space
+        run: |
+          df -h / | tail -1
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/share/swift /opt/hostedtoolcache/CodeQL
+          df -h / | tail -1
       - name: Name today's cache
         id: day
         run: echo "day=$(date -u +%F)" >> "$GITHUB_OUTPUT"
@@ -97,9 +106,8 @@ jobs:
             > "$RUNNER_TEMP/pre/$PRE_TAG-graph.log" 2>&1 || rc=$?
           echo "$rc" > "$RUNNER_TEMP/pre/$PRE_TAG.rc"
           exit "$rc"
-      # Saved whether the gate passed or not: a cold Go build outlasts //:spec-tests' 15 minutes, so a run with no cache
-      # can't pass, and waiting for a pass would never fill it. It is the floor under the go- cache: a run before
-      # go-cache.yml's first save, or after GitHub evicts every go- cache, still starts from a day-old Go build.
+      # Saved whether the gate passed or not, so a day whose first run fails still gets its modules, packages and
+      # browser.
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         if: always() && steps.cache.outputs.cache-hit != 'true'
         with:

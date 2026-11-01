@@ -56,14 +56,23 @@ test("the hosted pre-gate restores the Go cache go-cache.yml saves, with the sam
   assert.equal(path(gate, "restore"), path(warm, "save"))
 })
 
-// Until go-cache.yml first saves, and whenever GitHub evicts every go- cache, the day's cache is the only Go build a
-// hosted gate starts from; without it a gate compiles the module cold and //:spec-tests times out.
-test("the day's pre-gate cache still holds the Go build, restored under the go- cache", () => {
-  const gate = read(".github/workflows/mq-pregate.yml")
-  const paths = gate.match(/CACHE_PATHS: \|\n((?:\s+~\S+\n)+)/)[1].split("\n").map(l => l.trim())
-  assert.ok(paths.includes("~/.cache/go-build-smthrs"), paths.join(" "))
-  const day = gate.indexOf("key: gate-${{ steps.day.outputs.day }}")
-  const [go] = goSteps(gate, "restore")
-  assert.ok(day > 0 && go > 0, "both restore steps")
-  assert.ok(go > day, "the go- restore runs after the day's restore, so its newer entries are the ones kept")
+// The day's cache restores yesterday's and saves it again, so a Go build in it only grows; 17 hosted runs in a day
+// died with "No space left on device" while restoring it (2026-10-31/11-01). The go- cache, trimmed on each push,
+// is the one source of the graph's Go build.
+const gate = () => read(".github/workflows/mq-pregate.yml")
+
+test("the day's pre-gate cache leaves the graph's Go build to the go- cache", () => {
+  const paths = gate().match(/CACHE_PATHS: \|\n((?:\s+~\S+\n)+)/)[1].split("\n").map(l => l.trim()).filter(Boolean)
+  assert.ok(paths.length >= 3, paths.join(" "))
+  assert.ok(!paths.includes(graphCache.replace("$HOME", "~")), paths.join(" "))
+  assert.equal(goSteps(gate(), "restore").length, 1, "one go- restore")
+})
+
+test("the hosted pre-gate frees disk space before it restores a cache", () => {
+  const yml = gate()
+  const free = yml.indexOf("- name: Free disk space")
+  const firstRestore = yml.indexOf("uses: actions/cache/restore@")
+  assert.ok(free > 0 && firstRestore > 0, "both steps")
+  assert.ok(free < firstRestore, "space is freed first")
+  assert.match(yml.slice(free, firstRestore), /sudo rm -rf \/usr\/share\/dotnet /)
 })

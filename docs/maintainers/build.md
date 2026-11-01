@@ -45,10 +45,12 @@ restores. `.github/workflows/go-cache.yml` keeps that cache current: on each pus
 to `main` it runs `scripts/warm-go-cache.sh`, which compiles and vets what
 the graph's Go targets and `scripts/check-forms-table.sh` compile, with their
 flags, and saves the cache as `go-<commit>`. The pre-gate restores the newest
-`go-` cache over the day's `gate-` cache, which also holds a Go build: the Go
-cache is content-addressed, so the two merge, and a run before the first `go-`
-save, or after GitHub evicts every `go-` cache, starts from the day-old build. With one cache saved a day, the hosted `//typescript:compiler` build
-took 41 s an hour after the save and 393 s by the next morning (2026-10-31).
+`go-` cache, the only cache that holds the graph's Go build. With one cache saved
+a day, the hosted `//typescript:compiler` build took 41 s an hour after the save
+and 393 s by the next morning (2026-10-31). The day's `gate-` cache holds the
+modules, package and browser downloads; each day's restores the day before's, so
+a Go build in it only grew, and hosted runs ran out of disk restoring it. The
+run first deletes toolchains no target uses, about 10 GB.
 Every Go build and test target, including `//typescript:forms-generator`, uses `GOCACHE=$HOME/.cache/go-build-smthrs`,
 so one cache serves them all. `scripts/go-cache.test.mjs` fails when a target
 compiles a package the script misses, or when the two workflows' cache paths
