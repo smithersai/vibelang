@@ -94,7 +94,7 @@ D57 supplies decision 2's partial-annotation spelling: explicit `infer Name` slo
 | D60 | One repository, with the compiler in `typescript/`; the compiler is in `typescript/` | Spec and implementations change together; the imported TypeScript tree omits 349 MB of baselines |  | 27, 28 |
 | D61 | An EK diagnostic is a TypeScript diagnostic with source `EK`, on upstream's content-mapper path | One diagnostic path for CLI and LSP |  | 28 |
 | D62 | The prelude is the runtime's exports | Lazy imports preserve files that use no prelude names |  | 1, 27 |
-| D63 | A `.vibe` file imports `./x.vibe` or `./x.ts` by source name with no flag (no TS5097); specifiers become `.js` in JavaScript and `.d.ts` output | Source names for checking, output names for JavaScript | Amended by D365 | 10, 27, 28 |
+| D63 | A `.vibe` file imports `./x.vibe` or `./x.ts` by source name with no flag (no TS5097); specifiers become `.js` in JavaScript and `.d.ts` output | Source names for checking, output names for JavaScript | Amended by D365 and detail 263 (`.d.ts` keeps a written `./x.ts`) | 10, 27, 28 |
 | D64 | A failing compiler case passes when its exact set of error codes matches (TypeScript codes count, warnings do not); a runnable case compares only its `@@result` line, so programs may log | Exact codes detect regressions |  | 10, 27, 28 |
 | D65 | A `.vibe` call to a plain function runs inline as `f$direct(a)` everywhere, including a module's top level | It computes a value and runs no program | Amended by D366, D445, D500 | 13, 15 |
 | D66 | An overload candidate that asks for a plain function rejects a `.vibe` function value that can pause, as it rejects such a lambda (D56 extended to function values); a TypeScript function returning an Effect passes as data; if every candidate rejects, EK4301 reports against the first candidate's form | Named values and lambdas need the same callback safety | Amended by D324 | 13, 16 |
@@ -326,7 +326,7 @@ D57 supplies decision 2's partial-annotation spelling: explicit `infer Name` slo
 | D362 | A provider removes only the services it provides on every path; EK3207 for anything else | Unions, empty arrays, invalid values, and unchecked defaults compiled and died |  | 4 |
 | D363 | `wire` is recognized by symbol, keeps argument order, and never lets a layer provide its own input | Aliases skipped ordering; arguments ran reordered |  | 4 |
 | D364 | A `module` declaration is an ECMAScript module: live bindings, import order, case-sensitive names | An import denotes a binding, not a snapshot | Amended by D403 | 11, 26 |
-| D365 | Source specifiers are rewritten for the loader in every import form | Dynamic imports and CommonJS paths failed to load |  | 26, 27 |
+| D365 | Source specifiers are rewritten for the loader in every import form | Dynamic imports and CommonJS paths failed to load | Amended by detail 263 (declarations keep a written `./x.ts`) | 26, 27 |
 | D366 | A declaration file is a semantic ABI; renderers meet the compiler's meaning | Declarations stock TypeScript rejected; two plain-call ABIs | Amended by D384, D411, D416, D426 | 27 |
 | D367 | A name in a pattern means what it resolves to | Renaming a local changed a match |  | 3, 11, 26 |
 | D368 | A pattern reads each value once and keeps every test it cannot prove inert | A getter read twice; a dropped getter call | Amended by D405 | 26 |
