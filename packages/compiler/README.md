@@ -407,3 +407,5 @@ only diagnostics for the source being loaded and project-wide errors, including
 configuration diagnostics.
 An unrelated file's type errors do not prevent loading a clean module. Run
 `vibelang -p tsconfig.json` to check every project file.
+
+In a mixed migrated package, emitted native TypeScript entries under `.vibelang/js` resolve back to their original sources under the Node and Bun source hooks. Relative source imports and package imports therefore share module instances.

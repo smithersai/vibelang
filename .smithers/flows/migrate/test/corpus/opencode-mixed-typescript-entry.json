@@ -1,0 +1,4 @@
+{
+  "property": "mixed-native-exports",
+  "input": { "name": "app-node", "extension": "ts", "nested": true, "kind": "bare" }
+}

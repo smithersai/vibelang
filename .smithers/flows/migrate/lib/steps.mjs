@@ -37,6 +37,7 @@ import * as Wire from "./wire.mjs"
 import { wireEsbuildBuilds } from "./esbuild-builds.mjs"
 import { wirePublishingScripts } from "./publishing.mjs"
 import { wireReactTools } from "./react-tools.mjs"
+import { hasNativeRuntimeExport, hasVibeSource, routeEmittedExports } from "./emitted-exports.mjs"
 import { wireDeveloperTools } from "./tooling.mjs"
 import { wireTypecheckBuild } from "./typecheck-build.mjs"
 import { planEmittedImports, applyEmittedImports } from "./emitted-imports.mjs"
@@ -1130,9 +1131,16 @@ async function emitMigratedJs(config, t, logs) {
   const emitted = []
   for (const pkg of config.packages) {
     const manifest = join(t, pkg.dir, "package.json")
-    if (!existsSync(manifest) || !readFileSync(manifest, "utf8").includes("./.vibelang/js/")) continue
+    if (!existsSync(manifest)) continue
+    if (!hasVibeSource(join(t, pkg.dir))) {
+      routeEmittedExports(join(t, pkg.dir), {}, { restore: true })
+      continue
+    }
+    const packageText = readFileSync(manifest, "utf8")
+    if (!packageText.includes("./.vibelang/js/") && !hasNativeRuntimeExport(JSON.parse(packageText).exports)) continue
     const tsconfigs = Wire.projectsOf(typeScriptOf(config), join(t, pkg.dir), pkg.tsconfig)
     const result = await emitPackageJs({ compiler: compilerOf(config), tsconfigs, packageDir: join(t, pkg.dir), root: t, log: join(logs, `js-${slug(pkg.dir)}.log`) })
+    if (result.code === 0) routeEmittedExports(join(t, pkg.dir), result.outputs)
     emitted.push({ package: pkg.dir, files: result.files, code: result.code })
   }
   return emitted

@@ -216,7 +216,7 @@ Bun.plugin({
     })
     // A migrated package's emitted JavaScript, which its `default` export names
     // for consumers without a loader, runs from its .vibe source (emitted-js.mjs).
-    build.onLoad({ filter: /[\\/]\.vibelang[\\/]js[\\/].*\.js$/ }, ({ path }) => {
+    build.onLoad({ filter: /[\\/]\.vibelang[\\/]js[\\/].*\.(?:[cm]?js|jsx)$/ }, ({ path }) => {
       const source = sourceOfEmitted(path)
       return source === undefined ? undefined : { contents: reexportOf(source), loader: "js" }
     })

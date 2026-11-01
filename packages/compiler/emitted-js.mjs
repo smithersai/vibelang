@@ -14,13 +14,15 @@ import { sep } from "node:path"
 export const emittedDirectory = ".vibelang/js"
 const marker = `${sep}.vibelang${sep}js${sep}`
 
-/** The .vibe source of a file in a package's emitted JavaScript, or undefined. */
+/** The source of a file in a package's emitted JavaScript, or undefined. */
 export function sourceOfEmitted(path) {
-  if (typeof path !== "string" || !path.endsWith(".js")) return undefined
+  if (typeof path !== "string" || !/\.(?:[cm]?js|jsx)$/.test(path)) return undefined
   const at = path.lastIndexOf(marker)
   if (at < 0) return undefined
-  const source = path.slice(0, at) + sep + path.slice(at + marker.length, -".js".length) + ".vibe"
-  return existsSync(source) ? source : undefined
+  const extension = /\.(?:[cm]?js|jsx)$/.exec(path)[0]
+  const stem = path.slice(0, at) + sep + path.slice(at + marker.length, -extension.length)
+  const extensions = extension === ".mjs" ? [".mts", ".mjs"] : extension === ".cjs" ? [".cts", ".cjs"] : extension === ".jsx" ? [".tsx", ".jsx"] : [".ts", ".tsx", ".vibe", ".js"]
+  return extensions.map(suffix => stem + suffix).find(source => existsSync(source))
 }
 
 /**

@@ -1,0 +1,8 @@
+{
+  "property": "mixed-native-runtime",
+  "rule": "VIP-34 and Chapter 7: native TypeScript output names follow jsx:preserve; emit:tsx-preserve-import-extension is claimed by migfix-opencode.",
+  "input": {
+    "extension": "tsx",
+    "jsx": "preserve"
+  }
+}

@@ -62,6 +62,7 @@ const compilerTest = S.Shell.Test({
     S.file("//scripts/testing/property.mjs"), S.file("//docs/design/src/007-tooling.md"), S.file("//.smithers/flows/migrate/rules.md"),
     S.file("//.smithers/flows/migrate/test/publishing-imports.property.test.mjs"), S.file("//.smithers/flows/migrate/test/corpus/opencode-sdk-conditional-imports.json"),
     S.file("//.smithers/flows/migrate/test/publishing.property.test.mjs"), S.file("//.smithers/flows/migrate/test/corpus/opencode-published-migrated-entry.json"),
+    S.file("//.smithers/flows/migrate/test/emitted-exports.property.test.mjs"), S.file("//.smithers/flows/migrate/test/corpus/opencode-mixed-typescript-entry.json"), S.file("//.smithers/flows/migrate/test/corpus/opencode-mixed-jsx-preserve.json"),
     S.file("vite/src/relative-imports.js"), S.file("vite/src/paths-imports.js"), S.file("unplugin/src/relative-imports.js"), ...install],
   tools: [S.Host.bin("node"), S.Host.bin("bun"), S.Host.bin("jj")],
   sandbox: "none",

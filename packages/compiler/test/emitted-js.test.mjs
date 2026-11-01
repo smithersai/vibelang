@@ -63,12 +63,12 @@ function workspace(t) {
   return { root, run }
 }
 
-test("sourceOfEmitted maps a package's emitted file to its .vibe source, and nothing else", (t) => {
+test("sourceOfEmitted maps a package's emitted file to its source, and nothing else", (t) => {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-emitted-js-")))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   write(root, { "p/src/a.vibe": "", "p/.vibelang/js/src/a.js": "", "p/.vibelang/js/src/b.js": "", "p/src/b.ts": "", "p/src/c.js": "" })
   assert.equal(sourceOfEmitted(join(root, "p/.vibelang/js/src/a.js")), join(root, "p/src/a.vibe"))
-  assert.equal(sourceOfEmitted(join(root, "p/.vibelang/js/src/b.js")), undefined)
+  assert.equal(sourceOfEmitted(join(root, "p/.vibelang/js/src/b.js")), join(root, "p/src/b.ts"))
   assert.equal(sourceOfEmitted(join(root, "p/src/c.js")), undefined)
   assert.equal(sourceOfEmitted(join(root, "p/.vibelang/js/src/a.mjs")), undefined)
   assert.equal(sourceOfEmitted(undefined), undefined)
@@ -123,4 +123,19 @@ test("bun build reads the emitted JavaScript, and the vibelang/bun preload runs 
   const bundle = readFileSync(join(root, "out/main.js"), "utf8")
   assert.match(bundle, /from-emitted-js/)
   assert.doesNotMatch(bundle, /from-vibe-source/)
+})
+
+test("native emitted-source: loader identity follows the native source extension", () => {
+  fc.assert(fc.property(
+    fc.constantFrom(["ts", "js"], ["tsx", "jsx"], ["mts", "mjs"], ["cts", "cjs"], ["js", "js"]),
+    fc.constantFrom("token", "a..b", "ünicode"), fc.boolean(), (extensions, name, present) => {
+      const root = realpathSync(mkdtempSync(join(tmpdir(), "opencode-native-emitted-")))
+      try {
+        const [sourceExtension, emittedExtension] = extensions
+        const emitted = join(root, "pkg/.vibelang/js/src", name + "." + emittedExtension)
+        const source = join(root, "pkg/src", name + "." + sourceExtension)
+        write(root, { [emitted.slice(root.length + 1)]: "", ...(present ? { [source.slice(root.length + 1)]: "" } : {}) })
+        assert.equal(sourceOfEmitted(emitted), present ? source : undefined)
+      } finally { rmSync(root, { recursive: true, force: true }) }
+    }), { numRuns: 100 })
 })

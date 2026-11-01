@@ -511,3 +511,7 @@ Inventory treats executable bare filename literals such as `alchemy.run.ts` or a
 Revert restores recorded imports of native and previously existing VibeLang consumers, preserving the original alias and suffix. The migration's baseline or write-ahead rename journal identifies whether the importer was already `.vibe`; a consumer converted in that batch still names the restored native source as `.ts`. The fallback repairs unrecorded references without rewriting an original name it just restored.
 
 Import rewrites accept recorded `preserve` names together with injected `read` and `write` callbacks; the callbacks keep transactional source access while the recorded names stay intact.
+
+
+
+Native source runtime exports in a mixed package use that package's actual emitted graph, including native `.ts` entries and wildcard exports that share an output mapping. Their `types` and `vibelang-source` conditions retain the native source path; `default` names its emitted JavaScript. Source loaders keep relative and package imports on one instance. A package whose only `.vibe` file is private still receives the same routing; reverting its last source module restores the native export entries.
