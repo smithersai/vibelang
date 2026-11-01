@@ -1,0 +1,47 @@
+// expect-result: {"call":[7,["callee","a","b"]],"callStay":[["a","b","v","z"],["callee","a","b","v","z","call"]],"object":[8,["a","b"]],"array":[9,["a"]],"loop":[[1],["a","a"]],"getter":[7,["get"]]}
+// Loop round 4, OPUS-5 (decided detail 198, chapter 002 Evaluation order):
+// a do that jumps out of a larger expression runs after everything to its
+// left, once each, and nothing to its right runs. VIP-39 row 33 applies the
+// same rule to a JSX element; this is the .vibe neighbourhood.
+const log: string[] = []
+const rec = <T,>(s: string, v: T): T => (log.push(s), v)
+const make = (...xs: string[]) => (log.push("call"), xs)
+const callee = () => (log.push("callee"), make)
+
+effect function inCall(c: boolean) {
+  return callee()(rec("a", "a"), rec("b", "b"), do { if (c) return 7; rec("v", "v") }, rec("z", "z"))
+}
+effect function inObject(c: boolean) {
+  return { a: rec("a", 1), ...rec("b", {}), v: do { if (c) return 8; 1 }, z: rec("z", 2) }
+}
+effect function inArray(c: boolean) {
+  return [rec("a", 1), do { if (c) return 9; 2 }, rec("z", 3)]
+}
+effect function inLoop() {
+  const out: number[] = []
+  for (const i of [0, 1]) {
+    out.push(rec("a", 1) + do { if (i === 0) continue; 0 })
+  }
+  return out
+}
+effect function withGetter(c: boolean, props: { readonly a: number }) {
+  return [props.a, do { if (c) return 7; 1 }, rec("z", 0)]
+}
+
+effect function trace<T>(program: T!!) {
+  log.length = 0
+  const value = try program
+  return [value, [...log]]
+}
+
+export effect function main() {
+  const props = { get a() { log.push("get"); return 1 } }
+  return {
+    call: try trace(inCall(true)),
+    callStay: try trace(inCall(false)),
+    object: try trace(inObject(true)),
+    array: try trace(inArray(true)),
+    loop: try trace(inLoop()),
+    getter: try trace(withGetter(true, props)),
+  }
+}

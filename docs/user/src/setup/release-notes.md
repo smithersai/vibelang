@@ -304,6 +304,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 - Interrupted migration codemods could lose their rename, import or platform-split bookkeeping; the flow now journals every mechanical write before it starts and safely resumes or restores the original source.
+- VIP-39 didn't say what runs first when a `do` that `return`s sits in a JSX attribute after other attributes. It now says the tag and everything before the `do` are evaluated first, once, in source order, as for any other operand.
+
 - VIP-39 promised that renaming a `.vibe` file to `.vibex` changes nothing unless it has `<` in expression position, but a project without a `jsx` setting reports `TS6142` at every import of a `.vibex` file, and `preserve` writes `x.jsx`. The promise is now about parsing, and names both settings.
 
 - VIP-39 said only `<` in expression position reads differently in `.vibex`, but TypeScript's JSX scanner also reads `</` as a closing-tag token, so `a </b/.source.length` and `when </b/:` don't parse there. A new clash row says to write a space: `a < /b/`.
