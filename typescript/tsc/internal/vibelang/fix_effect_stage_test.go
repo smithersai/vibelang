@@ -27,6 +27,8 @@ func TestEffectStageFixes(t *testing.T) {
 			"export const f = (n: number) => (p(n) |> Effect.map(%, (x) => x + 1)) catch (e) => e.length\n"},
 		{"catch under try drops the try", "export const f = (n: number) => Effect.gen(function* () {\n  const v = yield* Effect.catch(p(n), (e) => Effect.succeed(e.length))\n  return v\n})\n",
 			"export const f = effect (n: number) => {\n  const v = p(n) catch (e) => e.length\n  return v\n}\n"},
+		{"a generator yields one with a body", "export const f = (n: number) => Effect.gen(function* () {\n  const v = yield* Effect.gen(function* () {\n    const k = yield* p(n)\n    return k + 1\n  })\n  return v\n})\n",
+			"export const f = effect (n: number) => {\n  const v = try effect {\n    const k = try p(n)\n    return k + 1\n  }\n  return v\n}\n"},
 		{"sync held", "export const v = Effect.sync(() => 1)\n", "export const v = effect { return 1 }\n"},
 		{"sync block", "export const v = Effect.sync(() => {\n  // one\n  const a = 1\n  return a + 1\n})\n",
 			"export const v = effect {\n  // one\n  const a = 1\n  return a + 1\n}\n"},

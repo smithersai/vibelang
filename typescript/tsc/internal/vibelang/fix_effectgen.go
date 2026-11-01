@@ -791,6 +791,9 @@ func tryOperandNeedsParentheses(c *checker.Checker, operand *ast.Node) bool {
 	if isPipeCall(operand) && isEffectPipeline(c, operand) {
 		return true // it becomes a pipe
 	}
+	if isEffectBlock(operand) {
+		return false // try effect { … }; in parentheses it reads as the retired try(…) hatch, EK4616
+	}
 	switch operand.Kind {
 	case ast.KindBinaryExpression, ast.KindConditionalExpression, ast.KindArrowFunction, ast.KindFunctionExpression, ast.KindAsExpression, ast.KindSatisfiesExpression:
 		return true
