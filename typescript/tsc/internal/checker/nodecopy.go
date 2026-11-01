@@ -442,14 +442,14 @@ func getExistingNodeTreeVisitor(b *NodeBuilderImpl, bound *recoveryBoundary) *as
 		}
 		introducesError, newName, _ := trackExistingEntityName(node.AsTypeReferenceNode().TypeName, nil)
 		if !introducesError {
-			typeArguments := visitor.VisitNodes(node.AsTypeReferenceNode().TypeArguments)
+			typeArguments := b.withoutEmptyBangSlots(node, visitor.VisitNodes(node.AsTypeReferenceNode().TypeArguments))
 			return b.setTextRange(b.f.UpdateTypeReferenceNode(
 				node.AsTypeReferenceNode(),
 				newName,
 				typeArguments,
 			), node)
 		} else {
-			serializedName := b.serializeTypeName(node.AsTypeReferenceNode().TypeName, false, visitor.VisitNodes(node.AsTypeReferenceNode().TypeArguments))
+			serializedName := b.serializeTypeName(node.AsTypeReferenceNode().TypeName, false, b.withoutEmptyBangSlots(node, visitor.VisitNodes(node.AsTypeReferenceNode().TypeArguments)))
 			if serializedName != nil {
 				return b.setTextRange(serializedName, node.AsTypeReferenceNode().TypeName)
 			}
@@ -904,4 +904,29 @@ func getExistingNodeTreeVisitor(b *NodeBuilderImpl, bound *recoveryBoundary) *as
 		},
 	})
 	return visitor
+}
+
+// withoutEmptyBangSlots returns arguments, the copied type arguments of
+// reference, without the slots that a VibeLang ! form leaves empty at its end.
+// The parser fills an empty slot with a never marked reparsed, and Effect's E
+// and R default to never, so a declaration that copies A!E writes
+// Effect.Effect<A, E>, as Effect TypeScript writes it and as the .vibe
+// module's own sidecar does (vibelang emptySlots). A never the source writes
+// stays. Only a .vibe file writes a ! form; the parser reparses JSDoc types
+// too, so the file decides.
+func (b *NodeBuilderImpl) withoutEmptyBangSlots(reference *ast.Node, arguments *ast.NodeList) *ast.NodeList {
+	written := reference.AsTypeReferenceNode().TypeArguments
+	if reference.AsTypeReferenceNode().TypeName.Flags&ast.NodeFlagsReparsed == 0 || !ast.GetSourceFileOfNode(reference).FileName().ExtensionIs(tspath.ExtensionVibe) || written == nil || arguments == nil || len(written.Nodes) != 3 || len(arguments.Nodes) != 3 {
+		return arguments
+	}
+	keep := 3
+	for keep > 1 && written.Nodes[keep-1].Kind == ast.KindNeverKeyword && written.Nodes[keep-1].Flags&ast.NodeFlagsReparsed != 0 {
+		keep--
+	}
+	if keep == 3 {
+		return arguments
+	}
+	list := b.f.NewNodeList(arguments.Nodes[:keep])
+	list.Loc = arguments.Loc
+	return list
 }
