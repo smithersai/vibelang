@@ -1,0 +1,5 @@
+# a producer's scope or finalizer requirement must match its written contract; observed on main a10800db69ec.
+FuzzReviewProducerScope scope:written:finalizer:0 compiler Chapter 2 producers: a producer's scope or finalizer requirement must match its written contract; lane sl1-apply
+FuzzReviewProducerScope scope:written:finalizer:1 compiler Chapter 2 producers: a producer's scope or finalizer requirement must match its written contract; lane sl1-apply
+FuzzReviewProducerScope scope:written:scope:0 compiler Chapter 2 producers: a producer's scope or finalizer requirement must match its written contract; lane sl1-apply
+FuzzReviewProducerScope scope:written:scope:1 compiler Chapter 2 producers: a producer's scope or finalizer requirement must match its written contract; lane sl1-apply
