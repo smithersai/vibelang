@@ -1,0 +1,30 @@
+{
+  "key": "migrate-flow:declaration-gate-stock-oracle",
+  "package": "packages/aws",
+  "source": {
+    "src/Pipes/builders.ts": "export const from = (value: string) => makeBuilder({ value })\nconst makeBuilder = (state: { value: string }) => ({\n  state,\n  named: (value: string) => makeBuilder({ value })\n})\nexport type Builder = ReturnType<typeof makeBuilder>\n",
+    "src/Ok.ts": "export const ok = (value: string): string => value\n"
+  },
+  "stock": {
+    "Pipes/builders.d.ts": "export declare const from: (value: string) => {\n    state: {\n        value: string;\n    };\n    named: (value: string) => /*elided*/ any;\n};\ndeclare const makeBuilder: (state: {\n    value: string;\n}) => {\n    state: {\n        value: string;\n    };\n    named: (value: string) => /*elided*/ any;\n};\nexport type Builder = ReturnType<typeof makeBuilder>;\nexport {};\n",
+    "Ok.d.ts": "export declare const ok: (value: string) => string;\n"
+  },
+  "native": {
+    "Ok.d.ts": "export declare const ok: (value: string) => string;\n"
+  },
+  "migrated": [
+    "packages/aws/src/Pipes/builders.vibe",
+    "packages/aws/src/Ok.vibe"
+  ],
+  "unproven": [
+    "packages/aws/src/Pipes/builders.vibe"
+  ],
+  "compilerSelection": {
+    "scripts": {
+      "typecheck": "tsc --noEmit",
+      "build:package": "tsrs -b"
+    },
+    "expected": "tsrs",
+    "missingExpected": "unavailable, no tsc fallback"
+  }
+}

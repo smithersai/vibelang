@@ -394,7 +394,7 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
   return surface
 }
 
-/** Public files are compared byte for byte. Legacy trees without entry-point metadata keep the conservative canonical gate. */
+/** Public files keep the exact identity gate. Stock/native oracle comparison explicitly requests canonical form. */
 // The relative module specifiers a declaration file names: import and export
 // declarations, import types, and import-equals requires, each as
 // { text, start, end, line } with start and end inside the quotes.
@@ -448,7 +448,7 @@ function publishedEquivalent(ts, a, b, sides) {
   return excused
 }
 
-export function compareDeclarations(ts, baselineDir, currentDir) {
+export function compareDeclarations(ts, baselineDir, currentDir, { canonical = false } = {}) {
   const before = listDeclarations(baselineDir)
   const after = listDeclarations(currentDir)
   const surface = dir => {
@@ -503,7 +503,7 @@ export function compareDeclarations(ts, baselineDir, currentDir) {
   for (const file of before.filter(f => afterSet.has(f))) {
     const current = moved.get(file) ?? file
     const text = dir => readFileSync(join(dir, dir === currentDir ? current : file), "utf8")
-    if (publicFiles.has(file)) {
+    if (publicFiles.has(file) && !canonical) {
       const pairs = publishedEquivalent(ts, text(baselineDir), text(currentDir), [side(baselineDir, file, beforeSet), side(currentDir, current, afterSet)])
       if (pairs === null) changed.push({ file, diff: lineDiff(text(baselineDir), text(currentDir)) })
       else for (const pair of pairs) excused.push({ file, ...pair })
@@ -706,8 +706,22 @@ export async function emitDeclarations({ compiler, tsconfig, cwd, outDir, log, r
   rmSync(outDir, { recursive: true, force: true })
   const existing = declarationFiles(resolve(root ?? cwd), resolve(outDir))
   mkdirSync(outDir, { recursive: true })
-  const flags = "--singleThreaded --noEmit false --declaration --emitDeclarationOnly --declarationMap false --sourceMap false --inlineSourceMap false --inlineSources false --composite false --incremental false --noEmitOnError false --pretty false --listEmittedFiles"
-  const result = await run(`${quote(compiler)} -p ${quote(tsconfig)} ${flags} --outDir ${quote(outDir)}`, { cwd, log })
+  let flags = "--singleThreaded --noEmit false --declaration --emitDeclarationOnly --declarationMap false --sourceMap false --inlineSourceMap false --inlineSources false --composite false --incremental false --noEmitOnError false --pretty false --listEmittedFiles"
+  let result = await run(`${quote(compiler)} -p ${quote(tsconfig)} ${flags} --outDir ${quote(outDir)}`, { cwd, log })
+  assertFinished(result, log)
+  let optionProbeLog = null
+  const unsupportedSingleThreaded = result.code !== 0 &&
+    /TS5023: Unknown compiler option ['"]--singleThreaded['"]/i.test(result.stdout + result.stderr)
+  if (unsupportedSingleThreaded) {
+    // Strada tsc has no Go single-threading switch. Keep the selected compiler
+    // and every declaration flag; retain the rejected invocation as evidence.
+    if (log) {
+      optionProbeLog = log + ".single-threaded.log"
+      writeFileSync(optionProbeLog, readFileSync(log))
+    }
+    flags = flags.replace("--singleThreaded ", "")
+    result = await run(`${quote(compiler)} -p ${quote(tsconfig)} ${flags} --outDir ${quote(outDir)}`, { cwd, log })
+  }
   assertFinished(result, log)
   // A file outside the project's rootDir emits beside its source, where a batch's commit would pick it up.
   const inside = `${resolve(outDir)}${sep}`
@@ -719,7 +733,7 @@ export async function emitDeclarations({ compiler, tsconfig, cwd, outDir, log, r
   }
   const files = listDeclarations(outDir)
   if (!files.length) throw new Error(`vibelang emitted no declarations for ${tsconfig} (exit ${result.code}${log ? `, log ${log}` : ""})`)
-  return { code: result.code, files: files.length, diagnostics: parseDiagnostics(result.stdout + result.stderr, { cwd, root }) }
+  return { code: result.code, files: files.length, diagnostics: parseDiagnostics(result.stdout + result.stderr, { cwd, root }), ...(unsupportedSingleThreaded ? { unsupportedOptions: ["--singleThreaded"], optionProbeLog } : {}) }
 }
 
 /**

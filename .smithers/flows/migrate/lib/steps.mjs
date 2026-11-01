@@ -23,6 +23,7 @@ import { splitBatchPlatform } from "./platform.mjs"
 import { check, newErrors, styleProblems, summarize } from "./diagnostics.mjs"
 import { preservedErrorAdvisories } from "./preserved-errors.mjs"
 import { compareDeclarations, recordDeclarationSurface, emitDeclarations, emitErrorsIn, emitPackageJs, loadTypeScript, sidecarChanges, writeLoaderRecords } from "./declarations.mjs"
+import { declarationNames, findStockCompiler, unprovenDeclarations, unprovenMigrations } from "./oracle.mjs"
 import { foreignChanges } from "./touched.mjs"
 import { compareTests, regressionIssue, runTests } from "./tests.mjs"
 import { verifyRepositoryTests } from "./test-diff-run.mjs"
@@ -1037,6 +1038,69 @@ export async function returnToUpgrade(t, commit) {
   await Jj.newAt(t, commit)
 }
 
+/**
+ * The declaration oracle setup records before it wires VibeLang: each
+ * published package's declarations as the repository's own compiler (tsc,
+ * tsgo or tsrs; config.stockCompiler names another) emits them into
+ * baseline/stock-dts. A package that already has .vibe modules, or no such
+ * compiler, records why it has none.
+ */
+async function emitStockOracle(config, p, logs) {
+  const t = config.target
+  const ts = typeScriptOf(config)
+  const oracle = {}
+  for (const pkg of config.packages) {
+    const dir = join(t, pkg.dir)
+    if (readJson(join(dir, "package.json")).private === true) continue
+    if (pkg.sources.some((s) => listSources(t, posix.join(pkg.dir, s)).some((f) => f.endsWith(".vibe")))) {
+      oracle[pkg.dir] = { unavailable: "the package already has .vibe modules, which the stock compiler cannot read" }
+      continue
+    }
+    const found = config.stockCompiler ? { name: posix.basename(config.stockCompiler), path: resolve(t, config.stockCompiler) } : findStockCompiler(t, dir)
+    if (!found) {
+      oracle[pkg.dir] = { unavailable: "no tsc, tsgo or tsrs is installed for it" }
+      continue
+    }
+    try {
+      const emitted = await emitPackageDeclarations({ compiler: found.path, ts, t, pkg, outDir: join(p.baseline, "stock-dts", slug(pkg.dir)), log: join(logs, `stock-dts-${slug(pkg.dir)}.log`) })
+      oracle[pkg.dir] = { compiler: found.name, path: found.path, code: emitted.code, files: emitted.files }
+    } catch (error) {
+      oracle[pkg.dir] = { unavailable: `${found.name} emitted no declarations: ${String(error.message).split("\n")[0]}` }
+    }
+  }
+  return oracle
+}
+
+/**
+ * Compares each package's native baseline declarations with the stock
+ * compiler's, writes baseline/declaration-oracle.json, and records an issue
+ * for a package where they differ: vibelang reads the unchanged sources
+ * otherwise than the repository's compiler does.
+ */
+function compareStockOracle(ts, p, stock) {
+  const result = {}
+  for (const [dir, emitted] of Object.entries(stock)) {
+    if (emitted.unavailable) {
+      result[dir] = emitted
+      continue
+    }
+    const unproven = unprovenDeclarations(ts, join(p.baseline, "stock-dts", slug(dir)), join(p.baseline, "dts", slug(dir)))
+    result[dir] = { ...emitted, ...unproven }
+    if (unproven.files.length) {
+      appendJsonl(p.issues, {
+        kind: "issue",
+        batch: "setup",
+        title: `vibelang's declarations of the unchanged ${dir} differ from ${emitted.compiler}'s`,
+        repro: `${emitted.compiler} and vibelang emit ${dir}'s declarations from the same sources: baseline/stock-dts/${slug(dir)} and baseline/dts/${slug(dir)}`,
+        actual: `${unproven.changed.length} differ, ${unproven.missing.length} only ${emitted.compiler} writes, ${unproven.extra.length} only vibelang writes; a batch cannot migrate their modules`,
+        files: unproven.files
+      })
+    }
+  }
+  writeJson(join(p.baseline, "declaration-oracle.json"), result)
+  return result
+}
+
 /** setup: on the Effect upgrade's commit, wire the toolchain, install, record the baseline tests, compile, declarations and inventory, and commit. */
 export async function setup(options) {
   const p = paths(options.run)
@@ -1054,6 +1118,8 @@ export async function setup(options) {
   }
   // The tests as the upgrade left them are what setting VibeLang up is compared with.
   const upstream = readJson(join(p.baseline, "upgraded-tests.json"))
+  // The repository's own compiler's declarations, before wiring changes its scripts and tsconfigs (oracle.mjs).
+  const stock = await emitStockOracle(config, p, logs)
   // Under --no-wire, only a package of the run that has no VibeLang yet is wired.
   const wired = config.wire ? await wireTarget(config, logs) : await wireNewPackages(config, logs)
   const compiler = compilerOf(config)
@@ -1090,6 +1156,7 @@ export async function setup(options) {
     declarations[pkg.dir].earlier = { files: earlier.files, changed: earlier.changed.map((c) => c.file), missing: earlier.missing }
     if (earlier.changed.length) appendJsonl(p.issues, earlierDeclarationsIssue({ version: version.trim(), revision: upgrade.jj.baseCommit, outDir, changes: earlier.changed }))
   }
+  const declarationOracle = compareStockOracle(ts, p, stock)
 
   const files = scopeFiles(config)
   const tokens = await countTokens(files.map((f) => join(t, f)))
@@ -1109,6 +1176,7 @@ export async function setup(options) {
     at: new Date().toISOString(),
     jj: { initialized: upgrade.jj.initialized, base: upgrade.jj.base, baseCommit: upgrade.jj.baseCommit, upgradeCommit: upgrade.jj.commit, setupCommit: setupCommit ?? upgrade.jj.commit, bookmark: config.bookmark },
     compiler: { path: compiler, version: version.trim(), toolchain: config.toolchain.kind === "staged" ? readToolchain(config.toolchain.dir) : config.toolchain },
+    declarationOracle: Object.fromEntries(Object.entries(declarationOracle).map(([dir, o]) => [dir, o.unavailable ? { unavailable: o.unavailable } : { compiler: o.compiler, unproven: o.files.length }])),
     effect: upgrade.effect,
     wired,
     agents,
@@ -1577,6 +1645,9 @@ export async function verify(options) {
   const testDiff = await testEdits(config, p, thePlan, b, ts)
   const declarations = {}
   const emitErrors = []
+  // A run set up before the oracle existed has none; its batches keep the native gate alone.
+  const oracle = readJsonIf(join(p.baseline, "declaration-oracle.json"))
+  const unproven = []
   for (const pkg of config.packages) {
     if (readJson(join(t, pkg.dir, "package.json")).private === true) {
       declarations[pkg.dir] = "not published"
@@ -1608,6 +1679,12 @@ export async function verify(options) {
     }
     declarations[pkg.dir] = compareDeclarations(ts, baselineDir, outDir)
     emitErrors.push(...emitErrorsIn(emitted.diagnostics, migrated, { code: emitted.code, log: join(logs, "dts-" + slug(pkg.dir) + ".log") }))
+    const stock = oracle?.[pkg.dir]
+    if (stock && !stock.unavailable) {
+      const projects = Wire.projectsOf(ts, join(t, pkg.dir), pkg.dtsTsconfig)
+      const names = declarationNames(ts, join(t, pkg.dir), projects.map((tsconfig) => ({ tsconfig, prefix: projects.length === 1 ? "." : slug(tsconfig) })))
+      unproven.push(...unprovenMigrations({ migrated, pkgDir: pkg.dir, names, oracle: stock }))
+    }
   }
   const after = foreignChanges(await Jj.changedPaths(t), { files, codemod, testDiff })
   const foreign = [...new Map([...before, ...after].map(c => [c.path, c])).values()]
@@ -1627,6 +1704,7 @@ export async function verify(options) {
     excusedSpecifiers: Object.entries(declarations).flatMap(([dir, d]) => (d.excused ?? []).map((pair) => ({ package: dir, ...pair }))),
     selectorChecks,
     testDiff,
+    declarationOracle: oracle ? { unproven, unavailable: Object.fromEntries(Object.entries(oracle).filter(([, o]) => o.unavailable).map(([dir, o]) => [dir, o.unavailable])) } : "not recorded: setup predates the stock compiler's oracle",
     compile: { batchErrors, newErrors: checked.newErrors, style, emitErrors },
     foreign,
     testDiffBefore,
@@ -1638,6 +1716,7 @@ export async function verify(options) {
       declarations: Object.values(declarations).every((d) => d === "not published" || d.identical),
       declarationEmit: emitErrors.length === 0,
       foreignFiles: foreign.length === 0,
+      declarationOracle: unproven.length === 0,
       batchErrors: batchErrors.length === 0,
       newErrors: checked.newErrors.length === 0,
       style: style.length === 0,
