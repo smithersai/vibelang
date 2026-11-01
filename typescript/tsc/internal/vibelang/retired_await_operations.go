@@ -23,7 +23,13 @@ func checkRetiredAwaitOperations(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		if name := awaitOperationNames[fiberHelper(node)]; name != "" {
-			report(c, node, EK1802, name)
+			message := EK1802
+			if inAsyncFunction(node) {
+				copy := *EK1802
+				copy.Text = "{0} was removed by VIP-18. In async code, construct the corresponding Effect operation and await Effect.runPromise(...); try.all, try.race, try.any and try.allSettled require effect code."
+				message = &copy
+			}
+			report(c, node, message, name)
 			cover(c, node)
 		}
 		return node.ForEachChild(visit)

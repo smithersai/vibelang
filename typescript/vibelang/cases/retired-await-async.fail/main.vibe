@@ -1,0 +1,16 @@
+// expect: EK1802
+import {Effect as E} from "effect"
+export async function allFn(){return await.all [E.succeed(1)]}
+export async function raceFn(){return await.race [E.succeed(1)]}
+export async function anyFn(){return await.any [E.succeed(1)]}
+export async function allSettledFn(){return await.allSettled [E.succeed(1)]}
+export const allArrow=async()=>await.all [E.succeed(1)]
+export const raceArrow=async()=>await.race [E.succeed(1)]
+export const anyArrow=async()=>await.any [E.succeed(1)]
+export const allSettledArrow=async()=>await.allSettled [E.succeed(1)]
+export class C {
+ async all(){return await.all [E.succeed(1)]}
+ async race(){return await.race [E.succeed(1)]}
+ async any(){return await.any [E.succeed(1)]}
+ async allSettled(){return await.allSettled [E.succeed(1)]}
+}

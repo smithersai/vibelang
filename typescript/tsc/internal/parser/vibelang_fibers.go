@@ -174,13 +174,13 @@ var awaitOperations = map[string]string{
 	"any":        "$awaitAny",
 }
 
-// isVibeLangAwaitOperation reports whether the current token, await, starts an
-// await operation: in a .vibe file, outside an async function, await
+// isVibeLangAwaitOperation reports whether the current token, await, starts a
+// retired await operation: in a .vibe file, await
 // followed on the same line by a dot, one of the operations, and an operand.
 // await. is a syntax error in a module, so the form takes no code that
 // parses today.
 func (p *Parser) isVibeLangAwaitOperation() bool {
-	return p.token == ast.KindAwaitKeyword && p.isVibeLangFile() && !p.inAwaitContext() && p.lookAhead((*Parser).nextTokensStartAwaitOperation)
+	return p.token == ast.KindAwaitKeyword && p.isVibeLangFile() && p.lookAhead((*Parser).nextTokensStartAwaitOperation)
 }
 
 func (p *Parser) nextTokensStartAwaitOperation() bool {

@@ -16,6 +16,9 @@ func retiredAwaitOperationRewrite(c *checker.Checker, file *ast.SourceFile, call
 	if name == "" || len(call.Arguments()) != 1 {
 		return nil
 	}
+	if inAsyncFunction(call) {
+		return &formRewrite{why: "Keep the async callable’s JavaScript context; construct the matching Effect operation and await Effect.runPromise(...)."}
+	}
 	a := analyzerFor(c)
 	joinName, joinImported := retiredAwaitImport(file, "join", "effect/Fiber", "$tryJoinFiber")
 	needJoin := false
