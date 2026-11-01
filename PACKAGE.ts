@@ -113,6 +113,7 @@ const specTests = [
   "TestCLISpecCommandFlags",
   "TestVIPFiberIDNumberEquality",
   "TestErrorDeclarationTwinQuoted",
+  "TestFixExplicitEmptyErrorDeclarations",
   "TestUnaryPowQuoted",
   "TestFixFixedPointQuoted",
   "TestPlainHandlerThrowQuoted",

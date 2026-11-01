@@ -1,3 +1,5 @@
+import { Data } from "effect"
+
 // An error declaration declares what the Effect TypeScript in
 // typescript/main.ts declares, a Data.TaggedError class with no member,
 // marker or namespace of VibeLang (D501), from foldkit managedResource.
@@ -15,3 +17,9 @@ export error Gone {
     return "gone"
   }
 }
+
+// Detail 273 / foldkit-90: the written class has a distinct declaration
+// spelling; the safe fixer retains it when declarations are enabled.
+export class MissingBuildId extends Data.TaggedError("MissingBuildId")<{}> {}
+
+export error TimeoutWithBraces {}

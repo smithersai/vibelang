@@ -436,6 +436,8 @@ Setters are forbidden in both error forms (`EK1302`). Use a method instead, or k
 
 Neither error form accepts type parameters (`EK1303`). Keep a plain generic error as an Effect TypeScript class; `vibelang --fix` rewrites a generic `error` declaration to that class without changing its fields or type parameters. A generic `schema error` needs concrete fields or a TypeScript schema factory; its quick fix is withheld because a class whose base refers to its type parameters would introduce `TS2562`. Generic tagged-error classes no longer receive the `EK4830` suggestion to write an unsupported declaration.
 
+A fieldless `error Timeout` or `error Timeout {}` declares the same base as `class Timeout extends Data.TaggedError("Timeout") {}`: `extends Timeout_base`. A TypeScript class that explicitly writes `Data.TaggedError("Timeout")<{}>` instead declares `extends Timeout_base<{}>`. In a project that emits declarations, `vibelang --fix` keeps that class and explains why `EK4830` has no automatic fix, preserving the written empty payload type argument. Without declaration output, the conversion remains available.
+
 ---
 
 The matching Effect page: [effect.website/docs/v4/error-management/expected-errors](https://effect.website/docs/v4/error-management/expected-errors/)

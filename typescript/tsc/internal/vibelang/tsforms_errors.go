@@ -196,6 +196,10 @@ func errorClassRewrite(c *checker.Checker, file *ast.SourceFile, class *ast.Node
 		return &formRewrite{why: "No quick fix: an error declaration's tag is its name, so the tag would become \"" + name + "\" instead of \"" + tag + "\"." + silence}
 	case parts.fields != nil && !ast.IsTypeLiteralNode(parts.fields):
 		return &formRewrite{why: "No quick fix: the fields come from " + expressionText(file, parts.fields) + "; write them in the declaration."}
+	case parts.fields != nil && len(parts.fields.Members()) == 0 && c.CompilerOptions().GetEmitDeclarations():
+		// Detail 273: a fieldless error has no payload type argument.
+		// Erasing a written <{}> would change the declaration bytes.
+		return &formRewrite{why: "No quick fix: an error declaration drops the explicit empty payload type argument from the declaration file; keep the class to preserve its declaration output."}
 	}
 	text := file.Text()
 	start := nodeStart(file, class)

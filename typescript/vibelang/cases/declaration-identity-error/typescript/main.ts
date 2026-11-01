@@ -13,3 +13,7 @@ export class Gone extends Data.TaggedError("Gone") {
     return "gone"
   }
 }
+
+export class MissingBuildId extends Data.TaggedError("MissingBuildId")<{}> {}
+
+export class TimeoutWithBraces extends Data.TaggedError("TimeoutWithBraces") {}
