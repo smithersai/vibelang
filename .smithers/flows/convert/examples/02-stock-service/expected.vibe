@@ -1,4 +1,5 @@
 service Stock {
+  static readonly key = "warehouse/Stock"
   count(sku: string): number!!
 }
 

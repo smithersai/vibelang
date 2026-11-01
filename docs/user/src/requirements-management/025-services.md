@@ -31,6 +31,8 @@ A service declaration takes no `extends` or `implements` clause (`EK0904`): its 
 
 Services are nominal: the compiler derives the key from package, module path, and declaration name, so two services with identical members are different dependencies. To keep a key, such as one a `Context.Service` class wrote before migrating, write it in the body: `static readonly key = "app/Users"`. A `key` that is not `static readonly` with a string literal is `EK3008`. An `abstract class` is an ordinary TypeScript class; one written as a service draws `EK4854`, whose fix, which `vibelang --fix` applies, writes the `service` declaration with its members and key. Implement one with an object literal or a class that `implements` its `.Shape`; don't construct, extend, or use `instanceof` on it.
 
+When migrating, preserve every original explicit key; deriving a new key can break providers across package boundaries or persisted identities.
+
 An explicit string-literal key keeps its value, including `""`. It is used for runtime lookup, the emitted key type, and duplicate-key checks; an empty literal does not request a derived key.
 
 ## Declaring a service of any shape

@@ -1,4 +1,5 @@
 service Banner {
+  static readonly key = "news/Banner"
   text(topic: string): string!!
 }
 

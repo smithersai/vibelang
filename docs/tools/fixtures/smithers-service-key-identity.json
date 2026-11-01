@@ -1,0 +1,7 @@
+{
+  "name": "smithers-service-key-identity",
+  "service": "FlowInvoker",
+  "key": "/fs/FlowInvoker",
+  "input": "import { Context, Effect } from \"effect\"\nclass FlowInvoker extends Context.Service<FlowInvoker, { invoke(): Effect.Effect<string> }>()(\"/fs/FlowInvoker\") {}\n",
+  "expected": "service FlowInvoker {\n  static readonly key = \"/fs/FlowInvoker\"\n  invoke(): string!!\n}\n"
+}

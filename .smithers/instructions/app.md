@@ -37,7 +37,7 @@ Each row is one Effect form and the VibeLang that replaces it.
 | Effect 4 TypeScript | VibeLang |
 | --- | --- |
 | `class NotFound extends Data.TaggedError("NotFound")<{ readonly id: string }> {}` | `error NotFound { id: string }` |
-| `class Users extends Context.Service<Users, { find(id: string): Effect.Effect<User, NotFound> }>()("app/Users") {}` | `service Users { find(id: string): User!NotFound }` |
+| `class Users extends Context.Service<Users, { find(id: string): Effect.Effect<User, NotFound> }>()("app/Users") {}` | `service Users { static readonly key = "app/Users"; find(id: string): User!NotFound }` |
 | `Effect.Effect<User, NotFound, Users>` | `User!NotFound!Users` (empty slot: never) |
 | `yield* Effect.fail(new NotFound({ id }))` | `throw new NotFound({ id })` |
 | `const user = yield* users.find(id)` | `const user = Users.find(id)` |
