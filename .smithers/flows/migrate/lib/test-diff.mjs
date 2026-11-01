@@ -6,6 +6,7 @@ import { createRequire } from "node:module"
 import { dirname, join, posix } from "node:path"
 import { isTestFile, isFixtureFile } from "./inventory.mjs"
 import { pathCandidate, provePathRename } from "./test-diff-paths.mjs"
+import { dependencyCandidate, proveDependencyAddition } from "./test-diff-dependencies.mjs"
 
 export const isProtectedFile = path => isTestFile(path) || isFixtureFile(path)
 
@@ -140,6 +141,8 @@ function parsed(ts, text, file) {
       for (const item of name.elements) if (ts.isBindingElement(item)) declare(item.name)
   }
   const importedRole = (module, name) =>
+    ["vitest", "@jest/globals", "bun:test", "chai"].includes(module) && name === "expect" ? "expect" :
+    ["assert", "node:assert", "assert/strict", "node:assert/strict"].includes(module) && ["*", "default"].includes(name) ? "assert" :
     ["path", "node:path"].includes(module) ? (["join", "resolve"].includes(name) ? "path:" + name : ["*", "default"].includes(name) ? "path" : null) :
     module === "vitest" && name === "vi" || module === "@jest/globals" && name === "jest" ? "mock" :
     ["fs", "node:fs", "fs/promises", "node:fs/promises"].includes(module) ?
@@ -195,6 +198,7 @@ function candidates(ts, source, bindings) {
     let kind
     if (moduleLiteral(ts, n, bindings)) kind = "specifier"
     else if (pathCandidate(ts, n)) kind = "path"
+    else if (dependencyCandidate(ts, n, bindings)) kind = "assertion"
     else if (ts.isCallExpression(n) && property(ts, n.expression, "glob") &&
       ts.isMetaProperty(n.expression.expression) && n.expression.expression.keywordToken === ts.SyntaxKind.ImportKeyword &&
       n.expression.expression.name.text === "meta") {
@@ -453,7 +457,7 @@ export function verifyTestDiff({ ts, before, after, renames, declarationImportSt
         for (const [key, x] of [...ac].sort(([, a], [, b]) => (a.node.end - a.node.pos) - (b.node.end - b.node.pos))) {
           const y = bc.get(key)
           if (!y || x.kind !== y.kind || maskedNode(x.node, oldEdits) === maskedNode(y.node, nextEdits)) continue
-          const hunk = { kind: ["specifier", "path"].includes(x.kind) ? x.kind : "selector", selector: x.kind,
+          const hunk = { kind: ["specifier", "path", "assertion"].includes(x.kind) ? x.kind : "selector", selector: x.kind,
             beforeLine: a.source.getLineAndCharacterOfPosition(x.node.getStart()).line + 1,
             afterLine: b.source.getLineAndCharacterOfPosition(y.node.getStart()).line + 1,
             before: x.node.getText(), after: y.node.getText() }
@@ -464,6 +468,8 @@ export function verifyTestDiff({ ts, before, after, renames, declarationImportSt
                 throw new Error("specifier is not the same-path rename of a migrated module")
             } else if (x.kind === "path") {
               hunk.resolved = provePathRename({ ts, file, old: x.node, next: y.node, a, b, before, after, renames })
+            } else if (x.kind === "assertion") {
+              Object.assign(hunk, proveDependencyAddition({ ts, file, old: x.node, next: y.node, before, after }))
             } else if (x.kind === "glob") {
               const ap = patterns(ts, x.node), bp = patterns(ts, y.node)
               if (!globWidening(ap, bp)) throw new Error("glob change is not an extension widening plus sidecar exclusion")
@@ -534,7 +540,7 @@ export function testDiffMarkdown(result) {
     "",
     ...result.files.flatMap(f => [
       "- " + code(f.file) + ": " + (f.ok ? "PASS" : "FAIL"),
-      ...f.hunks.flatMap(h => [
+      ...f.hunks.filter(h => h.kind !== "assertion").flatMap(h => [
         "  - " + h.kind + (h.beforeLine ? " at line " + h.beforeLine : "") + ": " + (h.reason ?? (code(h.before) + " → " + code(h.after))),
         ...(h.setCheck ? [
           "    - Before (" + h.setCheck.beforeCount + "): " + h.setCheck.before.map(code).join(", "),
@@ -543,6 +549,15 @@ export function testDiffMarkdown(result) {
       ])
     ]),
     ...(result.files.length ? [] : ["No test or fixture changed."]),
+    "",
+    "#### assertion edits",
+    "",
+    ...(() => {
+      const edits = result.files.flatMap(f => f.hunks.filter(h => h.kind === "assertion").map(h =>
+        "- " + code(f.file) + " at line " + h.beforeLine + ": add " + code(h.dependency) +
+        " (" + code(h.version) + ") in " + code(h.package) + "; " + code(h.before) + " → " + code(h.after)))
+      return edits.length ? edits : ["None."]
+    })(),
     ""
   ].join("\n")
 }

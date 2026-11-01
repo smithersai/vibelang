@@ -139,3 +139,29 @@ test("pinned trees prove a filesystem path and refuse asserted source text", asy
   assert.equal(bad.ok, false)
   assert.match(readFileSync(join(root, "paths/test-diff.md"), "utf8"), /send to migfix/)
 }))
+
+test("dependency assertion proof reads both pinned manifests and reaches the PR body", async () => fixture(async ({ root, target, run, p }) => {
+  const old = 'expect(Object.keys(pkg.dependencies)).toEqual(["effect"])'
+  const next = 'expect(Object.keys(pkg.dependencies)).toEqual(["effect", "vibelang-runtime"])'
+  put(target, "package.json", '{"dependencies":{"effect":"4.1.0"}}')
+  put(target, "test/x.test.ts", old)
+  const base = await Jj.commit(target, "dependency assertion baseline")
+  put(target, "package.json", '{"dependencies":{"effect":"4.1.0","vibelang-runtime":"0.0.12"}}')
+  put(target, "test/x.test.ts", next)
+  const result = await verifyRepositoryTests({ ts, target, base, renames: [], scratch: join(root, "dependency-proof") })
+  assert.equal(result.ok, true, JSON.stringify(result))
+  assert.equal(result.files[0].hunks[0].kind, "assertion")
+  const recorded = await record({ run, batch: "01", force: "no other checks in this fixture" })
+  assert.equal(recorded.testDiff.ok, true)
+  await report({ run })
+  const body = readFileSync(p.prBody, "utf8")
+  assert.match(body, /#### assertion edits/)
+  assert.match(body, /vibelang-runtime/)
+  assert.match(body, /package.json/)
+  // Both pinned manifests have the dependency now: this is no longer a gain.
+  const unchanged = await Jj.commitId(target, "@-")
+  put(target, "test/x.test.ts", old)
+  const noGain = await verifyRepositoryTests({ ts, target, base: unchanged, renames: [], scratch: join(root, "dependency-proof") })
+  assert.equal(noGain.ok, false)
+  assert.match(JSON.stringify(noGain), /did not gain/)
+}))
