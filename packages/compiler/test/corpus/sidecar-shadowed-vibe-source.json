@@ -1,0 +1,15 @@
+{
+  "key": "sidecar:explicit-vibe-shadowed-native",
+  "spec": "VIP-27 Content and chapter007 source import resolution: compatibility declarations preserve the module selected by the source.",
+  "input": {
+    "directory": ".vibe/declarations",
+    "style": ".js",
+    "name": "tag",
+    "form": "annotation"
+  },
+  "files": {
+    "src/tag.vibe": "export interface Tag { readonly kind: \"vibe\" }\n",
+    "src/tag.ts": "export interface Tag { readonly kind: \"native\" }\n",
+    "src/index.vibe": "import type { Tag } from \"./tag.vibe\"; export function make(): Tag { return {kind:\"vibe\"} }\n"
+  }
+}

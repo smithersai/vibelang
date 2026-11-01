@@ -479,7 +479,7 @@ await main()                    // EK0103: the Effect would never run
 
 ## Declaration output
 
-For each `x.vibe`, the compiler writes `x.d.vibe.ts` beside it, and for each `x.vibex`, `x.d.vibex.ts` (VIP-27, VIP-39). TypeScript's `allowArbitraryExtensions` resolves it, so plain `tsc` and TypeDoc understand imports of VibeLang source files. With `vibe.sidecarDir` the sidecars sit at their sources' paths under that directory instead, and tsconfig `rootDirs` lets the same tools resolve them ([Configuration](/spec/007-tooling#config-files); VIP-27, amended). A package build also writes ordinary `.d.ts` files to its output directory.
+For each `x.vibe`, the compiler writes `x.d.vibe.ts` beside it, and for each `x.vibex`, `x.d.vibex.ts` (VIP-27, VIP-39). TypeScript's `allowArbitraryExtensions` resolves it, so plain `tsc` and TypeDoc understand imports of `.vibe` files. With `vibe.sidecarDir` the sidecars sit at their sources' paths under that directory instead, and tsconfig `rootDirs` lets the same tools resolve them ([Configuration](/spec/007-tooling#config-files); VIP-27, amended). A package build also writes ordinary `.d.ts` files to its output directory.
 
 `bun check` runs the project's `check` script; a script that invokes a TypeScript checker uses that checker's sidecar resolution.
 

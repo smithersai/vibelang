@@ -49,6 +49,8 @@ This includes `src/user.vibe` without also checking its stale `src/user.d.vibe.t
 
 A non-relative import reaching a known compatibility declaration uses its available mapped source only when TypeScript's final resolved path is outside `node_modules`. This includes package exports, `paths` and package `#imports`. Apply `realpath` and `preserveSymlinks` first; a retained logical dependency path keeps its declaration and native module identity. The rule also applies to the effective `sidecarDir` map ([VIP-27's dated amendment](/vips/0027-declaration-output#amendment-an-opt-in-sidecar-directory-2026-11-01)). Explicitly selected declarations remain inputs subject to the ordinary overwrite guard.
 
+Compatibility declarations preserve the actual module selected by a source import. An explicit `./tag.vibe` remains that module even beside `tag.ts`, including re-exports and inferred import types, under every declaration import style and in either layout ([VIP-27](/vips/0027-declaration-output#amendment-an-opt-in-sidecar-directory-2026-11-01)).
+
 Relative imports in relocated sidecars resolve from the actual output location, including references to native TypeScript modules and mirrored VibeLang declarations. Another project's checker does not inherit the producer's `rootDirs`. Workspace package imports use the owning config to keep a relocated sidecar and its source as one module; published packages retain declarations. Migration setup removes superseded adjacent outputs in the same layout change and preserves existing scalar path inheritance and virtual roots.
 
 ```jsonc
