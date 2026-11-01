@@ -104,6 +104,16 @@ function contracts(ast, source = "") {
     const fn = mappers.get(catcher.name), channel = returns(fn?.returnType)
     return channel ? { name: catcher.name, channel, body: executable(fn.body) } : null
   }
+  // A directly returned callback writes its producer's failure channel even
+  // when migration replaces the raw callback with a platform service. Do not
+  // search inside nested callbacks or borrow a call whose result is discarded.
+  const returnedCallback = fn => {
+    if (fn.returnType) return null
+    const body = fn.body?.type === "BlockStatement" && fn.body.body.length === 1 &&
+      fn.body.body[0].type === "ReturnStatement" ? fn.body.body[0].argument : fn.body
+    return body?.type === "CallExpression" && api(body.callee) === "callback"
+      ? nameOf((body.typeArguments ?? body.typeParameters)?.params?.[1]) : null
+  }
   const visit = (node, path = [], scope = []) => {
     if (node.type === "CallExpression") site(node, scope)
     if (node.type === "VariableDeclarator") {
@@ -129,7 +139,8 @@ function contracts(ast, source = "") {
     }
     if (functionTypes.has(node.type)) {
       const named = node.id?.name ? [...path, node.id.name] : path
-      functions.push({ key: named.join("."), range: node.range, failure: failure(node.returnType), returns: returns(node.returnType), handler: handlers.has(node), returnedMapper: !node.returnType && api(node.body?.callee) === "acquireRelease" ? returnedMapper(node.body) : null,
+      const callbackChannel = returnedCallback(node)
+      functions.push({ key: named.join("."), range: node.range, failure: failure(node.returnType) ?? callbackChannel, returnedCallback: callbackChannel, returns: returns(node.returnType), handler: handlers.has(node), returnedMapper: !node.returnType && api(node.body?.callee) === "acquireRelease" ? returnedMapper(node.body) : null,
         // ESTree projects an eager effect block as an anonymous arrow. Its
         // source prefix distinguishes it from a nested function boundary.
         block: !node.id && /^effect(?:\s|\/\*[\s\S]*?\*\/|\/\/[^\n]*(?:\n|$))*$/.test(source.slice(node.range[0], node.body?.range?.[0])) })
@@ -161,7 +172,8 @@ export function preservedGlobalErrors(before, after, source, diagnostics) {
       if (!candidate.handler && !candidate.block && !includesError(candidate.returns)) break
     }
     const originals = original.functions.filter(old => fn?.key && old.key === fn.key)
-    const functionProof = fn && includesError(fn.failure) && originals.length === 1 && originals[0].failure === fn.failure
+    const functionProof = fn && includesError(fn.failure) && originals.length === 1 && originals[0].failure === fn.failure &&
+      (!originals[0].returnedCallback || current.functions.filter(candidate => candidate.key === fn.key).length === 1)
     const changedContract = fn && (!includesError(fn.failure) || originals.some(old => old.failure !== null && old.failure !== fn.failure))
     const siteProof = !changedContract && current.sites.find(site => site.range && site.range[0] <= offset && offset < site.range[1] &&
       includesError(site.channel) && original.counts.get(site.group) === current.counts.get(site.group) &&
@@ -195,7 +207,7 @@ export function preservedGlobalErrors(before, after, source, diagnostics) {
     decisions.push({ file: d.file, line: d.line, column: d.column, code: d.code, exempt: Boolean(keep), ...(fn ? { function: fn.key, channel: fn.failure } : {}),
       ...(siteProof ? { producer: siteProof.key, producerChannel: siteProof.channel } : {}),
       ...(splitProof ? { acquisition: splitProof } : {}),
-      reason: keep ? (functionProof ? "written global Error channel matches the original contract" : splitProof ? "unchanged mapper preserves the original returned acquire channel" : "written Error producer matches the original call contract") : "no matching explicit global Error channel" })
+      reason: keep ? (functionProof ? (originals[0].returnedCallback ? "written global Error channel matches the original returned callback contract" : "written global Error channel matches the original contract") : splitProof ? "unchanged mapper preserves the original returned acquire channel" : "written Error producer matches the original call contract") : "no matching explicit global Error channel" })
   }
   return { accepted, decisions }
 }

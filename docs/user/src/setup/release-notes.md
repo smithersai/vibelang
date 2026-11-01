@@ -225,6 +225,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Migration could break a plugin host that derives virtual module names from a resolved package entry and source-file extension; scope planning now keeps the observed packages native and records the source-enumeration cause, preserving the unchanged host.
 
+- The migrate flow rejected a native acquisition's unchanged `!Error` contract when its original function returned `Effect.callback<A, Error>`, as in foldkit's WebSocket example; it now recognizes that explicit returned channel when the callback becomes a platform service, while nested callbacks and changed contracts remain rejected.
+
 - `vibelang --fix` deleted comments from legacy diagnostic maps, including empty maps and entries superseded by modern settings; it now keeps every comment in direct and extended configs, with the same settings and a stable second run.
 
 - A `continue` to an earlier label in a chained `for...of`, such as `outer: inner: for (...)`, compiled to JavaScript that Node rejected; every label now stays on the loop, so labeled `continue` and `break` keep their TypeScript behavior.
