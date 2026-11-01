@@ -50,5 +50,21 @@ func failuresReservedMemberCases() []*failCase {
 			})
 		}
 	}
+	// VIP-29: a schema error's computed method, accessor or static key must
+	// be proved to exclude "_tag"; a getter under it would shadow the tag.
+	for i, key := range []struct{ decl, member string }{
+		{"declare const key: string", "get [key](): number { return 1 }"},
+		{"declare const key: \"id\" | \"_tag\"", "[key]() { return 1 }"},
+		{"declare const key: string & { readonly brand: unique symbol }", "get [key](): number { return 1 }"},
+		{"declare const key: `${string}`", "[key]() { return 1 }"},
+		{"declare const key: any", "static [key] = 1"},
+	} {
+		cases = append(cases, &failCase{
+			Name:  fmt.Sprintf("schema-error-member-key-domain-%d", i),
+			Quote: rule, Owner: "impl-hunt-fail", VIP: 29,
+			Host: "none", Decls: key.decl + "\nexport schema error Bad { id: string; ⟦" + key.member + "⟧ }",
+			Code: 2117, OneDiagnostic: true,
+		})
+	}
 	return cases
 }

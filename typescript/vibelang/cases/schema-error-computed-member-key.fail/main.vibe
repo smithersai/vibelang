@@ -1,0 +1,14 @@
+// expect: EK2117 EK2117 EK2117
+// VIP-29: a schema error's computed key must be proved to exclude "_tag".
+// Compiled, Broad's getter would shadow the tag and `new Broad(...)` would throw.
+const key = "_tag" as string
+declare const either: "id" | "_tag"
+export schema error Broad { id: string; get [key](): string { return "X" } }
+export schema error Union { id: string; [either]() { return 1 } }
+export schema error Static { static [key] = 1 }
+// Keys proved to exclude "_tag", and plain errors, whose own _tag shadows a prototype member:
+declare const sym: unique symbol
+declare const prefixed: `x-${string}`
+export schema error Symbolic { id: string; get [sym](): number { return 1 } }
+export schema error Prefixed { id: string; [prefixed]() { return 1 } }
+export error Plain { id: string; get [key](): string { return "X" } }

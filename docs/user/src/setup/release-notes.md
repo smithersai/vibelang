@@ -843,6 +843,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A `private`, `protected` or `public` `_tag` property, or `_tag!`, in an `error` or `schema error` body reported TypeScript's `TS2415`, `TS2564` or `TS2612` about the generated class next to `EK2117`. It now reports `EK2117` alone.
 
+- A `schema error` method or getter whose computed key had a broad type, such as `string`, compiled even when the key was `"_tag"`; constructing the error then threw `TypeError: Cannot set property _tag`. Such a key is now `EK2117` unless its type excludes `"_tag"` (a literal, a symbol, a number or a template such as `` `x-${string}` ``), and `vibelang --fix` keeps an existing member in an explicit Effect TypeScript class.
+
 - `vibelang --fix` could remove an explicit `<{}>` payload from a fieldless `Data.TaggedError` class, changing its published declaration. Projects that emit declarations now keep the class and receive an explanation instead.
 - Reverting a migration importer before its dependency could replace an original `.js` import with `.ts`; either revert order now restores the original specifier.
 - Switching migration toolchains could absorb newly failing tests or compiler errors into a passing baseline; the flow now rejects the switch and retains its before-and-after evidence.
