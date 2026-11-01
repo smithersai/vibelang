@@ -1,6 +1,7 @@
 package vibelang
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"slices"
@@ -23,7 +24,10 @@ import (
 // an earlier round refused on its own is refused again without a check
 // when this round offers it to the same texts (fixGate.alone). A round so
 // costs a few checks of the program, however many fixes it refuses, where
-// halving it cost two or more for each.
+// halving it cost two or more for each. Once a trial has added errors, the
+// next looks for its own in the files that reported them (gateRound.trial):
+// an error there proves it fails, and only a trial clean there goes on to
+// the whole program.
 func (g *fixGate) accept(texts map[tspath.RootedFilePath]string, proposals []proposal, refuse func(FixRefusal, string)) []proposal {
 	r := &gateRound{g: g, texts: texts, proposals: proposals, kept: map[int][]int{}}
 	var all []part
@@ -71,7 +75,7 @@ func (g *fixGate) accept(texts map[tspath.RootedFilePath]string, proposals []pro
 // it, and refused otherwise. It is the oracle accept is fuzzed against
 // (FixOptions.CheckEachFix).
 func (g *fixGate) acceptEach(texts map[tspath.RootedFilePath]string, proposals []proposal, refuse func(FixRefusal, string)) []proposal {
-	r := &gateRound{g: g, texts: texts, proposals: proposals, kept: map[int][]int{}}
+	r := &gateRound{g: g, texts: texts, proposals: proposals, kept: map[int][]int{}, wholeOnly: true}
 	for i, p := range proposals {
 		for f := range p.fixes {
 			if g.done.Err() != nil {
@@ -116,12 +120,17 @@ func (r *gateRound) finish(class []int, refuse func(FixRefusal, string)) []propo
 }
 
 // A gateRound is one round of fixGate.accept: the fixes it has kept and
-// refused, by proposal and fix index.
+// refused, by proposal and fix index, the fixes halving has kept until a
+// check of the whole program verifies them, and the files that reported an
+// error a trial added, in the order they did.
 type gateRound struct {
 	g         *fixGate
 	texts     map[tspath.RootedFilePath]string
 	proposals []proposal
 	kept      map[int][]int
+	tentative []part
+	reporting []tspath.RootedFilePath
+	wholeOnly bool // every trial checks the whole program
 	refusals  []gateRefusal
 	textsKey  []byte
 }
@@ -139,13 +148,15 @@ type part struct {
 }
 
 // A checked trial is the program of the kept fixes and some others, the
-// fixes it applies by proposal, its errors, and the errors it adds by key
-// and number. A trial of some files counts only their errors.
+// fixes it applies by proposal, its errors, the errors it adds by key and
+// number, and whether it checked the whole program. A trial of some files
+// counts only their errors.
 type checked struct {
 	program *compiler.Program
 	fixes   map[int][]int
 	errors  []*ast.Diagnostic
 	added   map[string]int
+	whole   bool
 }
 
 // subset returns proposal p with only fixes, in their order.
@@ -158,14 +169,19 @@ func (r *gateRound) subset(p int, fixes []int) proposal {
 	return q
 }
 
-// trial checks the program of the kept fixes and parts: all of it, or only
-// files when it names some.
+// trial checks the program of the kept fixes and parts in files, when it
+// names some. Otherwise it checks the files of the round that reported an
+// error first and, when they add none, all of the program: an error
+// proves a trial fails and only the whole program proves one passes, and
+// on a 240-module slice of t3code's apps/server a check of those files
+// took 10 to 20 s, and one of the program 6 minutes (2026-11-01). A fix
+// refused on that evidence is named by the first error of those files.
 func (r *gateRound) trial(parts []part, files []tspath.RootedFilePath) checked {
 	fixes := map[int][]int{}
 	for p, fs := range r.kept {
 		fixes[p] = slices.Clone(fs)
 	}
-	for _, pt := range parts {
+	for _, pt := range slices.Concat(r.tentative, parts) {
 		fixes[pt.p] = append(fixes[pt.p], pt.fixes...)
 	}
 	overlay := map[tspath.RootedFilePath]string{}
@@ -178,25 +194,67 @@ func (r *gateRound) trial(parts []part, files []tspath.RootedFilePath) checked {
 		size += len(fs)
 	}
 	r.g.progress.checkFixes(size, len(overlay))
-	if files != nil {
+	first := files
+	if files == nil {
+		first = r.likelyFiles(parts)
+	}
+	if first != nil {
 		r.g.progress.partial()
 	}
 	program := r.g.build(maps(r.texts, overlay))
 	r.g.progress.label("")
 	var errors []*ast.Diagnostic
-	if files == nil {
+	if first != nil {
+		errors = fileErrors(r.g.ctx, program, first)
+	}
+	added := r.addedBy(errors)
+	whole := first == nil
+	if files == nil && first != nil && len(added) == 0 {
+		r.g.progress.widened()
+		whole = true
+	}
+	if whole {
 		errors = programErrors(r.g.ctx, program)
-	} else {
-		for _, name := range files {
-			if file := program.GetSourceFile(name); file != nil {
-				for _, d := range slices.Concat(program.GetSyntacticDiagnostics(r.g.ctx, file), program.GetSemanticDiagnostics(r.g.ctx, file)) {
-					if d.Category() == diagnostics.CategoryError {
-						errors = append(errors, d)
-					}
-				}
-			}
+		added = r.addedBy(errors)
+	}
+	for _, d := range errors {
+		if d.File() != nil && added[errorKey(d)] > 0 && !slices.Contains(r.reporting, d.File().FileName()) {
+			r.reporting = append(r.reporting, d.File().FileName())
 		}
 	}
+	if files == nil && len(added) > 0 {
+		if whole {
+			r.g.lastFailed = program
+		}
+		if len(r.kept) == 0 && len(parts) == 1 && len(parts[0].fixes) == 1 {
+			if r.g.alone == nil {
+				r.g.alone = map[[32]byte]map[string]int{}
+			}
+			r.g.alone[r.aloneKey(parts[0].p, parts[0].fixes)] = added
+		}
+	}
+	return checked{program, fixes, errors, added, whole}
+}
+
+// likelyFiles returns the files likeliest to report an error parts add:
+// those of the round's added errors and, for one proposal, its own. It
+// returns nil before any trial has added an error.
+func (r *gateRound) likelyFiles(parts []part) []tspath.RootedFilePath {
+	if r.wholeOnly || len(r.reporting) == 0 {
+		return nil
+	}
+	files := slices.Clone(r.reporting)
+	if len(parts) == 1 {
+		if own := r.proposals[parts[0].p].file.FileName(); !slices.Contains(files, own) {
+			files = append(files, own)
+		}
+	}
+	return files
+}
+
+// addedBy returns the errors of errors that the baseline does not hold,
+// by key and number.
+func (r *gateRound) addedBy(errors []*ast.Diagnostic) map[string]int {
 	counts := map[string]int{}
 	for _, d := range errors {
 		counts[errorKey(d)]++
@@ -207,16 +265,22 @@ func (r *gateRound) trial(parts []part, files []tspath.RootedFilePath) checked {
 			added[key] = n - r.g.baseline[key]
 		}
 	}
-	if files == nil && len(added) > 0 {
-		r.g.lastFailed = program
-		if len(r.kept) == 0 && len(parts) == 1 && len(parts[0].fixes) == 1 {
-			if r.g.alone == nil {
-				r.g.alone = map[[32]byte]map[string]int{}
+	return added
+}
+
+// fileErrors returns the errors of files in program.
+func fileErrors(ctx context.Context, program *compiler.Program, files []tspath.RootedFilePath) []*ast.Diagnostic {
+	var errors []*ast.Diagnostic
+	for _, name := range files {
+		if file := program.GetSourceFile(name); file != nil {
+			for _, d := range slices.Concat(program.GetSyntacticDiagnostics(ctx, file), program.GetSemanticDiagnostics(ctx, file)) {
+				if d.Category() == diagnostics.CategoryError {
+					errors = append(errors, d)
+				}
 			}
-			r.g.alone[r.aloneKey(parts[0].p, parts[0].fixes)] = added
 		}
 	}
-	return checked{program, fixes, errors, added}
+	return errors
 }
 
 // aloneKey names the program of the texts of the round with fixes of
@@ -751,6 +815,14 @@ func (s fixSpanSet) holding(name tspath.RootedFilePath, pos, end int) [][2]int {
 // adds an error is halved until each half passes or is one file, the
 // files that report none of the errors first, and each failing file's
 // fixes are halved the same way.
+//
+// Its trials check the likely files only, and the fixes that pass them are
+// tentative: a later trial reads them, and one check of the whole program
+// at the end verifies them together, so that the check does not grow with
+// the refusals. Nothing is kept before that check. When it adds an error
+// the files it names join the likely ones and the tentative fixes are
+// halved again. The files can only grow, and when it names none, each
+// trial checks the whole program.
 func (r *gateRound) halve(parts []part, known *checked) {
 	// The files whose edited declarations the errors of an importer read
 	// (fixGate.errorSources) are the likeliest; they only order the halving.
@@ -761,7 +833,21 @@ func (r *gateRound) halve(parts []part, known *checked) {
 		}
 		return r.g.errorSources(proposals)
 	}
-	r.g.lastFailed = known.program
+	if known.whole {
+		r.g.lastFailed = known.program
+	}
+	// trial adds ps to the tentative fixes when they add no error there.
+	trial := func(ps []part) checked {
+		files := r.likelyFiles(ps)
+		if files == nil && !r.wholeOnly {
+			files = []tspath.RootedFilePath{} // no error names a file yet
+		}
+		t := r.trial(ps, files)
+		if len(t.added) == 0 {
+			r.tentative = append(r.tentative, ps...)
+		}
+		return t
+	}
 	origins := sources(parts)
 	var others, suspects []part
 	for _, pt := range parts {
@@ -778,8 +864,7 @@ func (r *gateRound) halve(parts []part, known *checked) {
 		if r.g.done.Err() != nil {
 			return
 		}
-		if !known && len(r.trial(ps, nil).added) == 0 {
-			r.keep(ps...)
+		if !known && len(trial(ps).added) == 0 {
 			return
 		}
 		if len(ps) == 1 {
@@ -809,9 +894,8 @@ func (r *gateRound) halve(parts []part, known *checked) {
 				return
 			}
 			if !known || len(fs) == 1 {
-				t := r.trial([]part{{pt.p, fs}}, nil)
+				t := trial([]part{{pt.p, fs}})
 				if len(t.added) == 0 {
-					r.keep(part{pt.p, fs})
 					return
 				}
 				if len(fs) == 1 {
@@ -824,4 +908,21 @@ func (r *gateRound) halve(parts []part, known *checked) {
 		}
 		fixes(pt.fixes, true)
 	}
+	tentative := r.tentative
+	if r.g.done.Err() != nil || len(tentative) == 0 {
+		r.tentative = nil
+		return
+	}
+	// The whole program, even when the last trial's files passed.
+	before := len(r.reporting)
+	r.tentative = nil
+	t := r.trial(tentative, nil)
+	if len(t.added) == 0 {
+		r.keep(tentative...)
+		return
+	}
+	if len(r.reporting) == before {
+		r.wholeOnly = true
+	}
+	r.halve(tentative, &t)
 }

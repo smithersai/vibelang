@@ -49,6 +49,7 @@ type fixProgress struct {
 	phasePartial int
 	next         string // what the next program built is for
 	nextPartial  bool   // the next program built is checked in some files
+	lastPartial  bool   // the last program built is checked in some files
 	activity     string
 	since        time.Time
 }
@@ -179,11 +180,27 @@ func (p *fixProgress) partial() {
 	}
 }
 
+// widened says the last program built, checked in some files, goes on to
+// the whole program.
+func (p *fixProgress) widened() {
+	if p != nil {
+		p.mu.Lock()
+		if p.lastPartial {
+			p.phasePartial--
+		}
+		p.lastPartial = false
+		p.mu.Unlock()
+	}
+}
+
 // label names the next program built, or clears the name when it is "".
 func (p *fixProgress) label(next string) {
 	if p != nil {
 		p.mu.Lock()
 		p.next = next
+		if next == "" {
+			p.nextPartial = false // the last build reused its program
+		}
 		p.mu.Unlock()
 	}
 }
@@ -197,7 +214,7 @@ func (p *fixProgress) building() {
 		if p.nextPartial {
 			p.phasePartial++
 		}
-		p.nextPartial = false
+		p.lastPartial, p.nextPartial = p.nextPartial, false
 		if p.next == "" {
 			p.next = "checking the project"
 		}

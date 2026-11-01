@@ -199,6 +199,8 @@ A proposed rewrite includes removal of imports from `effect` and its modules tha
 
 When a proposed fix adds an error in an unchanged importer, `--fix` follows references in that error to prioritize the edited declarations. It still checks each candidate against the original project's errors before keeping it; ambiguous references use the ordinary grouped search.
 
+A trial that adds an error needs only that error to fail, so once a round has found errors, `--fix` looks for a trial's errors in the files that reported them. It keeps no fix until a check of the whole project passes. A fix refused on that evidence names the first error of those files, which may not be the first error it adds across the project.
+
 Normalization continues until no accepted fix remains, even when nested edits overlap for more than sixteen rounds. If a rewrite repeats a source state, the command reports non-convergence and writes no files.
 
 A direct `extends` or `implements` entry retains its named type, such as `Effect.Effect<number>`. Effect types inside another base's type arguments can still shorten, as in `Holder<number!!>`.

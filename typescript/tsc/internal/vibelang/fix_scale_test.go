@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -22,8 +24,11 @@ import (
 // holds a Match chain whose fix holds the error it adds, and every tenth a
 // fix that adds an error to the module after it (fixFiles' modes and
 // more): about a third of the fixes are refused, in proportion to n, as
-// in a package whose modules were just renamed to .vibe.
-func scaleProject(t testing.TB, n int) (string, *tsoptions.ParsedCommandLine) {
+// in a package whose modules were just renamed to .vibe. When hidden, the
+// module after each such fix reads it through a string in an import type,
+// which names nothing, so that no error traces to the fix (blameReads) and
+// the gate halves.
+func scaleProject(t testing.TB, n int, hidden bool) (string, *tsoptions.ParsedCommandLine) {
 	t.Helper()
 	_, file, _, _ := editorProgram(t, "export const main = 1\n")
 	dir := filepath.Dir(file.FileName().AsString())
@@ -47,7 +52,9 @@ func scaleProject(t testing.TB, n int) (string, *tsoptions.ParsedCommandLine) {
 		if i%10 == 2 {
 			fmt.Fprintf(&b, "export function modes%d() {\n  const mode = Effect.succeed(\"fast\")\n  const all: Array<typeof mode> = [mode]\n  return all\n}\n", i)
 		}
-		if i%10 == 3 {
+		if i%10 == 3 && hidden {
+			fmt.Fprintf(&b, "export function more%d() {\n  const all: ReturnType<(typeof import(\"./m%03d.vibe\"))[\"modes%d\"]> = []\n  all.push(\"slow\")\n  return all\n}\n", i, i-1, i-1)
+		} else if i%10 == 3 {
 			fmt.Fprintf(&b, "import { modes%d } from \"./m%03d.vibe\"\nexport function more%d() {\n  const all = modes%d()\n  all.push(\"slow\")\n  return all\n}\n", i-1, i-1, i, i-1)
 		}
 		write(fmt.Sprintf("m%03d.vibe", i), b.String())
@@ -71,7 +78,7 @@ type scaleRun struct {
 
 func fixScaleRun(t *testing.T, n int) scaleRun {
 	t.Helper()
-	dir, config := scaleProject(t, n)
+	dir, config := scaleProject(t, n, false)
 	builds, fs := countingFS(dir, func(int) {})
 	runtime.GC()
 	var before runtime.MemStats
@@ -140,5 +147,54 @@ func TestFixScalesWithTheProject(t *testing.T) {
 	}
 	if r := ratio(float64(b.peak), float64(a.peak)); r >= 6 {
 		t.Errorf("--fix peaked at %d MB of heap for %d modules and %d MB for %d: %.1fx", b.peak>>20, large, a.peak>>20, small, r)
+	}
+}
+
+var fixWholeChecks = regexp.MustCompile(`(?m)^vibelang --fix: \S+: ([^:]+): .*\((\d+) whole, \d+ partial\)`)
+
+// wholeChecks returns the checks of the whole program that progress
+// lines say a run began, over its rounds and phases.
+func wholeChecks(t *testing.T, progress string) int {
+	t.Helper()
+	most := map[string]int{}
+	for _, m := range fixWholeChecks.FindAllStringSubmatch(progress, -1) {
+		n, err := strconv.Atoi(m[2])
+		if err != nil {
+			t.Fatal(err)
+		}
+		most[m[1]] = max(most[m[1]], n)
+	}
+	sum := 0
+	for _, n := range most {
+		sum += n
+	}
+	return sum
+}
+
+// A failing trial needs one error, and the round has seen where its
+// errors are, so the gate does not check the whole program to refuse a
+// fix. On a 120-module slice of t3code's apps/server, the last 21 fixes
+// of a round took 40 whole checks of 2 to 4 minutes each, and on 240
+// modules 6 minutes each (2026-11-01): no error traced to those fixes, so
+// the gate halved them with a whole check for each trial, and the trials
+// grew with the refusals.
+func TestFixHalvingChecksTheWholeProgramAFewTimes(t *testing.T) {
+	const small, large = 40, 160
+	counts := map[int]int{}
+	for _, n := range []int{small, large} {
+		_, config := scaleProject(t, n, true)
+		var progress strings.Builder
+		result := FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), config, FixOptions{Progress: &progress, ProgressEvery: time.Millisecond})
+		if result.Err != nil || len(result.Order) != n || len(result.Refused) != n/5+n/10 {
+			t.Fatalf("%d modules: fixed %d files, refused %d, error %v; want %d files and %d refusals", n, len(result.Order), len(result.Refused), result.Err, n, n/5+n/10)
+		}
+		counts[n] = wholeChecks(t, progress.String())
+		t.Logf("%d modules: %d whole checks for %d refusals", n, counts[n], len(result.Refused))
+	}
+	if counts[large] > 12 {
+		t.Errorf("%d modules took %d whole checks", large, counts[large])
+	}
+	if counts[large]*2 > counts[small]*3 {
+		t.Errorf("whole checks grew from %d at %d modules to %d at %d", counts[small], small, counts[large], large)
 	}
 }
