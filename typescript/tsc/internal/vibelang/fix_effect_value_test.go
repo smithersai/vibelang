@@ -12,11 +12,11 @@ import (
 func TestHoldProgramFix(t *testing.T) {
 	for _, test := range []struct{ name, source, want string }{
 		{"a call", "const p = (n: number): Effect.Effect<number> => Effect.sync(() => n)\nexport const v = p(1)\n",
-			"const p = (n: number): number!! => Effect.sync(() => n)\nexport const v = effect { return try p(1) }\n"},
+			"const p = (n: number): number!! => n\nexport const v = effect { return try p(1) }\n"},
 		{"a pipe", "const p = (n: number): Effect.Effect<number> => Effect.sync(() => n)\nexport const v = p(1).pipe(Effect.map((n) => n + 1))\n",
-			"const p = (n: number): number!! => Effect.sync(() => n)\nexport const v = effect { return try (p(1) |> Effect.map(%, (n) => n + 1)) }\n"},
+			"const p = (n: number): number!! => n\nexport const v = effect { return try (p(1) |> Effect.map(%, (n) => n + 1)) }\n"},
 		{"a field", "const p = (n: number): Effect.Effect<number> => Effect.sync(() => n)\nexport const o = { v: p(1) }\n",
-			"const p = (n: number): number!! => Effect.sync(() => n)\nexport const o = { v: effect { return try p(1) } }\n"},
+			"const p = (n: number): number!! => n\nexport const o = { v: effect { return try p(1) } }\n"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			got, result := fixedPipe(t, test.source)

@@ -129,6 +129,9 @@ func directFormRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 		argumentText = "(" + file.Text()[argument.Pos():argument.End()] + ")"
 	}
 	position := directPositionOf(call)
+	if position == positionRightValue && returnsEffectUnion(c, call) {
+		return nil
+	}
 	start, end := nodeStart(file, call), call.End()
 	var text string
 	switch name {
@@ -177,6 +180,45 @@ func directFormRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 		rewrite.message = directFailMessage
 	}
 	return rewrite
+}
+
+// returnsEffectUnion reports whether call is a branch of what a function
+// without a return type returns, and the branches are different Effects. The
+// function declares their union, which its callers see; as a value and a
+// throw, its branches would be one Effect.
+func returnsEffectUnion(c *checker.Checker, call *ast.Node) bool {
+	branches := call.Parent
+	if !ast.IsConditionalExpression(branches) || branches.Parent == nil || !ast.IsReturnStatement(branches.Parent) && !(ast.IsArrowFunction(branches.Parent) && branches.Parent.Body() == branches) {
+		return false
+	}
+	if fn := ast.GetContainingFunction(call); fn == nil || fn.Type() != nil {
+		return false
+	}
+	conditional := branches.AsConditionalExpression()
+	other := conditional.WhenTrue
+	if other == call {
+		other = conditional.WhenFalse
+	}
+	mine, theirs := programType(c, call), programType(c, other)
+	return mine != nil && theirs != nil && !c.IsTypeAssignableTo(mine, theirs) && !c.IsTypeAssignableTo(theirs, mine)
+}
+
+// programType returns the Effect type node builds, or nil. In a function that
+// runs a call, the type of the call is its success value.
+func programType(c *checker.Checker, node *ast.Node) *checker.Type {
+	node = ast.SkipParentheses(node)
+	if isInvocation(node) {
+		if signature := c.GetResolvedSignature(node); signature != nil {
+			if t := c.GetReturnTypeOfSignature(signature); isEffectType(c, t) {
+				return t
+			}
+		}
+		return nil
+	}
+	if t := c.GetTypeAtLocation(node); isEffectType(c, t) {
+		return t
+	}
+	return nil
 }
 
 // keepsEffectForm reports whether the function around call stays an Effect

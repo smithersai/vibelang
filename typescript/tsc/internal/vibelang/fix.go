@@ -310,6 +310,9 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 				if len(p.fixes) == 0 {
 					p = effectPipeFixes(ctx, program, file, g.refused, refuse)
 				}
+				if len(p.fixes) == 0 {
+					p = effectStageFixes(ctx, program, file, g.refused)
+				}
 			} else if len(p.fixes) == 0 {
 				p = fileFixes(ctx, program, file, g.refused, vipMigrationFixCodes)
 			}

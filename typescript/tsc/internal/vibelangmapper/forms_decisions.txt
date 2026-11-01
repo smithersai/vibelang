@@ -3339,8 +3339,8 @@ typescript/vibelang/cases/tsforms-services/main.vibe:24:3 lambda effectFn servic
 typescript/vibelang/cases/tsforms-services/main.vibe:26:42 lambda effectFn service
 typescript/vibelang/cases/tsforms-types-fixed/main.vibe:15:13 lambda effectFn table
 typescript/vibelang/cases/tsforms-types-fixed/main.vibe:15:29 lambda effectFn table
-typescript/vibelang/cases/tsforms-types-fixed/main.vibe:19:36 lambda plain table
-typescript/vibelang/cases/tsforms-types-fixed/main.vibe:20:35 lambda plain table
+typescript/vibelang/cases/tsforms-types-fixed/main.vibe:19:24 lambda program annotation
+typescript/vibelang/cases/tsforms-types-fixed/main.vibe:20:23 lambda program annotation
 typescript/vibelang/cases/tsforms-types-fixed/main.vibe:23:28 lambda effectFn annotation
 typescript/vibelang/cases/tsforms-types-fixed/main.vibe:44:22 byname program annotation
 typescript/vibelang/cases/tsforms-types-fixed/main.vibe:47:18 byname program annotation

@@ -48,6 +48,10 @@ func init() {
 // call, or the pipe it stands in, builds, or nil where the value is no
 // program a position holds.
 func planHoldProgram(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *formRewrite {
+	// A thunk's own rewrite (effectStageFixes) writes the block.
+	if thunkRewrite(c, file, call).fixable() {
+		return nil
+	}
 	// An unannotated .vibe helper is an Effect function by default (D500): its
 	// return type says what it is, which returnTypeFix writes.
 	if signature := c.GetResolvedSignature(call); signature != nil {

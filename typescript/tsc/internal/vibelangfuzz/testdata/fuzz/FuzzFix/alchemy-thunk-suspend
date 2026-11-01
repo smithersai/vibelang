@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport { Data, Effect } from \"effect\"\nexport class AuthError extends Data.TaggedError(\"AuthError\")<{ readonly message: string }> {}\nconst readEnv = (key: string): Effect.Effect<string, string> =>\n  key === \"\" ? Effect.fail(\"missing\") : Effect.succeed(key)\nconst browserSpec = Effect.suspend(() => readEnv(\"spec\"))\nexport const main = () => browserSpec.pipe(Effect.orElseSucceed(() => \"none\"))\n")

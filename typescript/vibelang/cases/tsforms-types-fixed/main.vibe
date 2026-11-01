@@ -16,8 +16,8 @@ function checked(program: number!Missing): Effect.Effect<string, never, infer R>
   return n >= 0 ? "ok" : "missing"
 }
 
-const held: string!! = Effect.sync(() => "held")
-const six: number!! = Effect.sync(() => 6)
+const held: string!! = effect { return "held" }
+const six: number!! = effect { return 6 }
 
 type Callback = (n: number) => number!!
 const callback: Callback = (n) => n + 1

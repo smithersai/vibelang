@@ -48,6 +48,6 @@ export function main() {
     any: any(-1),
     nested: nested(-1),
     tagged: tagged() catch (e) => match (e) { when { _tag: "Tagged" }: "by tag"; },
-    plain: find(-1) catch "plain"
+    plain: find(-1) catch () => "plain"
   }
 }

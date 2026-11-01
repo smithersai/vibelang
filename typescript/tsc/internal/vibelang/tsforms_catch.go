@@ -34,7 +34,9 @@ import (
 // One difference is VibeLang's by design (D13, D236): a cause that mixes an
 // expected failure with a defect or an interruption passes through a catch
 // expression, while Effect's combinators recover from the failure and drop
-// the rest. Refused: the data-last forms inside pipe, type arguments, a tag
+// the rest. The last stage of a pipeline that runs, x |> Effect.catch(%, h),
+// is the same catch expression. Refused: the data-last forms inside pipe, a
+// stage with stages after it, type arguments, a tag
 // that is not a string literal, and anything outside a VibeLang function body.
 
 // catchHandlerMessage is EK4835's text for Effect.catch, whose handler the
@@ -163,13 +165,28 @@ func catchCombinatorRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.
 	if self, inner := methodCatchParts(c, call); self != nil {
 		arguments = append([]*ast.Node{self}, inner.Arguments()...)
 	}
-	self := thunkBody(arguments[0])
-	left, runs := runningText(c, file, self)
-	if !runs {
-		return nil
-	}
-	if needsOperandParentheses(self) && isInvocation(ast.SkipParentheses(self)) || isHelperCall(self) || isLowPrecedence(self) {
-		left = "(" + left + ")"
+	// The site is what the catch expression replaces: call, or for the last
+	// stage of a pipeline that runs, the pipeline.
+	site := call
+	var left string
+	if isTopic(arguments[0]) {
+		pipe := stagePipe(call)
+		if pipe == nil {
+			return nil
+		}
+		if site = runningSite(pipe); site == nil {
+			return nil
+		}
+		left = catchLeftText(file, pipe.AsBinaryExpression().Left)
+	} else {
+		self := thunkBody(arguments[0])
+		var runs bool
+		if left, runs = runningText(c, file, self); !runs {
+			return nil
+		}
+		if needsOperandParentheses(self) && isInvocation(ast.SkipParentheses(self)) || isHelperCall(self) || isLowPrecedence(self) {
+			left = "(" + left + ")"
+		}
 	}
 	var handlers []catchHandler
 	var tags []string
@@ -256,12 +273,7 @@ func catchCombinatorRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.
 	var text string
 	if name == "catch" {
 		if handlers[0].parameter == "" {
-			// A handler that ignores the failure is a fallback (D236).
-			fallback := values[0]
-			if isLowPrecedence(handlers[0].value) && !strings.HasPrefix(fallback, "(") {
-				fallback = "(" + fallback + ")"
-			}
-			text = left + " catch " + fallback
+			text = left + " catch () => " + values[0]
 		} else {
 			text = left + " catch (" + variable + ") => " + values[0]
 		}
@@ -288,17 +300,21 @@ func catchCombinatorRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.
 			arms = append(arms, "default: throw "+variable+";")
 		}
 		text = left + " catch (" + variable + ") => match (" + variable + ") { " + strings.Join(arms, " ") + " }"
-		if len(text) > 100 || strings.ContainsAny(expressionText(file, call), "\r\n") {
+		if len(text) > 100 || strings.ContainsAny(expressionText(file, site), "\r\n") {
 			// One arm per line, as a match is written when it does not fit one.
-			indent := lineIndent(file.Text(), nodeStart(file, call))
+			indent := lineIndent(file.Text(), nodeStart(file, site))
 			text = left + " catch (" + variable + ") => match (" + variable + ") {\n" + indent + "  " + strings.Join(arms, "\n"+indent+"  ") + "\n" + indent + "}"
 		}
 	}
-	if catchNeedsParentheses(call) {
+	if catchNeedsParentheses(site) {
 		text = "(" + text + ")"
 	}
+	start := nodeStart(file, site)
+	if site.Flags&ast.NodeFlagsVibeLangTry != 0 {
+		start = tryKeyword(file, site).Pos() // a catch expression runs its left side
+	}
 	rewrite := withImportRemovals(c, file, &formRewrite{
-		edits:       []sourceEdit{{nodeStart(file, call), call.End(), text}},
+		edits:       []sourceEdit{{start, site.End(), text}},
 		description: shortText(text, "a catch expression"),
 	})
 	if name == "catch" {
