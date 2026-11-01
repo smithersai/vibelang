@@ -10,7 +10,7 @@ import { test } from "node:test"
 const source = process.env.VIBELANG_COMPILER_BENCH_ROOT ?? fileURLToPath(new URL("../", import.meta.url))
 const quote = value => "'" + value.replaceAll("'", "'\\''") + "'"
 
-for (const mode of ["native", "windows-native", "legacy", "override"]) {
+for (const mode of ["native", "windows-native", "legacy", "override", "diagnostic-failure"]) {
   test("compiler benchmark uses the requested build artifact: " + mode, t => {
     const root = mkdtempSync(join(tmpdir(), "vibelang bench contract-"))
     t.after(() => rmSync(root, { recursive: true, force: true }))
@@ -39,6 +39,8 @@ for (const mode of ["native", "windows-native", "legacy", "override"]) {
       'appendFileSync(process.env.BENCH_CONTRACT_TRACE, JSON.stringify({ compiler: process.argv[2], args }) + "\\n")',
       'console.log(args.includes("--version") ? "VibeLang fixture" : "Files: 3\\nCheck time: 0.01s\\nTotal time: 0.02s")'
     ].join("\n"))
+    if (mode === "diagnostic-failure") writeFileSync(core, readFileSync(core, "utf8") +
+      '\nif (!args.includes("--version")) { console.log("fixture.vibe(1,1): error TS0001: expected benchmark diagnostic"); process.exitCode = 2 }\n')
     const compiler = (path, name) => executable(path,
       "#!/bin/sh\nexec " + quote(process.execPath) + " " + quote(core) + " " + quote(name) + ' "$@"\n')
     const artifact = mode === "legacy" ? "typescript/built/local/tsc" : "packages/compiler/native/" + (mode === "windows-native" ? "vibelang.exe" : "vibelang")
@@ -61,6 +63,9 @@ for (const mode of ["native", "windows-native", "legacy", "override"]) {
     assert.match(result.stdout, /synthetic 2 modules, VibeLang/)
     assert.match(result.stdout, /synthetic 2 modules, Effect TS, this compiler/)
     assert.ok(result.stdout.includes("working directory: " + out))
+    if (mode === "diagnostic-failure") {
+      assert.equal((result.stdout.match(/\(exit 2, 1 errors\)/g) ?? []).length, 2, result.stdout)
+    }
     const calls = readFileSync(trace, "utf8").trim().split("\n").map(line => JSON.parse(line))
     assert.equal(calls.length, 3)
     const expected = mode === "override" ? "override" : nativeName

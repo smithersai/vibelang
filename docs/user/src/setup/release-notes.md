@@ -572,6 +572,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Compiler benchmarks could report success after docs extraction failed and omit or measure an incomplete corpus; they now stop with the extractor's exit status and retain its logs and partial corpus.
 
+- The measurement wrapper printed a failing compiler's status but returned success to its caller; it now returns the child status and reports signal termination as shell failure.
+
 - Compiler benchmarks lost a sample and crashed while summarizing it when a diagnostic lacked a final newline or the compiler died by signal; they now retain the measurement and its exit status.
 - After the migrate flow renamed a module to `.vibe`, an importer that named it through a tsconfig `paths` alias, `@/composer/schema`, kept that spelling, which the project’s `bun check` script invoking stock TypeScript cannot resolve (`TS2307`); the codemod now writes `@/composer/schema.vibe` there too, as for a relative import, and `revert` puts it back.
 

@@ -140,6 +140,18 @@ with `VIBELANG_FORMS_EXPORT`: unset `FORMS_BINARY` to compile an overlay with
 `go run`. The graph manages executable freshness; when supplying a path by
 hand, rebuild it after changing compiler sources.
 
+## Benchmark command receipts
+
+`python3 scripts/bench/measure.py <command...>` prints the command's combined
+output followed by a `MEASURE` receipt with wall time, peak RSS and the child
+exit status. The wrapper returns the same exit status. If a signal kills the
+child, the receipt records the negative signal number and the wrapper returns
+`128 + signal`, so shell scripts detect the failure.
+
+`scripts/bench/compiler.sh` deliberately continues after a measured command
+fails: its docs corpus includes expected diagnostics. Each table row reports
+the recorded exit statuses and diagnostic count beside its measurements.
+
 ## Packages
 
 ```text
