@@ -960,6 +960,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK0906` | a recognized service declaration missing its required body | 9 | [Services](005-services.md#static-rules) |
 | `EK0907` | a custom `service` declaration in a native ambient source context, explicit or inherited; includes `declare service`, ahead of the same missing-body recovery | 9 | [Services](005-services.md#static-rules) |
 | `EK0908` | two `service` members with no separator between them, such as `a: number b: string` on one line; write `;` or a line break between them (quick fix: insert `;`) | 9 | [Services](005-services.md#static-rules) |
+| `EK1101` | a trailing block: a `{` on the same line after a name, a property access or a call, `f(x) { … }` or `f { … }`, outside a heritage clause and a `provide` block's providers; quick fix: pass the block as the call's last argument, `f(x, effect { … })` where it ran as a program, `f(x, effect () => { … })` where it ran as an Effect function, `f(x, () => { … })` otherwise | 11 | [Configuration and tooling](007-tooling.md#compiler-and-tooling-requirements) |
 | `EK1201` | `provide` outside effect code | 12 | [Services](005-services.md#provide-blocks) |
 | `EK1202` | a line break immediately before or after a top-level provider-separating `,` | 12 | [Services](005-services.md#provide-blocks) |
 | `EK1301` | a constructor in an `error` or `schema error` body | 13 | [Failures](003-failures.md#error-declarations) |

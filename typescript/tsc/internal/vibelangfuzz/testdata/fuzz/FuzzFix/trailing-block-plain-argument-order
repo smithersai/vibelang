@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nlet seen = 0\nfunction arg() { seen = seen * 10 + 1; return 2 }\nfunction run(n: number, f: () => number) { seen = seen * 10 + n; return f() }\nexport function main() { const n = run(arg()) { seen = seen * 10 + 3; return seen }; return Effect.succeed(n) }\n")

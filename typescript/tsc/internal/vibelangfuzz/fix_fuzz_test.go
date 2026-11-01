@@ -163,7 +163,7 @@ func FuzzFix(f *testing.F) {
 			}
 			// D372: compare every callable exported Effect, not only main fixtures
 			// marked with expect-result. Chapter 26 requires the same exit.
-			if !toolsErrorFree(r) || !toolsErrorFree(after) {
+			if !toolsTrailingBlockRunnable(r) || !toolsErrorFree(after) {
 				return
 			}
 			for _, entry := range toolsRunnableExports(r) {
@@ -237,6 +237,15 @@ func toolsCompile(t *testing.T, w *Workspace, target string, files map[string]st
 // toolsErrorFree reports whether a compilation reports no error and emitted.
 func toolsErrorFree(r *Result) bool {
 	return !r.EmitSkipped && !slices.ContainsFunc(r.Diagnostics, func(d *ast.Diagnostic) bool { return d.Category() == diagnostics.CategoryError })
+}
+
+// VIP-11 retires source that previously ran. EK1101 is its migration
+// diagnostic, so it must not exclude the old emit from the existing D372
+// Exit oracle. Every other error still makes an original non-runnable.
+func toolsTrailingBlockRunnable(r *Result) bool {
+	return !r.EmitSkipped && !slices.ContainsFunc(r.Diagnostics, func(d *ast.Diagnostic) bool {
+		return d.Category() == diagnostics.CategoryError && !(IsEK(d) && d.Code() == 1101)
+	})
 }
 
 // toolsSameOutcome compares Chapter 26 and D372's exits: "the same exit and
@@ -340,6 +349,14 @@ var toolsFixCodes = sync.OnceValue(func() []int32 {
 			}
 		}
 	}
+	// Chapter 7's codemod requirement also names a denied form that no
+	// longer compiles. Keep it in the unapplied-fix oracle, so a no-op cannot
+	// silently skip both the migration and its existing Exit comparison.
+	trailing := regexp.MustCompile("a trailing block .*? is \x60(EK[0-9]{4})\x60").FindStringSubmatch(SpecText("007-tooling.md"))
+	if trailing == nil {
+		panic("Chapter 7 no longer names the trailing-block codemod diagnostic; update toolsFixCodes")
+	}
+	add(trailing[1])
 	add(retired[1])
 	add(forms[3]) // the lint codes named beside the range (D472, D473)
 	add(fix[1])   // EK1002's Effect.gen fix (D470)

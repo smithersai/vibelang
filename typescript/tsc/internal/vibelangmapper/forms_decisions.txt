@@ -3329,6 +3329,12 @@ typescript/vibelang/cases/tracing-all/main.vibe:21:18 lambda effectFn annotation
 typescript/vibelang/cases/tracing-all/main.vibe:25:44 lambda effectFn table
 typescript/vibelang/cases/tracing-caller-stack-self-expression/main.vibe:16:24 lambda effectFn annotation
 typescript/vibelang/cases/tracing-caller-stack-self-expression/main.vibe:5:14 lambda effectFn annotation
+typescript/vibelang/cases/trailing-block-denied.fail/main.vibe:10:49 block appended/effectFn annotation
+typescript/vibelang/cases/trailing-block-denied.fail/main.vibe:6:45 block appended/effectFn annotation
+typescript/vibelang/cases/trailing-block-denied.fail/main.vibe:7:43 block appended/plain fallback
+typescript/vibelang/cases/trailing-block-denied.fail/main.vibe:8:41 block appended/program table
+typescript/vibelang/cases/trailing-block-denied.fail/main.vibe:8:58 lambda effectFn service
+typescript/vibelang/cases/trailing-block-denied.fail/main.vibe:9:49 block appended/program table
 typescript/vibelang/cases/trust-levels/main.vibe:26:26 lambda program table
 typescript/vibelang/cases/trust-levels/main.vibe:45:60 lambda plain table
 typescript/vibelang/cases/trust-levels/main.vibe:51:34 lambda plain table

@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nerror Denied { id: number }\nexport function main() { return Effect.scoped { throw new Denied({ id: 7 }) } }\n")

@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nfunction twice(f: () => number) { return f() + f() }\nexport function main() { const n = twice() { /* keep */ return 2 /* end */ }; return Effect.succeed(n) }\n")

@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nfunction test(name: string, body: () => Effect.Effect<number>) { return body() }\nexport function main() { return test(\"one\",) { return Effect.succeed(1) } }\n")

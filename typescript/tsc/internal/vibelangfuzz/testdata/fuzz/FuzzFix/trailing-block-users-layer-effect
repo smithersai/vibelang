@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nservice Users { find(): number!! }\nconst live = Layer.effect(Users) { return { find: effect () => 7 } }\nexport effect function main() { provide live { return try (try Users).find() } }\n")

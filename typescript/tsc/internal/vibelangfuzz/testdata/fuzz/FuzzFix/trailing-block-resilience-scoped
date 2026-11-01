@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nexport function main() { return Effect.scoped { try yieldNow(); return 7 } }\n")

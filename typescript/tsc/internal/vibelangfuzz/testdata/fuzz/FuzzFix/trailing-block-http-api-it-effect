@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nconst it = { effect(name: string, body: () => number!!) { return body() } }\nexport function main() { return it.effect(\"loads\") { try yieldNow(); return 7 } }\n")

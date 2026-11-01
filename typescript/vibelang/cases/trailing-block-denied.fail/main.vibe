@@ -1,0 +1,10 @@
+// expect: EK1101
+function plain(f: () => number) { return f() }
+const obj = { plain }
+function test(name: string, body: () => Effect.Effect<number>) { return body() }
+service Users { find(): number!! }
+export function callback() { return plain() { return 7 } }
+export function bare() { return obj.plain { return 7 } }
+export const live = Layer.effect(Users) { return { find: effect () => 7 } }
+export function scoped() { return Effect.scoped { return 7 } }
+export function tested() { return test("loads") { return 7 } }
