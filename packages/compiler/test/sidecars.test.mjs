@@ -51,8 +51,8 @@ test("vibelang writes x.d.vibe.ts beside each .vibe module, naming .vibe imports
   const greet = readFileSync(join(root, "lib/src/greet.d.vibe.ts"), "utf8")
   assert.equal(greet, "import type { Name } from \"./name.vibe\";\nexport declare function greet(name: Name): string;\n")
   assert.equal(readFileSync(join(root, "lib/src/name.d.vibe.ts"), "utf8"), "export type Name = {\n    readonly first: string;\n};\n")
-  // A TypeScript module keeps the name stock TypeScript resolves.
-  assert.equal(readFileSync(join(root, "lib/src/loud.d.vibe.ts"), "utf8"), "import type { Loud } from \"./util.js\";\nexport declare const loud: (first: string) => Loud;\n")
+  // A written ./util.ts stays ./util.ts, as stock TypeScript declares it (detail 263).
+  assert.equal(readFileSync(join(root, "lib/src/loud.d.vibe.ts"), "utf8"), "import type { Loud } from \"./util.ts\";\nexport declare const loud: (first: string) => Loud;\n")
   assert.equal(existsSync(join(root, "lib/src/util.d.vibe.ts")), false)
   // A sidecar is an output of its source, never an input of the project.
   const listed = run(native, ["-p", "lib/tsconfig.json", "--listFiles"], root)
