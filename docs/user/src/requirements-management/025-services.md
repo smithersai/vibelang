@@ -123,7 +123,7 @@ Providers infer and check the implementation from the key argument, so most laye
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-9, VIP-12, VIP-14
-// run: try Console.log(try stringify(try testAnnouncement()))
+// run: { const jsonValue = try testAnnouncement(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function announceTicket() {
   const label = try nextLabel()
   const reporter = try Reporter

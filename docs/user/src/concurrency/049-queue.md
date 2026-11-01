@@ -25,8 +25,7 @@ When full, a bounded queue suspends offers until consumers free space, a droppin
 ## Offering values and batches
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14, VIP-17
-// run: try Console.log(try stringify([try offerWithBackpressure(), try rejectedBatch()]))
+// run: { const jsonValue = [try offerWithBackpressure(), try rejectedBatch()]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function offerWithBackpressure() {
   const queue = try Queue.bounded<number>(1)
   try Queue.offer(queue, 10)
@@ -49,8 +48,7 @@ effect function rejectedBatch() {
 ## Taking, polling, and draining values
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
-// run: const result = try consumeBatches(); try Console.log(try stringify([result.first, Option.getOrElse(result.optional, () => 0), result.pair, result.batch, result.empty]))
+// run: const result = try consumeBatches(); { const jsonValue = [result.first, Option.getOrElse(result.optional, () => 0), result.pair, result.batch, result.empty]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function consumeBatches() {
   const queue = try Queue.bounded<number>(8)
   try Queue.offerAll(queue, [1, 2, 3, 4, 5, 6])
@@ -69,8 +67,7 @@ effect function consumeBatches() {
 ## Querying queue state
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
-// run: try Console.log(try stringify(try inspectQueue()))
+// run: { const jsonValue = try inspectQueue(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function inspectQueue() {
   const queue = try Queue.bounded<string>(2)
   try Queue.offer(queue, "task")
@@ -90,7 +87,7 @@ Size counts buffered messages; capacity is the configured limit. Both are observ
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-17
-// run: try Console.log(try stringify(try finishNormally())); const stopped = try stopImmediately(); try Console.log(Exit.isFailure(stopped) && Cause.hasInterrupts(stopped.cause))
+// run: { const jsonValue = try finishNormally(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; const stopped = try stopImmediately(); try Console.log(Exit.isFailure(stopped) && Cause.hasInterrupts(stopped.cause))
 effect function finishNormally() {
   const queue = try Queue.bounded<number, Cause.Done>(4)
   try Queue.offerAll(queue, [7, 8])

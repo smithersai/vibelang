@@ -22,8 +22,7 @@ Create the pool once for the callers that share a limit: a pool allocated inside
 ## Limiting concurrent access
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
-// run: try Console.log(try stringify(try uploadAll()))
+// run: { const jsonValue = try uploadAll(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function uploadAll() {
   const uploads = try Semaphore.make(2)
   return try forEach(["a.csv", "b.csv", "c.csv", "d.csv"], (file) =>
@@ -45,8 +44,7 @@ The traversal can start all four callers, but only two enter the permit-protecte
 ## Acquiring several permits around work
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
-// run: try Console.log(try stringify(try weightedJobs()))
+// run: { const jsonValue = try weightedJobs(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function weightedJobs() {
   const memoryBudget = try Semaphore.make(4)
   return try forEach([1, 2, 3], (weight) =>

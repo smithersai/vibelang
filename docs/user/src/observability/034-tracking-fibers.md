@@ -6,7 +6,7 @@
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14, VIP-17
-// run: try Console.log(try stringify(try runGroup()))
+// run: { const jsonValue = try runGroup(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function runGroup() {
   return try scoped(effect {
     const workers = try FiberSet.make<number>()

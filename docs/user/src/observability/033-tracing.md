@@ -144,7 +144,7 @@ The tracer logger records logs inside an active span as timestamped events, a ti
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
-// run: const spans: Tracer.NativeSpan[] = []; const tracer = Tracer.make({ span(options) { const span = new Tracer.NativeSpan(options); spans.push(span); return span } }); try Console.log(try stringify(try withTracer(generate(), tracer))); try Console.log(try stringify(spans.map((span) => [span.name, Option.getOrElse(Option.map(span.parent, (parent) => parent.spanId === spans[0].spanId), () => false), span.traceId === spans[0].traceId, span.status._tag])))
+// run: const spans: Tracer.NativeSpan[] = []; const tracer = Tracer.make({ span(options) { const span = new Tracer.NativeSpan(options); spans.push(span); return span } }); { const jsonValue = try withTracer(generate(), tracer); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; { const jsonValue = spans.map((span) => [span.name, Option.getOrElse(Option.map(span.parent, (parent) => parent.spanId === spans[0].spanId), () => false), span.traceId === spans[0].traceId, span.status._tag]); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function loadTemplate() {
   return try withSpan(effect {
     try sleep("10 millis")
@@ -194,7 +194,7 @@ Open a `generate-report` trace to compare parent and child durations, attributes
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14, VIP-23, VIP-33
-// run: const { requests, collector } = collectorFixture(); provide ConfigProvider.layer(ConfigProvider.fromUnknown({ TRACE_ENDPOINT: "http://collector.invalid/v1/traces" })) { try Console.log(try stringify(try provideService(productionReport(), FetchHttpClient.Fetch, collector))) }; try Console.log(requests.length, (try stringify(requests)).includes("generate-report"))
+// run: const { requests, collector } = collectorFixture(); provide ConfigProvider.layer(ConfigProvider.fromUnknown({ TRACE_ENDPOINT: "http://collector.invalid/v1/traces" })) { { const jsonValue = try provideService(productionReport(), FetchHttpClient.Fetch, collector); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }; try Console.log(requests.length, (try stringify(requests)).includes("generate-report"))
 import { collectorFixture } from "./collector.ts"
 
 const TraceEndpoint = Config.String("TRACE_ENDPOINT")

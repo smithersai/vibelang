@@ -5,7 +5,7 @@ Effect's structured logging records progress, failures, and diagnostic context. 
 ## Emitting structured records
 
 ```vibe
-// run: const records: unknown[] = []; const capture = Logger.make(({ logLevel, message }) => { records.push([logLevel, message]) }); provide Logger.layer([capture]) { try reportProgress() }; try Console.log(try stringify(records))
+// run: const records: unknown[] = []; const capture = Logger.make(({ logLevel, message }) => { records.push([logLevel, message]) }); provide Logger.layer([capture]) { try reportProgress() }; { const jsonValue = records; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function reportProgress() {
   try log("export started", { format: "csv", stage: "prepare" })
   try logInfo("export completed", { rows: 240 })
@@ -27,7 +27,7 @@ effect function stringify(value: unknown) {
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14
-// run: const records: unknown[] = []; const capture = Logger.make(({ logLevel, message }) => { records.push([logLevel, message]) }); provide Logger.layer([capture]) { try diagnostics() }; try Console.log(try stringify(records))
+// run: const records: unknown[] = []; const capture = Logger.make(({ logLevel, message }) => { records.push([logLevel, message]) }); provide Logger.layer([capture]) { try diagnostics() }; { const jsonValue = records; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function diagnostics() {
   provide References.MinimumLogLevel = "Debug" {
     try logTrace("entered parser")
@@ -50,7 +50,7 @@ The default threshold, Info, filters Debug and Trace. Providing Debug enables De
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14
-// run: const records: unknown[] = []; const capture = Logger.make(({ message, fiber }) => { records.push([message, fiber.getRef(References.CurrentLogAnnotations)]) }); provide Logger.layer([capture]) { try annotatedExport(); try scopedAnnotations() }; try Console.log(try stringify(records))
+// run: const records: unknown[] = []; const capture = Logger.make(({ message, fiber }) => { records.push([message, fiber.getRef(References.CurrentLogAnnotations)]) }); provide Logger.layer([capture]) { try annotatedExport(); try scopedAnnotations() }; { const jsonValue = records; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function annotatedExport() {
   try annotateLogs(effect {
     try logInfo("preparing")
@@ -79,7 +79,7 @@ effect function scopedAnnotations() {
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14, VIP-17
-// run: const records: unknown[] = []; const capture = Logger.make(({ message, fiber, date }) => { records.push([message, fiber.getRef(References.CurrentLogSpans).map(([label, start]) => [label, date.getTime() - start])]) }); provide TestClock.layer() { try TestClock.setTime(0); provide Logger.layer([capture]) { const worker = fork timedExport(); try TestClock.adjust("30 millis"); join worker } }; try Console.log(try stringify(records))
+// run: const records: unknown[] = []; const capture = Logger.make(({ message, fiber, date }) => { records.push([message, fiber.getRef(References.CurrentLogSpans).map(([label, start]) => [label, date.getTime() - start])]) }); provide TestClock.layer() { try TestClock.setTime(0); provide Logger.layer([capture]) { const worker = fork timedExport(); try TestClock.adjust("30 millis"); join worker } }; { const jsonValue = records; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function timedExport() {
   try withLogSpan(effect {
     try logInfo("opening output")
@@ -98,8 +98,7 @@ Each record inside the log span carries the time elapsed since the span began, s
 ## Disabling and configuring logging
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14
-// run: const records: unknown[] = []; const capture = Logger.make(({ logLevel, message }) => { records.push([logLevel, message]) }); provide Logger.layer([capture]) { try quiet(); provide ConfigProvider.layer(ConfigProvider.fromUnknown({ LOG_LEVEL: "Debug" })) { try configured() } }; try Console.log(try stringify(records))
+// run: const records: unknown[] = []; const capture = Logger.make(({ logLevel, message }) => { records.push([logLevel, message]) }); provide Logger.layer([capture]) { try quiet(); provide ConfigProvider.layer(ConfigProvider.fromUnknown({ LOG_LEVEL: "Debug" })) { try configured() } }; { const jsonValue = records; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const Silent = Layer.succeed(References.MinimumLogLevel, "None")
 const LogLevel = Config.LogLevel("LOG_LEVEL")
 
@@ -126,8 +125,7 @@ The None threshold silences the provided region. `Config.LogLevel` builds a conf
 ## Defining a custom output handler
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14
-// run: try Console.log(try stringify(try captureLogs()))
+// run: { const jsonValue = try captureLogs(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function captureLogs() {
   const records: Array<{ level: string; message: unknown }> = []
   const capture = Logger.make(({ logLevel, message }) => {
@@ -151,7 +149,7 @@ effect function captureLogs() {
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14
-// run: const lines: string[] = []; const original = try Console.Console; try provideService(jsonExample(), Console.Console, { ...original, log: (line: string) => { lines.push(line) } }); const records = try Effect.try(() => lines.map((line) => JSON.parse(line))); try Console.log(try stringify(records.map((record) => [record.level, record.message])))
+// run: const lines: string[] = []; const original = try Console.Console; try provideService(jsonExample(), Console.Console, { ...original, log: (line: string) => { lines.push(line) } }); const records = try Effect.try(() => lines.map((line) => JSON.parse(line))); { const jsonValue = records.map((record) => [record.level, record.message]); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const TextLogs = Logger.layer([Logger.consoleLogFmt, Logger.tracerLogger])
 const PrettyLogs = Logger.layer([Logger.consolePretty(), Logger.tracerLogger])
 const ObjectLogs = Logger.layer([Logger.consoleStructured, Logger.tracerLogger])

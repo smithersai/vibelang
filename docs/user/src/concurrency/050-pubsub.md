@@ -6,7 +6,7 @@ A `PubSub` broadcasts values to independent subscribers: each active subscriber 
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14
-// run: try Console.log(try stringify(try broadcast()))
+// run: { const jsonValue = try broadcast(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function broadcast() {
   const hub = try PubSub.bounded<string>(4)
   return try ensuring(scoped(effect {
@@ -66,7 +66,7 @@ In Effect 4, consume the returned `PubSub.Subscription` with `PubSub.take` and t
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
-// run: try Console.log(try stringify(try batch()))
+// run: { const jsonValue = try batch(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function batch() {
   const hub = try PubSub.bounded<string>(3)
   return try ensuring(scoped(effect {
@@ -85,7 +85,7 @@ effect function batch() {
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
-// run: try Console.log(try stringify(try inspect()))
+// run: { const jsonValue = try inspect(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function inspect() {
   const hub = try PubSub.bounded<number>(5)
   return try ensuring(scoped(effect {

@@ -5,7 +5,7 @@ Effect's `Metric` module counts events, records current values, and measures dis
 ## Recording counters and gauges
 
 ```vibe
-// run: try Console.log(try stringify(try recordBatch())); try Console.log(String((try Metric.value(bytes)).count)); try Console.log(try stringify(try recordBatch()))
+// run: { const jsonValue = try recordBatch(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(String((try Metric.value(bytes)).count)); { const jsonValue = try recordBatch(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const requests = Metric.counter("guide_requests", { incremental: true })
 const queued = Metric.gauge("guide_queued")
 const bytes = Metric.counter("guide_bytes", { bigint: true })
@@ -58,8 +58,7 @@ processed 1
 ## Measuring distributions
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
-// run: const result = try recordSizes(); try Console.log(try stringify({ count: result.histogram.count, sum: result.histogram.sum, min: result.histogram.min, max: result.histogram.max, buckets: result.histogram.buckets })); try Console.log(result.summary.count, result.summary.sum, result.summary.min, result.summary.max)
+// run: const result = try recordSizes(); { const jsonValue = { count: result.histogram.count, sum: result.histogram.sum, min: result.histogram.min, max: result.histogram.max, buckets: result.histogram.buckets }; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(result.summary.count, result.summary.sum, result.summary.min, result.summary.max)
 const batchSizes = Metric.histogram("guide_batch_size", {
   boundaries: Metric.linearBoundaries({ start: 0, width: 20, count: 6 })
 })
@@ -115,8 +114,7 @@ rendered
 ## Counting categorical events
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
-// run: try Console.log(try stringify(Array.from(try recordOutcomes()).sort(([a], [b]) => Order.String(a, b))))
+// run: { const jsonValue = Array.from(try recordOutcomes()).sort(([a], [b]) => Order.String(a, b)); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const outcomes = Metric.frequency("guide_validation_outcomes")
 
 effect function recordOutcomes() {

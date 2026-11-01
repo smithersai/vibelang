@@ -42,8 +42,7 @@ effect function waitForAddress() {
 ## Completing with success or failure
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
-// run: try Console.log(try stringify(try completeOnce())); try Console.log(try shareFailure())
+// run: { const jsonValue = try completeOnce(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(try shareFailure())
 effect function completeOnce() {
   const result = try Deferred.make<number, string>()
   const accepted = try Deferred.succeed(result, 25)
@@ -70,8 +69,7 @@ The first completion wins; later completions return `false`. `Deferred.done` tak
 ## Polling completion state
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
-// run: try Console.log(try stringify(try inspectWithoutWaiting()))
+// run: { const jsonValue = try inspectWithoutWaiting(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function inspectWithoutWaiting() {
   const result = try Deferred.make<number>()
   const before = try Deferred.isDone(result) // false

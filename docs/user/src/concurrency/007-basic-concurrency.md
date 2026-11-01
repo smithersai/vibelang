@@ -7,7 +7,7 @@ Running a completed Effect with `try` can continue in the same fiber turn. It ad
 ## Sequential, bounded, and unbounded work
 
 ```vibe
-// run: try Console.log(try stringify(try runTasks()))
+// run: { const jsonValue = try runTasks(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function task(id: number) {
   try Console.log("starting", id)
   try sleep("40 millis")
@@ -122,8 +122,7 @@ The right-hand operand sees uninitialized loop-head bindings, as in JavaScript's
 ## Racing under different winner rules
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14, VIP-18
-// run: try Console.log(try stringify(try raceExamples()))
+// run: { const jsonValue = try raceExamples(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function answer(label: string, delay: Duration.Input) {
   try sleep(delay)
   return label
@@ -154,7 +153,7 @@ The `try` operations (TC39 await operations proposal) keep the same-named `Promi
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14
-// run: const result = try inspectRace(); try Console.log(Result.isFailure(result.outcome)); try Console.log(try stringify(result.winners))
+// run: const result = try inspectRace(); try Console.log(Result.isFailure(result.outcome)); { const jsonValue = result.winners; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function inspectRace() {
   const winners: number[] = []
   const outcome = try result(raceFirst(

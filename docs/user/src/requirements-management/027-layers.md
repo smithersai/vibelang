@@ -140,7 +140,7 @@ Reuse one layer value when several paths need a shared instance: equivalent reco
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14
-// run: try Console.log(try stringify(try main())); try Console.log(try withBuiltContext())
+// run: { const jsonValue = try main(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(try withBuiltContext())
 effect function main() {
   provide AppLive {
     const first = try report("Inventory")
@@ -221,7 +221,7 @@ A service declares only its members, besides `static readonly key` and `defaultV
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-12, VIP-14
-// run: try Console.log(try stringify([try testBannerDependency(), try testBannerDirectly(), try testBannerWithInlineSettings()]))
+// run: { const jsonValue = [try testBannerDependency(), try testBannerDirectly(), try testBannerWithInlineSettings()]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const SettingsTest = Layer.succeed(Settings, {
   prefix: "test"
 })

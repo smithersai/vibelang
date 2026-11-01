@@ -7,7 +7,7 @@ Effect shares repeated uses of one layer value within a build graph, and VibeLan
 ## Sharing acquisition across a graph
 
 ```vibe
-// run: try Console.log(try stringify(try documentLabels()))
+// run: { const jsonValue = try documentLabels(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 service Prefix {
   value: string
 }
@@ -62,8 +62,7 @@ Sharing lasts for the graph's managed lifetime, not process-wide. Scoped acquisi
 ## Requesting fresh acquisition
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-12, VIP-14
-// run: try Console.log(try stringify(try isolatedLabels()))
+// run: { const jsonValue = try isolatedLabels(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const Separate = Layer.merge(
   Layer.provide(HeadingLive, Layer.fresh(PrefixLive)),
   Layer.provide(FooterLive, Layer.fresh(PrefixLive))
@@ -84,8 +83,7 @@ effect function isolatedLabels() {
 ## Local provision boundaries
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-12, VIP-14
-// run: try Console.log(try stringify(try twoLocalReads())); try Console.log(try stringify(try oneSharedReadBoundary()))
+// run: { const jsonValue = try twoLocalReads(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; { const jsonValue = try oneSharedReadBoundary(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function readPrefix() {
   return (try Prefix).value
 }
@@ -116,7 +114,7 @@ Each sibling `provide` starts its own build boundary, and a nested one reuses a 
 
 ```vibe
 // pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
-// run: try Console.log(try stringify(try manualSharing()))
+// run: { const jsonValue = try manualSharing(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function manualSharing() {
   return try scoped(effect {
     const memoMap = try Layer.makeMemoMap
