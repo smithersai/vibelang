@@ -467,6 +467,38 @@ func RegisterUnwrappedReturnTypeHook(hook UnwrappedReturnTypeHook) {
 	unwrappedReturnTypeHooks = append(unwrappedReturnTypeHooks, hook)
 }
 
+// GeneratorAnnotationHook can replace t, the return type annotation of fn, a
+// generator function, with the generator type the generator checks compare
+// the body against: the instantiation check and the yield and return checks.
+// The signature's declared return type stays the annotation. VibeLang maps a
+// producer's Stream<A, E, R> to Generator<A, undefined, unknown>.
+type GeneratorAnnotationHook func(c *Checker, fn *ast.Node, t *Type) *Type
+
+var generatorAnnotationHooks []GeneratorAnnotationHook
+
+// RegisterGeneratorAnnotationHook adds hook to every checker. Call it only
+// from the init function of an in-tree package that tsc/cmd/tsc imports;
+// registration is not synchronized.
+func RegisterGeneratorAnnotationHook(hook GeneratorAnnotationHook) {
+	generatorAnnotationHooks = append(generatorAnnotationHooks, hook)
+}
+
+func (c *Checker) applyGeneratorAnnotationHooks(fn *ast.Node, t *Type) *Type {
+	if t == nil || fn == nil {
+		return t
+	}
+	for _, hook := range generatorAnnotationHooks {
+		t = hook(c, fn, t)
+	}
+	return t
+}
+
+// CreateGeneratorType builds Generator<yield, ret, next>, or its async
+// counterpart, for a GeneratorAnnotationHook.
+func (c *Checker) CreateGeneratorType(yieldType, returnType, nextType *Type, isAsyncGenerator bool) *Type {
+	return c.createGeneratorType(yieldType, returnType, nextType, isAsyncGenerator)
+}
+
 // AnnotatedReturnTypeHook can replace t, the return type that the return type
 // annotation of fn declares, as the return type of fn's signature.
 type AnnotatedReturnTypeHook func(c *Checker, fn *ast.Node, t *Type) *Type

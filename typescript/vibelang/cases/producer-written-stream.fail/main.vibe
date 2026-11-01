@@ -1,0 +1,4 @@
+// expect: TS2322
+// A yield outside the written Stream's element type is TypeScript's own
+// mismatch against that element type.
+export effect function* wrong(): Stream.Stream<string> { yield 1 }

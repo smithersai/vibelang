@@ -2878,7 +2878,7 @@ func (c *Checker) checkSignatureDeclaration(node *ast.Node) {
 	}
 	if returnTypeNode != nil {
 		if (functionFlags & (ast.FunctionFlagsInvalid | ast.FunctionFlagsGenerator)) == ast.FunctionFlagsGenerator {
-			returnType := c.getTypeFromTypeNode(returnTypeNode)
+			returnType := c.applyGeneratorAnnotationHooks(node, c.getTypeFromTypeNode(returnTypeNode))
 			if returnType == c.voidType {
 				c.error(returnTypeNode, diagnostics.A_generator_cannot_have_a_void_type_annotation)
 			} else {
@@ -11322,7 +11322,7 @@ func (c *Checker) checkYieldExpression(node *ast.Node) *Type {
 	// There is no point in doing an assignability check if the function
 	// has no explicit return type because the return type is directly computed
 	// from the yield expressions.
-	returnType := c.getReturnTypeFromAnnotation(fn)
+	returnType := c.applyGeneratorAnnotationHooks(fn, c.getReturnTypeFromAnnotation(fn))
 	if returnType != nil && returnType.flags&TypeFlagsUnion != 0 {
 		returnType = c.filterType(returnType, func(t *Type) bool {
 			return c.checkGeneratorInstantiationAssignabilityToReturnType(t, functionFlags, nil /*errorNode*/)

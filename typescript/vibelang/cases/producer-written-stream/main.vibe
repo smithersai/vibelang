@@ -1,0 +1,13 @@
+// expect-result: [3,"a,b",3]
+// Chapter 2 (VIP-21): a producer may write its Stream return type. The body is
+// checked as the generator it is, yields against the Stream's element type,
+// and callers and the declaration see the written Stream.
+export effect function* numbers(): Stream.Stream<number> { yield 1; yield 2; return }
+export effect function* letters(): Stream.Stream<string, never, never> { yield "a"; yield "b" }
+export effect function* failing(): Stream.Stream<number, string> { yield 3 }
+export effect function main() {
+  const sum = try Stream.runFold(numbers(), () => 0, (acc: number, x: number) => acc + x)
+  const joined = try Stream.runFold(letters(), () => "", (acc: string, x: string) => acc ? acc + "," + x : x)
+  const last = try Stream.runFold(failing(), () => 0, (acc: number, x: number) => x)
+  return [sum, joined, last]
+}

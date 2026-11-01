@@ -37,6 +37,7 @@ func init() {
 	checker.RegisterCatchVariableTypeHook(catchVariableType)
 	checker.RegisterUnwrappedReturnTypeHook(unwrappedReturnType)
 	checker.RegisterAnnotatedReturnTypeHook(annotatedReturnType)
+	checker.RegisterGeneratorAnnotationHook(producerAnnotation)
 	checker.RegisterAnnotatedReturnInferenceHook(inferredReturnInference)
 	checker.RegisterResolvingReturnTypeHook(selfCallType)
 	checker.RegisterInferTypeHook(inferChannel)

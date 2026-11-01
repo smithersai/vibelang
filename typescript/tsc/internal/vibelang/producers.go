@@ -569,3 +569,18 @@ func (tx *lowering) loopBodyStatements(r *region, statement *ast.Node) []*ast.No
 	}
 	return []*ast.Node{visited}
 }
+
+// producerAnnotation gives the generator checks of a producer with a written
+// Stream.Stream<A, E, R> return type the generator its body is: yields of A,
+// a bare return, and unknown sent in. The signature keeps the written Stream
+// (chapter 2: a written return type that is not a Stream is EK2102).
+func producerAnnotation(c *checker.Checker, fn *ast.Node, t *checker.Type) *checker.Type {
+	if !isProducer(fn) {
+		return t
+	}
+	element := streamChannel(c, t, "_A")
+	if element == nil {
+		return t
+	}
+	return c.CreateGeneratorType(element, c.GetUndefinedType(), c.GetUnknownType(), false /*isAsyncGenerator*/)
+}

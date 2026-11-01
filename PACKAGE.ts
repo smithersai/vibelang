@@ -294,6 +294,7 @@ const specTests = [
   "TestEffectBlockJumpsQuoted",
   "TestDoCompletionQuoted",
   "TestConcurrentHeadBindingsQuoted",
+  "TestProducerWrittenStreamQuoted",
   "TestRegistryMatchesSpec",
   "TestSeverityCodesMatchAppendixB",
   "TestAppendixBSeveritySettingsTakeEffect",
