@@ -1,0 +1,9 @@
+// expect: TS2451
+// Chapter 004, decided detail 245: two top-level patterns that bind one name
+// in one home redeclare it, as two let declarations do (TS2451). Separate
+// homes, braces or distinct names are the repair (is-home-separate).
+export function pick(a: unknown, b: unknown) {
+  if (a is { id: let id }) return id
+  if (b is { id: let id }) return id
+  return 0
+}

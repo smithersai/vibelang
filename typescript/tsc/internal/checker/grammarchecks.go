@@ -1566,7 +1566,10 @@ func (c *Checker) checkGrammarVariableDeclaration(node *ast.VariableDeclaration)
 		}
 	}
 
-	if node.ExclamationToken != nil && (node.Parent.Parent.Kind != ast.KindVariableStatement || node.Type == nil || node.Initializer != nil || nodeFlags&ast.NodeFlagsAmbient != 0) {
+	// The VibeLang parser asserts definite assignment on the untyped let it
+	// hoists for an is binding of a for head's init (parser.hoistForHead);
+	// the checker types that let from the pattern's assignment.
+	if node.ExclamationToken != nil && node.Flags&ast.NodeFlagsVibeLangIsBinding == 0 && (node.Parent.Parent.Kind != ast.KindVariableStatement || node.Type == nil || node.Initializer != nil || nodeFlags&ast.NodeFlagsAmbient != 0) {
 		var message *diagnostics.Message
 		switch {
 		case node.Initializer != nil:

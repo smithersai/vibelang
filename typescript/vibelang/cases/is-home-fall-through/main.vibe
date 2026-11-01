@@ -1,0 +1,36 @@
+// expect-result: ["success 1","Fail","Fail","Fail","success 2","Die"]
+// Chapter 004, decided detail 245: in the branch where an is pattern that
+// binds names failed, the subject keeps the type the pattern's tests leave
+// it. The assignments the lowering adds for the names never fail, so they
+// add no path on which the subject holds its declared type.
+import { Exit } from "effect"
+
+function tagOf(outcome: Exit<number, string>): string {
+  if (outcome is Exit.Success(let value)) return `success ${value}`
+  return outcome.cause.reasons.map((reason) => reason._tag).join("+")
+}
+function braced(outcome: Exit<number, string>): string {
+  if (outcome is Exit.Success(let value)) {
+    return `success ${value}`
+  }
+  return outcome.cause.reasons.map((reason) => reason._tag).join("+")
+}
+function negated(outcome: Exit<number, string>): string {
+  if (!(outcome is Exit.Success(let value))) return outcome.cause.reasons.map((reason) => reason._tag).join("+")
+  return `success ${value}`
+}
+function nested(outcome: Exit<number, string>): string {
+  if (outcome is Exit.Success(let value) && value > 0) return `success ${value}`
+  if (outcome is Exit.Failure(let cause)) return cause.reasons.map((reason) => reason._tag).join("+")
+  return "zero"
+}
+export function main() {
+  return [
+    tagOf(Exit.succeed(1)),
+    tagOf(Exit.fail("e")),
+    braced(Exit.fail("e")),
+    negated(Exit.fail("e")),
+    negated(Exit.succeed(2)),
+    nested(Exit.die("boom")),
+  ]
+}

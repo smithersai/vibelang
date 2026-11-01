@@ -1,0 +1,27 @@
+// expect-result: [1,2,3,[1,2]]
+// Chapter 004, decided detail 245: distinct names in one home, the same name
+// in separate blocks, and an unbraced loop body as its own home each compile;
+// braces around the body never change the result.
+export function pickOk(a: unknown, b: unknown) {
+  if (a is { id: let first }) return first
+  if (b is { id: let second }) return second
+  return 0
+}
+export function blocks(a: unknown, b: unknown) {
+  { if (a is { id: let id }) return id }
+  { if (b is { id: let id }) return id }
+  return 0
+}
+export function ids(xs: unknown[]) {
+  const out: unknown[] = []
+  for (const x of xs) if (x is { id: let id }) out.push(id)
+  return out
+}
+export function idsBraced(xs: unknown[]) {
+  const out: unknown[] = []
+  for (const x of xs) { if (x is { id: let id }) out.push(id) }
+  return out
+}
+export function main() {
+  return [pickOk({ id: 1 }, {}), pickOk({}, { id: 2 }), blocks({}, { id: 3 }), ids([{ id: 1 }, { id: 2 }, {}])]
+}

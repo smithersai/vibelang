@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\n// expect-result: [1,2]\n// Chapter 004, decided detail 245: --fix renames the later of two is bindings\n// of one name in one home and its later uses; a shorthand keeps its key.\nexport function pick(a: unknown, b: unknown) {\n  if (a is { let id }) return id\n  if (b is { let id }) return id\n  return 0\n}\nexport function main() {\n  return [pick({ id: 1 }, {}), pick({}, { id: 2 })]\n}\n")

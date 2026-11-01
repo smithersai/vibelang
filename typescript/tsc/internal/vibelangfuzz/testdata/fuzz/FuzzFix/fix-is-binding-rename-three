@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\n// expect-result: [1,2,3]\n// Chapter 004, decided detail 245: three patterns of one name take two --fix\n// rounds; the result is id, id2, id3.\nexport function pick(a: unknown, b: unknown, c: unknown) {\n  if (a is { id: let id }) return id\n  if (b is { id: let id }) return id\n  if (c is { let id }) return id\n  return 0\n}\nexport function main() {\n  return [pick({ id: 1 }, {}, {}), pick({}, { id: 2 }, {}), pick({}, {}, { id: 3 })]\n}\n")

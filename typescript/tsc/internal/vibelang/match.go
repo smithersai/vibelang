@@ -21,8 +21,10 @@ var (
 	EK4701 = message(4701, errorCategory, "This match does not handle every case of {0}: {1} is left.")
 	// EK4702: a binding inside an or or not pattern.
 	EK4702 = message(4702, errorCategory, "A binding cannot appear inside an or or not pattern yet.")
-	// EK4703: an is whose pattern binds names outside an if or while condition.
-	EK4703 = message(4703, errorCategory, "Bindings in an is pattern work only in the condition of an if or while statement, joined by &&.")
+	// EK4703: an is whose pattern binds names where the compiler gives them
+	// no home yet: a for head whose initializer is a var or using list, a
+	// for…in or for…of head, or a computed member key.
+	EK4703 = message(4703, errorCategory, "Bindings in an is pattern have no home here yet: they work in a statement of a block, in an if or while condition, in a for (init; test; update) head unless init is var or using, in a match arm, in a concise arrow body and in a class field initializer.")
 	// EK4704: a pattern form VibeLang does not support yet. {0} names it.
 	EK4704 = message(4704, errorCategory, "{0} patterns are not supported yet.")
 	// EK4705: and, or, and not combined at one level without parentheses.
@@ -328,7 +330,7 @@ func reportPatternError(c *checker.Checker, file *ast.SourceFile, call *ast.Node
 		if unsettledIsBindingHome(file, call) {
 			note(reportAt(c, file, at, EK0705), "Use an explicit local block or an ordinary parameter when that preserves initialization order. Do not move the initializer into the body.")
 		} else {
-			note(reportAt(c, file, at, EK4703), "Use the pattern in an if or while condition, or match the value with match.")
+			note(reportAt(c, file, at, EK4703), "Move the test into a statement of the enclosing block or an if condition, or match the value with match.")
 		}
 	case 4704:
 		detail := "These"

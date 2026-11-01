@@ -17236,6 +17236,11 @@ func (c *Checker) getTypeForVariableLikeDeclaration(declaration *ast.Node, inclu
 	if declaredType != nil {
 		return c.addOptionalityEx(declaredType, isProperty, isOptional)
 	}
+	if ast.IsVariableDeclaration(declaration) && declaration.Initializer() == nil && ast.IsIdentifier(declaration.Name()) {
+		if t := c.applyDeclaredTypeHooks(declaration); t != nil {
+			return t
+		}
+	}
 	if c.noImplicitAny && ast.IsVariableDeclaration(declaration) && !ast.IsBindingPattern(declaration.Name()) &&
 		c.getCombinedModifierFlagsCached(declaration)&ast.ModifierFlagsExport == 0 && declaration.Flags&ast.NodeFlagsAmbient == 0 {
 		// If --noImplicitAny is on or the declaration is in a Javascript file,
@@ -30719,6 +30724,13 @@ func (c *Checker) getContextualTypeForBinaryOperand(node *ast.Node, contextFlags
 }
 
 func (c *Checker) getContextualTypeForAssignmentExpression(binary *ast.BinaryExpression) *Type {
+	if binary.OperatorToken.Flags&ast.NodeFlagsReparsed != 0 {
+		// A VibeLang parser-written assignment initializes a pattern binding's
+		// hoisted declaration, whose declared type is this value's type
+		// (internal/vibelang/match_homes.go); the value takes no contextual
+		// type from the target, which would resolve the target's type first.
+		return nil
+	}
 	left := binary.Left
 	if ast.IsAccessExpression(left) {
 		expr := left.Expression()

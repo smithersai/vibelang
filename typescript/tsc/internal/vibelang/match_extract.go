@@ -121,7 +121,7 @@ func extractionCall(c *checker.Checker, node *ast.Node) *ast.Node {
 		if decl == nil || !ast.IsVariableDeclaration(decl) {
 			return nil
 		}
-		node = decl.Initializer()
+		node = hoistedValue(decl)
 	}
 	if node == nil || !ast.IsCallExpression(node) || len(node.Arguments()) != 2 {
 		return nil

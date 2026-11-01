@@ -210,6 +210,12 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Formatting a labeled arrow statement failed with `formatting changed the program`; labels now keep their arrow body under semicolon-free formatting, and written empty labels stay intact.
 
 - Formatting a returned function type removed written parentheses and changed published `.d.ts` files; the formatter now keeps those parentheses and their enclosed comments, including nested and generic function types.
+
+- An `is` that binds names in a `for (init; test; update)` head reported `EK4703`; the bindings now live in the head as chapter 004 states (decided detail 240): a binding from `init` is copied into each iteration like a `let` declared there, and a binding from `test` or `update` is a cell of each iteration, which a read in `update` cannot see initialized (`TS2454`). A `var` or `using` initializer still keeps `EK4703`.
+- An `is` that binds names in a `match` arm or in a class field initializer reported `EK4703`; the bindings now live in the arm, which is its own scope, or in the initializer's own scope, as chapter 004 states.
+- Code with two `is` patterns binding one name in one block compiled when each `if` head was its own scope; it now reports `TS2451` (or `TS2300` beside a parameter), and the diagnostic offers to rename the later binding and its uses, and `vibelang --fix` applies the rename (chapter 004, decided detail 245).
+- An `is` binding in an `if` head was scoped to that `if` alone, so `if (!(x is { id: let id })) return; use(id)` reported `EK4703` and `||` or nested conditions could not bind; the bindings now live in the block that holds the `if` (chapter 004, decided detail 245), an unbraced body is its own block, a `for concurrent` limit may bind, and two patterns binding one name in one block report TypeScript's `TS2451`. A binding written `const` keeps const immutability: an assignment to it is TypeScript's `TS2588`.
+- An `is` that binds names in a variable statement, an expression statement, a `return`, a `throw` or a concise arrow body reported `EK4703`; its bindings now live in the block that holds the statement, or in the arrow body (chapter 004). Unsupported homes retain `EK4703`; formal-parameter and enum initialization use `EK0705`.
 - After the migrate flow renamed a module to `.vibe`, an importer that named it through a tsconfig `paths` alias, `@/composer/schema`, kept that spelling, which the project’s `bun check` script invoking stock TypeScript cannot resolve (`TS2307`); the codemod now writes `@/composer/schema.vibe` there too, as for a relative import, and `revert` puts it back.
 
 
@@ -2188,6 +2194,13 @@ listed with an upgrade step.
   | `Buffer.from(text)` | `new TextEncoder().encode(text)`, or `Base64` and `Hex` |
   | a Node.js value an Effect API takes, such as `createServer` | a `module` block that imports it: `module node { export { createServer } from "node:http" }`, then `import { createServer } from node` |
   | a Node.js API nothing covers yet | the same `module` block or a `.ts` file, called through a hatch |
+
+
+### Repeated is binding names
+
+| Before | After and repair |
+| --- | --- |
+| Two `is` patterns binding one name in one block, such as `if (a is { id: let id }) …` twice in a function body | Each `if` head was its own scope; the bindings now live in the block that holds the `if` (chapter 004, decided detail 245), so the second pattern redeclares the name: `TS2451`, or `TS2300` beside a parameter. The diagnostic offers to rename the later binding and its uses, and `vibelang --fix` applies the rename (`id` becomes `id2`). |
 
 ## 0.0.10
 

@@ -51,6 +51,9 @@ const (
 	NodeFlagsVibeLangTry                   NodeFlags = 1 << 32 // If node is the operand of a VibeLang try written before a call, as f() in `try f()`: the parser returns the operand itself, so the call keeps its node and runs where it stands
 	NodeFlagsVibeLangEffect                NodeFlags = 1 << 33 // If node is a function marked effect (VIP-1, VIP-39), as in `effect function f()`, `effect (x) => …`, or a method `effect m()`, or the arrow the parser writes for an effect block, `effect { … }` (VIP-2)
 	NodeFlagsVibeLangPatternRead           NodeFlags = 1 << 34 // If node is the VibeLang parser's read of a part of a pattern's subject, after the test that the part exists
+	NodeFlagsVibeLangConst                 NodeFlags = 1 << 35 // If node is the variable declaration the VibeLang parser hoists for an is binding written const: an assignment to the name is TS2588 (vibelang/match_const.go)
+	NodeFlagsVibeLangIsBinding             NodeFlags = 1 << 36 // If node is the variable declaration the VibeLang parser hoists for a named is binding: a second one of its name in one home has a rename quick fix (vibelang/fix_binding_rename.go)
+	NodeFlagsVibeLangIterationCell         NodeFlags = 1 << 37 // If node is the variable declaration the VibeLang parser hoists for an is binding of a for statement's test or update: a fresh cell of each iteration, which the checker keeps uninitialized in the update (vibelang/match_for.go)
 
 	NodeFlagsBlockScoped = NodeFlagsLet | NodeFlagsConst | NodeFlagsUsing
 	NodeFlagsConstant    = NodeFlagsConst | NodeFlagsUsing

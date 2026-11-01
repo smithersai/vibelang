@@ -140,10 +140,8 @@ FuzzVIPDifferential exit:value/vip07.builtin-brands-plain compiler VIP-7: built-
 FuzzVIPDifferential corpus:data-vip07-builtin-brands-plain compiler VIP-7: minimized vip07.builtin-brands-plain witness; lane vip-match
 FuzzVIPDifferential exit:value/vip07.error-matcher-property-plain compiler VIP-7: vip07.error-matcher-property-plain disagrees with its cited rule (exit:value); lane vip-decls
 FuzzVIPDifferential corpus:data-vip07-error-matcher-property-plain compiler VIP-7: minimized vip07.error-matcher-property-plain witness; lane vip-decls
-FuzzVIPDifferential compile:TS2304/vip07.is-binding-scope-plain compiler VIP-7: vip07.is-binding-scope-plain disagrees with its cited rule (compile:TS2304); lane vip-match
-FuzzVIPDifferential corpus:data-vip07-is-binding-scope-plain compiler VIP-7: minimized vip07.is-binding-scope-plain witness; lane vip-match
-FuzzVIPDifferential compile:TS2304/vip07.is-binding-tdz-plain compiler VIP-7: vip07.is-binding-tdz-plain disagrees with its cited rule (compile:TS2304); lane vip-match
-FuzzVIPDifferential corpus:data-vip07-is-binding-tdz-plain compiler VIP-7: minimized vip07.is-binding-tdz-plain witness; lane vip-match
+FuzzVIPDifferential exit:value/vip07.is-binding-tdz-plain compiler VIP-7: a closure's read of a binding whose pattern was skipped returns undefined where chapter 004 has ReferenceError: the hoisted let lowering declares the cell before the pattern runs, so a run-time TDZ needs a per-reference guard (static reads are TS2454/TS2448); lane impl-hunt-data
+FuzzVIPDifferential corpus:data-vip07-is-binding-tdz-plain compiler VIP-7: minimized vip07.is-binding-tdz-plain witness (closure read of a skipped binding is undefined, not a ReferenceError); lane impl-hunt-data
 FuzzVIPDifferential exit:value/vip07.no-match-message-plain compiler VIP-7: the plain catch receives the no-match TypeError (detail 205), but runtime $match gives it the message "No match arm matched 2" where the chapter's has none (exit:value); lane impl-hunt-data e868cbc11015
 FuzzVIPDifferential corpus:data-vip07-no-match-message-plain compiler VIP-7: minimized vip07.no-match-message-plain witness; lane vip-core2
 FuzzVIPDifferential compile:EK4702/vip07.or-binding-override-plain compiler VIP-7: vip07.or-binding-override-plain disagrees with its cited chapter pair (compile:EK4702); lane vip-match

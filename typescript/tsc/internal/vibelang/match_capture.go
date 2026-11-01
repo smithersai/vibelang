@@ -166,7 +166,7 @@ func capturedSubject(c *checker.Checker, node *ast.Node) *ast.Node {
 	case declaration == nil || declaration.Name() == nil || declaration.Name().Flags&ast.NodeFlagsReparsed == 0:
 		return nil
 	case ast.IsVariableDeclaration(declaration):
-		return declaration.Initializer()
+		return hoistedValue(declaration)
 	case ast.IsParameterDeclaration(declaration):
 		if call := ast.WalkUpParenthesizedExpressions(declaration.Parent.Parent); call != nil && ast.IsCallExpression(call) {
 			if body, subject := isFunction(call); body != nil && ast.SkipParentheses(call.Expression()) == declaration.Parent {
@@ -175,6 +175,44 @@ func capturedSubject(c *checker.Checker, node *ast.Node) *ast.Node {
 		}
 	}
 	return nil
+}
+
+// hoistedValue returns the value declaration, a const or let the parser
+// wrote, holds: its initializer, or, for a let that hoistVibeLangIs declared
+// without one for a binding home, the right side of the first assignment to
+// it in its block, `(name = value, true)`.
+func hoistedValue(declaration *ast.Node) *ast.Node {
+	if value := declaration.Initializer(); value != nil {
+		return value
+	}
+	if declaration.Name() == nil || !ast.IsIdentifier(declaration.Name()) {
+		return nil
+	}
+	name := declaration.Name().Text()
+	block := declaration.Parent
+	for block != nil && block.Kind != ast.KindBlock && block.Kind != ast.KindModuleBlock && block.Kind != ast.KindSourceFile {
+		block = block.Parent
+	}
+	if block == nil {
+		return nil
+	}
+	var found *ast.Node
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if found != nil {
+			return true
+		}
+		if ast.IsBinaryExpression(node) {
+			b := node.AsBinaryExpression()
+			if b.OperatorToken.Kind == ast.KindEqualsToken && ast.IsIdentifier(b.Left) && b.Left.Text() == name && b.Left.Flags&ast.NodeFlagsReparsed != 0 {
+				found = b.Right
+				return true
+			}
+		}
+		return node.ForEachChild(visit)
+	}
+	block.ForEachChild(visit)
+	return found
 }
 
 // isCaptureName reports whether name is one the parser gives a capture:

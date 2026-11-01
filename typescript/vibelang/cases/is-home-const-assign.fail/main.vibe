@@ -1,0 +1,19 @@
+// expect: TS2588
+// Chapter 004: a name an is pattern binds with const keeps const
+// immutability, as a const declared in the home would, so a later
+// assignment, compound assignment, increment or destructuring write is
+// TS2588. A let binding is assignable (is-home-fall-through).
+export function assign(x: unknown) {
+  if (x is { id: const id }) { id = 2; return id }
+  return 0
+}
+export function afterGuard(x: { n: number } | undefined) {
+  if (!(x is { n: const n })) return 0
+  n += 1
+  n++
+  return n
+}
+export function destructure(x: { a: number; b: number }) {
+  if (x is { a: const a, b: let b }) { [a, b] = [b, a]; return a + b }
+  return 0
+}

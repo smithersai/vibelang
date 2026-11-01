@@ -474,7 +474,9 @@ func (p *Parser) parseVibeLangConcurrentFor(pos int) *ast.Node {
 	var limit *ast.Node
 	if p.token == ast.KindOpenParenToken && !p.lookAhead((*Parser).nextTokenIsConstOrLet) {
 		p.nextToken()
-		limit = p.parseExpressionAllowIn()
+		// A binding in the limit belongs to the home around the loop: the
+		// limit runs before the loop head exists (decided detail 249).
+		limit = p.hoistVibeLangIs(p.parseExpressionAllowIn())
 		p.parseExpected(ast.KindCloseParenToken)
 	}
 	forKeyword := scanner.SkipTrivia(p.sourceText, pos)
@@ -497,7 +499,7 @@ func (p *Parser) parseVibeLangConcurrentFor(pos int) *ast.Node {
 	saveContextFlags := p.contextFlags
 	p.setContextFlags(ast.NodeFlagsYieldContext, false)
 	p.setContextFlags(ast.NodeFlagsAwaitContext, false)
-	body := p.parseStatement()
+	body := p.parseEmbeddedStatement()
 	p.contextFlags = saveContextFlags
 	if body.Kind != ast.KindBlock {
 		body = p.vibelangSpanning(p.factory.NewBlock(p.newNodeList(body.Loc, []*ast.Node{body}), true /*multiLine*/), body.Loc)

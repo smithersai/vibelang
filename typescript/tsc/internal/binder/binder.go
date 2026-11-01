@@ -489,6 +489,16 @@ func (b *Binder) createFlowCondition(flags ast.FlowFlags, antecedent *ast.FlowNo
 	if (expression.Kind == ast.KindTrueKeyword && flags&ast.FlowFlagsFalseCondition != 0 || expression.Kind == ast.KindFalseKeyword && flags&ast.FlowFlagsTrueCondition != 0) && !ast.IsExpressionOfOptionalChainRoot(expression) && !ast.IsNullishCoalesce(expression.Parent) {
 		return b.unreachableFlow
 	}
+	if flags&ast.FlowFlagsFalseCondition != 0 && isAssignmentThenTrue(expression) {
+		// The test the VibeLang parser writes for a name an is pattern binds,
+		// (name = value, true), is true whenever it runs, as the literal true
+		// is: the branch where it is false is unreachable. Were it reachable,
+		// the branch where the pattern failed would hold the subject's
+		// declared type (the assignment's flow, which narrows nothing) beside
+		// the types the pattern's tests leave, and getTypeAtFlowBranchLabel
+		// stops at an antecedent that holds the declared type.
+		return b.unreachableFlow
+	}
 	if !isNarrowingExpression(expression) {
 		return antecedent
 	}
@@ -2623,6 +2633,20 @@ func GetContainerFlags(node *ast.Node) ContainerFlags {
 		}
 	}
 	return ContainerFlagsNone
+}
+
+// isAssignmentThenTrue reports whether expression is (name = value, true), the
+// test the VibeLang parser writes for a binding or a captured subject of an
+// is pattern (parser/vibelang_match.go, hoistDeclaration). Only the parser's
+// comma, flagged reparsed, qualifies: a comma a program writes keeps
+// TypeScript's reading, under which `(f(), true)` has a reachable false branch.
+func isAssignmentThenTrue(expression *ast.Node) bool {
+	expression = ast.SkipParentheses(expression)
+	if !ast.IsBinaryExpression(expression) {
+		return false
+	}
+	binary := expression.AsBinaryExpression()
+	return binary.OperatorToken.Kind == ast.KindCommaToken && binary.OperatorToken.Flags&ast.NodeFlagsReparsed != 0 && binary.Right.Kind == ast.KindTrueKeyword
 }
 
 func isNarrowingExpression(expr *ast.Node) bool {

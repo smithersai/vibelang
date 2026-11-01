@@ -1,0 +1,9 @@
+// expect: TS2300 TS2322
+// Chapter 004, decided detail 245: an is binding named like a parameter of
+// its home redeclares it, as a let in the function body would (TS2300). The
+// quick fix renames the later binding and its uses; is-home-one-name-fixed
+// runs what it writes.
+export function pick(a: unknown, id: number) {
+  if (a is { id: let id }) return id
+  return id
+}

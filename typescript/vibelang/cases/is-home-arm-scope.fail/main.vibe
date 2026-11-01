@@ -1,0 +1,15 @@
+// expect: TS2304
+// Chapter 004: a match arm has its own lexical scope, so an is inside it
+// does not export names to another arm or past the match; a class field
+// initializer's bindings do not reach the next field.
+export function leak(x: unknown, y: unknown) {
+  const r = match (x) {
+    when 1: (y is { n: let n }) ? n : 0;
+    default: n;
+  }
+  return r
+}
+export class Box {
+  a = ([1] is [let v]) ? v : 0
+  b = v
+}

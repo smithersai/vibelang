@@ -1,0 +1,26 @@
+// expect-result: [1,0,"a 1","b 2",3,"else-if"]
+// Chapter 004, decided detail 245: an is binding in an if head belongs to the
+// home that holds the if, so a negated guard leaves the name initialized for
+// the statements after it, a nested condition can bind, and an else body is
+// its own home.
+function guard(x: unknown) {
+  if (!(x is { id: let id })) return 0
+  return id
+}
+function either(x: unknown) {
+  if (x is { a: let a }) return `a ${String(a)}`
+  if (x is { b: let b }) return `b ${String(b)}`
+  return "none"
+}
+function nested(x: unknown) {
+  if (typeof x === "object" && x !== null && (x is { n: let n } && typeof n === "number" && n > 2)) return n
+  return -1
+}
+function elseIf(x: unknown) {
+  if (x is { kind: "k" }) return "k"
+  else if (x is { id: let id }) return "else-if"
+  return "none"
+}
+export function main() {
+  return [guard({ id: 1 }), guard({}), either({ a: 1 }), either({ b: 2 }), nested({ n: 3 }), elseIf({ id: 1 })]
+}

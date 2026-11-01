@@ -1,0 +1,19 @@
+// expect: TS2454 TS2448 EK4703
+// Chapter 004, decided detail 240 (loop round 2 OPUS-6): a test binding read
+// in the update is always uninitialized (TS2454); an update binding read in
+// the update before its pattern is a read before the binding (TS2448); a var
+// initializer gives the head no let list to hold the bindings (EK4703).
+export function testInUpdate(it: Iterator<number>) {
+  let total = 0
+  for (; it.next() is { done: false, value: let v }; total += v) {}
+  return total
+}
+export function beforePattern(xs: number[]) {
+  let total = 0
+  for (let i = 0; i < xs.length; (total += next), xs[i++] is let next) {}
+  return total
+}
+export function varInit(xs: number[]) {
+  for (var i = 0; xs is [let first, ...]; i++) return i
+  return 0
+}

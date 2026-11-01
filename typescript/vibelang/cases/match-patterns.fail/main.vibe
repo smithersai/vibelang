@@ -15,9 +15,12 @@ export function bindInOr(x: unknown) {
   }
 }
 
-export function bindOutsideIf(xs: number[]) {
-  const ok = xs is [let first]
-  return ok
+export function bindInForHead(xs: number[]) {
+  // A for head whose initializer is a var list has no let list to hold the
+  // bindings of its test (is-home-for-head gives every other head form a
+  // home).
+  for (var i = 0; xs is [let first]; i++) i++
+  return xs.length
 }
 
 export function regex(s: string) {

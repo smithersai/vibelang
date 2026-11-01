@@ -253,7 +253,7 @@ func (r *FixResult) Report(w io.Writer, name func(tspath.RootedFilePath) string)
 		for _, code := range codes {
 			parts = append(parts, fmt.Sprintf("EK%04d ×%d", code, fixed.Counts[code]))
 		}
-		for _, kind := range []string{tryLabel, effectLabel, preludeImportLabel, preludeKeyLabel} {
+		for _, kind := range []string{tryLabel, effectLabel, preludeImportLabel, preludeKeyLabel, isBindingRenameLabel} {
 			if n := fixed.Rewrites[kind]; n > 0 {
 				parts = append(parts, kind+" ×"+strconv.Itoa(n))
 				count += n
@@ -361,6 +361,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			p = p.withFixes(keywordMigrationFixes(ctx, program, file, g.refused, refuse))
 			p = p.withFixes(vipTypeMigrationFixes(ctx, program, file, g.refused))
 			p = p.withFixes(ambiguousRootMigrationFixes(ctx, program, file, g.refused))
+			p = p.withFixes(bindingRenameMigrationFixes(ctx, program, file, g.refused))
 			if len(p.fixes) == 0 && !options.MigrationOnly {
 				p = fileFixes(ctx, program, file, g.refused, tsFormFixCodes)
 				// A .pipe waits for the rules that read it, and for its
@@ -412,7 +413,14 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			}
 			fixed.Text = p.text()
 			for _, f := range p.fixes {
-				fixed.Counts[f.code]++
+				if f.label != "" {
+					if fixed.Rewrites == nil {
+						fixed.Rewrites = map[string]int{}
+					}
+					fixed.Rewrites[f.label]++
+				} else {
+					fixed.Counts[f.code]++
+				}
 			}
 			texts[name] = fixed.Text
 		}
@@ -736,6 +744,7 @@ type fileFix struct {
 	code  int32
 	edits []sourceEdit
 	key   string
+	label string // when set, the fix counts as a rewrite of this kind rather than under code: a native diagnostic has no EK code to count (fix_binding_rename.go)
 }
 
 // A proposal is one round's fixes of a file, whose edits do not overlap.
@@ -826,7 +835,7 @@ func fileFixes(ctx context.Context, program *compiler.Program, file *ast.SourceF
 				span := converters.FromLSPRangeToOriginal(file, edit.Range)
 				edits = append(edits, sourceEdit{span.Pos(), span.End(), edit.NewText})
 			}
-			candidates = append(candidates, fileFix{d.Code(), edits, key})
+			candidates = append(candidates, fileFix{code: d.Code(), edits: edits, key: key})
 			break
 		}
 	}

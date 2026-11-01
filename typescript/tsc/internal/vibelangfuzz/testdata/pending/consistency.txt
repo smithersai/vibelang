@@ -30,4 +30,3 @@ FuzzEditorConsistency corpus:selection-data compiler the minimal reproduction of
 FuzzEditorConsistency corpus:selection-match-binding compiler the minimal reproduction of consistency:selection-ranges:nesting:vibelang
 FuzzEditorConsistency corpus:selection-property-catch compiler the minimal reproduction of consistency:selection-ranges:nesting:vibelang
 FuzzEditorConsistency corpus:selection-schema compiler the minimal reproduction of consistency:selection-ranges:nesting:vibelang
-FuzzEditorConsistency corpus:symbols-is-binding compiler the minimal reproduction of consistency:document-symbols:selection-outside:Block

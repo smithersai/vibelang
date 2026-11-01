@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 
@@ -99,6 +100,8 @@ type matchArm struct {
 	pattern *pattern
 	value   *ast.Node
 	end     int
+	hoisted bool        // the bindings of an is in value or in a guard were hoisted (matchStatements)
+	hoists  []*ast.Node // their let statements, the arm block's first statements in every lowering of the match
 }
 
 // matchInfo is a match expression as written, kept so a return statement or
@@ -499,9 +502,292 @@ func (p *Parser) parseVibeLangIs(subject *ast.Node, pos int) *ast.Node {
 	marker = p.vibelangSpanning(marker, core.NewTextRange(pos, p.nodePos()))
 	if p.vibelangIsBindings == nil {
 		p.vibelangIsBindings = map[*ast.Node]*isInfo{}
+		p.vibelangIsHolders = map[*ast.Node]*ast.Node{}
 	}
 	p.vibelangIsBindings[marker] = info
-	return marker
+	// The parentheses hold the marker until a statement claims the bindings
+	// (hoistVibeLangIs); a while condition reads the marker through them.
+	holder := p.mParens(marker, marker.Loc)
+	p.vibelangIsHolders[marker] = holder
+	return holder
+}
+
+// hoistVibeLangIs rewrites every is in expression whose pattern binds names,
+// for a statement whose bindings live in the home that holds the statement
+// (chapter 004, decided details 240 and 245): each binding and each subject
+// or extraction the pattern holds becomes a let statement before the
+// statement (through reparseList, which parseListIndex places there, or the
+// block an unbraced statement body gets, parseEmbeddedStatement), and the is
+// becomes one boolean expression whose tests run in order and assign the
+// names as they succeed: `x is { id: let id }` is
+//
+//	($is1 = x, true) && typeof $is1 === "object" && $is1 !== null && "id" in $is1 && (id = $is1.id, true)
+//
+// A binding is assigned only when its pattern has matched, so after
+// `if (!(x is { id: let id })) return` the name is initialized, and a binding
+// the condition skipped stays undefined. Two patterns binding one name in
+// one home declare it twice, which TypeScript reports (TS2451), as for two
+// let statements. It returns expression itself when no is in it binds names.
+func (p *Parser) hoistVibeLangIs(expression *ast.Node) *ast.Node {
+	if expression == nil || len(p.vibelangIsBindings) == 0 {
+		return expression
+	}
+	var markers []*ast.Node
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if p.vibelangIsBindings[node] != nil {
+			markers = append(markers, node)
+			return false
+		}
+		if ast.IsFunctionLike(node) || ast.IsClassLike(node) {
+			// A function body, a concise arrow body and a class member are
+			// homes of their own: their statements, hoistConciseBody and
+			// hoistInitializerBody have claimed their bindings.
+			return false
+		}
+		return node.ForEachChild(visit)
+	}
+	visit(expression)
+	for _, marker := range markers {
+		info := p.vibelangIsBindings[marker]
+		holder := p.vibelangIsHolders[marker]
+		if holder == nil {
+			continue
+		}
+		var steps []matchStep
+		path, decl := p.subjectPath(info.subject, info.anchor, "$is")
+		steps = append(steps, matchStep{decl: decl})
+		p.compilePattern(info.pattern, path, &steps, &matchCompile{anchor: info.anchor})
+		var tests []*ast.Node
+		for _, step := range steps {
+			if step.decl != nil {
+				tests = append(tests, p.hoistDeclaration(step.decl, info.anchor))
+			} else {
+				tests = append(tests, step.test)
+			}
+		}
+		holder.AsParenthesizedExpression().Expression = p.joinTests(tests, ast.KindAmpersandAmpersandToken, info.anchor)
+		p.overrideParentInImmediateChildren(holder)
+		delete(p.vibelangIsBindings, marker)
+		delete(p.vibelangIsHolders, marker)
+	}
+	return expression
+}
+
+// hoistDeclaration turns decl, the const statement a compiled pattern wrote
+// for a binding or a captured subject, into a let statement without an
+// initializer on reparseList, and returns the test that assigns it,
+// `(name = value, true)`. The declaration keeps the name node, so the
+// language service finds the binding where the pattern wrote it.
+func (p *Parser) hoistDeclaration(decl *ast.Node, at core.TextRange) *ast.Node {
+	declaration := decl.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0]
+	name, value := declaration.Name(), declaration.Initializer()
+	hoisted := p.mConst(name, ast.NodeFlagsLet, nil, name.Loc)
+	if !strings.HasPrefix(name.Text(), "$") {
+		// A named binding: when another declaration of its home already
+		// declares the name, the rename quick fix finds it by this mark
+		// (vibelang/fix_binding_rename.go).
+		hoisted.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0].Flags |= ast.NodeFlagsVibeLangIsBinding
+	}
+	if decl.AsVariableStatement().DeclarationList.Flags&ast.NodeFlagsConst != 0 {
+		// A binding written const keeps its immutability: the hoisted let
+		// carries the mark the checker reads to report an assignment to the
+		// name (TS2588, vibelang/match_const.go).
+		hoisted.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0].Flags |= ast.NodeFlagsVibeLangConst
+	}
+	if p.vibelangHoists == nil {
+		p.vibelangHoists = map[*ast.Node]bool{}
+	}
+	p.vibelangHoists[hoisted] = true
+	p.reparseList = append(p.reparseList, hoisted)
+	var target *ast.Node
+	if strings.HasPrefix(name.Text(), "$") {
+		target = p.mTemp(name.Text(), name.Loc)
+	} else {
+		target = p.mIdent(name.Text(), name.Loc)
+	}
+	assign := p.mParens(p.mBinary(target, ast.KindEqualsToken, value, at), at)
+	return p.mParens(p.mBinary(assign, ast.KindCommaToken, p.mKeyword(ast.KindTrueKeyword, at), at), at)
+}
+
+// hoistStatementIs gives the bindings of an is in an expression statement, a
+// variable statement, a return or a throw the home that holds the statement
+// (chapter 004: the names of an is in an ordinary block expression belong to
+// the nearest enclosing block), as hoistVibeLangIs does for an if head. Other
+// statements claim their own bindings: an if or while condition and a for
+// concurrent limit, and a for head's let list (hoistForHead).
+func (p *Parser) hoistStatementIs(statement *ast.Statement) *ast.Statement {
+	if statement == nil || len(p.vibelangIsBindings) == 0 {
+		return statement
+	}
+	switch statement.Kind {
+	case ast.KindExpressionStatement, ast.KindVariableStatement, ast.KindReturnStatement, ast.KindThrowStatement:
+		p.hoistVibeLangIs(statement)
+	}
+	return statement
+}
+
+// hoistConciseBody gives the bindings of an is in a concise arrow body the
+// body's own scope (chapter 004): the body becomes a block that declares them
+// and returns the expression, where the block-body form would declare them.
+func (p *Parser) hoistConciseBody(body *ast.Node) *ast.Node {
+	if body == nil || len(p.vibelangIsBindings) == 0 {
+		return body
+	}
+	mark := len(p.reparseList)
+	p.hoistVibeLangIs(body)
+	hoists := p.takeHoists(mark)
+	if len(hoists) == 0 {
+		return body
+	}
+	returned := p.vibelangSpanning(p.factory.NewReturnStatement(body), body.Loc)
+	return p.mBlock(append(hoists, returned), body.Loc)
+}
+
+// hoistInitializerBody gives the bindings of an is in a class field or static
+// field initializer the initializer's own scope (chapter 004: ECMAScript
+// evaluates each initializer as a separate method-like body): the initializer
+// becomes a function called where it stands, (() => { let …; return expr })(),
+// whose arrow keeps this and super as the initializer has them.
+func (p *Parser) hoistInitializerBody(initializer *ast.Node) *ast.Node {
+	if initializer == nil || len(p.vibelangIsBindings) == 0 {
+		return initializer
+	}
+	mark := len(p.reparseList)
+	p.hoistVibeLangIs(initializer)
+	hoists := p.takeHoists(mark)
+	if len(hoists) == 0 {
+		return initializer
+	}
+	loc := initializer.Loc
+	end := core.NewTextRange(loc.End(), loc.End())
+	returned := p.vibelangSpanning(p.factory.NewReturnStatement(initializer), loc)
+	arrow := p.vibelangProgramArrow(nil, p.mBlock(append(hoists, returned), loc), end)
+	return p.mCall(p.mParens(arrow, loc), nil, loc)
+}
+
+// hoistForHead gives the bindings of an is in a for (init; test; update) head
+// their homes (chapter 004, decided detail 240): a binding from init is a let
+// declared in init, which CreatePerIterationEnvironment copies into each
+// iteration; a binding from test or update is a cell that an iteration's
+// update, test and body share, declared in init too and marked
+// NodeFlagsVibeLangIterationCell, so the checker reports a read of it in
+// update as uninitialized (vibelang/match_for.go), which the copied let would
+// otherwise hide. Every binding and capture becomes a declarator of init's let
+// list: no init or an expression init becomes `let …, $forN = expr`; a const
+// list becomes a let list whose own declarators keep const immutability
+// through NodeFlagsVibeLangConst (vibelang/match_const.go); a var or using list
+// has no let list to join and keeps EK4703. An init binding's declaration
+// asserts definite assignment (let n!), so a read of it in the head or the
+// body is not TS2454 when TypeScript cannot see that the pattern always
+// matches; a skipped init binding then reads undefined where chapter 004
+// has TS2454, a gap a refutability analysis closes later.
+func (p *Parser) hoistForHead(initializer, condition, incrementor *ast.Node, at core.TextRange) *ast.Node {
+	if len(p.vibelangIsBindings) == 0 {
+		return initializer
+	}
+	if initializer != nil && ast.IsVariableDeclarationList(initializer) && (initializer.Flags&ast.NodeFlagsUsing != 0 || initializer.Flags&(ast.NodeFlagsLet|ast.NodeFlagsConst) == 0) {
+		return initializer
+	}
+	mark := len(p.reparseList)
+	p.hoistVibeLangIs(initializer)
+	initHoists := p.takeHoists(mark)
+	p.hoistVibeLangIs(condition)
+	p.hoistVibeLangIs(incrementor)
+	cellHoists := p.takeHoists(mark)
+	if len(initHoists)+len(cellHoists) == 0 {
+		return initializer
+	}
+	var declarators []*ast.Node
+	for _, hoist := range initHoists {
+		declarator := hoistedDeclarator(hoist)
+		if initializer != nil && !strings.HasPrefix(declarator.Name().Text(), "$") {
+			// An init binding is read by the test, the update and the body
+			// of every iteration, as the detail's countdown example does.
+			// TypeScript's definite-assignment check sees the pattern's
+			// assignment inside the init's && chain as conditional, so the
+			// declaration carries a definite-assignment assertion, let n!,
+			// until a refutability analysis can tell a pattern the subject's
+			// type guarantees from one it does not.
+			token := p.vibelangSynthesized(p.factory.NewToken(ast.KindExclamationToken), declarator.Name().Loc)
+			declarator.AsVariableDeclaration().ExclamationToken = token
+			token.Parent = declarator
+		}
+		declarators = append(declarators, declarator)
+	}
+	for _, hoist := range cellHoists {
+		declarator := hoistedDeclarator(hoist)
+		declarator.Flags |= ast.NodeFlagsVibeLangIterationCell
+		declarators = append(declarators, declarator)
+	}
+	switch {
+	case initializer == nil:
+		return p.mLetList(declarators, at)
+	case ast.IsVariableDeclarationList(initializer):
+		list := initializer.AsVariableDeclarationList()
+		if initializer.Flags&ast.NodeFlagsConst != 0 {
+			initializer.Flags = initializer.Flags&^ast.NodeFlagsConst | ast.NodeFlagsLet
+			for _, declaration := range list.Declarations.Nodes {
+				declaration.Flags |= ast.NodeFlagsVibeLangConst
+			}
+		}
+		for _, declarator := range declarators {
+			declarator.Parent = initializer
+		}
+		list.Declarations.Nodes = append(declarators, list.Declarations.Nodes...)
+		return initializer
+	default:
+		p.vibelangMatchTemps++
+		temp := p.mTemp("$for"+strconv.Itoa(p.vibelangMatchTemps), at)
+		declaration := p.vibelangSpanning(p.factory.NewVariableDeclaration(temp, nil, nil, initializer), initializer.Loc)
+		return p.mLetList(append(declarators, declaration), at)
+	}
+}
+
+// hoistedDeclarator returns the declaration of the let statement hoistDeclaration wrote.
+func hoistedDeclarator(statement *ast.Node) *ast.Node {
+	return statement.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0]
+}
+
+// mLetList writes let d1, d2, … at at.
+func (p *Parser) mLetList(declarators []*ast.Node, at core.TextRange) *ast.Node {
+	return p.vibelangSpanning(p.factory.NewVariableDeclarationList(p.newNodeList(at, declarators), ast.NodeFlagsLet), at)
+}
+
+// takeHoists removes and returns the let statements hoistVibeLangIs put on
+// reparseList since mark, for a home that is not the statement list.
+func (p *Parser) takeHoists(mark int) []*ast.Node {
+	if len(p.reparseList) == mark {
+		return nil
+	}
+	var hoists, rest []*ast.Node
+	rest = append(rest, p.reparseList[:mark]...)
+	for _, e := range p.reparseList[mark:] {
+		if p.vibelangHoists[e] {
+			hoists = append(hoists, e)
+		} else {
+			rest = append(rest, e)
+		}
+	}
+	p.reparseList = rest
+	return hoists
+}
+
+// parseEmbeddedStatement parses the statement body of an if, else, loop or
+// labeled statement. When it is not a block and an is inside it hoisted
+// bindings, the body becomes a block holding them: an unbraced statement body
+// is its own home, created afresh each time it runs (decided detail 245).
+func (p *Parser) parseEmbeddedStatement() *ast.Statement {
+	mark := len(p.reparseList)
+	statement := p.parseStatement()
+	if statement == nil || statement.Kind == ast.KindBlock {
+		return statement
+	}
+	hoists := p.takeHoists(mark)
+	if len(hoists) == 0 {
+		return statement
+	}
+	return p.mBlock(append(hoists, statement), statement.Loc)
 }
 
 // patternHasBindings reports whether pat binds a name.
@@ -1226,16 +1512,39 @@ func (p *Parser) matchStatements(info *matchInfo, success func(value *ast.Node, 
 	path, decl := p.subjectPath(info.subject, info.anchor, "$match")
 	out := []*ast.Node{decl}
 	defaulted := false
-	for _, arm := range info.arms {
+	for i := range info.arms {
+		arm := &info.arms[i]
 		span := core.NewTextRange(arm.anchor.Pos(), arm.end)
+		var steps []matchStep
+		if arm.pattern != nil {
+			p.compilePattern(arm.pattern, path, &steps, &matchCompile{anchor: arm.anchor})
+		}
+		if !arm.hoisted {
+			// An arm is its own lexical scope (chapter 004): the bindings of
+			// an is in its value or in its guard are lets of the arm's block,
+			// before the tests that assign them. A match is lowered again
+			// when a statement claims it (matchStatement, the do block's
+			// completion), so the arm keeps its lets for that lowering.
+			arm.hoisted = true
+			mark := len(p.reparseList)
+			p.hoistVibeLangIs(arm.value)
+			for _, step := range steps {
+				if step.test != nil {
+					p.hoistVibeLangIs(step.test)
+				}
+			}
+			arm.hoists = p.takeHoists(mark)
+		}
 		if arm.pattern == nil {
-			out = append(out, success(arm.value, span)...)
+			statements := success(arm.value, span)
+			if len(arm.hoists) != 0 {
+				statements = []*ast.Node{p.mBlock(append(slices.Clone(arm.hoists), statements...), span)}
+			}
+			out = append(out, statements...)
 			defaulted = true
 			continue
 		}
-		var steps []matchStep
-		p.compilePattern(arm.pattern, path, &steps, &matchCompile{anchor: arm.anchor})
-		out = append(out, p.mBlock(p.emitSteps(steps, success(arm.value, span), arm.anchor), span))
+		out = append(out, p.mBlock(append(slices.Clone(arm.hoists), p.emitSteps(steps, success(arm.value, span), arm.anchor)...), span))
 	}
 	if !defaulted {
 		noMatch := p.mCall(p.vibelangIntrinsic("$noMatch", info.anchor), []*ast.Node{path()}, info.anchor)
@@ -1346,32 +1655,6 @@ func endsInJump(statement *ast.Node) bool {
 		return true
 	}
 	return false
-}
-
-// restructureVibeLangIf rewrites if (... && x is P && ...) S else E, when P
-// binds names, so the bindings are in scope in S:
-//
-//	$isN: { if (...) { const name = ...; if (...) { S; break $isN } } E }
-//
-// It returns nil when no is in the condition binds names.
-func (p *Parser) restructureVibeLangIf(condition, then, otherwise *ast.Node, pos int) *ast.Node {
-	steps := p.conditionSteps(condition)
-	if steps == nil {
-		return nil
-	}
-	anchor := p.keywordRangeAt(pos, "if")
-	if otherwise == nil {
-		return p.finishNode(p.factory.NewBlock(p.newNodeList(core.NewTextRange(pos, p.nodePos()), p.emitSteps(steps, []*ast.Node{then}, anchor)), true /*multiLine*/), pos)
-	}
-	p.vibelangMatchTemps++
-	label := "$is" + strconv.Itoa(p.vibelangMatchTemps)
-	success := []*ast.Node{then}
-	if !endsInJump(then) {
-		success = append(success, p.vibelangSpanning(p.factory.NewBreakStatement(p.mTemp(label, anchor)), anchor))
-	}
-	statements := append(p.emitSteps(steps, success, anchor), otherwise)
-	block := p.finishNode(p.factory.NewBlock(p.newNodeList(core.NewTextRange(pos, p.nodePos()), statements), true /*multiLine*/), pos)
-	return p.finishNode(p.factory.NewLabeledStatement(p.mTemp(label, anchor), block), pos)
 }
 
 // restructureVibeLangWhile rewrites while (... && x is P && ...) S, when P

@@ -1,0 +1,22 @@
+// expect-result: [1,2,0,5,7]
+// Chapter 004, decided detail 245: what the rename quick fix writes for
+// is-home-one-name.fail and is-home-one-name-parameter.fail compiles and
+// runs: the later binding and its later uses carry the new name, and a
+// shorthand binding keeps its key.
+export function pick(a: unknown, b: unknown) {
+  if (a is { id: let id }) return id
+  if (b is { id: let id2 }) return id2
+  return 0
+}
+export function shorthand(a: unknown, b: unknown) {
+  if (a is { let id }) return id
+  if (b is { id: let id2 }) return id2
+  return 0
+}
+export function beside(a: unknown, id: number) {
+  if (a is { id: let id2 }) return id2
+  return id
+}
+export function main() {
+  return [pick({ id: 1 }, {}), pick({}, { id: 2 }), shorthand({}, {}), shorthand({}, { id: 5 }), beside({}, 7)]
+}

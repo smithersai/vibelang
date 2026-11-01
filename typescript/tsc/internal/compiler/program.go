@@ -1552,7 +1552,7 @@ func (p *Program) getBindAndCheckDiagnosticsWithChecker(ctx context.Context, fil
 	}
 
 	// Checker creation forces binding, so bind diagnostics will be populated.
-	diags := slices.Clip(sourceFile.BindDiagnostics())
+	diags := fileChecker.ApplyBindDiagnosticsFilterHooks(sourceFile, slices.Clip(sourceFile.BindDiagnostics()))
 	diags = append(diags, fileChecker.GetDiagnostics(ctx, sourceFile)...)
 
 	if includeDeferredGlobals {

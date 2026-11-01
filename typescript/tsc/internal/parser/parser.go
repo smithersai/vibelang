@@ -111,6 +111,8 @@ type Parser struct {
 	vibelangTemps            []*ast.Node              // the identifiers of those names, which freshenVibeLangTemps renames when the file spells them (vibelang_match.go)
 	vibelangMatches          map[*ast.Node]*matchInfo // match expressions as written, by their call or statement (vibelang_match.go)
 	vibelangIsBindings       map[*ast.Node]*isInfo    // is expressions whose patterns bind names, by their markers (vibelang_match.go)
+	vibelangIsHolders        map[*ast.Node]*ast.Node  // the parenthesized expression written around each such marker, which hoistVibeLangIs fills (vibelang_match.go)
+	vibelangHoists           map[*ast.Node]bool       // the let statements hoistVibeLangIs put on reparseList, which an unbraced statement body keeps as its own home (vibelang_match.go)
 	vibelangSyntax           *[]VibeSyntax            // the forms recorded for ParseVibeLangSyntax, or nil (vibelang_syntax.go)
 	vibelangTypeScript       bool                     // reading a module declaration's body, which is TypeScript (vibelang_modules.go)
 }
@@ -1091,7 +1093,14 @@ func (p *Parser) parseOptionalTokenJSDoc(kind ast.Kind) *ast.Node {
 	return nil
 }
 
+// parseStatement parses a statement. An is in it whose pattern binds names,
+// outside a condition that claims them (if, while, for concurrent), binds in
+// the block that holds the statement (hoistStatementIs).
 func (p *Parser) parseStatement() *ast.Statement {
+	return p.hoistStatementIs(p.parseStatementWorker())
+}
+
+func (p *Parser) parseStatementWorker() *ast.Statement {
 	switch p.token {
 	case ast.KindSemicolonToken:
 		return p.parseEmptyStatement()
@@ -1302,14 +1311,14 @@ func (p *Parser) parseIfStatement() *ast.Node {
 	openParenParsed := p.parseExpected(ast.KindOpenParenToken)
 	expression := p.parseExpressionAllowIn()
 	p.parseExpectedMatchingBrackets(ast.KindOpenParenToken, ast.KindCloseParenToken, openParenParsed, openParenPosition)
-	thenStatement := p.parseStatement()
+	thenStatement := p.parseEmbeddedStatement()
 	var elseStatement *ast.Statement
 	if p.parseOptional(ast.KindElseKeyword) {
-		elseStatement = p.parseStatement()
+		elseStatement = p.parseEmbeddedStatement()
 	}
-	if rewritten := p.restructureVibeLangIf(expression, thenStatement, elseStatement, pos); rewritten != nil {
-		return rewritten // an is in the condition binds names (vibelang_match.go)
-	}
+	// An is in the condition that binds names declares them in the home that
+	// holds this statement (vibelang_match.go).
+	expression = p.hoistVibeLangIs(expression)
 	result := p.finishNode(p.factory.NewIfStatement(expression, thenStatement, elseStatement), pos)
 	p.withJSDoc(result, jsdoc)
 	return result
@@ -1319,7 +1328,7 @@ func (p *Parser) parseDoStatement() *ast.Node {
 	pos := p.nodePos()
 	jsdoc := p.jsdocScannerInfo()
 	p.parseExpected(ast.KindDoKeyword)
-	statement := p.parseStatement()
+	statement := p.parseEmbeddedStatement()
 	p.parseExpected(ast.KindWhileKeyword)
 	openParenPosition := p.scanner.TokenStart()
 	openParenParsed := p.parseExpected(ast.KindOpenParenToken)
@@ -1343,7 +1352,7 @@ func (p *Parser) parseWhileStatement() *ast.Node {
 	openParenParsed := p.parseExpected(ast.KindOpenParenToken)
 	expression := p.parseExpressionAllowIn()
 	p.parseExpectedMatchingBrackets(ast.KindOpenParenToken, ast.KindCloseParenToken, openParenParsed, openParenPosition)
-	statement := p.parseStatement()
+	statement := p.parseEmbeddedStatement()
 	if rewritten := p.restructureVibeLangWhile(expression, statement, pos); rewritten != nil {
 		return rewritten // an is in the condition binds names (vibelang_match.go)
 	}
@@ -1390,11 +1399,11 @@ func (p *Parser) parseForOrForInOrForOfStatement() *ast.Node {
 	case (awaitToken != nil || tryToken != nil) && p.parseExpected(ast.KindOfKeyword) || awaitToken == nil && p.parseOptional(ast.KindOfKeyword):
 		expression := p.doInContext(ast.NodeFlagsDisallowInContext, false, (*Parser).parseAssignmentExpressionOrHigher)
 		p.parseExpected(ast.KindCloseParenToken)
-		result = p.factory.NewForInOrOfStatement(ast.KindForOfStatement, awaitToken, initializer, expression, p.parseStatement())
+		result = p.factory.NewForInOrOfStatement(ast.KindForOfStatement, awaitToken, initializer, expression, p.parseEmbeddedStatement())
 	case p.parseOptional(ast.KindInKeyword):
 		expression := p.parseExpressionAllowIn()
 		p.parseExpected(ast.KindCloseParenToken)
-		result = p.factory.NewForInOrOfStatement(ast.KindForInStatement, nil /*awaitToken*/, initializer, expression, p.parseStatement())
+		result = p.factory.NewForInOrOfStatement(ast.KindForInStatement, nil /*awaitToken*/, initializer, expression, p.parseEmbeddedStatement())
 	default:
 		p.parseExpected(ast.KindSemicolonToken)
 		var condition *ast.Expression
@@ -1407,7 +1416,10 @@ func (p *Parser) parseForOrForInOrForOfStatement() *ast.Node {
 			incrementor = p.parseExpressionAllowIn()
 		}
 		p.parseExpected(ast.KindCloseParenToken)
-		result = p.factory.NewForStatement(initializer, condition, incrementor, p.parseStatement())
+		// An is in the head that binds names declares them in the head's let
+		// list (vibelang_match.go).
+		initializer = p.hoistForHead(initializer, condition, incrementor, p.keywordRangeAt(pos, "for"))
+		result = p.factory.NewForStatement(initializer, condition, incrementor, p.parseEmbeddedStatement())
 	}
 	if tryToken != nil {
 		result.Flags |= ast.NodeFlagsVibeLang
@@ -1622,7 +1634,7 @@ func (p *Parser) parseExpressionOrLabeledStatement() *ast.Statement {
 	expression := p.parseExpression()
 
 	if expression.Kind == ast.KindIdentifier && p.parseOptional(ast.KindColonToken) {
-		result := p.finishNode(p.factory.NewLabeledStatement(expression, p.parseStatement()), pos)
+		result := p.finishNode(p.factory.NewLabeledStatement(expression, p.parseEmbeddedStatement()), pos)
 		p.withJSDoc(result, jsdoc)
 		return result
 	}
@@ -2134,6 +2146,7 @@ func (p *Parser) parsePropertyDeclaration(pos int, jsdoc jsdocScannerInfo, modif
 	}
 	typeNode := p.parseTypeAnnotation()
 	initializer := p.doInContext(ast.NodeFlagsYieldContext|ast.NodeFlagsAwaitContext|ast.NodeFlagsDisallowInContext, false, (*Parser).parseInitializer)
+	initializer = p.hoistInitializerBody(initializer)
 	if p.isVibeLangFieldComma(typeNode, initializer) {
 		p.vibelangFieldComma = true // the comma is the next class element (vibelang_errors.go)
 	} else {
@@ -4716,7 +4729,7 @@ func (p *Parser) parseArrowFunctionExpressionBody(isAsync bool, allowReturnTypeI
 	p.setContextFlags(ast.NodeFlagsYieldContext, false)
 	node := p.parseAssignmentExpressionOrHigherWorker(allowReturnTypeInArrowFunction)
 	p.contextFlags = saveContextFlags
-	return node
+	return p.hoistConciseBody(node)
 }
 
 func (p *Parser) isStartOfExpressionStatement() bool {

@@ -1,0 +1,16 @@
+// expect-result: [[1,2,3],3]
+// Chapter 004, decided detail 249: a binding in a for concurrent limit
+// belongs to the home around the loop, because the limit runs before the loop
+// head exists; the body reads it where the pattern has matched.
+export effect function run(config: unknown, xs: number[]) {
+  const seen: number[] = []
+  let width = 0
+  for concurrent (config is { limit: let limit } && typeof limit === "number" ? limit : 1) (const x of xs) {
+    seen.push(x)
+    if (config is { limit: let again } && typeof again === "number") width = again
+  }
+  return [seen.toSorted(), width]
+}
+export function main() {
+  return run({ limit: 3 }, [1, 2, 3])
+}

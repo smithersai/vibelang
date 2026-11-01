@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\n// expect-result: [3,7]\n// Chapter 004, decided detail 245: an is binding named like a parameter is\n// TS2300; --fix renames the binding and the reads after it.\nexport function pick(a: unknown, id: number) {\n  if (a is { id: let id }) return id\n  return id\n}\nexport function main() {\n  return [pick({ id: 3 }, 7), pick({}, 7)]\n}\n")

@@ -1,0 +1,43 @@
+// expect-result: [[1,2,3],[3,2,1],[1,2,3],6,5,"const"]
+// Chapter 004, decided detail 240: a binding from a for head's init is a let
+// of the head, copied into each iteration; a binding from test or update is
+// a cell that each iteration's update, test and body share. drain and
+// countdown are the detail's examples; a const init list keeps its
+// immutability.
+export function iter(xs: number[]): Iterator<number> {
+  let i = 0
+  return { next: () => (i < xs.length ? { done: false, value: xs[i++] } : { done: true, value: undefined }) }
+}
+export function drain(it: Iterator<number>) {
+  const out: (() => number)[] = []
+  for (; it.next() is { done: false, value: let v }; ) out.push(() => v)
+  return out.map((g) => g())
+}
+export function countdown(src: { n: number }) {
+  const seen: (() => number)[] = []
+  for (src is { n: let n }; n > 0; n--) seen.push(() => n)
+  return seen.map((g) => g())
+}
+export function constInit(xs: number[]) {
+  const out: (() => number)[] = []
+  for (const it = iter(xs); it.next() is { done: false, value: let v }; ) out.push(() => v)
+  return out.map((g) => g())
+}
+export function letInit(xs: number[]) {
+  let total = 0
+  for (let i = 0; xs[i] is let x && typeof x === "number"; i++) total += x
+  return total
+}
+export function updateBinding(xs: number[]) {
+  let total = 0
+  for (let i = 0; i < xs.length; i++, xs[i] is let next && typeof next === "number" && (total += next)) total += 0
+  return total
+}
+export function constKept(xs: number[]) {
+  // @ts-expect-error: TS2588, the const init list keeps its immutability
+  for (const it = iter(xs); it.next() is { done: false, value: let v }; it = iter(xs)) return "const"
+  return "none"
+}
+export function main() {
+  return [drain(iter([1, 2, 3])), countdown({ n: 3 }), constInit([1, 2, 3]), letInit([1, 2, 3]), updateBinding([1, 2, 3]), constKept([1])]
+}

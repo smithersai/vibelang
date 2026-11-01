@@ -93,6 +93,31 @@ func RegisterCatchVariableTypeHook(hook CatchVariableTypeHook) {
 	catchVariableTypeHooks = append(catchVariableTypeHooks, hook)
 }
 
+// DeclaredTypeHook gives a variable declaration that has neither a type
+// annotation nor an initializer its declared type, or returns nil to leave
+// TypeScript's control-flow tracked type. VibeLang uses it for the let
+// declarations its parser hoists for pattern bindings, whose value the
+// pattern assigns later (internal/vibelang/match_homes.go).
+type DeclaredTypeHook func(c *Checker, declaration *ast.Node) *Type
+
+var declaredTypeHooks []DeclaredTypeHook
+
+// RegisterDeclaredTypeHook adds hook to every checker. Call it only from the
+// init function of an in-tree package that tsc/cmd/tsc imports; registration
+// is not synchronized.
+func RegisterDeclaredTypeHook(hook DeclaredTypeHook) {
+	declaredTypeHooks = append(declaredTypeHooks, hook)
+}
+
+func (c *Checker) applyDeclaredTypeHooks(declaration *ast.Node) *Type {
+	for _, hook := range declaredTypeHooks {
+		if t := hook(c, declaration); t != nil {
+			return t
+		}
+	}
+	return nil
+}
+
 func (c *Checker) applyCatchVariableTypeHooks(declaration *ast.Node) *Type {
 	for _, hook := range catchVariableTypeHooks {
 		if t := hook(c, declaration); t != nil {
@@ -180,6 +205,27 @@ func RegisterDiagnosticsFilterHook(hook DiagnosticsFilterHook) {
 
 func (c *Checker) applyDiagnosticsFilterHooks(file *ast.SourceFile, diagnostics []*ast.Diagnostic) []*ast.Diagnostic {
 	for _, hook := range diagnosticsFilterHooks {
+		diagnostics = hook(c, file, diagnostics)
+	}
+	return diagnostics
+}
+
+// bindDiagnosticsFilterHooks see a file's bind diagnostics, which the binder
+// reports before any checker runs (a redeclaration, TS2451), with the
+// checker that resolves the file, when the program collects its semantic
+// diagnostics (compiler.getBindAndCheckDiagnosticsWithChecker).
+var bindDiagnosticsFilterHooks []DiagnosticsFilterHook
+
+// RegisterBindDiagnosticsFilterHook adds hook to every checker, as
+// RegisterDiagnosticsFilterHook does, for bind diagnostics.
+func RegisterBindDiagnosticsFilterHook(hook DiagnosticsFilterHook) {
+	bindDiagnosticsFilterHooks = append(bindDiagnosticsFilterHooks, hook)
+}
+
+// ApplyBindDiagnosticsFilterHooks runs the bind diagnostics hooks on
+// diagnostics, file's bind diagnostics.
+func (c *Checker) ApplyBindDiagnosticsFilterHooks(file *ast.SourceFile, diagnostics []*ast.Diagnostic) []*ast.Diagnostic {
+	for _, hook := range bindDiagnosticsFilterHooks {
 		diagnostics = hook(c, file, diagnostics)
 	}
 	return diagnostics
