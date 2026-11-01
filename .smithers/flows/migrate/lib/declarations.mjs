@@ -7,6 +7,8 @@
 // emitted declaration.
 // Explicit names, unresolved modules and literal type values stay as written.
 // A published declaration (public-surface.json) is compared byte for byte.
+// When either snapshot cannot establish its public graph, every declaration
+// is compared as a published one, never canonically.
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { join, posix, resolve, sep } from "node:path"
@@ -246,6 +248,9 @@ export function lineDiff(before, after, limit = 12) {
   return out
 }
 
+/** What an older flow recorded for a manifest without entry-point fields; verify records such a baseline again. */
+export const NO_ENTRY_POINTS = "no published entry points"
+
 /** Published declaration roots, resolved through the aliases recorded by the emit. Unknown paths fail closed. */
 export function declarationSurface(ts, dir, manifest, aliases = {}, logicalPaths = {}) {
   const files = listDeclarations(dir)
@@ -267,7 +272,15 @@ export function declarationSurface(ts, dir, manifest, aliases = {}, logicalPaths
   if (manifest.exports !== undefined) strings(manifest.exports)
   strings(manifest.types ?? manifest.typings)
   if (!targets.length) strings(manifest.main ?? manifest.module)
-  if (!targets.length) return { roots: files, unresolved: ["no published entry points"] }
+  // Without an entry-point field TypeScript resolves the bare package name to
+  // the package root's index and nothing else: a package without one, such as
+  // a CLI that publishes only a bundled bin, declares no type surface.
+  if (!targets.length && manifest.typesVersions === undefined) {
+    const index = ["./index.js", "./index.ts", "./index.d.ts"].find(name => resolveName(name))
+    if (!index) return { roots: [], reachable: [], unresolved: [] }
+    targets.push(index)
+  }
+  if (!targets.length) return { roots: files, unresolved: [NO_ENTRY_POINTS] }
   const roots = new Set()
   const unresolved = []
   for (const target of targets) {
@@ -392,7 +405,7 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
   return surface
 }
 
-/** Public files are compared byte for byte. Legacy trees without entry-point metadata keep the conservative canonical gate. */
+/** Public files are compared byte for byte. Missing or unresolved entry-point metadata compares every file so. */
 // The relative module specifiers a declaration file names: import and export
 // declarations, import types, and import-equals requires, each as
 // { text, start, end, line } with start and end inside the quotes.
@@ -439,6 +452,11 @@ function publishedEquivalent(ts, a, b, sides) {
     const before = left[i].text, after = right[i].text
     if (before === after) continue
     if (!/^\.\.?\//.test(before) || !/^\.\.?\//.test(after)) return null
+    // Only D298's spellings: an extensionless or .ts name declared as its
+    // emitted .js. Any other explicit extension stays as written.
+    const base = before.replace(/\.ts$/, "").replace(/\/$/, "")
+    if (/\.(?:d\.[cm]?ts|[cm]?[jt]s|[jt]sx|json|vibe)$/.test(base)) return null
+    if (after !== base + ".js" && after !== base + "/index.js") return null
     const targets = sides.flatMap((side) => [before, after].flatMap((name) => side.targets(name)))
     if (targets.some((target) => target === undefined) || new Set(targets).size !== 1) return null
     excused.push({ line: right[i].line, before, after, declaration: targets[0] })
@@ -501,7 +519,7 @@ export function compareDeclarations(ts, baselineDir, currentDir) {
   for (const file of before.filter(f => afterSet.has(f))) {
     const current = moved.get(file) ?? file
     const text = dir => readFileSync(join(dir, dir === currentDir ? current : file), "utf8")
-    if (publicFiles.has(file)) {
+    if (!resolved || publicFiles.has(file)) {
       const pairs = publishedEquivalent(ts, text(baselineDir), text(currentDir), [side(baselineDir, file, beforeSet), side(currentDir, current, afterSet)])
       if (pairs === null) changed.push({ file, diff: lineDiff(text(baselineDir), text(currentDir)) })
       else for (const pair of pairs) excused.push({ file, ...pair })
@@ -527,7 +545,7 @@ export function compareDeclarations(ts, baselineDir, currentDir) {
   }).sort((a,b) => JSON.stringify(a).localeCompare(JSON.stringify(b)))
   const resolutionChanged = resolved && aSurface.resolutions && bSurface.resolutions &&
     JSON.stringify(edges(aSurface)) !== JSON.stringify(edges(bSurface, remap, true))
-  return { identical: !changed.length && !removed.length && !added.length && !rootsChanged && !reachableChanged && !resolutionChanged, files: before.length, added, addedPrivate, renamed: [...moved].map(([from, to]) => ({ from, to })), removed, changed, excused,
+  return { identical: !changed.length && !removed.length && !added.length && !rootsChanged && !reachableChanged && !resolutionChanged, comparison: resolved ? "public bytes" : "all bytes", files: before.length, added, addedPrivate, renamed: [...moved].map(([from, to]) => ({ from, to })), removed, changed, excused,
     ...(aSurface || bSurface ? { publicSurface: { before: aSurface, after: bSurface, rootsChanged: Boolean(rootsChanged), reachableChanged: Boolean(reachableChanged), resolutionChanged: Boolean(resolutionChanged) } } : {}) }
 }
 

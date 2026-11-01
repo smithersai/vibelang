@@ -18,7 +18,7 @@ import { checkSelectorEdits, restoreSourceLiterals, rewriteSourceLiterals } from
 import { splitBatchPlatform } from "./platform.mjs"
 import { check, newErrors, styleProblems, summarize } from "./diagnostics.mjs"
 import { preservedErrorAdvisories } from "./preserved-errors.mjs"
-import { compareDeclarations, recordDeclarationSurface, emitDeclarations, emitErrorsIn, loadTypeScript, sidecarChanges } from "./declarations.mjs"
+import { compareDeclarations, recordDeclarationSurface, emitDeclarations, emitErrorsIn, loadTypeScript, sidecarChanges, NO_ENTRY_POINTS } from "./declarations.mjs"
 import { compareTests, regressionIssue, runTests } from "./tests.mjs"
 import { verifyRepositoryTests } from "./test-diff-run.mjs"
 import { isProtectedFile, testDiffMarkdown } from "./test-diff.mjs"
@@ -1407,7 +1407,7 @@ export async function verify(options) {
     const baselineDir = join(p.baseline, "dts", slug(pkg.dir))
     const surfacePath = join(baselineDir, "public-surface.json")
     const oldSurface = existsSync(surfacePath) ? readJson(surfacePath) : null
-    if (!oldSurface || (!oldSurface.snapshotVersion && oldSurface.unresolved?.length)) {
+    if (!oldSurface || (!oldSurface.snapshotVersion && oldSurface.unresolved?.length) || oldSurface.unresolved?.includes(NO_ENTRY_POINTS)) {
       // A legacy run must snapshot the setup commit's shipped declarations,
       // never the candidate's current package files.
       const setup = readJson(p.setup)
