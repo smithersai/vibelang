@@ -66,6 +66,13 @@ package's project, with that package's settings. That holds outside `root` and
 for a package nested inside it, a directory with its own `package.json` and
 `tsconfig.json`. Each project compiles once per build or watch rebuild.
 
+For package exports that provide `vibelang-source`, the Bun, Rolldown,
+esbuild, webpack and Rspack adapters select that source condition. A package
+that mixes `.ts` and `.vibe` modules then shares one source graph instead of
+also bundling the copies under `.vibelang/js`. Existing custom conditions and
+the bundler's native defaults remain active. Rollup's separate package
+resolver must include `vibelang-source` in its export conditions.
+
 ### A config that the bundled program evaluates
 
 Some tools declare a bundle's options in the module they bundle. An

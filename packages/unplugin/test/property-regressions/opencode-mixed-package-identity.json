@@ -1,0 +1,5 @@
+{
+  "property": "source-export-module-identity",
+  "rule": "Chapter 7: bundlers read .vibe sources; migrating a package preserves its TypeScript module graph.",
+  "input": { "adapter": "bun", "kind": "exact", "wrapper": "direct", "nested": false, "dynamic": false, "custom": false }
+}

@@ -6,6 +6,19 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 import { createUnplugin } from "unplugin"
 
+const sourceConditions = (conditions = []) => conditions.includes("vibelang-source") ? conditions : ["vibelang-source", ...conditions]
+
+// Preserve Vite's native defaults when the user supplied no conditions.
+// Vite concatenates arrays returned by config hooks with the user's arrays.
+function sourceConditionConfig(config) {
+  const condition = "vibelang-source"
+  const conditions = (current, defaults) => current?.includes(condition) ? {} : { conditions: [...(current ? [] : defaults), condition] }
+  return {
+    resolve: conditions(config.resolve?.conditions, ["module", "browser", "development|production"]),
+    ssr: { resolve: conditions(config.ssr?.resolve?.conditions, ["module", "node", "development|production"]) }
+  }
+}
+
 const cleanId = (id) => id.split("?")[0]
 
 // A module declaration of main.vibe compiles to main.vibe.text.js beside it
@@ -313,6 +326,7 @@ export const unplugin = createUnplugin((options = {}, meta) => {
     },
     bun: {
       setup(build) {
+        if (build.config) build.config.conditions = sourceConditions(build.config.conditions)
         configure()
         const repository = repositoryOf(root)
         const names = vibeBasenames(repository)
@@ -333,9 +347,17 @@ export const unplugin = createUnplugin((options = {}, meta) => {
         })
       }
     },
-    vite: { configResolved(config) { configure(config.root) } },
+    rolldown: {
+      options(input) {
+        const defaults = ["module", ...(input.platform === "neutral" ? [] : [input.platform ?? "browser"])]
+        return { ...input, resolve: { ...input.resolve, conditionNames: sourceConditions(input.resolve?.conditionNames ?? defaults) } }
+      }
+    },
+    vite: { config: sourceConditionConfig, configResolved(config) { configure(config.root) } },
     webpack(compiler) {
       configure(compiler.context)
+      compiler.options.resolve ??= {}
+      compiler.options.resolve.conditionNames = sourceConditions(compiler.options.resolve.conditionNames ?? ["..."])
       compiler.hooks.shutdown.tapPromise("vibelang-backend", close)
       compiler.hooks.beforeCompile.tapPromise("vibelang-backend", loaded)
       compiler.hooks.thisCompilation.tap("vibelang-backend", (compilation) => {
@@ -348,10 +370,16 @@ export const unplugin = createUnplugin((options = {}, meta) => {
     },
     rspack(compiler) {
       configure(compiler.context)
+      compiler.options.resolve ??= {}
+      compiler.options.resolve.conditionNames = sourceConditions(compiler.options.resolve.conditionNames ?? ["..."])
       compiler.hooks.shutdown.tapPromise("vibelang-backend", close)
     },
     esbuild: {
-      config(initialOptions) { configure(initialOptions.absWorkingDir) },
+      config(initialOptions) {
+        configure(initialOptions.absWorkingDir)
+        // esbuild enables module automatically only without custom conditions.
+        initialOptions.conditions = sourceConditions(initialOptions.conditions ?? ["module"])
+      },
       // No path matches /a^/: use the native loader to preserve diagnostic lineText,
       // and resolve below, where the result can carry the module's side effects.
       onLoadFilter: /a^/,

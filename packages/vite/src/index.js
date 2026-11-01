@@ -8,6 +8,17 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 // Vite's default resolve.extensions, which a config that sets none uses.
 const viteExtensions = [".mjs", ".js", ".mts", ".ts", ".jsx", ".tsx", ".json"]
 
+// Preserve Vite's native defaults when the user supplied no conditions.
+// Vite concatenates arrays returned by config hooks with the user's arrays.
+function sourceConditionConfig(config) {
+  const condition = "vibelang-source"
+  const conditions = (current, defaults) => current?.includes(condition) ? {} : { conditions: [...(current ? [] : defaults), condition] }
+  return {
+    resolve: conditions(config.resolve?.conditions, ["module", "browser", "development|production"]),
+    ssr: { resolve: conditions(config.ssr?.resolve?.conditions, ["module", "node", "development|production"]) }
+  }
+}
+
 const cleanId = (id) => id.split("?")[0]
 
 // Vite's own module queries: ?import on a JavaScript import of a non-JS
@@ -146,7 +157,8 @@ export default function vibelang(options = {}) {
       // mount/index.vibe), reaches a .vibe module as it reaches a .ts one.
       // Vite concatenates a plugin's arrays with the config's.
       const extensions = config.resolve?.extensions
-      const added = extensions?.includes(".vibe") ? {} : { resolve: { extensions: extensions ? [".vibe"] : [...viteExtensions, ".vibe"] } }
+      const added = sourceConditionConfig(config)
+      if (!extensions?.includes(".vibe")) added.resolve.extensions = extensions ? [".vibe"] : [...viteExtensions, ".vibe"]
       if (!options.register) return added
       // Vitest copies test.env into process.env, which the processes a test
       // starts inherit: node reads NODE_OPTIONS, and bun, such as

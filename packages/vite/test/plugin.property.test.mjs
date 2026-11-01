@@ -248,7 +248,7 @@ function registerCase(root, input) {
   const original = input.configOptions ? inherited : process.env.NODE_OPTIONS
   const value = result?.test?.env.NODE_OPTIONS ?? original
   // Every config gains .vibe in resolve.extensions; only register adds NODE_OPTIONS.
-  assert.deepEqual(result.resolve, { extensions: [".mjs", ".js", ".mts", ".ts", ".jsx", ".tsx", ".json", ".vibe"] })
+  assert.deepEqual(result.resolve, { extensions: [".mjs", ".js", ".mts", ".ts", ".jsx", ".tsx", ".json", ".vibe"], conditions: ["module", "browser", "development|production", "vibelang-source"] })
   if (!input.register) assert.equal(result.test, undefined)
   else {
     assert.ok(value.startsWith(original))

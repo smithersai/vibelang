@@ -359,8 +359,8 @@ test("a TypeScript entry reaches a directory's index.vibe and an extensionless .
   const code = (result.output || result[0].output).filter((file) => file.type === "chunk").map((file) => file.code).join("\n")
   assert.match(code, /mounted 2/)
   // A config's own extensions keep their order, with .vibe after them.
-  assert.deepEqual(vibelang().config({ resolve: { extensions: [".ts", ".js"] } }).resolve, { extensions: [".vibe"] })
-  assert.deepEqual(vibelang().config({ resolve: { extensions: [".ts", ".vibe"] } }).resolve, undefined)
+  assert.deepEqual(vibelang().config({ resolve: { extensions: [".ts", ".js"] } }).resolve, { extensions: [".vibe"], conditions: ["module", "browser", "development|production", "vibelang-source"] })
+  assert.deepEqual(vibelang().config({ resolve: { extensions: [".ts", ".vibe"] } }).resolve, { conditions: ["module", "browser", "development|production", "vibelang-source"] })
 })
 
 test("a native compiler named bin/vibelang is executed without Node", async (t) => {

@@ -7,6 +7,12 @@ and closes its output pipes. A short compile can finish; after 500 ms teardown
 sends `SIGTERM`, then after another 500 ms sends `SIGKILL` if needed.
 A later build with the same plugin starts a fresh backend.
 
+The plugin selects `vibelang-source` package exports for application and SSR
+bundles, preserving the existing resolution conditions. A workspace package
+that mixes `.ts` and `.vibe` modules therefore uses one source graph, even
+when its default export points at emitted JavaScript under `.vibelang/js`.
+
+
 ## 1. Add the plugin to Vite
 
 Add `vibelang()` to the `plugins` array in `vite.config.ts`, beside the existing plugins:

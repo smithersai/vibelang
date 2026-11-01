@@ -7,6 +7,12 @@ The compiler owns type and language diagnostics. The plugin serves its JavaScrip
 and source maps, reports errors in the terminal and Vite overlay, and invalidates
 source modules and their importers after edits.
 
+The plugin selects `vibelang-source` package exports for application and SSR
+bundles, preserving the existing resolution conditions. A workspace package
+that mixes `.ts` and `.vibe` modules therefore uses one source graph, even
+when its default export points at emitted JavaScript under `.vibelang/js`.
+
+
 ## Install
 
 ```sh

@@ -1,0 +1,5 @@
+{
+  "property": "source-export-module-identity",
+  "rule": "Explicit custom conditions retain the caller's import condition and package source identity.",
+  "input": { "adapter": "rspack", "kind": "exact", "wrapper": "import", "nested": false, "dynamic": false, "custom": true }
+}
