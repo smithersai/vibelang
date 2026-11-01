@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nerror Missing { id: string }\nfunction load(n: number) {\n  try yieldNow()\n  return { n }\n}\nfunction double(n: number) {\n  return n * 2\n}\nconst toError = (id: string): Missing => new Missing({ id })\n// VIP-5 keeps the error call try; D421 keeps the plain call plain.\nexport function main() {\n  const a = try load(1)\n  const d = double(a.n)\n  if (d > 100) { try toError(\"statement\") }\n  return d > 100 ? try toError(\"return\") : double(d)\n}\n")

@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nfunction load(n: number) {\n  try yieldNow()\n  return { n }\n}\nfunction double(n: number) {\n  return n * 2\n}\nfunction triple(n: number): number {\n  return n * 3\n}\nconst halve = (n: number): number => n / 2\n// D421: plain callees stay plain calls when main becomes an effect function.\nexport function main() {\n  const a = try load(1)\n  const d = double(2)\n  const t = [triple(3)]\n  return a.n + d + t[0] + halve(8)\n}\n")

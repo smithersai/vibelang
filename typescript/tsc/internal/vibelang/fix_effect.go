@@ -149,12 +149,18 @@ func (a *analyzer) effectEditsIn(file *ast.SourceFile, node *ast.Node) ([]source
 				for end < len(text) && (text[end] == ' ' || text[end] == '\t') {
 					end++
 				}
-				// A tried call has its executed success type at the call site.
-				// Inspect the signature's returned value instead: an Effect
-				// subtype (including a tagged error) must keep its try, or the
-				// migration turns execution and failure into success data (VIP-5).
-				signature := a.checker.GetResolvedSignature(node) // plainCallee resolved it
-				switch t := a.checker.GetReturnTypeOfSignature(signature); {
+				// Inspect the value the call gives once the callee stays plain
+				// (D421). A written return type is that value: an Effect
+				// subtype (including a tagged error) keeps its try, or the
+				// migration turns execution and failure into success data
+				// (VIP-5); the call site shows only its executed success type.
+				// Without an annotation the signature is the checker's Effect
+				// wrapper of the body, and the call site's type is the value.
+				t := a.checker.GetTypeAtLocation(node)
+				if callee.Type() != nil {
+					t = a.checker.GetReturnTypeOfSignature(a.checker.GetResolvedSignature(node)) // plainCallee resolved it
+				}
+				switch {
 				case t != nil && effectOfValue(a.checker, t) != nil:
 					// Already a valid Effect operand; keep the written execution.
 				case t != nil && failsAsError(a.checker, t):
