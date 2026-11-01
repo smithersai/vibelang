@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs"
 import { posix } from "node:path"
 
 const command = /(?:^|[\s;&|(])(?:bunx\s+|npx\s+|pnpm\s+(?:exec\s+)?|yarn\s+)?oxlint(?:$|[\s;&|)])/m
+const runnerCommand = /(?:^|[;&|(])\s*(?:bunx\s+|npx\s+|pnpm\s+(?:exec\s+)?|yarn\s+)?oxlint(?:$|[\s;&|)])/m
 const scriptFile = /(?:^|[\s"'=])((?:\.?\.?\/)?[\w@./-]+\.(?:[cm]?[jt]sx?))(?=$|[\s"'])/g
 
 // An all-Vibe directory leaves no native files. Let the subsequent ESLint
@@ -85,6 +86,49 @@ export function addOxlintSelectors(text, ts) {
   return { text: editsOf(text, edits), warnings }
 }
 
+// A package name in metadata is not an executable. Follow local command
+// bindings only from known process APIs and shell tags, never every literal.
+function commandLiterals(source, ts) {
+  const bindings = new Map(), literals = new Set(), seen = new Set()
+  const collect = node => {
+    if ((ts.isVariableDeclaration(node) || ts.isParameter(node)) && ts.isIdentifier(node.name)) {
+      const immutable = ts.isVariableDeclaration(node) && (node.parent.flags & ts.NodeFlags.Const)
+      bindings.set(node.name.text, bindings.has(node.name.text) || !immutable ? null : node.initializer)
+    }
+    ts.forEachChild(node, collect)
+  }
+  collect(source)
+  const expression = node => {
+    if (!node || seen.has(node)) return
+    seen.add(node)
+    if (ts.isIdentifier(node)) return expression(bindings.get(node.text))
+    if (ts.isArrayLiteralExpression(node)) return expression(node.elements[0])
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) { literals.add(node); return }
+    if (ts.isTemplateExpression(node)) {
+      literals.add(node.head)
+      for (const span of node.templateSpans) literals.add(span.literal)
+      return
+    }
+    if (ts.isParenthesizedExpression(node) || ts.isAsExpression(node)) return expression(node.expression)
+    if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken) { expression(node.left); expression(node.right) }
+  }
+  const visit = node => {
+    if (ts.isCallExpression(node) || ts.isNewExpression(node)) {
+      const callee = node.expression
+      const name = ts.isIdentifier(callee) ? callee.text : ts.isPropertyAccessExpression(callee) ? callee.name.text : ""
+      if (/^(?:spawn|spawnSync|exec|execSync|execFile|execFileSync|execa|execaSync|execaCommand|execaCommandSync|Command)$/.test(name)) expression(node.arguments?.[0])
+    }
+    if (ts.isTaggedTemplateExpression(node)) {
+      const tag = node.tag
+      if ((ts.isIdentifier(tag) && (tag.text === "$" || tag.text === "sh")) ||
+          (ts.isPropertyAccessExpression(tag) && tag.name.text === "$")) expression(node.template)
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(source)
+  return literals
+}
+
 // File-list runners use the repository adapter: upstream Oxlint keeps TS,
 // while ESLint runs the same JS plugins against the original VibeLang AST.
 export function wireOxlint({ root, all, manifests, ts, write }) {
@@ -122,17 +166,13 @@ export function wireOxlint({ root, all, manifests, ts, write }) {
     let runnerRunsOxlint = false
     for (const [file, { text, source }] of runners) {
       let runs = false
-      const visit = node => {
-        if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateHead(node)) {
-          if (command.test(node.text) || node.text.includes(".vibelang/oxlint.mjs")) runs = true
-        }
-        ts.forEachChild(node, visit)
-      }
       if (!source) {
         if (/\boxlint\b/.test(text)) warnings.push(file + ": a TypeScript API is required to wire this Oxlint runner")
         continue
       }
-      visit(source)
+      for (const node of commandLiterals(source, ts)) {
+        if (runnerCommand.test(node.text) || node.text.includes(".vibelang/oxlint.mjs")) runs = true
+      }
       if (!runs) continue
       runnerRunsOxlint = true
     }
@@ -146,11 +186,12 @@ export function wireOxlint({ root, all, manifests, ts, write }) {
       const adapter = up + ".vibelang/oxlint.mjs"
       const parsed = ts.createSourceFile(file, next.text, ts.ScriptTarget.Latest, true)
       const edits = []
+      const commands = commandLiterals(parsed, ts)
       const redirect = node => {
         if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) return
-        if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) {
+        if (commands.has(node)) {
           const before = node.getText(parsed)
-          const after = before.replace(/(?<=["'`\s])(?:(?:bunx|npx|pnpm(?:\s+exec)?|yarn)\s+)?oxlint(?=$|["'`\s])/g, adapter)
+          const after = before.replace(/(^["\'`]|[;&|(])([ \t]*)(?:(?:bunx|npx|pnpm(?:\s+exec)?|yarn)\s+)?oxlint(?=$|["\'`\s;&|)])/g, (_all, boundary, space) => boundary + space + adapter)
           if (after !== before) edits.push({ start: node.getStart(parsed), end: node.end, text: after })
         }
         ts.forEachChild(node, redirect)

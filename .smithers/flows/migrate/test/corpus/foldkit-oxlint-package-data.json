@@ -1,0 +1,6 @@
+{
+  "repo": "foldkit",
+  "finding": "foldkit-115",
+  "source": "export const TOOL_DEPENDENCIES = ['oxlint', 'vitest']\n",
+  "expected": "Only executable command positions are rewritten; package-name data remains unchanged."
+}
