@@ -642,8 +642,35 @@ function carryVibeLangPatches(t, moved, version, release) {
  * Wires each of packages: the runtime and compiler dependencies and vibelang
  * for tsc in its package.json, and .vibe sources in its tsconfigs.
  */
-function wirePackages({ t, ts, packages, specsFor, writeIfChanged }) {
-  wirePackages({ t, ts, packages, specsFor, writeIfChanged })
+function wirePackages({ t, ts, packages, specsFor, writeIfChanged, warnings }) {
+  for (const pkg of packages) {
+    const path = join(t, pkg.dir, "package.json")
+    // A migrated module's declarations spell a relative import as the package's sources do (C′).
+    const sources = pkg.sources.flatMap((dir) => listSources(t, posix.join(pkg.dir, dir)))
+    const spelling = Wire.importSpelling(sources.map((file) => readFileSync(join(t, file), "utf8")))
+    if (!spelling.style && Object.values(spelling.counts).some(Boolean)) {
+      const counts = Object.entries(spelling.counts).filter(([, n]) => n).map(([style, n]) => `${n} ${style}`).join(", ")
+      warnings.push(`setup leaves ${pkg.dir}'s declarations importing migrated modules as ./x.js: its sources mix relative import spellings (${counts}), so no vibelang.declarationImportStyle fits; make them one spelling and run setup again`)
+    }
+    const next = Wire.addVibeLang(readJson(path), specsFor(pkg.dir))
+    next.scripts = Wire.replaceTsc(next.scripts)
+    writeIfChanged(path, readFileSync(path, "utf8"), JSON.stringify(next, null, 2) + "\n")
+    const dir = join(t, pkg.dir)
+    // A solution-style tsconfig's referenced projects compile the sources, so they are wired too.
+    for (const tsconfig of new Set([pkg.tsconfig, pkg.dtsTsconfig, ...Wire.projectsOf(ts, dir, pkg.tsconfig), ...Wire.projectsOf(ts, dir, pkg.dtsTsconfig)])) {
+      const file = join(dir, tsconfig)
+      const text = readFileSync(file, "utf8")
+      // Each compile writes x.d.vibe.ts beside x.vibe, which every other TypeScript checker reads,
+      // and the project lists .vibe files where it lists .ts files. An earlier setup's
+      // declarationSidecars setting is retired: the compiler rejects it (TS5023).
+      const current = Wire.removeVibeLangSetting(text, ts, "declarationSidecars")
+      // ".js" is the default, so an earlier setup's other spelling goes; mixed sources keep what the file says.
+      const styled = !spelling.style ? current
+        : spelling.style === ".js" ? Wire.removeVibeLangSetting(current, ts, "declarationImportStyle")
+        : Wire.addVibeLangSetting(current, ts, "declarationImportStyle", spelling.style)
+      writeIfChanged(file, text, Wire.addCompilerOptions(Wire.addVibeIncludes(styled, ts), { rewriteRelativeImportExtensions: true }))
+    }
+  }
 }
 
 /**
@@ -674,8 +701,8 @@ export async function wireNewPackages(config, log) {
     writeFileSync(path, after)
     changed.push(posix.relative(t, path))
   }
-  wirePackages({ t, ts: typeScriptOf(config), packages: added, specsFor, writeIfChanged })
   const warnings = []
+  wirePackages({ t, ts: typeScriptOf(config), packages: added, specsFor, writeIfChanged, warnings })
   const formatted = await formatWritten(t, changed, join(log, "setup-format.log"))
   if (formatted.code !== 0) warnings.push(`${formatted.formatter} exited ${formatted.code} on the files setup wrote; see ${join(log, "setup-format.log")}`)
   const manager = Wire.packageManager(readdirSync(t))
@@ -719,34 +746,7 @@ export async function wireTarget(config, log) {
     changed.push(posix.relative(t, path))
   }
   const ts = typeScriptOf(config)
-  for (const pkg of packages) {
-    const path = join(t, pkg.dir, "package.json")
-    // A migrated module's declarations spell a relative import as the package's sources do (C′).
-    const sources = pkg.sources.flatMap((dir) => listSources(t, posix.join(pkg.dir, dir)))
-    const spelling = Wire.importSpelling(sources.map((file) => readFileSync(join(t, file), "utf8")))
-    if (!spelling.style && Object.values(spelling.counts).some(Boolean)) {
-      const counts = Object.entries(spelling.counts).filter(([, n]) => n).map(([style, n]) => `${n} ${style}`).join(", ")
-      warnings.push(`setup leaves ${pkg.dir}'s declarations importing migrated modules as ./x.js: its sources mix relative import spellings (${counts}), so no vibelang.declarationImportStyle fits; make them one spelling and run setup again`)
-    }
-    const next = Wire.addVibeLang(readJson(path), specsFor(pkg.dir))
-    next.scripts = Wire.replaceTsc(next.scripts)
-    writeIfChanged(path, readFileSync(path, "utf8"), JSON.stringify(next, null, 2) + "\n")
-    const dir = join(t, pkg.dir)
-    // A solution-style tsconfig's referenced projects compile the sources, so they are wired too.
-    for (const tsconfig of new Set([pkg.tsconfig, pkg.dtsTsconfig, ...Wire.projectsOf(ts, dir, pkg.tsconfig), ...Wire.projectsOf(ts, dir, pkg.dtsTsconfig)])) {
-      const file = join(dir, tsconfig)
-      const text = readFileSync(file, "utf8")
-      // Each compile writes x.d.vibe.ts beside x.vibe, which every other TypeScript checker reads,
-      // and the project lists .vibe files where it lists .ts files. An earlier setup's
-      // declarationSidecars setting is retired: the compiler rejects it (TS5023).
-      const current = Wire.removeVibeLangSetting(text, ts, "declarationSidecars")
-      // ".js" is the default, so an earlier setup's other spelling goes; mixed sources keep what the file says.
-      const styled = !spelling.style ? current
-        : spelling.style === ".js" ? Wire.removeVibeLangSetting(current, ts, "declarationImportStyle")
-        : Wire.addVibeLangSetting(current, ts, "declarationImportStyle", spelling.style)
-      writeIfChanged(file, text, Wire.addCompilerOptions(Wire.addVibeIncludes(styled, ts), { rewriteRelativeImportExtensions: true }))
-    }
-  }
+  wirePackages({ t, ts, packages, specsFor, writeIfChanged, warnings })
   // Effect's lint rules run on .vibe files where the root's scripts run them on .ts files (VIP-38).
   const rootPackage = join(t, "package.json")
   if (existsSync(rootPackage)) {

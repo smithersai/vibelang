@@ -1,0 +1,25 @@
+{
+  "source": "t3code setup with --no-wire and a package newly added to the run; RD-008, rev-docs pass 22",
+  "contracts": {
+    "name": "@t3tools/contracts",
+    "scripts": {
+      "typecheck": "vibelang --noEmit"
+    },
+    "dependencies": {
+      "effect": "4.1.0",
+      "vibelang-runtime": "file:../../.vibelang-toolchain/vibelang-runtime-0.0.11-0123456789ab.tgz"
+    },
+    "devDependencies": {
+      "vibelang": "file:../../.vibelang-toolchain/vibelang-0.0.11-ba9876543210.tgz"
+    }
+  },
+  "plugin": {
+    "name": "oxlint-plugin-t3code",
+    "type": "module",
+    "scripts": {
+      "typecheck": "tsc --noEmit",
+      "test": "vp test run"
+    }
+  },
+  "tsconfig": "{\n  \"compilerOptions\": { \"strict\": true, \"noEmit\": true },\n  \"include\": [\"**/*.ts\"]\n}\n"
+}
