@@ -2,6 +2,7 @@
 import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join, posix } from "node:path"
 import { wireSourceChildren } from "./source-children.mjs"
+import { wireRolldownSources } from "./rolldown-builds.mjs"
 import { wireOxlint } from "./oxlint.mjs"
 import { addEslintIgnore, addEslintImportParsers, emittedIgnore, ownedPaths, sidecarIgnore } from "./wire.mjs"
 import { wireNodeSourceHooks } from "./node-hooks.mjs"
@@ -210,6 +211,7 @@ export function wireDeveloperTools({ root, specsFor, ts }) {
   warnings.push(...wireNodeSourceHooks({ root, all, manifests, ts, specsFor, write }).warnings)
   warnings.push(...wireSourceChildren({ root, all, manifests, ts, specsFor, write }).warnings)
   warnings.push(...wireTsdownConfigs({ root, all, ts, specsFor, write }).warnings)
+  warnings.push(...wireRolldownSources({ root, all, manifests, ts, specsFor, write }).warnings)
   const oxlint = wireOxlint({ root, all, manifests, ts, write })
   warnings.push(...oxlint.warnings)
   if (ts) for (const file of all.filter(f => /\.(?:[cm]?[jt]sx?|vibe|json)$/.test(f) && !/\.d\.(?:vibe\.)?[cm]?ts$/.test(f))) {

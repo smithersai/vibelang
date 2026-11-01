@@ -1,0 +1,19 @@
+{
+  "finding": "alchemy-46:programmatic-rolldown",
+  "note": "Minimized Alchemy Bundle's lazy loader, SvelteKit adapter calls without plugins, and cloudflare-runtime's exported typed plugin factory.",
+  "modules": [
+    {
+      "file": "src/Bundle.ts",
+      "source": "const loadRolldown = () => import(\"rolldown\");\nexport async function bundle() { const {rolldown, watch} = await loadRolldown(); await rolldown({input:\"./entry.ts\",plugins:[{name:\"own\"}]}); await watch({input:\"./entry.ts\"}); }\n"
+    },
+    {
+      "file": "src/sveltekit/aws.ts",
+      "source": "import {rolldown} from \"rolldown\";\nexport async function bundle() { return rolldown({input:\"./entry.ts\",external:[\"node:fs\"]}); }\n"
+    },
+    {
+      "file": "src/rolldown/plugin.ts",
+      "source": "import type * as rolldown from \"rolldown\";\nexport type RolldownPlugin = (options?: {enabled?: boolean}) => Array<rolldown.Plugin | null>;\nconst cloudflare: RolldownPlugin = (options = {}) => [options.enabled ? {name:\"optional\"} : null, {name:\"options\"}];\nexport default cloudflare;\n",
+      "factory": true
+    }
+  ]
+}
