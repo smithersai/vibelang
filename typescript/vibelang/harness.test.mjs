@@ -87,6 +87,28 @@ test("status failures retain per-case command evidence across reruns", (t) => {
   for (const file of paths) assert.ok(fs.existsSync(file))
 })
 
+test("a custom runner's run-seconds line sets its deadline", (t) => {
+  const { root, harness } = fixture(t)
+  for (const [name, seconds] of [["runner-1s", 1], ["runner-5s", 5]]) {
+    const at = path.join(root, "vibelang/cases", name)
+    fs.mkdirSync(path.join(at, "expected"), { recursive: true })
+    fs.writeFileSync(path.join(at, "scenario"), "runtime")
+    fs.writeFileSync(path.join(at, "tsconfig.json"), "{}")
+    fs.writeFileSync(path.join(at, "expected/stdout.txt"), "expected\n")
+    fs.writeFileSync(path.join(at, "run.mjs"), `// run-seconds: ${seconds} (a pipeline of bounded stages)\nawait new Promise((resolve) => setTimeout(resolve, 2500))\nconsole.log("expected")\n`)
+  }
+  const env = { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") }
+  const result = spawnSync(process.execPath, [harness, "--verbose", "--jobs", "2", "runner-1s", "runner-5s"], { env, encoding: "utf8", timeout: 30_000 })
+  assert.equal(result.status, 1, result.stdout + result.stderr)
+  assert.match(result.stdout, /^ok\s+runner-5s/m, result.stdout)
+  assert.match(result.stdout, /^FAIL\s+runner-1s: run.mjs printed printed no result \(exit killed by SIGKILL\)/m, result.stdout)
+  const log = /log:\s+(.+?)(?:\)|$)/m.exec(result.stdout)?.[1]
+  assert.ok(log, "the failing runner must name its log:\n" + result.stdout)
+  const run = JSON.parse(fs.readFileSync(log, "utf8")).commands.find((command) => command.phase === "run")
+  assert.equal(run.timeoutMs, 1_000)
+  assert.equal(run.timedOut, true)
+})
+
 test("command evidence records deadline kills, spawn errors, and bounded tails", async () => {
   const { CaseCommands } = await import("./harness-command.mjs")
   const commands = new CaseCommands()

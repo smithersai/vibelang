@@ -224,6 +224,16 @@ barrier-controlled regression that executes both targets' actual shell commands
 concurrently. The aggregate starts after the per-case compiler emits and before
 its runner loads the result, so shared output directories fail deterministically.
 
+A case's custom `run.mjs` has 60 seconds unless one of its lines says
+`// run-seconds: N`. The twelve `rewrite-*` runners call `compareRewrite`, a
+pipeline of six stages (two compiles, two runs, two `--fix` passes) that each
+have a 30-second deadline, and declare `// run-seconds: 180`, their sum: a slow
+stage then trips its own deadline, which names the stage in
+`out/rewrite-evidence/<stage>.log` with its duration, instead of the runner
+being killed as a whole. Under the 60-second default, post-merge killed healthy
+runs after four compiles on loaded hosts (medians of 13 to 20 seconds, maxima of
+86 to 115 seconds over 214 runs).
+
 To reproduce child-start races without a busy host, run the acceptance harness
 with `--late-start` (or set `VIBELANG_LATE_START=1`). It delays queued
 scheduler tasks by `100 ms` after the caller suspends, while timers can resume

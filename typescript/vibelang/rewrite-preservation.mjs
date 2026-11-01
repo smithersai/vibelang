@@ -1,5 +1,9 @@
 // Differential acceptance checks for source transformations. Every stage records
-// its command and output in out/rewrite-evidence, including failed rewrites.
+// its command, output and duration in out/rewrite-evidence, including failed rewrites.
+// Each stage has 30 s; a case's run.mjs declares `// run-seconds: 180`, the sum of
+// the six stages, so that the harness's runner deadline never fires before a
+// stage's own, which names the stage (on loaded hosts the 60 s default killed
+// healthy runs after four compiles).
 import assert from "node:assert/strict"
 import { spawnSync, spawn } from "node:child_process"
 import fs from "node:fs"
@@ -8,6 +12,7 @@ import { fileURLToPath } from "node:url"
 
 export async function compareRewrite(url, expected, { mode = "fix", present = [], absent = [], editorClass = "Bad" } = {}) {
   const dir = path.dirname(fileURLToPath(url))
+  assert.match(fs.readFileSync(fileURLToPath(url), "utf8"), /^\/\/ run-seconds: 180\b/m, "run.mjs must declare `// run-seconds: 180`: six stages of 30 s")
   const compiler = process.env.VIBELANG_REWRITE_BINARY || fileURLToPath(new URL("../built/local/tsc", import.meta.url))
   const work = path.join(dir, "out/rewrite-evidence")
   fs.rmSync(work, { recursive: true, force: true })
@@ -19,8 +24,9 @@ export async function compareRewrite(url, expected, { mode = "fix", present = []
   }
   fs.symlinkSync(path.join(dir, "node_modules"), path.join(work, "node_modules"))
   function command(stage, bin, args) {
+    const started = Date.now()
     const result = spawnSync(bin, args, { cwd: work, encoding: "utf8", timeout: 30_000, env: { ...process.env, NO_COLOR: "1" } })
-    fs.writeFileSync(path.join(work, stage + ".log"), JSON.stringify({ bin, args, status: result.status, signal: result.signal, error: result.error?.message, stdout: result.stdout, stderr: result.stderr }, null, 2))
+    fs.writeFileSync(path.join(work, stage + ".log"), JSON.stringify({ bin, args, ms: Date.now() - started, status: result.status, signal: result.signal, error: result.error?.message, stdout: result.stdout, stderr: result.stderr }, null, 2))
     assert.equal(result.status, 0, stage + "\n" + result.stdout + result.stderr)
     return result.stdout
   }

@@ -15,7 +15,10 @@
 //     success value on a line that starts with @@result, and the case passes
 //     when that line holds <json>. What the program logs does not count.
 //   - Any other case runs <case>/run.mjs, or else out/main.js, and compares
-//     what it prints with expected/stdout.txt.
+//     what it prints with expected/stdout.txt. A run.mjs has 60 s unless one
+//     of its lines says `// run-seconds: N`. A runner that is a pipeline of
+//     bounded stages sets N to the sum of its stage deadlines, so a slow stage
+//     trips its own deadline, which names the stage, before the runner's.
 //
 // --late-start (or VIBELANG_LATE_START=1) delays scheduler dispatch by 100 ms.
 // Use it to expose parents that sleep instead of waiting for child readiness.
@@ -186,6 +189,12 @@ function readHeaders(dir) {
   return headers
 }
 
+// A custom runner's deadline: 60 s, or the N of a `// run-seconds: N` line.
+function runnerSeconds(file) {
+  const line = /^\/\/ run-seconds: (\d+)\b/m.exec(fs.readFileSync(file, "utf8"))
+  return line ? Number(line[1]) : 60
+}
+
 // resultMarker starts the line on which out/run.mjs prints main()'s result.
 const resultMarker = "@@result "
 
@@ -341,13 +350,16 @@ async function check(name, commands) {
   }
 
   let entry = path.join(dir, "out", "main.js")
-  if (fs.existsSync(path.join(dir, "run.mjs"))) entry = path.join(dir, "run.mjs")
-  else if (headers.entry) {
+  let runTimeout = 60_000
+  if (fs.existsSync(path.join(dir, "run.mjs"))) {
+    entry = path.join(dir, "run.mjs")
+    runTimeout = runnerSeconds(entry) * 1000
+  } else if (headers.entry) {
     entry = path.join(dir, "out", "run.mjs")
     fs.writeFileSync(entry, runner(headers.entry))
   }
   const stdoutFile = path.join(expectedDir, "stdout.txt")
-  const ran = await commands.run("node", [entry], { phase: "run", cwd: dir, timeout: 60_000 })
+  const ran = await commands.run("node", [entry], { phase: "run", cwd: dir, timeout: runTimeout })
   let want, got
   if (fs.existsSync(stdoutFile)) {
     want = fs.readFileSync(stdoutFile, "utf8")

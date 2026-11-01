@@ -642,6 +642,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The migrate flow's setup rewrote only `tsc` in the migrated packages' scripts, so a root or TypeScript-only package that built with `tsrs -b` or `tsgo -b` rebuilt migrated projects with a stock compiler and published JavaScript that imports `./x.vibe`; setup now runs `vibelang` for `tsc`, `tsgo` and `tsrs` in the root's scripts and in every package that reaches a migrated one.
 
+- The `rewrite-*` acceptance cases, which compile a program, rewrite it with `vibelang --fix` and compile it again, could be killed as a whole after 60 s on a loaded host; a custom runner now declares its own deadline (`// run-seconds: N`), and these declare the sum of their six 30 s stages, so a slow stage is named instead.
+
 - Formatting valid `for` heads with `is` patterns could fail with an internal parse error; they now format at narrow and normal widths while keeping `is` attached to its subject.
 - Formatting native `Option` control flow could reject parenthesized `return (match …)` expressions and binding `is` branches; these forms now format while preserving their parsed structure.
 - A dprint `operatorPosition` of `sameLine` or `maintain` could wrap an `is` pattern onto the next line at a narrow width and fail with `')' expected`; the pattern now stays on the line of `is`.
