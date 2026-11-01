@@ -200,6 +200,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- On a loaded host, the bundler teardown tests could kill their finishing compiler and fail with `null !== 0`; they now control the grace timer and release the compiler explicitly, with a `30 s` hang guard.
+
 - `vibelang --fix` could remove an explicit `<{}>` payload from a fieldless `Data.TaggedError` class, changing its published declaration. Projects that emit declarations now keep the class and receive an explanation instead.
 
 - Switching migration toolchains could absorb newly failing tests or compiler errors into a passing baseline; the flow now rejects the switch and retains its before-and-after evidence.

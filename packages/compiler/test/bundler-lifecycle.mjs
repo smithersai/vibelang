@@ -6,6 +6,10 @@ import { join } from "node:path"
 import { setTimeout as delay } from "node:timers/promises"
 import { test } from "node:test"
 
+// Capture the real hang guard before a test controls the backend grace timer.
+const hangTimeout = setTimeout
+const clearHangTimeout = clearTimeout
+
 export function lifecycleTests(create) {
   for (const mode of ["finishes", "ignores termination", "leaves inherited pipes"]) {
     for (const hook of ["closeBundle", "closeWatcher"]) {
@@ -20,13 +24,13 @@ export function lifecycleTests(create) {
         // completion, while the plugin reports the missing module to its caller.
         await writeFile(compiler, `
 import { writeFileSync } from "node:fs"
-writeFileSync(${JSON.stringify(ready)}, String(process.pid))
-${mode === "finishes" ? 'setTimeout(() => process.exit(0), 200)' : mode === "ignores termination"
+${mode === "finishes" ? 'process.on("SIGUSR2", () => process.exit(0)); setInterval(() => {}, 1000)' : mode === "ignores termination"
   ? 'process.on("SIGTERM", () => {}); setInterval(() => {}, 1000)'
   : `import { spawn } from "node:child_process"
 const holder = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { stdio: "inherit" })
 writeFileSync(${JSON.stringify(join(root, "holder"))}, String(holder.pid))
 setInterval(() => {}, 1000)` }
+writeFileSync(${JSON.stringify(ready)}, String(process.pid))
 `)
         const plugin = create({ root, compiler })
         plugin.configResolved?.({ root, logger: { warn() {} } })
@@ -55,15 +59,37 @@ setInterval(() => {}, 1000)` }
         assert.ok(pid, "the compile started")
         child = process._getActiveHandles().find(handle => handle.pid === pid)
         assert.ok(child, "the test owns the compiler child")
-        const started = Date.now()
-        await plugin[hook]?.()
-        assert.ok(Date.now() - started < 5000, "teardown is bounded")
+        // The compiler used to sleep for 200 ms and race the real 500 ms
+        // grace timer. Under load it could receive SIGTERM before being
+        // scheduled again. Hold only the backend timer; the child exits when
+        // released, while teardown is already waiting for its active compile.
+        if (mode === "finishes") t.mock.timers.enable({ apis: ["setTimeout"] })
+        let guard
+        try {
+          const closing = plugin[hook]?.()
+          if (mode === "finishes") {
+            // Let the plugin enter backend.close() before releasing the child.
+            await new Promise(resolve => setImmediate(resolve))
+            assert.equal(child.exitCode, null, "the compile is active during teardown")
+            child.kill("SIGUSR2")
+          }
+          await Promise.race([
+            closing,
+            new Promise((_, reject) => {
+              guard = hangTimeout(() => reject(new Error("teardown exceeded its 30 s hang guard")), 30000)
+            })
+          ])
+        } finally {
+          clearHangTimeout(guard)
+          if (mode === "finishes") t.mock.timers.reset()
+        }
         assert.ok(child.exitCode !== null || child.signalCode !== null, "teardown waited for the compiler to exit")
         assert.ok(child.stdout.destroyed && child.stderr.destroyed, "both compiler pipes are closed")
         const handles = process._getActiveHandles()
         assert.ok(!handles.includes(child) && !handles.includes(child.stdout) && !handles.includes(child.stderr),
           "no compiler process or pipe handle remains")
-        if (mode === "finishes") assert.equal(child.exitCode, 0, "a short compile finishes during the grace period")
+        if (mode === "finishes") assert.equal(child.exitCode, 0,
+          `the compiler finishes during the grace period (signal: ${child.signalCode})`)
         await pending
         await plugin[hook]?.() // Repeated teardown is harmless.
       })
