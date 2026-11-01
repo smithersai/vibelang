@@ -263,8 +263,10 @@ export function restoreExports(root, edits, module) {
  * This includes extensionless file and directory-index imports, which stock
  * TypeScript cannot resolve to the sidecar as originally written. VibeLang
  * and its loaders resolve the source, and emit and declare ./user.vibe as
- * ./user.js (D298). A .vibe specifier of a module that revert returned to .ts
- * names its .ts source again.
+ * ./user.js (D298). Vitests and Jests mocks (vi.mock, vi.importActual,
+ * jest.requireActual) take this rule as an import does, so a mock keeps
+ * naming the module its test imports. A .vibe specifier of a module that
+ * revert returned to .ts names its .ts source again.
  */
 export function rewriteSpecifier(importer, specifier, target, { mock = false, base: aliased } = {}) {
   const targetExt = posix.extname(target)
@@ -286,7 +288,8 @@ export function rewriteSpecifier(importer, specifier, target, { mock = false, ba
  * Puts back the specifiers the codemod rewrote to name a module that revert
  * returns to .ts: each edit { file, from, to } of a TypeScript importer whose
  * `to` names `module` (repository-relative, now .ts) gets its `from` again,
- * so ./user.js stays ./user.js. Returns the edits made.
+ * so ./user.js stays ./user.js, and an edit is used once. Returns the edits
+ * made.
  */
 export function restoreSpecifiers(root, edits, module, aliases) {
   const vibe = module.replace(/\.(?:ts|mts)$/, ".vibe")
@@ -313,9 +316,14 @@ export function restoreSpecifiers(root, edits, module, aliases) {
     if (!existsSync(path)) continue
     const text = readFileSync(path, "utf8")
     const changes = []
+    // Each edit puts back one specifier, in source order, as rewriteImports
+    // recorded them: an import of ./user.js and a mock of ./user.ts both
+    // became ./user.vibe, and each gets its own spelling again.
+    const pending = [...fileEdits]
     for (const i of parseImports(text)) {
-      const edit = fileEdits.find((e) => e.to === i.specifier)
-      if (!edit) continue
+      const at = pending.findIndex((e) => e.to === i.specifier)
+      if (at < 0) continue
+      const [edit] = pending.splice(at, 1)
       changes.push({ start: i.start, end: i.end, text: edit.from })
       restored.push({ file, from: i.specifier, to: edit.from })
     }

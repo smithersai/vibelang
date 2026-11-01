@@ -7,6 +7,9 @@ const fromClause = /(?<=^|[;\n}])[ \t]*(import|export)\s+(type\s+)?((?:(?!\b(?:i
 const bare = /(?<=^|[;\n}])[ \t]*import\s*(['"])([^'"\n]+)\1/dg
 const dynamic = /\bimport\(\s*(['"])([^'"\n]+)\1\s*\)/dg
 const mocked = /\bmock\.module\(\s*(['"])([^'"\n]+)\1/dg
+// Vitest's and Jest's module mocks name a module by a path as an import does:
+// vi.mock("./leaf.ts", …), vi.importActual("./leaf.ts"), jest.requireActual(…).
+const testMocked = /\b(?:vi|vitest|jest)\s*\.\s*(?:mock|doMock|unmock|doUnmock|importActual|importMock|requireActual|requireMock)(?:<[^;\n]*?>)?\(\s*(['"])([^'"\n]+)\1/dg
 
 // Where a string or template ends, from just after its opening quote.
 const stringEnd = (text, at, quote) => {
@@ -66,8 +69,10 @@ export function commentRanges(text) {
 }
 
 /**
- * Every import and re-export specifier of text, in source order. A specifier
- * in a comment is prose, such as `{@link import("./x.ts").X}`, and declaration
+ * Every import and re-export specifier of text, in source order, with the
+ * module paths of dynamic imports, Bun's mock.module (kind "mock") and
+ * Vitest's and Jest's module mocks (kind "test-mock"). A specifier in a
+ * comment is prose, such as `{@link import("./x.ts").X}`, and declaration
  * emit copies a doc comment, so it is no import.
  */
 export function parseImports(text) {
@@ -89,6 +94,7 @@ export function parseImports(text) {
   for (const m of text.matchAll(bare)) found.push({ kind: "import", specifier: m[2], typeOnly: false, clause: "", start: m.indices[2][0], end: m.indices[2][1] })
   for (const m of text.matchAll(dynamic)) found.push({ kind: "dynamic", specifier: m[2], typeOnly: false, clause: "", start: m.indices[2][0], end: m.indices[2][1] })
   for (const m of text.matchAll(mocked)) found.push({ kind: "mock", specifier: m[2], typeOnly: false, clause: "", start: m.indices[2][0], end: m.indices[2][1] })
+  for (const m of text.matchAll(testMocked)) found.push({ kind: "test-mock", specifier: m[2], typeOnly: false, clause: "", start: m.indices[2][0], end: m.indices[2][1] })
   const comments = commentRanges(text)
   return found.filter((i) => !comments.some(([start, end]) => start <= i.start && i.start < end)).sort((a, b) => a.start - b.start)
 }
