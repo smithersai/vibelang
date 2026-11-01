@@ -232,10 +232,19 @@ func (r *gateRound) aloneKey(p int, fixes []int) [32]byte {
 	return key
 }
 
+// keep keeps parts, whose trial with the kept fixes adds no error, and
+// hands the texts of the kept fixes to fixGate.verified.
 func (r *gateRound) keep(parts ...part) {
 	for _, pt := range parts {
 		r.kept[pt.p] = append(r.kept[pt.p], pt.fixes...)
 		slices.Sort(r.kept[pt.p])
+	}
+	if r.g.verified != nil {
+		overlay := map[tspath.RootedFilePath]string{}
+		for p, fixes := range r.kept {
+			overlay[r.proposals[p].file.FileName()] = r.subset(p, fixes).text()
+		}
+		r.g.verified(maps(r.texts, overlay))
 	}
 }
 
@@ -467,6 +476,11 @@ func (r *gateRound) culprit(parts []part, t checked) ([2]int, map[string]int, bo
 		} else {
 			lo, low = mid, c
 		}
+	}
+	if r.g.done.Err() != nil || hi == 0 {
+		// Interrupted before it found the fix: a stopped run keeps what
+		// was kept before (fixKeeper).
+		return [2]int{}, nil, false
 	}
 	added := map[string]int{}
 	for key, n := range high.added {

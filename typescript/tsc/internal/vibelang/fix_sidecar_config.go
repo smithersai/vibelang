@@ -148,6 +148,8 @@ func removedSidecarSettingEdits(file *ast.SourceFile) []sourceEdit {
 	return merged
 }
 
+// writeSidecarConfigFixes writes changes; reportSidecarConfigFixes prints
+// them once the fixes are done.
 func writeSidecarConfigFixes(sys tsc.System, changes map[tspath.RootedFilePath]string) error {
 	names := make([]tspath.RootedFilePath, 0, len(changes))
 	for name := range changes {
@@ -162,12 +164,22 @@ func writeSidecarConfigFixes(sys tsc.System, changes map[tspath.RootedFilePath]s
 		if original, err := os.ReadFile(name.AsString()); err == nil && bytes.HasPrefix(original, []byte(bom)) && !strings.HasPrefix(text, bom) {
 			text = bom + text
 		}
-		if err := os.WriteFile(name.AsString(), []byte(text), 0o644); err != nil {
+		if err := writeFileAtomically(name.AsString(), text); err != nil {
 			return fmt.Errorf("%s: %w", relativeName(sys, name), err)
 		}
-		fmt.Fprintf(sys.Writer(), "vibelang --fix: %s: removed obsolete declarationSidecars setting\n", relativeName(sys, name))
 	}
 	return nil
+}
+
+func reportSidecarConfigFixes(sys tsc.System, changes map[tspath.RootedFilePath]string) {
+	names := make([]tspath.RootedFilePath, 0, len(changes))
+	for name := range changes {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+	for _, name := range names {
+		fmt.Fprintf(sys.Writer(), "vibelang --fix: %s: removed obsolete declarationSidecars setting\n", relativeName(sys, name))
+	}
 }
 
 func sidecarConfigPropertyName(property *ast.Node) string {

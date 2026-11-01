@@ -55,10 +55,12 @@ import (
 // (D310, D311) and writes M.M as M where a module's name names its service,
 // keeping each file's rewrites only when the program then reports no error
 // it did not before. Then an import of effect or one of its modules that
-// the fixes left unused is removed. Nothing is written until every round is
-// done, nothing at all when the command is interrupted, and a second run
-// finds nothing to fix. The fix of the retired try(…) hatch (EK4616, VIP-5)
-// runs under --fix-migration-only too. --fix-vip-only applies only the VIP
+// the fixes left unused is removed. Each time the gate verifies a set of
+// fixes, the command writes the files they change (fix_keep.go), so a run
+// stopped by SIGINT or SIGTERM keeps every fix it verified and none it did
+// not, and a second run finishes the work; after a run that finishes, a
+// second run finds nothing to fix. The fix of the retired try(…) hatch
+// (EK4616, VIP-5) runs under --fix-migration-only too. --fix-vip-only applies only the VIP
 // migrations: that fix, then try before each call that runs where it stands
 // (fix_try.go), which keeps the call's meaning while every call still runs
 // where it stands. --fix cannot be combined with --build or --watch.
@@ -74,8 +76,14 @@ const FixFlag = "--fix"
 // TypeScript-style teaching examples or their explicit imports (D382).
 // VIPOnly applies the VIP migrations and nothing else. CheckEachFix checks
 // each fix on its own instead of a round together: the oracle the fix gate
-// is fuzzed against, which no command line sets.
-type FixOptions struct{ MigrationOnly, VIPOnly, CheckEachFix bool }
+// is fuzzed against, which no command line sets. Verified, when set, is
+// called with the text of each file the fixes change each time the gate
+// verifies them together: after a round, after each set of a round's fixes
+// it keeps, and after each later rewrite (fix_keep.go).
+type FixOptions struct {
+	MigrationOnly, VIPOnly, CheckEachFix bool
+	Verified                             func(texts map[tspath.RootedFilePath]string)
+}
 
 // FixOptionsArguments removes the optional scope flag after --fix was found.
 // Ordinary --fix keeps its existing behavior, including prelude cleanup.
@@ -145,26 +153,35 @@ func FixWithOptions(ctx context.Context, sys tsc.System, args []string, options 
 	if len(errors) > 0 || config == nil {
 		return 0 // the compilation reports them
 	}
-	result := FixProjectWithOptions(ctx, configFS, sys.DefaultLibraryPath(), config, options)
+	run, stop := context.WithCancel(ctx)
+	defer stop()
+	keeper := &fixKeeper{sys: sys, config: configChanges, stop: stop, last: map[tspath.RootedFilePath]string{}, original: map[tspath.RootedFilePath]string{}}
+	options.Verified = keeper.keep
+	result := FixProjectWithOptions(run, configFS, sys.DefaultLibraryPath(), config, options)
+	if keeper.err != nil {
+		fmt.Fprintf(sys.ErrorWriter(), "vibelang --fix: %v\n", keeper.err)
+		return int(tsc.ExitStatusInvalidProject_OutputsSkipped)
+	}
 	if ctx.Err() != nil {
-		fmt.Fprintln(sys.ErrorWriter(), "vibelang --fix: interrupted; no file written.")
+		fmt.Fprintf(sys.ErrorWriter(), "vibelang --fix: interrupted; %s.\n", keeper.kept())
 		return int(tsc.ExitStatusInvalidProject_OutputsSkipped)
 	}
 	if result.Err != nil {
-		fmt.Fprintf(sys.ErrorWriter(), "vibelang --fix: %v; no file written.\n", result.Err)
+		fmt.Fprintf(sys.ErrorWriter(), "vibelang --fix: %v; %s.\n", result.Err, keeper.kept())
 		return int(tsc.ExitStatusInvalidProject_OutputsSkipped)
 	}
+	texts := map[tspath.RootedFilePath]string{}
 	for _, name := range result.Order {
-		file := result.Files[name]
-		if err := os.WriteFile(name.AsString(), []byte(file.Text), 0o644); err != nil {
-			fmt.Fprintf(sys.ErrorWriter(), "vibelang --fix: %s: %v\n", relativeName(sys, name), err)
-			return int(tsc.ExitStatusInvalidProject_OutputsSkipped)
-		}
+		texts[name] = result.Files[name].Text
 	}
-	if err := writeSidecarConfigFixes(sys, configChanges); err != nil {
-		fmt.Fprintf(sys.ErrorWriter(), "vibelang --fix: %v\n", err)
+	if keeper.keep(texts); keeper.err == nil {
+		keeper.writeConfig()
+	}
+	if keeper.err != nil {
+		fmt.Fprintf(sys.ErrorWriter(), "vibelang --fix: %v\n", keeper.err)
 		return int(tsc.ExitStatusInvalidProject_OutputsSkipped)
 	}
+	reportSidecarConfigFixes(sys, configChanges)
 	result.Report(sys.Writer(), func(name tspath.RootedFilePath) string { return relativeName(sys, name) })
 	return 0
 }
@@ -263,6 +280,30 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 	// again, so the checks run to their end and ctx is tested between them.
 	done := ctx
 	ctx = context.WithoutCancel(ctx)
+	// The files options.Verified writes are read as they were: the run's
+	// programs read their fixed text from its overlay, and a fixed file's
+	// Original is the text before the run.
+	originals := &collections.SyncMap[tspath.RootedFilePath, string]{}
+	disk := fs
+	fs = wrapvfs.Wrap(disk, wrapvfs.Replacements{ReadFile: func(name tspath.RootedFilePath) (string, bool) {
+		if text, ok := originals.Load(name); ok {
+			return text, true
+		}
+		return disk.ReadFile(name)
+	}})
+	verified := func(state map[tspath.RootedFilePath]string) {
+		if options.Verified == nil {
+			return
+		}
+		for name := range state {
+			if _, ok := originals.Load(name); !ok {
+				if text, ok := disk.ReadFile(name); ok {
+					originals.Store(name, text)
+				}
+			}
+		}
+		options.Verified(state)
+	}
 	texts := map[tspath.RootedFilePath]string{}
 	parsed := &fixParsedFiles{}
 	// When a round's fixes pass together, the next round's program is the one
@@ -282,7 +323,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 	if done.Err() != nil {
 		return result
 	}
-	g := &fixGate{ctx: ctx, done: done, build: build, baseline: errorCounts(ctx, program), refused: map[string]bool{}, alone: map[[32]byte]map[string]int{}}
+	g := &fixGate{ctx: ctx, done: done, build: build, baseline: errorCounts(ctx, program), refused: map[string]bool{}, alone: map[[32]byte]map[string]int{}, verified: verified}
 	seen := map[[32]byte]bool{fixState(program): true}
 	for {
 		if done.Err() != nil {
@@ -357,6 +398,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			}
 			texts[name] = fixed.Text
 		}
+		verified(texts)
 		program = build(texts)
 		state := fixState(program)
 		if seen[state] {
@@ -368,10 +410,12 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 	// try before each call that runs where it stands (VIP-5, fix_try.go).
 	if done.Err() == nil && options.VIPOnly {
 		rewriteTries(g, fs, build(texts), texts, result)
+		verified(texts)
 	}
 	// effect where a function compiles to an Effect (VIP-1, VIP-2, fix_effect.go).
 	if done.Err() == nil && options.VIPOnly {
 		rewriteEffects(g, fs, build(texts), texts, result)
+		verified(texts)
 	}
 	if options.MigrationOnly || options.VIPOnly {
 		slices.SortFunc(result.Order, tspath.RootedFilePath.Compare)
@@ -380,6 +424,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 	// What the prelude makes shorter (D310, D311).
 	if done.Err() == nil {
 		rewritePrelude(g, fs, build(texts), texts, result)
+		verified(texts)
 	}
 	// Remove the effect imports that the fixes left unused.
 	cleaned := map[tspath.RootedFilePath]string{}
@@ -393,6 +438,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			for name, text := range cleaned {
 				result.Files[name].Text = text
 			}
+			verified(maps(texts, cleaned))
 		}
 	}
 	slices.SortFunc(result.Order, tspath.RootedFilePath.Compare)
@@ -614,6 +660,9 @@ type fixGate struct {
 	build      func(map[tspath.RootedFilePath]string) *compiler.Program
 	baseline   map[string]int
 	refused    map[string]bool // fixes refused, by fixKey
+	// verified is called with the texts of each set of fixes the gate
+	// verifies together (FixOptions.Verified).
+	verified func(map[tspath.RootedFilePath]string)
 	// alone holds the errors each fix refused on its own added, by
 	// aloneKey: a later round that offers the same edit to the same texts
 	// builds the same program, so it is refused without a check.
