@@ -399,3 +399,31 @@ test("isolated case package fixtures survive scope, depth, links and payload mut
     value: fc.integer({ min: 0, max: 255 }),
   }), (input) => checkNestedFixture(t, input)), { seed: 106107, numRuns: 20, endOnFailure: true })
 })
+
+test("an isolated case compiles as it does in place: the cases' package scope and its own linked packages", (t) => {
+  const { root, harness, compiler } = fixture(t)
+  // The compiler stands in for what tsc reads outside the case's files: the nearest package.json scope above the case
+  // (cases/package.json in the repository) and a package the case links under a nested node_modules.
+  fs.writeFileSync(compiler, `#!/usr/bin/env node
+import fs from "node:fs"
+const scope = JSON.parse(fs.readFileSync("../package.json", "utf8"))
+if (scope.type !== "module") { console.log("main.vibe(1,1): error TS9999: not an ES module scope"); process.exit(1) }
+if (!fs.existsSync("consumer/node_modules/agent/index.js")) { console.log("consumer/main.vibe(1,22): error TS2307: no agent"); process.exit(1) }
+fs.mkdirSync("out", { recursive: true })
+fs.writeFileSync("out/main.js", 'console.log("expected")')
+`, { mode: 0o755 })
+  const cases = path.join(root, "vibelang/cases")
+  fs.writeFileSync(path.join(cases, "package.json"), '{"type":"module"}')
+  const at = path.join(cases, "runtime")
+  fs.mkdirSync(path.join(at, "consumer/agent"), { recursive: true })
+  fs.mkdirSync(path.join(at, "consumer/node_modules"), { recursive: true })
+  fs.writeFileSync(path.join(at, "consumer/agent/index.js"), "export const agent = 1\n")
+  fs.symlinkSync("../agent", path.join(at, "consumer/node_modules/agent"))
+  const env = { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") }
+  for (const args of [["runtime"], ["--isolated", "runtime"]]) {
+    const result = spawnSync(process.execPath, [harness, ...args], { env, encoding: "utf8", timeout: 10_000 })
+    assert.equal(result.status, 0, args.join(" ") + "\n" + result.stdout + result.stderr)
+    assert.match(result.stdout, /1 cases: 1 ok, 0 FAIL/)
+  }
+  assert.equal(fs.readdirSync(path.join(root, "vibelang")).some((name) => name.startsWith(".smthrs-harness-")), false)
+})

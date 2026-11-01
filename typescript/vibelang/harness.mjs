@@ -268,9 +268,20 @@ async function checkDeclarationIdentity(dir, commands) {
 
 // Keep the entire install and emit tree private, including custom run.mjs
 // files that import ./out and declaration-identity cases' typescript/out.
+// A copy must compile as the case does in place. The files beside the cases
+// (cases/package.json makes every case an ES module) come along, and so does a
+// case's own nested node_modules (linked or stub packages it commits); only
+// the install linkNodeModules rebuilds at the case root stays behind. Before
+// 2026-11-01 five cases failed only when isolated.
 function caseDirectory(name) {
   const source = path.join(casesDir, name)
   if (!isolated) return source
+  if (!fs.existsSync(isolatedCasesDir)) {
+    fs.mkdirSync(isolatedCasesDir, { recursive: true })
+    for (const entry of fs.readdirSync(casesDir, { withFileTypes: true })) {
+      if (entry.isFile()) fs.copyFileSync(path.join(casesDir, entry.name), path.join(isolatedCasesDir, entry.name))
+    }
+  }
   const dir = path.join(isolatedCasesDir, name)
   fs.cpSync(source, dir, {
     recursive: true,
@@ -419,8 +430,10 @@ async function main() {
     }
   }
   await Promise.all(Array.from({ length: jobs }, worker))
-  if (isolated && fs.existsSync(isolatedCasesDir) && fs.readdirSync(isolatedCasesDir).length === 0) {
-    fs.rmdirSync(isolatedCasesDir)
+  // Done when no case directory is left: the files copied beside them do not count.
+  if (isolated && fs.existsSync(isolatedCasesDir) &&
+    fs.readdirSync(isolatedCasesDir, { withFileTypes: true }).every((entry) => !entry.isDirectory())) {
+    fs.rmSync(isolatedCasesDir, { recursive: true, force: true })
   }
 
   const count = (status) => results.filter((r) => r.status === status).length
