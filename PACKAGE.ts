@@ -55,6 +55,7 @@ const specTests = [
   "TestMigrationMemberCommentsQuoted",
   "TestMigrationServiceImportsQuoted",
   "TestMigrationFunctionResourcesQuoted",
+  "TestMigrationAssertedColdQuoted",
   "TestDoForTryDiagnosticOwnerQuoted",
   "TestDoDeclarationBytesQuoted",
   "TestSpecifierWrittenJSX",

@@ -1,0 +1,51 @@
+# casts, satisfies and parentheses around a plain function's value must not change its kind; observed on main a10800db69ec.
+FuzzMigrationAssertedCold arrow:none:array compiler Chapter 1 function kinds: casts, satisfies and parentheses around a plain function's value must not change its kind; lane core-land
+FuzzMigrationAssertedCold corpus:arrow-none-array compiler Chapter 1 function kinds: minimized reproduction of arrow:none:array; lane core-land
+FuzzMigrationAssertedCold arrow:parenthesized:array compiler Chapter 1 function kinds: casts, satisfies and parentheses around a plain function's value must not change its kind; lane core-land
+FuzzMigrationAssertedCold corpus:arrow-parenthesized-array compiler Chapter 1 function kinds: minimized reproduction of arrow:parenthesized:array; lane core-land
+FuzzMigrationAssertedCold arrow:parenthesized:nested compiler Chapter 1 function kinds: casts, satisfies and parentheses around a plain function's value must not change its kind; lane core-land
+FuzzMigrationAssertedCold corpus:arrow-parenthesized-nested compiler Chapter 1 function kinds: minimized reproduction of arrow:parenthesized:nested; lane core-land
+FuzzMigrationAssertedCold arrow:parenthesized:object compiler Chapter 1 function kinds: casts, satisfies and parentheses around a plain function's value must not change its kind; lane core-land
+FuzzMigrationAssertedCold corpus:arrow-parenthesized-object compiler Chapter 1 function kinds: minimized reproduction of arrow:parenthesized:object; lane core-land
+FuzzMigrationAssertedCold arrow:satisfies:array compiler Chapter 1 function kinds: casts, satisfies and parentheses around a plain function's value must not change its kind; lane core-land
+FuzzMigrationAssertedCold corpus:arrow-satisfies-array compiler Chapter 1 function kinds: minimized reproduction of arrow:satisfies:array; lane core-land
+FuzzMigrationAssertedCold arrow:unknown:array compiler Chapter 1 function kinds: casts, satisfies and parentheses around a plain function's value must not change its kind; lane core-land
+FuzzMigrationAssertedCold corpus:arrow-unknown-array compiler Chapter 1 function kinds: minimized reproduction of arrow:unknown:array; lane core-land
+FuzzMigrationAssertedCold arrow:unknown:nested compiler Chapter 1 function kinds: casts, satisfies and parentheses around a plain function's value must not change its kind; lane core-land
+FuzzMigrationAssertedCold corpus:arrow-unknown-nested compiler Chapter 1 function kinds: minimized reproduction of arrow:unknown:nested; lane core-land
+FuzzMigrationAssertedCold arrow:unknown:object compiler Chapter 1 function kinds: casts, satisfies and parentheses around a plain function's value must not change its kind; lane core-land
+FuzzMigrationAssertedCold corpus:arrow-unknown-object compiler Chapter 1 function kinds: minimized reproduction of arrow:unknown:object; lane core-land
+FuzzMigrationAssertedCold foldkit-asserted-cold-values compiler Chapter 1 function kinds: casts, satisfies and parentheses around a plain function's value must not change its kind; lane core-land
+FuzzMigrationAssertedCold corpus:foldkit-asserted-cold-values compiler Chapter 1 function kinds: minimized reproduction of foldkit-asserted-cold-values; lane core-land
+FuzzMigrationAssertedCold function:none:array compiler Chapter 1 function kinds: casts, satisfies and parentheses around a plain function's value must not change its kind; lane core-land
+FuzzMigrationAssertedCold corpus:function-none-array compiler Chapter 1 function kinds: minimized reproduction of function:none:array; lane core-land
+FuzzMigrationAssertedCold function:parenthesized:array compiler Chapter 1 function kinds: casts, satisfies and parentheses around a plain function's value must not change its kind; lane core-land
+FuzzMigrationAssertedCold corpus:function-parenthesized-array compiler Chapter 1 function kinds: minimized reproduction of function:parenthesized:array; lane core-land
+FuzzMigrationAssertedCold function:parenthesized:nested compiler Chapter 1 function kinds: casts, satisfies and parentheses around a plain function's value must not change its kind; lane core-land
+FuzzMigrationAssertedCold corpus:function-parenthesized-nested compiler Chapter 1 function kinds: minimized reproduction of function:parenthesized:nested; lane core-land
+FuzzMigrationAssertedCold function:parenthesized:object compiler Chapter 1 function kinds: casts, satisfies and parentheses around a plain function's value must not change its kind; lane core-land
+FuzzMigrationAssertedCold corpus:function-parenthesized-object compiler Chapter 1 function kinds: minimized reproduction of function:parenthesized:object; lane core-land
+FuzzMigrationAssertedCold function:satisfies:array compiler Chapter 1 function kinds: casts, satisfies and parentheses around a plain function's value must not change its kind; lane core-land
+FuzzMigrationAssertedCold corpus:function-satisfies-array compiler Chapter 1 function kinds: minimized reproduction of function:satisfies:array; lane core-land
+FuzzMigrationAssertedCold function:unknown:array compiler Chapter 1 function kinds: casts, satisfies and parentheses around a plain function's value must not change its kind; lane core-land
+FuzzMigrationAssertedCold corpus:function-unknown-array compiler Chapter 1 function kinds: minimized reproduction of function:unknown:array; lane core-land
+FuzzMigrationAssertedCold function:unknown:nested compiler Chapter 1 function kinds: casts, satisfies and parentheses around a plain function's value must not change its kind; lane core-land
+FuzzMigrationAssertedCold corpus:function-unknown-nested compiler Chapter 1 function kinds: minimized reproduction of function:unknown:nested; lane core-land
+FuzzMigrationAssertedCold function:unknown:object compiler Chapter 1 function kinds: casts, satisfies and parentheses around a plain function's value must not change its kind; lane core-land
+FuzzMigrationAssertedCold corpus:function-unknown-object compiler Chapter 1 function kinds: minimized reproduction of function:unknown:object; lane core-land
+FuzzMigrationAssertedCold method:none:array compiler Chapter 1 function kinds: casts, satisfies and parentheses around a plain function's value must not change its kind; lane core-land
+FuzzMigrationAssertedCold corpus:method-none-array compiler Chapter 1 function kinds: minimized reproduction of method:none:array; lane core-land
+FuzzMigrationAssertedCold method:parenthesized:array compiler Chapter 1 function kinds: casts, satisfies and parentheses around a plain function's value must not change its kind; lane core-land
+FuzzMigrationAssertedCold corpus:method-parenthesized-array compiler Chapter 1 function kinds: minimized reproduction of method:parenthesized:array; lane core-land
+FuzzMigrationAssertedCold method:parenthesized:nested compiler Chapter 1 function kinds: casts, satisfies and parentheses around a plain function's value must not change its kind; lane core-land
+FuzzMigrationAssertedCold corpus:method-parenthesized-nested compiler Chapter 1 function kinds: minimized reproduction of method:parenthesized:nested; lane core-land
+FuzzMigrationAssertedCold method:parenthesized:object compiler Chapter 1 function kinds: casts, satisfies and parentheses around a plain function's value must not change its kind; lane core-land
+FuzzMigrationAssertedCold corpus:method-parenthesized-object compiler Chapter 1 function kinds: minimized reproduction of method:parenthesized:object; lane core-land
+FuzzMigrationAssertedCold method:satisfies:array compiler Chapter 1 function kinds: casts, satisfies and parentheses around a plain function's value must not change its kind; lane core-land
+FuzzMigrationAssertedCold corpus:method-satisfies-array compiler Chapter 1 function kinds: minimized reproduction of method:satisfies:array; lane core-land
+FuzzMigrationAssertedCold method:unknown:array compiler Chapter 1 function kinds: casts, satisfies and parentheses around a plain function's value must not change its kind; lane core-land
+FuzzMigrationAssertedCold corpus:method-unknown-array compiler Chapter 1 function kinds: minimized reproduction of method:unknown:array; lane core-land
+FuzzMigrationAssertedCold method:unknown:nested compiler Chapter 1 function kinds: casts, satisfies and parentheses around a plain function's value must not change its kind; lane core-land
+FuzzMigrationAssertedCold corpus:method-unknown-nested compiler Chapter 1 function kinds: minimized reproduction of method:unknown:nested; lane core-land
+FuzzMigrationAssertedCold method:unknown:object compiler Chapter 1 function kinds: casts, satisfies and parentheses around a plain function's value must not change its kind; lane core-land
+FuzzMigrationAssertedCold corpus:method-unknown-object compiler Chapter 1 function kinds: minimized reproduction of method:unknown:object; lane core-land
