@@ -762,11 +762,12 @@ export function main() {
 // TestEmitDoControlFlowCLI checks that diagnostics reach the command's exit
 // status in both output modes; callers must not execute rejected source.
 func TestEmitDoControlFlowCLI(t *testing.T) {
+	root, err := filepath.Abs("../../../..")
+	assert.NilError(t, err)
+	// The same cmd/vibelang-mapper the scope runs, from the same sources:
+	// this test links no second copy.
+	binary := mapperCLI(t, root)
 	dir := t.TempDir()
-	binary := filepath.Join(dir, "vibelang-mapper")
-	build := exec.Command("go", "build", "-o", binary, "../../cmd/vibelang-mapper")
-	out, err := build.CombinedOutput()
-	assert.NilError(t, err, "%s", out)
 	for _, c := range []struct {
 		source string
 		code   string

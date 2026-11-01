@@ -30,7 +30,23 @@ const formsGenerator = S.Shell.Build({
   timeout: "30m"
 })
 
+// The mapper's Go tests run the mapper CLI and compile a runtime copy with the
+// compiler. Both executables are built here from the compiler build inputs, so
+// a test run links neither: //:go-vibelangmapper hands them to the tests
+// through VIBELANG_MAPPER_TEST_TSC and VIBELANG_MAPPER_TEST_MAPPER
+// (internal/vibelangmapper/scope_test.go). A plain `go test` still links its own.
+const mapper = S.Shell.Build({
+  summary: "Build the TypeScript mapper CLI, typescript/built/local/vibelang-mapper.",
+  shell: "cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 " +
+    "go build -p 8 -trimpath -o ../built/local/vibelang-mapper ./cmd/vibelang-mapper",
+  data: [Tsc.srcs, S.file("go.work")],
+  tools: [S.Host.bin("go")],
+  outFiles: ["built/local/vibelang-mapper"],
+  sandbox: "none",
+  timeout: "30m"
+})
+
 /** Every file in typescript/ outside its subpackages, for the repository-wide checks. */
 const tree = S.Filegroup({ srcs: [...S.glob(["**"])] })
 
-export const Package = S.Package({ targets: { compiler, tree, "forms-generator": formsGenerator } })
+export const Package = S.Package({ targets: { compiler, mapper, tree, "forms-generator": formsGenerator } })

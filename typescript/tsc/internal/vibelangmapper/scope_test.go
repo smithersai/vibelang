@@ -114,7 +114,7 @@ func buildMapperTestScope(root string) error {
 		}
 	}
 	for _, tool := range []string{"tsc", "vibelang-mapper"} {
-		if err := run(filepath.Join(root, "typescript/tsc"), "go", "build", "-p", "8", "-trimpath", "-buildvcs=false", "-o", filepath.Join(scope, "bin", tool), "./cmd/"+tool); err != nil {
+		if err := provideScopeTool(root, scope, tool); err != nil {
 			return err
 		}
 	}
@@ -144,6 +144,70 @@ func buildMapperTestScope(root string) error {
 		return err
 	}
 	return run(scope, filepath.Join(scope, "bin/tsc"), "-p", filepath.Join(scope, "runtime-build/tsconfig.json"), "--outDir", filepath.Join(scope, "node_modules/vibelang-runtime/dist"))
+}
+
+// scopeToolVariables names, for each executable the scope runs, the
+// environment variable through which the build graph hands over its own cached
+// build: //typescript:compiler and //typescript:mapper, the same sources linked
+// once per gate instead of once per test binary. Unset, the scope links the
+// executable itself, so a plain `go test` needs no graph.
+var scopeToolVariables = map[string]string{
+	"tsc":             "VIBELANG_MAPPER_TEST_TSC",
+	"vibelang-mapper": "VIBELANG_MAPPER_TEST_MAPPER",
+}
+
+// scopeToolSource returns the prebuilt executable the environment names for
+// tool, or "" when it names none. A set variable must name an executable file:
+// the graph set it, so a missing file is a graph error, not a reason to link
+// quietly and hide that the handover failed.
+func scopeToolSource(tool string, lookup func(string) string) (string, error) {
+	variable := scopeToolVariables[tool]
+	path := lookup(variable)
+	if path == "" {
+		return "", nil
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return "", fmt.Errorf("%s=%s: %w", variable, path, err)
+	}
+	if !info.Mode().IsRegular() || info.Mode().Perm()&0o111 == 0 {
+		return "", fmt.Errorf("%s=%s: not an executable file", variable, path)
+	}
+	return path, nil
+}
+
+// provideScopeTool puts tool into scope/bin: a symlink to the executable the
+// environment names, else a fresh go build of ./cmd/<tool>.
+func provideScopeTool(root, scope, tool string) error {
+	target := filepath.Join(scope, "bin", tool)
+	source, err := scopeToolSource(tool, os.Getenv)
+	if err != nil {
+		return err
+	}
+	if source != "" {
+		return os.Symlink(source, target)
+	}
+	cmd := exec.Command("go", "build", "-p", "8", "-trimpath", "-buildvcs=false", "-o", target, "./cmd/"+tool)
+	cmd.Dir = filepath.Join(root, "typescript/tsc")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("mapper test scope: go build ./cmd/%s: %w\n%s", tool, err, out)
+	}
+	return nil
+}
+
+// mapperCLI returns the vibelang-mapper executable a test runs: the graph's
+// build when the environment names it, else the scope's, linked once per test
+// binary.
+func mapperCLI(t *testing.T, root string) string {
+	t.Helper()
+	source, err := scopeToolSource("vibelang-mapper", os.Getenv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if source != "" {
+		return source
+	}
+	return filepath.Join(mapperTestScope(t, root), "bin/vibelang-mapper")
 }
 
 // experimentalPlatformSource reports whether rel, a path in packages/runtime,

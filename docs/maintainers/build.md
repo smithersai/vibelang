@@ -160,6 +160,19 @@ and global state. The directory is removed when that test ends.
 `NODE_DISABLE_COMPILE_CACHE` and `NODE_V8_COVERAGE` disable this optimization;
 coverage collection keeps its ordinary behavior.
 
+## Mapper test executables
+
+The `internal/vibelangmapper` tests run two executables: the compiler, which
+compiles a copy of `packages/runtime` for their execution scope, and the mapper
+CLI. `//typescript:compiler` and `//typescript:mapper` build both from the
+compiler build inputs, and `//:go-vibelangmapper` hands them to the tests
+through the absolute paths `VIBELANG_MAPPER_TEST_TSC` and
+`VIBELANG_MAPPER_TEST_MAPPER`, so a gate links each executable once, not once
+per test binary (`scope_test.go`). A set variable must name an executable
+file; a missing file fails the tests instead of linking quietly. A plain
+`go test ./internal/vibelangmapper/...` leaves both unset and links its own,
+so it needs no graph.
+
 ## Forms-table checks
 
 `//typescript:forms-generator` builds `typescript/built/local/vibelang-forms`
@@ -226,6 +239,7 @@ five-second default that previously killed healthy slow imports.
 //typescript
   :compiler                     go build ./cmd/tsc -> typescript/built/local/tsc
   :forms-generator              cached go build ./cmd/vibelang-forms -> typescript/built/local/vibelang-forms
+  :mapper                       cached go build ./cmd/vibelang-mapper -> typescript/built/local/vibelang-mapper
 //typescript/vibelang
   :<case>                       harness.mjs <case>, one target per case (809)
   :lsp-smoke                    headless language-server editor checks
@@ -262,6 +276,7 @@ five-second default that previously killed healthy slow imports.
                     └─► :snippets, :docs-tools
 :tree ─► :release :snippets :tokens :forms :docs-tools :docs-check :go-vibelang*
 :srcs ─► :forms-generator ─► :forms
+:srcs ─► :compiler, :mapper ─► :go-vibelangmapper
 :design-files, :srcs, :vibelang-files, :vibelangfuzz-files ─► :spec-tests
 ```
 

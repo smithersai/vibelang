@@ -19,7 +19,7 @@ root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 tests="./internal/vibelang/... ./internal/vibelangmapper/... ./internal/vibelangfuzz/... ./internal/checker/...
 ./internal/effecttsgo/shim/checker/ ./internal/parser/... ./internal/format/... ./internal/core/...
 ./internal/vibelangfmt/..."
-commands="./cmd/tsc ./cmd/vibelang-forms"
+commands="./cmd/tsc ./cmd/vibelang-forms ./cmd/vibelang-mapper"
 
 if [ "${1:-}" = --print ]; then
 	for p in $tests $commands; do echo "$p"; done
