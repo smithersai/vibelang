@@ -24,13 +24,13 @@ export function area(shape: Shape): number {
 type Event = { readonly _tag: "Opened" } | { readonly _tag: "Closed"; readonly reason: string }
 
 export const describe = (event: Event) =>
-  (match (event) {
+  do { const $matchResult: string = match (event) {
     when { _tag: "Opened" }: "open";
     when { _tag: "Closed", let reason }: do {
       const text = reason.trim()
       "closed: " + text
     };
-  } as string)
+  }; $matchResult; }
 
 type Config = { readonly method: "token" | "oauth" | "none"; readonly value: string | number }
 

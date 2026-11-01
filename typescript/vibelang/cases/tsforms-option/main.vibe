@@ -17,8 +17,8 @@ export const label = (o: Option.Option<string>) =>
     Option.getOrElse(() => ""),
   )
 
-// A stage whose argument is a call keeps the pipe: the chain would evaluate
-// five() after the stage before it runs. The warning stays, without a fix.
+// A stage argument call runs before the pipeline's stages. The quick fix
+// captures its value before starting the method chain, preserving that order.
 function five() {
   return 5
 }

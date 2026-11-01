@@ -15,13 +15,13 @@ export const label = (o: Option<string>) =>
     .map((s) => s.toUpperCase())
     .getOrElse(() => "")
 
-// A stage whose argument is a call keeps the pipe: the chain would evaluate
-// five() after the stage before it runs. The warning stays, without a fix.
+// A stage argument call runs before the pipeline's stages. The quick fix
+// captures its value before starting the method chain, preserving that order.
 function five() {
   return 5
 }
 
-export const hasFive = (o: Option<number>) => pipe(o, Option.contains(five()))
+export const hasFive = (o: Option<number>) => do { const $optionInput = o; const $optionArg0 = five(); $optionInput.contains($optionArg0); }
 
 export function main() {
   return {

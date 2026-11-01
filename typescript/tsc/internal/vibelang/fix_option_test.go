@@ -45,11 +45,10 @@ func TestOptionPipeQuickFixes(t *testing.T) {
 	}
 }
 
-// Where the chain would evaluate a stage's argument at a time a program
-// could tell apart, or a comment would have no place, EK4840 has no quick fix.
+// A comment between stages has no unambiguous place in a rewritten chain.
+// Effectful stage arguments are covered by TestOptionFactoryHoistFoldkit.
 func TestOptionPipeRefusals(t *testing.T) {
 	for _, test := range []struct{ name, source, why string }{
-		{"an argument that runs code", "function fallback() { return 0 }\nexport const value = (o: Option.Option<number>) => pipe(o, Option.map((n) => n + 1), Option.getOrElse(fallback()))\n", "has an argument whose evaluation"},
 		{"a comment between stages", "export const label = (o: Option.Option<string>) =>\n  pipe(\n    o,\n    // shout\n    Option.map((s) => s.toUpperCase()),\n  )\n", "a comment stands between"},
 	} {
 		t.Run(test.name, func(t *testing.T) {

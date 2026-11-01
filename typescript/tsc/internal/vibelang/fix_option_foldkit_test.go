@@ -9,6 +9,7 @@ import (
 
 func TestOptionFactoryHoistFoldkit(t *testing.T) {
 	for _, source := range []string{
+		"function fallback(): () => number { return (): number => 0 }\nexport const f = (v:Option.Option<number>):number => pipe(v, Option.map((n:number):number => n + 1), Option.getOrElse(fallback()))",
 		"function make(): (n: number) => number { return (n:number):number => n + 1 }\nexport const f = (v:Option.Option<number>):Option.Option<number> => pipe(v, Option.map(make()))",
 		"function make(): (n: number) => number { return (n:number):number => n + 1 }\nexport const f = (v:Option.Option<number>):number => pipe(v, Option.map(make()), Option.getOrElse(() => 0))",
 		"function make(): (n: number) => number { return (n:number):number => n + 1 }\nexport const f = (v:Option.Option<number>):Option.Option<number> => v.pipe(Option.map(make()), Option.map((n:number) => n * 2))",

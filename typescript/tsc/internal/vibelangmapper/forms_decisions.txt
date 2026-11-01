@@ -3464,8 +3464,9 @@ typescript/vibelang/cases/tsforms-errors/main.vibe:29:12 lambda effectFn table
 typescript/vibelang/cases/tsforms-errors/main.vibe:29:28 lambda effectFn table
 typescript/vibelang/cases/tsforms-errors/main.vibe:30:11 lambda effectFn table
 typescript/vibelang/cases/tsforms-errors/main.vibe:30:30 lambda effectFn table
-typescript/vibelang/cases/tsforms-match-fixed/main.vibe:26:25 lambda effectFn fallback
-typescript/vibelang/cases/tsforms-match-fixed/main.vibe:27:10 lambda dual fallback
+typescript/vibelang/cases/tsforms-match-fixed/main.vibe:26:25 lambda plain fallback
+typescript/vibelang/cases/tsforms-match-fixed/main.vibe:27:43 lambda dual fallback
+typescript/vibelang/cases/tsforms-match-fixed/main.vibe:27:6 lambda dual fallback
 typescript/vibelang/cases/tsforms-match-fixed/main.vibe:29:45 lambda dual fallback
 typescript/vibelang/cases/tsforms-match-fixed/main.vibe:46:21 lambda plain annotation
 typescript/vibelang/cases/tsforms-match-fixed/main.vibe:46:59 lambda dual fallback
@@ -3497,7 +3498,8 @@ typescript/vibelang/cases/tsforms-option-fixed/main.vibe:11:22 lambda plain fall
 typescript/vibelang/cases/tsforms-option-fixed/main.vibe:13:22 lambda effectFn fallback
 typescript/vibelang/cases/tsforms-option-fixed/main.vibe:15:10 lambda plain fallback
 typescript/vibelang/cases/tsforms-option-fixed/main.vibe:16:16 lambda plain fallback
-typescript/vibelang/cases/tsforms-option-fixed/main.vibe:24:24 lambda effectFn fallback
+typescript/vibelang/cases/tsforms-option-fixed/main.vibe:24:24 lambda plain fallback
+typescript/vibelang/cases/tsforms-option-fixed/main.vibe:24:50 lambda dual fallback
 typescript/vibelang/cases/tsforms-option-fixed/main.vibe:5:21 lambda effectFn fallback
 typescript/vibelang/cases/tsforms-option-fixed/main.vibe:5:56 lambda choice fallback
 typescript/vibelang/cases/tsforms-option-fixed/main.vibe:5:97 lambda plain fallback

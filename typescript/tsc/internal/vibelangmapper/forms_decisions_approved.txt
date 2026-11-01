@@ -333,3 +333,7 @@ typescript/vibelang/lsp-fixture/src/declarations.vibe:16:52 block: appended/prog
 typescript/vibelang/lsp-fixture/src/forms.vibe:21:46 block: appended/program table -> lambda program table # VIP-11 codemod spells the appended block as an explicit argument and preserves its program form
 typescript/vibelang/lsp-fixture/src/lsrules-editor.vibe:16:45 block: appended/program table -> lambda program table # VIP-11 codemod spells the appended block as an explicit argument and preserves its program form
 typescript/vibelang/lsp-fixture/src/lsrules.vibe:16:45 block: appended/program table -> lambda program table # VIP-11 codemod spells the appended block as an explicit argument and preserves its program form
+
+typescript/vibelang/cases/tsforms-match-fixed/main.vibe:26:25 lambda: effectFn fallback -> plain fallback # foldkit-85 golden now returns its checked string binding from do; the unchanged runtime golden and Match differential retain its plain result contract.
+
+typescript/vibelang/cases/tsforms-option-fixed/main.vibe:24:24 lambda: effectFn fallback -> plain fallback # foldkit-39 golden eagerly captures the argument before native contains; the unchanged boolean runtime golden and Option differentials retain its plain result contract.
