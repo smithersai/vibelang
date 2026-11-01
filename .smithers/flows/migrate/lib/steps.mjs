@@ -20,7 +20,7 @@ import { preservedErrorAdvisories } from "./preserved-errors.mjs"
 import { compareDeclarations, recordDeclarationSurface, emitDeclarations, emitErrorsIn, loadTypeScript, sidecarChanges } from "./declarations.mjs"
 import { compareTests, regressionIssue, runTests } from "./tests.mjs"
 import { verifyRepositoryTests } from "./test-diff-run.mjs"
-import { testDiffMarkdown } from "./test-diff.mjs"
+import { isProtectedFile, testDiffMarkdown } from "./test-diff.mjs"
 import { vibeParser } from "./test-diff-format.mjs"
 import { measureTests } from "./measurement.mjs"
 import { regenerate } from "./hooks.mjs"
@@ -1141,9 +1141,23 @@ export async function codemod(options) {
       saveState(p.codemodState(b), state)
     }
   }
+  // Format only files authored by this transaction. A widened .vibe
+  // specifier can break the target's width check in a remaining .ts file.
+  const sourceFiles = [...new Set([
+    ...(state.writes ?? []).map(write => write.file),
+    ...(state.referenceWrites ?? []).map(write => write.file),
+    ...platform.splits.map(split => split.platform)
+  ])].filter(file => !isProtectedFile(file))
+  const sourceFormatLog = join(p.batch(b), "logs", "source-format.log")
+  const sourceFormatted = await formatWritten(t, sourceFiles, sourceFormatLog)
+  const formatted = { ...sourceFormatted, log: sourceFormatted.files.length ? posix.relative(p.run, sourceFormatLog) : null }
+  const platformFiles = new Set(platform.splits.map(split => split.platform))
+  const platformFormattedFiles = formatted.files.filter(file => platformFiles.has(file))
+  const platformResult = { ...platform, formatted: { ...formatted, files: platformFormattedFiles,
+    code: platformFormattedFiles.length ? formatted.code : 0, log: platformFormattedFiles.length ? formatted.log : null } }
   state.attempts.at(-1).finishedAt = new Date().toISOString()
   saveState(p.codemodState(b), state)
-  const result = { batch: b, at: new Date().toISOString(), files, platform, renames, exportEdits, importEdits, refEdits, scriptEdits, referenceEdits, referenceWarnings, referenceScan, selectorChecks, fix: { settled, rounds, byFile, totals: rewriteTotals(byFile), refused } }
+  const result = { batch: b, at: new Date().toISOString(), files, platform: platformResult, formatted, renames, exportEdits, importEdits, refEdits, scriptEdits, referenceEdits, referenceWarnings, referenceScan, selectorChecks, fix: { settled, rounds, byFile, totals: rewriteTotals(byFile), refused } }
   durableWrite(p.codemod(b), JSON.stringify(result, null, 2) + "\n")
   return result
 }
@@ -1308,6 +1322,13 @@ export async function revertMany(options) {
     const vibe = vibePath(result.file)
     return (resolveRelative(e.file, e.from, new Set([vibe])) ?? resolveAliased(e.file, e.from, new Set([vibe]), aliases)?.target) === vibe
   }))
+  const rewritten = [...new Set(results.flatMap(result =>
+    [result.importEdits, result.referenceEdits, result.refEdits, result.scriptEdits, result.exportEdits]
+      .flatMap(edits => (edits ?? []).map(edit => edit.file)).filter(Boolean)
+  ))].filter(file => !isProtectedFile(file))
+  const revertFormatLog = join(p.batch(b), "logs", "revert-format.log")
+  const revertedFormat = await formatWritten(config.target, rewritten, revertFormatLog)
+  for (const result of results) result.formatted = { ...revertedFormat, log: revertedFormat.files.length ? posix.relative(p.run, revertFormatLog) : null }
   writeJson(p.reverted(b), [...readJsonIf(p.reverted(b), []), ...results])
   return results
 }

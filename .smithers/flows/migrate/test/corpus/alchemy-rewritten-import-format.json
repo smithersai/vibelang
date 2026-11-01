@@ -1,0 +1,8 @@
+{
+  "finding": "alchemy:rewritten-import-width",
+  "note": "Minimized Lambda/Function import widened by .ts to .vibe. The TypeScript importer remains outside the renamed batch.",
+  "file": "src/VeryLongModulexxxxxxxxxxxxxxxxx.ts",
+  "importer": "src/Consumer.ts",
+  "source": "export const firstValue = 1;\nexport const secondValue = 2;\n",
+  "text": "import { firstValue, secondValue } from \"./VeryLongModulexxxxxxxxxxxxxxxxx.ts\";\nexport const both = [firstValue, secondValue];\n"
+}

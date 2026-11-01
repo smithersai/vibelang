@@ -56,6 +56,8 @@ The codemod refuses a batch whose `.vibe` path the repository ignores, as a trac
 
 A file the repository's own code finds by its name stays `.ts`, as a tool's config does: the inventory records in `namedBy` the first non-test file that writes the file name as a string, as alchemy's CLI writes `"alchemy.run.ts"`, and the plan refuses that file with the reason.
 
+The codemod formats generated `.platform.ts` siblings with the repository's own formatter before it records its result, so a batch's immediate format check sees the final TypeScript. `codemod.json` records the formatter, exact files, exit code and relative log under `platform.formatted`; formatter failures remain visible there and in `logs/platform-format.log`. Files outside the split remain untouched.
+
 Each step reads and writes the run directory, so a step that already recorded its result returns it, and a stopped run resumes where it stopped.
 
 Before changing the target, `codemod` atomically writes and flushes
@@ -310,6 +312,7 @@ The agent steps read `MIGRATE_AGENT` through Effect `Config`; without it, they f
 - `rules.md`, this flow's own rules: the current call rule (a call runs where it stands; only a function literal defers it), every VibeLang form, wrapping Effect mindfully, platform access only through services, Effect's modules or `Experimental.*`, hatches only for real Promise and callback libraries, identical declarations, every test kept.
 - The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md`.
 - The convert flow's cheat sheet and worked examples (`../convert/`).
+- Codemod formats only the files its write-ahead journal authored, including remaining TypeScript importers whose `.ts` specifier grows to `.vibe`. Protected tests and fixtures are excluded. The `formatted` receipt names every formatted file, exit status and `source-format.log`; `platform.formatted` retains the sibling subset. Revert formats only the files its reverse edits authored and records `revert-format.log`, so shortening a specifier also restores the target style. Unrelated local changes stay untouched.
 - The platform globals table, `docs/user/src/platform/platform-globals.md`.
 
 ```sh

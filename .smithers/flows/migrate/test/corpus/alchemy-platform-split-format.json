@@ -1,0 +1,6 @@
+{
+  "repo": "alchemy",
+  "pattern": "EventBridge/ToQueue createRouteId hashing helper, minimized for generated sibling formatting",
+  "file": "src/EventBridge/ToQueue.ts",
+  "source": "import { createHash } from \"node:crypto\";\nexport const createRouteId = (input: string): string => { const hash = createHash(\"sha1\").update(input).digest(\"hex\"); return \"EventBridge\" + hash; };\n"
+}
