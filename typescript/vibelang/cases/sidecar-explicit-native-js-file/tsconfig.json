@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "types": [],
+    "skipLibCheck": true,
+    "rootDir": ".",
+    "outDir": "out",
+    "declaration": true,
+    "rewriteRelativeImportExtensions": true,
+    "allowJs": true
+  },
+  "files": [
+    "main.vibe",
+    "native/model.js"
+  ]
+}

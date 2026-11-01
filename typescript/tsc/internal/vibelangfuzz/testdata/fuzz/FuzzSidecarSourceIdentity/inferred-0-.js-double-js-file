@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("inferred/0/.js/double/js-file")

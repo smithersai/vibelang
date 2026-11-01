@@ -1411,6 +1411,9 @@ func (b *NodeBuilderImpl) rewriteContentMappedModuleSpecifier(specifier tspath.M
 // writes each ./y.vibe in the setting's spelling: under module nodenext with
 // .ts imports allowed that is ./x.ts whatever the file writes (foldkit-92).
 func (b *NodeBuilderImpl) vibeDeclarationSpecifier(specifier tspath.ModuleSpecifier) (tspath.ModuleSpecifier, bool) {
+	if b.ctx.internalFlags&nodebuilder.InternalFlagsPreserveVibeSpecifiers != 0 {
+		return specifier.RewriteVibeExtension(tspath.ExtensionVibe)
+	}
 	extension := b.ch.compilerOptions.VibeLang.DeclarationImportExtension()
 	rewritten, ok := specifier.RewriteVibeExtension(extension)
 	file := b.ctx.enclosingFile

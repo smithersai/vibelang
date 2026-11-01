@@ -14,16 +14,18 @@ import (
 //
 // NOTE: EmitContext is not guaranteed to be thread-safe.
 type EmitContext struct {
-	Factory       *NodeFactory // Required. The NodeFactory to use to create new nodes
-	autoGenerate  map[*ast.MemberName]*AutoGenerateInfo
-	textSource    map[*ast.StringLiteralNode]*ast.Node
-	original      map[*ast.Node]*ast.Node
-	emitNodes     core.LinkStore[*ast.Node, emitNode]
-	assignedName  map[*ast.Node]*ast.Expression
-	classThis     map[*ast.Node]*ast.IdentifierNode
-	varScopeStack core.Stack[*varScope]
-	letScopeStack core.Stack[*varScope]
-	emitHelpers   collections.OrderedSet[*EmitHelper]
+	// Preserve source module identity through every sidecar declaration transform.
+	VibeDeclarationSidecar bool
+	Factory                *NodeFactory // Required. The NodeFactory to use to create new nodes
+	autoGenerate           map[*ast.MemberName]*AutoGenerateInfo
+	textSource             map[*ast.StringLiteralNode]*ast.Node
+	original               map[*ast.Node]*ast.Node
+	emitNodes              core.LinkStore[*ast.Node, emitNode]
+	assignedName           map[*ast.Node]*ast.Expression
+	classThis              map[*ast.Node]*ast.IdentifierNode
+	varScopeStack          core.Stack[*varScope]
+	letScopeStack          core.Stack[*varScope]
+	emitHelpers            collections.OrderedSet[*EmitHelper]
 }
 
 type environmentFlags int

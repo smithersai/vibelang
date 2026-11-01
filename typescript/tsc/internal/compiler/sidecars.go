@@ -51,9 +51,10 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 	}
 	fs := p.Host().FS()
 	result := p.Emit(ctx, EmitOptions{
-		TargetSourceFiles: sources,
-		EmitOnly:          EmitOnlyDts,
-		ForceEmit:         true,
+		TargetSourceFiles:      sources,
+		VibeDeclarationSidecar: true,
+		EmitOnly:               EmitOnlyDts,
+		ForceEmit:              true,
 		WriteFile: func(fileName tspath.RootedFilePath, text string, data *WriteFileData) error {
 			if data == nil || data.SourceFile == nil || !tspath.IsDeclarationFileName(string(fileName)) {
 				return nil // the declaration map
@@ -105,7 +106,8 @@ func sidecarText(text string, declarationFile string, source string, exists func
 // vibeSpecifier names a .vibe module by its source, ./y.vibe, where a
 // relative specifier, ./y.js, ./y or ./y.ts (each a
 // vibelang.declarationImportStyle), reaches y.vibe and no TypeScript file that
-// stock TypeScript would resolve first.
+// stock TypeScript would resolve first. Explicit .vibe specifiers have already
+// been preserved by declaration emit, so native siblings cannot hide them.
 func vibeSpecifier(specifier string, directory string, exists func(string) bool) string {
 	stem := specifier
 	switch {

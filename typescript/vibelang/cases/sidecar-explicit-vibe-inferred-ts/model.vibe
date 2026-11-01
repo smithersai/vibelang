@@ -1,0 +1,2 @@
+export interface Box { tag: "vibe" }
+export function make(): Box { return { tag: "vibe" } }

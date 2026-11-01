@@ -31,6 +31,11 @@ func (b *NodeBuilder) EmitContext() *printer.EmitContext {
 }
 
 func (b *NodeBuilder) enterContext(enclosingDeclaration *ast.Node, flags nodebuilder.Flags, internalFlags nodebuilder.InternalFlags, tracker nodebuilder.SymbolTracker) {
+	// Serialized type caches must distinguish portable declarations from
+	// source sidecars, including inferred import types.
+	if b.impl.e != nil && b.impl.e.VibeDeclarationSidecar {
+		internalFlags |= nodebuilder.InternalFlagsPreserveVibeSpecifiers
+	}
 	verbosityLevel := -1
 	maxTruncationLength := 0
 	if b.verbosity != nil {

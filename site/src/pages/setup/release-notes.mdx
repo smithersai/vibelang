@@ -303,6 +303,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A direct `Option.match` call reported `EK4839` as a choice made with Effect's `Match` functions, and the diagnostic tables omitted it; the message now names `Option`'s own `match` API, and the tables include direct calls and explain when their fix is refused.
 
+- An explicit `./model.vibe` import or re-export could make stock TypeScript read an unrelated `model.ts` or `model.d.ts` sibling and report `TS2322`; declaration sidecars now keep the explicit `.vibe` target, while native imports keep their native target.
+
 - `vibelang --fix` deleted comments from legacy diagnostic maps, including empty maps and entries superseded by modern settings; it now keeps every comment in direct and extended configs, with the same settings and a stable second run.
 
 - A `continue` to an earlier label in a chained `for...of`, such as `outer: inner: for (...)`, compiled to JavaScript that Node rejected; every label now stays on the loop, so labeled `continue` and `break` keep their TypeScript behavior.

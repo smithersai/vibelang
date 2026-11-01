@@ -1915,10 +1915,12 @@ type WriteFileData struct {
 type WriteFile func(fileName tspath.RootedFilePath, text string, data *WriteFileData) error
 
 type EmitOptions struct {
-	TargetSourceFiles []*ast.SourceFile // Source files to emit. If `nil`, emits all files
-	EmitOnly          EmitOnly
-	ForceEmit         bool
-	WriteFile         WriteFile
+	// Preserve original .vibe specifiers for declarations read beside sources.
+	VibeDeclarationSidecar bool
+	TargetSourceFiles      []*ast.SourceFile // Source files to emit. If `nil`, emits all files
+	EmitOnly               EmitOnly
+	ForceEmit              bool
+	WriteFile              WriteFile
 }
 
 type EmitResult struct {
@@ -1969,12 +1971,13 @@ func (p *Program) Emit(ctx context.Context, options EmitOptions) *EmitResult {
 
 	for _, sourceFile := range sourceFiles {
 		emitter := &emitter{
-			writer:     nil,
-			sourceFile: sourceFile,
-			emitOnly:   options.EmitOnly,
-			forceEmit:  options.ForceEmit,
-			writeFile:  options.WriteFile,
-			tr:         p.hosts.Tracing,
+			writer:                 nil,
+			sourceFile:             sourceFile,
+			emitOnly:               options.EmitOnly,
+			forceEmit:              options.ForceEmit,
+			writeFile:              options.WriteFile,
+			vibeDeclarationSidecar: options.VibeDeclarationSidecar,
+			tr:                     p.hosts.Tracing,
 		}
 		emitters = append(emitters, emitter)
 		wg.Queue(func() {

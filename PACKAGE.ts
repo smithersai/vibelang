@@ -50,6 +50,7 @@ const goVibelang = (summary: string, shell: string, data: ReadonlyArray<unknown>
 // lands and they stay cached otherwise.
 const specTests = [
   "TestDoLoopHeadQuoted",
+  "TestSidecarSourceIdentityQuoted",
   "TestDoForTryDiagnosticOwnerQuoted",
   "TestDoDeclarationBytesQuoted",
   "TestSpecifierWrittenJSX",

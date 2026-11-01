@@ -1099,6 +1099,11 @@ func (tx *specifierRewriter) visit(node *ast.Node) *ast.Node {
 // ./plain.ts included, stays as the source wrote it under every setting, as
 // tsc keeps it in the declaration of a .ts file (detail 263).
 func (tx *specifierRewriter) outputSpecifier(f *printer.NodeFactory, specifier *ast.Node) (*ast.Node, bool) {
+	// Source sidecars must retain explicit .vibe identity even when the
+	// portable output has a same-stem native sibling (VIP-27, RC-12).
+	if tx.EmitContext().VibeDeclarationSidecar {
+		return specifier, false
+	}
 	if specifier == nil || !ast.IsStringLiteral(specifier) || !tspath.FileExtensionIs(specifier.Text(), tspath.ExtensionVibe) {
 		return specifier, false
 	}

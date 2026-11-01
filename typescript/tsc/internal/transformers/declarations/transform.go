@@ -1662,6 +1662,9 @@ func (tx *DeclarationTransformer) rewriteModuleSpecifier(parent *ast.Node, input
 	if ast.IsStringLiteral(input) {
 		// A VibeLang module's declaration is reached through its .js output, or
 		// the spelling vibelang.declarationImportStyle names (D298).
+		if tx.EmitContext().VibeDeclarationSidecar && tspath.IsExternalModuleNameRelative(input.Text()) && strings.HasSuffix(input.Text(), tspath.ExtensionVibe) {
+			return input
+		}
 		if rewritten, ok := tspath.ToModuleSpecifier(input.Text()).RewriteVibeExtension(tx.compilerOptions.VibeLang.DeclarationImportExtension()); ok {
 			result := tx.Factory().NewStringLiteral(rewritten.AsString(), input.AsStringLiteral().TokenFlags)
 			tx.EmitContext().SetOriginal(result, input)

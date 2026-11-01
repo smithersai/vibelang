@@ -31,16 +31,17 @@ const (
 )
 
 type emitter struct {
-	host               EmitHost
-	emitOnly           EmitOnly
-	emitterDiagnostics ast.DiagnosticsCollection
-	writer             printer.EmitTextWriter
-	paths              *outputpaths.OutputPaths
-	sourceFile         *ast.SourceFile
-	emitResult         EmitResult
-	forceEmit          bool
-	writeFile          WriteFile
-	tr                 *tracing.Tracing
+	host                   EmitHost
+	emitOnly               EmitOnly
+	emitterDiagnostics     ast.DiagnosticsCollection
+	writer                 printer.EmitTextWriter
+	paths                  *outputpaths.OutputPaths
+	sourceFile             *ast.SourceFile
+	emitResult             EmitResult
+	forceEmit              bool
+	vibeDeclarationSidecar bool
+	writeFile              WriteFile
+	tr                     *tracing.Tracing
 
 	vibeLangDeclaration tspath.RootedFilePath // the declaration file written from a .vibe file (vibelang_manifest.go)
 }
@@ -50,6 +51,7 @@ func (e *emitter) emit() {
 		defer e.tr.Push(tracing.PhaseEmit, "emit", map[string]any{"path": string(e.sourceFile.PathKey())}, true)()
 	}
 	emitContext := printer.NewEmitContext()
+	emitContext.VibeDeclarationSidecar = e.vibeDeclarationSidecar
 	emitResolver := e.host.NewEmitResolver(emitContext)
 	e.emitJSFile(emitResolver, e.sourceFile, e.paths.JsFilePath(), e.paths.SourceMapFilePath())
 	e.emitDeclarationFile(emitResolver, e.sourceFile, e.paths.DeclarationFilePath(), e.paths.DeclarationMapPath())

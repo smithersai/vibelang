@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("inline-type/2/.ts/single/vibe")
