@@ -24,6 +24,7 @@ var bangSlotShapes = []struct{ key, text string }{
 	{"tuple", `[string, (number | boolean)?]`},
 	{"typeof", `typeof globalThis`},
 	{"nested-effect", `Effect.Effect<number, string>`},
+	{"generic-exclude", `Exclude<T, string>`},
 }
 
 var bangSlots = []struct{ key, bang, written string }{
