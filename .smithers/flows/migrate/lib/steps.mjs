@@ -333,6 +333,20 @@ async function upgradedCompilerChecks(config, logs, previous) {
   return checks
 }
 
+const failedCount = tests => Array.isArray(tests?.failed) ? tests.failed.length : tests?.failed ?? 0
+const testsPassed = tests => tests?.code === 0 && failedCount(tests) === 0
+const verificationDescription = result => testsPassed(result.tests)
+  ? "tests, declarations and style pass"
+  : result.tests?.code === undefined ? "declarations and style pass; test command status was not recorded"
+  : "declarations and style pass; tests still fail (exit " + result.tests.code + ", " + failedCount(result.tests) + " failing tests)"
+const testReportLabel = result => {
+  const tests = result.tests
+  if (!result.checks.tests) return "FAIL: " + tests.newFailures.length + " new, " + tests.missing.length + " missing"
+  if (tests.code === undefined) return "unknown: test command status not recorded"
+  if (!testsPassed(tests)) return "FAIL (unchanged): " + failedCount(tests) + " failing tests, exit " + tests.code
+  return tests.total === null ? "pass (command exit 0)" : "pass (" + tests.passed + "/" + tests.total + ")"
+}
+
 const testsOf = (r) => ({ code: r.code, total: r.total, passed: r.passed, failed: r.failed, skipped: r.skipped, ms: r.ms })
 
 /**
@@ -1309,7 +1323,7 @@ export async function verify(options) {
     files,
     formatted,
     tests: { code: tests.code, total: tests.total, passed: tests.passed, failed: tests.failed.length, skipped: tests.skipped,
-      status: tests.code === 0 ? "passed" : "failing", baseline: { code: baselineTests.code, failed: baselineTests.tests ? Object.keys(baselineTests.tests).filter(name => baselineTests.tests[name] === "failed") : [] }, ...testResults },
+      status: testsPassed(tests) ? "passed" : "failing", failedNames: tests.failed, baseline: { code: baselineTests.code, failed: baselineTests.tests ? Object.keys(baselineTests.tests).filter(name => baselineTests.tests[name] === "failed") : [] }, ...testResults },
     build: measurement?.builds?.candidate ?? candidateBuild,
     declarations,
     measurement, hooks,
@@ -1379,7 +1393,7 @@ export async function record(options) {
     ...rows.map((r) => (r.migrated ? `- ${r.planned} -> ${r.path} (${r.before} -> ${r.after} tokens)` : `- ${r.planned} stays .ts: ${reverted.find((x) => x.file === r.planned)?.reason ?? "not migrated"}`)),
     "",
     `Tokens (o200k) of the migrated files: ${before} -> ${now} (${tokens.percent ?? 0}%).`,
-    `Verify: ${verified?.ok ? "tests, declarations and style pass" : `forced: ${options.force}`}.`
+    `Verify: ${verified?.ok ? verificationDescription(verified) : `forced: ${options.force}`}.`
   ]
   await assertPortable(t, machineRoots(t, p.run, config.toolchain.dir))
   // Formatters and sidecar emission run after verify. Recheck the exact tree
@@ -1403,14 +1417,19 @@ export async function report(options) {
   })
   const issues = readIssues(p.issues).map((i) => i.entry)
   const done = batches.filter((b) => b.record)
+  const testFailures = batches.flatMap(b => (b.verify?.tests?.failedNames ?? []).map(name => ({ batch: b.batch, name })))
+  const testCommands = batches.filter(b => b.verify).map(b => ({ batch: b.batch, code: b.verify.tests.code, passed: testsPassed(b.verify.tests) }))
+
   const tokens = done.reduce((acc, b) => ({ before: acc.before + b.record.tokens.before, after: acc.after + b.record.tokens.after }), { before: 0, after: 0 })
   const data = {
     target: config.target,
     packages: config.packages.map((pkg) => pkg.dir),
     compiler: setupResult?.compiler?.version ?? null,
-    effect: upgrade && !upgrade.skipped ? { ...upgrade.effect, commit: upgrade.jj.commit, changed: upgrade.changed.length, regressions: upgrade.regressions } : null,
+    effect: upgrade && !upgrade.skipped ? { ...upgrade.effect, commit: upgrade.jj.commit, changed: upgrade.changed.length, tests: upgrade.tests, regressions: upgrade.regressions } : null,
     baseline: setupResult?.tests ?? null,
     scope: migrationScope(inventory, thePlan, { nativeConfigs: setupResult?.wired?.nativeViteConfigs ?? setupResult?.nativeViteConfigs ?? [] }),
+    testFailures,
+    testCommands,
     batches: { planned: batches.length, recorded: done.length },
     tokens: { ...tokens, percent: tokens.before ? Number((100 * (tokens.after - tokens.before) / tokens.before).toFixed(1)) : null },
     issues: issues.filter((i) => i.kind === "issue"),
@@ -1427,7 +1446,7 @@ export async function report(options) {
     `Target \`${config.target}\`, compiler ${data.compiler}. Baseline tests: ${data.baseline?.passed ?? "?"} passed, ${data.baseline?.failed?.length ?? 0} failing before the migration, ${data.baseline?.skipped ?? 0} skipped.`,
     "",
     ...(data.effect ? [data.effect.changed
-      ? `Effect upgraded from ${data.effect.from} to ${data.effect.to} in \`${data.effect.commit.slice(0, 12)}\`, before VibeLang was set up; ${data.effect.regressions?.newFailures.length || data.effect.regressions?.missing.length ? "the upgrade broke tests (see the setup issues)" : "the tests pass as before"}.`
+      ? `Effect upgraded from ${data.effect.from} to ${data.effect.to} in \`${data.effect.commit.slice(0, 12)}\`, before VibeLang was set up; ${data.effect.regressions?.newFailures.length || data.effect.regressions?.missing.length ? "the upgrade broke tests (see the setup issues)" : testsPassed(data.effect.tests) ? "the tests pass as before" : data.effect.tests?.code === undefined ? "the test command status was not recorded" : "the tests still fail (exit " + data.effect.tests.code + ", " + failedCount(data.effect.tests) + " failing tests)"}.`
       : `Effect was already ${data.effect.to}.`, ""] : []),
     `${data.batches.recorded} of ${data.batches.planned} batches recorded. Tokens of migrated files: ${tokens.before} -> ${tokens.after} (${data.tokens.percent ?? 0}%).`,
     "",
@@ -1442,13 +1461,20 @@ export async function report(options) {
     "| --- | ---: | ---: | --- | --- | --- | --- | --- |",
     ...batches.map((b) => {
       const v = b.verify
-      return `| ${b.batch} | ${b.files.length} | ${v ? v.files.filter((f) => f.migrated).length : "-"} | ${v ? (v.checks.tests ? `pass (${v.tests.passed}/${v.tests.total})` : `FAIL: ${v.tests.newFailures.length} new, ${v.tests.missing.length} missing`) : "-"} | ${v ? (v.checks.declarationEmit === false ? "EMIT FAILED" : v.checks.declarations ? (Object.values(v.declarations ?? {}).every(d => d === "not published") ? "not published" : "identical") : "CHANGED") : "-"} | ${v ? (v.checks.style ? "clean" : `${v.compile.style.length} EK48xx/EK4402`) : "-"} | ${b.record ? `${b.record.tokens.before} -> ${b.record.tokens.after}` : "-"} | ${b.record?.commit?.slice(0, 12) ?? "-"} |`
+      return `| ${b.batch} | ${b.files.length} | ${v ? v.files.filter((f) => f.migrated).length : "-"} | ${v ? testReportLabel(v) : "-"} | ${v ? (v.checks.declarationEmit === false ? "EMIT FAILED" : v.checks.declarations ? (Object.values(v.declarations ?? {}).every(d => d === "not published") ? "not published" : "identical") : "CHANGED") : "-"} | ${v ? (v.checks.style ? "clean" : `${v.compile.style.length} EK48xx/EK4402`) : "-"} | ${b.record ? `${b.record.tokens.before} -> ${b.record.tokens.after}` : "-"} | ${b.record?.commit?.slice(0, 12) ?? "-"} |`
     }),
     "",
     "## Test and fixture edits",
     "",
     ...data.testDiffs.flatMap(b => [`Batch ${b.batch}`, "", testDiffMarkdown(b.result)]),
     "",
+    ...(testCommands.some(command => !command.passed) ? [
+      "## Recorded test failures", "",
+      ...testFailures.map(failure => "- Batch " + failure.batch + ": " + failure.name),
+      ...testCommands.filter(command => !command.passed && !testFailures.some(failure => failure.batch === command.batch)).map(command =>
+        "- Batch " + command.batch + ": test command exit " + (command.code ?? "not recorded") + "; individual failure names were not recorded"),
+      ""
+    ] : []),
     "## Rewrites vibelang --fix applied",
     "",
     ...(Object.keys(rewrites).length ? Object.entries(rewrites).map(([k, n]) => `- ${k}: ${n}`) : ["- none"]),
@@ -1478,13 +1504,13 @@ export const steps = { "upgrade-effect": upgradeEffect, setup, plan, codemod, co
 }
 
 const summaries = {
-  "upgrade-effect": (r) => (r.skipped ? `skipped: ${r.skipped}` : `Effect ${r.effect.from} -> ${r.effect.to} in ${r.changed.length} files; ${r.regressions && (r.regressions.newFailures.length || r.regressions.missing.length) ? "tests regressed (a setup issue)" : "tests as before"}`),
+  "upgrade-effect": (r) => (r.skipped ? `skipped: ${r.skipped}` : `Effect ${r.effect.from} -> ${r.effect.to} in ${r.changed.length} files; ${r.regressions && (r.regressions.newFailures.length || r.regressions.missing.length) ? "tests regressed (a setup issue)" : testsPassed(r.tests) ? "tests pass as before" : r.tests?.code === undefined ? "test command status not recorded" : "tests still FAIL (exit " + r.tests.code + ", " + failedCount(r.tests) + " failing tests)"}`),
   setup: (r) => `baseline: ${r.tests.passed ?? "?"} tests pass, ${r.tests.failed.length} fail; ${r.inventory.effectValueFiles} Effect files`,
   plan: (r) => (r.accepted ? `${r.plan.batches.length} batches` : `waiting for a plan at ${r.output}`),
   codemod: (r) => `${r.renames.length} renamed, ${r.importEdits.length} imports rewritten, ${Object.values(r.fix.totals).reduce((a, b) => a + b, 0)} fixes, ${r.fix.refused.length} refused`,
   compile: (r) => `${r.summary.batch.errors} errors, ${r.summary.batch.warnings} warnings in the batch; ${r.newErrors.length} new errors`,
   repair: (r) => (r.done === false ? `waiting for the repair agent: ${r.prompt}` : `repaired; recorded ${JSON.stringify(r.recorded)}`),
-  verify: (r) => `${r.ok ? "pass" : "FAIL"}: ${JSON.stringify(r.checks)}`,
+  verify: (r) => (r.ok ? (testsPassed(r.tests) ? "pass" : r.tests?.code === undefined ? "baseline matched; test status unknown" : "baseline matched; tests FAIL") : "FAIL") + ": " + JSON.stringify(r.checks),
   record: (r) => `${r.commit ?? "nothing to commit"}; tokens ${r.tokens.before} -> ${r.tokens.after}`,
   report: (r) => `${r.batches.recorded}/${r.batches.planned} batches; ${r.codemodGaps.length} codemod gaps, ${r.issues.length} issues`
 }

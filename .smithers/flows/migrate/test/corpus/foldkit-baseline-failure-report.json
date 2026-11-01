@@ -1,0 +1,7 @@
+{
+  "key": "migrate:prepared-baseline-failure-label",
+  "source": "minimized status packet from the Foldkit MCP historical missing-build baseline: seven failed files must not become a green test label merely because the comparison has no new failures; names are neutral",
+  "code": 1,
+  "passed": 1,
+  "failedNames": ["dependency entry", "stdio distribution", "original file three", "original file four", "original file five", "original file six", "original file seven"]
+}

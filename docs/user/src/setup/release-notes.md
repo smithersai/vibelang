@@ -350,6 +350,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Migration plans rejected `.mts` sources; ESM packages can now migrate them to `.vibe` and revert them with their original imports and entry points. Unsafe CommonJS boundaries are reported before files move, also when an interrupted codemod resumes from its saved state.
 
+- Migration reports could call an unchanged failing test baseline a pass; reports and commit summaries now retain the actual failing status and test names.
+
 - Migration could record missing build outputs as pre-existing test failures and later test stale distributions; upgrade, setup and verification now run declared build prerequisites, retain their source and dependency evidence, and refuse an unprepared failing baseline.
 
 - The compiler package's tests could fail with a missing `packages/runtime/dist/index.js`, or skip their cache checks, when the runtime rebuilt at the same time; `//packages:compiler-test` now declares that build and runs after it.
