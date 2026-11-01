@@ -3344,6 +3344,11 @@ typescript/vibelang/cases/throw-cause/main.vibe:43:104 lambda plain fallback
 typescript/vibelang/cases/throw-cause/main.vibe:50:30 byname program table
 typescript/vibelang/cases/throw-cause/main.vibe:51:32 byname program table
 typescript/vibelang/cases/throw-cause/main.vibe:52:31 byname program table
+typescript/vibelang/cases/throw-coalesce-do-block/main.vibe:12:25 lambda dual fallback
+typescript/vibelang/cases/throw-coalesce-do-block/main.vibe:26:32 lambda dual fallback
+typescript/vibelang/cases/throw-coalesce-do-block/main.vibe:31:41 lambda dual fallback
+typescript/vibelang/cases/throw-coalesce-do-block/main.vibe:43:15 lambda effectFn annotation
+typescript/vibelang/cases/throw-coalesce-do-block/main.vibe:43:71 lambda dual fallback
 typescript/vibelang/cases/throw-conditional-precedence/main.vibe:10:13 lambda effectFn table
 typescript/vibelang/cases/throw-conditional-precedence/main.vibe:10:35 lambda effectFn table
 typescript/vibelang/cases/throw-conditional-precedence/main.vibe:11:13 lambda effectFn table

@@ -304,6 +304,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 - Interrupted migration codemods could lose their rename, import or platform-split bookkeeping; the flow now journals every mechanical write before it starts and safely resumes or restores the original source.
+- VIP-39's JSX clash table showed `x ?? throw <E/>`, a throw expression that no VIP adds and TypeScript rejects. The row now shows the `throw` statement and `x ?? do { throw <E/> }`.
+
 - `FuzzCommandLine` could fail with `the compilation rewrote the source main.d.vibe.ts` in a checkout where an earlier compile had left that sidecar in an acceptance case; the fuzz seeds now skip these generated files.
 
 - `vibelang --fix` refused to annotate the first of two `Config` helpers that a plain function calls, so neither helper was fixed: the function's one `EK9203` moved with the edit and named the second call, which the gate read as a new error; a span after or before a fix's edits in the file it edits is now compared where it lay before them.

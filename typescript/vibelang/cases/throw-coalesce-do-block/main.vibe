@@ -1,0 +1,49 @@
+// expect-result: {"found":"Ada","missing":"NotFound","lazy":"Ada","picked":"short","tooLong":"TooLong","arrow":"Bo"}
+// Loop round 4, OPUS-4 and ASTRA-1: throw is a statement, never an operand.
+// The do-block twin of every blocks-throw-expression form gives the same Exit.
+error NotFound { id: string }
+error TooLong { length: number }
+
+function find(id: string): string | undefined {
+  return id === "1" ? "Ada" : id === "2" ? "Bo" : undefined
+}
+
+effect function lookup(id: string) {
+  return find(id) ?? do { throw new NotFound({ id }) }
+}
+
+effect function missing() {
+  try {
+    return try lookup("9")
+  } catch (e) {
+    return e._tag
+  }
+}
+
+// The right side of ?? runs only when the left side is nullish.
+effect function lazy() {
+  let ran = false
+  const name = find("1") ?? do { ran = true; throw new NotFound({ id: "never" }) }
+  return ran ? "ran" : name
+}
+
+effect function label(text: string) {
+  return text.length < 6 ? "short" : do { throw new TooLong({ length: text.length }) }
+}
+
+effect function tooLong() {
+  try {
+    return try label("much too long")
+  } catch (e) {
+    return e._tag
+  }
+}
+
+effect function arrow() {
+  const get = effect (id: string): string!NotFound! => find(id) ?? do { throw new NotFound({ id }) }
+  return try get("2")
+}
+
+export effect function main() {
+  return { found: try lookup("1"), missing: try missing(), lazy: try lazy(), picked: try label("abc"), tooLong: try tooLong(), arrow: try arrow() }
+}
