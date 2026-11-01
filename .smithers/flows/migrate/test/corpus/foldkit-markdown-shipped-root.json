@@ -1,0 +1,10 @@
+{
+  "key": "migrate:handwritten-declaration-root",
+  "source": "foldkit-80: @foldkit/markdown exports ./content.d.ts outside its emitted declaration tree; decide-live's export-star and namespace-export shadow controls",
+  "cases": [
+    { "folder": "feature", "form": "star", "addition": "private", "changed": false },
+    { "folder": "feature", "form": "star", "addition": "shadow", "changed": false },
+    { "folder": "feature", "form": "namespace", "addition": "shadow", "changed": false },
+    { "folder": "feature", "form": "type", "addition": "private", "changed": true }
+  ]
+}

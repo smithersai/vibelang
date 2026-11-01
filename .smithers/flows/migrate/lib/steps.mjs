@@ -1056,14 +1056,25 @@ export async function verify(options) {
     const outDir = join(p.batch(b), "dts", slug(pkg.dir))
     const emitted = await emitPackageDeclarations({ compiler, ts, t, pkg, outDir, log: join(logs, `dts-${slug(pkg.dir)}.log`) })
     const baselineDir = join(p.baseline, "dts", slug(pkg.dir))
-    if (!existsSync(join(baselineDir, "public-surface.json"))) {
-      // Upgrade an older run's metadata from its committed baseline manifest.
+    const surfacePath = join(baselineDir, "public-surface.json")
+    const oldSurface = existsSync(surfacePath) ? readJson(surfacePath) : null
+    if (!oldSurface || (!oldSurface.snapshotVersion && oldSurface.unresolved?.length)) {
+      // A legacy run must snapshot the setup commit's shipped declarations,
+      // never the candidate's current package files.
       const setup = readJson(p.setup)
-      const original = await Jj.fileAt(t, setup.jj.setupCommit, posix.join(pkg.dir, "package.json"))
+      const revision = setup.jj.setupCommit
+      const original = await Jj.fileAt(t, revision, posix.join(pkg.dir, "package.json"))
       if (original !== null) {
+        const handwritten = new Map()
+        const prefix = pkg.dir === "." ? "" : pkg.dir + "/"
+        for (const file of await Jj.trackedFiles(t, revision)) {
+          if (!file.startsWith(prefix) || !/\.d\.[cm]?ts$/.test(file) || /\.d\.vibe\.ts$/.test(file) || file.split("/").includes("node_modules")) continue
+          const text = await Jj.fileAt(t, revision, file)
+          if (text !== null) handwritten.set(file.slice(prefix.length), text)
+        }
         const projects = Wire.projectsOf(ts, join(t, pkg.dir), pkg.dtsTsconfig)
         recordDeclarationSurface(ts, baselineDir, join(t, pkg.dir),
-          projects.map(tsconfig => ({ tsconfig, prefix: projects.length === 1 ? "." : slug(tsconfig) })), JSON.parse(original))
+          projects.map(tsconfig => ({ tsconfig, prefix: projects.length === 1 ? "." : slug(tsconfig) })), JSON.parse(original), { handwritten })
       }
     }
     declarations[pkg.dir] = compareDeclarations(ts, baselineDir, outDir)

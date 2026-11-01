@@ -133,15 +133,16 @@ export function lineDiff(before, after, limit = 12) {
 }
 
 /** Published declaration roots, resolved through the aliases recorded by the emit. Unknown paths fail closed. */
-export function declarationSurface(ts, dir, manifest, aliases = {}) {
+export function declarationSurface(ts, dir, manifest, aliases = {}, logicalPaths = {}) {
   const files = listDeclarations(dir)
   const known = new Set(files)
   const resolveName = (name, from = ".") => {
     const path = posix.normalize(posix.join(from, name))
-    if (aliases[path]) return aliases[path]
-    if (known.has(path)) return path
+    const lookup = candidate => aliases[candidate] ?? (known.has(candidate) ? candidate : undefined)
+    const exact = lookup(path)
+    if (exact) return exact
     const stem = path.replace(/(?:\.d\.vibe\.ts|\.[cm]?[jt]s|\.vibe)$/, "")
-    return [stem + ".d.ts", stem + ".d.mts", stem + ".d.cts", path + ".d.ts", path + "/index.d.ts"].find(f => known.has(f))
+    return [stem + ".d.ts", stem + ".d.mts", stem + ".d.cts", path + ".d.ts", path + "/index.d.ts", path + "/index.d.mts", path + "/index.d.cts"].map(lookup).find(Boolean)
   }
   const targets = []
   const strings = value => {
@@ -174,13 +175,13 @@ export function declarationSurface(ts, dir, manifest, aliases = {}) {
     }
   }
   // Every referenced declaration is public, including imports used only in types.
-  const reachable = new Set()
+  const reachable = new Set(), edges = new Map()
   const visit = file => {
     if (reachable.has(file)) return
     reachable.add(file)
     const text = readFileSync(join(dir, file), "utf8")
     const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true)
-    const follow = (name, base = posix.dirname(file), seen = new Set()) => {
+    const follow = (name, base = posix.dirname(logicalPaths[file] ?? file), seen = new Set(), origin = name) => {
       const self = manifest.name && (name === manifest.name || name.startsWith(manifest.name + "/"))
       if (name.startsWith("#") || self) {
         if (seen.has(name)) { unresolved.push(file + ": cyclic package alias " + name); return }
@@ -207,12 +208,16 @@ export function declarationSurface(ts, dir, manifest, aliases = {}) {
         }
         collect(value)
         if (!names.length) unresolved.push(file + ": unresolved package alias " + name)
-        else for (const target of names) follow(target, ".", new Set([...seen, name]))
+        else for (const target of names) follow(target, ".", new Set([...seen, name]), origin)
         return
       }
       if (!name.startsWith(".")) return // external dependency
       const dependency = resolveName(name, base)
-      if (dependency) visit(dependency)
+      if (dependency) {
+        const edge = [file, origin, dependency]
+        edges.set(JSON.stringify(edge), edge)
+        visit(dependency)
+      }
       else unresolved.push(file + ": " + name)
     }
     const walk = node => {
@@ -224,12 +229,14 @@ export function declarationSurface(ts, dir, manifest, aliases = {}) {
     for (const ref of source.referencedFiles) follow(ref.fileName.startsWith(".") ? ref.fileName : "./" + ref.fileName)
   }
   for (const file of roots) visit(file)
-  return { roots: [...roots].sort(), reachable: [...reachable].sort(), unresolved }
+  return { roots: [...roots].sort(), reachable: [...reachable].sort(), unresolved, resolutions: [...edges.values()].sort((a,b) => JSON.stringify(a).localeCompare(JSON.stringify(b))) }
 }
 
 /** Snapshot entry-point aliases while the original package manifest and tsconfigs still exist. */
-export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest = JSON.parse(readFileSync(join(packageDir, "package.json"), "utf8"))) {
-  const aliases = {}
+export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest = JSON.parse(readFileSync(join(packageDir, "package.json"), "utf8")), { handwritten } = {}) {
+  const aliases = {}, logicalPaths = {}
+  const shippedDir = ".migrate-shipped"
+  rmSync(join(dir, shippedDir), { recursive: true, force: true })
   for (const { tsconfig, prefix } of projects) {
     const path = resolve(packageDir, tsconfig)
     const config = ts.readConfigFile(path, ts.sys.readFile)
@@ -250,11 +257,23 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
       }
       for (const original of outputNames({ ...parsed.options, declaration: true, emitDeclarationOnly: true })) {
         aliases[rel(packageDir, original)] = declaration
+        logicalPaths[declaration] ??= rel(packageDir, original)
         aliases[rel(packageDir, original).replace(/\.d\.ts$/, ".js").replace(/\.d\.mts$/, ".mjs").replace(/\.d\.cts$/, ".cjs")] = declaration
       }
     }
   }
-  const surface = declarationSurface(ts, dir, manifest, aliases)
+  // Keep package-tree declarations in the run snapshot, never as live paths.
+  // Aliases of emitted files win over stale build output from the target.
+  const originals = handwritten ?? new Map([...declarationFiles(packageDir, resolve(dir))].map(([file, bytes]) => [rel(packageDir, file), bytes]))
+  for (const [file, bytes] of originals) {
+    if (!/\.d\.[cm]?ts$/.test(file) || /\.d\.vibe\.ts$/.test(file) || aliases[file]) continue
+    const stored = posix.join(shippedDir, file)
+    mkdirSync(join(dir, stored, ".."), { recursive: true })
+    writeFileSync(join(dir, stored), bytes)
+    aliases[file] = stored
+    logicalPaths[stored] = file
+  }
+  const surface = { ...declarationSurface(ts, dir, manifest, aliases, logicalPaths), snapshotVersion: 2 }
   writeFileSync(join(dir, "public-surface.json"), JSON.stringify(surface, null, 2) + "\n")
   return surface
 }
@@ -383,8 +402,19 @@ export function compareDeclarations(ts, baselineDir, currentDir) {
   const addedPrivate = resolved ? additions.filter(f => !publicFiles.has(f)) : []
   const added = additions.filter(f => !addedPrivate.includes(f))
   const rootsChanged = resolved && JSON.stringify(aSurface.roots) !== JSON.stringify(bSurface.roots.map(file => originalName.get(file) ?? file).sort())
-  return { identical: !changed.length && !removed.length && !added.length && !rootsChanged, files: before.length, added, addedPrivate, renamed: [...moved].map(([from, to]) => ({ from, to })), removed, changed, excused,
-    ...(aSurface || bSurface ? { publicSurface: { before: aSurface, after: bSurface, rootsChanged: Boolean(rootsChanged) } } : {}) }
+  const remap = file => originalName.get(file) ?? file
+  const reachableChanged = resolved && JSON.stringify(aSurface.reachable) !== JSON.stringify(bSurface.reachable.map(remap).sort())
+  // D298 excuses only specifier pairs already proved to select the same
+  // present declaration in both trees. Keep every other graph edge exact.
+  const edges = (surface, map = file => file, after = false) => surface.resolutions?.map(([from, name, to]) => {
+    const origin = map(from), target = map(to)
+    const pair = after && excused.find(pair => pair.file === origin && pair.after === name && pair.declaration === target)
+    return [origin, pair ? pair.before : name, target]
+  }).sort((a,b) => JSON.stringify(a).localeCompare(JSON.stringify(b)))
+  const resolutionChanged = resolved && aSurface.resolutions && bSurface.resolutions &&
+    JSON.stringify(edges(aSurface)) !== JSON.stringify(edges(bSurface, remap, true))
+  return { identical: !changed.length && !removed.length && !added.length && !rootsChanged && !reachableChanged && !resolutionChanged, files: before.length, added, addedPrivate, renamed: [...moved].map(([from, to]) => ({ from, to })), removed, changed, excused,
+    ...(aSurface || bSurface ? { publicSurface: { before: aSurface, after: bSurface, rootsChanged: Boolean(rootsChanged), reachableChanged: Boolean(reachableChanged), resolutionChanged: Boolean(resolutionChanged) } } : {}) }
 }
 
 // The files a declaration emit can write outside outDir: x.d.ts, x.d.mts,
