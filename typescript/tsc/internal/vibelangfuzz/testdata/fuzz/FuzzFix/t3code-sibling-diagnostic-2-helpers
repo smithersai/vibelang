@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport * as Config from \"effect/Config\";\nconst helper0 = (name: string) => Config.String(name);\nconst helper1 = (name: string) => Config.String(name);\nexport interface Settings { readonly p0: string; readonly p1: string; }\nexport const settings = (prefix: string): Config.Config<Settings> => Config.all({ p0: helper0(prefix + \"P0\"), p1: helper1(prefix + \"P1\") });\n")

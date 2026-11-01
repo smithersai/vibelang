@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport * as Schema from \"effect/Schema\";\nimport * as Effect from \"effect/Effect\";\nexport schema error Bad { message: string }\nexport const decode = (raw: unknown): string!Bad => Schema.decodeUnknownEffect(Schema.String)(raw).pipe(Effect.mapError(() => new Bad({ message: \"bad input\" })));\n")
