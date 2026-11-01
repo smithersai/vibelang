@@ -14,6 +14,20 @@ const read = path => readFileSync(path, "utf8")
 const hash = text => createHash("sha256").update(text).digest("hex")
 const compare = (a, b) => a < b ? -1 : a > b ? 1 : 0
 const clean = text => text.replace(/\s+/g, " ").trim()
+// These flags and the enclosing declaration stay fixed for this checker.
+// Keep the cache local to one program so a later generation reads fresh inputs.
+export function signatureFormatter(checker) {
+  const formatted = new WeakMap()
+  return signature => {
+    const cached = formatted.get(signature)
+    if (cached !== undefined) return cached
+    const text = clean(checker.signatureToString(signature, undefined,
+      ts.TypeFormatFlags.NoTruncation | ts.TypeFormatFlags.UseAliasDefinedOutsideCurrentScope))
+    formatted.set(signature, text)
+    return text
+  }
+}
+
 const union = values => values.includes("unknown") ? "unknown" : [...new Set(values.filter(v => v !== "never"))].sort(compare).join(" | ") || "never"
 const rethrowMethods = new Set(["map", "forEach", "filter", "reduce", "reduceRight", "find", "findIndex", "findLast", "findLastIndex", "some", "every", "sort", "toSorted", "flatMap"])
 const typedArrayOwner = /^(?:Int|Uint|Float|BigInt|BigUint)\d+(?:Clamped)?Array$/
@@ -132,7 +146,7 @@ export function generateThrowsInventory() {
   const checker = program.getTypeChecker()
   const sources = new SourceAnalysis({ dualPath: resolve(effectDir, "dist/Function.js") })
   const entries = new Map()
-  const sigString = sig => clean(checker.signatureToString(sig, undefined, ts.TypeFormatFlags.NoTruncation | ts.TypeFormatFlags.UseAliasDefinedOutsideCurrentScope))
+  const sigString = signatureFormatter(checker)
   const typeString = type => checker.typeToString(type, undefined, ts.TypeFormatFlags.NoTruncation | ts.TypeFormatFlags.UseAliasDefinedOutsideCurrentScope)
   const isEffectful = type => {
     if (type.isUnion()) return type.types.every(isEffectful)

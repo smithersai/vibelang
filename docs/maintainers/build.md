@@ -783,3 +783,22 @@ regression test always regenerates the expected inventory without this cache.
 ## Example compile diagnostics
 
 `sh scripts/check-examples.sh` keeps complete logs in `.cache/check-examples/`. A compiler failure includes the child's exit status in the summary and prints the last `40` log lines, capped at `8192` bytes, to stderr so retained CI receipts show the cause. It continues checking later examples and returns failure if any example failed.
+
+## Throws-inventory formatting benchmark
+
+Each inventory generation creates a fresh TypeScript program. Signature text is
+memoized within that checker, including aliases exported from several modules.
+The ordinary property test compares cached text with the real checker across
+overloads, generic and recursive types, constructors, re-exports, and shuffled
+queries.
+
+Run the full pinned-library benchmark separately:
+
+```sh
+node docs/tools/benchmarks/throws-signature-format.mjs
+```
+
+It delegates to the installed TypeScript compiler, counts actual
+`signatureToString` calls, and requires byte-identical `throws.json` output.
+The full library surface is expensive, so this counter check runs through the
+benchmark command rather than adding a second inventory generation to each gate.

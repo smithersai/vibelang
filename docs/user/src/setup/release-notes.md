@@ -581,6 +581,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Retired `await.all`, `await.race`, `await.any` and `await.allSettled` spellings in async code produced an unrelated parse error; they now report `EK1802` with async-context guidance and no effect-only automatic rewrite.
 
+- Documentation generation formatted the same declaration signatures again for re-exported aliases; each checker now reuses their formatted text while producing the same inventory.
+
 - `vibelang --fix` deleted comments from legacy diagnostic maps, including empty maps and entries superseded by modern settings; it now keeps every comment in direct and extended configs, with the same settings and a stable second run.
 
 - A `continue` to an earlier label in a chained `for...of`, such as `outer: inner: for (...)`, compiled to JavaScript that Node rejected; every label now stays on the loop, so labeled `continue` and `break` keep their TypeScript behavior.
