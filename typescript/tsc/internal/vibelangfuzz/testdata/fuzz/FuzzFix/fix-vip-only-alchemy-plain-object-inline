@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- framework.ts --\nimport { Effect } from \"effect\";\nexport interface Props { env: Record<string, string> }\nexport function FrameworkServer(_name: string, props: Props | Effect.Effect<Props>) {\n  return Effect.sync(() => \"env\" in props ? props.env.GREETING ?? \"hello\" : \"hello\");\n}\n-- main.vibe --\nimport { FrameworkServer } from \"./framework.ts\";\nexport effect function main() { return try FrameworkServer(\"Build\", { env: { GREETING: \"configured\" } }); }\n")
