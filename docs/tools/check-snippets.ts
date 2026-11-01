@@ -168,11 +168,12 @@ export function markdownPages(root: string): string[] {
   return [...new Set(pages)].sort()
 }
 
-// An explicit compiler wins, then the native checkout build, the legacy build, and PATH.
+// An explicit compiler wins, then the native checkout build and the legacy build.
+// Keep the missing native path so callers fail instead of checking another build on PATH.
 export function defaultCompiler(): string {
   const native = join(repo, "packages/compiler/native", process.platform === "win32" ? "vibelang.exe" : "vibelang")
   const legacy = join(repo, "typescript/built/local/tsc")
-  return process.env.VIBELANG_BINARY || (existsSync(native) ? native : existsSync(legacy) ? legacy : "vibelang")
+  return process.env.VIBELANG_BINARY || (existsSync(native) ? native : existsSync(legacy) ? legacy : native)
 }
 
 // The experiments package pins this parser. It only discovers declarations;

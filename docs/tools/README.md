@@ -61,8 +61,12 @@ Use a header comment before the code:
   markers fail, so resolved gaps cannot silently accumulate.
 
 `--compiler path` (or `VIBELANG_BINARY`) selects a compiler; the default is
-`typescript/built/local/tsc`, then `vibelang` on PATH. `--filter text` selects
-pages, and `--json path` writes diagnostics with Markdown line numbers.
+`packages/compiler/native/vibelang` (or `vibelang.exe` on Windows), then
+`typescript/built/local/tsc`. Without either build, checks fail on the missing
+checkout compiler; run `sh scripts/build-vibelang.sh` first. These tools never
+fall back to `vibelang` on `PATH`, including hover generation, snippet fixes
+and `--run` execution. An explicit compiler option can select an installed
+release. `--filter text` selects pages, and `--json path` writes diagnostics with Markdown line numbers.
 Temporary files are removed on success and failure; `--keep` preserves the
 temporary projects for debugging. Compiler crashes, missing runtime builds, and
 project configuration errors exit 2. Snippet failures exit 1.
