@@ -1,0 +1,14 @@
+{
+  "source": "inbox/migrate-t3code.md#migrate-flow:interrupted-codemod-loses-prepared-state",
+  "oracle": "A retry resumes prepared renames; compiler failure cannot corrupt modules outside the selected batch.",
+  "input": {
+    "count": 1,
+    "depth": 0,
+    "extension": ".ts"
+  },
+  "files": {
+    "src/m0.ts": "export const value0 = 0;\n",
+    "src/consumer.ts": "import { value0 } from \"./m0.ts\";\nexport const copy0 = value0;\n",
+    "src/old.vibe": "export const old = 1;\n"
+  }
+}
