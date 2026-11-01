@@ -74,6 +74,7 @@ const specTests = [
   "TestVibexNativeParityQuoted",
   "TestReviewNativeLoopsQuoted",
   "TestMigrationDoArmsQuoted",
+  "TestMigrationRootResolutionQuoted",
   "TestSpecifierWrittenJSX",
 
   "TestStockConsumerResolutionQuoted",
