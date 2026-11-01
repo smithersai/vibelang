@@ -50,7 +50,8 @@ func (p *projector) forConcurrent(call *ast.Node, e env) {
 		p.plan.insert(at, limitName)
 	}
 	p.plan.insert(at, ", (")
-	p.concurrentCopy(fn.Parameters()[0].Name(), at, env{})
+	pattern, statements := concurrentHeadPattern(fn, body)
+	p.concurrentCopy(pattern, at, env{})
 	p.plan.insert(at, ") => ")
 	p.plan.replace(at, p.tokenStart(body), "")
 	continues := p.concurrentJumps(body)
@@ -61,7 +62,7 @@ func (p *projector) forConcurrent(call *ast.Node, e env) {
 	if !braced {
 		p.plan.insert(p.tokenStart(body), "{ ")
 	}
-	p.visitList(body.Statements(), newEffectEnv())
+	p.visitList(statements, newEffectEnv())
 	// Record replacements after the body walk so region completion edits
 	// at the same return position open before the keyword is consumed.
 	for _, node := range continues {
@@ -78,6 +79,25 @@ func (p *projector) forConcurrent(call *ast.Node, e env) {
 	} else {
 		p.plan.insert(call.End(), ";")
 	}
+}
+
+// concurrentHeadPattern returns the head's binding and the body's own
+// statements. A destructuring head binds inside the item: the parser passes
+// the item as a synthesized $concurrentItem parameter and declares the
+// pattern from it as the body's first statement, which the source lacks, so
+// the pattern is what the helper argument shows and that statement is not
+// projected.
+func concurrentHeadPattern(fn, body *ast.Node) (*ast.Node, []*ast.Node) {
+	name := fn.Parameters()[0].Name()
+	statements := body.Statements()
+	if name.Flags&ast.NodeFlagsReparsed == 0 || name.Kind != ast.KindIdentifier || name.Text() != "$concurrentItem" || len(statements) == 0 || statements[0].Kind != ast.KindVariableStatement {
+		return name, statements
+	}
+	declarations := statements[0].AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes
+	if len(declarations) != 1 {
+		return name, statements
+	}
+	return declarations[0].Name(), statements[1:]
 }
 
 // concurrentCopy moves a lowered header subtree to its helper argument.

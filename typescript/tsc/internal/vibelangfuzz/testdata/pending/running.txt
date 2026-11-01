@@ -65,7 +65,6 @@ FuzzRunningRules corpus:concurrent-head-break-outer compiler VIP-19: minimal rep
 FuzzRunningRules diagnostic:concurrent-head-continue-outer compiler VIP-19: a labeled `continue` in a head default's `do` draws the retired EK1019, not EK1905; lane core-block
 FuzzRunningRules corpus:concurrent-head-continue-outer compiler VIP-19: minimal reproduction of diagnostic:concurrent-head-continue-outer; lane core-block
 FuzzVIPDifferential compile:TS2464/vip19.head-initialization-item compiler VIP-19: a `try` in a head computed key's `do` is not run on the item (TS2464, TS2538); lane impl-hunt-run
-FuzzVIPDifferential corpus:fz-run-vip19-head-initialization-item compiler VIP-19: minimal named probe reproduces compile:TS2464/vip19.head-initialization-item; lane impl-hunt-run
 FuzzVIPDifferential compile:TS2538/vip19.head-initialization-item compiler VIP-19: a `try` in a head computed key's `do` is not run on the item (TS2464, TS2538); lane impl-hunt-run
 FuzzVIPDifferential compile:TS2304/vip19.rhs-tdz compiler VIP-19: an RHS closure cannot name the head binding (TS2304); ECMAScript's head environment holds it uninitialized; lane impl-hunt-run
 FuzzVIPDifferential corpus:fz-run-vip19-rhs-tdz compiler VIP-19: minimal named probe reproduces compile:TS2304/vip19.rhs-tdz; lane impl-hunt-run

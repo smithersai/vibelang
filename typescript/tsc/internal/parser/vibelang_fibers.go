@@ -502,7 +502,27 @@ func (p *Parser) parseVibeLangConcurrentFor(pos int) *ast.Node {
 		body = p.vibelangSpanning(p.factory.NewBlock(p.newNodeList(body.Loc, []*ast.Node{body}), true /*multiLine*/), body.Loc)
 	}
 	p.rewriteConcurrentJumps(body, false /*inSwitch*/)
-	parameter := p.vibelangSpanning(p.factory.NewParameterDeclaration(nil, nil, binding, nil, nil, nil), binding.Loc)
+	name := binding
+	if binding.Kind != ast.KindIdentifier {
+		// A head pattern binds inside the item, as a for...of pattern binds
+		// inside its body: its defaults and computed keys may run Effects
+		// (chapter 2, "Destructuring and parameter defaults"), which a
+		// parameter list cannot. The item arrives as a synthesized parameter,
+		// and the pattern declares from it as the body's first statement.
+		name = p.vibelangSynthesized(p.factory.NewIdentifier("$concurrentItem"), ofKeyword)
+		item := p.vibelangSynthesized(p.factory.NewIdentifier("$concurrentItem"), ofKeyword)
+		declaration := p.vibelangSpanning(p.factory.NewVariableDeclaration(binding, nil /*exclamationToken*/, nil /*type*/, item), binding.Loc)
+		list := p.vibelangSpanning(p.factory.NewVariableDeclarationList(p.newNodeList(binding.Loc, []*ast.Node{declaration}), declarationKind), binding.Loc)
+		statement := p.vibelangSpanning(p.factory.NewVariableStatement(nil /*modifiers*/, list), binding.Loc)
+		// The block is finished already, so the new statement's parents are set here.
+		p.overrideParentInImmediateChildren(declaration)
+		p.overrideParentInImmediateChildren(list)
+		p.overrideParentInImmediateChildren(statement)
+		statement.Parent = body
+		statements := body.AsBlock().Statements
+		body.AsBlock().Statements = p.newNodeList(statements.Loc, append([]*ast.Node{statement}, statements.Nodes...))
+	}
+	parameter := p.vibelangSpanning(p.factory.NewParameterDeclaration(nil, nil, name, nil, nil, nil), binding.Loc)
 	// The item's binding keeps the kind its head declares: a const binding,
 	// destructured or not, is a constant, so assigning it is TS2588, as in
 	// a for...of loop.

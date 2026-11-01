@@ -230,6 +230,7 @@ const specTests = [
   "TestRestorePlacementQuoted",
   "TestEffectBlockJumpsQuoted",
   "TestDoCompletionQuoted",
+  "TestConcurrentHeadBindingsQuoted",
   "TestRegistryMatchesSpec",
   "TestSeverityCodesMatchAppendixB",
   "TestAppendixBSeveritySettingsTakeEffect",

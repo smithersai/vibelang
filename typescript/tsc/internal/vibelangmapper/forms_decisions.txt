@@ -736,6 +736,15 @@ typescript/vibelang/cases/concurrent-head-newline/main.vibe:11:30 lambda effectF
 typescript/vibelang/cases/concurrent-head-newline/main.vibe:13:36 lambda effectFn table
 typescript/vibelang/cases/concurrent-head-newline/main.vibe:5:12 lambda effectFn table
 typescript/vibelang/cases/concurrent-head-newline/main.vibe:9:12 lambda effectFn table
+typescript/vibelang/cases/concurrent-head-pattern-runs/main.vibe:10:25 lambda effectFn table
+typescript/vibelang/cases/concurrent-head-pattern-runs/main.vibe:10:31 lambda dual fallback
+typescript/vibelang/cases/concurrent-head-pattern-runs/main.vibe:11:25 lambda effectFn table
+typescript/vibelang/cases/concurrent-head-pattern-runs/main.vibe:11:33 lambda dual fallback
+typescript/vibelang/cases/concurrent-head-pattern-runs/main.vibe:12:23 lambda effectFn table
+typescript/vibelang/cases/concurrent-head-pattern-runs/main.vibe:12:42 lambda dual fallback
+typescript/vibelang/cases/concurrent-head-pattern-runs/main.vibe:13:28 lambda effectFn table
+typescript/vibelang/cases/concurrent-head-pattern-runs/main.vibe:9:25 lambda effectFn table
+typescript/vibelang/cases/concurrent-head-pattern-runs/main.vibe:9:34 lambda dual fallback
 typescript/vibelang/cases/conditional-factory-lambda-infers-channels/main.vibe:10:15 lambda effectFn annotation
 typescript/vibelang/cases/conditional-factory-lambda-infers-channels/main.vibe:11:19 lambda effectFn annotation
 typescript/vibelang/cases/conditional-factory-lambda-infers-channels/main.vibe:14:32 lambda plain fallback

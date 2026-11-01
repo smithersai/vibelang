@@ -1,0 +1,15 @@
+// expect-result: [3,4,5,6,7]
+// Chapter 2, "Destructuring and parameter defaults": a for concurrent head
+// pattern binds inside the item, so a try in a default's do or in a computed
+// key runs in the item, as it does in a for...of head. Before, the pattern was
+// the item function's parameter list, and such a do kept its Effect type.
+import { poll } from "./held.ts"
+export effect function main() {
+  const seen: number[] = []
+  for concurrent (const { n = do { 2 + try poll } } of [{}] as Array<{ n?: number }>) { seen.push(n) }
+  for concurrent (const { [do { try poll; "k" }]: m } of [{ k: 4 }] as Array<Record<string, number>>) { seen.push(m) }
+  for concurrent (const [a = do { try poll; 5 }] of [[]] as Array<Array<number>>) { seen.push(a) }
+  for concurrent (let { nested: { v = do { (try poll) + 5 } } } of [{ nested: {} }] as Array<{ nested: { v?: number } }>) { v += 0; seen.push(v) }
+  for concurrent(1) (const { w } of [{ w: 7 }]) { seen.push(w) }
+  return seen.sort()
+}
