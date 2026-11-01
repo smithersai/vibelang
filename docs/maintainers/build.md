@@ -182,6 +182,12 @@ file; a missing file fails the tests instead of linking quietly. A plain
 `go test ./internal/vibelangmapper/...` leaves both unset and links its own,
 so it needs no graph.
 
+The example checker reads each compiled example's `package.json` to decide
+whether to run its test script. A manifest read or parse failure fails that
+example as `test script discovery`, keeps the diagnostic in
+`.cache/check-examples/<name>.log` and continues checking the other examples.
+Only a successful read with no test script skips the test step.
+
 ## Forms-table checks
 
 `//typescript:forms-generator` builds `typescript/built/local/vibelang-forms`

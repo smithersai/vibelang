@@ -68,7 +68,17 @@ for name in hello users http-api file-tree resilience approval pipeline react-vi
     failed=1
     continue
   fi
-  if node -e 'process.exit(JSON.parse(require("node:fs").readFileSync(process.argv[1])).scripts?.test ? 0 : 1)' "$dir/package.json"; then
+  # A missing script is valid; a failed manifest read must not skip tests.
+  if test_script=$(node -e 'console.log(JSON.parse(require("node:fs").readFileSync(process.argv[1])).scripts?.test ? "yes" : "no")' "$dir/package.json" 2>>"$log"); then
+    :
+  else
+    status=$?
+    printf 'check-examples: test script discovery exited %s\n' "$status" >>"$log"
+    printf 'FAIL %-10s test script discovery (see .cache/check-examples/%s.log)\n' "$name" "$name"
+    failed=1
+    continue
+  fi
+  if [ "$test_script" = yes ]; then
     if ! (cd "$dir" && bun run test) >>"$log" 2>&1; then
       printf 'FAIL %-10s tests (see .cache/check-examples/%s.log)\n' "$name" "$name"
       failed=1
