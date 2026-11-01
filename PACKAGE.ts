@@ -60,6 +60,7 @@ const specTests = [
   "TestDoForTryDiagnosticOwnerQuoted",
   "TestDoDeclarationBytesQuoted",
   "TestDoContextualResultQuoted",
+  "TestMigrationRootResolutionQuoted",
   "TestSpecifierWrittenJSX",
 
   "TestStockConsumerResolutionQuoted",
