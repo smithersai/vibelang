@@ -1,0 +1,16 @@
+{
+  "finding": "opencode-54",
+  "input": {
+    "kind": "wildcard",
+    "wire": true,
+    "prefix": "@/",
+    "depth": 0,
+    "index": false
+  },
+  "pending": {
+    "exact_alias": {
+      "key": "rewriteSpecifier:exact-paths-alias",
+      "owner": "migfix-opencode"
+    }
+  }
+}
