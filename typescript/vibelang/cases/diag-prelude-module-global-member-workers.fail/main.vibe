@@ -1,0 +1,6 @@
+// expect: TS2339
+// A Worker runtime declares Response itself, not the DOM lib. Response in a
+// .vibe file is still Effect's module (VIP-14), so Response.json is TS2339,
+// and the note names globalThis.Response, the runtime's class (alchemy-39,
+// cloudflare-runtime's D1.worker).
+export function json(rows: ReadonlyArray<string>) { return Response.json({ rows }) }

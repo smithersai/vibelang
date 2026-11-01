@@ -1,0 +1,12 @@
+// expect: TS2339 TS2339 TS2339
+// Response, Headers and Worker are Effect's modules in a .vibe file (VIP-14,
+// D310). A static member that only the platform's class of that name has,
+// as Response.json, is TS2339, and a note says which Response this is and
+// that globalThis.Response reaches the other (alchemy-39). Worker is a
+// platform global, so its globalThis form belongs in a hatch or a module
+// block; the Fetch data classes are not. Effect's own members compile.
+export function json(body: string) { return Response.json({ body }) }
+export function redirect(to: string) { return Response.redirect(to, 302) }
+export function make(url: string) { return globalThis.Response.json({ url }) }
+export function terminate() { return Worker.prototype.terminate }
+export const empty = Headers.empty

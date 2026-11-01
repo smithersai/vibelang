@@ -70,6 +70,7 @@ const specTests = [
   "TestForeignCallbackSitesQuoted",
   "TestVibeResolutionTableQuoted",
   "TestDoJumpOperandQuoted",
+  "TestPreludeGlobalMemberQuoted",
   "TestFormatForHeadsQuoted",
   "TestFormatFoldkitQuoted",
   "TestFormatLabelQuoted",

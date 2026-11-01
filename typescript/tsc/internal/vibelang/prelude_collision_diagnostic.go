@@ -19,6 +19,7 @@ import (
 //	new Worker("./worker.js")   // TS2351: and the DOM's Worker is globalThis.Worker in a hatch
 //	w.postMessage("x")          // TS2339: w's Worker is Effect's; alias the DOM's in a .ts file
 //	Number.sum(1, 2)            // TS2339: Number is JavaScript's; import Effect's under another name
+//	Response.json(body)         // TS2339: Response is Effect's; the global's json is globalThis.Response.json
 //
 // A prelude name whose package the file does not resolve is not in scope, and
 // its error names the package to install:
@@ -148,8 +149,39 @@ func explainMissingMember(c *checker.Checker, file *ast.SourceFile, d *ast.Diagn
 				return note(d.Clone(), "{0} is {1} {0} here, which wins over Effect's {0} module ({2}). To call Effect's {0}.{3}, import the module under another name: import { {0} as Effect{0} } from \"{4}\".", text, owner, preludeModulePath(text), member, preludePackageOf(text))
 			}
 		}
+		return explainGlobalMember(c, file, d, receiver, member)
 	}
 	return d
+}
+
+// explainGlobalMember adds to d, TS2339 at M.member, a note when M is the
+// Effect module the prelude supplies and the global of the same name, which
+// the module shadows, has member: Response.json reads effect/ai/Response in
+// a .vibe file (VIP-14), and the Fetch class is globalThis.Response. A global
+// that is a platform API (D310), as Worker, belongs in a .ts file (VIP-33). It
+// returns d unchanged otherwise.
+func explainGlobalMember(c *checker.Checker, file *ast.SourceFile, d *ast.Diagnostic, receiver *ast.Node, member string) *ast.Diagnostic {
+	text := receiver.Text()
+	module := preludeModulePath(text)
+	if module == "" || !isEffectExportName(text) {
+		return d
+	}
+	symbol := preludeSymbol(c, preludeStateOf(c), file, text)
+	if symbol == nil || c.ResolveName(text, receiver, ast.SymbolFlagsValue|ast.SymbolFlagsType|ast.SymbolFlagsNamespace, false /*excludeGlobals*/) != symbol {
+		return d // a declaration or an import of the file's own
+	}
+	global := c.GlobalSymbol(text, ast.SymbolFlagsValue)
+	if global == nil || global == symbol || declaredInEffect(global) || c.GetPropertyOfType(c.GetTypeOfSymbol(global), member) == nil {
+		return d
+	}
+	d = note(d.Clone(), "{0} is Effect's {0} module ({1}), in scope without an import. To use your own {0}, declare or import it.", text, module)
+	if global.Flags()&(ast.SymbolFlagsFunctionScopedVariable|ast.SymbolFlagsFunction) == 0 {
+		return d // a global class is not a property of globalThis
+	}
+	if _, platform := platformGlobals[text]; platform {
+		return note(d, "The global {0} has {0}.{1}, and it is platform code, which lives in a .ts file.", text, member)
+	}
+	return note(d, "The global {0} has {0}.{1}: write globalThis.{0}.{1}.", text, member)
 }
 
 // domGlobal returns the global symbol named name with meaning when the DOM's

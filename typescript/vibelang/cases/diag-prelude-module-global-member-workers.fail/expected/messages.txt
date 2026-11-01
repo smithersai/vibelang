@@ -1,0 +1,2 @@
+Response is Effect's Response module (effect/ai/Response), in scope without an import. To use your own Response, declare or import it.
+The global Response has Response.json: write globalThis.Response.json.

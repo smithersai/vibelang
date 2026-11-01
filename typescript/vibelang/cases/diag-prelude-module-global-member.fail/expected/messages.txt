@@ -1,0 +1,5 @@
+Response is Effect's Response module (effect/ai/Response), in scope without an import. To use your own Response, declare or import it.
+The global Response has Response.json: write globalThis.Response.json.
+The global Response has Response.redirect: write globalThis.Response.redirect.
+Worker is Effect's Worker module (effect/workers/Worker), in scope without an import. To use your own Worker, declare or import it.
+The global Worker has Worker.prototype, and it is platform code, which lives in a .ts file.
