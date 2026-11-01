@@ -24,6 +24,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - `restore` inside a `for concurrent` body or head binding reported `EK2111`, as if no mask enclosed it, or compiled under a mask opened inside the body; it now reports `EK2202`, as does a `restore` that would capture an enclosing `uninterruptible` block across an `effect` function, arrow, method, producer or block (VIP-22, amended 2026-10-30 and 2026-10-31). A `do` expression inside a mask no longer reports `EK2111` for its `restore`.
 - A `break` or `continue` that would leave an `effect { }` block reported TypeScript's `TS1107`; it now reports `EK0202` (decided detail 247).
 - A `do` expression ending in a declaration, a loop or an `if` without an `else` reported TypeScript's `TS1109`; it now reports `EK0201`, which names the statement (decided detail 247). A `do` ending in `break` or `continue` reports only `EK1019`, the jump that leaves it, not `EK0201` as well. A `do` ending in a labeled statement, a `switch` (an empty case block included), an empty statement or a `var` statement is admitted, as the proposal's predicate admits them, and a `switch` clause ending in a loop, a bare `if` or a declaration is `EK0201`. A `do` ending in an empty interruption block, `do { uninterruptible {} }`, returned the block's marker call and failed to run; it is `undefined`.
+- Pattern bindings in parameter defaults and enum initializers reported a generic unsupported-binding error; they now identify the unsettled lexical scope with `EK0705`.
 - The migrate flow left a lint script that runs Oxlint in parentheses, `(oxlint --disable-nested-config)`, without its `.vibe` ESLint pass, and did the same to `(oxfmt --check .)` and `(prettier --check .)`, so those tools skipped `.vibe` files; each rerun of setup also added another layer of ESLint passes to a wired script, kept an earlier run's pass with the wrong `-c` configuration, and re-added the `**/*.d.vibe.ts` ESLint ignore once a formatter had requoted it. Each of these scripts now gets its pass, setup rewrites the passes it wrote before, and a rerun changes nothing.
 - `vibelang --fix` checked the whole project for each trial when no error traced to the fixes it was trying, so a package with many such fixes spent hours on a round's last few: on a generated project, 240 modules took 245 whole checks where 60 took 65. It now looks for a trial's errors in the files that reported errors earlier in the round, and checks the kept fixes against the whole project once at the end: the same 240 modules take 4 whole checks, and a fix refused this way names the first error of those files.
 - `vibelang --fix` checked the whole project once for each fix that added an error to another file, so a package with many such fixes took time that grew with the square of its size: on a generated project, 240 modules took 78 checks and 6.5 s where 60 took 24 and 0.9 s. It now finds the fixes behind the errors of different files together, in a few checks of those files, and prints the checks of each round in its progress line. When the prelude's rewrites added an error together, it also checked the project once for each file it rewrote; it now finds the rewrites that add one as it finds the fixes that do.
@@ -121,6 +122,7 @@ The fixes keep a rewrite only when it adds no compiler error.
 | A `match` without `default` whose arms name classes that are not error classes (classes that don't extend `effect`'s `YieldableError`), `Error`, or a class with its own `[Symbol.hasInstance]` or `[customMatcher]` | EK4701: such an arm no longer proves the match covers its subject, and the diagnostic's note names each arm that did not count. Add a `default` arm, or declare the classes with `error` or `Data.TaggedError`. An error class counts wherever it is declared, a `.ts` file or a declaration file included. |
 | A `match` without `default` over a `string` or `number` without a literal type, `unknown`, `any`, `object`, an array, or a type parameter, such as `match (x: string) { when "a": 1; }` | EK4701: such a subject is open, so its arms cannot cover it; the match previously compiled and threw a `TypeError` when no arm matched. Add a `default` arm, a bind-only arm such as `when let other:`, an arm that matches every value such as `when String:`, or narrow the subject's declared type to the literals the match handles. |
 | A package compiled by 0.0.10 that exports an `error` declaration | Its declaration file now declares exactly what `class E extends Data.TaggedError("E")<{ … }> {}` declares. `.vibe` code doesn't change. Recompile the package so its `.d.ts` matches. |
+| A trailing block, such as `Layer.effect(Users) { … }`, `it.effect("loads") { … }` or `Effect.scoped { … }` | `EK1101`: VibeLang has no trailing blocks (VIP-11). `vibelang --fix` writes the block as the call's last argument, `Layer.effect(Users, effect { … })`, `it.effect("loads", effect () => { … })`, `Effect.scoped(effect { … })`, or `f(x, () => { … })` for a plain callback. Runtime behavior is unchanged; comment printing and equivalent arrow layout can differ. |
 | A block after an Effect dual, such as `withSpan("load") { … }`, `timeout("1 second") { … }` or `semaphore.withPermits(1) { … }` | A block is always its call's last argument, so the callee's type no longer moves it. Write the program first, `withSpan(() => { … }, "load")`, or use the curried form, `semaphore.withPermits(1)(() => { … })`. `vibelang --fix` rewrites each site. Where the appended call still type-checks, it is EK1023. |
 | `() => fork p()`, or a `fork` in an `if` branch or a bare block | A fiber belongs to its innermost named region: a function body (an arrow's expression body included), one loop iteration, a `try`, `catch` or `finally` block, a block that declares `using`, or a `provide` or mask block. `if` branches, bare blocks, `do` blocks and `match` own nothing. Passing an owned fiber out of its region (returning, storing, assigning outside it, or capturing it) is now the error EK4838. Use `Effect.forkScoped(() => p())` for a child the caller's scope owns, or `detach(() => p())`. |
 | The `try` hatch, `try((text) => parse(text), (e) => new Bad({ e }), text)` | EK4616: `try` is an operator that runs an Effect (VIP-5), so `try(…)` is no longer a hatch. Wrap the code with Effect's own `Effect.try` or `Effect.tryPromise` and run it with `try`: `try Effect.try({ try: () => parse(text), catch: (e) => new Bad({ e }) })`. `vibelang --fix` rewrites each hatch, passing its inputs to its function, and refuses one whose inputs run code. A function that is not `async` but returns a promise is no longer awaited: write it `async`, or wrap it with `Effect.tryPromise`. The function `Effect.try` or `Effect.tryPromise` wraps is TypeScript, as a hatch's is: a `throw` there is JavaScript's, for the wrapper to catch, and platform APIs such as `fetch` are allowed there, where they were EK4402 before. `import { try } from "vibelang-runtime"` no longer resolves. |
@@ -207,6 +209,12 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 - Awaiting a Fiber or Deferred in effect code reported an error using the configurable warning codes `EK4609` and `EK4610`; it now reports the fixed placement error `EK0102` separately, so advisory severity settings keep their meaning without allowing `await` in effect code.
+
+- `vibelang agents check` could report `no errors` and succeed when its compiler failed or was terminated; checks and hooks now fail with the compiler's status, signal or spawn error and standard error output, including failures caused by errors outside the selected files.
+
+- Formatting a labeled arrow statement failed with `formatting changed the program`; labels now keep their arrow body under semicolon-free formatting, and written empty labels stay intact.
+
+- Formatting a returned function type removed written parentheses and changed published `.d.ts` files; the formatter now keeps those parentheses and their enclosed comments, including nested and generic function types.
 - After the migrate flow renamed a module to `.vibe`, an importer that named it through a tsconfig `paths` alias, `@/composer/schema`, kept that spelling, which the project’s `bun check` script invoking stock TypeScript cannot resolve (`TS2307`); the codemod now writes `@/composer/schema.vibe` there too, as for a relative import, and `revert` puts it back.
 
 
@@ -223,6 +231,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - On a loaded machine, the child-process tests of `vibelang-vite` and `vibelang-unplugin` failed with `Missing expected exception` because a killed process stays visible as a zombie until it is reaped; they now wait for the process's inherited connection to close.
 
+- Vite could invalidate a module immediately after serving it when the compiler wrote a generated `.d.vibe.ts` declaration; those output events now leave the served module and its importers cached, while real source edits still trigger hot updates.
 - The compiler package's tests could fail with a missing `packages/runtime/dist/index.js`, or skip their cache checks, when the runtime rebuilt at the same time; `//packages:compiler-test` now declares that build and runs after it.
 
 - Migration setup left root `tsrs` and `tsgo` typechecks on their old compiler, so converted files could be skipped or require an extra check of unrelated projects; it now runs `vibelang` with the original project arguments, including separate test projects.
@@ -241,6 +250,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Moving a repository the migrate flow had partly migrated onto a newer toolchain left its `.vibe` modules for the new compiler alone, which cannot recover a VIP migration only the earlier compiler knows (VIP-1's unmarked Effect helpers); `upgrade-effect` now runs the installed compiler's `vibelang --fix --fix-vip-only` first and commits its edits with the switch.
 
+- The examples, the app template, the Vite plugin's README and the style guide wrote trailing blocks such as `it.effect("loads") { … }`, which VIP-11 denied; they now pass the block as an argument, `it.effect("loads", effect () => { … })` and `Layer.effect(Users, effect { … })`.
+- VIP-11 denied trailing blocks, yet `Layer.effect(Users) { … }` and `it.effect("loads") { … }` still compiled silently as calls with an arrow argument; each trailing block is now `EK1101`, and `vibelang --fix` writes the block as the call's last argument with the same runtime behavior.
 - Release checks could fail with `ETXTBSY` while a parallel build overwrote the native compiler; native binaries now replace completed builds atomically, and release checks wait for the compiler and runtime builds.
 
 - The runtime's `main` tests, which start Node and Bun child processes, could fail at Bun's 5 s default on a loaded host; the runtime suite and every other `bun test` the build graph runs now pass an explicit `--timeout`, and a check keeps the flag in place.
@@ -1909,9 +1920,9 @@ listed with an upgrade step.
 
   ```vibe
   // fragment
-  timeout("10 millis") {
+  timeout(() => {
     try { sleep("1 hour") } finally { throw new CleanupError() }
-  } // parent can report only TimeoutError
+  }, "10 millis") // parent can report only TimeoutError
   ```
 
 - **Effect member lookup depends on declaration conventions.** Synthesized
@@ -2462,7 +2473,7 @@ This release has no breaking changes.
 - The starter treats EK3205 as an error: an entry module's `main` that
   needs services without providers stops the build and emits no JavaScript.
   Provide those services before running the entry program.
-- Members returned by `Layer.effect(Service) { ... }` must fit the
+- Members returned by `Layer.effect(Service, effect { ... })` must fit the
   service's contract, as in `Layer.succeed`. EK3101 rejects a member that
   looks up services its contract does not allow at call time; failures
   outside the member's contract are EK2001.
