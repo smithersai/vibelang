@@ -115,6 +115,7 @@ Appendix B supplies the current diagnostic assignments; compatibility declaratio
 | `FuzzMigrationAssertedCold` | Object, array and nested values in arrow, function and method homes; the foldkit source byte for byte (foldkit-2; owner core-land) | Chapter 1 function kinds and VIP-1: casts, satisfies and parentheses around a plain function's value do not change its kind |
 | `FuzzReviewProducerScope` | Inferred, written, effect and foreign producers with scope or finalizer use and a service (loop r1 ASTRA-3; owners sl1-apply, core-land) | Chapter 2 Producers: a producer's scope or finalizer requirement matches its written contract |
 | `FuzzMigrationSeverityIsolation` | 34 keyed configurations by code, category and direct or extended config (foldkit-14; product f58798560fe7) | Chapter 7 and VIP-34: VibeLang lint severities come from vibe.severities independently of the Effect lint table |
+| `FuzzMigrationEffectBlockLint` | Nested, bare, effect-arrow and ordinary-arrow-inside forms at depths 0 to 3 (alchemy-27; owner migfix-alchemy) | Chapter 7 and VIP-13: the effect-block lint and its safe quick fix apply to every EffectBlock form |
 | `FuzzSpecRules` | Retired | Current static targets quote their VIP chapters and gate those quotations through `specTests`. |
 | `FuzzSpecAllowed` | Retired | Current static targets and imported-scope controls cover the current forms. |
 | `FuzzSpecPrograms` | Retired | Semantics use `FuzzVIPDifferential`, with current chapter quotations and paired prints. |
