@@ -606,8 +606,16 @@ func (p *Parser) hoistDeclaration(decl *ast.Node, at core.TextRange) *ast.Node {
 	} else {
 		target = p.mIdent(name.Text(), name.Loc)
 	}
-	assign := p.mParens(p.mBinary(target, ast.KindEqualsToken, value, at), at)
-	return p.mParens(p.mBinary(assign, ast.KindCommaToken, p.mKeyword(ast.KindTrueKeyword, at), at), at)
+	// The assignment spans the value the source wrote, a subject before the
+	// is keyword: the language service descends only into nodes whose range
+	// holds a position (astnav.GetTouchingToken), so the references and the
+	// definition of the subject find it where the pattern tests it.
+	span := at
+	if value.Flags&ast.NodeFlagsReparsed == 0 && value.Pos() >= 0 {
+		span = core.NewTextRange(min(at.Pos(), value.Pos()), max(at.End(), value.End()))
+	}
+	assign := p.mParens(p.mBinary(target, ast.KindEqualsToken, value, span), span)
+	return p.mParens(p.mBinary(assign, ast.KindCommaToken, p.mKeyword(ast.KindTrueKeyword, at), span), span)
 }
 
 // hoistStatementIs gives the bindings of an is in an expression statement, a
@@ -1436,6 +1444,11 @@ func testsSpan(at core.TextRange, tests ...*ast.Node) core.TextRange {
 	for _, test := range tests {
 		if test.Flags&ast.NodeFlagsReparsed == 0 && test.End() > at.End() {
 			at = core.NewTextRange(at.Pos(), test.End())
+		}
+		// A test that holds a subject written before the keyword starts
+		// there (hoistDeclaration), and so does the chain that holds it.
+		if test.Pos() >= 0 && test.Pos() < at.Pos() {
+			at = core.NewTextRange(test.Pos(), at.End())
 		}
 	}
 	return at
