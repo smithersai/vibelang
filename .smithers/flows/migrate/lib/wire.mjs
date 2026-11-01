@@ -808,16 +808,18 @@ export function addVibeIncludes(text, ts) {
 
 /**
  * The repository's tsconfig files (tsconfig*.json, outside node_modules,
- * hidden directories and trees it does not own) that extend none of the
- * others, as repository-relative
- * paths: a compiler option set in each is set in every project. ts is
- * TypeScript's compiler API.
+ * hidden directories, fixtures, templates, tests and trees it does not own)
+ * that extend none of the others, as repository-relative paths: a compiler
+ * option set in each is set in every project. A tsconfig under a test or a
+ * fixture is a test's input, which setup never edits (detail 272; smithers
+ * platform-node's test/fixtures/lsp/ts/tsconfig.json, which an LSP test
+ * type-checks as data). ts is TypeScript's compiler API.
  */
 export function rootTsconfigs(root, ts) {
   const files = []
   const walk = (dir) => {
     for (const entry of readdirSync(join(root, dir), { withFileTypes: true })) {
-      if (entry.name === "node_modules" || entry.name.startsWith(".")) continue
+      if (entry.isDirectory() ? skippedDirectory(entry.name) || testDirectory(entry.name) : entry.name.startsWith(".")) continue
       const path = dir ? posix.join(dir, entry.name) : entry.name
       if (entry.isDirectory()) walk(path)
       else if (/^tsconfig.*\.json$/.test(entry.name)) files.push(path)

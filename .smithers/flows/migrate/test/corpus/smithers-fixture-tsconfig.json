@@ -1,0 +1,19 @@
+{
+  "finding": "smithers:setup-edits-fixture-tsconfig",
+  "note": "Smithers setup (7f3e5d7d6ed8, 9d39959a3eb2, and again in run9 and run10) added compiler options to packages/smithers/flows/platform-node/test/fixtures/lsp/ts/tsconfig.json, a fixture an LSP test type-checks as data; detail 272 forbids setup editing a test or fixture. rootTsconfigs walked every tsconfig*.json outside node_modules and hidden directories.",
+  "files": {
+    "package.json": "{ \"workspaces\": [\"packages/smithers/flows/*\"] }",
+    "tsconfig.base.json": "{ \"compilerOptions\": { \"strict\": true } }",
+    "packages/smithers/flows/platform-node/package.json": "{ \"name\": \"@smthrs/platform-node\" }",
+    "packages/smithers/flows/platform-node/tsconfig.json": "{ \"extends\": \"../../../../tsconfig.base.json\" }",
+    "packages/smithers/flows/platform-node/test/fixtures/lsp/ts/tsconfig.json": "{\n  \"compilerOptions\": {\n    \"strict\": true,\n    \"noEmit\": true\n  },\n  \"include\": [\"*.ts\"]\n}\n",
+    "packages/smithers/flows/platform-node/test/tsconfig.json": "{ \"compilerOptions\": { \"types\": [\"node\"] } }",
+    "packages/smithers/flows/platform-node/__fixtures__/app/tsconfig.json": "{}",
+    "packages/smithers/flows/platform-node/templates/starter/tsconfig.json": "{}",
+    "packages/smithers/flows/platform-node/src/tests-helpers/tsconfig.json": "{}"
+  },
+  "expected": [
+    "packages/smithers/flows/platform-node/src/tests-helpers/tsconfig.json",
+    "tsconfig.base.json"
+  ]
+}

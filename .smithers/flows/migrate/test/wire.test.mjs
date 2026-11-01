@@ -726,3 +726,46 @@ test("addCompilerOptions writes arrays and objects as dprint and Prettier format
     assert.deepEqual(JSON.parse(inlineJson(value)), value)
   }
 })
+
+// smithers platform-node: setup added compiler options to an LSP test's
+// fixture tsconfig on every run (detail 272: setup never edits a test or a
+// fixture).
+test("rootTsconfigs leaves the tsconfigs of tests, fixtures and templates out", () => {
+  const corpus = JSON.parse(readFileSync(new URL("./corpus/smithers-fixture-tsconfig.json", import.meta.url), "utf8"))
+  const root = mkdtempSync(join(tmpdir(), "migrate-tsconfigs-"))
+  try {
+    for (const [file, text] of Object.entries(corpus.files)) {
+      mkdirSync(join(root, file, ".."), { recursive: true })
+      writeFileSync(join(root, file), text)
+    }
+    assert.deepEqual(rootTsconfigs(root, ts).sort(), corpus.expected)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+// Every directory a test or fixture may live in, at any depth and beside any
+// source directory: no tsconfig under one is ever a root setup edits.
+test("rootTsconfigs never lists a tsconfig under a test or fixture directory (property)", () => {
+  const under = ["test", "tests", "__tests__", "fixtures", "__fixtures__", "fixture", "vite-do-fixture", "templates"]
+  const plain = ["src", "lib", "app", "testing", "contest", "fixed"]
+  let seed = 7
+  const next = (n) => (seed = (seed * 1103515245 + 12345) % 2147483648) % n
+  for (let round = 0; round < 40; round++) {
+    const root = mkdtempSync(join(tmpdir(), "migrate-tsconfigs-"))
+    try {
+      const expected = []
+      writeFileSync(join(root, "package.json"), "{}")
+      for (let i = 0; i < 6; i++) {
+        const parts = Array.from({ length: 1 + next(3) }, () => (next(3) === 0 ? under[next(under.length)] : plain[next(plain.length)]))
+        const file = [...parts, `tsconfig${next(2) ? "" : ".test"}.json`].join("/")
+        mkdirSync(join(root, file, ".."), { recursive: true })
+        writeFileSync(join(root, file), "{}")
+        if (!parts.some((part) => under.includes(part))) expected.push(file)
+      }
+      assert.deepEqual(rootTsconfigs(root, ts).sort(), [...new Set(expected)].sort(), `round ${round}`)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  }
+})
