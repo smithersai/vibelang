@@ -194,9 +194,9 @@ var restorePlacements = []struct{ name, statements, want string }{
 	{"plain-for-of-head", "for (const { n = do { restore { try p }; 1 } } of xs) { n }", ""},
 }
 
-func TestRestorePlacementQuoted(t *testing.T) { r3Quoted(t, "002-running.md", restoreItemQuote) }
+func TestRestoreItemPlacementQuoted(t *testing.T) { r3Quoted(t, "002-running.md", restoreItemQuote) }
 
-func FuzzRestorePlacement(f *testing.F) {
+func FuzzRestoreItemPlacement(f *testing.F) {
 	startShortBudget(f)
 	r3Quoted(f, "002-running.md", restoreItemQuote)
 	masks := []struct{ name, open, close string }{
@@ -223,15 +223,15 @@ func FuzzRestorePlacement(f *testing.F) {
 		errs := r3Errors(result.Diagnostics)
 		if r.want == "" {
 			if slices.Contains(errs, "EK2202") || slices.Contains(errs, "EK2111") {
-				Gap(t, "FuzzRestorePlacement", "valid:"+r.name, "002-running: %s should stay legal, got %v:\n%s", r.name, errs, source)
+				Gap(t, "FuzzRestoreItemPlacement", "valid:"+r.name, "002-running: %s should stay legal, got %v:\n%s", r.name, errs, source)
 			}
 			return
 		}
 		if !slices.Contains(errs, r.want) {
-			Gap(t, "FuzzRestorePlacement", "missing:EK2202", "002-running: %s; %s reports %v:\n%s", restoreItemQuote, r.name, errs, source)
+			Gap(t, "FuzzRestoreItemPlacement", "missing:EK2202", "002-running: %s; %s reports %v:\n%s", restoreItemQuote, r.name, errs, source)
 			return
 		}
-		ExpectPending(t, "FuzzRestorePlacement", "missing:EK2202")
+		ExpectPending(t, "FuzzRestoreItemPlacement", "missing:EK2202")
 	})
 }
 

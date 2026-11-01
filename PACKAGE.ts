@@ -271,7 +271,7 @@ const specTests = [
   "TestSidecarPortabilityRegression",
   "TestFixedCoverageQuoted",
   "TestFixScopeFlagsQuoted",
-  "TestRestorePlacementQuoted",
+  "TestRestoreItemPlacementQuoted",
   "TestIsHomesQuoted",
   "TestOwnerSyntaxCodesQuoted",
   "TestPipeEdgeQuoted",
