@@ -194,7 +194,7 @@ func originalsIn(dir string, texts map[string]string) map[tspath.RootedFilePath]
 func TestFixRunThatFinishesReports(t *testing.T) {
 	dir := keepProject(t)
 	sys := &fixSys{fs: bundled.WrapFS(osvfs.FS()), cwd: dir}
-	if status := FixWithOptions(t.Context(), sys, []string{"-p", dir}, FixOptions{}); status != 0 {
+	if status := FixWithOptions(t.Context(), sys, []string{"-p", dir}, FixOptions{ProgressEvery: time.Hour}); status != 0 {
 		t.Fatalf("status %d, %s", status, sys.stderr.String())
 	}
 	if !strings.HasPrefix(sys.stdout.String(), "vibelang --fix: f00.vibe: ") || !strings.HasSuffix(sys.stdout.String(), "1 fix refused.\n") || sys.stderr.Len() != 0 {

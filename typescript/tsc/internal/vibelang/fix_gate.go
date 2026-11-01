@@ -173,7 +173,13 @@ func (r *gateRound) trial(parts []part, files []tspath.RootedFilePath) checked {
 		slices.Sort(fs)
 		overlay[r.proposals[p].file.FileName()] = r.subset(p, fs).text()
 	}
+	size := 0
+	for _, fs := range fixes {
+		size += len(fs)
+	}
+	r.g.progress.checkFixes(size, len(overlay))
 	program := r.g.build(maps(r.texts, overlay))
+	r.g.progress.label("")
 	var errors []*ast.Diagnostic
 	if files == nil {
 		errors = programErrors(r.g.ctx, program)
@@ -238,6 +244,7 @@ func (r *gateRound) keep(parts ...part) {
 	for _, pt := range parts {
 		r.kept[pt.p] = append(r.kept[pt.p], pt.fixes...)
 		slices.Sort(r.kept[pt.p])
+		r.g.progress.decided(len(pt.fixes), 0)
 	}
 	if r.g.verified != nil {
 		overlay := map[tspath.RootedFilePath]string{}
@@ -256,6 +263,7 @@ func (r *gateRound) refuse(at [2]int, added map[string]int) {
 		}
 	}
 	r.refusals = append(r.refusals, gateRefusal{at, first})
+	r.g.progress.decided(0, 1)
 }
 
 // reportsAny reports whether one of the keys of added is an error of name.

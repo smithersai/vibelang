@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/collections"
@@ -79,10 +80,15 @@ const FixFlag = "--fix"
 // is fuzzed against, which no command line sets. Verified, when set, is
 // called with the text of each file the fixes change each time the gate
 // verifies them together: after a round, after each set of a round's fixes
-// it keeps, and after each later rewrite (fix_keep.go).
+// it keeps, and after each later rewrite (fix_keep.go). Progress, when
+// set, receives a line on what the run is doing at most once each
+// ProgressEvery, or each fixProgressEvery when that is 0 (fix_progress.go);
+// the command line sets it to stderr.
 type FixOptions struct {
 	MigrationOnly, VIPOnly, CheckEachFix bool
 	Verified                             func(texts map[tspath.RootedFilePath]string)
+	Progress                             io.Writer
+	ProgressEvery                        time.Duration
 }
 
 // FixOptionsArguments removes the optional scope flag after --fix was found.
@@ -157,6 +163,9 @@ func FixWithOptions(ctx context.Context, sys tsc.System, args []string, options 
 	defer stop()
 	keeper := &fixKeeper{sys: sys, config: configChanges, stop: stop, last: map[tspath.RootedFilePath]string{}, original: map[tspath.RootedFilePath]string{}}
 	options.Verified = keeper.keep
+	if options.Progress == nil {
+		options.Progress = sys.ErrorWriter()
+	}
 	result := FixProjectWithOptions(run, configFS, sys.DefaultLibraryPath(), config, options)
 	if keeper.err != nil {
 		fmt.Fprintf(sys.ErrorWriter(), "vibelang --fix: %v\n", keeper.err)
@@ -280,6 +289,8 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 	// again, so the checks run to their end and ctx is tested between them.
 	done := ctx
 	ctx = context.WithoutCancel(ctx)
+	progress := newFixProgress(options.Progress, options.ProgressEvery)
+	defer progress.close()
 	// The files options.Verified writes are read as they were: the run's
 	// programs read their fixed text from its overlay, and a fixed file's
 	// Original is the text before the run.
@@ -315,6 +326,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 	build := func(overlay map[tspath.RootedFilePath]string) *compiler.Program {
 		key := overlayKey(overlay)
 		if last == nil || key != lastOverlay {
+			progress.building()
 			last, lastOverlay = fixProgram(fs, libraryPath, config, parsed, overlay), key
 		}
 		return last
@@ -323,12 +335,13 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 	if done.Err() != nil {
 		return result
 	}
-	g := &fixGate{ctx: ctx, done: done, build: build, baseline: errorCounts(ctx, program), refused: map[string]bool{}, alone: map[[32]byte]map[string]int{}, verified: verified}
+	g := &fixGate{ctx: ctx, done: done, build: build, baseline: errorCounts(ctx, program), refused: map[string]bool{}, alone: map[[32]byte]map[string]int{}, verified: verified, progress: progress}
 	seen := map[[32]byte]bool{fixState(program): true}
-	for {
+	for round := 1; ; round++ {
 		if done.Err() != nil {
 			return result
 		}
+		progress.enter("round", round, fixesApplied(result), len(result.Refused), "finding fixes")
 		var proposals []proposal
 		for _, file := range fixableFiles(program) {
 			refuse := func(refusal FixRefusal, key string) {
@@ -369,6 +382,11 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 		if len(proposals) == 0 {
 			break
 		}
+		offered := 0
+		for _, p := range proposals {
+			offered += len(p.fixes)
+		}
+		progress.offered(offered)
 		accept := g.accept
 		if options.CheckEachFix {
 			accept = g.acceptEach
@@ -409,11 +427,13 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 	}
 	// try before each call that runs where it stands (VIP-5, fix_try.go).
 	if done.Err() == nil && options.VIPOnly {
+		progress.enter("try", 0, fixesApplied(result), len(result.Refused), "finding rewrites")
 		rewriteTries(g, fs, build(texts), texts, result)
 		verified(texts)
 	}
 	// effect where a function compiles to an Effect (VIP-1, VIP-2, fix_effect.go).
 	if done.Err() == nil && options.VIPOnly {
+		progress.enter("effect", 0, fixesApplied(result), len(result.Refused), "finding rewrites")
 		rewriteEffects(g, fs, build(texts), texts, result)
 		verified(texts)
 	}
@@ -423,6 +443,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 	}
 	// What the prelude makes shorter (D310, D311).
 	if done.Err() == nil {
+		progress.enter("prelude", 0, fixesApplied(result), len(result.Refused), "finding rewrites")
 		rewritePrelude(g, fs, build(texts), texts, result)
 		verified(texts)
 	}
@@ -434,6 +455,8 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 		}
 	}
 	if len(cleaned) > 0 && done.Err() == nil {
+		progress.enter("imports", 0, fixesApplied(result), len(result.Refused), "removing unused imports")
+		progress.checkFiles(len(cleaned))
 		if _, bad := newError(ctx, build(maps(texts, cleaned)), g.baseline); !bad {
 			for name, text := range cleaned {
 				result.Files[name].Text = text
@@ -443,6 +466,20 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 	}
 	slices.SortFunc(result.Order, tspath.RootedFilePath.Compare)
 	return result
+}
+
+// fixesApplied counts the fixes and rewrites result holds.
+func fixesApplied(result *FixResult) int {
+	n := 0
+	for _, file := range result.Files {
+		for _, c := range file.Counts {
+			n += c
+		}
+		for _, c := range file.Rewrites {
+			n += c
+		}
+	}
+	return n
 }
 
 // fixState fingerprints the complete project source state, with file names
@@ -663,6 +700,8 @@ type fixGate struct {
 	// verified is called with the texts of each set of fixes the gate
 	// verifies together (FixOptions.Verified).
 	verified func(map[tspath.RootedFilePath]string)
+	// progress says on stderr what the run is doing (fix_progress.go).
+	progress *fixProgress
 	// alone holds the errors each fix refused on its own added, by
 	// aloneKey: a later round that offers the same edit to the same texts
 	// builds the same program, so it is refused without a check.
@@ -672,7 +711,9 @@ type fixGate struct {
 // passes reports whether the program with overlay over texts adds no error,
 // and returns the first error it adds.
 func (g *fixGate) passes(texts, overlay map[tspath.RootedFilePath]string) (string, bool) {
+	g.progress.checkFiles(len(overlay))
 	program := g.build(maps(texts, overlay))
+	g.progress.label("")
 	error, bad := newError(g.ctx, program, g.baseline)
 	g.lastFailed = nil
 	if bad {
