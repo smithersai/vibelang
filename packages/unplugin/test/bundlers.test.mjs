@@ -374,9 +374,12 @@ for (const bundler of ["webpack", "rspack", "rollup", "esbuild"]) {
   it(`${bundler} reports a missing project instead of retrying forever`, async (t) => {
     const root = await fixture(t, `${bundler}-missing`)
     await rm(join(root, "tsconfig.json"))
+    // The guard proves the bundler ends; it is 60 s, a stage's budget on a loaded build
+    // host: at 15 s webpack's start outran it in two post-merges (median 2.1 s, max 16.4 s).
     const result = spawnSync(process.execPath, ["--no-warnings", build, bundler], {
-      cwd: root, encoding: "utf8", timeout: 15_000
+      cwd: root, encoding: "utf8", timeout: 60_000
     })
+    assert.equal(result.signal, null, `${bundler} did not end within 60 s: ${result.stdout}${result.stderr}`)
     assert.equal(result.error, undefined, result.stderr)
     assert.equal(result.status, 1, result.stdout + result.stderr)
     assert.match(result.stdout + result.stderr, /TS5058/)

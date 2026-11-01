@@ -932,6 +932,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Classes extending a value named `effect` were rejected with syntax errors; `class Derived extends effect { }` now compiles as it does in TypeScript.
 
+- The bundler plugin's missing-project check could kill webpack at 15 s on a loaded build host and report the kill as a wrong exit status; the check now allows 60 s and names a bundler that did not end.
+
 - The site's contrast check could lose its Chromium renderer under build-host memory pressure; it now audits each single-document page in place instead of opening a second renderer to combine the results.
 - VIP migration could remove `try` from calls returning tagged errors and turn their failures into success values; it now preserves execution of those Effects, while non-Effect Yieldables retain their `asEffect()` repair.
 
