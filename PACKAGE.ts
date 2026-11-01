@@ -75,6 +75,7 @@ const specTests = [
   "TestFormatReturnTypesQuoted",
   "TestEffectArrowHeadsQuoted",
   "TestSchemaDecodedKeyFlagsQuoted",
+  "TestFormatBlockHeaderRulesQuoted",
   "TestFormatContractCommentQuote",
   "TestFormatContractCommentNeighbors",
   "TestFormatContractCommentNeighborhood",

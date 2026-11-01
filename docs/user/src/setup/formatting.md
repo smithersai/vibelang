@@ -90,6 +90,8 @@ Comments between `catch` and its literal handler are preserved, including line c
 
 Comments between `effect` or `do` and the opening `{` stay with that block. For a `do` block, a line comment before `{` keeps its line break.
 
+Files containing the Unicode line and paragraph separators, `U+2028` and `U+2029`, keep stable indentation when formatted in the editor.
+
 
 ## From a VibeLang checkout
 

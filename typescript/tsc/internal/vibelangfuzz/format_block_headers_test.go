@@ -10,14 +10,14 @@ import (
 
 // VIP-34, chapter 7: "Comments and their code associations survive, including
 // JSDoc, compiler/linter/tool directives and directive-prologue meaning."
-// The existing TestFormatContractCommentQuote guards this exact quotation.
+// TestFormatBlockHeaderRulesQuoted guards the comment and idempotence rules.
 // Vary block kind, line endings, indentation, comment count and nesting.
 func FuzzFormatBlockHeaders(f *testing.F) {
 	startShortBudget(f)
-	checkFormatContractCommentQuote(f)
+	checkFormatBlockHeaderRulesQuoted(f)
 	keys := []string{"effect-block", "do-block", "do-line", "nested-effect"}
 	for _, key := range keys {
-		for _, layout := range []uint8{0, 1, 2, 3, 4, 15, 31, 63, 127, 255} {
+		for _, layout := range []uint8{0, 1, 2, 3, 4, 15, 31, 63, 127, 128, 129, 255} {
 			f.Add(key, layout)
 		}
 	}

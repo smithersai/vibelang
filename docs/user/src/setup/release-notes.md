@@ -226,6 +226,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - JSX attribute diagnostic `EK0402` lacked its VIP-39 cross-reference; the catalog now attributes the rule to both VIP-4 and VIP-39.
 
 
+- Formatting a file containing Unicode line separators in the editor could add indentation that disappeared on the next format; `U+2028` and `U+2029` now give stable indentation in one pass.
+
 - Formatting `effect` or `do` blocks with comments before `{` could fail; their header comments and the line breaks needed to parse the block now survive formatting.
 - Configuring one diagnostic severity disabled fuzz validation of unrelated warning categories; validation now checks each code against its own effective `vibe.severities` entry and keeps other defaults enforced.
 

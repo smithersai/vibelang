@@ -965,6 +965,10 @@ func (s *Scanner) Scan() ast.Kind {
 			if stringutil.IsLineBreak(ch) {
 				s.tokenFlags |= ast.TokenFlagsPrecedingLineBreak
 				s.pos += size
+				if !s.skipTrivia {
+					s.token = ast.KindNewLineTrivia
+					return s.token
+				}
 				continue
 			}
 			s.scanInvalidCharacter()
