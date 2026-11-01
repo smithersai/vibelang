@@ -1,0 +1,2 @@
+go test fuzz v1
+string("const p = effect {\r\n  provide UsersLive {\r\n    // request-local provider\r\n    try read()\r\n  }\r\n}\r\n")

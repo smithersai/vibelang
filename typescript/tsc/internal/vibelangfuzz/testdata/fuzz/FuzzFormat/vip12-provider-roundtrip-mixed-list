@@ -1,0 +1,2 @@
+go test fuzz v1
+string("const p = effect { provide AppLive, Users = testUsers { try read() } }\n")

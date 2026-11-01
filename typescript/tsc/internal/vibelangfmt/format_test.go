@@ -283,9 +283,9 @@ function logAll(ids: string[]) {
   }
 }
 `,
-	// Superseded and retired forms still parse, so the formatter keeps them:
-	// the layer declaration (D221), service class (D223), with (D172),
-	// select (EK4607), and typed and repeated catch clauses (D216).
+	// Older declarations and control flow still parse: layer (D221), service
+	// class (D223), select (EK4607), and typed/repeated catch clauses (D216).
+	// Provider blocks use VIP-12's current provide syntax.
 	"retired and older forms": `layer UsersLive: Users {
   const directory = Directory()
   find(id) { return directory.get(id) }
@@ -295,7 +295,7 @@ service class Accounts {
   find(id: string): Account!NotFound
 }
 function f(jobs: Queue.Queue<string>) {
-  with UsersLive {
+  provide UsersLive {
     select {
       case const job = jobs.take(): run(job)
       default: idle()
