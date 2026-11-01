@@ -144,7 +144,9 @@ func schemaTypeEdits(c *checker.Checker, file *ast.SourceFile, statement *ast.No
 	if len(declarations) == 0 {
 		return nil, true
 	}
-	if len(declarations) != 1 || declarations[0].Parent != statement.Parent || !isStructOwnType(file, declarations[0], name.Text(), exported && c.CompilerOptions().GetEmitDeclarations()) ||
+	// A private alias can be printed through an exported signature too.
+	// Preserve its written spelling whenever this project emits declarations.
+	if len(declarations) != 1 || declarations[0].Parent != statement.Parent || !isStructOwnType(file, declarations[0], name.Text(), c.CompilerOptions().GetEmitDeclarations()) ||
 		ast.HasSyntacticModifier(declarations[0], ast.ModifierFlagsExport) != exported || len(declarations[0].JSDoc(file)) != 0 {
 		return nil, false
 	}

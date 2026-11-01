@@ -255,6 +255,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Migration scope planning could change a native bundle input path when an unrelated module migrated; packages with protected bundle input paths now stay as TypeScript with a named cause.
 - A `data` declaration's declaration file differed from what TypeScript declares for its Effect TypeScript counterpart, so a migrated tagged union failed declaration identity: it declared the constant first, as `Data.TaggedEnum.Constructor<Delivery>`, and every field `readonly`. It now declares the type first, each field as written, and the constant with the type TypeScript infers, `Data.TaggedEnum.Constructor<{ readonly _tag: "Waiting" } | …>`, then a generic one's `WithGenerics` interface before its constant. **The `.d.ts` text of every exported `data` declaration changes**; the types are the same. Write `readonly` on a field whose TypeScript was `readonly` or wrapped in `Readonly<{ … }>`, which the migrate flow's identity gate reads as `{ readonly … }`.
 
+
+- In a project that emits declarations, `vibelang --fix` rewrote a private schema type used by an exported interface, changing `Schema.Schema.Type<typeof Meta>` to `typeof Meta.Type` in its declaration file; `EK4832` now preserves that spelling for private aliases and interfaces too.
 - Configuring one diagnostic severity disabled fuzz validation of unrelated warning categories; validation now checks each code against its own effective `vibe.severities` entry and keeps other defaults enforced.
 
 - Awaiting a `Fiber` or `Deferred` in effect code showed extra configurable warnings; it now reports only `EK0102`, with a working `join` or `Deferred.await` repair.

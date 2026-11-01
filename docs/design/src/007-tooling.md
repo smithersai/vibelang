@@ -150,7 +150,7 @@ These built-in warnings suggest an accepted VibeLang form without changing the m
 | --- | --- | --- |
 | `EK4830` | A class written with `Data.TaggedError("Name")` | Use `error Name { … }` only when its tag and class behavior are preserved. |
 | `EK4831` | A class written with `Context.Service` | Use `service Name { … }`, preserving the key with `static readonly key`. |
-| `EK4832` | A `const` holding `Schema.Struct({ … })` | Use `schema Name { … }` where the field mapping and associated type are preserved. |
+| `EK4832` | A `const` holding `Schema.Struct({ … })` | Use `schema Name { … }` where the field mapping and associated type are preserved. In a declaration-emitting project, preserve an own type written as `Schema.Schema.Type<typeof Name>`, private or exported, because a `schema` declaration prints `typeof Name.Type`. |
 | `EK4833` | A written `Effect.Effect<A, E, R>` type, except an interface's `extends` element, which `A!E!R` cannot spell | Use the equivalent `A!E!R` spelling, preserving `never` slots and required parentheses. |
 | `EK4834` | An explicitly run `Effect.succeed(v)` or `Effect.fail(e)` in effect code | Use the value `v` or `throw e`; do not apply this to an unrun Effect value. |
 | `EK4835` | An explicitly run `Effect.catch`, `Effect.catchTag`, or `Effect.catchTags` in effect code | Use a `catch effect` handler, with `match` on the failure for tag cases and a typed `throw` for unmatched failures. |
