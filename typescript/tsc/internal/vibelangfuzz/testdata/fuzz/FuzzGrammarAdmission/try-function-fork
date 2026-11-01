@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:try-function-fork\ntry function f(p) { return fork\nfork p; }")

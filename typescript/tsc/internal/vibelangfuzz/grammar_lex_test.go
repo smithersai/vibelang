@@ -90,7 +90,7 @@ func grammarLexSource(src string) []grammarToken {
 }
 
 // grammarPunctuators, longest first.
-var grammarPunctuators = []string{"...", "===", "!==", "**=", "??=", "?.", "=>", "==", "!=", "<=", ">=", "&&", "||", "??", "++", "--", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "**"}
+var grammarPunctuators = []string{"...", "===", "!==", "**=", "??=", "?.", "|>", "=>", "==", "!=", "<=", ">=", "&&", "||", "??", "++", "--", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "**"}
 
 // grammarSpell writes tokens back as source: one space between tokens and a line
 // break where a token has one before it.

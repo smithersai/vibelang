@@ -465,6 +465,16 @@ For declaration-identity campaigns, set `VIBELANG_FUZZ_DECLARATION_REPORT` to an
 
 ## Appendix A grammar engine
 
+`FuzzGrammarAdmission` checks reverse parser admission: a program without
+compiler syntax rejection must have an Appendix A derivation, even when
+it has name or type errors. The lab includes the pinned Hack pipe's `|>`
+token and `%` primary. Known mismatches have keyed corpus files and pending
+entries with `XPASS` detection. Its TypeScript subset and early-error limits,
+the checked parser/lowering inventory, and the distinction between syntax
+and legacy semantic admission are documented in
+[Grammar admission audit](grammar-admission.md).
+
+
 The grammar engine in `internal/vibelangfuzz/grammar_*_test.go` loads the
 current Appendix A through `SpecPath` at test time. It expands optional and
 repeated productions into a CFG and uses an Earley chart to count derivations

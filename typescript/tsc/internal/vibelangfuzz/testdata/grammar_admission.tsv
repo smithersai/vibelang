@@ -1,0 +1,791 @@
+# Hook (receiver-qualified method)	Form	Authority (docs/design/src; - means none)	Status	Reason
+parser/vibelang.go:Parser.isVibeLangFile	admission:declaration-support	900-appendices.md#DeclarationStart	support	Declaration dispatch and synthesized node support
+parser/vibelang.go:isVibeLangDeclarationWord	admission:declaration-support	900-appendices.md#DeclarationStart	support	Declaration dispatch and synthesized node support
+parser/vibelang.go:Parser.scanStartOfVibeLangDeclaration	admission:declaration-support	900-appendices.md#DeclarationStart	support	Declaration dispatch and synthesized node support
+parser/vibelang.go:Parser.isStartOfVibeLangDeclaration	admission:declaration-support	900-appendices.md#DeclarationStart	support	Declaration dispatch and synthesized node support
+parser/vibelang.go:Parser.parseVibeLangDeclaration	admission:declaration-support	900-appendices.md#DeclarationStart	support	Declaration dispatch and synthesized node support
+parser/vibelang.go:Parser.vibelangSynthesized	admission:declaration-support	900-appendices.md#DeclarationStart	support	Declaration dispatch and synthesized node support
+parser/vibelang.go:Parser.vibelangIntrinsic	admission:declaration-support	900-appendices.md#DeclarationStart	support	Declaration dispatch and synthesized node support
+parser/vibelang.go:Parser.vibelangSpanning	admission:declaration-support	900-appendices.md#DeclarationStart	support	Declaration dispatch and synthesized node support
+parser/vibelang.go:Parser.vibelangModifiers	admission:declaration-support	900-appendices.md#DeclarationStart	support	Declaration dispatch and synthesized node support
+parser/vibelang.go:Parser.vibelangAbstractMember	admission:declaration-support	900-appendices.md#DeclarationStart	support	Declaration dispatch and synthesized node support
+parser/vibelang.go:Parser.parseVibeLangMutable	admission:mutable-default	-	pending	VIP-15 preserves native writable defaults; mutable modifier is unadopted
+parser/vibelang.go:Parser.nextTokenStartsMemberNameOnSameLine	admission:declaration-support	900-appendices.md#DeclarationStart	support	Declaration dispatch and synthesized node support
+parser/vibelang.go:Parser.vibelangReadonly	admission:mutable-default	-	pending	VIP-15 preserves native writable defaults; mutable modifier is unadopted
+parser/vibelang.go:Parser.parseVibeLangEffectType	admission:effect-type	900-appendices.md#EffectType	support	VIP-3 type shorthand and slots
+parser/vibelang.go:Parser.parseVibeLangSlot	admission:effect-type	900-appendices.md#EffectOperand	support	Appendix A: EffectOperand; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
+parser/vibelang.go:Parser.parseVibeLangSlotType	admission:effect-type	900-appendices.md#EffectOperand	support	Appendix A: EffectOperand; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
+parser/vibelang.go:Parser.parseServiceDeclaration	admission:service	900-appendices.md#ServiceDeclaration	admitted	VIP-9; legacy control and custom shape branches remain pending
+parser/vibelang.go:Parser.parseLayerDeclaration	admission:layer-declaration	-	pending	No accepted VIP adopts layer declarations
+parser/vibelang.go:Parser.parseVibeLangEntityExpression	admission:declaration-support	900-appendices.md#DeclarationStart	support	Declaration dispatch and synthesized node support
+parser/vibelang.go:Parser.scanLayerValueStart	admission:layer-declaration	-	pending	No accepted VIP adopts layer declarations
+parser/vibelang.go:Parser.parseLayerValue	admission:layer-declaration	-	pending	No accepted VIP adopts layer declarations
+parser/vibelang.go:Parser.scanLayerMethodStart	admission:layer-declaration	-	pending	No accepted VIP adopts layer declarations
+parser/vibelang.go:Parser.isStartOfVibeLangProvide	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 provider parsing and support
+parser/vibelang.go:Parser.scanStartOfVibeLangProvide	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 provider parsing and support
+parser/vibelang.go:Parser.scanVibeLangProvideArguments	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 provider parsing and support
+parser/vibelang.go:Parser.parseVibeLangProvideStatement	admission:provide	900-appendices.md#ProvideStatement,900-appendices.md#Provider	support	Appendix A: ProvideStatement, Provider; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
+parser/vibelang.go:Parser.vibelangProviders	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 provider parsing and support
+parser/vibelang.go:Parser.parseVibeLangCatchClauses	admission:typed-catch	-	pending	VIP-5 forbids Effect try statements and typed catch clauses
+parser/vibelang.go:isTypedCatchClause	admission:typed-catch	-	pending	VIP-5 forbids Effect try statements and typed catch clauses
+parser/vibelang.go:clauseAnchor	admission:declaration-support	900-appendices.md#DeclarationStart	support	Declaration dispatch and synthesized node support
+parser/vibelang.go:Parser.vibelangCatchChain	admission:typed-catch	-	pending	VIP-5 forbids Effect try statements and typed catch clauses
+parser/vibelang.go:Parser.vibelangClauseBody	admission:typed-catch	-	pending	VIP-5 forbids Effect try statements and typed catch clauses
+parser/vibelang.go:Parser.vibelangClauseBodyOf	admission:typed-catch	-	pending	VIP-5 forbids Effect try statements and typed catch clauses
+parser/vibelang.go:Parser.isStartOfHandleClause	admission:handlers	-	pending	Open VIP-35; no admission for handler syntax
+parser/vibelang.go:Parser.parseVibeLangHandleStatement	admission:handlers	-	pending	Open VIP-35; no admission for handler syntax
+parser/vibelang.go:Parser.parseHandleClause	admission:handlers	-	pending	Open VIP-35; no admission for handler syntax
+parser/vibelang.go:Parser.parseHandleOperation	admission:handlers	-	pending	Open VIP-35; no admission for handler syntax
+parser/vibelang.go:Parser.vibelangClauseResumes	admission:handlers	-	pending	Open VIP-35; no admission for handler syntax
+parser/vibelang.go:Parser.parseSchemaDeclaration	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 schema mapping
+parser/vibelang.go:Parser.vibelangSchemaMember	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 schema mapping
+parser/vibelang.go:Parser.vibelangSchemaCall	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 schema mapping
+parser/vibelang.go:Parser.vibelangCalleeAnchor	admission:declaration-support	900-appendices.md#DeclarationStart	support	Declaration dispatch and synthesized node support
+parser/vibelang.go:Parser.vibelangSchemaFields	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 schema mapping
+parser/vibelang.go:Parser.vibelangSchemaProperties	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 schema mapping
+parser/vibelang.go:Parser.vibelangUnsupportedSchema	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 schema mapping
+parser/vibelang.go:Parser.vibelangSchemaOf	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 schema mapping
+parser/vibelang.go:Parser.vibelangSchemaPropertyName	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 schema mapping; decided detail 111 keeps __proto__ a field name
+parser/vibelang.go:isVibeLangSchemaLiteral	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 schema mapping
+parser/vibelang.go:Parser.vibelangEntityExpression	admission:declaration-support	900-appendices.md#DeclarationStart	support	Declaration dispatch and synthesized node support
+parser/vibelang_block_do.go:Parser.nextTokenIsBlockOrDoBlock	admission:block-do	-	pending	Unadopted block do recovery spelling
+parser/vibelang_block_do.go:Parser.rejectVibeLangBlockDo	admission:block-do	-	pending	Unadopted block do recovery spelling
+parser/vibelang_blocks.go:Parser.isStartOfVibeLangThrowExpression	admission:throw-expression	-	pending	General throw expressions unmentioned; match throw arm admitted separately; x ?? throw e is with Will
+parser/vibelang_blocks.go:Parser.parseVibeLangThrowExpression	admission:throw-expression	-	pending	General throw expressions unmentioned; match throw arm admitted separately; x ?? throw e is with Will
+parser/vibelang_blocks.go:Parser.isStartOfVibeLangDoExpression	admission:do	002-running.md	support	VIP-2 pinned do expression and completion support
+parser/vibelang_blocks.go:Parser.nextTokenIsOpenBraceToken	admission:do	002-running.md	support	VIP-2 pinned do expression and completion support
+parser/vibelang_blocks.go:Parser.parseVibeLangDoExpression	admission:do	002-running.md	support	VIP-2 pinned do expression and completion support
+parser/vibelang_blocks.go:Parser.vibelangInvoked	admission:do	002-running.md	support	VIP-2 pinned do expression and completion support
+parser/vibelang_blocks.go:Parser.isStartOfVibeLangBlockParam	admission:trailing-block	900-appendices.md	recovery	VIP-11 (amended 2026-11-01): parsed only to report EK1101 and its --fix rewrite (8fb3cf28); not language admission
+parser/vibelang_blocks.go:isVibeLangBlockParamHead	admission:trailing-block	900-appendices.md	recovery	VIP-11 (amended 2026-11-01): parsed only to report EK1101 and its --fix rewrite (8fb3cf28); not language admission
+parser/vibelang_blocks.go:Parser.parseVibeLangBlockParam	admission:trailing-block	900-appendices.md	recovery	VIP-11 (amended 2026-11-01): parsed only to report EK1101 and its --fix rewrite (8fb3cf28); not language admission
+parser/vibelang_blocks.go:isVibeLangMaskMarker	admission:interruption	900-appendices.md#Uninterruptible,900-appendices.md#Restore,900-appendices.md#Interruptible	support	VIP-22 internal interruption markers have no completion value; VIP-2 preserves preceding completion
+parser/vibelang_catch.go:Parser.isVibeLangCatchExpression	admission:catch	900-appendices.md#CatchExpression	admitted	VIP-5 literal handler production; value handler recovery audited separately
+parser/vibelang_catch.go:Parser.parseVibeLangCatchRest	admission:catch	900-appendices.md#CatchExpression	admitted	VIP-5 literal handler production; value handler recovery audited separately
+parser/vibelang_catch.go:Parser.parseVibeLangCatchHandler	admission:catch	900-appendices.md#CatchExpression	admitted	VIP-5 literal handler production; value handler recovery audited separately
+parser/vibelang_catch.go:Parser.nextTokenIsEqualsGreaterThanToken	admission:catch	900-appendices.md#CatchExpression	admitted	VIP-5 literal handler production; value handler recovery audited separately
+parser/vibelang_data.go:Parser.scanDataName	admission:data	900-appendices.md#DataDeclaration	support	VIP-16/28 declarations and generated constructors
+parser/vibelang_data.go:Parser.parseDataDeclaration	admission:data	900-appendices.md#DataDeclaration	support	VIP-16/28 declarations and generated constructors
+parser/vibelang_data.go:Parser.parseDataVariant	admission:data	900-appendices.md#Variant	support	Appendix A: Variant; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
+parser/vibelang_data.go:Parser.dataDefinition	admission:data	900-appendices.md#DataDeclaration	support	VIP-16/28 declarations and generated constructors
+parser/vibelang_data.go:Parser.dataReference	admission:data	900-appendices.md#DataDeclaration	support	VIP-16/28 declarations and generated constructors
+parser/vibelang_data.go:Parser.dataType	admission:data	900-appendices.md#DataDeclaration	support	VIP-16/28 declarations and generated constructors
+parser/vibelang_data.go:Parser.dataGenericConstructors	admission:data	900-appendices.md#DataDeclaration	support	VIP-16/28 declarations and generated constructors
+parser/vibelang_data.go:Parser.dataModifiers	admission:data	900-appendices.md#DataDeclaration	support	VIP-16/28 declarations and generated constructors
+parser/vibelang_data.go:DataDefinitionName	admission:data	900-appendices.md#DataDeclaration	support	VIP-16/28 declarations and generated constructors
+parser/vibelang_data.go:IsDataDeclaration	admission:data	900-appendices.md#DataDeclaration	support	VIP-16/28 declarations and generated constructors
+parser/vibelang_data.go:DataVariants	admission:data	900-appendices.md#DataDeclaration	support	VIP-16/28 declarations and generated constructors
+parser/vibelang_data.go:IsDataConstructors	admission:data	900-appendices.md#DataDeclaration	support	VIP-16/28 declarations and generated constructors
+parser/vibelang_effect.go:Parser.isVibeLangEffectWord	admission:effect	900-appendices.md#EffectFunction	support	VIP-1 function-kind parsing and recovery
+parser/vibelang_effect.go:Parser.scanStartOfShorthandFunction	admission:effect	900-appendices.md#EffectShorthand	recovery	VIP-1: shorthand recognition only for its specified rejection
+parser/vibelang_effect.go:Parser.scanStartOfEffectDeclaration	admission:effect	900-appendices.md#EffectFunction,900-appendices.md#Producer,900-appendices.md#EffectShorthand	support	Appendix A: EffectFunction, Producer, EffectShorthand; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
+parser/vibelang_effect.go:Parser.isStartOfAsyncShorthand	admission:async-shorthand	900-appendices.md#EffectShorthand	recovery	VIP-1: explicitly specified recovery for EK4618; not language admission
+parser/vibelang_effect.go:Parser.parseEffectDeclaration	admission:effect	900-appendices.md#EffectFunction,900-appendices.md#Producer,900-appendices.md#EffectShorthand	support	Appendix A: EffectFunction, Producer, EffectShorthand; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
+parser/vibelang_effect.go:Parser.parseShorthandFunctionDeclaration	admission:async-shorthand	900-appendices.md#EffectShorthand	recovery	VIP-1: explicitly specified recovery for EK4618; not language admission
+parser/vibelang_effect.go:Parser.markEffect	admission:effect	900-appendices.md#EffectFunction	support	VIP-1 function-kind parsing and recovery
+parser/vibelang_effect.go:Parser.tryParseVibeLangEffectArrow	admission:effect	900-appendices.md#EffectArrow	support	Appendix A: EffectArrow; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
+parser/vibelang_effect.go:Parser.tryParseVibeLangBareEffectArrow	admission:effect	900-appendices.md#EffectArrow	recovery	VIP-1/detail247: bare typed or generic Effect arrow heads are recovered only to report EK0109; not language admission
+parser/vibelang_effect.go:Parser.isStartOfVibeLangEffectExpression	admission:effect	900-appendices.md#EffectFunction,900-appendices.md#EffectBlock	support	Appendix A: EffectFunction, EffectBlock; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
+parser/vibelang_effect.go:Parser.parseVibeLangEffectExpression	admission:effect	900-appendices.md#EffectFunction,900-appendices.md#EffectBlock	support	Appendix A: EffectFunction, EffectBlock; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
+parser/vibelang_effect.go:Parser.isStartOfVibeLangEffectMember	admission:effect	900-appendices.md#EffectMethod,900-appendices.md#ProducerMethod,900-appendices.md#EffectAccessor	support	Appendix A: EffectMethod, ProducerMethod, EffectAccessor; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
+parser/vibelang_effect.go:Parser.parseVibeLangEffectMember	admission:effect	900-appendices.md#EffectMethod,900-appendices.md#ProducerMethod,900-appendices.md#EffectAccessor	support	Appendix A: EffectMethod, ProducerMethod, EffectAccessor; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
+parser/vibelang_effect.go:Parser.vibelangEffectMember	admission:effect	900-appendices.md#EffectMethod,900-appendices.md#ProducerMethod	support	Appendix A: EffectMethod, ProducerMethod; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
+parser/vibelang_errors.go:Parser.isStartOfVibeLangSchemaError	admission:error	900-appendices.md#SchemaErrorDeclaration	support	Appendix A: SchemaErrorDeclaration; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
+parser/vibelang_errors.go:Parser.parseErrorDeclaration	admission:error	900-appendices.md#ErrorDeclaration,900-appendices.md#SchemaErrorDeclaration	support	Appendix A: ErrorDeclaration, SchemaErrorDeclaration; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
+parser/vibelang_errors.go:Parser.parseVibeLangErrorHeritage	admission:error	900-appendices.md#ErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
+parser/vibelang_errors.go:Parser.isVibeLangFieldComma	admission:error	900-appendices.md#ErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
+parser/vibelang_errors.go:Parser.parseVibeLangFieldComma	admission:error	900-appendices.md#ErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
+parser/vibelang_errors.go:Parser.parseVibeLangErrorElement	admission:error	900-appendices.md#ErrorBody	support	Appendix A: ErrorBody; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
+parser/vibelang_errors.go:isVibeLangErrorField	admission:error	900-appendices.md#ErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
+parser/vibelang_errors.go:isVibeLangTagField	admission:error	900-appendices.md#ErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
+parser/vibelang_errors.go:Parser.vibelangErrorFieldSignatures	admission:error	900-appendices.md#ErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
+parser/vibelang_errors.go:Parser.vibelangMoveJSDoc	admission:error	900-appendices.md#ErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
+parser/vibelang_errors.go:Parser.vibelangErrorFields	admission:error	900-appendices.md#ErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
+parser/vibelang_errors.go:slicesSortByPos	admission:error	900-appendices.md#ErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
+parser/vibelang_errors.go:Parser.vibelangErrorTag	admission:error	900-appendices.md#ErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
+parser/vibelang_errors.go:Parser.vibelangErrorHeritage	admission:error	900-appendices.md#ErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
+parser/vibelang_errors.go:Parser.vibelangErrorRoot	admission:error	900-appendices.md#ErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
+parser/vibelang_errors.go:Parser.vibelangErrorSelf	admission:error	900-appendices.md#ErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
+parser/vibelang_errors.go:Parser.vibelangSchemaErrorFields	admission:error	900-appendices.md#SchemaErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
+parser/vibelang_errors.go:Parser.vibelangSchemaErrorRoot	admission:error	900-appendices.md#SchemaErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
+parser/vibelang_errors.go:Parser.vibelangSchemaErrorSubclass	admission:error	900-appendices.md#SchemaErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
+parser/vibelang_errors.go:Parser.vibelangSchemaErrorRegistration	admission:error	900-appendices.md#SchemaErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
+parser/vibelang_errors.go:Parser.vibelangErrorSubclass	admission:error	900-appendices.md#ErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
+parser/vibelang_errors.go:Parser.vibelangDeclareField	admission:error	900-appendices.md#ErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
+parser/vibelang_errors.go:Parser.vibelangErrorConstructor	admission:error	900-appendices.md#ErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
+parser/vibelang_errors.go:Parser.vibelangSynthesizedEntityName	admission:error	900-appendices.md#ErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
+parser/vibelang_fibers.go:Parser.tokenRange	admission:fork	900-appendices.md#ForkExpression	support	VIP-17/19 fork and concurrent-loop helpers; legacy paths below
+parser/vibelang_fibers.go:Parser.isStartOfVibeLangFork	admission:fork	900-appendices.md#ForkExpression	support	VIP-17/19 fork and concurrent-loop helpers; legacy paths below
+parser/vibelang_fibers.go:Parser.parseVibeLangFork	admission:fork	900-appendices.md#ForkExpression	support	VIP-17/19 fork and concurrent-loop helpers; legacy paths below
+parser/vibelang_fibers.go:Parser.isStartOfVibeLangJoin	admission:join	900-appendices.md#JoinExpression	support	VIP-17 single Fiber operand; aggregate meaning not admitted
+parser/vibelang_fibers.go:Parser.parseVibeLangJoin	admission:join	900-appendices.md#JoinExpression	support	VIP-17 single Fiber operand; aggregate meaning not admitted
+parser/vibelang_fibers.go:Parser.vibelangProgramArrow	admission:fork	900-appendices.md#ForkExpression	support	VIP-17/19 fork and concurrent-loop helpers; legacy paths below
+parser/vibelang_fibers.go:Parser.isVibeLangAwait	admission:legacy-await	-	pending	VIP-5/18 replace implicit await and await operations
+parser/vibelang_fibers.go:Parser.nextTokenStartsAwaitOperand	admission:legacy-await	-	pending	VIP-5/18 replace implicit await and await operations
+parser/vibelang_fibers.go:Parser.parseVibeLangAwait	admission:legacy-await	-	pending	VIP-5/18 replace implicit await and await operations
+parser/vibelang_fibers.go:Parser.isVibeLangAwaitOperation	admission:legacy-await	-	pending	VIP-5/18 replace implicit await and await operations
+parser/vibelang_fibers.go:Parser.nextTokensStartAwaitOperation	admission:legacy-await	-	pending	VIP-5/18 replace implicit await and await operations
+parser/vibelang_fibers.go:Parser.parseVibeLangAwaitOperation	admission:legacy-await	-	pending	VIP-5/18 replace implicit await and await operations
+parser/vibelang_fibers.go:Parser.isStartOfVibeLangSelect	admission:select	-	pending	No accepted VIP adopts select syntax
+parser/vibelang_fibers.go:Parser.nextTokenIsOpenBraceOnSameLine	admission:fork	900-appendices.md#ForkExpression	support	VIP-17/19 fork and concurrent-loop helpers; legacy paths below
+parser/vibelang_fibers.go:Parser.parseVibeLangSelect	admission:select	-	pending	No accepted VIP adopts select syntax
+parser/vibelang_fibers.go:Parser.labelSelectBreaks	admission:select	-	pending	No accepted VIP adopts select syntax
+parser/vibelang_fibers.go:Parser.jumpKeywordRange	admission:fork	900-appendices.md#ForkExpression	support	VIP-17/19 fork and concurrent-loop helpers; legacy paths below
+parser/vibelang_fibers.go:isFunctionOrClassBoundary	admission:fork	900-appendices.md#ForkExpression	support	VIP-17/19 fork and concurrent-loop helpers; legacy paths below
+parser/vibelang_fibers.go:Parser.isVibeLangConcurrentFor	admission:for-concurrent	900-appendices.md#ForConcurrent	support	VIP-19 concurrent loop
+parser/vibelang_fibers.go:Parser.nextTokenIsOpenParenOnSameLine	admission:fork	900-appendices.md#ForkExpression	support	VIP-17/19 fork and concurrent-loop helpers; legacy paths below
+parser/vibelang_fibers.go:Parser.nextTokenIsConstOrLet	admission:fork	900-appendices.md#ForkExpression	support	VIP-17/19 fork and concurrent-loop helpers; legacy paths below
+parser/vibelang_fibers.go:Parser.parseVibeLangConcurrentFor	admission:for-concurrent	900-appendices.md#ForConcurrent	support	VIP-19 concurrent loop
+parser/vibelang_fibers.go:Parser.rewriteConcurrentJumps	admission:for-concurrent	900-appendices.md#ForConcurrent	support	VIP-19 concurrent loop
+parser/vibelang_match.go:Parser.isStartOfVibeLangMatch	admission:match	900-appendices.md#MatchExpression,900-appendices.md#AsyncMatchExpression	support	Appendix A: MatchExpression, AsyncMatchExpression; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
+parser/vibelang_match.go:Parser.scanStartOfVibeLangMatch	admission:match	900-appendices.md#MatchExpression,900-appendices.md#AsyncMatchExpression	support	Appendix A: MatchExpression, AsyncMatchExpression; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
+parser/vibelang_match.go:Parser.isMatchWord	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.parseVibeLangMatch	admission:match	900-appendices.md#MatchExpression,900-appendices.md#AsyncMatchExpression	support	Appendix A: MatchExpression, AsyncMatchExpression; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
+parser/vibelang_match.go:Parser.combinatorWord	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.parseMatchPattern	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.parseMatchUnaryPattern	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.nextTokenStartsPattern	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.tokenStartsPattern	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.parseMatchPrimaryPattern	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.parseMatchValueExpression	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.parseMatchListPattern	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.parseMatchObjectPattern	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.isVibeLangIs	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.parseVibeLangIs	admission:is	004-match.md	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:patternHasBindings	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.mIdent	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.mTemp	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.freshenVibeLangTemps	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.mToken	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.mString	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.mBinary	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.mParens	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.mCall	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.mProperty	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.mElement	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.mNumber	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.mKeyword	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.mBlock	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.mConst	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.patternErrorCall	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.cloneIdentExpression	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.subjectPath	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.propertyPath	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:isLiteralKey	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.propertyKeyTest	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:BuiltinMatcherNamed	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:dottedName	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.matcherTest	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.compilePattern	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:IsSignedNumberZero	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.enterSubject	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:subjectReads	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.compileList	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.inlinePattern	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.joinTests	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:testsSpan	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.emitSteps	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.isExpression	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.matchStatements	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.matchFunctionCall	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.matchReturnStatement	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.matchReturnStatementAt	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.matchStatement	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:conjuncts	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.conditionSteps	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:endsInJump	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.restructureVibeLangWhile	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.keywordRangeAt	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.mPatternRead	admission:match	900-appendices.md#MatchExpression	support	VIP-7 marks property and positional reads for match binding type inference
+parser/vibelang_match.go:Parser.hoistVibeLangIs	admission:is	004-match.md	support	Chapter 004 binding homes for is (decided detail 245); synthesized let hoisting only
+parser/vibelang_match.go:Parser.hoistDeclaration	admission:is	004-match.md	support	Chapter 004 binding homes for is (decided detail 245); synthesized let hoisting only
+parser/vibelang_match.go:Parser.hoistStatementIs	admission:is	004-match.md	support	Chapter 004 binding homes for is (decided detail 245); synthesized let hoisting only
+parser/vibelang_match.go:Parser.hoistConciseBody	admission:is	004-match.md	support	Chapter 004 binding homes for is (decided detail 245); synthesized let hoisting only
+parser/vibelang_match.go:Parser.hoistInitializerBody	admission:is	004-match.md	support	Chapter 004 binding homes for is (decided detail 245); synthesized let hoisting only
+parser/vibelang_match.go:Parser.hoistForHead	admission:is	004-match.md	support	Chapter 004 binding homes for is (decided detail 245); synthesized let hoisting only
+parser/vibelang_match.go:hoistedDeclarator	admission:is	004-match.md	support	Chapter 004 binding homes for is (decided detail 245); synthesized let hoisting only
+parser/vibelang_match.go:Parser.mLetList	admission:is	004-match.md	support	Chapter 004 binding homes for is (decided detail 245); synthesized let hoisting only
+parser/vibelang_match.go:Parser.takeHoists	admission:is	004-match.md	support	Chapter 004 binding homes for is (decided detail 245); synthesized let hoisting only
+parser/vibelang_match.go:Parser.parseEmbeddedStatement	admission:is	004-match.md	support	Chapter 004 binding homes for is (decided detail 245); synthesized let hoisting only
+parser/vibelang_modules.go:Parser.isStartOfVibeLangModuleDeclaration	admission:inline-module	-	pending	Denied VIP-25; legacy inline module parser and imports
+parser/vibelang_modules.go:Parser.parseVibeLangModuleDeclaration	admission:inline-module	-	pending	Denied VIP-25; legacy inline module parser and imports
+parser/vibelang_modules.go:Parser.skipTypeScriptModuleBody	admission:inline-module	-	pending	Denied VIP-25; legacy inline module parser and imports
+parser/vibelang_modules.go:Parser.parseVibeLangModuleReference	admission:inline-module	-	pending	Denied VIP-25; legacy inline module parser and imports
+parser/vibelang_modules.go:Parser.vibelangModuleReference	admission:inline-module	-	pending	Denied VIP-25; legacy inline module parser and imports
+parser/vibelang_modules.go:Parser.isVibeLangModuleImport	admission:inline-module	-	pending	Denied VIP-25; legacy inline module parser and imports
+parser/vibelang_modules.go:Parser.parseVibeLangModuleImport	admission:inline-module	-	pending	Denied VIP-25; legacy inline module parser and imports
+parser/vibelang_modules.go:ModuleDeclarationFileSuffix	admission:inline-module	-	pending	Denied VIP-25; legacy inline module parser and imports
+parser/vibelang_modules.go:ModuleDeclarationSpecifier	admission:inline-module	-	pending	Denied VIP-25; legacy inline module parser and imports
+parser/vibelang_modules.go:IsVibeLangModuleDeclaration	admission:inline-module	-	pending	Denied VIP-25; legacy inline module parser and imports
+parser/vibelang_modules.go:IsVibeLangModuleReference	admission:inline-module	-	pending	Denied VIP-25; legacy inline module parser and imports
+parser/vibelang_modules.go:ModuleDeclarationBody	admission:inline-module	-	pending	Denied VIP-25; legacy inline module parser and imports
+parser/vibelang_modules.go:Parser.attachVibeLangModules	admission:inline-module	-	pending	Denied VIP-25; legacy inline module parser and imports
+parser/vibelang_modules.go:parseModuleBody	admission:inline-module	-	pending	Denied VIP-25; legacy inline module parser and imports
+parser/vibelang_modules.go:blankOutside	admission:inline-module	-	pending	Denied VIP-25; legacy inline module parser and imports
+parser/vibelang_pipes.go:Parser.isPipeOperator	admission:pipe	900-appendices.md#PipeExpression	support	VIP-23 pinned Hack pipe and topic
+parser/vibelang_pipes.go:Parser.parsePipeRest	admission:pipe	900-appendices.md#PipeExpression	support	VIP-23 pinned Hack pipe and topic
+parser/vibelang_pipes.go:isFunctionLiteral	admission:pipe	900-appendices.md#PipeExpression	support	VIP-23 pinned Hack pipe and topic
+parser/vibelang_pipes.go:runsCall	admission:pipe	900-appendices.md#PipeExpression	support	VIP-23 pinned Hack pipe and topic
+parser/vibelang_pipes.go:Parser.parseTopicReference	admission:pipe	900-appendices.md#PipeExpression	support	VIP-23 pinned Hack pipe and topic
+parser/vibelang_pipes.go:curriedPipeStage	admission:pipe	900-appendices.md#PipeExpression	support	VIP-23 pinned Hack pipe and topic
+parser/vibelang_pipes.go:Parser.rejectPipeConditional	admission:pipe	900-appendices.md#PipeBody	recovery	EK2301: a conditional after a pipe body has no valid reading; not language admission
+parser/vibelang_primitives.go:isVibeLangMaskWord	admission:interruption	900-appendices.md#Uninterruptible,900-appendices.md#Restore,900-appendices.md#Interruptible	support	Appendix A: Uninterruptible, Restore, Interruptible; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
+parser/vibelang_primitives.go:Parser.isStartOfVibeLangMaskBlock	admission:interruption	900-appendices.md#Uninterruptible,900-appendices.md#Restore,900-appendices.md#Interruptible	support	Appendix A: Uninterruptible, Restore, Interruptible; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
+parser/vibelang_primitives.go:Parser.parseVibeLangMaskBlock	admission:interruption	900-appendices.md#Uninterruptible,900-appendices.md#Restore,900-appendices.md#Interruptible	support	Appendix A: Uninterruptible, Restore, Interruptible; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
+parser/vibelang_primitives.go:Parser.parseVibeLangFinallyBlock	admission:finally-exit	-	pending	VIP-5 forbids Effect try/finally syntax
+parser/vibelang_primitives.go:isCauseCatchClause	admission:finally-exit	-	pending	VIP-5 forbids Effect try/finally syntax
+parser/vibelang_schema_alias.go:Parser.scanSchemaAliasStart	admission:schema-alias	900-appendices.md#SchemaDeclaration	support	VIP-15 aliases and companions
+parser/vibelang_schema_alias.go:Parser.parseSchemaAliasDeclaration	admission:schema-alias	900-appendices.md#SchemaDeclaration	support	VIP-15 aliases and companions
+parser/vibelang_schema_alias.go:Parser.vibelangSchemaType	admission:schema-alias	900-appendices.md#SchemaDeclaration	support	VIP-15 aliases and companions
+parser/vibelang_schema_alias.go:Parser.vibelangCompanionLoc	admission:schema-alias	900-appendices.md#SchemaDeclaration	support	VIP-15 aliases and companions
+parser/vibelang_schema_alias.go:IsSchemaAliasDeclaration	admission:schema-alias	900-appendices.md#SchemaDeclaration	support	VIP-15 aliases and companions
+parser/vibelang_schema_tuple.go:Parser.vibelangSchemaTuple	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 schema mapping of literal variadic tuple types
+parser/vibelang_schema_tuple.go:Parser.vibelangSchemaTupleGrammar	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 schema mapping of literal variadic tuple types
+parser/vibelang_schema_tuple.go:Parser.vibelangSchemaTuplePositions	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 schema mapping of literal variadic tuple types
+parser/vibelang_schema_tuple.go:schemaTupleElement	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 schema mapping of literal variadic tuple types
+parser/vibelang_schema_tuple.go:schemaLiteralRestTuple	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 schema mapping of literal variadic tuple types
+parser/vibelang_schema_tuple.go:schemaTupleHasArrayRest	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 schema mapping of literal variadic tuple types
+parser/vibelang_schema_tuple.go:Parser.schemaTupleUnion	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 schema mapping of literal variadic tuple types
+parser/vibelang_schema_tuple.go:Parser.schemaTupleUndefined	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 schema mapping of literal variadic tuple types
+parser/vibelang_schema_tuple.go:vibelangSchemaRestElement	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 schema mapping of literal variadic tuple types
+parser/vibelang_service_heritage.go:Parser.skipVibeLangServiceHeritage	admission:service-heritage	900-appendices.md#ServiceDeclaration	recovery	VIP-9 forbidden heritage diagnostic recovery
+parser/vibelang_service_type.go:Parser.parseServiceShapeDeclaration	admission:service-shape	-	pending	VIP-9 admits member body only, not service Name: Shape
+parser/vibelang_syntax.go:ParseVibeLangSyntax	admission:syntax-records	007-tooling.md	support	VIP-34 source spans for tooling; records grant no syntax authority
+parser/vibelang_syntax.go:Parser.recordVibeSyntax	admission:syntax-records	007-tooling.md	support	VIP-34 source spans for tooling; records grant no syntax authority
+parser/vibelang_syntax.go:Parser.vibelangSyntaxCount	admission:syntax-records	007-tooling.md	support	VIP-34 source spans for tooling; records grant no syntax authority
+parser/vibelang_syntax.go:Parser.vibelangSyntaxRewind	admission:syntax-records	007-tooling.md	support	VIP-34 source spans for tooling; records grant no syntax authority
+parser/vibelang_syntax.go:Parser.sourceRange	admission:syntax-records	007-tooling.md	support	VIP-34 source spans for tooling; records grant no syntax authority
+parser/vibelang_syntax.go:Parser.blockBraces	admission:syntax-records	007-tooling.md	support	VIP-34 source spans for tooling; records grant no syntax authority
+parser/vibelang_syntax.go:Parser.recordVibeSyntaxBlock	admission:syntax-records	007-tooling.md	support	VIP-34 source spans for tooling; records grant no syntax authority
+parser/vibelang_syntax.go:Parser.recordVibeSyntaxClause	admission:syntax-records	007-tooling.md	support	VIP-34 source spans for tooling; records grant no syntax authority
+parser/vibelang_try.go:Parser.isStartOfVibeLangTry	admission:try	900-appendices.md#TryExpression,900-appendices.md#TryAll	support	Appendix A: TryExpression, TryAll; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
+parser/vibelang_try.go:Parser.nextTokenStartsTryOperand	admission:try	900-appendices.md#TryExpression	support	VIP-5 try execution and VIP-18 operations
+parser/vibelang_try.go:Parser.parseVibeLangTry	admission:try	900-appendices.md#TryExpression,900-appendices.md#TryAll	support	Appendix A: TryExpression, TryAll; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
+parser/vibelang_try.go:triedChainOperand	admission:try	900-appendices.md#TryExpression	support	VIP-5 try execution and VIP-18 operations
+parser/vibelang_try.go:Parser.isVibeLangTryOperation	admission:try	900-appendices.md#TryAll	support	Appendix A: TryAll; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
+parser/vibelang_try.go:Parser.parseVibeLangTryOperation	admission:try	900-appendices.md#TryAll	support	Appendix A: TryAll; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
+parser/vibelang_try.go:isVibeLangTry	admission:try	900-appendices.md#TryExpression	support	VIP-5: try (try e) runs both layers; the inner try stays the operand
+vibelang/catches.go:init	admission:catch-tests	003-failures.md	support	Failure test support; legacy typed catch syntax audited separately
+vibelang/catches.go:isFailureTest	admission:catch-tests	003-failures.md	support	Failure test support; legacy typed catch syntax audited separately
+vibelang/catches.go:failureTags	admission:catch-tests	003-failures.md	support	Failure test support; legacy typed catch syntax audited separately
+vibelang/catches.go:lowering.visitFailureTest	admission:catch-tests	003-failures.md	support	Failure test support; legacy typed catch syntax audited separately
+vibelang/catches.go:checkCatchClauses	admission:catch-tests	003-failures.md	support	Failure test support; legacy typed catch syntax audited separately
+vibelang/chains_lower.go:optionalLink	admission:implicit-running	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/chains_lower.go:lowering.guardedLink	admission:implicit-running	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/chains_lower.go:writesQuestionDot	admission:implicit-running	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/chains_lower.go:lowering.unguardedOptional	admission:implicit-running	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/chains_lower.go:lowering.mayYield	admission:implicit-running	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/chains_lower.go:lowering.visitGuardedChain	admission:implicit-running	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/chains_lower.go:lowering.visitGuardedLink	admission:implicit-running	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/chains_lower.go:lowering.invokeGuarded	admission:implicit-running	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/chains_lower.go:lowering.boundThunk	admission:implicit-running	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/closing.go:lowering.closeLoops	admission:iterator-support	002-running.md,008-runtime.md	support	VIP-1/2: native iterator and failure-frame machinery for explicit Effect callables; grants no inferred function kind
+vibelang/closing.go:lowering.closeLoop	admission:iterator-support	002-running.md,008-runtime.md	support	VIP-1/2: native iterator and failure-frame machinery for explicit Effect callables; grants no inferred function kind
+vibelang/closing.go:lowering.isClosedLoop	admission:iterator-support	002-running.md,008-runtime.md	support	VIP-1/2: native iterator and failure-frame machinery for explicit Effect callables; grants no inferred function kind
+vibelang/closing.go:bindsOneName	admission:iterator-support	002-running.md,008-runtime.md	support	VIP-1/2: native iterator and failure-frame machinery for explicit Effect callables; grants no inferred function kind
+vibelang/data_lower.go:newDataPlan	admission:data	900-appendices.md#DataDeclaration	support	VIP-16/28 constructors
+vibelang/data_lower.go:dataPlan.planVariantTest	admission:data	900-appendices.md#DataDeclaration	support	VIP-16/28 constructors
+vibelang/data_lower.go:dataPlan.withoutUnusedIs	admission:data	900-appendices.md#DataDeclaration	support	VIP-16/28 constructors
+vibelang/data_lower.go:lowering.visitVariantTest	admission:data	900-appendices.md#DataDeclaration	support	VIP-16/28 constructors
+vibelang/datamethods.go:init	admission:extension-methods	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/datamethods.go:methodStateOf	admission:extension-methods	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/datamethods.go:homeModule	admission:extension-methods	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/datamethods.go:effectModuleOfFile	admission:extension-methods	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/datamethods.go:moduleMethod	admission:extension-methods	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/datamethods.go:methodProperty	admission:extension-methods	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/datamethods.go:takesSelfFirst	admission:extension-methods	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/datamethods.go:TakesSelfFirst	admission:extension-methods	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/datamethods.go:dataFunctionOf	admission:extension-methods	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/datamethods.go:effectModuleNamespace	admission:extension-methods	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/datamethods.go:methodCallOf	admission:extension-methods	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/datamethods.go:methodModuleOf	admission:extension-methods	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/datamethods.go:checkModuleMethods	admission:extension-methods	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/datamethods.go:namesPreludeModule	admission:extension-methods	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/datamethods.go:moduleMethodQuickInfo	admission:extension-methods	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/datamethods.go:moduleMethodCompletions	admission:extension-methods	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/datamethods.go:lowering.moduleNamespace	admission:extension-methods	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/datamethods.go:lowering.visitModuleMethodCall	admission:extension-methods	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/direct.go:lowering.directEffect	admission:effect-function-support	001-functions.md,002-running.md	support	VIP-1/2: explicit Effect callable bindings and direct-return optimization; implicit kind/by-name conversions removed by VIP-1 flip
+vibelang/direct.go:lowering.directResult	admission:effect-function-support	001-functions.md,002-running.md	support	VIP-1/2: explicit Effect callable bindings and direct-return optimization; implicit kind/by-name conversions removed by VIP-1 flip
+vibelang/direct.go:lowering.namedThunk	admission:effect-function-support	001-functions.md,002-running.md	support	VIP-1/2: explicit Effect callable bindings and direct-return optimization; implicit kind/by-name conversions removed by VIP-1 flip
+vibelang/direct.go:hasSimpleParameters	admission:effect-function-support	001-functions.md,002-running.md	support	VIP-1/2: explicit Effect callable bindings and direct-return optimization; implicit kind/by-name conversions removed by VIP-1 flip
+vibelang/entry.go:entryRuntime	admission:magic-main	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/entry.go:init	admission:magic-main	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/entry.go:checkPlatformImports	admission:magic-main	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/entry.go:namedPlatform	admission:magic-main	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/entry.go:platformImport	admission:magic-main	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/entry.go:entryModules	admission:magic-main	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/entry.go:entryCandidate	admission:magic-main	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/entry.go:entryMain	admission:magic-main	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/entry.go:containsTopLevelRunner	admission:magic-main	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/entry.go:startsProgram	admission:magic-main	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/entry.go:planEntry	admission:magic-main	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/entry.go:entryBundles	admission:magic-main	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/entry.go:neededServices	admission:magic-main	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/entry.go:provides	admission:magic-main	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/entry.go:platformNote	admission:magic-main	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/entry.go:resolvedModuleFile	admission:magic-main	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/entry.go:bundleServices	admission:magic-main	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/entry.go:lowering.entryReference	admission:magic-main	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/entry.go:lowering.entryStatement	admission:magic-main	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/frames_lower.go:findFrameReferences	admission:effect-function-support	001-functions.md,002-running.md	support	VIP-1/2: explicit Effect callable bindings and direct-return optimization; implicit kind/by-name conversions removed by VIP-1 flip
+vibelang/frames_lower.go:bindsFrame	admission:effect-function-support	001-functions.md,002-running.md	support	VIP-1/2: explicit Effect callable bindings and direct-return optimization; implicit kind/by-name conversions removed by VIP-1 flip
+vibelang/frames_lower.go:frameBindings	admission:effect-function-support	001-functions.md,002-running.md	support	VIP-1/2: explicit Effect callable bindings and direct-return optimization; implicit kind/by-name conversions removed by VIP-1 flip
+vibelang/frames_lower.go:isNewTarget	admission:effect-function-support	001-functions.md,002-running.md	support	VIP-1/2: explicit Effect callable bindings and direct-return optimization; implicit kind/by-name conversions removed by VIP-1 flip
+vibelang/frames_lower.go:opensFrame	admission:effect-function-support	001-functions.md,002-running.md	support	VIP-1/2: explicit Effect callable bindings and direct-return optimization; implicit kind/by-name conversions removed by VIP-1 flip
+vibelang/frames_lower.go:isSuperProperty	admission:effect-function-support	001-functions.md,002-running.md	support	VIP-1/2: explicit Effect callable bindings and direct-return optimization; implicit kind/by-name conversions removed by VIP-1 flip
+vibelang/frames_lower.go:frameBody	admission:effect-function-support	001-functions.md,002-running.md	support	VIP-1/2: explicit Effect callable bindings and direct-return optimization; implicit kind/by-name conversions removed by VIP-1 flip
+vibelang/frames_lower.go:lowering.forwarding	admission:effect-function-support	001-functions.md,002-running.md	support	VIP-1/2: explicit Effect callable bindings and direct-return optimization; implicit kind/by-name conversions removed by VIP-1 flip
+vibelang/frames_lower.go:lowering.hoistFrameReferences	admission:effect-function-support	001-functions.md,002-running.md	support	VIP-1/2: explicit Effect callable bindings and direct-return optimization; implicit kind/by-name conversions removed by VIP-1 flip
+vibelang/frames_lower.go:isSuperAssignment	admission:effect-function-support	001-functions.md,002-running.md	support	VIP-1/2: explicit Effect callable bindings and direct-return optimization; implicit kind/by-name conversions removed by VIP-1 flip
+vibelang/frames_lower.go:isAssignmentTarget	admission:effect-function-support	001-functions.md,002-running.md	support	VIP-1/2: explicit Effect callable bindings and direct-return optimization; implicit kind/by-name conversions removed by VIP-1 flip
+vibelang/frames_lower.go:lowering.superKey	admission:effect-function-support	001-functions.md,002-running.md	support	VIP-1/2: explicit Effect callable bindings and direct-return optimization; implicit kind/by-name conversions removed by VIP-1 flip
+vibelang/frames_lower.go:lowering.declareFrameBindings	admission:effect-function-support	001-functions.md,002-running.md	support	VIP-1/2: explicit Effect callable bindings and direct-return optimization; implicit kind/by-name conversions removed by VIP-1 flip
+vibelang/frames_lower.go:refersToOwnName	admission:effect-function-support	001-functions.md,002-running.md	support	VIP-1/2: explicit Effect callable bindings and direct-return optimization; implicit kind/by-name conversions removed by VIP-1 flip
+vibelang/frames_lower.go:lowering.nameFreeGenerator	admission:effect-function-support	001-functions.md,002-running.md	support	VIP-1/2: explicit Effect callable bindings and direct-return optimization; implicit kind/by-name conversions removed by VIP-1 flip
+vibelang/frames_lower.go:lowering.selfBoundFunction	admission:effect-function-support	001-functions.md,002-running.md	support	VIP-1/2: explicit Effect callable bindings and direct-return optimization; implicit kind/by-name conversions removed by VIP-1 flip
+vibelang/generated.go:lowering.generated	admission:source-map-support	007-tooling.md	support	VIP-34: generated function source-map support; grants no implicit function-literal conversion
+vibelang/generated.go:lowering.generatedFunctions	admission:source-map-support	007-tooling.md	support	VIP-34: generated function source-map support; grants no implicit function-literal conversion
+vibelang/generated.go:lowering.generatedThunk	admission:source-map-support	007-tooling.md	support	VIP-34: generated function source-map support; grants no implicit function-literal conversion
+vibelang/generated.go:isProgramArrow	admission:source-map-support	007-tooling.md	support	VIP-34: generated function source-map support; grants no implicit function-literal conversion
+vibelang/generated.go:programArrowRole	admission:source-map-support	007-tooling.md	support	VIP-34: generated function source-map support; grants no implicit function-literal conversion
+vibelang/generated.go:lowering.markProgramArrows	admission:source-map-support	007-tooling.md	support	VIP-34: generated function source-map support; grants no implicit function-literal conversion
+vibelang/handlers.go:runtimeExport	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handlers.go:handleCallOfClause	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handlers.go:resumeKind	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handlers.go:newHandlerPlan	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handlers.go:handlerPlan.planClause	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handlers.go:handlerPlan.planResume	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handlers.go:plan.resumesInTail	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handlers.go:handlerPlan.tailResumeOf	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handlers.go:handlerPlan.isTailResumeBody	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handlers.go:lowering.visitTailResumeReturn	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handlers.go:lowering.tailResumeCall	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handlers.go:init	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handlers.go:checkResumeWith	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handlers.go:checkResumeWithProgram	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handlers.go:operationOfClause	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handles.go:init	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handles.go:isHandleStatement	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handles.go:isClauseBinding	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handles.go:catches	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handles.go:isClauseOperation	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handles.go:isClauseCallee	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handles.go:isClauseContinuation	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handles.go:handleClauseOfBlock	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handles.go:handleClauses	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handles.go:controlGroups	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handles.go:entityText	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handles.go:analyzer.handleFlow	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handles.go:withoutRequirement	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handles.go:hasVibeLangStatement	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handles.go:hasHandleStatement	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handles.go:checkHandleStatements	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handles.go:checkHandleClauses	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handles.go:isControlDeclaration	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handles.go:lowering.isClauseResume	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handles.go:lowering.visitHandleStatement	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handles.go:lowering.clauseStatements	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handles.go:lowering.clauseFunction	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handles.go:lowering.pendingOf	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handles.go:lowering.visitClauseResume	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/handles.go:lowering.visitClauseResumeReturn	admission:handlers	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:hatchOf	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:shadowed	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:isHatchArgument	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:isWrappedCode	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:forEachHatchVibeLang	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:inHatch	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:init	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:checkHatches	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:takesFewerInputs	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:hatchIsland	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:outsideReferences	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:outsideNames	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:wrappedCall	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:boundaryCall	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:inputConsts	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:boundaryInputs	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:analyzer.runsVibeLang	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:receiverParameterName	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:argumentParameterName	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:isHatchValueReference	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:declaredOutside	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:isTaggedErrorClass	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:hasProperty	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:hatchFormOf	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:takesSignal	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:bindsExactly	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:hatchPromiseOf	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:promisenessOf	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:joinPromiseness	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:lowering.visitHatchCall	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:hatchQuickInfo	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:lowering.adapterHatchCall	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:hatchInputs	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:hatchInputEdits	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:parenthesized	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hatches.go:edit	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/hygiene.go:freshNames.freshName	admission:hygiene	007-tooling.md	support	VIP-34 generated name hygiene
+vibelang/hygiene.go:freshNames.spelled	admission:hygiene	007-tooling.md	support	VIP-34 generated name hygiene
+vibelang/hygiene.go:lowering.reachIntrinsics	admission:hygiene	007-tooling.md	support	VIP-34 generated name hygiene
+vibelang/hygiene.go:lowering.intrinsicReference	admission:hygiene	007-tooling.md	support	VIP-34 generated name hygiene
+vibelang/hygiene.go:lowering.freshName	admission:hygiene	007-tooling.md	support	VIP-34 generated name hygiene
+vibelang/hygiene.go:lowering.directName	admission:hygiene	007-tooling.md	support	VIP-34 generated name hygiene
+vibelang/hygiene.go:variantExportName	admission:hygiene	007-tooling.md	support	VIP-34 generated name hygiene
+vibelang/hygiene.go:moduleExportNames	admission:hygiene	007-tooling.md	support	VIP-34 generated name hygiene
+vibelang/imports.go:lowering.visitImportOrExport	admission:imports	007-tooling.md	support	VIP-34 emitted module specifiers
+vibelang/imports.go:lowering.outputSpecifier	admission:imports	007-tooling.md	support	VIP-34 emitted module specifiers
+vibelang/imports.go:outputSpecifierText	admission:imports	007-tooling.md	support	VIP-34 emitted module specifiers
+vibelang/imports.go:outputSpecifierTextWithJSX	admission:imports	007-tooling.md	support	VIP-34 emitted module specifiers
+vibelang/iterators_lower.go:lowering.protectIteratorFrames	admission:iterator-support	002-running.md,008-runtime.md	support	VIP-1/2: native iterator and failure-frame machinery for explicit Effect callables; grants no inferred function kind
+vibelang/iterators_lower.go:iteratorGeneratorBody	admission:iterator-support	002-running.md,008-runtime.md	support	VIP-1/2: native iterator and failure-frame machinery for explicit Effect callables; grants no inferred function kind
+vibelang/iterators_lower.go:iteratorPauses	admission:iterator-support	002-running.md,008-runtime.md	support	VIP-1/2: native iterator and failure-frame machinery for explicit Effect callables; grants no inferred function kind
+vibelang/iterators_lower.go:assignmentHasArray	admission:iterator-support	002-running.md,008-runtime.md	support	VIP-1/2: native iterator and failure-frame machinery for explicit Effect callables; grants no inferred function kind
+vibelang/joined.go:analyzer.joinsFailures	admission:iterator-support	002-running.md,008-runtime.md	support	VIP-1/2: native iterator and failure-frame machinery for explicit Effect callables; grants no inferred function kind
+vibelang/joined.go:joinPlan.planJoins	admission:iterator-support	002-running.md,008-runtime.md	support	VIP-1/2: native iterator and failure-frame machinery for explicit Effect callables; grants no inferred function kind
+vibelang/joined.go:analyzer.compilesToPlain	admission:iterator-support	002-running.md,008-runtime.md	support	VIP-1/2: native iterator and failure-frame machinery for explicit Effect callables; grants no inferred function kind
+vibelang/joined.go:analyzer.callJoinsFailures	admission:iterator-support	002-running.md,008-runtime.md	support	VIP-1/2: native iterator and failure-frame machinery for explicit Effect callables; grants no inferred function kind
+vibelang/joined.go:lowering.joinFrames	admission:iterator-support	002-running.md,008-runtime.md	support	VIP-1/2: native iterator and failure-frame machinery for explicit Effect callables; grants no inferred function kind
+vibelang/joined.go:lowering.isFrameCall	admission:iterator-support	002-running.md,008-runtime.md	support	VIP-1/2: native iterator and failure-frame machinery for explicit Effect callables; grants no inferred function kind
+vibelang/lower.go:newLowering	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
+vibelang/lower.go:lowering.visit	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
+vibelang/lower.go:lowering.visitSource	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
+vibelang/lower.go:lowering.visitNode	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
+vibelang/lower.go:lowering.visitSourceFile	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
+vibelang/lower.go:lowering.namespaceImport	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
+vibelang/lower.go:lowering.fileName	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
+vibelang/lower.go:lowering.effectName	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
+vibelang/lower.go:lowering.visitThrowStatement	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
+vibelang/lower.go:lowering.runtimeMember	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
+vibelang/lower.go:lowering.succeedByName	admission:implicit-running	-	pending	VIP-1/5 require explicit effect kind and execution; implicit conversion is legacy
+vibelang/lower.go:lowering.runtimeCall	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
+vibelang/lower.go:lowering.visitRunningCall	admission:implicit-running	-	pending	VIP-1/5 require explicit effect kind and execution; implicit conversion is legacy
+vibelang/lower.go:lowering.lowerFunction	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
+vibelang/lower.go:lowering.lowerProgram	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
+vibelang/lower.go:keepsThis	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
+vibelang/lower.go:lowering.generatorOf	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
+vibelang/lower.go:lowering.generatorFrom	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
+vibelang/lower.go:lowering.loweredBody	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
+vibelang/lower.go:lowering.directFunction	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
+vibelang/lower.go:lowering.wrapGenerator	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
+vibelang/lower.go:functionName	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
+vibelang/lower.go:lowering.visitEffectFunctionDeclaration	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
+vibelang/lower.go:lowering.effectFunctionDeclaration	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
+vibelang/match_builtins.go:init	admission:match-builtins	004-match.md	support	VIP-7 fixed built-in matchers
+vibelang/match_builtins.go:checkBuiltinPatterns	admission:match-builtins	004-match.md	support	VIP-7 fixed built-in matchers
+vibelang/match_builtins.go:builtinMatcherOf	admission:match-builtins	004-match.md	support	VIP-7 fixed built-in matchers
+vibelang/match_builtins.go:effectModuleNamed	admission:match-builtins	004-match.md	support	VIP-7 fixed built-in matchers
+vibelang/match_builtins.go:isBuiltinPatternTest	admission:match-builtins	004-match.md	support	VIP-7 fixed built-in matchers
+vibelang/match_builtins.go:builtinVariantProperty	admission:match-builtins	004-match.md	support	VIP-7 fixed built-in matchers
+vibelang/match_builtins.go:narrowBuiltinPattern	admission:match-builtins	004-match.md	support	VIP-7 fixed built-in matchers
+vibelang/match_builtins.go:lowering.visitBuiltinTest	admission:match-builtins	004-match.md	support	VIP-7 fixed built-in matchers
+vibelang/match_builtins.go:builtinExtractionType	admission:match-builtins	004-match.md	support	VIP-7 fixed built-in matchers
+vibelang/match_builtins.go:narrowBuiltinExtraction	admission:match-builtins	004-match.md	support	VIP-7 fixed built-in matchers
+vibelang/match_builtins.go:builtinGuardType	admission:match-builtins	004-match.md	support	VIP-7 fixed built-in matchers
+vibelang/match_lower.go:newExhaustivePlan	admission:match	900-appendices.md#MatchExpression	support	VIP-7 runtime matcher tests
+vibelang/match_lower.go:exhaustivePlan.planExhaustiveMatch	admission:match	900-appendices.md#MatchExpression	support	VIP-7 runtime matcher tests
+vibelang/match_lower.go:exhaustivePlan.withoutUnusedNoMatch	admission:match	900-appendices.md#MatchExpression	support	VIP-7 runtime matcher tests
+vibelang/match_lower.go:lowering.visitCheckedArm	admission:match	900-appendices.md#MatchExpression	support	VIP-7 runtime matcher tests
+vibelang/methods.go:analyzer.expectsEffect	admission:effect-method	900-appendices.md#EffectMethod	support	VIP-1 method lowering; legacy unmodified methods audited as function-kind
+vibelang/methods.go:lowering.lowerMethod	admission:effect-method	900-appendices.md#EffectMethod	support	VIP-1 method lowering; legacy unmodified methods audited as function-kind
+vibelang/methods.go:lowering.perRunMethod	admission:effect-method	900-appendices.md#EffectMethod	support	VIP-1 method lowering; legacy unmodified methods audited as function-kind
+vibelang/methods.go:usesThis	admission:effect-method	900-appendices.md#EffectMethod	support	VIP-1 method lowering; legacy unmodified methods audited as function-kind
+vibelang/names.go:lowering.generatorExpression	admission:names	001-functions.md	support	VIP-1 function name preservation
+vibelang/names.go:refersTo	admission:names	001-functions.md	support	VIP-1 function name preservation
+vibelang/names.go:refersToName	admission:names	001-functions.md	support	VIP-1 function name preservation
+vibelang/names.go:parameterRefersTo	admission:names	001-functions.md	support	VIP-1 function name preservation
+vibelang/names.go:sourceName	admission:names	001-functions.md	support	VIP-1 function name preservation
+vibelang/order.go:stableValue	admission:evaluation-order	002-running.md	support	VIP-19 concurrent loop and evaluation order
+vibelang/order.go:stableSymbol	admission:evaluation-order	002-running.md	support	VIP-19 concurrent loop and evaluation order
+vibelang/order.go:isNamespaceValue	admission:evaluation-order	002-running.md	support	VIP-19 concurrent loop and evaluation order
+vibelang/order.go:plan.noteStable	admission:evaluation-order	002-running.md	support	VIP-19 concurrent loop and evaluation order
+vibelang/order.go:lowering.inOrder	admission:evaluation-order	002-running.md	support	VIP-19 concurrent loop and evaluation order
+vibelang/order.go:lowering.concurrentForCall	admission:evaluation-order	002-running.md	support	VIP-19 concurrent loop and evaluation order
+vibelang/pipes_lower.go:plan.planPipe	admission:pipe	900-appendices.md#PipeExpression	support	VIP-23 single evaluation and topic substitution
+vibelang/pipes_lower.go:topicFirst	admission:pipe	900-appendices.md#PipeExpression	support	VIP-23 single evaluation and topic substitution
+vibelang/pipes_lower.go:evaluatedBefore	admission:pipe	900-appendices.md#PipeExpression	support	VIP-23 single evaluation and topic substitution
+vibelang/pipes_lower.go:evaluatedSometimes	admission:pipe	900-appendices.md#PipeExpression	support	VIP-23 single evaluation and topic substitution
+vibelang/pipes_lower.go:topicClosure	admission:pipe	900-appendices.md#PipeExpression	support	VIP-23 single evaluation and topic substitution
+vibelang/pipes_lower.go:lowering.visitPipe	admission:pipe	900-appendices.md#PipeExpression	support	VIP-23 single evaluation and topic substitution
+vibelang/pipes_lower.go:lowering.visitTopic	admission:pipe	900-appendices.md#PipeExpression	support	VIP-23 single evaluation and topic substitution
+vibelang/pipes_lower.go:lowering.visitTopicClosure	admission:pipe	900-appendices.md#PipeExpression	support	VIP-23 single evaluation and topic substitution
+vibelang/primitives.go:init	admission:interruption	900-appendices.md#Uninterruptible	support	VIP-22 interruption lowering
+vibelang/primitives.go:maskWord	admission:interruption	900-appendices.md#Uninterruptible	support	VIP-22 interruption lowering
+vibelang/primitives.go:maskMarkerWord	admission:interruption	900-appendices.md#Uninterruptible	support	VIP-22 interruption lowering
+vibelang/primitives.go:isRemovedPrimitiveMarker	admission:interruption	900-appendices.md#Uninterruptible	support	VIP-22 interruption lowering
+vibelang/primitives.go:isExitMarkerCall	admission:interruption	900-appendices.md#Uninterruptible	support	VIP-22 interruption lowering
+vibelang/primitives.go:exitBinding	admission:interruption	900-appendices.md#Uninterruptible	support	VIP-22 interruption lowering
+vibelang/primitives.go:exitBindingOf	admission:interruption	900-appendices.md#Uninterruptible	support	VIP-22 interruption lowering
+vibelang/primitives.go:isCauseCatch	admission:interruption	900-appendices.md#Uninterruptible	support	VIP-22 interruption lowering
+vibelang/primitives.go:isCauseVariable	admission:interruption	900-appendices.md#Uninterruptible	support	VIP-22 interruption lowering
+vibelang/primitives.go:hasPrimitiveStatement	admission:interruption	900-appendices.md#Uninterruptible	support	VIP-22 interruption lowering
+vibelang/primitives.go:primitivesOf	admission:interruption	900-appendices.md#Uninterruptible	support	VIP-22 interruption lowering
+vibelang/primitives.go:causeInterface	admission:interruption	900-appendices.md#Uninterruptible	support	VIP-22 interruption lowering
+vibelang/primitives.go:causeVariableType	admission:interruption	900-appendices.md#Uninterruptible	support	VIP-22 interruption lowering
+vibelang/primitives.go:exitCallType	admission:interruption	900-appendices.md#Uninterruptible	support	VIP-22 interruption lowering
+vibelang/primitives.go:enclosingTryOfFinally	admission:interruption	900-appendices.md#Uninterruptible	support	VIP-22 interruption lowering
+vibelang/primitives.go:checkPrimitives	admission:interruption	900-appendices.md#Uninterruptible	support	VIP-22 interruption lowering
+vibelang/primitives.go:isUninterruptibleProgram	admission:interruption	900-appendices.md#Uninterruptible	support	VIP-22 interruption lowering
+vibelang/primitives.go:primitiveQuickInfo	admission:interruption	900-appendices.md#Uninterruptible	support	VIP-22 interruption lowering
+vibelang/primitives.go:lowering.visitMaskBlock	admission:interruption	900-appendices.md#Uninterruptible	support	VIP-22 interruption lowering
+vibelang/producers.go:isProducer	admission:producer	900-appendices.md#Producer	support	VIP-21 producer and yield lowering
+vibelang/producers.go:producersOf	admission:producer	900-appendices.md#Producer	support	VIP-21 producer and yield lowering
+vibelang/producers.go:streamInterface	admission:producer	900-appendices.md#Producer	support	VIP-21 producer and yield lowering
+vibelang/producers.go:producerType	admission:producer	900-appendices.md#Producer	support	VIP-21 producer and yield lowering
+vibelang/producers.go:streamChannel	admission:producer	900-appendices.md#Producer	support	VIP-21 producer and yield lowering
+vibelang/producers.go:iteratedElementType	admission:producer	900-appendices.md#Producer	support	VIP-21 producer and yield lowering
+vibelang/producers.go:isStreamLoop	admission:producer	900-appendices.md#Producer	support	VIP-21 producer and yield lowering
+vibelang/producers.go:forEachStreamLoop	admission:producer	900-appendices.md#Producer	support	VIP-21 producer and yield lowering
+vibelang/producers.go:analyzer.hasStreamLoop	admission:producer	900-appendices.md#Producer	support	VIP-21 producer and yield lowering
+vibelang/producers.go:analyzer.addStreamLoop	admission:producer	900-appendices.md#Producer	support	VIP-21 producer and yield lowering
+vibelang/producers.go:newProducerPlan	admission:producer	900-appendices.md#Producer	support	VIP-21 producer and yield lowering
+vibelang/producers.go:producerPlan.planProducer	admission:producer	900-appendices.md#Producer	support	VIP-21 producer and yield lowering
+vibelang/producers.go:isClosingLoop	admission:producer	900-appendices.md#Producer	support	VIP-21 producer and yield lowering
+vibelang/producers.go:bodyPauses	admission:producer	900-appendices.md#Producer	support	VIP-21 producer and yield lowering
+vibelang/producers.go:lowering.visitProducer	admission:producer	900-appendices.md#Producer	support	VIP-21 producer and yield lowering
+vibelang/producers.go:bindingMayThrow	admission:producer	900-appendices.md#Producer	support	VIP-21 producer and yield lowering
+vibelang/producers.go:lowering.producerBindingBoundary	admission:producer	900-appendices.md#Producer	support	VIP-21 producer and yield lowering
+vibelang/producers.go:lowering.visitYield	admission:producer	900-appendices.md#Producer	support	VIP-21 producer and yield lowering
+vibelang/producers.go:lowering.visitStreamLoop	admission:producer	900-appendices.md#Producer	support	VIP-21 producer and yield lowering
+vibelang/producers.go:lowering.closingLoopLabel	admission:producer	900-appendices.md#Producer	support	VIP-21 producer and yield lowering
+vibelang/producers.go:lowering.runForOf	admission:producer	900-appendices.md#Producer	support	VIP-21 producer and yield lowering
+vibelang/producers.go:lowering.loopBodyStatements	admission:producer	900-appendices.md#Producer	support	VIP-21 producer and yield lowering
+vibelang/producers.go:lowering.runForTry	admission:for-try	900-appendices.md#ForTry	support	VIP-20 consumes a Stream with runForEachWhile
+vibelang/producers.go:lowering.javaScriptIterable	admission:native-for-of	900-appendices.md	support	Appendix A inherits TypeScript for...of; preserve native IteratorClose and next argument counts even for Stream-branded iterables
+vibelang/provide.go:init	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 providers
+vibelang/provide.go:isProvideBlock	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 providers
+vibelang/provide.go:isProvideLayer	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 providers
+vibelang/provide.go:provideLayer	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 providers
+vibelang/provide.go:hasProvideBlock	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 providers
+vibelang/provide.go:analyzer.provideFlow	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 providers
+vibelang/provide.go:emptyProvider	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 providers
+vibelang/provide.go:combineProviders	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 providers
+vibelang/provide.go:providerExpression	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 providers
+vibelang/provide.go:providerChannelsOf	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 providers
+vibelang/provide.go:providerType	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 providers
+vibelang/provide.go:providerTuple	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 providers
+vibelang/provide.go:providerSpread	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 providers
+vibelang/provide.go:contextServices	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 providers
+vibelang/provide.go:layerChannels	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 providers
+vibelang/provide.go:lowering.visitProvideBlock	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 providers
+vibelang/provide.go:checkProvideBlocks	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 providers
+vibelang/provide.go:checkProvideProviders	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 providers
+vibelang/provide.go:effectProvideArguments	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 providers
+vibelang/provide.go:providedCallType	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 providers
+vibelang/provide.go:providerCall	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 providers
+vibelang/provide.go:providerQuickInfo	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 providers
+vibelang/regions.go:region.add	admission:regions	002-running.md	support	Control completion support; legacy Effect try paths below
+vibelang/regions.go:frame.lands	admission:regions	002-running.md	support	Control completion support; legacy Effect try paths below
+vibelang/regions.go:isJumpTarget	admission:regions	002-running.md	support	Control completion support; legacy Effect try paths below
+vibelang/regions.go:lowering.visitJumpTarget	admission:regions	002-running.md	support	Control completion support; legacy Effect try paths below
+vibelang/regions.go:lowering.visitJump	admission:regions	002-running.md	support	Control completion support; legacy Effect try paths below
+vibelang/regions.go:lowering.jumpTo	admission:regions	002-running.md	support	Control completion support; legacy Effect try paths below
+vibelang/regions.go:lowering.leave	admission:regions	002-running.md	support	Control completion support; legacy Effect try paths below
+vibelang/regions.go:jumpKind	admission:regions	002-running.md	support	Control completion support; legacy Effect try paths below
+vibelang/regions.go:lowering.visitTryStatement	admission:effect-try	-	pending	VIP-5 forbids Effect try statements; native TypeScript try remains valid
+vibelang/regions.go:lowering.regionStatements	admission:regions	002-running.md	support	Control completion support; legacy Effect try paths below
+vibelang/regions.go:lowering.regionFunction	admission:regions	002-running.md	support	Control completion support; legacy Effect try paths below
+vibelang/regions.go:lowering.visitInFrame	admission:regions	002-running.md	support	Control completion support; legacy Effect try paths below
+vibelang/regions.go:lowering.runRegion	admission:regions	002-running.md	support	Control completion support; legacy Effect try paths below
+vibelang/regions.go:lowering.dispatch	admission:regions	002-running.md	support	Control completion support; legacy Effect try paths below
+vibelang/regions.go:lowering.runNow	admission:regions	002-running.md	support	Control completion support; legacy Effect try paths below
+vibelang/regions.go:canCompleteNormally	admission:regions	002-running.md	support	Control completion support; legacy Effect try paths below
+vibelang/regions.go:varList	admission:regions	002-running.md	support	Control completion support; legacy Effect try paths below
+vibelang/regions.go:lowering.visitVar	admission:regions	002-running.md	support	Control completion support; legacy Effect try paths below
+vibelang/regions.go:lowering.hoist	admission:regions	002-running.md	support	Control completion support; legacy Effect try paths below
+vibelang/regions.go:lowering.visitPlainThrowStatement	admission:regions	002-running.md	support	Control completion support; legacy Effect try paths below
+vibelang/regions.go:lowering.isNativeCatch	admission:regions	002-running.md	support	Control completion support; legacy Effect try paths below
+vibelang/regions.go:lowering.visitPlainCatchClause	admission:regions	002-running.md	support	Control completion support; legacy Effect try paths below
+vibelang/regions.go:init	admission:regions	002-running.md	support	Control completion support; legacy Effect try paths below
+vibelang/regions.go:checkFinallyJumps	admission:regions	002-running.md	support	Control completion support; legacy Effect try paths below
+vibelang/regions.go:forEachJumpLeaving	admission:regions	002-running.md	support	Control completion support; legacy Effect try paths below
+vibelang/scopes_lower.go:newScopePlan	admission:resource-scope	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/scopes_lower.go:scopePlan.planScopes	admission:resource-scope	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/scopes_lower.go:scopePlan.planAcquisitionReference	admission:resource-scope	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/scopes_lower.go:isAcquisitionName	admission:resource-scope	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/scopes_lower.go:scopePlan.renamedAcquisitions	admission:resource-scope	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/scopes_lower.go:lowering.visitAcquisitionReference	admission:resource-scope	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/scopes_lower.go:scopePlan.planUsingDeclarations	admission:resource-scope	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/scopes_lower.go:lowering.usingCall	admission:resource-scope	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/scopes_lower.go:scopePlan.scoped	admission:resource-scope	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/scopes_lower.go:lowering.visitScoped	admission:resource-scope	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/scopes_lower.go:lowering.scopeName	admission:resource-scope	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/scopes_lower.go:lowering.scopeRegion	admission:resource-scope	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/scopes_lower.go:statementsOf	admission:resource-scope	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/scopes_lower.go:lowering.visitScopeBlock	admission:resource-scope	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/scopes_lower.go:lowering.visitScopeLoopBody	admission:resource-scope	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/scopes_lower.go:lowering.scopeBody	admission:resource-scope	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/scopes_lower.go:lowering.visitUsing	admission:resource-scope	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/scopes_lower.go:lowering.acquisition	admission:resource-scope	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/scopes_lower.go:lowering.initializerProgram	admission:resource-scope	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/scopes_lower.go:lowering.succeed	admission:resource-scope	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/scopes_lower.go:lowering.visitFork	admission:resource-scope	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/scopes_lower.go:lowering.visitUsingForOf	admission:resource-scope	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/scopes_lower.go:lowering.usingIteration	admission:resource-scope	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/scopes_lower.go:lowering.visitUsingFor	admission:resource-scope	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/services_lower.go:newServicePlan	admission:services	900-appendices.md#ServiceDeclaration	support	VIP-9 service class lowering; legacy lookup/call paths below
+vibelang/services_lower.go:servicePlan.planServiceCall	admission:services	900-appendices.md#ServiceDeclaration	support	VIP-9 service class lowering; legacy lookup/call paths below
+vibelang/services_lower.go:servicePlan.planModuleKey	admission:services	900-appendices.md#ServiceDeclaration	support	VIP-9 service class lowering; legacy lookup/call paths below
+vibelang/services_lower.go:lowering.moduleKey	admission:implicit-service-call	-	pending	Denied VIP-10 and VIP-5; no implicit service/config execution
+vibelang/services_lower.go:servicePlan.hasKey	admission:services	900-appendices.md#ServiceDeclaration	support	VIP-9 service class lowering; legacy lookup/call paths below
+vibelang/services_lower.go:servicePlan.planServiceNode	admission:services	900-appendices.md#ServiceDeclaration	support	VIP-9 service class lowering; legacy lookup/call paths below
+vibelang/services_lower.go:servicePlan.looksUp	admission:services	900-appendices.md#ServiceDeclaration	support	VIP-9 service class lowering; legacy lookup/call paths below
+vibelang/services_lower.go:analyzer.addServiceLookup	admission:services	900-appendices.md#ServiceDeclaration	support	VIP-9 service class lowering; legacy lookup/call paths below
+vibelang/services_lower.go:lowering.visitServiceLookup	admission:implicit-service-call	-	pending	Denied VIP-10 and VIP-5; no implicit service/config execution
+vibelang/services_lower.go:lowering.visitModuleAlias	admission:inline-module	-	pending	Denied VIP-25
+vibelang/services_lower.go:lowering.visitServiceClass	admission:services	900-appendices.md#ServiceDeclaration	support	VIP-9 service class lowering; legacy lookup/call paths below
+vibelang/services_lower.go:operationArity	admission:services	900-appendices.md#ServiceDeclaration	support	VIP-9 service class lowering; legacy lookup/call paths below
+vibelang/trust_lower.go:newTrustedPlan	admission:trusted	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/trust_lower.go:plan.planTrustedCalls	admission:trusted	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/trust_lower.go:plan.unshadowedClass	admission:trusted	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/trust_lower.go:analyzer.expectedFailures	admission:trusted	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/trust_lower.go:analyzer.addFailures	admission:trusted	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/trust_lower.go:analyzer.hasEscapingFailure	admission:trusted	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/trust_lower.go:analyzer.forEachFailingCall	admission:trusted	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/trust_lower.go:lowering.classReference	admission:trusted	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/trust_lower.go:lowering.classAlias	admission:trusted	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/trust_lower.go:lowering.namedImportDeclarations	admission:trusted	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/trust_lower.go:lowering.visitTrustedCall	admission:trusted	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/trust_lower.go:lowering.visitTrustedPlainCall	admission:trusted	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/trust_lower.go:lowering.classArray	admission:trusted	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/trust_lower.go:lowering.trustedThunk	admission:trusted	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/trust_lower.go:lowering.arrow	admission:trusted	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/trust_lower.go:containsYield	admission:trusted	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/try.go:init	admission:legacy-try	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/try.go:isTryCall	admission:legacy-try	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/try.go:tryOperand	admission:legacy-try	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/try.go:checkTries	admission:legacy-try	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/try.go:checkTry	admission:legacy-try	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/try.go:tryKeyword	admission:legacy-try	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/try.go:triedText	admission:legacy-try	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/try.go:checkTriedCall	admission:legacy-try	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/try.go:retiredTryArguments	admission:legacy-try	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/try.go:retiredTryRewrite	admission:legacy-try	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/try.go:retiredTryMapper	admission:legacy-try	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/try.go:hatchRan	admission:legacy-try	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/try.go:isStableInput	admission:legacy-try	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/try.go:runsWhereItStands	admission:legacy-try	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/try.go:lowering.visitTry	admission:legacy-try	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/wire.go:init	admission:wire	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/wire.go:wireArgument.text	admission:wire	-	pending	Denied VIP-24: legacy wire provider rendering
+vibelang/wire.go:isWireCall	admission:wire	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/wire.go:isRuntimeExport	admission:wire	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/wire.go:runtimeExportOf	admission:wire	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/wire.go:packageNameOf	admission:wire	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/wire.go:layerParts	admission:wire	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/wire.go:unionMembers	admission:wire	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/wire.go:wireArguments	admission:wire	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/wire.go:fixedTupleElements	admission:wire	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/wire.go:graphOfWire	admission:wire	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/wire.go:findCycle	admission:wire	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/wire.go:consumersFirst	admission:wire	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/wire.go:checkWires	admission:wire	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/wire.go:checkWire	admission:wire	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/wire.go:neededFrom	admission:wire	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/wire.go:servicePlan.planWire	admission:wire	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/wire.go:lowering.visitWireCall	admission:wire	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/wire.go:lowering.visitWireArguments	admission:wire	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/wire.go:checkRunners	admission:wire	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/wire.go:mainImported	admission:wire	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/wire.go:bindsMain	admission:wire	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/wire.go:checkTest	admission:wire	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/wire.go:checkProgram	admission:wire	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/wire.go:noteEntryLayers	admission:wire	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/wire.go:runnerRequirements	admission:wire	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/wire.go:services.wireNeeders	admission:wire	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+vibelang/wire.go:providedBy	admission:wire	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
+parser/vibelang_catch.go:Parser.parseVibeLangCatchRest@catch-value	admission:catch-value	900-appendices.md#CatchHandler,002-running.md	recovery	VIP-5: a value handler is parsed only to report EK0509 with its quick fix (4488a715)
+parser/vibelang_effect.go:Parser.parseShorthandFunctionDeclaration@effect-shorthand	admission:effect-shorthand	900-appendices.md#EffectShorthand	recovery	VIP-1: explicitly specified recovery for EK4618; not language admission
+parser/vibelang.go:Parser.parseServiceDeclaration@control-declaration	admission:control-declaration	-	pending	Open VIP-35 does not admit control declarations
+parser/vibelang_fibers.go:Parser.parseVibeLangJoin@join-aggregate	admission:join-aggregate	-	pending	VIP-17 admits grammar operand but not aggregate Fiber join semantics
+parser/vibelang_fibers.go:Parser.nextTokenStartsLegacyForkOperand	admission:fork	900-appendices.md#ForkExpression	recovery	VIP-1/17: outside source Effect context, legacy fork operands are recognized only for their diagnostics and migration
+parser/vibelang_fibers.go:Parser.nextTokenStartsLegacyJoinOperand	admission:join	900-appendices.md#JoinExpression	recovery	VIP-1/17: outside source Effect context, legacy join operands are recognized only for their diagnostics and migration
+parser/vibelang_fiber_context.go:Parser.setVibeLangFiberContext	admission:fork	900-appendices.md#ForkExpression,900-appendices.md#JoinExpression	support	Appendix A source Effect parameter for the reserved fork and join operators (VIP-1/17)
+parser/vibelang_fiber_context.go:Parser.parseVibeLangOrdinaryInitializer	admission:fork	900-appendices.md#ForkExpression,900-appendices.md#JoinExpression	support	Appendix A source Effect parameter for the reserved fork and join operators (VIP-1/17)
+parser/vibelang_execution_power.go:Parser.reportVibeLangExecutionPower	admission:execution-power	900-appendices.md#TryExpression,900-appendices.md#ForkExpression,900-appendices.md#JoinExpression	recovery	EK0510: an unparenthesized try, fork or join left of ** is rejected; not language admission
+vibelang/services_lower.go:lowering.visitServiceLookup@service-call	admission:service-call	-	pending	Denied VIP-10 implicit service member lookup
+parser/vibelang_provide_newline.go:Parser.checkVibeLangProviderLineBreaks	admission:provide	900-appendices.md#ProvideStatement,900-appendices.md#Provider	recovery	VIP-12: reports line breaks between provider list commas; not language admission
+parser/vibelang_do.go:Parser.checkDoBoundary	admission:do	900-appendices.md,002-running.md	recovery	VIP-2: pinned TC39 do-expression static checks
+parser/vibelang_do.go:Parser.checkDoEnds	admission:do	900-appendices.md,002-running.md	recovery	VIP-2: pinned TC39 do-expression static checks
+parser/vibelang_do.go:Parser.checkDoLoopHead	admission:do	900-appendices.md,002-running.md	recovery	VIP-2: pinned TC39 do-expression static checks
+parser/vibelang_do.go:Parser.checkDoParameterVar	admission:do	900-appendices.md,002-running.md	recovery	VIP-2: pinned TC39 do-expression static checks
+parser/vibelang_do.go:Parser.doError	admission:do	900-appendices.md,002-running.md	recovery	VIP-2: pinned TC39 do-expression static checks
+parser/vibelang_do.go:Parser.doForTryHeadJump	admission:do	900-appendices.md,002-running.md	recovery	VIP-2: pinned TC39 do-expression static checks
+parser/vibelang_do.go:Parser.doSite	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:Parser.mapperCompletion	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:Parser.mapperCompletionOf	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:Parser.parseVibeLangDos	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:Parser.prepareDoMatches	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:Parser.recordVibeLangDo	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:Parser.transparentFunctionOf	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:compoundOperator	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:doLowering.assign	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:doLowering.binary	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:doLowering.callee	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:doLowering.complete	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:doLowering.completeList	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:doLowering.completeSlot	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:doLowering.conditional	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:doLowering.declarations	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:doLowering.expr	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:doLowering.letStatement	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:doLowering.lift	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:doLowering.lowerIn	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:doLowering.ordered	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:doLowering.properties	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:doLowering.ref	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:doLowering.reset	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:doLowering.shortCircuit	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:doLowering.slot	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:doLowering.spill	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:doLowering.statement	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:doLowering.statements	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:doLowering.temp	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:doLowering.undefined	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:doLowering.variableStatement	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:endsBadly	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:endsBadlyStatement	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:forEachDoStatement	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:hasLabel	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:isAwaitLiteralOperation	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:isBreakList	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:isBreakStatement	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:isEmptyList	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:isEmptyStatement	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:isIntrinsicCall	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:isLoopChain	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:isPureRead	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:isSynthesizedArrow	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:isTryOperation	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:jumpTargetWithin	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:keywordOf	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:loopHeadOf	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:setExpression	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:setStatement	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:setsCompletion	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:withoutEmpty	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_effect.go:Parser.isStartOfVibeLangEffectBlock	admission:effect-block	900-appendices.md#EffectBlock	admitted	VIP-2: expression-position effect block; separated from the VIP-1 function entry point
+parser/vibelang_effect.go:Parser.parseVibeLangEffectBlock	admission:effect-block	900-appendices.md#EffectBlock	admitted	VIP-2: expression-position effect block; separated from the VIP-1 function entry point
+parser/vibelang_fibers.go:Parser.parseVibeLangFork@outside-effect	admission:fork-outside-effect	-	pending	VIP-1/17 requires Effect context; an unreachable legacy fork prefix currently reports only name/discard diagnostics
+parser/vibelang_fibers.go:Parser.parseVibeLangJoin@outside-effect	admission:join-outside-effect	-	pending	VIP-1/17 requires Effect context; a legacy join prefix in plain code currently reports only name and EK4611 operand diagnostics
+parser/vibelang_data.go:Parser.parseDataFields	admission:data	900-appendices.md#DataDeclaration	support	VIP-16 data members; a missing member separator recovers as EK1605 (decided detail 241)
+parser/vibelang_data.go:dataMemberSeparatorDiagnostic	admission:data	900-appendices.md#DataDeclaration	recovery	VIP-16 / decided detail 241: EK1605 reports a missing data member separator
+parser/vibelang_default_data_export.go:Parser.parseVibeLangDefaultDataExport	admission:data	900-appendices.md#DataDeclaration,900-appendices.md#SchemaDeclaration	recovery	Chapter 006: export default schema and export default data are EK1501 and EK1603; read as named exports only to keep the module boundary
+parser/vibelang_default_data_export.go:Parser.skipSchemaTypeParameters	admission:schema	900-appendices.md#SchemaDeclaration	recovery	Chapter 006: schema type parameters are EK1502; read only so the declaration causes no second error
+parser/vibelang_default_data_export.go:Parser.vibelangDeclarationError	admission:data	900-appendices.md#DataDeclaration,900-appendices.md#SchemaDeclaration	recovery	Reports the Chapter 006 declaration syntax errors EK1501, EK1502 and EK1603
+parser/vibelang_match.go:Parser.markUncovered	admission:match	900-appendices.md#MatchExpression	support	Chapter 004 Coverage / decided detail 78: and and not arms cover nothing (EK4701); flags their tests for the checker
+parser/vibelang_match.go:bindsBesideOneTest	admission:match	900-appendices.md#MatchExpression	support	Chapter 004 Coverage / decided detail 78: an and whose other operands only bind covers what its test covers
+parser/vibelang_match.go:onlyBinds	admission:match	900-appendices.md#MatchExpression	support	Chapter 004 Coverage / decided detail 78: a pattern that only binds and tests key presence
+vibelang/lower.go:bodyStatements	admission:effect-function-support	001-functions.md,002-running.md	support	VIP-1: callable body helper relocated from retired plain-function lowering
+vibelang/trust_lower.go:inCatchingTry	admission:trusted	-	pending	Legacy trusted-exception hatch catch-context helper; no accepted VIP grants the trusted API
+parser/vibelang_do.go:Parser.completionSite	admission:do	900-appendices.md,002-running.md	support	VIP-2: completion temporary retains the contextual type of the source do-expression site
+parser/vibelang_do.go:anonymousDoValue	admission:do	900-appendices.md,002-running.md	support	VIP-2: identify anonymous source values so a do temporary does not infer a new native name
+parser/vibelang_do.go:doLowering.finish	admission:do	900-appendices.md,002-running.md	support	VIP-2: finish an earlier operand or spread before the following do expression runs
+parser/vibelang_do.go:doLowering.method	admission:do	900-appendices.md,002-running.md	support	VIP-2: preserve a member callee and its receiver before a later do expression
+parser/vibelang_do.go:doLowering.orderedWith	admission:do	900-appendices.md,002-running.md	support	VIP-2: finish do-bearing operands in native source evaluation order
+parser/vibelang_do.go:doLowering.propertyKey	admission:do	900-appendices.md,002-running.md	support	VIP-2: finish a computed property key and its native conversion before later do work
+parser/vibelang_do.go:doLowering.stringify	admission:do	900-appendices.md,002-running.md	support	VIP-2: preserve native template substitution conversion before a later do expression
+parser/vibelang_do.go:doLowering.template	admission:do	900-appendices.md,002-running.md	support	VIP-2: lower template substitutions in source order without adding an execution boundary
+parser/vibelang_do.go:doLowering.valueOnly	admission:do	900-appendices.md,002-running.md	support	VIP-2: preserve value-only completion and source anonymous names across do temporaries
+parser/vibelang_do.go:isMemberCallee	admission:do	900-appendices.md,002-running.md	support	VIP-2: recognize native member callees for receiver-preserving do lowering

@@ -37,13 +37,14 @@ const (
 )
 
 type grammarGsym struct {
-	kind  grammarSymKind
-	text  string // a nonterminal's name, a token or a class
-	nt    int
-	seqs  [][]string
-	on    bool // [+Effect] rather than [~Effect]; for a lookahead, on one line
-	prose bool // an assertion only Appendix A's prose rules make
-	eff   bool // the symbol stands in effect code ([+Effect])
+	kind      grammarSymKind
+	text      string // a nonterminal's name, a token or a class
+	nt        int
+	seqs      [][]string
+	on        bool // [+Effect] rather than [~Effect]; for a lookahead, on one line
+	prose     bool // an assertion only Appendix A's prose rules make
+	effectArg int8 // explicit [+Effect] or [~Effect] on this nonterminal
+	eff       bool // the symbol stands in effect code ([+Effect])
 }
 
 type grammarGrule struct {
@@ -159,10 +160,11 @@ func isGrammarName(s string) bool {
 
 // A notation element is a symbol, a name or a group, with its suffix.
 type grammarNelem struct {
-	sym    *grammarGsym
-	name   string
-	alts   [][]grammarNelem
-	suffix byte
+	sym       *grammarGsym
+	name      string
+	alts      [][]grammarNelem
+	suffix    byte
+	effectArg int8
 }
 
 // A grammarNdef is one production as written: its alternatives, their prose and
@@ -174,6 +176,7 @@ type grammarNdef struct {
 	comments []string
 	line     int
 	vibe     bool
+	source   string // pinned external proposal, when not an Appendix A production
 }
 
 // grammarSplitAlts splits a production body at its top-level "|".
@@ -317,6 +320,12 @@ func grammarParseElems(toks []grammarNtok, i int) ([][]grammarNelem, int) {
 		case t.kind == 'w':
 			e = grammarNelem{name: t.text}
 			i++
+			if i < len(toks) && toks[i].kind == 'b' {
+				if arg, ok := grammarEffectArgument(toks[i].text); ok {
+					e.effectArg = arg
+					i++
+				}
+			}
 		default:
 			i++
 			continue
@@ -387,6 +396,7 @@ CaseClause = "case" Expression ":" Statement* | "default" ":" Statement*
 Declaration = HoistableDeclaration | ClassDeclaration | InterfaceDeclaration | TypeAliasDeclaration | ImportDeclaration | ExportDeclaration
 HoistableDeclaration = FunctionDeclaration
 Block = "{" Statement* "}"
+FunctionBody = Statement*
 VariableStatement = LetOrConst BindingList StatementEnd | "using" [no LineTerminator here] BindingList StatementEnd
 LetOrConst = "const" | "let" | "var"
 BindingList = LexicalBinding | BindingList "," LexicalBinding
@@ -517,6 +527,7 @@ Name = BindingIdentifier
 // PrimaryExpression)" or "(where ECMAScript has AwaitExpression)" overrides
 // the table.
 var grammarSubsetHooks = []struct{ at, name string }{
+	{"PrimaryExpression", "PipeTopic"},
 	{"PrimaryExpression", "EffectFunction"},
 	{"PrimaryExpression", "Producer"},
 	{"PrimaryExpression", "EffectBlock"},
@@ -729,6 +740,16 @@ func grammarBuildGrammar(a *grammarAppendixData) *grammarCfg {
 		}
 	}
 	defs = append(defs, a.defs...)
+	// Appendix A incorporates the pinned Hack proposal. Its topic primary is
+	// external, not an inherited TypeScript production; install it only when
+	// Appendix A admits PipeExpression, keeping the TS-only grammar unchanged.
+	if defined["PipeExpression"] {
+		topic := grammarParseDef("PipeTopic", `"%"`, 0)
+		topic.vibe = true
+		topic.source = "vips/tc39-pipeline-operator/spec.html"
+		defs = append(defs, topic)
+		defined["PipeTopic"] = true
+	}
 	all := map[string]bool{}
 	for _, d := range defs {
 		all[d.name] = true
@@ -789,6 +810,9 @@ func grammarBuildGrammar(a *grammarAppendixData) *grammarCfg {
 		src := "ts"
 		if d.vibe {
 			src = fmt.Sprintf("%s:%d", a.file, d.line)
+		}
+		if d.source != "" {
+			src = d.source
 		}
 		alts := slices.Clone(d.alts)
 		alts = append(alts, extra[d.name]...)
@@ -880,13 +904,16 @@ func (g *grammarCfg) parameterize() *grammarCfg {
 			child := e && !plain
 			for k := range rhs {
 				s := &rhs[k]
-				if s.kind == grammarSymTok && s.text == "effect" {
+				if s.kind == grammarSymTok && s.text == "effect" || s.kind == grammarSymNT && s.text == "EffectModifier" {
 					child = true
 				}
 				s.eff = e
 				if s.kind == grammarSymNT {
 					s.eff = child
-					s.nt = idx(s.nt, child)
+					if s.effectArg != 0 {
+						s.eff = s.effectArg > 0
+					}
+					s.nt = idx(s.nt, s.eff)
 					s.text = h.names[s.nt]
 				}
 			}
@@ -941,7 +968,7 @@ func (g *grammarCfg) expand(owner string, alt []grammarNelem, src string, vibe b
 		case grammarTokenClasses[e.name]:
 			s = grammarGsym{kind: grammarSymClass, text: e.name}
 		case e.name != "":
-			s = grammarGsym{kind: grammarSymNT, text: e.name}
+			s = grammarGsym{kind: grammarSymNT, text: e.name, effectArg: e.effectArg}
 		default:
 			g.fresh++
 			name := fmt.Sprintf("%s#%d", owner, g.fresh)
@@ -954,6 +981,9 @@ func (g *grammarCfg) expand(owner string, alt []grammarNelem, src string, vibe b
 		}
 		if e.suffix != 0 {
 			label := s.text
+			if s.effectArg != 0 {
+				label += fmt.Sprintf("[Effect=%d]", s.effectArg)
+			}
 			if s.kind != grammarSymNT && s.kind != grammarSymClass {
 				label = fmt.Sprint(s)
 			}
@@ -1154,4 +1184,25 @@ func (g *grammarCfg) follow() []map[string]bool {
 		}
 	}
 	return f
+}
+
+// Attached arguments parameterize a nonterminal; unlike a prefix [+Effect]
+// guard they consume no source token. The lab models Effect only, while
+// retaining ECMAScript's other parameter names without opaque terminals.
+func grammarEffectArgument(text string) (int8, bool) {
+	var effect int8
+	for _, raw := range strings.Split(text, ",") {
+		arg := strings.TrimSpace(raw)
+		if len(arg) < 2 || !strings.ContainsRune("+~?", rune(arg[0])) ||
+			!slices.Contains([]string{"In", "Yield", "Await", "Effect", "Return", "Default"}, arg[1:]) {
+			return 0, false
+		}
+		if arg == "+Effect" {
+			effect = 1
+		}
+		if arg == "~Effect" {
+			effect = -1
+		}
+	}
+	return effect, true
 }

@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:throw-expression\nfunction f(x, e) { return x ?? throw e; }")

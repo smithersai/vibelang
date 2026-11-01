@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:layer-declaration\nservice S { n: number } layer Live: S { n: 1 }")

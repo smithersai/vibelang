@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:trailing-block\nfunction f() { return g(1) { return 2; }; }")

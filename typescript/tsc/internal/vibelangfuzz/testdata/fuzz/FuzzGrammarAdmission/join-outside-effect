@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:try-function-fork\n0BAAC77C87D8A")

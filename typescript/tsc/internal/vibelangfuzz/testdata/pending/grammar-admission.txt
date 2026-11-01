@@ -1,0 +1,14 @@
+# Reverse parser admission: known legacy syntax and diagnostic recovery.
+FuzzGrammarAdmission admission:throw-expression compiler Appendix A: general throw expressions are unmentioned; x ?? throw e is with Will; lane impl-hunt-admission
+FuzzGrammarAdmission corpus:throw-expression compiler Appendix A: general throw expressions are unmentioned; x ?? throw e is with Will; lane impl-hunt-admission
+FuzzGrammarAdmission admission:inline-module compiler VIP-25: inline TypeScript escape modules are denied; lane impl-hunt-admission
+FuzzGrammarAdmission corpus:inline-module compiler VIP-25: inline TypeScript escape modules are denied; lane impl-hunt-admission
+FuzzGrammarAdmission admission:service-shape compiler VIP-9: service declarations require the member body, not a colon shape; lane impl-hunt-admission
+FuzzGrammarAdmission corpus:service-shape compiler VIP-9: service declarations require the member body, not a colon shape; lane impl-hunt-admission
+FuzzGrammarAdmission admission:layer-declaration compiler VIP-9/12: no layer declaration production is adopted; lane impl-hunt-admission
+FuzzGrammarAdmission corpus:layer-declaration compiler VIP-9/12: no layer declaration production is adopted; lane impl-hunt-admission
+FuzzGrammarAdmission corpus:throw-expression-return compiler Appendix A: general throw expressions are unmentioned, including return throw try p; lane impl-hunt-admission
+FuzzGrammarAdmission admission:fork-outside-effect compiler VIP-1/17: a legacy fork prefix in plain code reports only name/discard errors instead of a syntax-placement rejection; lane impl-hunt-admission
+FuzzGrammarAdmission corpus:fork-outside-effect compiler VIP-1/17: plain-function unreachable fork prefix is outside the Effect grammar; lane impl-hunt-admission
+FuzzGrammarAdmission admission:join-outside-effect compiler VIP-1/17: a legacy join prefix in plain code reports only an operand type error instead of a syntax-placement rejection; lane impl-hunt-admission
+FuzzGrammarAdmission corpus:join-outside-effect compiler VIP-1/17: plain-function unreachable join prefix is outside the Effect grammar; lane impl-hunt-admission
