@@ -271,6 +271,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 - A package built with `tsdown` could fail to parse migrated sources because setup omitted its plugin; setup now wires every static config and local config factory, and installs the plugin in the owning package.
+
+- A migration batch could commit an earlier batch's module or an unrelated test that a fix rewrote. Verification and recording now reject files outside the batch and its recorded codemod edits.
 - Schema fuzzing could miss readonly-record alias regressions outside one spelling; keyed checks now cover the alias, mutability and required-key combinations while keeping unresolved compiler gaps explicit.
 
 - The install site named an unpublished compiler version and native Windows packages; it now uses npm’s published version and platforms, with WSL guidance until Windows packages are published.

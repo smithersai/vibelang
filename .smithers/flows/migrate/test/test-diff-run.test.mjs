@@ -16,7 +16,7 @@ const put = (root, file, text) => {
   mkdirSync(dirname(join(root, file)), { recursive: true })
   writeFileSync(join(root, file), text)
 }
-async function fixture(body) {
+async function fixture(body, { initial = {} } = {}) {
   const root = mkdtempSync(join(tmpdir(), "test-diff-repo-"))
   const target = join(root, "repo"), run = join(root, "run"), p = paths(run)
   try {
@@ -26,6 +26,7 @@ async function fixture(body) {
     put(target, "package.json", "{}\n")
     put(target, "src/X.ts", "export const f = () => 1\n")
     put(target, "test/x.test.ts", 'import { f } from "../src/X.ts"\nexpect(f()).toBe(1)\n')
+    for (const [file, text] of Object.entries(initial)) put(target, file, text)
     const base = await Jj.commit(target, "unmodified baseline")
     mkdirSync(join(target, "node_modules"))
     symlinkSync(dirname(require.resolve("typescript/package.json")), join(target, "node_modules/typescript"))
@@ -61,12 +62,11 @@ test("record --force cannot commit an edited assertion, and writes its reason", 
 }))
 test("record rechecks after a formatter edits a previously verified test", async () => fixture(async ({ target, run, p, base }) => {
   writeJson(p.verify("01"), { ok: true })
-  put(target, "package.json", '{"scripts":{"format":"prettier --write"}}')
   put(target, "node_modules/.bin/prettier", '#!/bin/sh\nsed -i "s/toBe(1)/toBe(2)/" test/x.test.ts\n')
   await must("chmod +x node_modules/.bin/prettier", { cwd: target })
   await assert.rejects(record({ run, batch: "01" }), /forbidden test\/fixture edits/)
   assert.equal(await Jj.commitId(target, "@-"), base)
-}))
+}, { initial: { "package.json": '{"scripts":{"format":"prettier --write"}}' } }))
 test("recorded selector/import proof is included in the PR body artifact", async () => fixture(async ({ run, p }) => {
   const result = await record({ run, batch: "01", force: "no other checks in this fixture" })
   assert.equal(result.testDiff.ok, true)
@@ -95,7 +95,7 @@ test("verify fails a batch even when all target tests and compiler checks pass",
   assert.equal(bad.checks.tests, true)
   assert.equal(bad.ok, false)
   assert.equal(bad.checks.testEdits, false)
-}))
+}, { initial: { "package.json": '{"private":true}', "tsconfig.json": '{"include":["src/**/*"]}' } }))
 test("specifier proof reads declarationImportStyle from the importer's inherited config", async () => fixture(async ({ root, target, base, renames }) => {
   put(target, "tsconfig.base.json", '{"compilerOptions":{"declarationImportStyle":"js"}}')
   put(target, "tsconfig.json", '{"extends":"./tsconfig.base.json"}')
@@ -148,6 +148,8 @@ test("dependency assertion proof reads both pinned manifests and reaches the PR 
   put(target, "test/x.test.ts", old)
   const base = await Jj.commit(target, "dependency assertion baseline")
   put(target, "package.json", '{"dependencies":{"effect":"4.1.0","vibelang-runtime":"0.0.12"}}')
+  const setup = await Jj.commit(target, "setup adds runtime dependency")
+  writeJson(p.setup, { jj: { upgradeCommit: base, setupCommit: setup } })
   put(target, "test/x.test.ts", next)
   const result = await verifyRepositoryTests({ ts, target, base, renames: [], scratch: join(root, "dependency-proof") })
   assert.equal(result.ok, true, JSON.stringify(result))

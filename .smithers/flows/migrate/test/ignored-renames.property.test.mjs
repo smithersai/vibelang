@@ -32,7 +32,7 @@ test("fixture repositories live outside the flow's source tree", () => {
 
 test("the migration contract records the files the batch renamed", () => {
   assert.ok(contract.includes("Renames the batch to `.vibe`"))
-  assert.ok(contract.includes("Commits the batch with jj, naming its files"))
+  assert.match(contract, /commits the batch with `?jj`?, naming its files/i)
 })
 
 function refusalReason(error, root, from, to) {

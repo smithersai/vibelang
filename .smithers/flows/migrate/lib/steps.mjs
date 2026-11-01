@@ -21,6 +21,7 @@ import { splitBatchPlatform } from "./platform.mjs"
 import { check, newErrors, styleProblems, summarize } from "./diagnostics.mjs"
 import { preservedErrorAdvisories } from "./preserved-errors.mjs"
 import { compareDeclarations, recordDeclarationSurface, emitDeclarations, emitErrorsIn, emitPackageJs, loadTypeScript, sidecarChanges } from "./declarations.mjs"
+import { foreignChanges } from "./touched.mjs"
 import { compareTests, regressionIssue, runTests } from "./tests.mjs"
 import { verifyRepositoryTests } from "./test-diff-run.mjs"
 import { isProtectedFile, testDiffMarkdown } from "./test-diff.mjs"
@@ -1506,6 +1507,9 @@ export async function verify(options) {
   const compiler = compilerOf(config)
   const logs = join(p.batch(b), "logs")
 
+  const codemod = readJsonIf(p.codemod(b))
+  const testDiffBefore = await testEdits(config, p, thePlan, b, typeScriptOf(config))
+  const before = foreignChanges(await Jj.changedPaths(t), { files, codemod, testDiff: testDiffBefore })
   const hooks = await regenerate(config,p,"verify-" + b)
   // Certify the generated and formatted text that record will commit.
   const formatted = await formatVibe(config, migrated, join(logs, "verify-format-vibe.log"))
@@ -1556,6 +1560,8 @@ export async function verify(options) {
     declarations[pkg.dir] = compareDeclarations(ts, baselineDir, outDir)
     emitErrors.push(...emitErrorsIn(emitted.diagnostics, migrated, { code: emitted.code, log: join(logs, "dts-" + slug(pkg.dir) + ".log") }))
   }
+  const after = foreignChanges(await Jj.changedPaths(t), { files, codemod, testDiff })
+  const foreign = [...new Map([...before, ...after].map(c => [c.path, c])).values()]
   const batchErrors = checked.diagnostics.filter((d) => migrated.includes(d.file) && d.category === "error")
   const style = checked.style.filter((d) => migrated.includes(d.file))
   const result = {
@@ -1573,13 +1579,16 @@ export async function verify(options) {
     selectorChecks,
     testDiff,
     compile: { batchErrors, newErrors: checked.newErrors, style, emitErrors },
+    foreign,
+    testDiffBefore,
     checks: {
       tests: testResults.ok,
-      testEdits: testDiff.ok && (measurement?.ok ?? true),
+      testEdits: testDiffBefore.ok && testDiff.ok && (measurement?.ok ?? true),
       selectors: selectorChecks.every(proof => proof.pass),
       baselinePrepared: baselineTests.code === 0 || baselineTests.build?.state === "complete",
       declarations: Object.values(declarations).every((d) => d === "not published" || d.identical),
       declarationEmit: emitErrors.length === 0,
+      foreignFiles: foreign.length === 0,
       batchErrors: batchErrors.length === 0,
       newErrors: checked.newErrors.length === 0,
       style: style.length === 0,
@@ -1601,6 +1610,13 @@ export async function record(options) {
   if (!verified?.ok && !options.force) throw new Error(`batch ${b} has not passed verify; run verify, or record with --force <reason>`)
   const t = config.target
   const files = batchFiles(config, thePlan, b)
+  const assertScope = async () => {
+    const testDiff = await testEdits(config, p, thePlan, b, typeScriptOf(config))
+    if (!testDiff.ok) throw new Error("batch " + b + ": forbidden test/fixture edits; see " + join(p.batch(b), "test-diff.md"))
+    const foreign = foreignChanges(await Jj.changedPaths(t), { files, codemod: readJsonIf(p.codemod(b)), testDiff })
+    if (foreign.length) throw new Error("files outside the batch's scope: " + foreign.map(c => c.path).join(", "))
+  }
+  await assertScope()
   // Legacy verify receipts and other formatters can still change the tree.
   // Re-certify that exact tree before counting its tokens or committing it.
   const beforeFormat = await Jj.commitId(t, "@")
@@ -1610,6 +1626,7 @@ export async function record(options) {
   // Certify the emitted graph after all source formatting, before checking final bytes.
   await emitMigratedJs(config, t, join(p.batch(b), "logs"))
   const afterFormat = await Jj.commitId(t, "@")
+  await assertScope()
   if (thePlan.mode === "one-pass" && (formatted.code !== 0 || vibeFormatted.code !== 0)) throw new Error("record refused: formatter failed")
   const verificationRefreshed = beforeFormat !== afterFormat || thePlan.mode === "one-pass"
   if (verificationRefreshed) {
@@ -1643,6 +1660,7 @@ export async function record(options) {
   // being committed; --force cannot waive the test-oracle contract.
   const testDiff = await testEdits(config, p, thePlan, b, typeScriptOf(config))
   if (!testDiff.ok) throw new Error(`batch ${b}: forbidden test/fixture edits; see ${join(p.batch(b), "test-diff.md")}; revert the edit or leave its module TypeScript`)
+  await assertScope()
   const commit = await Jj.commit(t, lines.join("\n"))
   if (commit) await Jj.setBookmark(t, config.bookmark, commit)
   const result = { batch: b, at: new Date().toISOString(), commit, bookmark: config.bookmark, files: rows, tokens, formatted, vibeFormatted, verificationRefreshed, testDiff, forced: verified?.ok ? null : options.force }

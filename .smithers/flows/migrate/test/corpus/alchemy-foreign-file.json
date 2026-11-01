@@ -1,0 +1,16 @@
+{
+  "key": "migrate-flow:no-foreign-file-touched",
+  "note": "alchemy-5a: the codemod's --fix rewrote packages/alchemy/src/State.vibe, which batch 01 had committed, while it migrated batch 05",
+  "batch": {
+    "files": [{ "planned": "packages/alchemy/src/Diff.ts", "path": "packages/alchemy/src/Diff.vibe", "migrated": true }],
+    "codemod": { "exportEdits": [{ "manifest": "packages/alchemy/package.json", "module": "packages/alchemy/src/Diff.vibe" }], "importEdits": [{ "file": "packages/alchemy/src/Plan.ts", "from": "./Diff.ts", "to": "./Diff.vibe" }] }
+  },
+  "changed": [
+    { "status": "R", "path": "packages/alchemy/src/Diff.vibe", "from": "packages/alchemy/src/Diff.ts" },
+    { "status": "A", "path": "packages/alchemy/src/Diff.d.vibe.ts" },
+    { "status": "M", "path": "packages/alchemy/package.json" },
+    { "status": "M", "path": "packages/alchemy/src/Plan.ts" },
+    { "status": "M", "path": "packages/alchemy/src/State.vibe" }
+  ],
+  "foreign": ["packages/alchemy/src/State.vibe"]
+}
