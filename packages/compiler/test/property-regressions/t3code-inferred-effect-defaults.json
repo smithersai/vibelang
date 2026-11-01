@@ -1,0 +1,14 @@
+{
+  "source": "t3code ProviderTextGeneration method type imported by a TypeScript provider",
+  "oracle": "Declarations are exactly what idiomatic Effect TypeScript would declare.",
+  "input": {
+    "arity": 2,
+    "syntax": "shorthand",
+    "form": "object",
+    "depth": 0,
+    "route": "relative",
+    "namespace": "subpath"
+  },
+  "pending": {},
+  "owner": "migfix-t3code"
+}
