@@ -10,7 +10,7 @@ const bodyRule = "when it is not a Block, is the home of the bindings inside it,
 test("chapter 4, VIP-7 and the pinned reconciliation give an unbraced body its own home", () => {
   const match = chapter("004-match")
   assert.ok(match.includes(bodyRule))
-  assert.ok(match.includes("so braces around a body never change a result (decided detail 245)"))
+  assert.ok(match.includes("so braces around a body never change a result ([VIP-7](../vips/0007-match.md#binding-homes-and-redeclarations))"))
   assert.ok(match.includes("An `if` head belongs to the home that contains the `if` statement"))
   assert.ok(match.includes("for (const x of xs) if (x is { id: let id }) out.push(id)"))
   assert.ok(!match.includes("nearest enclosing lexical block"))

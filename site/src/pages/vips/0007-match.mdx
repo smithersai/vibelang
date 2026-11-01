@@ -208,6 +208,18 @@ console.log(resultFlowExit) // Success([4, "7", 4, 7, 7])
 
 - **Amended 2026-10-30: explicit async-match body contexts.** The accepted Promise-producing sketch uses `[~Yield, +Await, ~Return, ~Effect]` for its subject, tests and arms. `await` is allowed; a thrown exception rejects the Promise; `return` and outward `break`/`continue` are syntax errors. A nested source callable retains its own contexts. These are the [snapshot's explicit reconciliations](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/tc39-pattern-matching/README.md#reconciliations-with-the-drafts-text); its vendored specification has no formal async-match production to supply them.
 
+### Binding homes and redeclarations
+
+The following rules specify binding homes under the adopted proposal.
+
+Two top-level patterns that bind one name in the same lexical home are a redeclaration, as two `let` declarations are, and report what such a `let` reports: `TS2451` beside another lexical declaration, `TS2300` beside a parameter.
+
+The statement body of `if`, `else`, `for`, `for…in`, `for…of`, `for await`, `for concurrent`, `for try`, `while`, `do…while` or a labeled statement, when it is not a Block, is the home of the bindings inside it, exactly as if it were wrapped in braces, and it is fresh each time the body runs, so braces around a body never change a result. An `if` head is outside its own body: `if (!(x is { id: let id })) return; use(id)` in a block reads `id` after the `if`, and the head of an `else if` belongs to the `else` body's home.
+
+A binding in a `for concurrent` limit belongs to the nearest home that encloses the loop, because the limit runs before the head environment exists; it is one cell, not copied into items.
+
+An `is` test in formal-parameter initialization is `EK0705` if a `let` or `const` pattern binding would need the parameter environment as its lexical home. This includes direct defaults, defaults nested in parameter destructuring, and evaluated computed binding keys. The same holds for a catch clause's parameter, whose environment is distinct from the catch Block. The pinned explainer leaves that scope unfinished, so no parameter-home binding is invented or moved into the body.
+
 ## Meaning in Effect TS terms
 
 `match` is plain JavaScript, not an Effect: TC39's semantics, with the arms tested in order and the subject evaluated once. It compiles to ordered tests on the subject, with no Effect involved.

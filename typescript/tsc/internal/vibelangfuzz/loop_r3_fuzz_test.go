@@ -241,8 +241,20 @@ func FuzzRestoreItemPlacement(f *testing.F) {
 
 var isHomeQuotes = []string{
 	"A binding in a `for concurrent` limit belongs to the nearest home that encloses the loop, because the limit runs before the head environment exists",
-	"The same holds for a catch clause's parameter, whose environment is distinct from the catch Block (decided detail 249).",
+	"The same holds for a catch clause's parameter, whose environment is distinct from the catch Block ([VIP-7](../vips/0007-match.md#binding-homes-and-redeclarations)).",
 	"An `if` head belongs to the home that contains the `if` statement;",
+}
+
+var isHomePublicQuotes = []string{
+	"Two top-level patterns that bind one name in the same lexical home are a redeclaration",
+	"The statement body of `if`, `else`, `for`",
+	"A binding in a `for concurrent` limit belongs to the nearest home that encloses the loop",
+	"The same holds for a catch clause's parameter, whose environment is distinct from the catch Block",
+}
+
+func requireIsHomeQuotes(t testing.TB) {
+	r3Quoted(t, "004-match.md", isHomeQuotes...)
+	r3Quoted(t, "../vips/0007-match.md", isHomePublicQuotes...)
 }
 
 var isHomePositions = []struct{ name, source, want, key string }{
@@ -255,11 +267,11 @@ var isHomePositions = []struct{ name, source, want, key string }{
 	{"guard-after-if", `const input: unknown = { code: 1 }; if (!(input is { code: let c })) return 0; c`, "", "guard:home"},
 }
 
-func TestIsHomesQuoted(t *testing.T) { r3Quoted(t, "004-match.md", isHomeQuotes...) }
+func TestIsHomesQuoted(t *testing.T) { requireIsHomeQuotes(t) }
 
 func FuzzIsHomePositions(f *testing.F) {
 	startShortBudget(f)
-	r3Quoted(f, "004-match.md", isHomeQuotes...)
+	requireIsHomeQuotes(f)
 	wrappers := []struct{ name, pre, post string }{
 		{"function", "export function f(): unknown { ", " ; return 0 }\n"},
 		{"arrow", "export const f = (): unknown => { ", " ; return 0 }\n"},

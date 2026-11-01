@@ -6,7 +6,7 @@ import { chapter, read } from "./spec-witness.mjs"
 test("chapter 4, Appendix B and VIP-7 place limit and catch-parameter bindings", () => {
   const match = chapter("004-match")
   assert.ok(match.includes("A binding in a `for concurrent` limit belongs to the nearest home that encloses the loop, because the limit runs before the head environment exists"))
-  assert.ok(match.includes("The same holds for a catch clause's parameter, whose environment is distinct from the catch Block (decided detail 249)"))
+  assert.ok(match.includes("The same holds for a catch clause's parameter, whose environment is distinct from the catch Block ([VIP-7](../vips/0007-match.md#binding-homes-and-redeclarations))"))
   assert.ok(match.includes("| an `is` pattern binding in formal-parameter or catch-parameter initialization"))
   assert.ok(match.includes("catch ({ code = (1 is let c) }: any) {} } // EK0705"))
   const row = chapter("900-appendices").split("\n").find(line => line.startsWith("| `EK0705` |")) ?? ""

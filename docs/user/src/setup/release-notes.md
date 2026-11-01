@@ -470,6 +470,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A pipe followed by a conditional, `x |> f(%) ? 1 : 2`, compiled as `x |> (f(%) ? 1 : 2)` without a word, although the pinned pipe proposal rejects a conditional at either end of a pipe; it is now `EK2301` at the `?`, which says to write `(x |> f(%)) ? 1 : 2` or `x |> (f(%) ? 1 : 2)`, and `vibelang --fix` writes `x |> (f(%) ? 1 : 2)`, the meaning it had.
 - `vibelang --fix` could keep a repair that turned one existing error into two when one kept its message and the other kept its span; each existing error now accounts for at most one error after the repair, while changed messages and spans moved by edits still match.
+
+- The pattern-binding chapter cited unpublished decision numbers for binding homes and redeclarations. It now links a public VIP-7 amendment stating those same rules.
 - A typed catch clause whose binding destructures, such as `catch ({ id }: NotFound)`, crashed the compiler and the editor with `Unhandled case in Node.Text`; it now reports `EK2112`, suggesting `catch (e)`, and its quick fix leaves the pattern alone.
 
 - Bundling a package that mixed `.ts` and `.vibe` modules could include two copies of a shared service or schema, so a built CLI failed at startup although its tests passed. The bundler plugins now select the package's `vibelang-source` exports and preserve the bundler's existing conditions, keeping one source graph.
