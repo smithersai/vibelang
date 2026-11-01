@@ -551,6 +551,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The specification left cyclic declaration output ambiguous; it now defines the retained `/*elided*/ any` output and keeps ordinary recursive-inference errors.
 
+- Diagnostic validation still treated `EK0202` as unimplemented after the compiler registered it; the registry checks and jump fuzz corpus now validate the implemented diagnostic directly.
+
 - Compiler validation could fail to build when two independent `restore` fuzz suites used the same Go test names; both suites now retain their coverage under distinct names.
 - Awaiting a Fiber or Deferred in effect code reported an error using the configurable warning codes `EK4609` and `EK4610`; it now reports the fixed placement error `EK0102` separately, so advisory severity settings keep their meaning without allowing `await` in effect code.
 

@@ -94,7 +94,7 @@ var specAhead = map[int32]string{
 	1705: renumbering, 1706: renumbering, 1803: renumbering, 1907: renumbering,
 	// Decided detail 212 gives an unparenthesized execution expression on the left of ** its code (loop round 1, ASTRA-10).
 	// Decided detail 247 gives the remaining owner-block rejections codes (loop round 3, OPUS-7).
-	109: "lane impl-hunt-func registers EK0109 (claim parser:effect-arrow-head-EK0109)", 202: "lane impl-hunt-run registers EK0202 (claim parser:effect-block-jump-EK0202)", 512: "lane impl-hunt-run registers EK0512 (claim parser:catch-mixing-EK0512)", 1505: "lane impl-hunt-data registers EK1505 (claim parser:schema-member-EK1505)", 1606: "lane impl-hunt-data registers EK1606 (claim parser:data-variant-EK1606)",
+	109: "lane impl-hunt-func registers EK0109 (claim parser:effect-arrow-head-EK0109)", 512: "lane impl-hunt-run registers EK0512 (claim parser:catch-mixing-EK0512)", 1505: "lane impl-hunt-data registers EK1505 (claim parser:schema-member-EK1505)", 1606: "lane impl-hunt-data registers EK1606 (claim parser:data-variant-EK1606)",
 }
 
 // TestRegistryMatchesSpec checks the registry against Appendix B of the
