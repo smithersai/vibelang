@@ -4,6 +4,7 @@ import { existsSync, readFileSync, readdirSync, writeFileSync, mkdirSync } from 
 import { dirname, resolve, relative } from "node:path"
 import { fileURLToPath } from "node:url"
 import { SourceAnalysis, scalarNativeThrows } from "./throws-source.mjs"
+import { inventoryInputKey, readInventoryReceipt, writeInventoryReceipt } from "./throws-receipt.mjs"
 
 export const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..")
 export const artifactPath = "docs/design/inventory/throws.json"
@@ -322,15 +323,28 @@ export function serializeInventory(inventory) {
   return JSON.stringify(header, null, 2).replace(/\n}$/, ',\n  "entries": [\n') +
     entries.map(entry => "    " + JSON.stringify(entry)).join(",\n") + "\n  ]\n}\n"
 }
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const inventory = generateThrowsInventory()
-  const expected = serializeInventory(inventory)
+export function verifyThrowsInventory(write = false) {
   const path = resolve(root, artifactPath)
-  if (process.argv.includes("--write")) {
-    mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, expected)
-    console.log("throws.json: " + inventory.entries.length + " entries")
-  } else if (!existsSync(path) || read(path) !== expected) {
-    console.error("Stale or missing " + artifactPath + "; run node docs/tools/throws-inventory.mjs --write")
-    process.exitCode = 1
+  const key = inventoryInputKey(root)
+  if (readInventoryReceipt(root, key, path)) {
+    console.log("throws.json: inputs unchanged; verified saved inventory")
+  } else {
+    const inventory = generateThrowsInventory()
+    const expected = serializeInventory(inventory)
+    if (inventoryInputKey(root) !== key) throw new Error("Throws inventory inputs changed during generation; retry")
+    if (write) {
+      mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, expected)
+      console.log("throws.json: " + inventory.entries.length + " entries")
+      writeInventoryReceipt(root, key, expected)
+    } else if (!existsSync(path) || read(path) !== expected) {
+      console.error("Stale or missing " + artifactPath + "; run node docs/tools/throws-inventory.mjs --write")
+      return false
+    } else {
+      writeInventoryReceipt(root, key, expected)
+    }
   }
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  if (verifyThrowsInventory(process.argv.includes("--write")) === false) process.exitCode = 1
 }

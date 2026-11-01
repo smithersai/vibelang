@@ -597,3 +597,13 @@ fixed executable classes. Executable paths, process names and arguments are
 never logged; unreadable or disappearing processes are counted and skipped.
 RSS sums can count shared pages more than once, so compare the classes with
 memory availability and cgroup accounting before choosing a resource bound.
+
+The throws inventory CLI, `node docs/tools/throws-inventory.mjs --check` or
+`--write`, reuses a successful analysis from `.cache/throws-inventory.json`.
+Each invocation hashes the bundled declarations and version, Effect sources,
+declarations and package metadata, the installed TypeScript parser, both package
+pins, and the generator, analyzer and receipt implementation. It also verifies
+the current `docs/design/inventory/throws.json` bytes. A changed input or artifact,
+or a missing or corrupt receipt, runs the analysis again; a failed check never
+saves a receipt. Delete the receipt to force analysis. The direct inventory
+regression test always regenerates the expected inventory without this cache.
