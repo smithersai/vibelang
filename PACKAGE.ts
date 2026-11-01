@@ -92,6 +92,7 @@ const specTests = [
   "TestMatchBindingHomesQuoted",
   "TestMatchOpenSubjectQuoted",
   "TestTrailingBlockBoundariesQuoted",
+  "TestReviewBindingContractsQuoted",
   "TestSpecifierWrittenJSX",
 
   "TestStockConsumerResolutionQuoted",
