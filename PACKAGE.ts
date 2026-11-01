@@ -137,6 +137,9 @@ const specTests = [
   "TestTopLevelAwaitQuoted",
   "TestEffectGlobalsQuoted",
   "TestSidecarEntryGlobsQuoted",
+  "TestReviewIsStatementHomesQuoted",
+  "TestReviewIsRedeclarationsQuoted",
+  "TestReviewIsBindingHomesQuoted",
   "TestSpecifierWrittenJSX",
 
   "TestStockConsumerResolutionQuoted",
