@@ -133,7 +133,13 @@ func EmitFilesAndReportErrors(input EmitInput) (result CompileAndEmitResult) {
 	)
 
 	emitResult := &compiler.EmitResult{EmitSkipped: true, Diagnostics: []*ast.Diagnostic{}}
-	if !input.ProgramLike.Options().ListFilesOnly.IsTrue() {
+	// Analysis-only commands suppress the complete emit phase. noEmit alone
+	// still permits incremental build metadata and VibeLang sidecars.
+	suppressEmit := false
+	if policy, ok := input.Sys.(interface{ SuppressEmit() bool }); ok {
+		suppressEmit = policy.SuppressEmit()
+	}
+	if !suppressEmit && !input.ProgramLike.Options().ListFilesOnly.IsTrue() {
 		emitStart := input.Sys.Now()
 		emitResult = input.ProgramLike.Emit(ctx, compiler.EmitOptions{
 			WriteFile: input.WriteFile,

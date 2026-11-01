@@ -43,6 +43,12 @@ Warnings never fail CI; promote their codes in vibe.severities to error. Invalid
 project settings return status 2.
 `
 
+// Keep compiler diagnostics and options while preventing every output phase,
+// including compatibility declarations and incremental build information.
+type analysisOnlySystem struct{ tsc.System }
+
+func (analysisOnlySystem) SuppressEmit() bool { return true }
+
 // Command runs `vibelang lint`.
 func Command(ctx context.Context, sys tsc.System, args []string) int {
 	// The release command takes compiler flags and reports compiler diagnostics
@@ -58,7 +64,7 @@ func Command(ctx context.Context, sys tsc.System, args []string) int {
 		}
 	}
 	if !legacy {
-		return int(execute.CommandLine(ctx, sys, append(slices.Clone(args), "--noEmit"), nil).Status)
+		return int(execute.CommandLine(ctx, analysisOnlySystem{sys}, append(slices.Clone(args), "--noEmit"), nil).Status)
 	}
 	out, errOut := sys.Writer(), sys.ErrorWriter()
 	var configPath, project string
