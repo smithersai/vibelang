@@ -86,7 +86,14 @@ type Seed struct {
 // CaseSeeds returns every acceptance case in typescript/vibelang/cases: its
 // sources, tsconfig.json, package.json and stubs, without expected outputs.
 var CaseSeeds = sync.OnceValue(func() []Seed {
-	root := filepath.Join(Root(), "typescript/vibelang/cases")
+	return loadCaseSeeds(filepath.Join(Root(), "typescript/vibelang/cases"))
+})
+
+// loadCaseSeeds reads the acceptance cases under root. A compile that runs in
+// a case's directory leaves x.d.vibe.ts beside x.vibe. That sidecar is
+// gitignored output, so reading it would make the seeds, and which case each
+// index picks, depend on what ran in this checkout before.
+func loadCaseSeeds(root string) []Seed {
 	entries, err := os.ReadDir(root)
 	if err != nil {
 		panic(err)
@@ -110,6 +117,9 @@ var CaseSeeds = sync.OnceValue(func() []Seed {
 				return nil
 			}
 			if d.Type()&fs.ModeSymlink != 0 || !ValidProjectPath(rel) {
+				return nil
+			}
+			if strings.HasSuffix(rel, ".d.vibe.ts") {
 				return nil
 			}
 			if rel == "pending" {
@@ -139,7 +149,7 @@ var CaseSeeds = sync.OnceValue(func() []Seed {
 		seeds = append(seeds, seed)
 	}
 	return seeds
-})
+}
 
 var vibeFence = regexp.MustCompile("(?ms)^[ \t]*```vibe[^\\n]*\\n(.*?)^[ \t]*```")
 
