@@ -29,7 +29,7 @@ effect function release(version: string) {
 
 ## Types
 
-**Effect types**. `A!E!R` means exactly `Effect.Effect<A, E, R>`. Empty and omitted slots are `never`. Leave out the whole annotation to infer a function's type.
+**Effect types**. `A!E!R` means exactly `Effect.Effect<A, E, R>`. Empty and omitted slots are `never`. Leave out the whole annotation to infer a function's type. A line break ends the type: each `!` and its slot stay on one line, `A!!` may end a line, and a slot in parentheses may span lines; a `!` with no slot on its line is `TS17019`.
 
 ```ts effect
 // fragment

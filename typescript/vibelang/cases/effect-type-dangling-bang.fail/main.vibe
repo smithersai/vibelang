@@ -1,0 +1,31 @@
+// expect: TS17019
+// Functions, "The A!E!R type shorthand" (VIP-3): each !, and the slot after
+// it, start on the line where the previous slot ends. A ! with no slot on its
+// line is TypeScript's postfix !, which it refuses (TS17019); the type ends
+// there, so the declaration has no initializer (TS1155) and the next line is
+// a statement; a syntax error suppresses those checker diagnostics here. A!!
+// may end a line, a parenthesized slot may span lines, and [A!!?] keeps the
+// tuple element optional (JSDoc ? does not start R).
+type User = { id: number }
+type NotFound = { _tag: "NotFound" }
+type Timeout = { _tag: "Timeout" }
+declare const loaded: User!NotFound
+declare const plain: User!!
+declare const either: User!(NotFound | Timeout)
+
+const b: User!
+  NotFound = loaded
+
+const ok: User!!
+  = plain
+const ok2: User!!= plain
+const ok3: User!(
+  NotFound | Timeout) = either
+interface Clock {
+  now(): number!!
+  later(): number!!
+}
+type Opt = [User!!?]
+type Opt2 = [User!NotFound?]
+export { ok, ok2, ok3 }
+export type { Clock, Opt, Opt2 }

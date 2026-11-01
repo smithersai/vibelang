@@ -243,6 +243,7 @@ const specTests = [
 
   "TestDirectTryAdvisoriesQuoted",
   "TestTopLevelAwaitQuoted",
+  "TestEffectTypeDanglingBangQuoted",
   "TestFormatForHeadsQuoted",
   "TestPlainRunnersQuoted",
   "TestPlainEffectBodyQuoted",

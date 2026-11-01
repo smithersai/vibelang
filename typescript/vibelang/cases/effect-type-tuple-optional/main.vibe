@@ -1,0 +1,16 @@
+// Functions, "The A!E!R type shorthand" (VIP-3): an enclosing optional tuple
+// element keeps the TypeScript omission and indexed undefined: [A!E?] and
+// [A!!?] mark the whole Effect element optional. The JSDoc postfix ? never
+// ends a slot, so the element is the Effect or undefined, never
+// Effect<A, E | null>.
+type User = { id: number }
+type NotFound = { _tag: "NotFound" }
+type Equal<X, Y> = (<T>() => T extends X ? 1 : 2) extends (<T>() => T extends Y ? 1 : 2) ? true : false
+type Pair = [User!NotFound?, User!!?]
+const firstIsOptionalEffect: Equal<Pair[0], (User!NotFound) | undefined> = true
+const secondIsOptionalEffect: Equal<Pair[1], (User!!) | undefined> = true
+const lengthIsOmittable: Equal<Pair["length"], 0 | 1 | 2> = true
+const empty: Pair = []
+export { firstIsOptionalEffect, secondIsOptionalEffect, lengthIsOmittable }
+// expect-result: 0
+export effect function main() { return empty.length }

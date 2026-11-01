@@ -64,6 +64,9 @@ const (
 )
 
 type Parser struct {
+	// vibeLangSlotDepth is > 0 while an Effect type slot is parsed (vibelang.go); JSDoc postfix forms are excluded there.
+	vibeLangSlotDepth int
+
 	scanner *scanner.Scanner
 	factory ast.NodeFactory
 
@@ -2967,6 +2970,9 @@ func (p *Parser) parsePostfixTypeOrHigher() *ast.Node {
 			p.nextToken()
 			typeNode = p.finishNode(p.factory.NewJSDocNonNullableType(typeNode), pos)
 		case ast.KindQuestionToken:
+			if p.vibeLangSlotDepth > 0 {
+				return typeNode // a slot excludes JSDoc's postfix ?; [A!E?] marks the whole element optional (vibelang.go)
+			}
 			// If next token is start of a type we have a conditional type
 			if p.lookAhead((*Parser).nextIsStartOfType) {
 				return typeNode

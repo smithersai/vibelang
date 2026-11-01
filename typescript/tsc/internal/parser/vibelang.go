@@ -3,6 +3,7 @@ package parser
 import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
@@ -263,6 +264,17 @@ func (p *Parser) parseVibeLangEffectType(result *ast.TypeNode) *ast.TypeNode {
 		return result
 	}
 	bang := p.scanner.TokenRange() // synthesized nodes stand on the first !
+	// A ! with no slot on its line and no second ! is not an Effect type:
+	// `const b: User!⏎ NotFound` and `const e: User! = …` hold the TypeScript
+	// postfix !, which TypeScript refuses (TS17019). Functions, "The A!E!R
+	// type shorthand": each !, and the slot after it, start on the line where
+	// the previous slot ends.
+	if p.lookAhead((*Parser).nextIsDanglingVibeLangBang) {
+		p.nextToken()
+		start := scanner.SkipTrivia(p.sourceText, result.Pos())
+		p.parseErrorAtRange(bang, diagnostics.X_0_at_the_end_of_a_type_is_not_valid_TypeScript_syntax_Did_you_mean_to_write_1, "!", p.sourceText[start:result.End()])
+		return result
+	}
 	errors := p.parseVibeLangSlot(true)
 	// Only here can an equality token begin the second shorthand bang.
 	if errors.End() == bang.End() && !p.hasPrecedingLineBreak() {
@@ -285,7 +297,37 @@ func (p *Parser) parseVibeLangEffectType(result *ast.TypeNode) *ast.TypeNode {
 	name := p.vibelangSynthesized(p.factory.NewQualifiedName(module, member), bang)
 	arguments := p.newNodeList(span, []*ast.Node{result, errors, dependencies})
 	reference := p.vibelangSpanning(p.factory.NewTypeReferenceNode(name, arguments), span)
+	// A postfix ? after the type is TypeScript's, as parsePostfixTypeOrHigher
+	// gives it: the tuple parser makes [A!E?] and [A!!?] optional elements, and
+	// anywhere else the checker refuses it (TS17019).
+	if p.token == ast.KindQuestionToken && !p.hasPrecedingLineBreak() && !p.lookAhead((*Parser).nextIsStartOfType) {
+		p.nextToken()
+		return p.finishNode(p.factory.NewJSDocNullableType(reference), result.Pos())
+	}
 	return reference
+}
+
+// nextIsDanglingVibeLangBang reports whether the ! at the current token has
+// neither a slot on its line nor a second ! (an equality token rescans to one).
+func (p *Parser) nextIsDanglingVibeLangBang() bool {
+	p.nextToken()
+	switch p.token {
+	case ast.KindExclamationToken, ast.KindExclamationEqualsToken, ast.KindExclamationEqualsEqualsToken:
+		return false
+	}
+	return p.hasPrecedingLineBreak() || !p.isStartOfVibeLangSlot()
+}
+
+// isStartOfVibeLangSlot reports whether the current token starts a slot type:
+// a TypeScript type start that is not a parser-only JSDoc form (?, *, ... or
+// !), which Appendix A excludes, so `[A!!?]` keeps the tuple element optional
+// (decided detail 211: JSDoc ? does not start R).
+func (p *Parser) isStartOfVibeLangSlot() bool {
+	switch p.token {
+	case ast.KindQuestionToken, ast.KindAsteriskToken, ast.KindDotDotDotToken, ast.KindExclamationToken:
+		return false
+	}
+	return p.isStartOfType(false /*inStartOfParameter*/)
 }
 
 // parseVibeLangSlot parses the ! at the current token and the type after it, or
@@ -293,7 +335,7 @@ func (p *Parser) parseVibeLangEffectType(result *ast.TypeNode) *ast.TypeNode {
 func (p *Parser) parseVibeLangSlot(allowObject bool) *ast.Node {
 	bang := p.scanner.TokenRange()
 	p.nextToken()
-	if p.token == ast.KindExclamationToken || (p.token == ast.KindOpenBraceToken && !allowObject) || p.hasPrecedingLineBreak() || !p.isStartOfType(false /*inStartOfParameter*/) {
+	if p.token == ast.KindExclamationToken || (p.token == ast.KindOpenBraceToken && !allowObject) || p.hasPrecedingLineBreak() || !p.isStartOfVibeLangSlot() {
 		return p.vibelangSynthesized(p.factory.NewKeywordTypeNode(ast.KindNeverKeyword), bang)
 	}
 	return p.parseVibeLangSlotType()
@@ -304,6 +346,8 @@ func (p *Parser) parseVibeLangSlot(allowObject bool) *ast.Node {
 func (p *Parser) parseVibeLangSlotType() *ast.TypeNode {
 	saveContextFlags := p.contextFlags
 	p.setContextFlags(ast.NodeFlagsTypeExcludesFlags, false)
+	p.vibeLangSlotDepth++
+	defer func() { p.vibeLangSlotDepth-- }()
 	var typeNode *ast.TypeNode
 	if p.isStartOfFunctionTypeOrConstructorType() {
 		typeNode = p.parseFunctionOrConstructorType()
