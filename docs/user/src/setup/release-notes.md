@@ -359,6 +359,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Migration codemods could stall on brace-heavy literals or broaden a test selector; source-name wiring now scans source inventories with cached, bounded matchers and proves the final selected filenames and counts unchanged.
 - `vibelang --fix` moved a TypeScript call out of `Effect.sync(() => label())` into an `effect` block, where EK4401 refused it and the whole file stayed unconverted. The thunk now stays, because it is the boundary that makes the call's exceptions defects.
+- The shipped skill taught `fork.in(scope)`, `fork.scoped` and `fork.detached`, which the release compiler could not parse; its examples now use `try Effect.forkIn`, `try Effect.forkScoped` and `try Effect.forkDetach` instead.
+
 
 - `vibelang --fix` could remove an explicit `<{}>` payload from a fieldless `Data.TaggedError` class, changing its published declaration. Projects that emit declarations now keep the class and receive an explanation instead.
 - Reverting a migration importer before its dependency could replace an original `.js` import with `.ts`; either revert order now restores the original specifier.

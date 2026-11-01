@@ -40,7 +40,7 @@ VibeLang is TypeScript with syntax for Effect. An `effect` function returns an E
 | `Schema.Literals([...])` and its type | `schema Code = "a" \| "b"` |
 | `Data.TaggedEnum<{ … }>` and `Data.taggedEnum` | `data Delivery { Waiting; Sent { tracking: string } }`; `Delivery.Waiting()`, `Delivery.Sent({ tracking })`; generic `data Outcome<A, E> { Ok { value: A }; Err { error: E } }` (up to four type parameters) |
 | `Match.value(x)…Match.exhaustive` | `match (x) { when "a": 1; when { _tag: "Sent", let tracking }: tracking; default: 0; }` |
-| `Effect.forkChild(w)`, `forkIn(w, scope)`, `forkScoped(w)`, `forkDetach(w)` | `fork w()`, `fork.in(scope) w()`, `fork.scoped w()`, `fork.detached w()` |
+| `Effect.forkChild(w)`, `forkIn(w, scope)`, `forkScoped(w)`, `forkDetach(w)` | `fork w()`, `try Effect.forkIn(w(), scope)`, `try Effect.forkScoped(w())`, `try Effect.forkDetach(w())` |
 | `Fiber.join(f)` | `join f` |
 | `Effect.all([a, b], { concurrency: "unbounded" })` | `try.all [a(), b()]`; `try all([a(), b()])` runs them one at a time, as `Effect.all` does |
 | `Effect.raceAllFirst`, `Effect.raceAll` | `try.race [a(), b()]` (first to finish), `try.any [a(), b()]` (first success) |
