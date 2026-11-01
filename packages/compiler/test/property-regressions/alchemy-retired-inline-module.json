@@ -1,0 +1,26 @@
+{
+  "finding": "inbox/migrate-alchemy.md#alchemy-51",
+  "input": {
+    "name": "pem",
+    "body": "function",
+    "literal": true
+  },
+  "source": "module pem { export function b(x: string): string { throw new Error(x) } }\nimport { b } from pem\nexport { b }\n",
+  "oracle": "VIP-25 denies inline module declarations. The module-identifier import is not ordinary TypeScript; do not invent declaration inlining or a new escape API.",
+  "pending": {
+    "owner": "del-rest",
+    "reason": "Legacy inline-module acceptance, not the requested new declaration format.",
+    "keys": [
+      "alchemy-pem-throw-reexport",
+      "pem:function",
+      "pem:const",
+      "pem:class",
+      "Legacy:function",
+      "Legacy:const",
+      "Legacy:class",
+      "escape:function",
+      "escape:const",
+      "escape:class"
+    ]
+  }
+}
