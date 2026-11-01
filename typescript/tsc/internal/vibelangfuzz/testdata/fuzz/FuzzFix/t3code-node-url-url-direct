@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport { URL } from \"node:url\";\nexport const read = (raw: string): string => new URL(raw).hostname;\n")

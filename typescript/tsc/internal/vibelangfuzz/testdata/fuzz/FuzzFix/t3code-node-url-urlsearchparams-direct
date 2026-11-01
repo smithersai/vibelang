@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport { URLSearchParams } from \"node:url\";\nexport const read = (raw: string): string | null => new URLSearchParams(raw).get(\"key\");\n")
