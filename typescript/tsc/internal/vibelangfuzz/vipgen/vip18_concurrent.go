@@ -2,6 +2,7 @@ package vipgen
 
 import (
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -340,6 +341,89 @@ func init() {
 			g.UseEffect()
 
 			return []Stmt{&catchEdge{vibe: "const xs: ReadonlyArray<Effect.Effect<number>> = [effect { return try Effect.andThen(Effect.sleep(2), Effect.succeed(1)) }, effect { return try Effect.andThen(Effect.sleep(1), Effect.succeed(2)) }]; const a = try.all xs; const r = try.race xs; const n = try.any xs; const s = try.allSettled xs; return [a, r, n, s.map(x => [Effect.isEffect(x), x._tag === \"Success\" ? x.value : 0])]", ref: "const xs = [Effect.gen(function* () { return yield* Effect.andThen(Effect.sleep(2), Effect.succeed(1)) }), Effect.gen(function* () { return yield* Effect.andThen(Effect.sleep(1), Effect.succeed(2)) })]; const a = yield* Effect.all(xs, { concurrency: \"unbounded\" }); const r = yield* Effect.raceAllFirst(xs); const n = yield* Effect.raceAll(xs); const s = yield* Effect.all(xs.map(Effect.exit), { concurrency: \"unbounded\" }); return [a, r, n, s.map(x => [Effect.isEffect(x), x._tag === \"Success\" ? x.value : 0])]"}}
+		},
+	})
+}
+
+// spreadIterModule patches Array.prototype[Symbol.iterator] while one
+// try.allSettled literal is built: install() is its first element and
+// restore() its last, so the patch sees exactly the construction of that
+// literal and is gone before any Effect runs. restore() succeeds with the
+// number of patched-iterator calls, so the Exits carry the count. spreadOf
+// builds each iterable without iterating an array, so only the literal's own
+// spread can reach the patch (loop round 5 OPUS-3 and ASTRA-2).
+// Kind 0, the probe's, is an array: only an array spread reaches the patch.
+const spreadIterModule = `import * as Effect from "effect/Effect"
+const original = Array.prototype[Symbol.iterator]
+let count = 0
+/** @throws {never} */
+export function install(reverse: boolean): Effect.Effect<number, number> {
+  count = 0
+  Object.defineProperty(Array.prototype, Symbol.iterator, { configurable: true, writable: true, value: function (this: unknown[]) {
+    count++
+    const items = Array.from({ length: this.length }, (_, i) => this[i])
+    return original.call(reverse ? items.reverse() : items)
+  } })
+  return Effect.succeed(-1)
+}
+/** @throws {never} */
+export function restore(): Effect.Effect<number, number> {
+  Object.defineProperty(Array.prototype, Symbol.iterator, { configurable: true, writable: true, value: original })
+  return Effect.succeed(1000 + count)
+}
+/** @throws {never} */
+export function spreadOf(kind: number, a: number, b: number): Iterable<Effect.Effect<number, number>> {
+  switch (kind) {
+    case 0: return [Effect.succeed(a), Effect.fail(b)]
+    case 1: return new Set<Effect.Effect<number, number>>().add(Effect.succeed(a)).add(Effect.fail(b))
+    case 2: return (function* () { yield Effect.succeed(a); yield Effect.fail(b) })()
+    case 3: {
+      const xs: Effect.Effect<number, number>[] = [Effect.succeed(0)]
+      Object.defineProperty(xs, Symbol.iterator, { value: function* () { yield Effect.fail(a); yield Effect.succeed(b) } })
+      return xs
+    }
+    default: return []
+  }
+}
+`
+
+func init() {
+	Register(&Construct{
+		Key: "vip18.all-settled-spread-once", VIP: 18,
+		Requires: []string{"vip01.effect-function", "vip05.try"},
+		Citations: []Citation{{
+			VIP: 18, Template: `Effect.all(source.map(Effect.exit), { concurrency: "unbounded" })`,
+			Quote:   "A literal containing a spread is evaluated once, in native element order, with each spread using its value's own iterator; the counterpart wraps that array by index (`source.map(Effect.exit)`) and adds no iteration of a compiler-created array",
+			Reading: "Build the literal once, as `const source = [install(), …, restore()]`, then run `Effect.all(source.map(Effect.exit), { concurrency: \"unbounded\" })`.",
+		}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+			g.UseModule("Exit", true)
+			g.AddFile("spread-iter.ts", spreadIterModule, "install", "restore", "spreadOf")
+			reverse := "false"
+			if g.Chance(2) {
+				reverse = "true"
+			}
+			elems := []string{"install(" + reverse + ")"}
+			next := 1
+			for range g.Intn(3) {
+				elems = append(elems, "Effect.succeed("+strconv.Itoa(next)+")")
+				next++
+			}
+			for range 1 + g.Intn(3) {
+				elems = append(elems, "...spreadOf("+strconv.Itoa(g.Intn(5))+", "+strconv.Itoa(next)+", "+strconv.Itoa(next+1)+")")
+				next += 2
+			}
+			if g.Chance(2) {
+				elems = append(elems, "Effect.fail("+strconv.Itoa(next)+")")
+			}
+			elems = append(elems, "restore()")
+			literal := "[" + strings.Join(elems, ", ") + "]"
+			shown := "return result.map(x => Exit.isSuccess(x) ? x.value : \"fail\")"
+			return []Stmt{&catchEdge{
+				vibe: "const result = try.allSettled " + literal + "; " + shown,
+				ref:  "const source = " + literal + "; const result = yield* Effect.all(source.map(Effect.exit), { concurrency: \"unbounded\" }); " + shown,
+			}}
 		},
 	})
 }
