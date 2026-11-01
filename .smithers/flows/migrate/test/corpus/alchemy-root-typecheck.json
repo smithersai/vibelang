@@ -1,0 +1,22 @@
+{
+  "key": "alchemy:root-typecheck-project-graph",
+  "scripts": {
+    "typecheck": "pnpm ensure:built && tsrs -b && pnpm -C packages/frontend-frameworks exec tsrs --noEmit -p tsconfig.test.json",
+    "build": "pnpm build:packages && tsrs -b && bun lint:providers",
+    "tsc": "tsrs",
+    "test": "bun alchemy-test"
+  },
+  "expected": {
+    "typecheck": "pnpm ensure:built && vibelang -b && pnpm -C packages/frontend-frameworks exec vibelang --noEmit -p tsconfig.test.json",
+    "build": "pnpm build:packages && vibelang -b && bun lint:providers",
+    "tsc": "vibelang",
+    "test": "bun alchemy-test"
+  },
+  "files": {
+    "tsconfig.base.json": "{\"compilerOptions\":{\"strict\":true,\"skipLibCheck\":true,\"target\":\"ES2022\",\"module\":\"ESNext\",\"moduleResolution\":\"Bundler\",\"noEmit\":true}}",
+    "tsconfig.json": "{\"files\":[],\"references\":[{\"path\":\"packages/app\"}]}",
+    "packages/app/tsconfig.json": "{\"extends\":\"../../tsconfig.base.json\",\"include\":[\"src/**/*.vibe\"],\"compilerOptions\":{\"composite\":true,\"outDir\":\"lib\"}}",
+    "packages/app/src/main.vibe": "export const value: number = 1;",
+    "excluded.ts": "export const unrelated: number = \"outside the build\";"
+  }
+}

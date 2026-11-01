@@ -63,11 +63,21 @@ export function inSubmodule(submodules, path) {
   return submodules.some((dir) => normal === dir || normal.startsWith(dir + "/"))
 }
 
-/** Replaces tsc with vibelang in package scripts: `tsc -b x` becomes `vibelang -b x`. */
+/** Keeps each compiler command's project arguments, including native TypeScript checkers. */
 export function replaceTsc(scripts = {}) {
   const next = {}
-  for (const [name, command] of Object.entries(scripts)) next[name] = command.replace(/(^|[\s;&|(])tsc(?=\s|$)/g, "$1vibelang")
+  for (const [name, command] of Object.entries(scripts)) next[name] = command.replace(/(^|[\s;&|(])(?:tsc|tsgo|tsrs)(?=\s|$)/g, "$1vibelang")
   return next
+}
+
+/**
+ * The root owns solution builds even when only leaf packages are migrated.
+ * Replace the checker in place: a shared base config is not an extra project.
+ */
+export function addCompilerScripts(pkg, compiler) {
+  const scripts = replaceTsc(pkg.scripts)
+  const changed = JSON.stringify(scripts) !== JSON.stringify(pkg.scripts ?? {})
+  return { ...pkg, ...(pkg.scripts ? { scripts } : {}), ...(changed ? { devDependencies: { ...pkg.devDependencies, vibelang: compiler } } : {}) }
 }
 
 // Oxlint options that take a value, so a path after one is not a lint target.

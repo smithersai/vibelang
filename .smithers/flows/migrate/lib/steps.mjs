@@ -525,8 +525,10 @@ export async function wireTarget(config, log) {
     const before = readFileSync(rootPackage, "utf8")
     const root = JSON.parse(before)
     const readConfig = (file) => existsSync(join(t, file)) ? readFileSync(join(t, file), "utf8") : undefined
-    const scripts = Wire.addEffectLint(root.scripts, readConfig)
-    if (JSON.stringify(scripts) !== JSON.stringify(root.scripts ?? {})) writeIfChanged(rootPackage, before, JSON.stringify({ ...root, scripts }, null, 2) + "\n")
+    const next = Wire.addCompilerScripts(root, specsFor(".").vibelang)
+    const scripts = Wire.addEffectLint(next.scripts, readConfig)
+    if (JSON.stringify(scripts) !== JSON.stringify(next.scripts ?? {})) next.scripts = scripts
+    if (JSON.stringify(next) !== JSON.stringify(root)) writeIfChanged(rootPackage, before, JSON.stringify(next, null, 2) + "\n")
   }
   // Every project resolves an import of ./x.vibe to its sidecar, as stock TypeScript does under this option.
   for (const tsconfig of Wire.rootTsconfigs(t, ts)) {
