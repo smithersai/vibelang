@@ -718,6 +718,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Native builds and copies could report success while leaving the executable path as a directory and putting the binary inside it; they now report the directory collision and preserve its contents.
 - Example checks could skip an example's tests after failing to read its manifest; `scripts/check-examples.sh` now reports a test-script discovery failure, keeps the diagnostic in the example log and continues checking the other examples.
 
+- Property-test replay could hide an unrelated tool or build failure as a known defect; known-failure entries now require a matching `errorPattern`, unexpected errors are reported, and resolved mapper cases run as ordinary regressions.
 
 - Passing an Effect function to a `Function` destination could bypass `EK4301` after generic union matching; callable destinations now keep the synchronous-callback check.
 

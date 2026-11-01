@@ -75,7 +75,7 @@ test("property helper replays saved input before discovery and fails on known-fa
     regressions: pathToFileURL(directory + "/"), check: n => { seen.push(n) } }
   await checkProperty(fc, options)
   assert.deepEqual(seen, [9, 0])
-  writeFileSync(file, JSON.stringify({ property: "helper", input: 9, knownFailure: true, rule: "metamorphic harness example" }))
+  writeFileSync(file, JSON.stringify({ property: "helper", input: 9, knownFailure: true, errorPattern: "fixture failure", rule: "metamorphic harness example" }))
   await assert.rejects(checkProperty(fc, options), /XPASS example.json/)
 })
 
@@ -86,7 +86,7 @@ test("saved regressions replay in filename order, select their property and reta
     "b.json": { property: "helper", input: 9 },
     "a.json": { property: "helper", input: 4 },
     "c.json": { property: "other", input: 99 },
-    "z.json": { property: "helper", input: 7, knownFailure: true, rule: "fixture failure" }
+    "z.json": { property: "helper", input: 7, knownFailure: true, errorPattern: "strictly unequal", rule: "fixture failure" }
   }
   for (const [file, input] of Object.entries(fixtures)) writeFileSync(join(directory, file), JSON.stringify(input))
   writeFileSync(join(directory, "README.md"), "Regression replay ignores non-JSON notes.")

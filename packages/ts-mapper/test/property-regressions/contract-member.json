@@ -34,8 +34,7 @@
   "numShrinks": 10,
   "error": "TS2741: Property '$plain' is missing in type '(n: number) => Effect<number, never, never>' but required in type 'typeof probe'.",
   "diagnostics": "\nM1 mapper-renderings form=contract modules=1\nM1 fork reference\nM1 execute native{\"result\":{\"text\":\"\ud83d\ude00plain\",\"value\":0,\"trace\":[\"B1_TOKEN_0\"]},\"positive\":3,\"negative\":0}\n\nM1 stock check tracing=nonesrc/contracts.ts(4,7): error TS2741: Property '$plain' is missing in type '(n: number) => Effect<number, never, never>' but required in type 'typeof probe'.\n",
-  "knownFailure": true,
-  "reason": "D421: a function with an Effect annotation keeps its Effect own form regardless of a pure body. The mapper adds a required $plain namespace member, so stock TS rejects the reverse assignment accepted by the compiler (TS2741). Random cases continue to verify the callable signature, execution and mappings after this specific, recorded member mismatch.",
+  "reason": "D421: a function with an Effect annotation keeps its Effect own form regardless of a pure body. This strict saved input now passes both directions of the callable contract, declarations, source maps and execution with tracing off and on; it remains an ordinary regression.",
   "minimalInput": {
     "source": "export function f(n: number): number!! { return n }\n",
     "consumer": "import { Effect } from \"effect\"\nimport { f } from \"./main.vibe\"\nconst forward: (n: number) => Effect.Effect<number, never, never> = f\nconst backward: typeof f = forward\n"

@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import { homedir } from "node:os"
 import { join, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
+import { inspect } from "node:util"
 
 const root = resolve(fileURLToPath(new URL("../..", import.meta.url)))
 const home = homedir()
@@ -39,9 +40,24 @@ export async function checkProperty(fc, {
   for (const { file, regression } of savedRegressions(regressions, name)) {
     if (!regression.knownFailure) await check(regression.input)
     else {
-      let failed = false
-      try { await check(regression.input) } catch { failed = true }
+      if (typeof regression.errorPattern !== "string" || !regression.errorPattern.trim()) {
+        throw new Error(`${file}: knownFailure requires a nonempty errorPattern`)
+      }
+      let pattern
+      try { pattern = new RegExp(regression.errorPattern) }
+      catch (cause) { throw new Error(`${file}: invalid errorPattern: ${cause.message}`, { cause }) }
+      let failed = false, failure
+      try { await check(regression.input) } catch (error) { failed = true; failure = error }
       if (!failed) throw new Error(`XPASS ${file}: remove knownFailure (${regression.rule})`)
+      // Assertion stacks can omit actual/expected with a custom message, and
+      // Error inspection abbreviates them. Inspect those fields separately.
+      const observed = String(failure?.stack ?? failure) + "\n" + inspect({
+        code: failure?.code, actual: failure?.actual, expected: failure?.expected
+      }, { colors: false, depth: 4, maxStringLength: null })
+      if (!pattern.test(observed)) {
+        throw new Error(`unexpected failure ${file}: expected errorPattern ${regression.errorPattern} (${regression.rule})\n${bounded(observed)}`,
+          { cause: failure })
+      }
       process.stderr.write(`known failure ${file}: ${regression.rule}\n`)
     }
   }

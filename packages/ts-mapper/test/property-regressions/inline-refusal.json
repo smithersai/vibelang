@@ -34,8 +34,7 @@
   "numShrinks": 13,
   "error": "Fork accepts and executes the project; stock TypeScript receives EK9001 instead of the required EK9100 semantic refusal.",
   "diagnostics": "\nM1 mapper-renderings form=plain modules=1\nM1 fork reference\nM1 execute native{\"result\":{\"text\":\"\ud83d\ude00plain\",\"value\":0,\"trace\":[\"B1_TOKEN_0\"]},\"positive\":3,\"negative\":0}\n\nM1 stock check tracing=nonesrc/n0.vibe(4,24): error EK9001: The TypeScript 7 mapper does not lower this VibeLang form yet; TypeScript sees its source text unchanged.\n",
-  "knownFailure": true,
-  "reason": "D366/D416 require EK9100 when a fork-accepted program cannot be rendered. Importing from an inline TypeScript module is rejected with legacy EK9001 instead. Random projects retain native reference, protocol-span and edit checks; only this exact refusal-code mismatch is known.",
+  "reason": "D366/D416 require EK9100 when a fork-accepted program cannot be rendered. This strict saved inline-module input now receives the required semantic refusal instead of legacy EK9001 with tracing off and on; it remains an ordinary regression.",
   "minimalInput": {
     "main.vibe": "module text { export const result = 1 }\nimport { result } from text\nexport const value = result\n"
   },

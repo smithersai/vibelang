@@ -218,9 +218,10 @@ async function renderings(root, input, p) {
     writeFileSync(join(root, "tsconfig.json"), JSON.stringify(config))
     const check = () => run(stock, ["-p", "tsconfig.json", "--outDir", "stock", "--runExternalCode", ...args], root, `stock check`)
     let checked = check()
-    // Pending D421 (property-regressions/contract-member.json): a pure body with an Effect annotation gains a required $plain
-    // member. Keep the strict, shrunk assignment below in the regression; random projects
-    // still check both directions of the callable signature and all execution/map laws.
+    // Historical D421 mismatch: an Effect annotation with a pure body gained a required
+    // $plain member. The strict saved contract-member regression now passes without
+    // this fallback; generated projects continue checking the callable signature,
+    // execution and mappings after this specific mismatch.
     if (!input.strictKnownFailures && input.form === "contract" && checked.status !== 0 &&
         /error TS2741: Property '\$plain' is missing/.test(checked.stdout)) {
       trace("known contract-member regression; checking the callable signature")
@@ -229,8 +230,9 @@ async function renderings(root, input, p) {
     }
     if (checked.status !== 0) {
       const errors = checked.stdout.split("\n").filter(line => line.includes("error "))
-      // Pending D366/D416 (property-regressions/inline-refusal.json): imports from inline modules use
-      // this legacy refusal. The strict saved case must XPASS when it becomes EK9100.
+      // Historical D366/D416 refusal-code mismatch. The strict saved inline-refusal
+      // regression now requires EK9100; broader generated projects continue after
+      // this specific legacy diagnostic.
       const knownInline = !input.strictKnownFailures && input.project.modules.some((node, i) =>
         node.inline && (!i || !node.typescript)) && errors.length > 0 &&
         errors.every(line => /error EK9001: The TypeScript 7 mapper does not lower this VibeLang form yet;/.test(line))

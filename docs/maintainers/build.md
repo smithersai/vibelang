@@ -249,6 +249,18 @@ discards the first attempt's temporary outputs. Ordinary compiler errors and
 prepared `FORMS_BINARY` failures still stop immediately. The decision-approval
 gate applies on both attempts.
 
+## Known property-test failures
+
+`scripts/testing/property.mjs` replays saved JSON inputs before generated
+cases. A `knownFailure: true` entry must provide a nonempty `errorPattern`
+regular expression matching the thrown error, including assertion details. Use a pattern
+specific to the recorded diagnostic or assertion; missing tools, timeouts and
+other failures must fail the check. Missing or invalid patterns fail before
+the saved input runs. Unexpected failures name the corpus file, expected
+pattern and actual error, retaining the original error as their cause.
+A saved known failure that succeeds remains `XPASS`: remove its
+`knownFailure` marker after fixing the defect.
+
 ## Packages
 
 ```text
