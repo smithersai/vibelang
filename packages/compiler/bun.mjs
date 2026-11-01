@@ -1,5 +1,5 @@
 import Module, { createRequire } from "node:module"
-import { extensionlessImport } from "./relative-imports.mjs"
+import { extensionlessImport, pathSpecifier } from "./relative-imports.mjs"
 import { aliasImport } from "./paths-imports.mjs"
 import { diagnosticsForFile } from "./diagnostics.mjs"
 // bun --preload vibelang/bun: Bun loads .vibe modules from source.
@@ -173,7 +173,16 @@ Bun.plugin({
         } catch { /* Builtins, assets and unresolved imports keep native handling. */ }
       }
     }
-    build.onResolve({ filter: /.*/ }, ({ path, importer }) => {
+    // Discovery follows a module Bun resolves by path: the entry, a dynamic
+    // import of a computed path. A bare specifier is left to Bun: its module,
+    // if it is the repository's, is one a discovered file imports, and
+    // opencode's TUI test resolved effect/package.json about four million
+    // times, each a JavaScript callback (opencode-35).
+    const debug = process.env.VIBELANG_BUN_DEBUG
+    let resolutions = 0
+    if (debug) process.once("exit", () => console.error(`vibelang/bun: ${resolutions} resolution${resolutions === 1 ? "" : "s"} reached discovery`))
+    build.onResolve({ filter: pathSpecifier }, ({ path, importer }) => {
+      if (debug) resolutions++
       if (discovering || inDependency(importer ?? "")) return undefined
       discovering = true
       try {

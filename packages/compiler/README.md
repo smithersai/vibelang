@@ -141,7 +141,10 @@ bun --preload vibelang/bun src/main.ts
 from the compile cache, honors `VIBELANG_PROJECT`, and throws the loaded source's errors and project-wide errors at the import. Bun 1.4.2 ignores a plugin's source maps, so a stack
 frame names the `.vibe` file with the line of its compiled JavaScript. `bun
 test` discovers only its own test file names, so a Bun suite is a `.test.ts`
-file that imports `.vibe` modules.
+file that imports `.vibe` modules. The preload reads a module's imports when
+Bun first resolves it by path (the entry, a relative or absolute import), and
+leaves a bare specifier to Bun; `VIBELANG_BUN_DEBUG=1` prints how many
+resolutions reached it.
 
 ## Compile projects from a tool
 

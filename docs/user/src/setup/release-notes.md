@@ -204,6 +204,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - After the migrate flow's setup, an ast-grep rule for TypeScript also scanned each `.vibe` module's `x.d.vibe.ts` sidecar, so a finding in a `.vibe` module was reported twice; setup now adds `**/*.d.vibe.ts` to the `ignores` of each TypeScript rule it extends to `.vibe`.
 
+- Under the `vibelang/bun` preload, every resolution Bun made, a bare `effect/package.json` included, ran a JavaScript callback, so opencode's TUI plugin test took 34 s instead of 1 s; the preload now handles only resolutions of a path.
+
 - Release checks could fail with `ETXTBSY` while a parallel build overwrote the native compiler; native binaries now replace completed builds atomically, and release checks wait for the compiler and runtime builds.
 
 - The runtime's `main` tests, which start Node and Bun child processes, could fail at Bun's 5 s default on a loaded host; the runtime suite and every other `bun test` the build graph runs now pass an explicit `--timeout`, and a check keeps the flag in place.
