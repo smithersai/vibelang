@@ -34,7 +34,7 @@ func TestMissingRuntimeQuoted(t *testing.T) { missingRuntimeQuoted(t) }
 func FuzzMissingRuntimeDependency(f *testing.F) {
 	startShortBudget(f)
 	missingRuntimeQuoted(f)
-	keys := []string{"effect", "producer", "catch", "catch-destructure", "catch-rest", "error", "value", "plain", "independent", "explicit", "independent-any", "explicit-only", "disabled-module"}
+	keys := []string{"effect", "producer", "catch", "catch-destructure", "catch-rest", "error", "value", "plain", "independent", "explicit", "independent-any", "explicit-only", "disabled-module", "foreign-explicit", "foreign-independent", "native-only"}
 	for _, key := range keys {
 		f.Add([]byte(key))
 		f.Add([]byte(key + "\x00\x03"))
@@ -131,8 +131,30 @@ func FuzzMissingRuntimeDependency(f *testing.F) {
 			if i%2 != 0 {
 				source = "/* retained */\n" + strings.ReplaceAll(source, "\n", "\r\n")
 			}
+			if key == "native-only" {
+				name = fmt.Sprintf("source%d.ts", i)
+				source = "import * as Existing from \"vibelang-runtime\"\nexport const value = Existing\n"
+			}
 			files[name] = source
 			names = append(names, name)
+			if key == "foreign-explicit" || key == "foreign-independent" {
+				foreign := fmt.Sprintf("foreign%d.ts", i)
+				module := "vibelang-runtime"
+				if len(parts) == 2 && len(parts[1]) > 0 && parts[1][0]&8 != 0 {
+					module += "/experimental"
+					foreign = "nested path/" + foreign
+				}
+				text := "import * as Existing from \"" + module + "\"\nexport const value = Existing\n"
+				if key == "foreign-independent" && i == 0 {
+					text += "export const wrong: number = 'bad'\n"
+				}
+				files[foreign] = text
+				if len(parts) == 2 && len(parts[1]) > 0 && parts[1][0]&4 != 0 {
+					names = append([]string{foreign}, names...)
+				} else {
+					names = append(names, foreign)
+				}
+			}
 		}
 		listed, _ := json.Marshal(names)
 		config := fmt.Sprintf(`{"compilerOptions":{"target":"ES2022","module":"NodeNext","moduleResolution":"NodeNext","strict":true,"skipLibCheck":true,"noEmit":true,"types":[]},"files":%s}`, listed)
@@ -153,10 +175,13 @@ func FuzzMissingRuntimeDependency(f *testing.F) {
 			if key != "plain" && control.missing {
 				want[2307] = 1
 			}
+			if key == "native-only" && control.missing {
+				want[2307] = count
+			}
 			if key == "disabled-module" {
 				want[2304] = count
 			}
-			if key == "independent" {
+			if key == "independent" || key == "foreign-independent" {
 				want[2322] = 1
 			}
 			if key == "independent-any" {

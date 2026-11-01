@@ -30,12 +30,12 @@ func init() {
 	checker.RegisterDiagnosticsFilterHook(missingRuntimeDiagnostics)
 }
 
-func prepareMissingRuntimeDiagnostics(c *checker.Checker, file *ast.SourceFile) {
-	if !isVibeLangFile(file) {
-		return
-	}
+func prepareMissingRuntimeDiagnostics(c *checker.Checker, _ *ast.SourceFile) {
 	state := missingRuntimeStateOf(c)
-	if state.scanning || state.scanned || runtimeInstalledFor(c, file) {
+	// A native TypeScript file can be checked before the VibeLang source
+	// that needs the runtime. Establish the project's one dependency error
+	// before filtering diagnostics from either language.
+	if state.scanning || state.scanned {
 		return
 	}
 	if !state.scanned {
@@ -81,9 +81,6 @@ func prepareMissingRuntimeDiagnostics(c *checker.Checker, file *ast.SourceFile) 
 }
 
 func missingRuntimeDiagnostics(c *checker.Checker, file *ast.SourceFile, all []*ast.Diagnostic) []*ast.Diagnostic {
-	if !isVibeLangFile(file) {
-		return all
-	}
 	state := missingRuntimeStateOf(c)
 	if state.scanning || !state.scanned {
 		return all
@@ -99,10 +96,18 @@ func missingRuntimeDiagnostics(c *checker.Checker, file *ast.SourceFile, all []*
 		if d != state.dependency && d.Source() == "" && d.Code() == 2307 && len(d.MessageArgs()) != 0 {
 			module := d.MessageArgs()[0]
 			if module == runtimeModule || strings.HasPrefix(module, runtimeModule+"/") {
-				continue
+				source := d.File()
+				if source == nil {
+					source = file
+				}
+				// A missing subpath of an installed package is independent
+				// of a different source's absent runtime installation.
+				if source != nil && !runtimeInstalledFor(c, source) {
+					continue
+				}
 			}
 		}
-		if state.needs[file] && d.Source() == "" {
+		if isVibeLangFile(file) && state.needs[file] && d.Source() == "" {
 			if missingNameCodes[d.Code()] && len(d.MessageArgs()) != 0 {
 				if _, ok := preludeModules[d.MessageArgs()[0]]; ok && !writtenEffectModuleDisabled(c, file, d, d.MessageArgs()[0]) {
 					continue

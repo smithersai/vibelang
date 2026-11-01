@@ -1001,7 +1001,7 @@ typescript/vibelang/cases/decl-provide-services/main.vibe:17:38 lambda plain ann
 typescript/vibelang/cases/decl-provide-services/main.vibe:17:73 lambda plain annotation
 typescript/vibelang/cases/decl-provide-services/main.vibe:20:30 lambda effectFn service
 typescript/vibelang/cases/decl-provide-services/main.vibe:27:41 lambda effectFn service
-typescript/vibelang/cases/decl-provide-services/main.vibe:53:41 lambda effectFn service
+typescript/vibelang/cases/decl-provide-services/main.vibe:53:43 lambda effectFn service
 typescript/vibelang/cases/decl-provide-top.fail/main.vibe:7:3 lambda effectFn service
 typescript/vibelang/cases/decl-provide/main.vibe:13:3 lambda effectFn service
 typescript/vibelang/cases/decl-provide/main.vibe:19:43 lambda program table
@@ -3486,7 +3486,8 @@ typescript/vibelang/cases/try-nested/main.vibe:9:21 byname program table
 typescript/vibelang/cases/tsforms-blocks-fixed/main.vibe:14:44 lambda effectFn service
 typescript/vibelang/cases/tsforms-blocks-fixed/main.vibe:15:40 lambda effectFn service
 typescript/vibelang/cases/tsforms-blocks-fixed/main.vibe:22:19 lambda program table
-typescript/vibelang/cases/tsforms-blocks-fixed/main.vibe:30:20 lambda effectFn service
+typescript/vibelang/cases/tsforms-blocks-fixed/main.vibe:30:32 byname program table
+typescript/vibelang/cases/tsforms-blocks-fixed/main.vibe:30:57 lambda effectFn service
 typescript/vibelang/cases/tsforms-blocks/main.vibe:14:44 lambda effectFn service
 typescript/vibelang/cases/tsforms-blocks/main.vibe:15:40 lambda effectFn service
 typescript/vibelang/cases/tsforms-blocks/main.vibe:22:26 byname program table

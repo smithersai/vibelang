@@ -177,6 +177,106 @@ func TestMissingRuntimeDisabledModuleNames(t *testing.T) {
 	}
 }
 
+// Chapter 7's dependency diagnostic is project-wide, including written native
+// imports, while independent TypeScript errors retain their own diagnostics.
+func TestMissingRuntimeForeignImports(t *testing.T) {
+	for _, installed := range []bool{false, true} {
+		for _, independent := range []bool{false, true} {
+			for _, reverse := range []bool{false, true} {
+				for _, foreignFirst := range []bool{false, true} {
+					t.Run(fmt.Sprintf("installed=%t/independent=%t/reverse=%t/foreignFirst=%t", installed, independent, reverse, foreignFirst), func(t *testing.T) {
+						packages := map[string]string{"effect": "packages/runtime/node_modules/effect"}
+						if installed {
+							packages["vibelang-runtime"] = "packages/runtime"
+						}
+						_, file, _, _ := editorProgramWith(t, "import './other.js'\nexport effect function value() { return 1 }", packages)
+						dir := filepath.Dir(file.FileName().AsString())
+						other := "import * as Existing from 'vibelang-runtime'\nexport const value = Existing\n"
+						if independent {
+							other += "export const wrong: number = 'bad'\n"
+						}
+						if err := os.WriteFile(filepath.Join(dir, "other.ts"), []byte(other), 0600); err != nil {
+							t.Fatal(err)
+						}
+						names := "[\"main.vibe\",\"other.ts\"]"
+						if reverse {
+							names = "[\"other.ts\",\"main.vibe\"]"
+						}
+						configName := filepath.Join(dir, "tsconfig.json")
+						configText := "{\"compilerOptions\":{\"target\":\"ES2022\",\"module\":\"NodeNext\",\"strict\":true,\"skipLibCheck\":true,\"noEmit\":true,\"types\":[]},\"files\":" + names + "}"
+						if err := os.WriteFile(configName, []byte(configText), 0600); err != nil {
+							t.Fatal(err)
+						}
+						var disk vfs.FS = osvfs.FS()
+						if !installed {
+							disk = missingRuntimeTestFS{disk}
+						}
+						fs := bundled.WrapFS(disk)
+						config, errors := tsoptions.GetParsedCommandLineOfConfigFile(tspath.RootedFilePathFromAbsolute(filepath.ToSlash(configName)), &core.CompilerOptions{}, nil, fs, nil)
+						if len(errors) != 0 {
+							t.Fatal(errors)
+						}
+						program := compiler.NewProgram(compiler.ProgramOptions{Config: config, Host: compiler.NewCompilerHost(fs, bundled.LibPath(), nil, nil, nil)})
+						if foreignFirst {
+							for _, source := range program.GetSourceFiles() {
+								if strings.HasSuffix(source.FileName().AsString(), "/other.ts") {
+									program.GetSemanticDiagnostics(t.Context(), source)
+								}
+							}
+						}
+						for repeat := 0; repeat < 2; repeat++ {
+							got := map[int32]int{}
+							for _, d := range program.GetSemanticDiagnostics(t.Context(), nil) {
+								if d.Category() == diagnostics.CategoryError {
+									got[d.Code()]++
+								}
+							}
+							want := map[int32]int{}
+							if !installed {
+								want[2307] = 1
+							}
+							if independent {
+								want[2322] = 1
+							}
+							if !stdmaps.Equal(got, want) {
+								t.Fatalf("want %v, got %v: %v", want, got, program.GetSemanticDiagnostics(t.Context(), nil))
+							}
+						}
+					})
+				}
+			}
+		}
+	}
+}
+
+// A project with only native inputs retains TypeScript's ordinary per-import
+// diagnostics; there is no compiler-generated VibeLang dependency to replace.
+func TestMissingRuntimeNativeOnly(t *testing.T) {
+	_, file, _, _ := editorProgramWith(t, "export const unused = 1", nil)
+	dir := filepath.Dir(file.FileName().AsString())
+	source := "import * as Existing from 'vibelang-runtime'\nexport const value = Existing\n"
+	for _, name := range []string{"a.ts", "b.ts"} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(source), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	configName := filepath.Join(dir, "tsconfig.json")
+	text := "{\"compilerOptions\":{\"module\":\"NodeNext\",\"target\":\"ES2022\",\"strict\":true,\"skipLibCheck\":true,\"noEmit\":true,\"types\":[]},\"files\":[\"a.ts\",\"b.ts\"]}"
+	if err := os.WriteFile(configName, []byte(text), 0600); err != nil {
+		t.Fatal(err)
+	}
+	fs := bundled.WrapFS(missingRuntimeTestFS{osvfs.FS()})
+	config, errors := tsoptions.GetParsedCommandLineOfConfigFile(tspath.RootedFilePathFromAbsolute(filepath.ToSlash(configName)), &core.CompilerOptions{}, nil, fs, nil)
+	if len(errors) != 0 {
+		t.Fatal(errors)
+	}
+	program := compiler.NewProgram(compiler.ProgramOptions{Config: config, Host: compiler.NewCompilerHost(fs, bundled.LibPath(), nil, nil, nil)})
+	all := program.GetSemanticDiagnostics(t.Context(), nil)
+	if len(all) != 2 || all[0].Code() != 2307 || all[1].Code() != 2307 {
+		t.Fatalf("want two native missing-import diagnostics, got %v", all)
+	}
+}
+
 // fixtureRuntime keeps dependency-free trust/contract tests focused on their
 // rule while letting the compiler resolve the runtime's namespace.
 func fixtureRuntime(files map[string]string) map[string]string {
