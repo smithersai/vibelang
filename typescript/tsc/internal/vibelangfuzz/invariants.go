@@ -241,7 +241,7 @@ func firstDifference(x, y string) string {
 // CheckDiagnostics applies the invariants every diagnostic of a compilation
 // keeps, whatever the project's settings. A Chapter 28 registry fact is
 // checked only where Facts derives one.
-func CheckDiagnostics(g *Gaps, dir string, ds []*ast.Diagnostic, defaultsApply bool) {
+func CheckDiagnostics(g *Gaps, dir string, ds []*ast.Diagnostic, defaultsApply bool, severities ...map[string]string) {
 	facts := Facts()
 	for _, d := range ds {
 		checkSpan(g, dir, d)
@@ -298,6 +298,19 @@ func CheckDiagnostics(g *Gaps, dir string, ds []*ast.Diagnostic, defaultsApply b
 			g.Add("ek:"+name, "%s is never emitted by the CLI (Chapter 28), but was reported: %s", name, keyOf(dir, d))
 			continue
 		}
+		// VIP-30 overrides one diagnostic code, never the whole project's
+		// warning policy. The effective map includes inherited settings.
+		if adjustable && len(severities) != 0 {
+			if severity, ok := severities[0][name]; ok {
+				matches := severity == "error" && d.Category() == diagnostics.CategoryError ||
+					severity == "warning" && d.Category() == diagnostics.CategoryWarning ||
+					severity == "suggestion" && d.Category() == diagnostics.CategorySuggestion
+				if !matches {
+					g.Add("ek:"+name, "%s is %s in vibe.severities, but was reported as %s: %s", name, severity, d.Category().Name(), keyOf(dir, d))
+				}
+				continue
+			}
+		}
 		if !defaultsApply && adjustable {
 			continue
 		}
@@ -340,13 +353,14 @@ func checkSpan(g *Gaps, dir string, d *ast.Diagnostic) {
 // DefaultsApply reports whether a project's EK diagnostics must have their
 // default categories: no configuration file sets the `vibelang` setting
 // `diagnostics`, and no source has an @vibelang-diagnostics comment
-// (Chapter 28, D241, D275).
+// (Chapter 28, D241, D275). Modern vibe.severities entries are checked
+// individually against the effective project settings instead.
 func DefaultsApply(project Project) bool {
-	if strings.Contains(project.Config, `"diagnostics"`) || strings.Contains(project.Config, `"severities"`) {
+	if strings.Contains(project.Config, `"diagnostics"`) {
 		return false
 	}
 	for name, text := range project.Files {
-		if strings.HasSuffix(name, ".json") && (strings.Contains(text, `"diagnostics"`) || strings.Contains(text, `"severities"`)) {
+		if strings.HasSuffix(name, ".json") && strings.Contains(text, `"diagnostics"`) {
 			return false
 		}
 		if strings.Contains(text, "@vibelang-diagnostics") {

@@ -50,7 +50,11 @@ func currentDiagnosticWitness(t *testing.T, key string, variant uint8) {
 	file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "/project/main.vibe", PathKey: "/project/main.vibe"}, "x", core.ScriptKindTS)
 	d := ast.NewExternalDiagnostic(file, core.NewTextRange(0, 1), "EK", category, code, "diagnostic policy witness")
 	gaps := &Gaps{}
-	CheckDiagnostics(gaps, "/project", []*ast.Diagnostic{d}, !configured)
+	var severities map[string]string
+	if configured {
+		severities = map[string]string{fmt.Sprintf("EK%04d", code): category.Name()}
+	}
+	CheckDiagnostics(gaps, "/project", []*ast.Diagnostic{d}, true, severities)
 	if gaps.Any() == valid {
 		Gap(t, "FuzzCurrentDiagnosticPolicy", fmt.Sprintf("policy:%s:category-%d:configured-%t", key, category, configured),
 			"VIP-5, VIP-30, VIP-34: current warning policy must apply; valid=%t gaps=%v", valid, gaps.found)

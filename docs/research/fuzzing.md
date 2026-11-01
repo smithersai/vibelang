@@ -2,6 +2,8 @@
 
 Researched 2026-10-27; suite built 2026-10-27 and 2026-10-28. This is a snapshot; `typescript/tsc/internal/vibelangfuzz/` is the live suite.
 
+Compiled regression replays in the spec gate use the same `VIBELANG_FUZZ_HANG=120s` stage budget as the full seed suite, so emitted-output checks retain their normal allowance on a busy host.
+
 ## Summary
 
 Fuzz VibeLang with Go's native fuzzer, and take every oracle from the specification.
@@ -79,7 +81,8 @@ The specification is ahead of the compiler in places (Chapter 28: "A registry en
 | Target | Input | Oracles, each from the specification |
 | --- | --- | --- |
 | `FuzzCurrentDiagnosticPolicy` | Keyed Fiber/Deferred await advisories, category and override bytes | Current Appendix B warning defaults and warning overrides (VIP-5, VIP-30, VIP-34); fixed language errors cannot be downgraded. A direct acceptance-case replay prevents sampling from hiding the configured-warning witness. |
-| `FuzzCompile` | Archive of a project, seeded with the cases and snippets | No panic or hang. Every EK code is registered in Chapter 28 and not retired; current Appendix B gives own-code default categories and warning configurability, with historical fallback for absent legacy rows. EK codes only in `.vibe` files (D266). Spans inside their files. Same result on a fresh compilation, in reverse file order, and emitting first. With no error: emitted JavaScript parses; it imports only effect, the runtime, written specifiers, module files and an entry's platform package (Chapter 27, D365, D403, D312); runtime helpers exist; source maps are version 3, stay inside the source and map each emitted statement into its statement (D34); every requested output exists; `.d.ts` files parse, and a consumer that calls every export type-checks under the fork and under stock TypeScript (D366); runtime helpers are the runtime's executable exports |
+| `FuzzDiagnosticSeverityScope` | Keyed Fiber/Deferred/fixed-error codes, category and own/unrelated setting bytes | VIP-30 entry-by-code overrides, exact configured categories, and unchanged defaults for other codes. |
+| `FuzzCompile` | Archive of a project, seeded with the cases and snippets | No panic or hang. Every EK code is registered in Chapter 28 and not retired; current Appendix B gives own-code default categories and warning configurability, with historical fallback for absent legacy rows. Each code follows its own effective `vibe.severities` entry, including inheritance; unrelated codes keep their defaults. EK codes only in `.vibe` files (D266). Spans inside their files. Same result on a fresh compilation, in reverse file order, and emitting first. With no error: emitted JavaScript parses; it imports only effect, the runtime, written specifiers, module files and an entry's platform package (Chapter 27, D365, D403, D312); runtime helpers exist; source maps are version 3, stay inside the source and map each emitted statement into its statement (D34); every requested output exists; `.d.ts` files parse, and a consumer that calls every export type-checks under the fork and under stock TypeScript (D366); runtime helpers are the runtime's executable exports |
 | `FuzzParse` | One text, parsed as `.vibe`, `.ts`, `.tsx`, `.d.ts` | No panic; well-formed tree; deterministic; ESTree output is JSON with ranges inside the text (Chapter 28 Linting, D277) |
 | `FuzzConfig` | A `vibelang` settings object and a source | Invalid values draw a config diagnostic; a valid severity sets an adjustable code; non-adjustable codes never change; tracing changes no diagnostic (Chapter 28, D104, D275) |
 | `FuzzTypeScriptParity` | A `.ts`-only project | Same diagnostics, with complete spans, JavaScript, declarations and maps as stock TypeScript 7.1.0-beta (D266) |

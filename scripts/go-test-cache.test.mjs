@@ -72,3 +72,16 @@ test("the fuzz seed target honors its documented deadline and build allowance", 
   assert.ok(seconds(testLimit[1]) >= seconds(documented[1]), "the graph truncates the documented seed run")
   assert.ok(seconds(taskLimit[1]) >= seconds(testLimit[1]) + 25 * 60, "the task deadline must leave the test its admission/build allowance")
 })
+
+test("the spec gate's compile replays share the full fuzz stage watchdog", () => {
+  const source = read("PACKAGE.ts")
+  const fullStart = source.indexOf('"go-vibelangfuzz": goVibelang(')
+  const specStart = source.indexOf('"spec-tests":', fullStart)
+  assert.ok(fullStart >= 0 && specStart > fullStart)
+  const full = source.slice(fullStart, specStart)
+  const spec = source.slice(specStart)
+  const budget = /VIBELANG_FUZZ_HANG=([0-9]+[smh])/.exec(full)
+  assert.ok(budget, "the full fuzz target must declare its stage watchdog")
+  assert.match(spec, new RegExp("VIBELANG_FUZZ_HANG=" + budget[1] + "(?: |$)"),
+    "compiled spec regressions must not inherit the short default watchdog")
+})

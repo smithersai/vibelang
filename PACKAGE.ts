@@ -48,6 +48,10 @@ const goVibelang = (summary: string, shell: string, data: ReadonlyArray<unknown>
 // Go sources, not the whole tree, so a specification edit runs them before it
 // lands and they stay cached otherwise.
 const specTests = [
+  "TestSeverityScopeQuoted",
+  "TestUnrelatedSeverityKeepsDiagnosticDefaults",
+  "TestDiagnosticSeverityScopeRegression",
+  "TestCompileSeverityOverridesByCode",
   "TestAwaitAdvisoryPlacementQuoted",
   "TestAwaitAdvisoryPlacementRegression",
   "TestCurrentDiagnosticPolicyQuoted",
@@ -294,7 +298,7 @@ const targets = {
   "spec-tests": S.Shell.Test({
     summary: "The Go tests that read docs/design (the registry, the VIP citations and coverage, the pending lines) and the cost guards of --fix and flow narrowing.",
     shell:
-      `cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} ` +
+      `cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} ` +
       `go test -count=1 -trimpath -run '^(${[...specTests, ...fixCostTests, ...narrowingCostTests].join("|")})$' ./internal/checker/ ./internal/vibelang/ ./internal/vibelangfuzz/ ./internal/effecttsgo/shim/checker/`,
     data: [design, Tsc.srcs, Tsc["effect-shim-files"], Tsc["vibelang-files"], Tsc["vibelangfuzz-files"], Packages["runtime-dist"]] as Array<never>,
     tools: [go, node],

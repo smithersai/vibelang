@@ -206,7 +206,11 @@ func compileGaps(t *testing.T, w *Workspace, g *Gaps, project Project, key strin
 		c.Diagnostics = withoutEffectLint(c.Diagnostics)
 		return c
 	}
-	CheckDiagnostics(g, a.Dir, a.Diagnostics, DefaultsApply(project))
+	var severities map[string]string
+	if a.Program != nil && a.Program.Options().VibeLang != nil {
+		severities = a.Program.Options().VibeLang.Severities
+	}
+	CheckDiagnostics(g, a.Dir, a.Diagnostics, DefaultsApply(project), severities)
 
 	// The determinism checks compile the input three more times, so they run
 	// on a third of the inputs, chosen by the input so that a failure
