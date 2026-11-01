@@ -1,8 +1,11 @@
 package vibelang
 
 import (
+	"slices"
+
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
 )
 
 // inferredReturnType gives a .vibe function that is an Effect, and has no
@@ -45,6 +48,61 @@ type effectInfo struct {
 	errorSources       []*ast.Node   // errorSources[i] adds errors[i]
 	requirementSources []*ast.Node   // requirementSources[i] adds requirements[i]
 	effect             *checker.Type // the generic Effect interface, from any Effect the body runs
+	runs               []effectRun   // the Effects the body runs whose three channels are known
+}
+
+// An effectRun is one Effect a body runs, as channelUnions compares them.
+type effectRun struct{ success, errors, requirements *checker.Type }
+
+// addRun records that the body runs t, an Effect.
+func (info *effectInfo) addRun(c *checker.Checker, t *checker.Type) {
+	if t.Flags()&checker.TypeFlagsUnion != 0 {
+		return
+	}
+	success, errors, requirements := channelType(c, t, "_A"), channelType(c, t, "_E"), channelType(c, t, "_R")
+	if success != nil && errors != nil && requirements != nil {
+		info.runs = append(info.runs, effectRun{success, errors, requirements})
+	}
+}
+
+// channelUnions returns info's E and R as an Effect type of effect writes
+// them. It reads them as TypeScript reads an Effect.gen body's (Chapter 7's
+// declaration identity): the function's yield type is the subtype-reduced
+// union of the Effects it yields, so a run that is a subtype of another run
+// adds nothing, and two runs whose error aliases hold the same members declare
+// the first alias, not its members; what is left joins with subtype reduction,
+// as `infer E` joins its candidates. Dropping a run keeps the channels mutually
+// assignable: Effect is covariant in E and R, so what it adds is in the run
+// that covers it. A channel no recorded run added, such as a throw, always
+// stays.
+func (a *analyzer) channelUnions(info *effectInfo, effect *checker.Type) (errors, requirements *checker.Type) {
+	c := a.checker
+	keptErrors, keptRequirements := info.errors, info.requirements
+	if effect != nil && len(info.runs) > 1 {
+		programs := make([]*checker.Type, len(info.runs))
+		for i, run := range info.runs {
+			programs[i] = c.NewTypeReference(effect, []*checker.Type{run.success, run.errors, run.requirements})
+		}
+		reduced := c.GetUnionTypeEx(programs, checker.UnionReductionSubtype)
+		kept := []*checker.Type{reduced}
+		if reduced.Flags()&checker.TypeFlagsUnion != 0 {
+			kept = reduced.Types()
+		}
+		survives := func(channel func(effectRun) *checker.Type) func(*checker.Type) bool {
+			held, dropped := map[*checker.Type]bool{}, map[*checker.Type]bool{}
+			for i, run := range info.runs {
+				if slices.Contains(kept, programs[i]) {
+					held[channel(run)] = true
+				} else {
+					dropped[channel(run)] = true
+				}
+			}
+			return func(t *checker.Type) bool { return held[t] || !dropped[t] }
+		}
+		keptErrors = core.Filter(info.errors, survives(func(run effectRun) *checker.Type { return run.errors }))
+		keptRequirements = core.Filter(info.requirements, survives(func(run effectRun) *checker.Type { return run.requirements }))
+	}
+	return c.GetUnionTypeEx(keptErrors, checker.UnionReductionSubtype), c.GetUnionTypeEx(keptRequirements, checker.UnionReductionSubtype)
 }
 
 func (info *effectInfo) addError(t *checker.Type, source *ast.Node) {
@@ -75,6 +133,7 @@ func (info *effectInfo) addRequirement(t *checker.Type, source *ast.Node) {
 func (info *effectInfo) add(other *effectInfo) {
 	info.addErrors(other)
 	info.addRequirements(other)
+	info.runs = append(info.runs, other.runs...)
 	if info.effect == nil {
 		info.effect = other.effect
 	}

@@ -227,6 +227,7 @@ func (a *analyzer) addCall(info *effectInfo, call *ast.Node) {
 	if r := channelType(a.checker, t, "_R"); r != nil {
 		info.addRequirement(r, call)
 	}
+	info.addRun(a.checker, t)
 	if info.effect == nil {
 		info.effect = effectInterface(a.checker, t)
 	}

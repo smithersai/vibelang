@@ -202,11 +202,12 @@ func annotatedReturnType(c *checker.Checker, fn *ast.Node, t *checker.Type) *che
 		if info == nil {
 			info = &effectInfo{} // fn's body is being collected
 		}
+		errors, requirements := a.channelUnions(info, effect)
 		if k.inferred(channelE) {
-			channels[channelE] = c.GetUnionType(info.errors)
+			channels[channelE] = errors
 		}
 		if k.inferred(channelR) {
-			channels[channelR] = c.GetUnionType(info.requirements)
+			channels[channelR] = requirements
 		}
 	}
 	return c.NewTypeReference(effect, channels)

@@ -422,8 +422,8 @@ func (a *analyzer) effectTypeOf(fn *ast.Node, success *checker.Type) *checker.Ty
 	if effect == nil {
 		return nil
 	}
-	errors, requirements := info.errors, info.requirements
-	return a.checker.NewTypeReference(effect, []*checker.Type{success, a.checker.GetUnionType(errors), a.checker.GetUnionType(requirements)})
+	errors, requirements := a.channelUnions(info, effect)
+	return a.checker.NewTypeReference(effect, []*checker.Type{success, errors, requirements})
 }
 
 // ownerCall returns the call or new expression that fn is an argument of,

@@ -65,6 +65,7 @@ const specTests = [
   "TestTrailingBlocksQuoted",
   "TestReviewColdConsoleQuoted",
   "TestPackageExportDeclarationQuoted",
+  "TestEffectChannelsQuoted",
   "TestFormatForHeadsQuoted",
   "TestFormatFoldkitQuoted",
   "TestFormatLabelQuoted",

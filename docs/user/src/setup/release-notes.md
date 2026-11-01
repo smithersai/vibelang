@@ -349,6 +349,10 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The examples, the app template, the Vite plugin's README and the style guide wrote trailing blocks such as `it.effect("loads") { … }`, which VIP-11 denied; they now pass the block as an argument, `it.effect("loads", effect () => { … })` and `Layer.effect(Users, effect { … })`.
 - VIP-11 denied trailing blocks, yet `Layer.effect(Users) { … }` and `it.effect("loads") { … }` still compiled silently as calls with an arrow argument; code that compiled before now has a compile error, `EK1101`, at each trailing block, and `vibelang --fix` writes the block as the call's last argument with the same runtime behavior.
+
+
+- An `effect` function that ran two Effects whose errors are aliases of one union, such as AWS `TagResourceError` and `UntagResourceError`, declared every member of the union, while the `Effect.fn` it replaces declares the first alias; its declaration now reads E and R as TypeScript reads them from an `Effect.gen` body, so it keeps the alias.
+
 - Release checks could fail with `ETXTBSY` while a parallel build overwrote the native compiler; native binaries now replace completed builds atomically, and release checks wait for the compiler and runtime builds.
 
 - The runtime's `main` tests, which start Node and Bun child processes, could fail at Bun's 5 s default on a loaded host; the runtime suite and every other `bun test` the build graph runs now pass an explicit `--timeout`, and a check keeps the flag in place.

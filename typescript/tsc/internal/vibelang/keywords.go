@@ -251,7 +251,8 @@ func (a *analyzer) keywordProgramType(node *ast.Node, success *checker.Type) *ch
 	if effect == nil {
 		return nil
 	}
-	return a.checker.NewTypeReference(effect, []*checker.Type{success, a.checker.GetUnionType(info.errors), a.checker.GetUnionType(info.requirements)})
+	errors, requirements := a.channelUnions(info, effect)
+	return a.checker.NewTypeReference(effect, []*checker.Type{success, errors, requirements})
 }
 
 // keywordOperandType is expressionType's step for a keyword operand: it

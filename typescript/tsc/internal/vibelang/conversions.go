@@ -495,7 +495,8 @@ func (a *analyzer) byNameType(node *ast.Node, success *checker.Type) *checker.Ty
 	if effect == nil {
 		return nil
 	}
-	return a.checker.NewTypeReference(effect, []*checker.Type{success, a.checker.GetUnionType(info.errors), a.checker.GetUnionType(info.requirements)})
+	errors, requirements := a.channelUnions(info, effect)
+	return a.checker.NewTypeReference(effect, []*checker.Type{success, errors, requirements})
 }
 
 // byNameResults visits only result positions, leaving conditions, operands,
