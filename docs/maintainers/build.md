@@ -171,6 +171,11 @@ passes `--timeout` (the runtime 30 s, which covers two 10 s children per test;
 fails a `PACKAGE.ts` shell or a package script that drops the flag, and a
 `main.test.ts` child deadline the runtime budget cannot cover twice.
 
+The runtime's two stock-`tsc` checks (emitted declarations, experimental
+identity) give the compiler the harness's compile budget, `120_000` ms, under a
+`150_000` ms test deadline: alone a run takes about 6 s at load 118, and the
+earlier `30_000` ms failed most logged runtime-test runs on loaded post-merge hosts.
+
 The documented debugging recipe test compiles an application and then starts
 Node.js to check its failing source-mapped exit. Its test deadline is
 `30_000` ms so both host processes can finish on a busy build host; it still

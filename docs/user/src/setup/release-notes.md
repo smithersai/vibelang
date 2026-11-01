@@ -244,6 +244,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 - `vibelang --fix` removed the retired `declarationSidecars` setting but left an empty `"vibelang": {  }` object behind, which a repository's formatter then rewrote; a settings object that held only that setting now goes with it, and one with a comment keeps the comment.
+- The runtime package's two stock-TypeScript checks could time out at 30 s on a loaded build host; they now have the same 120 s compile budget as the acceptance harness.
+
 - Formatting valid `for` heads with `is` patterns could fail with an internal parse error; they now format at narrow and normal widths while keeping `is` attached to its subject.
 
 - Compiler fuzz checks could stop before finishing their seed corpus; the build target now uses the documented 40-minute deadline and allows separate build time.

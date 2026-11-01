@@ -84,13 +84,16 @@ test("package: the ES-module and CommonJS guards pin the same Effect version", (
   expect(pin("version-guard.cts")).toBe(pin("version.ts"))
 })
 
+// A compile has the harness's compile budget, 120 s: alone this tsc run takes 6 s at load 118,
+// and at post-merge load it outran 30 s in most runtime-test failures logged on 10-31/11-01.
 test("package: emitted declarations resolve and retain helper types", () => {
   const result = Bun.spawnSync(["bun", "x", "--no-install", "tsc", "-p", "tests/tsconfig.json"], {
-    cwd: packageDir, stdout: "pipe", stderr: "pipe"
+    cwd: packageDir, stdout: "pipe", stderr: "pipe", timeout: 120_000
   })
+  expect(result.signalCode ?? null).toBeNull() // a killed tsc names its signal; a finished one has none
   expect(result.stdout.toString() + result.stderr.toString()).toBe("")
   expect(result.exitCode).toBe(0)
-}, 30_000)
+}, 150_000)
 
 test("package: a missing Effect 3 export cannot hide the version mismatch", async () => {
   const dir = fixture("3.19.0")
