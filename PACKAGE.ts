@@ -290,6 +290,18 @@ const targets = {
     [Tsc["vibelangfuzz-files"]],
     "30m"
   ),
+  // The merge gate runs it for a change to a case, the specification, the
+  // fuzz oracles or the compiler's project settings: each case's vibelang
+  // section seeds FuzzConfig, where //:go-vibelangfuzz runs only post-merge.
+  // The cases 04db4f250ebf added seeded vibelang.declarationImportStyle,
+  // which the oracle did not yet know, and 19f055973410 went RED post-merge.
+  "go-vibelangfuzz-config": goVibelang(
+    "The project-settings oracles over every case's vibelang section and the settings the specification lists.",
+    `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} ` +
+      "go test -short -count=1 -timeout=15m -trimpath -run '^FuzzConfig$' ./internal/vibelangfuzz/",
+    [Tsc["vibelangfuzz-files"]],
+    "30m"
+  ),
   // Shell targets do not inherit ambient Go controls. Declare the
   // post-merge fuzz budget: 24 seed workers and six build jobs.
   "go-vibelangfuzz": goVibelang(

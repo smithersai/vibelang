@@ -150,6 +150,7 @@ hand, rebuild it after changing compiler sources.
   :go-vibelangfuzz-pending      the inputs testdata/pending/ lists, which must still fail, and every VIP and data probe (merge gate)
   :go-vibelangfuzz-editor       the editor oracles over documentation examples and cases (merge gate)
   :go-vibelangfuzz-compile      the compile oracles over their short sample of cases and documentation examples (merge gate)
+  :go-vibelangfuzz-config       the project-settings oracles over every case's vibelang section (merge gate)
   :release :snippets :tokens :forms :docs-tools :docs-check :site-spec-links
   :site-contrast                exclusive: runs only with --include-exclusive
   :design-files                 Filegroup: docs/design
