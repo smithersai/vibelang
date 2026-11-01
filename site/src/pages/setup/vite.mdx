@@ -143,7 +143,7 @@ Run `npx vitest run`. Tests need no prior build. The output includes:
       Tests  1 passed (1)
 ```
 
-If a test starts a Node process that runs the project's source, such as a command-line program, pass `vibelang({ project: "tsconfig.test.json", register: true })`. The plugin adds `vibelang/register` to the tests' `NODE_OPTIONS`, so that process imports `.vibe` modules too, whatever its working directory. Any `NODE_OPTIONS` the configuration or the environment already sets is kept.
+If a test starts a Node process that runs the project's source, such as a command-line program, pass `vibelang({ project: "tsconfig.test.json", register: true })`. The plugin adds `vibelang/register` to the tests' `NODE_OPTIONS`, so that process imports `.vibe` modules too, whatever its working directory. Any `NODE_OPTIONS` the configuration or the environment already sets is kept. A Bun process a test starts, such as `process.execPath` under `bun x --bun vitest`, reads `BUN_OPTIONS` instead, so the plugin also adds `--preload` of `vibelang/bun` there, unless that file's path contains a space, which `BUN_OPTIONS` cannot carry.
 
 ### Node's test runner and Jest
 

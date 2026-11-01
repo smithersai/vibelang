@@ -39,7 +39,7 @@ For example, TypeScript’s [`${configDir}` substitution](https://www.typescript
 // Effective paths: outDir is app/dist; rootDir is configs/src.
 ```
 
-`.vibe` is a supported source extension: `files` may list it, and `include`, `exclude` and the default `**/*` treat it as they treat `.ts`. When both `x.vibe` and its compatibility declaration `x.d.vibe.ts` are selected, VibeLang uses the source and resolves `./x.vibe` to it; plain `tsc` uses the declaration.
+`.vibe` is a supported source extension: `files` may list it, and `include`, `exclude` and the default `**/*` treat it as they treat `.ts`. When both `x.vibe` and its compatibility declaration `x.d.vibe.ts` are selected, VibeLang uses the source and resolves `./x.vibe` to it; plain `tsc` uses the declaration. A package specifier that lands on `x.d.vibe.ts`, as a `types` export does, resolves to `x.vibe` when the source is beside it outside `node_modules`, so the sidecar and the source are one module; a published package keeps its declarations.
 
 ```json
 { "include": ["src"] }

@@ -26,6 +26,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The migrate flow's `record` left a batch's `.vibe` files unformatted whenever jj saw the module as renamed, as Smithers' `src/{Crypto.ts => Crypto.vibe}`, so the repository's format check then failed on them; `record` now formats and refreshes the sidecars of every `.vibe` file the batch wrote, renamed or not.
 - The migrate flow's `verify` listed a baseline test as missing when its name printed a date, such as `it.each([[new Date()]])("rejects %s")`, so a package with one could never pass; tests are now matched with any `Date#toString`, `toUTCString` or ISO date in their names set aside.
 - The migrate flow's setup wired `vibelang-vite` into the Vitest config the tests load without `register`, so a test that starts `node` on the sources, such as 62 of Smithers' test files, failed once the module graph reached a `.vibe` file; setup now writes `vibelang({ register: true })`, and adds `register: true` to a config that already had the plugin.
+- `vibelang-vite`'s `register: true` set only `NODE_OPTIONS`, so under `bun x --bun vitest` a test that started `process.execPath`, then Bun, could not import `.vibe` source; the plugin now also adds `--preload` of `vibelang/bun` to the tests' `BUN_OPTIONS`.
 - The migrate flow pointed a renamed module's package `exports` and `types` at `x.vibe`, so stock TypeScript, reading the module through its declaration sidecar, reported `TS2883` where a consumer's inferred type named one of the module's types; a `types` field or condition now names `x.d.vibe.ts`, and a bare entry becomes `{ "types": "./x.d.vibe.ts", "default": "./x.vibe" }`.
 - The migrate flow's `verify` passed a batch whose declaration emit failed in a migrated file, such as `TS7056` for a type too long to serialize, when the baseline's emit failed the same way and the two fallbacks were equal; it now fails the batch on any declaration emit error in a migrated file.
 - Formatting an inline `@internal` or other JSDoc comment beside an error payload could silently change its declaration output; the formatter now refuses changes to comment attachment and leaves the file intact.
@@ -206,6 +207,10 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `vibelang --fix` left `EK4401` on a plain call of a `.ts` module or package whose exceptions nothing lists, so a migration kept the module in TypeScript. In effect code it now writes `try Effect.orDie(Effect.try({ try: () => f(x), catch: (error) => error }))`, so an exception stays the defect it was in Effect TypeScript and the declaration doesn't change; in a function with no Effect operation it writes `: infer _`, which keeps the function plain. Neither form trusts the code, and `EK4806` no longer warns about that `catch`, since nothing reads what it returns.
 - The kernel law suite could still fail at 5 s on a loaded host after its 30 s budget moved into the test preload, because Bun applies a preload's default timeout to the first test file only; `bun run test` in `experiments` now passes the budget to every file, and the docs build uses the same flag.
 
+- After the migrate flow's setup, an ast-grep rule for TypeScript also scanned each `.vibe` module's `x.d.vibe.ts` sidecar, so a finding in a `.vibe` module was reported twice; setup now adds `**/*.d.vibe.ts` to the `ignores` of each TypeScript rule it extends to `.vibe`.
+
+- Under the `vibelang/bun` preload, every resolution Bun made, a bare `effect/package.json` included, ran a JavaScript callback, so opencode's TUI plugin test took 34 s instead of 1 s; the preload now handles only resolutions of a path.
+
 - Release checks could fail with `ETXTBSY` while a parallel build overwrote the native compiler; native binaries now replace completed builds atomically, and release checks wait for the compiler and runtime builds.
 
 - The runtime's `main` tests, which start Node and Bun child processes, could fail at Bun's 5 s default on a loaded host; the runtime suite and every other `bun test` the build graph runs now pass an explicit `--timeout`, and a check keeps the flag in place.
@@ -217,9 +222,21 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Contrast diagnostics could identify an already completed audit as the operation that crashed; they now distinguish active work and report Chromium's native status, available memory and aggregate process memory without logging process names or arguments.
 
 - `vibelang --fix --fix-vip-only` left a program such as `Effect.void` in an arm of a returned `?:` as a value (`cond ? Effect.void : Effect.fail(e)` under an `Effect` return type), which failed with `TS2322` "`Effect<void, never, never>` is not assignable to `void`"; each such arm now gets `try`, as a whole returned program does.
+- Contrast diagnostics could identify an already completed audit as the operation that crashed; they now distinguish active work and report Chromium's native status, available memory and aggregate process memory without logging process names or arguments.
+
+- `vibelang lint -c <oxlint config>` walked build output that Oxlint skips, such as foldkit's `packages/create-foldkit-app/dist/templates`, and failed with "does not include it; not linted"; it now skips what Oxlint skips for the same invocation: files ignored by `.gitignore` files up to the repository root and `.git/info/exclude`, the `--ignore-path` file (`.eslintignore` by default) and `--ignore-pattern` globs, with `--no-ignore` turning off the last two.
+
+- A `.vibe` import with a plugin's query, such as `./x.vibe?highlighted` that a website plugin loads as rendered HTML, was recompiled by `vibelang-vite` as the module and the build failed with `MISSING_EXPORT` for `default`; the plugin now compiles only the module itself and ids with Vite's own queries (`?import`, `?v=`, `?t=`, `?worker_file`), and leaves a resource another plugin loads alone, as it already did for `?raw` and `?url`.
+- A workspace package that exports a `.vibe` module's declaration sidecar as its types, and imports the module from its own `.ts` files as `./x.vibe`, gave a `vibelang` consumer two copies of the module, so its classes failed with TS2345 ("separate declarations of a private property"); the export now resolves to the source when the source is beside it outside `node_modules`.
+
+- After a `chmod` of the compiler, or any change to its timestamps that kept its bytes, every Vite or loader run recompiled each project (`compiler changed`). The cache now compares the compiler's contents when its timestamps differ, and recompiles only for a changed compiler.
+
+
 - Formatting valid `for` heads with `is` patterns could fail with an internal parse error; they now format at narrow and normal widths while keeping `is` attached to its subject.
 
 - Compiler fuzz checks could stop before finishing their seed corpus; the build target now uses the documented 40-minute deadline and allows separate build time.
+
+- In Vite, a `.vibe` module's `tsconfig` path alias such as `import { value } from "~/value"` resolved to nothing, though the same import from a `.ts` module resolved under `resolve.tsconfigPaths`; `vibelang-vite` now resolves it to the file the nearest `tsconfig.json`'s `paths` give, as `vibelang` does.
 
 - The site's contrast check could lose its Chromium renderer under build-host memory pressure; it now audits each single-document page in place instead of opening a second renderer to combine the results.
 - VIP migration could remove `try` from calls returning tagged errors and turn their failures into success values; it now preserves execution of those Effects, while non-Effect Yieldables retain their `asEffect()` repair.
@@ -227,6 +244,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Formatting a `data`, `schema` or field-only `error` declaration whose opening brace was on the next line could require a second pass to settle its indentation; one pass now produces stable indentation.
 - After that fix, VIP migration kept `try` on calls to unannotated plain functions such as `function double(n) { return n * 2 }`, which left an `EK0502` error; it drops that `try` again and keeps it only where the callee's written return type is an Effect.
 - VIP migration treated a plain function without a return type that returns an `error` instance or an object with `asEffect()` as an Effect: it kept `try` on its call, rewrote the call to `try f().asEffect()`, which returned a different value, or refused to migrate the file. It now removes that `try`, and the call gives the returned value, as it did before.
+
+- `try` could reject generic Effect subtype operands or report a standalone `Config` call as discarded; values and calls now run consistently, retaining their success, error and requirement types.
 - Editor smoke validation rejected the safe `catch (cause: Cause)` migration; it now checks the replacement with `try exit(effect { ... })` and verifies that applying it adds no error.
 
 - The migrate flow planned a tool's config that uses Effect, such as `graphql.config.ts`, for `.vibe`, and the tool, which finds its config by name, then failed with `config file not found`. A `*.config.ts` file now stays `.ts`, and a plan that names one is refused.
@@ -250,6 +269,10 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The fuzz suite did not check jumps in a `for concurrent` head; new checks cover `return`, `break` and `continue` in head defaults and computed keys, and `return` in the limit and operand.
 - Rerunning the migrate flow's setup on a repository an earlier release set up left the `declarationSidecars` setting it had written, so every compile of those packages failed with `TS5023`; setup now removes it from each tsconfig it wires.
+
+- The migrate flow's style gate refused a `Schema.TaggedError` class it must keep (its `EK4837` has no quick fix) because the class keeps its constructor, which `EK4814` warns about. It now accepts that `EK4814` on such a class.
+
+- `EK4805` told an exported class that extends `Error` to become an `error` declaration, whose constructor takes one object, so following it broke callers of `new X(message, options)`, and the migrate flow refused the file. For an exported class it now says there is no quick fix, and the migrate flow keeps the class.
 
 - Cross-platform compiler builds could fail without naming the affected platform or its exit status; each target now keeps a completion record and silent failures are identified.
 
