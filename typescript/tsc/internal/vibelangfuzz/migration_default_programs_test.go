@@ -28,16 +28,21 @@ func TestMigrationDefaultProgramsQuoted(t *testing.T) {
 // () { … })`; its rewrite `export default effect { … }` declared
 // `declare function _default(): void` (t3code agent 03:10Z: 47 of 50 modules
 // of the first server slice). The oracle is stock tsc's declaration of the
-// original under the migration gate's own comparison.
-type migrationDefaultProgramForm struct{ key, ts, vibe string }
+// original under the migration gate's own comparison. A declaration form is
+// a function declaration, exported as `export default` or by its name.
+type migrationDefaultProgramForm struct {
+	key, ts, vibe string
+	declaration   bool
+}
 
 func migrationDefaultProgramForms() []migrationDefaultProgramForm {
 	return []migrationDefaultProgramForm{
-		{"block", "Effect.gen(function* () {\n%s\n})", "effect {\n%s\n}"},
-		{"parenthesized-block", "(Effect.gen(function* () {\n%s\n}))", "(effect {\n%s\n})"},
-		{"function", "(n: number) => Effect.gen(function* () {\n%s\n})", "effect (n: number) => {\n%s\n}"},
+		{"block", "Effect.gen(function* () {\n%s\n})", "effect {\n%s\n}", false},
+		{"parenthesized-block", "(Effect.gen(function* () {\n%s\n}))", "(effect {\n%s\n})", false},
+		{"function", "(n: number) => Effect.gen(function* () {\n%s\n})", "effect (n: number) => {\n%s\n}", false},
 		// A pipeline stays inside the block: a module's top level runs nothing (EK1001).
-		{"pipeline", "Effect.gen(function* () {\n%s\n}).pipe(Effect.withSpan(\"load\"))", "effect {\nreturn try (effect {\n%s\n}).pipe(Effect.withSpan(\"load\"))\n}"},
+		{"pipeline", "Effect.gen(function* () {\n%s\n}).pipe(Effect.withSpan(\"load\"))", "effect {\nreturn try (effect {\n%s\n}).pipe(Effect.withSpan(\"load\"))\n}", false},
+		{"function-declaration", "function load(n: number) {\nreturn Effect.gen(function* () {\n%s\n})\n}", "effect function load(n: number) {\n%s\n}", true},
 	}
 }
 
@@ -82,7 +87,9 @@ func FuzzMigrationDefaultPrograms(f *testing.F) {
 		known := slices.Contains(migrationDefaultProgramBodies, body)
 		indent := func(text string) string { return "  " + strings.ReplaceAll(text, "\n", "\n  ") }
 		export := "export default "
-		if named {
+		if named && form.declaration {
+			export = "export "
+		} else if named {
 			export = "export const load = "
 		}
 		const imports = "import * as Effect from \"effect/Effect\"\n"
