@@ -382,6 +382,13 @@ requests leave no pending waiter. Shutdown allows another `5_000` ms before
 killing a server that ignores EOF. Run the process-lifecycle regressions with
 `node --test scripts/lsp-connection.test.mjs` (also part of `//:release`).
 
+For `// expect-result:` cases, the generated `out/run.mjs` drains stdout and
+stderr after printing the result or defect, before its forced exit. Large
+JSON values and failure details therefore reach the parent intact, while the
+forced exit still stops the runner's timer and background work.
+`scripts/harness-result.test.mjs` exercises the generated adapter with the real
+pinned Effect package, large strings, escapes, structured values and defects.
+
 The `//typescript/vibelang:fork-late-start` target runs the fork startup
 regressions with delayed scheduling as part of the regular compiler suite.
 It passes the harness's `--isolated` switch, which copies each case into

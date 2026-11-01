@@ -223,6 +223,10 @@ else {
   console.log("${resultMarker}failed: " + Cause.pretty(exit.cause).split("\\n")[0])
   console.error(Cause.pretty(exit.cause))
 }
+// Flush prior writes before the forced exit, including large results and defects.
+await Promise.all([process.stdout, process.stderr].map((stream) =>
+  new Promise((resolve, reject) => stream.write("", (error) => error ? reject(error) : resolve()))
+))
 process.exit(0)
 `
 }
