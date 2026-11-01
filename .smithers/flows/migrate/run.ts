@@ -18,6 +18,7 @@ export function payloadFrom(argv: ReadonlyArray<string>) {
     run: one(options, "run"),
     target: one(options, "target"),
     packages: many(options.package) as Array<string>,
+    ...(options["emitted-project"] ? { emittedProjects: many(options["emitted-project"]) as Array<string> } : {}),
     test: one(options, "test"),
     testCwd: typeof options["test-cwd"] === "string" ? options["test-cwd"] : ".",
     toolchain: one(options, "toolchain")

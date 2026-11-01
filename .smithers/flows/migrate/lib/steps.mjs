@@ -20,6 +20,7 @@ import * as Upgrade from "./upgrade.mjs"
 import * as Wire from "./wire.mjs"
 import { wireEsbuildBuilds } from "./esbuild-builds.mjs"
 import { wireDeveloperTools } from "./tooling.mjs"
+import { planEmittedImports, applyEmittedImports } from "./emitted-imports.mjs"
 import { readToolchain } from "./toolchain.mjs"
 import { assertPortable, machineRoots } from "./portable.mjs"
 import { appendJsonl, batchName, isDeclarationFile, must, quote, readJson, readJsonIf, run as sh, slug, writeJson, writeText } from "./util.mjs"
@@ -146,6 +147,7 @@ export function makeConfig(options) {
     test: { command: options.test, cwd: options.testCwd ?? ".", ...(options.testReport ? { report: options.testReport } : {}) },
     install: options.install ?? null,
     wire: options.wire !== false,
+    ...(options.emittedProjects?.length ? { emittedProjects: options.emittedProjects } : {}),
     toolchain: options.toolchain ? { kind: "staged", dir: resolve(options.toolchain) } : { kind: "npm", version: options.vibelangVersion },
     // Each recorded batch goes on this bookmark, one commit on top of the last.
     bookmark: options.bookmark ?? "vibe",
@@ -596,9 +598,54 @@ export async function wireTarget(config, log) {
   const install = config.install ?? Wire.installCommand(manager, readdirSync(t))
   await must(install, { cwd: t, log: join(log, "install.log") })
   for (const build of tooling.builds) await must(build.command, { cwd: join(t, build.cwd), log: join(log, "ast-grep-build.log") })
+  const emittedImports = await wireEmittedProjects(config, ts, join(log, "emitted-imports"))
+  changed.push(...emittedImports.changed.filter(file => !changed.includes(file)))
   const existingVibe = await formatExistingVibe(config, join(log, "setup-format-vibe.log"))
   if (existingVibe.code !== 0) warnings.push(`vibelang-format exited ${existingVibe.code} on the repository's .vibe files; see ${join(log, "setup-format-vibe.log")}`)
-  return { manager, formattedVibe: existingVibe.files, specs: Object.fromEntries(packages.map((pkg) => [pkg.dir, specsFor(pkg.dir)])), viteConfigs: vite.configs, viteAppConfigs: apps.configs, knipConfig: knip.config, formatted, changed, warnings, install }
+  return { manager, emittedImports, formattedVibe: existingVibe.files, specs: Object.fromEntries(packages.map((pkg) => [pkg.dir, specsFor(pkg.dir)])), viteConfigs: vite.configs, viteAppConfigs: apps.configs, knipConfig: knip.config, formatted, changed, warnings, install }
+}
+
+/**
+ * Only accept product wiring whose published declarations stay byte-identical.
+ * Roll back every planned edit if emitting or comparison fails.
+ */
+export async function wireEmittedProjects(config, ts, log) {
+  const root = config.target
+  const plan = planEmittedImports({ root, ts, packages: config.packages, projects: config.emittedProjects, compiler: compilerOf(config) })
+  if (!plan.changed.length) return { changed: [], modules: plan.modules }
+  const packages = config.packages.filter(pkg => plan.modules.some(m => packageOf(config, m.source) === pkg) &&
+    readJson(join(root, pkg.dir, "package.json")).private !== true)
+  const snapshot = async label => {
+    const result = new Map()
+    for (const pkg of packages) {
+      const outDir = join(log, label, slug(pkg.dir))
+      const emitted = await emitPackageDeclarations({ compiler: compilerOf(config), ts, t: root, pkg, outDir, log: outDir + ".log" })
+      if (emitted.code !== 0) throw new Error("emitted import wiring: declaration emit failed for " + pkg.dir + "; see " + outDir + ".log")
+      const visit = dir => {
+        for (const entry of readdirSync(dir, { withFileTypes: true })) {
+          const file = join(dir, entry.name)
+          if (entry.isDirectory()) visit(file)
+          else if (/\.d\.(?:ts|mts|cts)$/.test(file)) result.set(pkg.dir + "/" + posix.relative(outDir, file), readFileSync(file, "utf8"))
+        }
+      }
+      visit(outDir)
+    }
+    return result
+  }
+  const before = await snapshot("before")
+  if (packages.length && !before.size) throw new Error("emitted import wiring: published packages emitted no declarations")
+  applyEmittedImports(plan, { root })
+  try {
+    const formatted = await formatWritten(root, plan.changed, join(log, "format.log"))
+    if (formatted.code !== 0) throw new Error("emitted import wiring: formatting failed; see " + join(log, "format.log"))
+    const after = await snapshot("after")
+    const changed = [...new Set([...before.keys(), ...after.keys()])].filter(file => before.get(file) !== after.get(file))
+    if (changed.length) throw new Error("emitted import wiring changes published declarations: " + changed.join(", "))
+  } catch (error) {
+    applyEmittedImports(plan, { root, restore: true })
+    throw error
+  }
+  return { changed: plan.changed, modules: plan.modules, declarations: "byte-identical" }
 }
 
 /**

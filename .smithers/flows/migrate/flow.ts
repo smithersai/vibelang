@@ -20,6 +20,7 @@ const SetupPayload = {
   run: Schema.String,
   target: Schema.String,
   packages: Schema.Array(Schema.String),
+  emittedProjects: Schema.optional(Schema.Array(Schema.String)),
   test: Schema.String,
   testCwd: Schema.String,
   toolchain: Schema.String

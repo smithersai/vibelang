@@ -111,3 +111,35 @@ also requires `--custom-languages allow` or project trust; earlier versions
 load registered languages directly. Existing pinned versions are retained.
 
 Migration recognizes TypeScript/TSX aliases without case sensitivity and translates TS file selectors and ignores to .vibe, preserving directory scope.
+
+
+## Bundlers inside unchanged tests
+
+A test may call Rolldown's API or start Vite's bundled config loader on a
+fixture that imports the package's own sources. Runtime register hooks do
+not configure those bundlers. When the package's existing `build` or
+`prepare` script already compiles a project to individual JavaScript files,
+give migration's `upgrade-effect` command `--emitted-project` with that
+repository-relative project path. Repeat it for more than one project.
+
+Setup rewrites runtime imports in the package's product sources to exact
+private `#vibelang/emitted/…` entries. Each entry has a `vibelang-source`
+condition pointing at the source, a `types` condition for TypeScript, and
+a `default` condition pointing at the compiler's JavaScript output. Setup
+enables `vibelang-source` in the package's compiler projects' `customConditions`,
+so a cold compiler build reads sources before declaration sidecars exist.
+Node, Rolldown and Vite consume the emitted JavaScript through `default`.
+
+Setup records every selected source, output and alias in
+`setup.json`'s `wired.emittedImports.modules`. It uses exact entries instead
+of wildcard selectors and leaves tests, fixtures, test scripts, type-only
+imports and consumer `exports` intact. It adds no build step: the existing
+build must produce those outputs before the unchanged consumers run.
+A project that does not emit JavaScript, is outside the selected packages,
+or is not already compiled by `build` or `prepare` is refused.
+
+For published packages, setup emits declarations before and after this
+wiring and requires identical bytes. An alias that would leak into the
+published declarations causes setup to restore every planned edit and
+report the changed declaration paths. The migration's later declaration
+and test gates still apply.

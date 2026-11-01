@@ -20,7 +20,7 @@ steps: toolchain, upgrade-effect, setup, plan, codemod, compile, repair, revert,
 upgrade-effect options, which setup reads from the run: --target <repo> --package <dir>... --source <dir>... --test "<command>" [--test-cwd <dir>]
                (--toolchain <dir> | --vibelang-version <v>) [--tsconfig <file>] [--dts-tsconfig <file>]
                [--install "<command>"] [--no-wire] [--max-files N] [--max-lines N] [--allow-dirty]
-               [--base <revision>] [--bookmark <name>]`
+               [--base <revision>] [--bookmark <name>] [--emitted-project <build-tsconfig>...]`
 
 async function main(argv) {
   const { step, options } = parseArgs(argv)
@@ -36,6 +36,7 @@ async function main(argv) {
     target: options.target,
     packages: many(options.package),
     sources: many(options.source),
+    emittedProjects: many(options["emitted-project"]),
     test: options.test,
     testCwd: options["test-cwd"],
     testReport: options["test-report"],
