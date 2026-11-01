@@ -1,7 +1,8 @@
 // The edits that set up VibeLang in an existing project, as text-in,
 // text-out functions: the package's dependencies, tsc replaced by vibelang
 // in scripts, the vibelang-vite plugin in the Vitest or Vite config, the
-// vibelang-unplugin plugin in each Bun.build, the
+// vibelang-unplugin plugin in each Bun.build (esbuild's calls are
+// esbuild-builds.mjs), the
 // compiler option that lets .vibe files import local modules by their source
 // names, and the settings that let every TypeScript checker read a .vibe
 // module through its declaration sidecar. Each keeps the file's own
@@ -15,6 +16,7 @@ import { join, posix } from "node:path"
 import { wireNativeViteConfigs } from "./vite-config.mjs"
 import { workspaceGlobs, workspaceManifests } from "./upgrade.mjs"
 import { must, quote } from "./util.mjs"
+import { packageScripts, testLeftAsIs, testOnlyScripts } from "./test-files.mjs"
 
 /**
  * The repository's own files: a predicate on repository-relative paths that
@@ -223,10 +225,11 @@ function applyPluginEdits(text, edits) {
 export function addBunBuildPlugin(text, ts) {
   if (/from\s+['"]vibelang-unplugin\/bun['"]/.test(text)) return text
   const source = ts.createSourceFile("build.ts", text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
-  const refusal = "Bun.build does not take an object literal with an array of plugins; add vibelang() from vibelang-unplugin/bun to it by hand"
   const edits = []
   const find = (node) => {
     if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && ts.isIdentifier(node.expression.expression) && node.expression.expression.text === "Bun" && node.expression.name.text === "build") {
+      const line = source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1
+      const refusal = `line ${line}: Bun.build does not take an object literal with an array of plugins; add vibelang() from vibelang-unplugin/bun to it by hand`
       const options = node.arguments[0]
       if (!options || !ts.isObjectLiteralExpression(options)) throw new Error(refusal)
       edits.push(pluginEdit(text, source, options, ts, refusal))
@@ -739,12 +742,11 @@ export function wireBunTests({ root, packages, specsFor }) {
   return { changed, warnings }
 }
 
-// A script that calls Bun.build, and a test, which this flow never edits.
+// A script, source or test that calls Bun.build.
 const bunBuild = /\bBun\.build\s*\(/
 const scriptFile = /\.(?:ts|mts|js|mjs)$/
-const testFile = /(?:^|\/)(?:tests?|__tests__)\/|\.(?:test|spec)\.[^/]+$/
 
-/** The scripts of a package that call Bun.build: its files outside nested packages, dependencies and output. */
+/** The files of a package that call Bun.build: its files outside nested packages, dependencies and output. */
 function bunBuildFiles(root, dir) {
   const files = []
   const walk = (at) => {
@@ -761,10 +763,13 @@ function bunBuildFiles(root, dir) {
 
 /**
  * Adds vibelang-unplugin/bun to each Bun.build in a package that reaches
- * migrated sources (packagesReaching), and gives the package the plugin and
- * the compiler it needs. A test is left as it is, as a call whose shape
- * addBunBuildPlugin does not know is, with a warning. Returns the files
- * changed, the warnings and the scripts wired.
+ * migrated sources (packagesReaching), in its scripts and sources, and gives
+ * the package the plugin and the compiler it needs. A test, a fixture and a
+ * file only tests import stay as they are, with a warning (decided detail
+ * 272: setup never edits a test or the bundler configuration it embeds). A
+ * file with a call whose shape addBunBuildPlugin does not know is left as it
+ * is, with a warning that names the call's line. Returns the files changed,
+ * the warnings and the scripts wired.
  */
 export function wireBunBuilds({ root, packages, ts, specsFor }) {
   const changed = []
@@ -776,9 +781,11 @@ export function wireBunBuilds({ root, packages, ts, specsFor }) {
   }
   for (const pkg of packagesReaching(root, packages.map((migrated) => migrated.dir))) {
     const specs = specsFor(pkg.dir)
-    for (const file of bunBuildFiles(root, pkg.dir)) {
-      if (testFile.test(file)) {
-        warnings.push(`${file}: a test bundles with Bun.build, which needs vibelang() from vibelang-unplugin/bun to reach a .vibe module; add it by hand`)
+    const files = bunBuildFiles(root, pkg.dir)
+    const testOnly = files.length ? testOnlyScripts(root, pkg.dir, packageScripts(root, pkg.dir), JSON.parse(readFileSync(join(root, pkg.dir, "package.json"), "utf8"))) : new Set()
+    for (const file of files) {
+      if (testOnly.has(file)) {
+        warnings.push(`${file}: ${testLeftAsIs("Bun.build")}`)
         continue
       }
       if (!specs["vibelang-unplugin"]) {

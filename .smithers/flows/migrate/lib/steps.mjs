@@ -17,6 +17,7 @@ import { repairPrompt } from "./repair.mjs"
 import * as Jj from "./jj.mjs"
 import * as Upgrade from "./upgrade.mjs"
 import * as Wire from "./wire.mjs"
+import { wireEsbuildBuilds } from "./esbuild-builds.mjs"
 import { wireDeveloperTools } from "./tooling.mjs"
 import { readToolchain } from "./toolchain.mjs"
 import { assertPortable, machineRoots } from "./portable.mjs"
@@ -467,7 +468,7 @@ function carryVibeLangPatches(t, moved, version, release) {
 }
 
 /** Sets VibeLang up in the target: dependencies, scripts, the Vite plugin, tsconfigs and the declaration sidecars' format ignore. Returns what it changed. */
-async function wireTarget(config, log) {
+export async function wireTarget(config, log) {
   const t = config.target
   const changed = []
   const warnings = []
@@ -577,6 +578,10 @@ async function wireTarget(config, log) {
   const bunBuilds = Wire.wireBunBuilds({ root: t, packages: packages, ts, specsFor })
   changed.push(...bunBuilds.changed.filter((file) => !changed.includes(file)))
   warnings.push(...bunBuilds.warnings)
+  // And esbuild's build and context calls in scripts and sources (a sandbox bundles migrated flows); tests stay as they are (decided detail 272).
+  const esbuildBuilds = wireEsbuildBuilds({ root: t, packages: packages, ts, specsFor })
+  changed.push(...esbuildBuilds.changed.filter((file) => !changed.includes(file)))
+  warnings.push(...esbuildBuilds.warnings)
   // Knip reads .vibe files through vibelang/knip.
   const knip = Wire.wireKnip({ root: t, specs: specsFor(".") })
   changed.push(...knip.changed.filter((file) => !changed.includes(file)))

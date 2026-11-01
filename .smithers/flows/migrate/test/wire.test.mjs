@@ -323,7 +323,7 @@ const second = await Bun.build({
   assert.throws(() => addBunBuildPlugin("await Bun.build({ plugins })\n", ts), /by hand/)
 })
 
-test("wireBunBuilds wires the builds that bundle migrated sources and leaves tests to a person", () => {
+test("wireBunBuilds wires the builds that bundle migrated sources and leaves tests and test-only helpers as they are", () => {
   const root = mkdtempSync(join(tmpdir(), "migrate-bun-builds-"))
   try {
     const put = (file, text) => {
@@ -337,7 +337,9 @@ test("wireBunBuilds wires the builds that bundle migrated sources and leaves tes
     put("packages/cli/package.json", JSON.stringify({ name: "cli", dependencies: { util: "workspace:*" } }))
     put("packages/cli/script/build.ts", build)
     put("packages/cli/script/unknown.ts", "await Bun.build(options)\n")
-    put("packages/cli/test/bundle.test.ts", build)
+    put("packages/cli/test/bundle.test.ts", 'import "../script/bundle-helper.ts"\n' + build)
+    put("packages/cli/script/bundle-helper.ts", build)
+    put("packages/cli/fixtures/app/build.ts", build)
     put("packages/cli/dist/old.js", build)
     put("packages/alone/package.json", JSON.stringify({ name: "alone" }))
     put("packages/alone/script/build.ts", build)
@@ -345,11 +347,17 @@ test("wireBunBuilds wires the builds that bundle migrated sources and leaves tes
     const wired = wireBunBuilds({ root, packages: [{ dir: "packages/util" }], ts, specsFor })
     assert.deepEqual(wired.builds, ["packages/cli/script/build.ts", "packages/util/script/build.ts"])
     assert.ok(readFileSync(join(root, "packages/cli/script/build.ts"), "utf8").includes("plugins: [vibelang()]"))
+    // Decided detail 272: a test, a fixture and a helper only a test imports stay byte for byte.
+    assert.equal(readFileSync(join(root, "packages/cli/test/bundle.test.ts"), "utf8"), 'import "../script/bundle-helper.ts"\n' + build)
+    for (const file of ["packages/cli/script/bundle-helper.ts", "packages/cli/fixtures/app/build.ts"]) assert.equal(readFileSync(join(root, file), "utf8"), build)
     assert.equal(readFileSync(join(root, "packages/alone/script/build.ts"), "utf8"), build)
-    assert.equal(readFileSync(join(root, "packages/cli/test/bundle.test.ts"), "utf8"), build)
     assert.equal(readFileSync(join(root, "packages/cli/dist/old.js"), "utf8"), build)
     assert.equal(JSON.parse(readFileSync(join(root, "packages/cli/package.json"), "utf8")).devDependencies["vibelang-unplugin"], "file:/t/u.tgz")
-    assert.deepEqual(wired.warnings.map((w) => w.split(":")[0]), ["packages/cli/script/unknown.ts", "packages/cli/test/bundle.test.ts"])
+    assert.deepEqual(wired.warnings.sort(), [
+      "packages/cli/script/bundle-helper.ts: a test bundles with Bun.build; setup leaves tests as they are (decided detail 272), so a .vibe module it bundles resolves only through the migrated package's emitted JavaScript (opencode-32)",
+      "packages/cli/script/unknown.ts: line 1: Bun.build does not take an object literal with an array of plugins; add vibelang() from vibelang-unplugin/bun to it by hand",
+      "packages/cli/test/bundle.test.ts: a test bundles with Bun.build; setup leaves tests as they are (decided detail 272), so a .vibe module it bundles resolves only through the migrated package's emitted JavaScript (opencode-32)"
+    ])
     const old = wireBunBuilds({ root, packages: [{ dir: "packages/util" }], ts, specsFor: () => ({ vibelang: "file:/t/v.tgz" }) })
     assert.ok(old.warnings.some((w) => /rebuild the toolchain/.test(w)))
   } finally {
