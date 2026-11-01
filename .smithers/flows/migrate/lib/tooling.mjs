@@ -352,7 +352,22 @@ const jsPlugins = new Map(await Promise.all((oxlint.jsPlugins ?? []).map(async (
   return [name ?? pluginName(plugin.meta?.name ?? packageName, specifier), { ...plugin, rules }]
 })))
 // typescript-eslint refuses TypeScript 7, so its rules join only where it loads.
-const tseslint = await import("typescript-eslint").then(({ default: loaded }) => loaded, () => null)
+const tseslint = await import("typescript-eslint").then(({ default: loaded }) => {
+  const unused = loaded.plugin.rules["no-unused-vars"]
+  if (!unused?.create) return loaded
+  // Oxlint counts a typeof query as a read. typescript-eslint instead emits
+  // usedOnlyAsType, including for erased declare const unique-symbol brands.
+  // Adapt only that diagnostic; unused declarations and configured options
+  // still run through the original rule. The standalone parser is unchanged.
+  const rule = { ...unused, create(context) {
+    const adapted = Object.create(context)
+    Object.defineProperty(adapted, "report", { value(descriptor) {
+      if (descriptor.messageId !== "usedOnlyAsType") context.report(descriptor)
+    } })
+    return unused.create(adapted)
+  } }
+  return { ...loaded, plugin: { ...loaded.plugin, rules: { ...loaded.plugin.rules, "no-unused-vars": rule } } }
+}, () => null)
 const core = await import("eslint/use-at-your-own-risk").then(({ builtinRules }) => builtinRules, () => null)
 const typed = new Set(Object.keys(tseslint?.plugin?.rules ?? {}))
 const levels = { allow: "off", deny: "error", off: "off", warn: "warn", error: "error", 0: "off", 1: "warn", 2: "error" }
@@ -384,7 +399,7 @@ const ignores = (${nativeIgnorePatterns.toString()})(oxlint.ignorePatterns ?? []
 const correctness = levels[oxlint.categories?.correctness] !== "off"
 const configs = [
   { ignores: [...ignores, "**/node_modules/**", "**/dist/**", "**/build/**", "**/*.d.vibe.ts"] },
-  ...(correctness && tseslint ? tseslint.configs.recommended.map((config) => ({ ...config, files: ["**/*.vibe"] })) : []),
+  ...(correctness && tseslint ? tseslint.configs.recommended.map((config) => ({ ...config, ...(config.plugins ? { plugins: { ...config.plugins, "@typescript-eslint": tseslint.plugin } } : {}), files: ["**/*.vibe"] })) : []),
   { files: ["**/*.vibe"], linterOptions: { reportUnusedDisableDirectives: "off" }, languageOptions: { parser: withOxlintComments(parser, aliases) }, plugins: { oxc, ...(tseslint ? { "@typescript-eslint": tseslint.plugin } : {}), ...Object.fromEntries(jsPlugins) }, rules: { ...(correctness ? { "no-debugger": "error" } : {}), ...rules(oxlint.rules) } },
   ...overrides
 ]

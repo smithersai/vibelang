@@ -90,6 +90,10 @@ category off disables that fallback. Other native Oxlint rules are not
 automatically ported. Rules requiring project type information remain with
 `vibelang lint` (VIP-38).
 
+The mapped `no-unused-vars` rule counts `typeof` reads as Oxlint does,
+including erased `declare const` symbol brands, while retaining configured
+options and reporting unused declarations.
+
 Setup installs neither an Oxlint patch nor a fork. No projection hook or
 platform-specific binary is needed beyond the existing VibeLang compiler.
 
