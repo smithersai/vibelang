@@ -557,6 +557,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Passing an Effect function to a `Function` destination could bypass `EK4301` after generic union matching; callable destinations now keep the synchronous-callback check.
 
+- A migration left a repository’s lint configuration naming `x.ts` after the module became `x.vibe`, so a rule the repository had turned off for that file came back. Setup, the codemod and `revert` now keep literal Oxlint and ESLint paths pointing at each module, and setup repairs paths that earlier runs left behind.
+
 - Migration codemods could stall on brace-heavy literals or broaden a test selector; source-name wiring now scans source inventories with cached, bounded matchers and proves the final selected filenames and counts unchanged.
 - `vibelang --fix` moved a TypeScript call out of `Effect.sync(() => label())` into an `effect` block, where EK4401 refused it and the whole file stayed unconverted. The thunk now stays, because it is the boundary that makes the call's exceptions defects.
 - The shipped skill taught `fork.in(scope)`, `fork.scoped` and `fork.detached`, which the release compiler could not parse; its examples now use `try Effect.forkIn`, `try Effect.forkScoped` and `try Effect.forkDetach` instead.

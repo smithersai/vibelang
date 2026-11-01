@@ -1,0 +1,7 @@
+{
+  "source": "foldkit .oxlintrc.effect.json, minimized (drive-foldkit foldkit-107; spec ruling 2026-11-01T09:50Z)",
+  "config": ".oxlintrc.effect.json",
+  "text": "{\n  \"$schema\": \"./node_modules/oxlint/configuration_schema.json\",\n  // Plumbing whose failure channel is public `unknown`.\n  \"rules\": { \"effecttsgo/any-unknown-in-error-context\": \"error\" },\n  \"overrides\": [\n    {\n      \"files\": [\n        \"packages/foldkit/src/command/index.ts\",\n        \"packages/foldkit/src/html/index.ts\",\n        \"packages/foldkit/src/runtime/managedResourceFibers.ts\",\n      ],\n      \"rules\": { \"effecttsgo/any-unknown-in-error-context\": \"off\" },\n    },\n    {\n      \"files\": [\"examples/ssr/scripts/serve.ts\", \"packages/node/src/node.ts\"],\n      \"rules\": { \"effecttsgo/any-unknown-in-error-context\": \"off\" },\n    },\n  ],\n  \"ignorePatterns\": [\"packages/website/src/snippet/\", \"**/dist/**\"],\n}\n",
+  "renamed": ["packages/foldkit/src/command/index.ts", "packages/foldkit/src/runtime/managedResourceFibers.ts", "examples/ssr/scripts/serve.ts"],
+  "stays": ["packages/foldkit/src/html/index.ts", "packages/node/src/node.ts"]
+}
