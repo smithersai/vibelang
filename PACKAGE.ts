@@ -75,6 +75,8 @@ const specTests = [
   "TestReviewNativeLoopsQuoted",
   "TestMigrationDoArmsQuoted",
   "TestMigrationRootResolutionQuoted",
+  "TestPlainTryCatchQuoted",
+  "TestPlainMatchKindsQuoted",
   "TestSpecifierWrittenJSX",
 
   "TestStockConsumerResolutionQuoted",
