@@ -407,6 +407,8 @@ When a package script runs Oxlint directly or launches a JavaScript/TypeScript r
 
 The ESLint configuration preserves directory-wide overrides as well as extension globs. Its `oxc/no-accumulating-spread` counterpart is checked against upstream Oxlint; an enabled rule without a counterpart fails a file-list runner with the rule's name. This prevents silent rule loss when a repository adds another native rule.
 
+Lint configuration follows a module across its rename. Setup, the codemod and `revert` point each literal path in an Oxlint or ESLint configuration (`overrides[].files`, `ignorePatterns`, `ignores`, or any other string that names the file, from the configuration's directory or the root) at where the module is now, so a rule silenced on `x.ts` stays silenced on `x.vibe`. A module the codemod split keeps the path of its `x.platform.ts` sibling beside it. An Oxlint glob ending in `.ts` that matches a moved module gains its `.vibe` spelling, because native `vibelang lint` reads a glob as written; an ESLint glob stays, because the repository's parsers do not read `.vibe`. Setup repairs what earlier runs left.
+
 A directory containing only `.vibe` files still runs the ESLint pass. Setup adds `--no-error-on-unmatched-pattern` to the native Oxlint invocations, which have no TypeScript left to lint, and file-list adapters handle empty native directory scans the same way.
 
 Oxlint disable and enable comments keep their original scope and source locations. The generated parser bridge translates only parsed directive comments, including core and TypeScript rule aliases; it does not rewrite source strings or user files. Unused directives remain quiet, as in Oxlint's default configuration.
