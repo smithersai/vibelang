@@ -77,8 +77,31 @@ for (const script of ["packages/compiler/test/eslint/run.sh", "packages/vite/tes
     '"; VIBELANG_BINARY="$repo/packages/compiler/native/vibelang"; tsc="$root/built/local/tsc"; vibelang="$root/built/local/vibelang"; cd typescript/tsc; '
   writers.push([script, setup + command, output])
 }
+// Execute the published path while the writer holds its output open; the writer
+// waits for the test, so the window spans every read. A read is bounded by its
+// own completion, never by a wall clock: on a loaded host a healthy exec can take
+// seconds, and only an exec error such as ETXTBSY or a nonzero exit is a failure.
+function readers(binary, count = 32) {
+  const failures = []
+  for (let i = 0; i < count; i++) {
+    const result = spawnSync(binary, [])
+    if (result.error || result.status !== 0) failures.push(result.error?.code ?? result.signal ?? result.status)
+  }
+  return failures
+}
+
+test("a reader slowed past one second by host load still executes successfully", {
+  skip: process.platform !== "linux"
+}, t => {
+  const f = fixture(t)
+  // Models an exec delayed by load (post-merge 51f3e48a5698 timed out a healthy
+  // /bin/true at 1 s): the delay is the symptom under test, not a wait for a result.
+  f.put("slow-reader", "#!/bin/sh\nexec sleep 1.5\n", 0o755)
+  assert.deepEqual(readers(join(f.root, "slow-reader"), 1), [])
+})
+
 for (const [name, command, output, windows] of writers) test(name + ": readers execute throughout a rebuild without ETXTBSY", {
-  skip: process.platform !== "linux", timeout: 20_000
+  skip: process.platform !== "linux"
 }, async t => {
   const f = fixture(t, windows)
   const binary = join(f.root, output)
@@ -96,11 +119,7 @@ for (const [name, command, output, windows] of writers) test(name + ": readers e
   })
   t.after(() => { child.stdin.end("publish\n"); child.kill() })
   await ready
-  const failures = []
-  for (let i = 0; i < 32; i++) {
-    const result = spawnSync(binary, [], { timeout: 1000 })
-    if (result.status !== 0) failures.push(result.error?.code ?? result.status)
-  }
+  const failures = readers(binary)
   const during = statSync(binary).ino
   child.stdin.end("publish\n")
   assert.equal(await done, 0, stdout + stderr)
