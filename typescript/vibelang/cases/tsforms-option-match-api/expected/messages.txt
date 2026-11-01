@@ -1,0 +1,1 @@
+Option.match chooses with Option's match API; a match expression writes the choice: match (v) { when …: …; }.

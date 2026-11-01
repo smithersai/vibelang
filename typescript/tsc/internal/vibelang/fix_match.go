@@ -40,8 +40,9 @@ import (
 // written type gives it one. Where the match would test a value Match.exhaustive
 // rejects, it is one the chain's type does not admit.
 
-// EK4839 (D472): a Match chain. {0} names it, {1} the subject.
-var EK4839 = message(4839, warningCategory, "{0} chooses with Effect's Match functions; a match expression writes the choice: match ({1}) { when …: …; }.")
+// EK4839 (D472, effectscript-75): a Match chain or direct Option.match.
+// {0} names the choice, {1} the subject, and {2} the API it uses.
+var EK4839 = message(4839, warningCategory, "{0} chooses with {2}; a match expression writes the choice: match ({1}) { when …: …; }.")
 
 func init() {
 	registry[EK4839.Code] = EK4839
@@ -128,19 +129,19 @@ func matchStage(c *checker.Checker, stage *ast.Node) (*ast.Node, string) {
 	return call, name
 }
 
-// findMatchChains reports EK4839 at each Match chain of file.
+// findMatchChains reports EK4839 at each Match chain or direct Option.match in file.
 func findMatchChains(c *checker.Checker, file *ast.SourceFile, report func(at *ast.Node, rewrite *formRewrite, args ...any)) {
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		if optionMatchOf(c, node) && !inGeneratorBody(node) {
-			report(node, optionMatchRewrite(c, file, node), "Option.match", shortText(expressionText(file, node.Arguments()[0]), "value"))
+			report(node, optionMatchRewrite(c, file, node), "Option.match", shortText(expressionText(file, node.Arguments()[0]), "value"), "Option's match API")
 		}
 		if chain := matchChainOf(c, node); chain != nil && !inGeneratorBody(node) {
 			subject := "value"
 			if chain.subject != nil {
 				subject = shortText(expressionText(file, chain.subject), "…")
 			}
-			report(node, matchChainRewrite(c, file, node), shortText(expressionText(file, chain.start), core.IfElse(chain.subject != nil, "Match.value(…)", "Match.type<…>()")), subject)
+			report(node, matchChainRewrite(c, file, node), shortText(expressionText(file, chain.start), core.IfElse(chain.subject != nil, "Match.value(…)", "Match.type<…>()")), subject, "Effect's Match functions")
 		}
 		return node.ForEachChild(visit)
 	}

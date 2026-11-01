@@ -525,6 +525,8 @@ Library debugging concepts still apply; VibeLang's effect functions, service dec
 
 An `EK4405` input fix preserves captured values' types and is withheld when existing inputs lack matching parameters. The `EK4301` return annotation fix is withheld for a callback with `using`, since annotating its helper cannot remove the callback's resource requirement.
 
+`EK4839` also reports direct `Option.match(value, handlers)` calls, including named imports and namespace aliases. Its message names `Option`'s own `match` API. The fix uses native `match`, preserving subject evaluation, handler construction, property reads and the selected callback's order. It refuses a choice returning a program or comments between the arguments; those calls keep the warning and its refusal note.
+
 The `EK4839` quick fix preserves a Match return-type hint with a checked
 annotation on its binding, including destructuring, or a typed local binding
 inside a `do` expression. It uses existing written context when available

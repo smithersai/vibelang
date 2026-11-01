@@ -63,6 +63,9 @@ func FuzzFix(f *testing.F) {
 	for _, seed := range toolsSample(SnippetSeeds(), 4, 60, nil) {
 		f.Add(Archive(seed.Files))
 	}
+	for _, choices := range []string{"\x00\x07\x00\x00\x00", "\x01\x81\x01\x00\x01", "\x02\x82\x00\x01\x01\x01", "\x00\x80\x01\x01\x00", "\x01\xff\x00\x00\x01"} {
+		f.Add(optionMatchFixKey + choices)
+	}
 	w := NewWorkspace(f)
 	codes := toolsFixCodes()
 	var node *Node
@@ -73,6 +76,11 @@ func FuzzFix(f *testing.F) {
 	})
 	f.Fuzz(func(t *testing.T, archive string) {
 		toolsGuard(t, "FuzzFix", func() {
+			directOption := strings.HasPrefix(archive, optionMatchFixKey)
+			if directOption {
+				TestOptionMatchFixQuoted(t)
+				archive = optionMatchFixArchive(archive)
+			}
 			options := vibelang.FixOptions{VIPOnly: strings.HasPrefix(corpusFile(t, "FuzzFix"), "fix-vip-only-")}
 			files := toolsUnarchive(archive)
 			if toolsMainFile(files) == "" || toolsTooLarge(files) || toolsLeftOut("FuzzFix", files) {
@@ -84,10 +92,24 @@ func FuzzFix(f *testing.F) {
 			if r.Program == nil || config == nil || len(config.Errors) > 0 {
 				return
 			}
+			if directOption {
+				found := false
+				for _, d := range r.Diagnostics {
+					if d.Code() == 4839 {
+						found = true
+					}
+				}
+				if !toolsErrorFree(r) || !found {
+					Gap(t, "FuzzFix", "fix:direct-option-match:diagnostic", "Chapter 7 requires EK4839 on a direct Option.match: %v\n%s", SortedKeys(Keys(r.Dir, r.Diagnostics)), archive)
+				}
+			}
 			var result *vibelang.FixResult
 			toolsRun(t, "FuzzFix", "fix", archive, nil, func() {
 				result = vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), config, options)
 			})
+			if directOption && len(result.Files) == 0 {
+				Gap(t, "FuzzFix", "fix:direct-option-match:missing", "the direct Option.match must have a safe fix:\n%s", archive)
+			}
 			if result.Err != nil {
 				Gap(t, "FuzzFix", "fix:converge", "--fix did not reach a fixed point (%v):\n%s", result.Err, archive)
 				return
@@ -161,6 +183,10 @@ func FuzzFix(f *testing.F) {
 			if !toolsTrailingBlockRunnable(r) || !toolsErrorFree(after) {
 				return
 			}
+			resultKey := "fix:result"
+			if directOption {
+				resultKey = "fix:direct-option-match:value-and-events"
+			}
 			for _, entry := range toolsRunnableExports(r) {
 				if node == nil {
 					var err error
@@ -174,10 +200,13 @@ func FuzzFix(f *testing.F) {
 				// Node rejects before any user code, has no outcome to keep; a
 				// fixed program that stops running does break it.
 				if toolsInvalidOutcome(was) {
+					if directOption {
+						Gap(t, "FuzzFix", "fix:direct-option-match:runtime", "generated Option.match must run for value/event comparison: %+v\n%s", was, archive)
+					}
 					continue
 				}
 				if toolsInvalidOutcome(is) {
-					Gap(t, "FuzzFix", "fix:result", "D372: %s:%s returned an invalid Effect outcome: original %+v; fixed %+v\n%s\nfixed:\n%s", entry.file, entry.name, was, is, archive, Archive(fixed))
+					Gap(t, "FuzzFix", resultKey, "D372: %s:%s returned an invalid Effect outcome: original %+v; fixed %+v\n%s\nfixed:\n%s", entry.file, entry.name, was, is, archive, Archive(fixed))
 				}
 				if toolsSameOutcome(was, is) {
 					continue
@@ -187,18 +216,18 @@ func FuzzFix(f *testing.F) {
 				// inconclusive; crashes, timeouts and plain results never do.
 				repeated := toolsFreshOutcome(t, w, r, entry)
 				if toolsInvalidOutcome(repeated) {
-					Gap(t, "FuzzFix", "fix:result", "D372: a fresh original %s:%s returned %+v\n%s", entry.file, entry.name, repeated, archive)
+					Gap(t, "FuzzFix", resultKey, "D372: a fresh original %s:%s returned %+v\n%s", entry.file, entry.name, repeated, archive)
 				}
 				if !toolsSameOutcome(was, repeated) {
 					repeatedAgain := toolsFreshOutcome(t, w, r, entry)
 					if toolsInvalidOutcome(repeatedAgain) {
-						Gap(t, "FuzzFix", "fix:result", "D372: a fresh original %s:%s returned %+v\n%s", entry.file, entry.name, repeatedAgain, archive)
+						Gap(t, "FuzzFix", resultKey, "D372: a fresh original %s:%s returned %+v\n%s", entry.file, entry.name, repeatedAgain, archive)
 					}
 					if !toolsSameOutcome(repeated, repeatedAgain) {
 						t.Skipf("inconclusive D372 comparison: the original %s:%s is nondeterministic across fresh modules: %+v then %+v", entry.file, entry.name, repeated, repeatedAgain)
 					}
 				}
-				Gap(t, "FuzzFix", "fix:result", "%s:%s: the fixed program ends %+v, the original %+v\n%s\nfixed:\n%s", entry.file, entry.name, is, was, archive, Archive(fixed))
+				Gap(t, "FuzzFix", resultKey, "%s:%s: the fixed program ends %+v, the original %+v\n%s\nfixed:\n%s", entry.file, entry.name, is, was, archive, Archive(fixed))
 			}
 		})
 	})

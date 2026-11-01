@@ -1,0 +1,4 @@
+import * as O from "effect/Option"
+
+export const named = (v: Option<number>): number => do { const $optionSubject = v; const $optionHandlers: { onNone: () => number; onSome: (n: number) => number; } = { onNone: (): number => 0, onSome: (n): number => n }; const { onNone: $optionNone, onSome: $optionSome } = $optionHandlers; match ($optionSubject) { when Option.Some(let $optionValue): $optionSome($optionValue); default: $optionNone(); }; }
+export const aliased = (v: O.Option<number>): number => do { const $optionSubject = v; const $optionHandlers: { onNone: () => number; onSome: (n: number) => number; } = { onNone: (): number => -1, onSome: (n): number => n + 1 }; const { onNone: $optionNone, onSome: $optionSome } = $optionHandlers; match ($optionSubject) { when O.Some(let $optionValue): $optionSome($optionValue); default: $optionNone(); }; }

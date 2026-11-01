@@ -31,3 +31,29 @@ func TestOptionMatchNativeFoldkit(t *testing.T) {
 		}
 	}
 }
+
+// RC-8 / effectscript-75: the existing advisory names Option, including aliases.
+func TestOptionMatchDiagnosticAPI(t *testing.T) {
+	for _, source := range []string{
+		`import { Option } from "effect"; export const f = (v: Option.Option<number>): number => Option.match(v, { onNone: (): number => 0, onSome: (n): number => n });`,
+		`import * as O from "effect/Option"; export const f = (v: O.Option<number>): number => O.match(v, { onNone: (): number => 0, onSome: (n): number => n });`,
+	} {
+		p, f, _, _ := editorProgram(t, source)
+		found := false
+		for _, d := range p.GetSemanticDiagnostics(t.Context(), f) {
+			if d.Code() == EK4839.Code {
+				found = true
+				if !strings.Contains(d.String(), "Option.match chooses with Option's match API;") || strings.Contains(d.String(), "Effect's Match") {
+					t.Errorf("wrong API in advisory: %s", d.String())
+				}
+			}
+		}
+		if !found {
+			t.Fatalf("missing EK4839: %s", source)
+		}
+		fixed := applyQuickFix(t, source, EK4839.Code)
+		if strings.Contains(fixed, ".match(") {
+			t.Fatalf("direct choice was not fixed: %s", fixed)
+		}
+	}
+}

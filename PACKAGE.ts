@@ -62,6 +62,7 @@ const specTests = [
   "TestImportedDiagnosticScope",
   "TestImportedLintCodes",
 
+  "TestOptionMatchFixQuoted",
   "TestDeclarationPreludeModesQuoted",
   "TestNativeOutputSpecifierRulesQuoted",
   "TestLegacyConfigCommentsQuoted",

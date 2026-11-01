@@ -1,0 +1,5 @@
+import { Option } from "effect"
+import * as O from "effect/Option"
+
+export const named = (v: Option.Option<number>): number => Option.match(v, { onNone: (): number => 0, onSome: (n): number => n })
+export const aliased = (v: O.Option<number>): number => O.match(v, { onNone: (): number => -1, onSome: (n): number => n + 1 })

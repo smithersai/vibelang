@@ -1,0 +1,2 @@
+go test fuzz v1
+string("key:direct-option-match\n\x00\x80\x01\x01\x00")
