@@ -21,6 +21,8 @@ import { countTokens } from "./tokens.mjs"
 import { readIssues } from "./issues.mjs"
 import { repairPrompt } from "./repair.mjs"
 import * as Jj from "./jj.mjs"
+import { resolveAliased, resolveRelative } from "./imports.mjs"
+import { restoreReferences } from "./references.mjs"
 import * as Upgrade from "./upgrade.mjs"
 import * as Wire from "./wire.mjs"
 import { wireEsbuildBuilds } from "./esbuild-builds.mjs"
@@ -75,7 +77,7 @@ export function nextStep(runDir) {
   for (let i = 0; i < plan.batches.length; i++) {
     const b = batchName(i)
     if (existsSync(p.record(b))) continue
-    if (!existsSync(p.codemod(b))) return { step: "codemod", batch: b }
+    if (!existsSync(p.codemod(b)) || (plan.mode === "one-pass" && !readJson(p.codemod(b)).fix?.settled)) return { step: "codemod", batch: b }
     if (!existsSync(p.compile(b))) return { step: "compile", batch: b }
     if (!existsSync(p.repair(b))) return { step: "repair", batch: b }
     const verify = readJsonIf(p.verify(b))
@@ -857,6 +859,7 @@ async function runAgent(agent, { prompt, cwd, env, log }) {
  * (--accept file, or the file the agent wrote), validate it, and persist it.
  */
 export async function plan(options) {
+  if (options.scope) return (await import("./onepass.mjs")).onePassStep("plan", options)
   assertBaselineSafe(paths(options.run))
   const { p, config, inventory } = loadRun(options.run)
   if (existsSync(p.plan)) return { plan: readJson(p.plan), accepted: true }
@@ -880,7 +883,7 @@ export async function plan(options) {
 
 // The tsconfig paths aliases of the target's projects (pathAliases), or none
 // where no TypeScript compiler API is installed to read them.
-function aliasesOf(config) {
+export function aliasesOf(config) {
   try {
     return pathAliases(typeScriptOf(config), config.target)
   } catch {
@@ -893,6 +896,12 @@ export async function codemod(options) {
   assertBaselineSafe(paths(options.run))
   const { p, config, plan: thePlan } = loadRun(options.run)
   if (!thePlan) throw new Error("plan has not been accepted")
+  if (thePlan.mode === "one-pass") {
+    const { onePassStep } = await import("./onepass.mjs")
+    await onePassStep("rename", options)
+    await onePassStep("fix", options)
+    return readJson(p.codemod("01"))
+  }
   const b = currentBatch(options.run, options.batch)
   if (existsSync(p.codemod(b))) return readJson(p.codemod(b))
   const t = config.target
@@ -948,6 +957,13 @@ export async function compile(options) {
 export async function repair(options) {
   const { p, config, plan: thePlan } = loadRun(options.run)
   const b = currentBatch(options.run, options.batch)
+  if (thePlan?.mode === "one-pass") {
+    const settled = await (await import("./onepass.mjs")).onePassStep("settle", options)
+    if (!settled.settled) throw new Error("NOT SETTLED: see " + join(p.batch(b), "settle.json"))
+    const result = { batch: b, at: new Date().toISOString(), agent: "one-pass", files: batchFiles(config, thePlan, b), recorded: { "codemod-gap": 0, issue: 0, idiom: 0 }, notes: "settled by cause; see settle.json" }
+    writeJson(p.repair(b), result)
+    return result
+  }
   const codemodResult = readJsonIf(p.codemod(b))
   if (!codemodResult) throw new Error(`batch ${b}: codemod has not run`)
   const compileResult = readJsonIf(p.compile(b)) ?? (await compile({ run: options.run, batch: b }))
@@ -977,28 +993,63 @@ export async function repair(options) {
   return result
 }
 
-/** revert: return one migrated file of the current batch to its .ts source, with a reason. */
+/** Return one or many modules to their original TypeScript; validate the entire request first. */
 export async function revert(options) {
+  if (!options.file || !options.reason) throw new Error("revert needs --file <path.vibe> and --reason <text>")
+  return (await revertMany({ ...options, files: [{ file: options.file, reason: options.reason }] }))[0]
+}
+
+export async function revertMany(options) {
   const { p, config, plan } = loadRun(options.run)
   const b = currentBatch(options.run, options.batch)
-  if (!options.file || !options.reason) throw new Error("revert needs --file <path.vibe> and --reason <text>")
-  const vibe = options.file.replace(/\.ts$/, ".vibe")
-  const ts = vibe.replace(/\.vibe$/, ".ts")
-  const source = await revertSource(config.target, p, plan, b, ts, vibe)
-  await Jj.restore(config.target, source.revision, [ts, vibe])
-  rmSync(join(config.target, vibe.replace(/\.vibe$/, ".d.vibe.ts")), { force: true }) // its declaration sidecar
-  // A TypeScript importer gets the specifier it had before the codemod; a .vibe importer names the .ts source.
-  const codemodResult = readJsonIf(p.codemod(source.batch))
-  // The restored module has its platform code again, so the sibling the codemod split it into goes.
-  const split = codemodResult?.platform?.splits?.find((s) => s.file === ts)
-  if (split) rmSync(join(config.target, split.platform), { force: true })
-  const exportEdits = restoreExports(config.target, codemodResult?.exportEdits ?? [], ts)
   const aliases = aliasesOf(config)
-  const importEdits = [...restoreSpecifiers(config.target, codemodResult?.importEdits ?? [], ts, aliases), ...rewriteImports(config.target, await importers(config.target), [ts], aliases)]
-  const reverted = readJsonIf(p.reverted(b), [])
-  reverted.push({ file: ts, reason: options.reason, at: new Date().toISOString(), ...(source.batch === b ? {} : { from: source.batch }), exportEdits, importEdits })
-  writeJson(p.reverted(b), reverted)
-  return reverted.at(-1)
+  const requests = options.files ?? []
+  if (!requests.length) throw new Error("revert needs at least one file")
+  const seen = new Set(), prepared = []
+  for (const item of requests) {
+    const { file, reason = options.reason } = typeof item === "string" ? { file: item } : item
+    if (typeof file !== "string" || !/\.(?:ts|vibe)$/.test(file) || isDeclarationFile(file) || !reason) throw new Error("revert needs module paths and a cause")
+    if (posix.isAbsolute(file) || file.split("/").includes("..")) throw new Error("revert paths must be repository-relative")
+    const vibe = file.replace(/\.ts$/, ".vibe"), ts = vibe.replace(/\.vibe$/, ".ts")
+    if (seen.has(ts)) throw new Error("duplicate revert: " + file)
+    seen.add(ts)
+    if (!existsSync(join(config.target, vibe))) throw new Error("missing .vibe module (already reverted?): " + vibe)
+    const source = await revertSource(config.target, p, plan, b, ts, vibe)
+    const original = await Jj.fileAt(config.target, source.revision, ts)
+    if (original === null) throw new Error("missing revert source: " + ts)
+    prepared.push({ ts, vibe, reason, source, original })
+  }
+  const groups = new Map()
+  for (const item of prepared) {
+    const list = groups.get(item.source.revision) ?? []
+    list.push(item)
+    groups.set(item.source.revision, list)
+  }
+  for (const [revision, items] of groups) for (let i = 0; i < items.length; i += 100) {
+    await Jj.restore(config.target, revision, items.slice(i, i + 100).flatMap(x => [x.ts, x.vibe]))
+  }
+  // Check before rewriting: jj may exit successfully without restoring a missing path.
+  for (const { ts, vibe, original } of prepared) {
+    if (existsSync(join(config.target, vibe)) || !existsSync(join(config.target, ts)) || readFileSync(join(config.target, ts), "utf8") !== original) throw new Error("revert did not restore " + vibe)
+    rmSync(join(config.target, vibe.replace(/\.vibe$/, ".d.vibe.ts")), { force: true })
+  }
+  const results = []
+  for (const { ts, reason, source } of prepared) {
+    const cm = readJsonIf(p.codemod(source.batch), {})
+    const split = cm.platform?.splits?.find(s => s.file === ts)
+    if (split) rmSync(join(config.target, split.platform), { force: true })
+    const exportEdits = restoreExports(config.target, cm.exportEdits ?? [], ts)
+    const importEdits = restoreSpecifiers(config.target, cm.importEdits ?? [], ts, aliases)
+    const refEdits = restoreReferences(config.target, cm.refEdits ?? [], ts)
+    results.push({ file: ts, reason, at: new Date().toISOString(), ...(source.batch === b ? {} : { from: source.batch }), exportEdits, importEdits, ...(cm.refEdits ? { refEdits } : {}) })
+  }
+  const importEdits = rewriteImports(config.target, await importers(config.target), prepared.map(x => x.ts), aliases)
+  for (const result of results) result.importEdits.push(...importEdits.filter(e => {
+    const vibe = result.file.replace(/\.ts$/, ".vibe")
+    return (resolveRelative(e.file, e.from, new Set([vibe])) ?? resolveAliased(e.file, e.from, new Set([vibe]), aliases)?.target) === vibe
+  }))
+  writeJson(p.reverted(b), [...readJsonIf(p.reverted(b), []), ...results])
+  return results
 }
 
 /**
@@ -1230,7 +1281,9 @@ export async function report(options) {
   return data
 }
 
-export const steps = { "upgrade-effect": upgradeEffect, setup, plan, codemod, compile, repair, revert, verify, record, report }
+export const steps = { "upgrade-effect": upgradeEffect, setup, plan, codemod, compile, repair, revert, revertMany, verify, record, report,
+  ...Object.fromEntries(["rename", "fix", "check", "settle"].map(name => [name, async options => (await import("./onepass.mjs")).onePassStep(name, options)]))
+}
 
 const summaries = {
   "upgrade-effect": (r) => (r.skipped ? `skipped: ${r.skipped}` : `Effect ${r.effect.from} -> ${r.effect.to} in ${r.changed.length} files; ${r.regressions && (r.regressions.newFailures.length || r.regressions.missing.length) ? "tests regressed (a setup issue)" : "tests as before"}`),
@@ -1266,6 +1319,6 @@ export async function flowStep(step, options) {
     if (existsSync(recorded)) return done(next.batch, readJson(recorded))
     throw new Error(`${step} cannot run before ${next.step} for batch ${next.batch}`)
   }
-  if (step === "repair" && !options.agent) throw new Error(`repair needs an agent: set MIGRATE_AGENT, or follow ${p.repairPrompt(next.batch)} and run step.mjs repair --done`)
+  if (step === "repair" && !options.agent && readJson(p.plan).mode !== "one-pass") throw new Error(`repair needs an agent: set MIGRATE_AGENT, or follow ${p.repairPrompt(next.batch)} and run step.mjs repair --done`)
   return done(next.batch, await steps[step]({ ...options, batch: next.batch }))
 }

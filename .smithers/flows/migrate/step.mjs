@@ -16,7 +16,7 @@ import { steps, nextStep } from "./lib/steps.mjs"
 import { stageToolchain } from "./lib/toolchain.mjs"
 
 const usage = `usage: node .smithers/flows/migrate/step.mjs <step> --run <dir> [options]
-steps: toolchain, upgrade-effect, setup, plan, codemod, compile, repair, revert, verify, record, report, next
+steps: toolchain, upgrade-effect, setup, plan, rename, fix, check, settle, codemod, compile, repair, revert, verify, record, report, next
 upgrade-effect options, which setup reads from the run: --target <repo> --package <dir>... --source <dir>... --test "<command>" [--test-cwd <dir>]
                (--toolchain <dir> | --vibelang-version <v>) [--tsconfig <file>] [--dts-tsconfig <file>]
                [--install "<command>"] [--no-wire] [--max-files N] [--max-lines N] [--allow-dirty]
@@ -28,7 +28,7 @@ async function main(argv) {
   if (step === "toolchain") return print(await stageToolchain({ vibelang: one(options, "vibelang"), out: one(options, "out") }))
   const run = one(options, "run")
   if (step === "next") return print(nextStep(run))
-  const fn = steps[step]
+  const fn = step === "revert" && many(options.file).length > 1 ? steps.revertMany : steps[step]
   if (!fn) throw new Error(`unknown step ${step}\n${usage}`)
   const result = await fn({
     run,
@@ -55,15 +55,22 @@ async function main(argv) {
     done: Boolean(options.done),
     notes: options.notes,
     file: options.file,
+    files: many(options.file),
+    scope: options.scope,
+    jobs: options.jobs,
+    timeout: options.timeout,
+    rounds: options.rounds,
     reason: options.reason,
     force: options.force,
     noRecord: Boolean(options["no-record"]),
     base: options.base,
     bookmark: options.bookmark
   })
+  if (step === "settle" && !result.settled) process.exitCode = 1
   const next = nextStep(run)
   // stdout is the result; stderr says what to run next, after the result is written.
   await print(result)
+  if (step === "settle") console.error(result.settled ? "SETTLED" : "NOT SETTLED")
   console.error(`next: ${next.step}${next.batch ? ` --batch ${next.batch}` : ""}`)
 }
 

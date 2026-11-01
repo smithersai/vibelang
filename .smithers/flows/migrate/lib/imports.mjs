@@ -22,7 +22,7 @@ const stringEnd = (text, at, quote) => {
  * block comment hold none; a regular expression is read as code, so one that
  * looks like a comment hides at most the rest of its line.
  */
-function commentRanges(text) {
+export function commentRanges(text) {
   const ranges = []
   const holes = [] // the brace depth at each open template hole, ${
   let depth = 0

@@ -3,6 +3,32 @@
 
 You migrate an existing Effect TypeScript codebase to VibeLang one batch of files at a time. The result must be correct and idiomatic: it uses every VibeLang form that applies, wraps Effect only where no form exists, and keeps the package's public API and tests. Correct but TypeScript-shaped VibeLang is not done.
 
+## Whole-scope passes and rollback
+
+For a scope-list pass, use the shared flow commands: `plan --scope`,
+`rename`, `fix`, `check` and `settle`, all with `--run`. Keep one batch
+of all listed `.ts` modules; defer `.tsx` with its JSX cause. Never substitute
+a repository-specific driver or paths.
+
+Fix packages in dependency order with a bounded job count and compiler timeout.
+Split a large project by directory only into import-closed groups of at most
+`240` modules; stop and explain an indivisible closure above the cap. Keep the
+project's compiler options and always check the full projects after fixing.
+
+A failing dependency is retried before its importers: select the sink components
+of the failing-module dependency graph, including paths through healthy files.
+Recheck after each bulk revert. Keep every diagnostic family and cause in the run.
+Print `SETTLED` only when every project finished, no `.vibe` source has an
+error or style violation and no other file has errors beyond its baseline.
+Crashes, global errors, unattributed errors and an exhausted round limit remain
+`NOT SETTLED`; a successful restore command alone proves nothing.
+
+A bulk revert must validate every request, restore each original `.ts`,
+remove its `.vibe` and sidecar, and restore its exports, path references and
+every importer's specifier, including `.vibe` importers. Verify the files on
+disk and fail loudly if any requested module did not return. Settling does not
+replace the target's test or public-declaration gates.
+
 ## The call rule
 
 Calling an `effect` function returns its Effect unrun. Inside an `effect` function or block, `try` runs an Effect. Pass Effect values to program combinators: `try retry(fetchUser(id), policy)` and `try timeout(slow(), "1 second")`. To defer several statements, pass an `effect { … }` block: `retry(effect { return try fetchUser(id) }, policy)`, `withSpan(effect { return try load() }, "name")`, or `Effect.all([effect { return try load() }])`. A marked arrow is still a function returning an Effect; call it or replace it with an effect block at a program position. Callback positions stay functions: `Effect.forEach(ids, effect (id) => try load(id))`. `vibelang --fix --fix-vip-only` materializes legacy program literals using the old analyzer, before the inference rules are removed; annotated literals and optional/default parameters retain their contracts and delayed evaluation through `Effect.suspend`. Accepted VIPs override older examples: https://github.com/smithersai/vibelang/tree/main/docs/design/vips (VIP-1, VIP-2 and VIP-5).

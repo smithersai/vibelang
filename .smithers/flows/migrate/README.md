@@ -85,6 +85,75 @@ normalized, decoded path lies under the target, run, toolchain or home root.
 Virtual editor URIs such as `file:///src/ui/message.ts` and
 `file:///${path}` remain portable.
 
+### Whole-scope conversion
+
+Use the same run after `setup` to convert a scope in one pass. The scope file lists
+one repository-relative source path per line. Every `.ts` source in it belongs to
+one batch, including plain helpers and tests explicitly listed there; `.tsx`
+sources stay deferred with the JSX cause. Declarations and existing `.vibe`
+sources are recorded as deferred rather than renamed. A missing or escaping path
+fails planning.
+
+```sh
+step="node .smithers/flows/migrate/step.mjs"
+$step plan --run <run> --scope <scope.txt>
+$step rename --run <run> --jobs 8
+$step fix --run <run> --jobs 8 --timeout 3600 --rounds 4
+$step check --run <run> --jobs 8
+$step settle --run <run> --jobs 8 --rounds 12
+$step verify --run <run>
+$step record --run <run>
+```
+
+Each command uses only the run's target, packages and toolchain. Before
+`rename`, every configured project and every project named by a package's
+`typecheck` or `typecheck:tsc` script is checked into
+`onepass-baseline.json`. A solution's source projects are expanded.
+`rename` records the whole batch's renames, exports, relative import
+specifiers and non-import path references (scripts, build entrypoints and
+configuration) in `batches/01/codemod.json`.
+
+`fix` processes dependency packages first, with at most `--jobs` concurrent
+packages (maximum `8`); related packages never fix concurrently, and dependency
+cycles run serially. Each project runs `--fix` to a fixed point. Projects above
+`240` modules are grouped by directory into transitive import-closed shards,
+each at most `240` modules, using temporary projects that extend the original
+options. A closure larger than that cap stops with its file and size instead of
+running an unsafe shard. Temporary projects are removed after failure too.
+`--timeout` bounds each compiler invocation in seconds. A timeout, compiler
+crash or exhausted fix limit fails the command and keeps timing, project, shard
+and error receipts in `codemod.json` and `progress.jsonl`.
+
+`settle` checks every project again and groups a failing module's diagnostics
+by family in `settle-causes.json`. It returns dependency roots first, through
+healthy intermediate importers and cycles, then checks again before deciding
+whether an importer also needs to return. New errors in TypeScript importers
+are traced to migrated dependencies only after own errors have been retried.
+An unrelated or unattributed error stays visible and blocks completion.
+`settle.json` records each round, causes and remaining diagnostics. The
+command prints `SETTLED` and exits successfully only after a complete check
+finds no migrated-module error or style violation, no new TypeScript error
+beyond the per-project baseline, and no crash or global failure. An exhausted
+round limit prints `NOT SETTLED` and exits unsuccessfully.
+
+Bulk rollback uses repeated `--file` options:
+
+```sh
+$step revert --run <run> --file <a.vibe> --file <b.vibe> --reason "<cause>"
+```
+
+Every request is validated before the first restore. Each original `.ts`
+must return, its `.vibe` and sidecar must disappear, and exports, recorded
+paths and every importer's specifiers follow the restored source. Missing or
+already reverted modules fail loudly. The library exposes the same operation as
+`steps.revertMany({ run, batch, files, reason })`; `files` can also contain
+`{ file, reason }` entries.
+
+The existing flow uses this path when `plan.json` has `mode: "one-pass"`:
+`codemod` runs `rename` then `fix`, and `repair` runs `settle`.
+The target's test, declaration and style gates still run in `verify` before
+`record`. A clean settle alone does not prove those gates passed.
+
 ### Registry versions
 
 Once VibeLang publishes the version a migration needs, use the registry instead of a staged toolchain: start the run with `--vibelang-version <version>` in place of `--toolchain <dir>`. Setup then writes exact versions (`"vibelang": "0.0.12"`) and makes no `.vibelang-toolchain/`. Anyone can install the result, and the fork's pull request no longer depends on the tarballs.

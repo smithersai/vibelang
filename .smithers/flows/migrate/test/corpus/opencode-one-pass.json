@@ -1,0 +1,15 @@
+{
+  "key": "migrate-flow:one-pass",
+  "repo": "opencode",
+  "scope": [
+    "core/src/index.ts",
+    "app/src/index.ts",
+    "app/src/view.tsx"
+  ],
+  "sources": {
+    "core/src/index.ts": "export const value = 1\n",
+    "app/src/index.ts": "import { value } from \"../../core/src/index.js\"\nexport const result = value\n",
+    "consumer/src/index.ts": "import { value } from \"../../core/src/index.ts\"\nexport const result = value\n"
+  },
+  "symptom": "A failing converted producer and its importer must settle roots first; package scripts and all importers must follow a bulk revert."
+}

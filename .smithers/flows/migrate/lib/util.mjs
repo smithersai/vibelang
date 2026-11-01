@@ -6,10 +6,17 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } fr
 import { dirname, relative, sep } from "node:path"
 
 /** Runs a shell command and resolves with its exit code and output; never rejects on a nonzero exit. */
-export function run(command, { cwd, env, log, input } = {}) {
+export function run(command, { cwd, env, log, input, timeoutMs } = {}) {
   const started = Date.now()
   return new Promise((resolve, reject) => {
-    const child = spawn("bash", ["-c", command], { cwd, env: { ...process.env, ...env }, stdio: ["pipe", "pipe", "pipe"] })
+    const child = spawn("bash", ["-c", command], { cwd, env: { ...process.env, ...env }, stdio: ["pipe", "pipe", "pipe"], detached: Boolean(timeoutMs) })
+    let timedOut = false, forceTimer
+    const kill = signal => { try { process.kill(-child.pid, signal) } catch (error) { if (error.code !== "ESRCH") throw error } }
+    const timer = timeoutMs && setTimeout(() => {
+      timedOut = true
+      kill("SIGTERM")
+      forceTimer = setTimeout(() => kill("SIGKILL"), 1000)
+    }, timeoutMs)
     let stdout = ""
     let stderr = ""
     child.stdout.on("data", (chunk) => { stdout += chunk })
@@ -18,7 +25,9 @@ export function run(command, { cwd, env, log, input } = {}) {
     // A command that exits without reading its input (`true` as an install step) closes stdin first: that is no failure.
     child.stdin.on("error", (error) => { if (error.code !== "EPIPE") reject(error) })
     child.on("close", (code, signal) => {
-      const result = { command, cwd, code: code ?? 128, signal, stdout, stderr, ms: Date.now() - started }
+      clearTimeout(timer)
+      clearTimeout(forceTimer)
+      const result = { command, cwd, timedOut, code: timedOut ? 124 : code ?? 128, signal, stdout, stderr, ms: Date.now() - started }
       if (log) {
         mkdirSync(dirname(log), { recursive: true })
         writeFileSync(log, `$ ${command}\n# cwd ${cwd ?? process.cwd()}\n# exit ${result.code} in ${result.ms} ms\n\n${stdout}${stderr ? "\n# stderr\n" + stderr : ""}`)

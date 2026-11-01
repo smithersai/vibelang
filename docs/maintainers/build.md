@@ -324,6 +324,7 @@ A cached result is only as correct as its key is complete. Each target names:
   and `jj file list`, which the docs check runs while other targets restore
   their outputs, snapshots the working copy: an unignored temporary tree is
   tracked, then vanishes before the check reads it. Discovery prunes the Vite
+  The compiler-package migration fixtures also spawn `jj`; it is declared in the workspace host binaries and on `//packages:compiler-test`.
   and unplugin test `.fixtures/` trees and the compiler case directory, which
   has no package declarations: their generated outputs may change while the
   compiler tests explain their migration-source cache inputs. This excludes

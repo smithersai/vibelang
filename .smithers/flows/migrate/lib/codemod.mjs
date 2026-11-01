@@ -392,7 +392,7 @@ function vibeFilesUnder(dir) {
  * .vibe file back as it was, and an earlier batch's committed file, hand
  * repairs included, stays as committed.
  */
-export async function fixToFixedPoint({ compiler, tsconfig, cwd, root, maxRounds = 4, log, only }) {
+export async function fixToFixedPoint({ compiler, tsconfig, cwd, root, maxRounds = 4, log, only, timeoutMs }) {
   const rounds = []
   const byFile = {}
   const refused = []
@@ -409,8 +409,7 @@ export async function fixToFixedPoint({ compiler, tsconfig, cwd, root, maxRounds
   let last
   for (let round = 1; round <= maxRounds; round++) {
     // --declaration: what --fix keeps for a declaration file it keeps under a tsconfig that says noEmit too.
-    const result = await run(`${quote(compiler)} -p ${quote(tsconfig)} --fix --noEmit --declaration --pretty false`, { cwd, log: log && `${log}.${round}.log` })
-    assertFinished(result, log && `${log}.${round}.log`)
+    const result = await run(`${quote(compiler)} -p ${quote(tsconfig)} --fix --noEmit --declaration --pretty false`, { cwd, log: log && `${log}.${round}.log`, timeoutMs })
     const parsed = parseFixOutput(result.stdout, { cwd, root })
     if (kept) {
       for (const file of Object.keys(parsed.files)) {
@@ -421,6 +420,7 @@ export async function fixToFixedPoint({ compiler, tsconfig, cwd, root, maxRounds
       parsed.total = Object.values(parsed.files).reduce((n, kinds) => n + Object.values(kinds).reduce((a, b) => a + b, 0), 0)
       parsed.refused = parsed.refused.filter((r) => kept.has(r.file))
     }
+    assertFinished(result, log && `${log}.${round}.log`)
     rounds.push({ round, code: result.code, fixes: parsed.total, files: parsed.files, refused: parsed.refused })
     mergeFixes(byFile, parsed.files)
     refused.push(...parsed.refused)

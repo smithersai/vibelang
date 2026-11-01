@@ -53,7 +53,8 @@ const compilerTest = S.Shell.Test({
   // Migration properties exercise the flow's package-export and Bun.build edits.
   // Their helpers and the TypeScript API install must enter the cache key too.
   data: [compilerNative, runtimeDist, S.glob("compiler/**"), migrationSources, S.glob("//.smithers/flows/migrate/lib/**"), S.glob("//.smithers/flows/migrate/templates/**"),
-    S.file("//.smithers/flows/migrate/test/oxlint.test.mjs"),
+    S.file("//.smithers/flows/migrate/test/oxlint.test.mjs"), S.file("//.smithers/flows/migrate/test/onepass.test.mjs"),
+    S.file("//.smithers/flows/migrate/test/corpus/opencode-one-pass.json"), S.file("//.smithers/flows/migrate/step.mjs"),
     S.file("//.smithers/flows/migrate/test/corpus/opencode-oxlint-changed.json"), S.file("//.smithers/flows/migrate/README.md"),
     S.file("//docs/tools/package.json"), S.file("//docs/tools/bun.lock"),
     S.file("//scripts/testing/property.mjs"), S.file("//docs/design/src/007-tooling.md"), S.file("//.smithers/flows/migrate/rules.md"),

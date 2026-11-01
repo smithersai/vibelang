@@ -41,7 +41,7 @@ const crashLine = /^(?:panic: |fatal error: |SIG[A-Z]+: |goroutine \d+ \[)/m
 export function assertFinished(result, log) {
   const output = result.stdout + result.stderr
   const crash = crashLine.exec(output)
-  if (!crash && !result.signal && (result.code === 0 || parseDiagnostics(output).length)) return
+  if (!crash && !result.signal && !result.timedOut && (result.code === 0 || parseDiagnostics(output).length)) return
   const tail = crash ? output.slice(crash.index) : output
   throw new Error(`the compiler did not finish (exit ${result.code}${log ? `, log ${log}` : ""}):\n${tail.trim().split("\n").slice(0, 8).join("\n")}`)
 }
