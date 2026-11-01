@@ -276,6 +276,23 @@ func (a *analyzer) inProgramPipe(node *ast.Node) bool {
 	return pipe != nil && slices.ContainsFunc(topicsOf(pipe), a.atProgramPosition)
 }
 
+// isTryOperationElement reports whether node is an element of the array
+// literal a try operation takes, try.all [a(), b()]: the literal is built
+// natively, in element order, with a spread element iterated once, as
+// Effect.all([a(), b()]) builds it (VIP-18, decided detail 252), so an
+// element that calls a function holds the Effect the call gives instead of
+// running it or deferring it in Effect.suspend.
+func isTryOperationElement(node *ast.Node) bool {
+	array := node.Parent
+	if array == nil || array.Kind != ast.KindArrayLiteralExpression {
+		return false
+	}
+	for array.Parent != nil && ast.IsParenthesizedExpression(array.Parent) {
+		array = array.Parent
+	}
+	return tryOperationName(array.Parent) != ""
+}
+
 // holdsProgram recognizes a declared Effect const at any scope (D269),
 // or a contextual Effect field (D265). Only its initializer is held;
 // operands retain D147's ordinary parameter positions.
@@ -290,6 +307,9 @@ func holdsProgram(c *checker.Checker, expr *ast.Node) bool {
 	node := expr
 	for node.Parent != nil && ast.IsParenthesizedExpression(node.Parent) {
 		node = node.Parent
+	}
+	if isTryOperationElement(node) {
+		return true
 	}
 	decl := node.Parent
 	if decl == nil || !ast.IsPropertyAssignment(decl) || decl.Initializer() != node {

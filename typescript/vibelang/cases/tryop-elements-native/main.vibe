@@ -1,0 +1,13 @@
+// expect-result: {"settled":["Success:i","Success:1","Success:2","Failure:r"],"all":[3,"i"],"log":["install","iterate","restore","install","install"]}
+// Chapter 2, Running Effects concurrently (VIP-18, decided detail 252): the array literal of a try
+// operation is built once, natively, in element order, as [a(), ...xs, b()] is, with a spread
+// iterated once; an element call gives its Effect during construction, not inside Effect.suspend
+// at execution, so a spread between two calls is iterated between them.
+import { Effect } from "effect"
+import { counted, install, log, restore, tag } from "./effects.ts"
+export effect function main() {
+  const settled = try.allSettled [install(), ...counted(), restore()]
+  const all = try.all [Effect.succeed(3), install()]
+  const one = try.all [(install())]
+  return { settled: settled.map(tag), all, log: one.length === 1 ? log : [] }
+}

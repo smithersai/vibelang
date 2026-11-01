@@ -47,7 +47,12 @@ export function at(label: string, value: number): Effect.Effect<number> {
 /** @throws {never} */
 export function set12(): Set<Effect.Effect<number>> {
   order.push("set")
-  return new Set([Effect.succeed(1), Effect.succeed(2)])
+  // Built with add, not new Set([...]): the Set constructor iterates an
+  // array argument with the patched Array.prototype[Symbol.iterator].
+  const set = new Set<Effect.Effect<number>>()
+  set.add(Effect.succeed(1))
+  set.add(Effect.succeed(2))
+  return set
 }
 
 /** @throws {never} */

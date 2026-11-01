@@ -1,1 +1,0 @@
-impl-hunt-run try.allSettled wraps each element call in Effect.suspend, so a call before a spread runs after it and at execution, not in the literal's native element order (002 try.allSettled row, decided detail 252, loop round 5 OPUS-3; fuzz-findings claim allSettled:factory-construction-deferred)
