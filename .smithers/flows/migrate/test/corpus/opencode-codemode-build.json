@@ -1,0 +1,5 @@
+{
+  "source": "opencode packages/codemode/script/build.ts (drive2-opencode, opencode-47)",
+  "before": "#!/usr/bin/env bun\n\nimport { $ } from \"bun\"\nimport { fileURLToPath } from \"node:url\"\n\nprocess.chdir(fileURLToPath(new URL(\"..\", import.meta.url)))\n\nawait $`rm -rf dist`\nawait $`bun tsc -p tsconfig.build.json`\n",
+  "after": "#!/usr/bin/env bun\n\nimport { $ } from \"bun\"\nimport { fileURLToPath } from \"node:url\"\n\nprocess.chdir(fileURLToPath(new URL(\"..\", import.meta.url)))\n\nawait $`rm -rf dist`\nawait $`bun vibelang -p tsconfig.build.json`\n"
+}

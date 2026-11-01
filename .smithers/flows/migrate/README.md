@@ -259,7 +259,7 @@ $step next --run <run>                        # what to run next
 
 Directory imports with a trailing slash keep the selected index module when the flow adds its source extension: `./runtime/` becomes `./runtime/index.vibe` in a `.vibe` importer.
 
-A script that builds with `Bun.build` and runs `tsc` through Bun's shell (`` $`bunx tsc --emitDeclarationOnly` ``) runs `vibelang` after setup, which also compiles the package's `.vibe` modules; `tsc` in `package.json` scripts was already `vibelang`.
+A script that runs `tsc` through Bun's shell (`` $`bunx tsc --emitDeclarationOnly` ``, `` $`bun tsc -p tsconfig.build.json` ``), with or without a `Bun.build`, runs `vibelang` after setup, which also compiles the package's `.vibe` modules and writes their JavaScript and imports as `.js`; setup adds `vibelang` to the package's `devDependencies` when it has none. `tsc` in `package.json` scripts was already `vibelang`.
 
 A script that builds with `Bun.build` and runs `tsc` through Bun's shell (`` $`bunx tsc --emitDeclarationOnly` ``) runs `vibelang` after setup, which also compiles the package's `.vibe` modules; `tsc` in `package.json` scripts was already `vibelang`.
 

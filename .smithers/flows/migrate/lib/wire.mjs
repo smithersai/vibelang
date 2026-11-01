@@ -999,6 +999,9 @@ export function wireBunTests({ root, packages, specsFor }) {
 
 // A script, source or test that calls Bun.build.
 const bunBuild = /\bBun\.build\s*\(/
+// A $ template that names tsc: a script whose Bun shell may run it
+// (replaceTscInScript decides).
+const shellTsc = /\$`[^`]*\btsc\b/
 const scriptFile = /\.(?:ts|mts|js|mjs)$/
 
 /** The files of a package that call Bun.build: its files outside nested packages, dependencies and output. */
@@ -1009,7 +1012,10 @@ function bunBuildFiles(root, dir) {
       const path = at === "." ? entry.name : posix.join(at, entry.name)
       if (entry.isDirectory()) {
         if (!skippedDirectory(entry.name) && entry.name !== "dist" && !existsSync(join(root, path, "package.json"))) walk(path)
-      } else if (scriptFile.test(entry.name) && !entry.name.endsWith(".d.ts") && bunBuild.test(readFileSync(join(root, path), "utf8"))) files.push(path)
+      } else if (scriptFile.test(entry.name) && !entry.name.endsWith(".d.ts")) {
+        const text = readFileSync(join(root, path), "utf8")
+        if (bunBuild.test(text) || shellTsc.test(text)) files.push(path)
+      }
     }
   }
   walk(dir)
@@ -1041,6 +1047,21 @@ export function wireBunBuilds({ root, packages, ts, specsFor }) {
     for (const file of files) {
       if (testOnly.has(file)) {
         warnings.push(`${file}: ${testLeftAsIs("Bun.build")}`)
+        continue
+      }
+      // A build script that only runs tsc, such as codemode's
+      // $`bun tsc -p tsconfig.build.json`, which wrote dist/index.js importing
+      // ./codemode.vibe (opencode-47), needs vibelang alone.
+      if (!bunBuild.test(readFileSync(join(root, file), "utf8"))) {
+        const original = readFileSync(join(root, file), "utf8")
+        const text = replaceTscInScript(original, ts)
+        if (text === original) continue
+        write(file, text)
+        const manifest = posix.join(pkg.dir, "package.json")
+        const current = JSON.parse(readFileSync(join(root, manifest), "utf8"))
+        if (!current.dependencies?.vibelang && !current.devDependencies?.vibelang && specs.vibelang) {
+          write(manifest, JSON.stringify({ ...current, devDependencies: { ...current.devDependencies, vibelang: specs.vibelang } }, null, 2) + "\n")
+        }
         continue
       }
       if (!specs["vibelang-unplugin"]) {
