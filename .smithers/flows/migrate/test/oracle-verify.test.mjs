@@ -9,7 +9,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { makeConfig, paths, verify } from "../lib/steps.mjs"
-import { slug, writeJson, must } from "../lib/util.mjs"
+import { must, slug, writeJson } from "../lib/util.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const declaration = "export declare const apple = 1;\n"
@@ -63,14 +63,14 @@ test("migrate-flow:declaration-gate-stock-oracle: identical to a native baseline
   assert.equal(missing.ok, false)
 })
 
-test("an oracle that proves the migrated module's declaration, or none recorded, leaves verify to the native gate", async () => {
+test("only an available oracle that proves the migrated declaration allows verify to pass", async () => {
   const proven = await verifyWith({ compiler: "tsrs", files: ["other.d.ts"], missing: [], extra: [], changed: [{ file: "other.d.ts", diff: [] }] })
   assert.equal(proven.checks.declarationOracle, true)
   assert.equal(proven.ok, true)
   const unavailable = await verifyWith({ unavailable: "no tsc, tsgo or tsrs is installed for it" })
-  assert.equal(unavailable.checks.declarationOracle, true)
+  assert.equal(unavailable.checks.declarationOracle, false)
   assert.deepEqual(unavailable.declarationOracle.unavailable, { "packages/fruit": "no tsc, tsgo or tsrs is installed for it" })
   const none = await verifyWith(null)
-  assert.match(none.declarationOracle, /not recorded/)
-  assert.equal(none.ok, true)
+  assert.match(none.declarationOracle.unproven[0].reason, /no stock compiler oracle/)
+  assert.equal(none.ok, false)
 })

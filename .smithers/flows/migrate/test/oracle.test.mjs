@@ -13,6 +13,7 @@ import { emitDeclarations, loadTypeScript } from "../lib/declarations.mjs"
 import { declarationNames, findStockCompiler, unprovenDeclarations, unprovenMigrations } from "../lib/oracle.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
+const fc = require("fast-check")
 
 const runtime = fileURLToPath(new URL("../../../../packages/runtime/", import.meta.url))
 const ts = loadTypeScript([runtime])
@@ -108,50 +109,60 @@ test("the stock compiler's emit goes through emitDeclarations with the flags vib
   }
 })
 
+test("a missing or unavailable stock oracle cannot certify a migrated declaration", () => {
+  const options = { migrated: ["src/main.vibe", "test/a.vibe"], pkgDir: ".", names: { "src/main.vibe": "main.d.ts" } }
+  assert.match(unprovenMigrations(options)[0].reason, /no stock compiler oracle/)
+  const unavailable = unprovenMigrations({ ...options, oracle: { unavailable: "tsrs failed" } })
+  assert.equal(unavailable[0].reason, "tsrs failed")
+  assert.deepEqual(unavailable.map(x => x.file), ["src/main.vibe"])
+})
+
 test("property: spelling never makes a declaration unproven, and every type or file difference does", () => {
-  // Seeded: each file of the stock tree is in the native tree as is, respelled
-  // (comments, quotes, union and member order, redundant parentheses), with a
-  // changed type, or absent; the native tree may add files of its own.
-  let seed = 23
-  const next = (n) => ((seed = (seed * 1103515245 + 12345) % 2147483648), seed % n)
-  const types = ["string", "number", "boolean", "\"a\" | \"b\"", "ReadonlyArray<string>"]
-  for (let round = 0; round < 40; round++) {
-    const stock = {}
-    const native = {}
-    const expected = new Set()
-    const count = 1 + next(5)
-    for (let i = 0; i < count; i++) {
-      const name = `m${i}.d.ts`
-      const t = types[next(types.length)]
-      stock[name] = `export declare const v${i}: ${t};\nexport interface I${i} { a: string; b: number }\n`
-      switch (next(4)) {
-        case 0:
-          native[name] = stock[name]
-          break
-        case 1:
-          native[name] = `/** doc */\nexport declare const v${i}: (${t.includes("|") ? "'b' | 'a'" : t});\nexport interface I${i} {\n  b: number;\n  a: string;\n}\n`
-          break
-        case 2:
-          native[name] = `export declare const v${i}: ${t === "string" ? "number" : "string"};\nexport interface I${i} { a: string; b: number }\n`
+  fc.assert(fc.property(
+    fc.array(fc.record({
+      type: fc.constantFrom("string", "number", "boolean", '"a" | "b"', "ReadonlyArray<string>"),
+      change: fc.constantFrom("same", "spelling", "type", "missing")
+    }), { minLength: 1, maxLength: 8 }), fc.boolean(),
+    (modules, extra) => {
+      const stock = {}, native = {}, expected = new Set()
+      for (const [i, { type, change }] of modules.entries()) {
+        const name = "m" + i + ".d.ts"
+        stock[name] = "export declare const v" + i + ": " + type + ";\nexport interface I" + i + " { a: string; b: number }\n"
+        if (change === "same") native[name] = stock[name]
+        else if (change === "spelling") native[name] = "/** doc */\nexport declare const v" + i + ": (" + (type.includes("|") ? "'b' | 'a'" : type) + ");\nexport interface I" + i + " { b: number; a: string; }\n"
+        else {
           expected.add(name)
-          break
-        default:
-          expected.add(name)
+          if (change === "type") native[name] = "export declare const v" + i + ": " + (type === "string" ? "number" : "string") + ";\nexport interface I" + i + " { a: string; b: number }\n"
+        }
       }
-    }
-    if (next(3) === 0) {
-      native["extra.d.ts"] = "export declare const extra: string;\n"
-      expected.add("extra.d.ts")
-    }
-    const a = tree(stock)
-    const b = tree(native)
-    try {
-      assert.deepEqual(unprovenDeclarations(ts, a, b).files, [...expected].sort(), JSON.stringify({ stock, native }))
-    } finally {
-      rmSync(a, { recursive: true, force: true })
-      rmSync(b, { recursive: true, force: true })
-    }
-  }
+      if (extra) {
+        native["extra.d.ts"] = "export declare const extra: string;\n"
+        expected.add("extra.d.ts")
+      }
+      const a = tree(stock), b = tree(native)
+      try { assert.deepEqual(unprovenDeclarations(ts, a, b).files, [...expected].sort()) }
+      finally { rmSync(a, { recursive: true, force: true }); rmSync(b, { recursive: true, force: true }) }
+    }), { seed: 50123, numRuns: 100 })
+})
+
+test("property: oracle availability gates only the migrated modules in its declaration projects", () => {
+  fc.assert(fc.property(
+    fc.uniqueArray(fc.stringMatching(/^[a-z][a-z0-9]{0,7}$/), { minLength: 1, maxLength: 12 }),
+    fc.array(fc.boolean(), { minLength: 1, maxLength: 12 }),
+    fc.constantFrom("available", "missing", "unavailable"), fc.boolean(),
+    (modules, affected, state, root) => {
+      const pkgDir = root ? "." : "packages/aws"
+      const prefix = root ? "" : pkgDir + "/"
+      const names = Object.fromEntries(modules.map(name => [name + ".vibe", name + ".d.ts"]))
+      const missing = modules.filter((_, i) => affected[i % affected.length]).map(name => name + ".d.ts")
+      const oracle = state === "missing" ? undefined : state === "unavailable" ? { unavailable: "stock compiler failed" }
+        : { files: missing, missing, extra: [], changed: [] }
+      const migrated = [...modules.map(name => prefix + name + ".vibe"), prefix + "excluded/fixture.vibe", "other/package/foreign.vibe"]
+      const found = unprovenMigrations({ migrated, pkgDir, names, oracle })
+      const expected = modules.filter((name, i) => state !== "available" || affected[i % affected.length]).map(name => prefix + name + ".vibe")
+      assert.deepEqual(found.map(x => x.file), expected)
+      assert.equal(found.every(x => typeof x.reason === "string" && x.reason.length > 0), true)
+    }), { seed: 50143, numRuns: 300 })
 })
 
 test("alchemy: the declaration build compiler wins over a different typecheck compiler and a missing one has no fallback", () => {

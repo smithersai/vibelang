@@ -98,12 +98,17 @@ export function unprovenDeclarations(ts, stockDir, nativeDir) {
  */
 export function unprovenMigrations({ migrated, pkgDir, names, oracle }) {
   const prefix = posix.normalize(pkgDir) === "." ? "" : posix.normalize(pkgDir) + "/"
-  const unproven = new Set(oracle.files)
+  const unproven = new Set(oracle?.files ?? [])
   const out = []
   for (const file of migrated) {
     if (!file.startsWith(prefix)) continue
     const declaration = names[file.slice(prefix.length)]
-    if (declaration === undefined || !unproven.has(declaration)) continue
+    if (declaration === undefined) continue // not part of a declaration project
+    if (!oracle || oracle.unavailable) {
+      out.push({ file, declaration, reason: oracle?.unavailable ?? "setup recorded no stock compiler oracle; start a fresh setup before migrating this module", diff: [] })
+      continue
+    }
+    if (!unproven.has(declaration)) continue
     const reason = oracle.missing.includes(declaration) ? "the native baseline has no declaration for it; the stock compiler's has one"
       : oracle.extra.includes(declaration) ? "only the native baseline has a declaration for it"
       : "the native baseline's declaration differs from the stock compiler's"

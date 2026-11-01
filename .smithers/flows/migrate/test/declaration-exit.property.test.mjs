@@ -38,6 +38,9 @@ async function check(code, diagnostic) {
     writeJson(p.plan, { batches: [{ files: ["main.ts"] }] })
     writeJson(join(p.baseline, "tests.json"), { code: 0, tests: {}, total: 0, passed: 0, failed: [], skipped: 0 })
     writeJson(join(p.baseline, "compile-" + slug(".") + ".json"), [])
+
+    // This fixture isolates emit/format certification with a known matching stock baseline.
+    writeJson(join(p.baseline, "declaration-oracle.json"), { ".": { compiler: "fixture-stock", files: [], missing: [], extra: [], changed: [] } })
     const baseline = join(p.baseline, "dts", slug("."))
     mkdirSync(baseline, { recursive: true })
     writeFileSync(join(baseline, "main.d.ts"), declaration)

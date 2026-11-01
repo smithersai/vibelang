@@ -18,7 +18,7 @@ import { stageToolchain } from "./lib/toolchain.mjs"
 const usage = `usage: node .smithers/flows/migrate/step.mjs <step> --run <dir> [options]
 steps: toolchain, upgrade-effect, setup, plan, rename, fix, check, settle, codemod, compile, repair, revert, verify, record, report, next
 upgrade-effect options, which setup reads from the run: --target <repo> --package <dir>... --source <dir>... --test "<command>" [--test-cwd <dir>]
-               (--toolchain <dir> | --vibelang-version <v>) [--tsconfig <file>] [--dts-tsconfig <file>]
+               (--toolchain <dir> | --vibelang-version <v>) [--tsconfig <file>] [--dts-tsconfig <file>] [--stock-compiler <path>]
                [--install "<command>"] [--no-wire] [--max-files N] [--max-lines N] [--allow-dirty]
                [--base <revision>] [--bookmark <name>] [--emitted-project <build-tsconfig>...]`
 
@@ -50,6 +50,7 @@ async function main(argv) {
     typecheckRetire: many(options["typecheck-retire"]),
     typecheckPrepare: many(options["typecheck-prepare"]),
     typecheckSourceRoots: many(options["typecheck-source-root"]),
+    stockCompiler: options["stock-compiler"],
     install: options.install,
     wire: !options["no-wire"],
     maxFiles: options["max-files"],
