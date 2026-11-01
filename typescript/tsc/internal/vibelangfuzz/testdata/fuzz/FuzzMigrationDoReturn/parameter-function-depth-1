@@ -1,0 +1,2 @@
+go test fuzz v1
+string("parameter:function:depth=1")

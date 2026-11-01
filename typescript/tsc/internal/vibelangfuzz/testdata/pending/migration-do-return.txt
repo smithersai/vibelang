@@ -1,0 +1,19 @@
+# Parameter-default outward returns remain a compiler gap; ordinary callable bodies now pass their unchanged specification oracle.
+FuzzMigrationDoReturn parameter:async:depth=0 compiler VIP-2/TC39 do: an outward return from a do expression is checked at the enclosing activation, but the compiler rejects or mistypes it; lane migfix-foldkit
+FuzzMigrationDoReturn corpus:parameter-async-depth-0 compiler VIP-2/TC39 do: minimized reproduction of parameter:async:depth=0; lane migfix-foldkit
+FuzzMigrationDoReturn parameter:async:depth=1 compiler VIP-2/TC39 do: an outward return from a do expression is checked at the enclosing activation, but the compiler rejects or mistypes it; lane migfix-foldkit
+FuzzMigrationDoReturn corpus:parameter-async-depth-1 compiler VIP-2/TC39 do: minimized reproduction of parameter:async:depth=1; lane migfix-foldkit
+FuzzMigrationDoReturn parameter:async:depth=2 compiler VIP-2/TC39 do: an outward return from a do expression is checked at the enclosing activation, but the compiler rejects or mistypes it; lane migfix-foldkit
+FuzzMigrationDoReturn corpus:parameter-async-depth-2 compiler VIP-2/TC39 do: minimized reproduction of parameter:async:depth=2; lane migfix-foldkit
+FuzzMigrationDoReturn parameter:effect:depth=0 compiler VIP-2/TC39 do: an outward return from a do expression is checked at the enclosing activation, but the compiler rejects or mistypes it; lane migfix-foldkit
+FuzzMigrationDoReturn corpus:parameter-effect-depth-0 compiler VIP-2/TC39 do: minimized reproduction of parameter:effect:depth=0; lane migfix-foldkit
+FuzzMigrationDoReturn parameter:effect:depth=1 compiler VIP-2/TC39 do: an outward return from a do expression is checked at the enclosing activation, but the compiler rejects or mistypes it; lane migfix-foldkit
+FuzzMigrationDoReturn corpus:parameter-effect-depth-1 compiler VIP-2/TC39 do: minimized reproduction of parameter:effect:depth=1; lane migfix-foldkit
+FuzzMigrationDoReturn parameter:effect:depth=2 compiler VIP-2/TC39 do: an outward return from a do expression is checked at the enclosing activation, but the compiler rejects or mistypes it; lane migfix-foldkit
+FuzzMigrationDoReturn corpus:parameter-effect-depth-2 compiler VIP-2/TC39 do: minimized reproduction of parameter:effect:depth=2; lane migfix-foldkit
+FuzzMigrationDoReturn parameter:function:depth=0 compiler VIP-2/TC39 do: an outward return from a do expression is checked at the enclosing activation, but the compiler rejects or mistypes it; lane migfix-foldkit
+FuzzMigrationDoReturn corpus:parameter-function-depth-0 compiler VIP-2/TC39 do: minimized reproduction of parameter:function:depth=0; lane migfix-foldkit
+FuzzMigrationDoReturn parameter:function:depth=1 compiler VIP-2/TC39 do: an outward return from a do expression is checked at the enclosing activation, but the compiler rejects or mistypes it; lane migfix-foldkit
+FuzzMigrationDoReturn corpus:parameter-function-depth-1 compiler VIP-2/TC39 do: minimized reproduction of parameter:function:depth=1; lane migfix-foldkit
+FuzzMigrationDoReturn parameter:function:depth=2 compiler VIP-2/TC39 do: an outward return from a do expression is checked at the enclosing activation, but the compiler rejects or mistypes it; lane migfix-foldkit
+FuzzMigrationDoReturn corpus:parameter-function-depth-2 compiler VIP-2/TC39 do: minimized reproduction of parameter:function:depth=2; lane migfix-foldkit
