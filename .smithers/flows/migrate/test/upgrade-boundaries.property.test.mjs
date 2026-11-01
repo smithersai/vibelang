@@ -18,7 +18,7 @@ function checkRepin(input) {
     expected[field] = { ...before[field] }
     for (const name of input.packages) {
       before[field][name] = input.old
-      expected[field][name] = specs[name] ?? input.old
+      expected[field][name] = ["dependencies", "devDependencies"].includes(field) ? specs[name] ?? input.old : input.old
       found.push(name)
     }
   }

@@ -64,6 +64,8 @@ export function repinVibeLang(text, specs) {
     const [field, name] = s.path
     if (s.path.length !== 2 || !dependencyFields.has(field) || !vibeLangPackages.has(name)) return []
     found.push(name)
+    // A published peer describes the consumer contract, never a staged tarball.
+    if (field !== "dependencies" && field !== "devDependencies") return []
     if (specs[name] && specs[name] !== s.value && bumpable.test(s.value)) moved.push({ name, from: s.value.replace(/^[\^~]/, "") })
     const spec = specs[name]
     return spec && spec !== s.value ? [{ start: s.start, end: s.end, text: JSON.stringify(spec).slice(1, -1) }] : []
