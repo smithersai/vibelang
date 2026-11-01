@@ -31,7 +31,7 @@ func (p *Parser) vibelangArraySchemaReference(name, value, visible *ast.Node, mu
 	clonedName := p.factory.DeepCloneReparse(name)
 	clonedName.Parent = visible
 	p.vibelangSchemaGenerics = append(p.vibelangSchemaGenerics, ast.SchemaGenericReference{
-		Name: clonedName, Expression: visible, MutableArray: mutableValue, ReadonlyArray: readonly,
+		Arity: 1, Name: clonedName, Expression: visible, MutableArray: mutableValue, ReadonlyArray: readonly,
 		DefaultMutable: mutable, Legacy: legacy,
 	})
 	return visible
@@ -49,7 +49,22 @@ func (p *Parser) attachVibeLangSchemaGenericScopes(file *ast.SourceFile) {
 			continue
 		} // a discarded speculative parse
 		ref.Name.Parent = scope
-		ref.MutableArray.Parent = scope
-		ref.ReadonlyArray.Parent = scope
+		if ref.MutableArray != nil {
+			ref.MutableArray.Parent = scope
+		}
+		if ref.ReadonlyArray != nil {
+			ref.ReadonlyArray.Parent = scope
+		}
 	}
+}
+
+// A two-argument candidate is a Record only when its source name resolves to
+// the library's type alias. Unknown spellings have no previous codec to keep.
+func (p *Parser) vibelangRecordSchemaReference(name, value *ast.Node, legacy bool) *ast.Node {
+	clonedName := p.factory.DeepCloneReparse(name)
+	clonedName.Parent = value
+	p.vibelangSchemaGenerics = append(p.vibelangSchemaGenerics, ast.SchemaGenericReference{
+		Arity: 2, Name: clonedName, Expression: value, Legacy: legacy,
+	})
+	return value
 }

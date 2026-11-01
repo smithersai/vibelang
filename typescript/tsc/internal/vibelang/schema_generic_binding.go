@@ -35,16 +35,24 @@ func schemaGenericReferences(c *checker.Checker, file *ast.SourceFile) map[*ast.
 
 // The source name is detached metadata anchored to its visible codec. Resolve
 // only its type meaning; value-only bindings do not replace a library type.
-func schemaGenericArrayKind(c *checker.Checker, ref *ast.SchemaGenericReference) int {
+func schemaGenericKind(c *checker.Checker, ref *ast.SchemaGenericReference) int {
 	symbol := c.ResolveEntityName(ref.Name, ast.SymbolFlagsType)
 	if !isGlobal(c, symbol) {
 		return 0
 	}
 	switch symbol.Name() {
 	case "Array":
-		return 1
+		if ref.Arity == 1 {
+			return 1
+		}
 	case "ReadonlyArray":
-		return 2
+		if ref.Arity == 1 {
+			return 2
+		}
+	case "Record":
+		if ref.Arity == 2 {
+			return 3
+		}
 	}
 	return 0
 }
@@ -61,7 +69,7 @@ func schemaGenericReplacement(c *checker.Checker, node *ast.Node) *ast.Node {
 	if ref == nil {
 		return nil
 	}
-	switch schemaGenericArrayKind(c, ref) {
+	switch schemaGenericKind(c, ref) {
 	case 1:
 		if !ref.DefaultMutable {
 			return ref.MutableArray
@@ -88,7 +96,7 @@ func checkSchemaGenericReferences(c *checker.Checker, file *ast.SourceFile) {
 	refs := schemaGenericReferences(c, file)
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
-		if ref := refs[node]; ref != nil && schemaGenericArrayKind(c, ref) == 0 {
+		if ref := refs[node]; ref != nil && schemaGenericKind(c, ref) == 0 {
 			span := core.NewTextRange(scanner.SkipTrivia(file.Text(), ref.Name.Pos()), ref.Name.End())
 			d := reportAt(c, file, span, EK2109.With("This generic type does not name a mapped TypeScript-library schema type."))
 			note(d, "Name a schema value without type arguments, or write the decoder with explicit Effect Schema codecs.")
@@ -100,7 +108,7 @@ func checkSchemaGenericReferences(c *checker.Checker, file *ast.SourceFile) {
 
 // A normalizer writes canonical names. Their source bindings must denote the
 // same library type as the codec being replaced, including through imports.
-func schemaLibraryArrayName(c *checker.Checker, at *ast.Node, name string) bool {
+func schemaLibraryTypeName(c *checker.Checker, at *ast.Node, name string) bool {
 	symbol := c.ResolveName(name, at, ast.SymbolFlagsType, false)
 	if symbol != nil && symbol.Flags()&ast.SymbolFlagsAlias != 0 {
 		symbol = c.GetAliasedSymbol(symbol)

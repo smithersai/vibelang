@@ -18,6 +18,11 @@ Mapped array schemas follow the resolved TypeScript-library type. `globalThis.Ar
 
 Earlier compilers selected array mutability from the written name. If an imported `Array` actually names the library `ReadonlyArray`, or the reverse, `vibelang --fix --fix-migration-only` writes the previous decoder explicitly and preserves its public type. Ordinary compilation uses the resolved library meaning. This compatibility rewrite only covers previously supported canonical spellings; it does not invent old decoders for new qualified or renamed forms.
 
+A declaration such as `schema Values = globalThis.Record<"key", number>` and a renamed library `Record` binding use the record decoder with writable decoded keys. The same mapping applies when that library type is imported as `Array` or `Readonly`: its resolved binding and two arguments select the record mapping.
+
+If an earlier compiler accepted `Record<K, V>` while that name actually referred to a different library type, `vibelang --fix` preserves the previous record decoder with explicit Effect Schema code. A newly supported qualified or renamed form receives no compatibility rewrite.
+
+
 ## Modeling primitives, symbols, literals, enums, and template strings
 
 ```vibe

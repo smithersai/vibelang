@@ -354,14 +354,14 @@ func schemaTypeText(c *checker.Checker, file *ast.SourceFile, schema *ast.Node, 
 			return "", false
 		}
 		if strings.HasPrefix(inner, "ReadonlyArray<") {
-			if !schemaLibraryArrayName(c, schema, "Array") {
+			if !schemaLibraryTypeName(c, schema, "Array") {
 				return "", false
 			}
 			return "Array<" + strings.TrimPrefix(inner, "ReadonlyArray<"), true
 		}
 		return strings.TrimPrefix(inner, "readonly "), true
 	case "Array":
-		if len(arguments) != 1 || !schemaLibraryArrayName(c, schema, "ReadonlyArray") {
+		if len(arguments) != 1 || !schemaLibraryTypeName(c, schema, "ReadonlyArray") {
 			return "", false
 		}
 		element, ok := schemaTypeText(c, file, arguments[0], indent)
@@ -387,7 +387,7 @@ func schemaTypeText(c *checker.Checker, file *ast.SourceFile, schema *ast.Node, 
 		}
 		return "readonly [" + strings.Join(elements, ", ") + "]", true
 	case "Record":
-		if len(arguments) != 2 {
+		if len(arguments) != 2 || !schemaLibraryTypeName(c, schema, "Record") {
 			return "", false
 		}
 		key, ok := schemaTypeText(c, file, arguments[0], indent)
@@ -409,6 +409,9 @@ func schemaTypeText(c *checker.Checker, file *ast.SourceFile, schema *ast.Node, 
 		}
 		result := "Record<" + key + ", " + value + ">"
 		if !mutable {
+			if !schemaLibraryTypeName(c, schema, "Readonly") {
+				return "", false
+			}
 			result = "Readonly<" + result + ">"
 		}
 		return result, true

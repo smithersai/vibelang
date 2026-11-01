@@ -1408,8 +1408,9 @@ func (p *Parser) vibelangSchemaOf(typeNode *ast.Node) *ast.Node {
 					return p.vibelangSchemaCall("Record", name.Loc, p.vibelangSchemaOf(parts[0]), p.vibelangSchemaOf(parts[1]))
 				}
 			}
-		case ast.IsIdentifier(name) && name.Text() == "Record" && len(arguments) == 2:
-			return p.vibelangSchemaCall("Record", name.Loc, p.vibelangSchemaOf(arguments[0]), p.vibelangSchemaCall("mutableKey", arguments[1].Loc, p.vibelangSchemaOf(arguments[1])))
+		case len(arguments) == 2:
+			value := p.vibelangSchemaCall("Record", name.Loc, p.vibelangSchemaOf(arguments[0]), p.vibelangSchemaCall("mutableKey", arguments[1].Loc, p.vibelangSchemaOf(arguments[1])))
+			return p.vibelangRecordSchemaReference(name, value, ast.IsIdentifier(name) && name.Text() == "Record")
 		}
 	}
 	return p.vibelangUnsupportedSchema(typeNode.Loc)

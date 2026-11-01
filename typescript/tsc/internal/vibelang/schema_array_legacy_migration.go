@@ -50,7 +50,7 @@ func schemaArrayLegacyMigrationFixes(ctx context.Context, program *compiler.Prog
 	seen := map[*ast.Node]bool{}
 	for i := range file.VibeLangSchemaGenerics {
 		ref := &file.VibeLangSchemaGenerics[i]
-		kind := schemaGenericArrayKind(c, ref)
+		kind := schemaGenericKind(c, ref)
 		if !ref.Legacy || kind == 0 || (kind == 1) == ref.DefaultMutable {
 			continue
 		}

@@ -1,0 +1,22 @@
+// expect-result: [{"a":1},{"b":2},{"c":3},{"d":4},{"e":5}]
+import type { Dictionary, Array, Readonly } from "./library-types.js"
+export schema Canonical = Record<string,number>
+export schema Mutable = Dictionary<string,number>
+export schema Qualified = globalThis.Record<string,number>
+export schema CrossArray = Array<string,number>
+export schema CrossReadonly = Readonly<string,number>
+function typeChecks(a:Canonical,b:Mutable,c:Qualified,d:CrossArray,e:CrossReadonly):void {
+  a.x = 1
+  b.x = 1
+  c.x = 1
+  d.x = 1
+  e.x = 1
+}
+export effect function main() {
+  const a = try sync((codec) => Schema.decodeUnknownSync(codec)({a:1}), Canonical)
+  const b = try sync((codec) => Schema.decodeUnknownSync(codec)({b:2}), Mutable)
+  const c = try sync((codec) => Schema.decodeUnknownSync(codec)({c:3}), Qualified)
+  const d = try sync((codec) => Schema.decodeUnknownSync(codec)({d:4}), CrossArray)
+  const e = try sync((codec) => Schema.decodeUnknownSync(codec)({e:5}), CrossReadonly)
+  return [a,b,c,d,e]
+}

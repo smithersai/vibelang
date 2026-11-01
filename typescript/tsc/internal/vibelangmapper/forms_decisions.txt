@@ -3733,6 +3733,11 @@ typescript/vibelang/cases/schema-library-generic-arrays/main.vibe:22:22 lambda p
 typescript/vibelang/cases/schema-library-generic-arrays/main.vibe:23:22 lambda plain table
 typescript/vibelang/cases/schema-library-generic-arrays/main.vibe:24:22 lambda plain table
 typescript/vibelang/cases/schema-library-generic-arrays/main.vibe:25:22 lambda plain table
+typescript/vibelang/cases/schema-library-generic-records/main.vibe:16:22 lambda plain table
+typescript/vibelang/cases/schema-library-generic-records/main.vibe:17:22 lambda plain table
+typescript/vibelang/cases/schema-library-generic-records/main.vibe:18:22 lambda plain table
+typescript/vibelang/cases/schema-library-generic-records/main.vibe:19:22 lambda plain table
+typescript/vibelang/cases/schema-library-generic-records/main.vibe:20:22 lambda plain table
 typescript/vibelang/cases/schema-readonly-field-reference-upgrade/main.vibe:14:25 lambda plain annotation
 typescript/vibelang/cases/schema-required-field-reference-upgrade/main.vibe:14:25 lambda plain annotation
 typescript/vibelang/cases/schema-statics-annotation/main.vibe:10:21 lambda plain annotation

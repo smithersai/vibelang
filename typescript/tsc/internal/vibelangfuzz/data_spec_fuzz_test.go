@@ -296,6 +296,7 @@ func dataRules() []dataRule {
 	rules = append(rules, dataDeclarationRules()...)
 	rules = append(rules, unsettledIsBindingRules()...)
 	rules = append(rules, dataSchemaLibraryArrayRules()...)
+	rules = append(rules, dataSchemaLibraryRecordRules()...)
 	return append(rules, dataReadonlyRecordAliasRules()...)
 }
 
@@ -308,6 +309,9 @@ func checkDataRule(t *testing.T, w *Workspace, c dataRule, trivia uint8) {
 	}
 	if strings.HasPrefix(c.name, "schema-library-array-") {
 		c.source = mutateSchemaLibraryArray(c.source, trivia)
+	}
+	if strings.HasPrefix(c.name, "schema-library-record-") {
+		c.source = mutateSchemaLibraryRecord(c.source, trivia)
 	}
 	source := strings.Repeat("/* trivia */\n", int(trivia)%4) + c.source + "\nexport {}\n"
 	files := map[string]string{"main.vibe": source}
