@@ -431,6 +431,8 @@ A child must signal a `Deferred` after it enters its protected region or
 registers cleanup; its parent awaits that signal before interrupting or leaving
 the region. Neither `sleep` nor `yieldNow` proves readiness.
 
+The case harness accepts a positive safe integer for `--jobs`. It starts no more workers than there are selected cases. Invalid, missing, zero, negative or fractional counts exit with status `2` before any case is read or modified; a zero-worker run cannot report success.
+
 A case's key is the compiler's key, the runtime's `dist/` key, the Effect
 install's lockfiles, the harness files and the digests of the files in that
 case's directory. The compiler's key is the Go module's sources and the `go`

@@ -20,6 +20,9 @@
 //     bounded stages sets N to the sum of its stage deadlines, so a slow stage
 //     trips its own deadline, which names the stage, before the runner's.
 //
+// --jobs must be a positive safe integer. At most one worker per selected
+// case starts; invalid counts exit 2 before reading or modifying cases.
+//
 // --late-start (or VIBELANG_LATE_START=1) delays scheduler dispatch by 100 ms.
 // Use it to expose parents that sleep instead of waiting for child readiness.
 // --isolated copies each case into a private sibling of cases/, so an
@@ -90,6 +93,10 @@ const isolated = args.includes("--isolated")
 const verbose = args.includes("--verbose") || args.includes("-v")
 const jobsAt = args.indexOf("--jobs")
 const jobs = jobsAt >= 0 ? Number(args[jobsAt + 1]) : Math.max(2, Math.min(8, os.availableParallelism() >> 1))
+if (!Number.isSafeInteger(jobs) || jobs < 1) {
+  console.error("harness.mjs: --jobs must be a positive safe integer")
+  process.exit(2)
+}
 const selectors = args.filter((a, i) => !a.startsWith("-") && !(jobsAt >= 0 && i === jobsAt + 1))
 
 const allCases = fs
@@ -429,7 +436,7 @@ async function main() {
       flush()
     }
   }
-  await Promise.all(Array.from({ length: jobs }, worker))
+  await Promise.all(Array.from({ length: Math.min(jobs, selected.length) }, worker))
   // Done when no case directory is left: the files copied beside them do not count.
   if (isolated && fs.existsSync(isolatedCasesDir) &&
     fs.readdirSync(isolatedCasesDir, { withFileTypes: true }).every((entry) => !entry.isDirectory())) {
