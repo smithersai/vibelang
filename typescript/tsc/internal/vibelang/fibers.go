@@ -152,9 +152,9 @@ func checkAwait(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
 	}
 	switch {
 	case isJoinable(c, t, 0):
-		reportAt(c, file, keyword, EK4609, nodeText(file, operand))
+		reportAwaitValue(c, file, call, keyword, EK4609, operand)
 	case isDeferred(c, t):
-		reportAt(c, file, keyword, EK4610, nodeText(file, operand))
+		reportAwaitValue(c, file, call, keyword, EK4610, operand)
 	default:
 		d := reportAt(c, file, keyword, EK4603, c.TypeToString(t))
 		if isEffectType(c, t) {
@@ -166,6 +166,19 @@ func checkAwait(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
 		}
 	}
 	cover(c, call)
+}
+
+// reportAwaitValue keeps VIP-1 placement errors independent of configurable
+// VIP-5 advisories. Disabling an advisory never admits await in effect code.
+func reportAwaitValue(c *checker.Checker, file *ast.SourceFile, call *ast.Node, keyword core.TextRange, message *Message, operand *ast.Node) {
+	if isMarkedEffect(ast.GetContainingFunction(call)) {
+		advisory := *message
+		advisory.Category = warningCategory
+		reportAt(c, file, keyword, &advisory, nodeText(file, operand))
+		reportAt(c, file, keyword, EK0102)
+		return
+	}
+	reportAt(c, file, keyword, message, nodeText(file, operand))
 }
 
 // checkJoin reports a join that is in a hatch body or whose operand is not a

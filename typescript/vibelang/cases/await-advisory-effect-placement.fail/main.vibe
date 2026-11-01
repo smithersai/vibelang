@@ -1,0 +1,8 @@
+// expect: EK0102
+import type { Fiber, Deferred } from "effect"
+declare const fiber: Fiber.Fiber<number>
+declare const deferred: Deferred.Deferred<number>
+export effect function waitFiber() { return await fiber }
+export const waitDeferred = effect () => { return await deferred }
+export const waitBlock = effect { return await fiber }
+export const waiter = { effect wait() { return await deferred } }

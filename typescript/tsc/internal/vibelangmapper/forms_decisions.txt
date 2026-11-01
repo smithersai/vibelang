@@ -122,6 +122,9 @@ typescript/vibelang/cases/arrow-body-leading-comment/main.vibe:28:14 lambda plai
 typescript/vibelang/cases/arrow-body-leading-comment/main.vibe:30:12 lambda plain table
 typescript/vibelang/cases/arrow-body-leading-comment/main.vibe:32:17 lambda plain fallback
 typescript/vibelang/cases/arrow-body-leading-comment/main.vibe:6:15 lambda effectFn annotation
+typescript/vibelang/cases/await-advisory-effect-placement.fail/main.vibe:6:29 lambda dual fallback
+typescript/vibelang/cases/await-advisory-effect-placement.fail/main.vibe:7:26 lambda dual fallback
+typescript/vibelang/cases/await-advisory-effect-placement.fail/main.vibe:8:25 lambda dual fallback
 typescript/vibelang/cases/await-call-shape/main.vibe:14:23 lambda program table
 typescript/vibelang/cases/await-call-shape/main.vibe:14:52 lambda program table
 typescript/vibelang/cases/await-call-shape/main.vibe:15:24 lambda program table

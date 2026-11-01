@@ -19,8 +19,8 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,225 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 15,131 |
-| The skill and the user guide (139 pages) | 341,719 |
-| The user guide alone | 337,494 |
+| The skill and the user guide (139 pages) | 341,821 |
+| The user guide alone | 337,596 |
 | The specification (10 chapters) | 144,622 |
 | The decision log, `docs/design/history/DECISIONS.md` | 141,521 |
 
@@ -130,9 +130,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Zed](../setup/zed.md) | 479 |
 | [Other editors](../setup/other-editors.md) | 492 |
 | [Coding agents](../setup/coding-agents.md) | 990 |
-| **Upgrade** | **69,028** |
-| [Release notes](../setup/release-notes.md) | 69,028 |
-| **All 18 pages** | **99,409** |
+| **Upgrade** | **69,087** |
+| [Release notes](../setup/release-notes.md) | 69,087 |
+| **All 18 pages** | **99,468** |
 
 ### Guides
 
@@ -179,8 +179,8 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Caching** | **2,226** |
 | [Caching Effects](../caching/045-caching-effects.md) | 1,039 |
 | [Cache](../caching/046-cache.md) | 1,187 |
-| **Concurrency** | **8,853** |
-| [Fibers](../concurrency/047-fibers.md) | 3,311 |
+| **Concurrency** | **8,896** |
+| [Fibers](../concurrency/047-fibers.md) | 3,354 |
 | [Deferred](../concurrency/048-deferred.md) | 1,104 |
 | [Queue](../concurrency/049-queue.md) | 1,495 |
 | [PubSub](../concurrency/050-pubsub.md) | 1,362 |
@@ -256,7 +256,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Platform globals in VibeLang](../platform/platform-globals.md) | 5,178 |
 | [Cloudflare Workers](../platform/cloudflare-workers.md) | 790 |
 | [Alchemy](../platform/alchemy.md) | 2,527 |
-| **All 101 pages** | **170,492** |
+| **All 101 pages** | **170,535** |
 
 ### VibeLang features
 

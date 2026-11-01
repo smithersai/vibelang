@@ -1,4 +1,4 @@
-// expect: EK4601 EK4602 EK4603 EK4604 EK4609 EK4610 EK4611 EK4612
+// expect: EK0102 EK4601 EK4602 EK4603 EK4604 EK4611 EK4612
 effect function load(): number!! {
   return 1
 }
