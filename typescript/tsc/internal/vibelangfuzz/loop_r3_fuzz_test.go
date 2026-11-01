@@ -237,11 +237,12 @@ func FuzzRestoreItemPlacement(f *testing.F) {
 
 // ---------------------------------------------------------------------------
 // OPUS-8 (decided detail 249): binding homes at a catch parameter and a
-// for concurrent limit.
+// for concurrent limit, plus the post-guard home control from detail 245.
 
 var isHomeQuotes = []string{
 	"A binding in a `for concurrent` limit belongs to the nearest home that encloses the loop, because the limit runs before the head environment exists",
 	"The same holds for a catch clause's parameter, whose environment is distinct from the catch Block (decided detail 249).",
+	"An `if` head belongs to the home that contains the `if` statement;",
 }
 
 var isHomePositions = []struct{ name, source, want, key string }{
@@ -251,6 +252,7 @@ var isHomePositions = []struct{ name, source, want, key string }{
 	{"catch-array-default", `try { work() } catch ([a = (1 is let c)]: any) {}`, "EK0705", "catch:EK0705"},
 	{"catch-binding-free", `try { work() } catch ({ code = (1 is Number) }: any) {}`, "", "catch:free"},
 	{"catch-body", `try { work() } catch (e: any) { if (e is { code: let c }) return c }`, "", "catch:body"},
+	{"guard-after-if", `const input: unknown = { code: 1 }; if (!(input is { code: let c })) return 0; c`, "", "guard:home"},
 }
 
 func TestIsHomesQuoted(t *testing.T) { r3Quoted(t, "004-match.md", isHomeQuotes...) }
