@@ -148,6 +148,7 @@ Appendix B supplies the current diagnostic assignments; compatibility declaratio
 | `FuzzServiceNativeMemberTypes` | Omitted and explicit member types, optional methods/properties and member-local generics across loose, strict and explicit noImplicitAny overrides | Chapter 5 native PropertySignature/MethodSignature rules, VIP-9 and detail 276; independent TypeScript controls retain TS7010/TS7008 rather than an Effect-only prohibition |
 | `FuzzPlatformConstructorBindings` | Twelve DOM constructors and pure web helpers across capture, `new`, `instanceof` and local-shadow bindings; 72 keyed inputs | VIP-33 resolved host-library declarations and the checked Chapter 5 inventory classify every binding; native TypeScript is an independent syntax/type control |
 | `FuzzTopLevelAwait` | Keyed seed matrices with native TypeScript controls | Spec quotes checked by `TestTopLevelAwaitQuoted`; migration and review neighbourhoods |
+| `FuzzEffectGlobals` | Keyed seed matrices with native TypeScript controls | Spec quotes checked by `TestEffectGlobalsQuoted`; migration and review neighbourhoods |
 | `FuzzSpecRules` | Retired | Current static targets quote their VIP chapters and gate those quotations through `specTests`. |
 | `FuzzSpecAllowed` | Retired | Current static targets and imported-scope controls cover the current forms. |
 | `FuzzSpecPrograms` | Retired | Semantics use `FuzzVIPDifferential`, with current chapter quotations and paired prints. |
