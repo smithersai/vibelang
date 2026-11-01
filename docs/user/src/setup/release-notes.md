@@ -263,6 +263,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Compiler fuzz validation rejected configured `await` warnings such as `EK4609` according to a retired diagnostic policy; it now uses current Appendix B categories and warning overrides.
 
 - Migration verification could call declarations identical after their compiler failed; it now rejects every nonzero declaration emit and retains option-level errors.
+- A `.ts` declaration that named a type it reached through a package's `.vibe` module wrote a relative path into the package, `../../lib/src/x.js`, or failed with `TS2883`, once the bare specifier resolved to the `.vibe` source: the declaration emitter matched the module only against an export's emitted JavaScript. It now names the module by the export that selects it, `import("lib/x")`, when that export lists the source under `vibelang-source` or its `x.d.vibe.ts` sidecar under any condition, in exact and pattern entries (opencode's core: 1,478 `TS2883` in 110 files).
+
 - On a loaded host, the bundler teardown tests could kill their finishing compiler and fail with `null !== 0`; they now control the grace timer and release the compiler explicitly, with a `30 s` hang guard.
 
 - Passing an Effect function to a `Function` destination could bypass `EK4301` after generic union matching; callable destinations now keep the synchronous-callback check.

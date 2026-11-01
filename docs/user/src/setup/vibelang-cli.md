@@ -238,6 +238,8 @@ In each project whose checker is not `vibelang`, set TypeScript's [`allowArbitra
 
 TypeScript then resolves `import { greet } from "./greet.vibe"` to `greet.d.vibe.ts`, as it resolves `./styles.css` to `styles.d.css.ts`. Without the option it reports `TS6263`. Without custom `moduleSuffixes`, TypeScript does not map `./greet.js` or `./greet` to a sidecar, so a `.ts` file that such a checker reads names the `.vibe` module by its source. `vibelang` itself reads `greet.vibe` and never the sidecar, and a project's `include` leaves out a sidecar whose source is beside it.
 
+A workspace package can expose a module through its `x.d.vibe.ts` declaration under `types` and its `x.vibe` source under `vibelang-source`. Inferred declarations in consumers keep the package export name, such as `import("lib/x").Provider<number>`, including exact and wildcard export entries.
+
 This source preference also applies when `moduleSuffixes` places a paired `.d.vibe` fallback after its original suffix. Stock TypeScript keeps its own suffix order, which can select the sidecar before a `.tsx` sibling.
 
 What a sidecar cannot print is an error, such as `TS7056` for an inferred type too long to serialize, even in a project with neither `declaration` nor `composite`: declaration emit writes `any` in its place, and a stock checker that reads the sidecar would accept that `any` silently. Annotate the export, or keep the module `.ts`.

@@ -1261,6 +1261,12 @@ func tryGetModuleNameFromExportsOrImports(
 		if targetFileName.HasTSFileExtension() {
 			extensionSwappedTarget = targetFileName.RemoveFileExtension().AppendSuffix(module.TryGetJSExtensionForFileName(targetFileName, options))
 		}
+		// A .vibe module's declaration sidecar, which a `types` target names
+		// (VIP-27), stands for the module, as a .d.ts does for its .ts source.
+		var vibeSidecar tspath.RootedFilePath
+		if isVibeSource(targetFileName) {
+			vibeSidecar = tspath.RootedFilePath(strings.TrimSuffix(targetFileName.AsString(), ".vibe") + ".d.vibe.ts")
+		}
 		canTryTsExtension := preferTsExtension && targetFileName.HasImplementationTSFileExtension()
 
 		caseSensitivity := host.CaseSensitivity()
@@ -1273,6 +1279,7 @@ func tryGetModuleNameFromExportsOrImports(
 			resolvedTarget := packageDirectory.ResolveFile(strValue)
 			if len(extensionSwappedTarget) > 0 && caseSensitivity.CompareFilePaths(extensionSwappedTarget, resolvedTarget) == 0 ||
 				caseSensitivity.CompareFilePaths(targetFileName, resolvedTarget) == 0 ||
+				len(vibeSidecar) > 0 && caseSensitivity.CompareFilePaths(vibeSidecar, resolvedTarget) == 0 ||
 				len(outputFile) > 0 && caseSensitivity.CompareFilePaths(outputFile, resolvedTarget) == 0 ||
 				len(declarationFile) > 0 && caseSensitivity.CompareFilePaths(declarationFile, resolvedTarget) == 0 {
 				return packageName
@@ -1322,6 +1329,10 @@ func tryGetModuleNameFromExportsOrImports(
 				starReplacement := targetFilePath[len(leadingSlice) : len(targetFilePath)-len(trailingSlice)]
 				return replaceFirstStar(packageName, starReplacement)
 			}
+			if sidecar := vibeSidecar.AsString(); len(sidecar) > 0 && stringutil.HasPrefixAndSuffixWithoutOverlap(sidecar, leadingSlice, trailingSlice, caseSensitivity.IsCaseSensitive()) {
+				starReplacement := sidecar[len(leadingSlice) : len(sidecar)-len(trailingSlice)]
+				return replaceFirstStar(packageName, starReplacement)
+			}
 			if outputFileString := outputFile.AsString(); len(outputFileString) > 0 && stringutil.HasPrefixAndSuffixWithoutOverlap(outputFileString, leadingSlice, trailingSlice, caseSensitivity.IsCaseSensitive()) {
 				starReplacement := outputFileString[len(leadingSlice) : len(outputFileString)-len(trailingSlice)]
 				return replaceFirstStar(packageName, starReplacement)
@@ -1348,7 +1359,11 @@ func tryGetModuleNameFromExportsOrImports(
 		// conditional mapping
 		obj := exports.AsObject()
 		for key, value := range obj.Entries() {
-			if key == "default" || slices.Contains(conditions, key) || slices.Contains(conditions, "types") && module.IsApplicableVersionedTypesKey(key) {
+			// A migrated package names a .vibe module under vibelang-source, beside
+			// its sidecar under types and its emitted JavaScript by default
+			// (opencode-32); that target is the module itself (opencode-45).
+			if key == "default" || slices.Contains(conditions, key) || slices.Contains(conditions, "types") && module.IsApplicableVersionedTypesKey(key) ||
+				key == vibeSourceCondition && isVibeSource(targetFileName) {
 				result := tryGetModuleNameFromExportsOrImports(options, host, targetFileName, packageDirectory, packageName, value, conditions, mode, isImports, preferTsExtension)
 				if len(result) > 0 {
 					return result
@@ -1359,6 +1374,15 @@ func tryGetModuleNameFromExportsOrImports(
 		return ""
 	}
 	return ""
+}
+
+// vibeSourceCondition is the exports condition under which a migrated
+// package names a .vibe module's source (the migrate flow's rewriteExports).
+const vibeSourceCondition = "vibelang-source"
+
+// isVibeSource reports whether file is a .vibe module.
+func isVibeSource(file tspath.RootedFilePath) bool {
+	return strings.HasSuffix(file.AsString(), ".vibe")
 }
 
 // `importingSourceFile` and `importingSourceFileName`? Why not just use `importingSourceFile.path`?
