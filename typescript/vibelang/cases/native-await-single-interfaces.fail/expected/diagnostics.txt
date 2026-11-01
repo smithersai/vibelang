@@ -1,0 +1,3 @@
+main.vibe(3,63): error EK4609
+main.vibe(4,72): error EK4610
+main.vibe(5,103): error EK4610

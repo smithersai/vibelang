@@ -1,0 +1,5 @@
+// expect: EK4609 EK4610
+import type {Fiber,Deferred} from "effect"
+export async function fiber(value:Fiber.Fiber<number>){return await value}
+export async function deferred(value:Deferred.Deferred<number>){return await value}
+export async function deferredUnion(value:Deferred.Deferred<number>|Deferred.Deferred<string>){return await value}

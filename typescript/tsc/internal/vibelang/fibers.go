@@ -87,10 +87,10 @@ func checkFiberForms(c *checker.Checker, file *ast.SourceFile) {
 			t := c.GetTypeAtLocation(operand)
 			if t != nil {
 				var m *Message
-				if isJoinable(c, t, 0) {
+				if nativeAwaitAdvisoryTarget(c, t, "Fiber") {
 					m = EK4609
 				}
-				if isDeferred(c, t) {
+				if nativeAwaitAdvisoryTarget(c, t, "Deferred") {
 					m = EK4610
 				}
 				if m != nil {
@@ -513,4 +513,68 @@ func fiberFormQuickInfo(c *checker.Checker, node *ast.Node) (string, string) {
 		return "for concurrent", "Runs the body for each item in its own fiber and joins them all before the loop ends; a failure interrupts the rest."
 	}
 	return "", ""
+}
+
+// Test assignability against the pinned interface, rather than legacy
+// aggregate-join or marker-property detection. A repair must typecheck.
+func nativeAwaitTarget(c *checker.Checker, value *checker.Type, module string) bool {
+	if value == nil || value.Flags()&(checker.TypeFlagsAnyOrUnknown|checker.TypeFlagsNever) != 0 {
+		return false
+	}
+	for _, file := range c.Program().SourceFiles() {
+		if !isEffectModuleFile(file, module) || file.Symbol == nil {
+			continue
+		}
+		for _, export := range c.GetExportsOfModule(file.Symbol) {
+			if export.Name() != module || export.Flags()&ast.SymbolFlagsInterface == 0 {
+				continue
+			}
+			target := c.GetDeclaredTypeOfSymbol(export)
+			// Deferred's channels are invariant. Instantiating them with any
+			// rejects Deferred<number, never> under strictFunctionTypes.
+			channels := nativeAwaitChannels(c, value, module)
+			return channels != nil && c.IsTypeAssignableTo(value, c.NewTypeReference(target, channels))
+		}
+	}
+	return false
+}
+
+// Read the channels before checking the entire pinned interface: a marker
+// alone is insufficient, but its declared variance retains invariant arguments.
+func nativeAwaitChannels(c *checker.Checker, value *checker.Type, module string) []*checker.Type {
+	variance := c.GetTypeOfPropertyOfType(value, "~effect/"+module)
+	if variance == nil {
+		return nil
+	}
+	channels := make([]*checker.Type, 0, 2)
+	for _, name := range []string{"_A", "_E"} {
+		channel := c.GetTypeOfPropertyOfType(variance, name)
+		if channel == nil {
+			return nil
+		}
+		signatures := c.GetSignaturesOfType(channel, checker.SignatureKindCall)
+		if len(signatures) != 1 {
+			return nil
+		}
+		channels = append(channels, c.GetReturnTypeOfSignature(signatures[0]))
+	}
+	return channels
+}
+
+// Every union alternative can be the same handle kind with different
+// invariant channel arguments. Warning admission does not promise that
+// one generic bridge call can accept the entire union.
+func nativeAwaitAdvisoryTarget(c *checker.Checker, t *checker.Type, module string) bool {
+	if t == nil {
+		return false
+	}
+	if t.Flags()&checker.TypeFlagsUnion != 0 {
+		for _, member := range t.Types() {
+			if !nativeAwaitAdvisoryTarget(c, member, module) {
+				return false
+			}
+		}
+		return true
+	}
+	return nativeAwaitTarget(c, t, module)
 }

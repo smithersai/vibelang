@@ -1,0 +1,10 @@
+// expect-result: [0,true,true,true]
+import { Effect, type Fiber } from "effect"
+async function inspect() {
+ const empty=await ([] as const)
+ const marker: {readonly "~effect/Fiber":1}={"~effect/Fiber":1}
+ const deferredMarker: {readonly "~effect/Deferred":1}={"~effect/Deferred":1}
+ const box: {value:Fiber.Fiber<number>}={value:undefined as unknown as Fiber.Fiber<number>}
+ return [empty.length,(await marker)===marker,(await deferredMarker)===deferredMarker,(await box)===box]
+}
+export effect function main(){return try Effect.promise(inspect)}

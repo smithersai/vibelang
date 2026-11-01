@@ -25,6 +25,8 @@ effect function buildDashboard() {
 
 `fork` and `join` follow the unary precedence of `await`. Their operands can use any unary form, including type assertions and parenthesized expressions, and may start on the following line. A following member or call belongs to the operand; group the completed operation first when reading its result, as in `(join child).length`. Inside Effect code and its parameter lists, these words begin operators regardless of the next token. Outside Effect code they remain ordinary identifiers; give an ordinary helper another name when calling it from Effect code. Parenthesize either operator on the left of exponentiation: `(join child) ** 2`. They may appear directly on its right: `2 ** join child`.
 
+The native `await` warnings apply to values typed as a single `Fiber` or `Deferred`. Arrays, tuples and objects containing handles remain ordinary JavaScript values; awaiting a container does not run its contents. A marker property alone does not make an object a handle.
+
 ## Awaiting completion as data
 
 ```vibe
