@@ -1,0 +1,1 @@
+impl-hunt-func VIP-1/VIP-27: plain recursive builders must remain ordinary JavaScript and emit cyclic declaration elision after the function-model flip

@@ -71,3 +71,7 @@ An empty `vibe.sidecarDir` string names the directory of its declaring config, a
 
 Directory paths may overlap the source tree; emit still mirrors config-relative paths, and stale cleanup preserves every module's selected output. Stock TypeScript keeps its native `rootDirs` longest-prefix resolution. A separate sidecar directory avoids virtual-path collisions with sources inside that directory.
 
+
+### Amendment: cyclic inferred declaration types (2026-11-01)
+
+Declaration serialization retains TypeScript 5.9 and 7.0 behavior at the anonymous-type cycle sites changed by [TypeScript #64461](https://github.com/microsoft/TypeScript/pull/64461): write `/*elided*/ any` at the repeated type rather than report the new `TS5088`. This applies to `.vibe` and unchanged `.ts` files alike. Other `TS5088` checks and ordinary recursive-inference errors `TS7022`, `TS7023` and `TS7024` remain unchanged. The [recursive builder](../src/001-functions.md#declaration-output) illustrates the boundary.

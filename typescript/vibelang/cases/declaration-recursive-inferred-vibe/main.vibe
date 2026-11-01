@@ -1,0 +1,10 @@
+// expect-result: "b"
+// VIP-27: the same recursive builder as the ordinary TypeScript counterpart.
+export const from = (value: string) => makeBuilder({ value })
+const makeBuilder = (state: { value: string }) => ({
+  state,
+  named: (value: string) => makeBuilder({ value })
+})
+export effect function main() {
+  return from("a").named("b").state.value
+}

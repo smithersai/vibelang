@@ -253,6 +253,8 @@ A workspace package can expose a module through its `x.d.vibe.ts` declaration un
 
 This source preference also applies when `moduleSuffixes` places a paired `.d.vibe` fallback after its original suffix. Stock TypeScript keeps its own suffix order, which can select the sidecar before a `.tsx` sibling.
 
+Cyclic inferred declaration types retain TypeScript 5.9/7.0 elision: a repeated anonymous type prints `/*elided*/ any` rather than the new TypeScript 7.1 `TS5088`. Other recursion checks still apply; see [Declaration output](https://vibelang.sh/spec/001-functions#declaration-output).
+
 What a sidecar cannot print is an error, such as `TS7056` for an inferred type too long to serialize, even in a project with neither `declaration` nor `composite`: declaration emit writes `any` in its place, and a stock checker that reads the sidecar would accept that `any` silently. Annotate the export, or keep the module `.ts`.
 
 ### Keep the sidecars in one directory

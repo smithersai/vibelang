@@ -448,6 +448,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The migration reference could turn a successfully returned error into failure or start a returned Effect; it now distinguishes legacy wrapper removal from an intentional run and never guesses an `asEffect()` conversion.
 
 - The diagnostic reference described `EK9204` only on old `try` statements; it now also explains valid infallible `catch` expressions and rejects interim codes in modern severity settings.
+
+- The specification left cyclic declaration output ambiguous; it now defines the retained `/*elided*/ any` output and keeps ordinary recursive-inference errors.
 - Awaiting a Fiber or Deferred in effect code reported an error using the configurable warning codes `EK4609` and `EK4610`; it now reports the fixed placement error `EK0102` separately, so advisory severity settings keep their meaning without allowing `await` in effect code.
 
 - `vibelang agents check` could report `no errors` and succeed when its compiler failed or was terminated; checks and hooks now fail with the compiler's status, signal or spawn error and standard error output, including failures caused by errors outside the selected files.

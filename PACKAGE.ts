@@ -95,6 +95,7 @@ const specTests = [
   "TestEffectQualifierQuoted",
   "TestServiceImplicitAnyQuoted",
   "TestInterimSeverityRulesQuoted",
+  "TestRecursiveInferredDeclarationsQuoted",
   "TestAwaitAdvisoryPlacementQuoted",
   "TestAwaitAdvisoryPlacementRegression",
   "TestCurrentDiagnosticPolicyQuoted",

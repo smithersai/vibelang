@@ -39,7 +39,7 @@ func FuzzRecursiveInferredDeclarations(f *testing.F) {
 // sentence the oracle quotes (RULES.md 9).
 func TestRecursiveInferredDeclarationsQuoted(t *testing.T) { recursiveDeclarationsChapter(t) }
 
-const recursiveDeclarationsQuote = "Declarations are exactly what idiomatic Effect TypeScript would declare."
+const recursiveDeclarationsQuote = "the repeated anonymous type is written as `/*elided*/ any`, without an error for that cycle."
 
 func recursiveDeclarationsChapter(tb testing.TB) {
 	tb.Helper()
