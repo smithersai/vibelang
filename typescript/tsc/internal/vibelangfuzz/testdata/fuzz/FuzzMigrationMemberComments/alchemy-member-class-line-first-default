@@ -1,0 +1,3 @@
+go test fuzz v1
+string("class:line:first:default")
+string("export class Store {\n  // The stored values.\n  items: ReadonlyArray<string> = []\n}\n")
