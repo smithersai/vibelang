@@ -101,7 +101,7 @@ func (oc *OutputChecker) checkStockConsumer(dir string, inputs []string) {
 // the emitted declarations beside the mirror's and returns its name. A
 // consumer of a published package has its own configuration, not the
 // producer's, which may hold VibeLang's own settings (D275) that stock
-// TypeScript rejects; it keeps the producer's target, lib and types, which
+// TypeScript rejects; it keeps the producer's native module/resolution policy, target, lib and types, which
 // the declarations may rely on, and its paths, through which a case's stub
 // stands in for a package the harness does not install. The mirror holds a
 // copy of each stub at the same relative name, so each path still resolves.
@@ -124,7 +124,7 @@ func stockConsumerConfig(dir string) (string, error) {
 		CompilerOptions map[string]any `json:"compilerOptions"`
 	}
 	if data, err := os.ReadFile(filepath.Join(dir, "..", "tsconfig.json")); err == nil && json.Unmarshal(data, &project) == nil {
-		for _, name := range []string{"target", "lib", "types", "paths"} {
+		for _, name := range []string{"target", "lib", "types", "paths", "module", "moduleResolution", "allowImportingTsExtensions"} {
 			if value, ok := project.CompilerOptions[name]; ok {
 				options[name] = value
 			}
