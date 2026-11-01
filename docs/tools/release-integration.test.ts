@@ -73,3 +73,11 @@ test("upgrade repairs cover plain methods, renamed experimental layers and confl
   expect(rows.some(row => row.includes("ExperimentalNodeServices") && row.includes("NodeCrypto") && row.includes("ExperimentalNodeCrypto"))).toBe(true)
   expect(rows.some(row => row.includes("EK3206") && row.includes("one platform"))).toBe(true)
 })
+
+test("trailing-block upgrade names the new compile error and automatic rewrite", () => {
+  const entry = fixes.split("\n").find(line => line.startsWith("- ") && line.includes("VIP-11") && line.includes("EK1101")) || ""
+  expect(entry).toContain("compiled")
+  expect(entry).toContain("compile error")
+  expect(entry).toContain("`vibelang --fix`")
+  expect(entry).toContain("last argument")
+})
