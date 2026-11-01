@@ -1,0 +1,25 @@
+{
+  "finding": "smithers:baseline-admission-synthesized-exit",
+  "note": "Smithers packages/smithers: the upgraded check and setup's compile both print EK3870 missingReturnYieldStar as error at src/Command.ts(739,7) and src/Serve.ts(241,5) and exit 0 (ignoreEffect*InTscExitCode). Admission compared the real 0 with 2 derived from the error category and refused the toolchain switch (run14/baseline/admission.json: exitRegression, exit 0 -> 2, newErrors []).",
+  "diagnostics": [
+    {
+      "category": "error",
+      "code": "EK3870",
+      "file": "src/Command.ts",
+      "line": 739,
+      "column": 7,
+      "message": "missingReturnYieldStar: ...",
+      "notes": []
+    },
+    {
+      "category": "error",
+      "code": "EK3870",
+      "file": "src/Serve.ts",
+      "line": 241,
+      "column": 5,
+      "message": "missingReturnYieldStar: ...",
+      "notes": []
+    }
+  ],
+  "package": "packages/smithers"
+}

@@ -984,6 +984,7 @@ export async function setup(options) {
   for (const pkg of config.packages) {
     const checked = await checkPackage({ compiler, ts, t, pkg, log: join(logs, `compile-${slug(pkg.dir)}.log`) })
     writeJson(join(p.baseline, `compile-${slug(pkg.dir)}.json`), checked.diagnostics)
+    writeJson(join(p.baseline, `compile-${slug(pkg.dir)}.exit.json`), { code: checked.code })
     compile[pkg.dir] = summarize(checked.diagnostics)
     assertBaselineSafe(p)
     const outDir = join(p.baseline, "dts", slug(pkg.dir))

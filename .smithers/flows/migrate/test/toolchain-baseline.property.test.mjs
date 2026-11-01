@@ -138,3 +138,28 @@ test("foldkit-104: legacy receipts cannot hide a recorded failed toolchain switc
     await assert.rejects(steps.setup({ run: root }), failure)
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
+
+// smithers: both compiles print EK3870 as an error and exit 0; admission
+// compared the real 0 with a code derived from the categories (2).
+test("smithers: setup's admission compares the compiles' real exit codes, so Effect diagnostics that exit 0 pass", async () => {
+  const { assertBaselineSafe } = await import("../lib/baseline.mjs")
+  const corpus = JSON.parse(readFileSync(new URL("./corpus/smithers-baseline-effect-error-exit.json", import.meta.url), "utf8"))
+  const root = mkdtempSync(join(tmpdir(), "smithers-baseline-exit-"))
+  try {
+    const p = steps.paths(root)
+    const slug = corpus.package.replaceAll("/", "__")
+    const checks = (code) => ({ [corpus.package]: { compiler: "vibelang", code, diagnostics: corpus.diagnostics } })
+    fc.assert(fc.property(fc.record({ before: fc.constantFrom(0, 2), after: fc.constantFrom(0, 2, null), added: fc.boolean() }), (input) => {
+      rmSync(p.baseline, { recursive: true, force: true })
+      put(join(p.baseline, "upstream-checks.json"), checks(input.before))
+      put(join(p.baseline, "upgraded-checks.json"), checks(input.before))
+      const extra = { category: "error", code: "TS2322", file: "src/New.ts", line: 1, column: 1, message: "new", notes: [] }
+      put(join(p.baseline, `compile-${slug}.json`), input.added ? [...corpus.diagnostics, extra] : corpus.diagnostics)
+      // null: a receipt from before setup recorded its exit code.
+      if (input.after !== null) put(join(p.baseline, `compile-${slug}.exit.json`), { code: input.after })
+      const refused = input.added || (input.before === 0 && input.after === 2)
+      if (refused) assert.throws(() => assertBaselineSafe(p), failure)
+      else assert.equal(assertBaselineSafe(p).state, "accepted")
+    }), { seed: 3870, numRuns: 60 })
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
