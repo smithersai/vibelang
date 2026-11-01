@@ -219,6 +219,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A `.vibe` module that imported a native `.tsx` sibling under `jsx: preserve` named a missing `.js` file in its emitted JavaScript; imports and re-exports now name the sibling’s actual `.jsx` output.
 
+- Directory-import validation quoted a stale `.vibe` extension sentence; its oracle now follows the published `.vibe` and `.vibex` rule.
+
 - JSX attribute diagnostic `EK0402` lacked its VIP-39 cross-reference; the catalog now attributes the rule to both VIP-4 and VIP-39.
 
 - Configuring one diagnostic severity disabled fuzz validation of unrelated warning categories; validation now checks each code against its own effective `vibe.severities` entry and keeps other defaults enforced.

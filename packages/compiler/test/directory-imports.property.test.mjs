@@ -12,7 +12,7 @@ import {rewriteSpecifier} from "../../../.smithers/flows/migrate/lib/codemod.mjs
 const repo=fileURLToPath(new URL("../../../",import.meta.url))
 const ts=loadTypeScript([join(repo,"packages/runtime")])
 const tick=String.fromCharCode(96)
-const quote=tick+".vibe"+tick+" is a supported source extension"
+const quote=tick+".vibe"+tick+" and "+tick+".vibex"+tick+" are supported source extensions"
 let diagnostics=""
 function pattern(input){
  const importer="pkg/main.vibe"
