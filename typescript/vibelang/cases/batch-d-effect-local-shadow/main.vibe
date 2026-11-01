@@ -1,0 +1,3 @@
+// expect:
+const Effect = { Array: { head: (xs: number[]): number => xs.length } };
+export const result: number = Effect.Array.head([1]);

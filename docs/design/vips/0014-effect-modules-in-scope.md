@@ -36,3 +36,5 @@ Rust's prelude; Elixir's `Kernel`; VIP-6.
 > "So like before this should be configurable in the tsconfig.json but by default we should make javascript globals that are not platform specific take president but we should also make them available on Effect.* not just via impport with those changes I accept"
 
 > "Yea Typescript globals like Record take president"
+
+- **Amended 2026-11-01: collision qualifiers use the implicit binding.** `Effect.Array`, `Effect.String`, `Effect.Record` and other colliding-module qualifiers are intrinsic to the compiler's implicit `Effect`; they are not exports of `effect/Effect`. A written binding, imported under any name or declared locally, keeps its TypeScript meaning and shadows the implicit binding. An explicit namespace has no `Array` member (`TS2339`); use `import { Array as Arr } from "effect"`. Turning `vibe.effectModules` off removes the implicit qualifier without changing explicit imports.

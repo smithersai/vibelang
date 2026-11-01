@@ -178,3 +178,5 @@ A helper can take an Effect value and apply library operators to it. Its contrac
 Skip imports from `effect`'s root in `.vibe`. In `.ts` integration files, import `Effect`, `Layer`, and the other names you use as usual.
 
 [Upstream Effect page](https://effect.website/docs/v4/getting-started/importing-effect)
+
+The collision qualifiers `Effect.Array`, `Effect.String` and `Effect.Record` require the unshadowed implicit `Effect`. With `import { Effect } from "effect"` or `vibe.effectModules: false`, import each collision module separately, for example `import { Array as Arr } from "effect"`. Written local bindings and aliases keep their TypeScript members.

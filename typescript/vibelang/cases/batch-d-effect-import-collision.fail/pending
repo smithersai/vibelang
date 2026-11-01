@@ -1,0 +1,1 @@
+impl-hunt-svc VIP-14: explicit Effect import shadows the implicit collision-module binding; retain native TS2339

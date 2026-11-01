@@ -46,3 +46,6 @@ FuzzServiceImplicitAny corpus:optional-method-omitted compiler VIP-9: same minim
 FuzzServiceImplicitAny generic-method-omitted compiler VIP-9: legacy service method Effect-only contract check; lane impl-hunt-svc
 FuzzServiceImplicitAny corpus:generic-method-omitted compiler VIP-9: same minimized omitted/ordinary method; lane impl-hunt-svc
 FuzzProvideParenthesizedExpressions  nested-block  superseded  VIP-1: old VibeLang is a reference only; its trailing-block call withProvider { … } is not part of the language (VIP-11 denied trailing blocks, EK1101), so this provider shape no longer parses
+
+FuzzEffectQualifier imported compiler VIP-14: an explicit Effect import shadows the implicit binding; Effect.Array must report TS2339, but main 5559ba8dcd90 accepts it; lane impl-hunt-svc
+FuzzEffectQualifier corpus:imported compiler VIP-14: minimized explicit Effect import with collision-module access; lane impl-hunt-svc

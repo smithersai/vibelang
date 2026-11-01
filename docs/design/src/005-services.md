@@ -498,7 +498,7 @@ function lookup(q: string, s: string) {
 
 Every root export of the core `effect` package is in scope in a `.vibe` file without an import. In effect 4.1.0 these are 143 namespaces (`Schema`, `Layer`, `Stream`, `Option`, `Data`, `Context`, `Schedule`, `Duration`, …) and six functions (`pipe`, `flow`, `identity`, `absurd`, `cast`, `hole`). Emitted code imports each namespace from `effect/<Module>` and each function from `effect/Function`, under a fresh name. A local declaration or import shadows one, as with any global. `"vibe": { "effectModules": false }` in the config turns this off.
 
-**Precedence applies per meaning, as in TypeScript.** In a type position, a bare name declared as a type by an ambient global declaration (a TypeScript `lib` file or `@types`) keeps that meaning (including the DOM's `Console`, `FileSystem`, `Headers`, `Response` and `Event`). In a value or namespace position the table below decides. JavaScript globals that aren't platform-specific keep their meaning; Effect's module of the same name is then written `Effect.X`, or imported. Emitted namespace imports use fresh names so they do not shadow those global types.
+**Precedence applies per meaning, as in TypeScript.** In a type position, a bare name declared as a type by an ambient global declaration (a TypeScript `lib` file or `@types`) keeps that meaning (including the DOM's `Console`, `FileSystem`, `Headers`, `Response` and `Event`). In a value or namespace position the table below decides. JavaScript globals that aren't platform-specific keep their meaning; Effect's module of the same name is then written `Effect.X` through the unshadowed implicit `Effect`, or imported under another name. Emitted namespace imports use fresh names so they do not shadow those global types.
 
 | Name | Bare name means | Effect's module |
 | --- | --- | --- |
@@ -540,7 +540,7 @@ const first = Array$.head([1, 2])
 const o = Option.some(1)
 ```
 
-`Effect.M`, where `M` is a module in the table's first two rows, is that module: the emitted code imports it under a fresh name, as `Array$` above. Every other `Effect.x` is the export `x` of `effect/Effect`.
+Where `Effect` is the compiler's implicit binding, `Effect.M`, where `M` is a module in the table's first two rows, is that module: the emitted code imports it under a fresh name, as `Array$` above. Every other `Effect.x` is the export `x` of `effect/Effect`. A written binding keeps its ordinary TypeScript meaning: an imported, aliased or local `Effect` shadows the implicit binding. The namespace from `import { Effect } from "effect"` has no `Array`, so `Effect.Array` there is `TS2339`; import `Array as Arr` from `effect` instead. With `vibe.effectModules: false` the implicit binding is absent, and explicitly importing `Effect` does not restore its collision-module qualifiers ([VIP-14](../vips/0014-effect-modules-in-scope.md#decision), amended).
 
 ## The platform standard library
 
