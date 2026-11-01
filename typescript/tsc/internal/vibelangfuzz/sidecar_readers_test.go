@@ -66,11 +66,14 @@ func TestSidecarReaders(t *testing.T) {
 				}
 				defer r.Remove()
 				var got []string
-				for _, d := range r.Program.EmitDeclarationSidecars(t.Context(), func(string, string) error { return nil }) {
-					if d.Code() != 4094 {
-						t.Fatalf("unexpected sidecar diagnostic TS%d: %s", d.Code(), specDiagnosticText(d))
+				sidecars := r.Program.EmitDeclarationSidecars(t.Context(), func(string, string) error { return nil })
+				if sidecars != nil {
+					for _, d := range sidecars.Diagnostics {
+						if d.Code() != 4094 {
+							t.Fatalf("unexpected sidecar diagnostic TS%d: %s", d.Code(), specDiagnosticText(d))
+						}
+						got = append(got, fmt.Sprintf("%s:%d", filepath.Base(string(d.File().FileName())), d.Pos()))
 					}
-					got = append(got, fmt.Sprintf("%s:%d", filepath.Base(string(d.File().FileName())), d.Pos()))
 				}
 				slices.Sort(got)
 				slices.Sort(want)

@@ -144,8 +144,9 @@ func EmitFilesAndReportErrors(input EmitInput) (result CompileAndEmitResult) {
 			sidecars := input.Program.EmitDeclarationSidecars(ctx, func(fileName string, text string) error {
 				return input.Sys.FS().WriteFile(tspath.RootedFilePathFromNormalized(fileName), text)
 			}, input.Sys.FS())
-			if emitResult != nil {
-				emitResult.Diagnostics = append(emitResult.Diagnostics, sidecars...)
+			if emitResult != nil && sidecars != nil {
+				emitResult.Diagnostics = append(emitResult.Diagnostics, sidecars.Diagnostics...)
+				emitResult.EmitSkipped = emitResult.EmitSkipped || sidecars.EmitSkipped
 			}
 		}
 		result.times.emitTime += input.Sys.Now().Sub(emitStart)

@@ -130,7 +130,10 @@ func emitPortableSidecar(t testing.TB, files map[string]any) (string, []*ast.Dia
 		}
 		return nil
 	})
-	return text, found
+	if found == nil {
+		return text, nil
+	}
+	return text, found.Diagnostics
 }
 
 // checkPortableReader reads the sidecar's text as a stock checker does, with the

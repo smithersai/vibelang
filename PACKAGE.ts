@@ -55,6 +55,7 @@ const goVibelang = (summary: string, shell: string, data: ReadonlyArray<unknown>
 // Go sources and the migration comparator the counterpart controls exercise,
 // so either specification or comparator edits rerun them before landing.
 const specTests = [
+  "TestSidecarEmitRulesQuoted",
   "TestInferredEffectDefaultsQuoted",
   "TestAsyncCleanupRefactorQuoted",
   "TestEffectInitializerQuoted",

@@ -175,8 +175,8 @@ func FuzzSidecarSourceIdentity(f *testing.F) {
 		diagnostics := r.Program.EmitDeclarationSidecars(t.Context(), func(name, text string) error {
 			return os.WriteFile(name, []byte(text), 0644)
 		})
-		if HasError(diagnostics) {
-			Gap(t, "FuzzSidecarSourceIdentity", key, "sidecar rejected: %v", SortedKeys(Keys(r.Dir, diagnostics)))
+		if diagnostics != nil && HasError(diagnostics.Diagnostics) {
+			Gap(t, "FuzzSidecarSourceIdentity", key, "sidecar rejected: %v", SortedKeys(Keys(r.Dir, diagnostics.Diagnostics)))
 		}
 		script := "import { pathToFileURL } from \"node:url\"; const m = await import(pathToFileURL(" + strconv.Quote(filepath.Join(r.Dir, "out/main.js")) + ")); console.log(JSON.stringify(m." + selected.expression + "))"
 		cmd := exec.CommandContext(t.Context(), "node", "--input-type=module", "-e", script)

@@ -200,7 +200,7 @@ func checkSidecarEscapes(t *testing.T, w *Workspace, stock string, in sidecarEsc
 		}
 		return os.WriteFile(name, []byte(text), 0o600)
 	})
-	if HasError(ds) || sidecar == "" {
+	if (ds != nil && HasError(ds.Diagnostics)) || sidecar == "" {
 		Gap(t, target, key, "chapter 1: %s; missing or invalid sidecar: %v\n%s", sidecarEscapesQuote, ds, source)
 		return
 	}

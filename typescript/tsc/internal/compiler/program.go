@@ -1403,8 +1403,9 @@ func (p *Program) verifyCompilerOptions() {
 
 	// !!! The below needs filesByName, which is not equivalent to p.filesByPath.
 
-	// If the emit is enabled make sure that every output file is unique and not overwriting any of the input files
-	if !options.NoEmit.IsTrue() && !options.SuppressOutputPathCheck.IsTrue() {
+	// Make sure every emitted output, including a declaration sidecar, is unique
+	// and does not overwrite an input file.
+	if !options.SuppressOutputPathCheck.IsTrue() {
 		var emitFilesSeen collections.Set[tspath.PathKey]
 
 		// Verify that all the emit files are unique and don't overwrite input files
@@ -1431,20 +1432,27 @@ func (p *Program) verifyCompilerOptions() {
 			}
 		}
 
-		externalOutputSourceFiles := core.Filter(p.SourceFiles(), func(sourceFile *ast.SourceFile) bool {
-			return sourceFile.ContentMapper() != "" &&
-				!p.IsSourceFileFromExternalLibrary(sourceFile) &&
-				p.GetProjectReferenceFromSource(sourceFile.PathKey()) == nil
-		})
-		outputpaths.ForEachEmittedFile(p, options, func(emitFileNames *outputpaths.OutputPaths, sourceFile *ast.SourceFile) bool {
-			verifyEmitFilePath(emitFileNames.JsFilePath())
-			verifyEmitFilePath(emitFileNames.SourceMapFilePath())
-			verifyEmitFilePath(emitFileNames.DeclarationFilePath())
-			verifyEmitFilePath(emitFileNames.DeclarationMapPath())
-			verifyEmitFilePath(emitFileNames.ExternalOutputFilePath())
-			return false
-		}, p.getSourceFilesToEmit(nil, false, false), externalOutputSourceFiles, false)
-		verifyEmitFilePath(p.opts.Config.GetBuildInfoFileName())
+		if !options.NoEmit.IsTrue() {
+			externalOutputSourceFiles := core.Filter(p.SourceFiles(), func(sourceFile *ast.SourceFile) bool {
+				return sourceFile.ContentMapper() != "" &&
+					!p.IsSourceFileFromExternalLibrary(sourceFile) &&
+					p.GetProjectReferenceFromSource(sourceFile.PathKey()) == nil
+			})
+			outputpaths.ForEachEmittedFile(p, options, func(emitFileNames *outputpaths.OutputPaths, sourceFile *ast.SourceFile) bool {
+				verifyEmitFilePath(emitFileNames.JsFilePath())
+				verifyEmitFilePath(emitFileNames.SourceMapFilePath())
+				verifyEmitFilePath(emitFileNames.DeclarationFilePath())
+				verifyEmitFilePath(emitFileNames.DeclarationMapPath())
+				verifyEmitFilePath(emitFileNames.ExternalOutputFilePath())
+				return false
+			}, p.getSourceFilesToEmit(nil, false, false), externalOutputSourceFiles, false)
+			verifyEmitFilePath(p.opts.Config.GetBuildInfoFileName())
+		}
+		// Sidecars are emitted even with noEmit, through their own output path.
+		for _, source := range p.declarationSidecarSources() {
+			sidecar, _ := options.VibeSidecarPaths(string(source.FileName()), p.caseSensitivity)
+			verifyEmitFilePath(tspath.RootedFilePathFromNormalized(sidecar))
+		}
 	}
 }
 

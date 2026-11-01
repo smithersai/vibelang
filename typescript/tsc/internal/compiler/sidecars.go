@@ -4,6 +4,7 @@ import (
 	"context"
 	"regexp"
 	"strings"
+	"sync/atomic"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
@@ -34,23 +35,17 @@ var (
 
 // EmitDeclarationSidecars writes the declaration sidecar of each of the
 // program's .vibe modules whose text changed, with write, and returns the
-// declaration emit's diagnostics. A sidecar whose text is unchanged is not
+// declaration emit's result. A sidecar whose text is unchanged is not
 // written, so a watch that includes it does not rebuild. With output, the
 // file system the sidecars go to, it also deletes each module's sidecar from
 // the place the other layout puts it, so switching vibe.sidecarDir on or off
 // leaves one sidecar per module.
-func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileName string, text string) error, outputs ...vfs.FS) []*ast.Diagnostic {
+func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileName string, text string) error, outputs ...vfs.FS) *EmitResult {
 	var output vfs.FS
 	if len(outputs) != 0 {
 		output = outputs[0]
 	}
-	var sources []*ast.SourceFile
-	for _, file := range p.getSourceFilesToEmit(nil, true /*forceDtsEmit*/, false /*forceJsEmit*/) {
-		if file.IsDeclarationFile || file.EmbeddedModule() != nil || !tspath.FileExtensionIs(string(file.FileName()), tspath.ExtensionVibe) {
-			continue
-		}
-		sources = append(sources, file)
-	}
+	sources := p.declarationSidecarSources()
 	if len(sources) == 0 {
 		return nil
 	}
@@ -64,6 +59,7 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 	}
 	fs := p.Host().FS()
 	resolver := p.newResolver()
+	var blocked atomic.Bool
 	result := p.Emit(ctx, EmitOptions{
 		VibeDeclarationSidecar: true,
 		TargetSourceFiles:      sources,
@@ -75,6 +71,10 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 			}
 			source := string(data.SourceFile.FileName())
 			sidecar, stale := p.Options().VibeSidecarPaths(source, p.caseSensitivity)
+			if p.IsEmitBlocked(tspath.RootedFilePathFromNormalized(sidecar)) {
+				blocked.Store(true)
+				return nil
+			}
 			if output != nil && stale != "" && !selected[p.PathKeyForFileName(tspath.RootedFilePathFromNormalized(stale))] && output.FileExists(tspath.RootedFilePathFromNormalized(stale)) {
 				if err := output.Remove(tspath.RootedPathFromNormalized(stale)); err != nil {
 					return err
@@ -107,10 +107,11 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 	// type too long to serialize, and the stock checkers that read the sidecar
 	// accept that any without a word, so a consumer would lose the module's
 	// types.
-	if p.Options().GetEmitDeclarations() {
-		return result.Diagnostics
+	if !p.Options().GetEmitDeclarations() {
+		result.Diagnostics = p.sidecarReaderDiagnostics(result.Diagnostics, sources)
 	}
-	return p.sidecarReaderDiagnostics(result.Diagnostics, sources)
+	result.EmitSkipped = result.EmitSkipped || blocked.Load()
+	return result
 }
 
 // sidecarReaderDiagnostics keeps, of what the sidecars of a project with no
@@ -153,6 +154,18 @@ func (p *Program) sidecarReaderDiagnostics(reported []*ast.Diagnostic, sources [
 		}
 	}
 	return kept
+}
+
+// declarationSidecarSources is shared by output-path validation and emit.
+func (p *Program) declarationSidecarSources() []*ast.SourceFile {
+	var sources []*ast.SourceFile
+	for _, file := range p.getSourceFilesToEmit(nil, true /*forceDtsEmit*/, false /*forceJsEmit*/) {
+		if file.IsDeclarationFile || file.EmbeddedModule() != nil || !tspath.FileExtensionIs(string(file.FileName()), tspath.ExtensionVibe) {
+			continue
+		}
+		sources = append(sources, file)
+	}
+	return sources
 }
 
 // pruneSidecarDirectories removes directory and its ancestors while they are

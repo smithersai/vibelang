@@ -146,3 +146,74 @@ func TestSidecarTextResolvesFromFinalOutput(t *testing.T) {
 		})
 	}
 }
+
+// The sidecar callback uses forced declaration emit, but it must still honor
+// the same output-path block as ordinary declaration emit.
+func TestSidecarOverwriteInput(t *testing.T) {
+	for _, layout := range []string{"", ".vibe/declarations", "types"} {
+		for _, noEmit := range []bool{false, true} {
+			for _, explicit := range []bool{false, true} {
+				t.Run(fmt.Sprintf("layout=%s/noEmit=%t/files=%t", layout, noEmit, explicit), func(t *testing.T) {
+					sidecar := "main.d.vibe.ts"
+					if layout != "" {
+						sidecar = layout + "/" + sidecar
+					}
+					stale := ".vibe/declarations/main.d.vibe.ts"
+					if layout != "" {
+						stale = "main.d.vibe.ts"
+					}
+					setting := ""
+					if layout != "" {
+						setting = fmt.Sprintf(`,"sidecarDir":%q`, layout)
+					}
+					config := fmt.Sprintf(`{"compilerOptions":{"noLib":true,"noEmit":%t},"vibe":{"effectGlobals":false,"effectModules":false%s},`, noEmit, setting)
+					if explicit {
+						config += fmt.Sprintf(`"files":["main.vibe",%q]}`, sidecar)
+					} else {
+						config += `"include":["*"]}`
+					}
+					original := "// hand-written\r\nexport declare const original: unique symbol;\r\n"
+					fs := vfstest.FromMap(map[string]any{
+						"/src/tsconfig.json": config,
+						"/src/main.vibe":     "export const value = 42;",
+						"/src/" + sidecar:    original,
+						"/src/" + stale:      original,
+					}, tspath.CaseSensitive)
+					parsed, ds := tsoptions.GetParsedCommandLineOfConfigFile("/src/tsconfig.json", nil, nil, fs, nil)
+					if len(ds) != 0 {
+						t.Fatal(ds)
+					}
+					p := NewProgram(ProgramOptions{Config: parsed, Host: NewCompilerHost(fs, "/", nil, nil, nil)})
+					count := 0
+					for _, d := range p.GetProgramDiagnostics() {
+						if d.Code() == 5055 {
+							count++
+						}
+					}
+					if count != core.IfElse(explicit, 1, 0) {
+						t.Fatalf("TS5055 count=%d, explicitly listed=%t", count, explicit)
+					}
+					written := false
+					result := p.EmitDeclarationSidecars(t.Context(), func(name, text string) error {
+						written = true
+						return fs.WriteFile(tspath.RootedFilePathFromNormalized(name), text)
+					}, fs)
+					if result == nil || result.EmitSkipped != explicit {
+						t.Fatalf("emit result=%+v, explicitly listed=%t", result, explicit)
+					}
+					if written == explicit {
+						t.Fatalf("sidecar written=%t, explicitly listed=%t", written, explicit)
+					}
+					if explicit {
+						if got, _ := fs.ReadFile(tspath.RootedFilePathFromNormalized("/src/" + stale)); got != original {
+							t.Fatalf("blocked write removed stale bytes: %q", got)
+						}
+						if got, _ := fs.ReadFile(tspath.RootedFilePathFromNormalized("/src/" + sidecar)); got != original {
+							t.Fatalf("input bytes changed: %q", got)
+						}
+					}
+				})
+			}
+		}
+	}
+}

@@ -79,3 +79,7 @@ Directory paths may overlap the source tree; emit still mirrors config-relative 
 ### Amendment: cyclic inferred declaration types (2026-11-01)
 
 Declaration serialization retains TypeScript 5.9 and 7.0 behavior at the anonymous-type cycle sites changed by [TypeScript #64461](https://github.com/microsoft/TypeScript/pull/64461): write `/*elided*/ any` at the repeated type rather than report the new `TS5088`. This applies to `.vibe` and unchanged `.ts` files alike. Other `TS5088` checks and ordinary recursive-inference errors `TS7022`, `TS7023` and `TS7024` remain unchanged. The [recursive builder](https://github.com/smithersai/vibelang/blob/main/docs/design/src/001-functions.md#declaration-output) illustrates the boundary.
+
+### Amendment: native overwrite protection (2026-11-02)
+
+Decided detail 281 replaces detail 280: compatibility sidecars are emit outputs like `.d.ts`. An `include` source/sidecar pair selects the source and allows silent regeneration. Explicit `files` inputs retain native `TS5055` protection: exit `1` and unchanged declaration bytes, including under `vibe.sidecarDir`. There is no generated marker, backup directory or warning. The independent compatibility write schedule of detail 283 remains unchanged.
