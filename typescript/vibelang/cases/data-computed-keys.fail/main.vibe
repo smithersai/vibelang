@@ -1,0 +1,12 @@
+// expect: TS1170 TS1170
+// Chapter 006, decided detail 233: a data payload follows TypeScript type
+// literals, as the Data.TaggedEnum type the declaration writes does, so a
+// computed key expression whose type is not a literal type is TypeScript's own
+// TS1170; a literal computed key stays admitted.
+const prefix = "pre"
+data Payload {
+  Concatenated { [prefix + "fix"]: string }
+  Called { [String("called")]: number }
+  Literal { ["lit"]: number }
+}
+export const lit = Payload.Literal({ lit: 1 })

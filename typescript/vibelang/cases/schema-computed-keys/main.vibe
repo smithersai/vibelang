@@ -1,0 +1,16 @@
+// Chapter 006, decided detail 233: an ordinary schema's computed field keys
+// follow TypeScript's runtime object-literal computed property names, as the
+// emitted Schema.Struct fields object does. A concatenation, a call and a
+// parenthesized literal are admitted here, where a type literal reports
+// TS1170 (data-computed-keys.fail); a key of type string is admitted in both.
+const dynamic: string = "dynamic"
+const prefix = "pre"
+schema Keyed {
+  [dynamic]: number
+  [prefix + "fix"]: string
+  [String("called")]: number
+  [("paren")]: boolean
+  plain: number
+}
+export const keys = Object.keys(Keyed.fields).sort()
+export const plain: number = Schema.decodeUnknownSync(Keyed)({ dynamic: 1, prefix: "p", called: 3, paren: true, plain: 2 }).plain
