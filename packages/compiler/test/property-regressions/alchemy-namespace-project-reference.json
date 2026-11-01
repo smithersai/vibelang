@@ -1,0 +1,12 @@
+{
+  "source": "inbox/migrate-alchemy.md#alchemy-57",
+  "namespace": "RDS",
+  "name": "DBInstance",
+  "depth": 1,
+  "pending": {
+    "key": "alchemy-57:namespace:project-reference:disable-source-redirect",
+    "owner": "migfix-alchemy",
+    "decision": "VIP-27/Chapter 7: a namespace re-export and a direct subpath retain the same exported declaration type",
+    "symptom": "Only the namespace through a referenced VibeLang producer becomes an error type with disableSourceOfProjectReferenceRedirect enabled"
+  }
+}
