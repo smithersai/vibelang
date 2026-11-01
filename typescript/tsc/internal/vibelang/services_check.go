@@ -14,6 +14,9 @@ import (
 // service used as a base class (EK3002, EK3003, EK3004), declared generic
 // (EK3005), or with a static member that shadows a service member (EK9208).
 
+// ek3004Pattern is EK3004 for a class pattern naming a service. {0} is the pattern's expression.
+var ek3004Pattern = EK3004.With("A class pattern naming {0} is always false: implementations are plain objects; match their members instead, when { find: let find }.")
+
 func init() { fileChecks = append(fileChecks, checkServices) }
 
 func checkServices(c *checker.Checker, file *ast.SourceFile) {
@@ -31,6 +34,12 @@ func checkServices(c *checker.Checker, file *ast.SourceFile) {
 		case ast.IsBinaryExpression(node) && node.AsBinaryExpression().OperatorToken.Kind == ast.KindInstanceOfKeyword:
 			if service := serviceNamedBy(c, node.AsBinaryExpression().Right); service != nil {
 				report(c, node, EK3004, service.Name().Text())
+			}
+		case isPatternCall(node, "$is") || isPatternCall(node, "$extract"):
+			// A class pattern, when Users: or when Users(…):, tests the subject
+			// as instanceof does (chapter 005's static rules table).
+			if matcher := node.Arguments()[0]; serviceNamedBy(c, matcher) != nil {
+				report(c, matcher, ek3004Pattern, scanner.GetTextOfNode(matcher))
 			}
 		}
 		return node.ForEachChild(visit)

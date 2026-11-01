@@ -90,7 +90,7 @@ Each entry gives the condition and the repair. The examples and language-service
 | EK3001 | Two services share a key. | Rename one of the declarations named by the diagnostic. |
 | EK3002 | A class extends a service key. | Implement the service's shape instead of extending its key. |
 | EK3003 | `new` tries to construct a service key. | Read the provided implementation with `try Service`; create implementations as objects or classes implementing its shape. |
-| EK3004 | `instanceof` tests a service key, which is no base class. | Test the implementation's data or a concrete implementation class instead. |
+| EK3004 | `instanceof` or a class pattern, `when Users:`, tests a service key, which is no base class. | Test the implementation's data or a concrete implementation class instead; match its members, `when { find: let find }`. |
 | EK4838 | An obsolete check from the old language, which tied a fiber to the region that forked it. Returning, storing or passing a `Fiber` is not a VibeLang error, and a plain `fork` child is still interrupted when its parent ends. | Use `fork.scoped p()` for the caller's scope, `fork.in(scope) p()` for a scope you hold, or `fork.detached p()` for a fiber nothing owns. |
 | EK4611 | `join` receives something other than a Fiber. | Join one fiber at a time; run Effects with `try`, use `try Deferred.await(deferred)`, or wrap Promises with `tryPromise`. See [fiber lifetimes](/concurrency/047-fibers) for ownership forms. |
 | EK4819 | Registered for `yield effect` in a TypeScript Effect generator; currently not emitted in `.ts` files. | In TypeScript use `yield* effect`; in VibeLang write an effect function with `try`. |

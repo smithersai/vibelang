@@ -1,0 +1,15 @@
+// expect: EK3004 EK3004
+// Chapter 005, static rules: a class pattern naming a service, bare or as an
+// extractor, is always false because implementations are plain objects, as
+// instanceof a service is (vibelang-service-misuse.fail covers instanceof).
+export service Users {
+  static readonly key = "spec/Users"
+  find(id: string): string!!
+}
+declare const impl: unknown
+export function bare(): number {
+  return match (impl) { when Users: 1; default: 0 }
+}
+export function extractor(): number {
+  return match (impl) { when Users(let u): 1; default: 0 }
+}
