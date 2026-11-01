@@ -1,0 +1,2 @@
+// expect:
+export let old: Effect<number>;

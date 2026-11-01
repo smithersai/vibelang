@@ -52,3 +52,5 @@ FuzzFunctionBoundaries rule:return-type-any compiler VIP-1: a written `any` retu
 FuzzFunctionBoundaries corpus:fz-func-return-type-any compiler VIP-1: minimized return-type-any violation; lane vip-core2
 FuzzFunctionBoundaries rule:return-type-unknown compiler VIP-1: a written `unknown` return type on an effect function reports nothing, not EK0106; lane vip-core2
 FuzzFunctionBoundaries corpus:fz-func-return-type-unknown compiler VIP-1: minimized return-type-unknown violation; lane vip-core2
+FuzzLegacyEffectAlias legacy-global compiler VIP-3: missing identity-selected EK4856 transition warning; lane impl-hunt-func
+FuzzLegacyEffectAlias corpus:legacy-global compiler VIP-3: minimized old global alias; lane impl-hunt-func

@@ -71,6 +71,7 @@ const renumbering = "lane diag-renumber registers each VIP's hundred-block (deci
 // that Appendix B no longer assigns, fails, so the change that registers it
 // deletes its entry.
 var specAhead = map[int32]string{
+	4856: "lane impl-hunt-func implements the accepted legacy-alias transition (round 6 ASTRA-4)",
 	1301: renumbering,
 	// Jumps out of an async match (VIP-7) have an assigned code before compiler registration.
 	706: renumbering,

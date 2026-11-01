@@ -49,3 +49,5 @@ Old VibeLang is a reference only; nothing in it is part of the language unless a
 
 
 The part of D127 and D309 under which an omitted slot was inferred on a function with a body.
+
+- **Amended 2026-11-01: the retired bare global alias.** The language's shorthand `A!E!R` expands to `Effect.Effect<A, E, R>`; no normative global `Effect<A, E, R>` alias exists. While the legacy prelude alias is accepted, a use resolving to that alias reports migration warning `EK4856`. The quick fix and `--fix` write the shorthand, or `Effect.Effect<A, E, R>` in an interface heritage element, preserving grouping, defaults and declarations. Imported or local types named `Effect` retain their ordinary meanings. Remove the alias only in a coordinated compiler/codemod/docs release; thereafter a namespace-as-type use is TypeScript's `TS2709`, and an absent binding follows native name resolution.

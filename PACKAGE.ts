@@ -76,6 +76,7 @@ const specTests = [
   "TestAwaitPlacementQuickFixes",
   "TestSchemaBuiltinBindingsQuoted",
   "TestSchemaDeclarationCommentsQuoted",
+  "TestLegacyEffectAliasQuoted",
   "TestFixScopeRulesQuoted",
   "TestEffectQualifierQuoted",
   "TestServiceImplicitAnyQuoted",
