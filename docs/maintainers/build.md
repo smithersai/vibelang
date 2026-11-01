@@ -393,6 +393,12 @@ cases' individual targets. Successful copies are removed; failing copies and
 command logs remain for inspection. The root `node_modules/` install is rebuilt for the invocation; nested fixture packages, including copies below `stubs/`, are preserved. Relative fixture symlinks keep their written targets so they resolve inside the private copy. Any aggregate harness target that overlaps
 individual case targets must use `--isolated`.
 
+The harness decodes compiler and runner output as UTF-8 across pipe chunks,
+with separate decoders for stdout and stderr. A character split between reads
+stays intact in comparisons and retained command tails.
+`scripts/harness-utf8.test.mjs` checks real child processes with shifted
+multi-byte output, generated mixed text, nonzero exits and incomplete final bytes.
+
 The release check runs `typescript/vibelang/harness.test.mjs`, including a
 barrier-controlled regression that executes both targets' actual shell commands
 concurrently. The aggregate starts after the per-case compiler emits and before

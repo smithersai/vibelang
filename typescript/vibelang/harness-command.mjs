@@ -33,6 +33,9 @@ export class CaseCommands {
       }
       let stdout = ""
       let stderr = ""
+      // Pipe chunks can split a UTF-8 character; decode each stream incrementally.
+      child.stdout.setEncoding("utf8")
+      child.stderr.setEncoding("utf8")
       child.stdout.on("data", (d) => (stdout += d))
       child.stderr.on("data", (d) => (stderr += d))
       const timer = setTimeout(() => {
