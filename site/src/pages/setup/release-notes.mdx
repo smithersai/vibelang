@@ -345,6 +345,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `vibelang --fix` left `yield* Effect.gen(…)` half converted: it rewrote the inner generator, then refused the outer one with EK4616, because it wrote `try (effect { … })`. It now writes `try effect { … }`.
 
 
+- The tooling reference treated explicitly listed sidecars like discovered outputs; it now specifies `TS5055` input protection and the independent compatibility write under `noEmit`.
+
 - The migration inventory omitted the retired global `Effect<A, E, R>` alias; it now documents `EK4856`, its identity-safe repair and coordinated removal.
 
 - The codemod reference did not bound writable files; it now limits fixes to owned program sources and eligible configs, with only the proved fresh platform-companion exception.

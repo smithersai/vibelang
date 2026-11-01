@@ -11,8 +11,11 @@ import (
 
 // sidecarIdentityQuote and sidecarExportQuote are Chapter 7's rule.
 const (
-	sidecarIdentityQuote = "When both `x.vibe` and its compatibility declaration `x.d.vibe.ts` are selected, VibeLang uses the source and resolves `./x.vibe` to it"
-	sidecarExportQuote   = "A package specifier that lands on `x.d.vibe.ts`, as a `types` export does, resolves to `x.vibe` when the source is beside it outside `node_modules`, so the sidecar and the source are one module"
+	sidecarDiscoveryQuote     = "A compatibility sidecar is an emit output: when `include` or default discovery selects both `x.vibe` and `x.d.vibe.ts`, the source wins and the sidecar leaves the program, as discovery selects `x.ts` ahead of `x.d.ts`."
+	sidecarExplicitInputQuote = "A sidecar explicitly listed in `files` remains an input."
+	sidecarOverwriteQuote     = "If the compatibility write would overwrite it, the compiler reports native `TS5055` (`Cannot write file … because it would overwrite input file`), exits `1` and leaves its bytes unchanged."
+	sidecarIdentityQuote      = "VibeLang resolves a relative `./x.vibe` to source; plain `tsc` reads the compatibility declaration."
+	sidecarExportQuote        = "A package specifier that lands on `x.d.vibe.ts`, as a `types` export does, resolves to `x.vibe` when the source is beside it outside `node_modules`, so the sidecar and the source are one module"
 )
 
 // FuzzSidecarIdentity enforces sidecarExportQuote: a consumer that reaches a
@@ -54,7 +57,7 @@ func sidecarIdentityRule(tb testing.TB) {
 	if err != nil {
 		tb.Fatal(err)
 	}
-	for _, quote := range []string{sidecarIdentityQuote, sidecarExportQuote} {
+	for _, quote := range []string{sidecarDiscoveryQuote, sidecarExplicitInputQuote, sidecarOverwriteQuote, sidecarIdentityQuote, sidecarExportQuote} {
 		if !strings.Contains(string(text), quote) {
 			tb.Fatalf("Chapter 7 no longer says %q", quote)
 		}

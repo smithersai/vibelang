@@ -10,8 +10,7 @@ import { loadTypeScript } from "../../../.smithers/flows/migrate/lib/declaration
 import { rewriteImports, restoreSpecifiers } from "../../../.smithers/flows/migrate/lib/codemod.mjs"
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const ts=loadTypeScript([join(repo,"packages/runtime")])
-const tick=String.fromCharCode(96)
-const quote="plain "+tick+"tsc"+tick+" uses the declaration."
+const quote="VibeLang resolves a relative `./x.vibe` to source; plain `tsc` reads the compatibility declaration."
 let diagnostics=""
 function pattern(input){
  const importer="pkg/index.ts"

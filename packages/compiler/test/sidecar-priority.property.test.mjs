@@ -12,12 +12,15 @@ const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const binary = process.env.VIBELANG_BINARY || join(repo, "packages/compiler/native/vibelang")
 const modules = process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules")
 const corpus = new URL("./property-regressions/", import.meta.url)
-const rule = 'VIP-27; docs/design/src/007-tooling.md: "VibeLang uses the source"; paired compatibility suffixes must not substitute stale declarations for it'
+const discoveryQuote = "A compatibility sidecar is an emit output: when `include` or default discovery selects both `x.vibe` and `x.d.vibe.ts`, the source wins and the sidecar leaves the program, as discovery selects `x.ts` ahead of `x.d.ts`."
+const relativeQuote = "VibeLang resolves a relative `./x.vibe` to source; plain `tsc` reads the compatibility declaration."
+const rule = "VIP-27; docs/design/src/007-tooling.md: " + discoveryQuote + " " + relativeQuote
 let diagnostics = ""
 
 test("sidecar source-priority oracle quotes the current specification", () => {
   const chapter = readFileSync(join(repo, "docs/design/src/007-tooling.md"), "utf8")
-  assert.ok(chapter.includes("VibeLang uses the source"))
+  assert.ok(chapter.includes(discoveryQuote))
+  assert.ok(chapter.includes(relativeQuote))
 })
 
 function filesOf(input) {

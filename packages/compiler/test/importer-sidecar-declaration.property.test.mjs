@@ -20,8 +20,10 @@ const fixture = JSON.parse(readFileSync(new URL("./property-regressions/t3code-i
 
 test("the importer declaration oracle quotes source selection and preserves its literal corpus", () => {
   const chapter = readFileSync(join(repo, "docs/design/src/007-tooling.md"), "utf8")
-  const tick = String.fromCharCode(96)
-  assert.ok(chapter.includes("When both " + tick + "x.vibe" + tick + " and its compatibility declaration " + tick + "x.d.vibe.ts" + tick + " are selected, VibeLang uses the source"))
+  assert.ok(chapter.includes("A compatibility sidecar is an emit output: when `include` or default discovery selects both `x.vibe` and `x.d.vibe.ts`, the source wins and the sidecar leaves the program, as discovery selects `x.ts` ahead of `x.d.ts`."))
+  assert.ok(chapter.includes("A sidecar explicitly listed in `files` remains an input."))
+  assert.ok(chapter.includes("If the compatibility write would overwrite it, the compiler reports native `TS5055` (`Cannot write file … because it would overwrite input file`), exits `1` and leaves its bytes unchanged."))
+  assert.ok(chapter.includes("VibeLang resolves a relative `./x.vibe` to source; plain `tsc` reads the compatibility declaration."))
   for (const [name, hash] of Object.entries(fixture.hashes)) {
     assert.equal(createHash("sha256").update(fixture.files[name]).digest("hex"), hash, name)
   }
