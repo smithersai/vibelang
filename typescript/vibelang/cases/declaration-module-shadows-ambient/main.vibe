@@ -1,0 +1,3 @@
+// An import shadows a global, so a declaration names Effect's module plainly
+// unless the same file writes the ambient type (Smithers' flows/kernel Rooted).
+export const fileSystem = (base: FileSystem.FileSystem, rooted: Path): FileSystem.FileSystem => base

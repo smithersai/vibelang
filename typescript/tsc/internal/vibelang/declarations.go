@@ -224,7 +224,7 @@ func transformDeclarations(resolver printer.EmitResolver, sourceFile *ast.Source
 		declarations = sourceNamespaceImports(resolver.EmitContext(), sourceFile, declarations, names)
 		// A file that imports Effect from effect and writes Effect<…> keeps
 		// its import, so the prelude's Effect needs another local name.
-		aliases, imported := preludeAliases(declarations, names, ambientTypes)
+		aliases, imported := preludeAliases(declarations, names, ambientWritten(resolver.EmitContext(), declarations, refs, ambientTypes))
 		if len(aliases) > 0 {
 			renamer := &preludeRenamer{aliases: aliases, refs: refs}
 			renamer.NewTransformer(renamer.visit, resolver.EmitContext())
@@ -619,13 +619,35 @@ func effectModulePath(c *checker.Checker, t *checker.Type) string {
 	return ""
 }
 
+// ambientWritten returns the names of ambientTypes that declarations write
+// with their ambient meaning: a type reference that starts with the name and is
+// no prelude reference. Only those need the prelude's name out of the way. An
+// import shadows a global, so the rest print as idiomatic Effect TypeScript
+// does, FileSystem.FileSystem through import { FileSystem } from "effect"
+// (Chapter 1, Declaration output).
+func ambientWritten(ec *printer.EmitContext, declarations *ast.SourceFile, refs map[*ast.Node]bool, ambientTypes map[string]bool) map[string]bool {
+	written := map[string]bool{}
+	var visit func(node *ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if name := typeEntityName(node); name != nil {
+			first := ast.GetFirstIdentifier(name)
+			if ambientTypes[first.Text()] && !refs[ec.MostOriginal(first)] {
+				written[first.Text()] = true
+			}
+		}
+		return node.ForEachChild(visit)
+	}
+	declarations.AsNode().ForEachChild(visit)
+	return written
+}
+
 // preludeAliases returns a free local name for each prelude name in names
-// that a declaration, import or ambient global type already binds, and
+// that a declaration, import or written ambient type already binds, and
 // the names an import of declarations already imports, under the same name,
 // from the module declaration emit would import them from, which need no
 // import of their own: the Effect of `import { Effect } from "effect"` and
 // the Context of `import * as Context from "effect/Context"`.
-func preludeAliases(declarations *ast.SourceFile, names []string, ambientTypes map[string]bool) (map[string]string, map[string]bool) {
+func preludeAliases(declarations *ast.SourceFile, names []string, ambient map[string]bool) (map[string]string, map[string]bool) {
 	bound := map[string]bool{}
 	imported := map[string]bool{}
 	for _, statement := range declarations.Statements.Nodes {
@@ -652,7 +674,7 @@ func preludeAliases(declarations *ast.SourceFile, names []string, ambientTypes m
 	declarations.AsNode().ForEachChild(visit)
 	aliases := map[string]string{}
 	for _, name := range names {
-		if (!bound[name] && !ambientTypes[name]) || imported[name] {
+		if (!bound[name] && !ambient[name]) || imported[name] {
 			continue
 		}
 		for i := 1; ; i++ {

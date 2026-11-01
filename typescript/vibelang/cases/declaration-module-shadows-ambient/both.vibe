@@ -1,0 +1,2 @@
+// This file writes the DOM's FileSystem too, so Effect's takes another name.
+export const pair = (base: FileSystem.FileSystem, host: FileSystem): [FileSystem.FileSystem, FileSystem] => [base, host]
