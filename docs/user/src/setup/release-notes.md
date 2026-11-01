@@ -727,6 +727,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Compiler and loader benchmarks could silently use an old `effect` or `vibelang-runtime` installation in a reused output directory; staging now rejects that collision and asks for a fresh output directory.
 
 
+- Preparing compiler or loader benchmarks through an output `node_modules` symlink could rewrite packages in a shared installation; staging now rejects the alias before changing its target.
+
+
 - `vibelang --fix` could remove an explicit `<{}>` payload from a fieldless `Data.TaggedError` class, changing its published declaration. Projects that emit declarations now keep the class and receive an explanation instead.
 - Reverting a migration importer before its dependency could replace an original `.js` import with `.ts`; either revert order now restores the original specifier.
 

@@ -9,6 +9,12 @@ set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 dir=$1
 modules="$dir/node_modules"
+# An output alias can point into an installation shared by other checkouts.
+# Never rewrite its package links while preparing a benchmark workspace.
+if [ -L "$modules" ]; then
+  echo "modules.sh: output node_modules is a symlink at $modules; use a fresh benchmark output directory" >&2
+  exit 1
+fi
 mkdir -p "$modules"
 modules=$(CDPATH= cd -- "$modules" && pwd)
 [ -f "$root/packages/runtime/dist/index.js" ] || { echo "modules.sh: build packages/runtime first" >&2; exit 1; }

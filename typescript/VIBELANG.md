@@ -1461,6 +1461,8 @@ Upstream code needed four fixes for `.vibe` files in the server: auto-import pan
 
 Benchmark staging links the pinned `effect` and checkout `vibelang-runtime` into the output directory. Existing links can be refreshed on reruns. A real file or directory at either package path makes staging fail without replacing it; choose a fresh `--out` directory instead of reusing an installed project. This keeps measurements from silently loading an older package.
 
+Benchmark output needs its own `node_modules` directory. Staging rejects an output `node_modules` symlink before writing package links, so an aliased installation stays unchanged; choose a fresh `--out` directory. Dependency installations used as staging inputs can still be symlinks.
+
 Run the benchmarks on the build host, which is quieter and larger than a laptop; other suites running there at the same time add noise, so the tables report medians:
 
 ```sh
