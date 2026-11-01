@@ -12,8 +12,10 @@ function check(input) {
   const bare = protocol + ":" + "/".repeat(slashes)
   assert.deepEqual(absolutePaths(prefix + bare + " " + suffix, []), [])
   assert.deepEqual(absolutePaths(prefix + bare, []), [])
-  const absolute = bare + path
-  assert.deepEqual(absolutePaths(prefix + absolute + " " + suffix, []), [absolute])
+  const absolute = bare + (slashes === 2 ? "localhost/" : "") + path
+  const roots = ["/" + path.split("/")[0]]
+  assert.ok(absolutePaths(prefix + absolute + " " + suffix, roots).includes(absolute))
+  assert.deepEqual(absolutePaths(prefix + absolute + " " + suffix, []), [])
   assert.deepEqual(absolutePaths(prefix + protocol + ":../" + path + " " + suffix, []), [])
 }
 test("t3code: a bare file URL in prose is portable while absolute specifiers still fail", () => {

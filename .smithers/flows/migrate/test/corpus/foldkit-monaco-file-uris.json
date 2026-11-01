@@ -1,0 +1,7 @@
+{
+  "key": "foldkit-81",
+  "source": "const monacoUriForPath = (path: string): string => `file:///${path}`\n// against our model at `file:///src/ui/message.ts`\n",
+  "roots": ["/srv/example-home", "/srv/migrate/toolchain", "/srv/migrate/run", "/srv/project"],
+  "portable": ["file:///src/ui/message.ts", "file:///${path}", "file:///src/srv/example-home/model.ts"],
+  "machine": ["file:///srv/example-home/vibe/x.ts", "file:///srv/migrate/toolchain/bin", "file:/srv/migrate/run/batches/01", "file:///srv/project/src/x.vibe"]
+}

@@ -55,6 +55,10 @@ node .smithers/flows/migrate/step.mjs toolchain --vibelang . --out <toolchain>
 ```
 
 The toolchain holds the native compiler, npm tarballs of `vibelang` (with that compiler), `vibelang-runtime`, `vibelang-vite` and `vibelang-unplugin`, and the TypeScript compiler API that reads declarations. Setup copies the tarballs into `.vibelang-toolchain/` at the target's root, each named for its content (`vibelang-0.0.11-<hash>.tgz`), adds that directory to the target's `.gitignore`, and names them relatively from each package (`file:../../.vibelang-toolchain/vibelang-0.0.11-<hash>.tgz`), so no commit names a path on the build host. Every build of one version packs to the same file name, and npm, Bun and pnpm can keep parts of what an unchanged `file:` specifier installed before, its files or its command links; the content's name makes a rebuilt toolchain install. Every commit the flow makes first checks the lines it adds for this machine's absolute paths and refuses them. The target must be a jj repository or a Git checkout, which upgrade-effect makes a colocated jj repository.
+A `file:`, `link:` or `portal:` URI is machine-specific only when its
+normalized, decoded path lies under the target, run, toolchain or home root.
+Virtual editor URIs such as `file:///src/ui/message.ts` and
+`file:///${path}` remain portable.
 
 ### Registry versions
 

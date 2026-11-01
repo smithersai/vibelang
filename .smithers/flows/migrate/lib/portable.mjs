@@ -4,21 +4,41 @@
 // leak where it ran and install nowhere else. Every commit the flow makes
 // checks the lines it adds first.
 import { homedir } from "node:os"
+import { posix } from "node:path"
 import { must } from "./util.mjs"
 
 /** The machine's absolute paths that a committed line must not contain. */
 export const machineRoots = (...roots) => [...new Set([...roots, homedir()].filter((r) => r && r !== "/"))]
 
 // A path after the slashes: file:/home/x and file:///home/x, not a bare file:// in prose.
-const absoluteSpecifier = /\b(?:file|link|portal):\/+[^\s"',/][^\s"',]*/g
-
-/** The absolute paths in text: any of the roots, and a file:, link: or portal: specifier with an absolute path. */
-export function absolutePaths(text, roots) {
-  const found = []
-  for (const root of [...roots].sort((a, b) => b.length - a.length)) {
-    if (text.includes(root)) found.push(root)
+const absoluteSpecifier = /\b(?:file|link|portal):\/+[^\s"'`,/][^\s"'`,]*/g
+const under = (path, root) => path === root || path.startsWith(root.replace(/\/$/, "") + "/")
+const mentionsRoot = (text, root) => {
+  let at = text.indexOf(root)
+  while (at >= 0) {
+    const after = text[at + root.length]
+    if (!after || /[\s/"'`),;\]}]/.test(after)) return true
+    at = text.indexOf(root, at + 1)
   }
-  for (const m of text.matchAll(absoluteSpecifier)) found.push(m[0])
+  return false
+}
+
+/** Machine-root paths in prose and specifiers; virtual editor file: URIs remain portable. */
+export function absolutePaths(text, roots) {
+  const specifiers = [...text.matchAll(absoluteSpecifier)].map(m => {
+    let path
+    try { path = posix.normalize(decodeURIComponent(new URL(m[0]).pathname)) }
+    catch { path = posix.normalize(m[0].replace(/^[^:]+:\/+/, "/")) }
+    return { text: m[0], path }
+  })
+  // A machine-root-looking substring of a virtual URI is not a host path.
+  const prose = text.replace(absoluteSpecifier, "")
+  const found = []
+  const sorted = [...roots].filter(r => r && r !== "/").sort((a,b) => b.length - a.length)
+  for (const root of sorted) {
+    if (mentionsRoot(prose, root) || specifiers.some(s => under(s.path, root))) found.push(root)
+  }
+  for (const s of specifiers) if (sorted.some(root => under(s.path, root))) found.push(s.text)
   return [...new Set(found)]
 }
 
