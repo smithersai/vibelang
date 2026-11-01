@@ -270,6 +270,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The migration could select modules that an unchanged test bundles without native support, then fail that test after renaming them; inventory and both plan modes now retain the reachable source graph with its test and entry as evidence, and rename checks reject stale plans. Bundles already supplied a native adapter or emitted JavaScript remain eligible.
 
+- Reverting a migrated module skipped saved imports in consumers that were already `.vibe`, replacing an alias such as `@/a.js` with a different name that could cause `TS2877`; revert now restores those consumers' original imports while retaining source names in newly migrated consumers.
+
 - Migration could break a plugin host that derives virtual module names from a resolved package entry and source-file extension; scope planning now keeps the observed packages native and records the source-enumeration cause, preserving the unchanged host.
 
 - The migrate flow rejected a native acquisition's unchanged `!Error` contract when its original function returned `Effect.callback<A, Error>`, as in foldkit's WebSocket example; it now recognizes that explicit returned channel when the callback becomes a platform service, while nested callbacks and changed contracts remain rejected.

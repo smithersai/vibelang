@@ -322,7 +322,7 @@ export function rewriteSpecifier(importer, specifier, target, { mock = false, ba
 
 /**
  * Puts back the specifiers the codemod rewrote to name a module that revert
- * returns to .ts: each edit { file, from, to } of a TypeScript importer whose
+ * returns to .ts: each edit { file, from, to } of an importer whose
  * `to` names `module` (repository-relative, now .ts) gets its `from` again,
  * so ./user.js stays ./user.js, and an edit is used once. Returns the edits
  * made.
@@ -333,11 +333,10 @@ export function restoreSpecifiers(root, edits, module, aliases) {
   const byFile = new Map()
   for (const edit of edits) {
     let file = edit.file
-    if (file.endsWith(".vibe")) {
+    if (file.endsWith(".vibe") && !existsSync(join(root, file))) {
       // Revert may already have returned this importer to TypeScript. Its
       // recorded path still names .vibe; find the restored source, never a
       // still-native importer or an ambiguous pair of TypeScript sources.
-      if (existsSync(join(root, file))) continue
       const candidates = [".ts", ".mts", ".cts"].map(ext => file.slice(0, -".vibe".length) + ext)
         .filter(path => existsSync(join(root, path)))
       if (candidates.length !== 1) continue
@@ -386,9 +385,14 @@ export const importerFile = /\.(?:ts|tsx|mts|cts|vibe|js|jsx|mjs|cjs)$/
  * the module's source file, ../src/Monitor.ts, since ./x.js there names a
  * JavaScript file. Returns the edits made: { file, from, to }.
  */
-export function rewriteImports(root, scope, moved, aliases, { read = (file) => readFileSync(join(root, file), "utf8"), write = (file, text) => writeFileSync(join(root, file), text) } = {}) {
+export function rewriteImports(root, scope, moved, aliases, { preserve = [], read = (file) => readFileSync(join(root, file), "utf8"), write = (file, text) => writeFileSync(join(root, file), text) } = {}) {
   const files = new Set(scope)
   const only = moved && new Set(moved)
+  const kept = new Map()
+  for (const edit of preserve) {
+    if (!kept.has(edit.file)) kept.set(edit.file, new Set())
+    kept.get(edit.file).add(edit.to)
+  }
   const edits = []
   for (const file of scope) {
     if (!importerFile.test(file)) continue
@@ -398,6 +402,7 @@ export function rewriteImports(root, scope, moved, aliases, { read = (file) => r
     const changes = []
     for (const i of parseImports(text)) {
       if (javascript && !/\.(?:[cm]?tsx?|vibe)$/.test(i.specifier)) continue
+      if (kept.get(file)?.has(i.specifier)) continue
       // A tsconfig paths alias (`@/x`) names a module as a relative specifier does (opencode-39).
       const aliased = resolveRelative(file, i.specifier, files) === undefined ? resolveAliased(file, i.specifier, files, aliases) : undefined
       const target = aliased?.target ?? resolveRelative(file, i.specifier, files)

@@ -1287,6 +1287,8 @@ export async function revertMany(options) {
     if (existsSync(join(config.target, vibe)) || !existsSync(join(config.target, ts)) || !readFileSync(join(config.target, ts)).equals(Buffer.from(original))) throw new Error("revert did not restore " + vibe)
     rmSync(join(config.target, vibe.replace(/\.vibe$/, ".d.vibe.ts")), { force: true })
   }
+  const priorFiles = new Map()
+  for (const revision of groups.keys()) priorFiles.set(revision, new Set(await Jj.trackedFiles(config.target, revision)))
   const results = []
   for (const { ts, reason, source } of prepared) {
     const cm = readJsonIf(p.codemod(source.batch)) ?? readJsonIf(p.codemodState(source.batch)) ?? {}
@@ -1294,7 +1296,14 @@ export async function revertMany(options) {
     if (split) rmSync(join(config.target, split.platform), { force: true })
     const exportEdits = restoreExports(config.target, cm.exportEdits ?? [], ts)
     const scriptEdits = restoreViteScripts(config.target, cm.scriptEdits ?? [], ts)
-    const importEdits = restoreSpecifiers(config.target, cm.importEdits ?? [], ts, aliases)
+    // A newly migrated consumer keeps its source spelling; an existing
+    // VibeLang consumer keeps the name recorded before this migration.
+    const before = source.original ? null : priorFiles.get(source.revision)
+    const created = source.original ? new Set(source.renames.map(rename => rename.to)) : null
+    const priorEdits = (cm.importEdits ?? []).filter(edit =>
+      !edit.file.endsWith(".vibe") || !existsSync(join(config.target, edit.file)) ||
+      (created ? !created.has(edit.file) : before.has(edit.file)))
+    const importEdits = restoreSpecifiers(config.target, priorEdits, ts, aliases)
     const refEdits = restoreReferences(config.target, cm.refEdits ?? [], ts)
     const referenceEdits = []
     const history = (plan?.batches ?? []).map((_, i) => readJsonIf(p.codemod(batchName(i))) ?? readJsonIf(p.codemodState(batchName(i)))).filter(Boolean)
@@ -1321,7 +1330,8 @@ export async function revertMany(options) {
     }
     results.push({ file: ts, reason, at: new Date().toISOString(), ...(source.batch === b ? {} : { from: source.batch }), exportEdits, importEdits, scriptEdits, referenceEdits, ...(cm.refEdits ? { refEdits } : {}) })
   }
-  const importEdits = rewriteImports(config.target, await importers(config.target), prepared.map(x => x.ts), aliases)
+  const restored = results.flatMap(result => result.importEdits)
+  const importEdits = rewriteImports(config.target, await importers(config.target), prepared.map(x => x.ts), aliases, { preserve: restored })
   for (const result of results) result.importEdits.push(...importEdits.filter(e => {
     const vibe = vibePath(result.file)
     return (resolveRelative(e.file, e.from, new Set([vibe])) ?? resolveAliased(e.file, e.from, new Set([vibe]), aliases)?.target) === vibe
@@ -1345,8 +1355,9 @@ export async function revertMany(options) {
 async function revertSource(t, p, plan, b, ts, vibe) {
   for (let i = Number(b) - 1; i >= 0; i--) {
     const batch = batchName(i)
-    const original = readJsonIf(p.codemodState(batch))?.originals?.find(o => o.from === ts && o.to === vibe)
-    if (original) return { batch, original }
+    const journal = readJsonIf(p.codemodState(batch))
+    const original = journal?.originals?.find(o => o.from === ts && o.to === vibe)
+    if (original) return { batch, original, renames: journal.renames ?? journal.originals.map(({from,to}) => ({from,to})) }
   }
   if ((await Jj.fileAt(t, "@-", ts)) !== null) return { revision: "@-", batch: b }
   for (let i = (plan?.batches?.length ?? 0) - 1; i >= 0; i--) {

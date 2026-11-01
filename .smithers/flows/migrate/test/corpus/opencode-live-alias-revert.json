@@ -1,0 +1,11 @@
+{
+  "repo": "opencode",
+  "pattern": "revert skips the forward receipt of a still-migrated alias importer",
+  "files": {
+    "package.json": "{\"private\":true,\"type\":\"module\"}",
+    ".gitignore": "node_modules/\n",
+    "tsconfig.json": "{\"compilerOptions\":{\"module\":\"Preserve\",\"moduleResolution\":\"Bundler\",\"allowArbitraryExtensions\":true,\"allowImportingTsExtensions\":true,\"rewriteRelativeImportExtensions\":true,\"paths\":{\"@/*\":[\"./src/*\"]}},\"include\":[\"src/**/*\"]}",
+    "src/a.ts": "export const x = 42\n",
+    "src/use.vibe": "import { x } from \"@/a.js\"; export const value = x\n"
+  }
+}

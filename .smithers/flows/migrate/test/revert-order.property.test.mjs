@@ -71,14 +71,14 @@ test("revert order preserves original imports, exports and import types across a
       } finally { rmSync(root, { recursive: true, force: true }) }
     }), { seed: 450045, numRuns: 200 })
 })
-test("a still-native importer keeps explicit source names; an ambiguous restored path is not guessed", () => {
+test("saved edits restore an existing Vibe consumer; ambiguous restored native paths are not guessed", () => {
   const root = mkdtempSync(join(tmpdir(), "foldkit-revert-native-"))
   try {
     const native = 'import { b } from "./b.vibe"\n'
     put(root, { "a.vibe": native, "a.ts": native, "a.mts": native, "b.ts": "export const b = 1\n" })
     const edits = [{ file: "a.vibe", from: "./b.js", to: "./b.vibe" }]
-    assert.deepEqual(restoreSpecifiers(root, edits, "b.ts"), [])
-    assert.equal(readFileSync(join(root, "a.vibe"), "utf8"), native)
+    assert.deepEqual(restoreSpecifiers(root, edits, "b.ts"), [{ file: "a.vibe", from: "./b.vibe", to: "./b.js" }])
+    assert.equal(readFileSync(join(root, "a.vibe"), "utf8"), native.replace("./b.vibe", "./b.js"))
     rmSync(join(root, "a.vibe"))
     assert.deepEqual(restoreSpecifiers(root, edits, "b.ts"), [])
     assert.equal(readFileSync(join(root, "a.ts"), "utf8"), native)

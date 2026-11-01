@@ -492,4 +492,9 @@ The `fixToFixedPoint` preservation boundary applies on every exit, including int
 
 A runtime host that resolves a package entry, reads its extension and scans source filenames keeps its owning package native. Statically named workspace packages in that observer stay native too. The scope receipt records `RUNTIME-SOURCE-ENUMERATION` with the observer and line; other packages continue. The flow leaves the host and its virtual module names unchanged (VIP-34).
 
+
 Inventory treats executable bare filename literals such as `alchemy.run.ts` or an explicit `index.ts` as lookup names, so those modules remain TypeScript. It ignores comments, embedded code strings, type-only filename literals, module specifiers and fixture code. It parses only potential lookup-bearing files, including escaped filenames; directory resolution alone does not pin an `index.ts` module.
+
+Revert restores recorded imports of native and previously existing VibeLang consumers, preserving the original alias and suffix. The migration's baseline or write-ahead rename journal identifies whether the importer was already `.vibe`; a consumer converted in that batch still names the restored native source as `.ts`. The fallback repairs unrecorded references without rewriting an original name it just restored.
+
+Import rewrites accept recorded `preserve` names together with injected `read` and `write` callbacks; the callbacks keep transactional source access while the recorded names stay intact.
