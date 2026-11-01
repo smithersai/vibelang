@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nerror NotFound { id: string }\nschema error Gone { id: string }\nfunction make(id: string) {\n  return new NotFound({ id })\n}\nfunction gone(id: string) {\n  return new Gone({ id })\n}\nexport function main() {\n  try yieldNow()\n  const e = try make(\"x\")\n  const g = try gone(\"y\")\n  if (e.id === \"\") { try make(\"never\") }\n  return [e._tag, e.id, g._tag, g.id]\n}\n")

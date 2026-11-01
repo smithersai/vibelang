@@ -154,11 +154,15 @@ func (a *analyzer) effectEditsIn(file *ast.SourceFile, node *ast.Node) ([]source
 				// subtype (including a tagged error) keeps its try, or the
 				// migration turns execution and failure into success data
 				// (VIP-5); the call site shows only its executed success type.
-				// Without an annotation the signature is the checker's Effect
-				// wrapper of the body, and the call site's type is the value.
-				t := a.checker.GetTypeAtLocation(node)
-				if callee.Type() != nil {
-					t = a.checker.GetReturnTypeOfSignature(a.checker.GetResolvedSignature(node)) // plainCallee resolved it
+				t := a.checker.GetReturnTypeOfSignature(a.checker.GetResolvedSignature(node)) // plainCallee resolved it
+				if a.isPlainFunction(callee) && isEffectType(a.checker, t) {
+					// D421 types a plain variant as Effect<A, never, never>, a
+					// wrapper its $direct call never builds. The try ran that
+					// wrapper for its A, as data; once the function is plain
+					// (VIP-1) the call gives A itself, so the try goes, whatever
+					// A is. An A that is an error stays data, not throw, and a
+					// Yieldable A stays the object, not its asEffect().
+					t = nil
 				}
 				switch {
 				case t != nil && effectOfValue(a.checker, t) != nil:

@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nfunction out(name: string) {\n  return { name, asEffect: effect () => name }\n}\nexport function main() {\n  try yieldNow()\n  const o = try out(\"abc\")\n  return typeof o\n}\n")

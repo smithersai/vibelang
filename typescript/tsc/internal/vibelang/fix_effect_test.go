@@ -106,6 +106,108 @@ export effect function main() {
 	}
 }
 
+// D421 types a function that compiles to plain JavaScript as the wrapper
+// Effect<A, never, never>, which its $direct call never builds: try on its
+// call gave A as data. Under VIP-1 the function is plain and its call gives A,
+// so --fix-vip-only drops the try, whatever A is. A plain variant returning a
+// tagged error or a Yieldable returned it as data; its try neither stays (an
+// error would fail once VIP-1 types the call) nor gains asEffect() (which
+// returned the name instead of the object, or refused the whole file).
+func TestFixVIPDropsAPlainVariantsTry(t *testing.T) {
+	source := `error NotFound { id: string }
+
+function double(n: number) {
+  return n * 2
+}
+
+function half(n: number): number {
+  return n / 2
+}
+
+function pair(n: number) {
+  return { n, label: "x" }
+}
+
+function out(name: string) {
+  return { name, asEffect: effect () => name }
+}
+
+const triple = (n: number): number => n * 3
+
+function make(id: string) {
+  return new NotFound({ id })
+}
+
+export function main() {
+  try yieldNow()
+  const d = try double(2)
+  const h = try half(4)
+  const p = try pair(1)
+  const o = try out("a")
+  const t3 = try triple(1)
+  const e = try make("neg")
+  if (d < 0) { try make("neg") }
+  return d + h + p.n + o.name.length + t3 + e.id.length
+}
+`
+	want := `error NotFound { id: string }
+
+function double(n: number) {
+  return n * 2
+}
+
+function half(n: number): number {
+  return n / 2
+}
+
+function pair(n: number) {
+  return { n, label: "x" }
+}
+
+function out(name: string) {
+  return { name, asEffect: effect () => name }
+}
+
+const triple = (n: number): number => n * 3
+
+function make(id: string) {
+  return new NotFound({ id })
+}
+
+export effect function main() {
+  try yieldNow()
+  const d = double(2)
+  const h = half(4)
+  const p = pair(1)
+  const o = out("a")
+  const t3 = triple(1)
+  const e = make("neg")
+  if (d < 0) { make("neg") }
+  return d + h + p.n + o.name.length + t3 + e.id.length
+}
+`
+	_, file, _, _ := editorProgram(t, source)
+	dir := filepath.Dir(file.FileName().AsString())
+	if err := os.WriteFile(filepath.Join(dir, "tsconfig.json"), []byte(`{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"noEmit":true},"files":["main.vibe"]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	fs := bundled.WrapFS(osvfs.FS())
+	configPath := tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(dir, "tsconfig.json")))
+	config, errors := tsoptions.GetParsedCommandLineOfConfigFile(configPath, &core.CompilerOptions{}, nil, fs, nil)
+	if len(errors) != 0 {
+		t.Fatalf("config: %v", errors)
+	}
+	result := FixProjectWithOptions(t.Context(), fs, bundled.LibPath(), config, FixOptions{VIPOnly: true})
+	fixed := result.Files[file.FileName()]
+	if fixed == nil || fixed.Text != want {
+		got := ""
+		if fixed != nil {
+			got = fixed.Text
+		}
+		t.Fatalf("--fix-vip-only wrote\n%s\nwant\n%s\nrefused %+v", got, want, result.Refused)
+	}
+}
+
 // VIP-5 and Chapter 2's structural operand test admit tagged errors as
 // Effects: try toError(id) fails like throw, including in expression positions.
 // Keep those valid tries under --fix-vip-only. Only the non-Effect Yieldable

@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nfunction double(n: number) {\n  return n * 2\n}\nfunction half(n: number): number {\n  return n / 2\n}\nfunction pair(n: number) {\n  return { n, label: \"x\" }\n}\nconst triple = (n: number): number => n * 3\nexport function main() {\n  try yieldNow()\n  const d = try double(2)\n  const h = try half(4)\n  const p = try pair(1)\n  const t3 = try triple(1)\n  return [d, h, p.n, p.label, t3, try double(try half(8))]\n}\n")
