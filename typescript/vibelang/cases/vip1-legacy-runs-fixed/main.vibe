@@ -1,0 +1,182 @@
+// expect-result: {"statementRun":1,"constInit":3,"returned":3,"ternary":5,"ternaryConst":4,"nullish":6,"orElse":7,"andAlso":8,"matchArm":9,"matchDie":1,"matchFail":2,"ifElse":[],"doResult":11,"arrow":1,"arrowTernary":12,"handler":14,"argument":16,"member":"17","template":"18","factoryRun":190,"byName":21,"insideArray":[21,22],"handlerFail":24,"handlerBlock":25,"fallback":26,"matchDieNone":"Error: missing","matchFailNone":"Missing: "}
+// VIP-1 migration (decided detail 274): before VIP-1 a call in effect code
+// whose result was an Effect ran where it stood: a statement, an initializer,
+// a return value, an arm of ?: or match (foldkit-18's
+// `when Option.None: die(new Error("missing"))`), either side of ?? or ||,
+// the right side of &&, a do expression's result, an effect arrow's body, a
+// catch handler or fallback, an argument, an element or a property value.
+// After VIP-1 only try runs one, so this program returns programs instead of
+// their results. vibelang --fix-vip-only writes try in each position, and
+// marks a catch handler that ran a call effect (vip1-legacy-runs-fixed); the
+// migrated program gives what this one gave before VIP-1.
+error Missing { id: number }
+
+effect function load(n: number) {
+  try yieldNow()
+  return n
+}
+
+function plainId(n: number): number {
+  return n
+}
+
+function factory(n: number) {
+  return Effect.succeed(n * 10)
+}
+
+effect function statementRun(log: number[]) {
+  log.push(1)
+  try load(1)
+  return log.length
+}
+
+effect function constInit() {
+  const a = try load(2)
+  return a + 1
+}
+
+effect function returned() {
+  return try load(3)
+}
+
+effect function ternary(c: boolean) {
+  return c ? try load(4) : try load(5)
+}
+
+effect function ternaryConst(c: boolean) {
+  const v = c ? try load(4) : 0
+  return v
+}
+
+effect function nullish(x: number | undefined) {
+  return x ?? try load(6)
+}
+
+effect function orElse(x: number) {
+  return x || try load(7)
+}
+
+effect function andAlso(x: number) {
+  return x && try load(8)
+}
+
+effect function matchArm(o: Option.Option<number>) {
+  const v = match (o) {
+    when Option.None: try load(9);
+    when Option.Some(let n): n;
+  }
+  return v
+}
+
+effect function matchDie(o: Option.Option<number>) {
+  const v = match (o) {
+    when Option.None: try die(new Error("missing"));
+    when Option.Some(let n): n;
+  }
+  return v
+}
+
+effect function matchFail(o: Option.Option<number>) {
+  return match (o) {
+    when Option.None: try Effect.fail(new Missing({ id: 0 }));
+    when Option.Some(let n): n;
+  }
+}
+
+effect function ifElse(c: boolean, log: string[]) {
+  if (c) try load(10)
+  else log.push("else")
+  return log
+}
+
+effect function doResult() {
+  const v = do {
+    const x = 11
+    try load(x)
+  }
+  return v
+}
+
+const arrow = effect (n: number) => try load(n)
+
+const arrowTernary = effect (c: boolean) => c ? try load(12) : try load(13)
+
+effect function handler() {
+  return load(14) catch effect (e) => try load(15)
+}
+
+effect function argument() {
+  return plainId(try load(16))
+}
+
+effect function member() {
+  return (try load(17)).toFixed()
+}
+
+effect function template() {
+  return `${try load(18)}`
+}
+
+effect function factoryRun() {
+  return try factory(19)
+}
+
+effect function byName() {
+  return try Effect.map(load(20), (n) => n + 1)
+}
+
+effect function insideArray() {
+  return [try load(21), try load(22)]
+}
+
+effect function handlerFail() {
+  return Effect.fail(new Missing({ id: 24 })) catch effect (e) => try load(e.id)
+}
+
+effect function handlerBlock() {
+  return Effect.fail(new Missing({ id: 25 })) catch effect (e) => {
+    try load(1)
+    return try load(e.id)
+  }
+}
+
+effect function fallback() {
+  return Effect.fail(new Missing({ id: 26 })) catch effect () => try load(26)
+}
+
+effect function failed(run: Effect.Effect<unknown, unknown>) {
+  const exit = try Effect.exit(run)
+  return Exit.isFailure(exit) ? Cause.pretty(exit.cause).split("\n")[0] : "succeeded"
+}
+
+export effect function main() {
+  return {
+    statementRun: try statementRun([]),
+    constInit: try constInit(),
+    returned: try returned(),
+    ternary: try ternary(false),
+    ternaryConst: try ternaryConst(true),
+    nullish: try nullish(undefined),
+    orElse: try orElse(0),
+    andAlso: try andAlso(1),
+    matchArm: try matchArm(Option.none()),
+    matchDie: try matchDie(Option.some(1)),
+    matchFail: try matchFail(Option.some(2)),
+    ifElse: try ifElse(true, []),
+    doResult: try doResult(),
+    arrow: try arrow(1),
+    arrowTernary: try arrowTernary(true),
+    handler: try handler(),
+    argument: try argument(),
+    member: try member(),
+    template: try template(),
+    factoryRun: try factoryRun(),
+    byName: try byName(),
+    insideArray: try insideArray(),
+    handlerFail: try handlerFail(),
+    handlerBlock: try handlerBlock(),
+    fallback: try fallback(),
+    matchDieNone: try failed(matchDie(Option.none())),
+    matchFailNone: try failed(matchFail(Option.none())),
+  }
+}

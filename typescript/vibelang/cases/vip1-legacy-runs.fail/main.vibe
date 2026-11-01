@@ -1,0 +1,182 @@
+// expect: EK4801 TS2365 EK4801 TS2345 TS2339 EK4801 EK0509
+// VIP-1 migration (decided detail 274): before VIP-1 a call in effect code
+// whose result was an Effect ran where it stood: a statement, an initializer,
+// a return value, an arm of ?: or match (foldkit-18's
+// `when Option.None: die(new Error("missing"))`), either side of ?? or ||,
+// the right side of &&, a do expression's result, an effect arrow's body, a
+// catch handler or fallback, an argument, an element or a property value.
+// After VIP-1 only try runs one, so this program returns programs instead of
+// their results. vibelang --fix-vip-only writes try in each position, and
+// marks a catch handler that ran a call effect (vip1-legacy-runs-fixed); the
+// migrated program gives what this one gave before VIP-1.
+error Missing { id: number }
+
+effect function load(n: number) {
+  try yieldNow()
+  return n
+}
+
+function plainId(n: number): number {
+  return n
+}
+
+function factory(n: number) {
+  return Effect.succeed(n * 10)
+}
+
+effect function statementRun(log: number[]) {
+  log.push(1)
+  load(1)
+  return log.length
+}
+
+effect function constInit() {
+  const a = load(2)
+  return a + 1
+}
+
+effect function returned() {
+  return load(3)
+}
+
+effect function ternary(c: boolean) {
+  return c ? load(4) : load(5)
+}
+
+effect function ternaryConst(c: boolean) {
+  const v = c ? load(4) : 0
+  return v
+}
+
+effect function nullish(x: number | undefined) {
+  return x ?? load(6)
+}
+
+effect function orElse(x: number) {
+  return x || load(7)
+}
+
+effect function andAlso(x: number) {
+  return x && load(8)
+}
+
+effect function matchArm(o: Option.Option<number>) {
+  const v = match (o) {
+    when Option.None: load(9);
+    when Option.Some(let n): n;
+  }
+  return v
+}
+
+effect function matchDie(o: Option.Option<number>) {
+  const v = match (o) {
+    when Option.None: die(new Error("missing"));
+    when Option.Some(let n): n;
+  }
+  return v
+}
+
+effect function matchFail(o: Option.Option<number>) {
+  return match (o) {
+    when Option.None: Effect.fail(new Missing({ id: 0 }));
+    when Option.Some(let n): n;
+  }
+}
+
+effect function ifElse(c: boolean, log: string[]) {
+  if (c) load(10)
+  else log.push("else")
+  return log
+}
+
+effect function doResult() {
+  const v = do {
+    const x = 11
+    load(x)
+  }
+  return v
+}
+
+const arrow = effect (n: number) => load(n)
+
+const arrowTernary = effect (c: boolean) => c ? load(12) : load(13)
+
+effect function handler() {
+  return load(14) catch (e) => load(15)
+}
+
+effect function argument() {
+  return plainId(load(16))
+}
+
+effect function member() {
+  return load(17).toFixed()
+}
+
+effect function template() {
+  return `${load(18)}`
+}
+
+effect function factoryRun() {
+  return factory(19)
+}
+
+effect function byName() {
+  return Effect.map(load(20), (n) => n + 1)
+}
+
+effect function insideArray() {
+  return [load(21), load(22)]
+}
+
+effect function handlerFail() {
+  return Effect.fail(new Missing({ id: 24 })) catch (e) => load(e.id)
+}
+
+effect function handlerBlock() {
+  return Effect.fail(new Missing({ id: 25 })) catch (e) => {
+    load(1)
+    return load(e.id)
+  }
+}
+
+effect function fallback() {
+  return Effect.fail(new Missing({ id: 26 })) catch load(26)
+}
+
+effect function failed(run: Effect.Effect<unknown, unknown>) {
+  const exit = try Effect.exit(run)
+  return Exit.isFailure(exit) ? Cause.pretty(exit.cause).split("\n")[0] : "succeeded"
+}
+
+export effect function main() {
+  return {
+    statementRun: statementRun([]),
+    constInit: constInit(),
+    returned: returned(),
+    ternary: ternary(false),
+    ternaryConst: ternaryConst(true),
+    nullish: nullish(undefined),
+    orElse: orElse(0),
+    andAlso: andAlso(1),
+    matchArm: matchArm(Option.none()),
+    matchDie: matchDie(Option.some(1)),
+    matchFail: matchFail(Option.some(2)),
+    ifElse: ifElse(true, []),
+    doResult: doResult(),
+    arrow: arrow(1),
+    arrowTernary: arrowTernary(true),
+    handler: handler(),
+    argument: argument(),
+    member: member(),
+    template: template(),
+    factoryRun: factoryRun(),
+    byName: byName(),
+    insideArray: insideArray(),
+    handlerFail: handlerFail(),
+    handlerBlock: handlerBlock(),
+    fallback: fallback(),
+    matchDieNone: failed(matchDie(Option.none())),
+    matchFailNone: failed(matchFail(Option.none())),
+  }
+}
