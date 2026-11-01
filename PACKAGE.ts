@@ -140,6 +140,7 @@ const specTests = [
   "TestReviewIsStatementHomesQuoted",
   "TestReviewIsRedeclarationsQuoted",
   "TestReviewIsBindingHomesQuoted",
+  "TestEffectBlockDeclarationTwinQuoted",
   "TestSpecifierWrittenJSX",
 
   "TestStockConsumerResolutionQuoted",
