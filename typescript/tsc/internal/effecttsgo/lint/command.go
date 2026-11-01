@@ -24,16 +24,20 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
-const usage = `Usage: vibelang lint [-c <oxlint config>] [-p <project>] [--deny-warnings] [<path>...]
+const usage = `Usage: vibelang lint [-c <oxlint config>] [-p <project>] [--deny-warnings]
+                     [--ignore-path <file>] [--ignore-pattern <glob>]... [--no-ignore] [<path>...]
 
 Runs Effect's type-aware lint rules (effect-tsgo's effecttsgo/* rules) on the
 .vibe files under each path (default: the current directory). The Oxlint
 configuration selects the rules, their severities, overrides and
 ignorePatterns, as it does for Oxlint on .ts files; the default is
-.oxlintrc.json, then oxlint.config.ts, in the current directory. Each file is
-checked in the nearest project that includes it. Each directory prefers
-vibe.config.json, then tsconfig.json, then jsconfig.json; -p selects a file
-or directory.
+.oxlintrc.json, then oxlint.config.ts, in the current directory. The walk
+skips what Oxlint skips: files that .gitignore files up to the repository
+root and .git/info/exclude ignore, the --ignore-path file (.eslintignore by
+default, read beside each .gitignore) and each --ignore-pattern glob;
+--no-ignore turns off the last two. Each file is checked in the nearest
+project that includes it. Each directory prefers vibe.config.json, then
+tsconfig.json, then jsconfig.json; -p selects a file or directory.
 The status is 1 when an error is reported or a .vibe file has no project.
 Warnings never fail CI; promote their codes in vibe.severities to error. Invalid
 project settings return status 2.
@@ -44,7 +48,10 @@ func Command(ctx context.Context, sys tsc.System, args []string) int {
 	// The release command takes compiler flags and reports compiler diagnostics
 	// without emitting (VIP-38, detail 58). Retain the old Oxlint adapter for
 	// existing scripts that explicitly request it or have its config file.
-	legacy := slices.Contains(args, "-c") || slices.Contains(args, "--config") || slices.Contains(args, "--deny-warnings")
+	legacy := slices.ContainsFunc(args, func(arg string) bool {
+		name, _, _ := strings.Cut(arg, "=")
+		return slices.Contains([]string{"-c", "--config", "--deny-warnings", "--ignore-path", "--ignore-pattern", "--no-ignore"}, name)
+	})
 	for _, name := range []string{".oxlintrc.json", "oxlint.config.ts"} {
 		if _, err := os.Stat(filepath.Join(sys.GetCurrentDirectory().AsString(), name)); err == nil {
 			legacy = true
@@ -56,19 +63,34 @@ func Command(ctx context.Context, sys tsc.System, args []string) int {
 	out, errOut := sys.Writer(), sys.ErrorWriter()
 	var configPath, project string
 	var paths []string
+	var ignore ignoreOptions
 	for i := 0; i < len(args); i++ {
-		switch arg := args[i]; arg {
-		case "-c", "--config", "-p", "--project":
-			if i+1 == len(args) {
-				fmt.Fprintf(errOut, "vibelang lint: %s needs a value\n\n%s", arg, usage)
-				return 2
+		arg, value, inline := strings.Cut(args[i], "=")
+		if !strings.HasPrefix(args[i], "-") {
+			arg, inline = args[i], false
+		}
+		switch arg {
+		case "-c", "--config", "-p", "--project", "--ignore-path", "--ignore-pattern":
+			if !inline {
+				if i+1 == len(args) {
+					fmt.Fprintf(errOut, "vibelang lint: %s needs a value\n\n%s", arg, usage)
+					return 2
+				}
+				i++
+				value = args[i]
 			}
-			i++
-			if arg == "-c" || arg == "--config" {
-				configPath = args[i]
-			} else {
-				project = args[i]
+			switch arg {
+			case "-c", "--config":
+				configPath = value
+			case "--ignore-path":
+				ignore.ignorePath = value
+			case "--ignore-pattern":
+				ignore.patterns = append(ignore.patterns, value)
+			default:
+				project = value
 			}
+		case "--no-ignore":
+			ignore.noIgnore = true
 		case "--deny-warnings":
 			// Compatibility spelling; promote a code in vibe.severities to fail CI.
 		case "-h", "--help":
@@ -109,7 +131,7 @@ func Command(ctx context.Context, sys tsc.System, args []string) int {
 	if len(paths) == 0 {
 		paths = []string{"."}
 	}
-	files, err := vibeFiles(cwd, paths, config)
+	files, err := vibeFiles(cwd, paths, config, newIgnorer(cwd, ignore))
 	if err != nil {
 		fmt.Fprintf(errOut, "vibelang lint: %v\n", err)
 		return 2
@@ -242,7 +264,9 @@ func severityFor(config *Config, file string) map[string]etscore.Severity {
 	return severity
 }
 
-func vibeFiles(cwd string, paths []string, config *Config) ([]string, error) {
+// vibeFiles walks the .vibe files under paths, skipping what the
+// configuration's ignorePatterns and the ignore files and flags skip.
+func vibeFiles(cwd string, paths []string, config *Config, ignore *ignorer) ([]string, error) {
 	var files []string
 	for _, p := range paths {
 		if !filepath.IsAbs(p) {
@@ -253,12 +277,12 @@ func vibeFiles(cwd string, paths []string, config *Config) ([]string, error) {
 				return err
 			}
 			if entry.IsDir() {
-				if name := entry.Name(); file != p && (name == "node_modules" || strings.HasPrefix(name, ".")) || config.Ignored(file+"/") {
+				if name := entry.Name(); file != p && (name == "node_modules" || strings.HasPrefix(name, ".")) || config.Ignored(file+"/") || ignore.ignored(file, true) {
 					return filepath.SkipDir
 				}
 				return nil
 			}
-			if strings.HasSuffix(file, ".vibe") && !config.Ignored(file) {
+			if strings.HasSuffix(file, ".vibe") && !config.Ignored(file) && !ignore.ignored(file, false) {
 				files = append(files, file)
 			}
 			return nil

@@ -213,6 +213,10 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Contrast diagnostics could identify an already completed audit as the operation that crashed; they now distinguish active work and report Chromium's native status, available memory and aggregate process memory without logging process names or arguments.
 
 - `vibelang --fix --fix-vip-only` left a program such as `Effect.void` in an arm of a returned `?:` as a value (`cond ? Effect.void : Effect.fail(e)` under an `Effect` return type), which failed with `TS2322` "`Effect<void, never, never>` is not assignable to `void`"; each such arm now gets `try`, as a whole returned program does.
+- Contrast diagnostics could identify an already completed audit as the operation that crashed; they now distinguish active work and report Chromium's native status, available memory and aggregate process memory without logging process names or arguments.
+
+- `vibelang lint -c <oxlint config>` walked build output that Oxlint skips, such as foldkit's `packages/create-foldkit-app/dist/templates`, and failed with "does not include it; not linted"; it now skips what Oxlint skips for the same invocation: files ignored by `.gitignore` files up to the repository root and `.git/info/exclude`, the `--ignore-path` file (`.eslintignore` by default) and `--ignore-pattern` globs, with `--no-ignore` turning off the last two.
+
 - A `.vibe` import with a plugin's query, such as `./x.vibe?highlighted` that a website plugin loads as rendered HTML, was recompiled by `vibelang-vite` as the module and the build failed with `MISSING_EXPORT` for `default`; the plugin now compiles only the module itself and ids with Vite's own queries (`?import`, `?v=`, `?t=`, `?worker_file`), and leaves a resource another plugin loads alone, as it already did for `?raw` and `?url`.
 
 - Formatting valid `for` heads with `is` patterns could fail with an internal parse error; they now format at narrow and normal widths while keeping `is` attached to its subject.

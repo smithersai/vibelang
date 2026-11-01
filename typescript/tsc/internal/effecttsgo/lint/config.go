@@ -238,7 +238,8 @@ func matchAny(globs []*regexp.Regexp, rel string) bool {
 
 // globRegexp compiles a gitignore-style glob as Oxlint reads one: a pattern
 // without a slash matches at any depth, a trailing slash matches a directory's
-// contents, * stays within a path segment and ** crosses segments.
+// contents, * stays within a path segment, ** crosses segments and [...] is a
+// character class ([!...] negated).
 func globRegexp(glob string) *regexp.Regexp {
 	glob = strings.TrimPrefix(glob, "./")
 	anchored := strings.Contains(strings.TrimSuffix(glob, "/"), "/")
@@ -264,6 +265,18 @@ func globRegexp(glob string) *regexp.Regexp {
 			b.WriteString("[^/]*")
 		case ch == '?':
 			b.WriteString("[^/]")
+		case ch == '[':
+			end := strings.IndexByte(glob[i+1:], ']')
+			if end < 0 {
+				b.WriteString(`\[`)
+				continue
+			}
+			class := glob[i+1 : i+1+end]
+			if strings.HasPrefix(class, "!") {
+				class = "^" + class[1:]
+			}
+			b.WriteString("[" + strings.ReplaceAll(strings.ReplaceAll(class, `\`, `\\`), "[", `\[`) + "]")
+			i += end + 1
 		default:
 			b.WriteString(regexp.QuoteMeta(string(ch)))
 		}

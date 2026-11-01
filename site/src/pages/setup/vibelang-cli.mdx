@@ -109,6 +109,8 @@ vibelang -b -w packages/app
 
 The plugin also checks plain `.ts` projects, including schemas built with `Schema.optional` or `Schema.optionalKey`; no `.vibe` file is required.
 
+With an Oxlint configuration, `vibelang lint -c .oxlintrc.json [--deny-warnings] [<path>...]` runs the configuration's `effecttsgo/*` rules on the `.vibe` files under each path and walks the files Oxlint walks for the same invocation. It skips files that `.gitignore` files up to the repository root (a directory with `.git` or `.jj`) and `.git/info/exclude` ignore, the configuration's `ignorePatterns`, the `--ignore-path` file (`.eslintignore` by default, read beside each `.gitignore`) and each `--ignore-pattern` glob. `--no-ignore` turns off the ignore file and the patterns only. Build output such as a package's `dist/` that the repository ignores is not walked, so a copied source there is not reported as outside its project.
+
 The plugin's `ignoreEffectErrorsInTscExitCode`, `ignoreEffectWarningsInTscExitCode` and `ignoreEffectSuggestionsInTscExitCode` options keep these rules' `EK38xx` diagnostics of that category out of a `vibelang` build's exit status and out of `noEmitOnError`; the diagnostics still print.
 
 `vibelang agents init` also teaches coding agents to run `vibelang lint` before finishing a change.
