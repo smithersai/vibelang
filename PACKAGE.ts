@@ -75,6 +75,7 @@ const specTests = [
   "TestMigrationAliasConfigurationQuoted",
   "TestPlatformBoundaryHomesQuoted",
   "TestServiceNativeMemberTypesQuoted",
+  "TestPlatformConstructorBindingsQuoted",
   "TestDoForTryDiagnosticOwnerQuoted",
   "TestDoDeclarationBytesQuoted",
   "TestDoContextualResultFuzzQuoted",

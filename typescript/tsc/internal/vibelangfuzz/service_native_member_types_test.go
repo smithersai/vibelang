@@ -19,7 +19,7 @@ func serviceNativeMemberQuotes(tb testing.TB) {
 	tb.Helper()
 	text := SpecText("005-services.md")
 	for _, quote := range []string{
-		"A member may have any type, Effect or not, as " + string(rune(96)) + "Context.Service" + string(rune(96)) + " allows.",
+		"A member is typed as in an " + string(rune(96)) + "interface" + string(rune(96)) + ", because it has no body to infer from, and may have any type, Effect or not, as " + string(rune(96)) + "Context.Service" + string(rune(96)) + " allows.",
 		"a " + string(rune(96)) + "PropertySignature" + string(rune(96)) + " or a " + string(rune(96)) + "MethodSignature" + string(rune(96)) + " is that member",
 	} {
 		if !strings.Contains(text, quote) {
