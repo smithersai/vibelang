@@ -12,7 +12,7 @@ import (
 // sidecarReadersQuote is the rule in docs/user/src/setup/vibelang-cli.md
 // (foldkit-33: an app's main.vibe exporting Tabs.create<…>(), TS2883, failed
 // although tsc compiles its TypeScript, which emits no declarations).
-const sidecarReadersQuote = "In a project with neither, as for the same TypeScript under `tsc`, it is an error only where a `.ts` file of the project imports the module, since that file reads the sidecar: it is reported at that import."
+const sidecarReadersQuote = "What it still cannot print there, such as `TS4094`, is an error only where a `.ts` file of the project imports the module, as for the same TypeScript under `tsc`, since that file reads the sidecar: it is reported at that import."
 
 // TestSidecarReaders checks each combination of a sidecar that cannot print
 // an export (TS4094, a private member of an anonymous class), a project with

@@ -81,4 +81,7 @@ const (
 	// place of the source, so a TS7056 fallback to any would lose its types.
 	InternalFlagsNoTruncationLimit      InternalFlags = 1 << 5
 	InternalFlagsPreserveVibeSpecifiers InternalFlags = 1 << 6
+	// VibeLang: a sidecar that nothing publishes names a type by its local
+	// path, even one into node_modules (no TS2883).
+	InternalFlagsLocalModulePaths InternalFlags = 1 << 7
 )

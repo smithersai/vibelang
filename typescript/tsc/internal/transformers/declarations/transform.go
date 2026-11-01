@@ -227,11 +227,21 @@ const declarationEmitInternalNodeBuilderFlags = nodebuilder.InternalFlagsAllowUn
 // its inferred types print in full, as the source gives them to a checker
 // that reads it, and TS7056 cannot replace one with any (t3code agent,
 // 2026-10-31: t3code's contracts read their sources' full types).
+//
+// A project with neither declaration nor composite publishes no declarations,
+// so this transformer runs there only for the sidecars beside its .vibe
+// modules (VIP-27). Their readers are the project's own checkers, so a type
+// that a dependency's dependency declares is named by its local path into
+// node_modules: the exact type, where TS2883 would leave any (foldkit-33).
 func (tx *DeclarationTransformer) internalNodeBuilderFlags() nodebuilder.InternalFlags {
+	flags := declarationEmitInternalNodeBuilderFlags
 	if tx.state.currentSourceFile != nil && tspath.FileExtensionIs(string(tx.state.currentSourceFile.FileName()), tspath.ExtensionVibe) {
-		return declarationEmitInternalNodeBuilderFlags | nodebuilder.InternalFlagsNoTruncationLimit
+		flags |= nodebuilder.InternalFlagsNoTruncationLimit
 	}
-	return declarationEmitInternalNodeBuilderFlags
+	if !tx.compilerOptions.GetEmitDeclarations() {
+		flags |= nodebuilder.InternalFlagsLocalModulePaths
+	}
+	return flags
 }
 
 // functions as both `visitDeclarationStatements` and `transformRoot`, utilitzing SyntaxList nodes

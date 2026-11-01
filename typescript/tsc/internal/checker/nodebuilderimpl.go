@@ -699,7 +699,7 @@ func (b *NodeBuilderImpl) symbolToTypeNode(symbol *ast.Symbol, mask ast.SymbolFl
 		if len(specifierResult.specifier) == 0 {
 			specifierResult = b.getSpecifierForModuleSymbol(chain[0], core.ResolutionModeNone)
 		}
-		if (b.ctx.flags&nodebuilder.FlagsAllowNodeModulesRelativePaths == 0) /* && b.ch.compilerOptions.GetModuleResolutionKind() != core.ModuleResolutionKindClassic */ && strings.Contains(specifierResult.specifier.AsString(), "/node_modules/") {
+		if (b.ctx.flags&nodebuilder.FlagsAllowNodeModulesRelativePaths == 0) && b.ctx.internalFlags&nodebuilder.InternalFlagsLocalModulePaths == 0 /* && b.ch.compilerOptions.GetModuleResolutionKind() != core.ModuleResolutionKindClassic */ && strings.Contains(specifierResult.specifier.AsString(), "/node_modules/") {
 			oldSpecifierResult := specifierResult
 
 			if b.ch.compilerOptions.GetModuleResolutionKind() == core.ModuleResolutionKindNode16 || b.ch.compilerOptions.GetModuleResolutionKind() == core.ModuleResolutionKindNodeNext {

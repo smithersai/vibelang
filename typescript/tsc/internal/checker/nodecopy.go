@@ -257,7 +257,7 @@ func (b *NodeBuilderImpl) getModuleSpecifierOverride(parent *ast.Node, lit *ast.
 				name = b.getSpecifierForModuleSymbol(targetFile.Symbol, mode).specifier.AsString()
 			}
 		}
-		if len(name) > 0 && strings.Contains(name, "/node_modules/") {
+		if len(name) > 0 && b.ctx.internalFlags&nodebuilder.InternalFlagsLocalModulePaths == 0 && strings.Contains(name, "/node_modules/") {
 			b.ctx.encounteredError = true
 			b.ctx.tracker.ReportLikelyUnsafeImportRequiredError(name, "")
 		}

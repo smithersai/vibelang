@@ -141,6 +141,8 @@ const specTests = [
   "TestMigrationGeneratorReturnsQuoted",
   "TestUnionDataMemberQuoted",
   "TestCheckerLayout",
+  "TestSidecarPortabilityQuoted",
+  "TestSidecarPortabilityRegression",
   "TestVibeModuleBoundaryQuoted",
   "TestProvideParenthesizedExpressionsQuoted",
   "TestVibeModuleBoundaryRegression",
