@@ -1,0 +1,11 @@
+{
+  "repo": "opencode",
+  "pattern": "models-dev.ts and session/system-prompt.ts import text assets beside native entries routed to emitted JavaScript",
+  "asset": "opencode snapshot\n",
+  "files": {
+    "src/reader.ts": "import text from \"./snapshot.txt\" with { type: \"text\" }; export const snapshot = (): string => text;\n",
+    "src/snapshot.txt": "opencode snapshot\n",
+    "src/private.vibe": "export const unused = 1\n",
+    "package.json": "{\"name\":\"@demo/pkg\",\"type\":\"module\",\"exports\":{\"./reader\":\"./src/reader.ts\"}}"
+  }
+}
