@@ -141,6 +141,8 @@ const specTests = [
   "TestReviewIsRedeclarationsQuoted",
   "TestReviewIsBindingHomesQuoted",
   "TestEffectBlockDeclarationTwinQuoted",
+  "TestMatchBindingHomesQuoted",
+  "TestMatchOpenSubjectQuoted",
   "TestSpecifierWrittenJSX",
 
   "TestStockConsumerResolutionQuoted",
