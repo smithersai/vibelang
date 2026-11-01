@@ -121,6 +121,7 @@ Appendix B supplies the current diagnostic assignments; compatibility declaratio
 | `FuzzVibexNativeParity` | Nine ordinary TSX forms across missing/preserve/react-native/react JSX settings; keyed source/options corpus | VIP-39 requires native JSX diagnostics, output suffixes and preservation. Covers round 4 options, scanner, throw-expression and emit findings; quote gate `TestVibexNativeParityQuoted`. |
 | `FuzzPlainTryCatch` | Keyed seed matrices with native TypeScript controls | Spec quotes checked by `TestPlainTryCatchQuoted`; migration and review neighbourhoods |
 | `FuzzPlainMatchKinds` | Keyed seed matrices with native TypeScript controls | Spec quotes checked by `TestPlainMatchKindsQuoted`; migration and review neighbourhoods |
+| `FuzzTopLevelAwait` | Keyed seed matrices with native TypeScript controls | Spec quotes checked by `TestTopLevelAwaitQuoted`; migration and review neighbourhoods |
 | `FuzzSpecRules` | Retired | Current static targets quote their VIP chapters and gate those quotations through `specTests`. |
 | `FuzzSpecAllowed` | Retired | Current static targets and imported-scope controls cover the current forms. |
 | `FuzzSpecPrograms` | Retired | Semantics use `FuzzVIPDifferential`, with current chapter quotations and paired prints. |

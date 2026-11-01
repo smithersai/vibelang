@@ -77,6 +77,7 @@ const specTests = [
   "TestMigrationRootResolutionQuoted",
   "TestPlainTryCatchQuoted",
   "TestPlainMatchKindsQuoted",
+  "TestTopLevelAwaitQuoted",
   "TestSpecifierWrittenJSX",
 
   "TestStockConsumerResolutionQuoted",
