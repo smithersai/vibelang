@@ -134,6 +134,7 @@ const specTests = [
   "TestAlchemyUnionPipeRequirementsQuoted",
   "TestDoContextualResultQuoted",
   "TestMigrationRootResolutionQuoted",
+  "TestTopLevelAwaitQuoted",
   "TestSpecifierWrittenJSX",
 
   "TestStockConsumerResolutionQuoted",

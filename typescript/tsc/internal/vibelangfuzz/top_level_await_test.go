@@ -172,3 +172,88 @@ func FuzzTopLevelAwait(f *testing.F) {
 		ExpectPending(t, topLevelAwaitTarget, specCorpusKey(t))
 	})
 }
+package vibelangfuzz
+
+import (
+	"slices"
+	"strings"
+	"testing"
+)
+
+const topLevelAwaitTarget = "FuzzTopLevelAwait"
+
+// VIP-26; foldkit-42.
+const topLevelAwaitQuote = "A module's top level is ordinary JavaScript. `await` there is ES top-level await of a Promise (VIP-5), and `try` is not allowed, because a top level is not an `effect` function."
+
+func TestTopLevelAwaitQuoted(t *testing.T) {
+	if !strings.Contains(SpecText("../vips/0026-top-level-and-main.md"), topLevelAwaitQuote) {
+		t.Fatalf("VIP-26 no longer says %q", topLevelAwaitQuote)
+	}
+}
+
+type topLevelAwaitShape struct{ name, source string }
+
+// Every shape is ordinary ES top-level await; the same bytes are the native
+// control, so the oracle compares .vibe with TypeScript on identical text.
+func topLevelAwaitShapes() []topLevelAwaitShape {
+	return []topLevelAwaitShape{
+		{"export-const", "export const answer = await Promise.resolve(42);\n"},
+		{"const-then-export", "const value = await Promise.resolve(1);\nexport const answer = value + 1;\n"},
+		{"export-default", "export default await Promise.resolve(\"x\");\n"},
+		{"call-argument", "export const answer = Math.max(await Promise.resolve(1), 2);\n"},
+		{"template", "export const answer = `${await Promise.resolve(1)}`;\n"},
+		{"top-level-block", "let n = 0;\n{ n = await Promise.resolve(2); }\nexport const answer = n;\n"},
+		{"conditional", "export const answer = (await Promise.resolve(true)) ? 1 : 2;\n"},
+		{"for-await", "const out: number[] = [];\nfor await (const v of [Promise.resolve(1)]) { out.push(v); }\nexport const answer = out;\n"},
+		{"object-literal", "export const answer = { v: await Promise.resolve(1) };\n"},
+		{"array-literal", "export const answer = [await Promise.resolve(1), await Promise.resolve(2)];\n"},
+		{"awaited-then", "export const answer = await Promise.resolve(1).then((v) => v + 1);\n"},
+		{"async-function-beside", "async function load(): Promise<number> { return 3; }\nexport const answer = await load();\n"},
+	}
+}
+
+// foldkit-42: `await` at a module's top level awaits a Promise, as in
+// TypeScript, with no VibeLang diagnostic (EK4602, EK1001). The native control
+// compiles the identical ESM source.
+func FuzzTopLevelAwait(f *testing.F) {
+	startShortBudget(f)
+	shapes := topLevelAwaitShapes()
+	for _, shape := range shapes {
+		f.Add(shape.name)
+	}
+	w := NewWorkspace(f)
+	f.Fuzz(func(t *testing.T, name string) {
+		TestTopLevelAwaitQuoted(t)
+		index := slices.IndexFunc(shapes, func(s topLevelAwaitShape) bool { return s.name == name })
+		if index < 0 {
+			if name == "" {
+				return
+			}
+			index = int(name[0]) % len(shapes)
+		}
+		shape := shapes[index]
+		for _, native := range []bool{true, false} {
+			file := "main.vibe"
+			if native {
+				file = "main.ts"
+			}
+			files := map[string]string{file: shape.source, "package.json": "{ \"type\": \"module\" }\n"}
+			var result *Result
+			var err error
+			within(t, "check top-level await", func() { result, err = w.Compile(t.Context(), Project{Files: files}) })
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer result.Remove()
+			if !HasError(result.Diagnostics) {
+				continue
+			}
+			if native {
+				t.Fatalf("invalid native top-level await control: %v\n%s", SortedKeys(Keys(result.Dir, result.Diagnostics)), shape.source)
+			}
+			Gap(t, topLevelAwaitTarget, shape.name, "VIP-26: top-level await of a Promise is ordinary JavaScript, got %v\n%s", SortedKeys(Keys(result.Dir, result.Diagnostics)), shape.source)
+		}
+		ExpectPending(t, topLevelAwaitTarget, shape.name)
+		ExpectPending(t, topLevelAwaitTarget, specCorpusKey(t))
+	})
+}
