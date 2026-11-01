@@ -19,9 +19,9 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,194 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 15,041 |
-| The skill and the user guide (139 pages) | 337,889 |
-| The user guide alone | 333,695 |
-| The specification (10 chapters) | 144,329 |
+| The skill and the user guide (139 pages) | 338,187 |
+| The user guide alone | 333,993 |
+| The specification (10 chapters) | 144,455 |
 | The decision log, `docs/design/history/DECISIONS.md` | 141,521 |
 
 ## Effect TypeScript beside VibeLang
@@ -130,9 +130,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Zed](../setup/zed.md) | 479 |
 | [Other editors](../setup/other-editors.md) | 492 |
 | [Coding agents](../setup/coding-agents.md) | 990 |
-| **Upgrade** | **66,508** |
-| [Release notes](../setup/release-notes.md) | 66,508 |
-| **All 18 pages** | **96,380** |
+| **Upgrade** | **66,806** |
+| [Release notes](../setup/release-notes.md) | 66,806 |
+| **All 18 pages** | **96,678** |
 
 ### Guides
 
@@ -277,8 +277,8 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | Page | Tokens |
 | --- | ---: |
 | [Introduction](../../../design/src/000-intro.md) | 2,539 |
-| **The language** | **112,023** |
-| [1. Functions and Effect types](../../../design/src/001-functions.md) | 11,843 |
+| **The language** | **112,125** |
+| [1. Functions and Effect types](../../../design/src/001-functions.md) | 11,945 |
 | [2. Running Effects](../../../design/src/002-running.md) | 26,461 |
 | [3. Failures](../../../design/src/003-failures.md) | 15,067 |
 | [4. Pattern matching](../../../design/src/004-match.md) | 20,839 |
@@ -286,8 +286,8 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [6. Data](../../../design/src/006-data.md) | 7,797 |
 | [7. Configuration and tooling](../../../design/src/007-tooling.md) | 11,593 |
 | [8. Runtime guarantees](../../../design/src/008-runtime.md) | 7,103 |
-| **Appendices** | **29,767** |
-| [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 29,767 |
-| **All 10 pages** | **144,329** |
+| **Appendices** | **29,791** |
+| [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 29,791 |
+| **All 10 pages** | **144,455** |
 
 <!-- token-counts: end -->
