@@ -1,0 +1,18 @@
+{
+  "source": "inbox/migrate-t3code.md#migrate-flow:stale-or-nonzero-test-report-false-green",
+  "oracle": "Keep every test and its meaning.",
+  "examples": [
+    {
+      "key": "t3code:previous-vitest-report-must-not-survive-a-failed-invocation",
+      "input": { "baselineCode": 0, "mode": "missing", "code": 1, "count": 1 }
+    },
+    {
+      "key": "t3code:passing-assertions-do-not-hide-a-nonzero-exit",
+      "input": { "baselineCode": 0, "mode": "write", "code": 1, "count": 1 }
+    },
+    {
+      "key": "t3code:unchanged-baseline-failures-still-pass",
+      "input": { "baselineCode": 1, "mode": "write", "code": 1, "count": 2 }
+    }
+  ]
+}
