@@ -12,7 +12,7 @@ import (
 
 const provideParenQuote = "Parentheses make anything else a Layer expression: `provide (a, b) { }` provides the comma expression's value."
 
-var provideParenKeys = []string{"comma", "nested", "assignment", "outer-list", "multiline", "no-space", "bare-list", "ordinary-call", "arrow-call", "nested-block"}
+var provideParenKeys = []string{"comma", "nested", "assignment", "outer-list", "multiline", "no-space", "bare-list", "ordinary-call", "arrow-call", "nested-block", "last-paren", "all-paren"}
 
 func provideParenQuoted(t testing.TB) {
 	t.Helper()
@@ -29,14 +29,16 @@ func TestProvideParenthesizedExpressionsQuoted(t *testing.T) { provideParenQuote
 func TestProvideParenthesizedExpressions(t *testing.T) {
 	provideParenQuoted(t)
 	w := NewWorkspace(t)
-	for _, key := range []string{"comma", "nested", "assignment", "arrow-call", "nested-block"} {
+	for _, key := range []string{"comma", "nested", "assignment", "arrow-call", "last-paren", "all-paren"} {
 		t.Run(key, func(t *testing.T) { checkProvideParen(t, w, key, 0) })
 	}
 }
 
 // Native expression parentheses determine the one provider's value. Vary
 // nesting, discarded side effects, assignments, comments and internal line
-// breaks; bare lists and ordinary calls retain their own interpretation.
+// breaks; bare lists and ordinary calls retain their own interpretation. A
+// parenthesized provider that ends the list (last-paren, all-paren) is followed
+// by the body's {, which is not an arrow function's.
 func FuzzProvideParenthesizedExpressions(f *testing.F) {
 	startShortBudget(f)
 	provideParenQuoted(f)
@@ -94,6 +96,14 @@ func checkProvideParen(t *testing.T, w *Workspace, key string, variant byte) {
 	}
 	if key == "outer-list" {
 		head += ", Layer.empty"
+	}
+	// A parenthesized provider after a comma: the { after it opens the provide
+	// body, not an arrow function missing its => (Provider is a ConditionalExpression).
+	if key == "last-paren" {
+		head = "Layer.empty, " + head
+	}
+	if key == "all-paren" {
+		head = "(Layer.empty), " + head
 	}
 	if key == "bare-list" {
 		head = expression

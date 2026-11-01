@@ -1,0 +1,20 @@
+// expect-result: [3,3,3]
+// A parenthesized provider is a ConditionalExpression (900: Provider). The {
+// after a single parenthesized provider, or after the last of several, opens
+// the provide body; it is not an arrow function missing its =>.
+service A { static readonly key = "p/A"; n: number }
+service B { static readonly key = "p/B"; m: number }
+const LA = Layer.succeed(A, { n: 1 })
+const LB = Layer.succeed(B, { m: 2 })
+export effect function main() {
+  return [try provideBoth(), try provideLast(), try provideOnly()]
+}
+effect function provideBoth() {
+  provide (LA), (LB) { return (try A).n + (try B).m }
+}
+effect function provideLast() {
+  provide LA, (LB) { return (try A).n + (try B).m }
+}
+effect function provideOnly() {
+  provide (Layer.mergeAll(LA, LB)) { return (try A).n + (try B).m }
+}

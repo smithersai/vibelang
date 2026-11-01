@@ -4646,7 +4646,9 @@ func (p *Parser) parseParenthesizedArrowFunctionExpression(allowAmbiguity bool, 
 	for unwrappedType != nil && unwrappedType.Kind == ast.KindParenthesizedType {
 		unwrappedType = unwrappedType.Type() // Skip parens if need be
 	}
-	if !allowAmbiguity && p.token != ast.KindEqualsGreaterThanToken && p.token != ast.KindOpenBraceToken {
+	// In a provide head, the { after a parenthesized provider opens the provide
+	// body (vibelangNoBlockParams), not an arrow body missing its =>: provide (A), (B) { … }.
+	if !allowAmbiguity && p.token != ast.KindEqualsGreaterThanToken && (p.token != ast.KindOpenBraceToken || p.vibelangNoBlockParams && p.isVibeLangFile()) {
 		// Returning undefined here will cause our caller to rewind to where we started from.
 		return nil
 	}

@@ -33,3 +33,4 @@ FuzzServicesRules reject:member-effect-modifier compiler VIP-9: a bodyless effec
 FuzzServicesRules corpus:member-effect-modifier compiler VIP-9: minimized reproduction of reject:member-effect-modifier; lane impl-hunt-svc
 FuzzServicesRules diagnostic:export-default compiler VIP-9: export default service S is TypeScript syntax errors, not EK0905; chapter 5 is lane impl-hunt-svc territory, no fix queued yet; lane impl-hunt-svc
 FuzzServicesRules corpus:export-default compiler VIP-9: minimized reproduction of diagnostic:export-default; lane impl-hunt-svc
+FuzzProvideParenthesizedExpressions  nested-block  superseded  VIP-1: old VibeLang is a reference only; its trailing-block call withProvider { … } is not part of the language (VIP-11 denied trailing blocks, EK1101), so this provider shape no longer parses
