@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("pos:or\x00key:vip05.try\x00")
