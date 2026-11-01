@@ -4,6 +4,8 @@
 // wrote a coverage summary.
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs"
 import { join, posix } from "node:path"
+import { fileURLToPath } from "node:url"
+import { loadTypeScript } from "./declarations.mjs"
 import { effectUse, isEffectSpecifier, parseImports, resolveAlias, resolveRelative } from "./imports.mjs"
 import { isDeclarationFile, readJson, rel } from "./util.mjs"
 
@@ -25,6 +27,37 @@ export function listSources(root, dir) {
   }
   if (existsSync(join(root, dir))) walk(join(root, dir))
   return out.sort()
+}
+
+/**
+ * The source file names a module's own code writes as a string, by the first
+ * non-test file that writes each: alchemy's CLI defaults to "alchemy.run.ts",
+ * so a project's alchemy.run.ts is found by that name. A test's string, an
+ * index file (found by its directory) and a path are no such lookup.
+ */
+const bareFilename = new RegExp("[\"'`][^\"'`/\r\n]*\\.(?:ts|mts|cts)[\"'`]")
+function namedFiles(texts, root) {
+  const names = new Map()
+  let ts
+  for (const [path, text] of texts) {
+    if (isTestFile(path) || isFixtureFile(path) || !bareFilename.test(text) && !text.includes(String.fromCharCode(92))) continue
+    ts ??= loadTypeScript([root,
+      fileURLToPath(new URL("../../../../docs/tools/", import.meta.url)),
+      fileURLToPath(new URL("../../../../packages/runtime/", import.meta.url))])
+    const source = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true, ts.getScriptKindFromFileName(path))
+    const visit = node => {
+      if (ts.isStringLiteralLike(node)) {
+        const name = node.text, parent = node.parent
+        const specifier = ts.isImportDeclaration(parent) || ts.isExportDeclaration(parent) ||
+          ts.isExternalModuleReference(parent) || ts.isLiteralTypeNode(parent) ||
+          ts.isCallExpression(parent) && parent.expression.kind === ts.SyntaxKind.ImportKeyword
+        if (!specifier && [".ts", ".mts", ".cts"].some(ext => name.endsWith(ext)) && !name.includes("/") && !name.includes(String.fromCharCode(92)) && !names.has(name)) names.set(name, path)
+      }
+      ts.forEachChild(node, visit)
+    }
+    visit(source)
+  }
+  return names
 }
 
 /** Line coverage percentages by repository-relative path, from Vitest's or Istanbul's json-summary. */
@@ -52,8 +85,10 @@ export function buildInventory({ root, packages, tokens = {}, coverage = {}, pat
   const files = []
   for (const pkg of packages) for (const dir of pkg.sources) for (const path of listSources(root, posix.join(pkg.dir, dir))) files.push({ path, package: pkg.dir })
   const known = new Set(files.map((f) => f.path))
+  const texts = new Map(files.map(({ path }) => [path, readFileSync(join(root, path), "utf8")]))
+  const namedBy = namedFiles(texts, root)
   const records = files.map(({ path, package: pkg }) => {
-    const text = readFileSync(join(root, path), "utf8")
+    const text = texts.get(path)
     const imports = parseImports(text)
     const local = []
     const external = []
@@ -66,6 +101,7 @@ export function buildInventory({ root, packages, tokens = {}, coverage = {}, pat
       path,
       package: pkg,
       test: isTestFile(path) || isFixtureFile(path),
+      namedBy: namedBy.get(posix.basename(path)) ?? null,
       bytes: statSync(join(root, path)).size,
       lines: text.split("\n").length,
       tokens: tokens[join(root, path)] ?? null,

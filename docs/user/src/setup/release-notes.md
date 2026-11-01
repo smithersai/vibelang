@@ -248,6 +248,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Fuzz checks rejected current diagnostic codes and applied retired severity rules; they now read the registry and severity rules from Appendix B and the current tooling chapter, including imported `EK38xx` diagnostics in `.ts` files.
 
 - The migrate flow's `setup --no-wire` crashed with `RangeError: Maximum call stack size exceeded` when a run combined an already wired package with a new one; setup now wires the new package using the ordinary package-wiring rules, preserves existing wiring, and changes nothing on the next run.
+
+- The migrate flow planned a file that the repository's own code finds by its name, such as `alchemy.run.ts`, so `alchemy dev` found no stack after the rename; such a file now stays `.ts`, and the plan says which file names it.
 - A typed catch clause whose binding destructures, such as `catch ({ id }: NotFound)`, crashed the compiler and the editor with `Unhandled case in Node.Text`; it now reports `EK2112`, suggesting `catch (e)`, and its quick fix leaves the pattern alone.
 
 - Bundling a package that mixed `.ts` and `.vibe` modules could include two copies of a shared service or schema, so a built CLI failed at startup although its tests passed. The bundler plugins now select the package's `vibelang-source` exports and preserve the bundler's existing conditions, keeping one source graph.

@@ -97,3 +97,12 @@ test("the prompt lists the candidates, the limits, the output path and the draft
   assert.ok(prompt.includes("at most 6 files and 900 lines"))
   assert.ok(prompt.includes(JSON.stringify(draft, null, 2)))
 })
+
+test("a file the repository's own code finds by its name stays .ts (alchemy-49)", () => {
+  const f = (path, extra = {}) => ({ path, package: "pkg", test: false, effect: "values", lines: 10, imports: [], dependents: [], testedBy: [], coverage: null, namedBy: null, ...extra })
+  const named = f("examples/a/alchemy.run.ts", { namedBy: "packages/alchemy/src/Entrypoint.ts" })
+  const inventory = { files: [named, f("src/a.ts")], summary: {} }
+  assert.deepEqual(candidates(inventory).map((c) => c.path), ["src/a.ts"])
+  const { errors } = validatePlan({ version: 1, batches: [{ files: [named.path], reason: "entry" }] }, inventory)
+  assert.ok(errors.some((e) => e.includes("packages/alchemy/src/Entrypoint.ts finds by its name")), errors.join("\n"))
+})

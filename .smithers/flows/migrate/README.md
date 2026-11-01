@@ -48,6 +48,8 @@ Declaration identity applies only to published packages. `verify` reports a pack
 
 The codemod refuses a batch whose `.vibe` path the repository ignores, as a tracked module under an ignored `lib/` directory is: a commit would delete the `.ts` and record no `.vibe`.
 
+A file the repository's own code finds by its name stays `.ts`, as a tool's config does: the inventory records in `namedBy` the first non-test file that writes the file name as a string, as alchemy's CLI writes `"alchemy.run.ts"`, and the plan refuses that file with the reason.
+
 Each step reads and writes the run directory, so a step that already recorded its result returns it, and a stopped run resumes where it stopped.
 
 Before changing the target, `codemod` atomically writes and flushes
@@ -477,3 +479,5 @@ When extension rewriting is enabled, a migrated paths alias uses a relative sour
 The `fixToFixedPoint` preservation boundary applies on every exit, including interruption, signals and missing per-file statistics. Every pre-existing source outside `only` is restored from its original bytes before failure is reported; verified writes in selected modules remain available for resumption.
 
 A runtime host that resolves a package entry, reads its extension and scans source filenames keeps its owning package native. Statically named workspace packages in that observer stay native too. The scope receipt records `RUNTIME-SOURCE-ENUMERATION` with the observer and line; other packages continue. The flow leaves the host and its virtual module names unchanged (VIP-34).
+
+Inventory treats executable bare filename literals such as `alchemy.run.ts` or an explicit `index.ts` as lookup names, so those modules remain TypeScript. It ignores comments, embedded code strings, type-only filename literals, module specifiers and fixture code. It parses only potential lookup-bearing files, including escaped filenames; directory resolution alone does not pin an `index.ts` module.

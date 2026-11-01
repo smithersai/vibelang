@@ -1,0 +1,10 @@
+{
+  "files": {
+    "pkg/alchemy/src/Entrypoint.ts": "export const DEFAULT_ENTRYPOINT = \"alchemy.run.ts\"\n",
+    "pkg/examples/fly/alchemy.run.ts": "import { Effect } from \"effect\"\nexport default Effect.void\n",
+    "pkg/examples/fly/src/app.ts": "import { Effect } from \"effect\"\nexport const app = Effect.void\n"
+  },
+  "candidates": [
+    "pkg/examples/fly/src/app.ts"
+  ]
+}
