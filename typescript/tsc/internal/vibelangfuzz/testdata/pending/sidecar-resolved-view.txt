@@ -1,0 +1,24 @@
+FuzzSidecarResolvedPathView vibex-package-real-workspace compiler VIP-27/VIP-39/detail285: a direct Vibe JSX import must load its known source before final-path nominal identity is compared; lane vibex-1
+FuzzSidecarResolvedPathView corpus:vibex-package-real-workspace compiler VIP-27/VIP-39/detail285: a direct Vibe JSX import must load its known source before final-path nominal identity is compared; lane vibex-1
+FuzzSidecarResolvedPathView vibex-package-real-published compiler VIP-27/VIP-39/detail285: a direct Vibe JSX import must load its known source before final-path nominal identity is compared; lane vibex-1
+FuzzSidecarResolvedPathView corpus:vibex-package-real-published compiler VIP-27/VIP-39/detail285: a direct Vibe JSX import must load its known source before final-path nominal identity is compared; lane vibex-1
+FuzzSidecarResolvedPathView vibex-package-logical-workspace compiler VIP-27/VIP-39/detail285: a direct Vibe JSX import must load its known source before final-path nominal identity is compared; lane vibex-1
+FuzzSidecarResolvedPathView corpus:vibex-package-logical-workspace compiler VIP-27/VIP-39/detail285: a direct Vibe JSX import must load its known source before final-path nominal identity is compared; lane vibex-1
+FuzzSidecarResolvedPathView vibex-package-logical-published compiler VIP-27/VIP-39/detail285: a direct Vibe JSX import must load its known source before final-path nominal identity is compared; lane vibex-1
+FuzzSidecarResolvedPathView corpus:vibex-package-logical-published compiler VIP-27/VIP-39/detail285: a direct Vibe JSX import must load its known source before final-path nominal identity is compared; lane vibex-1
+FuzzSidecarResolvedPathView vibex-paths-real-workspace compiler VIP-27/VIP-39/detail285: a direct Vibe JSX import must load its known source before final-path nominal identity is compared; lane vibex-1
+FuzzSidecarResolvedPathView corpus:vibex-paths-real-workspace compiler VIP-27/VIP-39/detail285: a direct Vibe JSX import must load its known source before final-path nominal identity is compared; lane vibex-1
+FuzzSidecarResolvedPathView vibex-paths-real-published compiler VIP-27/VIP-39/detail285: a direct Vibe JSX import must load its known source before final-path nominal identity is compared; lane vibex-1
+FuzzSidecarResolvedPathView corpus:vibex-paths-real-published compiler VIP-27/VIP-39/detail285: a direct Vibe JSX import must load its known source before final-path nominal identity is compared; lane vibex-1
+FuzzSidecarResolvedPathView vibex-paths-logical-workspace compiler VIP-27/VIP-39/detail285: a direct Vibe JSX import must load its known source before final-path nominal identity is compared; lane vibex-1
+FuzzSidecarResolvedPathView corpus:vibex-paths-logical-workspace compiler VIP-27/VIP-39/detail285: a direct Vibe JSX import must load its known source before final-path nominal identity is compared; lane vibex-1
+FuzzSidecarResolvedPathView vibex-paths-logical-published compiler VIP-27/VIP-39/detail285: a direct Vibe JSX import must load its known source before final-path nominal identity is compared; lane vibex-1
+FuzzSidecarResolvedPathView corpus:vibex-paths-logical-published compiler VIP-27/VIP-39/detail285: a direct Vibe JSX import must load its known source before final-path nominal identity is compared; lane vibex-1
+FuzzSidecarResolvedPathView vibex-imports-real-workspace compiler VIP-27/VIP-39/detail285: a direct Vibe JSX import must load its known source before final-path nominal identity is compared; lane vibex-1
+FuzzSidecarResolvedPathView corpus:vibex-imports-real-workspace compiler VIP-27/VIP-39/detail285: a direct Vibe JSX import must load its known source before final-path nominal identity is compared; lane vibex-1
+FuzzSidecarResolvedPathView vibex-imports-logical-workspace compiler VIP-27/VIP-39/detail285: a direct Vibe JSX import must load its known source before final-path nominal identity is compared; lane vibex-1
+FuzzSidecarResolvedPathView corpus:vibex-imports-logical-workspace compiler VIP-27/VIP-39/detail285: a direct Vibe JSX import must load its known source before final-path nominal identity is compared; lane vibex-1
+FuzzSidecarResolvedPathView vibe-package-real-published compiler VIP-27/detail285: a published package keeps declaration identity separate from an explicitly loaded source; lane sidecar-dir
+FuzzSidecarResolvedPathView corpus:vibe-package-real-published compiler VIP-27/detail285: a published package keeps declaration identity separate from an explicitly loaded source; lane sidecar-dir
+FuzzSidecarResolvedPathView vibe-package-logical-published compiler VIP-27/detail285: a published package keeps declaration identity separate from an explicitly loaded source; lane sidecar-dir
+FuzzSidecarResolvedPathView corpus:vibe-package-logical-published compiler VIP-27/detail285: a published package keeps declaration identity separate from an explicitly loaded source; lane sidecar-dir
