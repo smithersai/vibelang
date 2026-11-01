@@ -1,0 +1,2 @@
+go test fuzz v1
+string("document:bracket:effect-wrapper:local")

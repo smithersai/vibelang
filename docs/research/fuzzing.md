@@ -141,6 +141,7 @@ Appendix B supplies the current diagnostic assignments; compatibility declaratio
 | `FuzzVibexDeclarationSpelling` | Default public declarations over JSX output modes, import/reexport/import-type forms and quotes, byte comparison with the specified native `.tsx` twin. Nondefault declaration-style mappings await their own rule. |
 | `TestPlatformBoundaryContractsQuoted` | Platform splitting retains file-scoped pragmas, schema value bindings and initializer order; real compiler controls and keyed T3code witnesses. |
 | `TestSidecarStyleScopeQuoted` | Actual native sidecar/package emits over all declaration styles and stock TypeScript consumers, with malformed-reference and wrong-field-type controls. |
+| `FuzzPlatformBoundaryHomes` | 72 keyed platform accesses across function, arrow, async and Effect-wrapper homes, static member spellings and local shadows | VIP-33 requires `EK4402` for resolved platform access in every home; native TypeScript and local bindings remain controls |
 | `FuzzSpecRules` | Retired | Current static targets quote their VIP chapters and gate those quotations through `specTests`. |
 | `FuzzSpecAllowed` | Retired | Current static targets and imported-scope controls cover the current forms. |
 | `FuzzSpecPrograms` | Retired | Semantics use `FuzzVIPDifferential`, with current chapter quotations and paired prints. |
