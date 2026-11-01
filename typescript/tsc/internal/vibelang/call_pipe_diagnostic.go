@@ -45,7 +45,7 @@ func explainCallPipe(c *checker.Checker, file *ast.SourceFile, all []*ast.Diagno
 			for at := node; at != nil && !isFunctionBoundary(at); at = at.Parent {
 				if first := preludePipeRunningCall(c, at); first != nil {
 					replacement := newDiagnosticAt(optionsFor(c, file), file, d.Loc(), EK4502.With("{0} already ran and returned its success value before pipe received it."), nodeText(file, first))
-					note(replacement, "Pass the program to the operation as a function: {0}", pipeStagesFix(file, first, at.Arguments()[1:]))
+					note(replacement, "Pass the Effect to the operation without running it: {0}", pipeStagesFix(file, first, at.Arguments()[1:]))
 					all[i] = replacement
 					break
 				}
@@ -59,7 +59,7 @@ func explainCallPipe(c *checker.Checker, file *ast.SourceFile, all []*ast.Diagno
 				if pipe := node.Parent.Parent; pipe != nil && ast.IsCallExpression(pipe) && pipe.Expression() == node.Parent {
 					stages = pipe.Arguments()
 				}
-				note(replacement, "Pass the program to the operation as a function: {0}", pipeStagesFix(file, call, stages))
+				note(replacement, "Pass the Effect to the operation without running it: {0}", pipeStagesFix(file, call, stages))
 				all[i] = replacement
 			}
 		}
@@ -67,13 +67,14 @@ func explainCallPipe(c *checker.Checker, file *ast.SourceFile, all []*ast.Diagno
 	return all
 }
 
-// pipeStagesFix writes the call that passes call's program through stages,
-// data-last calls such as Effect.retry(policy), as functions:
-// Effect.retry(() => f(1), policy). It names the shape instead when a stage
-// is not a call or the result is long.
+// pipeStagesFix writes the call that passes call's Effect, unrun, through
+// stages, data-last calls such as Effect.retry(policy), in their data-first
+// form: Effect.retry(f(1), policy). A function literal is never an Effect
+// (VIP-2), so the Effect itself is the argument. It names the shape instead
+// when a stage is not a call or the result is long.
 func pipeStagesFix(file *ast.SourceFile, call *ast.Node, stages []*ast.Node) string {
-	text := nodeText(file, call)
-	shape := "retry(() => " + shortText(text, "call()") + ", policy)"
+	text := strings.TrimPrefix(nodeText(file, call), "try ")
+	shape := "retry(" + shortText(text, "call()") + ", policy)"
 	if len(stages) == 0 {
 		return shape
 	}
@@ -81,7 +82,7 @@ func pipeStagesFix(file *ast.SourceFile, call *ast.Node, stages []*ast.Node) str
 		if !ast.IsCallExpression(stage) {
 			return shape
 		}
-		arguments := []string{"() => " + text}
+		arguments := []string{text}
 		for _, argument := range stage.Arguments() {
 			arguments = append(arguments, nodeText(file, argument))
 		}

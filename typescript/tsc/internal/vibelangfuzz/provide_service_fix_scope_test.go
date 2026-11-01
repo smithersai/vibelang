@@ -42,6 +42,9 @@ func provideServiceFixDiagnostic(d *ast.Diagnostic) string {
 
 // Native service provision leaves no Layer memo map. Layer provision creates
 // one. Both editor actions and --fix must preserve those pinned observations.
+// main is marked effect and tries the provision: under VIP-1 an unmarked
+// function is plain JavaScript that returns the program unrun, and EK4836's
+// block repair and its scope advice apply to effect code.
 func FuzzProvideServiceFixScope(f *testing.F) {
 	startShortBudget(f)
 	provideServiceFixScopeQuoted(f)
@@ -91,7 +94,7 @@ effect function observe(): string!! {
  const memo = try Effect.serviceOption(Layer.CurrentMemoMap)
  return memo._tag
 }
-` + extra + "export function main() { return " + call + " }\n"
+` + extra + "export effect function main() { return try " + call + " }\n"
 		files := map[string]string{"main.vibe": source, "package.json": `{"name":"provide-service-fix-scope","type":"module"}`}
 		before := toolsCompile(t, w, "FuzzProvideServiceFixScope", files)
 		defer before.Remove()

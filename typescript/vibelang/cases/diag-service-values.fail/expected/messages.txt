@@ -1,2 +1,2 @@
-Users().region
-Users().find
+(try Users).region
+(try Users).find

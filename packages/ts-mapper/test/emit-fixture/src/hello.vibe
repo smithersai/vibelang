@@ -1,6 +1,6 @@
 error EmptyName { name: string }
 
-export function hello(name: string) {
+export effect function hello(name: string) {
   if (name.length === 0) throw new EmptyName({ name })
   return `Hello, ${name}!`
 }

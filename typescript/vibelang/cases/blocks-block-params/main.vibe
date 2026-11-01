@@ -27,43 +27,43 @@ effect function guarded() {
 }
 
 // A function that takes the program as its last argument gets the block there.
-effect function twice(label: string, program: () => number!!) {
-  return label.length + try program() + try program()
+effect function twice(label: string, program: number!!) {
+  return label.length + try program + try program
 }
 
 effect function appended() {
-  return try twice("abcd", effect () => {
+  return try twice("abcd", effect {
     return 19
   })
 }
 
 class Runner {
-  effect run(name: string, program: () => string!!) {
-    return `${name}:${try program()}`
+  effect run(name: string, program: string!!) {
+    return `${name}:${try program}`
   }
 }
 
 effect function method() {
   const runner = new Runner()
-  return try runner.run("job", effect () => {
+  return try runner.run("job", effect {
     return "done"
   })
 }
 
 // A name followed by a block passes the block as the only argument.
-effect function once(program: () => string!!) {
-  return try program()
+effect function once(program: string!!) {
+  return try program
 }
 
 effect function bare() {
-  return try once(effect () => {
+  return try once(effect {
     return "once"
   })
 }
 
 effect function nested() {
-  return try (runnerOf()).run("outer", effect () => {
-    return try once(effect () => { return "inner" })
+  return try (runnerOf()).run("outer", effect {
+    return try once(effect { return "inner" })
   })
 }
 

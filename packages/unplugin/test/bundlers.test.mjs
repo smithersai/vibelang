@@ -187,7 +187,7 @@ describe("vibelang-unplugin", { concurrency }, () => {
       assert.equal(result.code, 0)
       assert.equal(await runBundle(bundler, root), expected)
 
-      // "coffee" is at shop.vibe line 32, column 19.
+      // "coffee" is at shop.vibe line 32, column 23.
       const code = await readFile(join(root, bundle), "utf8")
       const payload = JSON.parse(await readFile(join(root, bundle + ".map"), "utf8"))
       const source = payload.sources.findIndex((path) => path.endsWith("src/shop.vibe"))
@@ -202,7 +202,7 @@ describe("vibelang-unplugin", { concurrency }, () => {
         return
       }
       assert.ok(payload.sourcesContent[source].includes("service Inventory"), "the map embeds the .vibe source")
-      assert.deepEqual([entry.originalLine + 1, entry.originalColumn + 1], [32, 19])
+      assert.deepEqual([entry.originalLine + 1, entry.originalColumn + 1], [32, 23])
       // format.vibe's module declaration is a module of its own; its map names format.vibe (D403).
       const joined = lines.findIndex((text) => text.includes("String(quantity)"))
       assert.ok(joined >= 0, "the bundle holds format.vibe's module declaration")

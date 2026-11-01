@@ -1,0 +1,6 @@
+// expect: EK4301
+// D513: Function is a synchronous callable destination even though it has
+// no call signatures, so a function that returns an Effect can not go there.
+import { Thing, take } from "./lib.ts"
+
+export const taken = take(Thing)

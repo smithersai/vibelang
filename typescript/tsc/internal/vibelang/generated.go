@@ -83,8 +83,13 @@ func programArrowRole(node *ast.Node) thunkRole {
 func (tx *lowering) markProgramArrows(node *ast.Node) {
 	var visit func(*ast.Node) bool
 	visit = func(n *ast.Node) bool {
-		if ast.IsFunctionLike(n) && isProgramArrow(tx.EmitContext().MostOriginal(n)) {
+		if original := tx.EmitContext().MostOriginal(n); ast.IsFunctionLike(n) && isProgramArrow(original) {
 			tx.generated(n)
+			// A plain catch left side keeps its arrow, whose concise body
+			// is no statement either (programArrowRole).
+			if body := n.Body(); programArrowRole(original) == thunkIsNothing && body != nil && !ast.IsBlock(body) {
+				tx.generated(body)
+			}
 		}
 		n.ForEachChild(visit)
 		return false

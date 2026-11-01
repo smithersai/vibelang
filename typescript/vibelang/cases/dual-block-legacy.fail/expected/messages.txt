@@ -1,5 +1,4 @@
-A block is its call's last argument. `withSpan` takes its program first: write `withSpan(() => { … }, "load")`.
-A block is its call's last argument. `timeout` takes its program first: write `timeout(() => { … }, "1 second")`.
-A block is its call's last argument. `semaphore.withPermits(1)` returns the function that takes the program: write `semaphore.withPermits(1)(() => { … })`.
-error EK1023: This block is `withSpan`'s last argument, which `withSpan` accepts; through VibeLang 0.0.10 the block was `withSpan`'s program.
-Through VibeLang 0.0.10, a block after an Effect dual took the place of its program. vibelang --fix writes the arrow.
+A block is its call's last argument. `withSpan` takes its program first: write `withSpan(effect { … }, "load")`.
+A block is its call's last argument. `timeout` takes its program first: write `timeout(effect { … }, "1 second")`.
+A block is its call's last argument. `semaphore.withPermits(1)` returns the function that takes the program: write `semaphore.withPermits(1)(effect { … })`.
+Through VibeLang 0.0.10, a block after an Effect dual took the place of its program. vibelang --fix writes it as an effect block there.

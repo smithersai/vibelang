@@ -215,13 +215,12 @@ func reportPlainCodeRun(c *checker.Checker, file *ast.SourceFile, call *ast.Node
 }
 
 // runsAtTopLevel reports whether call, at a module's top level, would run a
-// program: a call that runs an Effect, a service member call such as
-// Users.find(id), or a call of an Effect value such as Users() or Port(). The
-// checker types the last two only inside function bodies, so at the top level
-// TypeScript reports a member that does not exist or a value that is not
-// callable, which EK1001 explains.
+// program: a call that runs an Effect, or a service member call such as
+// Users.find(id). The checker types the last only inside function bodies, so
+// at the top level TypeScript reports a member that does not exist, which
+// EK1001 explains.
 func runsAtTopLevel(c *checker.Checker, a *analyzer, call *ast.Node) (runs bool, explainsTypeScript bool) {
-	if a.runs(call) || a.runsVariant(call) {
+	if a.runs(call) {
 		return true, false
 	}
 	if call.QuestionDotToken() != nil {
@@ -230,12 +229,6 @@ func runsAtTopLevel(c *checker.Checker, a *analyzer, call *ast.Node) (runs bool,
 	callee := call.Expression()
 	if ast.IsPropertyAccessExpression(callee) && !ast.IsPrivateIdentifier(callee.Name()) {
 		if identifier, _ := serviceMember(c, callee, c.GetApparentType(c.GetTypeAtLocation(callee.Expression()))); identifier != nil {
-			return true, true
-		}
-	}
-	if len(call.Arguments()) == 0 && call.TypeArguments() == nil {
-		t := c.GetApparentType(c.GetTypeAtLocation(callee))
-		if len(c.GetSignaturesOfType(t, checker.SignatureKindCall)) == 0 && effectOfValue(c, t) != nil {
 			return true, true
 		}
 	}
@@ -249,7 +242,7 @@ func runsAtTopLevel(c *checker.Checker, a *analyzer, call *ast.Node) (runs bool,
 // there runs nothing and builds the program the callee receives (D147,
 // D155), so EK1001 does not apply.
 func (a *analyzer) passedAsProgram(call *ast.Node) bool {
-	if a.byNameOf(call) != nil || holdsProgram(a.checker, call) {
+	if holdsProgram(a.checker, call) {
 		return true
 	}
 	return a.atProgramPosition(call) || a.inProgramPipe(call)
@@ -315,18 +308,7 @@ func holdsProgram(c *checker.Checker, expr *ast.Node) bool {
 // recorder also asks it about an await operation's fields, which held their
 // calls through VibeLang 0.0.10.
 func holdsField(c *checker.Checker, node, decl *ast.Node) bool {
-	// D265 fields keep both established context and the active generic candidate (crash fix).
-	if isEffectType(c, c.GetContextualTypeForObjectLiteralElement(decl, checker.ContextFlagsSignature)) {
-		return true
-	}
-	a := analyzerFor(c)
-	if owner, path := ownerCall(node); owner != nil {
-		if signature := a.candidateOf(owner); signature != nil {
-			expected := a.expectedAt(owner, signature, path, node)
-			return len(expected) == 1 && isEffectType(c, expected[0])
-		}
-	}
-	return false
+	return isEffectType(c, c.GetContextualTypeForObjectLiteralElement(decl, checker.ContextFlagsSignature))
 }
 
 // reportTopLevelRun reports EK1001 for call, which runs a program at the
@@ -402,4 +384,49 @@ func runningFunctionName(fn *ast.Node) string {
 		return name
 	}
 	return "the enclosing function"
+}
+
+// invokedArrow returns the arrow that call invokes in place, (() => { … })(),
+// the form a throw expression or a do block parses into, or nil.
+func invokedArrow(call *ast.Node) *ast.Node {
+	if call == nil || !ast.IsCallExpression(call) || len(call.Arguments()) != 0 {
+		return nil
+	}
+	if callee := ast.SkipParentheses(call.Expression()); callee.Kind == ast.KindArrowFunction && callee.Body() != nil {
+		return callee
+	}
+	return nil
+}
+
+// topLevelFailure is EK1001's text for a throw that can escape a module's top
+// level. {0} is what it throws.
+var topLevelFailure = EK1001.With("A module's top level can't throw {0}: it runs as plain JavaScript, which never fails.")
+
+// topLevelBlockNote is EK1001's fix for a block or statement at a module's
+// top level that runs a program.
+const topLevelBlockNote = "Move it into a function that a program runs, such as main."
+
+// moduleThrowNote names the escape for code that must throw a JavaScript
+// exception, such as a test's throwing getter.
+const moduleThrowNote = "Or escape to TypeScript, whose throw is JavaScript's: move the code to a module block or a .ts file."
+
+// plainCodeName names node, a constructor, accessor or class static block, in
+// a diagnostic: "the constructor of Port", "get value", "the static block of
+// Port".
+func plainCodeName(node *ast.Node) string {
+	file := ast.GetSourceFileOfNode(node)
+	switch node.Kind {
+	case ast.KindGetAccessor:
+		return "get " + nodeText(file, node.Name())
+	case ast.KindSetAccessor:
+		return "set " + nodeText(file, node.Name())
+	}
+	what := "the constructor"
+	if node.Kind == ast.KindClassStaticBlockDeclaration {
+		what = "the static block"
+	}
+	if class := node.Parent; class != nil && class.Name() != nil {
+		return what + " of " + nodeText(file, class.Name())
+	}
+	return what + " of this class"
 }

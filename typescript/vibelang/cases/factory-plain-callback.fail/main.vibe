@@ -1,4 +1,8 @@
 // expect: EK4301
+// make is plain (VIP-1) and returns an Effect unrun. map keeps each Effect as
+// data, but forEach drops what its callback returns, so the programs never
+// run: EK4301.
 import { Effect } from "effect"
 export function make(n: number): number!! { return effect { return n } }
-export function main() { return [1].map(make) }
+export function kept() { return [1].map(make) }
+export function dropped() { [1].forEach(make) }

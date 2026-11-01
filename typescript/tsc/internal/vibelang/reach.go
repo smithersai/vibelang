@@ -228,12 +228,17 @@ func forkedPrograms(c *checker.Checker, argument *ast.Node, record bool, visit f
 				visit(property, requirementsOf(c, c.GetTypeAtLocation(property.Name()), 0))
 			}
 		}
-	case a.isByName(argument):
+	case false:
 		program := byNameSubject(argument)
 		visit(program, a.flowOf(program).requirements)
 	default:
 		t := c.GetTypeAtLocation(argument)
 		requirements := requirementsOf(c, t, 0)
+		if pipe := pipeOfTopic(node); isTopic(node) && pipe != nil {
+			// x |> f(%) is f(x) (VIP-23): % holds what the left side gives,
+			// so a control operation's call there is the program forked.
+			argument, node = pipe.AsBinaryExpression().Left, ast.SkipParentheses(pipe.AsBinaryExpression().Left)
+		}
 		if control := serviceLookup(c, node); control != nil && isControlType(control) && isEffectType(c, t) {
 			requirements = append(requirements, control)
 		}

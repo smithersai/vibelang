@@ -10,7 +10,7 @@ import (
 )
 
 func TestServiceKeyCallQuickFix(t *testing.T) {
-	const source = "service Fn: (n: number) => number\nexport function f() { return Fn(3) }\n"
+	const source = "service Fn: (n: number) => number\nexport effect function f() { return Fn(3) }\n"
 	program, file, service, converters := editorProgram(t, source)
 	items := program.GetSemanticDiagnostics(t.Context(), file)
 	if len(items) != 1 || items[0].Source() != "EK" || items[0].Code() != EK3007.Code {
@@ -35,7 +35,7 @@ func TestServiceKeyCallQuickFix(t *testing.T) {
 				t.Fatal("missing edit")
 			}
 			got := applyEditorEdits(t, file, converters, (*chosen.Edit.Changes)[lsconv.FileNameToDocumentURI(file.FileName())])
-			if want := strings.Replace(source, "Fn(3)", "Fn()(3)", 1); got != want {
+			if want := strings.Replace(source, "Fn(3)", "(try Fn)(3)", 1); got != want {
 				t.Fatalf("got %s, want %s", got, want)
 			}
 			checked, edited, _, _ := editorProgram(t, got)

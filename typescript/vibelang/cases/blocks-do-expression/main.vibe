@@ -48,7 +48,8 @@ function plain() {
   return do { const a = 3; a + 4 }
 }
 
-// Only an effect block builds a program; do always runs where it stands.
+// A do expression runs where it stands, even where a parameter expects a
+// program (VIP-2); pass an effect block instead.
 effect function raced() {
   return try race(effect { try sleep("1 millis"); return "fast" }, slow())
 }

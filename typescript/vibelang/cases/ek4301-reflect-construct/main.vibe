@@ -1,0 +1,11 @@
+// expect-result: 42
+// A Function parameter is in EK4301's plain row (D513), but a lib one, such
+// as Reflect.construct's target, returns what the function returns and drops
+// nothing, so an effect function passes and try runs the Effect it builds.
+// The VIP-31 probes vip01.new-target and vip22.new-target-binding read
+// new.target this way.
+effect function answer() { return 42 }
+
+export effect function main() {
+  return try (Reflect.construct(answer, []) as ReturnType<typeof answer>)
+}

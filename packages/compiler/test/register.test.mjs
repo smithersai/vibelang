@@ -61,7 +61,7 @@ test("runs .vibe modules imported from TypeScript, with one compile and one copy
       "import { marker } from \"./helper.ts\"",
       "import { shout } from \"./shout.vibe\"",
       "export const seen = marker",
-      "export function greet(name: string) {",
+      "export effect function greet(name: string) {",
       "  return shout(`Hello, ${name}`)",
       "}",
       ""
@@ -256,7 +256,7 @@ test("stack traces name .vibe lines without --enable-source-maps", { skip }, (t)
   const { run } = project(t, {
     // The error declaration emits more lines than it takes, so an unmapped
     // frame would name a later line of boom.vibe.
-    "src/boom.vibe": "error Refused { reason: string }\n\nexport function boom(): number!Refused {\n  throw new Refused({ reason: \"boom\" })\n}\n",
+    "src/boom.vibe": "error Refused { reason: string }\n\nexport effect function boom(): number!Refused {\n  throw new Refused({ reason: \"boom\" })\n}\n",
     "src/main.ts": [
       "import { Effect } from \"effect\"",
       "import { boom } from \"./boom.vibe\"",

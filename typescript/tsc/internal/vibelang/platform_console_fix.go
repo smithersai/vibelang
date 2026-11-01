@@ -54,7 +54,7 @@ func consoleFixRefusal(c *checker.Checker, call *ast.Node, method string) string
 	if call.Parent == nil || !ast.IsExpressionStatement(call.Parent) || !inLowerableBody(call.Parent) {
 		return "the call's value is used here; write try Console." + method + "(…) as its own statement of effect code."
 	}
-	if !inEffectCode(analyzerFor(c), call) {
+	if !inEffectCode(call) {
 		return "this is plain code, where try runs nothing: call Console from effect code, or keep the call in TypeScript."
 	}
 	return ""

@@ -37,5 +37,5 @@ export effect function main() {
       return try resume(continuation, true)
     }
   })
-  return try Effect.provide(effect { return ({ name: try greet("42"), missing: try greet("7"), region: (try Users()).region, approved }) }, Users.layer)
+  return try Effect.provide(effect { return ({ name: try greet("42"), missing: try greet("7"), region: (try Users).region, approved }) }, Users.layer)
 }

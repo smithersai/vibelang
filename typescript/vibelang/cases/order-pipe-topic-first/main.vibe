@@ -30,6 +30,6 @@ function rebound() {
 
 function increment(n: number) { return n + 1 }
 
-export function main() {
+export effect function main() {
   return { getter: getter(), rebound: rebound(), stable: 7 |> increment(%) }
 }

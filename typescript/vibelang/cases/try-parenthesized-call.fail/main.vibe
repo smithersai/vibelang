@@ -1,0 +1,6 @@
+// expect: EK0501
+// VIP-5: try (f()) is try f(), so in a plain function it is EK0501, as
+// try f() is (VIP-1: only an effect function runs Effects).
+export function plain() {
+  return try (Effect.succeed(1))
+}

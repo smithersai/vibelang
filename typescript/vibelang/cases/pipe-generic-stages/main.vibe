@@ -45,7 +45,7 @@ effect function startup() {
 }
 
 effect function title() {
-  return (try Reports()).title
+  return (try Reports).title
 }
 
 // expect-result: {"numbers":"count 1","strings":"label a","phase":["Draft","other published"],"startup":"needs region","title":"offline"}

@@ -9,7 +9,3 @@ lib.vibe(30,26): error EK4401
 lib.vibe(31,7): error EK4401
 lib.vibe(32,41): error EK4401
 lib.vibe(44,12): error EK4401
-lib.vibe(50,40): error EK4401
-lib.vibe(50,52): error EK4401
-lib.vibe(51,38): error EK4401
-lib.vibe(51,38): warning EK4406

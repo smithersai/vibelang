@@ -4,7 +4,7 @@ import { deadline, fetchReport, scenario } from "./main.vibe"
 
 it.effect("retries, races and joins under virtual time", effect () => {
   const pending = fork scenario()
-  TestClock.adjust("1 second")
+  try TestClock.adjust("1 second")
   const result = join pending
   assert.deepStrictEqual(result, {
     fastest: "cached report", timed: "TimeoutError", report: "report after 3 attempts"
@@ -12,23 +12,23 @@ it.effect("retries, races and joins under virtual time", effect () => {
 })
 
 it.effect("does not finish retries before their scheduled time", effect () => {
-  const completed = Deferred.make<string>()
-  const pending = fork {
-    const report = fetchReport()
-    completed.succeed(report)
+  const completed = try Deferred.make<string>()
+  const pending = fork effect {
+    const report = try fetchReport()
+    try completed.succeed(report)
     return report
   }
-  TestClock.adjust("19 millis")
-  const before = completed.isDone()
+  try TestClock.adjust("19 millis")
+  const before = try completed.isDone()
   assert.isFalse(before)
-  TestClock.adjust("1 millis")
+  try TestClock.adjust("1 millis")
   const report = join pending
   assert.strictEqual(report, "report after 3 attempts")
 })
 
 it.effect("interrupts a slow request at its deadline", effect () => {
   const pending = fork deadline()
-  TestClock.adjust("20 millis")
+  try TestClock.adjust("20 millis")
   const result = join pending
   assert.strictEqual(result, "TimeoutError")
 })

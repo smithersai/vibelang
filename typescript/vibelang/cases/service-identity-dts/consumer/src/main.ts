@@ -40,7 +40,7 @@ type Structural = Context.Service.Shape<typeof Users>
 // @ts-expect-error Users is not its shape (TS2322)
 export const widened: Effect.Effect<string, never, Structural> = program
 
-const viaCurrent = Effect.flatMap(current(), (users: Context.Service.Shape<typeof Users>) => sourceOf(users))
+const viaCurrent = Effect.map(current(), (users: Context.Service.Shape<typeof Users>) => sourceOf(users)) // sourceOf is plain (VIP-1)
 
 export const fake: Effect.Effect<string, never, never> = Effect.provide(program, Layer.succeed(Users, new UsersFake()))
 export const literal: Effect.Effect<string, never, never> = Effect.provideService(program, Users, shaped)

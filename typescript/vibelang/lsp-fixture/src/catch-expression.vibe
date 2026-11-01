@@ -1,18 +1,18 @@
-// Catch expressions (D236): a handler that gives a value, and one that matches the failure.
+// Catch expressions (VIP-5): a fallback function, and a handler that matches the failure.
 error Missing { id: string }
 error Late
 
-function findUser(id: string): string!Missing | Late! {
+effect function findUser(id: string): string!Missing | Late! {
   if (id === "") throw new Missing({ id })
   if (id === "late") throw new Late()
   return id
 }
 
-export function userOrGuest(id: string) {
+export effect function userOrGuest(id: string) {
   return findUser(id) catch () => "guest"
 }
 
-export function describeUser(id: string) {
+export effect function describeUser(id: string) {
   return findUser(id) catch (failure) => match (failure) {
     when Missing: `missing ${failure.id}`;
     when Late: "late";

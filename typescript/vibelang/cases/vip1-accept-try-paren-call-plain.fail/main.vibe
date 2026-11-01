@@ -1,0 +1,5 @@
+// expect: EK0501
+// try (f()) outside effect code is EK0501, as try f() is (VIP-5: try runs an
+// Effect only inside an effect function or block).
+export const paren = () => try (Effect.succeed(1))
+export const bare = () => try Effect.succeed(1)

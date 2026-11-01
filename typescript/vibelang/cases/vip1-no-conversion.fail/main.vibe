@@ -1,0 +1,7 @@
+// expect: TS2322
+// VIP-1: neither a return annotation nor a destination makes a function an
+// Effect function. A plain function that returns 7 is not an Effect, and a
+// plain arrow is not an Effect value.
+export function f(): number!! { return 7 }
+
+export const p: Effect.Effect<number> = () => 7

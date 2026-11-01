@@ -14,7 +14,7 @@ module iterators {
   }
 }
 import { elements } from iterators
-function* produce(events: string[]) {
+effect function* produce(events: string[]) {
   try {
     yield disposable(events, "x1")
     yield disposable(events, "x2")

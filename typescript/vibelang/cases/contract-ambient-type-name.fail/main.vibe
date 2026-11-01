@@ -1,19 +1,19 @@
 // expect: EK9202
-// With the DOM lib loaded, a bare FileSystem in a type position is the DOM
-// FileSystem (VIP-14); FileSystem() is Effect service. The diagnostic has to
-// tell the two apart and offer the qualified name, not "FileSystem | FileSystem".
+// With the DOM lib, a bare FileSystem type is the DOM's (VIP-14); try
+// FileSystem.FileSystem reads Effect's service (VIP-10). The diagnostic tells
+// them apart and offers the qualified name, not "FileSystem | FileSystem".
 export effect function onlyFs(): Effect<string, never, FileSystem> {
-  const fs = try FileSystem()
+  const fs = try FileSystem.FileSystem
   return String(typeof fs)
 }
 
 export effect function withPath(): Effect<string, never, FileSystem | Path> {
-  const fs = try FileSystem()
-  const path = try Path()
+  const fs = try FileSystem.FileSystem
+  const path = try Path.Path
   return path.sep + String(typeof fs)
 }
 
 export effect function qualified(): Effect<string, never, FileSystem.FileSystem> {
-  const fs = try FileSystem()
+  const fs = try FileSystem.FileSystem
   return String(typeof fs)
 }

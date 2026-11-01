@@ -1,6 +1,8 @@
-// expect: EK1001
+// expect: EK0501
+// A module's top level is ordinary JavaScript (VIP-26): try there is EK0501,
+// whatever the binding's annotation. Without try, each const holds its Effect.
 import { Effect } from "effect"
-export const unannotated = Effect.suspend(effect () => {})
-export let mutable: Effect.Effect<void, never, never> = Effect.suspend(effect () => {})
-export const unknownType: unknown = Effect.suspend(effect () => {})
-export const asserted = Effect.suspend(effect () => {}) as Effect.Effect<void, never, never>
+export const unannotated = try Effect.suspend(effect () => {})
+export let mutable: Effect.Effect<void, never, never> = try Effect.suspend(effect () => {})
+export const unknownType: unknown = try Effect.suspend(effect () => {})
+export const asserted = (try Effect.suspend(effect () => {})) as Effect.Effect<void, never, never>

@@ -16,5 +16,5 @@ export service Flagged: Shape {
 }
 
 export effect function main() {
-  return Flagged().id
+  return (try Flagged).id
 }

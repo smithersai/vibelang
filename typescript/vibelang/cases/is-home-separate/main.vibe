@@ -22,6 +22,6 @@ export function idsBraced(xs: unknown[]) {
   for (const x of xs) { if (x is { id: let id }) out.push(id) }
   return out
 }
-export function main() {
+export effect function main() {
   return [pickOk({ id: 1 }, {}), pickOk({}, { id: 2 }), blocks({}, { id: 3 }), ids([{ id: 1 }, { id: 2 }, {}])]
 }

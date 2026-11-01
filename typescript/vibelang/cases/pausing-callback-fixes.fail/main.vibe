@@ -1,15 +1,17 @@
-// expect: EK4301 EK4301 EK4301
-// EK4301's fix fits the callee: a sort comparator cannot run an Effect, so
-// its Effects run first; a VibeLang function that calls its callback as a
-// plain function needs a contract that runs it (D12).
+// expect: EK0501 TS2365
+// A sort comparator, and a callback a VibeLang function calls as a plain
+// function, are plain functions (VIP-1): try there is EK0501. Run the Effects
+// first, or give the callback an Effect contract and run it in an effect
+// function (D12). A try outside effect code leaves its Effect, which > and +
+// reject (TS2365).
 let count = 0
 effect function tick(): number!! { try sleep("0 millis"); count++; return count }
 
 function twice<A>(f: () => A): [A, A] { return [f(), f()] }
 
 export function main() {
-  const sorted = [3, 1, 2].sort((x, y) => tick() > 0 ? x - y : y - x)
-  const copied = [3, 1, 2].toSorted((x, y) => x - y + tick())
-  const pair = twice(() => tick())
+  const sorted = [3, 1, 2].sort((x, y) => try tick() > 0 ? x - y : y - x)
+  const copied = [3, 1, 2].toSorted((x, y) => x - y + try tick())
+  const pair = twice(() => try tick())
   return [sorted, copied, pair]
 }

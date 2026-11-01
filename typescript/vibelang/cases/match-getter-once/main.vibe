@@ -1,5 +1,5 @@
 // expect-result: [2,1]
-export function main() {
+export effect function main() {
   let reads = 0
   const subject = {
     get state(): "a" | "b" {

@@ -10,12 +10,12 @@ function hex(bytes: Uint8Array) {
 }
 
 effect function facts() {
-  const pid = try Experimental.Process.pid()
+  const pid = try (try Experimental.Process.Process).pid
   return {
-    same: pid === try Experimental.Process.Process.pid(),
+    same: pid === try (try Experimental.Process.Process).pid,
     positive: pid > 0,
     running: try Experimental.Process.isRunning(pid),
-    host: typeof try Experimental.Process.hostname() === "string",
+    host: typeof try (try Experimental.Process.Process).hostname === "string",
   }
 }
 
@@ -25,7 +25,7 @@ export effect function alive(process: Experimental.Process, pid: number) {
 
 export effect function faked() {
   provide Experimental.Process.layerTest({ platform: Effect.succeed("win32") }) {
-    return try Experimental.Process.platform()
+    return try (try Experimental.Process.Process).platform
   }
 }
 
@@ -46,6 +46,6 @@ export effect function main() {
   provide ExperimentalNodeServices.layer {
     const key = Redacted.make(new TextEncoder().encode("Jefe"))
     const digest = try mac(key, new TextEncoder().encode("what do ya want for nothing?"))
-    return { ...try facts(), alive: try alive(try Experimental.Process(), try Experimental.Process.pid()), faked: try faked(), mac: hex(digest) }
+    return { ...try facts(), alive: try alive(try Experimental.Process.Process, try (try Experimental.Process.Process).pid), faked: try faked(), mac: hex(digest) }
   }
 }

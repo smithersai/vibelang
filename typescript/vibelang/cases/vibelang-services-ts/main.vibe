@@ -8,12 +8,12 @@ import { UserRepo, UserRepoLive } from "./repo.ts"
 
 export effect function describe(id: string) {
   const user = try UserRepo.byId(id)
-  const everyone = try UserRepo.all()
+  const everyone = try (try UserRepo).all
   return `${user.name} of ${everyone.length}`
 }
 
 export effect function piped() {
-  return try (try UserRepo()).pipe("label")
+  return try (try UserRepo).pipe("label")
 }
 
 export effect function joined(a: string, b: string) {

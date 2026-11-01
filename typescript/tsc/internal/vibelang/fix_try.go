@@ -34,7 +34,8 @@ import (
 const tryLabel = "try"
 
 // tryEdits returns the edits that write try before each call of file that
-// runs where it stands. Calls that start at one offset, as f() and f().g()
+// runs where it stands, and rewrite each call of an Effect value
+// (effectValueCallEdits). Calls that start at one offset, as f() and f().g()
 // do, get one edit there, the outer call's try first: try (try f()).g().
 func tryEdits(c *checker.Checker, file *ast.SourceFile) []sourceEdit {
 	a := analyzerFor(c)
@@ -51,6 +52,13 @@ func tryEdits(c *checker.Checker, file *ast.SourceFile) []sourceEdit {
 	}
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
+		if at, open, rest, ok := effectValueCallEdits(a, file, node); ok {
+			if open != "" {
+				insert(at, open)
+			}
+			edits = append(edits, rest...)
+			return node.ForEachChild(visit)
+		}
 		if isInvocation(node) && triesHere(a, file, node) {
 			start := scanner.SkipTrivia(text, node.Pos())
 			if tryNeedsParentheses(node) {

@@ -4,24 +4,25 @@ import { findName, names } from "./users.js"
 error NotFound { id: number }
 
 // No annotations: the compiler infers Effect<string, NotFound, never>.
-function lookup(id: number) {
+effect function lookup(id: number) {
   // A hover test reads the call below, which VibeLang writes as throw (D288).
   // @vibelang-diagnostics-next-line EK4834:off
-  if (id >= names.length) Effect.fail(new NotFound({ id }))
-  return findName(id)
+  if (id >= names.length) try Effect.fail(new NotFound({ id }))
+  return try findName(id)
 }
 
-export function main() {
-  const name = lookup(1)
-  Console.log(`found ${name.toUpperCase()}`)
+export effect function main() {
+  const name = try lookup(1)
+  try Console.log(`found ${name.toUpperCase()}`)
 }
 
-function greeting() {
-  Effect.sleep("1 millis")
+effect function greeting() {
+  try Effect.sleep("1 millis")
   return "hello"
 }
 
-// Effect.timeout receives the greeting call by name, as a program (D147).
+// Effect.timeout receives the Effect that greeting() builds, evaluated once,
+// as JavaScript evaluates an argument (VIP-1, VIP-2).
 export function eventually() {
   return Effect.timeout(greeting(), "1 second")
 }
@@ -31,10 +32,10 @@ export function labelled(id: number) {
   return Option.some(id).map((n) => `#${n}`).getOrElse(() => "none")
 }
 
-// The pipe operator (D154, D155): Effect.timeout receives greeting() by name
-// through the first topic; the second topic is the timed greeting's value.
-export function piped() {
-  return greeting() |> Effect.timeout(%, "1 second") |> `${%}!`
+// The pipe operator (VIP-23): the first topic is the Effect greeting()
+// builds; try runs the timed greeting, so the second topic is its value.
+export effect function piped() {
+  return try (greeting() |> Effect.timeout(%, "1 second")) |> `${%}!`
 }
 
 // A throw expression and a do expression (D186, D187).
@@ -42,16 +43,16 @@ export function required(id: number) {
   return names[id] ?? throw new NotFound({ id })
 }
 
-export function shout() {
+export effect function shout() {
   return do {
-    const word = greeting()
+    const word = try greeting()
     word.toUpperCase()
   }
 }
 
-// withSpan's program, written first (D376).
-export function spanned() {
-  return withSpan(() => {
-    return greeting()
+// withSpan's program, an effect block written first (VIP-2).
+export effect function spanned() {
+  return try withSpan(effect {
+    return try greeting()
   }, "load")
 }

@@ -10,7 +10,7 @@ effect function findName(id: number) {
   return id === 1 ? try Effect.succeed("ada") : try Effect.succeed("grace")
 }
 
-export const greeting = effect () => (try Settings()).greeting
+export const greeting = effect () => (try Settings).greeting
 // Effect<string, never, Settings>
 
 export const nameLength = effect () => (try findName(1)).length

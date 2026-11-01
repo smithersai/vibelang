@@ -1,4 +1,6 @@
-// expect: EK4301 TS2769
+// expect: EK4801 TS2769
+// An effect function is a body Effect.fn takes (VIP-1). A plain arrow returning
+// a number is TypeScript's own error, and the Effect it drops is EK4801.
 import * as Effect from "effect/Effect"
 effect function load() { try yieldNow(); return 1 }
 export const named = Effect.fn("Reader.named")(load)

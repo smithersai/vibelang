@@ -1,0 +1,7 @@
+// expect-result: {"inc":2,"type":"number","mapped":[2,3]}
+import { inc } from "./lib.vibe"
+
+export effect function main() {
+  const v = inc(1)
+  return { inc: v, type: typeof v, mapped: [1, 2].map(inc) }
+}

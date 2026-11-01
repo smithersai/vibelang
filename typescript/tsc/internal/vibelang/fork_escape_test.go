@@ -15,50 +15,50 @@ import (
 // its methods, or a fork operand, await element, or for concurrent body in
 // the region. Anywhere else is EK4838, an error no setting lowers (D386).
 func TestFiberFlows(t *testing.T) {
-	const prefix = "function one() { sleep(1); return 1 }\nfunction keep(f: Fiber<number>) {}\nlet outer: Fiber<number> | undefined\n"
+	const prefix = "effect function one() { try sleep(1); return 1 }\nfunction keep(f: Fiber<number>) {}\nlet outer: Fiber<number> | undefined\n"
 	for _, test := range []struct {
 		name, source, how string // how is "" for no EK4838
 	}{
-		{"returned", "export function fib() { return fork one() }", "returned from that body"},
-		{"returned binding", "export function fib() { const f = fork one(); return f }", "returned from that body"},
-		{"returned let alias", "export function fib() { let f = fork one(); const g = f; return g }", "returned from that body"},
-		{"returned in an object", "export function fib() { const f = fork one(); return { f } }", "returned from that body in an object"},
-		{"returned in an array", "export function fib() { return [fork one()] }", "returned from that body in an array"},
-		{"returned through a conditional", "export function fib(b: boolean) { const f = fork one(); return b ? f : undefined }", "returned from that body"},
-		{"arrow body", "export const fib = () => fork one()", "returned from that body"},
-		{"arrow body call form", "export const fib = () => fork(one())", "returned from that body"},
-		{"if branch owns nothing", "export function fib(b: boolean) { if (b) { const f = fork one(); return f } return undefined }", "returned from that body"},
-		{"assigned outside", "export function fib() { outer = fork one() }", "assigned to outer, which outlives that body"},
-		{"assigned outside a loop iteration", "export function fib() { let last; for (const n of [1]) { last = fork one() } return 0 }", "assigned to last, which outlives that iteration"},
-		{"assigned to a property", "export function fib(o: { mutable f?: Fiber<number> }) { o.f = fork one() }", "assigned to o.f, which outlives that body"},
-		{"var", "export function fib() { var f = fork one(); return join f }", "held in var f"},
-		{"stored in an array", "export function fib() { const f = fork one(); const all = [f]; return 0 }", "stored in an array"},
-		{"passed to a call", "export function fib() { keep(fork one()) }", "passed to keep, which may keep it"},
-		{"passed through a binding", "export function fib() { const f = fork one(); keep(f) }", "passed to keep, which may keep it"},
-		{"Fiber function returning a Fiber", "export function fib() { const scope = Scope.make(); const f = fork one(); Fiber.runIn(f, scope); return 0 }", "passed to Fiber.runIn, which may keep it"},
-		{"captured", "export function fib() { const f = fork one(); return () => f }", "captured by a function"},
-		{"captured though not returned", "export function fib() { const f = fork one(); const read = () => f; return join read() }", "captured by a function"},
-		{"captured by a block param", "export function fib() { const f = fork one(); return withSpan(\"s\") { return join f } }", "captured by a block param"},
-		{"discarded", "export function fib() { fork one(); return 0 }", ""},
-		{"joined", "export function fib() { const f = fork one(); return join f }", ""},
-		{"joined in an array", "export function fib() { const a = fork one(); const b = fork one(); return join [a, b] }", ""},
-		{"joined in an object", "export function fib() { const a = fork one(); return join { a } }", ""},
-		{"joined through a held array", "export function fib() { const a = fork one(); const all = [a]; return join all }", ""},
-		{"held object's getter", "export function fib() { const a = fork one(); const tasks = { get a() { return a } }; return join tasks }", "captured by a function"},
-		{"held array also read otherwise", "export function fib() { const a = fork one(); const all = [a]; const n = all.length; return join all }", "stored in an array"},
-		{"held object returned", "export function fib() { const a = fork one(); const box = { a }; return box }", "stored in an object"},
-		{"held object's method", "export function fib() { const a = fork one(); const tasks = { read() { return a } }; return join tasks }", "captured by a function"},
-		{"let reassigned", "export function fib() { let f = fork one(); f = fork one(); return join f }", ""},
-		{"Fiber functions", "export function fib() { const f = fork one(); Fiber.interrupt(f); return Fiber.await(f) }", ""},
-		{"Fiber function over an array", "export function fib() { const a = fork one(); const b = fork one(); Fiber.interruptAll([a, b]); return 0 }", ""},
-		{"Fiber method", "export function fib() { const f = fork one(); f.interrupt(); return 0 }", ""},
-		{"fork operand", "export function fib() { const f = fork one(); const g = fork { join f }; return join g }", ""},
-		{"await element", "export function fib() { const f = fork one(); return await.race [join f, do { sleep(5); 0 }] }", ""},
-		{"do block value", "export function fib() { const f = do { fork one() }; return join f }", ""},
-		{"comma", "export const fib = () => (fork one(), 0)", ""},
-		{"detached", "export function fib() { return detach(() => one()) }", ""},
-		{"forkScoped", "export function fib() { return Effect.forkScoped(() => one()) }", ""},
-		{"not lowered by a setting", "// @vibelang-diagnostics EK4838:off\nexport function fib() { return fork one() }", "returned from that body"},
+		{"returned", "export effect function fib() { return fork one() }", "returned from that body"},
+		{"returned binding", "export effect function fib() { const f = fork one(); return f }", "returned from that body"},
+		{"returned let alias", "export effect function fib() { let f = fork one(); const g = f; return g }", "returned from that body"},
+		{"returned in an object", "export effect function fib() { const f = fork one(); return { f } }", "returned from that body in an object"},
+		{"returned in an array", "export effect function fib() { return [fork one()] }", "returned from that body in an array"},
+		{"returned through a conditional", "export effect function fib(b: boolean) { const f = fork one(); return b ? f : undefined }", "returned from that body"},
+		{"arrow body", "export const fib = effect () => fork one()", "returned from that body"},
+		{"arrow body call form", "export const fib = effect () => fork(one())", "returned from that body"},
+		{"if branch owns nothing", "export effect function fib(b: boolean) { if (b) { const f = fork one(); return f } return undefined }", "returned from that body"},
+		{"assigned outside", "export effect function fib() { outer = fork one() }", "assigned to outer, which outlives that body"},
+		{"assigned outside a loop iteration", "export effect function fib() { let last; for (const n of [1]) { last = fork one() } return 0 }", "assigned to last, which outlives that iteration"},
+		{"assigned to a property", "export effect function fib(o: { mutable f?: Fiber<number> }) { o.f = fork one() }", "assigned to o.f, which outlives that body"},
+		{"var", "export effect function fib() { var f = fork one(); return join f }", "held in var f"},
+		{"stored in an array", "export effect function fib() { const f = fork one(); const all = [f]; return 0 }", "stored in an array"},
+		{"passed to a call", "export effect function fib() { keep(fork one()) }", "passed to keep, which may keep it"},
+		{"passed through a binding", "export effect function fib() { const f = fork one(); keep(f) }", "passed to keep, which may keep it"},
+		{"Fiber function returning a Fiber", "export effect function fib() { const scope = Scope.make(); const f = fork one(); Fiber.runIn(f, scope); return 0 }", "passed to Fiber.runIn, which may keep it"},
+		{"captured", "export effect function fib() { const f = fork one(); return () => f }", "captured by a function"},
+		{"captured though not returned", "export effect function fib() { const f = fork one(); const read = () => f; return join read() }", "captured by a function"},
+		{"captured by a block param", "export effect function fib() { const f = fork one(); return withSpan(\"s\") { return join f } }", "captured by a block param"},
+		{"discarded", "export effect function fib() { fork one(); return 0 }", ""},
+		{"joined", "export effect function fib() { const f = fork one(); return join f }", ""},
+		{"joined in an array", "export effect function fib() { const a = fork one(); const b = fork one(); return join [a, b] }", ""},
+		{"joined in an object", "export effect function fib() { const a = fork one(); return join { a } }", ""},
+		{"joined through a held array", "export effect function fib() { const a = fork one(); const all = [a]; return join all }", ""},
+		{"held object's getter", "export effect function fib() { const a = fork one(); const tasks = { get a() { return a } }; return join tasks }", "captured by a function"},
+		{"held array also read otherwise", "export effect function fib() { const a = fork one(); const all = [a]; const n = all.length; return join all }", "stored in an array"},
+		{"held object returned", "export effect function fib() { const a = fork one(); const box = { a }; return box }", "stored in an object"},
+		{"held object's method", "export effect function fib() { const a = fork one(); const tasks = { read() { return a } }; return join tasks }", "captured by a function"},
+		{"let reassigned", "export effect function fib() { let f = fork one(); f = fork one(); return join f }", ""},
+		{"Fiber functions", "export effect function fib() { const f = fork one(); Fiber.interrupt(f); return Fiber.await(f) }", ""},
+		{"Fiber function over an array", "export effect function fib() { const a = fork one(); const b = fork one(); Fiber.interruptAll([a, b]); return 0 }", ""},
+		{"Fiber method", "export effect function fib() { const f = fork one(); f.interrupt(); return 0 }", ""},
+		{"fork operand", "export effect function fib() { const f = fork one(); const g = fork { join f }; return join g }", ""},
+		{"await element", "export effect function fib() { const f = fork one(); return await.race [join f, do { sleep(5); 0 }] }", ""},
+		{"do block value", "export effect function fib() { const f = do { fork one() }; return join f }", ""},
+		{"comma", "export const fib = effect () => (fork one(), 0)", ""},
+		{"detached", "export effect function fib() { return detach(one()) }", ""},
+		{"forkScoped", "export effect function fib() { return Effect.forkScoped(one()) }", ""},
+		{"not lowered by a setting", "// @vibelang-diagnostics EK4838:off\nexport effect function fib() { return fork one() }", "returned from that body"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			program, file, _, _ := editorProgram(t, prefix+test.source)
@@ -94,12 +94,12 @@ func TestFiberFlows(t *testing.T) {
 
 // D386: the quick fix gives the fiber the caller's lifetime or no owner.
 func TestFiberFlowFixes(t *testing.T) {
-	const prefix = "function one() { sleep(1); return 1 }\n"
+	const prefix = "effect function one() { try sleep(1); return 1 }\n"
 	for _, test := range []struct{ name, source, title, want string }{
-		{"forkScoped", "export function fib() { return fork one() }", "Write Effect.forkScoped to give the fiber the caller's lifetime", "export function fib() { return Effect.forkScoped(() => one()) }"},
-		{"detach", "export function fib() { return fork one() }", "Write detach to give the fiber no owner", "export function fib() { return detach(() => one()) }"},
-		{"arrow body", "export const fib = () => fork one()", "Write Effect.forkScoped to give the fiber the caller's lifetime", "export const fib = () => Effect.forkScoped(() => one())"},
-		{"fork block", "export function fib() { return fork { one() } }", "Write detach to give the fiber no owner", "export function fib() { return detach(() => { one() }) }"},
+		{"forkScoped", "export effect function fib() { return fork one() }", "Write Effect.forkScoped to give the fiber the caller's lifetime", "export effect function fib() { return Effect.forkScoped(one()) }"},
+		{"detach", "export effect function fib() { return fork one() }", "Write detach to give the fiber no owner", "export effect function fib() { return detach(one()) }"},
+		{"arrow body", "export const fib = effect () => fork one()", "Write Effect.forkScoped to give the fiber the caller's lifetime", "export const fib = effect () => Effect.forkScoped(one())"},
+		{"fork block", "export effect function fib() { return fork { try one() } }", "Write detach to give the fiber no owner", "export effect function fib() { return detach(effect { try one() }) }"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			program, file, service, converters := editorProgram(t, prefix+test.source)
@@ -153,19 +153,19 @@ func TestForkRegions(t *testing.T) {
 	for _, test := range []struct {
 		name, source, region string // region is the source text of the owner, or the function's name with "body"
 	}{
-		{"function body", "function f() { fork one() }", "f body"},
-		{"arrow body", "const f = () => fork one()", "fork one()"},
-		{"if branch", "function f(b: boolean) { if (b) { fork one() } }", "f body"},
-		{"if without braces", "function f(b: boolean) { if (b) fork one() }", "f body"},
-		{"bare block", "function f() { { fork one() } }", "f body"},
-		{"do block", "function f() { const x = do { fork one(); 1 }; return x }", "f body"},
-		{"loop body", "function f() { for (const n of [1]) { fork one() } }", "{ fork one() }"},
-		{"loop body without braces", "function f() { for (const n of [1]) fork one() }", "fork one()"},
-		{"try block", "function f() { try { fork one() } finally { } }", "{ fork one() }"},
-		{"using block", "function f(b: boolean) { if (b) { using t = { [Symbol.dispose]() {} }; fork one() } }", "{ using t = { [Symbol.dispose]() {} }; fork one() }"},
+		{"function body", "effect function f() { fork one() }", "f body"},
+		{"arrow body", "const f = effect () => fork one()", "fork one()"},
+		{"if branch", "effect function f(b: boolean) { if (b) { fork one() } }", "f body"},
+		{"if without braces", "effect function f(b: boolean) { if (b) fork one() }", "f body"},
+		{"bare block", "effect function f() { { fork one() } }", "f body"},
+		{"do block", "effect function f() { const x = do { fork one(); 1 }; return x }", "f body"},
+		{"loop body", "effect function f() { for (const n of [1]) { fork one() } }", "{ fork one() }"},
+		{"loop body without braces", "effect function f() { for (const n of [1]) fork one() }", "fork one()"},
+		{"try block", "effect function f() { try { fork one() } finally { } }", "{ fork one() }"},
+		{"using block", "effect function f(b: boolean) { if (b) { using t = { [Symbol.dispose]() {} }; fork one() } }", "{ using t = { [Symbol.dispose]() {} }; fork one() }"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			source := "function one() { sleep(1); return 1 }\n" + test.source
+			source := "effect function one() { try sleep(1); return 1 }\n" + test.source
 			program, file, _, _ := editorProgram(t, source)
 			program.GetSemanticDiagnostics(t.Context(), file)
 			c, done := program.GetTypeCheckerForFile(t.Context(), file)

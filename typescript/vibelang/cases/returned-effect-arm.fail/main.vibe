@@ -1,7 +1,7 @@
 // expect: EK4802
 // Each returned arm or operand that is an Effect value is what the caller
 // gets, as a returned Effect value is: the call in the other arm runs, and
-// this one is the success value. EK4802 is an error here (tsconfig.json).
+// this one is the success value. EK4802 is an error here (vibe.severities in tsconfig.json).
 interface Hooks {
   emit: (n: number) => void!never
   sleep: (n: number) => void!never
@@ -23,5 +23,5 @@ export effect function unannotated(n: number) {
 // Both arms are programs: a factory, which runs the chosen one.
 export const both = (n: number): void!! => n === 0 ? Effect.interrupt : Effect.void
 
-// A called arm runs, as EK4802's quick fix writes it.
-export const called = effect (n: number): void!! => n === 0 ? try Effect.interrupt() : try Console.log("emit", n)
+// An arm run with try runs, as EK4802's quick fix writes it (VIP-5).
+export const called = effect (n: number): void!! => n === 0 ? try Effect.interrupt : try Console.log("emit", n)

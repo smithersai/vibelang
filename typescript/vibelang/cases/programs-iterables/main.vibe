@@ -1,6 +1,6 @@
-// Where Effect.all expects an iterable or a record of Effects, an iterable or
-// a record of programs converts element by element (design D49): a tuple
-// literal, a record literal, a Set, and a Map's values.
+// Effect.all takes an iterable or a record of Effects: a tuple literal, a
+// record literal, a Set, and a Map's values. Calling an effect function
+// gives its Effect unrun (VIP-1); programs are not converted (D49 retired).
 effect function prepare(n: number) {
   try Effect.sleep("1 millis")
   return n * 2
@@ -9,9 +9,9 @@ effect function prepare(n: number) {
 effect function collected() {
   const tuple = try Effect.all([effect { return 12 }, effect { return "ready" }] as const)
   const object = try Effect.all({ count: effect { return 12 }, status: effect { return "ready" } })
-  const iterable = new Set([effect () => try prepare(3), effect () => try prepare(5)])
+  const iterable = new Set([prepare(3), prepare(5)])
   const set = try Effect.all(iterable, { concurrency: 2 })
-  const jobs = new Map([["a", effect () => try prepare(1)], ["b", effect () => try prepare(2)]])
+  const jobs = new Map([["a", prepare(1)], ["b", prepare(2)]])
   const values = try Effect.all(jobs.values())
   return { tuple, object, set, values }
 }

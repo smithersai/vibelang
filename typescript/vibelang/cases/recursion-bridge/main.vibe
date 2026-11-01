@@ -6,7 +6,7 @@ export effect function outer(n: number): number!! {
   return n === 0 ? 0 : bridge(3) + try outer(n - 1)
 }
 export effect function remote(n: number): number!! {
-  return n === 0 ? 0 : remoteBridge(3) + try remote(n - 1)
+  return n === 0 ? 0 : try remoteBridge(3) + try remote(n - 1)
 }
 class Bridge {
   get value(): number { return localInner(3) }
@@ -29,11 +29,11 @@ export effect function complex(n: number): number!! {
   return n === 0 ? 0 : complexBridge() + try complex(n - 1)
 }
 export effect function concurrent() {
-  const a = fork { try yieldNow(); return try outer(100000) }
-  const b = fork { try yieldNow(); return try remote(100000) }
+  const a = fork effect { try yieldNow(); return try outer(100000) }
+  const b = fork effect { try yieldNow(); return try remote(100000) }
   return join [a, b]
 }
-export function main() { return try outer(100000) }
+export effect function main() { return try outer(100000) }
 
 export effect function broken(n: number): number!! {
   return n === 0 ? fault.value : bridge(3) + try broken(n - 1)
@@ -63,4 +63,4 @@ export effect function references(n: number): number!! {
   return (receiver.getValue)() + (object.value ?? 0) + nested() - 1 + try references(n - 1)
 }
 
-export function after(n: number) { return localInner(n) + try inner(n) }
+export effect function after(n: number) { return localInner(n) + try inner(n) }

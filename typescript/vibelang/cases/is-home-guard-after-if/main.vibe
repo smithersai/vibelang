@@ -21,6 +21,6 @@ function elseIf(x: unknown) {
   else if (x is { id: let id }) return "else-if"
   return "none"
 }
-export function main() {
+export effect function main() {
   return [guard({ id: 1 }), guard({}), either({ a: 1 }), either({ b: 2 }), nested({ n: 3 }), elseIf({ id: 1 })]
 }

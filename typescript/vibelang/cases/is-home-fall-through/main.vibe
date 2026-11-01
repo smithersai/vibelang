@@ -24,7 +24,7 @@ function nested(outcome: Exit<number, string>): string {
   if (outcome is Exit.Failure(let cause)) return cause.reasons.map((reason) => reason._tag).join("+")
   return "zero"
 }
-export function main() {
+export effect function main() {
   return [
     tagOf(Exit.succeed(1)),
     tagOf(Exit.fail("e")),

@@ -94,79 +94,19 @@ func (tx *lowering) visit(node *ast.Node) *ast.Node {
 	if module := tx.plan.collisionModules[node]; module != "" && ast.IsPropertyAccessExpression(node) {
 		return tx.moduleNamespace(module)
 	}
-	if isFunctionBoundary(node) {
-		budget, escapes := tx.eagerBudget, tx.eagerEscapes
-		tx.eagerBudget, tx.eagerEscapes = nil, false
-		defer func() { tx.eagerBudget, tx.eagerEscapes = budget, escapes }()
-	}
-	if tx.frames.binders[node] && !tx.plan.cyclicDirects[node] {
+	if tx.frames.binders[node] {
 		return tx.hoistFrameReferences(node, tx.visitSource(node)) // super and arguments (frames_lower.go)
 	}
 	if tx.plan.classAliases[node] {
 		return tx.classAlias(node, tx.visitSource(node)) // a shadowed failure class (trust_lower.go)
 	}
-	visited := tx.visitSource(node)
-	if tx.eagerBudget != nil && !tx.rawPlain && !tx.inEffect {
-		ref := tx.plan.cycleRefs[node]
-		if ref == nil {
-			ref = tx.plan.directRefs[node]
-		}
-		// Fast calls carry the budget explicitly. All other invocations
-		// publish it around evaluation of their receiver and arguments too.
-		escape := (isInvocation(node) || ast.IsNewExpression(node)) && (!ast.IsCallExpression(node) || ref == nil || !tx.plan.fastRefs[ref])
-		// A property read can run a getter. Leave call receivers intact;
-		// the enclosing invocation covers their evaluation.
-		if ast.IsPropertyAccessExpression(node) || ast.IsElementAccessExpression(node) {
-			escape = plainPropertyEscapes(node)
-		}
-		if ast.IsBinaryExpression(node) && ast.IsAssignmentOperator(node.AsBinaryExpression().OperatorToken.Kind) {
-			left := ast.SkipParentheses(node.AsBinaryExpression().Left)
-			escape = ast.IsPropertyAccessExpression(left) || ast.IsElementAccessExpression(left)
-		}
-		if ast.IsPrefixUnaryExpression(node) || ast.IsPostfixUnaryExpression(node) || node.Kind == ast.KindDeleteExpression {
-			var operand *ast.Node
-			switch {
-			case ast.IsPrefixUnaryExpression(node):
-				operand = node.AsPrefixUnaryExpression().Operand
-			case ast.IsPostfixUnaryExpression(node):
-				operand = node.AsPostfixUnaryExpression().Operand
-			default:
-				operand = node.Expression()
-			}
-			escape = ast.IsPropertyAccessExpression(operand) || ast.IsElementAccessExpression(operand)
-		}
-		if escape {
-			return tx.publishPlainBudget(visited)
-		}
-	}
-	return visited
+	return tx.visitSource(node)
 }
 
 // visitSource lowers node, a node of the .vibe file or one the lowering made.
 func (tx *lowering) visitSource(node *ast.Node) *ast.Node {
 	if pipes := tx.plan.topicClosures[node]; len(pipes) != 0 && !tx.rebinding[node] {
 		return tx.visitTopicClosure(node, pipes)
-	}
-	if tx.plan.conversionOf(node) == convertByName {
-		return tx.byNameProgram(node)
-	}
-	if ref := tx.plan.cycleRefs[node]; ref != nil && !tx.inEffect {
-		return tx.visitDirectReference(node, ref)
-	}
-	if call := node.Parent; tx.inEffect && ast.IsIdentifier(node) && call != nil && ast.IsCallExpression(call) && call.Expression() == node {
-		if ref := tx.plan.cycleRefs[call]; ref != nil && ref.own {
-			// A heap body's cycle call runs a plain-annotated member's Effect form (D412).
-			effect := tx.Factory().NewIdentifier(tx.freshName(ref.name + "$effect"))
-			tx.EmitContext().SetOriginal(effect, node)
-			effect.Loc = node.Loc
-			return effect
-		}
-	}
-	if ref := tx.plan.directRefs[node]; ref != nil {
-		return tx.visitDirectReference(node, ref)
-	}
-	if conversion := tx.plan.conversionOf(node); conversion != convertNone {
-		return tx.convert(node, conversion)
 	}
 	visited := tx.visitNode(node)
 	if tx.inEffect && tx.plan.returns[node] {
@@ -215,20 +155,8 @@ func (tx *lowering) visitNode(node *ast.Node) *ast.Node {
 		return nil // the $noMatch of a match D209 proves exhaustive (D294, match_lower.go)
 	case tx.plan.checked[node] != nil:
 		return tx.visitCheckedArm(node, tx.plan.checked[node])
-	case node.Kind == ast.KindShorthandPropertyAssignment && tx.plan.conversionOf(node.Name()) != convertNone:
-		property := tx.Factory().NewPropertyAssignment(nil, node.Name(), nil, nil, tx.visit(node.Name()))
-		tx.EmitContext().SetOriginal(property, node)
-		property.Loc = node.Loc
-		return property
 	case node.Kind == ast.KindSourceFile:
 		return tx.visitSourceFile(node.AsSourceFile())
-	case node.Kind == ast.KindImportDeclaration && len(tx.plan.directImports[node]) != 0 && !tx.commonJS:
-		// CommonJS reads the variants from the module the import requires (importedVariant).
-		return tx.visitImportWithDirectVariants(node)
-	case node.Kind == ast.KindExportDeclaration && len(tx.plan.directExports[node]) != 0:
-		return tx.visitExportWithDirectVariants(node)
-	case node.Kind == ast.KindExportAssignment && tx.plan.directDefaults[node] != nil:
-		return tx.visitExportDefaultWithDirectVariant(node)
 	case platformImport(node) != nil:
 		// A platform import names the entry's platform and loads nothing (D312,
 		// entry.go), so it is elided as an import type is.
@@ -262,8 +190,6 @@ func (tx *lowering) visitNode(node *ast.Node) *ast.Node {
 		return tx.visitMaskBlock(node, maskWord(node)) // uninterruptible { ... } (primitives.go)
 	case tx.inEffect && tx.plan.scoped(node):
 		return tx.visitScoped(node)
-	case node.Kind == ast.KindCallExpression && tx.inEffect && tx.plan.values[node]:
-		return tx.visitEffectValueCall(node)
 	case node.Kind == ast.KindCallExpression && tx.inEffect && tx.frame.handleClause != nil && tx.isClauseResume(node):
 		return tx.visitClauseResume(node)
 	case isInvocation(node) && tx.inEffect && tx.plan.runsCall(node):
@@ -314,16 +240,6 @@ func (tx *lowering) visitNode(node *ast.Node) *ast.Node {
 		return tx.visitJumpTarget(node)
 	case tx.inEffect && tx.frame.region != nil && varList(node) != nil:
 		return tx.visitVar(node)
-	case tx.plain && node.Kind == ast.KindThrowStatement:
-		return tx.visitPlainThrowStatement(node)
-	case tx.plain && node.Kind == ast.KindCatchClause:
-		return tx.visitPlainCatchClause(node)
-	case node.Kind == ast.KindFunctionDeclaration && tx.plan.directs[node]:
-		return tx.visitPlainFunctionDeclaration(node)
-	case node.Kind == ast.KindFunctionDeclaration && tx.plan.cyclicDirects[node]:
-		return tx.visitCyclicPlainFunctionDeclaration(node)
-	case node.Kind == ast.KindVariableStatement && tx.plan.cyclicDirects[cycleArrowOf(node)]:
-		return tx.visitCyclicPlainFunctionDeclaration(cycleArrowOf(node))
 	case node.Kind == ast.KindCallExpression && tx.plan.wireOrders[node] != nil:
 		return tx.visitWireCall(node)
 	case tx.plan.producers[node]:
@@ -337,15 +253,9 @@ func (tx *lowering) visitNode(node *ast.Node) *ast.Node {
 	case tx.plan.isProgram(node):
 		return tx.lowerProgram(node)
 	case isFunctionBoundary(node):
-		savedRaw := tx.rawPlain
-		if tx.rawCallbacks {
-			tx.rawPlain = true
-		}
-		defer func() { tx.rawPlain = savedRaw }()
-		saved, savedPlain := tx.inEffect, tx.plain
+		saved := tx.inEffect
 		tx.inEffect = false
-		tx.plain = isLowerable(node) || isPlainGenerator(node) // a .vibe function that is not an Effect, or a plain generator (D296)
-		defer func() { tx.inEffect, tx.plain = saved, savedPlain }()
+		defer func() { tx.inEffect = saved }()
 	}
 	return tx.Visitor().VisitEachChild(node)
 }
@@ -448,147 +358,6 @@ func (tx *lowering) runtimeMember(name string) *ast.Node {
 		tx.runtime = tx.fileName("runtime")
 	}
 	return tx.Factory().NewPropertyAccessExpression(tx.runtime, nil /*questionDotToken*/, tx.Factory().NewIdentifier(name), ast.NodeFlagsNone)
-}
-
-// convert lowers a function value that its position converts: a program
-// becomes Effect.suspend(value), and an array or record of programs becomes
-// $programs(value). An expression passed by name becomes a program that runs
-// it (byNameProgram, which visit calls first).
-func (tx *lowering) convert(node *ast.Node, conversion conversion) *ast.Node {
-	f := tx.Factory()
-	value := tx.visitNode(node)
-	var callee *ast.Node
-	switch conversion {
-	case convertProgram:
-		callee = f.NewPropertyAccessExpression(tx.effectName(), nil /*questionDotToken*/, f.NewIdentifier("suspend"), ast.NodeFlagsNone)
-	case convertSyncProgram:
-		callee = f.NewPropertyAccessExpression(tx.effectName(), nil, f.NewIdentifier("sync"), ast.NodeFlagsNone)
-	case convertPrograms:
-		callee = tx.runtimeMember("$programs")
-	default:
-		return value
-	}
-	converted := f.NewCallExpression(callee, nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList([]*ast.Node{value}), ast.NodeFlagsNone)
-	tx.EmitContext().SetOriginal(converted, node)
-	converted.Loc = node.Loc
-	return converted
-}
-
-// byNameProgram lowers a by-name expression (D147), evaluating it on every
-// run. A tail program is returned by suspend, never yielded by a wrapper:
-// Effect 4.1.0 internal/effect.ts:1015-1021 returns the thunk's Effect without
-// pushing a continuation. In contrast, gen (1262-1284) installs an Iterator
-// (1457-1468), whose post-program step can be interrupted before restore
-// reinstates the mask (4626-4629, 4661-4681).
-// If operands run Effects, a generator computes the tail program first and
-// flatten (1907-1909, flatMap with identity) runs it after that generator
-// has finished. Expressions that compute a value after their last call
-// retain their generator.
-func (tx *lowering) byNameProgram(node *ast.Node) *ast.Node {
-	f := tx.Factory()
-	ec := tx.EmitContext()
-	saved, savedFrame, savedPlain := tx.inEffect, tx.frame, tx.plain
-	tx.inEffect, tx.plain = true, false
-	tx.frame = &frame{}
-	subject := byNameSubject(node) // a topic passes its pipe's left side (pipes.go)
-	value, tailProgram := tx.byNameResult(subject)
-	tx.inEffect, tx.frame, tx.plain = saved, savedFrame, savedPlain
-	// The expression's leading comments are printed where it was written,
-	// before its statement. Printed again inside the program, a line comment
-	// between the generated return and the expression would end the return
-	// (a line break there inserts a semicolon), and the program would return
-	// undefined instead of its value.
-	ec.AddEmitFlags(value, printer.EFNoLeadingComments)
-	if tailProgram && !containsYield(value) {
-		lowered := f.NewCallExpression(f.NewPropertyAccessExpression(tx.effectName(), nil, f.NewIdentifier("suspend"), ast.NodeFlagsNone), nil, nil, f.NewNodeList([]*ast.Node{tx.generatedThunk(nil, value)}), ast.NodeFlagsNone)
-		ec.SetOriginal(lowered, node)
-		lowered.Loc = node.Loc
-		return lowered
-	}
-	body := f.NewBlock(f.NewNodeList([]*ast.Node{f.NewReturnStatement(value)}), false /*multiLine*/)
-	generator := f.NewFunctionExpression(nil /*modifiers*/, f.NewToken(ast.KindAsteriskToken), nil /*name*/, nil /*typeParameters*/, f.NewNodeList(nil), nil /*type*/, nil /*fullSignature*/, body)
-	ec.SetOriginal(generator, node)
-	tx.generated(generator)
-	arguments := []*ast.Node{generator}
-	if usesThis(subject) {
-		self := f.NewObjectLiteralExpression(f.NewNodeList([]*ast.Node{
-			f.NewPropertyAssignment(nil /*modifiers*/, f.NewIdentifier("self"), nil /*postfixToken*/, nil /*typeNode*/, f.NewThisExpression()),
-		}), false /*multiLine*/)
-		arguments = []*ast.Node{self, generator}
-	}
-	callee := f.NewPropertyAccessExpression(tx.effectName(), nil /*questionDotToken*/, f.NewIdentifier("gen"), ast.NodeFlagsNone)
-	lowered := f.NewCallExpression(callee, nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList(arguments), ast.NodeFlagsNone)
-	if tailProgram {
-		lowered = f.NewCallExpression(f.NewPropertyAccessExpression(tx.effectName(), nil, f.NewIdentifier("flatten"), ast.NodeFlagsNone), nil, nil, f.NewNodeList([]*ast.Node{lowered}), ast.NodeFlagsNone)
-	}
-	ec.SetOriginal(lowered, node)
-	lowered.Loc = node.Loc
-	return lowered
-}
-
-// byNameResult computes the program in each result position without running
-// it. Only operands and conditions keep yield*: they finish before flatten
-// enters the chosen program, with no generator continuation after it.
-func (tx *lowering) byNameResult(node *ast.Node) (*ast.Node, bool) {
-	f := tx.Factory()
-	node = ast.SkipOuterExpressions(node, ast.OEKParentheses|ast.OEKTypeAssertions|ast.OEKNonNullAssertions|ast.OEKSatisfies)
-	switch node.Kind {
-	case ast.KindConditionalExpression:
-		conditional := node.AsConditionalExpression()
-		condition := tx.Visitor().VisitNode(conditional.Condition)
-		left, leftProgram := tx.byNameResult(conditional.WhenTrue)
-		right, rightProgram := tx.byNameResult(conditional.WhenFalse)
-		if leftProgram != rightProgram {
-			if !leftProgram {
-				left = tx.succeedByName(left)
-			} else {
-				right = tx.succeedByName(right)
-			}
-		}
-		return f.UpdateConditionalExpression(conditional, condition, conditional.QuestionToken, left, conditional.ColonToken, right), leftProgram || rightProgram
-	case ast.KindBinaryExpression:
-		binary := node.AsBinaryExpression()
-		switch binary.OperatorToken.Kind {
-		case ast.KindCommaToken:
-			left := tx.Visitor().VisitNode(binary.Left)
-			right, program := tx.byNameResult(binary.Right)
-			return f.UpdateBinaryExpression(binary, binary.Modifiers(), left, binary.Type, binary.OperatorToken, right), program
-		case ast.KindBarBarToken, ast.KindQuestionQuestionToken:
-			if !tx.holdsPrograms(binary.Left) {
-				// The left operand's value decides, including the success of a
-				// call in its result position, which runs before the test.
-				return tx.visitNode(node), false
-			}
-			// A left operand that holds a program tests the program itself.
-			left, _ := tx.byNameResult(binary.Left)
-			right, rightProgram := tx.byNameResult(binary.Right)
-			if !rightProgram {
-				right = tx.succeedByName(right)
-			}
-			return f.UpdateBinaryExpression(binary, binary.Modifiers(), left, binary.Type, binary.OperatorToken, right), true
-		}
-	}
-	var value *ast.Node
-	if ref := tx.plan.directRefs[node]; ref != nil {
-		value = tx.visitDirectReference(node, ref)
-	} else {
-		value = tx.visitNode(node)
-	}
-	tail := ast.SkipOuterExpressions(value, ast.OEKParentheses|ast.OEKTypeAssertions|ast.OEKNonNullAssertions|ast.OEKSatisfies)
-	if tail.Kind == ast.KindYieldExpression && tail.AsYieldExpression().AsteriskToken != nil {
-		return tail.Expression(), true
-	}
-	return value, tx.plan.heldPrograms[node]
-}
-
-// holdsPrograms reports whether each result position of node, the left side
-// of a by-name || or ??, holds a program as a value (byNameResults), which the
-// operator may test and return untested. A call there runs instead, and the
-// operator tests its success value.
-func (tx *lowering) holdsPrograms(node *ast.Node) bool {
-	held := true
-	byNameResults(node, func(result *ast.Node) { held = held && tx.plan.heldPrograms[result] })
-	return held
 }
 
 // succeedByName makes `Effect.succeed(value)` with value's source range: the
@@ -859,4 +628,13 @@ func (tx *lowering) effectFunctionDeclaration(node *ast.Node, parameters *ast.No
 	tx.EmitContext().SetOriginal(statement, node)
 	statement.Loc = node.Loc
 	return statement
+}
+
+// bodyStatements returns bodys statements, or none for an arrows
+// expression body.
+func bodyStatements(body *ast.Node) []*ast.Node {
+	if body == nil || !ast.IsBlock(body) {
+		return nil
+	}
+	return body.Statements()
 }

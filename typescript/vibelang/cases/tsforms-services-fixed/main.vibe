@@ -19,16 +19,17 @@ class Named extends Context.Service<Named, NamedShape>()("app/Named") {}
 class Port extends Context.Service<Port, number>()("app/Port") {}
 
 const UsersLive = Layer.succeed(Users, {
-  find(id) { return id === "1" ? "Ada" : "?" },
+  effect find(id) { return id === "1" ? "Ada" : "?" },
   region: "eu",
-  size(name) { return name.length }
+  effect size(name) { return name.length }
 })
-const NamedLive = Layer.succeed(Named, { read() { return "named" } })
+const NamedLive = Layer.succeed(Named, { effect read() { return "named" } })
 const PortLive = Layer.succeed(Port, 8080)
 
-export function main() {
+export effect function main() {
   provide UsersLive, NamedLive, PortLive {
-    const name = Users.find("1")
-    return { name, region: Users().region, size: Users.size(name), named: Named.read(), port: Port() }
+    const users = try Users
+    const name = try users.find("1")
+    return { name, region: users.region, size: try users.size(name), named: try (try Named).read(), port: try Port }
   }
 }

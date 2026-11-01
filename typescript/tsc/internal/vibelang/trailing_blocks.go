@@ -22,10 +22,10 @@ import (
 //	it.effect("loads") { … }       it.effect("loads", effect () => { … })  an Effect function
 //	twice() { … }                  twice(() => { … })                      a plain function
 //
-// The analyzer picks the spelling as the VIP migration does (fix_effect.go):
-// an arrow it converts to a program where an Effect is expected becomes an
-// effect block, an arrow in the Effect form an effect arrow, and every other
-// arrow stays the plain arrow the parser builds. fork { … } is fork's own
+// The destination picks the spelling, as it picked the block's form before
+// VIP-1: where the parameter expects an Effect the block becomes an effect
+// block, where it expects a function returning an Effect an effect arrow,
+// and anywhere else the plain arrow the parser builds. fork { … } is fork's own
 // block (D166, vibelang_fibers.go), not a block param, so EK1101 leaves it. A block after an Effect dual that D188 placed
 // elsewhere through 0.0.10 already has an error, TypeScript's or EK1023,
 // whose note and fix restore that placement (dual_block_migration.go), so
@@ -99,12 +99,15 @@ func checkTrailingBlocks(c *checker.Checker, file *ast.SourceFile) {
 func trailingBlockLead(c *checker.Checker, call *ast.Node) string {
 	arguments := call.Arguments()
 	arrow := arguments[len(arguments)-1]
-	c.GetResolvedSignature(call) // the analyzer decides the arrow's form while the call resolves
+	signature := c.GetResolvedSignature(call)
+	if signature == nil {
+		return "() => "
+	}
 	a := analyzerFor(c)
-	switch {
-	case a.literalProgramOperand(arrow):
+	switch e := a.classify(a.expectedAt(call, signature, []pathStep{{argument: len(arguments) - 1}}, arrow)); {
+	case e.program:
 		return "effect "
-	case a.finalForm(arrow) == formEffect:
+	case e.effectFn:
 		return "effect () => "
 	}
 	return "() => "

@@ -1,27 +1,28 @@
 // VibeLang code compiled against the declarations alone sees the same two
 // types as code compiled from the source: `implements Users` checks the
-// shape, Users.Shape types a plain object, and Users() is the shape (D501).
+// shape, Users.Shape types a plain object, and try Users() is the shape (D501).
+// Members that return Effects are effect methods and arrows (VIP-1).
 import { Flags, Prefix, Search, sourceOf, Users } from "../../out/main.js"
 
 class UsersHere implements Users {
   readonly source = "here"
-  find(id: string) {
+  effect find(id: string) {
     return { id, name: `here ${id}` }
   }
 }
 
-const shaped: Users.Shape = { source: "shaped", find: (id: string) => ({ id, name: id }) }
+const shaped: Users.Shape = { source: "shaped", find: effect (id: string) => ({ id, name: id }) }
 
 function describe(users: Users.Shape) {
   return users.source
 }
 
-function lookup() {
-  return `${describe(Users())} ${sourceOf(shaped)} ${Users.find("2").name} ${Prefix()}${Search.find("q")} beta ${Flags().beta}`
+effect function lookup() {
+  return `${describe(try Users)} ${sourceOf(shaped)} ${(try Users.find("2")).name} ${try Prefix}${try Search.find("q")} beta ${(try Flags).beta}`
 }
 
-export function viaVibe() {
-  provide Users = new UsersHere(), Search = { find: (q: string) => `hit:${q}` }, Prefix = "> " {
-    return lookup()
+export effect function viaVibe() {
+  provide Users = new UsersHere(), Search = { find: effect (q: string) => `hit:${q}` }, Prefix = "> " {
+    return try lookup()
   }
 }

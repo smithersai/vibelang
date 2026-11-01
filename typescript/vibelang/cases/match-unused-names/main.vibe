@@ -17,6 +17,6 @@ function guardOnly(box: { v: number }): boolean {
   return box.v is if (true)
 }
 
-export function main() {
+export effect function main() {
   return [match (next()) { default: 1; }, onlyDefault(2), guardOnly({ v: 3 })]
 }

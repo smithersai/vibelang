@@ -1,0 +1,16 @@
+// expect-result: [1,3,"ran",true,7]
+// VIP-5: try (f()) runs the call f() as try f() does; the parentheses only
+// group its operand. Before this was fixed, the parser's flag sat on the
+// parentheses, so the call ran nothing and was EK0502 "not an Effect".
+let ran = "no"
+effect function mark() {
+  ran = "ran"
+  return true
+}
+export effect function main() {
+  const a = try (Effect.succeed(1))
+  const b = try ((Effect.succeed(2))) + 1
+  const c = try (mark())
+  const held: number!! = effect { return try (Effect.succeed(7)) }
+  return [a, b, ran, c, try held]
+}

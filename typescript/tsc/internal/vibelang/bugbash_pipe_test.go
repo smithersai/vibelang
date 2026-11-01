@@ -10,10 +10,10 @@ func TestBugBashCallPipeGuidance(t *testing.T) {
 		name, source, want, absent string
 		code                       int32
 	}{
-		{"pipe span", `export function f() { return Effect.succeed(1).pipe(Effect.withSpan("n")) }`, `Effect.withSpan(() => Effect.succeed(1), "n")`, "retry", 4502},
+		{"pipe span", `export effect function f() { return (try Effect.succeed(1)).pipe(Effect.withSpan("n")) }`, `Effect.withSpan(Effect.succeed(1), "n")`, "retry", 4502},
 		{"retry", `error Flaky
-function f(s: number): number!Flaky { if (s < 1) throw new Flaky(); return s }
-export function main() { return f(1).pipe(Effect.retry({ times: 3 }), Effect.timeout("1 second")) }`, `Effect.timeout(() => Effect.retry(() => f(1), { times: 3 }), "1 second")`, "|>", 4502},
+effect function f(s: number): number!Flaky { if (s < 1) throw new Flaky(); return s }
+export effect function main() { return (try f(1)).pipe(Effect.retry({ times: 3 }), Effect.timeout("1 second")) }`, `Effect.timeout(Effect.retry(f(1), { times: 3 }), "1 second")`, "|>", 4502},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			program, file, _, _ := editorProgram(t, tc.source)

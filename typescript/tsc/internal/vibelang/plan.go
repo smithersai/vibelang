@@ -18,16 +18,13 @@ type plan struct {
 	parameterWrites map[*ast.Node]bool // Effect functions whose body writes a parameter binding
 
 	fieldlessErrorConstructors map[*ast.Node]bool
-	effects                    map[*ast.Node]bool       // functions lowered to Effect.fnUntraced generators
-	programs                   map[*ast.Node]bool       // lambdas lowered to Effect.gen programs (design D7)
-	runs                       map[*ast.Node]bool       // calls in those functions emitted as yield*
-	heldPrograms               map[*ast.Node]bool       // held values in by-name result positions
-	returns                    map[*ast.Node]bool       // returned Effect subtypes executed at an Effect return boundary
-	converts                   map[*ast.Node]conversion // function values converted where they are passed
-	prelude                    []string                 // prelude names the file uses as values (prelude.go)
-	intrinsics                 map[*ast.Node]bool       // intrinsics a source binding would capture, reached through the lowering's own import (prelude.go)
+	effects                    map[*ast.Node]bool // functions lowered to Effect.fnUntraced generators
+	programs                   map[*ast.Node]bool // lambdas lowered to Effect.gen programs (design D7)
+	runs                       map[*ast.Node]bool // calls in those functions emitted as yield*
+	returns                    map[*ast.Node]bool // returned Effect subtypes executed at an Effect return boundary
+	prelude                    []string           // prelude names the file uses as values (prelude.go)
+	intrinsics                 map[*ast.Node]bool // intrinsics a source binding would capture, reached through the lowering's own import (prelude.go)
 	servicePlan
-	plainPlan
 	joinPlan
 	trustedPlan
 	scopePlan
@@ -47,10 +44,9 @@ type plan struct {
 	entry *entryPlan // how an entry module runs its main (entry.go), or nil
 }
 
-func (p *plan) isEffect(fn *ast.Node) bool             { return p.effects[fn] }
-func (p *plan) isProgram(fn *ast.Node) bool            { return p.programs[fn] }
-func (p *plan) runsCall(call *ast.Node) bool           { return p.runs[call] }
-func (p *plan) conversionOf(node *ast.Node) conversion { return p.converts[node] }
+func (p *plan) isEffect(fn *ast.Node) bool   { return p.effects[fn] }
+func (p *plan) isProgram(fn *ast.Node) bool  { return p.programs[fn] }
+func (p *plan) runsCall(call *ast.Node) bool { return p.runs[call] }
 
 // planFile asks the checker which functions in file are Effects and which of
 // their calls run.
@@ -63,7 +59,7 @@ func planFile(resolver printer.EmitResolver, file *ast.SourceFile) *plan {
 }
 
 func newFilePlan() *plan {
-	p := &plan{effects: map[*ast.Node]bool{}, programs: map[*ast.Node]bool{}, runs: map[*ast.Node]bool{}, heldPrograms: map[*ast.Node]bool{}, converts: map[*ast.Node]conversion{}, servicePlan: newServicePlan(), plainPlan: newPlainPlan(), trustedPlan: newTrustedPlan(), scopePlan: newScopePlan()}
+	p := &plan{effects: map[*ast.Node]bool{}, programs: map[*ast.Node]bool{}, runs: map[*ast.Node]bool{}, servicePlan: newServicePlan(), trustedPlan: newTrustedPlan(), scopePlan: newScopePlan()}
 	p.parameterWrites = map[*ast.Node]bool{}
 	p.returns = map[*ast.Node]bool{}
 	p.fieldlessErrorConstructors = map[*ast.Node]bool{}
@@ -85,7 +81,6 @@ func populateFilePlan(c *checker.Checker, file *ast.SourceFile, p *plan) {
 	p.prelude = preludeUses(c, file)
 	p.collisionModules = collisionModules(c)
 	p.intrinsics = preludeStateOf(c).intrinsics
-	p.ownExports = moduleExportNames(c, file.Symbol)
 	a := analyzerFor(c)
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
@@ -96,8 +91,8 @@ func populateFilePlan(c *checker.Checker, file *ast.SourceFile, p *plan) {
 				}
 			}
 		}
-		if isLowerable(node) && (a.isEffect(node) || a.onPlainCycle(node)) {
-			if isLambda(node) && a.finalForm(node) == formProgram {
+		if isLowerable(node) && a.isEffect(node) {
+			if markedForm(node) == formProgram {
 				p.programs[node] = true
 			} else {
 				p.effects[node] = true
@@ -106,7 +101,7 @@ func populateFilePlan(c *checker.Checker, file *ast.SourceFile, p *plan) {
 			p.planClause(c, node)
 			p.planProducer(c, node)
 			forEachCallInBody(node, func(call *ast.Node) bool {
-				if a.runs(call) || a.isCycleCall(call) {
+				if a.runs(call) {
 					p.runs[call] = true
 				}
 				if ast.IsCallExpression(call) {
@@ -119,25 +114,6 @@ func populateFilePlan(c *checker.Checker, file *ast.SourceFile, p *plan) {
 		}
 		if a.returnedProgram(node) != nil {
 			p.returns[node] = true
-		}
-		if conversion := a.finalConversion(node); conversion == convertProgram || conversion == convertSyncProgram || conversion == convertPrograms || conversion == convertByName {
-			p.converts[node] = conversion
-			if conversion == convertByName {
-				byNameResults(byNameSubject(node), func(result *ast.Node) {
-					p.heldPrograms[result] = a.heldPrograms[result]
-				})
-			}
-		}
-		// A by-name expression has its own Effect body even when the
-		// enclosing factory stays plain. Plan the calls that body runs.
-		if isInvocation(node) && a.byNameOf(node) != nil {
-			if a.runs(node) {
-				p.runs[node] = true
-			}
-			if ast.IsCallExpression(node) {
-				p.planServiceCall(c, node)
-				p.planResume(c, node)
-			}
 		}
 		if form, ok := hatchFormOf(c, node); ok {
 			p.hatches[node] = form
@@ -153,7 +129,6 @@ func populateFilePlan(c *checker.Checker, file *ast.SourceFile, p *plan) {
 		if isPipe(node) {
 			p.planPipe(a, node)
 		}
-		p.planPlain(a, node)
 		p.planJoins(a, node) // D340 (joined.go)
 		p.planServiceNode(c, node)
 		if p.wireOrders[node] != nil || fiberHelper(node) == "$forConcurrent" {
@@ -209,7 +184,7 @@ func (a *analyzer) forEachRunningCallInBody(fn *ast.Node, cb func(*ast.Node) boo
 	}
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
-		if isFunctionBoundary(node) || a.isByName(node) {
+		if isFunctionBoundary(node) {
 			return false
 		}
 		if isInvocation(node) && cb(node) {
@@ -236,37 +211,27 @@ const (
 // only slower than solving the cycle. Every other function compiles to plain
 // JavaScript (design D10).
 type analyzer struct {
-	checker       *checker.Checker
-	states        map[*ast.Node]fnState
-	effects       map[*ast.Node]*effectInfo // see effectOf
-	approx        map[*ast.Node]*effectInfo // the E and R found so far of a call cycle being solved (recursion.go)
-	recursive     map[*ast.Node]bool        // functions on a call cycle
-	connecting    map[*ast.Node]bool        // functions solve is discovering the callees of, until their component is solved (recursion.go)
-	reentered     map[*ast.Node]bool        // functions whose E and R were read while their callees were being discovered
-	tryBlocks     map[*ast.Node]*effectInfo // see tryBlockFlow
-	factories     map[factoryKey]fnState
-	factoryActive map[*ast.Node]bool
-	contracts     map[*ast.Node]*contract // see contractOf
+	checker    *checker.Checker
+	states     map[*ast.Node]fnState
+	effects    map[*ast.Node]*effectInfo // see effectOf
+	approx     map[*ast.Node]*effectInfo // the E and R found so far of a call cycle being solved (recursion.go)
+	recursive  map[*ast.Node]bool        // functions on a call cycle
+	connecting map[*ast.Node]bool        // functions solve is discovering the callees of, until their component is solved (recursion.go)
+	reentered  map[*ast.Node]bool        // functions whose E and R were read while their callees were being discovered
+	tryBlocks  map[*ast.Node]*effectInfo // see tryBlockFlow
+	contracts  map[*ast.Node]*contract   // see contractOf
+	runsAsked  map[*ast.Node]bool        // calls runs is resolving (resolvedRunsResult)
 
 	// Lambda forms (forms.go).
 	lambdas         map[*ast.Node]*lambdaState
-	current         map[*ast.Node][]*checker.Signature  // call -> candidates its arguments are being checked against
-	rejected        map[*ast.Node]map[candidateKey]bool // call -> candidates a lambda argument rejected
-	resolving       map[*ast.Node]bool                  // calls whose signature candidateOf is resolving
-	effectInterface *checker.Type                       // the generic Effect interface, once seen
+	effectInterface *checker.Type // the generic Effect interface, once seen
 
-	conversions      map[*ast.Node]*valueState   // argument expressions that convert (conversions.go)
-	heldPrograms     map[*ast.Node]bool          // by-name result values before argument conversion
 	returnedPrograms map[*ast.Node]*checker.Type // structured programs at Effect return boundaries
 	valueTyping      map[*ast.Node]bool          // by-name arguments whose own type is being read (valueTypeOf)
 	classifying      map[*ast.Node]bool          // values whose position is being classified (expressionType)
 	keywordValues    map[*ast.Node]*checker.Type // keyword operands' values (keywords.go)
 
-	// Plain JavaScript functions (plain.go).
-	plain                 map[*ast.Node]plainState  // function declarations that compile to plain JavaScript
-	plainEdges            map[*ast.Node][]plainEdge // $direct calls in a function's own body (plain_cycles.go)
-	plainCycles           map[*ast.Node]bool        // plain functions on a cycle of $direct calls
-	programEffect         *checker.Type             // effect's Effect interface, found in the program's files
+	programEffect         *checker.Type // effect's Effect interface, found in the program's files
 	programEffectSearched bool
 
 	// Scope regions (scopes.go).
@@ -282,71 +247,28 @@ type analyzerKey struct{}
 func analyzerFor(c *checker.Checker) *analyzer {
 	return c.ExtensionState(analyzerKey{}, func() any {
 		return &analyzer{
-			checker:       c,
-			states:        map[*ast.Node]fnState{},
-			effects:       map[*ast.Node]*effectInfo{},
-			approx:        map[*ast.Node]*effectInfo{},
-			recursive:     map[*ast.Node]bool{},
-			connecting:    map[*ast.Node]bool{},
-			reentered:     map[*ast.Node]bool{},
-			tryBlocks:     map[*ast.Node]*effectInfo{},
-			contracts:     map[*ast.Node]*contract{},
-			factories:     map[factoryKey]fnState{},
-			factoryActive: map[*ast.Node]bool{},
-			lambdas:       map[*ast.Node]*lambdaState{},
-			current:       map[*ast.Node][]*checker.Signature{},
-			rejected:      map[*ast.Node]map[candidateKey]bool{},
-			resolving:     map[*ast.Node]bool{},
+			checker:    c,
+			states:     map[*ast.Node]fnState{},
+			runsAsked:  map[*ast.Node]bool{},
+			effects:    map[*ast.Node]*effectInfo{},
+			approx:     map[*ast.Node]*effectInfo{},
+			recursive:  map[*ast.Node]bool{},
+			connecting: map[*ast.Node]bool{},
+			reentered:  map[*ast.Node]bool{},
+			tryBlocks:  map[*ast.Node]*effectInfo{},
+			contracts:  map[*ast.Node]*contract{},
+			lambdas:    map[*ast.Node]*lambdaState{},
 
-			conversions:      map[*ast.Node]*valueState{},
-			heldPrograms:     map[*ast.Node]bool{},
 			returnedPrograms: map[*ast.Node]*checker.Type{},
 			valueTyping:      map[*ast.Node]bool{},
 			classifying:      map[*ast.Node]bool{},
 			keywordValues:    map[*ast.Node]*checker.Type{},
-			plain:            map[*ast.Node]plainState{},
-			plainEdges:       map[*ast.Node][]plainEdge{},
-			plainCycles:      map[*ast.Node]bool{},
 		}
 	}).(*analyzer)
 }
 
 func (a *analyzer) isEffect(fn *ast.Node) bool {
-	if isMarkedEffect(fn) {
-		return true
-	}
-	if a.isFactory(fn) {
-		return false
-	}
-	if isProducer(fn) {
-		return true // its body is an Effect body; calling it returns a Stream
-	}
-	if isLambda(fn) {
-		return a.finalForm(fn) != formPlain
-	}
-	if isWrittenForm(fn) {
-		// D500: a function's form is written. Without a return annotation it
-		// is an Effect function, whatever its body does; with one that is not
-		// an Effect, or with `infer _`, it is plain.
-		return !a.hasPlainContract(fn)
-	}
-	switch a.states[fn] {
-	case stateVisiting:
-		// A call that reaches fn again while its body is read, as a recursive
-		// size(): number method's this.next.size() does, is plain when fn has
-		// a plain return annotation: the annotation names its form (rule F),
-		// as D56's fixpoint counts a plain candidate's own cycle, and a body
-		// that runs an Effect is EK9203 at the annotation.
-		return !a.hasPlainContract(fn)
-	case stateEffect:
-		return true
-	case statePure:
-		return false
-	}
-	a.states[fn] = stateVisiting
-	effect := a.forEachRunningCallInBody(fn, a.performs) || a.expectsEffect(fn) && !a.hasPlainContract(fn) || hasEscapingThrow(fn) || a.hasEscapingFailure(fn) || a.hasContract(fn) || declaresUsing(fn) || hasVibeLangStatement(fn) || a.hasStreamLoop(fn)
-	a.states[fn] = core.IfElse(effect, stateEffect, statePure)
-	return effect
+	return markedForm(fn) != formNone || isProducer(fn)
 }
 
 // isWrittenForm reports whether fn is a .vibe function whose form its
@@ -360,51 +282,70 @@ func isWrittenForm(fn *ast.Node) bool {
 // Effect, calls an Effect function through its plain variant, or looks up a
 // service.
 func (a *analyzer) performs(call *ast.Node) bool {
-	return a.runs(call) || a.runsVariant(call) || ast.IsCallExpression(call) && !holdsProgram(a.checker, call) && isServiceLookup(a.checker, call)
+	return a.runs(call) || ast.IsCallExpression(call) && !holdsProgram(a.checker, call) && isServiceLookup(a.checker, call)
 }
 
 // runsVariant reports whether call calls an Effect function through its plain
 // variant (D421). It runs no Effect, but its callee is an Effect function,
 // which plain code may not call (D500): EK1001, EK9203, or EK4301.
 func (a *analyzer) runsVariant(call *ast.Node) bool {
-	if inHatch(call) || holdsProgram(a.checker, call) {
-		return false
-	}
-	sig := a.checker.GetResolvedSignature(call)
-	if sig == nil {
-		return false
-	}
-	fn := implementationOf(sig.Declaration())
-	return fn != nil && isLowerable(fn) && a.isSplittable(fn) && a.isPlainFunction(fn)
+	return false
 }
 
 // runs reports whether call runs an Effect, which the lowering spells yield*.
 func (a *analyzer) runs(call *ast.Node) bool {
-	if inHatch(call) || holdsProgram(a.checker, call) {
-		return false // hatches and declared program positions keep the Effect value
-	}
-	sig := a.callSignature(call)
-	if sig == nil {
+	if inHatch(call) {
 		return false
 	}
-	if fn := implementationOf(sig.Declaration()); fn != nil && isLowerable(fn) {
-		if isProducer(fn) {
-			return false // a call constructs the producer's Stream and runs none of it
+	if ast.IsCallExpression(call) {
+		if fn := ast.SkipParentheses(call.Expression()); isCalledInPlace(fn) {
+			return a.isEffect(fn) // a match or an is expression in effect code
 		}
-		if a.isPlainFunction(fn) && a.isSplittable(fn) {
-			// A plain function's call runs inline, through its $direct
-			// variant when it has one, and runs its Effect form only where
-			// that variant is out of reach.
-			return a.directReferenceOf(ast.GetInvokedExpression(call), fn) == nil
-		}
-		// D269 factories run their returned program; D67 Effect arrows retain their API.
-		if a.isFactory(fn) || a.isEffect(fn) {
-			return true // body inference may still be computing the signature's type
-		}
-		// A plain factory can return a cold Effect stored in a local. The
-		// callee's form does not decide whether that returned program runs.
 	}
-	return callRunsResult(a.checker, call, a.callReturnType(sig))
+	if catchExpressionOf(call) != nil {
+		if isCatchLeftBody(call) {
+			// a catch h1 catch h2 is (a catch h1) catch h2 (VIP-5): the
+			// outer catch runs the inner one, which stays its Effect.
+			return catchLeftRuns(call)
+		}
+		return inEffectCode(call) // e catch h runs e (VIP-5)
+	}
+	if isKeywordFormCall(call) || a.isFiberCall(call) {
+		// fork e, join f, for concurrent, select and provide are each
+		// exact sugar for an Effect that runs where the form stands, as
+		// try e does (VIP-12, VIP-17, VIP-19).
+		return inEffectCode(call) && !holdsProgram(a.checker, call) && a.resolvedRunsResult(call)
+	}
+	if catchLeftRuns(call) {
+		return true
+	}
+	if !isTry(call) || !inEffectCode(call) {
+		return false
+	}
+	// try S.member(…) runs the service lookup (D41), which the call does
+	// in effect code with or without try; a member that returns no Effect
+	// gives its value.
+	return serviceLookup(a.checker, call) == nil || a.resolvedRunsResult(call)
+}
+
+// resolvedRunsResult reports whether call returns an Effect, which it then
+// runs: a keyword form, or try on a service member call. The checker asks
+// runs while it resolves call (its inference target hook); that nested
+// question is answered no, and the resolution the outer question started
+// completes.
+func (a *analyzer) resolvedRunsResult(call *ast.Node) bool {
+	if a.runsAsked[call] {
+		// join f and fork e always give an Effect. Resolving one can type
+		// the call around it first (seen.push(join f) in a for concurrent
+		// body, whose callback the checker types for inference), which
+		// types the join itself: answering no there kept the Effect as
+		// the join's type (TS2345).
+		return a.givesFiberEffect(call)
+	}
+	a.runsAsked[call] = true
+	defer delete(a.runsAsked, call)
+	sig := a.callSignature(call)
+	return sig != nil && callRunsResult(a.checker, call, a.callReturnType(sig))
 }
 
 // callSignature is the signature call resolves to. The call of a do or throw
@@ -506,4 +447,68 @@ func effectInterfaceSymbol(c *checker.Checker, t *checker.Type) *ast.Symbol {
 		}
 	}
 	return nil
+}
+
+// isEffectAnnotation reports whether the type node t names an Effect.
+func (a *analyzer) isEffectAnnotation(t *ast.Node) bool {
+	return isEffectType(a.checker, a.checker.GetTypeFromTypeNode(t))
+}
+
+// programEffectInterface returns the generic Effect interface that effect's
+// Effect module declares, or nil when the program does not include effect.
+// Unlike an Effect found in some type on the way, it does not depend on the
+// order in which the checker checks things.
+func (a *analyzer) programEffectInterface() *checker.Type {
+	if a.programEffectSearched {
+		return a.programEffect
+	}
+	a.programEffectSearched = true
+	for _, file := range a.checker.Program().SourceFiles() {
+		if !isEffectModuleFile(file, "Effect") || file.Symbol == nil {
+			continue
+		}
+		for _, export := range a.checker.GetExportsOfModule(file.Symbol) {
+			if export.Name() == "Effect" && export.Flags()&ast.SymbolFlagsInterface != 0 {
+				a.programEffect = a.checker.GetDeclaredTypeOfSymbol(export)
+				return a.programEffect
+			}
+		}
+	}
+	return nil
+}
+
+// isFiberCall reports whether call is fork(e) or join(f), a call of the
+// runtime's fork or join. In effect code fork and join are reserved as await
+// is in an async body, so join(parts) joins and fork(e) forks e, as join parts
+// and fork e do (VIP-17, "reserved in effect code").
+func (a *analyzer) isFiberCall(call *ast.Node) bool {
+	if !ast.IsCallExpression(call) || call.QuestionDotToken() != nil {
+		return false
+	}
+	callee := ast.SkipParentheses(call.Expression())
+	return isRuntimeExport(a.checker, callee, "fork") || isRuntimeExport(a.checker, callee, "join")
+}
+
+// givesFiberEffect reports whether call is join f or fork e, as a keyword or
+// as a call of the runtime's join or fork, whose result is always an Effect.
+func (a *analyzer) givesFiberEffect(call *ast.Node) bool {
+	if fiberHelper(call) == "$join" || a.isFiberCall(call) {
+		return true
+	}
+	callee := ast.SkipParentheses(call.Expression())
+	return ast.IsIdentifier(callee) && callee.Text() == "fork" && callee.Flags&ast.NodeFlagsVibeLangIntrinsic != 0
+}
+
+// isKeywordFormCall reports whether call is a call the parser writes for a
+// keyword form: its callee is an intrinsic, which means the prelude's export
+// whatever the file declares (prelude.go). $try(e), the parser's call for
+// try e, is not one: try runs e by its own rule (runs), which needs no
+// resolved signature, so the checker types it the same whether or not it is
+// resolving the call around it.
+func isKeywordFormCall(call *ast.Node) bool {
+	if !ast.IsCallExpression(call) || isTryCall(call) {
+		return false
+	}
+	callee := ast.SkipParentheses(call.Expression())
+	return ast.IsIdentifier(callee) && callee.Flags&ast.NodeFlagsVibeLangIntrinsic != 0
 }

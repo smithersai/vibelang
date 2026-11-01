@@ -1,7 +1,8 @@
-// expect: EK4301
-// A callback that can pause, passed where JavaScript calls it synchronously
-// (design D9): Array.prototype.map and forEach call their callbacks on a
-// JavaScript stack frame that cannot pause, so each of these is EK4301.
+// expect: EK0501 EK4301
+// A callback that runs an Effect, passed where JavaScript calls it
+// synchronously (design D9): map and forEach call their callbacks as plain
+// functions (VIP-1), so try in an arrow there is EK0501, and an effect
+// function passed to forEach, which drops what it returns, is EK4301.
 import { Console } from "effect"
 import { find } from "./helpers.ts"
 
@@ -10,11 +11,12 @@ effect function findId(id: string) {
 }
 
 export function lambdas(ids: ReadonlyArray<string>) {
-  const found = ids.map((id) => find(id))
-  ids.forEach((id) => Console.log(id))
+  const found = ids.map((id) => try find(id))
+  ids.forEach((id) => try Console.log(id))
   return found
 }
 
 export function named(ids: ReadonlyArray<string>) {
+  ids.forEach(findId)
   return ids.map(findId)
 }

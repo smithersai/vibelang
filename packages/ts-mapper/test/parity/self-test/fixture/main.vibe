@@ -6,7 +6,7 @@ export class Tally {
   readonly count: number = 0
 }
 
-export function total(n: number): number!RangeError!Tally {
+export effect function total(n: number): number!RangeError!Tally {
   if (n < 0) throw new RangeError("negative")
   return n
 }
@@ -14,6 +14,6 @@ export function total(n: number): number!RangeError!Tally {
 // Unexported, so only the probe exports print it. Its type depends on its
 // lambda's form: the self-test flips the lambda to the Effect-function form
 // and checks that the harness reports ticks.
-function ticks() {
-  return Effect.sync(() => 1)
+effect function ticks() {
+  return try Effect.sync(() => 1)
 }

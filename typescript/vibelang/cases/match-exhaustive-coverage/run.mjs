@@ -5,7 +5,6 @@
 import fs from "node:fs"
 import { Session } from "node:inspector/promises"
 import { fileURLToPath } from "node:url"
-import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 
 const session = new Session()
@@ -22,7 +21,7 @@ const results = [
   arms.count(Option.none()),
   arms.count(Option.some(4)),
   arms.text("hi")
-].map((program) => Effect.runSync(program))
+]
 const { result } = await session.post("Profiler.takePreciseCoverage")
 await session.post("Profiler.stopPreciseCoverage")
 console.log(JSON.stringify(results))

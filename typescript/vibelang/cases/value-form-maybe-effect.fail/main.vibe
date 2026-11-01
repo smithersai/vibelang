@@ -1,7 +1,8 @@
 // expect: EK4301
 // A function whose return type may be an Effect, a union with an Effect
-// member, does not satisfy a plain function type (D512): its caller would
-// drop the program it returns.
+// member, does not satisfy a plain function type whose caller drops what it
+// returns: the program would never run. map keeps the results as data, so it
+// accepts it (VIP-1).
 import { each } from "./helpers.ts"
 
 effect function tick(n: number) {
@@ -13,6 +14,10 @@ const both: (n: number) => number | Effect<void> = tick
 
 export function mapped() {
   return [1, 2].map(both)
+}
+
+export function dropped() {
+  [1, 2].forEach(both)
 }
 
 export function passed() {

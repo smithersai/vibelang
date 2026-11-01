@@ -193,10 +193,10 @@ func TestDeclarationImportsRecycledAnnotation(t *testing.T) {
 		name, source, want string
 		prelude            bool
 	}{
-		{"arrow", `export const value = (): Effect.Effect<number, never, never> => { return 42 }`, `Effect.Effect<number, never, never>`, true},
-		{"function expression", `export const value = function(): Effect.Effect<number, never, never> { return 42 }`, `Effect.Effect<number, never, never>`, true},
-		{"object method", `export const value = { run(): Effect.Effect<number, never, never> { return 42 } }`, `Effect.Effect<number, never, never>`, true},
-		{"explicit import", `import { Effect as E } from "effect"; export const value = (): E.Effect<number, never, never> => { return 42 }`, `import { Effect as E } from "effect";`, false},
+		{"arrow", `export const value = effect (): Effect.Effect<number, never, never> => { return 42 }`, `Effect.Effect<number, never, never>`, true},
+		{"function expression", `export const value = effect function(): Effect.Effect<number, never, never> { return 42 }`, `Effect.Effect<number, never, never>`, true},
+		{"object method", `export const value = { effect run(): Effect.Effect<number, never, never> { return 42 } }`, `Effect.Effect<number, never, never>`, true},
+		{"explicit import", `import { Effect as E } from "effect"; export const value = effect (): E.Effect<number, never, never> => { return 42 }`, `import { Effect as E } from "effect";`, false},
 		{"generic shadow", `export const value = <Effect>(x: Effect): Effect => x`, `<Effect>(x: Effect) => Effect`, false},
 		{"namespace shadow", `namespace Effect { export type Effect<A, E, R> = A }; export const value = (): Effect.Effect<number, never, never> => 42`, `Effect.Effect<number, never, never>`, false},
 	} {
@@ -231,7 +231,7 @@ func TestDeclarationElidesPrivateJSDoc(t *testing.T) {
 	}{
 		{"elided namespace import", "/** PRIVATE_DOC */\nimport type * as E from \"effect/Effect\"\n/** PUBLIC_DOC */\nexport const visible = 2", []string{"PUBLIC_DOC"}, []string{"PRIVATE_DOC"}},
 		{"strip internal", "/** @internal PRIVATE_DOC */\nexport const hidden = 1\n/** PUBLIC_DOC */\nexport const visible = 2", []string{"PUBLIC_DOC"}, []string{"PRIVATE_DOC"}},
-		{"private Effect function", "/** PRIVATE_DOC */\nfunction hidden(): number!! { return 1 }\n/** PUBLIC_DOC */\nexport function visible(): number!! { return 2 }", []string{"PUBLIC_DOC"}, []string{"PRIVATE_DOC"}},
+		{"private Effect function", "/** PRIVATE_DOC */\neffect function hidden(): number!! { return 1 }\n/** PUBLIC_DOC */\nexport effect function visible(): number!! { return 2 }", []string{"PUBLIC_DOC"}, []string{"PRIVATE_DOC"}},
 		{"overload implementation", "function hidden(x: number): number;\n/** PRIVATE_DOC */\nfunction hidden(x: number): number { return x }\n/** PUBLIC_DOC */\nexport const visible = 2", []string{"PUBLIC_DOC"}, []string{"PRIVATE_DOC"}},
 		{"namespace private", "export namespace Public {\n/** PRIVATE_DOC */\nconst hidden = 1\n/** PUBLIC_DOC */\nexport const visible = 2\n}", []string{"PUBLIC_DOC"}, []string{"PRIVATE_DOC"}},
 		{"prelude import", "/** PRIVATE_DOC */\nconst hidden = 1\n/** PUBLIC_DOC */\nexport declare const visible: Effect.Effect<number, never, never>", []string{"PUBLIC_DOC"}, []string{"PRIVATE_DOC"}},

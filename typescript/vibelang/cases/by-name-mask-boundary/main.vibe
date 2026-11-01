@@ -1,6 +1,8 @@
 import { write, publish, operand, transaction, writeValue, twice, make } from "./probe.js"
 
 // Explicit function signatures expose program positions to both compilers.
+// Each argument is evaluated once, as JavaScript evaluates it (VIP-1, VIP-2):
+// an Effect operand is run with try, and an absent one is Effect.void.
 const repeat: (program: Effect.Effect<number>) => Effect.Effect<number[]> = twice
 
 export effect function commitThenPublish(): void!! {
@@ -14,7 +16,7 @@ export effect function commitThenPublish(): void!! {
 export effect function withOperand(): void!! {
   try Effect.uninterruptibleMask(effect (restoreInterruptibility) => {
     const restore: (program: Effect.Effect<void>) => Effect.Effect<void> = restoreInterruptibility
-    try restore(write(operand()))
+    try restore(write(try operand()))
     try publish()
   })
 }
@@ -30,7 +32,7 @@ export effect function withTopic(): void!! {
 export effect function withValue(): void!! {
   try Effect.uninterruptibleMask(effect (restoreInterruptibility) => {
     const restore: (program: Effect.Effect<void>) => Effect.Effect<void> = restoreInterruptibility
-    try restore(writeValue())
+    try restore(writeValue)
     try publish()
   })
 }
@@ -39,7 +41,7 @@ export effect function withOptional(): void!! {
   const writer: { write?: typeof write } = { write }
   try Effect.uninterruptibleMask(effect (restoreInterruptibility) => {
     const restore: (program: Effect.Effect<void>) => Effect.Effect<void> = restoreInterruptibility
-    try restore(writer.write?.())
+    try restore(writer.write?.() ?? Effect.void)
     try publish()
   })
 }

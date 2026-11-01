@@ -1,44 +1,35 @@
 package vibelang
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 )
 
-// EK4836 (D290): combinators that wrap a program, which VibeLang writes with
-// the program as an arrow or a block around the statements:
+// EK4836 (D290): combinators that wrap a program, which VibeLang writes as the
+// global withSpan or a provide block around the statements:
 //
-//	return Effect.withSpan(load(id), "load")          return withSpan(() => load(id), "load")
-//	return Effect.provide(main(), AppLive)            provide AppLive { return main() }
+//	return try Effect.withSpan(load(id), "load")      return try withSpan(load(id), "load")
+//	return try Effect.provide(main(), AppLive)        provide AppLive { return try main() }
 //
-// Effect.withSpan(self, name) becomes the prelude's withSpan(() => self, name)
-// (D151, D376) wherever it stands in a VibeLang function body: a block is its
-// call's last argument, and withSpan takes its program first, so the program
-// is an arrow there. Effect.provide(self, layers) becomes
-// a provide block (VIP-12) where a block can stand: as a return, whose return inside the block
-// returns from the function, and as an expression statement. A layer array
-// becomes the block's comma list. The program runs inside the arrow or the
-// block as the call ran it: a call runs where it stands, and an Effect value
-// is called. Refused: options arguments, the data-last forms inside pipe, a
-// provide or provideService anywhere a block cannot stand, a key that is not
-// a name or a dotted name, a file where a local withSpan shadows the
-// prelude's, and anything outside a VibeLang function body; the warning
-// stands without a fix where a provide block cannot. An Effect.withSpan whose
-// program is already a function literal becomes the prelude's withSpan with
-// the same arguments. The prelude's own withSpan is the VibeLang form.
+// Effect.withSpan(self, name) is the global withSpan (VIP-6) wherever it
+// stands, unless a local withSpan shadows it. A running Effect.provide(self,
+// layers) becomes a provide block (VIP-12) where a block can stand: as a
+// return, whose return inside the block returns from the function, and as an
+// expression statement. A layer array becomes the block's comma list. The
+// block evaluates its program after the providers, and after the layers
+// build, where the call evaluated it first, so only a program whose
+// evaluation does nothing moves (coldProgram). Refused: options arguments,
+// the data-last forms inside pipe, a provide that does not run or stands
+// where a block cannot, and anything outside a function body.
 
 // Effect.provideService retains its native call: building a Layer would
 // change scope and memo-map observations, so VIP-34 forbids that repair.
 
-// withSpanArrowForm is EK4836's text for Effect.withSpan, which has no
-// block form: its program becomes an arrow.
-var withSpanArrowForm = EK4836.With("{0} wraps a program in a call; write the program as an arrow: {1}.")
-
-// withSpanPreludeForm is EK4836's text for Effect.withSpan of a function
-// literal, which the prelude's withSpan takes as it is.
-var withSpanPreludeForm = EK4836.With("{0} is the prelude's withSpan written through Effect; write {1}.")
+// withSpanGlobalForm is EK4836 for Effect.withSpan, which the global spells.
+var withSpanGlobalForm = EK4836.With("{0} is the global withSpan written through Effect; write {1}.")
 
 // VIP-12 builds a Layer for Key = value; the native provideService does not.
 // VIP-34 permits a quick fix only when it preserves that observable behavior.
@@ -87,7 +78,7 @@ func findBlockForms(c *checker.Checker, file *ast.SourceFile, report func(at *as
 	visit = func(node *ast.Node) bool {
 		if name := blockFormOf(c, node); name != "" {
 			if rewrite := blockFormRewrite(c, file, node); rewrite != nil {
-				form := "withSpan(() => …, name)"
+				form := "withSpan(program, name)"
 				switch name {
 				case "provide":
 					form = "provide Layer { … }"
@@ -109,45 +100,24 @@ func blockFormRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node) 
 		return nil
 	}
 	arguments := call.Arguments()
-	// A block, or withSpan's arrow, runs its program; it does not evaluate
-	// the call's first argument before the others as the call did. So only
-	// an invocation already passed by name, a function literal, or a read of
-	// a binding the other arguments cannot change may move into it. Any other
-	// program expression, a getter or a factory call for example, is
-	// evaluated eagerly, in source order, and stays in its call: the
-	// warning then offers no fix.
-	operand := ast.SkipParentheses(arguments[0])
-	if name == "withSpan" && isLambda(operand) {
-		// Effect.withSpan(() => load(id), "load"): the program is an arrow
-		// already, so the prelude's withSpan takes the same arguments.
+	if name == "withSpan" {
 		if shadowed(call, "withSpan") {
 			return nil
 		}
 		callee := call.Expression()
 		result := "withSpan" + file.Text()[callee.End():call.End()]
-		return withImportRemovals(c, file, &formRewrite{edits: []sourceEdit{{nodeStart(file, callee), callee.End(), "withSpan"}}, description: shortText(result, "the prelude's withSpan"), message: withSpanPreludeForm})
+		return withImportRemovals(c, file, &formRewrite{edits: []sourceEdit{{nodeStart(file, callee), callee.End(), "withSpan"}}, description: shortText(result, "the global withSpan"), message: withSpanGlobalForm})
 	}
-	eager := !(isInvocation(operand) && analyzerFor(c).isByName(arguments[0])) &&
-		!ast.IsArrowFunction(operand) && !ast.IsFunctionExpression(operand) &&
-		!stableBindingRead(c, file, operand)
-	program, runs := runningText(c, file, thunkBody(arguments[0]))
-	if !runs {
+	operand := ast.SkipParentheses(arguments[0])
+	if !isEffectType(c, c.GetTypeAtLocation(operand)) {
 		return nil
 	}
+	program := tryText(arguments[0], expressionText(file, arguments[0]))
 	text := file.Text()
 	start, end := nodeStart(file, call), call.End()
 	indent := lineIndent(text, start)
 	var result string
 	switch name {
-	case "withSpan":
-		if shadowed(call, "withSpan") {
-			return nil
-		}
-		if eager {
-			return &formRewrite{why: eagerArrowNote, message: withSpanArrowForm}
-		}
-		result = "withSpan(() => " + program + ", " + expressionText(file, arguments[1]) + ")"
-		return withImportRemovals(c, file, &formRewrite{edits: []sourceEdit{{start, end, result}}, description: shortText(result, "withSpan with an arrow"), message: withSpanArrowForm})
 	case "provide", "provideService":
 		statement := call.Parent
 		returns := ast.IsReturnStatement(statement)
@@ -157,7 +127,7 @@ func blockFormRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node) 
 		if !analyzerFor(c).runs(call) {
 			return &formRewrite{why: blockPositionNote}
 		}
-		if eager {
+		if !coldProgram(c, file, operand) {
 			return &formRewrite{why: eagerProgramNote}
 		}
 		var providers []string
@@ -197,9 +167,26 @@ const blockPositionNote = "No quick fix: a provide block stands only as a statem
 // its call.
 const eagerProgramNote = "No quick fix: a block would evaluate its program expression after the other arguments; bind it to a const first."
 
-// eagerArrowNote is eagerProgramNote for withSpan, whose program becomes an
-// arrow that evaluates the expression each time the program runs.
-const eagerArrowNote = "No quick fix: an arrow would evaluate its program expression when the program runs, after the other arguments; bind it to a const first."
+// coldProgram reports whether evaluating node, a program, does nothing: it
+// reads a stable binding, or calls an effect function, which builds its Effect
+// and runs nothing, with arguments that are cold too.
+func coldProgram(c *checker.Checker, file *ast.SourceFile, node *ast.Node) bool {
+	node = ast.SkipParentheses(node)
+	if ast.IsLiteralExpression(node) || stableBindingRead(c, file, node) {
+		return true
+	}
+	if !ast.IsCallExpression(node) || isTry(node) || ast.IsOptionalChain(node) {
+		return false
+	}
+	signature := c.GetResolvedSignature(node)
+	if signature == nil || signature.Declaration() == nil {
+		return false
+	}
+	if !isMarkedEffect(signature.Declaration()) {
+		return false
+	}
+	return !slices.ContainsFunc(node.Arguments(), func(argument *ast.Node) bool { return !coldProgram(c, file, argument) })
+}
 
 // stableBindingRead reports whether node reads a binding whose value no
 // other argument of its call can change: an import, a const, or a parameter

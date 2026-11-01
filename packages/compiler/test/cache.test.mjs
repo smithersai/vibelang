@@ -35,7 +35,7 @@ const sources = {
   "tsconfig.json": tsconfig(),
   "src/helper.ts": "export const suffix = \"!\"\n",
   "src/shout.vibe": "import { suffix } from \"./helper.ts\"\n\nexport function shout(text: string): string {\n  return text.toUpperCase() + suffix\n}\n",
-  "src/fail.vibe": "error Refused { reason: string }\n\nexport function refuse(reason: string) {\n  throw new Refused({ reason })\n}\n",
+  "src/fail.vibe": "error Refused { reason: string }\n\nexport effect function refuse(reason: string) {\n  throw new Refused({ reason })\n}\n",
   "src/main.ts": [
     "import { Effect } from \"effect\"",
     "import { refuse } from \"./fail.vibe\"",
@@ -214,7 +214,7 @@ test("a changed tsconfig recompiles, including a config it extends", { skip }, a
   assert.equal(compiles(), 4)
 })
 
-test("a changed dependency recompiles: its types decide the emitted code", { skip }, async (t) => {
+test("a changed dependency recompiles", { skip }, async (t) => {
   const asEffect = {
     "node_modules/dep/index.d.ts": "import type { Effect } from \"effect\"\nexport declare function load(): Effect.Effect<string>\n",
     "node_modules/dep/index.js": "import { Effect } from \"effect\"\nexport const load = () => Effect.succeed(\"effect\")\n"
@@ -227,7 +227,7 @@ test("a changed dependency recompiles: its types decide the emitted code", { ski
     "tsconfig.json": tsconfig({ vibelang: { trustedPackages: ["dep"] } }),
     "node_modules/dep/package.json": '{"name":"dep","type":"module","types":"./index.d.ts","main":"./index.js"}',
     ...asEffect,
-    "src/loud.vibe": "import { load } from \"dep\"\n\nexport function loud() {\n  return load().toUpperCase()\n}\n",
+    "src/loud.vibe": "import { load } from \"dep\"\n\nexport function loud() {\n  return load()\n}\n",
     "src/dep.ts": [
       "import { Effect } from \"effect\"",
       "import { loud } from \"./loud.vibe\"",
@@ -236,14 +236,14 @@ test("a changed dependency recompiles: its types decide the emitted code", { ski
       ""
     ].join("\n")
   })
-  assert.equal(ok(run("src/dep.ts")), "EFFECT")
+  assert.equal(ok(run("src/dep.ts")), "effect")
   write(app, asPlain)
   await settle()
-  assert.equal(ok(run("src/dep.ts")), "PLAIN")
+  assert.equal(ok(run("src/dep.ts")), "plain")
   assert.equal(compiles(), 2)
   writeFileSync(join(app, "package-lock.json"), "{}\n")
   await settle()
-  assert.equal(ok(run("src/dep.ts")), "PLAIN")
+  assert.equal(ok(run("src/dep.ts")), "plain")
   assert.equal(compiles(), 3, "a lockfile change means an install")
 })
 
@@ -259,7 +259,7 @@ test("a changed tsconfig of a workspace package whose .vibe source the project r
     "dep/package.json": JSON.stringify({ name: "@acme/dep", type: "module", exports: { ".": "./src/greeting.vibe" } }),
     "dep/tsconfig.json": tsconfig({ vibelang: { trustedPackages: ["@acme/dep"] } }),
     "dep/src/text.ts": "export const text = (): string => \"hello\"\n",
-    "dep/src/greeting.vibe": "import { text } from \"./text.ts\"\n\nexport function greeting() {\n  return text()\n}\n"
+    "dep/src/greeting.vibe": "import { text } from \"./text.ts\"\n\nexport effect function greeting() {\n  return text()\n}\n"
   })
   mkdirSync(join(app, "node_modules/@acme"))
   symlinkSync(join(root, "dep"), join(app, "node_modules/@acme/dep"))

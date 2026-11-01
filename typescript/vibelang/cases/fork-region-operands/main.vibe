@@ -17,7 +17,7 @@ export effect function main() {
   const settled = (try $tryAllEffects([$tryJoinFiber(f), $tryJoinFiber(g)], { concurrency: "unbounded", mode: "result" }))
   const raced = (try.race [$tryJoinFiber(f), effect { return do { try sleep("1 second"); 0 } }])
   const any = (try.any [$tryJoinFiber(f)])
-  const waiter = fork (join f)
+  const waiter = fork $tryJoinFiber(f)
   const forked = join waiter
   const pending = fork sleep("1 minute")
   const stopper = fork { try Fiber.interrupt(pending) }

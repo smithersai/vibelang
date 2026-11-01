@@ -13,7 +13,7 @@ export function encoded(bytes: Uint8Array): string {
 export const command: ChildProcess.Command = ChildProcess.make("git", ["status"])
 
 // expect-result: {"hex":"6869","command":"StandardCommand","headers":"text/plain","local":"local","adjust":"function"}
-export function main() {
+export effect function main() {
   return {
     hex: encoded(new TextEncoder().encode("hi")),
     command: command._tag,

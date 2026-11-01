@@ -1,2 +1,2 @@
-This call returns an Effect subtype, which stays data until it is called, so this statement discards its result without running it.
-Call the result to run it, Exit.fail("discarded")(), or write the return type of what it calls as A!E!R, which runs the call where it stands.
+This call returns an Effect subtype, which only try runs, so this statement discards its result without running it.
+Return it, or run it with try inside an effect function: try Exit.fail("discarded").

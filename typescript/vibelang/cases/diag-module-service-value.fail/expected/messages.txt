@@ -1,2 +1,2 @@
-Write FileSystem() to read the service implementation, or call FileSystem.writeFileString(...) directly.
-Write Experimental.Process() to read the service implementation, or call Experimental.Process.hostname(...) directly.
+Write try FileSystem.FileSystem to read the service implementation, then use its writeFileString member: (try FileSystem.FileSystem).writeFileString.
+Write try Experimental.Process.Process to read the service implementation, then use its hostname member: (try Experimental.Process.Process).hostname.

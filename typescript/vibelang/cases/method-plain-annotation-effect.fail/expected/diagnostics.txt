@@ -1,4 +1,8 @@
-main.vibe(12,12): error EK9203
-main.vibe(16,11): error EK9203
-main.vibe(19,18): error EK9203
-main.vibe(26,11): error EK9203
+main.vibe(12,5): error EK0501
+main.vibe(12,5): error EK4801
+main.vibe(16,13): error EK0501
+main.vibe(16,24): error TS2339
+main.vibe(19,5): error EK0501
+main.vibe(19,5): error EK4801
+main.vibe(26,5): error EK0501
+main.vibe(26,5): error EK4801

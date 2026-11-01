@@ -2,18 +2,20 @@
 import { Effect, Exit } from "effect"
 error Refused { reason: string }
 // The twins' D-9 recipe: a union of Effects contract whose arms are decided
-// Exits. Each returned arm runs (S5-1), so a call runs the chosen Exit (D270).
+// Exits. An effect function's returned value stays unrun (VIP-5, amended
+// 2026-10-30), so each arm runs its Exit with try, and a call runs the chosen
+// one. curried is a plain function that returns an effect arrow (VIP-1).
 const decide = effect (flag: boolean): Effect.Effect<string, never, never> | Effect.Effect<never, Refused, never> =>
-  flag ? Exit.succeed("ok") : Exit.fail(new Refused({ reason: "no" }))
-const curried = effect <A>(value: A) => effect (flag: boolean): Effect.Effect<A, never, never> | Effect.Effect<never, Refused, never> =>
-  flag ? Exit.succeed(value) : Exit.fail(new Refused({ reason: "curried" }))
-// A plain arm returns its value; a nested conditional's arms still run.
+  flag ? try Exit.succeed("ok") : try Exit.fail(new Refused({ reason: "no" }))
+const curried = <A>(value: A) => effect (flag: boolean): Effect.Effect<A, never, never> | Effect.Effect<never, Refused, never> =>
+  flag ? try Exit.succeed(value) : try Exit.fail(new Refused({ reason: "curried" }))
+// A nested conditional's arms run the same way.
 const nested = effect (n: number): Effect.Effect<number, never, never> | Effect.Effect<never, Refused, never> =>
-  n > 1 ? (n > 5 ? Exit.succeed(n) : Exit.succeed(2)) : Exit.fail(new Refused({ reason: "small" }))
+  n > 1 ? (n > 5 ? try Exit.succeed(n) : try Exit.succeed(2)) : try Exit.fail(new Refused({ reason: "small" }))
 export effect function main() {
   const a = try decide(true)
   const b = decide(false) catch (_) => "failed"
-  const c = try (try curried(3))(true)
+  const c = try curried(3)(true)
   const d = curried(4)(false) catch (failure) => failure.reason
   const e = try nested(3)
   return [a, b, c, d, e]

@@ -3,7 +3,7 @@ error Refused { code: number }
 
 declare function call(): string!Timeout | Refused
 
-export function safe() {
+export effect function safe() {
   return call() catch (e) => match (e) {
     when Timeout: "timed out";
     when Refused: `refused ${e.code}`;

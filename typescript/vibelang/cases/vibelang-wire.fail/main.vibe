@@ -21,12 +21,12 @@ const UsersLive = Layer.succeed(Users, { find: effect (id: string) => try Effect
 const UsersTest = Layer.succeed(Users, { find: effect (id: string) => try Effect.succeed(`test-${id}`) })
 
 const CacheLive = Layer.effect(Cache, effect {
-  const db = try Database()
+  const db = try Database
   return { get: effect (key: string) => try db.query(key) }
 })
 
 const DatabaseLive = Layer.effect(Database, effect {
-  const cache = try Cache()
+  const cache = try Cache
   return { query: effect (sql: string) => try cache.get(sql) }
 })
 

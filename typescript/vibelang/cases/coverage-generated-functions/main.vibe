@@ -49,7 +49,7 @@ export effect function pair(n: number): number!Oops! {
 }
 
 export effect function nameOf(id: string): string!!Users {
-  return Users.find(id) catch () => "missing"
+  return (try Users).find(id) catch () => "missing"
 }
 
 export function label(n: number): string {

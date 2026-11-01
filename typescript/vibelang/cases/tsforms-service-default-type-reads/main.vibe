@@ -11,6 +11,6 @@ export type Enabled = (typeof Flags.default)["enabled"]
 export type Count = typeof Flags.default.count
 type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
 export const same: [Equal<Value, Flags.Shape>, Equal<Indexed, Flags.Shape>, Equal<Enabled, boolean>, Equal<Count, number>] = [true, true, true, true]
-export function main(): [boolean, boolean]!! {
+export effect function main(): [boolean, boolean]!! {
  return [Flags.default.enabled, Flags["default"].count === 2]
 }

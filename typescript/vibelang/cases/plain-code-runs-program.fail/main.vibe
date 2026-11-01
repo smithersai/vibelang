@@ -1,22 +1,21 @@
-// expect: EK1001 EK1001 EK1001 EK1001 EK1001 TS2362 TS2362 TS2365
+// expect: EK0501 TS2362 TS2365 TS2322
 // A class field's initializer, a default parameter value, a constructor, an
 // accessor and a static block run as plain JavaScript wherever they stand,
-// outside any program (D282). A running call there is always EK1001,
-// including when its result has no contextual type.
-// TypeScript can also report errors where the unrun Effect is used
-// as a success value in arithmetic or a comparison.
-effect function now(): number!! { return try Clock.currentTimeMillis() }
+// outside any Effect, and none can be marked effect (VIP-1). try there is
+// always EK0501 (VIP-5), including where its result has no contextual type.
+// TypeScript also reports where the unrun Effect is used as a number.
+effect function now(): number!! { return try Clock.currentTimeMillis }
 
 class Box {
-  created = now()
+  created = try now()
   readonly size: number
-  constructor() { this.size = now() * 2 }
-  get age() { return now() - 1 }
-  static { const late: boolean = now() > 0 }
+  constructor() { this.size = (try now()) * 2 }
+  get age() { return (try now()) - 1 }
+  static { const late: boolean = (try now()) > 0 }
 }
 
-function label(id: number = now()) { return `#${id}` }
+function label(id: number = try now()) { return `#${id}` }
 
-export function main() {
+export effect function main() {
   return [new Box().size, label()]
 }

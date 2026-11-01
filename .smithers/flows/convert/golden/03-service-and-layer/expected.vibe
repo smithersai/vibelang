@@ -3,11 +3,11 @@ service Clock2 {
 }
 
 const ClockLive = Layer.succeed(Clock2, {
-  now() { return 42 }
+  effect now() { return 42 }
 })
 
-export function program() {
+export effect function program() {
   provide ClockLive {
-    return Clock2.now() * 2
+    return (try (try Clock2).now()) * 2
   }
 }

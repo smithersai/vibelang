@@ -25,7 +25,7 @@ export effect function main() {
   const xs = try sync((s: string[]) => counted(s), seen)
   const held: number[]!! = effect { return try $tryAllEffects($tryGlobals.Array.from(xs), { concurrency: "unbounded" }) }
   const made = [...seen]
-  const runs = [try held(), try held(), try held()]
+  const runs = [try held, try held, try held]
   const ys = try sync((s: string[]) => counted(s), [] as string[])
   const settled = (try $tryAllEffects($tryGlobals.Array.from(ys), { concurrency: "unbounded", mode: "result" }))
   const race = (try.race $tryGlobals.Array.from(try sync((s: string[]) => counted(s), [] as string[])))

@@ -1,12 +1,12 @@
 error NotFound { id: string }
 
-function find(id: string): string!NotFound {
+effect function find(id: string): string!NotFound {
   if (id !== "1") throw new NotFound({ id })
   return "Ada"
 }
 
-export function greeting(id: string) {
-  return `Hello, ${find(id)}` catch (e) => match (e) {
+export effect function greeting(id: string) {
+  return `Hello, ${try find(id)}` catch (e) => match (e) {
     when NotFound: `No user ${e.id}`;
   }
 }

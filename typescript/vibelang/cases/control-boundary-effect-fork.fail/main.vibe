@@ -1,8 +1,9 @@
 // expect: EK4201
 // Effect's forks, races, and timeouts run a program on another fiber, which
 // cannot reach a handler on this one (chapter 9, "Handlers and
-// concurrency"). A call passed by name (D147) is checked as the lambda
-// () => call would be, including a pipe's left side.
+// concurrency"). The Effect an argument's call gives is checked for the
+// operations it performs, including a pipe's left side, which % holds
+// (VIP-23: x |> f(%) is f(x)).
 control Ask { ask(): number!! }
 
 export effect function forked() {

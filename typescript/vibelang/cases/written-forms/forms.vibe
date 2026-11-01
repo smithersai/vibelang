@@ -1,22 +1,22 @@
-// D500: a function's form is written. An unannotated function is an Effect
-// function whatever its body does; a plain return annotation, or `: infer _`,
-// makes a plain function, for VibeLang and TypeScript alike.
+// A function's kind is written (VIP-1): effect marks an Effect function,
+// whatever its body does, and no mark makes a plain function, for VibeLang and
+// TypeScript alike.
 let bumps = 0
 
-// Unannotated: Effect functions, cold to TypeScript.
-export function bump() {
+// Marked: Effect functions, cold to TypeScript.
+export effect function bump() {
   bumps++
   return bumps
 }
 export const arrow = effect (n: number) => n + 1
 export const api = { effect triple(n: number) { return n * 3 } }
 
-// Plain: a plain return annotation, or `: infer _`.
+// Unmarked: plain, whether its return type is written or inferred.
 export function double(n: number): number {
   return n * 2
 }
-export const half = (n: number): infer _ => n / 2
-export function makeApi(): infer _ {
+export const half = (n: number) => n / 2
+export function makeApi() {
   return { half(n: number): number { return n / 2 }, nested: { third(n: number): number { return n / 3 } } }
 }
 
@@ -30,9 +30,9 @@ export const madeThird = makeApi().nested.third(3)
 // A protocol member is plain wherever it is written (D484).
 export const label = { toString() { return "ok" }, toJSON: () => 1 }
 
-// Effect code runs an Effect function where it calls it.
+// try runs an Effect function's Effect; a plain call is a call.
 export effect function main() {
-  const first = bump()
-  const second = bump()
+  const first = try bump()
+  const second = try bump()
   return [first, second, try arrow(1), try api.triple(2), double(4)]
 }

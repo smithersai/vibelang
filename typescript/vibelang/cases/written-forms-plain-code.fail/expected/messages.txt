@@ -1,3 +1,0 @@
-twice is an Effect function, but Array.prototype.map calls it synchronously.
-Its quick fix writes its return type, : number, which makes it plain
-This callback calls the Effect function twice, but Array.prototype.map calls it synchronously.

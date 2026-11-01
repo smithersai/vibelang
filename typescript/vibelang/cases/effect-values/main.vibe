@@ -19,22 +19,22 @@ effect function loadConfig() {
 
 effect function cachedTwice() {
   const cached = try Effect.cached(effect { return try loadConfig() })
-  const first = try cached()
-  const second = try cached()
+  const first = try cached
+  const second = try cached
   return [first.port, second.port, loads]
 }
 
 effect function greeted() {
-  const greeter = try Greeter()
+  const greeter = try Greeter
   return try greeter.greet("ada")
 }
 
 // expect-result: {"clock":"number","cached":[8080,8080,1],"port":3000,"greeted":"hello ada"}
 export effect function main() {
   return {
-    clock: typeof try Clock.currentTimeMillis(),
+    clock: typeof try Clock.currentTimeMillis,
     cached: try cachedTwice(),
-    port: try Port(),
+    port: try Port,
     greeted: try Effect.provide(effect { return try greeted() }, GreeterLive)
   }
 }

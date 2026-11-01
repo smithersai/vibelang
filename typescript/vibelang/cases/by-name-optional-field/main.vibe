@@ -1,5 +1,7 @@
 // expect-result: {"missing":{"value":7},"present":{"value":7,"tags":["branch:main"]},"runs":1}
 import * as Effect from "effect/Effect"
+// Effect.all takes Effects (VIP-1: an argument is never turned into a
+// program), so an absent optional field is Effect.succeed(undefined).
 let runs = 0
 const decodeTags = effect (text: string): Effect.Effect<ReadonlyArray<string>, never, never> => {
   runs += 1
@@ -8,7 +10,7 @@ const decodeTags = effect (text: string): Effect.Effect<ReadonlyArray<string>, n
 const decode = effect (tags: string | null): Effect.Effect<{ value: number; tags: ReadonlyArray<string> | undefined }, never, never> =>
   try Effect.map(Effect.all({
     value: (Effect.succeed(7)),
-    tags: (tags === null ? undefined : decodeTags(tags))
+    tags: (tags === null ? Effect.succeed(undefined) : decodeTags(tags))
   }), (row) => row)
 export effect function main() {
   const missing = try decode(null)

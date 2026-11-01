@@ -1,8 +1,8 @@
-// A plain-annotated function's plain call cycles recurse as an unannotated
-// cycle's do (D412): on the JavaScript stack, then past the depth budget on
-// heap frames that run to completion before the outermost call returns, so
-// deep recursion completes where JavaScript's stack overflowed. Callers, a
-// TypeScript one included, still call the function itself.
+// A function not marked effect is plain JavaScript (VIP-1), so its call
+// cycles recurse on the JavaScript stack, exactly as the same TypeScript
+// does, with JavaScript's depth limit. (Before VIP-1, D412 moved deep plain
+// recursion onto heap frames; no VIP keeps that.) Callers, a TypeScript one
+// included, call the function itself.
 export function sumTo(n: number): number {
   return n === 0 ? 0 : n + sumTo(n - 1)
 }
@@ -25,4 +25,4 @@ function step(n: number): number {
 }
 
 // Module initialization is plain code too.
-export const atLoad = sumTo(100000)
+export const atLoad = sumTo(1000)

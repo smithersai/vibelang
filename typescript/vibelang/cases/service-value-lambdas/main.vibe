@@ -4,7 +4,7 @@ export const Timings = Context.Reference<(timing: number) => Effect.Effect<void>
   defaultValue: () => effect () => {}
 })
 effect function report(timing: number) {
-  const hear = try Timings()
+  const hear = try Timings
   try hear(timing)
   return timing
 }

@@ -4,6 +4,6 @@
 // expect-result: 43
 import { produce } from "./producer/src/lib.vibe"
 
-export function main() {
+export effect function main() {
   return produce()
 }

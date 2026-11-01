@@ -10,14 +10,14 @@ service Database {
 }
 
 const CacheLive = Layer.effect(Cache, effect {
-  const db = try Database()
+  const db = try Database
   return {
     get: effect (key) => try db.query(key)
   }
 })
 
 const DatabaseLive = Layer.effect(Database, effect {
-  const cache = try Cache()
+  const cache = try Cache
   return {
     query: effect (sql) => try cache.get(sql)
   }

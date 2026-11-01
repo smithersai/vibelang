@@ -1,6 +1,6 @@
 // expect-result: [3,1]
 // A changing getter must be read once across multiple tested arms.
-export function main() {
+export effect function main() {
   let reads = 0
   const subject = {
     get state(): "a" | "b" | "c" {

@@ -14,8 +14,8 @@ import { run } from bridge
 
 const decode = Schema.decodeUnknownEffect(Schema.Number)
 
-export const same = effect <A, E>(effect: A!E!): A!E! => try effect()
+export const same = effect <A, E>(effect: A!E!): A!E! => try effect
 
-export function main() {
+export effect function main() {
   return run(decode(2))
 }

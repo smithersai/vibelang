@@ -15,7 +15,7 @@ func TestNightlyQuickFixSafety(t *testing.T) {
 		name, source, title string
 		code                int32
 	}{
-		{"resource callback", "function timer(name: string) { return { name, [Symbol.dispose]() {} } }\nexport function names(ids: string[]) { return ids.map((id) => { using t = timer(id); return t.name }) }", "Write the return type of timer:", EK4301.Code},
+		// "resource callback" (EK4301 on timer) retired with D67: TestRetiredHelperReturnTypeDiagnostics (VIP-1).
 		{"unmatched input", "function size(r: { name: string }) { return try sync(() => r.name.length, r) }", "Pass r as an input", EK4405.Code},
 	} {
 		t.Run(test.name, func(t *testing.T) {

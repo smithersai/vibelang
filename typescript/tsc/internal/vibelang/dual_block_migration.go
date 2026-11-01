@@ -8,11 +8,13 @@ package vibelang
 // part in expression typing, form selection or emit.
 //
 // Where the appended call no longer type-checks, TypeScript's own error stays
-// and explainDualBlock adds a note with the arrow spelling. Where it still
-// type-checks, the block now means something else, which is EK1023. --fix
-// writes the data-first arrow where a data-first signature exists, and the
+// and explainDualBlock adds a note with the effect block spelling. Where it
+// still type-checks, the block now means something else, which is EK1023.
+// --fix writes the program first where a data-first signature exists, and the
 // curried call otherwise: the two calls D188's lowering emitted,
-// f(block, args) and f(args)(block), with the block written as an arrow.
+// f(block, args) and f(args)(block), with the block written as effect { … },
+// the Effect itself (VIP-2). An arrow there would be a plain function, which
+// never becomes a program at an Effect parameter (VIP-2).
 
 import (
 	"context"
@@ -34,13 +36,9 @@ func init() {
 	ls.RegisterCodeFixProvider(&ls.CodeFixProvider{ErrorCodes: []int32{2345, 2554, 2769}, GetCodeActions: dualBlockActions})
 }
 
-// dualBlockSilent is EK1023 for a block whose appended call still
-// type-checks, so the callee receives it as something other than its program.
-var dualBlockSilent = EK1023.With("This block is `{0}`'s last argument, which `{0}` accepts; through VibeLang 0.0.10 the block was `{0}`'s program.")
-
 // dualBlockMigrationNote marks every dual-block site for the docs migration
-// tool, as pipe_migration.go's note marks a pipe site.
-const dualBlockMigrationNote = "Through VibeLang 0.0.10, a block after an Effect dual took the place of its program. vibelang --fix writes the arrow."
+// tool.
+const dualBlockMigrationNote = "Through VibeLang 0.0.10, a block after an Effect dual took the place of its program. vibelang --fix writes it as an effect block there."
 
 // legacyDualBlockForm is where D188 placed a block param through 0.0.10.
 type legacyDualBlockForm uint8
@@ -148,9 +146,8 @@ func dualBlockCalls(c *checker.Checker, file *ast.SourceFile) []*ast.Node {
 type dualBlockNotesKey struct{}
 
 // explainDualBlock keeps TypeScript's error at a dual's block and adds the
-// arrow spelling, or reports EK1023 where the appended call type-checks. It
-// drops the EK4301 that the block draws as the plain callback a data-last
-// signature's options parameter takes: that callback is the misplaced block.
+// effect block spelling, or reports EK1023 where the appended call
+// type-checks.
 func explainDualBlock(c *checker.Checker, file *ast.SourceFile, ds []*ast.Diagnostic) []*ast.Diagnostic {
 	calls := dualBlockCalls(c, file)
 	if len(calls) == 0 {
@@ -160,9 +157,6 @@ func explainDualBlock(c *checker.Checker, file *ast.SourceFile, ds []*ast.Diagno
 	ds = slices.Clone(ds)
 	for _, call := range calls {
 		block := call.Arguments()[len(call.Arguments())-1]
-		ds = slices.DeleteFunc(ds, func(d *ast.Diagnostic) bool {
-			return d.Source() == diagnosticSource && d.Code() == EK4301.Code && innermostFunction(block, d.Loc()) == block
-		})
 		// TypeScript's error for the call, preferring one outside the block,
 		// never one that belongs to another dual block nested in it.
 		var found, inBody *ast.Diagnostic
@@ -188,7 +182,7 @@ func explainDualBlock(c *checker.Checker, file *ast.SourceFile, ds []*ast.Diagno
 			found = inBody
 		}
 		if found == nil {
-			found = newDiagnostic(optionsFor(c, file), call, dualBlockSilent, nodeText(file, call.Expression()))
+			found = newDiagnostic(optionsFor(c, file), call, EK1023, nodeText(file, call.Expression()))
 			if found == nil {
 				continue
 			}
@@ -208,7 +202,7 @@ func explainDualBlock(c *checker.Checker, file *ast.SourceFile, ds []*ast.Diagno
 }
 
 // dualBlockSpelling is the note that names where the callee takes its
-// program and gives the spelling with an arrow there.
+// program and gives the spelling with an effect block there.
 func dualBlockSpelling(c *checker.Checker, file *ast.SourceFile, call *ast.Node) string {
 	callee := nodeText(file, call.Expression())
 	var args []string
@@ -217,10 +211,10 @@ func dualBlockSpelling(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 	}
 	written := shortText(strings.Join(args, ", "), "…")
 	if legacyDualBlock(c, call) == dualBlockPrepended {
-		return "A block is its call's last argument. `" + callee + "` takes its program first: write `" + callee + "(() => { … }, " + written + ")`."
+		return "A block is its call's last argument. `" + callee + "` takes its program first: write `" + callee + "(effect { … }, " + written + ")`."
 	}
 	head := callee + "(" + written + ")"
-	return "A block is its call's last argument. `" + head + "` returns the function that takes the program: write `" + head + "(() => { … })`."
+	return "A block is its call's last argument. `" + head + "` returns the function that takes the program: write `" + head + "(effect { … })`."
 }
 
 // strictlyInside reports whether loc lies inside body's braces.
@@ -228,33 +222,11 @@ func strictlyInside(file *ast.SourceFile, body *ast.Node, loc core.TextRange) bo
 	return nodeStart(file, body) < loc.Pos() && loc.End() < body.End()
 }
 
-// innermostFunction returns the innermost function-like node of fn, or fn
-// itself, whose span holds loc, or nil when fn's span does not.
-func innermostFunction(fn *ast.Node, loc core.TextRange) *ast.Node {
-	file := ast.GetSourceFileOfNode(fn)
-	if loc.Pos() < fn.Pos() || fn.End() < loc.End() {
-		return nil
-	}
-	inner := fn
-	var visit func(*ast.Node) bool
-	visit = func(n *ast.Node) bool {
-		if nodeStart(file, n) > loc.Pos() || n.End() < loc.End() {
-			return false
-		}
-		if ast.IsFunctionLike(n) {
-			inner = n
-		}
-		return n.ForEachChild(visit)
-	}
-	fn.ForEachChild(visit)
-	return inner
-}
-
 // dualBlockRewrite plans the edits that keep the 0.0.10 meaning of call's
-// block: the program first, f(() => { … }, args), where a data-first
-// signature takes it, else the curried call, f(args)(() => { … }). The block
+// block: the program first, f(effect { … }, args), where a data-first
+// signature takes it, else the curried call, f(args)(effect { … }). The block
 // moves before the written arguments, which still run in their order, and
-// building an arrow does nothing observable, so the rewrite is exact.
+// building an effect block runs nothing (VIP-2), so the rewrite is exact.
 func dualBlockRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *formRewrite {
 	refuse := func(why string) *formRewrite {
 		return &formRewrite{why: "This block cannot be moved automatically: " + why}
@@ -292,13 +264,13 @@ func dualBlockRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node) 
 			}
 		}
 		open := scanner.SkipTrivia(text, calleeEnd)
-		edits = []sourceEdit{{open + 1, brace, "() => "}, {block.End(), block.End(), ", " + written + ")"}}
+		edits = []sourceEdit{{open + 1, brace, "effect "}, {block.End(), block.End(), ", " + written + ")"}}
 		description = "the program first, as the data-first signature takes it"
 	} else {
 		if paren < 0 {
-			edits = []sourceEdit{{calleeEnd, brace, "()(() => "}, {block.End(), block.End(), ")"}}
+			edits = []sourceEdit{{calleeEnd, brace, "()(effect "}, {block.End(), block.End(), ")"}}
 		} else {
-			edits = []sourceEdit{{paren + 1, brace, "(() => "}, {block.End(), block.End(), ")"}}
+			edits = []sourceEdit{{paren + 1, brace, "(effect "}, {block.End(), block.End(), ")"}}
 		}
 		description = "the program applied to the curried call"
 	}

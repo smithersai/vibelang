@@ -1,0 +1,15 @@
+// expect-result: [1,2]
+// Formerly trusted-plain-function.fail, which expected EK4301 here (D514).
+// D514 superseded: pre-VIP; foreign contracts come only from @throws on
+// .ts/.js imports (VIP-4, the 2026-10-31 no-throw ruling; spec ruling
+// 2026-11-01). A plain function passes a trusted value to map as JavaScript
+// does, so this compiles.
+import { parse } from "./helpers.ts"
+
+export function all(lines: Array<string>) {
+  return lines.map(parse)
+}
+
+export effect function main() {
+  return all(["1", "2"])
+}

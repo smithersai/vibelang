@@ -12,7 +12,7 @@ effect function method() {
   }
   effect function input() {
     trace.push("argument")
-    try Effect.yieldNow()
+    try Effect.yieldNow
     return "7"
   }
   const value = codec.parse?.(try input())
@@ -23,7 +23,7 @@ effect function receiver(codec: { parse: typeof JSON.parse } | undefined) {
   const trace: string[] = []
   effect function input() {
     trace.push("argument")
-    try Effect.yieldNow()
+    try Effect.yieldNow
     return "7"
   }
   const value = codec?.parse(try input())

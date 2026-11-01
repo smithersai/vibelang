@@ -1,4 +1,4 @@
-// expect: EK1001 EK9201 EK2114 EK4701
+// expect: EK0504 EK9201 EK2114 EK4701
 error NotFound { id: string }
 error Timeout
 
@@ -22,7 +22,7 @@ export effect function parsed() {
 
 // The left side cannot fail, so the catch never runs (EK9204, a warning).
 export effect function constant() {
-  return 1 catch () => 2
+  return Effect.succeed(1) catch () => 2
 }
 
 // default: throw e keeps Timeout in E, which the contract leaves out.
@@ -33,5 +33,5 @@ export effect function strict(id: string): string!! {
   }
 }
 
-// At a module's top level a catch expression runs a program (EK1001).
+// catch runs its Effect, so outside effect code it is EK0504 (VIP-5, chapter 2).
 export const top = find("1") catch () => "guest"

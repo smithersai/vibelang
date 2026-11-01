@@ -16,6 +16,6 @@ effect function ping(n: number): string!! {
 }
 effect function pong(n: number): string!! { return try ping(n - 1) }
 
-export function main() {
+export effect function main() {
   return [try even(200001), try odd(200001), try down(200000), try ping(200000)]
 }

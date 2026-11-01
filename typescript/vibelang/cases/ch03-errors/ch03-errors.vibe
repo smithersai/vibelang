@@ -141,7 +141,7 @@ effect function scenario() {
   }
   const strict = try strictId("12")
   const defect = try describeDefect("x")
-  const made = (makeNotFound("7"))._tag
+  const made = makeNotFound("7")._tag // makeNotFound is plain (VIP-1): it returns the error as a value
   return {
     found,
     missing,

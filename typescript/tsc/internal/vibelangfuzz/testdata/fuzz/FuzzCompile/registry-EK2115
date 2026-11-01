@@ -1,2 +1,0 @@
-go test fuzz v1
-string("-- main.vibe --\nexport const refuse = (reason: string): Effect.Effect<never, Missing, never> => {\n  if (reason === \"\") throw new Missing({ reason })\n  return effect { throw new Missing({ reason }) }\n")

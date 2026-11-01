@@ -1,24 +1,24 @@
-// expect: EK4301 TS2304 TS2322
-// Conformance probes of written forms that fail (D500, Chapter 30).
+// expect: TS2304 TS2322
+// Conformance probes of written forms that fail (VIP-1).
 import { takesPlain } from "./helpers.ts"
 
 error TxError
 const cached: number!! = effect { return 1 }
 
-// An Effect annotation makes an Effect function where only a plain one fits.
+// An Effect function does not fit where a plain one must return a number.
 export function annotatedAtPlain() {
   return takesPlain(effect (x): number!! => x + 1)
 }
 
-// A literal at a destination that returns an Effect is an Effect function, so
-// returning the program cached returns it unrun; write cached().
+// A plain callback may return the program flatMap runs; an effect callback
+// returns it as data, unrun (VIP-5).
 export effect function nested() {
-  return try Effect.flatMap(Effect.succeed(1), effect (v) => cached)
+  return try Effect.flatMap(Effect.succeed(1), (v) => cached)
 }
 
-// A union of a plain and an Effect function: its call would build the Effect
-// member's program and never run it.
-function twice(n: number) {
+// A union of a plain and an Effect function is a TypeScript union: its call
+// returns the member's result, a number or an unrun Effect (VIP-1).
+effect function twice(n: number) {
   return n * 2
 }
 export function mixed(flag: boolean) {

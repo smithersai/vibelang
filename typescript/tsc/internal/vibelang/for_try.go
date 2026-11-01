@@ -49,7 +49,7 @@ func checkForTry(c *checker.Checker, file *ast.SourceFile) {
 			if init := n.AsForInOrOfStatement().Initializer; init != nil && (!ast.IsVariableDeclarationList(init) || init.Flags&(ast.NodeFlagsLet|ast.NodeFlagsConst) == 0 || init.Flags&ast.NodeFlagsUsing != 0) {
 				report(c, init, forTryHead)
 			}
-			if !inLowerableBody(n) {
+			if !inEffectCode(n) { // a plain function is not effect code (VIP-1, VIP-20)
 				report(c, n, EK2001)
 				coverCodes(c, n.Expression(), 2488, 2504)
 			}

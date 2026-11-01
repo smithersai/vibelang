@@ -96,7 +96,7 @@ function answer() {
 }
 
 it.effect("answers", effect () => {
-  assert.strictEqual(answer(), 42)
+  assert.strictEqual(try answer(), 42)
 })
 ```
 

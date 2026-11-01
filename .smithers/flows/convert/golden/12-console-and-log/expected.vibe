@@ -1,5 +1,5 @@
-export function hello() {
-  Console.log("Hello")
-  log("logged")
+export effect function hello() {
+  try Console.log("Hello")
+  try log("logged")
   return "ok"
 }

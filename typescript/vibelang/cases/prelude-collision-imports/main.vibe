@@ -5,7 +5,7 @@ import { Array as EffectArray, Number as EffectNumber } from "effect"
 import { Headers as EffectHeaders } from "effect/http"; import { HostHeaders } from "./host.js"
 
 // expect-result: [3,[1,2],"1",[1,2],"2"]
-export function main() {
+export effect function main() {
   const headers = EffectHeaders.fromInput({ a: "1" })
   return [
     EffectNumber.sum(1, 2),

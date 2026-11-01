@@ -8,5 +8,5 @@ function increment() {
   runs++
   return 9
 }
-// Even a function with a plain body keeps its cold Effect form here.
-export const stored: Effect.Effect<number, never, never> = increment()
+// increment is plain (VIP-1); Effect.sync keeps its cold Effect form here.
+export const stored: Effect.Effect<number, never, never> = Effect.sync(increment)

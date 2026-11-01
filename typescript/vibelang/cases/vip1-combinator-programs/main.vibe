@@ -6,7 +6,7 @@ let runs = 0
 export effect function main() {
   const cold = runs
   const array = try Effect.all([...([
-    effect { runs++; try Effect.yieldNow(); return 1 },
+    effect { runs++; try Effect.yieldNow; return 1 },
     effect { runs++; return 2 }
   ] as const)])
   const record = try Effect.all({ ...{ value: effect { runs++; return 3 } } })

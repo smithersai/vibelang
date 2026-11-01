@@ -1,2 +1,1 @@
-Run the Effects the comparator needs first, with Effect.forEach or a for...of loop, then sort by their results with a plain comparator.
-Give twice's parameter an Effect contract, so twice runs it: f: () => A!E!R, with E and R in twice's return type.
+try runs an Effect only in effect code, but it is in a plain function.

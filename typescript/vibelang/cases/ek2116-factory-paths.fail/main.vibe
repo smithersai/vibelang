@@ -1,4 +1,7 @@
-// expect: EK2116 EK2116
+// expect: TS2322 TS2366
+// A plain function whose written type is an Effect is checked as TypeScript
+// checks it (VIP-1; D269's EK2116 is retired): a path that returns 2 is
+// TS2322, and a path that returns nothing is TS2366.
 import { Effect } from "effect"
 export function mixed(flag: boolean): number!! { if (flag) return effect { return 1 }; return 2 }
 export function missing(flag: boolean): number!! { if (flag) return effect { return 1 } }

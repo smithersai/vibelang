@@ -1,9 +1,10 @@
 // expect: EK4503
 // A module whose name names a service reads its members as the service's
 // key does (D311): Path.sep is Path.Path.sep, a value of the implementation,
-// so it is EK4503, as Users.region is, and Path().sep reads it. Terminal's
-// columns is a program, as Effect declares it: EK4503 says that
-// Terminal.columns() runs it. module-service-values runs both forms.
+// so it is EK4503, as Users.region is, and (try Path.Path).sep reads it.
+// Terminal's columns is a program, as Effect declares it: EK4503 says that
+// try (try Terminal.Terminal).columns runs it (VIP-5, VIP-10).
+// module-service-values runs both forms.
 export function main() {
   const sep = Path.sep
   const columns = Terminal.columns

@@ -112,9 +112,9 @@ func TestEditorRefactorGoldens(t *testing.T) {
 	for _, test := range []struct{ name, source, action, want string }{
 		{"interface to schema", "export interface /*cursor*/Person { readonly name: string }", "Convert to a schema declaration", "export schema Person { readonly name: string }"},
 		{"type to schema", "export type /*cursor*/Person = { name: string }", "Convert to a schema declaration", "export schema Person { name: string }"},
-		{"inferred contract", "export function /*cursor*/double(x: number) { return x * 2 }", "Write the inferred contract", "export function double(x: number): number!! { return x * 2 }"},
-		{"inferred effect contract", "export function /*cursor*/load() { return Effect.succeed(1) }", "Write the inferred contract", "export function load(): number!! { return Effect.succeed(1) }"},
-		{"remove contract", "export function /*cursor*/double(x: number): number!! { return x * 2 }", "Remove the contract", "export function double(x: number) { return x * 2 }"},
+		{"inferred contract", "export effect function /*cursor*/double(x: number) { return x * 2 }", "Write the inferred contract", "export effect function double(x: number): number!! { return x * 2 }"},
+		{"inferred effect contract", "export effect function /*cursor*/load() { return try Effect.succeed(1) }", "Write the inferred contract", "export effect function load(): number!! { return try Effect.succeed(1) }"},
+		{"remove contract", "export effect function /*cursor*/double(x: number): number!! { return x * 2 }", "Remove the contract", "export effect function double(x: number) { return x * 2 }"},
 		{"nested calls", helpers + "export const value = /*cursor*/f(g(1))", "Convert to a pipe", helpers + "export const value = 1 |> g(%) |> f(%)"},
 		{"pipe to calls", helpers + "export const value = 1 /*cursor*/|> g(%) |> f(%)", "Convert the pipe to calls", helpers + "export const value = f(g(1))"},
 		{"pipe precedence", "export const value = (1 + 2) /*cursor*/|> % * 3", "Convert the pipe to calls", "export const value = (1 + 2) * 3"},
@@ -170,11 +170,10 @@ func TestEditorRefactorsDeclineUnsupportedRewrites(t *testing.T) {
 }
 
 func TestEditorHoverExplainsCallBehavior(t *testing.T) {
-	for _, test := range []struct{ name, source, signature, note string }{
-		{"plain function", "function double(x: number) { return x * 2 }; function main() { return /*cursor*/double(2) }", "function double(x: number): number", "Plain JavaScript: VibeLang code calls it directly."},
-		{"running effect", "function main() { return Effect./*cursor*/succeed(1) }", "", "Runs here and returns `number`."},
-		{"deferred effect", "function main() { return Effect.all([Effect./*cursor*/succeed(1)]) }", "", "Passed by name to `Effect.all` as a program:"},
-		{"hatch body", "function main() { return sync(() => Effect./*cursor*/succeed(1)) }", "", ""},
+	for _, test := range []struct{ name, source, note string }{
+		{"running effect", "effect function main() { return try Effect./*cursor*/succeed(1) }", "Runs here and returns `number`."},
+		{"effect value", "effect function main() { return try Effect.all([Effect./*cursor*/succeed(1)]) }", ""},
+		{"plain function", "function main() { return Effect./*cursor*/succeed(1) }", ""},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			pos := strings.Index(test.source, "/*cursor*/")
@@ -184,54 +183,9 @@ func TestEditorHoverExplainsCallBehavior(t *testing.T) {
 			c, done := program.GetTypeCheckerForFile(t.Context(), file)
 			defer done()
 			node := astnav.GetTouchingPropertyName(file, pos)
-			signature, note := plainFunctionQuickInfo(c, node)
-			_, running := runningCallQuickInfo(c, node)
-			note += running
-			if signature != test.signature || (test.note == "" && note != "") || !strings.Contains(note, test.note) {
-				t.Fatalf("hover: %q / %q; want %q / %q", signature, note, test.signature, test.note)
-			}
-		})
-	}
-}
-
-// A hover on an argument passed by name, before its call is checked,
-// resolves the call first, so the call keeps the signature a full check
-// infers: after the hover on the first topic, Effect.timeout's program, the
-// second topic is the timed greeting's value, a string, not unknown.
-func TestEditorHoverOnByNameArgumentBeforeCheck(t *testing.T) {
-	source := "function greeting() { return \"hi\" }\nexport function piped() {\n  return greeting() |> Effect.timeout(%, \"1 second\") |> `${%}!`\n}\n"
-	_, file, service, _ := editorProgram(t, source)
-	uri := lsconv.FileNameToDocumentURI(file.FileName())
-	line := strings.Split(source, "\n")[2]
-	first := hoverText(t, service, uri, lsproto.Position{Line: 2, Character: uint32(strings.Index(line, "(%,") + 1)})
-	second := hoverText(t, service, uri, lsproto.Position{Line: 2, Character: uint32(strings.Index(line, "${%}") + 2)})
-	if !strings.Contains(first, "(topic) %: string!!") || !strings.HasPrefix(second, "(topic) %: string\n\nThe value") {
-		t.Fatalf("hovers %q, then %q; want the program string!!, then the value string", first, second)
-	}
-}
-
-// A hover on a call passed by name as an argument, before its owning call is
-// checked, resolves that call first, as a hover on a pipe's topic does: the
-// lowering passes greeting() to its owner by name, so the hover must not say
-// it runs here. The language server reaches this after an edit, when a fresh
-// checker answers the hover before any diagnostics run.
-func TestEditorHoverOnByNameCallArgumentBeforeCheck(t *testing.T) {
-	const greeting = "function greeting() {\n  Effect.sleep(\"1 millis\")\n  return \"hello\"\n}\n"
-	for _, test := range []struct{ name, body, owner string }{
-		{"argument", "return Effect.timeout(greeting(), \"1 second\")", "Effect.timeout"},
-		{"second owner", "return Effect.retry(greeting(), { times: 2 })", "Effect.retry"},
-		{"array element", "return Effect.all([greeting(), Effect.succeed(1)])", "Effect.all"},
-		{"nested owner", "return Effect.timeout(Effect.retry(greeting(), { times: 2 }), \"1 second\")", "Effect.retry"},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			source := greeting + "export function eventually() {\n  " + test.body + "\n}\n"
-			_, file, service, _ := editorProgram(t, source)
-			uri := lsconv.FileNameToDocumentURI(file.FileName())
-			line := strings.Split(source, "\n")[5]
-			shown := hoverText(t, service, uri, lsproto.Position{Line: 5, Character: uint32(strings.Index(line, "greeting()"))})
-			want := "Passed by name to `" + test.owner + "` as a program: it runs when that program runs, not here, and returns `string`."
-			if !strings.Contains(shown, want) {
-				t.Fatalf("hover %q; want %q", shown, want)
+			_, note := runningCallQuickInfo(c, node)
+			if (test.note == "" && note != "") || !strings.Contains(note, test.note) {
+				t.Fatalf("hover: %q; want %q", note, test.note)
 			}
 		})
 	}

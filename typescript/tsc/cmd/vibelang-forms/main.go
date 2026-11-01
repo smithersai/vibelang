@@ -76,7 +76,6 @@ func main() {
 	previous := flag.String("previous", "", "the committed decision snapshot: fail if a decision moved without an approval")
 	approved := flag.String("approved", "", "the approvals file for -previous")
 	stats := flag.Bool("stats", false, "print counts and timing to stderr")
-	legacy := flag.String("legacy", "", "write the checked decision-1 legacy oracle to this file (- for stdout); no forms table is generated")
 	flag.Parse()
 	root := *repo
 	if root == "" {
@@ -90,21 +89,6 @@ func main() {
 	}
 	if *runtime == "" {
 		*runtime = filepath.Join(root, "packages", "runtime", "src")
-	}
-	if *legacy != "" {
-		data, err := legacyOracle(root, *nodeModules)
-		if err != nil {
-			fail(err)
-		}
-		if *legacy == "-" {
-			_, err = os.Stdout.Write(data)
-		} else {
-			err = os.WriteFile(*legacy, data, 0o644)
-		}
-		if err != nil {
-			fail(err)
-		}
-		return
 	}
 	start := time.Now()
 	g, err := generate(must(filepath.Abs(*nodeModules)), must(filepath.Abs(*runtime)))

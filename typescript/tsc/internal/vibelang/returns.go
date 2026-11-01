@@ -55,20 +55,14 @@ func returnOwner(node *ast.Node) *ast.Node {
 // plain (D109); unannotated functions without an Effect expectation keep data.
 func (a *analyzer) expectsProgramReturn(fn *ast.Node) bool {
 	// S5-1 delegates structured subtype returns; D269 holds exact-Effect factory returns.
-	if !isLowerable(fn) || isProducer(fn) || a.isFactory(fn) {
+	if !isLowerable(fn) || isProducer(fn) {
 		return false
 	}
 	if fn.Type() != nil {
 		return a.hasContract(fn)
 	}
 	if isLambda(fn) {
-		e := a.classify(a.contextualTypes(fn))
-		if call, path := ownerCall(fn); call != nil {
-			if signature := a.candidateOf(call); signature != nil {
-				e = a.expectationAt(call, signature, path, fn)
-			}
-		}
-		return !e.plainFn && (e.effectFn || e.program)
+		return a.isEffect(fn)
 	}
 	return a.expectsEffect(fn)
 }
@@ -96,26 +90,11 @@ func returnedProgramType(c *checker.Checker, node *ast.Node, t *checker.Type) *c
 	if !a.expectsProgramReturn(fn) {
 		return t
 	}
-	// S22-3 amends S5-1: the declared success channel wins over the
-	// subtype's ability to run. Commands, Exits, and other yieldable values
-	// accepted by A are data; only a subtype rejected by A delegates.
-	if declared := a.declaredProgramReturn(fn); declared != nil {
-		// A contextual unknown or any, as in a tsc callback typed
-		// (n) => Effect<unknown>, names no success value, so a subtype returned
-		// there is S5-1's program. A contract written on the function names it.
-		if success := successType(c, declared); success != nil && (fn.Type() != nil || success.Flags()&(checker.TypeFlagsUnknown|checker.TypeFlagsAny) == 0) && c.IsTypeAssignableTo(t, success) {
-			delete(a.returnedPrograms, node) // discard a prior contextual probe's delegation
-			return t
-		}
-	}
-	channels := []*checker.Type{programChannelType(c, t, "_A"), programChannelType(c, t, "_E"), programChannelType(c, t, "_R")}
-	for _, channel := range channels {
-		if channel == nil {
-			return t
-		}
-	}
-	a.returnedPrograms[node] = c.NewTypeReference(effectInterface(c, t), channels)
-	return channels[channelA]
+	// VIP-5 (amended 2026-10-30, return values stay unflattened): a returned
+	// Effect subtype is the function's success data, as Effect.gen returns it,
+	// and return try e runs it. S5-1's delegation at the return boundary is
+	// gone; returnedProgram still forces this hook for the return checks.
+	return t
 }
 
 func (a *analyzer) returnedProgram(node *ast.Node) *checker.Type {
@@ -132,7 +111,7 @@ func (a *analyzer) returnedProgram(node *ast.Node) *checker.Type {
 			// These calls already yield their success under the call rule.
 			// Do not request their inferred return rows while a call cycle's
 			// fixpoint is being collected (D52).
-			if callee != nil && isLowerable(callee) && (a.hasContract(callee) || isPlainCandidate(callee) && a.isSplittable(callee)) {
+			if callee != nil && isLowerable(callee) && a.hasContract(callee) {
 				return nil
 			}
 			// A do or throw expression whose return type the checker is

@@ -8,9 +8,9 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 )
 
-// TestEditorCallFixKeepsTheContract checks that EK4802's call-it fix is
+// TestEditorCallFixKeepsTheContract checks that EK4802's run-it fix is
 // offered under a written contract only where the contract accepts what the
-// call runs: calling Exit.fail("data") in an unknown!! function would fail
+// run gives: try Exit.fail("data") in an unknown!! function would fail
 // with string, which E = never rejects (EK2001). A quick fix adds no error
 // (Chapter 28, Rewrites keep meaning).
 func TestEditorCallFixKeepsTheContract(t *testing.T) {
@@ -44,11 +44,11 @@ func TestEditorCallFixKeepsTheContract(t *testing.T) {
 			offered := false
 			if response.CommandOrCodeActionArray != nil {
 				for _, action := range *response.CommandOrCodeActionArray {
-					offered = offered || action.CodeAction != nil && action.CodeAction.Title == "Call it to run it"
+					offered = offered || action.CodeAction != nil && action.CodeAction.Title == "Run it with try"
 				}
 			}
 			if offered != test.offered {
-				t.Fatalf("Call it to run it offered: %v, want %v, in:\n%s", offered, test.offered, test.source)
+				t.Fatalf("Run it with try offered: %v, want %v, in:\n%s", offered, test.offered, test.source)
 			}
 		})
 	}

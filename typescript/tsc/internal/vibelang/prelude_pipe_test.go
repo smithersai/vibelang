@@ -6,14 +6,14 @@ import (
 )
 
 func TestPreludePipeCallGuidance(t *testing.T) {
-	source := "function num(n: number) { return n + 1 }\nexport function f() { return pipe(num(1), Effect.map((n: number) => n + 1)) }"
+	source := "effect function num(n: number) { return n + 1 }\nexport effect function f() { return pipe(try num(1), Effect.map((n: number) => n + 1)) }"
 	program, file, _, _ := editorProgram(t, source)
 	found := false
 	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
 		if d.Code() == 4502 {
 			found = true
 			text := diagnosticWithNotes(d)
-			if !strings.Contains(text, "Pass the program to the operation as a function: Effect.map(() => num(1), (n: number) => n + 1)") || strings.Contains(text, "|>") || strings.Contains(text, "pipe(() =>") {
+			if !strings.Contains(text, "Pass the Effect to the operation without running it: Effect.map(num(1), (n: number) => n + 1)") || strings.Contains(text, "|>") || strings.Contains(text, "pipe(() =>") {
 				t.Errorf("missing guidance: %s", text)
 			}
 		}

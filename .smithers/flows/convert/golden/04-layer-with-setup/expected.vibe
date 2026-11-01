@@ -4,8 +4,8 @@ service Greeter {
 
 export const GreeterLive = Layer.effect(Greeter, effect {
   const prefix = "Hello"
-  log("greeter ready")
+  try log("greeter ready")
   return {
-    greet(name) { return `${prefix}, ${name}` }
+    effect greet(name) { return `${prefix}, ${name}` }
   }
 })

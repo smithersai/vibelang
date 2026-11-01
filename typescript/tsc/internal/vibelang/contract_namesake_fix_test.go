@@ -12,12 +12,12 @@ import (
 
 // Smithers' agent/fs (migrate-smithers inbox, EK9202 "needs FileSystem, but
 // its contract says R = FileSystem"): with the DOM lib loaded, a contract's
-// bare FileSystem is the DOM's (VIP-14), the body's FileSystem() Effect's.
+// bare FileSystem is the DOM's (VIP-14), the body's try FileSystem.FileSystem Effect's (VIP-10).
 // The diagnostic names Effect's type FileSystem.FileSystem, explains the
 // collision, and --fix and --fix-vip-only write the contract's type through
 // its module, the meaning it had before VIP-14.
 func TestContractAmbientNamesake(t *testing.T) {
-	body := "  const fs = try FileSystem()\n  return String(typeof fs)\n}\n"
+	body := "  const fs = try FileSystem.FileSystem\n  return String(typeof fs)\n}\n"
 	for _, test := range []struct {
 		name, contract, want string
 	}{

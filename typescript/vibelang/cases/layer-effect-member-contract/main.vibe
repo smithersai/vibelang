@@ -10,7 +10,7 @@ service Builder { greet(name: string): string!! }
 const Clock2Live = Layer.succeed(Clock2, { effect now() { return 42 } })
 
 const GreeterLive = Layer.effect(Greeter, effect {
-  const clock = try Clock2()
+  const clock = try Clock2
   return { effect greet(name) { return `hi ${name} at ${try clock.now()}` } }
 })
 
@@ -19,7 +19,7 @@ const StampedLive = Layer.effect(Stamped, effect {
 })
 
 const BuilderLive = Layer.effect(Builder, effect {
-  const clock = try Clock2()
+  const clock = try Clock2
   const impl = { effect greet(name: string) { return `built ${name} at ${try clock.now()}` } }
   return impl
 })

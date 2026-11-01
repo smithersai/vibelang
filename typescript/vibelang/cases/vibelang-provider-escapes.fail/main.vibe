@@ -21,7 +21,7 @@ service Database {
 }
 
 export const UsersLive = Layer.effect(Users, effect {
-  const db = try Database()
+  const db = try Database
   return {
     effect find(id) {
       const rows = try db.query(`select ${id}`)

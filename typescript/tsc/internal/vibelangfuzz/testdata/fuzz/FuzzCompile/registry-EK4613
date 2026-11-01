@@ -1,2 +1,0 @@
-go test fuzz v1
-string("-- main.vibe --\n  const g = fork (() => { try Fiber.interrupt(f) })\n")

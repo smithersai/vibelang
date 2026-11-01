@@ -13,6 +13,6 @@ function shadowed() {
   return answer()
 }
 
-export function main() {
+export effect function main() {
   return [answer(), answer$direct, shadowed(), try sum(5), sum$recur]
 }

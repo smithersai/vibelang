@@ -1,0 +1,7 @@
+// VIP-1 flip acceptance case 5 (foldkit-3, probe foldkit-ssg-plain-runpromise):
+// a plain Promise entry, like an SSG renderPage(request), starts a root
+// Effect with runPromise and stays plain.
+export const render = (): Promise<number> => runPromise(effect { return 7 })
+
+export const renderPage = (request: { readonly path: string }): Promise<string> =>
+  runPromise(effect { return `page:${request.path}` })

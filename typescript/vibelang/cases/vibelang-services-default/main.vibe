@@ -30,7 +30,7 @@ service FeatureFlags {
 }
 
 export effect function checkoutPage(cartId: string) {
-  return (try FeatureFlags()).newCheckout ? `new ${cartId}` : `classic ${cartId}`
+  return (try FeatureFlags).newCheckout ? `new ${cartId}` : `classic ${cartId}`
 }
 
 export effect function login(user: string) {

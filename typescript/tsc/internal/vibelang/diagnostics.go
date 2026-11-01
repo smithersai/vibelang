@@ -77,9 +77,6 @@ var (
 	EK1006 = message(1006, errorCategory, "This pipe's body does not use its topic, %, so the value before |> would go nowhere.")
 	// EK1007: % outside every pipe's body.
 	EK1007 = message(1007, errorCategory, "% is the topic of a pipe and stands only in a pipe's body, after |>.")
-	// EK1008: a pipe that passes its left side by name and also uses it as a value. {0} is the left side.
-	EK1008 = message(1008, errorCategory, "% stands for {0}, which this pipe passes by name to a program elsewhere, so it cannot also be a value here.")
-
 	// EK1010: an unparenthesized throw expression before an operator. {0} is its unary operand.
 	EK1010 = message(1010, errorCategory, "throw takes only {0} here, so the rest of the expression would not be thrown; write throw (…) to throw the whole expression.")
 	// EK1011: a function compiles to an Effect in a program without effect's Effect type. {0} is the function.
@@ -87,7 +84,7 @@ var (
 	// EK1012: a call that runs and never succeeds is stored. {0} is the call, {1} what stores it. A warning a project may adjust (D241).
 	EK1012 = message(1012, warningCategory, "{0} runs here and never succeeds, so {1} never holds a value.")
 	// EK1023: a legacy decision would silently change meaning (D382). Not adjustable.
-	EK1023 = message(1023, errorCategory, "pipe now passes its first argument as the value it is, but through VibeLang 0.0.10 this pipe passed it as a program.")
+	EK1023 = message(1023, errorCategory, "This block is `{0}`'s last argument, which `{0}` accepts; through VibeLang 0.0.10 the block was `{0}`'s program.")
 	// EK1202: a line break beside a provider-list separator (VIP-12, detail 237).
 	EK1202 = message(1202, errorCategory, parser.VibeLangProvideCommaMessage)
 	// VIP-2's block diagnostics and TC39's do expression (VIP-2), reported by the parser,
@@ -154,7 +151,7 @@ var (
 	// EK3002: a class extends a service.
 	EK3002 = message(3002, errorCategory, "A class cannot extend a service: it would inherit the key and silently become the same service; implement its Shape instead.")
 	// EK3003: new on a service. {0} is the service.
-	EK3003 = message(3003, errorCategory, "{0} is a service key, so new {0}() cannot create an implementation; use {0}(), an object literal, or a class that implements {0}.Shape.")
+	EK3003 = message(3003, errorCategory, "{0} is a service key, so new {0}() cannot create an implementation; read the provided one with try {0}, or write an object literal or a class that implements {0}.Shape.")
 	// EK3004: instanceof on a service. {0} is the service.
 	EK3004 = message(3004, errorCategory, "instanceof {0} is always false: implementations are plain objects; check their members instead.")
 	// EK3005: a generic service class.
@@ -212,7 +209,7 @@ func init() {
 	for _, m := range []*Message{
 		EK0108,
 		EK1202,
-		EK1001, EK1002, EK1003, EK1005, EK1006, EK1007, EK1008, EK1010, EK1011, EK1012, EK1023,
+		EK1001, EK1002, EK1003, EK1005, EK1006, EK1007, EK1010, EK1011, EK1012, EK1023,
 		EK0201, EK0202, EK0203, EK0204, EK0205,
 		EK9201, EK9202, EK9203, EK9204, EK2005, EK2006, EK9205, EK9206, EK9207, EK2104, EK2105, EK2106, EK2107, EK2108, EK2109, EK2112, EK2113, EK2115, EK2116, EK2117, EK2118,
 		EK3001, EK3002, EK3003, EK3004, EK3005, EK9208, EK3101, EK3201, EK3202, EK3203, EK3204, EK3205, EK3206, EK3207,

@@ -1,0 +1,4 @@
+main.vibe(11,10): error TS2349
+main.vibe(15,10): error TS2349
+main.vibe(21,43): error TS2349
+main.vibe(25,10): error TS2348

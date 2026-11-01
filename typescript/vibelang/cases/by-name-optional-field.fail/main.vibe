@@ -5,6 +5,6 @@ const decode = effect (text: string): Effect.Effect<number, string, never> => {
   return text.length
 }
 export const wrongSuccess = effect (text: string | null): Effect.Effect<{ tags: string | undefined }, string, never> =>
-  try Effect.all({ tags: text === null ? undefined : decode(text) })
+  try Effect.all({ tags: text === null ? Effect.succeed(undefined) : decode(text) })
 export const wrongFailure = effect (text: string | null): Effect.Effect<{ tags: number | undefined }, never, never> =>
-  try Effect.all({ tags: text === null ? undefined : decode(text) })
+  try Effect.all({ tags: text === null ? Effect.succeed(undefined) : decode(text) })

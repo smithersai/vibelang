@@ -38,7 +38,7 @@ func checkNeverStored(c *checker.Checker, file *ast.SourceFile) {
 // never succeeds.
 func checkNeverStoredCall(c *checker.Checker, a *analyzer, file *ast.SourceFile, call *ast.Node) {
 	target, name, kind := storedAt(call)
-	if kind == storedNot || !a.runs(call) || a.isByName(call) {
+	if kind == storedNot || !a.runs(call) {
 		return
 	}
 	// A call the parser wrote for a form, such as $await for `await x`, has

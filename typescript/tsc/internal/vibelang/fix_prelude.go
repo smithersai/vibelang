@@ -264,10 +264,10 @@ func declaredImports(ctx context.Context, program *compiler.Program, file *ast.S
 // moduleExportUses returns the edits that keep each use of export, a
 // module's export of the module's own name that the file imports by name,
 // meaning the export once the import is gone and name means the module: a
-// type, a member the module does not export, and a service call M() keep
-// their text, since D311 gives the module's name those meanings, except a
-// type whose name an ambient type takes (VIP-14); any other use is written
-// name.name. It reports false when a use cannot be rewritten,
+// type and a member the module does not export keep their text, since D311
+// gives the module's name those meanings, except a type whose name an ambient
+// type takes (VIP-14); any other use is written name.name. It reports false
+// when a use cannot be rewritten,
 // such as an export of the binding.
 func moduleExportUses(c *checker.Checker, file *ast.SourceFile, module *ast.Symbol, export *ast.Symbol, name string) ([]sourceEdit, bool) {
 	var edits []sourceEdit
@@ -294,7 +294,6 @@ func moduleExportUses(c *checker.Checker, file *ast.SourceFile, module *ast.Symb
 		// so the removed import's FileSystem is written FileSystem.FileSystem.
 		case ast.IsTypeReferenceNode(parent) && export.Flags()&ast.SymbolFlagsType != 0 && !isBuiltinGlobalType(c, name):
 		case ast.IsPropertyAccessExpression(parent) && parent.Expression() == node && !moduleExports(c, module, parent.Name().Text()):
-		case ast.IsCallExpression(parent) && parent.Expression() == node && isEffectValueCallSite(parent) && moduleServiceKeyOf(c, module, name) != nil:
 		case ast.IsShorthandPropertyAssignment(parent):
 			edits = append(edits, sourceEdit{node.End(), node.End(), ": " + name + "." + name})
 		case ast.IsExportSpecifier(parent), ast.IsExportAssignment(parent):
@@ -319,7 +318,7 @@ func moduleExports(c *checker.Checker, module *ast.Symbol, member string) bool {
 // shortenableExport returns inner and outer when node writes a module's
 // export of the module's own name, M.M, as inner.outer's last name, where
 // writing M alone means the same (D311): M.M.member where the module exports
-// no member, M.M() for a service in a function body, or the type M.M.
+// no member, or the type M.M.
 // removed holds the modules whose imports the rewrite removes, which then
 // reach the prelude.
 func shortenableExport(c *checker.Checker, node *ast.Node, removed map[string]bool) (inner *ast.Node, outer *ast.Node) {
@@ -328,18 +327,14 @@ func shortenableExport(c *checker.Checker, node *ast.Node, removed map[string]bo
 		module := node.Expression()
 		parent := node.Parent
 		member := ast.IsPropertyAccessExpression(parent) && parent.Expression() == node && ast.IsIdentifier(parent.Name())
-		call := ast.IsCallExpression(parent) && parent.Expression() == node && isEffectValueCallSite(parent)
-		if !member && !call {
+		if !member {
 			return nil, nil
 		}
 		symbol, export := exportOfModuleReference(c, module, node.Name(), removed)
 		if export == nil {
 			return nil, nil
 		}
-		if member && moduleExports(c, symbol, parent.Name().Text()) {
-			return nil, nil
-		}
-		if call && moduleServiceKeyOf(c, symbol, node.Name().Text()) == nil {
+		if moduleExports(c, symbol, parent.Name().Text()) {
 			return nil, nil
 		}
 		return module, node

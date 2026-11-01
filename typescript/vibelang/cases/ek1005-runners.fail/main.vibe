@@ -1,7 +1,7 @@
 // expect: EK1005
-// D38: a runner may be called only where no fiber runs the code: at the
-// module's top level, and in a plain callback that such a place passes to a
-// TypeScript function. Anywhere else it is EK1005.
+// D38, VIP-1: a runner may be called only where no fiber runs the code: the
+// module's top level, async and plain functions (VIP-1: a function effect does
+// not mark is plain JavaScript) and the plain callbacks they pass on; elsewhere EK1005.
 import { Context, Effect, Layer, ManagedRuntime } from "effect"
 import { NodeRuntime } from "@effect/platform-node"
 import { describe, it, layer } from "@effect/vitest"
@@ -12,21 +12,21 @@ effect function refresh(id: string) {
   return id
 }
 
-function refreshAll(ids: ReadonlyArray<string>) {
+function refreshAll(ids: ReadonlyArray<string>) { // plain (VIP-1): no EK1005
   for (const id of ids) Effect.runFork(effect { return try refresh(id) })
 }
 
 const runtime = ManagedRuntime.make(Layer.empty)
 
-function viaRuntime() {
+function viaRuntime() { // plain (VIP-1): no EK1005
   return runtime.runPromise(effect { return try refresh("r") })
 }
 
-function withContext() {
+function withContext() { // plain (VIP-1): no EK1005
   return Effect.runSyncWith(Context.empty())(effect { return try refresh("w") })
 }
 
-function nestedMain() {
+function nestedMain() { // plain (VIP-1): no EK1005
   NodeRuntime.runMain(effect { return try refresh("m") })
 }
 
@@ -36,7 +36,7 @@ function register(f: () => void): void {
   handlers.push(f)
 }
 
-register(() => {
+register(() => { // a plain function's callback, from the top level (VIP-1)
   Effect.runFork(effect { return try refresh("e") })
 })
 

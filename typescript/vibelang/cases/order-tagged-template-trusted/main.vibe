@@ -5,7 +5,7 @@
 import { tag } from "./helper.js"
 
 effect function number(n: number) {
-  try Effect.yieldNow()
+  try Effect.yieldNow
   return n
 }
 

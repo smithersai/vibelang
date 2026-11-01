@@ -34,7 +34,7 @@ test("watch counts warnings separately on initial and incremental builds", { ski
   }
   const record = (event, detail) => events.push({ time: new Date().toISOString(), elapsedMs: performance.now(), event, source: sourceState(), detail })
   const diagnostic = () => JSON.stringify(events, null, 2)
-  const source = 'function step(n: number) { return n + 1 }\nexport function f() { return step(1) catch () => 0 }\n'
+  const source = 'function step(n: number) { return n + 1 }\nexport effect function f() { return Effect.succeed(step(1)) catch () => 0 }\n'
   const file = join(root, "main.vibe")
   writeFileSync(file, source)
   const normal = spawnSync(native, ["--pretty", "false"], { cwd: root, encoding: "utf8" })

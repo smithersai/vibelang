@@ -13,7 +13,7 @@ import (
 // file (plain.go). Every other call keeps its type.
 func callExpressionType(c *checker.Checker, call *ast.Node, t *checker.Type) *checker.Type {
 	t = providedCallType(c, call, t)
-	if !isInvocation(call) || holdsProgram(c, call) || !inLowerableBody(call) && analyzerFor(c).directCallee(call) == nil {
+	if !isInvocation(call) || holdsProgram(c, call) || !analyzerFor(c).runs(call) {
 		return t
 	}
 	if isExitMarkerCall(call) {
@@ -59,7 +59,7 @@ func callExpressionType(c *checker.Checker, call *ast.Node, t *checker.Type) *ch
 // stands where a program is expected (D147, D262, D269), and TypeScript
 // infers from it as usual.
 func runningCallInferenceTarget(c *checker.Checker, call *ast.Node, contextual *checker.Type, target *checker.Type) *checker.Type {
-	if !isInvocation(call) || !inLowerableBody(call) || !isVibeLangFile(ast.GetSourceFileOfNode(call)) || !isEffectType(c, target) {
+	if !isInvocation(call) || !isVibeLangFile(ast.GetSourceFileOfNode(call)) || !analyzerFor(c).runs(call) || !isEffectType(c, target) {
 		return target
 	}
 	a := analyzerFor(c)
@@ -67,8 +67,16 @@ func runningCallInferenceTarget(c *checker.Checker, call *ast.Node, contextual *
 		if a.isExpectedEffect(part) {
 			return target
 		}
+		if isEffectType(c, part) || isEffectSubtype(c, part) {
+			return nil // an error instance, which fails with itself, names no success
+		}
 	}
-	return nil
+	// The call stands for its Effect's success, so the contextual value type
+	// infers that success, as const o: Outcome = await f() infers f's T from
+	// Outcome: const o: Outcome = try Effect.succeed({ _tag: "Found" }) keeps
+	// "Found" literal, and so does effect { ... } catch h under an Outcome
+	// contract (D293).
+	return successType(c, target)
 }
 
 // callRunsResult is the shared checker/lowering predicate for D24: a call
@@ -90,7 +98,7 @@ func callRunsResult(c *checker.Checker, call *ast.Node, t *checker.Type) bool {
 // make(); try s` runs it. Without try, D24 keeps such a result as data, and t
 // stays as it is.
 func triedResult(c *checker.Checker, call *ast.Node, t *checker.Type) *checker.Type {
-	if call.Flags&ast.NodeFlagsVibeLangTry == 0 || t == nil || isEffectType(c, t) {
+	if !triedFlag(call) || t == nil || isEffectType(c, t) {
 		return t
 	}
 	if effect := effectOfValue(c, t); effect != nil {
@@ -198,16 +206,26 @@ func init() {
 }
 
 // structuredResult is EK4301's text for a statement that discards a call's
-// result, an Effect subtype that stays data until it is called (D24). {0} is
+// result, an Effect subtype that stays data until try runs it (VIP-5). {0} is
 // "This call" or "This tag", {1} whose result it is.
-var structuredResult = EK4301.With("{0} returns an Effect subtype, which stays data until it is called, so this statement discards {1} result without running it.")
+var structuredResult = EK4301.With("{0} returns an Effect subtype, which only try runs, so this statement discards {1} result without running it.")
 
-// D24 keeps structured Effect results as data. Discarding a call or template
-// statement must ask rather than silently leaving a SQL migration cold.
+// runWithTryNote is EK4301's repair for node, a discarded structured
+// result: try runs it in effect code; plain JavaScript returns it (VIP-1).
+func runWithTryNote(node *ast.Node) string {
+	if fn := enclosingFunction(node); fn != nil && inLowerableBody(node) && markedForm(fn) != formNone {
+		return "Run it with try: try {0}."
+	}
+	return "Return it, or run it with try inside an effect function: try {0}."
+}
+
+// A structured Effect result stays data. Discarding a call or template
+// statement must ask rather than silently leaving a SQL migration cold; a
+// statement that runs it, try sql.unsafe(…), discards nothing.
 func checkInvocationRuns(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
-		if isInvocation(node) && !inHatch(node) {
+		if isInvocation(node) && !inHatch(node) && !isTry(node) { // try runs it (VIP-5)
 			sig := c.GetResolvedSignature(node)
 			if sig != nil {
 				t := runningCallResult(c, node, sig)
@@ -217,18 +235,15 @@ func checkInvocationRuns(c *checker.Checker, file *ast.SourceFile) {
 				}
 				// A tried call already runs its structured result; only an
 				// unrun result is discarded by an expression statement.
-				if isStructuredEffectResult(c, t) && statement != nil && ast.IsExpressionStatement(statement) && !runsWhereItStands(analyzerFor(c), node) {
+				if isStructuredEffectResult(c, t) && statement != nil && ast.IsExpressionStatement(statement) && !underTry(node) {
 					text := shortText(nodeText(file, node), "this result")
 					if ast.IsCallExpression(node) {
 						d := report(c, node, structuredResult, "This call", "its")
-						note(d, "Call the result to run it, {0}(), or write the return type of what it calls as A!E!R, which runs the call where it stands.", text)
+						note(d, runWithTryNote(node), text)
 					} else {
 						d := report(c, node, structuredResult, "This tag", "the template's")
-						note(d, "Call the result to run it, {0}(), or write the tag's return type as A!E!R, which runs the template where it stands.", text)
+						note(d, runWithTryNote(node), text)
 					}
-				} else if ast.IsTaggedTemplateExpression(node) && isEffectType(c, t) && !inLowerableBody(node) && !atTopLevel(node) {
-					d := report(c, node, EK4301.With("This tagged template runs an Effect, but this position can't run one."))
-					note(d, "Move it into an Effect function's body.")
 				}
 			}
 		}

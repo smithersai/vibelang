@@ -1,0 +1,8 @@
+// VIP-1 flip acceptance case 3 (foldkit-3, repro 14-plain-runfork): a plain
+// function may start a root fiber with Effect.runFork and stays plain.
+import { Effect } from "effect"
+
+let forked = 0
+export const record = (): void => { Effect.runFork(Effect.void) }
+export const recordCounted = (): void => { Effect.runFork(Effect.sync(() => { forked += 1 })) }
+export const forkedCount = (): number => forked

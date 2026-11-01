@@ -7,7 +7,7 @@ import renamed from "./renamed.vibe"
 import namespace from "./namespace.vibe"
 import forwarded from "./forwarded.vibe"
 
-export function program() {
+export effect function program() {
   const a: string = local("local")
   const b: string = imported("imported")
   const c: string = renamed("renamed")

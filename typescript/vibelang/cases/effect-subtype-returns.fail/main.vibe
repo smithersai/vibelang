@@ -4,15 +4,15 @@ import * as Exit from "effect/Exit"
 import { implement, needsAction } from "./host.js"
 
 export effect function wrongSuccess() {
-  return try implement(effect (n) => Exit.succeed("wrong"))
+  return try implement(effect (n) => try Exit.succeed("wrong"))
 }
 
 export effect function wrongAnnotation(): Effect.Effect<number, never, never> {
-  return Exit.succeed("wrong")
+  return try Exit.succeed("wrong")
 }
 export effect function wrongError(): Effect.Effect<number, never, never> {
-  return Exit.fail("bad")
+  return try Exit.fail("bad")
 }
 export effect function wrongRequirement(): Effect.Effect<number, never, never> {
-  return needsAction()
+  return try needsAction()
 }

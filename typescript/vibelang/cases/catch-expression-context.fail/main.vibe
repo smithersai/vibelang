@@ -8,11 +8,15 @@ effect function find(n: number): number!Missing {
   return n
 }
 
+effect function found(n: number): { _tag: "Found"; value: number }!Missing {
+  return { _tag: "Found", value: try find(n) }
+}
+
 // The contextual type keeps literals literal; a side outside it still fails.
 effect function wrongHandler(n: number): Outcome!! {
-  return { _tag: "Found", value: find(n) } catch (error) => ({ _tag: "Lost", error })
+  return found(n) catch (error) => ({ _tag: "Lost", error })
 }
 
 effect function wrongFallback(n: number): "fast" | "slow"!! {
-  return (find(n) > 10 ? "fast" : "slow") catch () => "stopped"
+  return (effect { return (try find(n)) > 10 ? "fast" : "slow" }) catch () => "stopped"
 }

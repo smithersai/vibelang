@@ -9,7 +9,9 @@ import { fileURLToPath } from "node:url"
 // vibelang --fix keeps a fix whose only effect on an error the program
 // already reports is a more precise message (t3code: a schema helper's plain
 // return type turned a test's existing TS2345 from Effect<brand<…>> into
-// brand<…>, and the gate refused it 31 times).
+// brand<…>, and the gate refused it 31 times). VIP-1 leaves an unannotated
+// helper plain, so that fix is gone; EK4834's fix, try Effect.succeed(1) is 1,
+// narrows a from number to 1 and drives the same gate.
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const native = process.env.VIBELANG_BINARY || join(repo, "typescript/built/local/tsc")
 const effect = join(repo, "packages/runtime/node_modules/effect")
@@ -28,24 +30,21 @@ function project(t, files) {
   return root
 }
 
-const helper = 'import * as Schema from "effect/Schema"\n' +
-  "const makeThreadId = () => Schema.String.pipe(Schema.brand(\"ThreadId\"))\n" +
-  'export const ThreadId = makeThreadId()\n'
-
-test("--fix keeps a schema helper's plain return type when it only rewrites an existing error's message", { skip }, (t) => {
-  const root = project(t, { "ids.vibe": helper, "user.vibe": 'import { ThreadId } from "./ids.vibe"\nexport const count: number = ThreadId\n' })
+test("--fix keeps EK4834's fix when it only rewrites an existing error's message", { skip }, (t) => {
+  const main = "export effect function f() {\n  const a = try Effect.succeed(1)\n  const s: string = { v: a } as const\n  return s\n}\n"
+  const root = project(t, { "main.vibe": main })
   const result = spawnSync(native, ["-p", "tsconfig.json", "--fix", "--pretty", "false"], { cwd: root, encoding: "utf8" })
   assert.doesNotMatch(result.stdout, /not fixed/, result.stdout + result.stderr)
-  assert.match(readFileSync(join(root, "ids.vibe"), "utf8"), /const makeThreadId = \(\): /)
-  // The error the program reported before the fix is still there, once.
-  assert.equal(result.stdout.match(/user\.vibe\(2,14\): error TS2322/g)?.length, 1, result.stdout)
+  assert.match(readFileSync(join(root, "main.vibe"), "utf8"), /const a = 1\n/)
+  // The error the program reported before the fix is still there, once, now naming 1.
+  assert.equal(result.stdout.match(/main\.vibe\(3,9\): error TS2322: Type '\{ readonly v: 1; \}'/g)?.length, 1, result.stdout)
 })
 
 test("--fix still refuses a fix that reports an error where there was none", { skip }, (t) => {
-  const user = 'import { Effect } from "effect"\nimport { ThreadId } from "./ids.vibe"\n' +
-    'const needsEffect = (e: Effect.Effect<unknown>): string => "ok"\nexport const used: string = needsEffect(ThreadId)\n'
-  const root = project(t, { "ids.vibe": helper, "user.vibe": user })
+  const ids = "export effect function getA() {\n  const a = try Effect.succeed(1)\n  return { v: a } as const\n}\n"
+  const user = 'import { getA } from "./ids.vibe"\nexport effect function g() {\n  const n = try getA()\n  const m: typeof n = { v: 2 }\n  return m\n}\n'
+  const root = project(t, { "ids.vibe": ids, "user.vibe": user })
   const result = spawnSync(native, ["-p", "tsconfig.json", "--fix", "--pretty", "false"], { cwd: root, encoding: "utf8" })
-  assert.match(result.stdout, /ids\.vibe:\d+: EK1001 not fixed/, result.stdout + result.stderr)
-  assert.match(readFileSync(join(root, "ids.vibe"), "utf8"), /const makeThreadId = \(\) =>/)
+  assert.match(result.stdout, /ids\.vibe:\d+: EK4834 not fixed/, result.stdout + result.stderr)
+  assert.match(readFileSync(join(root, "ids.vibe"), "utf8"), /const a = try Effect\.succeed\(1\)/)
 })

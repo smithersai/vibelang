@@ -12,7 +12,7 @@ effect function getter() {
     }
   }
   effect function input() {
-    try Effect.yieldNow()
+    try Effect.yieldNow
     trace.push("argument")
     return "7"
   }
@@ -28,7 +28,7 @@ effect function replaced() {
   }
   const codec = { get parse(): typeof JSON.parse { return current } }
   effect function input() {
-    try Effect.yieldNow()
+    try Effect.yieldNow
     current = (text: string): any => {
       trace.push("replacement")
       return 107
@@ -46,7 +46,7 @@ effect function rebound() {
     return 7
   }
   effect function input() {
-    try Effect.yieldNow()
+    try Effect.yieldNow
     parse = (text: string): any => {
       trace.push("replacement")
       return 107

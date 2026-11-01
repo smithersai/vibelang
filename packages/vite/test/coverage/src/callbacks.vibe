@@ -1,12 +1,12 @@
 error Oops { n: number }
 
-export function step(base: number, payload: number): number!Oops! {
+export effect function step(base: number, payload: number): number!Oops! {
   if (payload < 0) throw new Oops({ n: payload })
   return base + payload
 }
 
-export const handler = (base: number): infer _ => (payload: number) => step(base, payload)
+export const handler = (base: number): infer _ => effect (payload: number) => try step(base, payload)
 
-export const unusedHandler = (base: number): infer _ => (payload: number) => step(base, payload)
+export const unusedHandler = (base: number): infer _ => effect (payload: number) => try step(base, payload)
 
-export const lazyHandler = (base: number): infer _ => (payload: number) => step(base, payload)
+export const lazyHandler = (base: number): infer _ => effect (payload: number) => try step(base, payload)

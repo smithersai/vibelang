@@ -566,44 +566,6 @@ func isServiceLookup(c *checker.Checker, call *ast.Node) bool {
 	return serviceLookup(c, call) != nil
 }
 
-// isEffectValueCallSite reports whether call has the form `p()` in the body
-// of a .vibe function.
-func isEffectValueCallSite(call *ast.Node) bool {
-	return len(call.Arguments()) == 0 && call.TypeArguments() == nil && call.QuestionDotToken() == nil && inLowerableBody(call)
-}
-
-// effectValueCall is the checker's call signatures hook. In a .vibe function
-// body, a value whose type is an Effect, called with no arguments, runs:
-// Users() gives the service's implementation, typed as its shape (D501), and
-// Port() reads a Config (design D24). The call gets the signature () => Effect<A, E, R>.
-func effectValueCall(c *checker.Checker, call *ast.Node, callee *checker.Type) []*checker.Signature {
-	if !isEffectValueCallSite(call) {
-		return nil
-	}
-	if effect := effectOfValue(c, callee); effect != nil {
-		return []*checker.Signature{c.NewCallSignature(effect)}
-	}
-	// FileSystem(): the module's name names its service (D311).
-	if key := moduleServiceKey(c, call.Expression(), callee); key != nil {
-		if effect := effectOfValue(c, c.GetTypeOfSymbol(key)); effect != nil {
-			return []*checker.Signature{c.NewCallSignature(effect)}
-		}
-	}
-	return nil
-}
-
-// isEffectValueCall reports whether call runs its callee, an Effect value.
-func isEffectValueCall(c *checker.Checker, call *ast.Node) bool {
-	if !isEffectValueCallSite(call) {
-		return false
-	}
-	callee := c.GetApparentType(c.GetTypeAtLocation(call.Expression()))
-	if len(c.GetSignaturesOfType(callee, checker.SignatureKindCall)) != 0 {
-		return false
-	}
-	return effectOfValue(c, callee) != nil || effectOfValue(c, serviceKeyTypeAt(c, call.Expression())) != nil
-}
-
 // effectOfValue returns Effect<A, E, R> for t, a type whose values are
 // Effects, or nil when some value of t is not one. Such a type is a Context
 // key or a Config, whose variance the Effect interface declares; an Exit, a

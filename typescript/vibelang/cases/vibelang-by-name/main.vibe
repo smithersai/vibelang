@@ -1,7 +1,7 @@
-// Where a parameter expects a program, an expression that runs an Effect is
-// passed by name (D147): fork(fetchReport()) passes the call as a program,
-// as if written () => fetchReport(), and runs nothing at the call site.
-// Elsewhere, such as Console.log's parameters, the call still runs here.
+// Calling an effect function builds its Effect and runs nothing (VIP-1), so
+// fork(fetchReport()) and Effect.retry(fetchReport()) pass a program with no
+// by-name rule. A plain function's call evaluates where it stands, so a runner
+// gets it through Effect.sync (VIP-6).
 class Unavailable extends TaggedError("Unavailable")<{ readonly attempt: number }> {}
 
 let attempts = 0
@@ -36,9 +36,8 @@ function subtotal() {
   return 7 * 8
 }
 
-// At the top level too, a runner receives a call by name: subtotal() runs
-// inside the program that runSync starts, through its plain variant.
-const total = Effect.runSync(subtotal())
+// subtotal() runs inside the program that runSync starts.
+const total = Effect.runSync(Effect.sync(() => subtotal()))
 
 // expect-result: {"report":"report after 3 attempts","winner":"fast","timed":"TimeoutError","joined":"fast","both":["fast","fast"],"logged":true,"attempts":3,"fastRuns":5,"total":56}
 export effect function main() {

@@ -1,9 +1,9 @@
-// expect: EK1001 EK9203 EK4301 TS2345
-// D500: an unannotated function is an Effect function, whatever its body
-// does, so plain code may not call it or pass it: a module's top level, a
-// class field, a constructor, an accessor, a parameter default, a function
-// with a plain annotation, and a plain callback. Nor may it call an Effect
-// function with a contract that has a plain variant.
+// expect: TS2345
+// An unmarked function is plain (VIP-1), so plain code calls it and passes it
+// anywhere: a module's top level, a class field, a constructor, an accessor, a
+// parameter default, a function with a plain annotation, and a plain callback.
+// An Effect function returns an Effect, so it does not fit a parameter that
+// wants a number back, and TypeScript's error says so.
 function twice(n: number) {
   return n * 2
 }

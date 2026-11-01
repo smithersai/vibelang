@@ -35,7 +35,7 @@ import (
 //
 // A parameter that a default or a pattern binds is bound when an Effect.gen
 // function is called, so that function stays plain and returns the block:
-// ({ id }): infer _ => effect { B }. Effect.fn binds its parameters when the
+// ({ id }) => effect { B }. Effect.fn binds its parameters when the
 // program runs, as an effect function does. An effect function is untraced:
 // Effect.fn's stack frames, which only a failure's trace reads, go, and its
 // name stays as the span.
@@ -308,11 +308,7 @@ func planEffectGen(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *fo
 			return &formRewrite{edits: joinEditsAt(append(rewrite.edits, sourceEdit{start, end, "effect " + body})), description: "an effect block"}
 		}
 	}
-	rewrite := &formRewrite{edits: []sourceEdit{{start, end, effectValueParentheses(outer, "effect "+body)}}, description: "an effect block"}
-	if edit, ok := plainReturnEdit(file, outer); ok {
-		rewrite.edits = append(rewrite.edits, edit)
-	}
-	return rewrite
+	return &formRewrite{edits: []sourceEdit{{start, end, effectValueParentheses(outer, "effect "+body)}}, description: "an effect block"}
 }
 
 // pipeOfReceiver returns the .pipe call that node is the receiver of, or nil.
@@ -345,30 +341,6 @@ func effectValueParentheses(node *ast.Node, text string) string {
 		return "(" + text + ")"
 	}
 	return text
-}
-
-// plainReturnEdit returns the edit that keeps the function around node, a
-// program it returns, plain: an unannotated .vibe function that returns an
-// effect block would be read as an Effect function that runs it, so it
-// writes its return type as inferred. It reports false where node is not
-// what a plain, unannotated function returns.
-func plainReturnEdit(file *ast.SourceFile, node *ast.Node) (sourceEdit, bool) {
-	parent := node.Parent
-	var fn *ast.Node
-	switch {
-	case ast.IsArrowFunction(parent) && parent.Body() == node:
-		fn = parent
-	case ast.IsReturnStatement(parent):
-		fn = ast.GetContainingFunction(parent)
-	}
-	if fn == nil || fn.Type() != nil || fn.Body() == nil || ast.GetFunctionFlags(fn)&(ast.FunctionFlagsAsync|ast.FunctionFlagsGenerator) != 0 || fn.Flags&ast.NodeFlagsVibeLangEffect != 0 {
-		return sourceEdit{}, false
-	}
-	close := parametersEnd(file, fn)
-	if close < 0 {
-		return sourceEdit{}, false
-	}
-	return sourceEdit{close, close, ": infer _"}, true
 }
 
 // parametersEnd returns the offset just past the ) of fn's parameters, or -1
@@ -755,11 +727,6 @@ func effectGenTryEdit(c *checker.Checker, file *ast.SourceFile, y *ast.Node) ([]
 		}
 		if !runsYield(y) && (success != nil && holdsEffectValue(c, success) || holdsEffectValue(c, c.GetTypeAtLocation(y))) {
 			return nil, label + " gives a program as its value, which VibeLang would run or hold by its declared type"
-		}
-		// A structured Effect result (D24), an interface that extends Effect,
-		// is no operand of try yet: a function gives its program.
-		if isInvocation(inner) && isStructuredEffectResult(c, effect) {
-			return []sourceEdit{keyword, {operandStart, operandStart, "Effect.suspend(() => "}, {operand.End(), operand.End(), ")"}}, ""
 		}
 		// An Effect.Yieldable that is no Effect runs through asEffect().
 		if !isEffectValueType(c, t) && !isEffectType(c, t) && yieldsEffect(c, t) {

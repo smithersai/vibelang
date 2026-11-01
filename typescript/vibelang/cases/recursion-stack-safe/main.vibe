@@ -21,7 +21,7 @@ export effect function sumTo(n: number): Effect<number> {
 }
 
 // A caller outside the cycle still reads a number.
-function deep() {
+effect function deep() {
   return try countdown(100000) + 1
 }
 
@@ -32,7 +32,7 @@ export effect function main() {
     even: try isEven(100000),
     odd: try isOdd(100000),
     sum: try sumTo(100000),
-    deep: deep(),
+    deep: try deep(),
     mapped: try Effect.forEach([3, 100000], countdown)
   }
 }

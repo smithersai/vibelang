@@ -1,0 +1,3 @@
+import { Bad } from "./bad.vibe"
+
+throw new Bad({ why: "top" })

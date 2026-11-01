@@ -20,6 +20,6 @@ function label(x: State) {
   }
 }
 
-export function main() {
+export effect function main() {
   return [label(State.Waiting()), reads]
 }

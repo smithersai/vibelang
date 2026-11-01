@@ -265,9 +265,9 @@ func checkMember(c *checker.Checker, at, fn *ast.Node, holder, owner, name strin
 			variable = string(variable[0]|0x20) + variable[1:]
 		}
 		if member != "" {
-			note(d, "Capture it once when the layer is built: const {0} = {1}()   …   {0}.{2}(…)", variable, serviceName, member)
+			note(d, "Capture it once when the layer is built: const {0} = try {1}   …   {0}.{2}(…)", variable, serviceName, member)
 		} else {
-			note(d, "Capture it once when the layer is built: const {0} = {1}()", variable, serviceName)
+			note(d, "Capture it once when the layer is built: const {0} = try {1}", variable, serviceName)
 		}
 		note(d, "Or declare it: {0}(…): {1}", name, bangText(c.TypeToString(channelType(c, contract, "_A")), c.TypeToString(allowedErrors), c.TypeToString(c.GetUnionType([]*checker.Type{allowedRequirements, service}))))
 	}

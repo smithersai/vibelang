@@ -8,9 +8,9 @@ main.vibe(20,12): error EK4301
 main.vibe(22,30): error EK4301
 main.vibe(23,34): error EK4301
 main.vibe(29,14): error EK4301
-main.vibe(30,37): error TS2322
-main.vibe(30,37): error EK4301
-main.vibe(31,35): error TS2322
-main.vibe(31,40): error EK4301
-main.vibe(37,48): error EK4301
-main.vibe(39,34): error EK4301
+main.vibe(32,37): error TS2322
+main.vibe(32,45): error EK4801
+main.vibe(33,35): error TS2322
+main.vibe(33,48): error EK4801
+main.vibe(39,48): error EK4301
+main.vibe(41,34): error EK4301

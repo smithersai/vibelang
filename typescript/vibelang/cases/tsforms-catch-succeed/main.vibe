@@ -1,4 +1,4 @@
 // expect-result: 1
 error Missing { id: string }
-function g() { throw new Missing({ id: "x" }) }
-export function main() { return Effect.catchTag(g(), "Missing", (e) => Effect.succeed(1)) }
+effect function g() { throw new Missing({ id: "x" }) }
+export effect function main() { return try Effect.catchTag(g(), "Missing", (e) => Effect.succeed(1)) }

@@ -1,0 +1,9 @@
+// expect: EK0502
+// A second try runs the first try's value, which must be an Effect (VIP-5).
+effect function seven() {
+  return 7
+}
+
+export effect function main() {
+  return try try seven()
+}

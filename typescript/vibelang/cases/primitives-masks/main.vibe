@@ -4,7 +4,7 @@
 effect function masked() {
   const done = try Deferred.make<string>()
   const started = try Deferred.make<void>()
-  const fiber = fork {
+  const fiber = fork effect {
     uninterruptible {
       try Deferred.succeed(started, void 0)
       try sleep("20 millis")
@@ -19,7 +19,7 @@ effect function masked() {
 // restore brings back the interruptibility the block began with.
 effect function restored() {
   const started = try Deferred.make<string>()
-  const fiber = fork {
+  const fiber = fork effect {
     uninterruptible {
       restore {
         try Deferred.succeed(started, "started")
@@ -35,7 +35,7 @@ effect function restored() {
 // interruptible makes code interruptible inside an uninterruptible block.
 effect function forced() {
   const started = try Deferred.make<string>()
-  const fiber = fork {
+  const fiber = fork effect {
     uninterruptible {
       interruptible {
         try Deferred.succeed(started, "started")
@@ -61,7 +61,7 @@ function work() {
 
 // The call form runs a program the same way.
 effect function call() {
-  return try uninterruptible(work())
+  return try uninterruptible(Effect.sync(work)) // work is plain (VIP-1)
 }
 
 export effect function main() {

@@ -4,7 +4,7 @@ effect function load(n: number): Effect.Effect<unknown, never, never> {
   runs++
   return n
 }
-function known(n: number) { runs++; return n }
+effect function known(n: number) { runs++; return n }
 effect function failing(): Effect.Effect<unknown, string, never> { throw "failed" }
 export effect function piped(n: number): Effect.Effect<number, never, never> {
   return (load(n) as Effect.Effect<number>) |> try Effect.map(%, (x) => x + 1)
@@ -21,7 +21,7 @@ export effect function main() {
   const typedValue = try typed()
   const direct = try Effect.map(known(3) as Effect.Effect<number>, (x) => x + 1)
   const repeated = (known(4) as Effect.Effect<number>) |> try Effect.all([%, %])
-  const compound = ((known(5) + 1) as Effect.Effect<number>) |> try Effect.map(%, (x) => x + 1)
+  const compound = (Effect.map(known(5), (x) => x + 1) as Effect.Effect<number>) |> try Effect.map(%, (x) => x + 1)
   const failure = try Effect.flip(erased())
   return { value, typed: typedValue, direct, repeated, compound, failure, runs }
 }

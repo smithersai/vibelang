@@ -1,2 +1,0 @@
-go test fuzz v1
-string("-- main.vibe --\neffect function load(): Effect.Effect<unknown, never, never> { return 1 }\nexport effect function main() {\n  return (load() as Effect.Effect<number>) |> try Effect.race(%, Effect.succeed(%))\n")

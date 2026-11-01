@@ -1,0 +1,47 @@
+// expect: EK0501 EK0504 EK1201 EK1902 EK2001
+// A function without effect is plain JavaScript (VIP-1), so each effect-only
+// construct in it is its "outside effect code" error (chapter 2's static
+// rules): try.race (VIP-18), catch (VIP-5), provide (VIP-12), for
+// concurrent (VIP-19) and for try (VIP-20).
+import { Layer } from "effect"
+
+export function raced() {
+  return try.race [Effect.succeed(1)]
+}
+
+export function caught() {
+  return Effect.fail(1) catch () => 2
+}
+
+export function provided(layer: Layer.Layer<never>) {
+  provide layer {
+    return 1
+  }
+}
+
+export function each() {
+  for concurrent (const x of [1, 2]) {
+    void x
+  }
+}
+
+export function consumed() {
+  for try (const x of Stream.make(1, 2)) {
+    void x
+  }
+}
+
+// In an effect function each runs.
+export effect function inEffect(layer: Layer.Layer<never>) {
+  const r = try.race [Effect.succeed(1)]
+  const v = Effect.fail(1) catch () => 2
+  provide layer {
+    for concurrent (const x of [1, 2]) {
+      try Console.log(x)
+    }
+  }
+  for try (const x of Stream.make(1, 2)) {
+    try Console.log(x)
+  }
+  return v + r
+}

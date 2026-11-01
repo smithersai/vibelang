@@ -1,2 +1,2 @@
-Call it to return its result: Effect.interrupt().
-Call it to return its result: (Effect.never)().
+Run it with try to return its result: try Effect.interrupt.
+Run it with try: try (Effect.never).

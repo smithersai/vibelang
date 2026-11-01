@@ -5,13 +5,13 @@
 service S { value: string }
 
 const Decorated = Layer.effect(S, effect {
-  return { value: (try S()).value + "!" }
+  return { value: (try S).value + "!" }
 })
 const Wrapped = wire(Decorated)
 const kept: Layer.Layer<S, never, S> = Wrapped
 
 export effect function broken(): string!! {
   provide kept {
-    return (try S()).value
+    return (try S).value
   }
 }

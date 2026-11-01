@@ -1,33 +1,9 @@
 # Chapter 2 operand-test disagreements; every pending input retains the spec oracle.
 
-FuzzMigrationEffectOperands feature:exact:fork:value compiler VIP-5/VIP-17/VIP-18: Chapter 2 operand test expects Effect assignability=True; exact value under fork reports EK4613; lane w2-fork
-FuzzMigrationEffectOperands corpus:alchemy-operands-exact-fork-value compiler VIP-5/VIP-17/VIP-18: minimized reproduction of feature:exact:fork:value; lane w2-fork
-FuzzMigrationEffectOperands feature:config:fork:value compiler VIP-5/VIP-17/VIP-18: Chapter 2 operand test expects Effect assignability=True; config value under fork reports EK1023; lane w2-fork
-FuzzMigrationEffectOperands corpus:alchemy-operands-config-fork-value compiler VIP-5/VIP-17/VIP-18: minimized reproduction of feature:config:fork:value; lane w2-fork
-FuzzMigrationEffectOperands feature:config:fork:call compiler VIP-5/VIP-17/VIP-18: Chapter 2 operand test expects Effect assignability=True; config call under fork reports EK1023; lane w2-fork
-FuzzMigrationEffectOperands corpus:alchemy-operands-config-fork-call compiler VIP-5/VIP-17/VIP-18: minimized reproduction of feature:config:fork:call; lane w2-fork
-FuzzMigrationEffectOperands feature:inherited:fork:value compiler VIP-5/VIP-17/VIP-18: Chapter 2 operand test expects Effect assignability=True; inherited value under fork reports EK1023; lane w2-fork
-FuzzMigrationEffectOperands corpus:alchemy-operands-inherited-fork-value compiler VIP-5/VIP-17/VIP-18: minimized reproduction of feature:inherited:fork:value; lane w2-fork
-FuzzMigrationEffectOperands feature:inherited:fork:call compiler VIP-5/VIP-17/VIP-18: Chapter 2 operand test expects Effect assignability=True; inherited call under fork reports EK1023; lane w2-fork
-FuzzMigrationEffectOperands corpus:alchemy-operands-inherited-fork-call compiler VIP-5/VIP-17/VIP-18: minimized reproduction of feature:inherited:fork:call; lane w2-fork
-FuzzMigrationEffectOperands feature:branded:fork:value compiler VIP-5/VIP-17/VIP-18: Chapter 2 operand test expects Effect assignability=True; branded value under fork reports EK1023; lane w2-fork
-FuzzMigrationEffectOperands corpus:alchemy-operands-branded-fork-value compiler VIP-5/VIP-17/VIP-18: minimized reproduction of feature:branded:fork:value; lane w2-fork
-FuzzMigrationEffectOperands feature:branded:fork:call compiler VIP-5/VIP-17/VIP-18: Chapter 2 operand test expects Effect assignability=True; branded call under fork reports EK1023; lane w2-fork
-FuzzMigrationEffectOperands corpus:alchemy-operands-branded-fork-call compiler VIP-5/VIP-17/VIP-18: minimized reproduction of feature:branded:fork:call; lane w2-fork
-FuzzMigrationEffectOperands feature:callable:fork:value compiler VIP-5/VIP-17/VIP-18: Chapter 2 operand test expects Effect assignability=True; callable value under fork reports EK1023; lane w2-fork
-FuzzMigrationEffectOperands corpus:alchemy-operands-callable-fork-value compiler VIP-5/VIP-17/VIP-18: minimized reproduction of feature:callable:fork:value; lane w2-fork
-FuzzMigrationEffectOperands feature:callable:fork:call compiler VIP-5/VIP-17/VIP-18: Chapter 2 operand test expects Effect assignability=True; callable call under fork reports EK1023; lane w2-fork
-FuzzMigrationEffectOperands corpus:alchemy-operands-callable-fork-call compiler VIP-5/VIP-17/VIP-18: minimized reproduction of feature:callable:fork:call; lane w2-fork
-FuzzMigrationEffectOperands feature:generic:fork:value compiler VIP-5/VIP-17/VIP-18: Chapter 2 operand test expects Effect assignability=True; generic value under fork reports EK4613; lane w2-fork
-FuzzMigrationEffectOperands corpus:alchemy-operands-generic-fork-value compiler VIP-5/VIP-17/VIP-18: minimized reproduction of feature:generic:fork:value; lane w2-fork
 FuzzMigrationEffectOperands feature:any:try.all:value compiler VIP-5/VIP-17/VIP-18: Chapter 2 operand test expects Effect assignability=True; any value under try.all reports EK1801; lane core-tryall
 FuzzMigrationEffectOperands corpus:alchemy-operands-any-try-all-value compiler VIP-5/VIP-17/VIP-18: minimized reproduction of feature:any:try.all:value; lane core-tryall
-FuzzMigrationEffectOperands feature:any:fork:value compiler VIP-5/VIP-17/VIP-18: Chapter 2 operand test expects Effect assignability=True; any value under fork reports EK1023; lane w2-fork
-FuzzMigrationEffectOperands corpus:alchemy-operands-any-fork-value compiler VIP-5/VIP-17/VIP-18: minimized reproduction of feature:any:fork:value; lane w2-fork
 FuzzMigrationEffectOperands feature:any:try.all:call compiler VIP-5/VIP-17/VIP-18: Chapter 2 operand test expects Effect assignability=True; any call under try.all reports EK1801; lane core-tryall
 FuzzMigrationEffectOperands corpus:alchemy-operands-any-try-all-call compiler VIP-5/VIP-17/VIP-18: minimized reproduction of feature:any:try.all:call; lane core-tryall
-FuzzMigrationEffectOperands feature:any:fork:call compiler VIP-5/VIP-17/VIP-18: Chapter 2 operand test expects Effect assignability=True; any call under fork reports EK1023; lane w2-fork
-FuzzMigrationEffectOperands corpus:alchemy-operands-any-fork-call compiler VIP-5/VIP-17/VIP-18: minimized reproduction of feature:any:fork:call; lane w2-fork
 FuzzMigrationEffectOperands feature:never:try:value compiler VIP-5/VIP-17/VIP-18: Chapter 2 operand test expects Effect assignability=True; never value under try reports EK0502; lane core-land
 FuzzMigrationEffectOperands corpus:alchemy-operands-never-try-value compiler VIP-5/VIP-17/VIP-18: minimized reproduction of feature:never:try:value; lane core-land
 FuzzMigrationEffectOperands feature:never:try:call compiler VIP-5/VIP-17/VIP-18: Chapter 2 operand test expects Effect assignability=True; never call under try reports EK0502; lane core-land
@@ -46,17 +22,9 @@ FuzzMigrationEffectOperands feature:unknown:fork:call compiler VIP-5/VIP-17/VIP-
 FuzzMigrationEffectOperands corpus:alchemy-operands-unknown-fork-call compiler VIP-5/VIP-17/VIP-18: minimized reproduction of feature:unknown:fork:call; lane w2-fork
 FuzzMigrationEffectOperands feature:number:catch:value compiler VIP-5/VIP-17/VIP-18: Chapter 2 operand test expects Effect assignability=False; number value under catch reports no error; lane core-land
 FuzzMigrationEffectOperands corpus:alchemy-operands-number-catch-value compiler VIP-5/VIP-17/VIP-18: minimized reproduction of feature:number:catch:value; lane core-land
-FuzzMigrationEffectOperands feature:number:fork:value compiler VIP-5/VIP-17/VIP-18: Chapter 2 operand test expects Effect assignability=False; number value under fork reports no error; lane w2-fork
-FuzzMigrationEffectOperands corpus:alchemy-operands-number-fork-value compiler VIP-5/VIP-17/VIP-18: minimized reproduction of feature:number:fork:value; lane w2-fork
 FuzzMigrationEffectOperands feature:number:catch:call compiler VIP-5/VIP-17/VIP-18: Chapter 2 operand test expects Effect assignability=False; number call under catch reports no error; lane core-land
 FuzzMigrationEffectOperands corpus:alchemy-operands-number-catch-call compiler VIP-5/VIP-17/VIP-18: minimized reproduction of feature:number:catch:call; lane core-land
-FuzzMigrationEffectOperands feature:number:fork:call compiler VIP-5/VIP-17/VIP-18: Chapter 2 operand test expects Effect assignability=False; number call under fork reports no error; lane w2-fork
-FuzzMigrationEffectOperands corpus:alchemy-operands-number-fork-call compiler VIP-5/VIP-17/VIP-18: minimized reproduction of feature:number:fork:call; lane w2-fork
 FuzzMigrationEffectOperands feature:option:catch:value compiler VIP-5/VIP-17/VIP-18: Chapter 2 operand test expects Effect assignability=False; option value under catch reports no error; lane core-land
 FuzzMigrationEffectOperands corpus:alchemy-operands-option-catch-value compiler VIP-5/VIP-17/VIP-18: minimized reproduction of feature:option:catch:value; lane core-land
-FuzzMigrationEffectOperands feature:option:fork:value compiler VIP-5/VIP-17/VIP-18: Chapter 2 operand test expects Effect assignability=False; option value under fork reports no error; lane w2-fork
-FuzzMigrationEffectOperands corpus:alchemy-operands-option-fork-value compiler VIP-5/VIP-17/VIP-18: minimized reproduction of feature:option:fork:value; lane w2-fork
 FuzzMigrationEffectOperands feature:option:catch:call compiler VIP-5/VIP-17/VIP-18: Chapter 2 operand test expects Effect assignability=False; option call under catch reports no error; lane core-land
 FuzzMigrationEffectOperands corpus:alchemy-operands-option-catch-call compiler VIP-5/VIP-17/VIP-18: minimized reproduction of feature:option:catch:call; lane core-land
-FuzzMigrationEffectOperands feature:option:fork:call compiler VIP-5/VIP-17/VIP-18: Chapter 2 operand test expects Effect assignability=False; option call under fork reports no error; lane w2-fork
-FuzzMigrationEffectOperands corpus:alchemy-operands-option-fork-call compiler VIP-5/VIP-17/VIP-18: minimized reproduction of feature:option:fork:call; lane w2-fork

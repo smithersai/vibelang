@@ -37,7 +37,7 @@ const (
 func (p *plan) planPipe(a *analyzer, pipe *ast.Node) {
 	topics := topicsOf(pipe)
 	switch {
-	case len(topics) != 0 && !slices.ContainsFunc(topics, func(topic *ast.Node) bool { return !a.isByName(topic) }):
+	case len(topics) != 0 && !slices.ContainsFunc(topics, func(topic *ast.Node) bool { return true }):
 		p.pipes[pipe] = pipeByName
 	case len(topics) == 1 && topicFirst(a.checker, pipe.AsBinaryExpression().Right, topics[0]):
 		p.pipes[pipe] = pipeSubstitute

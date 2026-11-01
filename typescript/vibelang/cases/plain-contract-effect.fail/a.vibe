@@ -1,4 +1,4 @@
-// expect: EK9203
+// expect: EK4801
 export const invalid = (): number => {
   Effect.succeed(1)
   return 1

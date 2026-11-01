@@ -11,6 +11,10 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
 )
 
+// The helper return-type fix answered EK9203, D67's plain annotation that
+// calls an unannotated helper. VIP-1 makes the unmarked helper plain, so the
+// project compiles and --fix has nothing to write; were the fix to return, it
+// must write foreign.Thing, never a name not in scope.
 func TestHelperReturnFixQualifiesImportedType(t *testing.T) {
 	source := "import * as foreign from './foreign.js';\nfunction helper(){return new foreign.Thing()}\nexport function caller():foreign.Thing{return helper()}\n"
 	initial, file, _, _ := editorProgram(t, source)
@@ -21,8 +25,11 @@ func TestHelperReturnFixQualifiesImportedType(t *testing.T) {
 	program := compiler.NewProgram(compiler.ProgramOptions{Config: initial.CommandLine(), Host: compiler.NewCompilerHost(fs, initial.Host().DefaultLibraryPath(), nil, nil, nil)})
 	result := FixProject(t.Context(), fs, bundled.LibPath(), program.CommandLine())
 	fixed := result.Files[file.FileName()]
-	if fixed == nil || result.Err != nil {
-		t.Fatalf("qualified helper annotation was refused: %+v", result)
+	if result.Err != nil || len(result.Refused) != 0 {
+		t.Fatalf("--fix failed: %+v", result)
+	}
+	if fixed == nil {
+		return
 	}
 	if strings.Contains(fixed.Text, "helper(): Thing") {
 		t.Fatalf("wrote a name not in scope: %s", fixed.Text)

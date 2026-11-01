@@ -10,6 +10,6 @@ export function double(n: number): number {
 log.push("main")
 
 // expect-result: {"mapped":[2,4],"log":["user","main"]}
-export function main() {
+export effect function main() {
   return { mapped, log }
 }

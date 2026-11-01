@@ -1,0 +1,31 @@
+// expect: EK1005
+// VIP-1 flip acceptance cases 3-5, neighbourhood: a runner may start a root
+// fiber where no fiber runs the code (D38). After VIP-1 that includes every
+// function effect does not mark, and a plain callback that such code passes
+// on; code an Effect function runs, and a plain callback it passes on, still
+// report EK1005.
+import { Effect } from "effect"
+
+export function plainDeclaration(): number { return Effect.runSync(Effect.succeed(1)) }
+
+export class Plain {
+  method(): number { return Effect.runSync(Effect.succeed(2)) }
+}
+
+export const plainMap = (xs: ReadonlyArray<number>): Array<number> => xs.map((x) => Effect.runSync(Effect.succeed(x)))
+
+export const plainForEach = (xs: ReadonlyArray<number>): void => { xs.forEach((x) => { Effect.runFork(Effect.succeed(x)) }) }
+
+export const plainReturned = () => () => Effect.runPromise(Effect.succeed(3))
+
+export effect function inEffect() { return Effect.runSync(Effect.succeed(4)) }
+
+export const inEffectArrow = effect (xs: ReadonlyArray<number>) => { xs.forEach((x) => { Effect.runFork(Effect.succeed(x)) }) }
+
+export const inBlock = (): void!! => effect { Effect.runSync(Effect.void) }
+
+effect function withCallback(f: () => void) { f() }
+export const viaEffectFunction: void!! = withCallback(() => { Effect.runFork(Effect.void) })
+
+function plainRegister(f: () => void): void { f() }
+plainRegister(() => { Effect.runFork(Effect.void) })

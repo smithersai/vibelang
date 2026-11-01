@@ -109,7 +109,22 @@ func checkFiberForms(c *checker.Checker, file *ast.SourceFile) {
 		case "$select":
 			keyword := scanner.GetRangeOfTokenAtPosition(file, node.Pos())
 			note(reportAt(c, file, keyword, EK4607), "Write try.race [a(), b()] with an Effect per case; use an effect { ... } block for statements. For a default clause, poll instead: Queue.poll(queue) and an if.")
+			// The retired form's case programs have no typing to check
+			// against: hide TypeScript's argument errors, such as a case
+			// head that gives an Effect where $select expects a program.
+			region := node
+			if block := ast.FindAncestor(node, ast.IsLabeledStatement); block != nil {
+				region = block // the labeled block the parser writes around $select
+			}
+			coverCodes(c, region, 2345)
 		case "$forConcurrent":
+			if !inEffectCode(node) {
+				// A plain function runs no Effect (VIP-1, VIP-19).
+				note(reportAt(c, file, scanner.GetRangeOfTokenAtPosition(file, node.Pos()), EK1902), "Mark the function effect, or loop with for...of.")
+				for _, arg := range node.Arguments() {
+					coverArgument(c, arg) // the item function is no Effect function here
+				}
+			}
 			if args := node.Arguments(); len(args) == 3 {
 				checkConcurrentBody(c, args[2].Body())
 			}
@@ -179,7 +194,7 @@ func checkJoin(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
 	}
 	operand := args[0]
 	t := c.GetTypeAtLocation(operand)
-	if t == nil || isJoinable(c, t, 0) {
+	if t == nil || isJoinable(c, t, 0) || analyzerFor(c).joinsRejectedFork(operand) {
 		return
 	}
 	d := reportAt(c, file, keyword, EK4611, c.TypeToString(t))

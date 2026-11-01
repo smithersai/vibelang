@@ -182,8 +182,14 @@ func (oc *OutputChecker) checkStatementMappings(name, generated, source string, 
 			retained = false
 		}
 		inside := func(span statementSpan) bool { return pos >= span.start && pos < span.end }
+		// Emit erases `as T` and `satisfies T`, so a statement can read as
+		// another source statement; it still maps to its own.
+		erasedAt := func(span statementSpan) bool {
+			rest, ok := strings.CutPrefix(statementKey(source[span.start:span.end]), statementKey(generated[start:n.End()]))
+			return inside(span) && ok && (strings.Contains(rest, "as") || strings.Contains(rest, "satisfies"))
+		}
 		if retained {
-			if !slices.ContainsFunc(candidates, inside) {
+			if !slices.ContainsFunc(candidates, inside) && !slices.ContainsFunc(spans, erasedAt) {
 				oc.G.Add("feature:source-map-statement", "D34: %s unchanged statement at %d:%d maps to source byte %d outside its statement [%d,%d): %q", name, line, column, pos, candidates[0].start, candidates[0].end, excerpt(generated, start))
 			}
 		} else {

@@ -31,7 +31,7 @@ export declare function fork<A, E, R>(program: import("effect/Effect").Effect<A,
 `
 			files["/workspace/x/src/main.vibe"] = `
 import { provider } from "./provider.js"
-export function example() { provide provider { ` + body + ` } }
+export effect function example() { provide provider { ` + body + ` } }
 `
 			// Provider channels have the same variance structure as Effect's Layer.
 			files["/workspace/x/src/provider.d.ts"] = `

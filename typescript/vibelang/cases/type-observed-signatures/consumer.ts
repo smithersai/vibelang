@@ -20,7 +20,7 @@ type Checks = [
   Assert<Eq<Effect.Error<ReturnType<typeof inferredGeneric>>, Failure>>,
   Assert<Eq<Effect.Success<ReturnType<typeof inferredGeneric>>, unknown>>,
   Assert<Eq<Parameters<typeof inferredGeneric>, [value: unknown]>>,
-  Assert<Eq<ReturnType<typeof plain>, Effect.Effect<number, never, never>>>,
+  Assert<Eq<ReturnType<typeof plain>, number>>,
   Assert<Eq<typeof run extends (...args: any[]) => Effect.Effect<any, Failure, never> ? true : false, true>>,
   Assert<Eq<Extract<keyof typeof M, "run" | "generic">, "run" | "generic">>
 ]

@@ -1,7 +1,8 @@
 // expect-result: [[3,102],[3,102],[3,102,3,4]]
-// A plain function compiles to a $direct variant that VibeLang callers call.
-// Its name is the compiler's, so a source binding spelled like it, in any
-// scope, keeps its own meaning, and the call keeps calling the function.
+// A source binding spelled like a compiler name (the retired $direct variant
+// of a plain function), in any scope, keeps its own meaning, and a call of
+// the function keeps calling the function. A plain function is plain
+// JavaScript (VIP-1), so Effect.forEach gets it through an effect arrow.
 import { inc, inc$direct } from "./lib.vibe"
 import * as Lib from "./lib.vibe"
 
@@ -18,5 +19,5 @@ function twice(n: number) { return n + 1 }
 function twice$direct(n: number): number { return n + 100 }
 
 export effect function main() {
-  return [shadow(), [twice(2), twice$direct(2)], [inc(2), inc$direct(2), Lib.inc(2), (try Effect.forEach([3], inc))[0]]]
+  return [shadow(), [twice(2), twice$direct(2)], [inc(2), inc$direct(2), Lib.inc(2), (try Effect.forEach([3], effect (n: number) => inc(n)))[0]]]
 }

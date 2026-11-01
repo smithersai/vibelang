@@ -8,24 +8,24 @@ service Greeting {
 }
 
 const NameLive = Layer.succeed(Name, {
-  value() {
+  effect value() {
     return "Ada"
   }
 })
 
 const GreetingLive = Layer.effect(Greeting, effect {
-  const name = Name()
+  const name = try Name
   return {
-    text() {
-      return `Hello, ${name.value()}`
+    effect text() {
+      return `Hello, ${try name.value()}`
     }
   }
 })
 
 export const AppLive = wire(GreetingLive, NameLive)
 
-export function greet() {
-  return Greeting.text()
+export effect function greet() {
+  return try (try Greeting).text()
 }
 
 interface Point {
@@ -52,8 +52,8 @@ export const piped = inc(double(1))
 export const unpiped = 1 |> double(%) |> inc(%)
 export const styled = Option.some(1).pipe(Option.map((n: number) => n + 1))
 
-export function pause() {
-  Effect.sleep("2 seconds")
+export effect function pause() {
+  try Effect.sleep("2 seconds")
 }
 
 export const UserId = Schema.String.pipe(Schema.brand("UserId"))

@@ -47,7 +47,7 @@ const data = new Map<string, ReadonlyArray<string>>([
 
 // The shared database: one connection per provide, released when the provided program ends.
 const DatabaseLive = Layer.effect(Database, effect {
-  const url = (try Config()).url
+  const url = (try Config).url
   if (url.startsWith("broken:")) throw new ConnectError({ url })   // a failing acquisition
   try Effect.acquireRelease(
     effect {
@@ -67,7 +67,7 @@ const DatabaseLive = Layer.effect(Database, effect {
 // Two services that depend on the database. Each captures Database when its layer is built, so
 // callers of Users.find and Orders.forUser need only Users and Orders.
 const UsersLive = Layer.effect(Users, effect {
-  const db = try Database()
+  const db = try Database
   return {
     effect find(id) {
       const rows = try Effect.orDie(effect { return try db.query("users", id) })
@@ -79,7 +79,7 @@ const UsersLive = Layer.effect(Users, effect {
 // Layer<Users, never, Database>
 
 const OrdersLive = Layer.effect(Orders, effect {
-  const db = try Database()
+  const db = try Database
   return {
     effect forUser(userId) {
       const rows = try Effect.orDie(effect { return try db.query("orders", userId) })

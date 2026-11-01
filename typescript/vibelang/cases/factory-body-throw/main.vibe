@@ -1,0 +1,25 @@
+// expect-result: ["threw Missing()","returned","Failure"]
+// A plain function that returns an Effect is plain JavaScript (VIP-1), so a
+// throw in its body is JavaScript's throw when it is called (VIP-4), and the
+// Effect it returns fails only when it runs. Before VIP-1 such a factory's
+// body could not throw (EK2115, D269 with D282).
+export error Missing { reason: string }
+
+export const refuse = (reason: string): Effect.Effect<never, Missing, never> => {
+  if (reason === "") throw new Missing({ reason })
+  return effect { throw new Missing({ reason }) }
+}
+
+function called(reason: string): string {
+  try {
+    void refuse(reason)
+    return "returned"
+  } catch (e) {
+    return e instanceof Missing ? `threw Missing(${e.reason})` : "threw something else"
+  }
+}
+
+export effect function main() {
+  const outcome = try exit(refuse("late"))
+  return [called(""), called("late"), outcome._tag]
+}

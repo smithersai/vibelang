@@ -1,5 +1,3 @@
-work() runs a program, but the constructor of Box runs as plain JavaScript, outside any program.
-work() runs a program, but the static block of Box runs as plain JavaScript, outside any program.
-work() runs a program, but get value runs as plain JavaScript, outside any program.
-work() runs a program, but set value runs as plain JavaScript, outside any program.
+work() is an Effect value, and this statement discards it without running it.
 work is a program, and this statement discards it without running it.
+Plain JavaScript runs no Effect: run it with try inside an effect function, or return it.

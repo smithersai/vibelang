@@ -16,16 +16,17 @@ import (
 
 // projectFiles is a workspace in which /app imports the .vibe source of the
 // workspace package /producer, and both call key() from the plain TypeScript
-// package @acme/helper.
+// package @acme/helper. The fixture installs no effect, so the app names
+// produce instead of running it (a try needs an Effect type, VIP-5).
 func projectFiles(producerTrust, appTrust string) map[string]string {
 	return fixtureRuntime(map[string]string{
 		"/node_modules/@acme/helper/package.json": `{"name":"@acme/helper","types":"index.d.ts"}`,
 		"/node_modules/@acme/helper/index.d.ts":   `export declare function key(): number`,
 		"/producer/package.json":                  `{"name":"@acme/producer"}`,
 		"/producer/tsconfig.json":                 fmt.Sprintf(`{"compilerOptions":{"strict":true,"noEmit":true,"allowImportingTsExtensions":true},"vibelang":{"trustedPackages":%s},"include":["src"]}`, producerTrust),
-		"/producer/src/lib.vibe":                  `import { key } from "@acme/helper"` + "\n" + `export function produce() { return key() }`,
+		"/producer/src/lib.vibe":                  `import { key } from "@acme/helper"` + "\n" + `export effect function produce() { return key() }`,
 		"/app/package.json":                       `{"name":"app"}`,
-		"/app/main.vibe":                          `import { key } from "@acme/helper"` + "\n" + `import { produce } from "../producer/src/lib.vibe"` + "\n" + `export function use() { return produce() + key() }`,
+		"/app/main.vibe":                          `import { key } from "@acme/helper"` + "\n" + `import { produce } from "../producer/src/lib.vibe"` + "\n" + `export effect function use() { return [produce, key()] }`,
 		"/app/tsconfig.json":                      fmt.Sprintf(`{"compilerOptions":{"strict":true,"noEmit":true,"allowImportingTsExtensions":true},"vibelang":{"trustedPackages":%s},"files":["main.vibe"]}`, appTrust),
 	})
 }
@@ -170,7 +171,7 @@ func TestLinkedWorkspaceVibeFileUsesItsOwnProjectSettings(t *testing.T) {
 			files := map[string]any{
 				"/workspace/errors/package.json":   `{"name":"@smthrs/errors","type":"module","exports":{".":"./src/index.ts"}}`,
 				"/workspace/errors/src/Code.ts":    `export function isCode(value: string): boolean { return value === "a" }`,
-				"/workspace/errors/src/Check.vibe": "import { isCode } from \"./Code.ts\"\nexport function check(value: string) {\n  return isCode(value)\n}\n",
+				"/workspace/errors/src/Check.vibe": "import { isCode } from \"./Code.ts\"\nexport effect function check(value: string) {\n  return isCode(value)\n}\n",
 				"/workspace/errors/src/index.ts":   `export { check } from "./Check.vibe"`,
 				"/app/node_modules/@smthrs/errors": vfstest.Symlink("/workspace/errors"),
 				"/app/package.json":                `{"name":"app","type":"module"}`,

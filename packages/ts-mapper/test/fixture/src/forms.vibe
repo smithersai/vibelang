@@ -2,29 +2,29 @@
 // TypeScript types forms-check.ts pins.
 export error NotFound { id: string }
 
-function find(id: string): string!NotFound! {
+effect function find(id: string): string!NotFound! {
   if (id === "") throw new NotFound({ id })
   return id
 }
 
 // The Effect function form: forEach's callback.
-export function each(ids: ReadonlyArray<string>) {
-  return Effect.forEach(ids, (id) => find(id))
+export effect function each(ids: ReadonlyArray<string>) {
+  return try Effect.forEach(ids, effect (id) => try find(id))
 }
 
 // The program form: retry's first argument.
-export function retried() {
-  return Effect.retry(() => find("x"), { times: 1 })
+export effect function retried() {
+  return try Effect.retry(effect { return try find("x") }, { times: 1 })
 }
 
 // By name: timeout's first argument is a program, so the call does not run.
-export function timed() {
-  return Effect.timeout(find("x"), "1 second")
+export effect function timed() {
+  return try Effect.timeout(find("x"), "1 second")
 }
 
 // A dual's data-first form: the arrow is the program withSpan wraps.
-export function spanned() {
-  return Effect.withSpan(() => {
-    return find("y")
+export effect function spanned() {
+  return try Effect.withSpan(effect {
+    return try find("y")
   }, "load")
 }

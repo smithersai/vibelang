@@ -25,14 +25,14 @@ effect function lease(name: string): Disposable!!Scope {
 }
 
 effect function open(name: string) {
-  return try Effect.acquireRelease(effect { return try handle(name) }, effect (h) => { h[Symbol.dispose]() })
+  return try Effect.acquireRelease(effect { return handle(name) }, effect (h) => { h[Symbol.dispose]() })
 }
 
 effect function openDisposable(name: string) {
-  return try Effect.acquireDisposable(effect { return try handle(name) })
+  return try Effect.acquireDisposable(effect { return handle(name) })
 }
 
-const leasedValue: Disposable!!Scope = Effect.acquireRelease(effect { return try handle("value") }, effect (h) => { h[Symbol.dispose]() })
+const leasedValue: Disposable!!Scope = Effect.acquireRelease(effect { return handle("value") }, effect (h) => { h[Symbol.dispose]() })
 
 function closes(name: string) {
   return events.filter((event) => event === `dispose ${name}`).length
@@ -42,9 +42,9 @@ effect function work() {
   using plain = handle("plain")
   using fromEffect = try unscoped("unscoped")
   using leased = try lease("lease")
-  using released = try Effect.acquireRelease(effect { return try handle("released") }, effect (h) => { h[Symbol.dispose]() })
+  using released = try Effect.acquireRelease(effect { return handle("released") }, effect (h) => { h[Symbol.dispose]() })
   using wrapped = try open("wrapped")
-  using value = try leasedValue()
+  using value = try leasedValue
   using disposable = try openDisposable("disposable")
   events.push("body")
 }

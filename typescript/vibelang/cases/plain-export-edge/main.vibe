@@ -1,4 +1,4 @@
 import { namedDefault, forwardedDefault, quoted } from "./barrel.vibe"
 import { "three-times" as directQuoted } from "./quoted.vibe"
 // expect-result: [3,4,12,15]
-export function main() { return [namedDefault(2), forwardedDefault(3), quoted(4), directQuoted(5)] }
+export effect function main() { return [namedDefault(2), forwardedDefault(3), quoted(4), directQuoted(5)] }

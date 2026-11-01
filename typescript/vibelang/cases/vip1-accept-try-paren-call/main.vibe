@@ -1,0 +1,21 @@
+// expect-result: {"direct":1,"nested":2,"member":3,"argument":4,"chained":5}
+// VIP-1 flip neighbourhood of acceptance case 7: parentheses only group the
+// operand of try (VIP-5: try works like await), so try (f()) runs f(), as
+// try f() does, in every position.
+const box = { get: () => Effect.succeed(3) }
+
+export const direct = effect () => { const v: number = try (Effect.succeed(1)); return v }
+export const nested = effect () => try ((Effect.succeed(2)))
+export const member = effect () => try (box.get())
+export const argument = effect () => { const v: number = Math.abs(try (Effect.succeed(-4))); return v }
+export const chained = effect () => (try (Effect.succeed({ n: 5 }))).n
+
+export effect function main() {
+  return {
+    direct: try direct(),
+    nested: try nested(),
+    member: try member(),
+    argument: try argument(),
+    chained: try chained(),
+  }
+}

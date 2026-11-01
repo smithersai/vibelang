@@ -36,7 +36,7 @@ export effect function guest(lookup: Lookup, id: string): string!!Users {
 }
 
 export effect function add(program: Counted, extra: Effect<number>): Effect<number, never, Users> {
-  return try program() + try extra() + try Users.count()
+  return try program + try extra + try Users.count()
 }
 
 export effect function main() {
