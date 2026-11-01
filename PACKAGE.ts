@@ -72,6 +72,7 @@ const specTests = [
   "TestPreludeImportShadowQuoted",
   "TestPreludeModuleClashQuoted",
   "TestVibexNativeParityQuoted",
+  "TestReviewNativeLoopsQuoted",
   "TestSpecifierWrittenJSX",
 
   "TestStockConsumerResolutionQuoted",
