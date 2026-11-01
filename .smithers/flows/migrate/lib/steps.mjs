@@ -1141,8 +1141,9 @@ async function emitMigratedJs(config, t, logs) {
     const tsconfigs = Wire.projectsOf(typeScriptOf(config), join(t, pkg.dir), pkg.tsconfig)
     const result = await emitPackageJs({ compiler: compilerOf(config), tsconfigs, packageDir: join(t, pkg.dir), root: t, log: join(logs, `js-${slug(pkg.dir)}.log`) })
     // Nonzero emits can still write valid package-owned files (for example TS6059).
-    const exportsChanged = routeEmittedExports(join(t, pkg.dir), result.outputs)
-    emitted.push({ package: pkg.dir, files: result.files, code: result.code, exportsChanged, diagnostics: result.diagnostics })
+    let runtimeRouting
+    const exportsChanged = routeEmittedExports(join(t, pkg.dir), result.outputs, { typescript:typeScriptOf(config), onGraph:graph=>runtimeRouting=graph })
+    emitted.push({ package: pkg.dir, files: result.files, code: result.code, exportsChanged, runtimeRouting, diagnostics: result.diagnostics })
   }
   return emitted
 }

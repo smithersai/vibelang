@@ -1,11 +1,11 @@
 {
   "repo": "opencode",
-  "pattern": "package tests import a sibling fixture outside rootDir; package-owned JS is still emitted",
+  "pattern": "package tests import a sibling fixture outside rootDir; the native entry shares an emitted runtime component with a Vibe dependency",
   "files": {
     "package.json": "{\"private\":true,\"type\":\"module\"}",
     "packages/cli/package.json": "{\"name\":\"@demo/cli\",\"type\":\"module\",\"exports\":{\".\":\"./src/index.ts\",\"./missing\":\"./src/missing.ts\"}}",
-    "packages/cli/tsconfig.json": "{\"compilerOptions\":{\"target\":\"ES2022\",\"module\":\"Preserve\",\"moduleResolution\":\"Bundler\",\"skipLibCheck\":true,\"singleThreaded\":true},\"include\":[\"src/**/*\",\"test/**/*\"]}",
-    "packages/cli/src/index.ts": "export const answer = 42\n",
+    "packages/cli/tsconfig.json": "{\"compilerOptions\":{\"target\":\"ES2022\",\"module\":\"Preserve\",\"moduleResolution\":\"Bundler\",\"skipLibCheck\":true,\"singleThreaded\":true,\"rewriteRelativeImportExtensions\":true},\"include\":[\"src/**/*\",\"test/**/*\"]}",
+    "packages/cli/src/index.ts": "import { hidden } from \"./private.vibe\"\nexport const answer = hidden + 41\n",
     "packages/cli/src/private.vibe": "export const hidden = 1\n",
     "packages/cli/src/missing.ts": "export const missing = 0\n",
     "packages/cli/test/index.ts": "import { fixture } from \"../../core/test/fixture/git.ts\"; export const result = fixture\n",

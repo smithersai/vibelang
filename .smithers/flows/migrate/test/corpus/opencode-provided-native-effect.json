@@ -1,0 +1,6 @@
+{
+  "property": "runtime-export-components",
+  "rule": "Existing tools work.",
+  "source": "Opencode plugin host resolves @opencode/plugin/effect.js to its native source; an unrelated Vibe module must not move that provided-module path.",
+  "input": { "pattern": false, "bridge": false, "dynamic": false, "size": 2 }
+}

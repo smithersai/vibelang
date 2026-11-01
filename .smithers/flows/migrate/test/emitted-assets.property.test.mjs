@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, renameSync, symlinkSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
@@ -28,10 +28,10 @@ async function fixture({ dir = "src", asset = "snapshot.txt", form = "static", n
     write(root, {
       "package.json": '{"type":"module"}',
       "pkg/package.json": JSON.stringify({ name: "@demo/pkg", type: "module", exports: { "./reader": "./" + dir + "/reader.ts" } }),
-      "pkg/tsconfig.json": JSON.stringify({ compilerOptions: { target: "ES2022", module: "Preserve", moduleResolution: "Bundler", allowArbitraryExtensions: true }, include: ["**/*"] }),
+      "pkg/tsconfig.json": JSON.stringify({ compilerOptions: { target: "ES2022", module: "Preserve", moduleResolution: "Bundler", allowArbitraryExtensions: true, rewriteRelativeImportExtensions: true }, include: ["**/*"] }),
       "pkg/assets.d.ts": 'declare module "*.txt" { const text: string; export default text }\n',
-      ["pkg/" + dir + "/reader.ts"]: body,
-      ["pkg/" + dir + "/private.vibe"]: "export const unused = 1\n",
+      ["pkg/" + dir + "/reader.ts"]: 'import "./private.ts";\n' + body,
+      ["pkg/" + dir + "/private.ts"]: "export const unused = 1\n",
       ["pkg/" + dir + "/" + asset]: corpus.asset,
       "entry.mjs": 'import { snapshot } from "@demo/pkg/reader"; console.log(typeof snapshot === "function" ? await snapshot() : snapshot)\n'
     })
@@ -45,6 +45,8 @@ async function fixture({ dir = "src", asset = "snapshot.txt", form = "static", n
       return result.stdout.trim()
     }
     const beforeValue = run("before")
+    renameSync(join(pkg, dir, "private.ts"), join(pkg, dir, "private.vibe"))
+    writeFileSync(join(pkg, dir, "reader.ts"), 'import "./private.js";\n' + body)
     if (form !== "reexport") assert.equal(beforeValue, corpus.asset.trim())
     const compiler = join(root, "emit.cjs")
     writeFileSync(compiler, [
@@ -58,7 +60,8 @@ async function fixture({ dir = "src", asset = "snapshot.txt", form = "static", n
     ].join("\n") + "\n", { mode: 0o755 })
     const result = await emitPackageJs({ compiler: native || compiler, tsconfigs: ["tsconfig.json"], packageDir: pkg, root })
     assert.equal(result.code, 0, JSON.stringify(result.diagnostics))
-    assert.equal(routeEmittedExports(pkg, result.outputs), true)
+    let routing
+    assert.equal(routeEmittedExports(pkg, result.outputs, {onGraph: value => routing = value}), true, JSON.stringify({outputs: result.outputs, routing, reader: readFileSync(join(pkg, ".vibelang/js", dir, "reader.js"), "utf8")}))
     assert.equal(run("after"), beforeValue)
     const emitted = readFileSync(join(pkg, ".vibelang/js", dir, "reader.js"), "utf8")
     if (!native) assert.ok(emitted.includes(decoys), "comments and unrelated strings keep every byte")
