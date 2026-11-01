@@ -15,7 +15,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vfs/vfstest"
 )
 
-const legacyCommentsQuote = "`vibelang --fix` moves each eligible map to root `vibe.severities`, including in extended configs, preserving JSONC comments, unrelated settings and existing modern entries."
+const legacyCommentsQuote = "`vibelang --fix` moves each eligible map to root `vibe.severities`, including in extended configs inside the repository, preserving JSONC comments, unrelated settings and existing modern entries; an extended config under `node_modules` is reported, not edited."
 const legacyCommentsStableQuote = "One `vibelang --fix` run applies fixes until none applies; running it again changes nothing."
 
 func legacyCommentsQuoted(t testing.TB) {

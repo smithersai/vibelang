@@ -45,6 +45,9 @@ import (
 // for VibeLang 0.0.10 or earlier, under the same checks.
 func FuzzFix(f *testing.F) {
 	startShortBudget(f)
+	if !strings.Contains(SpecText("007-tooling.md"), "the selected project's own files") {
+		f.Fatal("missing current --fix write boundary")
+	}
 	// Under -short every pending reproduction runs, with six of the
 	// tsforms cases, the TypeScript forms --fix rewrites, and four other
 	// cases: running all 22 tsforms cases took two minutes of seed CPU.
@@ -63,6 +66,12 @@ func FuzzFix(f *testing.F) {
 	for _, seed := range toolsSample(SnippetSeeds(), 4, 60, nil) {
 		f.Add(Archive(seed.Files))
 	}
+	// Imported dependencies remain read-only while an owned type rewrite runs.
+	f.Add(Archive(map[string]string{
+		"main.vibe":                            "import type { Foreign } from \"dependency\"; export type Local = Effect.Effect<number>; export type Imported = Foreign;\n",
+		"node_modules/dependency/package.json": "{\"name\":\"dependency\",\"type\":\"module\",\"types\":\"./index.vibe\"}",
+		"node_modules/dependency/index.vibe":   "export type Foreign = Effect.Effect<string>;\n",
+	}))
 	for _, choices := range []string{"\x00\x07\x00\x00\x00", "\x01\x81\x01\x00\x01", "\x02\x82\x00\x01\x01\x01", "\x00\x80\x01\x01\x00", "\x01\xff\x00\x00\x01"} {
 		f.Add(optionMatchFixKey + choices)
 	}
@@ -117,9 +126,12 @@ func FuzzFix(f *testing.F) {
 			fixed := maps.Clone(files)
 			for name, file := range result.Files {
 				rel := strings.TrimPrefix(name.AsString(), filepath.ToSlash(r.Dir)+"/")
-				// Chapter 28: --fix applies its fixes "to a project's own .vibe files".
-				if _, ok := files[rel]; !ok || !strings.HasSuffix(rel, ".vibe") {
+				// Chapter 007: the selected project's own program sources, including .vibex.
+				if _, ok := files[rel]; !ok || !(strings.HasSuffix(rel, ".vibe") || strings.HasSuffix(rel, ".vibex")) {
 					Gap(t, "FuzzFix", "fix:scope", "--fix changed %s, which is not one of the project's own .vibe files:\n%s", name, archive)
+				}
+				if strings.Contains("/"+filepath.ToSlash(rel)+"/", "/node_modules/") {
+					Gap(t, "FuzzFix", "fix:scope-dependency", "chapter 007 forbids dependency writes: %s", rel)
 				}
 				fixed[rel] = file.Text
 				// D372: comments survive every rewrite.
@@ -422,7 +434,7 @@ func toolsUnpermitted(t *testing.T, w *Workspace, r *Result, codes []int32, refu
 			continue
 		}
 		rel := strings.TrimPrefix(d.File().FileName().AsString(), filepath.ToSlash(r.Dir)+"/")
-		if _, ok := r.Sources[rel]; !ok || !strings.HasSuffix(rel, ".vibe") {
+		if _, ok := r.Sources[rel]; !ok || !(strings.HasSuffix(rel, ".vibe") || strings.HasSuffix(rel, ".vibex")) || strings.Contains("/"+filepath.ToSlash(rel)+"/", "/node_modules/") {
 			continue
 		}
 		// D291 permits a refusal that identifies an error the rewrite adds.

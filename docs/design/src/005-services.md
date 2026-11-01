@@ -581,7 +581,7 @@ A module is a namespace, not a service key (VIP-33, corrected). `try FileSystem`
 | Rule | Diagnostic |
 | --- | --- |
 | in a `.vibe` file, an `import` or `export … from` declaration, or an `import(…)` call with a string-literal specifier, whose specifier names a Node builtin with or without `node:` (`node:fs`, `fs`, `child_process`: Node's `module.builtinModules`), except an `import type` or `export type … from` declaration | `EK4402` |
-| a statically named value that reaches the platform (rule below) anywhere in a `.vibe` file, including inside `Effect.try` and `tryPromise` arrows. The quick fix and the codemod move the code into a sibling `.ts` module, or point to the Effect service (`HttpClient` for `fetch`) | `EK4402` |
+| a statically named value that reaches the platform (rule below) anywhere in a `.vibe` file, including inside `Effect.try` and `tryPromise` arrows. The quick fix and the codemod move the code into a sibling `.ts` module that does not exist yet; never rewrite an existing foreign file, and refuse with the not-fixed explanation if the move cannot preserve run phase, captures, receiver and public types, or point to the Effect service (`HttpClient` for `fetch`) | `EK4402` |
 
 <a id="reaches-the-platform"></a>`EK4402` asks one question of a statically named value: does the symbol it resolves to reach the platform, by doing I/O, starting a timer, or reading or changing host state? Statically named means an identifier, `.name`, `?.name`, `["name"]`, a template with no substitutions, or a destructured property with such a key, and an alias keeps the symbol it copies. Two kinds of symbol reach the platform:
 

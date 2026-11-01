@@ -41,3 +41,5 @@ provide NodeServices.layer { try readConfig("app.json") }   // VIP-12; the platf
 > "make Effect namespace global and every namespace below Effect global and if we were forced to add something because Effect doesn't already have a namespace for it it should be under Experimental."
 
 > "Node.js should only even be available via dependency injection or via escaping to normal typescript"
+
+- **Amended 2026-11-01: fresh platform companion.** The platform codemod may create a new owned sibling `.ts` companion only when it preserves run phase, captures, receiver and public types. It never overwrites or edits an existing foreign file; a collision or unavailable preservation proof gives the not-fixed explanation. This is VIP-34's only exception allowing creation of a foreign-source companion.

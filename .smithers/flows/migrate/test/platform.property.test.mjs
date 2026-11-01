@@ -9,7 +9,7 @@ const fc = require("fast-check")
 const ts = require("typescript")
 const spec = readFileSync(new URL("../../../../docs/design/src/005-services.md", import.meta.url), "utf8")
 // The EK4402 row's fix, which the codemod applies before a batch's rename.
-const quote = "The quick fix and the codemod move the code into a sibling `.ts` module, or point to the Effect service"
+const quote = "The quick fix and the codemod move the code into a sibling `.ts` module that does not exist yet; never rewrite an existing foreign file, and refuse with the not-fixed explanation if the move cannot preserve run phase, captures, receiver and public types, or point to the Effect service (`HttpClient` for `fetch`)"
 
 // Ambient builtins, so the in-memory programs need no @types/node.
 const ambient = `declare module "node:fs" { export function readFileSync(path: string): string; export function closeSync(fd: number): void }

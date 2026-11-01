@@ -345,6 +345,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `vibelang --fix` left `yield* Effect.gen(…)` half converted: it rewrote the inner generator, then refused the outer one with EK4616, because it wrote `try (effect { … })`. It now writes `try effect { … }`.
 
 
+- The codemod reference did not bound writable files; it now limits fixes to owned program sources and eligible configs, with only the proved fresh platform-companion exception.
+
 - The match reference claimed strict binding types under every compiler option and used unchecked extraction reads; it now follows project options and expresses proven presence without erasing actual `undefined` payloads.
 
 - The module guide implied explicit `Effect` imports gained `Array` and other collision modules; it now explains the implicit qualifier and explicit aliased-import form.

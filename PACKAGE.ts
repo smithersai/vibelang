@@ -76,6 +76,7 @@ const specTests = [
   "TestAwaitPlacementQuickFixes",
   "TestSchemaBuiltinBindingsQuoted",
   "TestSchemaDeclarationCommentsQuoted",
+  "TestFixScopeRulesQuoted",
   "TestEffectQualifierQuoted",
   "TestServiceImplicitAnyQuoted",
   "TestInterimSeverityRulesQuoted",
@@ -207,7 +208,8 @@ const specTests = [
   "TestSpecCitedProductionsExist",
   "TestSpecCodesInAppendixB",
   "TestAppendixBRows",
-  "TestFixGateQuoted"
+  "TestFixGateQuoted",
+  "TestShortTargetsBudgeted"
 ]
 // The cost guards of vibelang --fix. They count programs and parsed files, and
 // compare the time and memory of two project sizes, so a slower fix loop fails
