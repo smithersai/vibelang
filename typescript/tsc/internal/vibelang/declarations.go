@@ -441,7 +441,8 @@ func preludeNameUnwritten(c *checker.Checker, file *ast.SourceFile, name string,
 
 // writtenPreludeNames returns the prelude names that a declaration of file may
 // write: each one file writes, and Effect where file has an Effect form, whose
-// Effect TypeScript imports it. The schema, error and data forms write theirs
+// Effect TypeScript imports it: an Effect function, or an effect block, which
+// is Effect.gen (VIP-2). The schema, error and data forms write theirs
 // as intrinsics, as an A!E!R annotation and try write theirs.
 func writtenPreludeNames(c *checker.Checker, state *preludeState, file *ast.SourceFile) map[string]bool {
 	if written, ok := state.written[file]; ok {
@@ -459,7 +460,7 @@ func writtenPreludeNames(c *checker.Checker, state *preludeState, file *ast.Sour
 			}
 			return false
 		}
-		if !written["Effect"] && effectFunctionPath(c, node) != "" {
+		if !written["Effect"] && (isEffectBlock(node) || effectFunctionPath(c, node) != "") {
 			written["Effect"] = true
 		}
 		return node.ForEachChild(visit)
