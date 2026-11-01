@@ -774,6 +774,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A missing `vibelang-runtime` was reported twice when a `.ts` import and generated `.vibe` helpers referenced it; mixed projects now report the missing package once and keep independent TypeScript errors.
 - A project that resolved an `effect` other than the pinned 4.1.1 compiled, and its first Effect-typed use then failed with unrelated type errors; the compiler now reports one `EK3201` naming the resolved version, the VibeLang release and the pin.
 - Documentation checks repeated the full thrown-signature analysis even when its inputs were unchanged; the inventory CLI now verifies a content-keyed receipt and the generated file before reusing a successful result.
+- Sharded Go checks could report success without running tests when the external selector-joining command failed; selectors now use shell builtins and retain every assigned test.
 - `FuzzCommandLine` could fail with `the compilation rewrote the source main.d.vibe.ts` in a checkout where an earlier compile had left that sidecar in an acceptance case; the fuzz seeds now skip these generated files.
 - Listing a `.vibe` source and its declaration sidecar explicitly in `files` silently overwrote the sidecar; the compiler now reports `TS5055`, exits `1`, and preserves its bytes, including in `vibe.sidecarDir`.
 

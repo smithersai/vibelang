@@ -96,7 +96,15 @@ n=0
 for list in "$dir"/names*; do
   [ -f "$list" ] || continue
   i=${list##*/names}
-  run="^($(paste -sd '|' "$list"))\$"
+  # Join with shell builtins. An unchecked external join can fail and turn
+  # this into ^()$, silently running no tests while every shard reports success.
+  run="^("
+  separator=
+  while IFS= read -r name; do
+    run="$run$separator$name"
+    separator="|"
+  done < "$list"
+  run="$run)\$"
   ( child=
     cancel() {
       trap '' HUP INT TERM

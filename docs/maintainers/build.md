@@ -460,6 +460,8 @@ The first-bad flow reruns targets that fail at a bad commit, to separate breaks
 from flakes, and bisects each break to the first commit after a good one that
 fails it: `.smithers/flows/first-bad/README.md`.
 
+Shard selectors are joined with shell builtins, so a failing external `paste` command cannot turn a shard into an empty test selection.
+
 ## What a change reruns
 
 | Change | Reruns | Replays |
