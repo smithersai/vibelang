@@ -1,0 +1,7 @@
+// expect:
+export service Reader {
+ static readonly key = "batch/explicit"
+ read(): any
+ value: any
+ count(): number
+}

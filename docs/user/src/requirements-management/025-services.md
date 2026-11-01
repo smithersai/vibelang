@@ -23,7 +23,7 @@ effect function stringify(value: unknown) {
 // Output: ticket-17
 ```
 
-A service has no superclass or type parameters, and every instance member is abstract. Methods state full contracts, having no body to infer from; `readonly` value members are allowed. Its only static members are `static readonly key` and `defaultValue`; keep layers and helpers in ordinary declarations beside it.
+A service has no superclass or type parameters, and every instance member is abstract. Methods and properties declare the service's shape as in a TypeScript `interface`; `readonly` value members are allowed. Write intended types; a default factory does not infer missing member types. Its only static members are `static readonly key` and `defaultValue`; keep layers and helpers in ordinary declarations beside it.
 
 `Users.Shape` names the written member object directly, so service contracts can refer to their own or another service's `.Shape`. A service cannot declare type parameters or capture an enclosing type parameter in a member contract (`EK3005`): different specializations would share one runtime key. Use a concrete contract or a member-local generic method independent of outer parameters.
 
@@ -211,3 +211,5 @@ Capture construction dependencies in the layer factory: `try reporter.write(...)
 ## Coming from Effect
 
 `service` declarations replace hand-written `Context.Service` declarations in `.vibe` files. A `Context.Service` class there draws EK4831, whose quick fix writes the `service` declaration, keeping the class's key as `static readonly key`, when its members are written in the class's type argument ([TypeScript-style Effect code](../getting-started/012-devtools.md#typescript-style-effect-code)). Support for the new forms arrives with the compiler's VIP implementation. `try ServiceName` replaces yielding the key in a TypeScript generator to get its implementation; `try implementation.method()` runs an Effect-returning method.
+
+Service members follow TypeScript interface typing. Omitting a method's return type gives `TS7010` under `noImplicitAny`; an untyped property gives `TS7008`. With that option disabled both are `any`, and an explicit `read(): any` works under strict checking. Write the intended type; no Effect return is required.

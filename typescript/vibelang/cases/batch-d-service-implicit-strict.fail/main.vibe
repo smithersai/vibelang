@@ -1,0 +1,6 @@
+// expect: TS7010 TS7008
+export service Reader {
+ static readonly key = "batch/strict"
+ read()
+ value
+}

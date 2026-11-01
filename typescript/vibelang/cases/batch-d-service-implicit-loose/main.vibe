@@ -1,0 +1,6 @@
+// expect:
+export service Reader {
+ static readonly key = "batch/loose"
+ read()
+ value
+}

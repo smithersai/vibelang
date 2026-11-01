@@ -112,3 +112,5 @@ Old VibeLang is a reference only; nothing in it is part of the language unless a
 
 
 D40's abstract-class services, and `static readonly default`, which becomes `defaultValue`.
+
+- **Amended 2026-11-01: omitted member types.** Bodyless method and property signatures follow TypeScript's interface rules. Under `noImplicitAny`, `read()` reports `TS7010` and an untyped property reports `TS7008`; with that option off they have implicit `any`. An explicit `read(): any` is valid under strict checking. No separate VibeLang error, inferred Effect contract or Effect-only return restriction applies. The repair is the intended written type.
