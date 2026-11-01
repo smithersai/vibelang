@@ -1,6 +1,7 @@
 package vibelang
 
 import (
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
@@ -353,4 +354,12 @@ func runsWhereItStands(a *analyzer, call *ast.Node) bool {
 // name: e itself, the Effect it names.
 func (tx *lowering) visitTry(node *ast.Node) *ast.Node {
 	return tx.Visitor().VisitNode(tryOperand(node))
+}
+
+// EK1803: a name after try. other than all, race, any or allSettled; the
+// parser reports it (parser.TryOperationNameMessage, VIP-18).
+var EK1803 = message(1803, errorCategory, parser.TryOperationNameMessage)
+
+func init() {
+	registry[EK1803.Code] = EK1803
 }

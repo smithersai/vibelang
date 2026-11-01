@@ -89,7 +89,7 @@ var specAhead = map[int32]string{
 	// Decided details 122/130 reserve a separate code for Data.taggedEnum helper variant names.
 	1602: renumbering,
 	// The round-24 trigger catalog gives unsupported fork owners, fork.in scopes, dotted try names and concurrency limits their codes.
-	1705: renumbering, 1706: renumbering, 1803: renumbering, 1907: renumbering,
+	1705: renumbering, 1706: renumbering, 1907: renumbering,
 	// Decided detail 212 gives an unparenthesized execution expression on the left of ** its code (loop round 1, ASTRA-10).
 	// Decided detail 247 gives the remaining owner-block rejections codes (loop round 3, OPUS-7).
 	512: "lane impl-hunt-run registers EK0512 (claim parser:catch-mixing-EK0512)", 1505: "lane impl-hunt-data registers EK1505 (claim parser:schema-member-EK1505)", 1606: "lane impl-hunt-data registers EK1606 (claim parser:data-variant-EK1606)",

@@ -1,8 +1,10 @@
 package parser
 
 import (
+	"fmt"
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
 // `try e` runs the Effect e where it stands and gives its success value
@@ -89,6 +91,9 @@ var tryOperations = map[string]string{
 	"all": "$tryAll", "race": "$tryRace", "any": "$tryAny", "allSettled": "$tryAllSettled",
 }
 
+// isVibeLangTryOperation reports whether try is followed on the same line by
+// a dot and a name: one of the four operations, or another name, which
+// parseVibeLangTryOperation reports as EK1803 (VIP-18).
 func (p *Parser) isVibeLangTryOperation() bool {
 	return p.token == ast.KindTryKeyword && p.isVibeLangFile() && p.lookAhead(func(p *Parser) bool {
 		p.nextToken()
@@ -96,16 +101,27 @@ func (p *Parser) isVibeLangTryOperation() bool {
 			return false
 		}
 		p.nextToken()
-		_, ok := tryOperations[p.scanner.TokenValue()]
-		return ok && !p.hasPrecedingLineBreak()
+		return tokenIsIdentifierOrKeyword(p.token) && !p.hasPrecedingLineBreak()
 	})
 }
+
+// TryOperationNameMessage is EK1803's text: a name after try. other than the
+// four operations. %s is the name.
+const TryOperationNameMessage = "try.%s is not a VibeLang operation: try takes all, race, any or allSettled over an array of Effects. Run the Effect with try and apply the function to its result, as in f(try x)."
+
 func (p *Parser) parseVibeLangTryOperation() *ast.Node {
 	pos := p.nodePos()
 	anchor := p.tokenRange()
 	p.nextToken() // try
 	p.nextToken() // .
-	helper := tryOperations[p.scanner.TokenValue()]
+	name := p.scanner.TokenValue()
+	helper, ok := tryOperations[name]
+	if !ok {
+		// try.map x: EK1803, read as try x for recovery.
+		p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, p.tokenRange(), "EK", diagnostics.CategoryError, 1803, fmt.Sprintf(TryOperationNameMessage, name)))
+		p.hasParseError = true
+		helper = "$try"
+	}
 	p.nextToken()
 	word := core.NewTextRange(anchor.Pos(), p.nodePos())
 	operand := p.parseSimpleUnaryExpression()

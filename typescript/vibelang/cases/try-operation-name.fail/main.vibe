@@ -1,0 +1,7 @@
+// expect: EK1803 EK1803
+// Chapter 2 (VIP-18): a name after try. other than all, race, any or
+// allSettled is EK1803, read as try x for recovery, so nothing else cascades.
+import { poll } from "./held.ts"
+export effect function mapped() { return try.map poll }
+export effect function each() { return try.each poll }
+export effect function fine() { return try.all [poll] }
