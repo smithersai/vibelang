@@ -1566,6 +1566,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Migration could record formatted sources whose public declarations no longer matched the bytes verified earlier; verification now covers formatted sources, and recording rechecks any later formatting change. Protected test edits are rejected before verification runs again after formatting.
 
+- A `catch` quick fix could shadow an outer name read by the handler, changing its result; CLI and editor wrappers now choose a free parameter through the checker, including escaped names and exhausted fallback names.
+
 #### Compiler and diagnostics
 
 - The compiler crashed on a service declaration with a static member whose name is computed, such as `static [Symbol.iterator] = 1`, while looking for the service's `key`. It now treats only a member named `key` as the key.

@@ -109,6 +109,8 @@ Saved issue
 
 A catch expression can try the cache before applying a default: `effect { return latestTitle() catch effect () => try cachedTitle() } catch () => "Untitled issue"`. The cache runs after the primary fails, and the title is used after the cache fails. Each recovery uses Effect's cause policy.
 
+The `EK0509` quick fix for a callable value such as `x catch onErr` writes a function literal and chooses a parameter name that does not shadow a name visible to the handler. Escaped identifier spellings and comments do not change that choice.
+
 ## Coming from Effect
 
 Pass Effect values directly: `try firstSuccessOf([latestTitle(), cachedTitle()])`. Calling an effect function constructs its Effect. Each run executes its body again. Use `effect { … }` to make an alternative from several statements.

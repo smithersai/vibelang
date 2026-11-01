@@ -2,7 +2,7 @@ package vibelang
 
 import (
 	"context"
-	"regexp"
+	"strconv"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
@@ -114,7 +114,7 @@ func catchHandlerRepair(c *checker.Checker, file *ast.SourceFile, call, handler 
 			// stands, so its own type is what the Effect succeeds with.
 			repaired = "effect () => try " + source
 		case len(c.GetSignaturesOfType(c.GetApparentType(t), checker.SignatureKindCall)) != 0:
-			name := freshParameter(source)
+			name := freshCatchParameter(c, handler)
 			callee := source // a name, a property or a parenthesized expression
 			if inner == handler && !ast.IsIdentifier(inner) && !ast.IsPropertyAccessExpression(inner) {
 				callee = "(" + source + ")"
@@ -149,21 +149,21 @@ func applyTextChanges(text string, edits []core.TextChange) string {
 	return text
 }
 
-var catchParameterWord = regexp.MustCompile(`[A-Za-z_$][A-Za-z0-9_$]*`)
-
-// freshParameter names the repaired handler's parameter: e, unless the
-// handler's text already uses that name.
-func freshParameter(source string) string {
-	used := map[string]bool{}
-	for _, word := range catchParameterWord.FindAllString(source, -1) {
-		used[word] = true
-	}
-	for _, name := range []string{"e", "error", "failure"} {
-		if !used[name] {
+// freshCatchParameter uses the checker's decoded bindings, including names
+// written with Unicode escapes. Check every candidate, including the fallback;
+// source-text words mistake comments for reads and miss escaped identifiers.
+func freshCatchParameter(c *checker.Checker, handler *ast.Node) string {
+	for _, name := range []string{"e", "error", "failure", "$e"} {
+		if c.ResolveName(name, handler, ast.SymbolFlagsAll, false) == nil {
 			return name
 		}
 	}
-	return "$e"
+	for i := 2; ; i++ {
+		name := "$e" + strconv.Itoa(i)
+		if c.ResolveName(name, handler, ast.SymbolFlagsAll, false) == nil {
+			return name
+		}
+	}
 }
 
 // catchHandlerNeedsParentheses reports whether an arrow written as call's
