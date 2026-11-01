@@ -65,11 +65,40 @@ function observesBundleInputs(source, comments) {
   return names.has("metafile") && names.has("inputs")
 }
 
+// A runtime host can derive virtual module names from a resolved entry's
+// directory and extension. Renaming or relocating any source changes that
+// enumeration, even when a disconnected native export keeps its path.
+function observesRuntimeEnumeration(source, comments) {
+  let masked = source
+  for (const [start, end] of comments.slice().sort((a,b)=>b[0]-a[0])) masked = masked.slice(0,start) + " ".repeat(end-start) + masked.slice(end)
+  const names = new Set()
+  masked = masked.replace(literal, text => {
+    names.add(text.slice(1,-1))
+    return " ".repeat(text.length)
+  })
+  const resolver = /\b(?:Bun\s*\.\s*resolveSync|require\s*\.\s*resolve|import\s*\.\s*meta\s*\.\s*resolve)\s*\(/.exec(masked)
+  const enumerate = /\b(?:scanSync|scan|readdirSync|readdir)\s*\(/.test(masked)
+  const extension = /\bextname\s*\(/.test(masked)
+  return resolver && enumerate && extension ? { at: resolver.index, names } : null
+}
+
 export function pathReadDeferrals(root, modules, files) {
   const want = new Set(modules), available = new Set(files), causes = new Map()
   for (const file of files) {
-    if (!code.test(file) || !testFile.test(file) || !existsSync(join(root,file))) continue
+    if (!code.test(file) || !existsSync(join(root,file))) continue
     const source = readFileSync(join(root,file),"utf8"), comments = commentRanges(source), imports = parseImports(source)
+    const enumeration = observesRuntimeEnumeration(source, comments)
+    if (enumeration) {
+      const owned = new Set([packageDirOf(root,file)])
+      for (const candidate of modules) {
+        const dir = packageDirOf(root,candidate), manifest = join(root,dir,"package.json")
+        if (existsSync(manifest) && enumeration.names.has(JSON.parse(readFileSync(manifest,"utf8")).name)) owned.add(dir)
+      }
+      for (const candidate of modules) if (owned.has(packageDirOf(root,candidate))) causes.set(candidate,{
+        file:candidate, reason:"RUNTIME-SOURCE-ENUMERATION: "+file+":"+source.slice(0,enumeration.at).split("\n").length+" derives runtime module names from a resolved entry's directory and extension; keep this package native (VIP-34)"
+      })
+    }
+    if (!testFile.test(file)) continue
     const bundleInputs = observesBundleInputs(source, comments)
     for (const m of source.matchAll(strings)) {
       if (m[3] !== "ts") continue

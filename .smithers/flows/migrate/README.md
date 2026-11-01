@@ -471,3 +471,5 @@ Setup adapts publication helpers that map package `exports` or nested `imports` 
 When extension rewriting is enabled, a migrated paths alias uses a relative source name resolving to the same module. The flow reads the importer's effective `rewriteRelativeImportExtensions` option, including `extends`, and leaves its value unchanged. The forward receipt records the authored alias so native importers revert to their exact original spelling. Native `TS2877` checks remain in force.
 
 The `fixToFixedPoint` preservation boundary applies on every exit, including interruption, signals and missing per-file statistics. Every pre-existing source outside `only` is restored from its original bytes before failure is reported; verified writes in selected modules remain available for resumption.
+
+A runtime host that resolves a package entry, reads its extension and scans source filenames keeps its owning package native. Statically named workspace packages in that observer stay native too. The scope receipt records `RUNTIME-SOURCE-ENUMERATION` with the observer and line; other packages continue. The flow leaves the host and its virtual module names unchanged (VIP-34).
