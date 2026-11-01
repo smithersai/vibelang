@@ -567,6 +567,11 @@ A cached result is only as correct as its key is complete. Each target names:
   compiler tests explain their migration-source cache inputs. This excludes
   declaration discovery only; case sources still enter their declared inputs.
 
+Native builds and copies publish executables through `scripts/native-output.sh`.
+The helper refuses a directory at the executable path, including a symlink
+to a directory, before starting the writer and again before publication.
+It reports the path and leaves the directory and its contents intact.
+
 The command-line fuzz target builds its nested compiler with `-trimpath`,
 matching the outer Go test build. This lets the two builds share compiler
 package artifacts in the Go build cache on a fresh validation mirror.

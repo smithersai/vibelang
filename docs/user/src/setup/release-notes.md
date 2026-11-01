@@ -715,6 +715,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Grammar audits missed undefined forms accepted by parser and lowering paths; a checked admission inventory and `FuzzGrammarAdmission` now track those paths against the specification, with known gaps kept pending.
 - Migrations could accept changed APIs in private workspace packages; `--include-private-declarations` now checks their declarations and emit errors too.
 
+- Native builds and copies could report success while leaving the executable path as a directory and putting the binary inside it; they now report the directory collision and preserve its contents.
 
 - Passing an Effect function to a `Function` destination could bypass `EK4301` after generic union matching; callable destinations now keep the synchronous-callback check.
 
