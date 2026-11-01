@@ -289,15 +289,20 @@ func CheckDiagnostics(g *Gaps, dir string, ds []*ast.Diagnostic, defaultsApply b
 		if code == 2004 && strings.HasPrefix(d.MessageText(), "for try requires a Stream;") {
 			want = DefaultError
 		}
+		adjustable := facts.IsAdjustable(code)
+		catalog := "Chapter 28"
+		if current, ok := currentDiagnosticPolicy()[code]; ok {
+			want, adjustable, catalog = current, current == DefaultWarning, "Appendix B"
+		}
 		if want == DefaultNever {
 			g.Add("ek:"+name, "%s is never emitted by the CLI (Chapter 28), but was reported: %s", name, keyOf(dir, d))
 			continue
 		}
-		if !defaultsApply && facts.IsAdjustable(code) {
+		if !defaultsApply && adjustable {
 			continue
 		}
 		if !CategoryMatches(want, d.Category()) {
-			g.Add("ek:"+name, "%s is %s by default (Chapter 28), but was reported as %s: %s", name, want, d.Category().Name(), keyOf(dir, d))
+			g.Add("ek:"+name, "%s is %s by default (%s), but was reported as %s: %s", name, want, catalog, d.Category().Name(), keyOf(dir, d))
 		}
 	}
 }
