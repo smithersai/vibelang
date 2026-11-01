@@ -1777,7 +1777,10 @@ func (r *resolutionState) tryAddingExtensions(extensionless tspath.FileNameStem,
 				return resolved
 			}
 			// ./welcome.js resolves to welcome.vibe as it resolves to welcome.ts.
-			if resolved := r.tryExtension(tspath.ExtensionVibe, extensionless, false); !resolved.shouldContinueSearching() {
+			// A written ./welcome.ts names the migrated module by its source
+			// extension, as it named welcome.ts: rewriteRelativeImportExtensions
+			// rewrites it to ./welcome.js, which welcome.vibe emits (foldkit-113).
+			if resolved := r.tryExtension(tspath.ExtensionVibe, extensionless, originalExtension == tspath.ExtensionTs); !resolved.shouldContinueSearching() {
 				return resolved
 			}
 		}

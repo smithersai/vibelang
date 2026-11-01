@@ -104,6 +104,7 @@ const specTests = [
   "TestCompilerRegistryIsSpecified",
   "TestConfigOracleMatchesCompiler",
   "TestConfigPathBasesQuoted",
+  "TestWrittenSpecifierMigratedTargetQuoted",
   "TestConfigPathBases",
   "TestNativeAwaitOptionsQuoted",
   "TestNativeAwaitOptionsRegression",
