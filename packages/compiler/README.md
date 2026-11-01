@@ -124,6 +124,8 @@ so any number of processes can share a cache directory.
 | `VIBELANG_DISABLE_CACHE=1` | Compile in every process; read and write no cache |
 | Default | `vibelang-cache-<uid>` in the system's temporary directory, readable only by you |
 
+If the directory named by `TMPDIR` does not exist or names a file, compiler scratch output and the default cache use its nearest existing parent directory. Importing a module leaves the application temporary path untouched. Explicit cache-directory options still name the exact directory to create.
+
 The cache keeps one entry per project. It does not see a file that changes
 module resolution from outside the project's `include` and outside
 `node_modules`, or a `node_modules` link changed by hand rather than by a

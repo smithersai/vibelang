@@ -229,6 +229,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Switching between two pre-VIP-1 toolchains ran the earlier compiler's `--fix-vip-only` and changed pure `.map` callbacks into Effect functions; the migrate flow now probes both compilers and runs that migration only from pre-flip to post-flip, recording why it skips a switch or a failed probe in `vipFixes`.
 
+- Node and Bun imports could fail when `TMPDIR` named an absent application directory; compilation and the default cache now use an existing parent without creating that application directory.
+
 - `vibelang --fix` deleted comments from legacy diagnostic maps, including empty maps and entries superseded by modern settings; it now keeps every comment in direct and extended configs, with the same settings and a stable second run.
 
 - A `continue` to an earlier label in a chained `for...of`, such as `outer: inner: for (...)`, compiled to JavaScript that Node rejected; every label now stays on the loop, so labeled `continue` and `break` keep their TypeScript behavior.

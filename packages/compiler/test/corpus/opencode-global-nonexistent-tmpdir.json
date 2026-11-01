@@ -1,0 +1,16 @@
+{
+  "property": "loader-temporary-directory",
+  "rule": "Existing tools work.",
+  "input": {
+    "depth": 2,
+    "state": "missing",
+    "cache": "default",
+    "async": false
+  },
+  "repo": "opencode",
+  "pattern": "global.test.ts imports a Vibe-backed module with TMPDIR pointing at an absent application directory",
+  "files": {
+    "global.vibe": "export const value = 42\n",
+    "import.mjs": "const {value}=await import(\"./global.vibe\"); void value\n"
+  }
+}

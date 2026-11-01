@@ -50,6 +50,7 @@
     "editor",
     "agents.mjs",
     "cache.mjs",
+    "temporary.mjs",
     "diagnostics.mjs",
     "dprint-plugin.json",
     "eslint.mjs",

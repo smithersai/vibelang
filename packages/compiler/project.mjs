@@ -11,7 +11,7 @@ import { diagnosticsForFile } from "./diagnostics.mjs"
 import { spawn, spawnSync } from "node:child_process"
 import { closeSync, existsSync, mkdtempSync, openSync, readdirSync, readFileSync, readSync, realpathSync, rmSync, statSync } from "node:fs"
 import { createRequire } from "node:module"
-import { tmpdir } from "node:os"
+import { temporaryRoot } from "./temporary.mjs"
 import { performance } from "node:perf_hooks"
 import { basename, dirname, isAbsolute, join, parse, relative, resolve } from "node:path"
 import { launcherBinary, projectCache } from "./cache.mjs"
@@ -363,7 +363,7 @@ export function projectBackend({ root, compiler, cache, debug = () => {} }) {
       if (closed) throw new Error("vibelang: compiler backend is closed")
       return cached({ project, root, compiler, cache, debug }, async (stages) => {
         // Outside the project: webpack and esbuild rebuild when a directory they resolved through changes.
-        const out = mkdtempSync(join(tmpdir(), "vibelang-project-"))
+        const out = mkdtempSync(join(temporaryRoot(), "vibelang-project-"))
         try {
           const output = await stages.time("compiler", () => run(emitArgs(project, root, out)))
           return stages.time("collect", () => collect(output, root, out))
@@ -387,7 +387,7 @@ export function projectBackend({ root, compiler, cache, debug = () => {} }) {
  */
 export function compileProjectSync({ project, root = dirname(project), compiler = findCompiler(root), cache, debug = () => {} }) {
   return cached({ project, root, compiler, cache, debug }, (stages) => {
-    const out = mkdtempSync(join(tmpdir(), "vibelang-project-"))
+    const out = mkdtempSync(join(temporaryRoot(), "vibelang-project-"))
     try {
       const [file, argv] = command(compiler, emitArgs(project, root, out))
       const run = stages.time("compiler", () => spawnSync(file, argv, { cwd: root, encoding: "utf8", maxBuffer: 1 << 30 }))

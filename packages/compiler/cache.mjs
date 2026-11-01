@@ -23,7 +23,8 @@
 import { createHash, randomBytes } from "node:crypto"
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
-import { tmpdir, userInfo } from "node:os"
+import { userInfo } from "node:os"
+import { temporaryRoot } from "./temporary.mjs"
 import { basename, dirname, isAbsolute, join, resolve, sep } from "node:path"
 
 // Bump when an entry's shape or meaning changes. 2: a compile checks only
@@ -65,7 +66,7 @@ export function cacheDirectory(option) {
   if (disabled && disabled !== "0" && disabled !== "false") return undefined
   if (option && typeof option === "object" && option.directory) return { path: resolve(option.directory), shared: true }
   if (process.env.VIBELANG_CACHE_DIR) return { path: resolve(process.env.VIBELANG_CACHE_DIR), shared: true }
-  return { path: join(tmpdir(), `vibelang-cache-${owner()}`), shared: false }
+  return { path: join(temporaryRoot(), `vibelang-cache-${owner()}`), shared: false }
 }
 
 // The default directory lives in a temporary directory other users can write
