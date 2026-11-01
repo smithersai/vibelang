@@ -399,6 +399,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A closure created in a plain `for...of` loop's iterable expression could read an outer variable when the loop declared the same name in a destructured `let` or `const` head; it now captures the loop's uninitialized head binding and throws `ReferenceError`, as in TypeScript.
 
+- Quick-fix fuzz failures could show an existing error in another method when an edit added an error with the same code; they now show a diagnostic absent from the original program, while retaining the same error-count check.
+
 - `vibelang --fix` deleted comments from legacy diagnostic maps, including empty maps and entries superseded by modern settings; it now keeps every comment in direct and extended configs, with the same settings and a stable second run.
 
 - A `continue` to an earlier label in a chained `for...of`, such as `outer: inner: for (...)`, compiled to JavaScript that Node rejected; every label now stays on the loop, so labeled `continue` and `break` keep their TypeScript behavior.

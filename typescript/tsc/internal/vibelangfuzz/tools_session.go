@@ -521,11 +521,26 @@ func toolsAddedErrors(before, after *Result) []string {
 	}
 	slices.Sort(added)
 	if len(added) > 0 {
-		for _, d := range after.Diagnostics {
-			if d.Category() == diagnostics.CategoryError && slices.Contains(added, toolsFileCode(after, d)) {
-				added = append(added, "  "+d.String())
-				break
+		// Count by file/code as before, but show an unmatched diagnostic.
+		// Printing the first matching code can cite an existing error in an
+		// unrelated method and hide the error the edit actually introduced.
+		messages := map[string]int{}
+		for _, d := range before.Diagnostics {
+			if d.Category() == diagnostics.CategoryError {
+				messages[toolsFileCode(before, d)+"\x00"+d.String()]++
 			}
+		}
+		for _, d := range after.Diagnostics {
+			if d.Category() != diagnostics.CategoryError || !slices.Contains(added, toolsFileCode(after, d)) {
+				continue
+			}
+			key := toolsFileCode(after, d) + "\x00" + d.String()
+			if messages[key] > 0 {
+				messages[key]--
+				continue
+			}
+			added = append(added, fmt.Sprintf("  %s at bytes %d..%d: %s", toolsFileCode(after, d), d.Pos(), d.End(), d.String()))
+			break
 		}
 	}
 	return added
