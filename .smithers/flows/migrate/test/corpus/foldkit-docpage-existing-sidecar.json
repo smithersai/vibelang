@@ -1,0 +1,15 @@
+{
+  "file": "src/docPage.test.ts",
+  "text": "const pages = import.meta.glob(\"../page/**/*.ts\")",
+  "files": [
+    "page/demo.ts",
+    "page/stale.d.vibe.ts",
+    "src/docPage.test.ts"
+  ],
+  "renames": [
+    {
+      "from": "page/demo.ts",
+      "to": "page/demo.vibe"
+    }
+  ]
+}

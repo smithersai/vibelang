@@ -64,7 +64,7 @@ export function pathReadDeferrals(root, modules, files) {
 
 const escape = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 
-export function rewriteReferences(root, renames, files, { read = file => existsSync(join(root,file)) ? readFileSync(join(root,file),"utf8") : null, write = (file,text) => writeFileSync(join(root,file),text) } = {}) {
+export function rewriteReferences(root, renames, files, { read = file => existsSync(join(root,file)) ? readFileSync(join(root,file),"utf8") : null, write = (file,text) => writeFileSync(join(root,file),text), literals = true } = {}) {
   const moved = new Set(renames.map(r => r.from))
   const all = new Set(files.map(f => f.endsWith(".vibe") && moved.has(f.replace(/\.vibe$/, ".ts")) ? f.replace(/\.vibe$/, ".ts") : f))
   const edits = []
@@ -78,6 +78,7 @@ export function rewriteReferences(root, renames, files, { read = file => existsS
     const changes = []
     const quoted = [...source.matchAll(code.test(file) ? literal : strings)]
     source.replace(strings, (whole, q, stem, ext, offset) => {
+      if (!literals) return whole
       if (ext === "js" && !moduleCall(source.slice(Math.max(0,offset-150),offset))) return whole
       if (comments.some(([a,b]) => a <= offset && offset < b) || imports.some(i => offset >= i.start && offset < i.end)) return whole
       const module = pathTarget(root, file, source, offset, whole, stem)

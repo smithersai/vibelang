@@ -393,3 +393,43 @@ Shipped-root resolution checks retain the exact declaration graph, including eac
 The write-ahead codemod journal also includes platform siblings: it keeps the unsplit original module and plans sibling creation before any rename, write or compiler child. Replay completes a partial split, and per-file revert restores the unsplit source and removes only its recorded sibling. An existing companion is preserved.
 
 The same durable rename journal covers whole-scope mode: an interrupted rename resumes before compiler work, and bulk reverts restore the original source bytes.
+
+### Source filename wiring
+
+Before the compiler starts, `codemod` scans the inventory's source files,
+including source tests, for exact string filenames naming a renamed module.
+Recognized `import.meta.glob` and imported `glob`/`globSync`/`globby`
+calls gain native sources while retaining TypeScript coverage and excluding
+`.d.vibe.ts` sidecars. An extension array gains `.vibe` only when its sole
+selector use already excludes those sidecars. Package export maps retain the
+exact-entry wiring above; TypeScript config globs retain setup's include wiring.
+Binary files and directory symlinks are skipped.
+
+Every changed literal is recorded in `referenceEdits` with its file, line,
+original spelling and kind. Assertions, expected values, test names and
+type literals stay as written. Unknown glob dialects and unguarded extension
+lists produce `referenceWarnings` for repair. The journal flushes all edits
+before mutation; replay preserves checked hand repairs, and `revert` restores
+exact filename literals in either order.
+
+Glob matching caches one compiled matcher per literal across the source scan.
+Only path-shaped patterns shorter than 200 characters enter bounded brace
+matching. `referenceScan` records file and matcher counts and elapsed time.
+
+Selector rewrites require the complete tracked file inventory. The flow records
+exact selected names before and after each rewrite, maps renamed sources back
+to their originals, and refuses additions, drops or generated sidecars.
+Declarations already matched by the original glob count in its original set.
+`selectorChecks` in the codemod receipt and repair prompt provide the exact
+names and counts for the PR description. `verify` repeats this check against
+the final inventory; missing proofs and inventory growth fail verification.
+Establish an approved source companion before taking the selector inventory;
+a changed count cannot be waived or subtracted away.
+
+Only a recognized glob's direct pattern argument, or an array of positive literal patterns, uses the automatic selected-set proof. Matching options, exclusion arguments, transforms, spreads and negative-pattern arrays require manual wiring. Exact filename glob operands retain both the proof and per-module revert bookkeeping. Extension lists require an unmodified array or unshadowed global `Set`, a direct sidecar guard, and `file.slice(file.lastIndexOf("."))` or `substring` on that same filename. Unknown extension helpers and guards on another value are refused.
+
+The final verification reads each affected source once, rechecks its current glob contract or extension guard and literal count, then checks exact logical source names against the final inventory. A repaired selector cannot reuse stale proof metadata; a legacy exact-filename glob needs its original proof too. Selected-set checks remain available in the repair prompt for the PR description.
+
+Glob selected-set proofs also check source directories and workspace package directories as possible execution roots, using the complete tracked source catalog. A match that would add an unrelated native source from another package is refused.
+
+Detail 272 still keeps source-text assertion modules in TypeScript. Literal path and exact-set selector rewrites preserve filesystem identities; they do not authorize rewriting source scans or assertions. The Foldkit corpus retains the refused source-text witness alongside the supported filesystem identity test.

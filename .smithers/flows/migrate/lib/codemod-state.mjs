@@ -1,9 +1,10 @@
 // Write-ahead state for the batch's mechanical edits. Completion remains a
 // separate receipt: nextStep must never mistake "compiler started" for "done".
-import { closeSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs"
+import { closeSync, existsSync, fsyncSync, lstatSync, mkdirSync, openSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
-import { rewriteReferences } from "./references.mjs"
+import { pathReadDeferrals, rewriteReferences } from "./references.mjs"
 import { splitBatchPlatform } from "./platform.mjs"
+import { rewriteSourceLiterals } from "./source-paths.mjs"
 import { rewriteExports, rewriteImports, vibePath } from "./codemod.mjs"
 
 function syncDirectory(path) {
@@ -27,7 +28,9 @@ export function durableWrite(path, data, mode = 0o600) {
 export const saveState = (path, state) => durableWrite(path, JSON.stringify(state, null, 2) + "\n")
 
 /** Plan all edits without changing the target; original source bytes live in the journal. */
-export function prepareState(target, files, scope, { ts, aliases, referenceFiles = scope } = {}) {
+export function prepareState(target, files, scope, { ts, aliases, referenceFiles = scope, references = [], catalog = scope } = {}) {
+  const deferred = pathReadDeferrals(target, files, referenceFiles)
+  if (deferred.length) throw new Error("source text test requires .ts: " + deferred.map(d => d.file).join(", "))
   const renames = files.map(from => ({ from, to: vibePath(from) }))
   const originals = renames.map(({ from, to }) => {
     if (!existsSync(join(target, from))) throw new Error(`${from} does not exist`)
@@ -47,9 +50,26 @@ export function prepareState(target, files, scope, { ts, aliases, referenceFiles
   }
   const platform = ts ? splitBatchPlatform(target, files, ts, { read, write }) : { splits: [], refused: [] }
   const exportEdits = rewriteExports(target, renames, { write })
-  const refEdits = rewriteReferences(target, renames, referenceFiles.map(file => toOf.get(file) ?? file), { read, write })
+  const refEdits = rewriteReferences(target, renames, referenceFiles.map(file => toOf.get(file) ?? file), { read, write, literals: !ts })
   const importEdits = rewriteImports(target, [...scope, ...platform.splits.map(s => s.platform)].map(file => toOf.get(file) ?? file), renames.map(r => r.to), aliases, { read, write })
-  return { version: 1, target, files, phase: "prepared", platform, renames, originals, writes, exportEdits, importEdits, refEdits, attempts: [] }
+  const referenceEdits = [], referenceWarnings = [], selectorChecks = [], matcherCache = new Map()
+  const started = performance.now()
+  if (ts) for (const reference of references) {
+    const file = toOf.get(reference) ?? reference
+    if (/\.(?:pdf|png|jpe?g|gif|webp|avif|ico|woff2?|ttf|otf|zip|t?gz|br|wasm|node|exe|dll|so|mp[34])$/i.test(file)) continue
+    const path = join(target, fromOf.get(file) ?? file)
+    if (!lstatSync(path).isFile()) continue
+    const original = readFileSync(path)
+    if (original.includes(0)) continue
+    const text = original.toString("utf8")
+    if (!Buffer.from(text).equals(original) || !/\.[cm]?ts/.test(text)) continue
+    const changed = rewriteSourceLiterals(ts, read(file), file, renames, { matcherCache, inventory: catalog })
+    referenceEdits.push(...changed.edits)
+    referenceWarnings.push(...changed.warnings)
+    selectorChecks.push(...(changed.selectorChecks ?? []))
+    if (changed.edits.length) write(file, changed.text)
+  }
+  return { version: 1, target, files, phase: "prepared", referenceVersion: 1, referencePending: false, referenceScan: { files: references.length, patterns: matcherCache.size, durationMs: Math.round(performance.now() - started) }, referenceEdits, referenceWarnings, selectorChecks, platform, renames, originals, writes, exportEdits, importEdits, refEdits, attempts: [] }
 }
 
 /** Replay a prepared transaction, accepting each operation before or after its atomic write. */
@@ -72,4 +92,28 @@ export function applyState(target, state) {
     if (text !== before) throw new Error(`${file}: changed during codemod preparation; preserving it for review`)
     durableWrite(path, after, mode)
   }
+}
+
+/** Add literal wiring to an interrupted journal created by an earlier flow.
+ * Read current native files, preserving checked compiler/agent edits, while
+ * retaining the journal's original sources and declaration/test baselines. */
+export function prepareReferences(target, renames, ts, references, catalog = references) {
+  const matcherCache = new Map(), started = performance.now()
+  const result = { referenceVersion: 1, referencePending: true, referenceWrites: [], referenceEdits: [], referenceWarnings: [], selectorChecks: [] }
+  for (const file of references) {
+    if (/\.(?:pdf|png|jpe?g|gif|webp|avif|ico|woff2?|ttf|otf|zip|t?gz|br|wasm|node|exe|dll|so|mp[34])$/i.test(file)) continue
+    const path = join(target, file)
+    if (!lstatSync(path).isFile()) continue
+    const original = readFileSync(path)
+    if (original.includes(0)) continue
+    const text = original.toString("utf8")
+    if (!Buffer.from(text).equals(original) || !/\.[cm]?ts/.test(text)) continue
+    const changed = rewriteSourceLiterals(ts, text, file, renames, { matcherCache, inventory: catalog })
+    result.referenceEdits.push(...changed.edits)
+    result.referenceWarnings.push(...changed.warnings)
+    result.selectorChecks.push(...(changed.selectorChecks ?? []))
+    if (changed.edits.length) result.referenceWrites.push({ file, before: text, after: changed.text, mode: statSync(path).mode & 0o777 })
+  }
+  result.referenceScan = { files: references.length, patterns: matcherCache.size, durationMs: Math.round(performance.now() - started) }
+  return result
 }

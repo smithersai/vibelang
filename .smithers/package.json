@@ -14,7 +14,8 @@
     "@smthrs/flow": "1.0.0-rc.16",
     "@smthrs/plan": "1.0.0-rc.16",
     "effect": "4.0.6",
-    "js-tiktoken": "1.0.21"
+    "js-tiktoken": "1.0.21",
+    "minimatch": "10.2.6"
   },
   "devDependencies": {
     "@smthrs/cli": "1.0.0-rc.16",

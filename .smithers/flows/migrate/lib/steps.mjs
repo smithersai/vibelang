@@ -9,8 +9,9 @@ import { fileURLToPath } from "node:url"
 import { assertBaselineSafe } from "./baseline.mjs"
 import { buildInventory, listSources, readCoverage, tsconfigPaths } from "./inventory.mjs"
 import { defaultLimits, draftPlan, migrationScope, planPrompt, validatePlan } from "./plan.mjs"
-import { fixToFixedPoint, pathAliases, restoreExports, restoreSpecifiers, rewriteImports, rewriteTotals } from "./codemod.mjs"
-import { applyState, durableWrite, prepareState, saveState } from "./codemod-state.mjs"
+import { fixToFixedPoint, pathAliases, restoreExports, restoreSpecifiers, rewriteImports, rewriteTotals, vibePath } from "./codemod.mjs"
+import { applyState, durableWrite, prepareReferences, prepareState, saveState } from "./codemod-state.mjs"
+import { checkSelectorEdits, restoreSourceLiterals, rewriteSourceLiterals } from "./source-paths.mjs"
 import { splitBatchPlatform } from "./platform.mjs"
 import { check, newErrors, styleProblems, summarize } from "./diagnostics.mjs"
 import { preservedErrorAdvisories } from "./preserved-errors.mjs"
@@ -916,7 +917,7 @@ export function aliasesOf(config) {
 /** codemod: rename the batch to .vibe, rewrite imports, and run vibelang --fix to a fixed point. */
 export async function codemod(options) {
   assertBaselineSafe(paths(options.run))
-  const { p, config, plan: thePlan } = loadRun(options.run)
+  const { p, config, plan: thePlan, inventory } = loadRun(options.run)
   if (!thePlan) throw new Error("plan has not been accepted")
   if (thePlan.mode === "one-pass") {
     const { onePassStep } = await import("./onepass.mjs")
@@ -928,9 +929,16 @@ export async function codemod(options) {
   if (existsSync(p.codemod(b))) return readJson(p.codemod(b))
   const t = config.target
   const files = thePlan.batches[Number(b) - 1].files
+  // Setup's source inventory is the scan boundary; older runs without one
+  // use the configured source directories, never all tracked text files.
+  const references = () => [...new Set(inventory?.files.map(f => {
+    if (existsSync(join(t, f.path))) return f.path
+    const native = vibePath(f.path)
+    return existsSync(join(t, native)) ? native : null
+  }).filter(Boolean) ?? scopeFiles(config))]
   let state = readJsonIf(p.codemodState(b))
   if (!state) {
-    state = prepareState(t, files, await importers(t), { ts: typeScriptOf(config), aliases: aliasesOf(config) })
+    state = prepareState(t, files, await importers(t), { ts: typeScriptOf(config), aliases: aliasesOf(config), references: references(), catalog: [...new Set([...(await Jj.trackedFiles(t)), ...references()])] })
     saveState(p.codemodState(b), state)
   }
   if (state.version !== 1 || state.target !== t || JSON.stringify(state.files) !== JSON.stringify(files)) {
@@ -941,7 +949,16 @@ export async function codemod(options) {
     state.phase = "fixing"
     saveState(p.codemodState(b), state)
   }
-  const { renames, exportEdits, importEdits, refEdits = [] } = state
+  if (state.referenceVersion !== 1) {
+    Object.assign(state, prepareReferences(t, state.renames, typeScriptOf(config), references(), [...new Set([...(await Jj.trackedFiles(t)), ...references()])]))
+    saveState(p.codemodState(b), state)
+  }
+  if (state.referencePending) {
+    applyState(t, { renames: [], writes: state.referenceWrites })
+    state.referencePending = false
+    saveState(p.codemodState(b), state)
+  }
+  const { renames, exportEdits, importEdits, refEdits = [], scriptEdits = [], referenceEdits = [], referenceWarnings = [], referenceScan, selectorChecks = [] } = state
   const platform = state.platform ?? { splits: [], refused: [] }
   const attempt = state.attempts.length + 1
   state.attempts.push({ attempt, compiler: compilerOf(config), startedAt: new Date().toISOString(), projects: [] })
@@ -968,7 +985,7 @@ export async function codemod(options) {
   }
   state.attempts.at(-1).finishedAt = new Date().toISOString()
   saveState(p.codemodState(b), state)
-  const result = { batch: b, at: new Date().toISOString(), files, platform, renames, exportEdits, importEdits, refEdits, fix: { settled, rounds, byFile, totals: rewriteTotals(byFile), refused } }
+  const result = { batch: b, at: new Date().toISOString(), files, platform, renames, exportEdits, importEdits, refEdits, scriptEdits, referenceEdits, referenceWarnings, referenceScan, selectorChecks, fix: { settled, rounds, byFile, totals: rewriteTotals(byFile), refused } }
   durableWrite(p.codemod(b), JSON.stringify(result, null, 2) + "\n")
   return result
 }
@@ -1102,7 +1119,30 @@ export async function revertMany(options) {
     const exportEdits = restoreExports(config.target, cm.exportEdits ?? [], ts)
     const importEdits = restoreSpecifiers(config.target, cm.importEdits ?? [], ts, aliases)
     const refEdits = restoreReferences(config.target, cm.refEdits ?? [], ts)
-    results.push({ file: ts, reason, at: new Date().toISOString(), ...(source.batch === b ? {} : { from: source.batch }), exportEdits, importEdits, ...(cm.refEdits ? { refEdits } : {}) })
+    const referenceEdits = []
+    const history = (plan?.batches ?? []).map((_, i) => readJsonIf(p.codemod(batchName(i))) ?? readJsonIf(p.codemodState(batchName(i)))).filter(Boolean)
+    if (history.some(result => result.referenceEdits?.length)) {
+      const api = loadTypeScript([
+        ...(config.toolchain.kind === "staged" ? [config.toolchain.dir] : []),
+        config.target, ...config.packages.map(pkg => join(config.target, pkg.dir)),
+        fileURLToPath(new URL("../../../../packages/runtime", import.meta.url))
+      ]), vibe = vibePath(ts)
+      referenceEdits.push(...restoreSourceLiterals(api, config.target, cm.referenceEdits ?? [], ts, cm.renames ?? []))
+      const known = [...new Map(history.flatMap(result => result.renames ?? []).map(r => [r.from, r])).values()]
+      const current = known.flatMap(r => {
+        const native = existsSync(join(config.target, r.to)), original = existsSync(join(config.target, r.from))
+        if (native === original || r.from === ts) return []
+        return native ? [r] : [{ from:r.to, to:r.from }]
+      })
+      const text = readFileSync(join(config.target, ts), "utf8")
+      const contexts = new Set(history.flatMap(result => result.referenceEdits ?? [])
+        .filter(edit => edit.kind === "source-reference" && (edit.file === ts || edit.file === vibe))
+        .map(edit => edit.context).filter(Boolean))
+      const rewired = rewriteSourceLiterals(api, text, ts, current, { selectors: false, exactContexts: contexts, inventory: await Jj.trackedFiles(config.target) })
+      if (rewired.edits.length) writeFileSync(join(config.target, ts), rewired.text)
+      referenceEdits.push(...rewired.edits)
+    }
+    results.push({ file: ts, reason, at: new Date().toISOString(), ...(source.batch === b ? {} : { from: source.batch }), exportEdits, importEdits, referenceEdits, ...(cm.refEdits ? { refEdits } : {}) })
   }
   const importEdits = rewriteImports(config.target, await importers(config.target), prepared.map(x => x.ts), aliases)
   for (const result of results) result.importEdits.push(...importEdits.filter(e => {
@@ -1159,6 +1199,9 @@ export async function verify(options) {
 
   const hooks = await regenerate(config,p,"verify-" + b)
   const checked = await compile({ run: options.run, batch: b, noRecord: true })
+  const codemodReceipt = readJsonIf(p.codemod(b))
+  const hasSelectorEdits = codemodReceipt?.referenceEdits?.some(edit => edit.selectorKind || ["source-reference", "source-glob", "source-extensions"].includes(edit.kind))
+  const selectorChecks = hasSelectorEdits ? checkSelectorEdits(codemodReceipt, [...new Set([...(await Jj.trackedFiles(t)), ...scopeFiles(config)])], { ts: typeScriptOf(config), read: file => readFileSync(join(t, file), "utf8") }) : []
   const baselineTests = readJson(join(p.baseline, "tests.json"))
   const measurement = thePlan.mode === "one-pass" ? await measureTests(config,{run:p.run,batch:b}) : null
   const tests = measurement?.receipts.candidate ?? await runTests({ command: config.test.command, report: config.test.report, cwd: join(t, config.test.cwd), root: t, jsonFile: join(p.batch(b), "vitest.json"), log: join(logs, "tests.log") })
@@ -1210,11 +1253,13 @@ export async function verify(options) {
     measurement, hooks,
     // Each published specifier the gate excused, for the pull request's description.
     excusedSpecifiers: Object.entries(declarations).flatMap(([dir, d]) => (d.excused ?? []).map((pair) => ({ package: dir, ...pair }))),
+    selectorChecks,
     testDiff,
     compile: { batchErrors, newErrors: checked.newErrors, style, emitErrors },
     checks: {
       tests: testResults.ok,
       testEdits: testDiff.ok && (measurement?.ok ?? true),
+      selectors: selectorChecks.every(proof => proof.pass),
       declarations: Object.values(declarations).every((d) => d === "not published" || d.identical),
       declarationEmit: emitErrors.length === 0,
       batchErrors: batchErrors.length === 0,

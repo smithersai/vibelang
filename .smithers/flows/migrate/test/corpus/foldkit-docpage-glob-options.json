@@ -1,0 +1,24 @@
+{
+  "repo": "foldkit-derived selector neighbourhood",
+  "pattern": "docPage test glob: include and exclude positions have different selected sets",
+  "text": "import { globSync } from 'node:fs'; const files = globSync('**/*', { exclude: ['page/**/*.ts'] })",
+  "files": [
+    "page/main.ts",
+    "page/static.js"
+  ],
+  "staleProof": {
+    "text": "const files = import.meta.glob('page/**/*.ts')",
+    "replacement": "**/*"
+  },
+  "wrongGuard": "!a.endsWith(\".d.vibe.ts\") && extensions.includes(data.slice(data.lastIndexOf(\".\")))",
+  "packageCwd": {
+    "source": "import { globSync } from 'node:fs'; const files = globSync('src/**/*.ts')",
+    "files": [
+      "src/main.ts",
+      "tools/collector.ts",
+      "packages/other/package.json",
+      "packages/other/src/kept.ts",
+      "packages/other/src/already.vibe"
+    ]
+  }
+}

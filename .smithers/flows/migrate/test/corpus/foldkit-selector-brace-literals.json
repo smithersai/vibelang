@@ -1,0 +1,8 @@
+{
+  "key": "foldkit-94",
+  "count": 4000,
+  "data": "{display: grid; color: red; --x: {a,b,c,d,e,f,g,h}}",
+  "longPath": "src/{a,b,c,d,e,f,g,h}/{a,b,c,d,e,f,g,h}/**/*.ts",
+  "glob": "src/{a,b}/**/*.ts",
+  "renames": [{"from": "src/a/main.ts", "to": "src/a/main.vibe"}, {"from": "src/b/value.ts", "to": "src/b/value.vibe"}]
+}

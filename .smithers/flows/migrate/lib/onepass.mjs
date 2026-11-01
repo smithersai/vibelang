@@ -437,7 +437,8 @@ export async function onePassStep(step, options) {
         config.target, ...config.packages.map(pkg => join(config.target, pkg.dir)),
         fileURLToPath(new URL("../../../../packages/runtime", import.meta.url))
       ])
-      state = prepareState(config.target, files, await importers(config.target), { ts, aliases: aliasesOf(config), referenceFiles: await Jj.trackedFiles(config.target) })
+      const catalog = await Jj.trackedFiles(config.target)
+      state = prepareState(config.target, files, await importers(config.target), { ts, aliases: aliasesOf(config), referenceFiles: catalog, references: catalog, catalog })
       saveState(p.codemodState("01"), state)
     }
     if (state.target !== config.target || JSON.stringify(state.files) !== JSON.stringify(files)) throw new Error("rename journal does not match target and scope")
@@ -447,7 +448,7 @@ export async function onePassStep(step, options) {
       saveState(p.codemodState("01"), state)
     }
     const { renames, exportEdits, importEdits, refEdits = [], platform } = state
-    const cm = { batch: "01", at: new Date().toISOString(), files, renames, exportEdits, importEdits, refEdits, platform, renameComplete: true, fix: { settled: false, rounds: [], byFile: {}, totals: {}, refused: [] } }
+    const cm = { batch: "01", at: new Date().toISOString(), files, renames, exportEdits, importEdits, refEdits, platform, referenceEdits: state.referenceEdits, referenceWarnings: state.referenceWarnings, selectorChecks: state.selectorChecks, referenceScan: state.referenceScan, renameComplete: true, fix: { settled: false, rounds: [], byFile: {}, totals: {}, refused: [] } }
     durableWrite(p.codemod("01"), JSON.stringify(cm, null, 2) + "\n")
     return cm
   }

@@ -9,6 +9,9 @@ export function repairPrompt({ context, run, batch, target, packages, test, file
   const rewrites = Object.entries(codemod.fix.byFile).map(([file, kinds]) =>
     `- ${file}: ${Object.entries(kinds).map(([k, n]) => `${k} ×${n}`).join(", ")}`)
   const refused = codemod.fix.refused.map((r) => `- ${r.file}:${r.line} ${r.code} not fixed: the fixed program would report ${r.error}`)
+  const references = (codemod.referenceEdits ?? []).map(e => "- " + e.file + ":" + e.line + " [" + e.kind + "]: " + JSON.stringify(e.from) + " -> " + JSON.stringify(e.to))
+  const selectorChecks = (codemod.selectorChecks ?? []).map(proof => "- " + proof.file + ":" + proof.line + " " + (proof.pass ? "PASS" : "FAIL") + ": " + JSON.stringify(proof.contexts))
+  const referenceWarnings = (codemod.referenceWarnings ?? []).map(w => "- " + w)
   const batchDiagnostics = compile.diagnostics.filter((d) => files.includes(d.file))
   const elsewhere = compile.newErrors.filter((d) => !files.includes(d.file))
   return `${context.trimEnd()}
@@ -30,6 +33,16 @@ Rewrites \`vibelang --fix\` applied:
 ${rewrites.length ? rewrites.join("\n") : "- none"}
 
 ${refused.length ? `Fixes it refused:\n\n${refused.join("\n")}\n` : "It refused no fix."}
+
+## Source filename wiring
+
+${references.length ? references.join("\n") : "- none"}
+
+${referenceWarnings.length ? "Selectors needing repair:\n\n" + referenceWarnings.join("\n") : "No unresolved source selector."}
+
+${selectorChecks.length ? "Selected-set identity (include the exact lists in the PR description):\n\n" + selectorChecks.join("\n") : "No selector rewrite needing an identity proof."}
+
+Keep existing test assertions, expected values, budgets, skips and names. In a test, change only filename literals or selector literals with a passing selected-set identity proof, and list each path-only diff and proof in the batch progress. Exclude generated declaration sidecars. Record an unsupported selector as a codemod gap.
 
 ## What the compiler reports
 

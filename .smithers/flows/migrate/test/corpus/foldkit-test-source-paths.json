@@ -1,0 +1,14 @@
+{
+  "key": "codemod:renamed-source-literals",
+  "files": {
+    "src/main.ts": "// src/main.ts\nexport const dependencyPath = './value.ts'\n",
+    "src/value.ts": "export const value = 1\n",
+    "test/themeColor.test.ts": "import { readFileSync } from 'node:fs'\nconst actual = readFileSync('src/main.ts', 'utf8')\nexpect(actual).toContain('src/main.ts')\nconst intentional: 'src/main.vibe' = 'src/main.vibe'\nexpect(intentional).toEqual('src/main.vibe')\nexpect('src/main.vibe').toEqual('src/main.vibe')\n",
+    "scripts/pages.mjs": "const pages = import.meta.glob('src/**/*.ts')\n"
+  },
+  "batch": [
+    "src/main.ts",
+    "src/value.ts"
+  ],
+  "identityTest": "import { existsSync } from 'node:fs'\nexpect(existsSync('src/main.ts')).toBe(true)\nconst intentional: 'src/main.vibe' = 'src/main.vibe'\nexpect(intentional).toEqual('src/main.vibe')\nexpect('src/main.vibe').toEqual('src/main.vibe')\n"
+}

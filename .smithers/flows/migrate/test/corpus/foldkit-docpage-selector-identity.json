@@ -1,0 +1,7 @@
+{
+  "key": "migrate:selector-selected-set-identity",
+  "source": "foldkit docPage.test.ts selector; accepted 04:40Z ruling requires exact selected logical names/counts, excluding generated sidecars",
+  "file": "src/docPage.test.ts",
+  "text": "const pageSources = import.meta.glob('../page/**/*.ts')\n",
+  "files": ["page/demo.ts", "page/already.vibe", "src/docPage.test.ts"]
+}
