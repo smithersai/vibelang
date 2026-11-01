@@ -4,7 +4,7 @@ VibeLang is in early alpha.
 
 - Platforms: [macOS arm64/x64, Linux arm64/x64, Windows arm64/x64](../getting-started/004-installation.md#prerequisites). The npm and Bun starter rehearsal runs on Linux x64; the other five binaries are cross-built.
 - Effect: [`effect@4.1.0` exactly](existing-project.md); other versions are unsupported.
-- Stock TypeScript: `tsc`, `vue-tsc`, and `svelte-check` report TS2307 for `.vibe` imports; [build with `vibelang`](vibelang-cli.md#2-replace-tsc-in-the-scripts). `vibelang-ts-mapper`, a TypeScript 7.1 content mapper that lets stock TypeScript check `.vibe` files, is experimental and unpublished. It is tested with `typescript@7.1.0-beta`, which runs it only under `tsc --runExternalCode`.
+- Stock TypeScript: run `vibelang` first to emit adjacent `.d.vibe.ts` declaration sidecars, then enable `allowArbitraryExtensions` so stock TypeScript tools can [read `.vibe` imports](vibelang-cli.md#let-typescript-tools-read-vibe-modules). These tools read the declarations; they do not check the VibeLang implementation. `vibelang-ts-mapper`, a TypeScript 7.1 content mapper that lets stock TypeScript check `.vibe` files, is experimental and unpublished. It is tested with `typescript@7.1.0-beta`, which runs it only under `tsc --runExternalCode`.
 - Editors: [VS Code and Cursor use the bundled VSIX](vscode.md). VS Code Marketplace and Open VSX publishing are not ready.
 - Stability: [v0: breaking changes expected](release-notes.md). Read release notes before upgrading.
 
@@ -21,4 +21,3 @@ callee's callable type, such as `() => number!NotFound`, instead of erasing it.
 
 The experimental TypeScript mapper keeps an exported function’s written Effect contract, such as `number!!`, even when its body is pure. Its projected type has no `$plain` member.
 
-Support for the new forms and adjacent `.d.vibe.ts` declarations arrives with the compiler's VIP implementation.
