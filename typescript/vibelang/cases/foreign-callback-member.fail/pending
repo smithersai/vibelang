@@ -1,0 +1,1 @@
+impl-hunt-fail EK0402 is not reported for a foreign @throws {Error} function value checked against an untagged callback type, as an argument, object member, spread member or initializer (VIP-4 assignability; loop round 4 OPUS-1, decided detail 250)

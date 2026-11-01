@@ -304,6 +304,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 - Interrupted migration codemods could lose their rename, import or platform-split bookkeeping; the flow now journals every mechanical write before it starts and safely resumes or restores the original source.
+- VIP-39 didn't say whether a JSX attribute or tag is checked against VIP-4's thrown-type rule for function types. It now says an attribute is an object member, so a foreign handler with `@throws {Error}` is `EK0402` against an untagged `onClick`, and a tag's check against `JSX.ElementType` is not such a site.
+
 - The spec's `EK0510` row named only `try`, `fork` and `join`, so `try.all [a] ** 2` and `fork.scoped e ** 2` had no code. Chapter 2 and Appendix B now name all ten execution heads.
 
 - VIP-39 didn't say what runs first when a `do` that `return`s sits in a JSX attribute after other attributes. It now says the tag and everything before the `do` are evaluated first, once, in source order, as for any other operand.

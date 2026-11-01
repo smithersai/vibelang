@@ -1,0 +1,19 @@
+// expect: EK0402 EK0402 EK0402 EK0402
+// Loop round 4, OPUS-1: VIP-39 makes a JSX attribute an object member under
+// the VIP-4 assignability rule, so <button onClick={risky}> must give what
+// take({ onClick: risky }) gives in .vibe. A foreign function whose @throws
+// does not fit an untagged callback type is EK0402 as an argument, an object
+// member, a spread member and an assignment alike; @throws {never} fits.
+import { risky, safe, take, call } from "./handlers.ts"
+
+export function sites() {
+  call(risky)
+  take({ onClick: risky })
+  take({ ...{ onClick: risky } })
+  const handler: () => void = risky
+  call(safe)
+  take({ onClick: safe })
+  take({ ...{ onClick: safe } })
+  const fine: () => void = safe
+  return [handler, fine]
+}
