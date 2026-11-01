@@ -54,6 +54,7 @@ const specTests = [
   "TestSidecarSourceIdentityQuoted",
   "TestMigrationMemberCommentsQuoted",
   "TestMigrationServiceImportsQuoted",
+  "TestMigrationFunctionResourcesQuoted",
   "TestDoForTryDiagnosticOwnerQuoted",
   "TestDoDeclarationBytesQuoted",
   "TestSpecifierWrittenJSX",
