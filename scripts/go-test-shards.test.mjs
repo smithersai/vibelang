@@ -31,6 +31,9 @@ function setup(names, weights) {
   const dir = mkdtempSync(join(tmpdir(), "go-test-shards-"))
   mkdirSync(join(dir, "runs"))
   writeFileSync(join(dir, "pkg.test"), binary, { mode: 0o700 })
+  // A copy, so a box's scripts/go-test-slice beside the real script slices nothing here (//:release ran these tests
+  // in a box running one slice, and every unsliced case failed).
+  writeFileSync(join(dir, "go-test-shards.sh"), readFileSync(script, "utf8"), { mode: 0o700 })
   if (weights) {
     mkdirSync(join(dir, "testdata"))
     writeFileSync(join(dir, "testdata", "shard-seconds.txt"), weights)
@@ -38,7 +41,7 @@ function setup(names, weights) {
   return {
     dir,
     run(args = [], env = {}) {
-      const result = spawnSync("/bin/sh", [script, join(dir, "pkg.test"), "-test.timeout=40m0s", "-test.short=true", ...args], {
+      const result = spawnSync("/bin/sh", [join(dir, "go-test-shards.sh"), join(dir, "pkg.test"), "-test.timeout=40m0s", "-test.short=true", ...args], {
         cwd: dir,
         env: { ...process.env, NAMES: names.join(" "), RUNS: join(dir, "runs"), ...env },
         encoding: "utf8"
@@ -95,6 +98,111 @@ test("a failing process fails the run and every process's output is kept", () =>
     t.done()
   }
 })
+
+test("GO_TEST_SLICE=i/n: n runs run every name exactly once between them, slowest names in different slices", () => {
+  const names = ["TestSlowest", "FuzzSlower", "TestSlow", "TestA", "TestB", "TestC", "ExampleD"]
+  const t = setup(names, "90 TestSlowest\n60 FuzzSlower\n50 TestSlow\n")
+  try {
+    const slices = ["1/3", "2/3", "3/3"].map((slice) => {
+      const r = t.run([], { GO_TEST_SHARDS: "2", GO_TEST_SLICE: slice })
+      assert.equal(r.status, 0, r.stdout + r.stderr)
+      rmSync(join(t.dir, "runs"), { recursive: true, force: true })
+      mkdirSync(join(t.dir, "runs"))
+      return ran(r.stdout)
+    })
+    assert.deepEqual(slices.flat().sort(), [...names].sort())
+    const slow = ["TestSlowest", "FuzzSlower", "TestSlow"]
+    assert.ok(slices.every((s) => slow.filter((n) => s.includes(n)).length === 1), JSON.stringify(slices))
+  } finally {
+    t.done()
+  }
+})
+
+test("GO_TEST_SLICE with GO_TEST_SHARDS=1 still runs only its slice, in one process", () => {
+  const t = setup(["TestA", "TestB"])
+  try {
+    const r = t.run([], { GO_TEST_SHARDS: "1", GO_TEST_SLICE: "2/2" })
+    assert.equal(r.status, 0, r.stdout + r.stderr)
+    assert.equal(r.runs.length, 1)
+    assert.equal(ran(r.stdout).length, 1)
+  } finally {
+    t.done()
+  }
+})
+
+test("a package with no tests runs whole in slice 1 and not at all in the others", () => {
+  const t = setup([])
+  try {
+    const first = t.run([], { GO_TEST_SLICE: "1/2" })
+    assert.equal(first.status, 0, first.stdout + first.stderr)
+    assert.equal(first.runs.length, 1)
+    assert.deepEqual(first.runs[0], ["-test.timeout=40m0s", "-test.short=true"])
+    rmSync(join(t.dir, "runs"), { recursive: true, force: true })
+    mkdirSync(join(t.dir, "runs"))
+    const second = t.run([], { GO_TEST_SLICE: "2/2" })
+    assert.equal(second.status, 0, second.stdout + second.stderr)
+    assert.equal(second.runs.length, 0)
+    assert.match(second.stdout, /^PASS$/m)
+  } finally {
+    t.done()
+  }
+})
+
+test("scripts/go-test-slice slices on the host it names and nowhere else; GO_TEST_SLICE wins", () => {
+  // smthrs passes a target only its declared environment, so a graph run reads the slice from this file.
+  const names = ["TestA", "TestB", "TestC", "TestD"]
+  const t = setup(names)
+  const dir = mkdtempSync(join(tmpdir(), "go-test-slice-"))
+  const copy = join(dir, "go-test-shards.sh")
+  writeFileSync(copy, readFileSync(script, "utf8"), { mode: 0o700 })
+  const host = spawnSync("uname", ["-n"], { encoding: "utf8" }).stdout.trim()
+  const run = (env = {}) => {
+    rmSync(join(t.dir, "runs"), { recursive: true, force: true })
+    mkdirSync(join(t.dir, "runs"))
+    const r = spawnSync("/bin/sh", [copy, join(t.dir, "pkg.test")], {
+      cwd: t.dir,
+      env: { ...process.env, NAMES: names.join(" "), RUNS: join(t.dir, "runs"), GO_TEST_SHARDS: "2", ...env },
+      encoding: "utf8"
+    })
+    assert.equal(r.status, 0, r.stdout + r.stderr)
+    return r
+  }
+  try {
+    writeFileSync(join(dir, "go-test-slice"), "1/2 " + host + "\n")
+    const first = ran(run().stdout)
+    writeFileSync(join(dir, "go-test-slice"), "2/2 " + host + "\n")
+    const second = ran(run().stdout)
+    assert.equal(first.length, 2)
+    assert.deepEqual([...first, ...second].sort(), names)
+    assert.deepEqual(ran(run({ GO_TEST_SLICE: "1/2" }).stdout), first, "GO_TEST_SLICE wins over the file")
+    writeFileSync(join(dir, "go-test-slice"), "1/2 some-other-host\n")
+    const elsewhere = run()
+    assert.deepEqual(ran(elsewhere.stdout), names, "a slice file from another host slices nothing")
+    assert.match(elsewhere.stderr, /ignoring .*go-test-slice: it names host some-other-host/)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+    t.done()
+  }
+})
+
+test("scripts/go-test-slice is git-ignored, so no commit can carry it", () => {
+  const root = new URL("..", import.meta.url).pathname
+  const ignore = readFileSync(join(root, ".gitignore"), "utf8").split("\n")
+  assert.ok(ignore.includes("/scripts/go-test-slice"), "add /scripts/go-test-slice to .gitignore")
+})
+
+for (const slice of ["0/2", "3/2", "a/2", "1/", "/2", "1/2/3", "2"]) {
+  test("GO_TEST_SLICE=" + slice + " is refused before any test runs", () => {
+    const t = setup(["TestA"])
+    try {
+      const r = t.run([], { GO_TEST_SLICE: slice })
+      assert.equal(r.status, 2, r.stdout + r.stderr)
+      assert.equal(r.runs.length, 0)
+    } finally {
+      t.done()
+    }
+  })
+}
 
 for (const [why, args, env] of [
   ["a run that selects tests", ["-test.run=^TestB$"], {}],
