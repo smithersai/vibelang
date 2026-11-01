@@ -1,0 +1,43 @@
+{
+  "finding": "foldkit-112 (originally foldkit-17061)",
+  "note": "Minimized core20 interruption: a selected pass rewrites earlier-native sources outside its batch; partial stdout need not list the foreign writes.",
+  "pending": {},
+  "inputs": [
+    {
+      "count": 2,
+      "depth": 1,
+      "outcome": "interrupted",
+      "report": false
+    },
+    {
+      "count": 2,
+      "depth": 1,
+      "outcome": "interrupted",
+      "report": true
+    },
+    {
+      "count": 2,
+      "depth": 1,
+      "outcome": "signal",
+      "report": false
+    },
+    {
+      "count": 2,
+      "depth": 1,
+      "outcome": "signal",
+      "report": true
+    },
+    {
+      "count": 1,
+      "depth": 0,
+      "outcome": "success",
+      "report": true
+    },
+    {
+      "count": 1,
+      "depth": 0,
+      "outcome": "diagnostic",
+      "report": true
+    }
+  ]
+}
