@@ -122,3 +122,54 @@ test("a runner's printed lines give per-test results through the run's report pa
     rmSync(root, { recursive: true, force: true })
   }
 })
+
+// A fake Vitest: it writes the JSON report the flow asked for when `report`
+// exists, and exits with the status in `code`. The flow keeps the report path
+// between runs, so a run that writes none must not read the last run's.
+function fakeVitest(root) {
+  writeFileSync(join(root, "vitest"), [
+    "#!/bin/sh",
+    'for a in "$@"; do case "$a" in --outputFile.json=*) out="${a#--outputFile.json=}";; esac; done',
+    '[ -f report ] && cp report "$out"',
+    "exit $(cat code)",
+    ""
+  ].join("\n"), { mode: 0o755 })
+  writeFileSync(join(root, "report"), JSON.stringify({ testResults: [{ name: join(root, "a.test.ts"), status: "passed", assertionResults: [{ fullName: "a works", status: "passed" }] }] }))
+  return (code, report) => {
+    writeFileSync(join(root, "code"), String(code))
+    if (!report) rmSync(join(root, "report"), { force: true })
+    return runTests({ command: "./vitest run", cwd: root, root, jsonFile: join(root, "vitest.json") })
+  }
+}
+
+test("a Vitest run that writes no report is not read from the previous run's report", async () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-stale-report-"))
+  try {
+    const run = fakeVitest(root)
+    const baseline = await run(0, true)
+    assert.deepEqual(baseline.tests, { "a.test > a works": "passed" })
+    // The runner fails to start (a config error) and writes nothing.
+    const current = await run(1, false)
+    assert.equal(current.code, 1)
+    assert.equal(current.tests, null)
+    assert.deepEqual(compareTests(baseline, current), { ok: false, newFailures: ["(exit status)"], missing: [], fixed: [] })
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test("a passing report from a run that exits nonzero, after a baseline that exited 0, is a regression", async () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-nonzero-report-"))
+  try {
+    const run = fakeVitest(root)
+    const baseline = await run(0, true)
+    // Every test passes, then an unhandled error fails the run.
+    const current = await run(1, true)
+    assert.deepEqual(current.tests, baseline.tests)
+    assert.deepEqual(compareTests(baseline, current), { ok: false, newFailures: ["(exit status)"], missing: [], fixed: [] })
+    // A baseline that already exited nonzero keeps comparing test by test.
+    assert.equal(compareTests(current, current).ok, true)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})

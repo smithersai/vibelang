@@ -146,7 +146,8 @@ function byStableName(tests) {
 /**
  * What changed against the baseline: tests that now fail and did not, tests
  * that passed and are gone, and an exit status that turned nonzero when no
- * per-test report says why. Tests are matched by stableName.
+ * per-test result says why, with or without a per-test report. Tests are
+ * matched by stableName.
  */
 export function compareTests(baseline, current) {
   if (!baseline.tests || !current.tests) {
@@ -158,6 +159,9 @@ export function compareTests(baseline, current) {
   const newFailures = Object.keys(after).filter((n) => after[n] === "failed" && before[n] !== "failed").sort()
   const missing = Object.keys(before).filter((n) => before[n] === "passed" && !(n in after)).sort()
   const fixed = Object.keys(before).filter((n) => before[n] === "failed" && after[n] === "passed").sort()
+  // Every test passing does not make a run that now exits nonzero, such as
+  // one an unhandled error fails, a pass.
+  if (!newFailures.length && !missing.length && baseline.code === 0 && current.code !== 0) newFailures.push("(exit status)")
   return { ok: !newFailures.length && !missing.length, newFailures, missing, fixed }
 }
 
