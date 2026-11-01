@@ -2245,6 +2245,9 @@ typescript/vibelang/cases/fork-escape-flow.fail/main.vibe:37:22 byname program t
 typescript/vibelang/cases/fork-escape-fork-capture.fail/main.vibe:4:18 byname program table
 typescript/vibelang/cases/fork-escape-fork-capture.fail/main.vibe:5:19 lambda program table
 typescript/vibelang/cases/fork-escape-getter.fail/main.vibe:7:22 block appended/program table
+typescript/vibelang/cases/fork-escape-pipe/main.vibe:10:18 byname program table
+typescript/vibelang/cases/fork-escape-pipe/main.vibe:7:18 byname program table
+typescript/vibelang/cases/fork-escape-pipe/main.vibe:8:18 byname program table
 typescript/vibelang/cases/fork-escape-return.fail/main.vibe:10:15 byname program table
 typescript/vibelang/cases/fork-escape-return.fail/main.vibe:14:22 byname program table
 typescript/vibelang/cases/fork-escape-return.fail/main.vibe:19:20 byname program table

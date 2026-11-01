@@ -30,8 +30,9 @@ import (
 //
 // It may also be discarded, as `fork heartbeat()` alone discards it, and it
 // passes through parentheses, type assertions, conditionals, logical
-// operators, and the value of a do block, a match expression, or a catch
-// expression, which run where they stand. Anywhere else is EK4838, an error
+// operators, the value of a do block, a match expression, or a catch
+// expression, which run where they stand, and the left side of a pipe to
+// each topic % of its body. Anywhere else is EK4838, an error
 // that no setting lowers:
 //
 //	function startHeartbeat() { return fork heartbeat() }            // returned
@@ -214,6 +215,16 @@ func (f *fiberFlow) flow(value *ast.Node) *fiberEscape {
 			continue
 		case ast.IsBinaryExpression(parent):
 			binary := parent.AsBinaryExpression()
+			if isPipe(parent) && binary.Left == n {
+				// n |> body: the fiber is the body's topic, so it goes where each
+				// % goes (chapter 2: fork a() |> f(%) forks a() and pipes the Fiber).
+				for _, topic := range topicsOf(parent) {
+					if out := f.use(topic); out != nil {
+						return out
+					}
+				}
+				return nil // a body without a topic discards it
+			}
 			switch op := binary.OperatorToken.Kind; {
 			case op == ast.KindCommaToken && binary.Left == n:
 				return nil // discarded

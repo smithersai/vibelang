@@ -1,0 +1,13 @@
+// expect-result: [4,4,4]
+// Chapter 2, "fork and join": fork a() |> f(%) forks a() and pipes the Fiber, so a
+// fiber on a pipe's left side goes where its topic goes: into Fiber.join here, which
+// keeps it in its region. Before, EK4838 reported the pipe as a use the owner may not make.
+import { Effect, Fiber } from "effect"
+export effect function main() {
+  const a = fork Effect.succeed(4) |> Fiber.join(%)
+  const f = fork Effect.succeed(4)
+  const b = f |> Fiber.join(%)
+  const g = fork Effect.succeed(4)
+  const c = g |> (% |> Fiber.join(%))
+  return [a, b, c]
+}
