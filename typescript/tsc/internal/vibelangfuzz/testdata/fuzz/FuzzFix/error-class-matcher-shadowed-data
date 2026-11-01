@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nconst Data = 0; const TaggedError = 1; const $ErrorTaggedError = 2; export error E { id: string; static meta = 3 }\nexport effect function main() { const subject = { _tag: \"E\" as const, id: \"copy\" }; return match (subject) { when E: \"match\"; default: \"miss\"; } }\n")

@@ -218,7 +218,10 @@ func FuzzFix(f *testing.F) {
 			}
 			// D372: compare every callable exported Effect, not only main fixtures
 			// marked with expect-result. Chapter 26 requires the same exit.
-			if !toolsTrailingBlockRunnable(runtimeBefore) || !toolsErrorFree(after) {
+			// The explicit-class repair is offered for rejected static members
+			// and setters (EK1302). Its D372 meaning-preservation contract
+			// still applies to their already-emitted runtime representation.
+			if (!toolsTrailingBlockRunnable(runtimeBefore) && !toolsMemberRepairRuntime(r)) || !toolsErrorFree(after) {
 				if nativeTS {
 					t.Logf("native-ts remaining diagnostics prevent runtime comparison: %v", SortedKeys(Keys(after.Dir, after.Diagnostics)))
 				}
@@ -303,6 +306,26 @@ func toolsCompile(t *testing.T, w *Workspace, target string, files map[string]st
 		t.Fatal(err)
 	}
 	return r
+}
+
+// toolsMemberRepairRuntime admits only the error-member rejection that has
+// an explicit equivalent class fix. Other invalid programs have no runtime
+// equivalence promise in this oracle.
+func toolsMemberRepairRuntime(r *Result) bool {
+	if r.EmitSkipped {
+		return false
+	}
+	found := false
+	for _, d := range r.Diagnostics {
+		if d.Category() != diagnostics.CategoryError {
+			continue
+		}
+		if !IsEK(d) || d.Code() != 1302 {
+			return false
+		}
+		found = true
+	}
+	return found
 }
 
 // toolsErrorFree reports whether a compilation reports no error and emitted.

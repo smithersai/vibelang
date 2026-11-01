@@ -105,19 +105,15 @@ var errorMemberClassFix = &ls.CodeFixProvider{
 		}
 		base := p.Emit(baseNode, fix.SourceFile)
 		if module == "Data" {
-			constructor := qualifier + ".TaggedError("
-			if fix.ErrorCode == EK2117.Code {
-				// The old declaration uses the runtime's TaggedError shim,
-				// which also preserves cross-copy matching. A bare Data base
-				// would lose that existing behavior.
-				qualifier = "$ErrorTaggedError"
-				for i := 2; c.ResolveName(qualifier, class, ast.SymbolFlagsAll, false) != nil; i++ {
-					qualifier = "$ErrorTaggedError" + strconv.Itoa(i)
-				}
-				addedImport = "import { TaggedError as " + qualifier + " } from \"vibelang-runtime\"\n"
-				constructor = qualifier + "("
+			// Error declarations use the runtime's TaggedError shim, whose
+			// matcher also works across package copies. Keep that base when
+			// the rejected member is moved into an explicit class.
+			qualifier = "$ErrorTaggedError"
+			for i := 2; c.ResolveName(qualifier, class, ast.SymbolFlagsAll, false) != nil; i++ {
+				qualifier = "$ErrorTaggedError" + strconv.Itoa(i)
 			}
-			base = strings.Replace(base, "TaggedError(", constructor, 1)
+			addedImport = "import { TaggedError as " + qualifier + " } from \"vibelang-runtime\"\n"
+			base = strings.Replace(base, "TaggedError(", qualifier+"(", 1)
 		}
 		if clauses := class.ClassLikeData().HeritageClauses; clauses != nil {
 			for _, clause := range clauses.Nodes {

@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nexport error E { id?: string; constructor?: string; static get meta() { return 3 } }\nexport effect function main() { const subject = { _tag: \"E\" as const, id: \"copy\" }; return match (subject) { when E: \"match\"; default: \"miss\"; } }\n")
