@@ -53,6 +53,35 @@ func migrationAssertedColdPrograms() map[string][2]string {
 			}
 		}
 	}
+
+	// T3Code's schema helper and Atom factory are also ordinary TypeScript
+	// callables under VIP-1. No annotation or contextual overload runs them.
+	pairs["t3code-plain-schema-arrow"] = [2]string{"import * as Schema from \"effect/Schema\";\nconst make = () => Schema.String.pipe(Schema.brand(\"ThreadId\"));\nexport const ThreadId = make();\nexport const Event = Schema.Struct({ id: ThreadId });\n", "import * as Schema from \"effect/Schema\";\nconst make = () => Schema.String.pipe(Schema.brand(\"ThreadId\"));\nexport const ThreadId = make();\nexport const Event = Schema.Struct({ id: ThreadId });\n"}
+	pairs["t3code-plain-schema-function"] = [2]string{"import * as Schema from \"effect/Schema\";\nfunction make() { return Schema.String.pipe(Schema.brand(\"ThreadId\")); }\nexport const ThreadId = make();\nexport const Event = Schema.Struct({ id: ThreadId });\n", "import * as Schema from \"effect/Schema\";\nfunction make() { return Schema.String.pipe(Schema.brand(\"ThreadId\")); }\nexport const ThreadId = make();\nexport const Event = Schema.Struct({ id: ThreadId });\n"}
+	pairs["t3code-cold-atom-pipeline-length"] = [2]string{"import { Atom } from \"effect/reactivity\";\nimport * as Effect from \"effect/Effect\";\nexport const values = Atom.family((key: string) => Atom.make(Effect.succeed(key).pipe(Effect.map((value) => value.length))));\n", "import { Atom } from \"effect/reactivity\";\nimport * as Effect from \"effect/Effect\";\nexport const values = Atom.family((key: string) => Atom.make(Effect.succeed(key).pipe(Effect.map((value) => value.length))));\n"}
+	pairs["t3code-cold-atom-pipeline-text"] = [2]string{"import { Atom } from \"effect/reactivity\";\nimport * as Effect from \"effect/Effect\";\nexport const values = Atom.family((key: string) => Atom.make(Effect.succeed(key).pipe(Effect.map((value) => value + \"!\"))));\n", "import { Atom } from \"effect/reactivity\";\nimport * as Effect from \"effect/Effect\";\nexport const values = Atom.family((key: string) => Atom.make(Effect.succeed(key).pipe(Effect.map((value) => value + \"!\"))));\n"}
+	pairs["t3code-promise-confirmation"] = [2]string{"export function confirmation(): Promise<boolean> { return new Promise<boolean>((resolve) => { resolve(true); }); }\n", "export function confirmation(): Promise<boolean> { return new Promise<boolean>((resolve) => { resolve(true); }); }\n"}
+
+	// Foldkit-102: a generic Schema factory stays a plain TypeScript callable.
+	// ReturnType of an instantiation expression therefore names its Schema,
+	// never an implicitly run Effect, under the same Chapter 1 oracle above.
+	for _, home := range []string{"arrow", "function"} {
+		for _, schema := range []string{"Struct", "Array"} {
+			for _, actual := range []string{"String", "Number"} {
+				expression := "Schema.Struct({ value })"
+				if schema == "Array" {
+					expression = "Schema.Array(value)"
+				}
+				declaration := "export const make = <A extends Schema.Top>(value: A) => " + expression + ";\n"
+				if home == "function" {
+					declaration = "export function make<A extends Schema.Top>(value: A) { return " + expression + "; }\n"
+				}
+				source := "import * as Schema from \"effect/Schema\";\n" + declaration + "export type Value = ReturnType<typeof make<typeof Schema." + actual + ">>[\"Type\"];\n"
+				key := "foldkit-generic-schema-" + home + "-" + strings.ToLower(schema) + "-" + strings.ToLower(actual)
+				pairs[key] = [2]string{source, source}
+			}
+		}
+	}
 	return pairs
 }
 
@@ -95,7 +124,7 @@ func FuzzMigrationAssertedCold(f *testing.F) {
 				if index == 1 {
 					t.Fatalf("invalid generic/container control: %v\n%s", SortedKeys(Keys(result.Dir, result.Diagnostics)), pair[index])
 				}
-				Gap(t, migrationAssertedColdTarget, key, "VIP1 keyword decides plain callable despite casts; diagnostics=%v\n%s", SortedKeys(Keys(result.Dir, result.Diagnostics)), pair[index])
+				Gap(t, migrationAssertedColdTarget, key, "VIP1 keyword decides plain callable kind, including factories and casts; diagnostics=%v\n%s", SortedKeys(Keys(result.Dir, result.Diagnostics)), pair[index])
 			}
 		}
 		ExpectPending(t, migrationAssertedColdTarget, key)

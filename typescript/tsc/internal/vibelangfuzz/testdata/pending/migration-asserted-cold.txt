@@ -49,3 +49,27 @@ FuzzMigrationAssertedCold method:unknown:nested compiler Chapter 1 function kind
 FuzzMigrationAssertedCold corpus:method-unknown-nested compiler Chapter 1 function kinds: minimized reproduction of method:unknown:nested; lane core-land
 FuzzMigrationAssertedCold method:unknown:object compiler Chapter 1 function kinds: casts, satisfies and parentheses around a plain function's value must not change its kind; lane core-land
 FuzzMigrationAssertedCold corpus:method-unknown-object compiler Chapter 1 function kinds: minimized reproduction of method:unknown:object; lane core-land
+FuzzMigrationAssertedCold t3code-plain-schema-arrow compiler VIP-1 Chapter 1: neither a schema factory nor a contextual Atom callback runs an Effect without the effect keyword; lane core-land
+FuzzMigrationAssertedCold corpus:t3code-plain-schema-arrow compiler VIP-1 Chapter 1: neither a schema factory nor a contextual Atom callback runs an Effect without the effect keyword; lane core-land
+FuzzMigrationAssertedCold t3code-plain-schema-function compiler VIP-1 Chapter 1: neither a schema factory nor a contextual Atom callback runs an Effect without the effect keyword; lane core-land
+FuzzMigrationAssertedCold corpus:t3code-plain-schema-function compiler VIP-1 Chapter 1: neither a schema factory nor a contextual Atom callback runs an Effect without the effect keyword; lane core-land
+FuzzMigrationAssertedCold t3code-cold-atom-pipeline-length compiler VIP-1 Chapter 1: neither a schema factory nor a contextual Atom callback runs an Effect without the effect keyword; lane core-land
+FuzzMigrationAssertedCold corpus:t3code-cold-atom-pipeline-length compiler VIP-1 Chapter 1: neither a schema factory nor a contextual Atom callback runs an Effect without the effect keyword; lane core-land
+FuzzMigrationAssertedCold t3code-cold-atom-pipeline-text compiler VIP-1 Chapter 1: neither a schema factory nor a contextual Atom callback runs an Effect without the effect keyword; lane core-land
+FuzzMigrationAssertedCold corpus:t3code-cold-atom-pipeline-text compiler VIP-1 Chapter 1: neither a schema factory nor a contextual Atom callback runs an Effect without the effect keyword; lane core-land
+FuzzMigrationAssertedCold foldkit-generic-schema-arrow-struct-string compiler VIP-1 Chapter 1: unmarked generic Schema factories keep native ReturnType instantiation results (foldkit-102); lane core-land
+FuzzMigrationAssertedCold corpus:foldkit-generic-schema-arrow-struct-string compiler VIP-1 Chapter 1: unmarked generic Schema factories keep native ReturnType instantiation results (foldkit-102); lane core-land
+FuzzMigrationAssertedCold foldkit-generic-schema-arrow-struct-number compiler VIP-1 Chapter 1: unmarked generic Schema factories keep native ReturnType instantiation results (foldkit-102); lane core-land
+FuzzMigrationAssertedCold corpus:foldkit-generic-schema-arrow-struct-number compiler VIP-1 Chapter 1: unmarked generic Schema factories keep native ReturnType instantiation results (foldkit-102); lane core-land
+FuzzMigrationAssertedCold foldkit-generic-schema-arrow-array-string compiler VIP-1 Chapter 1: unmarked generic Schema factories keep native ReturnType instantiation results (foldkit-102); lane core-land
+FuzzMigrationAssertedCold corpus:foldkit-generic-schema-arrow-array-string compiler VIP-1 Chapter 1: unmarked generic Schema factories keep native ReturnType instantiation results (foldkit-102); lane core-land
+FuzzMigrationAssertedCold foldkit-generic-schema-arrow-array-number compiler VIP-1 Chapter 1: unmarked generic Schema factories keep native ReturnType instantiation results (foldkit-102); lane core-land
+FuzzMigrationAssertedCold corpus:foldkit-generic-schema-arrow-array-number compiler VIP-1 Chapter 1: unmarked generic Schema factories keep native ReturnType instantiation results (foldkit-102); lane core-land
+FuzzMigrationAssertedCold foldkit-generic-schema-function-struct-string compiler VIP-1 Chapter 1: unmarked generic Schema factories keep native ReturnType instantiation results (foldkit-102); lane core-land
+FuzzMigrationAssertedCold corpus:foldkit-generic-schema-function-struct-string compiler VIP-1 Chapter 1: unmarked generic Schema factories keep native ReturnType instantiation results (foldkit-102); lane core-land
+FuzzMigrationAssertedCold foldkit-generic-schema-function-struct-number compiler VIP-1 Chapter 1: unmarked generic Schema factories keep native ReturnType instantiation results (foldkit-102); lane core-land
+FuzzMigrationAssertedCold corpus:foldkit-generic-schema-function-struct-number compiler VIP-1 Chapter 1: unmarked generic Schema factories keep native ReturnType instantiation results (foldkit-102); lane core-land
+FuzzMigrationAssertedCold foldkit-generic-schema-function-array-string compiler VIP-1 Chapter 1: unmarked generic Schema factories keep native ReturnType instantiation results (foldkit-102); lane core-land
+FuzzMigrationAssertedCold corpus:foldkit-generic-schema-function-array-string compiler VIP-1 Chapter 1: unmarked generic Schema factories keep native ReturnType instantiation results (foldkit-102); lane core-land
+FuzzMigrationAssertedCold foldkit-generic-schema-function-array-number compiler VIP-1 Chapter 1: unmarked generic Schema factories keep native ReturnType instantiation results (foldkit-102); lane core-land
+FuzzMigrationAssertedCold corpus:foldkit-generic-schema-function-array-number compiler VIP-1 Chapter 1: unmarked generic Schema factories keep native ReturnType instantiation results (foldkit-102); lane core-land
