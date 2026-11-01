@@ -43,9 +43,7 @@ FuzzFailuresSpec  feature:promise-reject-wrapped  compiler  VIP-4: 003-failures.
 FuzzFailuresSpec  feature:declaration-throws  compiler  VIP-27, VIP-4: a constructor that throws draws EK2003 (decided detail 5 tracks new X() instead), so Id's declaration cannot carry @throws {BadInput}; lane w2-throw
 FuzzFailuresSpec  feature:declaration-async  compiler  VIP-27: an exported async function's declaration carries no @throws {never}; lane w2-throw
 FuzzFailuresSpec  feature:declaration-rethrows  compiler  VIP-27: an exported function that passes its parameter f to forEach carries no `@throws {never} @rethrows f`; lane w2-throw
-FuzzFailuresSpec  feature:error-constructor  compiler  VIP-13 (decided detail 24, 003-failures.md static rules): a constructor in an error body draws no error; lane fix-vip-decls
 FuzzFailuresSpec  feature:error-tag  compiler  VIP-13 (decided detail 24): a `_tag` member in an error body draws no error; lane fix-vip-decls
-FuzzFailuresSpec  feature:schema-error-constructor  compiler  VIP-29 (decided detail 24): a constructor in a schema error body draws no error; lane fix-vip-decls
 FuzzFailuresSpec  feature:schema-error-tag  compiler  VIP-29 (decided detail 24): a `_tag` member in a schema error body draws no error; lane fix-vip-decls
 FuzzFailuresSpec  feature:effect-decoder-call  compiler  VIP-4: 003-failures.md rejects calling the decoder Schema.decodeUnknownSync returns in effect code (it throws SchemaError); lane w2-throw
 FuzzFailuresSpec  feature:default-throwing  compiler  VIP-4: 003-failures.md rejects a default initializer that may throw in an effect function's parameter list; lane w2-throw
@@ -56,9 +54,7 @@ FuzzFailuresSpec  corpus:direct-local  compiler  the minimal reproduction of fea
 FuzzFailuresSpec  corpus:declaration-throws  compiler  the minimal reproduction of feature:declaration-throws
 FuzzFailuresSpec  corpus:declaration-async  compiler  the minimal reproduction of feature:declaration-async
 FuzzFailuresSpec  corpus:declaration-rethrows  compiler  the minimal reproduction of feature:declaration-rethrows
-FuzzFailuresSpec  corpus:error-constructor  compiler  the minimal reproduction of feature:error-constructor
 FuzzFailuresSpec  corpus:error-tag  compiler  the minimal reproduction of feature:error-tag
-FuzzFailuresSpec  corpus:schema-error-constructor  compiler  the minimal reproduction of feature:schema-error-constructor
 FuzzFailuresSpec  corpus:schema-error-tag  compiler  the minimal reproduction of feature:schema-error-tag
 FuzzFailuresSpec  corpus:effectful-body-throw  compiler  the minimal reproduction of feature:effectful-body-throw
 FuzzFailuresSpec  corpus:effectful-body-call  compiler  the minimal reproduction of feature:effectful-body-call

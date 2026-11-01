@@ -548,8 +548,8 @@ func (r *ruleCheck) checkClass(class *ast.Node) {
 		}
 		return
 	}
-	if !isSchemaValue(r.c, r.c.GetTypeAtLocation(base)) {
-		return
+	if errorDeclarationBase(class) || !isSchemaValue(r.c, r.c.GetTypeAtLocation(base)) {
+		return // an error declaration's constructor is EK1301 (error_constructor.go)
 	}
 	for _, member := range class.Members() {
 		if ast.IsConstructorDeclaration(member) && member.Body() != nil {

@@ -1,4 +1,4 @@
-main.vibe(14,14): error EK2118
-main.vibe(16,41): error TS2345
-main.vibe(27,14): error EK2118
-main.vibe(38,14): error EK2118
+main.vibe(15,14): error EK2118
+main.vibe(17,41): error TS2345
+main.vibe(29,14): error EK2118
+main.vibe(41,14): error EK2118

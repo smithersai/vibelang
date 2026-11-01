@@ -87,12 +87,12 @@ func rejectedMemberKind(member *ast.Node) string {
 }
 
 // dropRejectedMemberDiagnostics removes TypeScript's diagnostics inside a
-// rejected member, so the member gets EK1304 alone.
+// rejected member or a constructor, so the member gets EK1304 or EK1301 alone.
 func dropRejectedMemberDiagnostics(_ *checker.Checker, file *ast.SourceFile, all []*ast.Diagnostic) []*ast.Diagnostic {
 	if !isVibeLangFile(file) {
 		return all
 	}
-	rejected := errorRejectedMembers(file)
+	rejected := append(errorRejectedMembers(file), errorConstructors(file)...)
 	if len(rejected) == 0 {
 		return all
 	}

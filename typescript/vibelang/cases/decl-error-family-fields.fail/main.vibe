@@ -1,9 +1,12 @@
 // expect: EK2118
 // A subclass that declares fields and no constructor passes them to its
+
+import * as $ErrorData from "effect/Data"
 // base's constructor, which here takes positional arguments.
-error Base {
-  _tag: string
-  code: string
+class Base extends $ErrorData.TaggedError("Base" as string)<{
+    readonly _tag: string;
+    readonly code: string;
+}> {
 
   constructor(code: string, note: string) {
     super({ code: `${code}:${note}` })

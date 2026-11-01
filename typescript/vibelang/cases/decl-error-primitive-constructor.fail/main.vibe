@@ -2,9 +2,10 @@
 // A subclass that declares fields and no constructor passes them to its
 // base's constructor as one object; these bases take a string, a number or
 // a list instead (D278).
-error Base {
-  _tag: string
-  code: number
+class Base extends Data.TaggedError("Base" as string)<{
+    readonly _tag: string;
+    readonly code: number;
+}> {
 
   constructor(raw: string) {
     super({ code: raw.length })
@@ -15,9 +16,10 @@ export error Sub extends Base { path: string }
 
 export function main() { return new Sub({ code: 1, path: "x" }) }
 
-error Counted {
-  _tag: string
-  code: number
+class Counted extends Data.TaggedError("Counted" as string)<{
+    readonly _tag: string;
+    readonly code: number;
+}> {
 
   constructor(code: number | boolean) {
     super({ code: Number(code) })
@@ -26,9 +28,10 @@ error Counted {
 
 export error CountedSub extends Counted { extra: number }
 
-error Listed {
-  _tag: string
-  code: number
+class Listed extends Data.TaggedError("Listed" as string)<{
+    readonly _tag: string;
+    readonly code: number;
+}> {
 
   constructor(parts: ReadonlyArray<string>) {
     super({ code: parts.length })

@@ -3,10 +3,11 @@
 // @smthrs/errors' SmithersError does. A subclass with fields writes its own
 // constructor and sets them; one without fields inherits the base's.
 
-export error Failure {
-  _tag: string
-  code: string
-  summary: string
+export class Failure extends Data.TaggedError("Failure" as string)<{
+    readonly _tag: string;
+    readonly code: string;
+    readonly summary: string;
+}> {
 
   constructor(code: string, summary: string) {
     super({ code, summary: summary.trim() === "" ? "no summary" : summary.trim() })

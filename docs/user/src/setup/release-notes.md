@@ -886,6 +886,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The runtime's `main` tests, which start Node and Bun child processes, could fail at Bun's 5 s default on a loaded host; the runtime suite and every other `bun test` the build graph runs now pass an explicit `--timeout`, and a check keeps the flag in place.
 
+- A constructor in an `error` body compiled silently, and one in a `schema error` body got only the `EK4814` warning; both now report `EK1301` alone, and the quick fix keeps the constructor in an Effect TypeScript class.
 - An `error` or `schema error` body accepted an initialized property, a `private`, `protected`, `public` or `declare` property, a private name, an `accessor` property or an index signature, silently or with TypeScript's errors; each now reports `EK1304` alone, and the quick fix keeps the member in an Effect TypeScript class.
 - `vibelang --fix --fix-vip-only` left an `effect` arrow whose body is a call without `try`, as in `effect (k) => withSpan(program, "load")`, although the call runs today; once a function's `effect` mark alone decides, that arrow returns the call's Effect unrun. The codemod now writes `effect (k) => try withSpan(program, "load")`, as it already did for `return f()` in a block body.
 - `vibelang --fix` left `x |> Effect.withSpan(%, name)`, `x |> Effect.provide(%, L)` under `try`, and `try Effect.void` as written. It now writes the prelude's `withSpan`, a `provide` block, and nothing for `Effect.void`.

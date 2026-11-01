@@ -1,0 +1,9 @@
+// expect: EK1301
+// Chapter 3 static rules, first row: a constructor in an error or schema error
+// body is EK1301, in either form, and gets that one diagnostic.
+error E0 { id: string; constructor() { super({ id: "x" }) } }
+error E1 { constructor(id: string) { super() } }
+schema error S0 { id: string; constructor() { super({ id: "x" }) } }
+schema error S1 { constructor(public n: number) { super({}) } }
+// A payload field named constructor is ordinary.
+error Field { constructor: string }
