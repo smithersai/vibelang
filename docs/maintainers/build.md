@@ -150,7 +150,7 @@ hand, rebuild it after changing compiler sources.
 ```
 
 ```text
-:srcs ─► :compiler ─┬─► :<case> x809 ◄─┬─ :runtime-dist ─► :runtime-test
+:srcs ─► :compiler ─┬─► :<case> x809 ◄─┬─ :runtime-dist ─► :runtime-test, :compiler-test
                     ├─► :compiler-native ─► :compiler-test, :vite-test, :unplugin-test, :release, :snippets, :docs-tools
                     ├─► :lsp-smoke ◄─ :runtime-dist
                     └─► :snippets, :docs-tools
