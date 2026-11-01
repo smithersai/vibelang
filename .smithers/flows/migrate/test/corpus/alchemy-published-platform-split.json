@@ -1,0 +1,21 @@
+{
+  "finding": "alchemy-60",
+  "note": "Minimized AWS EventBridge/ToLambda createRouteId pattern: an EK4402 helper split adds a platform module to a files plus wildcard-exports package.",
+  "inputs": [
+    {
+      "name": "ToLambda",
+      "depth": 1,
+      "kind": "conditional"
+    },
+    {
+      "name": "ToLambda",
+      "depth": 1,
+      "kind": "wildcard"
+    },
+    {
+      "name": "ToLambda",
+      "depth": 1,
+      "kind": "explicit"
+    }
+  ]
+}
