@@ -1,0 +1,4 @@
+go test fuzz v1
+string("effect-function")
+string("member")
+bool(true)

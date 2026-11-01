@@ -53,6 +53,7 @@ const specTests = [
   "TestCurrentDiagnosticPolicyRegression",
   "TestCompileCurrentDiagnosticPolicy",
   "TestTrailingBlocksQuoted",
+  "TestReviewColdConsoleQuoted",
   "TestFormatForHeadsQuoted",
   "TestFormatFoldkitQuoted",
   "TestFormatLabelQuoted",
