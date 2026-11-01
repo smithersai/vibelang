@@ -164,6 +164,9 @@ func checkServiceDeclaration(c *checker.Checker, class *ast.Node) {
 		}
 		return
 	}
+	if kind == serviceClass && checkServiceOuterTypeParameters(c, class) {
+		return
+	}
 	s := servicesFor(c)
 	if others := s.sharingKey(class); len(others) > 0 {
 		d := report(c, class.Name(), EK3001, s.key(class))

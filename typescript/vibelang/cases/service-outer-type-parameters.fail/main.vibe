@@ -1,0 +1,139 @@
+// expect: EK3005 EK3005 EK3005 EK3005 EK3005 EK3005 EK3005 EK3005 EK3005 EK3005 EK3005 EK3005 EK3005 EK3005 EK3005 EK3005 EK3005 EK3005 EK3005 EK3005 EK3005 EK3005 EK3005
+import type { ForeignCallback, ForeignPlain, ForeignPhantom, ForeignMethod, ForeignGenericThrows, ForeignNested } from "./foreign-contracts.js"
+// A service has one key across every instantiation of its enclosing scope.
+
+export function makeProperty<T>(): number {
+  service S { static readonly key = "outer-case/Property"; value: T }
+  return 1
+}
+
+export function makeAlias<T>(): number {
+  type Box = { value: T }; service S { static readonly key = "outer-case/Alias"; value: Box }
+  return 1
+}
+
+export function makeConstraint<T>(): number {
+  service S { static readonly key = "outer-case/Constraint"; pick<U extends T>(u: U): U }
+  return 1
+}
+
+export function makeDefault<T>(): number {
+  type Box<U = T> = { value: U }; service S { static readonly key = "outer-case/Default"; value: Box }
+  return 1
+}
+
+export function makeMemberDefault<T>(): number {
+  service S { static readonly key = "outer-case/MemberDefault"; pick<U = T>(u: U): U }
+  return 1
+}
+
+export function makeArray<T>(): number {
+  service S { static readonly key = "outer-case/Array"; value: ReadonlyArray<T> }
+  return 1
+}
+
+export function makeIndexed<T extends { value: unknown }>(): number {
+  service S { static readonly key = "outer-case/Indexed"; value: T["value"] }
+  return 1
+}
+
+export function makeConditional<T>(): number {
+  service S { static readonly key = "outer-case/Conditional"; value: T extends string ? number : boolean }
+  return 1
+}
+
+export function makeMapped<T extends object>(): number {
+  service S { static readonly key = "outer-case/Mapped"; value: { [K in keyof T]: T[K] } }
+  return 1
+}
+
+export function makeMappedKeys<T extends object>(): number {
+  service S { static readonly key = "outer-case/MappedKeys"; value: { [K in keyof T]?: number } }
+  return 1
+}
+
+export function makeRemapped<T extends string>(): number {
+  service S { static readonly key = "outer-case/Remapped"; value: { [K in 'fixed' as T]: number } }
+  return 1
+}
+
+export function makeTemplate<T extends string>(): number {
+  service S { static readonly key = "outer-case/Template"; value: `prefix-${T}` }
+  return 1
+}
+
+export function makeStringMapping<T extends string>(): number {
+  service S { static readonly key = "outer-case/StringMapping"; value: Uppercase<T> }
+  return 1
+}
+
+// Independent member-local generics and concrete contracts remain valid.
+export function independent<T>(): number {
+  service S { static readonly key = "outer-case/independent"; identity<U>(value: U): U; concrete: { [K in 'fixed']?: number } }
+  return 1
+}
+
+export function makeForeign<T>(): number {
+  service S { static readonly key = "outer-case/Foreign"; load: ForeignCallback<T> }
+  return 1
+}
+
+// An unused generic argument is independent of the resolved member contract.
+export function independentForeign<T>(): number {
+  service S { static readonly key = "outer-case/ForeignPlain"; load: ForeignPlain<T>; phantom: ForeignPhantom<T>; concrete: ForeignCallback<string> }
+  return 1
+}
+
+export function makeForeignMethod<T>(): number {
+  service S { static readonly key = "outer-case/ForeignMethod"; load: ForeignMethod<T> }
+  return 1
+}
+export function makeForeignConstraint<T>(): number {
+  service S { static readonly key = "outer-case/ForeignConstraint"; load: ForeignGenericThrows<T> }
+  return 1
+}
+export function makeForeignNested<T>(): number {
+  service S { static readonly key = "outer-case/ForeignNested"; load: ForeignNested<T> }
+  return 1
+}
+export function makeForeignTwo<T>(): number {
+  service S { static readonly key = "outer-case/ForeignTwo"; load: { fixed: ForeignNested<string>; captured: ForeignNested<T> } }
+  return 1
+}
+
+// Deferred conditional branches retain their enclosing type identities.
+type ServiceConditionalBranch<A,B> = B extends string ? A : number
+
+export function conditionalTrue<T>(): number {
+  service S { static readonly key = "outer/conditionalTrue"; take<U>(): U extends string ? T : number }
+  return 1
+}
+
+export function conditionalFalse<T>(): number {
+  service S { static readonly key = "outer/conditionalFalse"; take<U>(): U extends string ? number : T }
+  return 1
+}
+
+export function conditionalCallable<T>(): number {
+  service S { static readonly key = "outer/conditionalCallable"; take: <U>() => U extends string ? T : number }
+  return 1
+}
+
+export function conditionalAlias<T>(): number {
+  service S { static readonly key = "outer/conditionalAlias"; take<U>(): ServiceConditionalBranch<T,U> }
+  return 1
+}
+
+export function conditionalNested<T>(): number {
+  service S { static readonly key = "outer/conditionalNested"; take<U,V>(): U extends string ? number : V extends number ? T : boolean }
+  return 1
+}
+
+type ServiceConditionalPhantom<A,B> = B extends string ? B : number
+type ServiceConditionalFlatten<A> = A extends ReadonlyArray<infer B> ? ServiceConditionalFlatten<B> : A
+export function conditionalControls<T>(): number {
+  service MemberOnly { static readonly key = "outer/conditionalMemberOnly"; take<U>(): U extends string ? U : number }
+  service UnusedArgument { static readonly key = "outer/conditionalUnused"; take<U>(): ServiceConditionalPhantom<T,U> }
+  service Recursive { static readonly key = "outer/conditionalRecursive"; take<U>(): ServiceConditionalFlatten<U> }
+  return 1
+}
