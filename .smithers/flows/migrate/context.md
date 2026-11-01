@@ -263,7 +263,7 @@ Each row is one Effect form and the VibeLang that replaces it.
 | `Effect.Effect<User, NotFound, Users>` | `User!NotFound!Users` (empty slot: never) |
 | `yield* Effect.fail(new NotFound({ id }))` | `throw new NotFound({ id })` |
 | `const user = yield* users.find(id)` | `const user = Users.find(id)` |
-| `x.pipe(Effect.orElseSucceed(() => "guest"))` | `x catch () => "guest"` |
+| `x.pipe(Effect.orElseSucceed(() => "guest"))` | `x catch "guest"` |
 | `x.pipe(Effect.catchTag("NotFound", (e) => …))` | `x catch (e) => match (e) { when NotFound: …; }` |
 | `x.pipe(Effect.retry(Schedule.recurs(3)), Effect.timeout("1 second"))` | `x \|> retry(%, Schedule.recurs(3)) \|> timeout(%, "1 second")` |
 | `Effect.forEach(ids, f, { concurrency: 8 })` | `forEach(ids, f, { concurrency: 8 })` |
@@ -292,7 +292,7 @@ function nameOf(id: string) {
   return Users.find(id).name
     |> retry(%, Schedule.recurs(3))
     |> timeout(%, "1 second")
-    catch () => "guest"
+    catch "guest"
 }
 
 export function main() {

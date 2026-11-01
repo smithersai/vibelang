@@ -368,9 +368,9 @@ typescript/vibelang/cases/catch-expression-context/main.vibe:24:68 lambda effect
 typescript/vibelang/cases/catch-expression-context/main.vibe:33:10 lambda effectFn table
 typescript/vibelang/cases/catch-expression-context/main.vibe:33:50 lambda effectFn table
 typescript/vibelang/cases/catch-expression-context/main.vibe:45:10 lambda effectFn table
-typescript/vibelang/cases/catch-expression-context/main.vibe:45:10 lambda effectFn table
-typescript/vibelang/cases/catch-expression-context/main.vibe:45:33 lambda effectFn table
-typescript/vibelang/cases/catch-expression-context/main.vibe:45:57 lambda effectFn table
+typescript/vibelang/cases/catch-expression-context/main.vibe:45:11 lambda effectFn table
+typescript/vibelang/cases/catch-expression-context/main.vibe:45:34 lambda effectFn table
+typescript/vibelang/cases/catch-expression-context/main.vibe:45:65 lambda effectFn table
 typescript/vibelang/cases/catch-expression-context/main.vibe:49:10 lambda effectFn table
 typescript/vibelang/cases/catch-expression-context/main.vibe:49:49 lambda effectFn table
 typescript/vibelang/cases/catch-expression-context/main.vibe:57:22 lambda effectFn table
@@ -399,9 +399,9 @@ typescript/vibelang/cases/catch-expression/main.vibe:27:25 lambda effectFn table
 typescript/vibelang/cases/catch-expression/main.vibe:27:45 lambda dual fallback
 typescript/vibelang/cases/catch-expression/main.vibe:29:14 lambda dual fallback
 typescript/vibelang/cases/catch-expression/main.vibe:35:10 lambda effectFn table
-typescript/vibelang/cases/catch-expression/main.vibe:35:10 lambda effectFn table
-typescript/vibelang/cases/catch-expression/main.vibe:35:24 lambda effectFn table
-typescript/vibelang/cases/catch-expression/main.vibe:35:38 lambda effectFn table
+typescript/vibelang/cases/catch-expression/main.vibe:35:11 lambda effectFn table
+typescript/vibelang/cases/catch-expression/main.vibe:35:25 lambda effectFn table
+typescript/vibelang/cases/catch-expression/main.vibe:35:46 lambda effectFn table
 typescript/vibelang/cases/catch-expression/main.vibe:40:10 lambda effectFn table
 typescript/vibelang/cases/catch-expression/main.vibe:40:25 lambda effectFn table
 typescript/vibelang/cases/catch-expression/main.vibe:40:39 lambda dual fallback
@@ -416,7 +416,7 @@ typescript/vibelang/cases/catch-expression/main.vibe:72:16 lambda effectFn table
 typescript/vibelang/cases/catch-expression/main.vibe:72:30 lambda effectFn table
 typescript/vibelang/cases/catch-expression/main.vibe:77:17 lambda effectFn table
 typescript/vibelang/cases/catch-expression/main.vibe:77:33 lambda effectFn table
-typescript/vibelang/cases/catch-expression/main.vibe:77:36 lambda plain fallback
+typescript/vibelang/cases/catch-expression/main.vibe:77:42 lambda plain fallback
 typescript/vibelang/cases/catch-expression/main.vibe:82:18 lambda effectFn table
 typescript/vibelang/cases/catch-expression/main.vibe:82:40 lambda effectFn table
 typescript/vibelang/cases/catch-expression/main.vibe:84:14 lambda effectFn table
@@ -1137,6 +1137,10 @@ typescript/vibelang/cases/effect-arrow-head-controls/main.vibe:6:24 lambda choic
 typescript/vibelang/cases/effect-arrow-head-nocheck.fail/main.vibe:2:15 lambda plain fallback
 typescript/vibelang/cases/effect-arrow-head-nocheck.fail/main.vibe:3:17 lambda plain fallback
 typescript/vibelang/cases/effect-bigint-method/main.vibe:8:3 lambda plain fallback
+typescript/vibelang/cases/effect-block-cold-log/main.vibe:6:13 lambda program table
+typescript/vibelang/cases/effect-block-console.fail/main.vibe:6:13 lambda program table
+typescript/vibelang/cases/effect-block-console.fail/main.vibe:7:13 lambda program table
+typescript/vibelang/cases/effect-block-console.fail/main.vibe:8:13 lambda program table
 typescript/vibelang/cases/effect-block-jumps-inside/main.vibe:6:19 lambda program table
 typescript/vibelang/cases/effect-block-jumps.fail/main.vibe:10:15 lambda program table
 typescript/vibelang/cases/effect-block-jumps.fail/main.vibe:11:15 lambda program table
