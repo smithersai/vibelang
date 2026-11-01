@@ -345,6 +345,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `vibelang --fix` left `yield* Effect.gen(…)` half converted: it rewrote the inner generator, then refused the outer one with EK4616, because it wrote `try (effect { … })`. It now writes `try effect { … }`.
 
 
+- The migration reference could turn a successfully returned error into failure or start a returned Effect; it now distinguishes legacy wrapper removal from an intentional run and never guesses an `asEffect()` conversion.
+
 - The diagnostic reference described `EK9204` only on old `try` statements; it now also explains valid infallible `catch` expressions and rejects interim codes in modern severity settings.
 - Awaiting a Fiber or Deferred in effect code reported an error using the configurable warning codes `EK4609` and `EK4610`; it now reports the fixed placement error `EK0102` separately, so advisory severity settings keep their meaning without allowing `await` in effect code.
 

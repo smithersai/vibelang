@@ -348,3 +348,5 @@ Run `bun test`. Use `Effect.runPromise` in an async test when the Effect is asyn
 Typed ESLint integration follows the same config discovery: `typedProgram()` checks `vibe.config.json`, `tsconfig.json`, then `jsconfig.json` in each directory, starting at `tsconfigRootDir`. Set `project` to select an explicit config file.
 
 For VIP-2, `vibelang --fix` also migrates a `do { … }` used as an Effect argument to `effect { return do { … } }`. The inner `do` preserves its completion value; the effect block delays evaluation until each run. This migration also runs under `--fix-vip-only`.
+
+The `--fix-vip-only` pass reads pre-VIP-1 code and preserves the old call's run phase: it removes a known wrapper's run even when its result was an error value or another Effect. It refuses unknown provenance. Ordinary `--fix` keeps intentional `try` operations in current source. A non-Effect operand keeps `EK0502`; no `asEffect()` call is guessed.

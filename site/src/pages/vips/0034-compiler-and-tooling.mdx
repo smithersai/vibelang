@@ -28,3 +28,5 @@ title: "VIP-34: compiler and tooling requirements"
 > "make sure we have good compile error messages too"
 
 > "They should not only compile and tests pass but we should be able to actually suggest migrating via having everything work including all their existing tooling"
+
+- **Amended 2026-11-01: migration preserves run phase.** The explicitly selected `--fix-vip-only` pass removes a known legacy wrapper's `try`, even when its success data is an error, a schema error, another Effect or an object with an `asEffect` member. An originally Effect-returning written or native contract keeps its intentional run. Decide from the original resolved callable and migration provenance; refuse when unknown. Ordinary `--fix` and `--fix-migration-only` never reinterpret a valid current `try` based on its final result type or lack of annotation.

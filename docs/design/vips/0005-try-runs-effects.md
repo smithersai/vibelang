@@ -100,3 +100,5 @@ Old VibeLang is a reference only; nothing in it is part of the language unless a
 
 - `for await` over a Stream, and `await.all` / `await.race`, need new spellings. They are decided in their own VIPs.
 
+
+- **Amended 2026-11-01: no guessed operand conversion.** A value that fails the structural Effect operand test keeps `EK0502`; migration inserts no conversion and unwraps nothing. An `asEffect` member does not grant permission to insert a call. `Option.some(1)` and `Result.succeed(2)` fail the test in the pinned Effect version. Removing a proven old wrapper's run is the separate VIP-34 migration rule.

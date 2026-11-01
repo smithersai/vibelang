@@ -390,6 +390,10 @@ vibelang --fix-vip-only --fix -p tsconfig.json
 vibelang --fix-vip-only # TS5023: add --fix
 ```
 
-The VIP migration keeps a valid `try` whose operand is structurally an Effect, including a call returning an `error` or `schema error` instance. It propagates that error as a failure, as `yield* e` does; it does not turn the error into success data. A non-Effect Yieldable still needs its explicit `asEffect()` conversion ([operand test](002-running.md#operand-test), [VIP-5](../vips/0005-try-runs-effects.md)). A call to a function the migration leaves plain gives that function's result ([Functions](001-functions.md)), so the migration removes a `try` before it unless the result is itself an Effect.
+The VIP-1 migration preserves each call's original run phase. When it removes a known legacy wrapper, it removes the `try` that ran that wrapper, even when the success data is an `error` or `schema error` instance, another Effect, or an object with an `asEffect` member. Keeping that `try` would fail with data or run a previously unrun program. A call whose written or native contract already returned the intended Effect keeps its `try`, including an error returned for intentional execution. Use the original resolved callable and migration provenance, not the final value's shape or annotation alone; refuse the repair when that provenance cannot be established ([VIP-34](../vips/0034-compiler-and-tooling.md#decision), amended).
+
+Only `--fix-vip-only` runs the VIP-1/VIP-2 function-kind and `try` passes, reading input as source for the release before VIP-1. Ordinary `--fix` and `--fix-migration-only` do not run those passes: ordinary `--fix` never removes a valid `try` from current source merely because its callee is unannotated. In current source, `try make()` intentionally runs the result whenever it passes the [operand test](002-running.md#operand-test).
+
+A value that fails that operand test, such as `Option.some(1)` or `Result.succeed(2)`, keeps `EK0502`: the migration inserts no conversion and unwraps nothing, whatever methods the value has ([VIP-5](../vips/0005-try-runs-effects.md#decision), amended). Removing the run of a proven legacy wrapper is a separate repair.
 
 These commands have no Effect TypeScript runtime translation.
