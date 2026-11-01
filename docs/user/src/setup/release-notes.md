@@ -673,6 +673,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Compiler cases returning large Effect values could fail because their runner exited before printing the complete result; it now flushes the result and failure details before exiting.
 
 - An empty or whitespace-only `pending` file could hide a failing compiler case as an unowned pending result; the harness now reports the invalid marker as a failure before compiling and retains a diagnostic log.
+
+- Release checks could start a test-file worker for almost every CPU on a large host; they now run at most eight files at once while retaining every test and failure.
 - Awaiting a Fiber or Deferred in effect code reported an error using the configurable warning codes `EK4609` and `EK4610`; it now reports the fixed placement error `EK0102` separately, so advisory severity settings keep their meaning without allowing `await` in effect code.
 
 - `vibelang agents check` could report `no errors` and succeed when its compiler failed or was terminated; checks and hooks now fail with the compiler's status, signal or spawn error and standard error output, including failures caused by errors outside the selected files.

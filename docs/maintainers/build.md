@@ -39,6 +39,13 @@ For remote checks, `scripts/remote.sh` restores tracked fixtures under
 filter stops the check with its diagnostics and exit status. An empty fixture
 list is valid. Temporary discovery files are removed on success and failure.
 
+The `//:release` target runs Node's test files with `--test-concurrency=8`.
+This bounds the number of simultaneous file workers independently of the host's
+CPU count and the graph's `--jobs` setting. Every selected file still runs,
+and a failing file keeps the target's nonzero exit status. Tests within a file
+keep their own concurrency settings; child processes they spawn are additional
+to the eight file workers.
+
 ## The merge queue's pre-gate
 
 The merge queue tests every queued change alone on current `main`, and a landing
