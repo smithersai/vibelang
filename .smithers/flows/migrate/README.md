@@ -242,3 +242,5 @@ A failed declaration command is labelled `EMIT FAILED` in the report even if its
 When tests live in `test`, `tests` or `__tests__` outside their nearest `tsconfig.json`, setup can write that test directory’s `tsconfig.json` extending the existing complete test project. It checks the original options and complete file membership and records the selected project, prior configuration, files and identity hashes in `baseline/logs/test-projects.jsonl`. Existing local configs and submodules remain unchanged. Missing or ambiguous project evidence produces a warning instead of a guessed configuration. Test bodies remain byte-identical.
 
 Staged VibeLang tarballs replace only entries in `dependencies` and `devDependencies`. Published peer and optional dependency ranges keep their original portable specifiers.
+
+Upgrade test fixtures provide both predecessor and staged compiler checks. Only the predecessor’s VIP-only invocation mutates the original source; failed baseline checks retain the original manifest and sources.
