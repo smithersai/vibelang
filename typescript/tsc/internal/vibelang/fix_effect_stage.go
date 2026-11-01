@@ -21,10 +21,13 @@ import (
 //	Effect.sync(() => v)                          effect { return v }
 //	Effect.sync(() => { B })                      effect { B }
 //	Effect.suspend(() => p)                       effect { return try p }
+//	try (x |> Effect.withSpan(%, "n"))            try withSpan(() => x, "n")
+//	try (x |> Effect.provide(%, L))               try effect { provide L { return try x } }
 //	try Effect.sync(() => v)                      v
 //	try Effect.suspend(() => p)                   try p
 //	(a) => Effect.sync(() => v)                   effect (a) => v
 //	(a) => Effect.sync(() => { B })               effect (a) => { B }
+//	try Effect.void; in a block, return try Effect.void    nothing, return
 //
 // A stage rewrites only where its pipeline runs: under try, or as what a
 // function returns. A catch expression runs its left side, so a pipeline held
@@ -98,18 +101,22 @@ func catchLeftText(file *ast.SourceFile, left *ast.Node) string {
 func stageRewrite(c *checker.Checker, file *ast.SourceFile, pipe *ast.Node) *formRewrite {
 	call := pipe.AsBinaryExpression().Right
 	if !ast.IsCallExpression(call) || call.TypeArguments() != nil || ast.IsOptionalChain(call) || len(call.Arguments()) != 2 ||
-		!isEffectFunction(c, call.Expression(), "Effect", "orElseSucceed", "mapError") || stagePipe(call) != pipe || !inLowerableBody(call) {
+		!isEffectFunction(c, call.Expression(), "Effect", "orElseSucceed", "mapError", "withSpan", "provide") || stagePipe(call) != pipe || !inLowerableBody(call) {
 		return nil
 	}
 	site := runningSite(pipe)
 	if site == nil {
 		return nil
 	}
+	_, name := effectMember(c, call.Expression())
+	if name == "withSpan" || name == "provide" {
+		return wrapperStageRewrite(c, file, site, pipe, name)
+	}
 	left := catchLeftText(file, pipe.AsBinaryExpression().Left)
 	argument := call.Arguments()[1]
 	handler, literal := catchHandlerOf(argument)
 	var text string
-	if _, name := effectMember(c, call.Expression()); name == "orElseSucceed" {
+	if name == "orElseSucceed" {
 		if !literal || handler.parameter != "" || isProgram(c, handler.value) {
 			return nil
 		}
@@ -129,6 +136,72 @@ func stageRewrite(c *checker.Checker, file *ast.SourceFile, pipe *ast.Node) *for
 		}
 	}
 	return siteRewrite(c, file, site, text, "a catch expression")
+}
+
+// wrapperStageRewrite plans the rewrite of pipe, whose last stage wraps its
+// program in a span or a layer, at site. A pipe passes its left side by name,
+// so the program runs inside the wrapper as it did in the stage.
+func wrapperStageRewrite(c *checker.Checker, file *ast.SourceFile, site, pipe *ast.Node, name string) *formRewrite {
+	left := pipe.AsBinaryExpression().Left
+	argument := pipe.AsBinaryExpression().Right.Arguments()[1]
+	program := expressionText(file, left)
+	if name == "withSpan" {
+		if shadowed(pipe, "withSpan") {
+			return nil
+		}
+		text := "withSpan(() => " + program + ", " + expressionText(file, argument) + ")"
+		if site != pipe {
+			text = "try " + text
+		}
+		return siteRewrite(c, file, site, text, "withSpan with an arrow")
+	}
+	if site == pipe {
+		return nil // a block runs what it holds: only try says this one runs
+	}
+	elements := []*ast.Node{argument}
+	if ast.IsArrayLiteralExpression(argument) {
+		elements = argument.Elements()
+	}
+	if len(elements) == 0 || slices.ContainsFunc(elements, func(e *ast.Node) bool { return ast.IsSpreadElement(e) || ast.IsOmittedExpression(e) }) {
+		return nil
+	}
+	providers := make([]string, len(elements))
+	for i, element := range elements {
+		providers[i] = providerText(file, element)
+	}
+	if needsOperandParentheses(left) {
+		program = "(" + program + ")"
+	}
+	text := "try effect { provide " + strings.Join(providers, ", ") + " { return try " + program + " } }"
+	return siteRewrite(c, file, site, text, "a provide block")
+}
+
+// voidRewrite plans the removal of site, try Effect.void, which runs nothing,
+// from the statement it stands in, or nil.
+func voidRewrite(c *checker.Checker, file *ast.SourceFile, site *ast.Node) *formRewrite {
+	operand := tryOperand(site)
+	if operand == nil || !ast.IsPropertyAccessExpression(operand) || !isEffectFunction(c, operand, "Effect", "void") {
+		return nil
+	}
+	statement := site.Parent
+	var edit sourceEdit
+	switch {
+	case ast.IsExpressionStatement(statement) && ast.IsBlock(statement.Parent):
+		edit = sourceEdit{nodeStart(file, statement), statement.End(), ""}
+		text := file.Text()
+		for edit.end < len(text) && (text[edit.end] == ' ' || text[edit.end] == ';') {
+			edit.end++
+		}
+		if line := lineIndent(text, edit.start); edit.start >= len(line) && strings.TrimSpace(text[edit.start-len(line):edit.start]) == "" && edit.end < len(text) && text[edit.end] == '\n' {
+			edit.start -= len(line)
+			edit.end++
+		}
+	case ast.IsReturnStatement(statement):
+		edit = sourceEdit{statement.Expression().Pos(), site.End(), ""}
+	default:
+		return nil
+	}
+	return withImportRemovals(c, file, &formRewrite{edits: []sourceEdit{edit}, description: "the statement without Effect.void"})
 }
 
 // triedCatchRewrite plans the removal of the try around a catch expression,
@@ -313,7 +386,10 @@ func effectStageFixes(ctx context.Context, program *compiler.Program, file *ast.
 		switch {
 		case isPipe(node):
 			propose(EK4835.Code, node, stageRewrite(c, file, node))
-		case ast.IsParenthesizedExpression(node), isTryCall(node):
+		case isTryCall(node):
+			propose(EK4835.Code, node, triedCatchRewrite(c, file, node))
+			propose(EK4834.Code, node, voidRewrite(c, file, node))
+		case ast.IsParenthesizedExpression(node):
 			propose(EK4835.Code, node, triedCatchRewrite(c, file, node))
 		case catchExpressionOf(node) != nil:
 			propose(EK4835.Code, node, triedLeftRewrite(file, node))

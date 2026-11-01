@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport { Context, Effect, Layer } from \"effect\"\nexport class Region extends Context.Service<Region, { readonly name: string }>()(\"Region\") {}\nconst RegionLive = Layer.succeed(Region, { name: \"eu\" })\nconst region = (): Effect.Effect<string, never, Region> => Effect.map(Effect.service(Region), (r) => r.name)\nexport const main = () =>\n  Effect.gen(function* () {\n    const name = yield* region().pipe(Effect.provide(RegionLive))\n    return name\n  })\n")
