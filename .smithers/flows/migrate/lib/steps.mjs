@@ -355,6 +355,8 @@ export async function upgradeEffect(options) {
   const before = await testRun("upstream")
   if (before.code !== 0 && !before.tests) throw new Error(`the target's tests do not run (exit ${before.code}); see ${join(logs, "upstream-tests.log")}`)
   writeJson(join(p.baseline, "upstream-tests.json"), { code: before.code, tests: before.tests })
+  // The installed compiler migrates its own .vibe modules before the new one replaces it.
+  const vip = await applyEarlierVipFixes(t, logs)
 
   const to = await runtimeEffect(config)
   const workspaceFile = join(t, "pnpm-workspace.yaml")
@@ -371,7 +373,7 @@ export async function upgradeEffect(options) {
   }
   const vibelang = repinVibeLang(config, manifests)
   const written = [...new Set([...upgrade.files.map((f) => f.path), ...vibelang.manifests, ...vibelang.written])]
-  const changed = [...written, ...upgrade.patches.flatMap((patch) => [patch.from, patch.to]), ...vibelang.patchFiles]
+  const changed = [...written, ...upgrade.patches.flatMap((patch) => [patch.from, patch.to]), ...vibelang.patchFiles, ...vip.changed]
   const formatted = await formatWritten(t, written, join(logs, "upgrade-format.log"))
 
   let after = before
@@ -388,7 +390,7 @@ export async function upgradeEffect(options) {
     if (issue) appendJsonl(p.issues, issue)
     await assertPortable(t, machineRoots(t, p.run, config.toolchain.dir))
     const moved = upgrade.files.length || upgrade.patches.length
-    commit = await Jj.commit(t, moved ? `migrate(vibelang): upgrade Effect to ${to}\n\nThe VibeLang runtime requires exactly effect ${to}. Moves effect and every\n@effect/* package on its major line from ${upgrade.from} to ${to}, with overrides\nthat keep one copy installed.${vibelang.manifests.length ? " The VibeLang packages it already uses move\nto this run's release, which requires that Effect." : ""} No source file changes;\nVibeLang comes next.` : switchMessage(config))
+    commit = await Jj.commit(t, moved ? `migrate(vibelang): upgrade Effect to ${to}\n\nThe VibeLang runtime requires exactly effect ${to}. Moves effect and every\n@effect/* package on its major line from ${upgrade.from} to ${to}, with overrides\nthat keep one copy installed.${vibelang.manifests.length ? " The VibeLang packages it already uses move\nto this run's release, which requires that Effect." : ""}${vip.changed.length ? vipSentence(vip) : " No source file changes;\nVibeLang comes next."}` : switchMessage(config, vip))
   }
   writeJson(join(p.baseline, "upgraded-tests.json"), { code: after.code, tests: after.tests })
   writeJson(join(p.baseline, "upgraded-checks.json"), await upgradedCompilerChecks(config, logs, priorChecks))
@@ -404,6 +406,7 @@ export async function upgradeEffect(options) {
     patches: upgrade.patches.map(({ from, to }) => ({ from, to })),
     vibelang: vibelang.manifests,
     vibelangPatches: vibelang.patches,
+    vipFixes: vip,
     changed,
     formatted,
     upstreamTests: testsOf(before),
@@ -415,10 +418,61 @@ export async function upgradeEffect(options) {
   return result
 }
 
+/**
+ * Applies the installed compiler's VIP migrations to the .vibe modules an
+ * earlier run migrated, before upgrade-effect repins VibeLang:
+ * `vibelang -p <tsconfig> --fix --fix-vip-only` with the `vibelang` installed
+ * nearest each project that holds a tracked .vibe file. Only that compiler can
+ * still make them: once VIP-1's rules apply, a later one cannot tell which
+ * unmarked helpers were Effect functions (opencode: 187 errors in ai's 15
+ * modules, none after the earlier compiler's 165 fixes). Returns the .vibe
+ * files it changed, the projects it ran on, and those it could not finish.
+ */
+async function applyEarlierVipFixes(t, logs) {
+  const vibe = (await Jj.trackedFiles(t)).filter((f) => f.endsWith(".vibe") && !f.split("/").includes("node_modules"))
+  if (!vibe.length) return { changed: [], projects: [], failed: [] }
+  const plan = earlierVipProjects(t, vibe)
+  const projects = plan.map((entry) => entry.project)
+  const before = new Map(vibe.map((f) => [f, readFileSync(join(t, f), "utf8")]))
+  const failed = []
+  for (const { project, compiler } of plan) {
+    if (!compiler) {
+      failed.push({ project, reason: "no installed vibelang" })
+      continue
+    }
+    const result = await sh(`${quote(join(t, compiler))} -p ${quote(join(t, project))} --fix --fix-vip-only --noEmit --pretty false`,
+      { cwd: join(t, posix.dirname(project)), log: join(logs, `vip-fix-${slug(posix.dirname(project))}.log`) })
+    if (result.code !== 0) failed.push({ project, code: result.code })
+  }
+  return { changed: vibe.filter((f) => readFileSync(join(t, f), "utf8") !== before.get(f)), projects, failed }
+}
+
+/**
+ * The projects applyEarlierVipFixes runs on, sorted: the nearest tsconfig.json
+ * at or above each of vibe (repository-relative .vibe files in t), once each,
+ * with the vibelang installed nearest that project, or undefined.
+ */
+export function earlierVipProjects(t, vibe) {
+  // The nearest name at or above file's directory, repository-relative.
+  const upward = (file, name) => {
+    for (let dir = posix.dirname(file); ; dir = posix.dirname(dir)) {
+      if (existsSync(join(t, dir, name))) return posix.join(dir, name)
+      if (dir === ".") return undefined
+    }
+  }
+  return [...new Set(vibe.map((f) => upward(f, "tsconfig.json")).filter(Boolean))].sort()
+    .map((project) => ({ project, compiler: upward(project, "node_modules/.bin/vibelang") }))
+}
+
+// The sentence a commit adds for the VIP migrations applyEarlierVipFixes made.
+const vipSentence = (vip) => vip.changed.length
+  ? ` First applies the earlier toolchain's VIP migrations\n(vibelang --fix --fix-vip-only) to ${vip.changed.length} .vibe file${vip.changed.length === 1 ? "" : "s"}.`
+  : ""
+
 /** The commit of an upgrade step that moved no Effect package: only VibeLang's pins changed. */
-function switchMessage(config) {
+function switchMessage(config, vip) {
   const name = config.toolchain.kind === "staged" ? readToolchain(config.toolchain.dir).commit?.slice(0, 12) ?? config.toolchain.dir : config.toolchain.version
-  return `migrate(vibelang): switch to the toolchain of VibeLang ${name}\n\nEffect stays where it is. Repins vibelang and its packages.`
+  return `migrate(vibelang): switch to the toolchain of VibeLang ${name}\n\nEffect stays where it is. Repins vibelang and its packages.${vipSentence(vip)}`
 }
 
 /**

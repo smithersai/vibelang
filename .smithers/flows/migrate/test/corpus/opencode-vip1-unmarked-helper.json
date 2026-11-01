@@ -1,0 +1,6 @@
+{
+  "key": "opencode-vip1-flip",
+  "note": "ai's 15 pre-flip modules give 187 errors under the VIP-1 flip; the pre-flip compiler's --fix --fix-vip-only makes 165 fixes in 13 files, then 0 errors (nyc-02 ~/migrate/opencode/copies/vip1-try). The stand-in compiler in upgrade-vip.test.mjs marks the helper as the earlier compiler would.",
+  "before": "export function unwrap(id: string) {\n  return try load(id)\n}\n",
+  "after": "export effect function unwrap(id: string) {\n  return try load(id)\n}\n"
+}
