@@ -1,0 +1,17 @@
+// expect: EK0201 EK0201 EK0201 EK0201 EK0201 EK0201
+// VIP-2 (decided detail 247): a do expression whose block ends in a
+// declaration, a loop or an if without an else has no completion value, and
+// that is EK0201, not TypeScript's TS1109: TypeScript has no do expression.
+declare function f(x?: number): number
+export const finalDeclaration = do { let n = 1 }
+export const finalLoop = do { for (const x of [1]) {} }
+export const finalIf = do { if (f()) { 1 } }
+export const finalWhile = do { let i = 0; while (i < 1) { i++ } }
+export const goodDo = do { let n = 1; n }
+export const goodLoop = do { for (const x of [1]) {} 7 }
+export const goodIf = do { if (f()) { 1 } else { 2 } }
+export const trailingEmpty = do { 3;;; }
+export const labeledLoop = do { label: for (const x of [1]) { break label } }
+export const switchClauseLet = do { switch (f()) { case 1: let n = 1 } }
+export const goodLabel = do { label: { 4 } }
+export const goodSwitch = do { switch (f()) { case 1: 5; default: 6 } }

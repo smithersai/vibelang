@@ -12,6 +12,8 @@ The language server keeps the numeric code (`103`) with source `EK`; the termina
 
 | Previous code | Current code | Rule |
 | --- | --- | --- |
+| `EK0201` | a `do` expression that ends in a declaration, a loop or an `if` without an `else` |
+| `EK0202` | a `break` or `continue` whose target is outside its `effect` block |
 | `EK4615` | `EK0502` | The same diagnostic rule with Appendix B numbering |
 | `EK4605` | `EK1903` | The same diagnostic rule with Appendix B numbering |
 | `EK4606` | `EK1904` | The same diagnostic rule with Appendix B numbering |
@@ -87,7 +89,7 @@ Registration reserves a code; it does not mean the compiler already implements e
 | `EK2117` | an `extends` clause or a `_tag` member in an `error` or `schema error` body, or a computed `schema error` key whose runtime domain cannot be proved to exclude `"_tag"` |
 | `EK2126` | a constraint on a generic `data` type parameter |
 | `EK2201` | an interruption block outside effect code |
-| `EK2202` | `restore` in an `effect` arrow or block nested in an `uninterruptible` block |
+| `EK2202` | `restore` in a `for concurrent` head binding initialization or body, or `restore` that captures an outer mask across an `effect` function, arrow, method, producer or block |
 | `EK2801` | a `data` declaration with more than 4 type parameters |
 | `EK2803` | a default on a generic `data` type parameter |
 | `EK3001` | two services with the same key |

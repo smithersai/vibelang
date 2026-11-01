@@ -1,0 +1,17 @@
+// expect-result: [3,1,1]
+// Controls for restore-item-region.fail: a for concurrent limit and iterable
+// run on the enclosing fiber, a do expression runs where it stands, and a
+// function that opens its own uninterruptible block restores inside it.
+export effect function main() {
+  const seen: number[] = []
+  uninterruptible {
+    for concurrent(do { restore { try Effect.succeed(2) }; 3 }) (const x of do { restore { try Effect.succeed(0) }; [1, 2, 3] }) {
+      seen.push(x)
+    }
+    const fromDo = do { restore { try Effect.succeed(1) }; 1 }
+    effect function own() { uninterruptible { restore { return 1 } } }
+    const fromOwn = try own()
+    interruptible { restore { try Effect.succeed(0) } }
+    return [seen.length, fromDo, fromOwn]
+  }
+}

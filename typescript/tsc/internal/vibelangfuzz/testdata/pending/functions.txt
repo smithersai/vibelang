@@ -34,10 +34,6 @@ FuzzFunctionSyntax syntax:method-name compiler VIP-1: an ordinary method named e
 FuzzFunctionSyntax corpus:fz-func-syntax-method-name compiler VIP-1: minimized syntax probe; lane vip-core2
 FuzzFunctionTypeScriptRules typescript:new compiler VIP-1: new of a .vibe function still reports the forbidden additional EK1020; lane vip-core2 (coordinate deletion lane)
 FuzzFunctionTypeScriptRules corpus:fz-func-typescript-new compiler VIP-1: minimized new-function diagnostic probe; lane vip-core2
-FuzzRestoreFunctionBoundary rule:arrow compiler VIP-22: lexical restore cannot cross a nested effect-function/block boundary; lane w2-provide
-FuzzRestoreFunctionBoundary rule:block compiler VIP-22: lexical restore cannot cross a nested effect-function/block boundary; lane w2-provide
-FuzzRestoreFunctionBoundary corpus:fz-func-restore-arrow compiler VIP-22: minimized lexical restore boundary; lane w2-provide
-FuzzRestoreFunctionBoundary corpus:fz-func-restore-block compiler VIP-22: minimized lexical restore boundary; lane w2-provide
 FuzzFunctionEffectInference corpus:fz-func-inference-0 compiler VIP-1: minimized Effect type-slot probe; lane vip-core2
 FuzzFunctionEffectInference corpus:fz-func-inference-1 compiler VIP-1: minimized Effect type-slot probe; lane vip-core2
 FuzzFunctionEffectInference corpus:fz-func-inference-2 compiler VIP-1: minimized Effect type-slot probe; lane vip-core2
@@ -56,11 +52,3 @@ FuzzFunctionBoundaries rule:return-type-any compiler VIP-1: a written `any` retu
 FuzzFunctionBoundaries corpus:fz-func-return-type-any compiler VIP-1: minimized return-type-any violation; lane vip-core2
 FuzzFunctionBoundaries rule:return-type-unknown compiler VIP-1: a written `unknown` return type on an effect function reports nothing, not EK0106; lane vip-core2
 FuzzFunctionBoundaries corpus:fz-func-return-type-unknown compiler VIP-1: minimized return-type-unknown violation; lane vip-core2
-FuzzRestoreFunctionBoundary rule:function compiler VIP-22: restore in a nested function reports EK2111, not EK2202 (decided details 51 and 51a); lane w2-provide
-FuzzRestoreFunctionBoundary corpus:fz-func-restore-function compiler VIP-22: minimized function restore boundary; lane w2-provide
-FuzzRestoreFunctionBoundary rule:method compiler VIP-22: restore in a nested method reports EK2111, not EK2202 (decided details 51 and 51a); lane w2-provide
-FuzzRestoreFunctionBoundary corpus:fz-func-restore-method compiler VIP-22: minimized method restore boundary; lane w2-provide
-FuzzRestoreFunctionBoundary rule:producer compiler VIP-22: restore in a nested producer reports EK2111, not EK2202 (decided details 51 and 51a); lane w2-provide
-FuzzRestoreFunctionBoundary corpus:fz-func-restore-producer compiler VIP-22: minimized producer restore boundary; lane w2-provide
-FuzzRestoreFunctionBoundary rule:concurrent compiler VIP-22: restore in a nested concurrent reports EK2111, not EK2202 (decided details 51 and 51a); lane w2-provide
-FuzzRestoreFunctionBoundary corpus:fz-func-restore-concurrent compiler VIP-22: minimized concurrent restore boundary; lane w2-provide

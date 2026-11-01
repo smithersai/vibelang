@@ -90,7 +90,7 @@ var SpecListedCodes = sync.OnceValue(func() []int32 {
 // and EK4855, VIP-9's EK3008, and VIP-20's migration code EK2007.
 // vipRetiredCodes are those they retire: EK4404, with the try hatch.
 var (
-	vipCodes        = []int32{3008, 502, 4616, 103, 2801, 4618, 1802, 4853, 4854, 4855, 2007}
+	vipCodes        = []int32{3008, 502, 4616, 103, 2801, 4618, 1802, 4853, 4854, 4855, 2007, 201, 202}
 	vipRetiredCodes = []int32{4404}
 )
 

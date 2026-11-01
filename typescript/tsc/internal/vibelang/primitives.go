@@ -265,43 +265,79 @@ func enclosingTryOfFinally(call *ast.Node) *ast.Node {
 	return try
 }
 
+// maskContext is what checkPrimitives knows about the code it visits: whether
+// a function encloses it, whether an uninterruptible block of that function
+// masks it, whether a mask of an enclosing function is in force at the
+// function's boundary, and whether a for concurrent item region holds it.
+type maskContext struct {
+	inFunction, masked, outerMasked, item bool
+}
+
 // checkPrimitives reports EK1001 at an interruption block at a module's top
-// level, which would run a program, and EK2111 at a restore block that no
-// uninterruptible block of the same function encloses.
+// level, which would run a program; EK2111 at a restore block that no
+// uninterruptible block encloses; and EK2202 at a restore block that would
+// capture an enclosing function's mask across an effect function, arrow,
+// method, producer or block, or that stands in a for concurrent item region,
+// its head binding initialization or body, whose items run as their own
+// Effects outside the enclosing mask (VIP-22, amended 2026-10-30 and
+// 2026-10-31). A do expression runs where it stands, so it is transparent.
 func checkPrimitives(c *checker.Checker, file *ast.SourceFile) {
-	var visit func(n *ast.Node, inFunction bool, masked bool) bool
-	visit = func(n *ast.Node, inFunction bool, masked bool) bool {
+	var visit func(n *ast.Node, ctx maskContext) bool
+	visit = func(n *ast.Node, ctx maskContext) bool {
+		if isDoArrow(file, n) {
+			n.ForEachChild(func(child *ast.Node) bool { return visit(child, ctx) })
+			return false
+		}
 		if isFunctionBoundary(n) {
 			// The program of uninterruptible written as an expression, as in
 			// `return uninterruptible { … }`, runs masked like the statement form.
-			inner := isUninterruptibleProgram(c, n)
-			n.ForEachChild(func(child *ast.Node) bool { return visit(child, true, inner) })
+			inner := maskContext{inFunction: true, masked: isUninterruptibleProgram(c, n), outerMasked: ctx.masked || ctx.outerMasked}
+			n.ForEachChild(func(child *ast.Node) bool { return visit(child, inner) })
 			return false
+		}
+		if fiberHelper(n) == "$forConcurrent" {
+			if args := n.Arguments(); len(args) == 3 && ast.IsArrowFunction(args[2]) {
+				// The limit and the iterable run on the enclosing fiber; the
+				// arrow's parameter (the head bindings) and body are the item region.
+				visit(args[0], ctx)
+				visit(args[1], ctx)
+				region := maskContext{inFunction: true, item: true}
+				args[2].ForEachChild(func(child *ast.Node) bool { return visit(child, region) })
+				return false
+			}
 		}
 		switch maskWord(n) {
 		case "":
 		case "restore":
 			marker := n.AsBlock().Statements.Nodes[0]
-			if !inFunction {
+			switch {
+			case !ctx.inFunction:
 				note(report(c, marker, EK1001.With("This restore block runs a program, but a module's top level is not inside one.")), topLevelBlockNote)
-			} else if !masked {
+			case ctx.item:
+				note(report(c, marker, EK2202.With("Restore in a for concurrent item: each item runs as its own Effect, outside the enclosing uninterruptible block, so there is no interruptibility to restore there.")), "Mask each item inside the body with Effect.uninterruptibleMask, or use a plain for loop.")
+			case ctx.masked:
+			case ctx.outerMasked:
+				note(report(c, marker, EK2202), "The enclosing uninterruptible block does not mask this function's Effect, which runs on its own. Open an uninterruptible block inside it, and restore inside that block.")
+			default:
 				note(report(c, marker, EK2111), "Put it inside an uninterruptible block, or use interruptible { … } to make the code interruptible.")
 			}
 		case "uninterruptible":
-			if !inFunction {
+			if !ctx.inFunction {
 				note(report(c, n.AsBlock().Statements.Nodes[0], EK1001.With("This uninterruptible block runs a program, but a module's top level is not inside one.")), topLevelBlockNote)
 			}
-			n.ForEachChild(func(child *ast.Node) bool { return visit(child, inFunction, true) })
+			masked := ctx
+			masked.masked = true
+			n.ForEachChild(func(child *ast.Node) bool { return visit(child, masked) })
 			return false
 		case "interruptible":
-			if !inFunction {
+			if !ctx.inFunction {
 				note(report(c, n.AsBlock().Statements.Nodes[0], EK1001.With("This interruptible block runs a program, but a module's top level is not inside one.")), topLevelBlockNote)
 			}
 		}
-		n.ForEachChild(func(child *ast.Node) bool { return visit(child, inFunction, masked) })
+		n.ForEachChild(func(child *ast.Node) bool { return visit(child, ctx) })
 		return false
 	}
-	file.AsNode().ForEachChild(func(child *ast.Node) bool { return visit(child, false, false) })
+	file.AsNode().ForEachChild(func(child *ast.Node) bool { return visit(child, maskContext{}) })
 }
 
 // isUninterruptibleProgram reports whether fn is the program a call of the

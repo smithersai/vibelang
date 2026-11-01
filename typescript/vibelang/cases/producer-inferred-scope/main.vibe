@@ -1,0 +1,27 @@
+// expect-result: [7,7,7]
+// Decided detail 225 (loop round 1, ASTRA-3): a producer's Stream requirements
+// are its body's without Scope, because the Stream's callback supplies that
+// Scope, as Stream.callback does. Forking a scoped child inside a producer
+// asks the consumer for no Scope; another service stays. The declaration
+// output is pinned in expected/main.d.ts, and each consumption of the Stream
+// runs the body again.
+import { poll, needsDb } from "./held.ts"
+export interface Db { readonly name: string }
+export effect function* scopedItem() {
+  const child = try Effect.forkScoped(poll)
+  yield 7
+}
+export effect function* withDb() {
+  const n = try needsDb
+  const child = try Effect.forkScoped(poll)
+  yield n
+}
+export effect function* plainItem() {
+  yield 7
+}
+export effect function main() {
+  const first = try Stream.runFold(scopedItem(), () => 0, (sum: number, x: number) => sum + x)
+  const second = try Stream.runFold(scopedItem(), () => 0, (sum: number, x: number) => sum + x)
+  const plain = try Stream.runFold(plainItem(), () => 0, (sum: number, x: number) => sum + x)
+  return [first, second, plain]
+}

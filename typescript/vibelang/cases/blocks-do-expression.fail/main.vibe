@@ -1,4 +1,4 @@
-// expect: TS1109 TS1108
+// expect: EK0201 TS1108
 function noElse(n: number) {
   return do {
     if (n > 1) {

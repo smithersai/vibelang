@@ -1,0 +1,17 @@
+// expect: EK0202 EK0202 EK0202
+// Appendix A, EffectBlock (decided detail 247): a break or continue whose
+// target is outside its effect block is EK0202. The block is a function body,
+// so the loop outside it is not in reach. A jump to a target inside the block
+// is fine; see effect-block-jumps-inside.
+export effect function jumps(xs: number[]) {
+  const seen: number[] = []
+  outer: for (const x of xs) {
+    const a = effect { if (x > 2) break; seen.push(x) }
+    const b = effect { if (x < 0) continue; seen.push(x) }
+    const c = effect { for (const y of xs) { if (y === x) continue outer } }
+    try a
+    try b
+    try c
+  }
+  return seen
+}

@@ -1,0 +1,35 @@
+// expect: EK2202 EK2202 EK2202 EK2202 EK2202 EK2202 EK2202
+// VIP-22 (amended 2026-10-30 and 2026-10-31): restore in a for concurrent head
+// binding initialization or body is EK2202, whatever the mask: each item runs
+// as its own Effect outside the enclosing mask. So is a restore that would
+// capture an outer mask across an effect function, arrow, method, producer or
+// block, which run on their own. See restore-item-region-controls.
+declare const poll: Effect.Effect<number>
+export effect function headDefault(xs: Array<{ n?: number }>) {
+  uninterruptible {
+    for concurrent (const { n = do { restore { try poll }; 1 } } of xs) { n }
+  }
+}
+export effect function body(xs: number[]) {
+  uninterruptible {
+    for concurrent (const x of xs) { restore { try poll }; x }
+  }
+}
+export effect function innerMask(xs: number[]) {
+  for concurrent (const x of xs) {
+    uninterruptible { restore { try poll } }
+    x
+  }
+}
+export effect function acrossBlock() {
+  uninterruptible { const e = effect { restore { try poll } }; try e }
+}
+export effect function acrossArrow() {
+  uninterruptible { const e = effect () => { restore { try poll } }; try e() }
+}
+export effect function acrossFunction() {
+  uninterruptible { effect function g() { restore { try poll } } try g() }
+}
+export effect function acrossMethod() {
+  uninterruptible { const o = { effect m() { restore { try poll } } }; try o.m() }
+}

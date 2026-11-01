@@ -99,7 +99,7 @@ effect function pollStatus(cancelled: boolean) {
 ```
 
 - `uninterruptible` (`Effect.uninterruptibleMask`) runs its block without interruption: an interruption that arrives waits until the block ends.
-- `restore` inside it brings back the fiber's previous interruptibility, so long waits stay cancellable.
+- `restore` inside it brings back the fiber's previous interruptibility, so long waits stay cancellable. A `restore` in an `effect` function, arrow, method, producer or block nested in the mask, or anywhere in a `for concurrent` head or body, is `EK2202`: those run as their own Effects, outside the mask. A `do` expression runs in place, so its `restore` is inside the mask.
 - `interruptible` (`Effect.interruptible`) makes its code interruptible even inside an uninterruptible region.
 - `try interrupt` (`Effect.interrupt`) interrupts the running fiber.
 

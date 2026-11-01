@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
@@ -85,11 +86,17 @@ func (p *Parser) vibelangInvoked(body *ast.Node, anchor core.TextRange, pos int)
 }
 
 // vibelangCompletion turns the last statement of statements into the
-// statement that returns its completion value, in place.
+// statement that returns its completion value, in place. Trailing empty
+// statements, as in `do { 3;; }`, produce no value of their own, so the
+// proposal's UpdateEmpty keeps the value before them.
 func (p *Parser) vibelangCompletion(statements *ast.NodeList) {
-	last := statements.Nodes[len(statements.Nodes)-1]
+	i := len(statements.Nodes) - 1
+	for i > 0 && statements.Nodes[i].Kind == ast.KindEmptyStatement {
+		i--
+	}
+	last := statements.Nodes[i]
 	if replaced := p.vibelangCompletionOf(last); replaced != last {
-		statements.Nodes[len(statements.Nodes)-1] = replaced
+		statements.Nodes[i] = replaced
 	}
 }
 
@@ -107,6 +114,11 @@ func (p *Parser) vibelangCompletionOf(statement *ast.Node) *ast.Node {
 	}
 	switch statement.Kind {
 	case ast.KindExpressionStatement:
+		if isVibeLangMaskMarker(statement) {
+			// An empty interruption block's marker, $uninterruptibleBlock(), is
+			// not its value: the block completes empty, so the do is undefined.
+			return statement
+		}
 		returned := p.factory.NewReturnStatement(statement.Expression())
 		returned.Parent = statement.Parent
 		return p.vibelangSpanning(returned, statement.Loc)
@@ -121,7 +133,7 @@ func (p *Parser) vibelangCompletionOf(statement *ast.Node) *ast.Node {
 	case ast.KindIfStatement:
 		ifStatement := statement.AsIfStatement()
 		if ifStatement.ElseStatement == nil {
-			p.parseErrorAtRange(p.skipRangeTrivia(statement.Loc), diagnostics.Expression_expected)
+			p.reportDoCompletion(statement, "an if without an else")
 			return statement
 		}
 		ifStatement.ThenStatement = p.vibelangCompletionOf(ifStatement.ThenStatement)
@@ -135,11 +147,147 @@ func (p *Parser) vibelangCompletionOf(statement *ast.Node) *ast.Node {
 			p.vibelangCompletionOf(tryStatement.CatchClause.AsCatchClause().Block)
 		}
 		return statement
+	case ast.KindLabeledStatement:
+		// A labeled statement completes as its statement does (the proposal's
+		// predicate recurses), so a labeled block ending well is admitted.
+		labeled := statement.AsLabeledStatement()
+		labeled.Statement = p.vibelangCompletionOf(labeled.Statement)
+		p.overrideParentInImmediateChildren(statement)
+		return statement
+	case ast.KindSwitchStatement:
+		// CaseBlock : { } is admitted, and so is a case block whose clauses end
+		// well (chapter 2, static predicates); a clause ending in a loop, a
+		// bare if or a declaration is reported. The clause values stay as
+		// written: a switch's completion follows fallthrough, which a return
+		// per clause would not.
+		for _, clause := range statement.AsSwitchStatement().CaseBlock.AsCaseBlock().Clauses.Nodes {
+			if kind, at := p.doCompletionProblem(clause.AsCaseOrDefaultClause().Statements); kind != "" {
+				p.reportDoCompletion(at, kind)
+			}
+		}
+		return statement
+	case ast.KindEmptyStatement:
+		return statement // an empty completion: the do is undefined
+	case ast.KindBreakStatement, ast.KindContinueStatement:
+		// A jump has no completion to report: EK1019 (do_blocks.go) names a
+		// break or continue that leaves the do expression.
+		return statement
+	case ast.KindReturnStatement:
+		return statement // reportReturnsInDo reports it
 	}
-	// A declaration, a loop, or any other statement has no completion value
-	// the proposal allows at the end of a do expression.
-	p.parseErrorAtRange(p.skipRangeTrivia(statement.Loc), diagnostics.Expression_expected)
+	if kind := doCompletionKind(statement); kind != "" {
+		p.reportDoCompletion(statement, kind)
+	}
 	return statement
+}
+
+// doCompletionProblem returns the kind and node of the last statement of
+// statements that the proposal's EndsInIterationOrBareIfOrDeclaration
+// rejects, descending through blocks, labeled statements, if branches, try
+// blocks and switch clauses as the predicate does, or "" and nil when the
+// statements may end a do expression. Trailing empty statements are skipped,
+// as UpdateEmpty keeps the value before them.
+func (p *Parser) doCompletionProblem(statements *ast.NodeList) (string, *ast.Node) {
+	if statements == nil {
+		return "", nil
+	}
+	i := len(statements.Nodes) - 1
+	for i >= 0 && statements.Nodes[i].Kind == ast.KindEmptyStatement {
+		i--
+	}
+	if i < 0 {
+		return "", nil
+	}
+	return p.doStatementProblem(statements.Nodes[i])
+}
+
+func (p *Parser) doStatementProblem(statement *ast.Node) (string, *ast.Node) {
+	switch statement.Kind {
+	case ast.KindBlock:
+		return p.doCompletionProblem(statement.AsBlock().Statements)
+	case ast.KindLabeledStatement:
+		return p.doStatementProblem(statement.AsLabeledStatement().Statement)
+	case ast.KindIfStatement:
+		ifStatement := statement.AsIfStatement()
+		if ifStatement.ElseStatement == nil {
+			return "an if without an else", statement
+		}
+		if kind, at := p.doStatementProblem(ifStatement.ThenStatement); kind != "" {
+			return kind, at
+		}
+		return p.doStatementProblem(ifStatement.ElseStatement)
+	case ast.KindTryStatement:
+		tryStatement := statement.AsTryStatement()
+		if kind, at := p.doStatementProblem(tryStatement.TryBlock); kind != "" {
+			return kind, at
+		}
+		if tryStatement.CatchClause != nil {
+			return p.doStatementProblem(tryStatement.CatchClause.AsCatchClause().Block)
+		}
+		return "", nil
+	case ast.KindSwitchStatement:
+		for _, clause := range statement.AsSwitchStatement().CaseBlock.AsCaseBlock().Clauses.Nodes {
+			if kind, at := p.doCompletionProblem(clause.AsCaseOrDefaultClause().Statements); kind != "" {
+				return kind, at
+			}
+		}
+		return "", nil
+	}
+	if kind := doCompletionKind(statement); kind != "" {
+		return kind, statement
+	}
+	return "", nil
+}
+
+// DoCompletionMessage is EK0201's text, for a do expression whose last
+// statement has no completion value (VIP-2; decided detail 247). %s names the
+// statement.
+const DoCompletionMessage = "A do expression must end in a statement with a value: an expression, a block, an if with an else, or a throw. This one ends in %s, which has no value. End the block with an expression."
+
+// reportDoCompletion reports EK0201 at statement, the last statement of a do
+// expression, which has no completion value.
+func (p *Parser) reportDoCompletion(statement *ast.Node, kind string) {
+	p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, p.skipRangeTrivia(statement.Loc), "EK", diagnostics.CategoryError, 201, fmt.Sprintf(DoCompletionMessage, kind)))
+	p.hasParseError = true
+}
+
+// isVibeLangMaskMarker reports whether statement is the marker call the parser
+// writes first in an interruption block, $uninterruptibleBlock(),
+// $restoreBlock() or $interruptibleBlock() (vibelang_primitives.go), which the
+// lowering replaces and which has no value of its own.
+func isVibeLangMaskMarker(statement *ast.Node) bool {
+	if statement.Kind != ast.KindExpressionStatement || !ast.IsCallExpression(statement.Expression()) {
+		return false
+	}
+	callee := statement.Expression().Expression()
+	if !ast.IsIdentifier(callee) {
+		return false
+	}
+	switch callee.Text() {
+	case "$uninterruptible" + vibelangMaskBlockLabel, "$restore" + vibelangMaskBlockLabel, "$interruptible" + vibelangMaskBlockLabel:
+		return true
+	}
+	return false
+}
+
+// doCompletionKind names a statement that cannot end a do expression, a
+// lexical declaration or a loop (the proposal's
+// EndsInIterationOrBareIfOrDeclaration), or "" for any other statement,
+// whose completion, a value or empty, the do may give. A var statement is a
+// Statement, not a Declaration, there; in .vibe it is EK1019 (do_blocks.go).
+func doCompletionKind(statement *ast.Node) string {
+	switch statement.Kind {
+	case ast.KindVariableStatement:
+		if statement.AsVariableStatement().DeclarationList.Flags&(ast.NodeFlagsLet|ast.NodeFlagsConst) == 0 {
+			return ""
+		}
+		return "a declaration"
+	case ast.KindFunctionDeclaration, ast.KindClassDeclaration, ast.KindInterfaceDeclaration, ast.KindTypeAliasDeclaration, ast.KindEnumDeclaration:
+		return "a declaration"
+	case ast.KindForStatement, ast.KindForInStatement, ast.KindForOfStatement, ast.KindWhileStatement, ast.KindDoStatement:
+		return "a loop"
+	}
+	return ""
 }
 
 // reportReturnsInDo reports each return statement of a do expression's

@@ -1,0 +1,20 @@
+// expect-result: [1,2,3]
+// A break or continue whose target is inside its effect block is ordinary
+// code; only a jump that would leave the block is EK0202.
+export effect function main() {
+  const seen: number[] = []
+  const program = effect {
+    for (const x of [1, 2, 3, 4]) {
+      if (x === 4) break
+      seen.push(x)
+    }
+    inner: for (const x of [1]) {
+      switch (x) {
+        case 1:
+          continue inner
+      }
+    }
+    return seen
+  }
+  return try program
+}

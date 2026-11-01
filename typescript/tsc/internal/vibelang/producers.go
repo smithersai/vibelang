@@ -110,6 +110,10 @@ func producerType(c *checker.Checker, fn *ast.Node, t *checker.Type) *checker.Ty
 	if info := analyzerFor(c).effectOf(fn); info != nil {
 		errors, requirements = info.errors, info.requirements
 	}
+	// The Stream's callback supplies the Scope the body's scoped forks and
+	// resources need, as Stream.callback's does, so the Stream's requirements
+	// are the body's without Scope (decided detail 225).
+	requirements = slices.DeleteFunc(slices.Clone(requirements), isScopeType)
 	return c.NewTypeReference(stream, []*checker.Type{element, c.GetUnionType(errors), c.GetUnionType(requirements)})
 }
 

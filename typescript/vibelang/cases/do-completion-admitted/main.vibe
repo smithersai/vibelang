@@ -1,0 +1,20 @@
+// expect-result: [1,true,7,true,true,2,true,true,true,3]
+// VIP-2: EndsInIterationOrBareIfOrDeclaration admits a do ending in a labeled block, an
+// empty statement, a switch (CaseBlock : { } included; chapter 2, static predicates) or a
+// var statement, which is a Statement, not a Declaration, to the proposal. Their values
+// follow the completion rules: a labeled block gives its block's value, an empty statement
+// and an empty switch give undefined, and so does an empty interruption block, whose marker
+// call is not its value (before, the marker was returned and the program failed to run).
+export effect function main() {
+  const labeled = do { label: { 1 } }
+  const onlyEmpty = do { ; }
+  const afterSwitch = do { switch (0) {} 7 }
+  const emptySwitch = do { switch (0) {} }
+  const emptyBlock = do { {} }
+  const trailingEmpty = do { 2;; }
+  const emptyMask = do { uninterruptible {} }
+  const emptyRestore = do { uninterruptible { restore {} } }
+  const emptyInterruptible = do { interruptible {} }
+  const maskedValue = do { uninterruptible { restore { 3 } } }
+  return [labeled, onlyEmpty === undefined, afterSwitch, emptySwitch === undefined, emptyBlock === undefined, trailingEmpty, emptyMask === undefined, emptyRestore === undefined, emptyInterruptible === undefined, maskedValue]
+}

@@ -721,7 +721,7 @@ effect function label(id: string) {
 // Output: short
 ```
 
-A `do` expression uses `const` or `let`, never `var` (`EK1019`; quick fix: `let`). Its `return`, `break` and `continue` act on the enclosing function or loop, as TC39 specifies.
+A `do` expression uses `const` or `let`, never `var` (`EK1019`; quick fix: `let`). Its `return`, `break` and `continue` act on the enclosing function or loop, as TC39 specifies. Its block must end in a statement with a value: ending it in a declaration, a loop or an `if` without an `else` is `EK0201`. A `break` or `continue` that would leave an `effect { }` block is `EK0202`.
 
 **Effect blocks as arguments**. Pass `effect { ... }` as an ordinary argument. A test API takes a callback that returns the Effect, such as `it.live("name", () => effect { ... })`.
 
