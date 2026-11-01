@@ -3,6 +3,33 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import { join, posix } from "node:path"
 import { addEslintIgnore, ownedPaths, sidecarIgnore } from "./wire.mjs"
 
+// An ast-grep rule's ignores gain the declaration sidecars, x.d.vibe.ts, which
+// a TypeScript rule otherwise scans as TypeScript, reporting each finding of a
+// .vibe module twice (opencode's lint:effect-patterns). sidecarIgnoreOf
+// writes the entry once; withoutSidecarIgnore takes back exactly what it wrote.
+const sidecarPattern = `"**/${sidecarIgnore}"`
+export function sidecarIgnoreOf(text) {
+  if (text.includes(sidecarPattern)) return text
+  const flow = /^ignores:[ \t]*\[/m.exec(text)
+  if (flow) return text.slice(0, flow.index + flow[0].length) + sidecarPattern + (/^ignores:[ \t]*\[[ \t]*\]/m.test(text) ? "" : ", ") + text.slice(flow.index + flow[0].length)
+  const block = /^ignores:[ \t]*(?:#.*)?\n([ \t]*)- /m.exec(text)
+  if (block) {
+    const at = block.index + block[0].length - block[1].length - 2
+    return text.slice(0, at) + `${block[1]}- ${sidecarPattern}\n` + text.slice(at)
+  }
+  // Appended in the file's own ending: a final newline only where it had one.
+  return text === "" || text.endsWith("\n") ? `${text}ignores:\n  - ${sidecarPattern}\n` : `${text}\nignores:\n  - ${sidecarPattern}`
+}
+const escaped = sidecarPattern.replace(/[.*]/g, "\\$&")
+export function withoutSidecarIgnore(text) {
+  return text
+    .replace(new RegExp(`(^|\\n)ignores:\\n  - ${escaped}\\n$`), "$1")
+    .replace(new RegExp(`\\nignores:\\n  - ${escaped}$`), "")
+    .replace(new RegExp(`^[ \\t]*- ${escaped}\\n`, "m"), "")
+    .replace(`${sidecarPattern}, `, "")
+    .replace(`[${sidecarPattern}]`, "[]")
+}
+
 function vibeSelectors(text) {
   let selectors = false
   const extension = value => value
@@ -352,12 +379,13 @@ export default [
     // Rules are selected by language. Registering the extension alone does
     // not apply the repo's existing TS rules, so clone those beside them.
     for (const rule of all.filter(f => f.startsWith(dir === "." ? "" : dir + "/") && /\.ya?ml$/.test(f) && f !== file && !f.endsWith(".vibelang.yml"))) {
-      let text = readFileSync(join(root, rule), "utf8")
+      const original = readFileSync(join(root, rule), "utf8")
       const language = /^language:[ \t]*(["']?)(?:typescript|tsx|ts)\1[ \t]*(?:#.*)?$/im
-      if (!language.test(text)) continue
-      text = vibeSelectors(text.replace(language, "language: VibeLang"))
+      if (!language.test(original)) continue
+      const text = vibeSelectors(withoutSidecarIgnore(original).replace(language, "language: VibeLang"))
         .replace(/^id:\s*(.+)$/m, "id: $1-vibelang")
       write(rule.replace(/\.ya?ml$/, ".vibelang.yml"), text)
+      write(rule, sidecarIgnoreOf(original))
     }
     builds.push({ cwd: dir, command: `node ${posix.relative(dir, ".") ? posix.relative(dir, ".") + "/" : ""}node_modules/vibelang/bin/vibelang-ast-grep ${library}` })
     needsCompiler = true

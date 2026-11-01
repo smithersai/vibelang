@@ -202,6 +202,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `vibelang --fix` left `EK4401` on a plain call of a `.ts` module or package whose exceptions nothing lists, so a migration kept the module in TypeScript. In effect code it now writes `try Effect.orDie(Effect.try({ try: () => f(x), catch: (error) => error }))`, so an exception stays the defect it was in Effect TypeScript and the declaration doesn't change; in a function with no Effect operation it writes `: infer _`, which keeps the function plain. Neither form trusts the code, and `EK4806` no longer warns about that `catch`, since nothing reads what it returns.
 - The kernel law suite could still fail at 5 s on a loaded host after its 30 s budget moved into the test preload, because Bun applies a preload's default timeout to the first test file only; `bun run test` in `experiments` now passes the budget to every file, and the docs build uses the same flag.
 
+- After the migrate flow's setup, an ast-grep rule for TypeScript also scanned each `.vibe` module's `x.d.vibe.ts` sidecar, so a finding in a `.vibe` module was reported twice; setup now adds `**/*.d.vibe.ts` to the `ignores` of each TypeScript rule it extends to `.vibe`.
+
 - Release checks could fail with `ETXTBSY` while a parallel build overwrote the native compiler; native binaries now replace completed builds atomically, and release checks wait for the compiler and runtime builds.
 
 - The runtime's `main` tests, which start Node and Bun child processes, could fail at Bun's 5 s default on a loaded host; the runtime suite and every other `bun test` the build graph runs now pass an explicit `--timeout`, and a check keeps the flag in place.
