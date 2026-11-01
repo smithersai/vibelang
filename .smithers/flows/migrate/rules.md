@@ -12,11 +12,11 @@ The skill below teaches accepted VIPs, and the toolchain does not implement ever
 
 | The skill | Write on this toolchain | Until then |
 | --- | --- | --- |
-| `const users = try Users`, then `try users.find(id)` | `try Users.find(id)`, or `const users = Users`; for a service key declared in TypeScript, `Users()` | `try Users` is EK0502 |
 | Every export of `Effect` as a global: `ensuring(…)`, `scoped(…)`, `onExit(…)`, `serviceOption(…)`, `currentParentSpan` | `Effect.ensuring(…)`, `Effect.scoped(…)`, `Effect.onExit(…)`, `Effect.serviceOption(…)`, `Effect.currentParentSpan`; unqualified are `all`, `die`, `exit`, `forEach`, `log`, `logDebug`, `logError`, `logInfo`, `logWarning`, `race`, `repeat`, `retry`, `sleep`, `timeout` and `withSpan` | TS2304 |
 | `fork.scoped w()`, `fork.in(scope) w()`, `fork.detached w()` | `Effect.forkScoped(w())`, `Effect.forkIn(w(), scope)`, `Effect.forkDetach(w())` | TS1005, EK4410 |
 | A function with no modifier is plain (VIP-1) | A return type or `: infer _` on a function that runs and returns no Effect; a function that returns an Effect without running it takes its contract, `(payload): unknown!unknown!unknown => declared.effect(payload)` | It compiles to an Effect; `: infer _` on one that calls an Effect function is EK9203 |
-| `Date.now()` and `Math.random()` are allowed (decided detail 56) | `Clock` and `Random` in Effect code; a module whose public API needs a synchronous clock stays `.ts` | EK4403 rejects them |
+
+`Date.now()` and `Math.random()` are allowed (decided detail 56). Prefer injected `Clock` and `Random` services for controllable tests.
 
 ## Use the forms
 

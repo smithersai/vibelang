@@ -220,6 +220,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The migration's ESLint bridge rejected `declare const` symbol brands used only through `typeof`, which Oxlint accepted; the mapped `no-unused-vars` rule now counts those reads and retains configured options and unused-declaration reports.
 - Migration upgrade self-tests failed before exercising an installed compiler; fixtures now model baseline checks and VIP-only fixes separately.
 
+- Migration instructions still avoided service-key lookup and native time/randomness calls after their blockers were fixed; they now teach the supported forms and keep the injected-service testing recommendation.
+
 - The known-limitations page incorrectly said stock TypeScript could not resolve `.vibe` imports; it now explains the implemented declaration-sidecar route with `allowArbitraryExtensions`.
 
 - The platform crypto example passed raw bytes as algorithm-bearing keys and omitted its encryption inputs; it now uses native Effect key types and declares every input.
