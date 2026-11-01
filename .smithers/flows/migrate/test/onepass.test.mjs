@@ -501,3 +501,38 @@ test("restart property preserves both completed work and timed-out config admiss
     }finally{rmSync(f.root,{recursive:true,force:true})}
   }),{seed:110716,numRuns:6})
 })
+
+test("opencode-57: scope retains a package when unrelated migration moves asserted native bundle inputs",async()=>{
+  const f=await fixture()
+  try{
+    put(f.target,"core/src/mcp.ts","export const answer = 42\n")
+    const original='const build=await Bun.build({entrypoints:["core"],metafile:true});\nexpect(Object.keys(build.metafile.inputs)).toContain("src/mcp.ts");\n'
+    put(f.target,"core/tests/import-boundaries.test.ts",original)
+    const result=await onePassStep("plan",{run:f.run,scope:f.scope})
+    assert.ok(result.plan.deferred.some(d=>d.file==="core/src/index.ts"&&/BUNDLE-INPUT-PATHS/.test(d.reason)&&d.reason.includes("core/src/mcp.ts")))
+    assert.ok(result.plan.batches[0].files.includes("app/src/index.ts"))
+    await onePassStep("rename",{run:f.run})
+    assert.ok(existsSync(join(f.target,"core/src/index.ts")))
+    assert.ok(existsSync(join(f.target,"core/src/mcp.ts")))
+    assert.equal(text(f.target,"core/tests/import-boundaries.test.ts"),original)
+    assert.equal(readJson(join(f.target,"core/package.json")).exports["./*"],"./src/*.ts")
+  }finally{rmSync(f.root,{recursive:true,force:true})}
+})
+
+test("opencode-57: an entirely protected scope reports the module, source and reader",async()=>{
+  const f=await fixture()
+  try{
+    put(f.target,"core/src/mcp.ts","export const answer = 42\n")
+    put(f.target,"core/tests/import-boundaries.test.ts",'const build=await Bun.build({metafile:true}); expect(Object.keys(build.metafile.inputs)).toContain("src/mcp.ts")\n')
+    put(f.run,"scope.txt","core/src/index.ts\n")
+    await assert.rejects(onePassStep("plan",{run:f.run,scope:f.scope}),e=>{
+      assert.match(e.message,/core\/src\/index\.ts/)
+      assert.match(e.message,/BUNDLE-INPUT-PATHS/)
+      assert.match(e.message,/core\/tests\/import-boundaries\.test\.ts:1/)
+      assert.match(e.message,/observes core\/src\/mcp\.ts/)
+      return true
+    })
+    assert.ok(existsSync(join(f.target,"core/src/index.ts")))
+    assert.ok(!existsSync(paths(f.run).plan))
+  }finally{rmSync(f.root,{recursive:true,force:true})}
+})

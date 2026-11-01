@@ -1,0 +1,6 @@
+{
+  "property": "bundle-input-paths",
+  "rule": "Source-text assertions remain protected.",
+  "source": "Opencode client import-boundaries.test.ts, opencode-57: the unchanged bundle input assertion expects src/mcp.ts after an unrelated src/effect/index migration.",
+  "input": { "pkg": "client", "name": "mcp", "nested": false, "kind": "dot", "quoted": false }
+}

@@ -47,15 +47,46 @@ function readsText(source, at) {
   return stack.includes(true)
 }
 
+// Bundle metadata exposes resolved source filenames too. Conservatively retain
+// the package when a protected test names an owned input: routing an unrelated
+// migration can otherwise move that native input into the emitted graph.
+// This is a scope restriction, not a rewrite of the test or the runtime graph.
+function observesBundleInputs(source, comments) {
+  let masked = source
+  for (const [start, end] of comments.slice().sort((a,b)=>b[0]-a[0])) masked = masked.slice(0,start) + " ".repeat(end-start) + masked.slice(end)
+  const quoted = [...masked.matchAll(literal)]
+  let code = masked
+  for (const m of quoted.slice().reverse()) code = code.slice(0,m.index) + " ".repeat(m[0].length) + code.slice(m.index+m[0].length)
+  const names = new Set(code.match(/\b(?:metafile|inputs)\b/g) ?? [])
+  for (const m of quoted) {
+    const name = m[0].slice(1,-1)
+    if ((name === "metafile" || name === "inputs") && /\[\s*$/.test(code.slice(0,m.index)) && /^\s*\]/.test(code.slice(m.index+m[0].length))) names.add(name)
+  }
+  return names.has("metafile") && names.has("inputs")
+}
+
 export function pathReadDeferrals(root, modules, files) {
-  const want = new Set(modules), causes = new Map()
+  const want = new Set(modules), available = new Set(files), causes = new Map()
   for (const file of files) {
     if (!code.test(file) || !testFile.test(file) || !existsSync(join(root,file))) continue
     const source = readFileSync(join(root,file),"utf8"), comments = commentRanges(source), imports = parseImports(source)
+    const bundleInputs = observesBundleInputs(source, comments)
     for (const m of source.matchAll(strings)) {
       if (m[3] !== "ts") continue
       if (comments.some(([a,b]) => a <= m.index && m.index < b) || imports.some(i => i.start <= m.index && m.index < i.end)) continue
       const target = pathTarget(root,file,source,m.index,m[0],m[2])
+      if (bundleInputs && !moduleCall(source.slice(Math.max(0,m.index-150),m.index))) {
+        // Metafiles may use a package or repository working directory.
+        // Retain every statically identified owner when those bases overlap.
+        const targets = new Set([target, posix.normalize(m[2] + ".ts")])
+        if (m[2].startsWith(root + "/")) targets.add(m[2].slice(root.length+1) + ".ts")
+        for (const observed of targets) if (available.has(observed)) {
+          const owner = packageDirOf(root,observed)
+          for (const candidate of modules) if (packageDirOf(root,candidate) === owner) causes.set(candidate,{
+            file: candidate, reason: "BUNDLE-INPUT-PATHS: " + file + ":" + source.slice(0,m.index).split("\n").length + " observes " + observed + "; keep this package native to preserve input filenames (detail 272)"
+          })
+        }
+      }
       if (want.has(target) && readsText(source,m.index)) causes.set(target,{ file: target, reason: "PATHNAME-READS: " + file + ":" + source.slice(0,m.index).split("\n").length + " asserts on the source text; keep .ts (detail 272 addendum 4)" })
     }
   }

@@ -419,7 +419,7 @@ export async function onePassStep(step, options) {
     const keep = new Set(deferred.map(d=>d.file))
     plan.batches[0].files = plan.batches[0].files.filter(f=>!keep.has(f))
     plan.deferred.push(...deferred)
-    if (!plan.batches[0].files.length) throw new Error("all scope modules are source-text assertions; keep .ts")
+    if (!plan.batches[0].files.length) throw new Error("all scope modules are protected test inputs; keep .ts: " + deferred.map(d=>d.file + ": " + d.reason).join("; "))
     if (existsSync(p.codemod("01"))) throw new Error("cannot replace a plan after rename")
     writeJson(p.plan, { ...plan, source: "scope list", acceptedAt: new Date().toISOString() })
     return { accepted: true, plan }

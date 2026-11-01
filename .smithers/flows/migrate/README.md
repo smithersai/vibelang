@@ -105,6 +105,13 @@ with `__dirname` or `import.meta.dirname`. An unknown directory or URL base
 does not identify a module. Comments and prose strings stay as written.
 `vi.mock` and `require.resolve` name modules. A module whose source text a
 test reads stays `.ts`, with the reader recorded as its deferral cause.
+A test that observes bundle `metafile.inputs` and names an owned source
+path also protects that package: an unrelated migration can route native exports
+through emitted JavaScript and change the observed input filename. Scope planning
+conservatively keeps the package native, records `BUNDLE-INPUT-PATHS` with the
+test and source path, and still admits candidates in other packages. If the whole
+scope is protected, the error lists each retained module and its cause. The test,
+its expected paths and the package runtime graph remain unchanged.
 
 Pass `--after-convert "<command>"` to `upgrade-effect` (repeat per hook).
 The run stores these repository adapters in `config.json` and runs them before
