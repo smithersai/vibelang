@@ -223,6 +223,11 @@ func matchChainRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 			case "not":
 				pattern = "not " + parenthesizedPattern(patterns[0])
 			}
+			if name == "whenOr" || name == "whenAnd" {
+				if guarded, ok := stringMatchAlternatives(c, file, args[:len(args)-1], name, stage); ok {
+					pattern = guarded
+				}
+			}
 			arm, why := matchHandlerArm(c, a, file, handler, pattern, args[0], name == "orElse")
 			if why != "" {
 				return refuse(why)
@@ -630,6 +635,12 @@ func matchPattern(c *checker.Checker, file *ast.SourceFile, pattern *ast.Node) (
 		return "{ " + strings.Join(fields, ", ") + " }", true
 	}
 	if ast.IsCallExpression(pattern) {
+		if module, name := effectMember(c, pattern.Expression()); module == "String" && name == "startsWith" && pattern.TypeArguments() == nil && pattern.QuestionDotToken() == nil && len(pattern.Arguments()) == 1 && ast.IsStringLiteral(pattern.Arguments()[0]) {
+			// The prefix itself is an inert literal. Bind the candidate once;
+			// invoking its string method retains startsWith's coercion/throw rules.
+			value := (&freshNames{file: file}).freshName("$matchString" + strconv.Itoa(nodeStart(file, pattern)))
+			return "let " + value + " and if (" + value + ".startsWith(" + expressionText(file, pattern.Arguments()[0]) + "))", true
+		}
 		if module, name := effectMember(c, pattern.Expression()); module == "Match" && name == "instanceOf" && len(pattern.Arguments()) == 1 && ast.IsIdentifier(pattern.Arguments()[0]) {
 			return pattern.Arguments()[0].Text(), true
 		}
@@ -801,4 +812,37 @@ func returnsBefore(block, last *ast.Node) bool {
 	}
 	block.ForEachChild(visit)
 	return found
+}
+
+// A whenOr/whenAnd group of literals and known prefix predicates needs one
+// candidate binding outside the alternatives. The ordered Boolean tests keep
+// Match's short-circuiting without introducing bindings inside or/not patterns.
+func stringMatchAlternatives(c *checker.Checker, file *ast.SourceFile, args []*ast.Node, operation string, stage *ast.Node) (string, bool) {
+	input := (&freshNames{file: file}).freshName("$matchString" + strconv.Itoa(nodeStart(file, stage)))
+	var conditions []string
+	prefix := false
+	for _, arg := range args {
+		pattern := ast.SkipParentheses(arg)
+		if ast.IsStringLiteral(pattern) {
+			conditions = append(conditions, input+" === "+expressionText(file, pattern))
+			continue
+		}
+		if !ast.IsCallExpression(pattern) || pattern.TypeArguments() != nil || pattern.QuestionDotToken() != nil || len(pattern.Arguments()) != 1 || !ast.IsStringLiteral(pattern.Arguments()[0]) {
+			return "", false
+		}
+		module, name := effectMember(c, pattern.Expression())
+		if module != "String" || name != "startsWith" {
+			return "", false
+		}
+		prefix = true
+		conditions = append(conditions, input+".startsWith("+expressionText(file, pattern.Arguments()[0])+")")
+	}
+	if !prefix {
+		return "", false
+	}
+	separator := " || "
+	if operation == "whenAnd" {
+		separator = " && "
+	}
+	return "let " + input + " and if (" + strings.Join(conditions, separator) + ")", true
 }

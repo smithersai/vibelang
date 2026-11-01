@@ -1,0 +1,30 @@
+import * as EffectString from "effect/String"
+export function weight(value: string): string {
+  return Match.value(value).pipe(
+    Match.when(EffectString.startsWith("Core"), (): string => "10"),
+    Match.whenOr("Exact", EffectString.startsWith("Codec"), EffectString.startsWith("Data"), (): string => "20"),
+    Match.orElse((): string => "99")
+  )
+}
+export function nested(value: { readonly name: string }): string {
+  return Match.value(value).pipe(
+    Match.when({ name: EffectString.startsWith("Co") }, (): string => "hit"),
+    Match.orElse((): string => "miss")
+  )
+}
+
+export function unicodeWeight(value: string): number {
+  return Match.value(value).pipe(
+    Match.when(EffectString.startsWith("💡"), (): number => 1),
+    Match.when(EffectString.startsWith("a'b"), (): number => 2),
+    Match.when(EffectString.startsWith("\u0000"), (): number => 3),
+    Match.orElse((): number => 0)
+  )
+}
+export function hygiene(value: string): string {
+  return Match.value(value).pipe(
+    Match.when(EffectString.startsWith("Core"), (): string => bindingForPrefix),
+    Match.orElse((): string => "other")
+  )
+}
+const bindingForPrefix = "bound"
