@@ -131,10 +131,13 @@ type encoding struct {
 	// what a || stands for (empty for a || of the source; |> for a pipe,
 	// followed by L and R when the encoding parenthesized its left side or
 	// its body), and the text to insert after a for or finally keyword.
-	voids    []string
-	pipes    []string
-	fors     []string
-	finallys []string
+	voids []string
+	// wrappedVoids holds, for each entry of voids, whether the encoding's own
+	// text parenthesizes that void expression alone, as (try x) does.
+	wrappedVoids []bool
+	pipes        []string
+	fors         []string
+	finallys     []string
 	// asyncs holds one entry for each async modifier of text, in order:
 	// effect for one that stands for effect (VIP-1), empty for one of the
 	// source.
@@ -790,6 +793,9 @@ func (e *encoder) finish() (*encoding, error) {
 		return values
 	}
 	result.voids = match("void", tokens.voids)
+	for _, pos := range tokens.voids {
+		result.wrappedVoids = append(result.wrappedVoids, tokens.voidNodes[pos].Parent.Kind == ast.KindParenthesizedExpression)
+	}
 	result.pipes = match("||", tokens.ors)
 	result.fors = match("for", tokens.fors)
 	result.finallys = match("finally", tokens.finallys)

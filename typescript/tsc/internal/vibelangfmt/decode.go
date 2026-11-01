@@ -14,16 +14,17 @@ import (
 
 // tokens are the positions of the tokens decoding matches by order: void
 // keywords, || operators, for keywords, finally keywords, and async
-// modifiers; orNodes are the binary expressions of ors.
+// modifiers; voidNodes are the void expressions of voids and orNodes the
+// binary expressions of ors.
 type tokens struct {
 	voids, ors, fors, finallys, asyncs, functions []int
-	orNodes                                       map[int]*ast.Node
+	voidNodes, orNodes                            map[int]*ast.Node
 }
 
 // collectTokens finds the tokens of file, a parse of text, that decoding
 // matches by order, sorted by position.
 func collectTokens(file *ast.SourceFile, text string) tokens {
-	t := tokens{orNodes: map[int]*ast.Node{}}
+	t := tokens{voidNodes: map[int]*ast.Node{}, orNodes: map[int]*ast.Node{}}
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		if modifiers := node.Modifiers(); modifiers != nil {
@@ -42,7 +43,9 @@ func collectTokens(file *ast.SourceFile, text string) tokens {
 		}
 		switch node.Kind {
 		case ast.KindVoidExpression:
-			t.voids = append(t.voids, scanner.SkipTrivia(text, node.Pos()))
+			pos := scanner.SkipTrivia(text, node.Pos())
+			t.voids = append(t.voids, pos)
+			t.voidNodes[pos] = node
 		case ast.KindBinaryExpression:
 			if operator := node.AsBinaryExpression().OperatorToken; operator.Kind == ast.KindBarBarToken {
 				pos := scanner.SkipTrivia(text, operator.Pos())
@@ -150,6 +153,15 @@ func (d *decoder) ordered() error {
 	for i, pos := range t.voids {
 		if word := d.enc.voids[i]; word != "" {
 			d.replace(pos, pos+len("void"), word)
+			// try, fork and join parse where ECMAScript has AwaitExpression
+			// (Appendix A), but they are written as void, which a formatter
+			// such as dprint parenthesizes before in and instanceof and leaves
+			// bare before is's >=, where it leaves await bare. Parentheses the
+			// formatter put around one, which its encoding did not have, go.
+			if paren := t.voidNodes[pos].Parent; paren.Kind == ast.KindParenthesizedExpression && !d.enc.wrappedVoids[i] {
+				d.replace(scanner.SkipTrivia(d.text, paren.Pos()), scanner.SkipTrivia(d.text, paren.Pos())+1, "")
+				d.replace(paren.End()-1, paren.End(), "")
+			}
 		}
 	}
 	for i, pos := range t.ors {

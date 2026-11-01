@@ -1,0 +1,2 @@
+go test fuzz v1
+string("effect function check(command: any, other: any) {\n  expect(try exit(CommandLine.lex(command)) is Exit.Failure).toBe(true)\n  expect((try exit(CommandLine.lex(other))) instanceof Error).toBe(false)\n}\n")

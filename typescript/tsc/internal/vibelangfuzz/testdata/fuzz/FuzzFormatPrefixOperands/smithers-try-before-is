@@ -1,0 +1,4 @@
+go test fuzz v1
+string("try")
+string("is-class")
+byte('\x0e')

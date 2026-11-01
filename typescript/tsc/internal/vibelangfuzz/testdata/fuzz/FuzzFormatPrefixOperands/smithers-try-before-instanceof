@@ -1,0 +1,4 @@
+go test fuzz v1
+string("try")
+string("instanceof")
+byte('\x0e')
