@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport { Schema } from \"effect\"\nexport const Token = Schema.Struct({ id: Schema.String })\nexport type Token = typeof Token.Type\n-- tsconfig.json --\n{\"compilerOptions\":{\"target\":\"es2022\",\"declaration\":true,\"strict\":true,\"module\":\"nodenext\",\"moduleResolution\":\"nodenext\",\"skipLibCheck\":true,\"outDir\":\"out\"},\"files\":[\"main.vibe\"]}\n")
