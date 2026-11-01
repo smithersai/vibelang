@@ -81,7 +81,10 @@ test("migration package exports reach each renamed module and revert independent
         const resolveAll = () => {
           const script = "console.log(JSON.stringify(" + JSON.stringify(names) +
             ".map(name => Bun.resolveSync('lib/' + name, process.cwd()))))"
-          const result = spawnSync("bun", ["-e", script], {
+          // A migrated export names the source under vibelang-source, beside the
+          // emitted JavaScript under default that this test does not write
+          // (opencode-32 B); the condition reaches the renamed module.
+          const result = spawnSync("bun", ["--conditions=vibelang-source", "-e", script], {
             cwd: root, encoding: "utf8", timeout: 20000, env: { ...process.env, NO_COLOR: "1" }
           })
           diagnostics = JSON.stringify({ input, manifest: read(), result }).replaceAll(root, "<project>")

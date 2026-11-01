@@ -54,18 +54,18 @@ test("setup leaves a pinned dprint configuration's plugins alone and keeps dprin
   })
   const result = wireDeveloperTools({ root, specsFor })
   const read = file => readFileSync(join(root, file), "utf8")
-  assert.deepEqual(JSON.parse(read("packages/pinned/dprint.json")), { ...pinnedConfig, excludes: ["**/dist", "**/*.d.vibe.ts"] })
+  assert.deepEqual(JSON.parse(read("packages/pinned/dprint.json")), { ...pinnedConfig, excludes: ["**/dist", "**/*.d.vibe.ts", "**/.vibelang/js/**"] })
   const pinned = JSON.parse(read("packages/pinned/package.json"))
   assert.deepEqual(pinned.scripts, { fmt: "(dprint check) && vibelang-format --check", "fmt:write": "(dprint fmt) && vibelang-format --write" })
   assert.equal(pinned.devDependencies.vibelang, "0.0.11")
   const open = JSON.parse(read("packages/open/dprint.json"))
   assert.ok(open.plugins.includes("npm:vibelang/dprint-plugin.json"))
-  assert.deepEqual(open.excludes, ["**/*.d.vibe.ts"])
+  assert.deepEqual(open.excludes, ["**/*.d.vibe.ts", "**/.vibelang/js/**"])
   assert.equal(JSON.parse(read("packages/open/package.json")).scripts.fmt, "dprint check")
-  assert.equal(read("packages/pinned/eslint.config.js"), 'import tseslint from "typescript-eslint"\n\nexport default tseslint.config(\n  { ignores: ["**/*.d.vibe.ts"] },\n  { ignores: ["**/dist"] },\n  { files: ["src/**/*.ts"] }\n)\n')
-  assert.equal(read("packages/open/eslint.config.mjs"), 'export default [\n  { ignores: ["**/*.d.vibe.ts"] },\n  { files: ["**/*.ts"] },\n]\n')
+  assert.equal(read("packages/pinned/eslint.config.js"), 'import tseslint from "typescript-eslint"\n\nexport default tseslint.config(\n  { ignores: ["**/.vibelang/js/**"] },\n  { ignores: ["**/*.d.vibe.ts"] },\n  { ignores: ["**/dist"] },\n  { files: ["src/**/*.ts"] }\n)\n')
+  assert.equal(read("packages/open/eslint.config.mjs"), 'export default [\n  { ignores: ["**/.vibelang/js/**"] },\n  { ignores: ["**/*.d.vibe.ts"] },\n  { files: ["**/*.ts"] },\n]\n')
   assert.equal(read("packages/named/eslint.config.js"), "const config = [{ files: [\"**/*.ts\"] }]\nexport default config\n")
-  assert.equal(read("packages/imports/eslint.config.js"), 'import importPlugin from "eslint-plugin-import"\n\nexport default [\n  { settings: { "import/parsers": { "vibelang/eslint": [".vibe"] } } },\n  { ignores: ["**/*.d.vibe.ts"] },\n  importPlugin.flatConfigs.recommended,\n]\n')
+  assert.equal(read("packages/imports/eslint.config.js"), 'import importPlugin from "eslint-plugin-import"\n\nexport default [\n  { settings: { "import/parsers": { "vibelang/eslint": [".vibe"] } } },\n  { ignores: ["**/.vibelang/js/**"] },\n  { ignores: ["**/*.d.vibe.ts"] },\n  importPlugin.flatConfigs.recommended,\n]\n')
   assert.equal(result.warnings.length, 2)
   assert.match(result.warnings[0], /^1 dprint configuration pins every plugin by checksum \(packages\/pinned\/dprint\.json\)/)
   assert.match(result.warnings[1], /^packages\/named\/eslint\.config\.js: add \{ ignores/)
@@ -359,15 +359,15 @@ test("setup run again on foldkit's wiring leaves one layer of passes and one ign
   const root = fixture(t, {
     "package.json": JSON.stringify({ scripts: { "lint:effect": `(((${inner}) && ${pass}) && ${pass}) && ${pass}`, own: `(pnpm build) && eslint --config .vibelang/eslint.config.mjs "**/*.vibe" --no-error-on-unmatched-pattern` } }),
     ".oxlintrc.effect.json": "{}",
-    "packages/e2e/eslint.config.mjs": "import js from '@eslint/js'\n\nexport default [\n  { ignores: ['**/*.d.vibe.ts'] },\n  js.configs.recommended,\n]\n",
+    "packages/e2e/eslint.config.mjs": "import js from '@eslint/js'\n\nexport default [\n  { ignores: ['**/.vibelang/js/**'] },\n  { ignores: ['**/*.d.vibe.ts'] },\n  js.configs.recommended,\n]\n",
     "eslint.config.mjs": "import js from '@eslint/js'\n\nexport default [\n  js.configs.recommended,\n]\n"
   })
   wireDeveloperTools({ root, specsFor })
   const scripts = JSON.parse(readFileSync(join(root, "package.json"))).scripts
   assert.equal(scripts["lint:effect"], `(${inner.replace("&& oxlint ", "&& oxlint --no-error-on-unmatched-pattern ")}) && ${pass} --max-warnings 0`)
   assert.equal(scripts.own, `(pnpm build) && eslint --config .vibelang/eslint.config.mjs "**/*.vibe" --no-error-on-unmatched-pattern`)
-  assert.equal(readFileSync(join(root, "packages/e2e/eslint.config.mjs"), "utf8"), "import js from '@eslint/js'\n\nexport default [\n  { ignores: ['**/*.d.vibe.ts'] },\n  js.configs.recommended,\n]\n")
-  assert.equal(readFileSync(join(root, "eslint.config.mjs"), "utf8"), "import js from '@eslint/js'\n\nexport default [\n  { ignores: ['**/*.d.vibe.ts'] },\n  js.configs.recommended,\n]\n")
+  assert.equal(readFileSync(join(root, "packages/e2e/eslint.config.mjs"), "utf8"), "import js from '@eslint/js'\n\nexport default [\n  { ignores: ['**/.vibelang/js/**'] },\n  { ignores: ['**/*.d.vibe.ts'] },\n  js.configs.recommended,\n]\n")
+  assert.equal(readFileSync(join(root, "eslint.config.mjs"), "utf8"), "import js from '@eslint/js'\n\nexport default [\n  { ignores: ['**/.vibelang/js/**'] },\n  { ignores: ['**/*.d.vibe.ts'] },\n  js.configs.recommended,\n]\n")
   assert.deepEqual(wireDeveloperTools({ root, specsFor }).changed, [])
   void own
 })

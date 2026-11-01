@@ -841,6 +841,8 @@ export function rootTsconfigs(root, ts) {
 
 /** The ignore line that keeps formatters reading .prettierignore (Prettier, Oxfmt, Vite+) off vibelang's declaration sidecars. */
 export const sidecarIgnore = "*.d.vibe.ts"
+// A migrated package's emitted JavaScript (emitPackageJs), vibelang's output too.
+export const emittedIgnore = "**/.vibelang/js/**"
 
 /** The Oxlint configurations a repository may keep at its root, in Oxlint's order. */
 export const oxlintConfigs = [".oxlintrc.json", ".oxlintrc.jsonc", "oxlint.config.ts", "oxlint.config.mts", "oxlint.config.js", "oxlint.config.mjs"]

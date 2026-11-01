@@ -32,7 +32,7 @@ test("smithers: a repository that exports its .vibe modules by bare paths gets i
   }
 })
 
-test("a repository without bare .vibe exports keeps the types and default pair (TS2883)", () => {
+test("a repository without bare .vibe exports names the sidecar, source and emitted default", () => {
   const root = mkdtempSync(join(tmpdir(), "migrate-exports-"))
   try {
     const files = {
@@ -42,7 +42,7 @@ test("a repository without bare .vibe exports keeps the types and default pair (
     for (const [path, text] of Object.entries(files)) put(root, path, text)
     assert.equal(bareVibeExports(root, manifestsOf(files)), false)
     rewriteExports(root, renameBatch(root, ["packages/core/src/model.ts"]), { bareEntries: false })
-    assert.deepEqual(JSON.parse(readFileSync(join(root, "packages/core/package.json"), "utf8")).exports["./model"], { types: "./src/model.d.vibe.ts", default: "./src/model.vibe" })
+    assert.deepEqual(JSON.parse(readFileSync(join(root, "packages/core/package.json"), "utf8")).exports["./model"], { types: "./src/model.d.vibe.ts", "vibelang-source": "./src/model.vibe", default: "./.vibelang/js/src/model.js" })
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

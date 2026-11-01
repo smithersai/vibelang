@@ -48,7 +48,7 @@ test("revert takes back the exports entry the codemod added for the file", async
     const exportEdits = rewriteExports(target, renameBatch(target, ["src/b.ts", "src/c.ts"]))
     writeJson(paths(run).codemod("01"), { exportEdits, importEdits: [] })
     const reverted = await revert({ run, batch: "01", file: "src/b.vibe", reason: "blocked on an issue" })
-    assert.deepEqual(readJson(join(target, "package.json")).exports, { "./c": { types: "./src/c.d.vibe.ts", default: "./src/c.vibe" }, "./*": "./src/*.ts" })
+    assert.deepEqual(readJson(join(target, "package.json")).exports, { "./c": { types: "./src/c.d.vibe.ts", "vibelang-source": "./src/c.vibe", default: "./.vibelang/js/src/c.js" }, "./*": "./src/*.ts" })
     assert.deepEqual(reverted.exportEdits.map((e) => e.key), ["./b"])
   } finally {
     rmSync(root, { recursive: true, force: true })

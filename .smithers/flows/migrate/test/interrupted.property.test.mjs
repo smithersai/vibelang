@@ -126,7 +126,7 @@ test("foldkit-74: every interrupted prefix of rename/import/export writes replay
           assert.equal(existsSync(join(root, files[i])), false)
           assert.equal(Buffer.from(resumed.originals[i].bytes, "base64").toString(), originals[i])
           assert.equal(readFileSync(join(root, "src/" + name + ".vibe"), "utf8"), originals[i].replace(".js", ".vibe"))
-          assert.deepEqual(readJson(join(root, "package.json")).exports["./" + name], { types: "./src/" + name + ".d.vibe.ts", default: "./src/" + name + ".vibe" })
+          assert.deepEqual(readJson(join(root, "package.json")).exports["./" + name], { types: "./src/" + name + ".d.vibe.ts", "vibelang-source": "./src/" + name + ".vibe", default: "./.vibelang/js/src/" + name + ".js" })
         }
       } finally { rmSync(root, { recursive: true, force: true }) }
     }

@@ -64,7 +64,7 @@ test("mts codemod and revert preserve exports, .mjs importers, source contents a
     const exportEdits = rewriteExports(target, renames)
     const importEdits = rewriteImports(target, ["consumer.ts", "scripts/main.vibe"])
     assert.equal(readFileSync(join(target, "consumer.ts"), "utf8"), 'import { answer } from "./scripts/main.vibe"\n')
-    assert.deepEqual(readJson(join(target, "package.json")).exports, { types: "./scripts/main.d.vibe.ts", default: "./scripts/main.vibe" })
+    assert.deepEqual(readJson(join(target, "package.json")).exports, { types: "./scripts/main.d.vibe.ts", "vibelang-source": "./scripts/main.vibe", default: "./.vibelang/js/scripts/main.js" })
     writeJson(paths(run).codemod("01"), { exportEdits, importEdits })
     writeFileSync(join(target, "scripts/main.d.vibe.ts"), "export declare const answer: number;\n")
     const result = await revert({ run, batch: "01", file: "scripts/main.vibe", reason: "test the inverse" })

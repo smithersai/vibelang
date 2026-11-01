@@ -3,7 +3,7 @@ import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileS
 import { join, posix } from "node:path"
 import { wireSourceChildren } from "./source-children.mjs"
 import { wireOxlint } from "./oxlint.mjs"
-import { addEslintIgnore, addEslintImportParsers, ownedPaths, sidecarIgnore } from "./wire.mjs"
+import { addEslintIgnore, addEslintImportParsers, emittedIgnore, ownedPaths, sidecarIgnore } from "./wire.mjs"
 import { wireNodeSourceHooks } from "./node-hooks.mjs"
 
 // An ast-grep rule's ignores gain the declaration sidecars, x.d.vibe.ts, which
@@ -296,15 +296,16 @@ export function wireDeveloperTools({ root, specsFor, ts }) {
       needsCompiler = true
     }
     // The declaration sidecars are vibelang's output, in its format.
-    config.excludes = [...new Set([...(config.excludes ?? []), `**/${sidecarIgnore}`])]
+    config.excludes = [...new Set([...(config.excludes ?? []), `**/${sidecarIgnore}`, emittedIgnore])]
     write(file, JSON.stringify(config, null, 2) + "\n")
   }
   if (pinned.size) warnings.push(`${pinned.size} dprint configuration${pinned.size === 1 ? " pins" : "s pin"} every plugin by checksum (${[...pinned].slice(0, 3).join(", ")}${pinned.size > 3 ? ", …" : ""}), and VibeLang's dprint plugin, npm:vibelang/dprint-plugin.json, has none: dprint leaves .vibe files there to vibelang-format, which their dprint scripts now run`)
   // ESLint lints x.d.vibe.ts as TypeScript wherever a files glob takes *.ts.
   for (const file of all.filter(f => /(^|\/)eslint\.config\.[cm]?[jt]s$/.test(f))) {
     const text = readFileSync(join(root, file), "utf8")
-    const ignored = addEslintIgnore(text)
-    if (ignored === null) warnings.push(`${file}: add { ignores: ["**/${sidecarIgnore}"] } as its first configuration by hand`)
+    const sidecars = addEslintIgnore(text)
+    const ignored = sidecars === null ? null : addEslintIgnore(sidecars, emittedIgnore)
+    if (ignored === null) warnings.push(`${file}: add { ignores: ["**/${sidecarIgnore}", "${emittedIgnore}"] } as its first configurations by hand`)
     // eslint-plugin-import reads a .vibe module's exports through vibelang/eslint.
     const next = addEslintImportParsers(ignored ?? text)
     if (next === null) {

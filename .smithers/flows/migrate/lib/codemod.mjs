@@ -139,26 +139,38 @@ const isSubpathMap = (value) => value !== null && typeof value === "object" && !
 // The package.json conditions whose target TypeScript reads as a declaration file.
 const typeConditions = new Set(["types", "typings"])
 
+// The package-relative path of a module's emitted JavaScript, which the migrate
+// flow commits under .vibelang/js/ (emitPackageJs): ./src/x -> ./.vibelang/js/src/x.js.
+const emittedOf = (stem) => "./.vibelang/js/" + posix.normalize(stem).replace(/^\.\//, "") + ".js"
+
 /**
  * value with each target that names source, a package-relative .ts module,
- * pointed at the module after its rename: a `types` condition at its
- * declaration sidecar (x.d.vibe.ts), any other at its .vibe source, and an
- * entry that is the bare path at both, `{ "types": "./x.d.vibe.ts", "default":
- * "./x.vibe" }`. Stock TypeScript resolves a .vibe target to its sidecar, but
- * names a type it reaches that way only through a target that is the sidecar
- * itself: with ./x.vibe a consumer's inferred type that names one of the
- * module's types is TS2883. vibelang, its loaders and its bundler plugins read
- * the .vibe source in either case (Chapter 7's source preference).
+ * pointed at the module after its rename. A `types` condition names its
+ * declaration sidecar (x.d.vibe.ts); a `main` or `module` field its .vibe
+ * source; an `exports` or `imports` target the source under the
+ * `vibelang-source` condition and the emitted JavaScript by `default`, and an
+ * entry that is the bare path the sidecar too:
+ *
+ *   { "types": "./x.d.vibe.ts", "vibelang-source": "./x.vibe", "default": "./.vibelang/js/x.js" }
+ *
+ * The `bun build` CLI loads no plugin and plain Node no loader, so they read
+ * the JavaScript (opencode-32); vibelang/register and vibelang/bun run the
+ * source in its place (emitted-js.mjs). Stock TypeScript names a type it
+ * reaches through a .vibe target only when that target is the sidecar itself:
+ * with ./x.vibe a consumer's inferred type that names one of the module's
+ * types is TS2883.
  */
-function pointAt(value, source, { condition, entry = false } = {}) {
+function pointAt(value, source, { condition, entry = false, bare = false } = {}) {
   if (typeof value === "string") {
     if (posix.normalize(value) !== source) return value
     const stem = value.replace(/\.(?:ts|mts)$/, "")
     if (typeConditions.has(condition)) return stem + ".d.vibe.ts"
-    return entry ? { types: stem + ".d.vibe.ts", default: stem + ".vibe" } : stem + ".vibe"
+    if (condition === "main" || condition === "module" || condition === "vibelang-source" || bare) return stem + ".vibe"
+    const runtime = { "vibelang-source": stem + ".vibe", default: emittedOf(stem) }
+    return entry ? { types: stem + ".d.vibe.ts", ...runtime } : runtime
   }
-  if (Array.isArray(value)) return value.map((item) => pointAt(item, source))
-  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, pointAt(item, source, { condition: key })]))
+  if (Array.isArray(value)) return value.map((item) => pointAt(item, source, { condition, bare }))
+  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, pointAt(item, source, { condition: key, bare })]))
   return value
 }
 
@@ -174,11 +186,17 @@ function pointBack(value, vibe, extension = ".ts") {
     if (posix.normalize(target) === stem + ".d.vibe.ts") return target.slice(0, -".d.vibe.ts".length) + extension
     return target
   }
+  const is = (target, path) => typeof target === "string" && posix.normalize(target) === path
   if (typeof value === "string") return ts(value)
   if (Array.isArray(value)) return value.map((item) => pointBack(item, vibe, extension))
   if (value && typeof value === "object") {
-    const keys = Object.keys(value)
-    if (keys.length === 2 && typeof value.types === "string" && typeof value.default === "string" && posix.normalize(value.types) === stem + ".d.vibe.ts" && posix.normalize(value.default) === vibe) return ts(value.default)
+    const keys = Object.keys(value).sort().join(",")
+    const emitted = posix.normalize(emittedOf(stem))
+    // What pointAt wrote, the source condition naming the .ts file's spelling.
+    if (keys === "default,vibelang-source" && is(value["vibelang-source"], vibe) && is(value.default, emitted)) return ts(value["vibelang-source"])
+    if (keys === "default,types,vibelang-source" && is(value.types, stem + ".d.vibe.ts") && is(value["vibelang-source"], vibe) && is(value.default, emitted)) return ts(value["vibelang-source"])
+    // An earlier toolchain's entry, { types, default: ./x.vibe }.
+    if (keys === "default,types" && is(value.types, stem + ".d.vibe.ts") && is(value.default, vibe)) return ts(value.default)
     return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, pointBack(item, vibe, extension)]))
   }
   return value
@@ -241,7 +259,7 @@ export function rewriteExports(root, renames, { write = (file, text) => writeFil
         const map = pkg[field]
         if (!isSubpathMap(map)) {
           if (targetsOf(map).some((target) => posix.normalize(target) === source)) {
-            pkg[field] = pointAt(map, source, { entry: !bareEntries })
+            pkg[field] = pointAt(map, source, { entry: !bareEntries, bare: bareEntries })
             record({ field })
           }
           continue
@@ -250,13 +268,13 @@ export function rewriteExports(root, renames, { write = (file, text) => writeFil
         for (const [key, value] of Object.entries(map)) {
           if (!key.includes("*")) {
             if (targetsOf(value).some((target) => posix.normalize(target) === source)) record({ field, key })
-            entries.push([key, pointAt(value, source, { entry: !bareEntries })])
+            entries.push([key, pointAt(value, source, { entry: !bareEntries, bare: bareEntries })])
             continue
           }
           const star = targetsOf(value).map((target) => starOf(target, `./${source}`)).find((match) => match !== undefined)
           const exact = star === undefined ? undefined : key.replace("*", star)
           if (exact !== undefined && !(exact in map) && !entries.some(([name]) => name === exact)) {
-            entries.push([exact, pointAt(mapTargets(value, (target) => target.replaceAll("*", star)), source, { entry: !bareEntries })])
+            entries.push([exact, pointAt(mapTargets(value, (target) => target.replaceAll("*", star)), source, { entry: !bareEntries, bare: bareEntries })])
             record({ field, key: exact, added: true })
           }
           entries.push([key, value])

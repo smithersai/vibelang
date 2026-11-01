@@ -14,12 +14,15 @@ const stem = fc.array(part, { minLength: 1, maxLength: 3 }).map((parts) => "m-" 
 
 // Describe the expected mappings directly; the oracle does not implement the
 // codemod's recursive walk or wildcard matching algorithm.
+// A renamed module's runtime target: its source for the loaders, its emitted
+// JavaScript for consumers without one (opencode-32).
+const runtime = (name, vibe) => vibe ? { "vibelang-source": "./src/" + name + ".vibe", default: "./.vibelang/js/src/" + name + ".js" } : "./src/" + name + ".ts"
 const shapes = [
-  (name, vibe) => vibe ? { types: "./src/" + name + ".d.vibe.ts", default: "./src/" + name + ".vibe" } : "./src/" + name + ".ts",
-  (name, vibe) => ({ types: "./dist/" + name + ".d.ts", bun: "./src/" + name + (vibe ? ".vibe" : ".ts"), default: "./dist/" + name + ".js" }),
-  (name, vibe) => ({ import: { types: "./dist/" + name + ".d.ts", default: "./src/" + name + (vibe ? ".vibe" : ".ts") }, require: ["./src/" + name + (vibe ? ".vibe" : ".ts"), "./fallback/" + name + ".cjs"] }),
-  (name, vibe) => ["./src/" + name + (vibe ? ".vibe" : ".ts"), { default: "./fallback/" + name + ".js" }],
-  (name, vibe) => ({ types: "./src/" + name + (vibe ? ".d.vibe.ts" : ".ts"), import: "./src/" + name + (vibe ? ".vibe" : ".ts") })
+  (name, vibe) => vibe ? { types: "./src/" + name + ".d.vibe.ts", ...runtime(name, true) } : "./src/" + name + ".ts",
+  (name, vibe) => ({ types: "./dist/" + name + ".d.ts", bun: runtime(name, vibe), default: "./dist/" + name + ".js" }),
+  (name, vibe) => ({ import: { types: "./dist/" + name + ".d.ts", default: runtime(name, vibe) }, require: [runtime(name, vibe), "./fallback/" + name + ".cjs"] }),
+  (name, vibe) => [runtime(name, vibe), { default: "./fallback/" + name + ".js" }],
+  (name, vibe) => ({ types: "./src/" + name + (vibe ? ".d.vibe.ts" : ".ts"), import: runtime(name, vibe) })
 ]
 
 function check(field, name, shape, corpus) {
@@ -56,4 +59,38 @@ test("opencode-3: migrating a wildcard export keeps package resolution and rever
   fc.assert(fc.property(fc.constantFrom("exports", "imports"), stem,
     fc.integer({ min: 0, max: shapes.length - 1 }), (field, name, shape) => check(field, name, shapes[shape])),
     { seed: 350103, numRuns: 250 })
+})
+
+// Existing emitted-import aliases select source explicitly. That leaf must
+// stay a string, including inside arrays, rather than acquire another condition.
+// Spec: detail272 optionB keeps the native tool's default and source identity.
+test("source conditions stay scalar and original defaults survive rename and revert", () => {
+  fc.assert(fc.property(stem, fc.boolean(), fc.boolean(), (name, array, nested) => {
+    const root = mkdtempSync(join(tmpdir(), "migrate-source-condition-"))
+    try {
+      const source = "./src/" + name + ".ts"
+      const before = {
+        types: array ? [source, "./fallback.d.ts"] : source,
+        "vibelang-source": array ? [source, "./fallback.vibe"] : source,
+        default: "./dist/" + name + ".js"
+      }
+      const target = nested ? { development: before, default: "./unchanged.js" } : before
+      const pkg = { name: "source-condition-repro", imports: { "#rule": target } }
+      writeFileSync(join(root, "package.json"), JSON.stringify(pkg))
+      const renames = [{ from: "src/" + name + ".ts", to: "src/" + name + ".vibe" }]
+      const edits = rewriteExports(root, renames)
+      const expected = {
+        types: array ? ["./src/" + name + ".d.vibe.ts", "./fallback.d.ts"] : "./src/" + name + ".d.vibe.ts",
+        "vibelang-source": array ? ["./src/" + name + ".vibe", "./fallback.vibe"] : "./src/" + name + ".vibe",
+        default: "./dist/" + name + ".js"
+      }
+      const actual = JSON.parse(readFileSync(join(root, "package.json"))).imports["#rule"]
+      assert.deepEqual(actual, nested ? { development: expected, default: "./unchanged.js" } : expected)
+      const once = readFileSync(join(root, "package.json"), "utf8")
+      rewriteExports(root, renames)
+      assert.equal(readFileSync(join(root, "package.json"), "utf8"), once)
+      restoreExports(root, edits, renames[0].from)
+      assert.deepEqual(JSON.parse(readFileSync(join(root, "package.json"))), pkg)
+    } finally { rmSync(root, { recursive: true, force: true }) }
+  }), { seed: 320069, numRuns: 100 })
 })

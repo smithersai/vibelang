@@ -19,7 +19,7 @@ import { checkSelectorEdits, restoreSourceLiterals, rewriteSourceLiterals } from
 import { splitBatchPlatform } from "./platform.mjs"
 import { check, newErrors, styleProblems, summarize } from "./diagnostics.mjs"
 import { preservedErrorAdvisories } from "./preserved-errors.mjs"
-import { compareDeclarations, recordDeclarationSurface, emitDeclarations, emitErrorsIn, loadTypeScript, sidecarChanges } from "./declarations.mjs"
+import { compareDeclarations, recordDeclarationSurface, emitDeclarations, emitErrorsIn, emitPackageJs, loadTypeScript, sidecarChanges } from "./declarations.mjs"
 import { compareTests, regressionIssue, runTests } from "./tests.mjs"
 import { verifyRepositoryTests } from "./test-diff-run.mjs"
 import { isProtectedFile, testDiffMarkdown } from "./test-diff.mjs"
@@ -859,12 +859,13 @@ export async function wireTarget(config, log) {
   // The sidecars are vibelang's output, in its format; formatters leave them alone.
   const formatIgnore = join(t, ".prettierignore")
   const formatIgnoreText = existsSync(formatIgnore) ? readFileSync(formatIgnore, "utf8") : ""
-  writeIfChanged(formatIgnore, formatIgnoreText, Wire.setIgnoreLine(formatIgnoreText, Wire.sidecarIgnore, true))
+  writeIfChanged(formatIgnore, formatIgnoreText, Wire.setIgnoreLine(Wire.setIgnoreLine(formatIgnoreText, Wire.sidecarIgnore, true), Wire.emittedIgnore, true))
   // And Oxlint leaves them alone: it reads x.d.vibe.ts as TypeScript, not as a declaration file.
   for (const name of Wire.oxlintConfigs.filter((name) => existsSync(join(t, name)))) {
     const text = readFileSync(join(t, name), "utf8")
-    const next = Wire.addOxlintIgnore(text)
-    if (next === null) warnings.push(`${name}: add "**/${Wire.sidecarIgnore}" to its ignorePatterns by hand`)
+    const sidecars = Wire.addOxlintIgnore(text)
+    const next = sidecars === null ? null : Wire.addOxlintIgnore(sidecars, Wire.emittedIgnore)
+    if (next === null) warnings.push(`${name}: add "**/${Wire.sidecarIgnore}" and "${Wire.emittedIgnore}" to its ignorePatterns by hand`)
     else writeIfChanged(join(t, name), text, next)
   }
   // Oxlint's plugin host is Node: a JS plugin the migration moves to VibeLang loads through vibelang/register.
@@ -1119,6 +1120,24 @@ export function aliasesOf(config) {
   }
 }
 
+/**
+ * Writes again the emitted JavaScript (.vibelang/js/) of each package of the
+ * run whose package.json names it (rewriteExports), after a step that can
+ * change a .vibe module: codemod, verify before its tests, record before its
+ * commit. Returns { package, files, code } for each.
+ */
+async function emitMigratedJs(config, t, logs) {
+  const emitted = []
+  for (const pkg of config.packages) {
+    const manifest = join(t, pkg.dir, "package.json")
+    if (!existsSync(manifest) || !readFileSync(manifest, "utf8").includes("./.vibelang/js/")) continue
+    const tsconfigs = Wire.projectsOf(typeScriptOf(config), join(t, pkg.dir), pkg.tsconfig)
+    const result = await emitPackageJs({ compiler: compilerOf(config), tsconfigs, packageDir: join(t, pkg.dir), root: t, log: join(logs, `js-${slug(pkg.dir)}.log`) })
+    emitted.push({ package: pkg.dir, files: result.files, code: result.code })
+  }
+  return emitted
+}
+
 /** codemod: rename the batch to .vibe, rewrite imports, and run vibelang --fix to a fixed point. */
 export async function codemod(options) {
   assertBaselineSafe(paths(options.run))
@@ -1238,9 +1257,11 @@ export async function codemod(options) {
   const platformFormattedFiles = formatted.files.filter(file => platformFiles.has(file))
   const platformResult = { ...platform, formatted: { ...formatted, files: platformFormattedFiles,
     code: platformFormattedFiles.length ? formatted.code : 0, log: platformFormattedFiles.length ? formatted.log : null } }
+  const emittedJs = await emitMigratedJs(config, t, join(p.batch(b), "logs"))
   state.attempts.at(-1).finishedAt = new Date().toISOString()
   saveState(p.codemodState(b), state)
   const result = { batch: b, at: new Date().toISOString(), files, platform: platformResult, formatted, renames, exportEdits, importEdits, refEdits, scriptEdits, referenceEdits, referenceWarnings, referenceScan, selectorChecks, fix: { settled, rounds, byFile, totals: rewriteTotals(byFile), refused } }
+  result.emittedJs = emittedJs
   durableWrite(p.codemod(b), JSON.stringify(result, null, 2) + "\n")
   return result
 }
@@ -1479,6 +1500,8 @@ export async function verify(options) {
   const hasSelectorEdits = codemodReceipt?.referenceEdits?.some(edit => edit.selectorKind || ["source-reference", "source-glob", "source-extensions"].includes(edit.kind))
   const selectorChecks = hasSelectorEdits ? checkSelectorEdits(codemodReceipt, [...new Set([...(await Jj.trackedFiles(t)), ...scopeFiles(config)])], { ts: typeScriptOf(config), read: file => readFileSync(join(t, file), "utf8") }) : []
   const baselineTests = readJson(join(p.baseline, "tests.json"))
+  // Tests, including one-pass measurements, read current emitted JavaScript.
+  await emitMigratedJs(config, t, logs)
   const candidateBuild = thePlan.mode === "one-pass" ? null : await prepareBuilds(config, logs, "candidate")
   const measurement = thePlan.mode === "one-pass" ? await measureTests(config,{run:p.run,batch:b}) : null
   const tests = measurement?.receipts.candidate ?? await runTests({ command: config.test.command, report: config.test.report, cwd: join(t, config.test.cwd), root: t, jsonFile: join(p.batch(b), "vitest.json"), log: join(logs, "tests.log") })
@@ -1570,6 +1593,8 @@ export async function record(options) {
   const written = (await Jj.changedPaths(t)).filter((c) => c.status !== "D").map((c) => c.path)
   const formatted = await formatWritten(t, written, join(p.batch(b), "logs", "format.log"))
   const vibeFormatted = await formatRecorded(config, written, join(p.batch(b), "logs"))
+  // Certify the emitted graph after all source formatting, before checking final bytes.
+  await emitMigratedJs(config, t, join(p.batch(b), "logs"))
   const afterFormat = await Jj.commitId(t, "@")
   if (thePlan.mode === "one-pass" && (formatted.code !== 0 || vibeFormatted.code !== 0)) throw new Error("record refused: formatter failed")
   const verificationRefreshed = beforeFormat !== afterFormat || thePlan.mode === "one-pass"

@@ -55,8 +55,8 @@ test("a pattern that matches a renamed module gains an exact entry, and other mo
     const edits = rewriteExports(root, renames)
     assert.deepEqual(read().exports, {
       "./effect/layer-node": "./src/effect/layer-node.ts",
-      "./bom": { types: "./src/bom.d.vibe.ts", default: "./src/bom.vibe" },
-      "./effect/deep": { types: "./src/effect/deep.d.vibe.ts", default: "./src/effect/deep.vibe" },
+      "./bom": { types: "./src/bom.d.vibe.ts", "vibelang-source": "./src/bom.vibe", default: "./.vibelang/js/src/bom.js" },
+      "./effect/deep": { types: "./src/effect/deep.d.vibe.ts", "vibelang-source": "./src/effect/deep.vibe", default: "./.vibelang/js/src/effect/deep.js" },
       "./*": "./src/*.ts"
     })
     assert.deepEqual(Object.keys(read().exports).at(-1), "./*")
@@ -77,8 +77,8 @@ test("an entry, a condition, an imports map and a main field that name a renamed
     const edits = rewriteExports(root, renameBatch(root, ["packages/util/src/bom.ts"]))
     assert.deepEqual(read(), {
       main: "src/bom.vibe",
-      exports: { ".": { bun: "./src/bom.vibe", default: "./dist/bom.js" }, "./other": "./src/other.ts" },
-      imports: { "#bom": { workerd: "./src/bom.vibe", default: "./src/other.ts" } }
+      exports: { ".": { bun: { "vibelang-source": "./src/bom.vibe", default: "./.vibelang/js/src/bom.js" }, default: "./dist/bom.js" }, "./other": "./src/other.ts" },
+      imports: { "#bom": { workerd: { "vibelang-source": "./src/bom.vibe", default: "./.vibelang/js/src/bom.js" }, default: "./src/other.ts" } }
     })
     assert.equal(edits.length, 3)
   })
@@ -88,7 +88,7 @@ test("a conditional pattern gives its other conditions the module's own targets"
   const manifest = { exports: { "./*.js": { types: "./dist/*.d.ts", bun: "./src/*.ts" } } }
   withManifest(manifest, ["packages/util/src/bom.ts"], (root, read) => {
     rewriteExports(root, renameBatch(root, ["packages/util/src/bom.ts"]))
-    assert.deepEqual(read().exports["./bom.js"], { types: "./dist/bom.d.ts", bun: "./src/bom.vibe" })
+    assert.deepEqual(read().exports["./bom.js"], { types: "./dist/bom.d.ts", bun: { "vibelang-source": "./src/bom.vibe", default: "./.vibelang/js/src/bom.js" } })
   })
 })
 
@@ -105,8 +105,8 @@ test("a types field or condition names the sidecar, and a bare entry gains one",
     assert.deepEqual(read(), {
       types: "./src/bom.d.vibe.ts",
       exports: {
-        "./bom": { types: "./src/bom.d.vibe.ts", import: "./src/bom.vibe" },
-        "./plain": { types: "./src/bom.d.vibe.ts", default: "./src/bom.vibe" },
+        "./bom": { types: "./src/bom.d.vibe.ts", import: { "vibelang-source": "./src/bom.vibe", default: "./.vibelang/js/src/bom.js" } },
+        "./plain": { types: "./src/bom.d.vibe.ts", "vibelang-source": "./src/bom.vibe", default: "./.vibelang/js/src/bom.js" },
         "./other": "./src/other.ts"
       }
     })
@@ -127,8 +127,8 @@ test("restoreExports undoes one module's entries and keeps the others'", () => {
   const manifest = { main: "src/bom.ts", exports: { ".": "./src/other.ts", "./*": "./src/*.ts" } }
   withManifest(manifest, ["packages/util/src/bom.ts", "packages/util/src/other.ts"], (root, read) => {
     const edits = rewriteExports(root, renameBatch(root, ["packages/util/src/bom.ts", "packages/util/src/other.ts"]))
-    const other = { types: "./src/other.d.vibe.ts", default: "./src/other.vibe" }
-    assert.deepEqual(read(), { main: "src/bom.vibe", exports: { ".": other, "./bom": { types: "./src/bom.d.vibe.ts", default: "./src/bom.vibe" }, "./other": other, "./*": "./src/*.ts" } })
+    const other = { types: "./src/other.d.vibe.ts", "vibelang-source": "./src/other.vibe", default: "./.vibelang/js/src/other.js" }
+    assert.deepEqual(read(), { main: "src/bom.vibe", exports: { ".": other, "./bom": { types: "./src/bom.d.vibe.ts", "vibelang-source": "./src/bom.vibe", default: "./.vibelang/js/src/bom.js" }, "./other": other, "./*": "./src/*.ts" } })
     restoreExports(root, edits, "packages/util/src/bom.ts")
     assert.deepEqual(read(), { main: "src/bom.ts", exports: { ".": other, "./other": other, "./*": "./src/*.ts" } })
     restoreExports(root, edits, "packages/util/src/other.ts")

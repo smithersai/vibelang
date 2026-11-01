@@ -1,0 +1,21 @@
+{
+  "key": "opencode-32",
+  "note": "packages/schema exports ./* as ./src/*.ts; opencode's boundary tests bundle @opencode/schema with the bun build CLI, which loads no plugin, so a migrated module must also exist as JavaScript.",
+  "files": {
+    "packages/schema/package.json": "{\"name\": \"@opencode/schema\", \"type\": \"module\", \"exports\": {\"./*\": \"./src/*.ts\"}}",
+    "packages/schema/tsconfig.json": "{\"compilerOptions\": {\"target\": \"ES2022\", \"module\": \"NodeNext\", \"moduleResolution\": \"NodeNext\", \"strict\": true, \"types\": [], \"skipLibCheck\": true, \"allowImportingTsExtensions\": true, \"rewriteRelativeImportExtensions\": true, \"noEmit\": true}, \"include\": [\"src/**/*\"]}",
+    "packages/schema/src/skill.ts": "import { prefix } from \"./util.ts\"\nexport const Skill: string = prefix + \"skill\"\n",
+    "packages/schema/src/util.ts": "export const prefix: string = \"opencode-\"\n",
+    "packages/app/package.json": "{\"name\": \"app\", \"type\": \"module\"}",
+    "packages/app/main.mjs": "import { Skill } from \"@opencode/schema/skill\"\nconsole.log(Skill)\n"
+  },
+  "exports": {
+    "./skill": {
+      "types": "./src/skill.d.vibe.ts",
+      "vibelang-source": "./src/skill.vibe",
+      "default": "./.vibelang/js/src/skill.js"
+    },
+    "./*": "./src/*.ts"
+  },
+  "prints": "opencode-skill"
+}
