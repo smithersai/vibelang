@@ -212,6 +212,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A typed catch clause whose binding destructures, such as `catch ({ id }: NotFound)`, crashed the compiler and the editor with `Unhandled case in Node.Text`; it now reports `EK2112`, suggesting `catch (e)`, and its quick fix leaves the pattern alone.
 
 - Bundling a package that mixed `.ts` and `.vibe` modules could include two copies of a shared service or schema, so a built CLI failed at startup although its tests passed. The bundler plugins now select the package's `vibelang-source` exports and preserve the bundler's existing conditions, keeping one source graph.
+
+- Under `module: Preserve`, a declaration printed inferred prelude types as `import("effect/Layer").Layer` even when the source used `Layer`; it now imports the written module names as the equivalent TypeScript does, including when the package leaves its module type implicit.
 - Configuring one diagnostic severity disabled fuzz validation of unrelated warning categories; validation now checks each code against its own effective `vibe.severities` entry and keeps other defaults enforced.
 
 - Awaiting a `Fiber` or `Deferred` in effect code showed extra configurable warnings; it now reports only `EK0102`, with a working `join` or `Deferred.await` repair.

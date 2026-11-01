@@ -1,0 +1,4 @@
+import { Context, Layer, References } from "effect"
+export const layer = Layer.merge(Layer.empty, Layer.empty)
+export const context = Context.add(Context.empty(), References.MinimumLogLevel, "Info")
+export type ContextSource = Context.Context<never>

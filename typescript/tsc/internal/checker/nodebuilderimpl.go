@@ -670,8 +670,12 @@ func (b *NodeBuilderImpl) symbolToTypeNode(symbol *ast.Symbol, mask ast.SymbolFl
 		// in scope, as VibeLang's prelude does: Option.Option<string>, not
 		// import("effect/Option").Option<string>. The name's import resolves
 		// in the file's own mode, so not where the import type needs another.
+		// Emit kinds such as Preserve are not resolution modes. Only the
+		// Node16/Next resolvers require the cross-mode restriction below.
+		resolution := b.ch.compilerOptions.GetModuleResolutionKind()
+		requiresModeMatch := resolution == core.ModuleResolutionKindNode16 || resolution == core.ModuleResolutionKindNodeNext
 		if b.ctx.internalFlags&nodebuilder.InternalFlagsRewriteModuleSpecifiers != 0 && contextFile != nil && (nonRootParts == nil && isTypeOf || nonRootParts != nil && ast.IsEntityName(nonRootParts)) &&
-			(targetFile == nil || b.ch.program.GetEmitModuleFormatOfFile(targetFile) == b.ch.program.GetEmitModuleFormatOfFile(contextFile)) {
+			(!requiresModeMatch || targetFile == nil || b.ch.program.GetEmitModuleFormatOfFile(targetFile) == b.ch.program.GetEmitModuleFormatOfFile(contextFile)) {
 			if name := b.ch.moduleNameFromHooks(contextFile, chain[0], b.f.NewIdentifier); name != nil {
 				entityName := b.qualifyEntityName(name, nonRootParts)
 				if isTypeOf {
