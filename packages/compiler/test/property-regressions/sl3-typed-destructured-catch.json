@@ -1,0 +1,24 @@
+{
+  "source": "loop/r3/APPLIED.md, Found while testing: typed destructured catch panic and plain typed catch rejection",
+  "input": {
+    "binding": "object",
+    "annotation": "any",
+    "home": "function",
+    "written": false,
+    "nested": false
+  },
+  "sourceCode": "declare function work(): void\nexport function sample() { try { work() } catch ({ code = 1 }: any) {} }\n",
+  "pending": {
+    "diagnostics": {
+      "key": "r3:plain-catch:typed-annotation:EK2105-EK2112-EK9203",
+      "owner": "impl-hunt-fail",
+      "relatedOwner": "impl-hunt-data"
+    }
+  },
+  "fixed": {
+    "panic": {
+      "key": "r3:plain-catch:destructured-binding:Node.Text",
+      "commit": "c94a0a44c6cf"
+    }
+  }
+}
