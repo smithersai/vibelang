@@ -53,7 +53,7 @@ export effect function main() {
   const picked = pick(load)
   // An arrow holds a program: building it runs nothing, calling it runs once.
   const before = runs
-  const p = effect () => try try work()
+  const p = effect () => try work()
   const built = runs - before
   const ran = try p()
   // A union of functions of one form calls the one chosen, in that form.

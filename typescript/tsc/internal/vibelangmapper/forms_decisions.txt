@@ -3805,7 +3805,6 @@ typescript/vibelang/cases/written-forms-probes/main.vibe:22:24 lambda program an
 typescript/vibelang/cases/written-forms-probes/main.vibe:40:26 lambda choice fallback
 typescript/vibelang/cases/written-forms-probes/main.vibe:44:27 lambda effectFn annotation
 typescript/vibelang/cases/written-forms-probes/main.vibe:56:13 lambda dual fallback
-typescript/vibelang/cases/written-forms-probes/main.vibe:56:30 byname program table
 typescript/vibelang/cases/written-forms/forms.vibe:11:22 lambda plain fallback
 typescript/vibelang/cases/written-forms/forms.vibe:12:22 lambda plain fallback
 typescript/vibelang/cases/written-forms/forms.vibe:18:21 lambda plain annotation
