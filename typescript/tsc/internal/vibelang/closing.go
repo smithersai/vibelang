@@ -36,27 +36,28 @@ import "github.com/microsoft/TypeScript/tsc/internal/ast"
 // return completion that unwinding resumes the frame with passes through it.
 
 // closeLoops rewrites each native for...of of a .vibe function's body that
-// the lowering emitted, as above. A label stays on its loop, inside the
-// block the rewrite makes, so a continue still targets an iteration statement.
+// the lowering emitted, as above. Every consecutive label stays on its loop,
+// inside the block the rewrite makes, so continue still targets an iteration.
 func (tx *lowering) closeLoops(node *ast.Node) *ast.Node {
 	visitor := tx.EmitContext().NewNodeVisitor(nil)
 	visitor.Visit = func(node *ast.Node) *ast.Node {
-		var label *ast.Node
+		var labels []*ast.Node
 		loop := node
-		if ast.IsLabeledStatement(node) {
-			label, loop = node, node.AsLabeledStatement().Statement
+		for ast.IsLabeledStatement(loop) {
+			labels = append(labels, loop)
+			loop = loop.AsLabeledStatement().Statement
 		}
 		if !tx.isClosedLoop(loop) {
 			return visitor.VisitEachChild(node)
 		}
-		return tx.closeLoop(label, visitor.VisitEachChild(loop))
+		return tx.closeLoop(labels, visitor.VisitEachChild(loop))
 	}
 	return visitor.VisitNode(node)
 }
 
 // closeLoop rewrites loop, a native for...of whose nested loops are already
-// rewritten, with label when one labels it.
-func (tx *lowering) closeLoop(label *ast.Node, loop *ast.Node) *ast.Node {
+// rewritten, keeping the complete label chain on the loop in source order.
+func (tx *lowering) closeLoop(labels []*ast.Node, loop *ast.Node) *ast.Node {
 	ec := tx.EmitContext()
 	f := tx.Factory()
 	statement := loop.AsForInOrOfStatement()
@@ -85,8 +86,9 @@ func (tx *lowering) closeLoop(label *ast.Node, loop *ast.Node) *ast.Node {
 	}), true))
 	guarded := f.NewBlock(f.NewNodeList([]*ast.Node{f.NewTryStatement(f.NewBlock(f.NewNodeList(body), true), catchInner, nil)}), true)
 	rewritten := f.UpdateForInOrOfStatement(statement, statement.AwaitModifier, initializer, statement.Expression, guarded)
-	if label != nil {
-		rewritten = f.UpdateLabeledStatement(label.AsLabeledStatement(), label.AsLabeledStatement().Label, rewritten)
+	for i := len(labels) - 1; i >= 0; i-- {
+		label := labels[i].AsLabeledStatement()
+		rewritten = f.UpdateLabeledStatement(label, label.Label, rewritten)
 	}
 	catchOuter := f.NewCatchClause(f.NewVariableDeclaration(outer, nil, nil, nil), f.NewBlock(f.NewNodeList([]*ast.Node{
 		f.NewThrowStatement(tx.runtimeCall("$finallyFailure", pending, outer)),
@@ -98,8 +100,8 @@ func (tx *lowering) closeLoop(label *ast.Node, loop *ast.Node) *ast.Node {
 	rethrow := f.NewIfStatement(f.NewBinaryExpression(nil, pending, nil, f.NewToken(ast.KindExclamationEqualsEqualsToken), tx.runtimeMember("$normal")), f.NewThrowStatement(pending), nil)
 	block := f.NewBlock(f.NewNodeList([]*ast.Node{declare, try, rethrow}), true)
 	original := loop
-	if label != nil {
-		original = label
+	if len(labels) > 0 {
+		original = labels[0]
 	}
 	ec.SetOriginal(block, original)
 	block.Loc = original.Loc

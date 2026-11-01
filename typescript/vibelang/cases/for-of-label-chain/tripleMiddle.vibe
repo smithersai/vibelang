@@ -1,0 +1,8 @@
+export function tripleMiddle(): number {
+  let total = 0
+  outer: middle: inner: for (const x of [1, 2]) {
+    total += x
+    continue middle
+  }
+  return total
+}

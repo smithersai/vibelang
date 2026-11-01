@@ -1,0 +1,8 @@
+export function breakOuter(): number {
+  let total = 0
+  outer: inner: for (const x of [1, 2]) {
+    total += x
+    break outer
+  }
+  return total
+}

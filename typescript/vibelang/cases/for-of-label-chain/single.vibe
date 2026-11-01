@@ -1,0 +1,8 @@
+export function single(): number {
+  let total = 0
+  outer: for (const x of [1, 2]) {
+    total += x
+    continue outer
+  }
+  return total
+}
