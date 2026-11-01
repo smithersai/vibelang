@@ -160,6 +160,8 @@ reason; those shapes need a manual rewrite.
 
 A plain `Option.match(value, { onNone, onSome })` has a native quick fix: the subject and the handler object are read once, in their original order, then a `match` chooses `when Option.Some(let value)` or the default. A choice whose arms return programs keeps the diagnostic and its reason.
 
+A discarded `Option.match` result becomes a statement block; expression positions retain a `do` expression. A choice that starts a larger expression statement is parenthesized. Both evaluate the subject and callbacks once, in order.
+
 An Option pipe whose stage argument is a callback factory, a property read or an object literal, such as `pipe(value, Option.map(EffectArray.append(1)))`, is cached first: a `do` block evaluates the subject and each argument in pipe order, then calls the methods on the cached values, so no factory moves into the stage that uses it.
 
 A default `Match.orElse` handler that destructures its parameter, `({ _tag }) => _tag`, becomes a catch-all `let` arm whose `do` block performs the same destructure, defaults included, only when the default runs.

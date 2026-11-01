@@ -8,6 +8,13 @@ import (
 
 func TestOptionMatchNativeFoldkit(t *testing.T) {
 	for _, source := range []string{
+		"export const f = (v: Option.Option<number>): void => { Option.match(v, {onNone: ():number => 0, onSome: (n):number => n}) + 1; }",
+		"export const f = (v: Option.Option<number>): void => { Option.match(v, {onNone: ():boolean => false, onSome: (n):boolean => n > 0}) ? 1 : 2; }",
+		"export const f = (v: Option.Option<number>): void => { Option.match(v, {onNone: (): (() => void) => ():void => {}, onSome: (n): (() => void) => ():void => {}})(); }",
+
+		"export const f = (v: Option.Option<number>): void => { Option.match(v, {onNone: ():void => {}, onSome: (n):void => {}}); }",
+		"export const f = (v: Option.Option<number>): void => { if (true) Option.match(v, {onNone: ():void => {}, onSome: (n):void => {}}); }",
+		"export const f = (v: Option.Option<number>): void => { (Option.match(v, {onNone: ():void => {}, onSome: (n):void => {}})); }",
 		"export const f = (v: Option.Option<number>): number => Option.match(v, {onNone: ():number => 0, onSome: (n):number => n})",
 		"export const f = (v: Option.Option<{a:number}>): number => Option.match(v, {onNone: ():number => 0, onSome: ({a}):number => { if (a) return a; return 2 }})",
 		"export const f = (v: Option.Option<number>): number => { const $optionSubject = 4; return Option.match(v, {onSome:(n):number => n + $optionSubject, onNone:():number => 0}) }",

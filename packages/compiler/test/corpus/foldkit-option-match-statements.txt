@@ -1,0 +1,49 @@
+export function statement(v: Option.Option<number>, trace: string[]): void {
+  Option.match(
+    v,
+    { onNone: (): void => { trace.push("none") }, onSome: (n): void => { trace.push(String(n)) } }
+  )
+  trace.push("after")
+}
+export function conditional(v: Option.Option<number>, trace: string[]): void {
+  if (trace.length >= 0) Option.match(v, { onNone: (): void => { trace.push("none") }, onSome: (n): void => { trace.push(String(n)) } })
+  trace.push("after")
+}
+export function parenthesized(v: Option.Option<number>, trace: string[]): void {
+  (Option.match(v, { onNone: (): void => { trace.push("none") }, onSome: (n): void => { trace.push(String(n)) } }))
+  trace.push("after")
+}
+export const arrow = (v: Option.Option<number>, trace: string[]): void => Option.match(v, { onNone: (): void => { trace.push("none") }, onSome: (n): void => { trace.push(String(n)) } })
+export function returned(v: Option.Option<number>, trace: string[]): void {
+  return Option.match(v, { onNone: (): void => { trace.push("none") }, onSome: (n): void => { trace.push(String(n)) } })
+}
+
+type Action = () => void
+type Box = { marker: number; touch(): void }
+export function calledResult(v: Option.Option<number>, trace: string[]): void {
+  Option.match(v, {
+    onNone: (): Action => (): void => { trace.push("none") },
+    onSome: (n): Action => (): void => { trace.push(String(n)) },
+  })()
+  trace.push("after")
+}
+export function leftBinary(v: Option.Option<number>, trace: string[]): void {
+  Option.match(v, {
+    onNone: (): number => { trace.push("none"); return 0 },
+    onSome: (n): number => { trace.push(String(n)); return n },
+  }) + trace.push("rhs")
+  trace.push("after")
+}
+export function leftConditional(v: Option.Option<number>, trace: string[]): void {
+  Option.match(v, { onNone: (): boolean => false, onSome: (n): boolean => n > 0 })
+    ? trace.push("yes")
+    : trace.push("no")
+  trace.push("after")
+}
+export function methodResult(v: Option.Option<number>, trace: string[]): void {
+  Option.match(v, {
+    onNone: (): Box => ({ marker: 0, touch(): void { trace.push(String(this.marker)) } }),
+    onSome: (n): Box => ({ marker: n, touch(): void { trace.push(String(this.marker)) } }),
+  }).touch()
+  trace.push("after")
+}

@@ -35,7 +35,25 @@ func optionMatchRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node
 	none := names.freshName("$optionNone")
 	some := names.freshName("$optionSome")
 	handlersType := c.TypeToString(c.GetTypeAtLocation(handlers))
-	text := "do { const " + input + " = " + expressionText(file, value) + "; const " + callbacks + ": " + handlersType + " = " + expressionText(file, handlers) +
+	prefix := "do { const "
+	// At the start of an expression statement, do denotes do/while.
+	// A plain block preserves the discarded result and callback order.
+	if ast.IsExpressionStatement(call.Parent) {
+		prefix = "{ const "
+	}
+	text := prefix + input + " = " + expressionText(file, value) + "; const " + callbacks + ": " + handlersType + " = " + expressionText(file, handlers) +
 		"; const { onNone: " + none + ", onSome: " + some + " } = " + callbacks + "; match (" + input + ") { when " + option + ".Some(let " + payload + "): " + some + "(" + payload + "); default: " + none + "(); }; }"
+	if !ast.IsExpressionStatement(call.Parent) {
+		// A call/property/binary chain can begin an expression statement too.
+		// Keep do in expression position when this call supplies its first token.
+		for parent := call.Parent; parent != nil; parent = parent.Parent {
+			if ast.IsExpressionStatement(parent) {
+				if nodeStart(file, parent.Expression()) == nodeStart(file, call) {
+					text = "(" + text + ")"
+				}
+				break
+			}
+		}
+	}
 	return withImportRemovals(c, file, &formRewrite{edits: []sourceEdit{{nodeStart(file, call), call.End(), text}}, description: "an eager native Option match"})
 }

@@ -242,6 +242,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The migrate flow's declaration snapshots failed with `TS5051` for valid projects using `inlineSources`; declaration-only emission now disables all source and declaration map options together, including inherited settings.
 
+- `--fix` could leave statement-position `Option.match` calls unchanged after a parser refusal; it now writes a valid block and preserves callback order.
 - Migrating a Match return-type hint could insert an `as` assertion that the repository's lint rejected; the quick fix now preserves checked type annotations, including destructured bindings.
 - `FuzzCommandLine` could fail with `the compilation rewrote the source main.d.vibe.ts` in a checkout where an earlier compile had left that sidecar in an acceptance case; the fuzz seeds now skip these generated files.
 
