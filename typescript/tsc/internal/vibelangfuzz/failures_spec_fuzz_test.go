@@ -461,6 +461,7 @@ func failuresCases() []*failCase {
 	add(&failCase{Name: "schema-error-default-export-newline", Quote: "As in ECMAScript's `ExportDeclaration`, `export error E` and `export schema error E` are named declarations; `export default error E` and `export default schema error E` are syntax errors (`EK1305`).", Host: "none", Decls: "⟦export default\nschema error Missing⟧\nexport const kept = 1", Code: 1305, OneDiagnostic: true, Owner: "impl-hunt-fail"})
 	add(&failCase{Name: "schema-error-default-export-contextual", Quote: "As in ECMAScript's `ExportDeclaration`, `export error E` and `export schema error E` are named declarations; `export default error E` and `export default schema error E` are syntax errors (`EK1305`).", Host: "none", Decls: "⟦export default schema error async {}⟧\nexport const kept = 1", Code: 1305, OneDiagnostic: true, Owner: "impl-hunt-fail"})
 	cases = append(cases, failuresErrorFamilyCases()...)
+	cases = append(cases, failuresReservedMemberCases()...)
 	cases = append(cases, failuresSchemaErrorReferenceCases()...)
 	cases = append(cases, failuresFieldCommaCases()...)
 	return append(cases, failuresExtraCases()...)

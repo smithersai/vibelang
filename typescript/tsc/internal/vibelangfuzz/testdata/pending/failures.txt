@@ -157,10 +157,6 @@ FuzzFailuresSpec feature:foreign-overload-number compiler VIP-4: 003-failures.md
 FuzzFailuresSpec corpus:foreign-overload-number compiler VIP-4: minimized reproduction of feature:foreign-overload-number; lane vip-core2
 FuzzFailuresSpec feature:rethrows-own-throw compiler VIP-4: 003-failures.md contract rethrows-own-throw disagrees on main 84f966a6 (error TS1128; error TS1434; error TS2552); lane vip-core2
 FuzzFailuresSpec corpus:rethrows-own-throw compiler VIP-4: minimized reproduction of feature:rethrows-own-throw; lane vip-core2
-FuzzFailuresSpec feature:error-priority-tag-initializer compiler VIP-13: 003-failures.md contract error-priority-tag-initializer disagrees on main 84f966a6 (error EK2117; error TS2416); lane fix-vip-decls
-FuzzFailuresSpec corpus:error-priority-tag-initializer compiler VIP-13: minimized reproduction of feature:error-priority-tag-initializer; lane fix-vip-decls
-FuzzFailuresSpec feature:schema-error-priority-tag-initializer compiler VIP-29: 003-failures.md contract schema-error-priority-tag-initializer disagrees on main 84f966a6 (error EK2117; error TS2416); lane fix-vip-decls
-FuzzFailuresSpec corpus:schema-error-priority-tag-initializer compiler VIP-29: minimized reproduction of feature:schema-error-priority-tag-initializer; lane fix-vip-decls
 FuzzFailuresSpec feature:effect-decoder-sync-call compiler VIP-4 (decided detail 66): current 003-failures.md contract effect-decoder-sync-call cannot be checked before the effect marker parses (TS1434); lane vip-core2
 FuzzFailuresSpec corpus:effect-decoder-sync-call compiler VIP-4: minimized reproduction of feature:effect-decoder-sync-call; lane vip-core2
 

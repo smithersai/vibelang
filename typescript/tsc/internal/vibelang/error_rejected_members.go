@@ -26,7 +26,7 @@ func init() {
 }
 
 func checkErrorRejectedMembers(c *checker.Checker, file *ast.SourceFile) {
-	for _, member := range errorRejectedMembers(file) {
+	for _, member := range errorRejectedMembers(c, file) {
 		d := report(c, member, ek1304Member, rejectedMemberKind(member))
 		note(d, "Keep it in an Effect TypeScript class: the quick fix rewrites the declaration as one.")
 		if ast.HasSyntacticModifier(member, ast.ModifierFlagsPrivate|ast.ModifierFlagsProtected) {
@@ -38,14 +38,15 @@ func checkErrorRejectedMembers(c *checker.Checker, file *ast.SourceFile) {
 	}
 }
 
-// errorRejectedMembers lists the rejected members of every error declaration in file.
-func errorRejectedMembers(file *ast.SourceFile) []*ast.Node {
+// errorRejectedMembers lists fallback-category members after resolving the
+// reserved name, including computed names. Their independent errors stay visible.
+func errorRejectedMembers(c *checker.Checker, file *ast.SourceFile) []*ast.Node {
 	var rejected []*ast.Node
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		if errorDeclarationBase(node) {
 			for _, member := range node.Members() {
-				if isErrorRejectedMember(member) {
+				if isErrorRejectedMember(c, member) {
 					rejected = append(rejected, member)
 				}
 			}
@@ -56,8 +57,8 @@ func errorRejectedMembers(file *ast.SourceFile) []*ast.Node {
 	return rejected
 }
 
-func isErrorRejectedMember(member *ast.Node) bool {
-	if member.Flags&ast.NodeFlagsReparsed != 0 || ast.HasSyntacticModifier(member, ast.ModifierFlagsStatic) || errorMemberIsTag(member) {
+func isErrorRejectedMember(c *checker.Checker, member *ast.Node) bool {
+	if member.Flags&ast.NodeFlagsReparsed != 0 || ast.HasSyntacticModifier(member, ast.ModifierFlagsStatic) || errorMemberIsReservedTag(c, member) {
 		return false
 	}
 	switch member.Kind {
@@ -94,11 +95,11 @@ func rejectedMemberKind(member *ast.Node) string {
 
 // dropRejectedMemberDiagnostics removes TypeScript's diagnostics inside a
 // rejected member or a constructor, so the member gets EK1304 or EK1301 alone.
-func dropRejectedMemberDiagnostics(_ *checker.Checker, file *ast.SourceFile, all []*ast.Diagnostic) []*ast.Diagnostic {
+func dropRejectedMemberDiagnostics(c *checker.Checker, file *ast.SourceFile, all []*ast.Diagnostic) []*ast.Diagnostic {
 	if !isVibeLangFile(file) {
 		return all
 	}
-	rejected := append(errorRejectedMembers(file), errorConstructors(file)...)
+	rejected := append(errorRejectedMembers(c, file), errorConstructors(file)...)
 	if len(rejected) == 0 {
 		return all
 	}

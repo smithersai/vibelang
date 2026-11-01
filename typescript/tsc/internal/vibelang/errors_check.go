@@ -120,6 +120,9 @@ func checkErrorDeclarations(c *checker.Checker, file *ast.SourceFile) {
 }
 
 func checkErrorDeclaration(c *checker.Checker, class *ast.Node, form errorForm, base *ast.Node) {
+	if (form == errorFormRoot || form == errorFormSchemaRoot) && checkErrorReservedMembers(c, class) {
+		return
+	}
 	name := class.Name()
 	symbol := c.GetSymbolAtLocation(name)
 	if symbol == nil {

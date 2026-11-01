@@ -1,0 +1,14 @@
+// expect: EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117
+// VIP-13/29 reserve the name for every member kind, including static members.
+export error Bad0E { static _tag = "Bad0E" }
+export schema error Bad0S { static _tag = "Bad0S" }
+export error Bad1E { static _tag() { return 1 } }
+export schema error Bad1S { static _tag() { return 1 } }
+export error Bad2E { static get _tag() { return "Bad2E" } }
+export schema error Bad2S { static get _tag() { return "Bad2S" } }
+export error Bad3E { static set _tag(value: string) {} }
+export schema error Bad3S { static set _tag(value: string) {} }
+export error Bad4E { get _tag(): "Bad4E" { return "Bad4E" } }
+export schema error Bad4S { get _tag(): "Bad4S" { return "Bad4S" } }
+export error Bad5E { static ["_tag"] = "Bad5E" }
+export schema error Bad5S { static ["_tag"] = "Bad5S" }

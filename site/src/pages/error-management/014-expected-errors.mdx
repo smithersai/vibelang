@@ -375,7 +375,9 @@ true
 Normalized PEN
 ```
 
-An `error` declaration is a named class. The keyword supplies its `Data.TaggedError` base and its tag. Methods and getters are allowed; a constructor or `_tag` override is not. A field is a property written with a type and no initializer, and as between interface members, a `;`, a comma or a new line ends it; two members on one line with nothing between them are `EK1306`, whose quick fix inserts `;`. A field is readonly, and the constructor takes the fields as one object. Commas may follow payload fields, including an optional field or the last field. Methods and other class elements keep TypeScript's punctuation.
+An `error` declaration is a named class. The keyword supplies its `Data.TaggedError` base and its tag. Methods and getters are allowed; a constructor or `_tag` override is not. The name `_tag` is reserved for every member kind, including methods, accessors and static members (`EK2117`). Rename the member. For a previously valid initialized field, accessor or static member, `vibelang --fix` preserves its implementation in an explicit Effect class. A field is a property written with a type and no initializer, and as between interface members, a `;`, a comma or a new line ends it; two members on one line with nothing between them are `EK1306`, whose quick fix inserts `;`. A field is readonly, and the constructor takes the fields as one object. Commas may follow payload fields, including an optional field or the last field. Methods and other class elements keep TypeScript's punctuation.
+
+For a reserved `_tag` member, `EK2117` takes precedence over the generic body-member diagnostic `EK1304`. Unrelated errors in member expressions remain visible.
 
 Empty `;` members are ignored in `error` and `schema error` bodies. The formatter can remove a member without JSDoc. A `;` with JSDoc stays, so the comment does not become the next member's contract.
 

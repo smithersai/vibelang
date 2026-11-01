@@ -1,6 +1,7 @@
 package vibelang
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -113,5 +114,40 @@ func TestErrorStaticMemberFixPreservesShadowedModules(t *testing.T) {
 				t.Fatalf("lost user schema reference: %s", fixed)
 			}
 		})
+	}
+}
+
+// A valid class repair must not be taught back into the rejected declaration.
+func TestErrorReservedStaticMemberMigrationConverges(t *testing.T) {
+	for _, source := range []string{
+		"export error E { id: string; _tag: \"E\" = \"E\" }\n",
+		"export schema error E { id: string; _tag: \"E\" = \"E\" }\n",
+		"export schema error E { id: string; get _tag(): \"E\" { return \"E\" } }\n",
+		"export schema error E { id: string; set _tag(value: \"E\") {} }\n",
+		"export error E { id: string; static _tag = \"metadata\" }\n",
+		"export schema error E { id: string; static get _tag() { return \"metadata\" } }\n",
+		"export abstract schema error E { id: string; static _tag = \"metadata\" }\n",
+	} {
+		for _, options := range []FixOptions{{}, {MigrationOnly: true}, {VIPOnly: true}} {
+			_, file, _, _ := editorProgram(t, source)
+			fs := bundled.WrapFS(osvfs.FS())
+			configPath := filepath.Join(filepath.Dir(file.FileName().AsString()), "tsconfig.json")
+			config, errors := tsoptions.GetParsedCommandLineOfConfigFile(tspath.RootedFilePathFromAbsolute(filepath.ToSlash(configPath)), &core.CompilerOptions{}, nil, fs, nil)
+			if len(errors) != 0 {
+				t.Fatal(errors)
+			}
+			result := FixProjectWithOptions(t.Context(), fs, bundled.LibPath(), config, options)
+			fixed := result.Files[file.FileName()]
+			if result.Err != nil || fixed == nil || fixed.Counts[2117] == 0 || !strings.Contains(fixed.Text, "class E extends") {
+				t.Fatalf("migration did not converge: source %s, options %+v, fixed %+v, error %v", source, options, fixed, result.Err)
+			}
+			if err := os.WriteFile(file.FileName().AsString(), []byte(fixed.Text), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			second := FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), config, options)
+			if second.Err != nil || len(second.Files) != 0 {
+				t.Fatalf("second migration changed a fixed source: options %+v, files %v, error %v", options, second.Files, second.Err)
+			}
+		}
 	}
 }

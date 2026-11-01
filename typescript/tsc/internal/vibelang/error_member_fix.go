@@ -15,15 +15,15 @@ import (
 )
 
 func init() {
-	tsFormFixCodes = append(tsFormFixCodes, EK1302.Code)
-	vipMigrationFixCodes = append(vipMigrationFixCodes, EK1302.Code)
+	tsFormFixCodes = append(tsFormFixCodes, EK1302.Code, EK2117.Code)
+	vipMigrationFixCodes = append(vipMigrationFixCodes, EK1302.Code, EK2117.Code)
 	ls.RegisterCodeFixProvider(errorMemberClassFix)
 }
 
 // Retain user-written members, including nested VibeLang syntax, as source.
 var errorMemberClassFix = &ls.CodeFixProvider{
 	Source:     diagnosticSource,
-	ErrorCodes: []int32{1302},
+	ErrorCodes: []int32{1302, 2117},
 	GetCodeActions: func(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
 		var class *ast.Node
 		var visit func(*ast.Node) bool
@@ -61,6 +61,20 @@ var errorMemberClassFix = &ls.CodeFixProvider{
 		c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
 		defer done()
 		c.GetDiagnostics(ctx, fix.SourceFile)
+		if fix.ErrorCode == EK2117.Code {
+			// Actual class members can retain their native implementation.
+			// Payload/family errors retain their own fixes.
+			eligible := false
+			for _, member := range class.Members() {
+				if member.Pos() <= fix.Span.Pos() && fix.Span.End() <= member.End() &&
+					errorMemberIsReservedTag(c, member) {
+					eligible = true
+				}
+			}
+			if !eligible {
+				return nil, nil
+			}
+		}
 		visible := c.ResolveName(module, class, ast.SymbolFlagsValue|ast.SymbolFlagsNamespace|ast.SymbolFlagsAlias, false)
 		if visible == nil || visible != preludeSymbol(c, preludeStateOf(c), fix.SourceFile, module) {
 			qualifier = "$Error" + module
@@ -91,7 +105,19 @@ var errorMemberClassFix = &ls.CodeFixProvider{
 		}
 		base := p.Emit(baseNode, fix.SourceFile)
 		if module == "Data" {
-			base = strings.Replace(base, "TaggedError(", qualifier+".TaggedError(", 1)
+			constructor := qualifier + ".TaggedError("
+			if fix.ErrorCode == EK2117.Code {
+				// The old declaration uses the runtime's TaggedError shim,
+				// which also preserves cross-copy matching. A bare Data base
+				// would lose that existing behavior.
+				qualifier = "$ErrorTaggedError"
+				for i := 2; c.ResolveName(qualifier, class, ast.SymbolFlagsAll, false) != nil; i++ {
+					qualifier = "$ErrorTaggedError" + strconv.Itoa(i)
+				}
+				addedImport = "import { TaggedError as " + qualifier + " } from \"vibelang-runtime\"\n"
+				constructor = qualifier + "("
+			}
+			base = strings.Replace(base, "TaggedError(", constructor, 1)
 		}
 		if clauses := class.ClassLikeData().HeritageClauses; clauses != nil {
 			for _, clause := range clauses.Nodes {
@@ -100,10 +126,22 @@ var errorMemberClassFix = &ls.CodeFixProvider{
 				}
 			}
 		}
+		// An abstract schema error currently installs its family registration
+		// before user static initializers. Keep it in the explicit class too.
+		familyAlias := ""
+		if fix.ErrorCode == EK2117.Code && module == "Schema" && ast.HasSyntacticModifier(class, ast.ModifierFlagsAbstract) {
+			familyAlias = "$ErrorSchemaFamily"
+			for i := 2; c.ResolveName(familyAlias, class, ast.SymbolFlagsAll, false) != nil; i++ {
+				familyAlias = "$ErrorSchemaFamily" + strconv.Itoa(i)
+			}
+			addedImport += "import { $schemaErrorFamily as " + familyAlias + " } from \"vibelang-runtime\"\n"
+		}
 		var members []string
 		for _, member := range class.Members() {
 			if member.Flags&ast.NodeFlagsReparsed == 0 {
 				members = append(members, text[member.Pos():member.End()])
+			} else if familyAlias != "" && member.Kind == ast.KindClassStaticBlockDeclaration {
+				members = append(members, strings.Replace(p.Emit(member, fix.SourceFile), "$schemaErrorFamily(", familyAlias+"(", 1))
 			}
 		}
 		replacement := head + " extends " + base + " {" + strings.Join(members, "\n") + "\n}"
