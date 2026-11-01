@@ -1,0 +1,10 @@
+{
+  "property": "vite-query-id-ownership",
+  "rule": "docs/user/src/setup/vite.md: Queries on a .vibe import (another plugin loads x.vibe?highlighted)",
+  "input": { "name": "input", "query": "?highlighted", "owned": false },
+  "files": {
+    "entry.ts": "import highlighted from \"./input.vibe?highlighted\"\nexport const rendered = highlighted\n",
+    "input.vibe": "export const value = effect { return 1 }\n",
+    "env.d.ts": "declare module \"*?highlighted\" { const value: string; export default value }\n"
+  }
+}

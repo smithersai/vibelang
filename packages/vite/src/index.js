@@ -8,6 +8,24 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 const viteExtensions = [".mjs", ".js", ".mts", ".ts", ".jsx", ".tsx", ".json"]
 
 const cleanId = (id) => id.split("?")[0]
+
+// Vite's own module queries: ?import on a JavaScript import of a non-JS
+// extension, ?v= and ?t= for versioning and hot updates, and the worker
+// entry's ?worker_file&type=. An id that carries only these is the module
+// itself. Any other query, such as x.vibe?highlighted or ?raw, names a
+// resource another plugin (or Vite) loads from the same source. Vite's
+// TypeScript transform rewrites the code that loader supplied, so such a
+// resource keeps its content; this plugin compiles the .vibe source itself,
+// so it leaves those ids alone instead of replacing the loaded module.
+const viteQueries = new Set(["import", "v", "t", "worker_file", "type"])
+function isModuleId(id) {
+  const query = id.indexOf("?")
+  if (query < 0) return true
+  for (const key of new URLSearchParams(id.slice(query + 1)).keys()) {
+    if (!viteQueries.has(key)) return false
+  }
+  return true
+}
 const slash = (path) => path.replaceAll("\\", "/")
 
 // A module declaration of main.vibe compiles to main.vibe.text.js beside it
@@ -130,7 +148,7 @@ export default function vibelang(options = {}) {
     // cache (vibelang/cache), keyed by every input.
     configureVitest(context) {
       const define = context.defineCacheKeyGenerator ?? context.experimental_defineCacheKeyGenerator
-      define?.(({ id }) => isCompiled(cleanId(id)) ? false : undefined)
+      define?.(({ id }) => isCompiled(cleanId(id)) && isModuleId(id) ? false : undefined)
     },
     configResolved(config) {
       root = config.root
@@ -164,7 +182,7 @@ export default function vibelang(options = {}) {
     // A module declaration's JavaScript comes from its .vibe file's compile.
     async load(id) {
       const file = cleanId(id)
-      if (!isModuleOutput(file) || /[?&](?:raw|url)(?:&|=|$)/.test(id)) return
+      if (!isModuleOutput(file) || !isModuleId(id)) return
       const { project, code, map, errors, error } = await (await loaded()).load(file)
       this.addWatchFile(project)
       if (errors.length) this.error(diagnostics(errors, file))
@@ -175,7 +193,7 @@ export default function vibelang(options = {}) {
     },
     async transform(_source, id) {
       const file = cleanId(id)
-      if (!file.endsWith(".vibe") || /[?&](?:raw|url)(?:&|=|$)/.test(id)) return
+      if (!file.endsWith(".vibe") || !isModuleId(id)) return
       const { project, code, map, errors, warnings, error } = await (await loaded()).load(file)
       this.addWatchFile(project)
       // Reject diagnostics for this source, including on repeated requests.

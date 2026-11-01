@@ -90,6 +90,10 @@ export const message = Effect.runSync(greet("Vite"))
 // Output: Hello, Vite!
 ```
 
+### Queries on a `.vibe` import
+
+Vite's own module queries name the module itself: `?import`, `?v=` and `?t=`, which Vite adds, and the worker entry's `?worker_file&type=`. The plugin compiles those ids. Any other query, such as `./x.vibe?raw`, `./x.vibe?url` or a plugin's own `./x.vibe?highlighted`, names a resource that Vite or another plugin loads from the same source. The plugin leaves such an id alone, so a plugin that serves `x.ts?highlighted` as rendered HTML serves `x.vibe?highlighted` the same way, and `?raw` gives the `.vibe` source text.
+
 ## 4. Test with Vitest
 
 The starter's app project excludes test sources. Create `tsconfig.test.json` so Vitest checks and compiles them too:
