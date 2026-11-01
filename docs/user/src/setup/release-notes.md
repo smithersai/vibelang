@@ -269,6 +269,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Migration setup could leave a native type exported through a TypeScript namespace barrel as an error type in project-aware linters; setup now enables source declaration redirects in owned configs and records those edits.
 
+
+- A package built with `tsdown` could fail to parse migrated sources because setup omitted its plugin; setup now wires every static config and local config factory, and installs the plugin in the owning package.
 - Schema fuzzing could miss readonly-record alias regressions outside one spelling; keyed checks now cover the alias, mutability and required-key combinations while keeping unresolved compiler gaps explicit.
 
 - The install site named an unpublished compiler version and native Windows packages; it now uses npm’s published version and platforms, with WSL guidance until Windows packages are published.

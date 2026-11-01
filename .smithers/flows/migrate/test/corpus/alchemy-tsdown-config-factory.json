@@ -1,0 +1,5 @@
+{
+  "file": "tsdown.config.ts",
+  "source": "import { defineConfig, type UserConfig } from \"tsdown\";\nconst existing = () => ({ name: \"kept\" });\nconst workerConfig = (entry: string): UserConfig => ({\n  entry,\n  plugins: [existing()] as unknown as UserConfig[\"plugins\"],\n});\nexport default defineConfig([\n  { entry: [\"src/index.ts\"], format: \"esm\" },\n  workerConfig(\"src/worker.ts\"),\n  { entry: \"src/dev.ts\", plugins: [existing()], dts: false },\n]);\n",
+  "configs": 3
+}
