@@ -26,7 +26,7 @@ const files = readdirSync(src)
 const ext = files.some((f) => f.endsWith(".vibe")) ? ".vibe" : ".ts"
 const count = files.filter((f) => /^m\d+\.(?:vibe|ts)$/.test(f) && f.endsWith(ext)).length
 const last = path.join(src, `m${count - 1}${ext}`)
-const other = path.join(src, `m${Math.floor(count / 2)}${ext}`)
+const other = path.join(src, `m${Math.min(Math.floor(count / 2), count - 2)}${ext}`)
 const uri = (file) => pathToFileURL(file).href
 
 // LSP_ARGS adds server arguments, such as "--pprofDir /tmp/prof".

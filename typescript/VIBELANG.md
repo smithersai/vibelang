@@ -1484,6 +1484,8 @@ The `MEASURE wall_s=... rss_mb=... exit=...` record starts on its own line, even
 
 The LSP benchmark counts only numbered `.vibe` or `.ts` source files in the project's selected language. Declaration sidecars (for example, `m0.d.vibe.ts`), emitted JavaScript, source maps and backup files do not count as modules.
 
+The LSP benchmark pulls cold diagnostics from the last numbered module and warm diagnostics from a different source module. A two-module project opens `m1` and then `m0`, so the warm measurement does not reuse the first file.
+
 Measured 2026-10-17 on the build server, VibeLang at `main` plus the plain-function fix below, against upstream tsgo 7.1.0-dev at 257e874 (medians of 5 runs; seconds and MiB):
 
 | Project | VibeLang wall | VibeLang check | Effect TS wall (upstream) | Effect TS check | Peak RSS, VibeLang / Effect TS |
