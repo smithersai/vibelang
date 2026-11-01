@@ -74,6 +74,7 @@ const specTests = [
   "TestSidecarStyleScopeQuoted",
   "TestMigrationAliasConfigurationQuoted",
   "TestPlatformBoundaryHomesQuoted",
+  "TestServiceNativeMemberTypesQuoted",
   "TestDoForTryDiagnosticOwnerQuoted",
   "TestDoDeclarationBytesQuoted",
   "TestDoContextualResultFuzzQuoted",

@@ -142,6 +142,7 @@ Appendix B supplies the current diagnostic assignments; compatibility declaratio
 | `TestPlatformBoundaryContractsQuoted` | Platform splitting retains file-scoped pragmas, schema value bindings and initializer order; real compiler controls and keyed T3code witnesses. |
 | `TestSidecarStyleScopeQuoted` | Actual native sidecar/package emits over all declaration styles and stock TypeScript consumers, with malformed-reference and wrong-field-type controls. |
 | `FuzzPlatformBoundaryHomes` | 72 keyed platform accesses across function, arrow, async and Effect-wrapper homes, static member spellings and local shadows | VIP-33 requires `EK4402` for resolved platform access in every home; native TypeScript and local bindings remain controls |
+| `FuzzServiceNativeMemberTypes` | Omitted and explicit member types, optional methods/properties and member-local generics across loose, strict and explicit noImplicitAny overrides | Chapter 5 native PropertySignature/MethodSignature rules, VIP-9 and detail 276; independent TypeScript controls retain TS7010/TS7008 rather than an Effect-only prohibition |
 | `FuzzSpecRules` | Retired | Current static targets quote their VIP chapters and gate those quotations through `specTests`. |
 | `FuzzSpecAllowed` | Retired | Current static targets and imported-scope controls cover the current forms. |
 | `FuzzSpecPrograms` | Retired | Semantics use `FuzzVIPDifferential`, with current chapter quotations and paired prints. |
