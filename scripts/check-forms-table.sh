@@ -40,7 +40,15 @@ case "${1:-}" in
 esac
 
 tmp="$(mktemp -d "${TMPDIR:-/tmp}/vibelang-forms.XXXXXX")"
-trap 'rm -rf "$tmp"' EXIT
+forms_stderr_pid=
+cleanup_forms() {
+  if [ -n "$forms_stderr_pid" ]; then
+    kill "$forms_stderr_pid" 2>/dev/null || true
+    wait "$forms_stderr_pid" 2>/dev/null || true
+  fi
+  rm -rf "$tmp"
+}
+trap cleanup_forms EXIT
 
 if [ -n "${FORMS_BINARY:-}" ]; then
   if [ -n "${VIBELANG_FORMS_EXPORT:-}" ]; then
@@ -75,8 +83,38 @@ generator=(go run -trimpath ${overlay[@]+"${overlay[@]}"} ./cmd/vibelang-forms)
 if [ -n "${FORMS_BINARY:-}" ]; then
   generator=("$FORMS_BINARY")
 fi
-(cd "$root/typescript/tsc" && CGO_ENABLED=0 "${generator[@]}" -repo "$root" ${modules[@]+"${modules[@]}"} \
-  -o "$tmp/forms_table.jsonl" -decisions "$tmp/forms_decisions.txt" ${gate[@]+"${gate[@]}"})
+run_generator() {
+  (cd "$root/typescript/tsc" && CGO_ENABLED=0 "${generator[@]}" -repo "$root" ${modules[@]+"${modules[@]}"} \
+    -o "$tmp/forms_table.jsonl" -decisions "$tmp/forms_decisions.txt" ${gate[@]+"${gate[@]}"})
+}
+if [ -n "${FORMS_BINARY:-}" ]; then
+  run_generator
+else
+  # Keep compiler/admission diagnostics live, and drain the recorder before
+  # classifying an error. Closing fd3 lets tee finish even on a silent build.
+  exec 3> >(tee "$tmp/generator.stderr" >&2)
+  forms_stderr_pid=$!
+  if run_generator 2>&3; then generator_status=0; else generator_status=$?; fi
+  exec 3>&-
+  stderr_status=0
+  wait "$forms_stderr_pid" || stderr_status=$?
+  forms_stderr_pid=
+  if [ "$stderr_status" != 0 ]; then
+    echo "check-forms-table: diagnostic recorder failed (exit $stderr_status)" >&2
+    exit "$stderr_status"
+  fi
+  if [ "$generator_status" != 0 ]; then
+    # Cache eviction can remove an archive after Go selected it for an import.
+    # Retry that compilation once; Go source and generator errors still fail.
+    if [ "$generator_status" = 1 ] && grep -Eq 'could not import .* \(open .*/[0-9a-f]{2}/[0-9a-f]{64}-d: no such file or directory\)' "$tmp/generator.stderr"; then
+      echo "check-forms-table: compiler cache archive disappeared; retrying generation once" >&2
+      rm -f "$tmp/forms_table.jsonl" "$tmp/forms_decisions.txt"
+      run_generator
+    else
+      exit "$generator_status"
+    fi
+  fi
+fi
 
 if [ "$write" = 1 ]; then
   cp "$tmp/forms_table.jsonl" "$table"

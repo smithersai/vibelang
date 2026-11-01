@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
-import { spawnSync } from "node:child_process"
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from "node:fs"
+import { spawnSync, spawn } from "node:child_process"
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, existsSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { stripTypeScriptTypes } from "node:module"
@@ -149,4 +149,196 @@ test("standalone checks retain their Go fallback and overlay", t => {
   assert.deepEqual(args.slice(1, 3), ["run", "-trimpath"])
   assert.ok(args.includes("-overlay"))
   assert.ok(args.includes("./cmd/vibelang-forms"))
+})
+
+
+const missingCache = root => "main.go:3:8: could not import fixture/dep (open " + root + "/cache space/ab/" + "f".repeat(64) + "-d: no such file or directory)\n"
+
+function fallbackFailures(f, { failures = 1, diagnostic = missingCache(f.root), code = 1, secondDiagnostic = "", secondCode = 0, noSecondOutput = false } = {}) {
+  const original = readFileSync(join(f.root, "bin/generator.mjs"), "utf8")
+    .replace('import { writeFileSync, appendFileSync }', 'import { writeFileSync, appendFileSync, readFileSync }')
+  const probe = String.raw`
+const attempt = readFileSync(process.env.FORMS_TEST_TRACE, "utf8").trim().split("\n").length
+if (attempt <= ${failures}) {
+  for (const flag of ["-o", "-decisions"]) {
+    const index = args.indexOf(flag)
+    if (index >= 0) writeFileSync(args[index + 1], "partial stale output\n")
+  }
+  process.stderr.write(${JSON.stringify(diagnostic)})
+  process.exit(${code})
+}
+if (${secondCode} !== 0) {
+  process.stderr.write(${JSON.stringify(secondDiagnostic)})
+  process.exit(${secondCode})
+}
+if (${noSecondOutput}) process.exit(0)
+`
+  f.put("bin/go", original.replace('for (const [flag, text]', probe + '\nfor (const [flag, text]'), 0o755)
+}
+
+for (const write of [false, true]) test("a missing compiler cache archive retries standalone generation once in " + (write ? "write" : "check") + " mode", t => {
+  const f = fixture(t)
+  fallbackFailures(f)
+  const run = f.run(write ? ["--write"] : [], { FORMS_BINARY: "" })
+  assert.equal(run.status, 0, run.stdout + run.stderr)
+  assert.match(run.stderr, /could not import fixture\/dep/)
+  assert.match(run.stderr, /retrying.*once/)
+  assert.equal(f.trace().length, 2)
+  assert.deepEqual(f.trace()[0].slice(1), f.trace()[1].slice(1), "Go and generator arguments remain identical")
+  assert.equal(readFileSync(join(f.root, "typescript/tsc/internal/vibelangmapper/forms_table.jsonl"), "utf8"), "table\n")
+  assert.equal(readFileSync(join(f.root, "typescript/tsc/internal/vibelangmapper/forms_decisions.txt"), "utf8"), "decisions\n")
+})
+
+test("a persistent missing cache archive stops after two attempts and leaves snapshots intact", t => {
+  const f = fixture(t)
+  fallbackFailures(f, { failures: 99 })
+  const run = f.run(["--write"], { FORMS_BINARY: "" })
+  assert.equal(run.status, 1, run.stdout + run.stderr)
+  assert.equal(f.trace().length, 2)
+  assert.equal((run.stderr.match(/could not import fixture\/dep/g) || []).length, 2)
+  assert.equal(readFileSync(join(f.root, "typescript/tsc/internal/vibelangmapper/forms_table.jsonl"), "utf8"), "table\n")
+  assert.equal(readFileSync(join(f.root, "typescript/tsc/internal/vibelangmapper/forms_decisions.txt"), "utf8"), "decisions\n")
+})
+
+for (const [why, diagnostic, code] of [
+  ["ordinary compile error", "main.go:3:8: undefined: missing\n", 1],
+  ["ordinary missing source", "open /project/main.go: no such file or directory\n", 1],
+  ["short hash", "could not import fixture/dep (open /cache/ab/" + "f".repeat(63) + "-d: no such file or directory)\n", 1],
+  ["wrong archive suffix", "could not import fixture/dep (open /cache/ab/" + "f".repeat(64) + ".a: no such file or directory)\n", 1],
+  ["argument failure", null, 2],
+  ["other exit status", null, 7],
+  ["terminated process status", null, 137],
+]) test("standalone generation does not retry " + why, t => {
+  const f = fixture(t)
+  fallbackFailures(f, { diagnostic: diagnostic ?? missingCache(f.root), code })
+  const run = f.run(["--write"], { FORMS_BINARY: "" })
+  assert.equal(run.status, code, run.stdout + run.stderr)
+  assert.equal(f.trace().length, 1)
+  assert.doesNotMatch(run.stderr, /retrying/)
+})
+
+test("prepared generator errors are never retried even if they look like compiler cache loss", t => {
+  const f = fixture(t)
+  fallbackFailures(f)
+  f.put("bin/generator.mjs", readFileSync(join(f.root, "bin/go"), "utf8"), 0o755)
+  const run = f.run(["--write"])
+  assert.equal(run.status, 1, run.stdout + run.stderr)
+  assert.equal(f.trace().length, 1)
+  assert.doesNotMatch(run.stderr, /retrying/)
+})
+
+for (const code of [1, 7]) test("a failed retry preserves its actual status " + code + " and both errors", t => {
+  const f = fixture(t)
+  fallbackFailures(f, { secondCode: code, secondDiagnostic: "unapproved decision move\n" })
+  const run = f.run(["--write"], { FORMS_BINARY: "" })
+  assert.equal(run.status, code, run.stdout + run.stderr)
+  assert.equal(f.trace().length, 2)
+  assert.match(run.stderr, /could not import fixture\/dep/)
+  assert.match(run.stderr, /unapproved decision move/)
+  assert.equal(readFileSync(join(f.root, "typescript/tsc/internal/vibelangmapper/forms_decisions.txt"), "utf8"), "decisions\n")
+})
+
+test("retry cannot bless a first attempt's partial output when the next attempt writes nothing", t => {
+  const f = fixture(t)
+  fallbackFailures(f, { noSecondOutput: true })
+  const run = f.run(["--write"], { FORMS_BINARY: "" })
+  assert.notEqual(run.status, 0, run.stdout + run.stderr)
+  assert.equal(f.trace().length, 2)
+  assert.equal(readFileSync(join(f.root, "typescript/tsc/internal/vibelangmapper/forms_table.jsonl"), "utf8"), "table\n")
+  assert.equal(readFileSync(join(f.root, "typescript/tsc/internal/vibelangmapper/forms_decisions.txt"), "utf8"), "decisions\n")
+})
+
+
+test("a cache-like stdout message cannot cause retry of a different failure", t => {
+  const f = fixture(t)
+  fallbackFailures(f)
+  f.put("bin/go", readFileSync(join(f.root, "bin/go"), "utf8").replaceAll("process.stderr.write", "process.stdout.write"), 0o755)
+  const run = f.run(["--write"], { FORMS_BINARY: "" })
+  assert.equal(run.status, 1, run.stdout + run.stderr)
+  assert.match(run.stdout, /could not import fixture\/dep/)
+  assert.equal(f.trace().length, 1)
+  assert.doesNotMatch(run.stderr, /retrying/)
+})
+
+test("retry retains a standalone overlay and its approval arguments", t => {
+  const f = fixture(t)
+  fallbackFailures(f)
+  const run = f.run(["--write"], { FORMS_BINARY: "", VIBELANG_FORMS_EXPORT: join(f.root, "overlay.go") })
+  assert.equal(run.status, 0, run.stdout + run.stderr)
+  const calls = f.trace()
+  assert.equal(calls.length, 2)
+  assert.deepEqual(calls[0].slice(1), calls[1].slice(1))
+  assert.ok(calls[1].includes("-overlay"))
+  assert.ok(calls[1].includes("-previous"))
+  assert.ok(calls[1].includes("-approved"))
+})
+
+
+test("standalone diagnostics arrive while the generator is still waiting", { timeout: 35_000 }, async t => {
+  const f = fixture(t)
+  const release = join(f.root, "release")
+  const original = readFileSync(join(f.root, "bin/generator.mjs"), "utf8")
+  const hold = String.raw`
+const { existsSync } = await import("node:fs")
+process.stderr.write("forms-test: waiting for own release\n")
+setTimeout(() => process.exit(9), 25_000).unref()
+while (!existsSync(process.env.FORMS_TEST_RELEASE)) await new Promise(resolve => setTimeout(resolve, 20))
+`
+  f.put("bin/go", original.replace('for (const [flag, text]', hold + '\nfor (const [flag, text]'), 0o755)
+  let mark, rejectMarker
+  const marker = new Promise((resolve, reject) => { mark = resolve; rejectMarker = reject })
+  const child = spawn("bash", [join(f.root, "scripts/check-forms-table.sh")], {
+    cwd: f.root, env: { ...f.env, FORMS_BINARY: "", FORMS_TEST_RELEASE: release },
+  })
+  let stderr = "", stdout = ""
+  child.stdout.on("data", data => { stdout += data })
+  child.stderr.on("data", data => {
+    stderr += data
+    if (stderr.includes("forms-test: waiting for own release")) mark()
+  })
+  child.on("error", rejectMarker)
+  const closed = new Promise(resolve => child.on("close", code => resolve(code)))
+  let deadline
+  try {
+    await Promise.race([
+      marker,
+      closed.then(code => { throw new Error("generator exited before its live diagnostic: " + code + "\n" + stderr) }),
+      new Promise((_, reject) => { deadline = setTimeout(() => reject(new Error("waiting diagnostic was buffered")), 20_000) }),
+    ])
+    clearTimeout(deadline)
+    assert.equal(child.exitCode, null, "the diagnostic must precede generator completion")
+    writeFileSync(release, "")
+    const code = await closed
+    assert.equal(code, 0, stdout + stderr)
+    assert.equal(f.trace().length, 1)
+  } finally {
+    clearTimeout(deadline)
+    writeFileSync(release, "")
+    let cleanup
+    await Promise.race([closed, new Promise(resolve => {
+      cleanup = setTimeout(() => { child.kill("SIGTERM"); resolve() }, 5_000)
+    })])
+    clearTimeout(cleanup)
+  }
+})
+
+
+test("a failed diagnostic recorder cannot approve freshly generated snapshots", t => {
+  const f = fixture(t)
+  const marker = join(f.root, "recorder-called")
+  const table = "typescript/tsc/internal/vibelangmapper/forms_table.jsonl"
+  f.put(table, "old table\n")
+  f.put("bin/go", readFileSync(join(f.root, "bin/generator.mjs"), "utf8"), 0o755)
+  f.put("bin/tee", '#!/bin/sh\nprintf called > "$FORMS_RECORDER_MARKER"\necho recorder-failed >&2\nexit 7\n', 0o755)
+  const run = f.run(["--write"], { FORMS_BINARY: "", FORMS_RECORDER_MARKER: marker })
+  if (existsSync(marker)) {
+    assert.equal(run.status, 7, run.stdout + run.stderr)
+    assert.match(run.stderr, /diagnostic recorder failed/)
+    assert.equal(readFileSync(join(f.root, table), "utf8"), "old table\n")
+  } else {
+    // The original check does not use a recorder; its successful generation
+    // remains a control rather than inventing an error in an unused tool.
+    assert.equal(run.status, 0, run.stdout + run.stderr)
+    assert.equal(readFileSync(join(f.root, table), "utf8"), "table\n")
+  }
 })

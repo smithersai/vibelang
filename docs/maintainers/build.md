@@ -227,6 +227,14 @@ five-second default that previously killed healthy slow imports.
 (cd packages/runtime && bun test tests/package-budget.test.ts tests/package.test.ts)
 ```
 
+Standalone `scripts/check-forms-table.sh` generation retries once when Go
+reports a disappeared compiler-cache archive. Diagnostics stay live while
+waiting or building; the first error is followed by an explicit retry message; a second failure stops the
+check with its status. Each attempt uses the same arguments and a retry
+discards the first attempt's temporary outputs. Ordinary compiler errors and
+prepared `FORMS_BINARY` failures still stop immediately. The decision-approval
+gate applies on both attempts.
+
 ## Packages
 
 ```text
