@@ -667,3 +667,7 @@ the current `docs/design/inventory/throws.json` bytes. A changed input or artifa
 or a missing or corrupt receipt, runs the analysis again; a failed check never
 saves a receipt. Delete the receipt to force analysis. The direct inventory
 regression test always regenerates the expected inventory without this cache.
+
+## Example compile diagnostics
+
+`sh scripts/check-examples.sh` keeps complete logs in `.cache/check-examples/`. A compiler failure includes the child's exit status in the summary and prints the last `40` log lines, capped at `8192` bytes, to stderr so retained CI receipts show the cause. It continues checking later examples and returns failure if any example failed.

@@ -12,6 +12,9 @@ const modes = [
   ["success", 0, /OK\s+alchemy-stack\s+bun run test/],
   ["install", 1, /FAIL\s+hello\s+install/],
   ["compile", 1, /FAIL\s+hello\s+compile/],
+  ["compile-file-tree-2", 1, /FAIL\s+file-tree\s+compile/],
+  ["compile-pipeline-42", 1, /FAIL\s+pipeline\s+compile/],
+  ["compile-http-api-127", 1, /FAIL\s+http-api\s+compile/],
   ["tests", 1, /FAIL\s+users\s+tests/],
   ["framework", 1, /FAIL\s+react-vite\s+typecheck, tests or build/],
   ["run", 1, /FAIL\s+hello\s+run/],
@@ -56,7 +59,13 @@ if ((mode === "install" && name === "hello" && process.argv[2] === "install") ||
 import { basename } from "node:path"
 const first = basename(process.cwd()) === "hello"
 const mode = process.env.EXAMPLES_CONTRACT_MODE
-if (first && mode === "compile") process.exit(7)
+const target = mode === "compile" ? "hello" : mode.startsWith("compile-") ? mode.slice(8, mode.lastIndexOf("-")) : ""
+if (basename(process.cwd()) === target) {
+  process.stdout.write("OMITTED_PREFIX" + "x".repeat(20000) + "\\n")
+  if (mode !== "compile-file-tree-2") for (let i = 0; i < 90; i++) process.stdout.write("old compiler context " + i + "\\n")
+  process.stderr.write("fixture compiler failed for " + target + "\\n")
+  process.exit(mode === "compile" ? 7 : Number(mode.slice(mode.lastIndexOf("-") + 1)))
+}
 mkdirSync("dist", { recursive: true })
 const output = first && mode === "output" ? "wrong" : "fixture"
 writeFileSync("dist/main.js", first && mode === "run" ? "process.exit(7)" : "console.log(" + JSON.stringify(output) + ")")
@@ -68,8 +77,17 @@ writeFileSync("dist/main.js", first && mode === "run" ? "process.exit(7)" : "con
     assert.equal(result.status, status, result.stdout + result.stderr)
     assert.match(result.stdout, message)
     assert.equal((result.stdout.match(/^FAIL/gm) ?? []).length, mode === "success" ? 0 : 1)
-    assert.match(result.stdout, /OK\s+http-api\s+compile \(long-running server/)
+    if (!mode.startsWith("compile-http-api-")) assert.match(result.stdout, /OK\s+http-api\s+compile \(long-running server/)
     assert.match(result.stdout, /OK\s+alchemy-stack\s+bun run test/)
     assert.doesNotMatch(result.stdout, /BROKEN|XPASS/)
+    if (mode.startsWith("compile")) {
+      const code = mode === "compile" ? 7 : Number(mode.slice(mode.lastIndexOf("-") + 1))
+      const target = mode === "compile" ? "hello" : mode.slice(8, mode.lastIndexOf("-"))
+      assert.match(result.stdout, new RegExp("compile \\(exit " + code + ";"))
+      assert.ok(result.stderr.includes(target + " compile exited " + code), result.stderr)
+      assert.ok(result.stderr.includes("fixture compiler failed for " + target), result.stderr)
+      assert.doesNotMatch(result.stderr, /OMITTED_PREFIX|old compiler context 0\n/)
+      assert.ok(Buffer.byteLength(result.stderr) < 9000, "central failure diagnostics stay bounded")
+    }
   })
 }

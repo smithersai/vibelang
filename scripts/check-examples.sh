@@ -63,8 +63,13 @@ for name in hello users http-api file-tree resilience approval pipeline react-vi
       fi
       continue ;;
   esac
-  if ! (cd "$dir" && "$compiler" -p .) >>"$log" 2>&1; then
-    printf 'FAIL %-10s compile (see .cache/check-examples/%s.log)\n' "$name" "$name"
+  if (cd "$dir" && "$compiler" -p .) >>"$log" 2>&1; then
+    :
+  else
+    compiler_status=$?
+    printf 'FAIL %-10s compile (exit %s; see .cache/check-examples/%s.log)\n' "$name" "$compiler_status" "$name"
+    printf 'check-examples: %s compile exited %s; last 40 log lines (up to 8192 bytes):\n' "$name" "$compiler_status" >&2
+    tail -c 8192 "$log" | tail -n 40 >&2 || true
     failed=1
     continue
   fi
