@@ -37,11 +37,12 @@ export const first = (value: Option.Option<number>): number => Option.getOrElse(
 export const run = () => quiet()
 `
 	want := `import * as Schema from "effect/Schema"
+import { Option } from "effect"
 
 export const Value: Schema.Codec<unknown> = Schema.Unknown
 export const update = (): void!never!never => Effect.void
 const quiet = (): void!! => Console.log("x")
-export const first = (value: Option<number>): number => Option.getOrElse(value, () => 0)
+export const first = (value: Option.Option<number>): number => Option.getOrElse(value, () => 0)
 export const run = () => quiet()
 `
 	_, file, _, _ := editorProgram(t, source)
@@ -312,31 +313,31 @@ import { HttpClient } from "effect/http"
 import * as ChildProcess from "effect/process/ChildProcess"
 import { Array as Arr, Option } from "effect"
 
-export const read = (path: string) => FileSystem.readFileString(Path.Path.join(path, "a"))
-export const key = FileSystem
-export const first = (value: Option.Option<number>): number => Option.getOrElse(value, () => 0)
-export const get = (url: string) => HttpClient.get(url)
-export const command = ChildProcess.make("ls")
-export const two = Arr.take([1, 2, 3], 2)
-export function implementation() {
+const read = (path: string) => FileSystem.readFileString(Path.Path.join(path, "a"))
+const key = FileSystem
+const first = (value: Option.Option<number>): number => Option.getOrElse(value, () => 0)
+const get = (url: string) => HttpClient.get(url)
+const command = ChildProcess.make("ls")
+const two = Arr.take([1, 2, 3], 2)
+function implementation() {
   return [FileSystem(), Path.Path()]
 }
-export const host = () => Experimental.Process.Process.hostname()
-export const running = (process: Experimental.Process.Process, pid: number) => process.isRunning(pid)
+const host = () => Experimental.Process.Process.hostname()
+const running = (process: Experimental.Process.Process, pid: number) => process.isRunning(pid)
 `
 	want := `import { Array as Arr } from "effect"
 
-export const read = (path: string) => FileSystem.readFileString(Path.join(path, "a"))
-export const key = FileSystem.FileSystem
-export const first = (value: Option<number>): number => Option.getOrElse(value, () => 0)
-export const get = (url: string) => HttpClient.get(url)
-export const command = ChildProcess.make("ls")
-export const two = Arr.take([1, 2, 3], 2)
-export function implementation() {
+const read = (path: string) => FileSystem.readFileString(Path.join(path, "a"))
+const key = FileSystem.FileSystem
+const first = (value: Option<number>): number => Option.getOrElse(value, () => 0)
+const get = (url: string) => HttpClient.get(url)
+const command = ChildProcess.make("ls")
+const two = Arr.take([1, 2, 3], 2)
+function implementation() {
   return [FileSystem(), Path()]
 }
-export const host = () => Experimental.Process.hostname()
-export const running = (process: Experimental.Process, pid: number) => process.isRunning(pid)
+const host = () => Experimental.Process.hostname()
+const running = (process: Experimental.Process, pid: number) => process.isRunning(pid)
 `
 	_, file, _, _ := editorProgram(t, source)
 	dir := filepath.Dir(file.FileName().AsString())

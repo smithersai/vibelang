@@ -12,14 +12,11 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
 )
 
-// In a project that emits declarations, EK4831's fix keeps the import of
-// Context that the declaration file writes a service's base through (D501),
-// even where the Context.Service class was its only use, so the file's .d.ts
-// stays what it was (Smithers' flows/secrets Egress, two services). Without
-// declarations nothing reads the import, so it goes, as does Effect once the
-// contracts are written A!E. A named import from effect's root is the
-// spelling the declaration file writes for the prelude's names anyway, so
-// --fix removes it and the .d.ts keeps the same import.
+// EK4831's fix keeps the imports the declaration writes the service through
+// (D501, detail 277), even where the Context.Service class was their only use,
+// so the file's declaration stays what it was (Smithers' flows/secrets Egress,
+// two services). Every .vibe module has a sidecar, so a project that emits no
+// declarations keeps them too.
 func TestFixServiceClassImports(t *testing.T) {
 	source := "import * as Context from \"effect/Context\"\nimport * as Effect from \"effect/Effect\"\n\nexport class Vault extends Context.Service<Vault, {\n  readonly get: (name: string) => Effect.Effect<string>\n}>()(\"@smithers/secrets/Vault\") {}\n\nexport const name = (n: string): Effect.Effect<string> => Effect.succeed(n)\n"
 	named := "import { Context, Effect } from \"effect\"\n\nexport class Vault extends Context.Service<Vault, {\n  readonly get: (name: string) => Effect.Effect<string>\n}>()(\"@smithers/secrets/Vault\") {}\n\nexport const name = (n: string): Effect.Effect<string> => Effect.succeed(n)\n"
@@ -28,8 +25,8 @@ func TestFixServiceClassImports(t *testing.T) {
 		name, source, options, want string
 	}{
 		{"kept", source, `"declaration":true,"noEmit":true`, "import * as Context from \"effect/Context\"\nimport * as Effect from \"effect/Effect\"\n\n" + service},
-		{"removed without declarations", source, `"noEmit":true`, "\n" + service},
-		{"named import", named, `"declaration":true,"noEmit":true`, "\n" + service},
+		{"kept without declarations, for the sidecar", source, `"noEmit":true`, "import * as Context from \"effect/Context\"\nimport * as Effect from \"effect/Effect\"\n\n" + service},
+		{"named import", named, `"declaration":true,"noEmit":true`, "import { Context, Effect } from \"effect\"\n\n" + service},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, file, _, _ := editorProgram(t, tc.source)

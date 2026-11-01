@@ -33,16 +33,19 @@ import (
 // the quick fixes, a file's rewrites are kept only when the program then
 // reports no error it did not report before.
 //
-// In a project that emits declarations, an import stays when its spelling
-// is not the one the declaration file would write for the prelude's name and
-// the file's declaration file keeps it, so the declaration file keeps the
-// import its TypeScript wrote (D501): with import * as Schema from
-// "effect/Schema" and an export typed Schema.Codec, the declaration keeps
-// import * as Schema from "effect/Schema" rather than import { Schema } from
-// "effect", and import type keeps its modifier. The declaration file prints types as the source writes them, so
-// the emitted declaration decides, not the exports' types: a local
-// type NonNull<V> = V extends DateTime.Utc ? … that an export names, or an
-// export typed keyof DateTime.Utc, keeps import * as DateTime.
+// An import stays when the file's declaration keeps it, as it stood before any
+// fix, so that declaration keeps the imports its TypeScript wrote, in their
+// order and under their names (detail 277, D501): with import { Layer, Schema }
+// from "effect" and an export typed Layer.Layer, or import * as Schema from
+// "effect/Schema" and an export typed Schema.Codec, the import stays, and M.M
+// with it. The prelude supplying a name does not make its import unneeded: the
+// emitter re-adds a name where the source no longer says, and prints an inferred
+// Schema.String as an import type. Every .vibe module has a declaration, its
+// sidecar, so no compiler option turns this off. The declaration file prints
+// types as the source writes them, so the emitted declaration decides, not the
+// exports' types: a local type NonNull<V> = V extends DateTime.Utc ? … that an
+// export names, or an export typed keyof DateTime.Utc, keeps import * as
+// DateTime.
 
 // A preludeRewrite is the rewrites of one file: its edits and how many of
 // each kind it makes.
@@ -133,7 +136,7 @@ func preludeRewritesOf(c *checker.Checker, file *ast.SourceFile, declared map[st
 			}
 			switch {
 			case preludePackageOf(name) == specifier:
-				if hasTypeModifier(statement, element) && declared[declaredImportKey(specifier, name)] {
+				if declared[declaredImportKey(specifier, name)] {
 					kept[name] = true
 					continue
 				}
@@ -207,57 +210,44 @@ func preludeRewritesOf(c *checker.Checker, file *ast.SourceFile, declared map[st
 	return r
 }
 
-// hasTypeModifier reports whether binding, an import of statement, is written
-// import type or { type X }. The declaration file prints that modifier and the
-// prelude's own import has none, so it is a spelling of its own.
-func hasTypeModifier(statement *ast.Node, binding *ast.Node) bool {
-	if statement.ImportClause().AsImportClause().PhaseModifier == ast.KindTypeKeyword {
-		return true
-	}
-	return ast.IsImportSpecifier(binding) && binding.AsImportSpecifier().IsTypeOnly
-}
-
 // declaredImportKey names the import of name from specifier.
 func declaredImportKey(specifier, name string) string {
 	return specifier + "\x00" + name
 }
 
-// declaredImports returns the imports of an effect module that the
-// declaration file of file keeps, by declaredImportKey, in a program that
-// emits declarations; nil otherwise, or when file imports no effect module
-// under the module's own name.
-func declaredImports(ctx context.Context, program *compiler.Program, file *ast.SourceFile) map[string]bool {
-	if !program.Options().GetEmitDeclarations() {
-		return nil
-	}
-	candidate := false
-	for _, b := range importBindingsOf(file) {
-		module := b.declaration.ModuleSpecifier()
-		if module == nil || !ast.IsStringLiteral(module) {
-			continue
-		}
-		if preludeModulePath(b.name) == module.Text() || preludePackageOf(b.name) == module.Text() && hasTypeModifier(b.declaration, b.node) {
-			candidate = true
-		}
-	}
-	if !candidate {
-		return nil
-	}
-	var text string
-	program.Emit(ctx, compiler.EmitOptions{TargetSourceFiles: []*ast.SourceFile{file}, EmitOnly: compiler.EmitOnlyDts, ForceEmit: true,
-		WriteFile: func(name tspath.RootedFilePath, data string, _ *compiler.WriteFileData) error {
-			if tspath.IsDeclarationFileName(name.AsString()) {
-				text = data
+// declaredImports returns, for each of program's .vibe files that imports
+// effect or one of its modules, the imports its declaration keeps, by
+// declaredImportKey. Every such file has a declaration whatever the compiler
+// options say, its sidecar (VIP-27), so this forces the emit.
+func declaredImports(ctx context.Context, program *compiler.Program) map[tspath.RootedFilePath]map[string]bool {
+	var files []*ast.SourceFile
+	for _, file := range fixableFiles(program) {
+		for _, b := range importBindingsOf(file) {
+			if module := b.declaration.ModuleSpecifier(); module != nil && ast.IsStringLiteral(module) && (module.Text() == "effect" || strings.HasPrefix(module.Text(), "effect/")) {
+				files = append(files, file)
+				break
 			}
+		}
+	}
+	declared := map[tspath.RootedFilePath]map[string]bool{}
+	if len(files) == 0 {
+		return declared
+	}
+	program.Emit(ctx, compiler.EmitOptions{TargetSourceFiles: files, EmitOnly: compiler.EmitOnlyDts, ForceEmit: true,
+		WriteFile: func(name tspath.RootedFilePath, data string, written *compiler.WriteFileData) error {
+			if written == nil || written.SourceFile == nil || !tspath.IsDeclarationFileName(name.AsString()) {
+				return nil
+			}
+			declarations := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "/declarations.d.ts", PathKey: "/declarations.d.ts"}, data, core.ScriptKindTS)
+			keys := map[string]bool{}
+			for _, b := range importBindingsOf(declarations) {
+				if module := b.declaration.ModuleSpecifier(); module != nil && ast.IsStringLiteral(module) {
+					keys[declaredImportKey(module.Text(), b.name)] = true
+				}
+			}
+			declared[written.SourceFile.FileName()] = keys
 			return nil
 		}})
-	declarations := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "/declarations.d.ts", PathKey: "/declarations.d.ts"}, text, core.ScriptKindTS)
-	declared := map[string]bool{}
-	for _, b := range importBindingsOf(declarations) {
-		if module := b.declaration.ModuleSpecifier(); module != nil && ast.IsStringLiteral(module) {
-			declared[declaredImportKey(module.Text(), b.name)] = true
-		}
-	}
 	return declared
 }
 
@@ -410,13 +400,12 @@ func exportOfModuleReference(c *checker.Checker, module *ast.Node, right *ast.No
 
 // preludeRewriteProject plans the rewrites of every fixable file of program
 // and returns each file's rewrite.
-func preludeRewriteProject(ctx context.Context, program *compiler.Program) map[tspath.RootedFilePath]preludeRewrite {
+func preludeRewriteProject(ctx context.Context, program *compiler.Program, declared map[tspath.RootedFilePath]map[string]bool) map[tspath.RootedFilePath]preludeRewrite {
 	rewrites := map[tspath.RootedFilePath]preludeRewrite{}
 	for _, file := range fixableFiles(program) {
 		program.GetSemanticDiagnostics(ctx, file)
-		declared := declaredImports(ctx, program, file)
 		c, done := program.GetTypeCheckerForFile(ctx, file)
-		r := preludeRewritesOf(c, file, declared)
+		r := preludeRewritesOf(c, file, declared[file.FileName()])
 		done()
 		if len(r.edits) > 0 {
 			rewrites[file.FileName()] = r

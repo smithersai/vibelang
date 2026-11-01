@@ -397,7 +397,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 	if done.Err() != nil {
 		return result
 	}
-	g := &fixGate{ctx: ctx, done: done, build: build, baseline: baselineOf(ctx, program), refused: map[string]bool{}, alone: map[[32]byte]map[string]int{}, verified: verified, progress: progress}
+	g := &fixGate{ctx: ctx, done: done, build: build, baseline: baselineOf(ctx, program), declared: declaredImports(ctx, program), keepUnused: !program.Options().NoUnusedLocals.IsTrue(), refused: map[string]bool{}, alone: map[[32]byte]map[string]int{}, verified: verified, progress: progress}
 	refuse := func(refusal FixRefusal, key string) {
 		g.refused[key] = true
 		result.Refused = append(result.Refused, refusal)
@@ -434,7 +434,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 				}
 			}
 			p.cleanImports = !options.MigrationOnly && !options.VIPOnly
-			p.declarations = program.Options().GetEmitDeclarations()
+			p.declared = g.unusedKept(file.FileName())
 			if len(p.fixes) > 0 {
 				proposals = append(proposals, p)
 			}
@@ -579,7 +579,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 func removeUnusedEffectImports(g *fixGate, texts map[tspath.RootedFilePath]string, result *FixResult) {
 	cleaned := map[tspath.RootedFilePath]string{}
 	for _, name := range result.Order {
-		if text, ok := withoutUnusedEffectImports(name, result.Files[name].Original, texts[name], program.Options().GetEmitDeclarations()); ok {
+		if text, ok := withoutUnusedEffectImports(name, result.Files[name].Original, texts[name], g.unusedKept(name)); ok {
 			cleaned[name] = text
 		}
 	}
@@ -622,7 +622,7 @@ func remainingFixes(ctx context.Context, program *compiler.Program, propose func
 		}
 	}
 	if !options.VIPOnly {
-		for name, r := range preludeRewriteProject(ctx, program) {
+		for name, r := range preludeRewriteProject(ctx, program, declaredImports(ctx, program)) {
 			line, _ := scannerLineOf(program.GetSourceFile(name), firstEdit(r.edits))
 			kind := preludeImportLabel
 			if r.imports == 0 {
@@ -675,7 +675,7 @@ func fixState(program *compiler.Program) [32]byte {
 // as fixGate.accept keeps a round's fixes. It records them in result and
 // texts.
 func rewritePrelude(g *fixGate, fs vfs.FS, program *compiler.Program, texts map[tspath.RootedFilePath]string, result *FixResult) {
-	rewrites := preludeRewriteProject(g.ctx, program)
+	rewrites := preludeRewriteProject(g.ctx, program, g.declared)
 	if len(rewrites) == 0 {
 		return
 	}
@@ -1032,6 +1032,10 @@ type fixGate struct {
 	done       context.Context   // canceled when the command is interrupted
 	build      func(map[tspath.RootedFilePath]string) *compiler.Program
 	baseline   errorBaseline
+	declared   map[tspath.RootedFilePath]map[string]bool // what declaredImports found before any fix
+	// keepUnused is whether the cleanup may keep a declared import the fixes
+	// left unused: not under noUnusedLocals, where TS6133 would refuse the fix.
+	keepUnused bool
 	refused    map[string]bool // fixes refused, by fixKey
 	// verified is called with the texts of each set of fixes the gate
 	// verifies together (FixOptions.Verified).
@@ -1078,7 +1082,7 @@ type proposal struct {
 	file         *ast.SourceFile
 	fixes        []fileFix
 	cleanImports bool
-	declarations bool // the project emits declarations (D501)
+	declared     map[string]bool // the file's imports its declaration keeps (detail 277)
 }
 
 // text returns the proposal's file with its fixes applied.
@@ -1091,7 +1095,7 @@ func (p proposal) text() string {
 	// Check the complete proposed rewrite. Delaying this cleanup until after
 	// acceptance would make noUnusedLocals reject a fix for its unused import.
 	if p.cleanImports {
-		if cleaned, ok := withoutUnusedEffectImports(p.file.FileName(), p.file.Text(), text, p.declarations); ok {
+		if cleaned, ok := withoutUnusedEffectImports(p.file.FileName(), p.file.Text(), text, p.declared); ok {
 			return cleaned
 		}
 	}
@@ -1212,13 +1216,24 @@ func applyEdits(text string, edits []sourceEdit) string {
 	return text
 }
 
+// unusedKept returns the declared imports of file that the cleanup of
+// unused effect imports keeps: none when the project reports unused locals,
+// since such an import is TS6133 there and the fix would be refused (an
+// unused import of a module whose names the prelude supplies, VIP-6).
+func (g *fixGate) unusedKept(file tspath.RootedFilePath) map[string]bool {
+	if !g.keepUnused {
+		return nil
+	}
+	return g.declared[file]
+}
+
 // withoutUnusedEffectImports removes from text, a file the fixes changed
 // from original, each import binding of effect or one of its modules that
-// original's code used and text's does not. In a project that emits
-// declarations (declarations), an import the declaration file writes
-// through stays (D501), as a service's Context does once a fix turned a
-// Context.Service class into a service declaration.
-func withoutUnusedEffectImports(name tspath.RootedFilePath, original, text string, declarations bool) (string, bool) {
+// original's code used and text's does not. An import in declared, which the
+// declaration file wrote before any fix, stays (unusedKept), as does one a
+// declaration writes through (D501), such as a service's Context once a fix
+// turned a Context.Service class into a service declaration.
+func withoutUnusedEffectImports(name tspath.RootedFilePath, original, text string, declared map[string]bool) (string, bool) {
 	parse := func(source string) *ast.SourceFile {
 		return parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: name, PathKey: tspath.CaseSensitive.PathKey(tspath.RootedPath(name))}, source, core.ScriptKindTS)
 	}
@@ -1242,9 +1257,12 @@ func withoutUnusedEffectImports(name tspath.RootedFilePath, original, text strin
 			gone[name] = used[name]
 		}
 	}
-	if declarations {
-		for _, statement := range declarationImports(after) {
-			delete(gone, namespaceImportOfModule(statement))
+	for _, statement := range declarationImports(after) {
+		delete(gone, namespaceImportOfModule(statement))
+	}
+	for _, b := range importBindingsOf(after) {
+		if module := b.declaration.ModuleSpecifier(); module != nil && ast.IsStringLiteral(module) && declared[declaredImportKey(module.Text(), b.name)] {
+			delete(gone, b.name)
 		}
 	}
 	if len(gone) == 0 {

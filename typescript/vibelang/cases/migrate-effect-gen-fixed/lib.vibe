@@ -2,6 +2,7 @@
 // VIP-5). The migration renames this file to lib.vibe;
 // migrate-effect-gen-fixed holds what --fix then writes, which main.ts runs
 // with the same result, and whose declarations are the same (expected/lib.d.ts).
+import { Effect, Layer } from "effect"
 import { Gone, Users } from "./services.js"
 
 // An arrow whose body is Effect.gen.

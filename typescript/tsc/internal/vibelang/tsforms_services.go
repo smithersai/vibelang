@@ -153,17 +153,13 @@ func serviceClassRewrite(c *checker.Checker, file *ast.SourceFile, class *ast.No
 		body = dedentText(body, len(shapeIndent)-len(classIndent))
 	}
 	declaration := "service " + name + " " + body
-	// In a project that emits declarations, the declaration file writes the
-	// service's base through the file's own import of Context (D501), so the
-	// import stays and the .d.ts stays what the class printed.
-	var kept []string
-	if c.CompilerOptions().GetEmitDeclarations() {
-		kept = append(kept, "Context")
-	}
+	// The declaration file writes the service's base through the file's own
+	// import of Context (D501), so the import stays and the declaration stays
+	// what the class printed, its sidecar included (detail 277).
 	return withImportRemovals(c, file, &formRewrite{
 		edits:       []sourceEdit{{start, class.End(), declaration}},
 		description: shortText(declaration, "service "+name+" { … }"),
-	}, kept...)
+	}, "Context")
 }
 
 // withServiceKey returns body, a service declaration's body, with
