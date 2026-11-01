@@ -190,7 +190,7 @@ export const VibeLang = async ({ directory }) => ({
 // ---- check
 
 // check applies --fix to each file's project and prints the result; it exits
-// 1 when an error is left in one of the files.
+// 1 when a project has errors or its compiler check did not complete.
 function check(files, findBinary) {
   if (files.length === 0) {
     console.error("vibelang agents check: name the .vibe files to check.")
@@ -199,12 +199,12 @@ function check(files, findBinary) {
   const result = checkFiles(files.map((file) => resolve(file)).filter((file) => existsSync(file)), findBinary(), process.cwd())
   const text = report(result, process.cwd(), true)
   if (text) console.log(text)
-  return result.errors.length > 0 ? 1 : 0
+  return failed(result) ? 1 : 0
 }
 
 // hook reads a PostToolUse event from Claude Code, Codex, Cursor or VS Code
 // on stdin. An error left in an edited file goes to stderr with exit status
-// 2, which each of them returns to the model; anything else to say goes back
+// 2, as does a failed project check; anything else to say goes back
 // as additionalContext.
 function hook(findBinary) {
   let event
@@ -217,7 +217,7 @@ function hook(findBinary) {
   const files = editedFiles(event, cwd).filter((file) => file.endsWith(".vibe") && existsSync(file))
   if (files.length === 0) return 0
   const result = checkFiles(files, findBinary(), cwd)
-  if (result.errors.length > 0) {
+  if (failed(result)) {
     process.stderr.write(`${report(result, cwd, false)}\n`)
     return 2
   }
@@ -246,7 +246,7 @@ export function editedFiles(event, cwd) {
 // checkFiles runs `vibelang -p <project> --fix --noEmit` once for each
 // project the files belong to and sorts what it prints.
 export function checkFiles(files, binary, cwd) {
-  const result = { fixes: [], errors: [], warnings: [], otherErrors: 0, missing: [] }
+  const result = { fixes: [], errors: [], warnings: [], otherErrors: 0, missing: [], failures: [] }
   const projects = new Map()
   for (const file of files.map((file) => realpathSync(file))) {
     const project = projectOf(file, binary)
@@ -261,6 +261,9 @@ export function checkFiles(files, binary, cwd) {
     const run = spawnSync(binary, ["-p", project, "--fix", "--noEmit", "--pretty", "false"], {
       cwd: directory, encoding: "utf8", maxBuffer: 1 << 26
     })
+    if (run.error || run.signal || run.status !== 0) {
+      result.failures.push({ project, status: run.status, signal: run.signal, error: run.error?.message, stderr: run.stderr ?? "" })
+    }
     const output = `${run.stdout ?? ""}${run.stderr ?? ""}`
     for (const fix of output.matchAll(/^vibelang --fix: (.+?): (\d+ fix(?:es)? \(.*\))$/gm)) {
       result.fixes.push({ file: resolve(directory, fix[1]), summary: fix[2] })
@@ -307,12 +310,24 @@ function projectOf(file, binary) {
   }
 }
 
+function failed(result) {
+  return result.errors.length > 0 || result.otherErrors > 0 || result.failures.length > 0
+}
+
 function report(result, cwd, clean) {
   const name = (file) => relative(cwd, file) || file
   const lines = []
   for (const fix of result.fixes) lines.push(`vibelang --fix rewrote ${name(fix.file)}: ${fix.summary}. Read it again before you edit it.`)
   for (const d of [...result.errors, ...result.warnings]) {
     lines.push(`${name(d.file)}(${d.line},${d.column}): ${d.severity} ${d.code}: ${d.message}`)
+  }
+  for (const failure of result.failures) {
+    const reason = [
+      failure.error && `cannot run compiler: ${failure.error}`,
+      failure.signal && `compiler terminated by ${failure.signal}`,
+      failure.status !== null && `compiler exited with status ${failure.status}`
+    ].filter(Boolean).join("; ")
+    lines.push(`vibelang: check incomplete for ${name(failure.project)}: ${reason}.\n${failure.stderr}`)
   }
   for (const file of result.missing) lines.push(`vibelang: no tsconfig.json above ${name(file)}; it was not checked.`)
   if (result.errors.length > 0) {

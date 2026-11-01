@@ -172,7 +172,7 @@ test("check prints the error left in a file and exits 1", { skip: skipNative }, 
   assert.match(broken.stdout, /^src\/a\.vibe\(1,14\): error TS2322: Type 'string' is not assignable to type 'number'\./m)
   assert.match(broken.stdout, /vibelang: 1 error left in the files you edited\. Fix it before you finish\./)
   const clean = vibelang(root, ["agents", "check", "src/b.vibe"])
-  assert.equal(clean.status, 0, clean.stdout)
+  assert.equal(clean.status, 1, clean.stdout)
   assert.match(clean.stdout, /vibelang: 1 error in other files of the project/)
 })
 
@@ -190,14 +190,14 @@ test("hook returns an edited file's error to the agent with exit status 2", { sk
   assert.match(codex.stderr, /error TS2322/)
 })
 
-test("hook says nothing about a file that isn't .vibe, and context about other files' errors", { skip: skipNative }, (t) => {
+test("hook ignores non-.vibe files and fails for other project errors", { skip: skipNative }, (t) => {
   const root = brokenProject(t)
   const other = vibelang(root, ["agents", "hook"], JSON.stringify({ cwd: root, tool_name: "Edit", tool_input: { file_path: join(root, "package.json") } }))
   assert.deepEqual([other.status, other.stdout, other.stderr], [0, "", ""])
   const clean = vibelang(root, ["agents", "hook"], JSON.stringify({ hook_event_name: "PostToolUse", cwd: root, tool_name: "Write", tool_input: { file_path: join(root, "src/b.vibe") } }))
-  assert.equal(clean.status, 0, clean.stderr)
-  assert.deepEqual(JSON.parse(clean.stdout).hookSpecificOutput.hookEventName, "PostToolUse")
-  assert.match(JSON.parse(clean.stdout).hookSpecificOutput.additionalContext, /1 error in other files/)
+  assert.equal(clean.status, 2, clean.stderr)
+  assert.equal(clean.stdout, "")
+  assert.match(clean.stderr, /1 error in other files/)
 })
 
 test("the opencode plugin appends check's report to an edit's result", { skip: skipNative }, async (t) => {

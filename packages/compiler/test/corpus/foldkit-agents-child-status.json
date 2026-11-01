@@ -1,0 +1,72 @@
+[
+  {
+    "name": "Foldkit successful control",
+    "kind": "exit",
+    "status": 0,
+    "stderr": ""
+  },
+  {
+    "name": "Foldkit compiler exits 2",
+    "kind": "exit",
+    "status": 2,
+    "stderr": "compiler did not complete\n"
+  },
+  {
+    "name": "Foldkit compiler SIGTERM",
+    "kind": "signal",
+    "signal": "SIGTERM",
+    "stderr": "compiler interrupted\n"
+  },
+  {
+    "name": "nonzero with selected diagnostic",
+    "kind": "exit",
+    "status": 2,
+    "stderr": "compiler failed after diagnostics\n",
+    "diagnostic": "witness.vibe(1,14): error TS2322: bad value"
+  },
+  {
+    "name": "nonzero with only another file error",
+    "kind": "exit",
+    "status": 2,
+    "stderr": "project check failed\n",
+    "diagnostic": "other.vibe(1,14): error TS2322: bad value"
+  },
+  {
+    "name": "cannot spawn missing compiler",
+    "kind": "missing",
+    "stderr": ""
+  },
+  {
+    "name": "cannot spawn nonexecutable compiler",
+    "kind": "denied",
+    "stderr": ""
+  },
+  {
+    "name": "successful warning",
+    "kind": "exit",
+    "status": 0,
+    "stderr": "",
+    "diagnostic": "witness.vibe(1,14): warning TS6133: unused value"
+  },
+  {
+    "name": "nonzero with stderr diagnostic",
+    "kind": "exit",
+    "status": 1,
+    "stderr": "compiler stopped\n",
+    "diagnosticStream": "stderr",
+    "diagnostic": "witness.vibe(1,14): error TS2322: bad value"
+  },
+  {
+    "name": "successful informational stderr",
+    "kind": "exit",
+    "status": 0,
+    "stderr": "compiler informational message\n"
+  },
+  {
+    "name": "zero status cannot hide other-file diagnostic",
+    "kind": "exit",
+    "status": 0,
+    "stderr": "",
+    "diagnostic": "other.vibe(1,14): error TS2322: bad value"
+  }
+]

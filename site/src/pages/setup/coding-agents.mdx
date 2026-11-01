@@ -52,9 +52,9 @@ src/profile.vibe(6,10): error TS2322: Type 'string' is not assignable to type 'n
 vibelang: 1 error left in the files you edited. Fix it before you finish.
 ```
 
-It exits with status 1 when an error is left in a file you named. Errors in the project's other files are counted on one line. In a directory with several `tsconfig*.json` files, such as `tsconfig.json` and `tsconfig.test.json`, it checks a file with the first project that includes it.
+It exits with status `1` when the project has an error, including errors outside the files you named. Errors in the project's other files are counted on one line. If the compiler exits unsuccessfully, is terminated by a signal or cannot start, the check also fails: it reports that the check is incomplete, names the exit status, signal or spawn error, and includes the compiler's standard error output. It never reports `no errors` for a failed compiler check. In a directory with several `tsconfig*.json` files, such as `tsconfig.json` and `tsconfig.test.json`, it checks a file with the first project that includes it.
 
-A hook returns an error to the agent with exit status 2, and a rewrite or a warning as context the agent reads with the tool's result.
+A hook returns a project error or an incomplete compiler check to the agent with exit status `2`, and a rewrite or a warning as context the agent reads with the tool's result.
 
 ## In a workspace
 
