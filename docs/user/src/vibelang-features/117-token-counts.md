@@ -19,8 +19,8 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,286 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 15,192 |
-| The skill and the user guide (139 pages) | 348,526 |
-| The user guide alone | 344,240 |
+| The skill and the user guide (139 pages) | 349,908 |
+| The user guide alone | 345,622 |
 | The specification (10 chapters) | 146,104 |
 | The decision log, `docs/design/history/DECISIONS.md` | 141,629 |
 
@@ -110,29 +110,29 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | --- | ---: |
 | [Set up VibeLang](../setup.md) | 1,865 |
 | [Known limitations](../setup/known-limitations.md) | 510 |
-| **Start a project** | **2,378** |
+| **Start a project** | **2,405** |
 | [New project](../setup/new-project.md) | 543 |
-| [Existing project](../setup/existing-project.md) | 1,835 |
-| **Build and test** | **9,036** |
-| [vibelang CLI](../setup/vibelang-cli.md) | 6,470 |
-| [Vite and Vitest](../setup/vite.md) | 2,566 |
+| [Existing project](../setup/existing-project.md) | 1,862 |
+| **Build and test** | **9,311** |
+| [vibelang CLI](../setup/vibelang-cli.md) | 6,680 |
+| [Vite and Vitest](../setup/vite.md) | 2,631 |
 | **Format and lint** | **3,952** |
 | [Format with dprint](../setup/formatting.md) | 1,897 |
 | [Developer tools](../setup/developer-tools.md) | 2,055 |
-| **Frameworks** | **9,544** |
-| [React](../setup/react.md) | 2,131 |
-| [Vue](../setup/vue.md) | 3,018 |
-| [Svelte](../setup/svelte.md) | 2,642 |
-| [Foldkit](../setup/foldkit.md) | 1,753 |
-| **Editors** | **3,992** |
-| [VS Code and Cursor](../setup/vscode.md) | 936 |
+| **Frameworks** | **9,652** |
+| [React](../setup/react.md) | 2,158 |
+| [Vue](../setup/vue.md) | 3,045 |
+| [Svelte](../setup/svelte.md) | 2,669 |
+| [Foldkit](../setup/foldkit.md) | 1,780 |
+| **Editors** | **4,030** |
+| [VS Code and Cursor](../setup/vscode.md) | 974 |
 | [Neovim](../setup/neovim.md) | 1,023 |
 | [Zed](../setup/zed.md) | 479 |
 | [Other editors](../setup/other-editors.md) | 492 |
 | [Coding agents](../setup/coding-agents.md) | 1,062 |
-| **Upgrade** | **73,215** |
-| [Release notes](../setup/release-notes.md) | 73,215 |
-| **All 18 pages** | **104,492** |
+| **Upgrade** | **74,164** |
+| [Release notes](../setup/release-notes.md) | 74,164 |
+| **All 18 pages** | **105,889** |
 
 ### Guides
 
@@ -267,10 +267,10 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Building an HTTP API](113-building-an-http-api.md) | 1,649 |
 | [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 5,892 |
 | [Cheat sheet](115-cheat-sheet.md) | 10,906 |
-| [Pattern matching with match and is](116-match-and-is.md) | 6,574 |
+| [Pattern matching with match and is](116-match-and-is.md) | 6,559 |
 | [Diagnostic code map](diagnostic-code-map.md) | 2,199 |
 | [Experimental platform APIs](118-experimental-platform-apis.md) | 3,813 |
-| **All 8 pages** | **33,785** |
+| **All 8 pages** | **33,770** |
 
 ### Specification
 

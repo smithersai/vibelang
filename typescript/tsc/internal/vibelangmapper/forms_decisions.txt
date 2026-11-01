@@ -1011,6 +1011,13 @@ typescript/vibelang/cases/decl-service/main.vibe:9:11 lambda effectFn service
 typescript/vibelang/cases/declaration-arrow-contract/main.vibe:14:32 lambda effectFn annotation
 typescript/vibelang/cases/declaration-arrow-contract/main.vibe:19:3 lambda effectFn annotation
 typescript/vibelang/cases/declaration-arrow-contract/main.vibe:9:22 lambda effectFn annotation
+typescript/vibelang/cases/declaration-identity-effect-channels/main.vibe:12:22 lambda choice fallback
+typescript/vibelang/cases/declaration-identity-effect-channels/main.vibe:17:22 lambda choice fallback
+typescript/vibelang/cases/declaration-identity-effect-channels/main.vibe:22:29 lambda choice fallback
+typescript/vibelang/cases/declaration-identity-effect-channels/main.vibe:27:25 lambda choice fallback
+typescript/vibelang/cases/declaration-identity-effect-channels/main.vibe:32:15 lambda plain fallback
+typescript/vibelang/cases/declaration-identity-effect-channels/main.vibe:34:23 lambda choice fallback
+typescript/vibelang/cases/declaration-identity-effect-channels/main.vibe:7:21 lambda choice fallback
 typescript/vibelang/cases/declaration-identity-effect-forms/function.vibe:3:20 lambda effectFn annotation
 typescript/vibelang/cases/declaration-identity-effect-forms/local.vibe:2:13 lambda plain annotation
 typescript/vibelang/cases/declaration-identity-effect-slots/main.vibe:22:21 lambda effectFn annotation
@@ -1036,6 +1043,8 @@ typescript/vibelang/cases/declaration-module-shadows-ambient/main.vibe:3:27 lamb
 typescript/vibelang/cases/declaration-prelude-library-types/main.vibe:5:21 lambda plain annotation
 typescript/vibelang/cases/declaration-recursive-inferred/main.vibe:6:34 lambda plain table
 typescript/vibelang/cases/declaration-recursive-inferred/main.vibe:7:32 lambda plain table
+typescript/vibelang/cases/default-effect-block/program.vibe:4:22 lambda plain fallback
+typescript/vibelang/cases/default-effect-block/program.vibe:5:16 lambda plain fallback
 typescript/vibelang/cases/diag-any-contracted.fail/main.vibe:10:18 lambda plain fallback
 typescript/vibelang/cases/diag-any-contracted.fail/main.vibe:17:18 lambda dual fallback
 typescript/vibelang/cases/diag-any-contracted.fail/main.vibe:21:18 lambda dual fallback
@@ -2691,6 +2700,7 @@ typescript/vibelang/cases/prelude-collision-imports/main.vibe:13:59 lambda plain
 typescript/vibelang/cases/prelude-imports-cjs/main.vibe:16:3 lambda effectFn service
 typescript/vibelang/cases/prelude-imports-cjs/main.vibe:29:23 lambda plain table
 typescript/vibelang/cases/prelude-imports-cjs/main.vibe:29:45 lambda plain table
+typescript/vibelang/cases/prelude-module-name-shadowed/main.vibe:13:15 lambda plain fallback
 typescript/vibelang/cases/primitives-bare/main.vibe:20:22 block appended/program table
 typescript/vibelang/cases/primitives-bare/main.vibe:23:20 byname program table
 typescript/vibelang/cases/primitives-bare/main.vibe:9:27 byname program table
