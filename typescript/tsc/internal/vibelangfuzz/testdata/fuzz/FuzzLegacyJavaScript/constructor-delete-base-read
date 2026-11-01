@@ -1,0 +1,4 @@
+go test fuzz v1
+string("constructor-delete-base-read")
+string("plain")
+byte(0)

@@ -1,7 +1,7 @@
-// A method whose parameters bind on every run (a default, a rest parameter
-// or a parameter it writes) forwards its this and arguments to a generator
-// that fnUntraced calls on each run. A nested Effect arrow that reads
-// arguments reads that run's arguments object, not one shared by every run.
+// expect: EK0107
+// VIP-1 rejects these legacy arguments reads in methods with defaults,
+// rest parameters and rewritten parameters. Keep each original witness
+// as a diagnostic regression instead of claiming it is runnable.
 export class Counter {
   effect defaulted(a: number, step = 1): number!! {
     const bump = effect () => {

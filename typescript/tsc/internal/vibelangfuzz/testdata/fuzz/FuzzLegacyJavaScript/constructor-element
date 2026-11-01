@@ -1,0 +1,4 @@
+go test fuzz v1
+string("constructor-element")
+string("effect")
+byte(0)

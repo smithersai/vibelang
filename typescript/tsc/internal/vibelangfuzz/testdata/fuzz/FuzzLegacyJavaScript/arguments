@@ -1,0 +1,4 @@
+go test fuzz v1
+string("arguments")
+string("plain")
+byte(0)

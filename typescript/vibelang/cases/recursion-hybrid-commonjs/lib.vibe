@@ -46,6 +46,6 @@ export effect function complex(n: number, { value } = { value: nextDefault() }, 
 }
 export function defaultCount(): number { return defaults }
 export effect function args(n: number, ...rest: number[]): Effect<number> {
-  if (n === 0) return arguments.length + rest.length
+  if (n === 0) return 1 + rest.length + rest.length
   return try args(n - 1, ...rest)
 }

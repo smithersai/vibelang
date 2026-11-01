@@ -1,0 +1,4 @@
+go test fuzz v1
+string("specifier-blob")
+string("plain")
+byte(0)

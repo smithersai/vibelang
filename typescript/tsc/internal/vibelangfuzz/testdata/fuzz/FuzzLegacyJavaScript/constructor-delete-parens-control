@@ -1,0 +1,4 @@
+go test fuzz v1
+string("constructor-delete-parens-control")
+string("plain")
+byte(1)

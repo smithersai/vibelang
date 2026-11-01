@@ -1,0 +1,7 @@
+args.vibe(8,12): error EK0107
+args.vibe(17,12): error EK0107
+args.vibe(19,25): error EK0107
+args.vibe(27,14): error EK0107
+args.vibe(29,37): error EK0107
+args.vibe(38,12): error EK0107
+args.vibe(48,12): error EK0107

@@ -327,6 +327,8 @@ aliases, which keep the symbol they copy. Any other use of `globalThis`, such as
 `const g = globalThis`, a computed key, a cast or an argument to `Reflect.get`, is EK0107. Use process isolation when running untrusted
 code.
 
+The same code covers the other legacy JavaScript the language removes anywhere in a `.vibe` file, plain functions included: `eval`, direct or indirect; the `Function` constructor, except `x instanceof Function` and `Function.prototype`; `arguments`, replaced by a rest parameter; `with`; reading `constructor` from a function value; and a string-literal `data:` or `blob:` import specifier. Property names such as `o.eval` and the type `Function` keep their TypeScript meaning. Code that needs one of these lives in a `.ts` or `.js` file.
+
 `Date.now()`, `Date()`, `new Date()`, and `Intl.DateTimeFormat().format()` with no
 argument read the current clock without a diagnostic. Read time through `try Clock.currentTimeMillis` and pass that
 value to the formatter when you need controlled time, including in tests.

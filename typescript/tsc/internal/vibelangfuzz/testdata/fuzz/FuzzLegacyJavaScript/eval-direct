@@ -1,0 +1,4 @@
+go test fuzz v1
+string("eval-direct")
+string("effect")
+byte(1)

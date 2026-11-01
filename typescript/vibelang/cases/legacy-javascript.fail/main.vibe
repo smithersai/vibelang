@@ -1,0 +1,25 @@
+// expect: EK0107 TS1101 TS2410
+// VIP-1 and VIP-4: eval, the Function constructor, arguments, with, a
+// function value's .constructor and data:/blob: specifiers are EK0107
+// anywhere in a .vibe file, plain functions included. Property names, the
+// instanceof test, Function.prototype and the type Function stay valid.
+export function count(x: number): number { return arguments.length }
+export effect function counted(x: number) { return arguments.length }
+export const F = Function
+export const made = new Function("a", "return a")
+export const called = Function("return 1")
+export const named = Function.name
+export const direct = eval("1")
+export const indirect = (0, eval)("1")
+export const optional = eval?.("1")
+export const AF = (async () => {}).constructor
+export const m = import("data:text/javascript,export default 1")
+export function read(o: { x: number }): number { with (o) { return 1 } }
+
+export const isFn = (x: unknown) => x instanceof Function
+export const isFn2 = (x: unknown) => x instanceof globalThis.Function
+export const source = Function.prototype.toString.call(() => 1)
+export const typed: Function = () => 1
+export const plainCtor = ({}).constructor
+export const row = { arguments: 1, eval: 2, var: 3 }
+export const names = row.arguments + row.eval + row.var

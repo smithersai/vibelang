@@ -21,9 +21,10 @@ export class Counter {
     var n = n + 1
     return n
   }
-  effect argumentsRead(n: number): Effect<number, never, never> {
+  effect argumentsRead(...args: [number]): Effect<number, never, never> {
+    let [n] = args
     n += 1
-    return n + arguments.length
+    return n + args.length
   }
   effect #increment(n: number): Effect<number, never, never> { return ++n }
   get operation() { return this.#increment }

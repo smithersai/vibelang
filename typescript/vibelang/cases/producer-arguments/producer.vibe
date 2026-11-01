@@ -1,5 +1,5 @@
-// A producer's body runs in a generator of its own each time its Stream
-// runs. It still reads the arguments of the call that made the Stream.
+// expect: EK0107
+// VIP-1 rejects legacy arguments in ordinary generators too.
 export function* echo(label: string, count: number) {
   yield `${arguments[0]}:${arguments.length}`
   yield label

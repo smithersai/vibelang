@@ -1,7 +1,7 @@
-// A nested Effect arrow reads the arguments object of the function around
-// it, on the same run. The arrow's generator binds its own arguments, so the
-// lowering declares the enclosing function's arguments where its body runs:
-// in the generator that runs again each time the Effect runs.
+// expect: EK0107
+// VIP-1 rejects the retained legacy arguments references in nested arrows,
+// shorthand properties and plain functions. These original runtime
+// witnesses now pin that rejection; legal bindings use rest parameters.
 export effect function nested(a: number): number!! {
   const bump = effect () => {
     const tick = try Effect.sync(() => 0)

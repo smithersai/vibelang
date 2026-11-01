@@ -1,0 +1,4 @@
+go test fuzz v1
+string("constructor-assert-write-control")
+string("plain")
+byte(2)

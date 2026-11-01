@@ -1,0 +1,4 @@
+go test fuzz v1
+string("eval-property-control")
+string("method")
+byte(1)

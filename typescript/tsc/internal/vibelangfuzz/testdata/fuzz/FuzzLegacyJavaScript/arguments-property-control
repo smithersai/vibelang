@@ -1,0 +1,4 @@
+go test fuzz v1
+string("arguments-property-control")
+string("effect")
+byte(1)

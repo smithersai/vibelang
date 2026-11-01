@@ -75,33 +75,33 @@ class Square extends Shape {
 }
 
 class Counter {
-  effect count(a: number, b?: number) {
+  effect count(...args: [a: number, b?: number]) {
     try Console.log("count")
-    return arguments.length
+    return args.length
   }
-  effect counted(a: number) {
+  effect counted(...args: [a: number]) {
     try {
       try Console.log("counted")
-      return arguments.length
+      return args.length
     } finally {
       try Console.log("counted done")
     }
   }
 }
 
-// arguments in an Effect arrow inside a function expression.
-const outer = effect function (a: number, b: number) {
+// A legal rest tuple remains visible to a nested Effect arrow.
+const outer = effect function (...args: [a: number, b: number]) {
   const inner = effect () => {
     try Console.log("inner")
-    return arguments.length
+    return args.length
   }
   return try inner()
 }
 
-// An Effect function declaration's generator already gets its arguments.
-effect function declared(a: number, b: number, c: number) {
+// A rest tuple also keeps a declaration's explicit call arity available.
+effect function declared(...args: [a: number, b: number, c: number]) {
   try Console.log("declared")
-  return arguments.length
+  return args.length
 }
 
 // expect-result: {"sub":"sub code 7","square":"shape/square/plain/plain","make":"made+square","later":"shape","grow":5,"guarded":"shape","count":2,"counted":1,"outer":2,"declared":3}

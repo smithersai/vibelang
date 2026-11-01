@@ -1,4 +1,4 @@
-// expect-result: [42,43,44]
+// expect: EK0107
 effect function throughUsing(value: number): number!! {
   using resource = try Effect.acquireRelease(effect { return 1 }, effect () => {})
   return arguments[0] as number

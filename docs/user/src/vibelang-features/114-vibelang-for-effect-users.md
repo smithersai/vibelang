@@ -348,3 +348,5 @@ A plain callback keeps its TypeScript body even when an `effect` function passes
 A package import or `paths` alias that selects a compatibility sidecar outside `node_modules` uses its available source, including `.vibex` and mirrored `vibe.sidecarDir` declarations. It therefore has the same class and private-member identity as a direct source import. TypeScript's `preserveSymlinks` policy still decides whether the resolved path stays inside `node_modules`.
 
 A value or call result typed `unknown` must be narrowed to an Effect before `try`; it reports `EK0502` otherwise. An Effect may still succeed with an `unknown` value. The explicit escape hatch `any` remains unchecked.
+
+The function `constructor` restriction applies to reading its value. Assigning or deleting the property does not read it, including through parentheses and TypeScript assertions; ordinary TypeScript assignment and `delete` checks still apply.

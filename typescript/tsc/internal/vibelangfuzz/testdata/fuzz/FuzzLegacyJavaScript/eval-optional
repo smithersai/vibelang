@@ -1,0 +1,4 @@
+go test fuzz v1
+string("eval-optional")
+string("arrow")
+byte(0)

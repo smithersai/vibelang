@@ -53,7 +53,7 @@ class Reader {
   prefix = 10
   effect read(arg: number) {
     const [n = try choose()] = values("method", [undefined])
-    return n + this.prefix + arguments[0]
+    return n + this.prefix + arg
   }
 }
 

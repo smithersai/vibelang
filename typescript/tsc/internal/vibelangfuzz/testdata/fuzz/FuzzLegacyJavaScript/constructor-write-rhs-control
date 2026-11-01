@@ -1,0 +1,4 @@
+go test fuzz v1
+string("constructor-write-rhs-control")
+string("method")
+byte(2)

@@ -1,0 +1,4 @@
+go test fuzz v1
+string("function-optional-call")
+string("effect")
+byte(2)
