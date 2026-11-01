@@ -33,8 +33,12 @@ person can dispatch the same inputs with `gh workflow run`:
 
 ```sh
 gh workflow run mq-pregate.yml -f tag=<name> -f base=<commit on main> \
-  -f targets='<targets>' -f patch=<base64 of the gzipped git diff>
+  -f targets='<targets>' -f patch=<base64 of the git diff, compressed with xz or gzip>
 ```
+
+`scripts/apply-patch.sh` applies the patch. GitHub limits a dispatch payload to
+65,535 characters, so the queue compresses with xz, and a change whose patch is
+still too large runs only on the build hosts.
 
 The workflow holds no secrets and its token only reads this repository. A hosted
 pass counts; a hosted failure sends the change back to a build host, which is the

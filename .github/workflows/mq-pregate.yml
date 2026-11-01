@@ -19,7 +19,7 @@ on:
         description: Graph targets, space-separated
         required: true
       patch:
-        description: Base64 of the gzipped diff against base
+        description: Base64 of the diff against base, compressed with xz or gzip
         required: true
 
 permissions:
@@ -48,7 +48,7 @@ jobs:
           ref: ${{ env.PRE_BASE }}
           persist-credentials: false
       - name: Apply the change
-        run: printf '%s' "$PRE_PATCH" | base64 -d | gunzip | git apply --whitespace=nowarn -
+        run: printf '%s' "$PRE_PATCH" | sh scripts/apply-patch.sh
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
           go-version-file: typescript/tsc/go.mod
