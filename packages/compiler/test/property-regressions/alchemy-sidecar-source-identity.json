@@ -1,0 +1,35 @@
+{
+  "property": "sidecar-source-module-identity",
+  "finding": "alchemy-36-sidecar-identity",
+  "note": "Four source files preserve the original migration repro byte-for-byte. Run both engines with allowImportingTsExtensions=true during declaration-only emit to isolate module identity from source-extension admission. The original config bytes remain unchanged.",
+  "input": {
+    "brand": "private",
+    "generic": false,
+    "mode": "commonjs",
+    "form": "types",
+    "name": "Stage"
+  },
+  "files": {
+    "lib/package.json": "{ \"name\": \"lib\", \"type\": \"module\", \"exports\": { \"./Stage\": { \"types\": \"./src/Stage.d.vibe.ts\", \"default\": \"./src/Stage.vibe\" }, \"./Use\": \"./src/Use.ts\" } }\n",
+    "lib/src/Stage.vibe": "export class Stage { private readonly brand = 1; constructor(readonly name: string) {} }\n",
+    "lib/src/Stage.d.vibe.ts": "export declare class Stage {\n    readonly name: string;\n    private readonly brand;\n    constructor(name: string);\n}\n",
+    "lib/src/Use.ts": "import { Stage } from \"./Stage.vibe\";\nexport const use = (s: Stage): string => s.name;\n",
+    "app/src/a.ts": "import { Stage } from \"lib/Stage\";\nimport { use } from \"lib/Use\";\nexport const run = (s: Stage) => use(s);\nexport const both = (s: Stage, t: Parameters<typeof use>[0]) => [s, t] as const;\n",
+    "app/tsconfig.json": "{ \"compilerOptions\": { \"strict\": true, \"module\": \"nodenext\", \"target\": \"es2022\", \"declaration\": true, \"emitDeclarationOnly\": true, \"outDir\": \"out\", \"rootDir\": \"src\", \"allowArbitraryExtensions\": true }, \"include\": [\"src/**/*.ts\"] }\n"
+  },
+  "hashes": {
+    "lib/src/Stage.vibe": "01766e21f64a1ae0f711a32f73f9faae3c786f5b99fde6420c4b012a7592b159",
+    "lib/src/Stage.d.vibe.ts": "6b6ac5eec29e8e9d2ad3a2ffea9c2d49ef871271db200dcb7ef777a8a4c84877",
+    "lib/src/Use.ts": "e44308a0450e37992984ab65d766efbeb83fad2844f231cb019fac11a9fc78a6",
+    "app/src/a.ts": "4110f6902749ada93ddfb5cb46d07c20db1018ccfc7a600149fd4783e85dab84"
+  },
+  "knownFailure": {
+    "owner": "migfix-alchemy",
+    "key": "sidecar-source-module-identity",
+    "keys": [],
+    "codes": [
+      "TS2345"
+    ],
+    "observedResolvedOn": "4dfd9a19cad2"
+  }
+}

@@ -326,6 +326,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Migration could reject a retained schema class for its constructor warning; regression properties now keep the exemption limited to the correct class and file.
 
+- Sidecar identity properties used retired specification wording; they now check the current source-resolution rule while retaining the original hashed corpus and nominal-identity controls.
+
 - Repaired native loop migrations now have strict corpus checks while retaining the remaining iterator gaps.
 
 - Plain callable roots, `match` results and JavaScript `try`/`catch` now have strict regression checks after their migration gaps were resolved.
