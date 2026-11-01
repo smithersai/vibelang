@@ -120,6 +120,9 @@ func matchStage(c *checker.Checker, stage *ast.Node) (*ast.Node, string) {
 	}
 	module, name := effectMember(c, callee)
 	if module != "Match" {
+		if hint := hoistedMatchHint(c, stage); hint != nil {
+			return hint, "withReturnType"
+		}
 		return nil, ""
 	}
 	return call, name
@@ -182,7 +185,8 @@ func matchChainRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 	}
 	text := file.Text()
 	var arms []matchArm
-	written := ""    // the type withReturnType writes
+	written := "" // the type withReturnType writes
+	hintRead := ""
 	annotations := 0 // handlers with a return type
 	annotation := "" // the return type they write, when they all write one
 	for i, stage := range chain.stages {
@@ -192,6 +196,13 @@ func matchChainRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 		case "withReturnType":
 			if i != 0 || stageCall == nil || len(stageCall.TypeArguments()) != 1 {
 				return refuse(label + " is not the first stage")
+			}
+			if ast.IsIdentifier(stage) {
+				typ := stageCall.TypeArguments()[0]
+				if !sameHintTypeScope(c, typ, stage) {
+					return refuse("the hoisted hint's type is shadowed at the choice")
+				}
+				hintRead = expressionText(file, stage)
 			}
 			written = nodeText(file, stageCall.TypeArguments()[0])
 		case "exhaustive", "orElseAbsurd":
@@ -323,6 +334,10 @@ func matchChainRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 	subject := "value"
 	if chain.subject != nil {
 		subject = expressionText(file, chain.subject)
+		if hintRead != "" {
+			input := (&freshNames{file: file}).freshName("$matchSubject")
+			subject = "do { const " + input + " = " + subject + "; " + hintRead + "; " + input + "; }"
+		}
 	} else {
 		// The parameter keeps the name the chain's function type gives it,
 		// so the declaration it emits is the same.
@@ -393,6 +408,9 @@ func matchChainRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 		} else {
 			replacement = "(" + replacement + " as " + typeText + ")"
 		}
+	}
+	if hintRead != "" && chain.subject == nil {
+		replacement = "do { " + hintRead + "; " + replacement + "; }"
 	}
 	if !strings.HasPrefix(replacement, "(") && needsMatchParentheses(call, chain.subject == nil) {
 		replacement = "(" + replacement + ")"
@@ -845,4 +863,47 @@ func stringMatchAlternatives(c *checker.Checker, file *ast.SourceFile, args []*a
 		separator = " && "
 	}
 	return "let " + input + " and if (" + strings.Join(conditions, separator) + ")", true
+}
+
+// A local const initialized by the real Match.withReturnType factory is an
+// immutable type hint. Keep its eager read (and its initialization), so TDZ,
+// exported uses and reuse by other choices retain their original behavior.
+func hoistedMatchHint(c *checker.Checker, stage *ast.Node) *ast.Node {
+	if !ast.IsIdentifier(stage) {
+		return nil
+	}
+	symbol := c.GetSymbolAtLocation(stage)
+	if symbol == nil {
+		return nil
+	}
+	decl := symbol.ValueDeclaration()
+	if decl == nil || !ast.IsVariableDeclaration(decl) || decl.Initializer() == nil || ast.GetSourceFileOfNode(decl) != ast.GetSourceFileOfNode(stage) {
+		return nil
+	}
+	list := decl.Parent
+	if list == nil || !ast.IsVariableDeclarationList(list) || list.Flags&ast.NodeFlagsBlockScoped != ast.NodeFlagsConst {
+		return nil
+	}
+	hint := ast.SkipParentheses(decl.Initializer())
+	if !ast.IsCallExpression(hint) || hint.QuestionDotToken() != nil || !isEffectFunction(c, hint.Expression(), "Match", "withReturnType") || len(hint.Arguments()) != 0 || len(hint.TypeArguments()) != 1 {
+		return nil
+	}
+	return hint
+}
+
+func sameHintTypeScope(c *checker.Checker, typ, stage *ast.Node) bool {
+	same := true
+	var visit func(*ast.Node) bool
+	visit = func(n *ast.Node) bool {
+		if ast.IsIdentifier(n) {
+			flags := ast.SymbolFlagsType | ast.SymbolFlagsNamespace | ast.SymbolFlagsAlias
+			if c.ResolveName(n.Text(), n, flags, false) != c.ResolveName(n.Text(), stage, flags, false) {
+				same = false
+				return true
+			}
+		}
+		return n.ForEachChild(visit)
+	}
+	visit(typ)
+	return same
 }

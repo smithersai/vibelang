@@ -1,0 +1,19 @@
+type Choice = { readonly label: string }
+const withChoice = Match.withReturnType<Choice>()
+function subject(value: number, trace: string[]): number { trace.push("subject"); return value }
+export function choose(value: number, trace: string[]): Choice {
+  return Match.value(subject(value, trace)).pipe(
+    withChoice,
+    Match.when(0, (): Choice => ({ label: "zero" })),
+    Match.orElse((): Choice => ({ label: "other" }))
+  )
+}
+export function another(value: number, trace: string[]): Choice {
+  return Match.value(subject(value, trace)).pipe(
+    withChoice,
+    Match.when(1, (): Choice => ({ label: "one" })),
+    Match.orElse((): Choice => ({ label: "many" }))
+  )
+}
+const withLabel = Match.withReturnType<string>()
+export const describe = Match.type<number>().pipe(withLabel, Match.when(0, (): string => "zero"), Match.orElse((): string => "other"))

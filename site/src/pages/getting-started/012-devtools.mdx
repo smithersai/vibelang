@@ -166,6 +166,8 @@ A default `Match.orElse` handler that destructures its parameter, `({ _tag }) =>
 
 A `Match.when(String.startsWith("Core"), …)` predicate, alone or inside `Match.whenOr` with exact literals, becomes a guarded arm, `when let value and if (value.startsWith("Core"))`, in the original case order.
 
+A hoisted return-type stage, `const withChoice = Match.withReturnType<T>()` passed to `.pipe(withChoice, …)`, converts like the inline form: the chain becomes a `match`, the hint's type context is kept, and the hint is still read before the subject so initialization order and TDZ behavior do not change.
+
 ### Effect.gen and Effect.fn
 
 `--fix` writes an `Effect.gen` or `Effect.fn` program as an effect function or an `effect { … }` block, and a `.pipe` of an Effect with `|>`. The last stage of a pipeline that runs becomes a catch expression: `Effect.catch`, `Effect.catchTag`, `Effect.catchTags`, `Effect.orElseSucceed(x, () => v)` as `x catch () => v`, and `Effect.mapError(x, (e) => f(e))` as `x catch effect (e) => { throw f(e) }`. A stage with stages after it stays a call, and so does a pipeline held as a value. `Effect.withSpan(x, name)` as a last stage becomes `withSpan(() => x, name)`, and under `try`, `Effect.provide(x, L)` becomes `try effect { provide L { return try x } }`. `try Effect.void` goes. `Effect.sync(() => v)` becomes `effect { return v }`, or `v` where it runs, and `Effect.suspend(() => p)` becomes `effect { return try p }`, or `try p` where it runs. A thunk that throws, awaits, or reads `this`, and a `sync` whose value is a program, stay as written. Each `yield* e` becomes `try e`, including an Effect value such as a service key or a `Config` descriptor:

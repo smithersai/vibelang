@@ -48,3 +48,23 @@ func TestMatchStringPrefixFoldkit(t *testing.T) {
 		}
 	}
 }
+
+func TestHoistedMatchReturnTypeFoldkit(t *testing.T) {
+	for _, source := range []string{
+		"const withChoice = Match.withReturnType<string>()\nexport const f = (n:number) => Match.value(n).pipe(withChoice, Match.when(1, () => 'one'), Match.orElse(() => 'many'))",
+		"type Choice = {readonly label:string}\nconst withChoice = Match.withReturnType<Choice>()\nexport const f = (n:number) => Match.value(n).pipe(withChoice, Match.when(1, () => ({label:'one'})), Match.orElse(() => ({label:'many'})))",
+		"export const withChoice = Match.withReturnType<string>()\nexport const f = Match.type<number>().pipe(withChoice, Match.when(1, () => 'one'), Match.orElse(() => 'many'))",
+		"const withChoice = Match.withReturnType<string>()\nexport const f = (n:number) => Match.value(n).pipe(withChoice, Match.when(1, () => 'one'), Match.orElse(() => 'many'))\nexport const g = (n:number) => Match.value(n).pipe(withChoice, Match.when(1, () => 'first'), Match.orElse(() => 'other'))",
+	} {
+		fixed := applyQuickFix(t, source, EK4839.Code)
+		if !strings.Contains(fixed, "match (") {
+			t.Fatalf("no hoisted hint quick fix:\n%s", fixed)
+		}
+		p, f, _, _ := editorProgram(t, fixed)
+		for _, d := range append(p.GetSyntacticDiagnostics(t.Context(), f), p.GetSemanticDiagnostics(t.Context(), f)...) {
+			if d.Category() == diagnostics.CategoryError {
+				t.Errorf("fixed source: %s\n%s", d.String(), fixed)
+			}
+		}
+	}
+}
