@@ -114,6 +114,7 @@ Appendix B supplies the current diagnostic assignments; compatibility declaratio
 | `FuzzMigrationFunctionResources` | Three success function types, three factory homes, four operations, the foldkit cleanup source (foldkit-15; owner core-land) | Chapter 1 function kinds: a plain function's resource calls keep ordinary JavaScript evaluation and the function stays plain |
 | `FuzzMigrationAssertedCold` | Object, array and nested values in arrow, function and method homes; the foldkit source byte for byte (foldkit-2; owner core-land) | Chapter 1 function kinds and VIP-1: casts, satisfies and parentheses around a plain function's value do not change its kind |
 | `FuzzReviewProducerScope` | Inferred, written, effect and foreign producers with scope or finalizer use and a service (loop r1 ASTRA-3; owners sl1-apply, core-land) | Chapter 2 Producers: a producer's scope or finalizer requirement matches its written contract |
+| `FuzzMigrationSeverityIsolation` | 34 keyed configurations by code, category and direct or extended config (foldkit-14; product f58798560fe7) | Chapter 7 and VIP-34: VibeLang lint severities come from vibe.severities independently of the Effect lint table |
 | `FuzzSpecRules` | Retired | Current static targets quote their VIP chapters and gate those quotations through `specTests`. |
 | `FuzzSpecAllowed` | Retired | Current static targets and imported-scope controls cover the current forms. |
 | `FuzzSpecPrograms` | Retired | Semantics use `FuzzVIPDifferential`, with current chapter quotations and paired prints. |

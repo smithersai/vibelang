@@ -60,6 +60,7 @@ const specTests = [
   "TestErrorShallowReadonlyQuoted",
   "TestDoSourceNamesQuoted",
   "TestReviewProducerScopeQuoted",
+  "TestMigrationSeverityIsolationQuoted",
   "TestDoForTryDiagnosticOwnerQuoted",
   "TestDoDeclarationBytesQuoted",
   "TestDoContextualResultFuzzQuoted",
