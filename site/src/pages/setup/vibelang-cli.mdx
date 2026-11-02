@@ -256,7 +256,7 @@ This source preference also applies when `moduleSuffixes` places a paired `.d.vi
 
 Cyclic inferred declaration types retain TypeScript 5.9/7.0 elision: a repeated anonymous type prints `/*elided*/ any` rather than the new TypeScript 7.1 `TS5088`. Other recursion checks still apply; see [Declaration output](https://vibelang.sh/spec/001-functions#declaration-output).
 
-What a sidecar cannot print is an error, such as `TS7056` for an inferred type too long to serialize, even in a project with neither `declaration` nor `composite`: declaration emit writes `any` in its place, and a stock checker that reads the sidecar would accept that `any` silently. Annotate the export, or keep the module `.ts`.
+What a sidecar cannot print, such as `TS4094` for a private member of an exported class expression or `TS2883` for a type it can name only through `node_modules`, is an error where the project emits declarations (`declaration` or `composite`): declaration emit writes `any` in its place, and a stock checker that reads the sidecar would accept that `any` silently. A project with neither publishes nothing, so its sidecars name such a type by its path into `node_modules`, which its own checkers resolve. What it still cannot print there, such as `TS4094`, is an error only where a `.ts` file of the project imports the module, as for the same TypeScript under `tsc`, since that file reads the sidecar: it is reported at that import. Annotate the export, or keep the module `.ts`.
 
 ### Keep the sidecars in one directory
 
