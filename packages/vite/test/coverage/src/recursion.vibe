@@ -1,0 +1,16 @@
+// A plain function that calls itself, as Smithers testing RecordingModel's
+// `strings` does. Before VIP-1 it compiled to stack-safe twins whose dispatch
+// counted an untaken statement and two ?? branches at the function's head.
+const strings = (value: unknown, out: Array<string>): Array<string> => {
+  if (typeof value === "string") {
+    out.push(value)
+  } else if (typeof value === "object" && value !== null) {
+    for (const [key, item] of Object.entries(value)) {
+      out.push(key)
+      strings(item, out)
+    }
+  }
+  return out
+}
+
+export const collect = (value: unknown): Array<string> => strings(value, [])

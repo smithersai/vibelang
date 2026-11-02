@@ -18,3 +18,4 @@ main.vibe:68:1 block covered
 main.vibe:73:1 traced covered
 main.vibe:80:1 unused uncovered
 main.vibe:84:7 double covered
+main.vibe:91:24 strings covered

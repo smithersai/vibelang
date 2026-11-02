@@ -281,6 +281,7 @@ const specTests = [
   "TestBangSlotGroupingQuoted",
   "TestMatchBindingTypesQuoted",
   "TestPreludeAmbientDeclarationsQuoted",
+  "TestCyclicPlainCoverageQuoted",
   "TestEffectLintConfigurationQuoted",
   "TestProvideCommaRecoveryQuoted",
   "TestMissingRuntimeQuoted",

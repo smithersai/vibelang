@@ -84,3 +84,18 @@ export effect function unused(n: number): number!Bad! {
 export function double(n: number) {
   return n * 2
 }
+
+// A plain function that calls itself is one function. Before VIP-1, its
+// stack-safe twins counted an untaken statement and two ?? branches at its
+// head (Smithers testing RecordingModel, a 100% coverage threshold missed).
+export const strings = (value: unknown, out: Array<string>): Array<string> => {
+  if (typeof value === "string") {
+    out.push(value)
+  } else if (typeof value === "object" && value !== null) {
+    for (const [key, item] of Object.entries(value)) {
+      out.push(key)
+      strings(item, out)
+    }
+  }
+  return out
+}
