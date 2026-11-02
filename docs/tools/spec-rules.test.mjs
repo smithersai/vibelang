@@ -283,3 +283,15 @@ test("fast-check: fenced option mutations never disappear behind comments or ind
     assert.ok(found.some(f => f.message.startsWith("--spec-test-" + suffix)))
   }), { seed: 14031, numRuns: 40 })
 }))
+
+test("await witness: the registry must name the accepted VIP that cites its code", () => fixture((root, edit) => {
+  edit(appendix, s => s.split("\n").map(line => line.startsWith("| \u0060EK0102\u0060") ? line.replace(/ \| [\d, ]+ \|/, " | 1 |") : line).join("\n"))
+  assert.ok(lintRegistry(root).some(f => f.message.includes("VIP-5") && f.message.includes("EK0102")))
+}))
+test("fast-check: dropping a decision's diagnostic authority is always detected", () => fixture((root, edit) => {
+  const original = read(root, appendix)
+  fc.assert(fc.property(fc.constantFrom([4, "EK0403"], [5, "EK0102"], [9, "EK3005"]), fc.constantFrom("1", "30", "34", "1, 34"), ([id, code], replacement) => {
+    edit(appendix, () => original.split("\n").map(line => line.startsWith("| \u0060" + code + "\u0060") ? line.replace(/ \| [\d, ]+ \|/, " | " + replacement + " |") : line).join("\n"))
+    assert.ok(lintRegistry(root).some(f => f.message.includes("VIP-" + id) && f.message.includes(code)))
+  }), { seed: 1025, numRuns: 30 })
+}))

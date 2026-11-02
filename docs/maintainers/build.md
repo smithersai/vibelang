@@ -766,7 +766,7 @@ their VIP source; `//:spec-shared-tables` produces the standalone resolution
 projection. The diagnostic adapter reads `docs/design/registry/diagnostics.json`
 once it is available and otherwise Appendix B. Unsupported authority is a
 visible warning until an accepted source settles it. A compatibility number
-explicitly described as still emitted is not a new diagnostic assignment.
+explicitly described as still emitted is not a new diagnostic assignment. An accepted VIP's `Decision` section that cites a diagnostic must also appear in that code's registry authority; statements describing an old code are historical.
 
 Run the compiler-backed VIP contract separately with `sh scripts/ci.sh //:spec-vip-examples --jobs 8`. It reports missing assigned diagnostics as errors; schematic examples remain visible warnings.
 

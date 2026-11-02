@@ -107,6 +107,23 @@ export function lintRegistry(root) {
   const publicAuthority = [...vips.values()].filter(v => v.status !== "open")
   const authorityText = publicAuthority.map(v => v.text).join("\n")
   const approvedToken = token => accepted.some(v => tokens(v.text).some(t => t.value === token || t.value.startsWith(token + ".")))
+  // An accepted decision that cites an assigned code is part of that
+  // code's authority. This is also checked by TestSpecCodesInAppendixB.
+  for (const [id, vip] of vips) {
+    if (vip.status !== "accepted") continue
+    const heading = "\n## Decision\n", start = vip.text.indexOf(heading)
+    if (start < 0) continue
+    const offset = start + heading.length, body = vip.text.slice(offset).split(/\n## /, 1)[0]
+    const cited = new Set()
+    for (const m of body.matchAll(/\bEK(?:38\d{2,}|\d{4})\b/g)) {
+      const begin = Math.max(body.lastIndexOf("\n", m.index), body.lastIndexOf(".", m.index)) + 1
+      if (/\bold\b/i.test(body.slice(begin, m.index)) || cited.has(m[0])) continue
+      cited.add(m[0])
+      const row = diagnostics.get(m[0]), ids = String(row?.authority ?? "").match(/\d+/g) ?? []
+      if (!ids.includes(String(id))) findings.push(issue("registry", vip.path, vip.text, offset + m.index,
+        "VIP-" + id + " cites " + m[0] + " but its registry authority does not name VIP-" + id))
+    }
+  }
   const seen = new Set()
   for (const path of chapters(root)) {
     const text = read(root, path)
