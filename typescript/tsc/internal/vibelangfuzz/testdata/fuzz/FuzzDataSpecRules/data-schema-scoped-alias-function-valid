@@ -1,0 +1,3 @@
+go test fuzz v1
+string("schema-scoped-alias-function-valid")
+byte('\x00')
