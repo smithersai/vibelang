@@ -1370,7 +1370,6 @@ export async function codemod(options) {
   }
   const { renames, exportEdits, importEdits, refEdits = [], scriptEdits = [], referenceEdits = [], referenceWarnings = [], referenceScan, selectorChecks = [], plain = {}, functionModel = "unprobed", packageScriptEdits = [] } = state
   const buildEntries = state.buildEntries ?? { edits: [], warnings: [] }
-  const buildEntries = state.buildEntries ?? { edits: [], warnings: [] }
   const platform = state.platform ?? { splits: [], refused: [] }
   const attempt = state.attempts.length + 1
   state.attempts.push({ attempt, compiler: compilerOf(config), startedAt: new Date().toISOString(), projects: [] })
