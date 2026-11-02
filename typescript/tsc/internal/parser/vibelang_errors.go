@@ -156,6 +156,9 @@ func (p *Parser) parseErrorDeclaration(pos int, jsdoc jsdocScannerInfo, modifier
 		p.parseExpected(ast.KindCloseBraceToken)
 		d.body = core.NewTextRange(start, p.nodePos())
 	}
+	if d.base == nil {
+		vibelangErrorPayloadSeparators(elements)
+	}
 	for _, element := range elements {
 		switch {
 		case isVibeLangErrorField(element) && isVibeLangTagField(element) && d.tag == nil:
@@ -261,7 +264,8 @@ func (p *Parser) isVibeLangFieldComma(typeNode *ast.Node, initializer *ast.Node)
 }
 
 // parseVibeLangFieldComma parses the comma after a field of such a body as an
-// empty class member flagged NodeFlagsVibeLang, for EK1013.
+// empty class member flagged NodeFlagsVibeLang. Payload Field separators
+// are consumed before projection; retained class punctuation gets EK1013.
 func (p *Parser) parseVibeLangFieldComma() *ast.Node {
 	pos := p.nodePos()
 	p.vibelangFieldComma = false
@@ -269,6 +273,22 @@ func (p *Parser) parseVibeLangFieldComma() *ast.Node {
 	result := p.finishNode(p.factory.NewSemicolonClassElement(), pos)
 	result.Flags |= ast.NodeFlagsVibeLang
 	return result
+}
+
+// Mark a projected payload Field's comma as a synthesized class separator.
+// Keep its source range in the tree: the formatter needs the punctuation's
+// position and attached comments. Missing separators have no written width.
+func vibelangErrorPayloadSeparators(elements []*ast.Node) {
+	payload := false
+	for _, element := range elements {
+		comma := ast.IsSemicolonClassElement(element) && element.Flags&ast.NodeFlagsVibeLang != 0 && element.Pos() < element.End()
+		if payload && comma {
+			element.Flags |= ast.NodeFlagsReparsed
+			payload = false
+			continue
+		}
+		payload = isVibeLangErrorField(element)
+	}
 }
 
 // parseVibeLangErrorElement gives a typed payload field named constructor

@@ -1,8 +1,4 @@
-main.vibe(7,31): error EK1013
-main.vibe(10,15): error EK1013
-main.vibe(11,17): error EK1013
-main.vibe(14,43): error EK1013
-main.vibe(16,36): error EK1013
-main.vibe(19,17): error EK1013
-main.vibe(24,16): error EK1013
-main.vibe(28,26): error EK1013
+main.vibe(12,43): error EK1013
+main.vibe(17,17): error EK1013
+main.vibe(22,16): error EK1013
+main.vibe(26,26): error EK1013

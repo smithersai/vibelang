@@ -310,12 +310,16 @@ func (p *projector) errorClassDeclaration(node *ast.Node) {
 			if member.Kind == ast.KindClassStaticBlockDeclaration && member.Flags&ast.NodeFlagsReparsed != 0 {
 				continue // the family's static block
 			}
-			p.visit(member, env{})
+			if !p.errorPayloadComma(member) {
+				p.visit(member, env{})
+			}
 		}
 	}
 	if form == errorClassRoot {
 		for _, member := range class.Members.Nodes {
-			p.visit(member, env{})
+			if !p.errorPayloadComma(member) {
+				p.visit(member, env{})
+			}
 		}
 	}
 	for _, clause := range ast.GetImplementsHeritageClauseElements(node) {
@@ -348,4 +352,19 @@ func hasSynthesizedDeclare(member *ast.Node) bool {
 		}
 	}
 	return false
+}
+
+// errorPayloadComma writes native class punctuation for a DSL payload
+// separator. The source comma remains available to formatting and mapping.
+func (p *projector) errorPayloadComma(member *ast.Node) bool {
+	flags := ast.NodeFlagsVibeLang | ast.NodeFlagsReparsed
+	if !ast.IsSemicolonClassElement(member) || member.Flags&flags != flags || member.Pos() >= member.End() {
+		return false
+	}
+	start := p.tokenStart(member)
+	if p.text[start:member.End()] != "," {
+		return false
+	}
+	p.plan.replace(start, member.End(), ";")
+	return true
 }

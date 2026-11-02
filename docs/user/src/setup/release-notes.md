@@ -591,6 +591,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - ESLint reported `no-unexpected-multiline` at a closing brace after some `is` patterns, such as `value is if (true)`; subject-capturing patterns now keep their own source form in ESTree, so generated matcher invocations produce no call warnings and written calls still report normally.
 
+- Commas between payload fields in `error` and `schema error` bodies reported `EK1013`; they now separate readonly constructor fields, including optional fields and trailing commas.
+
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 
 - Migration setup could leave a native type exported through a TypeScript namespace barrel as an error type in project-aware linters; setup now enables source declaration redirects in owned configs and records those edits.

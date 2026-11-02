@@ -1,0 +1,41 @@
+export error PlainFields { id: string, count: number }
+export error PlainOptional { id?: string, count: number }
+export error PlainLiteral { "id": string, 7: number }
+export error PlainMembers { id: string, get label(): string { return this.id } count: number }
+export error PlainReadonly { readonly id: string, readonly count: number }
+export error PlainComments { id: string /* before */, /** @internal */ count: number, }
+export error PlainMultiline { id:
+ string |
+ number,
+count?: number }
+export error PlainTrailing { id: string, }
+export schema error EncodedFields { id: string, count: number }
+export schema error EncodedOptional { id?: string, count: number }
+export schema error EncodedLiteral { "id": string, 7: number }
+export schema error EncodedMembers { id: string, get label(): string { return this.id } count: number }
+export schema error EncodedReadonly { readonly id: string, readonly count: number }
+export schema error EncodedComments { id: string /* before */, /** @internal */ count: number, }
+export schema error EncodedMultiline { id:
+ string |
+ number,
+count?: number }
+export schema error EncodedTrailing { id: string, }
+
+export const matrix = [
+  [PlainFields, new PlainFields({ id: "x", count: 1 }), { id: "x", count: 1 }, "count", 1, false],
+  [PlainOptional, new PlainOptional({ count: 1 }), { count: 1 }, "count", 1, false],
+  [PlainLiteral, new PlainLiteral({ id: "x", 7: 1 }), { id: "x", 7: 1 }, 7, 1, false],
+  [PlainMembers, new PlainMembers({ id: "x", count: 1 }), { id: "x", count: 1 }, "label", "x", false],
+  [PlainReadonly, new PlainReadonly({ id: "x", count: 1 }), { id: "x", count: 1 }, "count", 1, false],
+  [PlainComments, new PlainComments({ id: "x", count: 1 }), { id: "x", count: 1 }, "count", 1, false],
+  [PlainMultiline, new PlainMultiline({ id: "x" }), { id: "x" }, "id", "x", false],
+  [PlainTrailing, new PlainTrailing({ id: "x" }), { id: "x" }, "id", "x", false],
+  [EncodedFields, new EncodedFields({ id: "x", count: 1 }), { id: "x", count: 1 }, "count", 1, true],
+  [EncodedOptional, new EncodedOptional({ count: 1 }), { count: 1 }, "count", 1, true],
+  [EncodedLiteral, new EncodedLiteral({ id: "x", 7: 1 }), { id: "x", 7: 1 }, 7, 1, true],
+  [EncodedMembers, new EncodedMembers({ id: "x", count: 1 }), { id: "x", count: 1 }, "label", "x", true],
+  [EncodedReadonly, new EncodedReadonly({ id: "x", count: 1 }), { id: "x", count: 1 }, "count", 1, true],
+  [EncodedComments, new EncodedComments({ id: "x", count: 1 }), { id: "x", count: 1 }, "count", 1, true],
+  [EncodedMultiline, new EncodedMultiline({ id: "x" }), { id: "x" }, "id", "x", true],
+  [EncodedTrailing, new EncodedTrailing({ id: "x" }), { id: "x" }, "id", "x", true]
+] as const

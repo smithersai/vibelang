@@ -9,18 +9,10 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 )
 
-// The body of an error, schema error, service, or control declaration is a
-// class body (D278, D128): ; or a new line separates its fields, as in a
-// TypeScript class, and a comma does not.
-//
-//	error OutOfStock { sku: string, available: number }
-//
-//	error EK1013: The fields of an error are separated by ; or a new line, not by a comma.
-//
-// The parser reads such a comma as an empty class member flagged
-// NodeFlagsVibeLang (parser/vibelang_errors.go), so TypeScript does not
-// report "Expected '=' for property initializer." there. The quick fix
-// writes ; for the comma.
+// EK1013 covers comma markers retained as class punctuation by existing
+// declaration lowerings. Root error payload Fields use Appendix A Separator;
+// the parser marks their comma nodes as synthesized class separators.
+// Other retained markers still get this diagnostic and its semicolon fix.
 
 // EK1013: a comma after a field of an error, schema, schema error, service, or control declaration. {0} is the declaration's kind, such as "an error".
 var EK1013 = message(1013, errorCategory, "The fields of {0} are separated by ; or a new line, not by a comma.")
@@ -37,7 +29,7 @@ func checkFieldCommas(c *checker.Checker, file *ast.SourceFile) {
 	visit = func(node *ast.Node) bool {
 		if ast.IsClassDeclaration(node) {
 			for _, member := range node.Members() {
-				if ast.IsSemicolonClassElement(member) && member.Flags&ast.NodeFlagsVibeLang != 0 {
+				if ast.IsSemicolonClassElement(member) && member.Flags&ast.NodeFlagsVibeLang != 0 && member.Flags&ast.NodeFlagsReparsed == 0 {
 					note(report(c, member, EK1013, fieldDeclarationKind(node)), "Its body is a class body, as in TypeScript.")
 				}
 			}

@@ -1,8 +1,6 @@
 // expect: EK1013
-// Error, schema, schema error, service, and control declarations use
-// ; or a new line between fields (D278, D128). A comma reports EK1013.
-// The schema at the end is a declaration body; TypeScript object types
-// nested in a schema still allow commas.
+// Root error payload fields below admit shared comma separators. Other
+// declaration/class punctuation retains its existing EK1013 diagnostic.
 
 error OutOfStock { sku: string, available: number }
 
