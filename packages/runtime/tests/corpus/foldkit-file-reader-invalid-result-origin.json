@@ -1,0 +1,1 @@
+{"key":"Experimental.FileReader:invalid-result-origin","spec":"VIP-33/detail262: preserve error contracts","methods":["readAsText","readAsDataUrl","readAsArrayBuffer"],"invalidResult":null}

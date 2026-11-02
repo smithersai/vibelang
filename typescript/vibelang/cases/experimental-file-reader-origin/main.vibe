@@ -1,0 +1,15 @@
+// expect-result: ["InvalidData","InvalidData","InvalidData"]
+// foldkit-file-reader-invalid-result-origin: malformed load results are not host error events.
+import { blob, invalidReader } from "./page.ts"
+
+export effect function main() {
+  provide Layer.succeed(Experimental.FileReader.FileReader, invalidReader()) {
+    const reader = try Experimental.FileReader.FileReader
+    const file = blob()
+    return [
+      (try Effect.flip(reader.readAsText(file))).reason._tag,
+      (try Effect.flip(reader.readAsDataUrl(file))).reason._tag,
+      (try Effect.flip(reader.readAsArrayBuffer(file))).reason._tag
+    ]
+  }
+}

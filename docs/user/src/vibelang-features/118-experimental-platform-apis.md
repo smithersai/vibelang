@@ -328,8 +328,9 @@ Each takes a `Blob` or a `File`. For a file on disk, a path, use Effect's `FileS
 | `PermissionDenied` | The browser refused the read. |
 | `BadResource` | The file could not be read. |
 | `Unknown` | Any other error while reading. |
+| `InvalidData` | A `load` event gave a result of the wrong type. |
 
-Every reason but `BadArgument` comes from the reader's `error` event, so `error.reason._tag === "BadArgument"` tells a refused call from a failed read.
+Match `error.reason._tag`: `BadArgument` identifies a refused call, `InvalidData` identifies an unexpected result type, and the other tags identify the reader's `error` event. This remains distinct when a host error reuses the invalid result's exact cause and message.
 
 `ExperimentalBrowserFileReader.layer`, also in `ExperimentalBrowserServices.layer`, uses the host's `FileReader`. `Experimental.FileReader.layerTest()` needs no host: each member reads the `Blob` itself. Pass the members a test needs, such as one that fails.
 

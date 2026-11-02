@@ -7,6 +7,9 @@
  * start, a call that throws, fails with one whose reason is `BadArgument`. Both
  * keep the host's value as `cause`, and its message as `description`.
  *
+ * A load event with the wrong result type fails with InvalidData, distinct
+ * from either host failure even when its cause and message are reused.
+ *
  * Effect 4.1.0 has no service for `FileReader`. Effect's `FileSystem` reads
  * paths, and a browser `File` has none.
  *
@@ -127,7 +130,7 @@ export const make = (host: Host): FileReader => {
         const value = extract(reader.result)
         resume(
           value === undefined
-            ? Effect.fail(failure(method, new Error(`FileReader gave an unexpected result for ${method}`)))
+            ? Effect.fail(PlatformError.systemError({ _tag: "InvalidData", module: "FileReader", method, description: `FileReader gave an unexpected result for ${method}`, cause: new Error(`FileReader gave an unexpected result for ${method}`) }))
             : Effect.succeed(value)
         )
       })

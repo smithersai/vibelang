@@ -452,6 +452,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Compiler checks could miss regressions in the VibeLang formatter; the compiler gate now runs the formatter’s Go tests.
 - Synthetic compiler benchmarks emitted retired forms and could compare an implicit Effect helper with a plain TypeScript helper; fixtures now use current forms and explicit helper types, with compile and runtime checks for both languages.
 
+- Browser file reads could report an unexpected result exactly like a host error; `Experimental.FileReader` now identifies unexpected results with `InvalidData`, preserving the origin even when the cause and message coincide.
+
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 
 - Migration setup could leave a native type exported through a TypeScript namespace barrel as an error type in project-aware linters; setup now enables source declaration redirects in owned configs and records those edits.

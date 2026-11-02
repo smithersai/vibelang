@@ -81,9 +81,9 @@ test("FileReader: a read that throws and a result of the wrong kind fail, not di
   const thrown = FileReader.make(fakeHost({ throws: new TypeError("not a Blob") }).host)
   expect(await failureOf(thrown.readAsDataUrl(blob))).toMatchObject({ _tag: "BadArgument", method: "readAsDataURL", description: "not a Blob" })
   const wrong = FileReader.make(fakeHost({ load: new ArrayBuffer(1) }).host)
-  expect(await failureOf(wrong.readAsText(blob))).toMatchObject({ _tag: "Unknown", method: "readAsText" })
+  expect(await failureOf(wrong.readAsText(blob))).toMatchObject({ _tag: "InvalidData", method: "readAsText" })
   const empty = FileReader.make(fakeHost({ load: "text" }).host)
-  expect(await failureOf(empty.readAsArrayBuffer(blob))).toMatchObject({ _tag: "Unknown", method: "readAsArrayBuffer" })
+  expect(await failureOf(empty.readAsArrayBuffer(blob))).toMatchObject({ _tag: "InvalidData", method: "readAsArrayBuffer" })
 })
 
 test("FileReader: a call that throws is BadArgument and an error event is a SystemError, each with the host's own cause (property)", async () => {
@@ -167,4 +167,30 @@ test("FileReader: layerTest takes the members a test needs", async () => {
   })
   const read = Effect.flatMap(Effect.service(FileReader.FileReader), (reader) => reader.readAsText(blob))
   expect(await failureOf(Effect.provide(read, failing))).toMatchObject({ _tag: "BadArgument" })
+})
+
+// VIP-33/detail262: "Preserve original ... error/defect contracts".
+// Keyed migration corpus: foldkit-file-reader-invalid-result-origin.json.
+test("FileReader: foldkit invalid-result origin survives cause reuse (property)", async () => {
+  const corpus = await Bun.file(new URL("./corpus/foldkit-file-reader-invalid-result-origin.json", import.meta.url)).json()
+  const methods = ["readAsText", "readAsDataUrl", "readAsArrayBuffer"] as const
+  const reason = (method: typeof methods[number], outcome: Outcome) =>
+    Effect.runPromise(Effect.map(Effect.flip(FileReader.make(fakeHost(outcome).host)[method](blob)), (error) => error.reason))
+  const check = async (method: typeof methods[number], result: string | ArrayBuffer | null) => {
+    const invalid = await reason(method, { load: result })
+    // Reuse the *same* object as the host error event, including name/message.
+    const hostError = invalid.cause as { name: string; message: string }
+    const event = await reason(method, { error: hostError })
+    const refused = await reason(method, { throws: hostError })
+    expect(event.cause).toBe(invalid.cause)
+    expect(event.description).toBe(invalid.description)
+    expect(invalid._tag).toBe("InvalidData")
+    expect(event._tag).not.toBe("InvalidData")
+    expect(refused._tag).toBe("BadArgument")
+    expect(refused.cause).toBe(hostError)
+  }
+  for (const method of corpus.methods) await check(method, null)
+  await fc.assert(fc.asyncProperty(fc.constantFrom(...methods), fc.string(), async (method, text) => {
+    await check(method, method === "readAsArrayBuffer" ? text : new ArrayBuffer(0))
+  }), { seed: 413939, numRuns: 150 })
 })
