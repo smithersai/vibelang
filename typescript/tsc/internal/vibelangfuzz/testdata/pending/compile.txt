@@ -208,5 +208,3 @@ FuzzCompile corpus:registry-EK4843 compiler Appendix B: reproduction of registry
 
 
 
-FuzzCompile registry:EK0109 compiler Appendix B: Every diagnostic has an EK code. Detail 247 assigns EK0109 to rejected Effect-arrow heads, but the current registry has no row; lane spec-lander.
-FuzzCompile corpus:registry-EK0109 compiler Appendix B: minimized typed bare arrow for registry:EK0109; lane spec-lander.

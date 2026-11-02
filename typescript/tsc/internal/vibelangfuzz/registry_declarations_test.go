@@ -12,7 +12,6 @@ import (
 // diagnostics. Each entry expires when its declaration disappears or its
 // number gains a current assignment; TestCompilerRegistryIsSpecified checks it.
 var legacyDeclared = map[int32]string{
-	109:  "lane spec-lander; detail 247 assigns the arrow-head identity, but current Appendix B lacks its row",                                                            // effect_arrow_heads.go / parser-owned constant
 	1001: "lane del-rest",                                                                                                                                                 // diagnostics.go
 	1002: "lane del-rest",                                                                                                                                                 // diagnostics.go
 	1003: "lane del-rest",                                                                                                                                                 // diagnostics.go
