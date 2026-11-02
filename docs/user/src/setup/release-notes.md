@@ -675,9 +675,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A missing `vibelang-runtime` could go unnoticed or expose internal helper-name errors; compilation now reports one `TS2307` naming the dependency and keeps unrelated source errors.
 
-- A migration could need a second `vibelang --fix` run after an import cleanup exposed another fix; one invocation now repeats its passes, and reports any fixes left at its limit.
-
-
 - Checking documentation examples with a symlinked `TMPDIR` could stop with `Compiler failed` instead of reporting an example's type error; diagnostics now stay attached to their examples and later pages are checked.
 
 - Prettier and `formatSource` could silently keep unformatted `.vibe` input whose path was ignored, including `node_modules`; they now format the supplied buffer and report syntax errors.

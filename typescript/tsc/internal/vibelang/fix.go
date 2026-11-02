@@ -1,7 +1,6 @@
 package vibelang
 
 import (
-	"cmp"
 	"context"
 	"crypto/sha256"
 	"fmt"
@@ -59,13 +58,13 @@ import (
 // (D310, D311) and writes M.M as M where a module's name names its service,
 // keeping each file's rewrites only when the program then reports no error
 // it did not before. Then an import of effect or one of its modules that
-// the fixes left unused is removed. The rounds and rewrites repeat until
-// no fix applies, so a completed run reaches a fixed point. The command
-// writes each verified state (fix_keep.go), preserving checked fixes when
-// interrupted; a second run finishes the work. If a pass repeats a source
-// state, or fixes still apply at fixPassLimit, the run reports an error.
-// The fix of the retired try(…) hatch (EK4616, VIP-5) runs under
-// --fix-migration-only too. --fix-vip-only applies only the VIP
+// the fixes left unused is removed. Each time the gate verifies a set of
+// fixes, the command writes the files they change (fix_keep.go), so a run
+// stopped by SIGINT or SIGTERM keeps every fix it verified and none it did
+// not, stopping at once rather than after the check under way, and a second
+// run finishes the work; after a run that finishes, a
+// second run finds nothing to fix. The fix of the retired try(…) hatch
+// (EK4616, VIP-5) runs under --fix-migration-only too. --fix-vip-only applies only the VIP
 // migrations: that fix, then try before each call that runs where it stands
 // (fix_try.go), which keeps the call's meaning while every call still runs
 // where it stands. --fix cannot be combined with --build or --watch.
@@ -123,9 +122,8 @@ func FixArguments(args []string) ([]string, bool) {
 
 // Fix applies the safe quick fixes to the project that args, a command line
 // without --fix, names, writes the files they change, and reports them on
-// sys's writer. It returns a nonzero exit status when it cannot run or
-// fixes still apply at the pass limit; compilation diagnostics are reported
-// by the subsequent compilation.
+// sys's writer. It returns a nonzero exit status only when it cannot run;
+// diagnostics are the compilation's to report.
 func Fix(ctx context.Context, sys tsc.System, args []string) int {
 	return FixWithOptions(ctx, sys, args, FixOptions{})
 }
@@ -216,10 +214,6 @@ func FixWithOptions(ctx context.Context, sys tsc.System, args []string, options 
 	}
 	reportSidecarConfigFixes(sys, configChanges)
 	result.Report(sys.Writer(), func(name tspath.RootedFilePath) string { return relativeName(sys, name) })
-	if n := len(result.Remaining); n > 0 {
-		fmt.Fprintf(sys.ErrorWriter(), "vibelang --fix: stopped after %d %s with %d %s still applying; run vibelang --fix again.\n", fixPassLimit, plural(fixPassLimit, "pass", "passes"), n, plural(n, "fix", "fixes"))
-		return int(tsc.ExitStatusDiagnosticsPresent_OutputsGenerated)
-	}
 	return 0
 }
 
@@ -258,24 +252,15 @@ type FixRefusal struct {
 	Error string // the first error the fix would add
 }
 
-// A FixRemaining is a fix that still applies after the pass limit.
-type FixRemaining struct {
-	File tspath.RootedFilePath
-	Line int    // 1-based, in the fixed text
-	Fix  string // EK4841, or a prelude rewrite's kind (fix_prelude.go)
-}
-
 // FixResult is what FixProject did.
 type FixResult struct {
-	Files     map[tspath.RootedFilePath]*FixedFile
-	Order     []tspath.RootedFilePath
-	Refused   []FixRefusal
-	Remaining []FixRemaining // the fixes that still apply after fixPassLimit passes
-	Err       error          // normalization could not reach a fixed point
+	Files   map[tspath.RootedFilePath]*FixedFile
+	Order   []tspath.RootedFilePath
+	Refused []FixRefusal
+	Err     error // normalization could not reach a fixed point
 }
 
-// Report writes one line per fixed file, per refusal and per fix that still
-// applies, and a summary.
+// Report writes one line per fixed file and per refusal, and a summary.
 func (r *FixResult) Report(w io.Writer, name func(tspath.RootedFilePath) string) {
 	total := 0
 	for _, file := range r.Order {
@@ -315,15 +300,9 @@ func (r *FixResult) Report(w io.Writer, name func(tspath.RootedFilePath) string)
 		}
 		fmt.Fprintf(w, "vibelang --fix: %s:%d: %s not fixed: the fixed program would report %s\n", name(refusal.File), refusal.Line, code, refusal.Error)
 	}
-	for _, remaining := range r.Remaining {
-		fmt.Fprintf(w, "vibelang --fix: %s:%d: %s still applies after %d %s\n", name(remaining.File), remaining.Line, remaining.Fix, fixPassLimit, plural(fixPassLimit, "pass", "passes"))
-	}
 	fmt.Fprintf(w, "vibelang --fix: %d %s in %d %s", total, plural(total, "fix", "fixes"), len(r.Order), plural(len(r.Order), "file", "files"))
 	if len(r.Refused) > 0 {
 		fmt.Fprintf(w, "; %d %s refused", len(r.Refused), plural(len(r.Refused), "fix", "fixes"))
-	}
-	if n := len(r.Remaining); n > 0 {
-		fmt.Fprintf(w, "; %d %s still %s", n, plural(n, "fix", "fixes"), plural(n, "applies", "apply"))
 	}
 	fmt.Fprintln(w, ".")
 }
@@ -338,11 +317,6 @@ func plural(n int, one, many string) string {
 func FixProject(ctx context.Context, fs vfs.FS, libraryPath tspath.RootedDirectoryPath, config *tsoptions.ParsedCommandLine) *FixResult {
 	return FixProjectWithOptions(ctx, fs, libraryPath, config, FixOptions{})
 }
-
-// fixPassLimit bounds the passes of a --fix run, as ESLint's --fix bounds
-// its passes at ten. A run still applying fixes at the limit stops, keeps
-// what it fixed, and reports the fixes that still apply.
-var fixPassLimit = 10
 
 func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.RootedDirectoryPath, config *tsoptions.ParsedCommandLine, options FixOptions) *FixResult {
 	result := &FixResult{Files: map[tspath.RootedFilePath]*FixedFile{}}
@@ -397,236 +371,147 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 		return result
 	}
 	g := &fixGate{ctx: ctx, done: done, build: build, baseline: baselineOf(ctx, program), refused: map[string]bool{}, alone: map[[32]byte]map[string]int{}, verified: verified, progress: progress}
-	refuse := func(refusal FixRefusal, key string) {
-		g.refused[key] = true
-		result.Refused = append(result.Refused, refusal)
-	}
-	// propose returns a round's fixes: in each fixable file of program, the
-	// fixes options select whose edits do not overlap.
-	propose := func(program *compiler.Program) []proposal {
+	seen := map[[32]byte]bool{fixState(program): true}
+	for round := 1; ; round++ {
+		if done.Err() != nil {
+			return result
+		}
+		progress.enter("round", round, fixesApplied(result), len(result.Refused), "finding fixes")
 		var proposals []proposal
 		for _, file := range fixableFiles(program) {
+			refuse := func(refusal FixRefusal, key string) {
+				g.refused[key] = true
+				result.Refused = append(result.Refused, refusal)
+			}
 			var p proposal
 			if options.VIPOnly {
 				p = fileFixes(ctx, program, file, g.refused, vipMigrationFixCodes)
-			} else {
-				p = pipeMigrationFixes(ctx, program, file, g.refused, refuse)
-				p = p.withFixes(dualBlockMigrationFixes(ctx, program, file, g.refused, refuse))
-				p = p.withFixes(keywordMigrationFixes(ctx, program, file, g.refused, refuse))
-				p = p.withFixes(vipTypeMigrationFixes(ctx, program, file, g.refused))
-				p = p.withFixes(ambiguousRootMigrationFixes(ctx, program, file, g.refused))
-				p = p.withFixes(bindingRenameMigrationFixes(ctx, program, file, g.refused))
-				if options.MigrationOnly && len(p.fixes) == 0 {
-					p = sourceFileMigrationFixes(ctx, program, file, g.refused)
+				if len(p.fixes) > 0 {
+					proposals = append(proposals, p)
 				}
-				if len(p.fixes) == 0 && !options.MigrationOnly {
-					p = fileFixes(ctx, program, file, g.refused, tsFormFixCodes)
-					// Pipe and stage rewrites follow rules that consume their operands.
-					if len(p.fixes) == 0 {
-						p = effectPipeFixes(ctx, program, file, g.refused, refuse)
-					}
-					if len(p.fixes) == 0 {
-						p = effectStageFixes(ctx, program, file, g.refused)
-					}
-				} else if len(p.fixes) == 0 {
-					p = fileFixes(ctx, program, file, g.refused, vipMigrationFixCodes)
-				}
+				continue
 			}
-			p.cleanImports = !options.MigrationOnly && !options.VIPOnly
+			p = pipeMigrationFixes(ctx, program, file, g.refused, refuse)
+			p = p.withFixes(dualBlockMigrationFixes(ctx, program, file, g.refused, refuse))
+			p = p.withFixes(keywordMigrationFixes(ctx, program, file, g.refused, refuse))
+			p = p.withFixes(vipTypeMigrationFixes(ctx, program, file, g.refused))
+			p = p.withFixes(ambiguousRootMigrationFixes(ctx, program, file, g.refused))
+			p = p.withFixes(bindingRenameMigrationFixes(ctx, program, file, g.refused))
+			if options.MigrationOnly && len(p.fixes) == 0 {
+				p = sourceFileMigrationFixes(ctx, program, file, g.refused)
+			}
+			if len(p.fixes) == 0 && !options.MigrationOnly {
+				p = fileFixes(ctx, program, file, g.refused, tsFormFixCodes)
+				// A .pipe waits for the rules that read it, and for its
+				// generator, whose fix writes the .pipes it holds.
+				if len(p.fixes) == 0 {
+					p = effectPipeFixes(ctx, program, file, g.refused, refuse)
+				}
+				if len(p.fixes) == 0 {
+					p = effectStageFixes(ctx, program, file, g.refused)
+				}
+			} else if len(p.fixes) == 0 {
+				p = fileFixes(ctx, program, file, g.refused, vipMigrationFixCodes)
+			}
+			p.cleanImports = !options.MigrationOnly
 			if len(p.fixes) > 0 {
 				proposals = append(proposals, p)
 			}
 		}
-		return proposals
-	}
-	finish := func() *FixResult {
-		slices.SortFunc(result.Order, tspath.RootedFilePath.Compare)
-		return result
-	}
-	round := 0
-	seen := map[[32]byte]bool{fixState(program): true}
-	for pass := 1; ; pass++ {
-		// The rounds: each takes the fixes that apply, until none does.
-		for {
-			if done.Err() != nil {
-				return result
-			}
-			round++
-			progress.enter("round", round, fixesApplied(result), len(result.Refused), "finding fixes")
-			proposals := propose(program)
-			if len(proposals) == 0 {
-				break
-			}
-			offered := 0
-			for _, p := range proposals {
-				offered += len(p.fixes)
-			}
-			progress.offered(offered)
-			accept := g.accept
-			if options.CheckEachFix {
-				accept = g.acceptEach
-			}
-			accepted := accept(texts, proposals, refuse)
-			if done.Err() != nil {
-				return result
-			}
-			if len(accepted) == 0 {
-				continue // every fix refused; the next round tries the rest
-			}
-			for _, p := range accepted {
-				name := p.file.FileName()
-				fixed := result.Files[name]
-				if fixed == nil {
-					original, _ := fs.ReadFile(name)
-					fixed = &FixedFile{Original: original, Counts: map[int32]int{}}
-					result.Files[name] = fixed
-					result.Order = append(result.Order, name)
-				}
-				fixed.Text = p.text()
-				for _, f := range p.fixes {
-					if f.label != "" {
-						if fixed.Rewrites == nil {
-							fixed.Rewrites = map[string]int{}
-						}
-						fixed.Rewrites[f.label]++
-					} else {
-						fixed.Counts[f.code]++
-					}
-				}
-				texts[name] = fixed.Text
-			}
-			verified(texts)
-			program = build(texts)
-			state := fixState(program)
-			if seen[state] {
-				result.Err = fmt.Errorf("normalization repeated a source state instead of reaching a fixed point (automatic fix round, pass %d)", pass)
-				return result
-			}
-			seen[state] = true
-		}
-		if options.MigrationOnly {
-			return finish()
-		}
-		// The rewrites after the rounds, on program, the last round's.
-		before := maps(texts, nil)
-		beforeState := fixState(program)
-		if options.VIPOnly {
-			// try before each call that runs where it stands (VIP-5, fix_try.go).
-			if done.Err() == nil {
-				progress.enter("try", 0, fixesApplied(result), len(result.Refused), "finding rewrites")
-				rewriteTries(g, fs, program, texts, result)
-				verified(texts)
-			}
-			// effect where a function compiles to an Effect (VIP-1, VIP-2, fix_effect.go).
-			if done.Err() == nil {
-				progress.enter("effect", 0, fixesApplied(result), len(result.Refused), "finding rewrites")
-				rewriteEffects(g, fs, build(texts), texts, result)
-				verified(texts)
-			}
-		} else {
-			// What the prelude makes shorter (D310, D311).
-			if done.Err() == nil {
-				progress.enter("prelude", 0, fixesApplied(result), len(result.Refused), "finding rewrites")
-				rewritePrelude(g, fs, program, texts, result)
-				verified(texts)
-			}
-			// Remove the effect imports that the fixes left unused.
-			if done.Err() == nil {
-				removeUnusedEffectImports(g, texts, result)
-			}
-		}
-		if done.Err() != nil {
-			return finish()
-		}
-		if sameTexts(before, texts) {
-			break // the pass changed nothing: no fix applies
-		}
-		program = build(texts)
-		state := fixState(program)
-		if state == beforeState {
-			// A read can cache an unchanged file in the sparse overlay.
-			// Compare the actual source state before treating that as a cycle.
+		if len(proposals) == 0 {
 			break
 		}
+		offered := 0
+		for _, p := range proposals {
+			offered += len(p.fixes)
+		}
+		progress.offered(offered)
+		accept := g.accept
+		if options.CheckEachFix {
+			accept = g.acceptEach
+		}
+		accepted := accept(texts, proposals, func(refusal FixRefusal, key string) {
+			g.refused[key] = true
+			result.Refused = append(result.Refused, refusal)
+		})
+		if done.Err() != nil {
+			return result
+		}
+		if len(accepted) == 0 {
+			continue // every fix refused; the next round tries the rest
+		}
+		for _, p := range accepted {
+			name := p.file.FileName()
+			fixed := result.Files[name]
+			if fixed == nil {
+				original, _ := fs.ReadFile(name)
+				fixed = &FixedFile{Original: original, Counts: map[int32]int{}}
+				result.Files[name] = fixed
+				result.Order = append(result.Order, name)
+			}
+			fixed.Text = p.text()
+			for _, f := range p.fixes {
+				if f.label != "" {
+					if fixed.Rewrites == nil {
+						fixed.Rewrites = map[string]int{}
+					}
+					fixed.Rewrites[f.label]++
+				} else {
+					fixed.Counts[f.code]++
+				}
+			}
+			texts[name] = fixed.Text
+		}
+		verified(texts)
+		program = build(texts)
+		state := fixState(program)
 		if seen[state] {
-			result.Err = fmt.Errorf("normalization repeated a source state instead of reaching a fixed point (normalization rewrites, pass %d)", pass)
+			result.Err = fmt.Errorf("normalization repeated a source state instead of reaching a fixed point")
 			return result
 		}
 		seen[state] = true
-		if pass == fixPassLimit {
-			result.Remaining = remainingFixes(ctx, program, propose, options)
-			break
-		}
 	}
-	return finish()
-}
-
-// removeUnusedEffectImports removes, from each file the fixes changed, the
-// import bindings of effect and its modules that the fixes left unused
-// (withoutUnusedEffectImports), when the program then adds no error to g's
-// baseline, and records the texts in result and texts.
-func removeUnusedEffectImports(g *fixGate, texts map[tspath.RootedFilePath]string, result *FixResult) {
+	// try before each call that runs where it stands (VIP-5, fix_try.go).
+	if done.Err() == nil && options.VIPOnly {
+		progress.enter("try", 0, fixesApplied(result), len(result.Refused), "finding rewrites")
+		rewriteTries(g, fs, build(texts), texts, result)
+		verified(texts)
+	}
+	// effect where a function compiles to an Effect (VIP-1, VIP-2, fix_effect.go).
+	if done.Err() == nil && options.VIPOnly {
+		progress.enter("effect", 0, fixesApplied(result), len(result.Refused), "finding rewrites")
+		rewriteEffects(g, fs, build(texts), texts, result)
+		verified(texts)
+	}
+	if options.MigrationOnly || options.VIPOnly {
+		slices.SortFunc(result.Order, tspath.RootedFilePath.Compare)
+		return result
+	}
+	// What the prelude makes shorter (D310, D311).
+	if done.Err() == nil {
+		progress.enter("prelude", 0, fixesApplied(result), len(result.Refused), "finding rewrites")
+		rewritePrelude(g, fs, build(texts), texts, result)
+		verified(texts)
+	}
+	// Remove the effect imports that the fixes left unused.
 	cleaned := map[tspath.RootedFilePath]string{}
 	for _, name := range result.Order {
 		if text, ok := withoutUnusedEffectImports(name, result.Files[name].Original, texts[name]); ok {
 			cleaned[name] = text
 		}
 	}
-	if len(cleaned) == 0 {
-		return
-	}
-	g.progress.enter("imports", 0, fixesApplied(result), len(result.Refused), "removing unused imports")
-	if _, ok := g.passes(texts, cleaned); !ok {
-		return
-	}
-	for name, text := range cleaned {
-		result.Files[name].Text = text
-		texts[name] = text
-	}
-	g.verified(texts)
-}
-
-// sameTexts reports whether a and b hold the same files with the same texts.
-func sameTexts(a, b map[tspath.RootedFilePath]string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for name, text := range a {
-		if other, ok := b[name]; !ok || other != text {
-			return false
-		}
-	}
-	return true
-}
-
-// remainingFixes returns the fixes that still apply to program, which the
-// pass limit stopped --fix from applying: the next round's fixes, as
-// propose takes them, and the prelude rewrites, by file and line.
-func remainingFixes(ctx context.Context, program *compiler.Program, propose func(*compiler.Program) []proposal, options FixOptions) []FixRemaining {
-	var remaining []FixRemaining
-	for _, p := range propose(program) {
-		for _, f := range p.fixes {
-			line, _ := scannerLineOf(p.file, firstEdit(f.edits))
-			remaining = append(remaining, FixRemaining{File: p.file.FileName(), Line: line + 1, Fix: fmt.Sprintf("EK%04d", f.code)})
-		}
-	}
-	if !options.VIPOnly {
-		for name, r := range preludeRewriteProject(ctx, program) {
-			line, _ := scannerLineOf(program.GetSourceFile(name), firstEdit(r.edits))
-			kind := preludeImportLabel
-			if r.imports == 0 {
-				kind = preludeKeyLabel
+	if len(cleaned) > 0 && done.Err() == nil {
+		progress.enter("imports", 0, fixesApplied(result), len(result.Refused), "removing unused imports")
+		progress.checkFiles(len(cleaned))
+		if _, bad := newError(ctx, build(maps(texts, cleaned)), g.baseline); !bad {
+			for name, text := range cleaned {
+				result.Files[name].Text = text
 			}
-			remaining = append(remaining, FixRemaining{File: name, Line: line + 1, Fix: kind})
+			verified(maps(texts, cleaned))
 		}
 	}
-	slices.SortFunc(remaining, func(a, b FixRemaining) int {
-		if c := a.File.Compare(b.File); c != 0 {
-			return c
-		}
-		return cmp.Compare(a.Line, b.Line)
-	})
-	return remaining
+	slices.SortFunc(result.Order, tspath.RootedFilePath.Compare)
+	return result
 }
 
 // fixesApplied counts the fixes and rewrites result holds.

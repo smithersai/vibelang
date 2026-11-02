@@ -1,2 +1,0 @@
-go test fuzz v1
-string("-- main.vibe --\nfunction double(n: number) { return n * 2 }\nexport effect function main() { try yieldNow(); return double(2) }\n")

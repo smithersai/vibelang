@@ -531,5 +531,3 @@ The `EK4839` quick fix preserves a Match return-type hint with a checked
 annotation on its binding, including destructuring, or a typed local binding
 inside a `do` expression. It uses existing written context when available
 and does not introduce an `as` assertion.
-
-One `vibelang --fix` invocation repeats its passes until no fix applies. Running it again changes nothing. If the pass limit is reached, it reports the remaining fixes and exits with an error.
