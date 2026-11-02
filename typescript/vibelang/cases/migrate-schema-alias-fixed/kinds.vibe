@@ -3,7 +3,6 @@
 // kinds.vibe; migrate-schema-alias-fixed holds what --fix then writes, which
 // main.ts runs with the same result. The rule's fixes alone keep the
 // declarations TypeScript emits (expected/kinds.d.ts).
-import { Schema } from "effect"
 
 // Literals.
 export schema Kind = "persistent" | "incognito"

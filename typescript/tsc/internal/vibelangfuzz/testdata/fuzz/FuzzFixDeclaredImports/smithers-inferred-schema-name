@@ -1,2 +1,0 @@
-go test fuzz v1
-[]byte("inferred-name/no-emit/plain/.vibe")

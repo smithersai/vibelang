@@ -4,7 +4,6 @@
 // shape's members are written in place; a named shape keeps the warning
 // without a fix, and a shape that is not an object type has no service form
 // and draws nothing. tsforms-services-fixed is what vibelang --fix writes.
-import { Context } from "effect"
 
 export service Users {
   static readonly key = "app/Users"

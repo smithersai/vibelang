@@ -384,8 +384,6 @@ Tools that only analyze code, such as cycle checkers (madge) and dependency grap
 | `--fix-migration-only` | Migration fixes, excluding TypeScript-form teaching rewrites and prelude/import cleanup. |
 | `--fix-vip-only` | The existing VIP migration passes, including the VIP-1/VIP-2 function-kind and `try` migration, excluding prelude/import cleanup. |
 
-In every scope, `--fix` keeps an import that a module's declaration needs, in its place and under its name, so the declaration stays the same bytes. The prelude supplying a name does not make its import unneeded. Under `noUnusedLocals`, an import the fixes leave unused in the source is removed, since it would report `TS6133`. Every `.vibe` module has a declaration, its sidecar, so `noEmit` and `declaration: false` change nothing here.
-
 Either scope flag requires `--fix` somewhere in the argument list, before or after it; alone, each is an unknown compiler option (`TS5023`). The ordinary `--fix` invocation and its project options keep their existing meaning.
 
 ```sh

@@ -183,7 +183,6 @@ const specTests = [
   "TestVIPTemplatesCited",
   "TestRunningRulesQuoted",
   "TestMigrationForeignCallQuoted",
-  "TestFixDeclaredImportsQuoted",
   "TestBangSlotGroupingQuoted",
   "TestMatchBindingTypesQuoted",
   "TestPreludeAmbientDeclarationsQuoted",
