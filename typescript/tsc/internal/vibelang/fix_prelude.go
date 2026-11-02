@@ -243,6 +243,16 @@ func declaredImports(ctx context.Context, program *compiler.Program, file *ast.S
 	if !candidate {
 		return nil
 	}
+	return declarationImportKeys(ctx, program, file)
+}
+
+// declarationImportKeys returns the imports that the declaration file of
+// file writes, by declaredImportKey, in a program that emits declarations;
+// nil otherwise.
+func declarationImportKeys(ctx context.Context, program *compiler.Program, file *ast.SourceFile) map[string]bool {
+	if !program.Options().GetEmitDeclarations() {
+		return nil
+	}
 	var text string
 	program.Emit(ctx, compiler.EmitOptions{TargetSourceFiles: []*ast.SourceFile{file}, EmitOnly: compiler.EmitOnlyDts, ForceEmit: true,
 		WriteFile: func(name tspath.RootedFilePath, data string, _ *compiler.WriteFileData) error {

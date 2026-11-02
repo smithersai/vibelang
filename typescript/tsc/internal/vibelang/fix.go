@@ -502,6 +502,10 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 				}
 			}
 			p.cleanImports = !options.MigrationOnly && !options.VIPOnly
+			if len(p.fixes) > 0 && (p.cleanImports || removesImport(file, p.fixes)) {
+				p.declared = declarationImportKeys(ctx, program, file)
+				p.fixes = keepDeclaredImports(file, p.fixes, p.declared)
+			}
 			if len(p.fixes) > 0 {
 				proposals = append(proposals, p)
 			}
@@ -620,7 +624,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			}
 			// Remove the effect imports that the fixes left unused.
 			if done.Err() == nil {
-				removeUnusedEffectImports(g, texts, result)
+				removeUnusedEffectImports(g, program, texts, result)
 			}
 		}
 		if done.Err() != nil {
@@ -651,12 +655,20 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 
 // removeUnusedEffectImports removes, from each file the fixes changed, the
 // import bindings of effect and its modules that the fixes left unused
-// (withoutUnusedEffectImports), when the program then adds no error to g's
-// baseline, and records the texts in result and texts.
-func removeUnusedEffectImports(g *fixGate, texts map[tspath.RootedFilePath]string, result *FixResult) {
+// (withoutUnusedEffectImports), except those the file's declaration file in
+// program writes, when the program then adds no error to g's baseline, and
+// records the texts in result and texts.
+func removeUnusedEffectImports(g *fixGate, program *compiler.Program, texts map[tspath.RootedFilePath]string, result *FixResult) {
 	cleaned := map[tspath.RootedFilePath]string{}
 	for _, name := range result.Order {
-		if text, ok := withoutUnusedEffectImports(name, result.Files[name].Original, texts[name]); ok {
+		if _, ok := withoutUnusedEffectImports(name, result.Files[name].Original, texts[name], nil); !ok {
+			continue
+		}
+		var declared map[string]bool
+		if file := program.GetSourceFile(name); file != nil {
+			declared = declarationImportKeys(g.ctx, program, file)
+		}
+		if text, ok := withoutUnusedEffectImports(name, result.Files[name].Original, texts[name], declared); ok {
 			cleaned[name] = text
 		}
 	}
@@ -1161,6 +1173,9 @@ type proposal struct {
 	file         *ast.SourceFile
 	fixes        []fileFix
 	cleanImports bool
+	// declared is the imports file's declaration file writes, by
+	// declaredImportKey, which the import cleanup keeps.
+	declared map[string]bool
 }
 
 // text returns the proposal's file with its fixes applied.
@@ -1173,7 +1188,7 @@ func (p proposal) text() string {
 	// Check the complete proposed rewrite. Delaying this cleanup until after
 	// acceptance would make noUnusedLocals reject a fix for its unused import.
 	if p.cleanImports {
-		if cleaned, ok := withoutUnusedEffectImports(p.file.FileName(), p.file.Text(), text); ok {
+		if cleaned, ok := withoutUnusedEffectImports(p.file.FileName(), p.file.Text(), text, p.declared); ok {
 			return cleaned
 		}
 	}
@@ -1293,8 +1308,12 @@ func applyEdits(text string, edits []sourceEdit) string {
 
 // withoutUnusedEffectImports removes from text, a file the fixes changed
 // from original, each import binding of effect or one of its modules that
-// original's code used and text's does not.
-func withoutUnusedEffectImports(name tspath.RootedFilePath, original, text string) (string, bool) {
+// original's code used and text's does not, except one that kept, the
+// declaration file's imports by declaredImportKey, holds: the declaration
+// keeps the import its TypeScript wrote (D501), so an Effect.fn the fixes
+// turned into an effect arrow keeps import * as Effect from "effect/Effect"
+// while the export's type names Effect.
+func withoutUnusedEffectImports(name tspath.RootedFilePath, original, text string, kept map[string]bool) (string, bool) {
 	parse := func(source string) *ast.SourceFile {
 		return parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: name, PathKey: tspath.CaseSensitive.PathKey(tspath.RootedPath(name))}, source, core.ScriptKindTS)
 	}
@@ -1303,7 +1322,7 @@ func withoutUnusedEffectImports(name tspath.RootedFilePath, original, text strin
 	for _, b := range importBindingsOf(after) {
 		// A specifier that is no string, as error recovery can leave one,
 		// names no module.
-		if module := b.declaration.ModuleSpecifier(); module != nil && ast.IsStringLiteral(module) && (module.Text() == "effect" || strings.HasPrefix(module.Text(), "effect/")) {
+		if module := b.declaration.ModuleSpecifier(); module != nil && ast.IsStringLiteral(module) && (module.Text() == "effect" || strings.HasPrefix(module.Text(), "effect/")) && !kept[declaredImportKey(module.Text(), b.name)] {
 			names[b.name] = true
 		}
 	}

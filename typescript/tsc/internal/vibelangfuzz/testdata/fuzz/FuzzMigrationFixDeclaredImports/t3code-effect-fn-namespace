@@ -1,0 +1,2 @@
+go test fuzz v1
+string("import * as Effect from \"effect/Effect\"\nexport const ensure = Effect.fn(\"ensure\")(function* (n: number) {\n  return n + 1\n})\n")
