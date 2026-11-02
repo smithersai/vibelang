@@ -289,7 +289,7 @@ func planEffectGen(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *fo
 
 	switch {
 	case g.isFn:
-		program, why := effectFnText(file, g, body)
+		program, why := effectFnText(c, file, g, body)
 		if why != "" {
 			return refuse(why)
 		}
@@ -359,7 +359,7 @@ func parametersEnd(file *ast.SourceFile, fn *ast.Node) int {
 
 // effectFnText returns the effect function that replaces g, an Effect.fn
 // whose rewritten block is body, or why there is none.
-func effectFnText(file *ast.SourceFile, g *generatorCall, body string) (string, string) {
+func effectFnText(c *checker.Checker, file *ast.SourceFile, g *generatorCall, body string) (string, string) {
 	generator := g.generator
 	text := file.Text()
 	open := generator.ParameterList().Pos() - 1
@@ -370,14 +370,29 @@ func effectFnText(file *ast.SourceFile, g *generatorCall, body string) (string, 
 	if close < 0 || open < 0 {
 		return "", "its parameters could not be read"
 	}
+	// The native Effect.fn result prints its inferred parameter tuple, not
+	// the generator's annotation syntax. Serialize each checked parameter
+	// type, keeping its generic scope rather than reading a widened overload.
 	var head []sourceEdit
 	for _, parameter := range generator.Parameters() {
-		// Effect.fn's signature comes from its generator's parameter tuple,
-		// which prints an optional parameter with undefined.
-		if parameter.QuestionToken() != nil && parameter.Type() != nil && !strings.Contains(nodeText(file, parameter.Type()), "undefined") {
-			head = append(head, sourceEdit{parameter.Type().End(), parameter.Type().End(), " | undefined"})
+		if annotation := parameter.Type(); annotation != nil {
+			inferred := c.GetTypeFromTypeNode(annotation)
+			if parameter.QuestionToken() != nil {
+				inferred = c.GetUnionType([]*checker.Type{inferred, c.GetUndefinedType()})
+			}
+			printed := c.TypeToStringEx(inferred, annotation, checker.TypeFormatFlagsNoTruncation|checker.TypeFormatFlagsUseFullyQualifiedType, nil)
+			if printed == "" {
+				return "", "an inferred parameter type cannot be written"
+			}
+			if original := nodeText(file, annotation); printed != original {
+				if hasComment(original) {
+					return "", "a comment stands inside a parameter type that inference expands"
+				}
+				head = append(head, sourceEdit{nodeStart(file, annotation), annotation.End(), printed})
+			}
 		}
 	}
+
 	signature := applyEdits(text[:close], head)[open:]
 	keepsThis := generator.Name() != nil || usesFunctionThis(generator)
 	if g.span == nil && len(g.stages) == 0 {

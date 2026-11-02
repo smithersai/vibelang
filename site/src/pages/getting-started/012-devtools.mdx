@@ -193,6 +193,8 @@ export const greet = effect (id: string) => {
 
 Use an effect function for a sequence with parameters, and `effect { … }` for an Effect argument, such as `Layer.effect`'s second argument. Keep unrun Effect values intact. A `throw` in effect code fails the Effect with a typed error; plain and `async` callbacks keep JavaScript's exception semantics.
 
+`Effect.fn` infers its parameter tuple before TypeScript prints declarations. Its repair writes those checked parameter types: for example, a generator parameter written `ReadonlyArray<T>` becomes `readonly T[]`. It preserves generic parameters, optional parameters and the generator's input types through pipeline stages. A comment inside a type that needs rewriting keeps the diagnostic and its reason instead of losing the comment. An explicit import type such as `import("effect/Brand").Brand<"Path">` stays qualified in the parameter and inferred return declaration.
+
 `Effect.fn("name")` keeps its name as a span, `try Effect.withSpan(effect { … }, "name")`. An effect function records no `Effect.fn` stack frame in a failure's trace. A parameter with a default or a pattern, bound when an `Effect.gen` function is called, keeps the function plain: `({ id }): infer _ => effect { … }`. A generator's `throw`, a defect in Effect, becomes `return try Effect.die(e)`.
 
 Async conversion requires every `await` operand to be statically `PromiseLike`. JavaScript also permits `await` on a scalar, an unknown value or a mixed union. Normalize those operands explicitly, for example with `await Promise.resolve(value)`, before requesting the refactor.

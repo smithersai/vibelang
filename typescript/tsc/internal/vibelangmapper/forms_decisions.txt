@@ -1058,6 +1058,7 @@ typescript/vibelang/cases/declaration-import-style-inferred-nodenext/schema/inde
 typescript/vibelang/cases/declaration-import-style-inferred/schema/index.vibe:2:28 lambda plain annotation
 typescript/vibelang/cases/declaration-import-style-ts/Bind.vibe:8:21 lambda plain annotation
 typescript/vibelang/cases/declaration-import-style-ts/Contribution.vibe:3:23 lambda plain annotation
+typescript/vibelang/cases/declaration-import-type-qualifier/main.vibe:2:21 lambda plain fallback
 typescript/vibelang/cases/declaration-linked-esm.fail/main.vibe:3:19 lambda choice fallback
 typescript/vibelang/cases/declaration-linked-esm/main.vibe:2:19 lambda choice fallback
 typescript/vibelang/cases/declaration-linked-esm/main.vibe:3:25 lambda choice fallback
@@ -2549,6 +2550,12 @@ typescript/vibelang/cases/migrate-effect-gen-fixed/lib.vibe:51:3 lambda program 
 typescript/vibelang/cases/migrate-effect-gen-fixed/lib.vibe:53:20 lambda plain fallback
 typescript/vibelang/cases/migrate-effect-gen-fixed/lib.vibe:8:22 lambda choice fallback
 typescript/vibelang/cases/migrate-global-import-fixed/util.vibe:16:22 lambda plain annotation
+typescript/vibelang/cases/migrate-opencode-effect-fn-parameters-fixed/lib.vibe:11:25 lambda plain fallback
+typescript/vibelang/cases/migrate-opencode-effect-fn-parameters-fixed/lib.vibe:15:25 lambda plain fallback
+typescript/vibelang/cases/migrate-opencode-effect-fn-parameters-fixed/lib.vibe:5:24 lambda plain fallback
+typescript/vibelang/cases/migrate-opencode-effect-fn-parameters-fixed/lib.vibe:5:74 lambda program table
+typescript/vibelang/cases/migrate-opencode-effect-fn-parameters-fixed/lib.vibe:8:104 lambda program table
+typescript/vibelang/cases/migrate-opencode-effect-fn-parameters-fixed/lib.vibe:8:26 lambda plain fallback
 typescript/vibelang/cases/module-aliases/main.vibe:12:24 lambda plain annotation
 typescript/vibelang/cases/module-aliases/main.vibe:12:90 lambda plain table
 typescript/vibelang/cases/module-aliases/main.vibe:14:26 lambda plain fallback

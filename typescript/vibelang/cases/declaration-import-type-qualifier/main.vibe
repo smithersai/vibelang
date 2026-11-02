@@ -1,0 +1,2 @@
+import { Effect } from "effect"
+export const call = effect (input: string & import("effect/Brand").Brand<"Path">) => input

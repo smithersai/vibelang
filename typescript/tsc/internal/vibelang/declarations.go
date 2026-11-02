@@ -451,6 +451,16 @@ func writtenPreludeNames(c *checker.Checker, state *preludeState, file *ast.Sour
 	written := map[string]bool{}
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
+		if ast.IsImportTypeNode(node) {
+			// The qualifier belongs to the named module, even when its spelling
+			// is also a prelude name. Type arguments still use the local scope.
+			if arguments := node.AsImportTypeNode().TypeArguments; arguments != nil {
+				for _, argument := range arguments.Nodes {
+					visit(argument)
+				}
+			}
+			return false
+		}
 		if ast.IsIdentifier(node) {
 			if !isMemberNameOf(node) && isPreludeName(node.Text()) {
 				written[node.Text()] = true

@@ -1,0 +1,17 @@
+
+export const Path = Schema.String.pipe(Schema.brand("Path"))
+export type Path = typeof Path.Type
+
+export const cleanup = effect (files: readonly string[]) => try withSpan(effect {
+  return files.length
+}, "cleanup")
+export const canonical = effect (input: string & import("effect/Brand").Brand<"Path">) => try withSpan(effect {
+  return input
+}, "canonical")
+export const explicit = effect (files: readonly string[]) => {
+  return files.length
+}
+
+export const optional = effect (input?: (() => number) | undefined) => {
+  return input
+}
