@@ -5,7 +5,8 @@
 // stock tsc (types erased, no check), and the entry runs as
 // typescript/vibelang/harness.mjs runs it: out/run.mjs imports main(), runs
 // it, and prints `@@result <json>`. The case passes when that line is the
-// expected JSON, the same comparison the fork's own suite makes.
+// expected JSON, the same comparison the fork's own suite makes. The standalone
+// CLI exits nonzero if any selected case fails, including harness failures.
 //
 // The JavaScript runs against vibelang-runtime as built for the fork, through
 // runtime-shim.mjs, which adds the run-time exports the executable
@@ -273,4 +274,5 @@ if (import.meta.main) {
     console.log(`${r.ok ? "ok  " : "FAIL"} ${c.id}${r.ok ? "" : `: ${r.detail}`}${r.emit.diagnostics ? ` [emit: ${Object.entries(r.emit.codes).map(([k, n]) => `${k} ${n}`).join(", ")}]` : ""}`)
   }
   console.log(`runtime parity: ${passed}/${cases.length}`)
+  if (passed !== cases.length) process.exitCode = 1
 }
