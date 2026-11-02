@@ -2787,8 +2787,8 @@ typescript/vibelang/cases/new-target-constructor-arrow/box.vibe:16:36 lambda pla
 typescript/vibelang/cases/new-target-effect-arrow/main.vibe:6:16 lambda choice fallback
 typescript/vibelang/cases/new-target-effect-arrow/main.vibe:7:16 lambda plain table
 typescript/vibelang/cases/new-vibelang-function.fail/main.vibe:18:15 lambda plain fallback
-typescript/vibelang/cases/node-format-cjs.fail/main.vibe:3:21 lambda plain annotation
-typescript/vibelang/cases/node-format-default.fail/main.vibe:3:21 lambda plain annotation
+typescript/vibelang/cases/node-format-cjs.fail/main.vibe:2:21 lambda plain annotation
+typescript/vibelang/cases/node-format-default.fail/main.vibe:2:21 lambda plain annotation
 typescript/vibelang/cases/node-format-esm/main.vibe:5:21 lambda plain annotation
 typescript/vibelang/cases/nominal-services.fail/nominal-services.fail.vibe:20:10 lambda effectFn service
 typescript/vibelang/cases/nominal-services.fail/nominal-services.fail.vibe:24:29 lambda program table
@@ -3811,6 +3811,7 @@ typescript/vibelang/cases/top-level-effect-const.fail/main.vibe:6:76 lambda effe
 typescript/vibelang/cases/top-level-effect-const.fail/main.vibe:7:56 lambda effectFn table
 typescript/vibelang/cases/top-level-effect-const.fail/main.vibe:8:45 lambda effectFn table
 typescript/vibelang/cases/top-level-effect-const/program.vibe:3:74 lambda effectFn table
+typescript/vibelang/cases/top-level-promise-await/main.vibe:8:25 lambda choice fallback
 typescript/vibelang/cases/traced-callback-diagnostic.fail/main.vibe:7:50 lambda choice fallback
 typescript/vibelang/cases/traced-callback-span/main.vibe:3:23 lambda program table
 typescript/vibelang/cases/traced-callback-span/main.vibe:9:10 lambda dual fallback
