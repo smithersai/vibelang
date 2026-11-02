@@ -13,4 +13,15 @@ Specification: `docs/design/src/`. Process: CONTRIBUTING.md.
 - Never put credentials or private user content in fixtures, logs or issues.
 - Agents never approve or merge.
 
-<sub>284 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
+## vibe and main
+
+Work happens on `vibe`, and `main` is the productionized version. Treat `vibe` as one never-ending stacked PR:
+
+1. Land work on `vibe` right away. A red `vibe` is normal and blocks nobody.
+2. Take the first commit on `vibe`, or rebase so the commit you want is first, and make it green by amending it in place.
+3. Rebase the rest of `vibe` onto it, and meanwhile land the green commit on `main`.
+4. Repeat for the next commit on `vibe`.
+
+`main` only moves forward, to green commits, and is never rewritten. Base new work on `vibe`. Build toolchains from `main` unless you need a commit that's only on `vibe`, and say so when you do.
+
+<sub>461 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>

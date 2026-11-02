@@ -216,7 +216,21 @@ Specification: \`docs/design/src/\`. Process: CONTRIBUTING.md.
 - Match nearby code, format Go with gofmt, and don't reformat unrelated code.
 - {{secrets}}
 - Agents never approve or merge.`,
-  sections: []
+  sections: [
+    // Will, 2026-11-02 23:55Z: "vibe is where work happens main is where productionized version of it lands ... It's like
+    // a never ending stacked pr. Write this in agent Md".
+    {
+      heading: "vibe and main",
+      body: `Work happens on \`vibe\`, and \`main\` is the productionized version. Treat \`vibe\` as one never-ending stacked PR:
+
+1. Land work on \`vibe\` right away. A red \`vibe\` is normal and blocks nobody.
+2. Take the first commit on \`vibe\`, or rebase so the commit you want is first, and make it green by amending it in place.
+3. Rebase the rest of \`vibe\` onto it, and meanwhile land the green commit on \`main\`.
+4. Repeat for the next commit on \`vibe\`.
+
+\`main\` only moves forward, to green commits, and is never rewritten. Base new work on \`vibe\`. Build toolchains from \`main\` unless you need a commit that's only on \`vibe\`, and say so when you do.`
+    }
+  ]
 };
 
 /** templates/app/AGENTS.md, copied into every new app. It carries docs/user/llms-essentials.md verbatim and stays under 2 KB. */
