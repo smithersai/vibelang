@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
+import fc from "fast-check"
 import { chapter, read, block, run } from "./spec-witness.mjs"
 
 const repairs = [
@@ -30,4 +31,18 @@ test("the exact printed bridges run the values while native await keeps the obje
   const witness = block(chapter("002-running"), "function asyncFiberValue(")
   const result = run(witness + "\nif (observed._tag !== 'Success' || observed.value[0] !== 7 || observed.value[1] !== 8 || nativeFiber !== fiber || nativeDeferred !== deferred) throw observed\n")
   assert.equal(result.status, 0, result.stderr)
+})
+
+test("the fibers guide keeps async warning repairs in the original Promise context", () => {
+  const guide = read("docs/user/src/concurrency/047-fibers.md")
+  for (const [, repair] of repairs) assert.ok(guide.includes(repair), repair + " is missing from the fibers guide")
+})
+test("fast-check: the printed Promise bridges preserve arbitrary completion values and native handles", () => {
+  const witness = block(chapter("002-running"), "function asyncFiberValue(")
+  fc.assert(fc.property(fc.integer({ min: -1000, max: 1000 }), fc.integer({ min: -1000, max: 1000 }), (a, b) => {
+    const source = witness.replace("Effect.succeed(7)", "Effect.succeed(" + a + ")")
+      .replace("Deferred.succeed(deferred, 8)", "Deferred.succeed(deferred, " + b + ")")
+    const result = run(source + "\nif (observed._tag !== 'Success' || observed.value[0] !== " + a + " || observed.value[1] !== " + b + " || nativeFiber !== fiber || nativeDeferred !== deferred) throw observed\n")
+    assert.equal(result.status, 0, result.stderr)
+  }), { seed: 46094610, numRuns: 20 })
 })

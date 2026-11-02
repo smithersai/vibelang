@@ -181,7 +181,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Caching Effects](../caching/045-caching-effects.md) | 1,000 |
 | [Cache](../caching/046-cache.md) | 1,200 |
 | **Concurrency** | **9,100** |
-| [Fibers](../concurrency/047-fibers.md) | 3,500 |
+| [Fibers](../concurrency/047-fibers.md) | 3,600 |
 | [Deferred](../concurrency/048-deferred.md) | 1,100 |
 | [Queue](../concurrency/049-queue.md) | 1,500 |
 | [PubSub](../concurrency/050-pubsub.md) | 1,400 |
