@@ -867,6 +867,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - That corrected `try.allSettled` counterpart, `...[...xs].map(Effect.exit)`, still spread a second, generated array, so a changed `Array.prototype[Symbol.iterator]` saw an extra call and could reorder the Exits; the specification now builds the literal once, natively, and wraps that array by index, as the compiler already does.
 
 - The specification said `EK4834`, `EK4835` and `EK4836` warn on an "explicitly run" `Effect.succeed`, `Effect.fail`, `Effect.catch`, `Effect.provide` and their siblings without saying what that means, so `fork Effect.catch(e, h)`, the quick fix `EK0505` itself suggests, could be read as warned with no repair; the three rows now warn only on the direct operand of bare `try`, and name `fork`, `join`, `try.all` and its siblings, API arguments and `catch` heads as sites that do not warn.
+- The Effect TypeScript reference beside chapter 7's direct-`try` advisory example aggregated `Effect.succeed(2)` where the VibeLang `demo` aggregates `e`, and returned joined results instead of its fibers, so it succeeded while the example fails with `"e"`; it is now that example's counterpart, and a test runs both on the same inputs and compares their Exits.
 
 - Calling a producer whose parameter binding throws, such as `effect function* s({ id }: User)` called with `undefined` from TypeScript, threw a `TypeError` at the call; the call now returns a Stream that dies with the thrown value, as chapter 3 says, and binding still happens once, at the call.
 

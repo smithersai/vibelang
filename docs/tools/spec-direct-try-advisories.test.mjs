@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { readdirSync } from "node:fs"
 import { test } from "node:test"
-import { read } from "./spec-witness.mjs"
+import { block, read, run } from "./spec-witness.mjs"
 
 // Loop round 5, OPUS-4 (decided detail 254): EK4834, EK4835 and EK4836 said
 // "explicitly run" without a definition, and 002's own EK0505 quick fix,
@@ -54,4 +54,61 @@ test("the user guide's EK4835 and EK4836 sources are direct try operands", () =>
     assert.ok(governed.length > 0, `${code}: ${row}`)
     for (const span of governed) assert.match(span, /^`(return )?try Effect\./, `${code}: ${span}`)
   }
+})
+
+// PREVIEW-8: the advisory example's TypeScript reference is its counterpart.
+// Translate the VibeLang demo statement by statement with chapter 2's own
+// counterparts (`try x`, `fork x` as `Effect.forkChild(x)`, `try.all [..]` as
+// `Effect.all([..], { concurrency: "unbounded" })`), run that translation and
+// the published reference on the same inputs, and compare their Exits. The
+// harness observes the two child fibers from outside demo.
+const tooling = () => read("docs/design/src/007-tooling.md")
+
+function translate(source) {
+  const out = ['import { Effect } from "effect"']
+  for (const line of source.split("\n").map(l => l.replace(/\s*\/\/.*$/, "")).filter(l => l.trim())) {
+    let m
+    if (/^effect function demo\(/.test(line)) out.push("function demo(e: any, h: any) {", "  return Effect.gen(function* () {")
+    else if ((m = line.match(/^ {2}const (\w+) = try\.all \[(.*)\]$/))) out.push(`    const ${m[1]} = yield* Effect.all([${m[2]}], { concurrency: "unbounded" })`)
+    else if ((m = line.match(/^ {2}const (\w+) = try (.*)$/))) out.push(`    const ${m[1]} = yield* ${m[2]}`)
+    else if ((m = line.match(/^ {2}const (\w+) = fork (.*)$/))) out.push(`    const ${m[1]} = yield* Effect.forkChild(${m[2]})`)
+    else if ((m = line.match(/^ {2}return (.*)$/))) out.push(`    return ${m[1]}`)
+    else if (line === "}") out.push("  })", "}")
+    else throw new Error(`the test has no counterpart for: ${line}`)
+  }
+  return out.join("\n") + "\n"
+}
+
+const harness = `
+import { Effect as $Effect, Exit as $Exit, Fiber as $Fiber } from "effect"
+const $show = (exit: any) => $Exit.isSuccess(exit)
+  ? { success: exit.value }
+  : { failure: exit.cause.reasons.map((r: any) => r._tag === "Fail" ? ["Fail", r.error] : [r._tag]) }
+const $observe = (e: any) => $Effect.gen(function* () {
+  const exit: any = yield* $Effect.exit(demo(e, (_: string) => $Effect.succeed(7)))
+  if ($Exit.isFailure(exit)) return $show(exit)
+  const [child, failedChild, both] = exit.value
+  return { success: [$show(yield* $Fiber.await(child)), $show(yield* $Fiber.await(failedChild)), both] }
+})
+console.log(JSON.stringify(await $Effect.runPromise($Effect.all([$observe($Effect.fail("e")), $observe($Effect.succeed(2))]))))
+`
+
+function exits(program) {
+  const result = run(program + harness)
+  assert.equal(result.status, 0, result.stderr || result.stdout)
+  return JSON.parse(result.stdout.trim().split("\n").at(-1))
+}
+
+test("the advisory example's TypeScript reference ends with the VibeLang demo's Exit", () => {
+  const text = tooling()
+  const source = block(text, "effect function demo(", "vibe es")
+  const reference = block(text, "function demo(e: Effect.Effect<")
+  const expected = exits(translate(source))
+  // A failing e fails demo at try.all; a succeeding one lets demo inspect
+  // both children: the recovered child and the child that failed with "boom".
+  assert.deepEqual(expected, [
+    { failure: [["Fail", "e"]] },
+    { success: [{ success: 2 }, { failure: [["Fail", "boom"]] }, [1, 2]] }
+  ])
+  assert.deepEqual(exits(reference), expected)
 })

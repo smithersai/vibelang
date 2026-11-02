@@ -207,19 +207,16 @@ effect function demo(e: number!string, h: (x: string) => number!!) {
 
 ```ts [Effect]
 // TypeScript-form advisory reference
-import { Effect, Exit, Fiber } from "effect"
-const e: Effect.Effect<number, string> = Effect.fail("e")
-const h = (_: string) => Effect.succeed(7)
-const demo = Effect.gen(function* () {
-  const one = yield* Effect.succeed(1)
-  const child = yield* Effect.forkChild(Effect.catch(e, h))
-  const failedChild = yield* Effect.forkChild(Effect.fail("boom"))
-  const both = yield* Effect.all([Effect.succeed(one), Effect.succeed(2)], { concurrency: "unbounded" })
-  return [yield* Fiber.join(child), Exit.isFailure(yield* Fiber.await(failedChild)), both]
-})
-const result = await Effect.runPromiseExit(demo)
-if (!Exit.isSuccess(result)) throw new Error("expected demo to succeed")
-console.log(JSON.stringify(result.value))
+import { Effect } from "effect"
+function demo(e: Effect.Effect<number, string>, h: (x: string) => Effect.Effect<number>) {
+  return Effect.gen(function* () {
+    const one = yield* Effect.succeed(1)
+    const child = yield* Effect.forkChild(Effect.catch(e, h))
+    const failedChild = yield* Effect.forkChild(Effect.fail("boom"))
+    const both = yield* Effect.all([Effect.succeed(one), e], { concurrency: "unbounded" })
+    return [child, failedChild, both]
+  })
+}
 ```
 
 ## The Effect version
