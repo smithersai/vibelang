@@ -1,0 +1,27 @@
+// expect-result: {"before":true,"refused":"BadArgument","exitCode":143}
+// foldkit-119: a scaffold script exits 130 on SIGINT and 143 on SIGTERM. runMain interrupts on both, so the
+// cleanup finalizer reads which arrived from observeSignals and dies with Effect's exit-code marker.
+import * as Runtime from "effect/Runtime"
+import { ExperimentalNodeProcess } from "vibelang-runtime/experimental/platform-node"
+
+const exitCodes = { SIGINT: 130, SIGTERM: 143 }
+
+const signalExit = (code: number) => ({ [Runtime.errorExitCode]: code })
+
+effect function cleanup(received: Option.Option<"SIGINT" | "SIGTERM">!!) {
+  const signal = try received
+  if (Option.isSome(signal) && signal.value === "SIGTERM") try die(signalExit(exitCodes.SIGTERM))
+}
+
+export effect function main() {
+  provide ExperimentalNodeProcess.layer {
+    const process = try Experimental.Process.Process
+    const before = try Effect.scoped(effect {
+      const received = try process.observeSignals(["SIGINT", "SIGTERM"])
+      try cleanup(received)
+      return Option.isNone(try received)
+    })
+    const refused = Effect.scoped(process.observeSignals(["SIGKILL"])) catch (e) => e.reason._tag
+    return { before, refused, exitCode: Runtime.getErrorExitCode(signalExit(exitCodes.SIGTERM)) }
+  }
+}

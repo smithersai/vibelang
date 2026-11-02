@@ -379,7 +379,7 @@ const (
 	dialogGap      = "Effect has no service for the browser's dialogs; a terminal program asks with Terminal.readLine()."
 	runtimeGap     = "A runtime's own API belongs to its platform package's layers, such as @effect/platform-bun's, or to a .ts file."
 	processExit    = "Let main return or fail: NodeRuntime.runMain, which runs it, exits with 0 when it succeeds and 1 when it fails."
-	processEvents  = "NodeRuntime.runMain handles SIGINT and SIGTERM; Effect has no service for other process events."
+	processEvents  = "NodeRuntime.runMain handles SIGINT and SIGTERM, and (try Experimental.Process.Process).observeSignals(signals) tells a finalizer which arrived; Effect has no service for other process events."
 )
 
 // fileSystemAPIs maps the functions of fs, fs/promises, and fs.promises,

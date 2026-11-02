@@ -106,12 +106,12 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `process.kill` | `try (try Experimental.Process.Process).kill(pid, { killSignal })` |
 | `process.memoryUsage` | `try (try Experimental.Process.Process).memoryUsage` |
 | `process.nextTick` | `try yieldNow` |
-| `process.off` | escape to TypeScript for now: NodeRuntime.runMain handles SIGINT and SIGTERM; Effect has no service for other process events. |
-| `process.on` | escape to TypeScript for now: NodeRuntime.runMain handles SIGINT and SIGTERM; Effect has no service for other process events. |
-| `process.once` | escape to TypeScript for now: NodeRuntime.runMain handles SIGINT and SIGTERM; Effect has no service for other process events. |
+| `process.off` | escape to TypeScript for now: NodeRuntime.runMain handles SIGINT and SIGTERM, and (try Experimental.Process.Process).observeSignals(signals) tells a finalizer which arrived; Effect has no service for other process events. |
+| `process.on` | escape to TypeScript for now: NodeRuntime.runMain handles SIGINT and SIGTERM, and (try Experimental.Process.Process).observeSignals(signals) tells a finalizer which arrived; Effect has no service for other process events. |
+| `process.once` | escape to TypeScript for now: NodeRuntime.runMain handles SIGINT and SIGTERM, and (try Experimental.Process.Process).observeSignals(signals) tells a finalizer which arrived; Effect has no service for other process events. |
 | `process.pid` | `try (try Experimental.Process.Process).pid` |
 | `process.platform` | `try (try Experimental.Process.Process).platform` |
-| `process.removeListener` | escape to TypeScript for now: NodeRuntime.runMain handles SIGINT and SIGTERM; Effect has no service for other process events. |
+| `process.removeListener` | escape to TypeScript for now: NodeRuntime.runMain handles SIGINT and SIGTERM, and (try Experimental.Process.Process).observeSignals(signals) tells a finalizer which arrived; Effect has no service for other process events. |
 | `process.stderr` | `try Console.error(text)` |
 | `process.stdin` | `try (try Terminal.Terminal).readLine` |
 | `process.stdout` | `try Console.log(text)` |

@@ -10,7 +10,12 @@
  * `effect/persistence/UserDirectories`.
  *
  * Every fact is an Effect, as `Stdio.args` is, so a test replaces it with
- * {@link layerTest}. `kill` and `isRunning` fail with a `PlatformError`.
+ * {@link layerTest}. `kill`, `isRunning` and `observeSignals` fail with a
+ * `PlatformError`.
+ *
+ * `NodeRuntime.runMain` interrupts the program on `SIGINT` and on `SIGTERM`
+ * alike, so its `Exit` does not say which arrived; {@link Process.observeSignals}
+ * does, for a finalizer that cleans up as each signal requires.
  *
  * Layers: `ExperimentalNodeProcess.layer` from `vibelang-runtime/experimental/platform-node`
  * and `ExperimentalBunProcess.layer` from `vibelang-runtime/experimental/platform-bun`,
@@ -20,10 +25,13 @@
  * @experimental
  * @since 0.0.11
  */
+import type * as Arr from "effect/Array"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as PlatformError from "effect/PlatformError"
+import type * as Scope from "effect/Scope"
 import type { Signal } from "effect/process/ChildProcess"
 import type { ProcessId } from "effect/process/ChildProcessSpawner"
 
@@ -148,6 +156,22 @@ export interface Process {
    * running. Fails with a `BadArgument` when `pid` is not a positive integer.
    */
   readonly isRunning: (pid: number, options?: IsRunningOptions) => Effect.Effect<boolean, PlatformError.PlatformError>
+  /**
+   * Listens for `signals` while the current Scope is open, and gives an Effect
+   * that reads the first of them this process received: `Option.none()` until
+   * one arrives. Closing the Scope removes the listeners. Its listener runs
+   * before the host's others, such as `NodeRuntime.runMain`'s, and records the
+   * signal at once, so a finalizer that runs when `runMain` interrupts the
+   * program on that signal reads it.
+   *
+   * While it listens, the host does not end the process on those signals:
+   * `NodeRuntime.runMain` interrupts the program on `SIGINT` and `SIGTERM`, and
+   * other signals are the program's to handle. Fails with a `BadArgument` for a
+   * signal the host cannot listen for, such as `SIGKILL`.
+   */
+  readonly observeSignals: <S extends Signal>(
+    signals: Arr.NonEmptyReadonlyArray<S>
+  ) => Effect.Effect<Effect.Effect<Option.Option<S>>, PlatformError.PlatformError, Scope.Scope>
 }
 
 /**
@@ -172,7 +196,7 @@ export const make = (impl: Omit<Process, TypeId>): Process => ({ [TypeId]: TypeI
  * Provides fixed facts and a host with no other process, for tests. Pass the
  * members a test needs: `layerTest({ platform: Effect.succeed("win32") })`.
  * Without them, `pid` is 1, `platform` is `"linux"`, `isRunning` answers
- * `false` and `kill` fails with `NotFound`.
+ * `false`, `kill` fails with `NotFound` and `observeSignals` receives none.
  *
  * @category layers
  * @since 0.0.11
@@ -195,6 +219,7 @@ export const layerTest = (impl: Partial<Omit<Process, TypeId>> = {}): Layer.Laye
           PlatformError.systemError({ _tag: "NotFound", module: "Process", method: "kill", pathOrDescriptor: pid })
         ),
       isRunning: () => Effect.succeed(false),
+      observeSignals: () => Effect.succeed(Effect.succeed(Option.none())),
       ...impl
     })
   )

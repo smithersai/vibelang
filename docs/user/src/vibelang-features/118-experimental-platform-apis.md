@@ -6,7 +6,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | --- | --- | --- |
 | `Experimental.FileSystem` | `access(path, { executable })`, `open(path, { nonBlocking })`, `File.chmod` | Node, Bun |
 | `Experimental.Crypto` | `hmac`, `sign`, `verify`, beside the members of Effect 4.0's `Crypto` | Node, Bun, browser |
-| `Experimental.Process` | the process id, platform, host name and other facts; `kill`, `isRunning` | Node, Bun |
+| `Experimental.Process` | the process id, platform, host name and other facts; `kill`, `isRunning`, `observeSignals` | Node, Bun |
 | `Experimental.Locks` | `hold`, `tryHold`, `query` over Web Locks | browser; Node within one process |
 | `Experimental.MediaQuery` | `matches`, `changes` over `window.matchMedia` | browser |
 | `Experimental.Document` | `current`, the page's `Document`, for an API that takes one | browser |
@@ -178,6 +178,34 @@ Both fail with a `PlatformError` whose reason says why:
 | `NotFound` | No process has that id. |
 | `PermissionDenied` | This process may not signal it. |
 | `BadArgument` | `pid` is not a positive integer, the platform has no such signal, or `group` on Windows. |
+
+### Which signal ended the program
+
+`NodeRuntime.runMain` interrupts the program on `SIGINT` and on `SIGTERM` alike, so its exit is 130 for both. `try process.observeSignals(["SIGINT", "SIGTERM"])` listens for those signals until the current Scope closes and gives an Effect that reads the first one received: `Option.none()` until one arrives. Its listener runs before `runMain`'s and records the signal at once, so a finalizer that runs during the interruption reads it. To exit as a script that handled each signal did, the finalizer dies with Effect's exit-code marker, which `runMain`'s teardown reads:
+
+```vibe
+// serve.vibe
+// pending: VIP-1, VIP-5, VIP-14, VIP-26, VIP-33
+import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
+import * as Runtime from "effect/Runtime"
+import { ExperimentalNodeServices } from "vibelang-runtime/experimental/platform-node"
+
+const signalExit = (code: number) => ({ [Runtime.errorExitCode]: code })
+
+effect function serve() {
+  const received = try (try Experimental.Process.Process).observeSignals(["SIGINT", "SIGTERM"])
+  try Effect.addFinalizer(() => effect {
+    const signal = try received
+    if (Option.isSome(signal) && signal.value === "SIGTERM") try die(signalExit(143))
+  })
+  try Console.log("READY")
+  try Effect.never
+}
+
+NodeRuntime.runMain(Effect.provide(Effect.scoped(serve()), ExperimentalNodeServices.layer), { disableErrorReporting: true })
+```
+
+`SIGINT` exits 130, as `runMain` already does, and `SIGTERM` exits 143. While it listens, the host does not end the process on those signals itself; `runMain` interrupts the program. `observeSignals` fails with a `BadArgument` for `SIGKILL` and `SIGSTOP`, which no process can handle. `Experimental.Process.layerTest()` receives no signal: its `observeSignals` reads `Option.none()`.
 
 ### Testing with `Experimental.Process.layerTest`
 

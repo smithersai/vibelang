@@ -2,7 +2,9 @@
 // implements both, and Bun implements them as Node.js does.
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as PlatformError from "effect/PlatformError"
+import type { Signal } from "effect/process/ChildProcess"
 import type { ProcessId } from "effect/process/ChildProcessSpawner"
 import * as Process from "../Process.js"
 
@@ -16,6 +18,8 @@ interface Host {
   readonly versions: Readonly<Record<string, string | undefined>>
   readonly memoryUsage: () => Process.MemoryUsage
   readonly kill: (pid: number, signal: string | number) => true
+  readonly prependListener: (event: string, listener: () => void) => unknown
+  readonly off: (event: string, listener: () => void) => unknown
   readonly getBuiltinModule: (id: "node:os") => unknown
 }
 
@@ -74,6 +78,47 @@ const target = (
   return Effect.succeed(group === true ? -pid : pid)
 }
 
+// No process receives these: POSIX stops or kills it without a handler. Node.js
+// throws when a listener is added for them and Bun accepts a listener that never runs, so the
+// layer refuses them itself.
+const uncatchable: ReadonlySet<string> = new Set(["SIGKILL", "SIGSTOP"])
+
+const refused = (signal: Signal, why: string, cause?: unknown) =>
+  PlatformError.badArgument({ module: "Process", method: "observeSignals", description: `cannot listen for ${signal}: ${why}`, cause })
+
+// Listens for each signal; the first one received is the answer. The listener
+// goes first, before runMain's: runMain's interrupts the program, and the
+// finalizers that interruption runs can finish before any later listener runs.
+// A signal the host refuses throws: undo the others and fail.
+const observeSignals = <S extends Signal>(host: Host, signals: ReadonlyArray<S>) => {
+  const listening = Effect.suspend(() => {
+    const never = signals.find((signal) => uncatchable.has(signal))
+    if (never !== undefined) return Effect.fail(refused(never, "no process can handle it"))
+    let first: Option.Option<S> = Option.none()
+    const added: Array<readonly [S, () => void]> = []
+    const stop = () => {
+      for (const [signal, listener] of added) host.off(signal, listener)
+    }
+    for (const signal of signals) {
+      const listener = () => {
+        if (Option.isNone(first)) first = Option.some(signal)
+      }
+      try {
+        host.prependListener(signal, listener)
+      } catch (error) {
+        stop()
+        return Effect.fail(refused(signal, error instanceof Error ? error.message : String(error), error))
+      }
+      added.push([signal, listener])
+    }
+    return Effect.succeed({ read: Effect.sync(() => first), stop })
+  })
+  return Effect.map(
+    Effect.acquireRelease(listening, ({ stop }) => Effect.sync(stop)),
+    ({ read }) => read
+  )
+}
+
 const make = (): Process.Process => {
   const host = (globalThis as { readonly process?: Host }).process
   if (host === undefined || typeof host.getBuiltinModule !== "function") {
@@ -122,7 +167,8 @@ const make = (): Process.Process => {
             if (code === "ESRCH") return Effect.succeed(false)
             return Effect.fail(failure("isRunning", pid, error))
           }
-        }))
+        })),
+    observeSignals: (signals) => observeSignals(host, signals)
   })
 }
 
