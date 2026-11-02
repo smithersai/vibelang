@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
-import { analyze, cause, collect, failedTests, flakes, parseRun, report, slow, start, targetLines } from "../lib/steps.mjs"
+import { analyze, cause, collect, failedTests, flakes, parseRun, regressions, report, slow, start, targetLines } from "../lib/steps.mjs"
 
 const t = (label, status, key, ms = 1000) => ({ label, status, key, ms })
 
@@ -64,4 +64,28 @@ test("a run reports the fixture's flakes, tests and causes, and resumes", (c) =>
   assert.ok(first.flaky.includes("//:docs-tools"))
   assert.ok(!first.flaky.includes("//:spec-tests"), "a key that never passed is a real break")
   assert.deepEqual(report(run), first)
+})
+
+test("regressions reports a target whose median grew 1.5 times and 30 s, with the first slow run", () => {
+  const runs = []
+  for (let i = 0; i < 12; i++) {
+    const after = i >= 6
+    runs.push({ id: `r${i}`, at: `t${String(i).padStart(2, "0")}`, targets: [
+      t("//slower", "ran", `k${i}`, (after && i !== 6 ? 300 : 100) * 1000),
+      t("//load", "ran", `k${i}`, (after ? 130 : 100) * 1000),
+      t("//tiny", "ran", `k${i}`, (after ? 20 : 5) * 1000),
+      ...(i < 3 ? [t("//rare", "ran", `k${i}`, 1000)] : [t("//rare", "ran", `k${i}`, 900000)])
+    ] })
+  }
+  const found = regressions(runs, { split: "t06" })
+  assert.deepEqual(found.map((r) => r.label), ["//slower"])
+  assert.deepEqual(found[0], { label: "//slower", beforeRuns: 6, afterRuns: 6, beforeMedianS: 100, afterMedianS: 300, ratio: 3, timeouts: 0, firstSlow: { run: "r7", at: "t07" } })
+  assert.deepEqual(regressions(runs).map((r) => r.label), ["//slower"], "the split defaults to the middle run")
+})
+
+test("regressions reports timeouts after the split even when the median held", () => {
+  const runs = Array.from({ length: 10 }, (_, i) => ({ id: `r${i}`, at: `t${i}`, targets: [t("//x", i === 8 ? "failed" : "ran", `k${i}`, 100000)] }))
+  const found = regressions(runs, { split: "t5", timedOut: (id, label) => id === "r8" && label === "//x" })
+  assert.deepEqual(found.map((r) => [r.label, r.timeouts, r.ratio]), [["//x", 1, 1]])
+  assert.deepEqual(regressions(runs, { split: "t5" }), [], "a failure that is not a timeout is not a slowdown")
 })

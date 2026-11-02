@@ -1,0 +1,4 @@
+//packages:compiler-test: ✔ a failed compile is not cached (4130.359209ms)
+//packages:compiler-test: ✔ regeneration-hook fuzz retains command order and never runs past a failed hook (779.172053ms)
+//packages:compiler-test  failed  903.8s  command failed (exit -1): /bin/sh -c cd packages/compiler && bun install --frozen-lockfile && node --test test/*.test.mjs && cd ../../.smithers/flows && node --test migrate/test/*.test.mjs convert/*.test.mjs
+the tool timed out after 900000ms

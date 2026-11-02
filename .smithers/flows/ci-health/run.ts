@@ -1,7 +1,7 @@
 // Command-line composition root: runs the ci-health flow on the in-memory
 // engine. The run directory holds every step's result.
 //
-//   bun .smithers/flows/ci-health/run.ts --run <dir> --results <dir> [--since <ISO time>]
+//   bun .smithers/flows/ci-health/run.ts --run <dir> --results <dir> [--since <ISO time>] [--split <ISO time>]
 import { Cause, Effect, Exit, Layer, Option } from "effect";
 import * as Crypto from "effect/Crypto";
 import { FlowEngine } from "@smthrs/engine";
@@ -17,16 +17,16 @@ export const runtime = Interpreter.layerWithImplementations(health, layer).pipe(
 );
 
 /** execute runs the flow once and returns its exit. */
-export const execute = (payload: { run: string; results: string; since: string }) =>
+export const execute = (payload: { run: string; results: string; since: string; split: string }) =>
   Effect.runPromiseExit(health.execute(payload, { executionId: `ci-health-${Date.now()}` }).pipe(Effect.provide(runtime)));
 
 if (import.meta.main) {
-  const { values } = parseArgs({ options: { run: { type: "string" }, results: { type: "string" }, since: { type: "string" } } });
+  const { values } = parseArgs({ options: { run: { type: "string" }, results: { type: "string" }, since: { type: "string" }, split: { type: "string" } } });
   if (!values.run || !values.results) {
-    console.error("usage: bun .smithers/flows/ci-health/run.ts --run <dir> --results <dir> [--since <ISO time>]");
+    console.error("usage: bun .smithers/flows/ci-health/run.ts --run <dir> --results <dir> [--since <ISO time>] [--split <ISO time>]");
     process.exit(2);
   }
-  const exit = await execute({ run: resolve(values.run), results: resolve(values.results), since: values.since ?? "" });
+  const exit = await execute({ run: resolve(values.run), results: resolve(values.results), since: values.since ?? "", split: values.split ?? "" });
   if (Exit.isSuccess(exit)) console.log(JSON.stringify(exit.value, null, 2));
   else {
     const failure = Cause.findErrorOption(exit.cause);

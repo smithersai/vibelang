@@ -79,6 +79,51 @@ export function slow(runs) {
   })).sort((a, b) => b.totalS - a.totalS)
 }
 
+// regressions compares each target's run time after split with its time
+// before: a target whose median grew at least `ratio` times, and by at least
+// minDeltaS, got slower, and so did one that timed out after split. On
+// 2026-11-02 //packages:compiler-test went from a 138 s to a 478 s median on
+// cf pre-gate boxes, and timed out twice, when the migrate suites joined it;
+// nothing reported it until a timeout sent back an unrelated entry. split
+// defaults to the middle run. firstSlow is the first run after split from
+// which most of the next five ran `ratio` times the old median.
+export function regressions(runs, { split, timedOut = () => false, minRuns = 5, ratio = 1.5, minDeltaS = 30 } = {}) {
+  const at = split || runs[Math.floor(runs.length / 2)]?.at
+  const by = new Map()
+  for (const r of runs) {
+    for (const t of r.targets) {
+      if (t.status !== "ran" && t.status !== "failed") continue
+      const e = by.get(t.label) ?? { before: [], after: [], timeouts: 0 }
+      if (r.at < at) e.before.push(t.ms)
+      else {
+        e.after.push({ id: r.id, at: r.at, ms: t.ms })
+        if (t.status === "failed" && timedOut(r.id, t.label)) e.timeouts++
+      }
+      by.set(t.label, e)
+    }
+  }
+  const out = []
+  for (const [label, e] of by) {
+    if (e.before.length < minRuns || e.after.length < minRuns) continue
+    const was = median(e.before), now = median(e.after.map((x) => x.ms))
+    const slower = now >= was * ratio && now - was >= minDeltaS * 1000
+    if (!slower && e.timeouts === 0) continue
+    const slowAt = (i) => e.after.slice(i, i + 5).filter((x) => x.ms >= was * ratio).length >= 3
+    const first = e.after.findIndex((_, i) => e.after[i].ms >= was * ratio && slowAt(i))
+    out.push({
+      label,
+      beforeRuns: e.before.length,
+      afterRuns: e.after.length,
+      beforeMedianS: Math.round(was / 1000),
+      afterMedianS: Math.round(now / 1000),
+      ratio: Math.round((now / was) * 10) / 10,
+      timeouts: e.timeouts,
+      firstSlow: first >= 0 ? { run: e.after[first].id, at: e.after[first].at } : null
+    })
+  }
+  return out.sort((a, b) => b.afterMedianS - b.beforeMedianS - (a.afterMedianS - a.beforeMedianS))
+}
+
 // flakes lists every (target, key) that both passed and failed, with the runs
 // that failed: the same inputs gave two answers.
 export function flakes(runs) {
@@ -147,7 +192,7 @@ export function targetLines(log, label) {
 
 // analyze attributes each flaky target to its tests and causes through the
 // logs of the runs where it failed.
-export const analyze = (run) => once(run, "analyze", ({ results }) => {
+export const analyze = (run) => once(run, "analyze", ({ results, split }) => {
   const { runs } = read(paths(run).collect)
   const logs = new Map()
   const log = (id) => {
@@ -183,7 +228,9 @@ export const analyze = (run) => once(run, "analyze", ({ results }) => {
     ...t,
     tests: Object.entries(t.tests).map(([name, test]) => ({ name, ...test })).sort((a, b) => b.failures - a.failures)
   }))
-  return { ok: true, runs: runs.length, flaky: ranked, slow: slow(runs), summary: `${ranked.length} flaky targets over ${runs.length} runs` }
+  const timedOut = (id, label) => targetLines(log(id), label).some((l) => /timed out after/.test(l))
+  const regressed = regressions(runs, { split, timedOut })
+  return { ok: true, runs: runs.length, flaky: ranked, slow: slow(runs), regressed, summary: `${ranked.length} flaky targets, ${regressed.length} slower over ${runs.length} runs` }
 })
 
 // ACTIONS says what a cause usually needs; the report quotes it per target.
@@ -214,10 +261,14 @@ export const report = (run) => once(run, "report", () => {
   lines.push("", "## Flaky tests", "", "A test that stopped failing was probably fixed: check the last failure before fixing it again.", "", "| Target | Test | Failures | Last failed |", "| --- | --- | --- | --- |")
   const tests = a.flaky.flatMap((t) => t.tests.map((x) => ({ label: t.label, ...x }))).sort((x, y) => y.failures - x.failures).slice(0, 30)
   for (const t of tests) lines.push(`| \`${t.label}\` | ${cell(t.name)} | ${t.failures} | ${day(t.last)} |`)
+  lines.push("", "## Slower targets", "", "Run time after the split against before it, or timeouts after it. Find what changed at the first slow run.", "")
+  lines.push("| Target | Runs before, after | Median before | Median after | Ratio | Timeouts | First slow run |", "| --- | --- | --- | --- | --- | --- | --- |")
+  for (const t of a.regressed ?? []) lines.push(`| \`${t.label}\` | ${t.beforeRuns}, ${t.afterRuns} | ${t.beforeMedianS} s | ${t.afterMedianS} s | ${t.ratio} | ${t.timeouts} | ${t.firstSlow ? `${t.firstSlow.run} (${day(t.firstSlow.at)})` : "-"} |`)
   lines.push("", "## Slow targets", "", "| Target | Runs | Median | p90 | Total |", "| --- | --- | --- | --- | --- |")
   for (const t of a.slow.slice(0, 15)) lines.push(`| \`${t.label}\` | ${t.runs} | ${t.medianS} s | ${t.p90S} s | ${t.totalS} s |`)
   writeFileSync(path.join(run, "report.md"), lines.join("\n") + "\n")
-  return { ok: true, flaky: a.flaky.map((t) => t.label), tests: tests.map((t) => t.name), slow: a.slow.slice(0, 5).map((t) => t.label), summary: `report.md: ${a.flaky.length} flaky targets, ${tests.length} tests` }
+  const regressed = (a.regressed ?? []).map((t) => t.label)
+  return { ok: true, flaky: a.flaky.map((t) => t.label), tests: tests.map((t) => t.name), slow: a.slow.slice(0, 5).map((t) => t.label), regressed, summary: `report.md: ${a.flaky.length} flaky targets, ${tests.length} tests, ${regressed.length} slower targets` }
 })
 
 export const run = { collect, analyze, report }

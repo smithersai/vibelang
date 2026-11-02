@@ -1,0 +1,4 @@
+//packages:compiler-test: ✔ a successful project cannot mask another project's failed compiler (557.99694ms)
+//packages:compiler-test: ✔ a failed compile is not cached (2108.40749ms)
+//packages:compiler-test  failed  901.7s  command failed (exit -1): /bin/sh -c cd packages/compiler && bun install --frozen-lockfile && node --test test/*.test.mjs && cd ../../.smithers/flows && node --test migrate/test/*.test.mjs convert/*.test.mjs
+the tool timed out after 900000ms
