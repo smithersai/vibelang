@@ -55,7 +55,15 @@ func editorProgramWith(t testing.TB, source string, packages map[string]string) 
 		t.Fatal(err)
 	}
 	for name, target := range packages {
-		if err := os.Symlink(filepath.Join(root, target), filepath.Join(dir, "node_modules", name)); err != nil {
+		target = filepath.Join(root, target)
+		info, err := os.Stat(target)
+		if err != nil {
+			t.Fatalf("editor fixture package %q is unavailable at %s: %v; run sh scripts/setup.sh", name, target, err)
+		}
+		if !info.IsDir() {
+			t.Fatalf("editor fixture package %q is not a directory at %s; run sh scripts/setup.sh", name, target)
+		}
+		if err := os.Symlink(target, filepath.Join(dir, "node_modules", name)); err != nil {
 			t.Fatal(err)
 		}
 	}

@@ -526,6 +526,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Compiler validation could report the documented arrow-head diagnostic `EK0109` as unsupported; it now recognizes the published rule.
 
+- Editor and compiler tests with a missing fixture package could fail with unrelated type or rewrite assertions; they now name the missing package directory and the `sh scripts/setup.sh` command before constructing the fixture.
+
 - Migration could break a plugin host that derives virtual module names from a resolved package entry and source-file extension; scope planning now keeps the observed packages native and records the source-enumeration cause, preserving the unchanged host.
 
 - The migrate flow rejected a native acquisition's unchanged `!Error` contract when its original function returned `Effect.callback<A, Error>`, as in foldkit's WebSocket example; it now recognizes that explicit returned channel when the callback becomes a platform service, while nested callbacks and changed contracts remain rejected.
