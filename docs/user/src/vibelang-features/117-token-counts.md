@@ -19,8 +19,8 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,341 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 15,307 |
-| The skill and the user guide (140 pages) | 365,485 |
-| The user guide alone | 361,144 |
+| The skill and the user guide (140 pages) | 366,640 |
+| The user guide alone | 362,299 |
 | The specification (10 chapters) | 150,172 |
 | The decision log, `docs/design/history/DECISIONS.md` | 141,629 |
 
@@ -90,19 +90,19 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Start Here** | **2,597** |
 | [Welcome](../001-onboarding.md) | 1,884 |
 | [Why VibeLang?](../getting-started/002-why-effect.md) | 713 |
-| **Learning Path** | **11,504** |
+| **Learning Path** | **11,563** |
 | [The Effect Type](../getting-started/003-the-effect-type.md) | 2,349 |
-| [Installation](../getting-started/004-installation.md) | 2,844 |
+| [Installation](../getting-started/004-installation.md) | 2,903 |
 | [Creating Effects](../getting-started/005-creating-effects.md) | 3,158 |
 | [Two Types of Errors](../error-management/006-two-error-types.md) | 699 |
 | [Basic Concurrency](../concurrency/007-basic-concurrency.md) | 2,454 |
-| **Core Concepts** | **21,924** |
+| **Core Concepts** | **22,189** |
 | [Effect's Modules](../getting-started/008-importing-effect.md) | 3,082 |
 | [Running Effects](../getting-started/009-running-effects.md) | 1,819 |
 | [Sequencing Effects](../getting-started/010-using-generators.md) | 1,710 |
 | [Building Pipelines](../getting-started/011-building-pipelines.md) | 2,012 |
-| [Devtools](../getting-started/012-devtools.md) | 13,301 |
-| **All 12 pages** | **36,025** |
+| [Devtools](../getting-started/012-devtools.md) | 13,566 |
+| **All 12 pages** | **36,349** |
 
 ### Setup
 
@@ -113,8 +113,8 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Start a project** | **2,405** |
 | [New project](../setup/new-project.md) | 543 |
 | [Existing project](../setup/existing-project.md) | 1,862 |
-| **Build and test** | **9,977** |
-| [vibelang CLI](../setup/vibelang-cli.md) | 7,346 |
+| **Build and test** | **10,059** |
+| [vibelang CLI](../setup/vibelang-cli.md) | 7,428 |
 | [Vite and Vitest](../setup/vite.md) | 2,631 |
 | **Format and lint** | **4,617** |
 | [Format with dprint](../setup/formatting.md) | 2,001 |
@@ -131,9 +131,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Zed](../setup/zed.md) | 479 |
 | [Other editors](../setup/other-editors.md) | 492 |
 | [Coding agents](../setup/coding-agents.md) | 1,062 |
-| **Upgrade** | **83,467** |
-| [Release notes](../setup/release-notes.md) | 83,467 |
-| **All 19 pages** | **117,024** |
+| **Upgrade** | **84,216** |
+| [Release notes](../setup/release-notes.md) | 84,216 |
+| **All 19 pages** | **117,855** |
 
 ### Guides
 
