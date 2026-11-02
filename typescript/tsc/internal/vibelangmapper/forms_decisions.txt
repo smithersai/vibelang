@@ -2025,6 +2025,9 @@ typescript/vibelang/cases/hygiene-named-function-expression/main.vibe:7:15 lambd
 typescript/vibelang/cases/import-meta-platform.fail/main.vibe:21:24 lambda plain annotation
 typescript/vibelang/cases/import-meta-platform.fail/main.vibe:26:59 lambda plain table
 typescript/vibelang/cases/infer-deduplicated-channels/main.vibe:28:40 lambda effectFn service
+typescript/vibelang/cases/inline-uri-escape/main.vibe:4:40 lambda plain table
+typescript/vibelang/cases/inline-uri-escape/main.vibe:5:42 lambda plain table
+typescript/vibelang/cases/inline-uri-imports.fail/main.vibe:10:32 lambda plain table
 typescript/vibelang/cases/is-home-arm-and-field/main.vibe:22:17 lambda plain fallback
 typescript/vibelang/cases/is-home-arm-and-field/main.vibe:23:11 lambda dual fallback
 typescript/vibelang/cases/is-home-arm-scope.fail/main.vibe:13:7 lambda dual fallback
@@ -3450,10 +3453,6 @@ typescript/vibelang/cases/traced-callback-diagnostic.fail/main.vibe:5:50 lambda 
 typescript/vibelang/cases/traced-callback-span/main.vibe:3:23 lambda program table
 typescript/vibelang/cases/traced-callback-span/main.vibe:9:10 lambda dual fallback
 typescript/vibelang/cases/traced-callback-span/main.vibe:9:36 lambda program table
-typescript/vibelang/cases/tracing-all/main.vibe:21:18 lambda effectFn annotation
-typescript/vibelang/cases/tracing-all/main.vibe:25:44 lambda effectFn table
-typescript/vibelang/cases/tracing-caller-stack-self-expression/main.vibe:16:24 lambda effectFn annotation
-typescript/vibelang/cases/tracing-caller-stack-self-expression/main.vibe:5:14 lambda effectFn annotation
 typescript/vibelang/cases/trailing-block-denied.fail/main.vibe:10:49 block appended/effectFn annotation
 typescript/vibelang/cases/trailing-block-denied.fail/main.vibe:6:45 block appended/effectFn annotation
 typescript/vibelang/cases/trailing-block-denied.fail/main.vibe:7:43 block appended/plain fallback

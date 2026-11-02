@@ -58,6 +58,8 @@ const PrinterLive = Layer.effect(Printer, effect {
 
 `Layer.effect(Printer, effect { ... })` builds a `Printer`: `effect { ... }` is the layer's Effect, passed as an ordinary argument to `Layer.effect`. Its statements, `try Settings` included, run once when the layer builds. The returned object is the implementation; the service types its members, so `effect print(text)` needs no annotation. The method captures the `Settings` implementation, so callers need `Printer` but not `Settings`. A layer without setup is `Layer.succeed(Printer, { ... })`. Looking up a service inside a method instead makes it a call-time requirement, which the member's full contract must list.
 
+`Layer.mergeAll` builds its inputs independently. If one input needs a service supplied by another, `EK4807` points to `Layer.provide` or `Layer.provideMerge` to supply that construction dependency. Use `Layer.provideMerge` when both outputs should remain available.
+
 Keep method requirements at `never` when dependencies are implementation details, so a test can provide a simple fake without recreating the production graph.
 
 ## Constructing service layers
@@ -241,9 +243,13 @@ effect function testBannerWithInlineSettings() {
 
 Replace a dependency to exercise the real factory, or the service itself to isolate its consumers. If a test needs different construction inputs, change a layer that already includes production dependencies at its exposed factory boundary. For a small local override, `provide Key = value` supplies `Layer.succeed(Key, value)`. All providers keep their source order; the later provider of the same service wins, including when a `Layer` follows `Key = value`. Put construction dependencies in an outer block so they exist while the inner layer builds: providers in one list supply the block together and don't feed one another's construction dependencies.
 
+Parentheses keep one provider expression intact. `provide (record(), Live) { … }` evaluates `record()` once and supplies the resulting `Live` layer. A parenthesized assignment is an ordinary assignment too. Write `provide A, B { … }` to supply both layers.
+
 ## Coming from Effect
 
-`service` declarations, with layer constants beside them, replace hand-written key classes, and `effect { ... }` replaces generator-based factories. The Layer graph, memoization, and resource semantics stay Effect 4's. `Effect.provide` wrappers currently draw EK4836 and have a quick fix to write a `provide` block. Support for the new forms arrives with the compiler's VIP implementation.
+`service` declarations, with layer constants beside them, replace hand-written key classes, and `effect { ... }` replaces generator-based factories. The Layer graph, memoization, and resource semantics stay Effect 4's. `Effect.provide` wrappers currently draw `EK4836` and have a quick fix to write a `provide` block. `Effect.provideService` retains its native call: `provide Key = value` builds a `Layer`, changing `Scope` and `Layer.CurrentMemoMap`. `EK4836` explains why the service call has no automatic block rewrite.
+
+A line break before or after a provider-separating comma keeps the `provide` reading and reports `EK1202`. Keep the providers on one line, or compose them inside `Layer.mergeAll(…)`, where line breaks remain allowed.
 
 ---
 

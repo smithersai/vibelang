@@ -125,7 +125,7 @@ Each `.vibe` file keeps the settings of the package that owns it. When a project
 
 Only a warning's code or an assigned imported `EK38xx` lint code may appear in `vibe.severities`. Set it to `"error"`, `"warning"`, `"suggestion"` or `"off"`. Warnings do not fail CI or prevent emission under `noEmitOnError`; use `"error"` to fail CI. Suggestions appear only in the language server. Invalid entries report `EK3006`; unknown or wrong-typed `vibe` options report `EK3007`. `extends` merges severity entries by code.
 
-Root `vibelang.diagnostics` and `compilerOptions.vibelang.diagnostics` are legacy maps in any supported config or extended config. Supported settings keep applying until migrated; modern entries for the same diagnostic or its explicitly mapped port win. Each map reports `EK3009`, and hiding that warning leaves its settings active. Run `vibelang --fix` to migrate eligible maps while preserving comments; resolve obsolete or nonconfigurable entries first. Comments inside wrappers and empty maps, after final entries, and on superseded entries also survive. Other legacy options, including `vibelang.tracing` (`"none"`, `"exported"` or `"all"`), remain separate. See [Diagnostic severities](/setup/vibelang-cli#diagnostic-severities).
+Root `vibelang.diagnostics` and `compilerOptions.vibelang.diagnostics` are legacy maps in any supported config or extended config. Supported settings keep applying until migrated; modern entries for the same diagnostic or its explicitly mapped port win. Each map reports `EK3009`, and hiding that warning leaves its settings active. Run `vibelang --fix` to migrate eligible maps while preserving comments; resolve obsolete or nonconfigurable entries first. Comments inside wrappers and empty maps, after final entries, and on superseded entries also survive. See [Diagnostic severities](/setup/vibelang-cli#diagnostic-severities).
 
 For example, a legacy `EK4406` policy entry cannot appear in `vibe.severities`; remove it before migrating the map. `EK9100` is editor-only and warns by default; it requests a written type for the text-only projection and is not reported by the CLI.
 
@@ -143,7 +143,7 @@ Effect declarations and combinator calls written in TypeScript's style use the s
 | EK4833 | `Effect.Effect<User, NotFound, Db>` | `User!NotFound!Db` | There is no global `Effect<…>` type: `Effect` is the module |
 | EK4834 | `return try Effect.succeed(user)`, `try Effect.fail(error)` | `return user`, `throw error` | Pending VIP implementation |
 | EK4835 | `Effect.catchTag(find(id), "NotFound", (e) => …)` | `find(id) catch effect (e) => match (e) { when { _tag: "NotFound" }: …; default: throw e; }` | Pending VIP implementation |
-| EK4836 | `Effect.provide(main(), AppLive)`, `Effect.provideService(main(), Users, users)` | `provide AppLive { return try main() }`, `provide Users = users { return try main() }` | Pending VIP implementation |
+| `EK4836` | `Effect.provide(main(), AppLive)`, `Effect.provideService(main(), Users, users)` | `provide AppLive { return try main() }`; retain the native `Effect.provideService` call | A service call has no automatic block rewrite: building a `Layer` changes scope and memo-map observations |
 | EK4837 | `class Failed extends Schema.TaggedError<Failed>()("Failed", { … }) {}` | `schema error Failed { … }` | When the tag is the class's name and the body holds accessors and annotated methods; a field with no type form is named by a constant. `Schema.optionalKey`, an annotations argument or a constructor keeps the class |
 | EK4839 | `Match.value(status).pipe(Match.when("idle", () => "Idle"), Match.orElse(() => "Busy"))` | `match (status) { when "idle": "Idle"; default: "Busy"; }` | When each pattern is a literal, an object of patterns, a `Match` refinement such as `Match.string`, or `Match.instanceOf`, and each handler an arrow function that runs no program; a predicate or an array pattern keeps the warning without one. A type the arms do not share is written: `withReturnType`'s or the handlers' type, or a primitive one |
 | EK4841 | `export const Tags = Schema.Array(Schema.String)` just before `export type Tags = typeof Tags.Type` | `export schema Tags = readonly string[]` | When the type alias is the statement just after the constant, with the same export and no JSDoc, and every part of the schema has a type; a type written before its constant keeps its form, because the alias's declaration file lists the constant first |
@@ -523,6 +523,8 @@ The `EK4839` quick fix preserves a Match return-type hint with a checked
 annotation on its binding, including destructuring, or a typed local binding
 inside a `do` expression. It uses existing written context when available
 and does not introduce an `as` assertion.
+
+One `vibelang --fix` invocation repeats its passes until no fix applies. Running it again changes nothing. If the pass limit is reached, it reports the remaining fixes and exits with an error.
 
 ---
 
