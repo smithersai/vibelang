@@ -41,3 +41,12 @@ case, the full CLI exits `2` and lists the selectors before setting up modules
 or replacing `manifest.json`, `summary.json` or `summary.md`. Exact names,
 substrings and unions retain their selection rules. `--docs` and `--self-test`
 run independently of declaration selectors.
+
+Declaration comparisons retain named local export lists, including aliases and
+multiple lists, alongside their local declarations. Renaming or removing
+`export { local as Public }` therefore changes the measured surface; an empty
+`export {}` still only marks the file as a module.
+
+Public names in named export lists retain their spelling even when a local
+import binds that name. The local side of an alias still resolves through its
+import, so renaming that local alias with the same public name stays equivalent.

@@ -198,6 +198,13 @@ export function parseDeclarationFile(text: string): DeclarationFile {
           if (statement[m].kind === "id" && statement[m].text !== "as" && statement[m - 1]?.text !== "as") exportedNames.add(statement[m].text)
         }
         if (names.length === 0) continue
+        // Visibility alone loses the exported name: changing or dropping
+        // `export { local as Public }` must change the compared surface.
+        // Keep the lists in one unit, alongside the local declarations.
+        const key = "export local"
+        const unit = units.get(key)
+        if (unit) unit.statements.push(statement)
+        else units.set(key, { key, kind: "reexport", name: key, exported: true, overloads: 1, statements: [statement] })
       }
       continue
     }
@@ -295,6 +302,14 @@ export function normalizeTokens(statement: Token[], imports: ImportBinding[], ct
     const t = statement[i]
     const prev = statement[i - 1]
     const isMemberAccess = prev && prev.text === "."
+    // An exported name is a public name, even when an import binds the
+    // same spelling locally. Only the local side of an alias resolves.
+    const publicExportName = statement[0]?.text === "export" && statement[1]?.text === "{" &&
+      (statement[i + 1]?.text === "," || statement[i + 1]?.text === "}")
+    if (publicExportName && t.kind === "id") {
+      out.push(t.text)
+      continue
+    }
     if (t.kind === "id" && t.text === "import" && statement[i + 1]?.text === "(" && statement[i + 2]?.kind === "str") {
       // import("m", { with: { "resolution-mode": "import" } }).A.B
       let j = i + 3
