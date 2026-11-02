@@ -24,3 +24,11 @@ The tooling audit (2026-10-28): all four migrations broke because adopting VibeL
 ## Will's words
 
 > "To start we pin to a single version but we do this not because it's the long term plan but just to control variables while in alpha"
+
+## Details
+
+Decided details folded in on 2026-11-03. Each keeps its old number as history. The conflict pass deleted superseded, duplicate and relic details and resolved contradictions in favor of Will's words, then accepted VIPs, then later details. Principles are numbered as in [the introduction's Details](https://github.com/smithersai/vibelang/blob/main/docs/design/src/000-intro.md#details).
+
+### Detail 70
+
+**An off-pin Effect is a compile error** (audit 007 M5). VibeLang declares `effect` as an exact `peerDependency`, and the compiler reads the resolved `effect/package.json`: a version other than the pin is `EK3201` ("the resolved effect is X; VibeLang Y pins Z: upgrade both together"), shown in the editor and in CI. Decided by the agent from Will's "latest Effect only" (2026-10-26) and VIP-32, 2026-10-30.

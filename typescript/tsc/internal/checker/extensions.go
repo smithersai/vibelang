@@ -444,6 +444,11 @@ func (c *Checker) moduleNameFromHooks(file *ast.SourceFile, module *ast.Symbol, 
 // against, given returnType, fn's return type: the type an async function or
 // a generator wraps, as unwrapReturnType says, unless a hook says otherwise.
 func (c *Checker) unwrapReturnTypeOf(fn *ast.Node, returnType *Type) *Type {
+	// An adapted generator contract already defines its body's return type.
+	// Its public container must not be reinterpreted by unrelated unwrappers.
+	if bodyType := c.applyGeneratorAnnotationHooks(fn, returnType); bodyType != returnType {
+		return c.unwrapReturnType(bodyType, ast.GetFunctionFlags(fn))
+	}
 	t := c.unwrapReturnType(returnType, ast.GetFunctionFlags(fn))
 	for _, hook := range unwrappedReturnTypeHooks {
 		t = hook(c, fn, t)

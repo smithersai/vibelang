@@ -1,0 +1,14 @@
+// expect: EK2102 EK2102 EK2102 EK2102 EK2102 EK2102 EK2102 EK2102 EK2102 EK2102 EK2102 EK2102
+// VIP-21/detail287: erased and non-Stream written contracts are EK2102.
+export effect function* invalid0(): any { yield 7 }
+export effect function* invalid1(): unknown { yield 7 }
+export effect function* invalid2(): never { yield 7 }
+export effect function* invalid3(): Stream.Stream<number> | undefined { yield 7 }
+export effect function* invalid4(): Stream.Stream<number> | Stream.Stream<string> { yield 7 }
+export effect function* invalid5(): {} { yield 7 }
+export effect function* invalid6(): number[] { yield 7 }
+export effect function* invalid7(): Promise<number> { yield 7 }
+export effect function* invalid8(): Effect.Effect<number> { yield 7 }
+export effect function* invalid9(): Generator<number> { yield 7 }
+export effect function* invalid10(): AsyncGenerator<number> { yield 7 }
+export effect function* invalid11(): void { yield 7 }

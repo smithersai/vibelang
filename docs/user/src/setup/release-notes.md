@@ -466,6 +466,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Exporting a `data` declaration named `as` produced an invalid declaration file; the emitted type alias now disambiguates the contextual name and remains usable by TypeScript consumers.
 - Generic `data` parameters silently accepted defaults that its constructors do not support. Defaults now report `EK2803`; `vibelang --fix` preserves them in equivalent Effect TypeScript.
 | A schema field with a class-only modifier such as `public` or `static` | `TS1070`: run `vibelang --fix` to remove ignored modifiers and preserve the field’s codec and readonly behavior. |
+| A producer had an erased return annotation such as `any` or `unknown` | `EK2102`: write `Stream.Stream<A, E, R>` or omit the annotation to infer the producer contract. |
 - `--fix` could repeatedly recheck a large project when an importer's errors came from one edited dependency. It now traces referenced declarations and keeps unrelated reporter edits together while retaining the complete safety check.
 - The compiler reported `EK1307` for an ambient `error` or `schema error` declaration, but Appendix B did not list the code; it does now.
 - Six compiler cases still expected behaviour the language had already changed: plain `main` functions after VIP-1, an unrun `Fiber.join` result, an `error` constructor (`EK1301`), a last match arm without `;`, and `EK1003` for `for await` in a plain function; they now state current behaviour, and that last one is `plain-for-await.fail`, expecting `TS1103`.
@@ -546,6 +547,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Invalid `for concurrent` limits could produce a TypeScript argument error or pass unchecked; they now report `EK1907` consistently.
 - The language-server smoke test rejected a correctly formatted multiline `withSpan` call; it now checks the effect block and arguments across line breaks while rejecting changed program shapes.
 
+
+- Producers accepted erased return annotations and rejected valid `Stream` contracts; written `Stream` aliases now compile with their yield, error and requirement channels checked, and invalid contracts report `EK2102`.
 - In the editor, an `is` that binds names and has a parenthesized subject, such as `(x as T) is [let a]` or `([3, r] as const) is [let n, let e]`, made the TypeScript 7 mapper report "invalid or overlapping edits" and pass the whole file through unchanged, so the editor checked VibeLang syntax as TypeScript; the file now maps as it does without the parentheses.
 - Migration returned converted services to TypeScript when every member kept the original service requirement. Verification now accepts the `EK4809` design warning and preserves those member contracts; a configured `EK4809` error still fails.
 - Declarations of imported Effect values could gain an extra import; cold values and decoders now have regression comparisons against TypeScript.

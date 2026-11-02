@@ -1,0 +1,19 @@
+// expect-result: [7,8,9,7]
+// VIP-21/detail287: a written Stream annotation is the producer's public
+// contract. Native generator typing checks each yield against its A channel.
+import { needsScope } from "./held.ts"
+type Numbers = Stream.Stream<number>
+export effect function* direct(): Stream.Stream<number> { yield 7 }
+export effect function* alias(): Numbers { yield 8 }
+export effect function* normalized(): Stream.Stream<number> | never { yield 9 }
+export effect function* scoped(): Stream.Stream<number> { yield try needsScope }
+export effect function* contextual(): Stream.Stream<{kind:"x"}> { yield {kind:"x"} }
+export effect function* generic<T>(value: T): Stream.Stream<T> { yield value }
+export effect function main() {
+  return [
+    try Stream.runFold(direct(), () => 0, (sum: number, item: number) => sum + item),
+    try Stream.runFold(alias(), () => 0, (sum: number, item: number) => sum + item),
+    try Stream.runFold(normalized(), () => 0, (sum: number, item: number) => sum + item),
+    try Stream.runFold(scoped(), () => 0, (sum: number, item: number) => sum + item)
+  ]
+}

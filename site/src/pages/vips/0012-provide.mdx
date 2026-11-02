@@ -50,3 +50,34 @@ Effect's `Effect.provide`; Kotlin's `withContext(ctx) { … }`.
 > "Ok so with that I'm pretty sure all the issues for service and provide go away in which case I accept the proposal"
 
 *Corrected 2026-10-29: the example names a declared service (`Users`), so it runs.*
+
+## Details
+
+Decided details folded in on 2026-11-03. Each keeps its old number as history. The conflict pass deleted superseded, duplicate and relic details and resolved contradictions in favor of Will's words, then accepted VIPs, then later details. Principles are numbered as in [the introduction's Details](https://github.com/smithersai/vibelang/blob/main/docs/design/src/000-intro.md#details).
+
+### Detail 34
+
+(Opus round-10 M1; VIP-12) `provide` is a keyword only when the tokens from `provide` through a `{` on the line where the last provider ends parse as a `ProvideStatement`, as an arrow needs its whole head. Otherwise it is an identifier, in any code, effect code included.
+    **Recovery clarification (detail237).** The valid whole-head classifier is unchanged. For error recovery only, an otherwise-complete head with a line break immediately before or after a top-level provider-separating comma stays a recovered `provide` statement and receives `EK1202`; it does not become an identifier reading. Only those comma-adjacent restrictions are relaxed for classification, never for admission.
+    **Immutable-main source scope (d50d73, 34).** 005 publishes expression-context disambiguation for a provider binding named `effect`: the complete statement `provide (effect) { ... }` supplies that binding; `provide(effect)` without a body remains an ordinary call. In `provide effect { ... } { ... }`, the first block belongs to the `effect { ... }` provider expression and the second is the provide body. That `Effect` value is not automatically run or coerced into a `Layer`/`Context` provider. This applies the existing contextual grammar/whole-head rule. `main-d50-source-receipt.json` records the complete two-file source read; no compiler/gate rerun.
+    ```vibe
+    provide AppLive { try main() }   // provide statement
+    provide(x)                       // a call (local `provide`)
+    provide[0] = 1                   // element assignment
+    provide - 1                      // subtraction
+    ```
+    Effect TS: `Effect.provide(gen, AppLive)` for the first; the rest are TypeScript as written. Decided by the agent from principle 2 (ECMAScript's arrow-head cover grammar) and principle 3 (valid TypeScript keeps its meaning); 2026-10-29.
+
+### Detail 35
+
+(NW 38; VIP-12) A line break after a comma between providers is a syntax error, as VIP-12 says ("its providers and block must be on one line"). Breaks inside a provider are free. The formatter (VIP-34) never breaks a `provide` list at a comma; a long list stays on one line or the author writes `Layer.mergeAll(…)`.
+    **Separator scope clarification (detail237).** The existing one-line separator restriction applies immediately before as well as after each top-level provider comma, as Appendix A already states. Both invalid forms use `EK1202` through237's bounded head recovery; expression-internal line breaks remain free.
+    ```vibe
+    provide AppLive, Users = testUsers { try a() }   // ok
+    provide Layer.mergeAll(
+      AppLive,
+      UsersLive) { try a() }                          // ok
+    provide AppLive,
+      Users = testUsers { try a() }                   // syntax error
+    ```
+    Effect TS: `Effect.provide(gen, [AppLive, Layer.succeed(Users, testUsers)])`. Decided by the agent from VIP-12's text and principle 8 (relaxing to Opus's reading (b) later breaks no code); 2026-10-29.

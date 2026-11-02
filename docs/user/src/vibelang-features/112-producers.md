@@ -97,6 +97,8 @@ effect function alerts() {
 
 A producer has type `Stream.Stream<Value, Error, Requirements>`: Stream operators accept it directly, and TypeScript consumers see a Stream in its declaration file. For inferred body requirements `RBody`, the `Stream` requires `Exclude<RBody, Scope.Scope>`: `Stream.callback` supplies `Scope`, so a scoped child fork alone needs no external `Scope`. This exclusion also applies inside unions and aliases: `Scope.Scope | Users` becomes `Users`, while a requirement that extends `Scope.Scope`, such as `Scope.Scope & Users`, becomes `never`. Generic requirements retain `Exclude<RBody, Scope.Scope>`. Other service requirements remain, and this does not change explicit annotation checks or values of type `Scope.Scope`. `examples/pipeline` uses this filter, map, and take pattern.
 
+A written producer return annotation must resolve to `Stream.Stream<A, E, R>`. A type alias for that `Stream`, or a union that normalizes to it such as `Stream.Stream<number> | never`, is valid. A bare `any`, `unknown` or `never`, an optional `Stream` or a genuine union of `Stream` types is `EK2102`. Each yielded value must fit `A`; failures and requirements must fit `E` and `R`. Omit the annotation to infer all three channels.
+
 When Stream operators consume a producer, `Stream.callback` runs it on its own fiber with a one-element buffer, and closing the Stream interrupts it and runs cleanup.
 
 ## Iterate any Stream

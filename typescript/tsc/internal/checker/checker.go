@@ -30560,7 +30560,7 @@ func (c *Checker) getContextualReturnType(functionDecl *ast.Node, contextFlags C
 		}
 		return contextual
 	}
-	return c.applyContextualReturnTypeHooksWithContext(functionDecl, c.getContextualReturnTypeWorker(functionDecl, contextFlags, getContextual), getContextual)
+	return c.applyGeneratorAnnotationHooks(functionDecl, c.applyContextualReturnTypeHooksWithContext(functionDecl, c.getContextualReturnTypeWorker(functionDecl, contextFlags, getContextual), getContextual))
 }
 
 func (c *Checker) getContextualReturnTypeWorker(functionDecl *ast.Node, contextFlags ContextFlags, getContextual func() *Type) *Type {

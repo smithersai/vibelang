@@ -532,3 +532,63 @@ for (let run = 1; run <= 2; run++) {
   if (starts !== run || closes !== run) throw new Error("callback Scope was not fresh or finalized")
 }
 ```
+
+## Details
+
+Decided details folded in on 2026-11-03. Each keeps its old number as history. The conflict pass deleted superseded, duplicate and relic details and resolved contradictions in favor of Will's words, then accepted VIPs, then later details. Principles are numbered as in [the introduction's Details](/spec/000-intro#details).
+
+### Detail 110
+
+**Cold lexical effect bodies capture the this binding without eagerly reading it.** (live `008-derived-this` / `001-derived-this-capture`, one finding; owner `spec-fix-d`; VIP-1/VIP-2.) An `effect` block or arrow created/invoked before a derived constructor calls `super()` must not evaluate lexical `this` merely to construct its unrun Effect. Capture a fresh lexical accessor `const $getThis = () => this`, and invoke it only where the source actually reads `this` during execution, including a generated super-call receiver. An unreachable source read stays unreachable even if the Effect runs before `super()`. `Effect.gen({ self: this }, …)` is allowed where initialization is already guaranteed.
+    Status: applied in main 0a207dbf, revalidated by spec-fix-a against the source binding rule, explicit import-cycle hoisting sentence and the five passing native binding tests. Earlier helper-recipe fixes are superseded; no duplicate patch.
+    ```vibe
+    class Base {}
+    class Derived extends Base {
+      p: Derived!!
+      constructor() { const p = effect { return this }; super(); this.p = p }
+    }
+    ```
+    Effect TS: `const getThis = () => this; const p = Effect.gen(function* () { return getThis() }); super(); this.p = p`; running afterward succeeds with the constructed instance. Decided by the agent from principle 2 (TypeScript lexical this) and VIP-1/VIP-2 (cold bodies; preserve source bindings), 2026-10-29. Apply to 001/002/008; no ban on constructing cold Effects before super.
+
+### Detail 121
+
+**The two-element producer lead describes a sequential emitter, not concurrent item fibers.** (live `008-concurrent-producer-lead`; VIP-19/VIP-21/VIP-31; corrects VIP-21 and 002's overbroad promise.) Keep the specified `Stream.callback` one-element queue and the specified `Effect.forEach` concurrency. A sequential emitter can have one buffered element and one pending offer. Concurrent item fibers can each evaluate their value before suspending on their own `Queue.offer`; queue capacity one does not bound the number of pending emitters or upstream work globally. Unbounded concurrency has no constant global lead bound. A finite limit bounds active pending emitters by the iteration concurrency, in addition to queue capacity and work already consumed; do not promise a constant two. Add no implicit semaphore, yield lock, or other synchronization.
+    **Immutable-main source scope (d0cdbe, 121).** 002/008/VIP21 restrict the two-element producer lead bound to a sequential emitter; concurrent pending offers and unbounded lead retain native behavior. `root-main-d0cd-source-receipt.json` retains the complete31-file diff/hash/read scope. Source only; no decide-live compiler/gate rerun.
+    Status: applied in 1ad04d21992b (spec-fix-d; queued, not yet a main receipt; replaces withdrawn 3b6a7ed2e13c).
+    ```vibe
+    effect function* feed() {
+      for concurrent (const n of [1,2,3,4,5,6,7,8]) { yield n }
+    } // every item fiber may compute its value before a blocked consumer proceeds
+    ```
+    Effect TS: the existing `Stream.callback` plus `Effect.forEach(xs, n => Queue.offer(queue, n), { concurrency: "unbounded", discard: true })`. Decided by the agent from principle 1 (idiomatic Effect queue/concurrency behavior), principle 7 (do not add behavior Effect does not provide here), and VIP-31 (keep the declared counterpart's Exit), 2026-10-29. Correct the guarantee in 002, 008 and VIP-21 together; the coordinated Deferred witness in live/probes establishes Success with seven evaluated values ahead, not the timeout a global limit would cause.
+
+### Detail 158
+
+**Generated captures preserve the source NamedEvaluation context, including anonymous names.** (live `008-temporary-name-inference`; VIP-2/VIP-7/VIP-23/VIP-31.) A value-only source evaluation of an anonymous function/class must not gain an inferred name from a generated variable or assignment. Suppress inference before creation when placing such a value in a private temporary, for example `const $t = (0, anonymousExpression)`; parentheses alone do not suppress it. Preserve naming the original source actually requests. Apply this to pipe topics, do/match value temporaries and completion records. Never repair .name after creation: a class static initializer can already have observed it.
+    **Immutable-main source scope (2f702c, 158).** 001/002/008 publish source NamedEvaluation context through value captures, before class initialization; actual source15f32b447d3d. No compiler emission implementation or conformance inferred from docs/native-reference source publication. `main-2f-source-receipt.json` records the complete three-file source diff and worker-diff read.
+    Earlier source receipt: f449c3f984cb was verified and queued by spec-fix-a before the later independently checked main2f702c landing above.
+    ```vibe
+    function readName(f: () => number) { return f.name }
+    const n = (() => 7) |> readName(%) // empty string, not a generated name
+    const C = do { (class { static observed = this.name }) } // C.name and observed are empty
+    ```
+    Effect TS: `const $t = (0, () => 7); const n = readName($t)`, and `const $C = (0, class { static observed = this.name })`. Decided by the agent from principle 2 (ECMAScript NamedEvaluation versus GetValue), the pinned pipe/do evaluation algorithms, and VIP-31's source-value guarantee, 2026-10-30. This is an emitter preservation rule, not a source naming exception.
+
+Landing receipt: source f449c3f984cb landed in main 2f702c3eaa02 (queue 1793374925-spec-fix-a, gate mq-10302237-3).
+
+### Detail 193
+
+**An executed super property validates lexical this before evaluating its computed key.** (live `008-super-key-this-order`; VIP-1/VIP-31 native Reference order, refines details 110/178.) At the original super-property evaluation point, read/validate the source lexical `this` binding before evaluating a computed key. Then perform key evaluation, coercion, base/property operations and any later RHS/arguments/substitutions in their native order. The helper call `$super_get(key())` alone is insufficient because JavaScript evaluates its argument before the helper can validate `this`. A deferred lexical `getThis()` immediately before that call repairs the read witness; a general lowering must also retain the key-coercion/reference phases before later assignment/call operands. Apply to computed reads, assignments/updates and receiver-bearing call/tag references, retaining optional-call short circuiting and the once-only receiver/lookup guarantees in 178. Preserve suspending key expressions in their enclosing source activation rather than hiding `try`/`await`/`yield` in another callable.
+    Status: applied in main 0a207dbf, revalidated by spec-fix-a against the source binding rule, explicit import-cycle hoisting sentence and the five passing native binding tests. Earlier helper-recipe fixes are superseded; no duplicate patch.
+    ```vibe
+    function key(): "value" { return "value" }
+    class Base { get value() { return 7 } }
+    class Derived extends Base {
+      constructor() {
+        const program = effect { return super[key()] }
+        const outcome = runSyncExit(program) // before super(): defects before key() executes
+        super()
+      }
+    }
+    ```
+    Effect TS: `Effect.sync(() => super[key()])` captures the source lexical binding safely and reads it only when the Effect runs. In the helper recipe, create `const getThis = () => this` without invoking it at construction, then run `getThis(); return getSuper(key())` at the actual read. An unreachable super operation performs no validation. Do not read this at Effect construction or unconditionally at Effect start; detail 110's coldness and derived-constructor behavior remain. Decided by the agent from principle 2 (native SuperProperty/async operand order), VIP-1's source-binding guarantee, VIP-31's equal Exit/side-effect-order contract, and detail 110's delayed lexical-this read, 2026-10-30. Update 001's helper recipe and 008's binding/evaluation guarantees. Evidence: `super-this-key-order-types.log` passes strict TypeScript; `super-this-key-order-reference.log` on verified Effect 4.1.0 records native/fixed `Success(["failure"])` versus the old helper's `Success(["key", "failure"])`. The native async analogy rejects with ReferenceError without evaluating the key. These are before/after helper/reference checks, not VibeLang compiler-conformance results.

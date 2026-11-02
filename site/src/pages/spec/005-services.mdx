@@ -758,3 +758,130 @@ const m = import(name)                    // ok: a computed specifier is not che
 yield* Console.log("hi")
 yield* Effect.sleep("10 millis")
 ```
+
+## Details
+
+Decided details folded in on 2026-11-03. Each keeps its old number as history. The conflict pass deleted superseded, duplicate and relic details and resolved contradictions in favor of Will's words, then accepted VIPs, then later details. Principles are numbered as in [the introduction's Details](/spec/000-intro#details).
+
+### Detail 90
+
+**`import.meta` is limited to `import.meta.url`** (NW 54; audit 005 m5; r17-005; extends detail 56 and VIP-33). In `.vibe` code `import.meta` may appear only as the object of the static member access `.url`. Every other member (`dirname`, `filename`, `env`, `main`, `resolve`, and host additions such as Vite's `hot` and `glob` or Bun's `dir`, `file`, `path`) is `EK4402`, and so is any other use of `import.meta` itself: an alias (`const m = import.meta`), destructuring, a computed key, an argument or a spread, as detail 73 rules for `globalThis`. A type position (`typeof import.meta`) is TypeScript's. The quick fix names the Effect service or moves the code to a `.ts` file.
+    ```vibe
+    const u = new URL("./data.json", import.meta.url)   // ok: module identity (ECMA-262)
+    const d = import.meta.dirname                        // EK4402: acquire Path.Path; use its fromFileUrl/dirname methods
+    const k = import.meta.env.API_KEY                    // EK4402: use Config.String("API_KEY")
+    const m = import.meta                                // EK4402: alias
+    ```
+    Effect TS: `const path = yield* Path.Path; const file = yield* path.fromFileUrl(new URL(import.meta.url)); const d = path.dirname(file)`; `yield* Config.String("API_KEY")`. Decided by the agent from Will's VIP-33 rule ("All web apis and all node.js apis should be wrapped and effectful"; `import.meta.dirname` is Node's ESM spelling of the banned `__dirname`, and `env` is the banned `process.env`'s), detail 73's alias rule and principle 8; 2026-10-29.
+
+    **Path repair clarification, 2026-10-30 (Opus r21/r22 m10; live `005-import-meta-path-repair`).** The explicit module namespace is not a service instance: acquire `Path.Path` and invoke its Shape methods. The already-stated Effect TS uses `yield* path.fromFileUrl(new URL(import.meta.url))`, then the ordinary `path.dirname(file)`. In `.vibe` effect code, preserve both the explicit service acquisition and explicit execution of the returned conversion Effect; URL construction also keeps details 66/205's ordinary throwing-signature bridge requirements. Do not suggest a nonexistent namespace-level `Path.fromFileUrl` or add an implicit service-forwarding API. This is the existing VIP-9/VIP-33 counterpart and the accepted import-meta restriction, not a new language choice. The fixing lane reports its strict TypeScript/Effect 4.1.0 Path.layer witness; decide-live did not run a VibeLang compiler case for it.
+
+### Detail 181
+
+**A service's Shape is the written member object, named directly rather than extracted through its own key.** (live `005-service-recursive-shape`; VIP-9/VIP-27, TypeScript counterpart repair.) Give the service member object a hygienic private named type and use that type as the `Context.Service` Shape argument. At module scope, make the public namespace's `Shape` alias refer directly to the same named type, rather than `Context.Service.Shape<typeof Key>` through the key's still-being-resolved base expression. This admits ordinary self- and mutually recursive written member contracts without creating an artificial class-base/type-alias cycle. Keep the existing public `Repo` identifier type and `Repo.Shape` name; declaration output uses the same direct named shape, retains member modifiers and each callable's thrown-signature metadata, and keeps private helpers hygienic. Local service declarations retain the existing no-namespace rule and use a named member type internally. This is a type representation repair, not recursive value initialization or a new service API.
+    **Immutable-main source portion (098e7a, 181).** 005 uses a hygienic private written Shape type directly for class/reference bases and public namespace aliases, including local no-namespace forms and recursive/member metadata rules. Complete13-file,82,844-character diff independently read. Source publication only; no own compiler/native/gate check. `main-098-source-receipt.json` records exact scope. Independent root review is retained in `root-main098-source-receipt.json`.
+    **Immutable-main source scope (d0cdbe, 181).** Public VIP9 recursive-shape amendment published; chapter005 direct-shape counterpart remains a separate source slice. `root-main-d0cd-source-receipt.json` retains the complete31-file diff/hash/read scope. Source only; no decide-live compiler/gate rerun.
+    Current replacement: applied in b90eabdfa7b847d9e1ef2cad34f61d070e64abae (spec-fix-c; supersedes 45d9623587db after main rebase and current-release placement; queued, not a main receipt).
+    Public service publication: relevant VIP9 amendments applied in 267e5893ff47c15cb06959b176b9ed613815524f (spec-fix-c; submitted, no main receipt). Chapter005 counterpart/admission guidance remains separately submitted in45d9623587db; other213 publication stays with its owners.
+    Status: applied in 45d9623587dbb764a5168bbc217170441f5cc732 (spec-fix-c; queued, not yet a main receipt).
+    ```vibe
+    service Repo {
+      static readonly key = "test/Repo"
+      value: number;
+      next(): Repo.Shape;
+    }
+    const impl: Repo.Shape = { value: 7, next() { return this } }
+    ```
+    Effect TS: `type $RepoShape = { value: number; next(): Repo.Shape }; class Repo extends Context.Service<Repo, $RepoShape>()("test/Repo") {}; declare namespace Repo { type Shape = $RepoShape }`. A hygienic helper name is compiler-private, not this literal spelling. Source-order runtime key construction stays ordinary Effect TypeScript; the helper/namespace alias is erased. Decided by the agent from VIP-9's existing promise that `Repo.Shape` is exactly its written members, principle 2 (native TypeScript recursive object types), principle 4 (one direct shape representation for regular/default/local forms), and VIP-27's faithful declaration contract, 2026-10-30. Update 005's regular-service counterpart and declaration recipes; add self-recursive and mutually recursive member witnesses. Evidence: `service-shape-before.log` reproduces TS2506/TS2456 from the prescribed extracted shape; `service-shape-after-types.log` passes strict TypeScript and `service-shape-after.log` gives `Success(7)`. Additional mutual and local direct-shape counterparts pass strict checking and produce `Success(7)`/`Success(9)` in `service-shape-mutual-local*.log` on Effect 4.1.0. These are before/after counterpart checks, not VibeLang compiler-conformance evidence.
+
+    **Local own-shape hook (Loop r3 Opus OPUS-5).** Accepted public VIP-9 already grants the type-only `S.Shape` hook inside the service's own written member shape, without creating a namespace. Apply it in every admitted declaration scope, including local class services and defaulted References. Outside that own-shape position, local services still use `Context.Service.Shape<typeof S>`. Qualify chapter 005's no-local-namespace sentence instead of withdrawing the VIP's permission. Resolve the service symbol hygienically; preserve shadowing and do not extend this hook to arbitrary value/default initializer expressions.
+    ```vibe
+    function localService() {
+      service Local { static readonly key = "app/Local"; value: number; next(): Local.Shape }
+      const impl: Context.Service.Shape<typeof Local> = { value: 9, next() { return this } }
+      return impl.next().value
+    }
+    ```
+    Effect TS: inside the function, `type Shape0 = { value: number; next(): Shape0 }; class Local extends Context.Service<Local, Shape0>()("app/Local") {}; const impl: Context.Service.Shape<typeof Local> = { value: 9, next() { return this } }`. No namespace is emitted. Native strict TypeScript/Effect counterparts in `native-loop-r3/` produce 9/11 for local service/Reference; an outside `Local.Shape` lookup is `TS2702`. Decided by the agent from accepted VIP-9 and principle 4 (one private-shape hook without a scope exception), 2026-10-31. Reuses 181; these native checks do not certify VibeLang compiler conformance.
+
+### Detail 183
+
+**EK3005 covers captured outer type parameters in a service Shape.** (live `005-captured-service-generics`; closes the VIP-9 generic-key loophole without adding a new service restriction.) Reject a service when its resolved written member contracts depend on a free type parameter from an enclosing scope, even if the service declaration has no TypeParameters list. Follow aliases, constraints, defaulted type arguments and callable throws metadata; use resolved type-parameter identity, not its spelling. A type parameter bound within a member's own generic signature is allowed: it describes one fixed polymorphic member contract and does not specialize the key. If that member's constraint/default still depends on an outer parameter, the outer dependency remains rejected. A generic enclosing function containing a concrete parameter-independent service is allowed; unrelated generic value computations are not a reason to reject a fixed Shape. Keep explicit literal keys and duplicate-key rules unchanged; do not derive runtime keys from erased type arguments.
+    **Immutable-main source portion (098e7a, 183).** 005/AppendixB/publicVIP9 cover resolved free outer type-parameter capture under EK3005, preserving member-local generics and concrete parameter-independent services. Complete13-file,82,844-character diff independently read. Source publication only; no own compiler/native/gate check. `main-098-source-receipt.json` records exact scope. Independent root review is retained in `root-main098-source-receipt.json`.
+    **Immutable-main source scope (d0cdbe, 183).** Public VIP9 outer generic Shape-capture amendment published; chapter005 counterpart/admission delivery remains separately evidenced. `root-main-d0cd-source-receipt.json` retains the complete31-file diff/hash/read scope. Source only; no decide-live compiler/gate rerun.
+    Current replacement: applied in b90eabdfa7b847d9e1ef2cad34f61d070e64abae (spec-fix-c; supersedes 45d9623587db after main rebase and current-release placement; queued, not a main receipt).
+    Public service publication: relevant VIP9 amendments applied in 267e5893ff47c15cb06959b176b9ed613815524f (spec-fix-c; submitted, no main receipt). Chapter005 counterpart/admission guidance remains separately submitted in45d9623587db; other213 publication stays with its owners.
+    Status: applied in 45d9623587dbb764a5168bbc217170441f5cc732 (spec-fix-c; queued, not yet a main receipt).
+    ```vibe
+    function storeKey<T>() {
+      service Store { static readonly key = "test/Store"; value: T } // EK3005: Shape captures outer T
+      return Store
+    }
+    service Fixed {
+      static readonly key = "test/Fixed"
+      identity<T>(value: T): T // allowed: T belongs to this generic method
+    }
+    ```
+    Effect TS: the rejected counterpart creates `Context.Service<Store, { value: T }>()("test/Store")` separately for `T = number` and `T = string`; both key strings are equal, and later `Layer.succeed` provision replaces the earlier service, causing the accepted-as-infallible numeric use to die. A concrete service Shape containing `identity<T>(value: T): T` is instead the same polymorphic contract at every lookup. Decided by the agent from VIP-9's explicit reason for banning generic services (one runtime key cannot identify different specialized Shapes), principle 3 (hygienic symbol/type identity rather than token spelling), and principle 8 (reject an unsafe specialization instead of admitting an unsound service lookup), 2026-10-30. Update 005/VIP-9 and Appendix B's existing EK3005 rule; suggest a concrete Shape outside the capture or a genuinely polymorphic method where appropriate. Evidence: `decide-live-scratch/root-service-captured-types.log` accepts the whole Effect TS witness as `Effect.Effect<string, never, never>`, while `root-service-captured-reference.log` reports equal keys and a `Die(TypeError)` on Effect `4.1.0`. Add the two-instantiation rejection and method-local/fixed-Shape controls; these receipts are counterpart evidence, not VibeLang compiler conformance.
+
+### Detail 235
+
+**A service's `defaultValue` initializer has the source class-field context.** (live `005-service-default-effect-context`; accepted VIP-9 class-like service/static-default approval; VIP-1/VIP-5/VIP-17, detail216.) Apply216's existing field-initializer source boundary to the special `static readonly defaultValue = expression` member, even when the service declaration appears in an Effect body. It is ordinary initializer evaluation, outside the enclosing Effect execution and fork/join reservation context. Do not permit `try e` or fiber execution merely because lowering places the factory value in a `Context.Reference` options object. Existing outside-effect diagnostics/recovery apply (`EK0501` for try and216's fiber rule); no new diagnostic or implicit async/Effect initializer is introduced.
+    Status: applied in 64e52ee2b7024d88d1ececb44558cb1fe4534b05 (spec-fix-c; queued, not yet a main receipt).
+    **Immutable-main source scope (d0cdbe, 235).** The general216 field-boundary source is published, but235 service defaultValue application is not separately published by this batch. `root-main-d0cd-source-receipt.json` retains the complete31-file diff/hash/read scope. Source only; no decide-live compiler/gate rerun.
+    Mirror216's field behavior consistently: an ordinary identifier call such as `join(...)` may name a user helper in this reset context, while explicit Effect execution remains forbidden there. Native `await`/`yield` and nested source callable boundaries keep their corresponding native rules. A plain factory function body has its own plain-function boundary; a nested explicit Effect callable retains its existing context and must still satisfy the written `() => Shape` type. This decision does not change declaration key/type/member rules or introduce an effectful-default API.
+    Preserve ordinary eager evaluation of the initializer at the declaration's existing execution point, once and in source order. If the service is inside an Effect body, that declaration work remains cold until the body runs. Keep source binding/TDZ, native exceptions and existing eager throw checks; this context reset is not an exception-contract escape. Creating the factory value is distinct from invoking it through native Context.Reference fallback behavior. Do not move initializer work into the fallback callback, run an Effect synchronously, or insert a new runtime wrapper to grant source execution permission.
+    When computing a factory requires an Effect, compute it in the surrounding permitted Effect body first, then initialize the member with that value. Native Context.Reference calls and ordinary object expressions retain their own source contexts; the source service member's class-like boundary is resolved before lowering.
+    ```vibe
+    effect function local() {
+      const factory = try succeed(() => ({ n: 1 }))
+      service Flags {
+        static readonly key = "local/Flags"
+        static readonly defaultValue = factory
+        n: number
+      }
+      return (try Flags).n
+    }
+    // Writing try succeed(...) directly in defaultValue is EK0501.
+    ```
+    Effect TS:
+    ```ts
+    const local = () => Effect.gen(function* () {
+      const factory = yield* Effect.succeed(() => ({ n: 1 }))
+      const Flags = Context.Reference<{ n: number }>("local/Flags", { defaultValue: factory })
+      return (yield* Flags).n
+    })
+    ```
+    Decided by the agent from VIP-9's explicit class-like/static-default approval, principle2 (native static fields do not inherit an outer async await context), principle3 (source syntax/context before lowering), principle4 (one field boundary), and principle8/detail216 (no implicit initializer execution), 2026-10-30. This applies an approved source boundary rather than adding a new service/package API or a new call meaning; no Will question is needed. Reconcile005/002/AppendixA and public VIP-9/VIP-17 under213 while retaining the factory type, key rules and native Reference behavior.
+    `root-service-default-context-reference.log` independently verifies TypeScript5.9.3 `TS1308` and native Node SyntaxError for await directly in the analogous static field, plus the admitted precomputed native Effect4.1.0 counterpart returning1: no work before running, one factory creation and one fallback invocation. Earlier216 probes separately cover native field reset/reservation; the fixer's direct-reference-argument Success1 proves that distinct emitted position, not source service admission. The limited main695576 corpus scan of examples/cases/experiments found four defaultValue occurrences, all direct Context.Reference calls rather than custom service DefaultMember uses; this is not a full historic compatibility audit. No VibeLang compiler admission/emission, source implementation or main landing is verified by this lane.
+
+### Detail 237
+
+**A provider-comma line break remains a recovered `provide` head.** (live `005-provide-head-recovery`; accepted VIP-12's one-line provider separators, details34/35/232; existing Appendix A `ProvideStatement`.) At a statement start, classify a head as recovered `provide` when it otherwise parses through its body-opening `{` and only the `[no LineTerminator here]` restriction immediately before or after one or more top-level provider-separating commas is violated. In this bounded recovery test, relax only those comma-adjacent restrictions; require the ordinary provider grammar, the no-line-break rule after `provide`, and the final provider's same-line body-opening `{`. The recovered head remains invalid and receives existing `EK1202` for the provider-separator line break on either side. It must not fall back to an ordinary identifier reading merely because that same separator restriction failed. This reconciles34's whole-head classifier with35's prescribed recovery; it admits no previously rejected program and allocates no code.
+    Status: landed on main e5fed6c44492 (commit 8b53f99a7095; spec-fix-c, queued as c539368f2810).
+
+    Valid heads and this bounded recovered-head class retain34's statement priority in any code. Outside Effect code, the existing `EK1201` placement rule still applies; do not use identifier fallback to evade either applicable rule. This adds no global reservation of `provide`, no speculative body search, and no recovery across other malformed providers or a missing same-line final block. A call without that body, element access, subtraction and an expression after `return` keep their existing TypeScript readings. This decision does not broaden recovery at a break immediately after `provide` or before the final block.
+
+    Breaks inside a provider expression remain native expression trivia, including commas nested in calls, arrays or objects. Only actual top-level list separators receive this treatment, using the grammar's existing lexical `LineTerminator` definition. Formatting never introduces such a separator break; use a parenthesized/composed provider such as `Layer.mergeAll(...)` for multiline composition. Preserve provider evaluation order, once-only evaluation, receiver/binding semantics and all native `Effect.provide` typing/runtime behavior; invalid recovered heads have no lowering or runtime counterpart.
+
+    ```vibe
+    effect function good() {
+      provide A, B { try work() }          // valid head
+      provide Layer.mergeAll(
+        A,
+        B) { try work() }                  // inner breaks remain valid
+    }
+    effect function badAfter() {
+      provide A,
+      B { try work() }                     // EK1202: separator break after comma
+    }
+    effect function badBefore() {
+      provide A
+      , B { try work() }                   // EK1202: separator break before comma
+    }
+    function ordinary(provide: (x: number) => number) {
+      return provide(1)                    // ordinary call; no statement head
+    }
+    ```
+
+    Effect TS: the valid first head is `yield* Effect.provide(Effect.gen(function* () { yield* work() }), [A, B])`; the multiline composed provider uses `yield* Effect.provide(Effect.gen(function* () { yield* work() }), Layer.mergeAll(A, B))`. Both rejected heads are compile errors and have no Effect TypeScript execution. `ordinary` is TypeScript as written. Decided by the agent from VIP-12's accepted one-line rule and principles4 (one separator rule, no before/after exception) and8 (retain the already-published rejection), 2026-10-30. Source005/AppendixA/publicVIP12 and the EK1202 row must name both sides and the bounded recovery; spec-fix-c owns that documentation slice, not decide-live. No compiler execution or implementation completion is asserted.
