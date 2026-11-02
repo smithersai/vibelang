@@ -1,0 +1,4 @@
+// expect: TS2540
+type Shape = { readonly value: string };
+service Port: Shape { static readonly key = "probe/Readonly" }
+function update(value: Shape) { value.value = "changed" }

@@ -102,7 +102,11 @@ effect function lookup(query: string) {
 // Output: > hit:vibe
 ```
 
-A written whole-shape annotation accepts any implementation type: an interface declared elsewhere, a primitive such as `string`, or a function type. `class Search extends Context.Service<Search, SearchApi>()("app/Search") {}` is the Effect TypeScript counterpart with the same explicit key. Keep layers and helpers in separate declarations beside the VibeLang service; declare implementation members in `SearchApi`. Read the implementation with `const search = try Search`, then run an Effect-returning member with `try search.find(q)`; `try Prefix` returns the string implementation. The type `Search` is the service's identifier, so type an implementation `SearchApi` or `Context.Service.Shape<typeof Search>`.
+Write `service Name: Type { … }` when the implementation has a type declared elsewhere, a primitive such as `string`, a function, or another TypeScript type. The annotation supplies the whole shape, preserving its name and modifiers. The required body admits only `static readonly key` and `static readonly defaultValue`; keep layers and helpers beside the declaration. The written type passes directly to `Context.Service<Name, Type>`, or `Context.Reference<Type>` for a default, without an extra shape helper or namespace.
+
+Read the implementation with `const search = try Search`, then run an Effect-returning member with `try search.find(q)`; `try Prefix` returns the string implementation. The type `Search` is the service's identifier; use `SearchApi` or `Context.Service.Shape<typeof Search>` for its implementation. Existing key, default, ambient and generic-capture rules apply.
+The Effect TypeScript counterpart, `class Search extends Context.Service<Search, SearchApi>()("app/Search") {}`, has the same explicit key.
+
 
 ## Requesting and supplying implementations
 

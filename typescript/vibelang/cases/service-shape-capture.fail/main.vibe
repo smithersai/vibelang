@@ -1,0 +1,24 @@
+// expect: EK3005 EK3005 EK3005 EK3005
+function direct<T>() {
+ service Port: T { static readonly key = "probe/GenericDirect" }
+ return Port
+}
+function aliased<T>() {
+ type Shape = { readonly value: T }
+ service Port: Shape { static readonly key = "probe/GenericAlias" }
+ return Port
+}
+function erased<T>() {
+ type Shape<U> = { readonly value: string }
+ service Port: Shape<T> { static readonly key = "probe/GenericErased" }
+ return Port
+}
+function captured<T>() {
+ const value = null as unknown as { readonly value: T }
+ service Port: typeof value { static readonly key = "probe/GenericTypeof" }
+ return Port
+}
+function concrete<T>() {
+ service Port: { identity<U>(value: U): U } { static readonly key = "probe/GenericIndependent" }
+ return Port
+}

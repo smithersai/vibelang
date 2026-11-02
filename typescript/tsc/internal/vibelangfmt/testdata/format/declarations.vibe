@@ -6,9 +6,9 @@ error Timeout
 export error Wrapped<T> { cause: T; mutable attempts: number }
 service Users { find(id: string): User!NotFound; region: string }
 service Approval { approve(request: string): boolean!! }
-export service Search:SearchApi {   static readonly layer = Layer.succeed(Search, searchApi) }
-service Prefix:   string
-service Format: (value: string) => string!!
+export service Search:SearchApi {   static readonly key = "app/Search" }
+service Prefix:   string {}
+service Format: (value: string) => string!! {}
 schema Account { id: string; nickname?: string; role: 'admin' | 'member' }
 export   schema Code='root_missing'|'read_failed';
 schema Point = {x: number, y?: number}

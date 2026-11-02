@@ -1,7 +1,7 @@
 // A provide block over a program whose requirement is a type parameter R
 // needs Exclude<R, Prefix>, as Effect.provideService gives it: a caller whose
 // program needs only Prefix needs nothing. The block needed R itself.
-service Prefix: string
+service Prefix: string {}
 
 export const withPrefix = effect <A, E, R>(body: A!E!R) => {
   provide Prefix = "> " {

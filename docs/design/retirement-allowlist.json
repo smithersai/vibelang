@@ -1289,11 +1289,18 @@
       "sources": [
         {
           "source": "main.vibe",
-          "tokensSha256": "d1c1631ddc752db303ab22dc09a42e1f8b31a7d23f8bdcbfddfdd42d5b9882dc"
+          "tokensSha256": "2521092b9e14c8adbc2fa95ad6451f7417d76817fa81ad175d40356237744c04"
         }
       ],
-      "tokensSha256": "d1c1631ddc752db303ab22dc09a42e1f8b31a7d23f8bdcbfddfdd42d5b9882dc",
+      "tokensSha256": "2521092b9e14c8adbc2fa95ad6451f7417d76817fa81ad175d40356237744c04",
       "configSha256": "4ca2423e2c1998779a3bf6663292772f9ce55e4fc79916421f0723c2b3f389c5"
+    },
+    "sourceMigration": {
+      "vip": "VIP-9",
+      "reference": "docs/design/vips/0009-service-declarations.md: accepted whole-shape amendment requires the body of service Name: Type { ... }.",
+      "previousTokensSha256": "d1c1631ddc752db303ab22dc09a42e1f8b31a7d23f8bdcbfddfdd42d5b9882dc",
+      "tokensSha256": "2521092b9e14c8adbc2fa95ad6451f7417d76817fa81ad175d40356237744c04",
+      "reason": "Add only the required empty body to the written function-shape service. Preserve both service-key argument rejections, their source locations and every other executable token."
     }
   },
   {

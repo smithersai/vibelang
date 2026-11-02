@@ -1,4 +1,4 @@
-service X: typeof X
-service Result: ReturnType<typeof Result>
-service Keys: keyof typeof Keys
-service Direct: Direct
+service X: typeof X {}
+service Result: ReturnType<typeof Result> {}
+service Keys: keyof typeof Keys {}
+service Direct: Direct {}

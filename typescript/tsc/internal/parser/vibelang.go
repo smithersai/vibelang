@@ -461,10 +461,10 @@ func (p *Parser) parseServiceDeclaration(pos int, jsdoc jsdocScannerInfo, modifi
 		p.vibelangServiceError(core.NewTextRange(scanner.SkipTrivia(p.sourceText, word.Pos()), name.End()), 906, VibeLangServiceBodyMessage) // EK0906
 	}
 	if control && p.parseExpected(ast.KindOpenBraceToken) || !control && p.parseOptional(ast.KindOpenBraceToken) {
-		saveAbstract, saveFieldBody, saveService, saveControl := p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangServiceMembers, p.vibelangControlMembers
-		p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangServiceMembers, p.vibelangControlMembers = true, true, !control, control
+		saveAbstract, saveFieldBody, saveService, saveControl, saveShapeBody := p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangServiceMembers, p.vibelangControlMembers, p.vibelangServiceShapeBody
+		p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangServiceMembers, p.vibelangControlMembers, p.vibelangServiceShapeBody = true, true, !control, control, false
 		members = p.parseList(PCClassMembers, (*Parser).parseClassElement)
-		p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangServiceMembers, p.vibelangControlMembers = saveAbstract, saveFieldBody, saveService, saveControl
+		p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangServiceMembers, p.vibelangControlMembers, p.vibelangServiceShapeBody = saveAbstract, saveFieldBody, saveService, saveControl, saveShapeBody
 		if p.token == ast.KindCloseBraceToken {
 			form.Close = p.tokenRange()
 		}

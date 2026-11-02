@@ -1,0 +1,16 @@
+import { Context } from "effect";
+export type Shape = { readonly value: string };
+export service Port: Shape { static readonly key = "probe/Port" }
+export type Implementation = Context.Service.Shape<typeof Port>;
+export service Prefix: string { static readonly key = "probe/Prefix" }
+export service Tuple: readonly [string, number] { static readonly key = "probe/Tuple" }
+export service Fn: (n: number) => string { static readonly key = "probe/Fn" }
+export type Union = string | number;
+export service Choice: Union { static readonly key = "probe/Choice" }
+export service Flags: Shape { static readonly key = "probe/Flags"; static readonly defaultValue = () => ({ value: "yes" }) }
+export service Counter: number { static readonly key = "probe/Counter"; static readonly defaultValue: () => number = () => 4 }
+export type DefaultShape = Context.Service.Shape<typeof Flags>;
+export service Legacy {
+ static readonly key = "probe/Legacy"
+ readonly value: string
+}

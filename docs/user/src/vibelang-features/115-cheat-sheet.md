@@ -134,7 +134,7 @@ service Users {
 }
 ```
 
-**Services of any shape**. Use Effect's `Context.Service` directly for a primitive or an existing interface. A `service` declaration writes its members out.
+**Services of any shape**. `service Name: Type { … }` uses the whole written type, including a primitive or an existing interface. The required body admits only `key` and `defaultValue`; `Name.Shape` resolves to that type.
 
 ```ts effect
 import { Context, Effect } from "effect"
@@ -150,8 +150,8 @@ class Prefix extends Context.Service<Prefix, string>()("app/Prefix") {}
 interface SearchApi {
   find(query: string): string!!
 }
-class Search extends Context.Service<Search, SearchApi>()("app/Search") {}
-class Prefix extends Context.Service<Prefix, string>()("app/Prefix") {}
+service Search: SearchApi { static readonly key = "app/Search" }
+service Prefix: string { static readonly key = "app/Prefix" }
 ```
 
 **Layers**. A layer is Effect's own call: `effect { ... }` is the second argument to `Layer.effect(Users, effect { ... })` and is its Effect, runs once when the layer builds, and returns members typed by the service. Without setup, write `Layer.succeed(Users, { ... })`.

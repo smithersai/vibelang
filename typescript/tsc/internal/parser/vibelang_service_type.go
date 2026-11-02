@@ -14,8 +14,8 @@ const ServiceShapeFactory = "$service"
 // parseServiceShapeDeclaration parses the rest of a service of any shape
 // (D281), from the colon after its name:
 //
-//	service Search: SearchApi { static readonly layer = Layer.succeed(Search, impl) }
-//	service Prefix: string
+//	service Search: SearchApi { static readonly key = "app/Search" }
+//	service Prefix: string {}
 //
 // as the abstract class
 //
@@ -26,8 +26,7 @@ const ServiceShapeFactory = "$service"
 // reads the shape there and gives the class the static side
 // Context.Service<Search, SearchApi> (vibelang/services.go); the lowering
 // replaces the clause with the key class, as for every service. The body is
-// optional and holds static members; the checker reports an instance member
-// there (EK9207). The recorded form's Head runs from the word through the
+// required and admits only the existing key/defaultValue members (EK0902). The recorded form's Head runs from the word through the
 // shape, and Right is the shape.
 func (p *Parser) parseServiceShapeDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList, word core.TextRange, name *ast.Node, typeParameters *ast.NodeList) *ast.Node {
 	colon := p.tokenRange()
@@ -38,15 +37,18 @@ func (p *Parser) parseServiceShapeDeclaration(pos int, jsdoc jsdocScannerInfo, m
 	if p.token == ast.KindOpenBraceToken {
 		form.Open = p.tokenRange()
 		p.nextToken()
-		saveAbstract, saveService, saveControl := p.vibelangAbstractMembers, p.vibelangServiceMembers, p.vibelangControlMembers
-		p.vibelangAbstractMembers, p.vibelangServiceMembers, p.vibelangControlMembers = true, true, false
+		saveAbstract, saveService, saveControl, saveFieldBody, saveShapeBody := p.vibelangAbstractMembers, p.vibelangServiceMembers, p.vibelangControlMembers, p.vibelangFieldBody, p.vibelangServiceShapeBody
+		p.vibelangAbstractMembers, p.vibelangServiceMembers, p.vibelangControlMembers, p.vibelangFieldBody, p.vibelangServiceShapeBody = true, true, false, false, true
 		members = p.parseList(PCClassMembers, (*Parser).parseClassElement)
-		p.vibelangAbstractMembers, p.vibelangServiceMembers, p.vibelangControlMembers = saveAbstract, saveService, saveControl
+		p.vibelangAbstractMembers, p.vibelangServiceMembers, p.vibelangControlMembers, p.vibelangFieldBody, p.vibelangServiceShapeBody = saveAbstract, saveService, saveControl, saveFieldBody, saveShapeBody
 		if p.token == ast.KindCloseBraceToken {
 			form.Close = p.tokenRange()
 		}
 		p.parseExpected(ast.KindCloseBraceToken)
 	} else {
+		if !p.isVibeLangAmbientService(modifiers) {
+			p.vibelangServiceError(name.Loc, 906, VibeLangServiceBodyMessage)
+		}
 		end := p.nodePos()
 		members = p.newNodeList(core.NewTextRange(end, end), nil)
 	}

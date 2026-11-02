@@ -408,3 +408,17 @@ test("retirement authorization keys are unique across approval records", () => {
     seen.add(key);
   }
 });
+
+test("service-key argument witness adds only the required whole-shape body",()=>{
+ const entries=JSON.parse(readFileSync(new URL("../design/retirement-allowlist.json",import.meta.url),"utf8"))
+ const entry=entries.find(e=>e.code==="EK9214"&&e.case==="typescript/vibelang/cases/service-key-call-arguments.fail")
+ const migration=entry.sourceMigration
+ assert.equal(migration.vip,"VIP-9")
+ const source=readFileSync(new URL("../../"+entry.case+"/main.vibe",import.meta.url),"utf8")
+ const before=source.replace("service Fn: (n: number) => number {}","service Fn: (n: number) => number")
+ assert.notEqual(before,source,"the function-shape service must have its required body")
+ assert.equal(executableDigest(before),migration.previousTokensSha256,"all prior executable tokens must remain")
+ assert.equal(executableDigest(source),migration.tokensSha256)
+ assert.equal(migration.tokensSha256,entry.identityOnly.tokensSha256)
+ assert.equal(source.split("\n")[0],"// expect: EK9214","both original argument rejections stay active")
+})

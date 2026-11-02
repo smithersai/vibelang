@@ -62,6 +62,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The plain catch handler example now uses the catch result directly while retaining throw errors and valid Effect-handler controls.
 
 - Differential tests for destructuring defaults could report TypeScript errors in unreachable result observers. The observers now remain valid after outward jumps.
+- A service with a written shape could omit its body or declare extra static members. It now requires a body containing only `key` and `defaultValue`, preserving its written shape and TypeScript declaration.
+
 - Ambient-declaration API checks loaded unrelated browser declarations. They now use fewer libraries while preserving isolated global and augmentation checks.
 
 - Conditional-export API checks loaded unrelated browser declarations. They now use fewer libraries while retaining export selection, sidecar and native type checks.
@@ -2092,6 +2094,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Tree-sitter showed a JSX member tag such as `<catch.Box/>` in a `.vibex` file as a syntax error; member tag names now follow JSX while keywords stay reserved in ordinary code.
 
 - `.vibex` files lacked editor syntax highlighting and filetype associations; VS Code and Cursor now use a TSX-derived grammar with VibeLang forms inside JSX containers, and Neovim and Zed select JSX-aware highlighting.
+
 
 - The ast-grep library and npm package kept only the original parser, omitting additional registered grammars; builds now include every parser in `tree-sitter.json`, and migration registers the `.vibex` parser when the installed compiler supplies it, with JSX-only rules kept on the JSX parser.
 

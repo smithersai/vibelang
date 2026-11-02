@@ -28,8 +28,8 @@ export interface SearchApi {
   find(query: string): string!!
 }
 
-export service Search: SearchApi
-export service Prefix: string
+export service Search: SearchApi {}
+export service Prefix: string {}
 
 // A member that names the file's own type Shape keeps naming it in the
 // declaration file, outside the service's namespace.

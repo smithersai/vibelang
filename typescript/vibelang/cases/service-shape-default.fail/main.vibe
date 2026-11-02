@@ -1,0 +1,5 @@
+// expect: TS2322
+service Counter: number {
+ static readonly key = "probe/BadDefault"
+ static readonly defaultValue = () => "wrong"
+}

@@ -1,8 +1,8 @@
 // expect: TS2322
 // A service of shape string is its own requirement: providing another
 // service of the same shape leaves it unprovided (D93, D281).
-service Primary: string
-service Replica: string
+service Primary: string {}
+service Replica: string {}
 
 effect function read() {
   return try Primary

@@ -139,10 +139,10 @@ func (p *Parser) parseErrorDeclaration(pos int, jsdoc jsdocScannerInfo, modifier
 		form.Open = p.tokenRange()
 		p.nextToken()
 		d.mutable = map[*ast.Node]bool{}
-		saveAbstract, saveFieldBody, saveReadonly, saveService := p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangImplicitReadonly, p.vibelangServiceMembers // an error inside a service body is not one of its members
+		saveAbstract, saveFieldBody, saveReadonly, saveService, saveShapeBody := p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangImplicitReadonly, p.vibelangServiceMembers, p.vibelangServiceShapeBody // an error inside a service body is not one of its members
 		// Payload keys gain readonly when their signatures are synthesized below.
 		// Nested types and method bodies keep TypeScript mutability (VIP-13/29).
-		p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangImplicitReadonly, p.vibelangServiceMembers = false, true, false, false
+		p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangImplicitReadonly, p.vibelangServiceMembers, p.vibelangServiceShapeBody = false, true, false, false, false
 		list := p.parseList(PCClassMembers, func(p *Parser) *ast.Node {
 			if p.vibelangNoSeparator {
 				return p.parseVibeLangNoSeparator()
@@ -157,7 +157,7 @@ func (p *Parser) parseErrorDeclaration(pos int, jsdoc jsdocScannerInfo, modifier
 			}
 			return element
 		})
-		p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangImplicitReadonly, p.vibelangServiceMembers = saveAbstract, saveFieldBody, saveReadonly, saveService
+		p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangImplicitReadonly, p.vibelangServiceMembers, p.vibelangServiceShapeBody = saveAbstract, saveFieldBody, saveReadonly, saveService, saveShapeBody
 		elements = list.Nodes
 		if p.token == ast.KindCloseBraceToken {
 			form.Close = p.tokenRange()

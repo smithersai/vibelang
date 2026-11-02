@@ -1,5 +1,5 @@
 // expect: EK9207
-service X: X
-service Typeof: typeof Typeof
-service Result: ReturnType<typeof Result>
-service Keys: keyof typeof Keys
+service X: X {}
+service Typeof: typeof Typeof {}
+service Result: ReturnType<typeof Result> {}
+service Keys: keyof typeof Keys {}

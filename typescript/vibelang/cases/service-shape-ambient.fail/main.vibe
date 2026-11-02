@@ -1,0 +1,6 @@
+// expect: EK0907 EK0907 EK0907
+declare service Direct: string {}
+declare namespace Ambient {
+ service Nested: string { static readonly key = "probe/Ambient" }
+ service Missing: number
+}

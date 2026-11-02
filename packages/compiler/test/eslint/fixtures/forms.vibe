@@ -136,9 +136,7 @@ interface SearchApi {
  * @category services
  * @since 0.0.2
  */
-export service Search: SearchApi {
-  static readonly layer = Layer.succeed(Search, { find: (query: string) => query })
-}
+export service Search: SearchApi {}
 
 /**
  * The text before every greeting.
@@ -146,7 +144,7 @@ export service Search: SearchApi {
  * @category services
  * @since 0.0.2
  */
-export service Prefix: string
+export service Prefix: string {}
 
 /**
  * An account.

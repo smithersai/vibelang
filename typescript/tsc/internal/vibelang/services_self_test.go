@@ -15,7 +15,7 @@ func TestServiceShapeShadowedNames(t *testing.T) {
 		"service X: string extends infer X ? X : never",
 	} {
 		t.Run(source, func(t *testing.T) {
-			p, file, _, _ := editorProgram(t, source)
+			p, file, _, _ := editorProgram(t, source+" {}")
 			for _, d := range p.GetSemanticDiagnostics(t.Context(), file) {
 				if d.Category() == diagnostics.CategoryError {
 					t.Errorf("unexpected diagnostic: %s", d.String())

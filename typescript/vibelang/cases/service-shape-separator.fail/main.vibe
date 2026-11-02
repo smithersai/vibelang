@@ -1,0 +1,2 @@
+// expect: EK0908
+service Counter: number { static readonly key = "probe/NoSeparator" static readonly defaultValue = () => 4 }

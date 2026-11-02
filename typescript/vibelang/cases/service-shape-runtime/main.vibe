@@ -1,0 +1,13 @@
+// expect-result: {"fallback":4,"override":7,"shape":"ready"}
+type Shape = { readonly value: string };
+service Port: Shape { static readonly key = "probe/RuntimePort" }
+service Counter: number {
+ static readonly key = "probe/RuntimeCounter"
+ static readonly defaultValue = () => 4
+}
+export effect function main() {
+ const fallback = try Counter
+ provide Port = { value: "ready" }, Counter = 7 {
+  return { fallback, override: try Counter, shape: (try Port).value }
+ }
+}

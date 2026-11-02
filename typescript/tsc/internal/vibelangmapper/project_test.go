@@ -474,7 +474,7 @@ var projectionCases = []struct {
 	},
 	{
 		name:    "a service of any shape is a brand and a key for its shape (D281)",
-		source:  "export service Search: SearchApi {\n  static readonly layer = live\n}\nservice Prefix: string\nservice Format: (value: string) => string!!\n",
+		source:  "export service Search: SearchApi {\n  static readonly layer = live\n}\nservice Prefix: string {}\nservice Format: (value: string) => string!! {}\n",
 		virtual: "export interface Search { readonly \"~vibelang/service\"?: \"app/src/main#Search\" } export abstract class Search extends $service<Search, SearchApi>(\"app/src/main#Search\") {\n  static readonly layer = live\n}\ninterface Prefix { readonly \"~vibelang/service\"?: \"app/src/main#Prefix\" } abstract class Prefix extends $service<Prefix, string>(\"app/src/main#Prefix\") {}\ninterface Format { readonly \"~vibelang/service\"?: \"app/src/main#Format\" } abstract class Format extends $service<Format, (value: string) => Effect.Effect<string, never, never>>(\"app/src/main#Format\") {}\n",
 	},
 	{
@@ -864,7 +864,7 @@ func TestExecutableEdits(t *testing.T) {
 // static default as a reference's.
 func TestExecutableServiceShape(t *testing.T) {
 	t.Parallel()
-	source := "service Prefix: string\nservice Version: number { static readonly defaultValue = () => 4 }\n"
+	source := "service Prefix: string {}\nservice Version: number { static readonly defaultValue = () => 4 }\n"
 	p := lower(source, testContext)
 	var texts []string
 	for _, e := range p.plan.edits {

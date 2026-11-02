@@ -1,0 +1,7 @@
+// expect: EK0902 EK0902 EK0902 EK0902 EK0902 EK0902
+service Fields: string { static readonly key = "probe/Fields"; value: string }
+service Static: string { static readonly key = "probe/Static"; static readonly extra = 1 }
+service Method: string { static readonly key = "probe/Method"; read(): string }
+service Ctor: string { static readonly key = "probe/Ctor"; constructor() {} }
+service Index: string { static readonly key = "probe/Index"; [k: string]: string }
+service Block: string { static readonly key = "probe/Block"; static {} }

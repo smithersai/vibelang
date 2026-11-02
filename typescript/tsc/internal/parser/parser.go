@@ -113,6 +113,7 @@ type Parser struct {
 	vibelangImplicitReadonly bool                           // inside a data, schema or error body, whose type members are readonly unless written mutable (vibelang.go)
 	vibelangSchemaBody       bool                           // declaration body (including nested object types) reports non-fields as EK1505
 	vibelangControlMembers   bool                           // legacy control properties keep their readonly default (vibelang.go)
+	vibelangServiceShapeBody bool                           // annotated service bodies use interface member separators
 	vibelangAbstractMembers  bool                           // bodiless class members become abstract: a service or control body (vibelang.go)
 	vibelangFieldBody        bool                           // an error, service, or control body supports recoverable field commas (vibelang_errors.go)
 	vibelangFieldComma       bool                           // a comma follows the field just parsed in such a body (vibelang_errors.go)
@@ -1986,10 +1987,10 @@ func (p *Parser) parseClassDeclarationOrExpression(pos int, jsdoc jsdocScannerIn
 	if p.parseExpected(ast.KindOpenBraceToken) {
 		// ClassTail[Yield,Await] : (Modified) See 14.5
 		//      ClassHeritage[?Yield,?Await]opt { ClassBody[?Yield,?Await]opt }
-		saveAbstract, saveFieldBody, saveService := p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangServiceMembers // a class inside a service body is not one (vibelang.go)
-		p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangServiceMembers = false, false, false
+		saveAbstract, saveFieldBody, saveService, saveShapeBody := p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangServiceMembers, p.vibelangServiceShapeBody // a class inside a service body is not one (vibelang.go)
+		p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangServiceMembers, p.vibelangServiceShapeBody = false, false, false, false
 		members = p.parseList(PCClassMembers, (*Parser).parseClassElement)
-		p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangServiceMembers = saveAbstract, saveFieldBody, saveService
+		p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangServiceMembers, p.vibelangServiceShapeBody = saveAbstract, saveFieldBody, saveService, saveShapeBody
 		p.parseExpected(ast.KindCloseBraceToken)
 	} else {
 		members = p.createMissingList()
@@ -2320,6 +2321,14 @@ func (p *Parser) parsePropertyDeclaration(pos int, jsdoc jsdocScannerInfo, modif
 }
 
 func (p *Parser) parseSemicolonAfterPropertyName(name *ast.Node, typeNode *ast.TypeNode, initializer *ast.Expression) {
+	if p.vibelangServiceShapeBody {
+		if p.parseOptional(ast.KindCommaToken) || p.tryParseSemicolon() {
+			return
+		}
+		p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, p.tokenRange(), "EK", diagnostics.CategoryError, 908, "Service members require a semicolon, comma or line break between them."))
+		p.hasParseError = true
+		return
+	}
 	if p.token == ast.KindAtToken && !p.hasPrecedingLineBreak() {
 		p.parseErrorAtCurrentToken(diagnostics.Decorators_must_precede_the_name_and_all_keywords_of_property_declarations)
 		return

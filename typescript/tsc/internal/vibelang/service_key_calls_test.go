@@ -10,7 +10,7 @@ import (
 )
 
 func TestServiceKeyCallQuickFix(t *testing.T) {
-	const source = "service Fn: (n: number) => number\nexport effect function f() { return Fn(3) }\n"
+	const source = "service Fn: (n: number) => number {}\nexport effect function f() { return Fn(3) }\n"
 	program, file, service, converters := editorProgram(t, source)
 	items := program.GetSemanticDiagnostics(t.Context(), file)
 	if len(items) != 1 || items[0].Source() != "EK" || items[0].Code() != EK9214.Code {

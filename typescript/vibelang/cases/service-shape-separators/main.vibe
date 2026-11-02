@@ -1,0 +1,10 @@
+// expect-result: [4,7]
+service First: number {
+ static readonly key = "probe/Comma", static readonly defaultValue = () => 4
+}
+service Second: number
+{
+ static readonly key = "probe/Newline"
+ static readonly defaultValue = () => 7,
+}
+export effect function main() { return [try First, try Second] }

@@ -116,19 +116,25 @@ func checkDeclarationMembers(c *checker.Checker, class *ast.Node) {
 	}
 }
 
-// checkShapeDeclarationMembers reports EK9207 for each instance member of a
-// service of any shape (D281), service Search: SearchApi { ... }: the shape
-// is the written type, so the body holds only static members, such as a
-// layer. A member without a body is reported too, since it adds nothing to
-// the shape.
+// checkShapeDeclarationMembers admits only the reserved key/defaultValue
+// properties of a whole-shape service. Specialized checks retain ownership
+// of malformed reserved headers, constructors and index signatures.
 func checkShapeDeclarationMembers(c *checker.Checker, class *ast.Node, shape *ast.Node) {
 	for _, member := range class.Members() {
-		if ast.HasStaticModifier(member) || member.Name() == nil {
+		if ast.IsSemicolonClassElement(member) || member.Kind == ast.KindConstructor || member.Kind == ast.KindIndexSignature {
 			continue
 		}
-		d := report(c, member.Name(), serviceImplementationMemberDiagnostic.With("{0} is an instance member, but service {1}: {2} takes its members from {2}."), scanner.GetTextOfNode(member.Name()), class.Name().Text(), scanner.GetTextOfNode(shape))
+		if serviceReservedMemberError(member) != nil || checkServiceLiteralKey(c, class, member) {
+			continue
+		}
+		if ast.IsPropertyDeclaration(member) && ast.IsStatic(member) &&
+			ast.HasSyntacticModifier(member, ast.ModifierFlagsReadonly) && member.Name() != nil &&
+			ast.IsIdentifier(member.Name()) && member.Name().Text() == "defaultValue" &&
+			member.Initializer() != nil && member.PostfixToken() == nil {
+			continue
+		}
+		report(c, member, EK0902.With("A service with a written shape admits only static readonly key and static readonly defaultValue; the annotation supplies the whole shape."))
 		cover(c, member)
-		note(d, "Declare the member in {0}, then provide its implementation in a layer.", scanner.GetTextOfNode(shape))
 	}
 }
 
@@ -159,7 +165,7 @@ func checkServiceDeclaration(c *checker.Checker, class *ast.Node) {
 		return
 	}
 	for _, member := range class.Members() {
-		if ast.IsStatic(member) && !serviceStaticMemberRejected(class, member) && member.Name() != nil && ast.IsIdentifier(member.Name()) && member.Name().Text() == "key" {
+		if serviceShape(class) == nil && ast.IsStatic(member) && !serviceStaticMemberRejected(class, member) && member.Name() != nil && ast.IsIdentifier(member.Name()) && member.Name().Text() == "key" {
 			if checkServiceLiteralKey(c, class, member) {
 				continue
 			}
@@ -201,7 +207,7 @@ func checkServiceDeclaration(c *checker.Checker, class *ast.Node) {
 		}
 	}
 	for _, member := range class.Members() {
-		if serviceStaticMemberRejected(class, member) {
+		if serviceShape(class) == nil && serviceStaticMemberRejected(class, member) {
 			report(c, member, serviceStaticMemberDiagnostic)
 			cover(c, member)
 			continue
@@ -211,7 +217,7 @@ func checkServiceDeclaration(c *checker.Checker, class *ast.Node) {
 			continue
 		}
 		if ast.IsStatic(member) {
-			if instance[memberName.Text()] && !(kind == serviceClass && serviceStaticIdentityMember(member)) {
+			if serviceShape(class) == nil && instance[memberName.Text()] && !(kind == serviceClass && serviceStaticIdentityMember(member)) {
 				note(report(c, memberName, EK9208, memberName.Text()), "Rename one: {0}.{1} would call the service member.", name, memberName.Text())
 			}
 			continue

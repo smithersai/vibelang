@@ -99,10 +99,10 @@ service Approval {
   approve(request: string): boolean!!
 }
 export service Search: SearchApi {
-  static readonly layer = Layer.succeed(Search, searchApi)
+  static readonly key = "app/Search"
 }
-service Prefix: string
-service Format: (value: string) => string!!
+service Prefix: string {}
+service Format: (value: string) => string!! {}
 schema Account {
   id: string
   nickname?: string

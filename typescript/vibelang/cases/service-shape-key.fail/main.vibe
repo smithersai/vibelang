@@ -1,0 +1,5 @@
+// expect: EK0901 EK0901 EK0901
+const prefix = "probe/"
+service MissingReadonly: string { static key = "probe/Readonly" }
+service Dynamic: string { static readonly key = prefix + "Dynamic" }
+service Template: string { static readonly key = `probe/Template` }

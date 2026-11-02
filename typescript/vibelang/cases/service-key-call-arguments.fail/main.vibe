@@ -3,7 +3,7 @@
 // VIP-10). Calling it with arguments is EK9214, in place of TypeScript's
 // TS2348, whose suggestion of new would be EK3003. (try Fn)(3) calls the
 // implementation.
-service Fn: (n: number) => number
+service Fn: (n: number) => number {}
 
 service Users {
   find(id: string): string!!

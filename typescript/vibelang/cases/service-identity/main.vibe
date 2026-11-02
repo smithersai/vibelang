@@ -23,8 +23,8 @@ export interface SearchApi {
 
 // Any type can be a shape: Search() is a SearchApi and Prefix() a string,
 // as Context.Service<Search, SearchApi> and Context.Service<Prefix, string>.
-service Search: SearchApi
-service Prefix: string
+service Search: SearchApi {}
+service Prefix: string {}
 
 class UsersInMemory implements Users {
   readonly region = "memory"

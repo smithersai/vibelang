@@ -1,6 +1,6 @@
-// expect: EK0902 EK0902 EK0902
-// The body of service Name: Type holds only static members (D281): the
-// shape is the type, so an instance member is EK0902, with or without a body.
+// expect: EK0902 EK0902 EK0902 EK0902
+// The body of service Name: Type admits only key and defaultValue (VIP-9): the
+// shape is the type, so another member is EK0902, with or without a body.
 interface SearchApi {
   find(query: string): string!!
 }

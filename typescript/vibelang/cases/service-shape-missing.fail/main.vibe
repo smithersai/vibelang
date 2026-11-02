@@ -1,0 +1,5 @@
+// expect: EK0906 EK0906
+service Missing: string
+
+// Preserve the former grammar-admission witness: a colon shape still needs its body.
+service Port: number;

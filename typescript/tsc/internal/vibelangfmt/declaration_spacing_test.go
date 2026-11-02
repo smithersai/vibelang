@@ -17,7 +17,7 @@ func TestDeclarationKeywordSpacing(t *testing.T) {
 		"schema   error   Oops{code:number}",
 		"service   Users{find():Effect<string>}",
 		"service   class   Users{find():Effect<string>}",
-		"service   Prefix:   string",
+		"service   Prefix:   string {}",
 		"data   Shape{Sq{s:number}}",
 		"layer   Live: Users { find() { return \"x\" } }",
 	} {

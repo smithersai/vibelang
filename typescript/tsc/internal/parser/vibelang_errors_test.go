@@ -45,6 +45,26 @@ func classMembers(class *ast.Node) []string {
 	return members
 }
 
+func assertErrorMatcherRegistration(t *testing.T, class *ast.Node, name string) {
+	t.Helper()
+	members := class.Members()
+	if len(members) == 0 || members[0].Kind != ast.KindClassStaticBlockDeclaration {
+		t.Fatal("missing leading matcher registration")
+	}
+	statements := members[0].AsClassStaticBlockDeclaration().Body.Statements()
+	if len(statements) != 1 || statements[0].Kind != ast.KindExpressionStatement {
+		t.Fatal("matcher registration must contain one call")
+	}
+	call := statements[0].Expression()
+	if call.Kind != ast.KindCallExpression || call.Expression().Text() != "$schemaErrorMatcher" {
+		t.Fatal("missing error matcher helper")
+	}
+	args := call.Arguments()
+	if len(args) != 3 || args[0].Kind != ast.KindThisKeyword || args[1].Text() != name || args[2].Kind != ast.KindTrueKeyword {
+		t.Fatal("matcher must register this class, its own tag and plain-error mode")
+	}
+}
+
 func TestErrorDeclarationRootKeepsClassMembers(t *testing.T) {
 	t.Parallel()
 	file := parseErrorSource(t, `export error Validated implements Coded {
@@ -70,6 +90,7 @@ func TestErrorDeclarationRootKeepsClassMembers(t *testing.T) {
 	if implements := ast.GetImplementsHeritageClauseElements(class); len(implements) != 1 {
 		t.Fatalf("got %d implements elements, want 1", len(implements))
 	}
+	assertErrorMatcherRegistration(t, class, class.Name().Text())
 	got := strings.Join(classMembers(class), "\n")
 	want := strings.Join([]string{
 		"ClassStaticBlockDeclaration synthesized",
@@ -96,6 +117,7 @@ export const after = 1`)
 	if call.Expression().Text() != "$errorSubclass" || call.Arguments()[0].Text() != "Base" || call.Arguments()[1].Text() != "Child" {
 		t.Fatalf("base: got %s(%s, %s)", call.Expression().Text(), call.Arguments()[0].Text(), call.Arguments()[1].Text())
 	}
+	assertErrorMatcherRegistration(t, class, class.Name().Text())
 	got := strings.Join(classMembers(class), "\n")
 	want := strings.Join([]string{
 		"ClassStaticBlockDeclaration synthesized",
@@ -107,6 +129,7 @@ export const after = 1`)
 	if got != want {
 		t.Fatalf("members:\n%s\nwant:\n%s", got, want)
 	}
+	assertErrorMatcherRegistration(t, file.Statements.Nodes[1], "Bare")
 	if got := strings.Join(classMembers(file.Statements.Nodes[1]), "\n"); got != "ClassStaticBlockDeclaration synthesized\nPropertyDeclaration _tag DeclareKeyword ReadonlyKeyword synthesized" {
 		t.Fatalf("a subclass without fields keeps its matcher registration and tag: got\n%s", got)
 	}

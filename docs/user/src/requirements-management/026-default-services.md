@@ -2,6 +2,8 @@
 
 Effect gives the clock, random generation, console output, configuration sources, and tracing live defaults. VibeLang uses them, so using these adds no application service requirement.
 
+`service Name: Type { static readonly defaultValue = () => value }` uses the written `Type` as the whole shape and checks the factory against `() => Type`. Its declaration is `Context.Reference<Type>`; the body admits only `key` and `defaultValue`.
+
 [Upstream page](https://effect.website/docs/v4/requirements-management/default-services)
 
 ## Using the clock, random, and console

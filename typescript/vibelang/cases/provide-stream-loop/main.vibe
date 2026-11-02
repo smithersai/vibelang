@@ -3,8 +3,8 @@
 // Prefix and lets Suffix escape to the caller; the checker panicked here
 // (index out of range in provideFlow) because the loop added its requirements
 // without a source.
-service Prefix: string
-service Suffix: string
+service Prefix: string {}
+service Suffix: string {}
 
 const decorated = Stream.mapEffect(Stream.make("a", "b"), effect (word) => `${try Prefix}${word}${try Suffix}`)
 

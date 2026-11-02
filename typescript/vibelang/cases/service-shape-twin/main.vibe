@@ -1,0 +1,4 @@
+import { Context } from "effect";
+export type Shape = { readonly value: string };
+service Port: Shape { static readonly key = "probe/Port" }
+export type Implementation = Context.Service.Shape<typeof Port>;

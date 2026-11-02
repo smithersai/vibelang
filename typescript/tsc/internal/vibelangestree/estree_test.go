@@ -73,7 +73,7 @@ var forms = map[string]string{
 	"fibers":         "function f(ids: string[]) { const t = fork read(); const all = await.all [read()]; for concurrent(2) (const id of ids) log(id); return join t }\n",
 	"match":          "function f(x: number) { match (x) { when 1: log(\"one\"); default: log(\"other\"); } }\n",
 	"hatches":        "function f(text: string) { return try((text) => JSON.parse(text), text) ?? throw new Gone({ id: text }) }\n",
-	"service shapes": "service Prefix: string\nexport service Search: SearchApi { static readonly layer = live }\n",
+	"service shapes": "service Prefix: string {}\nexport service Search: SearchApi { static readonly key = \"app/Search\" }\n",
 	"data":           dataFile,
 	"modules":        moduleFile,
 }
