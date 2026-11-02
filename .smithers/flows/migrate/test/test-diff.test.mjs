@@ -415,3 +415,17 @@ test("standard imported mock and directory functions retain their roles", () => 
   const b = a.replace('f.endsWith(".ts")', '(f.endsWith(".ts") || f.endsWith(".vibe")) && !f.endsWith(".d.vibe.ts")')
   assert.equal(check(a, b).ok, true)
 })
+
+test("a test-project bridge setup wrote is its own addition only with the bytes setup wrote", () => {
+  const scratch = mkdtempSync(join(tmpdir(), "test-diff-bridge-"))
+  const text = JSON.stringify({ extends: "../tsconfig.test.json" }, null, 2) + "\n"
+  const diff = (after, bridges) => verifyTestDiff({ ts, before: { "test/a.test.ts": "it(\"a\", () => {})\n" },
+    after: { "test/a.test.ts": "it(\"a\", () => {})\n", ...after }, renames: [], bridges, scratch })
+  try {
+    const bridges = [{ config: "test/tsconfig.json", text }]
+    assert.equal(diff({ "test/tsconfig.json": text }, bridges).ok, true)
+    assert.equal(diff({ "test/tsconfig.json": text }, []).ok, false, "an unrecorded config is a test edit")
+    assert.equal(diff({ "test/tsconfig.json": text.replace("test.json", "json") }, bridges).ok, false, "a bridge edited after setup is a test edit")
+    assert.equal(diff({ "test/tsconfig.json": text, "test/b.test.ts": "it(\"b\", () => {})\n" }, bridges).ok, false, "a bridge never excuses an added test")
+  } finally { rmSync(scratch, { recursive: true, force: true }) }
+})

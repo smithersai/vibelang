@@ -424,7 +424,12 @@ function selectGlob(glob, pats, root, file, options, globRoot) {
     ignore: options.exhaustive ? [] : ["**/node_modules/**"], ...glob.options })).filter(p => p !== file)
 }
 
-export function verifyTestDiff({ ts, before, after, renames, declarationImportStyle = "vibe", glob, scratch, cwd = ".", globRoot, parseVibe }) {
+/**
+ * bridges: the test-project configs setup wrote ({ config, text }). The diff
+ * runs from before setup, so each bridge is an added file; it is setup's own
+ * only while its bytes are the ones setup wrote.
+ */
+export function verifyTestDiff({ ts, before, after, renames, bridges = [], declarationImportStyle = "vibe", glob, scratch, cwd = ".", globRoot, parseVibe }) {
   renames = renames.filter(r => samePathRename(r) && Object.hasOwn(before, r.from) && !Object.hasOwn(after, r.from) && Object.hasOwn(after, r.to) && !Object.hasOwn(before, r.to))
   const result = { ok: true, files: [] }
   let trees
@@ -440,6 +445,7 @@ export function verifyTestDiff({ ts, before, after, renames, declarationImportSt
   try {
     for (const file of sorted(new Set([...Object.keys(before), ...Object.keys(after)]))) {
       if (!isProtectedFile(file) || before[file] === after[file] && Object.hasOwn(before, file) === Object.hasOwn(after, file)) continue
+      if (!Object.hasOwn(before, file) && bridges.some(bridge => bridge.config === file && bridge.text === after[file])) continue
       const entry = { file, ok: true, hunks: [] }
       result.files.push(entry)
       const reject = reason => { entry.ok = false; entry.hunks.push({ kind: "forbidden", reason }) }

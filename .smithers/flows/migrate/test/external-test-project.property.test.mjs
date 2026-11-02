@@ -5,7 +5,7 @@ import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { test } from "node:test"
 import { wireTestProjects } from "../lib/test-projects.mjs"
-import { makeConfig, paths, setup } from "../lib/steps.mjs"
+import { makeConfig, paths, setup, testEdits } from "../lib/steps.mjs"
 import * as Jj from "../lib/jj.mjs"
 import { must, writeJson } from "../lib/util.mjs"
 import corpus from "./corpus/foldkit-external-test-project.json" with { type: "json" }
@@ -114,6 +114,9 @@ test("foldkit MCP: actual setup records the external test-project bridge without
     assert.ok(stages.at(-1).projects[0].optionsHash)
     assert.deepEqual(readFileSync(join(f.root, f.file)), protectedBytes)
     assert.ok(JSON.parse(readFileSync(p.setup)).wired.changed.includes("test/tsconfig.json"))
+    // Verify diffs tests from before setup (detail 272): the bridge setup wrote is not a test edit.
+    const diff = await testEdits(JSON.parse(readFileSync(p.config)), p, undefined, "01", ts)
+    assert.equal(diff.ok, true, JSON.stringify(diff.files))
   } finally { rmSync(f.root, { recursive: true, force: true }) }
 })
 

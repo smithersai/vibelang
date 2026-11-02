@@ -109,7 +109,7 @@ export function wireTestProjects({ root, packages, ts }) {
       throw new Error(config + ": generated test project did not preserve " + chosen.file + "'s options and complete file membership")
     }
     changed.push(config)
-    projects.push({ config, extends: chosen.file, files, previous,
+    projects.push({ config, extends: chosen.file, text, files, previous,
       optionsHash: hash(JSON.stringify(canonical(optionsOf(bridge)))), programHash: hash(identityOf(bridge)),
       programFiles: [...bridge.files].map(file => posix.relative(root, file)).sort() })
   }

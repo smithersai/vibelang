@@ -1002,7 +1002,9 @@ export async function wireTarget(config, log) {
   changed.push(...emittedImports.changed.filter(file => !changed.includes(file)))
   const existingVibe = await formatExistingVibe(config, join(log, "setup-format-vibe.log"))
   if (existingVibe.code !== 0) warnings.push(`vibelang-format exited ${existingVibe.code} on the repository's .vibe files; see ${join(log, "setup-format-vibe.log")}`)
-  return { manager, typecheck, declarationRedirects, emittedImports, sidecarDir, formattedVibe: existingVibe.files, specs: Object.fromEntries(packages.map((pkg) => [pkg.dir, specsFor(pkg.dir)])), viteConfigs: vite.configs, viteAppConfigs: apps.configs, nativeViteConfigs: apps.nativeConfigs ?? [], knipConfig: knip.config, formatted, changed, warnings, install }
+  return { manager, typecheck, declarationRedirects, emittedImports, sidecarDir, formattedVibe: existingVibe.files, specs: Object.fromEntries(packages.map((pkg) => [pkg.dir, specsFor(pkg.dir)])), viteConfigs: vite.configs, viteAppConfigs: apps.configs, nativeViteConfigs: apps.nativeConfigs ?? [], knipConfig: knip.config,
+    // Each test-project bridge setup wrote, with its exact text, which verify's test diff accepts as setup's own.
+    testProjects: testProjects.projects.map(({ config, text }) => ({ config, text })), formatted, changed, warnings, install }
 }
 
 /**
@@ -1643,6 +1645,7 @@ export async function testEdits(config, p, plan, b, ts) {
   return verifyRepositoryTests({
     ts, target: config.target,
     base: setup?.jj?.upgradeCommit ?? setup?.jj?.setupCommit ?? "@-",
+    bridges: setup?.wired?.testProjects ?? [],
     renames, directories: [config.target, ...config.packages.map(pkg => join(config.target, pkg.dir))],
     scratch: p.batch(b), cwd: config.test.cwd, globRoot: config.test.globRoot,
     parseVibe: vibeParser(() => compilerOf(config))
