@@ -25,7 +25,7 @@ effect function block() {
     using syncResource = try sync((e: string[]) => disposable("sync", e), events)
     using asyncResource = try sync((e: string[]) => asyncDisposable("async", e), events)
     events.push("body")
-    try yieldNow()
+    try yieldNow
   }
   events.push("after")
   return events
@@ -35,11 +35,11 @@ effect function loops() {
   const events: string[] = []
   for (using resource of try sync((e: string[]) => [disposable("s1", e), disposable("s2", e)], events)) {
     events.push("sync body")
-    try yieldNow()
+    try yieldNow
   }
   for (using resource of try sync((e: string[]) => [asyncDisposable("a1", e), asyncDisposable("a2", e)], events)) {
     events.push("async body")
-    try yieldNow()
+    try yieldNow
   }
   events.push("after")
   return events

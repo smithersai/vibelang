@@ -13,13 +13,13 @@ error NotFound { id: string }
 error Bad { cause: unknown }
 
 effect function find(id: string) {
-  try yieldNow()
+  try yieldNow
   if (id === "missing") throw new NotFound({ id })
   return id
 }
 
 effect function double(n: number) {
-  try yieldNow()
+  try yieldNow
   return n * 2
 }
 

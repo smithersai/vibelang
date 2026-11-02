@@ -12,7 +12,7 @@
 error Missing { id: number }
 
 effect function load(n: number) {
-  try yieldNow()
+  try yieldNow
   return n
 }
 

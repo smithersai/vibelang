@@ -5,6 +5,6 @@ export effect function main() {
   const r = record()
   const before = forkedCount()
   recordCounted()
-  try yieldNow()
+  try yieldNow
   return { record: typeof r, before, after: forkedCount() }
 }

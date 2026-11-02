@@ -1,0 +1,10 @@
+// expect-result: [true,true,true]
+import { Effect as Native } from "effect"
+const stop: typeof Native.interrupt = interrupt
+const pause: typeof Native.yieldNow = yieldNow
+export effect function main() {
+  try pause
+  const stopped = try Native.exit(stop)
+  return [stop === Native.interrupt, pause === Native.yieldNow,
+    Exit.isFailure(stopped) && Cause.hasInterrupts(stopped.cause)]
+}

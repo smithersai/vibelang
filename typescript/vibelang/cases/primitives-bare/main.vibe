@@ -11,14 +11,14 @@ effect function exitTag() {
 }
 
 effect function yielded() {
-  try yieldNow()
-  try yieldNow(5)
+  try yieldNow
+  try Effect.yieldNowWith(5)
   return true
 }
 
 effect function interrupted() {
   const fiber = fork effect {
-    try interrupt()
+    try interrupt
   }
   return (try exit(fiber.join()))._tag === "Failure"
 }

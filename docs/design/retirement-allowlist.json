@@ -1778,5 +1778,25 @@
       "reference": "docs/design/vips/0040-module-declarations.md: Status: accepted, 2026-11-03. Will: \"Are you asking me if I accept a vip I already asked you to add?\" Replaces denied [VIP-25](0025-inline-modules-denied.md). See the restricted syntax and module-name binding rules. This cites existing explicit acceptance, not a new approval."
     },
     "reason": "Accepted VIP-40 makes a module name a lexical binding: a second module of the same name, or a module beside a value binding, is the error EK4005. This fixture witnesses Appendix B’s EK4408 retirement sentence. Choosing which binding to rename can change identity or API, so no automatic rename is asserted."
+  },
+  {
+    "code": "TS2345",
+    "case": "typescript/vibelang/cases/pipe-legacy-aliased.fail",
+    "vip": "VIP-6",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0006-effect-globals.md: accepted by Will (2026-10-28); every value export of effect's Effect module is a global, and chapter 005 and VIP-33 name bare interrupt and yieldNow as those native values, retiring the runtime's wrappers"
+    },
+    "reason": "Fixture port for the native yield value: the case wrote the retired runtime wrapper call try yieldNow() and now writes the Effect value try yieldNow. It rejects the same rule as before; no new rejected form is added."
+  },
+  {
+    "code": "TS2850",
+    "case": "typescript/vibelang/cases/scopes-using-not-disposable.fail",
+    "vip": "VIP-6",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0006-effect-globals.md: accepted by Will (2026-10-28); every value export of effect's Effect module is a global, and chapter 005 and VIP-33 name bare interrupt and yieldNow as those native values, retiring the runtime's wrappers"
+    },
+    "reason": "Fixture port for the native yield value: the case wrote the retired runtime wrapper call try yieldNow() and now writes the Effect value try yieldNow. It rejects the same rule as before; no new rejected form is added."
   }
 ]

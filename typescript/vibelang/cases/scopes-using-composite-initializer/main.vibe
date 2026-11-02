@@ -55,7 +55,7 @@ effect function acquire(events: string[]) {
 }
 
 effect function keep<A>(value: A) {
-  try yieldNow()
+  try yieldNow
   return value
 }
 
@@ -104,13 +104,13 @@ effect function forHead(events: string[]): void!! {
 }
 
 effect function step<A>(events: string[], name: string, value: A) {
-  try yieldNow()
+  try yieldNow
   events.push(name)
   return value
 }
 
 effect function pick<A>(first: unknown, value: A, last: unknown) {
-  try yieldNow()
+  try yieldNow
   return value
 }
 

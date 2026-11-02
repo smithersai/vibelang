@@ -23,7 +23,7 @@ effect function array(reverse: boolean) {
   const events: string[] = []
   outer: inner: for (using x of [disposable(events), disposable(events)]) {
     events.push("body")
-    try yieldNow()
+    try yieldNow
     if (events.length < 2) {
       if (reverse) continue inner
       continue outer
@@ -38,7 +38,7 @@ effect function iterator(reverse: boolean) {
   const events: string[] = []
   outer: inner: for (using x of try sync((e: string[]) => elements(e), events)) {
     events.push("body")
-    try yieldNow()
+    try yieldNow
     if (events.length < 2) {
       if (reverse) continue inner
       continue outer
@@ -54,7 +54,7 @@ effect function producer(reverse: boolean) {
   outer: inner: for try (const item of produce(events)) {
     using x = item
     events.push("body")
-    try yieldNow()
+    try yieldNow
     if (events.length < 2) {
       if (reverse) continue inner
       continue outer
@@ -70,7 +70,7 @@ effect function stream(reverse: boolean) {
   outer: inner: for try (const item of Stream.ensuring(Stream.fromIterable([disposable(events), disposable(events)]), effect { events.push("closed") })) {
     using x = item
     events.push("body")
-    try yieldNow()
+    try yieldNow
     if (events.length < 2) {
       if (reverse) continue inner
       continue outer
@@ -85,7 +85,7 @@ effect function cStyle() {
   const events: string[] = []
   outer: inner: for (using h = disposable(events); ;) {
     events.push("body")
-    try yieldNow()
+    try yieldNow
     if (events.length < 2) continue outer
     break inner
   }
@@ -98,7 +98,7 @@ effect function nested() {
     i++
     inner: innerAlias: for (using y of try sync((e: string[]) => elements(e), events)) {
       events.push("body")
-      try yieldNow()
+      try yieldNow
       if (i === 1) continue outer
       break alias
     }

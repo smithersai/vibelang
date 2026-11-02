@@ -27,7 +27,7 @@ effect function array(ending: string) {
     for (using x of [disposable(events, "x1"), disposable(events, "x2")]) {
       using local = disposable(events, "local")
       events.push("body")
-      try yieldNow()
+      try yieldNow
       if (ending === "failure") throw new Bad()
       if (ending === "defect") try Effect.die("boom")
       if (ending === "break") break
@@ -61,7 +61,7 @@ effect function iterator(ending: string) {
     for (using x of try sync((e: string[]) => elements(e), events)) {
       using local = disposable(events, "local")
       events.push("body")
-      try yieldNow()
+      try yieldNow
       if (ending === "failure") throw new Bad()
       if (ending === "defect") try Effect.die("boom")
       if (ending === "break") break
@@ -96,7 +96,7 @@ effect function producer(ending: string) {
       using x = item
       using local = disposable(events, "local")
       events.push("body")
-      try yieldNow()
+      try yieldNow
       if (ending === "failure") throw new Bad()
       if (ending === "defect") try Effect.die("boom")
       if (ending === "break") break
@@ -132,7 +132,7 @@ effect function stream(ending: string) {
       using x = item
       using local = disposable(events, "local")
       events.push("body")
-      try yieldNow()
+      try yieldNow
       if (ending === "failure") throw new Bad()
       if (ending === "defect") try Effect.die("boom")
       if (ending === "break") break
@@ -167,7 +167,7 @@ effect function concurrent(ending: string) {
     for concurrent(1) (const i of [1, 2]) {
       using item = disposable(events, "x" + i)
       events.push("body")
-      try yieldNow()
+      try yieldNow
       if (ending === "failure") throw new Bad()
       if (ending === "defect") try Effect.die("boom")
       if (ending === "continue") continue

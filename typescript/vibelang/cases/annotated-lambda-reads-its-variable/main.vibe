@@ -30,6 +30,6 @@ const counted = Countdown.body({ n: 3 }).value
 
 // expect-result: ["countdown",3]
 export effect function main() {
-  try yieldNow()
+  try yieldNow
   return [Countdown.name, counted]
 }

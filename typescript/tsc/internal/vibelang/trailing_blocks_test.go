@@ -205,7 +205,7 @@ func TestTrailingBlockSkipsTheLayerDeclaration(t *testing.T) {
 // fork { … } is fork's own block (D166), which the parser reads apart
 // from block params, so it draws no EK1101.
 func TestTrailingBlockLeavesForkBlocks(t *testing.T) {
-	errors := errorsOf(t, "export effect function f() { const g = fork { try yieldNow(); return 1 }; return join g }")
+	errors := errorsOf(t, "export effect function f() { const g = fork { try yieldNow; return 1 }; return join g }")
 	for _, d := range errors {
 		if d.Code() == EK1101.Code {
 			t.Fatalf("fork { … } reports EK1101: %v", errors)

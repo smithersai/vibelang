@@ -4,7 +4,7 @@
 // (D401): using owns its value's disposal. Scope in the requirements lets
 // using bind a value it cannot dispose, which the acquisition releases.
 effect function count() {
-  try yieldNow()
+  try yieldNow
   return 5
 }
 

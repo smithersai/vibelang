@@ -439,7 +439,7 @@ type (
 	ErrField struct{ Var, Field string }
 	// Join is `join f` (Ch 7, D225), only as a Let's initializer.
 	Join struct{ Fiber string }
-	// YieldNow is the prelude's `yieldNow()` (Ch 1 prelude, D151).
+	// YieldNow is the native prelude value `yieldNow` (Ch 1 prelude, D151).
 	YieldNow struct{}
 	// ExitTag is `exit(() => Call)._tag` (Ch 3: exit gives an Exit as data).
 	ExitTag struct{ Call Expr }

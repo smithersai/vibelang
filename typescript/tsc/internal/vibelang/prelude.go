@@ -113,8 +113,6 @@ var preludeModules = map[string]string{
 	// functions, the functions an interruption block calls, and the names the
 	// parser writes for a catch clause typed Cause, finally (exit), and the
 	// interruption blocks' markers.
-	"interrupt":             runtimeModule,
-	"yieldNow":              runtimeModule,
 	"uninterruptible":       runtimeModule,
 	"restore":               runtimeModule,
 	"interruptible":         runtimeModule,

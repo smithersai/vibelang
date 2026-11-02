@@ -15,7 +15,7 @@ function replaced() {
 }
 
 effect function framed() {
-  try yieldNow()
+  try yieldNow
   try {
     try { throw new First() }
     finally { throw new Cleanup() }

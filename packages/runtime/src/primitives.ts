@@ -52,13 +52,6 @@ export const $finallyExit = <A, E, R, X, E2, R2>(
 ): Effect.Effect<A, E | E2, R | R2> =>
   Effect.onExit(self, (exit) => Effect.asVoid(finalizer(Exit.isSuccess(exit) ? Exit.void : exit as Exit.Exit<never, E>)))
 
-/** Bare `interrupt()` (D179): interrupts the running fiber, as Effect.interrupt. */
-export const interrupt = (): Effect.Effect<never> => Effect.interrupt
-
-/** Bare `yieldNow()` (D179): yields to the scheduler, with an optional priority. */
-export const yieldNow = (priority?: number): Effect.Effect<void> =>
-  priority === undefined ? Effect.yieldNow : Effect.yieldNowWith(priority)
-
 type Restore = <A, E, R>(program: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
 
 /** The restore of the innermost uninterruptible region a fiber runs in. */

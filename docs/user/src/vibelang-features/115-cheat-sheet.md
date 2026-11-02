@@ -505,7 +505,7 @@ if (result._tag === "Failure") yield* Effect.interrupt
 effect function outcome() {
   const result = try exit(getUser("1"))
   try yieldNow
-  if (result is Exit.Failure) try interrupt()
+  if (result is Exit.Failure) try interrupt
   return result
 }
 // Output: Success

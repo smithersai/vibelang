@@ -1,1 +1,1 @@
-interrupt is a program, and this statement discards it without running it.
+interrupt is an Effect value, and this statement discards it without running it.

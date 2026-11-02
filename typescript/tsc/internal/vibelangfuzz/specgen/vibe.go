@@ -535,11 +535,11 @@ func (v *vibePrinter) stmt(s Stmt) {
 		w.indent++
 		w.line("Deferred.succeed(%s, undefined)", ready)
 		v.stmts(s.Masked)
-		w.line("yieldNow()")
+		w.line("try yieldNow")
 		v.stmts(s.Masked)
 		if s.Restore {
 			w.line("restore {")
-			w.line("  yieldNow()")
+			w.line("  try yieldNow")
 			w.line("  trace.push(%q)", s.Fiber+":restored")
 			w.line("}")
 		}
@@ -949,7 +949,7 @@ func (v *vibePrinter) expr(x Expr) string {
 	case *Join:
 		return "join " + v.name(x.Fiber)
 	case *YieldNow:
-		return "yieldNow()"
+		return "try yieldNow"
 	case *ExitTag:
 		return "exit(() => " + v.expr(x.Call) + ")._tag"
 	case *TagOf:

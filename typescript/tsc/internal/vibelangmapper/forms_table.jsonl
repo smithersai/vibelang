@@ -1373,9 +1373,7 @@
 {"alias":"prelude#head","to":"effect/Effect#head"}
 {"alias":"prelude#hole","to":"effect/Function#hole"}
 {"alias":"prelude#identity","to":"effect/Function#identity"}
-{"alias":"prelude#ignore","to":"effect/Effect#ignore"}
-{"alias":"prelude#ignoreCause","to":"effect/Effect#ignoreCause"}
-{"alias":"prelude#interrupt","to":"vibelang-runtime#interrupt"}
+{"alias":"prelude#interrupt","to":"effect/Effect#interrupt"}
 {"alias":"prelude#interruptible","to":"vibelang-runtime#interruptible"}
 {"alias":"prelude#interruptibleMask","to":"effect/Effect#interruptibleMask"}
 {"alias":"prelude#isEffect","to":"effect/Effect#isEffect"}
@@ -11213,7 +11211,6 @@
 {"key":"vibelang-runtime#fork","sigs":[{"n":"0-2","p":["P"],"sf":1,"r":"effect/Effect"}]}
 {"key":"vibelang-runtime#forkIn","sigs":[{"n":"2","p":["","P"],"r":"effect/Effect","ra":"effect/Fiber"}]}
 {"key":"vibelang-runtime#handle","sigs":[{"n":"3","p":["P","",{"a":"E"}],"df":1,"r":"effect/Effect"},{"n":"4","p":["P","",{"a":"E"},"E"],"df":1,"r":"effect/Effect"}]}
-{"key":"vibelang-runtime#interrupt","sigs":[{"n":"0","r":"effect/Effect"}]}
 {"key":"vibelang-runtime#interruptible","sigs":[{"n":"1","p":["P"],"df":1,"r":"effect/Effect"}]}
 {"key":"vibelang-runtime#join","sigs":[{"n":"1","r":"effect/Effect"}]}
 {"key":"vibelang-runtime#restore","sigs":[{"n":"1","p":["P"],"df":1,"r":"effect/Effect"}]}
@@ -11224,7 +11221,6 @@
 {"key":"vibelang-runtime#trusted","sigs":[{"n":"2","p":["F"]}]}
 {"key":"vibelang-runtime#uninterruptible","sigs":[{"n":"1","p":["P"],"df":1,"r":"effect/Effect"}]}
 {"key":"vibelang-runtime#wire","sigs":[{"n":"0-1+","r":"effect/Layer"}]}
-{"key":"vibelang-runtime#yieldNow","sigs":[{"n":"0-1","r":"effect/Effect"}]}
 {"key":"vibelang-runtime/kernel#AbandonedContinuationContinued.captureStackTrace","sigs":[{"n":"1-2","p":["",{"t":"F","p":{"apply":"F","bind":"F","call":"F","caller":"F"}}]}]}
 {"key":"vibelang-runtime/kernel#ContinuationAlreadyConsumed.captureStackTrace","sigs":[{"n":"1-2","p":["",{"t":"F","p":{"apply":"F","bind":"F","call":"F","caller":"F"}}]}]}
 {"key":"vibelang-runtime/kernel#ContinuationWrongFiber.captureStackTrace","sigs":[{"n":"1-2","p":["",{"t":"F","p":{"apply":"F","bind":"F","call":"F","caller":"F"}}]}]}

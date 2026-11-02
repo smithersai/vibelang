@@ -2,7 +2,7 @@
 class Counter {
   n = 0
   build(offset: number) {
-    return effect { this.n++; try yieldNow(); return offset + this.n }
+    return effect { this.n++; try yieldNow; return offset + this.n }
   }
 }
 export effect function main() {

@@ -104,7 +104,6 @@ export const {
   forkIn,
   handle,
   handoff,
-  interrupt,
   interruptible,
   join,
   pipe,
@@ -121,6 +120,5 @@ export const {
   trusted,
   uninterruptible,
   wire,
-  yieldNow,
 } = abi
 

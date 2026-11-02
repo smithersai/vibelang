@@ -155,7 +155,7 @@ effect function awaitAnyMixed() {
 
 effect function interruptThenFinallyThrows() {
   try {
-    try interrupt()
+    try interrupt
   } finally {
     throw new E()
   }

@@ -22,7 +22,7 @@
 // that reruns each time it runs (VIP-2). Outside those positions effect is
 // an identifier.
 effect function double(n: number) {
-  try yieldNow()
+  try yieldNow
   return n * 2
 }
 
@@ -32,7 +32,7 @@ effect function triple(n: number) {
 
 class Greeter {
   effect greet(name: string) {
-    try yieldNow()
+    try yieldNow
     return name + "!"
   }
 }

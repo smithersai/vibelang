@@ -177,10 +177,10 @@ export type Shape = typeof Shape.Type
 // normalized VIP migration must succeed without reporting a state cycle.
 func TestFixVIPOnlyUnchangedOverlay(t *testing.T) {
 	for _, source := range []string{
-		"function double(n: number) { return n * 2 }\nexport effect function main() { try yieldNow(); return double(2) }\n",
-		"function triple(n: number): number { return n * 3 }\nexport effect function main() { try yieldNow(); return triple(2) }\n",
-		"const halve = (n: number): number => n / 2\nexport effect function main() { try yieldNow(); return halve(2) }\n",
-		"export effect function main() { try yieldNow(); return 1 }\n",
+		"function double(n: number) { return n * 2 }\nexport effect function main() { try yieldNow; return double(2) }\n",
+		"function triple(n: number): number { return n * 3 }\nexport effect function main() { try yieldNow; return triple(2) }\n",
+		"const halve = (n: number): number => n / 2\nexport effect function main() { try yieldNow; return halve(2) }\n",
+		"export effect function main() { try yieldNow; return 1 }\n",
 	} {
 		_, file, _, _ := editorProgram(t, source)
 		fs := bundled.WrapFS(osvfs.FS())

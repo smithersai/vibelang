@@ -18,13 +18,13 @@ import { asyncResource } from resources
 const events: string[] = []
 
 effect function openSync(name: string) {
-  try yieldNow()
+  try yieldNow
   events.push(`open ${name}`)
   return { [Symbol.dispose](): void { events.push(`dispose ${name}`) } }
 }
 
 effect function openAsync(name: string) {
-  try yieldNow()
+  try yieldNow
   events.push(`open ${name}`)
   return try sync((n: string, log: string[]) => asyncResource(n, log), name, events)
 }

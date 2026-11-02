@@ -5,7 +5,7 @@
 error Bad { cause: unknown }
 
 export effect function main() {
-  try yieldNow()
+  try yieldNow
   const n = try((text: string) => JSON.parse(text), (cause) => new Bad({ cause }), "1")
   const m = try(async () => 1)
   return [n, m]

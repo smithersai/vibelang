@@ -4,9 +4,9 @@
 import { all as $tryAllEffects } from "effect/Effect"
 import { $global as $tryGlobals } from "vibelang-runtime"
 import { map as $tryMapResults } from "effect/Effect"
-effect function one() { try yieldNow(); return 1 }
-effect function two() { try yieldNow(); return 2 }
-effect function work() { try yieldNow(); return { y: 7 } }
+effect function one() { try yieldNow; return 1 }
+effect function two() { try yieldNow; return 2 }
+effect function work() { try yieldNow; return { y: 7 } }
 
 // expect-result: {"count":2,"second":2,"field":2,"winner":"1","joined":7}
 export effect function main() {

@@ -8,7 +8,7 @@ function plain(n: number) {
 }
 
 export effect function main() {
-  try yieldNow()
+  try yieldNow
   const a = try plain(1)
   const b = try 42
   const c = try retry(try sleep("1 millis"), Schedule.recurs(1))

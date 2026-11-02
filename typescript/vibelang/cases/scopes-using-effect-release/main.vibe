@@ -17,12 +17,12 @@ function handle(name: string) {
 }
 
 effect function unscoped(name: string) {
-  try yieldNow()
+  try yieldNow
   return handle(name)
 }
 
 effect function lease(name: string): Disposable!!Scope {
-  try yieldNow()
+  try yieldNow
   return handle(name)
 }
 

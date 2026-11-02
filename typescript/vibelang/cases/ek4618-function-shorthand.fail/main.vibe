@@ -1,9 +1,9 @@
-// expect: EK0101
+// expect: EK0101 EK0404
 // effect goes exactly where TypeScript allows async (VIP-39): a declaration
 // keeps function. The shorthand VIP-1 had is EK0101, whose quick fix writes
 // function before the name.
 effect double(n: number) {
-  try yieldNow()
+  try yieldNow
   return n * 2
 }
 

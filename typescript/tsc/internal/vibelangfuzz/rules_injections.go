@@ -45,7 +45,7 @@ var (
 )
 
 // Retired targets remain retired; quotes follow current chapters.
-const loadDecl = "effect function load$$() { try yieldNow(); return 1; }"
+const loadDecl = "effect function load$$() { try yieldNow; return 1; }"
 
 var ruleInjections = []*ruleInjection{
 	{Code: 1101, Name: "trailing-block", Chapter: "007-tooling.md", Quote: "| `EK1101` | A rejected trailing block | Pass the block as the last argument:", Slots: top,

@@ -24,8 +24,8 @@ import (
 // interruption block is a block whose first statement calls a marker, such as
 // $uninterruptibleBlock(); the lowering runs the rest as a region under the
 // prelude's uninterruptible, restore, or interruptible, the functions that
-// `uninterruptible(program)` also calls. interrupt(), exit(program), and
-// yieldNow() are bare functions (effectroot.go, the runtime's primitives).
+// `uninterruptible(program)` also calls. Bare interrupt and yieldNow are
+// native Effect values; exit(program) is a native Effect function.
 
 func init() {
 	registry[EK2111.Code] = EK2111

@@ -80,7 +80,7 @@ function plainOk(): number {
 }
 
 effect function framed() {
-  try yieldNow()
+  try yieldNow
   for (const n of new Counted(true)) crash("body")
   return 0
 }

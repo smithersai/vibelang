@@ -103,7 +103,7 @@ effect function cancelBatch() {
     try ensuring(effect {
       if (id === 2) {
         try sleep("10 millis")
-        try interrupt()
+        try interrupt
       }
       try sleep("1 second")
     }, Console.log("branch finished"))

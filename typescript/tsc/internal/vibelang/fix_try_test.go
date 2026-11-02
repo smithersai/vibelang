@@ -26,13 +26,13 @@ func TestFixVIPWritesTryWhereCallsRun(t *testing.T) {
 	source := `error Bad { cause: unknown }
 
 effect function load(n: number) {
-  try yieldNow()
+  try Effect.yieldNowWith(0)
   return { n }
 }
 
 class Box {
   effect get(n: number) {
-    try yieldNow()
+    try Effect.yieldNowWith(0)
     return n
   }
 }
@@ -62,13 +62,13 @@ export effect function main() {
 	want := `error Bad { cause: unknown }
 
 effect function load(n: number) {
-  try yieldNow()
+  try Effect.yieldNowWith(0)
   return { n }
 }
 
 class Box {
   effect get(n: number) {
-    try yieldNow()
+    try Effect.yieldNowWith(0)
     return n
   }
 }

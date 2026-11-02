@@ -1,7 +1,7 @@
 // expect-result: [true,[]]
 import { Effect, Exit, Stream } from "effect"
 effect function consume(values: Iterable<number>, seen: number[]) {
- for (const x of values) { try yieldNow(); seen.push(x) }
+ for (const x of values) { try yieldNow; seen.push(x) }
 }
 export effect function main() {
  const seen: number[] = []

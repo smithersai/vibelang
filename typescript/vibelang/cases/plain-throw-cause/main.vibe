@@ -21,7 +21,7 @@ function mixed() {
 }
 
 effect function framedDied() {
-  try yieldNow()
+  try yieldNow
   const cause: unknown = Cause.die("boom")
   try { throw cause }
   catch (e) { return e === cause ? "Cause" : "other" }

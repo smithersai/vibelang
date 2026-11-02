@@ -3,7 +3,7 @@ import { Cause, Deferred, Effect, Exit, Fiber, Layer, Scope } from "effect"
 import {
   $catchExpression, $catchCause, $failureOf, $finallyExit, $fork,
   $isFailure, $noFailure, $provideEntries, $provideService, $region, $service, $using, acquireDisposable, acquireRelease,
-  interrupt, interruptible, restore, uninterruptible, wire, yieldNow
+  interruptible, restore, uninterruptible, wire
 } from "vibelang-runtime"
 
 interface Counter { readonly value: number }
@@ -420,7 +420,7 @@ test("cause helpers preserve all reasons, distinguish undefined failures from no
   expect(Effect.runSync($catchCause(Effect.failCause(mixed), cause => Effect.succeed(cause)))).toEqual(mixed)
   Effect.runSync(Effect.gen(function*() {
     const id = yield* Effect.fiberId
-    expect(yield* $catchCause(interrupt(), cause => Effect.succeed(cause))).toEqual(Cause.interrupt(id))
+    expect(yield* $catchCause(Effect.interrupt, cause => Effect.succeed(cause))).toEqual(Cause.interrupt(id))
   }))
   expect($isFailure({ _tag: "Missing" }, "Invalid", "Missing")).toBe(true)
   for (const value of [null, undefined, "Missing", {}, { _tag: "Other" }]) expect($isFailure(value, "Missing")).toBe(false)
@@ -451,8 +451,8 @@ test("nested masks restore the innermost region's previous interruptibility", as
   expect(await Effect.runPromise(uninterruptible(Effect.gen(function*() {
     return [yield* status, yield* restore(status), yield* uninterruptible(restore(status)), yield* interruptible(status), yield* status]
   })))).toEqual([false, true, false, true, false])
-  await Effect.runPromise(yieldNow())
-  await Effect.runPromise(yieldNow(2))
+  await Effect.runPromise(Effect.yieldNow)
+  await Effect.runPromise(Effect.yieldNowWith(2))
 })
 
 for (const [name, makeInterruptible] of [["restore", restore], ["interruptible", interruptible]] as const) {

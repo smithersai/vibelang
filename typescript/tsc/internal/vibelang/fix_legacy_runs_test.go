@@ -20,7 +20,7 @@ import (
 const legacyRunsPrelude = `error Missing { id: number }
 
 effect function load(n: number) {
-  try yieldNow()
+  try yieldNow
   return n
 }
 
@@ -255,7 +255,7 @@ func TestFixVIPLegacyPlainResultStays(t *testing.T) {
 // try's own operand run where they stand, as in try (c ? effect {} :
 // report(make())), rather than being held as a keyword form's operand.
 func TestFixVIPLegacyHeldInAnnotatedArrow(t *testing.T) {
-	source := legacyRunsPrelude + "const g = (n: number): number!! => {\n  const program: number!! = load(n)\n  return effect {\n    return try program\n  }\n}\n\neffect function f(c: boolean) {\n  return try (c ? effect { return 0 } : Effect.succeed(plainId(load(1))))\n}\n\neffect function piped() {\n  return try (effect { return plainId(load(3)) } |> Effect.orDie(%))\n}\n\neffect function report(d: number) {\n  try yieldNow()\n}\n\neffect function h(c: boolean) {\n  try (c ? effect {} : report(plainId(load(2))))\n}\n"
+	source := legacyRunsPrelude + "const g = (n: number): number!! => {\n  const program: number!! = load(n)\n  return effect {\n    return try program\n  }\n}\n\neffect function f(c: boolean) {\n  return try (c ? effect { return 0 } : Effect.succeed(plainId(load(1))))\n}\n\neffect function piped() {\n  return try (effect { return plainId(load(3)) } |> Effect.orDie(%))\n}\n\neffect function report(d: number) {\n  try yieldNow\n}\n\neffect function h(c: boolean) {\n  try (c ? effect {} : report(plainId(load(2))))\n}\n"
 	result, name := fixVIPOnlySource(t, source)
 	if len(result.Refused) != 0 {
 		t.Fatalf("refused %+v", result.Refused)

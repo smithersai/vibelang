@@ -39,7 +39,7 @@ function mixed() {
 
 // The same code in frames.
 effect function framed() {
-  try yieldNow()
+  try yieldNow
   try { return crash("first") }
   finally { crash("second") }
 }
