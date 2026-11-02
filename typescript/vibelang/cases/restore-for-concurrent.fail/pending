@@ -1,1 +1,0 @@
-impl-hunt-run: EK2202 is reported at every forbidden restore site; the computed do-expression property key still adds TS2464 and TS2538 because its inferred type is Effect<string> instead of string. Keep the diagnostic case pending until those independent type errors are fixed.
