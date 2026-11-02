@@ -73,7 +73,7 @@ Nested object and array patterns keep each captured subject through an `is` bind
 | `and`, `or`, `not` | Conjunction, alternative, or negation | `when "a" or "e":` |
 | Guard | A condition that is true | `when [let n] and if (n > 0):` |
 
-`var` is not allowed in pattern bindings (`EK0107`). Use `let` or `const`, including inside an `is` pattern; the quick fix and `vibelang --fix` replace `var` with `let`.
+`var` is not allowed in pattern bindings (`EK0107`). Binding names may start with `$`, as ordinary TypeScript identifiers do; a `const` binding keeps its assignment checks. Use `let` or `const`, including inside an `is` pattern; the quick fix and `vibelang --fix` replace `var` with `let`.
 
 ```vibe
 // pending: VIP-5, VIP-7, VIP-14
