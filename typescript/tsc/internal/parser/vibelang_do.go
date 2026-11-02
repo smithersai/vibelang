@@ -832,9 +832,17 @@ func (l *doLowering) undefined(at core.TextRange) *ast.Node {
 func (l *doLowering) completeList(name *ast.Node, statements []*ast.Node) []*ast.Node {
 	var out []*ast.Node
 	for i, s := range statements {
-		if s.Kind == ast.KindExpressionStatement && i+1 < len(statements) && setsCompletion(statements[i+1]) {
-			out = append(out, s)
-			continue
+		if s.Kind == ast.KindExpressionStatement {
+			next := i + 1
+			// Empty statements preserve the preceding completion. They
+			// must not change which expression needs a completion write.
+			for next < len(statements) && statements[next].Kind == ast.KindEmptyStatement {
+				next++
+			}
+			if next < len(statements) && setsCompletion(statements[next]) {
+				out = append(out, s)
+				continue
+			}
 		}
 		out = append(out, l.complete(name, s)...)
 	}
