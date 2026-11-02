@@ -347,6 +347,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Repeated `readonly` modifiers in schema fields were silently accepted; they now report `TS1030`, and `--fix` removes the duplicate without changing the codec.
 
 - Compiler validation could keep outdated advice checks when host binding rules changed; its quoted-rule guard now checks declaration origin and the `Worker` runtime exception.
+- Isolated compiler-case checks could lose nested package fixtures and report incorrect diagnostics; they now preserve nested packages and relative workspace links.
+
+- The fast gate could miss declaration-comparison regressions that later failed the full suite; it now runs private and public snapshot controls and tracks the migration comparator as an input.
 
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 
@@ -561,6 +564,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 - Passing an Effect function to a `Function` destination could bypass `EK4301` after generic union matching; callable destinations now keep the synchronous-callback check.
+
+- A migration left a repository’s lint configuration naming `x.ts` after the module became `x.vibe`, so a rule the repository had turned off for that file came back. Setup, the codemod and `revert` now keep literal Oxlint and ESLint paths pointing at each module, and setup repairs paths that earlier runs left behind.
 
 - Migration codemods could stall on brace-heavy literals or broaden a test selector; source-name wiring now scans source inventories with cached, bounded matchers and proves the final selected filenames and counts unchanged.
 - `vibelang --fix` moved a TypeScript call out of `Effect.sync(() => label())` into an `effect` block, where EK4401 refused it and the whole file stayed unconverted. The thunk now stays, because it is the boundary that makes the call's exceptions defects.
