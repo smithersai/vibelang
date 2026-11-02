@@ -108,6 +108,7 @@ const specTests = [
   "TestModuleMetadataBoundsQuoted",
   "TestVibexDeclarationSpellingQuoted",
   "TestPlatformBoundaryContractsQuoted",
+  "TestSidecarStyleScopeQuoted",
   "TestDoForTryDiagnosticOwnerQuoted",
   "TestDoDeclarationBytesQuoted",
   "TestDoContextualResultFuzzQuoted",
