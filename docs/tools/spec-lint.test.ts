@@ -123,3 +123,11 @@ test("platform-imports rejects round 6 OPUS-4's VIP-33 and VIP-26 examples (row 
     "vips/0033-platform-stdlib.md:12 `provide NodeServices…` at a module's top level is outside effect code (EK1201)"
   ])
 })
+
+test("counterpart-using rejects round 9 ASTRA-2's VIP-8 counterpart without `using` (row 51)", () => {
+  const original = "// Effect TS\nconst load = (p, q) => Effect.scoped(Effect.gen(function* () {\n  const db = yield* openDb()\n  return yield* db.query(q)\n}))\n```"
+  const defect = withEdit("vips/0008-using-denied.md", text => text.replace(/\/\/ Effect TS\n[^]*?\n```/, original))
+  expect(lint(defect, rule("counterpart-using")).map(v => `${v.file}:${v.line} ${v.message}`)).toEqual([
+    "vips/0008-using-denied.md:7 the Effect TS counterpart drops `using f = …`, so it does not acquire or dispose what the source does"
+  ])
+})

@@ -12,11 +12,16 @@ effect function load(p, q) {
 }
 
 // Effect TS
-const load = (p, q) => Effect.scoped(Effect.gen(function* () {
-  const db = yield* openDb()
-  return yield* db.query(q)
-}))
+const load = (p, q) => Effect.gen(function* () {
+  using f = openFile(p)            // TypeScript's using, unchanged
+  return yield* Effect.scoped(Effect.gen(function* () {
+    const db = yield* openDb()
+    return yield* db.query(q)
+  }))
+})
 ```
+*Corrected 2026-11-02: the Effect TS counterpart keeps `using f = openFile(p)` in the outer generator, with `Effect.scoped` inside it, matching the source's two bodies; it had dropped the declaration, so it neither acquired nor disposed the file (found by the round-9 review).*
+
 - **Amended 2026-10-29: a warning for `using` in effect code.** There it leaks on a failure or interruption, so it gets a warning, with a quick fix to `acquireDisposable` inside `scoped`. `using` keeps TypeScript's meaning. Sent to Will on Telegram 2026-10-29 11:28 under his standing rule 'assume I accept'; no objection by 12:00.
 
 ## What was proposed

@@ -300,7 +300,35 @@ const platformImports: Rule = {
   }
 }
 
-export const rules: Rule[] = [resolutionClaims, configKeys, importStyleScope, declarationImportForm, deniedVipRepairs, retiredForms, platformImports]
+// Counterparts keep native declarations (row 51 of round 14's open table,
+// round 9 ASTRA-2). VIP-8's example kept `using f = openFile(p)`, which
+// "keeps exactly TypeScript's meaning", but its `// Effect TS` counterpart
+// dropped it, so the counterpart neither acquires nor disposes the file. In a
+// code block with an `// Effect TS` counterpart, every `using` declaration of
+// the VibeLang half appears in the counterpart.
+const counterpartUsing: Rule = {
+  name: "counterpart-using",
+  finding: "r9 ASTRA-2 (row 51): VIP-8's Effect TS counterpart dropped the source's `using f = openFile(p)`",
+  check(spec) {
+    const out: Violation[] = []
+    for (const [file, text] of spec) {
+      for (const m of text.matchAll(/^[ \t]*```(\w+)?[^\n]*\n([^]*?)^[ \t]*```/gm)) {
+        const parts = m[2]!.split(/^\s*\/\/ Effect TS\b.*$/m)
+        if (parts.length < 2) continue
+        const counterpart = parts.slice(1).join("\n")
+        for (const u of parts[0]!.matchAll(/\b((?:await\s+)?using\s+[A-Za-z_$][\w$]*)\s*=/g)) {
+          if (!new RegExp(`\\b${u[1]!.replace(/\s+/g, "\\s+").replace(/\$/g, "\\$")}\\s*=`).test(counterpart)) {
+            out.push({ rule: this.name, file, line: lineAt(text, m.index! + m[0].indexOf(m[2]!) + u.index!) + 0,
+              message: `the Effect TS counterpart drops \`${u[1]} = …\`, so it does not acquire or dispose what the source does` })
+          }
+        }
+      }
+    }
+    return out
+  }
+}
+
+export const rules: Rule[] = [resolutionClaims, configKeys, importStyleScope, declarationImportForm, deniedVipRepairs, retiredForms, platformImports, counterpartUsing]
 
 export const lint = (spec: Spec, only = rules) => only.flatMap(rule => rule.check(spec))
 
