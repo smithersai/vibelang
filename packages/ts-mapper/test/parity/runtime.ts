@@ -45,6 +45,11 @@ const resultMarker = "@@result "
 const skipDirs = new Set(["node_modules", "out", "dist", ".cache", "expected"])
 const sourcePattern = /\.(vibe|ts|mts|cts|tsx)$/
 
+// Use the same filename mapping for locating the entry and checking emit output.
+function emittedPath(source: string): string {
+  return source.replace(/\.(vibe|ts|tsx)$/, ".js").replace(/\.mts$/, ".mjs").replace(/\.cts$/, ".cjs")
+}
+
 function walk(dir: string): string[] {
   const files: string[] = []
   const visit = (rel: string) => {
@@ -104,7 +109,7 @@ export function expectedResult(dir: string): { result: string; entry: string } |
   for (const name of fs.readdirSync(dir).sort()) {
     if (!/\.(vibe|ts|mts|cts)$/.test(name) || name.endsWith(".d.ts")) continue
     const line = fs.readFileSync(path.join(dir, name), "utf8").split("\n").find((l) => l.startsWith("// expect-result:"))
-    if (line) return { result: JSON.stringify(JSON.parse(line.slice("// expect-result:".length))), entry: name.replace(/\.(vibe|ts|mts|cts)$/, ".js") }
+    if (line) return { result: JSON.stringify(JSON.parse(line.slice("// expect-result:".length))), entry: emittedPath(name) }
   }
   return undefined
 }
@@ -165,7 +170,7 @@ async function runCase(c: RuntimeCase, o: RuntimeOptions, nm: string): Promise<R
   // tsc's layout: outputs mirror the sources' common directory (every
   // runnable case keeps its sources at the top level).
   const common = options.rootDir ? path.relative(dir, path.resolve(dir, options.rootDir)) : commonDirectory(sources)
-  const outputOf = (rel: string) => path.join(outDir, path.relative(common, rel)).replace(/\.(vibe|ts|tsx)$/, ".js").replace(/\.mts$/, ".mjs").replace(/\.cts$/, ".cjs")
+  const outputOf = (rel: string) => emittedPath(path.join(outDir, path.relative(common, rel)))
 
   for (const rel of sources.filter((f) => f.endsWith(".vibe"))) {
     const argv = [o.mapper, "--emit", path.join(dir, rel), "--out", outputOf(rel)]

@@ -918,3 +918,12 @@ decisions or an unavailable model warn and allow the entry.
 `//:spec-rule-judge-test` checks its tooling without a model.
 See [the configuration and fixed historical eval](../../scripts/spec-rule-judge/README.md)
 for external authority paths, the `smthrs eval` command and calibration results.
+
+
+The mapper runtime-parity runner maps entry filenames with the same rule as
+its emitted-file checks: `.ts` and `.vibe` run as `.js`, `.mts` as
+`.mjs`, and `.cts` as `.cjs`. The first source in alphabetical order with
+an `expect-result` header supplies the entry. Run
+`node --test scripts/mapper-runtime-entry.test.mjs` to check real pinned
+stock-TypeScript output and generated mixed entry batches. These tests run
+in `//:release`; the full mapper parity corpus remains outside the graph.
