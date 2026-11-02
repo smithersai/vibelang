@@ -53,18 +53,13 @@ function check(input) {
     const edits = rewriteImports(root, [importer, target], [importer], pathAliases(ts, root))
     const afterText = readFileSync(join(root, importer), "utf8")
     const after = compile()
-    const pending = input.kind === "vibe" && input.target === "ts" && !input.relative
-    if (pending && process.env.VIBELANG_NONRELATIVE_TS_RAW !== "1") {
-      assert.equal(fixture.pending.owner, "migfix-t3code")
-      assert.deepEqual(edits, [{ file: importer, from: specifier, to: specifier + ".ts" }])
-      assert.equal(afterText, source.replace(JSON.stringify(specifier), JSON.stringify(specifier + ".ts")))
-      assert.equal(after.status, 2, "XPASS " + fixture.pending.key + ": retire its pending entry")
-      const errors = [...after.output.matchAll(/error (TS\d+|EK\d+):/g)].map(m => m[1])
-      assert.deepEqual(errors, ["TS2877"], after.output)
-    } else {
-      assert.equal(after.status, 0, fixture.pending.key + ": retain a valid resolved import: " + after.output)
-      if (input.kind === "ts" && input.target === "ts") assert.equal(afterText, beforeText)
-      assert.ok(!pending, "XPASS " + fixture.pending.key)
+    // Decided detail 272: a module that stays TypeScript keeps the specifier
+    // the repository wrote, from a .vibe importer as from a .ts one. T3code's
+    // ~/leaf in a migrated importer once gained .ts and failed with TS2877.
+    assert.equal(after.status, 0, fixture.key + ": retain a valid resolved import: " + after.output)
+    if (input.target === "ts") {
+      assert.deepEqual(edits, [], fixture.key + ": a retained TypeScript target keeps its written specifier")
+      assert.equal(afterText, beforeText)
     }
   } finally { rmSync(root, { recursive: true, force: true }) }
 }
