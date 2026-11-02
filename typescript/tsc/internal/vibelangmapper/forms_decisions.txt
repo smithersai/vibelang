@@ -4394,6 +4394,9 @@ typescript/vibelang/cases/vip1-migrated-program-contracts/main.vibe:12:27 lambda
 typescript/vibelang/cases/vip1-migrated-program-contracts/main.vibe:13:41 byname program table
 typescript/vibelang/cases/vip1-migrated-program-contracts/main.vibe:14:7 lambda plain fallback
 typescript/vibelang/cases/vip1-no-conversion.fail/main.vibe:7:41 lambda program annotation
+typescript/vibelang/cases/vip1-plain-arrow-effectable-class/main.vibe:15:6 lambda choice fallback
+typescript/vibelang/cases/vip1-plain-arrow-effectable-class/main.vibe:17:7 lambda plain fallback
+typescript/vibelang/cases/vip1-plain-arrow-effectable-class/main.vibe:22:21 lambda effectFn table
 typescript/vibelang/cases/vip1-plain-functions/main.vibe:11:22 lambda plain fallback
 typescript/vibelang/cases/vip1-plain-functions/main.vibe:5:17 lambda plain fallback
 typescript/vibelang/cases/vip1-plain-functions/main.vibe:6:17 lambda plain fallback

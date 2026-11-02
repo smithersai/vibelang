@@ -1,0 +1,26 @@
+// alchemy-62 (packages/alchemy/src/Util/effect.ts): a plain arrow whose body
+// builds an Effect-typed value stays a plain function (VIP-1, chapter 001: a
+// function's kind is decided by a keyword on the function, never by its body or
+// by a type). effectClass returns a class whose static side is an Effect, so
+// `class X extends effectClass(impl)` needs a constructor, not a program.
+import * as Effectable from "effect/Effectable"
+
+export type EffectClass<Shape, A, Err = never, Req = never> = Effect<A, Err, Req> & {
+  new (_: never): Shape
+}
+
+export const effectClass: {
+  <A, Err = never, Req = never>(impl: Effect<A, Err, Req>): EffectClass<A, A, Err, Req>
+  <Shape>(): <A, Err = never, Req = never>(impl: Effect<A, Err, Req>) => EffectClass<Shape, A, Err, Req>
+} = ((impl?: any) =>
+  impl === undefined
+    ? (innerImpl: any) => effectClass(innerImpl)
+    : (Object.assign(
+        class {},
+        Effectable.Prototype({
+          label: "alchemy/EffectClass",
+          evaluate: () => impl,
+        }),
+      ) as unknown as EffectClass<any, any, any, any>)) as any
+
+export class Local extends effectClass<{ readonly tag: "local" }>()(Effect.succeed(1)) {}

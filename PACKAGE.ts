@@ -116,6 +116,7 @@ const specTests = [
   "TestDirectTryAdvisoriesQuoted",
   "TestFormatForHeadsQuoted",
   "TestPlainRunnersQuoted",
+  "TestPlainEffectBodyQuoted",
   "TestFormatFoldkitQuoted",
   "TestFormatLabelQuoted",
   "TestFormatReturnTypesQuoted",
