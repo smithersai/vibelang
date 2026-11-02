@@ -254,6 +254,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 | A required schema field whose referenced codec has optional or uncertain decoded key flags | `EK2109`: run `vibelang --fix` to keep the existing codec as an explicit `Schema.Struct` value. Written optional fields keep their optional behavior. |
 | A `Record` value referenced optional decoded keys or a readonly `Record` referenced mutable decoded keys | `EK2109`; `vibelang --fix` preserves the existing codecs, declarations and decoding. Schema-error declarations retain their constructors and matchers. |
 | A schema reference with an empty type argument list, such as `schema Name = Address<>` | `EK2109`: run `vibelang --fix` to remove the empty list. The codec, decoded values and declaration types stay the same. |
+| A schema field with repeated `readonly` modifiers | `TS1030`: run `vibelang --fix` to keep one modifier and preserve its codec. |
 | `vibelang.diagnostics` | Run `vibelang --fix` to move configurable warning settings to `vibe.severities`. Remove obsolete legacy policy entries before rerunning `--fix`. |
 
 ### Diagnostic codes
@@ -268,6 +269,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A `match` with an arm `[]` beside a `do` arm ending in an array, such as `when Option.None: []; when Option.Some(let link): do { …; [href, text] }`, failed with `TS7034` and `TS7005` on a generated `$do` variable, and so did `[]` in a property written before a `do`, as in `({ undoStack: [], grid: match (…) { … } })`; the `[]` is now an empty array literal, typed as it is written in place.
 
 - Migrating an already routed package could replace a nested `types.default` declaration path with runtime JavaScript, hiding its API types; `types` and `typings` now keep declaration paths through nested conditions and fallback arrays.
+- Renaming a source to `.vibe` left a literal Vite build entry pointing at the missing `.ts` file, so a compiler-clean migration could not bundle; the migrate flow now follows library, Rollup, Rolldown and pack entries to the renamed source, records them for `revert` and interrupted-run recovery, and warns about computed paths it cannot rewrite.
+- After the migrate flow renamed an entry point such as `scripts/generate.ts` to `.vibe`, package scripts still ran `node --import vibelang/register scripts/generate.ts` and failed with `ERR_MODULE_NOT_FOUND`. The codemod now points each script at the `.vibe` file, and `step revert` points it back.
 - Migration could widen a shared file-selection regex and change an unchanged assertion’s result; the codemod and `verifyTestDiff` now refuse named regexes with any assertion or other use not proven to select filenames (decided detail `272`, `RD-022`).
 
 - Under Vitest with the Vite plugin, a `.vibe` module's dependency loaded through its package's `module` export, which is often bundler-only ESM, so Node failed with `Cannot find module` or `Directory import … is not supported` (Smithers: `@opentelemetry/api`, 64 tests in 5 packages). The plugin no longer adds `module` to Vitest's conditions; Node loads the dependency through its `default` export, as without the plugin.
@@ -341,6 +344,10 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Passing fuzz CPU-budget runs left no baseline to diagnose regressions. Set `VIBELANG_FUZZ_BUDGET_LOG` to append each target’s CPU use, limit and runtime CPU settings on passing and failing runs.
 
+- Repeated `readonly` modifiers in schema fields were silently accepted; they now report `TS1030`, and `--fix` removes the duplicate without changing the codec.
+
+- Compiler validation could keep outdated advice checks when host binding rules changed; its quoted-rule guard now checks declaration origin and the `Worker` runtime exception.
+
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 
 - Migration setup could leave a native type exported through a TypeScript namespace barrel as an error type in project-aware linters; setup now enables source declaration redirects in owned configs and records those edits.
@@ -398,6 +405,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - An explicit `./model.vibe` import or re-export could make stock TypeScript read an unrelated `model.ts` or `model.d.ts` sibling and report `TS2322`; declaration sidecars now keep the explicit `.vibe` target, while native imports keep their native target.
 
 - A closure created in a plain `for...of` loop's iterable expression could read an outer variable when the loop declared the same name in a destructured `let` or `const` head; it now captures the loop's uninitialized head binding and throws `ReferenceError`, as in TypeScript.
+
+- Quick-fix fuzz failures could show an existing error in another method when an edit added an error with the same code; they now show a diagnostic absent from the original program, while retaining the same error-count check.
 
 - `vibelang --fix` deleted comments from legacy diagnostic maps, including empty maps and entries superseded by modern settings; it now keeps every comment in direct and extended configs, with the same settings and a stable second run.
 
