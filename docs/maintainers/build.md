@@ -83,6 +83,16 @@ gh workflow run mq-pregate.yml -f tag=<name> -f base=<commit on main> \
 65,535 characters, so the queue compresses with xz, and a change whose patch is
 still too large runs only on the build hosts.
 
+The hosted workflow installs Chromium only when browser prerequisites cannot
+be ruled out. `scripts/ci-browser-needed.mjs` asks `smthrs ci --plan` for the
+complete dependency plan of explicit, reviewed targets such as `//:release`
+and `//packages:compiler-test`. Every executable target in that closure must
+be on its reviewed list; a browser target reached through another target
+therefore keeps setup. Broad selectors, new targets, unfamiliar rules, incomplete
+plans and planner failures all retain `npm ci` and Chromium installation.
+Add a target to the reviewed list only after checking that its own command
+does not use a browser. The plan check does not execute any target.
+
 The workflow holds no secrets and its token only reads this repository. A hosted
 pass counts; a hosted failure sends the change back to a build host, which is the
 reference for rejecting it.

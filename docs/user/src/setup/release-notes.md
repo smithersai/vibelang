@@ -672,6 +672,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The site contrast check named a command when it started but gave no duration or exit details when it finished. Each command now records its elapsed time, exit status and termination signal.
 - `vibelang --fix` refused old VibeLang's `x catch throw e`, as in Smithers' `FileRouter.vibe` `catch throw readFailure()`: the `EK0509` repair wrote `x catch effect () => try throw e`, which does not parse. It now writes `x catch effect () => throw e`, which fails with `e`, typed, as the old fallback did.
 
+- Narrow hosted CI checks installed Chromium even when none of their targets used a browser; reviewed selections now skip browser setup after verifying their complete dependency plan, while browser and unfamiliar selections keep it.
+
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 
 - Migration setup could leave a native type exported through a TypeScript namespace barrel as an error type in project-aware linters; setup now enables source declaration redirects in owned configs and records those edits.

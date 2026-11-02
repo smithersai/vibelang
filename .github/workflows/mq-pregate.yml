@@ -89,7 +89,13 @@ jobs:
           path: ~/.cache/go-build-smthrs
           key: go-${{ env.PRE_BASE }}
           restore-keys: go-
+      - name: Select browser prerequisites
+        id: browser
+        run: |
+          (cd .smithers && bun install --frozen-lockfile)
+          node scripts/ci-browser-needed.mjs >> "$GITHUB_OUTPUT"
       - name: Install Chromium
+        if: steps.browser.outputs.needed == 'true'
         working-directory: site
         run: |
           npm ci --no-audit --no-fund
