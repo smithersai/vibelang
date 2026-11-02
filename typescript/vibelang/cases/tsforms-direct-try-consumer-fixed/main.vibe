@@ -1,0 +1,23 @@
+// expect-result: {"one":1,"two":2,"three":3,"r":4,"p":5,"c":7,"all":[1,2],"settled":1,"chained":8}
+// 007-tooling.md, EK4834-EK4836 (loop round 5 OPUS-4, decided detail 254):
+// the three rows warn only on the direct operand of bare try in effect code,
+// through parentheses, as and an import alias. A fork operand, a try.all or
+// try.allSettled element, an Effect API argument and a stored Effect do not
+// warn: fork Effect.catch(e, h) keeps recovery in the child.
+import * as E from "effect/Effect"
+export effect function main() {
+  const e: number!string = Effect.fail("e")
+  const one = 1
+  const two = try (Effect.succeed(2) as number!!)
+  const three = 3
+  const r = e catch () => 4
+  const p = try Effect.provide(Effect.succeed(5), Layer.empty)
+  const child = fork Effect.catch(e, () => Effect.succeed(7))
+  const failed = fork Effect.fail("boom")
+  const all = try.all [Effect.succeed(one), Effect.succeed(two)]
+  const settled = try.allSettled [Effect.fail("x")]
+  const chained = try Effect.andThen(Effect.succeed(1), () => Effect.succeed(8))
+  const c = join(child)
+  void failed
+  return { one, two, three, r, p, c, all, settled: settled.length, chained }
+}
