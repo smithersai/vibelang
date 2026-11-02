@@ -429,6 +429,12 @@ stays intact in comparisons and retained command tails.
 `scripts/harness-utf8.test.mjs` checks real child processes with shifted
 multi-byte output, generated mixed text, nonzero exits and incomplete final bytes.
 
+Before selecting or staging cases, the harness checks that
+`EFFECT_NODE_MODULES/effect` is a directory with a `package.json` file.
+A missing install, dangling link or incomplete package exits with status `2`
+and an install hint, preserving each case's previous outputs. Package and
+`node_modules` symlinks to valid installations are supported.
+
 The release check runs `typescript/vibelang/harness.test.mjs`, including a
 barrier-controlled regression that executes both targets' actual shell commands
 concurrently. The aggregate starts after the per-case compiler emits and before

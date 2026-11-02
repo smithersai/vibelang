@@ -34,6 +34,8 @@ fs.mkdirSync("out", { recursive: true })
 fs.writeFileSync("out/main.js", 'console.log("wrong " + ' + JSON.stringify(scenario) + '); console.error("runtime stderr"); process.exit(7)')
 `, { mode: 0o755 })
   fs.writeFileSync(path.join(root, "package.json"), '{"type":"module"}')
+  fs.mkdirSync(path.join(root, "modules/effect"), { recursive: true })
+  fs.writeFileSync(path.join(root, "modules/effect/package.json"), '{"name":"effect","version":"4.1.0"}')
   fs.mkdirSync(path.join(root, "runtime/dist"), { recursive: true })
   fs.writeFileSync(path.join(root, "runtime/package.json"), JSON.stringify({
     name: "vibelang-runtime", type: "module", files: ["dist"], exports: "./dist/index.js",
@@ -215,6 +217,7 @@ test("the late-start target and a per-case target compile concurrently without s
     fs.mkdirSync(path.dirname(file), { recursive: true })
     fs.writeFileSync(file, text)
   }
+  write("experiments/node_modules/effect/package.json", '{"name":"effect","version":"4.1.0"}')
   write("typescript/vibelang/PACKAGE.ts", fs.readFileSync(path.join(here, "PACKAGE.ts"), "utf8"))
   write("typescript/PACKAGE.ts", 'export const Package = { compiler: "compiler" }')
   write("packages/PACKAGE.ts", 'export const Package = { "runtime-dist": "runtime", "runtime-published": "runtime-published" }')

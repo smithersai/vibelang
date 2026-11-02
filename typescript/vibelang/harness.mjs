@@ -86,6 +86,22 @@ if (!effectModules || !runtimeDir) {
   process.exit(2)
 }
 
+// Check the requested installation before staging any case. A dangling link
+// can silently fall back to the runtime's install or cause compiler failures,
+// after each case's previous output has already been removed.
+const effectPackage = path.join(effectModules, "effect")
+let effectInstalled = false
+try {
+  effectInstalled = fs.statSync(effectPackage).isDirectory() &&
+    fs.statSync(path.join(effectPackage, "package.json")).isFile()
+} catch {}
+if (!effectInstalled) {
+  console.error("harness.mjs: missing Effect package at " + effectPackage +
+    "; install dependencies with (cd experiments && bun install --frozen-lockfile)" +
+    " or set EFFECT_NODE_MODULES to a node_modules directory containing effect")
+  process.exit(2)
+}
+
 const args = process.argv.slice(2)
 const statusOnly = args.includes("--status")
 const lateStart = args.includes("--late-start") || process.env.VIBELANG_LATE_START === "1"
