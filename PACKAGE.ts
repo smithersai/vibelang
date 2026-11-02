@@ -67,6 +67,7 @@ const specTests = [
   "TestReviewProducerScopeQuoted",
   "TestMigrationSeverityIsolationQuoted",
   "TestMigrationEffectBlockLintQuoted",
+  "TestReactEmittedImplementationQuoted",
   "TestDoForTryDiagnosticOwnerQuoted",
   "TestDoDeclarationBytesQuoted",
   "TestDoContextualResultFuzzQuoted",
