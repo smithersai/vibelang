@@ -8,6 +8,7 @@ import { test } from "node:test"
 import { codemod, makeConfig, paths } from "../lib/steps.mjs"
 import * as Jj from "../lib/jj.mjs"
 import { must, writeJson } from "../lib/util.mjs"
+import { writeProbeAwareCompiler } from "./fake-vibelang.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const fc = require("fast-check")
@@ -37,7 +38,9 @@ async function inspect(input, literal = false) {
       writeFileSync(join(repo,name),text)
     }
     const marker=join(root,"killed")
-    writeFileSync(join(repo,"node_modules/.bin/vibelang"), [
+    // The probe answers before the kill: the codemod probes the function
+    // model first, and this fixture interrupts the --fix that follows.
+    writeProbeAwareCompiler(join(repo,"node_modules/.bin/vibelang"), [
       "#!/usr/bin/env node",
       'const {existsSync,writeFileSync}=require("node:fs")',
       'if(!existsSync('+JSON.stringify(marker)+')) {',
