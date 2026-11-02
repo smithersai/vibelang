@@ -1,0 +1,10 @@
+{
+  "key": "migrate:emitted-imports:implicit-build-project",
+  "inbox": "foldkit-98",
+  "source": ".smithers/flows/migrate/README.md",
+  "oracle": "The existing compiler build may select its default tsconfig.json with bare -b or --build. TypeScript parseBuildCommand independently identifies that project; a different project remains refused.",
+  "witness": "pnpm run clean && vibelang -b",
+  "project": "tsconfig.json",
+  "seed": 413941,
+  "runs": 100
+}

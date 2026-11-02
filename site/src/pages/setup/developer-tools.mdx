@@ -147,6 +147,8 @@ not configure those bundlers. When the package's existing `build` or
 `prepare` script already compiles a project to individual JavaScript files,
 give migration's `upgrade-effect` command `--emitted-project` with that
 repository-relative project path. Repeat it for more than one project.
+A bare `vibelang -b` or `vibelang --build` in the existing build selects
+`tsconfig.json`. It does not establish a build for a different project.
 
 Setup rewrites runtime imports in the package's product sources to exact
 private `#vibelang/emitted/…` entries. Each entry has a `vibelang-source`

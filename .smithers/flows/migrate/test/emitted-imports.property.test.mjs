@@ -312,3 +312,40 @@ test("rewritten specifiers preserve the original quote style and the cooked alia
     }
   }
 })
+
+test("foldkit-98: emitted imports recognize the implicit build-mode project", () => {
+  const key = JSON.parse(readFileSync(new URL("./corpus/foldkit-emitted-implicit-build.json", import.meta.url), "utf8"))
+  fc.assert(fc.property(
+    fc.constantFrom("", "exec ", "pnpm exec ", "pnpm exec -- ", "npm exec -- ", "npx ", "bunx "),
+    fc.constantFrom("tsc", "vibelang"),
+    fc.constantFrom("-b", "--build"),
+    fc.boolean(),
+    fc.boolean(),
+    (prefix, binary, flag, throughScript, cleanFirst) => {
+      const f = fixture({ native: false })
+      try {
+        // TypeScript's own CLI parser is the independent project oracle.
+        const command = ts.parseBuildCommand([flag])
+        assert.deepEqual(command.errors, [])
+        assert.deepEqual(command.projects, ["."])
+        const pkg = JSON.parse(readFileSync(join(f.root, "package.json"), "utf8"))
+        pkg.scripts.compile = prefix + binary + " " + flag
+        pkg.scripts.clean = "node -e 'void 0'"
+        pkg.scripts.build = (cleanFirst ? "pnpm run clean && " : "") +
+          (throughScript ? "pnpm run compile" : pkg.scripts.compile)
+        put(f.root, "package.json", JSON.stringify(pkg))
+        const script = pkg.scripts.build
+        const planned = plan(f)
+        assert.deepEqual(planned.modules.map(module => module.source), [f.source])
+        assert.equal(planned.modules[0].output, "dist/rule.js")
+        applyEmittedImports(planned, f)
+        assert.equal(JSON.parse(readFileSync(join(f.root, "package.json"))).scripts.build, script)
+        applyEmittedImports(planned, { ...f, restore: true })
+        // The implicit invocation builds tsconfig.json, never a different
+        // project just because its output layout happens to be the same.
+        put(f.root, "alternate.json", readFileSync(join(f.root, "tsconfig.json"), "utf8"))
+        assert.throws(() => planEmittedImports({ ...f, projects: ["alternate.json"] }), /existing build/)
+      } finally { f.cleanup() }
+    },
+  ), { seed: key.seed, numRuns: key.runs })
+})

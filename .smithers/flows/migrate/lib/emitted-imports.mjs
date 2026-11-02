@@ -126,8 +126,10 @@ export function planEmittedImports({ root, packages, projects = [], ts, compiler
         let build = false
         for (let i = 1; i < command.length; i++) {
           if (["-p", "--project", "-b", "--build"].includes(command[i])) {
-            build ||= command[i] === "-b" || command[i] === "--build"
-            named.push(posix.normalize(command[++i] ?? ""))
+            const buildFlag = command[i] === "-b" || command[i] === "--build"
+            build ||= buildFlag
+            // A bare build command selects the package's default project.
+            named.push(posix.normalize(command[++i] ?? (buildFlag ? "tsconfig.json" : "")))
           } else if (command[i].startsWith("--project=")) named.push(posix.normalize(command[i].slice(10)))
         }
         if (build ? named.includes(projectName) : named.at(-1) === projectName) return true
