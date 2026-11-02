@@ -105,6 +105,7 @@ const specTests = [
   "TestIncrementalDiagnosticsQuoted",
   "TestIncrementalArtifactIdentityQuoted",
   "TestReactEmittedImplementationQuoted",
+  "TestModuleMetadataBoundsQuoted",
   "TestDoForTryDiagnosticOwnerQuoted",
   "TestDoDeclarationBytesQuoted",
   "TestDoContextualResultFuzzQuoted",
