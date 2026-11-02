@@ -79,6 +79,7 @@ const specTests = [
   "TestPlainMatchKindsQuoted",
   "TestTopLevelAwaitQuoted",
   "TestEffectGlobalsQuoted",
+  "TestSidecarEntryGlobsQuoted",
   "TestSpecifierWrittenJSX",
 
   "TestStockConsumerResolutionQuoted",

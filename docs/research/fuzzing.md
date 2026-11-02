@@ -123,6 +123,7 @@ Appendix B supplies the current diagnostic assignments; compatibility declaratio
 | `FuzzPlainMatchKinds` | Keyed seed matrices with native TypeScript controls | Spec quotes checked by `TestPlainMatchKindsQuoted`; migration and review neighbourhoods |
 | `FuzzTopLevelAwait` | Keyed seed matrices with native TypeScript controls | Spec quotes checked by `TestTopLevelAwaitQuoted`; migration and review neighbourhoods |
 | `FuzzEffectGlobals` | Keyed seed matrices with native TypeScript controls | Spec quotes checked by `TestEffectGlobalsQuoted`; migration and review neighbourhoods |
+| `TestSidecarEntryGlobsQuoted` | Expanded bundler entry globs retain source entries and exclude declaration sidecars; actual fast-glob and Rolldown integration, keyed Alchemy witness. |
 | `FuzzSpecRules` | Retired | Current static targets quote their VIP chapters and gate those quotations through `specTests`. |
 | `FuzzSpecAllowed` | Retired | Current static targets and imported-scope controls cover the current forms. |
 | `FuzzSpecPrograms` | Retired | Semantics use `FuzzVIPDifferential`, with current chapter quotations and paired prints. |

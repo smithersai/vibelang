@@ -1,0 +1,9 @@
+{
+  "key": "alchemy-61:expanded-entry-glob-selects-sidecar",
+  "owner": "wire-alchemy",
+  "spec": "007-tooling.md: Existing tools work; bundlers read .vibe",
+  "input": {
+    "names": ["core/HttpServer", "core/Plugin", "core/RuntimeError.shared", "core/RuntimeServices"],
+    "patterns": ["src/**/*.ts", "src/**/*.vibe"]
+  }
+}
