@@ -192,6 +192,7 @@ const specTests = [
   "TestWorkspaceDiagnosticOccurrencesQuoted",
   "TestAutomaticTracingKeysQuoted",
   "TestServicesRulesQuoted",
+  "TestServiceDefaultReadsQuoted",
   "TestProducerBindingQuoted",
   "TestEffectTypeSpacingQuoted",
   "TestPipeEdgesQuoted",
