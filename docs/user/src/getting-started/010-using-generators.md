@@ -14,6 +14,8 @@ Method names follow TypeScript's property-name rules, including bigint literals:
 
 A class can extend a value named `effect`: in `class Derived extends effect { }`, the braces are the class body.
 
+`try` keeps native delegated iteration even when it is the function's only return. An unchecked empty iterable succeeds with `undefined`, an unchecked noniterable dies with its native `TypeError`, and iterator getters keep their evaluation order. An iterator getter on an `Effect` is still observed.
+
 ## Sequence computations
 
 ```vibe

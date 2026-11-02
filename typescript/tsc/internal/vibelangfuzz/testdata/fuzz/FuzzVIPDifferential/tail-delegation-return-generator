@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:vip05.tail-native-delegation-return-generator\x00\x00\x00")

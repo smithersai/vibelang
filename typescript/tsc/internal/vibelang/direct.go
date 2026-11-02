@@ -6,35 +6,12 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
-// Direct Effects (S5-20). A generator costs every call of an Effect function
-// two run-loop operations more than the TypeScript it replaces: fnUntraced
-// suspends, starts an iterator, and succeeds with the value the generator
-// returns. When the lowered body is a single return, and its only yield* is
-// in a result position, the call returns that Effect itself, still evaluated
-// only when it runs:
-//
-//	export const step = (n: number): Effect<number> => Effect.succeed(n + 1)
-//	export const size = (items: string[]): Effect<number> => items.length
-//	export const ignore = (event: string): Effect<void> => {}
-//
-// becomes
-//
-//	export const step = (n) => Effect.suspend({ step: () => { return Effect.succeed(n + 1); } }.step)
-//	export const size = (items) => Effect.sync({ size: () => { return items.length; } }.size)
-//	export const ignore = (event) => Effect.void
-//
-// An arrow's thunk has a block, so coverage counts the arrow's concise body,
-// not the thunk's as well (thunkRole); a function declaration's or method's
-// thunk is `() => value`, which stands for its return statement.
-//
-// Effect 4.1.1 dies with a throw from either thunk, as it does with one from
-// a generator (internal/effect.ts:664-709), and suspend returns its program
-// without a continuation (1015-1021). The thunk is an arrow, so this,
-// arguments, and super are the function's own, and it is the property of an
-// object literal named after the source, so a stack trace names the VibeLang
-// function (D36). Every Effect the lowering yields is an Effect at run time
-// (Context keys and Config are Effects in 4.1.1), so suspend accepts it.
-
+// Direct Effects keep the source callable and its lexical thunk.
+// Pure returns use sync; delegated tails use gen, never suspend: even a
+// typed Effect can expose observable iterator getters (VIP-5, detail 226).
+// A private pair distinguishes delegated and ordinary conditional results.
+// Array elements preserve value-only evaluation of anonymous functions and
+// classes, without giving them an inferred property or variable name.
 // thunkRole says what the thunk of a direct Effect stands for in the source,
 // which decides how it maps (generated.go).
 type thunkRole int
@@ -53,8 +30,8 @@ const (
 	thunkIsNothing
 )
 
-// directEffect returns the Effect a call of node returns without a
-// generator, given body, node's lowered body, or nil when body needs one.
+// directEffect returns the Effect for a single-result callable, given its
+// lowered body, or nil when the general lowering is required.
 // role says what its thunk stands for.
 func (tx *lowering) directEffect(node *ast.Node, body *ast.Node, role thunkRole) *ast.Node {
 	if ast.GetFunctionFlags(node)&ast.FunctionFlagsAsyncGenerator != 0 || tx.plan.resumesInTail(node) {
@@ -68,16 +45,22 @@ func (tx *lowering) directEffect(node *ast.Node, body *ast.Node, role thunkRole)
 	if len(statements) != 1 || statements[0].Kind != ast.KindReturnStatement {
 		return nil
 	}
-	value, program, ok := tx.directResult(statements[0].Expression())
-	if !ok {
-		return nil
-	}
-	method := "sync"
-	if program {
-		method = "suspend"
+	value := statements[0].Expression()
+	delegated := containsYield(value)
+	if delegated {
+		var ok bool
+		value, ok = tx.tailCompletion(value)
+		if !ok {
+			return nil
+		}
 	}
 	thunk := tx.namedThunk(sourceName(node), value, role)
-	effect := f.NewCallExpression(f.NewPropertyAccessExpression(tx.effectName(), nil /*questionDotToken*/, f.NewIdentifier(method), ast.NodeFlagsNone), nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList([]*ast.Node{thunk}), ast.NodeFlagsNone)
+	var effect *ast.Node
+	if delegated {
+		effect = tx.delegatedTail(node, thunk)
+	} else {
+		effect = f.NewCallExpression(f.NewPropertyAccessExpression(tx.effectName(), nil /*questionDotToken*/, f.NewIdentifier("sync"), ast.NodeFlagsNone), nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList([]*ast.Node{thunk}), ast.NodeFlagsNone)
+	}
 	tx.EmitContext().SetOriginal(effect, statements[0])
 	switch {
 	case isProgramArrow(node):
@@ -91,48 +74,71 @@ func (tx *lowering) directEffect(node *ast.Node, body *ast.Node, role thunkRole)
 	return effect
 }
 
-// directResult splits a lowered result into the expression its thunk
-// returns and whether that is a program. A result position, through
-// conditionals, commas, and parentheses, that is `yield* program` holds the
-// program; a yield anywhere else needs the generator (ok is false). When some
-// results are programs, the value results become Effect.succeed(value), as in
-// byNameResult.
-func (tx *lowering) directResult(node *ast.Node) (value *ast.Node, program bool, ok bool) {
+// tailCompletion keeps condition/comma evaluation in the source lexical
+// thunk and records whether its result requires native yield* delegation.
+func (tx *lowering) tailCompletion(node *ast.Node) (*ast.Node, bool) {
 	f := tx.Factory()
 	inner := ast.SkipOuterExpressions(node, ast.OEKParentheses|ast.OEKTypeAssertions|ast.OEKNonNullAssertions|ast.OEKSatisfies)
+	pair := func(run bool, value *ast.Node) *ast.Node {
+		flag := ast.KindFalseKeyword
+		if run {
+			flag = ast.KindTrueKeyword
+		}
+		return f.NewArrayLiteralExpression(f.NewNodeList([]*ast.Node{f.NewToken(flag), value}), false)
+	}
 	switch {
 	case inner.Kind == ast.KindYieldExpression && inner.AsYieldExpression().AsteriskToken != nil:
-		return inner.Expression(), true, !containsYield(inner.Expression())
+		return pair(true, inner.Expression()), !containsYield(inner.Expression())
 	case inner.Kind == ast.KindConditionalExpression:
-		conditional := inner.AsConditionalExpression()
-		if containsYield(conditional.Condition) {
-			return nil, false, false
+		c := inner.AsConditionalExpression()
+		if containsYield(c.Condition) {
+			return nil, false
 		}
-		left, leftProgram, leftOK := tx.directResult(conditional.WhenTrue)
-		right, rightProgram, rightOK := tx.directResult(conditional.WhenFalse)
-		if !leftOK || !rightOK {
-			return nil, false, false
+		left, lok := tx.tailCompletion(c.WhenTrue)
+		right, rok := tx.tailCompletion(c.WhenFalse)
+		if !lok || !rok {
+			return nil, false
 		}
-		if leftProgram != rightProgram {
-			if !leftProgram {
-				left = tx.succeedByName(left)
-			} else {
-				right = tx.succeedByName(right)
-			}
-		}
-		return f.UpdateConditionalExpression(conditional, conditional.Condition, conditional.QuestionToken, left, conditional.ColonToken, right), leftProgram || rightProgram, true
+		return f.UpdateConditionalExpression(c, c.Condition, c.QuestionToken, left, c.ColonToken, right), true
 	case inner.Kind == ast.KindBinaryExpression && inner.AsBinaryExpression().OperatorToken.Kind == ast.KindCommaToken:
-		binary := inner.AsBinaryExpression()
-		if containsYield(binary.Left) {
-			return nil, false, false
+		b := inner.AsBinaryExpression()
+		if containsYield(b.Left) {
+			return nil, false
 		}
-		right, rightProgram, rightOK := tx.directResult(binary.Right)
-		if !rightOK {
-			return nil, false, false
+		right, ok := tx.tailCompletion(b.Right)
+		if !ok {
+			return nil, false
 		}
-		return f.UpdateBinaryExpression(binary, binary.Modifiers(), binary.Left, binary.Type, binary.OperatorToken, right), rightProgram, true
+		return f.UpdateBinaryExpression(b, b.Modifiers(), b.Left, b.Type, b.OperatorToken, right), true
 	}
-	return node, false, !containsYield(node)
+	return pair(false, node), !containsYield(node)
+}
+
+// delegatedTail captures the thunk outside the generator's scope. Its source
+// this, arguments, super, new.target and self references stay in the original
+// callable. Only private compiler bindings are evaluated in the generator.
+func (tx *lowering) delegatedTail(node, thunk *ast.Node) *ast.Node {
+	f := tx.Factory()
+	capture := f.NewUniqueName("_tail")
+	result := f.NewUniqueName("_completion")
+	valueName := f.NewUniqueName("_value")
+	call := f.NewCallExpression(capture, nil, nil, f.NewNodeList(nil), ast.NodeFlagsNone)
+	declare := f.NewVariableStatement(nil, f.NewVariableDeclarationList(f.NewNodeList([]*ast.Node{
+		f.NewVariableDeclaration(result, nil, nil, call),
+		f.NewVariableDeclaration(valueName, nil, nil, f.NewElementAccessExpression(result, nil, f.NewNumericLiteral("1", ast.TokenFlagsNone), ast.NodeFlagsNone)),
+	}), ast.NodeFlagsConst))
+	index := func(n string) *ast.Node {
+		return f.NewElementAccessExpression(result, nil, f.NewNumericLiteral(n, ast.TokenFlagsNone), ast.NodeFlagsNone)
+	}
+	value := f.NewConditionalExpression(index("0"), f.NewToken(ast.KindQuestionToken),
+		f.NewYieldExpression(f.NewToken(ast.KindAsteriskToken), valueName), f.NewToken(ast.KindColonToken), valueName)
+	body := f.NewBlock(f.NewNodeList([]*ast.Node{declare, f.NewReturnStatement(value)}), true)
+	generator := tx.generatorExpression(node, sourceName(node), nil, body)
+	callee := f.NewPropertyAccessExpression(tx.effectName(), nil, f.NewIdentifier("gen"), ast.NodeFlagsNone)
+	effect := f.NewCallExpression(callee, nil, nil, f.NewNodeList([]*ast.Node{generator}), ast.NodeFlagsNone)
+	parameter := f.NewParameterDeclaration(nil, nil, capture, nil, nil, nil)
+	factory := f.NewParenthesizedExpression(tx.generated(tx.arrow([]*ast.Node{parameter}, effect)))
+	return f.NewCallExpression(factory, nil, nil, f.NewNodeList([]*ast.Node{thunk}), ast.NodeFlagsNone)
 }
 
 // namedThunk returns `() => value`, as `{ name: () => value }.name` when name

@@ -174,9 +174,14 @@ func TestModuleServiceThroughPreludeNamespace(t *testing.T) {
 		"export effect function implementation() { return try Control.FileSystem.FileSystem }\n"+
 		"export const noop = Control.FileSystem.layerNoop({})\n"+
 		"export function exists(fs: Control.FileSystem, path: string) { return fs.exists(path) }\n")
+	// Both service selection and the implementation value must retain the
+	// namespace qualifier, independently of the generator/thunk spelling.
+	if strings.Count(js, "Control.FileSystem.FileSystem") != 2 ||
+		strings.Contains(js, "Control.FileSystem.FileSystem.FileSystem") {
+		t.Fatalf("module service qualification changed:\n%s", js)
+	}
 	for _, want := range []string{
 		"(yield* Control.FileSystem.FileSystem).readFileString(path)",
-		"() => Control.FileSystem.FileSystem }",
 		"Control.FileSystem.layerNoop({})",
 	} {
 		if !strings.Contains(js, want) {

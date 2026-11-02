@@ -1,0 +1,14 @@
+import { Effect } from "effect"
+export const events: string[] = []
+export effect function plain(value: any) { return try value }
+export effect function conditional(value: any) { return true ? try value : 0 }
+export effect function comma(value: any) { return (events.push("tail"), try value) }
+export const arrow = effect (value: any) => try value
+export const expression = effect function (value: any) { return try value }
+export const object = { effect run(value: any) { return try value } }
+export class Handler { effect run(value: any) { return try value } }
+export effect function known(value: Effect.Effect<number>) { return try value }
+
+export const named = effect function inner(value: any) { return try value }
+export const mixed = effect (yes: boolean, value: any) => yes ? try value : function () {}
+export const mixedClass = effect (yes: boolean, value: any) => yes ? try value : class { static seen = this.name }

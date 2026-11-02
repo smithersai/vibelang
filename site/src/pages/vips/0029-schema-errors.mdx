@@ -51,3 +51,30 @@ const jsonRoundTripExit = Schema.decodeUnknownExit(JsonCount)(JSON.parse(JSON.st
 **Amended 2026-10-30: computed keys preserve the discriminant.** A computed payload field key is rejected by the existing reserved-tag diagnostic unless its well-typed runtime property-key domain is proved to exclude `"_tag"`. Effective generic constraints and enum underlying values matter; opaque primitive brands/refinements do not change a string's possible runtime keys. Retain genuine literal/template constraints in intersections and require every union component to exclude the reserved value. Known numeric/symbol domains, safe literal/template domains and their brands remain admitted; `never` has no key. Reject `any`, `unknown` and unresolved or unprovable domains conservatively. Accepted keys retain native evaluation/order, with no value unwrapping, decoder execution or runtime tag guard. Ordinary TypeScript invalid-key rules remain independent.
 
 - **Amended 2026-10-30: computed-key counterparts.** Computed field keys use native runtime object-literal admission and evaluation, as for schema declarations. They must additionally prove their runtime key domain excludes `_tag`; native key admission does not relax that reserved-tag check, add a runtime guard or imply transport compatibility. Plain error payloads retain their separate erased TypeScript type-member counterpart.
+
+## Details
+
+Decided details folded in on 2026-11-03. Each keeps its old number as history. The conflict pass deleted superseded, duplicate and relic details and resolved contradictions in favor of Will's words, then accepted VIPs, then later details. Principles are numbered as in [the introduction's Details](https://github.com/smithersai/vibelang/blob/main/docs/design/src/000-intro.md#details).
+
+### Detail 16
+
+(VIP-29) `schema error Timeout` with no braces is allowed, like VIP-13's `error Timeout`.
+
+### Detail 42
+
+(NW 33; VIP-29) A generated `schema error` constructor is `@throws {never}`, a static contract like `error` and `data` constructors. A validation failure at construction (Effect 4.1.0 throws a plain `Error`) is a defect, as any implicit throw inside `Effect.gen` is.
+    ```vibe
+    schema error Invalid { name: NonEmptyString }
+    effect function f() { throw new Invalid({ name: "" }) }   // compiles; dies with Error at run time
+    ```
+    Effect TS: `Effect.gen(function* () { return yield* Effect.fail(new Invalid({ name: "" })) })`, where the constructor's throw is a defect. Decided by the agent from principle 1 (the same `Exit` as Effect TS) and VIP-29's `throw new E(…)` idiom, which tracking `Error` would break; 2026-10-29.
+
+    **Generated-constructor implicit-throw clarification.** The existing `@throws {never}` contract for generated `error`, `data` and `schema error` constructors is static; it does not promise that every well-typed JavaScript argument completes construction. Preserve the respective native Effect counterpart, including observable property reads, enumeration/copy operations and construction metadata. A user getter, setter, proxy trap or native target-state failure reached implicitly by those operations remains an untracked implicit throw under VIP-4/details81/205. Preserve its original value and phase: an ordinary native call can throw it, ordinary JavaScript `catch` catches it, and construction inside `Effect.gen` produces a defect. Do not add validation, suppress the exception, wrap it as typed failure, or change copy/prototype/tag behavior merely to enforce a runtime reading of `never`. Explicit evaluation of constructor arguments retains its own ordinary call/throws rules before construction. The accepted schema-error validation-defect rule above remains unchanged.
+    ```vibe
+    error CopyError { value: number }
+    const token = { failure: "copy" }
+    const payload = { get value(): number { throw token } }
+    effect function example() { return new CopyError(payload) } // construction dies with the original token
+    ```
+    Effect TS: `class CopyError extends Data.TaggedError("CopyError")<{ value: number }> {}` followed by `Effect.runSyncExit(Effect.gen(function* () { return new CopyError(payload) }))` has a `Die` carrying the original getter exception. `Data.taggedEnum` variant construction has the same implicit-throw classification, while retaining its own object-spread copy behavior rather than the tagged-error constructor's assignment protocol. These are not interchangeable lowering recipes.
+    Decided by the agent from detail42's explicit static contract and validation-defect rule, accepted VIP-4's implicit-throw split, details81/205 and principle1 (the native Effect result), principle2 (JavaScript getters/proxies/catch), and principle4 (one implicit-throw rule rather than a constructor exception), 2026-10-30. The fixer's complete retained reference source, empty strict TypeScript5.9.3 diagnostic log, native Effect4.1.0 results and saved core/record/enum implementation excerpts were read, not rerun: the probes cover `Data.TaggedError` and `Data.taggedEnum`, not schema-error constructors or compiled VibeLang. The corrected three-read truthy-cause observation and its earlier exploratory failure stay attributed. Source correction remains with spec-fix-b; no new diagnostic, API, canonical number or Will question is introduced.
