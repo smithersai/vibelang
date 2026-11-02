@@ -27,10 +27,10 @@ export function run(command, { cwd, env, log, input, timeoutMs } = {}) {
     child.on("close", (code, signal) => {
       clearTimeout(timer)
       clearTimeout(forceTimer)
-      const result = { command, cwd, timedOut, code: timedOut ? 124 : code ?? 128, signal, stdout, stderr, ms: Date.now() - started }
+      const result = { command, cwd, timedOut, code: timedOut ? 124 : code ?? 128, signal, pid: child.pid, stdout, stderr, ms: Date.now() - started }
       if (log) {
         mkdirSync(dirname(log), { recursive: true })
-        writeFileSync(log, `$ ${command}\n# cwd ${cwd ?? process.cwd()}\n# exit ${result.code} in ${result.ms} ms\n\n${stdout}${stderr ? "\n# stderr\n" + stderr : ""}`)
+        writeFileSync(log, `$ ${command}\n# cwd ${cwd ?? process.cwd()}\n# exit ${result.code} in ${result.ms} ms\n# pid ${child.pid}${signal ? `, killed by ${signal}` : ""}, ended ${new Date().toISOString()}\n\n${stdout}${stderr ? "\n# stderr\n" + stderr : ""}`)
       }
       resolve(result)
     })

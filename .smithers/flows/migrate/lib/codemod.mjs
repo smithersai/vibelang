@@ -545,6 +545,8 @@ export async function fixToFixedPoint({ compiler, tsconfig, cwd, root, maxRounds
       if (!kept.has(file)) others.set(file, readFileSync(path))
     }
   }
+  // `restored` lists the modules whose committed bytes the rounds put back.
+  const restored = []
   let last
   for (let round = 1; round <= maxRounds; round++) {
     // --declaration: what --fix keeps for a declaration file it keeps under a tsconfig that says noEmit too.
@@ -556,7 +558,9 @@ export async function fixToFixedPoint({ compiler, tsconfig, cwd, root, maxRounds
       // per-file statistics. Restore the whole nonselected byte snapshot.
       for (const [file, original] of others) {
         const path = join(root, file)
-        if (!existsSync(path) || !readFileSync(path).equals(original)) writeFileSync(path, original)
+        if (existsSync(path) && readFileSync(path).equals(original)) continue
+        writeFileSync(path, original)
+        restored.push(file)
       }
     }
     const parsed = parseFixOutput(result.stdout, { cwd, root })
@@ -576,7 +580,7 @@ export async function fixToFixedPoint({ compiler, tsconfig, cwd, root, maxRounds
     if (parsed.total === 0) break
   }
   const settled = rounds.at(-1).fixes === 0
-  return { settled, rounds, byFile, refused, diagnostics: parseDiagnostics(last.stdout + last.stderr, { cwd, root }) }
+  return { settled, rounds, byFile, refused, restored: [...new Set(restored)].sort(), diagnostics: parseDiagnostics(last.stdout + last.stderr, { cwd, root }) }
 }
 
 /** Totals of the rewrites that fired, by kind, over every file. */

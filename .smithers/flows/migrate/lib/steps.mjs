@@ -1364,6 +1364,7 @@ export async function codemod(options) {
   const compiler = compilerOf(config)
   const byFile = {}
   const refused = []
+  const restored = []
   const rounds = []
   let settled = true
   for (const pkg of config.packages.filter((pkg) => files.some((f) => packageOf(config, f) === pkg))) {
@@ -1375,6 +1376,7 @@ export async function codemod(options) {
       const fixed = await fixToFixedPoint({ compiler, tsconfig, cwd: join(t, pkg.dir), root: t, only: renames.map((r) => r.to), log: join(p.batch(b), "logs", `fix-attempt-${attempt}-${slug(pkg.dir)}${projects.length > 1 ? `-${slug(tsconfig)}` : ""}`) })
       for (const [file, kinds] of Object.entries(fixed.byFile)) byFile[file] = kinds
       refused.push(...fixed.refused)
+      restored.push(...fixed.restored)
       rounds.push(...fixed.rounds.map((r) => ({ package: pkg.dir, ...(projects.length > 1 ? { project: tsconfig } : {}), ...r })))
       settled &&= fixed.settled
       Object.assign(progress, { finishedAt: new Date().toISOString(), settled: fixed.settled, rounds: fixed.rounds.length })
@@ -1398,7 +1400,7 @@ export async function codemod(options) {
   const emittedJs = await emitMigratedJs(config, t, join(p.batch(b), "logs"))
   state.attempts.at(-1).finishedAt = new Date().toISOString()
   saveState(p.codemodState(b), state)
-  const result = { batch: b, at: new Date().toISOString(), files, platform: platformResult, formatted, plain, functionModel, renames, exportEdits, importEdits, refEdits, scriptEdits, referenceEdits, referenceWarnings, referenceScan, selectorChecks, fix: { settled, rounds, byFile, totals: rewriteTotals(byFile), refused } }
+  const result = { batch: b, at: new Date().toISOString(), files, platform: platformResult, formatted, plain, functionModel, renames, exportEdits, importEdits, refEdits, scriptEdits, referenceEdits, referenceWarnings, referenceScan, selectorChecks, fix: { settled, rounds, byFile, totals: rewriteTotals(byFile), refused, restored: [...new Set(restored)].sort() } }
   result.emittedJs = emittedJs
   durableWrite(p.codemod(b), JSON.stringify(result, null, 2) + "\n")
   return result

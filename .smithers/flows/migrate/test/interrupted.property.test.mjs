@@ -67,6 +67,8 @@ test("foldkit-74: SIGKILL during compiler work resumes without renaming or losin
     assert.equal(result.importEdits.length, 2)
     assert.match(readFileSync(join(f.target, "src/meta.vibe"), "utf8"), /checked hand repair/)
     assert.equal(result.fix.settled, true)
+    // codemod.json records which earlier batch's modules the fix put back (none here).
+    assert.deepEqual(result.fix.restored, [])
     const again = await codemod({ run: f.run })
     assert.deepEqual(again, result)
     // Original bytes are from the run, even if @- no longer contains TypeScript.

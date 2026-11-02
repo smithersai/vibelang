@@ -1,0 +1,14 @@
+{
+  "key": "migrate-flow:unreported-protected-write",
+  "others": [
+    "src/old.vibe"
+  ],
+  "acts": [
+    {
+      "file": "src/old.vibe",
+      "act": "write"
+    }
+  ],
+  "reported": [],
+  "end": "ok"
+}

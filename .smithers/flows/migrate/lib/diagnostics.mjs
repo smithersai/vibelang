@@ -43,7 +43,9 @@ export function assertFinished(result, log) {
   const crash = crashLine.exec(output)
   if (!crash && !result.signal && !result.timedOut && (result.code === 0 || parseDiagnostics(output).length)) return
   const tail = crash ? output.slice(crash.index) : output
-  throw new Error(`the compiler did not finish (exit ${result.code}${log ? `, log ${log}` : ""}):\n${tail.trim().split("\n").slice(0, 8).join("\n")}`)
+  // A timeout keeps its own words: callers such as onepass match "timed out" or "exit 124".
+  const ended = result.timedOut ? `timed out, exit ${result.code}` : result.signal ? `killed by ${result.signal}` : `exit ${result.code}`
+  throw new Error(`the compiler did not finish (${ended}${log ? `, log ${log}` : ""}):\n${tail.trim().split("\n").slice(0, 8).join("\n")}`)
 }
 
 /** Counts by code, and the diagnostics of the given files apart from the rest. */
