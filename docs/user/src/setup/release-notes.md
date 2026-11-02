@@ -554,6 +554,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A compiler launcher test could time out before reading its watcher’s ready message and leave the watcher running indefinitely; test-context teardown now stops and reaps that child even when stdout never arrives.
 
 - A malformed response could crash the LSP benchmark and leave its compiler server running; it now reports the request and protocol stage, then terminates and reaps the server.
+
+- Documentation hover generation could hang after its language server closed its response stream or sent malformed data; pending requests now fail with their method and protocol stage, allowing server and temporary-project cleanup to finish.
 - With `import { Effect } from "effect"` in a `.vibe` file, `Effect.Array.head([1])` compiled as if `Effect` were the implicit binding; a written `Effect` binding now keeps its ordinary TypeScript meaning, so that read reports `TS2339`, while the implicit `Effect.Array` and `typeof Effect.Array` still resolve (VIP-14).
 - The `EK4855` repair renamed a service `static readonly default` to `defaultValue` and rewrote its value reads, but left type reads such as `typeof Flags.default` and `(typeof Flags)["default"]`, so the repaired file failed with `TS2339`; the declaration now carries one `EK4855` whose fix rewrites every read in the file, type reads as `ReturnType<typeof Flags.defaultValue>`, and a read in another file keeps its own warning and fix.
 - A `break` or `continue` in a loop head's `do` could bypass `EK0205` by naming an outer label in a chain on the same loop; every label in that chain now gets the early error, while jumps to a different enclosing loop remain exempt.

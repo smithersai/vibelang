@@ -766,6 +766,13 @@ method. It terminates and reaps the owned server before returning failure,
 escalating to `SIGKILL` if the server ignores `SIGTERM`. Response bodies are
 omitted from malformed-response diagnostics.
 
+The docs hover client's `docs/tools/lsp.ts` rejects every pending request
+when the response stream ends, a frame is malformed, or a server request
+cannot be decoded. The error names the request and protocol stage without
+copying a malformed response's body. Hover generation can then close its
+server and remove its temporary projects; a server that ignores termination
+is killed after the existing two-second cleanup deadline.
+
 ## Known gaps
 
 - **Sandboxing.** The targets run with `sandbox: "none"`: the harness writes
