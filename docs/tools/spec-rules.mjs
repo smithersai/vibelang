@@ -188,9 +188,9 @@ export function lintAuthority(root) {
       if (vip?.status !== "denied") continue
       const begin = text.lastIndexOf("\n\n", m.index) + 2
       const end = text.indexOf("\n\n", m.index)
-      const paragraph = text.slice(begin, end < 0 ? undefined : end)
+      const paragraph = text.slice(begin, end < 0 ? undefined : end).replace(/\]\([^)]+\)/g, "]")
       if (text.slice(text.lastIndexOf("\n", m.index) + 1, m.index).trimStart().startsWith("//")) continue
-      if (/\b(?:denied|rejected|not permitted|not part of the language|no special syntax|removed|don.t exist)\b/i.test(paragraph)) continue
+      if (/\b(?:denied|rejected|not permitted|not part of the language|no special syntax|removed|don.t exist|trailing block.*(?:error|EK1101))\b/i.test(paragraph)) continue
       findings.push(issue("authority", path, text, m.index, "denied VIP-" + id + " cannot authorize this chapter citation"))
     }
     for (const m of text.matchAll(/^.*(?:Sources?:|[Aa]uthority:|[Aa]uthorized by|[Pp]ermitted by|[Aa]llowed by|[Aa]s (?:specified|defined) (?:in|by)).*$/gm)) {

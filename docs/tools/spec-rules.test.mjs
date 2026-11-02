@@ -112,3 +112,38 @@ test("fast-check: adding an undecided config key never changes the accepted key 
     assert.ok(lintTables(root).some(f => f.message.startsWith(key + ":")))
   }), { seed: 1430, numRuns: 30 })
 }))
+
+test("r14 OPUS-1: current chapter resolution is byte-identical to VIP-39", () => {
+  assert.deepEqual(lintCopies(repository), [])
+})
+
+test("r14 OPUS-2: current denied-VIP repair table includes the effect-function argument", () => {
+  assert.deepEqual(lintTables(repository).filter(f => f.message.includes("VIP-11")), [])
+})
+
+test("r7 ASTRA-4: VIP-5's current decision example contains no removed value handler", () => {
+  const source = examples(read(repository, "docs/design/vips/0005-try-runs-effects.md"))[0].source
+  assert.deepEqual(removedHandlers(source), [])
+  assert.ok(source.includes("catch () => guest"))
+})
+
+test("r2 OPUS-2 / ASTRA-2: current resource warning cites an accepted public amendment", () => {
+  assert.deepEqual(lintAuthority(repository), [])
+  const vip = read(repository, "docs/design/vips/0034-compiler-and-tooling.md")
+  assert.ok(vip.includes("default warning `EK0801`"))
+})
+
+test("r14 ASTRA-1 / OPUS-3: declaration spelling scope is generated from VIP-27 in both chapters", () => {
+  assert.deepEqual(lintCopies(repository), [])
+  const authority = section(read(repository, "docs/design/vips/0027-declaration-output.md"), "package-declaration-spelling")
+  assert.ok(authority.includes("controls only package"))
+  assert.ok(authority.includes("sidecars retain their existing VibeLang-source references"))
+  const tooling = read(repository, "docs/design/src/007-tooling.md")
+  for (const obsolete of ["compilerOptions.vibelang.declarationImportStyle", "`trustedPackages`", "`tracing`"]) assert.ok(!tooling.includes(obsolete))
+  assert.ok(!lintRegistry(repository).some(f => f.message.includes("declarationImportStyle")))
+})
+
+test("denied-link-filename: a link path containing denied cannot excuse positive authority", () => fixture((root, edit) => {
+  edit(chapter, s => s + "\nThe resource extension follows [VIP-8](../vips/0008-using-denied.md).\n")
+  assert.ok(lintAuthority(root).some(f => f.message.includes("VIP-8") && f.path === chapter))
+}))

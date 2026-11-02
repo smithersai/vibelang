@@ -367,6 +367,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The grammar admission fuzzer reported `join {}` as a new unclassified failure; it now keeps this object-operand witness under the existing pending finding while checking native calls, element accesses and line breaks separately.
 
 - Async conversion could change how a JavaScript `try` statement handles rejection or leave a `using` resource undisposed; the editor now leaves these bodies for an explicit handler and cleanup rewrite.
+- A denied-VIP link could evade the authority check because its filename contained `denied`; the check now reads the prose separately from the link destination.
+
 - Specification changes could leave option names, diagnostics, shared tables and VIP examples inconsistent; deterministic Smithers checks now report that drift before it lands.
 
 - The migrate flow's codemod left a test that lists a directory and filters it with an extension regex, such as t3code's React Compiler coverage and dependency-graph tests (`/\.tsx?$/.test(file)`), selecting only `.ts` files, so each migrated module silently dropped out of the check (318 t3code web and mobile modules stayed TypeScript); it now widens that one regex to `/(?<!\.d\.vibe)\.(?:tsx?|vibe)$/`, which selects `.vibe` modules and not their `x.d.vibe.ts` sidecars, when the selected files are the same by base name, and `verify` accepts only that widening.
