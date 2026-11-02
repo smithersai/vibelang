@@ -1,2 +1,0 @@
-go test fuzz v1
-string("-- main.vibe --\nimport { Context } from \"effect\"\n\nexport service Port {\n  static readonly key = \"Port\"\n  read: () => number\n}\n\nexport const main = (): number!! => 1\n")

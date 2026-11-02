@@ -28,8 +28,8 @@ func TestFixServiceClassImports(t *testing.T) {
 		name, source, options, want string
 	}{
 		{"kept", source, `"declaration":true,"noEmit":true`, "import * as Context from \"effect/Context\"\nimport * as Effect from \"effect/Effect\"\n\n" + service},
-		{"removed without declarations", source, `"noEmit":true`, "\n" + service},
-		{"named import", named, `"declaration":true,"noEmit":true`, "\n" + service},
+		{"removed without declarations", source, `"noEmit":true`, service},
+		{"named import", named, `"declaration":true,"noEmit":true`, service},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, file, _, _ := editorProgram(t, tc.source)

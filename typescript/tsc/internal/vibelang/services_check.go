@@ -40,52 +40,11 @@ func checkServices(c *checker.Checker, file *ast.SourceFile) {
 }
 
 // markDeclarationImports marks the file's own import of a module that only
-// its declaration file reads, through that import (D501): the namespace
-// import * as Context from "effect/Context", or the named import
-// import { Context } from "effect" (foldkit's spelling, foldkit-37), which
-// TS6133 would otherwise call unused.
+// its declaration file reads, through that import (D501).
 func markDeclarationImports(c *checker.Checker, file *ast.SourceFile) {
 	for _, statement := range declarationImports(file) {
 		c.MarkSymbolReferenced(statement.ImportClause().AsImportClause().NamedBindings.Symbol())
 	}
-	service, schemaError := declarationImportNeeds(file)
-	for _, statement := range file.Statements.Nodes {
-		for _, specifier := range rootNamedImports(statement) {
-			if name := specifier.Name().Text(); name == "Context" && service || name == "Schema" && schemaError {
-				c.MarkSymbolReferenced(specifier.Symbol())
-			}
-		}
-	}
-}
-
-// rootNamedImports returns the specifiers of statement, an import of
-// "effect" with named bindings, that import a module under its own name:
-// the Context of import { Context } from "effect", not { Context as C }.
-func rootNamedImports(statement *ast.Node) []*ast.Node {
-	if !ast.IsImportDeclaration(statement) || statement.ImportClause() == nil || !ast.IsStringLiteral(statement.ModuleSpecifier()) || statement.ModuleSpecifier().Text() != "effect" {
-		return nil
-	}
-	clause := statement.ImportClause().AsImportClause()
-	if clause.NamedBindings == nil || !ast.IsNamedImports(clause.NamedBindings) {
-		return nil
-	}
-	var specifiers []*ast.Node
-	for _, specifier := range clause.NamedBindings.AsNamedImports().Elements.Nodes {
-		if property := specifier.PropertyName(); property == nil || property.Text() == specifier.Name().Text() {
-			specifiers = append(specifiers, specifier)
-		}
-	}
-	return specifiers
-}
-
-// declarationImportNeeds reports whether file declares a service, whose
-// declaration writes Context, and a schema error, whose declaration writes
-// Schema.
-func declarationImportNeeds(file *ast.SourceFile) (service, schemaError bool) {
-	return declaresService(file), core.Some(file.Statements.Nodes, func(statement *ast.Node) bool {
-		form, _ := errorFormOf(statement)
-		return form == errorFormSchemaRoot
-	})
 }
 
 // declarationImports returns the file's namespace imports of an Effect
@@ -93,7 +52,11 @@ func declarationImportNeeds(file *ast.SourceFile) (service, schemaError bool) {
 // reads (D501): a service's base writes Context, and a schema error's writes
 // Schema.
 func declarationImports(file *ast.SourceFile) []*ast.Node {
-	service, schemaError := declarationImportNeeds(file)
+	service := declaresService(file)
+	schemaError := core.Some(file.Statements.Nodes, func(statement *ast.Node) bool {
+		form, _ := errorFormOf(statement)
+		return form == errorFormSchemaRoot
+	})
 	var imports []*ast.Node
 	for _, statement := range file.Statements.Nodes {
 		if name := namespaceImportOfModule(statement); name == "Context" && service || name == "Schema" && schemaError {

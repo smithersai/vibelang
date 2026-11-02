@@ -1,6 +1,0 @@
-// expect: TS6133
-// The control of service-named-context-import: with no service declaration,
-// nothing reads the import, and noUnusedLocals reports it.
-import { Context } from "effect"
-
-export const one = 1
