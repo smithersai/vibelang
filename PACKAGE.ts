@@ -361,6 +361,7 @@ const specTests = [
   "TestVIPTemplatesCited",
   "TestRunningRulesQuoted",
   "TestNativeStreamProtocolsQuoted",
+  "TestProducerDelegationQuoted",
   "TestMigrationForeignCallQuoted",
   "TestFixDeclaredImportsQuoted",
   "TestBangSlotGroupingQuoted",

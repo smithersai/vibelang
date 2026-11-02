@@ -655,6 +655,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Specification edits could add language rules without accepted authority; the optional `//:spec-rule-judge` Smithers target now reports Luna’s evidence and contradictions, caches retries, and allows entries through when the judge is unavailable.
 - The ESLint corpus check rejected two deliberately malformed compiler and editor fixtures as regressions; it now verifies their exact intended syntax errors and rejects changed or missing errors.
 
+- Producers accepted `yield*` even though delegation is not specified; it now reports `EK2103`. Native generator delegation keeps its ordinary behavior.
+
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 
 - Migration setup could leave a native type exported through a TypeScript namespace barrel as an error type in project-aware linters; setup now enables source declaration redirects in owned configs and records those edits.

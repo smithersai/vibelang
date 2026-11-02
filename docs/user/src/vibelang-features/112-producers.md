@@ -35,7 +35,7 @@ A `yield` inside a `for concurrent` item body emits on the enclosing producer's 
 
 The consumer stops at 25; before `firstAlert` returns, the producer's finalizer logs `sensor closed`. `break` or a failure in the loop body closes the Stream and runs its cleanup. Iterating the Stream again starts a new run.
 
-In `.vibe`, `effect function*` declares a producer; use a plain `function*` for `Effect.gen` or other generator-based APIs. A plain `function*`, with or without a JavaScript iterator return type, is a JavaScript generator ([below](#javascript-generators)). Generator methods on objects remain JavaScript generators unless marked `effect`. The value of `yield x` is `undefined` after the offer completes, including when it waits for room in the buffer. A bare `yield` offers `undefined`.
+In `.vibe`, `effect function*` declares a producer; use a plain `function*` for `Effect.gen` or other generator-based APIs. A plain `function*`, with or without a JavaScript iterator return type, is a JavaScript generator ([below](#javascript-generators)). Generator methods on objects remain JavaScript generators unless marked `effect`. The value of `yield x` is `undefined` after the offer completes, including when it waits for room in the buffer. A bare `yield` offers `undefined`. A producer cannot delegate with `yield*` (`EK2103`); use `for try` and `yield` to forward another stream's elements.
 
 A bare `return` ends a producer. `return value` is an error (`EK2128`) because a Stream has no return value; `vibelang --fix` writes `return` and keeps the value's evaluation. A `return` inside a `for try` head's binding initialization or body is also an error (`EK2002`); nested functions keep their own return targets. Save the result and use `break` instead.
 

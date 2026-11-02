@@ -1,0 +1,9 @@
+// expect-result: [1,2,"a","b"]
+function* numbers():Generator<number,void,unknown>{yield* [1,2]}
+function* text():Generator<string,void,unknown>{yield* "ab"}
+function* key():Generator<never,string,unknown>{return "m"}
+function* nameContext():Generator<number,void,string>{
+ const object={effect [(yield* key()) as string](){return 2}}
+ return
+}
+export effect function main(){return [...numbers(),...text()]}

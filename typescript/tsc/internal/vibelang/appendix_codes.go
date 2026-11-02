@@ -34,7 +34,7 @@ var (
 	EK1902 = message(1902, errorCategory, "For concurrent outside effect code. Iterate an Iterable inside effect code, and use continue to end an item.")
 	EK1905 = message(1905, errorCategory, "continue cannot leave a for concurrent item: each item runs in its own fiber.")
 	EK2102 = message(2102, errorCategory, "A producer whose written return type is not a Stream. Yield values from a producer and return without a value; its return type is a Stream.")
-	EK2103 = message(2103, errorCategory, "Yield* in a producer. Yield values from a producer and return without a value; its return type is a Stream.")
+	EK2103 = message(2103, errorCategory, "yield* is not supported in a producer. Loop over the source and yield each value instead.")
 	EK2201 = message(2201, errorCategory, "An interruption block outside effect code. Use interruption blocks inside effect code and restore inside the same uninterruptible region.")
 	EK2202 = message(2202, errorCategory, "Restore in an effect arrow or block nested in an uninterruptible block. Use interruption blocks inside effect code and restore inside the same uninterruptible region.")
 	// EK2301: a conditional at either end of a pipe; the parser reports it (parser.PipeConditionalMessage).

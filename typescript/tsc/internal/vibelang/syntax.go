@@ -47,7 +47,7 @@ func checkSyntax(c *checker.Checker, file *ast.SourceFile) {
 		}
 		switch node.Kind {
 		case ast.KindYieldExpression:
-			fn := ast.GetContainingFunction(node)
+			fn := yieldBodyFunction(file, node)
 			if node.AsYieldExpression().AsteriskToken != nil && (fn == nil || ast.GetFunctionFlags(fn)&ast.FunctionFlagsGenerator == 0) {
 				report(c, node, EK1015)
 				cover(c, node)

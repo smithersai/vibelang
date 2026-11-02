@@ -1,0 +1,10 @@
+// expect: EK2103 EK2103 EK2103 EK2103 TS2345
+import {Stream} from "effect"
+effect function* child(){yield 1}
+effect function* array(){yield* [1,2]}
+effect function* stream(){yield* child()}
+effect function* text(){yield* "ab"}
+function only(n:number):number[]{return [n]}
+effect function* innerError(){yield* only("bad")}
+function* native():Generator<number,void,unknown>{yield* [1,2]}
+export {}
