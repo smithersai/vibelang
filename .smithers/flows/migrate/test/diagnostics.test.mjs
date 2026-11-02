@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { fakeProjectFiles } from "./helpers/fake-project-files.mjs"
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -49,7 +50,7 @@ test("a compiler that dies is no clean run: check, the fix loop and the declarat
   try {
     const fake = (name, body) => {
       const path = join(root, name)
-      writeFileSync(path, `#!/bin/sh\n${body}\n`, { mode: 0o755 })
+      writeFileSync(path, `#!/bin/sh\n${fakeProjectFiles(root, { shell: true })}${body}\n`, { mode: 0o755 })
       return path
     }
     const dies = /the compiler did not finish \(exit 2/

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { fakeProjectFiles } from "./helpers/fake-project-files.mjs"
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -227,7 +228,7 @@ test("fixToFixedPoint keeps the rewrites of the batch's files only, and an earli
     // A compiler whose --fix rewrites every .vibe file of the project it has not rewritten yet, as vibelang does.
     const compiler = join(root, "fake-vibelang")
     writeFileSync(compiler, `#!/usr/bin/env node
-const fs = require("node:fs")
+${fakeProjectFiles(root)}const fs = require("node:fs")
 let n = 0
 for (const file of ["src/batch.vibe", "src/earlier.vibe"]) {
   const text = fs.readFileSync(file, "utf8")
@@ -263,7 +264,7 @@ test("fixToFixedPoint puts back an earlier batch's file in another package that 
     // vibelang --fix rewrites the project's every .vibe file, the dependency outside cwd included.
     const compiler = join(root, "fake-vibelang")
     writeFileSync(compiler, `#!/usr/bin/env node
-const fs = require("node:fs"), path = require("node:path")
+${fakeProjectFiles(root)}const fs = require("node:fs"), path = require("node:path")
 let n = 0
 for (const [file, text] of Object.entries(${JSON.stringify(corpus.fixed)})) {
   const abs = path.join(${JSON.stringify(root)}, file)
@@ -288,7 +289,7 @@ test("the fix loop asks for declarations, so --fix keeps what they print under a
   try {
     const seen = join(root, "args.txt")
     const compiler = join(root, "vibelang")
-    writeFileSync(compiler, `#!/bin/sh\necho "$@" > ${seen}\necho 'vibelang --fix: 0 fixes in 0 files.'\n`, { mode: 0o755 })
+    writeFileSync(compiler, `#!/bin/sh\n${fakeProjectFiles(root, { shell: true })}echo "$@" > ${seen}\necho 'vibelang --fix: 0 fixes in 0 files.'\n`, { mode: 0o755 })
     await fixToFixedPoint({ compiler, tsconfig: "tsconfig.json", cwd: root, root })
     assert.match(readFileSync(seen, "utf8"), /--fix --noEmit --declaration/)
   } finally {

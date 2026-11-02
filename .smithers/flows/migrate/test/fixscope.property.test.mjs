@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { fakeProjectFiles } from "./helpers/fake-project-files.mjs"
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
@@ -19,7 +20,7 @@ const layout = fc.record({
   rewritten: fc.array(fc.boolean(), { minLength: 20, maxLength: 20 }),
 })
 
-test("fixToFixedPoint keeps the batch's rewrites and puts back every other .vibe file in the repository", async () => {
+test("fixToFixedPoint keeps batch rewrites and restores nonselected files in the compiler's program", async () => {
   await fc.assert(fc.asyncProperty(layout, async (input) => {
     const root = mkdtempSync(join(tmpdir(), "migrate-fix-scope-property-"))
     try {
@@ -33,7 +34,7 @@ test("fixToFixedPoint keeps the batch's rewrites and puts back every other .vibe
       const touched = all.filter((_, i) => input.rewritten[i % input.rewritten.length] || batch.includes(all[i]))
       const compiler = join(root, "fake-vibelang")
       writeFileSync(compiler, `#!/usr/bin/env node
-const fs = require("node:fs"), path = require("node:path")
+${fakeProjectFiles(root)}const fs = require("node:fs"), path = require("node:path")
 const root = ${JSON.stringify(root)}
 let n = 0
 for (const file of ${JSON.stringify(touched)}) {

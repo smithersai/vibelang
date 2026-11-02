@@ -3,14 +3,15 @@
 // that name them by VibeLang's rules, then run `vibelang --fix` until it finds
 // nothing more to fix, recording each rewrite it applied and each it refused.
 import { spawnSync } from "node:child_process"
-import { existsSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs"
-import { join, posix, relative, resolve } from "node:path"
+import { existsSync, readdirSync, readFileSync, realpathSync, renameSync, writeFileSync } from "node:fs"
+import { join, posix, relative, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 import { loadTypeScript } from "./declarations.mjs"
 import { sidecarConfigIn, sidecarPath, sidecarSettings } from "./sidecar-config.mjs"
 import { applyEdits, parseImports, resolveAliased, resolveRelative } from "./imports.mjs"
 import { assertFinished, parseDiagnostics } from "./diagnostics.mjs"
 import { isDeclarationFile, quote, run } from "./util.mjs"
+import { fixProgramFiles, withFixFiles } from "./fix-scope.mjs"
 
 /**
  * The tsconfig `paths` of each file's project, for rewriteImports and
@@ -584,39 +585,47 @@ export function mergeFixes(into, files) {
   return into
 }
 
-/** Every .vibe file under dir, outside node_modules and hidden directories. */
-function vibeFilesUnder(dir) {
-  const out = []
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    if (entry.name === "node_modules" || entry.name.startsWith(".")) continue
-    const path = join(dir, entry.name)
-    if (entry.isDirectory()) out.push(...vibeFilesUnder(path))
-    else if (entry.name.endsWith(".vibe")) out.push(path)
-  }
-  return out
-}
-
 /**
  * Runs `vibelang -p tsconfig --fix --noEmit --declaration` until a run fixes nothing, at
  * most maxRounds times. Returns every round's report, the merged rewrites by
  * file and kind, the refusals, and the diagnostics of the last run. With
  * only, the files (relative to root) whose rewrites a batch keeps: --fix
- * rewrites every .vibe file of the project, so each round puts every other
- * .vibe file back as it was, and an earlier batch's committed file, hand
+ * rewrites every VibeLang source of the project and its dependency closure, so each
+ * round puts its nonselected files back, and an earlier batch's file, hand
  * repairs included, stays as committed.
  */
-export async function fixToFixedPoint({ compiler, tsconfig, cwd, root, maxRounds = 4, log, only, timeoutMs }) {
+export async function fixToFixedPoint(options) {
+  const files = await fixProgramFiles(options)
+  return withFixFiles(files, () => fixToFixedPointInScope(options, files), options.log)
+}
+
+async function fixToFixedPointInScope({ compiler, tsconfig, cwd, root, maxRounds = 4, log, only, timeoutMs }, scopeFiles) {
   const rounds = []
   const byFile = {}
   const refused = []
   const kept = only && new Set(only)
   const others = new Map()
+  const selected = new Map()
+  const identities = new Map()
+  const identity = path => {
+    const absolute = resolve(path)
+    if (!identities.has(absolute)) {
+      try { identities.set(absolute, realpathSync(absolute)) }
+      catch { identities.set(absolute, absolute) }
+    }
+    return identities.get(absolute)
+  }
+  const sourceRoot = resolve(root ?? cwd ?? ".")
   if (kept) {
-    // The whole repository: the package's project also reaches an earlier
-    // batch's .vibe module in another package, which --fix rewrites too.
-    for (const path of vibeFilesUnder(root)) {
-      const file = posix.relative(root, path)
-      if (!kept.has(file)) others.set(file, readFileSync(path))
+    for (const file of kept) {
+      const id = identity(resolve(sourceRoot, file))
+      if (!selected.has(id)) selected.set(id, file)
+    }
+    // A compiler can print physical paths while the caller uses a symlinked
+    // checkout. Select by file identity and retain the caller's report names.
+    for (const path of scopeFiles) {
+      const id = identity(path)
+      if (!selected.has(id)) others.set(path, { file: relative(identity(sourceRoot), id).split(sep).join("/"), original: readFileSync(path) })
     }
   }
   // `restored` lists the modules whose committed bytes the rounds put back.
@@ -630,8 +639,7 @@ export async function fixToFixedPoint({ compiler, tsconfig, cwd, root, maxRounds
     } finally {
       // An interrupted compiler may keep verified writes without printing
       // per-file statistics. Restore the whole nonselected byte snapshot.
-      for (const [file, original] of others) {
-        const path = join(root, file)
+      for (const [path, { file, original }] of others) {
         if (existsSync(path) && readFileSync(path).equals(original)) continue
         writeFileSync(path, original)
         restored.push(file)
@@ -639,12 +647,17 @@ export async function fixToFixedPoint({ compiler, tsconfig, cwd, root, maxRounds
     }
     const parsed = parseFixOutput(result.stdout, { cwd, root })
     if (kept) {
-      for (const file of Object.keys(parsed.files)) {
-        if (kept.has(file)) continue
-        delete parsed.files[file]
+      const owned = {}
+      for (const [file, kinds] of Object.entries(parsed.files)) {
+        const name = selected.get(identity(resolve(sourceRoot, file)))
+        if (name !== undefined) mergeFixes(owned, { [name]: kinds })
       }
-      parsed.total = Object.values(parsed.files).reduce((n, kinds) => n + Object.values(kinds).reduce((a, b) => a + b, 0), 0)
-      parsed.refused = parsed.refused.filter((r) => kept.has(r.file))
+      parsed.files = owned
+      parsed.total = Object.values(owned).reduce((n, kinds) => n + Object.values(kinds).reduce((a, b) => a + b, 0), 0)
+      parsed.refused = parsed.refused.flatMap(r => {
+        const file = selected.get(identity(resolve(sourceRoot, r.file)))
+        return file === undefined ? [] : [{ ...r, file }]
+      })
     }
     assertFinished(result, log && `${log}.${round}.log`)
     rounds.push({ round, code: result.code, fixes: parsed.total, files: parsed.files, refused: parsed.refused })

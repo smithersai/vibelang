@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { fakeProjectFiles } from "./helpers/fake-project-files.mjs"
 import {
   chmodSync,
   mkdirSync,
@@ -53,6 +54,7 @@ async function verify(input) {
       compiler,
       [
         "#!/usr/bin/env node",
+        fakeProjectFiles(root),
         'const fs = require("node:fs")',
         "const files = " + JSON.stringify(files),
         "let total = 0",

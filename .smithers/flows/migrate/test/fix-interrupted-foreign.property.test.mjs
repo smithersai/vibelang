@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { fakeProjectFiles } from "./helpers/fake-project-files.mjs"
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
@@ -23,7 +24,7 @@ async function exercise({mode=3,scope="selected",payload=Buffer.from(corpus.fore
    ...foreign.map(file=>remove?'fs.unlinkSync(path.join(root,'+JSON.stringify(file)+'));':'fs.writeFileSync(path.join(root,'+JSON.stringify(file)+'),Buffer.from('+JSON.stringify(changed.toString("base64"))+',"base64"));'),
    mode===0?'console.log("vibelang --fix: 0 fixes in 0 files.");':typeof mode==="number"?'console.error("vibelang --fix: interrupted; kept the fixes it verified.");process.exit('+mode+');':'process.kill(process.pid,'+JSON.stringify(mode)+');'
   ].join("\n")
-  writeFileSync(script,"#!/usr/bin/env node\n"+code+"\n");chmodSync(script,0o755)
+  writeFileSync(script,"#!/usr/bin/env node\n"+fakeProjectFiles(root)+code+"\n");chmodSync(script,0o755)
   const only=scope==="all"?undefined:scope==="none"?[]:[corpus.selected]
   let result,error
   try{result=await fixToFixedPoint({compiler:script,tsconfig:"tsconfig.json",cwd:root,root,only})}catch(e){error=e}

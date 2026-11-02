@@ -1,4 +1,5 @@
 // flowsync-t3code 13:20Z: fixToFixedPoint put an earlier batch's .vibe module
+import { fakeProjectFiles } from "./helpers/fake-project-files.mjs"
 // back only when --fix reported rewriting it. A write it did not report, or
 // one a killed or failing compiler left behind, stayed in the target, so the
 // batch's commit carried a change to a module an earlier batch had migrated.
@@ -29,7 +30,7 @@ function target(t, others, acts, reported, end) {
   for (const file of [batch, ...others]) writeFileSync(join(root, file), original(file))
   const compiler = join(root, "fake-vibelang")
   writeFileSync(compiler, `#!/usr/bin/env node
-const fs = require("node:fs")
+${fakeProjectFiles(root)}const fs = require("node:fs")
 fs.writeFileSync(${JSON.stringify(batch)}, "// fixed\\n")
 for (const { file, act } of ${JSON.stringify(acts)}) act === "delete" ? fs.rmSync(file) : fs.writeFileSync(file, "half written")
 for (const file of ${JSON.stringify(reported)}) console.log("vibelang --fix: " + file + ": 1 fix (EK4837 ×1)")

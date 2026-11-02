@@ -1,0 +1,9 @@
+{
+  "key": "opencode:convert-all:cross-package-fix-restore-race",
+  "packages": ["packages/util", "packages/protocol"],
+  "edges": [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false],
+  "delays": [0, 0, 0, 0],
+  "before": "export const make = Effect.fn(function* () { return 1 })\n",
+  "after": "export const make = effect () => 1\n",
+  "retained": "// earlier batch's checked source\nexport const stable = 1\n"
+}

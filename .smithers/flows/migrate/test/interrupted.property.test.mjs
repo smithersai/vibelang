@@ -281,11 +281,11 @@ test("a killed codemod's journal carries its Vite build entries for resume and r
     "vite.config.ts": vite
   }, ["src/b.ts"])
   try {
-    writeFileSync(f.compiler, "#!/bin/sh\nif [ -f probe.vibe ]; then mkdir -p out; printf '%s\\n' 'export declare const f: () => Effect.Effect<number, never, never>;' > out/probe.d.ts; exit 0; fi\nkill -KILL $$\n", { mode: 0o755 })
+    writeProbeAwareCompiler(f.compiler, "#!/bin/sh\nif [ -f probe.vibe ]; then mkdir -p out; printf '%s\\n' 'export declare const f: () => Effect.Effect<number, never, never>;' > out/probe.d.ts; exit 0; fi\nkill -KILL $$\n", { mode: 0o755 })
     await assert.rejects(codemod({ run: f.run }), /did not finish/)
     assert.deepEqual(readJson(paths(f.run).codemodState("01")).buildEntries.edits, [{ file: "vite.config.ts", source: "src/b.ts", from: "src/b.ts", to: "src/b.vibe" }])
     assert.equal(readFileSync(join(f.target, "vite.config.ts"), "utf8"), vite.replace("src/b.ts", "src/b.vibe"))
-    writeFileSync(f.compiler, "#!/bin/sh\nif [ -f probe.vibe ]; then mkdir -p out; printf '%s\\n' 'export declare const f: () => Effect.Effect<number, never, never>;' > out/probe.d.ts; exit 0; fi\necho 'vibelang --fix: 0 fixes in 0 files.'\n", { mode: 0o755 })
+    writeProbeAwareCompiler(f.compiler, "#!/bin/sh\nif [ -f probe.vibe ]; then mkdir -p out; printf '%s\\n' 'export declare const f: () => Effect.Effect<number, never, never>;' > out/probe.d.ts; exit 0; fi\necho 'vibelang --fix: 0 fixes in 0 files.'\n", { mode: 0o755 })
     const result = await codemod({ run: f.run })
     assert.equal(result.buildEntries.edits.length, 1)
     assert.equal(readFileSync(join(f.target, "vite.config.ts"), "utf8"), vite.replace("src/b.ts", "src/b.vibe"))
