@@ -164,6 +164,7 @@ func checkCatchExpressions(c *checker.Checker, file *ast.SourceFile) {
 				// EK0504 or EK0509 (foldkit devtools-mcp relayRegistry.vibe).
 				return node.ForEachChild(visit)
 			}
+			checkCatchHandlerResult(c, file, call, fallback)
 			if inLowerableBody(call) && analyzerFor(c).caughtErrors(call).Flags()&checker.TypeFlagsNever != 0 {
 				d := reportAt(c, file, keyword, deadCatchExpression, nodeText(file, left))
 				note(d, "Use a form that can fail, such as Option.getOrElse or Schema.decodeUnknownEffect, or remove the catch.")

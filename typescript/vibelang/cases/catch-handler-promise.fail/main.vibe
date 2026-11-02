@@ -1,0 +1,22 @@
+// expect: EK0507
+import { Effect } from "effect"
+
+declare function queryDb(e: unknown): Promise<number>
+declare function thenable(e: unknown): PromiseLike<number>
+declare function maybe(e: unknown): Promise<number> | undefined
+declare function mixed(e: unknown): Promise<number> | number
+
+declare const x: number!string
+
+// 002:147 EK0507: a plain handler whose result type is a Promise or thenable.
+export effect function promiseHandler() { return x catch (e) => queryDb(e) }
+export effect function thenableHandler() { return x catch (e) => thenable(e) }
+export effect function optionalHandler() { return x catch (e) => maybe(e) }
+export effect function unionHandler() { return x catch (e) => mixed(e) }
+export effect function functionHandler() { return x catch function (e: string) { return queryDb(e) } }
+
+// Controls: no EK0507.
+export effect function valueHandler() { return x catch (e) => 7 }
+export effect function throwHandler() { return x catch (e) => { throw e } }
+export effect function anyHandler() { return x catch (e) => (e as any) }
+export effect function effectHandler() { return x catch effect (e) => try Effect.promise(() => queryDb(e)) }
