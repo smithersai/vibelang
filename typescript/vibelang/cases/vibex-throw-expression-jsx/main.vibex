@@ -1,0 +1,37 @@
+// expect-result: {"found":"Ada","missing":"Missing","id":"9"}
+// VIP-39 row 4 (loop round 15 ASTRA-1): `x ?? throw <E/>` is a throw
+// expression (TC39 proposal, decided detail 284) whose UnaryExpression
+// operand starts JSX in .vibex, as `await <E/>` does in .tsx.
+error Missing { id: string }
+
+declare global {
+  namespace JSX {
+    type Element = Missing
+    interface IntrinsicElements { missing: { id: string } }
+  }
+}
+
+function h(_tag: "missing", props: { id: string }): Missing {
+  return new Missing({ id: props.id })
+}
+
+function find(id: string): string | undefined {
+  return id === "1" ? "Ada" : undefined
+}
+
+effect function lookup(id: string) {
+  return find(id) ?? throw <missing id={id} />
+}
+
+effect function missing() {
+  try {
+    return try lookup("9")
+  } catch (e) {
+    return e
+  }
+}
+
+export effect function main() {
+  const failure = try missing()
+  return { found: try lookup("1"), missing: typeof failure === "string" ? failure : failure._tag, id: typeof failure === "string" ? "" : failure.id }
+}
