@@ -90,3 +90,10 @@ test("declaration-import-form rejects round 14 OPUS-4's `import type` beside `im
     expect.stringContaining("`import type { Effect, Stream } from \"effect\"` disagrees")
   ])
 })
+
+test("denied-vip-repairs rejects round 14 OPUS-2's two-repair Appendix C row for VIP-11", () => {
+  const defect = withEdit("src/900-appendices.md", text => text.replace(/^(\| \[11\]\(\.\.\/vips\/0011-trailing-blocks-denied\.md\) \| trailing blocks, `f\(x\) \{ … \}` \| )[^\n]*$/m, "$1`f(x, () => { … })` or `f(x, effect { … })` |"))
+  expect(lint(defect, rule("denied-vip-repairs")).map(v => v.message)).toEqual([
+    expect.stringMatching(/^VIP-11's Appendix C repairs .* differ from `EK1101`'s quick fix /)
+  ])
+})

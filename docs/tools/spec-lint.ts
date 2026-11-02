@@ -199,7 +199,41 @@ const declarationImportForm: Rule = {
   }
 }
 
-export const rules: Rule[] = [resolutionClaims, configKeys, importStyleScope, declarationImportForm]
+// Denied-VIP repairs (round 14 OPUS-2, part 4). Appendix C's row for VIP-11
+// listed two repairs, `f(x, () => { … })` or `f(x, effect { … })`, while
+// VIP-11's amendment and Appendix B's `EK1101` row list three. Where a
+// denied VIP's code has an Appendix B row, Appendix C's "Instead" cell
+// lists exactly that row's call-shaped repairs.
+const callForms = (cell: string) => new Set([...cell.matchAll(/`(f\((?:[^`]*)\))`/g)].map(m => m[1]!.replace(/\bargs\b/g, "x")))
+const deniedVipRepairs: Rule = {
+  name: "denied-vip-repairs",
+  finding: "r14 OPUS-2: Appendix C gave VIP-11 two repairs, Appendix B's EK1101 row and VIP-11's amendment three",
+  check(spec) {
+    const out: Violation[] = []
+    const file = "src/900-appendices.md", text = spec.get(file) ?? ""
+    const codeRows = new Map<string, string>()
+    for (const m of text.matchAll(/^\| `(EK\d{4,5})` \|([^\n]*)$/gm)) codeRows.set(m[1]!, m[2]!)
+    const denied = text.indexOf("### Denied VIPs")
+    for (const m of text.slice(denied).matchAll(/^\| \[(\d+)\]\(\.\.\/vips\/([\w-]+\.md)\) \|[^|]*\|([^\n]*)\|$/gm)) {
+      if (denied < 0) break
+      const instead = callForms(m[3]!)
+      const vip = spec.get(`vips/${m[2]}`) ?? ""
+      for (const code of new Set([...vip.matchAll(/`(EK\d{4,5})`/g)].map(c => c[1]!))) {
+        const row = codeRows.get(code)
+        if (!row) continue
+        const fixes = callForms(row.slice(row.indexOf("quick fix")))
+        if (!fixes.size || !instead.size) continue
+        if ([...fixes].sort().join("\n") !== [...instead].sort().join("\n")) {
+          out.push({ rule: this.name, file, line: lineAt(text, denied + m.index!),
+            message: `VIP-${m[1]}'s Appendix C repairs ${[...instead].join(", ")} differ from \`${code}\`'s quick fix ${[...fixes].join(", ")}` })
+        }
+      }
+    }
+    return out
+  }
+}
+
+export const rules: Rule[] = [resolutionClaims, configKeys, importStyleScope, declarationImportForm, deniedVipRepairs]
 
 export const lint = (spec: Spec, only = rules) => only.flatMap(rule => rule.check(spec))
 

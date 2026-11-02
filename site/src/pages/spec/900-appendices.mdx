@@ -971,7 +971,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK0906` | a recognized service declaration missing its required body | 9 | [Services](/spec/005-services#static-rules) |
 | `EK0907` | a custom `service` declaration in a native ambient source context, explicit or inherited; includes `declare service`, ahead of the same missing-body recovery | 9 | [Services](/spec/005-services#static-rules) |
 | `EK0908` | two `service` members with no separator between them, such as `a: number b: string` on one line; write `;` or a line break between them (quick fix: insert `;`) | 9 | [Services](/spec/005-services#static-rules) |
-| `EK1101` | a trailing block: a `{` on the same line after a name, a property access or a call, `f(x) { … }` or `f { … }`, outside a heritage clause and a `provide` block's providers; quick fix: pass the block as the call's last argument, `f(x, effect { … })` where it ran as a program, `f(x, effect () => { … })` where it ran as an Effect function, `f(x, () => { … })` otherwise | 11 | [Configuration and tooling](/spec/007-tooling#compiler-and-tooling-requirements) |
+| `EK1101` | a trailing block: a `{` on the same line after a name, a property access or a call, `f(x) { … }` or `f { … }`, outside a heritage clause and a `provide` block's providers, where no TypeScript or VibeLang production admits the `{` (so `effect { … }`, `match (x) { … }`, `namespace A.B { … }` and declaration heads such as `service S { … }` are not trailing blocks); quick fix: pass the block as the call's last argument, `f(x, effect { … })` where it ran as a program, `f(x, effect () => { … })` where it ran as an Effect function, `f(x, () => { … })` otherwise | 11 | [Configuration and tooling](/spec/007-tooling#compiler-and-tooling-requirements) |
 | `EK1201` | `provide` outside effect code | 12 | [Services](/spec/005-services#provide-blocks) |
 | `EK1202` | a line break immediately before or after a top-level provider-separating `,` | 12 | [Services](/spec/005-services#provide-blocks) |
 | `EK1301` | a constructor in an `error` or `schema error` body | 13 | [Failures](/spec/003-failures#error-declarations) |
@@ -1233,7 +1233,7 @@ A denied VIP is not part of the language. Each records what was proposed and why
 | --- | --- | --- |
 | [8](/vips/0008-using-denied) | special syntax for Effect resources (`using` with Effect meaning, a `scoped` keyword) | `using` is TypeScript's; Effect resources use `scoped(effect { … })` |
 | [10](/vips/0010-service-call-shorthand-denied) | the `Users.find(id)` shorthand | `try (try Users).find(id)` |
-| [11](/vips/0011-trailing-blocks-denied) | trailing blocks, `f(x) { … }` | `f(x, () => { … })` or `f(x, effect { … })` |
+| [11](/vips/0011-trailing-blocks-denied) | trailing blocks, `f(x) { … }` | `f(x, () => { … })`, `f(x, effect () => { … })` or `f(x, effect { … })`, as `EK1101`'s quick fix chooses |
 | [24](/vips/0024-wire-denied) | `wire`, automatic layer composition | Effect's `Layer.provide` and `Layer.provideMerge` |
 | [25](/vips/0025-inline-modules-denied) | inline `module` declarations as a TypeScript escape | a `.ts` file |
 
