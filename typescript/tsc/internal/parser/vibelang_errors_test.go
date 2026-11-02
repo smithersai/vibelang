@@ -131,7 +131,7 @@ export const after = 1`)
 	}
 	assertErrorMatcherRegistration(t, file.Statements.Nodes[1], "Bare")
 	if got := strings.Join(classMembers(file.Statements.Nodes[1]), "\n"); got != "ClassStaticBlockDeclaration synthesized\nPropertyDeclaration _tag DeclareKeyword ReadonlyKeyword synthesized" {
-		t.Fatalf("a subclass without fields keeps its matcher registration and tag: got\n%s", got)
+		t.Fatalf("a subclass without fields keeps only its matcher registration and tag: got\n%s", got)
 	}
 }
 
