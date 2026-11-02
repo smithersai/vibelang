@@ -202,6 +202,7 @@ const specTests = [
   "TestDeclarationPreludeModesQuoted",
   "TestNativeOutputSpecifierRulesQuoted",
   "TestLegacyConfigCommentsQuoted",
+  "TestConfigDiagnosticSpansQuoted",
   "TestSchemaLibraryBindingQuoted",
   "TestSeverityInheritanceQuoted",
   "TestSeverityScopeQuoted",

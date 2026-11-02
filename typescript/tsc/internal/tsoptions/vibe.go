@@ -31,7 +31,7 @@ func parseVibeSettings(value any, expression *ast.Node, file *ast.SourceFile, ba
 		return options, errors, severityDiagnostics
 	}
 	for key, value := range object.Entries() {
-		property := jsonProperty(expression, key)
+		property := jsonLastProperty(expression, key)
 		node := jsonInitializer(property)
 		switch key {
 		case "effectGlobals", "effectModules":
@@ -69,7 +69,7 @@ func parseVibeSettings(value any, expression *ast.Node, file *ast.SourceFile, ba
 			}
 			options.Severities = map[string]string{}
 			for code, value := range codes.Entries() {
-				entry := jsonProperty(node, code)
+				entry := jsonLastProperty(node, code)
 				if !core.VibeSeverityCode(code) {
 					severityDiagnostics[code] = diagnostic(jsonName(entry), core.VibeInvalidSeverityCode, fmt.Sprintf("%s cannot appear in vibe.severities; remove the entry. Only warning codes and assigned EK38 lint codes can be configured.", code))
 					continue
@@ -141,4 +141,18 @@ func mergeVibeSeverityDiagnostics(base, child map[string]*ast.Diagnostic) map[st
 		maps.Copy(result, child)
 	}
 	return result
+}
+
+// Config values use the last occurrence of a JSONC key. Match the diagnostic
+// node to that value, including a duplicated severity container or code.
+func jsonLastProperty(object *ast.Node, name string) *ast.Node {
+	if object == nil || !ast.IsObjectLiteralExpression(object) {
+		return nil
+	}
+	for _, property := range slices.Backward(object.AsObjectLiteralExpression().Properties.Nodes) {
+		if ast.IsPropertyAssignment(property) && property.Name() != nil && ast.IsPropertyNameLiteral(property.Name()) && property.Name().Text() == name {
+			return property
+		}
+	}
+	return nil
 }

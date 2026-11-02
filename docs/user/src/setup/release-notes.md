@@ -503,6 +503,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Browser file reads could report an unexpected result exactly like a host error; `Experimental.FileReader` now identifies unexpected results with `InvalidData`, preserving the origin even when the cause and message coincide.
 - A valid severity override could still fail compilation because an overridden base entry was invalid; only effective severity entries now report `EK3006`, and valid overrides allow emission again.
+- With a repeated configuration key, an invalid-value error could underline the earlier valid value; it now points at the last value that the config uses.
 
 
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
