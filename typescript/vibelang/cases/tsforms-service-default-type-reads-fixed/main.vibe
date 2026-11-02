@@ -5,10 +5,10 @@ service Flags {
  enabled: boolean
  count: number
 }
-export type Value = ReturnType<typeof Flags.defaultValue>
-export type Indexed = ReturnType<(typeof Flags)["defaultValue"]>
-export type Enabled = (ReturnType<typeof Flags.defaultValue>)["enabled"]
-export type Count = ReturnType<typeof Flags.defaultValue>["count"]
+export type Value = (typeof Flags.defaultValue extends (...args: any) => infer __VibeDefault ? __VibeDefault : never)
+export type Indexed = ((typeof Flags)["defaultValue"] extends (...args: any) => infer __VibeDefault ? __VibeDefault : never)
+export type Enabled = ((typeof Flags.defaultValue extends (...args: any) => infer __VibeDefault ? __VibeDefault : never))["enabled"]
+export type Count = (typeof Flags.defaultValue extends (...args: any) => infer __VibeDefault ? __VibeDefault : never)["count"]
 type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
 export const same: [Equal<Value, Flags.Shape>, Equal<Indexed, Flags.Shape>, Equal<Enabled, boolean>, Equal<Count, number>] = [true, true, true, true]
 export effect function main(): [boolean, boolean]!! {

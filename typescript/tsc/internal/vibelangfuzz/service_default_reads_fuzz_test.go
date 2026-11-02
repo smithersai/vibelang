@@ -26,17 +26,25 @@ func TestServiceDefaultReadsQuoted(t *testing.T) {
 
 // A read of the legacy member, in a value or a type position. Each key names
 // a corpus file; the fuzz bytes choose the declaration and the placement.
-type serviceDefaultRead struct{ key, read, kind string }
+type serviceDefaultRead struct{ key, read, kind, shadow string }
 
 var serviceDefaultReads = []serviceDefaultRead{
-	{"value", "Flags.default", "value"},
-	{"value-member", "Flags.default.enabled", "value"},
-	{"element", "Flags[\"default\"]", "value"},
-	{"typeof", "typeof Flags.default", "type"},
-	{"typeof-member", "typeof Flags.default.enabled", "type"},
-	{"indexed", "(typeof Flags)[\"default\"]", "type"},
-	{"indexed-member", "(typeof Flags)[\"default\"][\"enabled\"]", "type"},
-	{"typeof-projection", "(typeof Flags.default)[\"enabled\"]", "type"},
+	{"value", "Flags.default", "value", ""},
+	{"value-member", "Flags.default.enabled", "value", ""},
+	{"element", "Flags[\"default\"]", "value", ""},
+	{"typeof", "typeof Flags.default", "type", ""},
+	{"typeof-member", "typeof Flags.default.enabled", "type", ""},
+	{"indexed", "(typeof Flags)[\"default\"]", "type", ""},
+	{"indexed-member", "(typeof Flags)[\"default\"][\"enabled\"]", "type", ""},
+	{"typeof-projection", "(typeof Flags.default)[\"enabled\"]", "type", ""},
+	{"typeof-shadow-local", "typeof Flags.default", "type", "local"},
+	{"indexed-shadow-local", "(typeof Flags)[\"default\"]", "type", "local"},
+	{"typeof-shadow-import", "typeof Flags.default", "type", "import"},
+	{"indexed-shadow-import", "(typeof Flags)[\"default\"]", "type", "import"},
+	{"typeof-shadow-nested", "typeof Flags.default", "type", "nested"},
+	{"indexed-shadow-nested", "(typeof Flags)[\"default\"]", "type", "nested"},
+	{"typeof-shadow-parameter", "typeof Flags.default", "type", "parameter"},
+	{"indexed-shadow-parameter", "(typeof Flags)[\"default\"]", "type", "parameter"},
 }
 
 // serviceDefaultReadsProject writes a service with a legacy default and one
@@ -56,10 +64,24 @@ func serviceDefaultReadsProject(form serviceDefaultRead, annotated, identifier, 
 	if form.kind == "type" {
 		statement = "export type Read = " + form.read + "\n"
 	}
-	if otherFile {
-		return map[string]string{"flags.vibe": prefix + declaration, "main.vibe": "import { Flags } from \"./flags.vibe\"\n" + statement}
+	switch form.shadow {
+	case "local":
+		statement = "type ReturnType<T> = { wrong: true }\n" + statement
+	case "import":
+		statement = "import type { ReturnType } from \"./shadow.vibe\"\n" + statement
+	case "nested":
+		statement = "export namespace Reads {\n type ReturnType<T> = { wrong: true }\n" + statement + "}\n"
+	case "parameter":
+		statement = strings.Replace(statement, "type Read =", "type Read<ReturnType = unknown> =", 1)
 	}
-	return map[string]string{"main.vibe": prefix + declaration + statement}
+	files := map[string]string{"main.vibe": prefix + declaration + statement}
+	if otherFile {
+		files = map[string]string{"flags.vibe": prefix + declaration, "main.vibe": "import { Flags } from \"./flags.vibe\"\n" + statement}
+	}
+	if form.shadow == "import" {
+		files["shadow.vibe"] = "export type ReturnType<T> = { wrong: true }\n"
+	}
+	return files
 }
 
 // serviceDefaultReadType prints the type of the read in main.vibe, as a type
@@ -72,20 +94,50 @@ func serviceDefaultReadType(t *testing.T, r *Result) string {
 	}
 	c, done := r.Program.GetTypeChecker(t.Context())
 	defer done()
-	for _, statement := range file.Statements.Nodes {
-		var name *ast.Node
-		switch {
-		case ast.IsTypeAliasDeclaration(statement):
-			name = statement.Name()
-		case ast.IsVariableStatement(statement):
-			name = statement.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0].Name()
+	var found *ast.Node
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if ast.IsTypeAliasDeclaration(node) && node.Name().Text() == "Read" {
+			found = node.Name()
+			return true
 		}
-		if name != nil && (name.Text() == "Read" || name.Text() == "read") {
-			return c.TypeToStringEx(c.GetTypeAtLocation(name), nil, checker.TypeFormatFlagsInTypeAlias|checker.TypeFormatFlagsNoTruncation, nil)
+		if ast.IsVariableDeclaration(node) && ast.IsIdentifier(node.Name()) && node.Name().Text() == "read" {
+			found = node.Name()
+			return true
 		}
+		return node.ForEachChild(visit)
+	}
+	file.AsNode().ForEachChild(visit)
+	if found != nil {
+		return c.TypeToStringEx(c.GetTypeAtLocation(found), nil, checker.TypeFormatFlagsInTypeAlias|checker.TypeFormatFlagsNoTruncation, nil)
 	}
 	t.Fatal("main.vibe declares no read")
 	return ""
+}
+
+// Check the public declaration output as a consumer would: recheck the
+// emitted declarations and expand Read/read there, rather than trusting the
+// source checker's type alone. Keeping .vibe module names preserves the
+// declaration emitter's relative imports in these isolated fixture files.
+func serviceDefaultReadDeclarationType(t *testing.T, w *Workspace, form serviceDefaultRead, r *Result) string {
+	t.Helper()
+	files := map[string]string{}
+	for name, text := range r.Outputs {
+		if strings.HasSuffix(name, ".d.ts") {
+			name = strings.TrimPrefix(name, "out/")
+			files[strings.TrimSuffix(name, ".d.ts")+".vibe"] = text
+		}
+	}
+	if len(files) == 0 {
+		t.Fatal("no emitted declarations for legacy default read")
+	}
+	declaration := toolsCompile(t, w, serviceDefaultReadsTarget, files)
+	defer declaration.Remove()
+	if declaration.Program == nil || !toolsErrorFree(declaration) {
+		Gap(t, serviceDefaultReadsTarget, "declaration:compile:"+form.key, "Appendix B %q: emitted declarations do not compile: %v\n%s", serviceDefaultReadsQuote, SortedKeys(Keys(declaration.Dir, declaration.Diagnostics)), Archive(files))
+		return ""
+	}
+	return serviceDefaultReadType(t, declaration)
 }
 
 func serviceDefaultReadCodes(r *Result, code int32) int {
@@ -117,6 +169,7 @@ func checkServiceDefaultReads(t *testing.T, w *Workspace, form serviceDefaultRea
 			return
 		}
 		typeBefore := serviceDefaultReadType(t, before)
+		declarationBefore := serviceDefaultReadDeclarationType(t, w, form, before)
 		config := toolsConfig(w, before.Dir)
 		if config == nil || len(config.Errors) > 0 {
 			t.Fatalf("config: %v", config)
@@ -156,6 +209,10 @@ func checkServiceDefaultReads(t *testing.T, w *Workspace, form serviceDefaultRea
 			Gap(t, serviceDefaultReadsTarget, "fix:type:"+form.key, "Appendix B %q: the read was %s and is %s after --fix\n%s\nfixed:\n%s", serviceDefaultReadsQuote, typeBefore, typeAfter, Archive(files), Archive(fixed))
 			return
 		}
+		if declarationAfter := serviceDefaultReadDeclarationType(t, w, form, after); declarationAfter != declarationBefore {
+			Gap(t, serviceDefaultReadsTarget, "fix:declaration:"+form.key, "Appendix B %q: the exported declaration was %s and is %s after --fix\n%s\nfixed:\n%s", serviceDefaultReadsQuote, declarationBefore, declarationAfter, Archive(files), Archive(fixed))
+			return
+		}
 		again := vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), toolsConfig(w, after.Dir), vibelang.FixOptions{})
 		if again.Err != nil || len(again.Files) > 0 {
 			Gap(t, serviceDefaultReadsTarget, "fix:fixed-point:"+form.key, "Appendix B %q: a second --fix changes %v (%v)\n%s", serviceDefaultReadsQuote, again.Order, again.Err, Archive(fixed))
@@ -179,7 +236,9 @@ func TestServiceDefaultReads(t *testing.T) {
 func FuzzServiceDefaultReads(f *testing.F) {
 	startShortBudget(f)
 	for _, form := range serviceDefaultReads {
-		f.Add(form.key, uint8(0))
+		if form.shadow == "" {
+			f.Add(form.key, uint8(0))
+		}
 	}
 	f.Add("value", uint8(4))
 	f.Add("typeof", uint8(4))

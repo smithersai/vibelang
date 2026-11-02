@@ -200,14 +200,21 @@ func legacyDefaultReadEdit(c *checker.Checker, file *ast.SourceFile, n *ast.Node
 		text = expressionText(file, n.Expression()) + open + "\"defaultValue\"]()"
 	case ast.IsTypeQueryNode(n):
 		left, _, tail := legacyDefaultTypeQuery(c, n)
-		text = "ReturnType<typeof " + expressionText(file, left) + ".defaultValue>"
+		text = legacyDefaultFactoryType("typeof " + expressionText(file, left) + ".defaultValue")
 		for _, member := range tail {
 			text += "[\"" + member + "\"]"
 		}
 	case ast.IsIndexedAccessTypeNode(n):
-		text = "ReturnType<" + expressionText(file, n.AsIndexedAccessTypeNode().ObjectType) + "[\"defaultValue\"]>"
+		text = legacyDefaultFactoryType(expressionText(file, n.AsIndexedAccessTypeNode().ObjectType) + "[\"defaultValue\"]")
 	}
 	return sourceEdit{nodeStart(file, n), n.End(), text}
+}
+
+// Use a lexical conditional type instead of the utility name ReturnType:
+// a local/imported alias or type parameter can shadow that global. The infer
+// binding is local to this conditional and cannot capture a source binding.
+func legacyDefaultFactoryType(factory string) string {
+	return "(" + factory + " extends (...args: any) => infer __VibeDefault ? __VibeDefault : never)"
 }
 
 func legacyDefaultRewrite(c *checker.Checker, file *ast.SourceFile, n *ast.Node) *formRewrite {

@@ -99,10 +99,10 @@ func TestVIP9DefaultValueMigrationRewritesReads(t *testing.T) {
 	}
 	got := applyQuickFix(t, source, EK4855.Code)
 	want := "service Flags { static readonly key = \"vip9/Flags\"; static readonly defaultValue: () => Flags.Shape = () => ({ enabled: true }); enabled: boolean }\n" +
-		"export type Value = ReturnType<typeof Flags.defaultValue>\n" +
-		"export type Indexed = ReturnType<(typeof Flags)[\"defaultValue\"]>\n" +
-		"export type Enabled = (ReturnType<typeof Flags.defaultValue>)[\"enabled\"]\n" +
-		"export type Deep = ReturnType<typeof Flags.defaultValue>[\"enabled\"]\n" +
+		"export type Value = (typeof Flags.defaultValue extends (...args: any) => infer __VibeDefault ? __VibeDefault : never)\n" +
+		"export type Indexed = ((typeof Flags)[\"defaultValue\"] extends (...args: any) => infer __VibeDefault ? __VibeDefault : never)\n" +
+		"export type Enabled = ((typeof Flags.defaultValue extends (...args: any) => infer __VibeDefault ? __VibeDefault : never))[\"enabled\"]\n" +
+		"export type Deep = (typeof Flags.defaultValue extends (...args: any) => infer __VibeDefault ? __VibeDefault : never)[\"enabled\"]\n" +
 		"export const value = Flags.defaultValue()\n" +
 		"export const element = Flags[\"defaultValue\"]()\n"
 	if got != want {

@@ -1,11 +1,3 @@
-FuzzServiceDefaultReads fix:type:typeof:local-shadow compiler VIP-9/34 Chapter 007 generated type-helper hygiene: repair captures a source ReturnType alias and changes the exported shape; lane cov-ch007
-FuzzServiceDefaultReads corpus:cov-ch007-typeof-local-shadow compiler VIP-9/34 Chapter 007 generated type-helper hygiene: repair captures a source ReturnType alias and changes the exported shape; lane cov-ch007
-FuzzServiceDefaultReads fix:type:typeof:import-shadow compiler VIP-9/34 Chapter 007 generated type-helper hygiene: repair captures a source ReturnType alias and changes the exported shape; lane cov-ch007
-FuzzServiceDefaultReads corpus:cov-ch007-typeof-import-shadow compiler VIP-9/34 Chapter 007 generated type-helper hygiene: repair captures a source ReturnType alias and changes the exported shape; lane cov-ch007
-FuzzServiceDefaultReads fix:type:indexed-member:local-shadow compiler VIP-9/34 Chapter 007 generated type-helper hygiene: repair captures a source ReturnType alias and changes the exported shape; lane cov-ch007
-FuzzServiceDefaultReads corpus:cov-ch007-indexed-member-local-shadow compiler VIP-9/34 Chapter 007 generated type-helper hygiene: repair captures a source ReturnType alias and changes the exported shape; lane cov-ch007
-FuzzServiceDefaultReads fix:type:indexed-member:import-shadow compiler VIP-9/34 Chapter 007 generated type-helper hygiene: repair captures a source ReturnType alias and changes the exported shape; lane cov-ch007
-FuzzServiceDefaultReads corpus:cov-ch007-indexed-member-import-shadow compiler VIP-9/34 Chapter 007 generated type-helper hygiene: repair captures a source ReturnType alias and changes the exported shape; lane cov-ch007
 FuzzVibexNativeParity generator-argument:none compiler VIP-1/39 Chapter 007 ordinary generator argument: native TSX accepts the cold Effect.gen factory, but VibeLang reports EK2128 and TS2345; lane cov-ch007
 FuzzVibexNativeParity corpus:cov-ch007-generator-argument-none compiler VIP-1/39 Chapter 007 ordinary generator argument: native TSX accepts the cold Effect.gen factory, but VibeLang reports EK2128 and TS2345; lane cov-ch007
 FuzzVibexNativeParity generator-argument:preserve compiler VIP-1/39 Chapter 007 ordinary generator argument: native TSX accepts the cold Effect.gen factory, but VibeLang reports EK2128 and TS2345; lane cov-ch007
