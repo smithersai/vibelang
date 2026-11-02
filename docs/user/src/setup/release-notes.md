@@ -527,6 +527,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 | Old diagnostic numbers, including `EK4617` | Appendix B numbering, including `EK0103`. Diagnostic triggers are unchanged. See the [old-to-new map](../vibelang-features/diagnostic-code-map.md). |
 
 ### Bugs fixed since 0.0.10
+- A `.ts` function declared `@throws {Error}` could be passed where a callback type such as `() => void` was expected, as an argument, object member, spread member, initializer, array element or return value, with no diagnostic. It now reports `EK0402`; a `@throws` on the function type, a `@rethrows` parameter, `Array` iteration callbacks and the thunk of `Effect.try` and `tryPromise` still admit it.
 
 - A declaration API checker killed by the system or by heap exhaustion left no result; the CLI now returns an explicit invalid receipt with the worker's exit status or signal, including when a worker exits successfully without a result.
 

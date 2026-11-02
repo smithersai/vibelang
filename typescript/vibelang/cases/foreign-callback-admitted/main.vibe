@@ -1,0 +1,49 @@
+// Chapter 3, "Assignability", and Appendix E: a foreign function value whose
+// @throws its destination admits compiles. @throws {unknown} admits anything,
+// @throws {Error} admits Error, a parameter named by @rethrows admits
+// anything, as do Array's map callback and the thunk of Effect.try in both
+// forms.
+import { risky, twice, type Loud, type Erroring } from "./helpers.ts"
+
+function caught(f: Loud) {
+  try {
+    return f()
+  } catch {
+    return "caught"
+  }
+}
+
+function guarded(f: Erroring) {
+  try {
+    return f()
+  } catch {
+    return "guarded"
+  }
+}
+
+function rethrown() {
+  try {
+    return twice(risky)
+  } catch {
+    return "rethrown"
+  }
+}
+
+function mapped() {
+  try {
+    return [1].map(risky)
+  } catch {
+    return "mapped"
+  }
+}
+
+function programs() {
+  return [Effect.try(risky), Effect.try({ try: risky, catch: () => "caught" })]
+}
+
+// expect-result: {"loud":"caught","erroring":"guarded","rethrown":"rethrown","mapped":"mapped","programs":2}
+export effect function main() {
+  const loud: Loud = risky
+  const erroring: Erroring = risky
+  return { loud: caught(loud), erroring: guarded(erroring), rethrown: rethrown(), mapped: mapped(), programs: programs().length }
+}

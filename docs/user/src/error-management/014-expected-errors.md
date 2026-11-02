@@ -43,6 +43,8 @@ VibeLang annotates `JSON.parse` as throwing `SyntaxError`. An effect function mu
 
 An ordinary nongenerator `async` function rejects its Promise for callback and parameter-default throws. Its declaration preserves throwing-callback admission on the parameter with `@throws {unknown}`, while the callee stays `@throws {never}` without a synchronous `@rethrows` tag. A plain function that merely returns a Promise can still throw before returning.
 
+A foreign function value must fit the function type it is passed or assigned as. A function type without `@throws` admits only a function that throws `never`, `@throws {U}` admits subtypes of `U`, and `@throws {unknown}` admits anything. So a `.ts` function declared `@throws {Error}`, passed where `() => void` is expected, is `EK0402` as an argument, an object member, a spread member, an initializer, an array element or a returned value. A parameter named by `@rethrows`, the callback of `Array` iteration methods such as `map`, and the thunk of `Effect.try` and `tryPromise` admit any thrown type.
+
 In an effect function, `throw` is a typed failure and a catch expression receives typed failures only. A plain function keeps TypeScript's behavior: its return annotation checks its result, and its `try`/`catch` statement can handle JavaScript exceptions while returning a value:
 
 ```vibe

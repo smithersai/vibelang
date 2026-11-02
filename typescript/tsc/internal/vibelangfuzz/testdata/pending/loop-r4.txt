@@ -1,9 +1,4 @@
 # Gaps found by the fuzz targets of spec loop round 4 (loop_r4_fuzz_test.go).
-FuzzForeignCallbackSites missing:EK0402/argument compiler VIP-4: a foreign @throws {TypeError|Error|unknown} function value passed for an untagged or narrower function-typed parameter reports no EK0402 (loop r4 OPUS-1, decided detail 250); lane impl-hunt-fail
-FuzzForeignCallbackSites missing:EK0402/member compiler VIP-4: the same value as an object member against a function-typed property reports no EK0402; a JSX attribute is this site (VIP-39, loop r4 OPUS-1); lane impl-hunt-fail
-FuzzForeignCallbackSites missing:EK0402/spread compiler VIP-4: the same value as a spread member reports no EK0402; a JSX spread attribute is this site (VIP-39, loop r4 OPUS-1); lane impl-hunt-fail
-FuzzForeignCallbackSites missing:EK0402/initializer compiler VIP-4: the same value assigned to a function-typed const reports no EK0402 (loop r4 OPUS-1); lane impl-hunt-fail
-FuzzForeignCallbackSites missing:EK0402/array compiler VIP-4: the same value as an element of a function-typed array reports no EK0402 (loop r4 OPUS-1); lane impl-hunt-fail
 FuzzDoJumpOperandPositions jump:return compiler VIP-2: a return out of a do in any operand position reports TS1108 (loop r4 OPUS-5, decided detail 198); core-block stack c6e04d919278 lands it; lane migfix-foldkit
 FuzzDoJumpOperandPositions jump:break compiler VIP-2: a break out of a do in any operand position reports the legacy EK1019 (loop r4 OPUS-5); core-block stack c6e04d919278 removes it; lane migfix-foldkit
 FuzzDoJumpOperandPositions jump:continue compiler VIP-2: a continue out of a do in any operand position reports the legacy EK1019 (loop r4 OPUS-5); core-block stack c6e04d919278 removes it; lane migfix-foldkit

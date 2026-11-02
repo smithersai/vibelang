@@ -98,12 +98,21 @@ var callbackDestinations = []struct {
 	{"unknown", "export interface Handler {\n  /** @throws {unknown} */\n  (): void\n}", 3},
 }
 
-var callbackSites = []struct{ name, code string }{
-	{"argument", "call(source)"},
-	{"member", "take({ onClick: source })"},
-	{"spread", "take({ ...{ onClick: source } })"},
-	{"initializer", "const h: Handler = source\n  void h"},
-	{"array", "const hs: Handler[] = [source]\n  void hs"},
+// callbackSites are the places a value meets a function type. A site that
+// admits unknown whatever Handler says is one of Appendix E's: a parameter
+// named by @rethrows, or the thunk of Effect.try.
+var callbackSites = []struct {
+	name, code string
+	admitsAll  bool
+}{
+	{"argument", "call(source)", false},
+	{"member", "take({ onClick: source })", false},
+	{"spread", "take({ ...{ onClick: source } })", false},
+	{"initializer", "const h: Handler = source\n  void h", false},
+	{"array", "const hs: Handler[] = [source]\n  void hs", false},
+	{"arrow-return", "const back = (): Handler => source\n  void back", false},
+	{"rethrows", "each(source)", true},
+	{"effect-try", "void Effect.try(source)", true},
 }
 
 func callbackNames() []string {
@@ -137,8 +146,9 @@ func FuzzForeignCallbackSites(f *testing.F) {
 		src := callbackSources[i/(len(callbackSites)*len(callbackDestinations))]
 		handlers := src.tag + "\nexport function source(): void {}\n" + dst.decl + "\n" +
 			"/** @throws {never} */\nexport declare function take(props: { onClick: Handler }): void\n" +
-			"/** @throws {never} */\nexport declare function call(f: Handler): void\n"
-		main := "import { source, take, call, type Handler } from \"./handlers.ts\"\nexport function sites() {\n  " + site.code + "\n}\n"
+			"/** @throws {never} */\nexport declare function call(f: Handler): void\n" +
+			"/** @throws {never} @rethrows f */\nexport declare function each(f: Handler): void\n"
+		main := "import { source, take, call, each, type Handler } from \"./handlers.ts\"\nexport function sites() {\n  " + site.code + "\n}\n"
 		files := map[string]string{"handlers.ts": handlers, "main.vibe": main}
 		config := strings.TrimSuffix(DefaultConfig, "\n  }\n}") + ",\n    \"allowImportingTsExtensions\": true,\n    \"noEmit\": true\n  },\n  \"files\": [\"main.vibe\", \"handlers.ts\"]\n}"
 		r, err := w.Compile(t.Context(), Project{Files: files, Config: config})
@@ -147,7 +157,7 @@ func FuzzForeignCallbackSites(f *testing.F) {
 		}
 		defer r.Remove()
 		errs := r4Errors(r.Diagnostics)
-		want := src.thrown > dst.admits
+		want := src.thrown > dst.admits && !site.admitsAll
 		got := slices.Contains(errs, "EK0402")
 		others := slices.DeleteFunc(slices.Clone(errs), func(e string) bool { return e == "EK0402" })
 		if len(others) > 0 {
