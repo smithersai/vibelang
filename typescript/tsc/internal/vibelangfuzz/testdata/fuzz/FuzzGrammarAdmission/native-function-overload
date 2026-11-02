@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:native-function-overload\nfunction f(p: number): number; function f(p: number) { return p; }")

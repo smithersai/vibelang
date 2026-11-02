@@ -303,6 +303,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Sharded Go tests could start several fuzz campaigns when `-test.fuzz` used a separate selector argument; that form now runs once with its original arguments and exit status.
 - Remote checks could report success after failing to discover tracked fixtures, leaving the build host with a partial checkout; `scripts/remote.sh` now stops before running tests and reports the failing discovery stage and exit status.
 
+- Grammar-admission fuzzing mistook native TypeScript function overload signatures for undefined VibeLang syntax. Its inherited grammar now recognizes bodyless declaration signatures and their `async` counterparts, including semicolon insertion, while function expressions still require bodies.
+
 - The fibers guide suggested Effect-body repairs inside ordinary async functions; it now shows `runPromise` bridges that run in the original Promise context.
 
 - Coverage and profiling with sharded Go tests could retain only one shard's measurements; profile output now comes from one complete test process.

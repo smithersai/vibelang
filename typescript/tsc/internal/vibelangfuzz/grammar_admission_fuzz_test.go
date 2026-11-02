@@ -69,6 +69,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"native-destructuring-initializer", "const { p = effect { return 1 ; } } ;"},
 	{"native-destructuring-initializer-array", "const [a] ;"},
 	{"fiber-binding-arrow", "const f = effect join => 1;"},
+	{"native-function-overload", "function f(p: number): number; function f(p: number) { return p; }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -650,6 +651,32 @@ func TestGrammarAdmissionCore(t *testing.T) {
 		if r := lab.read(lab.g, grammarLexSource(src), grammarParseMode{prose: true, names: true}); r.count == 0 {
 			t.Errorf("valid control has no derivation: %q", src)
 		}
+	}
+	// Appendix A inherits TypeScript overload signatures. Only declarations
+	// can omit their body: a function expression still needs its Block.
+	for _, source := range []string{
+		"function f(p: number): number; function f(p: number) { return p; }",
+		"function f(p: number): number\nfunction f(p: number) { return p; }",
+		"async function f(p: number): Promise<number>; async function f(p: number) { return p; }",
+	} {
+		if r := lab.read(lab.g, grammarLexSource(source), grammarParseMode{prose: true, names: true}); r.count == 0 {
+			t.Errorf("native function overload has no derivation: %s", source)
+		}
+	}
+	for _, source := range []string{
+		"const f = function(p: number);",
+		"const f = async function(p: number);",
+	} {
+		if r := lab.read(lab.g, grammarLexSource(source), grammarParseMode{prose: true, names: true}); r.count != 0 {
+			t.Errorf("bodyless function expression has a derivation: %s", source)
+		}
+	}
+	_, overloadSource := grammarAdmissionInput([]byte("key:function-kind\n88(027b"))
+	if overloadSource != "function f ( p ) ; { return p ; }" {
+		t.Fatalf("native overload campaign witness did not replay: %q", overloadSource)
+	}
+	if r := lab.read(lab.g, grammarLexSource(overloadSource), grammarParseMode{prose: true, names: true}); r.count == 0 {
+		t.Errorf("inherited signature plus a block has no derivation: %s", overloadSource)
 	}
 }
 

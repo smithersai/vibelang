@@ -102,3 +102,11 @@ The lab carries the modifier's context onto an inline identifier class as
 well as onto a nonterminal parameter list. Direct derivation controls reject
 both reserved bare heads and parenthesized heads while accepting a bare
 `effect p => 1` and native plain arrows.
+
+The bounded inherited TypeScript grammar includes bodyless function
+declaration signatures, with an explicit semicolon or semicolon insertion,
+and their `async` counterparts. Function expressions still require bodies.
+Valid typed overload and implementation controls keep this native syntax
+from being mistaken for an undefined VibeLang form. A keyed corpus also
+replays the campaign witness with a signature followed by a separate block;
+its native return-placement error does not make it an admission bug.
