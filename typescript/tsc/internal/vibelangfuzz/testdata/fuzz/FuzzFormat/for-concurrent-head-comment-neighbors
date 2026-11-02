@@ -1,0 +1,2 @@
+go test fuzz v1
+string("export effect function main() {\n  const seen: number[] = []\n  for concurrent /* a comment\n    between tokens */ (const x of [5, 6]) { seen.push(x) }\n  for concurrent(2) /* after the limit */ (const x of [7]) { seen.push(x) }\n  for /* before */ concurrent // after\n    (const x of [8]) { seen.push(x) }\n  return seen\n}\n")

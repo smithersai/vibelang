@@ -657,6 +657,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Producers accepted `yield*` even though delegation is not specified; it now reports `EK2103`. Native generator delegation keeps its ordinary behavior.
 - A timed-out `cache-loaders` validation hid which engine and cache mode failed; each child now records its stage, elapsed time, termination reason and partial output.
+- `vibelang-format` and the editor moved a comment written after a `for concurrent` or `for try` head in front of the head, turning `for concurrent /* note */ (const x of xs)` into `for /* note */ concurrent (const x of xs)`; the comment now stays after `concurrent`, its limit, or `try`.
 
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 

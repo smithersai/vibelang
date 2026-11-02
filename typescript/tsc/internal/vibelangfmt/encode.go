@@ -405,7 +405,10 @@ func (e *encoder) form(form parser.VibeSyntax) error {
 	case parser.VibeSyntaxBlockStatement:
 		e.opaque(placeholderBlockHead, form.Head, "", ":", firstLineWidth(e.text(form.Head))-1)
 	case parser.VibeSyntaxForConcurrent, parser.VibeSyntaxForTry:
-		end := skipSpaces(e.source, form.Head.End())
+		// The head keeps the comments that follow it: decoding puts the head back
+		// before the loop's ( and after any comments there, so a comment left in
+		// the TypeScript text would move in front of concurrent or try (D372).
+		end := scanner.SkipTrivia(e.source, form.Head.End())
 		// The saved head already contains nested prefixes; do not encode them twice.
 		e.add(edit{pos: form.Head.Pos(), end: end, opaque: true, token: "for", keyword: form.Word.Pos(), stands: e.source[form.Head.Pos():end]})
 	case parser.VibeSyntaxStatement:
