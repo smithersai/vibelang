@@ -259,6 +259,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 - A `do` in a destructuring assignment default, computed key or target could run before the right side, even when a supplied value skipped the default; assignments now preserve native destructuring order and run defaults only when needed.
+- After VIP-1, `vibelang --fix --fix-vip-only` left three pre-VIP-1 forms failing: an arrow such as `(text: string): number!! => parse(text) catch () => 0` (`EK0504`), a `catch` in a plain factory or at the top level (`EK0504`), and a function literal passed as a program, such as `forkIn(scope, () => work())` (`TS2345`). It now marks the arrow `effect`, writes the plain `catch` as `effect { return … catch … }`, and writes the literal as `effect { return try work() }`.
 
 - Migration could widen a shared file-selection regex and change an unchanged assertion’s result; the codemod and `verifyTestDiff` now refuse named regexes with any assertion or other use not proven to select filenames (decided detail `272`, `RD-022`).
 

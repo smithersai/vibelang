@@ -223,6 +223,13 @@ func (m *legacyModel) runsInBody(fn *ast.Node) bool {
 		if ast.IsCallExpression(node) && isInvokedForm(file, node) && strings.HasPrefix(nodeText(file, node), "throw") {
 			return true // a throw expression
 		}
+		if catchExpressionOf(node) != nil {
+			// A catch expression ran its left side in an Effect function
+			// before VIP-1, and outside effect code it is EK0504 after it
+			// (foldkit-130: (text): T!! => Effect.try(…) catch … was left
+			// unmarked).
+			return true
+		}
 		if isInvocation(node) && !inHatch(node) && !inCatchLeft(node) {
 			// A try, or, in a function whose written contract is an Effect,
 			// a call of an Effect value, as Crypto.Crypto() or Port() read a
@@ -644,8 +651,9 @@ func legacyEffectValueCall(a *analyzer, file *ast.SourceFile, call *ast.Node) bo
 
 // legacyProgramLiteral reports whether fn is a function literal without
 // parameters that initializes a const whose written type is an Effect, as
-// const migrate: void!E!R = () => { … }: the old compiler converted it to
-// the program it holds (D7), which VIP-2 writes as an effect block.
+// const migrate: void!E!R = () => { … }, or that is passed where its
+// parameter expects only a program: the old compiler converted it to the
+// program it holds (D7), which VIP-2 writes as an effect block.
 func legacyProgramLiteral(a *analyzer, fn *ast.Node) bool {
 	if fn.Kind != ast.KindArrowFunction && fn.Kind != ast.KindFunctionExpression || len(fn.Parameters()) != 0 || fn.TypeParameters() != nil || fn.Type() != nil || fn.Name() != nil {
 		return false
@@ -654,11 +662,26 @@ func legacyProgramLiteral(a *analyzer, fn *ast.Node) bool {
 		return false
 	}
 	n := outerParentheses(fn)
-	decl := n.Parent
-	if decl == nil || !ast.IsVariableDeclaration(decl) || decl.Initializer() != n || decl.Type() == nil {
+	if decl := n.Parent; decl != nil && ast.IsVariableDeclaration(decl) && decl.Initializer() == n {
+		return decl.Type() != nil && a.isExpectedEffect(a.checker.GetTypeFromTypeNode(decl.Type()))
+	}
+	// An argument or element whose parameter expects only a program, as
+	// forkIn's program does: the old compiler chose the literal's form from
+	// the parameter (D44) and passed the program it holds (foldkit-131,
+	// forkIn(scope, () => work())).
+	owner, path := ownerCall(fn)
+	if owner == nil || len(path) == 0 || !ast.IsCallExpression(owner) && !ast.IsNewExpression(owner) {
 		return false
 	}
-	return a.isExpectedEffect(a.checker.GetTypeFromTypeNode(decl.Type()))
+	if ast.IsCallExpression(owner) && ast.SkipParentheses(owner.Expression()).Flags&(ast.NodeFlagsReparsed|ast.NodeFlagsVibeLangIntrinsic) != 0 {
+		return false
+	}
+	signature := a.checker.GetResolvedSignature(owner)
+	if signature == nil {
+		return false
+	}
+	e := a.classify(a.expectedAt(owner, signature, path, fn))
+	return e.program && !e.effectFn && !e.plainFn
 }
 
 // programLiteralEdits returns the edits that write fn, a program literal
@@ -674,4 +697,20 @@ func programLiteralEdits(file *ast.SourceFile, fn *ast.Node) []sourceEdit {
 	}
 	end := outerParentheses(fn).End()
 	return []sourceEdit{{start, bodyStart, "effect { return "}, {end, end, " }"}}
+}
+
+// plainCatch reports whether node is a catch expression that stays outside
+// effect code after the migration: in a plain function the migration doesn't
+// mark, as an `: infer _` factory's `const attempt: T!! = (effect { … })
+// catch () => …`, or at the top level. Before VIP-1 it was the program
+// $catchExpression(() => left, handler), which builds its left side each time
+// it runs; after it, a catch outside effect code is EK0504. The migration
+// writes it as effect { return … }, the same program (foldkit-17067). A catch
+// inside another one's left side moves with it.
+func (m *legacyModel) plainCatch(node *ast.Node) bool {
+	if catchExpressionOf(node) == nil || inEffectCode(node) || inCatchLeft(node) {
+		return false
+	}
+	owner := effectCodeOwner(node)
+	return owner == nil || !m.marked(owner)
 }

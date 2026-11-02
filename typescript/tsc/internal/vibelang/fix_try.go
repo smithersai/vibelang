@@ -79,6 +79,10 @@ func tryEdits(c *checker.Checker, file *ast.SourceFile, unmatched map[int]bool) 
 			edits = append(edits, sourceEdit{scanner.SkipTrivia(text, node.Pos()), node.End(), m.blockText(file, node)})
 			return false
 		}
+		if m.plainCatch(node) {
+			insert(scanner.SkipTrivia(text, node.Pos()), "effect { return ")
+			edits = append(edits, sourceEdit{node.End(), node.End(), " }"})
+		}
 		if isFunctionBoundary(node) && m.marked(node) {
 			if legacyProgramLiteral(a, node) {
 				edits = append(edits, programLiteralEdits(file, node)...)

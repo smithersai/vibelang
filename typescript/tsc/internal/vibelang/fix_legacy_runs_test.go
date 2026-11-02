@@ -82,6 +82,19 @@ func TestFixVIPLegacyRunPositions(t *testing.T) {
 		{"service-call-evidence", "service Clock2 {\n  now: () => number\n}\n\nconst stamp = (n: number): number!!Clock2 => {\n  const clock = Clock2()\n  return clock.now() + n\n}\n", "service Clock2 {\n  now: () => number\n}\n\nconst stamp = effect (n: number): number!!Clock2 => {\n  const clock = try Clock2\n  return clock.now() + n\n}\n"},
 		{"program-literal", "const job: number!! = () => {\n  const v = load(1)\n  return v + 1\n}\n", "const job: number!! = effect {\n  const v = try load(1)\n  return v + 1\n}\n"},
 		{"property", "effect function f() {\n  return { a: load(23) }\n}\n", "effect function f() {\n  return { a: try load(23) }\n}\n"},
+		// foldkit-131: a literal passed where forkIn expects a program.
+		{"program-literal-argument", "effect function f(scope: Scope) {\n  try forkIn(scope, () => load(1))\n}\n", "effect function f(scope: Scope) {\n  try forkIn(scope, effect { return try load(1) })\n}\n"},
+		{"program-literal-argument-block", "effect function f(scope: Scope) {\n  try forkIn(scope, () => {\n    load(1)\n  })\n}\n", "effect function f(scope: Scope) {\n  try forkIn(scope, effect {\n    try load(1)\n  })\n}\n"},
+		// foldkit-130: a catch expression is the only run of a function whose
+		// form is effect.
+		{"catch-annotated-arrow", "const parse = (n: number): number!! => Effect.fail(new Missing({ id: n })) catch () => 0\n", "const parse = effect (n: number): number!! => Effect.fail(new Missing({ id: n })) catch () => 0\n"},
+		{"catch-bare-arrow", "const parse = (n: number) => Effect.fail(new Missing({ id: n })) catch () => 0\n", "const parse = effect (n: number) => Effect.fail(new Missing({ id: n })) catch () => 0\n"},
+		{"catch-declaration", "function g(n: number) {\n  const a = Effect.fail(new Missing({ id: n })) catch () => 0\n  return a + 1\n}\n", "effect function g(n: number) {\n  const a = Effect.fail(new Missing({ id: n })) catch () => 0\n  return a + 1\n}\n"},
+		// foldkit-17067: a catch in a plain factory, or at the top level, is
+		// the program effect { return … } writes.
+		{"catch-plain-factory", "const build = (trace: string[]): infer _ => {\n  trace.push(\"factory\")\n  const attempt: number!! = (effect {\n    trace.push(\"program\")\n    return 1\n  }) catch () => 0\n  return effect { return try attempt }\n}\n", "const build = (trace: string[]): infer _ => {\n  trace.push(\"factory\")\n  const attempt: number!! = effect { return (effect {\n    trace.push(\"program\")\n    return 1\n  }) catch () => 0 }\n  return effect { return try attempt }\n}\n"},
+		{"catch-plain-call-operand", "const g = (n: number): infer _ => {\n  const p: number!! = Effect.fail(new Missing({ id: n })) catch () => 0\n  return p\n}\n", "const g = (n: number): infer _ => {\n  const p: number!! = effect { return Effect.fail(new Missing({ id: n })) catch () => 0 }\n  return p\n}\n"},
+		{"catch-top-level", "export const p: number!! = Effect.fail(new Missing({ id: 1 })) catch () => 0\n", "export const p: number!! = effect { return Effect.fail(new Missing({ id: 1 })) catch () => 0 }\n"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			result, name := fixVIPOnlySource(t, legacyRunsPrelude+c.legacy)
