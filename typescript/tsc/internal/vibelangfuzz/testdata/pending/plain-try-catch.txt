@@ -1,13 +1,5 @@
 # Observed in r3 batch-b2 before pending; rechecked by r4/check-six.sh. Owner migfix-alchemy.
-FuzzPlainTryCatch arrow:catch-rethrow compiler VIP-1 Chapter 1: try/catch in a plain or async function is ordinary JavaScript; lane migfix-alchemy
 FuzzPlainTryCatch effect-function:catch-in-callback compiler VIP-1 Chapter 1: try/catch in a plain or async function is ordinary JavaScript; lane migfix-alchemy
 FuzzPlainTryCatch effect-function:finally compiler VIP-1 Chapter 1: try/catch in a plain or async function is ordinary JavaScript; lane migfix-alchemy
-FuzzPlainTryCatch function:catch-rethrow compiler VIP-1 Chapter 1: try/catch in a plain or async function is ordinary JavaScript; lane migfix-alchemy
-FuzzPlainTryCatch method:catch-rethrow compiler VIP-1 Chapter 1: try/catch in a plain or async function is ordinary JavaScript; lane migfix-alchemy
-FuzzPlainTryCatch top-level:catch-rethrow compiler VIP-1 Chapter 1: try/catch in a plain or async function is ordinary JavaScript; lane migfix-alchemy
-FuzzPlainTryCatch corpus:arrow-catch-rethrow compiler VIP-1 Chapter 1: try/catch in a plain or async function is ordinary JavaScript; minimized corpus reproduction; lane migfix-alchemy
 FuzzPlainTryCatch corpus:effect-function-catch-in-callback compiler VIP-1 Chapter 1: try/catch in a plain or async function is ordinary JavaScript; minimized corpus reproduction; lane migfix-alchemy
 FuzzPlainTryCatch corpus:effect-function-finally compiler VIP-1 Chapter 1: try/catch in a plain or async function is ordinary JavaScript; minimized corpus reproduction; lane migfix-alchemy
-FuzzPlainTryCatch corpus:function-catch-rethrow compiler VIP-1 Chapter 1: try/catch in a plain or async function is ordinary JavaScript; minimized corpus reproduction; lane migfix-alchemy
-FuzzPlainTryCatch corpus:method-catch-rethrow compiler VIP-1 Chapter 1: try/catch in a plain or async function is ordinary JavaScript; minimized corpus reproduction; lane migfix-alchemy
-FuzzPlainTryCatch corpus:top-level-catch-rethrow compiler VIP-1 Chapter 1: try/catch in a plain or async function is ordinary JavaScript; minimized corpus reproduction; lane migfix-alchemy

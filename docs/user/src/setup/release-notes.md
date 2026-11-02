@@ -280,6 +280,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A migrated package whose `files` list shipped only `dist` could install with an export pointing at missing `.vibelang/js/` JavaScript and fail with `ERR_MODULE_NOT_FOUND`. The migrate flow now includes the emitted runtime and loader records in its packing policy while preserving private-file exclusions.
 
+- Plain callable roots, match results and JavaScript try/catch now have strict regression checks after their migration gaps were resolved.
+
 - Repaired declaration namespaces and explicit Effect import membership now have strict regression checks instead of resolved pending records.
 
 - Pattern-binding and sidecar regression checks now cite the settled project-option and final-resolved-path rules, retaining their native TypeScript controls.
