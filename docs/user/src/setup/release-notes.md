@@ -334,6 +334,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Verifying a migrated package could reject the flow's new `.npmignore` and packing receipt as foreign files when its first emit happened after codemod. Packing ownership now stays in the batch journal through verification, recording and revert; unrelated files still fail the scope check.
 
+- Specification changes with grounded rules lacking accepted authority or contradicting retained text were only reported; `//:spec-rule-judge` now rejects them by default, while unavailable judgments still warn and allow the entry.
+
 - Sharded Go tests could start several fuzz campaigns when `-test.fuzz` used a separate selector argument; that form now runs once with its original arguments and exit status.
 - Remote checks could report success after failing to discover tracked fixtures, leaving the build host with a partial checkout; `scripts/remote.sh` now stops before running tests and reports the failing discovery stage and exit status.
 
@@ -597,6 +599,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Tagged error patterns from nested Effect modules rejected independently branded errors; all thirty-three retained error patterns now use their module guards, including singleton extraction and failed arity mismatches.
 
 - Reading a producer's `yield` result exposed a queue-offer boolean; a completed offer now gives `undefined`, as the language specifies.
+
+- Specification edits could add language rules without accepted authority; the optional `//:spec-rule-judge` Smithers target now reports Luna’s evidence and contradictions, caches retries, and allows entries through when the judge is unavailable.
 
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 

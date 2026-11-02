@@ -1,0 +1,40 @@
+diff --git a/docs/design/src/006-data.md b/docs/design/src/006-data.md
+index 2ff4b086bd..c4ded05c91 100644
+--- a/docs/design/src/006-data.md
++++ b/docs/design/src/006-data.md
+@@ -553,3 +553,22 @@
+ ### Declaration output
+ 
+ Exported `schema` and `data` declarations emit the TypeScript declarations of their Effect TypeScript counterparts above: a schema constant and its `typeof Name.Type` alias, or a `Data.TaggedEnum` alias and typed constructor constant. Generic data also emits the `WithGenerics` helper, named as above, when the exported constant references it; the helper is an implementation name, not a reserved source identifier. TypeScript declaration emission preserves inferred readonly payloads and the constructor signatures; it adds no runtime matcher.
++
++A JSDoc comment on a `schema` declaration is emitted on its `declare const` only; its `typeof Name.Type` alias has no comment. This includes `@internal`, `@public` and `@deprecated`, as on the ordinary Effect TypeScript pair. Native `removeComments` and `stripInternal` behavior is unchanged.
++
++```vibe es
++import * as Schema from "effect/Schema"
++
++/** A message on the wire. */
++export schema Message { readonly id: string }
++```
++
++```ts effect
++import * as Schema from "effect/Schema"
++
++/** A message on the wire. */
++export const Message = Schema.Struct({ id: Schema.String })
++export type Message = typeof Message.Type
++```
++
++Declaration emit retains the comment on the constant and leaves the type alias bare. To retain distinct documentation on a constant and its type alias, keep the ordinary TypeScript pair.
+diff --git a/docs/design/vips/0027-declaration-output.md b/docs/design/vips/0027-declaration-output.md
+index e1c466a4fd..324633c62d 100644
+--- a/docs/design/vips/0027-declaration-output.md
++++ b/docs/design/vips/0027-declaration-output.md
+@@ -34,6 +34,8 @@
+ 
+ `bun check` runs the project's `check` script; a script that invokes a TypeScript checker uses that checker's sidecar resolution. [Bun's script runner](https://bun.com/docs/runtime) executes the configured command.
+ 
++- **Amended 2026-11-01: documented schemas.** A JSDoc comment on a `schema` declaration is emitted on its `declare const` only; its `typeof Name.Type` alias has no comment. This includes `@internal`, `@public` and `@deprecated`, as on the ordinary Effect TypeScript pair. Native `removeComments` and `stripInternal` behavior is unchanged. A separate type-comment form is not introduced.
++
+ ## Prior art
+ 
+ Svelte's and Vue's TypeScript tooling; CSS modules' `.d.css.ts`; TypeScript's `allowArbitraryExtensions`.

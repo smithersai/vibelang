@@ -1,0 +1,24 @@
+diff --git a/docs/design/src/002-running.md b/docs/design/src/002-running.md
+index 8e3299d41c..73d7470119 100644
+--- a/docs/design/src/002-running.md
++++ b/docs/design/src/002-running.md
+@@ -1015,6 +1015,7 @@
+ | a labeled `break` or `continue` in head binding initialization or the body naming a statement that encloses the `for try`: `outer: for (const s of streams) { for try (const x of s) { continue outer } }` | `EK2003` |
+ | an operand that is not a `Stream`, `for try (const x of [1, 2]) { }`; convert an AsyncIterable with `Stream.fromAsyncIterable` first | `EK2004` |
+ | a head other than a `const` or `let` declaration: `var`, `using`, `await using` or an assignment head, `for try (x of s)`; write `for try (const v of s) { x = v }` | `EK2005` |
++| a legacy `for...of` or `for await` loop over a `Stream`, `for await (const x of s) { }`; `vibelang --fix` writes `for try (const x of s) { }` | `EK2007` |
+ 
+ ### Meaning
+ 
+diff --git a/docs/design/src/900-appendices.md b/docs/design/src/900-appendices.md
+index 13f6fe3255..61bdf25e4b 100644
+--- a/docs/design/src/900-appendices.md
++++ b/docs/design/src/900-appendices.md
+@@ -999,6 +999,7 @@
+ | `EK2003` | a labeled `break` or `continue` from `for try` head binding initialization or the body to a statement that encloses the `for try`; one naming the `for try` itself is its unlabeled `break` or `continue` | 20 | [Running Effects](002-running.md#for-try) |
+ | `EK2004` | a `for try` operand that is not a `Stream` | 20 | [Running Effects](002-running.md#for-try) |
+ | `EK2005` | a `var`, `using`, `await using` or assignment head in `for try`: any head other than a `const` or `let` declaration | 20 | [Running Effects](002-running.md#for-try) |
++| `EK2007` | a legacy `for...of` or `for await` loop over a `Stream`; migrate it to `for try` | 20 | [Running Effects](002-running.md#for-try) |
+ | `EK2102` | a producer whose written return type is not a `Stream` | 21 | [Running Effects](002-running.md#producers) |
+ | `EK2103` | `yield*` in a producer | 21 | [Running Effects](002-running.md#producers) |
+ | `EK2104` | `yield` in nonproducer effect code (an `effect` function, arrow or block), whether or not an outer producer exists, or in directly evaluated formal-parameter initialization of an Effect callable or producer | 21 | [Running Effects](002-running.md#producers) |

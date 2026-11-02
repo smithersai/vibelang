@@ -1,0 +1,38 @@
+diff --git a/docs/design/src/004-match.md b/docs/design/src/004-match.md
+index 20ea898744..e03ca268a8 100644
+--- a/docs/design/src/004-match.md
++++ b/docs/design/src/004-match.md
+@@ -509,6 +509,7 @@
+ - In `for…in`, `for…of`, `for await`, `for concurrent` and `for try`, a binding from the head expression, which runs once in the head's own environment, is copied into each iteration's binding environment; a skipped binding is copied uninitialized. A binding from a default inside the head declaration belongs to that iteration's fresh binding environment.
+ - In a concise arrow body, a binding belongs to the arrow body's scope, where the block-body form would declare it.
+ - In a class field or static field initializer, a binding belongs to that initializer's own scope, because ECMAScript evaluates each initializer as a separate method-like body. A `static` block is a block.
++- An `enum` member initializer has no lexical home in ECMAScript or the pinned explainer, so a binding introduced there is `EK0705`, as for a formal parameter: `enum E { A = (1 is let one) ? 1 : 0 }` is `EK0705`.
+ 
+ Each binding stays in TDZ until its pattern runs, under the checks in [`is` expressions](#is-expressions).
+ 
+diff --git a/docs/design/src/900-appendices.md b/docs/design/src/900-appendices.md
+index 246534a952..d92096b72b 100644
+--- a/docs/design/src/900-appendices.md
++++ b/docs/design/src/900-appendices.md
+@@ -946,7 +946,7 @@
+ | `EK0702` | a class pattern that [Class patterns](004-match.md#class-patterns) rejects: it names a `data` declaration or variant, a `schema` or a directly built `Context.Reference`, or its callee has no usable signature or return type (a `service` is `EK3004`) | 7 | [Pattern matching](004-match.md#class-patterns) |
+ | `EK0703` | lint warning: an extractor whose argument count can never match its pattern's list, `when NotFound():` | 7, 38 | [Pattern matching](004-match.md#class-patterns) |
+ | `EK0704` | an extractor `when C(…)`, `C()` included, on an ordinary class without its own `Symbol.customMatcher` (an inherited one does not count); write `when C:` or `when C and { x: let x }:` (VIP-7, amended) | 7 | [Pattern matching](004-match.md#class-patterns) |
+-| `EK0705` | an `is` lexical binding that would need formal-parameter initialization as its home; use an explicit local block preserving the intended result and call phase | 7 | [Pattern matching](004-match.md#is-bindings-in-parameter-initialization) |
++| `EK0705` | an `is` lexical binding that would need formal-parameter initialization as its home; use an explicit local block preserving the intended result and call phase; also a binding in an `enum` member initializer, which has no lexical home | 7 | [Pattern matching](004-match.md#is-bindings-in-parameter-initialization) |
+ | `EK0706` | a `return`, `break` or `continue` that leaves an `async match`; a nested function keeps its own `return` | 7 | [Pattern matching](004-match.md#async-match-jumps) |
+ | `EK0707` | invalid `match`/`is` grammar or a pattern-specific early error without a more specific assigned diagnostic; includes an interpolated primitive template pattern | 7 | [Pattern matching](004-match.md#syntax-and-meaning) |
+ | `EK0801` | warning: `using` in effect code; use `acquireDisposable` inside `scoped` | 8 | [Runtime](008-runtime.md) |
+diff --git a/docs/design/vips/0007-match.md b/docs/design/vips/0007-match.md
+index ca25121f2b..5e8c46319c 100644
+--- a/docs/design/vips/0007-match.md
++++ b/docs/design/vips/0007-match.md
+@@ -27,7 +27,7 @@
+ - **Amended 2026-10-29: which subjects are checked, and which arms cover a case.** The subject's type is normalized into union members (`boolean` to `true | false`, an enum to its members, a `data` type to its variants, `Option` to `None | Some`, `Exit` and `Result` to `Success | Failure`). The check applies when every member is a literal, `null`, `undefined`, an enum member, a `data` variant, an `error` or `schema error` instance, one of those six cases or a retained Effect error; any other member turns it off. Only unguarded arms cover; a bare binding covers everything; an object pattern covers variant `V` when it has `_tag: "V"` and its other properties are bare keys or `let` bindings of required fields; `or` covers the union; `and`, `not`, regex, relational, array, built-in and user-matcher patterns cover nothing. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 78).
+ - **Amended 2026-10-30: lexical cell identity.** Alternatives of one `or` share the cell of a name bound with the same keyword. A later alternative may replace a cell initialized by a failed earlier alternative; saved closures observe the replacement. Source `const` assignments remain forbidden; ordinary TDZ and duplicate-initialization rules outside that authorized replacement remain.
+ - **Amended 2026-10-30: loop-head binding lifetimes.** Lexical `is` bindings in `while`/`do…while` shadow outer names in a loop-head scope and never leak outside the loop. Every complete condition evaluation, including after `continue`, starts with fresh uninitialized cells. A successful condition and its following body share those cells, including later `let` writes seen by closures; short-circuiting can leave a binding in TDZ even when the condition is true. The initial `do` body uses uninitialized head cells; closures captured there retain those cells permanently in TDZ. Later conditions never rebind the initial cells. Nested source scopes and ordinary `if` block scope retain their existing rules.
+-- **Amended 2026-10-30: the other binding homes, and use before assignment.** In `for (init; test; update)`, an `init` binding belongs to the loop head as a `let` or `const` declared in `init` would, copied into each iteration when it is `let`; a `test` or `update` binding is a fresh cell in each iteration environment. A `for…in`, `for…of`, `for await`, `for concurrent` or `for try` head expression's binding is copied into each iteration. A concise arrow body's binding belongs to the arrow body, and a field initializer's binding to that initializer. `is` and `match` bindings take part in TypeScript's definite-assignment and use-before-declaration checks (`TS2454`, `TS2448`); a read those checks can't see throws `ReferenceError` while the cell is uninitialized.
++- **Amended 2026-10-30: the other binding homes, and use before assignment.** In `for (init; test; update)`, an `init` binding belongs to the loop head as a `let` or `const` declared in `init` would, copied into each iteration when it is `let`; a `test` or `update` binding is a fresh cell in each iteration environment. A `for…in`, `for…of`, `for await`, `for concurrent` or `for try` head expression's binding is copied into each iteration. A concise arrow body's binding belongs to the arrow body, and a field initializer's binding to that initializer; an `enum` member initializer has no home, so a binding there is `EK0705`. `is` and `match` bindings take part in TypeScript's definite-assignment and use-before-declaration checks (`TS2454`, `TS2448`); a read those checks can't see throws `ReferenceError` while the cell is uninitialized.
+ 
+ ```vibe es
+ // compiler-gap: pending VIP-7

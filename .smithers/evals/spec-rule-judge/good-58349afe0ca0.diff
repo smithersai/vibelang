@@ -1,0 +1,198 @@
+diff --git a/docs/design/src/006-data.md b/docs/design/src/006-data.md
+index dcf08f4b2e..2ff4b086bd 100644
+--- a/docs/design/src/006-data.md
++++ b/docs/design/src/006-data.md
+@@ -105,7 +105,7 @@
+ | `Record<K, V>` | `Schema.Record(K, Schema.mutableKey(V))` |
+ | `Readonly<Record<K, V>>` | `Schema.Record(K, V)` |
+ | nested object `{ name: T }` | `Schema.Struct({ name: Schema.mutableKey(S) })` |
+-| string, numeric or computed field key | the same key, emitted as written, as in a TypeScript object type |
++| string, numeric or computed field key | the field property key; computed names use the runtime schema-object rules below |
+ | writable field `name: T` | `name: Schema.mutableKey(S)` |
+ | writable optional field `name?: T` | `name: Schema.mutableKey(Schema.optional(S))` |
+ | readonly field `readonly name: T` | `name: S` |
+@@ -144,7 +144,7 @@
+ tupleForms.optional.push(3)
+ ```
+ 
+-`Schema.optional` accepts a missing key or `undefined`, matching TypeScript’s default. `Schema.mutableKey` changes the property, not its nested value; `Schema.mutable` changes an array or tuple, not its elements. Record keys must satisfy Effect’s `Schema.Record.Key` constraint. Field names follow TypeScript object types, which accept a computed name of any key type (TypeScript 5.9). Its expression is evaluated in declaration order, as in the emitted object literal; it is not a schema type reference. A computed key of non-literal type gives an index-signature type, but the runtime struct checks only the key the expression evaluates to, exactly as in Effect TypeScript. With default decoding options, extra keys are ignored and stripped, as in `Schema.Struct`.
++`Schema.optional` accepts a missing key or `undefined`, matching TypeScript’s default. `Schema.mutableKey` changes the property, not its nested value; `Schema.mutable` changes an array or tuple, not its elements. Record keys must satisfy Effect’s `Schema.Record.Key` constraint. Computed schema field names use native TypeScript runtime object-literal grammar and property-key type checks. A key call, parenthesized key or element-access key is admitted when that runtime object counterpart is admitted; type-member restrictions do not apply merely because the field's value is written as a type. Evaluate each admitted key once at the declaration's existing execution point in native property evaluation order, preserving getters, coercion, TDZ, thrown values and source-context throw checks. This follows ECMA-262's [property definition evaluation](https://tc39.es/ecma262/multipage/ecmascript-language-expressions.html#sec-runtime-semantics-propertydefinitionevaluation) and [property-key conversion](https://tc39.es/ecma262/multipage/abstract-operations.html#sec-topropertykey). The key expression is not a schema type reference. Infer the public type from the actual `Schema` value rather than a fabricated type literal containing the expression. A computed key of non-literal type gives an index-signature type, but the runtime struct checks only the key the expression evaluates to, exactly as in Effect TypeScript. With default decoding options, extra keys are ignored and stripped, as in `Schema.Struct`.
+ 
+ ```vibe es
+ // compiler-gap: pending VIP-15
+@@ -179,6 +179,42 @@
+ sample.counts.a = 2
+ ```
+ 
++The numeric keys below use call, parenthesized and element-access expressions. All pass native runtime object-key checks; the schema error also satisfies the existing reserved-`_tag` check because its key domain is numeric.
++
++```vibe es
++// compiler-gap: pending VIP-15, VIP-29
++let schemaKeyCalls = 0
++function schemaKey(): number { schemaKeyCalls++; return 42 }
++const Box = { get field(): number { schemaKeyCalls++; return 43 } }
++schema RuntimeCounts { [schemaKey()]: number; [(Box.field)]: number }
++schema error RuntimeCountError { [Box["field"]]: number }
++```
++
++```ts effect
++import { Effect, Exit, Schema } from "effect"
++
++let schemaKeyCalls = 0
++function schemaKey(): number { schemaKeyCalls++; return 42 }
++const Box = { get field(): number { schemaKeyCalls++; return 43 } }
++const RuntimeCounts = Schema.Struct({
++  [schemaKey()]: Schema.mutableKey(Schema.Number),
++  [(Box.field)]: Schema.mutableKey(Schema.Number)
++})
++type RuntimeCounts = typeof RuntimeCounts.Type
++class RuntimeCountError extends Schema.TaggedError<RuntimeCountError>()("RuntimeCountError", {
++  [Box["field"]]: Schema.Number
++}) {}
++const runtimeKeysExit = Effect.runSyncExit(Effect.gen(function* () {
++  const decoded = yield* Schema.decodeUnknownEffect(RuntimeCounts)({ 42: 1, 43: 2, 44: 99 })
++  const missing = Schema.decodeUnknownExit(RuntimeCounts)({ 42: 1 })
++  return [
++    schemaKeyCalls, decoded[42], decoded[43], Object.hasOwn(decoded, "44"),
++    Exit.isFailure(missing), new RuntimeCountError({ 43: 7 })[43]
++  ]
++}))
++console.log(runtimeKeysExit) // Success([3, 1, 2, false, true, 7])
++```
++
+ Referenced schemas must preserve the source's decoded-key modifiers. At every required field, required fixed tuple slot (before or after a rest), and `Record` value, the inferred schema type's `"~type.optionality"` must be `"required"`. At every effectively readonly field or readonly `Record` value, `"~type.mutability"` must be `"readonly"`; all `schema error` payload fields are effectively readonly even without a written `readonly`. These checks apply at the mapped position, recursively in nested structs and schema errors, through aliases and unions. A conflicting or unprovable flag is `EK2109`: use an unmodified value schema and write modifiers on the declaration. Writable and optional source positions retain the mappings above. The checks describe decoded `Type`; encoded-key and constructor-input defaults keep Effect's behavior. Field readonlyness is shallow and does not freeze nested mutable values.
+ 
+ ```vibe es
+@@ -325,7 +361,7 @@
+ 
+ [DataDeclaration](900-appendices.md#datadeclaration), which begins with [DataStart](900-appendices.md#datastart), is a list of [Variant](900-appendices.md#variant)s, possibly empty.
+ 
+-`data` follows [Declaration keywords](900-appendices.md#declaration-keywords), so `return data as User[]` and `const data = …` still work. [Field](900-appendices.md#field) and [Separator](900-appendices.md#separator) are those of `schema` declarations. A missing separator between two variants or two fields of a variant, `data D { A B }` or `A { x: number y: string }`, is `EK1605`. Variant names are TypeScript `IdentifierName`s, including reserved words such as `default`. Variant field keys follow TypeScript type literals, which accept computed names of any key type (TypeScript 5.9), as for `schema` fields. A non-literal key produces an index-signature type; the resulting payload must still satisfy Effect’s `Data.TaggedEnum` constraint forbidding `_tag`. In particular, a string index signature includes `_tag` and fails that constraint; it is not a `TS1170` error. Duplicate variant or field names get TypeScript’s duplicate-identifier diagnostic on the source name. Variants are separated as fields are, as the members of the `Data.TaggedEnum` type literal are, and a variant's fields may be `readonly`. A variant's `{` starts its field body even after line breaks; the `LineTerminator` alternative of [Separator](900-appendices.md#separator) does not apply before that `{`.
++`data` follows [Declaration keywords](900-appendices.md#declaration-keywords), so `return data as User[]` and `const data = …` still work. [Field](900-appendices.md#field) and [Separator](900-appendices.md#separator) are those of `schema` declarations. A missing separator between two variants or two fields of a variant, `data D { A B }` or `A { x: number y: string }`, is `EK1605`. Variant names are TypeScript `IdentifierName`s, including reserved words such as `default`. Variant field keys follow TypeScript's type-member checks. A broad entity-name key can produce an index signature; an arbitrary computed expression is not admitted merely because its type is a valid property-key type (`TS1170` can apply); the resulting payload must still satisfy Effect’s `Data.TaggedEnum` constraint forbidding `_tag`. In particular, a string index signature includes `_tag` and fails that constraint; it is not a `TS1170` error. Duplicate variant and field declarations receive the native TypeScript checks for their type members, rather than an unconditional duplicate-identifier diagnostic. Computed members with the same resolved name can merge when TypeScript admits them. Variants are separated as fields are, as the members of the `Data.TaggedEnum` type literal are, and a variant's fields may be `readonly`. A variant's `{` starts its field body even after line breaks; the `LineTerminator` alternative of [Separator](900-appendices.md#separator) does not apply before that `{`.
+ 
+ ### Meaning
+ 
+@@ -380,6 +416,70 @@
+ // Success([{ _tag: "Is" }, { _tag: "Match" }, { _tag: "Normal" }])
+ ```
+ 
++A data payload is emitted as a TypeScript type literal in `Data.TaggedEnum`. Its computed key expressions are type checked and erased: declaring or constructing data does not run those expressions. Ordinary value declarations keep their evaluation; a separate key initializer still runs where its statement stands. Schema field keys retain their documented runtime evaluation.
++
++```vibe es
++// compiler-gap: pending VIP-16
++let keyReads = 0; let initializerRuns = 0
++const Keys = { get field(): number { keyReads++; throw new Error("not evaluated") } }
++const initializedKey = (++initializerRuns, 2)
++data Reads { Item { [Keys.field]: string } }
++data Initialized { Item { [initializedKey]: string } }
++const read = Reads.Item({ 1: "read" })
++const eager = Initialized.Item({ 2: "eager" })
++effect function observeDataKeys() {
++  return [keyReads, initializerRuns, read[1], eager[2], keyReads]
++}
++// data Calls { Item { [dynamicKey()]: string } } // TS1170 when dynamicKey returns number
++```
++
++```ts effect
++import { Data, Effect, Exit } from "effect"
++
++let keyReads = 0; let initializerRuns = 0
++const Keys = { get field(): number { keyReads++; throw new Error("not evaluated") } }
++const initializedKey = (++initializerRuns, 2)
++type Reads = Data.TaggedEnum<{ Item: { [Keys.field]: string } }>
++const Reads = Data.taggedEnum<Reads>()
++type Initialized = Data.TaggedEnum<{ Item: { [initializedKey]: string } }>
++const Initialized = Data.taggedEnum<Initialized>()
++const read = Reads.Item({ 1: "read" })
++const eager = Initialized.Item({ 2: "eager" })
++function observeDataKeys() {
++  return Effect.gen(function* () {
++    return [keyReads, initializerRuns, read[1], eager[2], keyReads]
++  })
++}
++const dataKeyExit = Effect.runSyncExit(observeDataKeys())
++console.log(dataKeyExit) // Success([0, 1, "read", "eager", 0])
++```
++
++Computed payload members use TypeScript's own duplicate-member checks. The repeated computed field below is admitted with matching types; incompatible computed declarations instead receive the native `TS2717` check.
++
++```vibe es
++// compiler-gap: pending VIP-16
++const slot = "x" as const
++data Repeated { Row { [slot]: number; ["x"]: number } }
++effect function readRepeated() { return Repeated.Row({ x: 7 }).x }
++```
++
++```ts effect
++import { Data, Effect } from "effect"
++
++const slot = "x" as const
++type Repeated = Data.TaggedEnum<{
++  Row: { readonly [slot]: number; readonly ["x"]: number }
++}>
++const Repeated = Data.taggedEnum<Repeated>()
++type IncompatibleComputed = {
++  ["x"]: number
++  // @ts-expect-error TS2717: subsequent computed members must have the same type
++  ["x"]: string
++}
++const duplicateKeyExit = Effect.runSyncExit(Effect.sync(() => Repeated.Row({ x: 7 }).x))
++console.log(duplicateKeyExit) // Success(7)
++```
++
+ A generated variant constructor has the static contract `@throws {never}` (decided detail 42), independently of the foreign-callable default in VIP-4. Calling `Delivery.Sent({ tracking: "1Z" })` constructs the value directly; no `Effect.try` wrapper is needed. This adds no runtime validation or wrapping to `Data.taggedEnum`. Variant payload properties are readonly in the resulting type, even without a written `readonly`, as in Effect's `Data.TaggedEnum`.
+ 
+ The object-pattern test first checks for an ECMAScript object (including functions) and property presence, then reads the tag; see [Pattern matching](004-match.md).
+diff --git a/docs/design/src/900-appendices.md b/docs/design/src/900-appendices.md
+index a07f1fa8d3..32638d5ffd 100644
+--- a/docs/design/src/900-appendices.md
++++ b/docs/design/src/900-appendices.md
+@@ -679,9 +679,11 @@
+ #### Field
+ 
+ ```text
+-Field = "readonly"? PropertyName "?"? ":" Type Separator   (keys as in a TypeScript object type: an identifier, a string or numeric literal, or a computed name)
++Field = "readonly"? PropertyName "?"? ":" Type Separator   (identifier, string/numeric or computed spelling; admission and evaluation use the declaration counterpart below)
+ ```
+ 
++For `schema` and `schema error`, computed names use native TypeScript runtime object-literal grammar and key-type checks, and execute once in native property evaluation order. For plain `error` and `data` payloads, they use native TypeScript type-member checks and are erased. A broad entity-name key can be admitted in a type member while a call, parenthesized or element-access expression receives `TS1170`; the corresponding runtime schema key can still be admitted. Independent native errors and the existing reserved-key/source-modifier checks remain.
++
+ #### Separator
+ 
+ ```text
+diff --git a/docs/design/vips/0015-schema-declarations.md b/docs/design/vips/0015-schema-declarations.md
+index 1558222ed3..bc4d754d11 100644
+--- a/docs/design/vips/0015-schema-declarations.md
++++ b/docs/design/vips/0015-schema-declarations.md
+@@ -51,6 +51,8 @@
+ 
+ - **Amended 2026-10-30: referenced schemas preserve source modifier promises by conservative admission.** A required source field, a required fixed tuple position (before or after rest), or a required `Record` value position requires the referenced schema's inferred decoded-key optionality to be required. An effectively readonly field or readonly `Record` value position requires readonly decoded-key mutability. Check resolved schema flags through aliases; conflicting or unprovable needed flags are rejected by the field-mapping rule, with the repair to use an unmodified value schema and write modifiers on the source occurrence. Apply this recursively in nested mappings. Writable fields/records and optional source occurrences keep their existing mappings. This checks the flags at the mapped occurrence, not constructor spellings; it invents no flag-reset or unwrapping API. Encoded and constructor-input defaults retain Effect's behavior. Schema-error payload keys are effectively readonly even without a written `readonly`; this is shallow key readonlyness, not a deeply readonly decoded value. The [Data chapter's mapping](../src/006-data.md#schema-declarations) states the admitted cases.
+ 
++- **Amended 2026-10-30: computed-key counterparts.** Computed keys use the native TypeScript runtime object-literal grammar and property-key type checks of the `Schema` fields object, including admitted calls, parentheses and element access. Evaluate each key once in native property order, preserving getters, coercion, TDZ, thrown values and source-context throw checks. Infer the public type from the actual `Schema` value, not a synthetic type literal containing a key call. Reference modifiers and special-property-name rules retain their existing meaning.
++
+ - **Amended 2026-10-30: named declarations and diagnostics.** A `schema` declaration has no type parameters (`EK1502`); generic Schema construction stays an ordinary generic TypeScript factory. A direct `export default schema S …` is `EK1501`: declare `S` and write `export { S as default }`. A `schema error` follows the [error-declaration rules](0029-schema-errors.md). These codes catalog the existing named, nongeneric declaration grammar.
+ 
+ - **Amended 2026-10-30: incomplete declaration diagnostics.** A recognized ordinary schema declaration missing its required body or admitted alias form is `EK1503`. Recovery does not turn a missing body into an empty struct or reject a valid schema alias. The explicitly admitted bodyless `schema error` form keeps its existing rules. These codes label existing rejections; they add no admitted syntax.
+diff --git a/docs/design/vips/0016-data-declarations.md b/docs/design/vips/0016-data-declarations.md
+index 9215ddc89a..9f626f231b 100644
+--- a/docs/design/vips/0016-data-declarations.md
++++ b/docs/design/vips/0016-data-declarations.md
+@@ -22,6 +22,8 @@
+ - **Ambiguity: none.** `data` is a contextual keyword on the same line as its name, so `const data = …` still works.
+ - **Amended 2026-10-29: zero variants.** `data Empty {}` is allowed: an exact empty `Data.TaggedEnum` (the old EK2122 is deleted). Sent to Will on Telegram 2026-10-29 12:28 under his standing rule 'assume I accept'; no objection by 13:00.
+ 
++- **Amended 2026-10-30: payload key admission and erasure.** Payload fields use the ordinary TypeScript type-member computed-name checks. Duplicate members retain native TypeScript checking and merging. A broad entity-name key can form an index signature, while a dynamic expression can still be `TS1170`; a `PropertyKey` result alone is not an admission proof. These payload types are erased, so their key expressions add no runtime lookup, call or TDZ read when data is declared or constructed. Separate value declarations retain their normal evaluation. The generated `Data.TaggedEnum` constraint still rejects a payload that conflicts with `_tag`.
++
+ - **Amended 2026-10-30: named default exports.** A direct `export default data D { … }` is `EK1603`: declare `D` and write `export { D as default }`. This catalogs the existing named-declaration grammar and changes neither generic data support nor the variant payload/helper diagnostics.
+ 
+ - **Amended 2026-10-30: incomplete declaration diagnostics.** A recognized data declaration missing its required variant body is `EK1604`. An explicitly written empty body remains admitted; recovery does not supply one automatically. These codes label existing rejections; they add no admitted syntax.
+diff --git a/docs/design/vips/0029-schema-errors.md b/docs/design/vips/0029-schema-errors.md
+index 74477dedcb..5016119cc6 100644
+--- a/docs/design/vips/0029-schema-errors.md
++++ b/docs/design/vips/0029-schema-errors.md
+@@ -45,3 +45,5 @@
+ 
+ 
+ **Amended 2026-10-30: computed keys preserve the discriminant.** A computed payload field key is rejected by the existing reserved-tag diagnostic unless its well-typed runtime property-key domain is proved to exclude `"_tag"`. Effective generic constraints and enum underlying values matter; opaque primitive brands/refinements do not change a string's possible runtime keys. Retain genuine literal/template constraints in intersections and require every union component to exclude the reserved value. Known numeric/symbol domains, safe literal/template domains and their brands remain admitted; `never` has no key. Reject `any`, `unknown` and unresolved or unprovable domains conservatively. Accepted keys retain native evaluation/order, with no value unwrapping, decoder execution or runtime tag guard. Ordinary TypeScript invalid-key rules remain independent.
++
++- **Amended 2026-10-30: computed-key counterparts.** Computed field keys use native runtime object-literal admission and evaluation, as for schema declarations. They must additionally prove their runtime key domain excludes `_tag`; native key admission does not relax that reserved-tag check, add a runtime guard or imply transport compatibility. Plain error payloads retain their separate erased TypeScript type-member counterpart.

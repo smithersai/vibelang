@@ -1,0 +1,71 @@
+diff --git a/docs/design/src/002-running.md b/docs/design/src/002-running.md
+index 2152d219d8..04f3b79a9d 100644
+--- a/docs/design/src/002-running.md
++++ b/docs/design/src/002-running.md
+@@ -1000,6 +1000,8 @@
+ 
+ `for try (const x of stream)` consumes a Stream, pulling one element at a time, in order. It mirrors `for await` over AsyncIterables, which keeps its JavaScript meaning. `continue` skips one element, `break` stops consuming and closes the stream's scope, so a producer still running is interrupted and its finalizers run, and a failure in the body fails the loop.
+ 
++The item callback runs on the current consuming fiber; an item or source callable activation creates no new fiber owner. A plain `fork` child may outlive the item and successful loop completion while its owning fiber continues, is not implicitly joined, and is interrupted when that owner terminates. The consuming fiber can itself be a concurrent item's fiber or another explicitly created child. `fork.in`, `fork.scoped` and `fork.detached` retain their own native owners; `Stream` finalization and the loop's `break` and failure behavior are unchanged. This ownership rule adds no child-start ordering or per-item scope. See the [gated ownership witness](008-runtime.md#for-try-fiber-owner).
++
+ ```vibe es
+ // compiler-gap: pending VIP-20
+ effect function saveAll(rows: Stream.Stream<Row>) {
+diff --git a/docs/design/src/008-runtime.md b/docs/design/src/008-runtime.md
+index 70a9d1b1a3..0ac4eb8b95 100644
+--- a/docs/design/src/008-runtime.md
++++ b/docs/design/src/008-runtime.md
+@@ -420,3 +420,40 @@
+ iteratorCalls = 0
+ if (visit(2) !== "1,2" || iteratorCalls !== 0) throw new Error("parallel array reuse changed")
+ ```
++
++<a id="for-try-fiber-owner"></a>A plain `fork` in a `for try` item belongs to the current consuming fiber ([Running Effects](002-running.md#for-try)), not to the item. This witness waits for the child to start, lets the item and loop finish, then releases and joins it from the continuing owner. The gates establish this trace without promising scheduling order for unrelated fibers.
++
++```vibe es
++// compiler-gap: pending VIP-20
++effect function consume(items: Stream.Stream<number>) {
++  for try (const item of items) { fork work(item) }
++  try parentWork() // plain children may still run while this consuming fiber continues
++}
++```
++
++```ts effect
++// Stream consuming-fiber witness: VIP-17, VIP-20, VIP-31
++import { Deferred, Effect, Exit, Fiber, Stream } from "effect"
++
++const trace: string[] = []
++const result = await Effect.runPromiseExit(Effect.gen(function* () {
++  const started = yield* Deferred.make<void>()
++  const release = yield* Deferred.make<void>()
++  const children: Array<Fiber.Fiber<void>> = []
++  yield* Stream.runForEachWhile(Stream.make(1), () => Effect.gen(function* () {
++    children.push(yield* Effect.forkChild(Effect.gen(function* () {
++      yield* Deferred.succeed(started, undefined)
++      yield* Deferred.await(release)
++      trace.push("child")
++    })))
++    yield* Deferred.await(started)
++    trace.push("item")
++    return true
++  }))
++  trace.push("loop")
++  yield* Deferred.succeed(release, undefined)
++  yield* Fiber.join(children[0])
++  trace.push("joined")
++}))
++if (!Exit.isSuccess(result) || trace.join() !== "item,loop,child,joined") throw new Error("consuming-fiber ownership changed")
++```
+diff --git a/docs/design/vips/0020-for-try.md b/docs/design/vips/0020-for-try.md
+index fdc466fa96..525561e147 100644
+--- a/docs/design/vips/0020-for-try.md
++++ b/docs/design/vips/0020-for-try.md
+@@ -26,6 +26,8 @@
+ - **Amended 2026-10-29: no labeled jump out.** A labeled `break` or `continue` from a `for try` body to a statement outside it is a compile error, as `for concurrent` already rules. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 49).
+ - **Amended 2026-10-30: source head scope and item checks.** Evaluate the operand in ECMAScript's separate lexical environment with uninitialized head bindings. RHS closures retain those TDZ cells; each item receives fresh initialized bindings and the body keeps its own block. Apply the loop's outward-jump restrictions to head binding initialization and body, including defaults and computed keys, while nested source functions keep their own targets. The RHS retains the enclosing activation's permitted outward completions. Preserve the native per-element true/false protocol after the item completes; see [Running Effects](../src/002-running.md#for-try).
+ 
++- **Amended 2026-10-30: plain forks use the current consuming fiber.** `Stream.runForEachWhile` runs the item callback on that fiber, without creating a per-item owner. A plain `fork` child can outlive an item and successful loop completion while that owner continues; it is not implicitly joined and is interrupted when the owner terminates. The consuming fiber may itself be another child or a concurrent item's fiber. Explicit fork-owner forms and `Stream` finalization keep their native behavior, without a new start-order guarantee or item scope. See [Running Effects](../src/002-running.md#for-try) and the [ownership witness](../src/008-runtime.md#for-try-fiber-owner).
++
+ ## History
+ 
+ About 9 findings, mostly about producers, which have their own VIP. The round-11 major, where a type decided whether `for…of` consumed a Stream, doesn't apply: `for try` is syntax.

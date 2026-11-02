@@ -1,0 +1,88 @@
+diff --git a/docs/design/src/006-data.md b/docs/design/src/006-data.md
+index c4ded05c91..a482135026 100644
+--- a/docs/design/src/006-data.md
++++ b/docs/design/src/006-data.md
+@@ -85,7 +85,7 @@
+ type Code = typeof Code.Type
+ ```
+ 
+-In this table, `S`, `A` and `B` are the recursively mapped schemas of the corresponding type syntax. A reference names a Schema value, not an expanded TypeScript type alias, interface, enum or class. Apart from the mapped built-ins below, a reference without a Schema value is `EK2109`: declare it with `schema`.
++In this table, `S`, `A` and `B` are the recursively mapped schemas of the corresponding type syntax. A reference names a Schema value, not an expanded TypeScript type alias, interface, enum or class. The generic built-ins `Array<T>`, `ReadonlyArray<T>`, `Record<K, V>` and `Readonly<T>` in the table mean the corresponding TypeScript-library type bindings, selected by ordinary type lookup and alias resolution, not by spelling. A local or imported type binding can shadow a library type; a value-only binding does not by itself replace the separate library type binding. When the resolved binding is not a mapped built-in, apply the existing Schema-value lookup and arity rules. A reference with no suitable Schema value is `EK2109`: declare a schema or name a Schema value. This does not expand arbitrary user type aliases or introduce generic Schema declarations. The generic rows require these resolved library bindings; `T[]` and `readonly T[]` are syntax mappings independent of a written `Array` name.
+ 
+ | Type or field | Effect 4.1.0 schema |
+ | --- | --- |
+@@ -274,7 +274,7 @@
+ // Success(JsonCount({ count: 1n })); the encoded count was "1"
+ ```
+ 
+-Refinements and transformations stay Schema constants. In a schema type, an identifier or qualified name is looked up as a value and must satisfy Effect's `Schema.Top`; a type of the same name is not expanded. Imports and shadowing follow TypeScript value lookup. `typeof Name.Type` is the declared type.
++Refinements and transformations stay Schema constants. In a schema type, an identifier or qualified name is looked up as a value and must satisfy Effect's `Schema.Top`; a type of the same name is not expanded. Imports and shadowing follow TypeScript value lookup. The generic built-in rows first identify the library type binding as specified above. `typeof Name.Type` is the declared type.
+ 
+ ```vibe es
+ // compiler-gap: pending VIP-15
+@@ -337,7 +337,7 @@
+ | type parameters on a `schema` declaration; use an ordinary generic TypeScript factory returning a Schema value | `EK1502` |
+ | a recognized ordinary schema declaration missing its required body or admitted alias form | `EK1503` |
+ | two fields on one line with no separator, `{ a: string b: number }`; write `;` or a line break between them (quick fix: insert `;`) | `EK1504` |
+-| a field type outside the mapping, or a referenced schema with conflicting or unprovable decoded-key flags at a required or effectively readonly position; use an unmodified value schema and write the modifiers on the declaration (for `Date`, use `Schema.Date`) | `EK2109` |
++| a field type outside the mapping (including a shadowing type without a suitable Schema value), or a referenced schema with conflicting or unprovable decoded-key flags at a required or effectively readonly position; use an unmodified value schema and write the modifiers on the declaration (for `Date`, use `Schema.Date`) | `EK2109` |
+ 
+ 
+ A `schema error` keeps the error-declaration diagnostic `EK1305`; it does not use `EK1501`. A schema's named default export and an ordinary generic factory are normal TypeScript:
+@@ -550,6 +550,32 @@
+ const boxed: StringBox = Box.Value({ value: "hello" })
+ ```
+ 
++### Shadowing mapped built-ins
++
++```vibe es
++// fragment
++// compiler-gap: pending VIP-15
++export {}
++type Record<K, V> = { k: K; v: V }
++schema S { a: Record<string, number> } // EK2109: no Schema value for the local type
++```
++
++A repair supplies the actual decoder instead of silently selecting the library's dictionary mapping:
++
++```vibe es
++schema Entry { readonly k: string; readonly v: number }
++schema S { readonly a: Entry }
++```
++
++```ts effect
++import * as Schema from "effect/Schema"
++
++const Entry = Schema.Struct({ k: Schema.String, v: Schema.Number })
++type Entry = typeof Entry.Type
++const S = Schema.Struct({ a: Entry })
++type S = typeof S.Type
++```
++
+ ### Declaration output
+ 
+ Exported `schema` and `data` declarations emit the TypeScript declarations of their Effect TypeScript counterparts above: a schema constant and its `typeof Name.Type` alias, or a `Data.TaggedEnum` alias and typed constructor constant. Generic data also emits the `WithGenerics` helper, named as above, when the exported constant references it; the helper is an implementation name, not a reserved source identifier. TypeScript declaration emission preserves inferred readonly payloads and the constructor signatures; it adds no runtime matcher.
+diff --git a/docs/design/src/900-appendices.md b/docs/design/src/900-appendices.md
+index c3c7c12a04..36f3a8451a 100644
+--- a/docs/design/src/900-appendices.md
++++ b/docs/design/src/900-appendices.md
+@@ -1004,7 +1004,7 @@
+ | `EK2102` | a producer whose written return type is not a `Stream` | 21 | [Running Effects](002-running.md#producers) |
+ | `EK2103` | `yield*` in a producer | 21 | [Running Effects](002-running.md#producers) |
+ | `EK2104` | `yield` in nonproducer effect code (an `effect` function, arrow or block), whether or not an outer producer exists, or in directly evaluated formal-parameter initialization of an Effect callable or producer | 21 | [Running Effects](002-running.md#producers) |
+-| `EK2109` | a `schema` field type outside the mapping, or conflicting/unprovable referenced-schema decoded-key flags at a required or effectively readonly position | 15 | [Data](006-data.md#schema-declarations) |
++| `EK2109` | a `schema` field type outside the mapping (including a shadowing type without a suitable Schema value), or conflicting/unprovable referenced-schema decoded-key flags at a required or effectively readonly position | 15 | [Data](006-data.md#schema-declarations) |
+ | `EK2111` | `restore` outside an `uninterruptible` block | 22 | [Running Effects](002-running.md#interruption-blocks) |
+ | `EK2117` | an `extends` clause or a `_tag` member in an `error` or `schema error` body, or a computed `schema error` key whose runtime domain cannot be proved to exclude `"_tag"` | 13 | [Failures](003-failures.md#error-declarations) |
+ | `EK2126` | a constraint on a generic `data` type parameter | 28 | [Data](006-data.md#generic-unions) |
+diff --git a/docs/design/vips/0015-schema-declarations.md b/docs/design/vips/0015-schema-declarations.md
+index bc4d754d11..967a76f31b 100644
+--- a/docs/design/vips/0015-schema-declarations.md
++++ b/docs/design/vips/0015-schema-declarations.md
+@@ -72,3 +72,6 @@
+ ## Will's words
+ 
+ > "Yup I'm accepting this"
++
++
++- **Amended 2026-11-01: mapped generic bindings.** The generic built-ins `Array<T>`, `ReadonlyArray<T>`, `Record<K, V>` and `Readonly<T>` in the table mean the corresponding TypeScript-library type bindings, selected by ordinary type lookup and alias resolution, not by spelling. A local or imported type binding can shadow a library type; a value-only binding does not by itself replace the separate library type binding. When the resolved binding is not a mapped built-in, apply the existing Schema-value lookup and arity rules. A reference with no suitable Schema value is `EK2109`: declare a schema or name a Schema value. This does not expand arbitrary user type aliases or introduce generic Schema declarations. The array syntax `T[]` and `readonly T[]` remains independent of any written `Array` binding. See [Shadowing mapped built-ins](../src/006-data.md#shadowing-mapped-built-ins).

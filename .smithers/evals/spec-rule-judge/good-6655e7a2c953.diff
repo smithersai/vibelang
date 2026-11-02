@@ -1,0 +1,24 @@
+diff --git a/docs/design/src/002-running.md b/docs/design/src/002-running.md
+index 7c419db31a..8e9661ca91 100644
+--- a/docs/design/src/002-running.md
++++ b/docs/design/src/002-running.md
+@@ -34,6 +34,7 @@
+ | `try` outside effect code; the same rule applies to `try.all`, `try.race`, `try.any` or `try.allSettled` | `EK0501` |
+ | `try e` where `e` is not an Effect. A call that may throw, and a Promise, must first be wrapped with `Effect.try`, `tryPromise` or `promise` | `EK0502` |
+ | a `try` statement (`try { } catch { }`, `try { } finally { }`) anywhere in effect code. Handle failures with `catch` or `match`, and clean up with `ensuring` or `onExit`: `try ensuring(write(x), close())` | `EK0503` |
++| an unparenthesized `try`, `fork` or `join` expression on the left of `**`: `try a ** b`, as ECMAScript rejects `await a ** b`; write `(try a) ** b` | `EK0510` |
+ 
+ <a id="operand-test"></a>**Operand test.** `e` is an Effect when its type is assignable to `Effect.Effect<any, any, any>`. For example, in Effect 4.1.0 an `Exit`, a `Config`, a `Context.Service` key, a `Context.Reference` and an `error` instance (`Data.TaggedError` or `Schema.TaggedError`) pass this structural test; the list is not exhaustive. So `try new NotFound({ id })` fails like `throw`. `Option`, `Result`, `Stream`, `Layer` and `Fiber` do not pass the Effect operand test. An Effect that can't fail is still run with `try`. `never` and `any` pass this test, `never` as the success of an Effect that only fails; `unknown` does not, as TypeScript doesn't assign it to `Effect.Effect<any, any, any>`; it is the operand test, not [Failures](003-failures.md)' test of which callables are effectful.
+ 
+diff --git a/docs/design/src/900-appendices.md b/docs/design/src/900-appendices.md
+index 9ebcb2c32f..4110138342 100644
+--- a/docs/design/src/900-appendices.md
++++ b/docs/design/src/900-appendices.md
+@@ -942,6 +942,7 @@
+ | `EK0507` | a plain handler whose result is a Promise or thenable | 5 | [Running Effects](002-running.md#catch) |
+ | `EK0508` | lint warning: a plain handler whose result is an Effect; use `catch effect` | 5, 38 | [Running Effects](002-running.md#catch) |
+ | `EK0509` | a `catch` handler that is not a plain or `effect` arrow or function expression: `a catch b`, `a catch effect { }`, `a catch async (e) => b`, `a catch function* (e) { }`; a parameter list followed directly by a block, as in `try x catch (e) { }`, gets `EK0509` without adding `EK0505` for the same malformed handler | 5 | [Running Effects](002-running.md#catch) |
++| `EK0510` | an unparenthesized `try`, `fork` or `join` expression on the left of `**`, as ECMAScript rejects `await a ** b`; parenthesize it: `(try a) ** b` | 5, 17 | [Running Effects](002-running.md#static-rules) |
+ | `EK0511` | lint warning: an explicit `throw` that can complete a plain `catch` handler, not one caught inside it or in a nested function; use `catch effect` | 5, 38 | [Running Effects](002-running.md#catch) |
+ | `EK0701` | a missing `;` after a `match` arm, the last one included | 7 | [Pattern matching](004-match.md#syntax-and-meaning) |
+ | `EK0702` | a class pattern that [Class patterns](004-match.md#class-patterns) rejects: it names a `data` declaration or variant, a `schema` or a directly built `Context.Reference`, or its callee has no usable signature or return type (a `service` is `EK3004`) | 7 | [Pattern matching](004-match.md#class-patterns) |

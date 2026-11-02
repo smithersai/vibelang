@@ -904,3 +904,15 @@ subject calls, source trivia and Unicode offsets. Matcher invocations have
 the source node `VibeIsExpression`; source arrow calls remain
 `CallExpression`. The matcher and subject stay reachable to scope analysis,
 and source call newlines keep their reports.
+
+## Specification rule authority
+
+The optional `//:spec-rule-judge` run target checks added specification rules
+and compiler diagnostic messages with `gpt-6-luna`, after deterministic
+linters. It rejects grounded rules without accepted authority and contradictions
+by default. Platform owns its attachment to the pre-gate. Its private
+revision/diff/policy cache prevents retries from changing a verdict; missing
+decisions or an unavailable model warn and allow the entry.
+`//:spec-rule-judge-test` checks its tooling without a model.
+See [the configuration and fixed historical eval](../../scripts/spec-rule-judge/README.md)
+for external authority paths, the `smthrs eval` command and calibration results.

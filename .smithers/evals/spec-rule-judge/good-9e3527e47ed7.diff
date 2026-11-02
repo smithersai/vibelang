@@ -1,0 +1,26 @@
+diff --git a/docs/design/src/002-running.md b/docs/design/src/002-running.md
+index 05af4901ea..4cfc5615fd 100644
+--- a/docs/design/src/002-running.md
++++ b/docs/design/src/002-running.md
+@@ -118,7 +118,7 @@
+ | `x catch function* (e) { }` | syntax error | quick fix: `x catch function (e) { }` |
+ | `try x catch (e) { … }` | syntax error `EK0509` | quick fix: `x catch effect (e) => { … }` |
+ 
+-An arrow handler's body is TypeScript's concise body, which extends as far as an assignment expression does, as in `(e) => a ?? b`: `a catch () => b ? c : d` means `a catch (() => (b ? c : d))`. So `a catch effect (e) => b catch () => c` means `a catch (effect (e) => (b catch (() => c)))`. With a plain arrow, `b catch () => c` is in a plain function, so `a catch (e) => b catch () => c` is the error "`catch` outside effect code". Parenthesizing the arrow, `a catch ((e) => b) catch ((e) => c)`, parses, but the outer `catch` then needs an Effect operand (below).
++An arrow handler's body is TypeScript's concise body, which extends as far as an assignment expression does, as in `(e) => a ?? b`: `a catch () => b ? c : d` means `a catch (() => (b ? c : d))`, and `a catch () => b |> % + 1` means `a catch (() => (b |> % + 1))`: with `a` succeeding with `5` and `b` equal to `0` it gives `5`, and `(a catch () => b) |> % + 1` gives `6`. So `a catch effect (e) => b catch () => c` means `a catch (effect (e) => (b catch (() => c)))`. With a plain arrow, `b catch () => c` is in a plain function, so `a catch (e) => b catch () => c` is the error "`catch` outside effect code". Parenthesizing the arrow, `a catch ((e) => b) catch ((e) => c)`, parses, but the outer `catch` then needs an Effect operand (below).
+ 
+ In `(a catch h) catch k`, the outer `catch` runs the value that `a catch h` gives, so `a`'s success (`never`, if `a` only fails, passes the operand test above) and `h`'s result must both be Effects. To try fallbacks in turn, nest them in an `effect` handler: `a catch effect () => b catch () => c`.
+ 
+diff --git a/docs/design/src/900-appendices.md b/docs/design/src/900-appendices.md
+index 841683bb89..e7288b3b3c 100644
+--- a/docs/design/src/900-appendices.md
++++ b/docs/design/src/900-appendices.md
+@@ -318,6 +318,8 @@
+ 
+ These productions carry the enclosing `In`, `Yield`, `Await` and `Effect` grammar parameters consistently. Alongside the pinned covering-production restrictions on conditional, yield, assignment and arrow bodies, reject a body whose whole unparenthesized expression is a `PipeExpression`. Thus an unparenthesized chain has its unique sequential left-associated derivation; a parenthesized nested pipe remains valid with a separate topic scope. This restriction tests the whole body, not every nested occurrence of a pipe.
+ 
++It is a Syntax Error if the `ShortCircuitExpression` of a `PipeExpression` is a `CatchExpression` whose handler is an `ArrowHandler`; the `|>` then belongs to the arrow's body, as `?` does under [ConditionalExpression](#conditionalexpression). So `a catch () => b |> % + 1` is `a catch (() => (b |> % + 1))`; write `(a catch () => b) |> % + 1` to pipe the recovered value.
++
+ #### EffectType
+ 
+ ```text

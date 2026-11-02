@@ -542,6 +542,26 @@ const specLint = S.Shell.Test({
 })
 
 const targets = {
+  // A Run has no graph replay: revision and external decisions are runtime
+  // inputs. The script pins the revision/diff verdict, including failures.
+  // Platform owns attachment to the pre-gate; grounded violations reject by default.
+  "spec-rule-judge": S.Shell.Run({
+    summary: "Luna audits new spec rules against accepted authority; unavailable inputs fail open.",
+    shell: "node scripts/spec-rule-judge.mjs",
+    data: [tree],
+    tools: [node, S.Host.bin("jj")],
+    manual: true,
+    sandbox: "none",
+    timeout: "4m"
+  }),
+  "spec-rule-judge-test": S.Shell.Test({
+    summary: "Rule judge quote validation, revision collection, failure and retry properties.",
+    shell: "node --test scripts/spec-rule-judge.test.mjs",
+    data: [S.file("//scripts/spec-rule-judge.mjs"), S.file("//scripts/spec-rule-judge.test.mjs"), S.file("//scripts/spec-rule-judge/score.mjs")],
+    tools: [node, S.Host.bin("jj")],
+    sandbox: "none",
+    timeout: "1m"
+  }),
   "spec-shared-tables": specSharedTables,
   "spec-copy-sections": specCopySections,
   "spec-registry": specRegistry,

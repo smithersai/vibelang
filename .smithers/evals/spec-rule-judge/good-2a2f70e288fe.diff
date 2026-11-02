@@ -1,0 +1,123 @@
+diff --git a/docs/design/src/001-functions.md b/docs/design/src/001-functions.md
+index fab6811b18..218823b17c 100644
+--- a/docs/design/src/001-functions.md
++++ b/docs/design/src/001-functions.md
+@@ -139,7 +139,7 @@
+ 
+ "Inside" means the innermost enclosing function, as for `await` in JavaScript: a plain arrow written inside an `effect` function is a plain function, and `try` is an error inside it.
+ 
+-`try` works like `await`, so an `effect` function's parameter list, a class field initializer and a `static` block are not effect code, as `await` can't appear there in an `async` function ([the grammar's Effect parameter](900-appendices.md#the-effect-parameter)). An effect construct there is that construct's "outside effect code" error ([Running Effects](002-running.md#static-rules)). What a parameter default may throw is in [Code outside the generator](003-failures.md#code-outside-the-generator).
++`try` works like `await`, so an `effect` function's parameter list, a class field initializer and a `static` block are not effect code, as `await` can't appear there in an `async` function ([the grammar's Effect parameter](900-appendices.md#the-effect-parameter)). An effect construct there is that construct's "outside effect code" error ([Running Effects](002-running.md#static-rules)). What a parameter default may throw is in [Code outside the generator](003-failures.md#code-outside-the-generator). An `is` pattern cannot introduce a binding whose lexical home would be formal-parameter initialization (`EK0705`); binding-free tests and explicit block-local bindings follow [Pattern matching](004-match.md#is-bindings-in-parameter-initialization).
+ 
+ Class field and enum member initializers reset the Effect reservation context, so ordinary calls to identifiers named `fork` or `join` stay ordinary calls there. Static blocks inherit the surrounding reservation but stay outside Effect execution: `join(x)` in a class written in that reserved context receives `EK1701`; a static block in a plain context can call an ordinary `join`. Heritage and computed class element names keep their enclosing context, and a nested explicit Effect callable or block starts its own. [Appendix A](900-appendices.md#the-effect-parameter) states this rule and VIP-17’s outside-code identifier promise.
+ 
+diff --git a/docs/design/src/004-match.md b/docs/design/src/004-match.md
+index 52886bdb54..20ea898744 100644
+--- a/docs/design/src/004-match.md
++++ b/docs/design/src/004-match.md
+@@ -593,6 +593,7 @@
+ | a `match` with no `default` over a finite union that misses a case | `EK4701` |
+ | invalid `match`/`is` grammar or a pattern-specific early error without a more specific diagnostic | `EK0707` |
+ | a missing `;` after a `match` arm, the last one included | `EK0701` |
++| an `is` pattern binding in formal-parameter initialization with no explicit block/arm as its lexical home ([Parameter initialization](#is-bindings-in-parameter-initialization)) | `EK0705` |
+ | a class pattern naming a `data` declaration or variant, a `schema`, or a directly constructed `Context.Reference`; a call-only callee whose return type fails detail 94, or a callee with neither signature (services use `EK3004`; [Class patterns](#class-patterns)) | `EK0702` |
+ | an ordinary-class extractor without an own matcher (detail 100) | `EK0704` |
+ | lint warning: an extractor whose argument count can never match its pattern's list ([Class patterns](#class-patterns)) | `EK0703` |
+@@ -967,6 +968,59 @@
+ }
+ ```
+ 
++
++## `is` bindings in parameter initialization
++
++An `is` test in formal-parameter initialization is `EK0705` if a `let` or `const` pattern binding would need the parameter environment as its lexical home. This includes direct defaults, defaults nested in parameter destructuring, and evaluated computed binding keys. The pinned explainer leaves that scope unfinished, so no parameter-home binding is invented or moved into the body.
++
++A binding-free test remains allowed. A binding in an explicit source block within the initializer, including a `do` block or a match arm's scope, belongs to that block/arm and does not escape to other parameters or the body. Nested source callable bodies keep their own scopes and boundaries. Ordinary call arguments in a lexical block retain that block's binding rule; they are not formal parameters.
++
++A repair preserves eager, left-to-right, once-only initialization, parameter/body environment separation, `length`, TDZ and closure identity. An explicit local block can return the needed result; a different explicit parameter is an option only when it preserves the intended API. There is no generic move-to-body quick fix. Execution and exception boundaries retain the [shared default rules](002-running.md#destructuring-and-parameter-defaults).
++
++```vibe es
++// compiler-gap: pending VIP-7
++function bad(a = (1 is let captured)) { return a } // EK0705
++function nested({ a = (1 is const captured) } = {}) {} // EK0705
++function key({ [(1 is let captured) ? "x" : "y"]: value }: { x?: number; y?: number } = {}) {} // EK0705
++function testOnly(a = (1 is 1)) { return a } // allowed: no new binding
++function good(a = do { const ok = 1 is let captured; [ok, captured] }) { return a }
++function arm(a = match (1) { when let x: (1 is let captured) ? captured : 0; }) { return a }
++function body(a = () => (1 is let captured)) { return a } // nested source body
++function reader(seed: number, a = do { seed is let captured; () => ++captured }) { return a }
++function caller() { consume(1 is let captured); return captured } // caller's lexical block
++```
++
++For the simple non-jumping block-local default and ordinary call-argument witnesses, the native counterparts preserve the local cell and call phase:
++
++```ts effect
++import { Effect } from "effect"
++function good(a = (() => { let captured = 1; const ok = true; return [ok, captured] })()) {
++  return a
++}
++function testOnly(a = (1 === 1)) { return a }
++function reader(seed: number, a = (() => { let captured = seed; return () => ++captured })()) { return a }
++function caller() {
++  let captured = 1
++  consume(true)
++  return captured
++}
++function consume(_value: boolean) {}
++const defaultEvents: string[] = []
++function eager(
++  a = (() => { defaultEvents.push("default"); let captured = 1; return captured })(),
++  b = (defaultEvents.push("later"), 2)
++) {
++  defaultEvents.push("body")
++  return [a, b]
++}
++const parameterScopeExit = Effect.runSyncExit(Effect.sync(() => [good(), testOnly(), caller(), eager()])) // Success([[true, 1], true, 1, [1, 2]])
++defaultEvents // ["default", "later", "body"]
++const readerScopeExit = Effect.runSyncExit(Effect.sync(() => {
++  const first = reader(1), second = reader(100)
++  return [first(), second(), first()]
++})) // Success([2, 101, 3])
++```
++
+ ## Regular-expression patterns
+ 
+ A [RegularExpressionPattern](900-appendices.md#regularexpressionpattern) admits a bare `RegularExpressionLiteral` or its extractor suffix `(MatchList)`, including the nullable list `()`. It evaluates the literal once at its pattern position and matches as the same named `RegExp` value does. The runtime emulates the draft's `RegExp.prototype` matcher without patching the prototype: a bare pattern calls `test`; a non-global extractor returns `[regexp[Symbol.match](subject)]`, failing on `null`. A global extractor returns `Array.from(regexp[Symbol.matchAll](subject))` directly, failing when empty. Thus a non-global regex extracts one match array, not separate capture arguments; a global regex extracts one element per match. Calls preserve the regex receiver and the draft's observable property reads and `lastIndex` effects.
+diff --git a/docs/design/src/900-appendices.md b/docs/design/src/900-appendices.md
+index f66b409bc4..996c2fc618 100644
+--- a/docs/design/src/900-appendices.md
++++ b/docs/design/src/900-appendices.md
+@@ -946,6 +946,7 @@
+ | `EK0702` | a class pattern that [Class patterns](004-match.md#class-patterns) rejects: it names a `data` declaration or variant, a `schema` or a directly built `Context.Reference`, or its callee has no usable signature or return type (a `service` is `EK3004`) | 7 | [Pattern matching](004-match.md#class-patterns) |
+ | `EK0703` | lint warning: an extractor whose argument count can never match its pattern's list, `when NotFound():` | 7, 38 | [Pattern matching](004-match.md#class-patterns) |
+ | `EK0704` | an extractor `when C(…)`, `C()` included, on an ordinary class without its own `Symbol.customMatcher` (an inherited one does not count); write `when C:` or `when C and { x: let x }:` (decided detail 100) | 7 | [Pattern matching](004-match.md#class-patterns) |
++| `EK0705` | an `is` lexical binding that would need formal-parameter initialization as its home; use an explicit local block preserving the intended result and call phase | 7 | [Pattern matching](004-match.md#is-bindings-in-parameter-initialization) |
+ | `EK0706` | a `return`, `break` or `continue` that leaves an `async match`; a nested function keeps its own `return` | 7 | [Pattern matching](004-match.md#async-match-jumps) |
+ | `EK0707` | invalid `match`/`is` grammar or a pattern-specific early error without a more specific assigned diagnostic; includes an interpolated primitive template pattern | 7 | [Pattern matching](004-match.md#syntax-and-meaning) |
+ | `EK0801` | warning: `using` in effect code; use `acquireDisposable` inside `scoped` | 8 | [Runtime](008-runtime.md) |
+diff --git a/docs/design/vips/0007-match.md b/docs/design/vips/0007-match.md
+index 9161277ccb..ca25121f2b 100644
+--- a/docs/design/vips/0007-match.md
++++ b/docs/design/vips/0007-match.md
+@@ -190,6 +190,8 @@
+ console.log(resultFlowExit) // Success([4, "7", 4, 7, 7])
+ ```
+ 
++- **Amended 2026-10-30: formal-parameter binding homes.** An `is` test that would introduce a `let`/`const` binding into formal-parameter initialization is `EK0705`: the pinned explainer explicitly leaves that lexical home unfinished. This includes direct/destructured defaults and evaluated computed binding keys. Binding-free tests remain allowed; explicit source blocks and match arms inside an initializer keep their own local bindings, and nested source callable bodies keep their boundaries. Ordinary call arguments in a lexical block use that block. Preserve eager once-only initialization, parameter/body scope separation, `length`, TDZ, closures and exception boundaries; no generic move-to-body repair is supplied. This conservatively rejects an unspecified scope rather than introducing parameter-binding machinery.
++
+ - **Amended 2026-10-30: remaining pattern-syntax diagnostics.** Invalid `match`/`is` grammar and proposal-specific early errors without a more specific assigned diagnostic use `EK0707`. An interpolated primitive template pattern uses that code; write the ordinary interpolation in a guard. Do not duplicate a more specific diagnostic for the same rejection. Independent native lexical/type/name errors and errors in valid subexpressions keep TypeScript's diagnostics, including a malformed native template. Diagnostic ownership follows the source rule even when the parser reuses TypeScript helpers; this changes no admitted program.
+ 
+ - **Amended 2026-10-30: generic and refined subject domains.** Begin coverage normalization with the TypeScript type of the subject expression at its evaluation point, including represented flow refinements, and use its effective base constraint when one exists. Finite constrained parameters are checked conservatively over that constraint; unconstrained or broad parameters stay open. A represented intersection refinement may reduce the domain; a bare type parameter keeps its whole constraint even after a guard. Preserve literal, Boolean, enum and tag-case identity rather than boxing every subject with apparent-type conversion. This changes neither runtime tests nor ordinary arm/default-flow types.
+diff --git a/docs/design/vips/tc39-pattern-matching/README.md b/docs/design/vips/tc39-pattern-matching/README.md
+index 04aac37d52..36af1252b8 100644
+--- a/docs/design/vips/tc39-pattern-matching/README.md
++++ b/docs/design/vips/tc39-pattern-matching/README.md
+@@ -54,7 +54,7 @@
+ | `is`, its evaluation | "Let _matchCompletion_ be ? MatchPatternMatches of …", then a `~not-matched~` conversion | `Completion(MatchPatternMatches(…))`, kept as it is and passed to `FinishMatch` | `?` skips the closing step that the next line performs, and `MatchPatternMatches` gives a Boolean, not `~not-matched~` |
+ | `async match`, its grammar contexts | a Promise-producing sketch; the vendored specification has no formal `async match` production | the subject, tests and arms use `[~Yield, +Await, ~Return, ~Effect]`; `return` and outward `break`/`continue` are syntax errors; nested source callables reset their contexts normally | An explicit VIP-7 reconciliation completes the sketch with a self-contained source grammar |
+ | `while`/`do…while` lexical `is` cells | the explainer proposes loop-head/per-iteration scopes and an initial `do` TDZ | every complete condition starts fresh cells shared with its following body; initial-`do` closures keep their original TDZ cells | This states the source lifetime and closure identity without prescribing a lowering |
+-
++| lexical `is` bindings in formal-parameter initialization | scope-analysis operations are TODOs; the explainer flags function-argument-list scope as unfinished | `EK0705` when the binding would need the parameter environment; explicit local blocks/arms and binding-free tests remain admitted | Avoid inventing a parameter binding or changing eager initialization/TDZ by moving work into the body |
+ ## What VibeLang adds or keeps
+ 
+ - A `match` without `default` over a finite union that misses a case is EK4701 at compile time. The check reports; it never changes what runs, and an unmatched value throws the proposal's `TypeError`.

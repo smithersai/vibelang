@@ -1,0 +1,13 @@
+diff --git a/docs/design/src/001-functions.md b/docs/design/src/001-functions.md
+index 1a33422cb3..fbc81dfd57 100644
+--- a/docs/design/src/001-functions.md
++++ b/docs/design/src/001-functions.md
+@@ -186,7 +186,7 @@
+ | `effect m(p) { B }`, `effect #m(p) { B }` | `m(p) { return Effect.gen(function* () { B }) }`, `#m(p) { return Effect.gen(function* () { B }) }` |
+ | `export default effect function (p) { B }` | `export default function (p) { return Effect.gen(function* () { B }) }` |
+ 
+-Parameters, defaults included, are bound when the function is called, before `Effect.gen`, as an `async` function's are bound before its body starts. [Parameter defaults](002-running.md#parameter-defaults) says what a default may do: `effect function g(x = do { return null }) { return 1 }` is a function whose call `g()` gives an Effect that succeeds with `null`. The body runs each time the Effect runs. VIP-2 fixes this meaning: `effect { … }` is `Effect.gen(function* () { … })`, and the same as `(effect () => { … })()`.
++Parameters, defaults included, are bound when the function is called, before `Effect.gen`, as an `async` function's are bound before its body starts. If binding throws, as destructuring `undefined` does, the call returns an Effect that dies with the thrown value, as an `async` function's call returns a rejected Promise, and a producer's call returns a Stream that dies with it; the call itself never throws ([Code outside the generator](003-failures.md#code-outside-the-generator)). The table shows calls whose binding completes. [Parameter defaults](002-running.md#parameter-defaults) says what a default may do: `effect function g(x = do { return null }) { return 1 }` is a function whose call `g()` gives an Effect that succeeds with `null`. The body runs each time the Effect runs. VIP-2 fixes this meaning: `effect { … }` is `Effect.gen(function* () { … })`, and the same as `(effect () => { … })()`.
+ 
+ <a id="bindings"></a>**Bindings.** An `effect` body reads `this`, `super` and `new.target` exactly as the same body reads them in an `async` function of the same form: the same bindings, at the same step of evaluation, with the same errors. Only the start is later. Building the Effect reads none of them, and each run reads them where the body does. A function nested in the body has its own, as in TypeScript, and an `effect` arrow or block has its enclosing function's, as any arrow does. A producer (`effect function*`, `effect *m()`) follows the same rule, as an `async function*` does ([Producers](002-running.md#producers)). How the compiler passes these bindings into the generator that `Effect.gen` takes is its choice.
+ 

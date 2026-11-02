@@ -1,0 +1,234 @@
+[
+  {
+    "name": "r14-opus-1",
+    "revision": "9920b1a4e8a89d70b94b6ef5cdd3e64e465199f9",
+    "bad": true,
+    "focus": null,
+    "reason": "Written ./x.ts substitutes x.vibe without resolution authority.",
+    "diffHash": "9a34790e86695940dffc9b8ef221214f9272b9bcdc7e97e7ab0c889fea8fbdc9"
+  },
+  {
+    "name": "r14-opus-3",
+    "revision": "04db4f250ebf7446478e5a6a06de7241e90b8202",
+    "bad": true,
+    "focus": null,
+    "reason": "Adds compilerOptions path, unknown sibling keys, TS6046.",
+    "diffHash": "79d766eeedd0983f35cbee21023a91b70eb823e5b4888ac8ffe18ab0ca7e257b"
+  },
+  {
+    "name": "r14-opus-4",
+    "revision": "3f682a180a817656c581b0c776f82cb1c375ab49",
+    "bad": true,
+    "focus": null,
+    "reason": "Value import contradicts retained type-only import rule.",
+    "diffHash": "6916ef98fbd63b0914fccdf0b6afe51230bbe4c7a19b87be8853363873496884"
+  },
+  {
+    "name": "compilerOptions.vibelang",
+    "revision": "04db4f250ebf7446478e5a6a06de7241e90b8202",
+    "bad": true,
+    "focus": "compilerOptions.vibelang",
+    "reason": "Alias approved for severities does not authorize this setting path.",
+    "diffHash": "79d766eeedd0983f35cbee21023a91b70eb823e5b4888ac8ffe18ab0ca7e257b"
+  },
+  {
+    "name": "trustedPackages",
+    "revision": "04db4f250ebf7446478e5a6a06de7241e90b8202",
+    "bad": true,
+    "focus": "trustedPackages",
+    "reason": "Unapproved option name.",
+    "diffHash": "79d766eeedd0983f35cbee21023a91b70eb823e5b4888ac8ffe18ab0ca7e257b"
+  },
+  {
+    "name": "tracing",
+    "revision": "04db4f250ebf7446478e5a6a06de7241e90b8202",
+    "bad": true,
+    "focus": "tracing",
+    "reason": "Unapproved option name.",
+    "diffHash": "79d766eeedd0983f35cbee21023a91b70eb823e5b4888ac8ffe18ab0ca7e257b"
+  },
+  {
+    "name": "EK2007",
+    "revision": "bee62d976cde8b792dea7a5d1db41dfd79a6d2ee",
+    "bad": true,
+    "focus": null,
+    "reason": "Introduces new loop error code without accepted authority.",
+    "diffHash": "421da36d2a1d84a71bb5bf03fb1d771f90c075a80fcd4360d95ba439a6346ee8"
+  },
+  {
+    "name": "good-9e3527e47ed7",
+    "revision": "9e3527e47ed7c28534eb8623b75abc5882ff3365",
+    "bad": false,
+    "focus": null,
+    "reason": "docs(spec): 900-catch-arrow-pipe-input: a pipe after an arrow handler belongs to its body\n\nAppendix A gave a catch () => b |> % + 1 two derivations with different\nresults: the pipe in the arrow's concise body, or the pipe applied to the\nwhole catch. An early error now removes the second, as the existing one does\nfor ?, matching 002's concise-body sentence and the compiler. The case pins\nboth readings and the parenthesized repair.\n\nLoop round 1, OPUS-1.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
+    "diffHash": "5cf3c0ffef82a583173c360016e206eecc7dc7c8a50309ab54c3458e630cb5a0"
+  },
+  {
+    "name": "good-fa5f6bfa8605",
+    "revision": "fa5f6bfa860583187acb7a8916ffaa468a1f303b",
+    "bad": false,
+    "focus": null,
+    "reason": "docs(spec): attribute JSX callback errors to VIP-39\n\nVIP-39 applies VIP-4 assignability to JSX attributes and explicitly cites EK0402. Retain VIP-4 and add VIP-39 to the catalog cross-reference so the unchanged spec citation guard accepts the rule.",
+    "diffHash": "3676e1cfcdba857a4bb18b9495000094a9629c10c87ff3758c4ebfa6192485e1"
+  },
+  {
+    "name": "good-0e7dda327a01",
+    "revision": "0e7dda327a01efe1692d204579e1edb59ef3b51a",
+    "bad": false,
+    "focus": null,
+    "reason": "docs(spec): 007-vibex-publication: the chapters publish the .vibex file kind\n\nLoop round 4, OPUS-2. VIP-39 was accepted with no chapter text, and the\nresolution of ./x.js to x.vibe after x.ts and x.tsx was in no chapter at\nall. Chapter 7 gains a JSX source files section (file kind, the <\ncompetition, rows 1-5 and 39, jsx options and mode groups, the resolution\ntable) and names .vibex as a source extension and in its emit names; the\nintroduction lists VIP-39 under chapter 7 and in the language table;\nchapter 1 classifies .vibex files as modules and names x.d.vibex.ts;\nAppendix A says a .vibex file uses its productions unchanged. Principle 4\nis left alone because nothrow-impl rewrites that line.\n\nTest: docs/tools/spec-vibex-publication.test.mjs checks that every accepted\nVIP in vips/README.md appears in the introductions chapter list (so the\nnext accepted VIP cannot be forgotten), pins each .vibex sentence, and\nchecks chapter 7s resolution table equals VIP-39s.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
+    "diffHash": "6cc35efe314aa7b876256d957cfa8d1658f4187a3f8aa57b1069290d3c0a544e"
+  },
+  {
+    "name": "good-80a3de5f2887",
+    "revision": "80a3de5f28874974bff418667f9498c7ba1bb03a",
+    "bad": false,
+    "focus": null,
+    "reason": "docs(spec): 002-ek0510-all-heads: EK0510 names all ten execution heads\n\nLoop round 4, OPUS-7. Appendix A gives try, the four try.* operations, the\nfour fork forms and join a UnaryExpression operand, so each is a\nunary-level operand that ExponentiationExpression rejects, but the EK0510\nrows named only try, fork and join. Chapter 2 and Appendix B now list all\nten heads, and Appendix B adds VIP-18 for the try.* forms.\n\nTests: docs/tools/spec-unary-pow.test.mjs pins both rows and derives the\nten heads from Appendix As ForkExpression, JoinExpression and TryAll\nproductions, so a new head fails until the rows name it. TestUnaryPowQuoted\nfollows the new row. The case unary-pow-dotted-heads.fail (try.race and\ntry.any, whose parenthesized forms compile) is pending on impl-hunt-fail,\nwhich owns EK0510; fuzz coverage of the other heads is fuzz-findings claim\nfuzz:r4:OPUS-7:unary-power.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
+    "diffHash": "047193f8614b5bd41f6cc514ee6e3baf68ad99f7c712b5702e9db1d28ca63b54"
+  },
+  {
+    "name": "good-65c66b14d240",
+    "revision": "65c66b14d24024723f8ba98d2f0bd47432bfa622",
+    "bad": false,
+    "focus": null,
+    "reason": "docs(spec): resolve mapped schema generics by type binding (VIP-15)\n\nApply R10 OPUS-2 / decided detail 286. Distinguish the TypeScript library type binding from a local or imported type with the same spelling; value-only names keep the library type, and ordinary Schema fallback and arity rules still apply.\n\nA native TypeScript symbol matrix independently checks library, value-only, alias, interface and class bindings. The baseline public-text assertion fails. Six compiler witnesses stay pending for impl-hunt-data; two decoder controls pass. Existing mapped-binding fuzz and compiler claims remain with their owners. Refresh the existing schema-nonvalue fuzz quote without changing its oracle.",
+    "diffHash": "039e86738a679d0b82f9707ecd2377cdd8f6daac9746bf6a56600328b5189217"
+  },
+  {
+    "name": "good-0c0bc661707d",
+    "revision": "0c0bc661707dbeac3e9155a2c76726efbff66cc1",
+    "bad": false,
+    "focus": null,
+    "reason": "docs(spec): define schema JSDoc declaration ownership (VIP-27)\n\nApply R6 OPUS-3 schema half and decided detail 256: document only the schema constant, as the native Effect TypeScript pair does. Keep the cyclic-declaration half with chapters 001/007.\n\nPin the public wording in docs-tools and the root spec gate, compare declaration bytes with the native pair, and fuzz comment kind, schema form, removeComments and stripInternal. Baseline public-text assertion fails; native controls and the compiler case pass.",
+    "diffHash": "26f0fd5ad7f4f973788508445fa9ebb108bb7beec173dead6c64ccf5b1134bb3"
+  },
+  {
+    "name": "good-8e66ab600d8c",
+    "revision": "8e66ab600d8c42de5255eefaf8244dc00622bd99",
+    "bad": false,
+    "focus": null,
+    "reason": "docs(spec): 002-allsettled-spread-once: build the literal once and wrap it by index\n\nLoop round 5 OPUS-3 and ASTRA-2 (decided detail 252). The round 1 counterpart\nfor a spread in a try.allSettled literal, ...[...$xs].map(Effect.exit), spread\na second, compiler-created array, so a changed Array.prototype[Symbol.iterator]\nsaw one more call than native [a(), ...xs, b()] and could reorder the Exits.\n002 and a VIP-18 amendment now build the literal once and wrap it by index.\n\nTests: docs/tools/spec-allsettled-spread.test.mjs (quotes, plus an oracle over\nevery literal shape, iterable kind and patch mode that the stated counterpart\nmatches native construction and the old one does not); compiler case\nallsettled-spread-once (Set 0 calls, array 1, reversal, prefix/suffix order).\nThe compiler already agrees: $tryAllSettled maps the natively built operand.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
+    "diffHash": "0ab02e6ccee06adc3c36ff80a004710cb67a0d8d2817c22122d046a9d9b4cf50"
+  },
+  {
+    "name": "good-f775378c280f",
+    "revision": "f775378c280f0a9d68c7c74f2068ccacc442b036",
+    "bad": false,
+    "focus": null,
+    "reason": "docs(spec): 001-effect-type-rescan: the ! that completes A!! rescans =, ==, === and =>\n\nThe specification split != and !== after A!, which covers User!!= v but\nnot (): number!!=> e or e as number!!== e. Chapter 1 and Appendix A now say\nthe completing ! is read alone and scanning resumes at the next character, as\nTypeScript rescans > after type arguments. The compiler already does this\nsince 0fc82f878113; the case effect-type-bang-rescan pins every follower.\n\nLoop round 1, OPUS-5.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
+    "diffHash": "ffbdc00bcd3f23b1fce9707a34f0e684aa1f2482f3d454ffc352364411430702"
+  },
+  {
+    "name": "good-9b36a03ccaad",
+    "revision": "9b36a03ccaaddcb8b0628bf4aef0bedf8e46d534",
+    "bad": false,
+    "focus": null,
+    "reason": "docs(spec): 002-catch-mixed-cause-source: name where a mixed Cause comes from\n\nLoop round 1, OPUS-4. 8d37ed370e56 removed the false try.any origin and\nleft the clause without a source and with a stray comma. Both proposals\nagree: name Effect.failCause from TypeScript code, the one natural source\n(raceAll, ensuring, onExit and acquireRelease already report every reason\nas a defect).\n\nTests: spec-catch-cause-origin.test.mjs checks the clause; new\nspec-catch-cause-property.test.mjs runs 400 generated Causes (fail, die and\ninterrupt combined to depth 3) through Effect.catch and checks chapter 2's\nquoted rule: the handler runs iff the Cause has a failure and no defect, and\notherwise failures come back as defects in order.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
+    "diffHash": "fb97e396d37a55fe4e99331534a961e68cf3707d4ade4b16ec6c75181ec7ff47"
+  },
+  {
+    "name": "good-70ceb0fda1f5",
+    "revision": "70ceb0fda1f5d000b542b51fe9dad16cb3fd0698",
+    "bad": false,
+    "focus": null,
+    "reason": "docs(spec): 001-binding-failure-dies: a call never throws while binding parameters\n\nLoop round 1, OPUS-3. The counterpart table writes parameter binding before\nEffect.gen, which throws at the call, while 003 and VIP-2's 2026-10-30\namendment say the call never throws. Chapter 1 now states the rule under\nthe table: a binding failure gives an Effect (or a producer's Stream) that\ndies with the thrown value, as an async call rejects. The producer half of\nthe compiler fix is vibe/alpha-sl1-apply-5.\n\nTests: docs/tools/spec-call-never-throws.test.mjs (quote, and Node's async\nmodel: the call rejects, never throws).\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
+    "diffHash": "19a8d9abeb8d6354aaca64f99735ac7ee11151aa6eb21fa974307f84102e1648"
+  },
+  {
+    "name": "good-6655e7a2c953",
+    "revision": "6655e7a2c953cd2c465d2117d7a04a5bd8f19d0f",
+    "bad": false,
+    "focus": null,
+    "reason": "docs(spec): 002-unary-pow-code: publish EK0510 for try a ** b\n\nLoop round 1, ASTRA-10. Decided detail 212 allocates EK0510 to an\nunparenthesized try, fork or join expression on the left of **, as\nECMAScript rejects await a ** b. 9ecc333b469f published the rest of that\ncatalog and left EK0510 for after the EK0511 row beside it; this adds the\nchapter 2 try rule and the Appendix B row in code order. specAhead names\nimpl-hunt-fail (claim diag:unregistered-codes-r1) as the registering lane,\nand the acceptance case try-unary-pow.fail is pending on it.\n\nTests: docs/tools/spec-unary-pow.test.mjs (rows, code order, and Node's\nSyntaxError for await 2 ** 2 against (await 2) ** 2).\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
+    "diffHash": "db7459348b45a52aad085dac31093c7fb754fa2b490ec0d7b64518bfa4b34087"
+  },
+  {
+    "name": "good-bd3ebfd24802",
+    "revision": "bd3ebfd2480290c6945fb64dec37cd19f7350ce9",
+    "bad": false,
+    "focus": null,
+    "reason": "docs(spec): 007-fix-fixed-point-missing-runtime: publish the 2026-10-31 tooling rulings\n\nLoop round 1, OPUS-7. Orchestrator ruling 2026-10-31 03:00 UTC: one\nvibelang --fix run applies fixes until none applies, a second run changes\nnothing, and a run that has not converged within its pass limit reports the\nremaining fixes as an error. Ruling 04:40 UTC item 3: a compilation that needs\nvibelang-runtime and cannot resolve it fails with one error naming the\npackage. That error is TypeScript's TS2307 for a missing module (Astra's\nproposal; Opus's new EK3401 would add a code where the ruling asks for\nTypeScript's own behavior). Chapter 7 item 1 and 2 and VIP-34 state them. The\nOxlint sentence (item 2 of the 04:40 ruling) lands separately.\n\nThe compiler half (one error instead of per-helper TS2304/TS2552) belongs to\nimpl-hunt-svc (claim driver:missing-vibelang-runtime-one-error).\n\nTests: docs/tools/spec-tooling-rulings.test.mjs; TestFixFixedPointQuoted ties\nFuzzFix's fix:idempotence oracle to the chapter sentence it already quoted.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
+    "diffHash": "6c067dea7419609e7e0ce6299edf97222279457b6896502cfa653ed9ebd44d92"
+  },
+  {
+    "name": "good-ad14a7a0f0a6",
+    "revision": "ad14a7a0f0a6b8bcca2310407491035f5b154046",
+    "bad": false,
+    "focus": null,
+    "reason": "docs(spec): 007-oxlint-js-plugins: publish the Oxlint JS-plugin requirement\n\ncore-decisions 2026-10-31 04:40 UTC item 2: a repository's Oxlint JS-plugin\nrules run on .vibe files. c1de07b4e3eb implemented it in the migrate flow;\nchapter 7 did not say it.\n\nLoop round 1, OPUS-7 (item 2).\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
+    "diffHash": "6f5ad7e65a1e3b667f62ae057c3d3df6b9732102d08266f014526c453029a677"
+  },
+  {
+    "name": "good-7d4408a3b6f5",
+    "revision": "7d4408a3b6f5fe220b55efa60faedf2b491c216a",
+    "bad": false,
+    "focus": null,
+    "reason": "docs(spec): 003-EK1306-unnamed: name the error-body separator code in its chapter\n\nDecided detail 241 gave a missing separator in an error or schema error body the code EK1306 and Appendix B links\nthe row to 003, but 003 never named it, while 005 and 006 name EK0908, EK1504 and EK1605. Add the code after the\nseparator sentence (kept verbatim: a Go oracle quotes it) and a static-rules row.",
+    "diffHash": "11c8f543c3727ee5f481b611a6eadaa93fedb764e5c79659f16cfb3ee5079393"
+  },
+  {
+    "name": "good-64b8e6a31230",
+    "revision": "64b8e6a312303a3d71312a0360cb3af0305a0435",
+    "bad": false,
+    "focus": null,
+    "reason": "docs(spec): 004-is-binding-homes: reject enum-initializer homes and state for-head copies in the guide\n\nDecided detail 240, remaining clauses: an enum member initializer has no lexical home in ECMAScript or the pinned\nexplainer, so an is binding there is EK0705, as for a formal parameter; the EK0705 row and the VIP-7 amendment name\nit. The match user guide said only for-of heads copy bindings per iteration; it now states the for(;;) copies of an\ninitializer let binding (CreatePerIterationEnvironment), as the chapter does.",
+    "diffHash": "0d2cd6b7bb1d2a553941c347a23f15829ce0786ef94f00756f4e97a440dbcf28"
+  },
+  {
+    "name": "good-db320d31ebd0",
+    "revision": "db320d31ebd0301cfb0f67d9973bf1d7c18eb1b6",
+    "bad": false,
+    "focus": null,
+    "reason": "docs(spec): 002-producer-supplied-scope: reconcile declaration context\n\nReissue the complete accepted VIP-21/VIP-32 and decided225 source clarification on current main, preserving newer readonly-property, bun-check, producer lead and declaration rules. Infer body RBody and expose Exclude<RBody, Scope.Scope> because Stream.callback supplies Scope. Retain other services, written annotation checks and Scope-valued data.\n\nKeep the exact original three regressions and typed/runtime lifetime witness. Raw main9a7 controls fail3 before; Node3/Bun3, strong strict TypeScript5.9.3 equality controls and native Effect4.1.0 fresh callback lifetimes pass. Configured spec, regeneration/docs10 and forms pass with zero decision moves. Final fetch/rebase is unchanged and the original regression reruns. Include release notes and generated pages. No compiler inference implementation or main delivery claim.",
+    "diffHash": "b295e996ff94a1a4073bc692a603e0ffb77914789ec9dcd0bd0e84dc0ddb63b0"
+  },
+  {
+    "name": "good-2a2f70e288fe",
+    "revision": "2a2f70e288fe895249129e055dbe0284081e1aa5",
+    "bad": false,
+    "focus": null,
+    "reason": "docs(spec): 004-is-parameter-binding-scope: retain defined lexical homes\n\nApply accepted VIP-7 and settled detail214 without inventing a parameter binding\nenvironment. EK0705 rejects an is binding that needs that unsettled home, including\ndirect/destructured defaults and evaluated computed keys. Preserve binding-free\ntests, explicit block/arm-local bindings, nested source callable scopes and\nordinary call arguments in a lexical block. No generic move-to-body quick fix.\n\nRetain current main's loop-cell reconciliation and metadata, adding only the\nstill-unregistered0705 exemption. Both binding-scope and pinned reconciliation\nnotes remain rendered in their real table. Move the existing fix note into the\ncurrent release section and regenerate generated sources/pages.\n\nThe regression fails unchanged main. Fresh strict stock TypeScript5.9.3 and\nEffect4.1.0 controls preserve eager left-to-right/once-only defaults, skips, length\nand closure identity, with Success[[true,1],true,1,[1,2]] and Success[2,101,3].\nFour focused+grammar tests, regeneration, forms(no decision moves), links, docs:check\nand the exact PACKAGE.ts Go spec selection pass. No compiler-enforcement claim.",
+    "diffHash": "45af1cc2059275f1042c3431a6abe2dd242459ceb4cc18faa62acbf5a18cd1b0"
+  },
+  {
+    "name": "good-90422528fe94",
+    "revision": "90422528fe94698493b7e01ec31a2f46db445ca4",
+    "bad": false,
+    "focus": null,
+    "reason": "docs(spec): 008-native-unwind-cleanup: preserve native closing decisions\n\nApply accepted VIP-2/VIP-8/VIP-31 native behavior to runtime guarantees and forced destructuring/VIP2/producer-guide clauses. Iterator acquisition, advancement and exhaustion do not universally close an iterator. Native algorithms choose cleanup from their completion and Done state; a pending JavaScript throw wins over a closing error. A primitive close-result TypeError requires a normal default completion. Failed, dying or interrupted Effects retain generator abandonment.\n\nRetain all six original iterator regressions and extend coverage to acquisition/next/result getters, nullish methods, receiver identity, binding/assignment exhaustion and all close-method outcomes. Three documentation controls fail on raw main9a7f385a while10 native controls pass; after Node13/Bun13 and exact strict TypeScript5.9.3/nativeEffect4.1.0 three-case Exit witness pass. Final configured spec, regeneration, docs10 and forms pass without decision moves. Include primary ECMA references, release notes and generated pages.\n\nGeneralizes the r17-r20 destructuring cleanup correction and rejected12 guide fix through the complete native completion boundary, including the VIP2 default area identified by v17 FableM3/v21 DIFFCHECK6 in ORIGINS Circles. This states behavior without adding a lowering recipe, source syntax, independent runtime policy or compiler-conformance/main-landing claim.",
+    "diffHash": "144b2d55b861dbd676e2084a33efada8d7b73f384c069130d3576686092d8c8b"
+  },
+  {
+    "name": "good-d2cb0307bfcf",
+    "revision": "d2cb0307bfcf5b256913e4964a4e4ff5c3c76940",
+    "bad": false,
+    "focus": null,
+    "reason": "docs(spec): 007-config-configDir-inheritance: preserve native path bases\n\nVIP-30 retains TypeScript configuration semantics. Ordinary inherited relative paths keep their declaring directory, while supported leading configDir templates use the selected project directory.\n\nDocument the distinction in the spec and CLI guide, with a native config example and release note. Add a quoted spec gate, 36 parser controls, a keyed fuzz target and corpus across inheritance, overrides, extends arrays, path options and file selection. Stock TypeScript 5.9.3 and fresh native CLI controls agree.",
+    "diffHash": "6a0be5d578d01ef9f5c75ea655bf3e1e5999016fde82e89a71088316ad96d411"
+  },
+  {
+    "name": "good-58349afe0ca0",
+    "revision": "58349afe0ca03d642e59a182d681f233d1516ede",
+    "bad": false,
+    "focus": null,
+    "reason": "docs(spec): 006-computed-key-expression-admission: follow native counterparts\n\nApply accepted VIP-15/VIP-16/VIP-29 native counterparts and decided detail 233: runtime Schema object keys admit/evaluate native object-key expressions, while Data payload keys retain TypeLiteral admission and erasure. Scope the shared failures paragraph by declaration counterpart without replacing the separate plain-error erasure witness.\n\nKeep native TypeScript computed-member merging/compatibility diagnostics (including TS2717), rather than promising an unconditional duplicate-identifier error. Diagnostic ownership follows the adopted native rule (detail 232). Public VIP amendments and current release notes accompany both corrections.\n\nRegressions fail on unchanged main and pass here. Exact printed counterparts pass strict TypeScript 5.9.3 and Node/Effect 4.1.0 with Success([0,1,read,eager,0]), Success([3,1,2,false,true,7]) and Success(7). Forty native admission controls and 29 property-protocol controls cover key shapes, native coercion/abrupt order, erasure and actual-key decoding. Regeneration, forms (no decision moves), grammar, site links, //:spec-tests and docs:check pass after rebasing onto current main. The existing computed-key witness citation follows the corrected required behavior; its source program and expected result are unchanged.\n\nGeneralizes the v8 Fable m5 and v9 Fable m4 field-key fixes identified by ORIGINS; preserve reserved-tag domain proofs, schema-reference flags, source throw checks and special-property rules. No compiler-admission or implementation receipt is claimed.",
+    "diffHash": "a681c20391afd53967bd3f6ea5190343773697a5fa2ec4fa1f281722de23c1d1"
+  },
+  {
+    "name": "good-983c76ba027f",
+    "revision": "983c76ba027f5ae052d9676e99ef1f2e4a00bbb3",
+    "bad": false,
+    "focus": null,
+    "reason": "docs(spec): 004-async-match-jump-code: assign EK0706 to jumps out of an async match\n\nOpus round 31 m47 (carried since round 28): the return, break and continue\nthat VIP-7 already forbids inside an async match had no diagnostic code.\nDecided detail 224 assigns EK0706 by source ownership: a return that belongs\nto the async match, or a break or continue whose target is outside it, in the\nsubject, patterns, guards and arms, including inside a do expression. A\nnested function keeps its own return, a target inside the async match keeps\nthe ordinary rules, and a break or continue with no target anywhere keeps\nTypeScript's error. No new restriction or admission.\n\nReplaces rejected cb101527352f: that commit's Go comment \"VIP-7:\" made the\ndiagnostic-docs check read a pending EK0007. The rule now sits after the\nasyncBit example, clear of the async-match paragraph that queued 694b50845c8d\nand slice 16 both rewrite, and the specAhead entry has its own point in the\nmap instead of the end that queued da85c1f71b7a and 1435a289a173 share.\n\nThe doc regression fails on main and passes here. The inward counterpart\ntype-checks under strict TypeScript 5.9.3 and gives Success(1) on Effect 4.1.0.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
+    "diffHash": "6afbd3eb9744963e6d9aee2be09ae061d54f8e47e8bb7fc4fcf63cf36ae7c988"
+  },
+  {
+    "name": "good-f0524255885d",
+    "revision": "f0524255885d66ee816894371aa0910dbf5a5c57",
+    "bad": false,
+    "focus": null,
+    "reason": "docs(spec): 002-for-try-current-fiber: retain the consuming owner\n\nApply accepted VIP-17/VIP-20 and decided228 without replacing newer loop-head, producer or iterator rules. Plain forks in sequential Stream item callbacks belong to the current consuming fiber, survive successful item/loop completion while that owner continues, and are interrupted when it terminates. Explicit fork owners retain native behavior; no source activation creates an implicit owner.\n\nRetain the original four regressions and gated runtime witness. Three documentation controls fail on immutable main; Node4/Bun4 and exact strict TypeScript5.9.3/nativeEffect4.1.0 counterpart pass. After rebasing, configured spec, regeneration, docs checks and fresh forms generation pass without decision moves. Include release notes and generated pages. No compiler-conformance or main-landing claim.",
+    "diffHash": "22f60b52cd682d301b874ef4796dbf063291dfd55fc0781f6997194d311b5f80"
+  }
+]
