@@ -1,0 +1,8 @@
+FuzzTryAllSettledShapes admission:held-heterogeneous compiler VIP-18: a named heterogeneous tuple bypasses the native map callback type check; lane core-tryall
+FuzzTryAllSettledShapes corpus:held-heterogeneous compiler VIP-18: minimized witness of admission:held-heterogeneous; lane core-tryall
+FuzzTryAllSettledShapes admission:spread-heterogeneous compiler VIP-18: a spread heterogeneous tuple bypasses the native map callback type check; lane core-tryall
+FuzzTryAllSettledShapes corpus:spread-heterogeneous compiler VIP-18: minimized witness of admission:spread-heterogeneous; lane core-tryall
+FuzzTryAllSettledShapes type:held-tuple-length compiler VIP-18: a named homogeneous tuple keeps a fixed length instead of the native mapped array; lane core-tryall
+FuzzTryAllSettledShapes corpus:held-tuple-length compiler VIP-18: minimized witness of type:held-tuple-length; lane core-tryall
+FuzzTryAllSettledShapes type:spread-tuple-length compiler VIP-18: a spread homogeneous tuple keeps a fixed length instead of an array rest; lane core-tryall
+FuzzTryAllSettledShapes corpus:spread-tuple-length compiler VIP-18: minimized witness of type:spread-tuple-length; lane core-tryall

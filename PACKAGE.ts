@@ -135,6 +135,7 @@ const specTests = [
   "TestReviewNamespaceMeaningsQuoted",
   "TestContractDeclarationParensQuoted",
   "TestDoForTryDiagnosticOwnerQuoted",
+  "TestTryAllSettledShapesQuoted",
   "TestDoDeclarationBytesQuoted",
   "TestDoContextualResultFuzzQuoted",
   "TestReviewPipeGrammarQuoted",
