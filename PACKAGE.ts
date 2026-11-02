@@ -304,6 +304,7 @@ const specTests = [
   "TestVIPCanonicalFieldNames",
   "TestVIPEncodedFieldNames",
   "TestProducerScopeInferenceQuoted",
+  "TestProducerConcurrentYieldQuoted",
   "TestRestorePlacementQuoted",
   "TestEffectBlockJumpsQuoted",
   "TestDoCompletionQuoted",

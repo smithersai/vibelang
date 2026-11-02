@@ -3382,6 +3382,11 @@ typescript/vibelang/cases/primitives-masks/main.vibe:64:30 byname program table
 typescript/vibelang/cases/primitives-masks/main.vibe:7:22 lambda program table
 typescript/vibelang/cases/producer-arguments/producer.vibe:8:27 lambda plain fallback
 typescript/vibelang/cases/producer-binding-dies/main.vibe:10:27 lambda plain fallback
+typescript/vibelang/cases/producer-for-concurrent-yield/main.vibe:11:28 lambda effectFn table
+typescript/vibelang/cases/producer-for-concurrent-yield/main.vibe:14:28 lambda effectFn table
+typescript/vibelang/cases/producer-for-concurrent-yield/main.vibe:18:28 lambda effectFn table
+typescript/vibelang/cases/producer-for-concurrent-yield/main.vibe:6:19 lambda plain fallback
+typescript/vibelang/cases/producer-for-concurrent-yield/main.vibe:8:25 lambda effectFn table
 typescript/vibelang/cases/producer-inferred-scope/main.vibe:23:50 lambda plain table
 typescript/vibelang/cases/producer-inferred-scope/main.vibe:23:59 lambda plain table
 typescript/vibelang/cases/producer-inferred-scope/main.vibe:24:51 lambda plain table

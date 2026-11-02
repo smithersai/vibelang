@@ -11303,6 +11303,9 @@ func (c *Checker) checkYieldExpression(node *ast.Node) *Type {
 		yieldExpressionType = c.undefinedWideningType
 	}
 	fn := ast.GetContainingFunction(node)
+	for fn != nil && isTransparentYieldFunction(fn) {
+		fn = ast.GetContainingFunction(fn)
+	}
 	if fn == nil {
 		return c.anyType
 	}

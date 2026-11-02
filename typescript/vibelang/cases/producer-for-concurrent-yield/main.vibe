@@ -1,0 +1,26 @@
+// expect-result: [["user a","user b"],[1,2,3],["x",1,"y",2],[9,10]]
+// Chapter 2, Producers, Meaning: a for concurrent body is not an activation of its own, so a
+// yield in it emits from the producer around the loop (the chapter's Feed.items example):
+// unbounded, with a limit, with a destructuring head, and beside the producer's own yields.
+import { Effect, Stream } from "effect"
+const fetchUser = (id: string) => Effect.succeed("user " + id)
+export effect function* items(ids: string[]) {
+  for concurrent (const id of ids) { yield try fetchUser(id) }
+}
+effect function* limited(ns: number[]) {
+  for concurrent(1) (const n of ns) { yield n }
+}
+export effect function* pairs(ps: [string, number][]) {
+  for concurrent(1) (const [k, v] of ps) { yield k; yield v }
+}
+effect function* around(ns: number[]) {
+  yield 9
+  for concurrent(1) (const n of ns) { if (n > 1) continue; yield n + 9 }
+}
+export effect function main() {
+  const a = Array.from(try Stream.runCollect(items(["a", "b"]))).sort()
+  const b = Array.from(try Stream.runCollect(limited([1, 2, 3])))
+  const c = Array.from(try Stream.runCollect(pairs([["x", 1], ["y", 2]])))
+  const d = Array.from(try Stream.runCollect(around([1, 2])))
+  return [a, b, c, d]
+}

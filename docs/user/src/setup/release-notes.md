@@ -587,6 +587,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A direct `schema error` payload reference could silently make a readonly key writable or a required key optional; incompatible decoded-key flags now report `EK2109`, and `vibelang --fix` preserves the existing codecs in an explicit Effect TypeScript class.
 - The ESLint corpus check rejected deliberately unused source labels as generated code; it now checks the reported label's provenance while continuing to detect synthesized-label leaks.
 
+- A `yield` inside a producer's `for concurrent` body was rejected or omitted from its element type; item bodies now emit from and contribute their types to the enclosing producer.
+
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 
 - Migration setup could leave a native type exported through a TypeScript namespace barrel as an error type in project-aware linters; setup now enables source declaration redirects in owned configs and records those edits.

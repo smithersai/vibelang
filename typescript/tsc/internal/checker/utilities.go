@@ -1358,6 +1358,9 @@ func forEachYieldExpression(body *ast.Node, visitor func(expr *ast.Node) bool) b
 			// as local types. Regardless, skip them to avoid the work.
 		default:
 			if ast.IsFunctionLike(node) {
+				if isTransparentYieldFunction(node) {
+					return node.ForEachChild(traverse)
+				}
 				if node.Name() != nil && ast.IsComputedPropertyName(node.Name()) {
 					// Note that we will not include methods/accessors of a class because they would require
 					// first descending into the class. This is by design.

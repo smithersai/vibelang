@@ -47,7 +47,17 @@ var (
 	EK4612 = message(4612, errorCategory, "join is VibeLang syntax, but a hatch body is plain TypeScript.")
 )
 
+// isConcurrentBody reports whether fn is the body of a for concurrent loop,
+// the program arrow the parser writes as the third argument of $forConcurrent
+// (parser/vibelang_fibers.go). It is not an activation of its own: a yield in
+// it emits from the producer around the loop (chapter 2, Producers), which
+// the checker learns through the transparent yield hook.
+func isConcurrentBody(fn *ast.Node) bool {
+	return fn != nil && fn.Kind == ast.KindArrowFunction && fn.Flags&ast.NodeFlagsVibeLang != 0 && fiberHelper(fn.Parent) == "$forConcurrent"
+}
+
 func init() {
+	checker.RegisterTransparentYieldFunctionHook(isConcurrentBody)
 	for _, m := range []*Message{EK4601, EK4602, EK4603, EK4604, EK1903, EK1904, EK4607, EK4609, EK4610, EK4611, EK4612} {
 		registry[m.Code] = m
 	}

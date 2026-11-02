@@ -494,7 +494,7 @@ func (p *Parser) parseVibeLangConcurrentFor(pos int) *ast.Node {
 	items := p.parseAssignmentExpressionOrHigher()
 	p.parseExpected(ast.KindCloseParenToken)
 	saveContextFlags := p.contextFlags
-	p.setContextFlags(ast.NodeFlagsYieldContext, false)
+	// A concurrent item body keeps its enclosing producer yield context.
 	p.setContextFlags(ast.NodeFlagsAwaitContext, false)
 	body := p.parseEmbeddedStatement()
 	p.contextFlags = saveContextFlags
