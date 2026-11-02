@@ -927,3 +927,14 @@ an `expect-result` header supplies the entry. Run
 `node --test scripts/mapper-runtime-entry.test.mjs` to check real pinned
 stock-TypeScript output and generated mixed entry batches. These tests run
 in `//:release`; the full mapper parity corpus remains outside the graph.
+
+The ESLint corpus includes two deliberately malformed fixtures:
+`fiber-unary-exponentiation-error/main.vibe` checks `EK0510`, and
+`lsp-fixture/src/malformed-pipe.vibe` checks `TS1109` while editing. Its
+`helpers.mjs` records their exact repository paths, messages, lines and columns.
+Both corpus checks require the intended parser failure; a different error, a
+neighboring unlisted file or a fixture that now parses still fails. Update an
+expectation only with evidence from its owning compiler or LSP test. The native
+guard `test/eslint-corpus-parse-errors.test.mjs` runs in `compiler-test`; the
+optional `test/eslint/corpus-parse-errors*.test.mjs` suites exercise both actual
+corpus checks and generated real ESLint fatal reports.

@@ -57,3 +57,30 @@ export function firstDifference(a, b, path = "$") {
   }
   return undefined
 }
+
+// These files deliberately test syntax errors, rather than valid ESTree.
+// Keep exact diagnostics and positions: blanket skips would hide new failures
+// and fixtures that stopped exercising their intended error.
+const expectedSyntaxErrors = {
+  // The compiler case explicitly expects EK0510 (VIP-34, Spec 002).
+  "typescript/vibelang/cases/fiber-unary-exponentiation-error/main.vibe": {
+    message: "An unparenthesized execution expression cannot be the left operand of **. Parenthesize the try, fork, or join expression.",
+    line: 5, column: 10
+  },
+  // lsp-smoke.mjs asserts TS1109 for this incomplete pipe while editing.
+  "typescript/vibelang/lsp-fixture/src/malformed-pipe.vibe": {
+    message: "Expression expected.", line: 1, column: 11
+  }
+}
+
+export const expectedParseError = (file) => expectedSyntaxErrors[relativeToRepo(file)]
+
+export function matchesParseError(expected, error) {
+  return Boolean(expected && error instanceof SyntaxError && error.message === expected.message &&
+    error.lineNumber === expected.line && error.column === expected.column)
+}
+
+export function matchesLintParseError(expected, message) {
+  return Boolean(expected && message.fatal === true && message.ruleId === null &&
+    message.message === "Parsing error: " + expected.message && message.line === expected.line && message.column === expected.column)
+}

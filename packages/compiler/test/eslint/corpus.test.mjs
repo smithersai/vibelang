@@ -9,8 +9,9 @@ import { Linter } from "eslint"
 import { visitorKeys as typescriptKeys } from "@typescript-eslint/visitor-keys"
 import { parseForESLint } from "../../eslint.mjs"
 import { config } from "./config.mjs"
-import { relativeToRepo, repositoryFiles } from "./helpers.mjs"
+import { relativeToRepo, repositoryFiles, expectedParseError, matchesParseError, matchesLintParseError } from "./helpers.mjs"
 import { allVisitorKeys, problems, reportsSynthesizedLabel } from "./tree.mjs"
+
 
 const keys = allVisitorKeys(typescriptKeys)
 // The JSDoc convention is Smithers'; the corpus does not follow it.
@@ -35,11 +36,13 @@ test("every .vibe file parses into a tree of its own tokens and names", () => {
   const failures = []
   for (const file of files) {
     const code = readFileSync(file, "utf8")
+    const expected = expectedParseError(file)
     try {
       const { ast } = parseForESLint(code, { filePath: file })
+      if (expected) failures.push(`${relativeToRepo(file)}: expected syntax error was not reported: ${expected.message}`)
       for (const problem of problems(code, ast, keys)) failures.push(`${relativeToRepo(file)}: ${problem}`)
     } catch (error) {
-      failures.push(`${relativeToRepo(file)}: ${error.message}`)
+      if (!matchesParseError(expected, error)) failures.push(`${relativeToRepo(file)}: ${error.message}`)
     }
   }
   assert.deepEqual(failures, [])
@@ -49,6 +52,7 @@ test("every .vibe file lints without a crash or a report about code the parser w
   const failures = []
   for (const file of files) {
     const code = readFileSync(file, "utf8")
+    const expected = expectedParseError(file)
     let messages
     const linter = new Linter({ configType: "flat", cwd: "/" })
     try {
@@ -57,8 +61,12 @@ test("every .vibe file lints without a crash or a report about code the parser w
       failures.push(`${relativeToRepo(file)}: ${error.message.split("\n")[0]}`)
       continue
     }
+    if (expected && !messages.some((message) => matchesLintParseError(expected, message))) {
+      failures.push(`${relativeToRepo(file)}: expected lint parsing error was not reported: ${expected.message}`)
+    }
     for (const message of messages) {
       if (message.ruleId === "no-unused-labels" && !reportsSynthesizedLabel(message, linter.getSourceCode())) continue
+      if (matchesLintParseError(expected, message)) continue
       if (message.fatal || synthesizedFormRules.has(message.ruleId) || /'\$\w+'/.test(message.message)) {
         failures.push(`${relativeToRepo(file)}:${message.line}:${message.column} ${message.ruleId}: ${message.message}`)
       }
