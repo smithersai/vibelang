@@ -354,6 +354,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Declaration comparison tests could skip every input when TypeScript failed to load; they now fail and show the compiler output.
 
+- Incremental artifact identity properties required a manually configured compiler path; they now use the built checkout compiler by default and retain an explicit `VIBELANG_BINARY` override.
+
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 
 - Migration setup could leave a native type exported through a TypeScript namespace barrel as an error type in project-aware linters; setup now enables source declaration redirects in owned configs and records those edits.

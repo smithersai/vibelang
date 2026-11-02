@@ -101,6 +101,7 @@ const specTests = [
   "TestHelperReexportDeclarationsQuoted",
   "TestFileSchemaBoundaryQuoted",
   "TestIncrementalDiagnosticsQuoted",
+  "TestIncrementalArtifactIdentityQuoted",
   "TestDoForTryDiagnosticOwnerQuoted",
   "TestDoDeclarationBytesQuoted",
   "TestDoContextualResultFuzzQuoted",

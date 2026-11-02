@@ -1,0 +1,40 @@
+{
+  "key": "hot",
+  "files": {
+    "main.vibe": "export function read(): unknown { return import.meta.hot; }\n",
+    "globals.d.ts": "interface Array<T>{[n:number]:T;length:number} interface Boolean{} interface Function{} interface CallableFunction{} interface NewableFunction{} interface IArguments{} interface Number{} interface Object{} interface RegExp{} interface String{} interface ImportMeta{url:string;hot:object|undefined;env:Record<string,string>} type Record<K extends keyof any,T>={[P in K]:T};\n",
+    "package.json": "{\"type\":\"module\"}\n",
+    "tsconfig.json": "{\"compilerOptions\":{\"target\":\"ES2022\",\"module\":\"NodeNext\",\"moduleResolution\":\"NodeNext\",\"strict\":true,\"skipLibCheck\":true,\"noLib\":true,\"types\":[],\"composite\":true,\"incremental\":true,\"declaration\":true,\"rootDir\":\".\",\"outDir\":\"dist\"},\"files\":[\"globals.d.ts\",\"main.vibe\"]}\n"
+  },
+  "buildInfo": {
+    "path": "dist/tsconfig.tsbuildinfo",
+    "text": "{\"version\":\"7.1.0-dev\",\"root\":[[1,2]],\"packageJsons\":[\"../package.json\"],\"fileNames\":[\"../globals.d.ts\",\"../main.vibe\"],\"fileInfos\":[{\"version\":\"7cff2a5d1231faaee88cb6954bc3619b\",\"affectsGlobalScope\":true,\"impliedNodeFormat\":99},{\"version\":\"aaec5cd5d122707544c0f1963d5c7947\",\"signature\":\"a246f179a986a75b6d019f8c53fd800f\",\"impliedNodeFormat\":99}],\"options\":{\"composite\":true,\"declaration\":true,\"module\":199,\"outDir\":\"./\",\"rootDir\":\"..\",\"skipLibCheck\":true,\"strict\":true,\"target\":9},\"latestChangedDtsFile\":\"./main.d.ts\"}",
+    "sha256": "25108d72d62336b8faa5535d8c23461e5a8cc98ae0d4887e3318497f4eb21470"
+  },
+  "original": {
+    "status": 0,
+    "signal": null,
+    "output": ""
+  },
+  "warm": {
+    "status": 0,
+    "signal": null,
+    "output": ""
+  },
+  "fresh": {
+    "status": 2,
+    "signal": null,
+    "output": "main.vibe(1,42): error EK4402: Only import.meta.url is available in a .vibe file; use the Path or Config service for host state, or move this import.meta use to a .ts file.\n"
+  },
+  "previousNativeSHA256": "3abff0ef3caa0a028adbe18264c4c574b2ae649e93918cb83b7f7a086e312eaf",
+  "captureNativeSHA256": "9621b86b22640bcae5e55ca8bc5d04266a0435e75e583de1cef3ade413a56212",
+  "pending": {
+    "key": "incremental:previous-compiler:hot",
+    "owner": "migfix-foldkit",
+    "reason": "A real earlier compiler cache with the same TypeScript version masks current EK4402 diagnostics."
+  },
+  "emittedFiles": {
+    "dist/main.d.ts": "export declare function read(): unknown;\n",
+    "dist/main.js": "export function read() { return import.meta.hot; }\n"
+  }
+}
