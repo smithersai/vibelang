@@ -391,6 +391,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Compiler validation could keep outdated advice checks when host binding rules changed; its quoted-rule guard now checks declaration origin and the `Worker` runtime exception.
 
+- Compiler validation could fail while combining the pipe regression suites; both suites now run together.
+
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 
 - Migration setup could leave a native type exported through a TypeScript namespace barrel as an error type in project-aware linters; setup now enables source declaration redirects in owned configs and records those edits.
@@ -607,6 +609,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The measurement wrapper printed a failing compiler's status but returned success to its caller; it now returns the child status and reports signal termination as shell failure.
 
+- Compiler benchmarks lost a sample and crashed while summarizing it when a diagnostic lacked a final newline or the compiler died by signal; they now retain the measurement and its exit status.
+
 - The measurement wrapper printed a failing compiler's status but returned success to its caller; it now returns the child status and reports signal termination as shell failure.
 
 - Compiler benchmarks lost a sample and crashed while summarizing it when a diagnostic lacked a final newline or the compiler died by signal; they now retain the measurement and its exit status.
@@ -622,6 +626,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The LSP benchmark could wait two minutes after its server exited or leave the server running after an error; it now rejects the active request, reports the exit and server diagnostics, and waits for cleanup.
 
 - Grammar audits missed undefined forms accepted by parser and lowering paths; a checked admission inventory and `FuzzGrammarAdmission` now track those paths against the specification, with known gaps kept pending.
+- Migrations could accept changed APIs in private workspace packages; `--include-private-declarations` now checks their declarations and emit errors too.
+
 
 - Passing an Effect function to a `Function` destination could bypass `EK4301` after generic union matching; callable destinations now keep the synchronous-callback check.
 
@@ -714,6 +720,27 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 - The Foldkit guide showed only the small example app inline; it now also compares four excerpts from Foldkit's own migrated source with their originals.
+
+- `a catch () => b |> % + 1`, `x |> % catch () => y |> % + 1` and `1 |> effect () => % |> [%]` each had two parses in the spec. A pipe after an open arrow handler now belongs to the handler, and an `EffectArrow` is an arrow for the pipe-body restriction.
+
+- Six VibeLang syntax rules had no code in Appendix B. They are now `EK0109`, `EK0202`, `EK0512`, `EK1505` and `EK1606`; the compiler moves to them with its pending cases.
+
+- The spec said `S.Shape` is undeclared for a local service, against VIP-9. A local service now names `S.Shape` inside its own members, and uses `Context.Service.Shape<typeof S>` elsewhere.
+
+- An `is` binding in a `for concurrent` limit or a catch parameter had no home in the spec. A limit binding belongs to the home around the loop, and a catch-parameter binding is `EK0705`.
+
+- Two `is` tests that bind one name in one block had two readings. The spec now makes them a redeclaration, `TS2451`, with a `vibelang --fix` rename; the compiler still accepts them until that work lands.
+
+- The spec put an `is` binding in an unbraced loop body in the enclosing block, which would initialize one cell once per iteration. An unbraced statement body is now its own home, so braces never change a result.
+
+- `EK2202` named only a `for concurrent` body, so `restore` in a head default slipped past the written rule. The rule now names head binding initialization too; the compiler does not report the code yet.
+
+- `--fix-migration-only` and `--fix-vip-only` appeared in the tooling chapter with no accepted VIP. VIP-34 now records both.
+
+- The spec listed four Effect subpath namespaces that share a web platform name. It now lists `KeyFormat` and `Transferable` too; both keep their DOM meaning in a bare type position.
+
+- The spec gave `when Option.Some:` two readings in an exhaustiveness check. It now says a bare fixed pattern covers its case, which is what the compiler does.
+
 - The compiler package's tests could fail with a missing `packages/runtime/dist/index.js`, or skip their cache checks, when the runtime rebuilt at the same time; `//packages:compiler-test` now declares that build and runs after it.
 - Sharded Go test discovery dropped the run's flags, so test setup that required custom flags could fail before any test ran; discovery now retains the original arguments, including `-short` and custom values with spaces.
 
