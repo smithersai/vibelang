@@ -87,8 +87,22 @@ async function editor(dir, source) {
     child.kill()
   }
 }
-function exit(dir) {
-  const r=spawnSync(process.execPath,["--input-type=module","-e",'import * as Effect from "effect/Effect"; const {main}=await import("./out/main.js"); console.log(JSON.stringify(await Effect.runPromiseExit(main())))'],{cwd:dir,encoding:"utf8",timeout:30000})
+// Repeated properties still run each module in a fresh process. Share only
+// V8's source-validated compiled code, in a private cache owned by this test.
+// Coverage and explicit cache opt-outs retain Node's ordinary environment.
+const nodeCaches = new WeakMap()
+function exit(t, dir) {
+  let env = process.env
+  if (!env.NODE_V8_COVERAGE && !env.NODE_DISABLE_COMPILE_CACHE) {
+    let cache = nodeCaches.get(t)
+    if (!cache) {
+      cache = mkdtempSync(join(tmpdir(), "catch-repair-node-cache-"))
+      nodeCaches.set(t, cache)
+      t.after(() => rmSync(cache, { recursive: true, force: true }))
+    }
+    env = { ...env, NODE_COMPILE_CACHE: cache }
+  }
+  const r=spawnSync(process.execPath,["--input-type=module","-e",'import * as Effect from "effect/Effect"; const {main}=await import("./out/main.js"); console.log(JSON.stringify(await Effect.runPromiseExit(main())))'],{cwd:dir,encoding:"utf8",timeout:30000,env})
   assert.equal(r.status,0,r.stdout+r.stderr)
   return JSON.parse(r.stdout)
 }
@@ -112,7 +126,7 @@ export async function checkRepair(t, source, manual, {refuse=false,sole=false}={
     assert.match(original.stdout,/explicit.*conversion/i)
     const r=compile(control)
     assert.equal(r.status,0,r.stdout+r.stderr)
-    assert.deepEqual(exit(control),{_id:"Exit",_tag:"Success",value:7})
+    assert.deepEqual(exit(t,control),{_id:"Exit",_tag:"Success",value:7})
     return
   }
   assert.equal(repaired.status,0,repaired.stdout+repaired.stderr)
@@ -125,9 +139,9 @@ export async function checkRepair(t, source, manual, {refuse=false,sole=false}={
   const comments=text=>text.match(/\/\*[\s\S]*?\*\/|\/\/[^\r\n]*/g)||[]
   assert.deepEqual(comments(cliText),comments(source),"CLI lost comments")
   assert.deepEqual(comments(editorText),comments(source),"editor lost comments")
-  const expected=exit(control)
-  assert.deepEqual(exit(cli),expected,"CLI changed Exit")
-  assert.deepEqual(exit(lsp),expected,"editor changed Exit")
+  const expected=exit(t,control)
+  assert.deepEqual(exit(t,cli),expected,"CLI changed Exit")
+  assert.deepEqual(exit(t,lsp),expected,"editor changed Exit")
   const withoutPreludeImport=text=>text.replace('import * as Effect from "effect/Effect"\n', "")
   assert.deepEqual(withoutPreludeImport(cliText),withoutPreludeImport(editorText),"handler repair paths disagree")
   return cliText

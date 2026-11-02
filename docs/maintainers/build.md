@@ -101,6 +101,16 @@ Run only the bounded hang validation with:
 sh scripts/ci.sh //:go-vibelangfuzz-hangs --jobs 8
 ```
 
+## Native repair properties
+
+The handler-repair properties run the CLI repair, editor repair and manual
+control in separate Node processes and compare their `Exit` values. Repeated
+runs within a test share a private `NODE_COMPILE_CACHE` directory so Node can
+reuse compiled runtime dependencies. Each child still has its own module cache
+and global state. The directory is removed when that test ends.
+`NODE_DISABLE_COMPILE_CACHE` and `NODE_V8_COVERAGE` disable this optimization;
+coverage collection keeps its ordinary behavior.
+
 ## Forms-table checks
 
 `//typescript:forms-generator` builds `typescript/built/local/vibelang-forms`
