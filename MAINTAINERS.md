@@ -48,7 +48,7 @@ Timeline and commitment labels state a maintainer's current belief, not a promis
 
 Keep each change focused on one accepted issue, with a test that fails without the change, the checks it affects, and updated docs. Syntax, emitted declarations, runtime semantics and diagnostics need a compatibility review. CONTRIBUTING.md, MAINTAINERS.md and both AGENTS.md files come from `.smithers/flows/docs/project.ts`, except the starter's Essentials, which come from `docs/user/llms-essentials.md`. Edit the source, then run `bun run docs:generate` in `.smithers/`.
 
-Maintainers land their own work directly on `main`. Outside contributions arrive as pull requests that a maintainer reviews and merges. Agents never approve or merge. Never rewrite `main`'s history or republish a package version.
+Maintainers land their own work on `vibe`. `main` advances only to a commit on `vibe` whose post-merge checks passed, with no failing commit below it. Outside contributions arrive as pull requests that a maintainer reviews and merges. Agents never approve or merge. Never rewrite `main`'s history or republish a package version.
 
 ## Release process
 
@@ -71,4 +71,4 @@ Reports arrive through GitHub's private vulnerability reporting; see [SECURITY.m
 
 Publish a performance or token claim only with a public, reproducible method: pinned versions, inputs, units, results and limits. The README's [token comparison](.smithers/token-compare/README.md) is the model. Keep held-out tasks, hidden tests and transcripts private; a private benchmark is not public evidence.
 
-<sub>1,463 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
+<sub>1,490 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>

@@ -86,14 +86,18 @@ test("contributing describes actual CI entrypoints and maintainer-run PR checks"
   expect(output).toContain("`sh scripts/e2e.sh` and the compiler case suite, `(cd typescript && sh vibelang/smoke.sh --jobs 8)`")
 })
 
-test("maintainer docs describe direct landings, outside reviews, and every release platform", async () => {
+test("maintainer docs describe staged landings, outside reviews, and every release platform", async () => {
   const output = render(await readSources())
   for (const path of ["MAINTAINERS.md", "CONTRIBUTING.md"]) {
-    expect(output[path]).toContain("Maintainers land their own work directly on `main`.")
+    expect(output[path]).toContain("Maintainers land their own work on `vibe`.")
+    expect(output[path]).toContain("`main` advances only to a commit on `vibe` whose post-merge checks passed, with no failing commit below it.")
+    expect(output[path]).not.toContain("directly on `main`")
     expect(output[path]).toContain("Outside contributions arrive as pull requests that a maintainer reviews and merges.")
     expect(output[path]).not.toContain("A person reviews and merges every change.")
   }
   const maintainers = output["MAINTAINERS.md"]!
+  expect(maintainers).toContain("Never rewrite `main`'s history or republish a package version.")
+  expect(maintainers).toContain("Agents never approve or merge.")
   // The counts come from the table that builds the release, so a platform change fails here instead of a stale pin.
   const script = await readFile(join(repository, "scripts/release/make-packages.mjs"), "utf8")
   const table = /const platforms = \{([^}]*)\}/.exec(script)![1]!

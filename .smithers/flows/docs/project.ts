@@ -19,7 +19,7 @@ export const facts = {
   skill: "packages/compiler/skills/vibelang/SKILL.md",
   setup: "sh scripts/setup.sh",
   e2e: "sh scripts/e2e.sh",
-  merge: "Maintainers land their own work directly on `main`. Outside contributions arrive as pull requests that a maintainer reviews and merges. Agents never approve or merge.",
+  merge: "Maintainers land their own work on `vibe`. `main` advances only to a commit on `vibe` whose post-merge checks passed, with no failing commit below it. Outside contributions arrive as pull requests that a maintainer reviews and merges. Agents never approve or merge.",
   generated: "CONTRIBUTING.md, MAINTAINERS.md and both AGENTS.md files come from `.smithers/flows/docs/project.ts`, except the starter's Essentials, which come from `docs/user/llms-essentials.md`. Edit the source, then run `bun run docs:generate` in `.smithers/`",
   style: "Follow the surrounding code and each package's configuration. Format Go with gofmt. Keep TypeScript and VibeLang examples consistent with nearby files, and don't reformat unrelated code.",
   secrets: "Never put credentials or private user content in fixtures, logs or issues."
