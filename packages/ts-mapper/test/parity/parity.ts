@@ -1581,6 +1581,20 @@ async function stockVersionOf(): Promise<string> {
 }
 
 async function main() {
+  const partial = selectors.length > 0
+  let refs: CaseRef[] = []
+  if (!selfTest && !args.includes("--docs")) {
+    refs = discover()
+    if (partial) refs = refs.filter((r) => selectors.some((s) => r.id === s || r.id.includes(s)))
+    if (gate && partial) {
+      console.error("parity: --gate measures the whole corpus; drop the case selectors")
+      process.exit(2)
+    }
+    if (refs.length === 0) {
+      console.error(`parity: no declaration cases matched${partial ? `: ${selectors.map((s) => JSON.stringify(s)).join(", ")}` : " in the corpus"}`)
+      process.exit(2)
+    }
+  }
   fs.mkdirSync(outDir, { recursive: true })
   setupNodeModules()
   const stockVersion = await stockVersionOf()
@@ -1608,13 +1622,6 @@ async function main() {
     return
   }
 
-  let refs = discover()
-  const partial = selectors.length > 0
-  if (partial) refs = refs.filter((r) => selectors.some((s) => r.id === s || r.id.includes(s)))
-  if (gate && partial) {
-    console.error("parity: --gate measures the whole corpus; drop the case selectors")
-    process.exit(2)
-  }
   const runs = refs.map(loadRun)
   const t0 = performance.now()
   let done = 0

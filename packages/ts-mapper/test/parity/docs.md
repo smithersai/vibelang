@@ -35,3 +35,9 @@ summary; the normal full run regenerates the declaration results and adds docs.
 `--self-test` materializes a scratch Markdown page using the same pipeline and
 requires exactly one newly surfaced EK9100; it also runs the existing parity
 mutation tests. This fixture is never included in the corpus denominator.
+
+A declaration measurement requires at least one selected case. With no matching
+case, the full CLI exits `2` and lists the selectors before setting up modules
+or replacing `manifest.json`, `summary.json` or `summary.md`. Exact names,
+substrings and unions retain their selection rules. `--docs` and `--self-test`
+run independently of declaration selectors.
