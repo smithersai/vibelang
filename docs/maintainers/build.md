@@ -818,6 +818,9 @@ real stdio peers, concurrent failures, repeated cleanup and response-error
 recovery. Its `fast-check` property varies Unicode results, request counts
 and frame chunk sizes, including reversed response order.
 
+
+The mapper parity harness shares `parseJsonc` from `packages/compiler/cache.mjs` between its declaration and runtime columns. Configuration strings remain literal, including commas before `]` or `}`, comment lookalikes and escaped quotes; comments, trailing commas outside strings and an initial byte-order mark are accepted. `node --test scripts/mapper-parity-jsonc.test.mjs` checks generated JSON data and compiles and runs real TypeScript fixtures through the runtime column with the mapper package's pinned stock compiler and Effect install. It also checks the emitted paths against the source configuration. The release target includes this suite.
+
 ## Known gaps
 
 - **Sandboxing.** The targets run with `sandbox: "none"`: the harness writes

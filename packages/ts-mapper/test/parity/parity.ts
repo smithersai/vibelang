@@ -19,6 +19,7 @@ import crypto from "node:crypto"
 import { runDocs } from "./docs.ts"
 import { linkModules } from "../../../../docs/tools/check-snippets.ts"
 import { mapperEntry } from "./mapper-options"
+import { parseJsonc } from "../../../compiler/cache.mjs"
 import fs from "node:fs"
 import { createRequire, isBuiltin } from "node:module"
 import os from "node:os"
@@ -99,29 +100,6 @@ function walk(dir: string, keep: (name: string) => boolean): string[] {
   }
   visit("")
   return files
-}
-
-function parseJsonc(text: string): any {
-  let out = ""
-  let i = 0
-  while (i < text.length) {
-    const c = text[i]
-    if (c === '"') {
-      let j = i + 1
-      while (j < text.length && text[j] !== '"') j += text[j] === "\\" ? 2 : 1
-      out += text.slice(i, j + 1)
-      i = j + 1
-    } else if (c === "/" && text[i + 1] === "/") {
-      while (i < text.length && text[i] !== "\n") i++
-    } else if (c === "/" && text[i + 1] === "*") {
-      const end = text.indexOf("*/", i + 2)
-      i = end < 0 ? text.length : end + 2
-    } else {
-      out += c
-      i++
-    }
-  }
-  return JSON.parse(out.replace(/,(\s*[}\]])/g, "$1"))
 }
 
 type Exec = { code: number | string; output: string; ms: number }

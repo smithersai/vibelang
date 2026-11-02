@@ -17,6 +17,7 @@
 //   bun runtime.ts [case...]   the runtime column alone, with the PARITY_*
 //                              variables run.sh sets; prints one line per case
 import { mapperEntry } from "./mapper-options"
+import { parseJsonc } from "../../../compiler/cache.mjs"
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
@@ -63,28 +64,6 @@ function walk(dir: string): string[] {
   }
   visit("")
   return files
-}
-
-function parseJsonc(text: string): any {
-  let out = ""
-  for (let i = 0; i < text.length; ) {
-    const c = text[i]
-    if (c === '"') {
-      let j = i + 1
-      while (j < text.length && text[j] !== '"') j += text[j] === "\\" ? 2 : 1
-      out += text.slice(i, j + 1)
-      i = j + 1
-    } else if (c === "/" && text[i + 1] === "/") {
-      while (i < text.length && text[i] !== "\n") i++
-    } else if (c === "/" && text[i + 1] === "*") {
-      const end = text.indexOf("*/", i + 2)
-      i = end < 0 ? text.length : end + 2
-    } else {
-      out += c
-      i++
-    }
-  }
-  return JSON.parse(out.replace(/,(\s*[}\]])/g, "$1"))
 }
 
 async function exec(argv: string[], cwd: string, timeoutMs: number): Promise<{ code: number | string; stdout: string; stderr: string }> {
