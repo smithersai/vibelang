@@ -161,6 +161,25 @@ func FuzzMissingRuntimeDependency(f *testing.F) {
 		if key == "disabled-module" {
 			config = strings.TrimSuffix(config, "}") + `,"vibe":{"effectModules":false}}`
 		}
+		// Chapter 7's TS2307 rule holds only for a compilation whose emitted JavaScript imports vibelang-runtime. Under
+		// VIP-1 an effect function lowers to effect/Effect alone, so the shape does not decide it: emit the program with
+		// the runtime installed and expect the missing-runtime error only when that emit imports the package.
+		// A source that writes its own import of the package (explicit, foreign, native-only) needs it whatever the emit.
+		writesImport := strings.HasPrefix(key, "explicit") || strings.HasPrefix(key, "foreign") || key == "native-only"
+		vibeImports := func() bool {
+			r, err := present.Compile(t.Context(), Project{Files: files, Config: strings.Replace(config, `"noEmit":true`, `"noEmit":false`, 1)})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer r.Remove()
+			for name, out := range r.Outputs {
+				if strings.HasPrefix(filepath.Base(name), "source") && strings.Contains(out, `"vibelang-runtime`) {
+					return true
+				}
+			}
+			return false
+		}()
+		importsRuntime := writesImport || vibeImports
 		for _, control := range []struct {
 			key     string
 			w       *Workspace
@@ -172,10 +191,15 @@ func FuzzMissingRuntimeDependency(f *testing.F) {
 			}
 			defer r.Remove()
 			want := map[int32]int{}
-			if key != "plain" && control.missing {
+			if key != "plain" && control.missing && importsRuntime {
 				want[2307] = 1
 			}
 			if key == "native-only" && control.missing {
+				want[2307] = count
+			}
+			// Each foreign .ts file's own import reports TS2307 where it stands; only a .vibe emit that imports the
+			// package makes it one error for the compilation (chapter 7), as before VIP-1 every effect function did.
+			if strings.HasPrefix(key, "foreign") && control.missing && !vibeImports {
 				want[2307] = count
 			}
 			if key == "disabled-module" {
