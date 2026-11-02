@@ -295,3 +295,17 @@ test("fast-check: dropping a decision's diagnostic authority is always detected"
     assert.ok(lintRegistry(root).some(f => f.message.includes("VIP-" + id) && f.message.includes(code)))
   }), { seed: 1025, numRuns: 30 })
 }))
+
+test("landed VIP-30 sidecarDir: rooted property signatures authorize their chapter table key", () => {
+  assert.ok(!lintTables(repository).some(f => f.message.startsWith("vibe.sidecarDir:")))
+})
+test("fast-check: property signatures use their declared option root", () => fixture((root, edit) => {
+  const original = read(root, chapter), vip = "docs/design/vips/0030-config-files.md", approved = read(root, vip)
+  fc.assert(fc.property(fc.stringMatching(/^[a-z]{4,10}$/), fc.constantFrom("vibe", "foreign"), (suffix, owner) => {
+    const name = "specField" + suffix, key = "vibe." + name
+    edit(vip, () => approved + "\nThe top-level \u0060" + owner + "\u0060 object accepts \u0060" + name + "?: string\u0060.\n")
+    edit(chapter, () => original.replace("| Key | Meaning |\n| --- | --- |", "| Key | Meaning |\n| --- | --- |\n| \u0060" + key + "\u0060 | test field |"))
+    const rejected = lintTables(root).some(f => f.message.startsWith(key + ":"))
+    assert.equal(rejected, owner !== "vibe")
+  }), { seed: 30268, numRuns: 30 })
+}))

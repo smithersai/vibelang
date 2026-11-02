@@ -94,7 +94,9 @@ function fencedTokens(text) {
   }
   return found
 }
-const tokens = text => [...inlineTokens(text), ...fencedTokens(text)]
+const rootedFields = text => [...text.matchAll(/\b(?:top-level|root)\s+\x60(vibe|vibelang)\x60\s+object\s+accepts\s+\x60([A-Za-z_$][\w$]*)\s*\??\s*:/g)]
+  .map(m => ({ value: m[1] + "." + m[2], offset: m.index + m[0].lastIndexOf("\x60") + 1 }))
+const tokens = text => [...inlineTokens(text), ...fencedTokens(text), ...rootedFields(text)]
 const literalCode = code => new RegExp("\\b" + code + "\\b")
 export function lintRegistry(root) {
   const findings = reviewFindings(root, "registry"), vips = vipRegistry(root), diagnostics = diagnosticRegistry(root)

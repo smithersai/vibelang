@@ -732,7 +732,7 @@ lands. One adapter selects that source when present. TypeScript codes and
 options come from the pinned compiler registry. The registry also reads JSON/JSONC option keys and VibeLang CLI fences. Explicit `EK3007` or `TS5023` rejection witnesses do not assign a new option; other tools do not contribute compiler flags. VibeLang names require
 published VIP authority; unresolved authority is reported as a warning. An open VIP is not approval, even when its diagnostic already has a registry row. A denied VIP may explain a rejection in its own sentence; a neighbouring rejection sentence cannot authorize a positive citation.
 The table check compares decided config keys, denied VIP membership and
-repair forms, and resolution order. The copy check compares shared tables
+repair forms, and resolution order. A property signature such as `sidecarDir?: string` is qualified by the top-level option object its VIP declares; an unrelated object's field does not authorize a `vibe` key. The copy check compares shared tables
 and explicitly marked `spec-copy` sections byte for byte. The
 `//:spec-shared-tables` generated target derives the resolution reference
 from VIP-39.
