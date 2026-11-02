@@ -37,6 +37,8 @@ Setup warns with the file and line when a string source-extension allowlist incl
 Setup adds `vibelang()` from `vibelang-unplugin/rolldown` first in each configuration exported by an owned `tsdown.config.ts` (or its JavaScript variants), including arrays and immutable local config factories. It preserves existing options, plugin order and type assertions, and adds `vibelang-unplugin` to the owning package’s development dependencies, retaining an existing runtime dependency there. Test and fixture configs stay unchanged. A dynamic options expression, mutable plugin list or overriding spread that setup cannot edit safely produces a warning with the file and line.
 
 
+Across a pre-VIP-1 to post-VIP-1 toolchain switch, the predecessor first migrates inferred function kinds. After installing the new SDK, `upgrade-effect` checks those projects with the new compiler and runs its `--fix --fix-vip-only` only where the check still fails, before the upgraded builds. This finishes retired service calls such as `try RuleContext()` as `try RuleContext`. Same-era switches skip this completion pass. `vipFinish` records changed modules, projects, check summaries and failed invocations; `baseline/logs/vip-finish.json` records the active stage and final result even when a later build fails. The commit includes changes made by either compiler.
+
 ### Test and fixture identity
 
 Decided detail 272 keeps tests and fixtures as the migration's oracle. Each batch's `verify` compares pinned jj trees from before setup through the current batch, using the flow's test-file detection and fixture directories. Adding, deleting or renaming a test or fixture fails. Changed TypeScript files are parsed with the TypeScript AST; every byte outside the permitted literal or selector must stay unchanged, including embedded configs and setup. Source-text assertions remain protected.
@@ -454,7 +456,7 @@ When tests live in `test`, `tests` or `__tests__` outside their nearest `tsconfi
 
 Staged VibeLang tarballs replace only entries in `dependencies` and `devDependencies`. Published peer and optional dependency ranges keep their original portable specifiers.
 
-Upgrade test fixtures provide both predecessor and staged compiler checks. Only the predecessor’s VIP-only invocation mutates the original source; failed baseline checks retain the original manifest and sources.
+Upgrade test fixtures provide both predecessor and staged compiler checks. The predecessor handles inferred function kinds; the new compiler can then finish projects that still fail its check before the upgraded builds. Failed baseline checks remain failures.
 
 Shipped-root resolution checks retain the exact declaration graph, including each target. A published specifier spelling may use only the existing `D298` same-declaration proof; it cannot excuse a retargeted edge or another changed byte.
 

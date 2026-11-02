@@ -1,0 +1,5 @@
+{
+  "origin": "Foldkit oxlint-plugin rules: imported TypeScript Context.Service class lookup",
+  "before": "import { RuleContext } from \"effect-oxlint\"\nexport effect function readContext() {\n const ctx = try RuleContext()\n return ctx.id\n}\n",
+  "after": "import { RuleContext } from \"effect-oxlint\"\nexport effect function readContext() {\n const ctx = try RuleContext\n return ctx.id\n}\n"
+}

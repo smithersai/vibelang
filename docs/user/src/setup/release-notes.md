@@ -395,6 +395,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Sharded Go tests could report success after a partitioning tool failed and omitted tests; any failed weighting, sorting, slicing or assignment stage now stops the run with a diagnostic.
 
 - Awaiting a Promise, Effect or ordinary value inside effect code could report a retired await diagnostic; every operand now reports the assigned placement error `EK0102`, while native `async` awaiting keeps its behavior.
+
+- Switching an existing native project to the VIP-1 compiler left service lookups such as `try RuleContext()` unchanged and failed the upgraded build; the migrate flow now asks the new compiler to finish failing projects before that build, after the predecessor migrates inferred function kinds.
 - The `EK0509` repair of an object-literal value fallback, `x catch { directory }`, wrote `() => { directory }`, a block that returns nothing, and refused with `TS2322`; it now writes `() => ({ directory })`.
 - After VIP-1, `vibelang --fix --fix-vip-only` left a call that ran inside a catch's head cold, as in `decode(fs.readFileString(path)) catch …` (`TS2375`, `EK9202`); it now writes the head as the program it was, `(effect { return decode(try fs.readFileString(path)) }) catch …`.
 

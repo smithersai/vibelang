@@ -17,7 +17,7 @@ const fc = require("fast-check")
 
 const quote = "it first runs the installed `vibelang --fix --fix-vip-only` on each project with a tracked `.vibe` file"
 
-function fakeCompiler(bin, { side, target, calls, fixCode = 0, probeCode = 0, declaration, version = "0.0.11" }) {
+function fakeCompiler(bin, { side, target, calls, fixCode = 0, probeCode = 0, declaration, version = "0.0.11", finishServices = false }) {
   writeFileSync(bin, `#!/usr/bin/env node
 const fs = require("node:fs"), path = require("node:path")
 const args = process.argv.slice(2)
@@ -33,10 +33,17 @@ if (args.includes("--emitDeclarationOnly") && project && fs.readFileSync(project
   if (${declaration !== null}) fs.writeFileSync(path.join(out, "probe.d.ts"), ${JSON.stringify(declaration ?? (side === "pre" ? "export declare const f: (n: number) => Effect.Effect<number, never, never>;\n" : "export declare const f: (n: number) => number;\n"))})
   process.exit(0)
 }
+if (${finishServices} && !args.includes("--fix-vip-only") && args.includes("--noEmit")) {
+ const file=path.join(${JSON.stringify(target)},"src/rule.vibe")
+ if (fs.existsSync(file) && fs.readFileSync(file,"utf8").includes("try RuleContext()")) {
+  console.log(file+"(3,18): error TS2348: service class is not callable")
+  process.exit(2)
+ }
+}
 if (!args.includes("--fix-vip-only")) process.exit(0)
 if (${fixCode}) process.exit(${fixCode})
 const target = ${JSON.stringify(target)}, calls = ${JSON.stringify(calls)}
-if (calls) fs.appendFileSync(calls, process.cwd() + "|" + args.join(" ") + "|" + fs.readFileSync(path.join(target, "package.json"), "utf8").match(/vibelang-[a-z]*\\.tgz/)[0] + ${JSON.stringify("\n")})
+if (calls) fs.appendFileSync(calls, process.cwd() + "|" + args.join(" ") + "|" + path.basename(JSON.parse(fs.readFileSync(path.join(target, "package.json"), "utf8")).dependencies.vibelang) + ${JSON.stringify("\n")})
 function walk(dir) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     if (entry.name === "node_modules" || entry.name.startsWith(".")) continue
@@ -46,6 +53,17 @@ function walk(dir) {
   }
 }
 walk(process.cwd())
+if (${finishServices}) {
+ function finish(dir) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+   if (entry.name === "node_modules" || entry.name.startsWith(".")) continue
+   const file = path.join(dir, entry.name)
+   if (entry.isDirectory()) finish(file)
+   else if (file.endsWith(".vibe")) fs.writeFileSync(file, fs.readFileSync(file, "utf8").replaceAll("try RuleContext()", "try RuleContext"))
+  }
+ }
+ finish(process.cwd())
+}
 `, { mode: 0o755 })
 }
 
@@ -310,4 +328,72 @@ fs.chmodSync(bin, 0o755)
     process.env.PATH = originalPath
     rmSync(root, { recursive: true, force: true })
   }
+})
+
+
+test("foldkit: the new compiler finishes service lookups before the upgraded build", async () => {
+ const root=mkdtempSync(join(tmpdir(),"migrate-foldkit-service-finish-"))
+ try {
+  const corpus=JSON.parse(readFileSync(new URL("./corpus/foldkit-rulecontext-transition.json",import.meta.url),"utf8"))
+  const {target,toolchain,base,calls}=await fixture(root,{
+   "tsconfig.json":"{}\n","src/rule.vibe":corpus.before
+  })
+  fakeCompiler(join(toolchain,"native/vibelang"),{side:"post",target,calls,finishServices:true})
+  const manifest=JSON.parse(readFileSync(join(target,"package.json"),"utf8"))
+  manifest.scripts={"build:packages":"node check-build.cjs"}
+  writeJson(join(target,"package.json"),manifest)
+  writeFileSync(join(target,"check-build.cjs"),"const fs=require('node:fs');const p=JSON.parse(fs.readFileSync('package.json'));if(!p.dependencies.vibelang.includes('vibelang-old.tgz')&&fs.readFileSync('src/rule.vibe','utf8').includes('try RuleContext()')){console.error('retired RuleContext() survived SDK transition');process.exit(2)}\n")
+  const start=await Jj.commit(target,"service transition build contract")
+  const result=await upgradeEffect({run:join(root,"run"),target,packages:["."],test:"true",toolchain,install:"true",base:start??base}).catch(error=>{
+    const logs=join(root,"run/baseline/logs")
+    error.message += "\n"+readdirSync(logs).filter(name=>name.startsWith("vip-finish")).map(name=>name+"\n"+readFileSync(join(logs,name),"utf8")).join("\n")
+    throw error
+  })
+  assert.equal(readFileSync(join(target,"src/rule.vibe"),"utf8"),corpus.after)
+  assert.deepEqual(readFileSync(calls,"utf8").trim().split("\n").map(line=>line.split("|").at(-1)),["vibelang-old.tgz",JSON.parse(readFileSync(join(target,"package.json"),"utf8")).dependencies.vibelang.split("/").at(-1)])
+  assert.deepEqual(result.vipFinish.changed,["src/rule.vibe"])
+  assert.deepEqual(result.vipFinish.projects,["tsconfig.json"])
+  assert.deepEqual(result.vipFinish.failed,[])
+  assert.ok(result.changed.includes("src/rule.vibe"))
+  const receipt=JSON.parse(readFileSync(join(root,"run/baseline/logs/vip-finish.json"),"utf8"))
+  assert.equal(receipt.state,"complete")
+  assert.deepEqual(receipt.changed,["src/rule.vibe"])
+  assert.equal(receipt.checks["tsconfig.json"].code,2)
+  assert.equal(await Jj.fileAt(target,result.jj.commit,"src/rule.vibe"),corpus.after)
+ } finally {rmSync(root,{recursive:true,force:true})}
+})
+
+
+// Chapter 7: "Every breaking change ships a `vibelang --fix` codemod, so code
+// that compiled under the previous release migrates mechanically."
+// The predecessor alone can recover function kind; the new compiler finishes
+// its retired service operands before compilation becomes a new baseline.
+test("foldkit service transition property covers compiler eras and native siblings", async () => {
+ await fc.assert(fc.asyncProperty(
+  fc.constantFrom(["pre","pre"],["pre","post"],["post","post"],["post","pre"]),
+  fc.integer({min:1,max:5}),fc.integer({min:-1000,max:1000}),
+  async ([previous,next],count,offset)=>{
+   const root=mkdtempSync(join(tmpdir(),"migrate-foldkit-service-property-"))
+   try {
+    const corpus=JSON.parse(readFileSync(new URL("./corpus/foldkit-rulecontext-transition.json",import.meta.url),"utf8"))
+    const crossing=previous==="pre"&&next==="post"
+    const original=previous==="pre"?corpus.before:corpus.after
+    const files={"tsconfig.json":"{}\n","src/rule.vibe":original,"src/control.ts":'export const text = "try RuleContext()"\n'}
+    for(let i=1;i<count;i++)files["src/peer"+i+".vibe"]=original+"// sibling "+(offset+i)+"\n"
+    const {target,toolchain,base,calls}=await fixture(root,files)
+    fakeCompiler(join(target,"node_modules/.bin/vibelang"),{side:previous,target,calls})
+    fakeCompiler(join(toolchain,"native/vibelang"),{side:next,target,calls,finishServices:next==="post"})
+    const result=await upgradeEffect({run:join(root,"run"),target,packages:["."],test:"true",toolchain,install:"true",base})
+    for(const [file,before] of Object.entries(files)) {
+     const wanted=crossing&&file.endsWith(".vibe")?before.replaceAll("try RuleContext()","try RuleContext"):before
+     assert.equal(readFileSync(join(target,file),"utf8"),wanted,file)
+    }
+    assert.deepEqual(result.vipFinish?.projects??[],crossing?["tsconfig.json"]:[])
+    assert.equal(result.vipFinish?.changed.length??0,crossing?count:0)
+    assert.deepEqual(result.vipFinish?.failed??[],[])
+    assert.equal(existsSync(calls),crossing)
+    if(crossing)assert.equal(readFileSync(calls,"utf8").trim().split("\n").length,2)
+   } finally {rmSync(root,{recursive:true,force:true})}
+  }
+ ),{seed:413947,numRuns:40})
 })
