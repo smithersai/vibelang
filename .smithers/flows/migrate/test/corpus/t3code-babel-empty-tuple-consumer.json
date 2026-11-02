@@ -1,0 +1,16 @@
+{
+  "source": "t3code compileLikeMetro tuple consumer, empty-array neighbourhood",
+  "oracle": "Existing tools work.",
+  "input": {
+    "file": "babel.config.js",
+    "presets": [],
+    "consumer": "tuple",
+    "function": true,
+    "indent": 2
+  },
+  "pending": {
+    "key": "t3code:babel-empty-tuple-consumer:babel.config.js",
+    "owner": "migfix-t3code",
+    "symptom": "appended string is destructured as characters rather than a preset tuple"
+  }
+}

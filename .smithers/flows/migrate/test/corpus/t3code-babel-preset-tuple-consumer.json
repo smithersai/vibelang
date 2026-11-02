@@ -1,0 +1,12 @@
+{
+  "key": "t3code:babel-preset-tuple-consumer:babel.config.js",
+  "repo": "t3code",
+  "pattern": "apps/mobile/babel.config.js plus the unchanged reactCompilerCoverage.test.ts compileLikeMetro tuple consumer",
+  "spec": { "chapter": "007-tooling.md", "quote": "Existing tools work." },
+  "pending": { "owner": "migfix-t3code", "reason": "addBabelPreset appends a string; the existing tuple consumer sees its first character as the preset name" },
+  "input": {
+    "file": "babel.config.js",
+    "consumer": "tuple",
+    "source": "module.exports = function (api) { api.cache(true); return { presets: [[\"babel-preset-expo\", { unstable_transformImportMeta: true }]] }; };\n"
+  }
+}

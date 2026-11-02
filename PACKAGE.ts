@@ -400,6 +400,7 @@ const specTests = [
   "TestSpecCodesInAppendixB",
   "TestAppendixBRows",
   "TestFixGateQuoted",
+  "TestBabelTupleConsumerQuoted",
   "TestShortTargetsBudgeted",
   "TestUnionPlainCallsQuoted",
   "TestUnionDataMemberPlainTypeScript",
