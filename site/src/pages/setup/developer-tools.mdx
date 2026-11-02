@@ -8,6 +8,16 @@ description: "The migration setup extends the repository's existing format and l
 The migration setup extends the repository's existing format and lint scripts,
 rather than accepting a green command that skips VibeLang.
 
+## Build entry points
+
+A batched migration follows renamed sources in owned tool configurations,
+even when the package inventories only `src`. The `entry` arrays and maps used
+by `tsdown` or `tsup`, `rolldown`'s `input`, and Vite's `build.lib.entry`
+keep pointing at the same modules. This applies to TypeScript and JavaScript
+`*.config.*` files. Protected test configurations and fixtures stay as written.
+Resumed batches retain earlier filename edits, and reverting a module restores
+its original configuration entry.
+
 ## Prettier and Oxfmt
 
 Install `vibelang` and configure Prettier's `plugins` with

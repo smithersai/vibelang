@@ -1,4 +1,5 @@
 import { prepareBuilds } from "./builds.mjs"
+import { ownedToolConfigs } from "./tool-config-references.mjs"
 // The migrate flow's steps. Each reads and writes the run directory, so it can
 // run as a step of flow.ts or alone from step.mjs, and a later step reads what
 // an earlier one recorded. A step that has already recorded its result returns
@@ -1134,19 +1135,24 @@ export async function codemod(options) {
   const t = config.target
   const files = thePlan.batches[Number(b) - 1].files
   assertNoTestBundleRename(t, files)
-  // Setup's source inventory is the scan boundary; older runs without one
-  // use the configured source directories, never all tracked text files.
-  const references = () => [...new Set(inventory?.files.map(f => {
-    if (existsSync(join(t, f.path))) return f.path
-    const native = vibePath(f.path)
-    return existsSync(join(t, native)) ? native : null
-  }).filter(Boolean) ?? scopeFiles(config))]
+  // Include owned tool configuration outside src, preserving the source-only
+  // boundary for unrelated text, protected tests, fixtures and dependencies.
+  const tracked = await Jj.trackedFiles(t)
+  const toolConfigs = ownedToolConfigs(t, tracked)
+  const live = file => existsSync(join(t, file)) ? file :
+    existsSync(join(t, vibePath(file))) ? vibePath(file) : null
+  const references = () => [...new Set([
+    ...(inventory?.files.map(f => live(f.path)).filter(Boolean) ?? scopeFiles(config)),
+    ...toolConfigs.map(live).filter(Boolean)
+  ])]
   let state = readJsonIf(p.codemodState(b))
   if (!state) {
     // A repository that exports its .vibe modules by bare paths gets its new ones that way too.
     const owned = Wire.ownedPaths(t)
-    const manifests = (await Jj.trackedFiles(t)).filter((file) => /(?:^|\/)package\.json$/.test(file) && !/(?:^|\/)node_modules\//.test(file) && owned(file))
-    state = prepareState(t, files, await importers(t), { ts: typeScriptOf(config), aliases: aliasesOf(config), references: references(), catalog: [...new Set([...(await Jj.trackedFiles(t)), ...references()])], bareEntries: bareVibeExports(t, manifests) })
+    const manifests = tracked.filter((file) => /(?:^|\/)package\.json$/.test(file) && !/(?:^|\/)node_modules\//.test(file) && owned(file))
+    state = prepareState(t, files, await importers(t), { ts: typeScriptOf(config), aliases: aliasesOf(config), references: references(), catalog: [...new Set([...tracked, ...references()])], bareEntries: bareVibeExports(t, manifests) })
+    state.toolConfigReferences = 1
+    state.referenceScan.toolConfigFiles = toolConfigs.length
     saveState(p.codemodState(b), state)
   }
   if (state.version !== 1 || state.target !== t || JSON.stringify(state.files) !== JSON.stringify(files)) {
@@ -1158,7 +1164,34 @@ export async function codemod(options) {
     saveState(p.codemodState(b), state)
   }
   if (state.referenceVersion !== 1) {
-    Object.assign(state, prepareReferences(t, state.renames, typeScriptOf(config), references(), [...new Set([...(await Jj.trackedFiles(t)), ...references()])]))
+    Object.assign(state, prepareReferences(t, state.renames, typeScriptOf(config), references(), [...new Set([...tracked, ...references()])]))
+    state.toolConfigReferences = 1
+    state.referenceScan.toolConfigFiles = toolConfigs.length
+    saveState(p.codemodState(b), state)
+  }
+  if (state.referencePending) {
+    applyState(t, { renames: [], writes: state.referenceWrites })
+    state.referencePending = false
+    saveState(p.codemodState(b), state)
+  }
+  if (state.toolConfigReferences !== 1) {
+    // A version-1 journal may have already wired source literals. Extend its
+    // receipts rather than replacing them: revert still needs those edits.
+    const extra = prepareReferences(t, state.renames, typeScriptOf(config),
+      toolConfigs.map(live).filter(Boolean), [...new Set([...tracked, ...references()])])
+    const previous = state.referenceScan
+    Object.assign(state, extra, {
+      toolConfigReferences: 1,
+      referenceEdits: [...(state.referenceEdits ?? []), ...extra.referenceEdits],
+      referenceWarnings: [...new Set([...(state.referenceWarnings ?? []), ...extra.referenceWarnings])],
+      selectorChecks: [...(state.selectorChecks ?? []), ...extra.selectorChecks],
+      referenceScan: {
+        files: references().length,
+        patterns: (previous?.patterns ?? 0) + extra.referenceScan.patterns,
+        durationMs: (previous?.durationMs ?? 0) + extra.referenceScan.durationMs,
+        toolConfigFiles: extra.referenceScan.files, upgraded: true
+      }
+    })
     saveState(p.codemodState(b), state)
   }
   if (state.referencePending) {

@@ -428,14 +428,24 @@ The same durable rename journal covers whole-scope mode: an interrupted rename r
 
 ### Source filename wiring
 
-Before the compiler starts, `codemod` scans the inventory's source files,
-including source tests, for exact string filenames naming a renamed module.
+Before the compiler starts, `codemod` scans the inventory's source files
+and owned tool configurations for exact string filenames naming a renamed
+module, even when a configuration is outside the configured source directories.
 Recognized `import.meta.glob` and imported `glob`/`globSync`/`globby`
 calls gain native sources while retaining TypeScript coverage and excluding
 `.d.vibe.ts` sidecars. An extension array gains `.vibe` only when its sole
 selector use already excludes those sidecars. Package export maps retain the
 exact-entry wiring above; TypeScript config globs retain setup's include wiring.
 Binary files and directory symlinks are skipped.
+
+The extra configuration scan includes TypeScript and JavaScript `*.config.*`
+files, such as `tsdown.config.ts`. Explicit `entry` arrays and maps, `input`
+paths and `build.lib.entry` paths follow the renamed module. Test-runner
+configurations, tests, fixtures, generated trees, vendored packages and
+submodules stay outside this extra scan. Resuming an older journal adds
+configuration edits while retaining its earlier source-literal receipts, so
+`revert` can restore both. `referenceScan.toolConfigFiles` records the configuration
+count; a scope upgrade also records `upgraded`.
 
 Every changed literal is recorded in `referenceEdits` with its file, line,
 original spelling and kind. Assertions, expected values, test names and

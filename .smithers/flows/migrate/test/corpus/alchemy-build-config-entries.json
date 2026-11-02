@@ -1,0 +1,20 @@
+{
+  "repo": "alchemy",
+  "pattern": "package build entries outside the configured src inventory",
+  "quote": "Type checkers work through `.d.vibe.ts`, and linters, Knip, bundlers and test runners each read `.vibe`.",
+  "modules": [
+    "packages/cloudflare-runtime/src/vite/plugin.ts",
+    "packages/frontend-frameworks/src/astro/aws.ts"
+  ],
+  "configs": {
+    "packages/cloudflare-runtime/tsdown.config.ts": "// src/vite/plugin.ts is the authored entry\nexport default { entry: [\"src/vite/plugin.ts\"] }\n",
+    "packages/frontend-frameworks/tsdown.config.ts": "export default { entry: { \"astro/aws\": \"src/astro/aws.ts\" } }\n"
+  },
+  "key": "migrate-flow:build-config-entry-path",
+  "variants": [
+    "tsdown-array",
+    "tsup-map",
+    "rolldown-input",
+    "vite-lib"
+  ]
+}
