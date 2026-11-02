@@ -3,6 +3,7 @@ package vibelangfuzz
 import (
 	"bytes"
 	"maps"
+	"os"
 	"path/filepath"
 	"slices"
 	"sort"
@@ -106,7 +107,7 @@ func FuzzVIPLegacyRuns(f *testing.F) {
 // legacyRunsShort are the corpus files -short runs, within its budget: the
 // repository's own pattern, and the positions that wrap the call in a
 // function the parser writes or the source marks.
-var legacyRunsShort = map[string]bool{"foldkit-option-none-die": true, "match-arm": true, "catch-handler": true, "effect-arrow": true}
+var legacyRunsShort = map[string]bool{"foldkit-option-none-die": true, "match-arm": true, "catch-handler": true, "effect-arrow": true, "foldkit-devtools-mcp-config-value-catch": true}
 
 // legacyRunPosition writes a call, its try removed, in a position where the
 // old compiler ran it, as an expression with the call's value: call is the
@@ -126,9 +127,11 @@ var legacyRunPositions = map[string]legacyRunPosition{
 	"do-result":     func(call string) string { return "do { " + call + " }" },
 	"effect-arrow":  func(call string) string { return "try (effect () => " + call + ")()" },
 	"catch-handler": func(call string) string { return "(legacyFail() catch (e) => " + call + ")" },
-	"argument":      func(call string) string { return "legacyId(" + call + ")" },
-	"element":       func(call string) string { return "[" + call + "][0]" },
-	"property":      func(call string) string { return "({ legacyValue: " + call + " }).legacyValue" },
+	// VIP-5: catch owns the run of the old empty call of an Effect value.
+	"value-call-catch-head": func(call string) string { return "((" + call + ")() catch effect (e) => throw e)" },
+	"argument":              func(call string) string { return "legacyId(" + call + ")" },
+	"element":               func(call string) string { return "[" + call + "][0]" },
+	"property":              func(call string) string { return "({ legacyValue: " + call + " }).legacyValue" },
 }
 
 // legacyRunHelpers declares what the positions call. Each returns a literal
@@ -180,6 +183,10 @@ func legacyRunInput(data []byte, leaveOut map[string]bool) (string, string, bool
 	}
 	if legacyRunPositions[position] == nil {
 		return "", "", false
+	}
+	// A positioned repository witness uses the same migration and Exit oracle.
+	if program, ok := bytes.CutPrefix(data, []byte("program:")); ok {
+		return position, string(program), true
 	}
 	p := vipgen.Generate(data, leaveOut)
 	if p == nil || p.Plain {
@@ -337,4 +344,15 @@ func legacyInPlace(fn *ast.Node) bool {
 	}
 	paren := fn.Parent
 	return paren != nil && ast.IsParenthesizedExpression(paren) && paren.Parent != nil && ast.IsCallExpression(paren.Parent) && paren.Parent.Expression() == paren
+}
+
+// VIP-5 gives the catch ownership of the run, including migrated value calls.
+func TestLegacyValueCatchMigrationQuoted(t *testing.T) {
+	data, err := os.ReadFile(SpecPath("../vips/0005-try-runs-effects.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "As in Zig, you write `try x` or `x catch y`, never both.") {
+		t.Fatal("VIP-5 catch/run quote changed; review the migration oracle")
+	}
 }

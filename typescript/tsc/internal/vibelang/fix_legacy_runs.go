@@ -748,7 +748,7 @@ func (m *legacyModel) blockRuns(block *ast.Node) []*ast.Node {
 		if isWrittenFunction(node) {
 			return false // its own form: nothing in it ran in this program
 		}
-		if node != block && isInvocation(node) && !tried(node) && node.Flags&ast.NodeFlagsVibeLangTry == 0 && !isTryCall(node) && triesSyntax(m.a, ast.GetSourceFileOfNode(node), node) && m.effectResult(node) {
+		if node != ast.SkipParentheses(block) && isInvocation(node) && !tried(node) && node.Flags&ast.NodeFlagsVibeLangTry == 0 && !isTryCall(node) && triesSyntax(m.a, ast.GetSourceFileOfNode(node), node) && m.effectResult(node) {
 			ran := true
 			for p := node; p != block; p = p.Parent {
 				if held, _ := legacyHeldAt(m.a, p); held {
@@ -1155,7 +1155,15 @@ func (m *legacyModel) catchHeadRuns(node *ast.Node) *ast.Node {
 		return nil
 	}
 	left, _ := catchParts(node)
-	if left == nil || len(m.blockRuns(left)) == 0 {
+	if left == nil {
+		return nil
+	}
+	// Retire a value call before looking inside its factory. Its callee
+	// constructs the held program; it is not a nested run of the head.
+	if _, _, _, ok := effectValueCallEdits(m.a, ast.GetSourceFileOfNode(node), ast.SkipParentheses(left)); ok {
+		return nil
+	}
+	if len(m.blockRuns(left)) == 0 {
 		return nil
 	}
 	return left

@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("pos:value-call-catch-head\u0000program:import { Config } from \"effect\"\n\nfunction asEffect<A, E, R>(value: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> {\n  return value\n}\n\nexport const program = effect {\n  const maybePort = try asEffect(Config.option(Config.succeed(41)))\n  return maybePort\n}\n\nexport effect function main() { return try program }\n")

@@ -18,35 +18,45 @@ import (
 // member that is an Effect, called as S.m(), is read from the service, as
 // VIP-10 writes it: try (try S).m.
 
-// effectValueCallEdits returns the edits that rewrite call, when it is such a
-// call in the body of an effect function: the text that try writes at
-// offset at, and the other edits. It returns false for any other call.
+// effectValueCallEdits retains the four-result protocol used by existing
+// service-tag migrations. Only receipt-producing clients need the label.
 func effectValueCallEdits(a *analyzer, file *ast.SourceFile, call *ast.Node) (at int, open string, edits []sourceEdit, ok bool) {
+	at, open, edits, _, ok = effectValueCallEditsLabeled(a, file, call)
+	return at, open, edits, ok
+}
+
+// effectValueCallEditsLabeled also attributes the rewrite in --fix receipts.
+func effectValueCallEditsLabeled(a *analyzer, file *ast.SourceFile, call *ast.Node) (at int, open string, edits []sourceEdit, label string, ok bool) {
 	if !ast.IsCallExpression(call) || len(call.Arguments()) != 0 || call.TypeArguments() != nil || call.QuestionDotToken() != nil {
-		return 0, "", nil, false
+		return 0, "", nil, "", false
 	}
-	if call.Flags&(ast.NodeFlagsReparsed|ast.NodeFlagsVibeLang) != 0 || !inLowerableBody(call) {
-		return 0, "", nil, false
+	if call.Flags&(ast.NodeFlagsReparsed|ast.NodeFlagsVibeLang) != 0 {
+		return 0, "", nil, "", false
 	}
-	if fn := enclosingFunction(call); fn == nil || !a.isEffect(fn) {
-		return 0, "", nil, false
+	fn := enclosingFunction(call)
+	// The parser's catch-left function holds the Effect for catch to run.
+	// It is plain until something inside it runs with try, so checking only
+	// a.isEffect(fn) misses Port() as the complete catch head (foldkit MCP).
+	catchHead := fn != nil && isCatchLeftFunction(fn) && inEffectCode(fn) && ast.SkipParentheses(fn.Body()) == call
+	if !catchHead && (!inLowerableBody(call) || fn == nil || !a.isEffect(fn)) {
+		return 0, "", nil, "", false
 	}
 	c := a.checker
 	callee := call.Expression()
 	t := c.GetApparentType(c.GetTypeAtLocation(callee))
 	if len(c.GetSignaturesOfType(t, checker.SignatureKindCall)) != 0 {
-		return 0, "", nil, false
+		return 0, "", nil, "", false
 	}
 	text := file.Text()
 	start := scanner.SkipTrivia(text, call.Pos())
 	tried := underTry(call)
-	parens := !tried && tryNeedsParentheses(call)
+	parens := !catchHead && !tried && tryNeedsParentheses(call)
 	if ast.IsPropertyAccessExpression(callee) && !ast.IsPrivateIdentifier(callee.Name()) {
 		receiver := callee.Expression()
 		if identifier, _ := serviceMember(c, callee, c.GetApparentType(c.GetTypeAtLocation(receiver))); identifier != nil {
 			// S.m(), where the service's member m is an Effect: (try S).m.
 			if effectOfValue(c, t) == nil {
-				return 0, "", nil, false
+				return 0, "", nil, "", false
 			}
 			key := ""
 			if name := moduleServiceKeyName(c, receiver); name != "" {
@@ -54,7 +64,7 @@ func effectValueCallEdits(a *analyzer, file *ast.SourceFile, call *ast.Node) (at
 			}
 			open, end := "(try ", ""
 			switch {
-			case tried:
+			case catchHead || tried:
 			case parens:
 				open, end = "((try ", ")"
 				if continuesStatement(text, call, start) {
@@ -63,16 +73,21 @@ func effectValueCallEdits(a *analyzer, file *ast.SourceFile, call *ast.Node) (at
 			default:
 				open = "try (try "
 			}
-			return scanner.SkipTrivia(text, receiver.Pos()), open, []sourceEdit{{receiver.End(), receiver.End(), key + ")"}, {callee.End(), call.End(), end}}, true
+			return scanner.SkipTrivia(text, receiver.Pos()), open, []sourceEdit{{receiver.End(), receiver.End(), key + ")"}, {callee.End(), call.End(), end}}, "", true
 		}
 	}
 	key := moduleServiceKeyName(c, callee)
 	if effectOfValue(c, t) == nil && key == "" {
-		return 0, "", nil, false
+		return 0, "", nil, "", false
 	}
 	end := ""
 	if key != "" {
 		end = "." + key
+	}
+	if catchHead {
+		// Do not run the value before catch. Parentheses keep the operand
+		// together, including a factory call or a module's service key.
+		return start, "(", []sourceEdit{{callee.End(), call.End(), end + ")"}}, valueCallLabel, true
 	}
 	value := callee
 	if ast.IsParenthesizedExpression(callee) && !parens {
@@ -91,7 +106,7 @@ func effectValueCallEdits(a *analyzer, file *ast.SourceFile, call *ast.Node) (at
 	default:
 		open = "try "
 	}
-	return start, open, append(edits, sourceEdit{value.End(), call.End(), end}), true
+	return start, open, append(edits, sourceEdit{value.End(), call.End(), end}), "", true
 }
 
 // underTry reports whether node, parentheses aside, is the operand of try,

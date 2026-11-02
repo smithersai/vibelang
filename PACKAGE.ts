@@ -61,6 +61,7 @@ const specTests = [
   "TestEffectFactoriesAreOrdinaryValues",
   "TestEffectFactoryKeepsNativeReturnMismatch",
   "FuzzNativeEffectFactoryDestinations",
+  "TestLegacyValueCatchMigrationQuoted",
   "TestSidecarIdentityPropertyQuoted",
   "TestReviewLocalServiceShapeQuoted",
   "TestSidecarEmitRulesQuoted",

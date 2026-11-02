@@ -36,9 +36,10 @@ import (
 // written on a function that the old compiler made an Effect function, and a
 // try removed before a legacy wrapper's call (wrapperTry).
 const (
-	tryLabel     = "try"
-	effectLabel  = "effect"
-	untriedLabel = "try removed"
+	tryLabel       = "try"
+	valueCallLabel = "Effect value call"
+	effectLabel    = "effect"
+	untriedLabel   = "try removed"
 )
 
 // tryEdits returns the edits that write try before each call of file that
@@ -46,11 +47,12 @@ const (
 // (effectValueCallEdits), with the calls the legacy model can't decide.
 // Calls that start at one offset, as f() and f().g() do, get one edit
 // there, the outer call's try first: try (try f()).g().
-func tryEdits(c *checker.Checker, file *ast.SourceFile, unmatched map[int]bool) ([]sourceEdit, []tryRefusal) {
+func tryEdits(c *checker.Checker, file *ast.SourceFile, unmatched map[int]bool) ([]sourceEdit, []tryRefusal, map[string]int) {
 	a := analyzerFor(c)
 	text := file.Text()
 	var edits []sourceEdit
 	var refusals []tryRefusal
+	kinds := map[string]int{}
 	m := newLegacyModel(a, unmatched)
 	opens := map[int]int{} // offset -> index in edits
 	insert := func(at int, s string) {
@@ -63,7 +65,10 @@ func tryEdits(c *checker.Checker, file *ast.SourceFile, unmatched map[int]bool) 
 	}
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
-		if at, open, rest, ok := effectValueCallEdits(a, file, node); ok {
+		if at, open, rest, label, ok := effectValueCallEditsLabeled(a, file, node); ok {
+			if label != "" {
+				kinds[label]++
+			}
 			if open != "" {
 				insert(at, open)
 			}
@@ -191,7 +196,7 @@ func tryEdits(c *checker.Checker, file *ast.SourceFile, unmatched map[int]bool) 
 		return node.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
-	return edits, refusals
+	return edits, refusals, kinds
 }
 
 // tryRefusal is a call where the legacy model can't tell whether it ran: its
@@ -318,9 +323,10 @@ func continuesStatement(text string, call *ast.Node, start int) bool {
 
 // tryRewriteProject returns the try edits of each of program's .vibe files
 // that has any, and the calls of each that the legacy model can't decide.
-func tryRewriteProject(ctx context.Context, program *compiler.Program) (map[tspath.RootedFilePath][]sourceEdit, map[tspath.RootedFilePath][]tryRefusal) {
+func tryRewriteProject(ctx context.Context, program *compiler.Program) (map[tspath.RootedFilePath][]sourceEdit, map[tspath.RootedFilePath][]tryRefusal, map[tspath.RootedFilePath]map[string]int) {
 	rewrites := map[tspath.RootedFilePath][]sourceEdit{}
 	refusals := map[tspath.RootedFilePath][]tryRefusal{}
+	kinds := map[tspath.RootedFilePath]map[string]int{}
 	for _, file := range fixableFiles(program) {
 		unmatched := map[int]bool{}
 		for _, d := range program.GetSemanticDiagnostics(ctx, file) {
@@ -329,16 +335,17 @@ func tryRewriteProject(ctx context.Context, program *compiler.Program) (map[tspa
 			}
 		}
 		c, done := program.GetTypeCheckerForFile(ctx, file)
-		edits, refused := tryEdits(c, file, unmatched)
+		edits, refused, labels := tryEdits(c, file, unmatched)
 		done()
 		if len(edits) > 0 {
 			rewrites[file.FileName()] = edits
+			kinds[file.FileName()] = labels
 		}
 		if len(refused) > 0 {
 			refusals[file.FileName()] = refused
 		}
 	}
-	return rewrites, refusals
+	return rewrites, refusals, kinds
 }
 
 // rewriteTries writes try before the calls of program's files that ran
@@ -349,7 +356,7 @@ func tryRewriteProject(ctx context.Context, program *compiler.Program) (map[tspa
 // legacy model can't decide, and each file whose tries would add an error,
 // as refused: such a file keeps calls that no longer run.
 func rewriteTries(g *fixGate, fs vfs.FS, program *compiler.Program, texts map[tspath.RootedFilePath]string, result *FixResult) (wrote bool, refused []FixRefusal) {
-	rewrites, refusals := tryRewriteProject(g.ctx, program)
+	rewrites, refusals, kinds := tryRewriteProject(g.ctx, program)
 	var refusing []tspath.RootedFilePath
 	for name := range refusals {
 		refusing = append(refusing, name)
@@ -414,6 +421,9 @@ func rewriteTries(g *fixGate, fs vfs.FS, program *compiler.Program, texts map[ts
 		}
 		if fixed.Rewrites == nil {
 			fixed.Rewrites = map[string]int{}
+		}
+		for label, count := range kinds[name] {
+			fixed.Rewrites[label] += count
 		}
 		for _, e := range rewrites[name] {
 			fixed.Rewrites[tryLabel] += strings.Count(e.text, "try ")

@@ -551,6 +551,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - `try.allSettled` accepted heterogeneous named arrays and tuples and kept fixed lengths for named or spread tuples. Named operands now use the native `.map(Effect.exit)` callback check and array result; explicit literal elements keep their tuple positions, and `--fix` preserves earlier contracts (VIP-18).
 
+- Old configuration reads in `catch` expressions still failed with `TS2349` after `vibelang --fix --fix-vip-only`; migration now removes the retired value call and preserves the catch boundary.
+
 
 - Source-child loader wiring introduced a `fileURLToPath` import alias and failed repositories’ native import policies. Setup now uses a namespace import and refreshes its own previously generated helpers while preserving manually observed bindings.
 
