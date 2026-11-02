@@ -298,6 +298,18 @@ func emitDeclarationIdentityStock(t *testing.T, w *Workspace, tsc string, stock 
 		t.Fatalf("stock declaration emit failed to run: %v\n%s", runErr, out)
 	}
 	if runErr != nil {
+		// A crashed compiler did not check the baseline. Only a real
+		// TypeScript error makes a generated project ineligible.
+		reportedError := false
+		for _, line := range strings.Split(string(out), "\n") {
+			if m := stockDiagnostic.FindStringSubmatch(line); m != nil && m[4] == "error" {
+				reportedError = true
+				break
+			}
+		}
+		if !reportedError {
+			t.Fatalf("stock declaration emit failed without a TypeScript diagnostic: %v\n%s", runErr, out)
+		}
 		// A missing prelude name is intentionally valid only in .vibe;
 		// stock's error-recovery `any` is not a TypeScript API contract.
 		// This also excludes mutations introducing VibeLang-only syntax.

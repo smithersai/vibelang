@@ -18,6 +18,8 @@ The registry-debt corpus names the unassigned diagnostic it must still reach. `E
 
 `FuzzFix` keeps its general safety, meaning and second-run checks against the current tooling chapter, which now states that one `vibelang --fix` run reaches a fixed point. The historical per-code completion and refusal oracle was removed; its corpus inputs remain.
 
+Declaration comparisons skip an ineligible stock baseline only when `tsc` prints a TypeScript error diagnostic. A launcher or runtime failure instead fails the test with the process output, so broken tooling cannot make `FuzzDeclarationIdentity` or `FuzzErrorDeclarationTwin` silently pass.
+
 The stock TypeScript declaration consumer keeps the producer's native module and resolution policy. A package selecting extensionless declaration imports for a bundler is checked with bundler resolution; native `NodeNext` and `Node16` consumers keep their own explicit-extension checks. A keyed resolution target covers both policies and TypeScript-extension imports. Native JSX output imports are attributed to their written `.tsx` source under `preserve` and `react-native`; unrelated source suffixes and ordinary string literals do not authorize `.jsx` imports.
 
 The sections below record the original suite design and campaign history, including rules that accepted VIPs have since replaced.
