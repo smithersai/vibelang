@@ -715,3 +715,5 @@ The 118 keyed inputs vary spacing, comments and the line breaks the catalog expl
 `FuzzReviewNamespaceMeanings` checks the [per-meaning precedence rule](../design/src/005-services.md) for `KeyFormat` and `Transferable`. Six type positions retain either the DOM type or a local type alias while the value or namespace position reads Effect's module. The control imports that module under a fresh explicit name.
 
 All 24 keyed inputs remain in the corpus. Twelve observed local-type shadowing gaps have precise feature and corpus entries owned by the spec apply lane. `TestReviewNamespaceMeaningsQuoted` keeps the precedence and fresh-import-name rules in the spec gate.
+
+The T3code `slide-text` Option-match corpus retains object payloads, local block declarations and explicitly plain callbacks. `FuzzFix` varies `Some`/`None`, imports and handler getters while checking the original and fixed value, event order and convergence through its existing oracle. A flow must rerun safe fixes after marking plain functions; this test does not claim that orchestration already converges.
