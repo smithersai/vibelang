@@ -4,6 +4,8 @@
 //
 //   MIGRATE_AGENT="<command>" bun .smithers/flows/migrate/run.ts --run <dir> \
 //     --target <repo> --package <dir> --test "<command>" [--test-cwd <dir>] --toolchain <dir>
+//
+// --scope <scope.txt> plans one whole-scope pass instead, which needs no agent.
 import { Cause, Effect, Exit, Layer, Option } from "effect";
 import * as Crypto from "effect/Crypto";
 import { FlowEngine } from "@smthrs/engine";
@@ -24,7 +26,8 @@ export function payloadFrom(argv: ReadonlyArray<string>) {
     ...(options["after-convert"] ? { afterConvert: many(options["after-convert"]) as Array<string> } : {}),
     ...(options["measure-command"] ? { measureCommand: one(options, "measure-command") } : {}),
     testCwd: typeof options["test-cwd"] === "string" ? options["test-cwd"] : ".",
-    toolchain: one(options, "toolchain")
+    toolchain: one(options, "toolchain"),
+    ...(options.scope ? { scope: one(options, "scope") } : {})
   };
 }
 

@@ -28,14 +28,17 @@ const SetupPayload = {
   testCwd: Schema.String,
   toolchain: Schema.String
 };
+/** A scope file (one repository-relative module per line) plans one whole-scope pass, which needs no agent. */
+const FlowPayload = { ...SetupPayload, scope: Schema.optional(Schema.String) };
 const RunPayload = { run: Schema.String };
+const PlanPayload = { run: Schema.String, scope: Schema.optional(Schema.String) };
 
 const declare = <const Tag extends string, P extends Schema.Struct.Fields>(tag: Tag, payload: P) =>
   Action.make(tag, { implementationVersion, payload, success: Outcome, error: StepFailed });
 
 export const UpgradeEffect = declare("migrate/UpgradeEffect", SetupPayload);
 export const Setup = declare("migrate/Setup", RunPayload);
-export const Plan = declare("migrate/Plan", RunPayload);
+export const Plan = declare("migrate/Plan", PlanPayload);
 export const Codemod = declare("migrate/Codemod", RunPayload);
 export const Compile = declare("migrate/Compile", RunPayload);
 export const Repair = declare("migrate/Repair", RunPayload);
@@ -52,17 +55,17 @@ const step = (name: string, options: Record<string, unknown>) =>
     catch: (error) => new StepFailed({ step: name, message: error instanceof Error ? error.message : String(error) })
   });
 
-const withAgent = (name: string, run: string) =>
-  Effect.flatMap(Effect.orDie(agent), (command) => step(name, { run, agent: Option.getOrUndefined(command) }));
+const withAgent = (name: string, options: { readonly run: string; readonly scope?: string | undefined }) =>
+  Effect.flatMap(Effect.orDie(agent), (command) => step(name, { ...options, agent: Option.getOrUndefined(command) }));
 
 /** The steps' implementations, which the flow's host composes. */
 export const layer = Layer.mergeAll(
   UpgradeEffect.toLayer(({ packages, ...input }) => step("upgrade-effect", { ...input, packages: [...packages] }), { implementationVersion }),
   Setup.toLayer(({ run }) => step("setup", { run }), { implementationVersion }),
-  Plan.toLayer(({ run }) => withAgent("plan", run), { implementationVersion }),
+  Plan.toLayer((input) => withAgent("plan", input), { implementationVersion }),
   Codemod.toLayer(({ run }) => step("codemod", { run }), { implementationVersion }),
   Compile.toLayer(({ run }) => step("compile", { run }), { implementationVersion }),
-  Repair.toLayer(({ run }) => withAgent("repair", run), { implementationVersion }),
+  Repair.toLayer(({ run }) => withAgent("repair", { run }), { implementationVersion }),
   Verify.toLayer(({ run }) => step("verify", { run }), { implementationVersion }),
   Record.toLayer(({ run }) => step("record", { run }), { implementationVersion }),
   Report.toLayer(({ run }) => step("report", { run }), { implementationVersion })
@@ -74,14 +77,14 @@ export default Flow.make("migrate", {
   // The steps change the target repository and the run directory the payload
   // names, both outside this repository, so the flow declares no paths here.
   effects: { reads: [], writes: [], mode: "expected", onConflict: "serialize" },
-  payload: SetupPayload,
+  payload: FlowPayload,
   success: Outcome,
   error: StepFailed,
-  body: Node.capture({ implementationVersion }, (input: Schema.Struct.Type<typeof SetupPayload>) => {
+  body: Node.capture({ implementationVersion }, ({ scope, ...input }: Schema.Struct.Type<typeof FlowPayload>) => {
     const run = { run: input.run };
     return UpgradeEffect.call(input).pipe(
       Node.andThen(Setup.call(run)),
-      Node.andThen(Plan.call(run)),
+      Node.andThen(Plan.call(scope === undefined ? run : { ...run, scope })),
       Node.andThen(Codemod.call(run)),
       Node.andThen(Compile.call(run)),
       Node.andThen(Repair.call(run)),

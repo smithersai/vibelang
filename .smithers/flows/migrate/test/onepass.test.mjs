@@ -291,6 +291,19 @@ test("the normal flow codemod and repair actions use one-pass without an agent",
 })
 
 
+test("the flow's plan step plans a scope without an agent, and a later execution keeps that plan", async () => {
+  const f = await fixture()
+  try {
+    const planned = await flowStep("plan", { run: f.run, scope: f.scope })
+    assert.equal(planned.summary, "1 batches")
+    assert.equal(readJson(paths(f.run).plan).mode, "one-pass")
+    await flowStep("codemod", { run: f.run })
+    const again = await flowStep("plan", { run: f.run, scope: f.scope })
+    assert.equal(again.summary, "1 batches")
+    assert.equal(readJson(paths(f.run).plan).mode, "one-pass")
+  } finally { rmSync(f.root, { recursive: true, force: true }) }
+})
+
 test("root attribution follows conditional workspace exports through a bare package import", async () => {
   const f = await fixture()
   try {

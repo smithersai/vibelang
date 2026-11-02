@@ -1953,7 +1953,8 @@ export async function flowStep(step, options) {
   const done = (batch, result) => ({ step, batch: batch ?? "", summary: summaries[step](result) })
   if (step === "upgrade-effect" || step === "setup" || step === "report") return done("", await steps[step](options))
   if (step === "plan") {
-    const result = await plan(options)
+    // A later execution keeps the plan the first one recorded: a scope plans only before its rename.
+    const result = await plan(existsSync(paths(options.run).plan) ? { ...options, scope: undefined } : options)
     if (!result.accepted) throw new Error(`plan needs an agent: set MIGRATE_AGENT, or answer ${result.prompt} and run step.mjs plan --accept`)
     return done("", result)
   }

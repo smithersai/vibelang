@@ -325,6 +325,8 @@ MIGRATE_AGENT="<agent command>" bun .smithers/flows/migrate/run.ts --run <run> -
 
 The agent steps read `MIGRATE_AGENT` through Effect `Config`; without it, they fail with the prompt to answer, and the standalone steps take over from there. The agent is a command, not `@smthrs/agent`: a repair edits files and runs the target's compiler and tests in its repository on a build host, which a coding agent's non-interactive mode does today, and this repository's `.smithers` composes no model seat for `AgentAction`. A test supplies a scripted command.
 
+`--scope <scope.txt>` plans one whole-scope pass instead (`mode: "one-pass"`), so the run needs no agent: repair settles by diagnostic cause. A later execution keeps the plan the first one recorded.
+
 ## The idiom context
 
 `context.md` is the repair agent's system prompt. `build-context.mjs` generates it, so it is never edited by hand:
