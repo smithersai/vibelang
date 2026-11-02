@@ -26,11 +26,11 @@ effect function parseId(raw: string) {
 effect function profile(raw: string) {
   const id = try parseId(raw)                 // may throw InvalidId
   try {
-    return try Users.find(String(id))
+    return try (try Users).find(String(id))
   } catch (e) {                           // e: UserNotFound
     return guest
   } finally {
-    try Metrics.increment("profile")
+    try (try Metrics).increment("profile")
   }
 }
 // Effect<User, InvalidId, Users | Metrics>

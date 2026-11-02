@@ -71,7 +71,7 @@ const SessionLive = Layer.effect(Session, effect {
 
 effect function greet(id: string) {
   try {
-    return try Users.find(id)
+    return try (try Users).find(id)
   } catch (error) {
     return `No user ${error.id}`
   }
@@ -81,13 +81,13 @@ effect function lookups() {
   provide wire(UsersLive, DirectoryLive, StatsLive) {
     const found = try greet("42")
     const missing = try greet("7")
-    return { found, missing, region: (try Users).region, stats: `${try Stats.count()} lookups` }
+    return { found, missing, region: (try Users).region, stats: `${try (try Stats).count()} lookups` }
   }
 }
 
 effect function session() {
   provide SessionLive {
-    return try Session.name()
+    return try (try Session).name()
   }
 }
 

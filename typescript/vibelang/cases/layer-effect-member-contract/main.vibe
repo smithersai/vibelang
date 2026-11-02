@@ -15,7 +15,7 @@ const GreeterLive = Layer.effect(Greeter, effect {
 })
 
 const StampedLive = Layer.effect(Stamped, effect {
-  return { effect greet(name) { return `hi ${name} at ${try Clock2.now()}` } }
+  return { effect greet(name) { return `hi ${name} at ${try (try Clock2).now()}` } }
 })
 
 const BuilderLive = Layer.effect(Builder, effect {
@@ -27,6 +27,6 @@ const BuilderLive = Layer.effect(Builder, effect {
 // expect-result: ["hi a at 42","hi b at 42","built c at 42"]
 export effect function main() {
   provide wire(Clock2Live, GreeterLive, StampedLive, BuilderLive) {
-    return [try Greeter.greet("a"), try Stamped.greet("b"), try Builder.greet("c")]
+    return [try (try Greeter).greet("a"), try (try Stamped).greet("b"), try (try Builder).greet("c")]
   }
 }

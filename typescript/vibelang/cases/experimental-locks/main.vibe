@@ -3,20 +3,20 @@ import { Locks } from "vibelang-runtime/experimental/Locks"
 import { ExperimentalNodeLocks } from "vibelang-runtime/experimental/platform-node"
 
 effect function contend() {
-  using held = try Locks.hold("experimental-locks")
-  using tried = try Locks.tryHold("experimental-locks")
+  using held = try (try Locks).hold("experimental-locks")
+  using tried = try (try Locks).tryHold("experimental-locks")
   return { held: (try (try Locks).query).held.length, tried: tried.isSome() }
 }
 
 effect function steal() {
-  using first = try Locks.hold("experimental-locks-steal")
-  using second = try Locks.hold("experimental-locks-steal", { steal: true })
+  using first = try (try Locks).hold("experimental-locks-steal")
+  using second = try (try Locks).hold("experimental-locks-steal", { steal: true })
   try first.lost
   return true
 }
 
 effect function reserved() {
-  using held = try Locks.hold("-reserved")
+  using held = try (try Locks).hold("-reserved")
   return "held"
 }
 

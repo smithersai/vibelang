@@ -3199,7 +3199,7 @@ typescript/vibelang/cases/factory-conditional-running-arm/main.vibe:10:14 lambda
 typescript/vibelang/cases/factory-conditional-running-arm/main.vibe:14:20 lambda effectFn keyword
 typescript/vibelang/cases/factory-conditional-running-arm/main.vibe:14:70 byname program table
 typescript/vibelang/cases/factory-contracts.fail/main.vibe:10:44 lambda choice fallback
-typescript/vibelang/cases/factory-contracts.fail/main.vibe:11:44 lambda dual fallback
+typescript/vibelang/cases/factory-contracts.fail/main.vibe:11:44 lambda choice fallback
 typescript/vibelang/cases/factory-contracts.fail/main.vibe:12:44 lambda plain fallback
 typescript/vibelang/cases/factory-forwarding/main.vibe:12:49 lambda plain table
 typescript/vibelang/cases/factory-forwarding/main.vibe:4:21 lambda plain annotation
@@ -4252,8 +4252,8 @@ typescript/vibelang/cases/match-effect-tagged-aliases/main.vibe:30:9 lambda dual
 typescript/vibelang/cases/match-error-copy/main.vibe:3:29 lambda dual fallback
 typescript/vibelang/cases/match-exhaustive-last-arm/arms.vibe:23:23 lambda dual fallback
 typescript/vibelang/cases/match-extractor-errors.fail/main.vibe:26:10 lambda effectFn table
-typescript/vibelang/cases/match-extractor-errors.fail/main.vibe:26:26 lambda effectFn keyword
-typescript/vibelang/cases/match-extractor-errors.fail/main.vibe:26:50 lambda dual fallback
+typescript/vibelang/cases/match-extractor-errors.fail/main.vibe:26:32 lambda effectFn table
+typescript/vibelang/cases/match-extractor-errors.fail/main.vibe:26:56 lambda dual fallback
 typescript/vibelang/cases/match-extractor-errors.fail/main.vibe:27:13 lambda dual fallback
 typescript/vibelang/cases/match-extractor-errors.fail/main.vibe:28:31 lambda dual fallback
 typescript/vibelang/cases/match-extractor-errors.fail/main.vibe:29:14 lambda dual fallback
@@ -6416,11 +6416,19 @@ typescript/vibelang/cases/service-identity/main.vibe:85:66 lambda program table
 typescript/vibelang/cases/service-implementation-valid/main.vibe:8:38 lambda effectFn keyword
 typescript/vibelang/cases/service-interface-commas-runtime/main.vibe:7:43 lambda effectFn annotation
 typescript/vibelang/cases/service-interface-commas-runtime/main.vibe:7:76 lambda effectFn annotation
+typescript/vibelang/cases/service-key-member-reads/main.vibe:64:43 lambda plain table
 typescript/vibelang/cases/service-key-no-implicit-override/main.vibe:15:34 lambda plain fallback
+typescript/vibelang/cases/service-key-properties-native/main.vibe:17:9 lambda plain annotation
+typescript/vibelang/cases/service-key-properties-native/main.vibe:18:11 lambda plain annotation
+typescript/vibelang/cases/service-key-properties-native/main.vibe:19:9 lambda plain annotation
+typescript/vibelang/cases/service-key-properties-native/main.vibe:20:13 lambda plain annotation
+typescript/vibelang/cases/service-key-properties-native/main.vibe:21:7 lambda plain annotation
 typescript/vibelang/cases/service-local-shape-members-types.fail/main.vibe:5:65 lambda plain fallback
 typescript/vibelang/cases/service-local-shape-members/main.vibe:10:34 lambda plain fallback
 typescript/vibelang/cases/service-local-shape-members/main.vibe:10:54 lambda plain fallback
 typescript/vibelang/cases/service-local-shape-members/main.vibe:4:65 lambda plain fallback
+typescript/vibelang/cases/service-member-explicit/main.vibe:8:26 lambda plain fallback
+typescript/vibelang/cases/service-member-explicit/main.vibe:8:51 lambda plain fallback
 typescript/vibelang/cases/service-member-run-head/main.vibe:10:100 lambda effectFn table
 typescript/vibelang/cases/service-member-run-head/main.vibe:10:69 lambda effectFn table
 typescript/vibelang/cases/service-member-run-head/main.vibe:5:45 lambda effectFn table
@@ -7103,7 +7111,7 @@ typescript/vibelang/cases/vibelang-services-default/main.vibe:30:60 lambda plain
 typescript/vibelang/cases/vibelang-services-default/main.vibe:47:38 lambda program table
 typescript/vibelang/cases/vibelang-services-default/main.vibe:48:33 lambda program table
 typescript/vibelang/cases/vibelang-services-ts/main.vibe:11:24 byname program table
-typescript/vibelang/cases/vibelang-services-ts/main.vibe:24:19 lambda effectFn keyword
+typescript/vibelang/cases/vibelang-services-ts/main.vibe:24:19 lambda effectFn fallback
 typescript/vibelang/cases/vibelang-services-ts/main.vibe:32:29 lambda program table
 typescript/vibelang/cases/vibelang-services/main.vibe:28:10 lambda effectFn keyword
 typescript/vibelang/cases/vibelang-services/main.vibe:34:11 lambda effectFn keyword
@@ -7699,4 +7707,3 @@ typescript/vibelang/lsp-fixture/src/old-declarations.vibe:7:30 block appended/pr
 typescript/vibelang/lsp-fixture/src/old-declarations.vibe:9:3 lambda effectFn keyword
 typescript/vibelang/lsp-fixture/src/provide-services.vibe:2:33 lambda plain annotation
 typescript/vibelang/lsp-fixture/src/provide-services.vibe:2:68 lambda plain annotation
-typescript/vibelang/lsp-fixture/src/services.vibe:30:55 byname program table

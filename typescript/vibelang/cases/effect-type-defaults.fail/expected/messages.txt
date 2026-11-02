@@ -1,6 +1,6 @@
 main.vibe(14,10): error EK9201: Gone can escape find, but its contract says E = never.
 Catch it inside find, or change the contract to string!Gone!.
-main.vibe(14,10): error EK9202: find needs Users, but its contract says R = never.
+main.vibe(14,15): error EK9202: find needs Users, but its contract says R = never.
 Provide Users inside find with provide layer { … }, or add it to the contract: string!!Users.
-main.vibe(18,10): error EK9202: lookup needs Users, but its contract says R = never.
+main.vibe(18,15): error EK9202: lookup needs Users, but its contract says R = never.
 Provide Users inside lookup with provide layer { … }, or add it to the contract: string!Gone!Users.

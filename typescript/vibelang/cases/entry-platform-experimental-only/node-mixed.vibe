@@ -5,5 +5,5 @@ import "vibelang/platform/node"
 
 export effect function main() {
   const pid = try (try Experimental.Process.Process).pid
-  try Console.log(`node mixed ${try FileSystem.exists("package.json")} ${pid > 0}`)
+  try Console.log(`node mixed ${try (try FileSystem.FileSystem).exists("package.json")} ${pid > 0}`)
 }

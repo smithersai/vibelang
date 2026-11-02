@@ -13,7 +13,7 @@ const listFlows = effect () => {
 // initialized: the call runs at the const, and Effect.void is the value.
 export const report = effect (code: number | undefined) =>
   try Effect.suspend(effect () => {
-    const chosen = code === undefined ? Effect.void : try Status.set(code)
+    const chosen = code === undefined ? Effect.void : try (try Status).set(code)
     return chosen
   })
 
@@ -34,5 +34,5 @@ export const programs = effect (code: number) => try Effect.suspend(effect () =>
 export const ran = effect (code: number | undefined) =>
   try Effect.suspend(effect () => {
     if (code === undefined) return try Effect.void
-    return try Status.set(code)
+    return try (try Status).set(code)
   })

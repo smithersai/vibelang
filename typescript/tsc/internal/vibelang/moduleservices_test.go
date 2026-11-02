@@ -170,7 +170,7 @@ func moduleServiceProgram(t *testing.T, source string) (*compiler.Program, *ast.
 // service's.
 func TestModuleServiceThroughPreludeNamespace(t *testing.T) {
 	t.Parallel()
-	_, _, js := moduleServiceProgram(t, "export effect function read(path: string) { return try Control.FileSystem.readFileString(path) }\n"+
+	_, _, js := moduleServiceProgram(t, "export effect function read(path: string) { return try (try Control.FileSystem.FileSystem).readFileString(path) }\n"+
 		"export effect function implementation() { return try Control.FileSystem.FileSystem }\n"+
 		"export const noop = Control.FileSystem.layerNoop({})\n"+
 		"export function exists(fs: Control.FileSystem, path: string) { return fs.exists(path) }\n")
@@ -190,11 +190,10 @@ func TestModuleServiceThroughPreludeNamespace(t *testing.T) {
 	}
 }
 
-// D311 in the editor: completions after FileSystem. list the module's
-// exports and the service's members, and hover and go to definition on a
-// member reach the service's declaration.
+// VIP-10 keeps namespace completions native. Hover and definition on the
+// explicitly read implementation still reach the service declaration.
 func TestEditorModuleServices(t *testing.T) {
-	source := "export function read(path: string) {\n  return FileSystem.readFileString(path)\n}\n"
+	source := "export effect function read(path: string) {\n  const fs = try FileSystem.FileSystem\n  return try fs.readFileString(path)\n}\n"
 	program, file, _, converters := editorProgram(t, source)
 	service := ls.NewLanguageService(nil, program, fixHost{program: program, converters: converters}, file.FileName().AsString())
 	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
@@ -209,9 +208,14 @@ func TestEditorModuleServices(t *testing.T) {
 		members[symbol.Name()] = true
 	}
 	done()
-	for _, name := range []string{"readFileString", "exists", "layerNoop", "makeNoop"} {
+	for _, name := range []string{"FileSystem", "layerNoop", "makeNoop"} {
 		if !members[name] {
 			t.Errorf("completions after FileSystem. lack %s", name)
+		}
+	}
+	for _, name := range []string{"readFileString", "exists", "hostname", "pid"} {
+		if members[name] {
+			t.Errorf("namespace completion leaked implementation member %s", name)
 		}
 	}
 	uri := lsconv.FileNameToDocumentURI(file.FileName())
@@ -299,8 +303,7 @@ func findNode(root *ast.Node, match func(*ast.Node) bool) *ast.Node {
 }
 
 // D311 reaches the experimental services (D313) in the editor too:
-// completions after Experimental.Process. list the module's exports and the
-// service's members, and hover and go to definition on the service's hostname
+// completions after Experimental.Process. list only module exports, and hover and go to definition on the service's hostname
 // reach its declaration. The service is got with try and its Effect run with
 // try (VIP-1, VIP-5; VIP-10 denies Experimental.Process.hostname).
 func TestEditorExperimentalServices(t *testing.T) {
@@ -321,9 +324,14 @@ func TestEditorExperimentalServices(t *testing.T) {
 		members[symbol.Name()] = true
 	}
 	done()
-	for _, name := range []string{"hostname", "pid", "isRunning", "kill", "layerTest"} {
+	for _, name := range []string{"Process", "make", "layerTest"} {
 		if !members[name] {
 			t.Errorf("completions after Experimental.Process. lack %s", name)
+		}
+	}
+	for _, name := range []string{"readFileString", "exists", "hostname", "pid"} {
+		if members[name] {
+			t.Errorf("namespace completion leaked implementation member %s", name)
 		}
 	}
 	uri := lsconv.FileNameToDocumentURI(file.FileName())
@@ -343,10 +351,10 @@ func TestEditorModuleServiceCompletionEndpoint(t *testing.T) {
 		name, access string
 		want         []string
 	}{
-		{"effect", "FileSystem.", []string{"readFileString", "exists", "FileSystem", "make", "makeNoop"}},
-		{"effect partial", "FileSystem.rea", []string{"readFileString"}},
-		{"experimental", "Experimental.Process.", []string{"hostname", "pid", "Process", "make", "layerTest"}},
-		{"experimental partial", "Experimental.Process.hos", []string{"hostname"}},
+		{"effect", "FileSystem.", []string{"FileSystem", "make", "makeNoop"}},
+		{"effect partial", "FileSystem.mak", []string{"make", "makeNoop"}},
+		{"experimental", "Experimental.Process.", []string{"Process", "make", "layerTest"}},
+		{"experimental partial", "Experimental.Process.lay", []string{"layerTest"}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			source := "export function read() { return " + test.access + " }\n"

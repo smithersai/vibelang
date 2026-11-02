@@ -2,7 +2,7 @@
 import { Stamp, Users } from "./services.vibe"
 
 effect function stamped() {
-  return `${try Users.find("1")} at ${try Stamp.now()}`
+  return `${try (try Users).find("1")} at ${try (try Stamp).now()}`
 }
 
 export effect function main() {

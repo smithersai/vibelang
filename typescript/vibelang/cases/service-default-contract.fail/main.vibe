@@ -38,5 +38,5 @@ export effect function version(): number!! {
 }
 
 export effect function read(): string!! {
-  return try Reader.read()
+  return try (try Reader).read()
 }

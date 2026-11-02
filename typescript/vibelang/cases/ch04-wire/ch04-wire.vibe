@@ -36,8 +36,8 @@ const env = new Map<string, string>([["DATABASE_URL", "postgres://wired"]])
 const rows: ReadonlyArray<User> = [{ id: "1", name: "Ada", email: "ada@example.com" }]
 
 effect function welcome(id: string) {
-  const user = try Users.find(id)
-  try Mailer.send(user.email, `Welcome, ${user.name}!`)
+  const user = try (try Users).find(id)
+  try (try Mailer).send(user.email, `Welcome, ${user.name}!`)
   return user.name
 }
 // Effect<string, UserNotFound | MailError, Users | Mailer>

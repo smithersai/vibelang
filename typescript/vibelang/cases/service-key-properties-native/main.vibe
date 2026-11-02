@@ -1,0 +1,26 @@
+// expect-result: ["Users","vip10/native-key",0,true,true]
+// VIP-10: a key's actual properties retain TypeScript meaning even when the
+// implementation has identically named fields or methods.
+interface Api {
+  key: number
+  name(): number
+  length(): number
+  pipe(): number
+  toString(): number
+  of(value: Api): number
+}
+service Users: Api {
+  static readonly key = "vip10/native-key"
+}
+const implementation: Api = {
+  key: 1,
+  name: () => 2,
+  length: () => 3,
+  pipe: () => 4,
+  toString: () => 5,
+  of: () => 6
+}
+export effect function main() {
+  return [Users.name, Users.key, Users.length, Users.pipe() === Users,
+    Users.of(implementation) === implementation]
+}

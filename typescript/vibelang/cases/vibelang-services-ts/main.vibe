@@ -1,13 +1,13 @@
-// TypeScript-authored Context.Service classes and Effect's own services are
-// used like .vibe services (D41): a member that is an Effect value runs when
-// called, a member the service declares wins over the key's own pipe, and a
-// member that returns a plain value still looks the service up.
+// TypeScript-authored Context.Service classes and Effect services use explicit
+// lookup as .vibe services do (VIP-10). Run an Effect-valued member with try;
+// actual key properties keep their native TypeScript meaning. Even plain
+// implementation methods require their service lookup.
 import { Effect, Layer } from "effect"
 import { layer as PathLayer, Path } from "effect/Path"
 import { UserRepo, UserRepoLive } from "./repo.ts"
 
 export effect function describe(id: string) {
-  const user = try UserRepo.byId(id)
+  const user = try (try UserRepo).byId(id)
   const everyone = try (try UserRepo).all
   return `${user.name} of ${everyone.length}`
 }
@@ -17,11 +17,11 @@ export effect function piped() {
 }
 
 export effect function joined(a: string, b: string) {
-  return try Path.join(a, b)
+  return (try Path).join(a, b)
 }
 
 // A lambda whose body only looks a service up is an Effect function too.
-const underRoot = effect (part: string) => try Path.join("root", part)
+const underRoot = effect (part: string) => (try Path).join("root", part)
 
 effect function everything() {
   return [try describe("2"), try piped(), try joined("a", "b"), try underRoot("c")]

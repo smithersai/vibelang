@@ -1,2 +1,2 @@
-(try Users).region
-(try Users).find
+Property 'region' does not exist on type 'typeof Users'.
+Property 'find' does not exist on type 'typeof Users'.

@@ -41,7 +41,7 @@ const UsersAudited = Layer.effect(Users, effect {
   const db = try Database
   return {
     effect find(id) {
-      try Audit.record(`users.find ${id}`)    // looked up on every call
+      try (try Audit).record(`users.find ${id}`)    // looked up on every call
       return try findIn(db, id)
     },
     effect rename(id, name) { try renameIn(db, id, name) }

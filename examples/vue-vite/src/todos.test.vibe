@@ -9,7 +9,7 @@ it.effect("completes a todo", effect () => {
 it.effect("fails with TodoNotFound for an unknown id", effect () => {
   provide TodosLive {
     try {
-      try Todos.complete(99)
+      try (try Todos).complete(99)
       assert.fail("expected TodoNotFound")
     } catch (error) {
       assert.instanceOf(error, TodoNotFound)

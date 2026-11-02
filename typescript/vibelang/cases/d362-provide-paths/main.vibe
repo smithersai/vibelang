@@ -41,7 +41,7 @@ export effect function main() {
     provided = (try Left).left + (try Right).right
   }
   return {
-    common: try common(true), tuple: try tuple(), spread: try spread(), context: try context(), default: try Default.next(4),
+    common: try common(true), tuple: try tuple(), spread: try spread(), context: try context(), default: try (try Default).next(4),
     events: events.slice(0, 3), builds: events.filter((event) => event === "build").length, provided
   }
 }

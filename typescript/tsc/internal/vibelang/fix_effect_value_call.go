@@ -44,6 +44,16 @@ func effectValueCallEditsLabeled(a *analyzer, file *ast.SourceFile, call *ast.No
 	c := a.checker
 	callee := call.Expression()
 	t := c.GetApparentType(c.GetTypeAtLocation(callee))
+	var memberIdentifier *checker.Type
+	if ast.IsPropertyAccessExpression(callee) && !ast.IsPrivateIdentifier(callee.Name()) {
+		receiver := c.GetApparentType(c.GetTypeAtLocation(callee.Expression()))
+		if identifier, shape := legacyServiceMember(c, callee, receiver); identifier != nil &&
+			(isControlType(identifier) || c.GetPropertyOfType(receiver, callee.Name().Text()) == nil) {
+			memberIdentifier = identifier
+			// Migration reads the retired projection without restoring it to normal checking.
+			t = c.GetApparentType(c.GetTypeOfPropertyOfType(shape, callee.Name().Text()))
+		}
+	}
 	if len(c.GetSignaturesOfType(t, checker.SignatureKindCall)) != 0 {
 		return 0, "", nil, "", false
 	}
@@ -53,7 +63,7 @@ func effectValueCallEditsLabeled(a *analyzer, file *ast.SourceFile, call *ast.No
 	parens := !catchHead && !tried && tryNeedsParentheses(call)
 	if ast.IsPropertyAccessExpression(callee) && !ast.IsPrivateIdentifier(callee.Name()) {
 		receiver := callee.Expression()
-		if identifier, _ := serviceMember(c, callee, c.GetApparentType(c.GetTypeAtLocation(receiver))); identifier != nil {
+		if memberIdentifier != nil {
 			// S.m(), where the service's member m is an Effect: (try S).m.
 			if effectOfValue(c, t) == nil {
 				return 0, "", nil, "", false

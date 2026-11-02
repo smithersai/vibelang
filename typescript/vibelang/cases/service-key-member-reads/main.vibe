@@ -1,8 +1,8 @@
-// expect: EK4503
-// A member the service declares wins over the key's own members (D41), so
-// reading one through the key is EK4503 even when the key, a class and an
-// Effect Context key, has a member of the same name.
-service Person { name: string }
+// expect-result: ["Person","Person","function","function"]
+// VIP-10: actual key properties keep their native TypeScript meaning even
+// when an implementation declares the same names. Read or call an
+// implementation member only after an explicit lookup.
+service Person { static readonly key = "key-names/Person"; name: string }
 
 export effect function readName() {
   provide Person = { name: "Ada" } {
@@ -11,6 +11,7 @@ export effect function readName() {
 }
 
 service Shadowed {
+  static readonly key = "key-names/Shadowed"
   length: number
   prototype: string
   caller: string
@@ -35,8 +36,8 @@ service Shadowed {
   Identifier: string
 }
 
-service Named { name(): string!! }
-service Plain { region: string }
+service Named { static readonly key = "key-names/Named"; name(): string!! }
+service Plain { static readonly key = "key-names/Plain"; region: string }
 
 export function length() { return Shadowed.length }
 export function prototype() { return Shadowed.prototype }
@@ -63,18 +64,19 @@ export function identifier() { return Shadowed.Identifier }
 export function nested() { return [1].map(() => Person.name) }
 export function method() { return Named.name }
 
-// Valid: a call, the implementation, the key's members that the service does
-// not declare, and the module's top level, where the member rules do not apply (D90).
-export effect function called() { return try Named.name() }
+// Explicit implementation calls and actual key properties keep their own
+// meanings at every source location.
+export effect function called() { return try (try Named).name() }
 export effect function implementation() { return [(try Person).name, (try Shadowed).length, (try Shadowed).key] }
 export function keyMembers() { return [Plain.name, Plain.key] }
 export const className = Person.name
 
 // Valid: a local schema's interface extends Schema.Schema.Type, a type.
 export effect function typed() {
-  schema Local { readonly value: string }
+  schema Local { value: string }
   return try Schema.decodeUnknownEffect(Local)({ value: "v" })
 }
 
-// Spec rule: docs/design/src/005-services.md#7172c4fb914aae62
-// Chapter 005: missing key has a targeted diagnostic in local and unnamed-package service declarations (diag-service-key-names.fail).
+export effect function main() {
+  return [try readName(), className, typeof Shadowed.pipe, typeof Shadowed.of]
+}

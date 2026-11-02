@@ -47,14 +47,14 @@ effect function writeRows(file: TempFile, rows: ReadonlyArray<string>) {
 }
 
 effect function exportReport(id: string) {
-  using tmp = try TempFiles.create()
+  using tmp = try (try TempFiles).create()
   try {
-    try writeRows(tmp, try Reports.rows(id))
-    return try Storage.upload(tmp)
+    try writeRows(tmp, try (try Reports).rows(id))
+    return try (try Storage).upload(tmp)
   } catch (e) {                    // e: UploadError
-    return try Storage.queueRetry(id)
+    return try (try Storage).queueRetry(id)
   } finally {
-    try Metrics.increment("exports")
+    try (try Metrics).increment("exports")
   }
 }
 
@@ -96,8 +96,8 @@ effect function mixedCause() {
 
 effect function moveFunds(from: Account, to: Account, amount: number) {
   try Effect.uninterruptible(effect {
-    try Ledger.debit(from, amount)
-    try Ledger.credit(to, amount)     // an interruption waits until both have run
+    try (try Ledger).debit(from, amount)
+    try (try Ledger).credit(to, amount)     // an interruption waits until both have run
   })
 }
 

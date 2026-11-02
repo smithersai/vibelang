@@ -56,7 +56,7 @@ effect function slowQuery(id: string) {
 
 effect function syncInventory(store: Store) {
   syncRuns++
-  return try Inventory.sync(store)
+  return try (try Inventory).sync(store)
 }
 
 // The one rule
@@ -121,7 +121,7 @@ effect function startServer() {
   const cachedConfig = try Effect.cached(effect { return loadConfig() })  // Effect.cached returns a program
   const config = try cachedConfig                           // loads once
   const again = try cachedConfig                            // returns the cached value
-  return try Http.listen(config.port)
+  return try (try Http).listen(config.port)
 }
 
 // An Effect value from TypeScript is a program: calling it runs it.

@@ -29,7 +29,7 @@ export const TodosLive = Layer.effect(Todos, effect {
 
 export effect function completeTodo(id: number) {
   try {
-    const todo = try Todos.complete(id)
+    const todo = try (try Todos).complete(id)
     return `Completed: ${todo.title}`
   } catch (error) {
     return `No todo #${error.id}`
@@ -43,5 +43,5 @@ export interface Board {
 
 export effect function loadBoard(): Board!!Todos {
   const messages = [try completeTodo(2), try completeTodo(99)]
-  return { todos: try Todos.list(), messages }
+  return { todos: try (try Todos).list(), messages }
 }

@@ -32,7 +32,7 @@ effect function aliases(id: string) {
 // NOTE: UserRepo.all is an Effect-valued member, not a method; calling it runs it (Chapter 11's
 // "a value of type Effect, called as p()"). Whether `UserRepo.all()` is the right spelling is open.
 effect function directly(id: string) {
-  const user = try UserRepo.byId(id)
+  const user = try (try UserRepo).byId(id)
   const everyone = try (try UserRepo).all
   return `${user.name} of ${everyone.length}`
 }

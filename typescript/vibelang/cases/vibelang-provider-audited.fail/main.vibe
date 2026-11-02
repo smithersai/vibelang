@@ -28,7 +28,7 @@ export const UsersAudited = Layer.effect(Users, effect {
   const db = try Database
   return {
     effect find(id) {
-      try Audit.record(`users.find ${id}`)
+      try (try Audit).record(`users.find ${id}`)
       const user = try db.query(`select ${id}`)
       if (user === undefined) return try Effect.fail(new UserNotFound({ id }))
       return try Effect.succeed(user)
@@ -38,7 +38,7 @@ export const UsersAudited = Layer.effect(Users, effect {
 
 export class UsersLogged implements Users {
   effect find(id: string) {
-    try Audit.record(`find ${id}`)
+    try (try Audit).record(`find ${id}`)
     return try Effect.fail(new UserNotFound({ id }))
   }
 }

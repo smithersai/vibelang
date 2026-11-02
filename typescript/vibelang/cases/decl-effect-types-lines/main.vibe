@@ -17,8 +17,8 @@ const CounterLive = Layer.effect(Counter, effect {
 
 export effect function main() {
   return try Effect.provide(effect {
-    try Counter.increment()
-    try Counter.increment()
-    return { count: try Counter.read() }
+    try (try Counter).increment()
+    try (try Counter).increment()
+    return { count: try (try Counter).read() }
   }, CounterLive)
 }

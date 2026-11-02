@@ -38,7 +38,7 @@ export effect function failing(id: string): Effect<string, Gone> {
 }
 
 export effect function found(id: string): Effect<string, Gone, Users> {
-  return try Users.find(id)
+  return try (try Users).find(id)
 }
 
 export effect function guest(id: string): Effect<string, never, Users> {
@@ -46,7 +46,7 @@ export effect function guest(id: string): Effect<string, never, Users> {
 }
 
 export effect function inferred(id: string): Effect<string, Gone, Users> {
-  return try Users.find(id)
+  return try (try Users).find(id)
 }
 
 export effect function onlyErrors(id: string): Effect<string, Gone> {
@@ -55,7 +55,7 @@ export effect function onlyErrors(id: string): Effect<string, Gone> {
 }
 
 export effect function partial(id: string): Effect<string, Gone, Users> {
-  return try Users.find(id)
+  return try (try Users).find(id)
 }
 
 export effect function run(program: Effect<number>): Effect<number> {
@@ -72,8 +72,8 @@ export effect function main() {
       inferred: try inferred("42"),
       onlyErrors: try onlyErrors("x"),
       partial: try partial("42"),
-      count: try Users.count(),
-      all: try Users.all(),
+      count: try (try Users).count(),
+      all: try (try Users).all(),
       ran: try run(plain())
     }
   }

@@ -501,11 +501,17 @@ func isMemberCallSite(node *ast.Node) bool {
 	return call != nil && ast.IsCallExpression(call) && call.Expression() == node && call.QuestionDotToken() == nil && inLowerableBody(call)
 }
 
-// serviceMember returns the identifier and the shape of the service whose
-// member node, at a member call site, calls: receiver is the apparent type
-// of S in `S.member(…)`, and it must be a Context key whose service declares
-// member. It returns nil and nil otherwise.
+// serviceMember exposes only the Control operation protocol. VIP-10 denies
+// implicit implementation lookup through an ordinary service key.
 func serviceMember(c *checker.Checker, node *ast.Node, receiver *checker.Type) (identifier *checker.Type, shape *checker.Type) {
+	identifier, shape = legacyServiceMember(c, node, receiver)
+	if identifier == nil || !isControlType(identifier) {
+		return nil, nil
+	}
+	return identifier, shape
+}
+
+func legacyServiceMember(c *checker.Checker, node *ast.Node, receiver *checker.Type) (identifier *checker.Type, shape *checker.Type) {
 	identifier, shape = serviceOfKey(c, receiver)
 	if shape == nil {
 		// FileSystem.readFileString(path): the module's name names its service (D311).
@@ -517,11 +523,8 @@ func serviceMember(c *checker.Checker, node *ast.Node, receiver *checker.Type) (
 	return identifier, shape
 }
 
-// memberReceiver is the checker's member receiver hook. In a call
-// `S.member(…)` in a .vibe function body, where S is a Context key whose
-// service declares member, member is read from the service's shape (design
-// D41). A member the service declares therefore wins over the key's own
-// members, such as pipe, of, and use.
+// memberReceiver projects Control operations without changing native service
+// key properties, which TypeScript checks directly (VIP-10).
 func memberReceiver(c *checker.Checker, node *ast.Node, receiver *checker.Type) *checker.Type {
 	if !isMemberCallSite(node) && !isClauseOperation(node) {
 		return receiver

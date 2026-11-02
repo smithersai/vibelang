@@ -18,7 +18,7 @@ function describe(users: Users.Shape) {
 }
 
 effect function lookup() {
-  return `${describe(try Users)} ${sourceOf(shaped)} ${(try Users.find("2")).name} ${try Prefix}${try Search.find("q")} beta ${(try Flags).beta}`
+  return `${describe(try Users)} ${sourceOf(shaped)} ${(try (try Users).find("2")).name} ${try Prefix}${try (try Search).find("q")} beta ${(try Flags).beta}`
 }
 
 export effect function viaVibe() {

@@ -21,7 +21,7 @@ export const UsersLive = Layer.succeed(Users, {
 
 export effect function greet(id: string) {
   try {
-    const user = try Users.find(id)
+    const user = try (try Users).find(id)
     return `Welcome, ${user.name}`
   } catch (error) {
     return `No user ${error.id}`

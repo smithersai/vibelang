@@ -25,7 +25,7 @@ export const UsersLive = Layer.effect(Users, effect {
 export effect function createUser() {
   try {
     const input = try HttpServerRequest.schemaBodyJson(CreateUser)
-    const user = try Users.create(input.name)
+    const user = try (try Users).create(input.name)
     return try HttpServerResponse.json(user, { status: 201 })
   } catch (error) {
     return match (error) {

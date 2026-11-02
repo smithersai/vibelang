@@ -11,11 +11,11 @@ service Users {
 }
 
 export effect function find(id: string): Effect<string> {
-  return try Users.find(id)
+  return try (try Users).find(id)
 }
 
 export effect function lookup(id: string): Effect<string, Gone> {
-  return try Users.find(id)
+  return try (try Users).find(id)
 }
 
 // Spec rule: docs/design/src/001-functions.md#500c90cc7e66b8f2

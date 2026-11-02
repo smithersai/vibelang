@@ -15,7 +15,7 @@ service Users {
 }
 
 effect function findName(id: string) {
-  return (try Users.find(id)).name
+  return (try (try Users).find(id)).name
 }
 
 function names(ids: ReadonlyArray<string>) {

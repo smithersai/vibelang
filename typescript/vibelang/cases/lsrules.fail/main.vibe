@@ -41,7 +41,7 @@ export effect function hatched() {
 
 // EK4802: an Effect function that returns an Effect value.
 export effect function nested(program: Effect.Effect<number>) {
-  try Directory.lookup("1")
+  try (try Directory).lookup("1")
   return program
 }
 
@@ -66,7 +66,7 @@ export const AppLive = Layer.mergeAll(DirectoryLive, UsersLive)
 export effect function lookUp() {
   provide DirectoryLive {
     provide UsersLive {
-      return try Users.find("1")
+      return try (try Users).find("1")
     }
   }
 }

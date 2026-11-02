@@ -18,9 +18,9 @@ const GreeterLive = Layer.succeed(Greeter, {
 
 export effect function main() {
   provide GreeterLive {
-    try Console.log(try Greeter.greet("VibeLang"))
+    try Console.log(try (try Greeter).greet("VibeLang"))
     try {
-      try Greeter.greet("")
+      try (try Greeter).greet("")
     } catch (error) {
       try Console.log(`Recovered from ${error._tag}`)
     }

@@ -76,8 +76,8 @@ const UsersGrace = Layer.succeed(Users, {
 })
 
 export effect function greet(id: string) {
-  const user = try Users.find(id)
-  return try Settings.shout(`${(try Settings).greeting}, ${user.name}`)
+  const user = try (try Users).find(id)
+  return try (try Settings).shout(`${(try Settings).greeting}, ${user.name}`)
 }
 
 export effect function lookupBoth(id: string) {

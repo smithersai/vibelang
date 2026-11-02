@@ -10,7 +10,7 @@ error Neg { n: number }
 service Audit { note(n: number): void!! }
 
 export effect function biggest(n: number): Effect<number, Neg, Audit> {
-  try Audit.note(n)
+  try (try Audit).note(n)
   if (n < 0) throw new Neg({ n })
   return n === 0 ? 0 : Math.max(try biggest(n - 1), n)
 }

@@ -14,7 +14,7 @@ effect function facts() {
   return {
     same: pid === try (try Experimental.Process.Process).pid,
     positive: pid > 0,
-    running: try Experimental.Process.isRunning(pid),
+    running: try (try Experimental.Process.Process).isRunning(pid),
     host: typeof try (try Experimental.Process.Process).hostname === "string",
   }
 }
@@ -30,15 +30,15 @@ export effect function faked() {
 }
 
 export effect function mac(key: Redacted<Uint8Array>, data: Uint8Array) {
-  return try Experimental.Crypto.hmac("SHA-256", key, data)
+  return try (try Experimental.Crypto.Crypto).hmac("SHA-256", key, data)
 }
 
 export effect function executable(path: string) {
-  return try Experimental.FileSystem.access(path, { executable: true })
+  return try (try Experimental.FileSystem.FileSystem).access(path, { executable: true })
 }
 
 export effect function lock(name: string) {
-  return try Experimental.Locks.hold(name)
+  return try (try Experimental.Locks.Locks).hold(name)
 }
 
 // expect-result: {"same":true,"positive":true,"running":true,"host":true,"alive":true,"faked":"win32","mac":"5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843"}

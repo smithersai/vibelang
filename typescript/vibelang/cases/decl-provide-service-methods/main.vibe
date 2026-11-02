@@ -15,6 +15,6 @@ export effect function main() {
       return 2
     }
   } {
-    return { all: try Names.all(), count: try Names.count() }
+    return { all: try (try Names).all(), count: try (try Names).count() }
   }
 }

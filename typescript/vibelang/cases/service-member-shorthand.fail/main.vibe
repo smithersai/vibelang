@@ -1,0 +1,11 @@
+// expect: TS2339
+interface Api {
+ find(id: string): string!!
+ value(): number
+}
+service Users: Api { static readonly key = "vip10/case" }
+export effect function main() {
+ const a = try Users.find("42")
+ const b = Users.value()
+ return [a,b]
+}

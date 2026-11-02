@@ -20,13 +20,13 @@ export service Approval {
 }
 
 effect function release(version: string) {
-  if (!try Approval.approve(`deploy ${version}`)) return "declined"
+  if (!try (try Approval).approve(`deploy ${version}`)) return "declined"
   return `released ${version}`
 }
 
 effect function greet(id: string) {
   try {
-    return try Users.find(id)
+    return try (try Users).find(id)
   } catch (error) {
     return `No user ${error.id}`
   }

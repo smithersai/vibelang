@@ -88,7 +88,7 @@ effect function heartbeat(started: Deferred.Deferred<void>) {
 }
 
 effect function serve(port: number) {
-  using server = try Http.listen(port)
+  using server = try (try Http).listen(port)
   const started = try Deferred.make<void>()
   fork heartbeat(started)   // stopped before the server closes
   try Deferred.await(started)

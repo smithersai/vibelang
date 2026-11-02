@@ -48,7 +48,7 @@ function regionOf(users: Users.Shape) {
 
 effect function lookup(id: string) {
   const users = try Users
-  return `${try Users.find(id)} in ${regionOf(users)}, beta ${(try Flags).beta}`
+  return `${try (try Users).find(id)} in ${regionOf(users)}, beta ${(try Flags).beta}`
 }
 
 effect function search(query: string) {

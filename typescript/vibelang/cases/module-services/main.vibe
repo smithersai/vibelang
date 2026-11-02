@@ -3,8 +3,8 @@
 // Missing module members read from the implementation; exports keep
 // their meanings: FileSystem.layerNoop and Path.layer.
 effect function notes(directory: string) {
-  const file = try Path.join(directory, "notes.txt")
-  return [file, try FileSystem.readFileString(file)]
+  const file = (try Path.Path).join(directory, "notes.txt")
+  return [file, try (try FileSystem.FileSystem).readFileString(file)]
 }
 
 export effect function exists(fs: FileSystem.FileSystem, path: string) {
@@ -12,12 +12,12 @@ export effect function exists(fs: FileSystem.FileSystem, path: string) {
 }
 
 export effect function read(path: string) {
-  return try FileSystem.readFileString(path)
+  return try (try FileSystem.FileSystem).readFileString(path)
 }
 
-export const id = effect () => try SecureRandom.uuidV4()
-export const token = effect () => try SecureRandom.randomBytes(16)
-export const status = effect () => try ChildProcessSpawner.string(ChildProcess.make("git", ["status"]))
+export const id = effect () => try (try SecureRandom.SecureRandom).uuidV4()
+export const token = effect () => try (try SecureRandom.SecureRandom).randomBytes(16)
+export const status = effect () => try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make("git", ["status"]))
 export const line = effect () => try (try Terminal.Terminal).readLine
 
 const Files = FileSystem.layerNoop({

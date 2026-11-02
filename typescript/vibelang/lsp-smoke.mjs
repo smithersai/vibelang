@@ -680,15 +680,17 @@ try {
     assert(labels.includes("log") && labels.includes("error"), `labels ${JSON.stringify(labels.slice(0, 20))}`)
   })
 
-  await check("completion: module service members after a dot and a partial name", async () => {
-    for (const [needle, offsets, expected] of [
-      ["FileSystem.readFileString", [11, 14], ["readFileString", "exists", "FileSystem", "makeNoop"]],
-      // A service is read with try (VIP-10): (try Experimental.Process.Process).hostname.
-      ["Experimental.Process.Process", [21, 24], ["hostname", "pid", "Process", "layerTest"]]
+  await check("completion: namespace exports and explicit service members after a dot or partial name", async () => {
+    for (const [needle, offsets, expected, absent] of [
+      ["FileSystem.FileSystem", [11, 14], ["FileSystem", "makeNoop", "layerNoop"], ["readFileString", "exists"]],
+      ["fs.readFileString", [3, 6], ["readFileString", "exists"], ["FileSystem", "layerNoop"]],
+      ["Experimental.Process.Process", [21, 24], ["Process", "make", "layerTest"], ["hostname", "pid"]],
+      ["proc.hostname", [5, 8], ["hostname", "pid", "isRunning"], ["Process", "layerTest"]]
     ]) {
       for (const offset of offsets) {
         const labels = await completionLabels("src/services.vibe", needle, { offset })
         for (const name of expected) assert(labels.includes(name), `${needle} at ${offset}: no ${name} in ${JSON.stringify(labels)}`)
+        for (const name of absent) assert(!labels.includes(name), `${needle} at ${offset}: unexpected ${name}`)
         assert(new Set(labels).size === labels.length, `${needle}: duplicate completions`)
       }
     }

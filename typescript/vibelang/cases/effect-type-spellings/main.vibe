@@ -24,7 +24,7 @@ const UsersLive = Layer.succeed(Users, {
 })
 
 effect function full(id: string): Effect<string, NotFound, Users> {
-  return try Users.find(id)
+  return try (try Users).find(id)
 }
 
 effect function noDependencies(n: number): Effect<number, Timeout> {
@@ -33,7 +33,7 @@ effect function noDependencies(n: number): Effect<number, Timeout> {
 }
 
 effect function inferred(id: string): Effect<string, NotFound, Users> {
-  return try Users.find(id)
+  return try (try Users).find(id)
 }
 
 effect function neither(): Effect<number> {
@@ -41,7 +41,7 @@ effect function neither(): Effect<number> {
 }
 
 effect function onlyDependencies(): Effect<number, never, Users> {
-  return try Users.count()
+  return try (try Users).count()
 }
 
 const arrow = effect (n: number): Effect<number, Timeout, never> => try noDependencies(n) + 1

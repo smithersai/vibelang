@@ -94,8 +94,8 @@ const OrdersLive = Layer.effect(Orders, effect {
 
 // A caller: R is Users | Orders, never Database.
 effect function summary(userId: string) {
-  const user = try Users.find(userId)
-  const orders = try Orders.forUser(userId)
+  const user = try (try Users).find(userId)
+  const orders = try (try Orders).forUser(userId)
   let total = 0
   for (const order of orders) total += order.total
   return `${user.name}: ${orders.length} orders, ${total}`

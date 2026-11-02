@@ -12,8 +12,8 @@ service Flaky {
 service Leaky {
   read(): number!!
   static readonly defaultValue = () => ({
-    effect read() { try Audit.record(); return 1 }
+    effect read() { try (try Audit).record(); return 1 }
   })
 }
 
-export effect function example() { return try Flaky.read() + try Leaky.read() }
+export effect function example() { return try (try Flaky).read() + try (try Leaky).read() }

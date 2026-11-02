@@ -5,5 +5,5 @@ import { FileSystem } from "effect/FileSystem"
 import { Users } from "./services.vibe"
 
 export effect function main() {
-  try Console.log(`${try Users.find("1")}: ${try FileSystem.readFileString("users.json")}`)
+  try Console.log(`${try (try Users).find("1")}: ${try (try FileSystem).readFileString("users.json")}`)
 }

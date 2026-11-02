@@ -3,5 +3,5 @@ import "vibelang/platform/node"
 import "vibelang/platform/node"
 
 export effect function main() {
-  try Console.log(try FileSystem.readFileString("config.json"))
+  try Console.log(try (try FileSystem.FileSystem).readFileString("config.json"))
 }

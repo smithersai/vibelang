@@ -402,7 +402,7 @@ import { HttpClient } from "effect/http"
 import * as ChildProcess from "effect/process/ChildProcess"
 import { Array as Arr, Option } from "effect"
 
-const read = (path: string) => FileSystem.readFileString(Path.Path.join(path, "a"))
+const read = effect (path: string) => try (try FileSystem).readFileString((try Path.Path).join(path, "a"))
 const key = FileSystem
 const first = (value: Option.Option<number>): number => Option.getOrElse(value, () => 0)
 const get = (url: string) => HttpClient.get(url)
@@ -411,12 +411,12 @@ const two = Arr.take([1, 2, 3], 2)
 effect function implementation() {
   return [try FileSystem, try Path.Path]
 }
-const host = () => Experimental.Process.Process.hostname()
+const host = effect () => try (try Experimental.Process.Process).hostname
 const running = (process: Experimental.Process.Process, pid: number) => process.isRunning(pid)
 `
 	want := `import { Array as Arr } from "effect"
 
-const read = (path: string) => FileSystem.readFileString(Path.join(path, "a"))
+const read = effect (path: string) => try (try FileSystem.FileSystem).readFileString((try Path.Path).join(path, "a"))
 const key = FileSystem.FileSystem
 const first = (value: Option.Option<number>): number => Option.getOrElse(value, () => 0)
 const get = (url: string) => HttpClient.get(url)
@@ -425,7 +425,7 @@ const two = Arr.take([1, 2, 3], 2)
 effect function implementation() {
   return [try FileSystem.FileSystem, try Path.Path]
 }
-const host = () => Experimental.Process.hostname()
+const host = effect () => try (try Experimental.Process.Process).hostname
 const running = (process: Experimental.Process, pid: number) => process.isRunning(pid)
 `
 	_, file, _, _ := editorProgram(t, source)
@@ -447,12 +447,12 @@ const running = (process: Experimental.Process, pid: number) => process.isRunnin
 		}
 		t.Fatalf("--fix wrote\n%s\nwant\n%s\nrefused %+v", got, want, result.Refused)
 	}
-	if fixed.Rewrites[preludeImportLabel] != 5 || fixed.Rewrites[preludeKeyLabel] != 3 {
-		t.Errorf("rewrites %v; want 5 imports and 3 module exports", fixed.Rewrites)
+	if fixed.Rewrites[preludeImportLabel] != 5 || fixed.Rewrites[preludeKeyLabel] != 1 {
+		t.Errorf("rewrites %v; want 5 imports and 1 module export", fixed.Rewrites)
 	}
 	var report strings.Builder
 	result.Report(&report, func(name tspath.RootedFilePath) string { return filepath.Base(name.AsString()) })
-	if !strings.Contains(report.String(), "main.vibe: 8 fixes (prelude import ×5, module export ×3)") {
+	if !strings.Contains(report.String(), "main.vibe: 6 fixes (prelude import ×5, module export ×1)") {
 		t.Errorf("report:\n%s", report.String())
 	}
 	if err := os.WriteFile(file.FileName().AsString(), []byte(want), 0o600); err != nil {

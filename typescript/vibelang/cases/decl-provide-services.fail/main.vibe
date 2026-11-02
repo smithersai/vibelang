@@ -15,7 +15,7 @@ effect function notAKey() {
 
 effect function wrongShape() {
   provide Greeting = { words: 1 } {
-    return try Greeting.text()
+    return try (try Greeting).text()
   }
 }
 

@@ -29,7 +29,7 @@ const CounterLive = Layer.effect(Counter, effect {
 // The block provides Names, so the function needs no services.
 effect function greeting(id: string): string!NotFound! {
   provide NamesLive {
-    return `Hello, ${try Names.name(id)}`
+    return `Hello, ${try (try Names).name(id)}`
   }
 }
 
@@ -46,15 +46,15 @@ effect function early() {
 // One layer instance serves the whole block.
 effect function counted() {
   provide CounterLive {
-    try Counter.next()
-    return try Counter.next()
+    try (try Counter).next()
+    return try (try Counter).next()
   }
 }
 
 // An array of layers provides all of their services.
 effect function both(): string!NotFound! {
   provide [NamesLive, CounterLive] {
-    return `${try Names.name("42")} ${try Counter.next()}`
+    return `${try (try Names).name("42")} ${try (try Counter).next()}`
   }
 }
 
@@ -62,7 +62,7 @@ effect function both(): string!NotFound! {
 effect function context(): string!NotFound! {
   const names = Context.make(Names, { name: effect () => "Context" })
   provide names {
-    return try Names.name("42")
+    return try (try Names).name("42")
   }
 }
 

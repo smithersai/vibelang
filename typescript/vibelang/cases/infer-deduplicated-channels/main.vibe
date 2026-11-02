@@ -4,7 +4,7 @@ export service Need { value(): number!! }
 
 export effect function base(x: number) {
   if (x < 0) throw new Missing()
-  return try Need.value()
+  return try (try Need).value()
 }
 
 export effect function twice(x: number) {

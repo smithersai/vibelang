@@ -26,7 +26,7 @@ type Lookup = (id: string) => Effect<string, NotFound, Users>
 type Counted = number!!
 
 export effect function terse(id: string): string!NotFound!Users {
-  return try Users.find(id)
+  return try (try Users).find(id)
 }
 
 export effect function spelled(id: string): Effect<string, NotFound, Users> {
@@ -38,7 +38,7 @@ export effect function guest(lookup: Lookup, id: string): string!!Users {
 }
 
 export effect function add(program: Counted, extra: Effect<number>): Effect<number, never, Users> {
-  return try program + try extra + try Users.count()
+  return try program + try extra + try (try Users).count()
 }
 
 export effect function main() {
@@ -47,7 +47,7 @@ export effect function main() {
       terse: try terse("42"),
       spelled: try spelled("42"),
       guest: try guest(terse, "7"),
-      count: try Users.count(),
+      count: try (try Users).count(),
       sum: try add(Effect.succeed(1), Effect.succeed(2))
     }
   }

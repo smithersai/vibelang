@@ -14,5 +14,5 @@ service Users {
 }
 
 export effect function greeting(id: string): Effect<string, never, Users> {
-  return `Hello, ${(try Users.find(id)).name}`
+  return `Hello, ${(try (try Users).find(id)).name}`
 }

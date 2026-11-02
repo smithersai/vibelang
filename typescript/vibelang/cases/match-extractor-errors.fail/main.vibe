@@ -23,7 +23,7 @@ export function wrongArity(error: A | B) {
   }
 }
 export effect function escaping(id: string): string!Out!S {
-  return S.get(id) catch effect (error) => match (error) {
+  return (try S).get(id) catch effect (error) => match (error) {
     when A: throw new Out({ code: "a" });
     when B({ code: "only" }): throw new Out({ code: "only" });
     default: throw error;

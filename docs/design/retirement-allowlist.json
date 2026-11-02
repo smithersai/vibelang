@@ -1,5 +1,435 @@
 [
   {
+    "code": "EK9201",
+    "case": "typescript/vibelang/cases/d362-service-default-contract.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK3101",
+    "case": "typescript/vibelang/cases/d362-service-default-contract.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "TS2339",
+    "case": "typescript/vibelang/cases/diag-service-values.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK9201",
+    "case": "typescript/vibelang/cases/effect-type-defaults.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK9202",
+    "case": "typescript/vibelang/cases/effect-type-defaults.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK0501",
+    "case": "typescript/vibelang/cases/ek1001-top-level.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "TS2348",
+    "case": "typescript/vibelang/cases/ek1001-top-level.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "TS2349",
+    "case": "typescript/vibelang/cases/ek1001-top-level.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK3201",
+    "case": "typescript/vibelang/cases/ek3201-runner-services.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "TS2322",
+    "case": "typescript/vibelang/cases/ek3201-runner-services.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK3206",
+    "case": "typescript/vibelang/cases/ek3206-platforms.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK0403",
+    "case": "typescript/vibelang/cases/ek4401-boundary-operands.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK3205",
+    "case": "typescript/vibelang/cases/entry-main-services-error.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK3201",
+    "case": "typescript/vibelang/cases/entry-main-services.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK9202",
+    "case": "typescript/vibelang/cases/entry-platform-experimental-standard.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK3205",
+    "case": "typescript/vibelang/cases/entry-platform-experimental-standard.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK3201",
+    "case": "typescript/vibelang/cases/entry-platform-layer-services.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK3101",
+    "case": "typescript/vibelang/cases/layer-effect-member-contract.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK9201",
+    "case": "typescript/vibelang/cases/layer-effect-member-contract.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "TS2345",
+    "case": "typescript/vibelang/cases/layer-effect-member-contract.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK4801",
+    "case": "typescript/vibelang/cases/lsrules.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK4802",
+    "case": "typescript/vibelang/cases/lsrules.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK4804",
+    "case": "typescript/vibelang/cases/lsrules.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK4805",
+    "case": "typescript/vibelang/cases/lsrules.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK4806",
+    "case": "typescript/vibelang/cases/lsrules.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK4807",
+    "case": "typescript/vibelang/cases/lsrules.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK4816",
+    "case": "typescript/vibelang/cases/lsrules.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK4808",
+    "case": "typescript/vibelang/cases/lsrules.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK4809",
+    "case": "typescript/vibelang/cases/lsrules.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK4810",
+    "case": "typescript/vibelang/cases/lsrules.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK4811",
+    "case": "typescript/vibelang/cases/lsrules.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK4812",
+    "case": "typescript/vibelang/cases/lsrules.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK4813",
+    "case": "typescript/vibelang/cases/lsrules.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK4817",
+    "case": "typescript/vibelang/cases/lsrules.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK4815",
+    "case": "typescript/vibelang/cases/lsrules.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK4818",
+    "case": "typescript/vibelang/cases/lsrules.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK4701",
+    "case": "typescript/vibelang/cases/match-extractor-errors.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK9201",
+    "case": "typescript/vibelang/cases/match-extractor-errors.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK4802",
+    "case": "typescript/vibelang/cases/program-name-as-data.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK4802",
+    "case": "typescript/vibelang/cases/returned-union-as-data.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "TS2322",
+    "case": "typescript/vibelang/cases/service-default-contract.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "EK9201",
+    "case": "typescript/vibelang/cases/service-default-contract.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 fixture port: this failing case wrote service member calls as the denied shorthand S.m(args); they now spell the explicit lookup (try S).m(args). The case rejects the same rule as before; only positions and the retired shorthand spelling change, and no new rejected form is added."
+  },
+  {
+    "code": "TS2339",
+    "case": "typescript/vibelang/cases/service-member-shorthand.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and has vibelang --fix rewrite S.m(args) to (try S).m(args)"
+    },
+    "reason": "VIP-10 retires the service member shorthand: Users.find(id) on a service key is TypeScript's TS2339, as it is for the Effect TypeScript twin. vibelang --fix and --fix-vip-only rewrite the call to (try Users).find(id) (fix_service_member.go; TestVIP10ServiceShorthand, FuzzServiceMemberMigration); service-member-explicit is the passing twin of this case."
+  },
+  {
     "code": "EK1606",
     "severity": "error",
     "vip": "VIP-16",

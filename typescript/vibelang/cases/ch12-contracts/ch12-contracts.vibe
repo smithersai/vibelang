@@ -65,10 +65,10 @@ function estimate(cart: Cart) {
 }
 
 effect function quoteCart(cartId: string) {
-  const cart = try Carts.load(cartId)              // E: CartNotFound   R: Carts
+  const cart = try (try Carts).load(cartId)              // E: CartNotFound   R: Carts
   if (cart.items.length === 0) throw new EmptyCart({ cartId })
   try {
-    return try Pricing.quote(cart)                 // E: PricingDown    R: Pricing
+    return try (try Pricing).quote(cart)                 // E: PricingDown    R: Pricing
   } catch (e) {                                // e: PricingDown
     return estimate(cart)                      // a plain function
   }
@@ -80,8 +80,8 @@ effect function quoteCart(cartId: string) {
 // this version states the full contract, which must check.
 
 export effect function welcome(id: string): Effect<string, UserNotFound | MailError, Users | Mailer> {
-  const user = try Users.find(id)
-  try Mailer.send(user.email, "Welcome")
+  const user = try (try Users).find(id)
+  try (try Mailer).send(user.email, "Welcome")
   return user.name
 }
 
@@ -90,10 +90,10 @@ export effect function welcome(id: string): Effect<string, UserNotFound | MailEr
 // Recursion
 
 effect function totalSize(path: string): Effect<number, IOError, Files> {
-  const entry: Entry = try Files.stat(path)
+  const entry: Entry = try (try Files).stat(path)
   if (!entry.isDirectory) return entry.size
   let total = 0
-  for (const child of try Files.list(path)) total += try totalSize(`${path}/${child}`)
+  for (const child of try (try Files).list(path)) total += try totalSize(`${path}/${child}`)
   return total
 }
 // Effect<number, IOError, Files>

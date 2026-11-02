@@ -27,7 +27,7 @@ function* numbers(limit: number, log: string[]) {
 
 // A producer calls a service between yields.
 function* lookups(keys: ReadonlyArray<string>) {
-  for (const key of keys) yield try Store.get(key)
+  for (const key of keys) yield try (try Store).get(key)
 }
 
 // yield* yields every element of another producer.

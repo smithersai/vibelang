@@ -20,8 +20,8 @@ service Mailer {
 
 // welcome from Chapter 1, used by notifyAll and welcomeTraced.
 effect function welcome(id: string) {
-  const user = try Users.find(id)
-  try Mailer.send(user.email, `Welcome, ${user.name}!`)
+  const user = try (try Users).find(id)
+  try (try Mailer).send(user.email, `Welcome, ${user.name}!`)
   return user.name
 }
 // Effect<string, UserNotFound | MailError, Users | Mailer>
@@ -34,7 +34,7 @@ function add(a: number, b: number) {
 // Effect<number, never, never>
 
 effect function greeting(id: string) {
-  const user = try Users.find(id)
+  const user = try (try Users).find(id)
   return `Hello, ${user.name}`
 }
 // Effect<string, UserNotFound, Users>
@@ -42,7 +42,7 @@ effect function greeting(id: string) {
 // Calling runs the function
 
 effect function userName(id: string) {
-  const name = (try Users.find(id)).name.trim()
+  const name = (try (try Users).find(id)).name.trim()
   try Effect.log(`found ${name}`)
   return name
 }
@@ -52,7 +52,7 @@ effect function userName(id: string) {
 effect function notifyAll(ids: ReadonlyArray<string>) {
   let sent = 0
   for (const id of ids) {
-    const user = try Users.find(id)
+    const user = try (try Users).find(id)
     if (!user.subscribed) continue
     try welcome(id)
     sent++
@@ -72,7 +72,7 @@ effect function welcomeTraced(id: string) {
 // The narrower contract from the same section is ch02-contract-narrower.fail.vibe.
 
 export effect function greetingChecked(id: string): Effect<string, UserNotFound, Users> {
-  const user = try Users.find(id)
+  const user = try (try Users).find(id)
   return `Hello, ${user.name}`
 }
 

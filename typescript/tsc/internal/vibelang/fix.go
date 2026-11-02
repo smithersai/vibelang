@@ -645,7 +645,10 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 				proposals = append(proposals, p)
 				continue
 			}
-			if options.VIPOnly {
+			p = serviceMemberMigrationFixes(ctx, program, file, g.refused)
+			if len(p.fixes) != 0 {
+				// Apply the common refusal-site and safe-fix gates below.
+			} else if options.VIPOnly {
 				p = fileFixes(ctx, program, file, g.refused, vipMigrationFixCodes)
 				p = p.withFixes(fiberNameMigrationFixes(ctx, program, file, g.refused))
 			} else {

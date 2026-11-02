@@ -36,8 +36,8 @@ effect function approveAll(version: string) {
 
 effect function names() {
   provide NamesLive, GreeterLive {
-    const name = try Names.name()
-    return { name, greeting: try Greeter.greet(name) }
+    const name = try (try Names).name()
+    return { name, greeting: try (try Greeter).greet(name) }
   }
 }
 

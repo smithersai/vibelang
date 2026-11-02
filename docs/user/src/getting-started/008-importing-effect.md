@@ -101,7 +101,7 @@ Many of Effect's modules export something of their own name: the module `Option`
 
 The module's exports stay namespace members: `Option.some`, `FileSystem.layerNoop`, and `Path.layer`. A service key as an argument stays explicit: `Layer.succeed(FileSystem.FileSystem, implementation)`.
 
-Assigning a module stores its namespace: `const fs = FileSystem`. To call implementation methods, read the service first: `const fs = try FileSystem.FileSystem`. The same rule applies to `Experimental.Process` and the other modules that name a service.
+Assigning a module stores its namespace: `const fs = FileSystem`. To call implementation methods, read the service first: `const fs = try FileSystem.FileSystem`. The same rule applies to `Experimental.Process` and the other modules that name a service. Completion after a module lists its exports; implementation methods appear after the value returned by the explicit lookup.
 
 ```vibe
 // run: provide Path.layer, FileSystem.layerNoop({ readFileString: effect (path) => `read ${path}` }) { try Console.log(try readConfig("/srv")); try Console.log(firstOr(Chunk.empty(), 7)) }

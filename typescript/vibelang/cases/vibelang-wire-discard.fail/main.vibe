@@ -12,7 +12,7 @@ service Mailer {
 class Offline extends TaggedError("Offline")<{}> {}
 
 const Announce = Layer.effectDiscard(effect {
-  const sent = try Mailer.send("team@example.com")
+  const sent = try (try Mailer).send("team@example.com")
   if (sent === undefined) throw new Offline()
 })
 

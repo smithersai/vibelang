@@ -1,4 +1,4 @@
-// expect: EK0501 EK1001 TS2348 TS2349
+// expect: EK0501 TS2348 TS2349
 // D38, D51: a module's top level is not inside a program. A call there may
 // build values, but running a program there is an error. A module's top level
 // is ordinary JavaScript, not an effect function (VIP-26), so try there is
@@ -21,7 +21,7 @@ service Users {
   find(id: string): Effect.Effect<string, never, never>
 }
 
-export const ada = Users.find("1")
+export const ada = try Users
 export const users = Users()
 export const ready = Effect.void()
 

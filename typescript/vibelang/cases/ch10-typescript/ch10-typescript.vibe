@@ -34,7 +34,7 @@ export effect function title(id: string) {
 
 // Services written as Context.Service classes in TypeScript are used like .vibe services.
 effect function rowCount(id: string) {
-  return (try Database.query("select * from users where id = $1", [id])).length
+  return (try (try Database).query("select * from users where id = $1", [id])).length
 }
 
 // Generator-style code stays in TypeScript: see ch10-effect-gen.fail.vibe (EK1002).
@@ -53,7 +53,7 @@ effect function parseConfig(text: string) {
 // see ch02-plain-ts-call.fail.vibe), so the plain call is wrapped in Effect.try; the claim below is the
 // proposal's, from before D5.
 effect function profileCard(id: string) {
-  const user = try Users.find(id)
+  const user = try (try Users).find(id)
   return {
     title: try Effect.try(() => formatName(user)),   // a plain call behind a boundary
     avatar: try loadAvatar(user.id)                  // returns an Effect, so the call runs it

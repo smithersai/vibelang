@@ -1,2 +1,0 @@
-Person.name belongs to the service implementation; read it with (try Person).name.
-To extract the implementation method, write (try Named).name; to call it, write (try Named).name(…).

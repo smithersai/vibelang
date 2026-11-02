@@ -13,7 +13,7 @@ service Replica {
 }
 
 effect function both() {
-  return `${try Primary.query("select 1")} / ${try Replica.query("select 1")}`
+  return `${try (try Primary).query("select 1")} / ${try (try Replica).query("select 1")}`
 }
 
 const PrimaryLive = Layer.succeed(Primary, {

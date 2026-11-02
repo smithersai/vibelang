@@ -29,13 +29,13 @@ function pureMaps(ids: ReadonlyArray<string>, xs: ReadonlyArray<number>) {
 
 // Effect-aware traversals: Effect.forEach takes callbacks that return Effects; so does a for...of loop.
 effect function names(ids: ReadonlyArray<string>) {
-  return try Effect.forEach(ids, effect (id) => (try Users.find(id)).name)
+  return try Effect.forEach(ids, effect (id) => (try (try Users).find(id)).name)
 }
 // Effect<string[], UserNotFound, Users>
 
 effect function namesLoop(ids: ReadonlyArray<string>) {
   const out: string[] = []
-  for (const id of ids) out.push((try Users.find(id)).name)
+  for (const id of ids) out.push((try (try Users).find(id)).name)
   return out
 }
 // Effect<string[], UserNotFound, Users>

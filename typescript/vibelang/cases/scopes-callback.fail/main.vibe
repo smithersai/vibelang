@@ -17,9 +17,9 @@ export function names(ids: string[]) {
   })
 }
 
-export function connections(ids: string[]) {
+export function connections(ids: string[], pool: Pool.Shape) {
   return ids.map((id) => {
-    using conn = Pool.acquire()
+    using conn = pool.acquire()
     return `${id} ${conn.id}`
   })
 }

@@ -10,7 +10,7 @@ service Users {
 }
 
 effect function profileCard(id: string) {
-  const user = try Users.find(id)
+  const user = try (try Users).find(id)
   return {
     title: formatName(user),                 // a plain call
     avatar: try loadAvatar(user.id)              // returns an Effect, so the call runs it

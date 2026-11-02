@@ -64,8 +64,8 @@ const OrdersLive = Layer.effect(Orders, effect {
 const AppLive = wire(OrdersLive, UsersLive, DatabaseLive, ConfigLive)
 
 effect function summary(id: string) {
-  const user = try Users.find(id)
-  return `${user.name}: ${try Orders.count(id)} orders`
+  const user = try (try Users).find(id)
+  return `${user.name}: ${try (try Orders).count(id)} orders`
 }
 
 // expect-result: {"summary":"Ada: 2 orders","events":["connect memory://shop"]}

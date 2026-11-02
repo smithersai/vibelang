@@ -1,0 +1,12 @@
+// expect-result: ["Users","implementation","42"]
+interface Api {
+ find(id: string): string!!
+ name(): string
+}
+service Users: Api { static readonly key = "vip10/explicit" }
+export effect function main() {
+ provide Users = { find: effect (id) => id, name: () => "implementation" } {
+  const className: string = Users.name
+  return [className, (try Users).name(), try (try Users).find("42")]
+ }
+}

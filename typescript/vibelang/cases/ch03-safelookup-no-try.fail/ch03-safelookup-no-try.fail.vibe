@@ -23,7 +23,7 @@ effect function parseId(raw: string) {
 
 effect function lookupOrGuest(raw: string) {
   try {
-    return try Users.find(String(try parseId(raw)))
+    return try (try Users).find(String(try parseId(raw)))
   } catch (e) {
     if (e instanceof UserNotFound) return guest
     throw e

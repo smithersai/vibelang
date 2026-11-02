@@ -42,9 +42,9 @@ export const inferred: Equals<typeof UsersLive, Layer.Layer<Users, never, Databa
 // expect-result: {"name":"Ada","count":1,"missing":"UserNotFound"}
 export effect function main() {
   return try Effect.provide(effect {
-    const name = (try Users.find("1")).name
-    const count = try Users.count()
-    const missing = (try Effect.flip(effect { return try Users.find("9") }))._tag
+    const name = (try (try Users).find("1")).name
+    const count = try (try Users).count()
+    const missing = (try Effect.flip(effect { return try (try Users).find("9") }))._tag
     return { name, count, missing }
   }, Layer.provide(UsersLive, DatabaseLive))
 }

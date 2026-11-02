@@ -19,7 +19,7 @@ const contents = new Map<string, ReadonlyArray<string>>([
 ])
 
 function* lines(path: string) {
-  using file = try Files.open(path)
+  using file = try (try Files).open(path)
   while (true) {
     const line = try file.readLine()        // a service call: may wait on I/O
     if (line === undefined) return

@@ -36,7 +36,7 @@ effect function parseId(raw: string) {
 effect function lookup(raw: string) {
   const id = try parseId(raw)
   try {
-    return try Users.find(String(id))
+    return try (try Users).find(String(id))
   } catch (e) {                // e: UserNotFound
     return guest
   }
@@ -45,7 +45,7 @@ effect function lookup(raw: string) {
 
 effect function lookupOrGuest(raw: string) {
   try {
-    return try Users.find(String(try parseId(raw)))
+    return try (try Users).find(String(try parseId(raw)))
   } catch (e) {                          // e: InvalidId | UserNotFound
     if (e instanceof UserNotFound) return guest
     throw e                              // e: InvalidId here, so E is InvalidId
@@ -55,7 +55,7 @@ effect function lookupOrGuest(raw: string) {
 
 // NOTE: the proposal shows this line inside an unnamed function; it is wrapped in findOrGuest.
 effect function findOrGuest(id: string) {
-  const user = try Effect.catchTag(effect { return try Users.find(id) }, "UserNotFound", effect () => guest)
+  const user = try Effect.catchTag(effect { return try (try Users).find(id) }, "UserNotFound", effect () => guest)
   return user
 }
 
@@ -73,9 +73,9 @@ export effect function safeLookup(raw: string): Effect<User, never, Users> {
 
 effect function report(id: string) {
   try {
-    return try Reports.build(id)
+    return try (try Reports).build(id)
   } finally {
-    try Metrics.increment("reports")
+    try (try Metrics).increment("reports")
   }
 }
 

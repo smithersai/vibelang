@@ -120,20 +120,16 @@ func programModuleSymbol(c *checker.Checker, name string) *ast.Symbol {
 	}).(*programModule).module
 }
 
-// serviceMemberCompletions lists a service's members after `Users.` in a .vibe
-// function body. A call there reads the member from the service, not from
-// the Context key that the class compiles to (design D41), so the key's own
-// members, such as of, pipe, and use, would be the wrong list.
+// serviceMemberCompletions preserves native service-key and module exports.
+// Only the separately owned Control operation protocol projects its shape.
 func serviceMemberCompletions(c *checker.Checker, left *ast.Node, t *checker.Type) *checker.Type {
-	// After FileSystem., the module's exports, its export's members, and, in
-	// a function body, its service's members (D311).
+	// A module remains a namespace; VIP-10 requires an explicit service lookup.
 	if module := moduleOfExpression(c, left, c.GetApparentType(t)); module != nil {
 		types := []*checker.Type{t}
 		if export := moduleAliasOf(c, module, expressionName(left)); export != nil && export.Flags()&ast.SymbolFlagsValue != 0 {
 			exportType := c.GetTypeOfSymbol(export)
-			types = append(types, c.GetApparentType(exportType))
-			if _, shape := serviceOfKey(c, exportType); shape != nil && inLowerableBody(left) {
-				types = append(types, shape)
+			if identifier, shape := serviceOfKey(c, exportType); shape != nil && isControlType(identifier) && inLowerableBody(left) {
+				types = append(types, c.GetApparentType(exportType), shape)
 			}
 		}
 		return c.GetIntersectionType(types)
@@ -141,7 +137,7 @@ func serviceMemberCompletions(c *checker.Checker, left *ast.Node, t *checker.Typ
 	if !inLowerableBody(left) {
 		return t
 	}
-	if _, shape := serviceOfKey(c, c.GetApparentType(t)); shape != nil {
+	if identifier, shape := serviceOfKey(c, c.GetApparentType(t)); shape != nil && isControlType(identifier) {
 		return shape
 	}
 	return t

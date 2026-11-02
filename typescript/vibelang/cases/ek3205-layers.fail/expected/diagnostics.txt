@@ -1,4 +1,5 @@
 home.vibe(6,24): warning EK3205
 locks.vibe(4,24): warning EK3205
+locks.vibe(5,3): warning EK0801
 unnamed.vibe(3,24): warning EK3205
 upgraded.vibe(6,24): warning EK3205

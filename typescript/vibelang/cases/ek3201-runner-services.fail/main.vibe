@@ -18,11 +18,11 @@ service Clock2 {
 const TodosTest = Layer.succeed(Todos, { list: effect () => ["a"] })
 
 effect function count() {
-  return (try Todos.list()).length
+  return (try (try Todos).list()).length
 }
 
 effect function stamped() {
-  return `${try count()} at ${try Clock2.now()}`
+  return `${try count()} at ${try (try Clock2).now()}`
 }
 
 NodeRuntime.runMain(effect () => {

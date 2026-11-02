@@ -1,4 +1,4 @@
-// expect: EK4503
+// expect: TS2339
 service Users { region: string; find(id: string): string!! }
 export function main() {
   const region = Users.region
@@ -6,7 +6,7 @@ export function main() {
   return [region, find]
 }
 
-export effect function direct() { return try Users.find("id") }
+export effect function direct() { return try (try Users).find("id") }
 export effect function implementation() { return (try Users).region }
 export const keyMember = Users.key
 

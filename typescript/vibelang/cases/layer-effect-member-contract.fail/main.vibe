@@ -10,12 +10,12 @@ service Clock2 { now(): number!! }
 service Greeter { greet(name: string): string!! }
 service Files { open(name: string): string!! }
 
-effect function stamp(): number!!Clock2 { return try Clock2.now() }
-effect function helper(name: string) { return `hi ${name} at ${try Clock2.now()}` }
+effect function stamp(): number!!Clock2 { return try (try Clock2).now() }
+effect function helper(name: string) { return `hi ${name} at ${try (try Clock2).now()}` }
 
 export const Lookup = Layer.effect(Greeter, effect {
   return {
-    effect greet(name) { return `hi ${name} at ${try Clock2.now()}` }
+    effect greet(name) { return `hi ${name} at ${try (try Clock2).now()}` }
   }
 })
 

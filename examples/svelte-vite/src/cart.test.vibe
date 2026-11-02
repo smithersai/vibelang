@@ -9,7 +9,7 @@ it.effect("quotes a product in stock", effect () => {
 it.effect("fails a reservation with OutOfStock", effect () => {
   provide InventoryLive {
     try {
-      try Inventory.reserve("coffee", 3)
+      try (try Inventory).reserve("coffee", 3)
       assert.fail("expected OutOfStock")
     } catch (error) {
       assert.instanceOf(error, OutOfStock)

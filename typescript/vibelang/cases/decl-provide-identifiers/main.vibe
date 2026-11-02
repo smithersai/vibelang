@@ -12,7 +12,7 @@ const NamesLive = Layer.succeed(Names, {
 
 effect function old() {
   provide NamesLive {
-    return try Names.name()
+    return try (try Names).name()
   }
 }
 

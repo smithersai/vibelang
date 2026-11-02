@@ -18,14 +18,14 @@ const fixedRandom = { nextIntUnsafe: (): number => 7, nextDoubleUnsafe: (): numb
 
 effect function single(): string!! {
   provide Greeting = { text: effect () => "hi" } {
-    return try Greeting.text()
+    return try (try Greeting).text()
   }
 }
 
 // Layers and services mix in one list.
 effect function mixed(): string!! {
   provide NamesLive, Greeting = { text: effect () => "hi" } {
-    return `${try Names.name()} ${try Greeting.text()}`
+    return `${try (try Names).name()} ${try (try Greeting).text()}`
   }
 }
 
@@ -44,14 +44,14 @@ effect function qualified(): number!! {
 
 effect function both(): string!! {
   provide NamesLive, Random = fixedRandom {
-    return `${try Names.name()} ${try Random.nextInt}`
+    return `${try (try Names).name()} ${try Random.nextInt}`
   }
 }
 
 // A parenthesized Layer can be followed by another top-level provider.
 effect function called(): string!! {
   provide (NamesLive), Greeting = { text: effect () => "hi" } {
-    return `${try Names.name()} ${try Greeting.text()}`
+    return `${try (try Names).name()} ${try (try Greeting).text()}`
   }
 }
 

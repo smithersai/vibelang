@@ -26,5 +26,11 @@ export effect function serviceGreeting() {
   return try greeter.greet("Ada")
 }
 
-export effect function readFile(path: string) { return try FileSystem.readFileString(path) }
-export effect function processHostname() { return try (try Experimental.Process.Process).hostname }
+export effect function readFile(path: string) {
+  const fs = try FileSystem.FileSystem
+  return try fs.readFileString(path)
+}
+export effect function processHostname() {
+  const proc = try Experimental.Process.Process
+  return try proc.hostname
+}

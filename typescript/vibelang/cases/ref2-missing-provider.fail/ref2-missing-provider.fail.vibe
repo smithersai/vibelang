@@ -21,7 +21,7 @@ const MailerLive = Layer.effect(Mailer, effect {
 const AppLive = wire(MailerLive)
 
 effect function welcome() {
-  try Mailer.send("ada@example.com")
+  try (try Mailer).send("ada@example.com")
 }
 
 effect function main() {

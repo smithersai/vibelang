@@ -24,7 +24,7 @@ export const thunk = effect () => try Effect.suspend(effect () => listFlows)
 export const param = effect (body: () => void!!) => try Effect.suspend(effect () => body)
 
 // An arm of a conditional whose other arm runs.
-export const arm = effect (code: number) => try Effect.suspend(effect () => code > 0 ? listFlows : try Status.set(code))
+export const arm = effect (code: number) => try Effect.suspend(effect () => code > 0 ? listFlows : try (try Status).set(code))
 
 // Not reported: the call runs, the success type names the function, or no
 // Effect is expected.

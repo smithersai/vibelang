@@ -25,7 +25,7 @@ effect function mapAll<A, B, E, R>(items: ReadonlyArray<A>, f: (a: A) => B!E!R) 
 // NOTE: the proposal shows these two calls at a module's top level, where a call may not run a
 // program (EK1001); they are moved into a function.
 effect function namesAndSizes(ids: ReadonlyArray<string>, words: ReadonlyArray<string>) {
-  const names = try mapAll(ids, effect (id) => (try Users.find(id)).name)   // Effect<string[], UserNotFound, Users>
+  const names = try mapAll(ids, effect (id) => (try (try Users).find(id)).name)   // Effect<string[], UserNotFound, Users>
   const sizes = try mapAll(words, effect (w) => w.length)             // Effect<number[], never, never>
   return { names, sizes }
 }

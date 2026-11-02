@@ -26,7 +26,7 @@ func TestProvideBlockKeepsProviderWhenScoped(t *testing.T) {
 			files[base+"effect/Effect.d.ts"] += `
 export declare function succeed<A>(value: A): Effect<A>
 `
-			// Match the pinned package layout used to discover Effect's interface.
+			// Operand assignability locates the pinned Effect interface by its real dist path.
 			files[base+"effect/dist/Effect.d.ts"] = files[base+"effect/Effect.d.ts"]
 			delete(files, base+"effect/Effect.d.ts")
 			files[base+"effect/package.json"] = strings.ReplaceAll(files[base+"effect/package.json"], "./Effect.d.ts", "./dist/Effect.d.ts")

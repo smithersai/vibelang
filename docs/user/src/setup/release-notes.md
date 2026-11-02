@@ -185,6 +185,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 | Unused host namespace aliases such as `import NativeModule = WebAssembly.Module` | `vibelang --fix` removes already-erased aliases. Move a needed alias into a `.ts` adapter or use the injected Effect service. |
 
 ### Bugs fixed since 0.0.10
+- Calling an implementation method through a service key silently looked up the service and could hide native key properties. Keys now follow TypeScript; use an explicit `try` lookup, and `vibelang --fix` preserves the old direct call's run phase.
 
 - Ambient-import declaration-identity tests still checked unused newer ECMAScript libraries after browser libraries were removed; they now use ES5 declarations while retaining strict checks for private classes, missing modules and every generated sample.
 

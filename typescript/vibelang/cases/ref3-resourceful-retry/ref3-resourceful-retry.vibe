@@ -21,7 +21,7 @@ let slowAttempts = 0
 
 // Fails on the first two attempts. Each attempt holds a connection and starts with fresh locals.
 effect function attempt() {
-  using conn = try Pool.acquire()
+  using conn = try (try Pool).acquire()
   let local = 0
   local++
   attempts++
@@ -32,7 +32,7 @@ effect function attempt() {
 
 // Fails on the first attempt; the second hangs until it is cancelled.
 effect function slowAttempt() {
-  using conn = try Pool.acquire()
+  using conn = try (try Pool).acquire()
   slowAttempts++
   if (slowAttempts === 1) throw new Flaky({ attempt: slowAttempts })
   try Effect.sleep("1000 millis")

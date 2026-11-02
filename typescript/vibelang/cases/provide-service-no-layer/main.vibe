@@ -32,20 +32,20 @@ function names() {
 
 export effect function single(): string!! {
   provide Greeting = { text: effect () => "hi" } {
-    return `${try Greeting.text()}, ${try scope()}`
+    return `${try (try Greeting).text()}, ${try scope()}`
   }
 }
 
 export effect function two(): string!! {
   provide Greeting = { text: effect () => "hi" }, Names = { name: effect () => "Bo" } {
-    return `${try Names.name()} ${try Greeting.text()}, ${try scope()}`
+    return `${try (try Names).name()} ${try (try Greeting).text()}, ${try scope()}`
   }
 }
 
 // A Layer the source writes still builds one.
 export effect function layer(): string!! {
   provide NamesLive {
-    return `${try Names.name()}, ${try scope()}`
+    return `${try (try Names).name()}, ${try scope()}`
   }
 }
 
@@ -54,7 +54,7 @@ export effect function mixed(): string!! {
   events.length = 0
   provide Greeting = greeting("first"), names() {
     provide names(), Greeting = greeting("last") {
-      return `${try Names.name()} ${try Greeting.text()}, ${try scope()}, ${events.join(" ")}`
+      return `${try (try Names).name()} ${try (try Greeting).text()}, ${try scope()}, ${events.join(" ")}`
     }
   }
 }
@@ -63,7 +63,7 @@ export effect function mixed(): string!! {
 export effect function nested(): string!! {
   provide Greeting = { text: effect () => "outer" } {
     provide Greeting = { text: effect () => "early" }, Greeting = { text: effect () => "inner" } {
-      return try Greeting.text()
+      return try (try Greeting).text()
     }
   }
 }
@@ -71,13 +71,13 @@ export effect function nested(): string!! {
 // One pass through a one-service block, for the run-loop count.
 export effect function once(): number!! {
   provide Greeting = { text: effect () => "hi" } {
-    return (try Greeting.text()).length
+    return (try (try Greeting).text()).length
   }
 }
 
 // The same statements, for the native Effect.provide counterpart.
 export effect function bare() {
-  return (try Greeting.text()).length
+  return (try (try Greeting).text()).length
 }
 // VIP-12 layer-and-service-provider-equivalence
 // rule: docs/design/vips/0012-provide.md#3d274af5ff398519

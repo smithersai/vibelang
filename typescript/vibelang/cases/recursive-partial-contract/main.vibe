@@ -21,7 +21,7 @@ effect function factVia(n: number): number!Neg {
 }
 
 effect function audited(n: number): number!Neg!Audit {
-  try Audit.note(n)
+  try (try Audit).note(n)
   if (n < 0) throw new Neg({ n })
   if (n <= 1) return 1
   return n * try audited(n - 1)
@@ -46,7 +46,7 @@ effect function isEven(n: number): boolean!never!Audit {
 }
 
 effect function isOdd(n: number): boolean!never!Audit {
-  try Audit.note(n)
+  try (try Audit).note(n)
   return n === 0 ? false : !try isEven(n - 1)
 }
 

@@ -63,7 +63,7 @@ func TestInferredChannelsMemoized(t *testing.T) {
 				}
 				fmt.Fprintf(&source, "%sf%d(x: number)%s { ", prefix, i, annotation)
 				if i == 0 {
-					source.WriteString("if (x < 0) throw new Missing(); return try Need.value()")
+					source.WriteString("if (x < 0) throw new Missing(); return try (try Need).value()")
 				} else {
 					fmt.Fprintf(&source, "const a = try %sf%d(x); try sleep(\"0 millis\"); return a > 0 ? a : try %sf%d(x + 1)", receiver, i-1, receiver, i-1)
 				}

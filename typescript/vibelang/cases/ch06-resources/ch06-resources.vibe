@@ -77,7 +77,7 @@ effect function parseReport(text: string) {
 }
 
 effect function readReport(path: string) {
-  using file = try Files.open(path)
+  using file = try (try Files).open(path)
   return try parseReport(try file.readAll())
 }
 // Effect<Report, IOError | ParseError, Files>
@@ -86,14 +86,14 @@ effect function readReport(path: string) {
 
 effect function openFile(path: string) {
   return try Effect.acquireRelease(
-    effect { return try FileSystem.open(path) },      // acquire
+    effect { return try (try FileSystem).open(path) },      // acquire
     effect (file) => try file.close()            // release: always runs, exactly once
   )
 }
 // Effect<FileHandle, IOError, FileSystem | Scope>
 
 effect function openLog(day: string) {
-  return try Files.open(`/var/log/app-${day}.log`)    // no `using`: the caller owns the file
+  return try (try Files).open(`/var/log/app-${day}.log`)    // no `using`: the caller owns the file
 }
 // Effect<FileHandle, IOError, Files | Scope>
 
@@ -113,8 +113,8 @@ effect function compareLogs(a: string, b: string) {
 // without `using`, so it belongs to the caller and must still be open when openAndLog returns.
 
 effect function openAndLog() {
-  const connection = try Database.connect() // caller-owned: no `using`
-  using log = try Logs.open()
+  const connection = try (try Database).connect() // caller-owned: no `using`
+  using log = try (try Logs).open()
   return connection
 }
 

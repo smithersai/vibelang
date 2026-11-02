@@ -21,7 +21,7 @@ export effect function inspect(dir: string) {
     try file.chmod(0o600)
   }
   const key = Redacted.make(new TextEncoder().encode("Jefe"))
-  const mac = try Experimental.Crypto.Crypto.hmac("SHA-256", key, new TextEncoder().encode("what do ya want for nothing?"))
+  const mac = try (try Experimental.Crypto.Crypto).hmac("SHA-256", key, new TextEncoder().encode("what do ya want for nothing?"))
   return {
     link: (try fs.lstat(`${dir}/link`)).type,
     isLink: try isLink(`${dir}/link`),
@@ -37,7 +37,7 @@ export effect function inspect(dir: string) {
 // expect-result: {"link":"SymbolicLink","isLink":true,"kind":"SymbolicLink","followed":false,"size":4,"denied":"PermissionDenied","mode":"600","mac":"5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843"}
 export effect function main() {
   provide ExperimentalNodeServices.layer {
-    using dir = try Experimental.FileSystem.FileSystem.makeTempDirectoryScoped()
+    using dir = try (try Experimental.FileSystem.FileSystem).makeTempDirectoryScoped()
     return try inspect(dir)
   }
 }
