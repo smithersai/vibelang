@@ -1,0 +1,740 @@
+{
+  "key": "foldkit-websocket-returned-pipe-error",
+  "source": "foldkit-117: literal six-line minimized WebSocket acquisition pattern supplied by drive-foldkit-examples; native callback Error passes timeout/catchTag before return",
+  "rule": {
+    "chapter": "001-functions.md",
+    "quote": "Declarations are exactly what idiomatic Effect TypeScript would declare."
+  },
+  "before": "import { Effect } from \"effect\"\nexport const acquire = () => Effect.callback<number, Error>(() => {}).pipe(\n  Effect.timeout(\"5 seconds\"),\n  Effect.catchTag(\"TimeoutError\", () => Effect.fail(new Error(\"Connection timeout\"))),\n)\n",
+  "pending": [
+    {
+      "key": "preserved-errors:returned-callback-pipe:timeout-catchTag:expression:named:top",
+      "profile": "timeout-catchTag",
+      "wrapper": "expression",
+      "style": "named",
+      "home": "top",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:timeout-catchTag:expression:named:object",
+      "profile": "timeout-catchTag",
+      "wrapper": "expression",
+      "style": "named",
+      "home": "object",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:timeout-catchTag:expression:named:nested",
+      "profile": "timeout-catchTag",
+      "wrapper": "expression",
+      "style": "named",
+      "home": "nested",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:timeout-catchTag:expression:alias:top",
+      "profile": "timeout-catchTag",
+      "wrapper": "expression",
+      "style": "alias",
+      "home": "top",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:timeout-catchTag:expression:alias:object",
+      "profile": "timeout-catchTag",
+      "wrapper": "expression",
+      "style": "alias",
+      "home": "object",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:timeout-catchTag:expression:alias:nested",
+      "profile": "timeout-catchTag",
+      "wrapper": "expression",
+      "style": "alias",
+      "home": "nested",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:timeout-catchTag:expression:namespace:top",
+      "profile": "timeout-catchTag",
+      "wrapper": "expression",
+      "style": "namespace",
+      "home": "top",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:timeout-catchTag:expression:namespace:object",
+      "profile": "timeout-catchTag",
+      "wrapper": "expression",
+      "style": "namespace",
+      "home": "object",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:timeout-catchTag:expression:namespace:nested",
+      "profile": "timeout-catchTag",
+      "wrapper": "expression",
+      "style": "namespace",
+      "home": "nested",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:timeout-catchTag:block:named:top",
+      "profile": "timeout-catchTag",
+      "wrapper": "block",
+      "style": "named",
+      "home": "top",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:timeout-catchTag:block:named:object",
+      "profile": "timeout-catchTag",
+      "wrapper": "block",
+      "style": "named",
+      "home": "object",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:timeout-catchTag:block:named:nested",
+      "profile": "timeout-catchTag",
+      "wrapper": "block",
+      "style": "named",
+      "home": "nested",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:timeout-catchTag:block:alias:top",
+      "profile": "timeout-catchTag",
+      "wrapper": "block",
+      "style": "alias",
+      "home": "top",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:timeout-catchTag:block:alias:object",
+      "profile": "timeout-catchTag",
+      "wrapper": "block",
+      "style": "alias",
+      "home": "object",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:timeout-catchTag:block:alias:nested",
+      "profile": "timeout-catchTag",
+      "wrapper": "block",
+      "style": "alias",
+      "home": "nested",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:timeout-catchTag:block:namespace:top",
+      "profile": "timeout-catchTag",
+      "wrapper": "block",
+      "style": "namespace",
+      "home": "top",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:timeout-catchTag:block:namespace:object",
+      "profile": "timeout-catchTag",
+      "wrapper": "block",
+      "style": "namespace",
+      "home": "object",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:timeout-catchTag:block:namespace:nested",
+      "profile": "timeout-catchTag",
+      "wrapper": "block",
+      "style": "namespace",
+      "home": "nested",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:timeout-catchTag:parenthesized:named:top",
+      "profile": "timeout-catchTag",
+      "wrapper": "parenthesized",
+      "style": "named",
+      "home": "top",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:timeout-catchTag:parenthesized:named:object",
+      "profile": "timeout-catchTag",
+      "wrapper": "parenthesized",
+      "style": "named",
+      "home": "object",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:timeout-catchTag:parenthesized:named:nested",
+      "profile": "timeout-catchTag",
+      "wrapper": "parenthesized",
+      "style": "named",
+      "home": "nested",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:timeout-catchTag:parenthesized:alias:top",
+      "profile": "timeout-catchTag",
+      "wrapper": "parenthesized",
+      "style": "alias",
+      "home": "top",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:timeout-catchTag:parenthesized:alias:object",
+      "profile": "timeout-catchTag",
+      "wrapper": "parenthesized",
+      "style": "alias",
+      "home": "object",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:timeout-catchTag:parenthesized:alias:nested",
+      "profile": "timeout-catchTag",
+      "wrapper": "parenthesized",
+      "style": "alias",
+      "home": "nested",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:timeout-catchTag:parenthesized:namespace:top",
+      "profile": "timeout-catchTag",
+      "wrapper": "parenthesized",
+      "style": "namespace",
+      "home": "top",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:timeout-catchTag:parenthesized:namespace:object",
+      "profile": "timeout-catchTag",
+      "wrapper": "parenthesized",
+      "style": "namespace",
+      "home": "object",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:timeout-catchTag:parenthesized:namespace:nested",
+      "profile": "timeout-catchTag",
+      "wrapper": "parenthesized",
+      "style": "namespace",
+      "home": "nested",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:map:expression:named:top",
+      "profile": "map",
+      "wrapper": "expression",
+      "style": "named",
+      "home": "top",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:map:expression:named:object",
+      "profile": "map",
+      "wrapper": "expression",
+      "style": "named",
+      "home": "object",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:map:expression:named:nested",
+      "profile": "map",
+      "wrapper": "expression",
+      "style": "named",
+      "home": "nested",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:map:expression:alias:top",
+      "profile": "map",
+      "wrapper": "expression",
+      "style": "alias",
+      "home": "top",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:map:expression:alias:object",
+      "profile": "map",
+      "wrapper": "expression",
+      "style": "alias",
+      "home": "object",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:map:expression:alias:nested",
+      "profile": "map",
+      "wrapper": "expression",
+      "style": "alias",
+      "home": "nested",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:map:expression:namespace:top",
+      "profile": "map",
+      "wrapper": "expression",
+      "style": "namespace",
+      "home": "top",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:map:expression:namespace:object",
+      "profile": "map",
+      "wrapper": "expression",
+      "style": "namespace",
+      "home": "object",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:map:expression:namespace:nested",
+      "profile": "map",
+      "wrapper": "expression",
+      "style": "namespace",
+      "home": "nested",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:map:block:named:top",
+      "profile": "map",
+      "wrapper": "block",
+      "style": "named",
+      "home": "top",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:map:block:named:object",
+      "profile": "map",
+      "wrapper": "block",
+      "style": "named",
+      "home": "object",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:map:block:named:nested",
+      "profile": "map",
+      "wrapper": "block",
+      "style": "named",
+      "home": "nested",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:map:block:alias:top",
+      "profile": "map",
+      "wrapper": "block",
+      "style": "alias",
+      "home": "top",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:map:block:alias:object",
+      "profile": "map",
+      "wrapper": "block",
+      "style": "alias",
+      "home": "object",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:map:block:alias:nested",
+      "profile": "map",
+      "wrapper": "block",
+      "style": "alias",
+      "home": "nested",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:map:block:namespace:top",
+      "profile": "map",
+      "wrapper": "block",
+      "style": "namespace",
+      "home": "top",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:map:block:namespace:object",
+      "profile": "map",
+      "wrapper": "block",
+      "style": "namespace",
+      "home": "object",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:map:block:namespace:nested",
+      "profile": "map",
+      "wrapper": "block",
+      "style": "namespace",
+      "home": "nested",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:map:parenthesized:named:top",
+      "profile": "map",
+      "wrapper": "parenthesized",
+      "style": "named",
+      "home": "top",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:map:parenthesized:named:object",
+      "profile": "map",
+      "wrapper": "parenthesized",
+      "style": "named",
+      "home": "object",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:map:parenthesized:named:nested",
+      "profile": "map",
+      "wrapper": "parenthesized",
+      "style": "named",
+      "home": "nested",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:map:parenthesized:alias:top",
+      "profile": "map",
+      "wrapper": "parenthesized",
+      "style": "alias",
+      "home": "top",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:map:parenthesized:alias:object",
+      "profile": "map",
+      "wrapper": "parenthesized",
+      "style": "alias",
+      "home": "object",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:map:parenthesized:alias:nested",
+      "profile": "map",
+      "wrapper": "parenthesized",
+      "style": "alias",
+      "home": "nested",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:map:parenthesized:namespace:top",
+      "profile": "map",
+      "wrapper": "parenthesized",
+      "style": "namespace",
+      "home": "top",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:map:parenthesized:namespace:object",
+      "profile": "map",
+      "wrapper": "parenthesized",
+      "style": "namespace",
+      "home": "object",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:map:parenthesized:namespace:nested",
+      "profile": "map",
+      "wrapper": "parenthesized",
+      "style": "namespace",
+      "home": "nested",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:as:expression:named:top",
+      "profile": "as",
+      "wrapper": "expression",
+      "style": "named",
+      "home": "top",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:as:expression:named:object",
+      "profile": "as",
+      "wrapper": "expression",
+      "style": "named",
+      "home": "object",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:as:expression:named:nested",
+      "profile": "as",
+      "wrapper": "expression",
+      "style": "named",
+      "home": "nested",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:as:expression:alias:top",
+      "profile": "as",
+      "wrapper": "expression",
+      "style": "alias",
+      "home": "top",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:as:expression:alias:object",
+      "profile": "as",
+      "wrapper": "expression",
+      "style": "alias",
+      "home": "object",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:as:expression:alias:nested",
+      "profile": "as",
+      "wrapper": "expression",
+      "style": "alias",
+      "home": "nested",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:as:expression:namespace:top",
+      "profile": "as",
+      "wrapper": "expression",
+      "style": "namespace",
+      "home": "top",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:as:expression:namespace:object",
+      "profile": "as",
+      "wrapper": "expression",
+      "style": "namespace",
+      "home": "object",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:as:expression:namespace:nested",
+      "profile": "as",
+      "wrapper": "expression",
+      "style": "namespace",
+      "home": "nested",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:as:block:named:top",
+      "profile": "as",
+      "wrapper": "block",
+      "style": "named",
+      "home": "top",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:as:block:named:object",
+      "profile": "as",
+      "wrapper": "block",
+      "style": "named",
+      "home": "object",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:as:block:named:nested",
+      "profile": "as",
+      "wrapper": "block",
+      "style": "named",
+      "home": "nested",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:as:block:alias:top",
+      "profile": "as",
+      "wrapper": "block",
+      "style": "alias",
+      "home": "top",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:as:block:alias:object",
+      "profile": "as",
+      "wrapper": "block",
+      "style": "alias",
+      "home": "object",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:as:block:alias:nested",
+      "profile": "as",
+      "wrapper": "block",
+      "style": "alias",
+      "home": "nested",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:as:block:namespace:top",
+      "profile": "as",
+      "wrapper": "block",
+      "style": "namespace",
+      "home": "top",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:as:block:namespace:object",
+      "profile": "as",
+      "wrapper": "block",
+      "style": "namespace",
+      "home": "object",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:as:block:namespace:nested",
+      "profile": "as",
+      "wrapper": "block",
+      "style": "namespace",
+      "home": "nested",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:as:parenthesized:named:top",
+      "profile": "as",
+      "wrapper": "parenthesized",
+      "style": "named",
+      "home": "top",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:as:parenthesized:named:object",
+      "profile": "as",
+      "wrapper": "parenthesized",
+      "style": "named",
+      "home": "object",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:as:parenthesized:named:nested",
+      "profile": "as",
+      "wrapper": "parenthesized",
+      "style": "named",
+      "home": "nested",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:as:parenthesized:alias:top",
+      "profile": "as",
+      "wrapper": "parenthesized",
+      "style": "alias",
+      "home": "top",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:as:parenthesized:alias:object",
+      "profile": "as",
+      "wrapper": "parenthesized",
+      "style": "alias",
+      "home": "object",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:as:parenthesized:alias:nested",
+      "profile": "as",
+      "wrapper": "parenthesized",
+      "style": "alias",
+      "home": "nested",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:as:parenthesized:namespace:top",
+      "profile": "as",
+      "wrapper": "parenthesized",
+      "style": "namespace",
+      "home": "top",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:as:parenthesized:namespace:object",
+      "profile": "as",
+      "wrapper": "parenthesized",
+      "style": "namespace",
+      "home": "object",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    },
+    {
+      "key": "preserved-errors:returned-callback-pipe:as:parenthesized:namespace:nested",
+      "profile": "as",
+      "wrapper": "parenthesized",
+      "style": "namespace",
+      "home": "nested",
+      "owner": "migflow-foldkit",
+      "gap": "Returned Error-preserving callback pipe lacks its channel proof; retire this exact key when supported."
+    }
+  ]
+}
