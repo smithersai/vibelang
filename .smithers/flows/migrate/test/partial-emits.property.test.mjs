@@ -1,3 +1,4 @@
+import { writeProbeAwareCompiler } from "./fake-vibelang.mjs"
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -30,7 +31,7 @@ async function fixture({ code = 2, emitted = true, compiler } = {}) {
     const bin = join(target, "packages/cli/node_modules/.bin/vibelang")
     mkdirSync(dirname(bin), { recursive: true })
     if (compiler) symlinkSync(compiler, bin)
-    else writeFileSync(bin, [
+    else writeProbeAwareCompiler(bin, [
       "#!/usr/bin/env node",
       'const fs = require("node:fs"), path = require("node:path")',
       'const at = process.argv.indexOf("--outDir"), out = process.argv[at + 1]',
