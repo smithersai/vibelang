@@ -1,0 +1,10 @@
+export function take(subject: unknown): unknown {
+  const $match1=1, $match2=2, $match3=3, $is1=4
+  void [$match1,$match2,$match3,$is1]
+  if (subject is { child: { items: [let value] } }) return value
+  return "missing"
+}
+export const test = (subject: unknown): boolean => subject is { child: { items: [let value] } }
+export function inMatch(subject: unknown): unknown {
+  return match (subject) { when { child: { items: [let value] } }: value; default: "missing"; }
+}

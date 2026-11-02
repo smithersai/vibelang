@@ -58,6 +58,8 @@ A `return` or an outer labeled jump in `for try` head binding initialization sti
 
 ## Patterns
 
+Nested object and array patterns keep each captured subject through an `is` binding. A property getter used by the nested pattern runs once, as it does in a `match` arm.
+
 `[]` matches an empty iterable, including an empty string. A regex literal accepts the same extractor suffix as a named regex, such as `/re/(let match)` or `/re/()`. When `not(...)` or `not[...]` also parses as prefix negation, that parse wins regardless of a local function named `not`; qualify an extractor as `helpers.not(...)`.
 
 | Pattern | Matches | Example |

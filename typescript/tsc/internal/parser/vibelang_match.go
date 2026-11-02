@@ -1313,8 +1313,8 @@ func (p *Parser) enterSubject(path matchPath, pat *pattern, steps *[]matchStep, 
 	}
 	p.vibelangMatchTemps++
 	name := "$match" + strconv.Itoa(p.vibelangMatchTemps)
-	*steps = append(*steps, matchStep{decl: p.mConst(p.mIdent(name, pat.anchor), ast.NodeFlagsConst, path(), pat.anchor)})
-	return func() *ast.Node { return p.mIdent(name, pat.anchor) }
+	*steps = append(*steps, matchStep{decl: p.mConst(p.mTemp(name, pat.anchor), ast.NodeFlagsConst, path(), pat.anchor)})
+	return func() *ast.Node { return p.mTemp(name, pat.anchor) }
 }
 
 // subjectReads returns how many times compilePattern, outside an inline
