@@ -327,6 +327,16 @@ The agent steps read `MIGRATE_AGENT` through Effect `Config`; without it, they f
 
 `--scope <scope.txt>` plans one whole-scope pass instead (`mode: "one-pass"`), so the run needs no agent: repair settles by diagnostic cause. A later execution keeps the plan the first one recorded.
 
+### The eval
+
+`eval.ts` runs the flow, unmocked and with no agent, on a real Effect package, `fixture/canonical` (`fixture/README.md` says where it comes from), and compares four scores with `baseline.json`: the share of the scope's modules that end the run as `.vibe`, no new failing or missing test, unchanged published declarations, and a recorded batch. The step key includes the staged compiler's digest, so a compiler change that drops a score reads as a regression.
+
+```sh
+sh scripts/build-vibelang.sh && (cd packages/runtime && bun install && bun run build)
+bun .smithers/flows/migrate/eval.ts            # run, compare with baseline.json, exit 1 on a drop
+bun .smithers/flows/migrate/eval.ts --update   # run and record baseline.json
+```
+
 ## The idiom context
 
 `context.md` is the repair agent's system prompt. `build-context.mjs` generates it, so it is never edited by hand:

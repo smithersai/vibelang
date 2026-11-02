@@ -29,6 +29,10 @@ test("a change to the code a run executes changes the step key", (t) => {
   const before = flowDigest(dir)
   writeFileSync(path.join(dir, "lib/new.mjs"), "new\n")
   assert.notEqual(flowDigest(dir), before, "an added lib file")
+  const withLib = flowDigest(dir)
+  mkdirSync(path.join(dir, "templates"))
+  writeFileSync(path.join(dir, "templates/runner.mjs"), "template\n")
+  assert.notEqual(flowDigest(dir), withLib, "a template the run writes into its target")
 })
 
 test("the eval, its baseline, tests and README leave the step key alone", (t) => {

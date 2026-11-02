@@ -1,0 +1,34 @@
+{
+  "name": "@smthrs/canonical",
+  "type": "module",
+  "version": "1.0.0-rc.16",
+  "license": "MIT",
+  "description": "RFC 8785 canonical JSON as an Effect Schema",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./internal/*": null,
+    "./*/index": null,
+    "./Canonical": "./src/Canonical.ts",
+    "./index": "./src/index.ts",
+    "./Record": "./src/Record.ts",
+    "./BoundedJson": "./src/BoundedJson.ts",
+    "./IssuePath": "./src/IssuePath.ts",
+    "./ReadonlyMap": "./src/ReadonlyMap.ts",
+    "./Serializer": "./src/Serializer.ts"
+  },
+  "scripts": {
+    "check": "tsc -p tsconfig.test.json",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "26.4.1",
+    "effect": "4.0.5",
+    "fast-check": "4.9.0",
+    "typescript": "5.9.3",
+    "vitest": "5.0.0"
+  },
+  "peerDependencies": {
+    "effect": "4.0.5"
+  }
+}

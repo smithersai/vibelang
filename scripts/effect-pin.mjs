@@ -31,7 +31,8 @@ const LOCKFILES = ["bun.lock", "package-lock.json", "pnpm-lock.yaml"]
 // compiles; their tool decides their version.
 export const EXEMPT = new Map([
   [".smithers/package.json", "the Smithers packages' own Effect"],
-  ["site/package.json", "the site's Cloudflare deploy (alchemy)"]
+  ["site/package.json", "the site's Cloudflare deploy (alchemy)"],
+  [".smithers/flows/migrate/fixture/canonical/package.json", "the migrate eval's target, which starts on its own older Effect"]
 ])
 
 // Whether name versions with effect: effect itself and the @effect/* packages

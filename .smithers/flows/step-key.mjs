@@ -5,14 +5,14 @@
 // reported as flakiness: ts-bump's mutation run on 2026-11-01 dropped four
 // scores and said "Regressions: 0, Nondeterminism: 4".
 //
-// The digest covers each directory's flow.ts, run.ts and lib/, the code a run
-// executes; not eval.ts, baseline.json, test/ or README.md, which grade or
+// The digest covers each directory's flow.ts, run.ts, lib/ and templates/, the
+// code a run executes or writes into its target; not eval.ts, baseline.json, test/ or README.md, which grade or
 // describe the work. Pass every flow directory whose code the flow imports.
 import { createHash } from "node:crypto"
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs"
 import path from "node:path"
 
-const CODE = ["flow.ts", "run.ts", "lib"]
+const CODE = ["flow.ts", "run.ts", "lib", "templates"]
 
 function walk(file, out) {
   if (statSync(file).isDirectory()) for (const name of readdirSync(file).sort()) walk(path.join(file, name), out)

@@ -61,6 +61,7 @@ const unrun = [
   ["site/scripts/not-found.test.mjs", "builds the site using its npm install"],
   ["site/scripts/contrast.test.mjs", "requires the site's install, Chromium and a full site build"],
   ["editors/tree-sitter-vibelang/test/*.test.mjs", "the grammar property test fails on main"],
+  [".smithers/flows/migrate/fixture/**", "the migrate eval's fixture package (@smthrs/canonical); eval.ts runs its tests before and after the flow"],
 ]
 
 // A glob as the shell and `smthrs` read one: `**` crosses directories, `*` does not.
