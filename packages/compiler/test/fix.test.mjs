@@ -206,3 +206,26 @@ test("--fix qualifies an imported helper return type in its own scope", { skip }
   assert.equal(second.status, 0, second.stdout + second.stderr)
   assert.match(second.stdout, /0 fixes in 0 files/)
 })
+
+// An Effect.fn callback that is not a generator once drew an error quoting its
+// body, so --fix refused the safe Effect.gen rewrite inside it. Only effect
+// decides a function's kind now (VIP-1): the rewrite is written and compiles,
+// whether the span name is unique or shared.
+for (const [name, source] of [
+  ["a unique span name", 'export const work = Effect.fn("work")((n: number) => Effect.uninterruptible(Effect.gen(function* () { yield* Effect.log(n) })))\n'],
+  ["a repeated span name", 'export const first = Effect.fn("same")((n: number) => Effect.uninterruptible(Effect.gen(function* () { yield* Effect.log("first", n) })))\nexport const second = Effect.fn("same")((n: number) => Effect.uninterruptible(Effect.gen(function* () { yield* Effect.log("second", n) })))\n'],
+]) {
+  test(`--fix rewrites the body of an Effect.fn callback with ${name}`, { skip }, (t) => {
+    const root = project(t, source)
+    const first = vibelang(root, "--fix", "--pretty", "false")
+    assert.equal(first.status, 0, first.stdout + first.stderr)
+    assert.doesNotMatch(first.stdout, /error /)
+    const changed = readFileSync(join(root, "main.vibe"), "utf8")
+    assert.doesNotMatch(changed, /Effect\.gen|function\*|yield\*/)
+    assert.match(changed, /Effect\.uninterruptible\(effect \{ try Effect\.log\(/)
+    const second = vibelang(root, "--fix", "--pretty", "false")
+    assert.equal(second.status, 0, second.stdout + second.stderr)
+    assert.match(second.stdout, /0 fixes in 0 files/)
+    assert.equal(readFileSync(join(root, "main.vibe"), "utf8"), changed)
+  })
+}
