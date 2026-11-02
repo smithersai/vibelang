@@ -63,3 +63,15 @@ FuzzFunctionPlainRunners plain-runner:returned-arrow:runSyncExit compiler VIP-1:
 FuzzFunctionPlainRunners plain-runner:array-callback:runSyncExit compiler VIP-1: a plain function is plain JavaScript, but its statement Effect.runSyncExit(e) gets EK4301 (D24 structured result discarded, calltypes.go checkInvocationRuns) for the Exit it returns; lane core-land
 FuzzFunctionPlainRunners plain-runner:plain-callee-callback:runSyncExit compiler VIP-1: a plain function is plain JavaScript, but its statement Effect.runSyncExit(e) gets EK4301 (D24 structured result discarded, calltypes.go checkInvocationRuns) for the Exit it returns; lane core-land
 FuzzFunctionPlainRunners corpus:fz-plain-runner-runsyncexit compiler VIP-1: minimized plain-function runSyncExit statement (EK4301); lane core-land
+FuzzUnionDataMember plain-call:direct compiler VIP-1/VIP-26: plain module call retains EK4301 erasure diagnostics absent from native TypeScript; lane impl-hunt-func
+FuzzUnionDataMember corpus:vip1-plain-call-direct compiler VIP-1/VIP-26: minimized plain-call:direct call; lane impl-hunt-func
+FuzzUnionDataMember plain-call:array compiler VIP-1/VIP-26: plain module call retains EK4301 erasure diagnostics absent from native TypeScript; lane impl-hunt-func
+FuzzUnionDataMember corpus:vip1-plain-call-array compiler VIP-1/VIP-26: minimized plain-call:array call; lane impl-hunt-func
+FuzzUnionDataMember plain-call:explicit compiler VIP-1/VIP-26: plain module call retains EK4301 erasure diagnostics absent from native TypeScript; lane impl-hunt-func
+FuzzUnionDataMember corpus:vip1-plain-call-explicit compiler VIP-1/VIP-26: minimized plain-call:explicit call; lane impl-hunt-func
+FuzzUnionDataMember plain-call:explicit-array compiler VIP-1/VIP-26: plain module call retains EK4301 erasure diagnostics absent from native TypeScript; lane impl-hunt-func
+FuzzUnionDataMember corpus:vip1-plain-call-explicit-array compiler VIP-1/VIP-26: minimized plain-call:explicit-array call; lane impl-hunt-func
+FuzzUnionDataMember plain-call:later compiler VIP-1/VIP-26: plain module call retains EK4301 erasure diagnostics absent from native TypeScript; lane impl-hunt-func
+FuzzUnionDataMember corpus:vip1-plain-call-later compiler VIP-1/VIP-26: minimized plain-call:later call; lane impl-hunt-func
+FuzzUnionDataMember plain-call:later-array compiler VIP-1/VIP-26: plain module call retains EK4301 erasure diagnostics absent from native TypeScript; lane impl-hunt-func
+FuzzUnionDataMember corpus:vip1-plain-call-later-array compiler VIP-1/VIP-26: minimized plain-call:later-array call; lane impl-hunt-func

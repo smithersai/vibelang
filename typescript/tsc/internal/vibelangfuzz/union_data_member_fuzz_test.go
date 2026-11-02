@@ -21,7 +21,7 @@ import (
 // witness), the callable member (plain, generic, none), how the parameter
 // holds the union (directly, a type parameter it constrains, an array of
 // either) and the value (an Effect-returning resource class, a record, a
-// resource the callable member also takes, which stays EK4301).
+// resource the callable member also takes, compared with native TypeScript).
 // alchemy's Provider.effect(Resource, …) and Provider.collection([Account,
 // Certificate]) pass resource classes this way (corpus
 // alchemy-union-data-member-generic).
@@ -188,8 +188,8 @@ const unionDataConfig = `{"compilerOptions":{"target":"ES2022","module":"NodeNex
 
 // CheckUnionDataMember compares the codes of the union program with those of
 // the data-member program. A value the callable member also takes meets that
-// member's call signature, which returns any, so D430 requires EK4301,
-// including through a type parameter's declared constraint (D513). A generic
+// member's call signature. VIP-1/VIP-26 keep this ordinary call native,
+// including through a type parameter's declared constraint. A generic
 // callable whose marker is incompatible with the inferred witness is instead
 // excluded by the completed call's instantiation.
 func CheckUnionDataMember(t *testing.T, w *Workspace, in unionDataInput) {
@@ -234,8 +234,19 @@ func CheckUnionDataMember(t *testing.T, w *Workspace, in unionDataInput) {
 		!strings.HasPrefix(in.holder.name, "constrained") &&
 		(in.data.name != "plain" || strings.HasPrefix(in.holder.name, "explicit") || strings.HasPrefix(in.holder.name, "later"))
 	if in.value.name == "platform-resource" && in.callable.text != "" && !markerMismatch {
-		if !slices.Contains(union, "EK4301") {
-			g.Add("feature:union-callable-member", "D430: %q; the union's callable member takes %s, and its call signature returns any, so the Effect-returning value is EK4301.\nunion: %v\n%s\n%s", unionDataMemberQuote, in.value.name, union, unionFiles["lib.ts"], unionFiles["main.vibe"])
+		// VIP-1/VIP-26 replace D430's implicit Effect-call boundary here.
+		// This is an ordinary call passing a function value, so compare its
+		// diagnostics with the identical native TypeScript module.
+		requireUnionPlainCallQuote(t)
+		nativeFiles := make(map[string]string, len(unionFiles))
+		for name, text := range unionFiles {
+			if name == "main.vibe" {
+				name = "main.ts"
+			}
+			nativeFiles[name] = text
+		}
+		if native := codes(nativeFiles); !slices.Equal(native, union) {
+			g.Add("plain-call:"+in.holder.name, "VIP-26: %q; a plain call passing %s has the same diagnostics as native TypeScript. Native: %v; VibeLang: %v\n%s\n%s", unionPlainCallQuote, in.value.name, native, union, unionFiles["lib.ts"], unionFiles["main.vibe"])
 		}
 		g.FinishInput(t, key)
 		return

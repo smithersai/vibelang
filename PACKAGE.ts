@@ -227,7 +227,9 @@ const specTests = [
   "TestSpecCodesInAppendixB",
   "TestAppendixBRows",
   "TestFixGateQuoted",
-  "TestShortTargetsBudgeted"
+  "TestShortTargetsBudgeted",
+  "TestUnionPlainCallsQuoted",
+  "TestUnionDataMemberPlainTypeScript",
 ]
 // The cost guards of vibelang --fix. They count programs and parsed files, and
 // compare the time and memory of two project sizes, so a slower fix loop fails
