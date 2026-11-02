@@ -1094,6 +1094,12 @@ typescript/vibelang/cases/direct-effect/main.vibe:16:23 lambda effectFn annotati
 typescript/vibelang/cases/direct-effect/main.vibe:19:24 lambda effectFn annotation
 typescript/vibelang/cases/direct-effect/main.vibe:23:22 lambda effectFn annotation
 typescript/vibelang/cases/discarded-effect-call/main.vibe:7:34 byname program table
+typescript/vibelang/cases/do-array-completion/main.vibe:10:16 lambda plain annotation
+typescript/vibelang/cases/do-array-completion/main.vibe:14:18 lambda plain annotation
+typescript/vibelang/cases/do-array-completion/main.vibe:18:16 lambda plain annotation
+typescript/vibelang/cases/do-array-completion/main.vibe:23:16 lambda plain annotation
+typescript/vibelang/cases/do-array-completion/main.vibe:27:16 lambda plain annotation
+typescript/vibelang/cases/do-array-completion/main.vibe:32:20 lambda effectFn fallback
 typescript/vibelang/cases/do-assignment-pattern-order/main.vibe:10:139 lambda plain annotation
 typescript/vibelang/cases/do-assignment-pattern-order/main.vibe:10:223 lambda dual fallback
 typescript/vibelang/cases/do-assignment-pattern-order/main.vibe:11:139 lambda plain annotation
@@ -2459,6 +2465,10 @@ typescript/vibelang/cases/is-home-for-head/main.vibe:24:18 lambda plain table
 typescript/vibelang/cases/is-home-for-head/main.vibe:9:18 lambda plain fallback
 typescript/vibelang/cases/is-home-guard-after-if/main.vibe:20:9 lambda plain fallback
 typescript/vibelang/cases/is-home-statement/main.vibe:13:24 lambda plain fallback
+typescript/vibelang/cases/is-nested-binding-temps/main.vibe:11:23 lambda plain annotation
+typescript/vibelang/cases/is-nested-binding-temps/main.vibe:16:24 lambda plain annotation
+typescript/vibelang/cases/is-nested-binding-temps/main.vibe:21:22 lambda plain annotation
+typescript/vibelang/cases/is-nested-binding-temps/main.vibe:27:32 byname program table
 typescript/vibelang/cases/iterator-array-custom-close/main.vibe:19:19 byname program table
 typescript/vibelang/cases/iterator-binding-default-close/main.vibe:11:19 byname program table
 typescript/vibelang/cases/iterator-destructure-default-close/main.vibe:8:19 byname program table
