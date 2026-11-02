@@ -1,0 +1,5 @@
+// expect: EK0102
+// VIP-5: await inside effect code is a placement error for every operand type.
+effect function load() {
+  await Promise.resolve(1)
+}

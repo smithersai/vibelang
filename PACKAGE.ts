@@ -60,6 +60,7 @@ const specTests = [
   "TestAsyncCleanupRefactorQuoted",
   "TestEffectInitializerQuoted",
   "TestAsyncCleanupRefactorQuoted",
+  "TestEffectAwaitPlacementQuoted",
   "TestDoLoopHeadQuoted",
   "TestDoShortCircuitNarrowingQuoted",
   "TestSidecarEscapesQuoted",

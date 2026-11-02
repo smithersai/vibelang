@@ -146,6 +146,21 @@ func checkAwait(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
 	if len(args) != 1 || ast.NodeIsMissing(args[0]) {
 		return
 	}
+	// VIP-1/VIP-5: placement forbids every operand in effect code. Keep
+	// the handle-specific repair notes without the retired await codes.
+	if inEffectCode(call) {
+		d := reportAt(c, file, keyword, EK0102)
+		if t := c.GetTypeAtLocation(args[0]); t != nil {
+			switch {
+			case isJoinable(c, t, 0):
+				note(d, "Join the fiber with join {0}.", nodeText(file, args[0]))
+			case isDeferred(c, t):
+				note(d, "Wait for the Deferred with try Deferred.await({0}).", nodeText(file, args[0]))
+			}
+		}
+		cover(c, call)
+		return
+	}
 	operand := args[0]
 	if inner := ast.SkipParentheses(operand); ast.IsCallExpression(inner) && callReturnsEffect(c, inner) {
 		note(reportAt(c, file, keyword, EK4601, nodeText(file, operand)), "Remove await: the call runs and waits. To run it concurrently, fork it and join the fiber.")

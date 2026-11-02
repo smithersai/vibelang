@@ -67,7 +67,7 @@ var legacyDeclared = map[int32]string{
 	4501: "lane del-rest",                                                                                                                                                 // diagnostics.go
 	4502: "lane del-rest",                                                                                                                                                 // call_pipe_diagnostic.go
 	4503: "lane del-rest",                                                                                                                                                 // service_value_diagnostic.go
-	4601: "lane del-rest",                                                                                                                                                 // fibers.go
+	4601: "lane del-rest; declaration only: effect-body await uses EK0102, so no reduced source witness reaches this legacy fallback",                                     // fibers.go
 	4602: "lane del-rest",                                                                                                                                                 // fibers.go
 	4603: "lane del-rest",                                                                                                                                                 // fibers.go
 	4604: "lane del-rest",                                                                                                                                                 // fibers.go

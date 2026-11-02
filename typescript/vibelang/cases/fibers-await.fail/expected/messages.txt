@@ -1,10 +1,7 @@
-load() already runs here, so there is nothing to await.
-p is a promise, but await in VibeLang code does not wait for promises.
-await in VibeLang code waits for nothing, and this is 42.
+Await, for await or await using in effect code.
 await in a hatch body is JavaScript's await, which needs an async function.
 Join the fiber with join f.
 Wait for the Deferred with try Deferred.await(d).
 join takes a Fiber or an array or object of fibers, but this is Deferred<number, never>.
 Wait for a Deferred with d.await().
 join is VibeLang syntax, but a hatch body is plain TypeScript.
-Remove await: a value needs no waiting.

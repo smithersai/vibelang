@@ -1,6 +1,6 @@
-// expect: EK4602
-// await in VibeLang code does not wait for promises. A promise needs a
-// hatch, where await keeps its JavaScript meaning.
+// expect: EK0102
+// Effect code cannot await a Promise (VIP-1/VIP-5). Wrap it with
+// tryPromise and run it with try; native async code keeps await.
 declare const pending: Promise<number>
 
 export effect function total() {

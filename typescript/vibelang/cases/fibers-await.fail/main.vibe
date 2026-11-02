@@ -1,4 +1,5 @@
-// expect: EK0102 EK4601 EK4602 EK4603 EK4604 EK4611 EK4612
+// expect: EK0102 EK4604 EK4611 EK4612
+// VIP-5: effect-body await placement uses EK0102 independently of the operand.
 effect function load(): number!! {
   return 1
 }
