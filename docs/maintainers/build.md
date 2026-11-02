@@ -357,6 +357,11 @@ A cached result is only as correct as its key is complete. Each target names:
   `PATH` enters the key. Everything else a target needs is in its command
   text. `GOCACHE` is set there to `$HOME/.cache/go-build-smthrs`; Go keys its
   own cache by content, so it is not an input.
+  The fuzz targets (`//:go-vibelangfuzz` and its `-pending`,
+  `-editor`, `-compile`, `-config` and `-hangs` siblings) explicitly declare the optional
+  `VIBELANG_FUZZ_BUDGET_LOG` path. Set it before invoking `smthrs` to append
+  CPU baselines from passing and failing target runs. The path enters each
+  target's cache key; a cache hit does not rerun tests or append records.
 - **Its installs.** `node_modules` trees are installed from lockfiles before
   `smthrs` runs, as Smithers installs its own. The lockfile and `package.json`
   are the install's identity and inputs of every target that reads it.

@@ -23,25 +23,30 @@ const bun = S.Host.bin("bun")
 const node = S.Host.bin("node")
 const go = S.Host.bin("go")
 const gofmt = S.Host.bin("gofmt")
+// Shell targets receive only declared environment. Keep the optional append
+// destination in the key as well, so a different log path reruns the target.
+const fuzzBudgetEnv = { VIBELANG_FUZZ_BUDGET_LOG: process.env.VIBELANG_FUZZ_BUDGET_LOG ?? "" }
 
 const check = (
   summary: string,
   shell: string,
   data: ReadonlyArray<unknown>,
   tools: ReadonlyArray<typeof bun>,
-  timeout = "30m"
-) => S.Shell.Test({ summary, shell, data: [tree, ...data] as Array<never>, tools: [...tools], sandbox: "none", timeout })
+  timeout = "30m",
+  env: Readonly<Record<string, string>> = {}
+) => S.Shell.Test({ summary, shell, data: [tree, ...data] as Array<never>, tools: [...tools], sandbox: "none", timeout, env })
 
 // The VibeLang Go packages' tests read cases, docs and installs through the
 // repository root, so they take `tree` too. They run with -count=1: the graph
 // caches their results, and Go's own test cache would first hash every file
 // the tests opened (the fuzz suite opens about 25 million).
-const goVibelang = (summary: string, shell: string, data: ReadonlyArray<unknown> = [], timeout?: string) =>
+const goVibelang = (summary: string, shell: string, data: ReadonlyArray<unknown> = [], timeout?: string,
+  env: Readonly<Record<string, string>> = {}) =>
   check(summary, `cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs ${shell}`, [
     Tsc.srcs,
     Packages["runtime-dist"],
     ...data
-  ], [go, node], timeout)
+  ], [go, node], timeout, env)
 
 // The Go tests that read docs/design: the registry against the
 // specification's Appendix B, the settings oracle against the compiler, the
@@ -285,7 +290,8 @@ const pendingHangs = goVibelang(
   `CGO_ENABLED=0 GOMAXPROCS=8 GOFLAGS=-p=8 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG_PROBE=0 ${effect} ` +
     "go test -v -short -count=1 -timeout=5m -trimpath -run '^(TestPendingHangs|TestHangProbeDiagnosticSummary)$' ./internal/vibelangfuzz/",
   [Tsc["vibelangfuzz-files"]],
-  "30m"
+  "30m",
+  fuzzBudgetEnv
 )
 
 // This check reads only the generated spec/VIP pages. Keep it independently
@@ -427,7 +433,8 @@ const targets = {
     "The inputs testdata/pending/ lists still fail, and every probe passes or is pending: a change that makes one pass deletes its line.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} sh internal/vibelangfuzz/pending.sh`,
     [Tsc["vibelangfuzz-files"], pendingHangs],
-    "30m"
+    "30m",
+    fuzzBudgetEnv
   ),
   // The merge gate runs it for a change to the documentation or a case, which
   // seed its sample, where //:go-vibelangfuzz runs only post-merge: an example
@@ -439,7 +446,8 @@ const targets = {
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} ` +
       "go test -short -count=1 -timeout=15m -trimpath -run '^(FuzzEditor|FuzzEditorConsistency|FuzzEffectArrowHeads|FuzzAsyncRefactorBridges)$' ./internal/vibelangfuzz/",
     [Tsc["vibelangfuzz-files"]],
-    "30m"
+    "30m",
+    fuzzBudgetEnv
   ),
   // The merge gate runs it for a change to a case, the documentation or the
   // fuzz oracles, which seed its sample or judge it, where //:go-vibelangfuzz
@@ -452,7 +460,8 @@ const targets = {
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} ` +
       "go test -short -count=1 -timeout=15m -trimpath -run '^FuzzCompile$' ./internal/vibelangfuzz/",
     [Tsc["vibelangfuzz-files"]],
-    "30m"
+    "30m",
+    fuzzBudgetEnv
   ),
   // The merge gate runs it for a change to a case, the specification, the
   // fuzz oracles or the compiler's project settings: each case's vibelang
@@ -464,7 +473,8 @@ const targets = {
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} ` +
       "go test -short -count=1 -timeout=15m -trimpath -run '^FuzzConfig$' ./internal/vibelangfuzz/",
     [Tsc["vibelangfuzz-files"]],
-    "30m"
+    "30m",
+    fuzzBudgetEnv
   ),
   // Shell targets do not inherit ambient Go controls. Declare the
   // post-merge fuzz budget: 24 seed workers and six build jobs.
@@ -477,7 +487,8 @@ const targets = {
     // binary runs as six processes at once (scripts/go-test-shards.sh); each
     // keeps the documented 40m corpus deadline. Admission and compilation
     // retain their separate 25m allowance before the task's 65m limit.
-    "65m"
+    "65m",
+    fuzzBudgetEnv
   ),
   "spec-tests": S.Shell.Test({
     summary: "The Go tests that read docs/design (the registry, the VIP citations and coverage, the pending lines) and the cost guards of --fix and flow narrowing.",

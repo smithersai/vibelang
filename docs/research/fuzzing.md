@@ -452,6 +452,16 @@ compiles every case. Other targets retain their existing seed selection.
 
 ### Short target CPU guard
 
+Set `VIBELANG_FUZZ_BUDGET_LOG` to a file path to retain CPU baselines from
+passing runs as well as failures, without `go test -v`. At cleanup each guarded
+target appends one tab-separated line:
+`<test name>\t<used seconds, 3 decimals>\t<limit seconds>\t<GOMAXPROCS>\t<NumCPU>\n`.
+The file is created if needed; each line is a single append write, so concurrent
+test processes can share it. An open or write error is logged with `t.Logf`
+and does not fail the test. An unset or empty variable creates no log file.
+The existing test logs and CPU failure thresholds are unchanged.
+
+
 Every ordinary `-short` fuzz target on Linux and macOS logs aggregate process
 and completed child-process user plus system CPU at cleanup, after parallel
 seeds and subprocess oracles finish. Usage above `120` CPU-seconds is marked

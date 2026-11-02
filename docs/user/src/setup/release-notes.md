@@ -333,6 +333,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - After switching to another VibeLang compiler with the same TypeScript version, an incremental or `--build` check reused the previous compiler's cached result, so it could exit 0 where a fresh check reports errors (foldkit: `EK4402` on `import.meta.hot`). Build info now records the compiler's build, and a different build checks the project again.
 
+- Passing fuzz CPU-budget runs left no baseline to diagnose regressions. Set `VIBELANG_FUZZ_BUDGET_LOG` to append each target’s CPU use, limit and runtime CPU settings on passing and failing runs.
+
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 
 - Migration setup could leave a native type exported through a TypeScript namespace barrel as an error type in project-aware linters; setup now enables source declaration redirects in owned configs and records those edits.

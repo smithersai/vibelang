@@ -15,6 +15,7 @@ function targets(file) {
   const context = {
     fuzzTopics: new Map([["prelude", ["FuzzPreludeGlobalMember", "FuzzPreludeShadowed"]]]),
     vibelangTopics: new Map([["fix", ["TestFixReachesFixedPoint", "TestFixArguments"]]]),
+    process: { env: {} },
     migrationSources: { migrationSources: true },
     S: { Shell: { Build: spec => spec, Test: spec => spec }, Host: { bin: bin => bin },
       Filegroup: spec => spec, glob: patterns => patterns, file: file => file, Package: spec => spec },

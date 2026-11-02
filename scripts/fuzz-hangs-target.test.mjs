@@ -4,7 +4,7 @@ import { stripTypeScriptTypes } from "node:module"
 import { test } from "node:test"
 import { runInNewContext } from "node:vm"
 
-function targets() {
+function targets(env = {}) {
   const source = stripTypeScriptTypes(readFileSync(new URL("../PACKAGE.ts", import.meta.url), "utf8"))
     .replace(/^import .*$/gm, "")
     .replace("export const Package", "globalThis.result")
@@ -12,6 +12,7 @@ function targets() {
   const context = {
     fuzzTopics: new Map([["prelude", ["FuzzPreludeGlobalMember", "FuzzPreludeShadowed"]]]),
     vibelangTopics: new Map([["fix", ["TestFixReachesFixedPoint", "TestFixArguments"]]]),
+    process: { env },
     migrationSources: { migrationSources: true },
     S: { Filegroup: spec => spec, glob: glob => glob, file: file => file,
       Shell: { Test: spec => spec }, Host: { bin: bin => bin }, Package: spec => spec },
@@ -88,3 +89,14 @@ test("the internal/vibelang topics name every Test function by its file's first 
     for (const name of names) assert.match(name, /^Test[A-Za-z0-9_]+$/)
   }
 })
+
+
+for (const path of ["", "/tmp/fuzz budget.tsv"]) {
+  test("short-seed targets declare the optional CPU budget log: " + JSON.stringify(path), () => {
+    const graph = targets(path ? { VIBELANG_FUZZ_BUDGET_LOG: path } : {})
+    for (const name of ["go-vibelangfuzz", "go-vibelangfuzz-pending",
+      "go-vibelangfuzz-editor", "go-vibelangfuzz-compile", "go-vibelangfuzz-config", "go-vibelangfuzz-hangs"]) {
+      assert.equal(graph[name].env?.VIBELANG_FUZZ_BUDGET_LOG, path, name)
+    }
+  })
+}

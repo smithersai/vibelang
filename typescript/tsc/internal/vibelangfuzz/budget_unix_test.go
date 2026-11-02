@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"syscall"
 	"testing"
@@ -47,6 +48,20 @@ func enforceFuzzBudget(t testing.TB, limit time.Duration) {
 			t.Fatal(err)
 		}
 		used := end - start
+		if path := os.Getenv("VIBELANG_FUZZ_BUDGET_LOG"); path != "" {
+			file, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+			if err == nil {
+				// One append write keeps records intact across test processes.
+				_, err = file.WriteString(fmt.Sprintf("%s\t%.3f\t%g\t%d\t%d\n",
+					t.Name(), used.Seconds(), limit.Seconds(), runtime.GOMAXPROCS(0), runtime.NumCPU()))
+				if closeErr := file.Close(); err == nil {
+					err = closeErr
+				}
+			}
+			if err != nil {
+				t.Logf("%s: budget log: %v", t.Name(), err)
+			}
+		}
 		t.Logf("%s: short seed CPU: %v (failure limit %v)", t.Name(), used, limit)
 		if used > 120*time.Second {
 			t.Logf("%s: short seed CPU above 120s budget: %v", t.Name(), used)
@@ -69,7 +84,7 @@ func TestShortBudgetEnforced(t *testing.T) {
 		return
 	}
 	cmd := exec.Command(os.Args[0], "-test.run=^TestShortBudgetEnforced$")
-	cmd.Env = append(os.Environ(), "VIBELANG_BUDGET_PROBE=1")
+	cmd.Env = append(os.Environ(), "VIBELANG_BUDGET_PROBE=1", "VIBELANG_FUZZ_BUDGET_LOG=")
 	out, err := cmd.CombinedOutput()
 	if err == nil || !strings.Contains(string(out), "short seed CPU budget exceeded") {
 		t.Fatalf("budget guard did not fail: %v: %s", err, out)
