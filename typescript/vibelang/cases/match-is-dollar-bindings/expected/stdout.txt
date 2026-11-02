@@ -1,0 +1,1 @@
+dollar binding names and native Exits agree

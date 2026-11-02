@@ -335,6 +335,7 @@ func dataRules() []dataRule {
 	rules = append(rules, dataDeclarationRules()...)
 	rules = append(rules, dataNestedIsRules()...)
 	rules = append(rules, dataVarBindingRules()...)
+	rules = append(rules, dataDollarBindingRules()...)
 	rules = append(rules, unsettledIsBindingRules()...)
 	rules = append(rules, dataSchemaLibraryArrayRules()...)
 	rules = append(rules, dataSchemaLibraryRecordRules()...)
