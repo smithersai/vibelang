@@ -275,6 +275,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The `is` redeclaration checks stopped at stale specification quotes after binding homes were clarified. They now check the current VIP-7 rule: repeated names inside one pattern retain their initialization rules, while separate patterns sharing a home are redeclarations.
 
+- The pipe grammar checks stopped at an outdated specification sentence after Effect arrows were explicitly included in the covering-production rule. They now quote that rule and continue checking rejected conditional tests and their parenthesized repairs.
+
 - Missing-runtime fuzz checks assumed every Effect function imported `vibelang-runtime`; they now inspect parsed module imports and preserve independent errors when no runtime helper is needed.
 
 - Migrating an Effect pipeline could change its public declaration from an expanded intersection to a named alias, as in opencode's reconnect service; the quick fix now keeps the native `.pipe(...)` when uncurrying a stage would change inferred type names.

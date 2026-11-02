@@ -9,7 +9,7 @@ import (
 )
 
 const reviewPipeTarget = "FuzzReviewPipeGrammar"
-const reviewPipeChapterQuote = "The existing conditional, yield, assignment and arrow covering-production errors remain."
+const reviewPipeChapterQuote = "The existing conditional, yield, assignment and arrow covering-production errors remain, and an [EffectArrow](900-appendices.md#effectarrow) is an arrow here."
 const reviewPipeSnapshotQuote = "it is **invalid** syntax to use **other** operators that have **similar precedence**\n(i.e., the arrow `=>`, the ternary conditional operator `?` `:`,\nthe assignment operators, and the `yield` operator)\nas a **pipe head or body**."
 
 func TestReviewPipeGrammarQuoted(t *testing.T) {
