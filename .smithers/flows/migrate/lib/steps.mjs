@@ -45,6 +45,7 @@ import { wireDeveloperTools } from "./tooling.mjs"
 import { wireTypecheckBuild } from "./typecheck-build.mjs"
 import { planEmittedImports, applyEmittedImports } from "./emitted-imports.mjs"
 import { wireOxlintPlugins } from "./oxlint-plugins.mjs"
+import { wireNodeBins } from "./node-bins.mjs"
 import { readToolchain } from "./toolchain.mjs"
 import { probeVip1, probeTargetVip1 } from "./vip-flip.mjs"
 import { assertPortable, machineRoots } from "./portable.mjs"
@@ -899,6 +900,9 @@ export async function wireTarget(config, log) {
   const vite = Wire.wireVite({ root: t, packages: packages, test: config.test, ts, specsFor })
   changed.push(...vite.changed.filter((file) => !changed.includes(file)))
   warnings.push(...vite.warnings)
+  // And every script that runs a workspace Node bin reaching migrated sources, such as Smithers' smthrs.
+  const nodeBins = wireNodeBins({ root: t, packages: packages, manifests: Wire.repositoryPackages(t).filter((pkg) => Wire.ownedPaths(t)(posix.join(pkg.dir, "package.json"))), ts, specsFor })
+  changed.push(...nodeBins.changed.filter((file) => !changed.includes(file)))
   const tooling = wireDeveloperTools({ root: t, specsFor, ts })
   changed.push(...tooling.changed.filter(file => !changed.includes(file)))
   warnings.push(...tooling.warnings)

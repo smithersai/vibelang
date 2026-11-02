@@ -1,0 +1,23 @@
+{
+  "finding": "smithers:workspace-bin-without-loader",
+  "note": "Smithers' root scripts run `pnpm exec smthrs target '//:targetIndex' --write` and `smthrs flow start docs-sync`. smthrs is @smthrs/cli's Node bin, which loads packages/smithers/src; once src/internal/ControlNdjson was .vibe, `pnpm run target-index` failed loading NodeControl.ts -> ./internal/ControlNdjson.vibe, since smthrs runs without vibelang's loader (audit62-smithers, 2026-11-02).",
+  "files": {
+    "package.json": "{\n  \"name\": \"smithers\",\n  \"private\": true,\n  \"workspaces\": [\n    \"packages/*\"\n  ],\n  \"scripts\": {\n    \"target-index\": \"pnpm exec smthrs target '//:targetIndex' --write\",\n    \"docs:check\": \"smthrs flow start docs-sync --data '{\\\"mode\\\":\\\"check\\\"}' --wait\",\n    \"release:status\": \"node --import vibelang/register .smithers/flows/release-support/main.ts status\",\n    \"lint:docs\": \"lint-docs docs\",\n    \"fast\": \"fastbin run\"\n  }\n}\n",
+    "packages/cli/package.json": "{\"name\": \"@smthrs/cli\", \"type\": \"module\", \"bin\": {\"smthrs\": \"bin/smithers.mjs\"}}\n",
+    "packages/cli/bin/smithers.mjs": "#!/usr/bin/env node\nimport { main } from \"../src/main.ts\"\nawait main(process.argv.slice(2))\n",
+    "packages/cli/src/main.ts": "import { NodeControl } from \"@smthrs/smithers/NodeControl\"\nexport const main = async (args: string[]) => NodeControl.run(args)\n",
+    "packages/smithers/package.json": "{\"name\": \"@smthrs/smithers\", \"type\": \"module\", \"exports\": {\"./NodeControl\": \"./src/NodeControl.ts\"}}\n",
+    "packages/smithers/src/NodeControl.ts": "import { lines } from \"./internal/ControlNdjson.ts\"\nexport const NodeControl = { run: (args: string[]) => lines(args) }\n",
+    "packages/smithers/src/internal/ControlNdjson.ts": "export const lines = (args: string[]) => args.join(\"\\n\")\n",
+    "packages/tools/package.json": "{\"name\": \"tools\", \"type\": \"module\", \"bin\": {\"lint-docs\": \"bin/lint-docs.mjs\", \"fastbin\": \"bin/fast.mjs\"}}\n",
+    "packages/tools/bin/lint-docs.mjs": "#!/usr/bin/env node\nimport { readFileSync } from \"node:fs\"\nconsole.log(readFileSync(process.argv[2], \"utf8\").length)\n",
+    "packages/tools/bin/fast.mjs": "#!/usr/bin/env bun\nimport { NodeControl } from \"@smthrs/smithers/NodeControl\"\nconsole.log(NodeControl.run([]))\n"
+  },
+  "expected": {
+    "target-index": "NODE_OPTIONS=\"${NODE_OPTIONS:+$NODE_OPTIONS }--import=vibelang/register\" pnpm exec smthrs target '//:targetIndex' --write",
+    "docs:check": "NODE_OPTIONS=\"${NODE_OPTIONS:+$NODE_OPTIONS }--import=vibelang/register\" smthrs flow start docs-sync --data '{\"mode\":\"check\"}' --wait",
+    "release:status": "node --import vibelang/register .smithers/flows/release-support/main.ts status",
+    "lint:docs": "lint-docs docs",
+    "fast": "fastbin run"
+  }
+}
