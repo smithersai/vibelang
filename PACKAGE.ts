@@ -67,6 +67,7 @@ const specTests = [
   "TestEffectAwaitPlacementQuoted",
   "TestTryOperationElementsQuoted",
   "TestComputedFieldKeyFormattingQuoted",
+  "TestMapperWrittenDeclarationQuoted",
   "TestDoLoopHeadQuoted",
   "TestDoShortCircuitNarrowingQuoted",
   "TestSidecarEscapesQuoted",

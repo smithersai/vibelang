@@ -500,6 +500,8 @@ Node types for the VIP forms, such as effect functions, `effect { }` blocks, pre
 
 Declaration forms keep the TypeScript the checker reads: `error NotFound { id: string }` is a class with those fields, `service` declares a service key, and `schema User { ... }` is a `const User` typed by its fields. The parser leaves the names it writes for the checker, such as a `match`'s temporaries, out of scope analysis, so no rule reports a name the author did not write. A Vite Plus integration and a VibeLang Oxlint configuration are not shipped.
 
+The TypeScript projection retains `effect` on named functions and class methods, including when the written return type names an alias imported from another module. A body that only returns a value still runs as an Effect.
+
 ## Debugging in editors
 
 ```vibe

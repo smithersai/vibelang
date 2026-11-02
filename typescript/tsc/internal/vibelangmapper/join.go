@@ -217,6 +217,55 @@ type keyword struct {
 	with string
 }
 
+// These declarations have no contextual lambda destination. Preserve their
+// written kind separately from the resolver's lambda decisions (VIP-1).
+type writtenEffectDeclarationMark [2]int
+
+func isEffectDeclarationCandidate(n *ast.Node) bool {
+	switch n.Kind {
+	case ast.KindFunctionDeclaration:
+		if n.AsFunctionDeclaration().AsteriskToken != nil {
+			return false
+		}
+	case ast.KindMethodDeclaration:
+		if !ast.IsClassLike(n.Parent) || n.AsMethodDeclaration().AsteriskToken != nil {
+			return false
+		}
+	default:
+		return false
+	}
+	return n.Body() != nil && n.ParameterList() != nil && n.Flags&ast.NodeFlagsReparsed == 0 && !ast.HasSyntacticModifier(n, ast.ModifierFlagsAsync)
+}
+
+func writtenEffectDeclarationMarks(file *ast.SourceFile) map[writtenEffectDeclarationMark]bool {
+	marks := map[writtenEffectDeclarationMark]bool{}
+	var visit func(*ast.Node) bool
+	visit = func(n *ast.Node) bool {
+		if isEffectDeclarationCandidate(n) && n.Flags&ast.NodeFlagsVibeLangEffect != 0 {
+			marks[writtenEffectDeclarationMark{int(n.Kind), n.ParameterList().End()}] = true
+		}
+		n.ForEachChild(visit)
+		return false
+	}
+	file.AsNode().ForEachChild(visit)
+	return marks
+}
+
+func restoreWrittenEffectDeclarationMarks(file *ast.SourceFile, marks map[writtenEffectDeclarationMark]bool) {
+	if len(marks) == 0 {
+		return
+	}
+	var visit func(*ast.Node) bool
+	visit = func(n *ast.Node) bool {
+		if isEffectDeclarationCandidate(n) && marks[writtenEffectDeclarationMark{int(n.Kind), n.ParameterList().End()}] {
+			n.Flags |= ast.NodeFlagsVibeLangEffect
+		}
+		n.ForEachChild(visit)
+		return false
+	}
+	file.AsNode().ForEachChild(visit)
+}
+
 // vipKeywords returns the keywords of VIP-1, VIP-2 and VIP-5 that lower
 // writes over. try f() means f() where the call runs (VIP-5), so the try of
 // each call the parser flagged NodeFlagsVibeLangTry becomes spaces. effect

@@ -198,6 +198,7 @@ func Project(text string, ctx FileContext) Projection {
 // walk is set up, so the two renderings never see different plans.
 func lower(text string, ctx FileContext) *projector {
 	file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: projectedFileName, VibeLangDoAsFunction: true}, text, core.ScriptKindTS)
+	effectDeclarations := writtenEffectDeclarationMarks(file)
 	operandTries := tryOperandMarks(file, text)
 	keywords := vipKeywords(file, text)
 	if len(keywords) > 0 {
@@ -205,6 +206,7 @@ func lower(text string, ctx FileContext) *projector {
 		file = parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: projectedFileName, VibeLangDoAsFunction: true}, text, core.ScriptKindTS)
 	}
 	restoreTryOperandMarks(file, text, operandTries)
+	restoreWrittenEffectDeclarationMarks(file, effectDeclarations)
 	p := &projector{
 		file:            file,
 		text:            text,
@@ -507,15 +509,19 @@ func newFormResolver(file *ast.SourceFile) formResolver {
 }
 
 // isEffectMethod reports whether method, a method of a class with a body,
-// projects to an Effect function. A class that implements a service, one
+// projects to an Effect function. A written effect modifier settles the kind
+// first (VIP-1). A class that implements a service, one
 // the file declares or one imported from another module, implements Effect
 // contracts (D92, D128), so its instance methods are Effect functions; any
-// other method takes the form its body decides (L1's defaults), or its
+// other unmarked method takes the form its body decides (L1's defaults), or its
 // return annotation's.
 func (p *projector) isEffectMethod(method *ast.Node) bool {
 	m := method.AsMethodDeclaration()
 	if method.Body() == nil || m.AsteriskToken != nil || ast.HasSyntacticModifier(method, ast.ModifierFlagsAsync) {
 		return false
+	}
+	if method.Flags&ast.NodeFlagsVibeLangEffect != 0 {
+		return true
 	}
 	if !ast.IsStatic(method) {
 		for _, heritage := range ast.GetImplementsHeritageClauseElements(method.Parent) {
@@ -575,13 +581,16 @@ func isProjectedFunction(node *ast.Node) bool {
 // or declared after a return (S21-70), just as in the fork lowering.
 func (p *projector) functionDeclaration(node *ast.Node) {
 	p.functionLike(node, node.Body())
-	p.preparePlainBuiltinBody(node)
+	if node.Flags&ast.NodeFlagsVibeLangEffect == 0 {
+		p.preparePlainBuiltinBody(node)
+	}
 }
 
 // functionLike lowers fn, a function declaration or a method with body, as
 // functionDeclaration says.
 func (p *projector) functionLike(fn *ast.Node, body *ast.Node) {
-	if p.forms.(*Resolver).isFactory(fn) {
+	writtenEffect := fn.Flags&ast.NodeFlagsVibeLangEffect != 0
+	if !writtenEffect && p.forms.(*Resolver).isFactory(fn) {
 		p.factory(fn)
 		return
 	}
@@ -593,6 +602,10 @@ func (p *projector) functionLike(fn *ast.Node, body *ast.Node) {
 	}
 	returnType := fn.Type()
 	kind := contractOf(returnType)
+	// A named or imported return alias cannot erase a written kind (VIP-1).
+	if writtenEffect && kind == contractPlain {
+		kind = contractEffect
+	}
 	if kind != contractPlain {
 		p.callbackParameters(fn)
 	}
@@ -697,7 +710,7 @@ const (
 	contractEffect
 	// contractInfer: an A!E!R contract with an infer channel (D57).
 	contractInfer
-	// contractPlain: a plain type; the function stays plain (L2).
+	// contractPlain: a plain type; an unmarked function stays plain (L2).
 	contractPlain
 )
 

@@ -7,6 +7,8 @@ description: "An effect function describes a VibeLang computation: return a valu
 
 An effect function describes a VibeLang computation: return a value to succeed, throw a typed value for an expected failure, and wrap calls to plain TypeScript functions that may throw.
 
+The `effect` keyword also fixes the kind of a class method. Editor projection keeps that kind for a pure body and for a return type that names a local or imported Effect alias.
+
 ## Success and failure
 
 ```vibe
