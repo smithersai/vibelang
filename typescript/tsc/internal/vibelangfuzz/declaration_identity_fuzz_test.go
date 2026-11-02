@@ -310,17 +310,34 @@ func emitDeclarationIdentityStock(t *testing.T, w *Workspace, tsc string, stock 
 func compareIdentityDeclarations(ctx context.Context, api, baseline, current string) (string, error) {
 	// Import the actual migration gate, never a Go copy of its equivalence.
 	// Added/removed files also show their canonical text in the line diff.
+	// A fuzz program publishes nothing. The gate compares a tree without a
+	// manifest or public-surface.json byte for byte (right for a real
+	// package), so such a tree is compared on a copy that records an empty
+	// public surface: every declaration takes the canonical, private
+	// comparison, and an added private file still counts, as it did before.
+	// A tree with its own metadata is compared as it is.
 	const script = `import { createRequire } from "node:module";
-import { readFileSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-const [gate, api, before, after] = process.argv.slice(1);
+const [gate, api, baseline, current] = process.argv.slice(1);
 const { canonicalize, compareDeclarations, lineDiff } = await import(pathToFileURL(gate));
 const ts = createRequire(import.meta.url)(api);
+const scratch = mkdtempSync(join(tmpdir(), "identity-"));
+const privately = (dir, name) => {
+  if (!existsSync(dir) || existsSync(join(dir, "public-surface.json")) || existsSync(join(dir, "package.json"))) return dir;
+  const copy = join(scratch, name);
+  cpSync(dir, copy, { recursive: true });
+  writeFileSync(join(copy, "public-surface.json"), JSON.stringify({ roots: [], reachable: [], unresolved: [] }));
+  return copy;
+};
+const before = privately(baseline, "before"), after = privately(current, "after");
 const result = compareDeclarations(ts, before, after);
 const diffs = result.changed.map(({file, diff}) => file + "\n" + diff.join("\n"));
 for (const file of result.removed) diffs.push(file + " (removed)\n" + lineDiff(canonicalize(ts, readFileSync(join(before, file), "utf8"), file), "").join("\n"));
-for (const file of result.added) diffs.push(file + " (added)\n" + lineDiff("", canonicalize(ts, readFileSync(join(after, file), "utf8"), file)).join("\n"));
+for (const file of [...result.added, ...(result.addedPrivate ?? [])]) diffs.push(file + " (added)\n" + lineDiff("", canonicalize(ts, readFileSync(join(after, file), "utf8"), file)).join("\n"));
+rmSync(scratch, { recursive: true, force: true });
 console.log(JSON.stringify(diffs.join("\n")));`
 	gate := filepath.Join(Root(), ".smithers/flows/migrate/lib/declarations.mjs")
 	cmd := exec.CommandContext(ctx, "node", "--input-type=module", "-e", script, gate, api, baseline, current)
@@ -443,6 +460,20 @@ export type Shape = undefined | { a: string; b: number };`)
 	} {
 		if !strings.Contains(diff, line) {
 			t.Errorf("declaration difference lacks %q:\n%s", line, diff)
+		}
+	}
+	// A tree with its own manifest keeps the gate's own surface: main.d.ts
+	// is published, so the reordered union and the comment count.
+	for _, dir := range []string{before, after} {
+		write(dir, "package.json", `{"name":"published","types":"./main.d.ts"}`)
+	}
+	diff, err = compareIdentityDeclarations(t.Context(), api, before, after)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, line := range []string{"-1: /** baseline */", "+3: export type Shape = undefined | { a: string; b: number };"} {
+		if !strings.Contains(diff, line) {
+			t.Errorf("published declaration difference lacks %q:\n%s", line, diff)
 		}
 	}
 }
