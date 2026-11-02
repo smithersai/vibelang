@@ -172,7 +172,12 @@ func iteratedElementType(c *checker.Checker, node *ast.Node, iterated *checker.T
 	default:
 		return nil
 	}
-	return streamChannel(c, iterated, "_A")
+	// Only explicit for try uses the operand-domain rule. Native loops must
+	// not acquire Stream semantics merely because their operand is any.
+	if isForTry(node) && iterated != nil && iterated.Flags()&(checker.TypeFlagsAny|checker.TypeFlagsNever) != 0 {
+		return iterated
+	}
+	return streamChannel(c, c.GetApparentType(iterated), "_A")
 }
 
 // isStreamLoop recognizes explicit for try syntax in an Effect body.
@@ -218,7 +223,7 @@ func (a *analyzer) addStreamLoop(info *effectInfo, statement *ast.Node) {
 	if !isStreamLoop(a.checker, statement) {
 		return
 	}
-	iterated := a.checker.GetTypeAtLocation(statement.Expression())
+	iterated := a.checker.GetApparentType(a.checker.GetTypeAtLocation(statement.Expression()))
 	if e := streamChannel(a.checker, iterated, "_E"); e != nil {
 		info.addError(e, statement)
 	}

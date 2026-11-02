@@ -41,7 +41,7 @@ func checkForTry(c *checker.Checker, file *ast.SourceFile) {
 				report(c, n, EK2001)
 				coverCodes(c, n.Expression(), 2488, 2504)
 			}
-			if streamChannel(c, c.GetTypeAtLocation(n.Expression()), "_A") == nil {
+			if !forTryOperandType(c, c.GetTypeAtLocation(n.Expression())) {
 				report(c, n.Expression(), EK2004)
 				coverCodes(c, n.Expression(), 2488, 2504)
 			}
@@ -81,6 +81,21 @@ func checkForTry(c *checker.Checker, file *ast.SourceFile) {
 		return n.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
+}
+
+// VIP-20/detail 288 uses ordinary assignability to Stream<any, any, any>.
+// Channel extraction alone also admits incomplete objects with a variance
+// marker, and cannot recognize any, never or constrained type parameters.
+func forTryOperandType(c *checker.Checker, t *checker.Type) bool {
+	if t == nil {
+		return false
+	}
+	base := streamInterface(c)
+	if base == nil {
+		return false
+	}
+	any := c.GetAnyType()
+	return c.IsTypeAssignableTo(t, c.NewTypeReference(base, []*checker.Type{any, any, any}))
 }
 
 func isReturnKeyword(file *ast.SourceFile, n *ast.Node) bool {

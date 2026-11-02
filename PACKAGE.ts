@@ -146,6 +146,7 @@ const specTests = [
   "TestContractDeclarationParensQuoted",
   "TestDoForTryDiagnosticOwnerQuoted",
   "TestTryAllSettledShapesQuoted",
+  "TestForTryOperandsQuoted",
   "TestDoDeclarationBytesQuoted",
   "TestDoContextualResultFuzzQuoted",
   "TestReviewPipeGrammarQuoted",

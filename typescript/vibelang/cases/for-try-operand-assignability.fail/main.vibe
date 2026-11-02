@@ -1,0 +1,24 @@
+// expect: EK2004 TS18046 TS18048
+import { Stream } from "effect"
+
+effect function unknownRows(rows: unknown) {
+  for try (const row of rows) {}
+}
+effect function optionalRows(rows: Stream.Stream<number> | undefined) {
+  for try (const row of rows) {}
+}
+effect function nativeRows(rows: AsyncIterable<number>) {
+  for try (const row of rows) {}
+}
+effect function arrayRows(rows: number[]) {
+  for try (const row of rows) {}
+}
+effect function markerRows(rows: {
+  readonly [Stream.TypeId]: {
+    readonly _A: () => number
+    readonly _E: () => never
+    readonly _R: () => never
+  }
+}) {
+  for try (const row of rows) {}
+}

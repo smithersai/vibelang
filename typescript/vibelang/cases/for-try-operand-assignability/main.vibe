@@ -1,0 +1,21 @@
+// expect-result: [1,2,3]
+import { Stream } from "effect"
+
+effect function collect(rows: any) {
+  const seen: number[] = []
+  for try (const row of rows) { seen.push(row) }
+  return seen
+}
+effect function bottom(rows: never) {
+  for try (const row of rows) { const unreachable: never = row }
+}
+effect function constrained<T extends Stream.Stream<number>>(rows: T) {
+  const seen: number[] = []
+  for try (const row of rows) { const value: number = row; seen.push(value) }
+  return seen
+}
+export effect function main() {
+  const first = try collect(Stream.make(1, 2))
+  const last = try constrained(Stream.make(3))
+  return [...first, ...last]
+}
