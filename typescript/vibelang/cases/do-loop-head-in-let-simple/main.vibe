@@ -1,0 +1,34 @@
+export function probe(): unknown {
+  const events: unknown[] = []
+  let x: any = 7
+  function observe(label: string, f: () => unknown): void {
+    try { events.push([label, f()]) }
+    catch (e) { events.push([label, e instanceof Error ? e.name : String(e)]) }
+  }
+  for (const empty of [false, true]) {
+    let read: () => unknown = () => 0
+    const cells: (() => unknown)[] = []
+    let same: () => unknown = () => 0
+    let local: () => unknown = () => 0
+    outer: alias: for (let x in do {
+      read = (): unknown => x
+      same = read
+      observe("before", read)
+      { const x = 5; local = () => x }
+      empty ? ({}) : ({ a: 1, b: 2 })
+    }) {
+      events.push(["identity", read === same])
+      observe("during", read)
+      cells.push(() => x)
+      x += "!"
+      continue alias
+    }
+    observe("after", read)
+    x = 99
+    observe("mutated", read)
+    observe("local", local)
+    events.push(["cells", cells.map(f => f())])
+  }
+  return events
+}
+export { nativeSource } from "./native.js"

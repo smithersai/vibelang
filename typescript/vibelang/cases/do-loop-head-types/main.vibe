@@ -1,0 +1,23 @@
+// A same-named outer binding has a different type. A lifted do's closure
+// retains the number/string/pattern type from the head, not outer boolean.
+export function of(): unknown {
+  const x = false
+  let read: () => number = () => 0
+  for (const x of do { read = (): number => x; [1, 2] }) {}
+  try { return read() } catch (e) { return e instanceof Error ? e.name : String(e) }
+}
+export function pattern(): unknown {
+  const x = false, y = false
+  let read: () => number = () => 0
+  for (let { value: [x], other: y } of do {
+    read = (): number => x + y;
+    [{ value: [1], other: 2 }]
+  }) {}
+  try { return read() } catch (e) { return e instanceof Error ? e.name : String(e) }
+}
+export function keys(): unknown {
+  const x = false
+  let read: () => string = () => ""
+  for (const x in do { read = (): string => x; ({ key: 1 }) }) {}
+  try { return read() } catch (e) { return e instanceof Error ? e.name : String(e) }
+}

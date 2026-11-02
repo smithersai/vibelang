@@ -1,0 +1,14 @@
+// expect-result: ["ReferenceError",1,2]
+export effect function main() {
+  const x = 7
+  let read: () => unknown = () => 0
+  const cells: (() => number)[] = []
+  for (const x of do { read = (): unknown => x; try Effect.succeed(0); [1, 2] }) {
+    cells.push((): number => x)
+  }
+  return try Effect.sync(() => {
+    let status = "bad"
+    try { read() } catch (e) { status = e instanceof Error ? e.name : String(e) }
+    return [status, ...cells.map(f => f())]
+  })
+}

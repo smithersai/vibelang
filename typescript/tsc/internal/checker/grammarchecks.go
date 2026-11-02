@@ -11,6 +11,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/debug"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/jsnum"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 	"github.com/microsoft/TypeScript/tsc/internal/stringutil"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
@@ -1568,8 +1569,9 @@ func (c *Checker) checkGrammarVariableDeclaration(node *ast.VariableDeclaration)
 
 	// The VibeLang parser asserts definite assignment on the untyped let it
 	// hoists for an is binding of a for head's init (parser.hoistForHead);
-	// the checker types that let from the pattern's assignment.
-	if node.ExclamationToken != nil && node.Flags&ast.NodeFlagsVibeLangIsBinding == 0 && (node.Parent.Parent.Kind != ast.KindVariableStatement || node.Type == nil || node.Initializer != nil || nodeFlags&ast.NodeFlagsAmbient != 0) {
+	// the checker types that let from the pattern's assignment. Generated do
+	// head cells likewise get their type from the source iteration binding.
+	if node.ExclamationToken != nil && node.Flags&ast.NodeFlagsVibeLangIsBinding == 0 && parser.VibeLangDoHeadBinding(node.AsNode()) == nil && (node.Parent.Parent.Kind != ast.KindVariableStatement || node.Type == nil || node.Initializer != nil || nodeFlags&ast.NodeFlagsAmbient != 0) {
 		var message *diagnostics.Message
 		switch {
 		case node.Initializer != nil:

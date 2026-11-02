@@ -1,0 +1,47 @@
+function readError(read: () => unknown): string {
+  try { return String(read()) } catch (e) { return e instanceof Error ? e.name : String(e) }
+}
+export function returned(): unknown {
+  let read: () => unknown = () => 0
+  const x = 7
+  function inner(): unknown {
+    for (const x of do { read = (): unknown => x; return 42; [1] }) {}
+    return -1
+  }
+  return [inner(), readError(read)]
+}
+export function jumps(): unknown {
+  const x = 7
+  const events: unknown[] = []
+  let read: () => unknown = () => 0
+  let count = 0
+  outer: while (count++ < 2) {
+    inner: alias: for (let x of do {
+      read = (): unknown => x
+      if (count === 1) continue outer
+      if (count === 2) break outer
+      [1]
+    }) { continue alias }
+    events.push("wrong")
+  }
+  return [count, readError(read), events]
+}
+export function vars(): unknown {
+  const x = 7
+  let read: () => unknown = () => 0
+  for (const x of do { var leaked = 9; read = (): unknown => x; [1] }) {}
+  return [leaked, readError(read)]
+}
+export async function suspended(): Promise<unknown> {
+  const x = 7
+  let read: () => unknown = () => 0
+  const seen: unknown[] = []
+  for (const x of do { read = (): unknown => x; await Promise.resolve(0); [1, 2] }) { seen.push(x) }
+  return [seen, readError(read)]
+}
+export function* yielded(): Generator<unknown, unknown, unknown> {
+  const x = 7
+  let read: () => unknown = () => 0
+  for (const x of do { read = (): unknown => x; yield "pause"; [1] }) {}
+  return readError(read)
+}

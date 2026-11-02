@@ -30,6 +30,7 @@ func forOfHeadTDZ(g *Gen, s *Scope) Stmt {
 	jump := []string{"exhaust", "break", "continue"}[g.Intn(3)]
 	outer := 7 + g.Intn(20)
 	mutation := 3 + g.Intn(20)
+	withDo := g.Intn(2) != 0 // RC-37: do must keep the same native head environment.
 	head := []string{"[x]", "x", "{x}", "{pair:[x]}", "[x,y]", "[x=10]", "{x=10}"}[shape]
 	typ := []string{"[number]", "number", "{x:number}", "{pair:[number]}", "[number,number]", "[number?]", "{x?:number}"}[shape]
 	value := []string{"[index]", "index", "{x:index}", "{pair:[index]}", "[index,index+10]", "[index%2===1?undefined:index]", "{x:index%2===1?undefined:index}"}[shape]
@@ -90,15 +91,21 @@ observe("mutated",read);
 return JSON.stringify([trace,cells.map((f):number=>f()),x,y]);
 }`, name, jump, outerKind, outer, typ, typ, typ, count, value, typ,
 		declaration, head, callback, mutate)
+	nativeSource := source
+	if withDo {
+		expression := "items(" + callback + ")"
+		source = strings.Replace(source, " of "+expression, " of do { "+expression+" }", 1)
+		nativeSource = strings.Replace(nativeSource, " of "+expression, " of (() => "+expression+")()", 1)
+	}
 	ts := g.Name("stock")
 	// A JavaScript template literal keeps the source's lines as written, so
 	// the reference print holds the cited loop head token for token; a
 	// quoted string would glue each escaped newline to the next keyword.
-	if strings.ContainsAny(source, "`\\") || strings.Contains(source, "${") {
+	if strings.ContainsAny(nativeSource, "`\\") || strings.Contains(nativeSource, "${") {
 		panic("for-of head TDZ source must fit in a template literal")
 	}
 	reference := fmt.Sprintf("const %s=(await import(\"node:module\")).createRequire(import.meta.resolve(\"effect\"))(\"typescript\");\nconst %s=new Function(\"return \"+%s.transpileModule(`%s`,{compilerOptions:{target:%s.ScriptTarget.ES2022,module:%s.ModuleKind.ESNext}}).outputText)();",
-		ts, name, ts, source, ts, ts)
+		ts, name, ts, nativeSource, ts, ts)
 	g.AddDecl(&Code{V: source, E: reference})
 	return &forOfHeadTDZCall{Name: name}
 }

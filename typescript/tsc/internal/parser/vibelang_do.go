@@ -132,7 +132,7 @@ func (p *Parser) parseVibeLangDos(file *ast.SourceFile) {
 			marked[n] = true
 		}
 	}
-	l := &doLowering{p: p, marked: marked}
+	l := &doLowering{p: p, marked: marked, headCells: map[*ast.Node]*ast.Node{}}
 	for i, d := range p.vibelangDoOrder {
 		statements := d.block.AsBlock().Statements
 		if p.opts.VibeLangDoAsFunction {
@@ -168,6 +168,7 @@ func (p *Parser) parseVibeLangDos(file *ast.SourceFile) {
 	if sites := p.vibelangDoSites; sites != nil {
 		file.GetOrComputeData(ast.VibeLangDoSites, func(*ast.SourceFile) map[*ast.Node]*ast.Node { return sites })
 	}
+	file.GetOrComputeData(doHeadCellsKey, func(*ast.SourceFile) map[*ast.Node]*ast.Node { return l.headCells })
 	file.SetDiagnostics(attachFileToDiagnostics(p.diagnostics, file))
 }
 
@@ -785,9 +786,10 @@ func (p *Parser) doSite(do *ast.Node) *ast.Node {
 // ---------------------------------------------------------------- lowering
 
 type doLowering struct {
-	p      *Parser
-	marked map[*ast.Node]bool // the nodes from each lowered do expression up to its statement
-	temps  int
+	p         *Parser
+	marked    map[*ast.Node]bool // the nodes from each lowered do expression up to its statement
+	temps     int
+	headCells map[*ast.Node]*ast.Node // unreachable head cells -> source iteration bindings
 }
 
 func (l *doLowering) temp(prefix string, at core.TextRange) *ast.Node {
@@ -1099,8 +1101,7 @@ func (l *doLowering) lift(s *ast.Node) ([]*ast.Node, *ast.Node) {
 		w := s.AsSwitchStatement()
 		w.Expression = l.expr(w.Expression, &pre)
 	case ast.KindForInStatement, ast.KindForOfStatement:
-		f := s.AsForInOrOfStatement()
-		f.Expression = l.expr(f.Expression, &pre)
+		return l.loopHead(s, nil)
 	case ast.KindVariableStatement:
 		s = l.variableStatement(s, &pre)
 	case ast.KindForStatement:
@@ -1128,6 +1129,15 @@ func (l *doLowering) lift(s *ast.Node) ([]*ast.Node, *ast.Node) {
 		loop := l.p.vibelangSpanning(l.p.factory.NewForStatement(nil, nil, nil, body), s.Loc)
 		return nil, loop
 	case ast.KindLabeledStatement:
+		var labels []*ast.Node
+		loop := s
+		for loop.Kind == ast.KindLabeledStatement {
+			labels = append(labels, loop)
+			loop = loop.AsLabeledStatement().Statement
+		}
+		if loop.Kind == ast.KindForInStatement || loop.Kind == ast.KindForOfStatement {
+			return l.loopHead(loop, labels)
+		}
 		labeled := s.AsLabeledStatement()
 		inner, statement := l.lift(labeled.Statement)
 		if len(inner) != 0 && !isLoopChain(statement) {
@@ -1870,4 +1880,76 @@ func (p *Parser) mapperCompletionOf(statement *ast.Node) *ast.Node {
 		}
 	}
 	return statement
+}
+
+// doHeadCellsKey keeps a generated TDZ cell's type tied to its source head,
+// including destructuring's inferred element/property types. The map is local
+// to the parsed file; it contains no checker state.
+var doHeadCellsKey = ast.NewSourceFileDataKey[map[*ast.Node]*ast.Node]()
+
+// VibeLangDoHeadBinding returns the source iteration binding for an
+// uninitialized cell introduced while lowering a do in a lexical loop head.
+func VibeLangDoHeadBinding(declaration *ast.Node) *ast.Node {
+	file := ast.GetSourceFileOfNode(declaration)
+	if file == nil || !strings.HasSuffix(file.FileName().AsString(), ".vibe") {
+		return nil
+	}
+	return file.GetOrComputeData(doHeadCellsKey, func(*ast.SourceFile) map[*ast.Node]*ast.Node { return nil })[declaration]
+}
+
+// loopHead evaluates lifted RHS statements in the lexical environment of a
+// ForDeclaration, separate from the native loop's fresh per-iteration cells:
+//
+// $head: { pre; labels: for (const x of value) body; break $head; let x!; }
+//
+// The unreachable declarations create cells on entry but never initialize
+// them, even when a closure outlives the loop. No function boundary changes
+// return, var, labeled jumps, await or yield. var/assignment heads have no
+// head environment. Consecutive source labels stay directly on the loop.
+func (l *doLowering) loopHead(loop *ast.Node, labels []*ast.Node) ([]*ast.Node, *ast.Node) {
+	f := loop.AsForInOrOfStatement()
+	var pre []*ast.Node
+	f.Expression = l.expr(f.Expression, &pre)
+	l.p.overrideParentInImmediateChildren(loop)
+	statement := loop
+	for i := len(labels) - 1; i >= 0; i-- {
+		labels[i].AsLabeledStatement().Statement = statement
+		l.p.overrideParentInImmediateChildren(labels[i])
+		statement = labels[i]
+	}
+	init := f.Initializer
+	if len(pre) == 0 || !ast.IsVariableDeclarationList(init) || init.Flags&ast.NodeFlagsBlockScoped == 0 {
+		return pre, statement
+	}
+	label := l.temp("$doHead", loop.Loc)
+	leave := l.p.vibelangSpanning(l.p.factory.NewBreakStatement(l.ref(label, loop.Loc)), loop.Loc)
+	body := append(append(pre, statement), leave)
+	var bindings func(*ast.Node)
+	bindings = func(binding *ast.Node) {
+		name := binding.Name()
+		if ast.IsIdentifier(name) {
+			cell := l.letStatement(l.p.mIdent(name.Text(), name.Loc), name.Loc)
+			declaration := cell.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0]
+			if init.Flags&ast.NodeFlagsConst != 0 {
+				declaration.Flags |= ast.NodeFlagsVibeLangConst
+			}
+			// Preserve the source head's deferred-read checking, rather than
+			// treating this generated let as a never-assigned source local.
+			declaration.AsVariableDeclaration().ExclamationToken = l.p.vibelangSynthesized(l.p.factory.NewToken(ast.KindExclamationToken), name.Loc)
+			l.p.overrideParentInImmediateChildren(declaration)
+			l.headCells[declaration] = binding
+			body = append(body, cell)
+		} else if ast.IsBindingPattern(name) {
+			for _, element := range name.AsBindingPattern().Elements.Nodes {
+				if element.Kind != ast.KindOmittedExpression {
+					bindings(element)
+				}
+			}
+		}
+	}
+	for _, declaration := range init.AsVariableDeclarationList().Declarations.Nodes {
+		bindings(declaration)
+	}
+	block := l.p.mBlock(body, statement.Loc)
+	return nil, l.p.vibelangSpanning(l.p.factory.NewLabeledStatement(label, block), statement.Loc)
 }
