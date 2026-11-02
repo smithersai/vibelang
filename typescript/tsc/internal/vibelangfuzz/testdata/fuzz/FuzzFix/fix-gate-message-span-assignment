@@ -1,2 +1,0 @@
-go test fuzz v1
-string("-- ids.vibe --\nimport * as Schema from \"effect/Schema\"\nconst makeId = () => Schema.String\nexport const Id = makeId()\n-- user.vibe --\nimport { Effect, Schema } from \"effect\"\nimport { Id } from \"./ids.vibe\"\nexport const count: number = Id\nexport const other: number = null as unknown as (typeof Id extends Effect.Effect<unknown> ? number : Effect.Effect<typeof Schema.String>)\n")

@@ -220,8 +220,6 @@ A proposed rewrite includes removal of imports from `effect` and its modules tha
 
 When a proposed fix adds an error in an unchanged importer, `--fix` follows references in that error to prioritize the edited declarations. It still checks each candidate against the original project's errors before keeping it; ambiguous references use the ordinary grouped search.
 
-The check matches errors one to one by file, code and message, or by file, code and span. A changed message at an existing span and an unchanged message at a different span cannot both reuse one existing error. Spans before or after an edit are compared at their original positions.
-
 A trial that adds an error needs only that error to fail, so once a round has found errors, `--fix` looks for a trial's errors in the files that reported them. It keeps no fix until a check of the whole project passes. A fix refused on that evidence names the first error of those files, which may not be the first error it adds across the project.
 
 Normalization continues until no accepted fix remains, even when nested edits overlap for more than sixteen rounds. If a rewrite repeats a source state, the command reports non-convergence and writes no files.
