@@ -19,7 +19,7 @@
     "test:llms": "node --test scripts/llms.test.mjs",
     "social-card": "node scripts/render-social-card.mjs",
     "test:contrast": "node --test scripts/contrast.test.mjs",
-    "test:infrastructure": "node --test scripts/cloudflare-stack.test.mjs scripts/deploy-load.test.mjs",
+    "test:infrastructure": "node --test scripts/cloudflare-stack.test.mjs scripts/deploy-load.test.mjs scripts/patch-vocs-search.test.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {

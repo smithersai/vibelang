@@ -2172,6 +2172,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A catch-handler editor fix removed `async` or `*` even when its body still used `await` or `yield`, leaving new compile errors; CLI, editor and diagnostic guidance now withhold that edit and ask for an explicit body conversion.
 
 - Removing `async` from a `catch` handler deleted comments after it; modifier repairs now preserve every comment and the handler body.
+- The site checks skipped the five regression tests for its Vocs search-accessibility patch, so a broken upgrade or borrowed dependency guard could pass unnoticed; `test:infrastructure` now runs them against the installed site dependencies before the site builds.
+
 
 #### Compiler and diagnostics
 

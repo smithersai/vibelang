@@ -824,3 +824,17 @@ It delegates to the installed TypeScript compiler, counts actual
 `signatureToString` calls, and requires byte-identical `throws.json` output.
 The full library surface is expensive, so this counter check runs through the
 benchmark command rather than adding a second inventory generation to each gate.
+
+The `//:site-contrast` check runs `npm run test:infrastructure` after
+`npm ci` and before typechecking and building. That command also runs
+`site/scripts/patch-vocs-search.test.mjs` against the installed Vocs package.
+Its five tests check patch idempotence, refusal of an unsupported version or
+changed source or compiled module, and refusal to modify borrowed dependencies.
+They use temporary copies of the vendor files and leave the installed package
+unchanged. Run the same installed-site checks with:
+
+```sh
+cd site
+npm ci --no-audit --no-fund
+npm run test:infrastructure
+```
