@@ -295,6 +295,10 @@ func schemaErrorRewrite(c *checker.Checker, file *ast.SourceFile, class *ast.Nod
 		if ast.HasSyntacticModifier(member, ast.ModifierFlagsStatic) || errorMemberIsReservedTag(c, member) {
 			return no("the class has a static or reserved _tag member that an error declaration cannot keep.")
 		}
+		if key := member.Name(); key != nil && ast.IsComputedPropertyName(key) &&
+			keyDomainMayBeTag(c, c.GetTypeAtLocation(key.Expression()), 0) {
+			return no("a computed member key may be \"_tag\", which a schema error declaration reserves.")
+		}
 		// An accessor runs as plain JavaScript (D282), and a written return
 		// type keeps a method's form; anything else would change meaning.
 		method := ast.IsMethodDeclaration(member) && member.Type() != nil

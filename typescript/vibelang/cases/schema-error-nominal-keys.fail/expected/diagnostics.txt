@@ -1,0 +1,6 @@
+main.vibe(4,32): error EK2117
+main.vibe(6,32): error EK2117
+main.vibe(8,32): error EK2117
+main.vibe(10,32): error EK2117
+main.vibe(12,32): error EK2117
+main.vibe(14,32): error EK2117

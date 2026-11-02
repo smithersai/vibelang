@@ -1,0 +1,16 @@
+// expect: EK2117 EK2117 EK2117 EK2117 EK2117 EK2117
+type Brand = string & { readonly brand: unique symbol }
+declare const key0: `${Brand}`
+export schema error Bad0 { get [key0](): number { return 1 } }
+declare const key1: `_${Brand}`
+export schema error Bad1 { get [key1](): number { return 1 } }
+declare const key2: `${Brand}tag`
+export schema error Bad2 { get [key2](): number { return 1 } }
+declare const key3: Lowercase<Brand>
+export schema error Bad3 { get [key3](): number { return 1 } }
+declare const key4: Capitalize<Brand>
+export schema error Bad4 { get [key4](): number { return 1 } }
+declare const key5: Uncapitalize<Brand>
+export schema error Bad5 { get [key5](): number { return 1 } }
+declare const safe: `x-${Brand}`
+export schema error Good { get [safe](): number { return 1 } }

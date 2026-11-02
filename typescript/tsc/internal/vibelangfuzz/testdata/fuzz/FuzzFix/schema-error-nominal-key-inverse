@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nconst Brand = Schema.String.pipe(Schema.brand(\"Key\"))\nconst branded = Schema.decodeUnknownSync(Brand)(\"_tag\")\nconst field: `${typeof branded}` = `${branded}`\nexport class E extends Schema.TaggedError<E>()(\"E\", { id: Schema.String }) { get [field](): number { return 1 } }\nexport effect function main() { return new E({ id: \"x\" }) }\n")

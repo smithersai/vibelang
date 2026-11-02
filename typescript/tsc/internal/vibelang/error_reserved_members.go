@@ -38,52 +38,6 @@ func errorMemberKeyMayBeTag(c *checker.Checker, member *ast.Node, t *checker.Typ
 	return keyDomainMayBeTag(c, t, 0)
 }
 
-// keyDomainMayBeTag follows chapter 3's proof that a key's runtime domain
-// excludes "_tag": any, unknown and unresolved keys may be it; every union
-// member must exclude it; an intersection excludes it when one of its
-// primitive constraints does (a brand does not); a type parameter is its
-// constraint; an enum member is its underlying value; never has no key.
-func keyDomainMayBeTag(c *checker.Checker, t *checker.Type, depth int) bool {
-	if t == nil || depth > 16 {
-		return true
-	}
-	flags := t.Flags()
-	switch {
-	case flags&checker.TypeFlagsNever != 0:
-		return false
-	case flags&(checker.TypeFlagsAny|checker.TypeFlagsUnknown) != 0:
-		return true
-	case t.IsUnion():
-		for _, member := range t.Types() {
-			if keyDomainMayBeTag(c, member, depth+1) {
-				return true
-			}
-		}
-		return false
-	case t.IsIntersection():
-		for _, member := range t.Types() {
-			if member.Flags()&(checker.TypeFlagsPrimitive|checker.TypeFlagsInstantiable) != 0 && !keyDomainMayBeTag(c, member, depth+1) {
-				return false
-			}
-		}
-		return true
-	case flags&checker.TypeFlagsStringLiteral != 0:
-		value, ok := t.AsLiteralType().Value().(string)
-		return !ok || value == "_tag"
-	case flags&(checker.TypeFlagsNumberLike|checker.TypeFlagsESSymbolLike|checker.TypeFlagsBigIntLike|checker.TypeFlagsBooleanLike) != 0:
-		return false
-	case flags&(checker.TypeFlagsTemplateLiteral|checker.TypeFlagsStringMapping) != 0:
-		return c.IsTypeAssignableTo(c.GetStringLiteralType("_tag"), t)
-	case flags&checker.TypeFlagsInstantiable != 0:
-		constraint := c.GetBaseConstraintOfType(t)
-		if constraint == nil || constraint == t {
-			return true
-		}
-		return keyDomainMayBeTag(c, constraint, depth+1)
-	}
-	return true
-}
-
 // Return whether the legacy tag-type check has been superseded for this root.
 // The diagnostic explains only the rejected member's name and override shape;
 // independent errors inside its body remain visible.
