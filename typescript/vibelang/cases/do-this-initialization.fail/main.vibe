@@ -1,0 +1,8 @@
+// expect: TS17009 TS17009 TS17009 TS17009 TS17009
+class Base { x = 1 }
+function take(receiver: object, value: number): void {}
+class array extends Base { constructor() { const value = [this, do { super(); 2 }]; } }
+class call extends Base { constructor() { take(this, do { super(); 2 }); } }
+class element extends Base { constructor() { const value = this[do { super(); "x" as const }]; } }
+class propertyAssign extends Base { constructor() { this.x = do { super(); 2 }; } }
+class elementAssign extends Base { constructor() { this[do { super(); "x" as const }] = 2; } }

@@ -92,7 +92,7 @@ effect function intervalRecord() {
 {"started":0,"finished":40,"millis":40}
 ```
 
-This is the VibeLang form of the same sequence. In a TypeScript file, `Effect.gen(function* () { ... })` binds each Effect result with `yield*` to a local name; in a `.vibe` file, an effect function sequences those operations with `try`. Use `effect { ... }` when a combinator needs an Effect built from several statements. `do { ... }` is a TC39 do expression: it runs immediately and gives the block's normal completion value.
+This is the VibeLang form of the same sequence. In a TypeScript file, `Effect.gen(function* () { ... })` binds each Effect result with `yield*` to a local name; in a `.vibe` file, an effect function sequences those operations with `try`. Use `effect { ... }` when a combinator needs an Effect built from several statements. `do { ... }` is a TC39 do expression: it runs immediately and gives the block's normal completion value. Operands to its left are evaluated first. In a derived constructor, a `this` read before a later `do` that calls `super()` still reads an uninitialized receiver; moving `super()` into the `do` does not make that earlier read valid.
 
 `do` keeps ordinary expression typing: `const exact = do { 1 }` has type `1`, while `let ordinary = do { 1 }` widens to `number`. `do { 7; {} }` retains `7`, because the empty block inherits the preceding value; an entirely empty `do` gives `undefined`. `provide` and interruption blocks preserve these completion values too, including values carried through a locally consumed `break`.
 

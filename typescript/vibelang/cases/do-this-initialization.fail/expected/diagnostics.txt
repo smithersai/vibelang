@@ -1,0 +1,5 @@
+main.vibe(4,59): error TS17009
+main.vibe(5,48): error TS17009
+main.vibe(6,60): error TS17009
+main.vibe(7,53): error TS17009
+main.vibe(8,52): error TS17009

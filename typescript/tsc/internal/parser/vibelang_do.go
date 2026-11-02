@@ -1633,11 +1633,13 @@ func (l *doLowering) spill(e *ast.Node, pre *[]*ast.Node) *ast.Node {
 // isPureRead reports whether moving this read past arbitrary statements
 // preserves its value. Names can be reassigned, and property reads can call
 // getters, so neither is safe even when its syntax has no assignment.
+// Reading this can throw before super() initializes a derived constructor,
+// so it must also stay before any later operand's lifted statements.
 func isPureRead(e *ast.Node) bool {
 	switch e.Kind {
 	case ast.KindNumericLiteral, ast.KindBigIntLiteral, ast.KindStringLiteral,
 		ast.KindNoSubstitutionTemplateLiteral, ast.KindTrueKeyword, ast.KindFalseKeyword,
-		ast.KindNullKeyword, ast.KindThisKeyword:
+		ast.KindNullKeyword:
 		return true
 	}
 	return false

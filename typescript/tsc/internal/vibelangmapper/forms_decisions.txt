@@ -1118,6 +1118,16 @@ typescript/vibelang/cases/do-return-match-arms/main.vibe:3:24 lambda plain annot
 typescript/vibelang/cases/do-return-plain-functions/main.vibe:15:12 lambda plain annotation
 typescript/vibelang/cases/do-return-plain-functions/main.vibe:6:24 lambda plain annotation
 typescript/vibelang/cases/do-return-plain-functions/main.vibe:7:22 lambda plain annotation
+typescript/vibelang/cases/do-this-initialization/main.vibe:10:22 lambda plain annotation
+typescript/vibelang/cases/do-this-initialization/main.vibe:22:16 lambda plain annotation
+typescript/vibelang/cases/do-this-initialization/main.vibe:28:22 lambda plain annotation
+typescript/vibelang/cases/do-this-initialization/main.vibe:40:16 lambda plain annotation
+typescript/vibelang/cases/do-this-initialization/main.vibe:46:22 lambda plain annotation
+typescript/vibelang/cases/do-this-initialization/main.vibe:4:16 lambda plain annotation
+typescript/vibelang/cases/do-this-initialization/main.vibe:58:16 lambda plain annotation
+typescript/vibelang/cases/do-this-initialization/main.vibe:64:22 lambda plain annotation
+typescript/vibelang/cases/do-this-initialization/main.vibe:76:16 lambda plain annotation
+typescript/vibelang/cases/do-this-initialization/main.vibe:82:22 lambda plain annotation
 typescript/vibelang/cases/do-try-element/main.vibe:13:27 lambda plain fallback
 typescript/vibelang/cases/do-try-element/main.vibe:14:5 lambda program table
 typescript/vibelang/cases/do-try-element/main.vibe:15:27 lambda plain fallback
