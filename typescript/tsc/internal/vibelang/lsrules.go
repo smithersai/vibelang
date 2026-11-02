@@ -444,13 +444,16 @@ func returnedParts(value *ast.Node) []*ast.Node {
 	return nil
 }
 
-// checkThrow reports what a VibeLang function's throw statement fails with:
+// checkThrow reports what an Effect function's throw statement fails with:
 // an Effect value (EK4815), any or unknown (EK4811), or a global Error
-// (EK4804). A hatch's throw is JavaScript's; every other is a typed failure (D282).
+// (EK4804). Only effect code's throw is a typed failure (VIP-4, D282). A
+// plain function's throw, like a hatch's, is JavaScript's, which none of
+// these advisories is about; whether the plain function may throw at all is
+// the plain-function rules' question (EK9203 where it is refused).
 func (r *ruleCheck) checkThrow(statement *ast.Node) {
 	fn := ast.GetContainingFunction(statement)
 	value := statement.Expression()
-	if fn == nil || !isLowerable(fn) || value == nil {
+	if fn == nil || !isLowerable(fn) || value == nil || !r.a.isEffect(fn) {
 		return
 	}
 	t := r.c.GetTypeAtLocation(value)
