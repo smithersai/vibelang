@@ -17,6 +17,17 @@ export const program: number!! = function self(n = ++runs): number!! { return n 
 const \u0024effectPrograms = 7
 let runs = 0
 export const program: number!! = $effectPrograms$1.suspend(effect function self(n = ++runs): number!! { return n + \u0024effectPrograms })`},
+		// RD-015 (VIP-1): a function the old compiler made an Effect function
+		// only because a program captures it is marked, so the captured value
+		// is still an Effect function under keyword-only VIP-1.
+		{"captured declaration in a collection", `function job(){return 1;} export effect function main(){return try Effect.all([job, (job)]);}`, `import * as $effectPrograms from "effect/Effect"
+effect function job(){return 1;} export effect function main(){return try Effect.all([$effectPrograms.suspend(job), ($effectPrograms.suspend(job))]);}`},
+		{"captured declaration at a runner", `function job(){return 1;} export const value=Effect.runSync(job);`, `import * as $effectPrograms from "effect/Effect"
+effect function job(){return 1;} export const value=Effect.runSync($effectPrograms.suspend(job));`},
+		// A declaration that a direct call also reads stays unmarked: that
+		// call gives its value.
+		{"captured declaration also called", `function job(){return 1;} export effect function main(){ const n = job(); return [n, try Effect.all([job])] }`, `import * as $effectPrograms from "effect/Effect"
+function job(){return 1;} export effect function main(){ const n = job(); return [n, try Effect.all([$effectPrograms.suspend(job)])] }`},
 		{"fork callback", `export function main() { const f = fork { try yieldNow(); return 1 }; return join f }`, `export effect function main() { const f = fork effect { try yieldNow(); return 1 }; return join f }`},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

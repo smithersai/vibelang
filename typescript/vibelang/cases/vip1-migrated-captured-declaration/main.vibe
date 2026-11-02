@@ -1,0 +1,11 @@
+// expect-result: [[1,1],1]
+// RD-015 (VIP-1): the `vibelang --fix --fix-vip-only` output for functions
+// the pre-VIP-1 compiler made Effect functions only because a program
+// captured them (fix_effect_program_test.go, "captured declaration" rows).
+// The migration marks each one `effect`, so this file compiles and gives the
+// same result before and after the upgrade to keyword-only Effect functions.
+import * as $effectPrograms from "effect/Effect"
+effect function job(){return 1;}
+effect function step(){return 1;}
+const value = Effect.runSync($effectPrograms.suspend(step))
+export effect function main(){return [try Effect.all([$effectPrograms.suspend(job), ($effectPrograms.suspend(job))]), value]}

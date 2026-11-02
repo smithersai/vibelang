@@ -103,6 +103,7 @@ func (a *analyzer) effectEditsIn(file *ast.SourceFile, node *ast.Node) ([]source
 			}
 		}
 	}
+	captured := map[*ast.Node]bool{} // declarations marked because a program captures them (RD-015)
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		// A retired try hatch's function and mapper are TypeScript, which
@@ -140,6 +141,15 @@ func (a *analyzer) effectEditsIn(file *ast.SourceFile, node *ast.Node) ([]source
 				}
 				edits = append(edits, sourceEdit{start, start, helper}, sourceEdit{node.End(), node.End(), ")"})
 				marked++
+				// The captured function was an Effect function only by
+				// inference, which VIP-1 removes: mark it, or the helper
+				// receives a plain function after the upgrade (RD-015).
+				if fn := a.capturedProgramDeclaration(file, node); conv == convertProgram && fn != nil && !captured[fn] {
+					captured[fn] = true
+					edits = append(edits, sourceEdit{effectPosition(file, fn), effectPosition(file, fn), "effect "})
+					edits = append(edits, a.returnTries(file, fn)...)
+					marked++
+				}
 			}
 		}
 		switch {
@@ -704,4 +714,55 @@ func effectless(counts map[string]int) map[string]int {
 		result[key] += n
 	}
 	return result
+}
+
+// capturedProgramDeclaration returns the function declaration that value,
+// a function captured at a program position (convertProgram), names, when
+// the migration must mark it effect: an unexported, unmarked declaration in
+// file that the declaration pass leaves unmarked (D421), and that every
+// reference in file captures as a program. The pre-flip compiler made such a
+// declaration an Effect function by inference; VIP-1 makes a function an
+// Effect function only by its keyword, so the captured value must say so
+// (RD-015). A declaration with any other reference keeps its form here: its
+// direct calls give values that marking it would change.
+func (a *analyzer) capturedProgramDeclaration(file *ast.SourceFile, value *ast.Node) *ast.Node {
+	c := a.checker
+	id := ast.SkipParentheses(value)
+	if !ast.IsIdentifier(id) {
+		return nil
+	}
+	symbol := c.GetSymbolAtLocation(id)
+	if symbol == nil {
+		return nil
+	}
+	fn := symbol.ValueDeclaration()
+	if fn == nil || !ast.IsFunctionDeclaration(fn) || ast.GetSourceFileOfNode(fn) != file || fn.Body() == nil ||
+		ast.HasSyntacticModifier(fn, ast.ModifierFlagsExport) || isMarkedEffect(fn) || !isLowerable(fn) || isProducer(fn) ||
+		a.effectRewriteOf(fn) != formNone {
+		return nil
+	}
+	only := true
+	var visit func(node *ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if !only {
+			return true
+		}
+		if ast.IsIdentifier(node) && node != fn.Name() && c.GetSymbolAtLocation(node) == symbol {
+			// The conversion is on the reference or on parentheses around it.
+			converted := false
+			for at := node; at != nil && !converted; at = at.Parent {
+				converted = a.conversions[at] != nil && a.finalConversion(at) == convertProgram
+				if !ast.IsParenthesizedExpression(at.Parent) {
+					break
+				}
+			}
+			only = converted
+		}
+		return node.ForEachChild(visit)
+	}
+	file.AsNode().ForEachChild(visit)
+	if !only {
+		return nil
+	}
+	return fn
 }
