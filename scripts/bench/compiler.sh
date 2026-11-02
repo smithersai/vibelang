@@ -74,16 +74,34 @@ EOF_OPTIONS
 out=${out:-$(mktemp -d "${TMPDIR:-/tmp}/vibelang-bench-XXXXXX")}
 mkdir -p "$out"
 sh "$root/scripts/bench/modules.sh" "$out"
+# A reused --out keeps previous invocations as well as every target and trial.
+mkdir -p "$out/measurements"
+archive=$(mktemp -d "$out/measurements/run-XXXXXX")
+measurement=0
 
 # One measurement: median wall time, check time, and total time, and the
 # largest peak RSS, over $runs runs of `<binary> -p <tsconfig> --extendedDiagnostics`.
 measure() { # label binary tsconfig
   label=$1 bin=$2 config=$3
+  measurement=$((measurement + 1))
+  record="$archive/$measurement"
+  mkdir -p "$record"
+  python3 - "$label" "$bin" "$config" "$record/command.json" <<'EOF'
+import datetime, json, os, sys
+label, binary, config, output = sys.argv[1:]
+with open(output, "w") as stream:
+    json.dump({"schemaVersion": 1, "label": label, "cwd": os.getcwd(),
+               "startedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+               "command": [binary, "-p", config, "--extendedDiagnostics", "--pretty", "false"]}, stream, indent=2)
+EOF
   rm -rf "$(dirname "$config")/dist"
   i=0
   : > "$out/runs.txt"
   while [ $i -lt "$runs" ]; do
-    python3 "$root/scripts/bench/measure.py" "$bin" -p "$config" --extendedDiagnostics --pretty false > "$out/run.log" 2>&1 || true
+    log="$record/run-$((i + 1)).log"
+    python3 "$root/scripts/bench/measure.py" "$bin" -p "$config" --extendedDiagnostics --pretty false > "$log" 2>&1 || true
+    # Preserve the historical latest-run paths for scripts inspecting --out.
+    cp "$log" "$out/run.log"
     files=$(sed -n 's/^Files: *//p' "$out/run.log")
     check=$(sed -n 's/^Check time: *\([0-9.]*\)s/\1/p' "$out/run.log")
     total=$(sed -n 's/^Total time: *\([0-9.]*\)s/\1/p' "$out/run.log")
@@ -93,10 +111,23 @@ measure() { # label binary tsconfig
     done
     i=$((i + 1))
   done
-  python3 - "$label" "$out/runs.txt" <<'EOF'
-import statistics, sys
-label, path = sys.argv[1], sys.argv[2]
+  cp "$out/runs.txt" "$record/runs.txt"
+  python3 - "$record" <<'EOF'
+import json, os, statistics, sys
+record = sys.argv[1]
+with open(os.path.join(record, "command.json")) as stream:
+    result = json.load(stream)
+label, path = result["label"], os.path.join(record, "runs.txt")
 rows = [line.split() for line in open(path) if line.strip()]
+result["samples"] = [
+    {"log": f"run-{i + 1}.log", "wallSeconds": float(r[0]), "peakRssMiB": float(r[1]),
+     "exitCode": int(r[2]), "checkSeconds": float(r[3]), "totalSeconds": float(r[4]),
+     "files": int(r[5]), "errors": int(r[6])}
+    for i, r in enumerate(rows)
+]
+with open(os.path.join(record, "result.json"), "w") as stream:
+    json.dump(result, stream, indent=2)
+    stream.write("\n")
 med = lambda k: statistics.median(float(r[k]) for r in rows)
 rss = max(float(r[1]) for r in rows)
 codes = {r[2] for r in rows}
@@ -186,3 +217,4 @@ if [ -n "$scale" ]; then
 fi
 echo
 echo "working directory: $out"
+echo "measurements: $archive"
