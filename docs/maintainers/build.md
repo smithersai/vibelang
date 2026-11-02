@@ -730,7 +730,7 @@ Smithers graph and cache; no extra pre-gate script is needed.
 The registry check reads Appendix B until the one-file diagnostic registry
 lands. One adapter selects that source when present. TypeScript codes and
 options come from the pinned compiler registry. VibeLang names require
-published VIP authority; unresolved authority is reported as a warning.
+published VIP authority; unresolved authority is reported as a warning. An open VIP is not approval, even when its diagnostic already has a registry row.
 The table check compares decided config keys, denied VIP membership and
 repair forms, and resolution order. The copy check compares shared tables
 and explicitly marked `spec-copy` sections byte for byte. The

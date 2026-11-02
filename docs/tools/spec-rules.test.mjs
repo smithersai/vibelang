@@ -165,3 +165,22 @@ test("fast-check: moving a negative diagnostic never satisfies the original mark
     assert.ok(verdict(example, { status: 1, stdout: "main.vibe(" + line + ",1): error EK0502: operand\n" }).some(f => f.severity === "error"))
   }), { seed: 502, numRuns: 40 })
 })
+
+test("r14 OPUS-4 neighbourhood: a registry row cannot turn an open VIP into approval", () => fixture((root, edit) => {
+  writeFileSync(join(root, "docs/design/vips/0099-open-test.md"), "# VIP-99\n\n**Status:** open\n")
+  const row = "| `EK9901` | invented pending rule | 99 | chapter |\n"
+  edit(appendix, s => s.replace("| `EK0501`", row + "| `EK0501`"))
+  edit(chapter, s => s + "\nThe proposed rule reports `EK9901`.\n")
+  assert.ok(lintRegistry(root).some(f => f.message.includes("EK9901") && f.message.includes("open VIP") && f.severity === "warning"))
+}))
+test("fast-check: pending diagnostic authorities stay unresolved across the fresh VIP blocks", () => fixture((root) => {
+  const source = read(root, appendix), original = read(root, chapter)
+  fc.assert(fc.property(fc.integer({ min: 70, max: 99 }), id => {
+    const code = "EK" + id + "01"
+    writeFileSync(join(root, "docs/design/vips/00" + id + "-open-test.md"), "# VIP-" + id + "\n\n**Status:** open\n")
+    const row = "| \u0060" + code + "\u0060 | pending rule | " + id + " | chapter |\n"
+    writeFileSync(join(root, appendix), source.replace("| \u0060EK0501\u0060", row + "| \u0060EK0501\u0060"))
+    writeFileSync(join(root, chapter), original + "\nProposed diagnostic: \u0060" + code + "\u0060.\n")
+    assert.ok(lintRegistry(root).some(f => f.message.startsWith(code + " has only open VIP authority")))
+  }), { seed: 1404, numRuns: 30 })
+}))

@@ -73,6 +73,8 @@ export function lintRegistry(root) {
       } else {
         const ids = String(row.authority ?? "").match(/\d+/g) ?? []
         if (!ids.length || ids.some(id => !vips.has(Number(id)))) findings.push(issue("registry", path, text, m.index, code + " has an invalid registry authority"))
+        else if (ids.every(id => vips.get(Number(id)).status === "open"))
+          findings.push(issue("registry", path, text, m.index, code + " has only open VIP authority; an accepted source is still needed", "warning"))
       }
     }
     for (const token of tokens(text)) {

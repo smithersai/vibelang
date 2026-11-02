@@ -367,6 +367,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The grammar admission fuzzer reported `join {}` as a new unclassified failure; it now keeps this object-operand witness under the existing pending finding while checking native calls, element accesses and line breaks separately.
 
 - Async conversion could change how a JavaScript `try` statement handles rejection or leave a `using` resource undisposed; the editor now leaves these bodies for an explicit handler and cleanup rewrite.
+- A diagnostic row could treat an open VIP as approval; the registry check now reports that the proposal still needs an accepted source.
+
 - Deliberately rejected VIP examples named no diagnostic, and a matching code elsewhere could satisfy a check; examples now state their codes and inline checks require the marked source line.
 
 - A denied-VIP link could evade the authority check because its filename contained `denied`; the check now reads the prose separately from the link destination.
