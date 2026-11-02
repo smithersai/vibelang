@@ -2,6 +2,7 @@ package vibelang
 
 import (
 	"context"
+	"slices"
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
@@ -94,8 +95,10 @@ func preludePackageOf(name string) string {
 
 // preludeRewritesOf plans the rewrites of file, a .vibe file that c checked.
 // declared holds the imports file's declaration file keeps, by
-// declaredImportKey, in a project that emits declarations.
-func preludeRewritesOf(c *checker.Checker, file *ast.SourceFile, declared map[string]bool) preludeRewrite {
+// declaredImportKey, in a project that emits declarations. A named import
+// from effect's root that declared holds stays only when it is written
+// import type, unless all is set (preludeRewriteProject).
+func preludeRewritesOf(c *checker.Checker, file *ast.SourceFile, declared map[string]bool, all bool) preludeRewrite {
 	var r preludeRewrite
 	text := file.Text()
 	removed := map[string]bool{} // names whose imports go, so the prelude supplies them
@@ -133,7 +136,7 @@ func preludeRewritesOf(c *checker.Checker, file *ast.SourceFile, declared map[st
 			}
 			switch {
 			case preludePackageOf(name) == specifier:
-				if hasTypeModifier(statement, element) && declared[declaredImportKey(specifier, name)] {
+				if (all || hasTypeModifier(statement, element)) && declared[declaredImportKey(specifier, name)] {
 					kept[name] = true
 					continue
 				}
@@ -253,6 +256,13 @@ func declarationImportKeys(ctx context.Context, program *compiler.Program, file 
 	if !program.Options().GetEmitDeclarations() {
 		return nil
 	}
+	return emittedImportKeys(ctx, program, file)
+}
+
+// emittedImportKeys returns the imports that the declaration of file writes,
+// by declaredImportKey, whatever the compiler options say: every .vibe module
+// has a declaration, its sidecar (VIP-27), so this forces the emit.
+func emittedImportKeys(ctx context.Context, program *compiler.Program, file *ast.SourceFile) map[string]bool {
 	var text string
 	program.Emit(ctx, compiler.EmitOptions{TargetSourceFiles: []*ast.SourceFile{file}, EmitOnly: compiler.EmitOnlyDts, ForceEmit: true,
 		WriteFile: func(name tspath.RootedFilePath, data string, _ *compiler.WriteFileData) error {
@@ -413,19 +423,92 @@ func exportOfModuleReference(c *checker.Checker, module *ast.Node, right *ast.No
 	return symbol, export
 }
 
-// preludeRewriteProject plans the rewrites of every fixable file of program
-// and returns each file's rewrite.
-func preludeRewriteProject(ctx context.Context, program *compiler.Program) map[tspath.RootedFilePath]preludeRewrite {
+// preludeRewriteProject plans the rewrites of every fixable file of program,
+// whose texts are texts, and returns each file's rewrite. A rewrite removes an
+// import the file's declaration writes only when the declaration is the same
+// bytes without it (decided detail 277): fresh builds the program with the
+// file rewritten both ways, the second keeping every import the declaration
+// writes, and the declarations are compared. The prelude supplying a name does
+// not make its import unneeded: without import { Layer, Schema } from "effect"
+// written before a relative import, the emitter re-adds it after that import,
+// and an inferred Schema.String prints as an import type (9 Smithers
+// modules). Where the declaration comes out the same, as it does for
+// Option.Option<number> once import { Option } goes, the import goes. Every
+// .vibe module has a declaration, its sidecar, so no compiler option turns
+// this off. A nil fresh keeps every such import.
+func preludeRewriteProject(ctx context.Context, program *compiler.Program, texts map[tspath.RootedFilePath]string, fresh func(map[tspath.RootedFilePath]string) *compiler.Program) map[tspath.RootedFilePath]preludeRewrite {
 	rewrites := map[tspath.RootedFilePath]preludeRewrite{}
+	keeping := map[tspath.RootedFilePath]preludeRewrite{}
 	for _, file := range fixableFiles(program) {
 		program.GetSemanticDiagnostics(ctx, file)
 		declared := declaredImports(ctx, program, file)
 		c, done := program.GetTypeCheckerForFile(ctx, file)
-		r := preludeRewritesOf(c, file, declared)
+		r := preludeRewritesOf(c, file, declared, false)
 		done()
+		if r.imports > 0 {
+			if written := emittedImportKeys(ctx, program, file); len(written) > 0 {
+				c, done := program.GetTypeCheckerForFile(ctx, file)
+				keep := preludeRewritesOf(c, file, written, true)
+				done()
+				if !slices.Equal(keep.edits, r.edits) {
+					keeping[file.FileName()] = keep
+				}
+			}
+		}
 		if len(r.edits) > 0 {
 			rewrites[file.FileName()] = r
 		}
 	}
+	if len(keeping) == 0 {
+		return rewrites
+	}
+	names := make([]tspath.RootedFilePath, 0, len(keeping))
+	dropped := map[tspath.RootedFilePath]string{}
+	kept := map[tspath.RootedFilePath]string{}
+	for name, keep := range keeping {
+		original := program.GetSourceFile(name).Text()
+		names = append(names, name)
+		dropped[name] = applyEdits(original, rewrites[name].edits)
+		kept[name] = applyEdits(original, keep.edits)
+	}
+	var without, with map[tspath.RootedFilePath]string
+	if fresh != nil {
+		without = declarationsOf(ctx, fresh(maps(texts, dropped)), names)
+		with = declarationsOf(ctx, fresh(maps(texts, kept)), names)
+	}
+	for name, keep := range keeping {
+		if text, ok := without[name]; ok && text == with[name] {
+			continue // the declaration does not need the imports
+		}
+		if len(keep.edits) > 0 {
+			rewrites[name] = keep
+		} else {
+			delete(rewrites, name)
+		}
+	}
 	return rewrites
+}
+
+// declarationsOf returns the declaration text of each of program's files
+// named in names, by file. Every .vibe file has one whatever the compiler
+// options say, its sidecar (VIP-27), so this forces the emit.
+func declarationsOf(ctx context.Context, program *compiler.Program, names []tspath.RootedFilePath) map[tspath.RootedFilePath]string {
+	var files []*ast.SourceFile
+	for _, name := range names {
+		if file := program.GetSourceFile(name); file != nil {
+			files = append(files, file)
+		}
+	}
+	texts := map[tspath.RootedFilePath]string{}
+	if len(files) == 0 {
+		return texts
+	}
+	program.Emit(ctx, compiler.EmitOptions{TargetSourceFiles: files, EmitOnly: compiler.EmitOnlyDts, ForceEmit: true,
+		WriteFile: func(name tspath.RootedFilePath, data string, written *compiler.WriteFileData) error {
+			if written != nil && written.SourceFile != nil && tspath.IsDeclarationFileName(name.AsString()) {
+				texts[written.SourceFile.FileName()] = data
+			}
+			return nil
+		}})
+	return texts
 }

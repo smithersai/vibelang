@@ -646,7 +646,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 		}
 		seen[state] = true
 		if pass == fixPassLimit {
-			result.Remaining = remainingFixes(ctx, program, propose, options)
+			result.Remaining = remainingFixes(ctx, program, texts, fresh, propose, options)
 			break
 		}
 	}
@@ -702,7 +702,7 @@ func sameTexts(a, b map[tspath.RootedFilePath]string) bool {
 // remainingFixes returns the fixes that still apply to program, which the
 // pass limit stopped --fix from applying: the next round's fixes, as
 // propose takes them, and the prelude rewrites, by file and line.
-func remainingFixes(ctx context.Context, program *compiler.Program, propose func(*compiler.Program) []proposal, options FixOptions) []FixRemaining {
+func remainingFixes(ctx context.Context, program *compiler.Program, texts map[tspath.RootedFilePath]string, fresh func(map[tspath.RootedFilePath]string) *compiler.Program, propose func(*compiler.Program) []proposal, options FixOptions) []FixRemaining {
 	var remaining []FixRemaining
 	for _, p := range propose(program) {
 		for _, f := range p.fixes {
@@ -711,7 +711,7 @@ func remainingFixes(ctx context.Context, program *compiler.Program, propose func
 		}
 	}
 	if !options.VIPOnly {
-		for name, r := range preludeRewriteProject(ctx, program) {
+		for name, r := range preludeRewriteProject(ctx, program, texts, fresh) {
 			line, _ := scannerLineOf(program.GetSourceFile(name), firstEdit(r.edits))
 			kind := preludeImportLabel
 			if r.imports == 0 {
@@ -764,7 +764,7 @@ func fixState(program *compiler.Program) [32]byte {
 // as fixGate.accept keeps a round's fixes. It records them in result and
 // texts.
 func rewritePrelude(g *fixGate, fs vfs.FS, program *compiler.Program, texts map[tspath.RootedFilePath]string, result *FixResult) {
-	rewrites := preludeRewriteProject(g.ctx, program)
+	rewrites := preludeRewriteProject(g.ctx, program, texts, g.fresh)
 	if len(rewrites) == 0 {
 		return
 	}
