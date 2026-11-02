@@ -1041,3 +1041,11 @@ expectation only with evidence from its owning compiler or LSP test. The native
 guard `test/eslint-corpus-parse-errors.test.mjs` runs in `compiler-test`; the
 optional `test/eslint/corpus-parse-errors*.test.mjs` suites exercise both actual
 corpus checks and generated real ESLint fatal reports.
+
+
+The mapper runtime-parity runner treats each entry filename as a literal URL
+path segment and quotes its generated import. A filename containing `#`,
+`?`, `%20` or `"` keeps those characters rather than changing the imported
+path or JavaScript syntax. Run
+`node --test scripts/mapper-runtime-entry-url.test.mjs` for real pinned
+stock-TypeScript regressions and generated filename batches in `//:release`.
