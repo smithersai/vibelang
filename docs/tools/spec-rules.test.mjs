@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import test from "node:test"
 import fc from "fast-check"
@@ -27,11 +27,11 @@ test("r14 OPUS-3: legacy option paths cannot silently gain authority", () => fix
 }))
 test("r14 OPUS-2: VIP-11 has three repair forms", () => fixture((root, edit) => {
   edit(appendix, s => s.replace(/\| \[11\].*\n/, "| [11](../vips/0011-trailing-blocks-denied.md) | trailing blocks | `f(x, () => { … })` or `f(x, effect { … })` |\n"))
-  assert.ok(lintTables(root).some(f => f.message.includes("VIP-11 repair list omits")))
+  assert.ok(lintTables(root).some(f => f.message.includes("VIP-11")))
 }))
-test("r14 OPUS-1: reordered resolution candidates fail the table and copy contracts", () => fixture((root, edit) => {
+test("r14 OPUS-1: reordered resolution candidates fail the generated copy contract", () => fixture((root, edit) => {
   edit(chapter, s => s.replace("`App.ts`, `App.tsx`, `App.vibe`", "`App.vibe`, `App.ts`, `App.tsx`"))
-  for (const check of [lintTables, lintCopies]) assert.ok(check(root).some(f => f.message.includes("resolution")))
+  for (const check of [lintCopies]) assert.ok(check(root).some(f => f.message.includes("resolution")))
 }))
 test("r2 OPUS-2 / ASTRA-2: EK0801 cannot use denied VIP-8 as authority", () => fixture((root, edit) => {
   edit(appendix, s => s.split("\n").map(line => line.startsWith("| `EK0801`") ? line.replace(/ \| [\d, ]+ \|/, " | 8 |") : line).join("\n"))
@@ -133,15 +133,32 @@ test("r2 OPUS-2 / ASTRA-2: current resource warning cites an accepted public ame
   assert.ok(vip.includes("default warning `EK0801`"))
 })
 
-test("r14 ASTRA-1 / OPUS-3: declaration spelling scope is generated from VIP-27 in both chapters", () => {
-  assert.deepEqual(lintCopies(repository), [])
-  const authority = section(read(repository, "docs/design/vips/0027-declaration-output.md"), "package-declaration-spelling")
-  assert.ok(authority.includes("controls only package"))
-  assert.ok(authority.includes("sidecars retain their existing VibeLang-source references"))
-  const tooling = read(repository, "docs/design/src/007-tooling.md")
+test("r14 ASTRA-1 / OPUS-3: declaration spelling scope follows landed VIP-27 and VIP-30", () => {
+  for (const path of ["docs/design/src/001-functions.md", chapter]) {
+    const text = read(repository, path)
+    assert.ok(text.includes("declarationImportStyle"))
+    assert.ok(text.includes("sidecars"))
+    assert.ok(text.includes(".vibex"))
+  }
+  for (const path of ["docs/design/vips/0027-declaration-output.md", "docs/design/vips/0030-config-files.md"])
+    assert.ok(read(repository, path).includes("vibelang.declarationImportStyle"))
+  const tooling = read(repository, chapter)
   for (const obsolete of ["compilerOptions.vibelang.declarationImportStyle", "`trustedPackages`", "`tracing`"]) assert.ok(!tooling.includes(obsolete))
   assert.ok(!lintRegistry(repository).some(f => f.message.includes("declarationImportStyle")))
 })
+
+test("r14 OPUS-3: registry rejects the real second path and unapproved sibling keys", () => fixture((root, edit) => {
+  edit(chapter, s => s + "\nRoot `compilerOptions.vibelang.declarationImportStyle` sits beside `trustedPackages` and `tracing`.\n")
+  const findings = lintRegistry(root)
+  for (const token of ["compilerOptions.vibelang.declarationImportStyle", "trustedPackages", "tracing"])
+    assert.ok(findings.some(f => f.message.startsWith(token)), token)
+}))
+
+test("r14 OPUS-3: removing the accepted VIP spelling removes option authority", () => fixture((root, edit) => {
+  for (const name of readdirSync(join(root, "docs/design/vips")).filter(name => name.endsWith(".md")))
+    edit("docs/design/vips/" + name, s => s.replaceAll("vibelang.declarationImportStyle", "vibelang.removed"))
+  assert.ok(lintRegistry(root).some(f => f.message.startsWith("vibelang.declarationImportStyle has no accepted")))
+}))
 
 test("denied-link-filename: a link path containing denied cannot excuse positive authority", () => fixture((root, edit) => {
   edit(chapter, s => s + "\nThe resource extension follows [VIP-8](../vips/0008-using-denied.md).\n")
@@ -237,4 +254,11 @@ test("fast-check: fenced examples retain retired-form checks across list indenta
     assert.equal(found.length, 1)
     assert.ok(verdict(found[0], { status: 0, stdout: "" }).some(f => f.severity === "error" && f.message.includes("EK0509")))
   }), { seed: 90704, numRuns: 40 })
+})
+
+test("consolidation: maintainer instructions run the graph aggregate", () => {
+  const guide = read(repository, "docs/maintainers/build.md")
+  assert.ok(/sh scripts\/ci\.sh \/\/:spec-lint --jobs 8/.test(guide), "the documented command must select the static aggregate")
+  assert.ok(!guide.includes("Run it alone with `bun docs/tools/spec-lint.ts`"), "the direct runner bypasses registry and compiler contracts")
+  assert.equal((guide.match(/^## Specification contracts$/gm) ?? []).length, 1)
 })

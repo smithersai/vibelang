@@ -5,7 +5,7 @@ import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
-import { issue, read, repository, vipRegistry } from "./spec-rules.mjs"
+import { issue, read, repository, reviewFindings, vipRegistry } from "./spec-rules.mjs"
 
 export function expectations(source) {
   return source.split("\n").flatMap((line, index) => {
@@ -81,7 +81,7 @@ export function lintExamples(root, compiler = process.env.VIBELANG_COMPILER ?? j
   for (const required of [compiler, join(modules, "effect/package.json"), join(runtime, "dist/index.d.ts")])
     if (!existsSync(required)) throw new Error("Missing VIP check dependency: " + required)
   mkdirSync(join(root, ".cache"), { recursive: true })
-  const temp = mkdtempSync(join(root, ".cache/spec-examples-")), findings = []
+  const temp = mkdtempSync(join(root, ".cache/spec-examples-")), findings = reviewFindings(root, "examples")
   try {
     let index = 0
     for (const vip of vipRegistry(root).values()) {

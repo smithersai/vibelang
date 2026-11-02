@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test"
 import fc from "fast-check"
 import { lint, loadSpec, rules, type Spec } from "./spec-lint"
+import { examples, verdict } from "./spec-examples.mjs"
 
 const spec = legacyStyleFixtures(loadSpec())
 const rule = (name: string) => {
@@ -36,31 +37,22 @@ test("resolution-claims rejects round 14 OPUS-1's `./x.ts` to `x.vibe` sentence"
   ])
 })
 
-test("resolution-claims accepts a claim the table lists and rejects a table that drifts from VIP-39", () => {
+test("resolution-claims accepts a claim the table lists; generated copies own table equality", () => {
   const listed = withEdit("src/007-tooling.md", insertAfter("## JSX source files: `.vibex`\n", "\nA `./App.jsx` that resolves to `App.vibex` is checked as `.tsx`.\n"))
   expect(lint(listed, rule("resolution-claims"))).toEqual([])
-  const drift = withEdit("src/007-tooling.md", text => text.replace("| `./App.vibe` | `App.vibe`, `App.d.ts` |", "| `./App.vibe` | `App.vibe`, `App.ts`, `App.d.ts` |"))
-  expect(lint(drift, rule("resolution-claims")).map(v => v.message)).toEqual(["the resolution table differs from VIP-39's"])
+
 })
 
 const opus3 = "Root `vibelang.declarationImportStyle`, or `compilerOptions.vibelang.declarationImportStyle`, is `\".js\"` (the default), `\"extensionless\"` or `\".ts\"`. It decides how an emitted declaration spells a relative import of a `.vibe` module ([Declaration output](001-functions.md#declaration-output)). Any other value is a configuration error (`TS6046`). It sits in the legacy `vibelang` section with `trustedPackages` and `tracing`, so a child config's own `vibelang` section replaces an inherited one as a whole."
 
-test("config-keys rejects round 14 OPUS-3's paragraph: a second path, two keys and a TypeScript code with no VIP", () => {
+test("config-keys rejects round 14 OPUS-3's TypeScript configuration code; registry owns option authority", () => {
   const defect = withEdit("src/007-tooling.md", text => text.replace(/^Root `vibelang\.declarationImportStyle`.*$/m, opus3))
   expect(lint(defect, rule("config-keys")).map(v => v.message)).toEqual([
-    "`compilerOptions.vibelang.declarationImportStyle` appears in no accepted VIP",
-    "a VibeLang configuration error is given TypeScript's `TS6046`",
-    "`vibelang.trustedPackages` appears in no accepted VIP",
-    "`vibelang.tracing` appears in no accepted VIP"
+    "a VibeLang configuration error is given TypeScript's `TS6046`"
   ])
 })
 
-test("config-keys rejects a chapter key once no accepted VIP publishes it", () => {
-  const unpublished: Spec = new Map([...spec].map(([file, text]) =>
-    [file, file.startsWith("vips/") ? text.replaceAll("vibelang.declarationImportStyle", "vibelang.removed") : text]))
-  expect(lint(unpublished, rule("config-keys")).map(v => v.message)).toContain("`vibelang.declarationImportStyle` appears in no accepted VIP")
-  expect(lint(spec, rule("config-keys"))).toEqual([])
-})
+
 
 test("declaration-import-style-scope rejects round 14 ASTRA-1's unscoped option and missing VIP-27 amendment", () => {
   const astra1 = "A package whose sources spell relative imports another way keeps that spelling with the project setting `vibelang.declarationImportStyle`: `\"extensionless\"` declares `./user`, `\".ts\"` declares `./user.ts`, and `\".js\"` is the default."
@@ -111,9 +103,10 @@ test("denied-vip-repairs rejects round 14 OPUS-2's two-repair Appendix C row for
 
 test("retired-forms rejects round 7 ASTRA-4's `catch guest` in VIP-5's Decision example (row 46)", () => {
   const defect = withEdit("vips/0005-try-runs-effects.md", text => text.replace("const g = fetchUser(id) catch () => guest", "const g = fetchUser(id) catch guest"))
-  expect(lint(defect, rule("retired-forms")).map(v => `${v.file}:${v.line} ${v.message}`)).toEqual([
-    expect.stringMatching(/^vips\/0005-try-runs-effects\.md:12 the value handler `x catch guest` is removed/)
-  ])
+  const source = examples(defect.get("vips/0005-try-runs-effects.md")!)[0]!
+  expect(verdict(source, { status: 0, stdout: "" }).map(v => v.message)).toContain(
+    "EK0509: catch requires a function literal (VIP-5); removed value handler"
+  )
 })
 
 test("retired-forms rejects round 7 OPUS-6's bare `Effect<User, NotFound, Users>` in VIP-1 (row 45)", () => {

@@ -460,20 +460,6 @@ const fuzzTopicTargets = Object.fromEntries(
   ])
 )
 
-// The specification linters (docs/tools/spec-lint.ts): one rule per class of
-// inconsistency a review found, each with a test that fails on that defect.
-// They read only docs/design and the linter, so a specification edit runs
-// them in seconds and they stay cached otherwise. //:docs-tools requires
-// them, so the merge gate runs them.
-const specLint = S.Shell.Test({
-  summary: "The specification linters: each class of inconsistency a review found, checked over docs/design.",
-  shell: "cd docs/tools && bun test --timeout 60000 spec-lint.test.ts",
-  data: [design, S.Filegroup({ srcs: [...S.glob(["docs/tools/spec-lint.ts", "docs/tools/spec-lint.test.ts"])] })],
-  tools: [bun],
-  sandbox: "none",
-  timeout: "5m"
-})
-
 // One target per internal/vibelang test topic (vibelang-topics.ts): the Test
 // functions of internal/vibelang/<topic>_test.go and <topic>_*_test.go. The
 // merge gate runs a topic for a change to a source or test file of
@@ -496,8 +482,8 @@ const vibelangTopicTargets = Object.fromEntries(
 // Specification checks share the normal graph and cache. The existing forms
 // gate selection reaches these dependencies without a pre-gate change.
 const specInputs = S.Filegroup({ srcs: [...S.glob([
-  "docs/design/**", "docs/tools/spec-rules*", "docs/tools/spec-examples*",
-  "docs/tools/package.json", "docs/tools/bun.lock",
+  "docs/design/**", "docs/tools/spec-rules*", "docs/tools/spec-examples*", "docs/tools/spec-lint*",
+  "docs/tools/package.json", "docs/tools/bun.lock", "docs/maintainers/build.md",
   "typescript/tsc/internal/diagnostics/diagnosticMessages.json",
   "typescript/tsc/internal/tsoptions/declarations_generated.go"
 ])] })
@@ -507,6 +493,11 @@ const specSharedTables = S.Generate({
   data: [S.Filegroup({ srcs: [...S.glob(["docs/tools/spec-rules.mjs", "docs/design/vips/0039-vibex.md"])] })],
   mode: "check", sandbox: "none"
 })
+const specCopySections = S.Generate({
+  command: "node docs/tools/spec-rules.mjs copies --write",
+  changes: ["docs/design/src/001-functions.md", "docs/design/src/007-tooling.md"],
+  data: [specInputs], mode: "check", sandbox: "none"
+})
 const specCheck = (kind: string, deps: ReadonlyArray<unknown> = []) => S.Shell.Test({
   summary: "Specification " + kind + " contracts agree with published VIP authority.",
   shell: "node docs/tools/spec-rules.mjs " + kind,
@@ -514,7 +505,7 @@ const specCheck = (kind: string, deps: ReadonlyArray<unknown> = []) => S.Shell.T
 })
 const specRegistry = specCheck("registry")
 const specTables = specCheck("tables")
-const specCopies = specCheck("copies", [specSharedTables])
+const specCopies = specCheck("copies", [specSharedTables, specCopySections])
 const specAuthority = specCheck("authority")
 const specExamples = S.Shell.Test({
   summary: "Accepted VIP examples compile; negative examples report their stated codes.",
@@ -524,13 +515,23 @@ const specExamples = S.Shell.Test({
 })
 const specLinterTests = S.Shell.Test({
   summary: "Historical spec defects, seeded properties and native example checks reject regressions.",
-  shell: "node --test docs/tools/spec-rules.test.mjs docs/tools/spec-examples-compiler.test.mjs",
+  shell: "node --test docs/tools/spec-rules.test.mjs docs/tools/spec-examples-compiler.test.mjs && cd docs/tools && bun test --timeout 60000 spec-lint.test.ts",
   data: [specInputs, Packages["compiler-native"], Packages["runtime-dist"]] as Array<never>,
-  tools: [node], sandbox: "none", timeout: "5m"
+  tools: [node, bun], sandbox: "none", timeout: "5m"
+})
+
+// Both gate entry points select this aggregate. Each check has one owning
+// target; shared graph dependencies execute once and retain their own cache.
+const specLint = S.Shell.Test({
+  summary: "Static specification contracts and their regression tests.",
+  shell: "echo 'spec-lint: static contracts passed'",
+  data: [specRegistry, specTables, specCopies, specAuthority, specLinterTests],
+  sandbox: "none", timeout: "1m"
 })
 
 const targets = {
   "spec-shared-tables": specSharedTables,
+  "spec-copy-sections": specCopySections,
   "spec-registry": specRegistry,
   "spec-tables": specTables,
   "spec-copies": specCopies,
@@ -560,7 +561,7 @@ const targets = {
     "The forms table and its decisions match a fresh generation.",
     "FORMS_BINARY=$PWD/typescript/built/local/vibelang-forms " +
       "GOCACHE=$HOME/.cache/go-build-smthrs bash scripts/check-forms-table.sh",
-    [Typescript["forms-generator"], specRegistry, specTables, specCopies, specAuthority, specLinterTests],
+    [Typescript["forms-generator"], specLint],
     [bun, node]
   ),
   "docs-tools": check(

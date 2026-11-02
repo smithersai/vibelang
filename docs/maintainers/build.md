@@ -688,7 +688,7 @@ available for diagnosis. Only successful generation is used for measurement.
 - **Not yet in the graph.** `ts-mapper`, `create-vibelang`, the
   editors, the examples and `scripts/e2e.sh` run outside it.
 
-`//:spec-lint` runs `docs/tools/spec-lint.ts`, the specification linters. Each rule is one class of inconsistency a specification review found, such as a resolution claim VIP-39's table does not list, and `docs/tools/spec-lint.test.ts` shows each rule failing on the defect it was written for. `//:docs-tools` depends on it, so the pre-merge gate runs it. Its inputs are `docs/design/**` and the linter's two files. Run it alone with `bun docs/tools/spec-lint.ts`. A new class of inconsistency gets a rule and a failing-defect test in the commit that fixes it.
+The [specification contracts](#specification-contracts) run in `//:spec-lint`. A new class of inconsistency gets a rule and a failing-defect test in the commit that fixes it.
 
 `//:site-spec-links` checks the generated specification and VIP pages for unconverted `.md` links, missing pages and missing anchors. `//:docs-tools` depends on it, so the pre-merge gate runs it. Its inputs are `site/src/pages/spec/**`, `site/src/pages/vips/**` and `docs/tools/site-spec-links.test.ts`; unrelated changes reuse its cached result.
 
@@ -722,7 +722,7 @@ memory availability and cgroup accounting before choosing a resource bound.
 
 ## Specification contracts
 
-The existing `//:forms` gate target also requires `//:spec-registry`,
+Both `//:forms` and `//:docs-tools` require the static `//:spec-lint` aggregate, which selects `//:spec-registry`,
 `//:spec-tables`, `//:spec-copies`, `//:spec-authority`,
 `//:spec-linters-test`. They use the normal
 Smithers graph and cache; no extra pre-gate script is needed.
@@ -748,12 +748,25 @@ missing binding or a parser cascade. Compiler launch failures fail the target. A
 Run the focused contracts with:
 
 ```sh
-sh scripts/ci.sh //:spec-registry //:spec-tables //:spec-copies //:spec-authority //:spec-linters-test --jobs 8
+sh scripts/ci.sh //:spec-lint --jobs 8
 ```
 
 Each diagnostic names the source file and line. The historical regressions
 name their review finding; fast-check mutates registry tokens and resolution
 order with reproducible seeds.
+
+
+Each check has one owning target and a source-keyed cache entry. Review rules in `docs/tools/spec-lint.ts`
+are assigned to those targets by `lintKind`; option authority belongs to the
+registry, resolution bytes to generated copies, and accepted VIP catch-handler
+syntax to the compiler checker.
+
+`//:spec-copy-sections` regenerates chapter tables and marked sections from
+their VIP source; `//:spec-shared-tables` produces the standalone resolution
+projection. The diagnostic adapter reads `docs/design/registry/diagnostics.json`
+once it is available and otherwise Appendix B. Unsupported authority is a
+visible warning until an accepted source settles it. A compatibility number
+explicitly described as still emitted is not a new diagnostic assignment.
 
 Run the compiler-backed VIP contract separately with `sh scripts/ci.sh //:spec-vip-examples --jobs 8`. It reports missing assigned diagnostics as errors; schematic examples remain visible warnings.
 

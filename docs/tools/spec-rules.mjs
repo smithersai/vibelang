@@ -3,10 +3,13 @@
 import { mkdirSync, existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { lintKind, loadSpec } from "./spec-lint.ts"
 
 export const repository = fileURLToPath(new URL("../../", import.meta.url))
 export const read = (root, path) => readFileSync(join(root, path), "utf8")
 const chapters = root => readdirSync(join(root, "docs/design/src")).filter(x => x.endsWith(".md")).sort().map(x => "docs/design/src/" + x)
+export const reviewFindings = (root, kind) => lintKind(loadSpec(join(root, "docs/design")), kind)
+  .map(f => ({ kind, path: "docs/design/" + f.file, line: f.line, severity: "error", message: f.message }))
 export const issue = (kind, path, text, offset, message, severity = "error") =>
   ({ kind, path, line: text.slice(0, offset).split("\n").length, severity, message })
 
@@ -47,7 +50,7 @@ const tokens = text => [...text.matchAll(/`([^`\n]+)`/g)].flatMap(m => {
 })
 const literalCode = code => new RegExp("\\b" + code + "\\b")
 export function lintRegistry(root) {
-  const findings = [], vips = vipRegistry(root), diagnostics = diagnosticRegistry(root)
+  const findings = reviewFindings(root, "registry"), vips = vipRegistry(root), diagnostics = diagnosticRegistry(root)
   const upstream = JSON.parse(read(root, "typescript/tsc/internal/diagnostics/diagnosticMessages.json"))
   const tsCodes = new Set(Object.values(upstream).map(x => "TS" + x.code))
   const declarations = read(root, "typescript/tsc/internal/tsoptions/declarations_generated.go")
@@ -66,7 +69,7 @@ export function lintRegistry(root) {
       if (!row) {
         const line = text.slice(text.lastIndexOf("\n", m.index) + 1, text.indexOf("\n", m.index) < 0 ? undefined : text.indexOf("\n", m.index))
         // Explicit historical diagnostics are documentation, not assignments.
-        if (/\b(?:old|legacy|retired|transitional|interim|obsolete|replaced)\b/i.test(line)) continue
+        if (/\b(?:old|legacy|retired|transitional|interim|obsolete|replaced|still prints)\b/i.test(line)) continue
         if (literalCode(code).test(authorityText)) {
           findings.push(issue("registry", path, text, m.index, code + " has public authority but no registry row"))
         } else findings.push(issue("registry", path, text, m.index, code + " has no registry entry or published authority", "warning"))
@@ -107,7 +110,7 @@ export const sharedTables = [
   { key: "resolution", source: "docs/design/vips/0039-vibex.md", target: "docs/design/src/007-tooling.md", header: "| Specifier | Tries, in order |", finding: "r14 OPUS-1 / r4 OPUS-2" }
 ]
 export function lintCopies(root, write = false) {
-  const findings = []
+  const findings = write ? [] : reviewFindings(root, "copies")
   for (const copy of sharedTables) {
     const original = table(read(root, copy.source), copy.header), text = read(root, copy.target)
     const duplicate = table(text, copy.header)
@@ -141,7 +144,7 @@ export function section(text, anchor) {
 }
 
 export function lintTables(root) {
-  const findings = [], vips = vipRegistry(root)
+  const findings = reviewFindings(root, "tables"), vips = vipRegistry(root)
   const chapterPath = "docs/design/src/007-tooling.md", chapter = read(root, chapterPath)
   const config = table(chapter, "| Key | Meaning |")
   const chapterKeys = new Set([...config.matchAll(/^\| `(vibe\.[^\x60]+)` \|/gm)].map(m => m[1]))
@@ -149,7 +152,6 @@ export function lintTables(root) {
   for (const key of new Set([...chapterKeys, ...approvedKeys])) {
     if (chapterKeys.has(key) !== approvedKeys.has(key)) findings.push(issue("tables", chapterPath, chapter, chapter.indexOf("| Key | Meaning |"), key + ": decided-key table disagrees with VIP-30"))
   }
-  findings.push(...lintCopies(root).filter(x => x.message.startsWith("resolution")))
   const appendixPath = "docs/design/src/900-appendices.md", appendix = read(root, appendixPath)
   const denied = table(appendix, "| VIP | Denied | Instead |")
   const rows = [...denied.matchAll(/^\| \[(\d+)\].*? \| (.*?) \| (.*?) \|$/gm)]
@@ -168,14 +170,13 @@ export function lintTables(root) {
       if (!normalize(vip.text).includes(normalize(repair)) && !(repair === ".ts" && vip.text.includes("plain TypeScript")))
         findings.push(issue("tables", appendixPath, appendix, appendix.indexOf(m[0]), "VIP-" + m[1] + " repair is absent from its VIP: " + repair))
     }
-    if (Number(m[1]) === 11 && vip.text.includes("effect () =>") && !m[3].includes("effect () =>"))
-      findings.push(issue("tables", appendixPath, appendix, appendix.indexOf(m[0]), "VIP-11 repair list omits the effect-function argument (r14 OPUS-2)"))
+
   }
   return findings
 }
 
 export function lintAuthority(root) {
-  const findings = [], vips = vipRegistry(root)
+  const findings = reviewFindings(root, "authority"), vips = vipRegistry(root)
   for (const path of chapters(root)) {
     const text = read(root, path)
     for (const m of text.matchAll(/^\| `((?:EK|TS)\d+)` \| .*? \| ([\d, ]+) \|.*$/gm)) {

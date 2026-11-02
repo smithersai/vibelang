@@ -5,6 +5,7 @@
 // the violations and exits non-zero on any. The graph target is //:spec-lint.
 import { readdirSync, readFileSync } from "node:fs"
 import { resolve } from "node:path"
+import { fileURLToPath } from "node:url"
 
 // A specification: path relative to docs/design ("src/007-tooling.md",
 // "vips/0039-vibex.md") to text.
@@ -12,7 +13,7 @@ export type Spec = Map<string, string>
 export type Violation = { rule: string; file: string; line: number; message: string }
 export type Rule = { name: string; finding: string; check: (spec: Spec) => Violation[] }
 
-export function loadSpec(root = resolve(import.meta.dir, "../design")): Spec {
+export function loadSpec(root = fileURLToPath(new URL("../design", import.meta.url))): Spec {
   const spec: Spec = new Map()
   for (const dir of ["src", "vips"]) {
     for (const name of readdirSync(resolve(root, dir)).filter(name => name.endsWith(".md")).sort()) {
@@ -105,10 +106,7 @@ const resolutionClaims: Rule = {
     if (!ours || !theirs) {
       return [{ rule: this.name, file: ours ? "vips/0039-vibex.md" : "src/007-tooling.md", line: 1, message: "the relative-specifier resolution table is missing" }]
     }
-    // Compare the try orders; VIP-39's "(unchanged)" note is not a try.
-    if (JSON.stringify([...ours.tries]) !== JSON.stringify([...theirs.tries])) {
-      out.push({ rule: this.name, file: "src/007-tooling.md", line: lineAt(chapter, chapter.indexOf(chapterTable)), message: "the resolution table differs from VIP-39's" })
-    }
+    // Byte equality belongs to the generated copy contract. Here check prose claims only.
     const claim = /`\.\/([\w-]+)((?:\.\w+)?)`(?: that| which)? resolves? to `\1(\.[\w.]+)`/g
     for (const [file, text] of spec) {
       for (const m of prose(text).matchAll(claim)) {
@@ -129,22 +127,15 @@ const resolutionClaims: Rule = {
 // names must appear in an accepted VIP; so must each key a chapter lists as
 // part of the legacy `vibelang` section; and a VibeLang option's
 // configuration error is not given a TypeScript code.
-const configPath = /`((?:compilerOptions\.)?vibe(?:lang)?\.[a-z][A-Za-z]*)`/g
+// Registry parsing in spec-rules.mjs owns option paths.
 const configKeys: Rule = {
   name: "config-keys",
   finding: "r14 OPUS-3: 007 named `compilerOptions.vibelang.declarationImportStyle`, `trustedPackages`, `tracing` and `TS6046` with no VIP",
   check(spec) {
     const out: Violation[] = []
-    const vips = acceptedVips(spec).map(([, text]) => text).join("\n")
     for (const [file, text] of chapters(spec)) {
-      for (const m of prose(text).matchAll(configPath)) {
-        if (!vips.includes(m[1]!)) out.push({ rule: this.name, file, line: lineAt(text, m.index!), message: `\`${m[1]}\` appears in no accepted VIP` })
-      }
+      // Option spelling and authority belong to the registry contract.
       for (const sentence of sentences(text)) {
-        const listed = sentence.text.match(/`vibelang` section with ((?:`\w+`(?:,? and |, )?)+)/)
-        for (const [, key] of listed?.[1]!.matchAll(/`(\w+)`/g) ?? []) {
-          if (!vips.includes(`vibelang.${key}`)) out.push({ rule: this.name, file, line: lineAt(text, sentence.index), message: `\`vibelang.${key}\` appears in no accepted VIP` })
-        }
         if (/\bconfig(?:uration)? error\b/.test(sentence.text)) {
           for (const [code] of sentence.text.matchAll(/TS\d{4,5}/g)) {
             out.push({ rule: this.name, file, line: lineAt(text, sentence.index), message: `a VibeLang configuration error is given TypeScript's \`${code}\`` })
@@ -268,6 +259,8 @@ const retiredForms: Rule = {
     for (const [file, text] of [...chapters(spec), ...acceptedVips(spec)]) {
       for (const { line, text: code } of vibeCode(text)) {
         for (const r of retired) {
+          // The compiler checker owns catch literals in accepted VIP examples.
+          if (file.startsWith("vips/") && r.form.includes("catch")) continue
           if (r.pattern.test(code)) out.push({ rule: this.name, file, line, message: `${r.form} is removed (${r.source}): ${code.trim()}` })
         }
       }
@@ -384,7 +377,17 @@ const rulingClaims: Rule = {
 
 export const rules: Rule[] = [resolutionClaims, configKeys, importStyleScope, declarationImportForm, deniedVipRepairs, retiredForms, platformImports, counterpartUsing, collisionConditional, rulingClaims]
 
+const kinds: Record<string, string[]> = {
+  registry: ["config-keys"],
+  tables: ["resolution-claims", "declaration-import-style-scope", "denied-vip-repairs", "collision-conditional"],
+  copies: ["declaration-import-form", "counterpart-using"],
+  authority: ["ruling-claims"],
+  examples: ["retired-forms", "platform-imports"]
+}
 export const lint = (spec: Spec, only = rules) => only.flatMap(rule => rule.check(spec))
+export const lintKind = (spec: Spec, kind: string) =>
+  lint(spec, rules.filter(rule => kinds[kind]?.includes(rule.name)))
+
 
 if (import.meta.main) {
   const found = lint(loadSpec())

@@ -14,7 +14,7 @@ function targets(env = {}) {
     vibelangTopics: new Map([["fix", ["TestFixReachesFixedPoint", "TestFixArguments"]]]),
     process: { env },
     migrationSources: { migrationSources: true },
-    S: { Filegroup: spec => spec, glob: glob => glob, file: file => file,
+    S: { Generate: spec => spec, Filegroup: spec => spec, glob: glob => glob, file: file => file,
       Shell: { Test: spec => spec }, Host: { bin: bin => bin }, Package: spec => spec },
     Tsc: group("tsc"), Packages: group("packages"), Typescript: group("typescript"), Vibelang: group("vibelang")
   }
