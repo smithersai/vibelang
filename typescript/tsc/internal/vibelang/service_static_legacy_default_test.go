@@ -13,6 +13,7 @@ func TestServiceStaticLegacyDefaultMigration(t *testing.T) {
 	}{
 		{`static readonly default = { n: 1 }`, false, 1},
 		{`static readonly default: S.Shape = { n: 1 }`, false, 1},
+		{`static readonly default: S.Shape`, true, 0},
 		{`static readonly defaultValue = () => ({ n: 1 })`, false, 0},
 		{`static default = { n: 1 }`, true, 0},
 		{`static readonly ["default"] = { n: 1 }`, true, 0},

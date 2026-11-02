@@ -1,0 +1,5 @@
+// expect: EK0902
+service Empty { static readonly key = "legacy-empty/Body"; static readonly default: Empty.Shape; n: number }
+service External: { n: number } { static readonly key = "legacy-empty/Object"; static readonly default: External.Shape }
+service Scalar: number { static readonly key = "legacy-empty/Scalar"; static readonly default: number }
+service Callable: (n: number) => number { static readonly key = "legacy-empty/Function"; static readonly default: Callable.Shape }

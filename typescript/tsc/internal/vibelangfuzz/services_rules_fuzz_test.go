@@ -91,6 +91,10 @@ var servicesRules = []struct{ key, quote, good, bad string }{
 	{"member-static-shaped-object", "or another `static`", "export service Users: { n: number } { static readonly key = \"static/Object\" }", "export service Users: { n: number } { static readonly key = \"static/Object\"; static readonly extra = 1 }"},
 	{"member-static-shaped-scalar", "or another `static`", "export service Users: number { static readonly key = \"static/Scalar\" }", "export service Users: number { static readonly key = \"static/Scalar\"; static extra() { return 1 } }"},
 	{"member-static-shaped-shadow", "or another `static`", "export service Users: { read(): number } { static readonly key = \"static/Shadow\" }", "export service Users: { read(): number } { static readonly key = \"static/Shadow\"; static read() { return 1 } }"},
+	{"member-static-legacy-no-value-body", "or another `static`", "export service S { static readonly key = \"legacy/Body\"; static readonly default: S.Shape = { n: 1 }; n: number }", "export service S { static readonly key = \"legacy/Body\"; static readonly default: S.Shape; n: number }"},
+	{"member-static-legacy-no-value-object", "or another `static`", "export service S: { n: number } { static readonly key = \"legacy/Object\"; static readonly default: S.Shape = { n: 1 } }", "export service S: { n: number } { static readonly key = \"legacy/Object\"; static readonly default: S.Shape }"},
+	{"member-static-legacy-no-value-scalar", "or another `static`", "export service S: number { static readonly key = \"legacy/Scalar\"; static readonly default: number = 1 }", "export service S: number { static readonly key = \"legacy/Scalar\"; static readonly default: number }"},
+	{"member-static-legacy-no-value-function", "or another `static`", "export service S: (n: number) => number { static readonly key = \"legacy/Function\"; static readonly default: S.Shape = (n: number) => n }", "export service S: (n: number) => number { static readonly key = \"legacy/Function\"; static readonly default: S.Shape }"},
 }
 
 func servicesRulesChapter(f testing.TB) string {

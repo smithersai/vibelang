@@ -4,7 +4,7 @@ A service is a named capability a program uses without passing an implementation
 
 [Upstream page](https://effect.website/docs/v4/requirements-management/services)
 
-The transitional `static readonly default = implementation` form keeps its `EK4855` migration warning. `vibelang --fix` can rename the field and its value/type reads before the canonical static-member rules apply.
+The transitional `static readonly default = implementation` form keeps its `EK4855` migration warning. `vibelang --fix` can rename the field and its value/type reads before the canonical static-member rules apply. The legacy field needs an initializer; `static readonly default: Shape` without a value is `EK0902`.
 
 ## Declaring typed service keys
 
