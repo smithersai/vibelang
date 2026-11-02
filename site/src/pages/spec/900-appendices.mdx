@@ -1038,7 +1038,6 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK4609` | lint warning: `await` on a `Fiber` in an `async` function; to obtain its result in that context, use `await runPromise(Fiber.join(fiber))` | 5 | [Running Effects](/spec/002-running#await) |
 | `EK4610` | lint warning: `await` on a `Deferred` in an `async` function; to obtain its result in that context, use `await runPromise(Deferred.await(deferred))` | 5 | [Running Effects](/spec/002-running#await) |
 | `EK4701` | a `match` with no `default` whose subject passes the exhaustiveness check and misses a case; a guarded arm covers nothing | 7 | [Pattern matching](/spec/004-match#exhaustiveness) |
-| `EK4802` | warning: an `effect` function returns an Effect value unrun, so its caller gets the program instead of its result; a project where `--fix-vip-only` refused a call sets it to `"error"` | 1, 5 | [Configuration and tooling](/spec/007-tooling#effects-type-aware-lint) |
 | `EK4830` | lint warning: A class written with `Data.TaggedError("Name")` | 13, 34 | [Configuration and tooling](/spec/007-tooling#typescript-spellings-with-vibelang-forms) |
 | `EK4831` | lint warning: A class written with `Context.Service` | 9, 34 | [Configuration and tooling](/spec/007-tooling#typescript-spellings-with-vibelang-forms) |
 | `EK4832` | lint warning: A `const` holding `Schema.Struct({ … })` | 15, 34 | [Configuration and tooling](/spec/007-tooling#typescript-spellings-with-vibelang-forms) |

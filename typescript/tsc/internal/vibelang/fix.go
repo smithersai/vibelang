@@ -74,11 +74,6 @@ import (
 // accepted VIP, which --fix-migration-only applies too.
 var vipMigrationFixCodes []int32
 
-// maxTryRounds bounds the VIP-1 migration's try rounds: each round marks
-// the functions whose calls the round before tried, so a chain of calls
-// through n unmarked functions takes n+1 rounds.
-const maxTryRounds = 16
-
 // FixFlag is the command line flag that applies the quick fixes.
 const FixFlag = "--fix"
 
@@ -225,52 +220,7 @@ func FixWithOptions(ctx context.Context, sys tsc.System, args []string, options 
 		fmt.Fprintf(sys.ErrorWriter(), "vibelang --fix: stopped after %d %s with %d %s still applying; run vibelang --fix again.\n", fixPassLimit, plural(fixPassLimit, "pass", "passes"), n, plural(n, "fix", "fixes"))
 		return int(tsc.ExitStatusDiagnosticsPresent_OutputsGenerated)
 	}
-	if refused := result.refusedTries(); options.VIPOnly && refused > 0 {
-		return refusedTries(sys, configFileName, refused)
-	}
 	return 0
-}
-
-// FixStatusRefused is what FixWithOptions returns when the VIP-1 migration
-// refused a call. The command still compiles, so each refused site shows its
-// error, and then exits with FixRefusedExit at least.
-const FixStatusRefused = -1
-
-// FixRefusedExit is the least exit status of a --fix-vip-only run that
-// refused a call.
-const FixRefusedExit = int(tsc.ExitStatusDiagnosticsPresent_OutputsGenerated)
-
-// refusedTries makes EK4802 an error in the project's config, with a comment
-// that says why, when --fix-vip-only refused calls it can't tell ran before
-// VIP-1 (decided detail 274): such a call returns its program now, which
-// EK4802 otherwise only warns about. The owner removes the setting once a
-// run refuses none.
-func refusedTries(sys tsc.System, configFileName tspath.RootedFilePath, refused int) int {
-	why := fmt.Sprintf("vibelang --fix-vip-only refused %d %s that may have run before VIP-1 (decided detail 274): EK4802 is an error until each is migrated by hand; remove this setting when --fix-vip-only refuses none.", refused, plural(refused, "call", "calls"))
-	text, ok := sys.FS().ReadFile(configFileName)
-	if !ok {
-		fmt.Fprintf(sys.ErrorWriter(), "vibelang --fix: can't read %s to make EK4802 an error.\n", relativeName(sys, configFileName))
-		return FixStatusRefused
-	}
-	if updated, changed := tsoptions.SetVibeSeverity(configFileName, text, "EK4802", "error", why); changed {
-		if err := sys.FS().WriteFile(configFileName, updated); err != nil {
-			fmt.Fprintf(sys.ErrorWriter(), "vibelang --fix: can't write %s: %v\n", relativeName(sys, configFileName), err)
-			return FixStatusRefused
-		}
-		fmt.Fprintf(sys.Writer(), "vibelang --fix: %s: EK4802 is now an error: %s\n", relativeName(sys, configFileName), why)
-	}
-	return FixStatusRefused
-}
-
-// refusedTries counts the calls the VIP-1 migration refused to decide.
-func (r *FixResult) refusedTries() int {
-	n := 0
-	for _, refusal := range r.Refused {
-		if refusal.Rewrite == tryLabel {
-			n++
-		}
-	}
-	return n
 }
 
 // fixConfigFile returns the tsconfig.json that commandLine names with -p, or
@@ -301,12 +251,11 @@ type FixedFile struct {
 
 // A FixRefusal is a fix that would add an error.
 type FixRefusal struct {
-	File    tspath.RootedFilePath
-	Line    int // 1-based, in the text the fix was tried on
-	Code    int32
-	Label   string // a source migration without a diagnostic
-	Rewrite string // a rewrite's label, as try, when no diagnostic's fix was refused
-	Error   string // the first error the fix would add, or for a rewrite why it was not written
+	File  tspath.RootedFilePath
+	Line  int // 1-based, in the text the fix was tried on
+	Code  int32
+	Label string // a source migration without a diagnostic
+	Error string // the first error the fix would add
 }
 
 // A FixRemaining is a fix that still applies after the pass limit.
@@ -342,7 +291,7 @@ func (r *FixResult) Report(w io.Writer, name func(tspath.RootedFilePath) string)
 		for _, code := range codes {
 			parts = append(parts, fmt.Sprintf("EK%04d ×%d", code, fixed.Counts[code]))
 		}
-		kinds := []string{tryLabel, effectLabel, untriedLabel, preludeImportLabel, preludeKeyLabel, isBindingRenameLabel}
+		kinds := []string{tryLabel, preludeImportLabel, preludeKeyLabel, isBindingRenameLabel}
 		var otherKinds []string
 		for kind := range fixed.Rewrites {
 			if !slices.Contains(kinds, kind) {
@@ -360,10 +309,6 @@ func (r *FixResult) Report(w io.Writer, name func(tspath.RootedFilePath) string)
 		fmt.Fprintf(w, "vibelang --fix: %s: %d %s (%s)\n", name(file), count, plural(count, "fix", "fixes"), strings.Join(parts, ", "))
 	}
 	for _, refusal := range r.Refused {
-		if refusal.Rewrite != "" {
-			fmt.Fprintf(w, "vibelang --fix: %s:%d: %s not written: %s\n", name(refusal.File), refusal.Line, refusal.Rewrite, refusal.Error)
-			continue
-		}
 		code := refusal.Label
 		if code == "" {
 			code = fmt.Sprintf("EK%04d", refusal.Code)
@@ -575,27 +520,11 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			}
 		}
 		if options.VIPOnly {
-			// try before each call that ran where it stood before VIP-1, and effect on
-			// each function the old compiler made an Effect function (fix_try.go).
-			// A function marked effect returns its Effect now, so the calls of it
-			// that ran get their try in the next round.
+			// try before each call that runs where it stands (VIP-5, fix_try.go).
 			if done.Err() == nil {
-				var refused []FixRefusal
-				for round := 1; round <= maxTryRounds && done.Err() == nil; round++ {
-					progress.enter("try", round, fixesApplied(result), len(result.Refused), "finding rewrites")
-					var wrote bool
-					wrote, refused = rewriteTries(g, fs, build(texts), texts, result)
-					verified(texts)
-					if !wrote {
-						break
-					}
-				}
-				// A later pass meets the same refusals again; report each once.
-				for _, r := range refused {
-					if !slices.Contains(result.Refused, r) {
-						result.Refused = append(result.Refused, r)
-					}
-				}
+				progress.enter("try", 0, fixesApplied(result), len(result.Refused), "finding rewrites")
+				rewriteTries(g, fs, program, texts, result)
+				verified(texts)
 			}
 		} else {
 			// What the prelude makes shorter (D310, D311).
