@@ -137,6 +137,7 @@ Appendix B supplies the current diagnostic assignments; compatibility declaratio
 | `FuzzEffectQualifierBinding` | Three collision modules with implicit, root/subpath/renamed imports, local objects and explicit imports with modules disabled | Chapter 5 and VIP-14: written bindings shadow the implicit qualifier and keep ordinary TypeScript members |
 | `FuzzSidecarResolvedPathView` | Package `exports`, `paths` and `imports`; real/logical symlink paths; published/workspace layouts; both Vibe suffixes | Chapter 7, VIP-27/39: module view follows the final resolved path; direct source inclusion is checked independently of nominal assignability |
 | `FuzzAlchemyUnionPipeRequirements` | Alchemy union/pipe inferred service requirements, parameter/provider renames; same diagnostics, spans and output as stock TypeScript, with precise known-gap markers. |
+| `FuzzModuleMetadataBounds` | VIP-33 module metadata: direct `.url` access, forbidden host/Vite members, aliases, computed reads, arguments and spreads across module/function/arrow/effect-function homes. Native TypeScript controls and Foldkit directory/glob/config/entry corpus. |
 | `FuzzSpecRules` | Retired | Current static targets quote their VIP chapters and gate those quotations through `specTests`. |
 | `FuzzSpecAllowed` | Retired | Current static targets and imported-scope controls cover the current forms. |
 | `FuzzSpecPrograms` | Retired | Semantics use `FuzzVIPDifferential`, with current chapter quotations and paired prints. |
