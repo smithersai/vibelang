@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -458,12 +459,19 @@ func (p *Parser) checkDoLoopHead(d *doExpression) {
 	if loop == nil {
 		return
 	}
+	outer := loop
+	for ast.IsLabeledStatement(outer.Parent) {
+		outer = outer.Parent
+	}
+	labels, _ := ast.CollectLabelChain(outer)
 	forEachDoStatement(d.block, func(n *ast.Node) {
 		if n.Kind != ast.KindBreakStatement && n.Kind != ast.KindContinueStatement || jumpTargetWithin(n, d.block) {
 			return
 		}
 		label := n.Label()
-		targetsLoop := label != nil && loop.Parent.Kind == ast.KindLabeledStatement && loop.Parent.AsLabeledStatement().Label.Text() == label.Text()
+		targetsLoop := label != nil && slices.ContainsFunc(labels, func(n *ast.Node) bool {
+			return n.AsLabeledStatement().Label.Text() == label.Text()
+		})
 		if label == nil || targetsLoop {
 			p.doError(p.skipRangeTrivia(n.Loc), DoLoopHeadCode, DoLoopHeadMessage, keywordOf(n))
 		}

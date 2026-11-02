@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("for-condition-3-continue-label1")

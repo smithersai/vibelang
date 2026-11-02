@@ -1,6 +1,7 @@
 package parser_test
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -73,6 +74,75 @@ func TestVibeLangDoSnapshot(t *testing.T) {
 	for _, want := range []string{parser.DoExpressionsCommit, parser.DoExpressionsDate} {
 		if !strings.Contains(string(readme), want) {
 			t.Errorf("docs/design/vips/tc39-do-expressions/README.md does not name %s", want)
+		}
+	}
+}
+
+// Every label in a consecutive chain denotes the same loop (VIP-2,
+// Appendix B EK0205), whereas a label around a different loop is exempt.
+func TestVibeLangDoLoopHeadLabels(t *testing.T) {
+	heads := []struct{ name, text string }{
+		{"while", "while ($do) {}"},
+		{"do-while", "do {} while ($do);"},
+		{"for-initializer", "for ($do; false;) {}"},
+		{"for-declaration", "for (let value = $do; false;) {}"},
+		{"for-condition", "for (; $do;) {}"},
+		{"for-update", "for (; false; $do) {}"},
+		{"for-of", "for (const value of $do) {}"},
+		{"for-in", "for (const value in $do) {}"},
+		{"for-binding-default", "for (const { value = $do } of [{}]) {}"},
+	}
+	for _, head := range heads {
+		for length := 1; length <= 3; length++ {
+			var labels []string
+			for i := 0; i < length; i++ {
+				labels = append(labels, fmt.Sprintf("label%d", i))
+			}
+			for _, keyword := range []string{"break", "continue"} {
+				for _, target := range append(append([]string{""}, labels...), "enclosing", "local", "local-loop", "function") {
+					name := fmt.Sprintf("%s/%d/%s/%s", head.name, length, keyword, target)
+					t.Run(name, func(t *testing.T) {
+						jump := keyword + ";"
+						if target != "" {
+							jump = keyword + " " + target + ";"
+						}
+						body := jump + " []"
+						want := 1
+						switch target {
+						case "enclosing":
+							want = 0
+						case "local":
+							body = "local: while (true) { " + jump + " } []"
+							want = 0
+						case "local-loop":
+							body = "while (true) { " + keyword + "; } []"
+							want = 0
+						case "function":
+							body = "function g() { while (true) { " + keyword + "; } } []"
+							want = 0
+						}
+						loop := strings.ReplaceAll(head.text, "$do", "do { "+body+" }")
+						text := "function f() { enclosing: while (true) { " + strings.Join(labels, ": ") + ": " + loop + " } }"
+						file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "/test.vibe", PathKey: "/test.vibe"}, text, core.ScriptKindTS)
+						got := 0
+						for _, d := range file.Diagnostics() {
+							if d.Source() == "EK" && d.Code() == parser.DoLoopHeadCode {
+								got++
+								if at := text[d.Pos():d.End()]; at != jump {
+									t.Errorf("EK0205 at %q, want %q", at, jump)
+								}
+							} else if d.Source() != "EK" || d.Code() != parser.DoBoundaryCode {
+								t.Errorf("unexpected diagnostic: %v", d)
+							}
+						}
+						// EK0204 may additionally own an unsupported lowering
+						// position; it must never hide the loop-head early error.
+						if got != want {
+							t.Errorf("want EK0205 x%d, got x%d: %v\n%s", want, got, file.Diagnostics(), text)
+						}
+					})
+				}
+			}
 		}
 	}
 }

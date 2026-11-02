@@ -524,6 +524,16 @@ func IsIterationStatement(node *Node, lookInLabeledStatements bool) bool {
 	return false
 }
 
+// CollectLabelChain returns every consecutive label around a statement, in
+// source order, and the statement those labels denote.
+func CollectLabelChain(node *Node) (labels []*Node, statement *Node) {
+	for IsLabeledStatement(node) {
+		labels = append(labels, node)
+		node = node.AsLabeledStatement().Statement
+	}
+	return labels, node
+}
+
 // Determines if a node is a property or element access expression
 func IsAccessExpression(node *Node) bool {
 	return node.Kind == KindPropertyAccessExpression || node.Kind == KindElementAccessExpression

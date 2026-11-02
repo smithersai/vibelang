@@ -1,0 +1,32 @@
+// expect: EK0205 EK0205 EK0205 EK0205 EK0205 EK0205 EK0204 EK0204
+// VIP-2 / Appendix B: every consecutive label denotes the same loop.
+// do-while also retains its existing EK0204 lowering limitation.
+export function doubleBreak(): void {
+  outer: inner: while (do { break outer; true }) {}
+}
+export function doubleContinue(): void {
+  outer: inner: while (do { continue outer; true }) {}
+}
+export function tripleOuterBreak(): void {
+  outer: middle: inner: while (do { break outer; true }) {}
+}
+export function tripleMiddleContinue(): void {
+  outer: middle: inner: while (do { continue middle; true }) {}
+}
+export function doWhileBreak(): void {
+  outer: middle: inner: do {} while (do { break outer; true });
+}
+export function doWhileContinue(): void {
+  outer: inner: do {} while (do { continue outer; true });
+}
+// A different enclosing loop remains a permitted destination.
+export function enclosingBreak(): void {
+  enclosing: while (true) {
+    outer: inner: while (do { break enclosing; true }) {}
+  }
+}
+export function enclosingContinue(): void {
+  enclosing: while (true) {
+    outer: middle: inner: while (do { continue enclosing; true }) {}
+  }
+}

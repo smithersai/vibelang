@@ -1073,6 +1073,8 @@ typescript/vibelang/cases/do-jump-operand-order/main.vibe:7:13 lambda plain anno
 typescript/vibelang/cases/do-jump-operand-order/main.vibe:8:14 lambda choice fallback
 typescript/vibelang/cases/do-jump-operand-order/main.vibe:9:16 lambda dual fallback
 typescript/vibelang/cases/do-local-scope/main.vibe:7:32 lambda plain fallback
+typescript/vibelang/cases/do-loop-head-labels.fail/main.vibe:17:41 lambda plain fallback
+typescript/vibelang/cases/do-loop-head-labels.fail/main.vibe:20:33 lambda plain fallback
 typescript/vibelang/cases/do-lowering-effect-order/main.vibe:5:14 lambda plain fallback
 typescript/vibelang/cases/do-lowering-effect-order/main.vibe:6:28 lambda choice fallback
 typescript/vibelang/cases/do-match-bind-fallback/main.vibe:12:23 lambda plain annotation

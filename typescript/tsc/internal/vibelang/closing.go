@@ -20,12 +20,7 @@ import "github.com/microsoft/TypeScript/tsc/internal/ast"
 func (tx *lowering) closeLoops(node *ast.Node) *ast.Node {
 	visitor := tx.EmitContext().NewNodeVisitor(nil)
 	visitor.Visit = func(node *ast.Node) *ast.Node {
-		var labels []*ast.Node
-		loop := node
-		for ast.IsLabeledStatement(loop) {
-			labels = append(labels, loop)
-			loop = loop.AsLabeledStatement().Statement
-		}
+		labels, loop := ast.CollectLabelChain(node)
 		if !tx.isClosedLoop(loop) {
 			return visitor.VisitEachChild(node)
 		}

@@ -2,6 +2,7 @@ package vibelangfuzz
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -275,5 +276,95 @@ func FuzzDoCompletion(f *testing.F) {
 		}
 		ExpectPending(t, doCompletionTarget, key)
 		ExpectPending(t, doCompletionTarget, specCorpusKey(t))
+	})
+}
+
+const doLoopHeadTarget = "FuzzDoLoopHead"
+const doLoopHeadQuote = "a `break` or `continue` in a loop head's `do` that leaves it unlabeled or targets that loop"
+
+func TestDoLoopHeadQuoted(t *testing.T) { chapterSays(t, "900-appendices.md", doLoopHeadQuote) }
+
+// Appendix B owns EK0205. All consecutive labels denote this loop;
+// a jump to a genuinely enclosing statement or a local loop is exempt.
+// Exercise each head position, both jumps and every label in chains of
+// one to three labels, with keyed inputs and optional nested source blocks.
+func FuzzDoLoopHead(f *testing.F) {
+	startShortBudget(f)
+	chapterSays(f, "900-appendices.md", doLoopHeadQuote)
+	type site struct {
+		key, head, labels, keyword, target string
+	}
+	var sites []site
+	for _, head := range []struct{ key, text string }{
+		{"while", "while ($do) {}"},
+		{"do-while", "do {} while ($do);"},
+		{"for-initializer", "for ($do; false;) {}"},
+		{"for-declaration", "for (let v = $do; false;) {}"},
+		{"for-condition", "for (; $do;) {}"},
+		{"for-update", "for (; false; $do) {}"},
+		{"for-of", "for (const v of $do) {}"},
+		{"for-in", "for (const v in $do) {}"},
+		{"for-binding-default", "for (const { v = $do } of [{}]) {}"},
+	} {
+		for length := 1; length <= 3; length++ {
+			var labels []string
+			for i := 0; i < length; i++ {
+				labels = append(labels, fmt.Sprintf("label%d", i))
+			}
+			for _, keyword := range []string{"break", "continue"} {
+				for _, target := range append(append([]string{"unlabeled"}, labels...), "enclosing", "local", "local-loop", "function") {
+					key := fmt.Sprintf("%s-%d-%s-%s", head.key, length, keyword, target)
+					sites = append(sites, site{key, head.text, strings.Join(labels, ": ") + ": ", keyword, target})
+				}
+			}
+		}
+	}
+	keys := make([]string, len(sites))
+	for i, s := range sites {
+		keys[i] = s.key
+		f.Add([]byte(s.key))
+	}
+	f.Fuzz(func(t *testing.T, data []byte) {
+		choice, tail := keyedChoice(keys, data)
+		s := sites[choice]
+		jump := s.keyword + " " + s.target + ";"
+		if s.target == "unlabeled" {
+			jump = s.keyword + ";"
+		}
+		body, want := jump, 1
+		switch s.target {
+		case "enclosing":
+			want = 0
+		case "local":
+			body, want = "local: while (true) { "+jump+" }", 0
+		case "local-loop":
+			body, want = "while (true) { "+s.keyword+"; }", 0
+		case "function":
+			body, want = "function g() { while (true) { "+s.keyword+"; } }", 0
+		}
+		if len(tail) > 0 {
+			for depth := 0; depth < int(tail[0]%4); depth++ {
+				body = "{ " + body + " }"
+			}
+		}
+		loop := s.labels + strings.ReplaceAll(s.head, "$do", "do { "+body+" [] }")
+		source := "function f() { enclosing: while (true) { " + loop + " } }"
+		file, _ := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, source)
+		got, other := 0, 0
+		for _, d := range file.Diagnostics() {
+			if IsEK(d) && d.Code() == parser.DoLoopHeadCode {
+				got++
+			} else if !IsEK(d) || d.Code() != parser.DoBoundaryCode {
+				other++
+			}
+		}
+		// Some head positions also retain the distinct EK0204 lowering
+		// limitation. The oracle asserts the owning early error regardless.
+		key := "rule:" + s.key
+		if got != want || other != 0 {
+			Gap(t, doLoopHeadTarget, key, "%s; want EK0205 x%d, got x%d and %d other errors\n%s\n%v", doLoopHeadQuote, want, got, other, source, file.Diagnostics())
+		}
+		ExpectPending(t, doLoopHeadTarget, key)
+		ExpectPending(t, doLoopHeadTarget, specCorpusKey(t))
 	})
 }
