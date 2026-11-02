@@ -380,7 +380,9 @@ func grammarAdmissionForm(source string) string {
 				}
 				return "admission:" + word + "-outside-effect"
 			}
-			if next.kind == 'n' || next.kind == 's' {
+			// A same-line object operand cannot be a native call or element
+			// access. A newline still permits an identifier statement and block.
+			if next.kind == 'n' || next.kind == 's' || next.text == "{" {
 				return "admission:" + word + "-outside-effect"
 			}
 		case parser.VibeSyntaxBlockParam:
@@ -461,6 +463,30 @@ func TestGrammarAdmissionMutationKeys(t *testing.T) {
 	}
 	if got := grammarAdmissionForm("module { export const n = 1; }"); got != "admission:inline-module" {
 		t.Fatalf("nameless module: %s", got)
+	}
+	for _, source := range []string{"join {}", "join { n: 1 }"} {
+		if got := grammarAdmissionForm(source); got != "admission:join-outside-effect" {
+			t.Errorf("outside-Effect object prefix not keyed: %s: %s", source, got)
+		}
+	}
+	// A fork brace-body is a distinct legacy block form, not join's object
+	// operand. Keep it independently keyed rather than merging its recovery.
+	for _, source := range []string{"fork {}", "fork { n: 1 }"} {
+		if got := grammarAdmissionForm(source); got != "" {
+			t.Errorf("fork block merged into a prefix family: %s: %s", source, got)
+		}
+	}
+	for _, word := range []string{"fork", "join"} {
+		for _, tail := range []string{"\n{}", "(p)", "[0]", " + p"} {
+			if got := grammarAdmissionForm(word + tail); got != "" {
+				t.Errorf("native call/access/ASI classified as %s: %q", got, word+tail)
+			}
+		}
+	}
+	// The minimized campaign witness keeps its seed key across seed reordering.
+	_, objectSource := grammarAdmissionInput([]byte("key:trailing-block-bare\nb800207"))
+	if objectSource != "join { }" || grammarAdmissionForm(objectSource) != "admission:join-outside-effect" {
+		t.Errorf("object-prefix witness did not replay: %q", objectSource)
 	}
 	a := []byte{0, 0, 1, 2, 1, 2, 3}
 	key, source := grammarAdmissionInput(a)

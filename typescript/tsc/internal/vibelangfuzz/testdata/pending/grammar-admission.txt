@@ -16,3 +16,4 @@ FuzzGrammarAdmission admission:fiber-binding compiler VIP-17 (amended): fork or 
 FuzzGrammarAdmission corpus:fiber-binding compiler VIP-17 (amended): effect function f(join) must be EK1702; lane impl-hunt-admission
 FuzzGrammarAdmission admission:fiber-function-name grammar-lab Appendix A Name: a declaration's own name takes the enclosing context's parameters, so effect function join() {} at module level derives; the lab applies [+Effect] to every name after effect; lane impl-hunt-admission
 FuzzGrammarAdmission corpus:fiber-function-name grammar-lab Appendix A Name: effect function join(p) derives as a module-level declaration; the lab does not model it yet; lane impl-hunt-admission
+FuzzGrammarAdmission corpus:join-outside-effect-object compiler VIP-1/17: same-line join with an object operand outside Effect code reports only EK4611, without syntax rejection; lane impl-hunt-admission

@@ -284,6 +284,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Async conversion could change how a JavaScript `try` statement handles rejection or leave a `using` resource undisposed; the editor now leaves these bodies for an explicit handler and cleanup rewrite.
 - Validation of adjacent Effect initializers could stop at an obsolete specification citation; the regression and fuzz coverage now check the current token-rescanning rule.
 - Grammar conformance checks could misread `effect` before a line break; they now preserve Appendix A's same-line keyword rule and distinguish reserved fiber parameters from function names.
+- The grammar admission fuzzer reported `join {}` as a new unclassified failure; it now keeps this object-operand witness under the existing pending finding while checking native calls, element accesses and line breaks separately.
 
 - The migrate flow's codemod left a test that lists a directory and filters it with an extension regex, such as t3code's React Compiler coverage and dependency-graph tests (`/\.tsx?$/.test(file)`), selecting only `.ts` files, so each migrated module silently dropped out of the check (318 t3code web and mobile modules stayed TypeScript); it now widens that one regex to `/(?<!\.d\.vibe)\.(?:tsx?|vibe)$/`, which selects `.vibe` modules and not their `x.d.vibe.ts` sidecars, when the selected files are the same by base name, and `verify` accepts only that widening.
 

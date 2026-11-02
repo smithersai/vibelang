@@ -60,6 +60,9 @@ subset keeps ECMAScript's `ExpressionStatement` lookahead exactly, including
 `async [no LineTerminator here] function`; Appendix A's contextual keywords are
 same-line, so `effect` before a line break is an identifier statement.
 Type-directed meaning such as aggregate `join` is outside this syntax oracle.
+The outside-Effect prefix family includes `join {}`, which has no native
+call or element-access reading; `join(p)`, `join[0]` and an identifier before
+a line break and block remain separate native controls.
 
 Seeds use `key:<form>\n<program>`; corpus files retain those keys. Byte inputs
 also mutate valid and legacy programs by inserting, deleting, replacing or
