@@ -86,6 +86,7 @@ const specTests = [
   "TestEffectBlockDeclarationTwinQuoted",
   "TestMatchBindingHomesQuoted",
   "TestMatchOpenSubjectQuoted",
+  "TestTrailingBlockBoundariesQuoted",
   "TestSpecifierWrittenJSX",
 
   "TestStockConsumerResolutionQuoted",

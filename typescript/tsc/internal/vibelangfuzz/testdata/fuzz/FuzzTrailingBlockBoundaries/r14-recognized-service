@@ -1,0 +1,4 @@
+go test fuzz v1
+string("service")
+byte(0)
+bool(false)
