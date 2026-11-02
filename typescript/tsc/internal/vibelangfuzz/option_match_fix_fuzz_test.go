@@ -55,6 +55,18 @@ func optionMatchFixArchive(input string) string {
 			value = option + ".some<number | undefined>(undefined)"
 		}
 	}
+
+	// T3code slide-text: plain-marking can expose a later safe fix. Exercise
+	// the exact object payload and local declaration in its block arm too.
+	if pick(6)&1 != 0 {
+		valueType = "{ n: number }"
+		value = fmt.Sprintf("%s.some({ n: %d })", option, int(pick(1))-128)
+		if pick(2)&1 != 0 {
+			value = option + ".none<{ n: number }>()"
+		}
+		some = "(item: { n: number }): infer _ => { const n = item.n; events.push(\"some-object\"); return n + 1; }"
+	}
+
 	handlers := fmt.Sprintf(`{ onNone: (): number => { events.push("none"); return -1; }, onSome: %s }`, some)
 	if pick(4)&1 != 0 {
 		handlers = fmt.Sprintf(`{ get onNone(): () => number { events.push("read-none"); return (): number => { events.push("none"); return -1; }; }, get onSome(): (n: %s) => number { events.push("read-some"); return %s; } }`, valueType, some)
