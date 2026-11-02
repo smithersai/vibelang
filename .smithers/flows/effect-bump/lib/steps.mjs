@@ -4,8 +4,9 @@
 import { spawnSync } from "node:child_process"
 import { existsSync, lstatSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs"
 import path from "node:path"
+import { guard, literals as rewriteLiterals } from "./literals.mjs"
 
-export const STEPS = ["pin", "install", "build", "probe", "report"]
+export const STEPS = ["pin", "literals", "install", "build", "regenerate", "probe", "report"]
 
 // The directories whose installs the probes read, beside those whose lockfile
 // pin --write names.
@@ -56,13 +57,25 @@ function once(run, step, work) {
   return save(file, work(read(paths(run).options)))
 }
 
-// pin moves every manifest and version literal to the target version.
+// pin moves every manifest and version literal to the target version, and
+// records the version it moved from.
 export const pin = (run) => once(run, "pin", ({ repo, version }) => {
+  const from = JSON.parse(readFileSync(path.join(repo, "packages/runtime/package.json"), "utf8")).peerDependencies?.effect
   const r = sh(`node scripts/effect-pin.mjs --write ${version}`, repo)
   if (r.code !== 0) throw new Error(`pin: ${tail(r.output, 10)}`)
   const files = Number(/(\d+) files now pin/.exec(r.output)?.[1] ?? 0)
   const installs = [...r.output.matchAll(/reinstall (\S+)/g)].map((m) => m[1])
-  return { ok: true, version, files, installs, summary: `${files} files now pin effect ${version}` }
+  return { ok: true, version, from, files, installs, summary: `${files} files now pin effect ${version} (from ${from})` }
+})
+
+// literals moves the old version wherever a tracked file states it as the
+// current one: docs, tests, cases and stubs (lib/literals.mjs). The pin guards
+// and fixtures it keeps are listed in literals.json, for the fix commits.
+export const literals = (run) => once(run, "literals", ({ repo, version }) => {
+  const { from } = read(paths(run).pin)
+  if (!from || from === version) return { ok: true, changed: [], kept: [], summary: "no version to move" }
+  const { changed, kept } = rewriteLiterals(repo, from, version)
+  return { ok: true, from, changed, kept, summary: `${changed.length} files now write ${version} for ${from}; ${kept.length} keep ${from} on purpose` }
 })
 
 // install refreshes each lockfile pin named and the probes' installs. A
@@ -105,6 +118,24 @@ const outcome = (results) => {
 // build rebuilds the runtime and the compiler.
 export const build = (run) => once(run, "build", ({ repo }) => outcome(BUILDS.map((b) => check(repo, b))))
 
+// REGENERATE rewrites the generated files whose inputs include Effect's
+// declarations or the pin: the compiler's subpath module table (new modules,
+// such as 4.1.1's effect/jose), the D252 data methods, the forms table, the
+// inventories and docs that docs:generate writes, and the token counts. Like a
+// build, a failure is a finding: the forms table refuses a moved decision until
+// forms_decisions_approved.txt explains it.
+export const REGENERATE = [
+  { name: "effect-subpaths", cwd: ".", command: "EFFECT_NODE_MODULES=$PWD/docs/tools/node_modules node scripts/generate-effect-subpaths.mjs --write" },
+  { name: "data-methods", cwd: ".", command: "(cd typescript/tsc/cmd/vibelang-data-methods && bun install --frozen-lockfile) && bun typescript/tsc/cmd/vibelang-data-methods/generate.ts" },
+  { name: "forms-table", cwd: ".", command: "FORMS_NODE_MODULES=$PWD/docs/tools/node_modules bash scripts/check-forms-table.sh --write" },
+  { name: "docs-generate", cwd: ".smithers", command: "bun install --frozen-lockfile && bun run docs:generate" },
+  { name: "token-counts", cwd: ".", command: "bun docs/tools/token-counts.ts --write" }
+]
+
+// regenerate runs each generator in order against the new install.
+export const regenerate = (run) => once(run, "regenerate", ({ repo }) =>
+  outcome(REGENERATE.map((g) => check(repo, g, { EFFECT_NODE_MODULES: path.join(repo, "experiments/node_modules") }))))
+
 // failures lists the failing Go tests, bun tests and named checks in a probe's output.
 export function failures(output) {
   const out = new Set()
@@ -122,17 +153,24 @@ export const probe = (run) => once(run, "probe", ({ repo }) =>
 // report writes report.md: each failing build and probe, its failing tests
 // and the end of its output.
 export const report = (run) => once(run, "report", ({ version }) => {
-  const results = [...read(paths(run).build).results, ...read(paths(run).probe).results]
+  const results = [...read(paths(run).build).results, ...read(paths(run).regenerate).results, ...read(paths(run).probe).results]
+  const moved = read(paths(run).literals)
   const lines = [`# Effect ${version}: what to change`, "", "| Check | Result | Failures |", "| --- | --- | --- |"]
   for (const r of results) lines.push(`| ${r.name} | ${r.code ? "fail" : "pass"} (${r.seconds} s) | ${r.failures.map((f) => "`" + f + "`").join(", ")} |`)
   for (const r of results.filter((r) => r.code)) lines.push("", `## ${r.name}`, "", "`" + r.command + "`", "", "```text", r.output, "```")
+  // The pin guards wait for a person; manifests, lockfiles and fixtures keep the old version on purpose.
+  const byHand = (moved.kept ?? []).filter((k) => guard(k.glob))
+  if (byHand.length) {
+    lines.push("", `## Pin guards to move by hand`, "", `The literals step moved ${moved.changed.length} files. These test the versions around the pin: the previous patch is now ${moved.from}, the pin ${version}.`, "")
+    for (const k of byHand) lines.push(`- \`${k.file}\` (\`${k.glob}\`)`)
+  }
   lines.push("", "docs/maintainers/effect-upgrade.md says what each probe's tables are.")
   writeFileSync(path.join(run, "report.md"), lines.join("\n") + "\n")
   const red = results.filter((r) => r.code)
   return { ok: red.length === 0, failing: red.flatMap((r) => r.failures.length ? r.failures : [r.name]), summary: `report.md: ${red.length} of ${results.length} checks fail` }
 })
 
-export const run = { pin, install, build, probe, report }
+export const run = { pin, literals, install, build, regenerate, probe, report }
 
 // start records the run's options; the steps read them.
 export function start(runDir, options) {

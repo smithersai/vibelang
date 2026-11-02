@@ -4,13 +4,14 @@ import { Effect, Layer, Schema } from "effect";
 import { run as steps, start } from "./lib/steps.mjs";
 
 // One execution moves a VibeLang checkout to another Effect version and says
-// what that breaks: pin every manifest and version literal, install, rebuild,
-// run the checks that compare VibeLang's tables with the installed Effect,
-// and write report.md. Every step reads and writes the run directory, so a
+// what that breaks: pin every manifest and version literal, move the old
+// version wherever a file states it as current, install, rebuild, regenerate
+// the generated files, run the checks that compare VibeLang's tables with the
+// installed Effect, and write report.md. Every step reads and writes the run directory, so a
 // failed execution resumes where it stopped. No step calls a model: the
 // report is the input to the fix commits. README.md describes the run.
 
-const implementationVersion = "effect-bump/v1";
+const implementationVersion = "effect-bump/v2";
 
 const Outcome = Schema.Struct({ step: Schema.String, ok: Schema.Boolean, summary: Schema.String });
 
@@ -23,8 +24,10 @@ const declare = <const Tag extends string, P extends Schema.Struct.Fields>(tag: 
   Action.make(tag, { implementationVersion, payload, success: Outcome, error: StepFailed });
 
 export const Pin = declare("effect-bump/Pin", StartPayload);
+export const Literals = declare("effect-bump/Literals", RunPayload);
 export const Install = declare("effect-bump/Install", RunPayload);
 export const Build = declare("effect-bump/Build", RunPayload);
+export const Regenerate = declare("effect-bump/Regenerate", RunPayload);
 export const Probe = declare("effect-bump/Probe", RunPayload);
 export const Report = declare("effect-bump/Report", RunPayload);
 
@@ -40,14 +43,16 @@ const step = (name: keyof typeof steps, run: string) =>
 /** The steps' implementations, which the flow's host composes. */
 export const layer = Layer.mergeAll(
   Pin.toLayer(({ run, repo, version }) => Effect.sync(() => start(run, { repo, version })).pipe(Effect.andThen(step("pin", run))), { implementationVersion }),
+  Literals.toLayer(({ run }) => step("literals", run), { implementationVersion }),
   Install.toLayer(({ run }) => step("install", run), { implementationVersion }),
   Build.toLayer(({ run }) => step("build", run), { implementationVersion }),
+  Regenerate.toLayer(({ run }) => step("regenerate", run), { implementationVersion }),
   Probe.toLayer(({ run }) => step("probe", run), { implementationVersion }),
   Report.toLayer(({ run }) => step("report", run), { implementationVersion })
 );
 
 export default Flow.make("effect-bump", {
-  description: "Move a VibeLang checkout to another Effect version: pin, install, rebuild, run the checks that compare VibeLang with Effect, and report what to change",
+  description: "Move a VibeLang checkout to another Effect version: pin, move version literals, install, rebuild, regenerate, run the checks that compare VibeLang with Effect, and report what to change",
   capabilities: [],
   // The steps change the checkout and the run directory the payload names,
   // so the flow declares no paths here.
@@ -58,8 +63,10 @@ export default Flow.make("effect-bump", {
   body: Node.capture({ implementationVersion }, (input: Schema.Struct.Type<typeof StartPayload>) => {
     const run = { run: input.run };
     return Pin.call(input).pipe(
+      Node.andThen(Literals.call(run)),
       Node.andThen(Install.call(run)),
       Node.andThen(Build.call(run)),
+      Node.andThen(Regenerate.call(run)),
       Node.andThen(Probe.call(run)),
       Node.andThen(Report.call(run))
     );

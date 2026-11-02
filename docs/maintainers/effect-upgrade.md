@@ -30,9 +30,14 @@ site's Cloudflare deploy).
 
 ## Steps
 
-The effect-bump flow runs steps 1 to 3 and the checks that compare
+The effect-bump flow runs steps 1 to 4 and the checks that compare
 VibeLang with Effect, in a throwaway checkout, and writes a report of what to
-change: `.smithers/flows/effect-bump/README.md`.
+change: `.smithers/flows/effect-bump/README.md`. Beside the manifests it moves
+the old version wherever a file states it as the current one (docs, tests,
+cases, stubs), and regenerates the subpath table, the forms table and the
+generated docs: on the 4.1.1 bump that was 824 of the 861 files a person had
+edited by hand. Start there, then move the pin guards' witnesses the report
+lists and fix what its checks name.
 
 1. Run `node scripts/effect-pin.mjs --write <version>`. It prints each
    directory whose lockfile still pins the old version; run `bun install` (or

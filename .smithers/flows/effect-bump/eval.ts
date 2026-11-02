@@ -1,9 +1,11 @@
-// The effect-bump flow's eval: it runs the flow, unmocked, on a fresh jj
-// workspace of this repository and moves it to an Effect version whose
-// differences from the pin are known, then scores the report against them.
-// 4.0.6 is the version before the 4.1.0 pin: the 4.1.0 bump (lane effect-41)
-// had to change the root and subpath name tables, which their tests compare
-// with the installed Effect, so the report must name both tests.
+// The effect-bump flow's eval: it replays a real bump. It runs the flow,
+// unmocked, on a fresh jj workspace of main 61878b40 (effect 4.1.0) and moves
+// it to 4.1.1, then compares the result with the 4.1.1 commit lane
+// effect411-vibelang made by hand on that main (fixture/effect-4.1.1.json): the
+// files the flow must write byte for byte, and every file the lane changed.
+// The report must name what the lane then did by hand: 4.1.1's Jwks is a
+// module service the spec must document (TestModuleServicesDocumented), and
+// the runtime's pin guard tests the versions around the pin.
 //
 //   bun .smithers/flows/effect-bump/eval.ts            run, compare with baseline.json, exit 1 on a drop
 //   bun .smithers/flows/effect-bump/eval.ts --update   run and record baseline.json
@@ -15,6 +17,7 @@ import { Baseline, CaseExecutor, Gate, Regression, Report, Runner, Suite } from 
 import { Binding, Scorer } from "@smthrs/scorers";
 import { Effect, Exit, Layer } from "effect";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -27,14 +30,15 @@ const repository = join(here, "../../..");
 const baselineFile = join(here, "baseline.json");
 const target = { name: "effect-bump" };
 
-type Input = { readonly version: string; readonly mustFail: ReadonlyArray<string> };
-type Output = { readonly pinned: number; readonly failing: ReadonlyArray<string>; readonly pinsPass: boolean; readonly error?: string };
+type Input = { readonly fixture: string; readonly mustFail: ReadonlyArray<string> };
+type Fixture = { readonly base: string; readonly version: string; readonly changed: ReadonlyArray<string>; readonly expected: Readonly<Record<string, string>> };
+type Output = {
+  readonly pinned: number; readonly failing: ReadonlyArray<string>; readonly pinsPass: boolean;
+  readonly reproduced: number; readonly expected: number; readonly extra: ReadonlyArray<string>; readonly changed: number; readonly error?: string
+};
 
 const cases = [
-  {
-    name: "effect-4.0.6",
-    input: { version: "4.0.6", mustFail: ["TestEffectRootNamesMatchEffect", "TestEffectSubpathNamesMatchEffect"] } satisfies Input
-  }
+  { name: "effect-4.1.1", input: { fixture: "fixture/effect-4.1.1.json", mustFail: ["TestModuleServicesDocumented", "package: Node, Bun, and browser bundles check effect@4.1.0"] } satisfies Input }
 ];
 
 /** found: the share of the known differences the report names. */
@@ -47,6 +51,22 @@ const found = Scorer.make({
   })
 });
 
+/** reproduced: the share of the lane's mechanical files the flow wrote byte for byte. */
+const reproduced = Scorer.make({
+  id: "effect-bump/reproduced",
+  version: "1",
+  name: "reproduced",
+  score: ({ output }) => Effect.succeed({ score: (output as Output).reproduced / (output as Output).expected })
+});
+
+/** onlyLanes: the share of the files the flow changed that the lane changed too. */
+const onlyLanes = Scorer.make({
+  id: "effect-bump/only-lanes",
+  version: "1",
+  name: "only-lanes",
+  score: ({ output }) => Effect.succeed({ score: (output as Output).changed ? 1 - (output as Output).extra.length / (output as Output).changed : 0 })
+});
+
 /** pinned: the flow moved the manifests and left none behind. */
 const pinned = Scorer.make({
   id: "effect-bump/pinned",
@@ -55,24 +75,34 @@ const pinned = Scorer.make({
   score: ({ output }) => Effect.succeed({ score: (output as Output).pinned > 500 && (output as Output).pinsPass ? 1 : 0 })
 });
 
+const sha256 = (file: string) => createHash("sha256").update(readFileSync(file)).digest("hex");
+
 function bumpFresh(input: Input): Promise<Output> {
+  const fixture: Fixture = JSON.parse(readFileSync(join(here, input.fixture), "utf8"));
   const name = `effect-bump-eval-${process.pid}`;
   const scratch = mkdtempSync(join(tmpdir(), "effect-bump-eval-"));
   const workspace = join(scratch, "repo"), run = join(scratch, "run");
   const jj = (...args: Array<string>) => execFileSync("jj", args, { cwd: repository, stdio: "pipe" });
-  jj("workspace", "add", workspace, "--name", name, "-r", "@");
+  jj("workspace", "add", workspace, "--name", name, "-r", fixture.base);
   const cleanup = () => {
     if (process.env.EFFECT_BUMP_KEEP) return console.log(`effect-bump eval: kept ${scratch}`);
     try { jj("workspace", "forget", name); } catch {}
     rmSync(scratch, { recursive: true, force: true });
   };
-  return execute({ run, repo: workspace, version: input.version }).then((exit) => {
+  return execute({ run, repo: workspace, version: fixture.version }).then((exit) => {
     const read = (step: string) => existsSync(join(run, `${step}.json`)) ? JSON.parse(readFileSync(join(run, `${step}.json`), "utf8")) : undefined;
     const probe = read("probe");
+    const changed = execFileSync("jj", ["diff", "--name-only", "--from", fixture.base], { cwd: workspace, encoding: "utf8" }).split("\n").filter(Boolean);
+    const lanes = new Set(fixture.changed);
+    const same = Object.entries(fixture.expected).filter(([file, digest]) => existsSync(join(workspace, file)) && sha256(join(workspace, file)) === digest);
     const output: Output = {
       pinned: read("pin")?.files ?? 0,
       failing: read("report")?.failing ?? [],
       pinsPass: probe?.results?.find((r: { name: string }) => r.name === "pins")?.code === 0,
+      reproduced: same.length,
+      expected: Object.keys(fixture.expected).length,
+      extra: changed.filter((file) => !lanes.has(file)),
+      changed: changed.length,
       ...(Exit.isFailure(exit) ? { error: String(exit.cause) } : {})
     };
     cleanup();
@@ -86,7 +116,7 @@ const executor = CaseExecutor.make((suiteCase) =>
   Effect.tryPromise(async () => {
     const started = Date.now();
     const output = await bumpFresh(suiteCase.input as Input);
-    console.log(`effect-bump eval: ${suiteCase.name}: ${JSON.stringify(output)}`);
+    console.log(`effect-bump eval: ${suiteCase.name}: ${JSON.stringify({ ...output, extra: output.extra.slice(0, 20) })}`);
     if (output.error !== undefined) throw new Error(output.error);
     return { output, stepKey: stepKey(suiteCase.name, here), latencyMs: Date.now() - started, target };
   })
@@ -96,7 +126,7 @@ const program = Effect.gen(function* () {
   const suite = yield* Suite.make({
     name: "effect-bump",
     cases,
-    bindings: [Binding.make({ scorer: found, appliesTo: target }), Binding.make({ scorer: pinned, appliesTo: target })],
+    bindings: [found, pinned, reproduced, onlyLanes].map((scorer) => Binding.make({ scorer, appliesTo: target })),
     concurrency: 1
   });
   const run = yield* Runner.run(suite, { runId: `effect-bump-${Date.now()}`, at: new Date().toISOString() });

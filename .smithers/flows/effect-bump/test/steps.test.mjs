@@ -23,6 +23,15 @@ test("a run refuses another version, and report lists each failing build and pro
   t.after(() => rmSync(run, { recursive: true, force: true }))
   start(run, { repo: "/repo", version: "4.0.6" })
   assert.throws(() => start(run, { repo: "/repo", version: "4.2.0" }), /a run of effect 4\.0\.6/)
+  writeFileSync(paths(run).literals, JSON.stringify({
+    ok: true, from: "4.1.0", changed: ["docs/a.md"],
+    kept: [{ file: "packages/runtime/bun.lock", glob: "**/bun.lock" }, { file: ".smithers/flows/migrate/test/x.test.mjs", glob: ".smithers/flows/migrate/test/**" },
+      { file: "scripts/effect-pin.test.mjs", glob: "scripts/effect-pin.test.mjs" }]
+  }))
+  writeFileSync(paths(run).regenerate, JSON.stringify({
+    ok: false,
+    results: [{ name: "forms-table", command: "bash scripts/check-forms-table.sh --write", code: 1, seconds: 30, failures: [], output: "moved decision" }]
+  }))
   writeFileSync(paths(run).build, JSON.stringify({
     ok: false,
     results: [{ name: "runtime-build", command: "bun run build", code: 2, seconds: 9, failures: ["src/a.ts(1,1): error TS2307: x"], output: "src/a.ts(1,1): error TS2307: x" }]
@@ -34,10 +43,14 @@ test("a run refuses another version, and report lists each failing build and pro
       { name: "compiler-tables", command: "go test", code: 1, seconds: 40, failures: ["TestEffectRootNamesMatchEffect"], output: "--- FAIL: TestEffectRootNamesMatchEffect" }
     ]
   }))
-  assert.deepEqual(report(run).failing, ["src/a.ts(1,1): error TS2307: x", "TestEffectRootNamesMatchEffect"])
+  assert.deepEqual(report(run).failing, ["src/a.ts(1,1): error TS2307: x", "forms-table", "TestEffectRootNamesMatchEffect"])
   const md = readFileSync(join(run, "report.md"), "utf8")
   assert.match(md, /\| compiler-tables \| fail \(40 s\) \| `TestEffectRootNamesMatchEffect` \|/)
   assert.match(md, /## compiler-tables/)
   assert.match(md, /## runtime-build/)
+  assert.match(md, /## forms-table/)
   assert.doesNotMatch(md, /## pins/)
+  // A pin guard waits for a person; a lockfile moves in install, and a fixture keeps its version.
+  assert.match(md, /## Pin guards to move by hand[\s\S]*- `scripts\/effect-pin\.test\.mjs`/)
+  assert.doesNotMatch(md, /bun\.lock|flows\/migrate/)
 })
