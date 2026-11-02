@@ -51,7 +51,9 @@ func FuzzPlatformDerivedGlobals(f *testing.F) {
 	startShortBudget(f)
 	inventory := platformDerivedRules(f)
 	for _, key := range []string{
-		"MutationObserver:value", "MutationObserver:type", "MutationObserver:member", "MutationObserver:shadow",
+		"FileReader:shorthand", "FileReader:type", "FileReader:qualified-type",
+		"fetch:shorthand", "fetch:type", "setTimeout:shorthand", "setTimeout:type",
+		"MutationObserver:shorthand", "MutationObserver:value", "MutationObserver:type", "MutationObserver:member", "MutationObserver:shadow",
 		"HTMLElement:value", "HTMLElement:type", "HTMLElement:member", "HTMLElement:shadow",
 		"URL:value", "URL:type", "URL:member", "URL:shadow",
 		"AbortSignal:value", "AbortSignal:type", "AbortSignal:member",
@@ -69,7 +71,7 @@ func FuzzPlatformDerivedGlobals(f *testing.F) {
 		Missing(f, "install pinned @types/node in docs/tools before derived-platform fuzzing: %v", err)
 	}
 	names := append(slices.Clone(inventory.Banned), inventory.Allowlist...)
-	modes := []string{"value", "type", "member", "shadow"}
+	modes := []string{"value", "type", "qualified-type", "member", "shorthand", "shadow"}
 	f.Fuzz(func(t *testing.T, data []byte) {
 		parts := strings.SplitN(string(data), ":", 2)
 		name, mode := parts[0], "value"
@@ -96,12 +98,16 @@ func FuzzPlatformDerivedGlobals(f *testing.F) {
 		}
 		source := "export const value = " + name
 		want := 0
-		if hostMember || (slices.Contains(inventory.Banned, name) && (mode == "value" || mode == "member")) {
+		if hostMember || (slices.Contains(inventory.Banned, name) && (mode == "value" || mode == "member" || mode == "shorthand")) {
 			want = 1
 		}
 		switch mode {
 		case "type":
 			source = "export type Value = typeof " + name
+		case "qualified-type":
+			source = "export type Value = typeof globalThis." + name
+		case "shorthand":
+			source = "export const value = { " + name + " }"
 		case "member":
 			literal, _ := json.Marshal(name)
 			source = "export const value = globalThis[" + string(literal) + "]"

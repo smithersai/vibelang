@@ -484,6 +484,10 @@ func checkPlatform(c *checker.Checker, file *ast.SourceFile) {
 		case ast.IsImportDeclaration(node) || ast.IsExportDeclaration(node):
 			checkPlatformImport(c, node)
 			return false
+		case node.Kind == ast.KindTypeQuery:
+			// typeof setTimeout is a type, erased as host_global_declarations.go's
+			// unlisted globals are; the checker gives its operand value meaning.
+			return false
 		case ast.IsImportCall(node):
 			if arguments := node.Arguments(); len(arguments) > 0 && ast.IsStringLiteral(arguments[0]) {
 				if r, ok := platformModuleOf(arguments[0].Text()); ok {
@@ -601,7 +605,13 @@ func platformReference(c *checker.Checker, id *ast.Node) (platformRef, bool) {
 	if name == "" {
 		return platformRef{}, false
 	}
-	symbol := c.GetSymbolAtLocation(id)
+	var symbol *ast.Symbol
+	if ast.IsIdentifier(id) && id.Parent != nil && ast.IsShorthandPropertyAssignment(id.Parent) {
+		// { setTimeout } reads the global; the name's own symbol is the property.
+		symbol = c.GetShorthandAssignmentValueSymbol(id.Parent)
+	} else {
+		symbol = c.GetSymbolAtLocation(id)
+	}
 	if symbol == nil && ast.IsElementAccessExpression(id) {
 		// Symbol lookup does not expose every literal-key access. Resolve the
 		// already-validated static name on the actual receiver type instead.
@@ -650,7 +660,8 @@ func importedName(module string, decl *ast.Node) string {
 // globalPlatformName covers D102's bare globals and S6-1's globalThis
 // receiver. A locally declared globalThis or process retains its own meaning.
 func globalPlatformName(c *checker.Checker, node *ast.Node) string {
-	if ast.IsIdentifier(node) && isValueUse(node) {
+	if ast.IsIdentifier(node) && (isValueUse(node) || node.Parent != nil && ast.IsShorthandPropertyAssignment(node.Parent)) {
+		// A shorthand property's name is also the value it reads: { setTimeout }.
 		return node.Text()
 	}
 	if !ast.IsPropertyAccessExpression(node) && !ast.IsElementAccessExpression(node) {

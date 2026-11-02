@@ -1,0 +1,11 @@
+// expect: EK4402
+// A listed platform global follows the same value rules as an unlisted one (host-global-declarations.fail):
+// a shorthand property is a value use; a type query is TypeScript's and erased.
+export const shorthand = { setTimeout }
+export const pair = { fetch, value: 1 }
+export const viaGlobal = { timer: globalThis.setTimeout }
+export type Timer = typeof setTimeout
+export type Fetch = typeof globalThis.fetch
+export const own = { setTimeout: 42 }
+export const property = own.setTimeout
+export function local(setTimeout: number) { return { setTimeout } }
