@@ -48,10 +48,20 @@ export function problems(code, ast, visitorKeys) {
   if (!/^[\s\uFEFF]*$/u.test(code.slice(cursor))) found.push(`text after ${cursor} is in no token`)
 
   const named = new Set()
+  const effectPrefixes = []
   walk(ast, (node, parent) => {
     if (!(node.type in visitorKeys)) found.push(`unknown node type ${node.type}`)
     const [start, end] = node.range
     if (!(start >= 0 && start <= end && end <= code.length)) found.push(`${node.type} has range [${start}, ${end}]`)
+    // The contextual effect modifier (including an effect block) belongs to
+    // its function or method, like async. Exempt only the prefix before its
+    // first written child: a parameter, function name or method key named
+    // effect must still have an Identifier node.
+    if (["FunctionDeclaration", "FunctionExpression", "ArrowFunctionExpression", "TSDeclareFunction"].includes(node.type) ||
+        node.type === "MethodDefinition" || node.type === "Property" && node.method) {
+      const children = [node.id, node.key, ...(node.params ?? []), node.returnType, node.body].filter(Boolean)
+      effectPrefixes.push([start, Math.min(end, ...children.map((child) => child.range[0]))])
+    }
     // An identifier's range covers its type annotation, so it is known by its start and name.
     if (node.type === "Identifier") named.add(`${start}:${node.name}`)
   }, visitorKeys)
@@ -62,7 +72,8 @@ export function problems(code, ast, visitorKeys) {
     // A pattern's extractor (Exit.Success, Option.Some) and a primitive's
     // pattern (String) become guards, and an infer placeholder (D57) is
     // VibeInferType's name: none is a variable a rule could miss.
-    const exempt = formWords.has(word) || contextualKeywords.has(word) || patternWords.has(word) ||
+    const effectModifier = word === "effect" && effectPrefixes.some(([start, end]) => start <= token.range[0] && token.range[1] <= end)
+    const exempt = effectModifier || formWords.has(word) || contextualKeywords.has(word) || patternWords.has(word) ||
       previous === "." || previous === "infer"
     if (!named.has(`${token.range[0]}:${word}`) && !exempt) found.push(`name ${word} at ${token.range[0]} has no node`)
   })

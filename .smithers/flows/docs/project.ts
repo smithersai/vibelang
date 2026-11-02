@@ -123,6 +123,8 @@ Run the cached build graph locally with \`sh scripts/ci.sh\`; [the build graph](
 
 For each pull request, a maintainer runs \`sh scripts/e2e.sh\` and the compiler case suite, \`(cd typescript && sh vibelang/smoke.sh --jobs 8)\`, and records the results in the pull request.
 
+The compiler package tests include a native ESLint tree-oracle check, independent of the optional plugin install: contextual \`effect\` modifiers are syntax, while a binding, parameter or method named \`effect\` must retain its identifier node. It also knocks out written names to verify the oracle catches missing nodes.
+
 The end-to-end check runs setup, then scaffolds, installs, builds, runs and tests a temporary app, and stops at the first failing step. A compiler case is a directory under \`typescript/vibelang/cases/\`; \`typescript/vibelang/harness.mjs\` describes the format. A passing check doesn't prove every language feature works, so list the checks you ran, the ones that failed and the ones you couldn't run.`
     },
     {

@@ -52,7 +52,7 @@ const unrun = [
   ["typescript/packages/**", "upstream TypeScript's own packages, outside VibeLang's"],
   ["editors/vscode/**", "validate.sh's vscode step runs them, outside the build graph"],
   ["packages/ts-mapper/test/**", "validate.sh's go step runs them, outside the build graph"],
-  ["packages/compiler/test/eslint/*.test.mjs", "run.sh installs their own lockfile; 2 of 27 fail on main: an effect function's name has no node"],
+  ["packages/compiler/test/eslint/*.test.mjs", "run.sh installs its own lockfile; remaining failures cover synthesized match reports, corpus parsing and declaration token ranges; the effect-modifier oracle runs in compiler-test"],
   ["packages/create-vibelang/test/*.test.mjs", "1 of 29 fails on main: the scaffold's main reports EK3205"],
   ["site/scripts/patch-vocs-search.test.mjs", "requires the site's TypeScript and Vocs vendor files"],
   ["site/scripts/cloudflare-stack.test.mjs", "requires the site's TypeScript install"],

@@ -531,6 +531,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A failed source setup could delete the previous local starter while copying or rewriting its replacement; setup now prepares the replacement first and restores the previous starter if publishing it fails.
 
+- The ESLint acceptance checks reported valid `effect` modifiers as missing variable names; they now recognize function and method prefixes while still detecting a missing node for a variable, parameter or method named `effect`.
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 
 - Migration setup could leave a native type exported through a TypeScript namespace barrel as an error type in project-aware linters; setup now enables source declaration redirects in owned configs and records those edits.
