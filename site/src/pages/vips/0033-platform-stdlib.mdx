@@ -9,11 +9,14 @@ title: "VIP-33: the platform standard library"
 ## Decision
 
 ```ts
+import { NodeServices } from "@effect/platform-node"   // a platform package: imported, not in scope
 effect function readConfig(path: string) {
   const fs = try FileSystem.FileSystem             // Effect's platform service, injected by a layer
   return try fs.readFileString(path)
 }
-provide NodeServices.layer { try readConfig("app.json") }   // VIP-12; the platform layer is chosen at the edge
+effect function main() {
+  provide NodeServices.layer { try readConfig("app.json") }   // VIP-12; the platform layer is chosen at the edge
+}
 ```
 
 1. **Platform access only through injected Effect services** (`FileSystem`, `Path`, `ChildProcess`, `HttpClient`, …), each provided by a per-platform layer. A `.vibe` file has no `node:*` value imports and no Node globals (`process`, `Buffer`). Code that needs them lives in a `.ts` file; VIP-25 removed inline modules, so a `.ts` file is the escape.
@@ -22,6 +25,8 @@ provide NodeServices.layer { try readConfig("app.json") }   // VIP-12; the platf
 3. **Subpath namespaces are in scope** (`HttpClient`, `FileSystem`, `Path`, `ChildProcess`, … from Effect's subpath packages), with VIP-14's precedence rules.
 4. Old VibeLang's alias `Path.join(…)` → `Path.Path.join(…)` (D311) was a service shorthand, which VIP-10 denied. You write `(try Path.Path).join(…)`.
 5. Old VibeLang's provisional D312, under which the entry provided NodeServices for `main`, is gone (VIP-26).
+
+*Corrected 2026-11-02: the Decision example imports `NodeServices` from `@effect/platform-node`, a platform package that is not in scope (VIP-14), and provides it inside `effect function main()`, because `provide` belongs in effect code (VIP-12); chapter 5 shows the same program (found by the round-6 review).*
 
 *Corrected 2026-10-29: the module `FileSystem` is a namespace, and the service key it exports is `FileSystem.FileSystem` (likewise `Path.Path`); in effect 4.1.0, `yield*` of the namespace is a defect.*
 

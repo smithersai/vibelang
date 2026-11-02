@@ -5,6 +5,7 @@
 ## Decision
 
 ```ts
+import { NodeRuntime } from "@effect/platform-node"
 export effect function main() { … }
 NodeRuntime.runMain(main())     // exactly as in Effect TS
 await runPromise(main())        // or ES top-level await of a Promise (VIP-5); runPromise is a VIP-6 global
@@ -12,6 +13,8 @@ await runPromise(main())        // or ES top-level await of a Promise (VIP-5); r
 
 - A module's top level is ordinary JavaScript. `await` there is ES top-level await of a Promise (VIP-5), and `try` is not allowed, because a top level is not an `effect` function.
 - There is no magic entry point. A function named `main` is an ordinary function, and you call a runner yourself, exactly as in Effect TS.
+
+*Corrected 2026-11-02: the Decision example imports `NodeRuntime` from `@effect/platform-node`, which is not in scope (VIP-14), as chapter 1 does (found by the round-6 review).*
 
 ## Amendment: source file kind
 

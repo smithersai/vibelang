@@ -272,7 +272,35 @@ const retiredForms: Rule = {
   }
 }
 
-export const rules: Rule[] = [resolutionClaims, configKeys, importStyleScope, declarationImportForm, deniedVipRepairs, retiredForms]
+// Platform packages in examples (row 36 of round 14's open table, round 6
+// OPUS-4). VIP-33's Decision example used `NodeServices` with no import and
+// provided it at the top level, outside effect code; VIP-26's used
+// `NodeRuntime` with no import. Chapter 5: `NodeServices` is "a platform
+// package: imported, not in scope" (VIP-14 puts only Effect's modules in
+// scope), and `provide` outside effect code is `EK1201` (VIP-12). An example
+// that names a platform package's value imports it, and does not provide it
+// at a module's top level.
+const platformValue = /\b((?:Node|Bun|Browser)(?:Services|Runtime|Context|HttpServer|HttpClient|FileSystem|Path|Terminal|Worker))\b/g
+const platformImports: Rule = {
+  name: "platform-imports",
+  finding: "r6 OPUS-4 (row 36): VIP-33 used `NodeServices` unimported in a top-level `provide`; VIP-26 used `NodeRuntime` unimported",
+  check(spec) {
+    const out: Violation[] = []
+    for (const [file, text] of [...chapters(spec), ...acceptedVips(spec)]) {
+      for (const { line, text: code, block } of vibeCode(text)) {
+        if (/^\s*import\b/.test(code)) continue
+        for (const [, name] of code.replace(/\/\/.*$/, "").matchAll(platformValue)) {
+          const imported = new RegExp(`^\\s*import\\s+(?:type\\s+)?\\{[^}]*\\b${name}\\b[^}]*\\}\\s+from\\s+["']@effect\\/platform-`, "m")
+          if (!imported.test(block)) out.push({ rule: this.name, file, line, message: `\`${name}\` is a platform package's value, not in scope: the example must import it` })
+          if (/^provide\b/.test(code)) out.push({ rule: this.name, file, line, message: `\`provide ${name}…\` at a module's top level is outside effect code (EK1201)` })
+        }
+      }
+    }
+    return out
+  }
+}
+
+export const rules: Rule[] = [resolutionClaims, configKeys, importStyleScope, declarationImportForm, deniedVipRepairs, retiredForms, platformImports]
 
 export const lint = (spec: Spec, only = rules) => only.flatMap(rule => rule.check(spec))
 

@@ -111,3 +111,15 @@ test("retired-forms rejects round 7 OPUS-6's bare `Effect<User, NotFound, Users>
     expect.stringMatching(/^vips\/0001-effect-and-async-functions\.md:27 the bare type `Effect<A, E, R>` is removed/)
   ])
 })
+
+test("platform-imports rejects round 6 OPUS-4's VIP-33 and VIP-26 examples (row 36)", () => {
+  const vip33 = "```ts\neffect function readConfig(path: string) {\n  const fs = try FileSystem.FileSystem             // Effect's platform service, injected by a layer\n  return try fs.readFileString(path)\n}\nprovide NodeServices.layer { try readConfig(\"app.json\") }   // VIP-12; the platform layer is chosen at the edge\n```"
+  const defect: Spec = new Map(spec)
+  defect.set("vips/0033-platform-stdlib.md", spec.get("vips/0033-platform-stdlib.md")!.replace(/```ts\n[^]*?\n```/, vip33))
+  defect.set("vips/0026-top-level-and-main.md", spec.get("vips/0026-top-level-and-main.md")!.replace(/^import \{ NodeRuntime \} from "@effect\/platform-node"\n/m, ""))
+  expect(lint(defect, rule("platform-imports")).map(v => `${v.file}:${v.line} ${v.message}`)).toEqual([
+    "vips/0026-top-level-and-main.md:9 `NodeRuntime` is a platform package's value, not in scope: the example must import it",
+    "vips/0033-platform-stdlib.md:12 `NodeServices` is a platform package's value, not in scope: the example must import it",
+    "vips/0033-platform-stdlib.md:12 `provide NodeServices…` at a module's top level is outside effect code (EK1201)"
+  ])
+})
