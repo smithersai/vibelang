@@ -10,7 +10,9 @@ export function repairPrompt({ context, run, batch, target, packages, test, file
     `- ${file}: ${Object.entries(kinds).map(([k, n]) => `${k} ×${n}`).join(", ")}`)
   const refused = codemod.fix.refused.map((r) => `- ${r.file}:${r.line} ${r.code} not fixed: the fixed program would report ${r.error}`)
   const references = (codemod.referenceEdits ?? []).map(e => "- " + e.file + ":" + e.line + " [" + e.kind + "]: " + JSON.stringify(e.from) + " -> " + JSON.stringify(e.to))
-  const selectorChecks = (codemod.selectorChecks ?? []).map(proof => "- " + proof.file + ":" + proof.line + " " + (proof.pass ? "PASS" : "FAIL") + ": " + JSON.stringify(proof.contexts))
+  // A regex proof lists every file of its package; the prompt gets the counts, codemod.json the lists.
+  const contextsOf = proof => proof.kind === "source-regex" ? proof.contexts.map(({ before, after, mapped, ...counts }) => counts) : proof.contexts
+  const selectorChecks = (codemod.selectorChecks ?? []).map(proof => "- " + proof.file + ":" + proof.line + " " + (proof.pass ? "PASS" : "FAIL") + ": " + JSON.stringify(contextsOf(proof)))
   const referenceWarnings = (codemod.referenceWarnings ?? []).map(w => "- " + w)
   const batchDiagnostics = compile.diagnostics.filter((d) => files.includes(d.file))
   const elsewhere = compile.newErrors.filter((d) => !files.includes(d.file))

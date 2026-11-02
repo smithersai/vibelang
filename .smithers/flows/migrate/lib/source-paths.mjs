@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { posix, join } from "node:path"
 import { Minimatch } from "minimatch"
+import { compileRegex, disagreeingLiterals, enumeratesFiles, packageBase, regexIdentity, widenableRegexes, widenExtensionRegex } from "./regex-selectors.mjs"
 
 
 const calleeKey = (ts, node) => {
@@ -170,6 +171,7 @@ function selectorCounts(ts, text, file) {
     if (literal(node) && globCall(node)) add("source-glob", node, node.text)
     if (literal(node) && globOwner(node)) add("known-glob-context", node, null)
     if (ts.isArrayLiteralExpression(node) && node.elements.every(literal) && excludesSidecars(ts, source, node)) add("source-extensions", node, node.elements.map(n => n.text))
+    if (node.kind === ts.SyntaxKind.RegularExpressionLiteral) add("source-regex", node, node.text)
     ts.forEachChild(node, visit)
   }
   visit(source)
@@ -218,6 +220,10 @@ export function selectorIdentity(kind, before, after, file, renames, inventory, 
   }
   const fromOf = new Map(renames.map(r => [r.to, r.from])), toOf = new Map(renames.map(r => [r.from, r.to]))
   const originals = [...new Set(inventory.map(path => fromOf.get(path) ?? path))].sort()
+  if (kind === "source-regex") {
+    const proof = regexIdentity(before, after, originals, originals.map(path => toOf.get(path) ?? path), renames, packageBase(file, originals))
+    return { kind, ...proof }
+  }
   const mappedOriginals = originals.map(path => toOf.get(path) ?? path)
   const actual = [...new Set([...mappedOriginals, ...mappedOriginals.filter(path => path.endsWith(".vibe")).map(path => path.replace(/\.vibe$/, ".d.vibe.ts"))])]
   const old = kind === "source-glob" ? compiledSelector(before, matcherCache) : null
@@ -245,7 +251,7 @@ export function checkSelectorEdits(codemod, inventory, { ts, read } = {}) {
   const allRenames = codemod?.renames ?? []
   const renames = read ? allRenames.filter(r => present.has(r.to)) : allRenames
   return (codemod?.referenceEdits ?? []).filter(edit => edit.selectorKind ||
-    ["source-glob", "source-extensions"].includes(edit.kind) || (read && edit.kind === "source-reference")).map(edit => {
+    ["source-glob", "source-extensions", "source-regex"].includes(edit.kind) || (read && edit.kind === "source-reference")).map(edit => {
     let kind = edit.selectorKind ?? edit.kind
     let after = edit.to
     if (read) {
@@ -392,9 +398,43 @@ export function rewriteSourceLiterals(ts, text, file, renames, { selectors = tru
     ts.forEachChild(node, visit)
   }
   visit(source)
+  // An extension regex that filters a listed directory, /\.tsx?$/.test(file),
+  // selects .vibe modules and not their sidecars (decided 04:00Z (B), detail 272).
+  if (selectors && renames.length && enumeratesFiles(ts, source)) {
+    const asserted = node => {
+      for (let n = node.parent; n && !ts.isStatement(n); n = n.parent)
+        if (ts.isCallExpression(n) && /^(?:expect|assert)(?:\.|$)/.test(n.expression.getText(source))) return true
+      return false
+    }
+    const regexes = widenableRegexes(ts, source).filter(node => !literalOnly(node) && !asserted(node))
+      .filter(node => renames.some(r => compileRegex(node.text).test(r.from)))
+    if (regexes.length) {
+      // Every regex the file filters with widens, or none does: a half-widened filter changes the selection.
+      const widened = new Set(regexes)
+      const selected = renames.filter(r => regexes.some(node => compileRegex(node.text).test(r.from)))
+      const pending = [...changes].sort((a, b) => b.start - a.start).reduce((out, c) => out.slice(0, c.start) + c.text + out.slice(c.end), text)
+      const disagree = disagreeingLiterals(ts, source, ts.createSourceFile(file, pending, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS), selected, node => widened.has(node))
+      const proofs = regexes.map(node => ({ node, next: widenExtensionRegex(node.text),
+        proof: { file, line: line(node), ...selectorIdentity("source-regex", node.text, widenExtensionRegex(node.text), file, renames, inventory, matcherCache) } }))
+      const named = [...new Set(disagree.map(d => d.rename).filter(Boolean))]
+      const refused = disagree.length ? "another path test in the file tells a renamed module from its TypeScript source (" +
+        disagree.slice(0, 5).map(d => "line " + d.line + " " + d.literal).join(", ") + ")" + (named.length ? "; keep " + named.slice(0, 10).join(", ") + (named.length > 10 ? " and " + (named.length - 10) + " more" : "") + " as TypeScript, or wire the test by hand" : "") :
+        proofs.some(p => !p.proof.pass) ? (proofs.find(p => !p.proof.pass).proof.reason ?? "the selected set changes or the inventory is incomplete") : null
+      for (const { node, next, proof } of proofs) {
+        if (refused) Object.assign(proof, { pass: false, reason: refused, ...(disagree.length ? { disagree } : {}) })
+        selectorChecks.push(proof)
+        if (refused) {
+          warnings.push(file + ":" + line(node) + ": extension regex " + node.text + " cannot widen to .vibe: " + refused + "; rewrite refused")
+          continue
+        }
+        changes.push({ start: node.getStart(source), end: node.end, text: next })
+        edits.push({ file, from: node.text, to: next, kind: "source-regex", context: literalContext(ts, node), line: line(node) })
+      }
+    }
+  }
   changes.sort((a, b) => b.start - a.start)
   for (const change of changes) text = text.slice(0, change.start) + change.text + text.slice(change.end)
-  const selected = edits.filter(edit => edit.selectorKind || ["source-glob", "source-extensions"].includes(edit.kind))
+  const selected = edits.filter(edit => edit.selectorKind || ["source-glob", "source-extensions", "source-regex"].includes(edit.kind))
   if (selected.length) {
     const counts = selectorCounts(ts, text, file)
     for (const edit of selected) edit.selectorCount = counts.get(selectorKey(edit.selectorKind ?? edit.kind, edit.context, edit.to)) ?? 0

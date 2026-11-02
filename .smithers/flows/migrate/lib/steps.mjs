@@ -1515,7 +1515,7 @@ export async function verify(options) {
   const formatted = await formatVibe(config, migrated, join(logs, "verify-format-vibe.log"))
   const checked = await compile({ run: options.run, batch: b, noRecord: true })
   const codemodReceipt = readJsonIf(p.codemod(b))
-  const hasSelectorEdits = codemodReceipt?.referenceEdits?.some(edit => edit.selectorKind || ["source-reference", "source-glob", "source-extensions"].includes(edit.kind))
+  const hasSelectorEdits = codemodReceipt?.referenceEdits?.some(edit => edit.selectorKind || ["source-reference", "source-glob", "source-extensions", "source-regex"].includes(edit.kind))
   const selectorChecks = hasSelectorEdits ? checkSelectorEdits(codemodReceipt, [...new Set([...(await Jj.trackedFiles(t)), ...scopeFiles(config)])], { ts: typeScriptOf(config), read: file => readFileSync(join(t, file), "utf8") }) : []
   const baselineTests = readJson(join(p.baseline, "tests.json"))
   // Tests, including one-pass measurements, read current emitted JavaScript.

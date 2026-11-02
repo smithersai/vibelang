@@ -1,0 +1,14 @@
+{
+  "file": "apps/web/src/reactCompilerCoverage.test.ts",
+  "source": "import * as NodeFS from \"node:fs\";\nconst files = NodeFS.readdirSync(import.meta.dirname, { recursive: true }).map(String).filter(file => /\\.tsx?$/.test(file));\n",
+  "renames": [
+    {
+      "from": "apps/web/src/App.tsx",
+      "to": "apps/web/src/App.vibe"
+    }
+  ],
+  "inventory": [
+    "apps/web/src/App.tsx",
+    "apps/web/src/reactCompilerCoverage.test.ts"
+  ]
+}

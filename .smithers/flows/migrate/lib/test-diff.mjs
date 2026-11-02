@@ -8,6 +8,7 @@ import { isTestFile, isFixtureFile } from "./inventory.mjs"
 import { pathCandidate, provePathRename } from "./test-diff-paths.mjs"
 import { proveFormatterOnly } from "./test-diff-format.mjs"
 import { dependencyCandidate, proveDependencyAddition } from "./test-diff-dependencies.mjs"
+import { disagreeingLiterals, enumeratesFiles, onlyTested, packageBase, regexIdentity, widenExtensionRegex } from "./regex-selectors.mjs"
 
 export const isProtectedFile = path => isTestFile(path) || isFixtureFile(path)
 
@@ -208,7 +209,7 @@ function candidates(ts, source, bindings) {
       }
     } else if (ts.isCallExpression(n) && property(ts, n.expression, "filter") && n.arguments.length === 1) {
       found.set(key + ":filter", { kind: "filter", node: n.arguments[0], input: n.expression.expression })
-    }
+    } else if (n.kind === ts.SyntaxKind.RegularExpressionLiteral) kind = "regex-literal"
     if (kind) found.set(key, { kind, node: n })
     children(ts, n).forEach((c, i) => visit(c, key + "." + i))
   }
@@ -462,6 +463,9 @@ export function verifyTestDiff({ ts, before, after, renames, declarationImportSt
         for (const [key, x] of [...ac].sort(([, a], [, b]) => (a.node.end - a.node.pos) - (b.node.end - b.node.pos))) {
           const y = bc.get(key)
           if (!y || x.kind !== y.kind || maskedNode(x.node, oldEdits) === maskedNode(y.node, nextEdits)) continue
+          // A plain extension regex widened to .vibe has its own proof below; any other regex edit is left to the filter proofs.
+          const widening = ["regex", "regex-literal"].includes(x.kind) && y.node.text === widenExtensionRegex(x.node.text)
+          if (x.kind === "regex-literal" && !widening || x.kind === "regex" && widening) continue
           const hunk = { kind: ["specifier", "path", "assertion"].includes(x.kind) ? x.kind : "selector", selector: x.kind,
             beforeLine: a.source.getLineAndCharacterOfPosition(x.node.getStart()).line + 1,
             afterLine: b.source.getLineAndCharacterOfPosition(y.node.getStart()).line + 1,
@@ -475,6 +479,20 @@ export function verifyTestDiff({ ts, before, after, renames, declarationImportSt
               hunk.resolved = provePathRename({ ts, file, old: x.node, next: y.node, a, b, before, after, renames })
             } else if (x.kind === "assertion") {
               Object.assign(hunk, proveDependencyAddition({ ts, file, old: x.node, next: y.node, before, after }))
+            } else if (x.kind === "regex-literal") {
+              // Decided 04:00Z (B): the regex alone changes, it filters a listed directory, every use is R.test(x),
+              // the file's other path tests can't tell a migrated module from its source, and the selected set is the same.
+              if (!enumeratesFiles(ts, a.source)) throw new Error("extension regex is not in a file that lists a directory")
+              if (!onlyTested(ts, a.source, x.node) || !onlyTested(ts, b.source, y.node)) throw new Error("extension regex is used other than as R.test(file)")
+              const regexOld = regex(x.node.text)
+              const selected = renames.filter(r => regexOld.test(r.from))
+              const disagree = disagreeingLiterals(ts, a.source, b.source, selected, (old, next) => next.text === widenExtensionRegex(old.text))
+              if (disagree.length) throw new Error("another path test tells a migrated module from its source: " + disagree.map(d => "line " + d.line + " " + d.literal + (d.reason ? " (" + d.reason + ")" : "")).join(", "))
+              const proof = regexIdentity(x.node.text, y.node.text, Object.keys(before), Object.keys(after), renames, packageBase(file, Object.keys(before)))
+              const c = proof.contexts[0]
+              hunk.setCheck = { ok: proof.pass, beforeCount: c?.beforeCount ?? 0, afterCount: c?.afterCount ?? 0, before: c?.before ?? [], after: c?.after ?? [],
+                scope: c?.base, repository: c?.repository, ...(c?.added?.length ? { added: c.added } : {}), ...(c?.dropped?.length ? { dropped: c.dropped } : {}), ...(c?.sidecars ? { sidecars: c.sidecars } : {}) }
+              if (c?.sidecars) throw new Error("selector includes declaration sidecars")
             } else if (x.kind === "glob") {
               const ap = patterns(ts, x.node), bp = patterns(ts, y.node)
               if (!globWidening(ap, bp)) throw new Error("glob change is not an extension widening plus sidecar exclusion")
