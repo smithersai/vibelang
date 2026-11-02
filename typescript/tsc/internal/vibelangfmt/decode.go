@@ -320,6 +320,31 @@ func (d *decoder) node(node *ast.Node) error {
 			return lost()
 		}
 		d.replace(start, parent.End(), ";")
+	case placeholderClassMemberSeparator:
+		// The class formatter may move a trailing comment past the temporary
+		// semicolon. Remove that semicolon, then restore the comma at the dummy
+		// member, so the comment stays on its original side of the comma.
+		method := node.Parent
+		if method == nil || method.Kind != ast.KindMethodDeclaration || method.Parent == nil || !ast.IsClassLike(method.Parent) {
+			return fmt.Errorf("vibelang format: internal error: a service separator lost its member")
+		}
+		for i, member := range method.Parent.Members() {
+			if member != method || i == 0 {
+				continue
+			}
+			previous := method.Parent.Members()[i-1]
+			if previous.Name() != nil {
+				if index := d.placeholderOf(previous.Name()); index >= 0 && d.enc.placeholders[index].kind == placeholderClassMemberSeparator {
+					break
+				}
+			}
+			if pos := previous.End() - 1; pos >= 0 && pos < len(d.text) && d.text[pos] == ';' {
+				d.replace(pos, pos+1, "")
+			}
+			break
+		}
+		d.replace(d.start(method), method.End(), ",")
+
 	case placeholderIsPattern:
 		if parent.Kind != ast.KindBinaryExpression || parent.AsBinaryExpression().Right != node || parent.AsBinaryExpression().OperatorToken.Kind != ast.KindGreaterThanEqualsToken {
 			return lost()

@@ -61,6 +61,8 @@ Everything dprint's TypeScript plugin changes in a `.ts` file: indentation, line
 | `error`, `schema`, `data` | The body as an object type: one line when written on one line and it fits |
 | `service` | The body as a class body, one member per line |
 
+Service members and class-form `error` fields accept comma separators. Formatting preserves these separators, nested type commas and comments on either side of a separator.
+
 A `provide` list never wraps at a comma between providers. Line breaks inside a provider expression are allowed; the opening `{` stays on the line where the final provider ends.
 
 Pattern expressions in classic `for (init; test; update)` heads, including bindings introduced by `is`, keep their original head position and parse when formatted. The formatter keeps `is` on the same line as its subject and the start of its pattern, including when a narrow print width or the `operatorPosition` setting wraps the condition.

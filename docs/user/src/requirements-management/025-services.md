@@ -32,6 +32,8 @@ A service has no superclass or type parameters, and every instance member is abs
 
 Service contracts also work with `noUnusedLocals` and `noUnusedParameters`. Their bodyless signatures describe an implementation; unused checks still apply to actual private implementation members.
 
+Service methods and properties accept semicolons, commas or line breaks between members. Formatting accepts these separators and preserves the member types and comments, including commas inside tuple, generic and function types.
+
 
 Bodyless properties and methods use interface syntax. Class-only modifiers such as `public`, `private`, `protected`, `abstract`, `declare`, `accessor`, `override`, `async` and `effect`, private names such as `#count`, and definite assignment assertions such as `count!: number` are `EK0902`. `readonly` belongs only on a property, not a method. The editor quick fix and `vibelang --fix` remove a modifier or assertion while retaining comments and the written contract; a private name needs an explicit public name.
 

@@ -51,6 +51,11 @@ import (
 // Chapter 007 / formatter preserves parsed meaning, diagnostics, comments and idempotence: docs/design/src/007-tooling.md#f974d998eeccfd00
 func FuzzFormat(f *testing.F) {
 	startShortBudget(f)
+	formatServiceSeparatorsQuoted(f)
+	for _, rule := range formatServiceSeparatorRules {
+		f.Add(formatServiceSeparatorKey + rule.key)
+	}
+
 	seen := map[string]bool{}
 	for _, seed := range toolsSample(append(CaseSeeds(), SnippetSeeds()...), 120, 0, nil) {
 		for _, name := range toolsVibeFiles(seed.Files) {
@@ -75,7 +80,7 @@ func FuzzFormat(f *testing.F) {
 	w := NewWorkspace(f)
 	formatter := toolsFormatter(f)
 	f.Fuzz(func(t *testing.T, source string) {
-		source = formatLabelSource(formatReturnTypesSource(formatIsLineSource(formatFoldkitSource(source))))
+		source = formatServiceSeparatorSource(formatLabelSource(formatReturnTypesSource(formatIsLineSource(formatFoldkitSource(source)))))
 		toolsGuard(t, "FuzzFormat", func() {
 			if len(source) > 24<<10 || toolsLeftOut("FuzzFormat", map[string]string{"main.vibe": source}) {
 				return

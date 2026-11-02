@@ -385,6 +385,7 @@ const specTests = [
   "TestServiceShapeContractsQuoted",
   "TestServicesRulesQuoted",
   "TestServiceDefaultReadsQuoted",
+  "TestFormatServiceSeparatorsQuoted",
   "TestServiceUnusedMembersQuoted",
   "TestProducerBindingQuoted",
   "TestEffectTypeSpacingQuoted",

@@ -57,19 +57,20 @@ import (
 type placeholderKind int
 
 const (
-	placeholderText              placeholderKind = iota // the identifier is the text
-	placeholderIsPattern                                // a pattern; the >= before it is is
-	placeholderMatchHead                                // the property that holds a match's subject
-	placeholderMatchArm                                 // when and a pattern, as an arm's property name
-	placeholderBlockHead                                // a label for a block statement's header
-	placeholderClauseHead                               // a label for a try clause after the first
-	placeholderHandleHead                               // a catch variable for a handle clause
-	placeholderTypeHead                                 // a type alias name for an error or schema header
-	placeholderClassHead                                // a class name for a service or control header
-	placeholderCatch                                    // a method name for catch
-	placeholderMutableIndex                             // [ and the key name after mutable
-	placeholderEmptyClassElement                        // a JSDoc-owning empty class element
-	placeholderEmptyStatement                           // a JSDoc-owning empty statement
+	placeholderText                 placeholderKind = iota // the identifier is the text
+	placeholderIsPattern                                   // a pattern; the >= before it is is
+	placeholderMatchHead                                   // the property that holds a match's subject
+	placeholderMatchArm                                    // when and a pattern, as an arm's property name
+	placeholderBlockHead                                   // a label for a block statement's header
+	placeholderClauseHead                                  // a label for a try clause after the first
+	placeholderHandleHead                                  // a catch variable for a handle clause
+	placeholderTypeHead                                    // a type alias name for an error or schema header
+	placeholderClassHead                                   // a class name for a service or control header
+	placeholderCatch                                       // a method name for catch
+	placeholderMutableIndex                                // [ and the key name after mutable
+	placeholderEmptyClassElement                           // a JSDoc-owning empty class element
+	placeholderEmptyStatement                              // a JSDoc-owning empty statement
+	placeholderClassMemberSeparator                        // a temporary method standing for a service comma
 )
 
 type placeholder struct {
@@ -522,6 +523,7 @@ func (e *encoder) form(form parser.VibeSyntax) error {
 func (e *encoder) declaration(form parser.VibeSyntax) error {
 	head := declarationKeywordSpacing(e.text(form.Head))
 	if form.Class {
+		e.classMemberSeparators(form)
 		// A constructor payload is a field, but TypeScript's class parser
 		// reserves its unquoted name for constructor methods. Preserve the
 		// source name through an ordinary identifier while formatting.
@@ -564,6 +566,9 @@ func (e *encoder) declaration(form parser.VibeSyntax) error {
 		e.holders[len(e.holders)-1].alias = true
 		e.add(edit{pos: form.Head.Pos(), end: form.Head.End(), text: "type " + name, opaque: true})
 	case "service", "control":
+		if form.Name == "service" {
+			e.classMemberSeparators(form)
+		}
 		// The head of service Prefix: string runs through the shape (D281),
 		// which the placeholder keeps as written, with one space after the colon.
 		head = declarationKeywordSpacing(e.shapeHead(form, head))
@@ -580,6 +585,33 @@ func (e *encoder) declaration(form parser.VibeSyntax) error {
 		e.add(edit{pos: form.Range.Pos(), end: form.Range.End(), text: name, opaque: true})
 	}
 	return nil
+}
+
+// classMemberSeparators projects contract and payload commas to
+// temporary class members before handing the source to a TypeScript formatter. Only the
+// outer member separators change: commas inside types and expressions stay.
+func (e *encoder) classMemberSeparators(form parser.VibeSyntax) {
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if ast.IsClassLike(node) && node.Name() != nil && node.Name().Pos() >= form.Head.Pos() && node.Name().End() <= form.Head.End() {
+			seen := map[int]bool{} // a property comma is also an empty class element
+			for _, member := range node.Members() {
+				end := member.End()
+				pos := end - 1
+				if pos < 0 || pos >= len(e.source) || e.source[pos] != ',' {
+					pos = scanner.SkipTrivia(e.source, end)
+				}
+				if pos >= 0 && pos < len(e.source) && e.source[pos] == ',' && !seen[pos] {
+					seen[pos] = true
+					name := e.hold(placeholderClassMemberSeparator, ",", pos, 0)
+					e.replace(pos, pos+1, ";"+name+"();")
+				}
+			}
+			return true
+		}
+		return node.ForEachChild(visit)
+	}
+	e.file.AsNode().ForEachChild(visit)
 }
 
 // typeBody keeps the projected type alias on one line up to its opening
