@@ -2738,6 +2738,10 @@ typescript/vibelang/cases/producer-inferred-scope/main.vibe:24:51 lambda plain t
 typescript/vibelang/cases/producer-inferred-scope/main.vibe:24:60 lambda plain table
 typescript/vibelang/cases/producer-inferred-scope/main.vibe:25:49 lambda plain table
 typescript/vibelang/cases/producer-inferred-scope/main.vibe:25:58 lambda plain table
+typescript/vibelang/cases/producer-scope-unions/main.vibe:46:45 lambda plain table
+typescript/vibelang/cases/producer-scope-unions/main.vibe:46:54 lambda plain table
+typescript/vibelang/cases/producer-scope-unions/main.vibe:47:42 lambda plain table
+typescript/vibelang/cases/producer-scope-unions/main.vibe:47:51 lambda plain table
 typescript/vibelang/cases/producers/main.vibe:174:20 lambda plain annotation
 typescript/vibelang/cases/producers/main.vibe:184:8 lambda effectFn service
 typescript/vibelang/cases/producers/main.vibe:207:29 lambda program table

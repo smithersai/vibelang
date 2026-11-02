@@ -38,6 +38,18 @@ func FuzzProducerScopeInference(f *testing.F) {
 		{"scoped-one-service", "const a = try needsA; try Effect.forkScoped(poll); yield a", "A"},
 		{"scoped-two-services", "try Effect.forkScoped(poll); const a = try needsA; const b = try needsB; yield a + b", "A | B"},
 		{"scope-valued-data", "const s: Scope.Scope | null = null; yield s === null ? 7 : 8", "never"},
+		{"scope-r-union", "const a = try needsScopeA; yield a", "A"},
+		{"scope-r-two-services", "const a = try needsScopeAB; yield a", "A | B"},
+		{"scope-r-alias", "const a = try needsAliasScopeA; yield a", "A"},
+		{"scope-r-intersection", "const a = try needsScopeAndA; yield a", "never"},
+		{"scope-r-branded", "const a = try needsBrandedScope; yield a", "never"},
+		{"r-nonscope-union", "const a = try needsAB; yield a", "A | B"},
+		{"r-scope-only", "const a = try needsOnlyScope; yield a", "never"},
+		{"r-unknown", "const a = try needsUnknown; yield a", "unknown"},
+		{"r-any", "const a = try needsAny; yield a", "any"},
+		{"r-never", "const a = try poll; yield a", "never"},
+		{"generic-r", "R", "generic"},
+		{"generic-r-scope", "R | Scope.Scope", "generic"},
 		{"scope-in-ordinary-effect", "", "control"},
 	}
 	keys := make([]string, len(sites))
@@ -50,10 +62,14 @@ func FuzzProducerScopeInference(f *testing.F) {
 		choice, _ := keyedChoice(keys, data)
 		site := sites[choice]
 		prelude := "import { Effect, Scope, Stream } from \"effect\";\ndeclare const poll: Effect.Effect<number>;\nexport interface A { readonly a: number }\nexport interface B { readonly b: number }\ndeclare const needsA: Effect.Effect<number, never, A>;\ndeclare const needsB: Effect.Effect<number, never, B>;\n"
+		prelude += "type ScopeA = Scope.Scope | A; type BrandedScope = Scope.Scope & { readonly brand: \"scope\" }; declare const needsScopeA: Effect.Effect<number, never, Scope.Scope | A>; declare const needsScopeAB: Effect.Effect<number, never, Scope.Scope | A | B>; declare const needsAliasScopeA: Effect.Effect<number, never, ScopeA>; declare const needsScopeAndA: Effect.Effect<number, never, Scope.Scope & A>; declare const needsBrandedScope: Effect.Effect<number, never, BrandedScope>; declare const needsAB: Effect.Effect<number, never, A | B>; declare const needsOnlyScope: Effect.Effect<number, never, Scope.Scope>; declare const needsUnknown: Effect.Effect<number, never, unknown>; declare const needsAny: Effect.Effect<number, never, any>; "
 		var source string
 		if site.want == "control" {
 			// An ordinary effect function keeps Scope: the subtraction is the producer's alone.
 			source = prelude + "export effect function f() { const child = try Effect.forkScoped(poll); return 7 }\nconst same: Effect.Effect<number, never, Scope.Scope> = f()\nconst back: ReturnType<typeof f> = null as unknown as Effect.Effect<number, never, Scope.Scope>\nexport {}"
+		} else if site.want == "generic" {
+			contract := "<R>(work: Effect.Effect<number, never, " + site.body + ">) => Stream.Stream<number, never, Exclude<R, Scope.Scope>>"
+			source = prelude + "export effect function* p<R>(work: Effect.Effect<number, never, " + site.body + ">) { const a = try work; yield a }\nconst same: " + contract + " = p\nconst back: typeof p = null as unknown as (" + contract + ")\nexport {}"
 		} else {
 			source = prelude + "export effect function* p() { " + site.body + " }\nconst same: Stream.Stream<number, never, " + site.want + "> = p()\nconst back: ReturnType<typeof p> = null as unknown as Stream.Stream<number, never, " + site.want + ">\nexport {}"
 		}

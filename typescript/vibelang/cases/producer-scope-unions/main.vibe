@@ -1,0 +1,49 @@
+// expect-result: [7,7]
+// VIP-21 and decided detail 225: infer Exclude<RBody, Scope.Scope>, including
+// unions, aliases, structural Scope subtypes and unresolved type parameters.
+// The two assignments check every inferred requirement in both directions.
+import { union, twoServices, alias, intersection, branded, services, scopeOnly, unknownR, anyR, neverR } from "./held.ts"
+import type { A, B } from "./held.ts"
+import type { Scope } from "effect"
+export effect function* unionItems() { yield try union }
+const unionForward: Stream.Stream<number, never, A> = unionItems()
+const unionBackward: ReturnType<typeof unionItems> = null as unknown as Stream.Stream<number, never, A>
+export effect function* twoServicesItems() { yield try twoServices }
+const twoServicesForward: Stream.Stream<number, never, A | B> = twoServicesItems()
+const twoServicesBackward: ReturnType<typeof twoServicesItems> = null as unknown as Stream.Stream<number, never, A | B>
+export effect function* aliasItems() { yield try alias }
+const aliasForward: Stream.Stream<number, never, A> = aliasItems()
+const aliasBackward: ReturnType<typeof aliasItems> = null as unknown as Stream.Stream<number, never, A>
+export effect function* intersectionItems() { yield try intersection }
+const intersectionForward: Stream.Stream<number, never, never> = intersectionItems()
+const intersectionBackward: ReturnType<typeof intersectionItems> = null as unknown as Stream.Stream<number, never, never>
+export effect function* brandedItems() { yield try branded }
+const brandedForward: Stream.Stream<number, never, never> = brandedItems()
+const brandedBackward: ReturnType<typeof brandedItems> = null as unknown as Stream.Stream<number, never, never>
+export effect function* servicesItems() { yield try services }
+const servicesForward: Stream.Stream<number, never, A | B> = servicesItems()
+const servicesBackward: ReturnType<typeof servicesItems> = null as unknown as Stream.Stream<number, never, A | B>
+export effect function* scopeOnlyItems() { yield try scopeOnly }
+const scopeOnlyForward: Stream.Stream<number, never, never> = scopeOnlyItems()
+const scopeOnlyBackward: ReturnType<typeof scopeOnlyItems> = null as unknown as Stream.Stream<number, never, never>
+export effect function* unknownRItems() { yield try unknownR }
+const unknownRForward: Stream.Stream<number, never, unknown> = unknownRItems()
+const unknownRBackward: ReturnType<typeof unknownRItems> = null as unknown as Stream.Stream<number, never, unknown>
+export effect function* anyRItems() { yield try anyR }
+const anyRForward: Stream.Stream<number, never, any> = anyRItems()
+const anyRBackward: ReturnType<typeof anyRItems> = null as unknown as Stream.Stream<number, never, any>
+export effect function* neverRItems() { yield try neverR }
+const neverRForward: Stream.Stream<number, never, never> = neverRItems()
+const neverRBackward: ReturnType<typeof neverRItems> = null as unknown as Stream.Stream<number, never, never>
+export effect function* generic<R>(work: number!!(R)) { yield try work }
+const genericForward: <R>(work: number!!(R)) => Stream.Stream<number, never, Exclude<R, Scope.Scope>> = generic
+const genericBackward: typeof generic = null as unknown as (<R>(work: number!!(R)) => Stream.Stream<number, never, Exclude<R, Scope.Scope>>)
+export effect function* genericScoped<R>(work: number!!(R | Scope.Scope)) { yield try work }
+const genericScopedForward: <R>(work: number!!(R | Scope.Scope)) => Stream.Stream<number, never, Exclude<R, Scope.Scope>> = genericScoped
+const genericScopedBackward: typeof genericScoped = null as unknown as (<R>(work: number!!(R | Scope.Scope)) => Stream.Stream<number, never, Exclude<R, Scope.Scope>>)
+export effect function main() {
+  return [
+    try Stream.runFold(intersectionItems(), () => 0, (sum: number, value: number) => sum + value),
+    try Stream.runFold(scopeOnlyItems(), () => 0, (sum: number, value: number) => sum + value)
+  ]
+}

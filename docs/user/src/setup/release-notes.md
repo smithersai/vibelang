@@ -253,6 +253,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A local `break` from `finally` in a `do` expression could retain the `try` or `catch` value. It now carries the finalizer's completion value, including `undefined` for an empty abrupt completion; a normal finalizer preserves the protected value.
 
+
+- Producers could leak a `Scope` requirement from unions, aliases or structural subtypes; their inferred `Stream` now excludes `Scope` from the complete requirement type, including generics.
 - With `stripInternal`, an `@internal` schema lost both its constant and type alias from declarations; it now drops only the constant, matching the equivalent Effect TypeScript pair.
 
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.

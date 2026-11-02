@@ -1,0 +1,16 @@
+import { Effect, Stream } from "effect";
+import type { A, B } from "./held.ts";
+import type { Scope } from "effect";
+export declare function unionItems(): Stream.Stream<number, never, A>;
+export declare function twoServicesItems(): Stream.Stream<number, never, A | B>;
+export declare function aliasItems(): Stream.Stream<number, never, A>;
+export declare function intersectionItems(): Stream.Stream<number, never, never>;
+export declare function brandedItems(): Stream.Stream<number, never, never>;
+export declare function servicesItems(): Stream.Stream<number, never, A | B>;
+export declare function scopeOnlyItems(): Stream.Stream<number, never, never>;
+export declare function unknownRItems(): Stream.Stream<number, never, unknown>;
+export declare function anyRItems(): Stream.Stream<number, never, any>;
+export declare function neverRItems(): Stream.Stream<number, never, never>;
+export declare function generic<R>(work: Effect.Effect<number, never, R>): Stream.Stream<number, never, Exclude<R, Scope.Scope>>;
+export declare function genericScoped<R>(work: Effect.Effect<number, never, R | Scope.Scope>): Stream.Stream<number, never, Exclude<R, Scope.Scope>>;
+export declare function main(): Effect.Effect<number[], never, never>;

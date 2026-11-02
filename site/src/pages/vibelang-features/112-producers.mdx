@@ -92,7 +92,7 @@ effect function alerts() {
 // Output: ["25 C","28 C"]
 ```
 
-A producer has type `Stream.Stream<Value, Error, Requirements>`: Stream operators accept it directly, and TypeScript consumers see a Stream in its declaration file. For inferred body requirements `RBody`, the `Stream` requires `Exclude<RBody, Scope.Scope>`: `Stream.callback` supplies `Scope`, so a scoped child fork alone needs no external `Scope`. Other service requirements remain, and this does not change explicit annotation checks or values of type `Scope.Scope`. `examples/pipeline` uses this filter, map, and take pattern.
+A producer has type `Stream.Stream<Value, Error, Requirements>`: Stream operators accept it directly, and TypeScript consumers see a Stream in its declaration file. For inferred body requirements `RBody`, the `Stream` requires `Exclude<RBody, Scope.Scope>`: `Stream.callback` supplies `Scope`, so a scoped child fork alone needs no external `Scope`. This exclusion also applies inside unions and aliases: `Scope.Scope | Users` becomes `Users`, while a requirement that extends `Scope.Scope`, such as `Scope.Scope & Users`, becomes `never`. Generic requirements retain `Exclude<RBody, Scope.Scope>`. Other service requirements remain, and this does not change explicit annotation checks or values of type `Scope.Scope`. `examples/pipeline` uses this filter, map, and take pattern.
 
 When Stream operators consume a producer, `Stream.callback` runs it on its own fiber with a one-element buffer, and closing the Stream interrupts it and runs cleanup.
 
