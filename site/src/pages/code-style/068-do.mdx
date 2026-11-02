@@ -94,9 +94,11 @@ effect function intervalRecord() {
 
 This is the VibeLang form of the same sequence. In a TypeScript file, `Effect.gen(function* () { ... })` binds each Effect result with `yield*` to a local name; in a `.vibe` file, an effect function sequences those operations with `try`. Use `effect { ... }` when a combinator needs an Effect built from several statements. `do { ... }` is a TC39 do expression: it runs immediately and gives the block's normal completion value. Operands to its left are evaluated first. In a derived constructor, a `this` read before a later `do` that calls `super()` still reads an uninitialized receiver; moving `super()` into the `do` does not make that earlier read valid.
 
-`do` keeps ordinary expression typing: `const exact = do { 1 }` has type `1`, while `let ordinary = do { 1 }` widens to `number`. `do { 7; {} }` retains `7`, because the empty block inherits the preceding value; an entirely empty `do` gives `undefined`. `provide` and interruption blocks preserve these completion values too, including values carried through a locally consumed `break`.
+`do` keeps ordinary expression typing: `const exact = do { 1 }` has type `1`, while `let ordinary = do { 1 }` widens to `number`. A written type where the `do` stands, such as a function's return type, reaches the alternatives that produce the value, so `(flag: boolean): 'a' | 'b' => do { flag ? 'a' : 'b' }` compiles as the conditional would in place. `do { 7; {} }` retains `7`, because the empty block inherits the preceding value; an entirely empty `do` gives `undefined`. `provide` and interruption blocks preserve these completion values too, including values carried through a locally consumed `break`.
 
 In plain code, a `try`/`finally` inside `do` keeps the `try` or `catch` value when `finally` finishes normally. A jump from `finally` replaces that completion: `do { label: { try { 1 } finally { 2; break label } } }` gives `2`; omitting `2;` gives `undefined`.
+
+A `do` block cannot end with a declaration, including `var` (`EK0201`). Write `do { var value = 1; value }` to supply a value; its `var` still hoists to the enclosing function. Empty statements or blocks after the declaration do not make a final declaration valid.
 
 An `effect function*` produces a Stream with `yield`. A plain `function*` is a JavaScript generator. Consume a Stream with `for try`.
 
