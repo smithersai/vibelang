@@ -17,6 +17,8 @@ bun docs/tools/check-snippets.ts
 `TMPDIR` may name a symlink to a temporary directory. The checker resolves that directory before creating example projects, so compiler diagnostics still belong to their Markdown blocks and later pages are checked.
 
 
+Snippet projects link individual packages from both dependency trees, including every child of a shared scope such as `@effect`. Earlier packages retain priority, and extending an existing scoped link leaves its shared installation unchanged.
+
 The checker extracts `vibe` and `ts` fences under `docs/user`. The fence sets the language: a `vibe` block
 compiles as a `.vibe` module, a `ts` block as a `.ts` module. It also checks
 `ts effect` comparison blocks. Mark deliberate fragments with `// fragment`;

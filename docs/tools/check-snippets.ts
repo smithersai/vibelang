@@ -1,5 +1,5 @@
 // Run from the repository root: bun docs/tools/check-snippets.ts
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join, posix, relative, resolve } from "node:path"
 import { createRequire } from "node:module"
@@ -186,6 +186,24 @@ export function runtimeDir(): string {
   return process.env.VIBELANG_RUNTIME_DIR || join(repo, "packages/runtime")
 }
 
+// A scope is a local namespace, not a package: two dependency trees can
+// provide different children. Preserve an existing linked scope without
+// writing additional packages into its shared dependency installation.
+function localPackageScope(scope: string) {
+  if (!existsSync(scope)) { mkdirSync(scope, { recursive: true }); return }
+  if (!lstatSync(scope).isSymbolicLink()) return
+  const original = realpathSync(scope)
+  const staged = mkdtempSync(join(dirname(scope), ".snippet-scope-"))
+  const previous = staged + "-previous"
+  try {
+    for (const child of readdirSync(original)) symlinkSync(join(original, child), join(staged, child))
+    renameSync(scope, previous)
+    try { renameSync(staged, scope) }
+    catch (cause) { renameSync(previous, scope); throw cause }
+    unlinkSync(previous)
+  } finally { rmSync(staged, { recursive: true, force: true }) }
+}
+
 // Links the packages that every page project imports into temp/node_modules.
 export function linkModules(temp: string) {
   const modules = join(temp, "node_modules")
@@ -207,10 +225,14 @@ export function linkModules(temp: string) {
   const dependencies = [join(repo, "experiments/node_modules"), join(repo, "docs/tools/node_modules")]
   for (const source of dependencies) {
     if (!existsSync(source)) continue
-    for (const name of readdirSync(source).filter(n => !n.startsWith("."))) {
+    const packages = readdirSync(source).filter(n => !n.startsWith(".")).flatMap(name =>
+      name.startsWith("@") ? readdirSync(join(source, name)).filter(child => !child.startsWith(".")).map(child => join(name, child)) : [name])
+    for (const name of packages) {
       if (name === "vibelang-runtime" || name === "vibelang-vite") continue
       const target = join(modules, name)
-      if (!existsSync(target)) symlinkSync(join(source, name), target)
+      if (existsSync(target)) continue
+      if (name.startsWith("@")) localPackageScope(dirname(target))
+      symlinkSync(join(source, name), target)
     }
   }
   if (!existsSync(join(modules, "vibelang"))) symlinkSync(join(repo, "packages/compiler"), join(modules, "vibelang"))

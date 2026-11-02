@@ -1,0 +1,1 @@
+{"property":"docs-scoped-modules","rule":"Existing tools work.","repo":"vibelang","pattern":"runtime and docs dependencies share @effect but provide platform-node and vitest separately","input":{"first":["@effect/platform-node"],"second":["@effect/vitest"],"existing":"none","scope":"@effect"}}
