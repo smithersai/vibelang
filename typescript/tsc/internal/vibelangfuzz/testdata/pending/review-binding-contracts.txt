@@ -71,25 +71,7 @@ FuzzCollectionOperandDomain stream-never-direct compiler VIP-18/VIP-19/VIP-20 Ch
 FuzzCollectionOperandDomain corpus:stream-never-direct compiler VIP-18/VIP-19/VIP-20 Chapter 2/detail288: resolved binding, written Stream container or named collection operand domain; lane core-fortry
 FuzzCollectionOperandDomain stream-never-nested-block compiler VIP-18/VIP-19/VIP-20 Chapter 2/detail288: resolved binding, written Stream container or named collection operand domain; lane core-fortry
 FuzzCollectionOperandDomain corpus:stream-never-nested-block compiler VIP-18/VIP-19/VIP-20 Chapter 2/detail288: resolved binding, written Stream container or named collection operand domain; lane core-fortry
-FuzzEffectQualifierBinding array-renamed compiler VIP-14 Chapter 5/detail289: resolved binding, written Stream container or named collection operand domain; lane impl-hunt-svc
-FuzzEffectQualifierBinding corpus:array-renamed compiler VIP-14 Chapter 5/detail289: resolved binding, written Stream container or named collection operand domain; lane impl-hunt-svc
-FuzzEffectQualifierBinding string-renamed compiler VIP-14 Chapter 5/detail289: resolved binding, written Stream container or named collection operand domain; lane impl-hunt-svc
-FuzzEffectQualifierBinding corpus:string-renamed compiler VIP-14 Chapter 5/detail289: resolved binding, written Stream container or named collection operand domain; lane impl-hunt-svc
-FuzzEffectQualifierBinding number-renamed compiler VIP-14 Chapter 5/detail289: resolved binding, written Stream container or named collection operand domain; lane impl-hunt-svc
-FuzzEffectQualifierBinding corpus:number-renamed compiler VIP-14 Chapter 5/detail289: resolved binding, written Stream container or named collection operand domain; lane impl-hunt-svc
 FuzzSchemaMappedBinding readonly-local compiler VIP-15/detail286: a shadowed Readonly type must not dispatch as the mapped library built-in; lane impl-hunt-data
 FuzzSchemaMappedBinding corpus:readonly-local compiler VIP-15/detail286: a shadowed Readonly type must not dispatch as the mapped library built-in; lane impl-hunt-data
 FuzzSchemaMappedBinding readonly-imported compiler VIP-15/detail286: a shadowed Readonly type must not dispatch as the mapped library built-in; lane impl-hunt-data
 FuzzSchemaMappedBinding corpus:readonly-imported compiler VIP-15/detail286: a shadowed Readonly type must not dispatch as the mapped library built-in; lane impl-hunt-data
-FuzzEffectQualifierBinding array-root compiler VIP-14 Chapter 5/detail289: a written Effect import keeps native namespace membership and must report TS2339 for this absent root module; lane impl-hunt-svc
-FuzzEffectQualifierBinding corpus:array-root compiler VIP-14 Chapter 5/detail289: a written Effect import keeps native namespace membership and must report TS2339 for this absent root module; lane impl-hunt-svc
-FuzzEffectQualifierBinding array-subpath compiler VIP-14 Chapter 5/detail289: a written Effect import keeps native namespace membership and must report TS2339 for this absent root module; lane impl-hunt-svc
-FuzzEffectQualifierBinding corpus:array-subpath compiler VIP-14 Chapter 5/detail289: a written Effect import keeps native namespace membership and must report TS2339 for this absent root module; lane impl-hunt-svc
-FuzzEffectQualifierBinding string-root compiler VIP-14 Chapter 5/detail289: a written Effect import keeps native namespace membership and must report TS2339 for this absent root module; lane impl-hunt-svc
-FuzzEffectQualifierBinding corpus:string-root compiler VIP-14 Chapter 5/detail289: a written Effect import keeps native namespace membership and must report TS2339 for this absent root module; lane impl-hunt-svc
-FuzzEffectQualifierBinding string-subpath compiler VIP-14 Chapter 5/detail289: a written Effect import keeps native namespace membership and must report TS2339 for this absent root module; lane impl-hunt-svc
-FuzzEffectQualifierBinding corpus:string-subpath compiler VIP-14 Chapter 5/detail289: a written Effect import keeps native namespace membership and must report TS2339 for this absent root module; lane impl-hunt-svc
-FuzzEffectQualifierBinding number-root compiler VIP-14 Chapter 5/detail289: a written Effect import keeps native namespace membership and must report TS2339 for this absent root module; lane impl-hunt-svc
-FuzzEffectQualifierBinding corpus:number-root compiler VIP-14 Chapter 5/detail289: a written Effect import keeps native namespace membership and must report TS2339 for this absent root module; lane impl-hunt-svc
-FuzzEffectQualifierBinding number-subpath compiler VIP-14 Chapter 5/detail289: a written Effect import keeps native namespace membership and must report TS2339 for this absent root module; lane impl-hunt-svc
-FuzzEffectQualifierBinding corpus:number-subpath compiler VIP-14 Chapter 5/detail289: a written Effect import keeps native namespace membership and must report TS2339 for this absent root module; lane impl-hunt-svc
