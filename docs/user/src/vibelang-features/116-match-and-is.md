@@ -57,8 +57,6 @@ A `return` or an outer labeled jump in `for try` head binding initialization sti
 
 ## Patterns
 
-Nested object and array patterns keep each captured subject through an `is` binding. A property getter used by the nested pattern runs once, as it does in a `match` arm.
-
 `[]` matches an empty iterable, including an empty string. A regex literal accepts the same extractor suffix as a named regex, such as `/re/(let match)` or `/re/()`. When `not(...)` or `not[...]` also parses as prefix negation, that parse wins regardless of a local function named `not`; qualify an extractor as `helpers.not(...)`.
 
 | Pattern | Matches | Example |
@@ -73,7 +71,7 @@ Nested object and array patterns keep each captured subject through an `is` bind
 | `and`, `or`, `not` | Conjunction, alternative, or negation | `when "a" or "e":` |
 | Guard | A condition that is true | `when [let n] and if (n > 0):` |
 
-`var` is not allowed in pattern bindings (`EK0107`). Binding names may start with `$`, as ordinary TypeScript identifiers do; a `const` binding keeps its assignment checks. Use `let` or `const`, including inside an `is` pattern; the quick fix and `vibelang --fix` replace `var` with `let`.
+`var` is not allowed in pattern bindings (`EK0107`).
 
 ```vibe
 // pending: VIP-5, VIP-7, VIP-14
@@ -267,7 +265,7 @@ Only unguarded arms cover cases. Literal and enum-member patterns cover their ca
 
 An object pattern such as `{ _tag: "Sent", let tracking }` covers its tag case only for members that declare every other tested property as required. Each other property test must be a bare key or a `let` or `const` binding. Members sharing a tag are checked separately. Only a bare binding covers the `undefined` case of an optional `_tag`.
 
-`or` covers the union of its alternatives. `and`, `not`, regex, relational, array, built-in matcher and user-matcher patterns cover nothing. An `and` whose other side only binds, such as `{ _tag: "Square" } and let square`, covers what its test covers. Add `default` when cases remain. Runtime matching continues to use the pinned TC39 rules.
+`or` covers the union of its alternatives. `and`, `not`, regex, relational, array, built-in matcher and user-matcher patterns cover nothing. Add `default` when cases remain. Runtime matching continues to use the pinned TC39 rules.
 
 Any subject member outside these checked kinds turns the check off. Examples include `string` or `number` without a literal type, `unknown`, `any`, `object`, an untagged array or class instance, or a type parameter that does not normalize to checked cases. Such a match compiles without a `default` arm, and a value that no arm matches throws the proposal's `TypeError` at run time. To handle the rest, add a `default` arm, an arm that matches every value of its type, such as `when String:` over a `string`, or a bind-only arm such as `when let other:`.
 

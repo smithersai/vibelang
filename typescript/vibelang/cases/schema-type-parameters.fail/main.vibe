@@ -1,3 +1,0 @@
-// expect: EK1502
-// A generic schema is an ordinary generic function that returns a Schema value.
-export schema S<A> { a: string }

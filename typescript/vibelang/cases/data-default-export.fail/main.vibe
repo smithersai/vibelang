@@ -1,3 +1,0 @@
-// expect: EK1603
-// A data type has a name: declare it and write export { D as default }.
-export default data D { A; B }

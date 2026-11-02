@@ -290,8 +290,8 @@ export schema Shipment {
 }
 
 export interface Manifest {
-  readonly depot: string
-  parcels: Array<Shipment>
+  depot: string
+  mutable parcels: Array<Shipment>
 }
 ```
 

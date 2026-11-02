@@ -13,7 +13,6 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ## 0.0.11 (unreleased)
 - A `throw` in a plain function drew `EK4804`, `EK4811` or `EK4815`, the advisories about what an Effect function's typed failure fails with, though a plain function's `throw` is JavaScript's (VIP-4); t3code's throwing plain helpers failed the migrate flow's style gate on them. Only an Effect function's `throw` reports them now.
 - The migrate flow's `record` formatted a batch's `.vibe` files with `vibelang-format`, which takes only the quote style and print width from a dprint configuration, so where that configuration loads VibeLang's dprint plugin, `dprint check` failed on them over settings such as `trailingCommas` and `arrowFunction.useParentheses` (Smithers: 258 files); `record` now runs the repository's `dprint fmt` on those files.
-- The migrate flow's setup left a package script that runs a workspace package's Node bin, such as Smithers' `pnpm exec smthrs target '//:targetIndex' --write`, without VibeLang's loader, so the program failed as soon as a source it loads was `.vibe`; setup now gives such a script `NODE_OPTIONS="--import=vibelang/register"` when the bin's imports reach migrated sources.
 - A `do` expression ending in a declaration, a loop or an `if` without an `else` reported TypeScript's `TS1109`; it now reports `EK0201`, which names the statement (decided detail 247). A `do` ending in `break` or `continue` does not also report `EK0201`; a permitted jump keeps its enclosing target. A `do` ending in a labeled block, a `switch` (an empty case block included), an empty statement or a `var` statement is admitted, as the proposal's predicate admits them, and a `switch` clause ending in a loop, a bare `if` or a declaration is `EK0201`. A `do` ending in an empty interruption block, `do { uninterruptible {} }`, returned the block's marker call and failed to run; it is `undefined`.
 | `try do { …; value }` in effect code whose value is not an Effect, such as `try do { try sleep(d); "late" }` | The `do` was a program that `try` ran; it now runs where it stands and `try` runs its value (VIP-2), so a value that is not an Effect is `EK0502`. `vibelang --fix` writes `try effect { return do { … } }`, which runs the block when `try` does and keeps its completion value. |
 | A `do { … }` passed where an Effect is expected, such as `exit(do { 1 })` | `do` always runs immediately (VIP-2). `vibelang --fix` writes `exit(effect { return do { 1 } })`, delaying the block until the Effect runs and keeping its TC39 completion value. Ordinary `do` expressions stay immediate. |
@@ -71,7 +70,6 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Pattern bindings in parameter defaults and enum initializers reported a generic unsupported-binding error; they now identify the unsettled lexical scope with `EK0705`.
 - Once the migrate flow moved an Oxlint JS plugin's modules to `.vibe`, every lint failed with `ERR_UNKNOWN_FILE_EXTENSION ".vibe"`, since Oxlint loads plugins through Node; setup now preloads `vibelang/register` in each script that runs Oxlint and in the plugin package's test scripts.
 - The migrate flow's setup with `--no-wire` skipped wiring entirely, so a package of the run that an earlier setup had not wired, such as t3code's `oxlint-plugin-t3code`, `scripts` and `evals`, kept `tsc` and had no `vibelang-runtime`, and a migrated module there failed to load with `ERR_MODULE_NOT_FOUND`; setup now wires each such package with the specifiers the wired packages already use, and leaves the rest of the target as it was.
-- Adjacent `data` variants and payload fields reported a TypeScript semicolon error. They now report `EK1605` and offer a quick fix to insert `;`.
 - The migrate flow left a lint script that runs Oxlint in parentheses, `(oxlint --disable-nested-config)`, without its `.vibe` ESLint pass, and did the same to `(oxfmt --check .)` and `(prettier --check .)`, so those tools skipped `.vibe` files; each rerun of setup also added another layer of ESLint passes to a wired script, kept an earlier run's pass with the wrong `-c` configuration, and re-added the `**/*.d.vibe.ts` ESLint ignore once a formatter had requoted it. Each of these scripts now gets its pass, setup rewrites the passes it wrote before, and a rerun changes nothing.
 - `vibelang --fix` checked the whole project for each trial when no error traced to the fixes it was trying, so a package with many such fixes spent hours on a round's last few: on a generated project, 240 modules took 245 whole checks where 60 took 65. It now looks for a trial's errors in the files that reported errors earlier in the round, and checks the kept fixes against the whole project once at the end: the same 240 modules take 4 whole checks, and a fix refused this way names the first error of those files.
 - `vibelang --fix` checked the whole project once for each fix that added an error to another file, so a package with many such fixes took time that grew with the square of its size: on a generated project, 240 modules took 78 checks and 6.5 s where 60 took 24 and 0.9 s. It now finds the fixes behind the errors of different files together, in a few checks of those files, and prints the checks of each round in its progress line. When the prelude's rewrites added an error together, it also checked the project once for each file it rewrote; it now finds the rewrites that add one as it finds the fixes that do.
@@ -148,7 +146,6 @@ The fixes keep a rewrite only when it adds no compiler error.
 
 | Before | After and repair |
 | `vibelang.tracing` or mapper `options.tracing` | Remove the unsupported option. Add named operation spans explicitly with `try withSpan(program, "name")`. |
-| `when var name:` or a `var` binding in an `is` pattern | Pattern bindings use `let` or `const` (`EK0107`, VIP-7). The quick fix and `vibelang --fix` replace the pattern's `var` with `let`. |
 | --- | --- |
 | `effect@4.0.6` and `@effect/*@4.0.6` | Effect 4.1.0 is now the minimum supported version, pinned exactly: install `effect@4.1.0` and `@effect/*@4.1.0`; the runtime refuses any other version. Effect 4.1 removed `effect/Crypto` and `TestCrypto`, so `Crypto` in a `.vibe` file is the DOM's again. Use `effect/crypto`'s services: `SecureRandom.randomBytes(16)`, `SecureRandom.uuidV4()` and `SecureRandom.intBetween(min, max)` for `Crypto.randomBytes`, `Crypto.randomUUIDv4()` and `Crypto.randomIntBetween`; `Digest.digest(Digest.sha256, bytes)` for `Crypto.digest("SHA-256", bytes)`; `Mac` and `Signature` for HMAC and signatures. `NodeServices.layer` and `BunServices.layer` no longer provide a crypto service: provide `NodeCrypto.layer`, `BunCrypto.layer` or `BrowserCrypto.layer`. `Experimental.Crypto` keeps its members, and its platform layers provide Effect's crypto services too. Node.js 22.19.0 is the minimum for `@effect/platform-node`. A test terminal built with `Terminal.make` must now supply `size`, a scoped queue of resizes, such as `size: Queue.unbounded<Terminal.Size, Cause.Done>()`. |
 | A value after `catch`: `x catch "guest"`, `x catch onErr`, `x catch effect { … }`, `x catch async (e) => 7` | A `catch` handler is a function literal (VIP-5, amended 2026-10-29); anything else is `EK0509`. `vibelang --fix` writes `x catch () => "guest"`, `x catch (e) => onErr(e)`, `x catch effect () => { … }` and `x catch (e) => 7`; a value that is an Effect, such as `x catch Effect.succeed(1)`, becomes `x catch effect () => try Effect.succeed(1)`, which runs it as the old fallback did. In a chain or a conditional's test it parenthesizes the inner `catch`: `(a catch () => b) catch () => c`. |
@@ -289,9 +286,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The specification gave `vibelang.declarationImportStyle` a second path, `compilerOptions.vibelang.declarationImportStyle`, two sibling keys (`trustedPackages`, `tracing`) and the TypeScript code `TS6046`, none approved by a proposal; chapter 7 now names only the root key, VIP-30 publishes it, the compiler is unchanged, and `//:spec-lint` rejects a configuration key no accepted VIP names.
 - The specification said a relative `./x.ts` import reaches `x.vibe`, a resolution rule no proposal approved; chapter 7 no longer states it, the compiler still resolves such imports, and a new specification linter (`//:spec-lint`) rejects resolution claims VIP-39's table does not list.
-- An `is` pattern binding whose name began with `$`, such as `let $id`, could report a missing internal name; source binding names now remain distinct from compiler-generated temporaries, including `const` bindings and escaped identifiers.
-- A `var` binding in a match pattern could compile without an error, and an `is` binding could crash the compiler; both now report `EK0107`, with a quick fix and `vibelang --fix` repair to `let`.
-- Nested object and array patterns in an `is` test could report a missing internal name or narrow a value to `never`; captured subjects now keep the same internal name through binding hoisting and name hygiene.
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 
 - Migration setup could leave a native type exported through a TypeScript namespace barrel as an error type in project-aware linters; setup now enables source declaration redirects in owned configs and records those edits.
@@ -484,7 +478,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A resource accepted by a union's data member could still report `EK4301` when an inferred type argument ruled out its generic callable member; member matching now uses the completed call's inference, including arrays and later callback arguments.
 
 - Compiler benchmarks could report success after docs extraction failed and omit or measure an incomplete corpus; they now stop with the extractor's exit status and retain its logs and partial corpus.
-- The conversion and migration prompts showed an interface that dropped `readonly` and added a no-op `mutable` marker; the example now preserves the source property modifiers.
 - After the migrate flow renamed a module to `.vibe`, an importer that named it through a tsconfig `paths` alias, `@/composer/schema`, kept that spelling, which the project’s `bun check` script invoking stock TypeScript cannot resolve (`TS2307`); the codemod now writes `@/composer/schema.vibe` there too, as for a relative import, and `revert` puts it back.
 
 
@@ -498,8 +491,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 - Passing an Effect function to a `Function` destination could bypass `EK4301` after generic union matching; callable destinations now keep the synchronous-callback check.
-
-- A migration left a repository’s lint configuration naming `x.ts` after the module became `x.vibe`, so a rule the repository had turned off for that file came back. Setup, the codemod and `revert` now keep literal Oxlint and ESLint paths pointing at each module, and setup repairs paths that earlier runs left behind.
 
 - Migration codemods could stall on brace-heavy literals or broaden a test selector; source-name wiring now scans source inventories with cached, bounded matchers and proves the final selected filenames and counts unchanged.
 - `vibelang --fix` moved a TypeScript call out of `Effect.sync(() => label())` into an `effect` block, where EK4401 refused it and the whole file stayed unconverted. The thunk now stays, because it is the boundary that makes the call's exceptions defects.
@@ -924,8 +915,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A predicate pattern whose parameter had a type, such as `when isText:` with `isText(s: string | number): s is string`, narrowed the subject to the function's type, so `s.toUpperCase()` in the arm and `s.toFixed()` in `default` did not compile, and a call-only extractor with a typed parameter bound `any`. The arm and `default` now narrow as `if (isText(s))` does, and the bindings take the extractor's element types.
 
-- An arm that used `not`, or `and` with two tests, counted toward exhaustiveness, so `match (x) { when true and true: 1; when false: 0; }` compiled; such an arm now covers nothing, and the match needs another arm or a `default` (`EK4701`).
-
 - `vibelang/bun` scanned every module of every dependency and resolved each of their imports a second time, so a large package's tests ran about three times slower and timed out with no `.vibe` module loaded; it now stops at `node_modules`, and a 294-module import graph costs about the same with the preload as without it.
 
 - `vibelang --fix` deleted `import * as Schema from "effect/Schema"` when a `Schema.TaggedError` class was its only use, and rewrote a class whose module has another name, so the declaration file changed; in a project that emits declarations it now keeps the import and leaves such a class.
@@ -948,8 +937,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 - `when Array(let n):` bound the whole array, a typed-array extractor bound the whole value, `when pair(let a, let b):` threw at run time when `pair` was a plain function, and a class whose matcher declared its hint as `{ matchType: "extractor" }` typed its bindings as the class instance. `Array` and typed arrays now list their elements, as the proposal says, a plain function is called with the value and `{ matchType: "extractor" }` and returns `false` or the values, and the matcher's declared return type types the bindings.
-
-- `export default schema S` and `export default data D` reported a TypeScript syntax error that named no repair, and `schema S<A>` reported `TS2304`; they now report `EK1501`, `EK1603` and `EK1502`, each with its repair.
 
 - `vibelang-format` and the `vibelang/prettier` plugin wrote double quotes and wrapped at 120 columns whatever the repository's formatter settings said, so in a repository such as foldkit (Oxfmt, `singleQuote`, `printWidth: 80`) `.vibe` files differed in style from its `.ts` files. They now take the quote style and print width from the repository's Oxfmt, Prettier or dprint configuration, or from Prettier's options.
 
@@ -1446,7 +1433,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 | `when -0:` or `when +0:` written to match either zero | Write `when 0:`, which matches both zeros. A signed zero now matches only that zero, and `EK4701` reports a `match` that relied on it to cover `0`. |
 | An explicitly `readonly` schema field referencing mutable or uncertain decoded key flags | `EK2109`: run `vibelang --fix` to retain the existing codec as an explicit `Schema.Struct` value. Nested value mutability is unchanged. |
-| A `match` with no `default` that relies on a `not` arm, or an `and` arm with two tests, to cover a case | `EK4701`: add an arm that covers the case, or a `default` arm. |
 
 - EK4802's quick fix "Call it to run it" was offered in a function whose written contract rejects what the call runs, such as `return Exit.fail("data")` in an `unknown!!` function, and applying it added EK2001. It is now offered only where the contract accepts the call's failure, requirements and success.
 

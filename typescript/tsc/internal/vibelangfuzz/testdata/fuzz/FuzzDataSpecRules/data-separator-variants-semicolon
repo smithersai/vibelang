@@ -1,3 +1,0 @@
-go test fuzz v1
-string("data-separator-variants-semicolon")
-byte(0)

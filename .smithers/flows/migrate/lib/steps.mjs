@@ -17,7 +17,6 @@ import { bareVibeExports, fixToFixedPoint, importerFile, pathAliases, restoreExp
 import { restoreViteScripts } from "./vite-config.mjs"
 import { applyState, durableWrite, prepareReferences, prepareState, saveState } from "./codemod-state.mjs"
 import { checkSelectorEdits, restoreSourceLiterals, rewriteSourceLiterals } from "./source-paths.mjs"
-import { followLintRenames } from "./lint-paths.mjs"
 import { splitBatchPlatform } from "./platform.mjs"
 import { check, newErrors, styleProblems, summarize } from "./diagnostics.mjs"
 import { preservedErrorAdvisories } from "./preserved-errors.mjs"
@@ -45,7 +44,6 @@ import { wireDeveloperTools } from "./tooling.mjs"
 import { wireTypecheckBuild } from "./typecheck-build.mjs"
 import { planEmittedImports, applyEmittedImports } from "./emitted-imports.mjs"
 import { wireOxlintPlugins } from "./oxlint-plugins.mjs"
-import { wireNodeBins } from "./node-bins.mjs"
 import { readToolchain } from "./toolchain.mjs"
 import { probeVip1, probeTargetVip1 } from "./vip-flip.mjs"
 import { assertPortable, machineRoots } from "./portable.mjs"
@@ -900,9 +898,6 @@ export async function wireTarget(config, log) {
   const vite = Wire.wireVite({ root: t, packages: packages, test: config.test, ts, specsFor })
   changed.push(...vite.changed.filter((file) => !changed.includes(file)))
   warnings.push(...vite.warnings)
-  // And every script that runs a workspace Node bin reaching migrated sources, such as Smithers' smthrs.
-  const nodeBins = wireNodeBins({ root: t, packages: packages, manifests: Wire.repositoryPackages(t).filter((pkg) => Wire.ownedPaths(t)(posix.join(pkg.dir, "package.json"))), ts, specsFor })
-  changed.push(...nodeBins.changed.filter((file) => !changed.includes(file)))
   const tooling = wireDeveloperTools({ root: t, specsFor, ts })
   changed.push(...tooling.changed.filter(file => !changed.includes(file)))
   warnings.push(...tooling.warnings)
@@ -933,9 +928,6 @@ export async function wireTarget(config, log) {
   const typecheck = wireTypecheckBuild(config)
   changed.push(...typecheck.changed.filter(file => !changed.includes(file)))
   warnings.push(...typecheck.warnings)
-  // A lint path an earlier run's rename left behind names the module where it is now.
-  const lintPaths = followLintRenames(t, await Jj.trackedFiles(t))
-  changed.push(...new Set(lintPaths.map((edit) => edit.config).filter((file) => !changed.includes(file))))
   // What setup wrote is in the repository's own format.
   const formatted = await formatWritten(t, changed, join(log, "setup-format.log"))
   if (formatted.code !== 0) warnings.push(`${formatted.formatter} exited ${formatted.code} on the files setup wrote; see ${join(log, "setup-format.log")}`)
@@ -1241,11 +1233,6 @@ export async function codemod(options) {
     state.referencePending = false
     saveState(p.codemodState(b), state)
   }
-  // Lint configuration names each renamed module by its .vibe path (foldkit-107); kept in the state so a resumed run records it.
-  if (!state.lintPaths) {
-    state.lintPaths = followLintRenames(t, await Jj.trackedFiles(t))
-    saveState(p.codemodState(b), state)
-  }
   const { renames, exportEdits, importEdits, refEdits = [], scriptEdits = [], referenceEdits = [], referenceWarnings = [], referenceScan, selectorChecks = [] } = state
   const platform = state.platform ?? { splits: [], refused: [] }
   const attempt = state.attempts.length + 1
@@ -1288,7 +1275,7 @@ export async function codemod(options) {
   const emittedJs = await emitMigratedJs(config, t, join(p.batch(b), "logs"))
   state.attempts.at(-1).finishedAt = new Date().toISOString()
   saveState(p.codemodState(b), state)
-  const result = { batch: b, at: new Date().toISOString(), files, platform: platformResult, formatted, renames, exportEdits, importEdits, lintPaths: state.lintPaths, refEdits, scriptEdits, referenceEdits, referenceWarnings, referenceScan, selectorChecks, fix: { settled, rounds, byFile, totals: rewriteTotals(byFile), refused } }
+  const result = { batch: b, at: new Date().toISOString(), files, platform: platformResult, formatted, renames, exportEdits, importEdits, refEdits, scriptEdits, referenceEdits, referenceWarnings, referenceScan, selectorChecks, fix: { settled, rounds, byFile, totals: rewriteTotals(byFile), refused } }
   result.emittedJs = emittedJs
   durableWrite(p.codemod(b), JSON.stringify(result, null, 2) + "\n")
   return result
@@ -1471,9 +1458,6 @@ export async function revertMany(options) {
   const revertFormatLog = join(p.batch(b), "logs", "revert-format.log")
   const revertedFormat = await formatWritten(config.target, rewritten, revertFormatLog)
   for (const result of results) result.formatted = { ...revertedFormat, log: revertedFormat.files.length ? posix.relative(p.run, revertFormatLog) : null }
-  // The lint configuration names the modules by their TypeScript paths again (foldkit-107).
-  const lintPaths = followLintRenames(config.target, await Jj.trackedFiles(config.target))
-  for (const result of results) result.lintPaths = lintPaths
   writeJson(p.reverted(b), [...readJsonIf(p.reverted(b), []), ...results])
   return results
 }

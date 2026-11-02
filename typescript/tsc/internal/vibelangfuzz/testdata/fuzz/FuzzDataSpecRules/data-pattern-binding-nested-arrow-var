@@ -1,3 +1,0 @@
-go test fuzz v1
-string("pattern-binding-nested-arrow-var")
-byte(0)

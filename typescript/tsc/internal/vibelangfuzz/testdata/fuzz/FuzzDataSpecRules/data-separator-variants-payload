@@ -1,3 +1,0 @@
-go test fuzz v1
-string("data-separator-variants-payload")
-byte(0)

@@ -35,6 +35,10 @@ FuzzDataSpecRules feature:schema-error-priority-constructor compiler VIP-29: sch
 FuzzDataSpecRules corpus:data-schema-error-priority-constructor compiler VIP-29: schema-error-priority-constructor does not emit the single first-priority diagnostic from chapter 3; lane vip-decls; reproduction of feature:schema-error-priority-constructor
 FuzzDataSpecRules feature:declaration-schema compiler VIP-15: exported schema declarations omit Schema.mutableKey wrappers for writable fields, changing instance and constructor types; lane vip-decls
 FuzzDataSpecRules corpus:data-declaration-schema compiler VIP-15: minimized exported writable schema contract; lane vip-decls; reproduction of feature:declaration-schema
+FuzzDataSpecRules feature:exhaustive-and-does-not-cover compiler VIP-7: the combinator incorrectly establishes finite coverage; lane vip-match
+FuzzDataSpecRules corpus:data-exhaustive-and-does-not-cover compiler VIP-7: minimized exhaustive-and-does-not-cover witness; lane vip-match; reproduction of feature:exhaustive-and-does-not-cover
+FuzzDataSpecRules feature:exhaustive-not-does-not-cover compiler VIP-7: the combinator incorrectly establishes finite coverage; lane vip-match
+FuzzDataSpecRules corpus:data-exhaustive-not-does-not-cover compiler VIP-7: minimized exhaustive-not-does-not-cover witness; lane vip-match; reproduction of feature:exhaustive-not-does-not-cover
 FuzzDataSpecRules feature:exhaustive-error-undefined-complete compiler VIP-7: the undefined literal pattern is rejected with EK1005; lane vip-match
 FuzzDataSpecRules corpus:data-exhaustive-error-undefined-complete compiler VIP-7: minimized exhaustive-error-undefined-complete witness; lane vip-match; reproduction of feature:exhaustive-error-undefined-complete
 FuzzDataSpecRules feature:generic-helper-names-1 compiler VIP-28: the emitted generic helper does not use the documented collision suffix; lane vip-core2

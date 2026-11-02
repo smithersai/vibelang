@@ -37,38 +37,7 @@ import (
 // whose notes say why the arm did not count. The primitive classes test
 // typeof, which accepts every value of their type, so their arms count.
 
-func init() {
-	checker.RegisterFlowNarrowingHook(narrowOpenClassArm)
-	checker.RegisterFlowNarrowingHook(narrowUncoveredArm)
-}
-
-// narrowUncoveredArm is the flow narrowing hook for the tests of and and not
-// in a match with no default arm, which the parser wraps in parentheses
-// flagged NodeFlagsVibeLang: those patterns cover nothing (chapter 004,
-// Coverage), so where such a test fails its subject stays as it was. test is
-// a leaf of the flagged expression, as the binder flows it; a ! between them
-// turns the leaf's assumption around.
-func narrowUncoveredArm(_ *checker.Checker, _ *ast.Node, t *checker.Type, test *ast.Node, assumeTrue bool, _ func(*ast.Node, *checker.Type, *ast.Node) *checker.Type) *checker.Type {
-	negated := false
-	for node := test; node != nil; node = node.Parent {
-		switch {
-		case node.Kind == ast.KindParenthesizedExpression:
-			if node.Flags&ast.NodeFlagsVibeLang != 0 {
-				if assumeTrue == negated {
-					return t
-				}
-				return nil
-			}
-		case node.Kind == ast.KindPrefixUnaryExpression && node.AsPrefixUnaryExpression().Operator == ast.KindExclamationToken:
-			negated = !negated
-		case ast.IsBinaryExpression(node) && ast.IsLogicalBinaryOperator(node.AsBinaryExpression().OperatorToken.Kind):
-		case node == test:
-		default:
-			return nil
-		}
-	}
-	return nil
-}
+func init() { checker.RegisterFlowNarrowingHook(narrowOpenClassArm) }
 
 // narrowOpenClassArm is the checker's flow narrowing hook for a class arm of
 // a match: where the arm fails, it leaves reference, the subject or a part of
@@ -353,10 +322,6 @@ func uncountedArmNotes(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 		visit = func(node *ast.Node) bool {
 			if ast.IsFunctionLike(node) {
 				return false
-			}
-			if node.Kind == ast.KindParenthesizedExpression && node.Flags&ast.NodeFlagsVibeLang != 0 && !seen["and"] {
-				seen["and"] = true
-				notes = append(notes, "An arm that uses not, or and with two tests, covers no case: add an arm that covers it, or a default arm.")
 			}
 			if matcher, tested := classArmTest(node); matcher != nil {
 				root := tested

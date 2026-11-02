@@ -1,3 +1,0 @@
-go test fuzz v1
-string("is-dollar-name-2-const")
-byte(0)

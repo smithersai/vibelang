@@ -1137,7 +1137,6 @@ func (p *Parser) parseSchemaDeclaration(pos int, jsdoc jsdocScannerInfo, modifie
 	keyword := p.scanner.TokenRange()
 	p.nextToken() // schema
 	name := p.parseBindingIdentifier()
-	p.skipSchemaTypeParameters()
 	var members []*ast.Node
 	body := name.Loc
 	form := VibeSyntax{Kind: VibeSyntaxDeclaration, Name: "schema", Head: core.NewTextRange(keyword.Pos(), name.End())}

@@ -1,3 +1,0 @@
-go test fuzz v1
-string("data-separator-variants-reserved")
-byte(0)

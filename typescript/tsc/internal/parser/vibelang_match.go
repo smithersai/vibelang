@@ -134,10 +134,6 @@ type matchPath func() *ast.Node
 type matchCompile struct {
 	anchor core.TextRange
 	inline bool // inside or, not, or an is without an if or while: no declarations
-	// uncovered marks the tests of and and not, which cover nothing, in a match
-	// with no default arm, for EK4701 (chapter 004, Coverage). With a default arm
-	// no coverage is checked, and the arms narrow as TypeScript does.
-	uncovered bool
 }
 
 // ---------------------------------------------------------------- parsing
@@ -588,7 +584,7 @@ func (p *Parser) hoistDeclaration(decl *ast.Node, at core.TextRange) *ast.Node {
 	name, value := declaration.Name(), declaration.Initializer()
 	hoisted := p.mConst(name, ast.NodeFlagsLet, nil, name.Loc)
 	hoisted.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0].Flags |= ast.NodeFlagsVibeLangPatternHoist
-	if name.Flags&ast.NodeFlagsReparsed == 0 {
+	if !strings.HasPrefix(name.Text(), "$") {
 		// A named binding: when another declaration of its home already
 		// declares the name, the rename quick fix finds it by this mark
 		// (vibelang/fix_binding_rename.go).
@@ -606,7 +602,7 @@ func (p *Parser) hoistDeclaration(decl *ast.Node, at core.TextRange) *ast.Node {
 	p.vibelangHoists[hoisted] = true
 	p.reparseList = append(p.reparseList, hoisted)
 	var target *ast.Node
-	if name.Flags&ast.NodeFlagsReparsed != 0 {
+	if strings.HasPrefix(name.Text(), "$") {
 		target = p.mTemp(name.Text(), name.Loc)
 	} else {
 		target = p.mIdent(name.Text(), name.Loc)
@@ -1148,16 +1144,7 @@ func (p *Parser) compilePattern(pat *pattern, path matchPath, steps *[]matchStep
 			test(p.patternErrorCall(4702, "", at))
 			return
 		}
-		flags := pat.bindFlags
-		value := path()
-		if flags == ast.NodeFlagsNone {
-			// when var x: is EK0107, as var is everywhere in a .vibe file. The
-			// recovery still binds x as let, so later references check.
-			// Coverage derives from the original binding pattern.
-			value = p.mParens(p.mBinary(p.patternErrorCall(107, "", at), ast.KindCommaToken, value, at), at)
-			flags = ast.NodeFlagsLet
-		}
-		*steps = append(*steps, matchStep{decl: p.mConst(pat.name, flags, value, pat.name.Loc)})
+		*steps = append(*steps, matchStep{decl: p.mConst(pat.name, pat.bindFlags, path(), pat.name.Loc)})
 	case patternGuard:
 		// The parentheses span the guard's expression, so that the language
 		// service finds its names.
@@ -1277,12 +1264,8 @@ func (p *Parser) compilePattern(pat *pattern, path matchPath, steps *[]matchStep
 			return p.mCall(p.mProperty(extracted(), "slice", at), []*ast.Node{p.mNumber(n, at)}, at)
 		}, func() *ast.Node { return p.mProperty(extracted(), "length", at) }, steps, ctx)
 	case patternAnd:
-		first := len(*steps)
 		for _, item := range pat.items {
 			p.compilePattern(item, path, steps, ctx)
-		}
-		if !bindsBesideOneTest(pat.items) {
-			p.markUncovered(*steps, first, ctx, at)
 		}
 	case patternOr:
 		var alternatives []*ast.Node
@@ -1291,56 +1274,8 @@ func (p *Parser) compilePattern(pat *pattern, path matchPath, steps *[]matchStep
 		}
 		test(p.mParens(p.joinTests(alternatives, ast.KindBarBarToken, at), at))
 	case patternNot:
-		first := len(*steps)
 		inner := p.mParens(p.inlinePattern(pat.items[0], path, ctx), at)
 		test(p.vibelangSpanning(p.factory.NewPrefixUnaryExpression(ast.KindExclamationToken, inner), at))
-		p.markUncovered(*steps, first, ctx, at)
-	}
-}
-
-// bindsBesideOneTest reports whether at most one of items tests anything: the
-// others, let x or { let key }, only bind. Such an and covers what its test
-// covers, as the form vibelang --fix writes for a Match handler's parameter
-// needs: { _tag: "Square" } and let square.
-func bindsBesideOneTest(items []*pattern) bool {
-	tests := 0
-	for _, item := range items {
-		if !onlyBinds(item) {
-			tests++
-		}
-	}
-	return tests <= 1
-}
-
-// onlyBinds reports whether pat binds names and tests only that the keys it
-// names exist.
-func onlyBinds(pat *pattern) bool {
-	switch pat.kind {
-	case patternBinding:
-		return true
-	case patternObject:
-		for _, clause := range pat.clauses {
-			if clause.computed || clause.pattern != nil && clause.pattern.kind != patternBinding {
-				return false
-			}
-		}
-		return pat.rest == nil || pat.rest.kind == patternBinding
-	}
-	return false
-}
-
-// markUncovered wraps the tests of steps from first on in parentheses flagged
-// NodeFlagsVibeLang, which the checker's narrowUncoveredArm reads (match_closed.go
-// in package vibelang): where such a test fails, the subject stays as it was.
-func (p *Parser) markUncovered(steps []matchStep, first int, ctx *matchCompile, at core.TextRange) {
-	if !ctx.uncovered {
-		return
-	}
-	for i := first; i < len(steps); i++ {
-		if test := steps[i].test; test != nil {
-			steps[i].test = p.mParens(test, testsSpan(at, test))
-			steps[i].test.Flags |= ast.NodeFlagsVibeLang
-		}
 	}
 }
 
@@ -1378,8 +1313,8 @@ func (p *Parser) enterSubject(path matchPath, pat *pattern, steps *[]matchStep, 
 	}
 	p.vibelangMatchTemps++
 	name := "$match" + strconv.Itoa(p.vibelangMatchTemps)
-	*steps = append(*steps, matchStep{decl: p.mConst(p.mTemp(name, pat.anchor), ast.NodeFlagsConst, path(), pat.anchor)})
-	return func() *ast.Node { return p.mTemp(name, pat.anchor) }
+	*steps = append(*steps, matchStep{decl: p.mConst(p.mIdent(name, pat.anchor), ast.NodeFlagsConst, path(), pat.anchor)})
+	return func() *ast.Node { return p.mIdent(name, pat.anchor) }
 }
 
 // subjectReads returns how many times compilePattern, outside an inline
@@ -1477,7 +1412,7 @@ func (p *Parser) compileList(pat *pattern, path matchPath, n int, element func(i
 // inlinePattern writes pat as one boolean expression, for or, not, and an
 // is outside an if or while condition. A binding there is EK4702.
 func (p *Parser) inlinePattern(pat *pattern, path matchPath, ctx *matchCompile) *ast.Node {
-	inner := &matchCompile{anchor: ctx.anchor, inline: true, uncovered: ctx.uncovered}
+	inner := &matchCompile{anchor: ctx.anchor, inline: true}
 	var steps []matchStep
 	p.compilePattern(pat, path, &steps, inner)
 	var tests []*ast.Node
@@ -1590,14 +1525,13 @@ func (p *Parser) isExpression(info *isInfo, pos int) *ast.Node {
 func (p *Parser) matchStatements(info *matchInfo, success func(value *ast.Node, at core.TextRange) []*ast.Node, unmatched func(subject *ast.Node, at core.TextRange) *ast.Node) []*ast.Node {
 	path, decl := p.subjectPath(info.subject, info.anchor, "$match")
 	out := []*ast.Node{decl}
-	hasDefault := slices.ContainsFunc(info.arms, func(arm matchArm) bool { return arm.pattern == nil })
 	defaulted := false
 	for i := range info.arms {
 		arm := &info.arms[i]
 		span := core.NewTextRange(arm.anchor.Pos(), arm.end)
 		var steps []matchStep
 		if arm.pattern != nil {
-			p.compilePattern(arm.pattern, path, &steps, &matchCompile{anchor: arm.anchor, uncovered: !hasDefault})
+			p.compilePattern(arm.pattern, path, &steps, &matchCompile{anchor: arm.anchor})
 		}
 		if !arm.hoisted {
 			// An arm is its own lexical scope (chapter 004): the bindings of

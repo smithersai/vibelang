@@ -59,8 +59,6 @@ const specTests = [
   "TestErrorShallowReadonlyQuoted",
   "TestDoForTryDiagnosticOwnerQuoted",
   "TestDoDeclarationBytesQuoted",
-  "TestDoContextualResultQuoted",
-  "TestMigrationRootResolutionQuoted",
   "TestSpecifierWrittenJSX",
 
   "TestStockConsumerResolutionQuoted",
@@ -81,7 +79,6 @@ const specTests = [
   "TestDeclarationPreludeModesQuoted",
   "TestNativeOutputSpecifierRulesQuoted",
   "TestLegacyConfigCommentsQuoted",
-  "TestSchemaLibraryBindingQuoted",
   "TestSeverityScopeQuoted",
   "TestUnrelatedSeverityKeepsDiagnosticDefaults",
   "TestDiagnosticSeverityScopeRegression",

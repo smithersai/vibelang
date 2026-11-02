@@ -1,3 +1,0 @@
-go test fuzz v1
-string("pattern-binding-array-match-var")
-byte(0)

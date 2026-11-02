@@ -1,3 +1,0 @@
-go test fuzz v1
-string("pattern-binding-extractor-is-var")
-byte(0)

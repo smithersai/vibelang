@@ -1,2 +1,0 @@
-// expect: EK1501
-export default schema S = string

@@ -19,8 +19,8 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,341 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 15,307 |
-| The skill and the user guide (140 pages) | 369,275 |
-| The user guide alone | 364,934 |
+| The skill and the user guide (140 pages) | 368,445 |
+| The user guide alone | 364,104 |
 | The specification (10 chapters) | 150,525 |
 | The decision log, `docs/design/history/DECISIONS.md` | 141,629 |
 
@@ -131,9 +131,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Zed](../setup/zed.md) | 479 |
 | [Other editors](../setup/other-editors.md) | 492 |
 | [Coding agents](../setup/coding-agents.md) | 1,062 |
-| **Upgrade** | **86,393** |
-| [Release notes](../setup/release-notes.md) | 86,393 |
-| **All 19 pages** | **120,032** |
+| **Upgrade** | **85,774** |
+| [Release notes](../setup/release-notes.md) | 85,774 |
+| **All 19 pages** | **119,413** |
 
 ### Guides
 
@@ -208,11 +208,11 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Pattern Matching](../code-style/067-pattern-matching.md) | 1,921 |
 | [Excessive Nesting](../code-style/068-do.md) | 1,382 |
 | [Control Flow Operators](../code-style/069-control-flow.md) | 2,025 |
-| **Data Types** | **19,714** |
+| **Data Types** | **19,628** |
 | [BigDecimal](../data-types/070-bigdecimal.md) | 1,500 |
 | [Cause](../data-types/071-cause.md) | 1,324 |
 | [Chunk](../data-types/072-chunk.md) | 992 |
-| [Data](../data-types/073-data.md) | 3,420 |
+| [Data](../data-types/073-data.md) | 3,334 |
 | [DateTime](../data-types/074-datetime.md) | 3,217 |
 | [Duration](../data-types/075-duration.md) | 1,408 |
 | [Result](../data-types/076-result.md) | 1,661 |
@@ -257,7 +257,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Platform globals in VibeLang](../platform/platform-globals.md) | 6,199 |
 | [Cloudflare Workers](../platform/cloudflare-workers.md) | 790 |
 | [Alchemy](../platform/alchemy.md) | 2,527 |
-| **All 101 pages** | **173,795** |
+| **All 101 pages** | **173,709** |
 
 ### VibeLang features
 
@@ -268,10 +268,10 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Building an HTTP API](113-building-an-http-api.md) | 1,649 |
 | [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 6,101 |
 | [Cheat sheet](115-cheat-sheet.md) | 10,966 |
-| [Pattern matching with match and is](116-match-and-is.md) | 6,970 |
+| [Pattern matching with match and is](116-match-and-is.md) | 6,845 |
 | [Diagnostic code map](diagnostic-code-map.md) | 2,414 |
 | [Experimental platform APIs](118-experimental-platform-apis.md) | 3,813 |
-| **All 8 pages** | **34,758** |
+| **All 8 pages** | **34,633** |
 
 ### Specification
 
