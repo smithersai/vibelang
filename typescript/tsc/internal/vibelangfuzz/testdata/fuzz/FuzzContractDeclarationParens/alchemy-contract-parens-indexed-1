@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("indexed|\u0001\u0001")

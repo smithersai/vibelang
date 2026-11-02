@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("conditional|\u0002\u0002")
