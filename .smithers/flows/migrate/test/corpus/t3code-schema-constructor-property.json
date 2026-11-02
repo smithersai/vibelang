@@ -1,0 +1,15 @@
+{
+  "property": "MigrationSchemaConstructorGate",
+  "rule": "Retain only the warning owned by the same refused Schema.TaggedError class and source file; retain errors and unrelated diagnostics.",
+  "input": {
+    "name": 0,
+    "directory": 0,
+    "sameClass": true,
+    "sameFile": true,
+    "refused": true,
+    "selected": true,
+    "reverse": false,
+    "category": "warning",
+    "newline": "\n"
+  }
+}

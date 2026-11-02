@@ -318,15 +318,17 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The native resource example in the denied `using` proposal omitted acquisition and disposal from its Effect TypeScript counterpart; it now keeps the native `using` declaration in the outer generator.
 
+- Migration could reject a retained schema class for its constructor warning; regression properties now keep the exemption limited to the correct class and file.
+
 - Repaired native loop migrations now have strict corpus checks while retaining the remaining iterator gaps.
 
-- Plain callable roots, match results and JavaScript try/catch now have strict regression checks after their migration gaps were resolved.
+- Plain callable roots, `match` results and JavaScript `try`/`catch` now have strict regression checks after their migration gaps were resolved.
 
-- Repaired declaration namespaces and explicit Effect import membership now have strict regression checks instead of resolved pending records.
+- Repaired declaration namespaces and explicit `Effect` import membership now have strict regression checks instead of resolved pending records.
 
 - Pattern-binding and sidecar regression checks now cite the settled project-option and final-resolved-path rules, retaining their native TypeScript controls.
 
-- Top-level Promise awaits now have strict regression checks after their pending compiler gaps were resolved.
+- Top-level `Promise` awaits now have strict regression checks after their pending compiler gaps were resolved.
 
 - The compiler fuzz suite treated a warning configured as an error through legacy `vibelang.diagnostics` as a compiler defect; it now checks each parsed legacy override while retaining modern settings and unrelated defaults.
 
