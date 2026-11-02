@@ -393,6 +393,13 @@ promise must remain pending until the compiler is released by `SIGUSR2`; the
 finishing probe holds the backend grace clock with Node mock timers. All
 process, pipe, grace-period and hang-guard checks still run.
 
+The mapper hover runner, `packages/ts-mapper/test/lsp-hover.mjs`, shares
+`protocol-client.mjs` with the mapper protocol checks. Success, failed checks
+and transport errors all await owned-server cleanup; a peer that ignores
+termination is killed after one second. `//:release` runs
+`scripts/mapper-hover.test.mjs`: real peers cover success and failure paths,
+and generated checks vary frame chunks and server stderr pressure.
+
 The runtime entry tests start up to three host processes in sequence. Each
 child has a `10_000` ms deadline; the whole test allows `35_000` ms so the
 outer deadline covers all three on a busy build host.

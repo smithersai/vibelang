@@ -6,7 +6,7 @@
 //
 // Exits 0 when every expectation holds, 1 otherwise.
 
-import { spawn } from "node:child_process"
+import { client } from "./protocol-client.mjs"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { pathToFileURL } from "node:url"
@@ -41,65 +41,18 @@ function position(at, token) {
   return { line: before.length - 1, character: before.at(-1).length }
 }
 
-const server = spawn(tsc, ["--lsp", "--stdio"], { cwd: projectDir, stdio: ["pipe", "pipe", "pipe"] })
-// The server logs to stderr, including "context canceled" on a clean exit;
-// show the log only when a check fails.
-let serverLog = ""
-server.stderr.on("data", (chunk) => (serverLog += chunk))
-let buffer = Buffer.alloc(0)
-let nextId = 1
-const pending = new Map()
-
-// send writes one JSON-RPC message with LSP framing.
-function send(message) {
-  const body = Buffer.from(JSON.stringify({ jsonrpc: "2.0", ...message }), "utf8")
-  server.stdin.write(`Content-Length: ${body.length}\r\n\r\n`)
-  server.stdin.write(body)
-}
-
-// request sends a request and resolves with its result.
-function request(method, params) {
-  const id = nextId++
-  send({ id, method, params })
-  return new Promise((resolve, reject) => pending.set(id, { resolve, reject, method }))
-}
-
-// answer replies to a request the server sent: registrations, configuration
-// and progress all get the neutral answer.
-function answer(message) {
-  if (message.method === "workspace/configuration") {
-    send({ id: message.id, result: message.params.items.map(() => null) })
-  } else {
-    send({ id: message.id, result: null })
-  }
-}
-
-server.stdout.on("data", (chunk) => {
-  buffer = Buffer.concat([buffer, chunk])
-  for (;;) {
-    const headerEnd = buffer.indexOf("\r\n\r\n")
-    if (headerEnd < 0) return
-    const length = Number(/Content-Length: (\d+)/i.exec(buffer.subarray(0, headerEnd).toString())[1])
-    if (buffer.length < headerEnd + 4 + length) return
-    const message = JSON.parse(buffer.subarray(headerEnd + 4, headerEnd + 4 + length).toString("utf8"))
-    buffer = buffer.subarray(headerEnd + 4 + length)
-    if (message.method && message.id !== undefined) {
-      answer(message)
-    } else if (message.id !== undefined && pending.has(message.id)) {
-      const { resolve, reject, method } = pending.get(message.id)
-      pending.delete(message.id)
-      if (message.error) reject(new Error(`${method}: ${message.error.message}`))
-      else resolve(message.result)
-    }
-  }
-})
-
+// Share framing, request deadlines and owned-server teardown with the mapper's
+// protocol tests. The runner still owns the whole check's 60-second deadline.
+const rpc = client(tsc, ["--lsp", "--stdio"], projectDir)
+const request = (method, params) => rpc.request(method, params)
+const send = message => rpc.notify(message.method, message.params)
+let failures = 0
 const timeout = setTimeout(() => {
-  console.error(`lsp-hover: timed out after 60s; server log:\n${serverLog}`)
-  process.exit(1)
+  failures++
+  console.error(`lsp-hover: timed out after 60s; server log:\n${rpc.log()}`)
+  void rpc.close()
 }, 60_000)
 
-let failures = 0
 try {
   await request("initialize", {
     processId: process.pid,
@@ -141,8 +94,9 @@ try {
 } catch (error) {
   failures++
   console.error("lsp-hover:", error.message)
-  server.kill()
+} finally {
+  clearTimeout(timeout)
+  await rpc.close()
 }
-clearTimeout(timeout)
-if (failures > 0) console.error(`lsp-hover: ${failures} check(s) failed; server log:\n${serverLog}`)
-process.exit(failures === 0 ? 0 : 1)
+if (failures > 0) console.error(`lsp-hover: ${failures} check(s) failed; server log:\n${rpc.log()}`)
+process.exitCode = failures === 0 ? 0 : 1
