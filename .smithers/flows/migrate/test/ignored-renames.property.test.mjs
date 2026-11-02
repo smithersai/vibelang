@@ -1,9 +1,10 @@
 import assert from "node:assert/strict"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
+import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
-import { test } from "node:test"
+import { after, test } from "node:test"
 import * as Jj from "../lib/jj.mjs"
 import { renameBatch } from "../lib/codemod.mjs"
 import { must } from "../lib/util.mjs"
@@ -13,12 +14,21 @@ const fc = require("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/alchemy-ignored-source-rename.json", import.meta.url), "utf8"))
 const contract = readFileSync(new URL("../README.md", import.meta.url), "utf8")
 const raw = process.env.VIBELANG_IGNORED_RENAMES_RAW === "1"
-const fixtures = fileURLToPath(new URL("./.ignored-rename-fixtures/", import.meta.url))
-mkdirSync(fixtures, { recursive: true })
+// Fixture repositories live outside the source tree: //packages:compiler-test
+// keys every file under the flow, and a jj workspace would snapshot them.
+const fixtures = mkdtempSync(join(tmpdir(), "ignored-rename-fixtures-"))
+after(() => rmSync(fixtures, { recursive: true, force: true }))
 const put = (root, path, text) => {
   mkdirSync(dirname(join(root, path)), { recursive: true })
   writeFileSync(join(root, path), text)
 }
+
+test("fixture repositories live outside the flow's source tree", () => {
+  // //packages:compiler-test keys every file under the flow, hidden directories
+  // included, while //packages:migrate-test runs this file beside it.
+  const flow = fileURLToPath(new URL("..", import.meta.url))
+  assert.ok(!fixtures.startsWith(flow), fixtures)
+})
 
 test("the migration contract records the files the batch renamed", () => {
   assert.ok(contract.includes("Renames the batch to `.vibe`"))
