@@ -1,0 +1,6 @@
+{
+  "repo": "t3code",
+  "pattern": "apps/desktop/src/permissions/MacSettingsWindow.ts has a private schema value and same-name exported type",
+  "pending": { "key": "t3code:platform-split-schema-value-import", "owner": "migfix-t3code" },
+  "input": { "kind": "schema", "name": "Shape", "collision": true, "detached": false, "newline": "\n", "blank": 1, "pending": "t3code:platform-split-schema-value-import" }
+}
