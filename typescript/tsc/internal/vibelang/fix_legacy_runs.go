@@ -85,7 +85,7 @@ func (m *legacyModel) runOf(call *ast.Node) (legacyRun, string) {
 // keeps each round free of the errors a mark alone adds, as x + 1 for x the
 // call of a newly marked function.
 func (m *legacyModel) effectResult(call *ast.Node) bool {
-	if legacyEffectResult(m.a.checker, call) {
+	if legacyEffectResult(m.a.checker, call) || legacyValueReceiverCall(m.a, call) {
 		return true
 	}
 	signature := m.a.checker.GetResolvedSignature(call)
@@ -753,4 +753,54 @@ func (m *legacyModel) catchHeadRuns(node *ast.Node) *ast.Node {
 		return nil
 	}
 	return left
+}
+
+// legacyValueReceiverCall reports whether call is receiver.method(…), where
+// receiver names a const that a legacy call of an Effect value initializes,
+// as fileSystem in const fileSystem = FileSystem.FileSystem(), and method
+// returns an Effect. The old compiler ran that call and gave the service;
+// after VIP-1 the call is TS2349, so the checker types receiver as an error
+// and cannot see that the method's call ran too, which left foldkit's
+// devtools-mcp readRecordFile half migrated (EK9202). The migration rewrites
+// the initializer as try FileSystem.FileSystem (effectValueCallEdits), so the
+// method is read on the value's success type.
+func legacyValueReceiverCall(a *analyzer, call *ast.Node) bool {
+	if !ast.IsCallExpression(call) {
+		return false
+	}
+	callee := ast.SkipParentheses(call.Expression())
+	if !ast.IsPropertyAccessExpression(callee) {
+		return false
+	}
+	receiver := ast.SkipParentheses(callee.Expression())
+	if !ast.IsIdentifier(receiver) {
+		return false
+	}
+	c := a.checker
+	symbol := c.GetSymbolAtLocation(receiver)
+	if symbol == nil || symbol.ValueDeclaration() == nil {
+		return false
+	}
+	declaration := symbol.ValueDeclaration()
+	if !ast.IsVariableDeclaration(declaration) || declaration.Initializer() == nil || declaration.Type() != nil {
+		return false
+	}
+	initializer := ast.SkipParentheses(declaration.Initializer())
+	if !legacyEffectValueCall(a, ast.GetSourceFileOfNode(declaration), initializer) {
+		return false
+	}
+	success := varianceChannel(c, c.GetApparentType(c.GetTypeAtLocation(initializer.Expression())), "_A")
+	if success == nil {
+		return false
+	}
+	method := c.GetPropertyOfType(c.GetApparentType(success), callee.Name().Text())
+	if method == nil {
+		return false
+	}
+	for _, signature := range c.GetSignaturesOfType(c.GetTypeOfSymbol(method), checker.SignatureKindCall) {
+		if isEffectType(c, c.GetReturnTypeOfSignature(signature)) {
+			return true
+		}
+	}
+	return false
 }
