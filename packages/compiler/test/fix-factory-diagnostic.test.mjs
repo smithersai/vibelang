@@ -35,17 +35,30 @@ function vibelang(root, ...args) {
   return spawnSync(native, args, { cwd: root, encoding: "utf8" })
 }
 
-test("--fix retains an existing factory callback diagnostic across body rewrites", {skip}, (t)=>{
- const root=project(t, "export const cb:(...args:any[])=>void=Effect.catchTags({Bad:()=>Effect.fail(1)})\n")
- const result=vibelang(root,"--fix","--pretty","false")
- assert.equal(result.status,2,result.stdout+result.stderr)
- assert.match(result.stdout,/EK4301/)
- assert.doesNotMatch(result.stdout,/not fixed|refused/)
- const text=readFileSync(join(root,"main.vibe"),"utf8")
- // No try runs the handler's Effect.fail, so no fix writes a throw (VIP-1, VIP-5).
- assert.match(text,/Effect\.fail\(1\)/)
- const second=vibelang(root,"--fix","--pretty","false")
- assert.equal(second.status,2,second.stdout+second.stderr)
- assert.match(second.stdout,/0 fixes in 0 files/)
- assert.equal(readFileSync(join(root,"main.vibe"),"utf8"),text)
+test("--fix accepts an ordinary factory at a void destination without running its Effect", { skip }, (t) => {
+  const root = project(t, "export const cb:(...args:any[])=>void=Effect.catchTags({Bad:()=>Effect.fail(1)})\n")
+  const result = vibelang(root, "--fix", "--pretty", "false")
+  assert.equal(result.status, 0, result.stdout + result.stderr)
+  assert.doesNotMatch(result.stdout, /EK4301|not fixed|refused/)
+  const text = readFileSync(join(root, "main.vibe"), "utf8")
+  assert.match(text, /Effect\.fail\(1\)/)
+  assert.doesNotMatch(text, /throw 1/)
+  const second = vibelang(root, "--fix", "--pretty", "false")
+  assert.equal(second.status, 0, second.stdout + second.stderr)
+  assert.match(second.stdout, /0 fixes in 0 files/)
+  assert.equal(readFileSync(join(root, "main.vibe"), "utf8"), text)
+})
+
+test("--fix retains a native factory return-type error across body rewrites", { skip }, (t) => {
+  const root = project(t, "export const cb:(...args:any[])=>number=Effect.catchTags({Bad:effect ()=>try Effect.fail(1)})\n")
+  const result = vibelang(root, "--fix", "--pretty", "false")
+  assert.equal(result.status, 2, result.stdout + result.stderr)
+  assert.match(result.stdout, /TS2322/)
+  assert.doesNotMatch(result.stdout, /not fixed|refused/)
+  const text = readFileSync(join(root, "main.vibe"), "utf8")
+  assert.match(text, /throw 1/)
+  const second = vibelang(root, "--fix", "--pretty", "false")
+  assert.equal(second.status, 2, second.stdout + second.stderr)
+  assert.match(second.stdout, /0 fixes in 0 files/)
+  assert.equal(readFileSync(join(root, "main.vibe"), "utf8"), text)
 })

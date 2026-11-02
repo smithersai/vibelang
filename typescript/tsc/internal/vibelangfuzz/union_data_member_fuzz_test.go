@@ -2,41 +2,18 @@ package vibelangfuzz
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
 )
 
-// FuzzUnionDataMember enforces D430: "a call signature or method of the
-// target whose return type is neither definitely an Effect nor a union with
-// such a member is not matched by a source signature or method whose return
-// type is definitely an Effect: that check is EK4301". A value that only a
-// union target's member with no call signature takes meets no call
-// signature of the target, so it draws exactly the diagnostics it draws
-// when the parameter names that member alone. This compares the compiler
-// with itself on two inputs the ruling says agree (RULES.md 1). The input
-// picks the data member (plain, generic with a required or an optional
-// witness), the callable member (plain, generic, none), how the parameter
-// holds the union (directly, a type parameter it constrains, an array of
-// either) and the value (an Effect-returning resource class, a record, a
-// resource the callable member also takes, compared with native TypeScript).
-// alchemy's Provider.effect(Resource, …) and Provider.collection([Account,
-// Certificate]) pass resource classes this way (corpus
-// alchemy-union-data-member-generic).
-//
-// The callable member Function is checked against D513: "a destination whose
-// type is a function type returning a type that is not definitely an Effect,
-// `Function`, or a type parameter that only the function fixes whose
-// constraint is one of these, gives the plain form". Function and
-// (...args: any) => any are in the same row, so a union with one reports
-// what the union with the other does (corpus
-// union-data-member-function-constrained, React's useCallback<T extends
-// Function> shape).
+// FuzzUnionDataMember compares ordinary factory values with native TypeScript
+// under VIP-1/detail303. Keep the historical alchemy resource, generic
+// constraint, array, later-inference and Function controls, and compare
+// each data-only and callable-twin program with its own native counterpart.
 func FuzzUnionDataMember(f *testing.F) {
 	startShortBudget(f)
-	unionDataMemberRuling(f)
+	requireNativeFactoryQuote(f)
 	for _, data := range unionDataForms {
 		for _, holder := range unionHolders {
 			f.Add([]byte("union-data:" + data.name + "/plat-generic/" + holder.name + "/resource"))
@@ -65,26 +42,8 @@ func FuzzUnionDataMember(f *testing.F) {
 	})
 }
 
-// TestUnionDataMemberQuoted fails when D430 is reworded (RULES.md 9).
-func TestUnionDataMemberQuoted(t *testing.T) { unionDataMemberRuling(t) }
-
-const unionDataMemberQuote = "a call signature or method of the target whose return type is neither definitely an Effect nor a union with such a member is not matched by a source signature or method whose return type is definitely an Effect: that check is EK4301"
-
-const functionDestinationQuote = "a destination whose type is a function type returning a type that is not definitely an Effect, `Function`, or a type parameter that only the function fixes whose constraint is one of these, gives the plain form"
-
-func unionDataMemberRuling(tb testing.TB) {
-	tb.Helper()
-	text, err := os.ReadFile(filepath.Join(Root(), "docs/design/history/DECISIONS.md"))
-	if err != nil {
-		tb.Fatal(err)
-	}
-	if !strings.Contains(string(text), unionDataMemberQuote) {
-		tb.Fatalf("D430 no longer says %q", unionDataMemberQuote)
-	}
-	if !strings.Contains(string(text), functionDestinationQuote) {
-		tb.Fatalf("D513 no longer says %q", functionDestinationQuote)
-	}
-}
+// TestUnionDataMemberQuoted pins the current keyword-only function rule.
+func TestUnionDataMemberQuoted(t *testing.T) { requireNativeFactoryQuote(t) }
 
 type unionChoice struct{ name, text string }
 
@@ -102,7 +61,7 @@ var unionCallables = []unionChoice{
 	{"function", "export type Plat<R> = Function"},
 }
 
-// functionTwin is the callable member D513 puts in Function's row.
+// functionTwin checks a distinct native callable destination beside Function.
 var functionTwin = unionChoice{"any-function", "export type Plat<R> = (...args: any) => any"}
 
 // P stands for the parameter's type: U for the union, or Like<any> alone.
@@ -186,12 +145,8 @@ func (in unionDataInput) project(union bool) map[string]string {
 
 const unionDataConfig = `{"compilerOptions":{"target":"ES2022","module":"NodeNext","moduleResolution":"NodeNext","strict":true,"skipLibCheck":true,"types":[],"noEmit":true,"allowImportingTsExtensions":true}}`
 
-// CheckUnionDataMember compares the codes of the union program with those of
-// the data-member program. A value the callable member also takes meets that
-// member's call signature. VIP-1/VIP-26 keep this ordinary call native,
-// including through a type parameter's declared constraint. A generic
-// callable whose marker is incompatible with the inferred witness is instead
-// excluded by the completed call's instantiation.
+// CheckUnionDataMember keeps actual TypeScript assignability for every
+// destination; Function need not be interchangeable with a call signature.
 func CheckUnionDataMember(t *testing.T, w *Workspace, in unionDataInput) {
 	const target = "FuzzUnionDataMember"
 	defer recoverCompilerPanic(t, target)
@@ -217,43 +172,30 @@ func CheckUnionDataMember(t *testing.T, w *Workspace, in unionDataInput) {
 		slices.Sort(out)
 		return out
 	}
-	union := codes(unionFiles)
-	if in.callable.name == "function" {
-		twin := in
-		twin.callable = functionTwin
-		if other := codes(twin.project(true)); !slices.Equal(other, union) {
-			g.Add("feature:union-function-member", "D513: %q; Function and (...args: any) => any give the same form, so the two unions report the same codes.\nwith Function: %v\nwith (...args: any) => any: %v\n%s\n%s", functionDestinationQuote, union, other, unionFiles["lib.ts"], unionFiles["main.vibe"])
-		}
-		g.FinishInput(t, key)
-		return
-	}
-	// A direct generic callable matches the inferred marker only when W
-	// comes solely from platform (the phantom/plain data member). Witnesses,
-	// explicit number, and the later callback fix W to number instead.
-	markerMismatch := in.callable.name == "plat-generic" &&
-		!strings.HasPrefix(in.holder.name, "constrained") &&
-		(in.data.name != "plain" || strings.HasPrefix(in.holder.name, "explicit") || strings.HasPrefix(in.holder.name, "later"))
-	if in.value.name == "platform-resource" && in.callable.text != "" && !markerMismatch {
-		// VIP-1/VIP-26 replace D430's implicit Effect-call boundary here.
-		// This is an ordinary call passing a function value, so compare its
-		// diagnostics with the identical native TypeScript module.
-		requireUnionPlainCallQuote(t)
-		nativeFiles := make(map[string]string, len(unionFiles))
-		for name, text := range unionFiles {
+	nativeCodes := func(files map[string]string) []string {
+		native := make(map[string]string, len(files))
+		for name, text := range files {
 			if name == "main.vibe" {
 				name = "main.ts"
 			}
-			nativeFiles[name] = text
+			native[name] = text
 		}
-		if native := codes(nativeFiles); !slices.Equal(native, union) {
-			g.Add("plain-call:"+in.holder.name, "VIP-26: %q; a plain call passing %s has the same diagnostics as native TypeScript. Native: %v; VibeLang: %v\n%s\n%s", unionPlainCallQuote, in.value.name, native, union, unionFiles["lib.ts"], unionFiles["main.vibe"])
-		}
-		g.FinishInput(t, key)
-		return
+		return codes(native)
 	}
-	alone := codes(in.project(false))
-	if !slices.Equal(alone, union) {
-		g.Add("feature:union-data-member", "D430: %q; the union's callable member takes no %s, so the program reports what the data member alone does.\ndata member alone: %v\nunion: %v\n%s\n%s", unionDataMemberQuote, in.value.name, alone, union, unionFiles["lib.ts"], unionFiles["main.vibe"])
+	check := func(key string, files map[string]string) {
+		vibe, native := codes(files), nativeCodes(files)
+		if !slices.Equal(vibe, native) {
+			g.Add(key+":"+in.holder.name, "VIP-1/detail303: %q; ordinary factory values follow native TypeScript assignability. Native: %v; VibeLang: %v\n%s\n%s", nativeFactoryQuote, native, vibe, files["lib.ts"], files["main.vibe"])
+		}
+	}
+	requireNativeFactoryQuote(t)
+	check("plain-call", unionFiles)
+	if in.callable.name == "function" {
+		twin := in
+		twin.callable = functionTwin
+		check("function-twin", twin.project(true))
+	} else {
+		check("data-call", in.project(false))
 	}
 	g.FinishInput(t, key)
 }

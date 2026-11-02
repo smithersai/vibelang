@@ -1,7 +1,7 @@
-// expect: EK4301
-// Reference program 4 / D9: an effect function (it calls Users.find) passed by name where
-// Array.prototype.forEach drops what its callback returns: each Effect is dropped unrun, EK4301.
-// map keeps them as data (VIP-1).
+// expect:
+// Reference program4: findName is an effect function because it is marked.
+// Array.forEach accepts its value and drops each unrun Effect; map keeps
+// the programs as data, as native TypeScript does (VIP-1/detail303).
 
 class UserNotFound extends TaggedError("UserNotFound")<{ readonly id: string }> {}
 

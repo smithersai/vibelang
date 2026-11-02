@@ -19,17 +19,11 @@ FuzzFunctionBoundaries corpus:fz-func-await-effect-union compiler VIP-1: minimiz
 FuzzEffectChannelsDeclaration feature:effect-channels:vibe-callee compiler Chapter 1 declaration identity: an unannotated .vibe callee adds its E and R but no run, so its never error is no infer-E candidate and `quiet(n)` beside `Effect<A, Error | ApiError>` declares `ApiError | Error` where Effect.fn declares `Error`; lane migfix-alchemy
 FuzzEffectChannelsDeclaration corpus:vibe-callee-beside-union-channel compiler minimized feature:effect-channels:vibe-callee; lane migfix-alchemy
 FuzzUnionDataMember plain-call:direct compiler VIP-1/VIP-26: plain module call retains EK4301 erasure diagnostics absent from native TypeScript; lane impl-hunt-func
-FuzzUnionDataMember corpus:vip1-plain-call-direct compiler VIP-1/VIP-26: minimized plain-call:direct call; lane impl-hunt-func
 FuzzUnionDataMember plain-call:array compiler VIP-1/VIP-26: plain module call retains EK4301 erasure diagnostics absent from native TypeScript; lane impl-hunt-func
-FuzzUnionDataMember corpus:vip1-plain-call-array compiler VIP-1/VIP-26: minimized plain-call:array call; lane impl-hunt-func
 FuzzUnionDataMember plain-call:explicit compiler VIP-1/VIP-26: plain module call retains EK4301 erasure diagnostics absent from native TypeScript; lane impl-hunt-func
-FuzzUnionDataMember corpus:vip1-plain-call-explicit compiler VIP-1/VIP-26: minimized plain-call:explicit call; lane impl-hunt-func
 FuzzUnionDataMember plain-call:explicit-array compiler VIP-1/VIP-26: plain module call retains EK4301 erasure diagnostics absent from native TypeScript; lane impl-hunt-func
-FuzzUnionDataMember corpus:vip1-plain-call-explicit-array compiler VIP-1/VIP-26: minimized plain-call:explicit-array call; lane impl-hunt-func
 FuzzUnionDataMember plain-call:later compiler VIP-1/VIP-26: plain module call retains EK4301 erasure diagnostics absent from native TypeScript; lane impl-hunt-func
-FuzzUnionDataMember corpus:vip1-plain-call-later compiler VIP-1/VIP-26: minimized plain-call:later call; lane impl-hunt-func
 FuzzUnionDataMember plain-call:later-array compiler VIP-1/VIP-26: plain module call retains EK4301 erasure diagnostics absent from native TypeScript; lane impl-hunt-func
-FuzzUnionDataMember corpus:vip1-plain-call-later-array compiler VIP-1/VIP-26: minimized plain-call:later-array call; lane impl-hunt-func
 FuzzLegacyEffectAliasRepair variable:three-object compiler VIP-3: an object type in a written R slot (900 "A required error or requirement slot admits an ordinary object type") fails to parse (TS1005), as a type alias body and inside a type argument, tuple element or function return; lane impl-hunt-func
 FuzzLegacyEffectAliasRepair type-argument:three-object compiler VIP-3: an object type in a written R slot (900 "A required error or requirement slot admits an ordinary object type") fails to parse (TS1005), as a type alias body and inside a type argument, tuple element or function return; lane impl-hunt-func
 FuzzLegacyEffectAliasRepair tuple:three-object compiler VIP-3: an object type in a written R slot (900 "A required error or requirement slot admits an ordinary object type") fails to parse (TS1005), as a type alias body and inside a type argument, tuple element or function return; lane impl-hunt-func

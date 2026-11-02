@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/bundled"
 	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
@@ -13,18 +12,18 @@ import (
 
 // A handler that runs Effect.fail is an effect function (VIP-1), and try runs
 // the Effect (VIP-5); that is the call the direct-form fix edits to throw 1.
-const factoryLabelSource = "export const cb:(...args:any[])=>void=Effect.catchTags({Bad:effect ()=>try Effect.fail(1)})\n"
+const factoryLabelSource = "export const cb:(...args:any[])=>number=Effect.catchTags({Bad:effect ()=>try Effect.fail(1)})\n"
 
 func TestFixFactoryDiagnosticSurvivesArgumentEdit(t *testing.T) {
 	p, file, _, _ := editorProgram(t, factoryLabelSource)
 	before := 0
 	for _, d := range p.GetSemanticDiagnostics(t.Context(), file) {
-		if d.Code() == EK4301.Code {
+		if d.Source() == "" && d.Code() == 2322 {
 			before++
 		}
 	}
 	if before != 1 {
-		t.Fatalf("want one existing callback error; got %d", before)
+		t.Fatalf("want one existing native return-type error; got %d", before)
 	}
 	result := FixProject(t.Context(), p.Host().FS(), bundled.LibPath(), p.CommandLine())
 	fixed := result.Files[file.FileName()]
@@ -34,10 +33,12 @@ func TestFixFactoryDiagnosticSurvivesArgumentEdit(t *testing.T) {
 }
 
 func TestRepeatedFactoriesKeepDiagnosticIdentity(t *testing.T) {
-	oldCall := "Effect.catchTags({Bad:()=>Effect.fail('old')})"
-	newCall := "Effect.catchTags({Bad:()=>Effect.fail('new')})"
-	before := "export const a:(...args:any[])=>void=" + oldCall + ";\nexport const b:infer _=" + newCall + ";\n"
-	next := "export const a:infer _=" + oldCall + ";\nexport const b:(...args:any[])=>void=" + newCall + ";\n"
+	oldCall := "factory('old')"
+	newCall := "factory('new')"
+	head := "declare function factory<const T extends string>(value:T):()=>T;\ndeclare function take<T>(fn: (...args:any[])=>T):void;\n"
+	before := head + "export const a=take<number>(" + oldCall + ");\nexport const b=take<any>(" + newCall + ");\n"
+	next := head + "export const a=take<any>(" + oldCall + ");\nexport const b=take<number>(" + newCall + ");\n"
+
 	p, file, _, _ := editorProgram(t, before)
 	baseline := baselineOf(t.Context(), p)
 	fs := wrapvfs.Wrap(p.Host().FS(), wrapvfs.Replacements{ReadFile: func(name tspath.RootedFilePath) (string, bool) {
@@ -50,18 +51,4 @@ func TestRepeatedFactoriesKeepDiagnosticIdentity(t *testing.T) {
 	if added := addedErrors(t.Context(), after, baseline); len(added) == 0 {
 		t.Fatal("a new callback error replaced an old one under a repeated factory name")
 	}
-}
-
-func TestFactoryLabelRejectsComputedCallee(t *testing.T) {
-	_, file, _, _ := editorProgram(t, "declare const factories:any;declare const name:string;export const x=factories[name]({Bad:()=>Effect.fail(1)});\n")
-	var visit func(*ast.Node) bool
-	visit = func(n *ast.Node) bool {
-		if ast.IsCallExpression(n) && ast.IsElementAccessExpression(n.Expression()) {
-			if got := stableFactoryResultLabel(file, n); got != "" {
-				t.Fatalf("computed factory got stable label %q", got)
-			}
-		}
-		return n.ForEachChild(visit)
-	}
-	file.AsNode().ForEachChild(visit)
 }

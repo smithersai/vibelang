@@ -1,2 +1,1 @@
 try runs an Effect only in effect code, but it is in a plain function.
-work returns an Effect, or may, but (value: number, index: number, array: number[]) => void is a plain function type, whose callers drop the program unrun.

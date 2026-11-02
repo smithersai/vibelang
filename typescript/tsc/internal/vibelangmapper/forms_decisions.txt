@@ -4305,6 +4305,7 @@ typescript/vibelang/cases/plain-contract-exceptions/a.vibe:45:21 lambda effectFn
 typescript/vibelang/cases/plain-contract-render/a.vibe:5:23 lambda effectFn annotation
 typescript/vibelang/cases/plain-contract-render/a.vibe:5:69 lambda plain table
 typescript/vibelang/cases/plain-contract-validate/a.vibe:5:25 lambda effectFn annotation
+typescript/vibelang/cases/plain-effect-factory-values/main.vibe:17:29 lambda plain annotation
 typescript/vibelang/cases/plain-export-lists/main.vibe:14:24 lambda plain table
 typescript/vibelang/cases/plain-factory-programs.fail/main.vibe:11:22 lambda plain annotation
 typescript/vibelang/cases/plain-factory-programs.fail/main.vibe:18:21 lambda plain annotation

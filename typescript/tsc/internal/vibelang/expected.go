@@ -346,3 +346,52 @@ func (a *analyzer) propertyTypes(t *checker.Type, name string, depth int) []*che
 	}
 	return nil
 }
+
+// D492 leaves the declaring container's parameters uninstantiated on both
+// sides. An extracted function value instead uses its written signature.
+func (a *analyzer) relationReturnType(signature *checker.Signature, member bool) *checker.Type {
+	if member {
+		if declaration := signature.Declaration(); declaration != nil && declaresMemberSignature(declaration) {
+			signature = a.checker.GetSignatureFromDeclaration(declaration)
+		}
+	}
+	return a.checker.GetReturnTypeOfSignature(signature)
+}
+
+// A contextual member's form uses its declaration, while its parameters
+// keep TypeScript's contextual instantiation.
+func (a *analyzer) declaredMemberType(t *checker.Type) *checker.Type {
+	if t == nil {
+		return nil
+	}
+	signatures := a.checker.GetSignaturesOfType(t, checker.SignatureKindCall)
+	if len(signatures) == 0 {
+		return t
+	}
+	declared := make([]*checker.Signature, len(signatures))
+	for i, signature := range signatures {
+		declared[i] = a.checker.SignatureWithReturnType(signature, a.relationReturnType(signature, true))
+	}
+	return a.checker.NewFunctionType(nil, declared)
+}
+
+// declaresMemberSignature reports whether declaration is a member of a class,
+// an interface, or a type alias's type. A generic alias of a function type,
+// type LazyArg<A> = () => A, is not: TypeScript instantiates A at each use, so
+// LazyArg<Effect<A, E, R>> returns an Effect, which its declaration's A,
+// uninstantiated, would lose.
+func declaresMemberSignature(declaration *ast.Node) bool {
+	child := declaration
+	for parent := declaration.Parent; parent != nil; child, parent = parent, parent.Parent {
+		if parent.Kind == ast.KindTypeAliasDeclaration && parent.Type() == child {
+			return false
+		}
+		if ast.IsClassLike(parent) || parent.Kind == ast.KindInterfaceDeclaration || parent.Kind == ast.KindTypeAliasDeclaration {
+			return true
+		}
+		if isFunctionBoundary(parent) || parent.Kind == ast.KindSourceFile || ast.IsObjectLiteralExpression(parent) {
+			return false
+		}
+	}
+	return false
+}

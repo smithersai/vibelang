@@ -570,7 +570,7 @@ Library debugging concepts still apply; VibeLang's effect functions, service dec
 | TS2304, TS2552 (`Process`, `Locks`) | An experimental service is in scope only as a member of `Experimental`; the note writes your call that way, such as `try (try Experimental.Process.Process).hostname()`. A misspelled name never suggests a platform global that EK4402 bans, such as `process`; inside a `.ts` file, it may. |
 | TS2304 (`Model`, `Prompt`) | Two of effect's subpath packages have a module of this name, so neither is in scope. The note names both imports; write the one you mean, such as `import { Model } from "effect/schema"`. |
 
-An `EK4405` input fix preserves captured values' types and is withheld when existing inputs lack matching parameters. The `EK4301` return annotation fix is withheld for a callback with `using`, since annotating its helper cannot remove the callback's resource requirement.
+An `EK4405` input fix preserves captured values' types and is withheld when existing inputs lack matching parameters.
 
 `EK4839` also reports direct `Option.match(value, handlers)` calls, including named imports and namespace aliases. Its message names `Option`'s own `match` API. The fix uses native `match`, preserving subject evaluation, handler construction, property reads and the selected callback's order. It refuses a choice returning a program or comments between the arguments; those calls keep the warning and its refusal note.
 

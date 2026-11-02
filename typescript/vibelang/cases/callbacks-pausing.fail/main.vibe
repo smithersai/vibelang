@@ -1,8 +1,8 @@
-// expect: EK0501 EK4301
-// A callback that runs an Effect, passed where JavaScript calls it
-// synchronously (design D9): map and forEach call their callbacks as plain
-// functions (VIP-1), so try in an arrow there is EK0501, and an effect
-// function passed to forEach, which drops what it returns, is EK4301.
+// expect: EK0501
+// A plain callback cannot use try (EK0501). An explicitly written
+// effect function remains a value with its Effect return type; TypeScript
+// accepts that value at void destinations and forEach drops its program.
+// Neither destination supplies a function-kind conversion (VIP-1/detail303).
 import { Console } from "effect"
 import { find } from "./helpers.ts"
 

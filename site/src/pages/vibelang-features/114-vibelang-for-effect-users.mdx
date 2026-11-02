@@ -210,7 +210,7 @@ A forwarding member keeps its delegate's call phase with `const program: Effect.
 
 A synchronous visitor that must return a program keeps its callback type unchanged: return `effect { ... }` from the callback, then run the returned program from effectful code. A discarded `items.map(item => save(item))` still needs `Effect.forEach` or a loop.
 
-A generic callback constrained to `Function` keeps this synchronous check: passing an Effect function reports `EK4301`. A union can instead accept a callable resource as data through a non-callable member, including a generic member; the compiler checks which members accept the value. Member compatibility uses the completed call's type arguments: `take(resource)` and `take<number>(resource)` both accept a value that fits `Like<number>` but not `Platform<number>`. Callback forms still follow their declared signatures and constraints.
+An Effect-returning function passed or stored as data follows TypeScript's assignability rules, including generic constraints, arrays, unions and `Function` destinations. A `() => void` callback type can ignore the returned program; it does not run it. A destination requiring a number still reports TypeScript's return-type incompatibility. The function's written modifier determines its kind; the destination does not convert it.
 
 `retry(make(config), policy)` calls the factory once and retries its returned Effect. Use `retry(suspend(() => make(config)), policy)` to call the factory on each attempt; `const p: Made = make(config); try retry(p, policy)` calls it once and retries that program.
 

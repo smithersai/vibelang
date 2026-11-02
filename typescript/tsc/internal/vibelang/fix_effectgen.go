@@ -719,8 +719,20 @@ func plainMemberDestination(a *analyzer, node *ast.Node) bool {
 	if member == nil {
 		return false
 	}
-	declared := a.declaredPropertyType(member)
-	return declared != nil && len(c.GetSignaturesOfType(declared, checker.SignatureKindCall)) > 0 && a.isPlainFunctionType(declared)
+	// This is a refactor destination query, independent of assignment
+	// diagnostics: ordinary factories returning Effects are legal values.
+	declared := c.GetTypeOfSymbol(member)
+	if d := member.ValueDeclaration(); d != nil && d.Parent != nil && d.Symbol() != nil {
+		switch d.Parent.Kind {
+		case ast.KindClassDeclaration, ast.KindClassExpression, ast.KindInterfaceDeclaration, ast.KindTypeLiteral:
+			declared = c.GetTypeOfSymbol(d.Symbol())
+		}
+	}
+	if declared == nil || len(c.GetSignaturesOfType(declared, checker.SignatureKindCall)) == 0 {
+		return false
+	}
+	expected := a.classify([]*checker.Type{declared})
+	return expected.plainFn && !expected.effectFn && !expected.program
 }
 
 // plainArrowEffectText writes g, an Effect.fn with no stages, as a plain arrow

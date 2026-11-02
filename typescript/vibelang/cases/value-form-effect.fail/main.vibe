@@ -1,9 +1,9 @@
-// expect: EK4301
-// A function value whose return type is an Effect gives its Effect unrun
-// (VIP-1), so a callback position that drops what it returns rejects it, as
-// it rejects an Effect function. A position that keeps the result, such as
-// map's, collects the programs as data. Before VIP-1 map rejected it too
-// (D511).
+// expect:
+// An Effect-returning factory is an ordinary value (VIP-1/detail303).
+// A void callback destination accepts it under native TypeScript rules
+// and ignores its returned program; map instead keeps those programs.
+// Neither call changes its kind, runs its Effect, or rewrites the factory.
+// Imported and local factories follow the same native assignment rules.
 import { passThrough } from "./helpers.ts"
 
 function pick(p: number!!): infer _ {

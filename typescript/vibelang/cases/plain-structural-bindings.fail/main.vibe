@@ -1,4 +1,4 @@
-// expect: EK4301 TS2322 EK4801
+// expect: TS2322 EK4801
 class Counter {
   n = 5
   effect reset() { try log("reset ran"); this.n = 0 }

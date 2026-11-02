@@ -271,6 +271,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Upgrading a `.vibe` module could remove `readonly` from interface and object-type declarations, changing its published API. `vibelang --fix --fix-migration-only` now writes the old modifiers explicitly and preserves those declaration bytes.
 
 - Codemod conformance checks could report an unchanged private helper as a changed contract; their copied declaration probes now compare private signatures without assuming the original module exports them.
+
+- Passing or storing a function returning an Effect at a TypeScript-compatible callback type could report `EK4301`; these values now follow native TypeScript assignability, and calls still return their Effects unrun (VIP-1, detail303).
 - API checks invented ambient exports or hid an ambient type change when one input directory contained the other. Contributions now follow each snapshot’s dependency closure, and nested private-class origins remain distinct where required.
 
 - The editor outline merged separate `module` declarations as TypeScript namespaces and hid a later declaration with the same name; each VibeLang module now keeps its own outline entry and name range, including an invalid duplicate.

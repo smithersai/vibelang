@@ -82,7 +82,7 @@ Calling an effect function returns its unrun Effect. A caller runs it with `try`
 
 An effect method follows the same rules: its keyword determines its kind, and its return annotation checks the Effect type. A plain method, including a JavaScript protocol member such as `[Equal.symbol]`, keeps TypeScript's behavior, except that it can't throw. A plain function calls TypeScript code directly and handles its exceptions with `try`/`catch`. To run an Effect, use `try` inside an effect function or Effect block.
 
-An effect function can stand for a function type returning an Effect. Calling it returns that Effect unrun; a plain caller that ignores the return value does not run its work. Declare a function returning an Effect at a destination that needs one, or provide a plain function for a plain result. This applies to initializers, assignments, returns, property writes, typed literal elements, and members of objects and class instances.
+Effect-returning functions are ordinary values at typed destinations. TypeScript permits assigning one to a callback returning `void`, `any` or `unknown`, including through unions, arrays and object members. Calling it still returns its Effect unrun; ignoring that result does not run its work. A destination requiring a number still rejects a function returning an Effect with TypeScript's `TS2322`. A function's return type never adds or removes its written `effect` modifier.
 
 ## Wrapping a TypeScript function
 

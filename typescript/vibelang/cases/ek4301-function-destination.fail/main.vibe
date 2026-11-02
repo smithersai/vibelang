@@ -1,6 +1,6 @@
-// expect: EK4301
-// D513: Function is a synchronous callable destination even though it has
-// no call signatures, so a function that returns an Effect can not go there.
+// expect:
+// VIP-1/detail303: ordinary TypeScript assignability also governs Function.
+// Passing a factory as data neither runs it nor changes its written kind.
 import { Thing, take } from "./lib.ts"
 
 export const taken = take(Thing)

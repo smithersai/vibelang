@@ -1,8 +1,8 @@
-// expect: EK4301
-// An Effect never satisfies a plain function type (D430, D512): a function
-// value, an object, or a class instance whose function returns an Effect, or
-// may, is EK4301 wherever a declared type makes that function plain, since
-// the caller of the plain type drops the program unrun.
+// expect:
+// VIP-1/detail303: function values, object members and class instances retain
+// native TypeScript assignability at declared callback destinations.
+// A void return type can ignore an Effect result, and neither void nor
+// unknown changes the function kind or runs its returned program.
 import { runAll, register, resetAll } from "./helpers.ts"
 
 effect function tick() {

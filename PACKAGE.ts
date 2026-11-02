@@ -58,6 +58,9 @@ const goVibelang = (summary: string, shell: string, data: ReadonlyArray<unknown>
 // test needs no line here; scripts/spec-tests.test.mjs checks both.
 const specTests = [
   "FuzzFreshAsyncNonThenable",
+  "TestEffectFactoriesAreOrdinaryValues",
+  "TestEffectFactoryKeepsNativeReturnMismatch",
+  "FuzzNativeEffectFactoryDestinations",
   "TestSidecarIdentityPropertyQuoted",
   "TestReviewLocalServiceShapeQuoted",
   "TestSidecarEmitRulesQuoted",
