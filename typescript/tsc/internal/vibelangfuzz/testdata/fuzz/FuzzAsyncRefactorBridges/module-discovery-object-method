@@ -1,0 +1,4 @@
+go test fuzz v1
+string("object-method")
+byte(32)
+byte(1)

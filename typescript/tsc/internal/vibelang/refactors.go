@@ -209,6 +209,10 @@ func (rc *refactorContext) asyncRefactors(fn *ast.Node) []*ls.CodeAction {
 	if nested {
 		return nil // JavaScript completion/disposal and nested awaits need a separate rewrite.
 	}
+	adoptReturn := asyncNeedsReturnAdoption(fn.Body())
+	if (adoptReturn || len(awaits) > 0) && !rc.asyncBridgeModuleVisible(fn) {
+		return nil // a source binding shadows the module a Promise bridge needs
+	}
 	text := rc.file.Text()
 	var asyncModifier *ast.Node
 	if modifiers := fn.Modifiers(); modifiers != nil {
@@ -244,6 +248,12 @@ func (rc *refactorContext) asyncRefactors(fn *ast.Node) []*ls.CodeAction {
 		name := uniqueName(failureName(promise), errorNames)
 		errorNames = append(errorNames, name)
 		mapped = append(mapped, rc.textEdit(nodeStart(rc.file, await), await.End(), wrappedCall("tryPromise", nodeText(rc.file, promise), "(cause) => new "+name+"({ cause })")))
+	}
+	if adoptReturn {
+		// Insertions precede replacements sharing their start, as LSP asks.
+		adoption := rc.asyncReturnAdoptionEdits(fn)
+		plain = append(slices.Clone(adoption), plain...)
+		mapped = append(slices.Clone(adoption), mapped...)
 	}
 	declarationStart := nodeStart(rc.file, fn)
 	if ast.IsVariableDeclaration(fn.Parent) || ast.IsPropertyAssignment(fn.Parent) || ast.IsCallExpression(fn.Parent) || !ast.IsFunctionDeclaration(fn) {

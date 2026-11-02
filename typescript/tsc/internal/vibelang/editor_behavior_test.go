@@ -96,21 +96,32 @@ func editorProgramWith(t testing.TB, source string, packages map[string]string) 
 
 func applyEditorEdits(t *testing.T, file *ast.SourceFile, converters *lsconv.Converters, edits []*lsproto.TextEdit) string {
 	t.Helper()
-	edits = slices.Clone(edits)
-	slices.SortFunc(edits, func(a, b *lsproto.TextEdit) int {
-		return converters.FromLSPRangeToOriginal(file, b.Range).Pos() - converters.FromLSPRangeToOriginal(file, a.Range).Pos()
-	})
-	text := file.Text()
-	previous := len(text)
+	type span struct {
+		start, end int
+		text       string
+	}
+	spans := make([]span, 0, len(edits))
 	for _, edit := range edits {
-		span := converters.FromLSPRangeToOriginal(file, edit.Range)
-		if span.Pos() < 0 || span.End() > previous || span.Pos() > span.End() {
+		r := converters.FromLSPRangeToOriginal(file, edit.Range)
+		spans = append(spans, span{r.Pos(), r.End(), edit.NewText})
+	}
+	// LSP orders same-position insertions before a replacement. Read from
+	// the original source in that order; reverse application can overwrite
+	// a freshly inserted prefix or reject those valid edits as overlapping.
+	slices.SortStableFunc(spans, func(a, b span) int { return a.start - b.start })
+	source := file.Text()
+	var text strings.Builder
+	last := 0
+	for _, edit := range spans {
+		if edit.start < last || edit.end > len(source) || edit.start > edit.end {
 			t.Fatalf("invalid or overlapping editor edit: %+v", edit)
 		}
-		text = text[:span.Pos()] + edit.NewText + text[span.End():]
-		previous = span.Pos()
+		text.WriteString(source[last:edit.start])
+		text.WriteString(edit.text)
+		last = edit.end
 	}
-	return text
+	text.WriteString(source[last:])
+	return text.String()
 }
 
 // D245 promises usable source rewrites. Compare the complete edited source,
@@ -126,7 +137,7 @@ func TestEditorRefactorGoldens(t *testing.T) {
 		{"nested calls", helpers + "export const value = /*cursor*/f(g(1))", "Convert to a pipe", helpers + "export const value = 1 |> g(%) |> f(%)"},
 		{"pipe to calls", helpers + "export const value = 1 /*cursor*/|> g(%) |> f(%)", "Convert the pipe to calls", helpers + "export const value = f(g(1))"},
 		{"pipe precedence", "export const value = (1 + 2) /*cursor*/|> % * 3", "Convert the pipe to calls", "export const value = (1 + 2) * 3"},
-		{"async shorthand", "export async /*cursor*/later(n: number) { return n }", "Convert to a VibeLang function", "export effect function later(n: number) { return n }"},
+		{"async shorthand", "export async /*cursor*/later(n: number) { return n }", "Convert to a VibeLang function", "export effect function later(n: number) {\n  const __asyncValue = try effect { return n }\n  return try Effect.tryPromise(async () => __asyncValue)\n}"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			const prefix = "const café = '😀'; "

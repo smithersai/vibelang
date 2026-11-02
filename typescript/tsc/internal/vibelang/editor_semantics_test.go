@@ -14,8 +14,8 @@ import (
 
 func TestEditorAsyncRefactorGoldens(t *testing.T) {
 	for _, test := range []struct{ title, want string }{
-		{"Convert to a VibeLang function", "export effect function load(input: Promise<number>) { return try Effect.tryPromise(() => input) }"},
-		{"Convert to a VibeLang function with an error per await", "error PromiseFailed { cause: unknown }\nexport effect function load(input: Promise<number>) { return try Effect.tryPromise({ try: () => input, catch: (cause) => new PromiseFailed({ cause }) }) }"},
+		{"Convert to a VibeLang function", "export effect function load(input: Promise<number>) {\n  const __asyncValue = try effect { return try Effect.tryPromise(() => input) }\n  return try Effect.tryPromise(async () => __asyncValue)\n}"},
+		{"Convert to a VibeLang function with an error per await", "error PromiseFailed { cause: unknown }\nexport effect function load(input: Promise<number>) {\n  const __asyncValue = try effect { return try Effect.tryPromise({ try: () => input, catch: (cause) => new PromiseFailed({ cause }) }) }\n  return try Effect.tryPromise(async () => __asyncValue)\n}"},
 	} {
 		t.Run(test.title, func(t *testing.T) {
 			const source = "export async function load(input: Promise<number>) { return await input }"
@@ -50,7 +50,7 @@ func TestEditorAsyncRefactorGoldens(t *testing.T) {
 // as the insert first; lspApply applies edits by that rule, as editors do.
 func TestEditorAsyncRefactorUnexportedDeclaration(t *testing.T) {
 	const source = "async function load(input: Promise<number>) { return await input }"
-	const want = "error PromiseFailed { cause: unknown }\neffect function load(input: Promise<number>) { return try Effect.tryPromise({ try: () => input, catch: (cause) => new PromiseFailed({ cause }) }) }"
+	const want = "error PromiseFailed { cause: unknown }\neffect function load(input: Promise<number>) {\n  const __asyncValue = try effect { return try Effect.tryPromise({ try: () => input, catch: (cause) => new PromiseFailed({ cause }) }) }\n  return try Effect.tryPromise(async () => __asyncValue)\n}"
 	program, file, service, converters := editorProgram(t, source)
 	pos := strings.Index(source, "load")
 	var chosen *ls.CodeAction

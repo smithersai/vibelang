@@ -1,0 +1,4 @@
+go test fuzz v1
+string("block-arrow")
+byte(32)
+byte(1)

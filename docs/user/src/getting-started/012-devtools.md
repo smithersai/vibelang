@@ -252,6 +252,8 @@ When `vibe.effectModules` is `false`, `--fix` keeps the explicit Effect imports 
 
 Before async conversion, await a returned `Promise` or `PromiseLike` explicitly, as in `return await input`. Async functions adopt returned thenables; effect bodies require explicit Promise handling. The refactors therefore require an explicit `await` for those returns, including a union that may contain a Promise.
 
+A primitive TypeScript type can still hide a boxed runtime value with a `then` method. For returned values that need adoption, conversion finishes the body in an `effect { … }` block before bridging its result through `Effect.tryPromise`. Iterator cleanup therefore completes before a thenable is adopted. The conversion retains source comments, template contents and strict-mode directives, and is unavailable when a local or type-only `Effect` binding would make the bridge invalid.
+
 ## Effect language service rules
 
 `@effect/language-service` 0.87.5 has 108 diagnostics and editor features. The table maps rules to VibeLang forms and existing EK diagnostics. Effect functions use `try` to run Effects, and `catch` expressions handle failures. The table also marks features not implemented.

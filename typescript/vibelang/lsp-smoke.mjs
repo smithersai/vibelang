@@ -440,7 +440,7 @@ try {
     const schema = await refactor("interface Point", "Convert to a schema declaration")
     assert(schema.includes("schema Point {\n  x: number\n  y: number\n}"), "schema not written")
     const plain = await refactor("async function", "Convert to a VibeLang function")
-    assert(plain.includes("export effect function size(text: string) {\n  const length = try Effect.tryPromise(() => Promise.resolve(text.length))"), `async: ${plain.split("\n").filter((l) => l.includes("size") || l.includes("length =")).join(" / ")}`)
+    assert(plain.includes("export effect function size(text: string) {") && plain.includes("const length = try Effect.tryPromise(() => Promise.resolve(text.length))") && plain.includes("return try Effect.tryPromise(async () => "), `async: ${plain.split("\n").filter((l) => l.includes("size") || l.includes("length =")).join(" / ")}`)
     const mapped = await refactor("async function", "Convert to a VibeLang function with an error per await")
     assert(mapped.includes("error ResolveFailed { cause: unknown }\nexport effect function size(") && mapped.includes("try Effect.tryPromise({ try: () => Promise.resolve(text.length), catch: (cause) => new ResolveFailed({ cause }) })"), "errors not written")
     const toPipe = await refactor("inc(double(1))", "Convert to a pipe")

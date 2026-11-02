@@ -15,8 +15,13 @@ const asyncRefactorBridgeQuote = "| a Promise, in an `effect` function | an Effe
 
 const asyncRefactorEffectQuote = "`effect` goes exactly where TypeScript allows `async`, and nowhere else (VIP-1)"
 
+const asyncRefactorPreservationQuote = "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output; otherwise the diagnostic explains why it has no automatic fix."
+
 func requireAsyncRefactorBridgeQuote(t testing.TB) {
 	t.Helper()
+	if !strings.Contains(SpecText("007-tooling.md"), asyncRefactorPreservationQuote) {
+		t.Fatalf("missing preserving-refactor rule: %q", asyncRefactorPreservationQuote)
+	}
 	chapter, err := os.ReadFile(SpecPath("001-functions.md"))
 	if err != nil {
 		t.Fatal(err)
@@ -40,6 +45,7 @@ func FuzzAsyncRefactorBridges(f *testing.F) {
 		f.Add(key, uint8(0), uint8(1))
 		f.Add(key, uint8(3), uint8(7))
 		f.Add(key, uint8(20), uint8(7))
+		f.Add(key, uint8(32), uint8(1))
 	}
 	w := NewWorkspace(f)
 	sessions := newToolsSessions(f, w)
@@ -76,6 +82,9 @@ func FuzzAsyncRefactorBridges(f *testing.F) {
 		}
 		if mode&8 != 0 {
 			source = strings.Replace(source, "await ", "await /* promise */ ", 1)
+		}
+		if mode&32 != 0 {
+			source = "type Unrelated = Option.Option<number>;\n" + source
 		}
 		cursor := strings.Index(source, "ASYNC")
 		source = strings.Replace(source, "ASYNC", "async", 1)
@@ -125,6 +134,9 @@ func FuzzAsyncRefactorBridges(f *testing.F) {
 			want := "try Effect.tryPromise(() => " + operand + ")"
 			if strings.HasSuffix(action.Title, "with an error per await") {
 				want = "try Effect.tryPromise({ try: () => " + operand + ", catch: (cause) => new "
+			}
+			if !strings.Contains(got, "try effect {") || !strings.Contains(got, "return try Effect.tryPromise(async () => ") {
+				Gap(t, "FuzzAsyncRefactorBridges", "async-refactor:return-adoption:"+key, "native async adopts the completed return after the body; missing bridge after %s\\n%s", action.Title, Archive(edited))
 			}
 			if !strings.Contains(got, want) || strings.Contains(got, "await ") {
 				Gap(t, "FuzzAsyncRefactorBridges", "async-refactor:bridge:"+key, "%s; want %q after %s\n%s", asyncRefactorBridgeQuote, want, action.Title, Archive(edited))
