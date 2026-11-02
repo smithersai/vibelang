@@ -138,7 +138,7 @@ v0 runs one `vibelang` subprocess for the whole project on the first module requ
 and after each source change; requests share that compilation. Each plugin
 instance owns an output directory under `node_modules/.vibelang/vite-*`, removed
 when Vite closes. It forces JavaScript and source-map emission, embeds source
-content, checks and emits only the files under the root (`--loader-root`), and
+content, checks and emits only the `.vibe` files under the root (`--loader-root`), and
 disables declarations and incremental output.
 Source paths in compiler maps resolve to the original files before Vite composes
 the maps for its transformations. Each hook returns an independent map, so

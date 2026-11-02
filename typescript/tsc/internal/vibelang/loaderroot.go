@@ -14,7 +14,7 @@ import (
 //
 //	vibelang -p packages/a/tsconfig.json --loader-root packages/a ...
 //
-// type-checks and emits only the files under the directory (compiler.SetLoaderRoot).
+// type-checks and emits only the .vibe files under the directory (compiler.SetLoaderRoot).
 // The loader compiles a module of another workspace package with that
 // package's own project, so checking the sources of every package a project
 // imports in each project's compile would check each package once per

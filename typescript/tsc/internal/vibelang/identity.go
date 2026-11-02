@@ -41,7 +41,7 @@ func helpOptions() []*tsoptions.CommandLineOption {
 		{"stdio", "Use standard input and output for the language server (after --lsp)."},
 		{"estree", "Parse a .vibe file from stdin and print its ESTree JSON: --estree <file>."},
 		{"write-dprint-plugin", "Write the dprint process plugin for a package: --write-dprint-plugin <directory>."},
-		{"loader-root", "Type-check and emit only the files under a directory, as a module loader's compile does: --loader-root <directory>."},
+		{"loader-root", "Type-check and emit only the .vibe files under a directory, as a module loader's compile does: --loader-root <directory>."},
 	} {
 		options = append(options, &tsoptions.CommandLineOption{
 			Name:                     flag.name,

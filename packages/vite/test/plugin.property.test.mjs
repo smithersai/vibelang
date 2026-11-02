@@ -44,11 +44,14 @@ function write(root, files) {
 
 // Independent native emit, with the documented whole-project loader settings.
 // The plugin's own vibelang/project backend is deliberately not the oracle.
-function emit(root) {
-  const out = join(root, ".emit"), filesystem = parse(root).root
+// The loader settings emit only the project's .vibe modules (--loader-root):
+// the bundler loads its .ts modules itself. Running the program needs every
+// module's JavaScript, so the execution oracle emits the whole program.
+function emit(root, { loaderRoot = true } = {}) {
+  const out = join(root, loaderRoot ? ".emit" : ".emit-program"), filesystem = parse(root).root
   rmSync(out, { recursive: true, force: true })
   const result = run(compiler, [
-    "--project", join(root, "tsconfig.json"), "--loader-root", root,
+    "--project", join(root, "tsconfig.json"), ...(loaderRoot ? ["--loader-root", root] : []),
     "--pretty", "false", "--listFiles", "true", "--rootDir", filesystem,
     "--outDir", out, "--sourceMap", "true", "--inlineSources", "true",
     "--inlineSourceMap", "false", "--sourceRoot", filesystem,
@@ -162,7 +165,9 @@ async function buildDev(root, input) {
         file.startsWith(`${input.directory}/n${input.modules.length - 1}.`))))
       const direct = emit(root)
       assert.equal(direct.status, 0, direct.stdout + direct.stderr)
-      const oracle = run(process.execPath, [join(direct.directory, "src/main.js")], root, "execute direct emit")
+      const program = emit(root, { loaderRoot: false })
+      assert.equal(program.status, 0, program.stdout + program.stderr)
+      const oracle = run(process.execPath, [join(program.directory, "src/main.js")], root, "execute direct emit")
       assert.equal(oracle.status, 0, oracle.stderr)
       assert.deepEqual(JSON.parse(oracle.stdout), project.expected)
       for (const output of outputs(root, project, direct)) {

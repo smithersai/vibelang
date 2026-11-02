@@ -320,6 +320,35 @@ test("a failed compile is not cached", { skip }, async (t) => {
   assert.equal(compiles(), 2)
 })
 
+// opencode's standalone CLI test (bun:standalone-cold-project-compiles): a
+// cold start compiled each package for seconds, checking every .ts file in
+// it, though a loader serves only .vibe modules and reports only the loaded
+// module's diagnostics. A TypeScript error in such a file also kept every
+// compile out of the cache.
+test("a loader compile checks only .vibe sources: a TypeScript file's own error neither fails a load nor keeps it out of the cache", { skip }, async (t) => {
+  const { app, run, compiles } = await fixture(t, {
+    "src/unrelated.ts": "export const broken: number = \"not a number\"\n",
+    "src/helper.ts": "export const suffix = \"!\"\nexport const wrong: string = 1\n"
+  })
+  const cold = run()
+  assert.deepEqual(ok(cold), { text: "HI!", mapped: true })
+  const warm = run()
+  assert.deepEqual(ok(warm), { text: "HI!", mapped: true })
+  assert.match(warm.stderr, /tsconfig\.json from the cache in \d+ms/)
+  assert.equal(compiles(), 1, "the warm process compiles nothing")
+  const result = compileProjectSync({ project: join(app, "tsconfig.json"), compiler: native, cache: false })
+  assert.deepEqual(result.errors, [], "no .ts file under the root is checked")
+  assert.deepEqual([...new Set([...result.outputs.keys()].map((path) => path.replace(/^.*\.(vibe(?:\.\w+\.js)?)$/, "$1")))], ["vibe"],
+    "only .vibe modules are emitted")
+  // A .vibe module's own error still fails its load, and a .ts contract it reads is still checked against it.
+  write(app, { "src/shout.vibe": "import { wrong } from \"./helper.ts\"\n\nexport function shout(text: string): string {\n  const n: number = wrong\n  return text.toUpperCase() + n\n}\n" })
+  await settle()
+  const failed = run()
+  assert.notEqual(failed.status, 0)
+  assert.match(failed.stderr, /shout\.vibe:4:\d+ - error TS2322/)
+  assert.doesNotMatch(failed.stderr, /unrelated\.ts|helper\.ts:\d+:\d+ - error/)
+})
+
 test("a source edited while the compiler runs is not cached", { skip }, async (t) => {
   const { app, run, compiles, compiler, calls } = await fixture(t)
   const path = join(app, "src/shout.vibe")

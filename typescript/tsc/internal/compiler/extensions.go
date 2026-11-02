@@ -125,21 +125,33 @@ func embeddedModuleEmitsScript(resolver printer.EmitResolver, options *core.Comp
 
 var loaderRoot string
 
-// SetLoaderRoot makes every program type-check and emit only the files under
-// root, an absolute directory, for a module loader's compile: vibelang
+// SetLoaderRoot makes every program type-check and emit only the .vibe files
+// under root, an absolute directory, for a module loader's compile: vibelang
 // --loader-root, which packages/compiler/project.mjs passes. A loader serves
-// only the JavaScript of the modules under its project's directory, and
-// compiles a module of another workspace package with that package's own
-// project, so the program's other files, such as the sources of the workspace
-// packages it imports, only supply types. An empty root checks and emits every
-// file. Call it from the command's entry point before compiling; it is not
-// synchronized.
+// only the JavaScript of the .vibe modules under its project's directory, and
+// reports only the diagnostics of the module it loads; the runtime or bundler
+// loads a .ts module itself. It compiles a module of another workspace package
+// with that package's own project. So the program's other files, the .ts
+// sources beside the .vibe ones and the sources of the workspace packages it
+// imports, only supply types, and the checker reads only the types a .vibe
+// file needs: checking a package's every .ts file made one module's cold
+// load take seconds (opencode, bun:standalone-cold-project-compiles). An
+// empty root checks and emits every file. Call it from the command's entry
+// point before compiling; it is not synchronized.
 func SetLoaderRoot(root string) {
 	loaderRoot = root
 }
 
 // outsideLoaderRoot reports whether a loader's compile leaves file unchecked
-// and unemitted.
+// and unemitted: every file but a .vibe source under the root, and the module
+// declaration bodies (D283) of a .vibe source the compile checks.
 func outsideLoaderRoot(file *ast.SourceFile, caseSensitivity tspath.CaseSensitivity) bool {
-	return loaderRoot != "" && !tspath.ContainsPath(loaderRoot, string(file.FileName()), caseSensitivity)
+	if loaderRoot == "" {
+		return false
+	}
+	if canonical := file.CanonicalSourceFile(); canonical != nil {
+		file = canonical
+	}
+	return file.IsDeclarationFile || !file.FileName().ExtensionIs(tspath.ExtensionVibe) ||
+		!tspath.ContainsPath(loaderRoot, string(file.FileName()), caseSensitivity)
 }

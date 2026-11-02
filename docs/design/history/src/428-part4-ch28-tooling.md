@@ -110,7 +110,7 @@ only `.vibe` sources; imported `.ts` integrations join the program too.
 
 A `.vibe` file that belongs to another package, such as a workspace package a project imports as source, compiles with that package's own VibeLang settings, its trusted packages and diagnostic categories, as its own build would compile it (D297).
 
-A loader's compile, for `vibelang/register`, `vibelang/bun`, or a bundler plugin, type-checks and emits only the files under its project's directory (`vibelang --loader-root`). Another workspace package's source in that program supplies types, and that package's own compile checks it, so a cold start checks each package once instead of once for each package that imports it.
+A loader's compile, for `vibelang/register`, `vibelang/bun`, or a bundler plugin, type-checks and emits only the `.vibe` files under its project's directory (`vibelang --loader-root`). The runtime or bundler loads a `.ts` module itself, and a loader reports only the diagnostics of the `.vibe` module it loads, so the project's `.ts` files and another workspace package's sources in that program supply types alone, and the checker reads only the types a `.vibe` file needs. That package's own compile checks its `.vibe` sources, so a cold start checks each `.vibe` module once instead of once for each package that imports it, and a `.ts` file's own type error, which the loader never reports, does not keep the compile out of the cache.
 
 The starter tests source files through the Vite plugin:
 

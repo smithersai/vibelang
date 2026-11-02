@@ -1,0 +1,10 @@
+{
+  "property": "loader-check-scope",
+  "rule": "bun:standalone-cold-project-compiles: a cold start of opencode's CLI compiled each package for seconds, checking every .ts file beside its .vibe modules",
+  "input": {
+    "vibes": [{ "ts": -1, "own": false, "contract": false, "effect": false, "module": false, "outside": false }],
+    "ts": [{ "own": true, "vibe": 0 }, { "own": false, "vibe": 0 }, { "own": false, "vibe": -1 }],
+    "libraryError": false
+  },
+  "reason": "Minimized @opencode/server: one .vibe module (request-tracing) beside .ts modules that import it; a .ts error kept the compile out of the cache."
+}

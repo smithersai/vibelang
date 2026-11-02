@@ -171,9 +171,10 @@ export function formatDiagnostic(diagnostic) {
 // hold sources above its directory, as a test project whose tsconfig sets
 // rootDir to the repository does, and a narrower --rootDir than the project's
 // own fails it with TS6059. Only root's .vibe outputs are collected, so
-// --loader-root checks and emits only the files under root: the sources of
-// another workspace package the project imports only supply types, and are
-// checked by that package's own compile.
+// --loader-root checks and emits only the .vibe files under root: the
+// project's .ts files, which the runtime or bundler loads itself, and the
+// sources of another workspace package the project imports only supply types,
+// and that package's .vibe sources are checked by its own compile.
 const emitRoot = (root) => parse(resolve(root)).root
 
 const emitArgs = (project, root, out) => [
