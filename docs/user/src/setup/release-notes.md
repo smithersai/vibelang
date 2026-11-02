@@ -2497,6 +2497,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - ESLint rules saw adjacent generic openings such as `F<<T>(x: T) => T>` as one `<<` token; they now receive both `<` tokens at their source positions, while left-shift operators stay intact.
 
+- Full validation skipped the Go regression suites for the ESLint exporter and formatter; it now runs both and checks that every VibeLang-owned Go test package has a graph selector.
+
 ### Known bugs
 
 These bugs were found and confirmed and are being fixed; please don't re-report them, and each entry moves to the fixed list when its fix lands.

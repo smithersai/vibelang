@@ -46,6 +46,20 @@ and a failing file keeps the target's nonzero exit status. Tests within a file
 keep their own concurrency settings; child processes they spawn are additional
 to the eight file workers.
 
+## Go package coverage
+
+Full validation's `//typescript/tsc/...` selection includes
+`//typescript/tsc:go-vibelangestree` for the ESLint exporter and
+`//typescript/tsc:go-vibelangfmt` for formatting and dprint packaging.
+Each target keys on its package's tests and fixtures as well as the compiler
+sources, and the hosted cache warmer compiles both packages. Go does not run
+a dependency's tests when another package imports it.
+
+`scripts/go-test-inventory.test.mjs` discovers VibeLang-owned Go test
+packages and checks the graph's package selectors. Add a target when adding
+a sibling package; `./internal/vibelang/...` covers that directory and
+its children, including no sibling such as `internal/vibelangfmt`.
+
 ## The merge queue's pre-gate
 
 The merge queue tests every queued change alone on current `main`, and a landing
