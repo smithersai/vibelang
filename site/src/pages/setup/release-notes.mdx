@@ -734,6 +734,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A package built with `tsdown` could fail to parse migrated sources because setup omitted its plugin; setup now wires every static config and local config factory, and installs the plugin in the owning package.
 - A migration batch could commit an earlier batch's module or an unrelated test that a fix rewrote. Verification and recording now reject files outside the batch and its recorded codemod edits.
 - Migrating a package with wildcard exports could add a new public `.platform` module, as Alchemy's AWS platform splits did; the flow now refuses that split before writing files, and the declaration gate rejects new published `.d.ts` files.
+- A `service` method with no return type reported `EK9205` even with `noImplicitAny` off, and `read(): any` was rejected; an omitted member type now follows TypeScript as in an interface (`TS7010` for a method and `TS7008` for a property under `noImplicitAny`, `any` otherwise), and VibeLang adds no diagnostic of its own (VIP-9 amended).
+
 - Programmatic Rolldown builds and exported plugin sets could not bundle migrated modules, including Alchemy's lazy bundles and framework adapters; setup now wires the native plugin into supported calls and typed plugin factories, preserves test-pinned plugin positions, and installs runtime dependencies for published code.
 - A held union of Effects could be rejected even though every alternative was an Effect; `try` now accepts it and preserves every success, error and requirement type.
 - A catch-handler quick fix could remove `async` or `*` and leave invalid `await`, `yield` or result types; it now declines those repairs and explains the required explicit rewrite.
@@ -871,6 +873,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - VIP-39 grouped `react-native` with the JSX modes TypeScript transforms, though `react-native` keeps the element in its output. It now groups `react-native` with `preserve`: the framework's compiler decides when a `try` inside the element runs.
 - VIP-39's JSX clash table showed `x ?? throw <E/>`, a throw expression that no VIP adds and TypeScript rejects. The row now shows the `throw` statement and `x ?? do { throw <E/> }`.
 - The migrate flow's setup left a build script that only runs `tsc` through Bun's shell, such as opencode's codemode `` $`bun tsc -p tsconfig.build.json` ``, on stock `tsc`, so the published `dist/index.js` imported `./codemode.vibe` and failed to load once installed; setup now runs `vibelang` there too, which writes `dist/codemode.js`, and adds `vibelang` to the package's `devDependencies`.
+
+- A service declared inside a generic function or class could write member contracts in terms of the outer type parameter (`value: T`, `take(v: T)`, `load(): T!!`, or through an alias or a member-local constraint) and compiled, so every specialization shared one key; it now reports `EK3005` naming the member and the captured parameter, while member-local generics, unused generic arguments and concrete services in generic scopes still compile (decided detail `183`).
 - Adding a host interface augmentation in a `.ts` file disabled platform diagnostics for constructors such as `XMLHttpRequest`; those references now keep `EK4402`, while local and imported bindings still shadow globals.
 - Parenthesized provider expressions could be split into several providers or mistaken for service bindings; `provide (a, b)` now uses the comma expression's value, and parenthesized assignments keep their ordinary meaning.
 - A provider list split beside a comma could compile silently; both comma-adjacent breaks now report `EK1202`, with a safe fix when comments permit joining the lines.
@@ -880,6 +884,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A project that resolved an `effect` other than the pinned 4.1.1 compiled, and its first Effect-typed use then failed with unrelated type errors; the compiler now reports one `EK3201` naming the resolved version, the VibeLang release and the pin.
 - `sh scripts/build-vibelang.sh` built only `packages/compiler/native/vibelang`, while the compiler case harness runs `typescript/built/local/tsc`, so cases run after a rebuild tested an earlier compiler and passed or failed for the wrong code. The script now installs the same binary at `typescript/built/local/tsc`, and the harness warns when that binary is older than a compiler source.
 
+- A service with no body, a `declare service` or a service in a `declare namespace`, and two service members on one line with no separator reported TypeScript syntax errors or nothing; they now report `EK0906`, `EK0907` and `EK0908`, and `EK0908`'s quick fix inserts `;`. The separator repair preserves the following member's comments and `@throws` JSDoc.
 - Malformed service keys used the old diagnostic or accepted template literals; they now report `EK0901` and require `static readonly key` with a quoted string literal.
 - Bodyless service members accepted class-only syntax or raised unrelated TypeScript errors; they now report `EK0902`, with a quick fix that keeps comments and the written contract.
 - TypeScript consumers could not name an exported service's `S.Shape`; declarations now include that namespace alias and a shared private member type, preserving recursive, default and nested service shapes (VIP-9, VIP-27; detail 181).
@@ -1138,6 +1143,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A signed zero pattern, `when -0:` or `when +0:`, matched both zeros and counted as covering `0`; it now matches only that zero, as `Object.is` does, and a `match` without `default` whose only zero arm is signed reports `EK4701`.
 - An explicitly `readonly` schema field could acquire a writable decoded key through a referenced codec; conflicting or uncertain readonly flags now report `EK2109`, with preserving `--fix` expansion to explicit codecs.
 - Editor completion was empty inside the iterable expression of a `for concurrent` loop; it now offers in-scope names there while preserving completion behavior in function parameter lists.
+- A call signature in a service body, such as `(value: string): string`, failed with a cascade of syntax errors; it now reports one `EK0902`, and the rest of the service still checks.
+
+
 - A `match` arm without its `;`, or with `,`, compiled when a new line or `}` followed it, and `match (b) { }` reported a missing case or nothing; a missing separator is now `EK0701`, with a quick fix and `vibelang --fix`, and `match (b) { }`, a second or early `default`, a missing `:` and an interpolated template pattern are `EK0707`.
 - A `catch` handler whose only parameter was named `async`, `of`, `from` or `get`, as in `task catch of => of.length`, failed with `TS1005`; contextual keywords now work as handler parameters, as they do in any TypeScript arrow.
 - Editor parsing rejected `for try` `Stream` loops; the tree-sitter grammar now recognizes the loop and its `continue` and `break` statements.
@@ -1199,6 +1207,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - An explicit empty service key, `static readonly key = ""`, was replaced with a derived name; `""` now keeps its identity at runtime, in declarations and in duplicate-key checks.
 - `Effect.Array`, `Effect.String`, `Effect.Record` and the other Effect modules named like a JavaScript or TypeScript global reported `TS2339` in a `.vibe` file, so the specification's `Effect.Array.head(xs)` did not compile; each now names Effect's module, and the emitted code imports it.
 - A type under one of those modules, such as `Effect.Array.NonEmptyReadonlyArray<number>` or `Effect.Record.ReadonlyRecord<string, number>`, reported `TS2694`; it now names the module's type, and the declaration file writes it as `import("effect/Array").NonEmptyReadonlyArray<number>`.
+
+- A service with `static readonly defaultValue` could be written as a type, `let flags: Flags`, and the declaration file then used the `Context.Reference` constant as a type, which broke TypeScript consumers; that type now reports `TS2749` (`TS2694` in an import type), and `Flags.Shape` and `typeof Flags` still work.
+
 - A type query of one of those modules, such as `typeof Effect.Array` or `typeof Effect.Array.head`, reported `TS2339`; it now names the module, and the declaration file writes `typeof import("effect/Array")`.
 - The concurrent-loop ownership example passed a string to `sync`, which requires a thunk. Both calls now use valid thunks, with a matching Effect counterpart.
 - Computed field names appeared interchangeable between `error` and `schema error`. The specification now uses each native counterpart's key checks and retains TypeScript's `TS1170` for rejected payload key forms.
@@ -1210,6 +1221,11 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The specification left the ending check for `do` undefined for empty switches and VibeLang loops. It now uses an explicit empty-switch base case and the native iteration checks, preserving nonfinal values and rejecting final loops.
 - Service default initializers had an unspecified Effect boundary; they now follow source class-field rules, with Effect-based factories computed before the declaration.
 - Effect functions and methods inferred `void` for throw-only or mixed throw/fallthrough bodies; they now infer `never` or `undefined`, matching `Effect.gen`.
+
+- Service shapes with properties named `key` or `defaultValue` were rejected when the service declared the matching identity or default factory; these ordinary implementation properties now work.
+
+- Service members using a direct `this` type compiled when TypeScript rejects the corresponding shape; they now report `TS2526` and explain how to use a named type or interface.
+
 - The migrate flow failed a batch on `EK4832` for an exported `Schema.Struct` constant with no type export, which `--fix` must leave because a `schema` declaration would add a public type; `verify` no longer counts it.
 - The ESLint configuration the migrate flow writes for `.vibe` files enabled typescript-eslint's recommended rules whatever the repository's Oxlint configuration chose, so a rule the repository turns off, such as foldkit's `no-explicit-any` under `packages/foldkit/src`, failed its lint on migrated files, and the rules it enables never ran on them; the configuration now reads `.oxlintrc.json` on each run and applies its rules and overrides wherever ESLint or typescript-eslint has the rule.
 - The migrate flow's `--fix` dropped an Effect import the declaration file prints when a tsconfig set `noEmit`; it now asks for declarations, whatever the tsconfig says.
@@ -1227,6 +1243,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Service bodies and value initializers reported a legacy error and suggested making the member static; they now report `EK0902` and direct the implementation into a layer. Members in an aliased-shape service body use the same member diagnostic.
 - A `data`, `schema` or `error` declaration with its opening brace on the next line gained extra indentation on its first format pass; it now reaches its final indentation in one pass.
 
+
+- A `try` in a service's `defaultValue` initializer reported `EK0501` with advice to make `defaultValue` an effect method, which a service cannot declare; it now explains how to compute the value before the declaration and capture it in the default factory.
 
 - The migrate flow ran `vibelang --fix` over a whole package for each batch, which rewrote files earlier batches had committed and undid their hand repairs; each batch now keeps the rewrites of its own files only.
 - The migrate flow's rules told the repair agent that a function with no Effect operation stays plain, while the toolchain compiles an unannotated function or method to an Effect; the rules now say to write its return type or `: infer _`, and list the skill's forms the toolchain does not implement yet with what to write until each lands.

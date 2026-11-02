@@ -738,6 +738,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A package built with `tsdown` could fail to parse migrated sources because setup omitted its plugin; setup now wires every static config and local config factory, and installs the plugin in the owning package.
 - A migration batch could commit an earlier batch's module or an unrelated test that a fix rewrote. Verification and recording now reject files outside the batch and its recorded codemod edits.
 - Migrating a package with wildcard exports could add a new public `.platform` module, as Alchemy's AWS platform splits did; the flow now refuses that split before writing files, and the declaration gate rejects new published `.d.ts` files.
+- A `service` method with no return type reported `EK9205` even with `noImplicitAny` off, and `read(): any` was rejected; an omitted member type now follows TypeScript as in an interface (`TS7010` for a method and `TS7008` for a property under `noImplicitAny`, `any` otherwise), and VibeLang adds no diagnostic of its own (VIP-9 amended).
+
 - Programmatic Rolldown builds and exported plugin sets could not bundle migrated modules, including Alchemy's lazy bundles and framework adapters; setup now wires the native plugin into supported calls and typed plugin factories, preserves test-pinned plugin positions, and installs runtime dependencies for published code.
 - A held union of Effects could be rejected even though every alternative was an Effect; `try` now accepts it and preserves every success, error and requirement type.
 - A catch-handler quick fix could remove `async` or `*` and leave invalid `await`, `yield` or result types; it now declines those repairs and explains the required explicit rewrite.

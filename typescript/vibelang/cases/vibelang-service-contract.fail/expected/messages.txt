@@ -1,2 +1,1 @@
-Rates.latest has no body to infer from. Write its return type.
-Write the return type, such as number for a plain method or number!! for an Effect-returning method.
+latest', which lacks return-type annotation, implicitly has an 'any' return type.

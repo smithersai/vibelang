@@ -36,7 +36,7 @@ Bodyless properties and methods use interface syntax. Class-only modifiers such 
 
 A service declaration takes no `extends` or `implements` clause (`EK0904`): its identity is its key. Compose shapes with types instead, such as `find: Base.Shape["find"]`.
 
-A service method may declare a plain return type, such as `lookup(): number`, or an Effect return type, such as `lookup(): number!!`, as a `Context.Service` shape can. A missing return type reports `EK9205`: write it explicitly because the method has no body to infer from.
+A service method may declare a plain return type, such as `lookup(): number`, or an Effect return type, such as `lookup(): number!!`, as a `Context.Service` shape can. An omitted member type follows TypeScript, as in an interface: under `noImplicitAny`, `read()` is `TS7010` and an untyped property is `TS7008`; with the option off they are `any`. Explicit `read(): any` is valid under strict checking. VibeLang adds no diagnostic of its own and infers no Effect contract; fix `TS7010` by writing the intended return type.
 
 At module or namespace scope, `Users.Shape` names a service's implementation type. A function or block cannot declare that companion namespace: write `Context.Service.Shape<typeof Users>` for a local service instead. The editor offers this replacement, and `vibelang --fix` migrates a local `Users.Shape` annotation. Within the service's own instance member type, `Users.Shape` remains a type-only self-reference. A member-local type parameter named `Users` shadows that service name, as in TypeScript.
 

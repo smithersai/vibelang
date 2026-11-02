@@ -1,5 +1,5 @@
-// expect: EK9205
-// Bodyless methods accept plain or Effect returns; latest still needs a written type.
+// expect: TS7010
+// Bodyless methods accept plain or Effect returns; an omitted return type follows noImplicitAny (TS7010).
 import { Effect } from "effect"
 
 service Rates {

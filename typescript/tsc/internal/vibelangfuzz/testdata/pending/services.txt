@@ -5,17 +5,5 @@ FuzzServicesRules diagnostic:comma-methods compiler VIP-9: missing member separa
 FuzzServicesRules corpus:comma-methods compiler VIP-9: missing member separator must be EK0908; lane impl-hunt-fail (current companion df78d4004a62 unlanded)
 FuzzServicesRules diagnostic:comma-properties compiler VIP-9: missing member separator must be EK0908; lane impl-hunt-fail (current companion df78d4004a62 unlanded)
 FuzzServicesRules corpus:comma-properties compiler VIP-9: missing member separator must be EK0908; lane impl-hunt-fail (current companion df78d4004a62 unlanded)
-FuzzServiceImplicitAny method-omitted-strict compiler VIP-9: legacy service method Effect-only contract check; lane impl-hunt-svc
-FuzzServiceImplicitAny corpus:method-omitted-strict compiler VIP-9: same minimized omitted/ordinary method; lane impl-hunt-svc
-FuzzServiceImplicitAny method-omitted-loose compiler VIP-9: legacy service method Effect-only contract check; lane impl-hunt-svc
-FuzzServiceImplicitAny corpus:method-omitted-loose compiler VIP-9: same minimized omitted/ordinary method; lane impl-hunt-svc
-FuzzServiceImplicitAny method-explicit-any compiler VIP-9: legacy service method Effect-only contract check; lane impl-hunt-svc
-FuzzServiceImplicitAny corpus:method-explicit-any compiler VIP-9: same minimized omitted/ordinary method; lane impl-hunt-svc
-FuzzServiceImplicitAny method-explicit-number compiler VIP-9: legacy service method Effect-only contract check; lane impl-hunt-svc
-FuzzServiceImplicitAny corpus:method-explicit-number compiler VIP-9: same minimized omitted/ordinary method; lane impl-hunt-svc
-FuzzServiceImplicitAny optional-method-omitted compiler VIP-9: legacy service method Effect-only contract check; lane impl-hunt-svc
-FuzzServiceImplicitAny corpus:optional-method-omitted compiler VIP-9: same minimized omitted/ordinary method; lane impl-hunt-svc
-FuzzServiceImplicitAny generic-method-omitted compiler VIP-9: legacy service method Effect-only contract check; lane impl-hunt-svc
-FuzzServiceImplicitAny corpus:generic-method-omitted compiler VIP-9: same minimized omitted/ordinary method; lane impl-hunt-svc
 FuzzProvideParenthesizedExpressions  nested-block  superseded  VIP-1: old VibeLang is a reference only; its trailing-block call withProvider { … } is not part of the language (VIP-11 denied trailing blocks, EK1101), so this provider shape no longer parses
 

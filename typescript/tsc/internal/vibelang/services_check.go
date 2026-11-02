@@ -205,11 +205,9 @@ func checkServiceDeclaration(c *checker.Checker, class *ast.Node) {
 			continue
 		}
 		if kind == serviceClass && ast.IsMethodDeclaration(member) && serviceShape(class) == nil && !isServiceConstructSignature(class, member) {
-			if member.Type() == nil && member.Body() == nil {
-				cover(c, memberName) // TS7010: an implicit any return type
-				d := report(c, memberName, EK9205, name+"."+memberName.Text())
-				note(d, "Write the return type, such as {0} for a plain method or {1} for an Effect-returning method.", "number", "number!!")
-			}
+			// A member is typed as in an interface. An omitted type follows
+			// TypeScript: TS7010 under noImplicitAny, any otherwise, and
+			// VibeLang adds no diagnostic of its own (005, VIP-9 amended).
 			continue
 		}
 		if serviceContractClassSyntax(member) {
