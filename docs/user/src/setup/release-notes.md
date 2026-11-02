@@ -313,6 +313,10 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - With `stripInternal`, an `@internal` schema lost both its constant and type alias from declarations; it now drops only the constant, matching the equivalent Effect TypeScript pair.
 
+- The migrate flow could record a conversion that marked a plain function `effect`, so the call returned a program instead of its value (alchemy's `effectClass` broke every `class X extends effectClass(…)`) while types and declarations stayed unchanged; `verify` now fails a batch whose `effect` function was plain in the original and returned a value or did work at the call.
+
+- With `stripInternal`, an `@internal` schema lost both its constant and type alias from declarations; it now drops only the constant, matching the equivalent Effect TypeScript pair.
+
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 
 - Migration setup could leave a native type exported through a TypeScript namespace barrel as an error type in project-aware linters; setup now enables source declaration redirects in owned configs and records those edits.

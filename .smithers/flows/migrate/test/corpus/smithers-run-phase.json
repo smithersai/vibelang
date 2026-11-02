@@ -1,0 +1,18 @@
+{
+  "source": "smithers ui/src/app-operations/wiki and EffectHandlerRegistry (audit62-smithers, inbox migrate-alchemy 2026-11-02T06:20Z, shapes A and C)",
+  "quote": "A function's kind is decided by a keyword on the function, never by its body or by a type.",
+  "before": "export const ops = {\n  grammar: (args?: string) => {\n    if (!args?.trim()) return { payload: {} }\n    try { return { payload: JSON.parse(args) } } catch { return { error: \"Enter a JSON object\" } }\n  },\n}\nexport const make = (handler: { revert(id: string): any }) => ({\n  revert: (id: string) => {\n    if (id === \"\") throw new Error(\"empty\")\n    return handler.revert(id)\n  },\n})\n",
+  "after": "export const ops = {\n  effect grammar(args?: string) {\n    if (!args?.trim()) return { payload: {} }\n    try { return { payload: JSON.parse(args) } } catch { return { error: \"Enter a JSON object\" } }\n  },\n}\nexport const make = (handler: { revert(id: string): any }) => ({\n  revert: effect (id: string) => {\n    if (id === \"\") throw new Error(\"empty\")\n    return try handler.revert(id)\n  },\n})\n",
+  "expected": [
+    {
+      "name": "ops.grammar",
+      "line": 2,
+      "verdict": "value"
+    },
+    {
+      "name": "make.revert",
+      "line": 8,
+      "verdict": "eager"
+    }
+  ]
+}

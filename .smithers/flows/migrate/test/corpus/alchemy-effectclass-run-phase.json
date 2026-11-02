@@ -1,0 +1,13 @@
+{
+  "source": "alchemy packages/alchemy/src/Util/effect.ts (alchemy-62, inbox migrate-alchemy 2026-11-02T05:34Z)",
+  "quote": "A function's kind is decided by a keyword on the function, never by its body or by a type.",
+  "before": "import * as Effectable from \"effect/Effectable\"\n\nexport const effectClass: any = ((impl?: any) =>\n  impl === undefined\n    ? (innerImpl: any) => effectClass(innerImpl)\n    : (Object.assign(class {}, Effectable.Prototype({ label: \"alchemy/EffectClass\", evaluate: () => impl })) as any)) as any\n",
+  "after": "import * as Effectable from \"effect/Effectable\"\n\nexport const effectClass: any = (effect (impl?: any) =>\n  impl === undefined\n    ? (innerImpl: any) => effectClass(innerImpl)\n    : (Object.assign(class {}, Effectable.Prototype({ label: \"alchemy/EffectClass\", evaluate: () => impl })) as any)) as any\n",
+  "expected": [
+    {
+      "name": "effectClass",
+      "line": 3,
+      "verdict": "value"
+    }
+  ]
+}

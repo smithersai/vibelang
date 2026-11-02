@@ -23,6 +23,7 @@ import { splitBatchPlatform } from "./platform.mjs"
 import { toolchainKeepsFunctionsPlain } from "./plain.mjs"
 import { check, newErrors, styleProblems, summarize } from "./diagnostics.mjs"
 import { preservedErrorAdvisories } from "./preserved-errors.mjs"
+import { runPhaseCheck } from "./run-phase.mjs"
 import { compareDeclarations, recordDeclarationSurface, emitDeclarations, emitErrorsIn, emitPackageJs, loadTypeScript, sidecarChanges, writeLoaderRecords } from "./declarations.mjs"
 import { declarationNames, findStockCompiler, unprovenDeclarations, unprovenMigrations } from "./oracle.mjs"
 import { foreignChanges } from "./touched.mjs"
@@ -1697,6 +1698,7 @@ export async function verify(options) {
   const after = foreignChanges(await Jj.changedPaths(t), { files, codemod, testDiff })
   const foreign = [...new Map([...before, ...after].map(c => [c.path, c])).values()]
   const batchErrors = checked.diagnostics.filter((d) => migrated.includes(d.file) && d.category === "error")
+  const runPhase = runPhaseCheck({ compiler, ts, target: t, files: migrated, original: file => originalSourceOf(p, thePlan, file) })
   const style = checked.style.filter((d) => migrated.includes(d.file))
   const result = {
     batch: b,
@@ -1711,6 +1713,7 @@ export async function verify(options) {
     // Each published specifier the gate excused, for the pull request's description.
     excusedSpecifiers: Object.entries(declarations).flatMap(([dir, d]) => (d.excused ?? []).map((pair) => ({ package: dir, ...pair }))),
     selectorChecks,
+    runPhase,
     testDiff,
     compile: { batchErrors, newErrors: checked.newErrors, style, emitErrors },
     foreign,
@@ -1725,6 +1728,7 @@ export async function verify(options) {
       declarationEmit: emitErrors.length === 0,
       foreignFiles: foreign.length === 0,
       declarationOracle: unproven.length === 0,
+      runPhase: runPhase.blocking.length === 0,
       batchErrors: batchErrors.length === 0,
       newErrors: checked.newErrors.length === 0,
       style: style.length === 0,
