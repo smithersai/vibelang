@@ -1,9 +1,8 @@
-// expect: EK0501
+// expect: EK9203
 // A generator method is a JavaScript generator, whose body is plain code
-// (Chapter 8; VIP-1: it is not marked effect): try there, which would run an
-// Effect, is EK0501. Data, plain calls, an Effect the method yields unrun, a
-// program the method yields as a function, and a call yield* delegates to
-// are fine.
+// (Chapter 8): a call that runs an Effect there is EK9203, where the method
+// yielded the program unrun. Data, plain calls, a program the method yields
+// as a function, and a call yield* delegates to are fine.
 effect function work(n: number): number!! {
   try sleep("1 millis")
   return n
@@ -15,7 +14,7 @@ function double(n: number): number {
 
 const literal = {
   *items() {
-    yield try work(3)
+    yield work(3)
   },
 }
 
@@ -23,12 +22,11 @@ class Bag {
   *[Symbol.iterator]() {
     yield double(4)
     yield effect () => try work(4)
-    yield try work(5)
     yield work(5)
   }
 
   static *all() {
-    yield try work(6)
+    yield work(6)
   }
 
   *delegated() {

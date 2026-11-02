@@ -12,16 +12,16 @@ func TestHarness(t *testing.T) {
 	w := NewWorkspace(t)
 	r, err := w.Compile(t.Context(), Single(`error NotFound { id: string }
 service Users { name(id: string): string!NotFound }
-effect function nameOf(id: string) {
+function nameOf(id: string) {
   if (id !== "42") throw new NotFound({ id })
-  return try (try Users).name(id)
+  return Users.name(id)
 }
-export effect function main() {
-  provide Layer.succeed(Users, { effect name(id) { return "Ada" } }) {
-    return [try nameOf("42"), nameOf("7") catch (e) => e._tag]
+export function main() {
+  provide Layer.succeed(Users, { name(id) { return "Ada" } }) {
+    return [nameOf("42"), nameOf("7") catch (e) => e._tag]
   }
 }
-export effect function fails() { return try nameOf("7") }
+export function fails() { return nameOf("7") }
 `))
 	if err != nil {
 		t.Fatal(err)

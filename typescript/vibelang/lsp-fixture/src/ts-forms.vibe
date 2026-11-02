@@ -2,7 +2,7 @@
 // their quick fixes write an error declaration and the ! form.
 export class NotFound extends Data.TaggedError("NotFound")<{ readonly id: string }> {}
 
-export effect function lookupName(id: string): Effect.Effect<string, NotFound, never> {
+export function lookupName(id: string): Effect.Effect<string, NotFound, never> {
   if (id === "") throw new NotFound({ id })
   return id
 }

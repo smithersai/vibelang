@@ -9,6 +9,7 @@ var (
 	EK0102 = message(102, errorCategory, "Await, for await or await using in effect code. Use the matching effect or async function form; move legacy JavaScript to a .ts file.")
 	EK0104 = message(104, errorCategory, "Effect on a getter, setter or constructor. Use the matching effect or async function form; move legacy JavaScript to a .ts file.")
 	EK0105 = message(105, errorCategory, "Effect and async on one function. Use the matching effect or async function form; move legacy JavaScript to a .ts file.")
+	EK0106 = message(106, errorCategory, "An effect function whose written return type is not an Effect. Use the matching effect or async function form; move legacy JavaScript to a .ts file.")
 	EK0107 = message(107, errorCategory, "Eval, Function, arguments, var or with in a .vibe file. Use the matching effect or async function form; move legacy JavaScript to a .ts file.")
 	EK0301 = message(301, errorCategory, "! beside a union, an intersection, a function type or a conditional type without parentheses. Parenthesize the intended type before combining ! with another type operator.")
 	EK0401 = message(401, errorCategory, "A throw, a call that may throw, or a parameter default that may throw, in an effectful function. Wrap throwing code with Effect.try or tryPromise, or declare a compatible @throws contract.")
@@ -16,6 +17,7 @@ var (
 	EK0403 = message(403, errorCategory, "An unwrapped call, new expression or tagged template that may throw, in effect code or a plain catch handler. Wrap throwing code with Effect.try or tryPromise, or declare a compatible @throws contract.")
 	EK0404 = message(404, errorCategory, "An unwrapped Promise-producing call, new expression or async match in effect code. Wrap throwing code with Effect.try or tryPromise, or declare a compatible @throws contract.")
 	EK0405 = message(405, errorCategory, "A body that throws more than its written @throws {T}. Wrap throwing code with Effect.try or tryPromise, or declare a compatible @throws contract.")
+	EK0501 = message(501, errorCategory, "Try outside effect code, the top level included. Run an Effect with try inside effect code; use a function literal as the catch handler.")
 	EK0503 = message(503, errorCategory, "A try statement in effect code. Run an Effect with try inside effect code; use a function literal as the catch handler.")
 	EK0504 = message(504, errorCategory, "Catch outside effect code. Run an Effect with try inside effect code; use a function literal as the catch handler.")
 	EK0505 = message(505, errorCategory, "Try x catch h. Run an Effect with try inside effect code; use a function literal as the catch handler.")
@@ -44,7 +46,7 @@ var (
 )
 
 func init() {
-	for _, m := range []*Message{EK0101, EK0102, EK0104, EK0105, EK0107, EK0301, EK0401, EK0402, EK0403, EK0404, EK0405, EK0503, EK0504, EK0505, EK0506, EK0507, EK0508, EK0511, EK0801, EK0901, EK0902, EK0903, EK1201, EK1401, EK1701, EK1901, EK1902, EK1905, EK2102, EK2103, EK2201, EK2202, EK2301, EK2803, EK3006} {
+	for _, m := range []*Message{EK0101, EK0102, EK0104, EK0105, EK0106, EK0107, EK0301, EK0401, EK0402, EK0403, EK0404, EK0405, EK0501, EK0503, EK0504, EK0505, EK0506, EK0507, EK0508, EK0511, EK0801, EK0901, EK0902, EK0903, EK1201, EK1401, EK1701, EK1901, EK1902, EK1905, EK2102, EK2103, EK2201, EK2202, EK2301, EK2803, EK3006} {
 		registry[m.Code] = m
 	}
 }

@@ -2,17 +2,17 @@ import { assert, it } from "@effect/vitest"
 import { HttpClientRequest, HttpRouter, HttpServerRequest } from "effect/http"
 import { App } from "./main.vibe"
 
-effect function request(body: unknown) {
-  const client = try HttpClientRequest.bodyJson(HttpClientRequest.post("http://local/users"), body)
+function request(body: unknown) {
+  const client = HttpClientRequest.bodyJson(HttpClientRequest.post("http://local/users"), body)
   return HttpServerRequest.fromClientRequest(client)
 }
 
 it.effect("routes a validated request without opening a socket", effect () => {
-  try Effect.scoped(effect {
-    const app = try HttpRouter.toHttpEffect(App)
-    const created = try Effect.provideService(app, HttpServerRequest.HttpServerRequest, try request({ name: "Ada" }))
-    const conflict = try Effect.provideService(app, HttpServerRequest.HttpServerRequest, try request({ name: "Ada" }))
-    const bad = try Effect.provideService(app, HttpServerRequest.HttpServerRequest, try request({ name: 123 }))
+  Effect.scoped(effect {
+    const app = HttpRouter.toHttpEffect(App)
+    const created = Effect.provideService(app, HttpServerRequest.HttpServerRequest, request({ name: "Ada" }))
+    const conflict = Effect.provideService(app, HttpServerRequest.HttpServerRequest, request({ name: "Ada" }))
+    const bad = Effect.provideService(app, HttpServerRequest.HttpServerRequest, request({ name: 123 }))
     assert.deepStrictEqual([created.status, conflict.status, bad.status], [201, 409, 400])
   })
 })

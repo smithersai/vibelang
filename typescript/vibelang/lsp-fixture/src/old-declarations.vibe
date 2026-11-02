@@ -6,11 +6,11 @@ service class Greeting {
 
 layer GreetingLive: Greeting {
   const word = "hi"
-  effect text() { return word }
+  text() { return word }
 }
 
-export effect function greetingOld() {
+export function greetingOld() {
   provide GreetingLive {
-    return try (try Greeting).text()
+    return Greeting.text()
   }
 }

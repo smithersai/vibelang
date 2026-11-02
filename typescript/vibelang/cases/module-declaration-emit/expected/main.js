@@ -12,9 +12,11 @@ import { level } from "./main.vibe.config.js";
 import "./main.vibe.setup.js";
 export { clean as tidy } from "./main.vibe.text.js";
 export * from "./main.vibe.extras.js";
-export function describe(shape) {
-    return Effect_1.sync({ describe: () => `${shape.width}x${shape.height}` }.describe);
+export function describe$direct(shape) {
+    return `${shape.width}x${shape.height}`;
 }
+export function describe(...args) { return runtime.$plainSync(describe$direct, this, args); }
+describe[runtime.$direct] = describe$direct;
 export function main() {
     return Effect_1.fnUntraced(function* main() {
         const counter = yield* Effect_1.sync(() => new Counter());
@@ -28,7 +30,7 @@ export function main() {
             area: yield* Effect_1.sync(() => tools.area({ width: 2, height: 3 })),
             level,
             counted,
-            described: yield* describe({ width: 1, height: 2 }),
+            described: describe$direct({ width: 1, height: 2 }),
         }));
     }).apply(this, arguments);
 }

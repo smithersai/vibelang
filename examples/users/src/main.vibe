@@ -14,14 +14,14 @@ export service Users {
 }
 
 export const DirectoryLive = Layer.succeed(Directory, {
-  effect lookup(id) { return id === "42" ? { id, name: "Ada" } : undefined }
+  lookup(id) { return id === "42" ? { id, name: "Ada" } : undefined }
 })
 
 export const UsersLive = Layer.effect(Users, effect {
-  const directory = try Directory
+  const directory = Directory()
   return {
-    effect find(id) {
-      const user = try directory.lookup(id)
+    find(id) {
+      const user = directory.lookup(id)
       if (user === undefined) throw new UserNotFound({ id })
       return user
     }
@@ -29,23 +29,23 @@ export const UsersLive = Layer.effect(Users, effect {
 })
 
 export const UsersTest = Layer.succeed(Users, {
-  effect find(id) { return ({ id, name: "Grace" }) }
+  find(id) { return ({ id, name: "Grace" }) }
 })
 
 export const AppLive = wire(UsersLive, DirectoryLive)
 
-export effect function greet(id: string) {
+export function greet(id: string) {
   try {
-    const user = try Users.find(id)
+    const user = Users.find(id)
     return `Welcome, ${user.name}!`
   } catch (error) {
     return `No user ${error.id}`
   }
 }
 
-export effect function main() {
+export function main() {
   provide AppLive {
-    try Console.log(try greet("42"))
-    try Console.log(try greet("missing"))
+    Console.log(greet("42"))
+    Console.log(greet("missing"))
   }
 }

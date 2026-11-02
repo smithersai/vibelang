@@ -157,9 +157,6 @@ func (f *fiberFlow) reads(symbols []*ast.Symbol) []*ast.Node {
 func (f *fiberFlow) use(value *ast.Node) *fiberEscape {
 	for n := value; n != f.region && n.Parent != nil; n = n.Parent {
 		if isFunctionBoundary(n) && n != value && !isRegionTransparent(n) && !(isProgramArrow(n) && f.inRegionCall(n)) {
-			if isEffectBlock(n) {
-				return &fiberEscape{at: value, how: "captured by an effect block", captured: true}
-			}
 			if isProgramArrow(n) && n.Body() != nil && ast.IsBlock(n.Body()) {
 				return &fiberEscape{at: value, how: "captured by a block param", captured: true}
 			}
@@ -466,8 +463,6 @@ func regionNames(region *ast.Node) (string, string) {
 			return "this for concurrent loop's item", "item"
 		case isProgramArrow(parent) && parent.Parent != nil && ast.IsCallExpression(parent.Parent) && ast.IsIdentifier(parent.Parent.Expression()) && parent.Parent.Expression().Text() == "fork":
 			return "this fork block", "block"
-		case isEffectBlock(parent):
-			return "this effect block", "block"
 		case isProgramArrow(parent):
 			return "this block param", "block param"
 		}
@@ -500,7 +495,7 @@ func (f *fiberFlow) report(out *fiberEscape) {
 	d := report(f.c, f.fork.Expression(), EK4838, owner, out.how)
 	program := forkProgramText(f.file, f.fork)
 	if strings.ContainsRune(program, '\n') || len(program) > 60 {
-		program = "…"
+		program = "() => …"
 	}
 	note(d, "Give it the caller's lifetime: Effect.forkScoped({0})", program)
 	note(d, "Or give it no owner: detach({0}), or a scope you hold: forkIn(scope, {0})", program)
@@ -509,19 +504,22 @@ func (f *fiberFlow) report(out *fiberEscape) {
 	}
 }
 
-// forkProgramText returns the Effect that call, a fork, starts (VIP-17:
-// fork e is Effect.forkChild(e)): `fork heartbeat()` starts `heartbeat()`,
-// and `fork { ... }` starts the effect block `effect { ... }` (VIP-2).
+// forkProgramText returns the program that call, a fork, starts, written as
+// a function: `fork heartbeat()` starts `() => heartbeat()`, and `fork {
+// ... }` and `fork(() => ...)` start their own function.
 func forkProgramText(file *ast.SourceFile, call *ast.Node) string {
 	arguments := call.Arguments()
 	if len(arguments) == 0 {
-		return "…"
+		return "() => …"
 	}
 	program := arguments[0]
-	if isProgramArrow(program) {
-		return "effect " + nodeText(file, program.Body()) // fork { ... }
+	switch {
+	case isProgramArrow(program):
+		return "() => " + nodeText(file, program.Body()) // fork { ... }
+	case ast.IsFunctionExpressionOrArrowFunction(program):
+		return nodeText(file, program)
 	}
-	return nodeText(file, program)
+	return "() => " + nodeText(file, program)
 }
 
 // escapingFiberFix is EK4838's quick fix (D386): Effect.forkScoped gives the

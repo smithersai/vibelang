@@ -1,15 +1,11 @@
-// expect: EK0501 EK9201 EK9202 TS2339
-// A plain function's call gives its Effect unrun (VIP-1): stored at the top
-// level it is data. try runs it, only in effect code (VIP-5), and the run
-// program's channels must fit the effect function's contract. Outside effect
-// code try leaves the Effect unrun, so TypeScript also reports service.n.
+// expect: EK1001 EK9201 EK9202 EK9203
 const makeRuntime = (n: number): infer _ => {
   const p: Effect.Effect<{ n: number }, never, never> = effect { return { n } }
   return p
 }
 export const unannotated = makeRuntime(7)
 export const plain = (): number => {
-  const service = try makeRuntime(7)
+  const service = makeRuntime(7)
   return service.n
 }
 
@@ -19,7 +15,7 @@ const makeProgram = (input: Effect.Effect<number, Unavailable, Needed>): infer _
   const p: Effect.Effect<number, Unavailable, Needed> = input
   return p
 }
-// The program's channels survive the plain function.
+// The returned program's channels must survive the plain factory too.
 export effect function missingChannels(input: Effect.Effect<number, Unavailable, Needed>): number!! {
-  return try makeProgram(input)
+  return makeProgram(input)
 }

@@ -1,18 +1,19 @@
 // expect-result: {"found":"Ada","missing":"missing 0","record":{"ok":true},"fallback":"Grace","stub":[true,"gone"],"held":2,"free":"program"}
-// Effect.succeed and Effect.fail that try runs draw EK4834 (D288): a running
-// Effect.succeed(x) is x, and a running Effect.fail(e) fails as throw e does.
-// A call no try runs builds a program and draws nothing.
+// Effect.succeed and Effect.fail where the call runs draw EK4834 (D288): a
+// running Effect.succeed(x) is x, and a running Effect.fail(e) fails as
+// throw e does. A call passed by name, or one whose removal would turn a
+// lambda that returns an Effect into a plain function, draws nothing.
 // tsforms-direct-fixed is what vibelang --fix writes.
 error Missing { id: number }
 
-effect function find(id: number) {
-  if (id === 0) return try Effect.fail(new Missing({ id }))
-  return try Effect.succeed("Ada")
+function find(id: number) {
+  if (id === 0) return Effect.fail(new Missing({ id }))
+  return Effect.succeed("Ada")
 }
 
-effect function lookup(id: number) {
-  try find(id)
-  const name = try Effect.succeed("Grace")
+function lookup(id: number) {
+  find(id)
+  const name = Effect.succeed("Grace")
   return name
 }
 
@@ -22,24 +23,24 @@ interface Store {
 }
 
 const store: Store = {
-  read: effect () => try Effect.succeed(true),
-  gone: effect () => try Effect.fail(new Missing({ id: 1 }))
+  read: () => Effect.succeed(true),
+  gone: () => Effect.fail(new Missing({ id: 1 }))
 }
 
-effect function record(): Effect.Effect<{ ok: boolean }, never, never> {
-  return try Effect.succeed({ ok: true })
+function record(): Effect.Effect<{ ok: boolean }, never, never> {
+  return Effect.succeed({ ok: true })
 }
 
-export effect function main() {
+export function main() {
   const stubbed = store.gone() catch () => "gone"
   const free = { run: () => Effect.succeed("program") } as unknown as { run: () => Effect.Effect<string> }
   return {
-    found: try find(1),
+    found: find(1),
     missing: find(0) catch (e) => `missing ${e.id}`,
-    record: try record(),
-    fallback: try lookup(1),
-    stub: [try store.read(), stubbed],
-    held: try retry(Effect.succeed(2), Schedule.recurs(1)),
-    free: try free.run()
+    record: record(),
+    fallback: lookup(1),
+    stub: [store.read(), stubbed],
+    held: retry(Effect.succeed(2), Schedule.recurs(1)),
+    free: free.run()
   }
 }

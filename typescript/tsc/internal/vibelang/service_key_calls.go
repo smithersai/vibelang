@@ -9,14 +9,14 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
-// A service key called with arguments is EK3007 (Chapter 4, D415): get the
-// service, then call it (VIP-10), so Fn(3) for
-// service Fn: (n: number) => number means (try Fn)(3). It replaces
-// TypeScript's TS2348, whose suggestion of new would be EK3003, and its quick
-// fix writes (try Fn)(3) in effect code.
+// A service key called with arguments is EK3007 (Chapter 4, D415): S() takes
+// none and returns the implementation, so Fn(3) for
+// service Fn: (n: number) => number means Fn()(3). It replaces TypeScript's
+// TS2348, whose suggestion of new would be EK3003, and its quick fix writes
+// Fn()(3).
 
 // EK3007: a service key called with arguments. {0} is the service.
-var EK3007 = message(3007, errorCategory, "{0} is a service key, which takes no arguments: try {0} gets its implementation.")
+var EK3007 = message(3007, errorCategory, "{0} is a service key, which takes no arguments: {0}() returns its implementation.")
 
 func init() {
 	registry[EK3007.Code] = EK3007
@@ -35,9 +35,9 @@ func checkServiceKeyCalls(c *checker.Checker, file *ast.SourceFile) {
 				name := scanner.GetTextOfNode(node.Expression())
 				d := report(c, node, EK3007, name)
 				if serviceCallable(c, service) {
-					note(d, "Get the service, then call it: (try {0})(…).", name)
+					note(d, "Call its implementation: {0}()(…).", name)
 				} else {
-					note(d, "Get the service, then use a member: (try {0}).member(…).", name)
+					note(d, "Use a member of its implementation, {0}().member(…), or {0}.member(…).", name)
 				}
 				// TS2348: the key is not callable (did you mean new); TS2349 and
 				// TS2554 for the same call through VibeLang's call hook.
@@ -50,7 +50,7 @@ func checkServiceKeyCalls(c *checker.Checker, file *ast.SourceFile) {
 }
 
 // serviceKeyCallFix is EK3007's quick fix for a service whose implementation
-// is a function: in effect code Fn(3) becomes (try Fn)(3) (VIP-10).
+// is a function: Fn(3) becomes Fn()(3).
 var serviceKeyCallFix = &ls.CodeFixProvider{
 	Source:     diagnosticSource,
 	ErrorCodes: []int32{EK3007.Code},
@@ -59,8 +59,8 @@ var serviceKeyCallFix = &ls.CodeFixProvider{
 			return nil, nil
 		}
 		call := callStartingAt(fix.SourceFile, fix.Span.Pos())
-		if call == nil || !inEffectCode(call) {
-			return nil, nil // only effect code gets a service (VIP-1)
+		if call == nil {
+			return nil, nil
 		}
 		c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
 		service := serviceNamedBy(c, call.Expression())
@@ -69,10 +69,10 @@ var serviceKeyCallFix = &ls.CodeFixProvider{
 		if !callable {
 			return nil, nil // Users("ada") has no one rewrite: which member?
 		}
-		start, end := nodeStart(fix.SourceFile, call.Expression()), call.Expression().End()
+		end := call.Expression().End()
 		return []*ls.CodeAction{{
 			Description: "Call the service's implementation",
-			Changes:     append(replaceRange(fix, start, start, "(try "), replaceRange(fix, end, end, ")")...),
+			Changes:     replaceRange(fix, end, end, "()"),
 		}}, nil
 	},
 }

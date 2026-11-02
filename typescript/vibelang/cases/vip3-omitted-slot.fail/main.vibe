@@ -1,5 +1,5 @@
 // expect: EK9202 EK9202 EK9202
 service Input { value: number }
-export effect function shorthand(): number!never { return (try Input).value }
-export effect function empty(): number!! { return (try Input).value }
-export effect function longhand(): Effect<number> { return (try Input).value }
+export function shorthand(): number!never { return Input().value }
+export function empty(): number!! { return Input().value }
+export function longhand(): Effect<number> { return Input().value }

@@ -4,7 +4,7 @@
 // writes the wrapper, with the hatch's inputs as the function's arguments.
 error Bad { cause: unknown }
 
-export effect function main() {
+export function main() {
   try yieldNow()
   const n = try((text: string) => JSON.parse(text), (cause) => new Bad({ cause }), "1")
   const m = try(async () => 1)

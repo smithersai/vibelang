@@ -14,6 +14,6 @@ export function describe(e: Expired | Gone): string {
   }
 }
 
-export effect function main() {
+export function main() {
   return [describe(new Expired({ at: 1 })), describe(new Gone({ id: "1" }))]
 }

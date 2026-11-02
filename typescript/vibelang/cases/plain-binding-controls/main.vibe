@@ -11,10 +11,8 @@ class ValueBox<T> {
 }
 function plain(): void {}
 class EffectCounter { effect reset() { try sleep("1 millis") } }
-// TypeScript picks the first overload that fits (VIP-1 deleted form-aware
-// selection), and an Effect method fits void too, so the Effect one is first.
-function select(value: { reset(): void!! }): "effect"
 function select(value: Resettable): "plain"
+function select(value: { reset(): void!! }): "effect"
 function select(value: unknown): "plain" | "effect" { return "effect" }
 function cold(): void {}
 effect function logged(n: number) { try sleep("1 millis"); return n + 1 }

@@ -27,6 +27,8 @@ FuzzSplice registry:EK1006 compiler Appendix B: "A transitional compiler may sti
 FuzzSplice corpus:registry-EK1006 compiler Appendix B: reproduction of registry:EK1006; lane del-rest.
 FuzzSplice registry:EK1007 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 1007 with no current assignment; lane del-rest.
 FuzzSplice corpus:registry-EK1007 compiler Appendix B: reproduction of registry:EK1007; lane del-rest.
+FuzzSplice registry:EK1008 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 1008 with no current assignment; lane del-rest.
+FuzzSplice corpus:registry-EK1008 compiler Appendix B: reproduction of registry:EK1008; lane del-rest.
 FuzzSplice registry:EK1010 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 1010 with no current assignment; lane del-rest.
 FuzzSplice corpus:registry-EK1010 compiler Appendix B: reproduction of registry:EK1010; lane del-rest.
 FuzzSplice registry:EK1012 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 1012 with no current assignment; lane del-rest.
@@ -39,6 +41,8 @@ FuzzSplice registry:EK1017 compiler Appendix B: "A transitional compiler may sti
 FuzzSplice corpus:registry-EK1017 compiler Appendix B: reproduction of registry:EK1017; lane del-rest.
 FuzzSplice registry:EK1020 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 1020 with no current assignment; lane del-rest.
 FuzzSplice corpus:registry-EK1020 compiler Appendix B: reproduction of registry:EK1020; lane del-rest.
+FuzzSplice registry:EK1023 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 1023 with no current assignment; lane del-rest.
+FuzzSplice corpus:registry-EK1023 compiler Appendix B: reproduction of registry:EK1023; lane del-rest.
 FuzzSplice registry:EK2006 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 2006 with no current assignment; lane del-2.
 FuzzSplice corpus:registry-EK2006 compiler Appendix B: reproduction of registry:EK2006; lane del-2.
 FuzzSplice registry:EK2105 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 2105 with no current assignment; lane del-2.
@@ -57,6 +61,10 @@ FuzzSplice registry:EK2113 compiler Appendix B: "A transitional compiler may sti
 FuzzSplice corpus:registry-EK2113 compiler Appendix B: reproduction of registry:EK2113; lane del-2.
 FuzzSplice registry:EK2114 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 2114 with no current assignment; lane del-rest.
 FuzzSplice corpus:registry-EK2114 compiler Appendix B: reproduction of registry:EK2114; lane del-rest.
+FuzzSplice registry:EK2115 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 2115 with no current assignment; lane del-rest.
+FuzzSplice corpus:registry-EK2115 compiler Appendix B: reproduction of registry:EK2115; lane del-rest.
+FuzzSplice registry:EK2116 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 2116 with no current assignment; lane del-rest.
+FuzzSplice corpus:registry-EK2116 compiler Appendix B: reproduction of registry:EK2116; lane del-rest.
 FuzzSplice registry:EK2118 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 2118 with no current assignment; lane del-rest.
 FuzzSplice corpus:registry-EK2118 compiler Appendix B: reproduction of registry:EK2118; lane del-rest.
 FuzzSplice registry:EK2119 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 2119 with no current assignment; lane d-handlers.
@@ -129,6 +137,8 @@ FuzzSplice registry:EK4611 compiler Appendix B: "A transitional compiler may sti
 FuzzSplice corpus:registry-EK4611 compiler Appendix B: reproduction of registry:EK4611; lane del-rest.
 FuzzSplice registry:EK4612 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 4612 with no current assignment; lane del-rest.
 FuzzSplice corpus:registry-EK4612 compiler Appendix B: reproduction of registry:EK4612; lane del-rest.
+FuzzSplice registry:EK4613 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 4613 with no current assignment; lane del-rest.
+FuzzSplice corpus:registry-EK4613 compiler Appendix B: reproduction of registry:EK4613; lane del-rest.
 FuzzSplice registry:EK4702 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 4702 with no current assignment; lane del-rest.
 FuzzSplice corpus:registry-EK4702 compiler Appendix B: reproduction of registry:EK4702; lane del-rest.
 FuzzSplice registry:EK4703 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 4703 with no current assignment; lane del-rest.
@@ -143,6 +153,8 @@ FuzzSplice registry:EK4707 compiler Appendix B: "A transitional compiler may sti
 FuzzSplice corpus:registry-EK4707 compiler Appendix B: reproduction of registry:EK4707; lane del-rest.
 FuzzSplice registry:EK4801 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 4801 with no current assignment; lane del-rest.
 FuzzSplice corpus:registry-EK4801 compiler Appendix B: reproduction of registry:EK4801; lane del-rest.
+FuzzSplice registry:EK4802 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 4802 with no current assignment; lane del-rest.
+FuzzSplice corpus:registry-EK4802 compiler Appendix B: reproduction of registry:EK4802; lane del-rest.
 FuzzSplice registry:EK4803 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 4803 with no current assignment; lane del-rest.
 FuzzSplice corpus:registry-EK4803 compiler Appendix B: reproduction of registry:EK4803; lane del-rest.
 FuzzSplice registry:EK4804 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 4804 with no current assignment; lane del-rest.

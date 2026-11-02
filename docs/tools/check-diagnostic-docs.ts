@@ -44,6 +44,7 @@ export function pendingRegistryCodes(source: string): string[] {
 // describe the VIP language, so these have no reference until the compiler retires
 // or respells them; delete an entry when its code goes.
 export const retiredByVips: Record<string, string> = {
+  EK1008: "VIP-23: the topic is the Effect value, with no by-name operand",
   EK2005: "VIP-35: handlers are open",
   EK2006: "VIP-5: effect code has no try statements",
   EK9207: "VIP-9: service X: T is not a form",

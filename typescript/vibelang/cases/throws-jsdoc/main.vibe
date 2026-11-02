@@ -12,6 +12,6 @@ function port(text: string) {
 }
 
 // expect-result: {"ports":[80,"BadPort"],"double":4,"max":3}
-export effect function main() {
+export function main() {
   return { ports: [port("80"), port("x")], double: double(2), max: Math.max(1, 3) }
 }

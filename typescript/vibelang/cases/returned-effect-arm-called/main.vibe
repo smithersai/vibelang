@@ -7,8 +7,8 @@ interface Hooks {
 }
 
 const hooks: Hooks = {
-  emit: effect (n) => n === 0 ? try Effect.interrupt : try Console.log("emit", n),
-  cached: effect (n) => n ?? try Effect.interrupt,
+  emit: effect (n) => n === 0 ? try Effect.interrupt() : try Console.log("emit", n),
+  cached: effect (n) => n ?? try Effect.interrupt(),
 }
 
 export effect function main() {

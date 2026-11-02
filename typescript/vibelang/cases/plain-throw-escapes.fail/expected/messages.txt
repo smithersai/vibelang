@@ -1,0 +1,10 @@
+validate can't throw Invalid: its return annotation, string, makes it a plain function, which never fails.
+  Make it an Effect function: string!Invalid!
+  Or fail with a defect instead: die(new Invalid({ value })), annotated string!!
+  Or escape to TypeScript: move validate to a .ts file or a module block, or wrap the throw in sync(() => { … }), annotated string!!
+orThrow can't throw Invalid: its return annotation, string, makes it a plain function, which never fails.
+viaDo can't throw Invalid: its return annotation, number, makes it a plain function, which never fails.
+  Or fail with a defect instead: die(new Invalid({ value: String(n) })), annotated number!!
+This callback can't throw Invalid: Array.prototype.map calls it synchronously, as a plain function, which never fails.
+  Use Effect.forEach(["a", ""], (value) => { … }) or a for...of loop.
+  Or catch the failure inside the callback.

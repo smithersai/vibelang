@@ -11,7 +11,7 @@ error Child extends Base<number> { own: string }
 error Pair<T> extends Base<T> { other: T }
 
 // expect-result: {"child":[123,"ok","Child",true],"pair":["a","b","Pair",true]}
-export effect function main() {
+export function main() {
   const child = new Child({ value: 123, own: "ok" })
   const pair = new Pair<string>({ value: "a", other: "b" })
   const total: number = child.value

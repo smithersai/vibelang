@@ -21,7 +21,7 @@ export control Gate {
 export const SeatsLive = Layer.effect(Seats, effect {
   const taken = new Set<string>()
   return {
-    effect take(id) {
+    take(id) {
       if (taken.has(id)) throw new Gone({ id })
       taken.add(id)
       return id
@@ -29,15 +29,15 @@ export const SeatsLive = Layer.effect(Seats, effect {
   }
 })
 
-export effect function admit(id: string) {
-  return (try Gate.open(`admit ${id}`)) ? id : "closed"
+export function admit(id: string) {
+  return Gate.open(`admit ${id}`) ? id : "closed"
 }
 
-export effect function opened(id: string) {
+export function opened(id: string) {
   try {
-    return try admit(id)
+    return admit(id)
   } handle Gate.open(request) {
-    try resume(request.length > 0)
+    resume(request.length > 0)
   }
 }
 
@@ -45,28 +45,27 @@ function maybe(id: string): string | undefined {
   return id === "" ? undefined : id
 }
 
-export effect function seat(ids: ReadonlyArray<string>) {
+export function seat(ids: ReadonlyArray<string>) {
   provide SeatsLive {
-    const seats = try Seats
-    const first = fork seats.take("a")
-    const second = fork seats.take("b")
+    const first = fork Seats.take("a")
+    const second = fork Seats.take("b")
     const pair = join [first, second]
-    const third = fork seats.take("c")
+    const third = fork Seats.take("c")
     const one = join third
-    try detach(seats.take("d"))
-    const all = try.all [seats.take("e"), seats.take("f")]
-    const race = try.race [seats.take("g"), effect { try sleep("1 millis"); return "late" }]
-    const any = try.any [seats.take("h"), seats.take("i")]
-    const settled = try.allSettled [seats.take("j")]
-    for concurrent(2) (const id of ids) try log(id)
-    const name = seats.take("k") catch () => "guest"
-    const reason = seats.take("l") catch (e) => match (e) {
+    detach(Seats.take("d"))
+    const all = try.all [Seats.take("e"), Seats.take("f")]
+    const race = try.race [Seats.take("g"), effect { try sleep("1 millis"); return "late" }]
+    const any = try.any [Seats.take("h"), Seats.take("i")]
+    const settled = try.allSettled [Seats.take("j")]
+    for concurrent(2) (const id of ids) log(id)
+    const name = Seats.take("k") catch () => "guest"
+    const reason = Seats.take("l") catch (e) => match (e) {
       when Gone: `gone ${e.id}`;
     }
     const kept = maybe(name) ?? throw new Late()
     const loud = kept |> %.toUpperCase() |> `${%}!`
-    const outcome = try exit(seats.take("m"))
-    if (outcome is Exit.Failure(let cause)) try log(Cause.pretty(cause))
+    const outcome = exit(Seats.take("m"))
+    if (outcome is Exit.Failure(let cause)) log(Cause.pretty(cause))
     return { pair, one, all, race, any, settled, name, reason, kept, loud }
   }
 }

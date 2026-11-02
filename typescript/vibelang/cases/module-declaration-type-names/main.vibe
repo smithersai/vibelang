@@ -8,4 +8,4 @@ module Other { export const n = 3 }
 import { n as a } from Alias
 import { n as b } from Shape
 import { n as c } from Other
-export effect function main() { return [a, b, c] }
+export function main() { return [a, b, c] }

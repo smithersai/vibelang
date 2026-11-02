@@ -1,2 +1,4 @@
-try runs an Effect only in effect code, but it is in a plain function.
-findId returns an Effect, or may, but (value: string, index: number, array: readonly string[]) => void is a plain function type, whose callers drop the program unrun.
+This callback can't run find(id), an Effect: ReadonlyArray.prototype.map calls it synchronously, as a plain function.
+  Use Effect.forEach(ids, (id) => find(id)) or a for...of loop.
+  To collect the program instead of running it, return a function: (id) => () => find(id)
+findId is an Effect function, but ReadonlyArray.prototype.map calls it synchronously.

@@ -6,6 +6,6 @@
  */
 import { Effect, Layer } from "effect";
 export declare const layer: Layer.Layer<never>;
-export declare function mapAll<A, B>(items: ReadonlyArray<A>, f: (a: A) => B): B[];
+export declare function mapAll<A, B>(items: ReadonlyArray<A>, f: (a: A) => B): Effect.Effect<B[], never, never>;
 export declare const size: number;
 export declare function main(): Effect.Effect<number>;

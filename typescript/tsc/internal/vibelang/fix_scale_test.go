@@ -52,12 +52,12 @@ func scaleProject(t testing.TB, n int, hidden bool) (string, *tsoptions.ParsedCo
 			b.WriteString(strings.Replace(refusedMatchChain, "function kind", fmt.Sprintf("function kind%d", i), 1))
 		}
 		if i%10 == 2 {
-			fmt.Fprintf(&b, "export effect function modes%d() {\n  const mode = try Effect.succeed(\"fast\")\n  const all: Array<typeof mode> = [mode]\n  return all\n}\n", i)
+			fmt.Fprintf(&b, "export function modes%d() {\n  const mode = Effect.succeed(\"fast\")\n  const all: Array<typeof mode> = [mode]\n  return all\n}\n", i)
 		}
 		if i%10 == 3 && hidden {
 			fmt.Fprintf(&b, "export const more%d: ReturnType<(typeof import(\"./m%03d.vibe\"))[\"modes%d\"]> extends (\"fast\"[]!!) ? false : true = true\n", i, i-1, i-1)
 		} else if i%10 == 3 {
-			fmt.Fprintf(&b, "import { modes%d } from \"./m%03d.vibe\"\nexport effect function more%d() {\n  const all = try modes%d()\n  all.push(\"slow\")\n  return all\n}\n", i-1, i-1, i, i-1)
+			fmt.Fprintf(&b, "import { modes%d } from \"./m%03d.vibe\"\nexport function more%d() {\n  const all = modes%d()\n  all.push(\"slow\")\n  return all\n}\n", i-1, i-1, i, i-1)
 		}
 		write(fmt.Sprintf("m%03d.vibe", i), b.String())
 	}

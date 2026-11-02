@@ -2,6 +2,6 @@ error Flaky
 
 declare function fetchScore(): number!Flaky
 
-export effect function score() {
-  return fetchScore() |> try retry(%, Schedule.recurs(3))
+export function score() {
+  return fetchScore() |> retry(%, Schedule.recurs(3))
 }

@@ -3,11 +3,11 @@
 // runs the Effect or passes it on.
 import { loadTs, lookup, twice } from "./helpers.ts"
 
-effect function held() {
-  return try Effect.all([loadTs(3), twice(2)])
+function held() {
+  return Effect.all([loadTs(3), twice(2)])
 }
 
 // expect-result: {"a":1,"b":4,"c":11,"held":[3,4]}
-export effect function main() {
-  return { a: try loadTs(1), b: try twice(2), c: try lookup.find(1), held: try held() }
+export function main() {
+  return { a: loadTs(1), b: twice(2), c: lookup.find(1), held: held() }
 }

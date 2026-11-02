@@ -1,18 +1,18 @@
 // expect: EK4201
 control Ask { ask(): number!! }
-export effect function all() {
+export function all() {
   try { return try.all [Ask.ask()] }
   handle Ask.ask() { try resume(1) }
 }
-export effect function race() {
+export function race() {
   try { return try.race [Ask.ask()] }
   handle Ask.ask() { try resume(1) }
 }
-export effect function any() {
+export function any() {
   try { return try.any [Ask.ask()] }
   handle Ask.ask() { try resume(1) }
 }
-export effect function settled() {
+export function settled() {
   try { return try.allSettled [Ask.ask()] }
   handle Ask.ask() { try resume(1) }
 }

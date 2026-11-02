@@ -40,7 +40,7 @@ function edit() {
   return draft.title
 }
 
-export effect function main() {
+export function main() {
   return {
     a: bump({ label: "c", count: 1 }),
     b: tally(["x", "y", "x"]),

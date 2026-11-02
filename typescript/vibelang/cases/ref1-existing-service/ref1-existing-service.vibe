@@ -33,7 +33,7 @@ effect function aliases(id: string) {
 // "a value of type Effect, called as p()"). Whether `UserRepo.all()` is the right spelling is open.
 effect function directly(id: string) {
   const user = try UserRepo.byId(id)
-  const everyone = try (try UserRepo).all
+  const everyone = try UserRepo.all()
   return `${user.name} of ${everyone.length}`
 }
 // Effect<string, UserNotFound | DbError, UserRepo>

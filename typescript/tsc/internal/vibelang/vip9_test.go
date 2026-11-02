@@ -14,7 +14,7 @@ func TestVIP9AbstractClassIsOrdinary(t *testing.T) {
 
 func TestVIP9DefaultValueThunk(t *testing.T) {
 	for _, source := range []string{
-		"service Flags { static readonly defaultValue = () => ({ enabled: true }); enabled: boolean }\nexport effect function read(): boolean!! { return (try Flags).enabled }",
+		"service Flags { static readonly defaultValue = () => ({ enabled: true }); enabled: boolean }\nexport function read(): boolean!! { return Flags().enabled }",
 		"service Flags { static readonly defaultValue: () => Flags.Shape = () => ({ enabled: true }); enabled: boolean }\n",
 	} {
 		program, file, _, _ := editorProgram(t, source)

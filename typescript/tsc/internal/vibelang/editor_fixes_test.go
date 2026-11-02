@@ -17,27 +17,33 @@ func TestEditorQuickFixGoldens(t *testing.T) {
 		name, source, title, want string
 		code                      int32
 	}{
-		{"hatch constructor capture", "class C {}\nexport effect function main() { return try sync(() => new C()) }", "Pass C as an input", "class C {}\nexport effect function main() { return try sync((C) => new C(), C) }", EK4405.Code},
-		{"hatch narrowed capture", "effect function size(value: string | undefined) { if (value === undefined) return 0; return try sync(() => value.length) }", "Pass value as an input", "effect function size(value: string | undefined) { if (value === undefined) return 0; return try sync((value: string) => value.length, value) }", EK4405.Code},
-		{"hatch captured function type query", "const parse = (text: string): number => Number(text)\nexport effect function invalid(text: string) { return try sync((input: typeof text): ReturnType<typeof parse> => parse(input), text) }", "Pass parse as an input", "const parse = (text: string): number => Number(text)\nexport effect function invalid(text: string) { return try sync((input: typeof text, parse: (text: string) => number): ReturnType<typeof parse> => parse(input), text, parse) }", EK4405.Code},
-		{"typed catch expression", "error NotFound\neffect function load(): string!NotFound { throw new NotFound() }\nexport effect function main() { return load() catch (e: NotFound) => \"missing\" }", "Test the failure with match", "error NotFound\neffect function load(): string!NotFound { throw new NotFound() }\nexport effect function main() { return load() catch (e) => match (e) { when NotFound: \"missing\"; default: throw e; } }", 2112},
-		{"typed catch block", "error NotFound\neffect function load(): string!NotFound { throw new NotFound() }\nexport effect function main() { return load() catch (e: NotFound) => { return \"missing\" } }", "Test the failure with is", "error NotFound\neffect function load(): string!NotFound { throw new NotFound() }\nexport effect function main() { return load() catch (e) => { if (e is NotFound) { return \"missing\" } else { throw e } } }", 2112},
-		{"catch comments trailing", "error Gone\neffect function load(): number!Gone { throw new Gone() }\nexport effect function recover() {\n  try { return load() } catch (e: Gone) {\n    return 0 // keep fallback\n  }\n}", "Test the failure with match", "error Gone\neffect function load(): number!Gone { throw new Gone() }\nexport effect function recover() {\n  try { return load() } catch (e) {\n    return match (e) {\n      when Gone: 0; // keep fallback\n      default: throw e;\n    }\n  }\n}", 2112},
-		{"catch comments all trivia", "error Gone\neffect function load(): number!Gone { throw new Gone() }\nexport effect function recover() {\n  try { return load() } catch (e: Gone) {\n    // before fallback\n    return /* value */ 0 /* before semi */; // after fallback\n    /* after statement */\n  }\n}", "Test the failure with match", "error Gone\neffect function load(): number!Gone { throw new Gone() }\nexport effect function recover() {\n  try { return load() } catch (e) {\n    return match (e) {\n      // before fallback\n      when Gone: /* value */ 0 /* before semi */; // after fallback\n      /* after statement */\n      default: throw e;\n    }\n  }\n}", 2112},
-		{"run value", "effect function main(job: Effect.Effect<number>) { job }", "Run it with try", "effect function main(job: Effect.Effect<number>) { try job }", 4801},
-		{"run program by name", "export effect function main() { try Console.log(\"before\"); interrupt }", "Run it with try", "export effect function main() { try Console.log(\"before\"); try interrupt() }", 4801},
-		{"run conditional", "effect function main(flag: boolean, a: Effect.Effect<number>, b: Effect.Effect<number>) { flag ? a : b }", "Run it with try", "effect function main(flag: boolean, a: Effect.Effect<number>, b: Effect.Effect<number>) { try (flag ? a : b) }", 4801},
-		{"return value", "effect function main(job: Effect.Effect<number>) { try Effect.succeed(0); return job }", "Run it with try", "effect function main(job: Effect.Effect<number>) { try Effect.succeed(0); return try job }", 4802},
-		{"return conditional", "effect function main(flag: boolean, a: Effect.Effect<number>, b: Effect.Effect<number>) { try Effect.succeed(0); return flag ? a : b }", "Run it with try", "effect function main(flag: boolean, a: Effect.Effect<number>, b: Effect.Effect<number>) { try Effect.succeed(0); return try (flag ? a : b) }", 4802},
-		{"return conditional arm", "effect function main(flag: boolean, job: Effect.Effect<number>) { return flag ? job : try Effect.succeed(1) }", "Run it with try", "effect function main(flag: boolean, job: Effect.Effect<number>) { return flag ? try job : try Effect.succeed(1) }", 4802},
-		{"return value as unknown", "effect function main(job: Effect.Effect<number>): unknown!! { return job }", "Run it with try", "effect function main(job: Effect.Effect<number>): unknown!! { return try job }", 4802},
-		{"return program by name as unknown", "effect function main(job: () => number!!): unknown!! { return job }", "Run it with try", "effect function main(job: () => number!!): unknown!! { return try job() }", 4802},
-		{"return coalesced operand", "effect function main(n: number | undefined, job: Effect.Effect<number>) { try Effect.succeed(0); return n ?? job }", "Run it with try", "effect function main(n: number | undefined, job: Effect.Effect<number>) { try Effect.succeed(0); return n ?? try job }", 4802},
-		{"retain failure contract", `effect function main(job: Effect.Effect<number, string>) { const narrow = job as Effect.Effect<number>; return try narrow }`, "Remove the assertion", `effect function main(job: Effect.Effect<number, string>) { const narrow = job; return try narrow }`, 4810},
+		{"hatch constructor capture", "class C {}\nexport function main() { return try sync(() => new C()) }", "Pass C as an input", "class C {}\nexport function main() { return try sync((C) => new C(), C) }", EK4405.Code},
+		{"hatch narrowed capture", "function size(value: string | undefined) { if (value === undefined) return 0; return try sync(() => value.length) }", "Pass value as an input", "function size(value: string | undefined) { if (value === undefined) return 0; return try sync((value: string) => value.length, value) }", EK4405.Code},
+		{"hatch captured function type query", "const parse = (text: string): number => Number(text)\nexport function invalid(text: string) { return try sync((input: typeof text): ReturnType<typeof parse> => parse(input), text) }", "Pass parse as an input", "const parse = (text: string): number => Number(text)\nexport function invalid(text: string) { return try sync((input: typeof text, parse: (text: string) => number): ReturnType<typeof parse> => parse(input), text, parse) }", EK4405.Code},
+		{"typed catch expression", "error NotFound\nfunction load(): string!NotFound { throw new NotFound() }\nexport function main() { return load() catch (e: NotFound) => \"missing\" }", "Test the failure with match", "error NotFound\nfunction load(): string!NotFound { throw new NotFound() }\nexport function main() { return load() catch (e) => match (e) { when NotFound: \"missing\"; default: throw e; } }", 2112},
+		{"typed catch block", "error NotFound\nfunction load(): string!NotFound { throw new NotFound() }\nexport function main() { return load() catch (e: NotFound) => { return \"missing\" } }", "Test the failure with is", "error NotFound\nfunction load(): string!NotFound { throw new NotFound() }\nexport function main() { return load() catch (e) => { if (e is NotFound) { return \"missing\" } else { throw e } } }", 2112},
+		{"catch comments trailing", "error Gone\nfunction load(): number!Gone { throw new Gone() }\nexport function recover() {\n  try { return load() } catch (e: Gone) {\n    return 0 // keep fallback\n  }\n}", "Test the failure with match", "error Gone\nfunction load(): number!Gone { throw new Gone() }\nexport function recover() {\n  try { return load() } catch (e) {\n    return match (e) {\n      when Gone: 0; // keep fallback\n      default: throw e;\n    }\n  }\n}", 2112},
+		{"catch comments all trivia", "error Gone\nfunction load(): number!Gone { throw new Gone() }\nexport function recover() {\n  try { return load() } catch (e: Gone) {\n    // before fallback\n    return /* value */ 0 /* before semi */; // after fallback\n    /* after statement */\n  }\n}", "Test the failure with match", "error Gone\nfunction load(): number!Gone { throw new Gone() }\nexport function recover() {\n  try { return load() } catch (e) {\n    return match (e) {\n      // before fallback\n      when Gone: /* value */ 0 /* before semi */; // after fallback\n      /* after statement */\n      default: throw e;\n    }\n  }\n}", 2112},
+		{"run value", "function main(job: Effect.Effect<number>) { job }", "Call it to run it", "function main(job: Effect.Effect<number>) { job() }", 4801},
+		{"run program by name", "export function main() { Console.log(\"before\"); interrupt }", "Call it to run it", "export function main() { Console.log(\"before\"); interrupt() }", 4801},
+		{"run conditional", "function main(flag: boolean, a: Effect.Effect<number>, b: Effect.Effect<number>) { flag ? a : b }", "Call it to run it", "function main(flag: boolean, a: Effect.Effect<number>, b: Effect.Effect<number>) { (flag ? a : b)() }", 4801},
+		{"return value", "function main(job: Effect.Effect<number>) { Effect.succeed(0); return job }", "Call it to run it", "function main(job: Effect.Effect<number>) { Effect.succeed(0); return job() }", 4802},
+		{"return conditional", "function main(flag: boolean, a: Effect.Effect<number>, b: Effect.Effect<number>) { Effect.succeed(0); return flag ? a : b }", "Call it to run it", "function main(flag: boolean, a: Effect.Effect<number>, b: Effect.Effect<number>) { Effect.succeed(0); return (flag ? a : b)() }", 4802},
+		{"return conditional arm", "function main(flag: boolean, job: Effect.Effect<number>) { return flag ? job : Effect.succeed(1) }", "Call it to run it", "function main(flag: boolean, job: Effect.Effect<number>) { return flag ? job() : Effect.succeed(1) }", 4802},
+		{"return value as unknown", "function main(job: Effect.Effect<number>): unknown!! { return job }", "Call it to run it", "function main(job: Effect.Effect<number>): unknown!! { return job() }", 4802},
+		{"return program by name as unknown", "function main(job: () => number!!): unknown!! { return job }", "Call it to run it", "function main(job: () => number!!): unknown!! { return job() }", 4802},
+		{"return coalesced operand", "function main(n: number | undefined, job: Effect.Effect<number>) { Effect.succeed(0); return n ?? job }", "Call it to run it", "function main(n: number | undefined, job: Effect.Effect<number>) { Effect.succeed(0); return n ?? job() }", 4802},
+		{"retain failure contract", `function main(job: Effect.Effect<number, string>) { const narrow = job as Effect.Effect<number>; return narrow() }`, "Remove the assertion", `function main(job: Effect.Effect<number, string>) { const narrow = job; return narrow() }`, 4810},
 		{"Effect 4 name", `function main() { return Effect.catchAll(Effect.fail("bad"), () => Effect.succeed(1)) }`, "Write Effect.catch", `function main() { return Effect.catch(Effect.fail("bad"), () => Effect.succeed(1)) }`, 4813},
 		{"empty pipe", "// @vibelang-diagnostics EK4824:warning\nexport const value = pipe(1)", "Remove the pipe", "// @vibelang-diagnostics EK4824:warning\nexport const value = 1", 4824},
 		{"arrow expression", "// @vibelang-diagnostics EK4823:warning\nexport const add = (x: number) => { return x + 1 }", "Write the value as the body", "// @vibelang-diagnostics EK4823:warning\nexport const add = (x: number) => x + 1", 4823},
 		{"arrow object", "// @vibelang-diagnostics EK4823:warning\nexport const box = (x: number) => { return { value: x } }", "Write the value as the body", "// @vibelang-diagnostics EK4823:warning\nexport const box = (x: number) => ({ value: x })", 4823},
+		{"return type of a passed helper", "function twice(n: number) { return n * 2 }\nexport const doubled = [1, 2].map(twice)", "Write the return type of twice: number", "function twice(n: number): number { return n * 2 }\nexport const doubled = [1, 2].map(twice)", 4301},
+		{"return type of a helper a callback calls", "const inc = (n: number) => n + 1\nexport const bumped = [1, 2].map((n) => inc(n))", "Write the return type of inc: number", "const inc = (n: number): number => n + 1\nexport const bumped = [1, 2].map((n) => inc(n))", 4301},
+		{"return type of a helper at a top level", "function label(n: number) { return `#${n}` }\nexport const first = label(1)", "Write the return type of label: string", "function label(n: number): string { return `#${n}` }\nexport const first = label(1)", 1001},
+		{"return type of a helper and its own", "function half(n: number) { return n / 2 }\nfunction quarter(n: number) { return half(half(n)) }\nexport function plain(n: number): number { return quarter(n) }", "Write the return type of quarter: number", "function half(n: number): number { return n / 2 }\nfunction quarter(n: number): number { return half(half(n)) }\nexport function plain(n: number): number { return quarter(n) }", 9203},
+		{"return type through a name in scope", "namespace Store {\n  export interface Ref<A> { readonly target: A }\n  export const ref = (id: string): Ref<string> => ({ target: id })\n}\nconst refOf = (id: string) => Store.ref(id)\nexport const refs = [\"a\"].map(refOf)", "Write the return type of refOf: Store.Ref<string>", "namespace Store {\n  export interface Ref<A> { readonly target: A }\n  export const ref = (id: string): Ref<string> => ({ target: id })\n}\nconst refOf = (id: string): Store.Ref<string> => Store.ref(id)\nexport const refs = [\"a\"].map(refOf)", 4301},
+		{"long return type as infer", "const pairs = (n: number) => ({ id: n, label: `#${n}`, next: n + 1, prev: n - 1, tags: [String(n)] })\nexport const made = pairs(1)", "Write the return type of pairs: infer _", "const pairs = (n: number): infer _ => ({ id: n, label: `#${n}`, next: n + 1, prev: n - 1, tags: [String(n)] })\nexport const made = pairs(1)", 1001},
 		{"error field comma", "error OutOfStock { sku: string, available: number }", "Write ; for the comma", "error OutOfStock { sku: string; available: number }", 1013},
 		{"schema error field comma", "schema error Bad { sku: string,\n  reason: string }", "Write ; for the comma", "schema error Bad { sku: string;\n  reason: string }", 1013},
 		{"service field comma", "service Stock { region: string, count(): number!! }", "Write ; for the comma", "service Stock { region: string; count(): number!! }", 1013},
@@ -108,7 +114,7 @@ export const Person = Schema.TaggedStruct("Person", { name: Schema.String })`, 4
 // not offered for a returned union with a member that is no program: calling
 // `chosen` where it may be undefined would not check.
 func TestEditorQuickFixSkipsUncallableUnion(t *testing.T) {
-	source := "export effect function main(job: Effect.Effect<number> | undefined): unknown!! { const chosen = job; return chosen }"
+	source := "export function main(job: Effect.Effect<number> | undefined): unknown!! { const chosen = job; return chosen }"
 	program, file, service, converters := editorProgram(t, source)
 	var diagnostic *ast.Diagnostic
 	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
@@ -131,8 +137,8 @@ func TestEditorQuickFixSkipsUncallableUnion(t *testing.T) {
 	}
 	if response.CommandOrCodeActionArray != nil {
 		for _, action := range *response.CommandOrCodeActionArray {
-			if action.CodeAction != nil && action.CodeAction.Title == "Run it with try" {
-				t.Fatal("offered Run it with try for a union with undefined")
+			if action.CodeAction != nil && action.CodeAction.Title == "Call it to run it" {
+				t.Fatal("offered Call it to run it for a union with undefined")
 			}
 		}
 	}
@@ -224,32 +230,6 @@ func TestEditorQuickFixSkipsDestructuredCatch(t *testing.T) {
 			}
 			if !found {
 				t.Fatal("missing EK2112")
-			}
-		})
-	}
-}
-
-// The helper return-type fixes answered D67's inferred kinds: EK4301 for a
-// helper passed or called where a callback runs synchronously, EK1001 for one
-// a top level calls, and EK9203 for one a plain annotation calls. VIP-1 makes
-// a function's kind its marker, so an unmarked helper is plain JavaScript and
-// each of these sources compiles without an error to fix.
-func TestRetiredHelperReturnTypeDiagnostics(t *testing.T) {
-	for _, test := range []struct{ name, source string }{
-		{"return type of a passed helper", "function twice(n: number) { return n * 2 }\nexport const doubled = [1, 2].map(twice)"},
-		{"return type of a helper a callback calls", "const inc = (n: number) => n + 1\nexport const bumped = [1, 2].map((n) => inc(n))"},
-		{"return type of a helper at a top level", "function label(n: number) { return `#${n}` }\nexport const first = label(1)"},
-		{"return type of a helper and its own", "function half(n: number) { return n / 2 }\nfunction quarter(n: number) { return half(half(n)) }\nexport function plain(n: number): number { return quarter(n) }"},
-		{"return type through a name in scope", "namespace Store {\n  export interface Ref<A> { readonly target: A }\n  export const ref = (id: string): Ref<string> => ({ target: id })\n}\nconst refOf = (id: string) => Store.ref(id)\nexport const refs = [\"a\"].map(refOf)"},
-		{"long return type as infer", "const pairs = (n: number) => ({ id: n, label: `#${n}`, next: n + 1, prev: n - 1, tags: [String(n)] })\nexport const made = pairs(1)"},
-		{"resource callback", "function timer(name: string) { return { name, [Symbol.dispose]() {} } }\nexport function names(ids: string[]) { return ids.map((id) => { using t = timer(id); return t.name }) }"},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			program, file, _, _ := editorProgram(t, test.source)
-			for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
-				if d.Category() == diagnostics.CategoryError {
-					t.Errorf("EK%d: %s", d.Code(), d.String())
-				}
 			}
 		})
 	}

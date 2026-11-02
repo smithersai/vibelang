@@ -36,7 +36,7 @@ interface Follower {
 }
 export const kept = (ok: boolean): Follower => {
   const missing: never!Missing! = Effect.fail(new Missing({ id: "d" }))
-  return { follow: followUntil(), check: effect () => ok ? 1 : try missing }
+  return { follow: followUntil(), check: effect () => ok ? 1 : try missing() }
 }
 export const later = effect () => ({ follow: effect () => try followUntil(), id: try lookup(1) })
 export const statement = effect () => {

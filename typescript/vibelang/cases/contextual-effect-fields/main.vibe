@@ -15,15 +15,13 @@ export effect function main() {
   const afterNoop = runs
   const passed = make({ read: read() })
   const afterPassed = runs
-  // A field never turns its value into a program (VIP-2; D265 did): a plain
-  // call's result becomes one through Effect.sync.
-  const declared: JournalShape = { read: Effect.sync(plainRead) }
+  const declared: JournalShape = { read: (plainRead()) }
   const afterDeclared = runs
-  const a = try noop.read
-  const b = try passed.read
-  const c = try declared.read
-  const d = try Effect.provide(effect { return try (try Journal).read }, layer)
+  const a = try noop.read()
+  const b = try passed.read()
+  const c = try declared.read()
+  const d = try Effect.provide(effect { return try Journal.read() }, layer)
   const eager: { read: number } = { read: try Effect.sync(() => ++runs) }
-  const top = try atTop.read
+  const top = try atTop.read()
   return [before, afterNoop, afterPassed, afterDeclared, a, b, c, d, eager.read, top, runs]
 }

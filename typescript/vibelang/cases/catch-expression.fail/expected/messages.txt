@@ -1,1 +1,1 @@
-Catch outside effect code
+find("1") catch () => "guest" runs a program

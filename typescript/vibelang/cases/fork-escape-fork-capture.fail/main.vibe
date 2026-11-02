@@ -1,8 +1,8 @@
-// expect: EK1703 EK4838 TS2345
+// expect: EK4613 EK4838
 import "vibelang/platform/node"
 export effect function main() {
   const f = fork sleep("1 minute")
-  const g = fork (effect () => { try Fiber.interrupt(f) })
+  const g = fork (() => { try Fiber.interrupt(f) })
   join g
   try Console.log("accepted capture")
 }

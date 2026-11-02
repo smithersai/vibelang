@@ -11,9 +11,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vfs/wrapvfs"
 )
 
-// A handler that runs Effect.fail is an effect function (VIP-1), and try runs
-// the Effect (VIP-5); that is the call the direct-form fix edits to throw 1.
-const factoryLabelSource = "export const cb:(...args:any[])=>void=Effect.catchTags({Bad:effect ()=>try Effect.fail(1)})\n"
+const factoryLabelSource = "export const cb:(...args:any[])=>void=Effect.catchTags({Bad:()=>Effect.fail(1)})\n"
 
 func TestFixFactoryDiagnosticSurvivesArgumentEdit(t *testing.T) {
 	p, file, _, _ := editorProgram(t, factoryLabelSource)

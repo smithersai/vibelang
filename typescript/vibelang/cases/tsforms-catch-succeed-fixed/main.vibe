@@ -1,4 +1,4 @@
 // expect-result: 1
 error Missing { id: string }
-effect function g() { throw new Missing({ id: "x" }) }
-export effect function main() { return g() catch (e) => match (e) { when { _tag: "Missing" }: 1; } }
+function g() { throw new Missing({ id: "x" }) }
+export function main() { return g() catch (e) => match (e) { when { _tag: "Missing" }: 1; } }

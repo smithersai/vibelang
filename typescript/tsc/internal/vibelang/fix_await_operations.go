@@ -48,7 +48,7 @@ func retiredAwaitOperationRewrite(c *checker.Checker, file *ast.SourceFile, call
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		if elements[node] {
-			value := retiredAwaitExpression(c, file, node)
+			value := retiredAwaitExpression(c, file, node, node)
 			text := "effect { return " + value + " }"
 			// Reading a const binding has no effect. Constructing Fiber.join
 			// now preserves when it runs and avoids capturing an owned fiber
@@ -66,7 +66,7 @@ func retiredAwaitOperationRewrite(c *checker.Checker, file *ast.SourceFile, call
 		if isFunctionBoundary(node) && !isProgramArrow(node) {
 			return false
 		}
-		if retiredAwaitRunningCall(c, node) {
+		if retiredAwaitRunningCall(a, node, nil) {
 			start := nodeStart(file, node)
 			text := "try "
 			if tryNeedsParentheses(node) {
@@ -120,13 +120,15 @@ func retiredAwaitOperationRewrite(c *checker.Checker, file *ast.SourceFile, call
 		}
 	}
 
-	// Inline the old D49 collection conversion using standard Effects: the
-	// retired operation ran each function of no parameters that returns an
-	// Effect, so the rewrite keeps running it (VIP-1 retires D49 only for
-	// code written after it).
+	// Inline the old D49 collection conversion using standard Effects.
+	// No runtime adoption test is introduced: the old selected conversion
+	// (or its static recorder) says every element is an Effect-producing thunk.
 	if literal.Kind != ast.KindArrayLiteralExpression && literal.Kind != ast.KindObjectLiteralExpression {
-		if mapped := retiredAwaitProgramsOf(c, a, t); mapped != nil {
-			t = mapped
+		mapped := a.programsOf(t)
+		if a.finalConversion(operand) == convertPrograms || mapped != nil {
+			if mapped != nil {
+				t = mapped
+			}
 			arrays = everyMember(t, func(t *checker.Type) bool { return c.IsArrayType(t) || checker.IsTupleType(t) })
 			_, iterable = a.iteratedTypes(t)
 			useGlobals()
@@ -159,7 +161,7 @@ func retiredAwaitOperationRewrite(c *checker.Checker, file *ast.SourceFile, call
 		}
 	default:
 		useAll()
-		if keys := retiredAwaitObjectKeys(literal); keys != nil && !holdsProgram(c, call) {
+		if keys := retiredAwaitObjectKeys(literal); keys != nil && !holdsProgram(c, call) && !a.isByName(call) {
 			useGlobals()
 			mapped, mappedImported := retiredAwaitImport(file, "map", "effect/Effect", "$tryMapResults")
 			result := retiredAwaitFresh(file, "$tryResults")
@@ -194,7 +196,7 @@ func retiredAwaitOperationRewrite(c *checker.Checker, file *ast.SourceFile, call
 	}
 
 	replacement := "(" + operation + ")"
-	if holdsProgram(c, call) {
+	if holdsProgram(c, call) || a.isByName(call) {
 		if block != "" {
 			replacement = block
 		} else {
@@ -229,11 +231,8 @@ func retiredAwaitLiteral(node *ast.Node) *ast.Node {
 	}
 }
 
-// retiredAwaitRunningCall reports whether node is a call that the retired
-// operation's operand ran: before VIP-1 a call that returns an Effect ran
-// where it stood (rule R), so the rewrite writes try before it.
-func retiredAwaitRunningCall(c *checker.Checker, node *ast.Node) bool {
-	if !isInvocation(node) || node.Flags&(ast.NodeFlagsReparsed|ast.NodeFlagsVibeLang|ast.NodeFlagsVibeLangTry) != 0 || fiberHelper(node) != "" || inCatchLeft(node) || !isEffectType(c, c.GetTypeAtLocation(node)) {
+func retiredAwaitRunningCall(a *analyzer, node, element *ast.Node) bool {
+	if !isInvocation(node) || node.Flags&(ast.NodeFlagsReparsed|ast.NodeFlagsVibeLang|ast.NodeFlagsVibeLangTry) != 0 || fiberHelper(node) != "" || inCatchLeft(node) || !a.runs(node) {
 		return false
 	}
 	if ast.IsCallExpression(node) && node.Expression().Flags&ast.NodeFlagsReparsed != 0 {
@@ -246,7 +245,8 @@ func retiredAwaitRunningCall(c *checker.Checker, node *ast.Node) bool {
 		// that value instead.
 		return false
 	}
-	return true
+	owner := a.byNameOf(node)
+	return owner == nil || owner == element
 }
 
 // isDoExpressionCall reports whether node is the call the parser writes for a
@@ -269,14 +269,15 @@ func isDoExpressionCall(node *ast.Node) bool {
 	return open < len(text) && text[open] == '{'
 }
 
-func retiredAwaitExpression(c *checker.Checker, file *ast.SourceFile, node *ast.Node) string {
+func retiredAwaitExpression(c *checker.Checker, file *ast.SourceFile, node, element *ast.Node) string {
+	a := analyzerFor(c)
 	var edits []sourceEdit
 	var visit func(*ast.Node) bool
 	visit = func(n *ast.Node) bool {
 		if isFunctionBoundary(n) && !isProgramArrow(n) {
 			return false
 		}
-		if retiredAwaitRunningCall(c, n) {
+		if retiredAwaitRunningCall(a, n, element) {
 			start := nodeStart(file, n)
 			if tryNeedsParentheses(n) {
 				edits = append(edits, sourceEdit{start, start, "(try "}, sourceEdit{n.End(), n.End(), ")"})
@@ -399,53 +400,4 @@ func retiredAwaitObjectKeys(node *ast.Node) []string {
 		keys = append(keys, name.Text())
 	}
 	return keys
-}
-
-// retiredAwaitProgramOf returns the Effect that t, a function with no
-// required parameters that returns an Effect, ran as under D49, or nil.
-func retiredAwaitProgramOf(c *checker.Checker, t *checker.Type) *checker.Type {
-	signatures := c.GetSignaturesOfType(t, checker.SignatureKindCall)
-	if len(signatures) != 1 || signatures[0].MinArgumentCount() != 0 || len(signatures[0].TypeParameters()) != 0 {
-		return nil
-	}
-	if returned := c.GetReturnTypeOfSignature(signatures[0]); isEffectType(c, returned) {
-		return returned
-	}
-	return nil
-}
-
-// retiredAwaitProgramsOf returns the array or record of Effects that t, an
-// iterable or a record of such functions, converted to under D49, or nil. An
-// iterable converts to an array; like Effect.all, it treats an iterable as an
-// iterable, never as a record.
-func retiredAwaitProgramsOf(c *checker.Checker, a *analyzer, t *checker.Type) *checker.Type {
-	if t == nil || c.GetSignaturesOfType(t, checker.SignatureKindCall) != nil {
-		return nil
-	}
-	if elements, iterable := a.iteratedTypes(t); iterable {
-		if len(elements) == 0 {
-			return nil
-		}
-		var effects []*checker.Type
-		for _, element := range elements {
-			effect := retiredAwaitProgramOf(c, element)
-			if effect == nil {
-				return nil
-			}
-			effects = append(effects, effect)
-		}
-		return c.CreateArrayType(c.GetUnionType(effects), false)
-	}
-	ok := true
-	converted := c.MapObjectType(t, func(value *checker.Type) *checker.Type {
-		if effect := retiredAwaitProgramOf(c, value); effect != nil {
-			return effect
-		}
-		ok = false
-		return value
-	})
-	if !ok || len(c.GetPropertiesOfType(t)) == 0 && len(c.GetIndexInfosOfType(t)) == 0 {
-		return nil
-	}
-	return converted
 }

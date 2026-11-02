@@ -11,7 +11,8 @@ import * as runtime from "vibelang-runtime";
 // that is not a finite union, a match without default keeps its tests and
 // $noMatch, which throws the proposal's TypeError (D209), as text does here.
 import { announce, Denied, describe, greeting, NotFound, phaseLabel, record, Timeout, width } from "./arms.js";
-function text(value) {
+import { record$direct, describe$direct, greeting$direct } from "./arms.js";
+function text$direct(value) {
     {
         const $match2 = value;
         {
@@ -23,6 +24,8 @@ function text(value) {
         return $noMatch($match2);
     }
 }
+function text(...args) { return runtime.$plainSync(text$direct, this, args); }
+text[runtime.$direct] = text$direct;
 export function main() {
     return Effect.fnUntraced(runtime.$joinedFrame(function* main() {
         const phases = ["draft", "review", "published"];
@@ -32,7 +35,7 @@ export function main() {
             try {
                 for (const phase of phases) {
                     try {
-                        record(phase, logged);
+                        record$direct(phase, logged);
                     }
                     catch (thrown_1) {
                         pending_1 = thrown_1;
@@ -50,10 +53,10 @@ export function main() {
             phases: phases.map(phaseLabel),
             widths: phases.map(width),
             logged,
-            failures: [describe(new NotFound({ id: "7" })), describe(new Timeout()), describe(new Denied({ user: "Ada" }))],
-            greetings: [greeting(Option.none()), greeting(Option.some("Ada"))],
+            failures: [describe$direct(new NotFound({ id: "7" })), describe$direct(new Timeout()), describe$direct(new Denied({ user: "Ada" }))],
+            greetings: [greeting$direct(Option.none()), greeting$direct(Option.some("Ada"))],
             announced: yield* announce("published"),
-            text: text("hi")
+            text: text$direct("hi")
         };
     })).apply(this, arguments);
 }

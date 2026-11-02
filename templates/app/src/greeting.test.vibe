@@ -2,12 +2,12 @@ import { assert, it } from "@effect/vitest"
 import { EmptyName, greeting } from "./greeting.vibe"
 
 it.effect("greets a name", effect () => {
-  assert.strictEqual(try greeting("Ada"), "Hello, Ada!")
+  assert.strictEqual(greeting("Ada"), "Hello, Ada!")
 })
 
 it.effect("recovers from an empty name", effect () => {
   try {
-    try greeting("")
+    greeting("")
     assert.fail("expected EmptyName")
   } catch (error) {
     assert.instanceOf(error, EmptyName)

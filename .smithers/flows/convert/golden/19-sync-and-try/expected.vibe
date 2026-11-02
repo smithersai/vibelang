@@ -1,6 +1,6 @@
 error BadJson { error: unknown }
 
-export effect function parsed(text: string) {
+export function parsed(text: string) {
   return try Effect.try({ try: () => JSON.parse(text) as unknown, catch: (error) => new BadJson({ error }) })
 }
 

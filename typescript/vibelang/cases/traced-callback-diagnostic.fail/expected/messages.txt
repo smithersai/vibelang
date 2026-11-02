@@ -1,1 +1,3 @@
-Plain JavaScript runs no Effect
+Effect.fn expects a body returning an Effect or a JavaScript generator.
+withSpan(() => { ... }, name)
+the same span name passed to Effect.fn

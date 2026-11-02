@@ -55,7 +55,7 @@ test("--fix migrates inherited legacy settings and remains idempotent",{skip},t=
 for (const severity of ["error","warning","suggestion","off"]) {
  test(`imported EK3833 ${severity} overrides the language-service plugin`,{skip},t=>{
   const dir=project(t,{vibe:{severities:{EK3833:severity}}},`import { Effect } from "effect"
-export effect function pause() { try Effect.sleep(0); return 1 }
+export function pause() { Effect.sleep(0); return 1 }
 `)
   const result=run(dir,"--noEmit")
   assert.equal(result.status===0,severity!=="error",result.stdout+result.stderr)
@@ -149,7 +149,7 @@ export async function wait(fiber: Fiber.Fiber<number>, deferred: Deferred.Deferr
 test("invalid inherited lint severity uses the language-service setting", { skip }, t => {
  const dir = project(t, { extends: "./base.json", vibe: { severities: { EK3833: null } } },
   `import { Effect } from "effect"
-export effect function pause() { try Effect.sleep(0); return 1 }
+export function pause() { Effect.sleep(0); return 1 }
 `)
  writeFileSync(join(dir, "base.json"), JSON.stringify({
   compilerOptions: { plugins: [{ name: "@effect/language-service", diagnosticSeverity: { effectSleepZeroToYieldNow: "warning" } }] },

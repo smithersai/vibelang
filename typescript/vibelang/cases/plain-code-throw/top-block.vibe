@@ -1,5 +1,0 @@
-import { Bad } from "./bad.vibe"
-
-if (Bad.length < 5) {
-  throw new Bad({ why: "nested" })
-}

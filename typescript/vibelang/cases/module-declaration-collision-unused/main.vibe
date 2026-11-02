@@ -1,4 +1,4 @@
 // expect-result: 2
 module text { export const n = 1 }
 const text = 2
-export effect function main() { return text }
+export function main() { return text }

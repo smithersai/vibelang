@@ -1,13 +1,13 @@
-effect function cache() {
-  try sleep("50 millis")
+function cache() {
+  sleep("50 millis")
   return "cache"
 }
 
-effect function network() {
-  try sleep("10 millis")
+function network() {
+  sleep("10 millis")
   return "network"
 }
 
-export effect function fastest() {
-  return try race(cache(), network())
+export function fastest() {
+  return race(cache(), network())
 }

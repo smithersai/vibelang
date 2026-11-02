@@ -12,11 +12,11 @@
     "skipLibCheck": true,
     "rewriteRelativeImportExtensions": true,
     "outDir": "out",
-    "declaration": true
-  },
-  "vibe": {
-    "severities": {
-      "EK4802": "error"
+    "declaration": true,
+    "vibelang": {
+      "diagnostics": {
+        "EK4802": "error"
+      }
     }
   },
   "include": [

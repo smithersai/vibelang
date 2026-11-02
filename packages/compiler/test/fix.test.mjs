@@ -55,8 +55,8 @@ const source = `import { Data } from "effect"
 
 export class NotFound extends Data.TaggedError("NotFound")<{ readonly id: string }> {}
 
-export effect function find(id: string): Effect.Effect<string, NotFound, never> {
-  if (id === "") return try Effect.fail(new NotFound({ id }))
+export function find(id: string): Effect.Effect<string, NotFound, never> {
+  if (id === "") return Effect.fail(new NotFound({ id }))
   return id
 }
 `
@@ -64,7 +64,7 @@ export effect function find(id: string): Effect.Effect<string, NotFound, never> 
 const fixed = `
 export error NotFound { id: string }
 
-export effect function find(id: string): string!NotFound {
+export function find(id: string): string!NotFound {
   if (id === "") throw new NotFound({ id })
   return id
 }
@@ -76,7 +76,7 @@ test("--fix runs structured Effect results from VibeLang helpers", { skip }, (t)
   assert.equal(result.status, 0, result.stdout + result.stderr)
   assert.doesNotMatch(result.stdout, /not fixed|refused/)
   const text = readFileSync(join(root, "main.vibe"), "utf8")
-  assert.equal(text.split("try query()").length - 1, 2, text)
+  assert.equal(text.split("try Effect.suspend(() => query())").length - 1, 2, text)
   assert.ok(!text.includes("Effect.gen"), text)
   const second = vibelang(root, "-p", "tsconfig.json", "--fix", "--pretty", "false")
   assert.equal(second.status, 0, second.stdout + second.stderr)
@@ -98,8 +98,8 @@ test("--fix rewrites the forms, reports them, compiles, and is idempotent", { sk
 })
 
 test("--fix leaves a fix that would add an error, and says why", { skip }, (t) => {
-  const root = project(t, `export effect function modes() {
-  const mode = try Effect.succeed("fast")
+  const root = project(t, `export function modes() {
+  const mode = Effect.succeed("fast")
   const all: Array<typeof mode> = [mode]
   all.push("slow")
   return all
@@ -200,7 +200,7 @@ test("--fix qualifies an imported helper return type in its own scope", { skip }
   const first = vibelang(root, "--fix", "--pretty", "false")
   assert.equal(first.status, 0, first.stdout + first.stderr)
   const changed = readFileSync(join(root, "main.vibe"), "utf8")
-  // helper is plain, so nothing asks for a return annotation (VIP-1).
+  assert.match(changed, /helper\(\): (?:foreign\.Thing|infer _)/)
   assert.doesNotMatch(changed, /helper\(\): Thing/)
   const second = vibelang(root, "--fix", "--pretty", "false")
   assert.equal(second.status, 0, second.stdout + second.stderr)

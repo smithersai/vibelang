@@ -22,6 +22,6 @@ export class Box {
   static base = ({ n: 5 } is { n: let n }) ? n : 0
   first = ([6, 7] is [let first, ...]) ? first : 0
 }
-export effect function main() {
+export function main() {
   return [arms(1, { n: 1 }), arms("two", { s: "two" }), arms(1, {}), statementArm({ v: 3 }), statementArm(0), Box.base, new Box().first]
 }

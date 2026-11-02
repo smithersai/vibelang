@@ -181,14 +181,14 @@ test("markdownPages skips the built site, which holds each page's Markdown copy"
 
 test("extracts exact output fences and inline output, with optional run expressions", () => {
   const blocks = extract([
-    "```vibe", "// run: try Console.log(greet())", "function greet() { return 'hello' }", "```", "",
+    "```vibe", "// run: Console.log(greet())", "function greet() { return 'hello' }", "```", "",
     "~~~output", "hello", "  indented  ", "~~~",
     "```vibe", "export function main() { Console.log('a'); Console.log('b') }", "// Output: a", "// Output: b", "```",
     "```vibe", "const silent = 1", "// Output:", "```",
     "```vibe", "const displayOnly = 1", "```", "```out", "not checked", "```"
   ].join("\n"))
   expect(blocks.map(b => [b.run, b.output])).toEqual([
-    ["try Console.log(greet())", "hello\n  indented  "], [undefined, "a\nb"], [undefined, ""], [undefined, undefined]
+    ["Console.log(greet())", "hello\n  indented  "], [undefined, "a\nb"], [undefined, ""], [undefined, undefined]
   ])
 })
 
@@ -208,14 +208,14 @@ test.skipIf(!existsSync(compiler))("runs marked blocks and reports output mismat
         "```vibe", "// expect-error: TS2322", "const wrong: number = 'text'", "```",
         "```vibe", "import { missingFixture } from './missing.vibe'", "function incomplete() { return missingFixture() }", "```",
         "```vibe", "// names.vibe", "function salutation() { return 'Hello' }", "export function name() { return 'Ada' }", "```",
-        "```vibe", "// run: try Console.log(greet())", "function greet() { return `${salutation()}, ${name()}!` }", "```",
+        "```vibe", "// run: Console.log(greet())", "function greet() { return `${salutation()}, ${name()}!` }", "```",
         "```output", "Hello, Ada!", "```",
-        "```vibe", "export effect function main() { try Console.log('native entry') }", "// Output: native entry", "```",
+        "```vibe", "export function main() { Console.log('native entry') }", "// Output: native entry", "```",
         "```ts", "// TypeScript (.ts)", "// plain.ts", "console.log('plain entry')", "// Output: plain entry", "```"
       ],
       "pending": ["```ts", "// TypeScript (.ts)", "// pending.ts", "// run: return new Promise<void>(() => {})", "export const value = 1", "// Output:", "```"],
-      "mismatch": ["```vibe", "export effect function main() { try Console.log('actual') }", "// Output: claimed", "```"],
-      "exit": ["```vibe", "export effect function main() { try Effect.die('failure') }", "// Output:", "```"],
+      "mismatch": ["```vibe", "export function main() { Console.log('actual') }", "// Output: claimed", "```"],
+      "exit": ["```vibe", "export function main() { Effect.die('failure') }", "// Output:", "```"],
       "fragment": ["```vibe", "// fragment", "missing()", "// Output: impossible", "```"],
       "expected": ["```vibe", "// expect-error: TS2322", "const invalid: number = 'text'", "// Output:", "```"],
       "compile": ["```vibe", "// run: missing()", "const valid = 1", "// Output:", "```"]
@@ -240,7 +240,7 @@ test.skipIf(!existsSync(compiler))("runs marked blocks and reports output mismat
     // Give real entries the normal startup budget. Only the deliberate live
     // fiber uses a short timeout; busy CI hosts can take over three seconds
     // to load a native entry's platform runtime.
-    writeFileSync(join(root, "timeout.md"), ["```vibe", "export effect function main() { try Effect.never }", "// Output:", "```"].join("\n"))
+    writeFileSync(join(root, "timeout.md"), ["```vibe", "export function main() { Effect.never() }", "// Output:", "```"].join("\n"))
     const timeoutReport = join(root, "timeout.json")
     const { stderr: timeoutStderr, status: timeoutStatus } = await runSnippets(root, compiler, timeoutReport, { filter: "timeout.md", deadline: hangingBlockDeadline })
     expect({ status: timeoutStatus, stderr: timeoutStderr }).toEqual({ status: 1, stderr: "" })
@@ -262,9 +262,9 @@ test.skipIf(!existsSync(compiler))("runs Effect Vitest snippets, shared assertio
     writeFileSync(join(root, "pass.md"), [
       "```vibe", 'import { assert, it } from "@effect/vitest"', 'import { TestClock } from "effect/testing"',
       'function check(value: number) { assert.strictEqual(value, 42) }',
-      'it.effect("virtual sleep", effect () => { const worker = fork { try sleep("1 hour"); return 42 }; try TestClock.adjust("1 hour"); check(join worker) })',
+      'it.effect("virtual sleep", effect () => { const worker = fork { sleep("1 hour"); return 42 }; TestClock.adjust("1 hour"); check(join worker) })',
       '// Output:', "```",
-      "```vibe", '// run: check(42); try Console.log("checked")', 'function example() { return 42 }', '// Output: checked', "```"
+      "```vibe", '// run: check(42); Console.log("checked")', 'function example() { return 42 }', '// Output: checked', "```"
     ].join("\n"))
     writeFileSync(join(root, "failure.md"), [
       "```vibe", 'import { assert, it } from "@effect/vitest"',
@@ -408,7 +408,7 @@ test.skipIf(!existsSync(compiler))("late-start documentation runs expose timer r
       "  let cleaned = false",
       "  const worker = try Effect.forkChild(Effect.ensuring(effect {",
       "    try Deferred.succeed(started, undefined)",
-      "    try Effect.never",
+      "    try Effect.never()",
       "  }, Effect.sync(() => { cleaned = true })))",
       "  if (wait) try Deferred.await(started)",
       '  else try Effect.sleep("5 millis")',

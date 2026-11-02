@@ -33,8 +33,7 @@ func (p *projector) discardedStructuredCall(call *ast.Node) {
 	for outer.Parent != nil && ast.IsParenthesizedExpression(outer.Parent) {
 		outer = outer.Parent
 	}
-	// try sql.unsafe(…) runs the result, so the statement discards nothing (VIP-5).
-	if outer.Parent != nil && ast.IsExpressionStatement(outer.Parent) && call.Flags&ast.NodeFlagsVibeLangTry == 0 && outer.Flags&ast.NodeFlagsVibeLangTry == 0 {
-		p.fiberDiagnostic(call, 4301, "This call returns an Effect subtype, which only try runs, so this statement discards its result without running it. Run it with try.")
+	if outer.Parent != nil && ast.IsExpressionStatement(outer.Parent) {
+		p.fiberDiagnostic(call, 4301, "This call returns an Effect subtype, which stays data until it is called, so this statement discards its result without running it. Call the result to run it, or write the return type of what it calls as A!E!R.")
 	}
 }

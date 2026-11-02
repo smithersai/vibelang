@@ -10,40 +10,43 @@ class Tagged {
   readonly _tag = "Tagged" as const
 }
 
-effect function find(id: number): string!Missing | Timeout {
+function find(id: number): string!Missing | Timeout {
   if (id === 0) throw new Missing({ id })
   if (id < 0) throw new Timeout()
   return "Ada"
 }
 
-effect function tagged(): string!Tagged {
+function tagged(): string!Tagged {
   throw new Tagged()
 }
 
-effect function describe(id: number) {
-  return try Effect.catchTag(find(id), "Missing", (e) => Effect.succeed(`missing ${e.id}`))
+function describe(id: number) {
+  return Effect.catchTag(find(id), "Missing", (e) => `missing ${e.id}`)
 }
 
-effect function both(id: number) {
-  return try Effect.catchTags(find(id), { Missing: () => Effect.succeed("missing"), Timeout: () => Effect.succeed("slow") })
+function both(id: number) {
+  return Effect.catchTags(find(id), { Missing: () => "missing", Timeout: () => "slow" })
 }
 
-effect function any(id: number) {
-  return try Effect.catch(find(id), (e) => Effect.succeed(`failed ${e._tag}`))
+function any(id: number) {
+  return Effect.catch(find(id), (e) => `failed ${e._tag}`)
 }
 
-effect function nested(id: number) {
-  const inner = Effect.catchTag(find(id), "Missing", () => Effect.succeed("nf"))
-  return try Effect.catchTag(inner, "Timeout", () => Effect.succeed("to"))
+function nested(id: number) {
+  return Effect.catchTag(
+    Effect.catchTag(find(id), "Missing", () => "nf"),
+    "Timeout",
+    () => "to"
+  )
 }
 
-export effect function main() {
+export function main() {
   return {
-    described: [try describe(1), try describe(0)],
-    both: [try both(0), try both(-1)],
-    any: try any(-1),
-    nested: try nested(-1),
-    tagged: try Effect.catchTag(tagged(), "Tagged", () => Effect.succeed("by tag")),
-    plain: try Effect.catch(find(-1), () => Effect.succeed("plain"))
+    described: [describe(1), describe(0)],
+    both: [both(0), both(-1)],
+    any: any(-1),
+    nested: nested(-1),
+    tagged: Effect.catchTag(tagged(), "Tagged", () => "by tag"),
+    plain: Effect.catch(find(-1), () => "plain")
   }
 }

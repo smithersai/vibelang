@@ -1,5 +1,0 @@
-// VIP-1 flip acceptance case 4 (foldkit-3, repro 17-plain-runsync): a plain
-// function may run a root Effect with Effect.runSync and stays plain.
-import { Effect } from "effect"
-
-export const build = (): number => Effect.runSync(effect { return 3 })

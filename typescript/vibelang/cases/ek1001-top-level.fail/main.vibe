@@ -1,8 +1,6 @@
-// expect: EK0501 EK1001 TS2348 TS2349
+// expect: EK1001
 // D38, D51: a module's top level is not inside a program. A call there may
-// build values, but running a program there is an error. A module's top level
-// is ordinary JavaScript, not an effect function (VIP-26), so try there is
-// EK0501; a call of an effect function only builds its Effect (VIP-1).
+// build values, but a call that runs a program is EK1001.
 import { Config, Effect, Schedule } from "effect"
 
 effect function loadConfig() {
@@ -10,13 +8,12 @@ effect function loadConfig() {
   return { port: 8080 }
 }
 
-export const config = try loadConfig()
-export const answer = try Effect.succeed(42)
-Effect.runPromise(loadConfig()) // runPromise receives the program (VIP-1)
-export const nested = [try Effect.map(Effect.succeed(1), (n) => n + 1)]
+export const config = loadConfig()
+export const answer = Effect.succeed(42)
+Effect.runPromise(loadConfig()) // by name (D147): runPromise receives the program
+export const nested = [Effect.map(Effect.succeed(1), (n) => n + 1)]
 
-// A service lookup runs a program too. An Effect is not a function, so
-// calling one is TypeScript's own error; only try runs it (VIP-5, VIP-10).
+// A service lookup and a call of an Effect value run programs too.
 service Users {
   find(id: string): Effect.Effect<string, never, never>
 }
@@ -26,10 +23,8 @@ export const users = Users()
 export const ready = Effect.void()
 
 // Values: none of these runs a program.
-export const built = loadConfig() // the Effect, unrun (VIP-1)
-export const held = [Effect.map(Effect.succeed(1), (n) => n + 1)]
 export const port = Config.withDefault(Config.Port("PORT"), 3000)
-export const portNow = effect () => try port
+export const portNow = effect () => try port()
 export const policy = Schedule.recurs(3)
 export const later = effect () => try loadConfig()
 export const names = ["a", "b"].map((name) => name.toUpperCase())

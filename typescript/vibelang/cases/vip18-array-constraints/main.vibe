@@ -2,13 +2,13 @@
 import { values, derived, empty, exits } from "./factory.js"
 import type { Values } from "./factory.js"
 
-effect function collect<T extends ReadonlyArray<Effect.Effect<number>>>(xs: T) {
+function collect<T extends ReadonlyArray<Effect.Effect<number>>>(xs: T) {
   return try.all xs
 }
-effect function inherited(xs: Values) { return try.all xs }
-effect function settledInherited(xs: Values) { return try.allSettled xs }
-effect function bottom(xs: never[]) { return try.all xs }
-effect function settled(xs: ReadonlyArray<Exit.Exit<number, string>>) {
+function inherited(xs: Values) { return try.all xs }
+function settledInherited(xs: Values) { return try.allSettled xs }
+function bottom(xs: never[]) { return try.all xs }
+function settled(xs: ReadonlyArray<Exit.Exit<number, string>>) {
   return try.allSettled xs
 }
 export effect function main() {

@@ -1,6 +1,4 @@
-// expect: TS2322 TS2740
-// A function's kind is its marker (VIP-1): an Effect function in a plain
-// destination is TypeScript's own error, and map keeps the Effects it builds.
+// expect: EK4301 TS2322 TS2740
 import { Schema, SchemaTransformation } from "effect"
 effect function double(n: number): number!! { return n * 2 }
 export function main() {

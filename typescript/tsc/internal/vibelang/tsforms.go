@@ -117,6 +117,14 @@ func checkTypeScriptForms(c *checker.Checker, file *ast.SourceFile) {
 			continue
 		}
 		rule.find(c, file, func(at *ast.Node, rewrite *formRewrite, args ...any) {
+			if m.Code == 4834 || m.Code == 4835 {
+				a := analyzerFor(c)
+				for parent := at.Parent; parent != nil; parent = parent.Parent {
+					if ast.IsCallExpression(parent) && a.legacyPipeFirst(parent) != nil {
+						return
+					}
+				}
+			}
 			rewrite = preserveRewriteComments(file, rewrite)
 			m := rule.message
 			if rewrite != nil && rewrite.message != nil {
@@ -600,10 +608,41 @@ func isEffectFunction(c *checker.Checker, callee *ast.Node, module string, names
 	return m == module && slices.Contains(names, name)
 }
 
-// tryText returns text, the source of node, an Effect, run with try.
-func tryText(node *ast.Node, text string) string {
-	if isTry(node) || needsOperandParentheses(node) {
-		text = "(" + text + ")"
+// runningText returns the text that runs node, a program a rewrite moves
+// into a position where a call runs: node itself when it is an invocation,
+// and node called when it is an Effect value. It returns false for any other
+// node, which a rewrite cannot run.
+func runningText(c *checker.Checker, file *ast.SourceFile, node *ast.Node) (string, bool) {
+	return runningExpressionText(c, node, expressionText(file, node))
+}
+
+// thunkBody returns B when node is an arrow function, () => B, whose body B
+// is a call: a call of the arrow in place runs B where it stands, so a
+// rewrite writes load(id), not (() => load(id))(). It returns node otherwise,
+// and for an arrow that declares parameters, type parameters or a return
+// type, which B alone would drop.
+func thunkBody(node *ast.Node) *ast.Node {
+	arrow := ast.SkipParentheses(node)
+	if !ast.IsArrowFunction(arrow) || len(arrow.Parameters()) > 0 || arrow.TypeParameters() != nil || arrow.Type() != nil || ast.HasSyntacticModifier(arrow, ast.ModifierFlagsAsync) {
+		return node
 	}
-	return "try " + text
+	if body := arrow.Body(); body != nil && !ast.IsBlock(body) && isInvocation(ast.SkipParentheses(body)) {
+		return body
+	}
+	return node
+}
+
+// runningExpressionText is runningText with source text whose identifiers may
+// have been hygienically renamed by a source rewrite.
+func runningExpressionText(c *checker.Checker, node *ast.Node, text string) (string, bool) {
+	if isInvocation(ast.SkipParentheses(node)) {
+		return text, true
+	}
+	if t := c.GetTypeAtLocation(node); isEffectType(c, t) {
+		if needsOperandParentheses(node) {
+			text = "(" + text + ")"
+		}
+		return text + "()", true
+	}
+	return text, false
 }

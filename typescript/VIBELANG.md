@@ -68,7 +68,7 @@ Each case gets two symlinks in its `node_modules`: `effect`, from `$EFFECT_NODE_
 | `ts-ordinary-error.fail` | D266 preserves ordinary TS2322 and TS2339 |
 | `vibelang-parse` | A `.vibe` file parses and checks as TypeScript and emits `main.js` and `main.d.ts`; JavaScript prints its value, because `console` is a platform API |
 | `vibelang-wrap` | Exported functions and arrow functions lower to `Effect.fnUntraced`, and JavaScript runs them with `Effect.runSync` |
-| `plain-factory-programs`, `plain-factory-programs.fail` | S3-3: a plain function's call gives its program unrun and `try` runs it each time (VIP-1, VIP-5); top-level storage stays cold; `EK0501` for `try` in a plain function, and the run program's E/R checks remain enforced |
+| `plain-factory-programs`, `plain-factory-programs.fail` | S3-3: a plain factory's Effect-valued call runs and returns its success each time; D262 top-level storage stays cold; `EK1001`, `EK9203`, and returned-program E/R checks remain enforced |
 | `vibelang-lower` | Type-directed `yield*`: pure helpers stay plain, Effect-returning TypeScript calls and `.vibe` calls run, operands run left to right, a `Config` stays data |
 | `catch-narrowing`, `catch-narrowing.fail` | Smithers A-16: ternary, `&&`, `if`, and `typeof` guards reach catch operands, including bracket access and nested catches; absent and failing reads run correctly, while unguarded calls and real closure boundaries keep TS2722 |
 | `union-effect-calls`, `union-effect-channels.fail` | Smithers S14-1: unions of Effects run as statements, expressions, and by-name programs, join A/E/R, and keep mixed unions as data (D270) |
@@ -106,11 +106,11 @@ Each case gets two symlinks in its `node_modules`: `effect`, from `$EFFECT_NODE_
 | `plain-contract-validate`, `plain-contract-render`, `plain-contract-callback` | Smithers A-1, B-4, E-1 under D282: A-1's throwing validator is an Effect function, `string!Empty!`; B-4 keeps JavaScript's throw inside `sync` under `string!!`; E-1's plain callback calls keep their exceptions and declaration types |
 | `conditional-record`, `conditional-record-environment`, `conditional-record-inexact.fail` | Smithers E-15: paired TypeScript/VibeLang conditional records compile and stay plain under `exactOptionalPropertyTypes`; without it, both report TS2322 on the inferred optional `undefined` properties |
 | `plain-contract-exceptions` | A plain function throws only what its catch handles, which receives typed failures with their types, `JSON.parse`'s and a trusted call's included; exceptions from TypeScript it calls propagate unchanged and become defects in an Effect caller; a method or function that can throw takes an Effect contract (D282) |
-| `plain-contract-effect.fail` | A plain function runs no Effect (VIP-1): a statement that discards one is `EK4801` |
+| `plain-contract-effect.fail` | Running an Effect under a plain contract remains `EK9203` |
 | `plain-catch-exceptions` | Coercion, getter, revoked Proxy, and prototype-lookup exceptions pass through a plain function's catch unchanged, with `EK9204` at each catch; `JSON.parse`'s `SyntaxError` is a typed failure the catch receives (D282) |
-| `plain-throw-escapes` | A plain function's throw is JavaScript's (VIP-4): a throw statement, a throw expression, a throwing `match` arm and `do` block, a method, a rethrow, and a throwing `map` callback each reach the plain caller's `catch` |
+| `plain-throw-escapes.fail` | A throw that can escape a plain-annotated function is `EK9203`, with the contract that fixes it: a throw statement, a throw expression, a throwing `match` arm and `do` block, a method, and a rethrow; a plain callback that throws is `EK4301` (D282) |
 | `plain-throw-caught` | A plain function's catch handles its own throws and a trusted call's failure and returns a value; a TypeScript exception passes through it; under an Effect contract, throws in every form fail the Effect (D282) |
-| `factory-body-throw` | A plain function that returns an Effect throws as JavaScript does when called (VIP-1, VIP-4); the Effect it returns fails when run |
+| `factory-body-throw.fail` | A throw in a factory's call-time body is EK2115: the returned program fails instead (D269, D282) |
 | `ek2004-defect` | An Effect try with E = `never` warns that defects pass through and still propagates a defect (D260) |
 | `noemit-on-error` | Warning-only projects emit under `noEmitOnError`; errors and mixed warning/error projects do not, in both project and build mode (six checks) |
 | `contracts` | Written contracts: returns checked against A, a contract wider than the body, a contract on a body that runs nothing, `infer` in each channel (D57), and the `.d.ts` with the inferred channels filled in |
@@ -198,7 +198,7 @@ Each case gets two symlinks in its `node_modules`: `effect`, from `$EFFECT_NODE_
 | `ek4201.fail` | EK4201 for a control operation under `Effect.forEach` with `concurrency: 4`, `Effect.race`, and `Effect.timeout`, and for a producer that performs one passed to `Stream.runCollect`; none without concurrency, with `concurrency: 1`, with a handler inside each branch, or for a `for...of` over the producer |
 | `ek4202.fail` | EK4202 for a TypeScript function whose declared requirements hold a control operation; none for a generic TypeScript function that passes its argument's requirements through |
 | `plain-generator`, `plain-async-generator`, `generator-stream`, `plain-generator-yield.fail` | D271: JavaScript iterator contracts preserve sync and async generators; unannotated generators remain Streams; an invalid yield keeps TS2322; a JavaScript generator's catch receives typed failures only, so an exception passed in with `generator.throw()` passes through (D296) |
-| `plain-generator-throw` | A JavaScript generator's throw is JavaScript's (VIP-1, VIP-4), sync or async; one its own catch handles stays inside |
+| `plain-generator-throw.fail` | A throw that can escape a generator with a JavaScript iterator annotation is `EK9203`, sync or async; one its own catch handles stays inside (D296) |
 | `producers` | Producers (D26): laziness; cleanup before `break`, `return`, and `continue` to an outer label complete; one pass per run; service calls between yields; `yield*`; `Stream.take` without running ahead; a failure reaching the loop's `catch`; pattern, existing-variable, and `var` loop targets; a labeled JavaScript loop around a producer loop; `for...of` over a Stream; 100,000 elements under 50 frames; and `Stream<number, Broken, never>` in the `.d.ts` |
 
 ### Acceptance cases

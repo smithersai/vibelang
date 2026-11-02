@@ -27,7 +27,7 @@ func TestFixDoProgram(t *testing.T) {
 	program.GetSemanticDiagnostics(t.Context(), file)
 	c, done := program.GetTypeCheckerForFile(t.Context(), file)
 	defer done()
-	edits, _ := doProgramEdits(c, file)
+	edits, _ := effectEdits(c, file)
 	got := applyEdits(source, edits)
 	want := `export effect function main() {
   const held: Effect.Effect<number> = succeed(4)
@@ -90,7 +90,7 @@ func TestFixTryDoProgram(t *testing.T) {
 	program.GetSemanticDiagnostics(t.Context(), file)
 	c, done := program.GetTypeCheckerForFile(t.Context(), file)
 	defer done()
-	edits, _ := doProgramEdits(c, file)
+	edits, _ := effectEdits(c, file)
 	got := applyEdits(source, edits)
 	want := `export effect function main() {
   const held: Effect.Effect<number> = succeed(4)

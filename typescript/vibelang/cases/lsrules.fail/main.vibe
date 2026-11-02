@@ -18,7 +18,7 @@ const DirectoryLive = Layer.succeed(Directory, {
 })
 
 const UsersLive = Layer.effect(Users, effect {
-  const directory = try Directory
+  const directory = try Directory()
   return {
     effect find(id) {
       return try directory.lookup(id)

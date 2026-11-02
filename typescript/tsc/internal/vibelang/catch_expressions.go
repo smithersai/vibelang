@@ -32,18 +32,6 @@ func init() {
 	ls.RegisterQuickInfoHook(catchExpressionQuickInfo)
 }
 
-// catchHeadUntyped reports whether node is a catch expression whose left side
-// has no type: an expression of type any, as TypeScript gives a call it
-// rejected.
-func catchHeadUntyped(c *checker.Checker, node *ast.Node) bool {
-	call := catchExpressionOf(node)
-	if call == nil || len(call.Arguments()) == 0 || call.Arguments()[0].Body() == nil || ast.IsBlock(call.Arguments()[0].Body()) {
-		return false
-	}
-	t := c.GetTypeAtLocation(call.Arguments()[0].Body())
-	return t != nil && t.Flags()&checker.TypeFlagsAny != 0
-}
-
 // catchExpressionOf returns call when it is a catch expression the parser
 // wrote, or nil.
 func catchExpressionOf(call *ast.Node) *ast.Node {
@@ -97,9 +85,7 @@ func (a *analyzer) isCatchOperandProgram(fn *ast.Node) bool {
 // failures of a program on its left side, or of the code that runs there.
 func (a *analyzer) caughtErrors(call *ast.Node) *checker.Type {
 	left, _ := catchParts(call)
-	if a.isCatchOperandProgram(call.Arguments()[0]) || markedForm(call.Arguments()[0]) == formNone {
-		// The left side gives the Effect the catch runs (markedForm): what
-		// the handler receives is that Effect's failures.
+	if a.isCatchOperandProgram(call.Arguments()[0]) {
 		if program := effectOfValue(a.checker, a.checker.GetTypeAtLocation(ast.SkipParentheses(left))); program != nil {
 			if errors := channelType(a.checker, program, "_E"); errors != nil {
 				return errors
@@ -124,13 +110,6 @@ func checkCatchExpressions(c *checker.Checker, file *ast.SourceFile) {
 				return false // the parser already reports the missing operand
 			}
 			checkCatchHandler(c, file, call, fallback)
-			if !inEffectCode(call) {
-				// catch runs its left side (VIP-5), and a plain function runs
-				// no Effect (VIP-1).
-				note(reportAt(c, file, keyword, EK0504), "Mark the function effect, or use a try statement for a JavaScript exception.")
-				coverCodes(c, call, 2322, 2345) // its sides are typed as an Effect catch's
-				return true
-			}
 			if inLowerableBody(call) && analyzerFor(c).caughtErrors(call).Flags()&checker.TypeFlagsNever != 0 {
 				d := reportAt(c, file, keyword, deadCatchExpression, nodeText(file, left))
 				note(d, "Use a form that can fail, such as Option.getOrElse or Schema.decodeUnknownEffect, or remove the catch.")

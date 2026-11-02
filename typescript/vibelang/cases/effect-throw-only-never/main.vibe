@@ -8,8 +8,8 @@ export const arrow = effect () => { throw "stop" }
 export class Worker { effect fail() { throw "stop" } }
 export const worker = { effect fail() { throw "stop" } }
 import { plainFail, PlainWorker } from "./plain.js"
-export effect function nestedCallable() { effect function inner() { throw "nested" }; const arrow = effect () => { throw "nested" }; void inner; void arrow }
-export effect function nestedClass() { class Inner { effect fail() { throw "nested" } }; void Inner }
+export effect function nestedCallable() { function inner() { throw "nested" }; const arrow = () => { throw "nested" }; void inner; void arrow }
+export effect function nestedClass() { class Inner { fail() { throw "nested" } }; void Inner }
 export effect function diverges() { while (true) {} }
 export effect function throwOrReturn(flag: boolean) { if (flag) throw "stop"; return }
 type Success<F extends (...args: any[]) => any> = Effect.Success<ReturnType<F>>

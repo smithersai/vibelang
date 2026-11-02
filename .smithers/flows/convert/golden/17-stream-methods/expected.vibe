@@ -1,3 +1,3 @@
-export effect function hot() {
-  return Array.from(try Stream.make(18, 25, 30).filter((c) => c >= 25).map((c) => `${c} C`).runCollect())
+export function hot() {
+  return Array.from(Stream.make(18, 25, 30).filter((c) => c >= 25).map((c) => `${c} C`).runCollect())
 }

@@ -5,22 +5,22 @@ service Users {
 }
 
 export const UsersLive = Layer.succeed(Users, {
-  effect find(id) {
+  find(id) {
     if (id !== "42") throw new Bad({ code: id })
     return "Ada"
   }
 })
 
-export effect function nameOf(id: string): string!!Users {
-  return (try Users).find(id) catch () => "missing"
+export function nameOf(id: string): string!!Users {
+  return Users.find(id) catch () => "missing"
 }
 
-export effect function greet(id: string): string!Bad!Users {
-  const name = try Users.find(id)
+export function greet(id: string): string!Bad!Users {
+  const name = Users.find(id)
   return `hi ${name}`
 }
 
-export effect function neverGreeted(id: string): string!Bad!Users {
-  const name = try Users.find(id)
+export function neverGreeted(id: string): string!Bad!Users {
+  const name = Users.find(id)
   return `bye ${name}`
 }

@@ -1,7 +1,7 @@
 // A module that is also a program: node dist/lib.js runs its main, and
 // importing it runs nothing (D135).
-export effect function main() {
-  try Console.log("lib main ran")
+export function main() {
+  Console.log("lib main ran")
 }
 
 export function helper() {

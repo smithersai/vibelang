@@ -1,4 +1,3 @@
-// expect: TS1470 EK4603
-// A top-level await is ES top-level await (VIP-26), so only EK4603 says 42 is no Promise.
+// expect: TS1470 EK1001 EK4603
 export const here = (): string => import.meta.url;
 export const ready = await 42;

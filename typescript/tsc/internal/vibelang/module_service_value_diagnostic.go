@@ -48,9 +48,9 @@ func explainModuleServiceValue(c *checker.Checker, file *ast.SourceFile, all []*
 		replacement := d.Clone()
 		memberType := c.GetTypeOfPropertyOfType(shape, name.Text())
 		if isEffectValueType(c, memberType) || len(c.GetSignaturesOfType(memberType, checker.SignatureKindCall)) != 0 {
-			note(replacement, "Write try {0}.{2} to read the service implementation, then use its {1} member: (try {0}.{2}).{1}.", spelling, name.Text(), key.Name())
+			note(replacement, "Write {0}() to read the service implementation, or call {0}.{1}(...) directly.", spelling, name.Text())
 		} else {
-			note(replacement, "Write try {0}.{2} to read the service implementation, then read its {1} member.", spelling, name.Text(), key.Name())
+			note(replacement, "Write {0}() to read the service implementation, then read its {1} member.", spelling, name.Text())
 		}
 		if isAtModuleTopLevel(access) {
 			note(replacement, "Move the implementation lookup into an Effect function; a module's top level cannot run it.")

@@ -34,7 +34,7 @@ const data = new Map<string, ReadonlyArray<string>>([["users/1", ["Ada"]], ["ord
 const ConfigLive = Layer.succeed(Config, { url: "memory://shop" })
 
 const DatabaseLive = Layer.effect(Database, effect {
-  const url = (try Config).url
+  const url = (try Config()).url
   try Effect.sync(() => events.push(`connect ${url}`))
   return {
     query: effect (table: string, key: string) => try Effect.succeed(data.get(`${table}/${key}`) ?? [])
@@ -42,7 +42,7 @@ const DatabaseLive = Layer.effect(Database, effect {
 })
 
 const UsersLive = Layer.effect(Users, effect {
-  const db = try Database
+  const db = try Database()
   return {
     effect find(id) {
       const rows = try db.query("users", id)
@@ -53,7 +53,7 @@ const UsersLive = Layer.effect(Users, effect {
 })
 
 const OrdersLive = Layer.effect(Orders, effect {
-  const db = try Database
+  const db = try Database()
   return {
     effect count(userId) {
       return (try db.query("orders", userId)).length

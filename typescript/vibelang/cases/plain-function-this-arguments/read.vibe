@@ -1,5 +1,3 @@
-// VIP-1: only a function marked effect is an Effect function, and its body
-// reads this exactly as the same async body would (amendment 2026-10-30).
-export effect function read(this: { value: number }, add: number, scale = 1, ...extra: number[]) {
+export function read(this: { value: number }, add: number, scale = 1, ...extra: number[]) {
   return (this.value + add + extra.reduce((sum, value) => sum + value, 0)) * scale
 }

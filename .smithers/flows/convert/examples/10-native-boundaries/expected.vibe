@@ -1,6 +1,6 @@
 error InvalidAddress { reason: unknown }
 
-export effect function hostname(address: string) {
+export function hostname(address: string) {
   return try Effect.try({ try: () => new URL(address).hostname, catch: (reason) => new InvalidAddress({ reason }) })
 }
 

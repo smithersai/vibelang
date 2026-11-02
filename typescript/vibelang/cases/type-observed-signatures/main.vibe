@@ -24,7 +24,7 @@ export type Checks = [
   Assert<Eq<Effect.Error<ReturnType<typeof inferredGeneric>>, Failure>>,
   Assert<Eq<Effect.Success<ReturnType<typeof inferredGeneric>>, unknown>>,
   Assert<Eq<Parameters<typeof inferredGeneric>, [value: unknown]>>,
-  Assert<Eq<ReturnType<typeof plain>, number>>
+  Assert<Eq<ReturnType<typeof plain>, Effect.Effect<number, never, never>>>
 ]
 // expect-result: 4
 export effect function main() { const n: number = try run(1); const s: string = try generic("ok"); return plain(n) + s.length }

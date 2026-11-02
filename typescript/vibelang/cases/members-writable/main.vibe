@@ -30,7 +30,7 @@ export const bump = (counter: Counter): number => {
   return counter.count
 }
 
-export effect function main() {
+export function main() {
   const point = move({ x: 1, y: 2 })
   return { between: between(2, { minimum: 1, maximum: 3 }), minimum: widen({ minimum: 5 }), x: point.x, z: point["z"], count: bump({ count: 1 }) }
 }

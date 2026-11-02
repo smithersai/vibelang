@@ -1,0 +1,52 @@
+// expect: EK9203 EK9203 EK9203 EK9203 EK9203 EK9203 EK4301
+// D282: a plain return annotation means the function never fails. A throw
+// that can escape it is a typed failure, so it is EK9203, as running an
+// Effect there is, whatever form the throw takes.
+error Invalid { value: string }
+
+export const validate = (value: string): string => {
+  if (value === "") throw new Invalid({ value })
+  return value
+}
+
+export function orThrow(value: string | undefined): string {
+  return value ?? throw new Invalid({ value: "missing" })
+}
+
+export function pick(tag: string): number {
+  return match (tag) {
+    when "a": 1;
+    default: throw new Invalid({ value: tag });
+  }
+}
+
+export function viaDo(n: number): number {
+  return do {
+    if (n < 0) throw new Invalid({ value: String(n) })
+    n * 2
+  }
+}
+
+export class Router {
+  route(tag: string): string {
+    if (tag === "") throw new Invalid({ value: tag })
+    return "/"
+  }
+}
+
+// A throw inside a try that rethrows still escapes.
+export function rethrows(value: string): string {
+  try {
+    if (value === "") throw new Invalid({ value })
+    return value
+  } catch (e) {
+    throw e
+  }
+}
+
+// A plain callback that throws can pause, and its caller calls it
+// synchronously.
+export const checked = ["a", ""].map((value) => {
+  if (value === "") throw new Invalid({ value })
+  return value
+})

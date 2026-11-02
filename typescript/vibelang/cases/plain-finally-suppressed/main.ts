@@ -15,6 +15,6 @@ for (const call of [both, nested]) {
     console.log(shown(e))
   }
 }
-// Run as an Effect, it dies with the cleanup's defect alone.
-console.log(reasons(Effect.runSyncExit(Effect.sync(direct))))
+// The Effect form fails with the cleanup's defect alone.
+console.log(reasons(Effect.runSyncExit(direct())))
 console.log(JSON.stringify(Effect.runSync(report())))

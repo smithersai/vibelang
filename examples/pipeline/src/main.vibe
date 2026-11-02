@@ -5,13 +5,13 @@ function* readings() {
       yield celsius
     }
   } finally {
-    try Console.log("sensor closed")
+    Console.log("sensor closed")
   }
 }
 
-export effect function main() {
+export function main() {
   const alerts = readings().filter((value) => value >= 25).map((value) => `${value} C`).take(2)
   for try (const alert of alerts) {
-    try Console.log(`temperature alert: ${alert}`)
+    Console.log(`temperature alert: ${alert}`)
   }
 }

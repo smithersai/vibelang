@@ -1,3 +1,3 @@
 announce is an Effect value, and this function's success type, X, names no value, so this function succeeds with this program instead of running it.
-Run it with try: try announce. To return the program itself, write its type as the success type: (void!!)!E!R.
+Call it to run it: announce(). To return the program itself, write its type as the success type: (void!!)!E!R.
 Write its body in place to run it, or write its type as the success type to return it: (() => number!!)!E!R.

@@ -1,11 +1,9 @@
-// expect: EK0501 EK4301
-// A callback that visit or forEach calls as a plain function (VIP-1) can't
-// run work (try is EK0501), and forEach drops the Effect work returns (EK4301).
+// expect: EK4301 EK4301
 import { Effect } from "effect"
 const visit = <A>(callback: () => A): A => callback()
 effect function work() { return try Effect.succeed(1) }
 export function main() {
-  const used = visit(() => try work())
-  ;[1].forEach(work)
+  const used = visit(() => work())
+  ;[1].map(() => work())
   return used
 }

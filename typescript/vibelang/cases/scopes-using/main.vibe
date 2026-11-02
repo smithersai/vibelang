@@ -1,4 +1,3 @@
-import * as $effectPrograms from "effect/Effect"
 // using in an Effect function makes its block a Scope region (D14, D47):
 // only the block's using acquisitions get the region's Scope, and they
 // release in reverse order when the block exits, on success, failure, and
@@ -147,7 +146,7 @@ effect function interruptibleAcquire() {
 
 effect function deadline(program: () => Effect<string, never, never>) {
   try {
-    return try Effect.timeout($effectPrograms.suspend(program), "5 millis")
+    return try Effect.timeout(program, "5 millis")
   } catch (e) {
     return e._tag
   }

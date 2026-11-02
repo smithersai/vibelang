@@ -12,9 +12,9 @@ const compiler = defaultCompiler()
 test.skipIf(!existsSync(compiler))("isolates run-mode output across projects when the second has a warning", async () => {
   const root = mkdtempSync(join(tmpdir(), "snippet-isolation-test-"))
   try {
-    for (const [name, warning] of [["first", ""], ["second", 'export effect function constant() { return Effect.succeed(1) catch () => 2 }']] as const) {
+    for (const [name, warning] of [["first", ""], ["second", 'function unusedFailure() { throw new Error("unused") }']] as const) {
       writeFileSync(join(root, `${name}.md`), [
-        "```vibe", warning, `export effect function main() { try Console.log("${name}") }`, `// Output: ${name}`, "```"
+        "```vibe", warning, `export function main() { Console.log("${name}") }`, `// Output: ${name}`, "```"
       ].join("\n"))
     }
     const output = join(root, "report.json")

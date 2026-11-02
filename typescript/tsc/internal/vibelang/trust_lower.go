@@ -133,6 +133,9 @@ func (a *analyzer) addFailures(info *effectInfo, call *ast.Node) {
 // failures that can end fn: one that no try block of fn with a catch clause
 // encloses. Such a function is an Effect, as one with an escaping throw is.
 func (a *analyzer) hasEscapingFailure(fn *ast.Node) bool {
+	if a.isBodyDeferred(fn) {
+		return false
+	}
 	return a.forEachFailingCall(fn, func(call *ast.Node, caught bool) bool { return !caught })
 }
 
@@ -337,17 +340,4 @@ func containsYield(node *ast.Node) bool {
 		return false
 	}
 	return node.ForEachChild(containsYield)
-}
-
-// inCatchingTry reports whether a try block with a catch clause in the
-// function that holds node encloses node. In a plain function only there is
-// a trusted call's listed exception a typed failure, which the catch receives
-// (D54); elsewhere it propagates unchanged, as JavaScript's (D282).
-func inCatchingTry(node *ast.Node) bool {
-	for n := node; n.Parent != nil && !isFunctionBoundary(n.Parent); n = n.Parent {
-		if parent := n.Parent; parent.Kind == ast.KindTryStatement && parent.AsTryStatement().TryBlock == n && catches(parent) {
-			return true
-		}
-	}
-	return false
 }

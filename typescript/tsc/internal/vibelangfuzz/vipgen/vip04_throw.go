@@ -222,18 +222,16 @@ func (p *boundaryDefects) Vibe(w *Writer) {
 	w.Write("const " + p.StaticExit + " = try Effect.exit(" + p.StaticWork + ");\n")
 	w.Write("const " + p.ParamWork + ": Effect.Effect<string> = effect { const " + p.Program + " = " + p.Builder + "(undefined as unknown as { id: string }); ev(\"" + p.Built + "\"); return try " + p.Program + " };\n")
 	w.Write("const " + p.ParamExit + " = try Effect.exit(" + p.ParamWork + ");\n")
-	w.Write("ev(" + p.StaticExit + "._tag);\n")
-	w.Write("ev(" + p.ParamExit + "._tag)")
+	w.Write("return [" + p.StaticExit + ", " + p.ParamExit + "]")
 }
 func (p *boundaryDefects) Effect(w *Writer) {
 	w.Write("const " + p.StaticWork + " = Effect.gen(function* () { class " + p.Class + " { static { const box = undefined; box.value } }; return 0 });\n")
 	w.Write("const " + p.StaticExit + " = yield* Effect.exit(" + p.StaticWork + ");\n")
 	w.Write("const " + p.ParamWork + " = Effect.gen(function* () { const " + p.Program + " = " + p.Builder + "(undefined); ev(\"" + p.Built + "\"); return yield* " + p.Program + " });\n")
 	w.Write("const " + p.ParamExit + " = yield* Effect.exit(" + p.ParamWork + ");\n")
-	w.Write("ev(" + p.StaticExit + "._tag);\n")
-	w.Write("ev(" + p.ParamExit + "._tag)")
+	w.Write("return [" + p.StaticExit + ", " + p.ParamExit + "]")
 }
-func (*boundaryDefects) Ends() bool { return false }
+func (*boundaryDefects) Ends() bool { return true }
 
 // A plain function's try statement is JavaScript's (decided detail 205): its
 // catch receives every exception that reaches it, untracked ones included,

@@ -1,6 +1,6 @@
 error Oops { n: number }
 
-effect function step(payload: number): number!Oops! {
+function step(payload: number): number!Oops! {
   if (payload < 0) throw new Oops({ n: payload })
   return payload
 }
@@ -14,7 +14,7 @@ export function sized(n: number): string {
   return kind
 }
 
-export effect function describe(n: number): string!Oops! {
-  const v = try step(n)
+export function describe(n: number): string!Oops! {
+  const v = step(n)
   return match (v) { when 0: "zero"; default: "some"; }
 }

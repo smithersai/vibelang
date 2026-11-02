@@ -81,8 +81,7 @@ func constMainFunction(declaration *ast.Node) *ast.Node {
 }
 
 // constMainRewrite plans EK4843's fix for name, the name of a const or let
-// main: its statement becomes export function main() { … }, an effect function
-// when the function is one (VIP-1).
+// main: its statement becomes export function main() { … }.
 func constMainRewrite(c *checker.Checker, file *ast.SourceFile, name *ast.Node) *formRewrite {
 	declaration := name.Parent
 	if declaration == nil || !ast.IsVariableDeclaration(declaration) {
@@ -103,9 +102,6 @@ func constMainRewrite(c *checker.Checker, file *ast.SourceFile, name *ast.Node) 
 		return &formRewrite{why: "No quick fix: a function declaration would not mean what this function means; write export function main() { … } by hand."}
 	}
 	text := "export function main()"
-	if isMarkedEffect(fn) {
-		text = "export effect function main()"
-	}
 	if t := fn.Type(); t != nil {
 		text += ": " + nodeText(file, t)
 	}
@@ -115,22 +111,4 @@ func constMainRewrite(c *checker.Checker, file *ast.SourceFile, name *ast.Node) 
 		text += " {\n  return " + nodeText(file, body) + "\n}"
 	}
 	return &formRewrite{edits: []sourceEdit{{nodeStart(file, statement), statement.End(), text}}, description: "export function main() { … }"}
-}
-
-// readsLexicalContext reports whether body, outside the functions it declares
-// other than arrows, reads this, super, arguments or new.target.
-func readsLexicalContext(body *ast.Node) bool {
-	var visit func(node *ast.Node) bool
-	visit = func(node *ast.Node) bool {
-		switch {
-		case node.Kind == ast.KindThisKeyword || node.Kind == ast.KindSuperKeyword || node.Kind == ast.KindMetaProperty:
-			return true
-		case ast.IsIdentifier(node) && node.Text() == "arguments":
-			return true
-		case ast.IsFunctionLike(node) && node.Kind != ast.KindArrowFunction, ast.IsClassLike(node):
-			return false
-		}
-		return node.ForEachChild(visit)
-	}
-	return body != nil && visit(body)
 }

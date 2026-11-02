@@ -1,18 +1,18 @@
 // Hover Markdown in a .vibe file: VibeLang's notes, then a rule, then the JSDoc.
 
 /** Greets someone by name. */
-export effect function greet(name: string) {
-  try sleep("1 millis")
+export function greet(name: string) {
+  sleep("1 millis")
   return `Hello, ${name}`
 }
 
-export effect function shout(name: string) {
-  try sleep("1 millis")
+export function shout(name: string) {
+  sleep("1 millis")
   return name.toUpperCase()
 }
 
-export effect function welcome() {
-  const greeting = try greet("Ada")
-  const loud = try shout("Ada")
+export function welcome() {
+  const greeting = greet("Ada")
+  const loud = shout("Ada")
   return greeting + loud
 }

@@ -12,7 +12,7 @@ const catalog: ReadonlyArray<Product> = [
 ]
 
 export const InventoryLive = Layer.succeed(Inventory, {
-  effect reserve(sku, quantity) {
+  reserve(sku, quantity) {
     const product = catalog.find((entry) => entry.sku === sku)
     const available = product?.stock ?? 0
     if (product === undefined || available < quantity) throw new OutOfStock({ sku, available })
@@ -20,9 +20,9 @@ export const InventoryLive = Layer.succeed(Inventory, {
   }
 })
 
-export effect function quote(sku: string, quantity: number) {
+export function quote(sku: string, quantity: number) {
   try {
-    const product = try Inventory.reserve(sku, quantity)
+    const product = Inventory.reserve(sku, quantity)
     const total = (product.cents * quantity / 100).toFixed(2)
     return `${quantity} x ${product.name}: $${total}`
   } catch (error) {
@@ -30,6 +30,6 @@ export effect function quote(sku: string, quantity: number) {
   }
 }
 
-export effect function quoteCart() {
+export function quoteCart() {
   return try.all [quote("tea", 2), quote("coffee", 3)]
 }

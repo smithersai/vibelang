@@ -8,6 +8,6 @@ function double(n: number): number {
 }
 
 // expect-result: [2,4,6]
-export effect function main() {
+export function main() {
   return [1, 2, 3].map(double)
 }

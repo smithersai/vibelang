@@ -1,4 +1,3 @@
-import * as $effectPrograms from "effect/Effect"
 // Chapter 14. Callbacks and higher-order functions.
 // D500: a callback that may run Effects declares its channels as type parameters, as Effect TypeScript does.
 import { Schedule } from "effect"
@@ -31,7 +30,7 @@ effect function namesAndSizes(ids: ReadonlyArray<string>, words: ReadonlyArray<s
 }
 
 effect function withRetry<A, E, R>(times: number, program: () => A!E!R) {
-  return try Effect.retry($effectPrograms.suspend(program), Schedule.recurs(times))
+  return try Effect.retry(program, Schedule.recurs(times))
 }
 // <A, E, R>(times: number, program: () => Effect<A, E, R>) => Effect<A, E, R>
 

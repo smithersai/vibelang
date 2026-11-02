@@ -23,7 +23,10 @@ func inferredReturnType(c *checker.Checker, fn *ast.Node, t *checker.Type) *chec
 		return producerType(c, fn, t)
 	}
 	a := analyzerFor(c)
-	if !a.isEffect(fn) {
+	// A function that compiles to plain JavaScript through a $direct variant
+	// is still an Effect to TypeScript (Chapter 15); other plain functions,
+	// such as one with a plain return annotation, keep their type.
+	if !a.isSplittable(fn) && !a.isEffect(fn) {
 		return t
 	}
 	if effect := a.effectTypeOf(fn, t); effect != nil {

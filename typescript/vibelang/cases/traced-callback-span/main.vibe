@@ -2,13 +2,13 @@
 effect function list() {
   return try withSpan(effect {
     try yieldNow()
-    return (try Effect.currentSpan).name
+    return (try Effect.currentSpan()).name
   }, "Reader.list")
 }
 const reader = {
   fires: effect () => try withSpan(effect {
     try yieldNow()
-    return (try Effect.currentSpan).name
+    return (try Effect.currentSpan()).name
   }, "Reader.fires")
 }
 export effect function main() { return [try list(), try reader.fires()] }

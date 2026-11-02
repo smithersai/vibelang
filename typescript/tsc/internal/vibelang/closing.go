@@ -101,7 +101,11 @@ func (tx *lowering) isClosedLoop(node *ast.Node) bool {
 	if initializer := original.AsForInOrOfStatement().Initializer; ast.IsVariableDeclarationList(initializer) && (isUsingList(initializer) || len(initializer.AsVariableDeclarationList().Declarations.Nodes) != 1) {
 		return false // for (using r of rs) is a Scope region's (scopes_lower.go)
 	}
-	return inLowerableBody(original) && inEffectCode(original)
+	if !inLowerableBody(original) {
+		return false
+	}
+	fn := enclosingFunction(original)
+	return tx.plan.isEffect(fn) || tx.plan.isProgram(fn)
 }
 
 // bindsOneName reports whether a for...of head, a declaration list or an

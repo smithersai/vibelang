@@ -10,7 +10,7 @@ import { Resource } from "./res.js"
 const Option = { stage: "prod" }
 
 effect function stage() { return Resource.App.stage }
-const later = effect () => Resource.App.stage
+const later = () => Resource.App.stage
 
 export effect function main() {
   return [try stage(), try later(), Option.stage]

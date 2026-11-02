@@ -14,7 +14,7 @@ effect function answered(n: number) {
 
 export effect function main() {
   const byName = fork answered(2)
-  const block = fork effect {
+  const block = fork {
     try {
       return try Ask.ask()
     } handle Ask.ask() {

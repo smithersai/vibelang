@@ -41,13 +41,12 @@ export const parameterGeneric = <A>(input: { mutable value: A }): Effect.Effect<
   return program
 }
 
-// VIP-3: an inferred contract is a left-out annotation.
-export const inferred = (input: { mutable value: number }, reason: string | null) => {
+export const inferred = (input: { mutable value: number }, reason: string | null): number!infer E!infer R => {
   const snapshot = input.value
   return effect { if (reason !== null) throw reason; return snapshot }
 }
 
-// The program fails when it runs; the call returns it.
+// A factory's body never fails (D282): its program fails when it runs.
 export const refuse = (reason: string): Effect.Effect<never, string, never> => {
   return effect { throw reason }
 }

@@ -8,23 +8,26 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 )
 
-// EK4834 (D288): Effect.succeed and Effect.fail that try runs. In effect code,
-// try Effect.succeed(x) gives x, and try Effect.fail(e) fails as throw e does
-// (VIP-4, VIP-5):
+// EK4834 (D288): Effect.succeed and Effect.fail where the call runs. In a
+// VibeLang function a call runs where it stands (D147), so running
+// Effect.succeed(x) produces x, and running Effect.fail(e) fails as
+// throw e does (D46):
 //
-//	return try Effect.succeed(user)      return user
-//	return try Effect.fail(new Gone())   throw new Gone()
-//	effect () => try Effect.fail(error)  effect () => throw error
+//	return Effect.succeed(user)      return user
+//	return Effect.fail(new Gone())   throw new Gone()
+//	() => Effect.fail(error)         () => throw error
 //
-// Only a call that try runs counts. Any other call builds a program, which
-// the value would not be. The fix of Effect.succeed(x) writes x where a value
+// Only a call that runs in a VibeLang function body counts: a call passed by
+// name, held by a declared Effect type, or in a hatch builds a program, which
+// the value would not. The fix of Effect.succeed(x) writes x where a value
 // stands: a return, an initializer, an argument, an element or a field, an
 // arrow function's body, a branch of ?:, and the right side of ??, ||, or &&;
-// it refuses x that is itself an Effect, which try would hand back as data.
-// The fix of Effect.fail(e) writes a throw statement for a statement or a
-// return, and a throw expression (D186) for an arrow function's body, a
-// branch of ?:, and the right side of ??, ||, or &&. Calls with type arguments
-// are refused: the value alone would not carry them.
+// it refuses x that is itself an Effect, because the value would then be a
+// program the function returns rather than one it holds as data. The fix of
+// Effect.fail(e) writes a throw statement for a statement or a return, and a
+// throw expression (D186) for an arrow function's body, a branch of ?:, and
+// the right side of ??, ||, or &&. Calls with type arguments are
+// refused: the value alone would not carry them.
 
 // directFailMessage is EK4834's text for Effect.fail.
 var directFailMessage = EK4834.With("{0} runs here, so it fails the function as a throw does: {1}.")
@@ -48,8 +51,8 @@ func directFormCall(c *checker.Checker, call *ast.Node) string {
 		return ""
 	}
 	_, name := effectMember(c, call.Expression())
-	if !analyzerFor(c).runs(call) {
-		return "" // a call no try runs builds a program
+	if a := analyzerFor(c); !a.runs(call) || a.isByName(call) {
+		return "" // a program passed by name stays a program (D147)
 	}
 	return name
 }
@@ -126,12 +129,15 @@ func directFormRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 		argumentText = "(" + file.Text()[argument.Pos():argument.End()] + ")"
 	}
 	position := directPositionOf(call)
+	if position == positionRightValue && returnsEffectUnion(c, call) {
+		return nil
+	}
 	start, end := nodeStart(file, call), call.End()
 	var text string
 	switch name {
 	case "succeed":
 		t := c.GetTypeAtLocation(argument)
-		if isEffectType(c, t) || isEffectValueType(c, t) {
+		if isEffectType(c, t) || isEffectValueType(c, t) || !keepsEffectForm(c, call) {
 			return nil
 		}
 		text = argumentText
@@ -174,6 +180,78 @@ func directFormRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 		rewrite.message = directFailMessage
 	}
 	return rewrite
+}
+
+// returnsEffectUnion reports whether call is a branch of what a function
+// without a return type returns, and the branches are different Effects. The
+// function declares their union, which its callers see; as a value and a
+// throw, its branches would be one Effect.
+func returnsEffectUnion(c *checker.Checker, call *ast.Node) bool {
+	branches := call.Parent
+	if !ast.IsConditionalExpression(branches) || branches.Parent == nil || !ast.IsReturnStatement(branches.Parent) && !(ast.IsArrowFunction(branches.Parent) && branches.Parent.Body() == branches) {
+		return false
+	}
+	if fn := ast.GetContainingFunction(call); fn == nil || fn.Type() != nil {
+		return false
+	}
+	conditional := branches.AsConditionalExpression()
+	other := conditional.WhenTrue
+	if other == call {
+		other = conditional.WhenFalse
+	}
+	mine, theirs := programType(c, call), programType(c, other)
+	return mine != nil && theirs != nil && !c.IsTypeAssignableTo(mine, theirs) && !c.IsTypeAssignableTo(theirs, mine)
+}
+
+// programType returns the Effect type node builds, or nil. In a function that
+// runs a call, the type of the call is its success value.
+func programType(c *checker.Checker, node *ast.Node) *checker.Type {
+	node = ast.SkipParentheses(node)
+	if isInvocation(node) {
+		if signature := c.GetResolvedSignature(node); signature != nil {
+			if t := c.GetReturnTypeOfSignature(signature); isEffectType(c, t) {
+				return t
+			}
+		}
+		return nil
+	}
+	if t := c.GetTypeAtLocation(node); isEffectType(c, t) {
+		return t
+	}
+	return nil
+}
+
+// keepsEffectForm reports whether the function around call stays an Effect
+// function without call, which running Effect.succeed makes one: its form
+// does not depend on its body, as for a function with an Effect contract, a
+// declaration that D10 compiles with its Effect form beside it, or a lambda
+// or method whose expected type asks for an Effect function or a program; or
+// its body performs another Effect operation that the fixes keep. Otherwise
+// removing the call could turn a lambda that returns an Effect into a plain
+// function that returns the value, which its callers would see.
+func keepsEffectForm(c *checker.Checker, call *ast.Node) bool {
+	fn := ast.GetContainingFunction(call)
+	if fn == nil || !isLowerable(fn) {
+		return false
+	}
+	a := analyzerFor(c)
+	if a.hasContract(fn) || a.isSplittable(fn) {
+		return true
+	}
+	if ast.IsMethodDeclaration(fn) && a.expectsEffect(fn) {
+		return true
+	}
+	if isLambda(fn) {
+		if e := a.classify(a.contextualTypes(fn)); e.effectFn && !e.plainFn || e.program && !e.plainFn && !e.effectFn {
+			return true
+		}
+	}
+	if hasEscapingThrow(fn) || declaresUsing(fn) || hasVibeLangStatement(fn) {
+		return true
+	}
+	return a.forEachRunningCallInBody(fn, func(other *ast.Node) bool {
+		return other != call && a.performs(other) && directFormCall(c, other) != "succeed"
+	})
 }
 
 // isLowPrecedence reports whether expression binds more loosely than the

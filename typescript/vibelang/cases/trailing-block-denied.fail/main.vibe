@@ -1,7 +1,4 @@
-// expect: EK1101 TS2345
-// Under VIP-1 the parser's block is a program (VIP-2), so where the callee
-// takes a function TypeScript also reports TS2345 until --fix writes the
-// block as that function.
+// expect: EK1101
 function plain(f: () => number) { return f() }
 const obj = { plain }
 function test(name: string, body: () => Effect.Effect<number>) { return body() }

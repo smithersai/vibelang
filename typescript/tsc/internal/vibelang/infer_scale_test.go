@@ -53,9 +53,9 @@ func TestInferredChannelsScale(t *testing.T) {
 		}
 	}()
 	var source strings.Builder
-	source.WriteString("export effect function f0(x: number) { return x + 1 }\n")
+	source.WriteString("export function f0(x: number) { return x + 1 }\n")
 	for i := 1; i < 200; i++ {
-		fmt.Fprintf(&source, "export effect function f%d(x: number) { try sleep(\"0 millis\"); const a = try f%d(x); return a > 0 ? a : try f%d(x + 1) }\n", i, i-1, i-1)
+		fmt.Fprintf(&source, "export function f%d(x: number) { sleep(\"0 millis\"); const a = f%d(x); return a > 0 ? a : f%d(x + 1) }\n", i, i-1, i-1)
 	}
 	program, file, _, _ := editorProgram(t, source.String())
 	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {

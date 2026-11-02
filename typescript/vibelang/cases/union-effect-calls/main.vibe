@@ -7,9 +7,7 @@ export effect function direct(flag: boolean) {
   return value
 }
 export effect function byName(flag: boolean) {
-  // Effect.map's inference picks one arm of a union of Effects, so the union
-  // is widened first; no conversion passes it by name (VIP-1, D147 retired).
-  return try Effect.map(choose(flag) as Effect.Effect<string | number>, (value) => value)
+  return try Effect.map(choose(flag), (value) => value)
 }
 function readCounts(): number { return counts() }
 export effect function main() {

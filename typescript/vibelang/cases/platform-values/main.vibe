@@ -11,6 +11,6 @@ import { lineEnd, server } from node
 import { kind } from "./kind.ts"
 
 // expect-result: ["function","string"]
-export effect function main() {
+export function main() {
   return [kind(server), kind(lineEnd)]
 }

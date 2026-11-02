@@ -7,12 +7,12 @@ service Flags {
 abstract class Value { abstract value: string }
 class Concrete extends Value { value = "ordinary" }
 
-export effect function read(): boolean!! { return (try Flags).enabled }
+export function read(): boolean!! { return Flags().enabled }
 
 // expect-result: {"defaultValue":true,"override":false,"key":"vip-types/Flags","ordinary":"ordinary"}
-export effect function main() {
-  const defaultValue = try read()
+export function main() {
+  const defaultValue = read()
   let override = true
-  provide Layer.succeed(Flags, { enabled: false }) { override = try read() }
+  provide Layer.succeed(Flags, { enabled: false }) { override = read() }
   return { defaultValue, override, key: Flags.key, ordinary: new Concrete().value }
 }

@@ -11,46 +11,38 @@ service Size {
   of(text: string): number!!
 }
 
-const RegionLive = Layer.succeed(Region, { effect name() { return "eu" } })
-const SizeLive = Layer.succeed(Size, { effect of(text) { return text.length } })
+const RegionLive = Layer.succeed(Region, { name() { return "eu" } })
+const SizeLive = Layer.succeed(Size, { of(text) { return text.length } })
 
-effect function regionName() {
-  return try (try Region).name()
-}
-
-effect function sizeOf(text: string) {
-  return try (try Size).of(text)
-}
-
-effect function find() {
+function find() {
   return "Ada"
 }
 
-effect function traced() {
-  return try withSpan(find(), "find")
+function traced() {
+  return withSpan(() => find(), "find")
 }
 
-effect function provided() {
-  provide RegionLive { return try regionName() }
+function provided() {
+  provide RegionLive { return Region.name() }
 }
 
-effect function served() {
-  return try Effect.provideService(sizeOf("abcd"), Size, { effect of(text: string) { return text.length } })
+function served() {
+  return Effect.provideService(Size.of("abcd"), Size, { of(text: string) { return text.length } })
 }
 
-effect function describe() {
-  return `${try regionName()} ${try sizeOf("four")}`
+function describe() {
+  return `${Region.name()} ${Size.of("four")}`
 }
 
-effect function many() {
-  provide RegionLive, SizeLive { return try describe() }
+function many() {
+  provide RegionLive, SizeLive { return describe() }
 }
 
-effect function logged() {
-  provide RegionLive { try regionName() }
+function logged() {
+  provide RegionLive { Region.name() }
   return "done"
 }
 
-export effect function main() {
-  return { traced: try traced(), provided: try provided(), served: try served(), many: try many(), logged: try logged() }
+export function main() {
+  return { traced: traced(), provided: provided(), served: served(), many: many(), logged: logged() }
 }

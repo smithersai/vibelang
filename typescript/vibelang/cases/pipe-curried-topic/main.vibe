@@ -8,6 +8,6 @@ export const method = Schema.NullOr(Schema.String).pipe(Schema.withDecodingDefau
 // Both declarations must retain the concrete input schema.
 const same: typeof method = piped
 // expect-result: ["ok",null]
-export effect function main() {
+export function main() {
   return [Schema.decodeUnknownSync(same)("ok"), Schema.decodeUnknownSync(same)(null)]
 }

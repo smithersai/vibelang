@@ -367,6 +367,8 @@ func (tx *lowering) acquisition(initializer *ast.Node) *ast.Node {
 	if call := ast.SkipParentheses(initializer); call.Kind == ast.KindCallExpression {
 		var program *ast.Node
 		switch {
+		case tx.plan.values[call]:
+			program = tx.Visitor().VisitNode(call.Expression()) // p(), where p is an Effect value
 		case tx.plan.runsCall(call):
 			// Visit the call itself so module methods and other call rewrites
 			// still apply, and defer only its outer run: $using supplies the

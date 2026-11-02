@@ -3,16 +3,16 @@ import { Effect } from "effect"
 
 export function double(value: number): number { return value * 2 }
 
-export effect function answer() {
-  return try Effect.succeed(double(21))
+export function answer() {
+  return Effect.succeed(double(21))
 }
 
-it.effect("runs a VibeLang Effect function", effect () => {
-  const value = try answer()
-  try Effect.sync(() => assert.strictEqual(value, 42))
+it.effect("runs a VibeLang Effect function", () => {
+  const value = answer()
+  Effect.sync(() => assert.strictEqual(value, 42))
 })
 
-it.effect("keeps plain callbacks plain", effect () => {
+it.effect("keeps plain callbacks plain", () => {
   const values = [1, 2, 3].map(double)
-  try Effect.sync(() => assert.deepStrictEqual(values, [2, 4, 6]))
+  Effect.sync(() => assert.deepStrictEqual(values, [2, 4, 6]))
 })

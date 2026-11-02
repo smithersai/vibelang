@@ -13,24 +13,26 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
 )
 
-// vibelang --fix-vip-only migrates what a marked file still spells the old way
-// and leaves the rest as written: a function is an Effect function exactly when
-// marked effect (VIP-1), so the marker is an input now, and a call that no try
-// runs gives its Effect unrun (VIP-5). A retired await operation (EK1802) and the
-// retired try(…) hatch (EK4616) become try forms, in a function already marked.
-// fork's operand, a held const, the left side of catch and a plain function's
-// call stay as they are. A second run finds nothing to write.
+// vibelang --fix-vip-only writes try before each call that runs where it
+// stands (VIP-5): a call, a method call, a call in a statement, and a call
+// whose value a member access continues, in parentheses, with a semicolon
+// where the parenthesis would continue the line before. It writes none in a
+// retired await operation (EK1802 rewrites it), fork's operand, a held const, a function
+// literal's expression body, the left side of catch, a plain function's
+// call, or a call that already has try. It rewrites the retired try(…)
+// hatch as Effect.try (EK4616), and marks the Effect functions effect
+// (fix_effect.go). A second run finds nothing to write.
 func TestFixVIPWritesTryWhereCallsRun(t *testing.T) {
 	source := `error Bad { cause: unknown }
 
-effect function load(n: number) {
-  try yieldNow()
+function load(n: number) {
+  yieldNow()
   return { n }
 }
 
 class Box {
-  effect get(n: number) {
-    try yieldNow()
+  get(n: number) {
+    yieldNow()
     return n
   }
 }
@@ -39,22 +41,22 @@ function plainDouble(n: number): number {
   return n * 2
 }
 
-export effect function main() {
+export function main() {
   const box = new Box()
-  const a = try load(1)
-  try box.get(2)
-  const b = (try load(3)).n
+  const a = load(1)
+  box.get(2)
+  const b = load(3).n
   const all = await.all [load(4), load(5)]
   const f = fork load(6)
   const p: { n: number }!! = load(7)
-  const later = effect () => try load(8)
+  const later = () => load(8)
   const d = plainDouble(1)
-  ;(try load(11)).n
+  load(11).n
   const c = try load(9)
   const e = load(12) catch { n: 0 }
   const parsed = try((text) => JSON.parse(text), (cause) => new Bad({ cause }), "1")
   join f
-  return a.n + b + all[0].n + d + c.n + e.n + parsed + try box.get(10)
+  return a.n + b + all[0].n + d + c.n + e.n + parsed + box.get(10)
 }
 `
 	want := `error Bad { cause: unknown }
@@ -113,12 +115,12 @@ export effect function main() {
 		}
 		t.Fatalf("--fix-vip-only wrote\n%s\nwant\n%s\nrefused %+v", got, want, result.Refused)
 	}
-	if fixed.Counts[EK1802.Code] != 1 || fixed.Counts[EK4616.Code] != 1 {
-		t.Errorf("fixes %v; want one EK1802 fix and one EK4616 fix", fixed.Counts)
+	if fixed.Rewrites[tryLabel] != 7 || fixed.Counts[EK4616.Code] != 1 {
+		t.Errorf("rewrites %v, fixes %v; want 7 tries and one EK4616 fix", fixed.Rewrites, fixed.Counts)
 	}
 	var report strings.Builder
 	result.Report(&report, func(name tspath.RootedFilePath) string { return filepath.Base(name.AsString()) })
-	if !strings.Contains(report.String(), "main.vibe: 2 fixes (EK1802 ×1, EK4616 ×1)") {
+	if !strings.Contains(report.String(), "main.vibe: 13 fixes (EK1802 ×1, EK4616 ×1, try ×7, effect ×4)") {
 		t.Errorf("report:\n%s", report.String())
 	}
 
@@ -184,8 +186,8 @@ export const block = effect () => { return try authorize(Effect.succeed(1)) }
 // retired try hatch with a handler by name. The second argument is the
 // mapper whatever its form (D330), so EK4616's fix makes it the catch, and
 // undefined there leaves the catch out. The hatch's function is TypeScript
-// that Effect.try wraps as it is: the hatch stands in a function marked effect
-// (VIP-1), and the fix leaves the hatch's own function plain.
+// that Effect.try wraps as it is: --fix-vip-only marks the function holding
+// the hatch effect, never the hatch's own function.
 func TestFixVIPRetiredHatchMapperByName(t *testing.T) {
 	source := `const documentOf = (n: number): { readonly a: number } => {
   if (n < 0) throw new Error("negative")
@@ -194,19 +196,19 @@ func TestFixVIPRetiredHatchMapperByName(t *testing.T) {
 
 const unsupported = (): Error => new Error("unsupported")
 
-export const project = effect (n: number): Effect<number, Error> => {
+export const project = (n: number): Effect<number, Error> => {
   const { a } = try((documentOf, n) => documentOf(n), unsupported, documentOf, n)
   return a
 }
 
-export const projectBlock = effect (n: number): Effect<number, Error> => {
+export const projectBlock = (n: number): Effect<number, Error> => {
   const { a } = try((documentOf, n) => {
     return documentOf(n)
   }, unsupported, documentOf, n)
   return a
 }
 
-export const parse = effect (text: string): Effect<number, unknown> => {
+export const parse = (text: string): Effect<number, unknown> => {
   const n: number = try((text) => JSON.parse(text), undefined, text)
   return n
 }

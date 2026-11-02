@@ -33,22 +33,22 @@ const collapsed: Collapsed = false
 
 effect function lookup(query: string) {
   try {
-    return `${try Prefix}${try Search.find(query)}`
+    return `${try Prefix()}${try Search.find(query)}`
   } catch (error) {
     return `missing:${error.query}`
   }
 }
 
 effect function format(value: string) {
-  return try (try Format)(value)
+  return try (try Format())(value)
 }
 
-effect function upper(value: string) {
+function upper(value: string) {
   return value.toUpperCase()
 }
 
 export effect function main() {
   provide Search.layer, Prefix = "> ", Format = upper {
-    return { hit: try lookup("a"), miss: try lookup(""), index: (try Search).index, formatted: try format("x"), collapsed }
+    return { hit: try lookup("a"), miss: try lookup(""), index: (try Search()).index, formatted: try format("x"), collapsed }
   }
 }

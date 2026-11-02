@@ -105,25 +105,22 @@ it("uses a workspace package's VibeLang source", () => {
 test("a Vitest rerun recompiles a .vibe module whose import changed its contract", async (t) => {
   // Vitest 5 keeps transforms on disk between runs (fsModuleCache), keyed by
   // the module's own text; passing.test.vibe does not change, but value()
-  // becomes an Effect function, so its call now gives the Effect.
+  // becomes an Effect function, so its call must now run the Effect.
   const root = await fixture(t)
   await writeFile(join(root, "passing.test.vibe"), `import { assert, it } from "@effect/vitest"
 import { value } from "./dep.vibe"
 
 it.effect("reads its dependency", effect () => {
-  const seven: number = value()
-  assert.strictEqual(seven, 7)
+  assert.strictEqual(value(), 7)
 })
 `)
   await writeFile(join(root, "dep.vibe"), "export function value(): number {\n  return 7\n}\n")
   let result = await runVitest(root)
   assert.equal(result.code, 0, result.output)
-  await writeFile(join(root, "dep.vibe"), "export effect function value(): number!! {\n  try Console.log(\"value\")\n  return 7\n}\n")
+  await writeFile(join(root, "dep.vibe"), "export function value(): number!! {\n  Console.log(\"value\")\n  return 7\n}\n")
   result = await runVitest(root)
-  // Calling an effect function gives its Effect (VIP-1), which no longer fits
-  // the importer's number: only a recompile of the importer reports that.
-  assert.notEqual(result.code, 0, result.output)
-  assert.match(result.output, /TS2322/)
+  assert.equal(result.code, 0, result.output)
+  assert.match(result.output, /1 passed/)
   console.log("PASS Vitest rerun: a changed import's contract recompiles its importer")
 })
 
@@ -173,8 +170,8 @@ test("a deliberate failing assertion reports failure.test.vibe:6", async (t) => 
   const result = await runVitest(await fixture(t), true)
   assert.equal(result.code, 1, result.output)
   assert.match(result.output, /expected 41 to equal 42/)
-  assert.match(result.output, /failure\.test\.vibe:6:32/)
-  console.log("PASS expected failure: assertion stack at failure.test.vibe:6:32")
+  assert.match(result.output, /failure\.test\.vibe:6:28/)
+  console.log("PASS expected failure: assertion stack at failure.test.vibe:6:28")
 })
 
 test("a fixture goes at once after a request, with no dependency optimizer writing into it", async (t) => {

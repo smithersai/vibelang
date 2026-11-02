@@ -54,14 +54,14 @@ effect function find(finder: Finder, id: string): string!! {
 }
 
 effect function either(program: Maybe): number!! {
-  return program === undefined ? 0 : try program
+  return program === undefined ? 0 : try program()
 }
 
 const five: Effect<number> = Effect.sync(() => 5)
 
 effect function unwrap(program: Nested): number!NotFound! {
-  const inner = try program
-  return try inner
+  const inner = try program()
+  return try inner()
 }
 
 export effect function main() {

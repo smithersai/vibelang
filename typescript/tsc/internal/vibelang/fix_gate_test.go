@@ -48,10 +48,10 @@ func TestFixGateSeesErrorsBehindSyntaxError(t *testing.T) {
 // an error only to a file that imports it: here the literal type of "fast"
 // reaches use.vibe. The check of the whole program still refuses that fix.
 func TestFixGateSeesErrorsInOtherFiles(t *testing.T) {
-	_, file, _, _ := editorProgram(t, "export effect function modes() {\n  const mode = try Effect.succeed(\"fast\")\n  const all: Array<typeof mode> = [mode]\n  return all\n}\n")
+	_, file, _, _ := editorProgram(t, "export function modes() {\n  const mode = Effect.succeed(\"fast\")\n  const all: Array<typeof mode> = [mode]\n  return all\n}\n")
 	dir := filepath.Dir(file.FileName().AsString())
 	for name, text := range map[string]string{
-		"use.vibe":      "import { modes } from \"./main.vibe\"\nexport effect function use() {\n  const all = try modes()\n  all.push(\"slow\")\n  return all\n}\n",
+		"use.vibe":      "import { modes } from \"./main.vibe\"\nexport function use() {\n  const all = modes()\n  all.push(\"slow\")\n  return all\n}\n",
 		"tsconfig.json": `{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"noEmit":true,"allowImportingTsExtensions":true},"files":["main.vibe","use.vibe"]}`,
 	} {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(text), 0600); err != nil {
@@ -85,7 +85,7 @@ const refusedMatchChain = "type Config = { readonly method: \"token\" | \"oauth\
 // about 5 s a check, took 1,896 s (2026-10-31).
 func TestFixGateChecksAFewTimes(t *testing.T) {
 	const files, refused = 32, 12
-	_, file, _, _ := editorProgram(t, "export effect function modes() {\n  const mode = try Effect.succeed(\"fast\")\n  const all: Array<typeof mode> = [mode]\n  return all\n}\nexport type B = Effect.Effect<number>\n")
+	_, file, _, _ := editorProgram(t, "export function modes() {\n  const mode = Effect.succeed(\"fast\")\n  const all: Array<typeof mode> = [mode]\n  return all\n}\nexport type B = Effect.Effect<number>\n")
 	dir := filepath.Dir(file.FileName().AsString())
 	write := func(name, text string) {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(text), 0o600); err != nil {
@@ -99,7 +99,7 @@ func TestFixGateChecksAFewTimes(t *testing.T) {
 		}
 		write(fmt.Sprintf("f%02d.vibe", i), text)
 	}
-	write("more.vibe", "import { modes } from \"./main.vibe\"\nexport effect function more() {\n  const all = try modes()\n  all.push(\"slow\")\n  return all\n}\n")
+	write("more.vibe", "import { modes } from \"./main.vibe\"\nexport function more() {\n  const all = modes()\n  all.push(\"slow\")\n  return all\n}\n")
 	write("plain.ts", "export const plain = 1\n")
 	write("tsconfig.json", `{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"noEmit":true,"allowImportingTsExtensions":true},"include":["*.vibe","*.ts"]}`)
 	config, errors := tsoptions.GetParsedCommandLineOfConfigFile(tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(dir, "tsconfig.json"))), &core.CompilerOptions{}, nil, bundled.WrapFS(osvfs.FS()), nil)

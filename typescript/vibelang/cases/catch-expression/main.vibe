@@ -32,7 +32,7 @@ effect function partial(id: string): string!Timeout! {
 
 // catch associates to the left: try b after a fails, then fall back.
 effect function firstOf(a: string, b: string): string!! {
-  return (find(a) catch effect () => try find(b)) catch () => "none"
+  return (find(a) catch () => find(b)) catch () => "none"
 }
 
 // A throw expression replaces the failure.
@@ -52,7 +52,7 @@ effect function lookupNickname(id: string) {
 
 // catch binds looser than ??, so the default is inside the catch.
 effect function nickname(id: string): string!! {
-  return effect { return (try lookupNickname(id)) ?? "unknown" } catch () => "failed"
+  return lookupNickname(id) ?? "unknown" catch () => "failed"
 }
 
 effect function crash(): string!Timeout! {
@@ -61,7 +61,7 @@ effect function crash(): string!Timeout! {
 
 // Defects pass through a catch expression.
 effect function defect(): string!! {
-  return match (try exit(effect { return crash() catch () => "caught" })) {
+  return match (try exit(crash() catch () => "caught")) {
     when Exit.Success(let value): value;
     when Exit.Failure(let cause): Cause.hasDies(cause) ? "died" : "other";
   }

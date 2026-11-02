@@ -61,8 +61,7 @@ export function width(phase) {
     })();
     return label;
 }
-// As a statement.
-export function record(phase, log) {
+export function record$direct(phase, log) {
     $match5: {
         const $match6 = phase;
         {
@@ -89,8 +88,10 @@ export function record(phase, log) {
         }
     }
 }
-// The last arm still binds user and n.
-export function describe(failure) {
+// As a statement.
+export function record(...args) { return runtime.$plainSync(record$direct, this, args); }
+record[runtime.$direct] = record$direct;
+export function describe$direct(failure) {
     {
         const $match8 = failure;
         {
@@ -117,7 +118,10 @@ export function describe(failure) {
         }
     }
 }
-export function greeting(name) {
+// The last arm still binds user and n.
+export function describe(...args) { return runtime.$plainSync(describe$direct, this, args); }
+describe[runtime.$direct] = describe$direct;
+export function greeting$direct(name) {
     {
         const $match11 = name;
         {
@@ -135,6 +139,8 @@ export function greeting(name) {
         }
     }
 }
+export function greeting(...args) { return runtime.$plainSync(greeting$direct, this, args); }
+greeting[runtime.$direct] = greeting$direct;
 // In an Effect function, whose arms run Effects.
 export function announce(arg_1) {
     return Effect_1.fnUntraced(function* announce(phase) {

@@ -357,10 +357,9 @@ try {
     const layerFix = layerActions.find((a) => a.title === "Rewrite the layer declaration as a Layer call")
     assert(layerFix, `no EK2121 quick fix among ${JSON.stringify(layerActions.map((a) => a.title))}`)
     const layerEdits = layerFix.edit?.changes?.[uri] ?? []
-    // The layer's member is an effect method: a method without effect is plain (VIP-1).
-    const want = "const GreetingLive = Layer.effect(Greeting) {\n  const word = \"hi\"\n  return {\n    effect text() { return word }\n  }\n}"
+    const want = "const GreetingLive = Layer.effect(Greeting) {\n  const word = \"hi\"\n  return {\n    text() { return word }\n  }\n}"
     assert(layerEdits.length === 1 && layerEdits[0].newText === want, `EK2121 edits ${JSON.stringify(layerEdits)}`)
-    assert(layerEdits[0].range.start.line === layerStart.line && layerEdits[0].range.end.line === lineOf(file, "effect text() { return word }") + 1, `EK2121 edit range ${JSON.stringify(layerEdits[0].range)}`)
+    assert(layerEdits[0].range.start.line === layerStart.line && layerEdits[0].range.end.line === lineOf(file, "text() { return word }") + 1, `EK2121 edit range ${JSON.stringify(layerEdits[0].range)}`)
   })
 
   await check("code action: TypeScript-style forms warn as EK4830 and EK4833, and their quick fixes write an error declaration and A!E", async () => {
@@ -417,9 +416,8 @@ try {
     assert(fix, `no quick fix among ${JSON.stringify(actions.map((a) => a.title))}`)
     const edits = fix.edit?.changes?.[uri] ?? []
     // Tooling: a quick fix preserves evaluation order, coldness and types.
-    // 4db9c1cb correctly keeps the protected expression inside exit's Effect,
-    // with the try that runs it there (VIP-5).
-    const want = "return match (try exit(effect { return try lookupUser(id) })) {\n    when Exit.Success(let value): value;\n    when Exit.Failure(let cause): \"fallback\";\n  }"
+    // 4db9c1cb correctly keeps the protected expression inside exit's Effect.
+    const want = "return match (try exit(effect { return lookupUser(id) })) {\n    when Exit.Success(let value): value;\n    when Exit.Failure(let cause): \"fallback\";\n  }"
     assert(edits.length === 1 && edits[0].newText === want, `edits ${JSON.stringify(edits)}`)
     const original = text("src/old-catch.vibe")
     const offset = (p) => original.split("\n").slice(0, p.line).reduce((n, line) => n + line.length + 1, 0) + p.character
@@ -461,7 +459,7 @@ try {
     assert(fixed.includes("return sync((text: string) => text.length, text)"), `fixed text: ${fixed}`)
   })
 
-  await check("code action: Effect's language service rules report in .vibe, and their quick fixes run with try and rename", async () => {
+  await check("code action: Effect's language service rules report in .vibe, and their quick fixes call and rename", async () => {
     open("src/lsrules.vibe", "vibe")
     const items = await diagnostics("src/lsrules.vibe")
     const codes = items.map((d) => `${d.source}${d.code}:${d.severity}`).sort()
@@ -477,8 +475,8 @@ try {
     const floating = items.find((d) => d.code === 4801)
     const start = at("src/lsrules.vibe", "program\n  //")
     assert(floating.range.start.line === start.line && floating.range.start.character === start.character, `range ${JSON.stringify(floating.range)}`)
-    const callEdits = await fixFor(floating, "Run it with try")
-    assert(callEdits.length === 1 && callEdits[0].newText === "try " && callEdits[0].range.start.character === start.character, `edits ${JSON.stringify(callEdits)}`)
+    const callEdits = await fixFor(floating, "Call it to run it")
+    assert(callEdits.length === 1 && callEdits[0].newText === "()" && callEdits[0].range.start.character === start.character + "program".length, `edits ${JSON.stringify(callEdits)}`)
     const nested = items.find((d) => d.code === 4808)
     const nestedActions = (await connection.request("textDocument/codeAction", { textDocument: { uri }, range: nested.range, context: { diagnostics: [nested], only: ["quickfix"] } })) ?? []
     assert(!nestedActions.some((a) => a.title === "Provide both layers in one block"), `unsafe nested provide merge: ${JSON.stringify(nestedActions)}`)
@@ -528,7 +526,7 @@ try {
       return apply(relative, action.edit?.changes?.[uri] ?? [])
     }
     const contract = await refactor("greet()", "Write the inferred contract")
-    assert(contract.includes("export effect function greet(): string!!Greeting {"), `contract: ${contract.split("\n").find((l) => l.includes("greet("))}`)
+    assert(contract.includes("export function greet(): string!!Greeting {"), `contract: ${contract.split("\n").find((l) => l.includes("greet("))}`)
     const schema = await refactor("interface Point", "Convert to a schema declaration")
     assert(schema.includes("schema Point {\n  x: number\n  y: number\n}"), "schema not written")
     const plain = await refactor("async function", "Convert to a VibeLang function")
@@ -644,11 +642,9 @@ try {
     assert(/Runs here and returns `never`/.test(shown), `got ${JSON.stringify(shown)}`)
   })
 
-  // D147's by-name arguments are retired: an argument is evaluated once, as
-  // JavaScript evaluates it, so greeting() gives Effect.timeout its Effect (VIP-1, VIP-2).
-  await check("hover: a call passed as an argument builds its Effect once, not by name", async () => {
+  await check("hover: a call passed by name says it runs as a program", async () => {
     const shown = await hover("src/main.vibe", "greeting(), ")
-    assert(shown.includes("function greeting(): string!!") && !shown.includes("Passed by name") && !shown.includes("Runs here"), `got ${JSON.stringify(shown)}`)
+    assert(/Passed by name to `Effect\.timeout` as a program: it runs when that program runs, not here, and returns `string`/.test(shown), `got ${JSON.stringify(shown)}`)
   })
 
   await check("hover: a call in a .ts file does not run", async () => {
@@ -768,8 +764,7 @@ try {
   await check("completion: module service members after a dot and a partial name", async () => {
     for (const [needle, offsets, expected] of [
       ["FileSystem.readFileString", [11, 14], ["readFileString", "exists", "FileSystem", "makeNoop"]],
-      // A service is read with try (VIP-10): (try Experimental.Process.Process).hostname.
-      ["Experimental.Process.Process", [21, 24], ["hostname", "pid", "Process", "layerTest"]]
+      ["Experimental.Process.hostname", [21, 24], ["hostname", "pid", "Process", "layerTest"]]
     ]) {
       for (const offset of offsets) {
         const labels = await completionLabels("src/services.vibe", needle, { offset })
@@ -789,11 +784,9 @@ try {
     assert(/Method syntax: calls `Option\.getOrElse\(/.test(shown), `got ${JSON.stringify(shown)}`)
   })
 
-  // A topic is the left side's value, evaluated once (VIP-23); the by-name
-  // topic of D155 is retired, so the first topic is the Effect greeting() builds.
-  await check("hover: a topic holds its left side's value, an Effect, not a program passed by name", async () => {
-    const shown = await hover("src/main.vibe", "%, \"1 second\")) |>")
-    assert(shown.includes("(topic) %: string!!") && !shown.includes("Passed by name"), `got ${JSON.stringify(shown)}`)
+  await check("hover: a topic passed by name names the program's receiver", async () => {
+    const shown = await hover("src/main.vibe", "%, \"1 second\") |>")
+    assert(shown.includes("Passed by name to `Effect.timeout` as a program: `greeting()` runs when that program runs"), `got ${JSON.stringify(shown)}`)
   })
 
   await check("hover: a topic used as a value shows its type and left side", async () => {
@@ -810,10 +803,10 @@ try {
       lines.splice(start.line, end.line - start.line + 1, ...(head + edit.newText + tail).split("\n"))
     }
     const formatted = lines.join("\n")
-    assert(formatted.includes('try (greeting() |> Effect.timeout(%, "1 second")) |> `${%}!`'), `formatted to ${JSON.stringify(formatted.split("\n").filter((l) => l.includes("greeting()")))}`)
+    assert(formatted.includes('greeting() |> Effect.timeout(%, "1 second") |> `${%}!`'), `formatted to ${JSON.stringify(formatted.split("\n").filter((l) => l.includes("greeting()")))}`)
   })
 
-  await check("formatting: throw, do, and an effect block keep their shape", async () => {
+  await check("formatting: throw, do, and a program arrow keep their shape", async () => {
     const edits = await connection.request("textDocument/formatting", { textDocument: { uri: fileUri("src/main.vibe") }, options: { tabSize: 2, insertSpaces: true } })
     const lines = text("src/main.vibe").split("\n")
     for (const edit of [...(edits ?? [])].sort((a, b) => b.range.start.line - a.range.start.line || b.range.start.character - a.range.start.character)) {
@@ -824,8 +817,7 @@ try {
     const formatted = lines.join("\n")
     assert(formatted.includes("return names[id] ?? throw new NotFound({ id })"), `formatted to ${JSON.stringify(formatted.split("\n").filter((l) => l.includes("throw")))}`)
     assert(formatted.includes("return do {") && formatted.includes("    word.toUpperCase()"), `formatted to ${JSON.stringify(formatted.split("\n").filter((l) => l.includes("do {") || l.includes("toUpperCase")))}`)
-    // A program is an effect block, not an arrow (VIP-2).
-    assert(formatted.includes("return try withSpan(effect {") && formatted.includes("    return try greeting()") && formatted.includes('}, "load")'), `formatted to ${JSON.stringify(formatted.split("\n").filter((l) => l.includes("withSpan") || l.includes("return try greeting") || l.includes('"load"')))}`)
+    assert(formatted.includes("return withSpan(() => {") && formatted.includes("    return greeting()") && formatted.includes('}, "load")'), `formatted to ${JSON.stringify(formatted.split("\n").filter((l) => l.includes("withSpan") || l.includes("return greeting") || l.includes('"load"')))}`)
   })
 
   await check("completion: an Effect data type lists its module's functions as methods", async () => {
@@ -1034,11 +1026,10 @@ try {
     assert(!labels.some(label => label.includes("~vibelang")), `synthetic member in ${JSON.stringify(labels)}`)
   })
 
-  // A function without effect is plain JavaScript, for VibeLang and TypeScript
-  // callers alike (VIP-1); no caller sees it as an Effect.
-  await check("hover: a plain .vibe function shows its plain signature", async () => {
+  await check("hover: a plain .vibe function shows the signature VibeLang calls", async () => {
     const shown = await hover("src/services.vibe", "double(n")
-    assert(shown.includes("function double(n: number): number") && !shown.includes("Effect<number"), `got ${JSON.stringify(shown)}`)
+    assert(shown.includes("function double(n: number): number"), `got ${JSON.stringify(shown)}`)
+    assert(/TypeScript callers see `(Effect\.)?Effect<number, never, never>`/.test(shown), `got ${JSON.stringify(shown)}`)
   })
 
   await check("hover: a call to a plain .vibe function shows its plain signature and does not run", async () => {
@@ -1046,9 +1037,9 @@ try {
     assert(shown.includes("function double(n: number): number") && !shown.includes("Runs here"), `got ${JSON.stringify(shown)}`)
   })
 
-  await check("hover: a .ts file sees a plain .vibe function as plain JavaScript", async () => {
+  await check("hover: a .ts file sees a plain .vibe function as an Effect", async () => {
     const shown = await hover("src/report.ts", "double(2)")
-    assert(shown.includes("function double(n: number): number") && !shown.includes("Effect<number"), `got ${JSON.stringify(shown)}`)
+    assert(/Effect<number, never, never>/.test(shown) && !shown.includes("Plain JavaScript"), `got ${JSON.stringify(shown)}`)
   })
 
   await check("hover: a service member call runs and shows its success value", async () => {

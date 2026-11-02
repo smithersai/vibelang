@@ -16,8 +16,8 @@ export const TodosLive = Layer.effect(Todos, effect {
     [3, { id: 3, title: "Render the board", done: false }]
   ])
   return {
-    effect list() { return [...items.values()] },
-    effect complete(id) {
+    list() { return [...items.values()] },
+    complete(id) {
       const todo = items.get(id)
       if (todo === undefined) throw new TodoNotFound({ id })
       const done = { ...todo, done: true }
@@ -27,9 +27,9 @@ export const TodosLive = Layer.effect(Todos, effect {
   }
 })
 
-export effect function completeTodo(id: number) {
+export function completeTodo(id: number) {
   try {
-    const todo = try Todos.complete(id)
+    const todo = Todos.complete(id)
     return `Completed: ${todo.title}`
   } catch (error) {
     return `No todo #${error.id}`
@@ -41,7 +41,7 @@ export interface Board {
   messages: ReadonlyArray<string>
 }
 
-export effect function loadBoard(): Board!!Todos {
-  const messages = [try completeTodo(2), try completeTodo(99)]
-  return { todos: try Todos.list(), messages }
+export function loadBoard(): Board!!Todos {
+  const messages = [completeTodo(2), completeTodo(99)]
+  return { todos: Todos.list(), messages }
 }

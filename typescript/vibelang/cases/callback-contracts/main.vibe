@@ -20,7 +20,7 @@ export effect function mapSafe<A, B>(items: ReadonlyArray<A>, f: (a: A) => Effec
 }
 
 export effect function withRetry<A, E, R>(times: number, program: () => A!E!R) {
-  return try Effect.retry(Effect.suspend(program), { times }) // Effect.retry takes an Effect; suspend calls program on each attempt (VIP-1)
+  return try Effect.retry(program, { times })
 }
 
 let attempts = 0

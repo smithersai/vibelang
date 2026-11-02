@@ -1,3 +1,3 @@
-try runs an Effect only in effect code, but a parameter default runs when plain is called, outside any Effect.
-try runs an Effect only in effect code, but a parameter default runs when effectful is called, outside any Effect.
-Make value optional and run the default in the body of an effect function: value ?? (try work()).
+work() runs a program, but a default parameter value is plain JavaScript, so the call does not run.
+Make value optional and compute the default in the body: value ?? work().
+Make program optional and compute the default in the body: program ?? work().

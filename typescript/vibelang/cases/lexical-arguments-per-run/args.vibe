@@ -40,8 +40,7 @@ export const anonymous = effect function (a: number): number!! {
   return try read() + anonymous.length
 }
 
-// A plain function (VIP-1) returns its effect arrow, which reads the plain
-// function's arguments.
+// A plain function's body runs in its $direct variant.
 export function plain(a: number) {
   return effect () => {
     const tick = try Effect.sync(() => 0)

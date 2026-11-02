@@ -1,8 +1,0 @@
-// expect: EK0106
-// VIP-1: an effect function returns an Effect, so a return type written on
-// it is an Effect type. number is not one; number!! is.
-export effect function f(): number { return 1 }
-
-export effect function g(): number!! { return 1 }
-
-export const h = effect (n: number): string => `${n}`

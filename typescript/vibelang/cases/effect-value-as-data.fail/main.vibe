@@ -47,7 +47,7 @@ export const kept = effect (n: number): (unknown!!)!! => {
   const program: unknown!! = effect { return n + 1 }
   return program
 }
-export const ran = effect () => Stream.make(1) |> try Stream.run(%, Sink.forEach(effect (_n: number) => try announce))
+export const ran = effect () => Stream.make(1) |> try Stream.run(%, Sink.forEach(effect (_n: number) => try announce()))
 export const factory = (n: number): number!! => {
   const copy = n
   return effect { return copy + 1 }

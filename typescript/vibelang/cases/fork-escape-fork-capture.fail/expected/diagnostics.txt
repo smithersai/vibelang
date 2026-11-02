@@ -1,3 +1,2 @@
 main.vibe(4,13): error EK4838
-main.vibe(5,18): error EK1703
-main.vibe(5,19): error TS2345
+main.vibe(5,18): error EK4613

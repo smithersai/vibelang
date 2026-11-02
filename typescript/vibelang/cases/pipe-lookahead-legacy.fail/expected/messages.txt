@@ -1,0 +1,2 @@
+pipe now passes its first argument as the value it is, but through VibeLang 0.0.10 this pipe passed it as a program.
+To keep that meaning, hold the first argument as a program with its type written, const first: A!E!R = () => …, and pass first.

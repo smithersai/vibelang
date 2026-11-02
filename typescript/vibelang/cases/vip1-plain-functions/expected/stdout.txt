@@ -1,1 +1,0 @@
-{"shadowed":[7,8,8],"value":7,"arrow":7,"main":7,"thrown":"bad","afterCall":["call"],"runs":[7,7],"afterRuns":["call"]}

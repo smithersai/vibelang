@@ -1,9 +1,6 @@
 package vipgen
 
-import (
-	"fmt"
-	"strings"
-)
+import "strings"
 
 // VIP-5: "`try e` runs the Effect `e` inside an `effect` function or block
 // and gives its success value. A failure propagates to the enclosing
@@ -170,52 +167,6 @@ func init() {
 			g.UseEffect()
 
 			return []Stmt{&catchEdge{vibe: "const obj = { run: () => Effect.succeed(3) }; const a = try\n obj.run() + 4; return a", ref: "const obj = { run: () => Effect.succeed(3) }; const a = (yield* obj.run()) + 4; return a"}}
-		},
-	})
-}
-
-// tryOperandForms are operands of try that are not a bare call: parentheses,
-// a pipe whose left side calls, a stored Effect and a member. Each is the
-// Effect e of `try e` (VIP-1 flip acceptance cases 7 and 9: alchemy's
-// try (pages |> Stream.runCollect(%)), t3code's try DateTime.now).
-var tryOperandForms = []struct{ vibe, ref string }{
-	{"(Effect.succeed(N))", "(Effect.succeed(N))"},
-	{"((Effect.succeed(N)))", "((Effect.succeed(N)))"},
-	{"(Effect.succeed(N) |> Effect.map(%, (n: number) => n + 1))", "(Effect.map(Effect.succeed(N), (n) => n + 1))"},
-	{"(k |> Effect.map(%, (n: number) => n + 1))", "(Effect.map(k, (n) => n + 1))"},
-	{"k", "k"},
-	{"(k)", "(k)"},
-	{"holder.e", "holder.e"},
-}
-
-// tryOperandPositions are positions that give the operand a contextual type,
-// as an annotated declaration's initializer does to a call's argument; X
-// stands for try's operand, Y for the reference's yield*.
-var tryOperandPositions = []struct{ vibe, ref string }{
-	{"const a: number = Math.abs(try X); return a", "const a = Math.abs(yield* Y); return a"},
-	{"let a: number; a = Math.max(try X, 0); return a", "let a; a = Math.max(yield* Y, 0); return a"},
-	{"const a: Array<number> = [try X]; return a[0]", "const a = [yield* Y]; return a[0]"},
-	{"const a: { v: number } = { v: try X }; return a.v", "const a = { v: yield* Y }; return a.v"},
-	{"const a: number = (try X) + 1; return a", "const a = (yield* Y) + 1; return a"},
-	{"return Array.from([try X]).map((n) => n * 2)[0]", "return Array.from([yield* Y]).map((n) => n * 2)[0]"},
-}
-
-func init() {
-	Register(&Construct{
-		Key: "vip05.try-operand-positions", VIP: 5,
-		Requires: []string{"vip01.effect-function"},
-		Citations: []Citation{{VIP: 5, Template: "yield* ‹e›", Quote: "`try e` runs the Effect `e` inside an `effect` function or block and gives its success value.",
-			Reading: "Parentheses, a pipe, a stored Effect and a member are each the Effect e; an argument of a call that initializes an annotated declaration is still a position where try runs it, as yield* does in the reference."}},
-		Focus: func(g *Gen, s *Scope) []Stmt {
-			g.UseEffect()
-			form := tryOperandForms[g.Intn(len(tryOperandForms))]
-			position := tryOperandPositions[g.Intn(len(tryOperandPositions))]
-			n := fmt.Sprint(g.Intn(9) + 1)
-			setup := "const k: Effect.Effect<number> = Effect.succeed(N); const holder = { e: Effect.succeed(N) }; "
-			refSetup := "const k = Effect.succeed(N); const holder = { e: Effect.succeed(N) }; "
-			vibe := strings.ReplaceAll(setup+strings.ReplaceAll(position.vibe, "X", form.vibe), "N", n)
-			ref := strings.ReplaceAll(refSetup+strings.ReplaceAll(position.ref, "Y", form.ref), "N", n)
-			return []Stmt{&catchEdge{vibe: vibe, ref: ref}}
 		},
 	})
 }

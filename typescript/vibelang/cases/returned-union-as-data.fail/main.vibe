@@ -33,6 +33,6 @@ export const programs = effect (code: number) => try Effect.suspend(effect () =>
 // Not reported: the chosen program runs where it is chosen.
 export const ran = effect (code: number | undefined) =>
   try Effect.suspend(effect () => {
-    if (code === undefined) return try Effect.void
+    if (code === undefined) return try Effect.void()
     return try Status.set(code)
   })

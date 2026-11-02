@@ -66,10 +66,8 @@ effect function exportWithShortDeadline(id: string) {
   return try Effect.timeout(effect { return try exportReport(id) }, "10 millis")
 }
 
-// A defect is not caught by catch in effect code (D13): a JavaScript
-// TypeError is a defect. (A plain function's catch is JavaScript's and would
-// catch it, VIP-1, so this one is an effect function.)
-effect function defectThroughCatch() {
+// A defect is not caught by catch (D13): a JavaScript TypeError is a defect.
+function defectThroughCatch() {
   try {
     const broken: any = undefined
     return broken.name
@@ -167,7 +165,7 @@ effect function scenario() {
   }
   uploadDelay = 0
   const deadline = try exportWithDeadline("r4")
-  const defect = try Effect.exit(defectThroughCatch())
+  const defect = try Effect.exit(effect { return try defectThroughCatch() })
   const mixed = try Effect.exit(effect { return try mixedCause() })
   let moved = "none"
   try {

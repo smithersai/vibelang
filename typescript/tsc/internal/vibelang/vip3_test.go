@@ -4,7 +4,7 @@ import "testing"
 
 func TestVIP3OmittedRequirementIsNever(t *testing.T) {
 	for _, annotation := range []string{"number!never", "number!!", "Effect.Effect<number>"} {
-		program, file, _, _ := editorProgram(t, "import { Effect, Context } from \"effect\"\nservice Input { value: number }\nexport effect function read(): "+annotation+" { return (try Input).value }\n")
+		program, file, _, _ := editorProgram(t, "import { Effect, Context } from \"effect\"\nservice Input { value: number }\nexport function read(): "+annotation+" { return Input().value }\n")
 		found := false
 		for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
 			t.Log(d.String())
@@ -19,9 +19,9 @@ func TestVIP3OmittedRequirementIsNever(t *testing.T) {
 }
 
 func TestVIP3RequirementMigration(t *testing.T) {
-	source := "service Input { value: number }\nexport effect function read(): number!never { return (try Input).value }\n"
+	source := "service Input { value: number }\nexport function read(): number!never { return Input().value }\n"
 	got := applyQuickFix(t, source, EK4853.Code)
-	want := "service Input { value: number }\nexport effect function read(): number!never!Input { return (try Input).value }\n"
+	want := "service Input { value: number }\nexport function read(): number!never!Input { return Input().value }\n"
 	if got != want {
 		t.Fatalf("got %s; want %s", got, want)
 	}
@@ -30,7 +30,7 @@ func TestVIP3RequirementMigration(t *testing.T) {
 // The retired rule inferred R through calls of functions that also left R
 // out, so both members of a cycle get the R the cycle needs.
 func TestVIP3RequirementMigrationSolvesCycles(t *testing.T) {
-	program, file, _, _ := editorProgram(t, "service Audit { note(n: number): void!! }\neffect function isEven(n: number): boolean!never { return n === 0 ? true : !(try isOdd(n - 1)) }\neffect function isOdd(n: number): boolean!never { try (try Audit).note(n); return n === 0 ? false : !(try isEven(n - 1)) }\nexport const f = isEven\n")
+	program, file, _, _ := editorProgram(t, "service Audit { note(n: number): void!! }\nfunction isEven(n: number): boolean!never { return n === 0 ? true : !isOdd(n - 1) }\nfunction isOdd(n: number): boolean!never { Audit.note(n); return n === 0 ? false : !isEven(n - 1) }\nexport const f = isEven\n")
 	var fixes []string
 	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
 		if d.Code() == EK4853.Code {
@@ -45,7 +45,7 @@ func TestVIP3RequirementMigrationSolvesCycles(t *testing.T) {
 // A callback without a contract may need any R, which the caller's
 // declaration cannot name, so nothing is written.
 func TestVIP3RequirementMigrationSkipsUnnameableRequirements(t *testing.T) {
-	program, file, _, _ := editorProgram(t, "error Boom\nexport effect function raise(make: () => Boom): number!Boom { throw make() }\n")
+	program, file, _, _ := editorProgram(t, "error Boom\nexport function raise(make: () => Boom): number!Boom { throw make() }\n")
 	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
 		if d.Code() == EK4853.Code {
 			t.Fatalf("unexpected fix: %s", d.String())

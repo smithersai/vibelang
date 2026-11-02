@@ -6,19 +6,19 @@ service Needed {
   lookup(): number!never!never
 }
 
-effect function fails(n: number): number!Boom!never {
+function fails(n: number): number!Boom!never {
   if (n < 0) throw new Boom("negative")
   return n
 }
 
-export effect function wrongSuccess(): string!Boom!never {
-  return try fails(1) // probe-error: TS2322 number
+export function wrongSuccess(): string!Boom!never {
+  return fails(1) // probe-error: TS2322 number
 }
 
-export effect function wrongError(n: number): number!never!never {
-  return try fails(n) // probe-error: TS2322 Boom
+export function wrongError(n: number): number!never!never {
+  return fails(n) // probe-error: TS2322 Boom
 }
 
-export effect function wrongRequirement(): number!never!never {
-  return try Needed.lookup() // probe-error: TS2322 Needed
+export function wrongRequirement(): number!never!never {
+  return Needed.lookup() // probe-error: TS2322 Needed
 }

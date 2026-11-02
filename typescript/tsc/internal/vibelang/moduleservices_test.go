@@ -170,8 +170,8 @@ func moduleServiceProgram(t *testing.T, source string) (*compiler.Program, *ast.
 // service's.
 func TestModuleServiceThroughPreludeNamespace(t *testing.T) {
 	t.Parallel()
-	_, _, js := moduleServiceProgram(t, "export effect function read(path: string) { return try Control.FileSystem.readFileString(path) }\n"+
-		"export effect function implementation() { return try Control.FileSystem.FileSystem }\n"+
+	_, _, js := moduleServiceProgram(t, "export function read(path: string) { return Control.FileSystem.readFileString(path) }\n"+
+		"export function implementation() { return Control.FileSystem() }\n"+
 		"export const noop = Control.FileSystem.layerNoop({})\n"+
 		"export function exists(fs: Control.FileSystem, path: string) { return fs.exists(path) }\n")
 	for _, want := range []string{
@@ -295,11 +295,10 @@ func findNode(root *ast.Node, match func(*ast.Node) bool) *ast.Node {
 
 // D311 reaches the experimental services (D313) in the editor too:
 // completions after Experimental.Process. list the module's exports and the
-// service's members, and hover and go to definition on the service's hostname
-// reach its declaration. The service is got with try and its Effect run with
-// try (VIP-1, VIP-5; VIP-10 denies Experimental.Process.hostname).
+// service's members, and hover and go to definition on
+// Experimental.Process.hostname reach the service's declaration.
 func TestEditorExperimentalServices(t *testing.T) {
-	source := "export effect function host() {\n  return try (try Experimental.Process.Process).hostname\n}\n"
+	source := "export function host() {\n  return Experimental.Process.hostname()\n}\n"
 	program, file, _, converters := editorProgram(t, source)
 	service := ls.NewLanguageService(nil, program, fixHost{program: program, converters: converters}, file.FileName().AsString())
 	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
@@ -309,7 +308,7 @@ func TestEditorExperimentalServices(t *testing.T) {
 	}
 	c, done := program.GetTypeCheckerForFile(t.Context(), file)
 	access := findNode(file.AsNode(), func(n *ast.Node) bool {
-		return ast.IsPropertyAccessExpression(n) && n.Name().Text() == "Process" && ast.IsPropertyAccessExpression(n.Expression())
+		return ast.IsPropertyAccessExpression(n) && n.Name().Text() == "hostname"
 	})
 	members := map[string]bool{}
 	for _, symbol := range c.GetPropertiesOfType(serviceMemberCompletions(c, access.Expression(), c.GetTypeAtLocation(access.Expression()))) {
@@ -327,7 +326,7 @@ func TestEditorExperimentalServices(t *testing.T) {
 	}
 	uris := definitionURIs(t, service, uri, positionOf(source, "hostname", 1))
 	if len(uris) == 0 || !strings.HasSuffix(uris[0], "/experimental/Process.d.ts") {
-		t.Errorf("definition of hostname = %v, want vibelang-runtime's experimental/Process.d.ts", uris)
+		t.Errorf("definition of Experimental.Process.hostname = %v, want vibelang-runtime's experimental/Process.d.ts", uris)
 	}
 }
 

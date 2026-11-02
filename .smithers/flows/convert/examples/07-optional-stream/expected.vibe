@@ -1,5 +1,5 @@
-export effect function summary(prefix: Option.Option<string>) {
+export function summary(prefix: Option.Option<string>) {
   const heading = prefix.map((s) => s.toUpperCase()).getOrElse(() => "READINGS")
-  const readings = try Stream.make(3, 8, 13, 21).filter((n) => n > 5).map((n) => n * 10).take(2).runCollect()
+  const readings = Stream.make(3, 8, 13, 21).filter((n) => n > 5).map((n) => n * 10).take(2).runCollect()
   return `${heading}: ${Array.from(readings).join(", ")}`
 }

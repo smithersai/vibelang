@@ -17,6 +17,6 @@ export function beside(a: unknown, id: number) {
   if (a is { id: let id2 }) return id2
   return id
 }
-export effect function main() {
+export function main() {
   return [pick({ id: 1 }, {}), pick({}, { id: 2 }), shorthand({}, {}), shorthand({}, { id: 5 }), beside({}, 7)]
 }

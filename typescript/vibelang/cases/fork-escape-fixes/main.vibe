@@ -3,7 +3,7 @@
 // Effect.forkScoped, the quick fix, gives it the caller's Scope, forkIn a
 // scope the caller holds, and detach no owner.
 effect function slow(): number!! {
-  try sleep("5 millis")
+  sleep("5 millis")
   return 7
 }
 
@@ -22,11 +22,11 @@ effect function startDetached() {
 }
 
 export effect function main() {
-  const scoped = try Effect.scoped(effect { return join (try startScoped()) })
-  const concise = try Effect.scoped(effect { return join (try startConcise()) })
-  const scope = try Scope.make()
-  const inScope = join (try startIn(scope))
-  try Scope.close(scope, Exit.void)
-  const detached = join (try startDetached())
+  const scoped = Effect.scoped(effect { return join startScoped() })
+  const concise = Effect.scoped(effect { return join startConcise() })
+  const scope = Scope.make()
+  const inScope = join startIn(scope)
+  Scope.close(scope, Exit.void)
+  const detached = join startDetached()
   return { scoped, concise, inScope, detached }
 }

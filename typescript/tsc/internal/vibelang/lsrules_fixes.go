@@ -55,10 +55,8 @@ func nodeStart(file *ast.SourceFile, node *ast.Node) int {
 	return scanner.SkipTrivia(file.Text(), node.Pos())
 }
 
-// callEffectFix runs the Effect value that EK4801 or EK4802 reports with try
-// (VIP-5): e becomes try e, a ?? b becomes try (a ?? b), and a program named
-// by reference, a function of no arguments, becomes try f(). Only effect
-// code runs an Effect, so plain code gets no fix.
+// callEffectFix calls the Effect value that EK4801 or EK4802 reports, so
+// that it runs: e becomes e(), and a + b becomes (a + b)().
 var callEffectFix = &ls.CodeFixProvider{
 	Source:     diagnosticSource,
 	ErrorCodes: []int32{EK4801.Code, EK4802.Code},
@@ -67,7 +65,7 @@ var callEffectFix = &ls.CodeFixProvider{
 			parent := node.Parent
 			switch {
 			case ast.IsExpressionStatement(parent) && parent.Expression() == node:
-				return inEffectCode(parent) // plain code runs no Effect (VIP-1)
+				return inLowerableBody(parent)
 			case ast.IsReturnStatement(parent):
 				return true
 			case ast.IsArrowFunction(parent):
@@ -79,13 +77,12 @@ var callEffectFix = &ls.CodeFixProvider{
 			}
 			return false
 		})
-		if value == nil || !inEffectCode(value) {
+		if value == nil {
 			return nil, nil
 		}
 		c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
 		some, all := analyzerFor(c).programMembers(c.GetTypeAtLocation(value))
 		rejected := contractRejectsCall(c, value)
-		called := analyzerFor(c).programOf(c.GetTypeAtLocation(value)) != nil
 		done()
 		uncallable := some && !all
 		if uncallable {
@@ -94,19 +91,11 @@ var callEffectFix = &ls.CodeFixProvider{
 		if rejected {
 			return nil, nil
 		}
-		start := nodeStart(fix.SourceFile, value)
-		before, after := "try ", ""
+		changes := replaceRange(fix, value.End(), value.End(), "()")
 		if needsParentheses(value) {
-			before, after = "try (", ")"
+			changes = append(replaceRange(fix, nodeStart(fix.SourceFile, value), nodeStart(fix.SourceFile, value), "("), replaceRange(fix, value.End(), value.End(), ")()")...)
 		}
-		if called {
-			after += "()"
-		}
-		changes := replaceRange(fix, start, start, before)
-		if after != "" {
-			changes = append(changes, replaceRange(fix, value.End(), value.End(), after)...)
-		}
-		return []*ls.CodeAction{{Description: "Run it with try", Changes: changes}}, nil
+		return []*ls.CodeAction{{Description: "Call it to run it", Changes: changes}}, nil
 	},
 }
 
@@ -639,7 +628,7 @@ var inferredFormFix = &ls.CodeFixProvider{
 		c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
 		defer done()
 		a := analyzerFor(c)
-		f := markedForm(fn)
+		f := a.finalForm(fn)
 		if f == formProgram {
 			return nil, nil
 		}
@@ -649,10 +638,10 @@ var inferredFormFix = &ls.CodeFixProvider{
 				f = formEffect
 			}
 		}
-		// A plain function holding a try is EK0501's conflict, not a choice:
-		// its fix marks the function effect, and no annotation keeps the
-		// program (VIP-1; Chapter 28, Rewrites keep meaning).
-		if (f == formPlain || f == formNone) && (a.firstPause(fn) != nil || holdsTry(fn.Body())) {
+		// A plain form whose body pauses is EK4301's conflict, not a choice:
+		// a plain annotation there adds EK9203, so no annotation keeps the
+		// program (Chapter 28, Rewrites keep meaning, D372).
+		if (f == formPlain || f == formNone) && a.firstPause(fn) != nil {
 			return nil, nil
 		}
 		printType := func(t *checker.Type) string {

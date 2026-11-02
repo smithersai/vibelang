@@ -62,7 +62,7 @@ export function count(n: number) {
 // A predicate is no match pattern, so this chain keeps its warning and has no fix.
 export const scale = (n: number) => Match.value(n).pipe(Match.when((x) => x > 9, () => "big"), Match.orElse(() => "small"))
 
-export effect function main() {
+export function main() {
   return {
     labels: [label("idle"), label("busy")],
     areas: [area({ _tag: "Circle", radius: 2 }), area({ _tag: "Square", side: 3 })],

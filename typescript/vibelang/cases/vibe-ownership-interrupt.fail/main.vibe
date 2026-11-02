@@ -1,6 +1,4 @@
-// expect: EK1002
-// Effect.gen's function* is a producer here (VIP-21); calling onLapse only
-// builds its Effect (VIP-1), so EK1002 is the one error.
+// expect: EK1001 EK1002
 import { Effect } from "effect"
 
 const onLapse = effect (_unconfirmedMs: number) => Effect.void

@@ -1,11 +1,10 @@
-import * as $effectPrograms from "effect/Effect"
 // A pipe whose left side is a program literal, `() => { ... }`, passes it by
 // name to a curried stage `f(args)(%)`, as D154 passes any program. D272's
 // method-pipe form `x.pipe(f(args))` reads the left side as a value, and a
 // function literal has no pipe method.
 const twice = effect (label: string) => effect <A, E, R>(self: A!E!R): Array<A | string>!E!R => {
-  const first = try self
-  const second = try self
+  const first = try self()
+  const second = try self()
   return [label, first, second]
 }
 
@@ -15,5 +14,5 @@ export effect function main() {
   return (effect () => {
     runs++
     return runs
-  }) |> try (try twice("runs"))($effectPrograms.suspend(%))
+  }) |> try (try twice("runs"))(%)
 }

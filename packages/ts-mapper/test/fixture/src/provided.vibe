@@ -2,18 +2,18 @@ service Greeting {
   text(): string!!
 }
 
-const SilentLive = Layer.succeed(Greeting, { text: effect () => "" })
+const SilentLive = Layer.succeed(Greeting, { text: () => "" })
 
 // provide Key = value projects to $provideEntries, which stock TypeScript
 // types as Effect.provide: the block's requirements drop Greeting.
-export effect function provided() {
-  provide Greeting = { text: effect () => "hi" } {
-    return try Greeting.text()
+export function provided() {
+  provide Greeting = { text: () => "hi" } {
+    return Greeting.text()
   }
 }
 
-export effect function mixed() {
-  provide SilentLive, Greeting = { text: effect () => "hi" } {
-    return try Greeting.text()
+export function mixed() {
+  provide SilentLive, Greeting = { text: () => "hi" } {
+    return Greeting.text()
   }
 }

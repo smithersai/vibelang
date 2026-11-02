@@ -1,0 +1,8 @@
+// expect: EK4301
+// A trusted value that lists failures is EK4301 where only a plain function
+// fits (D514): a listed failure would reach the receiver as a defect.
+import { parse } from "./helpers.ts"
+
+export function all(lines: Array<string>) {
+  return lines.map(parse)
+}

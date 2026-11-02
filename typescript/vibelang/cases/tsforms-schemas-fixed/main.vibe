@@ -24,11 +24,11 @@ function local(value: unknown) {
   return Schema.decodeUnknownEffect(Local)(value)
 }
 
-export effect function main() {
-  const user: User = try Schema.decodeUnknownEffect(User)({ id: "1", role: "admin" })
-  const order = try Schema.decodeUnknownEffect(Order)({
+export function main() {
+  const user: User = Schema.decodeUnknownEffect(User)({ id: "1", role: "admin" })
+  const order = Schema.decodeUnknownEffect(Order)({
     items: ["a"], total: 2, pair: ["x", true], tags: { t: 1 }, owner: { id: "2", role: "member" }, status: "open", note: null, meta: { ok: true }
   })
-  const refused = (try exit(Schema.decodeUnknownEffect(Order)({ items: 1 }))) is Exit.Failure
-  return { user, order, refused, local: try local({ value: "v" }), exact: try Schema.decodeUnknownEffect(Exact)({}) }
+  const refused = exit(Schema.decodeUnknownEffect(Order)({ items: 1 })) is Exit.Failure
+  return { user, order, refused, local: local({ value: "v" }), exact: Schema.decodeUnknownEffect(Exact)({}) }
 }

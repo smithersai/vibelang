@@ -10,45 +10,43 @@ class Tagged {
   readonly _tag = "Tagged" as const
 }
 
-effect function find(id: number): string!Missing | Timeout {
+function find(id: number): string!Missing | Timeout {
   if (id === 0) throw new Missing({ id })
   if (id < 0) throw new Timeout()
   return "Ada"
 }
 
-effect function tagged(): string!Tagged {
+function tagged(): string!Tagged {
   throw new Tagged()
 }
 
-effect function describe(id: number) {
-  return find(id) catch effect (e) => match (e) {
-    when { _tag: "Missing" }: `missing ${e.id}`;
-    default: throw e;
-  }
+function describe(id: number) {
+  return find(id) catch (e) => match (e) { when { _tag: "Missing" }: `missing ${e.id}`; default: throw e; }
 }
 
-effect function both(id: number) {
+function both(id: number) {
   return find(id) catch (e) => match (e) {
     when { _tag: "Missing" }: "missing";
     when { _tag: "Timeout" }: "slow";
   }
 }
 
-effect function any(id: number) {
+function any(id: number) {
   return find(id) catch (e) => `failed ${e._tag}`
 }
 
-effect function nested(id: number) {
-  const inner = Effect.catchTag(find(id), "Missing", () => Effect.succeed("nf"))
-  return inner catch (e) => match (e) { when { _tag: "Timeout" }: "to"; }
+function nested(id: number) {
+  return (find(id) catch (e) => match (e) { when { _tag: "Missing" }: "nf"; default: throw e; }) catch (e) => match (e) {
+    when { _tag: "Timeout" }: "to";
+  }
 }
 
-export effect function main() {
+export function main() {
   return {
-    described: [try describe(1), try describe(0)],
-    both: [try both(0), try both(-1)],
-    any: try any(-1),
-    nested: try nested(-1),
+    described: [describe(1), describe(0)],
+    both: [both(0), both(-1)],
+    any: any(-1),
+    nested: nested(-1),
     tagged: tagged() catch (e) => match (e) { when { _tag: "Tagged" }: "by tag"; },
     plain: find(-1) catch () => "plain"
   }

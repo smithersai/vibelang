@@ -1,3 +1,4 @@
 Write number!Neg!Audit, or call biggest where only its value is used, such as an operand or a variable's initializer.
 Write number!Neg!, or call either where only its value is used, such as an operand or a variable's initializer.
 Write number!Neg!: a generic function's call of itself needs its whole contract.
+Write every channel of its contract with its success type as A: A!Neg!.

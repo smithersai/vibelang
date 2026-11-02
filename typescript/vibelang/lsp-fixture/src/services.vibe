@@ -9,7 +9,7 @@ export service Users {
   find(id: number): Effect<string, Missing, never>
 }
 
-// No effect marker: plain JavaScript (VIP-1).
+// No Effect operation and no failure: this compiles to plain JavaScript.
 export function double(n: number) {
   return n * 2
 }
@@ -26,5 +26,5 @@ export effect function serviceGreeting() {
   return try greeter.greet("Ada")
 }
 
-export effect function readFile(path: string) { return try FileSystem.readFileString(path) }
-export effect function processHostname() { return try (try Experimental.Process.Process).hostname }
+export function readFile(path: string) { return FileSystem.readFileString(path) }
+export function processHostname() { return Experimental.Process.hostname() }

@@ -48,5 +48,5 @@ func FormsOfType(c *checker.Checker, t *checker.Type, steps ...string) (forms st
 // IsFactoryFunction exposes D269's checked form to compiler tooling. A text
 // projector decides from written types and reports EK9100 when it cannot.
 func IsFactoryFunction(c *checker.Checker, fn *ast.Node) bool {
-	return false
+	return analyzerFor(c).isFactory(fn)
 }

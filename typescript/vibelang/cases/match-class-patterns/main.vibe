@@ -122,12 +122,12 @@ export effect function main() {
     sameName: [sameName(new A.NotFound({ id: "a" })), sameName(new Timeout({ ms: 5 })), sameName(new B.NotFound({ id: "b" }))],
     sameNameIs: [sameNameIs(new A.NotFound({ id: "a" })), sameNameIs(new Timeout({ ms: 5 })), sameNameIs(new B.NotFound({ id: "b" }))],
     family: [family(new Missing({ code: "m", path: "/p" })), family(new Other({ code: "o" }))],
-    shape: [shape(new Circle({ r: 1 })), shape(new Square({ side: 2 })), shape(circle), try settle(Effect.sync(() => shape(stray)))],
-    parity: [parity(new Even(2)), parity(new Odd(3)), try settle(Effect.sync(() => parity(new Odd(2))))],
-    shapeOrCount: [shapeOrCount(new Circle({ r: 1 })), shapeOrCount(Option.none()), shapeOrCount(Option.some(4)), try settle(Effect.sync(() => shapeOrCount(stray)))],
+    shape: [shape(new Circle({ r: 1 })), shape(new Square({ side: 2 })), shape(circle), try settle(shape(stray))],
+    parity: [parity(new Even(2)), parity(new Odd(3)), try settle(parity(new Odd(2)))],
+    shapeOrCount: [shapeOrCount(new Circle({ r: 1 })), shapeOrCount(Option.none()), shapeOrCount(Option.some(4)), try settle(shapeOrCount(stray))],
     positions: [
-      shapeStatement(new Square({ side: 2 }), []), try settle(Effect.sync(() => shapeStatement(stray, []))),
-      shapeExpression(new Square({ side: 2 })), try settle(Effect.sync(() => shapeExpression(stray))),
+      shapeStatement(new Square({ side: 2 }), []), try settle(shapeStatement(stray, [])),
+      shapeExpression(new Square({ side: 2 })), try settle(shapeExpression(stray)),
       try shapeEffect(new Square({ side: 2 })), try settle(shapeEffect(stray))
     ]
   }

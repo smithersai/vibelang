@@ -9,7 +9,7 @@ function crash(label: string): number {
   return (undefined as any)[label]
 }
 
-// Plain, so a TypeScript caller calls it directly.
+// Plain-annotated, so a TypeScript caller calls it directly.
 export function both(): number {
   try { return crash("first") }
   finally { crash("second") }
@@ -21,15 +21,14 @@ export function nested(): number {
   finally { crash("third") }
 }
 
-// Unannotated, and still plain: a function is an Effect function only when
-// marked effect (VIP-1).
+// Unannotated and eligible: frames call its plain form, TypeScript its Effect form.
 export function direct() {
   try { return crash("first") }
   finally { crash("second") }
 }
 
-// The cleanup's exception replaces the Bad in flight, and a plain function's
-// catch is JavaScript's catch (VIP-4), which catches it, so mixed returns.
+// The cleanup's defect replaces the expected failure in flight, and a catch
+// recovers only expected failures (D13), so the outer catch never runs.
 function mixed() {
   try {
     try { throw new Bad() }
@@ -56,10 +55,10 @@ export function reasons(outcome: Exit<unknown, unknown>): string {
 
 export effect function report() {
   return {
-    both: reasons(try exit(effect { return both() })),
-    nested: reasons(try exit(effect { return nested() })),
-    direct: reasons(try exit(effect { return direct() })),
-    mixed: reasons(try exit(effect { return mixed() })),
+    both: reasons(try exit(both())),
+    nested: reasons(try exit(nested())),
+    direct: reasons(try exit(direct())),
+    mixed: reasons(try exit(mixed())),
     framed: reasons(try exit(framed()))
   }
 }

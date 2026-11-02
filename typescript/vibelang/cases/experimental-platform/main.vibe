@@ -10,7 +10,7 @@ function hex(bytes: Uint8Array) {
 }
 
 export effect function inspect(dir: string) {
-  const fs = try Experimental.FileSystem.FileSystem
+  const fs = try Experimental.FileSystem.FileSystem()
   try fs.writeFileString(`${dir}/data`, "1234")
   try fs.chmod(`${dir}/data`, 0o644)
   try fs.symlink("data", `${dir}/link`)

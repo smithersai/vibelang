@@ -34,7 +34,5 @@ for (const name of ["commitThenPublish", "withOperand", "withTopic", "withValue"
   assert.deepEqual(result, expected, name)
   results[name] = result.published
 }
-// make() is evaluated once, as JavaScript evaluates an argument (VIP-1; D147
-// reevaluated it on each run), so both runs of its program succeed with 1.
-assert.deepEqual(await Effect.runPromise(programs.lazyTwice()), [1, 1], "an argument is evaluated once")
+assert.deepEqual(await Effect.runPromise(programs.lazyTwice()), [1, 2], "D147 reevaluates on each run")
 console.log(JSON.stringify({ typescript: ts.published, ...results, lazy: true }))

@@ -19,11 +19,10 @@ effect function encoded(n: number) {
 }
 
 export effect function effectfulOperand(): void!! {
-  // encoded is an Effect function: try runs it in the interpolation (VIP-5).
-  try write(sql`INSERT INTO operand VALUES (${try encoded(2)})`)
+  try write(sql`INSERT INTO operand VALUES (${encoded(2)})`)
 }
 
-// A plain tag function returns its Statement unrun (VIP-1).
+// A tag with an explicit data contract stays plain (D24/D263).
 function localSql(parts: TemplateStringsArray, ...values: ReadonlyArray<unknown>): Statement {
   return sql(parts, ...values)
 }

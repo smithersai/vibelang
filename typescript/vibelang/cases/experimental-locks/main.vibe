@@ -5,13 +5,13 @@ import { ExperimentalNodeLocks } from "vibelang-runtime/experimental/platform-no
 effect function contend() {
   using held = try Locks.hold("experimental-locks")
   using tried = try Locks.tryHold("experimental-locks")
-  return { held: (try (try Locks).query).held.length, tried: tried.isSome() }
+  return { held: (try Locks.query()).held.length, tried: tried.isSome() }
 }
 
 effect function steal() {
   using first = try Locks.hold("experimental-locks-steal")
   using second = try Locks.hold("experimental-locks-steal", { steal: true })
-  try first.lost
+  try first.lost()
   return true
 }
 

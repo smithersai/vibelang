@@ -159,15 +159,15 @@ export async function fixPage(markdown: string, dir: string, compiler: string, t
     if (block.run) {
       let helper = `$docsFixRun${block.number}`
       while (fixedText.includes(helper)) helper += "$"
-      fixedText += `\n// ${tag}:run\neffect function ${helper}() { ${block.run} }\n// ${tag}:run-end\n`
-      runMarkers.set(block.number, { start: `// ${tag}:run\neffect function ${helper}() { `, end: ` }\n// ${tag}:run-end` })
+      fixedText += `\n// ${tag}:run\nfunction ${helper}() { ${block.run} }\n// ${tag}:run-end\n`
+      runMarkers.set(block.number, { start: `// ${tag}:run\nfunction ${helper}() { `, end: ` }\n// ${tag}:run-end` })
     }
     writeFileSync(path, fixedText)
     markers.set(block.number, { start, end })
   }
   const fixed = await command([compiler, "--fix", ...(vip ? ["--fix-vip-only"] : allFixes ? [] : ["--fix-migration-only"]), "--noEmit", "--pretty", "false", "-p", join(dir, "fix/tsconfig.json")], join(dir, "fix"), 120000)
   if (fixed.timedOut) throw new Error("--fix timed out")
-  if (/EK(?:1023|1703|4609|4610) not fixed:/.test(fixed.stdout + fixed.stderr)) throw new Error(`migration refused: ${fixed.stdout}${fixed.stderr}`)
+  if (/EK(?:1023|4609|4610|4613) not fixed:/.test(fixed.stdout + fixed.stderr)) throw new Error(`migration refused: ${fixed.stdout}${fixed.stderr}`)
   if (fixed.exitCode !== 0 && !parseDiagnostics(fixed.stdout + "\n" + fixed.stderr).length) {
     throw new Error(`--fix failed (${fixed.exitCode}): ${fixed.stdout}${fixed.stderr}`)
   }

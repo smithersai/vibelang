@@ -1,4 +1,4 @@
-// expect: EK9206 EK9206 EK9206 TS7023
+// expect: EK9206 EK9206 EK9206 EK9206
 // A recursive function whose contract leaves E or R to inference must write
 // every channel when a call of itself stands where TypeScript needs the
 // contract to type it: an argument, a logical operand, or a generic call.

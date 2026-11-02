@@ -53,41 +53,46 @@ func fixProjectOf(t *testing.T, files map[string]string) *FixResult {
 	return FixProjectWithOptions(t.Context(), fs, bundled.LibPath(), config, FixOptions{})
 }
 
-// The gate keeps a fix whose edit only rewrites an existing error's message.
-// t3code's contracts drove this with D500's helper return-type fix; VIP-1
-// leaves an unannotated helper plain, so that fix is gone, and EK4834's fix
-// (try Effect.succeed(1) is 1) drives it here: a becomes 1, so the existing
-// error names { readonly v: 1; } where it named { readonly v: number; }, at
-// the same place. The gate once compared errors by message and refused it.
+// t3code's contracts: makeEntityId builds a schema, so --fix writes its plain
+// return type (EK1001). A test elsewhere already fails to decode a struct of
+// those ids for an unrelated reason, and the fix only makes that error's
+// message name brand<…> where it named Effect<brand<…>>. The gate compared
+// errors by message, so it read the rewritten message as a new error and
+// refused the fix, which left every schema built from the helper an Effect.
 func TestFixGateKeepsFixThatRewritesAnExistingErrorsMessage(t *testing.T) {
-	const source = "export effect function f() {\n" +
-		"  const a = try Effect.succeed(1)\n" +
-		"  const s: string = { v: a } as const\n" +
-		"  return s\n" +
-		"}\n"
-	result := fixProjectOf(t, map[string]string{"main.vibe": source})
+	const helper = "import * as Schema from \"effect/Schema\"\n" +
+		"const makeThreadId = () => Schema.String.pipe(Schema.brand(\"ThreadId\"))\n" +
+		"export const ThreadId = makeThreadId()\n"
+	// The error the program reports before and after the fix, at one place.
+	const user = "import { ThreadId } from \"./ids.vibe\"\n" +
+		"export const count: number = ThreadId\n"
+	result := fixProjectOf(t, map[string]string{"ids.vibe": helper, "user.vibe": user})
 	if len(result.Refused) != 0 {
-		t.Fatalf("--fix refused EK4834's fix: %+v", result.Refused)
+		t.Fatalf("--fix refused the helper's plain return type: %+v", result.Refused)
 	}
-	if fixed := fixedText(result, "main.vibe"); !strings.Contains(fixed, "const a = 1\n") {
-		t.Fatalf("--fix did not write a's value:\n%s", fixed)
+	var fixed string
+	for name, f := range result.Files {
+		if strings.HasSuffix(name.AsString(), "ids.vibe") {
+			fixed = f.Text
+		}
+	}
+	if !strings.Contains(fixed, "const makeThreadId = (): ") {
+		t.Fatalf("--fix did not keep makeThreadId plain:\n%s", fixed)
 	}
 }
 
 // The same gate still refuses a fix whose program reports an error at a
-// place that had none: once a is 1, user.vibe's { v: 2 } no longer fits.
+// place that had none: the fixed helper's id is a string where user.vibe
+// passes it to a function that takes an Effect.
 func TestFixGateRefusesAnErrorAtANewPlace(t *testing.T) {
-	const ids = "export effect function getA() {\n" +
-		"  const a = try Effect.succeed(1)\n" +
-		"  return { v: a } as const\n" +
-		"}\n"
-	const user = "import { getA } from \"./ids.vibe\"\n" +
-		"export effect function g() {\n" +
-		"  const n = try getA()\n" +
-		"  const m: typeof n = { v: 2 }\n" +
-		"  return m\n" +
-		"}\n"
-	result := fixProjectOf(t, map[string]string{"ids.vibe": ids, "user.vibe": user})
+	const helper = "import * as Schema from \"effect/Schema\"\n" +
+		"const makeThreadId = () => Schema.String.pipe(Schema.brand(\"ThreadId\"))\n" +
+		"export const ThreadId = makeThreadId()\n"
+	const user = "import { Effect } from \"effect\"\n" +
+		"import { ThreadId } from \"./ids.vibe\"\n" +
+		"const needsEffect = (e: Effect.Effect<unknown>): string => \"ok\"\n" +
+		"export const used: string = needsEffect(ThreadId)\n"
+	result := fixProjectOf(t, map[string]string{"ids.vibe": helper, "user.vibe": user})
 	if len(result.Refused) == 0 {
 		t.Fatalf("--fix wrote a fix that adds an error at a new place: %+v", result.Files)
 	}
@@ -104,64 +109,68 @@ func fixedText(result *FixResult, suffix string) string {
 	return ""
 }
 
-// An error after the edit that the edit only moves keeps its place: t3code's
-// otelEnvironment.ts drove this with D500's helper annotations (drive-t3code,
-// inbox migrate-t3code.md, 2026-11-01T04:04Z, fix:sibling-diagnostic-refuses-fix);
-// under VIP-1 EK4834's fix shortens the line before an existing TS2322, which
-// moves to a new column.
+// t3code's packages/shared/src/otelEnvironment.ts: a plain function calls two
+// unannotated Config helpers, and EK9203 reports its first call. Annotating
+// that helper's return type is right, and the edit moves the function's one EK9203, which
+// now names the second call; the gate read it as a new error, refused the
+// fix, and the module reverted (drive-t3code, inbox migrate-t3code.md,
+// 2026-11-01T04:04Z, fix:sibling-diagnostic-refuses-fix).
 func TestFixGateKeepsFixThatLeavesASiblingErrorAfterIt(t *testing.T) {
-	const source = "export effect function f() {\n" +
-		"  const a = try Effect.succeed(1); const bad: string = 5\n" +
-		"  return [a, bad]\n" +
-		"}\n"
-	result := fixProjectOf(t, map[string]string{"main.vibe": source})
+	const settings = "import * as Config from \"effect/Config\"\n" +
+		"const endpoint = (name: string) => Config.String(name)\n" +
+		"const protocol = (name: string) => Config.String(name)\n" +
+		"export interface Settings { readonly endpoint: string; readonly protocol: string }\n" +
+		"export const settings = (prefix: string): Config.Config<Settings> =>\n" +
+		"  Config.all({ endpoint: endpoint(prefix + \"ENDPOINT\"), protocol: protocol(prefix + \"PROTOCOL\") })\n"
+	result := fixProjectOf(t, map[string]string{"settings.vibe": settings})
 	if len(result.Refused) != 0 {
-		t.Fatalf("--fix refused EK4834's fix: %+v", result.Refused)
+		t.Fatalf("--fix refused a Config helper's annotation: %+v", result.Refused)
 	}
-	if fixed := fixedText(result, "main.vibe"); !strings.Contains(fixed, "const a = 1; const bad: string = 5") {
-		t.Fatalf("--fix did not write a's value:\n%s", fixed)
+	fixed := fixedText(result, "settings.vibe")
+	// Each helper gets a return annotation, which makes it a plain factory.
+	for _, helper := range []string{"const endpoint = (name: string): ", "const protocol = (name: string): "} {
+		if !strings.Contains(fixed, helper) {
+			t.Fatalf("--fix did not write %q:\n%s", helper, fixed)
+		}
 	}
 }
 
 // An edited file's error after the edit that lies where the file had none is
-// still new: once a is 1, b's initializer 2 no longer fits typeof a.
+// still new: the fixed helper's id is a string where the same file passes it
+// to a function that takes an Effect.
 func TestFixGateRefusesAnErrorAfterTheEditAtANewPlace(t *testing.T) {
-	const source = "export effect function f() {\n" +
-		"  const a = try Effect.succeed(1); let b: typeof a = 2\n" +
-		"  return b\n" +
-		"}\n"
-	result := fixProjectOf(t, map[string]string{"main.vibe": source})
+	const ids = "import { Effect } from \"effect\"\n" +
+		"import * as Schema from \"effect/Schema\"\n" +
+		"const makeThreadId = () => Schema.String.pipe(Schema.brand(\"ThreadId\"))\n" +
+		"export const ThreadId = makeThreadId()\n" +
+		"const needsEffect = (e: Effect.Effect<unknown>): string => \"ok\"\n" +
+		"export const used: string = needsEffect(ThreadId)\n"
+	result := fixProjectOf(t, map[string]string{"ids.vibe": ids})
 	if len(result.Refused) == 0 {
-		t.Fatalf("--fix wrote a fix that adds an error after it: %s", fixedText(result, "main.vibe"))
+		t.Fatalf("--fix wrote a fix that adds an error after it: %s", fixedText(result, "ids.vibe"))
 	}
 }
 
 // RC-17: one existing error cannot cover both a changed message at its old
-// span and its old message at a newly invalid span. EK4834's fix (try
-// Effect.succeed(1) is 1) narrows getId's success from { readonly v: number }
-// to { readonly v: 1 }: the error at the old span changes its message, and
-// other's conditional now picks the type that reports the old message.
+// span and its old message at a newly invalid span.
 func TestFixGateRefusesMixedMessageSpanMultiplicity(t *testing.T) {
-	const helper = "export effect function getId() {\n" +
-		"  const a = try Effect.succeed(1)\n" +
-		"  return { v: a } as const\n" +
-		"}\n"
+	const helper = "import * as Schema from \"effect/Schema\"\n" +
+		"const makeId = () => Schema.String\n" +
+		"export const Id = makeId()\n"
 	for _, calls := range []bool{false, true} {
 		t.Run(fmt.Sprintf("calls=%v", calls), func(t *testing.T) {
-			user := "import { Effect } from \"effect\"\n" +
-				"import { getId } from \"./ids.vibe\"\n" +
-				"type Id = ReturnType<typeof getId> extends Effect.Effect<infer A, any, any> ? A : never\n" +
-				"type Other = Id extends { v: 1 } ? Id : string\n"
+			user := "import { Effect, Schema } from \"effect\"\n" +
+				"import { Id } from \"./ids.vibe\"\n"
 			if calls {
-				user += "declare function needsString(s: string): void\n" +
-					"declare const id: Id\ndeclare const other: Other\n" +
-					"needsString(id)\nneedsString(other)\n"
+				user += "declare const other: typeof Id extends Effect.Effect<unknown> ? number : Effect.Effect<typeof Schema.String>\n" +
+					"declare function needsNumber(n: number): void\n" +
+					"needsNumber(Id)\nneedsNumber(other)\n"
 			} else {
-				user += "export const count: string = null as unknown as Id\n" +
-					"export const other: string = null as unknown as Other\n"
+				user += "export const count: number = Id\n" +
+					"export const other: number = null as unknown as (typeof Id extends Effect.Effect<unknown> ? number : Effect.Effect<typeof Schema.String>)\n"
 			}
 			result := fixProjectOf(t, map[string]string{"ids.vibe": helper, "user.vibe": user})
-			if len(result.Refused) == 0 || strings.Contains(fixedText(result, "ids.vibe"), "const a = 1") {
+			if len(result.Refused) == 0 || strings.Contains(fixedText(result, "ids.vibe"), "const makeId = (): ") {
 				t.Fatalf("--fix kept a repair that turns one error into two: refused=%+v, helper=%s", result.Refused, fixedText(result, "ids.vibe"))
 			}
 		})

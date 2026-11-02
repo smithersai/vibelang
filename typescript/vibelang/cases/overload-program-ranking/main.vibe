@@ -34,7 +34,7 @@ effect function socket() {
 
 effect function tick(started: Deferred.Deferred<void>) {
   try Deferred.succeed(started, undefined)
-  try Effect.yieldNow
+  try Effect.yieldNow()
 }
 
 // S6-3: the joined fiber cannot finish before forever has started. Both
@@ -84,14 +84,12 @@ function first() {
 }
 
 effect function zipFail() {
-  try { return try Effect.zip(Effect.sync(first), fail()) } catch (error) { return { error, zipped } } // first is plain (VIP-1)
+  try { return try Effect.zip(first(), fail()) } catch (error) { return { error, zipped } }
 }
 
 // Sequential zip and fallback never start an unreachable second program.
-// Effect.yieldNow is an Effect value: calling it would run it (D501), so it
-// is passed as itself (VIP-1: no by-name passing).
 effect function zipNever() {
-  try { return try Effect.zip(fail(), Effect.forever(Effect.yieldNow)) } catch (error) { return error }
+  try { return try Effect.zip(fail(), Effect.forever(Effect.yieldNow())) } catch (error) { return error }
 }
 
 effect function fallbackFail() {
@@ -100,7 +98,7 @@ effect function fallbackFail() {
 }
 
 effect function fallbackNever() {
-  return try orElse(Effect.succeed(9), Effect.forever(Effect.yieldNow))
+  return try orElse(Effect.succeed(9), Effect.forever(Effect.yieldNow()))
 }
 
 effect function curried() {

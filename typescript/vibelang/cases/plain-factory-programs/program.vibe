@@ -7,12 +7,13 @@ export const makeRuntime = (options: { n: number }): infer _ => {
   }
   return p
 }
-// Importing this module holds a program without running it; each run calls
-// makeRuntime and runs the program it returns with try (VIP-1, VIP-5).
+// D262, D500: importing this module holds a program without running it; each
+// run calls makeRuntime and runs the program it returns.
 export const stored: Effect.Effect<{ n: number }, never, never> = effect { return try makeRuntime({ n: 11 }) }
 
+// This body has no other Effect operation to force generator lowering.
 export effect function useIt(options: { n: number }): number!! {
-  const service = try makeRuntime(options)
+  const service = makeRuntime(options)
   return service.n
 }
 
@@ -20,8 +21,8 @@ function identity<A>(value: A): A {
   const p: A = value
   return p
 }
-// identity is plain: it returns stored unrun, and try runs it.
+// The instantiated call type, rather than the generic's plain body, decides.
 export effect function useGenericFactory() {
-  const service = try identity(stored)
+  const service = identity(stored)
   return service.n
 }

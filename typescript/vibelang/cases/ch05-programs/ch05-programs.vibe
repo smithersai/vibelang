@@ -105,11 +105,10 @@ function makeSync(store: Store): () => Effect<SyncReport, SyncError, Inventory> 
 // A plain function (D9): calling makeSync runs nothing.
 
 // NOTE: stores.map(makeSync) passes the plain makeSync to Array.prototype.map (D9), so
-// syncAll is an array of program functions. Effect.all takes Effects, so each function is
-// called to build its Effect first (VIP-1: no conversion at the destination).
+// syncAll is an array of program functions; Effect.all must then convert each element to an Effect.
 effect function syncEverything(stores: ReadonlyArray<Store>) {
   const syncAll = stores.map(makeSync)                    // an array of programs; nothing ran
-  return try Effect.all(syncAll.map((program) => program()), { concurrency: 4 })  // now they run
+  return try Effect.all(syncAll, { concurrency: 4 })          // now they run
 }
 
 function loadConfig() {
@@ -118,15 +117,15 @@ function loadConfig() {
 }
 
 effect function startServer() {
-  const cachedConfig = try Effect.cached(effect { return loadConfig() })  // Effect.cached returns a program
-  const config = try cachedConfig                           // loads once
-  const again = try cachedConfig                            // returns the cached value
+  const cachedConfig = try Effect.cached(effect { return try loadConfig() })  // Effect.cached returns a program
+  const config = try cachedConfig()                           // loads once
+  const again = try cachedConfig()                            // returns the cached value
   return try Http.listen(config.port)
 }
 
 // An Effect value from TypeScript is a program: calling it runs it.
 effect function clockKind() {
-  const millis = try Clock.currentTimeMillis
+  const millis = try Clock.currentTimeMillis()
   return typeof millis
 }
 

@@ -45,7 +45,7 @@ func checkTryOperations(c *checker.Checker, file *ast.SourceFile) {
 		if name := tryOperationName(node); name != "" {
 			operand := node.Arguments()[0]
 			t := c.GetTypeAtLocation(operand)
-			valid := tryOperationArrayType(c, t)
+			valid := tryOperationArrayType(c, t) && !tryOperationUsesFunctionConversion(c, node)
 			if t != nil && !valid {
 				report(c, operand, EK1801, name)
 				cover(c, node)
@@ -156,4 +156,29 @@ func tryOperationImportPosition(file *ast.SourceFile) int {
 		at = statement.End()
 	}
 	return at
+}
+
+// While legacy contextual conversions exist, they must not turn functions
+// into the Effect values required by VIP-18. Read their selected decision;
+// do not infer another form or change conversions in other calls.
+func tryOperationUsesFunctionConversion(c *checker.Checker, call *ast.Node) bool {
+	a := analyzerFor(c)
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		owner, _ := ownerCall(node)
+		if owner == call {
+			switch a.finalConversion(node) {
+			case convertProgram, convertSyncProgram, convertPrograms:
+				return true
+			}
+			if isLambda(node) && !isProgramArrow(node) && a.finalForm(node) == formProgram {
+				return true
+			}
+		}
+		if isFunctionBoundary(node) {
+			return false
+		}
+		return node.ForEachChild(visit)
+	}
+	return visit(call.Arguments()[0])
 }

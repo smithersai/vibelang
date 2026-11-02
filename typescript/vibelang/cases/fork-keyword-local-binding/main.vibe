@@ -15,7 +15,7 @@ effect function slow(): number!! {
 export effect function main() {
   const a = ordinaryFork()
   const f = fork slow()
-  const g = fork effect {
+  const g = fork {
     try sleep("1 millis")
     return 8
   }

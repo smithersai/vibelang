@@ -349,13 +349,15 @@ func (tx *lowering) visitProvideBlock(node *ast.Node) *ast.Node {
 	return tx.runRegion(node, run, r)
 }
 
-// checkProvideBlocks reports EK1201 at a provide block outside effect code:
-// a module's top level only declares, and a plain function runs no Effect
-// (VIP-1, VIP-12), so such a block would run a program nothing runs.
+// checkProvideBlocks reports EK1201 at a provide block that no function encloses:
+// a module's top level only declares, and such a block would run a program.
 func checkProvideBlocks(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(n *ast.Node) bool
 	visit = func(n *ast.Node) bool {
-		if isProvideBlock(n) && !inEffectCode(n) {
+		if isFunctionBoundary(n) {
+			return false
+		}
+		if isProvideBlock(n) {
 			report(c, n, moduleProvideDiagnostic)
 		}
 		return n.ForEachChild(visit)
@@ -428,6 +430,8 @@ func providedCallType(c *checker.Checker, call *ast.Node, t *checker.Type) *chec
 		program := c.GetTypeAtLocation(self)
 		if signature := singleCallSignature(c, program); signature != nil {
 			program = c.GetReturnTypeOfSignature(signature)
+		} else if analyzerFor(c).isByName(self) {
+			program = analyzerFor(c).byNameType(self, program)
 		}
 		return result(t, program)
 	}

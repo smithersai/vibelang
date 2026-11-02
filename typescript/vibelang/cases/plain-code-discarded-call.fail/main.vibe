@@ -1,7 +1,4 @@
-// expect: EK4801
-// A constructor, a static block and an accessor are plain JavaScript (VIP-1):
-// a call there gives the Effect unrun, so a statement that discards it, or a
-// program it names, discards a program that never runs.
+// expect: EK1001 EK1001 EK1001 EK1001 EK4801 EK4801
 effect function work() { try sleep("1 millis"); return 1 }
 
 class Box {

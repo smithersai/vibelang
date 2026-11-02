@@ -1,2 +1,2 @@
-(try Users).region
-(try Users).find
+Users().region
+Users().find

@@ -1,8 +1,8 @@
-// expect: EK1703 EK1703
+// expect: EK4613 EK1023
 // This source compiled on VibeLang 0.0.10, where fork ran a program value
-// and an Exit, and converted a function to its program. fork e now forks the
-// Effect e (VIP-17); an operand that is not an Effect is EK1703 (decided
-// detail 88). fork-operand-legacy-fixed is this source written for VIP-17.
+// and an Exit, and converted a function to its program. fork's operand is
+// now a program by syntax whose result is its value (D322, D433);
+// fork-operand-legacy-fixed is what vibelang --fix writes.
 effect function work(n: number) {
   try sleep("1 millis")
   return n

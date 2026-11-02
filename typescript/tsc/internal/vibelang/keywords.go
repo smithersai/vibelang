@@ -26,20 +26,18 @@ import (
 // destination's type: D147's type-chosen deferral no longer reaches these
 // operands, so a plain call such as events.push("x") runs in the new fiber
 // too. The operand's program succeeds with the operand's value, which is
-// never run again: an operand that is not an Effect is EK1703,
+// never run again: an operand whose value is itself a program is EK4613,
 // and an await element that is a fiber or a Deferred is EK4609 or EK4610
 // (D394, D433). For such an operand, which no compiling program has, the
 // compiler keeps the reading its repair gives, so the error stands alone.
 
-// EK1703: a fork operand that is not an Effect (VIP-17). {0} is the operand, {1} its type.
-var EK1703 = message(1703, errorCategory, "fork runs an Effect on a new fiber, but {0} is {1}.")
+// EK4613: a keyword operand whose own type is a program (D394, D433). {0} is the operand, {1} what would give it back.
+var EK4613 = message(4613, errorCategory, "{0} is a program, so {1} would give it back unrun.")
 
 func init() {
-	registry[EK1703.Code] = EK1703
-	tsFormFixCodes = append(tsFormFixCodes, EK1703.Code)
-	vipMigrationFixCodes = append(vipMigrationFixCodes, EK1703.Code)
+	registry[EK4613.Code] = EK4613
 	fileChecks = append(fileChecks, checkKeywordOperands)
-	ls.RegisterCodeFixProvider(&ls.CodeFixProvider{Source: diagnosticSource, ErrorCodes: []int32{EK1703.Code, EK4609.Code, EK4610.Code}, GetCodeActions: keywordOperandActions})
+	ls.RegisterCodeFixProvider(&ls.CodeFixProvider{Source: diagnosticSource, ErrorCodes: []int32{EK4613.Code, EK4609.Code, EK4610.Code}, GetCodeActions: keywordOperandActions})
 }
 
 // mayBeKeywordOperand is the cheap test that runs on every expression: node
@@ -130,7 +128,7 @@ func (a *analyzer) keywordFork(operand *ast.Node) *ast.Node {
 // keywordFormOf returns the keyword form that owns node as its operand by
 // syntax, a fork or an await operation, or nil. node is the operand inside
 // its parentheses; a function literal there is excluded, since its type is
-// a program, which EK1703 reports, and it keeps the form its destination
+// a program, which EK4613 reports, and it keeps the form its destination
 // gives it.
 func (a *analyzer) keywordFormOf(node *ast.Node) *ast.Node {
 	if node == nil || node.Parent == nil || ast.IsParenthesizedExpression(node) || ast.IsFunctionExpressionOrArrowFunction(node) {
@@ -141,7 +139,10 @@ func (a *analyzer) keywordFormOf(node *ast.Node) *ast.Node {
 		return nil
 	}
 	outer := outerParentheses(node)
-	return awaitLiteralOperation(outer)
+	if call := awaitLiteralOperation(outer); call != nil {
+		return call
+	}
+	return a.keywordFork(outer)
 }
 
 // keywordOperand reports whether node is a keyword operand whose program its
@@ -156,7 +157,7 @@ func (a *analyzer) keywordOperand(node *ast.Node) bool {
 		return !a.keywordRejects(node, value)
 	}
 	// Not typed yet: checking the form types it, through expressionType.
-	if call := a.keywordFormOf(node); call != nil {
+	if call := a.keywordFormOf(node); !a.resolving[call] {
 		a.checker.GetResolvedSignature(call)
 	}
 	value, ok := a.keywordValues[node]
@@ -274,13 +275,25 @@ func (a *analyzer) keywordOperandType(node *ast.Node, t *checker.Type) (*checker
 	if program == nil {
 		return t, false
 	}
+	s := a.conversions[node]
+	if s == nil {
+		s = &valueState{byCandidate: map[candidateKey]conversion{}, types: map[candidateKey]*checker.Type{}}
+		a.conversions[node] = s
+	}
+	s.first, s.checked = convertByName, true
+	if signature := a.candidateOf(call); signature != nil {
+		s.byCandidate[keyOf(signature)] = convertByName
+	}
+	for _, candidate := range a.current[call] {
+		s.byCandidate[keyOf(candidate)] = convertByName
+	}
 	return program, true
 }
 
 // keywordValueType returns the value type of node, a keyword operand, as its
 // form's check left it, or its type when no check recorded one.
 func (a *analyzer) keywordValueType(node *ast.Node) *checker.Type {
-	if call := a.keywordFormOf(node); call != nil && a.keywordValues[node] == nil {
+	if call := a.keywordFormOf(node); call != nil && a.keywordValues[node] == nil && !a.resolving[call] {
 		a.checker.GetResolvedSignature(call)
 	}
 	if value := a.keywordValues[node]; value != nil {
@@ -327,10 +340,8 @@ func keywordWhat(call *ast.Node) string {
 	return "fork's new fiber"
 }
 
-// checkKeywordOperands reports EK1703 at a fork operand that is not an
-// Effect: fork e forks the Effect e evaluates to (VIP-17). Retired await
-// operations keep only their old typing recorder for --fix; EK1802 rejects the
-// syntax.
+// checkKeywordOperands validates fork operands. Retired await operations
+// keep only their old typing recorder for --fix; EK1802 rejects the syntax.
 func checkKeywordOperands(c *checker.Checker, file *ast.SourceFile) {
 	a := analyzerFor(c)
 	var visit func(*ast.Node) bool
@@ -338,72 +349,54 @@ func checkKeywordOperands(c *checker.Checker, file *ast.SourceFile) {
 		if node.Kind == ast.KindModuleDeclaration || awaitOperationNames[fiberHelper(node)] != "" {
 			return false
 		}
-		if ast.IsCallExpression(node) && !inHatch(node) && len(node.Arguments()) == 1 && a.keywordFork(node.Arguments()[0]) != nil && inEffectCode(node) {
-			checkForkOperand(c, file, node.Arguments()[0])
+		if ast.IsCallExpression(node) && !inHatch(node) && len(node.Arguments()) == 1 && a.keywordFork(node.Arguments()[0]) != nil {
+			a.checkKeywordOperand(file, node, node.Arguments()[0])
 		}
 		return node.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
 }
 
-// forkOperandRejected reports whether operand, fork's, fails the operand test
-// of try: its type is known and is not an Effect (VIP-17, EK1703).
-func forkOperandRejected(c *checker.Checker, operand *ast.Node) bool {
-	t := c.GetTypeAtLocation(operand)
-	return t != nil && t.Flags()&(checker.TypeFlagsAnyOrUnknown|checker.TypeFlagsNever) == 0 &&
-		!isEffectValueType(c, t) && effectOfValue(c, t) == nil
-}
-
-// joinsRejectedFork reports whether operand, join's, is a fork whose operand
-// EK1703 rejects, or a const bound to one. That fork's call resolves to no
-// Fiber (fork job picks Effect.forkScoped's options overload), and EK1703
-// already names the mistake, so join reports nothing more.
-func (a *analyzer) joinsRejectedFork(operand *ast.Node) bool {
+// checkKeywordOperand reports operand, an operand of call as written, when
+// its value is a program, or, as an await element, a fiber or a Deferred.
+func (a *analyzer) checkKeywordOperand(file *ast.SourceFile, call *ast.Node, operand *ast.Node) {
 	c := a.checker
-	expr := ast.SkipParentheses(operand)
-	if ast.IsIdentifier(expr) {
-		symbol := c.GetSymbolAtLocation(expr)
-		if symbol == nil || symbol.ValueDeclaration() == nil {
-			return false
-		}
-		decl := symbol.ValueDeclaration()
-		if !ast.IsVariableDeclaration(decl) || !ast.IsVarConst(decl) || decl.Initializer() == nil {
-			return false
-		}
-		expr = ast.SkipParentheses(decl.Initializer())
-	}
-	if !ast.IsCallExpression(expr) || len(expr.Arguments()) != 1 || a.keywordFork(expr.Arguments()[0]) == nil || !inEffectCode(expr) {
-		return false
-	}
-	return forkOperandRejected(c, expr.Arguments()[0])
-}
-
-// checkForkOperand reports operand, fork's, when its type is not an Effect,
-// the operand test of try (VIP-17, VIP-5).
-func checkForkOperand(c *checker.Checker, file *ast.SourceFile, operand *ast.Node) {
 	inner := ast.SkipParentheses(operand)
 	if ast.NodeIsMissing(inner) {
 		return
 	}
-	if !forkOperandRejected(c, operand) {
-		return
-	}
-	t := c.GetTypeAtLocation(operand)
-	text := shortText(nodeText(file, inner), "this operand")
-	d := reportAt(c, file, core.NewTextRange(nodeStart(file, operand), operand.End()), EK1703, text, c.TypeToString(t))
+	rewrite := keywordOperandRewrite(c, file, call, operand)
+	var d *ast.Diagnostic
+	span := core.NewTextRange(nodeStart(file, operand), operand.End())
 	switch {
+	case isForkBlock(inner):
+		return // fork { … }: the block is the program
 	case ast.IsFunctionExpressionOrArrowFunction(inner):
-		note(d, "Fork an effect block instead: fork effect { ... }.")
-		note(d, "Through VibeLang 0.0.10, fork ran the function's body: vibelang --fix writes that body as the operand.")
-	case len(c.GetSignaturesOfType(t, checker.SignatureKindCall)) > 0:
-		note(d, "Call it to fork the Effect it returns: fork {0}().", text)
+		if requiredParameterCount(inner) == 0 {
+			d = reportAt(c, file, span, EK4613, "This function", keywordWhat(call))
+		}
 	default:
-		note(d, "Fork an Effect, such as fork Effect.succeed({0}).", text)
+		value := a.keywordValueType(inner)
+		switch {
+		case value == nil:
+		case a.isProgramValueType(value):
+			d = reportAt(c, file, span, EK4613, messageText(inner, "This operand"), keywordWhat(call))
+		}
 	}
-	coverArgument(c, operand)
+	if d != nil {
+		if rewrite.fixable() {
+			note(d, "Write {0}.", rewrite.description)
+		} else if rewrite != nil && rewrite.why != "" {
+			note(d, "{0}", rewrite.why)
+		}
+		coverArgument(c, operand)
+	}
+	if reading := a.legacyKeywordReading(call, operand); reading.change != keywordUnchanged {
+		reportKeywordMigration(c, file, legacyKeywordSite{call, operand, reading}, d)
+	}
 }
 
-// keywordOperandActions offers the repair of an EK1703, EK4609, or EK4610
+// keywordOperandActions offers the repair of an EK4613, EK4609, or EK4610
 // at a keyword operand.
 func keywordOperandActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
 	c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)

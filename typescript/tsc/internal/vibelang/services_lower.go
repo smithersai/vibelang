@@ -10,6 +10,7 @@ import (
 // servicePlan records what the lowering does with services in one file.
 type servicePlan struct {
 	lookups    map[*ast.Node]bool   // calls S.member(…) whose callee looks the service up
+	values     map[*ast.Node]bool   // calls p() that run p, an Effect value
 	moduleKeys map[*ast.Node]string // the S or p of those calls that name a module, and the key it names (D311)
 	aliases    map[*ast.Node]string // property accesses M.member read through M's export, and the export's name (D311)
 	keys       map[*ast.Node]string // service and control classes, by declaration, and their keys
@@ -21,7 +22,7 @@ type servicePlan struct {
 }
 
 func newServicePlan() servicePlan {
-	return servicePlan{lookups: map[*ast.Node]bool{}, moduleKeys: map[*ast.Node]string{}, aliases: map[*ast.Node]string{}, keys: map[*ast.Node]string{}, wireOrders: map[*ast.Node][]int{}, wireLists: map[*ast.Node][]wireArgument{}}
+	return servicePlan{lookups: map[*ast.Node]bool{}, values: map[*ast.Node]bool{}, moduleKeys: map[*ast.Node]string{}, aliases: map[*ast.Node]string{}, keys: map[*ast.Node]string{}, wireOrders: map[*ast.Node][]int{}, wireLists: map[*ast.Node][]wireArgument{}}
 }
 
 // planServiceCall records how call, in the body of a function the lowering
@@ -30,6 +31,10 @@ func (p *servicePlan) planServiceCall(c *checker.Checker, call *ast.Node) {
 	if isServiceLookup(c, call) {
 		p.lookups[call] = true
 		p.planModuleKey(c, call.Expression().Expression())
+	}
+	if isEffectValueCall(c, call) {
+		p.values[call] = true
+		p.planModuleKey(c, call.Expression())
 	}
 }
 
@@ -116,6 +121,16 @@ func (tx *lowering) visitModuleAlias(node *ast.Node) *ast.Node {
 	lowered := f.UpdatePropertyAccessExpression(access, object, access.QuestionDotToken, node.Name(), node.Flags)
 	tx.EmitContext().SetOriginal(lowered, node)
 	return lowered
+}
+
+// visitEffectValueCall turns `p()`, where p is an Effect value, into
+// `yield* p`.
+func (tx *lowering) visitEffectValueCall(node *ast.Node) *ast.Node {
+	f := tx.Factory()
+	callee := tx.moduleKey(node.Expression(), tx.Visitor().VisitNode(node.Expression()))
+	run := f.NewYieldExpression(f.NewToken(ast.KindAsteriskToken), callee)
+	tx.EmitContext().SetOriginal(run, node)
+	return run
 }
 
 // visitServiceClass turns a service class into a class that extends the

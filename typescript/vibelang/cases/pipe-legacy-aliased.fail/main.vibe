@@ -1,8 +1,8 @@
-// expect: TS2345
-// A function literal never turns into a program because a parameter expects
-// an Effect (VIP-2), so pipe is Effect's ordinary function however it is
-// imported: a stage that takes an Effect rejects a function, and a stage that
-// takes anything gets the function.
+// expect: TS2345 EK1023
+// Effect's pipe is recognized by the declaration its callee resolves to, not
+// its spelling: imported as flow, or read as Function.pipe, a pipe whose
+// first argument VibeLang 0.0.10 made a program by look-ahead gets the same
+// migration diagnostics as pipe.
 import { pipe as flow } from "effect"
 import * as Fn from "effect/Function"
 

@@ -1,9 +1,9 @@
 // expect: EK4401
 // Without a vibelang.manifest.json listing it, a declaration file says
 // nothing about how its functions fail, so an Effect function's call of one
-// is EK4401, as for any TypeScript function.
+// is EK4401, as for any TypeScript function (D500).
 import { double } from "./lib/double.js"
 
-export effect function main() {
+export function main() {
   return double(2)
 }

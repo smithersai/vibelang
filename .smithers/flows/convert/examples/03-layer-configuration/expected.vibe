@@ -4,9 +4,9 @@ service Banner {
 }
 
 export const BannerLive = Layer.effect(Banner, effect {
-  const edition = try Config.String("EDITION")
-  try log(`Preparing ${edition}`)
+  const edition = Config.String("EDITION")()
+  log(`Preparing ${edition}`)
   return {
-    effect text(topic) { return `${edition}: ${topic}` }
+    text(topic) { return `${edition}: ${topic}` }
   }
 })

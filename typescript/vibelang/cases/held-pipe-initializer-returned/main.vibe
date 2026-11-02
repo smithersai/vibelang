@@ -19,6 +19,6 @@ export effect function main() {
   const program: number!! = make(local) |> Effect.map(%, (n) => n * 10) |> Effect.map(%, (n) => n + 1)
   const factory: number!! = forwarded(viaForward)
   const before = [local.runs, viaForward.runs]
-  const values = [try program, try program, try factory, try factory]
+  const values = [try program(), try program(), try factory(), try factory()]
   return [before, values, [local.runs, viaForward.runs]]
 }

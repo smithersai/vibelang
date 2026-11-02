@@ -288,22 +288,17 @@ export function writeProject(dir: string, blocks: Block[], options: { exportFunc
       // TypeScript's parser cannot read VibeLang's statement forms, such as
       // `fork { ... }` and `select { ... }`, and its recovery can lift
       // statements out of a function. Top-level code starts in column 0.
-      // `effect function f()` reads as the name effect, then a declaration after it.
-      const position = ast.getLineAndCharacterOfPosition(statement.getStart(ast))
-      const head = ast.text.slice(statement.getStart(ast) - position.character, statement.getStart(ast))
-      const marked = ts.isFunctionDeclaration(statement) && /^(?:export\s+)?effect\s+$/.test(head)
-      if (position.character !== 0 && !marked) continue
+      if (ast.getLineAndCharacterOfPosition(statement.getStart(ast)).character !== 0) continue
       // The 0.0.1 compiler does not forward a pure function's direct variant
       // through an export list. For execution fixtures, export synthetic
       // function bindings on their declaration instead. Keep original export
       // lists unchanged so real code bugs still surface. Hover/check projects
       // preserve every source column by leaving this option off.
       if (options.exportFunctions && ts.isFunctionDeclaration(statement) && statement.name &&
-          !explicitExports.has(statement.name.text) && !ts.getModifiers(statement)?.some(m => m.kind === ts.SyntaxKind.ExportKeyword) && !head.startsWith("export")) {
-        exportStarts.push(statement.getStart(ast) - position.character)
+          !explicitExports.has(statement.name.text) && !ts.getModifiers(statement)?.some(m => m.kind === ts.SyntaxKind.ExportKeyword)) {
+        exportStarts.push(statement.getStart(ast))
         exported.add(statement.name.text)
       }
-      if (marked && head.startsWith("export")) exported.add((statement as any).name.text)
       const before = new Set(names)
       if (ts.isImportDeclaration(statement)) {
         const clause = statement.importClause
@@ -432,7 +427,7 @@ export async function runBlock(dir: string, blocks: Block[], result: Result, com
   while (result.source.includes(helper)) helper += "$"
   if (result.run) {
     const file = join(dir, filename)
-    writeFileSync(file, readFileSync(file, "utf8") + `\nexport ${filename.endsWith(".ts") ? "" : "effect "}function ${helper}() { ${result.run} }\n`)
+    writeFileSync(file, readFileSync(file, "utf8") + `\nexport function ${helper}() { ${result.run} }\n`)
   }
   const config = JSON.parse(readFileSync(join(dir, "tsconfig.json"), "utf8"))
   // The 0.0.1 release suppresses emit on warnings with noEmitOnError, yet

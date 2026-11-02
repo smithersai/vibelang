@@ -6,13 +6,13 @@
 // tsforms-types-fixed is what vibelang --fix writes.
 error Missing { id: string }
 
-effect function load(id: string): number!Missing {
+function load(id: string): number!Missing {
   if (id === "") throw new Missing({ id })
   return id.length
 }
 
-effect function checked(program: number!Missing): Effect.Effect<string, never, infer R> {
-  const n = program catch () => -1
+function checked(program: number!Missing): Effect.Effect<string, never, infer R> {
+  const n = program() catch () => -1
   return n >= 0 ? "ok" : "missing"
 }
 
@@ -20,32 +20,32 @@ const held: string!! = effect { return "held" }
 const six: number!! = effect { return 6 }
 
 type Callback = (n: number) => number!!
-const callback: Callback = effect (n) => n + 1
+const callback: Callback = (n) => n + 1
 
-effect function maybe(program: (number!!) | undefined): number!! {
-  return program === undefined ? 0 : try program
+function maybe(program: (number!!) | undefined): number!! {
+  return program === undefined ? 0 : program()
 }
 
-effect function nested(program: (number!!)!!): number!! {
-  const inner = try program
-  return try inner
+function nested(program: (number!!)!!): number!! {
+  const inner = program()
+  return inner()
 }
 
-effect function kept(
+function kept(
   // @vibelang-diagnostics-next-line EK4833:off
   program: Effect.Effect<number>
 ): number!! {
-  return try program
+  return program()
 }
 
-export effect function main() {
+export function main() {
   return {
-    loaded: try load("abc"),
-    checked: try checked(load("x")),
-    held: try held,
-    callback: try callback(3),
-    maybe: try maybe(Effect.succeed(5)),
-    nested: try nested(Effect.succeed(six)),
-    kept: try kept(Effect.succeed(7))
+    loaded: load("abc"),
+    checked: checked(load("x")),
+    held: held(),
+    callback: callback(3),
+    maybe: maybe(Effect.succeed(5)),
+    nested: nested(Effect.succeed(six)),
+    kept: kept(Effect.succeed(7))
   }
 }

@@ -14,9 +14,9 @@ import (
 // a scoped acquisition needed Scope.
 func TestHoverShowsGenericUsingRequirementWithoutScope(t *testing.T) {
 	t.Parallel()
-	const source = "export effect function withResource<A extends Disposable, R>(open: () => A!!R) {\n  using r = try open()\n  return \"used\"\n}\n"
+	const source = "export function withResource<A extends Disposable, R>(open: () => A!!R) {\n  using r = open()\n  return \"used\"\n}\n"
 	_, file, service, _ := editorProgram(t, source)
-	text := hoverText(t, service, lsconv.FileNameToDocumentURI(file.FileName()), lsproto.Position{Line: 0, Character: 24})
+	text := hoverText(t, service, lsconv.FileNameToDocumentURI(file.FileName()), lsproto.Position{Line: 0, Character: 17})
 	if !strings.Contains(text, "Exclude<R, Scope>") {
 		t.Fatalf("hover of withResource does not show Exclude<R, Scope>:\n%s", text)
 	}

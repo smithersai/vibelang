@@ -13,7 +13,7 @@ export const UsersLive = Layer.effect(Users, effect {
   const names = new Set<string>()
   let nextId = 0
   return {
-    effect create(name) {
+    create(name) {
       if (names.has(name)) throw new NameTaken({ name })
       names.add(name)
       nextId++
@@ -22,11 +22,11 @@ export const UsersLive = Layer.effect(Users, effect {
   }
 })
 
-export effect function createUser() {
+export function createUser() {
   try {
-    const input = try HttpServerRequest.schemaBodyJson(CreateUser)
-    const user = try Users.create(input.name)
-    return try HttpServerResponse.json(user, { status: 201 })
+    const input = HttpServerRequest.schemaBodyJson(CreateUser)
+    const user = Users.create(input.name)
+    return HttpServerResponse.json(user, { status: 201 })
   } catch (error) {
     return match (error) {
       when NameTaken: HttpServerResponse.text(`Name already registered: ${error.name}`, { status: 409 });
@@ -49,6 +49,6 @@ import { createServer } from node
 const Server = NodeHttpServer.layer(createServer, { port: 3000 })
 const Live = Layer.provide(HttpRouter.serve(App), Server)
 
-export effect function main() {
-  try Layer.launch(Live)
+export function main() {
+  Layer.launch(Live)
 }

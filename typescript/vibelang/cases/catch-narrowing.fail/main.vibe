@@ -21,11 +21,10 @@ export effect function nested(source: Source): number!! {
   return 0
 }
 
-// Failure can change a property; no handler inherits its guard (the value
-// fallback is removed, VIP-5 amendment 31a).
+// Failure can change a property; neither fallback nor handler inherits it.
 effect function failed(): number!string! { throw "failed" }
 export effect function fallback(source: Source): number!string! {
-  return source.read === undefined ? 0 : (failed() catch effect () => try source.read())
+  return source.read === undefined ? 0 : (failed() catch () => source.read())
 }
 export effect function handler(source: Source): number!string! {
   return source.read === undefined ? 0 : (failed() catch effect (error) => try source.read())

@@ -1,16 +1,16 @@
 error MissingParcel { tracking: string }
 
-effect function destination(tracking: string): string!MissingParcel {
+function destination(tracking: string): string!MissingParcel {
   if (tracking !== "PK-9") throw new MissingParcel({ tracking })
   return "Oslo"
 }
 
-export effect function route(tracking: string) {
-  return `Ship to ${try destination(tracking)}` catch (e) => match (e) {
+export function route(tracking: string) {
+  return `Ship to ${destination(tracking)}` catch (e) => match (e) {
     when MissingParcel: `Investigate ${e.tracking}`;
   }
 }
 
-export effect function destinationOrDepot(tracking: string) {
+export function destinationOrDepot(tracking: string) {
   return destination(tracking) catch () => "depot"
 }

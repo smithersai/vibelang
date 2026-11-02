@@ -26,15 +26,15 @@ export service Reader {
 }
 
 export effect function flag(): boolean!! {
-  return (try Flags).enabled
+  return (try Flags()).enabled
 }
 
 export effect function prefix(): string!! {
-  return try Prefix
+  return try Prefix()
 }
 
 export effect function version(): number!! {
-  return try Version
+  return try Version()
 }
 
 export effect function read(): string!! {

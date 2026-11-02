@@ -1,5 +1,5 @@
-// expect: EK9204 EK9204 EK9204
-// In effect code a catch receives typed failures only (D13), so a catch whose try
+// expect: EK9204 EK9204 EK9204 EK9204
+// A catch receives typed failures only (D13, D282), so a catch whose try
 // block fails with no expected error can never run: Option.getOrThrow's
 // exception and a JavaScript TypeError are defects that pass through it.
 // EK9204 is a warning by default; this project makes it an error.
@@ -17,8 +17,7 @@ effect function firstAdmin(names: ReadonlyArray<string>) {
   }
 }
 
-// A plain function is JavaScript (VIP-1): its catch catches every
-// exception, so it is never dead and gets no EK9204.
+// A plain function's catch receives typed failures only too (D282).
 function parse(text: string) {
   try {
     return text.length

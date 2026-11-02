@@ -4,15 +4,15 @@ service Users {
   name(id: string): string!ApiError
 }
 
-effect function nameOf(id: string) {
-  return (try Users).name(id)
+function nameOf(id: string) {
+  return Users.name(id)
     |> retry(%, Schedule.exponential("100 millis"))
     |> timeout(%, "2 seconds")
     catch () => "unknown"
 }
 
-export effect function names(ids: ReadonlyArray<string>) {
-  const all = try forEach(ids, nameOf, { concurrency: 8 })
-  try log(`Loaded ${all.length} names`)
+export function names(ids: ReadonlyArray<string>) {
+  const all = forEach(ids, nameOf, { concurrency: 8 })
+  log(`Loaded ${all.length} names`)
   return all
 }

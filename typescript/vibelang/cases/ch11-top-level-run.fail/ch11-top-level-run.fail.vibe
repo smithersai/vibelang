@@ -1,7 +1,6 @@
-// expect: EK0501
-// Chapter 11 "Where programs start": try loadConfig() runs a program, but a module's top level is
-// ordinary JavaScript, not an effect function (VIP-26). Without try, loadConfig() builds the
-// Effect unrun (VIP-1).
+// expect: EK1001
+// Chapter 11 "Where programs start": loadConfig() runs a program, but a module's top level is not
+// inside one.
 
 interface AppConfig {
   port: number
@@ -13,4 +12,4 @@ effect function loadConfig() {
   return config
 }
 
-export const config = try loadConfig()
+export const config = loadConfig()

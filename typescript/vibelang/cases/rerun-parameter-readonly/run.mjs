@@ -21,9 +21,14 @@ import * as program from "./out/main.js"
   const p = program.property({ n: 1 })
   console.log("object mutation", JSON.stringify([Effect.runSync(p), Effect.runSync(p), Effect.runSync(p)]))
 }
-// plain and plainRest are plain functions (VIP-1): each call runs the body.
-console.log("plain", JSON.stringify([program.plain(1), program.plain(1), program.plain(1)]))
-console.log("plain rest", JSON.stringify([program.plainRest(1, 2), program.plainRest(1, 2), program.plainRest(1, 2)]))
+{
+  const p = program.plain(1)
+  console.log("plain", JSON.stringify([Effect.runSync(p), Effect.runSync(p), Effect.runSync(p)]))
+}
+{
+  const p = program.plainRest(1, 2)
+  console.log("plain rest", JSON.stringify([Effect.runSync(p), Effect.runSync(p), Effect.runSync(p)]))
+}
 {
   const p = program.hatch(1)
   console.log("sync", JSON.stringify([Effect.runSync(p), Effect.runSync(p), Effect.runSync(p)]))

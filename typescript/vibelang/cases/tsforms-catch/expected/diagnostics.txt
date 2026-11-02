@@ -1,6 +1,7 @@
 main.vibe(24,10): warning EK4835
 main.vibe(28,10): warning EK4835
 main.vibe(32,10): warning EK4835
-main.vibe(37,10): warning EK4835
-main.vibe(46,13): warning EK4835
-main.vibe(47,12): warning EK4835
+main.vibe(36,10): warning EK4835
+main.vibe(37,5): warning EK4835
+main.vibe(49,13): warning EK4835
+main.vibe(50,12): warning EK4835

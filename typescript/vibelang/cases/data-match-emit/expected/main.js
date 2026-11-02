@@ -1,5 +1,4 @@
 import * as Data from "effect/Data";
-import * as Effect from "effect/Effect";
 import * as runtime from "vibelang-runtime";
 const Delivery = Data.taggedEnum();
 function describe(delivery) {
@@ -22,7 +21,9 @@ function describe(delivery) {
 function isSent(value) {
     return (Delivery.$is("Sent")(value));
 }
-export function main() {
-    return Effect.sync({ main: () => [describe(Delivery.Waiting()), describe(Delivery.Sent({ tracking: "parcel-8" })), isSent(Delivery.Sent({ tracking: "x" })), isSent({ tracking: "x" })] }.main);
+export function main$direct() {
+    return [describe(Delivery.Waiting()), describe(Delivery.Sent({ tracking: "parcel-8" })), isSent(Delivery.Sent({ tracking: "x" })), isSent({ tracking: "x" })];
 }
+export function main(...args) { return runtime.$plainSync(main$direct, this, args); }
+main[runtime.$direct] = main$direct;
 runtime.$entry(import.meta.main, import.meta.url, main, () => runtime.$runMain(main()));

@@ -5,11 +5,11 @@ service Prefix: string
 
 export const withPrefix = effect <A, E, R>(body: A!E!R) => {
   provide Prefix = "> " {
-    return try body
+    return try body()
   }
 }
 
-const greet = effect (name: string) => `${try Prefix}${name}`
+const greet = effect (name: string) => `${try Prefix()}${name}`
 
 /** Fails to compile unless T is never. */
 type Never<T extends never> = T

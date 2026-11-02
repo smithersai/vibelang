@@ -30,7 +30,7 @@ effect function work() {
 }
 const both: () => number | Effect<void> = work
 
-export effect function main() {
+export function main() {
   const fs = [tick, tick]
   runAll(fs)
   runAll([...fs])

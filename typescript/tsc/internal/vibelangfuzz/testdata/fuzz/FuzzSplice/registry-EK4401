@@ -1,2 +1,2 @@
 go test fuzz v1
-string("-- lib/double.d.ts --\nexport declare function double(n: number): number;\n-- main.vibe --\nimport { double } from \"./lib/double.js\"\nexport effect function main() {\n  return double(2)\n")
+string("-- lib/double.d.ts --\nexport declare function double(n: number): number;\n-- main.vibe --\nimport { double } from \"./lib/double.js\"\nexport function main() {\n  return double(2)\n")

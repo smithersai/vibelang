@@ -1,2 +1,2 @@
 go test fuzz v1
-string("-- helpers.ts --\nexport class BadPort extends Error {\n/** @throws {BadPort} when the text is not a whole number */\nexport function parsePort(text: string): number {\n-- main.vibe --\nimport { double, parsePort } from \"./helpers.ts\"\neffect function port(text: string) {\n    return parsePort(text)\n")
+string("-- helpers.ts --\nexport class BadPort extends Error {\n/** @throws {BadPort} when the text is not a whole number */\nexport function parsePort(text: string): number {\n-- main.vibe --\nimport { double, parsePort } from \"./helpers.ts\"\nfunction port(text: string) {\n    return parsePort(text)\n")

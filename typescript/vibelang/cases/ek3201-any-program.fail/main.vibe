@@ -1,8 +1,7 @@
-// expect: EK1002 EK3201
+// expect: EK1001 EK1002 EK3201
 // An Effect TypeScript program pasted into a .vibe file: Effect.gen takes a
 // producer here (EK1002), so main has type any, and EK3201 at the runner says
-// its services are unknown rather than "no provider for any". The top-level
-// Effect.gen call only builds a value (VIP-1, VIP-26), so it is no EK1001.
+// its services are unknown rather than "no provider for any".
 import { Context, Effect } from "effect"
 
 class Greeter extends Context.Service<Greeter, {

@@ -54,7 +54,7 @@ service Settings {
 }
 
 effect function apiUrl(path: string) {
-  return `${(try Settings).baseUrl}/${path}`
+  return `${(try Settings()).baseUrl}/${path}`
 }
 // Effect<string, never, Settings>
 
@@ -73,7 +73,7 @@ function toUser(row: Row) {
 // Writing a provider (the version without Effect.orDie is ch04-provider-escapes.fail.vibe)
 
 const UsersLive = Layer.effect(Users, effect {
-  const db = try Database              // runs once, when the layer is built
+  const db = try Database()              // runs once, when the layer is built
   return {
     effect find(id) {
       const rows = try Effect.orDie(effect { return try db.query("select * from users where id = $1", [id]) })
@@ -129,7 +129,7 @@ effect function connect(url: string) {
 const Postgres = { connect }
 
 const DatabaseLive = Layer.effect(Database, effect {
-  const pool = try Postgres.connect((try Config).url)    // no `using`: the pool lives as long as the layer
+  const pool = try Postgres.connect((try Config()).url)    // no `using`: the pool lives as long as the layer
   return {
     query: effect (sql, params) => try pool.query(sql, params),
     execute: effect (sql, params) => try pool.execute(sql, params)

@@ -7,16 +7,16 @@ import (
 
 func TestAnyCallResultIgnoresErrorRecovery(t *testing.T) {
 	p, file, _, _ := editorProgram(t, `import * as Effect from "effect/Effect"
-export effect function missingMember(value: { present: number }) {
-  try Effect.yieldNow()
+export function missingMember(value: { present: number }) {
+  Effect.yieldNow()
   return value.missing()
 }
-export effect function missingName() {
-  try Effect.yieldNow()
+export function missingName() {
+  Effect.yieldNow()
   return notDeclared()
 }
-export effect function genuineAny(value: any) {
-  try Effect.yieldNow()
+export function genuineAny(value: any) {
+  Effect.yieldNow()
   return value()
 }`)
 	count := 0

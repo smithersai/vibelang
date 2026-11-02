@@ -1,2 +1,2 @@
 go test fuzz v1
-string("-- main.vibe --\nexport effect function inHatch() {\n  return try sync(() => {\n    await Promise.resolve(1)\n")
+string("-- main.vibe --\n  return try sync(() => {\n    await.all [Promise.resolve(1)]\n")

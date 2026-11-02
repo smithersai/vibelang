@@ -3,4 +3,4 @@ import { hash } from "./hi#1.vibe"
 import { percent } from "./hi%1.vibe"
 export { literal } from "./hi%23.vibe"
 import { literal } from "./hi%23.vibe"
-export effect function main() { return `${hash} ${percent} ${literal}` }
+export function main() { return `${hash} ${percent} ${literal}` }

@@ -25,7 +25,7 @@ const DatabaseLive = Layer.succeed(Database, {
 })
 
 const UsersLive = Layer.effect(Users, effect {
-  const db = try Database
+  const db = try Database()
   return {
     effect find(id) {
       const user = try db.lookup(id)

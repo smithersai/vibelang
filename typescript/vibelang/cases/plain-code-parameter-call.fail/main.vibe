@@ -1,15 +1,11 @@
-// expect: EK0501
-// A parameter default runs when the function is called, outside any Effect,
-// so try there runs nothing, in a plain function or an effect function
-// (VIP-1 formal-parameter amendment, VIP-5). A default that holds the
-// Effect unrun is data, as any plain call's result is.
+// expect: EK1001 EK1001 EK1001
 effect function work() { try sleep("1 millis"); return 1 }
 
-function plain(value = try work()) { return 1 }
+function plain(value = work()) { return 1 }
 
-effect function effectful(value = try work()) {
+effect function effectful(value = work()) {
   try sleep("1 millis")
   return 2
 }
 
-effect function held(program: number!! = work()) { return try program }
+effect function held(program: number!! = work()) { return try program() }

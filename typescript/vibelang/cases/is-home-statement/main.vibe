@@ -34,7 +34,7 @@ export function expressionStatement(x: { a: number; b: number } | null) {
   x is { a: let a, b: let b } && (total = a + b)
   return total
 }
-export effect function main() {
+export function main() {
   return [
     initializer({ id: 1 }),
     initializer({}),

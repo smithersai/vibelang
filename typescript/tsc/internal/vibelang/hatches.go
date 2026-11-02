@@ -259,7 +259,7 @@ func boundaryCall(c *checker.Checker, file *ast.SourceFile, effect string, call 
 // a const holds it outside the wrapper's plain function.
 type boundaryInput struct {
 	node        *ast.Node // the operand the const stands for
-	pos, end    int       // the source the const's name replaces
+	pos         int
 	param, text string
 	tries       bool // the const's value runs its operand
 }
@@ -295,20 +295,9 @@ func boundaryInputs(c *checker.Checker, file *ast.SourceFile, call *ast.Node) ([
 		operands = append(operands, input{node: argument, param: argumentParameterName(c, call, i)})
 	}
 	var inputs []input
-	for i, operand := range operands {
+	for _, operand := range operands {
 		if a.runsVibeLang(operand.node) {
-			operand.pos, operand.end, operand.text = nodeStart(file, operand.node), operand.node.End(), nodeText(file, operand.node)
-			if i == 0 && len(operands) > len(call.Arguments()) && operand.node.Flags&ast.NodeFlagsVibeLangTry != 0 {
-				// (try f()).m() parses as f().m(), the tried call's range
-				// starting at try inside the parentheses, which the
-				// const's name replaces too: shelf.m(), not (shelf).m().
-				source := file.Text()
-				if open := strings.LastIndexByte(source[:operand.pos], '('); open >= 0 && strings.TrimSpace(source[open+1:operand.pos]) == "" {
-					if close := scanner.SkipTrivia(source, operand.end); close < len(source) && source[close] == ')' {
-						operand.pos, operand.end = open, close+1
-					}
-				}
-			}
+			operand.pos, operand.text = nodeStart(file, operand.node), nodeText(file, operand.node)
 			if inner := ast.SkipParentheses(operand.node); isInvocation(inner) && a.performs(inner) && inner.Flags&ast.NodeFlagsVibeLangTry == 0 && !isTryCall(inner) {
 				operand.tries = true
 			}
@@ -355,7 +344,7 @@ func boundaryInputs(c *checker.Checker, file *ast.SourceFile, call *ast.Node) ([
 	text := file.Text()[start:call.End()]
 	for i := len(inputs) - 1; i >= 0; i-- {
 		in := inputs[i]
-		text = text[:in.pos-start] + in.param + text[in.end-start:]
+		text = text[:in.pos-start] + in.param + text[in.node.End()-start:]
 	}
 	return inputs, text
 }
@@ -372,7 +361,7 @@ func (a *analyzer) runsVibeLang(node *ast.Node) bool {
 		if n.Flags&ast.NodeFlagsVibeLangTry != 0 || isTryCall(n) {
 			return true
 		}
-		if isInvocation(n) && (a.performs(n) || a.callsVibeLangFunction(n)) {
+		if isInvocation(n) && (a.performs(n) || a.callsVibeLangFunction(n) || ast.IsCallExpression(n) && isEffectValueCall(a.checker, n)) {
 			return true
 		}
 		return n.ForEachChild(visit)

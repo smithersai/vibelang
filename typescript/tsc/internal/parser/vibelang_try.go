@@ -46,7 +46,6 @@ func (p *Parser) parseVibeLangTry() *ast.Node {
 	p.nextToken() // try
 	operand := p.parseSimpleUnaryExpression()
 	p.recordVibeSyntax(VibeSyntax{Kind: VibeSyntaxPrefix, Word: anchor, Range: core.NewTextRange(anchor.Pos(), operand.End())})
-	// A call that holds a try already is that try's: the outer try runs its value.
 	if inner := ast.SkipParentheses(operand); (ast.IsCallExpression(inner) || ast.IsTaggedTemplateExpression(inner)) && !isVibeLangTry(inner) {
 		operand.Flags |= ast.NodeFlagsVibeLangTry
 		operand.Loc = core.NewTextRange(pos, operand.End())

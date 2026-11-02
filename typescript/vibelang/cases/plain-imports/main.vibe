@@ -1,7 +1,6 @@
-// A .vibe module calls another module's plain functions by named import,
-// renamed import, or namespace import, and passes them where JavaScript
-// expects a plain function. A function not marked effect is plain JavaScript
-// (VIP-1), so Effect.forEach takes an effect arrow that calls it.
+// A .vibe module calls another module's plain functions inline through their
+// $direct variants, by named import, renamed import, or namespace import, and
+// passes them where JavaScript expects a plain function (D9, D10).
 import { Effect } from "effect"
 import { double, square as sq } from "./math.vibe"
 import * as M from "./math.vibe"
@@ -21,7 +20,7 @@ export effect function main() {
     squares: [1, 2, 3].map(sq),
     renamed: sq(4),
     namespace: [M.double(7), M.square(5)],
-    viaEffect: try Effect.forEach([1, 2], effect (n: number) => double(n)),
+    viaEffect: try Effect.forEach([1, 2], double),
     listed: [triple(2), threeTimes(3), Listed.threeTimes(4)],
     mapped: [1, 2].map(threeTimes),
     barrel: [multiplied(5), forwarded(6)]

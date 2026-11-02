@@ -4,12 +4,12 @@ service Mailer {
   send(to: string): Effect<void, never, never>
 }
 
-effect function welcome() {
-  try Mailer.send("ada@example.com")
+function welcome() {
+  Mailer.send("ada@example.com")
 }
 
-export effect function main() {
-  try welcome()
+export function main() {
+  welcome()
 }
 
-Effect.runFork(effect { return try main() }) // probe-error: TS2345 Mailer
+Effect.runFork(() => main()) // probe-error: TS2345 Mailer

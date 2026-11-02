@@ -1,6 +1,6 @@
-export effect function counted() {
-  const ref = try Ref.make(0)
-  try Ref.update(ref, (n) => n + 1)
-  try Ref.update(ref, (n) => n + 1)
-  return try Ref.get(ref)
+export function counted() {
+  const ref = Ref.make(0)
+  Ref.update(ref, (n) => n + 1)
+  Ref.update(ref, (n) => n + 1)
+  return Ref.get(ref)
 }

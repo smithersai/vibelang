@@ -2,6 +2,6 @@
 // (D135). A const or let main that holds a function draws EK4843, since node
 // runs nothing and prints nothing, and its quick fix writes the declaration
 // that tsforms-entry-main-fixed holds.
-export effect function main() {
+export function main() {
   try Console.log("Hello")
 }

@@ -5,18 +5,18 @@ service Greeter {
 }
 
 const GreeterLive = Layer.succeed(Greeter, {
-  effect greet(name: string) {
-    return try greeting(name)
+  greet(name: string) {
+    return greeting(name)
   },
 })
 
-export effect function main() {
+export function main() {
   provide GreeterLive {
-    try Console.log(try Greeter.greet("VibeLang"))
+    Console.log(Greeter.greet("VibeLang"))
     try {
-      try Greeter.greet("")
+      Greeter.greet("")
     } catch (error) {
-      try Console.log(`Recovered from ${error._tag}`)
+      Console.log(`Recovered from ${error._tag}`)
     }
   }
 }

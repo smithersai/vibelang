@@ -1,7 +1,8 @@
-// expect: TS2850 TS2339
-// A plain callback is plain JavaScript (VIP-1), so its using holds a
-// TypeScript Disposable, as Array.prototype.map and Effect.sync call it; an
-// Effect there is TypeScript's own error (TS2850): using acquires no resource.
+// expect: EK4301
+// A function that declares using compiles to frames (D54), so a callback
+// with using cannot be the plain function that Array.prototype.map or
+// Effect.sync calls, whether its using holds a TypeScript Disposable or
+// acquires an Effect resource.
 service Pool {
   acquire(): Effect<{ id: number }, never, Scope>
 }

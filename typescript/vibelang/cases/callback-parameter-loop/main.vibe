@@ -9,6 +9,6 @@ export function findFirst<T>(xs: ReadonlyArray<T>, p: (x: T) => boolean) {
   return undefined
 }
 
-export effect function main() {
+export function main() {
   return findFirst([1, 2, 3], (x) => x > 1)
 }

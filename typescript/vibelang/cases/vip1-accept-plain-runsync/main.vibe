@@ -1,7 +1,0 @@
-// expect-result: {"build":3,"type":"number"}
-import { build } from "./lib.vibe"
-
-export effect function main() {
-  const v = build()
-  return { build: v, type: typeof v }
-}

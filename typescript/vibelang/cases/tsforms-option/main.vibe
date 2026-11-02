@@ -25,7 +25,7 @@ function five() {
 
 export const hasFive = (o: Option.Option<number>) => pipe(o, Option.contains(five()))
 
-export effect function main() {
+export function main() {
   return {
     names: [name(Option.some(" ada ")), name(Option.none())],
     next: [next(Option.some(1)), next(Option.none())],

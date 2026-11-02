@@ -1,10 +1,10 @@
-// expect-result: {"suspended":"Failure","block":"Failure","concise":"Failure","subtype":"Success","code":"lost"}
+// expect-result: {"suspended":"Failure","block":"Failure","concise":"Failure","subtype":7,"code":"lost"}
 // A pipe whose last stage is a call that runs gives that call's success, as
 // the call does without the pipe (D24, D154). Returned from a function whose
 // Effect contract comes from a generic parameter, an Exit that pipe produces
 // is the function's success, not a program to run a second time (S5-1).
-// A block that returns an Exit, an Effect subtype, succeeds with that Exit as
-// data: return values stay unflattened (VIP-5 amendment 2026-10-30).
+// A last stage that returns a subtype as data still delegates, as the bare
+// call does.
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -30,7 +30,7 @@ export effect function main() {
     suspended: suspended._tag,
     block: block._tag,
     concise: concise._tag,
-    subtype: subtype._tag,
+    subtype,
     code: failure instanceof Lost ? failure.code : "none"
   }
 }

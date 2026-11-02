@@ -1,9 +1,7 @@
 // expect: EK4301
-// A function value whose return type is an Effect gives its Effect unrun
-// (VIP-1), so a callback position that drops what it returns rejects it, as
-// it rejects an Effect function. A position that keeps the result, such as
-// map's, collects the programs as data. Before VIP-1 map rejected it too
-// (D511).
+// A function value has the form its type gives (D511): a plain function whose
+// return type is an Effect is an Effect function as a value, so a plain
+// callback position rejects it, as it rejects an Effect function.
 import { passThrough } from "./helpers.ts"
 
 function pick(p: number!!): infer _ {
@@ -11,12 +9,10 @@ function pick(p: number!!): infer _ {
 }
 
 export function fromSource(xs: Array<number!!>) {
-  xs.forEach(pick)
   return xs.map(pick)
 }
 
 export function fromTypeScript(xs: Array<number!!>) {
-  xs.forEach(passThrough)
   return xs.map(passThrough)
 }
 

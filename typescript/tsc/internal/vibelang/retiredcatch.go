@@ -243,9 +243,6 @@ var retiredCatchFix = &ls.CodeFixProvider{
 		if chain == nil {
 			return retiredCatchExpressionActions(ctx, fix)
 		}
-		if !inEffectCode(chain.try) {
-			return nil, nil // the rewrite writes try, which runs only in effect code (VIP-1)
-		}
 		c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
 		defer done()
 		description, start, newText, ok := chain.rewrite(c, fix.SourceFile)

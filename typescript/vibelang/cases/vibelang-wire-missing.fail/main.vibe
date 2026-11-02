@@ -14,7 +14,7 @@ service Mailer {
 }
 
 const MailerLive = Layer.effect(Mailer, effect {
-  const smtp = try Smtp
+  const smtp = try Smtp()
   return { send: effect (to: string) => try smtp.deliver(to) }
 })
 

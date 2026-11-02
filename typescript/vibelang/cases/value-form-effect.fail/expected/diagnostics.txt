@@ -1,2 +1,2 @@
-main.vibe(14,14): error EK4301
-main.vibe(19,14): error EK4301
+main.vibe(12,17): error EK4301
+main.vibe(16,17): error EK4301

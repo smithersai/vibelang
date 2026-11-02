@@ -1,8 +1,6 @@
-import * as $effectPrograms from "effect/Effect"
-// Programs as values (design D7): a function with no parameters is a
-// program, and nothing runs until something calls it. A function value is
-// not converted where Effect expects an Effect (VIP-1): calling it, or
-// Effect.suspend, gives the Effect.
+// Programs as values (design D7, D49): a function with no parameters is a
+// program, nothing runs until something calls it, and a function value
+// converts to an Effect where Effect expects one.
 import { Effect, Schedule } from "effect"
 
 let runs = 0
@@ -34,20 +32,17 @@ effect function stored() {
   const flaky = effect () => try flakyWork()
   const before = runs
   const once = try job()
-  const retried = try Effect.retry($effectPrograms.suspend(flaky), Schedule.recurs(3))
-  const pair = try Effect.all([$effectPrograms.suspend(job), $effectPrograms.suspend(returned)], { concurrency: 2 })
-  const record = try Effect.all({ a: $effectPrograms.suspend(job), b: $effectPrograms.suspend(returned) })
+  const retried = try Effect.retry(flaky, Schedule.recurs(3))
+  const pair = try Effect.all([job, returned], { concurrency: 2 })
+  const record = try Effect.all({ a: job, b: returned })
   return { before, once, retried, pair, record }
 }
 
-// Arrays and records of programs built at run time: each program is called
-// to give its Effect (VIP-1).
+// Arrays and records of programs built at run time convert element by element.
 effect function built() {
   const jobs = ["x", "y"].map(makeJob)
   const table: Record<string, () => Effect.Effect<string>> = { p: makeJob("p"), q: makeJob("q") }
-  const effects: Record<string, Effect.Effect<string>> = {}
-  for (const key in table) effects[key] = table[key]()
-  return { jobs: try Effect.all(jobs.map((job) => job())), table: try Effect.all(effects) }
+  return { jobs: try Effect.all(jobs), table: try Effect.all(table) }
 }
 
 // expect-result: {"stored":{"before":0,"once":"STORED","retried":"FLAKY","pair":["STORED","RETURNED"],"record":{"a":"STORED","b":"RETURNED"}},"built":{"jobs":["X","Y"],"table":{"p":"P","q":"Q"}},"runs":9}

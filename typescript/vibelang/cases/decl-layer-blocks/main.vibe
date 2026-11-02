@@ -25,8 +25,8 @@ const DirectoryLive = Layer.succeed(Directory, {
 })
 
 export const UsersLive = Layer.effect(Users, effect {
-  const directory = try Directory
-  const stats = try Stats
+  const directory = try Directory()
+  const stats = try Stats()
   return {
     effect find(id) {
       try stats.record()
@@ -81,7 +81,7 @@ effect function lookups() {
   provide wire(UsersLive, DirectoryLive, StatsLive) {
     const found = try greet("42")
     const missing = try greet("7")
-    return { found, missing, region: (try Users).region, stats: `${try Stats.count()} lookups` }
+    return { found, missing, region: (try Users()).region, stats: `${try Stats.count()} lookups` }
   }
 }
 

@@ -28,22 +28,20 @@ func TestMissingRuntimeDependency(t *testing.T) {
 		{"plain function", "export function value(): number { return 1 }", "", false, nil},
 		{"runtime value", "export const value = Experimental", "", false, []int32{2307}},
 		{"error declaration", "export error Missing { id: string }", "", false, []int32{2307}},
-		// VIP-1: an effect function without catch or producers lowers to
-		// effect/Effect alone, so it needs no runtime.
-		{"effect", "export effect function value() { return 1 }", "", false, nil},
+		{"effect", "export effect function value() { return 1 }", "", false, []int32{2307}},
 		{"producer", "export effect function* value() { yield 1 }", "", false, []int32{2307}},
 		{"catch", `export effect function value() { return Effect.fail("bad") catch (_e) => 0 }`, "", false, []int32{2307}},
 		{"destructured catch", `export effect function value() { return Effect.fail({ message: "bad" }) catch ({ message }) => message.length }`, "", false, []int32{2307}},
 		{"rest catch", `export effect function value() { return Effect.fail("bad") catch (...errors) => errors.length }`, "", false, []int32{2307}},
 		{"multiple files", "import './other.js'\nexport effect function value() { return 1 }", "export effect function* values() { yield 1 }", false, []int32{2307}},
-		{"independent error", "export error Missing { id: string }\nexport const x: number = 'bad'", "", false, []int32{2307, 2322}},
+		{"independent error", "export effect function value() { return 1 }\nexport const x: number = 'bad'", "", false, []int32{2307, 2322}},
 		{"independent callback parameter", `export effect function value() { return Effect.fail(0) catch (_e) => { const inner = (x): number => 1; return inner(0) } }`, "", false, []int32{2307, 7006}},
 		{"independent nested call callback", `export effect function value() { return Effect.fail(0) catch (_e) => { const invoke = (cb: any): number => cb(0); return invoke((x): number => 1) } }`, "", false, []int32{2307, 7006}},
 		{"written import", "import { Experimental as Existing } from \"vibelang-runtime\"\nexport effect function value() { return 1 }", "", false, []int32{2307}},
 		{"late written import", "export const before = 1\nimport { Experimental as Existing } from \"vibelang-runtime\"\nexport effect function value() { return 1 }", "", false, []int32{2307}},
 		{"multiple written imports", "import { Experimental as Existing } from \"vibelang-runtime\"\nimport \"./other.js\"\nexport effect function value() { return 1 }", "import { Experimental as Existing } from \"vibelang-runtime\"\nexport effect function other() { return 1 }", false, []int32{2307}},
 		{"written subpath import", "import * as Existing from \"vibelang-runtime/experimental\"\nexport effect function value() { return 1 }", "", false, []int32{2307}},
-		{"independent missing package", "import { absent } from \"missing-other-package\"\nexport error Missing { id: string }", "", false, []int32{2307, 2307}},
+		{"independent missing package", "import { absent } from \"missing-other-package\"\nexport effect function value() { return 1 }", "", false, []int32{2307, 2307}},
 		{"subpath only imports", "import * as Existing from \"vibelang-runtime/experimental\"\nimport \"./other.js\"\nexport const value = Existing", "import * as Other from \"vibelang-runtime/experimental\"\nexport const other = Other", false, []int32{2307}},
 		{"installed subpath only", "import * as Existing from \"vibelang-runtime/experimental\"\nexport const value = Existing", "", true, nil},
 		{"installed subpath", "import * as Existing from \"vibelang-runtime/experimental\"\nexport effect function value() { return 1 }", "", true, nil},
@@ -139,10 +137,10 @@ func TestMissingRuntimeDisabledModuleNames(t *testing.T) {
 		name, source, settings string
 		missing                bool
 	}{
-		{"Effect", "export error Missing { id: string }\nexport effect function value() { return Effect }", "{\"effectModules\":false}", true},
-		{"Stream", "export error Missing { id: string }\nexport effect function value() { return Stream }", "{\"effectModules\":false}", true},
-		{"function global", "export error Missing { id: string }\nexport effect function value() { return succeed }", "{\"effectGlobals\":false}", true},
-		{"intrinsic shorthand", "export error Missing { id: string }\nexport effect function value(): number!! { return 1 }", "{\"effectModules\":false}", false},
+		{"Effect", "export effect function value() { return Effect }", "{\"effectModules\":false}", true},
+		{"Stream", "export effect function value() { return Stream }", "{\"effectModules\":false}", true},
+		{"function global", "export effect function value() { return succeed }", "{\"effectGlobals\":false}", true},
+		{"intrinsic shorthand", "export effect function value(): number!! { return 1 }", "{\"effectModules\":false}", false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			_, file, _, _ := editorProgramWith(t, test.source, map[string]string{"effect": "packages/runtime/node_modules/effect"})

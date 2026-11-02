@@ -1,2 +1,2 @@
+main.vibe(12,13): error EK3007
 main.vibe(13,13): error EK3007
-main.vibe(14,13): error EK3007

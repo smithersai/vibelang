@@ -12,16 +12,16 @@ const directory: ReadonlyArray<User> = [
 ]
 
 export const UsersLive = Layer.succeed(Users, {
-  effect find(id) {
+  find(id) {
     const user = directory.find((entry) => entry.id === id)
     if (user === undefined) throw new UserNotFound({ id })
     return user
   }
 })
 
-export effect function greet(id: string) {
+export function greet(id: string) {
   try {
-    const user = try Users.find(id)
+    const user = Users.find(id)
     return `Welcome, ${user.name}`
   } catch (error) {
     return `No user ${error.id}`

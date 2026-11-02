@@ -549,6 +549,9 @@ func (tx *lowering) visitPlainThrowStatement(node *ast.Node) *ast.Node {
 // function that compiles to plain JavaScript still catches typed failures only.
 func (tx *lowering) isNativeCatch(clause *ast.Node) bool {
 	original := tx.EmitContext().MostOriginal(clause)
+	if inPlainGeneratorBody(original) {
+		return true
+	}
 	fn := ast.GetContainingFunction(original)
 	return fn == nil || !tx.plan.isEffect(fn)
 }
@@ -604,9 +607,10 @@ func init() {
 // code keeps JavaScript's finally (VIP-4), where such a jump replaces the
 // completion in flight.
 func checkFinallyJumps(c *checker.Checker, file *ast.SourceFile) {
+	a := analyzerFor(c)
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
-		if node.Kind == ast.KindTryStatement && node.AsTryStatement().FinallyBlock != nil && inLowerableBody(node) && inEffectCode(node) {
+		if node.Kind == ast.KindTryStatement && node.AsTryStatement().FinallyBlock != nil && inLowerableBody(node) && inEffectCode(a, node) {
 			forEachJumpLeaving(node.AsTryStatement().FinallyBlock, func(jump *ast.Node) {
 				keyword := jumpKind(jump.Kind)
 				d := reportAt(c, file, scanner.GetRangeOfTokenAtPosition(file, jump.Pos()), EK2006, keyword)
@@ -616,6 +620,14 @@ func checkFinallyJumps(c *checker.Checker, file *ast.SourceFile) {
 		return node.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
+}
+
+// inEffectCode reports whether node, in a lowerable body, is effect code: its
+// function is marked effect, or compiles to an Effect frame. A marked
+// function's plain variant changes no diagnostic (D421).
+func inEffectCode(a *analyzer, node *ast.Node) bool {
+	fn := enclosingFunction(node)
+	return isMarkedEffect(fn) || !a.compilesToPlain(fn)
 }
 
 // forEachJumpLeaving calls fn with each return, break, or continue in block,

@@ -5,6 +5,6 @@ import { NodeServices } from "@effect/platform-node"
 
 export effect function main() {
   provide NodeServices.layer {
-    try Console.log(try (try Experimental.Process.Process).hostname)
+    try Console.log(try Experimental.Process.hostname())
   }
 }

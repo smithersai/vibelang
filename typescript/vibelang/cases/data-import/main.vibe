@@ -24,7 +24,7 @@ function name(shape: Shapes.Shape) {
   }
 }
 
-export effect function main() {
+export function main() {
   const tree = Tree.Node({ left: Tree.Leaf({ value: 1 }), right: Tree.Node({ left: Tree.Leaf({ value: 2 }), right: Tree.Leaf({ value: 3 }) }) })
   return {
     areas: [area(Shape.Circle({ radius: 2 })), area(Shape.Square({ side: 3 })), area(Shape.Dot())],

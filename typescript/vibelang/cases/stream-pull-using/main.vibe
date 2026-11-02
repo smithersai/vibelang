@@ -13,7 +13,7 @@ export effect function main() {
       effect () => { events.push("close") }
     )).flatMap((numbers) => Stream.fromArray(numbers)).rechunk(2).toPull()
     while (true) {
-      const batch = try Pull.catchDone(effect { return try pull }, effect () => undefined)
+      const batch = try Pull.catchDone(effect { return try pull() }, effect () => undefined)
       if (batch === undefined) break
       batches.push([...batch])
     }

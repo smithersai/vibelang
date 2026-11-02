@@ -6,50 +6,46 @@ type Wrap = (body: Effect.Effect<number, never, never>) => Effect.Effect<number,
 
 // Both branches produce the program that provision must run.
 export const bare = effect (wrap: Wrap | undefined): Effect.Effect<unknown, never, never> => {
-  const body: Effect.Effect<number, never, never> = effect { return 41 + try Tag }
+  const body: Effect.Effect<number, never, never> = effect { return 41 + try Tag() }
   return try Effect.provideService(wrap === undefined ? body : wrap(body), Tag, 1)
 }
 
-// Control: an arm that is an effect block runs the held program when the
-// provided program runs (VIP-2), inside the provision.
+// Control: calling the held program in its arm runs it.
 export const called = effect (wrap: Wrap | undefined): Effect.Effect<unknown, never, never> => {
-  const body: Effect.Effect<number, never, never> = effect { return 41 + try Tag }
-  return try Effect.provideService(wrap === undefined ? effect { return try body } : wrap(body), Tag, 1)
+  const body: Effect.Effect<number, never, never> = effect { return 41 + try Tag() }
+  return try Effect.provideService(wrap === undefined ? body() : wrap(body), Tag, 1)
 }
 
 export effect function orChoice(body: Effect.Effect<number> | undefined, wrap: Wrap): number!! {
-  return try Effect.provideService(body || wrap(effect { return 41 + try Tag }), Tag, 1)
+  return try Effect.provideService(body || wrap(effect { return 41 + try Tag() }), Tag, 1)
 }
 
 export effect function nullishChoice(body: Effect.Effect<number> | undefined, wrap: Wrap): number!! {
-  return try Effect.provideService(body ?? wrap(effect { return 41 + try Tag }), Tag, 1)
+  return try Effect.provideService(body ?? wrap(effect { return 41 + try Tag() }), Tag, 1)
 }
 
 export effect function commaChoice(wrap: Wrap): number!! {
-  const body: Effect.Effect<number> = effect { return 41 + try Tag }
+  const body: Effect.Effect<number> = effect { return 41 + try Tag() }
   return try Effect.provideService((Effect.sleep("1 millis"), wrap(body)), Tag, 1)
 }
 
 export effect function withCondition(wrap: Wrap): number!! {
-  const body: Effect.Effect<number> = effect { return 41 + try Tag }
+  const body: Effect.Effect<number> = effect { return 41 + try Tag() }
   return try Effect.provideService(Effect.succeed(true) ? body : wrap(body), Tag, 1)
 }
 
 export effect function withPipe(wrap: Wrap | undefined): number!! {
-  const body: Effect.Effect<number> = effect { return 41 + try Tag }
+  const body: Effect.Effect<number> = effect { return 41 + try Tag() }
   return (wrap === undefined ? body : wrap(body)) |> try Effect.provideService(%, Tag, 1)
 }
 
 function pureNumber() { return 42 }
 
-// An argument is evaluated once, as JavaScript evaluates it (VIP-1, VIP-2):
-// a plain value becomes a program only where the code says so.
-
 export effect function plainFallback(body: Effect.Effect<number> | undefined): number!! {
-  return try Effect.uninterruptible(body ?? Effect.sync(pureNumber))
+  return try Effect.uninterruptible(body ?? pureNumber())
 }
 
 export effect function plainConditional(choose: boolean): number!! {
   const body: Effect.Effect<number> = effect { return 42 }
-  return try Effect.uninterruptible(choose ? body : Effect.sync(pureNumber))
+  return try Effect.uninterruptible(choose ? body : pureNumber())
 }

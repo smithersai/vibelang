@@ -9,26 +9,23 @@ import (
 )
 
 // TestMissingEffectReportsEffectFunctions compiles a program in which neither
-// effect nor vibelang-runtime resolves. Each Effect function, one marked
-// effect (VIP-1) and a producer (VIP-21), is EK1011. A function without the
-// mark is plain, annotated or not, and is not reported.
+// effect nor vibelang-runtime resolves. Each Effect function, an unannotated
+// one whatever its body does (D500) and a producer, is EK1011. A function with
+// a plain annotation keeps its plain behavior and is not reported.
 func TestMissingEffectReportsEffectFunctions(t *testing.T) {
 	t.Parallel()
-	source := `export const make = effect (name: string) => {
+	source := `export const make = (name: string) => {
   if (name === "") throw new TypeError("empty")
   return { name }
 }
-export effect function greet(name: string) {
+export function greet(name: string) {
   return "hello " + name
 }
-export const count = effect function* () {
+export const count = function* () {
   yield 1
 }
 export function shout(name: string): string {
   return name.toUpperCase()
-}
-export function whisper(name: string) {
-  return name.toLowerCase()
 }
 `
 	p := computedKeyProgram(t, map[string]string{
@@ -56,7 +53,7 @@ func TestUnsupportedEffectReportsInstalledVersion(t *testing.T) {
 			p := computedKeyProgram(t, map[string]string{
 				"/workspace/x/src/package.json":                             `{"type":"module"}`,
 				"/workspace/x/src/tsconfig.json":                            `{"compilerOptions":{"strict":true,"target":"ESNext","module":"NodeNext","skipLibCheck":true,"types":[]},"files":["main.vibe"]}`,
-				"/workspace/x/src/main.vibe":                                prefix + `export effect function fail() { throw new Error("bad") }`,
+				"/workspace/x/src/main.vibe":                                prefix + `export function fail() { throw new Error("bad") }`,
 				"/workspace/x/src/node_modules/effect/package.json":         `{"name":"effect","version":"3.19.0","type":"module","exports":{".":{"types":"./dist/dts/index.d.ts"},"./Effect":{"types":"./dist/dts/Effect.d.ts"}}}`,
 				"/workspace/x/src/node_modules/effect/dist/dts/index.d.ts":  `export * as Effect from "./Effect.js"`,
 				"/workspace/x/src/node_modules/effect/dist/dts/Effect.d.ts": `export interface Effect<A, E = never, R = never> { readonly _A: A; readonly _E: E; readonly _R: R }`,

@@ -35,7 +35,7 @@ export const check = effect (n: number) => {
 
 // A callback that returns the program it builds.
 export const doubleAll = effect (xs: ReadonlyArray<number>) => {
-  return try Effect.forEach(xs, (x) => Effect.succeed(x * 2))
+  return try Effect.forEach(xs, (x) => x * 2)
 }
 
 // A program value that a yield* runs, and a template literal that keeps its lines.
@@ -50,6 +50,6 @@ export const UsersLive = Layer.effect(
   Users,
   effect {
     const prefix = "user-"
-    return { find: (id: string) => Effect.succeed(id === "1" ? "Ada" : prefix + id) }
+    return { find: (id: string) => id === "1" ? "Ada" : prefix + id }
   },
 )

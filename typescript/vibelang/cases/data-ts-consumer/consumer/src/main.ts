@@ -22,4 +22,4 @@ export const lines: ReadonlyArray<string> = [
   String(Equal.equals(sent, Delivery.Sent({ tracking: "parcel-8" }))),
   String(unboxed)
 ]
-export const viaVibe: string = track(sent) // track is a plain function (VIP-1)
+export const viaVibe: Effect.Effect<string, never, never> = track(sent)

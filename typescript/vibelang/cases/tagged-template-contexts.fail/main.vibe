@@ -1,21 +1,15 @@
-// expect: EK0501 EK4301 EK4801
-// A tagged template is a call (D267): it gives the tag's Effect unrun (VIP-1),
-// and only try runs it (VIP-5). try at the top level, in a plain callback, a
-// constructor, an accessor or a parameter default is outside effect code:
-// EK0501. A statement that discards a structured Effect result is EK4301
-// (D24), and one whose try leaves its Effect unrun is EK4801. Before VIP-1 a
-// template there ran implicitly and was EK1001/EK4301.
+// expect: EK1001 EK4301
 import { tag, statement } from "./tags.js"
-try tag`top-level`
+tag`top-level`
 export function main() {
-  return [1].map(() => try tag`callback`)
+  return [1].map(() => tag`callback`)
 }
 
 export function migration() {
   statement`CREATE TABLE example (id TEXT)`
 }
 class Invalid {
-  constructor() { try tag`constructor` }
-  get value() { return try tag`getter` }
+  constructor() { tag`constructor` }
+  get value() { return tag`getter` }
 }
-function defaults(value = try tag`default`) { return value }
+function defaults(value = tag`default`) { return value }

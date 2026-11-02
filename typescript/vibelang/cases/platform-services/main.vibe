@@ -19,7 +19,7 @@ export const status = effect () => try ChildProcessSpawner.string(ChildProcess.m
 export const token = effect () => try SecureRandom.randomBytes(16)
 export const id = effect () => try SecureRandom.uuidV4()
 export const page = effect (url: string) => try HttpClient.get(url)
-export const args = effect () => try (try Stdio).args
+export const args = effect () => try Stdio.args()
 export const here = effect () => try Path.resolve()
 export const scratch = effect () => try FileSystem.makeTempDirectory()
 export const sha = effect (bytes: Uint8Array) => try Digest.digest(Digest.sha256, bytes)

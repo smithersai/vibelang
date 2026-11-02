@@ -1,4 +1,3 @@
-import * as $effectPrograms from "effect/Effect"
 // Reference program 5. Programs as data: store, return, retry, and concurrently compose a program
 // without running it early.
 // NOTE: the proposal states this program in prose only; the contract comment below is this file's
@@ -40,8 +39,8 @@ effect function scenario() {
   const builtButNotRun = countRuns()                                // nothing ran yet
 
   const once = try stored()                                             // calling runs it
-  const retried = try Effect.retry($effectPrograms.suspend(flaky), Schedule.recurs(3))           // retry a stored program
-  const both = try Effect.all([$effectPrograms.suspend(stored), $effectPrograms.suspend(returned)], { concurrency: 2 })   // compose stored programs
+  const retried = try Effect.retry(flaky, Schedule.recurs(3))           // retry a stored program
+  const both = try Effect.all([stored, returned], { concurrency: 2 })   // compose stored programs
   const twice = [try returned(), try returned()]                            // each call runs it again
 
   return {

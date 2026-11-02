@@ -7,7 +7,7 @@ export function main() {
 }
 
 export effect function direct() { return try Users.find("id") }
-export effect function implementation() { return (try Users).region }
+export effect function implementation() { return (try Users()).region }
 export const keyMember = Users.key
 
 export const topLevelRegion = Users.region

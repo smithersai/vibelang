@@ -89,11 +89,11 @@ function reasons(outcome: Exit<unknown, unknown>): string {
 // expect-result: {"body":"Die(body)","head":"Die(type)","late":"Die(body)","break":"Die(close)","ok":"ok(3)","framed":"Die(body)+Die(close)","lookups":5}
 export effect function main() {
   const result = {
-    body: reasons(try exit(Effect.sync(() => plainBody()))),
-    head: reasons(try exit(Effect.sync(() => plainHead()))),
-    late: reasons(try exit(Effect.sync(() => plainLate()))),
-    break: reasons(try exit(Effect.sync(() => plainBreak()))),
-    ok: reasons(try exit(Effect.sync(() => plainOk()))),
+    body: reasons(try exit(plainBody())),
+    head: reasons(try exit(plainHead())),
+    late: reasons(try exit(plainLate())),
+    break: reasons(try exit(plainBreak())),
+    ok: reasons(try exit(plainOk())),
     framed: reasons(try exit(framed()))
   }
   return { ...result, lookups }

@@ -1,10 +1,10 @@
 // A declaration file that the nearest vibelang.manifest.json lists was compiled
-// from VibeLang: its plain functions are trusted plain calls, in Effect
+// from VibeLang (D500): its plain functions are trusted plain calls, in Effect
 // code as in plain code, and passing one to map passes the plain function.
 import { double } from "./lib/double.js"
 
 export const initial = double(3)
 
-export effect function main() {
+export function main() {
   return [initial, double(2), [1, 2].map(double)]
 }

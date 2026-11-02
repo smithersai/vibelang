@@ -6,6 +6,7 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
 )
 
 // A call to code that is not Effect needs a declared trust level (design D5,
@@ -539,15 +540,10 @@ func isBoundaryCallback(c *checker.Checker, fn *ast.Node) bool {
 }
 
 // outsideFibers reports whether node is code that no fiber runs: at the
-// module's top level, in an async function, in a plain function (VIP-1: a
-// function that effect does not mark is plain JavaScript, and its caller
-// decides where it runs), or in a plain callback that such a place passes to a
-// TypeScript function, such as a describe body or a route handler. A runner
-// may be called there (D38), and a plain call there is an ordinary JavaScript
-// call, as at the top level (D51). A plain callback runs where the call that
-// receives it runs: on the fiber when Effect code passes it, as in
-// xs.forEach((x) => …) in an effect function. An effect function that
-// receives one runs it on its own fiber.
+// module's top level, in an async function, or in a plain callback that such a
+// place passes to a TypeScript function, such as a describe body or a route
+// handler. A runner may be called there (D38), and a plain call there is an
+// ordinary JavaScript call, as at the top level (D51).
 func outsideFibers(c *checker.Checker, a *analyzer, node *ast.Node) bool {
 	if inHatch(node) {
 		return true // a hatch's body is the way back in to TypeScript (D148)
@@ -559,27 +555,14 @@ func outsideFibers(c *checker.Checker, a *analyzer, node *ast.Node) bool {
 	if ast.HasSyntacticModifier(fn, ast.ModifierFlagsAsync) {
 		return true // its body is TypeScript, and it runs on a Promise (VIP-1)
 	}
-	if a.isEffect(fn) {
+	if !isLambda(fn) || a.isEffect(fn) {
 		return false
 	}
 	call, _ := ownerCall(fn)
-	if !isLambda(fn) || call == nil {
-		return true // a plain function, or a plain function value (VIP-1)
-	}
-	if !ast.IsCallExpression(call) || callsEffectFunction(c, a, call) {
+	if call == nil || !ast.IsCallExpression(call) || callTrust(c, call).kind == trustES {
 		return false
 	}
 	return outsideFibers(c, a, call)
-}
-
-// callsEffectFunction reports whether call calls a .vibe function that effect
-// marks, which runs the callbacks it receives on its own fiber.
-func callsEffectFunction(c *checker.Checker, a *analyzer, call *ast.Node) bool {
-	decl := signatureDeclaration(c, call)
-	if decl == nil || !ast.IsFunctionLike(decl) || !isVibeLangFile(ast.GetSourceFileOfNode(decl)) {
-		return false
-	}
-	return a.isEffect(implementationOf(decl))
 }
 
 // enclosingFunction returns the function whose body holds node, or nil at
@@ -637,10 +620,10 @@ func checkTrust(c *checker.Checker, file *ast.SourceFile) {
 }
 
 func checkCall(c *checker.Checker, a *analyzer, file *ast.SourceFile, call *ast.Node) {
-	if fn := enclosingFunction(call); fn != nil && !a.isEffect(fn) {
+	if fn := enclosingFunction(call); fn != nil && !a.isSplittable(fn) && !a.isEffect(fn) {
 		return // D282: a plain function's calls of TypeScript code are JavaScript calls
 	}
-	if ast.IsSuperCall(call) || ast.IsImportCall(call) || a.performs(call) || isPlatformCallee(c, call) || returnsEffectful(c, call) {
+	if ast.IsSuperCall(call) || ast.IsImportCall(call) || a.performs(call) || isEffectValueCall(c, call) || isPlatformCallee(c, call) || returnsEffectful(c, call) {
 		return
 	}
 	t := callTrust(c, call)
@@ -670,50 +653,28 @@ func checkCall(c *checker.Checker, a *analyzer, file *ast.SourceFile, call *ast.
 	}
 }
 
-// returnsEffectful reports whether call's callee returns wholly an Effect, a
-// Stream or a Layer. Such a function can't throw: its failures are its
-// Effect's error channel, so a call of it is never throw-tracked, whether the
-// call runs the Effect or passes it on (VIP-4, amended 2026-10-29; decided
-// detail 36). A generic signature is classified before type-argument
-// substitution, a type parameter by its constraint (VIP-4, amended 2026-10-30).
+// returnsEffectful reports whether call's declaration returns wholly an Effect,
+// a Stream or a Layer: such a function can't throw and is never throw-tracked,
+// wherever its call stands (VIP-4, amended). The return is read before type
+// arguments are substituted, so an unconstrained T is not one (detail 36).
 func returnsEffectful(c *checker.Checker, call *ast.Node) bool {
-	sig := c.GetResolvedSignature(call)
-	if sig == nil {
+	declaration := signatureDeclaration(c, call)
+	if declaration == nil {
 		return false
 	}
-	for sig.Target() != nil {
-		sig = sig.Target()
+	result := c.GetReturnTypeOfSignature(c.GetSignatureFromDeclaration(declaration))
+	if result != nil && result.Flags()&checker.TypeFlagsInstantiable != 0 {
+		result = c.GetBaseConstraintOfType(result)
 	}
-	result := c.GetReturnTypeOfSignature(sig)
-	if ast.IsOptionalChain(call) {
-		// f?.() calls f only when it is there; the checker's call-chain
-		// signature adds undefined to what f returns.
-		result = c.GetNonNullableType(result)
-	}
-	return isEffectfulType(c, result)
-}
-
-// isEffectfulType reports whether every value of t is an Effect, a Stream or
-// a Layer. any, unknown and a union with another member are not.
-func isEffectfulType(c *checker.Checker, t *checker.Type) bool {
-	if t != nil && t.Flags()&checker.TypeFlagsTypeParameter != 0 {
-		t = c.GetBaseConstraintOfType(t)
-	}
-	if t == nil {
+	if result == nil || result.Flags()&checker.TypeFlagsObject == 0 && result.Flags()&checker.TypeFlagsUnion == 0 {
 		return false
 	}
-	if t.Flags()&checker.TypeFlagsUnion != 0 {
-		for _, member := range t.Types() {
-			if !isEffectfulType(c, member) {
-				return false
-			}
+	return core.Every(result.Distributed(), func(member *checker.Type) bool {
+		if member.Flags()&checker.TypeFlagsObject == 0 {
+			return false
 		}
-		return len(t.Types()) > 0
-	}
-	if t.Flags()&(checker.TypeFlagsObject|checker.TypeFlagsIntersection) == 0 {
-		return false
-	}
-	return isEffectType(c, t) || c.GetPropertyOfType(t, streamTypeID) != nil || isLayerType(c, t)
+		return isEffectSubtype(c, member) || isLayerType(c, member) || streamInterface(c) != nil && member.Target() == streamInterface(c)
+	})
 }
 
 // trustedNote is EK4401's other fix: declare the function's failures with

@@ -1,8 +1,8 @@
 // expect: TS2339 TS7015 TS2349
-effect function box(program: number!!) { return { value: try program } }
-effect function array(program: number!!) { return [try program] }
+effect function box(program: () => number!!) { return { value: try program() } }
+effect function array(program: () => number!!) { return [try program()] }
 effect function wrong() {
-  const member = (try box(effect { return 3 })).missing
-  const element = (try array(effect { return 4 }))["missing"]
-  return (try box(effect { return 5 }))(2)
+  const member = (try box(effect () => { return 3 })).missing
+  const element = (try array(effect () => { return 4 }))["missing"]
+  return (try box(effect () => { return 5 }))(2)
 }

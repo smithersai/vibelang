@@ -1,8 +1,8 @@
-// expect: EK1703
-// fork e forks the Effect e (VIP-17): fork held forks the program held, and
-// fork(effect { ... }) forks the block. A function is not an Effect, so fork
-// job is EK1703 (decided detail 88). Through 0.0.10 fork job ran the
-// function's program; write fork job().
+// expect: EK4613
+// A fork whose operand's type is a program, definitely an Effect or a
+// function with no required parameters, is EK4613: the new fiber would
+// succeed with that program unrun (D433). Through 0.0.10 each of these forks
+// ran the program; write fork job(), fork heartbeat(), or fork held().
 effect function heartbeat(): number!! {
   try sleep("1 millis")
   return 7

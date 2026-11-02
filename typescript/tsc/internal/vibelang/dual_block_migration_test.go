@@ -15,7 +15,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
 )
 
-const dualBlockWork = "effect function work() { try sleep(\"1 millis\"); return \"done\" }\n"
+const dualBlockWork = "function work() { sleep(\"1 millis\"); return \"done\" }\n"
 
 // errorsOf returns the error diagnostics of source's file, with the text of
 // their notes.
@@ -41,16 +41,16 @@ func notesOf(d *ast.Diagnostic) string {
 
 // D376: a block is its call's last argument, so a block after a dual that
 // takes its program first or returns a function of it keeps TypeScript's
-// error, with a note that gives the effect block spelling.
+// error, with a note that gives the arrow spelling.
 func TestDualBlockKeepsTypeScriptErrorWithNote(t *testing.T) {
 	for _, test := range []struct {
 		name, source string
 		code         int32
 		note         string
 	}{
-		{"data-first", "export function f() { return withSpan(\"load\") { return work() } }", 2769, "`withSpan` takes its program first: write `withSpan(effect { … }, \"load\")`."},
-		{"data-first with one candidate", "export function f() { return timeout(\"1 second\") { return work() } }", 2345, "`timeout` takes its program first: write `timeout(effect { … }, \"1 second\")`."},
-		{"curried method", "export function f() { const s = Semaphore.makeUnsafe(1); return s.withPermits(1) { return work() } }", 2554, "`s.withPermits(1)` returns the function that takes the program: write `s.withPermits(1)(effect { … })`."},
+		{"data-first", "export function f() { return withSpan(\"load\") { return work() } }", 2769, "`withSpan` takes its program first: write `withSpan(() => { … }, \"load\")`."},
+		{"data-first with one candidate", "export function f() { return timeout(\"1 second\") { return work() } }", 2345, "`timeout` takes its program first: write `timeout(() => { … }, \"1 second\")`."},
+		{"curried method", "export function f() { const s = Semaphore.makeUnsafe(1); return s.withPermits(1) { return work() } }", 2554, "`s.withPermits(1)` returns the function that takes the program: write `s.withPermits(1)(() => { … })`."},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			errors := errorsOf(t, dualBlockWork+test.source)
@@ -65,16 +65,30 @@ func TestDualBlockKeepsTypeScriptErrorWithNote(t *testing.T) {
 	}
 }
 
-// D382 made a block whose appended call type-checked EK1023. The block is
-// now a program (VIP-2), which withSpan's data-last options parameter
-// rejects, so TypeScript's error stays, with the effect block spelling.
-func TestDualBlockOptionsSlotRejectsTheProgram(t *testing.T) {
-	errors := errorsOf(t, "export function f() { return withSpan(\"k\") { return { attributes: {} } } }")
-	if len(errors) != 1 || errors[0].Code() != 2769 || errors[0].Source() != "" {
-		t.Fatalf("errors %v, want only TS2769", errors)
+// The block withSpan's data-last options parameter receives is a plain
+// callback that pauses, so the appended call draws EK4301 beside TS2769.
+// That EK4301 names the misplaced block, so it is dropped; the same arrow
+// written as an argument keeps it.
+func TestDualBlockDropsTheCallbackCascade(t *testing.T) {
+	block := errorsOf(t, dualBlockWork+"export function f() { return withSpan(\"load\") { work(); return {} } }")
+	if slices.ContainsFunc(block, func(d *ast.Diagnostic) bool { return d.Code() == EK4301.Code }) {
+		t.Fatalf("the block draws EK4301: %v", block)
 	}
-	if notes := notesOf(errors[0]); !strings.Contains(notes, "write `withSpan(effect { … }, \"k\")`") {
-		t.Fatalf("notes %q lack the effect block spelling", notes)
+	arrow := errorsOf(t, dualBlockWork+"export function f() { return withSpan(\"load\", () => { work(); return {} }) }")
+	if !slices.ContainsFunc(arrow, func(d *ast.Diagnostic) bool { return d.Source() == diagnosticSource && d.Code() == EK4301.Code }) {
+		t.Fatalf("the written arrow draws no EK4301, so the cascade this test guards is gone: %v", arrow)
+	}
+}
+
+// D382: a block whose appended call type-checks has changed meaning
+// silently, which is EK1023 and nothing else.
+func TestDualBlockSilentChangeIsEK1023(t *testing.T) {
+	errors := errorsOf(t, "export function f() { return withSpan(\"k\") { return { attributes: {} } } }")
+	if len(errors) != 1 || errors[0].Code() != EK1023.Code || errors[0].Source() != diagnosticSource {
+		t.Fatalf("errors %v, want only EK1023", errors)
+	}
+	if notes := notesOf(errors[0]); !strings.Contains(notes, "write `withSpan(() => { … }, \"k\")`") {
+		t.Fatalf("EK1023's notes %q lack the arrow spelling", notes)
 	}
 }
 
@@ -99,13 +113,13 @@ func TestDualBlockRecorderLeavesAppendedForms(t *testing.T) {
 
 func TestDualBlockMigrationFixAndIdempotence(t *testing.T) {
 	for _, test := range []struct{ source, want string }{
-		{"export function f() { return withSpan(\"load\") { return work() } }", "export function f() { return withSpan(effect { return work() }, \"load\") }"},
-		{"export function f() {\n  return withSpan(\"x\", { attributes: { a: 1 } }) {\n    return work()\n  }\n}", "export function f() {\n  return withSpan(effect {\n    return work()\n  }, \"x\", { attributes: { a: 1 } })\n}"},
-		{"export function f() {\n  return retry({\n    times: 3,\n  }) {\n    return work()\n  }\n}", "export function f() {\n  return retry(effect {\n    return work()\n  }, {\n    times: 3,\n  })\n}"},
-		{"export function f() { const s = Semaphore.makeUnsafe(1); return s.withPermits(1) { return work() } }", "export function f() { const s = Semaphore.makeUnsafe(1); return s.withPermits(1)(effect { return work() }) }"},
-		{"export function f() { return withSpan(\"k\") { return { attributes: {} } } }", "export function f() { return withSpan(effect { return { attributes: {} } }, \"k\") }"},
+		{"export function f() { return withSpan(\"load\") { return work() } }", "export function f() { return withSpan(() => { return work() }, \"load\") }"},
+		{"export function f() {\n  return withSpan(\"x\", { attributes: { a: 1 } }) {\n    return work()\n  }\n}", "export function f() {\n  return withSpan(() => {\n    return work()\n  }, \"x\", { attributes: { a: 1 } })\n}"},
+		{"export function f() {\n  return retry({\n    times: 3,\n  }) {\n    return work()\n  }\n}", "export function f() {\n  return retry(() => {\n    return work()\n  }, {\n    times: 3,\n  })\n}"},
+		{"export function f() { const s = Semaphore.makeUnsafe(1); return s.withPermits(1) { return work() } }", "export function f() { const s = Semaphore.makeUnsafe(1); return s.withPermits(1)(() => { return work() }) }"},
+		{"export function f() { return withSpan(\"k\") { return { attributes: {} } } }", "export function f() { return withSpan(() => { return { attributes: {} } }, \"k\") }"},
 		// Nested blocks move in one round: their edits do not overlap.
-		{"export function f() { return withSpan(\"outer\") { return timeout(\"1 second\") { return work() } } }", "export function f() { return withSpan(effect { return timeout(effect { return work() }, \"1 second\") }, \"outer\") }"},
+		{"export function f() { return withSpan(\"outer\") { return timeout(\"1 second\") { return work() } } }", "export function f() { return withSpan(() => { return timeout(() => { return work() }, \"1 second\") }, \"outer\") }"},
 	} {
 		t.Run(test.source, func(t *testing.T) {
 			p, file, _, _ := editorProgram(t, dualBlockWork+test.source)
@@ -183,8 +197,8 @@ func TestDualBlockLegacyCaseFix(t *testing.T) {
 // TypeScript error or EK1023.
 func TestDualBlockCodeAction(t *testing.T) {
 	for _, test := range []struct{ source, want string }{
-		{"export function f() { return withSpan(\"load\") { return work() } }", "export function f() { return withSpan(effect { return work() }, \"load\") }"},
-		{"export function f() { return withSpan(\"k\") { return { attributes: {} } } }", "export function f() { return withSpan(effect { return { attributes: {} } }, \"k\") }"},
+		{"export function f() { return withSpan(\"load\") { return work() } }", "export function f() { return withSpan(() => { return work() }, \"load\") }"},
+		{"export function f() { return withSpan(\"k\") { return { attributes: {} } } }", "export function f() { return withSpan(() => { return { attributes: {} } }, \"k\") }"},
 	} {
 		program, file, service, converters := editorProgram(t, dualBlockWork+test.source)
 		var diagnostic *ast.Diagnostic

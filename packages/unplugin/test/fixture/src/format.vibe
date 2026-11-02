@@ -12,6 +12,6 @@ module text {
 
 import { line } from text
 
-export effect function receipt(verb: string, quantity: number, item: string) {
-  return try sync((verb, quantity, item) => line(verb, quantity, item), verb, quantity, item)
+export function receipt(verb: string, quantity: number, item: string) {
+  return sync((verb, quantity, item) => line(verb, quantity, item), verb, quantity, item)
 }

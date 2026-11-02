@@ -12,8 +12,8 @@ import (
 
 func TestFixGateFollowsUneditedProviderInEditedModule(t *testing.T) {
 	dir, config := fixFiles(t)
-	middle := "import { modes } from './main.vibe'\nexport const values = modes\nexport type Noise = Effect.Effect<number>\n"
-	reporter := "import { values } from './middle.vibe'\nexport effect function more() {const all = try values();all.push('slow');return all}\n"
+	middle := "import { modes } from './main.vibe'\nexport const values = modes()\nexport type Noise = Effect.Effect<number>\n"
+	reporter := "import { values } from './middle.vibe'\nexport function more() {values.push('slow');return values}\n"
 	for name, text := range map[string]string{"middle.vibe": middle, "more.vibe": reporter} {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(text), 0600); err != nil {
 			t.Fatal(err)

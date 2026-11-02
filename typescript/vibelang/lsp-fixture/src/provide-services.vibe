@@ -1,8 +1,8 @@
 // provide Key = value: one service for one block (D173).
 const seeded = { nextIntUnsafe: (): number => 4, nextDoubleUnsafe: (): number => 0.5 }
 
-export effect function rolled(): number!! {
+export function rolled(): number!! {
   provide Random = seeded {
-    return try Random.nextInt
+    return Random.nextInt()
   }
 }

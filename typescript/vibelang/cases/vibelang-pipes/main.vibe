@@ -43,14 +43,14 @@ effect function hello() {
   return "hi"
 }
 
-// At the top level the call builds tracedHello's Effect (VIP-1), and the runner
-// starts it, the whole pipe, as one program.
+// At the top level a runner receives its program by name, so EK1001 does not
+// apply; the runner starts tracedHello, the whole pipe, as one program.
 effect function tracedHello(): string!! { return hello() |> try withSpan(%, "hello") }
 export const started = runFork(tracedHello())
 
-// An effect block holds the whole pipe, which fork runs on a child fiber.
+// A pipe passed by name as a whole: fork runs it on a child fiber.
 effect function forked() {
-  const fiber = fork effect { return hello() |> timeout(%, "1 second") |> `${try %}!` }
+  const fiber = fork(hello() |> timeout(%, "1 second") |> `${%}!`)
   return try fiber.join()
 }
 

@@ -1,7 +1,7 @@
 import { assert, it } from "@effect/vitest"
 import { Effect } from "effect"
 
-it.effect("reports the original assertion line", effect () => {
-  const value = try Effect.succeed(41)
-  try Effect.sync(() => assert.strictEqual(value, 42))
+it.effect("reports the original assertion line", () => {
+  const value = Effect.succeed(41)
+  Effect.sync(() => assert.strictEqual(value, 42))
 })

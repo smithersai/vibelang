@@ -51,11 +51,11 @@ func (s *fixSys) SinceStart() time.Duration { return 0 }
 // (fixFiles).
 func keepProject(t *testing.T) string {
 	t.Helper()
-	main := "export effect function modes() {\n  const mode = try Effect.succeed(\"fast\")\n  const all: Array<typeof mode> = [mode]\n  return all\n}\nexport type B = Effect.Effect<number>\nexport type Deep = " + strings.Repeat("Effect.Effect<", 5) + "string" + strings.Repeat(">", 5) + "\n"
+	main := "export function modes() {\n  const mode = Effect.succeed(\"fast\")\n  const all: Array<typeof mode> = [mode]\n  return all\n}\nexport type B = Effect.Effect<number>\nexport type Deep = " + strings.Repeat("Effect.Effect<", 5) + "string" + strings.Repeat(">", 5) + "\n"
 	_, file, _, _ := editorProgram(t, main)
 	dir := filepath.Dir(file.FileName().AsString())
 	files := map[string]string{
-		"more.vibe":     "import { modes } from \"./main.vibe\"\nexport effect function more() {\n  const all = try modes()\n  all.push(\"slow\")\n  return all\n}\nexport type C = Effect.Effect<Effect.Effect<boolean>>\n",
+		"more.vibe":     "import { modes } from \"./main.vibe\"\nexport function more() {\n  const all = modes()\n  all.push(\"slow\")\n  return all\n}\nexport type C = Effect.Effect<Effect.Effect<boolean>>\n",
 		"f00.vibe":      "export type T0 = Effect.Effect<number>\n",
 		"f01.vibe":      "export type T1 = Effect.Effect<Effect.Effect<number>>\n",
 		"plain.ts":      "export const plain = 1\n",

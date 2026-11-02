@@ -35,7 +35,7 @@ func (h trustedFixHost) GetPreferences(string) lsutil.UserPreferences {
 func trustedActions(t *testing.T, files map[string]string) []*lsproto.CodeAction {
 	t.Helper()
 	fs := bundled.WrapFS(vfstest.FromMap(files, tspath.CaseInsensitive))
-	parsed, errors := tsoptions.GetParsedCommandLineOfConfigFile("/home/src/src/tsconfig.json", &core.CompilerOptions{}, nil, fs, nil)
+	parsed, errors := tsoptions.GetParsedCommandLineOfConfigFile("/Users/x/src/tsconfig.json", &core.CompilerOptions{}, nil, fs, nil)
 	if len(errors) != 0 {
 		t.Fatalf("config: %v", errors)
 	}
@@ -43,8 +43,8 @@ func trustedActions(t *testing.T, files map[string]string) []*lsproto.CodeAction
 	converters := lsconv.NewConverters(lsproto.PositionEncodingKindUTF16, func(name tspath.RootedFilePath) *lsconv.LSPLineMap {
 		return lsconv.ComputeLSPLineStarts(files[string(name)])
 	})
-	service := ls.NewLanguageService(nil, p, trustedFixHost{converters: converters}, "/home/src/src/main.vibe")
-	file := p.GetSourceFile("/home/src/src/main.vibe")
+	service := ls.NewLanguageService(nil, p, trustedFixHost{converters: converters}, "/Users/x/src/main.vibe")
+	file := p.GetSourceFile("/Users/x/src/main.vibe")
 	for _, d := range p.GetSemanticDiagnostics(t.Context(), file) {
 		if d.Code() != 4406 {
 			continue
@@ -133,15 +133,15 @@ export function parse(text: string, ...rest: string[]) { return text.length + re
 				module = "./index"
 			}
 			files := map[string]string{
-				"/home/src/src/tsconfig.json":                              `{"compilerOptions":{"strict":true},"include":["*.ts","*.vibe"]}`,
-				"/home/src/src/helpers.ts":                                 test.extra + helper,
-				"/home/src/src/index.ts":                                   `export { parse, Bad } from "./helpers"`,
-				"/home/src/src/main.vibe":                                  "import { parse as read" + test.caller + " } from " + `"` + module + `"` + "\nexport effect function main() { return [read(\"x\"), read(\"y\")] }\n",
-				"/home/src/src/node_modules/vibelang-runtime/package.json": `{"name":"vibelang-runtime","types":"index.d.ts"}`,
-				"/home/src/src/node_modules/vibelang-runtime/index.d.ts":   `export declare function trusted<A extends unknown[], B>(f: (...args: A) => B, classes: readonly unknown[]): (...args: A) => B`,
+				"/Users/x/src/tsconfig.json":                              `{"compilerOptions":{"strict":true},"include":["*.ts","*.vibe"]}`,
+				"/Users/x/src/helpers.ts":                                 test.extra + helper,
+				"/Users/x/src/index.ts":                                   `export { parse, Bad } from "./helpers"`,
+				"/Users/x/src/main.vibe":                                  "import { parse as read" + test.caller + " } from " + `"` + module + `"` + "\nexport function main() { return [read(\"x\"), read(\"y\")] }\n",
+				"/Users/x/src/node_modules/vibelang-runtime/package.json": `{"name":"vibelang-runtime","types":"index.d.ts"}`,
+				"/Users/x/src/node_modules/vibelang-runtime/index.d.ts":   `export declare function trusted<A extends unknown[], B>(f: (...args: A) => B, classes: readonly unknown[]): (...args: A) => B`,
 			}
 			if test.name == "existing caller alias" {
-				files["/home/src/src/helpers.ts"] = "import { trusted } from \"vibelang-runtime\"\n" + helper + "export const parseTrusted = trusted(parse, [Bad])\n"
+				files["/Users/x/src/helpers.ts"] = "import { trusted } from \"vibelang-runtime\"\n" + helper + "export const parseTrusted = trusted(parse, [Bad])\n"
 			}
 			for step := range 2 {
 				actions := trustedActions(t, files)
@@ -155,7 +155,7 @@ export function parse(text: string, ...rest: string[]) { return text.length + re
 					t.Fatalf("actions=%d", len(actions))
 				}
 				if step == 0 && test.name != "existing caller alias" {
-					if _, ok := (*actions[0].Edit.Changes)["file:///home/src/src/helpers.ts"]; !ok {
+					if _, ok := (*actions[0].Edit.Changes)["file:///Users/x/src/helpers.ts"]; !ok {
 						t.Fatal("missing file:/// helper edit")
 					}
 				}
@@ -164,14 +164,14 @@ export function parse(text: string, ...rest: string[]) { return text.length + re
 				}
 				applyTrustedAction(t, files, actions[0])
 			}
-			got := files["/home/src/src/helpers.ts"]
+			got := files["/Users/x/src/helpers.ts"]
 			if strings.Count(got, "export const parseTrusted =") != 1 || strings.Count(got, `from "vibelang-runtime"`) != 1 {
 				t.Fatalf("duplicate wrapper/import:\n%s", got)
 			}
 			if !strings.Contains(got, "export function parse(") {
 				t.Fatal("original implementation removed")
 			}
-			caller := files["/home/src/src/main.vibe"]
+			caller := files["/Users/x/src/main.vibe"]
 			if strings.Contains(caller, "read(\"") || strings.Count(caller, `from "./helpers"`) != 1 {
 				t.Fatalf("caller not migrated once:\n%s", caller)
 			}

@@ -1,8 +1,7 @@
 // expect: EK3007
-// A service key is not a function: try S gives the implementation (VIP-5,
-// VIP-10). Calling it with arguments is EK3007, in place of TypeScript's
-// TS2348, whose suggestion of new would be EK3003. (try Fn)(3) calls the
-// implementation.
+// A service key takes no arguments: S() returns the implementation. Calling
+// it with arguments is EK3007, in place of TypeScript's TS2348, whose
+// suggestion of new would be EK3003. Fn()(3) calls the implementation.
 service Fn: (n: number) => number
 
 service Users {
@@ -12,6 +11,6 @@ service Users {
 export effect function lookups() {
   const a = Fn(3)
   const b = Users("ada")
-  const c = (try Fn)(3)
+  const c = (try Fn())(3)
   return [a, b, c]
 }

@@ -1,0 +1,305 @@
+package vibelang
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/microsoft/TypeScript/tsc/internal/bundled"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
+	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
+)
+
+// vibelang --fix-vip-only marks effect each function the analyzer compiles
+// to an Effect (VIP-1): a declaration, a method, and a literal in the Effect
+// form, with try before an arrow's body that the function runs. A literal in
+// the program form becomes an effect block (VIP-2). A function that compiles
+// to plain JavaScript stays unmarked and loses the try its calls had, and a
+// catch handler that runs nothing stays plain. A second run writes nothing.
+func TestFixVIPWritesEffect(t *testing.T) {
+	source := `function load(n: number) {
+  try yieldNow()
+  return { n }
+}
+
+function double(n: number) {
+  return n * 2
+}
+
+class Box {
+  get(n: number) {
+    return n
+  }
+}
+
+export function main() {
+  const box = new Box()
+  const a = try load(1)
+  const twice = try forEach([1, 2], (n) => load(n))
+  const again = try Effect.retry(() => load(3), { times: 1 })
+  const block = try Effect.retry(() => { try yieldNow(); return 4 }, { times: 1 })
+  const d = double(2)
+  const g = try box.get(5)
+  const h = load(6) catch (e) => ({ n: 0 })
+  return a.n + twice.length + again.n + block + d + g + h.n
+}
+`
+	want := `effect function load(n: number) {
+  try yieldNow()
+  return { n }
+}
+
+function double(n: number) {
+  return n * 2
+}
+
+class Box {
+  effect get(n: number) {
+    return n
+  }
+}
+
+export effect function main() {
+  const box = new Box()
+  const a = try load(1)
+  const twice = try forEach([1, 2], effect (n) => try load(n))
+  const again = try Effect.retry(effect { return try load(3) }, { times: 1 })
+  const block = try Effect.retry(effect { try yieldNow(); return 4 }, { times: 1 })
+  const d = double(2)
+  const g = try box.get(5)
+  const h = load(6) catch (e) => ({ n: 0 })
+  return a.n + twice.length + again.n + block + d + g + h.n
+}
+`
+	_, file, _, _ := editorProgram(t, source)
+	dir := filepath.Dir(file.FileName().AsString())
+	if err := os.WriteFile(filepath.Join(dir, "tsconfig.json"), []byte(`{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"noEmit":true},"files":["main.vibe"]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	fs := bundled.WrapFS(osvfs.FS())
+	configPath := tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(dir, "tsconfig.json")))
+	config, errors := tsoptions.GetParsedCommandLineOfConfigFile(configPath, &core.CompilerOptions{}, nil, fs, nil)
+	if len(errors) != 0 {
+		t.Fatalf("config: %v", errors)
+	}
+	result := FixProjectWithOptions(t.Context(), fs, bundled.LibPath(), config, FixOptions{VIPOnly: true})
+	fixed := result.Files[file.FileName()]
+	if fixed == nil || fixed.Text != want {
+		got := ""
+		if fixed != nil {
+			got = fixed.Text
+		}
+		t.Fatalf("--fix-vip-only wrote\n%s\nwant\n%s\nrefused %+v", got, want, result.Refused)
+	}
+	if fixed.Rewrites[effectLabel] != 6 {
+		t.Errorf("rewrites %v; want 6 effect rewrites: load, get, main, the literal, and the two blocks", fixed.Rewrites)
+	}
+	if err := os.WriteFile(file.FileName().AsString(), []byte(want), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	again := FixProjectWithOptions(t.Context(), fs, bundled.LibPath(), config, FixOptions{VIPOnly: true})
+	if len(again.Files) != 0 {
+		t.Errorf("a second run wrote %+v", again.Files[file.FileName()])
+	}
+}
+
+// D421 types a function that compiles to plain JavaScript as the wrapper
+// Effect<A, never, never>, which its $direct call never builds: try on its
+// call gave A as data. Under VIP-1 the function is plain and its call gives A,
+// so --fix-vip-only drops the try, whatever A is. A plain variant returning a
+// tagged error or a Yieldable returned it as data; its try neither stays (an
+// error would fail once VIP-1 types the call) nor gains asEffect() (which
+// returned the name instead of the object, or refused the whole file).
+func TestFixVIPDropsAPlainVariantsTry(t *testing.T) {
+	source := `error NotFound { id: string }
+
+function double(n: number) {
+  return n * 2
+}
+
+function half(n: number): number {
+  return n / 2
+}
+
+function pair(n: number) {
+  return { n, label: "x" }
+}
+
+function out(name: string) {
+  return { name, asEffect: effect () => name }
+}
+
+const triple = (n: number): number => n * 3
+
+function make(id: string) {
+  return new NotFound({ id })
+}
+
+export function main() {
+  try yieldNow()
+  const d = try double(2)
+  const h = try half(4)
+  const p = try pair(1)
+  const o = try out("a")
+  const t3 = try triple(1)
+  const e = try make("neg")
+  if (d < 0) { try make("neg") }
+  return d + h + p.n + o.name.length + t3 + e.id.length
+}
+`
+	want := `error NotFound { id: string }
+
+function double(n: number) {
+  return n * 2
+}
+
+function half(n: number): number {
+  return n / 2
+}
+
+function pair(n: number) {
+  return { n, label: "x" }
+}
+
+function out(name: string) {
+  return { name, asEffect: effect () => name }
+}
+
+const triple = (n: number): number => n * 3
+
+function make(id: string) {
+  return new NotFound({ id })
+}
+
+export effect function main() {
+  try yieldNow()
+  const d = double(2)
+  const h = half(4)
+  const p = pair(1)
+  const o = out("a")
+  const t3 = triple(1)
+  const e = make("neg")
+  if (d < 0) { make("neg") }
+  return d + h + p.n + o.name.length + t3 + e.id.length
+}
+`
+	_, file, _, _ := editorProgram(t, source)
+	dir := filepath.Dir(file.FileName().AsString())
+	if err := os.WriteFile(filepath.Join(dir, "tsconfig.json"), []byte(`{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"noEmit":true},"files":["main.vibe"]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	fs := bundled.WrapFS(osvfs.FS())
+	configPath := tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(dir, "tsconfig.json")))
+	config, errors := tsoptions.GetParsedCommandLineOfConfigFile(configPath, &core.CompilerOptions{}, nil, fs, nil)
+	if len(errors) != 0 {
+		t.Fatalf("config: %v", errors)
+	}
+	result := FixProjectWithOptions(t.Context(), fs, bundled.LibPath(), config, FixOptions{VIPOnly: true})
+	fixed := result.Files[file.FileName()]
+	if fixed == nil || fixed.Text != want {
+		got := ""
+		if fixed != nil {
+			got = fixed.Text
+		}
+		t.Fatalf("--fix-vip-only wrote\n%s\nwant\n%s\nrefused %+v", got, want, result.Refused)
+	}
+}
+
+// VIP-5 and Chapter 2's structural operand test admit tagged errors as
+// Effects: try toError(id) fails like throw, including in expression positions.
+// Keep those valid tries under --fix-vip-only. Only the non-Effect Yieldable
+// needs EK0502's asEffect repair; dropping a try would return the error as data.
+func TestFixVIPKeepsAnErrorsFailure(t *testing.T) {
+	source := `error NotFound { id: string }
+interface Output { readonly name: string; asEffect(): string!! }
+const toError = (id: string): NotFound => new NotFound({ id })
+const output = (name: string): Output => ({ name, asEffect: effect () => name })
+export const f = effect (id: string) => {
+  if (id === "") { return try toError(id) }
+  if (id === "?") { try toError(id) }
+  const held = [try toError(id)]
+  const name = try output(id)
+  return held.length > 1 ? "" : name
+}
+`
+	want := `error NotFound { id: string }
+interface Output { readonly name: string; asEffect(): string!! }
+const toError = (id: string): NotFound => new NotFound({ id })
+const output = (name: string): Output => ({ name, asEffect: effect () => name })
+export const f = effect (id: string) => {
+  if (id === "") { return try toError(id) }
+  if (id === "?") { try toError(id) }
+  const held = [try toError(id)]
+  const name = try output(id).asEffect()
+  return held.length > 1 ? "" : name
+}
+`
+	program, file, _, _ := editorProgram(t, source)
+	note := ""
+	nonEffectOperands := 0
+	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
+		if d.Code() == EK0502.Code {
+			nonEffectOperands++
+			for _, chained := range d.MessageChain() {
+				note += chained.String()
+			}
+		}
+	}
+	if nonEffectOperands != 1 || !strings.Contains(note, "write try output(id).asEffect()") {
+		t.Errorf("want only Output to report EK0502 with its asEffect repair, got %d: %q", nonEffectOperands, note)
+	}
+	dir := filepath.Dir(file.FileName().AsString())
+	if err := os.WriteFile(filepath.Join(dir, "tsconfig.json"), []byte(`{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"noEmit":true},"files":["main.vibe"]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	fs := bundled.WrapFS(osvfs.FS())
+	config, errors := tsoptions.GetParsedCommandLineOfConfigFile(tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(dir, "tsconfig.json"))), &core.CompilerOptions{}, nil, fs, nil)
+	if len(errors) != 0 {
+		t.Fatalf("config: %v", errors)
+	}
+	result := FixProjectWithOptions(t.Context(), fs, bundled.LibPath(), config, FixOptions{VIPOnly: true})
+	got := source
+	if fixed := result.Files[file.FileName()]; fixed != nil {
+		got = fixed.Text
+	}
+	if got != want {
+		t.Fatalf("--fix-vip-only wrote\n%s\nwant\n%s", got, want)
+	}
+}
+
+func TestFixEffectAnnotatedArrows(t *testing.T) {
+	source := `import * as Effect from "effect/Effect"
+export const value = (): Effect.Effect<number> => 1
+export const block = (): Effect.Effect<number> => { return 2 }
+export const literal = function (): Effect.Effect<number> { return 3 }
+export const shorthand = (): number!! => 4
+type Result = Effect.Effect<number>
+export const alias = (): Result => 5
+export const plain = (): number => 6
+const held: Effect.Effect<number> = Effect.succeed(7)
+export const factory = (): Effect.Effect<number> => held
+`
+	want := `import * as Effect from "effect/Effect"
+export const value = effect (): Effect.Effect<number> => 1
+export const block = effect (): Effect.Effect<number> => { return 2 }
+export const literal = effect function (): Effect.Effect<number> { return 3 }
+export const shorthand = effect (): number!! => 4
+type Result = Effect.Effect<number>
+export const alias = effect (): Result => 5
+export const plain = (): number => 6
+const held: Effect.Effect<number> = Effect.succeed(7)
+export const factory = (): Effect.Effect<number> => held
+`
+	program, file, _, _ := editorProgram(t, source)
+	program.GetSemanticDiagnostics(t.Context(), file)
+	c, done := program.GetTypeCheckerForFile(t.Context(), file)
+	defer done()
+	edits, count := effectEdits(c, file)
+	got := applyEdits(source, mergeInsertions(edits))
+	if got != want || count != 5 {
+		t.Fatalf("effect rewrite (%d):\n%s\nwant:\n%s", count, got, want)
+	}
+}

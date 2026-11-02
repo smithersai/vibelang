@@ -29,5 +29,5 @@ export service Flags {
 
 export effect function greet(id: string) {
   const user = try Users.find(id)
-  return `${user.name} via ${(try Users).source}, beta ${(try Flags).beta}`
+  return `${user.name} via ${(try Users()).source}, beta ${(try Flags()).beta}`
 }

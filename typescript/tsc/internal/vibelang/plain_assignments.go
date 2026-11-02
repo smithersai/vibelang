@@ -19,13 +19,14 @@ func checkPlainAssignments(c *checker.Checker, file *ast.SourceFile) {
 			// Under written forms (D500) plain_targets.go reports a function
 			// value, a method, and a container of either at its destination
 			// (D430, D512); it leaves a function literal to its destination's
-			// form. This reports that literal everywhere but a call argument.
+			// form, which callbacks.go checks only at a call argument. This reports
+			// that literal everywhere else.
 			if !isLambda(value) && !ast.IsFunctionExpression(value) {
 				return
 			}
 			// The callback check already explains plain literal bodies and
 			// named arguments whose candidate rejected their form.
-			if isLambda(value) && markedForm(value) == formNone || ast.IsMethodDeclaration(value) && !a.hasContract(value) {
+			if isLambda(value) && a.finalForm(value) == formPlain && (!a.hasContract(value) || !a.canBePlain(value)) || a.finalConversion(value) == convertRejected || ast.IsMethodDeclaration(value) && !a.hasContract(value) {
 				return
 			}
 			d := report(c, value, EK4301.With("This value contains an Effect function, but its destination expects a plain function. Write an Effect function type, or provide a plain function."))
@@ -67,7 +68,8 @@ func checkPlainAssignments(c *checker.Checker, file *ast.SourceFile) {
 				}
 				check(node.Body(), target)
 			}
-			// A call's arguments are plain_targets.go's.
+			// A call's literal arguments are callbacks.go's (EK4301 for an
+			// Effect-annotated callback), and its other arguments plain_targets.go's.
 		}
 		return node.ForEachChild(visit)
 	}
@@ -252,7 +254,7 @@ func (a *analyzer) effectStandsForPlain(source, target *checker.Type, member boo
 				if a.hasPlainContract(fn) {
 					continue
 				}
-				if a.hasContract(fn) || a.isEffect(fn) || member && false {
+				if a.hasContract(fn) || a.isEffect(fn) || a.isFactory(fn) || member && a.isSplittable(fn) {
 					relation.returned = returned
 					return true
 				}

@@ -1,7 +1,7 @@
-export effect function tracked() {
+export function tracked() {
   try {
     return 1
   } finally {
-    try log("cleanup")
+    log("cleanup")
   }
 }

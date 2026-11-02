@@ -20,8 +20,8 @@ import (
 // class, an interface, or a type literal declares is read by that declaration,
 // with its own type parameters left uninstantiated, a VibeLang method by its
 // form (D485). Function literals take their destination's form (rule F), so
-// they are checked where they are written, not here. Function, which has no
-// call signature, is a plain function type here too (D513).
+// they are checked where they are written, not here; so are the arguments a
+// call converts (conversions.go).
 
 func init() {
 	fileChecks = append(fileChecks, checkPlainTargets)
@@ -68,11 +68,10 @@ func checkPlainTargets(c *checker.Checker, file *ast.SourceFile) {
 					if ast.IsSpreadElement(argument) || i >= len(signature.Parameters()) && !signature.HasRestParameter() {
 						continue
 					}
-					target := c.GetTypeAtPosition(signature, i)
-					if target == c.GetGlobalFunctionType() && signature.Declaration() != nil && isLibFile(c, ast.GetSourceFileOfNode(signature.Declaration())) {
-						continue // Reflect.construct and Reflect.apply return what the function returns; they drop nothing
+					if a.finalConversion(argument) != convertNone {
+						continue // converted, or rejected with its own EK4301 (callbacks.go)
 					}
-					a.checkPlainTarget(file, argument, target)
+					a.checkPlainTarget(file, argument, c.GetTypeAtPosition(signature, i))
 				}
 			}
 		}
@@ -92,6 +91,9 @@ func (a *analyzer) checkPlainTarget(file *ast.SourceFile, source *ast.Node, targ
 	t := c.GetTypeAtLocation(source)
 	if t == nil || !c.IsTypeAssignableTo(t, target) {
 		return // TypeScript reports the mismatch
+	}
+	if a.rejectsElement(inner) {
+		return // an element's own EK4301 (callbacks.go)
 	}
 	e := a.erasure(t, target, 0)
 	if e.owner == nil {
@@ -113,6 +115,20 @@ func (a *analyzer) checkPlainTarget(file *ast.SourceFile, source *ast.Node, targ
 		d = report(c, source, erasedHeldMember, text, e.member, owner)
 	}
 	note(d, erasedFix)
+}
+
+// rejectsElement reports whether an element of node, an array literal, is a
+// function value its call rejected, which has its own EK4301.
+func (a *analyzer) rejectsElement(node *ast.Node) bool {
+	if !ast.IsArrayLiteralExpression(node) {
+		return false
+	}
+	for _, element := range node.Elements() {
+		if a.finalConversion(element) == convertRejected {
+			return true
+		}
+	}
+	return false
 }
 
 // erased is where a value puts an Effect where its type declares a plain
@@ -144,38 +160,22 @@ func (a *analyzer) erasure(source, target *checker.Type, depth int) erased {
 		return erased{}
 	}
 	if target.Flags()&checker.TypeFlagsUnion != 0 {
-		// The source fits some member of the union. A callable member that
-		// takes it as an Effect function keeps it (D39); a plain callable
-		// member it fits reaches it, even beside a data member (D430, D513).
-		// Otherwise it erases an Effect only when every member that could
-		// hold it does.
-		var found, called erased
-		kept := false
+		// The source fits some member of the union; it erases an Effect only
+		// when every member that could hold it does.
+		var found erased
 		for _, member := range target.Types() {
 			if member.Flags()&(checker.TypeFlagsNullable|checker.TypeFlagsVoid) != 0 || !c.IsTypeAssignableTo(source, member) {
 				continue
 			}
 			e := a.erasure(source, member, depth)
-			switch {
-			case e.owner == nil && a.isCallableTarget(member):
+			if e.owner == nil {
 				return erased{}
-			case e.owner == nil:
-				kept = true
-			case a.isCallableTarget(member):
-				called = e
-			default:
-				found = e
 			}
-		}
-		if called.owner != nil {
-			return called
-		}
-		if kept {
-			return erased{}
+			found = e
 		}
 		return found
 	}
-	if a.isCallableTarget(target) {
+	if len(c.GetSignaturesOfType(target, checker.SignatureKindCall)) > 0 {
 		if a.isPlainFunctionType(target) && mayReturnEffect(c, source) {
 			return erased{owner: target}
 		}
@@ -213,13 +213,6 @@ func (a *analyzer) erasure(source, target *checker.Type, depth int) erased {
 		}
 	}
 	return erased{}
-}
-
-// isCallableTarget reports whether target takes a function and calls it: it
-// has a call signature, or it is Function, which has none but takes any
-// function, as React's useCallback<T extends Function> does (D513).
-func (a *analyzer) isCallableTarget(target *checker.Type) bool {
-	return target == a.checker.GetGlobalFunctionType() || len(a.checker.GetSignaturesOfType(target, checker.SignatureKindCall)) > 0
 }
 
 // isPlainFunctionType reports whether every call signature of t returns a

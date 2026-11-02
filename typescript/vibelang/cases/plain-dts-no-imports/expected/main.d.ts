@@ -1,1 +1,2 @@
-export declare function double(n: number): number;
+import { Effect } from "effect";
+export declare function double(n: number): Effect.Effect<number, never, never>;

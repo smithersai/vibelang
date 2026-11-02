@@ -1,5 +1,4 @@
-import * as $effectPrograms from "effect/Effect"
 // Program lambdas still bind optional/rest parameters when they run.
-export const defaults: Effect<number, never, never> = $effectPrograms.suspend(effect (n: number = 1) => n)
-export const optional: Effect<number | undefined, never, never> = $effectPrograms.suspend(effect (n?: number) => n)
-export const rest: Effect<number[], never, never> = $effectPrograms.suspend(effect (...values: number[]) => values)
+export const defaults: Effect<number, never, never> = (n: number = 1) => n
+export const optional: Effect<number | undefined, never, never> = (n?: number) => n
+export const rest: Effect<number[], never, never> = (...values: number[]) => values

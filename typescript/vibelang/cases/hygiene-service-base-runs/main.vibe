@@ -5,7 +5,7 @@
 export const S_base = 1
 export service S { value: string }
 
-export effect function read() { return (try S).value }
+export effect function read() { return (try S()).value }
 
 export effect function main() {
   provide S = { value: "ok" } {

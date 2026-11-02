@@ -12,11 +12,11 @@ effect function joined(log: string[]) {
   const startedB = try Deferred.make<void>()
   const releasedB = try Deferred.make<void>()
   const a = fork {
-    try { try Deferred.succeed(startedA, undefined); try Effect.never }
+    try { try Deferred.succeed(startedA, undefined); try Effect.never() }
     finally { log.push("A waits"); try releasedB.await(); log.push("A done") }
   }
   const b = fork {
-    try { try Deferred.succeed(startedB, undefined); try Effect.never }
+    try { try Deferred.succeed(startedB, undefined); try Effect.never() }
     finally { log.push("B done"); try Deferred.succeed(releasedB, undefined) }
   }
   try startedA.await()
@@ -34,11 +34,11 @@ effect function all(log: string[]) {
   try {
     (try.all [
       effect { return do {
-        try { try Deferred.succeed(startedA, undefined); try Effect.never }
+        try { try Deferred.succeed(startedA, undefined); try Effect.never() }
         finally { log.push("A waits"); try releasedB.await(); log.push("A done") }
       } },
       effect { return do {
-        try { try Deferred.succeed(startedB, undefined); try Effect.never }
+        try { try Deferred.succeed(startedB, undefined); try Effect.never() }
         finally { log.push("B done"); try Deferred.succeed(releasedB, undefined) }
       } },
       effect { return do {
@@ -54,11 +54,11 @@ effect function racePrograms(log: string[]) {
   const releasedB = try Deferred.make<void>()
   log.push((try.race [
     effect { return do {
-      try { try Effect.never }
+      try { try Effect.never() }
       finally { log.push("A waits"); try releasedB.await(); log.push("A done") }
     } },
     effect { return do {
-      try { try Effect.never }
+      try { try Effect.never() }
       finally { log.push("B done"); try Deferred.succeed(releasedB, undefined) }
     } },
     effect { return do { "winner" } }

@@ -1,0 +1,3 @@
+steps can't throw Invalid: its return annotation, Generator<string>, makes it a JavaScript generator, which never fails.
+  Remove the annotation to make it a producer, a Stream whose throw fails the Stream.
+  Or escape to TypeScript, whose throw is JavaScript's: move steps to a module block or a .ts file.

@@ -38,7 +38,7 @@ effect function renameIn(db: Database.Shape, id: string, name: string) {
 }
 
 const UsersAudited = Layer.effect(Users, effect {
-  const db = try Database
+  const db = try Database()
   return {
     effect find(id) {
       try Audit.record(`users.find ${id}`)    // looked up on every call
