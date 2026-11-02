@@ -60,3 +60,15 @@ test("config-keys rejects a chapter key once no accepted VIP publishes it", () =
   expect(lint(unpublished, rule("config-keys")).map(v => v.message)).toContain("`vibelang.declarationImportStyle` appears in no accepted VIP")
   expect(lint(spec, rule("config-keys"))).toEqual([])
 })
+
+test("declaration-import-style-scope rejects round 14 ASTRA-1's unscoped option and missing VIP-27 amendment", () => {
+  const astra1 = "A package whose sources spell relative imports another way keeps that spelling with the project setting `vibelang.declarationImportStyle`: `\"extensionless\"` declares `./user`, `\".ts\"` declares `./user.ts`, and `\".js\"` is the default."
+  const defect: Spec = new Map(spec)
+  defect.set("src/001-functions.md", spec.get("src/001-functions.md")!.replace(/A package whose sources spell relative imports another way[^\n]*?is the default\.[^\n]*?(?= Under every setting)/, astra1))
+  defect.set("vips/0027-declaration-output.md", spec.get("vips/0027-declaration-output.md")!.replace(/\n- \*\*Amended 2026-11-02: declaration import spelling\.\*\*[^\n]*\n/, "\n"))
+  expect(defect.get("src/001-functions.md")).not.toBe(spec.get("src/001-functions.md"))
+  expect(lint(defect, rule("declaration-import-style-scope")).map(v => `${v.file} ${v.message}`)).toEqual([
+    "src/001-functions.md a paragraph naming `declarationImportStyle` does not say that source-adjacent sidecars keep their spelling",
+    "vips/0027-declaration-output.md the VIP does not publish `vibelang.declarationImportStyle`, as decided detail 263 asks"
+  ])
+})

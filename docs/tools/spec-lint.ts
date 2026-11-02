@@ -40,6 +40,15 @@ export function sentences(text: string): { text: string; index: number }[] {
   return out
 }
 
+// The paragraphs and list items of a text's prose, each with its offset.
+export function paragraphs(text: string): { text: string; index: number }[] {
+  const out: { text: string; index: number }[] = []
+  for (const m of prose(text).matchAll(/(?:^|\n)((?:(?![ \t]*(?:[-*]|\d+\.)[ \t])[^\n]+|[ \t]*(?:[-*]|\d+\.)[ \t][^\n]*)(?:\n(?![ \t]*(?:[-*]|\d+\.)[ \t])[^\n]+)*)/g)) {
+    if (m[1]!.trim()) out.push({ text: m[1]!, index: m.index! + m[0].indexOf(m[1]!) })
+  }
+  return out
+}
+
 // The rows of the first table after `marker`, each a list of trimmed cells.
 function tableAfter(text: string, marker: string): string[][] | undefined {
   const at = text.indexOf(marker)
@@ -134,7 +143,35 @@ const configKeys: Rule = {
   }
 }
 
-export const rules: Rule[] = [resolutionClaims, configKeys]
+// The scope of `vibelang.declarationImportStyle` (round 14 ASTRA-1). Decided
+// detail 263 calls it "an opt-in package declaration spelling policy" and
+// says "source-adjacent sidecars retain their existing VibeLang-source
+// reference rules", and asks for VIP-27 and VIP-30 amendments. 001 and 007
+// stated the option with no sidecar boundary and neither VIP named it. Every
+// paragraph that names the option states the sidecar boundary, and VIP-27
+// and VIP-30 both publish it.
+const importStyleScope: Rule = {
+  name: "declaration-import-style-scope",
+  finding: "r14 ASTRA-1: 001:483 and 007:107 gave declarationImportStyle no sidecar boundary; VIP-27 and VIP-30 did not name it",
+  check(spec) {
+    const out: Violation[] = []
+    for (const [file, text] of [...chapters(spec), ...acceptedVips(spec)]) {
+      for (const p of paragraphs(text)) {
+        if (p.text.includes("declarationImportStyle") && !/sidecar/i.test(p.text)) {
+          out.push({ rule: this.name, file, line: lineAt(text, p.index), message: "a paragraph naming `declarationImportStyle` does not say that source-adjacent sidecars keep their spelling" })
+        }
+      }
+    }
+    for (const file of ["vips/0027-declaration-output.md", "vips/0030-config-files.md"]) {
+      if (!spec.get(file)?.includes("`vibelang.declarationImportStyle`")) {
+        out.push({ rule: this.name, file, line: 1, message: "the VIP does not publish `vibelang.declarationImportStyle`, as decided detail 263 asks" })
+      }
+    }
+    return out
+  }
+}
+
+export const rules: Rule[] = [resolutionClaims, configKeys, importStyleScope]
 
 export const lint = (spec: Spec, only = rules) => only.flatMap(rule => rule.check(spec))
 
