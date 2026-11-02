@@ -1,2 +1,2 @@
 go test fuzz v1
-string("-- main.vibe --\ndeclare const pending: Promise<number>\n  const n = await pending\n")
+string("-- main.vibe --\ndeclare const pending: Promise<number>\nexport function legacyRegistryWitness() { const n = await pending; return n; }\n")

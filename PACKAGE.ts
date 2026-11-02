@@ -55,6 +55,7 @@ const specTests = [
 
   "TestCurrentFixCodesQuoted",
   "TestRegistryDebtLedger",
+  "TestRegistryDebtWitnessIdentity",
   "TestRegistryUsesCurrentAppendix",
   "TestCurrentConfigFacts",
   "TestCurrentRegistryTables",
