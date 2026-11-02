@@ -3,6 +3,7 @@ package vibelangfuzz
 import (
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -17,7 +18,14 @@ const effectChannelsQuote = "Declarations are exactly what idiomatic Effect Type
 // compiler with itself on two inputs the sentence says agree (RULES.md 1). The
 // input picks up to four runs. alchemy's AWS `syncTags` helpers run
 // `tagResource` and `untagResource`, whose errors are two such aliases, and
-// declared every member instead (corpus alchemy-aws-sync-tags).
+// declared every member instead (corpus alchemy-aws-sync-tags). alchemy's
+// kubernetes `waitForLoadBalancer` reads a hostname whose channel holds
+// `Error` and throws `ServiceNotReady`, an `Error` subclass: Effect.fn's
+// reduced union absorbs it into `Error`, and a `catch` arm on its tag then
+// finds no such member (alchemy-63; corpus alchemy-k8s-service-not-ready,
+// whose throw is an expression in alchemy-k8s-service-not-ready-expr). The
+// AWS sites read through a .vibe function with a contract
+// (alchemy-aws-contract-read-not-ready).
 func FuzzEffectChannelsDeclaration(f *testing.F) {
 	startShortBudget(f)
 	effectChannelsChapter(f)
@@ -64,6 +72,10 @@ var effectChannelRuns = []effectChannelRun{
 	{"env-b", "try envB()", "yield* envB()"},
 	{"fail", "if (n > 0) throw new A()", "if (n > 0) return yield* Effect.fail(new A())"},
 	{"quiet", "try quiet(n)", "yield* quiet(n)"},
+	{"host", "try hostname()", "yield* hostname()"},
+	{"not-ready", "if (n > 1) throw new NotReady()", "if (n > 1) return yield* Effect.fail(new NotReady())"},
+	{"not-ready-expr", "n > 2 ? n : throw new NotReady()", "n > 2 ? n : yield* Effect.fail(new NotReady())"},
+	{"vibe-read", "try vibeRead()", "yield* vibeRead()"},
 }
 
 const effectChannelsLib = `import { Effect } from "effect"
@@ -88,9 +100,12 @@ export declare const base: () => Effect.Effect<void, Base>
 export declare const derived: () => Effect.Effect<number, Derived>
 export declare const envA: () => Effect.Effect<void, TagError, EnvA>
 export declare const envB: () => Effect.Effect<void, UntagError, EnvB>
+export class ApiError extends Error { readonly _tag = "ApiError"; readonly status: number = 503 }
+export class NotReady extends Error { readonly _tag = "NotReady" }
+export declare const hostname: () => Effect.Effect<string | undefined, Error | ApiError>
 `
 
-const effectChannelsImports = `import { A, base, derived, envA, envB, list, read, tag, untag } from "./lib.js"
+const effectChannelsImports = `import { A, ApiError, base, derived, envA, envB, hostname, list, NotReady, read, tag, untag } from "./lib.js"
 `
 
 // parseEffectChannels reads `channels:<run>;<run>…` (RULES.md 11), and
@@ -122,7 +137,7 @@ func CheckEffectChannels(t *testing.T, w *Workspace, runs []effectChannelRun) {
 	if len(runs) == 0 {
 		return
 	}
-	vibe, twin := []string{effectChannelsImports, "const quiet = effect (n: number) => n\n\nexport const program = effect (n: number) => {\n"}, []string{"import { Effect } from \"effect\"\n", effectChannelsImports, "const quiet = Effect.fn(function* (n: number) {\n  return n\n})\n\nexport const program = Effect.fn(function* (n: number) {\n"}
+	vibe, twin := []string{effectChannelsImports, "const quiet = effect (n: number) => n\n\neffect function vibeRead(): string | undefined!Error | ApiError! { return undefined }\n\nexport const program = effect (n: number) => {\n"}, []string{"import { Effect } from \"effect\"\n", effectChannelsImports, "const quiet = Effect.fn(function* (n: number) {\n  return n\n})\n\nconst vibeRead = (): Effect.Effect<string | undefined, Error | ApiError> => Effect.succeed(undefined)\n\nexport const program = Effect.fn(function* (n: number) {\n"}
 	for _, run := range runs {
 		vibe = append(vibe, "  "+run.vibe+"\n")
 		twin = append(twin, "  "+run.twin+"\n")
@@ -162,7 +177,14 @@ func CheckEffectChannels(t *testing.T, w *Workspace, runs []effectChannelRun) {
 	case len(vibeErrors) != 0:
 		g.Add("feature:effect-channels-compile", "%v\n%s", vibeErrors, vibeText)
 	case vibeDeclares != twinDeclares:
-		g.Add("feature:effect-channels", "Chapter 1: %q.\n.vibe:  %s\ntwin:   %s\n%s", effectChannelsQuote, vibeDeclares, twinDeclares, vibeText)
+		// An unannotated .vibe callee adds its channels but no run: its
+		// success is the type being inferred, so it adds no candidate to
+		// compare (feature:effect-channels:vibe-callee).
+		key := "feature:effect-channels"
+		if slices.ContainsFunc(runs, func(run effectChannelRun) bool { return run.name == "quiet" }) {
+			key += ":vibe-callee"
+		}
+		g.Add(key, "Chapter 1: %q.\n.vibe:  %s\ntwin:   %s\n%s", effectChannelsQuote, vibeDeclares, twinDeclares, vibeText)
 	}
 	g.FinishInput(t, key)
 }

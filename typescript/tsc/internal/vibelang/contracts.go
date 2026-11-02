@@ -232,24 +232,24 @@ func inferChannel(c *checker.Checker, node *ast.Node) bool {
 	return k != nil && k.reference == reference
 }
 
-// calleeContract returns the E and R that a call contributes when its callee
-// is a .vibe function with a contract, from the signature the call resolved
-// to, so a generic contract is instantiated. ok is false when the contract
+// calleeContract returns the Effect a call runs, and its E and R, when its
+// callee is a .vibe function with a contract, from the signature the call
+// resolved to, so a generic contract is instantiated. ok is false when the contract
 // infers a channel: the caller then reads the callee's body, which never asks
 // for a return type that a call cycle may be computing.
-func (a *analyzer) calleeContract(callee *ast.Node, call *ast.Node, sig *checker.Signature) (e, r *checker.Type, ok bool) {
+func (a *analyzer) calleeContract(callee *ast.Node, call *ast.Node, sig *checker.Signature) (t, e, r *checker.Type, ok bool) {
 	k := a.contractOf(callee)
 	if k == nil || k.inferredAny() {
-		return nil, nil, false
+		return nil, nil, nil, false
 	}
-	t := runningCallResult(a.checker, call, sig)
+	t = runningCallResult(a.checker, call, sig)
 	e, r = channelType(a.checker, t, "_E"), channelType(a.checker, t, "_R")
 	if e == nil || r == nil {
 		// The call resolved to a form that returns no Effect, such as a
 		// lambda's plain form (D113): the caller reads the callee's body.
-		return nil, nil, false
+		return nil, nil, nil, false
 	}
-	return e, r, true
+	return t, e, r, true
 }
 
 // checkContracts reports, for each function in file that the lowering can

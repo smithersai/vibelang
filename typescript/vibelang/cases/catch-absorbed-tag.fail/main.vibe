@@ -1,0 +1,22 @@
+// expect: TS2367
+// The tag arm compares with the inferred channel. The throw of `NotReady`, an
+// `Error` subclass, yields an Effect that `read()`'s covers, so the channel is
+// `read()`'s `Error | ApiError` and holds no `"NotReady"` tag (see
+// catch-absorbed-tag). Stock TypeScript rejects the counterpart
+// `Effect.gen(...).pipe(Effect.catchTag("NotReady", ...))` with TS2345.
+// Write the class pattern `when NotReady:` instead. alchemy-63.
+// @vibelang-diagnostics-next-line EK4830:off
+class ApiError extends Data.TaggedError("ApiError")<{ status: number }> {}
+// @vibelang-diagnostics-next-line EK4830:off
+class NotReady extends Data.TaggedError("NotReady")<{}> {}
+
+effect function read(): string | undefined!Error | ApiError! { return undefined }
+
+export const byTag = effect () =>
+  (try effect {
+    const host = try read()
+    return (host ? host : throw new NotReady())
+  }) catch effect (e) => match (e) {
+    when { _tag: "NotReady" }: "none";
+    default: throw e;
+  }

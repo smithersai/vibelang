@@ -54,3 +54,5 @@ FuzzFunctionBoundaries rule:return-type-unknown compiler VIP-1: a written `unkno
 FuzzFunctionBoundaries corpus:fz-func-return-type-unknown compiler VIP-1: minimized return-type-unknown violation; lane vip-core2
 FuzzLegacyEffectAlias legacy-global compiler VIP-3: missing identity-selected EK4856 transition warning; lane impl-hunt-func
 FuzzLegacyEffectAlias corpus:legacy-global compiler VIP-3: minimized old global alias; lane impl-hunt-func
+FuzzEffectChannelsDeclaration feature:effect-channels:vibe-callee compiler Chapter 1 declaration identity: an unannotated .vibe callee adds its E and R but no run, so its never error is no infer-E candidate and `quiet(n)` beside `Effect<A, Error | ApiError>` declares `ApiError | Error` where Effect.fn declares `Error`; lane migfix-alchemy
+FuzzEffectChannelsDeclaration corpus:vibe-callee-beside-union-channel compiler minimized feature:effect-channels:vibe-callee; lane migfix-alchemy

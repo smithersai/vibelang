@@ -266,6 +266,8 @@ InvalidCode
 
 Catch, then `match` on the failure: an arm such as `when ItemMissing:` handles that error class, and `default: throw error` passes the others on with their types (`string!InvalidCode`). The expression form takes the same `match`: `effect { return (try findItem(input)).label } catch effect (error) => match (error) { when ItemMissing: "Out of catalog"; default: throw error; }`. A `match` without `default` must handle every failure the Effect can raise (compile error EK4701), so a complete match needs no rethrow. `error is ItemMissing` tests one class in an `if`. `catchTag` removes the selected tagged case, and accepts a nonempty array of tags for one handler; `catchTags` takes a table of separate handlers.
 
+The handler's failure type is the error channel, which an effect function or block infers as `Effect.gen` does. A `throw` adds its class unless an Effect the body runs already fails with a supertype of it. Beside `try read()`, where `read()` fails with `Error | ApiError`, `throw new NotReady()` of a class that extends `Error` adds nothing: the channel stays `Error | ApiError`. A tag arm `when { _tag: "NotReady" }:` then finds no member with that tag, and TypeScript reports `TS2367`, as it rejects `catchTag("NotReady", …)` on the same Effect. Match the class instead: `when NotReady:` tests `instanceof`, so it handles the failure whatever the channel says.
+
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-13, VIP-14
 // run: try Console.log((try withTagTable("")).label); try Console.log((try withFilter("book")).label); try Console.log((try withPredicate("book")).label); try Console.log((try flip(withFilter("")))._tag); try Console.log((try flip(withPredicate("")))._tag)

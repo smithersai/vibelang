@@ -1,0 +1,36 @@
+// expect-result: {"missing":"none","present":"host","api":"api 503"}
+// An effect block's error channel is inferred as Effect.gen infers it
+// (001-functions, Inferred types). The block runs `read()`, an
+// `Effect<_, Error | ApiError>`, and throws `NotReady`, an `Error` subclass,
+// that is, it yields `Effect.fail(new NotReady())`. That run is a subtype of
+// `read()`'s, so the generator's yield type drops it, and the channel is
+// `read()`'s as written: `Error | ApiError`. So the `ApiError` tag arm types,
+// and `NotReady` needs its class pattern, which tests `instanceof`, not the
+// static union (004-match). alchemy-63: kubernetes `waitForLoadBalancer`.
+// @vibelang-diagnostics-next-line EK4830:off
+class ApiError extends Data.TaggedError("ApiError")<{ status: number }> {}
+// @vibelang-diagnostics-next-line EK4830:off
+class NotReady extends Data.TaggedError("NotReady")<{}> {}
+
+effect function read(value: string | undefined | number): string | undefined!Error | ApiError! {
+  if (typeof value === "number") throw new ApiError({ status: value })
+  return value
+}
+
+export const hostname = effect (value: string | undefined | number) =>
+  (try effect {
+    const host = try read(value)
+    return (host ? host : throw new NotReady())
+  }) catch effect (e) => match (e) {
+    when NotReady: "none";
+    when { _tag: "ApiError" }: `api ${e.status}`;
+    default: throw e;
+  }
+
+export effect function main() {
+  return {
+    missing: try hostname(undefined),
+    present: try hostname("host"),
+    api: try hostname(503)
+  }
+}

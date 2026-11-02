@@ -39,7 +39,9 @@ func (a *analyzer) flowOf(node *ast.Node) *effectInfo {
 			info.add(a.provideFlow(n)) // provide Layer { ... } (provide.go)
 		case n.Kind == ast.KindThrowStatement:
 			n.ForEachChild(visit)
-			info.addError(a.thrownType(n), n.Expression()) // a typed failure everywhere outside a hatch (D282)
+			thrown := a.thrownType(n)
+			info.addError(thrown, n.Expression()) // a typed failure everywhere outside a hatch (D282)
+			info.addThrow(a.checker, thrown)      // `return yield* Effect.fail(e)`, an Effect<never, E>
 		case n.Kind == ast.KindCallExpression && a.resolvingProgramCall(n) != nil:
 			// A do or throw expression being typed: it looks up no service
 			// and has no trusted failures (callSignature).
@@ -209,11 +211,17 @@ func (a *analyzer) addCall(info *effectInfo, call *ast.Node) {
 	// knows only its type parameters. A callee with a contract adds what the
 	// contract says.
 	if callee := implementationOf(sig.Declaration()); callee != nil && isLowerable(callee) && sig.Target() == nil && !a.isFactory(callee) && (a.isSplittable(callee) || a.isEffect(callee)) {
-		if e, r, ok := a.calleeContract(callee, call, sig); ok {
+		if t, e, r, ok := a.calleeContract(callee, call, sig); ok {
 			info.addError(e, call)
 			info.addRequirement(r, call)
+			info.addRun(a.checker, t)
 		} else if calleeInfo := a.effectOf(callee); calleeInfo != nil {
 			info.addFrom(calleeInfo, call)
+			if isProgramArrow(callee) {
+				// A do or throw expression's body is the enclosing body's own
+				// code, as Effect.gen inlines it: its runs are this body's.
+				info.runs = append(info.runs, calleeInfo.runs...)
+			}
 		}
 		return
 	}

@@ -65,44 +65,63 @@ func (info *effectInfo) addRun(c *checker.Checker, t *checker.Type) {
 	}
 }
 
+// addThrow records that the body throws t: in an Effect generator that is
+// `return yield* Effect.fail(e)`, a run of an Effect<never, t>.
+func (info *effectInfo) addThrow(c *checker.Checker, t *checker.Type) {
+	if t != nil && t.Flags()&checker.TypeFlagsNever == 0 {
+		info.runs = append(info.runs, effectRun{c.GetNeverType(), t, c.GetNeverType()})
+	}
+}
+
 // channelUnions returns info's E and R as an Effect type of effect writes
 // them. It reads them as TypeScript reads an Effect.gen body's (Chapter 7's
-// declaration identity): the function's yield type is the subtype-reduced
-// union of the Effects it yields, so a run that is a subtype of another run
-// adds nothing, and two runs whose error aliases hold the same members declare
-// the first alias, not its members; what is left joins with subtype reduction,
-// as `infer E` joins its candidates. Dropping a run keeps the channels mutually
-// assignable: Effect is covariant in E and R, so what it adds is in the run
-// that covers it. A channel no recorded run added, such as a throw, always
-// stays.
+// declaration identity). The body's yield type is the subtype-reduced union of
+// the Effects it yields, a throw's `Effect.fail(e)` included; so a run that is
+// a subtype of another run adds nothing, and two runs whose error aliases hold
+// the same members declare the first alias, not its members. `infer E` then
+// takes one candidate from each run that is left: one distinct candidate is
+// the channel as written, unreduced, and several join with subtype reduction.
+// So a run of `Effect<A, Error | ApiError>` beside a throw of an `Error`
+// subclass declares `Error | ApiError` (alchemy-63). Dropping a run keeps the
+// channels mutually assignable: Effect is covariant in E and R, so what it
+// adds is in the run that covers it. A channel no recorded run added, such as
+// a provide block's, is a candidate of its own.
 func (a *analyzer) channelUnions(info *effectInfo, effect *checker.Type) (errors, requirements *checker.Type) {
 	c := a.checker
-	keptErrors, keptRequirements := info.errors, info.requirements
-	if effect != nil && len(info.runs) > 1 {
-		programs := make([]*checker.Type, len(info.runs))
-		for i, run := range info.runs {
-			programs[i] = c.NewTypeReference(effect, []*checker.Type{run.success, run.errors, run.requirements})
-		}
-		reduced := c.GetUnionTypeEx(programs, checker.UnionReductionSubtype)
-		kept := []*checker.Type{reduced}
-		if reduced.Flags()&checker.TypeFlagsUnion != 0 {
-			kept = reduced.Types()
-		}
-		survives := func(channel func(effectRun) *checker.Type) func(*checker.Type) bool {
-			held, dropped := map[*checker.Type]bool{}, map[*checker.Type]bool{}
-			for i, run := range info.runs {
-				if slices.Contains(kept, programs[i]) {
-					held[channel(run)] = true
-				} else {
-					dropped[channel(run)] = true
-				}
-			}
-			return func(t *checker.Type) bool { return held[t] || !dropped[t] }
-		}
-		keptErrors = core.Filter(info.errors, survives(func(run effectRun) *checker.Type { return run.errors }))
-		keptRequirements = core.Filter(info.requirements, survives(func(run effectRun) *checker.Type { return run.requirements }))
+	if effect == nil || len(info.runs) == 0 {
+		return c.GetUnionTypeEx(info.errors, checker.UnionReductionSubtype), c.GetUnionTypeEx(info.requirements, checker.UnionReductionSubtype)
 	}
-	return c.GetUnionTypeEx(keptErrors, checker.UnionReductionSubtype), c.GetUnionTypeEx(keptRequirements, checker.UnionReductionSubtype)
+	programs := make([]*checker.Type, len(info.runs))
+	for i, run := range info.runs {
+		programs[i] = c.NewTypeReference(effect, []*checker.Type{run.success, run.errors, run.requirements})
+	}
+	reduced := c.GetUnionTypeEx(programs, checker.UnionReductionSubtype)
+	kept := []*checker.Type{reduced}
+	if reduced.Flags()&checker.TypeFlagsUnion != 0 {
+		kept = reduced.Types()
+	}
+	candidates := func(listed []*checker.Type, channel func(effectRun) *checker.Type) []*checker.Type {
+		var out []*checker.Type
+		for i, run := range info.runs {
+			if slices.Contains(kept, programs[i]) {
+				out = core.AppendIfUnique(out, channel(run))
+			}
+		}
+		for _, t := range listed {
+			if !slices.ContainsFunc(info.runs, func(run effectRun) bool { return channel(run) == t }) {
+				out = core.AppendIfUnique(out, t)
+			}
+		}
+		return out
+	}
+	join := func(ts []*checker.Type) *checker.Type {
+		if len(ts) == 1 {
+			return ts[0]
+		}
+		return c.GetUnionTypeEx(ts, checker.UnionReductionSubtype)
+	}
+	return join(candidates(info.errors, func(run effectRun) *checker.Type { return run.errors })),
+		join(candidates(info.requirements, func(run effectRun) *checker.Type { return run.requirements }))
 }
 
 func (info *effectInfo) addError(t *checker.Type, source *ast.Node) {
