@@ -9,6 +9,8 @@ import { chapter, tools } from "./spec-witness.mjs"
 // web platform global also has. The list is computed here from the pinned
 // packages, so an Effect or TypeScript bump fails until the chapter follows.
 const effectDir = join(tools, "node_modules/effect")
+// The chapter names the pinned version, so the list is read after its words.
+const effectVersion = JSON.parse(readFileSync(join(effectDir, "package.json"), "utf8")).version
 
 function subpathNamespaces(section) {
   const subpaths = [...section.matchAll(/`effect\/([a-z][a-z-]*)`/g)].map(m => m[1])
@@ -47,7 +49,9 @@ test("chapter 5 lists every subpath namespace that a web platform global shares"
   const platform = platformNames()
   const shared = [...namespaces.keys()].filter(name => platform.has(name)).sort()
   assert.deepEqual(shared, ["Event", "Headers", "KeyFormat", "Response", "Transferable", "Worker"])
-  const list = section.slice(section.indexOf("In effect 4.1.0 these are"))
+  const start = section.indexOf(`In effect ${effectVersion} these are`)
+  assert.ok(start >= 0, `chapter 5 names effect ${effectVersion}, the pinned version`)
+  const list = section.slice(start)
   for (const name of shared) {
     assert.ok(list.includes("`" + name + "` (`effect/" + namespaces.get(name) + "`"), name)
     const typeOnly = !platform.get(name).has("value")
