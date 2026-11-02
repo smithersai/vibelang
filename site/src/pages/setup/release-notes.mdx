@@ -2065,6 +2065,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Workspace dependency cycles could make `setup` miss Bun preloads and Vite wiring for packages that imported migrated code. Every package that reaches the code is now wired.
 
+
+- Changes to the formatter specification could pass the pre-merge checks without running one of its quote guards; every static-rule quote guard is now checked for inclusion in that gate.
+
 ### Known bugs
 
 These bugs were found and confirmed and are being fixed; please don't re-report them, and each entry moves to the fixed list when its fix lands.
