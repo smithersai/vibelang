@@ -1,6 +1,5 @@
 {
   "repo": "t3code",
   "pattern": "apps/desktop/src/snapShot/ActiveWindow.ts and LinuxSnapShot.ts move an already approved native directive boundary",
-  "pending": { "key": "t3code:platform-split-file-pragmas", "owner": "migfix-t3code" },
-  "input": { "kind": "pragma", "detached": true, "newline": "\n", "blank": 2, "pending": "t3code:platform-split-file-pragmas" }
+  "input": { "kind": "pragma", "detached": true, "newline": "\n", "blank": 2 }
 }

@@ -15,11 +15,9 @@ const native = process.env.VIBELANG_BINARY ?? fileURLToPath(new URL("../../../..
 const effect = fileURLToPath(new URL("../../../../experiments/node_modules/effect", import.meta.url))
 const quote = "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output"
 const moveQuote = "The quick fix and the codemod move the code into a sibling"
-const raw = process.env.VIBELANG_PLATFORM_BOUNDARY_RAW === "1"
 const pragma = "// @effect-diagnostics nodeBuiltinImport:off -- approved existing TypeScript platform boundary"
 const corpora = ["t3code-platform-split-file-pragmas.json", "t3code-platform-split-schema-value-import.json"]
   .map(name => JSON.parse(readFileSync(new URL("./corpus/" + name, import.meta.url), "utf8")))
-class BoundaryGap extends Error {}
 function sourceOf(input) {
   const gap = input.detached ? input.newline.repeat(input.blank) : input.newline
   const head = pragma + gap
@@ -57,35 +55,23 @@ function check(input) {
       "the pragma control must prove the native lint is active: " + unsuppressed.output)
     const split = splitPlatform(original, "original.ts", ts)
     assert.ok(split, "platform import is a real split candidate")
-    if (split.refused) {
-      assert.ok(split.refused.includes("original.ts"))
-      if (!raw && input.pending) assert.fail("XPASS " + input.pending)
+    // 3e2aa319488c: an exported type that reads the moved schema value, under
+    // its own name or another, would change the module's declarations, so the
+    // split refuses and the module stays whole. A directive boundary moves.
+    if (input.kind === "schema") {
+      const typeName = input.collision ? input.name : "Public" + input.name
+      assert.match(split.refused ?? "", new RegExp("^original\\.ts: the type " + typeName + " reads the value " + input.name + ","))
       return
     }
+    assert.ok(!split.refused, "the split moves the platform boundary: " + split.refused)
     assert.ok(split.platform.includes("node:fs"))
     const helper = split.platform.replaceAll('"./original.ts"', '"./main.vibe"')
     writeFileSync(join(root, "main.vibe"), split.module)
     writeFileSync(join(root, "original.platform.ts"), helper)
+    // 350a4ae40429: the sibling keeps the module's file-wide directives.
     const after = compile(["main.vibe", "original.platform.ts"])
-    if (after.status === 0) {
-      if (!raw && input.pending) assert.fail("XPASS " + input.pending)
-      if (input.kind === "schema") {
-        const declaration = helper.indexOf("const " + input.name)
-        const decode = helper.indexOf("const decode")
-        assert.ok(declaration >= 0 && decode > declaration, "schema value initializes before decode")
-      }
-      return
-    }
-    const codes = [...after.output.matchAll(/error (EK\d+|TS\d+)/g)].map(match => match[1])
-    if (input.kind === "pragma" && input.pending) {
-      assert.ok(!helper.includes(pragma), "the pending family is only the missing moved directive")
-      assert.ok(codes.length > 0 && codes.every(code => code === "EK3877"), after.output)
-    } else if (input.kind === "schema" && input.pending) {
-      assert.match(helper, new RegExp("import type \\{ " + input.name + " \\}"))
-      assert.ok(codes.includes("TS2693"), after.output)
-      assert.ok(codes.every(code => ["TS2693", "TS2345", "TS2322"].includes(code)), after.output)
-    } else assert.fail("positive control failed: " + after.output)
-    if (raw) throw new BoundaryGap(input.pending + ": moved platform boundary must retain source validity")
+    assert.equal(after.status, 0, "a moved platform boundary retains source validity: " + after.output)
+    assert.ok(helper.includes(pragma), "the sibling carries the file directive")
   } finally { rmSync(root, { recursive: true, force: true }) }
 }
 test("platform boundary properties quote the accepted source contract", () => {
@@ -101,7 +87,6 @@ test("platform boundaries span directive gaps, line endings and same-name schema
   fc.assert(fc.property(fc.record({
     kind: fc.constantFrom("pragma", "schema"), newline: fc.constantFrom("\n", "\r\n"),
     blank: fc.integer({ min: 2, max: 4 }), name: fc.constantFrom("Shape", "Settings", "Payload"),
-  }), input => check({ ...input, collision: true, detached: input.kind === "pragma",
-    pending: input.kind === "pragma" ? (input.newline === "\n" ? "t3code:platform-split-file-pragmas" : undefined) : "t3code:platform-split-schema-value-import" })),
+  }), input => check({ ...input, collision: true, detached: input.kind === "pragma" })),
   { seed: 9012245, numRuns: 12, endOnFailure: true })
 })
