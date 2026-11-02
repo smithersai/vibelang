@@ -104,7 +104,7 @@ The configured category controls reporting: an `"error"` makes both `vibelang` a
 
 ### Declaration import spelling
 
-Root `vibelang.declarationImportStyle` is `".js"` (the default), `"extensionless"` or `".ts"` ([VIP-30](../vips/0030-config-files.md#decision), amended). It decides how a package declaration in the output directory spells a relative import of a `.vibe` module ([Declaration output](001-functions.md#declaration-output)); a source-adjacent sidecar keeps the source's `./x.vibe` and JavaScript output keeps `./x.js` under every setting. Any other value is a configuration error. It sits in the legacy `vibelang` section, so a child config's own `vibelang` section replaces an inherited one as a whole, as an explicit child legacy section does for [legacy severity maps](#legacy-severity-maps).
+Root `vibelang.declarationImportStyle` is `".js"` (the default), `"extensionless"` or `".ts"` ([VIP-30](../vips/0030-config-files.md#decision), amended). It decides how a package declaration in the output directory spells a relative import of a `.vibe` or `.vibex` module ([Declaration output](001-functions.md#declaration-output)); a source-adjacent sidecar keeps the source's `./x.vibe` and JavaScript output keeps `./x.js` under every setting. A relative `./x.vibex` is declared as its JavaScript output by default, `./x.jsx` under `"jsx": "preserve"` and `./x.js` otherwise; what the other two settings declare for it is not yet decided. Any other value is a configuration error. It sits in the legacy `vibelang` section, so a child config's own `vibelang` section replaces an inherited one as a whole, as an explicit child legacy section does for [legacy severity maps](#legacy-severity-maps).
 
 ### Legacy severity maps
 

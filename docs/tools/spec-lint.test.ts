@@ -67,8 +67,16 @@ test("declaration-import-style-scope rejects round 14 ASTRA-1's unscoped option 
   defect.set("src/001-functions.md", spec.get("src/001-functions.md")!.replace(/A package whose sources spell relative imports another way[^\n]*?is the default\.[^\n]*?(?= Under every setting)/, astra1))
   defect.set("vips/0027-declaration-output.md", spec.get("vips/0027-declaration-output.md")!.replace(/\n- \*\*Amended 2026-11-02: declaration import spelling\.\*\*[^\n]*\n/, "\n"))
   expect(defect.get("src/001-functions.md")).not.toBe(spec.get("src/001-functions.md"))
-  expect(lint(defect, rule("declaration-import-style-scope")).map(v => `${v.file} ${v.message}`)).toEqual([
+  // The `.vibex` half of the rule (OPUS-5) also fires on this bullet; this test is about sidecars.
+  expect(lint(defect, rule("declaration-import-style-scope")).map(v => `${v.file} ${v.message}`).filter(m => !m.includes(".vibex"))).toEqual([
     "src/001-functions.md a paragraph naming `declarationImportStyle` does not say that source-adjacent sidecars keep their spelling",
     "vips/0027-declaration-output.md the VIP does not publish `vibelang.declarationImportStyle`, as decided detail 263 asks"
+  ])
+})
+
+test("declaration-import-style-scope rejects round 14 OPUS-5's `.vibe`-only declaration spelling", () => {
+  const defect = withEdit("src/007-tooling.md", text => text.replace(/(It decides how a package declaration in the output directory spells a relative import of a `\.vibe`)[^(]*( module)/, "$1$2").replace(/ A relative `\.\/x\.vibex` [^\n]*?(?= It sits in the legacy)/, ""))
+  expect(lint(defect, rule("declaration-import-style-scope")).map(v => `${v.file}:${v.line} ${v.message}`)).toEqual([
+    expect.stringMatching(/^src\/007-tooling\.md:\d+ a chapter paragraph naming `declarationImportStyle` states no rule for a `\.\/x\.vibex` import$/)
   ])
 })

@@ -152,13 +152,18 @@ const configKeys: Rule = {
 // and VIP-30 both publish it.
 const importStyleScope: Rule = {
   name: "declaration-import-style-scope",
-  finding: "r14 ASTRA-1: 001:483 and 007:107 gave declarationImportStyle no sidecar boundary; VIP-27 and VIP-30 did not name it",
+  finding: "r14 ASTRA-1 and OPUS-5: 001:483 and 007:107 gave declarationImportStyle no sidecar boundary and no `.vibex` rule; VIP-27 and VIP-30 did not name it",
   check(spec) {
     const out: Violation[] = []
     for (const [file, text] of [...chapters(spec), ...acceptedVips(spec)]) {
       for (const p of paragraphs(text)) {
         if (p.text.includes("declarationImportStyle") && !/sidecar/i.test(p.text)) {
           out.push({ rule: this.name, file, line: lineAt(text, p.index), message: "a paragraph naming `declarationImportStyle` does not say that source-adjacent sidecars keep their spelling" })
+        }
+        // Round 14 OPUS-5: VIP-39 made `.vibex` a source kind beside `.vibe`;
+        // a chapter's declaration-spelling rule says what a `.vibex` import gets.
+        if (file.startsWith("src/") && p.text.includes("declarationImportStyle") && !/`\.\/[\w-]+\.vibex`/.test(p.text)) {
+          out.push({ rule: this.name, file, line: lineAt(text, p.index), message: "a chapter paragraph naming `declarationImportStyle` states no rule for a `./x.vibex` import" })
         }
       }
     }
