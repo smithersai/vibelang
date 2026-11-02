@@ -273,6 +273,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A guarded `do` body such as `x !== undefined && do { x.length }` could report that `x` was possibly `undefined`; `&&`, `||` and `??` now retain the source guard’s TypeScript narrowing, evaluate the left operand once and still invalidate narrowing after an assignment.
 
+- The `is` redeclaration checks stopped at stale specification quotes after binding homes were clarified. They now check the current VIP-7 rule: repeated names inside one pattern retain their initialization rules, while separate patterns sharing a home are redeclarations.
+
 - Missing-runtime fuzz checks assumed every Effect function imported `vibelang-runtime`; they now inspect parsed module imports and preserve independent errors when no runtime helper is needed.
 
 - Migrating an Effect pipeline could change its public declaration from an expanded intersection to a named alias, as in opencode's reconnect service; the quick fix now keeps the native `.pipe(...)` when uncurrying a stage would change inferred type names.

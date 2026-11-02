@@ -9,13 +9,15 @@ import (
 )
 
 const reviewIsRedeclarationsTarget = "FuzzReviewIsRedeclarations"
-const reviewIsHomeQuote = "In an ordinary block expression or an `if` head, its `let` and `const` names belong to the nearest enclosing lexical block"
+const reviewIsHomeQuote = "In an ordinary block expression or an `if` head, its `let` and `const` names belong to the nearest enclosing lexical home"
 const reviewIsBindingQuote = "As with normal binding statements,\nthe bindings introduced by binding patterns\nare established in the nearest block scope"
 const reviewIsDuplicateQuote = "within the scope of an entire top-level pattern,\na given name can appear in multiple binding patterns,\nas long as all instances use the same binding type keyword."
-const reviewIsRepeatQuote = "repeated binding patterns keep the pinned duplicate-initialization rules and their `or` replacement exception."
+const reviewIsRepeatQuote = "The pinned duplicate-initialization rules and their `or` replacement exception apply within one top-level pattern."
+
+const reviewIsRedeclarationQuote = "Two top-level patterns that bind one name in the same lexical home are a redeclaration, as two `let` declarations are"
 
 func TestReviewIsRedeclarationsQuoted(t *testing.T) {
-	for _, quote := range []string{reviewIsHomeQuote, reviewIsRepeatQuote} {
+	for _, quote := range []string{reviewIsHomeQuote, reviewIsRepeatQuote, reviewIsRedeclarationQuote} {
 		if !strings.Contains(SpecText("004-match.md"), quote) {
 			t.Fatalf("Chapter4 no longer says %q; update the binding-home oracle", quote)
 		}
