@@ -152,7 +152,7 @@ TypeScript consumers see exported VibeLang functions as returning ordinary Effec
 
 An initializer can immediately follow the shorthand: `const e: number!!=Effect.succeed(1)` means `const e: number!! = Effect.succeed(1)`. Ordinary `!=` and `!==` expressions keep their TypeScript meaning.
 
-Use `A!E!R` or `Effect.Effect<A, E, R>`, rather than the retired bare global `Effect<A, E, R>` alias. Its migration warning is `EK4856`; `vibelang --fix` selects the resolved legacy symbol and preserves grouping. Local and imported types named `Effect` keep their TypeScript meaning. Alias removal happens only in a coordinated compiler and codemod release.
+Use `A!E!R` or `Effect.Effect<A, E, R>`, rather than the retired bare global `Effect<A, E, R>` alias. Its migration warning is `EK4856`; `vibelang --fix` selects the resolved legacy symbol and writes `A!E!R` where it needs no new parentheses, such as `number!!` for `Effect<number>`, and `Effect.Effect<A, E, R>` elsewhere, such as `Effect.Effect<A | B, E>`, `Effect.Effect<A, E>[]` and an `extends` or `implements` clause. Local and imported types named `Effect` keep their TypeScript meaning. Alias removal happens only in a coordinated compiler and codemod release.
 
 ---
 

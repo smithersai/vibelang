@@ -1,0 +1,2 @@
+write (number | string)!!.
+write (number | string)!Error.

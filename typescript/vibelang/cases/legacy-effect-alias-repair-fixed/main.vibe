@@ -1,0 +1,20 @@
+// expect:
+// Loop round 15 OPUS-3, decided detail 260 (2026-11-02): EK4856's repair writes
+// A!E!R where that needs no new parentheses, Effect.Effect<A, E, R> otherwise.
+// The repaired spelling of legacy-effect-alias-repair-positions, one line each.
+// A written Effect.Effect<…> outside an interface extends element still draws the
+// style advisory EK4833 (007), which asks for the shorthand with its parentheses.
+export let v: number!!;
+export let e: string!Error;
+export let n: string!never;
+export let u: Effect.Effect<number | string>;
+export let a: Effect.Effect<number, Error>[];
+export let m: Effect.Effect<number> | undefined;
+export let t: [number!!];
+export let f: () => string!Error;
+export interface I extends Effect.Effect<number> {}
+type Same<A, B> = [A] extends [B] ? [B] extends [A] ? true : false : false
+export const sameV: Same<typeof v, Effect.Effect<number>> = true
+export const sameE: Same<typeof e, Effect.Effect<string, Error>> = true
+export const sameT: Same<typeof t, [Effect.Effect<number>]> = true
+export const sameF: Same<typeof f, () => Effect.Effect<string, Error>> = true

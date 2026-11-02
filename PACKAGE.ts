@@ -91,6 +91,7 @@ const specTests = [
   "TestSchemaDeclarationCommentsQuoted",
   "TestDeclarationStyleRulesQuoted",
   "TestLegacyEffectAliasQuoted",
+  "TestLegacyEffectAliasRepairQuoted",
   "TestFixScopeRulesQuoted",
   "TestEffectQualifierQuoted",
   "TestServiceImplicitAnyQuoted",
