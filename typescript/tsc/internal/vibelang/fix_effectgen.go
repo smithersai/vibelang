@@ -136,6 +136,7 @@ type generatorCall struct {
 	stages     []*ast.Node // the stages after an Effect.fn's generator
 	module     string      // the text that names Effect at the call
 	selfIsThis bool        // Effect.gen({ self: this }, …)
+	returns    string      // the Effect type an Effect.fn.Return<A, E, R> annotation names, or ""
 }
 
 // readGeneratorCall reads call. It returns nil for a call of another API,
@@ -179,11 +180,39 @@ func readGeneratorCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 		g.module = "Effect" // Effect's own function, named by a bare global
 	}
 	generator := g.generator
-	if !isGeneratorExpression(generator) || ast.GetFunctionFlags(generator)&ast.FunctionFlagsAsync != 0 || generator.Type() != nil || generator.Body() == nil ||
+	if !isGeneratorExpression(generator) || ast.GetFunctionFlags(generator)&ast.FunctionFlagsAsync != 0 || generator.Body() == nil ||
 		!g.isFn && (len(generator.Parameters()) > 0 || generator.TypeParameters() != nil) {
 		return g, "its generator is not a function* () { … } written in place"
 	}
+	if generator.Type() != nil {
+		// Effect.fn's generator may say what its function's Effect is:
+		// function* (): Effect.fn.Return<A, E, R> is effect (): Effect.Effect<A, E, R>.
+		if g.returns = fnReturnEffectType(file, generator.Type()); g.returns == "" || !g.isFn {
+			return g, "its generator has a return type other than Effect.fn.Return"
+		}
+	}
 	return g, ""
+}
+
+// fnReturnEffectType returns the Effect type that t, a written
+// Ns.fn.Return<A, E, R>, names, Ns.Effect<A, E, R>, or "" for another type.
+func fnReturnEffectType(file *ast.SourceFile, t *ast.Node) string {
+	if !ast.IsTypeReferenceNode(t) || t.TypeArguments() == nil || len(t.TypeArguments()) == 0 || len(t.TypeArguments()) > 3 {
+		return ""
+	}
+	name := t.AsTypeReferenceNode().TypeName
+	if !ast.IsQualifiedName(name) || name.AsQualifiedName().Right.Text() != "Return" {
+		return ""
+	}
+	fn := name.AsQualifiedName().Left
+	if !ast.IsQualifiedName(fn) || fn.AsQualifiedName().Right.Text() != "fn" || !ast.IsIdentifier(fn.AsQualifiedName().Left) {
+		return ""
+	}
+	var arguments []string
+	for _, argument := range t.TypeArguments() {
+		arguments = append(arguments, nodeText(file, argument))
+	}
+	return fn.AsQualifiedName().Left.Text() + ".Effect<" + strings.Join(arguments, ", ") + ">"
 }
 
 // planEffectGen plans EK1002's fix for call: the edits, or the note that says
@@ -288,6 +317,12 @@ func planEffectGen(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *fo
 	body := applyEdits(text[:blockEnd], edits)[blockStart:]
 
 	switch {
+	case g.isFn && len(g.stages) == 0 && plainMemberDestination(a, outer):
+		program, why := plainArrowEffectText(file, g, body)
+		if why != "" {
+			return refuse(why)
+		}
+		return &formRewrite{edits: []sourceEdit{{start, end, program}}, description: "a function that returns an effect block"}
 	case g.isFn:
 		program, why := effectFnText(c, file, g, body)
 		if why != "" {
@@ -394,6 +429,12 @@ func effectFnText(c *checker.Checker, file *ast.SourceFile, g *generatorCall, bo
 	}
 
 	signature := applyEdits(text[:close], head)[open:]
+	if g.returns != "" {
+		if len(g.stages) > 0 {
+			return "", "its generator's return type names the Effect before its stages"
+		}
+		signature += ": " + g.returns // a span keeps the Effect's type
+	}
 	keepsThis := generator.Name() != nil || usesFunctionThis(generator)
 	if g.span == nil && len(g.stages) == 0 {
 		if keepsThis {
@@ -420,6 +461,61 @@ func effectFnText(c *checker.Checker, file *ast.SourceFile, g *generatorCall, bo
 		return "effect function " + nameOf(generator) + signature + " { return " + running + " }", ""
 	}
 	return "effect " + signature + " => " + running, ""
+}
+
+// plainMemberDestination reports whether node is an object literal's
+// property whose destination member is a plain function as EK4301 reads it,
+// by its declaration with type parameters uninstantiated (D485, D512), such
+// as Context.Reference's defaultValue: () => Service. An effect function there
+// is EK4301; a plain arrow that returns an effect block is what the member
+// declares, and its callers get the same cold program.
+func plainMemberDestination(a *analyzer, node *ast.Node) bool {
+	c := a.checker
+	property := node.Parent
+	if property == nil || !ast.IsPropertyAssignment(property) || property.Initializer() != node || property.Name() == nil ||
+		!ast.IsIdentifier(property.Name()) && !ast.IsStringLiteral(property.Name()) {
+		return false
+	}
+	contextual := c.GetContextualType(property.Parent, checker.ContextFlagsNone)
+	if contextual == nil {
+		return false
+	}
+	member := c.GetPropertyOfType(contextual, property.Name().Text())
+	if member == nil {
+		return false
+	}
+	declared := a.declaredPropertyType(member)
+	return declared != nil && len(c.GetSignaturesOfType(declared, checker.SignatureKindCall)) > 0 && a.isPlainFunctionType(declared)
+}
+
+// plainArrowEffectText writes g, an Effect.fn with no stages, as a plain arrow
+// that returns its program: (a) => effect { B }, with its span around it.
+func plainArrowEffectText(file *ast.SourceFile, g *generatorCall, body string) (string, string) {
+	generator := g.generator
+	if generator.Name() != nil || usesFunctionThis(generator) {
+		return "", "the generator has a name or reads this, which an arrow function has no own of"
+	}
+	open := generator.ParameterList().Pos() - 1
+	if generator.TypeParameterList() != nil {
+		open = generator.TypeParameterList().Pos() - 1
+	}
+	close := parametersEnd(file, generator)
+	if close < 0 || open < 0 {
+		return "", "its parameters could not be read"
+	}
+	signature := file.Text()[open:close]
+	if g.returns != "" {
+		signature += ": " + g.returns
+	}
+	program := "effect " + body
+	if g.span != nil {
+		arguments := []string{program}
+		for _, argument := range g.span {
+			arguments = append(arguments, nodeText(file, argument))
+		}
+		program = g.module + ".withSpan(" + strings.Join(arguments, ", ") + ")"
+	}
+	return signature + " => " + program, ""
 }
 
 // nameOf returns generator's name, or "".
@@ -597,7 +693,7 @@ func scanEffectGenBody(c *checker.Checker, a *analyzer, file *ast.SourceFile, ge
 			if lexical {
 				s.why = "the generator reads super"
 			}
-		case ast.IsMetaProperty(node):
+		case ast.IsMetaProperty(node) && node.AsMetaProperty().KeywordToken == ast.KindNewKeyword:
 			if lexical {
 				s.why = "the generator reads new.target"
 			}

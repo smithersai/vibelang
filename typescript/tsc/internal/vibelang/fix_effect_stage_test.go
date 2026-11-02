@@ -25,6 +25,8 @@ func TestEffectStageFixes(t *testing.T) {
 			"export const f = effect (n: number) => {\n  const v = (p(n) |> Effect.map(%, (x) => x + 1)) catch (e) => e.length\n  return v\n}\n"},
 		{"catch under try drops the try", "export const f = (n: number) => Effect.gen(function* () {\n  const v = yield* Effect.catch(p(n), (e) => Effect.succeed(e.length))\n  return v\n})\n",
 			"export const f = effect (n: number) => {\n  const v = p(n) catch (e) => e.length\n  return v\n}\n"},
+		{"a generator yields one it holds", "export const v = Effect.gen(function* () {\n  return yield* Effect.gen(function* () {\n    return 1\n  })\n})\n",
+			"export const v = effect {\n  return try effect {\n    return 1\n  }\n}\n"},
 		{"a generator yields one with a body", "export const f = (n: number) => Effect.gen(function* () {\n  const v = yield* Effect.gen(function* () {\n    const k = yield* p(n)\n    return k + 1\n  })\n  return v\n})\n",
 			"export const f = effect (n: number) => {\n  const v = try effect {\n    const k = try p(n)\n    return k + 1\n  }\n  return v\n}\n"},
 		{"sync held", "export const v = Effect.sync(() => 1)\n", "export const v = effect { return 1 }\n"},
@@ -40,14 +42,18 @@ func TestEffectStageFixes(t *testing.T) {
 		{"suspend run", "export const f = (n: number) => Effect.gen(function* () {\n  const v = yield* Effect.suspend(() => p(n))\n  return v\n})\n",
 			"export const f = effect (n: number) => {\n  const v = try p(n)\n  return v\n}\n"},
 		{"withSpan run", "export const f = (n: number) => Effect.gen(function* () {\n  const v = yield* p(n).pipe(Effect.withSpan(\"load\"))\n  return v\n})\n",
-			"export const f = effect (n: number) => {\n  const v = try (p(n) |> withSpan(%, \"load\"))\n  return v\n}\n"},
+			"export const f = effect (n: number) => {\n  const v = try withSpan(p(n), \"load\")\n  return v\n}\n"},
 		{"provide run", "export const f = (n: number) => Effect.gen(function* () {\n  const v = yield* p(n).pipe(Effect.provide(Layer.empty))\n  return v\n})\n",
 			"export const f = effect (n: number) => {\n  const v = try effect { provide Layer.empty { return try p(n) } }\n  return v\n}\n"},
+		{"provideService run", "service Cache { static readonly key = \"Cache\"; n: number }\nexport const f = (n: number) => Effect.gen(function* () {\n  const v = yield* p(n).pipe(Effect.provideService(Cache, { n: 1 }))\n  return v\n})\n",
+			"service Cache { static readonly key = \"Cache\"; n: number }\nexport const f = effect (n: number) => {\n  const v = try effect { provide Cache = { n: 1 } { return try p(n) } }\n  return v\n}\n"},
 		{"void statement", "export const f = (n: number) => Effect.gen(function* () {\n  yield* Effect.void\n  return n\n})\n",
 			"export const f = effect (n: number) => {\n  return n\n}\n"},
 		{"void returned", "export const f = (n: number) => Effect.gen(function* () {\n  if (n > 0) {\n    return yield* Effect.void\n  }\n  yield* p(n)\n})\n",
 			"export const f = effect (n: number) => {\n  if (n > 0) {\n    return\n  }\n  try p(n)\n}\n"},
 		{"suspend held", "export const v = Effect.suspend(() => p(1))\n", "export const v = effect { return try p(1) }\n"},
+		{"a constructor at a plain member", "export const f = (o: Option<number>) => Option.match(o, { onNone: () => Effect.fail(\"x\"), onSome: Effect.succeed })\n",
+			"export const f = (o: Option<number>) => Option.match(o, { onNone: () => Effect.fail(\"x\"), onSome: (value) => Effect.succeed(value) })\n"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			source, want := stageHeader+test.source, "const p = effect (n: number): number!string => n\n"+test.want
@@ -74,12 +80,14 @@ func TestEffectStageFixesRefuse(t *testing.T) {
 		{"a span with options", "export const f = (n: number) => p(n).pipe(Effect.withSpan(\"load\", { attributes: { n } }))\n", "withSpan(%"},
 		{"a returned pipeline is a value", "export const f = (n: number) => p(n).pipe(Effect.orElseSucceed(() => 0))\n", "Effect.orElseSucceed(%"},
 		{"a returned mapError is a value", "export const f = (n: number) => p(n).pipe(Effect.mapError((e) => e.length))\n", "Effect.mapError(%"},
+		{"a returned catch stage writes no call of the topic (opencode-48)", "export const f = (n: number) => p(n).pipe(Effect.map((x) => x + 1), Effect.catch((e) => Effect.succeed(e.length)))\n", "Effect.catch(%"},
 		{"a span a plain function returns", "export const f = (n: number) => p(n).pipe(Effect.withSpan(\"load\"))\n", "withSpan(%"},
 		{"a provide no try runs", "export const f = (n: number) => p(n).pipe(Effect.provide(Layer.empty))\n", "Effect.provide(%"},
 		{"a sync a statement returns", "export function f(n: number) {\n  return Effect.sync(() => n)\n}\n", "Effect.sync("},
 		{"a sync of a program", "export const f = (n: number) => Effect.sync(() => p(n))\n", "Effect.sync("},
 		{"a sync that reads this", "export class C {\n  n = 1\n  get() { return Effect.sync(() => this.n) }\n}\n", "Effect.sync("},
 		{"a suspend of a block", "export const f = (n: number) => Effect.suspend(() => {\n  if (n > 0) return p(n)\n  return p(0)\n})\n", "Effect.suspend("},
+		{"a constructor passed on, not at a plain member", "export const f = (o: Array<number>) => Effect.forEach(o, Effect.succeed)\n", "Effect.forEach(o, Effect.succeed)"},
 		{"a thunk by name", "const thunk = () => 1\nexport const v = Effect.sync(thunk)\n", "Effect.sync(thunk"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -99,6 +107,9 @@ func TestThunkKeepsTypeScriptCall(t *testing.T) {
 		{"a call in a block", "export const v = Effect.sync(() => {\n  const a = label()\n  return a\n})\n", "const a = label()\n  return a\n})"},
 		{"an argument", "export const v = Effect.sync(() => [label()])\n", "Effect.sync(() => [label()])"},
 		{"a built-in that lists its failures", "export const f = (s: string) => Effect.sync(() => JSON.parse(s))\n", "Effect.sync(() => JSON.parse(s))"},
+		{"a thunk returned", "export const f = () => Effect.sync(() => label())\n", "() => Effect.sync(() => label())"},
+		{"a suspend's operand", "const p = (s: string) => Effect.succeed(s)\nexport const v = Effect.suspend(() => p(label()))\n", "Effect.suspend(() => p(label()))"},
+		{"a plain function in the thunk moves", "export const v = Effect.sync(() => () => label())\n", "effect { return () => label() }"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			source := "import { label } from \"./lib.ts\"\n" + test.source

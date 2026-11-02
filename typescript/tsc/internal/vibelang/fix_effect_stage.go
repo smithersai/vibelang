@@ -8,6 +8,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/compiler"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
 )
 
 // vibelang --fix writes the last stage of a pipeline, and a program built from
@@ -21,8 +22,9 @@ import (
 //	Effect.sync(() => v)                          effect { return v }
 //	Effect.sync(() => { B })                      effect { B }
 //	Effect.suspend(() => p)                       effect { return try p }
-//	try (x |> Effect.withSpan(%, "n"))            try withSpan(() => x, "n")
+//	try (x |> Effect.withSpan(%, "n"))            try withSpan(x, "n")
 //	try (x |> Effect.provide(%, L))               try effect { provide L { return try x } }
+//	try (x |> Effect.provideService(%, K, v))     try effect { provide K = v { return try x } }
 //	try Effect.sync(() => v)                      v
 //	try Effect.suspend(() => p)                   try p
 //	(a) => Effect.sync(() => v)                   effect (a) => v
@@ -94,8 +96,11 @@ func catchLeftText(file *ast.SourceFile, left *ast.Node) string {
 // Effect.orElseSucceed or an Effect.mapError, or nil.
 func stageRewrite(c *checker.Checker, file *ast.SourceFile, pipe *ast.Node) *formRewrite {
 	call := pipe.AsBinaryExpression().Right
-	if !ast.IsCallExpression(call) || call.TypeArguments() != nil || ast.IsOptionalChain(call) || len(call.Arguments()) != 2 ||
-		!isEffectFunction(c, call.Expression(), "Effect", "orElseSucceed", "mapError", "withSpan", "provide") || stagePipe(call) != pipe || !inLowerableBody(call) {
+	if !ast.IsCallExpression(call) || call.TypeArguments() != nil || ast.IsOptionalChain(call) || len(call.Arguments()) < 2 || len(call.Arguments()) > 3 ||
+		!isEffectFunction(c, call.Expression(), "Effect", "orElseSucceed", "mapError", "withSpan", "provide", "provideService") || stagePipe(call) != pipe || !inLowerableBody(call) {
+		return nil
+	}
+	if _, name := effectMember(c, call.Expression()); len(call.Arguments()) != core.IfElse(name == "provideService", 3, 2) {
 		return nil
 	}
 	site := runningSite(pipe)
@@ -103,7 +108,7 @@ func stageRewrite(c *checker.Checker, file *ast.SourceFile, pipe *ast.Node) *for
 		return nil
 	}
 	_, name := effectMember(c, call.Expression())
-	if name == "withSpan" || name == "provide" {
+	if name == "withSpan" || name == "provide" || name == "provideService" {
 		return wrapperStageRewrite(c, file, site, pipe, name)
 	}
 	left := catchLeftText(file, pipe.AsBinaryExpression().Left)
@@ -143,19 +148,28 @@ func wrapperStageRewrite(c *checker.Checker, file *ast.SourceFile, site, pipe *a
 		if shadowed(pipe, "withSpan") {
 			return nil
 		}
-		text := "try withSpan(() => " + program + ", " + expressionText(file, argument) + ")"
-		return siteRewrite(c, file, site, text, "withSpan with an arrow")
+		text := "try withSpan(" + program + ", " + expressionText(file, argument) + ")"
+		return siteRewrite(c, file, site, text, "withSpan")
 	}
-	elements := []*ast.Node{argument}
-	if ast.IsArrayLiteralExpression(argument) {
-		elements = argument.Elements()
-	}
-	if len(elements) == 0 || slices.ContainsFunc(elements, func(e *ast.Node) bool { return ast.IsSpreadElement(e) || ast.IsOmittedExpression(e) }) {
-		return nil
-	}
-	providers := make([]string, len(elements))
-	for i, element := range elements {
-		providers[i] = providerText(file, element)
+	var providers []string
+	if name == "provideService" {
+		// x |> Effect.provideService(%, Key, value) is provide Key = value.
+		value := pipe.AsBinaryExpression().Right.Arguments()[2]
+		if !ast.IsEntityNameExpression(argument) {
+			return nil
+		}
+		providers = []string{expressionText(file, argument) + " = " + providerText(file, value)}
+	} else {
+		elements := []*ast.Node{argument}
+		if ast.IsArrayLiteralExpression(argument) {
+			elements = argument.Elements()
+		}
+		if len(elements) == 0 || slices.ContainsFunc(elements, func(e *ast.Node) bool { return ast.IsSpreadElement(e) || ast.IsOmittedExpression(e) }) {
+			return nil
+		}
+		for _, element := range elements {
+			providers = append(providers, providerText(file, element))
+		}
 	}
 	if needsOperandParentheses(left) {
 		program = "(" + program + ")"
@@ -265,8 +279,8 @@ func thunkValue(arrow *ast.Node) *ast.Node {
 // what they mean in a block (see callNeedsBoundary).
 func thunkMovesToBlock(c *checker.Checker, body *ast.Node) bool {
 	a := analyzerFor(c)
-	var stays func(node *ast.Node) bool
-	stays = func(node *ast.Node) bool {
+	var stays func(node *ast.Node, plain bool) bool
+	stays = func(node *ast.Node, plain bool) bool {
 		switch node.Kind {
 		case ast.KindThrowStatement, ast.KindTryStatement, ast.KindAwaitExpression, ast.KindYieldExpression, ast.KindThisKeyword:
 			return true
@@ -276,14 +290,16 @@ func thunkMovesToBlock(c *checker.Checker, body *ast.Node) bool {
 			}
 		case ast.KindFunctionDeclaration, ast.KindFunctionExpression, ast.KindClassDeclaration, ast.KindClassExpression:
 			return false
+		case ast.KindArrowFunction:
+			plain = true // a plain function's calls are JavaScript calls (D282)
 		case ast.KindCallExpression:
-			if callNeedsBoundary(c, a, node) {
+			if !plain && callNeedsBoundary(c, a, node) {
 				return true
 			}
 		}
-		return node.ForEachChild(stays)
+		return node.ForEachChild(func(child *ast.Node) bool { return stays(child, plain) })
 	}
-	return !stays(body)
+	return !stays(body, false)
 }
 
 // callNeedsBoundary reports whether call means something else in effect code
@@ -376,6 +392,21 @@ func thunkRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *for
 	return withImportRemovals(c, file, &formRewrite{edits: edits, description: "an effect block"})
 }
 
+// constructorValueRewrite writes node, Effect.succeed or Effect.fail held as a
+// value at a plain member, as an arrow that calls it: onSome: Effect.succeed
+// becomes onSome: (value) => Effect.succeed(value). EK4301 refuses the
+// constructor there, because D512 reads the member uninstantiated, and the
+// arrow returns the same program for the one argument a member's caller
+// gives. A member passing more arguments changes nothing: both drop them.
+func constructorValueRewrite(c *checker.Checker, file *ast.SourceFile, node *ast.Node) *formRewrite {
+	if !ast.IsPropertyAccessExpression(node) || !ast.IsIdentifier(node.Expression()) || node.Expression().Text() == "value" ||
+		!isEffectFunction(c, node, "Effect", "succeed", "fail") || !plainMemberDestination(analyzerFor(c), node) {
+		return nil
+	}
+	text := nodeText(file, node)
+	return &formRewrite{edits: []sourceEdit{{nodeStart(file, node), node.End(), "(value) => " + text + "(value)"}}, description: "a plain arrow"}
+}
+
 // effectStageFixes proposes the rewrites of file above, taking each that
 // overlaps none taken before it; the next round takes the rest.
 func effectStageFixes(ctx context.Context, program *compiler.Program, file *ast.SourceFile, refused map[string]bool) proposal {
@@ -406,6 +437,8 @@ func effectStageFixes(ctx context.Context, program *compiler.Program, file *ast.
 			propose(EK4835.Code, node, triedLeftRewrite(file, node))
 		case ast.IsCallExpression(node):
 			propose(EK4834.Code, node, thunkRewrite(c, file, node))
+		case ast.IsPropertyAccessExpression(node):
+			propose(EK4301.Code, node, constructorValueRewrite(c, file, node))
 		}
 		return node.ForEachChild(visit)
 	}

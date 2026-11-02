@@ -97,6 +97,12 @@ func TestEffectGenQuickFixes(t *testing.T) {
 			"export const f = effect (n: number) => {\n  if (n < 0) return try Effect.die(new Error(\"negative\"))\n  return n\n}\n"},
 		{"Effect.fn", "export const f = Effect.fn(function* (n: number) {\n  return yield* Effect.succeed(n)\n})\n",
 			"export const f = effect (n: number) => {\n  return n\n}\n"},
+		{"Effect.fn with a return annotation", "export const f = Effect.fn(\"f\")(function* (n: number): Effect.fn.Return<number> {\n  return yield* Effect.succeed(n)\n})\n",
+			"export const f = effect (n: number): Effect.Effect<number> => try Effect.withSpan(effect {\n  return n\n}, \"f\")\n"},
+		{"Effect.fn reading import.meta", "export const f = Effect.fn(function* () {\n  return import.meta.url\n})\n",
+			"export const f = effect () => {\n  return import.meta.url\n}\n"},
+		{"Effect.fnUntraced where a plain member is declared", "import * as Context from \"effect/Context\"\nexport const Addresses = Context.Reference<Effect.Effect<ReadonlySet<string>>>(\"Addresses\", {\n  defaultValue: Effect.fnUntraced(function* () {\n    const resolved = yield* Effect.succeed([\"a\"])\n    return new Set(resolved)\n  }),\n})\n",
+			"import * as Context from \"effect/Context\"\nexport const Addresses = Context.Reference<Effect.Effect<ReadonlySet<string>>>(\"Addresses\", {\n  defaultValue: () => effect {\n    const resolved = [\"a\"]\n    return new Set(resolved)\n  },\n})\n"},
 		{"Effect.fnUntraced with a default", "export const f = Effect.fnUntraced(function* (n = 1) {\n  return yield* Effect.succeed(n)\n})\n",
 			"export const f = effect (n = 1) => {\n  return n\n}\n"},
 		{"Effect.fn with a name", "export const f = Effect.fn(\"f\")(function* (n: number) {\n  return yield* Effect.succeed(n)\n})\n",
@@ -168,6 +174,9 @@ func TestEffectGenRefusals(t *testing.T) {
 		{"a nested function*", "export const f = (xs: ReadonlyArray<number>) => Effect.gen(function* () {\n  return yield* Effect.forEach(xs, (x) => Effect.gen(function* () { return yield* Effect.succeed(x) }))\n})\n", "another function*"},
 		{"a program as the value", "export const f = (make: () => Effect.Effect<Effect.Effect<number>>) => Effect.gen(function* () {\n  const inner = yield* make()\n  return yield* inner\n})\n", "gives a program as its value"},
 		{"a comment outside the body", "export const f = () => Effect.gen(/* why */ function* () {\n  return yield* Effect.succeed(1)\n})\n", "a comment stands between"},
+		{"another return type", "type G = Generator<never, number>\nexport const f = Effect.fn(function* (n: number): G {\n  return n\n})\n", "a return type other than Effect.fn.Return"},
+		{"a return annotation before stages", "export const f = Effect.fn(function* (n: number): Effect.fn.Return<number> {\n  return n\n}, Effect.map((x) => x + 1))\n", "names the Effect before its stages"},
+		{"new.target", "export function F(this: unknown) {\n  return Effect.gen(function* () {\n    return new.target === undefined\n  })\n}\n", "new.target"},
 		{"an Effect.fn stage that reads the arguments", "export const f = Effect.fn(function* (n: number) {\n  return yield* Effect.succeed(n)\n}, (e, n) => Effect.map(e, (x) => x + n))\n", "reads the function's arguments"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -279,7 +288,7 @@ func effectGenDiagnostic(t *testing.T, source string) (*ast.Diagnostic, func() (
 		}
 		if response.CommandOrCodeActionArray != nil {
 			for _, action := range *response.CommandOrCodeActionArray {
-				if action.CodeAction != nil && strings.HasPrefix(action.CodeAction.Title, "Write an effect") && action.CodeAction.Edit != nil && action.CodeAction.Edit.Changes != nil {
+				if action.CodeAction != nil && (strings.HasPrefix(action.CodeAction.Title, "Write an effect") || strings.HasPrefix(action.CodeAction.Title, "Write a function")) && action.CodeAction.Edit != nil && action.CodeAction.Edit.Changes != nil {
 					changes := *action.CodeAction.Edit.Changes
 					return applyEditorEdits(t, file, converters, changes[lsconv.FileNameToDocumentURI(file.FileName())]), true
 				}

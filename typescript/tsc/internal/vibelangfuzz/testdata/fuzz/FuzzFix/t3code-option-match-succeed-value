@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport { Effect, Option } from \"effect\"\nexport const f = (o: Option.Option<number>) => Option.match(o, { onNone: () => Effect.fail(\"x\"), onSome: Effect.succeed })\n")
