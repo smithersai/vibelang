@@ -1,0 +1,11 @@
+// expect-result: [7,"undefined",null,"undefined"]
+// VIP-21: yield evaluates to undefined after offering its operand; an
+// annotation supplies context independently of the separate TS7057 gap.
+import { Stream } from "effect"
+effect function* values() {
+  const a: undefined = yield 7
+  yield a === void 0 ? "undefined" : "wrong"
+  const b: undefined = yield
+  yield b === void 0 ? "undefined" : "wrong"
+}
+export effect function main() { return try Stream.runCollect(values()) }

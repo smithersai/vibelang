@@ -27,7 +27,7 @@ class ProducerQueue extends Context.Service<ProducerQueue, Queue.Queue<unknown, 
 
 /** `yield value` in a producer: offer it to the producer's queue. */
 export const $yield = <T>(value: T): Effect.Effect<void, never, YieldOf<T>> =>
-  Effect.flatMap(Effect.service(ProducerQueue), (queue) => Queue.offer(queue, value)) as any
+  Effect.asVoid(Effect.flatMap(Effect.service(ProducerQueue), (queue) => Queue.offer(queue, value))) as any
 
 /** A producer: the Stream its call returns. */
 export type Producer<T, E = never, R = never> = Stream.Stream<T, E, R>

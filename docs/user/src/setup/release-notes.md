@@ -596,6 +596,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Tagged error patterns from nested Effect modules rejected independently branded errors; all thirty-three retained error patterns now use their module guards, including singleton extraction and failed arity mismatches.
 
+- Reading a producer's `yield` result exposed a queue-offer boolean; a completed offer now gives `undefined`, as the language specifies.
+
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 
 - Migration setup could leave a native type exported through a TypeScript namespace barrel as an error type in project-aware linters; setup now enables source declaration redirects in owned configs and records those edits.
