@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:fork-block\neffect function f() { const a = fork { return 1; }; return join a; }")

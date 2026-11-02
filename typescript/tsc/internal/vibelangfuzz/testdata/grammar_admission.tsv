@@ -761,6 +761,8 @@ parser/vibelang_do.go:isTryOperation	admission:do	900-appendices.md,002-running.
 parser/vibelang_do.go:jumpTargetWithin	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
 parser/vibelang_do.go:keywordOf	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
 parser/vibelang_do.go:loopHeadOf	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:VibeLangDoHeadBinding	admission:do	900-appendices.md,002-running.md	support	VIP-2: maps a do lowering's generated loop-head cell back to its source ForDeclaration binding for checking; introduces no additional syntax
+parser/vibelang_do.go:doLowering.loopHead	admission:do	900-appendices.md,002-running.md	support	VIP-2: evaluates a do in a lexical for-in/of head in TC39 TDZ order (ForIn/OfHeadEvaluation); introduces no additional syntax
 parser/vibelang_do.go:setExpression	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
 parser/vibelang_do.go:setStatement	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
 parser/vibelang_do.go:setsCompletion	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
@@ -790,3 +792,4 @@ parser/vibelang_do.go:doLowering.stringify	admission:do	900-appendices.md,002-ru
 parser/vibelang_do.go:doLowering.template	admission:do	900-appendices.md,002-running.md	support	VIP-2: lower template substitutions in source order without adding an execution boundary
 parser/vibelang_do.go:doLowering.valueOnly	admission:do	900-appendices.md,002-running.md	support	VIP-2: preserve value-only completion and source anonymous names across do temporaries
 parser/vibelang_do.go:isMemberCallee	admission:do	900-appendices.md,002-running.md	support	VIP-2: recognize native member callees for receiver-preserving do lowering
+parser/vibelang_fibers.go:Parser.parseVibeLangFork@block	admission:fork-block	-	pending	VIP-17 requires a UnaryExpression operand; legacy bare brace bodies are wrapped in program arrows without adopted bare-block authority

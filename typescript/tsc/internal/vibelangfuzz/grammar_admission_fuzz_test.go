@@ -63,6 +63,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"trailing-block", "function f() { return g(1) { return 2; }; }"},
 	{"trailing-block-bare", "M {}"},
 	{"async-shorthand", "async f() { return 1; }"},
+	{"fork-block", "effect function f() { const a = fork { return 1; }; return join a; }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -385,6 +386,8 @@ func grammarAdmissionForm(source string) string {
 			if next.kind == 'n' || next.kind == 's' || next.text == "{" {
 				return "admission:" + word + "-outside-effect"
 			}
+		case parser.VibeSyntaxForkBlock:
+			return "admission:fork-block"
 		case parser.VibeSyntaxBlockParam:
 			return "admission:trailing-block"
 		case parser.VibeSyntaxModule:
@@ -469,11 +472,29 @@ func TestGrammarAdmissionMutationKeys(t *testing.T) {
 			t.Errorf("outside-Effect object prefix not keyed: %s: %s", source, got)
 		}
 	}
-	// A fork brace-body is a distinct legacy block form, not join's object
-	// operand. Keep it independently keyed rather than merging its recovery.
+	// A fork brace-body is a distinct legacy form, not join's object
+	// operand. Its own pending key tracks the unadopted block-to-program form.
 	for _, source := range []string{"fork {}", "fork { n: 1 }"} {
+		if got := grammarAdmissionForm(source); got != "admission:fork-block" {
+			t.Errorf("bare fork block not keyed independently: %s: %s", source, got)
+		}
+	}
+	for _, source := range []string{
+		"effect function f() { fork { return 1; } }",
+		"effect function f() { fork { const n = 1; return n; } }",
+		"effect function f() { fork { { return 1; } } }",
+	} {
+		if got := grammarAdmissionForm(source); got != "admission:fork-block" {
+			t.Errorf("bare fork block not keyed independently: %s: %s", source, got)
+		}
+	}
+	for _, source := range []string{
+		"effect function f() { fork effect { return 1; } }",
+		"const o = { fork() { return 1; } };",
+		"const s = 'fork { return 1; }';",
+	} {
 		if got := grammarAdmissionForm(source); got != "" {
-			t.Errorf("fork block merged into a prefix family: %s: %s", source, got)
+			t.Errorf("non-legacy fork form classified as %s: %s", got, source)
 		}
 	}
 	for _, word := range []string{"fork", "join"} {

@@ -84,3 +84,9 @@ The lab recognizes attached grammar arguments and carries `[Effect]` through
 parameter names without treating them as source tokens; full `[Yield]`,
 `[Await]` and other early-error checks remain outside this bounded lab.
 `TestGrammarAdmissionCore` keeps the valid Effect controls in the fast gate.
+
+The legacy bare `fork { return 1; }` body is tracked as
+`admission:fork-block`, independently of an object operand or the admitted
+`fork effect { return 1; }`. Its statements have no `UnaryExpression`
+derivation; the compiler still wraps them in a program. The keyed pending
+witness reports that gap without rejecting any compiler form.
