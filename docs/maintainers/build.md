@@ -301,7 +301,7 @@ earlier run already proved.
 
 ## Cache contracts
 
-The compiler and Vite package tests consume `//:migration-sources`, a root-owned filegroup for the migrate flow's helpers and verifier tests. A `//` prefix roots a glob's path but does not change its package scope: a glob declared in `packages/PACKAGE.ts` cannot select the root-owned `.smithers/flows/migrate/` files. `migration-inputs.ts` defines the shared group without a declaration-module import cycle. The compiler package's cache-contract tests use `smthrs explain` to check the real dependency, every source path and its current content digest.
+The compiler and Vite package tests consume `//:migration-sources`, a root-owned filegroup that holds every file of the migrate flow, so a new flow file needs no entry in any `PACKAGE.ts`. A `//` prefix roots a glob's path but does not change its package scope: a glob declared in `packages/PACKAGE.ts` selects none of the root-owned `.smithers/flows/migrate/` files, and `smthrs explain` shows it with `"files": []`. `migration-inputs.ts` defines the shared group without a declaration-module import cycle. The compiler package's cache-contract tests use `smthrs explain` to check the real dependency and that every file under `.smithers/flows/migrate/` is an input with its current content digest.
 
 
 A cached result is only as correct as its key is complete. Each target names:

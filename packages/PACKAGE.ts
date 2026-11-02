@@ -88,7 +88,7 @@ const compilerToolsTest = S.Shell.Test({
   summary: "vibelang/metro, vibelang/babel and vibelang/emit against Metro, Babel, the React Compiler and Oxc.",
   shell: "VIBELANG_BINARY=$PWD/packages/compiler/native/vibelang sh packages/compiler/test/tools/run.sh",
   // The migrate flow patches oxc-transform-react with lib/react-tools.mjs; one test applies it to the real package.
-  data: [compilerNative, S.glob("compiler/**"), S.glob("vite/src/**"), S.glob("//.smithers/flows/migrate/lib/**"), S.file("//experiments/package.json"), S.file("//experiments/bun.lock")],
+  data: [compilerNative, S.glob("compiler/**"), S.glob("vite/src/**"), migrationSources, S.file("//experiments/package.json"), S.file("//experiments/bun.lock")],
   tools: [S.Host.bin("node"), S.Host.bin("bun")],
   sandbox: "none",
   timeout: "10m"
