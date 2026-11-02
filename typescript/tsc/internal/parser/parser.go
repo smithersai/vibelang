@@ -462,16 +462,7 @@ func (p *Parser) parseSourceFileWorker() *ast.SourceFile {
 		p.contextFlags |= ast.NodeFlagsAmbient
 	}
 	pos := p.nodePos()
-	// VibeLang: a .vibe file is a module (VIP-30), and its top level is
-	// ordinary JavaScript, where await is ES top-level await of a Promise
-	// (VIP-26, foldkit-42). A function body leaves this context as it does in
-	// TypeScript, so await there is VibeLang's again.
-	saveContextFlags := p.contextFlags
-	if p.isVibeLangFile() && !isDeclarationFile {
-		p.setContextFlags(ast.NodeFlagsAwaitContext, true)
-	}
 	statements := p.parseListIndex(PCSourceElements, (*Parser).parseToplevelStatement)
-	p.contextFlags = saveContextFlags
 	end := p.nodePos()
 	endJSDoc := p.jsdocScannerInfo()
 	eof := p.parseTokenNode()

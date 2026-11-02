@@ -36,7 +36,7 @@ Ordinary relative config paths stay relative to the config that declares them. I
 
 Every source `.vibe` file has its own module scope, including when `moduleDetection` is `"legacy"` or both `vibe.effectGlobals` and `vibe.effectModules` are `false`. Share a value through an explicit `export` and `import`. The option retains its TypeScript meaning for `.ts` and `.js` files.
 
-Top-level `await` is ES top-level await of a Promise, with its module and target requirements, whatever its operand. An unsupported target reports `TS1378`; CommonJS output under `module: "NodeNext"` reports `TS1309`.
+Top-level `await` keeps its module and target requirements for unary and multiline operands too. An unsupported target reports `TS1378`; CommonJS output under `module: "NodeNext"` reports `TS1309`.
 
 ### Inspect or initialize configuration
 

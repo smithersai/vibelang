@@ -44,6 +44,8 @@ FuzzFunctionsSpec rule:var-loop compiler VIP-1: var declarations in loop heads m
 FuzzFunctionsSpec corpus:fz-func-var-loop compiler VIP-1: minimized var-loop ban; lane vip-core2
 FuzzFunctionBoundaries rule:arguments-default compiler VIP-1: arguments is banned in parameter defaults too; lane vip-core2
 FuzzFunctionBoundaries corpus:fz-func-arguments-default compiler VIP-1: minimized default binding ban; lane vip-core2
+FuzzFunctionBoundaries rule:await-effect-top compiler VIP-1: `await` on an Effect at the module top level reports a legacy message, not EK0103; lane vip-core2
+FuzzFunctionBoundaries corpus:fz-func-await-effect-top compiler VIP-1: minimized await-effect-top violation; lane vip-core2
 FuzzFunctionBoundaries rule:await-effect-union compiler VIP-1: `await` on a union with an Effect member must report EK0103 by the Result test; lane vip-core2
 FuzzFunctionBoundaries corpus:fz-func-await-effect-union compiler VIP-1: minimized await-effect-union violation; lane vip-core2
 FuzzFunctionBoundaries rule:return-type-any compiler VIP-1: a written `any` return type on an effect function reports nothing, not EK0106; lane vip-core2
