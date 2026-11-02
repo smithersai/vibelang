@@ -1,2 +1,0 @@
-FuzzEffectFnParameterDeclaration declaration:namespace-return:0:optional=false compiler VIP-27: converting Fx.fn changes the native Fx.Effect return namespace to the implicit root Effect import; detail277 preservation, existing product owner migfix-t3code
-FuzzEffectFnParameterDeclaration corpus:opencode-effect-fn-namespace-return compiler VIP-27: same namespace-return witness; lane migfix-t3code
