@@ -83,14 +83,32 @@ if [ "$listed_status" -ne 0 ]; then
 fi
 weights=testdata/shard-seconds.txt
 [ -f "$weights" ] || weights=/dev/null
-awk -v weights="$weights" '
+# Check every stage before running any subset of the tests. A POSIX shell
+# pipeline reports only the last command's status; an earlier failure can
+# otherwise leave a partial, apparently successful partition.
+if ! awk -v weights="$weights" '
   BEGIN { while ((getline line < weights) > 0) { split(line, f, " "); if (line !~ /^#/ && f[2] != "") w[f[2]] = f[1] } }
   /^(Test|Fuzz|Example)[A-Za-z0-9_]*$/ { print (($0 in w) ? w[$0] : 1), $0 }
-' "$dir/listed" | sort -k1,1nr -k2,2 | awk -v i="$si" -v n="$sn" '
+' "$dir/listed" > "$dir/weighted"; then
+  echo "go-test-shards: weighting tests failed" >&2
+  exit 1
+fi
+if ! sort -k1,1nr -k2,2 "$dir/weighted" > "$dir/ordered"; then
+  echo "go-test-shards: sorting tests failed" >&2
+  exit 1
+fi
+if ! awk -v i="$si" -v n="$sn" '
   { best = 0; for (j = 1; j < n; j++) if (load[j] < load[best]) best = j; load[best] += $1; if (best == i - 1) print }
-' | awk -v k="$shards" -v dir="$dir" '
+' "$dir/ordered" > "$dir/sliced"; then
+  echo "go-test-shards: slicing tests failed" >&2
+  exit 1
+fi
+if ! awk -v k="$shards" -v dir="$dir" '
   { best = 0; for (i = 1; i < k; i++) if (load[i] < load[best]) best = i; load[best] += $1; print $2 > (dir "/names" best) }
-'
+' "$dir/sliced"; then
+  echo "go-test-shards: partitioning tests failed" >&2
+  exit 1
+fi
 
 n=0
 for list in "$dir"/names*; do

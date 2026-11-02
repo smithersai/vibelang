@@ -516,6 +516,11 @@ also run the binary once. The output file then contains the complete run;
 shards would overwrite the same file. Setting only a sampling rate or fraction
 keeps ordinary test sharding.
 
+Weighting, sorting, slice selection and shard assignment must all succeed
+before a test process starts. A failed stage names itself in the diagnostic,
+keeps the tool's error output and fails the run; a partial partition cannot
+report a successful subset of the suite. Temporary partition files are removed.
+
 The fuzz shell caps `GOMAXPROCS` at the smaller of `24` and the CPUs allowed
 by the process affinity, using Node's `os.availableParallelism()`. A lane
 restricted to four CPUs therefore starts four seed workers, rather than sizing

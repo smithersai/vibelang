@@ -294,6 +294,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The fibers guide suggested Effect-body repairs inside ordinary async functions; it now shows `runPromise` bridges that run in the original Promise context.
 
 - Coverage and profiling with sharded Go tests could retain only one shard's measurements; profile output now comes from one complete test process.
+
+- Sharded Go tests could report success after a partitioning tool failed and omitted tests; any failed weighting, sorting, slicing or assignment stage now stops the run with a diagnostic.
 - The `EK0509` repair of an object-literal value fallback, `x catch { directory }`, wrote `() => { directory }`, a block that returns nothing, and refused with `TS2322`; it now writes `() => ({ directory })`.
 - After VIP-1, `vibelang --fix --fix-vip-only` left a call that ran inside a catch's head cold, as in `decode(fs.readFileString(path)) catch …` (`TS2375`, `EK9202`); it now writes the head as the program it was, `(effect { return decode(try fs.readFileString(path)) }) catch …`.
 
