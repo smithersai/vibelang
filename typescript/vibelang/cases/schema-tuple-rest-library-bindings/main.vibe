@@ -1,0 +1,20 @@
+import type {Sequence,Array as CrossArray} from "./library-types.js"
+export schema Qualified=readonly [...globalThis.Array<number>]
+export schema QualifiedFrozen=readonly [...globalThis.ReadonlyArray<number>]
+export schema Renamed=readonly [...Sequence<number>]
+export schema Swapped=readonly [...CrossArray<number>]
+export schema Grouped=readonly [...(Sequence<number>)]
+export schema Label=readonly [...items:Sequence<number>]
+export schema Trailing=readonly [string,...Sequence<number>,boolean]
+export schema Mutable=[...globalThis.ReadonlyArray<number>]
+export schema Nested=readonly [...Sequence<globalThis.Array<number>>]
+function typeChecks(a:Renamed,b:Mutable,c:Nested):void {
+ // @ts-expect-error readonly tuple
+ a.push(1)
+ b.push(1)
+ // @ts-expect-error number elements
+ b.push("bad")
+ c[0].push(1)
+ // @ts-expect-error outer tuple remains readonly
+ c.push([1])
+}

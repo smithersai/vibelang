@@ -1,0 +1,3 @@
+go test fuzz v1
+string("schema-tuple-rest-binding-renamed-array-nested-tail-readonly")
+byte(28)

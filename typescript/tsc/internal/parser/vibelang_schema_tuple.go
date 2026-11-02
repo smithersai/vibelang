@@ -6,9 +6,10 @@ import (
 )
 
 type schemaTuplePosition struct {
-	typ      *ast.Node
-	optional bool
-	rest     bool
+	restNames []*ast.Node
+	typ       *ast.Node
+	optional  bool
+	rest      bool
 }
 
 // Literal variadic tuples are normalized like native TypeScript tuples before
@@ -26,6 +27,14 @@ func (p *Parser) vibelangSchemaTuple(typeNode *ast.Node) *ast.Node {
 	for _, position := range positions {
 		inRest = inRest || position.rest
 		value := p.vibelangSchemaOf(position.typ)
+		for _, name := range position.restNames {
+			cloned := p.vibelangSchemaGenericName(name)
+			cloned.Parent.Parent = value
+			p.vibelangSchemaGenerics = append(p.vibelangSchemaGenerics, ast.SchemaGenericReference{
+				Arity: 1, Name: cloned, Expression: value, RestArray: true,
+				Legacy: ast.IsIdentifier(name) && (name.Text() == "Array" || name.Text() == "ReadonlyArray"),
+			})
+		}
 		if position.optional {
 			value = p.vibelangSchemaCall("optional", position.typ.Loc, value)
 		}
@@ -48,11 +57,11 @@ func schemaTupleElement(node *ast.Node) schemaTuplePosition {
 	switch node.Kind {
 	case ast.KindNamedTupleMember:
 		member := node.AsNamedTupleMember()
-		return schemaTuplePosition{member.Type, member.QuestionToken != nil, member.DotDotDotToken != nil}
+		return schemaTuplePosition{typ: member.Type, optional: member.QuestionToken != nil, rest: member.DotDotDotToken != nil}
 	case ast.KindOptionalType:
-		return schemaTuplePosition{node.AsOptionalTypeNode().Type, true, false}
+		return schemaTuplePosition{typ: node.AsOptionalTypeNode().Type, optional: true}
 	case ast.KindRestType:
-		return schemaTuplePosition{node.AsRestTypeNode().Type, false, true}
+		return schemaTuplePosition{typ: node.AsRestTypeNode().Type, rest: true}
 	}
 	return schemaTuplePosition{typ: node}
 }
@@ -196,6 +205,16 @@ func (p *Parser) vibelangSchemaTuplePositions(tuple *ast.Node) ([]schemaTuplePos
 				positions = append(positions, expanded...)
 				continue
 			}
+			original := element.typ
+			for original.Kind == ast.KindParenthesizedType {
+				original = original.AsParenthesizedTypeNode().Type
+			}
+			if original.Kind == ast.KindTypeReference {
+				ref := original.AsTypeReferenceNode()
+				if ref.TypeArguments != nil && len(ref.TypeArguments.Nodes) == 1 {
+					element.restNames = append(element.restNames, ref.TypeName)
+				}
+			}
 			element.typ = vibelangSchemaRestElement(element.typ)
 			if element.typ == nil {
 				return nil, true, false
@@ -223,7 +242,9 @@ func (p *Parser) vibelangSchemaTuplePositions(tuple *ast.Node) ([]schemaTuplePos
 	}
 	if firstRest >= 0 && firstRest < lastOptionalOrRest {
 		var types []*ast.Node
+		var names []*ast.Node
 		for _, element := range positions[firstRest : lastOptionalOrRest+1] {
+			names = append(names, element.restNames...)
 			typ := element.typ
 			if element.optional {
 				typ = p.schemaTupleUndefined(typ)
@@ -231,14 +252,15 @@ func (p *Parser) vibelangSchemaTuplePositions(tuple *ast.Node) ([]schemaTuplePos
 			types = append(types, typ)
 		}
 		union := p.schemaTupleUnion(types)
-		positions[firstRest] = schemaTuplePosition{typ: union, rest: true}
+		positions[firstRest] = schemaTuplePosition{typ: union, rest: true, restNames: names}
 		positions = append(positions[:firstRest+1], positions[lastOptionalOrRest+1:]...)
 	}
 	return positions, true, true
 }
 
 // vibelangSchemaRestElement extracts the repeated schema type from the array
-// spellings supported in a tuple rest position.
+// spellings supported in a tuple rest position. Generic names are retained and
+// checked against the resolved TypeScript library type after binding.
 func vibelangSchemaRestElement(element *ast.Node) *ast.Node {
 	if element == nil {
 		return nil
@@ -257,7 +279,7 @@ func vibelangSchemaRestElement(element *ast.Node) *ast.Node {
 		return element.AsArrayTypeNode().ElementType
 	case ast.KindTypeReference:
 		ref := element.AsTypeReferenceNode()
-		if ast.IsIdentifier(ref.TypeName) && (ref.TypeName.Text() == "Array" || ref.TypeName.Text() == "ReadonlyArray") && ref.TypeArguments != nil && len(ref.TypeArguments.Nodes) == 1 {
+		if ref.TypeArguments != nil && len(ref.TypeArguments.Nodes) == 1 {
 			return ref.TypeArguments.Nodes[0]
 		}
 	}

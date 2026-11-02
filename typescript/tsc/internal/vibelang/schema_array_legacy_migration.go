@@ -52,6 +52,11 @@ func schemaArrayLegacyMigrationFixes(ctx context.Context, program *compiler.Prog
 	seen := map[*ast.Node]bool{}
 	for i := range file.VibeLangSchemaGenerics {
 		ref := &file.VibeLangSchemaGenerics[i]
+		// Both library array types repeat the same element codec in a tuple.
+		// Tuple mutability belongs to the tuple, so no kind-swap migration.
+		if ref.RestArray {
+			continue
+		}
 		kind := schemaGenericKind(c, ref)
 		unchanged := (kind == 1) == ref.DefaultMutable
 		if ref.DefaultKind != 0 {

@@ -2371,6 +2371,7 @@ type TokenCacheKey struct {
 // SchemaGenericReference retains candidate codecs until the checker resolves
 // a mapped generic's TypeScript type binding (VIP-15, detail 286).
 type SchemaGenericReference struct {
+	RestArray      bool
 	Arity          int
 	InnerName      *Node
 	ReadonlyRecord *Node

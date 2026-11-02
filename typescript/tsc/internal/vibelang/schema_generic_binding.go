@@ -27,7 +27,11 @@ func schemaGenericReferences(c *checker.Checker, file *ast.SourceFile) map[*ast.
 	refs := map[*ast.Node]*ast.SchemaGenericReference{}
 	for i := range file.VibeLangSchemaGenerics {
 		ref := &file.VibeLangSchemaGenerics[i]
-		refs[ref.Expression] = ref
+		// A tuple rest validates its source binding without replacing the
+		// repeated codec or hiding a nested generic's replacement.
+		if !ref.RestArray {
+			refs[ref.Expression] = ref
+		}
 	}
 	state.files[file] = refs
 	return refs
@@ -117,10 +121,9 @@ func checkSchemaGenericReferences(c *checker.Checker, file *ast.SourceFile) {
 	if len(file.VibeLangSchemaGenerics) == 0 {
 		return
 	}
-	refs := schemaGenericReferences(c, file)
-	var visit func(*ast.Node) bool
-	visit = func(node *ast.Node) bool {
-		if ref := refs[node]; ref != nil && schemaGenericKind(c, ref) == 0 {
+	for i := range file.VibeLangSchemaGenerics {
+		ref := &file.VibeLangSchemaGenerics[i]
+		if ast.GetSourceFileOfNode(ref.Name) == file && schemaGenericKind(c, ref) == 0 {
 			names := []*ast.Node{ref.Name}
 			if ref.InnerName != nil {
 				names = nil
@@ -139,9 +142,7 @@ func checkSchemaGenericReferences(c *checker.Checker, file *ast.SourceFile) {
 				note(d, "Name a schema value without type arguments, or write the decoder with explicit Effect Schema codecs.")
 			}
 		}
-		return node.ForEachChild(visit)
 	}
-	file.AsNode().ForEachChild(visit)
 }
 
 // A normalizer writes canonical names. Their source bindings must denote the

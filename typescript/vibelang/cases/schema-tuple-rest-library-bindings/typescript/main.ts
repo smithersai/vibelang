@@ -1,0 +1,19 @@
+import {Schema} from "effect"
+export const Qualified=Schema.TupleWithRest(Schema.Tuple([]),[Schema.Number])
+export type Qualified=typeof Qualified.Type
+export const QualifiedFrozen=Schema.TupleWithRest(Schema.Tuple([]),[Schema.Number])
+export type QualifiedFrozen=typeof QualifiedFrozen.Type
+export const Renamed=Schema.TupleWithRest(Schema.Tuple([]),[Schema.Number])
+export type Renamed=typeof Renamed.Type
+export const Swapped=Schema.TupleWithRest(Schema.Tuple([]),[Schema.Number])
+export type Swapped=typeof Swapped.Type
+export const Grouped=Schema.TupleWithRest(Schema.Tuple([]),[Schema.Number])
+export type Grouped=typeof Grouped.Type
+export const Label=Schema.TupleWithRest(Schema.Tuple([]),[Schema.Number])
+export type Label=typeof Label.Type
+export const Trailing=Schema.TupleWithRest(Schema.Tuple([Schema.String]),[Schema.Number,Schema.Boolean])
+export type Trailing=typeof Trailing.Type
+export const Mutable=Schema.mutable(Schema.TupleWithRest(Schema.Tuple([]),[Schema.Number]))
+export type Mutable=typeof Mutable.Type
+export const Nested=Schema.TupleWithRest(Schema.Tuple([]),[Schema.mutable(Schema.Array(Schema.Number))])
+export type Nested=typeof Nested.Type
