@@ -177,6 +177,20 @@ In `package.json`, replace `tsc` in the build script with `vibelang` so it check
 
 Run `npm run build`, or `bun run build`; then run `npm run test`, or `bun run test`. The build exits with status 0, and its last line starts with `✓ built in`. Review the files you added before committing them.
 
+## Dependency pre-bundling
+
+A cold dev server scans the application for the packages it imports and
+pre-bundles them before the first request. A `.vibe` module's JavaScript
+imports packages its source does not name, such as `effect/Schema` for a
+`schema` declaration, `effect/Option` for `Option`, or `vibelang-runtime`. The
+plugin adds `.vibe` to `optimizeDeps.extensions` and lets the scan read each
+`.vibe` module's compiled JavaScript, so these imports are pre-bundled with the
+rest. Without that, Vite found them on the first request, optimized again, and
+reloaded the page, which could fail a browser test already running on it. The
+scan compiles each `.vibe` module it reaches once; the requests reuse that
+compile. A module that does not compile scans as empty and reports its errors
+when requested.
+
 ## Generated declarations
 
 While serving a `.vibe` module, the compiler can write its `.d.vibe.ts`

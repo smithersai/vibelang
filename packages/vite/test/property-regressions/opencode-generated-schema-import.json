@@ -1,0 +1,10 @@
+{
+  "property": "vite-dep-scan",
+  "rule": "docs/user/src/setup/vite.md: Dependency pre-bundling (opencode app stories, Vite 7.3.6: effect/Schema found only on the first story's request, whose re-optimize reload destroyed the page)",
+  "input": { "entry": "html", "barrels": [], "explicit": true, "features": ["schema"] },
+  "files": {
+    "index.html": "<script type=\"module\" src=\"/entry.ts\"></script>\n",
+    "entry.ts": "import * as first from \"./value.vibe\"\nconsole.log(first)\n",
+    "value.vibe": "export schema Item { value: string }\n"
+  }
+}

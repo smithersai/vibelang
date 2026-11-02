@@ -113,6 +113,33 @@ function withOption(env, name, flag) {
 // VIBELANG_VITE_DEBUG=1 traces whole-project compiles and invalidations.
 const debug = process.env.VIBELANG_VITE_DEBUG ? (text) => console.error(`vibelang-vite: ${text}`) : () => {}
 
+// Vite pre-bundles the bare imports its dependency scan finds before the first
+// request. An import found later, on a request, makes Vite optimize again and
+// reload the page, which can fail a browser test running on it. The scan
+// (Vite's src/node/optimizer/scan.ts: esbuild on Vite 7, Rolldown on Vite 8)
+// resolves through the plugins' resolveId but runs no plugin's load or
+// transform, and it follows only a module that is JavaScript, HTML or has an
+// extension in optimizeDeps.extensions. The plugins in
+// optimizeDeps.esbuildOptions (Vite 7) or optimizeDeps.rolldownOptions (Vite 8,
+// whose plugin context has meta.rolldownVersion) run before the scanner's own.
+// A .vibe module's source names none of the imports its JavaScript adds, such
+// as effect/Schema for a schema, so the scan reads that JavaScript.
+const scannedId = /\.vibe(?:\.[^./\\]+\.js)?$/
+function scanConfig(config, meta, load) {
+  const extensions = config.optimizeDeps?.extensions?.includes(".vibe") ? [] : [".vibe"]
+  const scan = async (file) => isCompiled(file) ? load(file) : undefined
+  if (meta?.rolldownVersion) {
+    return { extensions, rolldownOptions: { plugins: [{ name: "vibelang:scan", load: { filter: { id: scannedId },
+      async handler(id) { const code = await scan(cleanId(id)); return code === undefined ? undefined : { code, moduleType: "js" } } } }] } }
+  }
+  return { extensions, esbuildOptions: { plugins: [{ name: "vibelang:scan", setup(build) {
+    build.onLoad({ filter: scannedId }, async ({ path }) => {
+      const contents = await scan(path)
+      return contents === undefined ? undefined : { contents, loader: "js" }
+    })
+  } }] } }
+}
+
 /** @param {import('./index.d.ts').VibeLangOptions} options */
 export default function vibelang(options = {}) {
   let root, project, logger, backend, modules, current, closing
@@ -140,6 +167,18 @@ export default function vibelang(options = {}) {
     return work
   }
 
+  // The JavaScript the scan reads. A module that does not compile scans as
+  // empty, as Vite's scanner treats a file it cannot read; its request reports
+  // the diagnostics.
+  async function scanned(file) {
+    try {
+      const { code } = await (await loaded()).load(file)
+      return code ?? ""
+    } catch {
+      return ""
+    }
+  }
+
   function diagnostics(errors, file) {
     const first = errors.find((diagnostic) => diagnostic.file) || {}
     return {
@@ -158,6 +197,7 @@ export default function vibelang(options = {}) {
       // Vite concatenates a plugin's arrays with the config's.
       const extensions = config.resolve?.extensions
       const added = sourceConditionConfig(config)
+      added.optimizeDeps = scanConfig(config, this?.meta, scanned)
       if (!extensions?.includes(".vibe")) added.resolve.extensions = extensions ? [".vibe"] : [...viteExtensions, ".vibe"]
       if (!options.register) return added
       // Vitest copies test.env into process.env, which the processes a test
