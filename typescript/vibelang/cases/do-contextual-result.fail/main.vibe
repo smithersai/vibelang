@@ -1,0 +1,10 @@
+// expect: TS2322
+// Chapter 002: contextual typing reaches the alternatives that produce a do
+// expression's value, so an alternative outside the written type is the same
+// error a conditional written in place reports.
+type Selection =
+  | { readonly _tag: 'SelectedEdge'; readonly value: number }
+  | { readonly _tag: 'IgnoredEdge'; readonly reason: 'GuardFailed' }
+export const wrong = (condition: boolean): Selection => do {
+  condition ? { _tag: 'SelectedEdge', value: 1 } : { _tag: 'Nope', reason: 'GuardFailed' }
+}

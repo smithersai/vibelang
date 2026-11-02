@@ -118,6 +118,7 @@ type Parser struct {
 	vibelangTypeScript       bool                        // reading a module declaration's body, which is TypeScript (vibelang_modules.go)
 	vibelangDos              map[*ast.Node]*doExpression // do expressions as written, by their call (vibelang_do.go)
 	vibelangDoOrder          []*doExpression             // the same, in source order
+	vibelangDoSites          map[*ast.Node]*ast.Node     // each do completion temporary's declaration to the reference at the do's site (vibelang_do.go)
 }
 
 func newParser() *Parser {

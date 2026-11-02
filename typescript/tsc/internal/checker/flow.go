@@ -250,7 +250,14 @@ func (c *Checker) getTypeAtFlowAssignment(f *FlowState, flow *ast.FlowNode) Flow
 			if c.isEmptyArrayAssignment(node) {
 				return FlowType{t: c.getEvolvingArrayType(c.neverType)}
 			}
-			assignedType := c.getWidenedLiteralType(c.getInitialOrAssignedType(f, flow))
+			assignedType := c.getInitialOrAssignedType(f, flow)
+			if c.doCompletionDeclaration(f.reference) == nil {
+				// A VibeLang do expression's completion keeps its values' literal
+				// types, as an expression written in place does: chapter 002,
+				// "`const exact = do { 1 }` has type `1`, while `let ordinary =
+				// do { 1 }` widens to `number`".
+				assignedType = c.getWidenedLiteralType(assignedType)
+			}
 			if c.isTypeAssignableTo(assignedType, f.declaredType) {
 				return FlowType{t: assignedType}
 			}

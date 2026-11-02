@@ -55,6 +55,7 @@ const (
 	NodeFlagsVibeLangIsBinding             NodeFlags = 1 << 36 // If node is the variable declaration the VibeLang parser hoists for a named is binding: a second one of its name in one home has a rename quick fix (vibelang/fix_binding_rename.go)
 	NodeFlagsVibeLangIterationCell         NodeFlags = 1 << 37 // If node is the variable declaration the VibeLang parser hoists for an is binding of a for statement's test or update: a fresh cell of each iteration, which the checker keeps uninitialized in the update (vibelang/match_for.go)
 	NodeFlagsVibeLangPatternHoist          NodeFlags = 1 << 38 // If node is any declaration hoisted for a pattern binding, subject or extractor: its declared type comes from the pattern assignment, not ordinary evolving-variable flow.
+	NodeFlagsVibeLangDoCompletion          NodeFlags = 1 << 39 // If node is the variable declaration the VibeLang parser writes for a do expression's completion value (parser/vibelang_do.go): an assignment to it takes the contextual type of the do's site (VibeLangDoSites), and its flow type keeps the assigned values' literal types (checker getContextualTypeForBinaryOperand, getTypeAtFlowAssignment).
 
 	NodeFlagsBlockScoped = NodeFlagsLet | NodeFlagsConst | NodeFlagsUsing
 	NodeFlagsConstant    = NodeFlagsConst | NodeFlagsUsing

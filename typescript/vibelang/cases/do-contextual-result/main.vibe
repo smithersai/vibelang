@@ -1,0 +1,63 @@
+// expect-result: ["SelectedEdge","IgnoredEdge","SelectedEdge","IgnoredEdge","SelectedEdge","a","b",1,2,"GuardFailed"]
+// Chapter 002: "Contextual typing reaches only the expression alternatives
+// contributing to the normal result; discarded intermediate expressions and
+// outward returns retain their own source contexts." The written result type
+// reaches a do expression's final conditional, its if/else branches and a
+// nested do, so an object literal's _tag stays a literal type; and the value
+// keeps its literal types: "`const exact = do { 1 }` has type `1`, while
+// `let ordinary = do { 1 }` widens to `number`". foldkit-121.
+type Selection =
+  | { readonly _tag: 'SelectedEdge'; readonly value: number }
+  | { readonly _tag: 'IgnoredEdge'; readonly reason: 'GuardFailed' }
+type Edge =
+  | { readonly _tag: 'When'; readonly condition: boolean }
+  | { readonly _tag: 'Otherwise' }
+
+// foldkit's selectFromGuardList: a match arm's do ends in a conditional.
+export const select = (edge: Edge): Selection =>
+  match (edge) {
+    when { _tag: 'When' } and let guarded: do {
+      const condition = guarded.condition
+      condition ? { _tag: 'SelectedEdge', value: 1 } : { _tag: 'IgnoredEdge', reason: 'GuardFailed' }
+    };
+    when { _tag: 'Otherwise' }: ({ _tag: 'SelectedEdge', value: 0 });
+  }
+
+// A plain do under a written return type.
+export const plain = (condition: boolean): Selection => do {
+  const value = 2
+  condition ? { _tag: 'SelectedEdge', value } : { _tag: 'IgnoredEdge', reason: 'GuardFailed' }
+}
+
+// if/else alternatives, one of them a nested do.
+export const nested = (n: number): Selection => do {
+  if (n > 0) {
+    (do { ({ _tag: 'SelectedEdge', value: n }) })
+  } else {
+    ({ _tag: 'IgnoredEdge', reason: 'GuardFailed' })
+  }
+}
+
+// A literal union context keeps the alternatives' literal types.
+export const letter = (flag: boolean): 'a' | 'b' => do { flag ? 'a' : 'b' }
+const exact = do { 1 }
+const exactCheck: 1 = exact
+let ordinary = do { 1 }
+ordinary = 2
+// A discarded intermediate expression keeps its own context.
+export const reason = (): 'GuardFailed' => do { 'ignored'; 'GuardFailed' }
+
+export effect function main() {
+  return [
+    select({ _tag: 'When', condition: true })._tag,
+    select({ _tag: 'When', condition: false })._tag,
+    select({ _tag: 'Otherwise' })._tag,
+    plain(false)._tag,
+    nested(3)._tag,
+    letter(true),
+    letter(false),
+    exactCheck,
+    ordinary,
+    reason(),
+  ]
+}

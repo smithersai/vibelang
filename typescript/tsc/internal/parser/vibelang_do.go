@@ -148,8 +148,11 @@ func (p *Parser) parseVibeLangDos(file *ast.SourceFile) {
 		if !d.lifted {
 			// The function returns the completion value: (() => { let $do1; …; return $do1 })()
 			end := d.keyword
-			returned := p.vibelangSpanning(p.factory.NewReturnStatement(l.ref(d.name, end)), end)
-			statements.Nodes = append(append([]*ast.Node{l.letStatement(l.ref(d.name, d.keyword), d.keyword)}, statements.Nodes...), returned)
+			ref := l.ref(d.name, end)
+			returned := p.vibelangSpanning(p.factory.NewReturnStatement(ref), end)
+			let := l.letStatement(l.ref(d.name, d.keyword), d.keyword)
+			p.completionSite(let, ref)
+			statements.Nodes = append(append([]*ast.Node{let}, statements.Nodes...), returned)
 		}
 		p.overrideParentInImmediateChildren(d.block)
 	}
@@ -162,7 +165,26 @@ func (p *Parser) parseVibeLangDos(file *ast.SourceFile) {
 	file.AsNode().ForEachChild(visit)
 	file.Statements.Nodes = l.statements(file.Statements.Nodes)
 	p.overrideParentInImmediateChildren(file.AsNode())
+	if sites := p.vibelangDoSites; sites != nil {
+		file.GetOrComputeData(ast.VibeLangDoSites, func(*ast.SourceFile) map[*ast.Node]*ast.Node { return sites })
+	}
 	file.SetDiagnostics(attachFileToDiagnostics(p.diagnostics, file))
+}
+
+// completionSite marks the declaration of let, the statement declaring a do
+// expression's completion temporary, and records ref, the reference that
+// stands where the do expression was, for the checker: an assignment of a
+// completion value takes ref's contextual type, as the value returned from
+// the function the do first was takes the function's (ast.VibeLangDoSites;
+// chapter 002, "Contextual typing reaches only the expression alternatives
+// contributing to the normal result").
+func (p *Parser) completionSite(let, ref *ast.Node) {
+	declaration := let.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0]
+	declaration.Flags |= ast.NodeFlagsVibeLangDoCompletion
+	if p.vibelangDoSites == nil {
+		p.vibelangDoSites = map[*ast.Node]*ast.Node{}
+	}
+	p.vibelangDoSites[declaration] = ref
 }
 
 // prepareDoMatches removes the synthetic callable boundary around a match
@@ -1209,15 +1231,19 @@ func (l *doLowering) expr(e *ast.Node, pre *[]*ast.Node) *ast.Node {
 		return e
 	}
 	if d := l.p.vibelangDos[e]; d != nil && d.lifted {
-		*pre = append(*pre, l.letStatement(l.ref(d.name, d.keyword), d.keyword), d.block)
+		let := l.letStatement(l.ref(d.name, d.keyword), d.keyword)
+		*pre = append(*pre, let, d.block)
 		at := l.p.sourceRange(e)
 		if e.Flags&ast.NodeFlagsVibeLangTry == 0 {
-			return l.ref(d.name, at)
+			ref := l.ref(d.name, at)
+			l.p.completionSite(let, ref)
+			return ref
 		}
 		// try do { … } (VIP-5): the parser flagged the do's call and widened
 		// it to start at try. The reference starts at do, after its let, and
 		// $try runs the value, as try runs any operand that is not a call.
 		ref := l.ref(d.name, core.NewTextRange(d.keyword.Pos(), at.End()))
+		l.p.completionSite(let, ref)
 		callee := l.p.vibelangIntrinsic("$try", core.NewTextRange(at.Pos(), at.Pos()+len("try")))
 		return l.p.vibelangSpanning(l.p.factory.NewCallExpression(callee, nil, nil, l.p.newNodeList(ref.Loc, []*ast.Node{ref}), ast.NodeFlagsNone), at)
 	}

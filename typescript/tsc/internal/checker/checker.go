@@ -30711,6 +30711,15 @@ func (c *Checker) getContextualTypeForBinaryOperand(node *ast.Node, contextFlags
 		// In an assignment expression, the right operand is contextually typed by the type of the left operand
 		// unless it's an assignment declaration.
 		if node == binary.Right {
+			if site := c.doCompletionSite(binary.Left); site != nil {
+				// A VibeLang do expression's completion value takes the
+				// contextual type of the do's site, as the value returned from
+				// the function the do first was takes the function's (parser
+				// vibelang_do.go): chapter 002, "Contextual typing reaches only
+				// the expression alternatives contributing to the normal
+				// result".
+				return c.getContextualType(site, contextFlags)
+			}
 			target := ast.GetLeftmostExpression(binary.Left, false)
 			if !(ast.IsIdentifier(target) && c.getResolvedSymbol(target).Flags()&ast.SymbolFlagsModuleExports != 0) {
 				return c.getContextualTypeForAssignmentExpression(binary)
@@ -30737,6 +30746,31 @@ func (c *Checker) getContextualTypeForBinaryOperand(node *ast.Node, contextFlags
 		}
 	}
 	return nil
+}
+
+// doCompletionSite returns the reference that stands where a VibeLang do
+// expression was when target names the let the parser wrote for the do's
+// completion value, or nil (ast.NodeFlagsVibeLangDoCompletion, ast.VibeLangDoSites).
+func (c *Checker) doCompletionSite(target *ast.Node) *ast.Node {
+	declaration := c.doCompletionDeclaration(target)
+	if declaration == nil {
+		return nil
+	}
+	sites := ast.GetSourceFileOfNode(declaration).GetOrComputeData(ast.VibeLangDoSites, func(*ast.SourceFile) map[*ast.Node]*ast.Node { return nil })
+	return sites[declaration]
+}
+
+// doCompletionDeclaration returns the let the VibeLang parser wrote for a do
+// expression's completion value when reference names it, or nil.
+func (c *Checker) doCompletionDeclaration(reference *ast.Node) *ast.Node {
+	if !ast.IsIdentifier(reference) || reference.Flags&ast.NodeFlagsReparsed == 0 {
+		return nil
+	}
+	declaration := c.getResolvedSymbol(reference).ValueDeclaration()
+	if declaration == nil || declaration.Flags&ast.NodeFlagsVibeLangDoCompletion == 0 {
+		return nil
+	}
+	return declaration
 }
 
 func (c *Checker) getContextualTypeForAssignmentExpression(binary *ast.BinaryExpression) *Type {

@@ -1,0 +1,18 @@
+type Selection =
+  | { readonly _tag: 'SelectedEdge'; readonly value: number }
+  | { readonly _tag: 'IgnoredEdge'; readonly reason: 'GuardFailed' }
+
+type Edge =
+  | { readonly _tag: 'When'; readonly condition: boolean }
+  | { readonly _tag: 'Otherwise' }
+
+export const select = (edge: Edge): Selection =>
+  match (edge) {
+    when { _tag: 'When' } and let guarded: do {
+      const condition = guarded.condition
+      condition
+        ? { _tag: 'SelectedEdge', value: 1 }
+        : { _tag: 'IgnoredEdge', reason: 'GuardFailed' }
+    };
+    when { _tag: 'Otherwise' }: ({ _tag: 'SelectedEdge', value: 0 });
+  }
