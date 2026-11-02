@@ -65,12 +65,17 @@ export function addMetroWrapper(text, ts, file = "metro.config.js") {
  * is none; in a JavaScript one, each `presets: [...]` array literal. Returns
  * the text unchanged when it already names vibelang/babel; throws when a
  * JavaScript config has no presets array literal, so a person adds it.
+ * Babel takes a preset as a name or a [name, options] pair; in a list whose
+ * presets are all pairs, vibelang/babel is the pair ["vibelang/babel", {}],
+ * so code that reads the list as pairs (t3code's compileLikeMetro test) still
+ * can.
  */
 export function addBabelPreset(text, ts, file = "babel.config.js") {
   if (text.includes("vibelang/babel")) return text
   if (/\.json$|^\.babelrc$/.test(posix.basename(file))) {
     const config = JSON.parse(text)
-    config.presets = [...(config.presets ?? []), "vibelang/babel"]
+    const presets = config.presets ?? []
+    config.presets = [...presets, presets.length && presets.every(Array.isArray) ? ["vibelang/babel", {}] : "vibelang/babel"]
     return JSON.stringify(config, null, /\n(\s+)"/.exec(text)?.[1] ?? 2) + (text.endsWith("\n") ? "\n" : "")
   }
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, scriptKind(ts, file))
@@ -80,7 +85,8 @@ export function addBabelPreset(text, ts, file = "babel.config.js") {
     if (ts.isPropertyAssignment(node) && (ts.isIdentifier(node.name) || ts.isStringLiteral(node.name)) && node.name.text === "presets" && ts.isArrayLiteralExpression(node.initializer)) {
       const list = node.initializer
       const last = list.elements.at(-1)
-      edits.push(last ? { at: last.end, text: `, ${q}vibelang/babel${q}` } : { at: list.getStart(source) + 1, text: `${q}vibelang/babel${q}` })
+      const preset = last && list.elements.every(ts.isArrayLiteralExpression) ? `[${q}vibelang/babel${q}, {}]` : `${q}vibelang/babel${q}`
+      edits.push(last ? { at: last.end, text: `, ${preset}` } : { at: list.getStart(source) + 1, text: preset })
     }
     ts.forEachChild(node, visit)
   }

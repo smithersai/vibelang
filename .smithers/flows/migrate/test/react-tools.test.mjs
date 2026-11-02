@@ -73,10 +73,39 @@ test("addMetroWrapper imports withVibeLang for export default, in the file's quo
 
 test("addBabelPreset adds vibelang/babel last to the presets, in JavaScript and JSON", () => {
   const wired = addBabelPreset(t3codeBabel, ts)
-  assert.match(wired, /presets: \[\["babel-preset-expo", \{ unstable_transformImportMeta: true \}\], "vibelang\/babel"\],/)
+  // t3code lists its one preset as a pair, and apps/mobile's compileLikeMetro reads each as [name, options].
+  assert.match(wired, /presets: \[\["babel-preset-expo", \{ unstable_transformImportMeta: true \}\], \["vibelang\/babel", \{\}\]\],/)
   assert.equal(addBabelPreset(wired, ts), wired)
   assert.equal(addBabelPreset('{\n  "presets": ["module:@react-native/babel-preset"]\n}\n', ts, ".babelrc"), '{\n  "presets": [\n    "module:@react-native/babel-preset",\n    "vibelang/babel"\n  ]\n}\n')
   assert.throws(() => addBabelPreset("const presets = [];\nmodule.exports = { presets };\n", ts), /by hand/)
+})
+
+test("addBabelPreset keeps the presets' shape: a list of pairs gets a pair, any other list a name", () => {
+  const name = fc.constantFrom("babel-preset-expo", "module:@react-native/babel-preset", "@babel/preset-env")
+  const preset = fc.oneof(name, fc.tuple(name, fc.dictionary(fc.constantFrom("loose", "modules"), fc.boolean(), { maxKeys: 2 }).map((options) => ({ ...options }))))
+  const form = fc.constantFrom("object", "function", "json")
+  const render = (presets, form) => {
+    const json = JSON.stringify(presets)
+    if (form === "json") return { file: "babel.config.json", text: JSON.stringify({ presets }, null, 2) + "\n" }
+    if (form === "object") return { file: "babel.config.js", text: `module.exports = { presets: ${json} };\n` }
+    return { file: "babel.config.js", text: `module.exports = function (api) {\n  api.cache(true);\n  return { presets: ${json} };\n};\n` }
+  }
+  const load = (text, form) => {
+    if (form === "json") return JSON.parse(text)
+    const module = {}
+    new Function("module", text)(module)
+    return typeof module.exports === "function" ? module.exports({ cache() {} }) : module.exports
+  }
+  fc.assert(fc.property(fc.array(preset, { maxLength: 4 }), form, (presets, form) => {
+    const { file, text } = render(presets, form)
+    const wired = addBabelPreset(text, ts, file)
+    const after = load(wired, form).presets
+    assert.deepEqual(after.slice(0, -1), presets)
+    const pairs = presets.length > 0 && presets.every(Array.isArray)
+    assert.deepEqual(after.at(-1), pairs ? ["vibelang/babel", {}] : "vibelang/babel")
+    if (pairs) assert.deepEqual(after.map(([name]) => name), [...presets.map(([name]) => name), "vibelang/babel"])
+    assert.equal(addBabelPreset(wired, ts, file), wired)
+  }), { numRuns: 200 })
 })
 
 test("addReactCompilerInclude lets plugin-react's React Compiler see .vibe modules", () => {
