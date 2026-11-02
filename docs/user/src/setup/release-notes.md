@@ -268,6 +268,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - An `effect` body that ran an Effect failing with `Error | ApiError` and threw an `Error` subclass declared its error channel as `Error`, so a `catch` arm on `ApiError`'s tag failed with `TS2339`; it now declares `Error | ApiError`, as `Effect.gen` infers.
 
 - Regression tests for forbidden error inheritance missed native parents with extensible tags; fuzz coverage now records these unresolved cases explicitly.
+- The specification gave two different spellings for the `effect` import a declaration file adds, `import type { Effect, Stream }` and `import { Effect }`; it now uses the value import throughout, as the compiler and the Effect TypeScript twin's declaration write it.
 - The specification said how a declaration spells an import of a `.vibe` module but not of a `.vibex` one; it now gives VIP-39's default, `./x.jsx` under `"jsx": "preserve"` and `./x.js` otherwise, and says the other `declarationImportStyle` settings are not yet decided for `.vibex`.
 - The specification applied `vibelang.declarationImportStyle` to every emitted declaration, which left open whether a source-adjacent `x.d.vibe.ts` sidecar changes its `./b.vibe` import; it now says the setting spells package declarations only, a sidecar keeps `./b.vibe` as the compiler writes it, and VIP-27 and VIP-30 publish the option.
 

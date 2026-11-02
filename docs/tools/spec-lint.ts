@@ -176,7 +176,30 @@ const importStyleScope: Rule = {
   }
 }
 
-export const rules: Rule[] = [resolutionClaims, configKeys, importStyleScope]
+// The import a declaration adds (round 14 OPUS-4). 001's Content bullet and
+// its worked example wrote `import type { Effect, Stream } from "effect"`;
+// the Specifiers bullet beside it wrote `import { Effect } from "effect"`, and
+// VIP-27 holds declarations to the bytes the Effect TypeScript twin's
+// declaration has, which keeps the twin's value import. Within chapter 1's
+// Declaration output section every `import … from "effect"` takes one form.
+const declarationImportForm: Rule = {
+  name: "declaration-import-form",
+  finding: "r14 OPUS-4: 001:482 and 001:565 wrote `import type { Effect, Stream }`, 001:483 `import { Effect }`, for the same added import",
+  check(spec) {
+    const text = spec.get("src/001-functions.md") ?? ""
+    const start = text.indexOf("\n## Declaration output\n")
+    if (start < 0) return [{ rule: this.name, file: "src/001-functions.md", line: 1, message: "the Declaration output section is missing" }]
+    const next = text.indexOf("\n## ", start + 1)
+    const section = text.slice(start, next < 0 ? undefined : next)
+    const found = [...section.matchAll(/import (type )?\{[^}\n]*\} from ["']effect["']/g)]
+    const typeOnly = found.filter(m => m[1]), value = found.filter(m => !m[1])
+    if (!typeOnly.length || !value.length) return []
+    return typeOnly.map(m => ({ rule: this.name, file: "src/001-functions.md", line: lineAt(text, start + m.index!),
+      message: `\`${m[0]}\` disagrees with the section's \`${value[0]![0]}\`: an added import has one form, the Effect TypeScript twin's` }))
+  }
+}
+
+export const rules: Rule[] = [resolutionClaims, configKeys, importStyleScope, declarationImportForm]
 
 export const lint = (spec: Spec, only = rules) => only.flatMap(rule => rule.check(spec))
 
