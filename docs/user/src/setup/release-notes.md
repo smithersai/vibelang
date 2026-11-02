@@ -334,6 +334,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Sidecar identity properties used retired specification wording; they now check the current source-resolution rule while retaining the original hashed corpus and nominal-identity controls.
 
+- Compiler fuzz checks could miss local service shape visibility and recursion; they now compare those forms with native TypeScript and retain exact pending keys for compiler gaps.
+
 - Repaired native loop migrations now have strict corpus checks while retaining the remaining iterator gaps.
 
 - Plain callable roots, `match` results and JavaScript `try`/`catch` now have strict regression checks after their migration gaps were resolved.
