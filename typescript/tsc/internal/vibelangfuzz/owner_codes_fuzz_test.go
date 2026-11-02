@@ -211,7 +211,31 @@ func FuzzEffectBlockJumps(f *testing.F) {
 const doCompletionTarget = "FuzzDoCompletion"
 const doCompletionQuote = "EndsInIterationOrBareIfOrDeclaration"
 
-func TestDoCompletionQuoted(t *testing.T) { chapterSays(t, "002-running.md", doCompletionQuote) }
+func TestDoCompletionQuoted(t *testing.T) { ownerDoCompletionRules(t) }
+func ownerDoCompletionRules(t testing.TB) {
+	t.Helper()
+	chapterSays(t, "002-running.md", doCompletionQuote)
+	chapterSays(t, "002-running.md", "For `Statement : VariableStatement`, the pinned predicate returns `isLast`.")
+	chapterSays(t, "002-running.md", "`var` in a `do` expression in a parameter list is `EK0203`.")
+	const grammar = `StatementListItem :
+        Declaration
+
+      Statement :
+        VariableStatement
+
+      LabelledItem :
+        FunctionDeclaration
+    </emu-grammar>
+    <emu-alg>
+      1. Return _isLast_.`
+	draft, err := os.ReadFile(SpecPath("../vips/tc39-do-expressions/spec.emu"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(draft), grammar) {
+		t.Fatal("VIP-2's pinned VariableStatement rule no longer returns isLast; reconcile the oracle")
+	}
+}
 
 // A do expression whose block ends in an iteration statement, a bare if or a
 // declaration is EK0201 at the parser, never TypeScript's TS1109; a block
@@ -219,7 +243,7 @@ func TestDoCompletionQuoted(t *testing.T) { chapterSays(t, "002-running.md", doC
 // ends well is admitted (VIP-2, decided detail 247).
 func FuzzDoCompletion(f *testing.F) {
 	startShortBudget(f)
-	chapterSays(f, "002-running.md", doCompletionQuote)
+	ownerDoCompletionRules(f)
 	sites := []struct {
 		key, last string
 		bad       bool
@@ -248,9 +272,18 @@ func FuzzDoCompletion(f *testing.F) {
 		{"switch-clause-expression", "switch (0) { case 0: 1; default: 2 }", false},
 		{"switch-clause-let", "switch (0) { case 0: let n = 1 }", true},
 		{"switch-clause-bare-if", "switch (0) { default: if (c) { 1 } }", true},
-		{"var", "var n = 1", false},
+		{"var", "var n = 1", true},
 		{"break", "break", false},
 		{"continue", "continue", false},
+		{"var-trailing-empty", "var n = 1; ;", true},
+		{"var-trailing-block", "var n = 1; {}", true},
+		{"var-nested", "{ var n = 1 }", true},
+		{"var-nested-empty", "{ var n = 1; {} }", true},
+		{"var-multiple", "var a = 1, n = 2", true},
+		{"var-then-value", "var n = 1; n", false},
+		{"var-then-value-empty", "var n = 1; n; {}; ;", false},
+		{"var-nested-then-value", "{ var n = 1; n }", false},
+		{"parameter-var", "var n = 1; n", false},
 	}
 	keys := make([]string, len(sites))
 	for i, site := range sites {
@@ -260,21 +293,47 @@ func FuzzDoCompletion(f *testing.F) {
 	f.Fuzz(func(t *testing.T, data []byte) {
 		choice, _ := keyedChoice(keys, data)
 		site := sites[choice]
-		source := "declare const c: boolean\nexport const v = do { " + site.last + " }\n"
-		file, _ := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, source)
-		var ek, other int
-		for _, d := range file.Diagnostics() {
-			if d.Code() == 201 {
-				ek++
-			} else {
-				other++
+		var wantCode int32
+		if site.bad {
+			wantCode = parser.DoEndsCode
+		}
+		type probe struct {
+			scope, source string
+			code          int32
+		}
+		probes := []probe{{"module", "declare const c: boolean\nexport const v = do { " + site.last + " }\n", wantCode}}
+		if site.key == "parameter-var" {
+			probes = []probe{{"parameter", "export function f(value = do { " + site.last + " }) { return value }", parser.DoParameterVarCode}}
+		} else if strings.HasPrefix(site.key, "var") {
+			for _, context := range []struct{ name, head string }{{"plain", "function"}, {"effect", "effect function"}} {
+				probes = append(probes, probe{context.name, "export " + context.head + " f() { const value = do { " + site.last + " }; return value }", wantCode})
 			}
 		}
-		key := "rule:" + site.key
-		if site.bad && (ek != 1 || other != 0) || !site.bad && (ek != 0 || other != 0) {
-			Gap(t, doCompletionTarget, key, "%s; expected %d EK0201 and no other parse error, got %d and %d\n%s\n%v", doCompletionQuote, map[bool]int{true: 1}[site.bad], ek, other, source, file.Diagnostics())
+		for _, sample := range probes {
+			file, _ := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, sample.source)
+			var matching, other int
+			for _, diagnostic := range file.Diagnostics() {
+				if IsEK(diagnostic) && diagnostic.Code() == sample.code {
+					matching++
+				} else {
+					other++
+				}
+			}
+			wantCount := 0
+			want := "no parse diagnostics"
+			if sample.code != 0 {
+				wantCount = 1
+				want = fmt.Sprintf("one EK%04d", sample.code)
+			}
+			key := "rule:" + site.key
+			if sample.scope != "module" && sample.scope != "parameter" {
+				key += ":" + sample.scope
+			}
+			if matching != wantCount || other != 0 {
+				Gap(t, doCompletionTarget, key, "%s; %s context wants %s, got matching x%d and other x%d\n%s\n%v", doCompletionQuote, sample.scope, want, matching, other, sample.source, file.Diagnostics())
+			}
+			ExpectPending(t, doCompletionTarget, key)
 		}
-		ExpectPending(t, doCompletionTarget, key)
 		ExpectPending(t, doCompletionTarget, specCorpusKey(t))
 	})
 }

@@ -37,6 +37,10 @@ For `EndsInIterationOrBareIfOrDeclaration`, `CaseBlock : { }` returns `false` fo
 
 The upstream `spec.emu` stays unchanged. These are the missing empty case-block base case and the native iteration classification for the added loops, not a blanket fallback for unrecognized syntax. [Appendix A](../../src/900-appendices.md#notes-on-the-productions) records the effective rules; [Running Effects](../../src/002-running.md#do-expressions) gives checked examples.
 
+## Variable statements at the end
+
+For `Statement : VariableStatement`, the pinned predicate returns `isLast`. A final `var` declaration is therefore `EK0201`, including when only empty statements or empty blocks follow it. A nonfinal `var` remains legal and hoists to the enclosing function: `do { var value = 1; value }` keeps that behavior. The separate parameter-list restriction remains `EK0203`. This follows the existing vendored `Statement : VariableStatement` algorithm; it does not change the pinned snapshot.
+
 ## Where VibeLang falls short of it
 
 The compiler lowers a do expression to the statements around it. Where no statement surrounds it, as in a parameter default, a declaration in a for-loop initializer, a class member, a `case` test, an optional chain, or a VibeLang form the compiler still writes as a function (`catch` and `throw` expressions, `fork`), it keeps a function. There a `return`, `var`, a jump out, `await` or `yield` inside the block is `EK0204`, rather than meaning what the snapshot says. In particular the snapshot lets `function f(x = do { return null }) {}` return from `f`; VibeLang rejects it.

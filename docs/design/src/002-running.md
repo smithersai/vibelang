@@ -500,6 +500,8 @@ function leaveDo() { return Effect.gen(function* () { return 7 }) }
 
 **Static predicates.** For `EndsInIterationOrBareIfOrDeclaration`, `CaseBlock : { }` returns `false` for either value of `isLast` and any `labelSet`, including when the switch is nonfinal. Every [ForTry](900-appendices.md#fortry) and [ForConcurrent](900-appendices.md#forconcurrent) production, with or without a concurrency limit, uses the native iteration rule: `isLast` equal to `true` gives `true`; otherwise a body passing `IsBreak` with that label set gives `true`; otherwise apply the predicate to the body with the same `labelSet` and `isLast`. The loop statement itself has `IsEmpty` and `IsBreak` equal to `false`. Thus nonfinal loop bodies are still visited, and a final added loop is rejected like a final native loop. Ordinary switch completion and loop jump restrictions stay unchanged. The [snapshot receipt](../vips/tc39-do-expressions/README.md#static-predicate-reconciliations) and [Appendix A](900-appendices.md#notes-on-the-productions) record these cases.
 
+For `Statement : VariableStatement`, the pinned predicate returns `isLast`. A final `var` declaration is therefore `EK0201`, including when only empty statements or empty blocks follow it. A nonfinal `var` remains legal and hoists to the enclosing function: `do { var value = 1; value }` keeps that behavior. The separate parameter-list restriction remains `EK0203`.
+
 ```vibe es
 // compiler-gap: pending VIP-2, VIP-19, VIP-20
 const value = do { switch (0) {} 7 } // 7

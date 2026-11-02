@@ -302,9 +302,6 @@ func endsBadlyStatement(s *ast.Node, labels []string, isLast bool) *ast.Node {
 		ast.KindReturnStatement, ast.KindThrowStatement, ast.KindDebuggerStatement:
 		return nil
 	case ast.KindVariableStatement:
-		if s.AsVariableStatement().DeclarationList.Flags&ast.NodeFlagsBlockScoped == 0 {
-			return nil
-		}
 		return when(isLast)
 	case ast.KindBlock:
 		return endsBadly(s.AsBlock().Statements.Nodes, labels, isLast)

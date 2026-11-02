@@ -43,7 +43,7 @@ func TestVibeLangDoEarlyErrors(t *testing.T) {
 	for _, text := range []string{
 		"function f(n) { const v = match (n) { default: do { return 1 } }; return v }",
 		"function f() { return do {} }",
-		"function f() { return do { var n = 1 } }",
+		"function f() { return do { var n = 1; n } }",
 		"effect function f() { return do { uninterruptible {} } }",
 		"function f() { return do { 1; ; } }",
 		"function f() { return do { 1; l: { break l } } }",

@@ -1,0 +1,10 @@
+// expect: EK0201 EK0201 EK0201 EK0201 EK0201 EK0201 EK0201 EK0203
+// VIP-2's pinned VariableStatement predicate returns isLast.
+export function finalVar() { return do { var value = 1 } }
+export effect function effectFinalVar() { return do { var value = 1 } }
+export function afterEmptyStatement() { return do { var value = 1; ; } }
+export function afterEmptyBlock() { return do { var value = 1; {} } }
+export function nestedFinalVar() { return do { { var value = 1 } } }
+export function nestedEmptyBlock() { return do { { var value = 1; {} } } }
+export function multipleBindings() { return do { var first = 1, second = 2 } }
+export function parameterVar(value = do { var inner = 1; inner }) { return value }

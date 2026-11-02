@@ -1092,6 +1092,7 @@ typescript/vibelang/cases/discarded-effect-call/main.vibe:7:34 byname program ta
 typescript/vibelang/cases/do-call-argument/main.vibe:23:43 lambda plain annotation
 typescript/vibelang/cases/do-call-argument/main.vibe:26:16 lambda plain fallback
 typescript/vibelang/cases/do-declaration-initializer-order/main.vibe:12:35 lambda plain fallback
+typescript/vibelang/cases/do-final-var.fail/main.vibe:10:41 lambda plain fallback
 typescript/vibelang/cases/do-jump-operand-order/main.vibe:40:21 byname program annotation
 typescript/vibelang/cases/do-jump-operand-order/main.vibe:41:25 byname program annotation
 typescript/vibelang/cases/do-jump-operand-order/main.vibe:42:23 byname program annotation
