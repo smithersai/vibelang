@@ -67,6 +67,8 @@ node --import vibelang/register src/main.ts
 
 `vibelang/register` lets Node import `.vibe` modules from source, so a
 TypeScript entry point, a script, or a test that spawns `node` needs no `dist/`.
+A committed loader record from `writeLoaderRecord` in `vibelang/project` can move with the checkout. It relocates recorded file paths and source-map sources while preserving emitted JavaScript bytes, including strings containing the old checkout path. Records from the older format are ignored and compiled again.
+
 The first `.vibe` import compiles the whole project in the nearest
 `tsconfig.json` above the module, once per process; every `.vibe` module of that
 project comes from that compile. The compile type-checks the project's own

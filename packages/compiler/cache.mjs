@@ -34,7 +34,8 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "nod
 // 5: sidecars beside their sources are compiler outputs.
 // 6: a directory record names the vibe.sidecarDir children its listing omits.
 // 7: configured sidecar layouts fingerprint inputs, including overlapping roots.
-const format = 7
+// 8: discard cached results populated by text-rewriting loader records.
+const format = 8
 const version = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")).version
 
 // A file whose timestamp is this close to a compile's start may have changed
@@ -655,8 +656,8 @@ function entryOf({ project, root, snapshot, result, files, hashDependencies = fa
 // checks the record input by input; when every one holds it uses the recorded
 // result and caches it as its own compile. A record that fails any check
 // costs only the compile it would have saved.
-const recordFormat = 1
-const recordBase = "<vibelang-record-base>"
+// 2: relocate structured path fields only; format 1 rewrote program data.
+const recordFormat = 2
 const lockfiles = installFiles.filter((name) => !name.includes("/"))
 
 /** The loader record of a project. */
@@ -698,8 +699,39 @@ const contentHolds = (record) => {
   }
 }
 
-const escaped = (path) => JSON.stringify(path).slice(1, -1)
-const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+// Only these fields belong to the record's path schema. Program text,
+// diagnostic messages, source-map names and other payloads stay byte-for-byte
+// as emitted, even when they contain a checkout path or the old placeholder.
+function recordPaths(entry, path) {
+  const files = (records) => records.map((record) => ({ ...record, path: path(record.path) }))
+  return {
+    ...entry,
+    project: path(entry.project),
+    root: path(entry.root),
+    configs: files(entry.configs),
+    directories: entry.directories.map(([directory, stamp, names, omitted, options]) => [
+      path(directory), stamp, names, omitted,
+      ...(options === undefined ? [] : [{
+        ...options, excluded: options.excluded.map(path),
+        sidecarDir: path(options.sidecarDir), home: path(options.home)
+      }])
+    ]),
+    installs: files(entry.installs),
+    packages: files(entry.packages),
+    files: files(entry.files),
+    inputs: entry.inputs.map(path),
+    warnings: entry.warnings.map((warning) => warning.file === undefined ? warning : { ...warning, file: path(warning.file) }),
+    outputs: entry.outputs.map((output) => ({
+      ...output,
+      paths: output.paths.map(path),
+      map: output.map && {
+        ...output.map,
+        ...(output.map.file === undefined ? {} : { file: path(output.map.file) }),
+        sources: output.map.sources.map(path)
+      }
+    }))
+  }
+}
 
 /**
  * The loader record of one project's compile: { file, begin, write, lookup }.
@@ -745,10 +777,16 @@ export function loaderRecord({ project, root, compiler }) {
       outputs: built.entry.outputs.map(({ paths, code, map }) =>
         ({ paths, code, map: map && { ...map, sourcesContent: undefined } }))
     }
-    let text = JSON.stringify(entry)
-    if (text.includes(recordBase)) throw new Error(`cannot record ${project}: its compile names ${recordBase}`)
-    text = text.replace(new RegExp(escapeRegExp(escaped(base)) + '(?=["/]|\\\\\\\\)', "g"), recordBase)
-    const record = { format: recordFormat, base: relative(dirname(file), base).split(sep).join("/") || ".", entry: JSON.parse(text) }
+    // A tagged relative path cannot collide with any string in user data.
+    // Paths outside the workspace (for example a shared dependency install)
+    // remain absolute and continue to refer to that same external input.
+    const portable = recordPaths(entry, (path) => {
+      if (!isAbsolute(path)) return path
+      const local = relative(base, path)
+      return local === ".." || local.startsWith(".." + sep) || isAbsolute(local)
+        ? path : { relative: local.split(sep).join("/") }
+    })
+    const record = { format: recordFormat, base: relative(dirname(file), base).split(sep).join("/") || ".", entry: portable }
     mkdirSync(dirname(file), { recursive: true })
     const temporary = `${file}.${process.pid}.${randomBytes(6).toString("hex")}.tmp`
     try {
@@ -778,7 +816,7 @@ export function loaderRecord({ project, root, compiler }) {
   function validate(record) {
     if (record.format !== recordFormat || typeof record.base !== "string") return { miss: "record of another format" }
     const base = resolve(dirname(file), record.base)
-    const entry = JSON.parse(JSON.stringify(record.entry).replaceAll(recordBase, () => escaped(base)))
+    const entry = recordPaths(record.entry, (path) => typeof path === "string" ? path : resolve(base, path.relative))
     if (entry.format !== format || entry.version !== version) return { miss: "record of another version" }
     if (entry.project !== project || entry.root !== root) return { miss: "record of another project" }
     if (entry.compiler !== binaryDigest(compiler)) return { miss: "record of another compiler" }
