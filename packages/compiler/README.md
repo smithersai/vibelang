@@ -159,7 +159,8 @@ saves a compile: a stale one costs nothing but the compile.
 
 The migrate flow writes a record for each project a migrated package's
 `.vibe` modules compile with, each time it writes the package's emitted
-JavaScript. To write one yourself, after changing a package:
+JavaScript, with the package's installed `vibelang/project`. To write one
+yourself, after changing a package:
 
 ```sh
 node -e 'import("vibelang/project").then(p => console.log(p.writeLoaderRecord({ project: process.argv[1] })))' packages/protocol/tsconfig.json

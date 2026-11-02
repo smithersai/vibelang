@@ -10,10 +10,9 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { dirname, join, posix, relative, resolve, sep } from "node:path"
-import { fileURLToPath } from "node:url"
+import { fileURLToPath, pathToFileURL } from "node:url"
 import { assertFinished, parseDiagnostics } from "./diagnostics.mjs"
 import { quote, rel, run } from "./util.mjs"
-import { formatDiagnostic, nearestProject, writeLoaderRecord } from "../../../../packages/compiler/project.mjs"
 
 /** The TypeScript compiler API (5.x or 6.x; TypeScript 7's package has no such API), from the first directory that has it. */
 export function loadTypeScript(directories) {
@@ -629,8 +628,21 @@ export async function emitPackageJs({ compiler, tsconfigs, packageDir, log, root
  * A nested package and a project outside the package are their own. A
  * project that does not compile, or a compiler that cannot record, leaves no
  * record and a receipt entry that says why; the emit stands either way.
+ *
+ * The writer is the package's installed vibelang/project, the loader that
+ * reads the record, through its public export: a flow stages without the
+ * repository's packages, and a record holds only for the loader version that
+ * wrote it.
  */
-export function writeLoaderRecords({ compiler, packageDir, root }) {
+export async function writeLoaderRecords({ compiler, packageDir, root }) {
+  const name = (path) => rel(root ?? packageDir, path)
+  let loader
+  try {
+    loader = await import(pathToFileURL(createRequire(join(packageDir, "package.json")).resolve("vibelang/project")).href)
+  } catch (error) {
+    return [{ package: name(packageDir), error: `vibelang/project is not installed for this package: ${String(error?.message ?? error).split("\n")[0]}` }]
+  }
+  const { formatDiagnostic, nearestProject, writeLoaderRecord } = loader
   const inside = (path) => !relative(packageDir, path).startsWith("..")
   const projects = new Set()
   const walk = (directory) => {
@@ -646,7 +658,6 @@ export function writeLoaderRecords({ compiler, packageDir, root }) {
     }
   }
   walk(packageDir)
-  const name = (path) => rel(root ?? packageDir, path)
   return [...projects].sort().map((project) => {
     try {
       const written = writeLoaderRecord({ project, compiler })

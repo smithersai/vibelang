@@ -1269,7 +1269,7 @@ async function emitMigratedJs(config, t, logs) {
     // Nonzero emits can still write valid package-owned files (for example TS6059).
     let runtimeRouting
     const exportsChanged = routeEmittedExports(join(t, pkg.dir), result.outputs, { typescript:typeScriptOf(config), onGraph:graph=>runtimeRouting=graph })
-    const loaderRecords = writeLoaderRecords({ compiler: compilerOf(config), packageDir: join(t, pkg.dir), root: t })
+    const loaderRecords = await writeLoaderRecords({ compiler: compilerOf(config), packageDir: join(t, pkg.dir), root: t })
     emitted.push({ package: pkg.dir, files: result.files, code: result.code, exportsChanged, runtimeRouting, loaderRecords, diagnostics: result.diagnostics })
   }
   return emitted
