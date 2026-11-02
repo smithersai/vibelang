@@ -760,6 +760,12 @@ generator's exit status and prints its diagnostics. Its output directory keeps
 `docs-corpus.log` and `docs-corpus.stderr.log`; the failed corpus remains
 available for diagnosis. Only successful generation is used for measurement.
 
+The LSP benchmark, `node scripts/bench/lsp.mjs <server> <project>`, reports
+malformed response headers, JSON or messages with the active request and its
+method. It terminates and reaps the owned server before returning failure,
+escalating to `SIGKILL` if the server ignores `SIGTERM`. Response bodies are
+omitted from malformed-response diagnostics.
+
 ## Known gaps
 
 - **Sandboxing.** The targets run with `sandbox: "none"`: the harness writes

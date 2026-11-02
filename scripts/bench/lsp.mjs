@@ -55,24 +55,40 @@ child.stdout.on("end", () => fail("server stdout closed"))
 child.stdout.on("error", (error) => fail(`server stdout failed (${error.code ?? error.message})`))
 child.stdin.on("error", (error) => fail(`server stdin failed (${error.code ?? error.message})`))
 child.stdout.on("data", (chunk) => {
+  if (failure) return
   buffer = Buffer.concat([buffer, chunk])
-  for (;;) {
-    const end = buffer.indexOf("\r\n\r\n")
-    if (end < 0) return
-    const length = Number(/Content-Length: *(\d+)/i.exec(buffer.subarray(0, end).toString())?.[1])
-    if (buffer.length < end + 4 + length) return
-    const message = JSON.parse(buffer.subarray(end + 4, end + 4 + length).toString())
-    buffer = buffer.subarray(end + 4 + length)
-    if (message.method === undefined) {
-      const entry = pending.get(message.id)
-      if (!entry) continue
-      pending.delete(message.id)
-      clearTimeout(entry.timer)
-      message.error ? entry.reject(new Error(`request ${message.id} (${entry.method}): ${message.error.message}`)) : entry.resolve(message.result)
-    } else if (message.id !== undefined) {
-      const result = message.method === "workspace/configuration" ? message.params.items.map(() => null) : null
-      send({ jsonrpc: "2.0", id: message.id, result })
+  let stage = "header"
+  try {
+    for (;;) {
+      stage = "header"
+      const end = buffer.indexOf("\r\n\r\n")
+      if (end < 0) return
+      const lengths = buffer.subarray(0, end).toString().split("\r\n").filter(line => /^Content-Length:/i.test(line))
+      const match = lengths.length === 1 && /^Content-Length: *(\d+) *$/i.exec(lengths[0])
+      const length = match ? Number(match[1]) : NaN
+      if (!Number.isSafeInteger(length)) throw new Error()
+      if (buffer.length < end + 4 + length) return
+      stage = "JSON"
+      const message = JSON.parse(buffer.subarray(end + 4, end + 4 + length).toString())
+      buffer = buffer.subarray(end + 4 + length)
+      stage = "message"
+      if (message === null || typeof message !== "object" || Array.isArray(message)) throw new Error()
+      if (message.method === undefined) {
+        const entry = pending.get(message.id)
+        if (!entry) continue
+        pending.delete(message.id)
+        clearTimeout(entry.timer)
+        message.error ? entry.reject(new Error(`request ${message.id} (${entry.method}): ${message.error.message}`)) : entry.resolve(message.result)
+      } else if (message.id !== undefined) {
+        const result = message.method === "workspace/configuration" ? message.params.items.map(() => null) : null
+        send({ jsonrpc: "2.0", id: message.id, result })
+      }
     }
+  } catch {
+    // Event callbacks cannot throw into benchmark()'s teardown. Reject the
+    // active request instead, without copying response payloads into logs.
+    buffer = Buffer.alloc(0)
+    fail(`server sent malformed LSP ${stage}`)
   }
 })
 function send(message) {

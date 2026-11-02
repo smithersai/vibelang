@@ -8,7 +8,10 @@ import { test } from "node:test"
 
 const script = process.env.VIBELANG_BENCH_LSP_SCRIPT ?? fileURLToPath(new URL("./bench/lsp.mjs", import.meta.url))
 
-for (const mode of ["success", "initialize-error", "diagnostic-error", "initialize-exit", "initialize-zero-exit", "initialize-noisy-exit", "initialize-slow-term", "initialize-ignore-term", "diagnostic-exit", "diagnostic-signal", "hover-exit", "stdout-close", "stdout-close-ignore-term", "stdin-close"]) {
+const malformed = ["initialize", "diagnostic", "hover"].flatMap(stage =>
+  ["json", "header", "null", "array", "negative-length", "duplicate-length", "unsafe-length", "config"].map(kind => `malformed-${kind}-${stage}`))
+
+for (const mode of ["success", "success-fragmented", "success-coalesced", "initialize-error", "diagnostic-error", "initialize-exit", "initialize-zero-exit", "initialize-noisy-exit", "initialize-slow-term", "initialize-ignore-term", "diagnostic-exit", "diagnostic-signal", "hover-exit", "stdout-close", "stdout-close-ignore-term", "stdin-close", "malformed-json-ignore-term", ...malformed]) {
   test("LSP benchmark owns its server: " + mode, async t => {
     const root = mkdtempSync(join(tmpdir(), "vibelang lsp bench-"))
     let peer
@@ -26,11 +29,18 @@ for (const mode of ["success", "initialize-error", "diagnostic-error", "initiali
       'import { appendFileSync, closeSync, writeFileSync, writeSync } from "node:fs"',
       'writeFileSync(process.env.BENCH_PEER_PID, String(process.pid))',
       'setInterval(() => {}, 1000)',
-      'if (process.env.BENCH_PEER_MODE === "stdout-close-ignore-term") process.on("SIGTERM", () => {})',
+      'if (["stdout-close-ignore-term", "malformed-json-ignore-term"].includes(process.env.BENCH_PEER_MODE)) process.on("SIGTERM", () => {})',
       'if (process.env.BENCH_PEER_MODE === "initialize-slow-term") process.on("SIGTERM", () => setTimeout(() => process.exit(0), 500))',
       'if (process.env.BENCH_PEER_MODE === "initialize-ignore-term") process.on("SIGTERM", () => {})',
       'let buffer = Buffer.alloc(0)',
-      'const reply = body => { const text = JSON.stringify(body); process.stdout.write("Content-Length: " + Buffer.byteLength(text) + "\\r\\n\\r\\n" + text) }',
+      'const frame = body => { const text = JSON.stringify(body); return "Content-Length: " + Buffer.byteLength(text) + "\\r\\n\\r\\n" + text }',
+      'const reply = body => {',
+      '  const message = frame(body)',
+      '  if (process.env.BENCH_PEER_MODE === "success-fragmented") {',
+      '    const split = message.indexOf("\\r\\n\\r\\n") + 3',
+      '    process.stdout.write(message.slice(0, split)); setTimeout(() => { process.stdout.write(message.slice(split, split + 2)); setTimeout(() => process.stdout.write(message.slice(split + 2)), 1) }, 1)',
+      '  } else process.stdout.write((process.env.BENCH_PEER_MODE === "success-coalesced" ? frame({jsonrpc: "2.0", method: "$/progress", params: {value: "通知"}}) + frame({jsonrpc: "2.0", id: "unknown", result: null}) : "") + message)',
+      '}',
       'process.stdin.on("data", chunk => {',
       '  buffer = Buffer.concat([buffer, chunk])',
       '  for (;;) {',
@@ -40,6 +50,12 @@ for (const mode of ["success", "initialize-error", "diagnostic-error", "initiali
       '    const message = JSON.parse(buffer.subarray(end + 4, end + 4 + length)); buffer = buffer.subarray(end + 4 + length)',
       '    appendFileSync(process.env.BENCH_PEER_TRACE, JSON.stringify(message) + "\\n")',
       '    const mode = process.env.BENCH_PEER_MODE',
+      '    const malformedMethod = mode.endsWith("-initialize") ? "initialize" : mode.endsWith("-hover") ? "textDocument/hover" : "textDocument/diagnostic"',
+      '    if (mode.startsWith("malformed-") && message.method === malformedMethod) {',
+      '      const body = mode.includes("-null-") ? "null" : mode.includes("-array-") ? "[]" : mode.includes("-config-") ? JSON.stringify({jsonrpc: "2.0", id: "server-config", method: "workspace/configuration", params: {items: null}}) : "{PRIVATE_RESPONSE_BODY"',
+      '      const header = mode.includes("-header-") ? "Content-Type: application/json" : mode.includes("-negative-length-") ? "Content-Length: -1" : mode.includes("-duplicate-length-") ? "Content-Length: 1\\r\\nContent-Length: 2" : mode.includes("-unsafe-length-") ? "Content-Length: 9007199254740992" : "Content-Length: " + Buffer.byteLength(body)',
+      '      process.stdout.write(header + "\\r\\n\\r\\n" + body); return',
+      '    }',
       '    if (mode === "stdin-close" && message.method === "initialize") { process.stdin.destroy(); try { closeSync(0) } catch {}; reply({jsonrpc: "2.0", id: message.id, result: null}); return }',
       '    if (mode === "initialize-noisy-exit" && message.method === "initialize") { process.stderr.write("NOISE_START" + "x".repeat(256 * 1024), () => { writeSync(2, "fixture server stopped during initialize\\n"); process.exit(23) }); return }',
       '    if (mode === "initialize-zero-exit" && message.method === "initialize") { writeSync(2, "fixture server stopped during initialize\\n"); process.exit(0) }',
@@ -73,7 +89,7 @@ for (const mode of ["success", "initialize-error", "diagnostic-error", "initiali
     const calls = readFileSync(trace, "utf8").trim().split("\n").map(line => JSON.parse(line))
     assert.equal(calls[0].method, "initialize")
     assert.deepEqual(calls[0].params.workspaceFolders, [{ uri: pathToFileURL(project).href, name: "bench" }])
-    if (mode === "success") {
+    if (mode.startsWith("success")) {
       assert.equal(result.status, 0, result.stderr)
       assert.match(result.stdout, /^benchmark project 4 modules: diagnostics cold \d+ ms \(0 errors\), warm \d+ ms; hover first \d+ ms, median of 2 \d+\.\d ms; peak RSS (?:\d+ MiB|n\/a)\n$/)
       assert.equal(calls.filter(call => call.method === "textDocument/diagnostic").length, 2)
@@ -83,13 +99,17 @@ for (const mode of ["success", "initialize-error", "diagnostic-error", "initiali
       assert.equal(result.status, 1, result.stdout + result.stderr)
       if (mode.endsWith("-error") || mode === "initialize-slow-term" || mode === "initialize-ignore-term") assert.match(result.stderr, /fixture .* failed/)
       else {
-        const method = mode.startsWith("initialize-") ? "initialize" : mode === "hover-exit" ? "textDocument/hover" : "textDocument/diagnostic"
+        const method = mode.startsWith("initialize-") || mode.endsWith("-initialize") ? "initialize" : mode === "hover-exit" || mode.endsWith("-hover") ? "textDocument/hover" : "textDocument/diagnostic"
         assert.ok(result.stderr.includes(method), result.stderr)
         assert.match(result.stderr, /request \d+/)
         if (mode.endsWith("-exit")) assert.match(result.stderr, mode === "initialize-zero-exit" ? /code 0/ : /code 23/)
         else if (mode.endsWith("-signal")) assert.match(result.stderr, /SIGTERM/)
         else if (mode === "stdin-close") assert.match(result.stderr, /stdin failed \(EPIPE\)/)
-        else {
+        else if (mode.startsWith("malformed-")) {
+          assert.match(result.stderr, /malformed LSP (?:header|JSON|message)/)
+          assert.doesNotMatch(result.stderr, /PRIVATE_RESPONSE_BODY/)
+          if (mode.endsWith("ignore-term")) assert.match(result.stderr, /SIGKILL/)
+        } else {
           assert.match(result.stderr, /stdout closed/)
           if (mode === "stdout-close-ignore-term") assert.match(result.stderr, /SIGKILL/)
         }
