@@ -278,7 +278,13 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A guarded `do` body such as `x !== undefined && do { x.length }` could report that `x` was possibly `undefined`; `&&`, `||` and `??` now retain the source guard’s TypeScript narrowing, evaluate the left operand once and still invalidate narrowing after an assignment.
 
+- The `is` redeclaration checks stopped at stale specification quotes after binding homes were clarified. They now check the current VIP-7 rule: repeated names inside one pattern retain their initialization rules, while separate patterns sharing a home are redeclarations.
+
+- The pipe grammar checks stopped at an outdated specification sentence after Effect arrows were explicitly included in the covering-production rule. They now quote that rule and continue checking rejected conditional tests and their parenthesized repairs.
+
 - Missing-runtime fuzz checks assumed every Effect function imported `vibelang-runtime`; they now inspect parsed module imports and preserve independent errors when no runtime helper is needed.
+
+- Concurrent migration batches could restore another package's files to their old bytes after it reported successful fixes; restoration now stays inside each compiler source graph, and overlapping graphs take turns.
 
 - Migrating an Effect pipeline could change its public declaration from an expanded intersection to a named alias, as in opencode's reconnect service; the quick fix now keeps the native `.pipe(...)` when uncurrying a stage would change inferred type names.
 - After VIP-1, a `catch` passed where an Effect is expected, as in `FiberMap.run(map, key, (effect { … }) catch effect (e) => …)`, ran instead of being passed, and `vibelang --fix --fix-vip-only` left it; the migration now writes it as `effect { return … catch … }`, the program the old compiler passed.
@@ -415,6 +421,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Remote contributor checks could pass using dependencies left over from an earlier checkout; `scripts/remote.sh` now checks owned installs against the synchronized lockfiles and stops on install errors.
 
 - Compiler checks could miss regressions in the VibeLang formatter; the compiler gate now runs the formatter’s Go tests.
+- Synthetic compiler benchmarks emitted retired forms and could compare an implicit Effect helper with a plain TypeScript helper; fixtures now use current forms and explicit helper types, with compile and runtime checks for both languages.
 
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 
@@ -1234,6 +1241,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Editor completion was empty inside the iterable expression of a `for concurrent` loop; it now offers in-scope names there while preserving completion behavior in function parameter lists.
 
+- A `match` arm without its `;`, or with `,`, compiled when a new line or `}` followed it, and `match (b) { }` reported a missing case or nothing; a missing separator is now `EK0701`, with a quick fix and `vibelang --fix`, and `match (b) { }`, a second or early `default`, a missing `:` and an interpolated template pattern are `EK0707`.
+
 - Editor parsing rejected `for try` `Stream` loops; the tree-sitter grammar now recognizes the loop and its `continue` and `break` statements.
 
 - In a project that emits declarations, `vibelang --fix` removed an import such as `import * as DateTime from "effect/DateTime"` that the declaration file still printed, through a local type an export names (`type NonNull<V> = V extends DateTime.Utc ? …`), a conditional type or a written `keyof DateTime.Utc`, so the declaration imported `{ DateTime } from "effect"`; `--fix` now keeps every import the file's declaration keeps.
@@ -1643,6 +1652,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 | `when -0:` or `when +0:` written to match either zero | Write `when 0:`, which matches both zeros. A signed zero now matches only that zero, and `EK4701` reports a `match` that relied on it to cover `0`. |
 | An explicitly `readonly` schema field referencing mutable or uncertain decoded key flags | `EK2109`: run `vibelang --fix` to retain the existing codec as an explicit `Schema.Struct` value. Nested value mutability is unchanged. |
+| A `match` arm that ends in a new line, in `,`, or at `}` without `;` | `EK0701`: run `vibelang --fix` to write the `;`. |
 
 - EK4802's quick fix "Call it to run it" was offered in a function whose written contract rejects what the call runs, such as `return Exit.fail("data")` in an `unknown!!` function, and applying it added EK2001. It is now offered only where the contract accepts the call's failure, requirements and success.
 

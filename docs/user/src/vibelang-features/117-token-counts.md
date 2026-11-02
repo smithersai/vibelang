@@ -19,8 +19,8 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,406 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 15,541 |
-| The skill and the user guide (140 pages) | 381,525 |
-| The user guide alone | 377,119 |
+| The skill and the user guide (140 pages) | 382,100 |
+| The user guide alone | 377,694 |
 | The specification (10 chapters) | 155,193 |
 | The decision log, `docs/design/history/DECISIONS.md` | 141,629 |
 
@@ -113,8 +113,8 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Start a project** | **2,405** |
 | [New project](../setup/new-project.md) | 543 |
 | [Existing project](../setup/existing-project.md) | 1,862 |
-| **Build and test** | **11,678** |
-| [vibelang CLI](../setup/vibelang-cli.md) | 8,798 |
+| **Build and test** | **11,764** |
+| [vibelang CLI](../setup/vibelang-cli.md) | 8,884 |
 | [Vite and Vitest](../setup/vite.md) | 2,880 |
 | **Format and lint** | **4,689** |
 | [Format with dprint](../setup/formatting.md) | 2,073 |
@@ -131,9 +131,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Zed](../setup/zed.md) | 479 |
 | [Other editors](../setup/other-editors.md) | 492 |
 | [Coding agents](../setup/coding-agents.md) | 1,062 |
-| **Upgrade** | **93,658** |
-| [Release notes](../setup/release-notes.md) | 93,658 |
-| **All 19 pages** | **130,643** |
+| **Upgrade** | **94,060** |
+| [Release notes](../setup/release-notes.md) | 94,060 |
+| **All 19 pages** | **131,131** |
 
 ### Guides
 
@@ -268,10 +268,10 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Building an HTTP API](113-building-an-http-api.md) | 1,649 |
 | [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 6,101 |
 | [Cheat sheet](115-cheat-sheet.md) | 11,135 |
-| [Pattern matching with match and is](116-match-and-is.md) | 7,085 |
+| [Pattern matching with match and is](116-match-and-is.md) | 7,172 |
 | [Diagnostic code map](diagnostic-code-map.md) | 2,432 |
 | [Experimental platform APIs](118-experimental-platform-apis.md) | 3,813 |
-| **All 8 pages** | **35,060** |
+| **All 8 pages** | **35,147** |
 
 ### Specification
 
