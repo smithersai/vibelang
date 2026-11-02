@@ -9,9 +9,9 @@ import (
 
 // FuzzMatchBindingHomes holds Chapter 4, Typing, across the homes a match
 // expression stands in and against its TypeScript counterpart; migfix-smithers'
-// FuzzMatchBindingTypes varies the pattern shapes under the same options: "Patterns type as the
-// TypeScript counterpart this chapter shows for them, so every rule below is
-// what `tsc --strict` gives that counterpart" and "A `let` binding has the
+// FuzzMatchBindingTypes varies the pattern shapes under the same options.
+// Chapter 4 types each pattern under the project compiler options, and
+// "A `let` binding has the
 // type TypeScript gives the value it is bound to in the counterpart." Every
 // counterpart below reads a property, a tuple element or the narrowed subject,
 // so compiler options that widen index accesses (`noUncheckedIndexedAccess`)
@@ -41,7 +41,7 @@ func FuzzMatchBindingHomes(f *testing.F) {
 func TestMatchBindingHomesQuoted(t *testing.T) { bindingHomeChapters(t) }
 
 var bindingHomeQuotes = []string{
-	"Patterns type as the TypeScript counterpart this chapter shows for them, so every rule below is what `tsc --strict` gives that counterpart",
+	"Patterns type as the TypeScript counterpart this chapter shows for them, under the project's compiler options; the table below illustrates `tsc --strict`",
 	"A `let` binding has the type TypeScript gives the value it is bound to in the counterpart.",
 	"| fixed `Option.Some(let v)` | `Option.isOption(s) && Option.isSome(s)` | `v`: `A` for `Option<A>`; `unknown` for an `unknown` subject |",
 	"| fixed `Exit.Failure(let c)`, `Result.Success(let v)` | the module guards ([Retained fixed patterns](#retained-fixed-patterns)) | `c`: `Cause.Cause<E>`; `v`: `A` |",

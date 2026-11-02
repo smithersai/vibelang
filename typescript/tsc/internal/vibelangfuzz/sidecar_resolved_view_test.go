@@ -14,16 +14,13 @@ import (
 // This checks checker identity/source selection. Input-overwrite protection
 // and relocated sidecar output remain separate owner contracts.
 func TestSidecarResolvedPathViewQuoted(t *testing.T) {
-	quote := "A package specifier that lands on " + sidecarViewBacktick + "x.d.vibe.ts" + sidecarViewBacktick + ", as a " + sidecarViewBacktick + "types" + sidecarViewBacktick + " export does, resolves to " + sidecarViewBacktick + "x.vibe" + sidecarViewBacktick + " when the source is beside it outside " + sidecarViewBacktick + "node_modules" + sidecarViewBacktick + ", so the sidecar and the source are one module; a published package keeps its declarations."
+	quote := "A non-relative specifier that TypeScript resolves to `x.d.vibe.ts` or `x.d.vibex.ts`, through a package `types` export, a `paths` entry or package `#imports`, resolves to the available `x.vibe` or `x.vibex` source when the final resolved path is outside `node_modules`."
 	if !strings.Contains(SpecText("007-tooling.md"), quote) {
 		t.Fatalf("Chapter7 no longer says %q", quote)
 	}
-	vip, err := os.ReadFile(filepath.Join(Root(), "docs/design/vips/0039-vibex.md"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	vip := SpecText("../vips/0039-vibex.md")
 	quote = "A " + sidecarViewBacktick + ".vibex" + sidecarViewBacktick + " file is a " + sidecarViewBacktick + ".vibe" + sidecarViewBacktick + " file read with TypeScript's JSX language variant."
-	if !strings.Contains(string(vip), quote) {
+	if !strings.Contains(vip, quote) {
 		t.Fatalf("VIP39 no longer says %q", quote)
 	}
 }
