@@ -68,6 +68,10 @@ const gate = args.includes("--gate")
 const selfTest = args.includes("--self-test")
 const jobsAt = args.indexOf("--jobs")
 const jobs = jobsAt >= 0 ? Number(args[jobsAt + 1]) : Math.max(2, Math.min(12, os.availableParallelism() >> 1))
+if (!Number.isSafeInteger(jobs) || jobs <= 0) {
+  console.error("parity: --jobs requires a positive safe integer")
+  process.exit(2)
+}
 const selectors = args.filter((a, i) => !a.startsWith("--") && !(jobsAt >= 0 && i === jobsAt + 1))
 
 // ---------------------------------------------------------------- utilities

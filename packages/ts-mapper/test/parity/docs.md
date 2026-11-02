@@ -3,6 +3,12 @@ The default full parity run also measures documentation diagnostics. Use
 It took 16 seconds on the implementation check, below the 60 second budget.
 Case selectors continue to select only declaration cases.
 
+The full parity harness accepts `--jobs N` only when `N` is a positive safe
+integer. Invalid or missing counts exit with status `2` before staging
+dependencies or replacing documentation receipts. A zero worker count cannot
+produce a clean measurement without running its compiler projects. Validate
+the argument handling with `node --test scripts/mapper-parity-jobs.test.mjs`.
+
 The lane imports `extract`, `markdownPages`, and `writeProject` directly from
 `docs/tools/check-snippets.ts`. It includes fragments, expected errors, compiler
 gaps, and TypeScript companion blocks under docs/user (excluding generated site),
