@@ -52,8 +52,8 @@ const goVibelang = (summary: string, shell: string, data: ReadonlyArray<unknown>
 // specification's Appendix B, the settings oracle against the compiler, the
 // fuzz suite's citations of the VIPs, its coverage of the accepted VIPs, its
 // pending lines' VIP reasons, and the chapters its oracles still read. Their inputs are the specification and the
-// Go sources, not the whole tree, so a specification edit runs them before it
-// lands and they stay cached otherwise.
+// Go sources and the migration comparator the counterpart controls exercise,
+// so either specification or comparator edits rerun them before landing.
 const specTests = [
   "TestDoLoopHeadQuoted",
   "TestSidecarEscapesQuoted",
@@ -303,6 +303,9 @@ const specTests = [
   "TestShortTargetsBudgeted",
   "TestUnionPlainCallsQuoted",
   "TestUnionDataMemberPlainTypeScript",
+  "TestCounterpartDeclarationComparison",
+  "TestDeclarationIdentityCanonicalization",
+  "TestDataCounterpartFoldkit",
 ]
 // The cost guards of vibelang --fix. They count programs and parsed files, and
 // compare the time and memory of two project sizes, so a slower fix loop fails
@@ -528,7 +531,7 @@ const targets = {
     shell:
       `cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} ` +
       `go test -count=1 -trimpath -run '^(${[...specTests, ...fixCostTests, ...narrowingCostTests].join("|")})$' ./internal/checker/ ./internal/vibelang/ ./internal/vibelangfuzz/ ./internal/effecttsgo/shim/checker/`,
-    data: [design, Tsc.srcs, Tsc["effect-shim-files"], Tsc["vibelang-files"], Tsc["vibelangfuzz-files"], Packages["runtime-dist"]] as Array<never>,
+    data: [design, migrationSources, Tsc.srcs, Tsc["effect-shim-files"], Tsc["vibelang-files"], Tsc["vibelangfuzz-files"], Packages["runtime-dist"]] as Array<never>,
     tools: [go, node],
     sandbox: "none",
     timeout: "15m"

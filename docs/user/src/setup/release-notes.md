@@ -344,6 +344,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Compiler validation could keep outdated advice checks when host binding rules changed; its quoted-rule guard now checks declaration origin and the `Worker` runtime exception.
 - Isolated compiler-case checks could lose nested package fixtures and report incorrect diagnostics; they now preserve nested packages and relative workspace links.
 
+- The fast gate could miss declaration-comparison regressions that later failed the full suite; it now runs private and public snapshot controls and tracks the migration comparator as an input.
+
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 
 - Migration setup could leave a native type exported through a TypeScript namespace barrel as an error type in project-aware linters; setup now enables source declaration redirects in owned configs and records those edits.
