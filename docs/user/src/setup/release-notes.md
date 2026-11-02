@@ -266,6 +266,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- Four spec quote guards (`TestEffectFnParameterDeclarationQuoted`, `TestInferredEffectDeclarationQuoted`, `TestPipeDeclarationAliasesQuoted`, `TestTopLevelAwaitVIPQuoted`) landed outside the pre-merge spec gate, so a spec edit could break them unseen; the gate now runs them.
 - Missing-runtime fuzz checks assumed every Effect function imported `vibelang-runtime`; they now inspect parsed module imports and preserve independent errors when no runtime helper is needed.
 
 - Migrating an Effect pipeline could change its public declaration from an expanded intersection to a named alias, as in opencode's reconnect service; the quick fix now keeps the native `.pipe(...)` when uncurrying a stage would change inferred type names.

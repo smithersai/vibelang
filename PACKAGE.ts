@@ -382,6 +382,10 @@ const specTests = [
   "TestCounterpartDeclarationComparison",
   "TestDeclarationIdentityCanonicalization",
   "TestDataCounterpartFoldkit",
+  "TestEffectFnParameterDeclarationQuoted",
+  "TestInferredEffectDeclarationQuoted",
+  "TestPipeDeclarationAliasesQuoted",
+  "TestTopLevelAwaitVIPQuoted",
 ]
 // The cost guards of vibelang --fix. They count programs and parsed files, and
 // compare the time and memory of two project sizes, so a slower fix loop fails
