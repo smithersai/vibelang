@@ -257,6 +257,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Clipboard errors suggested an unavailable namespace function; they now show how to obtain the injected service and run its `readString` Effect.
 
+- Malformed imports keep their TypeScript syntax errors even when `vibelang-runtime` is absent.
 - The grammar inventory cited old compatibility diagnostics as though they were current public assignments. Those references now explicitly say they are historical; all pending gaps and their regression witnesses remain intact.
 - Filesystem platform errors recommended methods on the `FileSystem` namespace, where they do not exist; their advice now gets `FileSystem.FileSystem` before calling the implementation.
 - Migrating imports inside native `module` bodies could replace `./leaf.js` with `./leaf.vibe` and cause `TS5097`. These bodies now keep their original TypeScript import spelling.

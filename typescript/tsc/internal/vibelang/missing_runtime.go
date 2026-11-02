@@ -56,7 +56,11 @@ func prepareMissingRuntimeDiagnostics(c *checker.Checker, _ *ast.SourceFile) {
 			needed := tx.runtime != nil
 			for _, statement := range lowered.Statements.Nodes {
 				if ast.IsImportDeclaration(statement) {
-					module := statement.AsImportDeclaration().ModuleSpecifier.Text()
+					specifier := statement.AsImportDeclaration().ModuleSpecifier
+					if specifier == nil || !ast.IsStringLiteral(specifier) {
+						continue // parser recovery can retain an expression; its TS syntax errors stand
+					}
+					module := specifier.Text()
 					if module == runtimeModule || strings.HasPrefix(module, runtimeModule+"/") {
 						needed = true
 					}
