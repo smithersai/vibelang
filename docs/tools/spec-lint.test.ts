@@ -139,3 +139,10 @@ test("collision-conditional rejects round 6 ASTRA-5's unconditional VIP-39 colli
     "vips/0039-vibex.md a same-stem pair gets `TS5055`/`TS5056` only where the selected inputs write the same output path; the sentence does not say so"
   ])
 })
+
+test("ruling-claims rejects round 9 OPUS-2's VIP-25 rationale without its amendment (row 50)", () => {
+  const defect = withEdit("vips/0025-inline-modules-denied.md", text => text.replace(/\n\*Amended 2026-11-02[^]*?(?=\n\n|$)/, ""))
+  expect(lint(defect, rule("ruling-claims")).map(v => `${v.file} ${v.message}`)).toEqual([
+    expect.stringMatching(/^vips\/0025-inline-modules-denied\.md the denial's reason .* contradicts Will's 2026-10-31 ruling/)
+  ])
+})
