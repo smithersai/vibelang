@@ -74,24 +74,35 @@ export function splitPlatform(text, file, ts, { globals = [] } = {}) {
   const declarations = []
   for (const statement of source.statements) {
     if (ts.isImportDeclaration(statement)) continue
-    declarations.push({ statement, names: declaredNames(statement, ts), reads: readNames(statement, ts), exported: isExported(statement, ts) })
+    declarations.push({ statement, names: declaredNames(statement, ts), reads: readNames(statement, ts), valueReads: valueReadNames(statement, ts), exported: isExported(statement, ts) })
   }
-  const byName = new Map()
-  for (const d of declarations) for (const name of d.names) byName.set(name, d)
+  const typeOnly = (d) => ts.isInterfaceDeclaration(d.statement) || ts.isTypeAliasDeclaration(d.statement)
+  // A name can have a value and a type of its own, Effect's schema pattern
+  // `const Shape = Schema.String` with `type Shape = typeof Shape.Type`.
+  const byName = new Map(), valueByName = new Map(), typeByName = new Map()
+  for (const d of declarations) for (const name of d.names) {
+    byName.set(name, d)
+    ;(typeOnly(d) ? typeByName : valueByName).set(name, d)
+  }
+  // A value read takes the value; a name read only as a type takes the type.
+  const declarationRead = (d, name) => {
+    const value = valueByName.get(name), type = typeByName.get(name)
+    return value && type ? (d.valueReads.has(name) ? value : type) : (value ?? type)
+  }
   const moved = new Set(declarations.filter((d) => [...d.reads].some((n) => platform.has(n) && !byName.has(n))))
   if (!moved.size) return null
   // The moved code takes the module's own declarations it reads, values and types.
   // Types stay in the module, whose declarations name them: the sibling
   // imports an exported type, and has its own copy of a private type alias or
   // interface, which is the same type structurally.
-  const typeOnly = (d) => ts.isInterfaceDeclaration(d.statement) || ts.isTypeAliasDeclaration(d.statement)
   const typesFromModule = new Set()
   const copied = new Set()
   for (let grew = true; grew; ) {
     grew = false
     for (const d of [...moved, ...copied]) {
-      for (const name of d.reads) {
-        const needed = byName.get(name)
+      // valueReads adds a type's read of its own name's value, `typeof X.Type`.
+      for (const name of new Set([...d.reads, ...d.valueReads])) {
+        const needed = declarationRead(d, name)
         if (!needed || moved.has(needed) || copied.has(needed)) continue
         if (typeOnly(needed)) {
           if (needed.exported) typesFromModule.add(name)
@@ -107,6 +118,18 @@ export function splitPlatform(text, file, ts, { globals = [] } = {}) {
     if (!isMovable(d.statement, ts)) return { refused: `${file}: ${firstLine(source, d.statement)} cannot move to ${posix.basename(platformPath(file))}` }
   }
   const kept = declarations.filter((d) => !moved.has(d))
+  // A kept type that reads a moved value, `type Shape = typeof Shape.Type`,
+  // would make the module's declaration import it from the sibling.
+  const movedValues = new Set([...moved].filter((d) => !typeOnly(d)).flatMap((d) => [...d.names]))
+  for (const d of kept) {
+    if (!typeOnly(d)) continue
+    const read = [...d.valueReads].find((name) => movedValues.has(name))
+    if (read) return { refused: `${file}: the type ${[...d.names].join(", ")} reads the value ${read}, which ${posix.basename(platformPath(file))} would take, so the module's declarations would change` }
+  }
+  // A type stays in the module, and its declaration carries the value of the
+  // same name with it (TypeScript emits the merged symbol).
+  const twin = [...movedValues].find((name) => typeByName.has(name))
+  if (twin) return { refused: `${file}: the value ${twin} would move to ${posix.basename(platformPath(file))} but the type ${twin} stays, so the module's declarations would change` }
   const keptReads = new Set(kept.flatMap((d) => [...d.reads]))
   // A moved export stays in the module as a function with its written
   // signature; any other moved export means the module cannot keep its API.
@@ -272,6 +295,39 @@ function readNames(statement, ts) {
   }
   visit(statement)
   for (const name of declaredNames(statement, ts)) reads.delete(name)
+  return reads
+}
+
+// The identifiers statement reads as values: outside types, plus the first
+// name of a `typeof X` query and a class's `extends` expression. A value
+// declaration's own names are left out; a type's are not, since
+// `type Shape = typeof Shape.Type` reads the value Shape.
+function valueReadNames(statement, ts) {
+  const reads = new Set()
+  const visit = (node, inType) => {
+    if (ts.isTypeQueryNode(node)) {
+      let name = node.exprName
+      while (ts.isQualifiedName(name)) name = name.left
+      if (ts.isIdentifier(name)) reads.add(name.text)
+      for (const t of node.typeArguments ?? []) visit(t, true)
+      return
+    }
+    if (ts.isHeritageClause(node) && node.token === ts.SyntaxKind.ExtendsKeyword && ts.isClassLike(node.parent)) {
+      for (const t of node.types) { visit(t.expression, false); for (const a of t.typeArguments ?? []) visit(a, true) }
+      return
+    }
+    const type = inType || ts.isTypeNode(node) || ts.isTypeAliasDeclaration(node) || ts.isInterfaceDeclaration(node) || ts.isTypeParameterDeclaration(node) || ts.isHeritageClause(node)
+    if (!type && ts.isIdentifier(node)) {
+      const parent = node.parent
+      const declares = parent && (ts.isVariableDeclaration(parent) || ts.isFunctionDeclaration(parent) || ts.isClassDeclaration(parent) || ts.isEnumDeclaration(parent) || ts.isParameter(parent) || ts.isBindingElement(parent)) && parent.name === node
+      const member = parent && ((ts.isPropertyAccessExpression(parent) && parent.name === node) || ((ts.isPropertyAssignment(parent) || ts.isPropertyDeclaration(parent) || ts.isMethodDeclaration(parent) || ts.isGetAccessor(parent) || ts.isSetAccessor(parent) || ts.isEnumMember(parent)) && parent.name === node))
+      if (!declares && !member) reads.add(node.text)
+    }
+    if (!type && ts.isShorthandPropertyAssignment(node)) reads.add(node.name.text)
+    ts.forEachChild(node, (child) => visit(child, type))
+  }
+  visit(statement, false)
+  if (!ts.isTypeAliasDeclaration(statement) && !ts.isInterfaceDeclaration(statement)) for (const name of declaredNames(statement, ts)) reads.delete(name)
   return reads
 }
 

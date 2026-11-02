@@ -429,6 +429,8 @@ Shipped-root resolution checks retain the exact declaration graph, including eac
 
 The write-ahead codemod journal also includes platform siblings: it keeps the unsplit original module and plans sibling creation before any rename, write or compiler child. Replay completes a partial split, and per-file revert restores the unsplit source and removes only its recorded sibling. An existing companion is preserved.
 
+The split tells a value from a type of the same name, Effect's schema pattern `const Shape = Schema.String` with `type Shape = typeof Shape.Type`: moved code that reads `Shape` as a value takes the value, and a type read takes the type. The module keeps its platform code with a named cause when the moved value's type of the same name, or a type that reads the value, stays in the module, since the module's declaration would then import the value from the sibling.
+
 The same durable rename journal covers whole-scope mode: an interrupted rename resumes before compiler work, and bulk reverts restore the original source bytes.
 
 ### Source filename wiring
