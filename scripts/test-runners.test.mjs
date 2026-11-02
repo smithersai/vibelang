@@ -17,6 +17,8 @@ const runs = [
   ["scripts/release/*.test.mjs", "PACKAGE.ts", "scripts/release/*.test.mjs"],
   ["typescript/vibelang/harness.test.mjs", "PACKAGE.ts", "typescript/vibelang/harness.test.mjs"],
   ["docs/redirect/*.test.mjs", "PACKAGE.ts", "docs/redirect/*.test.mjs"],
+  ["site/scripts/sync-spec-docs.test.mjs", "PACKAGE.ts", "site/scripts/sync-spec-docs.test.mjs"],
+  ["site/scripts/sync-user-docs.test.mjs", "PACKAGE.ts", "site/scripts/sync-user-docs.test.mjs"],
   [".smithers/flows/effect-bump/test/*.test.mjs", "PACKAGE.ts", ".smithers/flows/effect-bump/test/*.test.mjs"],
   ["docs/tools/*.test.*", "PACKAGE.ts", "cd docs/tools && bun test --timeout 60000 --parallel=3 --no-isolate $(ls *.test.*"],
   ["packages/runtime/tests/**", "packages/PACKAGE.ts", "cd packages/runtime && bun test"],
@@ -51,7 +53,12 @@ const unrun = [
   ["packages/ts-mapper/test/**", "validate.sh's go step runs them, outside the build graph"],
   ["packages/compiler/test/eslint/*.test.mjs", "run.sh installs their own lockfile; 2 of 27 fail on main: an effect function's name has no node"],
   ["packages/create-vibelang/test/*.test.mjs", "1 of 29 fails on main: the scaffold's main reports EK3205"],
-  ["site/scripts/*.test.mjs", "they import the site's npm install; 32/32 pass with it"],
+  ["site/scripts/patch-vocs-search.test.mjs", "requires the site's TypeScript and Vocs vendor files"],
+  ["site/scripts/cloudflare-stack.test.mjs", "requires the site's TypeScript install"],
+  ["site/scripts/deploy-load.test.mjs", "requires the site's Alchemy install"],
+  ["site/scripts/llms.test.mjs", "requires built site publication output"],
+  ["site/scripts/not-found.test.mjs", "builds the site using its npm install"],
+  ["site/scripts/contrast.test.mjs", "requires the site's install, Chromium and a full site build"],
   ["editors/tree-sitter-vibelang/test/*.test.mjs", "the grammar property test fails on main"],
 ]
 

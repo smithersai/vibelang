@@ -547,8 +547,9 @@ const targets = {
   "site-spec-links": siteSpecLinks,
   "spec-lint": specLint,
   release: check(
-    "The release and contributor scripts' node tests, the effect-bump, ts-bump, ci-health and first-bad flows' steps, and their evals' step keys.",
+    "The release, contributor and site generator node tests, the upgrade and maintenance flows' steps, and their evals' step keys.",
     "node --test --test-concurrency=8 scripts/release/*.test.mjs scripts/*.test.mjs typescript/vibelang/harness.test.mjs docs/redirect/*.test.mjs " +
+      "site/scripts/sync-spec-docs.test.mjs site/scripts/sync-user-docs.test.mjs " +
       ".smithers/flows/effect-bump/test/*.test.mjs .smithers/flows/ts-bump/test/*.test.mjs .smithers/flows/ci-health/test/*.test.mjs .smithers/flows/first-bad/test/*.test.mjs " +
       ".smithers/flows/test/*.test.mjs",
     [Packages["compiler-native"], Packages["runtime-dist"]],

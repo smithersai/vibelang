@@ -435,6 +435,14 @@ A missing install, dangling link or incomplete package exits with status `2`
 and an install hint, preserving each case's previous outputs. Package and
 `node_modules` symlinks to valid installations are supported.
 
+The release check also runs the dependency-free site generator unit suites:
+`site/scripts/sync-spec-docs.test.mjs` and
+`site/scripts/sync-user-docs.test.mjs`. These check specification links and
+page rendering in temporary fixtures; they need
+neither a site install nor a browser or site build.
+`scripts/test-runners.test.mjs` guards their registration and lists the
+remaining site suites with their required installs or build outputs.
+
 The release check runs `typescript/vibelang/harness.test.mjs`, including a
 barrier-controlled regression that executes both targets' actual shell commands
 concurrently. The aggregate starts after the per-case compiler emits and before
