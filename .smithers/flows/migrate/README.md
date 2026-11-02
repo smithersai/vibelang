@@ -265,6 +265,8 @@ The target's test, declaration and style gates still run in `verify` before
 
 ### Registry versions
 
+`step.mjs` runs from a copy of `.smithers/flows/migrate` with no `node_modules` in reach, as `toolchain` and `upgrade-effect` must before a target has `vibelang` installed: the flow bundles minimatch in `lib/vendor/`, and its loader-record step takes `vibelang/project` from the target's installed `vibelang`.
+
 Once VibeLang publishes the version a migration needs, use the registry instead of a staged toolchain: start the run with `--vibelang-version <version>` in place of `--toolchain <dir>`. Setup then writes exact versions (`"vibelang": "0.0.12"`) and makes no `.vibelang-toolchain/`. Anyone can install the result, and the fork's pull request no longer depends on the tarballs.
 
 To switch a target that a staged toolchain set up, start a new run on it with `--vibelang-version`. Upgrade-effect continues on the `vibe` bookmark, and commits only when the version needs another Effect. Setup then replaces the three `file:` specifiers with the version, deletes `.vibelang-toolchain/` and its `.gitignore` line, reinstalls, records a new baseline, and commits the switch on top. The batches already on `vibe` stay as they are.

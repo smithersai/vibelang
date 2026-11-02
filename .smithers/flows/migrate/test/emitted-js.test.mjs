@@ -153,27 +153,58 @@ test("the emit step writes each loader project's record, which a cold lookup acc
 })
 
 // A toolchain build stages .smithers on its own, without the repository's
-// packages (m12-opencode). The flow must load from such a copy; its record step
-// takes vibelang/project from the target's installed vibelang, and reports a
-// target without one instead of failing the emit.
-test("the migrate flow loads from a staged .smithers copy outside the repository", async (t) => {
+// packages or .smithers/node_modules (m12-opencode, drive2-opencode). The flow
+// must load from such a copy with nothing to find by walking up: step.mjs runs
+// before a target has vibelang installed. The record step alone needs vibelang,
+// from the target: a target without it gets a receipt entry, not a failed emit.
+function stageFlow(t) {
   const smithers = fileURLToPath(new URL("../../../", import.meta.url))
   const top = realpathSync(mkdtempSync(join(tmpdir(), "migrate-staged-flow-")))
   t.after(() => rmSync(top, { recursive: true, force: true }))
   const staged = join(top, "toolchain/.smithers")
-  cpSync(smithers, staged, { recursive: true, filter: (path) => !/(?:^|[\\/])node_modules(?:[\\/]|$)/.test(path.slice(smithers.length)) })
-  symlinkSync(realpathSync(join(smithers, "node_modules")), join(staged, "node_modules"))
+  cpSync(join(smithers, "flows"), join(staged, "flows"), { recursive: true, filter: (path) => !/[\\/]node_modules(?:[\\/]|$)/.test(path.slice(smithers.length)) })
+  const flow = join(staged, "flows/migrate")
+  // The stage is only a proof if a dependency cannot be found above it.
+  assert.throws(() => createRequire(join(flow, "lib/steps.mjs")).resolve("minimatch"), { code: "MODULE_NOT_FOUND" })
+  return { top, flow }
+}
+
+test("the migrate flow loads every module and runs step.mjs from a stage with no node_modules in reach", (t) => {
+  const { top, flow } = stageFlow(t)
+  const modules = readdirSync(join(flow, "lib"), { recursive: true }).filter((file) => file.endsWith(".mjs"))
+  assert.ok(modules.includes("source-paths.mjs") && modules.includes("steps.mjs"))
+  const imports = modules.map((file) => `await import(${JSON.stringify(pathToFileURL(join(flow, "lib", file)).href)})`).join("\n")
+  const loaded = spawnSync(process.execPath, ["--input-type=module", "-e", imports], { cwd: top, encoding: "utf8" })
+  assert.equal(loaded.status, 0, loaded.stderr)
+  const help = spawnSync(process.execPath, [join(flow, "step.mjs"), "help"], { cwd: top, encoding: "utf8" })
+  assert.equal(help.status, 0, help.stderr)
+  assert.match(help.stdout, /^usage: node \.smithers\/flows\/migrate\/step\.mjs/)
+})
+
+test("a staged flow's record step reports a target with no vibelang installed", async (t) => {
+  const { top, flow } = stageFlow(t)
   const target = join(top, "target/packages/schema")
   write(target, { "package.json": "{}", "tsconfig.json": "{}", "src/skill.vibe": "export const skill = 1\n" })
-  const lib = join(staged, "flows/migrate/lib")
-  const probe = [
-    `const { writeLoaderRecords } = await import(${JSON.stringify(pathToFileURL(join(lib, "declarations.mjs")).href)})`,
-    `await import(${JSON.stringify(pathToFileURL(join(lib, "steps.mjs")).href)})`,
-    `console.log(JSON.stringify(await writeLoaderRecords({ compiler: "vibelang", packageDir: ${JSON.stringify(target)}, root: ${JSON.stringify(join(top, "target"))} })))`
-  ].join("\n")
+  const probe = `const { writeLoaderRecords } = await import(${JSON.stringify(pathToFileURL(join(flow, "lib/declarations.mjs")).href)})
+console.log(JSON.stringify(await writeLoaderRecords({ compiler: "vibelang", packageDir: ${JSON.stringify(target)}, root: ${JSON.stringify(join(top, "target"))} })))`
   const result = spawnSync(process.execPath, ["--input-type=module", "-e", probe], { cwd: top, encoding: "utf8" })
   assert.equal(result.status, 0, result.stderr)
   const [entry] = JSON.parse(result.stdout.trim().split("\n").at(-1))
   assert.equal(entry.package, "packages/schema")
   assert.match(entry.error, /^vibelang\/project is not installed for this package/)
+})
+
+test("a staged flow writes a loader record with only the target's installed vibelang in reach", { skip: !compiler && "set VIBELANG_BINARY" }, async (t) => {
+  const { top, flow } = stageFlow(t)
+  const root = join(top, "target")
+  const target = join(root, "packages/schema")
+  write(target, { "package.json": "{\"type\":\"module\"}", "tsconfig.json": "{\"compilerOptions\":{\"target\":\"ES2022\",\"module\":\"NodeNext\",\"moduleResolution\":\"NodeNext\",\"types\":[]},\"include\":[\"src/**/*\"]}", "src/skill.vibe": "export const skill: number = 1\n" })
+  mkdirSync(join(root, "node_modules"), { recursive: true })
+  symlinkSync(fileURLToPath(new URL("../../../../packages/compiler/", import.meta.url)), join(root, "node_modules/vibelang"))
+  await new Promise((done) => setTimeout(done, 120))
+  const probe = `const { writeLoaderRecords } = await import(${JSON.stringify(pathToFileURL(join(flow, "lib/declarations.mjs")).href)})
+console.log(JSON.stringify(await writeLoaderRecords({ compiler: ${JSON.stringify(compiler)}, packageDir: ${JSON.stringify(target)}, root: ${JSON.stringify(root)} })))`
+  const result = spawnSync(process.execPath, ["--input-type=module", "-e", probe], { cwd: top, encoding: "utf8" })
+  assert.equal(result.status, 0, result.stderr)
+  assert.deepEqual(JSON.parse(result.stdout.trim().split("\n").at(-1)), [{ project: "packages/schema/tsconfig.json", file: "packages/schema/.vibelang/js/.loader/tsconfig.json.json", modules: 1 }])
 })
