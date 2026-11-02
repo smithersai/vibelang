@@ -49,10 +49,16 @@ func (p *Parser) attachVibeLangSchemaGenericScopes(file *ast.SourceFile) {
 			continue
 		} // a discarded speculative parse
 		ref.Name.Parent.Parent = scope
-		if ref.MutableArray != nil {
+		if ref.InnerName != nil {
+			ref.InnerName.Parent.Parent = scope
+		}
+		if ref.ReadonlyRecord != nil && ref.ReadonlyRecord != ref.Expression {
+			ref.ReadonlyRecord.Parent = scope
+		}
+		if ref.MutableArray != nil && ref.MutableArray != ref.Expression {
 			ref.MutableArray.Parent = scope
 		}
-		if ref.ReadonlyArray != nil {
+		if ref.ReadonlyArray != nil && ref.ReadonlyArray != ref.Expression {
 			ref.ReadonlyArray.Parent = scope
 		}
 	}
@@ -76,4 +82,58 @@ func (p *Parser) vibelangSchemaGenericName(name *ast.Node) *ast.Node {
 	holder := p.vibelangSpanning(p.factory.NewTypeReferenceNode(cloned, nil), name.Loc)
 	ast.SetParentInChildren(holder)
 	return cloned
+}
+
+// Keep both written bindings and each admitted codec. Readonly<Record<K,V>>
+// is selected only after resolving both names; an Array alias around the same
+// inner Record retains the ordinary array mapping.
+func (p *Parser) vibelangReadonlyRecordReference(outer, inner *ast.Node, parts []*ast.Node) *ast.Node {
+	key, value := p.vibelangSchemaOf(parts[0]), p.vibelangSchemaOf(parts[1])
+	readonlyRecord := p.vibelangSchemaCall("Record", outer.Loc, key, value)
+	mutableRecord := p.vibelangSchemaCall("Record", inner.Loc, key, p.vibelangSchemaCall("mutableKey", parts[1].Loc, value))
+	readonlyArray := p.vibelangSchemaCall("Array", outer.Loc, mutableRecord)
+	mutableArray := p.vibelangSchemaCall("mutable", outer.Loc, p.vibelangSchemaCall("Array", outer.Loc, mutableRecord))
+	kind, legacy := 2, false
+	if ast.IsIdentifier(outer) {
+		switch outer.Text() {
+		case "Array":
+			kind, legacy = 1, true
+		case "ReadonlyArray":
+			kind, legacy = 2, true
+		case "Readonly":
+			if ast.IsIdentifier(inner) && inner.Text() == "Record" {
+				kind, legacy = 4, true
+			}
+		}
+	}
+	legacy = legacy && ast.IsIdentifier(inner) && inner.Text() == "Record"
+	visible := readonlyArray
+	if kind == 1 {
+		visible = mutableArray
+	}
+	if kind == 4 {
+		visible = readonlyRecord
+	}
+	// Shared mapped arguments keep their visible parents. Alternatives are
+	// metadata, never bound independently or allowed to reparent those values.
+	for _, root := range []*ast.Node{readonlyRecord, readonlyArray, mutableArray} {
+		var link func(*ast.Node, *ast.Node)
+		link = func(node, parent *ast.Node) {
+			if node == key || node == value {
+				return
+			}
+			node.Parent = parent
+			node.ForEachChild(func(child *ast.Node) bool { link(child, node); return false })
+		}
+		link(root, visible)
+	}
+	ast.SetParentInChildren(visible)
+	outerName, innerName := p.vibelangSchemaGenericName(outer), p.vibelangSchemaGenericName(inner)
+	outerName.Parent.Parent, innerName.Parent.Parent = visible, visible
+	p.vibelangSchemaGenerics = append(p.vibelangSchemaGenerics, ast.SchemaGenericReference{
+		Arity: 1, Name: outerName, InnerName: innerName, Expression: visible,
+		MutableArray: mutableArray, ReadonlyArray: readonlyArray, ReadonlyRecord: readonlyRecord,
+		DefaultMutable: kind == 1, DefaultKind: kind, Legacy: legacy,
+	})
+	return visible
 }

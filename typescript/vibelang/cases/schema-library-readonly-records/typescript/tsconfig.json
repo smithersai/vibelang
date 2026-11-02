@@ -1,0 +1,1 @@
+{"compilerOptions":{"strict":true,"target":"es2022","module":"nodenext","skipLibCheck":true,"types":[],"outDir":"out","declaration":true},"include":["*.ts"]}

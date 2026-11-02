@@ -5,7 +5,7 @@ const Alias = Optional
 declare const Uncertain: typeof Schema.Number | typeof Optional
 namespace Codecs { export const MutableNumber = Mutable }
 export schema Writable = Record<"a", Optional>
-export schema Readonly = Readonly<Record<"a", Mutable>>
+export schema Frozen = Readonly<Record<"a", Mutable>>
 export schema Aliased = Record<"a", Alias>
 export schema Widened = Readonly<Record<"a", Uncertain>>
 export schema Nested { readonly value: Readonly<Record<string, Codecs.MutableNumber>> }

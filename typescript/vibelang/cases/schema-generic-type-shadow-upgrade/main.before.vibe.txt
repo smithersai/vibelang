@@ -1,0 +1,6 @@
+type Array<T> = { value: T }
+type Record<K, V> = { key: K; value: V }
+export schema Numbers = Array<number>
+export schema Counts = Readonly<Record<string, number>>
+export const numbers: Numbers = [1, 2]
+export const counts: Counts = { apples: 3 }

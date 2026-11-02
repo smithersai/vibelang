@@ -156,6 +156,8 @@ Runtime helper consumers must handle the primitive branch of `$extract(C, value)
 
 For generic schema arrays, resolve the TypeScript-library type binding instead of guessing from its written name (VIP-15, detail286). Canonical `Array<T>` and `ReadonlyArray<T>` imports that refer to the opposite library type can preserve the old decoder and declarations through `vibelang --fix --fix-migration-only`. Keep ordinary compilation on the resolved meaning. Do not invent previous codecs for newly supported qualified or renamed generic forms.
 
+- VIP-15/detail286: resolve both generic type bindings in `Readonly<Record<K, V>>`, including qualified or renamed imports. Keep source-required and readonly decoded-key checks. For previously accepted shadowed canonical names, apply the compiler’s preserving explicit-codec repair; when the canonical `Readonly` name resolves to an array library type, use `--fix-migration-only` to retain the earlier record codec. Never invent a previous codec for newly supported spellings.
+
 ## The language
 
 The VibeLang skill follows: every form beside the Effect code it replaces, and the rules with their EK codes. Accepted VIPs and the call rule above take precedence over older examples.

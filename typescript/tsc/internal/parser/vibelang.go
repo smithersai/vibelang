@@ -1383,6 +1383,18 @@ func (p *Parser) vibelangSchemaOf(typeNode *ast.Node) *ast.Node {
 			arguments = reference.TypeArguments.Nodes
 		}
 		name := reference.TypeName
+		if len(arguments) == 1 {
+			inner := arguments[0]
+			for inner.Kind == ast.KindParenthesizedType {
+				inner = inner.AsParenthesizedTypeNode().Type
+			}
+			if inner.Kind == ast.KindTypeReference {
+				r := inner.AsTypeReferenceNode()
+				if r.TypeArguments != nil && len(r.TypeArguments.Nodes) == 2 {
+					return p.vibelangReadonlyRecordReference(name, r.TypeName, r.TypeArguments.Nodes)
+				}
+			}
+		}
 		switch {
 		case len(arguments) == 0:
 			return p.vibelangEntityExpression(name)
@@ -1396,18 +1408,6 @@ func (p *Parser) vibelangSchemaOf(typeNode *ast.Node) *ast.Node {
 			argument := p.vibelangSchemaOf(arguments[0])
 			value := p.vibelangSchemaCall("Array", name.Loc, argument)
 			return p.vibelangArraySchemaReference(name, value, value, false, false)
-		case ast.IsIdentifier(name) && name.Text() == "Readonly" && len(arguments) == 1:
-			innerType := arguments[0]
-			for innerType.Kind == ast.KindParenthesizedType {
-				innerType = innerType.AsParenthesizedTypeNode().Type
-			}
-			if innerType.Kind == ast.KindTypeReference {
-				inner := innerType.AsTypeReferenceNode()
-				if ast.IsIdentifier(inner.TypeName) && inner.TypeName.Text() == "Record" && inner.TypeArguments != nil && len(inner.TypeArguments.Nodes) == 2 {
-					parts := inner.TypeArguments.Nodes
-					return p.vibelangSchemaCall("Record", name.Loc, p.vibelangSchemaOf(parts[0]), p.vibelangSchemaOf(parts[1]))
-				}
-			}
 		case len(arguments) == 2:
 			value := p.vibelangSchemaCall("Record", name.Loc, p.vibelangSchemaOf(arguments[0]), p.vibelangSchemaCall("mutableKey", arguments[1].Loc, p.vibelangSchemaOf(arguments[1])))
 			return p.vibelangRecordSchemaReference(name, value, ast.IsIdentifier(name) && name.Text() == "Record")

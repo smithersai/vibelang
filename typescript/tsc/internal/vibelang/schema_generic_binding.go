@@ -40,6 +40,15 @@ func schemaGenericKind(c *checker.Checker, ref *ast.SchemaGenericReference) int 
 	if !isGlobal(c, symbol) {
 		return 0
 	}
+	if ref.InnerName != nil {
+		inner := c.ResolveEntityName(ref.InnerName, ast.SymbolFlagsType)
+		if !isGlobal(c, inner) || inner.Name() != "Record" {
+			return 0
+		}
+		if symbol.Name() == "Readonly" {
+			return 4
+		}
+	}
 	switch symbol.Name() {
 	case "Array":
 		if ref.Arity == 1 {
@@ -67,6 +76,21 @@ func schemaGenericReplacement(c *checker.Checker, node *ast.Node) *ast.Node {
 	}
 	ref := schemaGenericReferences(c, file)[node]
 	if ref == nil {
+		return nil
+	}
+	if ref.ReadonlyRecord != nil {
+		var selected *ast.Node
+		switch schemaGenericKind(c, ref) {
+		case 1:
+			selected = ref.MutableArray
+		case 2:
+			selected = ref.ReadonlyArray
+		case 4:
+			selected = ref.ReadonlyRecord
+		}
+		if selected != node {
+			return selected
+		}
 		return nil
 	}
 	switch schemaGenericKind(c, ref) {
@@ -97,9 +121,23 @@ func checkSchemaGenericReferences(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		if ref := refs[node]; ref != nil && schemaGenericKind(c, ref) == 0 {
-			span := core.NewTextRange(scanner.SkipTrivia(file.Text(), ref.Name.Pos()), ref.Name.End())
-			d := reportAt(c, file, span, EK2109.With("This generic type does not name a mapped TypeScript-library schema type."))
-			note(d, "Name a schema value without type arguments, or write the decoder with explicit Effect Schema codecs.")
+			names := []*ast.Node{ref.Name}
+			if ref.InnerName != nil {
+				names = nil
+				outer := c.ResolveEntityName(ref.Name, ast.SymbolFlagsType)
+				if !isGlobal(c, outer) || (outer.Name() != "Array" && outer.Name() != "ReadonlyArray" && outer.Name() != "Readonly") {
+					names = append(names, ref.Name)
+				}
+				inner := c.ResolveEntityName(ref.InnerName, ast.SymbolFlagsType)
+				if !isGlobal(c, inner) || inner.Name() != "Record" {
+					names = append(names, ref.InnerName)
+				}
+			}
+			for _, name := range names {
+				span := core.NewTextRange(scanner.SkipTrivia(file.Text(), name.Pos()), name.End())
+				d := reportAt(c, file, span, EK2109.With("This generic type does not name a mapped TypeScript-library schema type."))
+				note(d, "Name a schema value without type arguments, or write the decoder with explicit Effect Schema codecs.")
+			}
 		}
 		return node.ForEachChild(visit)
 	}

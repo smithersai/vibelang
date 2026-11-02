@@ -38,25 +38,27 @@ func vibelangSourceToken(sourceFile *ast.SourceFile, current *ast.Node, start in
 	// metadata. Return its actual type-context token before searching the
 	// lowered codec, which contains no corresponding source reference.
 	for _, reference := range sourceFile.VibeLangSchemaGenerics {
-		if reference.Name == nil || ast.GetSourceFileOfNode(reference.Name) != sourceFile {
-			continue
-		}
-		var nameToken func(*ast.Node) *ast.Node
-		nameToken = func(name *ast.Node) *ast.Node {
-			if ast.IsIdentifier(name) && name.End() == end &&
-				scanner.GetTokenPosOfNode(name, sourceFile, false) == start {
-				return name
+		for _, name := range []*ast.Node{reference.Name, reference.InnerName} {
+			if name == nil || ast.GetSourceFileOfNode(name) != sourceFile {
+				continue
 			}
-			if ast.IsQualifiedName(name) {
-				if found := nameToken(name.AsQualifiedName().Left); found != nil {
-					return found
+			var nameToken func(*ast.Node) *ast.Node
+			nameToken = func(name *ast.Node) *ast.Node {
+				if ast.IsIdentifier(name) && name.End() == end &&
+					scanner.GetTokenPosOfNode(name, sourceFile, false) == start {
+					return name
 				}
-				return nameToken(name.AsQualifiedName().Right)
+				if ast.IsQualifiedName(name) {
+					if found := nameToken(name.AsQualifiedName().Left); found != nil {
+						return found
+					}
+					return nameToken(name.AsQualifiedName().Right)
+				}
+				return nil
 			}
-			return nil
-		}
-		if found := nameToken(reference.Name); found != nil {
-			return found
+			if found := nameToken(name); found != nil {
+				return found
+			}
 		}
 	}
 	var found *ast.Node

@@ -161,7 +161,7 @@ false
 
 ## Declaring records and index signatures
 
-In a `schema` declaration, `Readonly<Record<K, V>>` maps to `Schema.Record`. Parentheses only group its argument: `Readonly<(Record<string, number>)>` produces the same codec and readonly decoded properties.
+In a `schema` declaration, `Readonly<Record<K, V>>` maps to `Schema.Record`. Parentheses only group its argument: `Readonly<(Record<string, number>)>` produces the same codec and readonly decoded properties. Both generic names follow their resolved TypeScript-library bindings: `globalThis.Readonly<globalThis.Record<string, number>>` and renamed library imports produce the same readonly keys. A value-only local does not hide either library type. A shadowing type without a suitable mapping reports `EK2109`; `vibelang --fix` preserves the previous codec for previously accepted canonical spellings. If a canonical `Readonly` import now selects an array type, `--fix-migration-only` preserves its earlier record decoder explicitly.
 
 ```vibe
 // run: { const jsonValue = try Schema.decodeUnknownEffect(NormalizedStock)({ NORTH: 2, north: 3 }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(Schema.is(RegionalStock)({ east: 1 }), Schema.is(LabeledCounters)({ total: 3, east: 3 }))

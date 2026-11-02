@@ -14,6 +14,9 @@ func init() { fileChecks = append(fileChecks, checkSchemaRecordReferenceFlags) }
 func checkSchemaRecordReferenceFlags(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
+		if selected := schemaGenericReplacement(c, node); selected != nil {
+			return visit(selected)
+		}
 		if generatedSchemaRecordCall(c, node, "Record", 2) {
 			value := node.Arguments()[1]
 			readonly := true

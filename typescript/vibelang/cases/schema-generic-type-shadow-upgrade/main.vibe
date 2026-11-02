@@ -1,0 +1,8 @@
+type Array<T> = { value: T }
+type Record<K, V> = { key: K; value: V }
+export const Numbers = Schema.mutable(Schema.Array(Schema.Number));
+export type Numbers = typeof Numbers.Type;
+export const Counts = Schema.Record(Schema.String, Schema.Number);
+export type Counts = typeof Counts.Type;
+export const numbers: Numbers = [1, 2]
+export const counts: Counts = { apples: 3 }

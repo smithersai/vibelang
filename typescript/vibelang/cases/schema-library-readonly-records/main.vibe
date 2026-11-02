@@ -1,0 +1,28 @@
+import type {Dictionary,Freeze,Array as CrossArray,Readonly as CrossReadonly} from "./library-types.js"
+export schema Canonical=Readonly<Record<"x",number>>
+export schema QualifiedInner=Readonly<globalThis.Record<"x",number>>
+export schema QualifiedOuter=globalThis.Readonly<Record<"x",number>>
+export schema Both=Freeze<(Dictionary<"x",number>)>
+export schema Renamed=Readonly<Dictionary<"x",number>>
+export schema CrossA=Readonly<CrossArray<"x",number>>
+export schema CrossR=Readonly<CrossReadonly<"x",number>>
+export schema Nested=Freeze<Dictionary<"x",number[]>>
+function typeChecks(a:Canonical,b:QualifiedInner,c:QualifiedOuter,d:Both,e:Renamed,f:CrossA,g:CrossR,h:Nested):void {
+  // @ts-expect-error readonly key
+  a.x=0
+  // @ts-expect-error readonly key
+  b.x=0
+  // @ts-expect-error readonly key
+  c.x=0
+  // @ts-expect-error readonly key
+  d.x=0
+  // @ts-expect-error readonly key
+  e.x=0
+  // @ts-expect-error readonly key
+  f.x=0
+  // @ts-expect-error readonly key
+  g.x=0
+  h.x.push(1)
+  // @ts-expect-error required key
+  const absent:Both={}
+}

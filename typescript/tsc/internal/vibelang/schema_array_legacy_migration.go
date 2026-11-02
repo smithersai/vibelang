@@ -30,8 +30,10 @@ var schemaGenericLegacyBindingFix = &ls.CodeFixProvider{
 			return nil, nil
 		}
 		for _, ref := range fix.SourceFile.VibeLangSchemaGenerics {
-			if ref.Legacy && scanner.SkipTrivia(fix.SourceFile.Text(), ref.Name.Pos()) == fix.Span.Pos() && ref.Name.End() == fix.Span.End() {
-				return schemaFlagExpansionAt(ctx, fix, ref.Expression)
+			for _, name := range []*ast.Node{ref.Name, ref.InnerName} {
+				if name != nil && ref.Legacy && scanner.SkipTrivia(fix.SourceFile.Text(), name.Pos()) == fix.Span.Pos() && name.End() == fix.Span.End() {
+					return schemaFlagExpansionAt(ctx, fix, ref.Expression)
+				}
 			}
 		}
 		return nil, nil
@@ -51,7 +53,11 @@ func schemaArrayLegacyMigrationFixes(ctx context.Context, program *compiler.Prog
 	for i := range file.VibeLangSchemaGenerics {
 		ref := &file.VibeLangSchemaGenerics[i]
 		kind := schemaGenericKind(c, ref)
-		if !ref.Legacy || kind == 0 || (kind == 1) == ref.DefaultMutable {
+		unchanged := (kind == 1) == ref.DefaultMutable
+		if ref.DefaultKind != 0 {
+			unchanged = kind == ref.DefaultKind
+		}
+		if !ref.Legacy || kind == 0 || unchanged {
 			continue
 		}
 		var root *ast.Node

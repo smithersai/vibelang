@@ -2372,6 +2372,9 @@ type TokenCacheKey struct {
 // a mapped generic's TypeScript type binding (VIP-15, detail 286).
 type SchemaGenericReference struct {
 	Arity          int
+	InnerName      *Node
+	ReadonlyRecord *Node
+	DefaultKind    int
 	Name           *Node
 	Expression     *Node
 	MutableArray   *Node
