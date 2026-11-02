@@ -200,6 +200,7 @@ const specTests = [
   "TestLegacyConfigCommentsQuoted",
   "TestSchemaLibraryBindingQuoted",
   "TestSeverityScopeQuoted",
+  "TestLegacySeverityQuoted",
   "TestUnrelatedSeverityKeepsDiagnosticDefaults",
   "TestDiagnosticSeverityScopeRegression",
   "TestCompileSeverityOverridesByCode",

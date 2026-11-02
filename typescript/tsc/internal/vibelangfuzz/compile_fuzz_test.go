@@ -201,8 +201,8 @@ func compileGaps(t *testing.T, w *Workspace, g *Gaps, project Project, key strin
 		return c
 	}
 	var severities map[string]string
-	if a.Program != nil && a.Program.Options().VibeLang != nil {
-		severities = a.Program.Options().VibeLang.Severities
+	if a.Program != nil {
+		severities = EffectiveSeverities(a.Program.Options().VibeLang)
 	}
 	CheckDiagnostics(g, a.Dir, a.Diagnostics, DefaultsApply(project), severities)
 

@@ -2,6 +2,7 @@ package vibelangfuzz
 
 import (
 	"fmt"
+	"maps"
 	"path"
 	"slices"
 	"sort"
@@ -299,6 +300,28 @@ func CheckDiagnostics(g *Gaps, dir string, ds []*ast.Diagnostic, defaultsApply b
 			g.Add("ek:"+name, "%s is %s by default (Appendix B), but was reported as %s: %s", name, facts.Default(code), d.Category().Name(), keyOf(dir, d))
 		}
 	}
+}
+
+// legacySeverityQuote is 007-tooling.md's rule for legacy severity maps.
+const legacySeverityQuote = "Until migrated, a supported legacy setting still controls its legacy diagnostic unless an effective modern entry for the same diagnostic"
+
+// EffectiveSeverities returns the per-code severities a project sets: its
+// legacy vibelang.diagnostics entries, overridden by its vibe.severities
+// entries for the same code. 007-tooling.md (Legacy severity maps): "Until
+// migrated, a supported legacy setting still controls its legacy diagnostic
+// unless an effective modern entry for the same diagnostic or its explicitly
+// mapped port overrides it." The parsed legacy map holds only the supported
+// codes (VibeLangAdjustableCodes). It returns nil when the project sets none.
+func EffectiveSeverities(options *core.VibeLangOptions) map[string]string {
+	if options == nil || len(options.Diagnostics) == 0 && len(options.Severities) == 0 {
+		return nil
+	}
+	result := maps.Clone(options.Diagnostics)
+	if result == nil {
+		result = map[string]string{}
+	}
+	maps.Copy(result, options.Severities)
+	return result
 }
 
 // CategoryMatches reports whether a reported category is the default.
