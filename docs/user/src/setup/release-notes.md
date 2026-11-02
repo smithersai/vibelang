@@ -302,6 +302,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Top-level Promise awaits now have strict regression checks after their pending compiler gaps were resolved.
 
+- The compiler fuzz suite treated a warning configured as an error through legacy `vibelang.diagnostics` as a compiler defect; it now checks each parsed legacy override while retaining modern settings and unrelated defaults.
+
 - Four spec quote guards (`TestEffectFnParameterDeclarationQuoted`, `TestInferredEffectDeclarationQuoted`, `TestPipeDeclarationAliasesQuoted`, `TestTopLevelAwaitVIPQuoted`) landed outside the pre-merge spec gate, so a spec edit could break them unseen; the gate now runs them.
 - Source-map fuzz checks could reject correct mappings after TypeScript erased annotations or assertions beside an untyped lookalike; they now compare each statement’s executable syntax as well as its written tokens.
 
