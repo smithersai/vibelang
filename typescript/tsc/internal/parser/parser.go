@@ -6811,7 +6811,12 @@ func (p *Parser) inAwaitContext() bool {
 }
 
 func (p *Parser) skipRangeTrivia(textRange core.TextRange) core.TextRange {
-	return core.NewTextRange(scanner.SkipTrivia(p.sourceText, textRange.Pos()), textRange.End())
+	// A range of only trivia, as a zero-width one before whitespace, becomes
+	// zero-width at its end: skipping past its end would invert it, and a
+	// lowered do temporary with pos > end made neverstored's message text
+	// panic (do-array-completion on vibe e9e851fdf6b6).
+	pos := min(scanner.SkipTrivia(p.sourceText, textRange.Pos()), textRange.End())
+	return core.NewTextRange(pos, textRange.End())
 }
 
 func isReservedWord(token ast.Kind) bool {

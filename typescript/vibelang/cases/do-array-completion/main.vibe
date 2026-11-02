@@ -30,7 +30,7 @@ const ifElse = (flag: boolean): ReadonlyArray<string> => do {
 export effect function main() {
   const link: Link = { href: '/a', text: 'A' }
   const inferred = (n: 0 | 1) => {
-    const items = match (n) { when 0: []; when 1: do { const y = 'y'; [y] } }
+    const items = match (n) { when 0: []; when 1: do { const y = 'y'; [y] }; }
     return items
   }
   const none = inferred(0)
