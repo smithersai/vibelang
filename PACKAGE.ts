@@ -107,6 +107,7 @@ const specTests = [
   "TestReactEmittedImplementationQuoted",
   "TestModuleMetadataBoundsQuoted",
   "TestVibexDeclarationSpellingQuoted",
+  "TestPlatformBoundaryContractsQuoted",
   "TestDoForTryDiagnosticOwnerQuoted",
   "TestDoDeclarationBytesQuoted",
   "TestDoContextualResultFuzzQuoted",
