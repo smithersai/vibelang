@@ -16,6 +16,9 @@
       },
     },
   },
+  "patchedDependencies": {
+    "@typescript-eslint/typescript-estree@8.69.0": "patches/@typescript-eslint%2Ftypescript-estree@8.69.0.patch",
+  },
   "packages": {
     "@babel/helper-validator-identifier": ["@babel/helper-validator-identifier@7.29.7", "", {}, "sha512-qehxGkRj55h/ff8EMaJ+cYhyaKlHIxqYDn682wQD7RNp9UujOQsHog2uS0r2vzr4pW+sXf90NeeayjcNaX3fFg=="],
 

@@ -1,0 +1,43 @@
+diff --git a/dist/node-utils.js b/dist/node-utils.js
+index 4ebaddb68b472ed82549f96d70aa08f9de4f9925..0fa649f0733646fe830bb4f9d52c7277ffbc614d 100644
+--- a/dist/node-utils.js
++++ b/dist/node-utils.js
+@@ -512,6 +512,7 @@ function convertToken(token, ast) {
+  */
+ function convertTokens(ast) {
+     const result = [];
++    const typeOpenings = new Set();
+     /**
+      * @param node the ts.Node
+      */
+@@ -521,6 +522,14 @@ function convertTokens(ast) {
+         if (isComment(node) || isJSDocComment(node)) {
+             return;
+         }
++        // TypeScript 5.9 getChildren drops the outer < of F<<T>() => T>.
++        // Record the parser's actual type-list boundaries, not text in comments,
++        // strings, templates or a binary << expression.
++        for (const list of [node.typeArguments, node.typeParameters]) {
++            if (list && ast.text[list.pos - 1] === "<") {
++                typeOpenings.add(list.pos - 1);
++            }
++        }
+         if (isToken(node) && node.kind !== SyntaxKind.EndOfFileToken) {
+             result.push(convertToken(node, ast));
+         }
+@@ -529,6 +538,15 @@ function convertTokens(ast) {
+         }
+     }
+     walk(ast);
++    const starts = new Set(result.map(token => token.range[0]));
++    for (const start of typeOpenings) {
++        if (!starts.has(start)) {
++            const range = [start, start + 1];
++            result.push({ type: ts_estree_1.AST_TOKEN_TYPES.Punctuator,
++                value: "<", range, loc: getLocFor(range, ast) });
++        }
++    }
++    result.sort((a, b) => a.range[0] - b.range[0]);
+     return result;
+ }
+ class TSError extends Error {

@@ -2462,6 +2462,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A passing compiler-case suite gave no warning when a case or phase became slower; `scripts/bench/case-timings.mjs` now compares repeated timing reports, flags median increases over `50%` without blocking correctness checks, and rejects incomplete or mismatched evidence.
 
+- ESLint rules saw adjacent generic openings such as `F<<T>(x: T) => T>` as one `<<` token; they now receive both `<` tokens at their source positions, while left-shift operators stay intact.
+
 ### Known bugs
 
 These bugs were found and confirmed and are being fixed; please don't re-report them, and each entry moves to the fixed list when its fix lands.

@@ -13,13 +13,15 @@ import (
 // the } that continues a template from a block's, or >> from two type
 // argument lists closing; the tree can, so the scan rescans where the tree
 // has a regular expression, a template continuation, or a shift or
-// comparison operator.
+// comparison operator. Adjacent generic openings, <<, need the inverse:
+// split them unless the tree records an actual left-shift operator.
 
 // lexicalContext is what the scan needs from the tree.
 type lexicalContext struct {
 	regexps     map[int]bool
 	templates   map[int]bool
 	greaters    map[int]bool
+	leftShifts  map[int]bool
 	pipes       map[int]bool
 	identifiers map[int]bool
 }
@@ -29,6 +31,7 @@ func newLexicalContext() *lexicalContext {
 		regexps:     map[int]bool{},
 		templates:   map[int]bool{},
 		greaters:    map[int]bool{},
+		leftShifts:  map[int]bool{},
 		pipes:       map[int]bool{},
 		identifiers: map[int]bool{},
 	}
@@ -50,6 +53,8 @@ func (l *lexicalContext) collect(file *ast.SourceFile, text string) {
 		case ast.KindBinaryExpression:
 			operator := n.AsBinaryExpression().OperatorToken
 			switch operator.Kind {
+			case ast.KindLessThanLessThanToken:
+				l.leftShifts[start(operator)] = true
 			case ast.KindGreaterThanGreaterThanToken, ast.KindGreaterThanGreaterThanGreaterThanToken,
 				ast.KindGreaterThanEqualsToken, ast.KindGreaterThanGreaterThanEqualsToken,
 				ast.KindGreaterThanGreaterThanGreaterThanEqualsToken:
@@ -107,6 +112,10 @@ func lex(text string, l *lexicalContext) (tokens []*obj, comments []*obj) {
 		case ast.KindCloseBraceToken:
 			if l.templates[start] {
 				kind = s.ReScanTemplateToken(false)
+			}
+		case ast.KindLessThanLessThanToken:
+			if !l.leftShifts[start] {
+				kind = s.ReScanLessThanToken()
 			}
 		case ast.KindGreaterThanToken:
 			if l.greaters[start] {
