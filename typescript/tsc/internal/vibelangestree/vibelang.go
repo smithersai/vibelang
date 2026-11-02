@@ -22,6 +22,7 @@ import (
 //	A!infer E              VibeInferType { name }, outside a conditional type
 //	x |> f(%)              VibePipeExpression { left, right }, TopicReference
 //	x catch (e) => y       VibeCatchExpression { expression, handler }
+//	pattern binding step   VibePatternAssignment { expression: AssignmentExpression }
 //	provide L, K = v { }   VibeProvideStatement { providers, body },
 //	                       VibeServiceProvider { key, value }
 //	uninterruptible { }    VibeMaskStatement { kind, body }
@@ -98,6 +99,15 @@ func (c *converter) convertVibeLang(n *ast.Node, parent *ast.Node) (*obj, bool) 
 		}
 	case ast.KindBinaryExpression:
 		binary := n.AsBinaryExpression()
+		assignment := ast.SkipParentheses(binary.Left)
+		// A pattern step assigns a subject/extraction/binding, then yields
+		// synthetic true so the next test runs. It is not a source comma
+		// expression whose constant truthiness ESLint should report (VIP-34).
+		if binary.OperatorToken.Kind == ast.KindCommaToken && synthesized(binary.OperatorToken) &&
+			binary.Right.Kind == ast.KindTrueKeyword && synthesized(binary.Right) &&
+			assignment.Kind == ast.KindBinaryExpression && assignment.AsBinaryExpression().OperatorToken.Kind == ast.KindEqualsToken {
+			return c.node(n, "VibePatternAssignment").set("expression", c.convertChild(binary.Left, n)), true
+		}
 		if n.Flags&ast.NodeFlagsVibeLang != 0 && binary.OperatorToken.Kind == ast.KindBarToken {
 			return c.node(n, "VibePipeExpression").
 				set("left", c.convertChild(binary.Left, n)).

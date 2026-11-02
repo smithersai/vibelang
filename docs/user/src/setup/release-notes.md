@@ -511,6 +511,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Site generator unit tests ran in no build target, so regressions could reach the published docs unchecked; the release gate now runs both dependency-free suites.
 
+- ESLint reported `no-constant-binary-expression` on a valid `is` pattern with bindings, such as `outcome is Exit.Failure(let cause)`; generated binding steps no longer look like constant expressions, and constants written in source still get the rule.
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 
 - Migration setup could leave a native type exported through a TypeScript namespace barrel as an error type in project-aware linters; setup now enables source declaration redirects in owned configs and records those edits.

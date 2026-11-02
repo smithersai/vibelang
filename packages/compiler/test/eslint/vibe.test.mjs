@@ -260,3 +260,29 @@ test("a syntax error in a module declaration's body is ESLint's parsing error at
   assert.equal(message.message, "Parsing error: Unexpected keyword or identifier.")
   assert.deepEqual([message.line, message.column], [4, 3])
 })
+
+
+test("pattern bookkeeping does not trigger constant-expression lint or hide user constants", () => {
+  const verify = (code) => new Linter({ configType: "flat", cwd: "/" }).verify(code, [{
+    files: ["**/*.vibe"], languageOptions: { parser: vibelang },
+    rules: { "no-constant-binary-expression": "error" }
+  }], { filename: "/patterns.vibe" })
+  for (const pattern of ["Exit.Failure(let cause)", "[let cause]", "{ cause: let cause }"]) {
+    assert.deepEqual(verify(`function f(x) { if (x is ${pattern}) return cause }`), [], pattern)
+    const messages = verify(`function f(x) { if (true && (x is ${pattern})) return cause }`)
+    assert.equal(messages.length, 1, pattern)
+    assert.equal(messages[0].ruleId, "no-constant-binary-expression")
+  }
+  assert.equal(verify("function f(x) { return (x = 1, true) && x }").length, 1)
+})
+
+test("pattern assignment visitor keys retain reads and writes of source bindings", () => {
+  for (const [body, expected] of [["return cause", []], ["return 0", ["cause"]]]) {
+    const code = `export function f(x) { if (x is Exit.Failure(let cause)) ${body} }`
+    const messages = new Linter({ configType: "flat", cwd: "/" }).verify(code, [{
+      files: ["**/*.vibe"], languageOptions: { parser: vibelang },
+      rules: { "@typescript-eslint/no-unused-vars": "error" }, plugins: { "@typescript-eslint": tseslint.plugin }
+    }], { filename: "/patterns.vibe" })
+    assert.deepEqual(messages.map((message) => message.message.match(/'([^']+)'/)?.[1]), expected)
+  }
+})

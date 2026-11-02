@@ -34,6 +34,7 @@ export const vibeVisitorKeys = Object.freeze({
   VibeInferType: [],
   VibeMaskStatement: ["body"],
   VibeModuleDeclaration: ["id", "body"],
+  VibePatternAssignment: ["expression"],
   VibePipeExpression: ["left", "right"],
   VibeProvideStatement: ["providers", "body"],
   VibeServiceProvider: ["key", "value"]
