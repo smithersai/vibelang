@@ -3,6 +3,7 @@ package binder
 import (
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
@@ -587,6 +588,17 @@ func (b *Binder) finishFlowLabel(label *ast.FlowLabel) *ast.FlowNode {
 func (b *Binder) bind(node *ast.Node) bool {
 	if node == nil {
 		return false
+	}
+	// Keep a dead do expression's local assignment graph available to the
+	// checker. This boundary still leads to unreachableFlow, so it cannot
+	// make the enclosing function or source bindings reachable.
+	if b.currentFlow == b.unreachableFlow && ast.IsVariableDeclaration(node) && node.Initializer() == nil {
+		name := node.Name()
+		if name != nil && ast.IsIdentifier(name) && name.Flags&ast.NodeFlagsVibeLangTemporary != 0 && strings.HasPrefix(name.Text(), "$do") {
+			entry := b.newFlowNode(ast.FlowFlagsBranchLabel | ast.FlowFlagsVibeLangDoUnreachable)
+			entry.Antecedents = b.newFlowList(b.currentFlow, nil)
+			b.currentFlow = entry
+		}
 	}
 	// Even though in the AST the jsdoc @typedef node belongs to the current node,
 	// its symbol might be in the same scope with the current node's symbol. Consider:
@@ -1567,7 +1579,7 @@ func (b *Binder) bindContainer(node *ast.Node, containerFlags ContainerFlags) {
 		b.bindChildren(node)
 		// Reset flags (for incremental scenarios)
 		node.Flags &^= ast.NodeFlagsReachabilityAndEmitFlags | ast.NodeFlagsContainsThis
-		if b.currentFlow.Flags&ast.FlowFlagsUnreachable == 0 && containerFlags&ContainerFlagsIsFunctionLike != 0 {
+		if b.currentFlow.Flags&ast.FlowFlagsUnreachable == 0 && !b.isDeadDoContinuation(b.currentFlow) && containerFlags&ContainerFlagsIsFunctionLike != 0 {
 			bodyData := node.BodyData()
 			if bodyData != nil && ast.NodeIsPresent(bodyData.Body) {
 				node.Flags |= ast.NodeFlagsHasImplicitReturn
@@ -2001,7 +2013,11 @@ func (b *Binder) bindBreakOrContinueStatement(label *ast.Node, currentTarget *as
 	if label != nil {
 		activeLabel := b.findActiveLabel(label.Text())
 		if activeLabel != nil {
-			activeLabel.referenced = true
+			// Retained dead do flow is checked locally, but a source jump
+			// there must not make an enclosing unused label count as used.
+			if !b.isDeadDoContinuation(b.currentFlow) {
+				activeLabel.referenced = true
+			}
 			b.bindBreakOrContinueFlow(getTarget(activeLabel))
 		}
 	} else {
@@ -2186,8 +2202,52 @@ func (b *Binder) maybeBindExpressionFlowIfCall(node *ast.Node) {
 	}
 }
 
+// isDeadDoContinuation distinguishes a graph retained solely for checking
+// a dead do expression from a source continuation the binder could reach.
+// Keep ordinary label and implicit-return bookkeeping as if that graph had
+// remained at unreachableFlow. A reachable branch or nested function start
+// prevents the special case.
+func (b *Binder) isDeadDoContinuation(flow *ast.FlowNode) bool {
+	found := false
+	seen := map[*ast.FlowNode]bool{}
+	var dead func(*ast.FlowNode) bool
+	dead = func(flow *ast.FlowNode) bool {
+		for flow != nil {
+			if flow.Flags&ast.FlowFlagsVibeLangDoUnreachable != 0 {
+				found = true
+				return true
+			}
+			if flow.Flags&ast.FlowFlagsUnreachable != 0 || seen[flow] {
+				return true
+			}
+			seen[flow] = true
+			switch {
+			case flow.Flags&ast.FlowFlagsStart != 0:
+				return false
+			case flow.Flags&ast.FlowFlagsLoopLabel != 0:
+				if flow.Antecedents == nil {
+					return true
+				}
+				flow = flow.Antecedents.Flow
+			case flow.Flags&ast.FlowFlagsBranchLabel != 0:
+				for list := flow.Antecedents; list != nil; list = list.Next {
+					if !dead(list.Flow) {
+						return false
+					}
+				}
+				return true
+			default:
+				flow = flow.Antecedent
+			}
+		}
+		return false
+	}
+	return dead(flow) && found
+}
+
 func (b *Binder) bindLabeledStatement(node *ast.Node) {
 	stmt := node.AsLabeledStatement()
+	deadDoContinuation := b.isDeadDoContinuation(b.currentFlow)
 	postStatementLabel := b.createBranchLabel()
 	b.activeLabelList = &ActiveLabel{
 		next:           b.activeLabelList,
@@ -2198,7 +2258,7 @@ func (b *Binder) bindLabeledStatement(node *ast.Node) {
 	}
 	b.bind(stmt.Label)
 	b.bind(stmt.Statement)
-	if !b.activeLabelList.referenced {
+	if !b.activeLabelList.referenced && !deadDoContinuation {
 		// Mark the label as unused; the checker will decide whether to report it
 		stmt.Label.Flags |= ast.NodeFlagsUnreachable
 	}

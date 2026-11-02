@@ -1753,8 +1753,10 @@ func (l *doLowering) conditional(e *ast.Node, pre *[]*ast.Node) *ast.Node {
 		value := l.expr(x, &inner)
 		return l.p.mBlock(append(inner, l.statement(l.assign(l.ref(name, x.Loc), value, x.Loc), x.Loc)), x.Loc)
 	}
-	*pre = append(*pre, l.letStatement(name, at), l.p.vibelangSpanning(l.p.factory.NewIfStatement(c.Condition, branch(c.WhenTrue), branch(c.WhenFalse)), e.Loc))
-	return l.ref(name, l.p.sourceRange(e))
+	let, ref := l.letStatement(name, at), l.ref(name, l.p.sourceRange(e))
+	l.p.completionSite(let, ref)
+	*pre = append(*pre, let, l.p.vibelangSpanning(l.p.factory.NewIfStatement(c.Condition, branch(c.WhenTrue), branch(c.WhenFalse)), e.Loc))
+	return ref
 }
 
 // binary lowers a binary expression. Its left side runs first; a logical
@@ -1781,7 +1783,15 @@ func (l *doLowering) binary(e *ast.Node, pre *[]*ast.Node) *ast.Node {
 		// The checker follows this immutable capture back to the original
 		// condition, including ??'s nullish test, without evaluating it again.
 		guard := l.temp("$do_guard", at)
-		*pre = append(*pre, l.p.mConst(guard, ast.NodeFlagsConst, l.valueOnly(left), at), l.letStatement(name, at))
+		let, ref := l.letStatement(name, at), l.ref(name, l.p.sourceRange(e))
+		l.p.completionSite(let, ref)
+		capture := l.p.mConst(guard, ast.NodeFlagsConst, l.valueOnly(left), at)
+		// Unlike &&'s discarded truthy guard, || and ?? retain their left
+		// operand as a possible result and preserve its contextual type.
+		if operator != ast.KindAmpersandAmpersandToken {
+			l.p.completionSite(capture, ref)
+		}
+		*pre = append(*pre, capture, let)
 		var inner []*ast.Node
 		right := l.expr(b.Right, &inner)
 		inner = append(inner, l.statement(l.assign(l.ref(name, b.Right.Loc), right, b.Right.Loc), b.Right.Loc))
@@ -1790,7 +1800,7 @@ func (l *doLowering) binary(e *ast.Node, pre *[]*ast.Node) *ast.Node {
 		// retains false/true/nullish filtering as well as the RHS's type.
 		skipped := l.statement(l.assign(l.ref(name, at), l.ref(guard, at), at), at)
 		*pre = append(*pre, l.p.vibelangSpanning(l.p.factory.NewIfStatement(l.shortCircuit(operator, l.ref(guard, at), at), l.p.mBlock(inner, b.Right.Loc), skipped), e.Loc))
-		return l.ref(name, l.p.sourceRange(e))
+		return ref
 	case ast.IsLogicalOrCoalescingAssignmentOperator(operator):
 		// x ||= e: x is an identifier (doSite).
 		target := ast.SkipParentheses(b.Left)

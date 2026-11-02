@@ -58,6 +58,7 @@ const (
 	NodeFlagsVibeLangDoCompletion          NodeFlags = 1 << 39 // If node is the variable declaration the VibeLang parser writes for a do expression's completion value, or for a value it evaluates early to keep source order (spill; parser/vibelang_do.go): an assignment to it takes the contextual type of the do's site (VibeLangDoSites), and its flow type keeps the assigned values' literal types (checker getContextualTypeForBinaryOperand, getTypeAtFlowAssignment).
 
 	NodeFlagsVibeLangShorthandBinding NodeFlags = 1 << 40 // A source object-pattern binder also supplies an implicit fixed property key; rename must expose that key.
+	NodeFlagsVibeLangTemporary        NodeFlags = 1 << 41 // Identifier introduced by mTemp, rather than a source binding synthesized with mIdent
 
 	NodeFlagsBlockScoped = NodeFlagsLet | NodeFlagsConst | NodeFlagsUsing
 	NodeFlagsConstant    = NodeFlagsConst | NodeFlagsUsing

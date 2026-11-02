@@ -38,15 +38,18 @@ type SharedFlow struct {
 }
 
 type FlowState struct {
-	reference       *ast.Node
-	declaredType    *Type
-	initialType     *Type
-	flowContainer   *ast.Node
-	refKey          CacheHashKey
-	depth           int
-	sharedFlowStart int
-	reduceLabels    []*ast.FlowReduceLabelData
-	next            *FlowState
+	reference        *ast.Node
+	declaredType     *Type
+	initialType      *Type
+	flowContainer    *ast.Node
+	refKey           CacheHashKey
+	depth            int
+	sharedFlowStart  int
+	doEntry          *ast.FlowNode
+	doCompletion     bool
+	generatedCapture bool
+	reduceLabels     []*ast.FlowReduceLabelData
+	next             *FlowState
 }
 
 func (c *Checker) getFlowState() *FlowState {
@@ -82,18 +85,45 @@ func (c *Checker) getFlowTypeOfReferenceEx(reference *ast.Node, declaredType *Ty
 	if c.flowAnalysisDisabled {
 		return c.errorType
 	}
+	var generatedCapture *ast.Node
+	if ast.IsIdentifier(reference) && reference.Flags&ast.NodeFlagsReparsed != 0 {
+		declaration := c.getResolvedSymbol(reference).ValueDeclaration()
+		if declaration != nil && ast.IsVariableDeclaration(declaration) &&
+			declaration.Name().Flags&ast.NodeFlagsVibeLangTemporary != 0 {
+			generatedCapture = declaration
+		}
+	}
+	var doTemporary *ast.Node
+	if generatedCapture != nil && declaredType == c.autoType && generatedCapture.Initializer() == nil &&
+		strings.HasPrefix(reference.Text(), "$do") {
+		doTemporary = generatedCapture
+	}
 	if flowNode == nil {
 		flowNode = getFlowNodeOfNode(reference)
 		if flowNode == nil {
+			// A syntactically abrupt do (throw/return/break/continue) has
+			// no continuation flow at all; its value is still never.
+			if doTemporary != nil {
+				return c.neverType
+			}
 			return declaredType
 		}
 	}
 	f := c.getFlowState()
 	f.reference = reference
+	f.doCompletion = doTemporary != nil
+	f.generatedCapture = generatedCapture != nil
 	f.declaredType = declaredType
 	f.initialType = core.Coalesce(initialType, declaredType)
 	f.flowContainer = flowContainer
 	f.sharedFlowStart = len(c.sharedFlows)
+	// In dead surrounding code, check an expression's own completion from
+	// its entry. A preceding never call must not erase its written value type.
+	if doTemporary != nil {
+		if entry := getFlowNodeOfNode(doTemporary.Name()); entry != nil && !c.isReachableFlowNode(entry) {
+			f.doEntry = entry
+		}
+	}
 	c.flowInvocationCount++
 	evolvedType := c.getTypeAtFlowNode(f, flowNode).t
 	c.sharedFlows = c.sharedFlows[:f.sharedFlowStart]
@@ -108,6 +138,12 @@ func (c *Checker) getFlowTypeOfReferenceEx(reference *ast.Node, declaredType *Ty
 	} else {
 		resultType = c.finalizeEvolvingArrayType(evolvedType)
 	}
+	// A completion with no local normal path is never (VIP-2), rather than
+	// an implicit-any source binding. Initialized operand captures keep their
+	// declared checked type through the ordinary unreachable fallback.
+	if resultType == c.unreachableNeverType && doTemporary != nil {
+		return c.neverType
+	}
 	if resultType == c.unreachableNeverType || reference.Parent != nil && ast.IsNonNullExpression(reference.Parent) && resultType.flags&TypeFlagsNever == 0 && c.getTypeWithFacts(resultType, TypeFactsNEUndefinedOrNull).flags&TypeFlagsNever != 0 {
 		return declaredType
 	}
@@ -115,6 +151,9 @@ func (c *Checker) getFlowTypeOfReferenceEx(reference *ast.Node, declaredType *Ty
 }
 
 func (c *Checker) getTypeAtFlowNode(f *FlowState, flow *ast.FlowNode) FlowType {
+	if flow == f.doEntry {
+		return FlowType{t: f.initialType}
+	}
 	if f.depth == 2000 {
 		// We have made 2000 recursive invocations. To avoid overflowing the call stack we report an error
 		// and disable further control flow analysis in the containing function or module body.
@@ -128,6 +167,10 @@ func (c *Checker) getTypeAtFlowNode(f *FlowState, flow *ast.FlowNode) FlowType {
 	f.depth++
 	var sharedFlow *ast.FlowNode
 	for {
+		if flow == f.doEntry {
+			f.depth--
+			return FlowType{t: f.initialType}
+		}
 		flags := flow.Flags
 		if flags&ast.FlowFlagsShared != 0 {
 			// We cache results of flow type resolution for shared nodes that were previously visited in
@@ -194,7 +237,11 @@ func (c *Checker) getTypeAtFlowNode(f *FlowState, flow *ast.FlowNode) FlowType {
 		default:
 			// Unreachable code errors are reported in the binding phase. Here we
 			// simply return the non-auto declared type to reduce follow-on errors.
-			t = FlowType{t: c.convertAutoToAny(f.declaredType)}
+			if f.doCompletion && flags&ast.FlowFlagsUnreachable != 0 {
+				t = FlowType{t: c.unreachableNeverType}
+			} else {
+				t = FlowType{t: c.convertAutoToAny(f.declaredType)}
+			}
 		}
 		if sharedFlow != nil {
 			// Record visited node and the associated type in the cache.
@@ -239,7 +286,7 @@ func (c *Checker) getTypeAtFlowAssignment(f *FlowState, flow *ast.FlowNode) Flow
 	// Assignments only narrow the computed type if the declared type is a union type. Thus, we
 	// only need to evaluate the assigned type if the declared type is a union type.
 	if c.isMatchingReference(f.reference, node) {
-		if !c.isReachableFlowNode(flow) {
+		if !c.isReachableDoFlowNode(f, flow) {
 			return FlowType{t: c.unreachableNeverType}
 		}
 		if getAssignmentTargetKind(node) == AssignmentKindCompound {
@@ -251,11 +298,11 @@ func (c *Checker) getTypeAtFlowAssignment(f *FlowState, flow *ast.FlowNode) Flow
 			// written in place (chapter 002), so `[]` there is an empty array
 			// literal, not the start of an evolving array that later pushes
 			// grow (foldkit-122: `when None: []` beside a do arm was TS7005).
-			if c.isEmptyArrayAssignment(node) && c.doCompletionDeclaration(f.reference) == nil {
+			if c.isEmptyArrayAssignment(node) && !f.generatedCapture && c.doCompletionDeclaration(f.reference) == nil {
 				return FlowType{t: c.getEvolvingArrayType(c.neverType)}
 			}
 			assignedType := c.getInitialOrAssignedType(f, flow)
-			if c.doCompletionDeclaration(f.reference) == nil {
+			if !f.generatedCapture && c.doCompletionDeclaration(f.reference) == nil {
 				// A VibeLang do expression's completion keeps its values' literal
 				// types, as an expression written in place does: chapter 002,
 				// "`const exact = do { 1 }` has type `1`, while `let ordinary =
@@ -281,7 +328,7 @@ func (c *Checker) getTypeAtFlowAssignment(f *FlowState, flow *ast.FlowNode) Flow
 	// reference 'x.y.z', we may be at an assignment to 'x.y' or 'x'. In that case,
 	// return the declared type.
 	if c.containsMatchingReference(f.reference, node) {
-		if !c.isReachableFlowNode(flow) {
+		if !c.isReachableDoFlowNode(f, flow) {
 			return FlowType{t: c.unreachableNeverType}
 		}
 		// A matching dotted name might also be an expando property on a function *expression*,
@@ -2565,6 +2612,13 @@ func (c *Checker) getFlowTypeInStaticBlocks(symbol *ast.Symbol, staticBlocks []*
 	return nil
 }
 
+func (c *Checker) isReachableDoFlowNode(f *FlowState, flow *ast.FlowNode) bool {
+	if f.doEntry == nil {
+		return c.isReachableFlowNode(flow)
+	}
+	return c.isReachableFlowNodeWorker(f, flow, false)
+}
+
 func (c *Checker) isReachableFlowNode(flow *ast.FlowNode) bool {
 	f := c.getFlowState()
 	result := c.isReachableFlowNodeWorker(f, flow, false /*noCacheCheck*/)
@@ -2576,12 +2630,15 @@ func (c *Checker) isReachableFlowNode(flow *ast.FlowNode) bool {
 
 func (c *Checker) isReachableFlowNodeWorker(f *FlowState, flow *ast.FlowNode, noCacheCheck bool) bool {
 	for {
-		if flow == c.lastFlowNode {
+		if flow == f.doEntry {
+			return true
+		}
+		if f.doEntry == nil && flow == c.lastFlowNode {
 			return c.lastFlowNodeReachable
 		}
 		flags := flow.Flags
 		if flags&ast.FlowFlagsShared != 0 {
-			if !noCacheCheck && len(f.reduceLabels) == 0 {
+			if f.doEntry == nil && !noCacheCheck && len(f.reduceLabels) == 0 {
 				if reachable, ok := c.flowNodeReachable[flow]; ok {
 					return reachable
 				}

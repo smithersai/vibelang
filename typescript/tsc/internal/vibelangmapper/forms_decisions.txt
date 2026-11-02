@@ -1894,6 +1894,12 @@ typescript/vibelang/cases/do-method-bind-shadow/main.vibe:11:5 lambda plain anno
 typescript/vibelang/cases/do-method-bind-shadow/main.vibe:11:89 lambda plain annotation
 typescript/vibelang/cases/do-method-bind-shadow/main.vibe:8:5 lambda plain annotation
 typescript/vibelang/cases/do-nested-early-errors.fail/main.vibe:5:34 lambda plain fallback
+typescript/vibelang/cases/do-never-completion/main.vibe:59:48 lambda plain fallback
+typescript/vibelang/cases/do-never-completion/main.vibe:65:64 lambda plain fallback
+typescript/vibelang/cases/do-never-completion/main.vibe:71:48 lambda effectFn fallback
+typescript/vibelang/cases/do-never-completion/main.vibe:76:35 lambda plain annotation
+typescript/vibelang/cases/do-never-completion/main.vibe:77:31 lambda plain annotation
+typescript/vibelang/cases/do-never-completion/main.vibe:78:33 lambda plain annotation
 typescript/vibelang/cases/do-object-spread-finish-order/main.vibe:30:56 lambda plain annotation
 typescript/vibelang/cases/do-object-spread-finish-order/main.vibe:50:73 lambda plain annotation
 typescript/vibelang/cases/do-object-spread-finish-order/main.vibe:70:55 lambda plain annotation

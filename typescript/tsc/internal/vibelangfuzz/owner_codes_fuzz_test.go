@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -285,14 +286,38 @@ func FuzzDoCompletion(f *testing.F) {
 		{"var-nested-then-value", "{ var n = 1; n }", false},
 		{"parameter-var", "var n = 1; n", false},
 	}
+	for _, key := range []string{"d1", "d2", "d3", "d4", "d5", "d6", "position", "conditional", "logical", "finally", "parameter", "nested", "invalid", "outer-completion", "outer-receiver", "outer-conditional", "outer-finally", "outer-invalid", "outer-return", "outer-bindings", "user-prefixed-auto", "user-never-iteration", "empty-captures", "empty-source", "empty-source-filled", "literal-captures", "context-captures", "source-literal", "type"} {
+		sites = append(sites, struct {
+			key, last string
+			bad       bool
+		}{"never-" + key, "", false})
+	}
 	keys := make([]string, len(sites))
 	for i, site := range sites {
 		keys[i] = site.key
+		if strings.HasPrefix(site.key, "never-") {
+			// These keys have a checked-in canonical corpus entry. Go runs
+			// that entry in short mode too; do not compile it twice.
+			if _, err := os.Stat(filepath.Join("testdata", "fuzz", doCompletionTarget, site.key)); err != nil {
+				f.Fatal(err)
+			}
+			continue
+		}
 		f.Add([]byte(site.key))
 	}
 	f.Fuzz(func(t *testing.T, data []byte) {
-		choice, _ := keyedChoice(keys, data)
+		choice, tail := keyedChoice(keys, data)
 		site := sites[choice]
+		if key, ok := strings.CutPrefix(site.key, "never-"); ok {
+			if key == "type" {
+				checkDoNeverCompletionType(t, tail)
+				ExpectPending(t, doCompletionTarget, specCorpusKey(t))
+				return
+			}
+			checkDoNeverCompletion(t, NewWorkspace(t), StockTypeScript(t), key, tail)
+			ExpectPending(t, doCompletionTarget, specCorpusKey(t))
+			return
+		}
 		var wantCode int32
 		if site.bad {
 			wantCode = parser.DoEndsCode

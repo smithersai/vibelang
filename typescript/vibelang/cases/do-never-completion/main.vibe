@@ -1,0 +1,84 @@
+// PREVIEW-15: unreachable completion must not infer an implicit any temporary.
+import { stop, raise } from "./stop.js"
+export function d1(): unknown { try { return do { raise(); 1 } } catch (error) { return error } }
+export function d2(): unknown { return do { stop(); 1 } }
+export function d3(): unknown { try { return do { stop(); 1 } } catch (error) { return error } }
+export function d4(): number { return do { 1 } }
+export function d5(): number { return do { stop(); 1 } }
+export function d6(flag: boolean): number { return do { if (flag) stop(); 1 } }
+
+// A never call outside do does not change the block's checked value type.
+export function outerReceiver(): string {
+  stop();
+  return (class { static m(n: number): string { return String(n) } }).m(do { 1 });
+}
+export function outerValue(): string {
+  stop();
+  const value = do { 1 };
+  return value.toFixed();
+}
+export function afterReturn(): string {
+  return "before";
+  const value = do { 1 };
+  return value.toFixed();
+}
+
+export function outerEnd(): number {
+  stop();
+  const value = do { 1 };
+  value.toFixed();
+}
+export function returnEnd(): number {
+  return 1;
+  const value = do { 1 };
+  value.toFixed();
+}
+
+export function afterReturnBinding(): unknown {
+ return 1;
+ let user;
+ const value = do { 1 };
+ return user;
+}
+export function afterReturnLabel(): number {
+ return 1;
+ const value = do { 1 };
+ unused: {}
+ void value;
+}
+export function inferredReturn() {
+ return 1;
+ const value = do { 1 };
+ void value;
+}
+export const checkedInferred: number = inferredReturn();
+
+// Public declarations serialize source values rather than completion cells.
+export const ClassValue = do { (class { value = 1; method() { return this.value } }) };
+export const NamedClassValue: { new(): { value: number }; Self: unknown } = do { (class Source { static Self = Source; value = 1 }) };
+export function callbackValue() { return do { (() => 1) }; }
+export const nestedClassValue: { new(): object; Self: unknown } = do { const inner = do { (class Inner { static Self = Inner }) }; inner };
+export const finallyClassValue = do { try { (class { value = 1 }) } finally {} };
+
+// Empty array receiver captures keep the source literal's checked type.
+export function emptyReceiver() { return [].concat(do { [] }) }
+export function emptyOptionalReceiver() { return []?.concat(do { [] }) }
+export function emptyComputedReceiver() { return []["concat"](do { [] }) }
+export function filledReceiver() { const values = []; values.push(1); return values.concat(do { [] }) }
+
+export function emptyMatch(): number { return match ([]) { when []: 1; default: 0; } }
+export function emptyLiftedMatch(): number { return match ([]) { when []: do { 1 }; default: 0; } }
+export function emptyIs(): boolean { return [] is []; }
+
+export function emptyConditional(flag: boolean) { return flag ? [] : do { [] } }
+export function emptyLogical(flag: boolean) { return flag && do { [] } }
+export function emptyCoalesce(flag: boolean) { return (flag ? [] : undefined) ?? do { [] } }
+export const conditionalLiteral = (flag: boolean): 1 | 2 => flag ? do { 1 } : do { 2 };
+export const logicalLiteral = (flag: boolean): false | 1 => flag && do { 1 };
+export const coalescedLiteral = (flag: boolean): 1 | 2 => (flag ? 1 : undefined) ?? do { 2 };
+
+type Shape = { tag: "a" } | { tag: "b" };
+export function contextConditional(flag: boolean): Shape { return flag ? do { ({ tag: "a" }) } : do { ({ tag: "b" }) } }
+export function contextLogical(flag: boolean): false | Shape { return flag && do { ({ tag: "a" }) } }
+export function contextCoalesce(flag: boolean): Shape { return (flag ? { tag: "a" } : undefined) ?? do { ({ tag: "b" }) } }
+export function contextOr(flag: boolean): Shape { return (flag ? { tag: "a" } : undefined) || do { ({ tag: "b" }) } }

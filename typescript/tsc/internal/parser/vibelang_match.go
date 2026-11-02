@@ -930,6 +930,7 @@ func (p *Parser) mIdent(name string, at core.TextRange) *ast.Node {
 // it, so that freshenVibeLangTemps can rename every reference to it.
 func (p *Parser) mTemp(name string, at core.TextRange) *ast.Node {
 	id := p.mIdent(name, at)
+	id.Flags |= ast.NodeFlagsVibeLangTemporary
 	p.vibelangTemps = append(p.vibelangTemps, id)
 	return id
 }

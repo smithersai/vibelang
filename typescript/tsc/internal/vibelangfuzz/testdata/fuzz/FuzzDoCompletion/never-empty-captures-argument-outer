@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("never-empty-captures:\x03\x01")
