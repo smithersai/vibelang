@@ -123,6 +123,21 @@ func (tx *lowering) visitNode(node *ast.Node) *ast.Node {
 		return tx.visitGuardedChain(node, link) // a ?. before a yield (chains_lower.go)
 	}
 	switch {
+	case doPropertyKey(node) != nil:
+		// const $do_k1 = k converts k where it stands, as [k] would
+		// (parser/vibelang_do.go).
+		d := node.AsVariableDeclaration()
+		key := tx.generated(tx.runtimeCall("$propertyKey", tx.visit(d.Initializer)))
+		return tx.Factory().UpdateVariableDeclaration(d, tx.visit(d.Name()), d.ExclamationToken, d.Type, key)
+	case doSpreadCopy(node) != nil:
+		// ...$do_s1 spreads the items a spread before a do produced where
+		// it stood (parser/vibelang_do.go); iterating the generated array
+		// would read Array.prototype[Symbol.iterator].
+		items := tx.generated(tx.runtimeCall("$spreadItems", tx.visit(doSpreadCopy(node))))
+		spread := tx.Factory().NewSpreadElement(items)
+		tx.EmitContext().SetOriginal(spread, node)
+		spread.Loc = node.Loc
+		return spread
 	case doBindingMethod(node) != nil:
 		bound := tx.generated(tx.runtimeCall("$bindMethod", tx.visit(doBindingMethod(node)), tx.visit(node.Arguments()[0])))
 		tx.EmitContext().SetOriginal(bound, node)

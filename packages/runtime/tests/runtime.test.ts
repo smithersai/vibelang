@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
 import { Cause, Context, Deferred, Fiber, Stream } from "effect"
 import {
-  $bind, $bindMethod, $catch, $caught, $control, $expected, $finally, $finallyFailure, $joinedFrame, $plainOf, $plainSync, $fork, $forOf, $normal, acquireRelease,
+  $bind, $bindMethod, $propertyKey, $spreadItems, $catch, $caught, $control, $expected, $finally, $finallyFailure, $joinedFrame, $plainOf, $plainSync, $fork, $forOf, $normal, acquireRelease,
   $produce, $program, $programs, $reference, $region, $service, $tailResume,
   $tailResumeWith, $trusted, $trustedPlain, $using, $yield, $yieldAll, abandon, Control,
   $direct, Effect, Exit, fork, handle, handoff, Layer, pipe, resume,
@@ -40,6 +40,37 @@ test("calls: generated method references ignore helper properties and defer invo
   events.length = 0
   expect(() => missing(operand())).toThrow(TypeError)
   expect(events).toEqual(["argument"])
+})
+
+test("$propertyKey converts a key as a computed key does", () => {
+  const events: string[] = []
+  const sym = Symbol("k")
+  const key = (value: string | symbol) => ({ [Symbol.toPrimitive](hint: string) { events.push(hint); return value } })
+  expect($propertyKey(key("a"))).toBe("a")
+  expect($propertyKey(key(sym))).toBe(sym)
+  expect($propertyKey(1)).toBe("1")
+  expect($propertyKey({ toString: () => "s", valueOf: () => "v" })).toBe("s")
+  expect(events).toEqual(["string", "string"])
+  expect(() => $propertyKey({ [Symbol.toPrimitive]() { throw new Error("key") } })).toThrow("key")
+})
+
+test("$spreadItems spreads its items without the array iterator", () => {
+  const items = [1, undefined, 3]
+  const original = Array.prototype[Symbol.iterator]
+  const reads: string[] = []
+  Object.defineProperty(Array.prototype, Symbol.iterator, {
+    configurable: true, writable: true,
+    value: function (this: unknown[]) { reads.push("array-iterator"); return original.call(this) },
+  })
+  try {
+    const spread = $spreadItems(items)
+    const copy: unknown[] = []
+    for (const x of spread) copy.push(x)
+    expect(copy).toEqual([1, undefined, 3])
+    expect(reads).toEqual([])
+  } finally {
+    Object.defineProperty(Array.prototype, Symbol.iterator, { configurable: true, writable: true, value: original })
+  }
 })
 
 // A failure beside a defect passes as a defect, as Effect 4.1.0's typed

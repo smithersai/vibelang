@@ -1,0 +1,114 @@
+// expect-result: [["property",true,[["get:1","do","new:1"],{"value":4}]],["element",true,[["key:string","get:1","do","new:1"],{"value":4}]],["replacement",true,[["do","A"],{"value":3}]],["getter-throws",true,[["get:1"],"throw:getter"]],["outward",["get:1","do"]]]
+
+// VIP-2: "The block runs where the do expression stands."
+
+// Constructor GetValue precedes its arguments, including abrupt completion.
+
+import { Trace, constructors, key, replacement } from "./operands.ts"
+
+function s0Do(): unknown {
+  const t = new Trace()
+  try {
+    const obj = constructors(t)
+    const result = new obj.C(do { t.ev("do"); t.state = 2; 3 })
+    return [t.events, result]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s0Fn(): unknown {
+  const t = new Trace()
+  try {
+    const obj = constructors(t)
+    const result = new obj.C((function (): number { t.ev("do"); t.state = 2; return 3 })())
+    return [t.events, result]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s1Do(): unknown {
+  const t = new Trace()
+  try {
+    const obj = constructors(t)
+    const result = new obj[key(t)](do { t.ev("do"); t.state = 2; 3 })
+    return [t.events, result]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s1Fn(): unknown {
+  const t = new Trace()
+  try {
+    const obj = constructors(t)
+    const result = new obj[key(t)]((function (): number { t.ev("do"); t.state = 2; return 3 })())
+    return [t.events, result]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s2Do(): unknown {
+  const t = new Trace()
+  try {
+    const obj = replacement(t)
+    const result = new obj.C(do { t.ev("do"); t.state = 2; obj.C = obj.B; 3 })
+    return [t.events, result]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s2Fn(): unknown {
+  const t = new Trace()
+  try {
+    const obj = replacement(t)
+    const result = new obj.C((function (): number { t.ev("do"); t.state = 2; obj.C = obj.B; return 3 })())
+    return [t.events, result]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s3Do(): unknown {
+  const t = new Trace()
+  try {
+    const obj = constructors(t, true)
+    const result = new obj.C(do { t.ev("do"); t.state = 2; 3 })
+    return [t.events, result]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s3Fn(): unknown {
+  const t = new Trace()
+  try {
+    const obj = constructors(t, true)
+    const result = new obj.C((function (): number { t.ev("do"); t.state = 2; return 3 })())
+    return [t.events, result]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function outward(): string[] {
+  const t = new Trace()
+  const obj = constructors(t)
+  const value = new obj.C(do { t.ev("do"); return t.events })
+  return [String(value)]
+}
+
+const pairs: [string, () => unknown, () => unknown][] = [["property", s0Do, s0Fn],["element", s1Do, s1Fn],["replacement", s2Do, s2Fn],["getter-throws", s3Do, s3Fn]]
+
+export effect function main() {
+  const out: unknown[] = []
+  for (const [name, viaDo, viaFn] of pairs) {
+    const a = viaDo(), b = viaFn()
+    out.push([name, JSON.stringify(a) === JSON.stringify(b), a])
+  }
+  out.push(["outward", outward()])
+  return out
+}

@@ -191,6 +191,34 @@ func doBoundMethod(c *checker.Checker, callee *ast.Node) *ast.Node {
 	return doBindingMethod(symbol.ValueDeclaration().Initializer())
 }
 
+// doSpreadCopy returns $do_s1 for ...$do_s1, the spread the do lowering
+// writes for the items a spread before a do produced
+// (parser/vibelang_do.go), or nil for any other node.
+func doSpreadCopy(node *ast.Node) *ast.Node {
+	if node.Kind != ast.KindSpreadElement {
+		return nil
+	}
+	items := node.Expression()
+	if !ast.IsIdentifier(items) || items.Flags&ast.NodeFlagsReparsed == 0 || !strings.HasPrefix(items.Text(), "$do_s") {
+		return nil
+	}
+	return items
+}
+
+// doPropertyKey returns k for const $do_k1 = k, the constant the do
+// lowering writes for a computed key before a do (parser/vibelang_do.go),
+// or nil for any other node.
+func doPropertyKey(node *ast.Node) *ast.Node {
+	if node.Kind != ast.KindVariableDeclaration {
+		return nil
+	}
+	name := node.Name()
+	if !ast.IsIdentifier(name) || name.Flags&ast.NodeFlagsReparsed == 0 || !strings.HasPrefix(name.Text(), "$do_k") {
+		return nil
+	}
+	return node.Initializer()
+}
+
 // doBindingMethod identifies only the parser's virtual binding call. The
 // checker uses its bind signature for generics and explicit this parameters;
 // the emitter uses the runtime's captured invocation intrinsic.

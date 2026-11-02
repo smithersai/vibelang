@@ -1,0 +1,94 @@
+// expect-result: [["template",true,[["str:1","do"],"as1b3"]],["template-throws",true,[["str:1"],"throw:str"]],["template-symbol",true,[[],"throw:Cannot convert a Symbol value to a string"]],["outward",["str:1","do"]]]
+
+// VIP-2 pins TC39 do expressions: "The block runs where the do expression stands."
+
+// Every operand before a do is finished first: a spread is iterated, an object
+
+// spread copies its properties, a computed key is converted (ToPropertyKey), an
+
+// untagged substitution is converted to a string and a tag is read. Each scenario
+
+// runs twice, with do and with each do as an immediately invoked function; main
+
+// reports whether both agree and the do run's trace and value.
+
+import { Box, iter, key, shape, src, str, sum, sym, tags, Trace, withArrayIterator } from "./operands.ts"
+
+function s17Do(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = `a${str(t, false)}b${do { t.ev('do'); t.state = 2; 3 }}`
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s17Fn(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = `a${str(t, false)}b${(function (): number { t.ev('do'); t.state = 2; return 3 })()}`
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s18Do(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = `a${str(t, true)}b${do { t.ev('do'); 3 }}`
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s18Fn(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = `a${str(t, true)}b${(function (): number { t.ev('do'); return 3 })()}`
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s19Do(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = `a${sym as unknown as string}b${do { t.ev('do'); 3 }}`
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s19Fn(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = `a${sym as unknown as string}b${(function (): number { t.ev('do'); return 3 })()}`
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function outward(): string[] {
+  const t = new Trace()
+  const value = `${str(t, false)}${do { t.ev("do"); return t.events }}`
+  return [String(value)]
+}
+
+const scenarios: [string, () => unknown, () => unknown][] = [["template",s17Do,s17Fn],["template-throws",s18Do,s18Fn],["template-symbol",s19Do,s19Fn]]
+
+export effect function main() {
+  const results: unknown[] = []
+  for (const [name, viaDo, viaFunction] of scenarios) {
+    const a = viaDo(), b = viaFunction()
+    results.push([name, JSON.stringify(a) === JSON.stringify(b), a])
+  }
+
+  results.push(["outward", outward()])
+  return results
+}

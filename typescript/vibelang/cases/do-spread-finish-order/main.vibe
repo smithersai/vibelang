@@ -1,0 +1,235 @@
+// expect-result: [["array-spread",true,[["open:1","next:0:1","next:1:1","next:2:1","next:3:1","do"],{"length":4,"holes":false,"items":[11,21,31,3]}]],["call-spread",true,[["open:1","next:0:1","next:1:1","next:2:1","do","call"],35]],["new-spread",true,[["open:1","next:0:1","next:1:1","next:2:1","do","new"],{"box":[11,21,3]}]],["spread-throws",true,[["open:1","next:0:1","next:1:1"],"throw:next"]],["two-spreads",true,[["open:1","next:0:1","next:1:1","open:1","next:0:1","next:1:1","do","open:2","next:0:2","next:1:2"],{"length":5,"holes":false,"items":[11,0,11,3,12]}]],["elision",true,[["do"],{"length":4,"holes":true,"items":[null,1,null,3]}]],["do-throws",true,[["open:1","next:0:1","next:1:1","get:x:1","key:string:1","str:1","do"],"throw:do"]],["array-iterator",true,[["array-iterator","do"],{"length":3,"holes":false,"items":[7,8,3]}]],["call-array-iterator",true,[["array-iterator","do","call"],18]],["nested",true,[["open:1","next:0:1","next:1:1","open:1","next:0:1","next:1:1","get:x:1","key:string:1","str:1","do","call"],13]],["outward",["open:1","next:0:1","next:1:1","next:2:1","do"]]]
+
+// VIP-2 pins TC39 do expressions: "The block runs where the do expression stands."
+
+// Every operand before a do is finished first: a spread is iterated, an object
+
+// spread copies its properties, a computed key is converted (ToPropertyKey), an
+
+// untagged substitution is converted to a string and a tag is read. Each scenario
+
+// runs twice, with do and with each do as an immediately invoked function; main
+
+// reports whether both agree and the do run's trace and value.
+
+import { Box, iter, key, shape, src, str, sum, sym, tags, Trace, withArrayIterator } from "./operands.ts"
+
+function s0Do(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = [...iter(t, 3, -1), do { t.ev('do'); t.state = 2; 3 }]
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s0Fn(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = [...iter(t, 3, -1), (function (): number { t.ev('do'); t.state = 2; return 3 })()]
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s1Do(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = sum(t, ...iter(t, 2, -1), do { t.ev('do'); t.state = 2; 3 })
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s1Fn(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = sum(t, ...iter(t, 2, -1), (function (): number { t.ev('do'); t.state = 2; return 3 })())
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s2Do(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = new Box(t, ...iter(t, 2, -1), do { t.ev('do'); t.state = 2; 3 })
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s2Fn(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = new Box(t, ...iter(t, 2, -1), (function (): number { t.ev('do'); t.state = 2; return 3 })())
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s3Do(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = [...iter(t, 3, 1), do { t.ev('do'); t.state = 2; 3 }]
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s3Fn(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = [...iter(t, 3, 1), (function (): number { t.ev('do'); t.state = 2; return 3 })()]
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s4Do(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = [...iter(t, 1, -1), 0, ...iter(t, 1, -1), do { t.ev('do'); t.state = 2; 3 }, ...iter(t, 1, -1)]
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s4Fn(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = [...iter(t, 1, -1), 0, ...iter(t, 1, -1), (function (): number { t.ev('do'); t.state = 2; return 3 })(), ...iter(t, 1, -1)]
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s5Do(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = [, 1, , do { t.ev('do'); 3 }]
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s5Fn(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = [, 1, , (function (): number { t.ev('do'); return 3 })()]
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s23Do(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = [...iter(t, 1, -1), { ...src(t, false), [key(t, 'string')]: `${str(t, false)}${do { t.ev('do'); t.fail('do') }}` }]
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s23Fn(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = [...iter(t, 1, -1), { ...src(t, false), [key(t, 'string')]: `${str(t, false)}${(function (): number { t.ev('do'); return t.fail('do') })()}` }]
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s24Do(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = withArrayIterator(t, (): unknown => [...[7, 8], do { t.ev('do'); 3 }])
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s24Fn(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = withArrayIterator(t, (): unknown => [...[7, 8], (function (): number { t.ev('do'); return 3 })()])
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s25Do(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = withArrayIterator(t, (): unknown => sum(t, ...[7, 8], do { t.ev('do'); 3 }))
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s25Fn(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = withArrayIterator(t, (): unknown => sum(t, ...[7, 8], (function (): number { t.ev('do'); return 3 })()))
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s26Do(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = sum(t, ...iter(t, 1, -1), [...iter(t, 1, -1), { ...src(t, false), [key(t, 'string')]: `${str(t, false)}${do { t.ev('do'); t.state = 2; 3 }}` }].length)
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s26Fn(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = sum(t, ...iter(t, 1, -1), [...iter(t, 1, -1), { ...src(t, false), [key(t, 'string')]: `${str(t, false)}${(function (): number { t.ev('do'); t.state = 2; return 3 })()}` }].length)
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function outward(): unknown {
+  const t = new Trace()
+  const value = [...iter(t, 2, -1), do { t.ev("do"); return t.events }]
+  return value
+}
+
+const scenarios: [string, () => unknown, () => unknown][] = [["array-spread",s0Do,s0Fn],["call-spread",s1Do,s1Fn],["new-spread",s2Do,s2Fn],["spread-throws",s3Do,s3Fn],["two-spreads",s4Do,s4Fn],["elision",s5Do,s5Fn],["do-throws",s23Do,s23Fn],["array-iterator",s24Do,s24Fn],["call-array-iterator",s25Do,s25Fn],["nested",s26Do,s26Fn]]
+
+export effect function main() {
+  const results: unknown[] = []
+  for (const [name, viaDo, viaFunction] of scenarios) {
+    const a = viaDo(), b = viaFunction()
+    results.push([name, JSON.stringify(a) === JSON.stringify(b), a])
+  }
+
+  results.push(["outward", outward()])
+
+  return results
+}

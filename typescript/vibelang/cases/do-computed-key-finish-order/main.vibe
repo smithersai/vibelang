@@ -1,0 +1,219 @@
+// expect-result: [["assignment-key-late",true,[["do","key:string:2"],[["k2",3]]]],["assignment-key-throws-late",true,[["do","key:string:2"],"throw:key"]],["computed-key",true,[["key:string:1","do"],[["k1",3]]]],["computed-key-later",true,[["key:string:1","value:1","do"],[["k1",1],["b",3]]]],["computed-key-symbol",true,[["key:string:1","do"],[["symbol:key",3]]]],["computed-key-throws",true,[["key:string:1"],"throw:key"]],["computed-key-overwrite",true,[["key:string:1","do"],[["k1",3],["z",9]]]],["computed-key-this",true,[["key:string:1","do"],[["k1",[["name","self"],["run",null]]],["b",3]]]],["method-key",true,[["key:string:1","key:string:1","do"],[["k1",2],["b",3]]]],["outward",["key:string:1","do"]]]
+
+// VIP-2 pins TC39 do expressions: "The block runs where the do expression stands."
+
+// Every operand before a do is finished first: a spread is iterated, an object
+
+// spread copies its properties, a computed key is converted (ToPropertyKey), an
+
+// untagged substitution is converted to a string and a tag is read. Each scenario
+
+// runs twice, with do and with each do as an immediately invoked function; main
+
+// reports whether both agree and the do run's trace and value.
+
+import { Box, iter, key, shape, src, str, sum, sym, tags, Trace, withArrayIterator } from "./operands.ts"
+
+function s10Do(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = ({ [key(t, 'string')]: do { t.ev('do'); t.state = 2; 3 } })
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s10Fn(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = ({ [key(t, 'string')]: (function (): number { t.ev('do'); t.state = 2; return 3 })() })
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s11Do(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = ({ [key(t, 'string')]: (t.ev('value:' + t.state), 1), b: do { t.ev('do'); t.state = 2; 3 } })
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s11Fn(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = ({ [key(t, 'string')]: (t.ev('value:' + t.state), 1), b: (function (): number { t.ev('do'); t.state = 2; return 3 })() })
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s12Do(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = ({ [key(t, 'symbol')]: do { t.ev('do'); 3 } })
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s12Fn(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = ({ [key(t, 'symbol')]: (function (): number { t.ev('do'); return 3 })() })
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s13Do(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = ({ [key(t, 'throw')]: do { t.ev('do'); 3 } })
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s13Fn(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = ({ [key(t, 'throw')]: (function (): number { t.ev('do'); return 3 })() })
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s14Do(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = ({ k1: 0, [key(t, 'string')]: do { t.ev('do'); 3 }, z: 9 })
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s14Fn(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = ({ k1: 0, [key(t, 'string')]: (function (): number { t.ev('do'); return 3 })(), z: 9 })
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s15Do(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = ({ name: 'self', run(t: Trace): unknown { return { [key(t, 'string')]: this, b: do { t.ev('do'); 3 } } } }).run(t)
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s15Fn(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = ({ name: 'self', run(t: Trace): unknown { return { [key(t, 'string')]: this, b: (function (): number { t.ev('do'); return 3 })() } } }).run(t)
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s16Do(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = ({ [key(t, 'string')](): number { return 1 }, get [key(t, 'string')](): number { return 2 }, b: do { t.ev('do'); t.state = 2; 3 } })
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s16Fn(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = ({ [key(t, 'string')](): number { return 1 }, get [key(t, 'string')](): number { return 2 }, b: (function (): number { t.ev('do'); t.state = 2; return 3 })() })
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+// An element assignment converts its key after its right-hand side.
+function s90Do(): unknown {
+  const t = new Trace()
+  try {
+    const record: Record<string, unknown> = {}
+    record[key(t, 'string')] = do { t.ev('do'); t.state = 2; 3 }
+    return [t.events, shape(record)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s90Fn(): unknown {
+  const t = new Trace()
+  try {
+    const record: Record<string, unknown> = {}
+    record[key(t, 'string')] = (function (): number { t.ev('do'); t.state = 2; return 3 })()
+    return [t.events, shape(record)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s91Do(): unknown {
+  const t = new Trace()
+  try {
+    const record: Record<string, unknown> = {}
+    record[key(t, 'throw')] = do { t.ev('do'); t.state = 2; 3 }
+    return [t.events, shape(record)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s91Fn(): unknown {
+  const t = new Trace()
+  try {
+    const record: Record<string, unknown> = {}
+    record[key(t, 'throw')] = (function (): number { t.ev('do'); t.state = 2; return 3 })()
+    return [t.events, shape(record)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function outward(): string[] {
+  const t = new Trace()
+  const value = { [key(t, "string")]: do { t.ev("do"); return t.events } }
+  return [String(value)]
+}
+
+const scenarios: [string, () => unknown, () => unknown][] = [["assignment-key-late",s90Do,s90Fn],["assignment-key-throws-late",s91Do,s91Fn],["computed-key",s10Do,s10Fn],["computed-key-later",s11Do,s11Fn],["computed-key-symbol",s12Do,s12Fn],["computed-key-throws",s13Do,s13Fn],["computed-key-overwrite",s14Do,s14Fn],["computed-key-this",s15Do,s15Fn],["method-key",s16Do,s16Fn]]
+
+export effect function main() {
+  const results: unknown[] = []
+  for (const [name, viaDo, viaFunction] of scenarios) {
+    const a = viaDo(), b = viaFunction()
+    results.push([name, JSON.stringify(a) === JSON.stringify(b), a])
+  }
+
+  results.push(["outward", outward()])
+  return results
+}

@@ -1276,33 +1276,8 @@ func (l *doLowering) expr(e *ast.Node, pre *[]*ast.Node) *ast.Node {
 		for _, argument := range c.Arguments.Nodes {
 			later = later || l.marked[argument]
 		}
-		callee := ast.SkipParentheses(c.Expression)
-		if later && (callee.Kind == ast.KindPropertyAccessExpression || callee.Kind == ast.KindElementAccessExpression) {
-			at := l.p.sourceRange(e)
-			this := func() *ast.Node {
-				return l.p.vibelangSynthesized(l.p.factory.NewKeywordExpression(ast.KindThisKeyword), at)
-			}
-			// receiver returns the object the callee reads and the bound this.
-			receiver := func(object *ast.Node) (*ast.Node, *ast.Node) {
-				if object.Kind == ast.KindSuperKeyword || object.Kind == ast.KindThisKeyword {
-					return object, this()
-				}
-				name := l.temp("$do_t", at)
-				value := l.expr(object, pre)
-				*pre = append(*pre, l.p.mConst(name, ast.NodeFlagsConst, value, at))
-				return l.ref(name, at), l.ref(name, at)
-			}
-			var bound *ast.Node
-			if callee.Kind == ast.KindPropertyAccessExpression {
-				access := callee.AsPropertyAccessExpression()
-				access.Expression, bound = receiver(access.Expression)
-			} else {
-				access := callee.AsElementAccessExpression()
-				access.Expression, bound = receiver(access.Expression)
-				access.ArgumentExpression = l.expr(access.ArgumentExpression, pre)
-			}
-			l.p.overrideParentInImmediateChildren(callee)
-			c.Expression = l.spill(l.p.mCall(l.p.mProperty(callee, "bind", at), []*ast.Node{bound}, at), pre)
+		if later && isMemberCallee(c.Expression) {
+			c.Expression = l.method(c.Expression, l.p.sourceRange(e), pre)
 			c.Arguments.Nodes = l.ordered(pre, c.Arguments.Nodes...)
 			break
 		}
@@ -1314,25 +1289,34 @@ func (l *doLowering) expr(e *ast.Node, pre *[]*ast.Node) *ast.Node {
 		if c.Arguments != nil {
 			arguments = c.Arguments.Nodes
 		}
-		c.Expression = l.callee(c.Expression, arguments, pre)
+		// Unlike a method call, new consumes the constructor's value,
+		// not its reference and receiver. Finish GetValue before any
+		// argument's do, including a property getter (RC-29).
+		parts := l.ordered(pre, append([]*ast.Node{c.Expression}, arguments...)...)
+		c.Expression = parts[0]
 		if c.Arguments != nil {
-			c.Arguments.Nodes = l.ordered(pre, c.Arguments.Nodes...)
+			c.Arguments.Nodes = parts[1:]
 		}
 	case ast.KindTaggedTemplateExpression:
+		// A tag is read, with its receiver, before the substitutions run,
+		// as a method is read before its arguments.
 		t := e.AsTaggedTemplateExpression()
-		t.Tag = l.callee(t.Tag, []*ast.Node{t.Template}, pre)
-		t.Template = l.expr(t.Template, pre)
+		if l.marked[t.Template] && isMemberCallee(t.Tag) {
+			t.Tag = l.method(t.Tag, l.p.sourceRange(e), pre)
+		} else {
+			t.Tag = l.callee(t.Tag, []*ast.Node{t.Template}, pre)
+		}
+		if t.Template.Kind == ast.KindTemplateExpression {
+			// The tag gets its substitutions as values, unconverted.
+			l.template(t.Template, l.finish, pre)
+		} else {
+			t.Template = l.expr(t.Template, pre)
+		}
 	case ast.KindTemplateExpression:
-		spans := e.AsTemplateExpression().TemplateSpans.Nodes
-		expressions := make([]*ast.Node, len(spans))
-		for i, span := range spans {
-			expressions[i] = span.Expression()
-			l.marked[expressions[i]] = l.marked[expressions[i]] || l.marked[span]
-		}
-		for i, x := range l.ordered(pre, expressions...) {
-			spans[i].AsTemplateSpan().Expression = x
-			l.p.overrideParentInImmediateChildren(spans[i])
-		}
+		// An untagged template converts each substitution to a string as
+		// it reaches it, so an earlier one is converted, not only read,
+		// before a later do runs.
+		l.template(e, l.stringify, pre)
 	case ast.KindArrayLiteralExpression:
 		a := e.AsArrayLiteralExpression()
 		a.Elements.Nodes = l.ordered(pre, a.Elements.Nodes...)
@@ -1387,9 +1371,14 @@ func setExpression(e, x *ast.Node) {
 }
 
 // ordered lowers parts, which run in order: each part before the last one
-// that holds a do expression is read into a constant first, unless reading
-// it has no effect.
+// that holds a do expression is finished first (finish).
 func (l *doLowering) ordered(pre *[]*ast.Node, parts ...*ast.Node) []*ast.Node {
+	return l.orderedWith(pre, l.finish, parts...)
+}
+
+// orderedWith is ordered with done finishing each part before the last one
+// that holds a do expression.
+func (l *doLowering) orderedWith(pre *[]*ast.Node, done func(*ast.Node, *[]*ast.Node) *ast.Node, parts ...*ast.Node) []*ast.Node {
 	last := -1
 	for i, part := range parts {
 		if part != nil && l.marked[part] {
@@ -1400,10 +1389,109 @@ func (l *doLowering) ordered(pre *[]*ast.Node, parts ...*ast.Node) []*ast.Node {
 	for i := 0; i <= last; i++ {
 		out[i] = l.expr(parts[i], pre)
 		if i < last {
-			out[i] = l.spill(out[i], pre)
+			out[i] = done(out[i], pre)
 		}
 	}
 	return out
+}
+
+// template lowers the substitutions of e, a template expression, in order,
+// finishing each one before the last that holds a do expression with done.
+func (l *doLowering) template(e *ast.Node, done func(*ast.Node, *[]*ast.Node) *ast.Node, pre *[]*ast.Node) {
+	spans := e.AsTemplateExpression().TemplateSpans.Nodes
+	expressions := make([]*ast.Node, len(spans))
+	for i, span := range spans {
+		expressions[i] = span.Expression()
+		l.marked[expressions[i]] = l.marked[expressions[i]] || l.marked[span]
+	}
+	for i, x := range l.orderedWith(pre, done, expressions...) {
+		spans[i].AsTemplateSpan().Expression = x
+		l.p.overrideParentInImmediateChildren(spans[i])
+	}
+	l.p.overrideParentInImmediateChildren(e)
+}
+
+// finish runs all of e, an element, argument or operand, before a later do
+// expression: its value is read into a constant, unless reading it has no
+// effect. A spread ...x is finished only once x is iterated, so it becomes
+// ...$do_s1 after const $do_s1 = [...x] as const (TC39 do expressions: the block
+// runs where the do expression stands, after the spread before it); the
+// emitter spreads $do_s1 through the runtime's $spreadItems
+// (vibelang/lower.go), which reads no array iterator. An elision has no
+// value to read.
+func (l *doLowering) finish(e *ast.Node, pre *[]*ast.Node) *ast.Node {
+	switch e.Kind {
+	case ast.KindOmittedExpression:
+		return e
+	case ast.KindSpreadElement:
+		at := l.p.sourceRange(e)
+		array := l.p.vibelangSpanning(l.p.factory.NewArrayLiteralExpression(l.p.newNodeList(at, []*ast.Node{e}), false /*multiLine*/), at)
+		// as const keeps a spread tuple's elements for the checker.
+		constType := l.p.vibelangSpanning(l.p.factory.NewTypeReferenceNode(l.p.mIdent("const", at), nil), at)
+		array = l.p.vibelangSpanning(l.p.factory.NewAsExpression(array, constType), at)
+		name := l.temp("$do_s", at)
+		*pre = append(*pre, l.p.mConst(name, ast.NodeFlagsConst, array, at))
+		return l.p.vibelangSpanning(l.p.factory.NewSpreadElement(l.ref(name, at)), at)
+	}
+	return l.spill(e, pre)
+}
+
+// stringify finishes e, an untagged template's substitution, before a later
+// do expression: const t = `${e}` converts it as the template does, symbols
+// and throwing conversions included. A literal's conversion has no effect.
+func (l *doLowering) stringify(e *ast.Node, pre *[]*ast.Node) *ast.Node {
+	if isPureRead(e) && e.Kind != ast.KindThisKeyword {
+		return e
+	}
+	at := l.p.sourceRange(e)
+	head := l.p.vibelangSynthesized(l.p.factory.NewTemplateHead("", "", ast.TokenFlagsNone), at)
+	tail := l.p.vibelangSynthesized(l.p.factory.NewTemplateTail("", "", ast.TokenFlagsNone), at)
+	span := l.p.vibelangSpanning(l.p.factory.NewTemplateSpan(e, tail), at)
+	template := l.p.vibelangSpanning(l.p.factory.NewTemplateExpression(head, l.p.newNodeList(at, []*ast.Node{span})), at)
+	name := l.temp("$do_t", at)
+	*pre = append(*pre, l.p.mConst(name, ast.NodeFlagsConst, template, at))
+	return l.ref(name, at)
+}
+
+// isMemberCallee reports whether callee reads a method: o.m or o[k].
+func isMemberCallee(callee *ast.Node) bool {
+	callee = ast.SkipParentheses(callee)
+	return callee.Kind == ast.KindPropertyAccessExpression || callee.Kind == ast.KindElementAccessExpression
+}
+
+// method captures callee, o.m or o[k], before a later do expression runs,
+// preserving both getter order and its receiver (VIP-2 expression lowering):
+// o.m(do { … }) is const f = o.m.bind(o); …; f(…), and o.tag`${do { … }}`
+// is const f = o.tag.bind(o); …; f`…`. bind keeps the method's type,
+// generics included, for the checker; the emitter calls the runtime's
+// $bindMethod for it (vibelang/lower.go), which reads nothing from the
+// method.
+func (l *doLowering) method(callee *ast.Node, at core.TextRange, pre *[]*ast.Node) *ast.Node {
+	member := ast.SkipParentheses(callee)
+	this := func() *ast.Node {
+		return l.p.vibelangSynthesized(l.p.factory.NewKeywordExpression(ast.KindThisKeyword), at)
+	}
+	// receiver returns the object the callee reads and the bound this.
+	receiver := func(object *ast.Node) (*ast.Node, *ast.Node) {
+		if object.Kind == ast.KindSuperKeyword || object.Kind == ast.KindThisKeyword {
+			return object, this()
+		}
+		name := l.temp("$do_t", at)
+		value := l.expr(object, pre)
+		*pre = append(*pre, l.p.mConst(name, ast.NodeFlagsConst, value, at))
+		return l.ref(name, at), l.ref(name, at)
+	}
+	var bound *ast.Node
+	if member.Kind == ast.KindPropertyAccessExpression {
+		access := member.AsPropertyAccessExpression()
+		access.Expression, bound = receiver(access.Expression)
+	} else {
+		access := member.AsElementAccessExpression()
+		access.Expression, bound = receiver(access.Expression)
+		access.ArgumentExpression = l.expr(access.ArgumentExpression, pre)
+	}
+	l.p.overrideParentInImmediateChildren(member)
+	return l.spill(l.p.mCall(l.p.mProperty(member, "bind", at), []*ast.Node{bound}, at), pre)
 }
 
 // properties lowers an object literal's properties in order.
@@ -1423,7 +1511,7 @@ func (l *doLowering) properties(properties []*ast.Node, pre *[]*ast.Node) {
 				computed := name.AsComputedPropertyName()
 				computed.Expression = l.expr(computed.Expression, pre)
 				if l.marked[a.Initializer] || i < last && !anonymousDoValue(a.Initializer) {
-					computed.Expression = l.spill(computed.Expression, pre)
+					computed.Expression = l.propertyKey(computed.Expression, pre)
 				}
 				l.p.overrideParentInImmediateChildren(name)
 			}
@@ -1453,14 +1541,47 @@ func (l *doLowering) properties(properties []*ast.Node, pre *[]*ast.Node) {
 				properties[i] = property
 			}
 		case ast.KindSpreadAssignment:
+			// ...o copies o's properties where it stands: before a later
+			// do, const t = {...o} copies them, and ...t copies the copy.
 			a := property.AsSpreadAssignment()
 			a.Expression = l.expr(a.Expression, pre)
 			if i < last {
-				a.Expression = l.spill(a.Expression, pre)
+				at := l.p.sourceRange(property)
+				copied := l.p.vibelangSpanning(l.p.factory.NewSpreadAssignment(a.Expression), at)
+				object := l.p.vibelangSpanning(l.p.factory.NewObjectLiteralExpression(l.p.newNodeList(at, []*ast.Node{copied}), false /*multiLine*/), at)
+				name := l.temp("$do_t", at)
+				*pre = append(*pre, l.p.mConst(name, ast.NodeFlagsConst, object, at))
+				a.Expression = l.ref(name, at)
+			}
+		case ast.KindMethodDeclaration, ast.KindGetAccessor, ast.KindSetAccessor:
+			// A method's or accessor's computed name runs, and is
+			// converted, where it stands.
+			if name := property.Name(); name.Kind == ast.KindComputedPropertyName && i < last {
+				computed := name.AsComputedPropertyName()
+				computed.Expression = l.propertyKey(computed.Expression, pre)
+				l.p.overrideParentInImmediateChildren(name)
 			}
 		}
 		l.p.overrideParentInImmediateChildren(property)
 	}
+}
+
+// propertyKey finishes k, a computed property name, before a later do
+// expression: const $do_k1 = k reads it, and the emitter converts it there
+// with the runtime's $propertyKey (vibelang/lower.go), ECMA-262's
+// ToPropertyKey: its string hint, a symbol kept and a throwing conversion,
+// before the property's value runs. The checker sees [$do_k1] with k's type,
+// as it sees [k]. A literal's conversion has no effect. An element
+// assignment's key is not a computed property name; it converts later, by
+// its own rule.
+func (l *doLowering) propertyKey(k *ast.Node, pre *[]*ast.Node) *ast.Node {
+	if isPureRead(k) && k.Kind != ast.KindThisKeyword {
+		return k
+	}
+	at := l.p.sourceRange(k)
+	name := l.temp("$do_k", at)
+	*pre = append(*pre, l.p.mConst(name, ast.NodeFlagsConst, k, at))
+	return l.ref(name, at)
 }
 
 // callee lowers a call's callee, read before its arguments: when an

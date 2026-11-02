@@ -102,6 +102,20 @@ func GetTextOfNodeFromSourceText(sourceText string, node *ast.Node, includeTrivi
 			// A numeric literal synthesized at another token, as VibeLang's select
 			// writes its case indices, prints its own text.
 			return node.Text()
+		} else if ast.IsTemplateLiteralKind(node.Kind) {
+			// A template part synthesized at another token, as VibeLang's do
+			// lowering writes `${x}` to convert a substitution, prints its
+			// own raw text between its delimiters.
+			switch node.Kind {
+			case ast.KindNoSubstitutionTemplateLiteral:
+				return "`" + node.AsNoSubstitutionTemplateLiteral().RawText + "`"
+			case ast.KindTemplateHead:
+				return "`" + node.RawText() + "${"
+			case ast.KindTemplateMiddle:
+				return "}" + node.RawText() + "${"
+			default:
+				return "}" + node.RawText() + "`"
+			}
 		}
 		// Only the above node kinds are currently transformed into one another by the reparser, requiring the textual remapping.
 		// (Any reamppings done by emit transforms are handled by `getLiteralTextOfNode` in the printer)

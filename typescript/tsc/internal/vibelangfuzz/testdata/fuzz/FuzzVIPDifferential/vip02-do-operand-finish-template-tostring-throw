@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:vip02.do-operand-finish\x00\xf2\xf1\xb4b\xad6bIs\xef#\tA\xca\x14")

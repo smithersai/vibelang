@@ -1,0 +1,94 @@
+// expect-result: [["tag-getter",true,[["get:tag:1","do","tag:1:box"],"a|31"]],["tag-element",true,[["get:tag:1","do","tag:1:box","str:2"],"a||s2,31"]],["tag-identity",true,[["get:tag:1","do:0","tag:1:box","get:tag:1","do:1","tag:1:box"],{"length":3,"holes":false,"items":["x|01","x|11","true"]}]],["outward",["get:tag:1","do"]]]
+
+// VIP-2 pins TC39 do expressions: "The block runs where the do expression stands."
+
+// Every operand before a do is finished first: a spread is iterated, an object
+
+// spread copies its properties, a computed key is converted (ToPropertyKey), an
+
+// untagged substitution is converted to a string and a tag is read. Each scenario
+
+// runs twice, with do and with each do as an immediately invoked function; main
+
+// reports whether both agree and the do run's trace and value.
+
+import { Box, iter, key, shape, src, str, sum, sym, tags, Trace, withArrayIterator } from "./operands.ts"
+
+function s20Do(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = tags(t).tag`a${do { t.ev('do'); t.state = 2; 3 }}`
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s20Fn(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = tags(t).tag`a${(function (): number { t.ev('do'); t.state = 2; return 3 })()}`
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s21Do(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = tags(t)['tag']`a${str(t, false)}${do { t.ev('do'); t.state = 2; 3 }}`
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s21Fn(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = tags(t)['tag']`a${str(t, false)}${(function (): number { t.ev('do'); t.state = 2; return 3 })()}`
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s22Do(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = [0, 1].map((i: number): string => tags(t).tag`x${do { t.ev('do:' + i); i }}`).concat([String(t.seen[0] === t.seen[1])])
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function s22Fn(): unknown {
+  const t = new Trace()
+  try {
+    const value: unknown = [0, 1].map((i: number): string => tags(t).tag`x${(function (): number { t.ev('do:' + i); return i })()}`).concat([String(t.seen[0] === t.seen[1])])
+    return [t.events, shape(value)]
+  } catch (e) {
+    return [t.events, "throw:" + (e instanceof Error ? e.message : String(e))]
+  }
+}
+
+function outward(): string[] {
+  const t = new Trace()
+  const value = tags(t).tag`${do { t.ev("do"); return t.events }}`
+  return [String(value)]
+}
+
+const scenarios: [string, () => unknown, () => unknown][] = [["tag-getter",s20Do,s20Fn],["tag-element",s21Do,s21Fn],["tag-identity",s22Do,s22Fn]]
+
+export effect function main() {
+  const results: unknown[] = []
+  for (const [name, viaDo, viaFunction] of scenarios) {
+    const a = viaDo(), b = viaFunction()
+    results.push([name, JSON.stringify(a) === JSON.stringify(b), a])
+  }
+
+  results.push(["outward", outward()])
+  return results
+}

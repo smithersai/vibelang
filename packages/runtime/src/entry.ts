@@ -14,6 +14,8 @@ export const {
   $tryAllSettled,
   $bind,
   $bindMethod,
+  $spreadItems,
+  $propertyKey,
   $catch,
   $catchCause,
   $catchExpression,

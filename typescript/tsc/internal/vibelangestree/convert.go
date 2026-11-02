@@ -1558,6 +1558,9 @@ func (c *converter) templateElement(n *ast.Node, tagged bool) *obj {
 		endTrim = 1
 	}
 	raw := c.text[min(r.start+1, r.end):max(r.end-endTrim, r.start+1)]
+	if n.Flags&ast.NodeFlagsReparserTransformedLiteral != 0 {
+		raw = n.RawText() // synthesized at another token: its own text
+	}
 	var cooked any = n.Text()
 	if tagged && !isValidEscape(raw) {
 		cooked = nil

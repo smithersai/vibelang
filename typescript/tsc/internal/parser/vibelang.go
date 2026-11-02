@@ -13,9 +13,10 @@ import (
 //
 // A node that has no source text of its own is synthesized: it takes the
 // location of the source token it stands for, NodeFlagsReparsed keeps the
-// language service from treating it as source, and, for identifiers and
-// string literals, NodeFlagsReparserTransformedLiteral makes the printer
-// print the node's own text instead of the source text at its location.
+// language service from treating it as source, and, for identifiers,
+// string and numeric literals and template literal parts,
+// NodeFlagsReparserTransformedLiteral makes the printer print the node's own
+// text instead of the source text at its location.
 
 // isVibeLangFile reports whether the parser is reading a .vibe file, outside
 // a module declaration's body, which is TypeScript (vibelang_modules.go).
@@ -109,7 +110,7 @@ func (p *Parser) parseVibeLangDeclaration(pos int, jsdoc jsdocScannerInfo, modif
 func (p *Parser) vibelangSynthesized(node *ast.Node, anchor core.TextRange) *ast.Node {
 	node.Loc = anchor
 	node.Flags |= p.contextFlags | ast.NodeFlagsReparsed
-	if node.Kind == ast.KindIdentifier || node.Kind == ast.KindStringLiteral || node.Kind == ast.KindNumericLiteral {
+	if node.Kind == ast.KindIdentifier || node.Kind == ast.KindStringLiteral || node.Kind == ast.KindNumericLiteral || ast.IsTemplateLiteralKind(node.Kind) {
 		node.Flags |= ast.NodeFlagsReparserTransformedLiteral
 	}
 	p.overrideParentInImmediateChildren(node)
