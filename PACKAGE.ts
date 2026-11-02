@@ -136,6 +136,7 @@ const specTests = [
   "TestMigrationRootResolutionQuoted",
   "TestTopLevelAwaitQuoted",
   "TestEffectGlobalsQuoted",
+  "TestSidecarEntryGlobsQuoted",
   "TestSpecifierWrittenJSX",
 
   "TestStockConsumerResolutionQuoted",
