@@ -278,7 +278,14 @@ func globRegexp(glob string) *regexp.Regexp {
 			b.WriteString("[" + strings.ReplaceAll(strings.ReplaceAll(class, `\`, `\\`), "[", `\[`) + "]")
 			i += end + 1
 		default:
-			b.WriteString(regexp.QuoteMeta(string(ch)))
+			// Quote an original literal span, preserving its UTF-8 bytes.
+			// Converting each byte to a rune corrupts non-ASCII filenames.
+			end := strings.IndexAny(glob[i:], "*?[")
+			if end < 0 {
+				end = len(glob) - i
+			}
+			b.WriteString(regexp.QuoteMeta(glob[i : i+end]))
+			i += end - 1
 		}
 	}
 	if strings.HasSuffix(glob, "/") {
