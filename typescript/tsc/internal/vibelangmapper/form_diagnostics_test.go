@@ -24,7 +24,6 @@ import (
 var formChoiceAhead = map[string]string{
 	"docs/user/src/error-management/016-fallback.md#block-4":                    "mapper:effect-block-catch-head (impl-hunt-run)",
 	"docs/user/src/schema/086-getting-started.md#block-7":                       "mapper:effect-block-catch-head (impl-hunt-run)",
-	"docs/user/src/schema/089-advanced-usage.md#block-2":                        "mapper:effect-block-catch-head (impl-hunt-run)",
 	"docs/user/src/setup/vite.md#block-6":                                       "mapper:effect-block-catch-head (impl-hunt-run)",
 	"docs/user/src/vibelang-features/118-experimental-platform-apis.md#block-6": "mapper:effect-block-catch-head (impl-hunt-run)",
 	"docs/user/src/error-management/006-two-error-types.md#block-1":             "mapper:effect-block-catch-head (impl-hunt-run)",
@@ -63,8 +62,6 @@ var formChoiceAhead = map[string]string{
 	// The editor reports D253 on an array method of a typed callback parameter or property; the projector does not.
 	"docs/user/src/044-batching.md#block-6": "mapper:d253-editor-only-typed-receiver (fix-main-red)",
 	"docs/user/src/setup/vue.md#block-5":    "mapper:d253-editor-only-typed-receiver (fix-main-red)",
-	// Effect arrows as object-literal property values: the editor and the projector report different spans.
-	"docs/user/src/getting-started/real-provider-before-after.md#block-2": "mapper:object-property-effect-arrow-spans (fix-main-red)",
 }
 
 // TestFormDiagnosticsMatchesProjection keeps the editor's inexpensive query

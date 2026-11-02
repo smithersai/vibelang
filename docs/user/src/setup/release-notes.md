@@ -547,6 +547,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Type-checking the build graph reported a duplicate Go formatter target, while loading it could silently replace its description. The formatter and dprint packaging target is now declared once.
 
 - An object requirement in `A!E!{ ... }` failed to parse in aliases and signatures; these positions now accept it, while implementation return annotations keep their body-brace boundary.
+
+- Editor projection could treat a callback marked `effect` as plain or ask the user to choose its form; it now preserves the keyword's Effect function kind, including through callback annotations and imported calls.
 - Repeated test-harness runs reported `declaration API comparison unavailable` ("Ambient declaration load order differs") for Chapter 4 and VIP-7 match cases: a case's runner left `typescript/node_modules/effect` linked to its pinned reference Effect, and the next run compiled the TypeScript twin against it. The harness now removes that link, so the twin compiles against the case's Effect on every run.
 - `vibelang --fix` rewrote every qualified call such as `Effect.succeed(1)` to the bare global `succeed(1)` once VIP-6 made every Effect export a global, so the fixed forms of the TypeScript-form and migration examples changed again on a second run and `--fix` built more checking programs than its bound allows. `--fix` again leaves qualified `Effect` calls as written.
 

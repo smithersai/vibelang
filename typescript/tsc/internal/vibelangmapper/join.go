@@ -274,7 +274,8 @@ func restoreWrittenEffectDeclarationMarks(file *ast.SourceFile, marks map[writte
 // vipKeywords returns the keywords of VIP-1, VIP-2 and VIP-5 that lower
 // writes over. try f() means f() where the call runs (VIP-5), so the try of
 // each call the parser flagged NodeFlagsVibeLangTry becomes spaces. effect
-// before a function (VIP-1) changes nothing yet, so it becomes spaces too.
+// before a function (VIP-1) becomes spaces too; written effect lambdas keep
+// their kind through writtenEffectLambdaMarks, independently of the destination.
 // effect { … } (VIP-2) is the program that () => { … } builds where an
 // Effect is expected, and a return in it returns from the block, so its
 // effect becomes ()=> and spaces. catch can follow the block but not an arrow,
@@ -418,4 +419,41 @@ func withoutKeywords(segments []spanmap.Segment, keywords []keyword) []spanmap.S
 		}
 	}
 	return out
+}
+
+// A parameter-list end survives keyword blanking, including bare arrows
+// and nested arrows whose bodies end at the same source position.
+type writtenEffectLambdaMark [2]int
+
+func effectLambdaMark(fn *ast.Node) writtenEffectLambdaMark {
+	return writtenEffectLambdaMark{int(fn.Kind), fn.ParameterList().End()}
+}
+
+func writtenEffectLambdaMarks(file *ast.SourceFile) map[writtenEffectLambdaMark]bool {
+	marks := map[writtenEffectLambdaMark]bool{}
+	var visit func(*ast.Node) bool
+	visit = func(n *ast.Node) bool {
+		if isLambda(n) && n.Flags&ast.NodeFlagsVibeLangEffect != 0 && n.ParameterList() != nil {
+			marks[effectLambdaMark(n)] = true
+		}
+		n.ForEachChild(visit)
+		return false
+	}
+	file.AsNode().ForEachChild(visit)
+	return marks
+}
+
+func restoreWrittenEffectLambdaMarks(file *ast.SourceFile, marks map[writtenEffectLambdaMark]bool) {
+	if len(marks) == 0 {
+		return
+	}
+	var visit func(*ast.Node) bool
+	visit = func(n *ast.Node) bool {
+		if isLambda(n) && n.ParameterList() != nil && marks[effectLambdaMark(n)] {
+			n.Flags |= ast.NodeFlagsVibeLangEffect
+		}
+		n.ForEachChild(visit)
+		return false
+	}
+	file.AsNode().ForEachChild(visit)
 }

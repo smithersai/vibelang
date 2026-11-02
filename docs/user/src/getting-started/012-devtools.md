@@ -541,6 +541,8 @@ Typed lint tools that discover `tsconfig.json` from each `.ts` file need a proje
 
 When a typed tool uses project references across source-exporting workspace packages, keep `disableSourceOfProjectReferenceRedirect` absent or `false`. Disabling source redirects can leave a native type behind a TypeScript namespace barrel, such as `AWS.RDS.DBInstance`, as an error type even when a direct subpath import is typed. Source redirects let the tool read `x.d.vibe.ts`. Migration setup updates owned configs and records each change in `wired.declarationRedirects`; external presets stay unchanged and receive a local override.
 
+The TypeScript projection keeps an explicitly marked `effect` lambda as an Effect function, even when its receiving callback type returns `void`. Its written keyword also settles its form when the callback comes from another module.
+
 Forms whose TypeScript long form would mislead a rule have their own node types, which rules and `no-restricted-syntax` selectors can name:
 
 | Form | ESTree node |

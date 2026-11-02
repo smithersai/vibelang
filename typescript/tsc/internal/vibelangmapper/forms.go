@@ -1,10 +1,11 @@
 package vibelangmapper
 
 // The forms table (language change L1, research/typedirected.md section 6).
-// The projector reads no types, so it cannot ask the checker which form a
-// lambda takes (D56), whether an argument is passed by name (D147), or what
+// The projector reads no types, so it cannot ask the checker which form
+// an unmarked lambda takes (D56), whether an argument is passed by name (D147), or what
 // a value converts to (D7, D49). It asks this
-// table instead. cmd/vibelang-forms generates it from the declarations of the
+// table instead. A written effect lambda keeps its keyword kind before
+// destination resolution (VIP-1). cmd/vibelang-forms generates the table from declarations of the
 // packages VibeLang pins (effect@4.1.1, the @effect/* packages the corpus uses,
 // and vibelang-runtime) with the fork's own classifier, the code that makes
 // those decisions in internal/vibelang. scripts/check-forms-table.sh fails when

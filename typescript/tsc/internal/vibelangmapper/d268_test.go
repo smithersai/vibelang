@@ -213,8 +213,8 @@ func TestMapperFollowupRuntimeCases(t *testing.T) {
 					}
 				}
 				if name == "effect-subtype-returns" && filepath.Base(file) == "main.vibe" {
-					assertSubtypeHostChoices(t, string(source))
-					t.Skip("native-only runtime: five callback contracts come from host.ts (EK9100)")
+					assertSubtypeHostForms(t, string(source))
+					t.Skip("native-only runtime: imported trusted Effect-subtype values need checker signatures")
 				}
 				checked := Project(string(source), testContext)
 				if len(checked.Diagnostics) != 0 {

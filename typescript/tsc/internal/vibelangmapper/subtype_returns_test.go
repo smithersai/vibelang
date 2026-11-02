@@ -57,12 +57,20 @@ func TestSubtypeReturnPlainData(t *testing.T) {
 	}
 }
 
-// The unchanged acceptance case requires host callback signatures. Keep its
-// EK9100 limitation explicit instead of asserting a guessed callback form.
-func assertSubtypeHostChoices(t *testing.T, source string) {
+// Written effect callbacks decide their form even across a host boundary.
+// Keep the old unresolved-signature check as an unmarked-source control.
+func assertSubtypeHostForms(t *testing.T, source string) {
 	t.Helper()
 	checked := Project(source, testContext)
 	_, _, emitted := Emit(source, testContext)
+	for _, diagnostics := range [][]Diagnostic{checked.Diagnostics, emitted} {
+		if len(diagnostics) != 0 {
+			t.Fatalf("written effect callbacks need no form choice: %v", diagnostics)
+		}
+	}
+	legacy := strings.ReplaceAll(source, "effect ", "")
+	checked = Project(legacy, testContext)
+	_, _, emitted = Emit(legacy, testContext)
 	for _, diagnostics := range [][]Diagnostic{checked.Diagnostics, emitted} {
 		if len(diagnostics) != 5 {
 			t.Fatalf("want five unresolved host callbacks: %v", diagnostics)
@@ -75,12 +83,12 @@ func assertSubtypeHostChoices(t *testing.T, source string) {
 	}
 }
 
-func TestSubtypeReturnHostBoundaryUnknown(t *testing.T) {
+func TestSubtypeReturnHostBoundaryWrittenKind(t *testing.T) {
 	source, err := os.ReadFile(filepath.Join("../../../..", "typescript/vibelang/cases/effect-subtype-returns/main.vibe"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertSubtypeHostChoices(t, string(source))
+	assertSubtypeHostForms(t, string(source))
 }
 
 func TestSubtypeReturnFailureDiagnostic(t *testing.T) {

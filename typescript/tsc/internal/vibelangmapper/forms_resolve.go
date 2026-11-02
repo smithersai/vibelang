@@ -137,10 +137,12 @@ const (
 	// FromHatch is a hatch's TypeScript (D148): a lambda inside the first
 	// argument of sync, try, or callback is plain JavaScript.
 	FromHatch
+	// FromKeyword is an explicit effect lambda modifier (VIP-1).
+	FromKeyword
 )
 
 func (p Provenance) String() string {
-	return [...]string{"fallback", "table", "annotation", "service", "protocol", "hatch"}[p]
+	return [...]string{"fallback", "table", "annotation", "service", "protocol", "hatch", "keyword"}[p]
 }
 
 // PathStep is one step below a call argument: an array element or an
@@ -296,6 +298,16 @@ var formsProviderCallees = map[string]int{
 // expression, or a method of an object literal.
 func (r *Resolver) Lambda(fn *ast.Node) Decision {
 	d := Decision{Node: fn}
+	// A destination never changes the kind written on a function (VIP-1).
+	// This also precedes the retired D269 factory heuristics.
+	if fn.Flags&ast.NodeFlagsVibeLangEffect != 0 && isLambda(fn) {
+		d.Call, d.Argument, d.Steps = formsOwnerCall(fn)
+		if d.Call != nil {
+			d.Callee = r.Callee(d.Call)
+		}
+		d.Form, d.Class, d.Provenance, d.Note = FormEffectFn, ClassEffectFn, FromKeyword, "written effect modifier (VIP-1)"
+		return d
+	}
 	if r.isFactory(fn) {
 		d.Form, d.Provenance, d.Note = FormFactory, FromAnnotation, "declared Effect factory (D269)"
 		return d
