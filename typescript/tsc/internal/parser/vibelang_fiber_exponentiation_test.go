@@ -19,8 +19,10 @@ func TestVibeLangFiberUnaryExponentiation(t *testing.T) {
 				source := "effect function f() { return " + expression + " }"
 				file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, source, core.ScriptKindTS)
 				items := file.Diagnostics()
-				if len(items) != 1 || items[0].Code() != 17006 {
-					t.Fatalf("unparenthesized unary exponentiation needs TS17006: %v", items)
+				// Spec 002 and Appendix B: an unparenthesized fork or join head on
+				// the left of ** is EK0510, as ECMAScript rejects await there.
+				if len(items) != 1 || items[0].Code() != parser.VibeLangExecutionPowerCode || items[0].Source() != "EK" {
+					t.Fatalf("unparenthesized execution before ** needs EK0510: %v", items)
 				}
 			})
 		}
