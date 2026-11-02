@@ -400,11 +400,11 @@ func joinImport(f *printer.NodeFactory, declarations *ast.SourceFile, at int, sp
 //	export const fromString =                               import { Option } from "effect";
 //	  Option.liftPredicate((s: string) => s.length > 0)     export declare const fromString: (b: string) => Option.Option<string>;
 //
-// rather than import("effect/Option").Option<string>. The Effect module is in
-// scope whether or not the source writes Effect, since a function is an
-// Effect by what it does, and Effect TypeScript that declares one imports
-// Effect. transformDeclarations imports each name that the declaration file
-// keeps.
+// rather than import("effect/Option").Option<string>. A marked Effect
+// function or effect block also needs Effect, as its native translation does.
+// An unmarked function that merely returns a native helper's Effect keeps
+// TypeScript's inferred import type. transformDeclarations imports each name
+// that the declaration file keeps.
 func preludeModuleName(c *checker.Checker, file *ast.SourceFile, module *ast.Symbol, newIdentifier func(string) *ast.Node) *ast.Node {
 	if !isVibeLangFile(file) {
 		return nil
@@ -440,7 +440,7 @@ func preludeNameUnwritten(c *checker.Checker, file *ast.SourceFile, name string,
 }
 
 // writtenPreludeNames returns the prelude names that a declaration of file may
-// write: each one file writes, and Effect where file has an Effect form, whose
+// write: each one file writes, and Effect where file has a marked Effect form, whose
 // Effect TypeScript imports it: an Effect function, or an effect block, which
 // is Effect.gen (VIP-2). The schema, error and data forms write theirs
 // as intrinsics, as an A!E!R annotation and try write theirs.
@@ -470,7 +470,7 @@ func writtenPreludeNames(c *checker.Checker, state *preludeState, file *ast.Sour
 			}
 			return false
 		}
-		if !written["Effect"] && (isEffectBlock(node) || effectFunctionPath(c, node) != "") {
+		if !written["Effect"] && isMarkedEffect(node) {
 			written["Effect"] = true
 		}
 		return node.ForEachChild(visit)

@@ -53,6 +53,8 @@ effect function accepted(value: number) {
 
 Inspect `A`, `E`, and `R` when changing a function. Calling an `effect` function returns an unrun Effect. `try` returns its success value. The function's complete contract also records escaping failures and unmet services, and generated declarations expose it to TypeScript consumers.
 
+An ordinary function that returns a native helper's Effect keeps the helper's inferred declaration spelling. If TypeScript writes `import("effect/Effect").Effect<…>` and this file never names `Effect`, the `.vibe` declaration keeps that import type; merely inferring an Effect return does not add a root `Effect` import. An `effect` function or `effect { … }` block still imports the types its generated declaration needs.
+
 Hover over an Effect-returning function to see its inferred `Effect<A, E, R>`. Language-server, formatter, and diagnostic support for the new forms arrives with the compiler's VIP implementation.
 
 ## Diagnostics, completions, and refactors

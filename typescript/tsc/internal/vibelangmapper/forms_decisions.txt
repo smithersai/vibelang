@@ -1064,6 +1064,7 @@ typescript/vibelang/cases/declaration-linked-esm/main.vibe:2:19 lambda choice fa
 typescript/vibelang/cases/declaration-linked-esm/main.vibe:3:25 lambda choice fallback
 typescript/vibelang/cases/declaration-module-shadows-ambient/both.vibe:2:21 lambda plain annotation
 typescript/vibelang/cases/declaration-module-shadows-ambient/main.vibe:3:27 lambda plain annotation
+typescript/vibelang/cases/declaration-opencode-inferred-effect-qualifier/main.vibe:3:23 lambda choice fallback
 typescript/vibelang/cases/declaration-prelude-library-types/main.vibe:5:21 lambda plain annotation
 typescript/vibelang/cases/declaration-recursive-inferred-vibe/main.vibe:3:21 lambda plain fallback
 typescript/vibelang/cases/declaration-recursive-inferred-vibe/main.vibe:4:21 lambda plain fallback
