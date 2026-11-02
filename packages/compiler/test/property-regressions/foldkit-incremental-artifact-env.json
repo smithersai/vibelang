@@ -28,11 +28,6 @@
   },
   "previousNativeSHA256": "3abff0ef3caa0a028adbe18264c4c574b2ae649e93918cb83b7f7a086e312eaf",
   "captureNativeSHA256": "9621b86b22640bcae5e55ca8bc5d04266a0435e75e583de1cef3ade413a56212",
-  "pending": {
-    "key": "incremental:previous-compiler:env",
-    "owner": "migfix-foldkit",
-    "reason": "A real earlier compiler cache with the same TypeScript version masks current EK4402 diagnostics."
-  },
   "emittedFiles": {
     "dist/main.d.ts": "export declare function read(): unknown;\n",
     "dist/main.js": "export function read() { return import.meta.env; }\n"

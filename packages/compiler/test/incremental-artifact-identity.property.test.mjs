@@ -10,7 +10,6 @@ import fc from "fast-check"
 import { SpecPath } from "../../../scripts/testing/spec-path.mjs"
 
 const binary = process.env.VIBELANG_BINARY || fileURLToPath(new URL("../native/" + (process.platform === "win32" ? "vibelang.exe" : "vibelang"), import.meta.url))
-const raw = process.env.VIBELANG_INCREMENTAL_ARTIFACT_RAW === "1"
 const fixtures = ["url", "hot", "env"].map(key => JSON.parse(readFileSync(new URL("./property-regressions/foldkit-incremental-artifact-" + key + ".json", import.meta.url), "utf8")))
 test("real cache fixtures retain their source and artifact provenance", () => {
   assert.ok(readFileSync(SpecPath("005-services.md"), "utf8").includes("`import.meta` may appear only as the object of `.url`"))
@@ -47,10 +46,9 @@ function check(fixture, mutation) {
     const warm = compile([])
     const fresh = compile(["--composite", "false", "--incremental", "false"])
     assert.deepEqual(fresh, fixture.key === "url" ? { status: 0, codes: [] } : { status: 2, codes: ["EK4402"] }, "the chapter boundary remains active in a fresh check")
-    if (!mutation && fixture.pending && !raw) {
-      assert.equal(fixture.pending.owner, "migfix-foldkit")
-      assert.deepEqual(warm, { status: 0, codes: [] }, "XPASS " + fixture.pending.key + ": retire the historical-cache pending entry")
-    } else assert.deepEqual(warm, fresh, fixture.pending?.key ?? "unchanged source must not change diagnostics when the cache is present")
+    // 644226993380 (foldkit-123): a build info written by another compiler
+    // build is not reused, so the earlier compiler's cache cannot hide EK4402.
+    assert.deepEqual(warm, fresh, "unchanged source must not change diagnostics when the cache is present")
   } finally { rmSync(root, { recursive: true, force: true }) }
 }
 for (const fixture of fixtures) test("historical compiler cache: " + fixture.key, () => check(fixture))
