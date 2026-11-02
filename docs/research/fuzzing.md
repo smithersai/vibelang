@@ -191,6 +191,7 @@ Appendix B supplies the current diagnostic assignments; compatibility declaratio
 | `TestMatchBindingHomesQuoted`, `TestSidecarResolvedPathViewQuoted` | Current project-option and final-path clauses | Preserve match native controls and resolved sidecar identity cases; VIP-39 is read through `SpecText` like the chapter. |
 | `FuzzEffectFnParameterDeclaration`, `FuzzEffectQualifierBinding` | Resolved feature and corpus records now run strictly; all keyed corpus inputs retained | Native controls and unchanged specification oracles continue to report genuine pending gaps separately. |
 | `FuzzMigrationPlainRoots`, `FuzzPlainMatchKinds`, `FuzzPlainTryCatch` | Resolved feature and corpus records now run strictly; all keyed corpus inputs retained | Native controls and unchanged specification oracles continue to report genuine pending gaps separately. |
+| `FuzzReviewNativeLoops` | Resolved corpus records now run strictly; all keyed corpus inputs retained | Native controls and unchanged specification oracles continue to report genuine pending gaps separately. |
 | `FuzzSpecRules` | Retired | Current static targets quote their VIP chapters and gate those quotations through `specTests`. |
 | `FuzzSpecAllowed` | Retired | Current static targets and imported-scope controls cover the current forms. |
 | `FuzzSpecPrograms` | Retired | Semantics use `FuzzVIPDifferential`, with current chapter quotations and paired prints. |
