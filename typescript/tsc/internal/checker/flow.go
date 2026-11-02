@@ -247,7 +247,11 @@ func (c *Checker) getTypeAtFlowAssignment(f *FlowState, flow *ast.FlowNode) Flow
 			return c.newFlowType(c.getBaseTypeOfLiteralType(flowType.t), flowType.incomplete)
 		}
 		if f.declaredType == c.autoType || f.declaredType == c.autoArrayType {
-			if c.isEmptyArrayAssignment(node) {
+			// A VibeLang do expression's completion value is an expression
+			// written in place (chapter 002), so `[]` there is an empty array
+			// literal, not the start of an evolving array that later pushes
+			// grow (foldkit-122: `when None: []` beside a do arm was TS7005).
+			if c.isEmptyArrayAssignment(node) && c.doCompletionDeclaration(f.reference) == nil {
 				return FlowType{t: c.getEvolvingArrayType(c.neverType)}
 			}
 			assignedType := c.getInitialOrAssignedType(f, flow)

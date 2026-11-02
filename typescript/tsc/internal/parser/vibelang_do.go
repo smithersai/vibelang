@@ -1817,8 +1817,13 @@ func (l *doLowering) spill(e *ast.Node, pre *[]*ast.Node) *ast.Node {
 	}
 	at := l.p.sourceRange(e)
 	name := l.temp("$do_t", at)
-	*pre = append(*pre, l.p.mConst(name, ast.NodeFlagsConst, l.valueOnly(e), at))
-	return l.ref(name, at)
+	spilled := l.p.mConst(name, ast.NodeFlagsConst, l.valueOnly(e), at)
+	*pre = append(*pre, spilled)
+	ref := l.ref(name, at)
+	// The value is typed where it was written, not as a new const's
+	// initializer (foldkit-122: `[]` before a later do).
+	l.p.completionSite(spilled, ref)
+	return ref
 }
 
 // isPureRead reports whether moving this read past arbitrary statements

@@ -17254,7 +17254,9 @@ func (c *Checker) getTypeForVariableLikeDeclaration(declaration *ast.Node, inclu
 		}
 		// Use control flow tracked 'any[]' type for non-ambient, non-exported variables with an empty array
 		// literal initializer.
-		if initializer != nil && isEmptyArrayLiteral(initializer) {
+		// A VibeLang do lowering's temporary stands for an expression written
+		// at its site, where `[]` is an empty array literal (foldkit-122).
+		if initializer != nil && isEmptyArrayLiteral(initializer) && declaration.Flags&ast.NodeFlagsVibeLangDoCompletion == 0 {
 			return c.autoArrayType
 		}
 	}
@@ -30313,6 +30315,12 @@ func (c *Checker) getContextualTypeForVariableLikeDeclaration(declaration *ast.N
 	if t := c.initializerContextualTypeFromHooks(declaration); t != nil {
 		return t
 	}
+	if site := c.doTemporarySite(declaration); site != nil {
+		// A value the VibeLang do lowering evaluates early, to keep source
+		// order, takes the contextual type of the place it was written
+		// (foldkit-122: `{ undoStack: [], grid: match (…) { … do { … } } }`).
+		return c.getContextualType(site, contextFlags)
+	}
 	switch declaration.Kind {
 	case ast.KindParameter:
 		return c.getContextuallyTypedParameterType(declaration)
@@ -30752,8 +30760,15 @@ func (c *Checker) getContextualTypeForBinaryOperand(node *ast.Node, contextFlags
 // expression was when target names the let the parser wrote for the do's
 // completion value, or nil (ast.NodeFlagsVibeLangDoCompletion, ast.VibeLangDoSites).
 func (c *Checker) doCompletionSite(target *ast.Node) *ast.Node {
-	declaration := c.doCompletionDeclaration(target)
-	if declaration == nil {
+	return c.doTemporarySite(c.doCompletionDeclaration(target))
+}
+
+// doTemporarySite returns the reference that stands where the expression a
+// VibeLang do lowering's temporary holds was written, when declaration is
+// such a temporary (ast.NodeFlagsVibeLangDoCompletion, ast.VibeLangDoSites),
+// or nil.
+func (c *Checker) doTemporarySite(declaration *ast.Node) *ast.Node {
+	if declaration == nil || declaration.Flags&ast.NodeFlagsVibeLangDoCompletion == 0 {
 		return nil
 	}
 	sites := ast.GetSourceFileOfNode(declaration).GetOrComputeData(ast.VibeLangDoSites, func(*ast.SourceFile) map[*ast.Node]*ast.Node { return nil })

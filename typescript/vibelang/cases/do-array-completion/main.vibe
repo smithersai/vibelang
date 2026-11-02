@@ -1,0 +1,45 @@
+// expect-result: [[],["/a","A"],[],["/a","A"],["head"],["head","/a","A"],[],["x"],[0,1],[],["y"],{"undoStack":[],"redoStack":[],"grid":["blank"]},{"undoStack":[],"redoStack":[],"grid":["/a"]}]
+// foldkit-122 (Foldkit uiToastBasic, pixel-art): a match whose arms are an
+// empty array and a do ending in an array. Chapter 002 types a do's value as
+// the expression written in place, so `[]` beside it is an empty array
+// literal, not an evolving array (TS7034/TS7005 on the $do temporary), and so
+// is `[]` in a property before the do, which the lowering evaluates first
+// (Pixel Art's undoStack and redoStack).
+import { Option } from 'effect'
+type Link = Readonly<{ href: string; text: string }>
+const direct = (maybeLink: Option.Option<Link>): ReadonlyArray<string> => match (maybeLink) {
+  when Option.None: [];
+  when Option.Some(let link): do { const { href, text } = link; [href, text] };
+}
+const property = (maybeLink: Option.Option<Link>): Readonly<{ content: ReadonlyArray<string> }> => ({content: match (maybeLink) {
+  when Option.None: [];
+  when Option.Some(let link): do { const { href, text } = link; [href, text] };
+}})
+const spread = (maybeLink: Option.Option<Link>): ReadonlyArray<string> => ['head', ...match (maybeLink) {
+  when Option.None: [];
+  when Option.Some(let link): do { const { href, text } = link; [href, text] };
+}]
+type Pixels = Readonly<{ undoStack: ReadonlyArray<string>; redoStack: ReadonlyArray<string>; grid: ReadonlyArray<string> }>
+const prefix = (maybeLink: Option.Option<Link>): Pixels => ({undoStack: [], redoStack: [], grid: match (maybeLink) {
+  when Option.None: ['blank'];
+  when Option.Some(let link): do { const { href } = link; [href] };
+}})
+const ifElse = (flag: boolean): ReadonlyArray<string> => do {
+  if (flag) { [] } else { (do { ['x'] }) }
+}
+export effect function main() {
+  const link: Link = { href: '/a', text: 'A' }
+  const inferred = (n: 0 | 1) => {
+    const items = match (n) { when 0: []; when 1: do { const y = 'y'; [y] } }
+    return items
+  }
+  const none = inferred(0)
+  return [
+    direct(Option.none()), direct(Option.some(link)),
+    property(Option.none()).content, property(Option.some(link)).content,
+    spread(Option.none()), spread(Option.some(link)),
+    ifElse(true), ifElse(false),
+    [none.length, inferred(1).length], none, inferred(1),
+    prefix(Option.none()), prefix(Option.some(link)),
+  ]
+}

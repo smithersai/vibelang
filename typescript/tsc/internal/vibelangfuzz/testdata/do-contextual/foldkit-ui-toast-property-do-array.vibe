@@ -1,0 +1,6 @@
+import { Option } from 'effect'
+type Link = Readonly<{ href: string; text: string }>
+export const render = (maybeLink: Option.Option<Link>): Readonly<{ content: ReadonlyArray<string> }> => ({content: match (maybeLink) {
+ when Option.None: [];
+ when Option.Some(let link): do { const { href, text } = link; [href, text] };
+}})

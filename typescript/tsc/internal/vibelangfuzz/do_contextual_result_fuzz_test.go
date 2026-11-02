@@ -43,11 +43,17 @@ func indexOf(text, quote string) int {
 // TypeScript's emit of the counterpart. The alternatives sit in a conditional,
 // an if/else, a switch, a match arm, a nested do, a call argument and a
 // return, at every do depth up to three (foldkit-121,
-// `experimental/machine/machine.vibe` selectFromGuardList).
+// `experimental/machine/machine.vibe` selectFromGuardList). The empty-array
+// keys put `[]` beside a do ending in an array, in a match arm, an object
+// property, a spread, an if/else and an inferred local: written in place,
+// `[]` is an empty array literal, never the start of an evolving array
+// (foldkit-122, Foldkit uiToastBasic and pixel-art, TS7034/TS7005). The
+// prefix keys put `[]` and a tagged object literal in properties before a
+// do, which the lowering evaluates first into temporaries.
 func FuzzDoContextualResult(f *testing.F) {
 	startShortBudget(f)
 	w, tsc := NewWorkspace(f), StockTypeScript(f)
-	for _, key := range []string{"foldkit-edge-selection", "plain-conditional", "if-else", "nested-do", "switch-arms", "match-arms", "literal-union", "fresh-literal", "call-argument"} {
+	for _, key := range []string{"foldkit-edge-selection", "plain-conditional", "if-else", "nested-do", "switch-arms", "match-arms", "literal-union", "fresh-literal", "call-argument", "empty-array-match", "empty-array-property", "empty-array-spread", "empty-array-if-else", "empty-array-local", "empty-array-prefix-property", "prefix-tag", "foldkit-ui-toast", "foldkit-pixel-art-prefix"} {
 		f.Add(key, uint8(0))
 		f.Add(key, uint8(11))
 	}
@@ -96,6 +102,49 @@ func FuzzDoContextualResult(f *testing.F) {
 		case "fresh-literal":
 			source = "const exact = do { " + wrap("1") + " }\nexport const exactCheck: 1 = exact\nlet ordinary = do { " + wrap("1") + " }\nordinary = 2\nexport const widened: number = ordinary"
 			counterpart = "const exact = 1\nexport const exactCheck: 1 = exact\nlet ordinary = 1\nordinary = 2\nexport const widened: number = ordinary"
+		case "empty-array-match":
+			source = "export const items = (n: 0 | 1): ReadonlyArray<string> => match (n) { when 0: []; when 1: do { const a = 'x'; " + wrap("[a, 'y']") + " }; }"
+			counterpart = "export const items = (n: 0 | 1): ReadonlyArray<string> => { if (n === 0) { return [] } const a = 'x'; return [a, 'y'] }"
+		case "empty-array-property":
+			source = "export const view = (n: 0 | 1): Readonly<{ content: ReadonlyArray<string> }> => ({ content: match (n) { when 0: []; when 1: do { const a = 'x'; " + wrap("[a]") + " }; } })"
+			counterpart = "export const view = (n: 0 | 1): Readonly<{ content: ReadonlyArray<string> }> => ({ content: n === 0 ? [] : ['x'] })"
+		case "empty-array-spread":
+			source = "export const items = (n: 0 | 1): ReadonlyArray<string> => ['head', ...match (n) { when 0: []; when 1: do { const a = 'x'; " + wrap("[a]") + " }; }]"
+			counterpart = "export const items = (n: 0 | 1): ReadonlyArray<string> => ['head', ...(n === 0 ? [] : ['x'])]"
+		case "empty-array-if-else":
+			source = "export const items = (flag: boolean): ReadonlyArray<string> => do { if (flag) { [] } else { " + wrap("['x']") + " } }"
+			counterpart = "export const items = (flag: boolean): ReadonlyArray<string> => { if (flag) { return [] } else { return ['x'] } }"
+		case "empty-array-local":
+			source = "export const count = (n: 0 | 1): number => { const items = match (n) { when 0: []; when 1: do { const a = 'x'; " + wrap("[a]") + " }; }; return items.length }"
+			counterpart = "export const count = (n: 0 | 1): number => { const items = n === 0 ? [] : ['x']; return items.length }"
+		case "empty-array-prefix-property":
+			// Properties before a do run first, so the lowering evaluates
+			// them into temporaries; each is still typed where it was written.
+			source = "export const view = (n: 0 | 1): Readonly<{ before: ReadonlyArray<string>; after: ReadonlyArray<string> }> => ({ before: [], after: match (n) { when 0: []; when 1: do { const a = 'x'; " + wrap("[a]") + " }; } })"
+			counterpart = "export const view = (n: 0 | 1): Readonly<{ before: ReadonlyArray<string>; after: ReadonlyArray<string> }> => ({ before: [], after: n === 0 ? [] : ['x'] })"
+		case "prefix-tag":
+			source = types + "export const pair = (condition: boolean): Readonly<{ first: Selection; second: Selection }> => ({ first: " + selected + ", second: do { " + wrap(conditional) + " } })"
+			counterpart = types + "export const pair = (condition: boolean): Readonly<{ first: Selection; second: Selection }> => ({ first: " + selected + ", second: " + conditional + " })"
+		case "foldkit-pixel-art-prefix":
+			// Foldkit Pixel Art's init, minimized by drive-foldkit-examples:
+			// empty undo and redo stacks before the grid's do arm.
+			for name, text := range map[string]*string{"foldkit-pixel-art-adjacent-empty-arrays.vibe": &source, "foldkit-pixel-art-adjacent-empty-arrays.ts": &counterpart} {
+				raw, err := os.ReadFile(filepath.Join("testdata", "do-contextual", name))
+				if err != nil {
+					t.Fatal(err)
+				}
+				*text = string(raw)
+			}
+		case "foldkit-ui-toast":
+			// Foldkit uiToastBasic's minimized pattern (drive-foldkit-web) and
+			// its TypeScript original.
+			for name, text := range map[string]*string{"foldkit-ui-toast-property-do-array.vibe": &source, "foldkit-ui-toast-property-do-array.ts": &counterpart} {
+				raw, err := os.ReadFile(filepath.Join("testdata", "do-contextual", name))
+				if err != nil {
+					t.Fatal(err)
+				}
+				*text = string(raw)
+			}
 		case "call-argument":
 			source = types + "declare function take(s: Selection): string\nexport const taken = (condition: boolean): string => take(do { " + wrap(conditional) + " })"
 			counterpart = types + "declare function take(s: Selection): string\nexport const taken = (condition: boolean): string => take(" + conditional + ")"
