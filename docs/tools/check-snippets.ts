@@ -372,9 +372,18 @@ export function writeProject(dir: string, blocks: Block[], options: { exportFunc
 
 // Keep compile and execution output separate so a failure identifies its stage.
 export async function command(args: string[], cwd: string, timeout: number) {
-  const child = Bun.spawn(args, { cwd, stdout: "pipe", stderr: "pipe" })
+  const grouped = process.platform !== "win32"
+  const child = Bun.spawn(args, { cwd, stdout: "pipe", stderr: "pipe", detached: grouped })
   let timedOut = false
-  const timer = setTimeout(() => { timedOut = true; child.kill("SIGKILL") }, timeout)
+  // A compiler or test runner may exit before descendants release its pipes.
+  // Keep the deadline through output draining and kill the group we own.
+  const timer = setTimeout(() => {
+    timedOut = true
+    if (grouped) {
+      try { process.kill(-child.pid, "SIGKILL") }
+      catch (error) { if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error }
+    } else child.kill("SIGKILL")
+  }, timeout)
   try {
     const [stdout, stderr, exitCode] = await Promise.all([
       new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited

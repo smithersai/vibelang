@@ -134,7 +134,12 @@ selected compiler, then runs each entry separately with Node and the linked
 local runtime. It compares stdout exactly, normalizing CRLF to LF and removing
 one final newline from each side; spaces, ordering, and extra lines matter.
 Nonzero exits, execution timeouts (10 seconds by default; set with
-`--timeout milliseconds`), compile errors, and output mismatches fail the check.
+`--timeout milliseconds`), compile errors, and output mismatches fail the check. On POSIX,
+each compiler or execution command owns a process group. Its deadline remains
+active until both output streams close and kills that group, including children
+that keep a pipe open after their parent exits. The result retains partial
+output, the parent's exit status and `timedOut: true`; a zero parent exit
+does not turn that timeout into a pass. Windows kills the immediate process.
 Examples that import `@effect/vitest`, including through earlier blocks, run
 inside Vitest after compilation, and every registered `it.effect` test must pass.
 An empty output marker checks their assertions without adding printed output;

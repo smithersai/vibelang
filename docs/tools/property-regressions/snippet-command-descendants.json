@@ -1,0 +1,10 @@
+{
+  "property": "snippet-command-descendants",
+  "rule": "A snippet deadline must stop descendants holding its output pipes even when the parent exited zero.",
+  "input": {
+    "exits": true,
+    "stream": "stderr",
+    "depth": 2,
+    "noise": 0
+  }
+}
