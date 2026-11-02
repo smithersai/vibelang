@@ -1,0 +1,22 @@
+// expect-result: [[2],[3],[1],[1,1,1]]
+import {Effect,Stream} from "effect"
+import {make,counts,type Dual} from "./native.js"
+
+function syncValues(rows:Dual):number[] {
+ const values:number[]=[]
+ for(const value of rows){values.push(value);break}
+ return values
+}
+async function asyncValues(rows:Dual):Promise<number[]> {
+ const values:number[]=[]
+ for await(const value of rows){values.push(value);break}
+ return values
+}
+export effect function main(){
+ const rows=try Effect.try(()=>make())
+ const sync=syncValues(rows)
+ const async=try Effect.promise(()=>asyncValues(rows))
+ const stream=try Stream.runCollect(rows)
+ const seen=try Effect.try(()=>counts())
+ return [sync,async,stream,seen]
+}

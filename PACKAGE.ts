@@ -353,6 +353,7 @@ const specTests = [
   "TestCanonicalVIPExitReasonTagControls",
   "TestVIPTemplatesCited",
   "TestRunningRulesQuoted",
+  "TestNativeStreamProtocolsQuoted",
   "TestMigrationForeignCallQuoted",
   "TestFixDeclaredImportsQuoted",
   "TestBangSlotGroupingQuoted",

@@ -1,0 +1,5 @@
+// expect: TS2488 TS2504 EK0102
+import {Stream} from "effect"
+export function plain(rows:Stream.Stream<number>):void {for(const row of rows){void row}}
+export async function nativeAsync(rows:Stream.Stream<number>):Promise<void> {for await(const row of rows){void row}}
+export effect function running(rows:Stream.Stream<number>) {for await(const row of rows){void row}}

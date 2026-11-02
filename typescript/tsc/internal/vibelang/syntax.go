@@ -11,8 +11,10 @@ import (
 // have. An async function means what it means in TypeScript (VIP-1): its body
 // is TypeScript, as a hatch's is, where await waits for a promise; awaiting
 // an Effect there is EK0103, since an Effect goes through runPromise first
-// (VIP-5). Outside an async function a call already waits, so for await and
-// await using are EK1003 (Chapter 10). The parser writes await outside an
+// (VIP-5). Native loops keep their TypeScript protocols and operand checks.
+// A for await in an Effect body is EK0102; it never implicitly consumes a
+// Stream (VIP-20, detail293). Await using retains its separate legacy check.
+// The parser writes await outside an
 // async function as $await (fibers.go), so an AwaitExpression here is inside
 // an async function. D271 exempts
 // explicit JavaScript iterator generators and their own body syntax.
@@ -57,8 +59,8 @@ func checkSyntax(c *checker.Checker, file *ast.SourceFile) {
 				cover(c, node) // the Effect the await leaves unrun restates EK0103
 			}
 		case ast.KindForOfStatement:
-			if await := node.AsForInOrOfStatement().AwaitModifier; await != nil && !inAsyncFunction(node) && streamChannel(c, c.GetTypeAtLocation(node.Expression()), "_A") == nil {
-				note(report(c, await, EK1003, "for await"), "Use for try to consume a Stream in effect code; for await is for AsyncIterables in async code.")
+			if await := node.AsForInOrOfStatement().AwaitModifier; await != nil && inLowerableBody(node) && analyzerFor(c).isEffect(ast.GetContainingFunction(node)) {
+				note(report(c, await, EK0102), "Use for try to consume a Stream in effect code; for await is for AsyncIterables in async code.")
 				cover(c, await)
 			}
 		case ast.KindVariableDeclarationList:

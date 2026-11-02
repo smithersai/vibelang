@@ -14,8 +14,6 @@ FuzzFunctionBoundaries rule:async-shorthand compiler VIP-1: chapter 1 requires t
 FuzzFunctionBoundaries corpus:fz-func-async-shorthand compiler VIP-1: minimized async-shorthand violation; lane vip-core2
 FuzzFunctionBoundaries rule:await-using compiler VIP-1: chapter 1 requires the specified EK diagnostic for await-using; lane vip-core2
 FuzzFunctionBoundaries corpus:fz-func-await-using compiler VIP-1: minimized await-using violation; lane vip-core2
-FuzzFunctionBoundaries rule:for-await compiler VIP-1: chapter 1 requires the specified EK diagnostic for for-await; lane vip-core2
-FuzzFunctionBoundaries corpus:fz-func-for-await compiler VIP-1: minimized for-await violation; lane vip-core2
 FuzzFunctionBoundaries rule:getter compiler VIP-1: chapter 1 requires the specified EK diagnostic for getter; lane vip-core2
 FuzzFunctionBoundaries corpus:fz-func-getter compiler VIP-1: minimized getter violation; lane vip-core2
 FuzzFunctionBoundaries rule:setter compiler VIP-1: chapter 1 requires the specified EK diagnostic for setter; lane vip-core2

@@ -231,7 +231,7 @@ The fixes keep a rewrite only when it adds no compiler error.
 | An abstract class used as a service | EK4854 (VIP-9): write a `service` declaration. `--fix` removes the class spelling and preserves its members and key. Abstract classes now have ordinary TypeScript semantics. |
 | `static readonly default = shape` on a service | EK4855 (VIP-9): write `static readonly defaultValue = () => shape`. `--fix` renames the member, wraps its type and value in a thunk, and updates its value and type reads (`typeof S.default` becomes `ReturnType<typeof S.defaultValue>`). |
 | `A!E` on a function with a body inferred its requirements | EK4853 (VIP-3): every omitted slot is `never`, exactly as in `Effect<A, E, R>`. `--fix` writes the requirements previously inferred from the body. Leave out the annotation to infer the whole contract. |
-| `for (const x of stream)` or `for await (const x of stream)` | Write `for try (const x of stream)` inside effect code. `EK2007` offers this rewrite through `vibelang --fix`. Replace a body `return` with `break` and return after the loop. |
+| `for (const x of stream)` or native `for await (const x of stream)` | Native loops keep JavaScript iteration and TypeScript operand diagnostics. Choose `for try (const x of stream)` explicitly for `Stream` consumption inside effect code; `for await` in effect code is `EK0102`. |
 
 Direct platform calls such as `console.log` and `process.env.NAME` were
 already EK4402 in 0.0.10; holding their values and importing Node values
@@ -558,6 +558,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Compiler validation could report the documented arrow-head diagnostic `EK0109` as unsupported; it now recognizes the published rule.
 
 - Editor and compiler tests with a missing fixture package could fail with unrelated type or rewrite assertions; they now name the missing package directory and the `sh scripts/setup.sh` command before constructing the fixture.
+
+- Native loops over values that also implement `Stream` were rejected or rewritten to consume the `Stream`; they now keep native TypeScript diagnostics and the written JavaScript iteration protocol.
 
 - Migration could break a plugin host that derives virtual module names from a resolved package entry and source-file extension; scope planning now keeps the observed packages native and records the source-enumeration cause, preserving the unchanged host.
 
