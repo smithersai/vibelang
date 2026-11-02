@@ -199,6 +199,8 @@ async function runCase(c: RuntimeCase, o: RuntimeOptions, nm: string): Promise<R
   fs.writeFileSync(entry, runner(header.entry))
   const ran = await exec(["node", entry], dir, 60_000)
   result.actual = ran.stdout.split("\n").findLast((line) => line.startsWith(resultMarker))?.slice(resultMarker.length) ?? null
+  // Keep the result for diagnosis, and require the process to finish successfully.
+  if (ran.code !== 0) return done(`runtime failed (exit: ${ran.code}): ${ran.stderr.trim().split("\n")[0] ?? ""}`.slice(0, 300))
   if (result.actual === header.result) return { ...done(""), ok: true }
   const why = result.actual ?? `printed no result (exit ${ran.code}): ${ran.stderr.trim().split("\n").find((l) => /Error|error/.test(l)) ?? ran.stderr.trim().split("\n")[0] ?? ""}`
   return done(why.slice(0, 300))
