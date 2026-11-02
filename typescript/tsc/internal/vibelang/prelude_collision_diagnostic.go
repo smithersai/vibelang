@@ -181,7 +181,8 @@ func explainGlobalMember(c *checker.Checker, file *ast.SourceFile, d *ast.Diagno
 	if global.Flags()&(ast.SymbolFlagsFunctionScopedVariable|ast.SymbolFlagsFunction) == 0 {
 		return d // a global class is not a property of globalThis
 	}
-	if _, platform := platformGlobals[text]; platform {
+	// VIP-33 derives the ban from the declaration, so an unlisted host global is platform code too.
+	if _, platform := platformGlobals[text]; platform || isUnlistedHostGlobal(c, global) {
 		return note(d, "The global {0} has {0}.{1}, and it is platform code, which lives in a .ts file.", text, member)
 	}
 	return note(d, "The global {0} has {0}.{1}: write globalThis.{0}.{1}.", text, member)

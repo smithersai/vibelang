@@ -1,4 +1,4 @@
-// expect: TS2339 TS2339 TS2339
+// expect: TS2339 TS2339 EK4402 TS2339
 // Response, Headers and Worker are Effect's modules in a .vibe file (VIP-14,
 // D310). A static member that only the platform's class of that name has,
 // as Response.json, is TS2339, and a note says which Response this is and
