@@ -58,4 +58,3 @@ FuzzVIPDifferential  feature:vip29.schema-error-cross-copy-plain  compiler  VIP-
 FuzzVIPDifferential exit:called/vip31.for-of-label-chain-plain compiler VIP-1: the generated unannotated plain main defers its call-time event, the same implicit-function classification gap as vip23.pipe-plain; lane vip-core2
 
 FuzzVIPDifferential exit:called/vip02.do-finally-completion-plain compiler VIP-1: a function with neither keyword is plain JavaScript ("neither keyword: plain JavaScript"), but the generated unannotated plain main defers its call-time event, the existing plain-function classification gap; completion values and events are compared before this timing gap; lane vip-core2
-FuzzVIPDifferential corpus:vip02-do-finally-call-time compiler VIP-1: minimized call-time reproduction for exit:called/vip02.do-finally-completion-plain; lane vip-core2
