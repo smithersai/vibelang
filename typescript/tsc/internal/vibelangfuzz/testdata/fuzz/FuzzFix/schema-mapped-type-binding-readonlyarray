@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\ntype ReadonlyArray<T> = { value: T }; export schema S = ReadonlyArray<number>\nexport {}\n")

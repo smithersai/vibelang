@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\ntype Array<T> = { value: T }; export schema S = Array<number>\nexport {}\n")

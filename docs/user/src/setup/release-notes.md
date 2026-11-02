@@ -304,6 +304,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A sharded Go test run silently skipped Unicode-named tests when ASCII-named tests were also present; every listed test, fuzz target and example now runs exactly once.
 
+- Schema type-binding regressions could escape tests after coverage was dropped; retained keyed cases now check namespace and function scopes, escaped names, value-only shadows and preserving migrations.
+
 - Sharded Go tests could start several fuzz campaigns when `-test.fuzz` used a separate selector argument; that form now runs once with its original arguments and exit status.
 - Remote checks could report success after failing to discover tracked fixtures, leaving the build host with a partial checkout; `scripts/remote.sh` now stops before running tests and reports the failing discovery stage and exit status.
 

@@ -1,0 +1,2 @@
+import type { Record } from "./types.js"
+schema S = Record<string, number>

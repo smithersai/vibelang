@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nexport schema Readonly = Readonly<Record<string,number>>;\nexport schema Other = Readonly<Record<string,number>>;\n")

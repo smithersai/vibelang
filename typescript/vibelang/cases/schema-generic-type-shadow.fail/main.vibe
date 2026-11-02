@@ -1,0 +1,34 @@
+// expect: EK2109 EK2109 EK2109 EK2109 EK2109 EK2109 EK2109 EK2109 EK2109
+import type { Record as ImportedRecord } from "./types.js"
+namespace LocalArray {
+  type Array<T> = { value: T }
+  schema S = Array<number>
+}
+namespace LocalReadonlyArray {
+  type ReadonlyArray<T> = { value: T }
+  schema S { values: ReadonlyArray<number> }
+}
+namespace LocalRecord {
+  type Record<K, V> = { key: K; value: V }
+  schema S = Record<string, number>
+}
+namespace LocalReadonly {
+  type Readonly<T> = { wrapped: T }
+  schema S = Readonly<Record<string, number>>
+}
+namespace NestedRecord {
+  type Record<K, V> = { key: K; value: V }
+  schema S = Readonly<Record<string, number>>
+}
+namespace Imported {
+  type Record<K, V> = ImportedRecord<K, V>
+  schema S = Record<string, number>
+}
+namespace ErrorField {
+  type Array<T> = { value: T }
+  schema error Bad { values: Array<number> }
+}
+namespace Escaped {
+  type Array<T> = { value: T }
+  schema S = Arr\u0061y<number>
+}

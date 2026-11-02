@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\ntype Record<K,V> = { key: K; value: V }; export schema S { values: Record<string, number> }\nexport {}\n")
