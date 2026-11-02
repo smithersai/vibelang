@@ -2712,6 +2712,7 @@ typescript/vibelang/cases/malformed-catch.fail/main.vibe:2:40 lambda effectFn ta
 typescript/vibelang/cases/malformed-catch.fail/main.vibe:2:48 lambda effectFn table
 typescript/vibelang/cases/match-arm-grammar.fail/main.vibe:32:12 lambda plain fallback
 typescript/vibelang/cases/match-builtin-shadowed/main.vibe:29:28 lambda program table
+typescript/vibelang/cases/match-class-pattern-values.fail/main.vibe:10:66 lambda plain table
 typescript/vibelang/cases/match-class-patterns/main.vibe:124:100 byname program annotation
 typescript/vibelang/cases/match-class-patterns/main.vibe:124:112 lambda plain table
 typescript/vibelang/cases/match-class-patterns/main.vibe:125:66 byname program annotation

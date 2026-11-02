@@ -20,7 +20,7 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,435 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 15,570 |
 | The skill and the user guide (140 pages) | 390,000 |
-| The user guide alone | 380,000 |
+| The user guide alone | 390,000 |
 | The specification (10 chapters) | 160,000 |
 | The decision log, `docs/design/history/DECISIONS.md` | 140,000 |
 
@@ -116,9 +116,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Build and test** | **12,000** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 9,000 |
 | [Vite and Vitest](../setup/vite.md) | 2,900 |
-| **Format and lint** | **4,700** |
-| [Format with dprint](../setup/formatting.md) | 2,100 |
-| [Developer tools](../setup/developer-tools.md) | 2,600 |
+| **Format and lint** | **6,200** |
+| [Format with dprint](../setup/formatting.md) | 2,200 |
+| [Developer tools](../setup/developer-tools.md) | 3,900 |
 | **Frameworks** | **12,000** |
 | [React](../setup/react.md) | 2,200 |
 | [React Native and Metro](../setup/react-native.md) | 420 |
@@ -131,9 +131,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Zed](../setup/zed.md) | 480 |
 | [Other editors](../setup/other-editors.md) | 490 |
 | [Coding agents](../setup/coding-agents.md) | 1,100 |
-| **Upgrade** | **96,000** |
-| [Release notes](../setup/release-notes.md) | 96,000 |
-| **All 19 pages** | **130,000** |
+| **Upgrade** | **97,000** |
+| [Release notes](../setup/release-notes.md) | 97,000 |
+| **All 19 pages** | **140,000** |
 
 ### Guides
 
@@ -268,7 +268,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Building an HTTP API](113-building-an-http-api.md) | 1,600 |
 | [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 6,200 |
 | [Cheat sheet](115-cheat-sheet.md) | 11,000 |
-| [Pattern matching with match and is](116-match-and-is.md) | 7,300 |
+| [Pattern matching with match and is](116-match-and-is.md) | 7,500 |
 | [Diagnostic code map](diagnostic-code-map.md) | 2,500 |
 | [Experimental platform APIs](118-experimental-platform-apis.md) | 6,000 |
 | **All 8 pages** | **38,000** |
