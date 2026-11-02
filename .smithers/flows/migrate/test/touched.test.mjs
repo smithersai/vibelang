@@ -93,3 +93,32 @@ test("property: only freshly certified protected edits enter the scope, never a 
       allOk && fileOk ? [changed[1]] : changed)
   }), { seed: 410412, numRuns: 150 })
 })
+
+// loadercold-opencode's emit writes <package>/.vibelang/js/.loader/<tsconfig>.json
+// each time it writes the package's JavaScript; verify called that record foreign.
+test("the emit's JavaScript and loader records are the flow's own, in any package", () => {
+  const own = [
+    { status: "A", path: "app/.vibelang/js/.loader/tsconfig.json.json" },
+    { status: "M", path: "packages/core/.vibelang/js/.loader/tsconfig.build.json.json" },
+    { status: "A", path: "app/.vibelang/js/src/index.js" },
+    { status: "A", path: ".vibelang/js/src/index.js" }
+  ]
+  assert.deepEqual(foreignChanges(own, { files: [], codemod: {} }), [])
+})
+
+test("property: only paths under a .vibelang/js directory leave the foreign check", () => {
+  const segment = fc.stringMatching(/^[a-z][a-z0-9-]{0,6}$/)
+  const dir = fc.array(segment, { maxLength: 3 }).map((parts) => parts.map((part) => part + "/").join(""))
+  fc.assert(fc.property(dir, segment, (prefix, name) => {
+    const batch = { files: [], codemod: {} }
+    assert.deepEqual(foreignChanges([{ status: "A", path: prefix + ".vibelang/js/" + name + ".js" }], batch), [])
+    const foreign = [
+      { status: "A", path: prefix + ".vibelang/oxlint.mjs" },
+      { status: "A", path: prefix + ".vibelang/js-old/" + name + ".js" },
+      { status: "A", path: prefix + "x.vibelang/js/" + name + ".js" },
+      { status: "M", path: prefix + "src/" + name + ".ts" },
+      { status: "R", path: prefix + ".vibelang/js/" + name + ".js", from: prefix + "src/" + name + ".ts" }
+    ]
+    assert.deepEqual(foreignChanges(foreign, batch), foreign)
+  }), { seed: 411021, numRuns: 150 })
+})

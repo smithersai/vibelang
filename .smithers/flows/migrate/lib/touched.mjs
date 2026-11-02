@@ -7,6 +7,12 @@ import { isProtectedFile } from "./test-diff.mjs"
 // batch's committed module that --fix rewrote (alchemy-5a), a test or config
 // the repair edited, a declaration an emit left beside its source. verify
 // fails a batch with one, before its record would commit it unseen.
+//
+// A package's .vibelang/js/ tree is the flow's own output, not a change the
+// batch chose: each emit deletes the tree and writes it again from the sources,
+// and a loader record there names its dependencies' digests, so a batch in one
+// package rewrites another package's record. Every path under it is in scope.
+const emitted = /(?:^|\/)\.vibelang\/js\//
 
 /** Every path the batch may touch, repository-relative. */
 export function batchScope({ files, codemod, testDiff }) {
@@ -36,5 +42,6 @@ export function batchScope({ files, codemod, testDiff }) {
  */
 export function foreignChanges(changed, batch) {
   const scope = batchScope(batch)
-  return changed.filter((c) => !scope.has(c.path) || (c.from !== undefined && !scope.has(c.from)))
+  const own = (path) => scope.has(path) || emitted.test(path)
+  return changed.filter((c) => !own(c.path) || (c.from !== undefined && !own(c.from)))
 }
