@@ -1506,6 +1506,13 @@ typescript/vibelang/cases/effect-block-jumps.fail/main.vibe:11:15 lambda program
 typescript/vibelang/cases/effect-block-jumps.fail/main.vibe:9:15 lambda program table
 typescript/vibelang/cases/effect-block-lexical/main.vibe:14:18 lambda plain fallback
 typescript/vibelang/cases/effect-block-lexical/main.vibe:5:12 lambda choice fallback
+typescript/vibelang/cases/effect-block-this-before-super/main.vibe:11:36 lambda choice fallback
+typescript/vibelang/cases/effect-block-this-before-super/main.vibe:23:15 lambda plain fallback
+typescript/vibelang/cases/effect-block-this-before-super/main.vibe:30:18 lambda program annotation
+typescript/vibelang/cases/effect-block-this-before-super/main.vibe:31:18 lambda program annotation
+typescript/vibelang/cases/effect-block-this-before-super/main.vibe:32:18 lambda program annotation
+typescript/vibelang/cases/effect-block-this-before-super/main.vibe:38:27 lambda plain fallback
+typescript/vibelang/cases/effect-block-this-before-super/main.vibe:40:16 lambda plain annotation
 typescript/vibelang/cases/effect-collision-namespaces/main.vibe:2:37 lambda plain table
 typescript/vibelang/cases/effect-computed-method/main.vibe:11:3 lambda choice fallback
 typescript/vibelang/cases/effect-contextual-assertions/main.vibe:3:16 lambda plain annotation
@@ -1514,6 +1521,7 @@ typescript/vibelang/cases/effect-contract-plain-destinations.fail/main.vibe:10:1
 typescript/vibelang/cases/effect-contract-plain-destinations.fail/main.vibe:11:13 lambda plain table
 typescript/vibelang/cases/effect-contract-plain-destinations.fail/main.vibe:8:18 lambda plain table
 typescript/vibelang/cases/effect-gen-computed-method.fail/main.vibe:7:23 lambda plain table
+typescript/vibelang/cases/effect-heritage/main.vibe:11:48 lambda plain fallback
 typescript/vibelang/cases/effect-loaded-by-parse/lib.vibe:6:21 lambda plain fallback
 typescript/vibelang/cases/effect-loaded-by-parse/lib.vibe:7:26 lambda plain fallback
 typescript/vibelang/cases/effect-loaded-by-parse/lib.vibe:8:23 lambda choice fallback
@@ -2828,6 +2836,8 @@ typescript/vibelang/cases/match-tagged-error-guards/guard9.vibe:1:201 lambda dua
 typescript/vibelang/cases/match-tagged-error-guards/guard9.vibe:1:255 lambda dual fallback
 typescript/vibelang/cases/match-tagged-error-guards/guard9.vibe:1:309 lambda dual fallback
 typescript/vibelang/cases/match-tagged-error-guards/guard9.vibe:1:371 lambda dual fallback
+typescript/vibelang/cases/match-undefined-pattern/main.vibe:16:14 lambda plain annotation
+typescript/vibelang/cases/match-undefined-pattern/main.vibe:17:12 lambda plain annotation
 typescript/vibelang/cases/match-unused-names/main.vibe:17:16 lambda plain fallback
 typescript/vibelang/cases/match-unused-names/main.vibe:21:17 lambda dual fallback
 typescript/vibelang/cases/members-writable/main.vibe:19:21 lambda plain annotation
@@ -3339,6 +3349,12 @@ typescript/vibelang/cases/producer-scope-unions/main.vibe:46:45 lambda plain tab
 typescript/vibelang/cases/producer-scope-unions/main.vibe:46:54 lambda plain table
 typescript/vibelang/cases/producer-scope-unions/main.vibe:47:42 lambda plain table
 typescript/vibelang/cases/producer-scope-unions/main.vibe:47:51 lambda plain table
+typescript/vibelang/cases/producer-written-stream/main.vibe:10:48 lambda plain table
+typescript/vibelang/cases/producer-written-stream/main.vibe:10:58 lambda plain table
+typescript/vibelang/cases/producer-written-stream/main.vibe:11:46 lambda plain table
+typescript/vibelang/cases/producer-written-stream/main.vibe:11:55 lambda plain table
+typescript/vibelang/cases/producer-written-stream/main.vibe:9:45 lambda plain table
+typescript/vibelang/cases/producer-written-stream/main.vibe:9:54 lambda plain table
 typescript/vibelang/cases/producers/main.vibe:174:20 lambda plain annotation
 typescript/vibelang/cases/producers/main.vibe:184:8 lambda effectFn service
 typescript/vibelang/cases/producers/main.vibe:207:29 lambda program table
