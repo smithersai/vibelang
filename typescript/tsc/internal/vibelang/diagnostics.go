@@ -418,7 +418,8 @@ func coverCodes(c *checker.Checker, node *ast.Node, codes ...int32) {
 }
 
 // coverArgument hides TypeScript's error that argument's type does not fit
-// its parameter (TS2345, or TS2769 for an overloaded callee), or that a type
+// its parameter (TS2345, TS2769 for overloads, or TS2741/TS2739 for missing
+// properties), or that a type
 // argument does not fit its type parameter's constraint (TS2344), because an
 // EK diagnostic reported for argument explains it. Unlike cover, it keeps the
 // errors inside argument, such as those in a test's body.
@@ -464,7 +465,7 @@ func filterCoveredDiagnostics(c *checker.Checker, file *ast.SourceFile, diagnost
 		if d.Source() != "" {
 			return false
 		}
-		if (d.Code() == 2345 || d.Code() == 2769 || d.Code() == 2344) && slices.Contains(arguments, d.Pos()) {
+		if (d.Code() == 2345 || d.Code() == 2769 || d.Code() == 2344 || d.Code() == 2741 || d.Code() == 2739) && slices.Contains(arguments, d.Pos()) {
 			return true
 		}
 		if slices.ContainsFunc(codes, func(r coveredCodes) bool {

@@ -1,0 +1,16 @@
+// expect: EK1901 EK1901 TS2322 TS2345 TS2345 TS2345
+declare function fromText(value: string): unknown
+export effect function badBody(input: unknown) {
+  for concurrent (const item of input) { const text: string = 1 }
+}
+export effect function badOperand() {
+  for concurrent (const item of fromText(1)) { }
+}
+// Both operands are iterable. Their preexisting helper-inference errors
+// keep TypeScript's code rather than claiming they are not Iterable.
+export effect function arrayUnion(input: string[] | number[]) {
+  for concurrent (const item of input) { }
+}
+export effect function containerUnion(input: number[] | Set<string>) {
+  for concurrent (const item of input) { }
+}

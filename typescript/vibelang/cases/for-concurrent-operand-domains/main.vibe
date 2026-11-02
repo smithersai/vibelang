@@ -1,0 +1,15 @@
+// expect-result: ["1", "2", "a", "b", "3"]
+export effect function main() {
+  const out: string[] = []
+  const unchecked: any = [1, 2]
+  for concurrent(1) (const item of unchecked) { out.push(String(item)) }
+  for concurrent(1) (const item of "ab") { out.push(item) }
+  for concurrent(1) (const item of new Set([3])) { out.push(String(item)) }
+  return out
+}
+export effect function readonlyItems(input: readonly number[]) {
+  for concurrent (const item of input) { }
+}
+export effect function bottom(input: never) {
+  for concurrent (const item of input) { }
+}

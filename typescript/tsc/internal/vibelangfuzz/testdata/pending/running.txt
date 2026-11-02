@@ -36,7 +36,7 @@ FuzzVIPDifferential compile:EK0204/vip19.limit-return compiler VIP-19: a `return
 FuzzVIPDifferential corpus:fz-run-vip19-limit-return compiler VIP-19: minimal named probe reproduces compile:EK0204/vip19.limit-return; lane impl-hunt-run
 FuzzVIPDifferential compile:EK0204/vip19.rhs-return compiler VIP-19: a `return` in the RHS `do` is still blocked by EK0204 at the compiler intrinsic boundary instead of leaving the enclosing function; lane impl-hunt-run
 FuzzVIPDifferential corpus:fz-run-vip19-rhs-return compiler VIP-19: minimal named probe reproduces compile:EK0204/vip19.rhs-return; lane impl-hunt-run
-FuzzVIPDifferential compile:TS2345/vip19.rhs-return compiler VIP-19: a `return` in the RHS `do` is still blocked at the compiler intrinsic boundary and leaves the `do`'s type as `7 | number[]` (TS2345); lane impl-hunt-run
+FuzzVIPDifferential compile:EK1901/vip19.rhs-return compiler VIP-19: a `return` in the RHS `do` is still blocked at the compiler intrinsic boundary and leaves the `do`'s type as `7 | number[]` (EK1901, formerly the helper's TS2345); lane impl-hunt-run
 
 FuzzDoDeclarationBytes bytes:inferred-return:depth-1 compiler VIP-1, VIP-27: unannotated plain functions still infer Effect even without do, changing their public signature; lane vip-core2
 FuzzDoDeclarationBytes bytes:inferred-return:depth-2 compiler VIP-1, VIP-27: unannotated plain functions still infer Effect even without do, changing their public signature; lane vip-core2
@@ -48,3 +48,7 @@ FuzzUncheckedTryDeclarations call:0 compiler VIP-5/VIP-27: direct any-valued try
 FuzzUncheckedTryDeclarations corpus:call-0 compiler VIP-5/VIP-27: direct any-valued try calls infer never error/environment channels instead of native yield-star unknown channels; lane conf-auto-effect-bodyless-admission
 FuzzUncheckedTryDeclarations call:1 compiler VIP-5/VIP-27: direct any-valued try calls infer never error/environment channels instead of native yield-star unknown channels; lane conf-auto-effect-bodyless-admission
 FuzzUncheckedTryDeclarations corpus:call-1 compiler VIP-5/VIP-27: direct any-valued try calls infer never error/environment channels instead of native yield-star unknown channels; lane conf-auto-effect-bodyless-admission
+FuzzConcurrentOperandDiagnostics compile:union-arrays compiler VIP-19: valid Iterable union retains preexisting TS2345 helper inference error; the separate classification key must never be EK1901; lane core-fortry
+FuzzConcurrentOperandDiagnostics corpus:union-arrays compiler VIP-19: minimized Iterable-union inference witness; lane core-fortry
+FuzzConcurrentOperandDiagnostics compile:union-containers compiler VIP-19: valid Iterable union retains preexisting TS2345 helper inference error; the separate classification key must never be EK1901; lane core-fortry
+FuzzConcurrentOperandDiagnostics corpus:union-containers compiler VIP-19: minimized Iterable-union inference witness; lane core-fortry

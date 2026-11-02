@@ -144,6 +144,7 @@ func checkFiberForms(c *checker.Checker, file *ast.SourceFile) {
 				}
 			}
 			if args := node.Arguments(); len(args) == 3 {
+				checkConcurrentOperand(c, args[0])
 				checkConcurrentLimit(c, file, args[1])
 				checkConcurrentBody(c, args[2].Body())
 			}
@@ -151,6 +152,36 @@ func checkFiberForms(c *checker.Checker, file *ast.SourceFile) {
 		return node.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
+}
+
+// checkConcurrentOperand gives the source loop's operand diagnostic instead
+// of leaking the synthesized helper's argument error. Its contextual Iterable
+// domain retains ordinary assignability, including any and never. Erase its
+// inferred element arguments: a valid union of iterables can otherwise fail
+// helper inference without failing the Iterable operand test.
+func checkConcurrentOperand(c *checker.Checker, operand *ast.Node) {
+	if ast.NodeIsMissing(operand) {
+		return
+	}
+	actual := c.GetTypeAtLocation(operand)
+	expected := c.GetContextualType(operand, checker.ContextFlagsNone)
+	if actual == nil || expected == nil || expected.Flags()&checker.TypeFlagsObject == 0 || expected.ObjectFlags()&checker.ObjectFlagsReference == 0 {
+		return
+	}
+	arguments := c.GetTypeArguments(expected)
+	domain := make([]*checker.Type, len(arguments))
+	for i := range domain {
+		domain[i] = c.GetAnyType()
+	}
+	expected = c.NewTypeReference(expected.Target(), domain)
+	if c.IsTypeAssignableTo(actual, expected) {
+		return
+	}
+	report(c, operand, EK1901)
+	// Only the outer argument mismatch is explained. Keep an inner call's
+	// argument errors and every independent diagnostic in the loop body.
+	coverArgument(c, operand)
+	coverArgument(c, ast.SkipParentheses(operand))
 }
 
 // checkAwait reports an await whose operand it cannot wait for.

@@ -27,7 +27,7 @@ var (
 	EK1201 = message(1201, errorCategory, "Provide outside effect code. Move provide into an effect function or effect block.")
 	EK1401 = message(1401, errorCategory, "A namespace name that two subpaths export, or a subpath and the root. Import the conflicting modules under distinct names.")
 	EK1701 = message(1701, errorCategory, "Fork or join outside effect code. Move fork or join into an effect function or effect block.")
-	EK1901 = message(1901, errorCategory, "A for concurrent operand that is not an Iterable. Iterate an Iterable inside effect code, and use continue to end an item.")
+	EK1901 = message(1901, errorCategory, "for concurrent requires an Iterable. Pass an iterable value; consume a Stream with for try instead.")
 	EK1902 = message(1902, errorCategory, "For concurrent outside effect code. Iterate an Iterable inside effect code, and use continue to end an item.")
 	EK1905 = message(1905, errorCategory, "continue cannot leave a for concurrent item: each item runs in its own fiber.")
 	EK1907 = message(1907, errorCategory, "A for concurrent limit must be assignable to Types.Concurrency: number or \"unbounded\".")
