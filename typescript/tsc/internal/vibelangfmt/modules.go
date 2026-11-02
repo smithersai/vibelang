@@ -91,11 +91,27 @@ func formatModules(source string, modules []moduleBody, formatter TypeScriptForm
 	var out strings.Builder
 	cursor := 0
 	for _, module := range modules {
-		formatted, err := formatter(source[module.body.Pos():module.body.End()])
+		// Use the same field-key protection in the body's standalone pass.
+		body := source[module.body.Pos():module.body.End()]
+		file := parser.ParseSourceFile(typeScriptOptions, body, core.ScriptKindTS)
+		e := &encoder{file: file, source: body, sentinel: "$v"}
+		for strings.Contains(body, e.sentinel) {
+			e.sentinel += "_"
+		}
+		e.protectComputedFieldKeys()
+		enc, err := e.finish()
+		if err != nil {
+			return "", err
+		}
+		formatted, err := formatter(enc.text)
 		if err != nil {
 			return "", fmt.Errorf("vibelang format: the TypeScript formatter failed on module %s: %w", module.name, err)
 		}
-		formatted, err = preserveTypeScript(source[module.body.Pos():module.body.End()], formatted)
+		formatted, err = enc.decode(formatted)
+		if err != nil {
+			return "", fmt.Errorf("vibelang format: module %s: %w", module.name, err)
+		}
+		formatted, err = preserveTypeScript(body, formatted)
 		if err != nil {
 			return "", fmt.Errorf("vibelang format: module %s: %w", module.name, err)
 		}

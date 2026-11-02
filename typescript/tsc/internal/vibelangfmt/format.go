@@ -103,6 +103,11 @@ func (c *comparer) same(a, b *ast.Node) error {
 	if a.Kind != b.Kind {
 		return c.differ(a, fmt.Sprintf("%v became %v", a.Kind, b.Kind))
 	}
+	if aKey, bKey := computedFieldKey(a), computedFieldKey(b); aKey != nil && bKey != nil {
+		if computedKeyGrouping(aKey) != computedKeyGrouping(bKey) {
+			return c.differ(a, "computed field key parentheses changed")
+		}
+	}
 	if associatedDocCount(a, c.before) != associatedDocCount(b, c.after) {
 		return c.differ(a, "JSDoc attachment changed; choose whether the comment should apply before formatting")
 	}

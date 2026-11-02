@@ -64,7 +64,7 @@ Support for the new forms arrives with the compiler's VIP implementation.
 
 A statement-level `match` keeps its boundary after a statement without a semicolon, including with `semiColons: "asi"`. Parenthesized `return (match …)` expressions and binding `is` branches keep the grouping and braces needed to preserve their parsed structure. When a host writes a braced single-statement body of a binding `is` without braces, the formatter restores the block on its own lines.
 
-Written parentheses and their enclosed comments in return-type annotations stay in place, including nested and generic function types. For example, `(): (() => string)` keeps that return-type grouping in its `.d.ts` output.
+Written parentheses and their enclosed comments in return-type annotations stay in place, including nested and generic function types. For example, `(): (() => string)` keeps that return-type grouping in its `.d.ts` output. Computed field and type-member keys also keep their written parentheses and enclosed comments: changing `[(key)]` into `[key]`, or `[(keys).value]` into `[keys.value]`, can change TypeScript's native key diagnostics.
 
 A label on an arrow expression keeps that expression as its body, including with `semiColons: "asi"`.
 

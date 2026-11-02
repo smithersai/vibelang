@@ -207,6 +207,7 @@ func encode(fileName, source string) (*encoding, error) {
 			return nil, err
 		}
 	}
+	e.protectComputedFieldKeys()
 	if err := e.clauses(forms); err != nil {
 		return nil, err
 	}

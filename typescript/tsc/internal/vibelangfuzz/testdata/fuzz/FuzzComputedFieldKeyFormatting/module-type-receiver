@@ -1,0 +1,2 @@
+go test fuzz v1
+string("module-type\n\u0005\u0001")

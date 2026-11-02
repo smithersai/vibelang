@@ -1,0 +1,2 @@
+go test fuzz v1
+string("type-method\n\u0005\u0001")
