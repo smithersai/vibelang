@@ -74,11 +74,14 @@ func (p *projector) schemaDeclaration(node *ast.Node) {
 	}
 	// Export already precedes the replaced keyword, so it belongs to the
 	// interface, with a second export preceding the value declaration.
-	if isSchemaAlias(declaration) {
-		// D280: the type is the schema's decoded type.
-		p.plan.witness(start, "type "+name.Text()+" = typeof "+name.Text()+".Type;\n"+exported)
-	} else {
-		p.plan.witness(start, "interface "+name.Text()+" extends "+schema+".Schema.Type<typeof "+name.Text()+"> {}\n"+exported)
+	// VIP-15 foldkit-9: a written type already supplies the witness.
+	if schemaHasSynthesizedType(node) {
+		if isSchemaAlias(declaration) {
+			// D280: the type is the schema's decoded type.
+			p.plan.witness(start, "type "+name.Text()+" = typeof "+name.Text()+".Type;\n"+exported)
+		} else {
+			p.plan.witness(start, "interface "+name.Text()+" extends "+schema+".Schema.Type<typeof "+name.Text()+"> {}\n"+exported)
+		}
 	}
 	value := p.schemaExpression(declaration.Initializer(), schema)
 	p.plan.replace(start, node.End(), "const "+name.Text()+" = "+value+";")
@@ -246,4 +249,20 @@ func explicitSchemaValue(node *ast.Node) bool {
 func (p *projector) schemaDiagnostic(node *ast.Node, message string) {
 	start := p.tokenStart(node)
 	p.diagnostics = append(p.diagnostics, Diagnostic{Start: start, Length: node.End() - start, Code: 2109, Message: message})
+}
+
+// schemaHasSynthesizedType reports whether this schema still needs the
+// projection's type witness. A written alias replaces that companion in the
+// parser and must keep its own source position, docs and export status.
+func schemaHasSynthesizedType(statement *ast.Node) bool {
+	if statement.Parent == nil || !statement.Parent.CanHaveStatements() {
+		return true
+	}
+	name := statement.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0].Name().Text()
+	for _, sibling := range statement.Parent.Statements() {
+		if isSchemaAliasType(sibling) && sibling.Name().Text() == name {
+			return true
+		}
+	}
+	return false
 }

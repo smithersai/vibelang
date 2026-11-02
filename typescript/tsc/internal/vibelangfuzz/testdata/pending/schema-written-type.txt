@@ -1,0 +1,3 @@
+FuzzSchemaWrittenType feature:schema-writable-default compiler VIP-15: unmarked schema fields still lower readonly; lane schema-readonly (unlanded prerequisite 1cf7adc77c4d, then entry 2).
+FuzzSchemaWrittenType corpus:foldkit-model-preservation-documented-schema compiler VIP-15: exact foldkit-9 writable-field twin; lane schema-readonly (unlanded prerequisite 1cf7adc77c4d, then entry 2).
+FuzzSchemaWrittenType quote:written-companion fold-details VIP-15/VIP-27: accepted foldkit-9 companion paragraph awaits spec fold; lane fold-details.

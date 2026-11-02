@@ -1,0 +1,13 @@
+import { Schema } from "effect";
+export namespace Outer {
+    /** Outer schema. */
+    export schema Message = string;
+    /** Outer type. */
+    export type Message = typeof Message.Type;
+    export namespace Inner {
+        /** Inner type before schema. */
+        export type Message = typeof Message.Type;
+        /** Inner schema. */
+        export schema Message { readonly id: string }
+    }
+}

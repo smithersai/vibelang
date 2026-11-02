@@ -1,0 +1,15 @@
+// expect: TS2300 TS2451
+import { Schema } from "effect";
+const Other = Schema.String;
+schema Message0 { id: string }
+interface Message0 { id: string }
+
+interface Message1 { id: string }
+schema Message1 { id: string }
+
+schema Message2 = string;
+interface Message2 { id: string }
+
+interface Message3 { id: string }
+schema Message3 = string;
+

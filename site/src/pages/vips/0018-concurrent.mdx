@@ -37,3 +37,26 @@ About 37 findings over rounds 2 to 11, about when elements are evaluated and abo
 ## Will's words
 
 > "this is a yes"
+
+## Details
+
+Decided details folded in on 2026-11-03. Each keeps its old number as history. The conflict pass deleted superseded, duplicate and relic details and resolved contradictions in favor of Will's words, then accepted VIPs, then later details. Principles are numbered as in [the introduction's Details](https://github.com/smithersai/vibelang/blob/main/docs/design/src/000-intro.md#details).
+
+### Detail 288
+
+**Stream iteration, concurrent iteration and `try.all` use ordinary assignability to their named operand domains.** (R10 Opus OPUS-4; accepted VIP-18/19/20, chapter002's operand-test rule, existing88/89/104/266; principles2/4.) Check `for try` against `Stream.Stream<any,any,any>` (`EK2004`), `for concurrent` against `Iterable<unknown>` (`EK1901`), and the general `try.all` operand against `ReadonlyArray<Effect.Effect<any,any,any>>` (`EK1801`). These are the source-operand tests, not a nominal constructor test, a spelling test or a test that arbitrarily excludes the bottom type.
+
+    TypeScript assignability admits `any` and `never` and checks aliases, readonly arrays/tuples and unions normally. `unknown` and a union containing `undefined` are rejected when not assignable to the stated domain. A `never` expression has no runtime witness; admitting its type neither invents a value nor guarantees runtime safety for `any`. Keep ordinary definite-assignment/native diagnostics, existing literal-element/spread checking and execution-context rules. There is no implicit conversion from an AsyncIterable to a Stream.
+
+    ```vibe
+    effect function bottom(programs: never) { return try.all programs } // operand type admitted
+    effect function invalid(items: unknown) {
+      for try (const item of items) {} // EK2004
+    }
+    ```
+
+    Effect TypeScript counterpart: the corresponding parameter domains are `Stream.runForEach`'s Stream, `Effect.forEach`'s iterable and `Effect.all`'s readonly array of programs for this form. A stock TypeScript assignment to those three explicit types provides the static oracle. This does not replace VibeLang's existing loop, concurrency, closing or completion semantics. In particular the current compiler's `EK1801` for `try.all` with `never` is an implementation gap, not permission to contradict002's stated bottom-type rule.
+
+    Publish the three diagnostic rows and the002 explanation, with VIP-18/19/20 companion amendments where needed. Use per-code spec-quoted fuzz matrices over `any`/`never`/`unknown`, valid aliases, structural subtypes, optional unions, readonly tuples, collection elements and nested execution contexts. Retain keyed pending compiler gaps and native negative controls; no test was run by this lane.
+
+    Decided by the agent from principle2 (TypeScript assignability), principle4 (the existing named operand test rather than three exceptions), accepted VIP-18/19/20 and the existing002 `any`/`never` statement, 2026-11-01, under Will's 2026-10-29 delegation. Class A.

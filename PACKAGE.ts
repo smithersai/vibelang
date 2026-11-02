@@ -221,6 +221,7 @@ const specTests = [
   "TestAwaitPlacementQuickFixes",
   "TestSchemaBuiltinBindingsQuoted",
   "TestSchemaDeclarationCommentsQuoted",
+  "TestSchemaWrittenTypeQuoted",
   "TestDeclarationStyleRulesQuoted",
   "TestUnrelatedDeclarationSpecifierQuoted",
   "TestReturnedPipeContractQuoted",

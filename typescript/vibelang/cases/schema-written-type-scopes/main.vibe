@@ -1,0 +1,30 @@
+import { Schema } from "effect";
+schema Message = string;
+type Message = typeof Message.Type;
+{
+    type Message = typeof Message.Type;
+    schema Message { readonly id: string }
+    const witness: Message = { id: "block" };
+}
+function declarations() {
+    schema Message = number;
+    type Message = typeof Message.Type;
+    const witness: Message = 1;
+}
+switch (0) {
+    case 0:
+        schema Switched = boolean;
+        break;
+    default:
+        type Switched = typeof Switched.Type;
+        const witness: Switched = true;
+}
+switch (0) {
+    case 0:
+        type Reversed = typeof Reversed.Type;
+        break;
+    default:
+        schema Reversed { readonly id: string }
+        const witness: Reversed = { id: "switch" };
+}
+export {};

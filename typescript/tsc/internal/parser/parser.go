@@ -115,6 +115,7 @@ type Parser struct {
 	vibelangMatches          map[*ast.Node]*matchInfo    // match expressions as written, by their call or statement (vibelang_match.go)
 	vibelangIsBindings       map[*ast.Node]*isInfo       // is expressions whose patterns bind names, by their markers (vibelang_match.go)
 	vibelangIsHolders        map[*ast.Node]*ast.Node     // the parenthesized expression written around each such marker, which hoistVibeLangIs fills (vibelang_match.go)
+	vibelangSchemaTypes      map[*ast.Node]bool          // synthesized ordinary-schema companions, distinct from data aliases
 	vibelangHoists           map[*ast.Node]bool          // the let statements hoistVibeLangIs put on reparseList, which an unbraced statement body keeps as its own home (vibelang_match.go)
 	vibelangSyntax           *[]VibeSyntax               // the forms recorded for ParseVibeLangSyntax, or nil (vibelang_syntax.go)
 	vibelangFiberContext     bool                        // fork/join reservation inherited by source grammar
@@ -694,6 +695,9 @@ func (p *Parser) parseListIndex(kind ParsingContext, parseElement func(p *Parser
 	}
 	p.reparseList = outerReparseList
 	p.parsingContexts = saveParsingContexts
+	if p.isVibeLangFile() && (kind == PCSourceElements || kind == PCBlockStatements) {
+		list = p.vibelangWrittenSchemaTypes(list)
+	}
 	return p.nodeSliceArena.Clone(list)
 }
 
@@ -1549,6 +1553,9 @@ func (p *Parser) parseCaseBlock() *ast.Node {
 	jsdoc := p.jsdocScannerInfo()
 	p.parseExpected(ast.KindOpenBraceToken)
 	clauses := p.parseList(PCSwitchClauses, (*Parser).parseCaseOrDefaultClause)
+	if p.isVibeLangFile() {
+		p.vibelangWrittenSchemaSwitchTypes(clauses)
+	}
 	p.parseExpected(ast.KindCloseBraceToken)
 	result := p.finishNode(p.factory.NewCaseBlock(clauses), pos)
 	p.withJSDoc(result, jsdoc)

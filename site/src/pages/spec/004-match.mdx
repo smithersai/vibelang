@@ -1396,3 +1396,398 @@ function cryptoLabel(e: unknown) {
   return "other"
 }
 ```
+
+## Details
+
+Decided details folded in on 2026-11-03. Each keeps its old number as history. The conflict pass deleted superseded, duplicate and relic details and resolved contradictions in favor of Will's words, then accepted VIPs, then later details. Principles are numbered as in [the introduction's Details](/spec/000-intro#details).
+
+### Detail 112
+
+**Async match resolves its arm union using TypeScript's async return adoption.** (live `004-async-result-adoption`; amends detail 79's Result shorthand.) Let `U` be the union of arm result types. The result is `Promise<Awaited<U>>`, using TypeScript's actual async-return resolution, including its Promise-like/thenable checks, not `Promise<U>` when U itself contains a Promise. Keep the existing async boundary and explicit Effect bridge.
+    **Immutable-main source portion (098e7a, 112).** 002/publicVIP5 now state immediate Effect success data for returns, successful try and plain handlers, with no implicit Effect execution or thenable assimilation; explicit Promise runners retain native resolution. The unadopted async-do analogy is replaced by an invoked native async arrow. Complete13-file,82,844-character diff independently read. Source publication only; no own compiler/native/gate check. `main-098-source-receipt.json` records exact scope.
+    **Immutable-main source scope (2756e4, 112).** 004 now uses Promise\<Awaited\<U>> with native async-return/thenable adoption, matching the earlier publicVIP7 amendment. This verifies the chapter source portion, not compiler typing/emission. `main-275-source-receipt.json` records the complete two-file read; no own compiler/gate/native rerun.
+    **Immutable-main source scope (d50d73, 112).** Public VIP7 now states `Promise<Awaited<U>>` async arm-result adoption using native TypeScript thenable rules and the existing async/bridge boundary. Only this public-amendment source portion is independently verified in this batch. `main-d50-source-receipt.json` records the complete two-file source read; no compiler/gate rerun.
+    Current replacement: applied in 25d3d1f2413d9814e2881b92145ad833ad0cec67 (spec-fix-c; supersedes 896853cf4870 after main rebase and current-release placement; queued, not a main receipt).
+    Status: applied in 896853cf4870b2500152bb4951c2d2203526041c (spec-fix-c; queued, not yet a main receipt).
+    ```vibe
+    const n: Promise<number> = async match (true) { default: Promise.resolve(7); }
+    ```
+    Effect TS: `const n: Promise<number> = (async () => { return Promise.resolve(7) })()`; `Effect.promise(() => n)` succeeds with 7. Decided by the agent from principle 2 (TypeScript async return typing) and VIP-7's already-chosen async-function counterpart, 2026-10-29. Apply to detail 79's restatement and 004's typing table.
+
+    Native adoption versus success-data source receipt: accepted VIP-1/VIP-5 distinguish native async/Promise resolution from immediate Effect success data at function returns, `try` successes and plain-handler results. An Effect-valued success is not implicitly executed; explicit native Promise runners retain native assimilation, with Exit-wrapper and Promise-runner results distinguished. The analogy uses an invoked native async arrow, without adopting `async do` (existing196/VIP-2). Complete source replacement `e9a134a1faae` (spec-fix-b; supersedes b7403e1988b3, queued, not main) includes the printed counterpart in snippet checks. Three documentation baseline failures/native controls then Node10/Bun10, strict TypeScript5.9.3/native Effect4.1.0 and regeneration/forms/spec/docs checks are attributed to the fixer; no new language/API behavior or decide-live compiler execution.
+
+    Landed source receipt: e9a134a1faae as main098e7a04a7b5 (spec-fix-b26, gate mq-10310155-19). Full success-data law and native async-IIFE analogy/004 companion; focused/strict/native and all required source checks pass. No compiler-conformance claim.
+
+### Detail 113
+
+**A negated pattern narrows by negating its actual positive test.** (live `004-negated-custom-class`; amends detail 79's class-negation shorthand.) Only the ordinary-class path whose positive test is `s instanceof C` may use that test's exclusion for `not C`. An own custom matcher negates its own invocation, with only the complement narrowing TypeScript establishes from its declared predicate; a boolean-returning matcher establishes none. Fixed Effect guards and generated tagged-error patterns likewise complement their actual guards/tag tests. Do not substitute instanceof for another matcher or invent extra exhaustiveness coverage; detail 78's coverage remains.
+    **Immutable-main source scope (2756e4, 113).** 004 not-pattern row complements the actual recognition test; ownboolean matchers do not become instanceof exclusions or establish narrowing. Chapter source, not compiler conformance. `main-275-source-receipt.json` records the complete two-file read; no own compiler/gate/native rerun.
+    **Immutable-main source scope (d50d73, 113).** Public VIP7 now complements each actual recognition test for negation; ordinary boolean matchers establish no narrowing, and no negation coverage is added. Only this public-amendment source portion is independently verified in this batch. `main-d50-source-receipt.json` records the complete two-file source read; no compiler/gate rerun.
+    Current replacement: applied in 25d3d1f2413d9814e2881b92145ad833ad0cec67 (spec-fix-c; supersedes 896853cf4870 after main rebase and current-release placement; queued, not a main receipt).
+    Publication receipt: applied in c36e89ad7f0d (spec-fix-c; VIP7 actual-test negation; queued, not a main receipt). Existing004 source receipt896853cf4870 remains separate.
+    Status: applied in 896853cf4870b2500152bb4951c2d2203526041c (spec-fix-c; queued, not yet a main receipt).
+    ```vibe
+    class OnlyNumbers {
+      static [Symbol.customMatcher](s: unknown): boolean { return typeof s === "number" }
+    }
+    // s: OnlyNumbers | number
+    match (s) { when not OnlyNumbers: s.toFixed(0); default: "number"; } // TS error: no narrowing
+    ```
+    Effect TS: `if (!OnlyNumbers[Symbol.customMatcher](s)) { s.toFixed(0) }` is a TypeScript error for the union. Decided by the agent from principle 2 (counterpart-based TypeScript narrowing), VIP-7's actual matcher dispatch, and principle 8 (no unproved narrowing), 2026-10-29.
+
+### Detail 117
+
+**Match and is use the pinned per-evaluation cache and FinishMatch, including its error aggregation.** (Opus round-19 M1/m6; VIP-7 snapshot; refines detail 95.) Property-presence/read operations, iterator acquisition, and pulled elements are cached as the pinned CreateMatchCache algorithms prescribe, across arms of one match and within one is evaluation; do not hoist or share across separate evaluations. Run FinishMatch after the selected arm or no-match completion, closing cached iterators not already done. Its combination of an arm/no-match throw and closing errors is the snapshot's AggregateError, not destructuring's incoming-throw precedence. Synchronous JavaScript abrupt completions take that finishing path. In effect code a yielded failure, defect, or interruption abandons the generator and does not reach it, exactly as the existing native-using/destructuring rule; no automatic ensuring is added.
+    **Immutable-main source scope (f6fe7a, 117).** 004 removes its flawed general Reflect.apply/cache lowering recipe and labels the new two-value generator example as a finite native witness. General cache/FinishMatch rules remain above; no full matcher implementation proof. `root-mainf6-source-receipt.json` and `root-mainf6-throws-audit.json` preserve reviewed-prose/structured-artifact limits; no full raw9.19MB human-read or owncompiler/Go/generator/test/gate claim.
+    **Independent f6fe7 source portion (117).** Chapter004 replaces the purported general cache-lowering recipe with a native witness explicitly limited to the fixedtwo()generator. Generalcache/FinishMatch semantics still come from the existing rules, not the witness. Full27,227-character nongenerateddiffread; sourceonly, no decide-livecompiler/gaterun. `main-f6f-source-receipt.json` records limits.
+    Current replacement: applied in ab3d71c5fb7c8da2c5b8eda36d67d6e7bc499267 (spec-fix-c; supersedes 525d50e66907 after main rebase and current-release placement; queued, not a main receipt).
+    Related cache-counterpart follow-up: spec-fix-c reports c9b989606ad1c6ad093cf5ad264c7e6544f0e7d2 queued; this removes the remaining mutable-helper example. It is not a new main landing receipt or a reversal of the separate binding/cache status below.
+    Status: applied in 525d50e66907693342d609d026f18487f348f563 (spec-fix-c; queued, not yet a main receipt).
+    ```vibe
+    function* two() { yield 1; yield 2 }
+    match (two()) { when [let a]: a; when [let a, let b]: a + b; default: 0; } // 3
+    ```
+    Effect TS: perform the pinned cached matching algorithm in the surrounding Effect.gen; later arms reuse the first arm's cached elements, then finish cached iterators. The schematic if-chain counterparts omit cache machinery only when that omission cannot affect their data-only witnesses. Decided by the agent from principle 2 (the pinned TC39 snapshot) and VIP-7's full-proposal decision, 2026-10-29. The r20-004/r20-008 fixes already state this behavior; no removal of cache semantics is approved.
+
+### Detail 119
+
+**Reconcile the disputed TC39 object-key early error with the accepted bare-key syntax.** (live `004-bare-key-early-error`; VIP-7/VIP-16.) VibeLang does not adopt the pinned draft's disputed early error for a MatchProperty PropertyName coverable by BindingIdentifier, either in the bare presence form or before a colon. Bare identifier keys test presence without creating a binding, and identifier keys such as `_tag:` remain valid. Record this explicitly in the vendored README's reconciliation table and 004; do not silently edit the upstream spec.emu. Keep its separate __proto__ pattern-key early error and all unrelated restrictions.
+    **Immutable-main source portion (098e7a, 119).** 004/TC39 README explicitly decline only the disputed BindingIdentifier-coverable object-key early error for bare/colon keys, preserving identifier presence keys, `_tag:` and the separate proto restriction. Complete13-file,82,844-character diff independently read. Source publication only; no own compiler/native/gate check. `main-098-source-receipt.json` records exact scope. Independent root review is retained in `root-main098-source-receipt.json`.
+    Current replacement: applied in 65e5460f15eaee293b112acd006040b4d2ed0f53 (spec-fix-c; supersedes 6d836e97200f after main rebase and current-release placement; queued, not a main receipt).
+    Status: applied in 6d836e97200fea42d9f717d3cbcfc7a711ca536d (spec-fix-c; queued, not yet a main receipt).
+    ```vibe
+    const tracking = "outer"
+    match ({ tracking: "payload" }) { when { tracking }: tracking; default: "none"; } // "outer"
+    match (x) { when { _tag: "Sent", let tracking }: tracking; default: "none"; } // valid keys
+    ```
+    Effect TS: `"tracking" in subject ? tracking : "none"`, with the pinned cached property operations and ordinary narrowing. Decided by the agent from VIP-16's specifically accepted bare-key rule, VIP-7's already-required reconciliation mechanism, and principle 4 (one meaning for identifier property names), 2026-10-29. This removes an incorporated-draft contradiction; it does not admit a new form.
+
+### Detail 123
+
+**FinishMatch seeds errors only from a throw, preserving return/break/continue when closing succeeds.** (live `004-finishmatch-abrupt-kind`; reconciles the pinned VIP-7 snapshot and refines detail 117.) Replace the incorporated FinishMatch step “if matchCompletion is abrupt, append its Value” with “if matchCompletion is a ThrowCompletion, append its Value”. Keep every pending nonthrow completion's value and target while finishing cached iterators. If closing adds no error, propagate the original return/break/continue; if a close fails, apply the snapshot's close-error/aggregation behavior, which may replace that pending nonthrow completion. Keep aggregation for an actual throw plus closing errors and keep Effect-generator abandonment on yielded failures/interruption. Record this reconciliation in the vendored README and 004; retain the upstream spec.emu unmodified.
+    Status: applied in 12d6a3b9ce5e on main (source/cross-reference revalidated by spec-fix-c; no duplicate patch). Native completion/Exit regressions pass in main-decision-receipts.log.
+    ```vibe
+    effect function answer() {
+      const ignored = match (true) { default: do { return 7 }; }
+      return 0
+    } // succeeds with 7, never dies with 7
+    ```
+    Effect TS: `Effect.gen(function* () { return 7 })` for the no-iterator witness; the full lowering carries that ReturnCompletion through FinishMatch. Decided by the agent from VIP-2's same-activation do control flow, VIP-7's no-function-boundary match, and principle 2 (ordinary completion kinds are not all throws), 2026-10-29. Add return/break/continue witnesses; this corrects a contradictory draft step, not source control flow.
+
+### Detail 126
+
+**Empty array patterns have one nullable-list derivation and always pass an Iterator Record.** (live `004-array-nullable-list`; VIP-7 pinned-grammar reconciliation.) Reconcile `ArrayPattern` as `"[" MatchList "]"`, requiring the existing nullable `MatchList` nonterminal. Keep its empty alternative, preserving empty array patterns and zero-argument extractor lists. Every array pattern acquires the iterator record and calls `ListPatternMatches` with that record; its empty path calls `FinishListMatch(iteratorRecord, cacheGroup, 0)`. Drop the draft's absent-MatchList branch passing the original subject, which is not an Iterator Record. Keep the snapshot's caching, empty-length check and iterator finishing; do not treat an empty array pattern as a wildcard or make it array-only.
+    **Immutable-main source portion (098e7a, 126).** 004/AppendixA/TC39 README now use one required nullable MatchList derivation for ArrayPattern, empty-iterable behavior and cached Iterator Records rather than a subject-as-record empty path. Complete13-file,82,844-character diff independently read. Source publication only; no own compiler/native/gate check. `main-098-source-receipt.json` records exact scope. Independent root review is retained in `root-main098-source-receipt.json`.
+    Current replacement: applied in 65e5460f15eaee293b112acd006040b4d2ed0f53 (spec-fix-c; supersedes 6d836e97200f after main rebase and current-release placement; queued, not a main receipt).
+    Status: applied in 6d836e97200fea42d9f717d3cbcfc7a711ca536d (spec-fix-c; queued, not yet a main receipt).
+    ```vibe
+    match (xs) { when []: "empty"; default: "not empty"; }
+    // matches an empty iterable; there is exactly one grammar derivation for []
+    ```
+    Effect TS: acquire/cache the subject's iterator, test that its first step is done, and perform the pinned finishing operations. Decided by the agent from principle 4 (remove the redundant optional node, the smaller repair), principle 2 (Iterator Record abstract-operation contracts), and VIP-7's admitted empty-list semantics, 2026-10-29. Record this deliberate reconciliation in the vendored README and 004/Appendix A/008 as applicable; keep upstream spec.emu intact.
+
+### Detail 127
+
+**Pattern elisions consume their full ECMAScript width, not one item per Elision node.** (live `004-array-elision-count`; VIP-7 snapshot reconciliation.) In every array-pattern/extractor-list elision branch, compute the Elision width as the number of commas. Pull/cache that many consecutive elements, requiring each skipped position to exist, and advance the visited index/count by the full width before the next element or final length check. Apply this to leading, internal and trailing elisions, preserving cache order and iterator finishing. Retain the vendored upstream text and record the corrected abstract operations in its README, 004 and 008.
+    **Immutable-main source portion (fb3e96, 127).** 004/snapshotREADME state full comma-width elision cardinality, required skipped positions and cached-index advancement, with short/full literal witnesses. Complete10-file,47,460-character diff independently read. Source publication only; no own compiler/native/Go/gate check. `main-fb3-source-receipt.json` records exact limits.
+    Current replacement: applied in ab3d71c5fb7c8da2c5b8eda36d67d6e7bc499267 (spec-fix-c; supersedes 525d50e66907 after main rebase and current-release placement; queued, not a main receipt).
+    Status: applied in 525d50e66907693342d609d026f18487f348f563 (spec-fix-c; queued, not yet a main receipt).
+    ```vibe
+    match ([9,3]) { when [,,3]: "hit"; default: "miss"; }   // "miss"
+    match ([9,8,3]) { when [,,3]: "hit"; default: "miss"; } // "hit"
+    ```
+    Effect TS: the pinned list matcher with two cached skips before comparing the third element to 3, then exact-length finishing. Decided by the agent from principle 2 (ECMAScript Elision width), VIP-7's admitted array structure and its pinned explainer, 2026-10-29. This corrects an abstract-operation count; it adds no syntax.
+
+### Detail 128
+
+**An absent optional pattern element consumes zero values; fixed-arity lint uses the admitted length interval.** (live `004-optional-pattern-cardinality`; reconciles the VIP-7 snapshot; refines detail 82.) When an optional MatchElement sees an exhausted iterator, return zero consumed values, retain Done and the unchanged cache, and do not execute its sub-pattern or initialize its bindings. Do not synthesize an undefined element: a present undefined still runs and must satisfy that sub-pattern. Repeated missing optionals keep the same actual index, preserving the cache's sequential-read invariant. The pinned proposal's other binding/scope rules remain; no new absent-binding default is invented.
+    **Immutable-main source portion (fb3e96, 128).** 004/snapshotREADME state zero-consumption absent optionals, no absent binding initialization, present-undefined testing and fixed-extractor required-to-total arity interval, including Option.None(1?). Complete10-file,47,460-character diff independently read. Source publication only; no own compiler/native/Go/gate check. `main-fb3-source-receipt.json` records exact limits.
+    Current replacement: applied in ab3d71c5fb7c8da2c5b8eda36d67d6e7bc499267 (spec-fix-c; supersedes 525d50e66907 after main rebase and current-release placement; queued, not a main receipt).
+    Status: applied in 525d50e66907693342d609d026f18487f348f563 (spec-fix-c; queued, not yet a main receipt).
+    ```vibe
+    match ([]) { when [1?]: "hit"; default: "miss"; }          // "hit": absent
+    match ([undefined]) { when [1?]: "hit"; default: "miss"; } // "miss": present undefined is not 1
+    match (o) { when Option.None(1?): "none"; default: "some"; } // allowed; [] fits the optional list
+    ```
+    Effect TS: the fixed `Option.isOption(s) && Option.isNone(s)` test followed by list matching on `[]`, whose absent optional consumes zero values. For detail 82's no-rest fixed-arity warning, use the interval [required elements, total elements], counting each elision position by detail 127 and optional elements only in the maximum. Warn only if the known extracted length lies outside that interval; raw written argument count is insufficient. Decided by the agent from VIP-7's already-admitted optional grammar and its explicit absence branch, principle 2 (Iterator Record/cache invariants), and principle 8 (no false always-failing warning from an unproved arity test), 2026-10-29. Update 004 and the detail-82 lint restatement together.
+
+### Detail 135
+
+**Default-arm narrowing follows failed actual tests, independently of exhaustiveness coverage.** (live `004-default-predicate-complement`; corrects detail 79's coverage-only shorthand.) Type a default arm using TypeScript control flow after all preceding ordered pattern/guard tests have failed, with the actual cached matcher counterpart. A declared predicate's false branch may exclude a type even though that predicate contributes no `EK4701` coverage. Include guards and source mutations in that flow; do not assume a guarded predicate failed its positive predicate test. Detail 78's deliberately conservative coverage algorithm remains separate and unchanged.
+    **Immutable-main source scope (2756e4, 135).** 004 default arms follow failed ordered actual tests/guards with cachedreads/mutations, independent of exhaustiveness coverage; failed guards do not prove positivepredicate failure. Chapter source only. `main-275-source-receipt.json` records the complete two-file read; no own compiler/gate/native rerun.
+    **Immutable-main source scope (d50d73, 135).** Public VIP7 now types the default arm by actual failed ordered tests/guards, independent of exhaustiveness coverage. Only this public-amendment source portion is independently verified in this batch. `main-d50-source-receipt.json` records the complete two-file source read; no compiler/gate rerun.
+    Current replacement: applied in 25d3d1f2413d9814e2881b92145ad833ad0cec67 (spec-fix-c; supersedes 896853cf4870 after main rebase and current-release placement; queued, not a main receipt).
+    Status: applied in 896853cf4870b2500152bb4951c2d2203526041c (spec-fix-c; queued, not yet a main receipt).
+    ```vibe
+    function isText(s: string | number): s is string { return typeof s === "string" }
+    function classify(s: string | number) {
+      return match (s) { when isText: s.length; default: s.toFixed(0); }
+    } // default s: number
+    ```
+    Effect TS: `if (isText(s)) return s.length; return s.toFixed(0)`, which TypeScript strictly accepts. Decided by the agent from principle 2 (the actual counterpart's true and false branch narrowing), detail 79's overarching counterpart promise, and principle 4 (one control-flow model; coverage only determines missing-case diagnostics), 2026-10-30. Update 004's default sentence and detail-79 restatement after the claimed r19-diffcheck typing table lands; do not stack on its unlanded 68bae0bed8c2.
+
+### Detail 141
+
+**Matching algorithms pass the iterator records their contracts require.** (live `004-iterator-record-flow`; VIP-7 snapshot reconciliation; refines details 117/123/126.) In InvokeCustomMatcher's extractor path, return the Iterator Record from GetIteratorCached, not the user iterable used to acquire it. ListPatternMatches receives that record. GetIteratorCached's IteratorsToClose Set stores private wrapper objects directly; FinishMatch iterates those SetData entries, skips empty slots, and reads each wrapper's internal CachedIterator directly. Do not invent a Value slot or read user-visible IteratorsToClose properties. Keep insertion/closing order, cached iterator reuse, throw-only initial error collection, and settled closing-error aggregation. Record the correction in the vendored README and 004/008 while leaving upstream spec.emu intact.
+    **Immutable-main source portion (fb3e96, 141).** 004/008/snapshotREADME explicitly require shared private cached Iterator Records for array/extractor list/cleanup operations, successful custom-extractor objects, insertion-order registry/empty-slot handling and no user Value/IteratorsToClose bookkeeping reads. Complete10-file,47,460-character diff independently read. Source publication only; no own compiler/native/Go/gate check. `main-fb3-source-receipt.json` records exact limits.
+    **Immutable-main source portion (098e7a, 141).** 004 now explicitly states that every array/extractor list receives its cached Iterator Record and finishing paths do not receive the original subject. This verifies that public statement, not every internal extractor/SetData correction or runtime implementation. Complete13-file,82,844-character diff independently read. Source publication only; no own compiler/native/gate check. `main-098-source-receipt.json` records exact scope.
+    Current replacement: applied in ab3d71c5fb7c8da2c5b8eda36d67d6e7bc499267 (spec-fix-c; supersedes 525d50e66907 after main rebase and current-release placement; queued, not a main receipt).
+    Status: applied in 525d50e66907693342d609d026f18487f348f563 (spec-fix-c; queued, not yet a main receipt).
+    ```vibe
+    class Numeric {
+      static [Symbol.customMatcher](s: unknown): false | [number] { return typeof s === "number" ? [s] : false }
+    }
+    match (7) { when Numeric(let n): n; default: 0; } // 7
+    match ([1]) { when [1]: "yes"; default: "no"; } // "yes"
+    ```
+    Effect TS: call the own matcher, acquire/cache an iterator for its successful iterable result, pass the resulting private Iterator Record to list matching, then finish the cached records in insertion order. Decided by the agent from principle 2 (the stated abstract-operation and ECMAScript SetData contracts), VIP-7's admitted extractor/list semantics, and principle 4 (one private record representation), 2026-10-30. These are value-flow errata, not new match behavior or runtime prototype patches.
+
+### Detail 144
+
+**Array patterns read the iterator with primitive-capable GetV semantics.** (live `004-array-subject-getv`; VIP-7 snapshot reconciliation.) Null and undefined fail an array pattern. For every other subject, acquire/cache Symbol.iterator with GetV-equivalent semantics; a missing or noncallable iterator method fails the pattern. Preserve the original subject as the receiver for inherited getters and for invoking its iterator method, including primitive strings; do not substitute a wrapper object as receiver. A throwing accessor/method or malformed iterator protocol retains the existing implicit error behavior and per-evaluation cache. Object patterns retain their separate validated-Object HasProperty rules.
+    **Immutable-main source portion (fb3e96, 144).** 004/snapshotREADME publish primitive-capable cached GetV iterator lookup, original getter/call receiver, nullish/missing/noncallable misses and native malformed-protocol throws. Complete10-file,47,460-character diff independently read. Source publication only; no own compiler/native/Go/gate check. `main-fb3-source-receipt.json` records exact limits.
+    Current replacement: applied in ab3d71c5fb7c8da2c5b8eda36d67d6e7bc499267 (spec-fix-c; supersedes 525d50e66907 after main rebase and current-release placement; queued, not a main receipt).
+    Status: applied in 525d50e66907693342d609d026f18487f348f563 (spec-fix-c; queued, not yet a main receipt).
+    ```vibe
+    function word(s: unknown) { return match (s) { when ["a","b"]: "word"; default: "other"; } }
+    word("ab") // "word"
+    word(null); word(undefined); word(1) // each "other"
+    ```
+    Effect TS: after a nullish check, perform the native `subject[Symbol.iterator]` read and call the acquired method with subject as this, then use the cached list matcher and finishing operations. Decided by the agent from VIP-7's admitted iterable subjects, principle 2 (ECMAScript GetV versus Object-only Get), and principle 8 (do not claim an invalid abstract-operation assertion has a defined runtime outcome), 2026-10-30. Record the reconciliation in the vendored README and 004/008; it removes no primitive iterable from the language.
+
+### Detail 146
+
+**The is evaluator retains Boolean results in a Completion and always finishes synchronous matching.** (live `004-is-result-conversion`; VIP-7 snapshot reconciliation, details 117/123.) Capture `Completion(MatchPatternMatches(...))` without an initial `?` unwrapping. A normal completion already contains true or false; preserve it unchanged and pass the Completion Record to FinishMatch. Remove the obsolete conversion from the internal not-matched sentinel, which this operation does not return. A synchronous matcher throw also reaches FinishMatch before propagating; yielded Effect failure/defect/interruption retains the established generator-abandonment rule.
+    Status: applied in 12d6a3b9ce5e on main (source/cross-reference revalidated by spec-fix-c; no duplicate patch). Native completion/Exit regressions pass in main-decision-receipts.log.
+    ```vibe
+    const no = 2 is 1  // false
+    const yes = 1 is 1 // true
+    ```
+    Effect TS: `const a: number = 2, b: number = 1; const no = a === 1; const yes = b === 1` for these tests (widened subjects avoid TypeScript's unrelated disjoint-literal comparison diagnostic), with the pinned completion/finish machinery for general matching. Decided by the agent from VIP-7's Boolean is contract, principle 2 (Completion versus ECMAScript Boolean values), and detail 117's synchronous finishing rule, 2026-10-30. Record this in README/004/008 without editing the vendored upstream text.
+
+### Detail 147
+
+**A pattern guard reads its expression's value before converting it to Boolean.** (live `004-guard-reference-value`; VIP-7 snapshot reconciliation.) Evaluate the guard Expression once, apply GetValue once to the resulting reference/value, and then ToBoolean. This reads identifier/member values, invokes a property getter at the source read, and preserves a lexical TDZ error. Never treat an internal Reference Record as a truthy ECMAScript value. Retain source order, ordinary TypeScript guard narrowing, and existing implicit-error behavior.
+    **Immutable-main source portion (fb3e96, 147).** 004/snapshotREADME state once-only guard GetValue before Boolean conversion, preserving getters/TDZ/abrupt read timing. Complete10-file,47,460-character diff independently read. Source publication only; no own compiler/native/Go/gate check. `main-fb3-source-receipt.json` records exact limits.
+    Current replacement: applied in ab3d71c5fb7c8da2c5b8eda36d67d6e7bc499267 (spec-fix-c; supersedes 525d50e66907 after main rebase and current-release placement; queued, not a main receipt).
+    Status: applied in 525d50e66907693342d609d026f18487f348f563 (spec-fix-c; queued, not yet a main receipt).
+    ```vibe
+    function classify(flag: boolean) {
+      return match (true) { when true and if (flag): "hit"; default: "miss"; }
+    }
+    classify(false) // "miss"
+    ```
+    Effect TS: `if (true && flag) return "hit"; return "miss"`, with the subject tested/cached as specified. Decided by the agent from principle 2 (TypeScript if and ECMAScript GetValue/ToBoolean), VIP-7's adopted guard meaning, and principle 4 (one ordinary expression read, no matcher-specific reference conversion), 2026-10-30. Add an explicit reconciliation to README/004; retain the upstream spec.emu and add no new wrapper or diagnostic.
+
+### Detail 150
+
+**Object pattern properties execute left to right in source order.** (live `004-object-property-order`; VIP-7 snapshot reconciliation.) In the recursive MatchPropertyList operation, evaluate the left prefix first, stop on failure, then evaluate the final property. Concatenate excluded-key results in that order. For each property retain key evaluation, presence check, cached value read, sub-pattern and binding initialization in order; copy object rest only after the property list. The printed right-to-left recursion contradicts the snapshot's explainer and is not adopted.
+    **Immutable-main source portion (fb3e96, 150).** 004/snapshotREADME state left-to-right object property/key/presence/value/subpattern/binding order with short-circuit and rest afterward. Complete10-file,47,460-character diff independently read. Source publication only; no own compiler/native/Go/gate check. `main-fb3-source-receipt.json` records exact limits.
+    Current replacement: applied in ab3d71c5fb7c8da2c5b8eda36d67d6e7bc499267 (spec-fix-c; supersedes 525d50e66907 after main rebase and current-release placement; queued, not a main receipt).
+    Status: applied in 525d50e66907693342d609d026f18487f348f563 (spec-fix-c; queued, not yet a main receipt).
+    ```vibe
+    const seen: string[] = []
+    const s = { get first() { seen.push("first"); return seen.length }, get second() { seen.push("second"); return seen.length } }
+    match (s) { when { first: 1, second: 2 }: "hit"; default: "miss"; } // hit; seen: first, second
+    ```
+    Effect TS: the source-ordered cached checks first === 1 and then second === 2, short-circuiting on failure. Decided by the agent from the pinned explainer's explicit object-pattern execution order, principle 2 (ordinary TypeScript property evaluation order), and principle 4 (one source-order rule), 2026-10-30. Record the recursion correction in README/004 and keep the upstream spec.emu intact.
+
+### Detail 151
+
+**Object rest retains ordinary CopyDataProperties reads outside the match-specific read cache.** (live `004-object-rest-cache`; refines detail 117's cache summary under VIP-7.) GetCached and the specified presence/iterator operations use the per-evaluation match cache. Object-rest copying uses the pinned CopyDataProperties own-key, enumerability and Get behavior instead; it can re-read a getter already cached by another pattern. Qualify the once-per-match getter statement to cached pattern reads. Do not silently replace rest copying with a new cached-copy algorithm or freeze its current key/descriptor snapshot.
+    **Immutable-main source portion (fb3e96, 151).** 004/snapshotREADME distinguish cached pattern reads from ordinary object-rest CopyDataProperties own-key/enumerability/Get behavior; rest may re-read a getter. Complete10-file,47,460-character diff independently read. Source publication only; no own compiler/native/Go/gate check. `main-fb3-source-receipt.json` records exact limits.
+    Current replacement: applied in ab3d71c5fb7c8da2c5b8eda36d67d6e7bc499267 (spec-fix-c; supersedes 525d50e66907 after main rebase and current-release placement; queued, not a main receipt).
+    Status: applied in 525d50e66907693342d609d026f18487f348f563 (spec-fix-c; queued, not yet a main receipt).
+    ```vibe
+    let reads = 0
+    const s = { get value() { return ++reads } }
+    const result = match (s) { when { value: 0 }: 0; when { ...let rest }: rest.value; }
+    // result === 2; reads === 2
+    ```
+    Effect TS: the first pattern reads/caches s.value; the next arm's ordinary object rest copy reads it again. Decided by the agent from VIP-7's pinned CopyDataProperties operation, principle 2 (TypeScript object-rest behavior), and principle 4 (keep the existing operation rather than add another cache policy), 2026-10-30. Update README/004/008's cache wording consistently.
+
+### Detail 155
+
+**Selected match arms and default arms read their expression values before finishing.** (live `004-arm-reference-value`; VIP-7 snapshot reconciliation, same reference principle as detail 147.) At all three selected/default Expression sites, evaluate once, perform GetValue once, and return that ECMAScript language value to clause traversal. Capture abrupt completions through the existing Completion/FinishMatch path. A selected getter is read before finishing cached iterators, so its throw is part of the pending match completion and aggregation. Do not defer that read to an outer expression or pass an internal Reference Record as a language value. Retain outward jumps and yielded Effect abandonment.
+    **Immutable-main source portion (fb3e96, 155).** 004/snapshotREADME state selected/default expression GetValue before iterator finishing, preserving getter/TDZ/abrupt-completion timing. Complete10-file,47,460-character diff independently read. Source publication only; no own compiler/native/Go/gate check. `main-fb3-source-receipt.json` records exact limits.
+    Current replacement: applied in ab3d71c5fb7c8da2c5b8eda36d67d6e7bc499267 (spec-fix-c; supersedes 525d50e66907 after main rebase and current-release placement; queued, not a main receipt).
+    Status: applied in 525d50e66907693342d609d026f18487f348f563 (spec-fix-c; queued, not yet a main receipt).
+    ```vibe
+    function choose(answer: number) { return match (1) { when 1: answer; default: 0; } }
+    choose(7) // 7
+    ```
+    Effect TS: `if (subject === 1) return answer; return 0`, with the pinned cache/finish boundary around arm-value acquisition for a general subject. Decided by the agent from VIP-7's arm-value contract, principle 2 (GetValue distinguishes a reference from its value), and principle 4 (one expression-read rule for guards and selected values), 2026-10-30. Keep the upstream draft intact and list the evaluator-site corrections explicitly.
+
+### Detail 159
+
+**Inclusive relational patterns retain the ordinary \<= and >= directions.** (live `004-relational-inclusive-direction`; VIP-7 snapshot reconciliation.) For \<= use IsLessThan(value, subject, false); for >= use IsLessThan(subject, value, true). Each returns false for a true or undefined comparison result, and true otherwise. Preserve admitted subject types, once-only bound evaluation, subject/bound coercion order and unordered/NaN behavior. The printed swapped arguments implement the opposite bounds and are not an intentional language exception.
+    **Immutable-main source portion (fb3e96, 159).** 004/snapshotREADME publish ordinary admitted-subject \<=/>= direction, once-only bound/coercion order, unordered failure and rejection before bound evaluation for other subject types. Complete10-file,47,460-character diff independently read. Source publication only; no own compiler/native/Go/gate check. `main-fb3-source-receipt.json` records exact limits.
+    Current replacement: applied in ab3d71c5fb7c8da2c5b8eda36d67d6e7bc499267 (spec-fix-c; supersedes 525d50e66907 after main rebase and current-release placement; queued, not a main receipt).
+    Status: applied in 525d50e66907693342d609d026f18487f348f563 (spec-fix-c; queued, not yet a main receipt).
+    ```vibe
+    match (1) { when <= 2: "small"; default: "large"; } // small
+    match (1) { when >= 2: "large"; default: "small"; } // small
+    ```
+    Effect TS: ordinary subject \<= bound and subject >= bound after the source's once-only evaluations, with the snapshot's subject-admission rule. Decided by the agent from principle 2 (the named ECMAScript/TypeScript comparisons), VIP-7's relational-pattern meaning, and principle 4 (inclusive forms agree with their strict counterparts), 2026-10-30. Reconcile the two algorithms in README/004; leave upstream spec.emu intact.
+
+### Detail 165
+
+**Later or alternatives may replace the same pattern binding initialized by a failed alternative.** (live `004-or-binding-replacement`; VIP-7 snapshot reconciliation.) Adopt the pinned explainer's explicit replacement rule: track initialization provenance within the relevant or pattern and permit a later same-keyword binding to replace a cell initialized by a failed earlier alternative. Preserve that cell's identity so a saved closure sees the replacement. Retain the ordinary TDZ before first initialization, user-facing const immutability, and duplicate-initialization errors outside this authorized replacement. Do not implement separate disconnected cells per alternative or reset unrelated bindings.
+    **Immutable-main source portion (098e7a, 165).** 004/README now preserve one shared same-keyword or-binding cell and permit only the authorized replacement after a failed earlier alternative; unrelated bindings, TDZ and const assignment rules remain. Complete13-file,82,844-character diff independently read. Source publication only; no own compiler/native/gate check. `main-098-source-receipt.json` records exact scope. Independent root review is retained in `root-main098-source-receipt.json`.
+    **Immutable-main source scope (d0cdbe, 165).** Public VIP7 shared-cell/or replacement amendment published; this receipt does not certify the separately queued full chapter/counterpart slice. `root-main-d0cd-source-receipt.json` retains the complete31-file diff/hash/read scope. Source only; no decide-live compiler/gate rerun.
+    Current replacement: applied in c1aba4c130998919c6116ebe436e28fec4f639f1 (spec-fix-c; supersedes 1325fb6df62c after main rebase and current-release placement; queued, not a main receipt).
+    Publication receipt: applied in ac8433dd4267 (spec-fix-c; VIP7 cell rules; queued, not a main receipt).
+    Status: applied in 1325fb6df62cafb4f1c52d1665ad7f24dcf4c99c (spec-fix-c; queued, not yet a main receipt).
+    ```vibe
+    match ([5]) { when ([let x and String]) or { length: let x }: x; default: 0; } // 1
+    ```
+    Effect TS: one hygienic pattern-binding cell receives 5 in the failed left branch, then 1 in the successful right branch; reads/closures share that cell. Decided by the agent from VIP-7's incorporated explainer example, principle 2 (the expressly specified or binding behavior), and principle 4 (one shared binding identity rather than per-alternative source scopes), 2026-10-30. Reconcile or and VariableDeclarationPatternMatches in README/004 while retaining the upstream draft.
+
+### Detail 168
+
+**Primitive template patterns follow the formal no-substitution grammar for now.** (live `004-interpolated-template-pattern`; VIP-7 reconciliation, option A.) Admit NoSubstitutionTemplate patterns; reject an interpolated template in primitive-pattern position as a syntax error. Ordinary interpolated templates remain valid in arms and guard expressions. The explainer's ordinary-interpolation wording and the formal draft's future structural-interpolation note do not agree; choose the conservative formal grammar instead of assigning a meaning that a later pinned snapshot could need to remove. Document this as an explicit reconciliation in README/004, not an unmentioned omission from the full-explainer claim.
+    **Immutable-main source scope (2756e4, 168).** 004 and pinnedsnapshotREADME explicitly admit only NoSubstitutionTemplate primitivepatterns and reject interpolation there while allowing ordinary guard/arm interpolation. This source portion does not publish the separate0707 diagnostic catalog. `main-275-source-receipt.json` records the complete two-file read; no own compiler/gate/native rerun.
+    Current replacement: applied in ef0aa31ca3d73f8a9e7c2584ea1340024e5d67d3 (spec-fix-c; supersedes f7d0b168341a after main rebase and current-release placement; queued, not a main receipt).
+    Status: applied in f7d0b168341a87e441efa07c72cb0f326d2f3857 (spec-fix-c; queued, not yet a main receipt).
+    ```vibe
+    match (s) { when `tag-A`: "hit"; default: "miss"; } // allowed
+    match (s) { when let v and if (v === `tag-${kind}`): "hit"; default: "miss"; } // ordinary interpolation in a guard
+    // when `tag-${kind}`: is a syntax error; use the guard form
+    ```
+    Effect TS: compare the string subject to "tag-A", or evaluate the ordinary template in the source-position guard and compare it there. Decided by the agent from principle 8 (reject the unsettled syntax now; a later relaxation preserves compatibility), principle 4 (retain one existing primitive grammar rather than invent another interpolation meaning), and the pinned formal NoSubstitutionTemplate production, 2026-10-30. The direct-pattern corpus search in main cases/examples found no interpolated-template pattern; interpolation in arm values is unaffected. No string-extraction/binding syntax is introduced.
+
+### Detail 169
+
+**Signed Number-zero patterns do not cover TypeScript's collapsed zero case.** (live `004-signed-zero-coverage`; qualifies detail 78's literal coverage, VIP-7.) Preserve the pinned runtime tests: a syntactically signed Number NumericLiteral uses `SameValue`, while unsigned literal zero uses `SameValueZero`. Because TypeScript's literal type `0` admits both positive and negative zero, neither a `+0` nor a `-0` pattern alone matches every value of that case. Such a signed pattern contributes no coverage of the zero case under the existing whole-case algorithm, including any equivalent Number-literal spelling whose evaluated value is zero. An unsigned zero literal covers it. Other valid signed nonzero numeric literals retain singleton coverage; valid bigint zero has no distinct negative-zero value. Do not change pattern equality or give ordinary negative literals no coverage. The current conservative algorithm does not combine the two partial signed-zero arms into a new finer proof: use unsigned zero or `default` for that case. This also applies to a checked zero-valued enum case admitting both signs.
+    **Immutable-main source scope (2756e4, 169).** 004 coverage excludes all signed Numberzero spellings, including a pair of signedzero arms and checkedzero enumcases; unsignedzero covers both signs, nonzero/bigint cases retain native rules. Source only. `main-275-source-receipt.json` records the complete two-file read; no own compiler/gate/native rerun.
+    Current replacement: applied in ef0aa31ca3d73f8a9e7c2584ea1340024e5d67d3 (spec-fix-c; supersedes f7d0b168341a after main rebase and current-release placement; queued, not a main receipt).
+    Status: applied in f7d0b168341a87e441efa07c72cb0f326d2f3857 (spec-fix-c; queued, not yet a main receipt).
+    ```vibe
+    function label(n: 0 | 1) {
+      return match (n) { when -0: "negative"; when 1: "one"; }
+    } // EK4701: ordinary positive zero is not covered
+    function complete(n: 0 | -1) {
+      return match (n) { when 0: "zero"; when -1: "negative one"; }
+    } // exhaustive: unsigned zero covers both signs; -1 covers its singleton
+    ```
+    Effect TS: the first match tests `Object.is(n, -0)`, then `n === 1`, and otherwise throws `new TypeError()`; the second tests `n === 0`, then `n === -1`. A positive `0` belongs to the first parameter type yet fails both tests. Decided by the agent from principle 2 (TypeScript's collapsed zero type and the pinned TC39 signed tests), detail 78's requirement that a covering arm match every value of a case, and principle 8 (retain conservative whole-case coverage), 2026-10-30. Reconcile 004's literal/unary-numeric coverage and add positive-zero, negative-zero, unsigned-zero, alternate spelling, nonzero-negative and bigint witnesses; keep runtime semantics unchanged.
+
+### Detail 179
+
+**Prefix negation wins the contextual not/member-extractor collision by syntax alone.** (live `004-not-extractor-ambiguity`; VIP-7 incorporated-grammar reconciliation.) When the same pattern token sequence admits both `not MatchPattern` and an identifier-rooted member/extractor pattern starting with contextual `not`, choose the negation derivation before applying the ordinary pattern early errors. Never consult the existence, type or symbol of a local binding to select that parse. This includes `not(let x)` (negation of a parenthesized binding pattern) and `not[0]` (negation of an array pattern). Preserve `not` as an ordinary TypeScript name outside this prefix collision and in property/binding-name positions. A qualified callee such as `helpers.not(...)` is an ordinary extractor; renaming the callee is another existing escape. If negation is not a syntactically available derivation, this rule does not invent one or globally reserve the name. Do not retry the competing identifier parse merely to evade an early error on the selected negation.
+    **Immutable-main source portion (098e7a, 179).** 004/AppendixA/README publish syntactic prefix-not priority over an identifier-rooted member/extractor before early errors, without binding lookup or identifier fallback; qualified extractors remain available. Complete13-file,82,844-character diff independently read. Source publication only; no own compiler/native/gate check. `main-098-source-receipt.json` records exact scope. Independent root review is retained in `root-main098-source-receipt.json`.
+    Current replacement: applied in 65e5460f15eaee293b112acd006040b4d2ed0f53 (spec-fix-c; supersedes 6d836e97200f after main rebase and current-release placement; queued, not a main receipt).
+    Status: applied in 6d836e97200fea42d9f717d3cbcfc7a711ca536d (spec-fix-c; queued, not yet a main receipt).
+    ```vibe
+    function not(s: unknown): [unknown] { return [s] }
+    const helpers = { not }
+    match (5) { when not(let x): "hit"; default: "miss"; } // miss; local not is not called
+    match (5) { when helpers.not(let x): "hit"; default: "miss"; } // hit; extractor is called
+    match ([0]) { when not[0]: "other"; default: "zero"; } // zero; not is prefix negation
+    ```
+    Effect TS: the first pattern negates the always-matching binding test and therefore selects the fallback without invoking the function; the qualified extractor calls `helpers.not(subject)` once and matches its one-element result list. Decided by the agent from principle 3 (call-site/pattern syntax determines behavior, never binding-dependent grammar), principle 4 (one priority for the contextual prefix rather than type/scope-driven reparsing), and VIP-7's required parenthesized negation syntax, 2026-10-30. Record the collision rule in Appendix A's contextual-keyword row, 004 and the vendored README while retaining upstream files. Evidence: `decide-live-scratch/root-not-pattern-reference.log` on Effect `4.1.0` observes the competing reference outcomes `Success({ result: "miss", calls: 0 })` and `Success({ result: "hit", calls: 1 })`; it demonstrates why the grammar needs one choice, not current compiler behavior. Add the two ambiguous forms and qualified extractor as grammar/behavior witnesses.
+
+### Detail 187
+
+**The regex-literal pattern alternative includes its promised extractor suffix.** (live `004-regex-extractor-grammar`; VIP-7 regex-literal reconciliation and named-RegExp extraction, grammar admission repair.) Use one `RegularExpressionPattern` alternative of `MatchPattern`, with exactly the bare `RegularExpressionLiteral` branch and `RegularExpressionLiteral ( MatchList )` branch, preserving the pinned nullable MatchList and grammar parameters. Replace the earlier bare-literal addition rather than adding a second derivation for the same bare regex. Route the bare branch through the existing regex Boolean test and the suffixed branch through the same adopted regex extractor/iterator/list matching operation used for a named RegExp value. Evaluate the literal once at its pattern evaluation point. Preserve global/non-global behavior and the adopted singleton extraction containing the complete match result; this does not switch to the explainer's different spread-of-captures contract or admit arbitrary expression/call callees.
+    **Immutable-main source portion (098e7a, 187).** 004/AppendixA/README use one regex-literal pattern alternative with bare/extractor branches and nullable MatchList, preserving named-RegExp extraction and single evaluation. Complete13-file,82,844-character diff independently read. Source publication only; no own compiler/native/gate check. `main-098-source-receipt.json` records exact scope. Independent root review is retained in `root-main098-source-receipt.json`.
+    Current replacement: applied in 65e5460f15eaee293b112acd006040b4d2ed0f53 (spec-fix-c; supersedes 6d836e97200f after main rebase and current-release placement; queued, not a main receipt).
+    Status: applied in 6d836e97200fea42d9f717d3cbcfc7a711ca536d (spec-fix-c; queued, not yet a main receipt).
+    ```vibe
+    function digits(s: string) {
+      return match (s) {
+        when /(\d+)-(\d+)/(let m): m[1] + m[2];
+        default: "none";
+      }
+    } // digits("12-34") is "1234"
+    ```
+    Effect TS: evaluate the regexp, obtain its adopted match result through the existing RegExp matching operation, fail the pattern on null, otherwise match the singleton extracted list `[result]`; `m` receives the full result array before the selected expression reads its captures. The named and literal spellings use the same extractor semantics. Decided by the agent from VIP-7's adopted regex-literal pattern support, principle 1 (a literal RegExp extractor behaves like the same value assigned a name), and principle 4 (one narrow regex production rather than broadening every matcher expression), 2026-10-30. Reconcile 004, Appendix A and the vendored README, retaining upstream files. Add bare/suffixed literals, nullable-list handling, named equivalence and global/non-global witnesses. `decide-live-scratch/root-regex-extractor-reference.log` records `Success("1234")` and `Success("none")` on Effect `4.1.0`; the incorporated special member-expression production lacks a regex-literal root. This is grammar/reference evidence, not a VibeLang parser-conformance result.
+
+### Detail 190
+
+**A no-substitution template pattern compares with the general SameValueZero operation.** (live `004-template-precondition`; VIP-7 pinned-algorithm reconciliation, independent of detail 168's interpolation restriction.) Replace the template branch's unguarded `SameValueNonNumber(subject, templateValue)` with `SameValueZero(subject, templateValue)`, as the adjacent Literal branch does. The template value is a string; equal strings match and every non-string subject fails without coercion. Do not manufacture an assertion exception for violating an abstract operation's preconditions, call `toString` on the subject, or change arm selection/order. The template remains evaluated at its ordinary pattern position.
+    **Immutable-main source scope (2756e4, 190).** 004/pinnedsnapshotREADME replace unguarded SameValueNonNumber for primitive templatepatterns with general SameValueZero, preserving string equality and nonstring miss without coercion. Source only. `main-275-source-receipt.json` records the complete two-file read; no own compiler/gate/native rerun.
+    Current replacement: applied in ef0aa31ca3d73f8a9e7c2584ea1340024e5d67d3 (spec-fix-c; supersedes f7d0b168341a after main rebase and current-release placement; queued, not a main receipt).
+    Status: applied in f7d0b168341a87e441efa07c72cb0f326d2f3857 (spec-fix-c; queued, not yet a main receipt).
+    ```vibe
+    effect function label(s: unknown) {
+      return match (s) { when `ready`: "hit"; default: "miss"; }
+    } // "ready" hits; 0, null, objects and Symbols miss
+    ```
+    Effect TS: a non-coercing comparison `subject === "ready"` followed by the selected value is equivalent for this string constant; general SameValueZero handles the full admitted subject domain. Decided by the agent from principle 2 (ECMAScript's operation domains and the pinned explainer's primitive no-coercion rule), principle 4 (reuse the neighboring general equality test rather than add a new special failure), and VIP-7's ordinary fallback behavior, 2026-10-30. Reconcile 004 and the vendored README, retaining upstream `spec.emu`. `decide-live-scratch/root-template-precondition-reference.log` on Effect `4.1.0` confirms string hit/miss and non-string misses while identifying the old SameValueNonNumber precondition failures. This is algorithm/reference evidence, not compiler conformance.
+
+### Detail 191
+
+**Lexical is bindings in while/do-while use the explainer's for-of-style loop scope and fresh iteration cells.** (live `004-is-loop-scope`; VIP-7 reconciliation, derives the specific loop model rather than applying nearest-block prose to a loop head.) Adopt the pinned explainer's explicit loop-head/per-iteration model. A loop-local head scope shadows outer names and does not leak outside the loop. Before each complete `while` condition evaluation, establish fresh uninitialized cells for that condition's lexical `is` bindings; all condition reads see their TDZ until the corresponding pattern initializes them. A successful condition and its body share those cells, so closures observe that iteration's later `let` writes. A next test, including after `continue`, gets new cells rather than reinitializing a prior `const` cell. A short-circuited binding stays uninitialized even if another path makes the condition true. Preserve nested source block/function scopes instead of hoisting their own bindings into the head.
+    **Immutable-main source portion (098e7a, 191).** 004/008/README now state per-condition fresh lexical-is cells, successful-body sharing, shadowing/TDZ/short-circuit rules and permanent initial-do-head closure TDZ without prescribing a lowering. Complete13-file,82,844-character diff independently read. Source publication only; no own compiler/native/gate check. `main-098-source-receipt.json` records exact scope. Independent root review is retained in `root-main098-source-receipt.json`.
+    **Immutable-main source scope (d0cdbe, 191).** Public VIP7/snapshot README loop-head/per-iteration/initial-do TDZ-cell lifetime amendment published; separately queued chapter lifetime/counterpart slice not fully certified by this receipt. `root-main-d0cd-source-receipt.json` retains the complete31-file diff/hash/read scope. Source only; no decide-live compiler/gate rerun.
+    Current replacement: applied in c1aba4c130998919c6116ebe436e28fec4f639f1 (spec-fix-c; supersedes 1325fb6df62c after main rebase and current-release placement; queued, not a main receipt).
+    Publication receipt: applied in ac8433dd4267 (spec-fix-c; VIP7 cell rules; queued, not a main receipt).
+    Status: applied in 1325fb6df62cafb4f1c52d1665ad7f24dcf4c99c (spec-fix-c; queued, not yet a main receipt).
+    ```vibe
+    function readLoop() {
+      const x = 99; let n = 0; const readers: (() => number)[] = []
+      while (n < 2 && (++n is const x)) { readers.push(() => x) }
+      return [x, ...readers.map(f => f())] // [99, 1, 2]
+    }
+    ```
+    For `do-while`, its first body executes in the loop's initial uninitialized head environment; a direct read is TDZ. A closure captured there keeps those cells and remains TDZ later, just as detail 109's pre-iteration head captures never become initialized per-item cells. After that body, each condition gets a fresh cell set; when true, the following body shares that preceding condition's set. `continue` reaches the next condition with a new set; false/break exits without exporting names. Initial-body closures are not retroactively rebound to a later condition. Leave `if`'s nearest-block behavior and detail 165's within-one-or replacement unchanged; this does not relax the existing `var` ban.
+    Effect TS: ordinary fresh lexical declarations per iteration give preserved outer `99` and captured `[1,2]`; native head-TDZ closures as in detail 109 model the initial do-body cell lifetime. Decided by the agent from VIP-7's incorporated explainer's specific proposed for-of loop scope, principle 2 (TypeScript/ECMAScript per-iteration lexical identity), detail 109's already-decided head-versus-iteration cell rule, and principle 4 (fresh condition activations rather than an exception allowing const reinitialization), 2026-10-30. Reconcile 004, the vendored README and source-binding guarantees; add repeated-const/shadowing, condition/body shared-cell, skipped-binding TDZ, continue and first-body do-while witnesses. `root-is-loop-reference.log` demonstrates `[1,2]` versus reused-cell `[2,2]`; `root-loop-binding-cells.log` checks shared mutation, permanent initial-head TDZ and fresh later captures. These are native lexical-cell/reference-policy checks, not compiler conformance or execution of native pattern syntax.
+
+    **`is` expression example and non-loop scope clarification (Opus round23 m26).** The operator runs the same ordered pattern test and extraction as a one-pattern match and returns a boolean; apply the same subject evaluation, cache, cleanup and predicate-narrowing rules, not `instanceof` merely because the pattern is a class. Lexical pattern bindings in an `if` condition or ordinary expression belong to the nearest enclosing source block, as the incorporated explainer's `is`/Bindings section expressly says; they are not scoped only to the successful branch. A binding stays TDZ until its binding pattern executes. Match failure after that execution does not undo initialization; a failed prefix or skipped branch may leave it uninitialized. Preserve detail 165's specific `or` replacement rule and this detail's separate loop scopes, and retain the existing `var` ban. A focused example is `function inspect(x: number) { if (x is let value and if (value > 0)) return value; return value }`: both paths can read `value`, because the unconditional binding executed before the guard, and the function returns `x`. Its ordinary TypeScript/Effect counterpart is `function inspect(x: number) { let value = x; if (value > 0) return value; return value }`. Conversely, in `if (s is [1, let value]) { use(value) }`, the enclosing block contains `value`, but a failure of the first element can leave a later read in TDZ. Add complete `vibe es`/`ts effect` examples to 004 and state this scope; a hand-written counterpart for a fallible pre-binding pattern needs the existing uninitialized-cell model, not unconditional `let value = undefined`. Decided by the agent from VIP-7's incorporated pinned explainer and principles 2 and 4, 2026-10-30; no new operator or binding policy is introduced.
+
+### Detail 210
+
+**Finite match coverage uses effective generic constraints without boxing ordinary literal types.** (live `004-generic-subject-coverage`; Opus r21/r22 m6; clarifies details 78/102/200.) For `EK4701` domain normalization, begin with the TypeScript type of the subject expression at its evaluation point, including the flow refinements the pinned checker actually represents there. Resolve that type's effective base constraint where one exists (including a constrained type parameter or a generic-containing intersection); otherwise retain that type. Then apply the existing finite-member/tag-case normalization. Preserve literal, Boolean, enum and tag-case identity. Do not replace every subject with the checker's boxed apparent type: ordinary `0`, `"A"` and `true` must not become `Number`, `String` and `Boolean` wrapper subjects.
+    Status: source-identical metadata replacement queued as 31217af424251e9f4bb0b24cd3e5ba4ba19cd18b (spec-fix-c; tracked files identical to tested a2ccf6c40ec7; description deduplicated).
+    Status: applied in a2ccf6c40ec7bd236fadcb2ef809655c20f270bc (spec-fix-c; queued, not yet a main receipt).
+    Status: applied in ce8771ed0967f85172e079b164a61bac61c76963 (spec-fix-c; queued, not yet a main receipt).
+    ```vibe
+    function tags<T extends { _tag: "A" } | { _tag: "B" }>(s: T) {
+      return match (s) { when { _tag: "A" }: 1; when { _tag: "B" }: 2; } // exhaustive
+    }
+    function letters<T extends "A" | "B">(s: T) {
+      return match (s) { when "A": 1; } // EK4701: B remains in the constraint
+    }
+    function open<T>(s: T) { return match (s) { when "A": 1; } } // open subject: no EK4701; unmatched execution still TypeError
+    ```
+    A constrained `T` uses its finite constraint as a conservative domain: missing `B` in the tagged example is likewise `EK4701`; covering both cases suffices for every permitted instantiation. Unconstrained `T`, `any`/`unknown`, a broad constraint, or any normalized member outside the admitted families keeps details 78/102's existing open-subject policy (checking off, runtime matching/no-match behavior unchanged). Do not adopt the old native compiler's separate rejection of unconstrained matches as the current policy. Aliases/instantiations use resolved checker identities and reductions; an unprovable finite domain stays open rather than being guessed closed.
+
+    **Flow is not a second inference engine.** Honor a genuine represented refinement, such as `T & { _tag: "A" }` supplied by a predicate, whose effective constraint is the A member; a single A arm can then cover it. An ordinary union subject already narrowed to A likewise has the A domain. If TypeScript still exposes the bare generic `T` after an equality/property guard, its constraint remains the domain: do not infer extra narrowing from source guard text just for coverage. In the pinned 5.9.3 reference, both a direct tag guard and a literal-equality guard leave the bare generic reference typed `T`, while the predicate-intersection and ordinary-union controls expose the narrower type. Preserve ordinary arm/default subject flow under details 79/113/135; this coverage projection neither casts the subject nor changes binding types, and it never removes runtime tests.
+
+    Effect TS: the corresponding native generic `switch (s._tag)` or `switch (s)` over the admitted literal constraint, with explicit no-match `TypeError` where a source path remains; the type proof changes no Effect operation or Exit. Decided by the agent from principle 2 (the pinned TypeScript flow/constraint types), principle 8 (finite over-approximation without invented narrowing), and details 78/102/200's existing domain/coverage contract, 2026-10-30. Add tagged/literal constrained complete/incomplete cases, unconstrained/open controls, represented-flow and bare-generic guard controls, and ordinary single-literal controls to 004/VIP-7 and fixing tests. This settles an underspecified normalization term; no Will choice or new runtime/public API is involved. `root-generic-domain-reference.log` records strict TypeScript 5.9.3 checker types, base constraints and apparent types for all those boundary forms. It is static reference evidence, not a VibeLang conformance claim; spec-fix-c retains source investigation/application.
+    **Additional native-check receipt, 2026-10-30.** `generic-coverage-reference.log` independently confirms complete/incomplete tagged and literal constraints, unconstrained controls and the raw-reference boundary. Native TypeScript may accept a one-case switch or assignment after a bounded literal guard while still reporting the source reference type as bare `T`; detail 210 deliberately keeps that reference's conservative full constraint for coverage. Do not use the native switch's final whole-object `never` proof as a replacement for the stated coverage projection (likewise detail 200's uniform-tag distinction). Ordinary flow/assignability remains TypeScript's. The expanded exploratory log records the expected TS2322 for assigning an unconstrained `T` to `"A"`; the final strict control marks that as an expected error and passes. These are checker-reference controls, not VibeLang diagnostics or permission to broaden the recorded rule.
+
+### Detail 214
+
+**An `is` pattern may not introduce lexical bindings into an unsettled formal-parameter initialization environment.** (live `004-is-parameter-binding-scope`; VIP-7 pinned explainer Binding Behavior Details explicitly leaves function-argument-list scope unfinished; scope-analysis draft operations are TODOs.) Report `EK0705` when a `let`/`const` binding introduced by an `is` expression in formal-parameter initialization would need the parameter environment as its lexical home. Apply to direct parameter defaults, defaults nested in parameter destructuring, and evaluated computed binding keys there. Do not invent a hoisted parameter binding, leak a body-local binding backwards into defaults, or decide eager TDZ/closure identity by moving the expression into the body. A pattern with no bindings remains allowed under the existing rules. A binding in an explicit source block inside that initializer, including a `do` block or a match arm's already-defined scope, uses that block/arm and may be used there; it does not escape into other parameters or the source body. Nested source callable bodies retain their own existing scopes and boundaries, rather than becoming parameter work of the containing function. Ordinary call arguments evaluated in a lexical block are not formal-parameter declarations and retain detail 191's nearest-block rule. Keep eager, left-to-right, once-only initialization, parameter/body environment separation, and the existing Effect/producer exception boundary unchanged. This is conservative admission of a scope the accepted draft does not define, not a new parameter-binding model; a later accepted reconciliation can relax EK0705. Do not offer a generic move-to-body quick fix because that can change timing, parameter TDZ, length and closures. Suggest an explicit local block returning the needed result, or an ordinary explicit parameter, only when the source author can preserve the intended result.
+    Status: landed on main 77510050781c (commit 2a2f70e288fe; spec-fix-c, queued as aeab02eb878c).
+    Status: applied in d9a37430188ebb0757dbb60d6233b8685a59d939 (spec-fix-c; queued, not yet a main receipt).
+    ```vibe
+    function bad(a = (1 is let captured)) { return a } // EK0705: no defined parameter-home binding
+    function alsoBad({ a = (1 is const captured) } = {}) {} // EK0705
+    function good(a = do { const ok = 1 is let captured; [ok, captured] }) { return a }
+    function testOnly(a = (1 is Number)) { return a } // no new pattern bindings
+    function caller() { consume(1 is let captured); return captured } // ordinary call argument: caller block
+    ```
+    Effect TS: the simple block-local example has the ordinary counterpart `function good(a = (() => { let captured = 1; const ok = true; return [ok, captured] })()) { return a }`; its local binding does not become a parameter or body-local name. This non-jumping example is illustrative, not a universal lowering recipe. Decided by the agent from principle 8 (reject an unspecified scope until it can be safely relaxed), principle 4 (reuse explicit existing scopes instead of inventing parameter-binding machinery), VIP-7's explicit unfinished scope note, and details 118/191/197's parameter/activation boundaries, 2026-10-30. `EK0701`–`EK0704` are already allocated in main; `EK0705` is the next free VIP-7 code after checking the shared log/live findings. Add 004/001/default-scope notes, VIP-7 reconciliation and Appendix B with direct/default/computed-key rejects, explicit-block and binding-free controls, and ordinary call-argument scope examples. This decision makes no compiler-conformance or source-landing claim.
+
+### Detail 232
+
+**Diagnostic ownership follows the source rule, not parser reuse.** (live `004-interpolated-template-code`; accepted VIP-7/VIP-34; Appendix B; details 60/168/213/224.) TypeScript's own syntax, lexical and static errors on ordinary native syntax keep their `TS` codes, including independent errors in embedded expressions and types. A rejection that instead depends on a VibeLang production, placement rule, proposal-specific early error or explicitly adopted reconciliation has the owning VIP's `EK` code. Importing a TC39 proposal or implementing it with a TypeScript parser helper does not make its new grammar native TypeScript. This classifies diagnostics only; it changes no admitted program or runtime meaning.
+    **General ownership source publication (a4359).** At immutable main `a4359e5274e5`, chapter007 and public VIP-34 explicitly preserve native `TS` lexical/syntax/static errors and assign VibeLang-specific rejections to their owning `EK` diagnostic, regardless of parser-helper reuse. Independent native errors and existing specific codes are preserved. The full two-file,5,003-character diff was independently read. The separate004/AppendixB `EK0707` catalog application is not in this slice; neither compiler emission nor any other queued packet is certified. `main-a43-source-receipt.json` records scope.
+    Status: applied in 1435a289a173f0644ca9c738962dbdeff9154c64 (spec-fix-c; queued, not yet a main receipt).
+    For VIP-7's `match`/`is` grammar and pattern-specific early errors without a more specific assigned diagnostic, allocate `EK0707`: invalid match/pattern syntax, with the concrete rejected form and a valid repair in the message. Detail 168's interpolated template in primitive-pattern position therefore uses `EK0707`; ordinary template interpolation in a guard or arm remains admitted. Keep existing assigned identities, including `EK0701` arm separation, `EK0702` matcher admission, `EK0703` arity lint, `EK0704` ordinary-class extraction, `EK0705` parameter-home bindings, `EK0706` outward async-match jumps, `EK4701` exhaustiveness and `EK3004` service patterns. Do not add `EK0707` on top of a specific diagnostic for the same rejection, and do not suppress independent native lexical/type/name errors or errors in valid subexpressions under a blanket recovery range. A malformed native template or ordinary invalid expression is not automatically `EK0707` merely because it appears inside a match.
+    ```vibe
+    const bad = match (s) { when `tag-${kind}`: 1; default: 0; } // EK0707: use a guard
+    const good = match (s) { when let v and if (v === `tag-${kind}`): 1; default: 0; }
+    const nativeError = match (s) { when let v and if (missingName): 1; default: 0; } // TS2304 for missingName
+    ```
+    Effect TS:
+    ```ts
+    const v = s
+    const good = v === `tag-${kind}` ? 1 : 0
+    ```
+    The rejected primitive pattern has no accepted runtime counterpart. An unresolved `missingName` in the equivalent ordinary conditional remains TypeScript's own error. Decided by the agent from accepted VIP-34/Appendix B's explicit own-syntax-versus-TypeScript distinction, VIP-7's ownership of the pinned proposal/reconciliations, principle 2 (preserve native TypeScript diagnostics), principle 4 (one shared remaining syntax diagnostic rather than a code per witness), and principle 8/detail 168 (retain conservative rejection), 2026-10-30. Update `004-match.md`, `007-tooling.md` and Appendix B and public VIP-7/VIP-34 under detail 213; source implementation remains with spec-fix-c. The compiler registry and catalog at immutable main `352013c7a59f` contain neither printed `EK0707` nor numeric `707`, and the shared ledger/claims contain no earlier allocation at reservation time; `root-match-syntax-code-availability.json` preserves source hashes and the claim distinction. This is not a compiler-emission, historical-code, whole-suite or main-landing verification.
+
+    Chapter007/publicVIP34 companion: applied in 196612922a3f5d67f3068baf5ea4da22a8889946 (spec-fix-d; verified and queued, not a main receipt). Three before/after documentation regressions, strict/native TypeScript5.9.3 controls and rebased spec/docs/forms checks pass. Spec-fix-c retains004/AppendixB/VIP7 and0707 source delivery; this receipt does not claim the whole decision implemented.

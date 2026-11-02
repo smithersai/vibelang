@@ -97,6 +97,10 @@ func (p *Parser) vibelangSchemaType(keyword core.TextRange, name *ast.Node, modi
 	right := p.vibelangSynthesized(p.factory.NewIdentifier("Type"), name.Loc)
 	query := p.vibelangSynthesized(p.factory.NewTypeQueryNode(p.vibelangSynthesized(p.factory.NewQualifiedName(left, right), name.Loc), nil /*typeArguments*/), name.Loc)
 	alias := p.factory.NewTypeAliasDeclaration(aliasModifiers, typeName, nil /*typeParameters*/, query)
+	if p.vibelangSchemaTypes == nil {
+		p.vibelangSchemaTypes = make(map[*ast.Node]bool)
+	}
+	p.vibelangSchemaTypes[alias] = true
 	return p.vibelangSynthesized(alias, keyword)
 }
 

@@ -1,0 +1,15 @@
+// expect: TS2300 TS2451
+import { Schema } from "effect";
+const Other = Schema.String;
+schema Message0 { id: string }
+type Message0<T> = typeof Message0.Type;
+
+type Message1<T> = typeof Message1.Type;
+schema Message1 { id: string }
+
+schema Message2 = string;
+type Message2<T> = typeof Message2.Type;
+
+type Message3<T> = typeof Message3.Type;
+schema Message3 = string;
+

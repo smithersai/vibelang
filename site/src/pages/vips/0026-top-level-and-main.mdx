@@ -31,3 +31,34 @@ Old VibeLang (D135, D517, EK4843) had the compiler emit `runMain(main())` for an
 ## History
 
 The old findings were contradictions about `main` (EK4843 versus chapter 28). They are moot.
+
+## Details
+
+Decided details folded in on 2026-11-03. Each keeps its old number as history. The conflict pass deleted superseded, duplicate and relic details and resolved contradictions in favor of Will's words, then accepted VIPs, then later details. Principles are numbered as in [the introduction's Details](https://github.com/smithersai/vibelang/blob/main/docs/design/src/000-intro.md#details).
+
+### Detail 253
+
+**Synchronous source `throw` has no module-body exception.** (Loop r5 Opus OPUS-1 top-level question; Will's 2026-10-31 no-local-throws ruling, accepted VIP-26 and principle 8.) Reject an explicit source `throw` in the ordinary top-level body of a `.vibe` module, including its directly evaluated blocks, `do` expressions and plain `try`/`catch` statements. A top-level `await`, an ES-module host or asynchronous module evaluation does not put that body inside an `async` VibeLang function and does not create an implicit Effect. VIP-39 applies the same VibeLang rule to `.vibex`. Will's rule is about synchronous source `throw`, so catching that same explicit source statement locally does not legalize it. A native `try`/`catch` that handles an actual foreign-call exception is a different case and keeps its admitted foreign-boundary rule.
+
+    Classify nested callable/Effect bodies by their own existing owner: `throw` in `effect` code is `Effect.fail`; admitted async function/arrow/method throws reject their Promise under detail251; a nested synchronous callable or initializer remains synchronous. A plain generator body is not made async by returning an iterator. This decision adds no generator protocol, inline TypeScript module, implicit runner, local throws metadata or new diagnostic identity. Native top-level Promise `await` and its option checks stay unchanged. The restriction on the explicit `throw` statement is the deliberate Will-ordered difference from TypeScript, not a difference in where Effects may run.
+
+    ```vibe
+    throw new Error("stop") // error: ordinary module body
+    try { throw new Error("stop") } catch {} // error: source throw stays forbidden
+    const p = effect { throw new Error("stop") } // allowed: cold typed failure
+    async function rejected() { throw new Error("stop") } // allowed: Promise rejection, detail251
+    ```
+
+    Effect TS:
+
+    ```ts
+    const p = Effect.gen(function* () {
+      return yield* Effect.fail(new Error("stop"))
+    })
+    async function rejected() { throw new Error("stop") }
+    // Native TypeScript also permits top-level throw; VibeLang deliberately rejects it under Will's ruling.
+    ```
+
+    No Will confirmation is needed: the ruling already rejects source `throw` outside the admitted Effect/async owners, and principle8 supplies the conservative scope where the wording names functions as examples. `nothrow-spec` and `nothrow-impl` retain source/compiler ownership. Cover ordinary module blocks, caught and uncaught source throws, `do`, top-level-await presence and module/target options, `.vibe`/`.vibex`, nested plain/async/Effect boundaries and initializers in their regression/spec-quoted keyed fuzz work. Preserve foreign-call handling, unknown native implicit exceptions and the separately accepted Promise behavior; do not widen this into whole-program exception proof. This policy lane ran no VibeLang compiler test for this clarification.
+
+    Decided by the agent from Will's 2026-10-31 no-local-throws ruling, accepted VIP-26's ordinary module body/no implicit runner and principle 8, 2026-10-31. Class A; no new Will question.

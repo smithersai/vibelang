@@ -10,6 +10,12 @@ test("schema declaration documentation belongs to its constant", () => {
   assert.ok(read("docs/design/vips/0027-declaration-output.md").includes("documented schemas"))
 })
 
+test("written schema companions keep their own declaration documentation", { skip: "pending fold-details: accepted foldkit-9 text in chapter 006" }, () => {
+  assert.ok(chapter("006-data").includes("its synthesized `typeof Name.Type` alias has no comment"))
+  assert.ok(chapter("006-data").includes("one written, nongeneric `type X = typeof X.Type` in the same scope replaces the synthesized alias, in either source order"))
+  assert.ok(chapter("006-data").includes("Preserve each declaration’s own JSDoc, order and export status as on the native constant/type pair"))
+})
+
 test("native Effect pairs retain documentation and visibility on the constant", { timeout: 60000 }, () => {
   const docs = ["", "/** Wire message. */", "/** First line.\n * Second line.\n */",
     "/** @internal */", "/** @public */", "/** @deprecated Use another schema. */",
