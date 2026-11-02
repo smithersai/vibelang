@@ -12,7 +12,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.Document` | `current`, the page's `Document`, for an API that takes one | browser |
 | `Experimental.ResizeObserver` | `observe` of an element, until the Scope closes | browser |
 | `Experimental.FileReader` | `readAsText`, `readAsDataUrl`, `readAsArrayBuffer` of a `Blob` or a `File` | browser |
-| `Experimental.Animations` | `nextFrame`, `onNextFrame`, `frameDeltas`, `settled` over animation frames and the Web Animations API | browser |
+| `Experimental.Animations` | `nextFrame`, `nextFrameUnless`, `frameDeltas`, `settled` over animation frames and the Web Animations API | browser |
 
 `Experimental` is in scope in every `.vibe` file without an import, as Effect's modules are. A local declaration or an import named `Experimental` shadows it. TypeScript imports the same modules from `vibelang-runtime/experimental`, or one module from its subpath, such as `vibelang-runtime/experimental/FileSystem`.
 
@@ -269,7 +269,7 @@ export effect function closeMenu() {
 | Expression | Gives | Replaces |
 | --- | --- | --- |
 | `try animations.nextFrame` | the next frame's timestamp, in the milliseconds of `performance.now` | `requestAnimationFrame(callback)` |
-| `animations.onNextFrame(callback)` | a function that cancels the frame, and runs `callback` inside it | `requestAnimationFrame`, `cancelAnimationFrame` |
+| `try animations.nextFrameUnless(register)` | nothing, after a pending commit or the next frame; interruption cancels the registration | `requestAnimationFrame`, `cancelAnimationFrame` |
 | `animations.frameDeltas` | a `Stream` of the milliseconds between frames | a loop of `requestAnimationFrame` |
 | `try animations.settled(selector)` | nothing, once the element's animations and transitions end | `element.getAnimations()`, then each `finished` |
 
@@ -277,20 +277,20 @@ Interrupting `nextFrame` cancels its frame, and ending `frameDeltas` cancels the
 
 `settled` waits a frame, so styles set just before it apply, then waits for the first element that matches `selector`, and completes when none does. A cancelled animation counts as ended, and one with infinite iterations never ends. A selector the browser rejects is a defect.
 
-`onNextFrame` is a plain function, the one member here that is not an Effect. A fiber can yield between two Effects, so code that checks something and then asks for a frame must do both in one synchronous body. Its result is the cleanup that `callback` expects:
+`nextFrameUnless(register)` is a cold Effect. Its synchronous registrar checks whether a commit is pending and returns that registration's cancel function, or returns `undefined` to choose a frame. The check and registration run together without a fiber yield; interruption cancels the chosen registration. A renderer requiring an immediate cancel function keeps its synchronous host integration in a `.ts` file.
 
 ```vibe
 // pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
 effect function afterCommit(isPending: () => boolean, onCommit: (listener: () => void) => () => void) {
   const animations = try Experimental.Animations.Animations
-  try callback((isPending: () => boolean, onCommit: (listener: () => void) => () => void, animations: Experimental.Animations.Animations, resume: Resume<void, never>) => {
-    if (isPending()) return onCommit(() => resume())
-    return animations.onNextFrame(() => resume())
-  }, isPending, onCommit, animations)
+  try animations.nextFrameUnless((resume): (() => void) | undefined => {
+    if (isPending()) return onCommit(resume)
+    return undefined
+  })
 }
 ```
 
-`ExperimentalBrowserAnimations.layer`, also in `ExperimentalBrowserServices.layer`, uses `requestAnimationFrame` and `document`. `Experimental.Animations.layerTest()` completes every wait at time 0, and `frameDeltas` stays open and gives nothing. Pass the members a test needs, as above.
+`ExperimentalBrowserAnimations.layer`, also in `ExperimentalBrowserServices.layer`, uses `requestAnimationFrame` and `document`. `Experimental.Animations.layerTest()` completes frame waits at time 0; a pending commit follows the registrar. `frameDeltas` stays open and gives nothing. Pass the members a test needs, as above.
 
 ## FileReader
 

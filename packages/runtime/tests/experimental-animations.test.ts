@@ -144,20 +144,63 @@ test("Animations: a selector the host rejects is a defect, not a hang", async ()
   expect(String(exit)).toContain("not a selector")
 })
 
-test("Animations: onNextFrame registers synchronously, runs in the frame, and its result cancels the frame", () => {
-  const { fireFrames, frames, host } = fakeHost(() => null)
-  const service = Animations.make(host)
-  const times: Array<number> = []
-  const cancel = service.onNextFrame((time) => times.push(time))
-  expect(frames.size).toBe(1)
-  fireFrames(16)
-  expect(times).toEqual([16])
-  const cancelled = service.onNextFrame((time) => times.push(time))
-  cancelled()
-  expect(frames.size).toBe(0)
-  fireFrames(32)
-  expect(times).toEqual([16])
-  cancel()
+// VIP-33/detail261: "Perform the pending-commit check and callback registration
+// together in its synchronous native registration function".
+// Keyed migration corpus: foldkit-render-atomic-frame.json.
+test("Animations: foldkit atomic registration is cold, same-turn, and cancels only its own registration (property)", async () => {
+  const corpus = await Bun.file(new URL("./corpus/foldkit-render-atomic-frame.json", import.meta.url)).json()
+  const check = async (pending: boolean, synchronous: boolean, interrupted: boolean) => {
+    const { fireFrames, frames, host, log } = fakeHost(() => null)
+    const service = Animations.make(host)
+    let listener: (() => void) | undefined
+    const program = service.nextFrameUnless((resume) => {
+      log.push("check")
+      queueMicrotask(() => log.push("microtask"))
+      if (!pending) return undefined
+      log.push("commit")
+      listener = resume
+      if (synchronous) resume()
+      return () => { listener = undefined; log.push("unsubscribe") }
+    })
+    expect("onNextFrame" in service).toBe(false)
+    expect(log).toEqual([])
+    // Run the same cold value twice; neither registration is cached.
+    for (let run = 0; run < 2; run++) {
+      log.length = 0
+      await Effect.runPromise(Effect.gen(function*() {
+        const fiber = yield* Effect.forkChild(program)
+        yield* until(() => log.includes("check"))
+        expect(log.slice(0, 2)).toEqual(["check", pending ? "commit" : "frame"])
+        if (interrupted && !(pending && synchronous)) {
+          yield* Fiber.interrupt(fiber)
+          expect(log.filter((entry) => entry === (pending ? "unsubscribe" : "cancel"))).toHaveLength(1)
+          expect(frames.size).toBe(0)
+          if (pending) expect(listener).toBeUndefined()
+        } else {
+          if (pending) listener!()
+          else fireFrames(16)
+          yield* Fiber.join(fiber)
+          expect(log).not.toContain("unsubscribe")
+          expect(log).not.toContain("cancel")
+        }
+      }))
+    }
+  }
+  for (const row of corpus.schedules) await check(row.pending, row.synchronous, row.interrupted)
+  await fc.assert(fc.asyncProperty(fc.boolean(), fc.boolean(), fc.boolean(), check), { seed: 261, numRuns: 100 })
+})
+
+test("Animations: nextFrameUnless defects for missing frames only when the registrar chooses a frame", async () => {
+  const { host } = fakeHost(() => null)
+  const missing = Animations.make({ ...host, requestAnimationFrame: () => { throw new Error("missing frame host") } })
+  const pending = missing.nextFrameUnless((resume) => { resume(); return () => {} })
+  expect(Exit.isSuccess(await Effect.runPromiseExit(pending))).toBe(true)
+  const frame = missing.nextFrameUnless(() => undefined)
+  const failed = await Effect.runPromiseExit(frame)
+  expect(Exit.isFailure(failed)).toBe(true)
+  expect(String(failed)).toContain("missing frame host")
+  const registrar = missing.nextFrameUnless(() => { throw new Error("registrar failure") })
+  expect(String(await Effect.runPromiseExit(registrar))).toContain("registrar failure")
 })
 
 test("Animations: frameDeltas gives the time since the last frame, the first since the Stream started, and cancels on end", async () => {
@@ -208,12 +251,10 @@ test("Animations: layerTest completes at once, and takes the members a test need
   const frame = await Effect.runPromise(Effect.provide(Effect.flatMap(service, (animations) => animations.nextFrame), Animations.layerTest()))
   expect(frame).toBe(0)
   const fired = await Effect.runPromise(Effect.provide(
-    Effect.flatMap(service, (animations) => Effect.callback<number>((resume) => {
-      animations.onNextFrame((time) => resume(Effect.succeed(time)))
-    })),
+    Effect.flatMap(service, (animations) => animations.nextFrameUnless(() => undefined)),
     Animations.layerTest()
   ))
-  expect(fired).toBe(0)
+  expect(fired).toBeUndefined()
   const stayed = Effect.flatMap(service, (animations) => Effect.timeoutOption(Stream.runDrain(animations.frameDeltas), "10 millis"))
   expect((await Effect.runPromise(Effect.provide(stayed, Animations.layerTest())))._tag).toBe("None")
   const run = Effect.flatMap(Effect.service(Animations.Animations), (animations) =>

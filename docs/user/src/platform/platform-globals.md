@@ -37,7 +37,7 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `addEventListener` | `Stream.fromEventListener(target, "message")` |
 | `alert` | escape to TypeScript for now: Effect has no service for the browser's dialogs; a terminal program asks with `try (try Terminal.Terminal).readLine`. |
 | `caches` | escape to TypeScript for now: Effect has no service for the browser's Cache Storage; KeyValueStore stores strings by key. |
-| `cancelAnimationFrame` | `(try Experimental.Animations.Animations).onNextFrame(callback)` |
+| `cancelAnimationFrame` | `try (try Experimental.Animations.Animations).nextFrame` |
 | `cancelIdleCallback` | escape to TypeScript for now: Effect has no service for the browser's idle callbacks; schedule work with Schedule, or call them in a .ts file. |
 | `clearImmediate` | `try Fiber.interrupt(fiber)` |
 | `clearInterval` | `try Fiber.interrupt(fiber)` |
@@ -134,7 +134,7 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `window.FileReader` | `try (try Experimental.FileReader.FileReader).readAsText(blob)` |
 | `window.ResizeObserver` | `try (try Experimental.ResizeObserver.ResizeObserver).observe(element, onResize)` |
 | `window.addEventListener` | `BrowserStream.fromEventListenerWindow("resize")` |
-| `window.cancelAnimationFrame` | `(try Experimental.Animations.Animations).onNextFrame(callback)` |
+| `window.cancelAnimationFrame` | `try (try Experimental.Animations.Animations).nextFrame` |
 | `window.matchMedia` | `try (try Experimental.MediaQuery.MediaQuery).matches(query)` |
 | `window.requestAnimationFrame` | `try (try Experimental.Animations.Animations).nextFrame` |
 
@@ -248,10 +248,10 @@ effect function experimental(path: string, pid: number, killSignal: ChildProcess
   const lock = try (try Experimental.Locks.Locks).hold(name)
   const reducedMotion = try (try Experimental.MediaQuery.MediaQuery).matches(query)
   const frame = try (try Experimental.Animations.Animations).nextFrame
-  const cancelFrame = (try Experimental.Animations.Animations).onNextFrame(callback)
+  try (try Experimental.Animations.Animations).nextFrameUnless(() => undefined)
   const text = try (try Experimental.FileReader.FileReader).readAsText(blob)
   try (try Experimental.ResizeObserver.ResizeObserver).observe(element, onResize)
-  return { id, platform, arch, executable, versions, memory, host, cores, origin, running, file, mac, signed, valid, sealed, opened, pair, lock, reducedMotion, frame, cancelFrame, text, element }
+  return { id, platform, arch, executable, versions, memory, host, cores, origin, running, file, mac, signed, valid, sealed, opened, pair, lock, reducedMotion, frame, text, element }
 }
 ```
 

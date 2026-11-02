@@ -96,7 +96,7 @@ A non-schema object used as a `schema` alias: If it has a public `Type` member, 
 - The TypeScript mapper's Go tests linked the compiler and mapper executables, and a second mapper copy, on every run; the build graph now hands them its cached `//typescript:compiler` and `//typescript:mapper` builds, and a plain `go test` still links its own.
 - A fiber on the left of a pipe, `fork a() |> Fiber.join(%)` or `f |> Fiber.join(%)`, was `EK4838` (an owned fiber used where it may not go); the fiber now goes where the pipe's topic goes, as chapter 2 says `fork a() |> f(%)` forks `a()` and pipes the Fiber, so a topic joined or passed to a `Fiber` function stays in its region and one passed to another call or captured by a function is still `EK4838`.
 - A `.vibe` file that read `window.matchMedia` got `EK4402` and had to move the read to a `.ts` file, because Effect has no service for media queries; `Experimental.MediaQuery` now reads and follows a query, `EK4402` names it, and `ExperimentalBrowserServices.layer` provides it.
-- A `.vibe` file that used `requestAnimationFrame`, `cancelAnimationFrame` or `Element.getAnimations` got `EK4402` and had to move the call to a `.ts` file; `Experimental.Animations` now gives `nextFrame`, `onNextFrame`, `frameDeltas` and `settled`, `EK4402` names it, and `ExperimentalBrowserServices.layer` provides it.
+- A `.vibe` file that used `requestAnimationFrame`, `cancelAnimationFrame` or `Element.getAnimations` got `EK4402` and had to move the call to a `.ts` file; `Experimental.Animations` now gives `nextFrame`, `nextFrameUnless`, `frameDeltas` and `settled`, `EK4402` names it, and `ExperimentalBrowserServices.layer` provides it.
 - A `.vibe` file that read a browser `File` got `EK4402`, which said to use `FileSystem`, and that service reads paths; `Experimental.FileReader` now reads a `Blob` or a `File` as text, a data URL or bytes, `EK4402` names it, and `ExperimentalBrowserServices.layer` provides it.
 - A `.vibe` file that followed an element's size got `EK4402` for `ResizeObserver`; `Experimental.ResizeObserver` now observes an element until its Scope closes, `EK4402` names it, and `ExperimentalBrowserServices.layer` provides it.
 - A `.vibe` file that passed `document` to an API that takes an event target got `EK4402` with no service to use; `Experimental.Document` now gives the page's `Document`, `EK4402` names it, and `ExperimentalBrowserServices.layer` provides it.
@@ -451,6 +451,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Compiler checks could miss regressions in the VibeLang formatter; the compiler gate now runs the formatter’s Go tests.
 - Synthetic compiler benchmarks emitted retired forms and could compare an implicit Effect helper with a plain TypeScript helper; fixtures now use current forms and explicit helper types, with compile and runtime checks for both languages.
+
+- Waiting for a pending browser commit or animation frame required a plain host callback; `Experimental.Animations.nextFrameUnless` now checks and registers atomically inside a cold Effect, with cancellation on interruption (decided detail 261).
 
 - Browser file reads could report an unexpected result exactly like a host error; `Experimental.FileReader` now identifies unexpected results with `InvalidData`, preserving the origin even when the cause and message coincide.
 

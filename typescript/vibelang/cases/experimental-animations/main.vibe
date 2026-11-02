@@ -3,10 +3,11 @@
 // synchronous body, so no commit can land between them; each cancels what it registered.
 effect function awaitCommitOrFrame(isCommitPending: () => boolean, onNextCommit: (listener: () => void) => () => void) {
   const animations = try Experimental.Animations.Animations
-  return try callback((isCommitPending: () => boolean, onNextCommit: (listener: () => void) => () => void, animations: Experimental.Animations.Animations, resume: Resume<number, never>) => {
-    if (isCommitPending()) return onNextCommit(() => resume(1))
-    return animations.onNextFrame((time) => resume(time))
-  }, isCommitPending, onNextCommit, animations)
+  try animations.nextFrameUnless((resume): (() => void) | undefined => {
+    if (isCommitPending()) return onNextCommit(resume)
+    return undefined
+  })
+  return 0
 }
 
 effect function waitForAnimationSettled(selector: string) {

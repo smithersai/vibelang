@@ -3,8 +3,8 @@
  *
  * {@link Animations.nextFrame} waits for the next frame and
  * {@link Animations.frameDeltas} follows every frame.
- * {@link Animations.onNextFrame} registers in the caller's synchronous body,
- * for an `Effect.callback` whose check and registration must not be split.
+ * {@link Animations.nextFrameUnless} checks for a pending commit and registers
+ * it or a frame within one synchronous Effect registration boundary.
  * {@link Animations.settled} waits for the animations of an element to end.
  *
  * Effect 4.1.0 has no service for `requestAnimationFrame` or
@@ -74,13 +74,12 @@ export interface Animations {
    */
   readonly nextFrame: Effect.Effect<number>
   /**
-   * Asks for `callback` to run inside the next animation frame, before this
-   * returns, and gives the function that cancels it. It is a plain function
-   * because a fiber can yield between two Effects: use it in the synchronous
-   * body of an `Effect.callback` that checks something and then registers.
-   * Everywhere else, use {@link Animations.nextFrame}.
+   * Checks for a pending commit and chooses its registration, or the next
+   * frame, in one synchronous Effect registration boundary. The registrar
+   * returns its cleanup when it registers a commit; undefined chooses a frame.
+   * The Effect is cold. Interrupting it cancels the chosen registration.
    */
-  readonly onNextFrame: (callback: (time: number) => void) => () => void
+  readonly nextFrameUnless: (register: (resume: () => void) => (() => void) | undefined) => Effect.Effect<void>
   /**
    * The milliseconds since the previous frame, once a frame; the first is since
    * the Stream started. The browser pauses frames in a hidden tab, so a delta
@@ -125,7 +124,11 @@ export const make = (host: Host): Animations => {
   return {
     [TypeId]: TypeId,
     nextFrame,
-    onNextFrame,
+    nextFrameUnless: (register) => Effect.callback<void>((resume) => {
+      const finish = () => resume(Effect.void)
+      const cancel = register(finish) ?? onNextFrame(finish)
+      return Effect.sync(cancel)
+    }),
     frameDeltas: Stream.callback<number>((queue) =>
       Effect.acquireRelease(
         Effect.sync(() => {
@@ -151,8 +154,9 @@ export const make = (host: Host): Animations => {
 
 /**
  * Provides animations that end at once, for tests: `nextFrame` and `settled`
- * complete, `onNextFrame` runs its callback in a microtask, all at time 0, and
- * `frameDeltas` stays open and gives nothing. Pass the members a test needs.
+ * complete, `nextFrameUnless` performs the same registration choice with a
+ * microtask in place of a frame, and `frameDeltas` stays open and gives nothing.
+ * Pass the members a test needs.
  *
  * @category layers
  * @since 0.0.11
@@ -161,15 +165,14 @@ export const layerTest = (impl: Partial<Omit<Animations, TypeId>> = {}): Layer.L
   Layer.succeed(Animations, {
     [TypeId]: TypeId,
     nextFrame: Effect.succeed(0),
-    onNextFrame: (callback) => {
+    nextFrameUnless: (register) => Effect.callback<void>((resume) => {
+      const finish = () => resume(Effect.void)
+      const cancel = register(finish)
+      if (cancel !== undefined) return Effect.sync(cancel)
       let cancelled = false
-      queueMicrotask(() => {
-        if (!cancelled) callback(0)
-      })
-      return () => {
-        cancelled = true
-      }
-    },
+      queueMicrotask(() => { if (!cancelled) finish() })
+      return Effect.sync(() => { cancelled = true })
+    }),
     frameDeltas: Stream.never,
     settled: () => Effect.void,
     ...impl

@@ -213,8 +213,8 @@ export const run = (key: Uint8Array) => createHmac("sha256", key)`, []string{
 		}},
 		{"cancelling an animation frame", `export const run = (id: number) => cancelAnimationFrame(id)`, []string{
 			"cancelAnimationFrame is platform code, which VibeLang code does not use directly.",
-			"Use the experimental Animations service:   (try Experimental.Animations.Animations).onNextFrame(callback)", provideExperimentalBrowser,
-			"Interrupting nextFrame cancels its frame; onNextFrame gives the function that cancels it.",
+			"Use the experimental Animations service:   try (try Experimental.Animations.Animations).nextFrame", provideExperimentalBrowser,
+			"Interrupting nextFrame cancels its frame; nextFrameUnless atomically chooses a pending commit or a frame.",
 		}},
 		{"file reader", `export const run = () => new FileReader()`, []string{
 			"FileReader is platform code, which VibeLang code does not use directly.",
