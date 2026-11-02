@@ -307,6 +307,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A migration packaging check could report a Unicode file missing because `tar` escaped its filename under the C locale. The check now reads extracted filenames and covers C and UTF-8 locales, including installed Node and Bun imports.
 
 - Package-barrel regression checks now exercise TypeScript package entries that re-export VibeLang modules under Bun and Rolldown, including the documented adapter and its negative control.
+
+- Compiler fuzz checks missed legacy `Effect` repairs in heritage clauses; they now check qualified output, generic defaults and local or imported aliases in both interface and class heritage.
 - After VIP-1, `vibelang --fix --fix-vip-only` could not see that a method of a service read as `const fs = FileSystem.FileSystem()` ran where it stood, so it refused the whole file's migration (`EK9202`) and left functions such as foldkit's `readLiveRecordFile` plain, building their reads at the call and skipping their later steps; it now writes `try FileSystem.FileSystem` and runs each such method with `try`.
 - A `match` whose last arm lacked its `;` beside a `do` could crash the compiler (`slice bounds out of range`) instead of reporting `EK0701`; a lowered `do` temporary no longer gets a range that ends before it starts.
 - A Date match regression check still rejected an object with `Date.prototype`; it now expects the prototype check required by VIP-7, in both bare and extractor patterns.

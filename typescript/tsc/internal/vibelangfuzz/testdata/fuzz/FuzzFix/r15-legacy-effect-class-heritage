@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\ndeclare const Base: new () => Effect.Effect<readonly number[], Error, { readonly need: true }>;\nexport class Child extends Base implements Effect<readonly number[], Error, { readonly need: true }> { readonly marker=true }\n-- tsconfig.json --\n{\"compilerOptions\": {\"strict\": true, \"module\": \"NodeNext\", \"moduleResolution\": \"NodeNext\", \"target\": \"ES2022\", \"skipLibCheck\": true, \"declaration\": true, \"outDir\": \"out\"}}\n")
