@@ -54,6 +54,8 @@ const goVibelang = (summary: string, shell: string, data: ReadonlyArray<unknown>
 // pending lines' VIP reasons, and the chapters its oracles still read. Their inputs are the specification and the
 // Go sources and the migration comparator the counterpart controls exercise,
 // so either specification or comparator edits rerun them before landing.
+// Every Test...Quoted in the target's packages runs by its name (fuzz coverage RULES #9), so a new quote
+// test needs no line here; scripts/spec-tests.test.mjs checks both.
 const specTests = [
   "TestSidecarEmitRulesQuoted",
   "TestInferredEffectDefaultsQuoted",
@@ -165,7 +167,6 @@ const specTests = [
   "TestReviewBindingContractsQuoted",
   "TestSidecarResolvedPathViewQuoted",
   "TestAlchemyUnionPipeRequirementsQuoted",
-  "TestDoContextualResultQuoted",
   "TestMigrationRootResolutionQuoted",
   "TestTopLevelAwaitQuoted",
   "TestEffectGlobalsQuoted",
@@ -203,7 +204,6 @@ const specTests = [
   "TestNativeOutputSpecifierRulesQuoted",
   "TestLegacyConfigCommentsQuoted",
   "TestConfigDiagnosticSpansQuoted",
-  "TestSchemaLibraryBindingQuoted",
   "TestSeverityInheritanceQuoted",
   "TestCatchNativeHandlerRepairQuoted",
   "TestSeverityScopeQuoted",
@@ -680,7 +680,7 @@ const targets = {
     summary: "The Go tests that read docs/design (the registry, the VIP citations and coverage, the pending lines) and the cost guards of --fix and flow narrowing.",
     shell:
       `cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} ` +
-      `go test -count=1 -trimpath -run '^(${[...specTests, ...fixCostTests, ...narrowingCostTests].join("|")})$' ./internal/checker/ ./internal/vibelang/ ./internal/vibelangfuzz/ ./internal/effecttsgo/shim/checker/`,
+      `go test -count=1 -trimpath -run '^(Test[A-Za-z0-9_]*Quoted|${[...specTests, ...fixCostTests, ...narrowingCostTests].join("|")})$' ./internal/checker/ ./internal/vibelang/ ./internal/vibelangfuzz/ ./internal/effecttsgo/shim/checker/`,
     data: [design, migrationSources, Tsc.srcs, Tsc["effect-shim-files"], Tsc["vibelang-files"], Tsc["vibelangfuzz-files"], Packages["runtime-dist"]] as Array<never>,
     tools: [go, node],
     sandbox: "none",

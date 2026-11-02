@@ -329,7 +329,7 @@ A saved known failure that succeeds remains `XPASS`: remove its
   :site-contrast                npm ci and a production build of a private copy of site/, then the contrast audit
   :spec-lint                    the specification linters over docs/design (merge gate, through :docs-tools)
   :design-files                 Filegroup: docs/design
-  :spec-tests                   the Go tests that read docs/design (registry, whole printed diagnostic numbers, VIP citations, pending lines), the cost guards of --fix and flow narrowing
+  :spec-tests                   the Go tests that read docs/design (every Test...Quoted by name, registry, whole printed diagnostic numbers, VIP citations, pending lines), the cost guards of --fix and flow narrowing
 ```
 
 ```text
