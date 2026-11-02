@@ -1473,6 +1473,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A `catch` quick fix could shadow an outer name read by the handler, changing its result; CLI and editor wrappers now choose a free parameter through the checker, including escaped names and exhausted fallback names.
 - A catch-handler editor fix removed `async` or `*` even when its body still used `await` or `yield`, leaving new compile errors; CLI, editor and diagnostic guidance now withhold that edit and ask for an explicit body conversion.
 - Removing `async` from a `catch` handler deleted comments after it; modifier repairs now preserve every comment and the handler body.
+- `vibelang --fix` removed an `effect` import with a doc comment before it, such as a module header, when the declaration did not write the import: tsc drops the comment with the import, so without it the comment led the declaration and the published `.d.ts` changed (Smithers `Canonical.d.ts`). `--fix` now keeps such an import when removing it would change the declaration.
 
 #### Compiler and diagnostics
 

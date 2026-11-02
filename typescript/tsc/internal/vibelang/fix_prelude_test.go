@@ -1,12 +1,14 @@
 package vibelang
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/bundled"
+	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
@@ -190,7 +192,8 @@ export class Renamed extends Schema.TaggedError<Renamed>()("Other", {}) {}
 // wherever the declaration prints the module: in a local type an export
 // names, in a conditional type, or in a written type the checker resolves to
 // one that no longer names the module, and an import whose type modifier is
-// all that differs from the prelude's. An import only code uses still goes.
+// all that differs from the prelude's. An import only code uses still goes,
+// unless comments before it would lead the declaration without it (s-53).
 func TestFixKeepsImportsTheDeclarationPrints(t *testing.T) {
 	cases := []struct{ name, source, want string }{
 		{"local conditional alias", `import * as DateTime from "effect/DateTime"
@@ -233,6 +236,26 @@ export const value: number = 1
 const delay: Duration.Input = 10
 export const value: number = 1
 `},
+		{"a header comment the declaration drops with the import", `/**
+ * What this module is for.
+ */
+import { Effect } from "effect"
+
+const run = Effect.runSync(Effect.succeed(1))
+export const answer: number = run
+`, ""},
+		{"a header comment the declaration keeps", `/**
+ * What this module is for.
+ */
+import { Effect } from "effect"
+
+export const answer = (n: number) => Effect.succeed(n + 1)
+`, `/**
+ * What this module is for.
+ */
+
+export const answer = (n: number) => Effect.succeed(n + 1)
+`},
 		{"code only", `import * as DateTime from "effect/DateTime"
 
 export const isUtc = (value: unknown): boolean => DateTime.isDateTime(value)
@@ -265,6 +288,66 @@ export const isUtc = (value: unknown): boolean => DateTime.isDateTime(value)
 				t.Fatalf("--fix wrote\n%s\nwant\n%s\nrefused %+v", got, want, result.Refused)
 			}
 		})
+	}
+}
+
+// Decided detail 277 around s-53: whatever comments come before a prelude
+// import, wherever the import sits and whether the declaration writes it,
+// vibelang --fix leaves the declaration's bytes as they were. Where no comment
+// stands before the imports they still go.
+func TestFixLeavesDeclarationBytesAroundImportComments(t *testing.T) {
+	comments := []string{"", "// a\n", "/* a */\n", "/**\n * a\n */\n", "// a\n// b\n", "// a\n\n"}
+	befores := []string{"", "import * as Option from \"effect/Option\"\n"}
+	uses := []string{
+		"const run = Effect.runSync(Effect.succeed(1))\nexport const answer: number = run\n",
+		"export const answer = (n: number) => Effect.succeed(n + 1)\n",
+	}
+	declaration := func(t *testing.T, dir string) string {
+		fs := bundled.WrapFS(osvfs.FS())
+		config, errors := tsoptions.GetParsedCommandLineOfConfigFile(tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(dir, "tsconfig.json"))), &core.CompilerOptions{}, nil, fs, nil)
+		if len(errors) != 0 {
+			t.Fatalf("config: %v", errors)
+		}
+		program := compiler.NewProgram(compiler.ProgramOptions{Config: config, Host: compiler.NewCompilerHost(fs, bundled.LibPath(), nil, nil, nil)})
+		name := tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(dir, "main.vibe")))
+		return declarationsOf(t.Context(), program, []tspath.RootedFilePath{name})[name]
+	}
+	for i, comment := range comments {
+		for j, before := range befores {
+			for k, use := range uses {
+				source := comment + before + "import { Effect } from \"effect\"\n\n" + use
+				if before != "" {
+					source += "export const none: number = Option.getOrElse(Option.none(), () => 0)\n"
+				}
+				t.Run(fmt.Sprintf("comment%d-before%d-use%d", i, j, k), func(t *testing.T) {
+					_, file, _, _ := editorProgram(t, source)
+					dir := filepath.Dir(file.FileName().AsString())
+					if err := os.WriteFile(filepath.Join(dir, "tsconfig.json"), []byte(`{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"declaration":true,"emitDeclarationOnly":true,"outDir":"out"},"files":["main.vibe"]}`), 0o600); err != nil {
+						t.Fatal(err)
+					}
+					want := declaration(t, dir)
+					fs := bundled.WrapFS(osvfs.FS())
+					config, errors := tsoptions.GetParsedCommandLineOfConfigFile(tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(dir, "tsconfig.json"))), &core.CompilerOptions{}, nil, fs, nil)
+					if len(errors) != 0 {
+						t.Fatalf("config: %v", errors)
+					}
+					result := FixProject(t.Context(), fs, bundled.LibPath(), config)
+					got := source
+					if fixed := result.Files[file.FileName()]; fixed != nil {
+						got = fixed.Text
+					}
+					if comment == "" && strings.Contains(got, `from "effect"`) {
+						t.Fatalf("--fix kept the import with no comment before it:\n%s", got)
+					}
+					if err := os.WriteFile(file.FileName().AsString(), []byte(got), 0o600); err != nil {
+						t.Fatal(err)
+					}
+					if after := declaration(t, dir); after != want {
+						t.Fatalf("--fix turned\n%s\ninto\n%s\nand the declaration\n%s\ninto\n%s", source, got, want, after)
+					}
+				})
+			}
+		}
 	}
 }
 

@@ -10,6 +10,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
@@ -435,7 +436,11 @@ func exportOfModuleReference(c *checker.Checker, module *ast.Node, right *ast.No
 // modules). Where the declaration comes out the same, as it does for
 // Option.Option<number> once import { Option } goes, the import goes. Every
 // .vibe module has a declaration, its sidecar, so no compiler option turns
-// this off. A nil fresh keeps every such import.
+// this off. A nil fresh keeps every such import. An import with comments
+// before it is compared too, though the declaration does not write it: the
+// declaration drops those comments with the import, and without the import
+// they lead the next statement it prints, as a module header comment did in
+// @smthrs/canonical's Canonical.d.ts (s-53).
 func preludeRewriteProject(ctx context.Context, program *compiler.Program, texts map[tspath.RootedFilePath]string, fresh func(map[tspath.RootedFilePath]string) *compiler.Program) map[tspath.RootedFilePath]preludeRewrite {
 	rewrites := map[tspath.RootedFilePath]preludeRewrite{}
 	keeping := map[tspath.RootedFilePath]preludeRewrite{}
@@ -446,7 +451,14 @@ func preludeRewriteProject(ctx context.Context, program *compiler.Program, texts
 		r := preludeRewritesOf(c, file, declared, false)
 		done()
 		if r.imports > 0 {
-			if written := emittedImportKeys(ctx, program, file); len(written) > 0 {
+			written := emittedImportKeys(ctx, program, file)
+			for key := range commentedImportKeys(file) {
+				if written == nil {
+					written = map[string]bool{}
+				}
+				written[key] = true
+			}
+			if len(written) > 0 {
 				c, done := program.GetTypeCheckerForFile(ctx, file)
 				keep := preludeRewritesOf(c, file, written, true)
 				done()
@@ -487,6 +499,27 @@ func preludeRewriteProject(ctx context.Context, program *compiler.Program, texts
 		}
 	}
 	return rewrites
+}
+
+// commentedImportKeys returns, by declaredImportKey, the named and
+// namespace imports of file whose import statement has comments before it.
+func commentedImportKeys(file *ast.SourceFile) map[string]bool {
+	var keys map[string]bool
+	text := file.Text()
+	for _, b := range importBindingsOf(file) {
+		module := b.declaration.ModuleSpecifier()
+		if module == nil || !ast.IsStringLiteral(module) {
+			continue
+		}
+		for range scanner.GetLeadingCommentRanges(&ast.NodeFactory{}, text, b.declaration.Pos()) {
+			if keys == nil {
+				keys = map[string]bool{}
+			}
+			keys[declaredImportKey(module.Text(), b.name)] = true
+			break
+		}
+	}
+	return keys
 }
 
 // declarationsOf returns the declaration text of each of program's files
