@@ -35,6 +35,23 @@ export function names(): unknown[] {
  out.push(parameter())
  const nested = do { (do { (do { (class { static observed = this.name }) }) }) }
  out.push([nested.name, nested.observed])
+ // RC-33 capture neighbours: synthetic branches are value-only.
+ const conditional = true ? (() => 1) : do { () => 2 }
+ const conditionalClass = true ? (class { static observed = this.name }) : do { (class { static observed = this.name }) }
+ // @ts-ignore -- native always-truthy warning is independent of value naming.
+ const logical = (() => 3) || do { () => 4 }
+ // @ts-ignore -- native nullishness warning is independent of value naming.
+ const coalescing = (() => 5) ?? do { () => 6 }
+ const method = (class { static observed = this.name; static take(_n: number): string[] { return [this.name, this.observed] } }).take(do { 1 })
+ const keyObject = { [(class { static [Symbol.toPrimitive](): string { return this.name } }) as any]: do { 1 } }
+ out.push(conditional.name, [conditionalClass.name, conditionalClass.observed], logical.name, coalescing.name, method, Object.keys(keyObject))
+ const matchFunction = match (() => 7) { when let value: value.name; }
+ const matchClass = match (class { static observed = this.name }) { when let value: [value.name, value.observed]; }
+ out.push(matchFunction, matchClass)
+ const pipeArrow = (() => 1) |> [%.name, %.name]
+ const pipeClass = (class { static observed = this.name }) |> [%.name, %.observed]
+ const pipeNamed = (class Written { static observed = this.name }) |> [%.name, %.observed]
+ out.push(pipeArrow, pipeClass, pipeNamed)
  return out
 }
 

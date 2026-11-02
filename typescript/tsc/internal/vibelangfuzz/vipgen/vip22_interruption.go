@@ -1008,6 +1008,44 @@ func init() {
 			Reading: "Chapter 2 expands the VIP operation with completion records and lexical captures; the reference dispatches outward jumps only after the operation completes."}},
 		Focus: func(g *Gen, s *Scope) []Stmt {
 			g.UseEffect()
+			// RC-33 / 001-functions source-names: "A value-only evaluation of an
+			// anonymous function or class cannot gain a name from a private
+			// variable or assignment; preserve a name the source explicitly requests."
+			// The native reference returns the value directly from each mask,
+			// rather than giving an anonymous definition a record-property name.
+			if mode := g.Intn(6); mode != 0 {
+				operands := []string{"() => 1", "function () { return 1 }", "class { static observed = this.name }", "function written() { return 1 }", "class Written { static observed = this.name }"}
+				operand := operands[mode-1]
+				source, native := "return ("+operand+");", "return ("+operand+");"
+				depthLimit := 1 + g.Intn(3)
+				for depth := 0; depth < depthLimit; depth++ {
+					block, call := "uninterruptible", "Effect.uninterruptibleMask"
+					if depth > 0 && g.Intn(2) == 0 {
+						block, call = "interruptible", "Effect.interruptible"
+					}
+					source = block + " { " + source + " }"
+					if block == "uninterruptible" {
+						native = "return yield* " + call + "(() => Effect.gen(function* () { " + native + " }));"
+					} else {
+						native = "return yield* " + call + "(Effect.gen(function* () { " + native + " }));"
+					}
+				}
+				name, value := g.Name("regionCapture"), g.Name("regionValue")
+				g.AddDecl(&FixedPair{
+					Source:    "effect function " + name + "() { " + source + " }",
+					Reference: "function " + name + "() { return Effect.gen(function* () { " + native + " }); }",
+				})
+				observed := value + ".name"
+				if mode == 3 || mode == 5 {
+					observed = value + ".observed"
+				}
+				result := "ev(" + value + ".name); ev(" + observed + "); return 1"
+				return []Stmt{&catchEdge{
+					vibe: "const " + value + " = try " + name + "(); " + result,
+					ref:  "const " + value + " = yield* " + name + "(); " + result,
+				}}
+			}
+
 			return []Stmt{&catchEdge{vibe: "let n = 0; uninterruptible { return (ev(\"return-site\"), ++n) }; return 99", ref: "let n = 0; const c = yield* Effect.uninterruptibleMask(() => Effect.gen(function* () { return { tag: \"Return\", value: (ev(\"return-site\"), ++n) } })); if (c.tag === \"Return\") return c.value; return 99"}}
 		},
 	})

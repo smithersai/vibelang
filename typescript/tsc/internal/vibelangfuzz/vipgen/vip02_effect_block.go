@@ -300,7 +300,7 @@ func init() {
 			}
 			choice := g.Intn(len(operands))
 			operand := operands[choice]
-			position := g.Intn(4)
+			position := g.Intn(10)
 			wrap := func(body string, native bool) string {
 				for range depth {
 					if native {
@@ -313,6 +313,9 @@ func init() {
 			}
 			program := func(native bool) string {
 				later := wrap("2", native)
+				if position >= 4 && position <= 7 {
+					later = wrap(operand, native)
+				}
 				var prefix, value string
 				switch position {
 				case 0:
@@ -321,6 +324,23 @@ func init() {
 					prefix, value = "const values = ["+operand+", "+later+"] as const; ", "values[0]"
 				case 2:
 					prefix, value = "const values = { f: "+operand+", x: "+later+" }; ", "values.f"
+				case 4:
+					prefix, value = "const value = true ? ("+operand+") : "+later+"; ", "value"
+				case 5:
+					prefix, value = "\n// @ts-ignore -- value naming oracle\nconst value = ("+operand+") || "+later+"; ", "value"
+				case 6:
+					prefix, value = "\n// @ts-ignore -- value naming oracle\nconst value = ("+operand+") ?? "+later+"; ", "value"
+				case 8:
+					return "return (class { static observed = this.name; static read(_n: number) { return [this.name, this.observed] } }).read(" + later + ")"
+				case 9:
+					return "const result = { [(class { static [Symbol.toPrimitive]() { return this.name } }) as any]: " + later + " }; return Object.keys(result)"
+				case 7:
+					if native {
+						prefix = "const value = " + wrap(operand, true) + "; "
+					} else {
+						prefix = "const value = match (" + operand + ") { when let captured: captured; }; "
+					}
+					value = "value"
 				default:
 					prefix, value = "const key = Symbol(\"slot\"); const values = { [key]: "+operand+", x: "+later+" }; ", "values[key]"
 				}
@@ -335,7 +355,7 @@ func init() {
 			name := g.Name("doNames")
 			g.AddDecl(&FixedPair{
 				Source:    "function " + name + "(): unknown { " + program(false) + " }",
-				Reference: "function " + name + "() { " + strings.NewReplacer(": number", "", " as const", "").Replace(program(true)) + " }",
+				Reference: "function " + name + "() { " + strings.NewReplacer(": number", "", " as const", "", " as any", "").Replace(program(true)) + " }",
 			})
 			return []Stmt{&Return{Value: &Call{Name: name}, Succeed: true}}
 		},

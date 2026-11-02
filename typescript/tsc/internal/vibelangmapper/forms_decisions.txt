@@ -2215,6 +2215,10 @@ typescript/vibelang/cases/do-object-spread-finish-order/main.vibe:30:56 lambda p
 typescript/vibelang/cases/do-object-spread-finish-order/main.vibe:50:73 lambda plain annotation
 typescript/vibelang/cases/do-object-spread-finish-order/main.vibe:70:55 lambda plain annotation
 typescript/vibelang/cases/do-object-spread-finish-order/main.vibe:90:61 lambda plain annotation
+typescript/vibelang/cases/do-region-source-names/main.vibe:2:53 lambda plain fallback
+typescript/vibelang/cases/do-region-source-names/main.vibe:3:48 lambda plain fallback
+typescript/vibelang/cases/do-region-source-names/main.vibe:5:55 lambda plain fallback
+typescript/vibelang/cases/do-region-source-names/main.vibe:7:49 lambda plain fallback
 typescript/vibelang/cases/do-return-match-arms/main.vibe:16:14 lambda plain annotation
 typescript/vibelang/cases/do-return-match-arms/main.vibe:3:24 lambda plain annotation
 typescript/vibelang/cases/do-return-plain-functions/main.vibe:15:12 lambda plain annotation
@@ -2231,6 +2235,16 @@ typescript/vibelang/cases/do-source-names/main.vibe:30:18 lambda plain annotatio
 typescript/vibelang/cases/do-source-names/main.vibe:32:34 lambda plain annotation
 typescript/vibelang/cases/do-source-names/main.vibe:32:60 lambda plain annotation
 typescript/vibelang/cases/do-source-names/main.vibe:34:32 lambda plain fallback
+typescript/vibelang/cases/do-source-names/main.vibe:39:30 lambda plain fallback
+typescript/vibelang/cases/do-source-names/main.vibe:39:46 lambda plain fallback
+typescript/vibelang/cases/do-source-names/main.vibe:42:19 lambda plain fallback
+typescript/vibelang/cases/do-source-names/main.vibe:42:36 lambda plain fallback
+typescript/vibelang/cases/do-source-names/main.vibe:44:22 lambda plain fallback
+typescript/vibelang/cases/do-source-names/main.vibe:44:39 lambda plain fallback
+typescript/vibelang/cases/do-source-names/main.vibe:48:30 lambda dual fallback
+typescript/vibelang/cases/do-source-names/main.vibe:48:31 lambda plain fallback
+typescript/vibelang/cases/do-source-names/main.vibe:49:27 lambda dual fallback
+typescript/vibelang/cases/do-source-names/main.vibe:51:21 lambda plain fallback
 typescript/vibelang/cases/do-source-names/main.vibe:6:21 lambda plain annotation
 typescript/vibelang/cases/do-source-names/main.vibe:7:19 lambda plain annotation
 typescript/vibelang/cases/do-spread-finish-order/main.vibe:110:71 lambda plain annotation

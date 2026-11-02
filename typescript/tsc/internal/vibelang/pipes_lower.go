@@ -143,7 +143,7 @@ func (tx *lowering) visitPipe(node *ast.Node) *ast.Node {
 	f := tx.Factory()
 	topic := f.NewUniqueName("topic")
 	tx.EmitContext().AddVariableDeclaration(topic)
-	left := tx.Visitor().VisitNode(pipe.Left)
+	left := tx.captureValue(tx.Visitor().VisitNode(pipe.Left))
 	if tx.topicNames == nil {
 		tx.topicNames = map[*ast.Node]*ast.IdentifierNode{}
 	}

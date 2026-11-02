@@ -898,7 +898,7 @@ func (p *Parser) hoistForHead(initializer, condition, incrementor *ast.Node, at 
 	default:
 		p.vibelangMatchTemps++
 		temp := p.mTemp("$for"+strconv.Itoa(p.vibelangMatchTemps), at)
-		declaration := p.vibelangSpanning(p.factory.NewVariableDeclaration(temp, nil, nil, initializer), initializer.Loc)
+		declaration := p.vibelangSpanning(p.factory.NewVariableDeclaration(temp, nil, nil, p.valueOnly(initializer)), initializer.Loc)
 		return p.mLetList(append(declarators, declaration), at)
 	}
 }
@@ -1167,7 +1167,7 @@ func (p *Parser) cloneIdentExpression(expr *ast.Node) *ast.Node {
 func (p *Parser) subjectPath(subject *ast.Node, anchor core.TextRange, prefix string) (matchPath, *ast.Node) {
 	p.vibelangMatchTemps++
 	name := prefix + strconv.Itoa(p.vibelangMatchTemps)
-	decl := p.mConst(p.mTemp(name, anchor), ast.NodeFlagsConst, subject, core.NewTextRange(min(anchor.Pos(), subject.Pos()), subject.End()))
+	decl := p.mConst(p.mTemp(name, anchor), ast.NodeFlagsConst, p.valueOnly(subject), core.NewTextRange(min(anchor.Pos(), subject.Pos()), subject.End()))
 	return func() *ast.Node { return p.mTemp(name, anchor) }, decl
 }
 

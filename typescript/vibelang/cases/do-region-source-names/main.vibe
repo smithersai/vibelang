@@ -1,0 +1,16 @@
+// RC-33 / chapter 001 source names: a return's completion record is value-only.
+effect function arrow() { uninterruptible { return (() => 1) } }
+effect function fn() { interruptible { return (function () { return 1 }) } }
+effect function klass() { uninterruptible { interruptible { return (class { static observed = this.name }) } } }
+effect function namedFn() { uninterruptible { return (function written() { return 1 }) } }
+effect function namedClass() { interruptible { return (class Written { static observed = this.name }) } }
+effect function sourceBinding() { const bound = () => 1; uninterruptible { return bound } }
+export effect function main() {
+  const a = try arrow()
+  const f = try fn()
+  const C = try klass()
+  const n = try namedFn()
+  const N = try namedClass()
+  const b = try sourceBinding()
+  return [a.name, f.name, [C.name, C.observed], n.name, [N.name, N.observed], b.name]
+}

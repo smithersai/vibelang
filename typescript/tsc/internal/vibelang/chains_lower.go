@@ -125,7 +125,7 @@ func (tx *lowering) visitGuardedChain(node, link *ast.Node) *ast.Node {
 		}
 		guard.receiver = f.NewUniqueName("receiver")
 		ec.AddVariableDeclaration(guard.receiver)
-		object = f.NewParenthesizedExpression(f.NewAssignmentExpression(guard.receiver, object))
+		object = f.NewParenthesizedExpression(f.NewAssignmentExpression(guard.receiver, tx.captureValue(object)))
 		if ast.IsPropertyAccessExpression(callee) {
 			value = f.NewPropertyAccessExpression(object, nil /*questionDotToken*/, callee.Name(), ast.NodeFlagsNone)
 		} else {
@@ -134,7 +134,7 @@ func (tx *lowering) visitGuardedChain(node, link *ast.Node) *ast.Node {
 	} else {
 		value = tx.Visitor().VisitNode(callee)
 	}
-	test := f.NewBinaryExpression(nil /*modifiers*/, f.NewParenthesizedExpression(f.NewAssignmentExpression(guard.base, value)), nil /*typeNode*/, f.NewToken(ast.KindEqualsEqualsToken), f.NewKeywordExpression(ast.KindNullKeyword))
+	test := f.NewBinaryExpression(nil /*modifiers*/, f.NewParenthesizedExpression(f.NewAssignmentExpression(guard.base, tx.captureValue(value))), nil /*typeNode*/, f.NewToken(ast.KindEqualsEqualsToken), f.NewKeywordExpression(ast.KindNullKeyword))
 	if tx.chainGuards == nil {
 		tx.chainGuards = map[*ast.Node]*chainGuard{}
 	}

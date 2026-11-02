@@ -107,3 +107,21 @@ func sourceName(fn *ast.Node) string {
 	}
 	return ""
 }
+
+// captureValue prevents an emitter-generated binding from becoming the
+// NamedEvaluation context of a source anonymous function or class. Do it
+// before creation: a class static initializer may already observe its name.
+func (tx *lowering) captureValue(value *ast.Node) *ast.Node {
+	if value == nil {
+		return nil
+	}
+	original := ast.SkipOuterExpressions(value, ast.OEKParentheses|ast.OEKTypeAssertions|ast.OEKNonNullAssertions|ast.OEKSatisfies|ast.OEKPartiallyEmittedExpressions)
+	switch original.Kind {
+	case ast.KindArrowFunction, ast.KindFunctionExpression, ast.KindClassExpression:
+		if original.Name() == nil {
+			f := tx.Factory()
+			return f.NewParenthesizedExpression(f.NewBinaryExpression(nil, f.NewVoidZeroExpression(), nil, f.NewToken(ast.KindCommaToken), value))
+		}
+	}
+	return value
+}

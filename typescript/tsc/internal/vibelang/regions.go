@@ -178,7 +178,7 @@ func (tx *lowering) leave(j jump, value *ast.Node, original *ast.Node) *ast.Node
 	properties := []*ast.Node{f.NewPropertyAssignment(nil /*modifiers*/, f.NewIdentifier("kind"), nil /*postfixToken*/, nil /*typeNode*/, f.NewStringLiteral(jumpKind(j.kind), ast.TokenFlagsNone))}
 	if j.kind == ast.KindReturnStatement {
 		if value != nil {
-			properties = append(properties, f.NewPropertyAssignment(nil /*modifiers*/, f.NewIdentifier("value"), nil /*postfixToken*/, nil /*typeNode*/, value))
+			properties = append(properties, f.NewPropertyAssignment(nil /*modifiers*/, f.NewIdentifier("value"), nil /*postfixToken*/, nil /*typeNode*/, tx.captureValue(value)))
 		}
 	} else {
 		properties = append(properties, f.NewPropertyAssignment(nil /*modifiers*/, f.NewIdentifier("label"), nil /*postfixToken*/, nil /*typeNode*/, f.NewStringLiteral(j.label, ast.TokenFlagsNone)))

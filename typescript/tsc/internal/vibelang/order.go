@@ -136,7 +136,7 @@ func (tx *lowering) inOrder(operands, sources []*ast.Node, emit []int) []*ast.No
 		}
 		name := f.NewUniqueName("operand")
 		tx.EmitContext().AddVariableDeclaration(name)
-		assignments = append(assignments, f.NewAssignmentExpression(name, value))
+		assignments = append(assignments, f.NewAssignmentExpression(name, tx.captureValue(value)))
 		values[i] = name
 		if spread {
 			values[i] = f.NewSpreadElement(name)

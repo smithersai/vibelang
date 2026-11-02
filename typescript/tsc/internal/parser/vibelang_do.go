@@ -897,6 +897,9 @@ func (l *doLowering) letStatement(name *ast.Node, at core.TextRange) *ast.Node {
 }
 
 func (l *doLowering) assign(target, value *ast.Node, at core.TextRange) *ast.Node {
+	// A compiler cell is a value-only capture, even in a conditional or
+	// short-circuit branch; it must not supply an inferred function name.
+	value = l.p.valueOnly(value)
 	if value.Kind == ast.KindBinaryExpression && value.AsBinaryExpression().OperatorToken.Kind == ast.KindCommaToken {
 		value = l.p.mParens(value, value.Loc)
 	}
@@ -1605,7 +1608,7 @@ func (l *doLowering) method(callee *ast.Node, at core.TextRange, pre *[]*ast.Nod
 		}
 		name := l.temp("$do_t", at)
 		value := l.expr(object, pre)
-		*pre = append(*pre, l.p.mConst(name, ast.NodeFlagsConst, value, at))
+		*pre = append(*pre, l.p.mConst(name, ast.NodeFlagsConst, l.p.valueOnly(value), at))
 		return l.ref(name, at), l.ref(name, at)
 	}
 	var bound *ast.Node
@@ -1707,7 +1710,7 @@ func (l *doLowering) propertyKey(k *ast.Node, pre *[]*ast.Node) *ast.Node {
 	}
 	at := l.p.sourceRange(k)
 	name := l.temp("$do_k", at)
-	*pre = append(*pre, l.p.mConst(name, ast.NodeFlagsConst, k, at))
+	*pre = append(*pre, l.p.mConst(name, ast.NodeFlagsConst, l.p.valueOnly(k), at))
 	return l.ref(name, at)
 }
 
@@ -1911,7 +1914,7 @@ func compoundOperator(kind ast.Kind) ast.Kind {
 }
 
 // anonymousDoValue follows only wrappers erased by JavaScript emission.
-// A do completion or an ordered operand is value-only, even when its
+// A completion, ordered operand or match subject is value-only, even when its
 // temporary is a native NamedEvaluation source.
 func anonymousDoValue(e *ast.Node) bool {
 	if e == nil {
@@ -1931,14 +1934,19 @@ func anonymousDoValue(e *ast.Node) bool {
 }
 
 func (l *doLowering) valueOnly(e *ast.Node) *ast.Node {
+	return l.p.valueOnly(e)
+}
+
+func (p *Parser) valueOnly(e *ast.Node) *ast.Node {
 	if !anonymousDoValue(e) {
 		return e
 	}
-	at := l.p.sourceRange(e)
+	at := p.sourceRange(e)
 	// void 0 is inert, cannot be shadowed and does not trigger TS2695.
 	// A comma expression suppresses native inferred names before a class's
 	// static elements run; parentheses alone would still infer the name.
-	return l.p.mParens(l.p.mBinary(l.undefined(at), ast.KindCommaToken, e, at), at)
+	empty := p.vibelangSpanning(p.factory.NewVoidExpression(p.mNumber(0, at)), at)
+	return p.mParens(p.mBinary(empty, ast.KindCommaToken, e, at), at)
 }
 
 // spill reads e into a constant, unless reading it has no effect and a do

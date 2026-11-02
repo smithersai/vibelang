@@ -511,7 +511,7 @@ effect function outcome() {
 // Output: Success
 ```
 
-**Interruption**. These statements require effect code; plain and `async` functions, `class` field and `enum` member initializers, `static` blocks and parameter defaults report `EK2201`. `uninterruptible { … }` masks interruption for its statements, and `restore { … }` inside it restores the interruptibility from before the innermost mask, which may itself be uninterruptible. `interruptible { … }` allows interruption inside masked code. They are ordinary blocks, so `return` inside one returns from the effect function. A nested effect callable or `effect` block must introduce its own mask; it cannot capture an outer block's `restore`.
+**Interruption**. These statements require effect code; plain and `async` functions, `class` field and `enum` member initializers, `static` blocks and parameter defaults report `EK2201`. `uninterruptible { … }` masks interruption for its statements, and `restore { … }` inside it restores the interruptibility from before the innermost mask, which may itself be uninterruptible. `interruptible { … }` allows interruption inside masked code. They are ordinary blocks, so `return` inside one returns from the effect function. A returned anonymous function or class keeps its empty `.name`, including the name observed by class static initializers. A nested effect callable or `effect` block must introduce its own mask; it cannot capture an outer block's `restore`.
 
 The opening `{` follows the keyword on the same line; across a line break the word is an ordinary identifier before a separate block.
 
@@ -638,7 +638,7 @@ function hot() {
 
 Stream transformations construct a Stream. Run it with a Stream consumer such as `Stream.runCollect`, or iterate it with `for try`.
 
-**The pipe operator**. `%` is the value on the left, evaluated once. Effects remain values in a pipe: `try (getUser("1") |> retry(%, policy) |> timeout(%, "1 second"))`.
+**The pipe operator**. `%` is the value on the left, evaluated once. An anonymous function or class used as a topic keeps its empty `.name`, including inside class static initializers. Effects remain values in a pipe: `try (getUser("1") |> retry(%, policy) |> timeout(%, "1 second"))`.
 
 ```ts effect
 // fragment
@@ -703,7 +703,7 @@ effect function label(id: string) {
 
 A `do` expression is TC39's: `return`, `break`, `continue` and `var` inside it mean what they mean around it. Its block cannot end with a declaration, a loop or an `if` without `else` (`EK0201`); an unlabeled jump or one targeting any label directly chained around the same loop cannot leave a `do` expression in that loop's head (`EK0205`), nor a `var` stand in one in a parameter list (`EK0203`), including inside nested `do` expressions; and where VibeLang still writes a function around it, such as a parameter default, none of them can leave it (`EK0204`).
 
-An anonymous function or class used as a `do` completion or an array value keeps its empty `.name`. An object property before a later `do` keeps its property name; class static initializers observe that source name during creation.
+An anonymous function or class used as a `do` completion, conditional value, method receiver, computed key, `match` subject or array value keeps its empty `.name`. An object property before a later `do` keeps its property name; class static initializers observe that source name during creation.
 
 A `do` in the right-hand operand of a `for…in` or `for…of` lexical head keeps that head's scope. Its closures capture the uninitialized `let` or `const` head bindings, separately from the initialized bindings of each iteration.
 

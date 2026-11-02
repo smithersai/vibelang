@@ -79,6 +79,17 @@ func init() {
 		// its second is Math.max with a literal: the log holds the head's
 		// event once, and main succeeds with 3.
 		Focus: func(g *Gen, s *Scope) []Stmt {
+			// Chapter 001's Generated captures preserve the source
+			// NamedEvaluation context, including class static observations.
+			switch g.Intn(4) {
+			case 1:
+				return []Stmt{&catchEdge{vibe: "return Effect.succeed((() => 1) |> [%.name, %.name])", ref: "return Effect.succeed(((value) => [value.name, value.name])(() => 1))"}}
+			case 2:
+				return []Stmt{&catchEdge{vibe: "return Effect.succeed((class { static observed = this.name }) |> [%.name, %.observed])", ref: "return Effect.succeed(((value) => [value.name, value.observed])(class { static observed = this.name }))"}}
+			case 3:
+				return []Stmt{&catchEdge{vibe: "return Effect.succeed((class Written { static observed = this.name }) |> [%.name, %.observed])", ref: "return Effect.succeed(((value) => [value.name, value.observed])(class Written { static observed = this.name }))"}}
+			}
+
 			p := &Pipe{Name: g.Name("n"), Head: &Logged{Label: g.Label(), Value: &Num{Value: 2}}}
 			t0 := g.Name("t")
 			p.Temps = append(p.Temps, t0)

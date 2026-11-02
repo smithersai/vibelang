@@ -286,7 +286,7 @@ func (tx *lowering) trustedThunk(node *ast.Node) *ast.Node {
 	case (ast.IsPropertyAccessExpression(callee) || ast.IsElementAccessExpression(callee)) && callee.Expression().Kind != ast.KindSuperKeyword:
 		saved := f.NewUniqueName("receiver")
 		tx.EmitContext().AddVariableDeclaration(saved)
-		receiver = hoist("receiver", f.NewAssignmentExpression(saved, callee.Expression()))
+		receiver = hoist("receiver", f.NewAssignmentExpression(saved, tx.captureValue(callee.Expression())))
 		if ast.IsPropertyAccessExpression(callee) {
 			function = hoist("method", f.NewPropertyAccessExpression(saved, nil /*questionDotToken*/, callee.Name(), ast.NodeFlagsNone))
 		} else {

@@ -33,5 +33,21 @@ export function names(): unknown[] {
  out.push(parameter())
  const nested = (() => { return (() => { return ((() => { return (class { static observed = this.name }) })()) })() })()
  out.push([nested.name, nested.observed])
+ const conditional = true ? (() => 1) : (() => { return () => 2 })()
+ const conditionalClass = true ? (class { static observed = this.name }) : (() => { return class { static observed = this.name } })()
+ // @ts-ignore -- native always-truthy warning is independent of value naming.
+ const logical = (() => 3) || (() => { return () => 4 })()
+ // @ts-ignore -- native nullishness warning is independent of value naming.
+ const coalescing = (() => 5) ?? (() => { return () => 6 })()
+ const method = (class { static observed = this.name; static take(_n: number): string[] { return [this.name, this.observed] } }).take((() => { return 1 })())
+ const keyObject = { [(class { static [Symbol.toPrimitive](): string { return this.name } }) as any]: (() => { return 1 })() }
+ out.push(conditional.name, [conditionalClass.name, conditionalClass.observed], logical.name, coalescing.name, method, Object.keys(keyObject))
+ const matchFunction = ((value: () => number) => value.name)(() => 7)
+ const matchClass = ((value: { name: string; observed: string }) => [value.name, value.observed])(class { static observed = this.name })
+ out.push(matchFunction, matchClass)
+ const pipeArrow = ((value: () => number) => [value.name, value.name])(() => 1)
+ const pipeClass = ((value: { name: string; observed: string }) => [value.name, value.observed])(class { static observed = this.name })
+ const pipeNamed = ((value: { name: string; observed: string }) => [value.name, value.observed])(class Written { static observed = this.name })
+ out.push(pipeArrow, pipeClass, pipeNamed)
  return out
 }
