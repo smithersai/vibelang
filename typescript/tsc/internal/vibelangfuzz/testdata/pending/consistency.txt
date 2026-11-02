@@ -6,8 +6,6 @@
 # listed by corpus file, so that it fails as XPASS once fixed.
 # <target> <key> <owner> <what is missing, with the decision it breaks>
 FuzzEditorConsistency feature:layer-declaration compiler hang: the parser loops on a stray `)` or `]` in a `layer` declaration's body (FuzzFormat corpus parser-hang-layer-close-paren)
-FuzzEditorConsistency consistency:selection-ranges:nesting:vibelang compiler LSP 3.17 ("parent.range must contain this.range"), D32: nodes synthesized for VibeLang surface forms have selection ranges that do not nest in source order; ordinary TypeScript syntax retains strict keys
-FuzzEditorConsistency corpus:selection-contract-bang compiler the minimal reproduction of consistency:selection-ranges:nesting:vibelang
 FuzzEditorConsistency consistency:rename:ClassDeclaration:diagnostics:EK2117 compiler LSP 3.17, D372: renaming an `error` or `schema error` declaration leaves `extends Base` in another error's heritage unrenamed (its references miss it), so the renamed program adds EK2117 and TS2304
 FuzzEditorConsistency corpus:rename-error-extends compiler the minimal reproduction of consistency:rename:ClassDeclaration:diagnostics:EK2117
 FuzzEditorConsistency consistency:rename:ClassDeclaration:diagnostics:EK0502 compiler LSP 3.17, D372: renaming an `error` declaration changes its `_tag` but leaves the matching key of `Effect.catchTags(e, { A: … })` unrenamed, so the handlers no longer match and the renamed program adds EK0502, TS2769 and TS7006 (seed#8 on 8b4abee2)
@@ -24,9 +22,3 @@ FuzzEditorConsistency consistency:rename:Parameter:written-not-a-reference compi
 FuzzEditorConsistency corpus:rename-is-parameter compiler the minimal reproduction of consistency:rename:Parameter:written-not-a-reference
 FuzzEditorConsistency corpus:rename-match-property compiler the minimal reproduction of consistency:rename:VariableDeclaration:diagnostics:TS2339
 FuzzEditorConsistency corpus:rename-select-call compiler the minimal reproduction of consistency:rename:FunctionDeclaration:diagnostics:TS2304
-FuzzEditorConsistency corpus:selection-arrow-catch compiler the minimal reproduction of consistency:selection-ranges:nesting:vibelang
-FuzzEditorConsistency corpus:selection-catch compiler the minimal reproduction of consistency:selection-ranges:nesting:vibelang
-FuzzEditorConsistency corpus:selection-data compiler the minimal reproduction of consistency:selection-ranges:nesting:vibelang
-FuzzEditorConsistency corpus:selection-match-binding compiler the minimal reproduction of consistency:selection-ranges:nesting:vibelang
-FuzzEditorConsistency corpus:selection-property-catch compiler the minimal reproduction of consistency:selection-ranges:nesting:vibelang
-FuzzEditorConsistency corpus:selection-schema compiler the minimal reproduction of consistency:selection-ranges:nesting:vibelang

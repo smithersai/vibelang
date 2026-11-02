@@ -188,10 +188,12 @@ func getSmartSelectionRange(l *LanguageService, sourceFile *ast.SourceFile, pos 
 	ranges := newSelectionRangeBuilder(maxSelectionRangeDepth - 1)
 	var root *lsproto.SelectionRange
 	var lastRange lsproto.Range
+	hasRange := false
 	if sourceFile.ContentMapper() == "" {
 		fullRange, _ := l.converters.ToLSPRange(sourceFile, core.NewTextRange(sourceFile.Pos(), sourceFile.End()))
 		root = &lsproto.SelectionRange{Range: fullRange}
 		lastRange = fullRange
+		hasRange = true
 	}
 
 	nodeContainsPosition := func(node *ast.Node) bool {
@@ -231,7 +233,14 @@ func getSmartSelectionRange(l *LanguageService, sourceFile *ast.SourceFile, pos 
 		if lastRange == lspRange {
 			return
 		}
+		// Lowered source nodes can overlap: a generated callee may stand
+		// for a type name while an argument covers the whole written type.
+		// Retain only stops nested inside the preceding source selection.
+		if hasRange && !lspRangeContains(lastRange, lspRange) {
+			return
+		}
 		lastRange = lspRange
+		hasRange = true
 
 		ranges.push(lspRange)
 	}

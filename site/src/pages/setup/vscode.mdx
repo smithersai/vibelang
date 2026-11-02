@@ -57,6 +57,8 @@ The server advertises these features to LSP clients. In VS Code and Cursor, use 
 
 These are language-server capabilities, not a guarantee that every construct offers a result. A client must enable and support each feature; for `.ts` files that import `.vibe`, use the VibeLang TypeScript handoff described above.
 
+**Expand Selection** follows nested source ranges in `schema` and `data` declarations, `match` and typed `catch` expressions, including mutable schema arrays with nested arrays or record values.
+
 ## Server settings and troubleshooting
 
 | Setting | Default | Purpose |
