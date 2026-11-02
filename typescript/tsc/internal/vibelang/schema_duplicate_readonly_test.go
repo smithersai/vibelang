@@ -132,7 +132,7 @@ func TestSchemaRemainingFixUsesDiagnosticSource(t *testing.T) {
 					code: tc.code, edits: []sourceEdit{{start: 0, end: 0, text: ""}},
 				}}}}
 			}
-			got := remainingFixes(t.Context(), program, propose, FixOptions{VIPOnly: true})
+			got := remainingFixes(t.Context(), program, nil, nil, propose, FixOptions{VIPOnly: true})
 			want := FixRemaining{File: file.FileName(), Line: 1, Fix: tc.want}
 			if len(got) != 1 || got[0] != want {
 				t.Fatalf("remaining fix: got %+v, want %+v", got, want)
