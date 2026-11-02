@@ -893,3 +893,14 @@ Packaging properties inspect extracted archive filenames through Node's filesyst
 LC_ALL=C node --test .smithers/flows/migrate/test/emitted-pack.property.test.mjs
 LC_ALL=C.UTF-8 node --test .smithers/flows/migrate/test/emitted-pack.property.test.mjs
 ```
+
+### Captured pattern source forms
+
+The native `eslint-is-calls.property.test.mjs` guards captured `is` subjects,
+with a keyed regression minimized from `match-subject-once`.
+The optional `test/eslint/is-calls-property.test.mjs` checks the actual
+`no-unexpected-multiline` rule over guards, extractors, pattern combinators,
+subject calls, source trivia and Unicode offsets. Matcher invocations have
+the source node `VibeIsExpression`; source arrow calls remain
+`CallExpression`. The matcher and subject stay reachable to scope analysis,
+and source call newlines keep their reports.

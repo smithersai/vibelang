@@ -630,3 +630,13 @@ it.live("finds a user", effect () => {
   const user = getUser("1")
   assert.strictEqual(user.name, "Ada")
 })
+
+/**
+ * Tests a guard while evaluating the subject once.
+ *
+ * @category constructors
+ * @since 0.0.2
+ */
+export function guarded(outcome: Exit.Exit<User, NotFound>) {
+  return outcome is if (Exit.isFailure(outcome))
+}

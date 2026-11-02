@@ -263,6 +263,12 @@ func (c *converter) vibeCall(n *ast.Node) *obj {
 	arguments := listNodes(call.Arguments)
 	callee := call.Expression
 	switch {
+	case len(arguments) == 1 && c.isPatternMatcher(callee):
+		// The parser captures a subject with an arrow invocation so it is
+		// evaluated once. There is no written call around the pattern:
+		// retain its matcher scope and subject, without exposing imaginary
+		// call parentheses to source-based rules.
+		return c.convertCall(n).set("type", "VibeIsExpression")
 	case isSynthesizedIdentifier(callee, "$catchExpression") && len(arguments) == 2:
 		self, handler := arguments[0], arguments[1]
 		result := c.node(n, "VibeCatchExpression").set("expression", c.convertChild(programBody(self), self))
@@ -290,6 +296,18 @@ func (c *converter) vibeCall(n *ast.Node) *obj {
 			set("right", right)
 	}
 	return nil
+}
+
+// isPatternMatcher recognizes only the parser's subject-capturing arrow at
+// an is keyword. A written arrow, even one naming $is1, has no synthetic =>;
+// other generated arrows (do, throw, catch) start at their own keywords.
+func (c *converter) isPatternMatcher(callee *ast.Node) bool {
+	arrow := ast.SkipParentheses(callee)
+	if !isProgramArrow(arrow) {
+		return false
+	}
+	_, kind := c.tokenAfter(c.start(arrow))
+	return kind == ast.KindIsKeyword
 }
 
 // isProgramArrow reports whether n is an arrow function the parser wrote

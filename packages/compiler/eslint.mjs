@@ -32,6 +32,7 @@ export const vibeVisitorKeys = Object.freeze({
   VibeCatchExpression: ["expression", "handler"],
   VibeEffectType: ["success", "failure", "requirements"],
   VibeInferType: [],
+  VibeIsExpression: ["callee", "arguments"],
   VibeMaskStatement: ["body"],
   VibeModuleDeclaration: ["id", "body"],
   VibePatternAssignment: ["expression"],

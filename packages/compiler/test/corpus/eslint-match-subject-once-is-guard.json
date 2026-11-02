@@ -1,0 +1,9 @@
+{
+  "property": "eslint-is-call-form",
+  "rule": "VIP-34 existing tools work; captured is source form",
+  "input": {
+    "code": "function f(box) {\n  return box.value is if (true)\n}\nfunction after() {}\n",
+    "warnings": 0
+  },
+  "note": "Minimized from match-subject-once and match-unused-names: the captured is subject is not a written function invocation."
+}
