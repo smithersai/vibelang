@@ -436,6 +436,11 @@ returning `143`. This also covers cancellation while listing test names, when
 the package's `TestMain` can already be running. Discovery keeps the original
 test flags.
 
+Coverage and profiling runs (`-coverprofile`, `-cpuprofile`, `-memprofile`, `-blockprofile`, `-mutexprofile`, `-trace`)
+also run the binary once. The output file then contains the complete run;
+shards would overwrite the same file. Setting only a sampling rate or fraction
+keeps ordinary test sharding.
+
 The fuzz shell caps `GOMAXPROCS` at the smaller of `24` and the CPUs allowed
 by the process affinity, using Node's `os.availableParallelism()`. A lane
 restricted to four CPUs therefore starts four seed workers, rather than sizing

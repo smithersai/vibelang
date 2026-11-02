@@ -19,13 +19,24 @@ run=
 for a in "$@"; do case $a in -test.run=*) run=\${a#-test.run=} ;; esac; done
 i=0
 while [ "$(ls "$RUNS" | wc -l)" -lt "\${BARRIER:-1}" ]; do i=$((i + 1)); [ $i -gt 400 ] && { echo "no overlap"; exit 9; }; sleep 0.05; done
+profile=
+while [ "$#" -gt 0 ]; do
+  case $1 in
+    -test.coverprofile|-test.cpuprofile|-test.memprofile|-test.blockprofile|-test.mutexprofile|-test.trace) shift; profile=$1 ;;
+    -test.coverprofile=*|-test.cpuprofile=*|-test.memprofile=*|-test.blockprofile=*|-test.mutexprofile=*|-test.trace=*) profile=$(printf '%s' "$1" | cut -d= -f2-) ;;
+  esac
+  shift
+done
+selected=
 status=0
 for n in $NAMES; do
   if [ -z "$run" ] || printf '%s\\n' "$n" | grep -Eq "$run"; then
+    selected="$selected$n\\n"
     echo "ran $n"
     [ "$n" = TestFails ] && { echo "--- FAIL: TestFails (0.00s)"; status=1; }
   fi
 done
+[ -z "$profile" ] || printf '%b' "$selected" > "$profile"
 exit $status
 `
 
@@ -310,6 +321,54 @@ setInterval(() => {}, 1000)
     for (const pid of pids) {
       assert.ok(readdirSync(runs).includes(pid + ".stopped"), "test binary " + pid + " did not receive cancellation")
       assert.throws(() => process.kill(Number(pid), 0), { code: "ESRCH" }, "test binary " + pid + " was not reaped")
+    }
+  })
+}
+
+for (const flag of ["coverprofile", "cpuprofile", "memprofile", "blockprofile", "mutexprofile", "trace"]) {
+  for (const split of [false, true]) {
+    test(flag + (split ? " split" : " equals") + " keeps all tests in one profile and preserves arguments", () => {
+      const t = setup(["TestA", "TestB", "FuzzD"])
+      try {
+        const profile = join(t.dir, "profile with spaces.out")
+        const args = split ? ["-test." + flag, profile] : ["-test." + flag + "=" + profile]
+        const r = t.run(args, { GO_TEST_SHARDS: "3" })
+        assert.equal(r.status, 0, r.stdout + r.stderr)
+        assert.deepEqual(readFileSync(profile, "utf8").trim().split("\n").sort(), ["FuzzD", "TestA", "TestB"], "profile must contain every test")
+        assert.equal(r.runs.length, 1, "concurrent profiles overwrite the same output path")
+        assert.deepEqual(r.runs[0], ["-test.timeout=40m0s", "-test.short=true", ...args])
+      } finally {
+        t.done()
+      }
+    })
+  }
+}
+
+test("profiling retains failures and their output", () => {
+  const t = setup(["TestA", "TestFails", "TestC"])
+  try {
+    const r = t.run(["-test.trace=" + join(t.dir, "trace.out")], { GO_TEST_SHARDS: "3" })
+    assert.equal(r.status, 1)
+    assert.match(r.stdout, /--- FAIL: TestFails/)
+    assert.equal(r.runs.length, 1)
+    assert.deepEqual(ran(r.stdout), ["TestA", "TestC", "TestFails"])
+  } finally {
+    t.done()
+  }
+})
+
+for (const flag of ["memprofilerate", "blockprofilerate", "mutexprofilefraction"]) {
+  test(flag + " without an output file still shards ordinary tests", () => {
+    const t = setup(["TestA", "TestB", "TestC"])
+    try {
+      const args = ["-test." + flag + "=1"]
+      const r = t.run(args, { GO_TEST_SHARDS: "3", BARRIER: "3" })
+      assert.equal(r.status, 0, r.stdout + r.stderr)
+      assert.equal(r.runs.length, 3)
+      for (const argv of r.runs) assert.deepEqual(argv.slice(0, 3), ["-test.timeout=40m0s", "-test.short=true", ...args])
+      assert.deepEqual(ran(r.stdout), ["TestA", "TestB", "TestC"])
+    } finally {
+      t.done()
     }
   })
 }
