@@ -86,3 +86,28 @@ test("ResizeObserver: layerTest observes nothing, and takes the members a test n
   await Effect.runPromise(Effect.provide(observe, recording))
   expect(seen).toEqual([element])
 })
+
+// VIP-33/detail262: "ordinary interruption/resource cleanup"; the observer
+// belongs to the caller's Scope even when the host refuses its first target.
+test("ResizeObserver: foldkit setup defects still disconnect acquired observers (property)", async () => {
+  const corpus = await Bun.file(new URL("./corpus/foldkit-chart-resize-setup.json", import.meta.url)).json()
+  const check = async (stage: "constructor" | "observe" | "none", cleanupThrows: boolean) => {
+    let disconnected = 0
+    const failure = new Error("resize setup " + stage)
+    const host: ResizeObserver.Host = {
+      makeObserver: () => {
+        if (stage === "constructor") throw failure
+        return {
+          observe: () => { if (stage === "observe") throw failure },
+          disconnect: () => { disconnected++; if (cleanupThrows) throw new Error("resize cleanup") }
+        }
+      }
+    }
+    const result = await Effect.runPromiseExit(Effect.scoped(ResizeObserver.make(host).observe(element, () => {})))
+    expect(disconnected).toBe(stage === "constructor" ? 0 : 1)
+    expect(Exit.isFailure(result)).toBe(stage !== "none" || cleanupThrows)
+    if (stage !== "none") expect(String(result)).toContain(failure.message)
+  }
+  for (const stage of corpus.stages) await check(stage, false)
+  await fc.assert(fc.asyncProperty(fc.constantFrom("constructor", "observe", "none"), fc.boolean(), check), { seed: 35024, numRuns: 150 })
+})

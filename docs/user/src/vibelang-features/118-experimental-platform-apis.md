@@ -352,6 +352,8 @@ export effect function follow(element: Element) {
 
 `try observer.observe(element, onResize)` runs `onResize` when `element` changes size, and once when it starts, until the Scope closes. `onResize` runs synchronously, before the browser paints, so a layout it changes shows in the same frame; a `Stream` would run after the paint. For the window's size, use `BrowserStream.fromEventListenerWindow("resize")`.
 
+The observer is acquired before its first `observe` call, so closing the scope also disconnects it when the host rejects that target. Constructor and setup exceptions remain defects.
+
 `ExperimentalBrowserResizeObserver.layer`, also in `ExperimentalBrowserServices.layer`, uses the host's `ResizeObserver`. `Experimental.ResizeObserver.layerTest()` never fires. Pass `observe` to fire it, as above.
 
 ## Document

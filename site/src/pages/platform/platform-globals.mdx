@@ -31,6 +31,8 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `Bun` | escape to TypeScript for now: A runtime's own API belongs to its platform package's layers, such as @effect/platform-bun's, or to a .ts file. |
 | `Deno` | escape to TypeScript for now: A runtime's own API belongs to its platform package's layers, such as @effect/platform-bun's, or to a .ts file. |
 | `EventSource` | `try HttpClient.get(url)` |
+| `FileReader` | `try (try Experimental.FileReader.FileReader).readAsText(blob)` |
+| `ResizeObserver` | `try (try Experimental.ResizeObserver.ResizeObserver).observe(element, onResize)` |
 | `SharedWorker` | `effect/workers`: `import { Worker as EffectWorker }` and `WorkerRunner` |
 | `WebSocket` | `try Socket.makeWebSocket(url)` |
 | `Worker` | `effect/workers`: `import { Worker as EffectWorker }` and `WorkerRunner`. Bare `Worker` is Effect's `effect/workers` namespace, and `globalThis.Worker` is EK4402 |
@@ -40,8 +42,8 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `addEventListener` | `Stream.fromEventListener(target, "message")` |
 | `alert` | escape to TypeScript for now: Effect has no service for the browser's dialogs; a terminal program asks with `try (try Terminal.Terminal).readLine`. |
 | `caches` | escape to TypeScript for now: Effect has no service for the browser's Cache Storage; KeyValueStore stores strings by key. |
-| `cancelAnimationFrame` | escape to TypeScript for now: Effect has no service for the browser's animation and idle callbacks; schedule work with Schedule, or call them in a .ts file. |
-| `cancelIdleCallback` | escape to TypeScript for now: Effect has no service for the browser's animation and idle callbacks; schedule work with Schedule, or call them in a .ts file. |
+| `cancelAnimationFrame` | `try (try Experimental.Animations.Animations).nextFrame` |
+| `cancelIdleCallback` | escape to TypeScript for now: Effect has no service for the browser's idle callbacks; schedule work with Schedule, or call them in a .ts file. |
 | `clearImmediate` | `try Fiber.interrupt(fiber)` |
 | `clearInterval` | `try Fiber.interrupt(fiber)` |
 | `clearTimeout` | `try Fiber.interrupt(fiber)` |
@@ -85,6 +87,7 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `indexedDB` | `try (try KeyValueStore.KeyValueStore).get(key)` |
 | `localStorage` | `try (try KeyValueStore.KeyValueStore).get(key)` |
 | `location` | escape to TypeScript for now: Effect has no service for the DOM; UI code belongs in a .ts or .tsx file, such as a React component's. |
+| `matchMedia` | `try (try Experimental.MediaQuery.MediaQuery).matches(query)` |
 | `module` | `export const name = value` |
 | `navigator` | escape to TypeScript for now: Effect has no service for the browser's navigator; navigator.clipboard, geolocation, permissions, and locks have services. |
 | `navigator.clipboard` | `try (try Clipboard.Clipboard).readString` |
@@ -123,8 +126,8 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `prompt` | escape to TypeScript for now: Effect has no service for the browser's dialogs; a terminal program asks with `try (try Terminal.Terminal).readLine`. |
 | `queueMicrotask` | `try yieldNow` |
 | `removeEventListener` | `Stream.fromEventListener(target, "message")` |
-| `requestAnimationFrame` | escape to TypeScript for now: Effect has no service for the browser's animation and idle callbacks; schedule work with Schedule, or call them in a .ts file. |
-| `requestIdleCallback` | escape to TypeScript for now: Effect has no service for the browser's animation and idle callbacks; schedule work with Schedule, or call them in a .ts file. |
+| `requestAnimationFrame` | `try (try Experimental.Animations.Animations).nextFrame` |
+| `requestIdleCallback` | escape to TypeScript for now: Effect has no service for the browser's idle callbacks; schedule work with Schedule, or call them in a .ts file. |
 | `require` | `import { name } from "./module.ts"` |
 | `require.resolve` | escape to TypeScript: resolve in a `.ts` module and call it with `Effect.try`, because `import.meta` allows only `.url` |
 | `self` | escape to TypeScript for now: Effect has no global-object service; keep access to the host global object in TypeScript. |
@@ -133,7 +136,12 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `setInterval` | `try repeat(program, Schedule.spaced("1 second"))` |
 | `setTimeout` | `try sleep("1 second")` |
 | `window` | escape to TypeScript for now: Effect has no service for the DOM; UI code belongs in a .ts or .tsx file, such as a React component's. |
+| `window.FileReader` | `try (try Experimental.FileReader.FileReader).readAsText(blob)` |
+| `window.ResizeObserver` | `try (try Experimental.ResizeObserver.ResizeObserver).observe(element, onResize)` |
 | `window.addEventListener` | `BrowserStream.fromEventListenerWindow("resize")` |
+| `window.cancelAnimationFrame` | `try (try Experimental.Animations.Animations).nextFrame` |
+| `window.matchMedia` | `try (try Experimental.MediaQuery.MediaQuery).matches(query)` |
+| `window.requestAnimationFrame` | `try (try Experimental.Animations.Animations).nextFrame` |
 
 A numeric return value from `main` does not set the exit status:
 `effect function main(): number!! { return 3 }` succeeds with 3 and still exits 0 when passed to `NodeRuntime.runMain`. Return normally for exit 0,
@@ -215,10 +223,10 @@ effect function browser() {
 }
 ```
 
-VibeLang's experimental services fill what Effect lacks, provided by `ExperimentalNodeServices.layer` from `vibelang-runtime/experimental/platform-node` or Bun's, and `Locks` by `ExperimentalBrowserServices.layer` from `vibelang-runtime/experimental/platform-browser`; [Experimental platform APIs](/vibelang-features/118-experimental-platform-apis) has the details:
+VibeLang's experimental services fill what Effect lacks, provided by `ExperimentalNodeServices.layer` from `vibelang-runtime/experimental/platform-node` or Bun's, and `Locks` and `MediaQuery` by `ExperimentalBrowserServices.layer` from `vibelang-runtime/experimental/platform-browser`; [Experimental platform APIs](/vibelang-features/118-experimental-platform-apis) has the details:
 
 ```vibe
-effect function experimental(path: string, pid: number, killSignal: ChildProcess.Signal, name: string, macKey: Mac.Key, aeadKey: Aead.Key, privateKey: Signature.PrivateKey, publicKey: Signature.PublicKey, signature: Uint8Array, data: Uint8Array, plaintext: Uint8Array, ciphertext: Uint8Array, nonce: Uint8Array) {
+effect function experimental(path: string, pid: number, killSignal: ChildProcess.Signal, name: string, query: string, callback: (time: number) => void, blob: Blob, element: Element, onResize: () => void, macKey: Mac.Key, aeadKey: Aead.Key, privateKey: Signature.PrivateKey, publicKey: Signature.PublicKey, signature: Uint8Array, data: Uint8Array, plaintext: Uint8Array, ciphertext: Uint8Array, nonce: Uint8Array) {
   const fs = try Experimental.FileSystem.FileSystem
   const id = try (try Experimental.Process.Process).pid
   const platform = try (try Experimental.Process.Process).platform
@@ -240,7 +248,12 @@ effect function experimental(path: string, pid: number, killSignal: ChildProcess
   const opened = try (try Aead.Aead).decrypt(aeadKey, ciphertext, { nonce })
   const pair = try (try Signature.Signature).generateKeyPair(Signature.ed25519)
   const lock = try (try Experimental.Locks.Locks).hold(name)
-  return { id, platform, arch, executable, versions, memory, host, cores, origin, running, file, mac, signed, valid, sealed, opened, pair, lock }
+  const reducedMotion = try (try Experimental.MediaQuery.MediaQuery).matches(query)
+  const frame = try (try Experimental.Animations.Animations).nextFrame
+  try (try Experimental.Animations.Animations).nextFrameUnless(() => undefined)
+  const text = try (try Experimental.FileReader.FileReader).readAsText(blob)
+  try (try Experimental.ResizeObserver.ResizeObserver).observe(element, onResize)
+  return { id, platform, arch, executable, versions, memory, host, cores, origin, running, file, mac, signed, valid, sealed, opened, pair, lock, reducedMotion, frame, text, element }
 }
 ```
 

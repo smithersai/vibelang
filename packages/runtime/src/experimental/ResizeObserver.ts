@@ -91,13 +91,9 @@ export const make = (host: Host): ResizeObserver => ({
   [TypeId]: TypeId,
   observe: (element, onResize) =>
     Effect.acquireRelease(
-      Effect.sync(() => {
-        const observer = host.makeObserver(onResize)
-        observer.observe(element)
-        return observer
-      }),
+      Effect.sync(() => host.makeObserver(onResize)),
       (observer) => Effect.sync(() => observer.disconnect())
-    ).pipe(Effect.asVoid)
+    ).pipe(Effect.flatMap((observer) => Effect.sync(() => observer.observe(element))))
 })
 
 /**

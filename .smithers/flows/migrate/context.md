@@ -699,7 +699,7 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `Bun` | escape to TypeScript for now: A runtime's own API belongs to its platform package's layers, such as @effect/platform-bun's, or to a .ts file. |
 | `Deno` | escape to TypeScript for now: A runtime's own API belongs to its platform package's layers, such as @effect/platform-bun's, or to a .ts file. |
 | `EventSource` | `try HttpClient.get(url)` |
-| `FileReader` | `try (try Experimental.FileReader.FileReader).readAsText(file)` |
+| `FileReader` | `try (try Experimental.FileReader.FileReader).readAsText(blob)` |
 | `ResizeObserver` | `try (try Experimental.ResizeObserver.ResizeObserver).observe(element, onResize)` |
 | `SharedWorker` | `effect/workers`: `import { Worker as EffectWorker }` and `WorkerRunner` |
 | `WebSocket` | `try Socket.makeWebSocket(url)` |
@@ -710,7 +710,7 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `addEventListener` | `Stream.fromEventListener(target, "message")` |
 | `alert` | escape to TypeScript for now: Effect has no service for the browser's dialogs; a terminal program asks with `try (try Terminal.Terminal).readLine`. |
 | `caches` | escape to TypeScript for now: Effect has no service for the browser's Cache Storage; KeyValueStore stores strings by key. |
-| `cancelAnimationFrame` | `(try Experimental.Animations.Animations).onNextFrame(callback)` |
+| `cancelAnimationFrame` | `try (try Experimental.Animations.Animations).nextFrame` |
 | `cancelIdleCallback` | escape to TypeScript for now: Effect has no service for the browser's idle callbacks; schedule work with Schedule, or call them in a .ts file. |
 | `clearImmediate` | `try Fiber.interrupt(fiber)` |
 | `clearInterval` | `try Fiber.interrupt(fiber)` |
@@ -804,10 +804,10 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `setInterval` | `try repeat(program, Schedule.spaced("1 second"))` |
 | `setTimeout` | `try sleep("1 second")` |
 | `window` | escape to TypeScript for now: Effect has no service for the DOM; UI code belongs in a .ts or .tsx file, such as a React component's. |
-| `window.FileReader` | `try (try Experimental.FileReader.FileReader).readAsText(file)` |
+| `window.FileReader` | `try (try Experimental.FileReader.FileReader).readAsText(blob)` |
 | `window.ResizeObserver` | `try (try Experimental.ResizeObserver.ResizeObserver).observe(element, onResize)` |
 | `window.addEventListener` | `BrowserStream.fromEventListenerWindow("resize")` |
-| `window.cancelAnimationFrame` | `(try Experimental.Animations.Animations).onNextFrame(callback)` |
+| `window.cancelAnimationFrame` | `try (try Experimental.Animations.Animations).nextFrame` |
 | `window.matchMedia` | `try (try Experimental.MediaQuery.MediaQuery).matches(query)` |
 | `window.requestAnimationFrame` | `try (try Experimental.Animations.Animations).nextFrame` |
 

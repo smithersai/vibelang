@@ -452,6 +452,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Compiler checks could miss regressions in the VibeLang formatter; the compiler gate now runs the formatter’s Go tests.
 - Synthetic compiler benchmarks emitted retired forms and could compare an implicit Effect helper with a plain TypeScript helper; fixtures now use current forms and explicit helper types, with compile and runtime checks for both languages.
 
+- A resize observer could remain allocated when the browser rejected its first target; `Experimental.ResizeObserver` now disconnects it when the scope closes, including after setup fails.
+
 - Waiting for a pending browser commit or animation frame required a plain host callback; `Experimental.Animations.nextFrameUnless` now checks and registers atomically inside a cold Effect, with cancellation on interruption (decided detail 261).
 
 - Browser file reads could report an unexpected result exactly like a host error; `Experimental.FileReader` now identifies unexpected results with `InvalidData`, preserving the origin even when the cause and message coincide.
