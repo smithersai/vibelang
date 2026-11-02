@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.ts --\nimport { type DateTime, Schema } from \"effect\"\nexport type Stamp = DateTime.Utc\nexport const value = Schema.decodeUnknownEffect(Schema.Number)\n-- package.json --\n{\"type\":\"module\"}\n-- tsconfig.json --\n{\"compilerOptions\":{\"target\":\"ES2022\",\"module\":\"NodeNext\",\"moduleResolution\":\"NodeNext\",\"strict\":true,\"skipLibCheck\":true,\"declaration\":true,\"outDir\":\"out\",\"singleThreaded\":true},\"files\":[\"main.ts\"]}\n")
