@@ -94,6 +94,7 @@ const specTests = [
   "TestReviewExecutionDiagnosticsQuoted",
   "TestReviewNamespaceMeaningsQuoted",
   "TestContractDeclarationParensQuoted",
+  "TestReviewSidecarWritesQuoted",
   "TestDoForTryDiagnosticOwnerQuoted",
   "TestDoDeclarationBytesQuoted",
   "TestDoContextualResultFuzzQuoted",
