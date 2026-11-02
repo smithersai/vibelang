@@ -346,6 +346,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The fast gate could miss declaration-comparison regressions that later failed the full suite; it now runs private and public snapshot controls and tracks the migration comparator as an input.
 
+- Migration alias regression tests failed without a manually set compiler path; they now use the built checkout compiler by default and retain an explicit `VIBELANG_BINARY` override.
+
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 
 - Migration setup could leave a native type exported through a TypeScript namespace barrel as an error type in project-aware linters; setup now enables source declaration redirects in owned configs and records those edits.

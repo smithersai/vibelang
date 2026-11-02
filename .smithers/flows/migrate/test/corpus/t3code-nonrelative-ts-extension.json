@@ -1,0 +1,6 @@
+{
+  "key": "codemod-gap:nonrelative-ts-extension",
+  "source": "T3code assetUrls/openFileInPreview/previewRuntime minimized import of an unchanged TypeScript dependency",
+  "input": {"prefix":"~/","depth":0,"name":"leaf","kind":"vibe","target":"ts","relative":false},
+  "pending": {"key":"t3code:nonrelative-ts-extension:retained-ts","owner":"migfix-t3code"}
+}
