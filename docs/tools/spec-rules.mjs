@@ -188,11 +188,21 @@ export function lintAuthority(root) {
     for (const m of text.matchAll(/VIP-(\d+)\b|\]\(\.\.\/vips\/(\d{4})-[^)]+\)/g)) {
       const id = Number(m[1] ?? m[2]), vip = vips.get(id)
       if (vip?.status !== "denied") continue
-      const begin = text.lastIndexOf("\n\n", m.index) + 2
+      const boundary = text.lastIndexOf("\n\n", m.index)
+      const begin = boundary < 0 ? 0 : boundary + 2
       const end = text.indexOf("\n\n", m.index)
-      const paragraph = text.slice(begin, end < 0 ? undefined : end).replace(/\]\([^)]+\)/g, "]")
+      // Blank link destinations without moving offsets: a filename containing
+      // denied is not a rejection, nor is a separate neighbouring sentence.
+      const paragraph = text.slice(begin, end < 0 ? undefined : end)
+        .replace(/\]\([^)]+\)/g, link => "]" + " ".repeat(link.length - 1))
+      const offset = m.index - begin
+      const sentence = [...paragraph.matchAll(/[\s\S]+?(?:[.!?](?=\s|$)|$)/g)]
+        .find(s => s.index <= offset && offset < s.index + s[0].length)?.[0] ?? paragraph
       if (text.slice(text.lastIndexOf("\n", m.index) + 1, m.index).trimStart().startsWith("//")) continue
-      if (/\b(?:denied|rejected|not permitted|not part of the language|no special syntax|removed|don.t exist|trailing block.*(?:error|EK1101))\b/i.test(paragraph)) continue
+      // A standalone attributed quotation records historical rationale; it
+      // does not assert that the denied proposal is part of the language.
+      if (/^["“][\s\S]+["”]\s*\(VIP-\d+\)\.\s*$/.test(sentence.trim())) continue
+      if (/\b(?:denied|rejected|not permitted|not part of the language|no special syntax|removed|don.t exist|trailing block.*(?:error|EK1101))\b/i.test(sentence)) continue
       findings.push(issue("authority", path, text, m.index, "denied VIP-" + id + " cannot authorize this chapter citation"))
     }
     for (const m of text.matchAll(/^.*(?:Sources?:|[Aa]uthority:|[Aa]uthorized by|[Pp]ermitted by|[Aa]llowed by|[Aa]s (?:specified|defined) (?:in|by)).*$/gm)) {

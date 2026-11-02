@@ -202,3 +202,22 @@ test("fast-check: a code-specific prerequisite never hides another error or a st
     assert.ok(verdict(example, { status: 1, stdout: "error " + code + ": pending\nmain.vibe(1,1): error TS1005: syntax\n" }).some(f => f.severity === "error"))
   }), { seed: 396054, numRuns: 40 })
 })
+
+test("r2 OPUS-2 / ASTRA-2 neighbourhood: a rejection sentence cannot excuse a positive denied-VIP citation", () => fixture((root, edit) => {
+  edit(chapter, s => s + "\nThe resource extension follows [VIP-8](../vips/0008-using-denied.md). VIP-11 was denied.\n")
+  assert.ok(lintAuthority(root).some(f => f.path === chapter && f.message.includes("VIP-8")))
+}))
+test("fast-check: neighbouring rejection sentences never authorize a denied VIP", () => fixture((root) => {
+  fc.assert(fc.property(fc.constantFrom(8, 10, 11, 24, 25), fc.boolean(), fc.constantFrom(". ", ".\n", "! ", "? "), (id, before, separator) => {
+    const positive = "This rule follows VIP-" + id, negative = "VIP-11 was denied"
+    writeFileSync(join(root, "docs/design/src/999-sentence-authority.md"), (before ? negative + separator + positive : positive + separator + negative) + ".\n")
+    assert.ok(lintAuthority(root).some(f => f.path.endsWith("999-sentence-authority.md") && f.message.includes("VIP-" + id)))
+  }), { seed: 20811, numRuns: 60 })
+}))
+
+test("a standalone attributed quotation may record a denied VIP rationale", () => fixture((root, edit) => {
+  const addedAfter = read(root, chapter).split("\n").length
+  edit(chapter, s => s + "\n\"A little bit of ambiguity is unacceptable\" (VIP-8).\n")
+  writeFileSync(join(root, "docs/design/src/999-quotation.md"), "\"A little bit of ambiguity is unacceptable\" (VIP-8).\n")
+  assert.deepEqual(lintAuthority(root).filter(f => f.path.endsWith("999-quotation.md") || (f.path === chapter && f.line > addedAfter)), [])
+}))
