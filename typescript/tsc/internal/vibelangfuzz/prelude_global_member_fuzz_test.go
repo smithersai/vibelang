@@ -17,8 +17,9 @@ import (
 // (RULES.md 1). When the module lacks m and the global it shadows has it
 // (globalThis.X.m type-checks in the .ts file), the error names
 // globalThis.X.m; when globalThis.X.m does not type-check, the error must
-// not send the reader there. Worker is platform code (005-services), so
-// its note sends the reader to a .ts file instead. The input picks the lib (the DOM, a Worker
+// not send the reader there. Worker, and any global the DOM lib declares
+// (VIP-33's derived ban), is platform code, so its note sends the reader to a
+// .ts file instead and never names globalThis.X.m. The input picks the lib (the DOM, a Worker
 // runtime's `declare var Response`, as @cloudflare/workers-types writes it,
 // or a global class, which globalThis does not carry), the name and the
 // member. alchemy's cloudflare-runtime called Response.json in a Worker
@@ -168,9 +169,16 @@ func CheckPreludeGlobalMember(t *testing.T, w *Workspace, in preludeGlobalInput)
 		g.Add("feature:prelude-global-member:bare-is-module", "005-services rule 3: %q; bare %s.%s is %s's %s, so it draws TS2339 exactly when the imported module does.\n.vibe: %q\n.ts importing %s: %q", preludeGlobalMemberQuote, x, m, in.name.text, x, vibe, in.name.text, module)
 	}
 	reach := "globalThis." + x + "." + m
-	if x == "Worker" {
+	// VIP-33 (amended 10-29) derives the ban from the declaration: a member of a
+	// global the DOM lib declares is EK4402 as globalThis.X.m, so the note sends
+	// the reader to a .ts file, as it does for Worker. A Worker runtime's own
+	// `declare var Response` is outside the ban, so its note still names globalThis.
+	if x == "Worker" || in.lib.name == "dom" {
 		if len(vibe) != 0 && len(global) == 0 && !strings.Contains(vibe[0], "platform code, which lives in a .ts file") {
-			g.Add("feature:prelude-global-member:note-platform", "005-services bans the host Worker binding: its member note must send the reader to a .ts file:\n%s", vibe[0])
+			g.Add("feature:prelude-global-member:note-platform", "005-services and VIP-33 ban the host %s binding: its member note must send the reader to a .ts file:\n%s", x, vibe[0])
+		}
+		if len(vibe) != 0 && strings.Contains(vibe[0], reach) {
+			g.Add("feature:prelude-global-member:note-advises-banned", "VIP-33: %s is EK4402, so the note must not advise it:\n%s", reach, vibe[0])
 		}
 		g.FinishInput(t, key)
 		return
