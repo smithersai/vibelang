@@ -1,0 +1,9 @@
+{
+  "key": "migrate:emitted-imports:declaration-sidecar",
+  "inbox": "foldkit-98",
+  "source": ".smithers/flows/migrate/README.md",
+  "oracle": "TypeScript declaration files, including arbitrary-extension declaration sidecars, do not emit JavaScript. The actual TypeScript emitter supplies the independent expected output set; ordinary control.vibe.ts still emits.",
+  "witness": "src/rule.d.vibe.ts",
+  "seed": 413942,
+  "runs": 60
+}

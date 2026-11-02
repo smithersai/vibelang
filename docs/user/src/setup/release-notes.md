@@ -606,6 +606,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Moving a checkout with a committed loader record changed ordinary string values containing the old checkout path; records now relocate only structured file paths and source-map sources, preserving the emitted program bytes.
 
 - Migration setup rejected an emitting project built by bare `vibelang -b` or `vibelang --build`; it now recognizes their default `tsconfig.json` while still refusing unrelated projects.
+- Migration setup rejected projects containing `.d.vibe.ts` sidecars because those files emit no JavaScript; it now excludes declaration inputs and preserves them unchanged.
+
 - The fibers guide suggested Effect-body repairs inside ordinary async functions; it now shows `runPromise` bridges that run in the original Promise context.
 - Only the first `catch` outside effect code in a file reported `EK0504` and `EK0509`; every later one went unreported, and `vibelang --fix` had no repair for its value fallback. Every catch is now checked.
 - Awaiting a Promise, Effect or ordinary value inside effect code could report a retired await diagnostic; every operand now reports the assigned placement error `EK0102`, while native `async` awaiting keeps its behavior.

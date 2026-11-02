@@ -144,6 +144,8 @@ give migration's `upgrade-effect` command `--emitted-project` with that
 repository-relative project path. Repeat it for more than one project.
 A bare `vibelang -b` or `vibelang --build` in the existing build selects
 `tsconfig.json`. It does not establish a build for a different project.
+Declaration inputs, including `.d.vibe.ts` sidecars, stay unchanged;
+setup selects only source modules that emit JavaScript.
 
 Setup rewrites runtime imports in the package's product sources to exact
 private `#vibelang/emitted/…` entries. Each entry has a `vibelang-source`

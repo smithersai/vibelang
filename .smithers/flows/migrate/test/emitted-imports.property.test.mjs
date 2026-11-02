@@ -349,3 +349,44 @@ test("foldkit-98: emitted imports recognize the implicit build-mode project", ()
     },
   ), { seed: key.seed, numRuns: key.runs })
 })
+
+test("foldkit-98: emitted imports exclude declaration sidecars from JavaScript candidates", () => {
+  const key = JSON.parse(readFileSync(new URL("./corpus/foldkit-emitted-declaration-sidecars.json", import.meta.url), "utf8"))
+  fc.assert(fc.property(
+    fc.constantFrom("rule", "café", "機械", "nested/with space"),
+    fc.constantFrom(".d.vibe.ts", ".d.vibex.ts", ".d.css.ts", ".d.ts", ".d.mts", ".d.cts"),
+    (stem, suffix) => {
+      const f = fixture({ native: false })
+      try {
+        const declaration = "src/" + stem + suffix
+        const ordinary = "src/control.vibe.ts"
+        assert.equal(ts.isDeclarationFileName(declaration), true)
+        assert.equal(ts.isDeclarationFileName(ordinary), false)
+        put(f.root, declaration, "export declare const declared: number\n")
+        put(f.root, ordinary, "export const live = 7\n")
+        const entry = "import { answer } from './rule.ts'\nimport { live } from './control.vibe.ts'\nexport const result = answer() + live\n"
+        put(f.root, "src/entry.ts", entry)
+        const cfg = JSON.parse(readFileSync(join(f.root, "tsconfig.json"), "utf8"))
+        cfg.files.push(declaration, ordinary)
+        put(f.root, "tsconfig.json", JSON.stringify(cfg))
+        // Real TypeScript emission establishes which files produce JavaScript;
+        // arbitrary-extension declaration sidecars never produce an output.
+        const parsed = ts.parseJsonConfigFileContent(cfg, ts.sys, f.root)
+        assert.deepEqual(parsed.errors, [])
+        const outputs = []
+        const result = ts.createProgram(parsed.fileNames, parsed.options).emit(undefined, file => outputs.push(file))
+        assert.equal(result.emitSkipped, false)
+        const javascript = outputs.filter(file => /\.(?:js|mjs|cjs)$/.test(file)).map(file => file.slice(f.root.length + 1)).sort()
+        assert.deepEqual(javascript, ["dist/control.vibe.js", "dist/entry.js", "dist/rule.js"])
+        const before = readFileSync(join(f.root, declaration), "utf8")
+        const planned = plan(f)
+        assert.deepEqual(planned.modules.map(module => module.source).sort(), [ordinary, f.source].sort())
+        assert.ok(planned.modules.every(module => javascript.includes(module.output)))
+        applyEmittedImports(planned, f)
+        assert.equal(readFileSync(join(f.root, declaration), "utf8"), before)
+        applyEmittedImports(planned, { ...f, restore: true })
+        assert.equal(readFileSync(join(f.root, "src/entry.ts"), "utf8"), entry)
+      } finally { f.cleanup() }
+    },
+  ), { seed: key.seed, numRuns: key.runs })
+})

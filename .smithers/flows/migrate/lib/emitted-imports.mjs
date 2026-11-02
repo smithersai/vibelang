@@ -140,7 +140,7 @@ export function planEmittedImports({ root, packages, projects = [], ts, compiler
     const selected = new Map()
     for (const file of parsed.fileNames) {
       const source = posix.relative(root, file)
-      if (!/\.(?:ts|mts|cts|vibe)$/.test(source) || /\.d\.(?:ts|mts|cts)$/.test(source) || protectedFile(source) || packageDirOf(root, source) !== dir) continue
+      if (!/\.(?:ts|mts|cts|vibe)$/.test(source) || ts.isDeclarationFileName(source) || protectedFile(source) || packageDirOf(root, source) !== dir) continue
       if (!packages.some(p => inside(p.dir, source) && (p.sources ?? ["src"]).some(s => inside(posix.join(p.dir, s), source)))) continue
       // Stock TypeScript preserves unknown extensions; VibeLang's emitter
       // treats .vibe exactly as .ts for its JavaScript output name.
