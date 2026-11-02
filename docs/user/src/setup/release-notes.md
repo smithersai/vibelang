@@ -2427,6 +2427,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Changes to the formatter specification could pass the pre-merge checks without running one of its quote guards; every static-rule quote guard is now checked for inclusion in that gate.
 
+- A passing compiler-case suite gave no warning when a case or phase became slower; `scripts/bench/case-timings.mjs` now compares repeated timing reports, flags median increases over `50%` without blocking correctness checks, and rejects incomplete or mismatched evidence.
+
 ### Known bugs
 
 These bugs were found and confirmed and are being fixed; please don't re-report them, and each entry moves to the fixed list when its fix lands.

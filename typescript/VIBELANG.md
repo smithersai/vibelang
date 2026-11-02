@@ -1463,6 +1463,8 @@ Benchmark staging links the pinned `effect` and checkout `vibelang-runtime` into
 
 Benchmark output needs its own `node_modules` directory. Staging rejects an output `node_modules` symlink before writing package links, so an aliased installation stays unchanged; choose a fresh `--out` directory. Dependency installations used as staging inputs can still be symlinks.
 
+Compiler-case timing reports have a separate, informational comparator: see [compiler-case performance reports](../docs/maintainers/compiler-case-performance.md) for repeated `--report` trials, phase medians and alerts above `1.5x`. It does not alter case deadlines or fail a correctness gate on a timing alert.
+
 Run the benchmarks on the build host, which is quieter and larger than a laptop; other suites running there at the same time add noise, so the tables report medians:
 
 ```sh
