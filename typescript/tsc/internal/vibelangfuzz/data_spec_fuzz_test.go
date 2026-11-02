@@ -260,7 +260,7 @@ func dataRules() []dataRule {
 	rules = append(rules, dataTaggedMembersRules()...)
 	rules = append(rules, dataDeclarationRules()...)
 	rules = append(rules, unsettledIsBindingRules()...)
-	return rules
+	return append(rules, dataReadonlyRecordAliasRules()...)
 }
 
 const dataRuleTarget = "FuzzDataSpecRules"

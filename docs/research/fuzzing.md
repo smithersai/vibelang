@@ -528,3 +528,5 @@ bare operation. The `vip05-try-fatal-result` differential corpus preserves
 the minimized typed-helper witness; the runtime Exit and event-log oracle is unchanged.
 
 The `FuzzTryNested` corpus also varies native Effect calls, stored native arrows and member aliases over zero to three held Effect layers. The written-forms arrow has one `try` for one layer; an extra `try` must report `EK0502` under Chapter 2.
+
+The static `FuzzDataSpecRules` matrix for readonly record aliases varies six library-binding spellings, parenthesized arguments, readonly writes, value types, required keys and nested mutable arrays. Each unresolved combination has its own feature key and corpus file; canonical `Readonly<Record<"x", number>>` controls stay active. A pending entry records missing compiler support rather than treating an unsupported decoder as an equivalent result.
