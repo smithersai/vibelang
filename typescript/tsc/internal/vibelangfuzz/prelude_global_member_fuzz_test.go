@@ -31,7 +31,7 @@ func FuzzPreludeGlobalMember(f *testing.F) {
 		"dom/Response/json", "dom/Response/redirect", "dom/Response/missing",
 		"dom/Headers/prototype", "dom/Event/AT_TARGET", "dom/Worker/prototype",
 		"workers/Response/json", "workers/Headers/prototype",
-		"class/Response/json",
+		"class/Response/json", "workers/Response/redirect", "workers/Response/missing",
 	} {
 		f.Add([]byte("prelude-global:" + seed))
 	}
@@ -46,6 +46,9 @@ func TestPreludeGlobalMemberQuoted(t *testing.T) { preludeGlobalMemberRuling(t) 
 
 const preludeGlobalMemberQuote = "These namespaces come in scope with the precedence above, so a subpath namespace whose name is a web platform global names Effect's."
 
+const preludeHostOriginQuote = "A global is banned when the symbol has a declaration in `lib.dom*.d.ts`, `lib.webworker*.d.ts`, `lib.scripthost.d.ts` or `@types/node`, none in `lib.es*.d.ts` or `lib.decorators*.d.ts`, and is not on the allowlist below."
+const preludeOwnDeclarationQuote = "and a project's own `declare var fetch` is not a host declaration."
+
 func preludeGlobalMemberRuling(tb testing.TB) {
 	tb.Helper()
 	text, err := os.ReadFile(SpecPath("005-services.md"))
@@ -54,6 +57,11 @@ func preludeGlobalMemberRuling(tb testing.TB) {
 	}
 	if !strings.Contains(string(text), "The ban on `Worker` covers the host binding only: `globalThis.Worker`, `globalThis[\"Worker\"]` and `self.Worker` are `EK4402`.") {
 		tb.Fatal("005-services no longer bans the host Worker binding")
+	}
+	for _, quote := range []string{preludeHostOriginQuote, preludeOwnDeclarationQuote} {
+		if !strings.Contains(string(text), quote) {
+			tb.Fatalf("005-services no longer says %q", quote)
+		}
 	}
 	if !strings.Contains(string(text), preludeGlobalMemberQuote) {
 		tb.Fatalf("005-services rule 3 no longer says %q", preludeGlobalMemberQuote)
