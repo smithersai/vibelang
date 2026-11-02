@@ -368,6 +368,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Async conversion could change how a JavaScript `try` statement handles rejection or leave a `using` resource undisposed; the editor now leaves these bodies for an explicit handler and cleanup rewrite.
 - Specification checks duplicated review rules and let copied resolution tables drift in wording; one Smithers gate now owns each static check and generates shared table bytes from the accepted VIP.
+- New option names and compiler flags inside specification code fences escaped the registry check; JSON/JSONC configuration and VibeLang CLI examples now receive the same authority checks as inline spellings.
+
 
 - The `using` warning cited a denied proposal as its authority; it now cites the accepted VIP-34 amendment while keeping its code and behavior.
 

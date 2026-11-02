@@ -262,3 +262,24 @@ test("consolidation: maintainer instructions run the graph aggregate", () => {
   assert.ok(!guide.includes("Run it alone with `bun docs/tools/spec-lint.ts`"), "the direct runner bypasses registry and compiler contracts")
   assert.equal((guide.match(/^## Specification contracts$/gm) ?? []).length, 1)
 })
+
+test("r14 OPUS-3 neighbourhood: fenced configuration and CLI spellings retain authority checks", () => fixture((root, edit) => {
+  edit(chapter, s => s + "\n```jsonc\n{ \"compilerOptions\": { \"vibelang\": { \"tracing\": true } } }\n```\n```sh\nvibelang --spec-test-fenced\n```\n")
+  const found = lintRegistry(root)
+  for (const token of ["compilerOptions.vibelang.tracing", "--spec-test-fenced"])
+    assert.ok(found.some(f => f.message.startsWith(token)), token)
+}))
+test("fenced registry controls distinguish rejection examples and other tools", () => fixture((root, edit) => {
+  edit(chapter, s => s + "\n```jsonc\n{ \"vibe\": { \"effectGlobal\": false } } // EK3007: misspelled option\n```\n```sh\nnode tool.mjs --spec-test-unrelated\n```\n")
+  assert.ok(!lintRegistry(root).some(f => /vibe.effectGlobal has|--spec-test-unrelated/.test(f.message)))
+}))
+test("fast-check: fenced option mutations never disappear behind comments or indentation", () => fixture((root, edit) => {
+  const original = read(root, chapter)
+  fc.assert(fc.property(fc.stringMatching(/^[a-z]{5,16}$/), fc.integer({ min: 0, max: 3 }), (suffix, indent) => {
+    const name = "specTest" + suffix, pad = " ".repeat(indent)
+    edit(chapter, () => original + "\n" + pad + "```jsonc\n{ /* 😀 */ \"vibe\": { \"" + name + "\": true } }\n" + pad + "```\n```sh\nvibelang --spec-test-" + suffix + "\n```\n")
+    const found = lintRegistry(root)
+    assert.ok(found.some(f => f.message.startsWith("vibe." + name + " has no accepted")))
+    assert.ok(found.some(f => f.message.startsWith("--spec-test-" + suffix)))
+  }), { seed: 14031, numRuns: 40 })
+}))

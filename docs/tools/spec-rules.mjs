@@ -3,6 +3,7 @@
 import { mkdirSync, existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import ts from "typescript"
 import { lintKind, loadSpec } from "./spec-lint.ts"
 
 export const repository = fileURLToPath(new URL("../../", import.meta.url))
@@ -39,7 +40,7 @@ export function diagnosticRegistry(root) {
     .map(m => [m[1], { authority: m[3], path: pathB }]))
 }
 
-const tokens = text => [...text.matchAll(/`([^`\n]+)`/g)].flatMap(m => {
+const inlineTokens = text => [...text.matchAll(/`([^`\n]+)`/g)].flatMap(m => {
   const value = m[1]
   // Inventory generation commands belong to the documentation tool, not the
   // language CLI. Their --write/--test arguments are not compiler options.
@@ -48,6 +49,52 @@ const tokens = text => [...text.matchAll(/`([^`\n]+)`/g)].flatMap(m => {
   return [...value.matchAll(/\b(?:compilerOptions\.vibelang(?:\.[A-Za-z]\w*)?|vibelang\.[A-Za-z]\w*|vibe\.(?!config\b)[A-Za-z]\w*)\b|--[a-z][\w-]*\b/g)]
     .map(t => ({ value: t[0], offset: m.index + 1 + t.index }))
 })
+// Configuration fences may contain several JSONC examples. Scan balanced
+// objects first, then use the JSON AST so comments and braces in strings cannot
+// invent keys. Explicit rejection examples are not positive option assignments.
+function fencedTokens(text) {
+  const found = []
+  for (const m of text.matchAll(/^[ \t]{0,3}(`{3,}|~{3,})(jsonc?|sh|bash|shell)\s*\n([\s\S]*?)^[ \t]{0,3}\1[ \t]*$/gm)) {
+    const body = m[3], base = m.index + m[0].indexOf("\n") + 1
+    const rejected = offset => /(?:\/\/|#).*\b(?:EK3007|TS5023)\b/.test(body.split("\n")[body.slice(0, offset).split("\n").length - 1] ?? "")
+    if (!m[2].startsWith("json")) {
+      for (const line of body.matchAll(/^.*$/gm)) {
+        if (!/^\s*(?:\$\s+)?(?:(?:npx|bunx)\s+)?vibelang(?:\s|$)/.test(line[0])) continue
+        for (const flag of line[0].split(/\s+#/)[0].matchAll(/--[a-z][\w-]*\b/g))
+          found.push({ value: flag[0], offset: base + line.index + flag.index })
+      }
+      continue
+    }
+    const scanner = ts.createScanner(ts.ScriptTarget.Latest, true, ts.LanguageVariant.Standard, body)
+    let depth = 0, start = 0
+    const properties = node => ts.isObjectLiteralExpression(node) ? node.properties.filter(ts.isPropertyAssignment) : []
+    for (let token = scanner.scan(); token !== ts.SyntaxKind.EndOfFileToken; token = scanner.scan()) {
+      if (token === ts.SyntaxKind.OpenBraceToken && depth++ === 0) start = scanner.getTokenPos()
+      if (token !== ts.SyntaxKind.CloseBraceToken) continue
+      if (--depth !== 0) continue
+      const source = ts.parseJsonText("spec.json", body.slice(start, scanner.getTextPos()))
+      const object = source.statements[0]?.expression
+      if (!object) continue
+      const add = (property, prefix) => {
+        const offset = start + property.name.getStart(source)
+        if (!rejected(offset)) found.push({ value: prefix + property.name.text, offset: base + offset })
+      }
+      for (const section of properties(object)) {
+        if (["vibe", "vibelang"].includes(section.name.text)) {
+          for (const property of properties(section.initializer)) add(property, section.name.text + ".")
+        } else if (section.name.text === "compilerOptions") {
+          for (const property of properties(section.initializer)) {
+            if (property.name.text === "vibelang") {
+              for (const nested of properties(property.initializer)) add(nested, "compilerOptions.vibelang.")
+            } else add(property, "compilerOptions.")
+          }
+        }
+      }
+    }
+  }
+  return found
+}
+const tokens = text => [...inlineTokens(text), ...fencedTokens(text)]
 const literalCode = code => new RegExp("\\b" + code + "\\b")
 export function lintRegistry(root) {
   const findings = reviewFindings(root, "registry"), vips = vipRegistry(root), diagnostics = diagnosticRegistry(root)
@@ -85,6 +132,7 @@ export function lintRegistry(root) {
       if (seen.has(key)) continue
       seen.add(key)
       if (value.startsWith("--") && tsOptions.has(value.slice(2))) continue
+      if (value.startsWith("compilerOptions.") && !value.startsWith("compilerOptions.vibelang") && tsOptions.has(value.slice(16))) continue
       if (approvedToken(value)) continue
       findings.push(issue("registry", path, text, token.offset, value + " has no accepted VIP spelling; publish the decided authority or obtain a decision", "warning"))
     }
