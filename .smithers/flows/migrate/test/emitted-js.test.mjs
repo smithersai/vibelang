@@ -8,7 +8,8 @@ import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { dirname, join, relative } from "node:path"
 import { test } from "node:test"
-import { emitPackageJs } from "../lib/declarations.mjs"
+import { emitPackageJs, writeLoaderRecords } from "../lib/declarations.mjs"
+import { loaderRecord } from "../../../../packages/compiler/cache.mjs"
 import { renameBatch, rewriteExports } from "../lib/codemod.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
@@ -126,4 +127,24 @@ test("a migrated package's exports and emit let plain node and the bun build CLI
     const run = spawnSync("bun", [join(root, "out/main.js")], { encoding: "utf8" })
     assert.equal(run.stdout.trim(), corpus.prints, run.stderr)
   }
+})
+
+// opencode cold start: with the emitted JavaScript, the emit step writes the
+// loader record of the package's project, which a cold loader uses in place
+// of the compile (packages/compiler/test/loader-record.test.mjs).
+test("the emit step writes each loader project's record, which a cold lookup accepts", { skip: !compiler && "set VIBELANG_BINARY" }, async (t) => {
+  const corpus = JSON.parse(readFileSync(new URL("./corpus/opencode-schema-bun-build.json", import.meta.url), "utf8"))
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "migrate-loader-record-")))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  write(root, corpus.files)
+  rewriteExports(root, renameBatch(root, ["packages/schema/src/skill.ts"]))
+  const packageDir = join(root, "packages/schema")
+  await emitPackageJs({ compiler, tsconfigs: ["tsconfig.json"], packageDir, root })
+  await new Promise((done) => setTimeout(done, 120))
+  const records = writeLoaderRecords({ compiler, packageDir, root })
+  assert.deepEqual(records, [{ project: "packages/schema/tsconfig.json", file: "packages/schema/.vibelang/js/.loader/tsconfig.json.json", modules: 1 }])
+  const project = join(packageDir, "tsconfig.json")
+  const found = loaderRecord({ project, root: packageDir, compiler }).lookup()
+  assert.equal(found.miss, undefined, found.miss)
+  assert.ok(found.result.outputs.has(join(packageDir, "src/skill.vibe")))
 })

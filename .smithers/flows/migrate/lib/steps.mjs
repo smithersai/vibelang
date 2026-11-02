@@ -22,7 +22,7 @@ import { checkSelectorEdits, restoreSourceLiterals, rewriteSourceLiterals } from
 import { splitBatchPlatform } from "./platform.mjs"
 import { check, newErrors, styleProblems, summarize } from "./diagnostics.mjs"
 import { preservedErrorAdvisories } from "./preserved-errors.mjs"
-import { compareDeclarations, recordDeclarationSurface, emitDeclarations, emitErrorsIn, emitPackageJs, loadTypeScript, sidecarChanges } from "./declarations.mjs"
+import { compareDeclarations, recordDeclarationSurface, emitDeclarations, emitErrorsIn, emitPackageJs, loadTypeScript, sidecarChanges, writeLoaderRecords } from "./declarations.mjs"
 import { foreignChanges } from "./touched.mjs"
 import { compareTests, regressionIssue, runTests } from "./tests.mjs"
 import { verifyRepositoryTests } from "./test-diff-run.mjs"
@@ -1190,7 +1190,8 @@ async function emitMigratedJs(config, t, logs) {
     // Nonzero emits can still write valid package-owned files (for example TS6059).
     let runtimeRouting
     const exportsChanged = routeEmittedExports(join(t, pkg.dir), result.outputs, { typescript:typeScriptOf(config), onGraph:graph=>runtimeRouting=graph })
-    emitted.push({ package: pkg.dir, files: result.files, code: result.code, exportsChanged, runtimeRouting, diagnostics: result.diagnostics })
+    const loaderRecords = writeLoaderRecords({ compiler: compilerOf(config), packageDir: join(t, pkg.dir), root: t })
+    emitted.push({ package: pkg.dir, files: result.files, code: result.code, exportsChanged, runtimeRouting, loaderRecords, diagnostics: result.diagnostics })
   }
   return emitted
 }

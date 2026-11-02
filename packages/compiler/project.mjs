@@ -14,7 +14,7 @@ import { createRequire } from "node:module"
 import { temporaryRoot } from "./temporary.mjs"
 import { performance } from "node:perf_hooks"
 import { basename, dirname, isAbsolute, join, parse, relative, resolve } from "node:path"
-import { launcherBinary, projectCache } from "./cache.mjs"
+import { launcherBinary, loaderRecord, loaderRecordFile, projectCache } from "./cache.mjs"
 
 const slash = (path) => path.replaceAll("\\", "/")
 const located = /^(.+?)\((\d+),(\d+)\):\s+(error|warning)\s+(\w+\d+):\s?(.*)$/
@@ -290,11 +290,21 @@ function cached({ project, root, compiler, cache, debug }, run) {
     debug(`${project} from the cache in ${elapsed(started)}`)
     return hit.result
   }
+  // A cold cache: the project's committed loader record (cache.mjs) serves the
+  // compile when every input it names still holds, and the cache keeps it.
+  const recorded = store && existsSync(loaderRecordFile(project))
+    ? stages.time("record", () => loaderRecord({ project, root, compiler }).lookup()) : undefined
+  if (recorded?.result) {
+    stages.time("store", () => store.store(store.begin(), recorded.result, recorded.files))
+    debug(`${project} from its loader record in ${elapsed(started)}: ${stages}`)
+    return recorded.result
+  }
   const snapshot = stages.time("snapshot", () => store?.begin())
   const finish = ({ result, files }) => {
     stages.time("store", () => store?.store(snapshot, result, files))
     const modules = new Set(result.outputs.values()).size
-    debug(`compiled ${project} in ${elapsed(started)} (${hit?.miss ?? "cache off"}): ${stages}; ` +
+    const reason = hit?.miss === undefined ? "cache off" : recorded === undefined ? hit.miss : `${hit.miss}; record: ${recorded.miss}`
+    debug(`compiled ${project} in ${elapsed(started)} (${reason}): ${stages}; ` +
       `${modules} ${modules === 1 ? "module" : "modules"}, ${files.length} files read`)
     return result
   }
@@ -387,17 +397,47 @@ export function projectBackend({ root, compiler, cache, debug = () => {} }) {
  * such as Node's synchronous module hooks.
  */
 export function compileProjectSync({ project, root = dirname(project), compiler = findCompiler(root), cache, debug = () => {} }) {
-  return cached({ project, root, compiler, cache, debug }, (stages) => {
-    const out = mkdtempSync(join(temporaryRoot(), "vibelang-project-"))
+  return cached({ project, root, compiler, cache, debug }, (stages) => compileOnce(project, root, compiler, stages))
+}
+
+// One compiler run over a project, as a loader runs it.
+function compileOnce(project, root, compiler, stages = stopwatch()) {
+  const out = mkdtempSync(join(temporaryRoot(), "vibelang-project-"))
+  try {
+    const [file, argv] = command(compiler, emitArgs(project, root, out))
+    const run = stages.time("compiler", () => spawnSync(file, argv, { cwd: root, encoding: "utf8", maxBuffer: 1 << 30 }))
+    if (run.error) throw new Error(`vibelang: ${run.error.message}\nCompiler: ${compiler}`)
+    return stages.time("collect", () => collect({ status: run.status, signal: run.signal, output: run.stdout + run.stderr }, root, out))
+  } finally {
+    rmSync(out, { recursive: true, force: true })
+  }
+}
+
+/**
+ * writeLoaderRecord compiles a project as the loaders do and commits the
+ * result as its loader record, <project dir>/.vibelang/js/.loader/<name>.json
+ * (cache.mjs), so a process with a cold cache loads the project's .vibe
+ * modules without compiling them while every input is unchanged. The migrate
+ * flow writes one with the package's emitted JavaScript. Returns { file,
+ * modules }, or { errors } when the project does not compile, which leaves no
+ * record. An input that changes during the compile is retried twice.
+ */
+export function writeLoaderRecord({ project, root = dirname(project), compiler = findCompiler(root) }) {
+  project = resolve(project)
+  const record = loaderRecord({ project, root: resolve(root), compiler })
+  rmSync(record.file, { force: true })
+  for (let attempt = 1; ; attempt++) {
+    const snapshot = record.begin()
+    const { result, files } = compileOnce(project, resolve(root), compiler)
+    if (result.errors.length) return { errors: result.errors }
     try {
-      const [file, argv] = command(compiler, emitArgs(project, root, out))
-      const run = stages.time("compiler", () => spawnSync(file, argv, { cwd: root, encoding: "utf8", maxBuffer: 1 << 30 }))
-      if (run.error) throw new Error(`vibelang: ${run.error.message}\nCompiler: ${compiler}`)
-      return stages.time("collect", () => collect({ status: run.status, signal: run.signal, output: run.stdout + run.stderr }, root, out))
-    } finally {
-      rmSync(out, { recursive: true, force: true })
+      const file = record.write(snapshot, result, files)
+      return { file, modules: new Set(result.outputs.values()).size }
+    } catch (error) {
+      if (attempt === 3 || !/changed during or too close/.test(error.message)) throw error
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 120)
     }
-  })
+  }
 }
 
 /** Returns the preferred config in the nearest directory above file, or undefined. */

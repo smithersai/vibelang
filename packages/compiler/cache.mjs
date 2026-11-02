@@ -111,14 +111,14 @@ function racy(stat, since, dependency) {
 // files rather than editing installed ones, and hard links into a shared store
 // change a file's ctime without changing it. A project file also keeps a hash,
 // so a checkout that rewrites it with the same bytes does not miss.
-function recordFile(path, since) {
+function recordFile(path, since, hashDependencies = false) {
   const dependency = isDependency(path)
   const before = statOf(path)
   if (before === undefined || racy(before, since, dependency)) return undefined
-  if (dependency) return { path, stamp: stampOf(before) }
+  if (dependency && !hashDependencies) return { path, stamp: stampOf(before) }
   const hash = digest(readFileSync(path))
   const after = statOf(path)
-  if (after === undefined || !sameStamp(stampOf(before), stampOf(after), false)) return undefined
+  if (after === undefined || !sameStamp(stampOf(before), stampOf(after), dependency)) return undefined
   return { path, stamp: stampOf(before), hash }
 }
 
@@ -306,7 +306,8 @@ function scannedDirectories(main) {
     ? [include.value].flat().map((spec) => expand(spec, include.base))
     : files === undefined ? [join(home, "**/*")] : []
   const roots = specs.map((spec) => {
-    const parts = spec.split(/[\\/]/)
+    // A backslash is a separator on Windows alone; elsewhere it is a name's.
+    const parts = spec.split(process.platform === "win32" ? /[\\/]/ : /\//)
     const wild = parts.findIndex((part) => /[*?]/.test(part))
     if (wild === -1) {
       // TypeScript reads a last component without '.', '*' or '?' as a directory.
@@ -558,56 +559,9 @@ export function projectCache({ project, root, compiler, cache, debug = () => {} 
   }
 
   function write(snapshot, result, files) {
-    const records = []
-    const packages = new Map()
-    const nearest = new Map()
-    for (const path of files) {
-      const record = recordFile(path, snapshot.started)
-      if (record === undefined) return debug(`not caching ${project}: ${path} changed during or too close to the compile`)
-      records.push(record)
-      const manifest = nearestFile(dirname(path), "package.json", nearest)
-      if (manifest !== null && !packages.has(manifest)) packages.set(manifest, undefined)
-    }
-    for (const path of packages.keys()) {
-      const record = recordFile(path, snapshot.started)
-      if (record === undefined) return debug(`not caching ${project}: ${path} changed during or too close to the compile`)
-      packages.set(path, record)
-    }
-    // The checker gives a .vibe file of another package the settings of the
-    // nearest tsconfig.json above it and what that extends (D297), so those
-    // configs decide this compile too.
-    const settings = new Map()
-    const nearestConfigs = new Map()
-    for (const path of files) {
-      if (!path.endsWith(".vibe")) continue
-      const config = nearestFile(dirname(path), "tsconfig.json", nearestConfigs)
-      if (config === null || config === project || settings.has(config)) continue
-      for (const file of readConfigs(config).files) if (!settings.has(file) && existsSync(file)) settings.set(file, undefined)
-    }
-    for (const path of settings.keys()) {
-      const record = recordFile(path, snapshot.started)
-      if (record === undefined) return debug(`not caching ${project}: ${path} changed during or too close to the compile`)
-      settings.set(path, record)
-    }
-    const outputs = new Map()
-    for (const [path, output] of result.outputs) {
-      const existing = outputs.get(output)
-      if (existing) existing.paths.push(path)
-      else outputs.set(output, { paths: [path], code: output.code, map: output.map })
-    }
-    const entry = {
-      format, version, project, root,
-      compiler: snapshot.compiler,
-      compilerDigests: snapshot.compilerDigests,
-      configs: [...snapshot.configs, ...settings.values()],
-      directories: snapshot.directories,
-      installs: snapshot.installs,
-      packages: [...packages.values()],
-      files: records,
-      inputs: result.inputs,
-      warnings: result.warnings,
-      outputs: [...outputs.values()]
-    }
+    const built = entryOf({ project, root, snapshot, result, files })
+    if (built.reason !== undefined) return debug(`not caching ${project}: ${built.reason}`)
+    const entry = built.entry
     const temporary = `${file}.${process.pid}.${randomBytes(6).toString("hex")}.tmp`
     try {
       prepare(location)
@@ -620,4 +574,229 @@ export function projectCache({ project, root, compiler, cache, debug = () => {} 
   }
 
   return { file, lookup, begin, store }
+}
+
+// A cache entry for a compile's result: the snapshot taken before the compile,
+// and a record of each file it read, the package.json nearest each, and the
+// tsconfigs that decide another package's .vibe source. Returns { entry }, or
+// { reason } when a file changed during or too close to the compile.
+function entryOf({ project, root, snapshot, result, files, hashDependencies = false }) {
+  const changed = (path) => ({ reason: `${path} changed during or too close to the compile` })
+  const records = []
+  const packages = new Map()
+  const nearest = new Map()
+  for (const path of files) {
+    const record = recordFile(path, snapshot.started, hashDependencies)
+    if (record === undefined) return changed(path)
+    records.push(record)
+    const manifest = nearestFile(dirname(path), "package.json", nearest)
+    if (manifest !== null && !packages.has(manifest)) packages.set(manifest, undefined)
+  }
+  for (const path of packages.keys()) {
+    const record = recordFile(path, snapshot.started, hashDependencies)
+    if (record === undefined) return changed(path)
+    packages.set(path, record)
+  }
+  // The checker gives a .vibe file of another package the settings of the
+  // nearest tsconfig.json above it and what that extends (D297), so those
+  // configs decide this compile too.
+  const settings = new Map()
+  const nearestConfigs = new Map()
+  for (const path of files) {
+    if (!path.endsWith(".vibe")) continue
+    const config = nearestFile(dirname(path), "tsconfig.json", nearestConfigs)
+    if (config === null || config === project || settings.has(config)) continue
+    for (const file of readConfigs(config).files) if (!settings.has(file) && existsSync(file)) settings.set(file, undefined)
+  }
+  for (const path of settings.keys()) {
+    const record = recordFile(path, snapshot.started, hashDependencies)
+    if (record === undefined) return changed(path)
+    settings.set(path, record)
+  }
+  const outputs = new Map()
+  for (const [path, output] of result.outputs) {
+    const existing = outputs.get(output)
+    if (existing) existing.paths.push(path)
+    else outputs.set(output, { paths: [path], code: output.code, map: output.map })
+  }
+  return {
+    entry: {
+      format, version, project, root,
+      compiler: snapshot.compiler,
+      compilerDigests: snapshot.compilerDigests,
+      configs: [...snapshot.configs, ...settings.values()],
+      directories: snapshot.directories,
+      installs: snapshot.installs,
+      packages: [...packages.values()],
+      files: records,
+      inputs: result.inputs,
+      warnings: result.warnings,
+      outputs: [...outputs.values()]
+    }
+  }
+}
+
+// Loader records (opencode cold start). A migrated package commits its
+// emitted JavaScript under .vibelang/js/ for tools that load no VibeLang
+// plugin, but a loader cannot run that JavaScript in place of the source:
+// nothing proves it is what the current sources, configs, dependencies and
+// compiler emit, and emit is type-directed. So every cold process compiled
+// each workspace package it reached (opencode's CLI child: schema, server,
+// protocol, ai and codemode, 7 to 13 s each on a 4-vCPU box).
+//
+// A loader record is a cache entry made portable and committed beside the
+// project, at <project dir>/.vibelang/js/.loader/<tsconfig name>.json: the
+// loader's own compile result, with every input known by its content alone.
+// Paths are relative to the workspace (the nearest directory above the project
+// with a lockfile), file stamps give way to digests (dependencies included),
+// the compiler is the digest of the native binary, the installs are the
+// workspace's lockfiles, and source maps leave out the source text, which the
+// reader takes from the files it has just checked. On a cache miss a loader
+// checks the record input by input; when every one holds it uses the recorded
+// result and caches it as its own compile. A record that fails any check
+// costs only the compile it would have saved.
+const recordFormat = 1
+const recordBase = "<vibelang-record-base>"
+const lockfiles = installFiles.filter((name) => !name.includes("/"))
+
+/** The loader record of a project. */
+export const loaderRecordFile = (project) => join(dirname(project), ".vibelang", "js", ".loader", `${basename(project)}.json`)
+
+// The directory a record's paths are relative to: the nearest one at or above
+// the project's that holds a lockfile, else the project's own.
+function workspaceOf(project) {
+  for (let directory = dirname(project); ; directory = dirname(directory)) {
+    if (lockfiles.some((name) => existsSync(join(directory, name)))) return directory
+    if (dirname(directory) === directory) return dirname(project)
+  }
+}
+
+// The file whose bytes decide what a compiler emits: the native binary that a
+// launcher runs, else the compiler itself. Digests are kept per process.
+const binaryDigests = new Map()
+function binaryDigest(compiler) {
+  let path = compiler
+  try { path = realpathSync(compiler) } catch { /* a missing compiler has no digest */ }
+  path = launcherBinary(path) ?? path
+  const stat = statOf(path)
+  if (stat === undefined) return null
+  const known = binaryDigests.get(path)
+  if (known !== undefined && sameStamp(known.stamp, stampOf(stat), false)) return known.digest
+  const value = digest(readFileSync(path))
+  binaryDigests.set(path, { stamp: stampOf(stat), digest: value })
+  return value
+}
+
+const contentHolds = (record) => {
+  const stat = statOf(record.path)
+  if (record.hash === null) return stat === undefined
+  if (stat === undefined || stat.size !== record.size) return false
+  try {
+    return digest(readFileSync(record.path)) === record.hash
+  } catch {
+    return false
+  }
+}
+
+const escaped = (path) => JSON.stringify(path).slice(1, -1)
+const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+
+/**
+ * The loader record of one project's compile: { file, begin, write, lookup }.
+ *   begin()                        a snapshot of the inputs known before the compile
+ *   write(snapshot, result, files) writes the record of a compile with no error
+ *   lookup()                       { result, files } when every input holds, else { miss: reason }
+ */
+export function loaderRecord({ project, root, compiler }) {
+  const file = loaderRecordFile(project)
+
+  function begin() {
+    const configs = readConfigs(project)
+    return {
+      started: Date.now(),
+      compiler: binaryDigest(compiler),
+      configs: configs.files.map(snapshotFile),
+      directories: snapshotDirectories(configs.main)
+    }
+  }
+
+  function write(snapshot, result, files) {
+    if (result.errors.length) throw new Error(`${project} did not compile; a record holds only a compile with no error`)
+    const base = workspaceOf(project)
+    const built = entryOf({ project, root, snapshot: { ...snapshot, compilerDigests: undefined, installs: [] }, result, files, hashDependencies: true })
+    if (built.reason !== undefined) throw new Error(`cannot record ${project}: ${built.reason}`)
+    const content = (record) => record.stamp === null || record.hash === undefined
+      ? { path: record.path, hash: null }
+      : { path: record.path, size: record.stamp[0], hash: record.hash }
+    const installs = []
+    for (let directory = dirname(project); ; directory = dirname(directory)) {
+      for (const name of lockfiles) installs.push(content(snapshotFile(join(directory, name))))
+      if (directory === base || dirname(directory) === directory) break
+    }
+    const entry = {
+      ...built.entry,
+      compiler: snapshot.compiler,
+      compilerDigests: undefined,
+      configs: built.entry.configs.map(content),
+      directories: built.entry.directories.map(([path, , ...listed]) => [path, null, ...listed]),
+      installs,
+      packages: built.entry.packages.map(content),
+      files: built.entry.files.map(content),
+      outputs: built.entry.outputs.map(({ paths, code, map }) =>
+        ({ paths, code, map: map && { ...map, sourcesContent: undefined } }))
+    }
+    let text = JSON.stringify(entry)
+    if (text.includes(recordBase)) throw new Error(`cannot record ${project}: its compile names ${recordBase}`)
+    text = text.replace(new RegExp(escapeRegExp(escaped(base)) + '(?=["/]|\\\\\\\\)', "g"), recordBase)
+    const record = { format: recordFormat, base: relative(dirname(file), base).split(sep).join("/") || ".", entry: JSON.parse(text) }
+    mkdirSync(dirname(file), { recursive: true })
+    const temporary = `${file}.${process.pid}.${randomBytes(6).toString("hex")}.tmp`
+    try {
+      writeFileSync(temporary, JSON.stringify(record, null, 1) + "\n")
+      renameSync(temporary, file)
+    } catch (error) {
+      rmSync(temporary, { force: true })
+      throw error
+    }
+    return file
+  }
+
+  function lookup() {
+    let record
+    try {
+      record = JSON.parse(readFileSync(file, "utf8"))
+    } catch (error) {
+      return { miss: error?.code === "ENOENT" ? "no record" : "unreadable record" }
+    }
+    try {
+      return validate(record)
+    } catch {
+      return { miss: "unreadable record" }
+    }
+  }
+
+  function validate(record) {
+    if (record.format !== recordFormat || typeof record.base !== "string") return { miss: "record of another format" }
+    const base = resolve(dirname(file), record.base)
+    const entry = JSON.parse(JSON.stringify(record.entry).replaceAll(recordBase, () => escaped(base)))
+    if (entry.format !== format || entry.version !== version) return { miss: "record of another version" }
+    if (entry.project !== project || entry.root !== root) return { miss: "record of another project" }
+    if (entry.compiler !== binaryDigest(compiler)) return { miss: "record of another compiler" }
+    const directory = entry.directories.find((record) => !directoryHolds(record))
+    if (directory) return { miss: `${directory[0]} gained or lost a file` }
+    for (const list of [entry.configs, entry.installs, entry.packages, entry.files]) {
+      const changed = list.find((record) => !contentHolds(record))
+      if (changed) return { miss: `${changed.path} changed` }
+    }
+    const outputs = new Map()
+    for (const { paths, code, map } of entry.outputs) {
+      if (map) map.sourcesContent = map.sources.map((source) => readFileSync(source, "utf8"))
+      const output = { code, map }
+      for (const path of paths) outputs.set(path, output)
+    }
+    const files = entry.files.map((record) => record.path)
+    return { result: { outputs, inputs: entry.inputs, files, errors: [], warnings: entry.warnings }, files }
+  }
+
+  return { file, begin, write, lookup }
 }

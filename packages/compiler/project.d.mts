@@ -98,6 +98,18 @@ export function compileProjectSync(options: {
   cache?: CacheOption
   debug?: (text: string) => void
 }): Result
+/**
+ * Compiles a project as the loaders do and writes its loader record,
+ * `<project dir>/.vibelang/js/.loader/<name>.json`, which a process with a
+ * cold cache uses in place of the compile while every input holds. Returns
+ * the record and its module count, or the errors of a project that does not
+ * compile, which leaves no record.
+ */
+export function writeLoaderRecord(options: {
+  project: string
+  root?: string
+  compiler?: string
+}): { file: string; modules: number } | { errors: Diagnostic[] }
 export function nearestProject(file: string): string | undefined
 
 /**

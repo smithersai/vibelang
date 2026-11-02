@@ -1,0 +1,16 @@
+{
+  "property": "loader-record",
+  "rule": "Existing tools work.",
+  "repo": "opencode",
+  "pattern": "packages/cli's standalone child (bun --preload vibelang/bun src/index.ts serve) imports @opencode/protocol/api, whose default export names the committed .vibelang/js; the preload ran protocol's .vibe source and type-checked the whole protocol project on every cold start (schema, server, protocol, ai and codemode: 7-13 s each), so test/standalone.test.ts timed out at 10 s in CI",
+  "files": {
+    "package.json": "{\"name\": \"demo\", \"private\": true, \"type\": \"module\", \"workspaces\": [\"packages/*\"]}\n",
+    "packages/protocol/package.json": "{\"name\": \"@demo/protocol\", \"type\": \"module\", \"exports\": {\"./api\": {\"types\": \"./src/api.d.vibe.ts\", \"vibelang-source\": \"./src/api.vibe\", \"default\": \"./.vibelang/js/src/api.js\"}}}\n",
+    "packages/protocol/tsconfig.json": "{\"compilerOptions\": {\"target\": \"ES2022\", \"module\": \"NodeNext\", \"moduleResolution\": \"NodeNext\", \"strict\": true, \"types\": [], \"skipLibCheck\": true}, \"include\": [\"src/**/*\"]}\n",
+    "packages/protocol/src/api.vibe": "import { routes } from \"./groups/pty.vibe\"\n\nexport const Api: string = \"api:\" + routes.join(\",\")\n\nexport function where(): string {\n  return String(new Error(\"here\").stack)\n}\n",
+    "packages/protocol/src/groups/pty.vibe": "export const routes: Array<string> = [\"pty.create\", \"pty.connect\"]\n",
+    "packages/cli/package.json": "{\"name\": \"@demo/cli\", \"type\": \"module\"}\n",
+    "packages/cli/src/index.ts": "import { Api, where } from \"@demo/protocol/api\"\nconsole.log(JSON.stringify({ api: Api, mapped: /api\\.vibe:6/.test(where()) }))\n",
+    "packages/cli/src/index.mjs": "import { Api, where } from \"@demo/protocol/api\"\nconsole.log(JSON.stringify({ api: Api, mapped: /api\\.vibe:6/.test(where()) }))\n"
+  }
+}

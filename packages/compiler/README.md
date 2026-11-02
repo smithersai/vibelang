@@ -131,6 +131,42 @@ module resolution from outside the project's `include` and outside
 `node_modules`, or a `node_modules` link changed by hand rather than by a
 package manager; edit the importing file, or delete the cache directory.
 
+### Loader records
+
+A cache starts empty in every CI run and every fresh checkout, so each such
+process compiled every workspace package whose `.vibe` modules it reached,
+even when the package's current JavaScript was committed under
+`.vibelang/js/`: nothing proved that JavaScript current, and emit is
+type-directed. A loader record is that proof. It is the loader's own compile
+of a project, committed at `<project dir>/.vibelang/js/.loader/<tsconfig
+name>.json`, with every input named by content rather than by timestamp:
+
+| Input | What the record holds |
+| --- | --- |
+| Sources | The digest of each file the compile read, dependencies included |
+| Project files | Each `include` directory's file names |
+| Configuration | The digests of the configs the cache tracks |
+| Packages | The digests of the nearest `package.json` files and of the lockfiles from the project's directory up to the workspace's |
+| Compiler | The digest of the native binary |
+
+Paths are relative to the workspace, the nearest directory at or above the
+project that holds a lockfile, so a record holds in any checkout. On a cache
+miss, a loader checks the record input by input, about 150 ms for opencode's
+five packages and 3,000 files; when all hold it uses the recorded result and
+caches it, and when any differs it compiles as before. A record only ever
+saves a compile: a stale one costs nothing but the compile.
+`VIBELANG_DISABLE_CACHE=1` turns records off too.
+
+The migrate flow writes a record for each project a migrated package's
+`.vibe` modules compile with, each time it writes the package's emitted
+JavaScript. To write one yourself, after changing a package:
+
+```sh
+node -e 'import("vibelang/project").then(p => console.log(p.writeLoaderRecord({ project: process.argv[1] })))' packages/protocol/tsconfig.json
+```
+
+A project with a type error gets no record.
+
 ## Run .vibe modules in Bun
 
 ```sh
@@ -154,7 +190,9 @@ load no plugin, such as the `bun build` CLI and plain `node`. Both loaders run
 the `.vibe` source instead: `vibelang/register` resolves
 `<package>/.vibelang/js/<path>.js` to `<package>/<path>.vibe` when that exists,
 and `vibelang/bun` loads that file as a re-export of the source, so the source
-module has one instance whichever way it is imported.
+module has one instance whichever way it is imported.. With the
+package's [loader record](#loader-records), a process with a cold cache runs
+that source from the recorded compile instead of compiling the package.
 
 ## Bundle .vibe modules with Metro
 

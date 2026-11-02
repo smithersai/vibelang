@@ -13,6 +13,7 @@ import { dirname, join, posix, relative, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 import { assertFinished, parseDiagnostics } from "./diagnostics.mjs"
 import { quote, rel, run } from "./util.mjs"
+import { formatDiagnostic, nearestProject, writeLoaderRecord } from "../../../../packages/compiler/project.mjs"
 
 /** The TypeScript compiler API (5.x or 6.x; TypeScript 7's package has no such API), from the first directory that has it. */
 export function loadTypeScript(directories) {
@@ -616,6 +617,45 @@ export async function emitPackageJs({ compiler, tsconfigs, packageDir, log, root
     }
   }
   return { code, files, outputs, diagnostics: parseDiagnostics(output, { cwd: packageDir, root }) }
+}
+
+/**
+ * Writes the loader record (vibelang/project's writeLoaderRecord) of each
+ * project a loader compiles one of the package's .vibe modules with, the
+ * nearest tsconfig above the module, beside the emitted JavaScript under
+ * .vibelang/js/.loader/. A process with a cold cache, such as every CI run,
+ * then loads the package without compiling it while its inputs are unchanged
+ * (opencode's standalone CLI child compiled five packages, 7 to 13 s each).
+ * A nested package and a project outside the package are their own. A
+ * project that does not compile, or a compiler that cannot record, leaves no
+ * record and a receipt entry that says why; the emit stands either way.
+ */
+export function writeLoaderRecords({ compiler, packageDir, root }) {
+  const inside = (path) => !relative(packageDir, path).startsWith("..")
+  const projects = new Set()
+  const walk = (directory) => {
+    for (const item of readdirSync(directory, { withFileTypes: true })) {
+      if (item.name.startsWith(".") || item.name === "node_modules") continue
+      const path = join(directory, item.name)
+      if (item.isDirectory()) {
+        if (!existsSync(join(path, "package.json"))) walk(path)
+      } else if (item.name.endsWith(".vibe")) {
+        const project = nearestProject(path)
+        if (project !== undefined && inside(project)) projects.add(project)
+      }
+    }
+  }
+  walk(packageDir)
+  const name = (path) => rel(root ?? packageDir, path)
+  return [...projects].sort().map((project) => {
+    try {
+      const written = writeLoaderRecord({ project, compiler })
+      if (written.errors) return { project: name(project), errors: written.errors.length, first: formatDiagnostic(written.errors[0]) }
+      return { project: name(project), file: name(written.file), modules: written.modules }
+    } catch (error) {
+      return { project: name(project), error: String(error?.message ?? error).split("\n")[0] }
+    }
+  })
 }
 
 // Assets are not compiler outputs. Keep their original file identity when
