@@ -129,7 +129,10 @@ func checkCatchExpressions(c *checker.Checker, file *ast.SourceFile) {
 				// no Effect (VIP-1).
 				note(reportAt(c, file, keyword, EK0504), "Mark the function effect, or use a try statement for a JavaScript exception.")
 				coverCodes(c, call, 2322, 2345) // its sides are typed as an Effect catch's
-				return true
+				// Keep walking: returning true stopped the whole walk at the
+				// first catch outside effect code, so later catches got no
+				// EK0504 or EK0509 (foldkit devtools-mcp relayRegistry.vibe).
+				return node.ForEachChild(visit)
 			}
 			if inLowerableBody(call) && analyzerFor(c).caughtErrors(call).Flags()&checker.TypeFlagsNever != 0 {
 				d := reportAt(c, file, keyword, deadCatchExpression, nodeText(file, left))
