@@ -333,6 +333,7 @@ func dataRules() []dataRule {
 	rules = append(rules, dataHelperNameRules()...)
 	rules = append(rules, dataTaggedMembersRules()...)
 	rules = append(rules, dataDeclarationRules()...)
+	rules = append(rules, dataNestedIsRules()...)
 	rules = append(rules, unsettledIsBindingRules()...)
 	rules = append(rules, dataSchemaLibraryArrayRules()...)
 	rules = append(rules, dataSchemaLibraryRecordRules()...)
