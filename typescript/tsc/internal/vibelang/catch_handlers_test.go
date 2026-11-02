@@ -25,6 +25,7 @@ func TestCatchHandlerEK0509QuickFix(t *testing.T) {
 		{"{ make }", "() => ({ make })"},
 		{"{ v: make() }", "() => ({ v: make() })"},
 		{"Effect.succeed(8)", "effect () => try Effect.succeed(8)"},
+		{"throw new Error(\"y\")", "effect () => throw new Error(\"y\")"},
 		{"effect { return 9 }", "effect () => { return 9 }"},
 		{"async (e) => 7", "(e) => 7"},
 		{"async e => 7", "e => 7"},

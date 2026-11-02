@@ -23,12 +23,15 @@ import (
 //	x catch guest                x catch () => guest
 //	x catch onErr                x catch (e) => onErr(e)        (onErr a function)
 //	x catch Effect.succeed(1)    x catch effect () => try Effect.succeed(1)
+//	x catch throw e              x catch effect () => throw e
 //	x catch effect { … }         x catch effect () => { … }
 //	x catch async (e) => 7       x catch (e) => 7
 //	x catch function* (e) { }    x catch function (e) { }
 //
 // An Effect value gets an effect handler that runs it, as the legacy fallback
-// did; a plain () => effect would hold it as data (EK0508).
+// did; a plain () => effect would hold it as data (EK0508). A throw
+// expression gets an effect handler too, so it fails with its value, typed,
+// as the legacy fallback did; in a plain handler it would be a defect.
 
 // EK0509: a catch handler that is no function literal.
 var EK0509 = message(509, errorCategory, "A catch handler that is not a plain or effect arrow or function expression. Run an Effect with try inside effect code; use a function literal as the catch handler.")
@@ -119,6 +122,8 @@ func catchHandlerRepair(c *checker.Checker, file *ast.SourceFile, call, handler 
 		repaired = source[:keyword-start+len("effect")] + " () =>" + source[keyword-start+len("effect"):]
 	case ast.IsClassExpression(inner):
 		return nil, ""
+	case isThrowExpression(file, inner):
+		repaired = "effect () => " + source
 	default:
 		t := c.GetTypeAtLocation(inner)
 		switch {
@@ -151,6 +156,17 @@ func catchHandlerRepair(c *checker.Checker, file *ast.SourceFile, call, handler 
 		edits[1].NewText += ")"
 	}
 	return edits, repaired
+}
+
+// isThrowExpression reports whether node is a throw expression, the call of
+// the function the parser writes around it (D186), whose first token is the
+// source's throw.
+func isThrowExpression(file *ast.SourceFile, node *ast.Node) bool {
+	if !ast.IsCallExpression(node) || len(node.Arguments()) != 0 || node.Expression().Kind != ast.KindParenthesizedExpression {
+		return false
+	}
+	keyword := scanner.GetRangeOfTokenAtPosition(file, node.Pos())
+	return file.Text()[keyword.Pos():keyword.End()] == "throw"
 }
 
 // Removing async and/or * cannot leave their own await/yield operations.

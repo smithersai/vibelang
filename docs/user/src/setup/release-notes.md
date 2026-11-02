@@ -666,6 +666,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `vibelang-format` and the editor moved a comment written after a `for concurrent` or `for try` head in front of the head, turning `for concurrent /* note */ (const x of xs)` into `for /* note */ concurrent (const x of xs)`; the comment now stays after `concurrent`, its limit, or `try`.
 
 - The site contrast check named a command when it started but gave no duration or exit details when it finished. Each command now records its elapsed time, exit status and termination signal.
+- `vibelang --fix` refused old VibeLang's `x catch throw e`, as in Smithers' `FileRouter.vibe` `catch throw readFailure()`: the `EK0509` repair wrote `x catch effect () => try throw e`, which does not parse. It now writes `x catch effect () => throw e`, which fails with `e`, typed, as the old fallback did.
 
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 
