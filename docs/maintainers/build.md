@@ -386,6 +386,33 @@ A gate that needs only some checks names their labels, for example
 `.flows/` between runs, so a long-lived CI checkout replays everything an
 earlier run already proved.
 
+## Synthetic compiler benchmark fixtures
+
+The `//scripts/bench:synthetic` target generates VibeLang and Effect TypeScript
+projects, compiles both without diagnostics, and runs the emitted JavaScript
+with the pinned Effect runtime. It checks `chain`, `dense` and `single` with
+`1`, `3` and `6` modules: no predecessor, partial fan-in and all four dense
+predecessors. A fast-check property varies the shape, module count and branch
+inputs, including negative values, the successful `k1` lookup and missing keys.
+
+Both languages must match an independent arithmetic oracle for plain helpers,
+successful service calls, typed failures, catch handlers, fork/join, nested
+service layers and dense dependencies. The plain helper has a `number` return
+annotation so it also stays plain before the VIP-1 compiler transition.
+
+The target requires the graph's compiler and runtime outputs and the compiler
+package's pinned fast-check install. Missing prerequisites fail in CI rather
+than skipping. Run it before collecting synthetic timings after a language or
+Effect upgrade:
+
+~~~sh
+sh scripts/ci.sh //scripts/bench:synthetic --jobs 8
+~~~
+
+The VibeLang compiler checks both extensions; its TypeScript path checks
+`effect-ts`. This verifies fixture correctness and equivalence, without
+measuring compiler performance.
+
 ## Cache contracts
 
 The compiler and Vite package tests consume `//:migration-sources`, a root-owned filegroup that holds every file of the migrate flow, so a new flow file needs no entry in any `PACKAGE.ts`. A `//` prefix roots a glob's path but does not change its package scope: a glob declared in `packages/PACKAGE.ts` selects none of the root-owned `.smithers/flows/migrate/` files, and `smthrs explain` shows it with `"files": []`. `migration-inputs.ts` defines the shared group without a declaration-module import cycle. The compiler package's cache-contract tests use `smthrs explain` to check the real dependency and that every file under `.smithers/flows/migrate/` is an input with its current content digest.

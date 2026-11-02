@@ -13,6 +13,7 @@ const read = (path) => readFileSync(new URL(path, root), "utf8")
 // [test files, the file that runs them, the text in it that names them]
 const runs = [
   ["scripts/*.test.mjs", "PACKAGE.ts", "scripts/*.test.mjs"],
+  ["scripts/bench/*.test.mjs", "scripts/bench/PACKAGE.ts", "node --test scripts/bench/gen-synthetic.test.mjs"],
   ["scripts/release/*.test.mjs", "PACKAGE.ts", "scripts/release/*.test.mjs"],
   ["typescript/vibelang/harness.test.mjs", "PACKAGE.ts", "typescript/vibelang/harness.test.mjs"],
   ["docs/redirect/*.test.mjs", "PACKAGE.ts", "docs/redirect/*.test.mjs"],
@@ -52,7 +53,6 @@ const unrun = [
   ["packages/create-vibelang/test/*.test.mjs", "1 of 29 fails on main: the scaffold's main reports EK3205"],
   ["site/scripts/*.test.mjs", "they import the site's npm install; 32/32 pass with it"],
   ["editors/tree-sitter-vibelang/test/*.test.mjs", "the grammar property test fails on main"],
-  ["scripts/bench/*.test.mjs", "they need the native compiler; the generator emits retired forms (maintainability backlog)"],
 ]
 
 // A glob as the shell and `smthrs` read one: `**` crosses directories, `*` does not.

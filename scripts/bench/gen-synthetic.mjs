@@ -48,8 +48,8 @@ function moduleImports(i, extension) {
 function vibelangModule(i) {
   const prev = i - 1
   const imports = moduleImports(i, ".vibe") + (shape !== "single" && i > 0 ? "\n" : "")
-  const a = i > 0 ? `n > 0 ? run${prev}() + plain${prev}(n) : 0` : "0"
-  const extra = back(i).map((j) => ` + load${j}(${key})`).join("") + (fanIn && i > 0 ? ` + deep${prev}(n)` : "")
+  const a = i > 0 ? `n > 0 ? (try run${prev}()) + plain${prev}(n) : 0` : "0"
+  const extra = back(i).map((j) => ` + (try load${j}(${key}))`).join("") + (fanIn && i > 0 ? ` + (try deep${prev}(n))` : "")
   return `${imports}export error Missing${i} { id: string }
 export error Busy${i}
 
@@ -66,51 +66,48 @@ export service Store${i} {
   size: number
 }
 
-export const Store${i}Live = Layer.effect(Store${i}) {
+export const Store${i}Live = Layer.effect(Store${i}, effect {
   const items = new Map<string, Item${i}>([["k1", { id: "k1", value: ${i} }]])
   return {
-    get(id) {
+    effect get(id: string): Item${i}!Missing${i} {
       const item = items.get(id)
       if (item === undefined) throw new Missing${i}({ id })
       return item
     },
     size: 1
   }
-}
+})
 
-export function plain${i}(x: number) {
+export function plain${i}(x: number): number {
   return x * 2 + ${i}
 }
 
-export function load${i}(id: string) {
-  const item = Store${i}.get(id)
+export effect function load${i}(id: string) {
+  const store = try Store${i}
+  const item = try store.get(id)
   return item.value + 1
 }
 
-export function step${i}(n: number) {
+export effect function step${i}(n: number) {
   const a = ${a}
-  try {
-    return load${i}(${key}) + a
-  } catch (e) {
-    return match (e) {
-      when Missing${i}: a;
-    }
+  return (load${i}(${key}) |> Effect.map(%, (value) => value + a)) catch (e) => match (e) {
+    when Missing${i}: a;
   }
 }
 
-export function deep${i}(n: number) {
-  return step${i}(n)${extra}
+export effect function deep${i}(n: number) {
+  return (try step${i}(n))${extra}
 }
 
-export function fanout${i}(n: number) {
+export effect function fanout${i}(n: number) {
   const left = fork step${i}(n)
   const right = fork step${i}(n + 1)
-  return left.join() + right.join()
+  return (join left) + (join right)
 }
 
-export function run${i}(): number!! {
+export effect function run${i}(): number!! {
   provide Store${i}Live {
-    return fanout${i}(3) |> % * 2
+    return (try fanout${i}(3)) |> % * 2
   }
 }
 `
@@ -150,7 +147,7 @@ export const Store${i}Live = Layer.effect(Store${i}, Effect.sync(() => {
   })
 }))
 
-export function plain${i}(x: number) {
+export function plain${i}(x: number): number {
   return x * 2 + ${i}
 }
 
@@ -203,7 +200,7 @@ function project(dir, ext, module, main) {
 }
 
 project(path.join(out, "vibelang"), ".vibe", vibelangModule,
-  `import { run${count - 1} } from "./m${count - 1}.vibe"\n\nexport function main() {\n  log(run${count - 1}())\n}\n`)
+  `import { run${count - 1} } from "./m${count - 1}.vibe"\n\nexport effect function main() {\n  try log(try run${count - 1}())\n}\n`)
 project(path.join(out, "effect-ts"), ".ts", effectModule,
   `import { Effect } from "effect"\nimport { run${count - 1} } from "./m${count - 1}.ts"\n\nexport const main = Effect.flatMap(run${count - 1}(), (n) => Effect.log(n))\n`)
 console.log(`wrote ${count} modules to ${out}/vibelang and ${out}/effect-ts`)
