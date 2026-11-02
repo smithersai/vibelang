@@ -670,3 +670,5 @@ The Foldkit compiler-identity fixtures contain unmodified build metadata emitted
 Inferred Effect default properties retain T3code's typed-provider corpus and compare the TypeScript importer's raw declaration across 18 arity/syntax/form pairs and 24 generated import-route, namespace and nesting variants. Resolved omitted-default cases require byte identity, and `TestInferredEffectDefaultsQuoted` keeps the Chapter 1 declaration oracle in the spec gate.
 
 Vite alias-neighbourhood properties start servers through `devServer`, the shared fixture helper that disables dependency optimization during cleanup. Native TypeScript importer resolution remains the paired control across prefixes, nesting and query suffixes.
+
+The tools property `react-emitted-phi.property.test.mjs` feeds the native emit adapter's actual JavaScript to the pinned Oxc React Compiler, against untouched TypeScript controls. The minimized T3code nested-loop/IIFE corpus and generated local-name, guard and comment mutations must pass the actual React check. The corpus records the historical phi invariant; the existing clean-hook control must optimize identically.
