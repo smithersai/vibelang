@@ -1,9 +1,0 @@
-{
-  "key": "migration-gate:relative-TS-import-normalization-beyond263-277",
-  "modules": [
-    { "before": "export * from \"./config.ts\";\n", "after": "export * from \"./config.js\";\n" },
-    { "before": "import { ThreadId, type ScopedThreadRef } from \"@t3tools/contracts\";\nexport { ThreadId };\n", "after": "import { type ScopedThreadRef, ThreadId } from \"@t3tools/contracts\";\nexport { ThreadId };\n" },
-    { "before": "export { b, a } from \"./config.ts\";\n", "after": "export { a, b } from \"./config.ts\";\n" },
-    { "before": "/** original contract */\nexport type X = string;\n", "after": "export type X = string;\n" }
-  ]
-}
