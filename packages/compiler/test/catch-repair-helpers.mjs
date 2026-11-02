@@ -72,7 +72,13 @@ async function editor(dir, source) {
     const actions=await request("textDocument/codeAction",{textDocument:{uri},range:diagnostic.range,context:{diagnostics:[diagnostic],only:["quickfix"]}})
     const chosen=actions?.find(a=>a.title.startsWith("Write the handler as "))
     if(!chosen) return null
-    const offset=p=>source.split("\n").slice(0,p.line).reduce((n,line)=>n+line.length+1,0)+p.character
+    const starts=[0]
+    for(let i=0;i<source.length;i++) {
+      const ch=source.charCodeAt(i)
+      if(ch===13) { if(source.charCodeAt(i+1)===10) i++; starts.push(i+1) }
+      else if(ch===10 || ch===0x2028 || ch===0x2029) starts.push(i+1)
+    }
+    const offset=p=>starts[p.line]+p.character
     const edits=chosen.edit.changes[uri].map(e=>({start:offset(e.range.start),end:offset(e.range.end),text:e.newText})).sort((a,b)=>b.start-a.start)
     for(const e of edits) source=source.slice(0,e.start)+e.text+source.slice(e.end)
     return source

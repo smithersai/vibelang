@@ -94,7 +94,7 @@ func catchHandlerRepair(c *checker.Checker, file *ast.SourceFile, call, handler 
 		for _, modifier := range inner.ModifierNodes() {
 			if modifier.Kind == ast.KindAsyncKeyword {
 				r := scanner.GetRangeOfTokenAtPosition(file, modifier.Pos())
-				edits = append(edits, core.TextChange{TextRange: core.NewTextRange(r.Pos(), scanner.SkipTrivia(text, r.End())), NewText: ""})
+				edits = append(edits, core.TextChange{TextRange: core.NewTextRange(r.Pos(), scanner.SkipTriviaEx(text, r.End(), &scanner.SkipTriviaOptions{StopAtComments: true})), NewText: ""})
 			}
 		}
 		if ast.IsFunctionExpression(inner) && inner.AsFunctionExpression().AsteriskToken != nil {

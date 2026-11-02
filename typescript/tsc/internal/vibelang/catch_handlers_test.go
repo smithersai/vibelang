@@ -158,3 +158,20 @@ func TestCatchHandlerModifierBodySafety(t *testing.T) {
 		checkCatchHandlerFix(t, prefix+handler+" }\n", handler, prefix+"(e:string) => "+body+" }\n", true)
 	}
 }
+
+// RC-21: modifier trivia belongs to the user's source, including JSDoc.
+func TestCatchHandlerModifierComments(t *testing.T) {
+	const prefix = "export effect function f() { return Effect.fail(\"bad\") catch "
+	for _, test := range []struct{ handler, want string }{
+		{"async /* KEEP_HEADER */ (e:string) => 7", "/* KEEP_HEADER */ (e:string) => 7"},
+		{"async /* KEEP_ONE */ /* KEEP_TWO */ (e:string) => 7", "/* KEEP_ONE */ /* KEEP_TWO */ (e:string) => 7"},
+		{"async /** KEEP_DOC */ function(e:string){return 7}", "/** KEEP_DOC */ function(e:string){return 7}"},
+		{"async/*KEEP*/(e:string)=>7", "/*KEEP*/(e:string)=>7"},
+		{"async /* HEADER */ function /* LINE\nBREAK */ * (e:string){const preserved=7}", "/* HEADER */ function /* LINE\nBREAK */  (e:string){const preserved=7}"},
+		{"async /* ASYNC */ function /* BEFORE */ * /* AFTER */ (e:string){const preserved=7}", "/* ASYNC */ function /* BEFORE */  /* AFTER */ (e:string){const preserved=7}"},
+	} {
+		t.Run(test.handler, func(t *testing.T) {
+			checkCatchHandlerFix(t, prefix+test.handler+" }\n", test.handler, prefix+test.want+" }\n", true)
+		})
+	}
+}

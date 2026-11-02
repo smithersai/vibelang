@@ -109,7 +109,11 @@ Saved issue
 
 A catch expression can try the cache before applying a default: `effect { return latestTitle() catch effect () => try cachedTitle() } catch () => "Untitled issue"`. The cache runs after the primary fails, and the title is used after the cache fails. Each recovery uses Effect's cause policy.
 
-The `EK0509` quick fix for a callable value such as `x catch onErr` writes a function literal and chooses a parameter name that does not shadow a name visible to the handler. Escaped identifier spellings and comments do not change that choice. For an `async` or generator handler, removing `async` or `*` is offered only when the handler uses no `await` or `yield` at its own function level. Nested functions keep their own modifiers. Otherwise, the diagnostic asks for an explicit body conversion, and CLI and editor offer no modifier edit.
+The `EK0509` quick fix for a callable value such as `x catch onErr` writes a function literal and chooses a parameter name that does not shadow a name visible to the handler. Escaped identifier spellings and comments do not change that choice. 
+
+For an `async` or generator handler, removing `async` or `*` is offered only when the handler uses no `await` or `yield` at its own function level. Nested functions keep their own modifiers. Otherwise, the diagnostic asks for an explicit body conversion, and CLI and editor offer no modifier edit.
+
+Modifier repairs keep comments after `async` and around `*`, including JSDoc comments.
 
 ## Coming from Effect
 
