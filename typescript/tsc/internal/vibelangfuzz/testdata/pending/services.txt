@@ -1,9 +1,6 @@
 # Chapter 5 (Services) static rules: FuzzServicesRules reads each table row at test time.
-# Recovered service fixes retire their 15 pending rules; export-default remains with impl-hunt-fail.
+# Recovered service fixes and current VIP-9 syntax retire the satisfied pending rules.
 
-FuzzServicesRules diagnostic:comma-methods compiler VIP-9: missing member separator must be EK0908; lane impl-hunt-fail (current companion df78d4004a62 unlanded)
-FuzzServicesRules corpus:comma-methods compiler VIP-9: missing member separator must be EK0908; lane impl-hunt-fail (current companion df78d4004a62 unlanded)
-FuzzServicesRules diagnostic:comma-properties compiler VIP-9: missing member separator must be EK0908; lane impl-hunt-fail (current companion df78d4004a62 unlanded)
-FuzzServicesRules corpus:comma-properties compiler VIP-9: missing member separator must be EK0908; lane impl-hunt-fail (current companion df78d4004a62 unlanded)
+
 FuzzProvideParenthesizedExpressions  nested-block  superseded  VIP-1: old VibeLang is a reference only; its trailing-block call withProvider { … } is not part of the language (VIP-11 denied trailing blocks, EK1101), so this provider shape no longer parses
 
