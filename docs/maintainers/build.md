@@ -156,6 +156,7 @@ hand, rebuild it after changing compiler sources.
                                 change edits a compiler source or fuzz test of topic <t>)
   :release :snippets :tokens :forms :docs-tools :docs-check :site-spec-links
   :site-contrast                npm ci and a production build of a private copy of site/, then the contrast audit
+  :spec-lint                    the specification linters over docs/design (merge gate, through :docs-tools)
   :design-files                 Filegroup: docs/design
   :spec-tests                   the Go tests that read docs/design (registry, whole printed diagnostic numbers, VIP citations, pending lines), the cost guards of --fix and flow narrowing
 ```
@@ -367,6 +368,8 @@ package artifacts in the Go build cache on a fresh validation mirror.
 - **Not yet in the graph.** ts-mapper, create-vibelang, the
   editors, the examples, `scripts/e2e.sh` and the LSP smoke test run outside
   it.
+
+`//:spec-lint` runs `docs/tools/spec-lint.ts`, the specification linters. Each rule is one class of inconsistency a specification review found, such as a resolution claim VIP-39's table does not list, and `docs/tools/spec-lint.test.ts` shows each rule failing on the defect it was written for. `//:docs-tools` depends on it, so the pre-merge gate runs it. Its inputs are `docs/design/**` and the linter's two files. Run it alone with `bun docs/tools/spec-lint.ts`. A new class of inconsistency gets a rule and a failing-defect test in the commit that fixes it.
 
 `//:site-spec-links` checks the generated specification and VIP pages for unconverted `.md` links, missing pages and missing anchors. `//:docs-tools` depends on it, so the pre-merge gate runs it. Its inputs are `site/src/pages/spec/**`, `site/src/pages/vips/**` and `docs/tools/site-spec-links.test.ts`; unrelated changes reuse its cached result.
 

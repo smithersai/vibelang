@@ -9,18 +9,18 @@ import (
 	"testing"
 )
 
-// Chapter 7, docs/design/src/007-tooling.md, Design principles, Emit names,
-// and chapter 1, docs/design/src/001-functions.md, Declaration output,
-// Specifiers (detail 263).
-const (
-	writtenTsSpecifierQuote   = "A relative `./x.ts` that resolves to `x.vibe`, as an import written before `x.ts` became `x.vibe` does, is checked and emitted as it is for `x.ts`: `rewriteRelativeImportExtensions` rewrites it to `./x.js`, and a declaration keeps `./x.ts`."
-	writtenSpecifierKeptQuote = "Under every setting, every other specifier stays as the source wrote it, `./plain.ts` included, as `tsc` keeps it in the declaration of a `.ts` file."
-)
+// Chapter 1, docs/design/src/001-functions.md, Declaration output,
+// Specifiers (detail 263). Chapter 7 no longer states that a written `./x.ts`
+// reaches `x.vibe`: no VIP, decided detail or ruling approves that resolution
+// (round 14 OPUS-1). The compiler still resolves it, and
+// TestWrittenSpecifierMigratedTarget keeps that behavior until the spec agent
+// answers the question recorded as OPEN in decided detail 296.
+const writtenSpecifierKeptQuote = "Under every setting, every other specifier stays as the source wrote it, `./plain.ts` included, as `tsc` keeps it in the declaration of a `.ts` file."
 
 func TestWrittenSpecifierMigratedTargetQuoted(t *testing.T) { requireWrittenSpecifierQuotes(t) }
 
 func requireWrittenSpecifierQuotes(t testing.TB) {
-	for chapter, quote := range map[string]string{"007-tooling.md": writtenTsSpecifierQuote, "001-functions.md": writtenSpecifierKeptQuote} {
+	for chapter, quote := range map[string]string{"001-functions.md": writtenSpecifierKeptQuote} {
 		text, err := os.ReadFile(SpecPath(chapter))
 		if err != nil {
 			t.Fatal(err)
@@ -31,7 +31,7 @@ func requireWrittenSpecifierQuotes(t testing.TB) {
 	}
 }
 
-// TestWrittenSpecifierMigratedTarget enforces both quotes for an importer that
+// TestWrittenSpecifierMigratedTarget enforces the quote for an importer that
 // keeps the specifier it wrote for a module that became VibeLang. Witness:
 // foldkit-113 (inbox/migrate-foldkit.md, 2026-11-01), consumer.vibe's
 // import { type Factory } from './target.ts' failed TS2876 under

@@ -282,9 +282,24 @@ const fuzzTopicTargets = Object.fromEntries(
   ])
 )
 
+// The specification linters (docs/tools/spec-lint.ts): one rule per class of
+// inconsistency a review found, each with a test that fails on that defect.
+// They read only docs/design and the linter, so a specification edit runs
+// them in seconds and they stay cached otherwise. //:docs-tools requires
+// them, so the merge gate runs them.
+const specLint = S.Shell.Test({
+  summary: "The specification linters: each class of inconsistency a review found, checked over docs/design.",
+  shell: "cd docs/tools && bun test --timeout 60000 spec-lint.test.ts",
+  data: [design, S.Filegroup({ srcs: [...S.glob(["docs/tools/spec-lint.ts", "docs/tools/spec-lint.test.ts"])] })],
+  tools: [bun],
+  sandbox: "none",
+  timeout: "5m"
+})
+
 const targets = {
   "go-vibelangfuzz-hangs": pendingHangs,
   "site-spec-links": siteSpecLinks,
+  "spec-lint": specLint,
   release: check(
     "The release and contributor scripts' node tests, the effect-bump, ts-bump, ci-health and first-bad flows' steps, and their evals' step keys.",
     "node --test scripts/release/*.test.mjs scripts/*.test.mjs typescript/vibelang/harness.test.mjs docs/redirect/*.test.mjs " +
@@ -309,9 +324,9 @@ const targets = {
     [bun, node]
   ),
   "docs-tools": check(
-    "docs/tools' bun tests, with cached specification links and without site contrast.",
-    "cd docs/tools && bun test --timeout 60000 $(ls *.test.* | grep -vE '^site-(contrast|spec-links)\\.test\\.')",
-    [Typescript.compiler, Packages["runtime-dist"], Packages["compiler-native"], siteSpecLinks],
+    "docs/tools' bun tests, with cached specification links and linters and without site contrast.",
+    "cd docs/tools && bun test --timeout 60000 $(ls *.test.* | grep -vE '^(site-(contrast|spec-links)|spec-lint)\\.test\\.')",
+    [Typescript.compiler, Packages["runtime-dist"], Packages["compiler-native"], siteSpecLinks, specLint],
     [bun, node]
   ),
   // It installs and builds a private copy of site/ (docs/tools/site-scratch.ts),
