@@ -268,6 +268,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - An `effect` body that ran an Effect failing with `Error | ApiError` and threw an `Error` subclass declared its error channel as `Error`, so a `catch` arm on `ApiError`'s tag failed with `TS2339`; it now declares `Error | ApiError`, as `Effect.gen` infers.
 
 - Regression tests for forbidden error inheritance missed native parents with extensible tags; fuzz coverage now records these unresolved cases explicitly.
+- VIP-39 said `App.vibe` beside `App.vibex` always collide with `TS5055`/`TS5056`, though under `"jsx": "preserve"` with declarations off they write `App.js` and `App.jsx`; it now says the pair collides only where both write the same output path, as `App.ts` beside `App.tsx` does.
 - VIP-8's Effect TypeScript counterpart dropped the source's `using f = openFile(p)`, so it neither opened nor disposed the file; it now keeps the declaration in the outer generator, as TypeScript's `using` does.
 - VIP-33's opening example provided `NodeServices.layer` at a module's top level with no import, a program the spec rejects (`EK1201`, `EK0501`, `TS2304`), and VIP-26's used `NodeRuntime` with no import; both now import the platform package, and VIP-33 provides the layer inside `effect function main()`, as chapter 5 does.
 - VIP-1's written-return-type example used the bare type `Effect<User, NotFound, Users>`, which is not a VibeLang form; it now writes `User!NotFound!Users`, as chapter 1 does.

@@ -131,3 +131,11 @@ test("counterpart-using rejects round 9 ASTRA-2's VIP-8 counterpart without `usi
     "vips/0008-using-denied.md:7 the Effect TS counterpart drops `using f = …`, so it does not acquire or dispose what the source does"
   ])
 })
+
+test("collision-conditional rejects round 6 ASTRA-5's unconditional VIP-39 collision (row 39)", () => {
+  const original = "`App.vibe` beside `App.vibex`, or `App.tsx` beside `App.vibex`, write the same output and get TypeScript's TS5055/TS5056, as `App.ts` beside `App.tsx` does."
+  const defect = withEdit("vips/0039-vibex.md", text => text.replace(/`App\.vibe` beside `App\.vibex`, or `App\.tsx` beside `App\.vibex`, get[^\n]*/, original))
+  expect(lint(defect, rule("collision-conditional")).map(v => `${v.file} ${v.message}`)).toEqual([
+    "vips/0039-vibex.md a same-stem pair gets `TS5055`/`TS5056` only where the selected inputs write the same output path; the sentence does not say so"
+  ])
+})

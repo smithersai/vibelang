@@ -328,7 +328,30 @@ const counterpartUsing: Rule = {
   }
 }
 
-export const rules: Rule[] = [resolutionClaims, configKeys, importStyleScope, declarationImportForm, deniedVipRepairs, retiredForms, platformImports, counterpartUsing]
+// Output collisions follow output paths (row 39 of round 14's open table,
+// round 6 ASTRA-5). VIP-39 said `App.vibe` beside `App.vibex` "write the same
+// output and get TypeScript's TS5055/TS5056" unconditionally; under
+// `"jsx": "preserve"` with declarations off they write `App.js` and
+// `App.jsx`. Decided detail 265: "report native output-collision diagnostics
+// only where the selected inputs really share a written path". A sentence
+// giving a same-stem pair `TS5055` or `TS5056` states that condition.
+const collisionConditional: Rule = {
+  name: "collision-conditional",
+  finding: "r6 ASTRA-5 (row 39): VIP-39 gave every `.vibe`/`.vibex` same-stem pair TS5055/TS5056",
+  check(spec) {
+    const out: Violation[] = []
+    for (const [file, text] of spec) {
+      for (const sentence of sentences(text)) {
+        if (/TS505[56]/.test(sentence.text) && /\bbeside\b/.test(sentence.text) && !/\bonly (?:where|when|if)\b[^.]*\boutput/.test(sentence.text)) {
+          out.push({ rule: this.name, file, line: lineAt(text, sentence.index), message: "a same-stem pair gets `TS5055`/`TS5056` only where the selected inputs write the same output path; the sentence does not say so" })
+        }
+      }
+    }
+    return out
+  }
+}
+
+export const rules: Rule[] = [resolutionClaims, configKeys, importStyleScope, declarationImportForm, deniedVipRepairs, retiredForms, platformImports, counterpartUsing, collisionConditional]
 
 export const lint = (spec: Spec, only = rules) => only.flatMap(rule => rule.check(spec))
 
