@@ -87,12 +87,16 @@ const FixFlag = "--fix"
 // it keeps, and after each later rewrite (fix_keep.go). Progress, when
 // set, receives a line on what the run is doing at most once each
 // ProgressEvery, or each fixProgressEvery when that is 0 (fix_progress.go);
-// the command line sets it to stderr.
+// the command line sets it to stderr. IsolationChecks and CheckpointFirst,
+// when not 0, replace fixIsolationChecks and fixCheckpointFirst
+// (fix_gate.go): FuzzFixGateBounds varies them, and no command line sets
+// them.
 type FixOptions struct {
 	MigrationOnly, VIPOnly, CheckEachFix bool
 	Verified                             func(texts map[tspath.RootedFilePath]string)
 	Progress                             io.Writer
 	ProgressEvery                        time.Duration
+	IsolationChecks, CheckpointFirst     int
 }
 
 // FixOptionsArguments removes the optional scope flag after --fix was found.
@@ -389,6 +393,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 		key := overlayKey(overlay)
 		if last == nil || key != lastOverlay {
 			progress.building()
+			last = nil // the last program can go while the next is built
 			last, lastOverlay = fixProgram(fs, libraryPath, config, parsed, overlay), key
 		}
 		return last
@@ -397,7 +402,16 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 	if done.Err() != nil {
 		return result
 	}
-	g := &fixGate{ctx: ctx, done: done, build: build, baseline: baselineOf(ctx, program), refused: map[string]bool{}, alone: map[[32]byte]map[string]int{}, verified: verified, progress: progress}
+	// fresh builds a program no check has read, as the last one: on
+	// opencode's core, a box of 12 GiB ran out of memory when it held
+	// both (2026-11-02).
+	fresh := func(overlay map[tspath.RootedFilePath]string) *compiler.Program {
+		progress.building()
+		last = nil
+		last, lastOverlay = fixProgram(fs, libraryPath, config, parsed, overlay), overlayKey(overlay)
+		return last
+	}
+	g := &fixGate{ctx: ctx, done: done, build: build, fresh: fresh, baseline: baselineOf(ctx, program), refused: map[string]bool{}, alone: map[[32]byte]map[string]int{}, verified: verified, progress: progress, isolationChecks: options.IsolationChecks, checkpointFirst: options.CheckpointFirst}
 	refuse := func(refusal FixRefusal, key string) {
 		g.refused[key] = true
 		result.Refused = append(result.Refused, refusal)
@@ -1030,8 +1044,11 @@ type fixGate struct {
 	ctx        context.Context   // never canceled: see FixProject
 	done       context.Context   // canceled when the command is interrupted
 	build      func(map[tspath.RootedFilePath]string) *compiler.Program
-	baseline   errorBaseline
-	refused    map[string]bool // fixes refused, by fixKey
+	// fresh builds a program that no check has read, which build may
+	// return (gateRound.orderErrors); build when nil.
+	fresh    func(map[tspath.RootedFilePath]string) *compiler.Program
+	baseline errorBaseline
+	refused  map[string]bool // fixes refused, by fixKey
 	// verified is called with the texts of each set of fixes the gate
 	// verifies together (FixOptions.Verified).
 	verified func(map[tspath.RootedFilePath]string)
@@ -1041,6 +1058,9 @@ type fixGate struct {
 	// aloneKey: a later round that offers the same edit to the same texts
 	// builds the same program, so it is refused without a check.
 	alone map[[32]byte]map[string]int
+	// isolationChecks and checkpointFirst replace fixIsolationChecks and
+	// fixCheckpointFirst when not 0 (FixOptions).
+	isolationChecks, checkpointFirst int
 }
 
 // passes reports whether the program with overlay over texts adds no error,

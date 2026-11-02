@@ -1,0 +1,2 @@
+go test fuzz v1
+string("m=160,g=2,every=5,at=0,d=1,cp=16,iso=256,stop=60")

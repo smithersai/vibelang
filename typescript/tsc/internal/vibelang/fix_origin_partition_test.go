@@ -62,7 +62,11 @@ func TestFixGateRetainsSafeReporterEdits(t *testing.T) {
 		t.Fatal(errors)
 	}
 	t.Logf("%d complete candidate checks", builds)
-	if builds > 5 {
-		t.Fatalf("performed %d checks; want <=5", builds)
+	// One of them checks the round's own texts in the files that reported
+	// the error, which a check of only those files is held to
+	// (gateRound.orderErrors), and a trial clean in those files is checked
+	// in the whole program built again (gateRound.trial).
+	if builds > 7 {
+		t.Fatalf("performed %d checks; want <=7", builds)
 	}
 }

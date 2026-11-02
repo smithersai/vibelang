@@ -97,11 +97,11 @@ func TestFixProgressCountsTheChecksOfARound(t *testing.T) {
 	p.building()
 	p.partial()
 	p.building()
-	p.widened() // clean in its files, so it goes on to the program
+	p.building() // clean in its files, so the whole program, built again
 	p.mu.Lock()
 	line := p.line(time.Now())
 	p.mu.Unlock()
-	if want := "; 5 checks, 4 this round (2 whole, 2 partial); "; !strings.Contains(line, want) {
+	if want := "; 6 checks, 5 this round (2 whole, 3 partial); "; !strings.Contains(line, want) {
 		t.Fatalf("line %q does not say %q", line, want)
 	}
 	if !fixProgressLine.MatchString(line) {
@@ -111,7 +111,7 @@ func TestFixProgressCountsTheChecksOfARound(t *testing.T) {
 	p.mu.Lock()
 	line = p.line(time.Now())
 	p.mu.Unlock()
-	if want := "; 5 checks, 0 this phase (0 whole, 0 partial); "; !strings.Contains(line, want) {
+	if want := "; 6 checks, 0 this phase (0 whole, 0 partial); "; !strings.Contains(line, want) {
 		t.Fatalf("line %q does not say %q", line, want)
 	}
 }

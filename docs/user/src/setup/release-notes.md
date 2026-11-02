@@ -255,6 +255,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 - Producers could leak a `Scope` requirement from unions, aliases or structural subtypes; their inferred `Stream` now excludes `Scope` from the complete requirement type, including generics.
+- Large `--fix` rounds could stop without saving progress. The fixer now saves verified checkpoints and bounds refusal isolation, so an interrupted run keeps its verified changes.
 - With `stripInternal`, an `@internal` schema lost both its constant and type alias from declarations; it now drops only the constant, matching the equivalent Effect TypeScript pair.
 
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.

@@ -18,9 +18,11 @@ import (
 // timeout keeps the fixes it verified. A run on a large package checks it
 // for an hour or more, and one that wrote only at its end lost all of it
 // when a flow's timeout stopped it (opencode packages/ai, 2026-10-31).
-// The gate verifies sets that only grow, and the keeper writes a file only
-// when its text changed: a stopped run's files hold the last set verified,
-// and a run that finishes writes each changed file a few times at most.
+// The sets the gate verifies grow, but for a fix a halving's checkpoint
+// verified and its later checks refuse (gateRound.checkpoint), which the
+// next set leaves out. The keeper writes a file only when its text
+// changed: a stopped run's files hold the last set verified, and a run
+// that finishes writes each changed file a few times at most.
 type fixKeeper struct {
 	// mu holds the fields below while a set is written; closed ends the
 	// writes and the progress lines of a run that stopped (keeperWriter).
