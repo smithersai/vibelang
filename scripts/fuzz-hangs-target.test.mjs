@@ -10,6 +10,7 @@ function targets() {
     .replace("export const Package", "globalThis.result")
   const group = prefix => new Proxy({}, { get: (_, name) => prefix + "." + name })
   const context = {
+    fuzzTopics: new Map([["prelude", ["FuzzPreludeGlobalMember", "FuzzPreludeShadowed"]]]),
     migrationSources: { migrationSources: true },
     S: { Filegroup: spec => spec, glob: glob => glob, file: file => file,
       Shell: { Test: spec => spec }, Host: { bin: bin => bin }, Package: spec => spec },
@@ -43,4 +44,22 @@ test("hang validation declares the source, corpus and runtime it reads", () => {
   assert.ok(hangs.tools.includes("go"))
   assert.ok(hangs.tools.includes("node"))
   assert.equal(hangs.sandbox, "none")
+})
+
+test("each fuzz topic runs its Fuzz functions over their seeds", () => {
+  const prelude = targets()["go-vibelangfuzz-topic-prelude"]
+  assert.ok(prelude, "the merge gate selects //:go-vibelangfuzz-topic-<topic> (ls/gate-cases.sh)")
+  assert.match(prelude.shell, /go test -short -count=1 .*-run '\^\(FuzzPreludeGlobalMember\|FuzzPreludeShadowed\)\$' \.\/internal\/vibelangfuzz\/$/)
+  assert.match(prelude.shell, /VIBELANG_FUZZ_REQUIRE=1/)
+  assert.ok(prelude.data.includes("tsc.vibelangfuzz-files"))
+})
+
+test("the fuzz topics name every Fuzz function by its file's first word", async () => {
+  const { fuzzTopics } = await import("../fuzz-topics.ts")
+  assert.ok(fuzzTopics.get("prelude").includes("FuzzPreludeGlobalMember"), "prelude_global_member_fuzz_test.go")
+  assert.ok(fuzzTopics.get("fix").includes("FuzzFix"), "fix_fuzz_test.go")
+  for (const [topic, names] of fuzzTopics) {
+    assert.match(topic, /^[a-z0-9]+$/)
+    for (const name of names) assert.match(name, /^Fuzz[A-Za-z0-9_]+$/)
+  }
 })

@@ -14,6 +14,7 @@ function targets(file) {
   const source = stripTypeScriptTypes(read(file)).replace(/^import .*$/gm, "")
     .replace("export const Package", "globalThis.result")
   const context = {
+    fuzzTopics: new Map([["prelude", ["FuzzPreludeGlobalMember", "FuzzPreludeShadowed"]]]),
     migrationSources: { migrationSources: true },
     S: { Shell: { Build: spec => spec, Test: spec => spec }, Host: { bin: bin => bin },
       Filegroup: spec => spec, glob: patterns => patterns, file: file => file, Package: spec => spec },
