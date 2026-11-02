@@ -47,6 +47,10 @@ async function fixture(manifest, { before = corpus.before, after = corpus.after,
     writeJson(p.plan, { batches: [{ files: [pkg + "/main.ts"] }] })
     writeJson(join(p.baseline, "tests.json"), { code: 0, tests: {}, total: 0, passed: 0, failed: [], skipped: 0 })
     writeJson(join(p.baseline, "compile-" + slug(pkg) + ".json"), [])
+    // A package held to declaration identity needs setup's stock oracle
+    // (bd3e60eb7c13); a private one held by the opt-in needs it as a published
+    // one does. This fixture isolates identity with a matching stock baseline.
+    if (includePrivate) writeJson(join(p.baseline, "declaration-oracle.json"), { [pkg]: { compiler: "fixture-stock", files: [], missing: [], extra: [], changed: [] } })
     const baseline = join(p.baseline, "dts", slug(pkg))
     mkdirSync(baseline, { recursive: true })
     writeFileSync(join(baseline, "main.d.ts"), before)
