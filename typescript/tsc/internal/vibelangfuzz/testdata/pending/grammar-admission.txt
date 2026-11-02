@@ -19,3 +19,5 @@ FuzzGrammarAdmission corpus:fiber-function-name grammar-lab Appendix A Name: eff
 FuzzGrammarAdmission corpus:join-outside-effect-object compiler VIP-1/17: same-line join with an object operand outside Effect code reports only EK4611, without syntax rejection; lane impl-hunt-admission
 FuzzGrammarAdmission admission:fork-block compiler VIP-17: a bare fork brace-body containing statements is not a UnaryExpression operand; the compiler wraps it in a program and accepts it; lane impl-hunt-admission
 FuzzGrammarAdmission corpus:fork-block compiler VIP-17: bare fork block statements have no Appendix A derivation; lane impl-hunt-admission
+FuzzGrammarAdmission corpus:fiber-binding-arrow compiler VIP-17 (amended): a bare Effect-arrow parameter reserves fork/join exactly as parenthesized parameters; lane impl-hunt-admission
+FuzzGrammarAdmission corpus:fiber-binding-arrow-nested compiler VIP-17 (amended): bare join parameter remains invalid even when the arrow returns an ordinary function; lane impl-hunt-admission

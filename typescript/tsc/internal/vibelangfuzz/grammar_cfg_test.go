@@ -931,6 +931,12 @@ func (g *grammarCfg) parameterize() *grammarCfg {
 					child = true
 				}
 				s.eff = e
+				// An inline identifier class after EffectModifier belongs to
+				// the same Effect head as a nonterminal parameter list. Bare
+				// EffectArrow BindingIdentifier must reserve fork/join too.
+				if r.vibe && s.kind == grammarSymClass {
+					s.eff = child
+				}
 				if s.kind == grammarSymNT {
 					s.eff = child
 					if s.effectArg != 0 {

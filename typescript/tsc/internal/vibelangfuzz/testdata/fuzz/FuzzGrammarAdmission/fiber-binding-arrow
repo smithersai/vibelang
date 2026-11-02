@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:fiber-binding-arrow\nconst f = effect join => 1;")

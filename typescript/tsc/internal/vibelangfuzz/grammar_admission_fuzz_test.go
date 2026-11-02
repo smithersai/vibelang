@@ -68,6 +68,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	// pattern is TS1182, a native grammar rejection, not an admitted form.
 	{"native-destructuring-initializer", "const { p = effect { return 1 ; } } ;"},
 	{"native-destructuring-initializer-array", "const [a] ;"},
+	{"fiber-binding-arrow", "const f = effect join => 1;"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -273,6 +274,13 @@ func grammarAdmissionForm(source string) string {
 		if tok.kind != 'w' || tok.text != "effect" {
 			continue
 		}
+		// EffectArrow also has a bare BindingIdentifier head. It shares
+		// the parameter reservation of a parenthesized head; a line break
+		// after effect or before => instead keeps native identifier/ASI rules.
+		if i+2 < len(ts) && !ts[i+1].nl && !ts[i+2].nl &&
+			ts[i+1].kind == 'w' && (ts[i+1].text == "fork" || ts[i+1].text == "join") && ts[i+2].text == "=>" {
+			return "admission:fiber-binding"
+		}
 		open, arrow := i+1, true
 		if open < len(ts) && !ts[open].nl && ts[open].text == "function" {
 			open, arrow = open+1, false
@@ -422,6 +430,29 @@ func TestGrammarAdmissionMutationKeys(t *testing.T) {
 		if got := grammarAdmissionForm(source); got != "admission:fiber-binding" {
 			t.Errorf("reserved Effect parameter not keyed: %s: %s", source, got)
 		}
+	}
+	for _, word := range []string{"fork", "join"} {
+		for _, body := range []string{"1", "{ return 1; }", "function f(p) { return fork p; }"} {
+			source := "const f = effect " + word + " => " + body + ";"
+			if got := grammarAdmissionForm(source); got != "admission:fiber-binding" {
+				t.Errorf("bare reserved Effect parameter not keyed: %s: %s", source, got)
+			}
+		}
+		for _, source := range []string{
+			word + " => 1",
+			"effect\n" + word + " => 1",
+			"effect " + word + "\n=> 1",
+			"effect(" + word + ")",
+			"const effect = (" + word + ") => 1",
+		} {
+			if got := grammarAdmissionForm(source); got != "" {
+				t.Errorf("native identifier or broken arrow head classified as %s: %q", got, source)
+			}
+		}
+	}
+	_, bareSource := grammarAdmissionInput([]byte("key:fork\n22102B7"))
+	if bareSource != "effect join => function f ( p ) { return fork p ; }" || grammarAdmissionForm(bareSource) != "admission:fiber-binding" {
+		t.Errorf("bare parameter campaign witness did not replay under its precise key: %q", bareSource)
 	}
 	if got := grammarAdmissionForm("effect function join(p) { return 1; }"); got != "admission:fiber-function-name" {
 		t.Errorf("declaration name not keyed: %s", got)
@@ -590,6 +621,22 @@ func TestGrammarAdmissionCore(t *testing.T) {
 					t.Fatalf("valid Appendix A control has no derivation: %s", seed.source)
 				}
 			})
+		}
+	}
+	// Appendix A EffectArrow puts its bare BindingIdentifier under the
+	// modifier's [+Effect], exactly as Params. Keep inherited TS plain-arrow
+	// controls distinct: only the Effect head reserves these names here.
+	for _, source := range []string{"const f = effect p => 1;", "const f = join => 1;", "const f = fork => 1;"} {
+		if r := lab.read(lab.g, grammarLexSource(source), grammarParseMode{prose: true, names: true}); r.count == 0 {
+			t.Errorf("valid bare arrow control has no derivation: %s", source)
+		}
+	}
+	for _, word := range []string{"fork", "join"} {
+		for _, head := range []string{word, "(" + word + ")"} {
+			source := "const f = effect " + head + " => 1;"
+			if r := lab.read(lab.g, grammarLexSource(source), grammarParseMode{prose: true, names: true}); r.count != 0 {
+				t.Errorf("reserved Effect parameter has a derivation: %s", source)
+			}
 		}
 	}
 	// A reworded sentence must not silently drop the same-line keyword rule.

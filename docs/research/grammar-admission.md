@@ -92,3 +92,13 @@ The legacy bare `fork { return 1; }` body is tracked as
 `fork effect { return 1; }`. Its statements have no `UnaryExpression`
 derivation; the compiler still wraps them in a program. The keyed pending
 witness reports that gap without rejecting any compiler form.
+
+The `admission:fiber-binding` neighborhood includes bare Effect-arrow heads,
+`effect join => 1`, as well as parenthesized parameters. Both reserve
+`fork` and `join` under VIP-17. Plain arrows, ordinary calls and a line break
+after `effect` remain native controls. A minimized keyed corpus also keeps
+the campaign witness whose bare arrow returns an ordinary function.
+The lab carries the modifier's context onto an inline identifier class as
+well as onto a nonterminal parameter list. Direct derivation controls reject
+both reserved bare heads and parenthesized heads while accepting a bare
+`effect p => 1` and native plain arrows.

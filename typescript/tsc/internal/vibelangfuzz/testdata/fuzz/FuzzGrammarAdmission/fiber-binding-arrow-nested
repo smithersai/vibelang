@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:fork\n22102B7")

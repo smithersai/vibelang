@@ -304,6 +304,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The compiler fuzz suite treated a warning configured as an error through legacy `vibelang.diagnostics` as a compiler defect; it now checks each parsed legacy override while retaining modern settings and unrelated defaults.
 
+- Grammar-admission fuzzing missed bare reserved parameters such as `effect join => 1` and reported variants as new unknown forms. Its grammar reader now reserves `fork` and `join` in bare Effect-arrow heads, and the oracle tracks them with parenthesized parameters, retaining plain-arrow and line-break controls.
+
 - Four spec quote guards (`TestEffectFnParameterDeclarationQuoted`, `TestInferredEffectDeclarationQuoted`, `TestPipeDeclarationAliasesQuoted`, `TestTopLevelAwaitVIPQuoted`) landed outside the pre-merge spec gate, so a spec edit could break them unseen; the gate now runs them.
 - Source-map fuzz checks could reject correct mappings after TypeScript erased annotations or assertions beside an untyped lookalike; they now compare each statement’s executable syntax as well as its written tokens.
 
