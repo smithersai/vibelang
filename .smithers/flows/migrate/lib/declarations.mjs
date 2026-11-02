@@ -687,6 +687,34 @@ export async function writeLoaderRecords({ compiler, packageDir, root }) {
   })
 }
 
+/**
+ * Checks each record writeLoaderRecords wrote (records, its receipt entries)
+ * against the final tree, with the same installed vibelang/project's
+ * checkLoaderRecord, and adds `miss` to an entry whose record does not hold.
+ * A record names the package.json of every package its compile read, so one
+ * written before another package's routing changed that manifest missed on
+ * every cold start (opencode's ai package, 76 .vibe modules). An installed
+ * vibelang without checkLoaderRecord leaves the entries as they are.
+ */
+export async function checkLoaderRecords({ compiler, packageDir, root, records }) {
+  let check
+  try {
+    check = (await import(pathToFileURL(createRequire(join(packageDir, "package.json")).resolve("vibelang/project")).href)).checkLoaderRecord
+  } catch {
+    return records
+  }
+  if (typeof check !== "function") return records
+  return records.map((entry) => {
+    if (entry.file === undefined) return entry
+    try {
+      const found = check({ project: join(root ?? packageDir, entry.project), compiler })
+      return found.miss === undefined ? entry : { ...entry, miss: found.miss }
+    } catch (error) {
+      return { ...entry, miss: String(error?.message ?? error).split("\n")[0] }
+    }
+  })
+}
+
 // Assets are not compiler outputs. Keep their original file identity when
 // JavaScript moves under .vibelang/js, including import attributes and dynamic
 // imports. The generated module alone changes; asset bytes stay at source.

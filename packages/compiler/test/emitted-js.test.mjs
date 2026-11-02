@@ -94,8 +94,9 @@ test("emitted-source: an emitted .js file maps to the .vibe beside its package's
   }), { seed: 35035, numRuns: 200 })
 })
 
-test("reexportOf names the source once per form, so a module with no default export loads", () => {
-  assert.equal(reexportOf("/r/src/a.vibe"), 'export * from "/r/src/a.vibe"\nimport * as source from "/r/src/a.vibe"\nexport default source.default\n')
+test("reexportOf names the source once per form, and exports default only for a source that has one", () => {
+  assert.equal(reexportOf("/r/src/a.vibe", true), 'export * from "/r/src/a.vibe"\nimport * as source from "/r/src/a.vibe"\nexport default source.default\n')
+  assert.equal(reexportOf("/r/src/a.vibe", false), 'export * from "/r/src/a.vibe"\n')
 })
 
 test("node reads a migrated package's emitted JavaScript, and node --import vibelang/register its .vibe source", { skip }, (t) => {

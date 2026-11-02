@@ -110,6 +110,16 @@ export function writeLoaderRecord(options: {
   root?: string
   compiler?: string
 }): { file: string; modules: number } | { errors: Diagnostic[] }
+/**
+ * Checks a project's loader record against the current tree as a cold loader
+ * does: `{ modules }` when every input holds, else `{ miss }` naming the first
+ * input that does not.
+ */
+export function checkLoaderRecord(options: {
+  project: string
+  root?: string
+  compiler?: string
+}): { modules: number } | { miss: string }
 export function nearestProject(file: string): string | undefined
 
 /**

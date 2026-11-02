@@ -158,8 +158,12 @@ saves a compile: a stale one costs nothing but the compile.
 `VIBELANG_DISABLE_CACHE=1` turns records off too.
 
 The migrate flow writes a record for each project a migrated package's
-`.vibe` modules compile with, each time it writes the package's emitted
-JavaScript, with the package's installed `vibelang/project`. To write one
+`.vibe` modules compile with, with the package's installed `vibelang/project`,
+each time it writes the packages' emitted JavaScript. It writes the records
+after it has emitted and routed every package, because a record names each
+`package.json` its compile read and routing rewrites them, then checks each
+record against the final tree with `checkLoaderRecord`, which returns
+`{ modules }` or the `{ miss }` a cold loader would see. To write one
 yourself, after changing a package:
 
 ```sh
@@ -191,7 +195,8 @@ load no plugin, such as the `bun build` CLI and plain `node`. Both loaders run
 the `.vibe` source instead: `vibelang/register` resolves
 `<package>/.vibelang/js/<path>.js` to `<package>/<path>.vibe` when that exists,
 and `vibelang/bun` loads that file as a re-export of the source, so the source
-module has one instance whichever way it is imported.. With the
+module has one instance whichever way it is imported, and the same keys: the
+re-export has a `default` only when the source has one. With the
 package's [loader record](#loader-records), a process with a cold cache runs
 that source from the recorded compile instead of compiling the package.
 

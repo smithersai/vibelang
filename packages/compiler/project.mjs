@@ -440,6 +440,18 @@ export function writeLoaderRecord({ project, root = dirname(project), compiler =
   }
 }
 
+/**
+ * checkLoaderRecord checks a project's loader record against the current tree
+ * as a loader with a cold cache does: { modules } when every input holds, else
+ * { miss } naming the first that does not. The migrate flow checks each record
+ * once every package is emitted and routed.
+ */
+export function checkLoaderRecord({ project, root = dirname(project), compiler = findCompiler(root) }) {
+  project = resolve(project)
+  const found = loaderRecord({ project, root: resolve(root), compiler }).lookup()
+  return found.miss !== undefined ? { miss: found.miss } : { modules: new Set(found.result.outputs.values()).size }
+}
+
 /** Returns the preferred config in the nearest directory above file, or undefined. */
 export function nearestProject(file) {
   for (let directory = dirname(file); ; directory = dirname(directory)) {

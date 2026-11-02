@@ -1,0 +1,20 @@
+{
+  "key": "opencode-loader-record-routing-order",
+  "note": "opencode's ai package (76 .vibe modules) imports @opencode/schema's native barrel, which exports migrated .vibe modules. The flow emitted, routed and recorded ai, then emitted and routed schema, whose `.` export moved from ./src/index.ts to .vibelang/js; ai's committed loader record named schema's old package.json and missed on every cold start (`packages/schema/package.json changed`), a cold compile of 76 modules. Records must follow every package's routing.",
+  "packages": [
+    "packages/ai",
+    "packages/schema"
+  ],
+  "files": {
+    "package.json": "{\"name\": \"demo\", \"private\": true, \"type\": \"module\", \"workspaces\": [\"packages/*\"]}",
+    "packages/ai/package.json": "{\"name\": \"@demo/ai\", \"type\": \"module\", \"exports\": {\".\": \"./src/index.ts\"}}",
+    "packages/ai/tsconfig.json": "{\"compilerOptions\": {\"target\": \"ES2022\", \"module\": \"NodeNext\", \"moduleResolution\": \"NodeNext\", \"strict\": true, \"types\": [], \"skipLibCheck\": true, \"allowImportingTsExtensions\": true, \"rewriteRelativeImportExtensions\": true, \"noEmit\": true}, \"include\": [\"src/**/*\"]}",
+    "packages/ai/src/index.ts": "export { provider } from \"./provider.vibe\"\n",
+    "packages/ai/src/provider.vibe": "import { model } from \"@demo/schema\"\n\nexport const provider: string = \"provider:\" + model\n",
+    "packages/schema/package.json": "{\"name\": \"@demo/schema\", \"type\": \"module\", \"exports\": {\".\": \"./src/index.ts\"}}",
+    "packages/schema/tsconfig.json": "{\"compilerOptions\": {\"target\": \"ES2022\", \"module\": \"NodeNext\", \"moduleResolution\": \"NodeNext\", \"strict\": true, \"types\": [], \"skipLibCheck\": true, \"allowImportingTsExtensions\": true, \"rewriteRelativeImportExtensions\": true, \"noEmit\": true}, \"include\": [\"src/**/*\"]}",
+    "packages/schema/src/index.ts": "export { model } from \"./model.vibe\"\nexport { id } from \"./id.ts\"\n",
+    "packages/schema/src/model.vibe": "export const model: string = \"model\"\n",
+    "packages/schema/src/id.ts": "export const id: string = \"id\"\n"
+  }
+}

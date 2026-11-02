@@ -180,6 +180,19 @@ Bun.plugin({
     // that never import a .vibe module.
     const commonJS = (file, code) => /\.(?:cjs|cts)$/.test(file) ||
       /\bmodule\s*(?:\.\s*exports|\[\s*["']exports["']\s*\])|\bexports\s*[.[]/.test(code)
+    // Whether a module exports `default` itself, as Bun's namespace of it
+    // has: a .vibe module by its JavaScript, a CommonJS one always (Bun's
+    // interop default is module.exports). Code that does not read, compile or
+    // scan keeps the default; loading the source then reports the error.
+    function exportsDefault(file) {
+      try {
+        if (file.endsWith(".vibe")) return new Bun.Transpiler({ loader: "js" }).scan(emitted(file).code).exports.includes("default")
+        const code = readFileSync(file, "utf8")
+        return commonJS(file, code) || new Bun.Transpiler({ loader: loaderOf(file) }).scan(code).exports.includes("default")
+      } catch {
+        return true
+      }
+    }
     const exactly = (file, physical) => new RegExp("^(?:" + [...new Set([file, physical])].map(escapeRegExp).join("|") + ")$")
     function discover(file, code, loader = loaderOf(file)) {
       file = resolve(file)
@@ -278,7 +291,7 @@ Bun.plugin({
       const source = sourceOfEmitted(path)
       if (source === undefined) return undefined
       claim(source)
-      return { contents: reexportOf(source), loader: "js" }
+      return { contents: reexportOf(source, exportsDefault(source)), loader: "js" }
     })
     // Bun 1.4.2 ignores a plugin's source maps, so the module is its JavaScript alone.
     build.onLoad({ filter: /\.vibe$/ }, ({ path }) => { const code = emitted(path).code; discover(path, code, "js"); return resolveImports(path, code, "js") })

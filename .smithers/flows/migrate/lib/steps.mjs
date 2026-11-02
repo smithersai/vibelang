@@ -26,7 +26,7 @@ import { toolchainKeepsFunctionsPlain } from "./plain.mjs"
 import { check, newErrors, styleProblems, summarize } from "./diagnostics.mjs"
 import { preservedErrorAdvisories } from "./preserved-errors.mjs"
 import { runPhaseCheck } from "./run-phase.mjs"
-import { compareDeclarations, recordDeclarationSurface, emitDeclarations, emitErrorsIn, emitPackageJs, loadTypeScript, sidecarChanges, writeLoaderRecords, NO_ENTRY_POINTS } from "./declarations.mjs"
+import { compareDeclarations, recordDeclarationSurface, emitDeclarations, emitErrorsIn, checkLoaderRecords, emitPackageJs, loadTypeScript, sidecarChanges, writeLoaderRecords, NO_ENTRY_POINTS } from "./declarations.mjs"
 import { declarationNames, findStockCompiler, unprovenDeclarations, unprovenMigrations } from "./oracle.mjs"
 import { foreignChanges } from "./touched.mjs"
 import { compareTests, regressionIssue, runTests } from "./tests.mjs"
@@ -1298,8 +1298,15 @@ export function aliasesOf(config) {
  * run whose package.json names it (rewriteExports), after a step that can
  * change a .vibe module: codemod, verify before its tests, record before its
  * commit. Returns the output count, exit code, diagnostics and export-change receipt for each.
+ *
+ * Loader records come after every package's emit and routing: a record names
+ * the package.json of each package its compile read, and routing rewrites a
+ * package.json, so a record written inside the loop went stale when a later
+ * package was routed (package A's .vibe imports B's barrel; routing B after
+ * recording A made A's record miss on B/package.json). Each final record is
+ * then checked against the final tree; an entry whose record misses says why.
  */
-async function emitMigratedJs(config, t, logs) {
+export async function emitMigratedJs(config, t, logs) {
   const emitted = []
   for (const pkg of config.packages) {
     const manifest = join(t, pkg.dir, "package.json")
@@ -1317,9 +1324,12 @@ async function emitMigratedJs(config, t, logs) {
     // Nonzero emits can still write valid package-owned files (for example TS6059).
     let runtimeRouting, packingFiles=[]
     const exportsChanged = routeEmittedExports(join(t, pkg.dir), result.outputs, { typescript:typeScriptOf(config), onGraph:graph=>runtimeRouting=graph, onPacking:files=>packingFiles=files.map(file=>posix.join(pkg.dir,file)) })
-    const loaderRecords = await writeLoaderRecords({ compiler: compilerOf(config), packageDir: join(t, pkg.dir), root: t })
-    emitted.push({ package: pkg.dir, files: result.files, code: result.code, exportsChanged, runtimeRouting, packingFiles, loaderRecords, diagnostics: result.diagnostics })
+    emitted.push({ package: pkg.dir, files: result.files, code: result.code, exportsChanged, runtimeRouting, packingFiles, loaderRecords: [], diagnostics: result.diagnostics })
   }
+  // A restored package emitted nothing and gets no record, as before.
+  const recorded = emitted.filter((entry) => !entry.restored)
+  for (const entry of recorded) entry.loaderRecords = await writeLoaderRecords({ compiler: compilerOf(config), packageDir: join(t, entry.package), root: t })
+  for (const entry of recorded) entry.loaderRecords = await checkLoaderRecords({ compiler: compilerOf(config), packageDir: join(t, entry.package), root: t, records: entry.loaderRecords })
   return emitted
 }
 
