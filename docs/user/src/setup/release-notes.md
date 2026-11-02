@@ -529,6 +529,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Schema array types rejected renamed or qualified library types, and an imported `Array` could silently use the wrong mutability; they now select the codec from the resolved library binding and retain it when expanding a schema through a quick fix.
 
+- A failed source setup could delete the previous local starter while copying or rewriting its replacement; setup now prepares the replacement first and restores the previous starter if publishing it fails.
+
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 
 - Migration setup could leave a native type exported through a TypeScript namespace barrel as an error type in project-aware linters; setup now enables source declaration redirects in owned configs and records those edits.
