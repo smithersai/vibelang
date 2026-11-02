@@ -208,3 +208,29 @@ console.log(JSON.stringify(await writeLoaderRecords({ compiler: ${JSON.stringify
   assert.equal(result.status, 0, result.stderr)
   assert.deepEqual(JSON.parse(result.stdout.trim().split("\n").at(-1)), [{ project: "packages/schema/tsconfig.json", file: "packages/schema/.vibelang/js/.loader/tsconfig.json.json", modules: 1 }])
 })
+
+// A toolchain build stages .smithers on its own, without the repository's
+// packages (m12-opencode). The flow must load from such a copy; its record step
+// takes vibelang/project from the target's installed vibelang, and reports a
+// target without one instead of failing the emit.
+test("the migrate flow loads from a staged .smithers copy outside the repository", async (t) => {
+  const smithers = fileURLToPath(new URL("../../../", import.meta.url))
+  const top = realpathSync(mkdtempSync(join(tmpdir(), "migrate-staged-flow-")))
+  t.after(() => rmSync(top, { recursive: true, force: true }))
+  const staged = join(top, "toolchain/.smithers")
+  cpSync(smithers, staged, { recursive: true, filter: (path) => !/(?:^|[\\/])node_modules(?:[\\/]|$)/.test(path.slice(smithers.length)) })
+  symlinkSync(realpathSync(join(smithers, "node_modules")), join(staged, "node_modules"))
+  const target = join(top, "target/packages/schema")
+  write(target, { "package.json": "{}", "tsconfig.json": "{}", "src/skill.vibe": "export const skill = 1\n" })
+  const lib = join(staged, "flows/migrate/lib")
+  const probe = [
+    `const { writeLoaderRecords } = await import(${JSON.stringify(pathToFileURL(join(lib, "declarations.mjs")).href)})`,
+    `await import(${JSON.stringify(pathToFileURL(join(lib, "steps.mjs")).href)})`,
+    `console.log(JSON.stringify(await writeLoaderRecords({ compiler: "vibelang", packageDir: ${JSON.stringify(target)}, root: ${JSON.stringify(join(top, "target"))} })))`
+  ].join("\n")
+  const result = spawnSync(process.execPath, ["--input-type=module", "-e", probe], { cwd: top, encoding: "utf8" })
+  assert.equal(result.status, 0, result.stderr)
+  const [entry] = JSON.parse(result.stdout.trim().split("\n").at(-1))
+  assert.equal(entry.package, "packages/schema")
+  assert.match(entry.error, /^vibelang\/project is not installed for this package/)
+})
