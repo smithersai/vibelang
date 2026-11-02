@@ -48,6 +48,26 @@ Fuzz VibeLang with Go's native fuzzer, and take every oracle from the specificat
 
 The compiler is a Go fork of TypeScript 7, so the engine is `go test -fuzz`: coverage-guided, in-process, with failing inputs kept as regression tests in `testdata/fuzz/`. The engine is the easy part. Compiler-fuzzing research finds bugs through oracles: a program the generator knows is valid must compile, two programs the specification calls equivalent must behave the same, and a program with one injected rule violation must draw exactly the diagnostic the specification assigns. `internal/vibelangfuzz` implements those oracles in the targets below, reads its facts from `docs/design/src` at test time, and records each place the specification is ahead of the compiler as a pending gap instead of encoding today's behavior.
 
+## Check claim aliases before starting a fix
+
+An exact search can miss another lane's spelling of the same reproduction.
+The advisory lookup reads a claim log without changing it:
+
+~~~sh
+node scripts/claim-lookup.mjs /path/to/claims.txt FuzzCompile:match-flow-limit-cubic:stale-hang
+~~~
+
+It reports exact keys, punctuation aliases and shared corpus stems with the
+original key, lane, timestamp and match reason. An unreleased entry less than
+six hours old is marked active. A later record updates only that exact key
+and lane; releasing one spelling does not release another alias.
+
+The real duplicate pair used `FuzzCompile:match-flow-limit-cubic:stale-hang`
+and `FuzzCompile/match-flow-limit-cubic`. An exact search found one record;
+the lookup reports both. A shared stem is a review hint, not proof that two
+bugs are identical. Read the active matches and the lane's report before
+appending a precise claim. The lookup never claims a bug or authorizes work.
+
 ## Running the seed corpus
 
 The complete short corpus has a 40-minute test deadline. The graph target `//:go-vibelangfuzz` adds 25 minutes for admission and compilation, so its task deadline cannot cancel a test that still has time left. The per-process hang watchdog stays at 120 seconds.

@@ -535,6 +535,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The ESLint acceptance checks reported valid `effect` modifiers as missing variable names; they now recognize function and method prefixes while still detecting a missing node for a variable, parameter or method named `effect`.
 - Nested objects and index signatures inside a `data` payload were made readonly implicitly; they now keep their written TypeScript mutability.
+- Exact claim searches could miss another lane working on the same reproduction under a different key spelling; the advisory claim lookup now shows punctuation aliases, shared corpus names and each claim's age and status.
 
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 
