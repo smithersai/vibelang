@@ -151,6 +151,7 @@ const specTests = [
   "TestSchemaBuiltinBindingsQuoted",
   "TestSchemaDeclarationCommentsQuoted",
   "TestDeclarationStyleRulesQuoted",
+  "TestUnrelatedDeclarationSpecifierQuoted",
   "TestLegacyEffectAliasQuoted",
   "TestLegacyEffectAliasRepairQuoted",
   "TestFixScopeRulesQuoted",

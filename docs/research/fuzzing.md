@@ -629,3 +629,5 @@ Alchemy's parenthesized contract declarations are checked against their explicit
 The compiler harness's isolation property varies package scopes, nesting depth, relative links and fixture payloads. It checks that nested package copies survive, links stay inside the private case and the original case's files remain unchanged while its root install is regenerated.
 
 `FuzzReviewSidecarWrites` runs the real CLI over explicit and discovered sidecars in ordinary emit, `noEmit` and `declaration: false` modes. Independent stock TypeScript controls check input selection and native write triggers; Chapter 7 supplies the distinct unconditional VibeLang compatibility-write rule. Keyed corpus cases vary paths, spaces, nesting and values, and retain exact pending overwrite gaps with their owner.
+
+`FuzzUnrelatedDeclarationSpecifier` compares the raw declaration of an unchanged native TypeScript or TSX importer before and after migrating an unrelated implementation. Its T3code corpus and generated quote, directory and result-shape neighbours preserve inferred import specifiers without canonicalization.
