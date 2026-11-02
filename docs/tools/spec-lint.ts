@@ -49,6 +49,19 @@ export function paragraphs(text: string): { text: string; index: number }[] {
   return out
 }
 
+// The VibeLang half of each TypeScript-family code block: the lines before a
+// `// Effect TS` or `// compiles to` counterpart, each with its line number.
+export function vibeCode(text: string): { line: number; text: string; block: string }[] {
+  const out: { line: number; text: string; block: string }[] = []
+  for (const m of text.matchAll(/^[ \t]*```(\w+)?[^\n]*\n([^]*?)^[ \t]*```/gm)) {
+    if (!/^(ts|vibe|tsx|vibex)$/.test(m[1] ?? "")) continue
+    const first = lineAt(text, m.index!) + 1
+    const half = m[2]!.split(/^\s*\/\/ (?:Effect TS|compiles to)\b.*$/m)[0]!
+    half.split("\n").forEach((line, i) => out.push({ line: first + i, text: line, block: half }))
+  }
+  return out
+}
+
 // The rows of the first table after `marker`, each a list of trimmed cells.
 function tableAfter(text: string, marker: string): string[][] | undefined {
   const at = text.indexOf(marker)
@@ -233,7 +246,31 @@ const deniedVipRepairs: Rule = {
   }
 }
 
-export const rules: Rule[] = [resolutionClaims, configKeys, importStyleScope, declarationImportForm, deniedVipRepairs]
+// Retired forms in VIP and chapter examples (rows 45 and 46 of round 14's
+// open table). A VIP's opening example is the first program a reader copies,
+// and two still used forms an accepted source has removed. Each check names
+// the source that removed its form.
+const retired: { form: string; pattern: RegExp; source: string }[] = [
+  { form: "the value handler `x catch guest`", pattern: /\bcatch\s+(?!effect\b|async\b|\(|<)[A-Za-z_$][\w$]*\s*(?:\/\/.*)?$/,
+    source: "VIP-5, amended 2026-10-29: `x catch () => guest` replaces the value form `x catch guest`, which is removed" },
+]
+const retiredForms: Rule = {
+  name: "retired-forms",
+  finding: "r7 ASTRA-4 (row 46): VIP-5's Decision example used the removed value handler `catch guest`",
+  check(spec) {
+    const out: Violation[] = []
+    for (const [file, text] of [...chapters(spec), ...acceptedVips(spec)]) {
+      for (const { line, text: code } of vibeCode(text)) {
+        for (const r of retired) {
+          if (r.pattern.test(code)) out.push({ rule: this.name, file, line, message: `${r.form} is removed (${r.source}): ${code.trim()}` })
+        }
+      }
+    }
+    return out
+  }
+}
+
+export const rules: Rule[] = [resolutionClaims, configKeys, importStyleScope, declarationImportForm, deniedVipRepairs, retiredForms]
 
 export const lint = (spec: Spec, only = rules) => only.flatMap(rule => rule.check(spec))
 

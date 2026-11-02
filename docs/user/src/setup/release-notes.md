@@ -268,6 +268,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - An `effect` body that ran an Effect failing with `Error | ApiError` and threw an `Error` subclass declared its error channel as `Error`, so a `catch` arm on `ApiError`'s tag failed with `TS2339`; it now declares `Error | ApiError`, as `Effect.gen` infers.
 
 - Regression tests for forbidden error inheritance missed native parents with extensible tags; fuzz coverage now records these unresolved cases explicitly.
+- VIP-5's opening example still used the removed value handler `fetchUser(id) catch guest`, which no longer parses; it now writes `catch () => guest`.
 - The specification's `EK1101` trigger, "a `{` on the same line after a name, a property access or a call", read as covering `effect { … }`, `match (x) { … }` and declaration heads, and Appendix C gave the trailing-block denial two repairs where `EK1101` has three; the trigger now excludes every `{` a production reads and Appendix C lists the same three repairs.
 - The specification gave two different spellings for the `effect` import a declaration file adds, `import type { Effect, Stream }` and `import { Effect }`; it now uses the value import throughout, as the compiler and the Effect TypeScript twin's declaration write it.
 - The specification said how a declaration spells an import of a `.vibe` module but not of a `.vibex` one; it now gives VIP-39's default, `./x.jsx` under `"jsx": "preserve"` and `./x.js` otherwise, and says the other `declarationImportStyle` settings are not yet decided for `.vibex`.

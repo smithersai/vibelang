@@ -97,3 +97,10 @@ test("denied-vip-repairs rejects round 14 OPUS-2's two-repair Appendix C row for
     expect.stringMatching(/^VIP-11's Appendix C repairs .* differ from `EK1101`'s quick fix /)
   ])
 })
+
+test("retired-forms rejects round 7 ASTRA-4's `catch guest` in VIP-5's Decision example (row 46)", () => {
+  const defect = withEdit("vips/0005-try-runs-effects.md", text => text.replace("const g = fetchUser(id) catch () => guest", "const g = fetchUser(id) catch guest"))
+  expect(lint(defect, rule("retired-forms")).map(v => `${v.file}:${v.line} ${v.message}`)).toEqual([
+    expect.stringMatching(/^vips\/0005-try-runs-effects\.md:12 the value handler `x catch guest` is removed/)
+  ])
+})
