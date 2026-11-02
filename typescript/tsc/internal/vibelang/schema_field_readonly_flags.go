@@ -21,11 +21,10 @@ func init() {
 func checkSchemaReadonlyFields(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
-		if isSchemaStruct(node) {
-			fields := node.Arguments()[0]
+		if fields := schemaMappedFieldObject(node); fields != nil {
 			readonly := sourceSchemaReadonlyKeys(file, fields.Loc)
 			for _, property := range fields.AsObjectLiteralExpression().Properties.Nodes {
-				if !ast.IsPropertyAssignment(property) || !readonly[property.Name().Loc] {
+				if !ast.IsPropertyAssignment(property) || property.Name() == nil || property.Name().Flags&ast.NodeFlagsReparsed != 0 || (!isSchemaErrorFields(fields) && !readonly[property.Name().Loc]) {
 					continue
 				}
 				value := property.Initializer()
@@ -114,6 +113,9 @@ var schemaReadonlyFieldExpansionFix = &ls.CodeFixProvider{
 		fix.SourceFile.AsNode().ForEachChild(find)
 		if value == nil {
 			return nil, nil
+		}
+		if directSchemaErrorReference(value) {
+			return errorMemberClassFix.GetCodeActions(ctx, fix)
 		}
 		c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
 		defer done()

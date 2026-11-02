@@ -329,6 +329,11 @@ func schemaErrorRewrite(c *checker.Checker, file *ast.SourceFile, class *ast.Nod
 // object, as a schema error's field, and the constant that names its codec
 // when it has no type form, or why it cannot be written.
 func schemaErrorField(c *checker.Checker, file *ast.SourceFile, property *ast.Node, class string) (field string, constant string, why string) {
+	if ast.IsPropertyAssignment(property) {
+		if known, immutable := schemaStructValueReadonly(c, property.Initializer()); known && !immutable {
+			return "", "", "the field's decoded key is not known to be readonly; keep the native class."
+		}
+	}
 	if isNativeProtoSetter(property) {
 		return "", "", "the native __proto__ property sets the fields object's prototype, but a schema error field creates an own key."
 	}

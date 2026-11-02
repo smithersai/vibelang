@@ -16,13 +16,13 @@ func init() {
 
 // Detail 132: source-required struct fields must remain present. A named
 // optional-key schema must not silently make a required field optional.
-// Readonly-key enforcement and direct schema-error fields are separate rules.
+// Readonly-key enforcement is separate; schema errors share the field checks.
 func checkSchemaRequiredFields(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(*ast.Node) bool
 	visit = func(n *ast.Node) bool {
-		if isSchemaStruct(n) {
-			for _, property := range n.Arguments()[0].AsObjectLiteralExpression().Properties.Nodes {
-				if !ast.IsPropertyAssignment(property) {
+		if fields := schemaMappedFieldObject(n); fields != nil {
+			for _, property := range fields.AsObjectLiteralExpression().Properties.Nodes {
+				if !ast.IsPropertyAssignment(property) || property.Name() == nil || property.Name().Flags&ast.NodeFlagsReparsed != 0 {
 					continue
 				}
 				value := property.Initializer()
@@ -86,6 +86,9 @@ var schemaRequiredFieldExpansionFix = &ls.CodeFixProvider{
 		fix.SourceFile.AsNode().ForEachChild(find)
 		if value == nil {
 			return nil, nil
+		}
+		if directSchemaErrorReference(value) {
+			return errorMemberClassFix.GetCodeActions(ctx, fix)
 		}
 		c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
 		defer done()

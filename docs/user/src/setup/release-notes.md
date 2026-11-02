@@ -165,6 +165,7 @@ A non-schema object used as a `schema` alias: If it has a public `Type` member, 
 
 | Before | After and repair |
 | --- | --- |
+| A `schema error` payload referencing a mutable-key codec, or a required payload referencing an optional-key codec | `EK2109`: run `vibelang --fix` to retain the codecs and decoding in an explicit Effect TypeScript class. |
 | Nested `schema` aliases containing named, optional or rest tuples | Normal compilation now maps the tuple positions. Run `vibelang --fix --fix-migration-only` to retain the previous `Schema.Unknown` placeholders and public declarations through explicit Effect codecs. |
 | Generic `data` with a default, such as `data Box<A = string>` | `EK2803`: run `vibelang --fix` to retain the default on an equivalent Effect TypeScript type alias and preserve the constructors. |
 
@@ -565,6 +566,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The ESLint acceptance checks reported valid `effect` modifiers as missing variable names; they now recognize function and method prefixes while still detecting a missing node for a variable, parameter or method named `effect`.
 - Nested objects and index signatures inside a `data` payload were made readonly implicitly; they now keep their written TypeScript mutability.
 - Exact claim searches could miss another lane working on the same reproduction under a different key spelling; the advisory claim lookup now shows punctuation aliases, shared corpus names and each claim's age and status.
+
+- A direct `schema error` payload reference could silently make a readonly key writable or a required key optional; incompatible decoded-key flags now report `EK2109`, and `vibelang --fix` preserves the existing codecs in an explicit Effect TypeScript class.
 
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 

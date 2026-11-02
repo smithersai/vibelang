@@ -1,0 +1,13 @@
+// expect: EK2109
+const Mutable = Schema.mutableKey(Schema.Number)
+const Optional = Schema.optionalKey(Schema.Number)
+const Alias = Mutable
+const Uncertain = Schema.Number as Schema.Top
+schema error Direct { value: Mutable }
+schema error Explicit { readonly value: Mutable }
+schema error Aliased { value: Alias }
+schema error OptionalMutable { value?: Mutable }
+schema error Required { value: Optional }
+schema error Wide { value: Uncertain }
+schema error Good { optional?: Optional; array: number[] }
+export {}
