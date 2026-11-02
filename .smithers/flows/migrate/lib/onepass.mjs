@@ -449,7 +449,7 @@ export async function onePassStep(step, options) {
         fileURLToPath(new URL("../../../../packages/runtime", import.meta.url))
       ])
       const catalog = await Jj.trackedFiles(config.target)
-      state = prepareState(config.target, files, await importers(config.target), { ts, aliases: aliasesOf(config), referenceFiles: catalog, references: catalog, catalog, plainGroups: plainGroupsOf(config, files, ts, { flipped: await toolchainKeepsFunctionsPlain({ compiler: compilerOf(config), modules: join(config.target, config.packages[0].dir, "node_modules"), dir: join(p.run, "probe") }) }) })
+      state = prepareState(config.target, files, await importers(config.target), { ts, aliases: aliasesOf(config), referenceFiles: catalog, references: catalog, catalog, tracked: catalog, plainGroups: plainGroupsOf(config, files, ts, { flipped: await toolchainKeepsFunctionsPlain({ compiler: compilerOf(config), modules: join(config.target, config.packages[0].dir, "node_modules"), dir: join(p.run, "probe") }) }) })
       saveState(p.codemodState("01"), state)
     }
     if (state.target !== config.target || JSON.stringify(state.files) !== JSON.stringify(files)) throw new Error("rename journal does not match target and scope")

@@ -31,7 +31,7 @@ export function durableWrite(path, data, mode = 0o600) {
 export const saveState = (path, state) => durableWrite(path, JSON.stringify(state, null, 2) + "\n")
 
 /** Plan all edits without changing the target; original source bytes live in the journal. */
-export function prepareState(target, files, scope, { ts, aliases, referenceFiles = scope, references = [], catalog = scope, bareEntries = false, plainGroups = [] } = {}) {
+export function prepareState(target, files, scope, { ts, aliases, referenceFiles = scope, references = [], catalog = scope, bareEntries = false, plainGroups = [], tracked } = {}) {
   for (const from of files) assertModuleBoundary(target, from)
   const deferred = pathReadDeferrals(target, files, referenceFiles)
   if (deferred.length) throw new Error("source text test requires .ts: " + deferred.map(d => d.file).join(", "))
@@ -61,6 +61,8 @@ export function prepareState(target, files, scope, { ts, aliases, referenceFiles
   const scriptEdits = rewriteViteScripts(target, renames, { read, write })
   const packageScriptEdits = rewriteScripts(target, renames, { read, write })
   const refEdits = rewriteReferences(target, renames, referenceFiles.map(file => toOf.get(file) ?? file), { read, write, literals: !ts })
+  // Literal Vite build inputs that name a renamed module (tracked: the repository's files).
+  const buildEntries = ts && tracked ? rewriteBuildEntrypoints(target, tracked, renames, ts, { read, write }) : { edits: [], warnings: [] }
   const importEdits = rewriteImports(target, [...scope, ...platform.splits.map(s => s.platform)].map(file => toOf.get(file) ?? file), renames.map(r => r.to), aliases, { read, write })
   const referenceEdits = [], referenceWarnings = [], selectorChecks = [], matcherCache = new Map()
   const started = performance.now()
@@ -79,7 +81,7 @@ export function prepareState(target, files, scope, { ts, aliases, referenceFiles
     selectorChecks.push(...(changed.selectorChecks ?? []))
     if (changed.edits.length) write(file, changed.text)
   }
-  return { version: 1, target, files, phase: "prepared", referenceVersion: 1, referencePending: false, referenceScan: { files: references.length, patterns: matcherCache.size, durationMs: Math.round(performance.now() - started) }, referenceEdits, referenceWarnings, selectorChecks, platform, plain, functionModel: plainGroups.length ? (plainGroups.every(g => g.flipped) ? "plain-by-syntax" : "legacy-inference") : "unprobed", renames, originals, writes, exportEdits, importEdits, refEdits, scriptEdits, packageScriptEdits, attempts: [] }
+  return { version: 1, target, files, phase: "prepared", referenceVersion: 1, referencePending: false, referenceScan: { files: references.length, patterns: matcherCache.size, durationMs: Math.round(performance.now() - started) }, referenceEdits, referenceWarnings, selectorChecks, platform, plain, functionModel: plainGroups.length ? (plainGroups.every(g => g.flipped) ? "plain-by-syntax" : "legacy-inference") : "unprobed", renames, originals, writes, exportEdits, buildEntries, importEdits, refEdits, scriptEdits, packageScriptEdits, attempts: [] }
 }
 
 /** Replay a prepared transaction, accepting each operation before or after its atomic write. */
