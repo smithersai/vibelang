@@ -340,6 +340,82 @@ test("extensionless imports keep native CommonJS .js interop through nested Type
   }
 })
 
+// opencode's plugin runtime require()s src/effect/index.ts, a native barrel
+// whose schema modules became .vibe. Bun makes a module whose onLoad returns a
+// pending Promise async, and require() of an async module throws, so the
+// preload rewrites a native importer's imports synchronously: require() loads
+// it wherever it loads the module's .ts twin.
+test("require() loads a native module that reaches a .vibe module through an extensionless, .js or alias import", { skip }, (t) => {
+  const { bun } = project(t, {
+    "tsconfig.json": JSON.stringify({
+      compilerOptions: { target: "ESNext", module: "ESNext", moduleResolution: "Bundler", types: [], skipLibCheck: true, noEmit: true, paths: { "@/*": ["./src/*"] } },
+      include: ["src/**/*"]
+    }),
+    "src/schema/id.vibe": 'export const id: string = "id"\n',
+    "src/schema/rpc.vibe": 'import { id } from "./id"\nexport const rpc: string = id + "-rpc"\n',
+    "src/schema/index.ts": 'export { id } from "./id"\nexport * from "./rpc.js"\n',
+    "src/effect/index.ts": 'export * from "../schema"\nexport { rpc as aliased } from "@/schema/rpc"\nexport const label = "./id"\n',
+    "src/loader.ts": [
+      'import { createRequire } from "node:module"',
+      "const req = createRequire(import.meta.url)",
+      'const effect = req("./effect/index.ts")',
+      "console.log([effect.id, effect.rpc, effect.aliased, effect.label].join(\" \"))",
+      ""
+    ].join("\n"),
+    "src/main.cjs": 'const effect = require("./effect/index.ts"); console.log([effect.id, effect.rpc, effect.aliased].join(" "))\n'
+  })
+  for (const [entry, expected] of [["src/loader.ts", "id id-rpc id-rpc ./id\n"], ["src/main.cjs", "id id-rpc id-rpc\n"]]) {
+    const result = bun(["--preload", preload, entry])
+    assert.equal(result.status, 0, result.stderr)
+    assert.equal(result.stdout, expected)
+  }
+})
+
+// opencode's TUI installs OpenTUI's runtime plugin (@opentui/core 0.7.0
+// runtime-plugin.js), which gives a project file it sees by an absolute
+// specifier an async onLoad. The re-export that runs a migrated package's
+// emitted file from source names that source by an absolute path, so the
+// loader must load it synchronously first: require() of the package entry
+// worked when its default export was the .ts file. hostPlugin does what
+// OpenTUI does with an absolute specifier.
+const hostPlugin = [
+  'const { isAbsolute } = require("node:path")',
+  "const wrapped = new Set()",
+  'Bun.plugin({ name: "host-rewrite", setup(build) {',
+  "  build.onResolve({ filter: /.*/ }, (args) => {",
+  "    const path = args.path",
+  "    if (!isAbsolute(path) || /[\\\\/]node_modules[\\\\/]/.test(path) || !/\\.[cm]?[jt]sx?$/.test(path) || wrapped.has(path)) return undefined",
+  "    wrapped.add(path)",
+  '    const exact = new RegExp("^" + path.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&") + "$")',
+  '    build.onLoad({ filter: exact }, async (loaded) => ({ contents: await Bun.file(loaded.path).text(), loader: loaded.path.endsWith(".js") ? "js" : "ts" }))',
+  "    return undefined",
+  "  })",
+  "} })",
+  ""
+].join("\n")
+
+test("require() loads a .vibe module's native imports synchronously beside a plugin that rewrites the project files it sees (opencode TUI)", { skip }, (t) => {
+  const bundler = JSON.stringify({ compilerOptions: { target: "ESNext", module: "ESNext", moduleResolution: "Bundler", types: [], skipLibCheck: true, noEmit: true }, include: ["src/**/*"] })
+  const { bun } = project(t, {
+    "host.cjs": hostPlugin,
+    "packages/schema/package.json": JSON.stringify({ name: "@fixture/schema", type: "module", exports: { ".": { types: "./src/index.ts", default: "./.vibelang/js/src/index.js" } } }),
+    "packages/schema/tsconfig.json": bundler,
+    "packages/schema/src/helper.ts": "export const helper: number = 41\n",
+    "packages/schema/src/leaf.vibe": 'import { helper } from "./helper"\nexport const value: number = helper + 1\n',
+    "packages/schema/src/index.ts": 'export { value } from "./leaf"\n',
+    // The migrate flow's committed emit, which the loader runs from source.
+    "packages/schema/.vibelang/js/src/index.js": 'export { value } from "./leaf.js"\n',
+    "packages/schema/.vibelang/js/src/leaf.js": "export const value = 0\n",
+    "emitted.mjs": 'import "./host.cjs"\nimport { createRequire } from "node:module"\nconsole.log(createRequire(import.meta.url)("./packages/schema/.vibelang/js/src/index.js").value)\n',
+    "source.cjs": 'require("./host.cjs")\nconsole.log(require("./packages/schema/src/index.ts").value)\n'
+  })
+  for (const entry of ["emitted.mjs", "source.cjs"]) {
+    const result = bun(["--preload", preload, entry])
+    assert.equal(result.status, 0, result.stderr)
+    assert.equal(result.stdout, "42\n")
+  }
+})
+
 // ./prompt.txt names no script extension, so the resolvers look for
 // prompt.txt/index.ts, and Bun throws ENOTDIR where Node returns undefined.
 test("the resolvers pass over a relative import of a file that is not a script", { skip: !hasBun && "bun is not on PATH" }, (t) => {

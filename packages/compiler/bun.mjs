@@ -15,7 +15,7 @@ import { diagnosticsForFile } from "./diagnostics.mjs"
 // are unchanged. A module declaration of a .vibe module is a module of its
 // own, main.vibe.text.js beside main.vibe for module text (D403), which is not
 // on disk; its JavaScript comes from the same compile.
-import { existsSync, readFileSync, realpathSync } from "node:fs"
+import { existsSync, readFileSync, realpathSync, statSync } from "node:fs"
 import { dirname, join, resolve, isAbsolute } from "node:path"
 import { compileProjectSync, formatDiagnostic, moduleDeclarationSource, nearestProject, workspaceProject } from "./project.mjs"
 
@@ -23,6 +23,7 @@ if (typeof Bun === "undefined") {
   throw new Error("vibelang/bun is a Bun preload; under Node, use node --import vibelang/register")
 }
 
+const isDirectory = (path) => { try { return statSync(path).isDirectory() } catch { return false } }
 const isRelative = (specifier) => specifier.startsWith("./") || specifier.startsWith("../")
 // Only a relative import or a tsconfig paths alias can name a .vibe module,
 // and a dependency has none: a workspace package's real path is outside
@@ -112,39 +113,62 @@ const moduleNamespace = "vibelang-module"
 const pathOf = (importer) => importer?.startsWith(`${moduleNamespace}:`) ? importer.slice(moduleNamespace.length + 1) : importer
 
 // Bun runtime resolution does not call onResolve for an extensionless
-// import. Let Bun parse the importing source, externalizing every import
-// and replacing only the relative names and paths aliases that TypeScript
-// resolves to .vibe.
+// import. Replace, in the importing source itself, only the relative names
+// and paths aliases that TypeScript resolves to .vibe, and keep the loader,
+// so Bun transpiles the module as it would without vibelang.
 // The common path needs only a scan; dependencies keep Bun's own loader.
-async function resolveImports(path, contents, loader) {
+//
+// The rewrite is synchronous. Bun makes a module whose onLoad returns a
+// pending Promise an async module, and require() of an async module throws
+// "require() async module ... is unsupported" (Bun 1.4.4,
+// src/jsc/bindings/ModuleLoader.cpp: handleOnLoadResult wraps a Promise in a
+// pending module, and the require path throws while it is pending). opencode's
+// plugin runtime require()s a native barrel whose schema modules are .vibe.
+// A quoted copy of a specifier can also be a string, a comment, a type or the
+// argument of a call to a shadowed require, so each copy gets a marked name of
+// its own, and the copies that a scan of the marked source reports as imports
+// are the ones replaced.
+//
+// The scan is Bun.Transpiler's scan(), a parse, not scanImports(). Bun 1.4.4's
+// scanImports() reports a require("./x") call even where require is a local
+// binding, and drops a dynamic import whose specifier is not ASCII, such as
+// import("./leaf-\u96ea"); scan() reports neither require() calls nor
+// type-only imports. A CommonJS require and `import x = require()` reach a
+// .vibe module through the CommonJS resolve hook above instead.
+const esImports = (code, loader) => new Bun.Transpiler({ loader }).scan(code).imports
+const escapeRegExp = (value) => value.replace(/[.*+?^{}$()|[\]\\]/g, "\\$&")
+function resolveImports(path, contents, loader) {
   const replacements = new Map()
-  for (const entry of new Bun.Transpiler({ loader }).scanImports(contents)) {
+  for (const entry of esImports(contents, loader)) {
     const source = vibeImport(dirname(path), entry.path)
     if (source !== undefined) replacements.set(entry.path, source)
   }
   if (replacements.size === 0) return { contents, loader }
-  const result = await Bun.build({
-    entrypoints: [path], target: "bun", write: false, sourcemap: "inline",
-    plugins: [{ name: "vibelang-imports", setup(build) {
-      build.onLoad({ filter: /.*/ }, () => ({ contents, loader }))
-      build.onResolve({ filter: /.*/ }, (args) => args.importer
-        ? { path: replacements.get(args.path) ?? args.path, external: true }
-        : undefined)
-    } }]
-  })
-  if (!result.success) throw new AggregateError(result.logs, `vibelang/bun: cannot load ${path}`)
-  return { contents: await result.outputs[0].text(), loader: "js" }
+  const quoted = new RegExp("([\"'`])(" + [...replacements.keys()].map(escapeRegExp).join("|") + ")\\1", "g")
+  // A mark keeps the copy's quote and needs no escape, so the source still parses.
+  const mark = (specifier, copy) => specifier + "#vibelang-copy-" + copy
+  let copies = 0
+  const marked = contents.replace(quoted, (_, quote, specifier) => quote + mark(specifier, copies++) + quote)
+  const imports = new Set(esImports(marked, loader).map((entry) => entry.path))
+  let copy = 0
+  const rewritten = contents.replace(quoted, (match, quote, specifier) =>
+    imports.has(mark(specifier, copy++)) ? JSON.stringify(replacements.get(specifier)) : match)
+  return { contents: rewritten, loader }
 }
 
 Bun.plugin({
   name: "vibelang",
   setup(build) {
     const discovered = new Set()
+    const rewrittenFiles = new Set()
     let discovering = false
     const loaderOf = (file) => file.endsWith("tsx") ? "tsx" : file.endsWith("jsx") ? "jsx" : /\.[cm]?ts$/.test(file) ? "ts" : "js"
     // Register only importers that actually need rewriting. A broad onLoad
     // changes Bun's native CommonJS export interop, even for dependencies
     // that never import a .vibe module.
+    const commonJS = (file, code) => /\.(?:cjs|cts)$/.test(file) ||
+      /\bmodule\s*(?:\.\s*exports|\[\s*["']exports["']\s*\])|\bexports\s*[.[]/.test(code)
+    const exactly = (file, physical) => new RegExp("^(?:" + [...new Set([file, physical])].map(escapeRegExp).join("|") + ")$")
     function discover(file, code, loader = loaderOf(file)) {
       file = resolve(file)
       const emittedSource = code !== undefined
@@ -154,18 +178,17 @@ Bun.plugin({
       if (discovered.has(physical)) return
       discovered.add(physical)
       if (inDependency(physical)) return
-      let imports
+      let imports, rewritten
       try {
         code ??= readFileSync(file, "utf8")
-        imports = new Bun.Transpiler({ loader }).scanImports(code)
+        rewritten = esImports(code, loader)
+        imports = [...new Bun.Transpiler({ loader }).scanImports(code), ...rewritten]
       } catch { return }
-      const needsRewrite = imports.some((entry) =>
-        entry.kind !== "require-call" && vibeImport(dirname(file), entry.path) !== undefined)
-      if (needsRewrite && !emittedSource && !/\.(?:cjs|cts)$/.test(file) &&
-          !/\bmodule\s*(?:\.\s*exports|\[\s*["']exports["']\s*\])|\bexports\s*[.[]/.test(code)) {
-        const escape = (value) => value.replace(/[.*+?^{}$()|[\]\\]/g, "\\$&")
-        build.onLoad({ filter: new RegExp("^(?:" + [file, physical].map(escape).join("|") + ")$") },
+      const needsRewrite = rewritten.some((entry) => vibeImport(dirname(file), entry.path) !== undefined)
+      if (needsRewrite && !emittedSource && !commonJS(file, code)) {
+        build.onLoad({ filter: exactly(file, physical) },
           ({ path }) => resolveImports(path, readFileSync(path, "utf8"), loaderOf(path)))
+        rewrittenFiles.add(physical)
       }
       for (const entry of imports) {
         try {
@@ -173,6 +196,27 @@ Bun.plugin({
           discover(target ?? Bun.resolveSync(entry.path, dirname(file)))
         } catch { /* Builtins, assets and unresolved imports keep native handling. */ }
       }
+    }
+    // An emitted package file's re-export names its source by an absolute
+    // path, an import the native package entry never made. Another plugin may
+    // claim that path: OpenTUI's runtime plugin (@opentui/core 0.7.0
+    // runtime-plugin.js) gives a project file it sees by an absolute specifier
+    // an async onLoad, so opencode's TUI require() of a package whose default
+    // export is .vibelang/js/src/index.js threw "require() async module". Bun
+    // calls the first matching onLoad, so the plugin loads a native source
+    // itself first, unchanged, as Bun loads the package's own entry.
+    const claimed = new Set()
+    function claim(file) {
+      discover(file)
+      if (!/\.[cm]?[jt]sx?$/.test(file)) return
+      let physical
+      try { physical = realpathSync(file) } catch { return }
+      if (claimed.has(physical) || rewrittenFiles.has(physical) || inDependency(physical)) return
+      claimed.add(physical)
+      let code
+      try { code = readFileSync(file, "utf8") } catch { return }
+      if (commonJS(file, code)) return
+      build.onLoad({ filter: exactly(file, physical) }, ({ path }) => ({ contents: readFileSync(path, "utf8"), loader: loaderOf(path) }))
     }
     // Discovery follows a module Bun resolves by path: the entry, a dynamic
     // import of a computed path. A bare specifier is left to Bun: its module,
@@ -187,8 +231,10 @@ Bun.plugin({
       if (discovering || inDependency(importer ?? "")) return undefined
       discovering = true
       try {
+        // Bun.resolveSync(path, directory) names that directory as the importer (Bun 1.4.4).
         const from = pathOf(importer)
-        discover(Bun.resolveSync(path, from && isAbsolute(from) ? dirname(from) : process.cwd()))
+        const origin = !from || !isAbsolute(from) ? process.cwd() : isDirectory(from) ? from : dirname(from)
+        discover(Bun.resolveSync(path, origin))
       } catch { /* The specific resolver and Bun report resolution errors. */ } finally { discovering = false }
       return undefined
     })
@@ -218,7 +264,9 @@ Bun.plugin({
     // for consumers without a loader, runs from its .vibe source (emitted-js.mjs).
     build.onLoad({ filter: /[\\/]\.vibelang[\\/]js[\\/].*\.(?:[cm]?js|jsx)$/ }, ({ path }) => {
       const source = sourceOfEmitted(path)
-      return source === undefined ? undefined : { contents: reexportOf(source), loader: "js" }
+      if (source === undefined) return undefined
+      claim(source)
+      return { contents: reexportOf(source), loader: "js" }
     })
     // Bun 1.4.2 ignores a plugin's source maps, so the module is its JavaScript alone.
     build.onLoad({ filter: /\.vibe$/ }, ({ path }) => { const code = emitted(path).code; discover(path, code, "js"); return resolveImports(path, code, "js") })

@@ -1,0 +1,16 @@
+{
+  "property": "bun-require-vibe",
+  "rule": "opencode bun:require-native-plugin-effect-async: the TUI plugin runtime's createLoader require()s packages/plugin/src/effect/index.ts, a native barrel that re-exports schema modules migrated to .vibe through extensionless imports; Bun threw require() async module ... is unsupported",
+  "input": {
+    "specifier": "extensionless",
+    "quote": "\"",
+    "form": "star",
+    "barrels": 2,
+    "entry": "createRequire",
+    "preimport": false,
+    "decoy": false,
+    "typeImport": false,
+    "value": 1
+  },
+  "reason": "opencode-require-native-effect-barrel: a native index.ts re-exports a native schema barrel that re-exports a .vibe module by an extensionless name, and a plugin loader require()s the index through createRequire."
+}

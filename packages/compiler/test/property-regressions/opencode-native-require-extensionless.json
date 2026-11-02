@@ -1,0 +1,16 @@
+{
+  "repo": "opencode",
+  "pattern": "native plugin package and native schema barrel synchronously require a migrated leaf",
+  "links": {
+    "@fixture/plugin": "./packages/plugin",
+    "@fixture/schema": "./packages/schema"
+  },
+  "files": {
+    "packages/plugin/package.json": "{\"name\":\"@fixture/plugin\",\"type\":\"module\",\"exports\":{\"./effect\":\"./src/effect/index.ts\"}}",
+    "packages/plugin/src/effect/index.ts": "export {value, Effect, succeed} from \"@fixture/schema\"\n",
+    "packages/schema/package.json": "{\"name\":\"@fixture/schema\",\"type\":\"module\",\"exports\":{\".\":\"./src/index.ts\"}}",
+    "packages/schema/src/index.ts": "export {value, Effect, succeed} from \"./leaf\"\n",
+    "packages/schema/src/leaf.vibe": "export {Effect} from \"effect\"\nexport {succeed} from \"effect/Effect\"\nexport const value = {answer: 42}\n",
+    "run.cjs": "const {createRequire}=require('node:module'); Bun.resolveSync('./packages/plugin/src/effect/index.ts',__dirname); const req=createRequire(__filename); const loaded=req('@fixture/plugin/effect'); const leaf=req('./packages/schema/src/leaf.vibe'); console.log(JSON.stringify({answer:loaded.value.answer,shared:loaded.value===leaf.value,hostEffect:loaded.Effect===req(\"effect\").Effect,hostSubpath:loaded.succeed===req(\"effect/Effect\").succeed}))\n"
+  }
+}
