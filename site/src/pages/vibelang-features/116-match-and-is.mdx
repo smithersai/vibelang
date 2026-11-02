@@ -265,7 +265,7 @@ An object pattern such as `{ _tag: "Sent", let tracking }` covers its tag case o
 
 Any subject member outside these checked kinds turns the check off. Examples include `string` or `number` without a literal type, `unknown`, `any`, `object`, an untagged array or class instance, or a type parameter that does not normalize to checked cases. Such a match compiles without a `default` arm, and a value that no arm matches throws the proposal's `TypeError` at run time. To handle the rest, add a `default` arm, an arm that matches every value of its type, such as `when String:` over a `string`, or a bind-only arm such as `when let other:`.
 
-A signed Number-zero pattern such as `-0` or `+0` does not cover the whole TypeScript `0` case (`EK4701`), because its test distinguishes the two signs. Use unsigned `0` or `default`; ordinary negative nonzero literals still cover their cases.
+A signed Number-zero pattern such as `-0` or `+0` does not cover the whole TypeScript `0` case (`EK4701`), because its test distinguishes the two signs. Use unsigned `0` or `default`; ordinary negative nonzero literals still cover their cases. The sign test also works when a local binding is named `Object`; matching does not call that binding's `is` property.
 
 A type parameter with a finite constraint is checked over that constraint: `T extends "A" | "B"` needs both cases. A broad constraint such as `string` stays open. A represented TypeScript flow refinement can reduce the domain; a reference still typed as bare `T` keeps its whole constraint. This does not change the subject's ordinary type in an arm.
 

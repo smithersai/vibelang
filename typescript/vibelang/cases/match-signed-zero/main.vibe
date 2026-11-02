@@ -25,3 +25,35 @@ export function big(n: bigint) {
 export function isNegativeZero(n: number) {
   return n is -0
 }
+
+// Source-local Object bindings do not supply the language's SameValue test.
+export function shadowed(value: unknown) {
+  let reads = 0
+  const Object = { get is() { reads++; return (_a: unknown, _b: unknown) => true } }
+  const result = match(value) { when -0: "minus"; when +0: "plus"; default: "other"; }
+  return [result, reads]
+}
+export function shadowedIs(value: unknown, Object: {}) {
+  return [value is -0, value is +0]
+}
+export function nestedShadow(value: unknown) {
+  const Object = undefined
+  let reads = 0
+  const box = { get n() { reads++; return value } }
+  const result = match(box) { when { n: -0 }: "minus"; when { n: +0 }: "plus"; default: "other"; }
+  return [result, reads]
+}
+export function onceShadow() {
+  const Object = 0
+  let reads = 0
+  const subject = () => { reads++; return -0 }
+  return [subject() is -0, reads]
+}
+
+export function onceNestedIs() {
+  const Object = undefined
+  const $zero1 = "source"
+  let reads = 0
+  const box = { get n() { reads++; return reads === 1 ? -0 : 1 } }
+  return [box is { n: -0 }, reads, $zero1]
+}

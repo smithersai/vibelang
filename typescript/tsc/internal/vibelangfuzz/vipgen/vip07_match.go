@@ -957,3 +957,40 @@ func init() {
 	registerWitness(7, ChapterWitness{Key: "vip07.object-property-order-plain", Chapter: "../vips/tc39-pattern-matching/explainer.md", Quote: "1. For each non-rest object pattern clause `key: sub-pattern`, in source order:", Vibe: "function witness(){const trace:string[]=[];const s={get first(){trace.push(\"first\");return 1},get second(){trace.push(\"second\");return 2}};const value=match(s){when {first:0,second:2}:\"bad\";when {first:1,second:2}:\"hit\";default:\"miss\";};return [value,trace]}", Effect: "function witness(){const trace=[];const s={get first(){trace.push(\"first\");return 1},get second(){trace.push(\"second\");return 2}};const first=s.first;let value=\"miss\";if(first===0){const second=s.second;if(second===2)value=\"bad\"}else if(first===1){const second=s.second;if(second===2)value=\"hit\"}return [value,trace]}", Cite: vip7Cite("return")})
 	registerWitness(7, ChapterWitness{Key: "vip07.rest-outside-cache-plain", Chapter: "../vips/tc39-pattern-matching/spec.emu", Quote: "1. Perform ? CopyDataProperties(_restObj_, _subject_, _excludedNames_).", Vibe: "function witness(){let reads=0;const s={get value(){return ++reads}};const value=match(s){when {value:0}:0;when {...let rest}:rest.value;};return [value,reads]}", Effect: "function witness(){let reads=0;const s={get value(){return ++reads}};const cached=s.value;let value;if(cached===0)value=0;else{const rest={...s};value=rest.value}return [value,reads]}", Cite: vip7Cite("return")})
 }
+
+// Detail 169's SameValue rule is independent of source Object bindings.
+// One witness checks every spelling/form/value combination, amortizing the
+// compiler and worker setup without dropping any neighborhood assertions.
+func init() {
+	source := `function witness(): unknown[] { let reads = 0; let shadowReads = 0; const $global = 0; const runtime = null; const Object = { get is() { shadowReads++; return (_a: unknown, _b: unknown): boolean => true } }; const values: unknown[] = [0,-0,1,-1,5e-324,-5e-324,NaN,Infinity,-Infinity,0n,"0",null,undefined,{},new Number(-0),Symbol("s")]; const hits = [`
+	reference := `function witness() { let reads = 0; let shadowReads = 0; const same = Object.is; const values = [0,-0,1,-1,5e-324,-5e-324,NaN,Infinity,-Infinity,0n,"0",null,undefined,{},new Number(-0),Symbol("s")]; const hits = [`
+	literals := []string{"-0", "+0", "-0.0", "-1e-400"}
+	for _, literal := range literals {
+		for _, form := range []string{"match", "is"} {
+			expression := "value is " + literal
+			if form == "match" {
+				expression = "match(value) { when " + literal + ": true; default: false; }"
+			}
+			source += "values.map((value): boolean => { reads++; return " + expression + " }),"
+			reference += "values.map((value) => { reads++; return same(value," + literal + ") }),"
+		}
+	}
+	source += "];"
+	reference += "];"
+	var nested []string
+	for i, literal := range literals {
+		n := strconv.Itoa(i)
+		source += "let keyReads" + n + "=0; const box" + n + "={ get n() { keyReads" + n + "++; return keyReads" + n + "===1 ? " + literal + " : 1 } }; const nested" + n + "=box" + n + " is {n:" + literal + "};"
+		reference += "let keyReads" + n + "=0; const box" + n + "={ get n() { keyReads" + n + "++; return keyReads" + n + "===1 ? " + literal + " : 1 } }; const saved" + n + "=box" + n + ".n; const nested" + n + "=same(saved" + n + "," + literal + ");"
+		nested = append(nested, "[nested"+n+",keyReads"+n+"]")
+	}
+	result := "return [hits,reads,shadowReads,[" + strings.Join(nested, ",") + "]] }"
+	registerWitness(7, ChapterWitness{
+		Key:     "vip07.signed-zero-object-plain",
+		Chapter: "004-match.md",
+		Quote:   "A signed Number literal whose value is zero (`+0`, `-0`, `-0.0`, `+0e0`, and equivalent spellings) covers no zero case: its `SameValue` test distinguishes signs, while TypeScript's `0` type admits both.",
+		Vibe:    source + result,
+		Effect:  reference + result,
+		Cite:    vip7Cite("const same = Object.is"),
+	})
+}

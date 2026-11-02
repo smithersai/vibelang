@@ -51,6 +51,8 @@ var preludeModules = map[string]string{
 	// An error that extends another, which the parser writes (D278, parser/vibelang_errors.go).
 	"$errorSubclass": runtimeModule,
 	"$ErrorArgs":     runtimeModule,
+	// Compiler-written global reads retain native types without source capture.
+	"$global": runtimeModule,
 	// How a schema error joins its family, which the parser writes (D304).
 	"$schemaErrorFamily": runtimeModule,
 	"$schemaErrorMember": runtimeModule,

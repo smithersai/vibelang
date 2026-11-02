@@ -1155,10 +1155,11 @@ func (p *Parser) compilePattern(pat *pattern, path matchPath, steps *[]matchStep
 		}
 	case patternLiteral:
 		if IsSignedNumberZero(pat.expr) {
-			// A signed zero tests SameValue, which tells -0 from +0, as the
-			// pinned TC39 draft does; TypeScript does not narrow Object.is,
-			// so the arm covers no zero case (decided detail 169).
-			test(p.mCall(p.mProperty(p.mIdent("Object", at), "is", at), []*ast.Node{path(), pat.expr}, at))
+			// SameValue must use the real Object constructor, independently
+			// of source bindings named Object or $global. The existing
+			// intrinsic also retains Object.is's native TypeScript typing.
+			object := p.mProperty(p.vibelangIntrinsic("$global", at), "Object", at)
+			test(p.mCall(p.mProperty(object, "is", at), []*ast.Node{path(), pat.expr}, at))
 		} else {
 			test(p.mBinary(path(), ast.KindEqualsEqualsEqualsToken, pat.expr, at))
 		}

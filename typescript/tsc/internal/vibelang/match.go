@@ -150,7 +150,9 @@ func signedZeroArmNote(c *checker.Checker, file *ast.SourceFile, call *ast.Node,
 			}
 			if ast.IsCallExpression(node) && ast.IsPropertyAccessExpression(node.Expression()) && len(node.Arguments()) == 2 {
 				callee := node.Expression()
-				if isSynthesizedName(callee.Expression(), "Object") && callee.Name().Text() == "is" && parser.IsSignedNumberZero(node.Arguments()[1]) {
+				object := callee.Expression()
+				globalObject := ast.IsPropertyAccessExpression(object) && isSynthesizedName(object.Expression(), "$global") && object.Name().Text() == "Object"
+				if (globalObject || isSynthesizedName(object, "Object")) && callee.Name().Text() == "is" && parser.IsSignedNumberZero(node.Arguments()[1]) {
 					written = nodeText(file, node.Arguments()[1])
 					return true
 				}
