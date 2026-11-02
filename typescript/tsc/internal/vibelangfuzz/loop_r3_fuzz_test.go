@@ -409,7 +409,7 @@ func FuzzOwnerSyntaxCodes(f *testing.F) {
 // says are one program. The grammar lab has no pipe productions, so it can't
 // count these derivations.
 
-var pipeEdgeQuotes = []string{
+var loopR3PipeEdgeQuotes = []string{
 	"It is a Syntax Error if the input of a [PipeExpression](#pipeexpression) ends in an open arrow handler",
 	"Parentheses around the handler or the whole `catch` expression, a `NonArrowHandler` and a block-bodied arrow close the handler",
 }
@@ -428,11 +428,11 @@ var pipeEdgeSentences = []struct{ name, source, greedy string }{
 	{"pipe-only", "a |> % |> % ", "(a |> %) |> %"},
 }
 
-func TestPipeEdgeQuoted(t *testing.T) { r3Quoted(t, "900-appendices.md", pipeEdgeQuotes...) }
+func TestPipeEdgeQuoted(t *testing.T) { r3Quoted(t, "900-appendices.md", loopR3PipeEdgeQuotes...) }
 
 func FuzzPipeRightEdge(f *testing.F) {
 	startShortBudget(f)
-	r3Quoted(f, "900-appendices.md", pipeEdgeQuotes...)
+	r3Quoted(f, "900-appendices.md", loopR3PipeEdgeQuotes...)
 	names := make([]string, len(pipeEdgeSentences))
 	for i, s := range pipeEdgeSentences {
 		names[i] = s.name
@@ -455,7 +455,7 @@ func FuzzPipeRightEdge(f *testing.F) {
 			return
 		}
 		if left.Outputs["main.js"] != right.Outputs["main.js"] {
-			Gap(t, "FuzzPipeRightEdge", "reading:"+s.name, "900-appendices: %s; %q and %q emit differently:\n%s\n---\n%s", pipeEdgeQuotes[0], s.source, s.greedy, left.Outputs["main.js"], right.Outputs["main.js"])
+			Gap(t, "FuzzPipeRightEdge", "reading:"+s.name, "900-appendices: %s; %q and %q emit differently:\n%s\n---\n%s", loopR3PipeEdgeQuotes[0], s.source, s.greedy, left.Outputs["main.js"], right.Outputs["main.js"])
 		}
 	})
 }
