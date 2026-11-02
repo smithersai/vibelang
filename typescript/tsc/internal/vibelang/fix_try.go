@@ -79,6 +79,22 @@ func tryEdits(c *checker.Checker, file *ast.SourceFile, unmatched map[int]bool) 
 			edits = append(edits, sourceEdit{scanner.SkipTrivia(text, node.Pos()), node.End(), m.blockText(file, node)})
 			return false
 		}
+		if head := m.catchHeadRuns(node); head != nil {
+			// The head becomes the program it was, with try before each call
+			// that ran in it; one edit also opens the catch's own effect
+			// block, which applyEdits could not order beside it.
+			open := ""
+			wrap := m.plainCatch(node) || m.heldCatch(node)
+			if wrap {
+				open = "effect { return "
+			}
+			edits = append(edits, sourceEdit{scanner.SkipTrivia(text, head.Pos()), head.End(), open + "(" + m.blockText(file, head) + ")"})
+			if wrap {
+				edits = append(edits, sourceEdit{node.End(), node.End(), " }"})
+			}
+			visit(node.Arguments()[1])
+			return false
+		}
 		if m.plainCatch(node) || m.heldCatch(node) {
 			insert(scanner.SkipTrivia(text, node.Pos()), "effect { return ")
 			edits = append(edits, sourceEdit{node.End(), node.End(), " }"})

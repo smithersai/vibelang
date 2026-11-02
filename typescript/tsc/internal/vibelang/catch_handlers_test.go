@@ -20,6 +20,10 @@ func TestCatchHandlerEK0509QuickFix(t *testing.T) {
 		{"(7)", "() => (7)"},
 		{"onErr", "(e) => onErr(e)"},
 		{"make()", "() => make()"},
+		// An object literal fallback keeps its braces an object (foldkit-17069).
+		{"{ v: 1 }", "() => ({ v: 1 })"},
+		{"{ make }", "() => ({ make })"},
+		{"{ v: make() }", "() => ({ v: make() })"},
 		{"Effect.succeed(8)", "effect () => try Effect.succeed(8)"},
 		{"effect { return 9 }", "effect () => { return 9 }"},
 		{"async (e) => 7", "(e) => 7"},

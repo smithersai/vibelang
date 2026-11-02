@@ -39,6 +39,9 @@ func FuzzVIPLegacyForms(f *testing.F) {
 	for _, handler := range legacyFormHandlerKeys() {
 		f.Add([]byte("infer-factory:effect-block:" + handler))
 	}
+	for _, shape := range slices.Sorted(maps.Keys(legacyFormFallbacks)) {
+		f.Add([]byte("fallback:" + shape))
+	}
 	for _, body := range slices.Sorted(maps.Keys(legacyFormArguments)) {
 		f.Add([]byte("argument:" + body))
 	}
@@ -115,7 +118,9 @@ var legacyFormOperands = map[string]struct {
 	fails        bool
 	traceEachRun string
 }{
-	"fail-call":    {"legacyBoom()", true, ""},
+	"fail-call": {"legacyBoom()", true, ""},
+	// A call that ran inside the head, in effect code only (foldkit-17070).
+	"nested-call":  {"legacyAdd(legacyWork())", false, "work"},
 	"make-call":    {"legacyMake()", false, "make"},
 	"effect-block": {"(effect {\n    trace.push(\"left\")\n    return try legacyBoom()\n  })", true, "left"},
 }
@@ -128,6 +133,18 @@ var legacyFormHandlers = map[string]struct {
 	"plain":     {"() => 0", "0", ""},
 	"plain-tag": {"(e) => e._tag.length", "10", ""},
 	"effect":    {"effect () => {\n    trace.push(\"handler\")\n    return 1\n  }", "1", "handler"},
+}
+
+// legacyFormFallbacks are pre-VIP-5 value fallbacks written as object
+// literals; EK0509's repair must keep each an object, not a block
+// (foldkit-17069: catch { directory }).
+var legacyFormFallbacks = map[string]string{
+	"object":         "{ v: 3 }",
+	"shorthand":      "{ v }",
+	"quoted-key":     "{ \"v\": 3 }",
+	"trailing-comma": "{ v: 3, }",
+	"parenthesized":  "({ v: 3 })",
+	"spread":         "{ ...{ v: 3 } }",
 }
 
 // legacyFormArguments are function literals passed where Effect.all expects
@@ -155,6 +172,14 @@ function legacyHold(p: number!!): number!! {
   return p
 }
 
+function legacyAdd(n: number): number {
+  return n + 2
+}
+
+effect function legacyBoomObject(): Readonly<{ v: number }>!LegacyMiss {
+  throw new LegacyMiss()
+}
+
 effect function legacyWork() {
   trace.push("work")
   return 5
@@ -169,6 +194,14 @@ func legacyFormHandlerKeys() []string { return slices.Sorted(maps.Keys(legacyFor
 // JSON main must succeed with under the pre-VIP-1 model.
 func legacyFormInput(data []byte) (key, source, want string) {
 	parts := strings.Split(string(data), ":")
+	if len(parts) == 2 && parts[0] == "fallback" {
+		fallback, ok := legacyFormFallbacks[parts[1]]
+		if !ok {
+			return "", "", ""
+		}
+		main := "export effect function main() {\n  const v = 3\n  const a = try (legacyBoomObject() catch " + fallback + ")\n  const b = try (legacyBoomObject() catch " + fallback + ")\n  return [a, b]\n}\n"
+		return "fallback:" + parts[1], legacyFormHelpers + main, `[{"v":3},{"v":3}]`
+	}
 	if len(parts) == 2 && parts[0] == "argument" {
 		body, ok := legacyFormArguments[parts[1]]
 		if !ok {
@@ -187,6 +220,9 @@ func legacyFormInput(data []byte) (key, source, want string) {
 	owner, operand, handler := legacyFormOwners[parts[0]], legacyFormOperands[parts[1]], legacyFormHandlers[parts[2]]
 	catch := operand.source + " catch " + handler.source
 	main := "export effect function main() {\n  const a = try g(1)\n  const b = try g(1)\n  return [a, b, trace.join(\",\")]\n}\n"
+	if parts[1] == "nested-call" && (parts[0] == "infer-factory" || parts[0] == "top-level") {
+		return "", "", "" // plain code ran no call in a catch head
+	}
 	value := "7"
 	var run []string
 	if owner.factory {
@@ -206,7 +242,8 @@ func legacyFormInput(data []byte) (key, source, want string) {
 }
 
 // sameJSON reports whether got, in the VIP worker's encoding (an array is
-// {"$array": […]}), encodes the plain JSON value want.
+// {"$array": […]}, a plain object {"$class": "Object", "fields": {…}}),
+// encodes the plain JSON value want.
 func sameJSON(got, want []byte) bool {
 	var x, y any
 	return json.Unmarshal(got, &x) == nil && json.Unmarshal(want, &y) == nil && reflect.DeepEqual(plainVIPValue(x), y)
@@ -217,6 +254,9 @@ func plainVIPValue(v any) any {
 	case map[string]any:
 		if items, ok := v["$array"].([]any); ok && len(v) == 1 {
 			return plainVIPValue(items)
+		}
+		if fields, ok := v["fields"].(map[string]any); ok && v["$class"] == "Object" && len(v) == 2 {
+			return plainVIPValue(fields)
 		}
 		for k, item := range v {
 			v[k] = plainVIPValue(item)

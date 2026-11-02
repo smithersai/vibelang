@@ -3,6 +3,7 @@ package vibelang
 import (
 	"context"
 	"strconv"
+	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
@@ -126,7 +127,13 @@ func catchHandlerRepair(c *checker.Checker, file *ast.SourceFile, call, handler 
 			}
 			repaired = "(" + name + ") => " + callee + "(" + name + ")"
 		default:
-			repaired = "() => " + source
+			// An object literal as the body of an arrow needs parentheses,
+			// or its braces are a block (foldkit-17069: catch { directory }).
+			body := source
+			if strings.HasPrefix(body, "{") {
+				body = "(" + body + ")"
+			}
+			repaired = "() => " + body
 		}
 	}
 	edits := []core.TextChange{{TextRange: core.NewTextRange(start, handler.End()), NewText: repaired}}

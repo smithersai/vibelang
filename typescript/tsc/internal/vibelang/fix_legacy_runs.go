@@ -733,3 +733,24 @@ func (m *legacyModel) heldCatch(node *ast.Node) bool {
 	held, byName, _ := legacyHold(m.a, node)
 	return held && (byName || vibelangmapper.HeldConstDeclaration(node) != nil)
 }
+
+// catchHeadRuns returns the left side of node, a catch expression in effect
+// code, when a call nested in it ran before VIP-1, or nil. The old compiler
+// passed the left side by name, a program whose calls ran in it (D147), as
+// fs.readFileString(path) does in decode(fs.readFileString(path)) catch …;
+// after VIP-1 the left side is the catch's program operand, so that call is
+// cold and decode's Option is no Effect (foldkit-17070, TS2375). The
+// migration writes the head as (effect { return decode(try …) }).
+func (m *legacyModel) catchHeadRuns(node *ast.Node) *ast.Node {
+	if catchExpressionOf(node) == nil {
+		return nil
+	}
+	if owner := effectCodeOwner(node); !inEffectCode(node) && (owner == nil || !m.marked(owner)) {
+		return nil
+	}
+	left, _ := catchParts(node)
+	if left == nil || len(m.blockRuns(left)) == 0 {
+		return nil
+	}
+	return left
+}

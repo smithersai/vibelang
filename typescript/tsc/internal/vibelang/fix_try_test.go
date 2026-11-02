@@ -19,7 +19,9 @@ import (
 // runs gives its Effect unrun (VIP-5). A retired await operation (EK1802) and the
 // retired try(…) hatch (EK4616) become try forms, in a function already marked.
 // fork's operand, a held const, the left side of catch and a plain function's
-// call stay as they are. A second run finds nothing to write.
+// call stay as they are; the retired value fallback { n: 0 } becomes the
+// function literal () => ({ n: 0 }) (EK0509, foldkit-17069). A second run
+// finds nothing to write.
 func TestFixVIPWritesTryWhereCallsRun(t *testing.T) {
 	source := `error Bad { cause: unknown }
 
@@ -87,7 +89,7 @@ export effect function main() {
   const d = plainDouble(1)
   ;(try load(11)).n
   const c = try load(9)
-  const e = load(12) catch { n: 0 }
+  const e = load(12) catch () => ({ n: 0 })
   const parsed = try Effect.try({ try: () => ((text) => JSON.parse(text))("1"), catch: (cause) => new Bad({ cause }) })
   join f
   return a.n + b + all[0].n + d + c.n + e.n + parsed + try box.get(10)
@@ -118,7 +120,7 @@ export effect function main() {
 	}
 	var report strings.Builder
 	result.Report(&report, func(name tspath.RootedFilePath) string { return filepath.Base(name.AsString()) })
-	if !strings.Contains(report.String(), "main.vibe: 2 fixes (EK1802 ×1, EK4616 ×1)") {
+	if !strings.Contains(report.String(), "main.vibe: 3 fixes (EK0509 ×1, EK1802 ×1, EK4616 ×1)") {
 		t.Errorf("report:\n%s", report.String())
 	}
 
