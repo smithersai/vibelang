@@ -262,6 +262,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 | Old diagnostic numbers, including `EK4617` | Appendix B numbering, including `EK0103`. Diagnostic triggers are unchanged. See the [old-to-new map](../vibelang-features/diagnostic-code-map.md). |
 
 ### Bugs fixed since 0.0.10
+
+- Migrating an Effect pipeline could change its public declaration from an expanded intersection to a named alias, as in opencode's reconnect service; the quick fix now keeps the native `.pipe(...)` when uncurrying a stage would change inferred type names.
 - The migrate flow could not load from a staged copy of `.smithers`, as a toolchain build stages it: `source-paths.mjs` imported `minimatch` from `node_modules`. The flow now ships minimatch in `lib/vendor/`.
 - The migrate flow's `verify` failed a batch when the flow had just written a loader record (`.vibelang/js/.loader/`), calling that record a foreign file; the flow now treats everything under `.vibelang/js/` as its own output.
 - The migration codemod rewrote a migrated module's written `./c.js` or `./e` import of a module that stays TypeScript to `./c.ts` or `./e.ts`, so the package's published `.d.ts` no longer matched the original (18 of foldkit's 225 declarations); it now keeps every written specifier of an unchanged module and rewrites only a renamed module's name to `.vibe` (decided detail 272).

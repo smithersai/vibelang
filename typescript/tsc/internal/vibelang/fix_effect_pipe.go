@@ -102,6 +102,9 @@ func planEffectPipe(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *f
 	if slices.ContainsFunc(stages, ast.IsSpreadElement) {
 		return refuse("a stage is a spread")
 	}
+	if pipeStageAliasContext(c, call) {
+		return refuse("a stage needs its native .pipe context to preserve inferred type names")
+	}
 	text := file.Text()
 	last := stages[len(stages)-1]
 	closing := call.End() - 1
@@ -151,6 +154,53 @@ func planEffectPipe(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *f
 		edits = append(edits, sourceEdit{start, start, open})
 	}
 	return &formRewrite{edits: joinEditsAt(edits), description: "the pipeline with |>"}
+}
+
+// pipeStageAliasContext reports when uncurrying would discard an alias choice
+// made by .pipe's contextual stage type. Structurally equivalent types can
+// declare different names (VIP-27, detail 277). Compare every stage, not only
+// the final result: a following map may wrap the affected type in an array.
+func pipeStageAliasContext(c *checker.Checker, call *ast.Node) bool {
+	for i, stage := range call.Arguments() {
+		stage = ast.SkipParentheses(stage)
+		if !ast.IsCallExpression(stage) || !isDataFirstStage(c, stage) {
+			continue
+		}
+		actual, contextual := c.GetTypeAtLocation(stage), c.GetContextualTypeForArgumentAtIndex(call, i)
+		if actual == nil || contextual == nil {
+			continue
+		}
+		for _, original := range c.GetSignaturesOfType(actual, checker.SignatureKindCall) {
+			if len(original.Parameters()) == 0 {
+				continue
+			}
+			for _, expected := range c.GetSignaturesOfType(contextual, checker.SignatureKindCall) {
+				if len(expected.Parameters()) == 0 {
+					continue
+				}
+				a, b := c.GetTypeOfSymbol(original.Parameters()[0]), c.GetTypeOfSymbol(expected.Parameters()[0])
+				if !isEffectType(c, a) || !isEffectType(c, b) || a.Flags()&checker.TypeFlagsObject == 0 || b.Flags()&checker.TypeFlagsObject == 0 ||
+					a.ObjectFlags()&checker.ObjectFlagsReference == 0 || b.ObjectFlags()&checker.ObjectFlagsReference == 0 {
+					continue
+				}
+				left, right := c.GetTypeArguments(a), c.GetTypeArguments(b)
+				if len(left) != 3 || len(right) != 3 {
+					continue
+				}
+				for j, x := range left {
+					y := right[j]
+					if x == y || !c.IsTypeAssignableTo(x, y) || !c.IsTypeAssignableTo(y, x) {
+						continue
+					}
+					flags := checker.TypeFormatFlagsNoTruncation | checker.TypeFormatFlagsUseFullyQualifiedType
+					if c.TypeToStringEx(x, call, flags, nil) != c.TypeToStringEx(y, call, flags, nil) {
+						return true
+					}
+				}
+			}
+		}
+	}
+	return false
 }
 
 // joinEditsAt returns edits with an insertion and the edit that starts at the

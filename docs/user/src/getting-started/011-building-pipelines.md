@@ -2,6 +2,8 @@
 
 Use statements for dependent steps and the pipe operator, `|>`, for a series of transformations of a value. In `x |> f(%)`, the topic `%` stands for `x`: the body after `|>` says where the value goes, so a stage can take it in any argument position.
 
+`vibelang --fix` rewrites Effect `.pipe(...)` calls to `|>` when the rewrite preserves inference. A curried stage can select a different spelling for an imported type alias than its data-first form. In that case the quick fix keeps `.pipe(...)` and explains why it cannot rewrite it automatically, preserving the module's declaration output. The original pipeline remains valid VibeLang.
+
 ## Compose reusable functions
 
 ```vibe
