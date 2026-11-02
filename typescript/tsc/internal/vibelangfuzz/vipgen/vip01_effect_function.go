@@ -624,3 +624,74 @@ func init() {
 		})
 	}
 }
+
+// Alchemy62: an Effect-typed prototype is ordinary data in a plain class
+// factory. Neither contextual overloads nor an Effect-valued return cast may
+// change the callable's kind or evaluate its result. The explicit marker
+// control also isolates the existing pre-flip compatibility path.
+func init() {
+	for _, form := range []string{"arrow", "block", "function", "declaration", "method", "marked"} {
+		vibe, reference := effectClassFactoryWitness(form)
+		registerWitness(1, ChapterWitness{
+			Key:     "vip01.effectclass-" + form + "-plain",
+			Chapter: "001-functions.md",
+			Quote:   "A function's kind is decided by a keyword on the function, never by its body or by a type.",
+			Vibe:    vibe, Effect: reference, Modules: []string{"Effectable"},
+			Cite: Citation{VIP: 1, Template: "Object.assign", Quote: "neither keyword: plain JavaScript; returns the Effect unrun"},
+		})
+	}
+}
+
+func effectClassFactoryWitness(form string) (string, string) {
+	build := func(vibe bool) string {
+		parameter, inner, marker, cast := "impl", "innerImpl", "", ""
+		evaluate := "() => { evaluations++; return impl; }"
+		alias, annotation, head := "", "", "function witness()"
+		if vibe {
+			parameter, inner = "impl?: any", "innerImpl: any"
+			evaluate = "(): infer _ => { evaluations++; return impl; }"
+			head = "function witness(): infer _"
+			cast = " as unknown as EffectClass<any, any, any, any>"
+			alias = "type EffectClass<Shape,A,E=never,R=never> = Effect.Effect<A,E,R> & { new (_:never):Shape };"
+			annotation = ": { <A,E=never,R=never>(impl:Effect.Effect<A,E,R>):EffectClass<A,A,E,R>; <Shape>():<A,E=never,R=never>(impl:Effect.Effect<A,E,R>)=>EffectClass<Shape,A,E,R> }"
+			if form == "marked" {
+				marker = ": infer _"
+				inner += "): infer _"
+				inner = "(" + inner
+			}
+		}
+		innerFunction := "(" + inner + ") => effectClass(innerImpl)"
+		if vibe && form == "marked" {
+			innerFunction = inner + " => effectClass(innerImpl)"
+		}
+		value := "(Object.assign(class { value = 7 }, Effectable.Prototype({ label: \"alchemy/EffectClass\", evaluate: " + evaluate + " }))" + cast + ")"
+		expression := "(" + parameter + ")" + marker + " => impl === undefined ? " + innerFunction + " : " + value
+		block := "if (impl === undefined) return " + innerFunction + "; return " + value + ";"
+		declaration := ""
+		switch form {
+		case "block":
+			expression = "(" + parameter + ") => { " + block + " }"
+		case "function":
+			expression = "function(" + parameter + ") { " + block + " }"
+		case "declaration":
+			declaration = "function factory(" + parameter + ") { " + block + " }"
+			expression = "factory"
+		case "method":
+			declaration = "const holder = { make(" + parameter + ") { " + block + " } };"
+			expression = "holder.make.bind(holder)"
+		}
+		if vibe {
+			expression = "(" + expression + ") as any"
+		}
+		ctorType := ""
+		if vibe {
+			ctorType = ": any"
+		}
+		return head + " { let evaluations=0; " + alias + declaration +
+			"const effectClass" + annotation + " = " + expression + ";" +
+			"const curry = effectClass(); const Ctor" + ctorType + "=effectClass(Effect.succeed(7)); const Curried" + ctorType + "=curry(Effect.succeed(7));" +
+			"class Derived extends Ctor {}" +
+			"return [typeof curry,typeof Ctor,typeof Curried,new Ctor().value,new Curried().value,new Derived().value,evaluations,Effect.isEffect(Ctor)]; }"
+	}
+	return build(true), build(false)
+}

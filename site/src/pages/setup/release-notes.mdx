@@ -164,6 +164,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Service-call regression tests now cover catch heads, parentheses, computed members, and aliases, checking that retired static shortcuts are rejected while explicit service reads compile.
 
+- Plain factory regressions could escape differential checks; generated cases now cover direct and curried Effect class construction, inheritance and call-time evaluation.
+
 - Published API checks rejected identical JSON exports as non-modules; JSON assets now retain their `resolveJsonModule` types, and real type changes still fail.
 
 - Source-child loader wiring introduced a `fileURLToPath` import alias and failed repositories’ native import policies. Setup now uses a namespace import and refreshes its own previously generated helpers while preserving manually observed bindings.
