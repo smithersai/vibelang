@@ -13,7 +13,7 @@ const flow = ".smithers/flows/migrate"
 // list); a `//` glob in packages/PACKAGE.ts matched no file at all.
 const flowFiles = (dir = flow) => readdirSync(join(root, dir), { withFileTypes: true })
   .flatMap(e => e.isDirectory() ? (e.name === "node_modules" ? [] : flowFiles(dir + "/" + e.name)) : [dir + "/" + e.name])
-for (const label of ["//packages:compiler-test", "//packages:vite-test", "//packages:compiler-tools-test"]) {
+for (const label of ["//packages:compiler-test", "//packages:migrate-test", "//packages:vite-test", "//packages:compiler-tools-test"]) {
   test(label + " keys every file of the migrate flow, including hidden directories", { timeout: 180000 }, () => {
     const explain = target => {
       const child = spawnSync(process.execPath, [join(root, ".smithers/node_modules/.bin/smthrs"), "explain", target, "--format", "json"],
@@ -25,8 +25,8 @@ for (const label of ["//packages:compiler-test", "//packages:vite-test", "//pack
     assert.ok(plan.dependencies.includes("//:migration-sources"), label + ": missing migration source dependency")
     const sources = explain("//:migration-sources")
     const files = new Map(sources.inputs.flatMap(input => input.files ?? []).map(f => [f.path, f.digest]))
-    // compiler-test also runs the convert flow's tests.
-    const required = [...flowFiles(), ...(label.includes("compiler-test") ? flowFiles(".smithers/flows/convert") : [])]
+    // migrate-test also runs the convert flow's tests.
+    const required = [...flowFiles(), ...(label.includes("migrate-test") ? flowFiles(".smithers/flows/convert") : [])]
     assert.ok(required.some(f => f.startsWith(flow + "/templates/")) && required.some(f => f.startsWith(flow + "/test/corpus/")))
     for (const file of required) {
       assert.ok(files.has(file), label + ": missing cache input " + file)

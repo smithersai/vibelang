@@ -47,13 +47,9 @@ const compilerNative = S.Shell.Build({
   timeout: "5m"
 })
 
-// The migrate and convert flows' tests run here too: they stage this compiler
-// and runtime as a toolchain, and scripts/test-runners.test.mjs fails when a
-// test file runs in no target. //:migration-sources keys both flows.
 const compilerTest = S.Shell.Test({
-  summary: "The compiler package's node tests and the migrate and convert flows' tests.",
-  shell: "cd packages/compiler && bun install --frozen-lockfile && node --test test/*.test.mjs && " +
-    "cd ../../.smithers/flows && node --test migrate/test/*.test.mjs convert/*.test.mjs",
+  summary: "The compiler package's node tests.",
+  shell: "cd packages/compiler && bun install --frozen-lockfile && node --test test/*.test.mjs",
   // Migration properties exercise the flow's package-export and Bun.build edits.
   // Their helpers and the TypeScript API install must enter the cache key too.
   data: [compilerNative, runtimeDist, S.glob("compiler/**"), migrationSources, S.glob("//.smithers/flows/migrate/lib/**"), S.glob("//.smithers/flows/migrate/templates/**"),
@@ -67,6 +63,25 @@ const compilerTest = S.Shell.Test({
     S.file("//.smithers/flows/migrate/test/publishing-imports.property.test.mjs"), S.file("//.smithers/flows/migrate/test/corpus/opencode-sdk-conditional-imports.json"),
     S.file("//.smithers/flows/migrate/test/publishing.property.test.mjs"), S.file("//.smithers/flows/migrate/test/corpus/opencode-published-migrated-entry.json"),
     S.file("vite/src/relative-imports.js"), S.file("vite/src/paths-imports.js"), S.file("unplugin/src/relative-imports.js"), ...install],
+  tools: [S.Host.bin("node"), S.Host.bin("bun"), S.Host.bin("jj")],
+  sandbox: "none",
+  timeout: "15m"
+})
+
+// The migrate and convert flows' tests stage this compiler and runtime as a
+// toolchain. They ran inside //packages:compiler-test from 2026-11-02 00:58Z,
+// which took that target from a 134 s to a 389 s median on cf pre-gate boxes,
+// with six 15-minute timeouts; as their own target they run on another box.
+// //:migration-sources keys both flows; scripts/test-runners.test.mjs fails
+// when a test file runs in no target.
+const migrateTest = S.Shell.Test({
+  summary: "The migrate and convert flows' tests.",
+  shell: "cd packages/compiler && bun install --frozen-lockfile && " +
+    "cd ../../.smithers/flows && node --test migrate/test/*.test.mjs convert/*.test.mjs",
+  data: [compilerNative, runtimeDist, S.glob("compiler/**"), migrationSources,
+    S.file("//docs/tools/package.json"), S.file("//docs/tools/bun.lock"),
+    S.file("//scripts/testing/property.mjs"), S.file("//docs/design/src/007-tooling.md"),
+    S.glob("vite/src/**"), S.glob("unplugin/src/**"), ...install],
   tools: [S.Host.bin("node"), S.Host.bin("bun"), S.Host.bin("jj")],
   sandbox: "none",
   timeout: "15m"
@@ -112,6 +127,7 @@ export const Package = S.Package({
     "runtime-published": runtimePublished,
     "compiler-native": compilerNative,
     "compiler-test": compilerTest,
+    "migrate-test": migrateTest,
     "compiler-tools-test": compilerToolsTest,
     "vite-test": viteTest,
     "unplugin-test": unpluginTest,

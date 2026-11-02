@@ -142,6 +142,7 @@ hand, rebuild it after changing compiler sources.
   :runtime-test                 bun test (runtime)
   :compiler-native              the binary and dprint plugin in packages/compiler
   :compiler-test                node --test (compiler package)
+  :migrate-test                 node --test (the migrate and convert flows)
   :vite-test :unplugin-test      the bundler plugins' test/run.sh (source maps, builds, watch)
 //                              checks that read the whole repository
   :tree                         Filegroup: every file
@@ -160,8 +161,8 @@ hand, rebuild it after changing compiler sources.
 ```
 
 ```text
-:srcs ─► :compiler ─┬─► :<case> x809 ◄─┬─ :runtime-dist ─► :runtime-test, :compiler-test
-                    ├─► :compiler-native ─► :compiler-test, :vite-test, :unplugin-test, :release, :snippets, :docs-tools
+:srcs ─► :compiler ─┬─► :<case> x809 ◄─┬─ :runtime-dist ─► :runtime-test, :compiler-test, :migrate-test
+                    ├─► :compiler-native ─► :compiler-test, :migrate-test, :vite-test, :unplugin-test, :release, :snippets, :docs-tools
                     ├─► :lsp-smoke ◄─ :runtime-dist
                     └─► :snippets, :docs-tools
 :tree ─► :release :snippets :tokens :forms :docs-tools :docs-check :go-vibelang*
@@ -338,7 +339,7 @@ A cached result is only as correct as its key is complete. Each target names:
   and `jj file list`, which the docs check runs while other targets restore
   their outputs, snapshots the working copy: an unignored temporary tree is
   tracked, then vanishes before the check reads it. Discovery prunes the Vite
-  The compiler-package migration fixtures also spawn `jj`; it is declared in the workspace host binaries and on `//packages:compiler-test`.
+  The compiler-package migration fixtures also spawn `jj`; it is declared in the workspace host binaries and on `//packages:compiler-test` and `//packages:migrate-test`.
   and unplugin test `.fixtures/` trees and the compiler case directory, which
   has no package declarations: their generated outputs may change while the
   compiler tests explain their migration-source cache inputs. This excludes
