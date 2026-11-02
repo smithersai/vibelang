@@ -824,6 +824,9 @@ The mapper parity harness shares `parseJsonc` from `packages/compiler/cache.mjs`
 
 The declaration and runtime columns of mapper parity share `packages/ts-mapper/test/parity/command.ts`. A command's deadline covers both process exit and stdout/stderr draining. On POSIX, the command owns a separate process group; a timeout stops that group, including descendants holding inherited pipes after their parent exits. The reported status names the timeout even when the parent exited `0`; spontaneous signals keep their signal status, and ordinary commands keep their exit code and separate output streams. Windows retains direct-child termination. `node --test scripts/mapper-parity-command.test.mjs` checks real process trees, generated stream ownership and nesting, partial output, isolated concurrent commands and spawn failures; the release target runs it.
 
+
+The mapper runtime parity column requires stock TypeScript to exit `0` before it runs any emitted JavaScript. `noCheck` deliberately skips type checking, but syntax errors still fail compilation even when `noEmitOnError: false` leaves executable output. A failure names the compile stage, exit status and first diagnostic, bounded to `300` characters. `node --test scripts/mapper-runtime-compile.test.mjs` uses the pinned real compiler to cover emitted output after syntax errors, verify that top-level side effects never run after a failed compile, and retain healthy and deliberately unchecked controls. Generated mixed batches check isolation between failing and passing cases; the release target runs the suite.
+
 ## Known gaps
 
 - **Sandboxing.** The targets run with `sandbox: "none"`: the harness writes

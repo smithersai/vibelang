@@ -162,6 +162,7 @@ async function runCase(c: RuntimeCase, o: RuntimeOptions, nm: string): Promise<R
     const config = { compilerOptions: { ...stockOptions, noCheck: true, noEmit: false, noEmitOnError: false, declaration: false, outDir, rootDir: path.resolve(dir, common || ".") }, files: tsFiles }
     fs.writeFileSync(path.join(dir, "tsconfig.runtime.json"), `${JSON.stringify(config, null, 2)}\n`)
     const compiled = await exec([o.stockTsc, "-p", "tsconfig.runtime.json", "--pretty", "false"], dir, 120_000)
+    if (compiled.code !== 0) return done((`stock tsc exited ${compiled.code}: ${(compiled.stdout + compiled.stderr).trim().split("\n")[0]}`).slice(0, 300))
     if (tsFiles.some((f) => !fs.existsSync(outputOf(f)))) return done(`stock tsc wrote no JavaScript for the .ts sources: ${(compiled.stdout + compiled.stderr).split("\n")[0]}`)
   }
 
