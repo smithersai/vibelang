@@ -531,7 +531,7 @@ func GetScriptKindFromFileName(fileName tspath.RootedFilePath) ScriptKind {
 			return ScriptKindJSX
 		case tspath.ExtensionTs, tspath.ExtensionCts, tspath.ExtensionMts, tspath.ExtensionVibe:
 			return ScriptKindTS
-		case tspath.ExtensionTsx:
+		case tspath.ExtensionTsx, tspath.ExtensionVibex:
 			return ScriptKindTSX
 		case tspath.ExtensionJson:
 			return ScriptKindJSON

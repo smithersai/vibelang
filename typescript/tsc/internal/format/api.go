@@ -9,7 +9,6 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ls/lsutil"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 	"github.com/microsoft/TypeScript/tsc/internal/stringutil"
-	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
 type FormatRequestKind int
@@ -110,7 +109,7 @@ func formatNodeLines(ctx context.Context, sourceFile *ast.SourceFile, node *ast.
 }
 
 func FormatDocument(ctx context.Context, sourceFile *ast.SourceFile) []core.TextChange {
-	if sourceFile.FileName().Extension() == tspath.ExtensionVibe {
+	if sourceFile.FileName().IsVibeLangSource() {
 		return formatVibeLangDocument(ctx, sourceFile)
 	}
 	return FormatSpan(ctx, core.NewTextRange(0, sourceFile.End()), sourceFile, FormatRequestKindFormatDocument)

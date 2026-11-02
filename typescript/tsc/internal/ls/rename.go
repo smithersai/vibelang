@@ -214,7 +214,7 @@ func (l *LanguageService) getRenameInfoForNode(ctx context.Context, newName stri
 // D500 uses infer _ as return-inference syntax, not a named type parameter.
 // Conditional infer bindings and ordinary generic parameters remain renameable.
 func isInferredReturnPlaceholder(file *ast.SourceFile, node *ast.Node) bool {
-	if file == nil || file.IsDeclarationFile || !file.FileName().ExtensionIs(tspath.ExtensionVibe) ||
+	if file == nil || file.IsDeclarationFile || !file.FileName().IsVibeLangSource() ||
 		!ast.IsIdentifier(node) || node.Text() != "_" || node.Parent == nil || node.Parent.Kind != ast.KindTypeParameter {
 		return false
 	}

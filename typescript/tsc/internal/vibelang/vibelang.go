@@ -12,7 +12,6 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/transformers/declarations"
-	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
 func init() {
@@ -52,7 +51,7 @@ func init() {
 
 // isVibeLangFile reports whether file is a VibeLang source file.
 func isVibeLangFile(file *ast.SourceFile) bool {
-	return file != nil && !file.IsDeclarationFile && file.FileName().ExtensionIs(tspath.ExtensionVibe)
+	return file != nil && !file.IsDeclarationFile && file.FileName().IsVibeLangSource()
 }
 
 // isLowerable reports whether node is a function that the lowering can turn

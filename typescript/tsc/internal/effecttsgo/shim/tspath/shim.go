@@ -124,6 +124,7 @@ const ExtensionTs = tspath.ExtensionTs
 const ExtensionTsBuildInfo = tspath.ExtensionTsBuildInfo
 const ExtensionTsx = tspath.ExtensionTsx
 const ExtensionVibe = tspath.ExtensionVibe
+const ExtensionVibex = tspath.ExtensionVibex
 
 var ExtensionsNotSupportingExtensionlessResolution = tspath.ExtensionsNotSupportingExtensionlessResolution
 

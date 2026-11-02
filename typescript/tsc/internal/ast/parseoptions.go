@@ -81,8 +81,8 @@ func getExternalModuleIndicator(file *SourceFile, opts ExternalModuleIndicatorOp
 		}
 	}
 
-	// VIP-30: every source .vibe is a module, independently of moduleDetection.
-	if opts.Force || file.FileName().ExtensionIs(tspath.ExtensionVibe) {
+	// VIP-30: every source .vibe or .vibex is a module, independently of moduleDetection.
+	if opts.Force || file.FileName().IsVibeLangSource() {
 		return file.AsNode()
 	}
 

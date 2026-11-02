@@ -119,7 +119,7 @@ func loadCaseSeeds(root string) []Seed {
 			if d.Type()&fs.ModeSymlink != 0 || !ValidProjectPath(rel) {
 				return nil
 			}
-			if strings.HasSuffix(rel, ".d.vibe.ts") {
+			if strings.HasSuffix(rel, ".d.vibe.ts") || strings.HasSuffix(rel, ".d.vibex.ts") {
 				return nil
 			}
 			if rel == "pending" {

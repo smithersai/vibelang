@@ -5,7 +5,6 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
-	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
 // isVibeLangWrittenDeclaration reports whether declaration declares a name
@@ -16,7 +15,7 @@ import (
 func isVibeLangWrittenDeclaration(declaration *ast.Node) bool {
 	name := declaration.Name()
 	return name != nil && ast.IsIdentifier(name) && name.Flags&ast.NodeFlagsReparsed != 0 && strings.HasPrefix(name.Text(), "$") &&
-		ast.GetSourceFileOfNode(declaration).FileName().ExtensionIs(tspath.ExtensionVibe)
+		ast.GetSourceFileOfNode(declaration).FileName().IsVibeLangSource()
 }
 
 // isVibeLangPatternRead reports whether accessNode is the VibeLang parser's read
@@ -33,7 +32,7 @@ func isVibeLangPatternRead(accessNode *ast.Node) bool {
 // override nothing the source wrote.
 func isVibeLangServiceDeclaredMember(class *ast.Node, member *ast.Symbol) bool {
 	extends := ast.GetClassExtendsHeritageElement(class)
-	if extends == nil || !ast.GetSourceFileOfNode(class).FileName().ExtensionIs(tspath.ExtensionVibe) {
+	if extends == nil || !ast.GetSourceFileOfNode(class).FileName().IsVibeLangSource() {
 		return false
 	}
 	base := extends.Expression()

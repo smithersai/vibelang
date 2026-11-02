@@ -17,6 +17,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/locale"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
 // The invariants every compilation keeps, whatever its input. Each one names
@@ -275,7 +276,7 @@ func CheckDiagnostics(g *Gaps, dir string, ds []*ast.Diagnostic, defaultsApply b
 		// confined to `.vibe`." Imported rules retain upstream file eligibility,
 		// including selected TypeScript inputs (importedFileScopeQuote).
 		// This invariant confines VibeLang's own rules, not the imported rules.
-		if !imported && (d.File() == nil || !strings.HasSuffix(string(d.File().OriginalFileName()), ".vibe")) {
+		if !imported && (d.File() == nil || !tspath.IsVibeLangSource(string(d.File().OriginalFileName()))) {
 			g.Add("feature:d266", "VIP-34: %s attaches to a file that is not a .vibe file: %s", name, keyOf(dir, d))
 			continue
 		}

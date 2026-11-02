@@ -4,6 +4,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
 // VibeLang's surface syntax as written.
@@ -126,10 +127,19 @@ type VibeSyntaxArm struct {
 
 // ParseVibeLangSyntax parses a .vibe file as ParseSourceFile does, and returns
 // the VibeLang forms it holds, in the order the parser finished them.
+// vibeLangScriptKind is the kind a VibeLang file parses as: TSX for a
+// .vibex (VIP-39), else TS.
+func vibeLangScriptKind(fileName tspath.RootedFilePath) core.ScriptKind {
+	if fileName.ExtensionIs(tspath.ExtensionVibex) {
+		return core.ScriptKindTSX
+	}
+	return core.ScriptKindTS
+}
+
 func ParseVibeLangSyntax(opts ast.SourceFileParseOptions, sourceText string) (*ast.SourceFile, []VibeSyntax) {
 	p := getParser()
 	defer putParser(p)
-	p.initializeState(opts, sourceText, core.ScriptKindTS)
+	p.initializeState(opts, sourceText, vibeLangScriptKind(opts.FileName))
 	forms := []VibeSyntax{}
 	p.vibelangSyntax = &forms
 	p.nextToken()

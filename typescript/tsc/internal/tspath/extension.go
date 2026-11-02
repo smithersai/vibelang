@@ -19,16 +19,17 @@ const (
 	ExtensionCjs         = ".cjs"
 	ExtensionCts         = ".cts"
 	ExtensionDcts        = ".d.cts"
-	ExtensionVibe        = ".vibe" // VibeLang source; parses as TypeScript
+	ExtensionVibe        = ".vibe"  // VibeLang source; parses as TypeScript
+	ExtensionVibex       = ".vibex" // VibeLang source with JSX; parses as TSX (VIP-39)
 )
 
 var (
 	SupportedDeclarationExtensions                 = []string{ExtensionDts, ExtensionDcts, ExtensionDmts}
-	SupportedTSImplementationExtensions            = []string{ExtensionTs, ExtensionTsx, ExtensionMts, ExtensionCts, ExtensionVibe}
-	supportedTSExtensionsForExtractExtension       = []string{ExtensionDts, ExtensionDcts, ExtensionDmts, ExtensionTs, ExtensionTsx, ExtensionMts, ExtensionCts, ExtensionVibe}
-	AllSupportedExtensions                         = [][]string{{ExtensionTs, ExtensionTsx, ExtensionDts, ExtensionJs, ExtensionJsx, ExtensionVibe}, {ExtensionCts, ExtensionDcts, ExtensionCjs}, {ExtensionMts, ExtensionDmts, ExtensionMjs}}
-	SupportedTSExtensions                          = [][]string{{ExtensionTs, ExtensionTsx, ExtensionDts, ExtensionVibe}, {ExtensionCts, ExtensionDcts}, {ExtensionMts, ExtensionDmts}}
-	SupportedTSExtensionsFlat                      = []string{ExtensionTs, ExtensionTsx, ExtensionDts, ExtensionCts, ExtensionDcts, ExtensionMts, ExtensionDmts, ExtensionVibe}
+	SupportedTSImplementationExtensions            = []string{ExtensionTs, ExtensionTsx, ExtensionMts, ExtensionCts, ExtensionVibe, ExtensionVibex}
+	supportedTSExtensionsForExtractExtension       = []string{ExtensionDts, ExtensionDcts, ExtensionDmts, ExtensionTs, ExtensionTsx, ExtensionMts, ExtensionCts, ExtensionVibe, ExtensionVibex}
+	AllSupportedExtensions                         = [][]string{{ExtensionTs, ExtensionTsx, ExtensionDts, ExtensionJs, ExtensionJsx, ExtensionVibe, ExtensionVibex}, {ExtensionCts, ExtensionDcts, ExtensionCjs}, {ExtensionMts, ExtensionDmts, ExtensionMjs}}
+	SupportedTSExtensions                          = [][]string{{ExtensionTs, ExtensionTsx, ExtensionDts, ExtensionVibe, ExtensionVibex}, {ExtensionCts, ExtensionDcts}, {ExtensionMts, ExtensionDmts}}
+	SupportedTSExtensionsFlat                      = []string{ExtensionTs, ExtensionTsx, ExtensionDts, ExtensionCts, ExtensionDcts, ExtensionMts, ExtensionDmts, ExtensionVibe, ExtensionVibex}
 	SupportedJSExtensions                          = [][]string{{ExtensionJs, ExtensionJsx}, {ExtensionMjs}, {ExtensionCjs}}
 	SupportedJSExtensionsFlat                      = []string{ExtensionJs, ExtensionJsx, ExtensionMjs, ExtensionCjs}
 	AllSupportedExtensionsWithJson                 = slices.Concat(AllSupportedExtensions, [][]string{{ExtensionJson}})
@@ -37,11 +38,36 @@ var (
 	ExtensionsNotSupportingExtensionlessResolution = []string{ExtensionMts, ExtensionDmts, ExtensionMjs, ExtensionCts, ExtensionDcts, ExtensionCjs}
 )
 
-func ExtensionIsTs(ext string) bool {
-	return ext == ExtensionTs || ext == ExtensionTsx || ext == ExtensionDts || ext == ExtensionVibe || ext == ExtensionMts || ext == ExtensionDmts || ext == ExtensionCts || ext == ExtensionDcts || len(ext) >= 7 && ext[:3] == ".d." && ext[len(ext)-3:] == ".ts"
+// IsVibeLangSource reports whether fileName names a VibeLang source, a .vibe
+// or a .vibex file (VIP-39). A declaration sidecar such as x.d.vibe.ts is
+// TypeScript. Every "is this VibeLang?" test calls it.
+func IsVibeLangSource(fileName string) bool {
+	return VibeLangSourceExtension(fileName) != ""
 }
 
-var extensionsToRemove = []string{ExtensionDts, ExtensionDmts, ExtensionDcts, ExtensionMjs, ExtensionMts, ExtensionCjs, ExtensionCts, ExtensionTs, ExtensionJs, ExtensionTsx, ExtensionJsx, ExtensionJson, ExtensionVibe}
+// VibeLangSourceExtension returns the extension of a VibeLang source,
+// ".vibe" or ".vibex", or "" when fileName is not one. A site that strips the
+// extension to build a name strips this one.
+func VibeLangSourceExtension(fileName string) string {
+	switch {
+	case strings.HasSuffix(fileName, ExtensionVibe):
+		return ExtensionVibe
+	case strings.HasSuffix(fileName, ExtensionVibex):
+		return ExtensionVibex
+	}
+	return ""
+}
+
+// IsVibeLangSource reports whether f names a .vibe or .vibex source.
+func (f RootedFilePath) IsVibeLangSource() bool {
+	return IsVibeLangSource(string(f))
+}
+
+func ExtensionIsTs(ext string) bool {
+	return ext == ExtensionTs || ext == ExtensionTsx || ext == ExtensionDts || ext == ExtensionVibe || ext == ExtensionVibex || ext == ExtensionMts || ext == ExtensionDmts || ext == ExtensionCts || ext == ExtensionDcts || len(ext) >= 7 && ext[:3] == ".d." && ext[len(ext)-3:] == ".ts"
+}
+
+var extensionsToRemove = []string{ExtensionDts, ExtensionDmts, ExtensionDcts, ExtensionMjs, ExtensionMts, ExtensionCjs, ExtensionCts, ExtensionTs, ExtensionJs, ExtensionTsx, ExtensionJsx, ExtensionJson, ExtensionVibe, ExtensionVibex}
 
 func RemoveFileExtension(path string) string {
 	// Remove any known extension even if it has more than one dot
@@ -145,7 +171,7 @@ func GetDeclarationEmitExtensionForPath(path string) string {
 		return ExtensionDmts
 	case FileExtensionIsOneOf(path, []string{ExtensionCjs, ExtensionCts}):
 		return ExtensionDcts
-	case FileExtensionIsOneOf(path, []string{ExtensionTs, ExtensionTsx, ExtensionJs, ExtensionJsx, ExtensionVibe}):
+	case FileExtensionIsOneOf(path, []string{ExtensionTs, ExtensionTsx, ExtensionJs, ExtensionJsx, ExtensionVibe, ExtensionVibex}):
 		return ExtensionDts
 	default:
 		ext := GetAnyExtensionFromPath(path, nil, CaseSensitive)

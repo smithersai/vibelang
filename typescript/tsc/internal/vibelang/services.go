@@ -292,7 +292,7 @@ func (s *services) key(class *ast.Node) string {
 	file := ast.GetSourceFileOfNode(class)
 	fileName := file.FileName()
 	program := s.checker.Program()
-	module := string(fileName.RemoveExtension(tspath.ExtensionVibe))
+	module := string(fileName.RemoveExtension(tspath.VibeLangSourceExtension(fileName.AsString())))
 	prefix := ""
 	if directory := program.GetNearestAncestorDirectoryWithPackageJson(fileName.Directory()); directory != "" {
 		prefix = directory.BaseName()

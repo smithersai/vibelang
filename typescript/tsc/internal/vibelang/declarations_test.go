@@ -125,13 +125,13 @@ func computedKeyFiles(symlinked bool) map[string]string {
 	return map[string]string{
 		"/workspace/x/src/package.json":  `{"type":"module"}`,
 		"/workspace/x/src/tsconfig.json": `{"compilerOptions":{"strict":true,"target":"ESNext","module":"NodeNext","declaration":true},"files":["main.vibe"]}`,
-		effect + "package.json":      `{"name":"effect","type":"module","exports":{".":{"types":"./index.d.ts"},"./Effect":{"types":"./Effect.d.ts"},"./Inspectable":{"types":"./Inspectable.d.ts"}}}`,
-		effect + "index.d.ts":        `export * as Effect from "./Effect.js"; export * as Inspectable from "./Inspectable.js"`,
-		effect + "Effect.d.ts":       `export interface Effect<A, E = never, R = never> { readonly "~effect/Effect": { readonly _A: (_: never) => A; readonly _E: (_: never) => E; readonly _R: (_: never) => R } }`,
-		effect + "Inspectable.d.ts":  `export declare const NodeInspectSymbol: unique symbol`,
-		runtime + "package.json":     `{"name":"vibelang-runtime","type":"module","exports":{".":{"types":"./index.d.ts"}}}`,
-		runtime + "index.d.ts":       `export * as Effect from "effect/Effect"; export * from "./match.js"`,
-		runtime + "match.d.ts":       `export declare const customMatcher: unique symbol`,
+		effect + "package.json":          `{"name":"effect","type":"module","exports":{".":{"types":"./index.d.ts"},"./Effect":{"types":"./Effect.d.ts"},"./Inspectable":{"types":"./Inspectable.d.ts"}}}`,
+		effect + "index.d.ts":            `export * as Effect from "./Effect.js"; export * as Inspectable from "./Inspectable.js"`,
+		effect + "Effect.d.ts":           `export interface Effect<A, E = never, R = never> { readonly "~effect/Effect": { readonly _A: (_: never) => A; readonly _E: (_: never) => E; readonly _R: (_: never) => R } }`,
+		effect + "Inspectable.d.ts":      `export declare const NodeInspectSymbol: unique symbol`,
+		runtime + "package.json":         `{"name":"vibelang-runtime","type":"module","exports":{".":{"types":"./index.d.ts"}}}`,
+		runtime + "index.d.ts":           `export * as Effect from "effect/Effect"; export * from "./match.js"`,
+		runtime + "match.d.ts":           `export declare const customMatcher: unique symbol`,
 	}
 }
 

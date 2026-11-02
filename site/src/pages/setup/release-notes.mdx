@@ -365,6 +365,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The pipe grammar checks stopped at an outdated specification sentence after Effect arrows were explicitly included in the covering-production rule. They now quote that rule and continue checking rejected conditional tests and their parenthesized repairs.
 
+- A `.vibex` file (VIP-39: VibeLang with JSX) failed with `TS6054`; the compiler now reads it as VibeLang parsed as `.tsx`, so JSX and VibeLang forms mix in one file. Imports of `.vibex` modules, output names under `jsx: preserve`, editors and bundlers follow in later VIP-39 slices.
 - Missing-runtime fuzz checks assumed every Effect function imported `vibelang-runtime`; they now inspect parsed module imports and preserve independent errors when no runtime helper is needed.
 
 - Concurrent migration batches could restore another package's files to their old bytes after it reported successful fixes; restoration now stays inside each compiler source graph, and overlapping graphs take turns.

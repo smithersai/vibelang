@@ -3,6 +3,7 @@ package vibelangfuzz
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"slices"
 	"strings"
 	"sync"
@@ -15,7 +16,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vibelangestree"
 )
 
-// FuzzParse parses any text as a .vibe, .ts, .tsx and .d.ts file and holds
+// FuzzParse parses any text as a .vibe, .vibex, .ts, .tsx and .d.ts file and holds
 // the tree to what the checker, the emitter and the editor read from it
 // (Chapter 27's pipeline starts at the parser): no panic; every node inside
 // the text and its parent, after its previous sibling; the same tree and
@@ -59,6 +60,7 @@ type parseKind struct {
 
 var parseKinds = []parseKind{
 	{"/fuzz/main.vibe", core.ScriptKindTS},
+	{"/fuzz/main.vibex", core.ScriptKindTSX},
 	{"/fuzz/main.ts", core.ScriptKindTS},
 	{"/fuzz/main.tsx", core.ScriptKindTSX},
 	{"/fuzz/main.d.ts", core.ScriptKindTS},
@@ -94,7 +96,7 @@ func parseGaps(g *Gaps, source string) {
 		// diagnostics print at its spans (D61), source maps carry them (D34),
 		// and the editor finds the node at a position by descending through
 		// children in order (Chapter 28, The editor).
-		if where == ".vibe" {
+		if where == ".vibe" || where == ".vibex" {
 			// The VibeLang parser writes each abbreviation as the TypeScript
 			// it stands for, placing the long form's nodes at the source
 			// spans they come from, which may overlap; Chapter 27 and 28 hold
@@ -117,6 +119,13 @@ func parseGaps(g *Gaps, source string) {
 		if again := dumpTree(parseAs(k, source)); again != dumps[k.name] {
 			g.Add("feature:parse-determinism", "parsing as %s again gives another tree:\n%s", strings.TrimPrefix(k.name, "/fuzz/main"), firstDifference(dumps[k.name], again))
 		}
+	}
+	// A .vibex is a .vibe read with the JSX variant, and the two readings
+	// compete only for < (Chapter 7, JSX source files): text without < parses
+	// to the same tree and the same syntax errors under both names. This
+	// compares the compiler with itself on two inputs the chapter says agree.
+	if !strings.Contains(source, "<") && dumps["/fuzz/main.vibe"] != dumps["/fuzz/main.vibex"] {
+		g.Add("feature:vibex-rename-invariance", "text without < parses differently as .vibe and .vibex:\n%s", firstDifference(dumps["/fuzz/main.vibe"], dumps["/fuzz/main.vibex"]))
 	}
 	for _, name := range []string{"main.vibe", "main.ts"} {
 		checkESTree(g, name, source)
@@ -271,4 +280,22 @@ func rangeProblem(value any, size int) (kind string, problem string) {
 		}
 	}
 	return "", ""
+}
+
+// vibexQuotes are Chapter 7's rules FuzzParse's rename oracle reads.
+var vibexQuotes = []string{
+	"A `.vibex` file is a `.vibe` file read with TypeScript's JSX language variant",
+	"every VibeLang production is `.vibe`'s; where they compete for `<` in expression position, `.tsx`'s reading wins",
+}
+
+func TestVibexRenameQuoted(t *testing.T) {
+	text, err := os.ReadFile(SpecPath("007-tooling.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, quote := range vibexQuotes {
+		if !strings.Contains(string(text), quote) {
+			t.Fatalf("Chapter 7 no longer says %q", quote)
+		}
+	}
 }

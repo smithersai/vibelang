@@ -1,8 +1,6 @@
 package lint
 
 import (
-	"strings"
-
 	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/internal/rules"
 	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/ast"
 )
@@ -109,7 +107,7 @@ var vibeRuleNames = func() []string {
 
 // ruleNamesFor returns the rules to run on sf; nil selects every rule.
 func ruleNamesFor(sf *ast.SourceFile) []string {
-	if strings.HasSuffix(sf.FileName().AsString(), ".vibe") {
+	if sf.FileName().IsVibeLangSource() {
 		return vibeRuleNames
 	}
 	return nil

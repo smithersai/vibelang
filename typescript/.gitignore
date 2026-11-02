@@ -140,3 +140,4 @@ tools/gotestsum.exe.hash
 !tsc/testdata/submoduleAccepted.txt
 !tsc/testdata/submoduleTriaged.txt
 /vibelang/cases/*/*.d.vibe.ts
+/vibelang/cases/*/*.d.vibex.ts

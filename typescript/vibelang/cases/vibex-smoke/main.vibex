@@ -1,0 +1,26 @@
+// expect-result: ["vibex-smoke/main#Users",{"tag":"p","props":{"title":"7"},"children":["3"]}]
+// VIP-39: a .vibex file is VibeLang read as .tsx. The pipe and its topic work
+// inside a JSX attribute and a JSX child, and the service key derives from the
+// extensionless path, as for main.vibe.
+type VNode = { tag: string; props: Record<string, unknown> | null; children: unknown[] }
+
+declare global {
+  namespace JSX {
+    type Element = VNode
+    interface IntrinsicElements {
+      [tag: string]: Record<string, unknown>
+    }
+  }
+}
+
+function h(tag: string, props: Record<string, unknown> | null, ...children: unknown[]): VNode {
+  return { tag, props, children }
+}
+
+export service Users {}
+
+export effect function main() {
+  const n = 2
+  const element = <p title={String(n |> % + 5)}>{n |> String(% + 1)}</p>
+  return [Users.key, element]
+}

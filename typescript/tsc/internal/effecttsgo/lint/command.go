@@ -288,7 +288,7 @@ func vibeFiles(cwd string, paths []string, config *Config, ignore *ignorer) ([]s
 				}
 				return nil
 			}
-			if strings.HasSuffix(file, ".vibe") && !config.Ignored(file) && !ignore.ignored(file, false) {
+			if tspath.IsVibeLangSource(file) && !config.Ignored(file) && !ignore.ignored(file, false) {
 				files = append(files, file)
 			}
 			return nil

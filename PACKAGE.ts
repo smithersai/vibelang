@@ -267,6 +267,7 @@ const specTests = [
   "TestFiberUnaryOperandsQuoted",
   "TestDeclarationLineBreakQuoted",
   "TestEffectHeritageQuoted",
+  "TestVibexRenameQuoted",
   "TestSchemaDecodedKeyFlagsQuoted",
   "TestFormatBlockHeaderRulesQuoted",
   "TestFormatContractCommentQuote",

@@ -3,7 +3,6 @@ package compiler
 import (
 	"encoding/json"
 	"slices"
-	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/outputpaths"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
@@ -78,5 +77,5 @@ func (p *Program) writeVibeLangManifest(emitters []*emitter, emitOptions EmitOpt
 
 // isVibeLangSource reports whether fileName names a .vibe file.
 func isVibeLangSource(fileName tspath.RootedFilePath) bool {
-	return strings.HasSuffix(fileName.AsString(), ".vibe")
+	return fileName.IsVibeLangSource()
 }

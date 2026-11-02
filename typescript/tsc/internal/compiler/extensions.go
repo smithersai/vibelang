@@ -143,8 +143,8 @@ func SetLoaderRoot(root string) {
 }
 
 // outsideLoaderRoot reports whether a loader's compile leaves file unchecked
-// and unemitted: every file but a .vibe source under the root, and the module
-// declaration bodies (D283) of a .vibe source the compile checks.
+// and unemitted: every file but a VibeLang source under the root, and the module
+// declaration bodies (D283) of a VibeLang source the compile checks.
 func outsideLoaderRoot(file *ast.SourceFile, caseSensitivity tspath.CaseSensitivity) bool {
 	if loaderRoot == "" {
 		return false
@@ -152,6 +152,6 @@ func outsideLoaderRoot(file *ast.SourceFile, caseSensitivity tspath.CaseSensitiv
 	if canonical := file.CanonicalSourceFile(); canonical != nil {
 		file = canonical
 	}
-	return file.IsDeclarationFile || !file.FileName().ExtensionIs(tspath.ExtensionVibe) ||
+	return file.IsDeclarationFile || !file.FileName().IsVibeLangSource() ||
 		!tspath.ContainsPath(loaderRoot, string(file.FileName()), caseSensitivity)
 }

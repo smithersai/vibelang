@@ -22,10 +22,11 @@ import (
 // reference paths resolve from the final sidecar location, independently of
 // a consumer's config. VibeLang's resolver still prefers the matching source.
 
-// SidecarPath returns the declaration sidecar of a .vibe file beside it:
-// x.d.vibe.ts for x.vibe.
+// SidecarPath returns the declaration sidecar of a VibeLang file beside it:
+// x.d.vibe.ts for x.vibe and x.d.vibex.ts for x.vibex.
 func SidecarPath(fileName string) string {
-	return strings.TrimSuffix(fileName, tspath.ExtensionVibe) + ".d" + tspath.ExtensionVibe + ".ts"
+	extension := tspath.VibeLangSourceExtension(fileName)
+	return strings.TrimSuffix(fileName, extension) + ".d" + extension + ".ts"
 }
 
 var (
@@ -130,7 +131,7 @@ func (p *Program) sidecarReaderDiagnostics(reported []*ast.Diagnostic, sources [
 	}
 	imports := map[*ast.SourceFile][]*ast.Diagnostic{} // a .vibe module -> where .ts files import it
 	for _, file := range p.GetSourceFiles() {
-		if file.IsDeclarationFile || vibe[file] || tspath.FileExtensionIs(string(file.FileName()), tspath.ExtensionVibe) {
+		if file.IsDeclarationFile || vibe[file] || file.FileName().IsVibeLangSource() {
 			continue
 		}
 		for _, specifier := range file.Imports() {
@@ -160,7 +161,7 @@ func (p *Program) sidecarReaderDiagnostics(reported []*ast.Diagnostic, sources [
 func (p *Program) declarationSidecarSources() []*ast.SourceFile {
 	var sources []*ast.SourceFile
 	for _, file := range p.getSourceFilesToEmit(nil, true /*forceDtsEmit*/, false /*forceJsEmit*/) {
-		if file.IsDeclarationFile || file.EmbeddedModule() != nil || !tspath.FileExtensionIs(string(file.FileName()), tspath.ExtensionVibe) {
+		if file.IsDeclarationFile || file.EmbeddedModule() != nil || !file.FileName().IsVibeLangSource() {
 			continue
 		}
 		sources = append(sources, file)

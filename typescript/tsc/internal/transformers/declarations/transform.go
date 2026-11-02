@@ -235,7 +235,7 @@ const declarationEmitInternalNodeBuilderFlags = nodebuilder.InternalFlagsAllowUn
 // node_modules: the exact type, where TS2883 would leave any (foldkit-33).
 func (tx *DeclarationTransformer) internalNodeBuilderFlags() nodebuilder.InternalFlags {
 	flags := declarationEmitInternalNodeBuilderFlags
-	if tx.state.currentSourceFile != nil && tspath.FileExtensionIs(string(tx.state.currentSourceFile.FileName()), tspath.ExtensionVibe) {
+	if tx.state.currentSourceFile != nil && tx.state.currentSourceFile.FileName().IsVibeLangSource() {
 		flags |= nodebuilder.InternalFlagsNoTruncationLimit
 	}
 	if !tx.compilerOptions.GetEmitDeclarations() {

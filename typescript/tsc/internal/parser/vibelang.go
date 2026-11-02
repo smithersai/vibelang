@@ -5,10 +5,9 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
-	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
-// VibeLang (.vibe) files add short forms to TypeScript's syntax. Each form
+// VibeLang (.vibe and .vibex) files add short forms to TypeScript's syntax. Each form
 // parses into the TypeScript nodes it abbreviates, so the binder, checker,
 // emitter, and language service handle it exactly like the long form.
 //
@@ -22,7 +21,7 @@ import (
 // isVibeLangFile reports whether the parser is reading a .vibe file, outside
 // a module declaration's body, which is TypeScript (vibelang_modules.go).
 func (p *Parser) isVibeLangFile() bool {
-	return !p.vibelangTypeScript && tspath.FileExtensionIs(string(p.opts.FileName), tspath.ExtensionVibe)
+	return !p.vibelangTypeScript && p.opts.FileName.IsVibeLangSource()
 }
 
 // isVibeLangDeclarationWord reports whether text starts a VibeLang declaration

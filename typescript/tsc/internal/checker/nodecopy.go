@@ -916,7 +916,7 @@ func getExistingNodeTreeVisitor(b *NodeBuilderImpl, bound *recoveryBoundary) *as
 // too, so the file decides.
 func (b *NodeBuilderImpl) withoutEmptyBangSlots(reference *ast.Node, arguments *ast.NodeList) *ast.NodeList {
 	written := reference.AsTypeReferenceNode().TypeArguments
-	if reference.AsTypeReferenceNode().TypeName.Flags&ast.NodeFlagsReparsed == 0 || !ast.GetSourceFileOfNode(reference).FileName().ExtensionIs(tspath.ExtensionVibe) || written == nil || arguments == nil || len(written.Nodes) != 3 || len(arguments.Nodes) != 3 {
+	if reference.AsTypeReferenceNode().TypeName.Flags&ast.NodeFlagsReparsed == 0 || !ast.GetSourceFileOfNode(reference).FileName().IsVibeLangSource() || written == nil || arguments == nil || len(written.Nodes) != 3 || len(arguments.Nodes) != 3 {
 		return arguments
 	}
 	keep := 3

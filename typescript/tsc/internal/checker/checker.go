@@ -15800,7 +15800,7 @@ func (c *Checker) resolveExternalModule(
 							// CJS file resolving to an ESM file
 							var diagnosticDetails *ast.Diagnostic
 							ext := importingSourceFile.FileName().Extension()
-							if ext == tspath.ExtensionTs || ext == tspath.ExtensionJs || ext == tspath.ExtensionTsx || ext == tspath.ExtensionJsx || ext == tspath.ExtensionVibe {
+							if ext == tspath.ExtensionTs || ext == tspath.ExtensionJs || ext == tspath.ExtensionTsx || ext == tspath.ExtensionJsx || ext == tspath.ExtensionVibe || ext == tspath.ExtensionVibex {
 								diagnosticDetails = c.createModeMismatchDetails(importingSourceFile, errorNode)
 							}
 

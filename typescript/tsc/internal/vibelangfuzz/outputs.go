@@ -39,7 +39,7 @@ func isDeclaration(name string) bool {
 // a module declaration's body is a file of its own whose original file is
 // the .vibe file (D283, D403).
 func fromVibe(file *ast.SourceFile) bool {
-	return file != nil && strings.HasSuffix(string(file.OriginalFileName()), ".vibe")
+	return file != nil && tspath.IsVibeLangSource(string(file.OriginalFileName()))
 }
 
 // relName returns a program file's path relative to the project directory.

@@ -50,7 +50,7 @@ const bindingRenameNote = "Two is patterns bind {0} in one block: the quick fix 
 // diagnostics are the file's, shared by every checker, so a diagnostic that
 // already carries the note keeps one.
 func explainBindingRename(c *checker.Checker, file *ast.SourceFile, ds []*ast.Diagnostic) []*ast.Diagnostic {
-	if !strings.HasSuffix(file.FileName().AsString(), ".vibe") {
+	if !file.FileName().IsVibeLangSource() {
 		return ds
 	}
 	var renames []bindingRename
@@ -346,7 +346,7 @@ func isIdentifierByte(b byte) bool {
 
 // bindingRenameActions offers the rename at either report of the duplicate.
 func bindingRenameActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-	if !strings.HasSuffix(fix.SourceFile.FileName().AsString(), ".vibe") {
+	if !fix.SourceFile.FileName().IsVibeLangSource() {
 		return nil, nil
 	}
 	c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
@@ -369,7 +369,7 @@ func bindingRenameActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.Co
 // source.
 func bindingRenameMigrationFixes(ctx context.Context, program *compiler.Program, file *ast.SourceFile, refused map[string]bool) proposal {
 	p := proposal{file: file}
-	if !strings.HasSuffix(file.FileName().AsString(), ".vibe") {
+	if !file.FileName().IsVibeLangSource() {
 		return p
 	}
 	c, done := program.GetTypeCheckerForFile(ctx, file)

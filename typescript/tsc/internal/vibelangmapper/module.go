@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
 // A service's key, and the brand its shape carries, name the module that
@@ -33,7 +35,7 @@ func FileContextOf(fileName string) FileContext {
 // package uses its base name, where the fork uses its path from the
 // program's common source directory, which a per-file mapper cannot know.
 func moduleKey(fileName string, read func(string) ([]byte, error)) string {
-	module := strings.TrimSuffix(fileName, ".vibe")
+	module := strings.TrimSuffix(fileName, tspath.VibeLangSourceExtension(fileName))
 	for dir := path.Dir(fileName); ; dir = path.Dir(dir) {
 		if data, err := read(path.Join(dir, "package.json")); err == nil {
 			prefix := path.Base(dir)

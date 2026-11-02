@@ -92,7 +92,7 @@ func (options *CompilerOptions) GetAllowImportingTsExtensions() bool {
 // may: it imports ./welcome.vibe and ./format.ts, and its emitted JavaScript
 // imports ./welcome.js and ./format.js.
 func (options *CompilerOptions) AllowImportingTsExtensionsFrom(fileName tspath.RootedFilePath) bool {
-	return options.GetAllowImportingTsExtensions() || fileName.IsDeclarationFile() || fileName.ExtensionIs(tspath.ExtensionVibe)
+	return options.GetAllowImportingTsExtensions() || fileName.IsDeclarationFile() || fileName.IsVibeLangSource()
 }
 
 func (options *CompilerOptions) GetResolveJsonModule() bool {

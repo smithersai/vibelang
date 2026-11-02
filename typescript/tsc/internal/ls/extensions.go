@@ -108,7 +108,7 @@ func withQuickInfoHooks(c *checker.Checker, node *ast.Node, quickInfo string, do
 	// In a .vibe file the hooks' notes come first and a horizontal rule
 	// separates them from the declaration's own documentation, so clients can
 	// tell the two apart.
-	if strings.HasSuffix(string(ast.GetSourceFileOfNode(node).FileName()), ".vibe") {
+	if ast.GetSourceFileOfNode(node).FileName().IsVibeLangSource() {
 		return quickInfo, notes + "\n\n---\n\n" + documentation
 	}
 	return quickInfo, notes + "\n\n" + documentation
@@ -138,7 +138,7 @@ func isVibeLangWrittenName(symbol *ast.Symbol) bool {
 	}
 	for _, declaration := range declarations {
 		name := declaration.Name()
-		if name == nil || name.Flags&ast.NodeFlagsReparsed == 0 || !ast.GetSourceFileOfNode(declaration).FileName().ExtensionIs(tspath.ExtensionVibe) {
+		if name == nil || name.Flags&ast.NodeFlagsReparsed == 0 || !ast.GetSourceFileOfNode(declaration).FileName().IsVibeLangSource() {
 			return false
 		}
 	}

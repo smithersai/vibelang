@@ -3,7 +3,6 @@ package astnav
 import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
-	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
 // VibeLang (.vibe) forms parse into the TypeScript nodes they abbreviate
@@ -19,11 +18,11 @@ import (
 //     for concurrent(8) (const id of ids) passes ids before 8, and its body
 //     function starts after the binding id.
 //
-// TypeScript code has neither, so outside .vibe files an identifier in
+// TypeScript code has neither, so outside .vibe and .vibex files an identifier in
 // trivia still panics, as upstream.
 
 func isVibeLangSourceFile(sourceFile *ast.SourceFile) bool {
-	return tspath.FileExtensionIs(string(sourceFile.FileName()), tspath.ExtensionVibe)
+	return sourceFile.FileName().IsVibeLangSource()
 }
 
 // vibelangSourceToken returns the source node that is exactly the token at

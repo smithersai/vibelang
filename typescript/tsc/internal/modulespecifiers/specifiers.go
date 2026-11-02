@@ -1382,7 +1382,7 @@ const vibeSourceCondition = "vibelang-source"
 
 // isVibeSource reports whether file is a .vibe module.
 func isVibeSource(file tspath.RootedFilePath) bool {
-	return strings.HasSuffix(file.AsString(), ".vibe")
+	return file.IsVibeLangSource()
 }
 
 // `importingSourceFile` and `importingSourceFileName`? Why not just use `importingSourceFile.path`?
