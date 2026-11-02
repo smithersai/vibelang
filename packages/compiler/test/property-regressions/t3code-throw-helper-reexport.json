@@ -1,0 +1,9 @@
+{
+  "key": "t3code:declaration-gate:sync-throw-helper-reexport",
+  "input": {
+    "name": "required",
+    "parameter": "value",
+    "message": "missing"
+  },
+  "invariant": "A bare reexport changes the published declaration; an explicit plain function wrapper retains it while the throwing implementation stays in TypeScript."
+}

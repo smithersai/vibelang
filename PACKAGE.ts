@@ -98,6 +98,8 @@ const specTests = [
   "TestCatchScopeFixQuoted",
   "TestReviewPatternOptionsQuoted",
   "TestNonrelativeAliasSpellingQuoted",
+  "TestHelperReexportDeclarationsQuoted",
+  "TestFileSchemaBoundaryQuoted",
   "TestDoForTryDiagnosticOwnerQuoted",
   "TestDoDeclarationBytesQuoted",
   "TestDoContextualResultFuzzQuoted",
