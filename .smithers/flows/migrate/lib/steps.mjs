@@ -1368,6 +1368,7 @@ export async function codemod(options) {
   }
   const { renames, exportEdits, importEdits, refEdits = [], scriptEdits = [], referenceEdits = [], referenceWarnings = [], referenceScan, selectorChecks = [], plain = {}, functionModel = "unprobed", packageScriptEdits = [] } = state
   const buildEntries = state.buildEntries ?? { edits: [], warnings: [] }
+  const buildEntries = state.buildEntries ?? { edits: [], warnings: [] }
   const platform = state.platform ?? { splits: [], refused: [] }
   const attempt = state.attempts.length + 1
   state.attempts.push({ attempt, compiler: compilerOf(config), startedAt: new Date().toISOString(), projects: [] })
@@ -1411,7 +1412,7 @@ export async function codemod(options) {
   const emittedJs = await emitMigratedJs(config, t, join(p.batch(b), "logs"))
   state.attempts.at(-1).finishedAt = new Date().toISOString()
   saveState(p.codemodState(b), state)
-  const result = { batch: b, at: new Date().toISOString(), files, platform: platformResult, formatted, plain, functionModel, renames, exportEdits, buildEntries, importEdits, lintPaths: state.lintPaths, refEdits, scriptEdits, packageScriptEdits, referenceEdits, referenceWarnings, referenceScan, selectorChecks, fix: { settled, rounds, byFile, totals: rewriteTotals(byFile), refused, restored: [...new Set(restored)].sort() } }
+  const result = { batch: b, at: new Date().toISOString(), files, platform: platformResult, formatted, plain, functionModel, renames, exportEdits, buildEntries, buildEntries, importEdits, lintPaths: state.lintPaths, refEdits, scriptEdits, packageScriptEdits, referenceEdits, referenceWarnings, referenceScan, selectorChecks, fix: { settled, rounds, byFile, totals: rewriteTotals(byFile), refused, restored: [...new Set(restored)].sort() } }
   result.emittedJs = emittedJs
   durableWrite(p.codemod(b), JSON.stringify(result, null, 2) + "\n")
   return result

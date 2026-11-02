@@ -9,6 +9,7 @@ import { rewriteViteScripts } from "./vite-config.mjs"
 import { rewriteSourceLiterals } from "./source-paths.mjs"
 import { assertModuleBoundary, rewriteExports, rewriteImports, rewriteScripts, vibePath } from "./codemod.mjs"
 import { rewriteBuildEntrypoints } from "./build-entrypoints.mjs"
+import { rewriteBuildEntrypoints } from "./build-entrypoints.mjs"
 
 function syncDirectory(path) {
   const fd = openSync(path, "r")

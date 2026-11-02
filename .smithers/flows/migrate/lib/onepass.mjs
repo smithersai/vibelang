@@ -459,7 +459,7 @@ export async function onePassStep(step, options) {
       saveState(p.codemodState("01"), state)
     }
     const { renames, exportEdits, importEdits, refEdits = [], platform } = state
-    const cm = { batch: "01", at: new Date().toISOString(), files, renames, exportEdits, importEdits, refEdits, platform, buildEntries: state.buildEntries, plain: state.plain, functionModel: state.functionModel, scriptEdits: state.scriptEdits, packageScriptEdits: state.packageScriptEdits, referenceEdits: state.referenceEdits, referenceWarnings: state.referenceWarnings, selectorChecks: state.selectorChecks, referenceScan: state.referenceScan, renameComplete: true, fix: { settled: false, rounds: [], byFile: {}, totals: {}, refused: [] } }
+    const cm = { batch: "01", at: new Date().toISOString(), files, renames, exportEdits, importEdits, refEdits, platform, buildEntries: state.buildEntries, buildEntries: state.buildEntries, plain: state.plain, functionModel: state.functionModel, scriptEdits: state.scriptEdits, packageScriptEdits: state.packageScriptEdits, referenceEdits: state.referenceEdits, referenceWarnings: state.referenceWarnings, selectorChecks: state.selectorChecks, referenceScan: state.referenceScan, renameComplete: true, fix: { settled: false, rounds: [], byFile: {}, totals: {}, refused: [] } }
     durableWrite(p.codemod("01"), JSON.stringify(cm, null, 2) + "\n")
     return cm
   }
