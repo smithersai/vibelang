@@ -247,6 +247,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 | Old diagnostic numbers, including `EK4617` | Appendix B numbering, including `EK0103`. Diagnostic triggers are unchanged. See the [old-to-new map](../vibelang-features/diagnostic-code-map.md). |
 
 ### Bugs fixed since 0.0.10
+- With `import { Effect } from "effect"` in a `.vibe` file, `Effect.Array.head([1])` compiled as if `Effect` were the implicit binding; a written `Effect` binding now keeps its ordinary TypeScript meaning, so that read reports `TS2339`, while the implicit `Effect.Array` and `typeof Effect.Array` still resolve (VIP-14).
 - The `EK4855` repair renamed a service `static readonly default` to `defaultValue` and rewrote its value reads, but left type reads such as `typeof Flags.default` and `(typeof Flags)["default"]`, so the repaired file failed with `TS2339`; the declaration now carries one `EK4855` whose fix rewrites every read in the file, type reads as `ReturnType<typeof Flags.defaultValue>`, and a read in another file keeps its own warning and fix.
 - With `stripInternal`, an `@internal` schema lost both its constant and type alias from declarations; it now drops only the constant, matching the equivalent Effect TypeScript pair.
 

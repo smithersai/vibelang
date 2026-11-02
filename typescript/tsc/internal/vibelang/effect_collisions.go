@@ -39,6 +39,20 @@ func effectCollisionProperty(c *checker.Checker, node *ast.Node, receiver *check
 	return effectCollisionModule(c, node, actual, name)
 }
 
+// effectCollisionBinding returns the symbol the written Effect of node, the
+// leftmost name of a qualified name, is bound to: an import specifier when
+// the file imports Effect, a local declaration when it declares one, and the
+// module export when the implicit binding supplies it.
+func effectCollisionBinding(c *checker.Checker, name *ast.Node) *ast.Symbol {
+	for ast.IsQualifiedName(name) {
+		name = name.AsQualifiedName().Left
+	}
+	if !ast.IsIdentifier(name) {
+		return nil
+	}
+	return c.GetSymbolAtLocation(name)
+}
+
 // effectCollisionNamespace is Effect.M on the left of a type name, as in
 // Effect.Array.NonEmptyReadonlyArray<number>, where namespace is the symbol
 // Effect resolved to. typeof Effect.M checks its qualified name as a property
@@ -46,6 +60,9 @@ func effectCollisionProperty(c *checker.Checker, node *ast.Node, receiver *check
 func effectCollisionNamespace(c *checker.Checker, name *ast.Node, namespace *ast.Symbol, right *ast.Node, meaning ast.SymbolFlags) *ast.Symbol {
 	if !ast.IsQualifiedName(name) || !ast.IsIdentifier(right) {
 		return nil
+	}
+	if binding := effectCollisionBinding(c, name); binding != nil {
+		namespace = binding // the written name, before the checker resolved its alias
 	}
 	return effectCollisionModule(c, name, namespace, right.Text())
 }
@@ -65,6 +82,14 @@ func effectCollisionModule(c *checker.Checker, node *ast.Node, actual *ast.Symbo
 	effect := preludeSymbol(c, state, file, "Effect")
 	if effect == nil || aliasTarget(c, actual) != aliasTarget(c, effect) {
 		return nil
+	}
+	// Only the implicit binding exposes Effect.M. A written binding keeps its
+	// ordinary TypeScript meaning (005, VIP-14): import { Effect } from
+	// "effect" is the native module, whose Array is TS2339.
+	for _, declaration := range actual.Declarations() {
+		if declared := ast.GetSourceFileOfNode(declaration); declared != nil && !declared.IsDeclarationFile {
+			return nil
+		}
 	}
 	symbol := effectExportSymbol(c, state, file, name)
 	if symbol != nil {
