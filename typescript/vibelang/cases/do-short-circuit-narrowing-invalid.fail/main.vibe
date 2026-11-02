@@ -1,0 +1,29 @@
+// expect: TS18048 TS18048 TS18048 TS18048 TS18048 TS18048 TS18048 TS18048
+export function unguarded(x: string | undefined) {
+  return true && do { x.length }
+}
+export function invalidated(x: string | undefined) {
+  return x !== undefined && do { x = undefined; x.length }
+}
+export function nullishWrongBranch(x: string | undefined) {
+  return x ?? do { x.length }
+}
+export function disjunctionWrongBranch(x: string | undefined) {
+  return x !== undefined || do { x.length }
+}
+
+function maybe(): string | undefined { return undefined }
+export function guardWriteAnd(x: string | undefined) {
+  return (x !== undefined && (x = maybe(), true)) && do { x.length }
+}
+export function guardWriteOr(x: string | undefined) {
+  return (x === undefined || (x = maybe(), false)) || do { x.length }
+}
+
+export function leftWrite(x: string | undefined) {
+  return (x !== undefined && do { x = undefined; true }) && do { x.length }
+}
+
+export function propertyInvalidated(x: { value: string | undefined }) {
+  return (x.value !== undefined && (x.value = maybe(), true)) && do { x.value.length }
+}

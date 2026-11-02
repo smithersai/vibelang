@@ -104,6 +104,8 @@ In plain code, a `try`/`finally` inside `do` keeps the `try` or `catch` value wh
 
 A `do` block cannot end with a declaration, including `var` (`EK0201`). Write `do { var value = 1; value }` to supply a value; its `var` still hoists to the enclosing function. Empty statements or blocks after the declaration do not make a final declaration valid.
 
+A `do` on the right of `&&`, `||` or `??` runs only in that operator’s selected branch and keeps its TypeScript narrowing. For example, `x !== undefined && do { x.length }` accepts `x: string | undefined`; assigning `undefined` to `x` before reading `x.length` still reports an error. The left operand runs once.
+
 An `effect function*` produces a Stream with `yield`. A plain `function*` is a JavaScript generator. Consume a Stream with `for try`.
 
 ## Coming from Effect

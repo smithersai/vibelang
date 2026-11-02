@@ -95,6 +95,23 @@ func (p *Parser) doError(at core.TextRange, code int32, text string, args ...str
 	p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, at, "EK", diagnostics.CategoryError, code, text))
 }
 
+// DoNarrowingOrigin retains a lifted value's source control relationship.
+// Body marks a do completion, whose writes remain visible to guard analysis.
+type DoNarrowingOrigin struct {
+	Operator           ast.Kind
+	Guard, Right, Body *ast.Node
+}
+
+var doNarrowingOrigins = ast.NewSourceFileDataKey[map[*ast.Node]*DoNarrowingOrigin]()
+
+func GetDoNarrowingOrigin(binding *ast.Node) *DoNarrowingOrigin {
+	file := ast.GetSourceFileOfNode(binding)
+	if file == nil {
+		return nil
+	}
+	return file.GetOrComputeData(doNarrowingOrigins, func(*ast.SourceFile) map[*ast.Node]*DoNarrowingOrigin { return nil })[binding]
+}
+
 // parseVibeLangDos checks and lowers the file's do expressions.
 func (p *Parser) parseVibeLangDos(file *ast.SourceFile) {
 	if len(p.vibelangDoOrder) == 0 {
@@ -132,7 +149,7 @@ func (p *Parser) parseVibeLangDos(file *ast.SourceFile) {
 			marked[n] = true
 		}
 	}
-	l := &doLowering{p: p, marked: marked, headCells: map[*ast.Node]*ast.Node{}}
+	l := &doLowering{p: p, marked: marked, headCells: map[*ast.Node]*ast.Node{}, origins: map[*ast.Node]*DoNarrowingOrigin{}}
 	for i, d := range p.vibelangDoOrder {
 		statements := d.block.AsBlock().Statements
 		if p.opts.VibeLangDoAsFunction {
@@ -164,6 +181,7 @@ func (p *Parser) parseVibeLangDos(file *ast.SourceFile) {
 	}
 	file.AsNode().ForEachChild(visit)
 	file.Statements.Nodes = l.statements(file.Statements.Nodes)
+	file.GetOrComputeData(doNarrowingOrigins, func(*ast.SourceFile) map[*ast.Node]*DoNarrowingOrigin { return l.origins })
 	p.overrideParentInImmediateChildren(file.AsNode())
 	if sites := p.vibelangDoSites; sites != nil {
 		file.GetOrComputeData(ast.VibeLangDoSites, func(*ast.SourceFile) map[*ast.Node]*ast.Node { return sites })
@@ -807,6 +825,7 @@ type doLowering struct {
 	marked    map[*ast.Node]bool // the nodes from each lowered do expression up to its statement
 	temps     int
 	headCells map[*ast.Node]*ast.Node // unreachable head cells -> source iteration bindings
+	origins   map[*ast.Node]*DoNarrowingOrigin
 }
 
 func (l *doLowering) temp(prefix string, at core.TextRange) *ast.Node {
@@ -1263,7 +1282,9 @@ func (l *doLowering) expr(e *ast.Node, pre *[]*ast.Node) *ast.Node {
 		return e
 	}
 	if d := l.p.vibelangDos[e]; d != nil && d.lifted {
-		let := l.letStatement(l.ref(d.name, d.keyword), d.keyword)
+		binding := l.ref(d.name, d.keyword)
+		l.origins[binding] = &DoNarrowingOrigin{Body: d.block}
+		let := l.letStatement(binding, d.keyword)
 		*pre = append(*pre, let, d.block)
 		at := l.p.sourceRange(e)
 		if e.Flags&ast.NodeFlagsVibeLangTry == 0 {
@@ -1711,11 +1732,19 @@ func (l *doLowering) binary(e *ast.Node, pre *[]*ast.Node) *ast.Node {
 	case operator == ast.KindAmpersandAmpersandToken || operator == ast.KindBarBarToken || operator == ast.KindQuestionQuestionToken:
 		name := l.temp("$do_v", at)
 		left := l.expr(b.Left, pre)
-		*pre = append(*pre, l.letStatement(name, at), l.statement(l.assign(l.ref(name, left.Loc), left, left.Loc), left.Loc))
+		// Keep the source guard separate from the mutable completion value.
+		// The checker follows this immutable capture back to the original
+		// condition, including ??'s nullish test, without evaluating it again.
+		guard := l.temp("$do_guard", at)
+		*pre = append(*pre, l.p.mConst(guard, ast.NodeFlagsConst, l.valueOnly(left), at), l.letStatement(name, at))
 		var inner []*ast.Node
 		right := l.expr(b.Right, &inner)
 		inner = append(inner, l.statement(l.assign(l.ref(name, b.Right.Loc), right, b.Right.Loc), b.Right.Loc))
-		*pre = append(*pre, l.p.vibelangSpanning(l.p.factory.NewIfStatement(l.shortCircuit(operator, l.ref(name, at), at), l.p.mBlock(inner, b.Right.Loc), nil), e.Loc))
+		l.origins[name] = &DoNarrowingOrigin{Operator: operator, Guard: left, Right: right}
+		// Assign the skipped value in its narrowed branch, so the result
+		// retains false/true/nullish filtering as well as the RHS's type.
+		skipped := l.statement(l.assign(l.ref(name, at), l.ref(guard, at), at), at)
+		*pre = append(*pre, l.p.vibelangSpanning(l.p.factory.NewIfStatement(l.shortCircuit(operator, l.ref(guard, at), at), l.p.mBlock(inner, b.Right.Loc), skipped), e.Loc))
 		return l.ref(name, l.p.sourceRange(e))
 	case ast.IsLogicalOrCoalescingAssignmentOperator(operator):
 		// x ||= e: x is an identifier (doSite).

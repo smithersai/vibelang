@@ -727,6 +727,8 @@ An anonymous function or class used as a `do` completion or an array value keeps
 
 A `do` in the right-hand operand of a `for…in` or `for…of` lexical head keeps that head's scope. Its closures capture the uninitialized `let` or `const` head bindings, separately from the initialized bindings of each iteration.
 
+A `do` in a short-circuit operand keeps the selected branch’s TypeScript narrowing: `x !== undefined && do { x.length }` is valid for `x: string | undefined`. The same rule applies to `||` and `??`; the left operand runs once, and assignments inside the body invalidate narrowing normally.
+
 A `break` or `continue` whose target is outside an `effect { }` block is `EK0202`; the block runs as its own Effect.
 
 **Effect blocks as arguments**. Pass `effect { ... }` as an ordinary argument. A test API takes a callback that returns the Effect, such as `it.live("name", () => effect { ... })`.

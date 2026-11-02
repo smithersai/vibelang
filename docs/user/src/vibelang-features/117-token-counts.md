@@ -18,10 +18,10 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | Load | Tokens |
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,406 |
-| The skill and the [cheat sheet](115-cheat-sheet.md) | 15,474 |
-| The skill and the user guide (140 pages) | 381,174 |
-| The user guide alone | 376,768 |
-| The specification (10 chapters) | 155,111 |
+| The skill and the [cheat sheet](115-cheat-sheet.md) | 15,541 |
+| The skill and the user guide (140 pages) | 381,385 |
+| The user guide alone | 376,979 |
+| The specification (10 chapters) | 155,193 |
 | The decision log, `docs/design/history/DECISIONS.md` | 141,629 |
 
 ## Effect TypeScript beside VibeLang
@@ -131,9 +131,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Zed](../setup/zed.md) | 479 |
 | [Other editors](../setup/other-editors.md) | 492 |
 | [Coding agents](../setup/coding-agents.md) | 1,062 |
-| **Upgrade** | **93,454** |
-| [Release notes](../setup/release-notes.md) | 93,454 |
-| **All 19 pages** | **130,439** |
+| **Upgrade** | **93,518** |
+| [Release notes](../setup/release-notes.md) | 93,518 |
+| **All 19 pages** | **130,503** |
 
 ### Guides
 
@@ -201,12 +201,12 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Leftovers](../sink/062-leftovers.md) | 748 |
 | **Testing** | **1,492** |
 | [TestClock](../testing/063-testclock.md) | 1,492 |
-| **Code Style** | **8,941** |
+| **Code Style** | **9,021** |
 | [Guidelines](../code-style/064-guidelines.md) | 888 |
 | [Dual APIs](../code-style/065-dual.md) | 1,120 |
 | [Branded Types](../code-style/066-branded-types.md) | 1,279 |
 | [Pattern Matching](../code-style/067-pattern-matching.md) | 1,921 |
-| [Excessive Nesting](../code-style/068-do.md) | 1,708 |
+| [Excessive Nesting](../code-style/068-do.md) | 1,788 |
 | [Control Flow Operators](../code-style/069-control-flow.md) | 2,025 |
 | **Data Types** | **19,628** |
 | [BigDecimal](../data-types/070-bigdecimal.md) | 1,500 |
@@ -257,7 +257,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Platform globals in VibeLang](../platform/platform-globals.md) | 6,199 |
 | [Cloudflare Workers](../platform/cloudflare-workers.md) | 790 |
 | [Alchemy](../platform/alchemy.md) | 2,527 |
-| **All 101 pages** | **174,235** |
+| **All 101 pages** | **174,315** |
 
 ### VibeLang features
 
@@ -267,20 +267,20 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Producers](112-producers.md) | 2,780 |
 | [Building an HTTP API](113-building-an-http-api.md) | 1,649 |
 | [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 6,101 |
-| [Cheat sheet](115-cheat-sheet.md) | 11,068 |
+| [Cheat sheet](115-cheat-sheet.md) | 11,135 |
 | [Pattern matching with match and is](116-match-and-is.md) | 7,085 |
 | [Diagnostic code map](diagnostic-code-map.md) | 2,432 |
 | [Experimental platform APIs](118-experimental-platform-apis.md) | 3,813 |
-| **All 8 pages** | **34,993** |
+| **All 8 pages** | **35,060** |
 
 ### Specification
 
 | Page | Tokens |
 | --- | ---: |
 | [Introduction](../../../design/src/000-intro.md) | 2,615 |
-| **The language** | **121,190** |
+| **The language** | **121,272** |
 | [1. Functions and Effect types](../../../design/src/001-functions.md) | 13,172 |
-| [2. Running Effects](../../../design/src/002-running.md) | 27,985 |
+| [2. Running Effects](../../../design/src/002-running.md) | 28,067 |
 | [3. Failures](../../../design/src/003-failures.md) | 15,122 |
 | [4. Pattern matching](../../../design/src/004-match.md) | 22,047 |
 | [5. Services and the environment](../../../design/src/005-services.md) | 11,779 |
@@ -289,6 +289,6 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [8. Runtime guarantees](../../../design/src/008-runtime.md) | 7,187 |
 | **Appendices** | **31,306** |
 | [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 31,306 |
-| **All 10 pages** | **155,111** |
+| **All 10 pages** | **155,193** |
 
 <!-- token-counts: end -->

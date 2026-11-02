@@ -706,6 +706,7 @@ parser/vibelang_fiber_context.go:Parser.parseVibeLangOrdinaryInitializer	admissi
 parser/vibelang_execution_power.go:Parser.reportVibeLangExecutionPower	admission:execution-power	900-appendices.md#TryExpression,900-appendices.md#ForkExpression,900-appendices.md#JoinExpression	recovery	EK0510: an unparenthesized try, fork or join left of ** is rejected; not language admission
 vibelang/services_lower.go:lowering.visitServiceLookup@service-call	admission:service-call	-	pending	Denied VIP-10 implicit service member lookup
 parser/vibelang_provide_newline.go:Parser.checkVibeLangProviderLineBreaks	admission:provide	900-appendices.md#ProvideStatement,900-appendices.md#Provider	recovery	VIP-12: reports line breaks between provider list commas; not language admission
+parser/vibelang_do.go:GetDoNarrowingOrigin	admission:do	000-intro.md,002-running.md	support	VIP-2 / RC-38: retain the original short-circuit guard for TypeScript flow analysis without admitting additional syntax
 parser/vibelang_do.go:Parser.checkDoBoundary	admission:do	900-appendices.md,002-running.md	recovery	VIP-2: pinned TC39 do-expression static checks
 parser/vibelang_do.go:Parser.checkDoEnds	admission:do	900-appendices.md,002-running.md	recovery	VIP-2: pinned TC39 do-expression static checks
 parser/vibelang_do.go:Parser.checkDoLoopHead	admission:do	900-appendices.md,002-running.md	recovery	VIP-2: pinned TC39 do-expression static checks

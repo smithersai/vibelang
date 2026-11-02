@@ -341,3 +341,200 @@ func init() {
 		},
 	})
 }
+
+// DoNarrowingKeys names guard relationships, rather than indexes, so saved
+// corpus inputs keep testing the same relationship when new shapes are added.
+var DoNarrowingKeys = []string{
+	"truthy", "defined", "nonnull", "typeof-and", "typeof-or",
+	"alias", "discriminant", "predicate", "predicate-or", "nullish",
+	"nested-and", "nested-or", "side-effects", "read-before-write", "guard-recheck-and", "guard-recheck-or", "guard-recheck-not",
+	"left-and", "left-or", "left-nullish", "left-recheck", "guard-property-write",
+	"invalidated", "unguarded",
+	"nullish-invalid", "or-invalid", "guard-write-and", "guard-write-or", "guard-write-not", "left-write", "guard-property-invalidated",
+}
+
+// DoNarrowingProgram prints one typed do probe and its immediate-arrow twin.
+// The third print erases only the written types for the existing native Exit
+// oracle. Static diagnostics are compared against stock tsc separately.
+func DoNarrowingProgram(key string, variant uint8, name string) (vibe, twin, reference string) {
+	typ, before, rawBefore := "string | undefined", "", ""
+	nativeGuard := ""
+	guard, op, body, rawBody := "x !== undefined", "&&", "x.length", "x.length"
+	args := fmt.Sprintf("%q, undefined", strings.Repeat("a", 1+int(variant%8)))
+	switch key {
+	case "left-and", "left-or", "left-nullish", "left-recheck", "left-write":
+		guard, nativeGuard = "(x !== undefined && do { x.length > 0 })", "(x !== undefined && (() => x.length > 0)())"
+		if key == "left-or" {
+			guard, nativeGuard, op = "(x === undefined || do { x.length === 0 })", "(x === undefined || (() => x.length === 0)())", "||"
+		}
+		if key == "left-nullish" {
+			guard, nativeGuard, op = "(x ?? do { undefined })", "(x ?? (() => undefined)())", "??"
+			body, rawBody = "const absent: undefined = x; 7", "const absent = x; 7"
+		}
+		if key == "left-recheck" {
+			before = "function retainString(value: string | undefined): string | undefined { return value }; "
+			rawBefore = "function retainString(value) { return value }; "
+			guard = "((x !== undefined && do { x = retainString(x); true }) && x !== undefined)"
+			nativeGuard = "((x !== undefined && (() => { x = retainString(x); return true })()) && x !== undefined)"
+		}
+		if key == "left-write" {
+			guard, nativeGuard = "(x !== undefined && do { x = undefined; true })", "(x !== undefined && (() => { x = undefined; return true })())"
+		}
+	case "truthy":
+		guard = "x"
+	case "nonnull":
+		typ, guard = "string | null", "x !== null"
+		args = fmt.Sprintf("%q, null", strings.Repeat("a", 1+int(variant%8)))
+	case "typeof-and", "typeof-or":
+		typ, guard = "string | number", "typeof x === \"string\""
+		args = fmt.Sprintf("%q, 7", strings.Repeat("a", 1+int(variant%8)))
+		if key == "typeof-or" {
+			guard, op = "typeof x !== \"string\"", "||"
+		}
+	case "alias":
+		before = "const present = x !== undefined; const alias = present; "
+		rawBefore, guard = before, "alias"
+	case "discriminant":
+		typ = "{ kind: \"a\"; n: number } | { kind: \"b\"; text: string }"
+		guard, body, rawBody = "x.kind === \"a\"", "x.n", "x.n"
+		args = fmt.Sprintf("{ kind: \"a\", n: %d }, { kind: \"b\", text: \"b\" }", 1+int(variant))
+	case "guard-property-invalidated":
+		typ = "{ value: string | undefined }"
+		before = "function maybe(): string | undefined { return undefined }; "
+		rawBefore = "function maybe() { return undefined }; "
+		guard = "(x.value !== undefined && (x.value = maybe(), true))"
+		body, rawBody = "x.value.length", "x.value.length"
+		args = "{ value: \"abc\" }, { value: undefined }"
+	case "guard-property-write":
+		typ = "{ kind: \"a\"; n: number; count: number } | { kind: \"b\"; count: number }"
+		writes := []string{"x.count++", "x.count += 1", "++x.count"}
+		guard = "(x.kind === \"a\" && (events.push(\"count\"), " + writes[int(variant%3)] + ", true))"
+		body, rawBody = "x.n + x.count", "x.n + x.count"
+		args = fmt.Sprintf("{ kind: \"a\", n: %d, count: 0 }, { kind: \"b\", count: 0 }", 1+int(variant))
+	case "predicate", "predicate-or", "side-effects":
+		typ = "unknown"
+		before = "function isString(value: unknown): value is string { return typeof value === \"string\" }; "
+		rawBefore = "function isString(value) { return typeof value === \"string\" }; "
+		guard = "isString(x)"
+		args = fmt.Sprintf("%q, 7", strings.Repeat("a", 1+int(variant%8)))
+		if key == "predicate-or" {
+			guard, op = "!isString(x)", "||"
+		}
+		if key == "side-effects" {
+			guard = "(events.push(\"left\"), isString(x))"
+		}
+	case "nullish", "nullish-invalid":
+		typ, guard, op = "string | null | undefined", "x", "??"
+		body = "const absent: null | undefined = x; absent === null ? 7 : 9"
+		rawBody = "const absent = x; absent === null ? 7 : 9"
+		args = "\"\", null, undefined"
+		if key == "nullish-invalid" {
+			body, rawBody = "x.length", "x.length"
+		}
+	case "nested-and":
+		guard = "(x !== undefined && x.length > 0)"
+	case "nested-or":
+		guard, op = "(x === undefined || x.length === 0)", "||"
+	case "read-before-write":
+		typ = "string | undefined"
+		body, rawBody = "const n = x.length; x = undefined; n", "const n = x.length; x = undefined; n"
+	case "guard-recheck-and", "guard-recheck-or", "guard-recheck-not":
+		before = "function retainString(value: string | undefined): string | undefined { return value }; "
+		rawBefore = "function retainString(value) { return value }; "
+		guard = "(x !== undefined && (x = retainString(x), x !== undefined))"
+		if key == "guard-recheck-or" {
+			guard, op = "(x === undefined || (x = retainString(x), x === undefined))", "||"
+		}
+		if key == "guard-recheck-not" {
+			guard, op = "!("+guard+")", "||"
+		}
+	case "guard-write-and", "guard-write-or", "guard-write-not":
+		before = "function maybe(): string | undefined { return undefined }; "
+		rawBefore = "function maybe() { return undefined }; "
+		guard = "(x !== undefined && (x = maybe(), true))"
+		if key == "guard-write-or" {
+			guard, op = "(x === undefined || (x = maybe(), false))", "||"
+		}
+		if key == "guard-write-not" {
+			guard, op = "!("+guard+")", "||"
+		}
+	case "invalidated":
+		body, rawBody = "x = undefined; x.length", "x = undefined; x.length"
+	case "unguarded":
+		guard = "true"
+	case "or-invalid":
+		op = "||"
+	}
+	if nativeGuard == "" {
+		nativeGuard = guard
+	}
+	value := func(raw string, arrow bool) string {
+		parts := strings.Split(raw, ";")
+		last := strings.TrimSpace(parts[len(parts)-1])
+		head := strings.Join(parts[:len(parts)-1], ";")
+		if head != "" {
+			head += ";"
+		}
+		if arrow {
+			return "(() => { " + head + "return " + last + " })()"
+		}
+		return "(do { " + raw + " })"
+	}
+	rhs, twinRHS, refRHS := value(body, false), value(body, true), value(rawBody, true)
+	for range int(variant % 3) {
+		rhs, twinRHS, refRHS = "(do { "+rhs+" })", "(() => { return "+twinRHS+" })()", "(() => { return "+refRHS+" })()"
+	}
+	// Branch events prove skipping, ordering and single guard evaluation.
+	rhs = "do { events.push(\"right\"); " + rhs + " }"
+	twinRHS = "(() => { events.push(\"right\"); return " + twinRHS + " })()"
+	refRHS = "(() => { events.push(\"right\"); return " + refRHS + " })()"
+	calls := []string{}
+	switch key {
+	case "guard-property-write":
+		calls = []string{fmt.Sprintf("read({ kind: \"a\", n: %d, count: 0 })", 1+int(variant)), "read({ kind: \"b\", count: 0 })"}
+	case "discriminant":
+		calls = []string{fmt.Sprintf("read({ kind: \"a\", n: %d })", 1+int(variant)), "read({ kind: \"b\", text: \"b\" })"}
+	default:
+		for _, arg := range strings.Split(args, ", ") {
+			calls = append(calls, "read("+arg+")")
+		}
+	}
+	print := func(param, prefix, right, eventsType, condition string) string {
+		resultType := ""
+		if param != "" {
+			resultType = ": (number | boolean | string | undefined | string[])[]"
+		}
+		return fmt.Sprintf("function read(x%s)%s { const events%s = []; %sconst result = %s %s %s; return [result, events] }; const %s = [%s]",
+			param, resultType, eventsType, prefix, condition, op, right, name, strings.Join(calls, ", "))
+	}
+	vibe = print(": "+typ, before, rhs, ": string[]", guard)
+	twin = print(": "+typ, before, twinRHS, ": string[]", nativeGuard)
+	reference = print("", rawBefore, refRHS, "", nativeGuard)
+
+	return
+}
+
+func init() {
+	Register(&Construct{
+		Key: "vip02.do-short-circuit-narrowing-plain", VIP: 2, Plain: true,
+		Citations: []Citation{{VIP: 2,
+			Template: "(() => { return x.length })()",
+			Quote:    "It runs now and gives its last statement's value",
+			Reading:  "The do expression retains TypeScript control flow in its selected short-circuit branch (chapter 000). The reference uses immediate arrows, with no outward jumps; a separate stock-tsc oracle checks the typed twins.",
+		}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			key := DoNarrowingKeys[g.Intn(22)]
+			name := g.Name("narrowed")
+			vibe, _, ref := DoNarrowingProgram(key, uint8(g.Intn(256)), name)
+			return []Stmt{&doNarrowingProbe{vibe: vibe + "; return Effect.succeed(" + name + ")", reference: ref + "; return Effect.succeed(" + name + ")"}}
+		},
+	})
+}
+
+// Each read returns its branch trace beside its value. The canonical Exit
+// oracle compares both, including the trace of a skipped RHS.
+type doNarrowingProbe struct{ vibe, reference string }
+
+func (p *doNarrowingProbe) Vibe(w *Writer)   { w.Write(";{ " + p.vibe + " }") }
+func (p *doNarrowingProbe) Effect(w *Writer) { w.Write(";{ " + p.reference + " }") }
+func (p *doNarrowingProbe) Ends() bool       { return true }
