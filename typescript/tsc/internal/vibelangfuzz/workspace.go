@@ -103,7 +103,9 @@ func NewWorkspace(tb testing.TB) *Workspace {
 	if err := installPackages(dir, effect, runtime); err != nil {
 		tb.Fatal(err)
 	}
-	return &Workspace{Dir: dir, fs: bundled.WrapFS(osvfs.FS())}
+	w := &Workspace{Dir: dir}
+	w.fs = &workspaceSourceFS{FS: bundled.WrapFS(osvfs.FS()), files: &w.files}
+	return w
 }
 
 // Missing reports a missing dependency: it skips the test, or fails it when
@@ -337,6 +339,25 @@ func isSource(name string) bool {
 		}
 	}
 	return false
+}
+
+// workspaceSourceFS lets real --fix invocations reuse the same dependency
+// trees as Compile. The fixer validates text and parse options, so no program,
+// diagnostics, gate decision or runtime result is cached across inputs.
+type workspaceSourceFS struct {
+	vfs.FS
+	files *sync.Map
+}
+
+func (fs *workspaceSourceFS) GetSourceFile(opts ast.SourceFileParseOptions) *ast.SourceFile {
+	name := string(opts.FileName)
+	if !strings.Contains(name, "/node_modules/") && !strings.HasPrefix(name, string(bundled.LibPath())) {
+		return nil
+	}
+	if file, ok := fs.files.Load(opts); ok {
+		return file.(*ast.SourceFile)
+	}
+	return nil
 }
 
 // sharingHost parses each library and package declaration file once per

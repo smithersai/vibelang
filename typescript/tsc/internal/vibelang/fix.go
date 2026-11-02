@@ -377,7 +377,8 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 		options.Verified(state)
 	}
 	texts := map[tspath.RootedFilePath]string{}
-	parsed := &fixParsedFiles{}
+	sourceFiles, _ := disk.(fixSourceFiles)
+	parsed := &fixParsedFiles{sourceFiles: sourceFiles}
 	// When a round's fixes pass together, the next round's program is the one
 	// the gate just checked them in; building it again checked the project
 	// twice per round. A program does not change once built, so build returns
@@ -745,7 +746,17 @@ func overlayKey(overlay map[tspath.RootedFilePath]string) [32]byte {
 }
 
 // fixParsedFiles holds the files a --fix run has parsed, by parse options.
-type fixParsedFiles = collections.SyncMap[ast.SourceFileParseOptions, *ast.SourceFile]
+// A caller that already parsed a dependency may supply its immutable syntax.
+// The fixer still reads current text and checks the complete parse options;
+// every program and checker is fresh, and a stale tree is never reused.
+type fixSourceFiles interface {
+	GetSourceFile(ast.SourceFileParseOptions) *ast.SourceFile
+}
+
+type fixParsedFiles struct {
+	collections.SyncMap[ast.SourceFileParseOptions, *ast.SourceFile]
+	sourceFiles fixSourceFiles
+}
 
 // fixProgram builds config's program with the texts of overlay in place of
 // the files on disk, reusing the files of parsed whose text is unchanged.
@@ -779,6 +790,12 @@ func (h fixCompilerHost) GetSourceFile(opts ast.SourceFileParseOptions) *ast.Sou
 	}
 	if file, ok := h.parsed.Load(opts); ok && file.Text() == text {
 		return file
+	}
+	if h.parsed.sourceFiles != nil {
+		if file := h.parsed.sourceFiles.GetSourceFile(opts); file != nil && file.ParseOptions() == opts && file.Text() == text {
+			h.parsed.Store(opts, file)
+			return file
+		}
 	}
 	file := h.CompilerHost.GetSourceFile(opts)
 	h.parsed.Store(opts, file)
