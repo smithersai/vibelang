@@ -1,0 +1,35 @@
+// VIP-2 / pinned TC39 do completion; the runner compares each block with native eval.
+export function probe0(): unknown { return do { label: { try { 1; } finally { 2; break label; } } }; } // local-break
+export function probe1(): unknown { return do { label: { try { 1; } finally { break label; } } }; } // empty-break
+export function probe2(): unknown { return do { label: { try { throw 0; } catch { 4; } finally { 5; break label; } } }; } // catch-break
+export function probe3(): unknown { return do { label: { try { 1; } finally { try { 2; } finally { 99; } 3; break label; } } }; } // nested-finalizers
+export function probe4(): unknown { return do { try { 1; } finally { 2; } }; } // normal-finalizer
+export function probe5(): unknown { return do { try { 1; } finally {} }; } // empty-normal-finalizer
+export function probe6(): unknown { return do { try { throw 0; } catch { 4; } finally { 5; } }; } // normal-catch-finalizer
+export function probe7(): unknown { return do { label: { try { throw 0; } catch { 4; } finally { break label; } } }; } // empty-catch-break
+export function probe8(): unknown { return do { label: { try { 1; } finally { try { 2; } finally { 3; break label; } } } }; } // nested-abrupt-finalizer
+export function probe9(): unknown { return do { label: { try { 1; } finally { 9; try { 2; } finally { break label; } } } }; } // nested-empty-abrupt
+export function probe10(): unknown { return do { try { 1; } finally { inner: { 2; break inner; } } }; } // internal-break-finishes-normally
+export function probe11(): unknown { return do { label: { try { 1; break label; } finally { 2; } } }; } // try-break-normal-finalizer
+export function probe12(): unknown { return do { label: { try { 1; break label; } finally { 2; break label; } } }; } // try-break-overridden
+export function probe13(): unknown { return do { 7; try {} finally { 9; } }; } // empty-try-normal-finalizer
+export function probe14(): unknown { return do { label: { try { 1; } finally { 2; if (true) { break label; } } } }; } // empty-if-abrupt
+export function probe15(): unknown { return do { label: { try { 1; } finally { 2; if (true) break label; else 0; } } }; } // direct-if-break
+export function probe16(): unknown { return do { label: { try { 1; } finally { 2; while (true) break label; } } }; } // loop-body-break
+export function probe17(): unknown { return do { label: { try { 1; } finally { switch (0) { case 0: 5; break label; } } } }; } // switch-clause-break
+export function probe18(): unknown { return do { label: { try { 1; } finally { inner: break label; } } }; } // labeled-body-break
+export function probe19(): unknown { return do { try { 1; } finally { for (let i = 0; i < 2; i++) { 9; continue; } } }; } // internal-continue
+export function returnOverride(): unknown { return do { try { 1; } finally { return 7; } }; }
+export function throwOverride(): unknown { try { return do { try { 1; } finally { throw 8; } }; } catch (error) { return error; } }
+export function continueOverride(): number {
+  let total = 0;
+  for (let i = 0; i < 3; i++) {
+    const value = do { try { i; } finally { if (i < 2) continue; 99; } };
+    total += value;
+  }
+  return total;
+}
+export function differentNormalType(): number { return do { try { 1; } finally { "discarded"; } }; }
+export function differentAbruptType(): unknown { return do { label: { try { 1; } finally { "final"; break label; } } }; }
+// The pinned do algorithm applies UpdateEmpty to abrupt completions too: the inner do carries 7.
+export function nestedDoBreak(): unknown { return do { label: { try { 1; } finally { (do { 7; break label; }); } } }; }

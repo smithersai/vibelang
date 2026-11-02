@@ -96,6 +96,8 @@ This is the VibeLang form of the same sequence. In a TypeScript file, `Effect.ge
 
 `do` keeps ordinary expression typing: `const exact = do { 1 }` has type `1`, while `let ordinary = do { 1 }` widens to `number`. `do { 7; {} }` retains `7`, because the empty block inherits the preceding value; an entirely empty `do` gives `undefined`. `provide` and interruption blocks preserve these completion values too, including values carried through a locally consumed `break`.
 
+In plain code, a `try`/`finally` inside `do` keeps the `try` or `catch` value when `finally` finishes normally. A jump from `finally` replaces that completion: `do { label: { try { 1 } finally { 2; break label } } }` gives `2`; omitting `2;` gives `undefined`.
+
 An `effect function*` produces a Stream with `yield`. A plain `function*` is a JavaScript generator. Consume a Stream with `for try`.
 
 ## Coming from Effect

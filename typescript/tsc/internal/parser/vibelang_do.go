@@ -804,8 +804,8 @@ func (l *doLowering) undefined(at core.TextRange) *ast.Node {
 
 // completeList makes statements assign each completion value to name, as
 // TC39 evaluates them: an expression statement sets it, and an if, switch,
-// try or loop resets it to undefined first, as UpdateEmpty does. A finally
-// block's value is not the statement's, so it is left alone.
+// try or loop resets it to undefined first, as UpdateEmpty does. A normal
+// finally preserves the protected value; an abrupt one replaces it.
 //
 // An expression statement that the next statement overwrites, by setting or
 // resetting the value, keeps its own expression, so a value such as a fiber
@@ -894,6 +894,65 @@ func (l *doLowering) complete(name *ast.Node, s *ast.Node) []*ast.Node {
 			l.complete(name, block)
 			statements := block.AsBlock().Statements
 			statements.Nodes = append([]*ast.Node{l.reset(name, l.p.skipRangeTrivia(block.Loc))}, statements.Nodes...)
+			l.p.overrideParentInImmediateChildren(block)
+		}
+		if block := try.FinallyBlock; block != nil {
+			// Normal finalization leaves the protected completion untouched.
+			// A jump out carries the finalizer's independent completion,
+			// initialized to undefined for TryStatement's UpdateEmpty.
+			finalAt := l.p.skipRangeTrivia(block.Loc)
+			value := l.temp("$do_finally", finalAt)
+			l.complete(value, block)
+			statements := block.AsBlock().Statements
+			statements.Nodes = append([]*ast.Node{l.letStatement(value, finalAt)}, statements.Nodes...)
+			var transfer func(*ast.Node) bool
+			transfer = func(n *ast.Node) bool {
+				if ast.IsClassLike(n) || ast.IsFunctionLike(n) && !isSynthesizedArrow(n) {
+					return false
+				}
+				n.ForEachChild(transfer)
+				if !ast.IsBreakOrContinueStatement(n) || jumpTargetWithin(n, block) {
+					return false
+				}
+				parent := n.Parent
+				at := l.p.skipRangeTrivia(n.Loc)
+				completion := value
+				// An abrupt nested do expression already carries its own
+				// UpdateEmpty value before its enclosing statement finishes.
+				for ancestor := parent; ancestor != nil && ancestor != block; ancestor = ancestor.Parent {
+					if d := l.p.vibelangDos[ancestor]; d != nil && d.name != nil {
+						completion = d.name
+						break
+					}
+				}
+				copy := l.statement(l.assign(l.ref(name, at), l.ref(completion, at), at), at)
+				replacement := l.p.mBlock([]*ast.Node{copy, n}, n.Loc)
+				switch parent.Kind {
+				case ast.KindBlock, ast.KindModuleBlock, ast.KindCaseClause, ast.KindDefaultClause:
+					for i, child := range parent.StatementList().Nodes {
+						if child == n {
+							parent.StatementList().Nodes[i] = replacement
+							break
+						}
+					}
+				case ast.KindIfStatement:
+					branch := parent.AsIfStatement()
+					if branch.ThenStatement == n {
+						branch.ThenStatement = replacement
+					} else {
+						branch.ElseStatement = replacement
+					}
+				case ast.KindLabeledStatement:
+					parent.AsLabeledStatement().Statement = replacement
+				case ast.KindWithStatement:
+					parent.AsWithStatement().Statement = replacement
+				default:
+					setStatement(parent, replacement)
+				}
+				l.p.overrideParentInImmediateChildren(parent)
+				return false
+			}
+			block.ForEachChild(transfer)
 			l.p.overrideParentInImmediateChildren(block)
 		}
 		return []*ast.Node{l.reset(name, at), s}
