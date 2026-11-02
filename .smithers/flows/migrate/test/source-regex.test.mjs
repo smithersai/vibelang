@@ -3,7 +3,8 @@
 // selected-set identity proof. Minimized from t3code's
 // apps/web/src/reactCompilerCoverage.test.ts and apps/mobile/src/dependency-graph.test.ts.
 import assert from "node:assert/strict"
-import { mkdtempSync, readFileSync, rmSync } from "node:fs"
+import { spawnSync } from "node:child_process"
+import { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -224,4 +225,135 @@ test("t3code source-discovery corpus preserves selected module identities", () =
   assert.equal(result.edits.length, 1)
   assert.ok(result.selectorChecks.every(check => check.pass))
   assert.match(result.text, /vibe/)
+})
+
+// RD-022, detail 272: "No other assertion, embedded config, setup or build call
+// may change." A selected-set proof alone cannot protect other uses of R.
+const sharedFile = "apps/web/src/shared.test.ts"
+const sharedPrefix = 'import * as fs from "node:fs";\nimport assert from "node:assert/strict";\nconst R = /\\.ts$/;\n'
+const discovery = 'const files = fs.readdirSync("src").filter(file => R.test(file));\n'
+const forceShared = source => source.replace("/\\.ts$/", widenExtensionRegex("/\\.ts$/"))
+const rewriteShared = source => rewriteSourceLiterals(ts, source, sharedFile, webRenames, { inventory })
+
+test("RD-022: a named regex used only for directory selection may widen", () => {
+  const source = sharedPrefix + discovery + 'assert.equal(files.length, 1);\n'
+  const changed = rewriteShared(source)
+  assert.equal(changed.text, forceShared(source))
+  assert.equal(verify(webRenames, sharedFile, source, changed.text).ok, true)
+})
+
+const unsafeSharedSources = [
+  sharedPrefix + discovery + 'assert.equal(R.test("unrelated.vibe"), false);\n',
+  sharedPrefix + 'fs.readdirSync("src");\nassert.equal(R.test("unrelated.vibe"), false);\n',
+  sharedPrefix + discovery + 'const accepted = R.test("unrelated.vibe"); assert.equal(accepted, false);\n',
+  sharedPrefix + discovery + 'export { R };\n',
+  sharedPrefix.replace("const R =", "export const R =") + discovery,
+  sharedPrefix + discovery + 'const object = { R }; assert.equal(object.R.test("unrelated.vibe"), false);\n',
+  sharedPrefix + discovery + 'const check = R; assert.equal(check.test("unrelated.vibe"), false);\n',
+  sharedPrefix + discovery + 'const f = file => R.test(file); assert.equal(f("unrelated.vibe"), false);\n',
+  sharedPrefix + 'fs.readdirSync("src"); const files = ["unrelated.vibe"].filter(file => R.test(file));\n',
+  sharedPrefix + 'fs.readdirSync("src"); const files = other.filter(file => R.test(file));\n',
+  sharedPrefix + 'const files = fs.readdirSync("src").filter(file => (file = "unrelated.vibe") && R.test(file));\n',
+  sharedPrefix + 'const files = fs.readdirSync("src").filter(file => { assert.equal(R.test(file), true); return true });\n',
+]
+
+test("RD-022: the codemod refuses shared assertions and unrelated listings", () => {
+  for (const source of unsafeSharedSources) {
+    const changed = rewriteShared(source)
+    assert.equal(changed.text, source, source)
+    assert.match(changed.warnings.join("\n"), /selection|selector/, source)
+  }
+})
+
+test("RD-022: verify independently refuses forced shared-regex edits", () => {
+  for (const source of unsafeSharedSources) {
+    const result = verify(webRenames, sharedFile, source, forceShared(source))
+    assert.equal(result.ok, false, JSON.stringify(result))
+  }
+})
+
+test("RD-022: inline directory regex still widens", () => {
+  const source = sharedPrefix.replace('const R = /\\.ts$/;\n', "") + discovery.replace("R.test", "/\\.ts$/.test")
+  const changed = rewriteShared(source)
+  assert.equal(changed.text, forceShared(source))
+  assert.equal(verify(webRenames, sharedFile, source, changed.text).ok, true)
+})
+
+test("RD-022: resolved shadowed names do not hide a shared assertion", () => {
+  const source = sharedPrefix + discovery + 'function probe(R) { return R.test("other") }\nassert.equal(R.test("unrelated.vibe"), false);\n'
+  assert.equal(rewriteShared(source).text, source)
+  assert.equal(verify(webRenames, sharedFile, source, forceShared(source)).ok, false)
+})
+
+test("RD-022 property: random uses of a named regex never change assertion behaviour", () => {
+  const uses = [
+    discovery,
+    'const others = fs.readdirSync("src").map(String).filter(name => (R).test(name));\n',
+    'assert.equal(R.test("unrelated.vibe"), false);\n',
+    'const value = R.test("unrelated.vibe"); assert.equal(value, false);\n',
+    'const check = R; assert.equal(check.test("unrelated.vibe"), false);\n',
+    'const names = ["unrelated.vibe"].filter(name => R.test(name)); assert.equal(names.length, 0);\n',
+    'const check = () => R.test("unrelated.vibe"); assert.equal(check(), false);\n',
+    'const names = fs.readdirSync("src").filter(name => { assert.equal(R.test("unrelated.vibe"), false); return true });\n',
+  ]
+  const run = source => {
+    const body = source.replace(/^import .*;\n/gm, "")
+    const outcomes = []
+    const assertion = { equal: (actual, expected) => outcomes.push(actual === expected) }
+    Function("fs", "assert", body)({ readdirSync: () => ["module.ts"] }, assertion)
+    return outcomes
+  }
+  fc.assert(fc.property(fc.array(fc.integer({ min: 0, max: uses.length - 1 }), { minLength: 1, maxLength: 8 }), picks => {
+    const source = sharedPrefix + 'fs.readdirSync("src");\n' + picks.map(i => "{\n" + uses[i] + "}\n").join("")
+    const changed = rewriteShared(source)
+    assert.deepEqual(run(changed.text), run(source))
+    const unsafe = picks.some(i => i >= 2)
+    const forced = verify(webRenames, sharedFile, source, forceShared(source))
+    assert.equal(forced.ok, !unsafe, JSON.stringify(forced))
+    assert.equal(changed.edits.length > 0, !unsafe)
+  }), { seed: 220272, numRuns: 300 })
+})
+
+test("RD-022: named selection preserves resolved imports, parentheses and immutable lists", () => {
+  for (const source of [
+    sharedPrefix + 'const names = fs.readdirSync("src"); const files = names.filter(name => R.test(name));',
+    sharedPrefix + 'const files = fs.readdirSync("src").map(String).filter(name => { return (R).test(name) && !name.endsWith(".json") });',
+    sharedPrefix + discovery + 'function probe(R) { return R.test("other") }',
+    sharedPrefix + discovery + 'const more = fs.readdirSync("src").filter(name => R.test(name));',
+  ]) {
+    const changed = rewriteShared(source)
+    assert.equal(changed.text, forceShared(source), JSON.stringify(changed))
+    assert.equal(verify(webRenames, sharedFile, source, changed.text).ok, true)
+  }
+})
+
+test("RD-022 witness: a forced widening changes a real passing Node assertion", () => {
+  const scratch = mkdtempSync(join(tmpdir(), "shared-regex-runtime-"))
+  try {
+    mkdirSync(join(scratch, "src"))
+    writeFileSync(join(scratch, "src/module.ts"), "")
+    const source = sharedPrefix + discovery + 'assert.equal(files.length, 1); assert.equal(R.test("unrelated.vibe"), false);'
+    const run = text => {
+      writeFileSync(join(scratch, "probe.mjs"), text)
+      return spawnSync(process.execPath, ["probe.mjs"], { cwd: scratch, encoding: "utf8" })
+    }
+    assert.equal(run(source).status, 0)
+    const file = "test/discovery.test.mjs"
+    const renames = [{ from: "src/module.ts", to: "src/module.vibe" }]
+    const inventory = ["package.json", file, "src/module.ts"]
+    const changed = rewriteSourceLiterals(ts, source, file, renames, { inventory })
+    assert.equal(changed.text, source)
+    assert.equal(run(changed.text).status, 0)
+    renameSync(join(scratch, "src/module.ts"), join(scratch, "src/module.vibe"))
+    writeFileSync(join(scratch, "src/module.d.vibe.ts"), "")
+    const forced = run(forceShared(source))
+    assert.equal(forced.status, 1)
+    assert.match(forced.stderr, /true !== false/)
+    const result = verifyTestDiff({
+      ts, renames, scratch,
+      before: { "package.json": "{}", [file]: source, "src/module.ts": "" },
+      after: { "package.json": "{}", [file]: forceShared(source), "src/module.vibe": "", "src/module.d.vibe.ts": "" },
+    })
+    assert.equal(result.ok, false, JSON.stringify(result))
+  } finally { rmSync(scratch, { recursive: true, force: true }) }
 })

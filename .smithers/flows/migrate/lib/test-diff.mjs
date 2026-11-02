@@ -8,7 +8,7 @@ import { isTestFile, isFixtureFile } from "./inventory.mjs"
 import { pathCandidate, provePathRename } from "./test-diff-paths.mjs"
 import { proveFormatterOnly } from "./test-diff-format.mjs"
 import { dependencyCandidate, proveDependencyAddition } from "./test-diff-dependencies.mjs"
-import { disagreeingLiterals, enumeratesFiles, onlyTested, packageBase, regexIdentity, widenExtensionRegex } from "./regex-selectors.mjs"
+import { disagreeingLiterals, enumeratesFiles, onlySelectionUses, packageBase, regexIdentity, widenExtensionRegex } from "./regex-selectors.mjs"
 
 export const isProtectedFile = path => isTestFile(path) || isFixtureFile(path)
 
@@ -483,7 +483,7 @@ export function verifyTestDiff({ ts, before, after, renames, declarationImportSt
               // Decided 04:00Z (B): the regex alone changes, it filters a listed directory, every use is R.test(x),
               // the file's other path tests can't tell a migrated module from its source, and the selected set is the same.
               if (!enumeratesFiles(ts, a.source)) throw new Error("extension regex is not in a file that lists a directory")
-              if (!onlyTested(ts, a.source, x.node) || !onlyTested(ts, b.source, y.node)) throw new Error("extension regex is used other than as R.test(file)")
+              if (!onlySelectionUses(ts, a.source, x.node) || !onlySelectionUses(ts, b.source, y.node)) throw new Error("extension regex has a use not proven to be file selection")
               const regexOld = regex(x.node.text)
               const selected = renames.filter(r => regexOld.test(r.from))
               const disagree = disagreeingLiterals(ts, a.source, b.source, selected, (old, next) => next.text === widenExtensionRegex(old.text))

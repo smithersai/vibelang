@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { posix, join } from "node:path"
 import { Minimatch } from "minimatch"
-import { compileRegex, disagreeingLiterals, enumeratesFiles, packageBase, regexIdentity, widenableRegexes, widenExtensionRegex } from "./regex-selectors.mjs"
+import { compileRegex, disagreeingLiterals, enumeratesFiles, onlySelectionUses, packageBase, regexIdentity, widenableRegexes, widenExtensionRegex } from "./regex-selectors.mjs"
 
 
 const calleeKey = (ts, node) => {
@@ -417,7 +417,8 @@ export function rewriteSourceLiterals(ts, text, file, renames, { selectors = tru
       const proofs = regexes.map(node => ({ node, next: widenExtensionRegex(node.text),
         proof: { file, line: line(node), ...selectorIdentity("source-regex", node.text, widenExtensionRegex(node.text), file, renames, inventory, matcherCache) } }))
       const named = [...new Set(disagree.map(d => d.rename).filter(Boolean))]
-      const refused = disagree.length ? "another path test in the file tells a renamed module from its TypeScript source (" +
+      const unproved = regexes.find(node => !onlySelectionUses(ts, source, node))
+      const refused = unproved ? "a named regex has a use not proven to be file selection; keep " + selected.slice(0, 10).map(r => r.from).join(", ") + " as TypeScript" : disagree.length ? "another path test in the file tells a renamed module from its TypeScript source (" +
         disagree.slice(0, 5).map(d => "line " + d.line + " " + d.literal).join(", ") + ")" + (named.length ? "; keep " + named.slice(0, 10).join(", ") + (named.length > 10 ? " and " + (named.length - 10) + " more" : "") + " as TypeScript, or wire the test by hand" : "") :
         proofs.some(p => !p.proof.pass) ? (proofs.find(p => !p.proof.pass).proof.reason ?? "the selected set changes or the inventory is incomplete") : null
       for (const { node, next, proof } of proofs) {

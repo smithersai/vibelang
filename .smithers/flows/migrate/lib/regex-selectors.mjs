@@ -67,6 +67,139 @@ export function onlyTested(ts, source, node) {
   return declared === 1 && refs.length > 0 && refs.every(ref => testCall(ts, ref))
 }
 
+// Resolve local references without loading or executing the target project.
+const referenceIndices = new WeakMap()
+function referenceIndex(ts, source) {
+  if (referenceIndices.has(source)) return referenceIndices.get(source)
+  const program = ts.createProgram([source.fileName], { noLib: true, noResolve: true }, {
+    getSourceFile: name => name === source.fileName ? source : undefined,
+    getDefaultLibFileName: () => "", writeFile: () => {}, getCurrentDirectory: () => "",
+    getDirectories: () => [], fileExists: name => name === source.fileName,
+    readFile: name => name === source.fileName ? source.text : undefined,
+    getCanonicalFileName: name => name, useCaseSensitiveFileNames: () => true, getNewLine: () => "\n"
+  })
+  const checker = program.getTypeChecker(), refs = new Map()
+  const symbol = n => ts.isExportSpecifier(n.parent) ? checker.getExportSpecifierLocalTargetSymbol(n.parent) :
+    ts.isShorthandPropertyAssignment(n.parent) ?
+    checker.getShorthandAssignmentValueSymbol(n.parent) : checker.getSymbolAtLocation(n)
+  const visit = n => {
+    if (ts.isIdentifier(n)) {
+      const s = symbol(n)
+      if (s) refs.set(s, [...(refs.get(s) ?? []), n])
+    }
+    ts.forEachChild(n, visit)
+  }
+  visit(source)
+  const result = { symbol, refs }
+  referenceIndices.set(source, result)
+  return result
+}
+
+const unwrap = (ts, n) => {
+  while (ts.isParenthesizedExpression(n)) n = n.expression
+  return n
+}
+
+/**
+ * Detail 272 / RD-022: a named regex may widen only when every resolved use
+ * is a selection predicate over an enumerated filename. Merely listing a
+ * directory elsewhere, or merely calling R.test(x), proves no such dataflow.
+ * This bounded proof deliberately refuses aliases and unknown consumers.
+ * Inline predicates retain their existing admission, except assertions.
+ */
+export function onlySelectionUses(ts, source, node) {
+  const assertion = n => {
+    for (let p = n.parent; p && !ts.isStatement(p); p = p.parent)
+      if (ts.isCallExpression(p) && /^(?:expect|assert)(?:\.|$)/.test(p.expression.getText(source))) return true
+    return false
+  }
+  if (assertion(node)) return false
+  if (testCall(ts, node)) return true
+  let declaration = node.parent
+  while (ts.isParenthesizedExpression(declaration)) declaration = declaration.parent
+  if (!ts.isVariableDeclaration(declaration) || !ts.isIdentifier(declaration.name) ||
+      !(declaration.parent.flags & ts.NodeFlags.Const)) return false
+  if (declaration.parent.parent.modifiers?.some(m => [ts.SyntaxKind.ExportKeyword, ts.SyntaxKind.DefaultKeyword].includes(m.kind))) return false
+  const { symbol, refs } = referenceIndex(ts, source)
+  const binding = symbol(declaration.name)
+  if (!binding || binding.declarations?.length !== 1) return false
+  const uses = (refs.get(binding) ?? []).filter(n => n !== declaration.name)
+  const singleDeclaration = n => {
+    const ds = symbol(n)?.declarations
+    return ds?.length === 1 ? ds[0] : null
+  }
+  // Trust the imported enumerator's identity, never a locally spelled lookalike.
+  const imported = (n, methods) => {
+    n = unwrap(ts, n)
+    const member = ts.isPropertyAccessExpression(n) ? n.name.text : null
+    const d = singleDeclaration(member ? n.expression : n)
+    if (!d) return false
+    if (member && (ts.isNamespaceImport(d) || ts.isImportClause(d))) {
+      const imp = ts.isNamespaceImport(d) ? d.parent.parent : d.parent
+      return ["fs", "node:fs"].includes(imp.moduleSpecifier?.text) && methods.has(member)
+    }
+    if (!member && ts.isImportSpecifier(d)) {
+      const imp = d.parent.parent.parent
+      return ["fs", "node:fs"].includes(imp.moduleSpecifier?.text) && methods.has(d.propertyName?.text ?? d.name.text)
+    }
+    return false
+  }
+  const listing = (n, seen = new Set()) => {
+    n = unwrap(ts, n)
+    if (ts.isIdentifier(n)) {
+      const d = singleDeclaration(n)
+      if (!d || seen.has(d) || !ts.isVariableDeclaration(d) || !d.initializer ||
+          !(d.parent.flags & ts.NodeFlags.Const)) return false
+      // A const array is still mutable. Admit only a single consumption,
+      // not another callback that could change it through its array argument.
+      const s = symbol(n), next = new Set([...seen, d])
+      const reads = (refs.get(s) ?? []).filter(ref => ref !== d.name)
+      if (reads.length !== 1 || reads[0] !== n) return false
+      return listing(d.initializer, next)
+    }
+    if (!ts.isCallExpression(n) || n.questionDotToken) return false
+    if (imported(n.expression, new Set(["readdirSync", "globSync"]))) return true
+    const e = n.expression
+    if (!ts.isPropertyAccessExpression(e)) return false
+    return e.name.text === "map" && n.arguments.length === 1 && ts.isIdentifier(n.arguments[0]) &&
+      n.arguments[0].text === "String" && !symbol(n.arguments[0]) && listing(e.expression, seen)
+  }
+  return uses.length > 0 && uses.every(ref => {
+    if (!testCall(ts, ref) || assertion(ref)) return false
+    let receiver = ref
+    while (ts.isParenthesizedExpression(receiver.parent)) receiver = receiver.parent
+    const call = receiver.parent.parent
+    // Only pure boolean composition may carry the result to the filter.
+    let result = call
+    for (;;) {
+      const p = result.parent
+      if (ts.isParenthesizedExpression(p) ||
+          ts.isPrefixUnaryExpression(p) && p.operator === ts.SyntaxKind.ExclamationToken ||
+          ts.isBinaryExpression(p) && [ts.SyntaxKind.AmpersandAmpersandToken, ts.SyntaxKind.BarBarToken].includes(p.operatorToken.kind)) result = p
+      else break
+    }
+    let callback = result.parent
+    if (ts.isReturnStatement(callback) && ts.isBlock(callback.parent) &&
+        callback.parent.statements.length === 1) callback = callback.parent.parent
+    if (!ts.isArrowFunction(callback) && !ts.isFunctionExpression(callback)) return false
+    if (callback.modifiers?.length || callback.asteriskToken || callback.parameters.length !== 1) return false
+    const writesParameter = n => ts.isBinaryExpression(n) && (n.operatorToken.kind >= ts.SyntaxKind.FirstAssignment && n.operatorToken.kind <= ts.SyntaxKind.LastAssignment) ||
+      ts.isPrefixUnaryExpression(n) && [ts.SyntaxKind.PlusPlusToken, ts.SyntaxKind.MinusMinusToken].includes(n.operator) ||
+      ts.isPostfixUnaryExpression(n) || ts.forEachChild(n, writesParameter)
+    if (writesParameter(callback.body)) return false
+    const param = callback.parameters[0]
+    const input = unwrap(ts, call.arguments[0])
+    if (!ts.isIdentifier(param.name) || param.initializer || param.dotDotDotToken ||
+        !ts.isIdentifier(input) || symbol(input) !== symbol(param.name)) return false
+    let argument = callback
+    while (ts.isParenthesizedExpression(argument.parent)) argument = argument.parent
+    const filter = argument.parent
+    return ts.isCallExpression(filter) && filter.arguments.length === 1 && filter.arguments[0] === argument &&
+      ts.isPropertyAccessExpression(filter.expression) && filter.expression.name.text === "filter" &&
+      listing(filter.expression.expression)
+  })
+}
+
 const enumerators = new Set(["readdir", "readdirSync", "opendir", "opendirSync", "glob", "globSync", "globby", "globbySync", "walk", "walkSync"])
 
 /** The file lists a directory: the regex filters file names, not arbitrary strings. */
@@ -141,11 +274,16 @@ export function disagreeingLiterals(ts, beforeSource, afterSource, renames, skip
   return out
 }
 
-/** Every regex literal of this file the codemod widens, as nodes. */
+/** Extension-regex candidates; each still needs a use and selected-set proof. */
 export function widenableRegexes(ts, source) {
   const out = []
   const visit = n => {
-    if (n.kind === ts.SyntaxKind.RegularExpressionLiteral && widenExtensionRegex(n.text) && onlyTested(ts, source, n)) out.push(n)
+    if (n.kind === ts.SyntaxKind.RegularExpressionLiteral && widenExtensionRegex(n.text)) {
+      let d = n.parent
+      while (ts.isParenthesizedExpression(d)) d = d.parent
+      if (onlyTested(ts, source, n) || ts.isVariableDeclaration(d) && ts.isIdentifier(d.name) &&
+          ts.isVariableDeclarationList(d.parent) && d.parent.flags & ts.NodeFlags.Const) out.push(n)
+    }
     ts.forEachChild(n, visit)
   }
   visit(source)
