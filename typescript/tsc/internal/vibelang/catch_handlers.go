@@ -76,6 +76,10 @@ func checkCatchHandler(c *checker.Checker, file *ast.SourceFile, call, fallback 
 		note(d, "This handler uses await or yield at its own function level; an explicit body conversion is needed before removing async or *.")
 	} else if _, text := catchHandlerRepair(c, file, call, handler); text != "" {
 		note(d, "Write it as a function literal: {0}.", text)
+	} else if inner := ast.SkipParentheses(handler); isAsyncOrGenerator(inner) {
+		if reason := catchNativeKeywordRefusal(c, inner); reason != "" {
+			note(d, "{0}", reason)
+		}
 	}
 }
 
@@ -89,6 +93,9 @@ func catchHandlerRepair(c *checker.Checker, file *ast.SourceFile, call, handler 
 	inner := ast.SkipParentheses(handler)
 	if isAsyncOrGenerator(inner) {
 		if catchHandlerNeedsConversion(handler) {
+			return nil, ""
+		}
+		if catchNativeKeywordRefusal(c, inner) != "" {
 			return nil, ""
 		}
 		var edits []core.TextChange
@@ -157,6 +164,11 @@ func catchHandlerNeedsConversion(handler *ast.Node) bool {
 	var visit func(*ast.Node) bool
 	visit = func(n *ast.Node) bool {
 		if ast.IsFunctionLike(n) {
+			// Synchronous source do/match closures share this activation.
+			// Native functions, async match and effect blocks keep their boundary.
+			if isProgramArrow(n) && !isEffectBlock(n) && ast.GetFunctionFlags(n)&ast.FunctionFlagsAsync == 0 {
+				return n.ForEachChild(visit)
+			}
 			// Names and decorators execute before a method's body boundary.
 			if name := n.Name(); name != nil && ast.IsComputedPropertyName(name) && visit(name) {
 				return true
@@ -168,7 +180,7 @@ func catchHandlerNeedsConversion(handler *ast.Node) bool {
 			}
 			return false
 		}
-		if ast.IsAwaitExpression(n) || ast.IsYieldExpression(n) ||
+		if ast.IsAwaitExpression(n) || fiberHelper(n) == "$await" || ast.IsYieldExpression(n) ||
 			n.Kind == ast.KindForOfStatement && n.AsForInOrOfStatement().AwaitModifier != nil ||
 			ast.IsVariableDeclarationList(n) && ast.IsVarAwaitUsing(n) {
 			return true
@@ -261,4 +273,17 @@ func catchHandlerActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.Cod
 		changes = append(changes, replaceRange(fix, edit.Pos(), edit.End(), edit.NewText)...)
 	}
 	return []*ls.CodeAction{{Description: "Write the handler as " + text, Changes: changes}}, nil
+}
+
+// catchNativeKeywordRefusal keeps the result a valid plain handler when the
+// malformed native function loses async or *. A written contract needs an
+// explicit rewrite; native suspension and returned Promises need a bridge.
+func catchNativeKeywordRefusal(c *checker.Checker, fn *ast.Node) string {
+	if fn.Type() != nil {
+		return "Removing the native function modifier would conflict with its written return contract. Rewrite the contract explicitly."
+	}
+	if asyncReturnsPromiseValue(c, fn.Body()) {
+		return "Removing the native function modifier would leave an unawaited Promise result in a plain handler. Bridge the Promise explicitly in an effect handler."
+	}
+	return ""
 }

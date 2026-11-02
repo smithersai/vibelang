@@ -527,6 +527,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Compiler benchmarks overwrote earlier trials and targets' diagnostic logs. Every invocation now retains all trial logs, commands and parsed samples, including failed trials, when you reuse `--out`.
 - Schema fuzzing could miss readonly-record alias regressions outside one spelling; keyed checks now cover the alias, mutability and required-key combinations while keeping unresolved compiler gaps explicit.
+- A catch-handler quick fix could remove `async` or `*` and leave invalid `await`, `yield` or result types; it now declines those repairs and explains the required explicit rewrite.
 
 - The install site named an unpublished compiler version and native Windows packages; it now uses npm’s published version and platforms, with WSL guidance until Windows packages are published.
 

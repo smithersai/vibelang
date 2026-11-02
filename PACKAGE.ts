@@ -205,6 +205,7 @@ const specTests = [
   "TestConfigDiagnosticSpansQuoted",
   "TestSchemaLibraryBindingQuoted",
   "TestSeverityInheritanceQuoted",
+  "TestCatchNativeHandlerRepairQuoted",
   "TestSeverityScopeQuoted",
   "TestLegacySeverityQuoted",
   "TestUnrelatedSeverityKeepsDiagnosticDefaults",
