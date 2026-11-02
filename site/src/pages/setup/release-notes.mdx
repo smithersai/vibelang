@@ -37,6 +37,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - In a package containing both `.ts` and `.vibe` modules, an unchanged TypeScript export still sent `bun build` into a `.vibe` import, which it treated as a file asset. Migration now routes native runtime exports through the package's actual emitted files too; the source loaders resolve them back to their originals, preserving one instance.
 - After the migrate flow renamed a package's module to `.vibe`, the `bun build` CLI, which loads no plugin, bundled it as a file asset and failed with `No matching export` (opencode's 90 `@opencode/schema` modules); the flow now commits each migrated package's emitted JavaScript under `.vibelang/js/` and points the package's `default` exports at it, while the loaders keep running the source.
 - A package whose `default` export names its emitted JavaScript under `.vibelang/js/`, which the `bun build` CLI and plain `node` need, ran that committed JavaScript under `node --import vibelang/register` and the `vibelang/bun` preload too; both loaders now run its `.vibe` source, as one module instance.
+- A listed platform global such as `setTimeout` or `fetch` passed with no diagnostic as a shorthand property, `{ setTimeout }`, and got `EK4402` in a type, `typeof setTimeout`, the opposite of an unlisted host global such as `WebAssembly`; both now follow the same rules: the shorthand is `EK4402`, and the type query is TypeScript's.
 - The migrate flow's setup wrote an array compiler option without spaces, such as `"customConditions": ["vibelang","bun"]`, so a repository's dprint or Prettier check failed on every tsconfig it edited (Smithers: about 60 packages, for `moduleSuffixes`); it now writes `["vibelang", "bun"]`, as those formatters do.
 - The migrate flow's setup added compiler options to every root `tsconfig*.json` it found, test fixtures included, such as the project an LSP test in Smithers' `platform-node` type-checks as data, and did it again on each run; setup now leaves the tsconfigs under `test`, `tests`, `__tests__`, fixture and `templates` directories as they are.
 - Documentation examples could not import `@effect/vitest` when another dependency supplied a different `@effect` package; snippet projects now link every scoped package from both dependency trees without changing shared installs.
@@ -97,6 +98,13 @@ A non-schema object used as a `schema` alias: If it has a public `Type` member, 
 - An exported `AsyncFiberError` constructor could change its declaration spelling when a nearby matcher changed; inferred `Fiber` parameters now keep the same namespace import, while written types and local names remain intact.
 - A producer with a written `Stream.Stream<A, E, R>` return type was rejected with `TS2739` (`Generator<…>` is not a `Stream`), so a producer could only leave its type to inference; its body is now checked as the generator it is, each `yield` against `A`, and callers and the declaration file keep the written `Stream`.
 - `try.map x`, a name after `try.` other than `all`, `race`, `any` or `allSettled`, failed with three TypeScript parse errors; it is now `EK1803`, read as `try x` for recovery.
+- The TypeScript mapper's Go tests linked the compiler and mapper executables, and a second mapper copy, on every run; the build graph now hands them its cached `//typescript:compiler` and `//typescript:mapper` builds, and a plain `go test` still links its own.
+- A fiber on the left of a pipe, `fork a() |> Fiber.join(%)` or `f |> Fiber.join(%)`, was `EK4838` (an owned fiber used where it may not go); the fiber now goes where the pipe's topic goes, as chapter 2 says `fork a() |> f(%)` forks `a()` and pipes the Fiber, so a topic joined or passed to a `Fiber` function stays in its region and one passed to another call or captured by a function is still `EK4838`.
+- A `.vibe` file that read `window.matchMedia` got `EK4402` and had to move the read to a `.ts` file, because Effect has no service for media queries; `Experimental.MediaQuery` now reads and follows a query, `EK4402` names it, and `ExperimentalBrowserServices.layer` provides it.
+- A `.vibe` file that used `requestAnimationFrame`, `cancelAnimationFrame` or `Element.getAnimations` got `EK4402` and had to move the call to a `.ts` file; `Experimental.Animations` now gives `nextFrame`, `nextFrameUnless`, `frameDeltas` and `settled`, `EK4402` names it, and `ExperimentalBrowserServices.layer` provides it.
+- A `.vibe` file that read a browser `File` got `EK4402`, which said to use `FileSystem`, and that service reads paths; `Experimental.FileReader` now reads a `Blob` or a `File` as text, a data URL or bytes, `EK4402` names it, and `ExperimentalBrowserServices.layer` provides it.
+- A `.vibe` file that followed an element's size got `EK4402` for `ResizeObserver`; `Experimental.ResizeObserver` now observes an element until its Scope closes, `EK4402` names it, and `ExperimentalBrowserServices.layer` provides it.
+- A `.vibe` file that passed `document` to an API that takes an event target got `EK4402` with no service to use; `Experimental.Document` now gives the page's `Document`, `EK4402` names it, and `ExperimentalBrowserServices.layer` provides it.
 - The migrate flow left a lint script that runs Oxlint in parentheses, `(oxlint --disable-nested-config)`, without its `.vibe` ESLint pass, and did the same to `(oxfmt --check .)` and `(prettier --check .)`, so those tools skipped `.vibe` files; each rerun of setup also added another layer of ESLint passes to a wired script, kept an earlier run's pass with the wrong `-c` configuration, and re-added the `**/*.d.vibe.ts` ESLint ignore once a formatter had requoted it. Each of these scripts now gets its pass, setup rewrites the passes it wrote before, and a rerun changes nothing.
 - `vibelang --fix` checked the whole project for each trial when no error traced to the fixes it was trying, so a package with many such fixes spent hours on a round's last few: on a generated project, 240 modules took 245 whole checks where 60 took 65. It now looks for a trial's errors in the files that reported errors earlier in the round, and checks the kept fixes against the whole project once at the end: the same 240 modules take 4 whole checks, and a fix refused this way names the first error of those files.
 - `vibelang --fix` checked the whole project once for each fix that added an error to another file, so a package with many such fixes took time that grew with the square of its size: on a generated project, 240 modules took 78 checks and 6.5 s where 60 took 24 and 0.9 s. It now finds the fixes behind the errors of different files together, in a few checks of those files, and prints the checks of each round in its progress line. When the prelude's rewrites added an error together, it also checked the project once for each file it rewrote; it now finds the rewrites that add one as it finds the fixes that do.
@@ -448,6 +456,12 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Compiler checks could miss regressions in the VibeLang formatter; the compiler gate now runs the formatter’s Go tests.
 - Synthetic compiler benchmarks emitted retired forms and could compare an implicit Effect helper with a plain TypeScript helper; fixtures now use current forms and explicit helper types, with compile and runtime checks for both languages.
+
+- A resize observer could remain allocated when the browser rejected its first target; `Experimental.ResizeObserver` now disconnects it when the scope closes, including after setup fails.
+
+- Waiting for a pending browser commit or animation frame required a plain host callback; `Experimental.Animations.nextFrameUnless` now checks and registers atomically inside a cold Effect, with cancellation on interruption (decided detail 261).
+
+- Browser file reads could report an unexpected result exactly like a host error; `Experimental.FileReader` now identifies unexpected results with `InvalidData`, preserving the origin even when the cause and message coincide.
 
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 
@@ -828,6 +842,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 - The diagnostic reference could make an emitted `EK3008` look unknown; it now explains that this static service-key error corresponds to the specification's `EK0901` until compiler renumbering.
+
+- The Chapter 15 compiler regression could fail with `moved: "none"` on a busy host; its deadlines now run on `TestClock`, preserving timeout and cleanup ordering independently of host timer dispatch.
 - The kernel law suite could still fail at 5 s on a loaded host after its 30 s budget moved into the test preload, because Bun applies a preload's default timeout to the first test file only; `bun run test` in `experiments` now passes the budget to every file, and the docs build uses the same flag.
 
 - After the migrate flow's setup, an ast-grep rule for TypeScript also scanned each `.vibe` module's `x.d.vibe.ts` sidecar, so a finding in a `.vibe` module was reported twice; setup now adds `**/*.d.vibe.ts` to the `ignores` of each TypeScript rule it extends to `.vibe`.
@@ -920,6 +936,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The LSP benchmark could loop forever with an infinite hover count or crash with an empty sample set; it now rejects invalid counts and missing arguments before reading a project or starting the server.
 
 - Classes extending a value named `effect` were rejected with syntax errors; `class Derived extends effect { }` now compiles as it does in TypeScript.
+
+- The bundler plugin's missing-project check could kill webpack at 15 s on a loaded build host and report the kill as a wrong exit status; the check now allows 60 s and names a bundler that did not end.
 
 - The site's contrast check could lose its Chromium renderer under build-host memory pressure; it now audits each single-document page in place instead of opening a second renderer to combine the results.
 - VIP migration could remove `try` from calls returning tagged errors and turn their failures into success values; it now preserves execution of those Effects, while non-Effect Yieldables retain their `asEffect()` repair.
