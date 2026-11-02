@@ -126,9 +126,22 @@ func grammarLexNotation(s string) []grammarNtok {
 			out = append(out, grammarNtok{'q', string(rs[i+1 : min(j, len(rs))])})
 			i = j + 1
 		case r == '[':
-			j := i + 1
-			for j < len(rs) && rs[j] != ']' {
-				j++
+			// A lookahead may nest [no LineTerminator here], as ECMAScript's
+			// ExpressionStatement does; quoted tokens such as "[" don't nest.
+			j, depth := i+1, 1
+			for ; j < len(rs); j++ {
+				if rs[j] == '"' {
+					for j++; j < len(rs) && rs[j] != '"'; j++ {
+					}
+					continue
+				}
+				if rs[j] == '[' {
+					depth++
+				} else if rs[j] == ']' {
+					if depth--; depth == 0 {
+						break
+					}
+				}
 			}
 			out = append(out, grammarNtok{'b', string(rs[i+1 : min(j, len(rs))])})
 			i = j + 1
@@ -341,6 +354,12 @@ func grammarParseElems(toks []grammarNtok, i int) ([][]grammarNelem, int) {
 
 var grammarNotationQuoted = regexp.MustCompile(`"([^"]*)"`)
 
+// grammarNoLTMark stands in a lookahead sequence for [no LineTerminator here]
+// between two of its tokens; it matches no token.
+const grammarNoLTMark = "\n"
+
+var grammarLookaheadElem = regexp.MustCompile(`"([^"]*)"|\[no LineTerminator here\]`)
+
 // grammarBracketSym reads an ECMAScript restriction or a grammar parameter.
 func grammarBracketSym(text string) *grammarGsym {
 	t := strings.TrimSpace(text)
@@ -363,7 +382,11 @@ func grammarBracketSym(text string) *grammarGsym {
 		var seqs [][]string
 		for _, part := range strings.Split(set, ",") {
 			var seq []string
-			for _, m := range grammarNotationQuoted.FindAllStringSubmatch(part, -1) {
+			for _, m := range grammarLookaheadElem.FindAllStringSubmatch(part, -1) {
+				if m[0] == "[no LineTerminator here]" {
+					seq = append(seq, grammarNoLTMark)
+					continue
+				}
 				seq = append(seq, m[1])
 			}
 			if len(seq) > 0 {
@@ -407,7 +430,7 @@ BindingPropertyList = BindingProperty | BindingPropertyList "," BindingProperty
 BindingProperty = BindingIdentifier Initializer? | PropertyName ":" BindingIdentifier Initializer?
 BindingElementList = BindingIdentifier | BindingElementList "," BindingIdentifier
 EmptyStatement = ";"
-ExpressionStatement = [lookahead ∉ { "{", "function", "class", "let" "[", "async" "function", "effect" "function", "using" }] Expression StatementEnd
+ExpressionStatement = [lookahead ∉ { "{", "function", "class", "let" "[", "async" [no LineTerminator here] "function", "effect" [no LineTerminator here] "function", "using" }] Expression StatementEnd
 StatementEnd = ";" | ASI
 IfStatement = "if" "(" Expression ")" Statement "else" Statement | "if" "(" Expression ")" Statement [lookahead ∉ { "else" }]
 WhileStatement = "while" "(" Expression ")" Statement

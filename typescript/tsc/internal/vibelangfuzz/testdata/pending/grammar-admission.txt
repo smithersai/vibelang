@@ -12,3 +12,7 @@ FuzzGrammarAdmission admission:fork-outside-effect compiler VIP-1/17: a legacy f
 FuzzGrammarAdmission corpus:fork-outside-effect compiler VIP-1/17: plain-function unreachable fork prefix is outside the Effect grammar; lane impl-hunt-admission
 FuzzGrammarAdmission admission:join-outside-effect compiler VIP-1/17: a legacy join prefix in plain code reports only an operand type error instead of a syntax-placement rejection; lane impl-hunt-admission
 FuzzGrammarAdmission corpus:join-outside-effect compiler VIP-1/17: plain-function unreachable join prefix is outside the Effect grammar; lane impl-hunt-admission
+FuzzGrammarAdmission admission:fiber-binding compiler VIP-17 (amended): fork or join as an Effect callable's parameter is the syntax error EK1702; the compiler reports only type errors and defines no EK1702; lane impl-hunt-admission
+FuzzGrammarAdmission corpus:fiber-binding compiler VIP-17 (amended): effect function f(join) must be EK1702; lane impl-hunt-admission
+FuzzGrammarAdmission admission:fiber-function-name grammar-lab Appendix A Name: a declaration's own name takes the enclosing context's parameters, so effect function join() {} at module level derives; the lab applies [+Effect] to every name after effect; lane impl-hunt-admission
+FuzzGrammarAdmission corpus:fiber-function-name grammar-lab Appendix A Name: effect function join(p) derives as a module-level declaration; the lab does not model it yet; lane impl-hunt-admission

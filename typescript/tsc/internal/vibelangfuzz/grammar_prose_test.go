@@ -309,7 +309,7 @@ var grammarProseRuleTexts = []struct {
 	{"reserved", regexp.MustCompile("`fork` and `join` are reserved words")},
 	{"reference", regexp.MustCompile("`fork` and `join` are keywords where an `IdentifierReference` could stand")},
 	{"same-line-first", regexp.MustCompile(`Each one and the token after it are on one line`)},
-	{"same-line-all", regexp.MustCompile(`keyword only before the tokens below, on the same line`)},
+	{"same-line-all", regexp.MustCompile(`keyword only before the tokens (?:below|listed), on the same line`)},
 	{"try-one-line", regexp.MustCompile("(statement that starts with `try \\{`|At the start of a statement, `try \\{` begins)")},
 	{"try-any-line", regexp.MustCompile("`try` followed by `\\{`, on the same line or not")},
 	{"limit-by-paren", regexp.MustCompile("a parenthesized group followed by another `\\(` is the concurrency limit")},

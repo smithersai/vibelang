@@ -55,7 +55,10 @@ and suggestions do not.
 Operand and name/type errors do not. Syntax-only legacy recovery also
 counts as rejection; this grants no authority to the corresponding form. The grammar lab models a
 bounded TypeScript subset, so an unrecognized program is triaged as either
-compiler admission or lab/spec coverage before it is made pending.
+compiler admission or lab/spec coverage before it is made pending. The
+subset keeps ECMAScript's `ExpressionStatement` lookahead exactly, including
+`async [no LineTerminator here] function`; Appendix A's contextual keywords are
+same-line, so `effect` before a line break is an identifier statement.
 Type-directed meaning such as aggregate `join` is outside this syntax oracle.
 
 Seeds use `key:<form>\n<program>`; corpus files retain those keys. Byte inputs

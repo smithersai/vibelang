@@ -285,13 +285,21 @@ func (p *grammarEarley) match(s grammarGsym, i int) bool {
 }
 
 func (p *grammarEarley) seqAt(seq []string, i int, oneLine bool) bool {
-	for k, w := range seq {
+	k := 0
+	for _, w := range seq {
+		if w == grammarNoLTMark {
+			if i+k < len(p.toks) && p.toks[i+k].nl {
+				return false
+			}
+			continue
+		}
 		if i+k >= len(p.toks) || p.toks[i+k].text != w || p.toks[i+k].kind == 's' {
 			return false
 		}
 		if oneLine && k > 0 && p.toks[i+k].nl {
 			return false
 		}
+		k++
 	}
 	return true
 }

@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:throw-expression-return\n\xe8\x03X0800870")

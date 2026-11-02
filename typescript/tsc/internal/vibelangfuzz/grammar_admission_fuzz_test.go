@@ -232,20 +232,79 @@ func grammarAdmissionForm(source string) string {
 		for body < len(ts) && ts[body].text != "{" {
 			body++
 		}
-		execution := false
-		for j := body + 1; j < len(ts); j++ {
-			if ts[j].text == "{" {
-				break
-			}
-			if ts[j].text == "}" {
-				if execution {
-					return "admission:function-kind"
+		if grammarPlainExecutes(ts, body) {
+			return "admission:function-kind"
+		}
+	}
+	// A plain arrow (no effect before its head) is plain code too.
+	for i, tok := range ts {
+		if tok.text != "=>" || i == 0 {
+			continue
+		}
+		head := i - 1
+		if ts[head].text == ")" {
+			for depth := 0; head >= 0; head-- {
+				if ts[head].text == ")" {
+					depth++
+				} else if ts[head].text == "(" {
+					if depth--; depth == 0 {
+						break
+					}
 				}
+			}
+		}
+		marked := false
+		for k := head - 1; k >= 0 && k >= head-2; k-- {
+			marked = marked || ts[k].text == "effect"
+		}
+		if !marked && grammarPlainExecutes(ts, i+1) {
+			return "admission:function-kind"
+		}
+	}
+	// VIP-17 (amended): an Effect callable's parameters reserve fork and
+	// join, so a binding named fork or join there is EK1702. An effect(...)
+	// call without => is not a parameter list.
+	for i, tok := range ts {
+		if tok.kind != 'w' || tok.text != "effect" {
+			continue
+		}
+		open, arrow := i+1, true
+		if open < len(ts) && !ts[open].nl && ts[open].text == "function" {
+			open, arrow = open+1, false
+			if open < len(ts) && ts[open].kind == 'w' {
+				// Appendix A Name: a declaration's own name takes the
+				// enclosing context's parameters. The lab gives it [+Effect].
+				declaration := i == 0 || tok.nl || ts[i-1].text == ";" || ts[i-1].text == "}" || ts[i-1].text == "{" || ts[i-1].text == "export"
+				if declaration && (ts[open].text == "fork" || ts[open].text == "join") {
+					return "admission:fiber-function-name"
+				}
+				open++
+			}
+		}
+		if open >= len(ts) || ts[open].nl || ts[open].text != "(" {
+			continue
+		}
+		depth, binding := 0, false
+		k := open
+		for ; k < len(ts); k++ {
+			switch ts[k].text {
+			case "(", "[", "{":
+				depth++
+			case ")", "]", "}":
+				depth--
+			}
+			if depth == 0 {
 				break
 			}
-			if ts[j].kind == 'w' && ts[j].text == "try" && j+1 < len(ts) && ts[j+1].text != "{" {
-				execution = true
+			if ts[k].kind == 'w' && (ts[k].text == "fork" || ts[k].text == "join") {
+				switch ts[k-1].text {
+				case "(", ",", "[", "{", "...":
+					binding = true
+				}
 			}
+		}
+		if binding && (!arrow || k+1 < len(ts) && ts[k+1].text == "=>") {
+			return "admission:fiber-binding"
 		}
 	}
 	for i, tok := range ts {
@@ -350,6 +409,38 @@ func TestGrammarAdmissionMutationKeys(t *testing.T) {
 	if got := grammarAdmissionForm("effect function f(p) { return try p; }"); got != "" {
 		t.Errorf("same-line effect modifier classified as %s", got)
 	}
+	for _, source := range []string{"effect function f(join) { return 1; }", "effect function f(p, ...fork) { return 1; }", "effect ({ join }) => 1"} {
+		if got := grammarAdmissionForm(source); got != "admission:fiber-binding" {
+			t.Errorf("reserved Effect parameter not keyed: %s: %s", source, got)
+		}
+	}
+	if got := grammarAdmissionForm("effect function join(p) { return 1; }"); got != "admission:fiber-function-name" {
+		t.Errorf("declaration name not keyed: %s", got)
+	}
+	if got := grammarAdmissionForm("const g = effect function join(p) { return 1; };"); got == "admission:fiber-function-name" {
+		t.Errorf("expression name keyed as a declaration name")
+	}
+	if got := grammarAdmissionForm("function f(p) { return p catch () => 1; }"); got != "admission:function-kind" {
+		t.Errorf("plain catch expression not keyed: %s", got)
+	}
+	if got := grammarAdmissionForm("function f() { try { g(); } catch (e) { h(); } }"); got != "" {
+		t.Errorf("try statement classified as %s", got)
+	}
+	for _, source := range []string{"function f(p) { { try p; } }", "function f() { return g(1); { return try 2; }; }", "const g = (p) => try p;", "effect function f(p) { return p catch () => try 1; }"} {
+		if got := grammarAdmissionForm(source); got != "admission:function-kind" {
+			t.Errorf("plain execution not keyed: %s: %s", source, got)
+		}
+	}
+	for _, source := range []string{"const g = effect (p) => try p;", "effect function f(p) { return p catch () => 1; }", "function f(p) { const g = effect () => try p; }", "function f() { if (x) { try { g(); } catch (e) { h(); } } }"} {
+		if got := grammarAdmissionForm(source); got != "" {
+			t.Errorf("%q classified as %s", source, got)
+		}
+	}
+	for _, source := range []string{"function f(join) { return 1; }", "effect(join);", "effect function f(p = 1) { return join p; }"} {
+		if got := grammarAdmissionForm(source); got != "" {
+			t.Errorf("%q classified as %s", source, got)
+		}
+	}
 	if got := grammarAdmissionForm("function f(p) { return fork\nfork p; }"); got != "admission:fork-outside-effect" {
 		t.Errorf("outside-Effect prefix not keyed: %s", got)
 	}
@@ -394,6 +485,39 @@ func TestGrammarAdmissionMutationKeys(t *testing.T) {
 	}
 }
 
+// grammarPlainExecutes reports whether the plain callable body at ts[at] (a
+// block, or an arrow's concise body) uses try or a catch expression, at any
+// depth, before it ends. A nested effect callable or block stops the scan: its
+// try is effect code.
+func grammarPlainExecutes(ts []grammarToken, at int) bool {
+	if at >= len(ts) {
+		return false
+	}
+	block := ts[at].text == "{"
+	depth := 0
+	for j := at; j < len(ts); j++ {
+		t := ts[j]
+		switch {
+		case t.text == "(" || t.text == "[" || t.text == "{":
+			depth++
+		case t.text == ")" || t.text == "]" || t.text == "}":
+			depth--
+		case !block && depth == 0 && (t.text == "," || t.text == ";"):
+			return false
+		case t.kind == 'w' && t.text == "effect":
+			return false
+		case t.kind == 'w' && t.text == "try" && j+1 < len(ts) && ts[j+1].text != "{":
+			return true
+		case t.kind == 'w' && t.text == "catch" && ts[j-1].text != "}":
+			return true // a catch expression, not a try statement's clause
+		}
+		if depth < 0 || block && depth == 0 {
+			return false
+		}
+	}
+	return false
+}
+
 func grammarAdmissionMutationKey(source string) string {
 	h := fnv.New64a()
 	_, _ = h.Write([]byte(source))
@@ -415,6 +539,18 @@ func TestGrammarAdmissionCore(t *testing.T) {
 					t.Fatalf("valid Appendix A control has no derivation: %s", seed.source)
 				}
 			})
+		}
+	}
+	// A reworded sentence must not silently drop the same-line keyword rule.
+	if lab.prose.sameLine != 2 {
+		t.Fatalf("Appendix A's same-line contextual keyword rule was not read (sameLine=%d); update grammarProseRuleTexts", lab.prose.sameLine)
+	}
+	// ECMAScript's ExpressionStatement lookahead is async [no LineTerminator
+	// here] function, and Appendix A's contextual keywords are same-line, so a
+	// word before a line break is its own statement.
+	for _, src := range []string{"async\nfunction f(p) { return 1; }", "effect\nfunction f(p) { return 1; }", "effect\nfunction f(p) { return join\np; }", "async function f(p) { return 1; }", "effect function f(p) { return 1; }"} {
+		if r := lab.read(lab.g, grammarLexSource(src), grammarParseMode{prose: true, names: true}); r.count == 0 {
+			t.Errorf("valid control has no derivation: %q", src)
 		}
 	}
 }
@@ -469,6 +605,10 @@ func grammarAdmissionSyntaxDiagnostic(d *ast.Diagnostic) bool {
 	// outside a source file or module block, e.g. `{ export = 1 }` (TS1231).
 	case 1231, 1232, 1233, 1234, 1235, 1258, 1473, 1474:
 		return true
+	// checkGrammarArrowFunction: a line break before => (TS1200); the
+	// checker's throw check: a line break after throw (TS1142).
+	case 1200, 1142:
+		return true
 	}
 	return false
 }
@@ -503,6 +643,10 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		{"native-module-element-context-warning", "", diagnostics.CategoryWarning, 1231, false},
 		{"external-module-element-code-collision", "other", diagnostics.CategoryError, 1231, false},
 		{"ek-module-element-code-collision", "EK", diagnostics.CategoryError, 1231, false},
+		{"native-arrow-line-terminator", "", diagnostics.CategoryError, 1200, true},
+		{"native-arrow-line-terminator-warning", "", diagnostics.CategoryWarning, 1200, false},
+		{"native-throw-line-break", "", diagnostics.CategoryError, 1142, true},
+		{"native-throw-line-break-warning", "", diagnostics.CategoryWarning, 1142, false},
 		{"native-module-type-error", "", diagnostics.CategoryError, 1192, false},
 		{"native-return-type-error", "", diagnostics.CategoryError, 1064, false},
 		{"native-name-error", "", diagnostics.CategoryError, 2304, false},
