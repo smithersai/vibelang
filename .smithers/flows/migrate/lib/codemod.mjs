@@ -452,6 +452,11 @@ export function rewriteImports(root, scope, moved, aliases, { preserve = [], rea
       const aliased = resolveRelative(file, i.specifier, files) === undefined ? resolveAliased(file, i.specifier, files, aliases) : undefined
       const target = aliased?.target ?? resolveRelative(file, i.specifier, files)
       if (!target || (only && !only.has(file) && !only.has(target))) continue
+      // A paths alias to a module that stays TypeScript keeps its authored
+      // spelling: it resolved under this configuration before the rename, and
+      // `~/leaf.ts`, a non-relative TypeScript name, is TS2877 under
+      // rewriteRelativeImportExtensions (t3code web, 23 modules).
+      if (aliased && !target.endsWith(".vibe") && posix.extname(i.specifier) !== ".vibe") continue
       let next = rewriteSpecifier(file, i.specifier, target, { mock: i.kind === "mock", base: aliased?.base })
       if (aliased && target.endsWith(".vibe") && aliases?.rewriteRelativeImportExtensions?.(file)) {
         // Native TS2877 rejects non-relative source names under this option.
