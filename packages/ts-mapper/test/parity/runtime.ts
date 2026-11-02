@@ -167,8 +167,11 @@ async function runCase(c: RuntimeCase, o: RuntimeOptions, nm: string): Promise<R
   }
 
   fs.mkdirSync(outDir, { recursive: true })
-  const entry = path.join(outDir, "run.mjs")
-  fs.writeFileSync(entry, runner(header.entry))
+  // Compiler output may itself contain run.mjs. Keep the runner in an
+  // owned directory so no emitted module is overwritten.
+  const runnerDir = fs.mkdtempSync(path.join(outDir, ".parity-run-"))
+  const entry = path.join(runnerDir, "run.mjs")
+  fs.writeFileSync(entry, runner("../" + header.entry))
   const ran = await exec(["node", entry], dir, 60_000)
   result.actual = ran.stdout.split("\n").findLast((line) => line.startsWith(resultMarker))?.slice(resultMarker.length) ?? null
   // Keep the result for diagnosis, and require the process to finish successfully.

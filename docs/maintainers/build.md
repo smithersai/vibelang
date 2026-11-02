@@ -1049,3 +1049,10 @@ path segment and quotes its generated import. A filename containing `#`,
 path or JavaScript syntax. Run
 `node --test scripts/mapper-runtime-entry-url.test.mjs` for real pinned
 stock-TypeScript regressions and generated filename batches in `//:release`.
+
+
+Each mapper runtime-parity runner lives in its own directory under the
+case's output directory, so a dependency named `run.mjs` keeps its emitted
+exports. Run `node --test scripts/mapper-runtime-runner.test.mjs` for real
+pinned stock-TypeScript module graphs, byte comparisons against an
+independent emit, and generated direct/reexport graphs in `//:release`.
