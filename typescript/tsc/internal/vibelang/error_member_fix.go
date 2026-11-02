@@ -7,6 +7,7 @@ import (
 	"unicode"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/ls/change"
@@ -82,6 +83,22 @@ var errorMemberClassFix = &ls.CodeFixProvider{
 				return nil, nil
 			}
 		}
+		// A statically named instance accessor overrides TaggedError's _tag
+		// property (TS2611); a method has an incompatible function type.
+		// Branding can leave a computed name outside native property-name
+		// resolution, but a native known name has no valid class repair.
+		for _, member := range class.Members() {
+			if member.Flags&ast.NodeFlagsReparsed != 0 ||
+				ast.HasSyntacticModifier(member, ast.ModifierFlagsStatic) ||
+				(!ast.IsGetAccessorDeclaration(member) && !ast.IsSetAccessorDeclaration(member) && !ast.IsMethodDeclaration(member)) ||
+				!errorMemberIsReservedTag(c, member) {
+				continue
+			}
+			key := member.Name()
+			if !ast.IsComputedPropertyName(key) || checker.IsTypeUsableAsPropertyName(c.GetTypeAtLocation(key.Expression())) {
+				return nil, nil
+			}
+		}
 		if fix.ErrorCode == EK2117.Code {
 			// Actual class members can retain their native implementation.
 			// Payload/family errors retain their own fixes.
@@ -131,6 +148,13 @@ var errorMemberClassFix = &ls.CodeFixProvider{
 				parts = append(parts, p.Emit(param, fix.SourceFile))
 			}
 			head += "<" + strings.Join(parts, ", ") + ">"
+		}
+		// The parser gives a fieldless body a synthetic empty payload.
+		// Printing it as a written <{}> changes declaration heritage from
+		// E_base to E_base<{}>; retain the original uninstantiated base.
+		if arguments := baseNode.TypeArguments(); module == "Data" && len(arguments) == 1 &&
+			ast.IsTypeLiteralNode(arguments[0]) && len(arguments[0].Members()) == 0 {
+			baseNode = emit.Factory.NewExpressionWithTypeArguments(baseNode.Expression(), nil)
 		}
 		base := p.Emit(baseNode, fix.SourceFile)
 		if module == "Data" {

@@ -1,0 +1,1 @@
+export effect function main() { return "nominal schema-error key migrations preserve Exits and declarations" }

@@ -1,0 +1,78 @@
+// expect: EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117
+// VIP-13: singleton brands retain the reserved tag name; broad keys keep native admission.
+type KeyBrand = { readonly brand: unique symbol }; type Tag = "_tag" & KeyBrand; type Word = "tag" & KeyBrand; type Underscore = "_" & KeyBrand; type Upper = "_TAG" & KeyBrand; declare const unique: unique symbol;
+declare const key0: "_tag"
+export error E0getter { id: string; get [key0](): number { return 1 } }
+export error E0method { id: string; [key0](): number { return 1 } }
+declare const key1: Tag
+export error E1getter { id: string; get [key1](): number { return 1 } }
+export error E1method { id: string; [key1](): number { return 1 } }
+declare const key2: Tag & { readonly extra: unique symbol }
+export error E2getter { id: string; get [key2](): number { return 1 } }
+export error E2method { id: string; [key2](): number { return 1 } }
+declare const key3: Tag & string
+export error E3getter { id: string; get [key3](): number { return 1 } }
+export error E3method { id: string; [key3](): number { return 1 } }
+declare const key4: Tag & unknown
+export error E4getter { id: string; get [key4](): number { return 1 } }
+export error E4method { id: string; [key4](): number { return 1 } }
+declare const key5: Tag | "_tag"
+export error E5getter { id: string; get [key5](): number { return 1 } }
+export error E5method { id: string; [key5](): number { return 1 } }
+declare const key6: `${Tag}`
+export error E6getter { id: string; get [key6](): number { return 1 } }
+export error E6method { id: string; [key6](): number { return 1 } }
+declare const key7: `_${Word}`
+export error E7getter { id: string; get [key7](): number { return 1 } }
+export error E7method { id: string; [key7](): number { return 1 } }
+declare const key8: `${Underscore}tag`
+export error E8getter { id: string; get [key8](): number { return 1 } }
+export error E8method { id: string; [key8](): number { return 1 } }
+declare const key9: Lowercase<Upper>
+export error E9getter { id: string; get [key9](): number { return 1 } }
+export error E9method { id: string; [key9](): number { return 1 } }
+declare const key10: Capitalize<Tag>
+export error E10getter { id: string; get [key10](): number { return 1 } }
+export error E10method { id: string; [key10](): number { return 1 } }
+declare const key11: Uncapitalize<Tag>
+export error E11getter { id: string; get [key11](): number { return 1 } }
+export error E11method { id: string; [key11](): number { return 1 } }
+declare const key12: Lowercase<Uppercase<Tag>>
+export error E12getter { id: string; get [key12](): number { return 1 } }
+export error E12method { id: string; [key12](): number { return 1 } }
+declare const key13: "safe" & KeyBrand
+export error E13getter { id: string; get [key13](): number { return 1 } }
+export error E13method { id: string; [key13](): number { return 1 } }
+declare const key14: ("_tag" | "safe") & KeyBrand
+export error E14getter { id: string; get [key14](): number { return 1 } }
+export error E14method { id: string; [key14](): number { return 1 } }
+declare const key15: string & KeyBrand
+export error E15getter { id: string; get [key15](): number { return 1 } }
+export error E15method { id: string; [key15](): number { return 1 } }
+declare const key16: string
+export error E16getter { id: string; get [key16](): number { return 1 } }
+export error E16method { id: string; [key16](): number { return 1 } }
+declare const key17: Lowercase<string & KeyBrand>
+export error E17getter { id: string; get [key17](): number { return 1 } }
+export error E17method { id: string; [key17](): number { return 1 } }
+declare const key18: Uppercase<Tag>
+export error E18getter { id: string; get [key18](): number { return 1 } }
+export error E18method { id: string; [key18](): number { return 1 } }
+declare const key19: Lowercase<"SAFE" & KeyBrand>
+export error E19getter { id: string; get [key19](): number { return 1 } }
+export error E19method { id: string; [key19](): number { return 1 } }
+declare const key20: `${Tag}${Tag}`
+export error E20getter { id: string; get [key20](): number { return 1 } }
+export error E20method { id: string; [key20](): number { return 1 } }
+declare const key21: `x-${Tag}`
+export error E21getter { id: string; get [key21](): number { return 1 } }
+export error E21method { id: string; [key21](): number { return 1 } }
+declare const key22: number
+export error E22getter { id: string; get [key22](): number { return 1 } }
+export error E22method { id: string; [key22](): number { return 1 } }
+declare const key23: typeof unique
+export error E23getter { id: string; get [key23](): number { return 1 } }
+export error E23method { id: string; [key23](): number { return 1 } }
+declare const key24: never
+export error E24getter { id: string; get [key24](): number { return 1 } }
+export error E24method { id: string; [key24](): number { return 1 } }

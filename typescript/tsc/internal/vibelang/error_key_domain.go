@@ -151,3 +151,97 @@ func keyMappingMayContainTagText(c *checker.Checker, t *checker.Type, text strin
 	}
 	return false
 }
+
+// keyDomainSingleString finds a proven singleton string after erasing opaque
+// brands. Plain errors reserve a known _tag member, but do not apply the
+// schema-error rule that rejects every broad key domain (Chapter 3, VIP-13).
+func keyDomainSingleString(c *checker.Checker, t *checker.Type, depth int) (string, bool) {
+	if t == nil || depth > 16 {
+		return "", false
+	}
+	flags := t.Flags()
+	switch {
+	case flags&checker.TypeFlagsStringLiteral != 0:
+		value, ok := t.AsLiteralType().Value().(string)
+		return value, ok
+	case t.IsUnion():
+		value := ""
+		found := false
+		for _, member := range t.Types() {
+			next, known := keyDomainSingleString(c, member, depth+1)
+			if !known || found && next != value {
+				return "", false
+			}
+			value, found = next, true
+		}
+		return value, found
+	case t.IsIntersection():
+		value := ""
+		found := false
+		for _, member := range t.Types() {
+			if next, known := keyDomainSingleString(c, member, depth+1); known {
+				if found && next != value {
+					return "", false
+				}
+				value, found = next, true
+			}
+		}
+		if found {
+			for _, member := range t.Types() {
+				if !keyDomainMayContainTagText(c, member, value, depth+1) {
+					return "", false
+				}
+			}
+		}
+		return value, found
+	case flags&checker.TypeFlagsTemplateLiteral != 0:
+		template := t.AsTemplateLiteralType()
+		parts, holes := template.Texts(), template.Types()
+		if len(parts) != len(holes)+1 {
+			return "", false
+		}
+		value := parts[0]
+		for i, hole := range holes {
+			part, known := keyDomainSingleString(c, hole, depth+1)
+			if !known {
+				return "", false
+			}
+			value += part + parts[i+1]
+		}
+		return value, true
+	case flags&checker.TypeFlagsStringMapping != 0:
+		value, known := keyDomainSingleString(c, t.AsStringMappingType().Target(), depth+1)
+		if !known || t.Symbol() == nil {
+			return "", false
+		}
+		// ASCII case mappings agree with JavaScript. Other keys need no singleton
+		// proof to remain admitted in an ordinary error.
+		for _, r := range value {
+			if r > 127 {
+				return "", false
+			}
+		}
+		switch t.Symbol().Name() {
+		case "Uppercase":
+			return strings.ToUpper(value), true
+		case "Lowercase":
+			return strings.ToLower(value), true
+		case "Capitalize":
+			if value != "" {
+				value = strings.ToUpper(value[:1]) + value[1:]
+			}
+			return value, true
+		case "Uncapitalize":
+			if value != "" {
+				value = strings.ToLower(value[:1]) + value[1:]
+			}
+			return value, true
+		}
+	case flags&checker.TypeFlagsInstantiable != 0:
+		constraint := c.GetBaseConstraintOfType(t)
+		if constraint != nil && constraint != t {
+			return keyDomainSingleString(c, constraint, depth+1)
+		}
+	}
+	return "", false
+}

@@ -138,8 +138,25 @@ func TestErrorReservedStaticMemberMigrationConverges(t *testing.T) {
 			}
 			result := FixProjectWithOptions(t.Context(), fs, bundled.LibPath(), config, options)
 			fixed := result.Files[file.FileName()]
+			// A native-resolved accessor would replace EK2117 with TS2611.
+			// Keep these rows as no-action checks in every migration mode.
+			if strings.Contains(source, "; get _tag") || strings.Contains(source, "; set _tag") {
+				if result.Err != nil || len(result.Files) != 0 {
+					t.Fatalf("invalid accessor class was offered: source %s, options %+v, files %v, error %v", source, options, result.Files, result.Err)
+				}
+				if got, err := os.ReadFile(file.FileName().AsString()); err != nil || string(got) != source {
+					t.Fatalf("unrepairable accessor changed: %q, %v", got, err)
+				}
+				continue
+			}
 			if result.Err != nil || fixed == nil || fixed.Counts[2117] == 0 || !strings.Contains(fixed.Text, "class E extends") {
 				t.Fatalf("migration did not converge: source %s, options %+v, fixed %+v, error %v", source, options, fixed, result.Err)
+			}
+			checked, checkedFile, _, _ := editorProgram(t, fixed.Text)
+			for _, d := range append(checked.GetSyntacticDiagnostics(t.Context(), checkedFile), checked.GetSemanticDiagnostics(t.Context(), checkedFile)...) {
+				if d.Category() == diagnostics.CategoryError {
+					t.Fatalf("converged repair does not typecheck: %s\n%s", d.String(), fixed.Text)
+				}
 			}
 			if err := os.WriteFile(file.FileName().AsString(), []byte(fixed.Text), 0o644); err != nil {
 				t.Fatal(err)

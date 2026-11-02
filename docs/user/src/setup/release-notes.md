@@ -230,6 +230,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Editor rename checks falsely reported a failure when TypeScript repaired duplicate declarations; checks now accept those repairs while still catching added collisions and unrelated diagnostic changes.
 
 - Renaming a symbol in a file with an unfinished `module { ... }` declaration could crash the editor. Rename now skips the missing module name and still updates other bindings.
+| A plain `error` method or getter with a computed key known to be `"_tag"`, including a branded singleton, template or string mapping | `EK2117` reserves the name. Run `vibelang --fix` to keep a compatible member in an explicit Effect TypeScript class; rename an instance member whose native override is invalid. |
 | A typed `_tag` payload field in an `error` or `schema error` | `EK2117` reserves the generated tag name, including when the written type accepts it. Rename the field, or use `vibelang --fix` to retain a compatible contract in an explicit class. Fieldless plain bases with generated subclasses need a manual class migration. |
 | An initialized `_tag` field, accessor or static member in an `error` or `schema error` | `EK2117` reserves the name; `--fix` retains previously valid members in explicit Effect classes. |
 - Loading a `.vibe` module through `vibelang/register`, `vibelang/bun` or a bundler plugin failed with `TS6305: Output file '…/lib/x.d.ts' has not been built from source file '…/src/x.ts'` when its tsconfig `references` a project that was not built yet, as in a fresh clone before `vibelang -b`; the loader's compile now reads a referenced project's types from its sources, as the editor does, and a relative import into that project no longer reports `TS2878`.
@@ -524,6 +525,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Build entry globs could emit empty chunks from generated `.d.vibe.ts` files beside the source outputs; the Rolldown plugin now excludes those sidecars from single, array and named entries, including `tsdown` builds.
 - Knip could hide an unused export when an ordinary comment followed `@public`; the adapter now preserves that comment and Knip applies the same attachment rules as for TypeScript.
 - Knip marked later names in a `@public` variable declaration as unused; all bindings in that declaration now keep the marker.
+
+- Plain error getters and methods whose computed name is a branded `"_tag"` could bypass the reserved tag check. They now receive `EK2117`, including literal template and string mapping variants. The class repair preserves compatible branded members and leaves native-resolved instance tag accessors and methods for manual repair instead of introducing TypeScript errors. Fieldless repairs also preserve their constructor declarations.
 
 - Initialized `_tag` fields, accessors and static members in an `error` or `schema error` could compile or report duplicate or unrelated diagnostics; they now report `EK2117`, and `--fix` retains previously valid implementations in explicit Effect classes.
 - A typed `_tag` field in an `error` or `schema error` could override the generated tag contract or report unrelated TypeScript errors; it now reports `EK2117` at the field name, and `vibelang --fix` retains compatible contracts and schema-family registration in an explicit class.

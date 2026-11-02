@@ -10,29 +10,30 @@ import (
 const nominalKeyPrelude = "type Brand = string & { readonly brand: unique symbol }; type LiteralBrand = \"x\" & { readonly brand: unique symbol }; type UpperTag = \"_TAG\" & { readonly brand: unique symbol }; type Count = \"COUNT\" & { readonly brand: unique symbol }; "
 
 var nominalKeyDomains = []struct {
-	name, domain string
-	reserved     bool
+	name, domain  string
+	reserved      bool
+	plainReserved bool
 }{
-	{"brand", "Brand", true},
-	{"literal-brand", "LiteralBrand", false},
-	{"template-brand", "`${Brand}`", true},
-	{"template-brand-suffix", "`${Brand}tag`", true},
-	{"template-brand-prefix", "`_${Brand}`", true},
-	{"template-brand-safe-prefix", "`x-${Brand}`", false},
-	{"template-literal-brand", "`${LiteralBrand}`", false},
-	{"lowercase-brand", "Lowercase<Brand>", true},
-	{"uppercase-brand", "Uppercase<Brand>", false},
-	{"capitalize-brand", "Capitalize<Brand>", true},
-	{"uncapitalize-brand", "Uncapitalize<Brand>", true},
-	{"multiple-holes", "`${Brand}${Brand}`", true},
-	{"safe-multiple-holes", "`${Brand}x${Brand}`", false},
-	{"literal-fragments", "`_${Brand}ag`", true},
-	{"safe-suffix", "`_${Brand}x`", false},
-	{"number-hole", "`${number}`", false},
-	{"boolean-hole", "`${boolean}`", false},
-	{"union-hole", "`${Brand | \"safe\"}`", true},
-	{"lowercase-literal-brand", "Lowercase<UpperTag>", true},
-	{"safe-lowercase-literal-brand", "Lowercase<Count>", false},
+	{"brand", "Brand", true, false},
+	{"literal-brand", "LiteralBrand", false, false},
+	{"template-brand", "`${Brand}`", true, false},
+	{"template-brand-suffix", "`${Brand}tag`", true, false},
+	{"template-brand-prefix", "`_${Brand}`", true, false},
+	{"template-brand-safe-prefix", "`x-${Brand}`", false, false},
+	{"template-literal-brand", "`${LiteralBrand}`", false, false},
+	{"lowercase-brand", "Lowercase<Brand>", true, false},
+	{"uppercase-brand", "Uppercase<Brand>", false, false},
+	{"capitalize-brand", "Capitalize<Brand>", true, false},
+	{"uncapitalize-brand", "Uncapitalize<Brand>", true, false},
+	{"multiple-holes", "`${Brand}${Brand}`", true, false},
+	{"safe-multiple-holes", "`${Brand}x${Brand}`", false, false},
+	{"literal-fragments", "`_${Brand}ag`", true, false},
+	{"safe-suffix", "`_${Brand}x`", false, false},
+	{"number-hole", "`${number}`", false, false},
+	{"boolean-hole", "`${boolean}`", false, false},
+	{"union-hole", "`${Brand | \"safe\"}`", true, false},
+	{"lowercase-literal-brand", "Lowercase<UpperTag>", true, true},
+	{"safe-lowercase-literal-brand", "Lowercase<Count>", false, false},
 }
 
 func TestErrorNominalTemplateDomain(t *testing.T) {
@@ -76,7 +77,7 @@ func TestErrorNominalTemplateMembers(t *testing.T) {
 						errors = append(errors, d.String())
 						reserved = reserved || d.Source() == diagnosticSource && d.Code() == 2117 && d.Pos() == strings.Index(source, "[key]")
 					}
-					want := form == "schema error" && row.reserved
+					want := form == "schema error" && row.reserved || form == "error" && row.plainReserved
 					if want && (len(errors) != 1 || !reserved) {
 						t.Fatalf("want one EK2117 at computed key; got %v", errors)
 					}

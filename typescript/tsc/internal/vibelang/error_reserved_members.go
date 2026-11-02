@@ -17,6 +17,9 @@ func errorMemberIsReservedTag(c *checker.Checker, member *ast.Node) bool {
 		if t != nil && checker.IsTypeUsableAsPropertyName(t) {
 			return checker.GetPropertyNameFromType(t) == "_tag"
 		}
+		if key, known := keyDomainSingleString(c, t, 0); known {
+			return key == "_tag"
+		}
 		return errorMemberKeyMayBeTag(c, member, t)
 	}
 	return errorMemberIsTag(member)

@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nconst Key = Schema.Literal(\"_tag\").pipe(Schema.brand(\"Key\"))\nconst key = Schema.decodeUnknownSync(Key)(\"_tag\")\nexport error E { get [key](): number { return 1 } }\n")

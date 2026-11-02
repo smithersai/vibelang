@@ -430,6 +430,8 @@ expired E2
 
 An `error` declaration always extends `Data.TaggedError`, so `error MissingFile extends FileError` is a compile error. Group related errors with a union type, `type FileError = MissingFile | ExpiredFile`, and choose among them with `match`. Each error keeps its own bare name as its tag, so `catchTag("MissingFile")` routes it.
 
+A computed method or getter whose key is known to be `"_tag"` is reserved in either error form, even when its singleton type is branded, wrapped in a template or mapped with `Lowercase`. Broad keys in a plain `error` keep the native computed-name checks. `vibelang --fix` retains the member in an explicit class when native TypeScript accepts it; no class repair is offered for an instance accessor or method whose resolved name overrides the base `_tag` property. Fieldless errors retain their constructor declarations.
+
 ## Errors that encode
 
 ```vibe
