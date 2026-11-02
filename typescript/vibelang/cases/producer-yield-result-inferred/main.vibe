@@ -1,0 +1,14 @@
+// expect-result: [7,"undefined"]
+import { Stream } from "effect"
+effect function* p() {
+ const result=yield 7
+ const precise:undefined=result
+ yield precise===void 0 ? "undefined" : "wrong"
+}
+export effect function main() {return try Stream.runCollect(p())}
+
+// The computed key evaluates in nativeKeys, before the method body exists.
+function* nativeKeys(): Generator<number, void, string> {
+ const object={effect *[(yield 1) as string](){yield 2}}
+ return
+}

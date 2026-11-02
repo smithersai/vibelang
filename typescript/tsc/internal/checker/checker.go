@@ -11349,6 +11349,9 @@ func (c *Checker) checkYieldExpression(node *ast.Node) *Type {
 		use := core.IfElse(isAsync, IterationUseAsyncYieldStar, IterationUseYieldStar)
 		return core.OrElse(c.getIterationTypeOfIterable(use, IterationTypeKindReturn, yieldExpressionType, node.Expression()), c.anyType)
 	}
+	if result := c.yieldExpressionResultTypeFromHooks(node, fn); result != nil {
+		return result
+	}
 	if returnType != nil {
 		return core.OrElse(c.getIterationTypeOfGeneratorFunctionReturnType(IterationTypeKindNext, returnType, isAsync), c.anyType)
 	}
