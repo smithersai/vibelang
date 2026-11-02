@@ -19,8 +19,8 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,406 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 15,474 |
-| The skill and the user guide (140 pages) | 376,017 |
-| The user guide alone | 371,611 |
+| The skill and the user guide (140 pages) | 378,138 |
+| The user guide alone | 373,732 |
 | The specification (10 chapters) | 152,794 |
 | The decision log, `docs/design/history/DECISIONS.md` | 141,629 |
 
@@ -116,24 +116,24 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Build and test** | **11,631** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 8,751 |
 | [Vite and Vitest](../setup/vite.md) | 2,880 |
-| **Format and lint** | **4,667** |
-| [Format with dprint](../setup/formatting.md) | 2,051 |
+| **Format and lint** | **4,689** |
+| [Format with dprint](../setup/formatting.md) | 2,073 |
 | [Developer tools](../setup/developer-tools.md) | 2,616 |
-| **Frameworks** | **10,067** |
+| **Frameworks** | **11,722** |
 | [React](../setup/react.md) | 2,158 |
 | [React Native and Metro](../setup/react-native.md) | 415 |
 | [Vue](../setup/vue.md) | 3,045 |
 | [Svelte](../setup/svelte.md) | 2,669 |
-| [Foldkit](../setup/foldkit.md) | 1,780 |
+| [Foldkit](../setup/foldkit.md) | 3,435 |
 | **Editors** | **4,069** |
 | [VS Code and Cursor](../setup/vscode.md) | 1,013 |
 | [Neovim](../setup/neovim.md) | 1,023 |
 | [Zed](../setup/zed.md) | 479 |
 | [Other editors](../setup/other-editors.md) | 492 |
 | [Coding agents](../setup/coding-agents.md) | 1,062 |
-| **Upgrade** | **90,514** |
-| [Release notes](../setup/release-notes.md) | 90,514 |
-| **All 19 pages** | **125,775** |
+| **Upgrade** | **90,813** |
+| [Release notes](../setup/release-notes.md) | 90,813 |
+| **All 19 pages** | **127,751** |
 
 ### Guides
 
@@ -201,12 +201,12 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Leftovers](../sink/062-leftovers.md) | 748 |
 | **Testing** | **1,492** |
 | [TestClock](../testing/063-testclock.md) | 1,492 |
-| **Code Style** | **8,796** |
+| **Code Style** | **8,941** |
 | [Guidelines](../code-style/064-guidelines.md) | 888 |
 | [Dual APIs](../code-style/065-dual.md) | 1,120 |
 | [Branded Types](../code-style/066-branded-types.md) | 1,279 |
 | [Pattern Matching](../code-style/067-pattern-matching.md) | 1,921 |
-| [Excessive Nesting](../code-style/068-do.md) | 1,563 |
+| [Excessive Nesting](../code-style/068-do.md) | 1,708 |
 | [Control Flow Operators](../code-style/069-control-flow.md) | 2,025 |
 | **Data Types** | **19,628** |
 | [BigDecimal](../data-types/070-bigdecimal.md) | 1,500 |
@@ -257,7 +257,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Platform globals in VibeLang](../platform/platform-globals.md) | 6,199 |
 | [Cloudflare Workers](../platform/cloudflare-workers.md) | 790 |
 | [Alchemy](../platform/alchemy.md) | 2,527 |
-| **All 101 pages** | **174,015** |
+| **All 101 pages** | **174,160** |
 
 ### VibeLang features
 

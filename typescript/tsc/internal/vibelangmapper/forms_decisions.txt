@@ -933,6 +933,7 @@ typescript/vibelang/cases/coverage-generated-functions/main.vibe:74:23 lambda pr
 typescript/vibelang/cases/coverage-generated-functions/main.vibe:81:10 lambda effectFn table
 typescript/vibelang/cases/coverage-generated-functions/main.vibe:81:24 lambda effectFn table
 typescript/vibelang/cases/coverage-generated-functions/main.vibe:81:42 lambda dual fallback
+typescript/vibelang/cases/coverage-generated-functions/main.vibe:91:24 lambda plain annotation
 typescript/vibelang/cases/d362-effect-provide-union.fail/main.vibe:14:22 lambda dual fallback
 typescript/vibelang/cases/d362-effect-provide-union.fail/main.vibe:16:16 lambda program table
 typescript/vibelang/cases/d362-effect-provide-union.fail/main.vibe:17:16 lambda program table

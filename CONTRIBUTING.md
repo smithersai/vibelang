@@ -64,6 +64,8 @@ The Go suites run from `typescript/tsc/`. Install Effect with `(cd experiments &
 
 `packages/ts-mapper/` is `vibelang-ts-mapper`, an experimental, unpublished TypeScript 7.1 content mapper through which stock `tsc` and TypeScript's language server check `.vibe` files. `bash packages/ts-mapper/test/e2e.sh` builds it, installs the TypeScript its `package.json` pins, and checks, emits and runs projects with it; `KEEP=1` keeps the projects. A project enables it with a top-level `"contentMappers": [{ "package": "vibelang-ts-mapper", "extensions": [".vibe"] }]` in `tsconfig.json`. TypeScript runs a mapper only when allowed: `tsc --runExternalCode`, `runExternalCode: true` in a language server's initialization options, or, in VS Code, a trusted workspace with `js/ts.contentMappers.enabled` on. Stock `tsc` writes declarations for `.vibe` files (`greet.d.vibe.ts`) but no JavaScript. When `vibelang` or `vibelang-mapper --emit` writes that JavaScript, add `"outputExtensions": { ".vibe": ".js" }` to the entry and set `rewriteRelativeImportExtensions`, as `packages/ts-mapper/test/emit-fixture` does: `tsc` then imports `./greet.js` and writes `greet.d.ts`. `TS_CONTENT_MAPPER_DEBUG=1` makes `tsc` log the protocol and the mapper's stderr.
 
+Runtime `main` subprocess failures emit a `[runtime-child]` JSON record with the host, elapsed milliseconds, explicit timeout, signal and output byte counts. `timeoutReported` is Bun's child-timeout flag; Bun can terminate a child at the enclosing test deadline while this flag is `false`. Source, arguments, paths and output contents are omitted. Reproduce the bounded timeout regression with `(cd packages/runtime && bun test tests/subprocess.property.test.ts)`.
+
 The repository has no CI or commit statuses. For each pull request, a maintainer runs `sh scripts/e2e.sh` and the compiler case suite, `(cd typescript && sh vibelang/smoke.sh --jobs 8)`, and records the results in the pull request.
 
 The end-to-end check runs setup, then scaffolds, installs, builds, runs and tests a temporary app, and stops at the first failing step. A compiler case is a directory under `typescript/vibelang/cases/`; `typescript/vibelang/harness.mjs` describes the format. A passing check doesn't prove every language feature works, so list the checks you ran, the ones that failed and the ones you couldn't run.
@@ -91,4 +93,4 @@ Start with [good first issues](https://github.com/smithersai/vibelang/issues?q=i
 
 Ask with the [question form](https://github.com/smithersai/vibelang/issues/new?template=question.yml). Report a vulnerability privately, never in an issue: see [SECURITY.md](.github/SECURITY.md).
 
-<sub>2,403 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
+<sub>2,496 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
