@@ -1615,6 +1615,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A function ending in `return try value` could reject unchecked iterables and skip iterator getters, including a getter on an `Effect`; tail `try` now keeps native delegation, defect identity and evaluation order.
 
+- A `restore` in a computed object or class method name, or a class's `extends` expression, incorrectly reported `EK2202`; it now uses the enclosing activation's mask.
+
 - Runtime parity reported a missing module for valid `.mts` and `.cts` entry files; it now runs their emitted `.mjs` and `.cjs` files, using the same filename mapping as its emit checks.
 
 - The specification listed `EK0204`, a compiler limitation, among the language rules; it now lists it under transitional compiler diagnostics, and the spec linter prevents compiler gaps from entering the normative table.

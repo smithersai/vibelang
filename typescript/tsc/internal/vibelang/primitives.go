@@ -288,11 +288,35 @@ func checkPrimitives(c *checker.Checker, file *ast.SourceFile) {
 			n.ForEachChild(func(child *ast.Node) bool { return visit(child, ctx) })
 			return false
 		}
+		if ast.IsClassLike(n) {
+			// Class definition expressions run now. Member bodies, field
+			// initialization and static blocks keep their independent context;
+			// computed names and heritage expressions use the enclosing mask.
+			inner := maskContext{inFunction: true, outerMasked: ctx.masked || ctx.outerMasked}
+			n.ForEachChild(func(child *ast.Node) bool {
+				if ast.IsClassElement(child) {
+					child.ForEachChild(func(part *ast.Node) bool {
+						if part == child.Name() && part.Kind == ast.KindComputedPropertyName {
+							return visit(part, ctx)
+						}
+						return visit(part, inner)
+					})
+					return false
+				}
+				return visit(child, ctx)
+			})
+			return false
+		}
 		if isFunctionBoundary(n) {
 			// The program of uninterruptible written as an expression, as in
 			// `return uninterruptible { … }`, runs masked like the statement form.
 			inner := maskContext{inFunction: true, masked: isUninterruptibleProgram(c, n), outerMasked: ctx.masked || ctx.outerMasked}
-			n.ForEachChild(func(child *ast.Node) bool { return visit(child, inner) })
+			n.ForEachChild(func(child *ast.Node) bool {
+				if child == n.Name() && child.Kind == ast.KindComputedPropertyName {
+					return visit(child, ctx)
+				}
+				return visit(child, inner)
+			})
 			return false
 		}
 		if fiberHelper(n) == "$forConcurrent" {

@@ -1,0 +1,14 @@
+// expect-result: ["object","class","static","heritage","own"]
+export effect function main(){
+ const events:string[]=[]
+ uninterruptible {
+  const o={[(do {restore {events.push("object")}}, "m")](){return 1}}
+  class C {[(do {restore {events.push("class")}}, "m")](){return 2}}
+  class Static {static [(do {restore {events.push("static")}}, "m")](){return 3}}
+  class Base {}
+  class Derived extends (do {restore {events.push("heritage")}}, Base) {}
+  const later=effect ()=>{uninterruptible {restore {events.push("own")}}}
+  try later()
+ }
+ return events
+}
