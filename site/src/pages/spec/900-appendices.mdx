@@ -932,7 +932,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK0107` | `eval`, `Function`, `arguments`, `var` or `with` in a `.vibe` file; `globalThis` other than as the object of a statically named member; `.constructor` of a function; a `data:` or `blob:` import specifier; `var` in a pattern binding | 1, 4, 33 | [Functions](/spec/001-functions#direct-eval) |
 | `EK0108` | a recognized `effect` modifier on an `abstract` declaration, in an ambient `declare` context, or on an `interface` or type literal member | 1 | [Functions](/spec/001-functions#static-rules) |
 | `EK0201` | a `do` block whose last statement violates TC39's `EndsInIterationOrBareIfOrDeclaration` early error | 2 | [Running Effects](/spec/002-running#do-expressions) |
-| `EK0202` | a `break` or `continue` whose target is outside the block of an `effect { … }` expression | 2 | [Functions](/spec/001-functions) |
+| `EK0202` | a `break` or `continue` whose target is outside the block of an `effect { … }` expression | 2 | [Running Effects](/spec/002-running#effect-blocks) |
 | `EK0203` | `var` in a `do` expression in a parameter list | 2 | [Running Effects](/spec/002-running#do-expressions) |
 | `EK0204` | current compiler implementation limitation: an outward source completion cannot yet cross a generated function boundary in this position; this is not a TC39 early error | 2 | [Running Effects](/spec/002-running#do-expressions) |
 | `EK0205` | a `break` or `continue` in a loop head's `do` that leaves it unlabeled or targets that loop | 2 | [Running Effects](/spec/002-running#do-expressions) |

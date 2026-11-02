@@ -1637,7 +1637,6 @@ typescript/vibelang/cases/for-of-closes-iterator/main.vibe:89:5 lambda effectFn 
 typescript/vibelang/cases/for-of-closes-iterator/main.vibe:93:13 byname program table
 typescript/vibelang/cases/for-of-closes-iterator/main.vibe:93:40 lambda effectFn table
 typescript/vibelang/cases/for-of-closes-iterator/main.vibe:93:5 lambda effectFn table
-typescript/vibelang/cases/for-of-native-close/lowered.vibe:4:18 lambda dual fallback
 typescript/vibelang/cases/for-of-native-close/main.vibe:47:60 lambda plain protocol
 typescript/vibelang/cases/for-of-native-close/main.vibe:51:149 lambda plain annotation
 typescript/vibelang/cases/for-of-native-close/main.vibe:51:41 lambda plain annotation
