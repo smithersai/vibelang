@@ -69,6 +69,7 @@ const specTests = [
   "TestMigrationEffectBlockLintQuoted",
   "TestReactEmittedImplementationQuoted",
   "TestModuleMetadataBoundsQuoted",
+  "TestVibexDeclarationSpellingQuoted",
   "TestDoForTryDiagnosticOwnerQuoted",
   "TestDoDeclarationBytesQuoted",
   "TestDoContextualResultFuzzQuoted",
