@@ -342,6 +342,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Repeated `readonly` modifiers in schema fields were silently accepted; they now report `TS1030`, and `--fix` removes the duplicate without changing the codec.
 
 - Compiler validation could keep outdated advice checks when host binding rules changed; its quoted-rule guard now checks declaration origin and the `Worker` runtime exception.
+- Isolated compiler-case checks could lose nested package fixtures and report incorrect diagnostics; they now preserve nested packages and relative workspace links.
 
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 

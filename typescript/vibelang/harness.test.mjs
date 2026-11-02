@@ -5,6 +5,8 @@ import os from "node:os"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import test from "node:test"
+import { createRequire } from "node:module"
+const fc = createRequire(new URL("../../packages/runtime/package.json", import.meta.url))("fast-check")
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 
@@ -328,4 +330,72 @@ console.log(value)
   assert.match(result.stdout, /1 cases: 1 ok, 0 FAIL/)
   assert.equal(fs.existsSync(path.join(root, "vibelang/cases/runtime/out")), false)
   assert.equal(fs.readdirSync(path.join(root, "vibelang")).some((name) => name.startsWith(".smthrs-harness-")), false)
+})
+
+function checkNestedFixture(t, { depth, scoped, linked, value }) {
+  const { root, harness, compiler } = fixture(t)
+  const at = path.join(root, "vibelang/cases/runtime")
+  const prefix = path.join("consumer", ...Array.from({ length: depth }, (_, i) => "nested" + i))
+  const name = scoped ? "@scope/package" : "package"
+  const dependency = path.join(prefix, "node_modules", name)
+  const contents = JSON.stringify({ value })
+  const write = (name, text) => {
+    const file = path.join(at, name)
+    fs.mkdirSync(path.dirname(file), { recursive: true })
+    fs.writeFileSync(file, text)
+  }
+  if (linked) {
+    const source = path.join(prefix, "fixture-package")
+    write(path.join(source, "data.json"), contents)
+    fs.mkdirSync(path.dirname(path.join(at, dependency)), { recursive: true })
+    fs.symlinkSync(path.relative(path.dirname(dependency), source), path.join(at, dependency))
+  } else {
+    write(path.join(dependency, "data.json"), contents)
+  }
+  // A nested installed copy is intentional source data, including below stubs.
+  const duplicate = path.join("stubs/wrapper/node_modules/package/data.json")
+  write("stubs/wrapper/package.json", '{"name":"wrapper","type":"module"}')
+  write(duplicate, contents)
+  write("fixture.json", JSON.stringify({ paths: [dependency + "/data.json", duplicate], value }))
+  write("node_modules/stale/data.json", '"must not be copied"')
+  write("out/retained.json", '"prior original output"')
+  const before = fs.readFileSync(path.join(at, "out/retained.json"), "utf8")
+  fs.writeFileSync(compiler, `#!/usr/bin/env node
+import assert from "node:assert/strict"
+import fs from "node:fs"
+import path from "node:path"
+const fixture = JSON.parse(fs.readFileSync("fixture.json", "utf8"))
+for (const file of fixture.paths) {
+  const resolved = fs.realpathSync(file)
+  const relative = path.relative(process.cwd(), resolved)
+  assert.ok(!relative.startsWith("..") && !path.isAbsolute(relative), "fixture link escaped the isolated case: " + resolved)
+  assert.equal(JSON.parse(fs.readFileSync(file, "utf8")).value, fixture.value, "nested fixture changed")
+}
+assert.equal(fs.existsSync("node_modules/stale/data.json"), false, "root install must be regenerated")
+fs.mkdirSync("out", { recursive: true })
+fs.writeFileSync("out/main.js", 'console.log("expected")')
+`, { mode: 0o755 })
+  const env = { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") }
+  const result = spawnSync(process.execPath, [harness, "--isolated", "runtime"], { env, encoding: "utf8", timeout: 10_000 })
+  const evidence = /log:\s+([^\n)]+)/.exec(result.stdout)?.[1]
+  const details = evidence && fs.existsSync(evidence) ? fs.readFileSync(evidence, "utf8") : ""
+  assert.equal(result.status, 0, result.stdout + result.stderr + details)
+  assert.match(result.stdout, /1 cases: 1 ok, 0 FAIL/)
+  assert.equal(fs.readFileSync(path.join(at, "out/retained.json"), "utf8"), before)
+  assert.equal(fs.readFileSync(path.join(at, "node_modules/stale/data.json"), "utf8"), '"must not be copied"')
+  assert.equal(JSON.parse(fs.readFileSync(path.join(at, duplicate), "utf8")).value, value)
+}
+
+test("isolated cases retain nested package fixtures and relative workspace links", (t) => {
+  checkNestedFixture(t, { depth: 0, scoped: false, linked: true, value: 7 })
+  checkNestedFixture(t, { depth: 1, scoped: false, linked: false, value: 8 })
+})
+
+test("isolated case package fixtures survive scope, depth, links and payload mutations", (t) => {
+  fc.assert(fc.property(fc.record({
+    depth: fc.integer({ min: 0, max: 3 }),
+    scoped: fc.boolean(),
+    linked: fc.boolean(),
+    value: fc.integer({ min: 0, max: 255 }),
+  }), (input) => checkNestedFixture(t, input)), { seed: 106107, numRuns: 20, endOnFailure: true })
 })

@@ -229,7 +229,7 @@ it. Keeping this directory beside `cases/` preserves custom runners' relative
 imports of shared helpers. Its `out/`, `node_modules/`, custom runners and declaration-identity
 outputs belong to that invocation, so it can run concurrently with the same
 cases' individual targets. Successful copies are removed; failing copies and
-command logs remain for inspection. Any aggregate harness target that overlaps
+command logs remain for inspection. The root `node_modules/` install is rebuilt for the invocation; nested fixture packages, including copies below `stubs/`, are preserved. Relative fixture symlinks keep their written targets so they resolve inside the private copy. Any aggregate harness target that overlaps
 individual case targets must use `--isolated`.
 
 The release check runs `typescript/vibelang/harness.test.mjs`, including a

@@ -274,8 +274,14 @@ function caseDirectory(name) {
   const dir = path.join(isolatedCasesDir, name)
   fs.cpSync(source, dir, {
     recursive: true,
-    filter: (file) => !path.relative(source, file).split(path.sep)
-      .some((part) => part === "out" || part === "node_modules" || part === ".cache"),
+    // Keep fixture package copies and workspace links inside the private case.
+    // Only the root install is rebuilt by linkNodeModules; nested installs are
+    // intentional inputs, including duplicate packages below stubs/.
+    verbatimSymlinks: true,
+    filter: (file) => {
+      const parts = path.relative(source, file).split(path.sep)
+      return parts[0] !== "node_modules" && !parts.some((part) => part === "out" || part === ".cache")
+    },
   })
   return dir
 }
