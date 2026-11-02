@@ -569,6 +569,8 @@ The pinned snapshot is the vendored copy of `tc39/proposal-do-expressions` at co
 
 A destructuring or parameter default runs only when it applies. In effect code a destructuring pattern behaves exactly as the same pattern in JavaScript with the pinned `do` proposal: ECMA-262's BindingInitialization, IteratorBindingInitialization and DestructuringAssignmentEvaluation, with GetIterator and IteratorClose for array patterns. Evaluation order, getters, the iterator protocol, temporal dead zones, closing, and the `name` and `message` of every protocol error are that algorithm's on the same host, and the canonical `Exit` compares them ([Runtime guarantees](/spec/008-runtime)). How the compiler achieves it (native destructuring with an inline `yield*`, a runtime helper, or any other lowering) is its choice; the examples below, the VIP-31 differential suite and the fuzz suite check it.
 
+In an assignment pattern, the right side is evaluated once before the pattern. Computed keys and assignment targets then run at their native destructuring steps; a default runs only for `undefined`, including a missing value. A present value, including `null`, skips its default. This also applies when the key, target or default contains `do`.
+
 Three things can happen in a default:
 
 - **A jump.** A `return`, `break` or `continue` in a default's `do` acts on the enclosing function or loop, as TC39 specifies. It leaves an array pattern as the same jump leaves a `for…of` body: ECMA-262 gives IteratorClose the jump's completion, so the iterator closes unless it is done, and an error from closing replaces the jump.

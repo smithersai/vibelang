@@ -733,6 +733,13 @@ func (p *Parser) doSite(do *ast.Node) *ast.Node {
 		case ast.KindBinaryExpression:
 			binary := n.AsBinaryExpression()
 			operator := binary.OperatorToken.Kind
+			if operator == ast.KindEqualsToken && child == binary.Left && ast.IsAssignmentPattern(ast.SkipParentheses(child)) {
+				// Assignment patterns are not expression literals. Native
+				// DestructuringAssignmentEvaluation owns the RHS-first order,
+				// each target/key, conditional defaults and IteratorClose.
+				// Keep the same inline function boundary as binding patterns.
+				return nil
+			}
 			if child == binary.Right && ast.IsCompoundAssignmentOperator(operator) && !ast.IsIdentifier(ast.SkipParentheses(binary.Left)) {
 				return nil
 			}

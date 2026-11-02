@@ -52,6 +52,8 @@ effect function retryDelay(failure: Failure) {
 // Output: 0 millis
 ```
 
+A `do` in a destructuring assignment target, computed key or default runs at that pattern’s JavaScript evaluation step, after the right side. A default runs only for `undefined` or a missing value; a present value skips it. Getters and iterators retain their native order. As with declaration patterns, these positions currently retain a function boundary: an outward jump, `var`, `await` or `yield` in their `do` reports `EK0204`.
+
 A function named `match` still works. Only `match (value) {` followed by `when`, `default`, or `}` starts a match.
 
 A `return` or an outer labeled jump in `for try` head binding initialization still violates the Stream loop rule (`EK2002` or `EK2003`), even when written inside `do`.
