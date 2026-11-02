@@ -410,6 +410,14 @@ identity) give the compiler the harness's compile budget, `120_000` ms, under a
 `150_000` ms test deadline: alone a run takes about 6 s at load 118, and the
 earlier `30_000` ms failed most logged runtime-test runs on loaded post-merge hosts.
 
+The compiler launcher's watcher test registers teardown with `TestContext.after`
+before waiting for stdout. A timed-out test does not settle an outstanding
+`once(stdout, "data")`, so `finally` alone cannot clean up a watcher whose
+ready message never arrived. Teardown sends `SIGTERM` through the real
+launcher and awaits its close, which reaps the native child. The cancellation
+regression mutes that child's stdout, exercises the unchanged five-second test
+deadline, and checks that the runner exits and the native PID is gone.
+
 The documented debugging recipe test compiles an application and then starts
 Node.js to check its failing source-mapped exit. Its test deadline is
 `30_000` ms so both host processes can finish on a busy build host; it still

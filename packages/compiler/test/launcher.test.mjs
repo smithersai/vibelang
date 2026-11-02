@@ -77,33 +77,38 @@ test("preserves native termination signals", () => {
   }
 })
 
-test("forwards termination to a running native watcher", { timeout: 5000 }, async () => {
+test("forwards termination to a running native watcher", { timeout: 5000 }, async (t) => {
   const scratch = mkdtempSync(join(tmpdir(), "vibelang-watcher-"))
   let wrapper
   let nativePid
-  try {
-    const binary = join(scratch, "native vibelang")
-    writeFileSync(binary, '#!/usr/bin/env node\nconsole.log(process.pid)\nsetInterval(() => {}, 1000)\n')
-    chmodSync(binary, 0o755)
-    wrapper = spawn(process.execPath, [launcher, "--watch"], {
-      env: { ...process.env, VIBELANG_BINARY: binary }, stdio: ["ignore", "pipe", "inherit"]
-    })
-    const [data] = await once(wrapper.stdout, "data")
-    nativePid = Number(data.toString().trim())
-    assert.ok(nativePid > 0)
-    const closed = once(wrapper, "close")
-    wrapper.kill("SIGTERM")
-    const [code, signal] = await closed
-    assert.equal(code, null)
-    assert.equal(signal, "SIGTERM")
-    assert.throws(() => process.kill(nativePid, 0), { code: "ESRCH" })
-  } finally {
-    wrapper?.kill("SIGKILL")
+  // A timeout does not settle once(stdout, "data"), so finally would never
+  // run if startup stopped before the ready message. Hooks run on cancellation.
+  t.after(async () => {
+    if (wrapper && wrapper.exitCode === null && wrapper.signalCode === null) {
+      const closed = once(wrapper, "close")
+      wrapper.kill("SIGTERM")
+      await closed
+    }
     if (nativePid) {
       try { process.kill(nativePid, "SIGKILL") } catch {}
     }
     rmSync(scratch, { recursive: true, force: true })
-  }
+  })
+  const binary = join(scratch, "native vibelang")
+  writeFileSync(binary, '#!/usr/bin/env node\nconsole.log(process.pid)\nsetInterval(() => {}, 1000)\n')
+  chmodSync(binary, 0o755)
+  wrapper = spawn(process.execPath, [launcher, "--watch"], {
+    env: { ...process.env, VIBELANG_BINARY: binary }, stdio: ["ignore", "pipe", "inherit"]
+  })
+  const [data] = await once(wrapper.stdout, "data")
+  nativePid = Number(data.toString().trim())
+  assert.ok(nativePid > 0)
+  const closed = once(wrapper, "close")
+  wrapper.kill("SIGTERM")
+  const [code, signal] = await closed
+  assert.equal(code, null)
+  assert.equal(signal, "SIGTERM")
+  assert.throws(() => process.kill(nativePid, 0), { code: "ESRCH" })
 })
 
 // installed lays out a copy of the launcher as an installed package, with an
