@@ -142,7 +142,7 @@ Appendix B supplies the current diagnostic assignments; compatibility declaratio
 | `FuzzVibexNativeParity` | Nine ordinary TSX forms across missing/preserve/react-native/react JSX settings; keyed source/options corpus | VIP-39 requires native JSX diagnostics, output suffixes and preservation. Covers round 4 options, scanner, throw-expression and emit findings; quote gate `TestVibexNativeParityQuoted`. |
 | `FuzzPlainTryCatch` | Keyed seed matrices with native TypeScript controls | Spec quotes checked by `TestPlainTryCatchQuoted`; migration and review neighbourhoods |
 | `FuzzPlainMatchKinds` | Keyed seed matrices with native TypeScript controls | Spec quotes checked by `TestPlainMatchKindsQuoted`; migration and review neighbourhoods |
-| `FuzzTopLevelAwait` | Keyed seed matrices with native TypeScript controls | Spec quotes checked by `TestTopLevelAwaitQuoted`; migration and review neighbourhoods |
+| `FuzzTopLevelAwait` | Twelve keyed module-level forms with native TypeScript controls; all corpus files retained | VIP-26 quote checked by `TestTopLevelAwaitVIPQuoted`; `TestTopLevelAwait` retains the parser witnesses. Resolved Promise forms are strict checks; the separate module-level `for await` gap remains pending for `migfix-foldkit`. |
 | `FuzzEffectGlobals` | Keyed seed matrices with native TypeScript controls | Spec quotes checked by `TestEffectGlobalsQuoted`; migration and review neighbourhoods |
 | `TestSidecarEntryGlobsQuoted` | Expanded bundler entry globs retain source entries and exclude declaration sidecars; actual fast-glob and Rolldown integration, keyed Alchemy witness. |
 | `FuzzReviewIsStatementHomes` | Keyed lexical-home and leak-control matrices | Chapter 4 scope quotes checked by `TestReviewIsStatementHomesQuoted` |

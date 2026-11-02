@@ -1,23 +1,3 @@
-# Observed in r3 batch-b2 before pending; rechecked by r4/check-six.sh. Owner migfix-foldkit.
-FuzzTopLevelAwait array-literal compiler VIP-26: module top-level await of a Promise has ordinary JavaScript meaning; lane migfix-foldkit
-FuzzTopLevelAwait async-function-beside compiler VIP-26: module top-level await of a Promise has ordinary JavaScript meaning; lane migfix-foldkit
-FuzzTopLevelAwait awaited-then compiler VIP-26: module top-level await of a Promise has ordinary JavaScript meaning; lane migfix-foldkit
-FuzzTopLevelAwait call-argument compiler VIP-26: module top-level await of a Promise has ordinary JavaScript meaning; lane migfix-foldkit
-FuzzTopLevelAwait conditional compiler VIP-26: module top-level await of a Promise has ordinary JavaScript meaning; lane migfix-foldkit
-FuzzTopLevelAwait const-then-export compiler VIP-26: module top-level await of a Promise has ordinary JavaScript meaning; lane migfix-foldkit
-FuzzTopLevelAwait export-const compiler VIP-26: module top-level await of a Promise has ordinary JavaScript meaning; lane migfix-foldkit
+# Promise await forms now pass their unchanged native TypeScript oracle; only module-level for-await remains pending.
 FuzzTopLevelAwait for-await compiler VIP-26: module top-level await of a Promise has ordinary JavaScript meaning; lane migfix-foldkit
-FuzzTopLevelAwait object-literal compiler VIP-26: module top-level await of a Promise has ordinary JavaScript meaning; lane migfix-foldkit
-FuzzTopLevelAwait template compiler VIP-26: module top-level await of a Promise has ordinary JavaScript meaning; lane migfix-foldkit
-FuzzTopLevelAwait top-level-block compiler VIP-26: module top-level await of a Promise has ordinary JavaScript meaning; lane migfix-foldkit
-FuzzTopLevelAwait corpus:array-literal compiler VIP-26: module top-level await of a Promise has ordinary JavaScript meaning; minimized corpus reproduction; lane migfix-foldkit
-FuzzTopLevelAwait corpus:async-function-beside compiler VIP-26: module top-level await of a Promise has ordinary JavaScript meaning; minimized corpus reproduction; lane migfix-foldkit
-FuzzTopLevelAwait corpus:awaited-then compiler VIP-26: module top-level await of a Promise has ordinary JavaScript meaning; minimized corpus reproduction; lane migfix-foldkit
-FuzzTopLevelAwait corpus:call-argument compiler VIP-26: module top-level await of a Promise has ordinary JavaScript meaning; minimized corpus reproduction; lane migfix-foldkit
-FuzzTopLevelAwait corpus:conditional compiler VIP-26: module top-level await of a Promise has ordinary JavaScript meaning; minimized corpus reproduction; lane migfix-foldkit
-FuzzTopLevelAwait corpus:const-then-export compiler VIP-26: module top-level await of a Promise has ordinary JavaScript meaning; minimized corpus reproduction; lane migfix-foldkit
-FuzzTopLevelAwait corpus:export-const compiler VIP-26: module top-level await of a Promise has ordinary JavaScript meaning; minimized corpus reproduction; lane migfix-foldkit
 FuzzTopLevelAwait corpus:for-await compiler VIP-26: module top-level await of a Promise has ordinary JavaScript meaning; minimized corpus reproduction; lane migfix-foldkit
-FuzzTopLevelAwait corpus:object-literal compiler VIP-26: module top-level await of a Promise has ordinary JavaScript meaning; minimized corpus reproduction; lane migfix-foldkit
-FuzzTopLevelAwait corpus:template compiler VIP-26: module top-level await of a Promise has ordinary JavaScript meaning; minimized corpus reproduction; lane migfix-foldkit
-FuzzTopLevelAwait corpus:top-level-block compiler VIP-26: module top-level await of a Promise has ordinary JavaScript meaning; minimized corpus reproduction; lane migfix-foldkit
