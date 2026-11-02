@@ -17,5 +17,8 @@
       }
     }
   },
+  "vibe": {
+    "severities": { "EK4802": "error" }
+  },
   "include": ["*.vibe"]
 }
