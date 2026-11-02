@@ -8,14 +8,20 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 // Vite's default resolve.extensions, which a config that sets none uses.
 const viteExtensions = [".mjs", ".js", ".mts", ".ts", ".jsx", ".tsx", ".json"]
 
-// Preserve Vite's native defaults when the user supplied no conditions.
+// Preserve the host's native defaults when the user supplied no conditions.
 // Vite concatenates arrays returned by config hooks with the user's arrays.
+// Vitest's defaults leave out `module` (its getDefaultServerConditions): it
+// passes its server conditions to the Node processes that run tests as
+// --conditions, and a package's `module` export is often bundler-only ESM.
+// Vite's own, `module` included, made Node load @opentelemetry/api's build/esm
+// in Smithers' tests. Vitest sets VITEST before it loads the config.
 function sourceConditionConfig(config) {
   const condition = "vibelang-source"
   const conditions = (current, defaults) => current?.includes(condition) ? {} : { conditions: [...(current ? [] : defaults), condition] }
+  const vitest = process.env.VITEST === "true" && !config.test?.browser?.enabled
   return {
-    resolve: conditions(config.resolve?.conditions, ["module", "browser", "development|production"]),
-    ssr: { resolve: conditions(config.ssr?.resolve?.conditions, ["module", "node", "development|production"]) }
+    resolve: conditions(config.resolve?.conditions, vitest ? ["node", "development|production"] : ["module", "browser", "development|production"]),
+    ssr: { resolve: conditions(config.ssr?.resolve?.conditions, vitest ? ["node", "development|production"] : ["module", "node", "development|production"]) }
   }
 }
 

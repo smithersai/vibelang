@@ -1,0 +1,17 @@
+{
+  "property": "vitest-node-conditions",
+  "rule": "docs/user/src/setup/vite.md: under Vitest the conditions are Vitest's, without `module`",
+  "source": "Smithers flows/observability src/Otel.vibe importing @effect/opentelemetry, whose @opentelemetry/api maps `module` to bundler-only build/esm (2026-11-02, 64 tests in 5 packages)",
+  "files": {
+    "package.json": "{ \"private\": true, \"type\": \"module\" }",
+    "tsconfig.json": "{ \"compilerOptions\": { \"target\": \"ES2022\", \"module\": \"NodeNext\", \"moduleResolution\": \"NodeNext\", \"strict\": true, \"skipLibCheck\": true, \"types\": [], \"noEmit\": true }, \"include\": [\"src/*.vibe\"] }",
+    "node_modules/bundler-esm/package.json": "{ \"name\": \"bundler-esm\", \"version\": \"1.0.0\", \"exports\": { \".\": { \"types\": \"./index.d.ts\", \"module\": \"./esm/index.js\", \"default\": \"./cjs/index.js\" } } }",
+    "node_modules/bundler-esm/index.d.ts": "export declare const answer: number\n",
+    "node_modules/bundler-esm/esm/package.json": "{ \"type\": \"module\" }",
+    "node_modules/bundler-esm/esm/index.js": "export { answer } from \"./answer\"\n",
+    "node_modules/bundler-esm/esm/answer.js": "export const answer = 1\n",
+    "node_modules/bundler-esm/cjs/index.js": "exports.answer = 42\n",
+    "src/uses.vibe": "import { answer } from \"bundler-esm\"\n\nexport const read = (): number => answer\n",
+    "test/uses.test.ts": "import { expect, it } from \"vitest\"\nimport { read } from \"../src/uses.vibe\"\n\nit(\"loads the dependency through its default export\", () => {\n  expect(read()).toBe(42)\n})\n"
+  }
+}

@@ -8,7 +8,10 @@ and source maps, reports errors in the terminal and Vite overlay, and invalidate
 source modules and their importers after edits.
 
 The plugin selects `vibelang-source` package exports for application and SSR
-bundles, preserving the existing resolution conditions. A workspace package
+bundles, preserving the existing resolution conditions. Under Vitest, which
+passes its conditions to the Node processes that run tests, the defaults are
+Vitest's own, which leave out `module`: Node then loads a dependency through
+its `default` export, as it does without the plugin. A workspace package
 that mixes `.ts` and `.vibe` modules therefore uses one source graph, even
 when its default export points at emitted JavaScript under `.vibelang/js`.
 
