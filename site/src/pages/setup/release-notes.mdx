@@ -272,6 +272,18 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The migrate flow's platform split left a module's file-wide directives, such as t3code Desktop's `// @effect-diagnostics nodeBuiltinImport:off`, on the `.vibe` module only, so the `<Name>.platform.ts` sibling that now held the `node:child_process` import reported `EK3877` and the module went back to TypeScript; the sibling now starts with the same directives.- With `stripInternal`, an `@internal` schema lost both its constant and type alias from declarations; it now drops only the constant, matching the equivalent Effect TypeScript pair.
 - An `effect` body that ran an Effect failing with `Error | ApiError` and threw an `Error` subclass declared its error channel as `Error`, so a `catch` arm on `ApiError`'s tag failed with `TS2339`; it now declares `Error | ApiError`, as `Effect.gen` infers.
 
+- Regression tests for forbidden error inheritance missed native parents with extensible tags; fuzz coverage now records these unresolved cases explicitly.
+- VIP-25 said inline TypeScript modules were pointless because plain `.vibe` functions have TypeScript's meaning, which Will's 2026-10-31 ruling that plain VibeLang code cannot `throw` made false; a dated amendment now says so, and the denial stands.
+- VIP-39 said `App.vibe` beside `App.vibex` always collide with `TS5055`/`TS5056`, though under `"jsx": "preserve"` with declarations off they write `App.js` and `App.jsx`; it now says the pair collides only where both write the same output path, as `App.ts` beside `App.tsx` does.
+- VIP-8's Effect TypeScript counterpart dropped the source's `using f = openFile(p)`, so it neither opened nor disposed the file; it now keeps the declaration in the outer generator, as TypeScript's `using` does.
+- VIP-33's opening example provided `NodeServices.layer` at a module's top level with no import, a program the spec rejects (`EK1201`, `EK0501`, `TS2304`), and VIP-26's used `NodeRuntime` with no import; both now import the platform package, and VIP-33 provides the layer inside `effect function main()`, as chapter 5 does.
+- VIP-1's written-return-type example used the bare type `Effect<User, NotFound, Users>`, which is not a VibeLang form; it now writes `User!NotFound!Users`, as chapter 1 does.
+- VIP-5's opening example still used the removed value handler `fetchUser(id) catch guest`, which no longer parses; it now writes `catch () => guest`.
+- The specification's `EK1101` trigger, "a `{` on the same line after a name, a property access or a call", read as covering `effect { … }`, `match (x) { … }` and declaration heads, and Appendix C gave the trailing-block denial two repairs where `EK1101` has three; the trigger now excludes every `{` a production reads and Appendix C lists the same three repairs.
+- The specification gave two different spellings for the `effect` import a declaration file adds, `import type { Effect, Stream }` and `import { Effect }`; it now uses the value import throughout, as the compiler and the Effect TypeScript twin's declaration write it.
+- The specification said how a declaration spells an import of a `.vibe` module but not of a `.vibex` one; it now gives VIP-39's default, `./x.jsx` under `"jsx": "preserve"` and `./x.js` otherwise, and says the other `declarationImportStyle` settings are not yet decided for `.vibex`.
+- The specification applied `vibelang.declarationImportStyle` to every emitted declaration, which left open whether a source-adjacent `x.d.vibe.ts` sidecar changes its `./b.vibe` import; it now says the setting spells package declarations only, a sidecar keeps `./b.vibe` as the compiler writes it, and VIP-27 and VIP-30 publish the option.
+
 - The specification gave `vibelang.declarationImportStyle` a second path, `compilerOptions.vibelang.declarationImportStyle`, two sibling keys (`trustedPackages`, `tracing`) and the TypeScript code `TS6046`, none approved by a proposal; chapter 7 now names only the root key, VIP-30 publishes it, the compiler is unchanged, and `//:spec-lint` rejects a configuration key no accepted VIP names.
 - The specification said a relative `./x.ts` import reaches `x.vibe`, a resolution rule no proposal approved; chapter 7 no longer states it, the compiler still resolves such imports, and a new specification linter (`//:spec-lint`) rejects resolution claims VIP-39's table does not list.
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
@@ -464,6 +476,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Whole-repository migrations needed local drivers and could report success after a failed rollback; the migrate flow now plans one scope batch, fixes bounded dependency-ordered shards, and reverts by cause until every project is clean against its baseline.
 
 - A resource accepted by a union's data member could still report `EK4301` when an inferred type argument ruled out its generic callable member; member matching now uses the completed call's inference, including arrays and later callback arguments.
+
+- Compiler benchmarks could report success after docs extraction failed and omit or measure an incomplete corpus; they now stop with the extractor's exit status and retain its logs and partial corpus.
 - After the migrate flow renamed a module to `.vibe`, an importer that named it through a tsconfig `paths` alias, `@/composer/schema`, kept that spelling, which the project’s `bun check` script invoking stock TypeScript cannot resolve (`TS2307`); the codemod now writes `@/composer/schema.vibe` there too, as for a relative import, and `revert` puts it back.
 
 
@@ -473,6 +487,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A `.ts` declaration that named a type it reached through a package's `.vibe` module wrote a relative path into the package, `../../lib/src/x.js`, or failed with `TS2883`, once the bare specifier resolved to the `.vibe` source: the declaration emitter matched the module only against an export's emitted JavaScript. It now names the module by the export that selects it, `import("lib/x")`, when that export lists the source under `vibelang-source` or its `x.d.vibe.ts` sidecar under any condition, in exact and pattern entries (opencode's core: 1,478 `TS2883` in 110 files).
 
 - Packing a migrated package could leave its installed exports pointing at `src/*.vibe` or `.vibelang/js` even though the package shipped only `dist`. Setup now adapts publication helpers that map TypeScript source exports to built paths, preserving their existing `dist/*.js` and `dist/*.d.ts` exports for migrated entries.
+- The LSP benchmark could wait two minutes after its server exited or leave the server running after an error; it now rejects the active request, reports the exit and server diagnostics, and waits for cleanup.
+
 
 - Passing an Effect function to a `Function` destination could bypass `EK4301` after generic union matching; callable destinations now keep the synchronous-callback check.
 
@@ -582,6 +598,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The migrate flow's codemod renamed a tracked module under a `.gitignore`d directory, so the batch's commit deleted the `.ts` and recorded no `.vibe`, and a revert left the `.vibe` behind; the codemod now refuses that batch before it changes anything.
 
+
+- The diagnostic reference could make an emitted `EK3008` look unknown; it now explains that this static service-key error corresponds to the specification's `EK0901` until compiler renumbering.
 - The kernel law suite could still fail at 5 s on a loaded host after its 30 s budget moved into the test preload, because Bun applies a preload's default timeout to the first test file only; `bun run test` in `experiments` now passes the budget to every file, and the docs build uses the same flag.
 
 - After the migrate flow's setup, an ast-grep rule for TypeScript also scanned each `.vibe` module's `x.d.vibe.ts` sidecar, so a finding in a `.vibe` module was reported twice; setup now adds `**/*.d.vibe.ts` to the `ignores` of each TypeScript rule it extends to `.vibe`.
@@ -806,7 +824,11 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Some unary or multiline top-level `await` expressions compiled into output incompatible with the selected target or CommonJS host; they now report `TS1378` or `TS1309`.
 
 
+- A retained Effect error's extractor, such as `when Cause.TimeoutError(let t):`, did not cover its case, so a `match` that handled every member still reported `EK4701`; its one-binding extractor now covers the case, as the bare pattern does.
+
 - In a `.vibe` file a member of an interface or an object type was readonly to the checker, so `options.minimum = 0` was `TS2540`, while its declaration printed the member writable; such a member is now writable unless written `readonly`, as in TypeScript, and the checker and the declaration agree. The fields of `data`, `schema` and `error` bodies keep their readonly default, and `mutable` is still accepted. The migrate flow's codemod no longer writes `mutable`.
+
+- `when NotFound:` and `when NotFound(let e):` narrowed the subject, and typed `e`, as the `NotFound` class alone, although the generated matcher also accepts a plain object or another package's copy with the tag `"NotFound"`; a `match` over such a member then reported `EK4701` after the arm. They now narrow as `Effect.catchTag` does, to the subject's members with that tag, and keep the class only when the subject has none, so a later arm for another class with the same tag sees `never`: that arm never runs.
 
 
 - With paired `moduleSuffixes` such as `["", ".d.vibe"]`, VibeLang read a stale declaration sidecar instead of its `.vibe` source and reported incorrect types; it now reads the source and keeps ordinary `.ts` and `.tsx` priority.

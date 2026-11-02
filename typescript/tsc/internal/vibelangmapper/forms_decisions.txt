@@ -2287,9 +2287,6 @@ typescript/vibelang/cases/match-effect-tagged-aliases/main.vibe:21:39 lambda dua
 typescript/vibelang/cases/match-effect-tagged-aliases/main.vibe:22:83 lambda plain fallback
 typescript/vibelang/cases/match-effect-tagged-aliases/main.vibe:22:9 lambda dual fallback
 typescript/vibelang/cases/match-error-copy/main.vibe:3:29 lambda dual fallback
-typescript/vibelang/cases/match-error-tag-narrowing/main.vibe:11:23 lambda plain fallback
-typescript/vibelang/cases/match-error-tag-narrowing/main.vibe:21:30 lambda plain fallback
-typescript/vibelang/cases/match-error-tag-narrowing/main.vibe:30:30 lambda plain fallback
 typescript/vibelang/cases/match-exhaustive-last-arm/arms.vibe:23:23 lambda dual fallback
 typescript/vibelang/cases/match-extractor-errors.fail/main.vibe:26:10 lambda effectFn table
 typescript/vibelang/cases/match-extractor-errors.fail/main.vibe:26:26 lambda effectFn table
