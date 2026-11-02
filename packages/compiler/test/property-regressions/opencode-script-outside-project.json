@@ -1,0 +1,12 @@
+{
+  "key": "opencode-script-outside-project",
+  "mode": "excluded",
+  "depth": 0,
+  "config": "tsconfig.scripts.json",
+  "value": "script",
+  "files": {
+    "script/run.vibe": "import { greet } from \"../src/greet.vibe\"\nconst message: string = greet(\"script\")\n",
+    "src/greet.vibe": "export const greet = (name: string): string => \"hi \" + name\n",
+    "tsconfig.json": "{ \"compilerOptions\": { \"strict\": true, \"module\": \"NodeNext\", \"moduleResolution\": \"NodeNext\", \"noEmit\": true, \"allowArbitraryExtensions\": true, \"types\": [] }, \"include\": [\"src\"] }\n"
+  }
+}
