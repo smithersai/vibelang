@@ -772,6 +772,15 @@ cross-file barrier, per-file ordering checks and a failing worker.
 
 `//:site-spec-links` checks the generated specification and VIP pages for unconverted `.md` links, missing pages and missing anchors. `//:docs-tools` depends on it, so the pre-merge gate runs it. Its inputs are `site/src/pages/spec/**`, `site/src/pages/vips/**` and `docs/tools/site-spec-links.test.ts`; unrelated changes reuse its cached result.
 
+The contrast test emits `site contrast stage result:` JSON after each of its
+five commands: dependency installation, infrastructure tests, typecheck,
+production build and browser audit. Each record includes the command,
+`elapsedMs`, exit `code` and `signal`; a command that cannot start records
+its error and a null code. Records appear before the exit assertion, so a
+failed stage retains its cost. Compare these costs before changing the audit's
+inputs or budget. The private site copy, registry snapshot, release-environment
+sanitization, successful browser output and failing-command output are retained.
+
 The `//:site-contrast` browser audit emits `site contrast diagnostic:` JSON
 records before and after each navigation and axe audit. Each names the theme,
 page, state, operation sequence and elapsed time. A `renderer-crash` or

@@ -1,4 +1,5 @@
 import { test, expect, afterAll } from "bun:test"
+import { contrastStage } from "./site-contrast-stage"
 import { scratchSite } from "./site-scratch"
 import { resolve, join } from "node:path"
 import { mkdtempSync, readFileSync, writeFileSync, chmodSync, rmSync } from "node:fs"
@@ -48,11 +49,7 @@ test("built install metadata resolves in the npm snapshot and both themes have z
       const env = { ...process.env, ...(command.includes("build") ? { NODE_ENV: "production", PATH: bin + ":" + process.env.PATH } : {}) }
       delete env.VIBELANG_SITE_RELEASE_FILE
       delete env.VIBELANG_RELEASE_VERSION
-      console.log("site contrast stage:", command.join(" "), "NODE_ENV=" + (env.NODE_ENV ?? "unset"))
-      const child = Bun.spawn(command, { cwd: site, env, stdout: "pipe", stderr: "pipe" })
-      const [stdout, stderr, code] = await Promise.all([
-        new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited,
-      ])
+      const { stdout, stderr, code } = await contrastStage(command, site, env)
       expect({ command, code, output: code === 0 ? "" : stdout + stderr }).toEqual({ command, code: 0, output: "" })
       if (command.includes("build")) {
         expect(builtInstallProblems(join(site, "dist/public"), snapshot)).toEqual([])
