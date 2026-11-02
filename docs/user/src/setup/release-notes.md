@@ -585,6 +585,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Exact claim searches could miss another lane working on the same reproduction under a different key spelling; the advisory claim lookup now shows punctuation aliases, shared corpus names and each claim's age and status.
 
 - A direct `schema error` payload reference could silently make a readonly key writable or a required key optional; incompatible decoded-key flags now report `EK2109`, and `vibelang --fix` preserves the existing codecs in an explicit Effect TypeScript class.
+- The ESLint corpus check rejected deliberately unused source labels as generated code; it now checks the reported label's provenance while continuing to detect synthesized-label leaks.
 
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 

@@ -10,7 +10,7 @@ import { visitorKeys as typescriptKeys } from "@typescript-eslint/visitor-keys"
 import { parseForESLint } from "../../eslint.mjs"
 import { config } from "./config.mjs"
 import { relativeToRepo, repositoryFiles } from "./helpers.mjs"
-import { allVisitorKeys, problems } from "./tree.mjs"
+import { allVisitorKeys, problems, reportsSynthesizedLabel } from "./tree.mjs"
 
 const keys = allVisitorKeys(typescriptKeys)
 // The JSDoc convention is Smithers'; the corpus does not follow it.
@@ -50,13 +50,15 @@ test("every .vibe file lints without a crash or a report about code the parser w
   for (const file of files) {
     const code = readFileSync(file, "utf8")
     let messages
+    const linter = new Linter({ configType: "flat", cwd: "/" })
     try {
-      messages = new Linter({ configType: "flat", cwd: "/" }).verify(code, corpusConfig, { filename: file })
+      messages = linter.verify(code, corpusConfig, { filename: file })
     } catch (error) {
       failures.push(`${relativeToRepo(file)}: ${error.message.split("\n")[0]}`)
       continue
     }
     for (const message of messages) {
+      if (message.ruleId === "no-unused-labels" && !reportsSynthesizedLabel(message, linter.getSourceCode())) continue
       if (message.fatal || synthesizedFormRules.has(message.ruleId) || /'\$\w+'/.test(message.message)) {
         failures.push(`${relativeToRepo(file)}:${message.line}:${message.column} ${message.ruleId}: ${message.message}`)
       }

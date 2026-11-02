@@ -102,3 +102,17 @@ const contextualKeywords = new Set([
 ])
 
 export const allVisitorKeys = (typescriptKeys) => ({ ...typescriptKeys, ...vibeVisitorKeys })
+
+
+// The corpus includes deliberately unused source labels. A no-unused-labels
+// report is a synthesized-code failure only when its reported name/location
+// is not an ordinary label identifier in the author's tree.
+export function synthesizedLabelAtNode(message, node) {
+  const name = /^'([^']+):' is defined but never used\.$/u.exec(message.message)?.[1]
+  return !name || node?.type !== "Identifier" || node.name !== name || node.synthesized === true
+}
+
+export function reportsSynthesizedLabel(message, sourceCode) {
+  const index = sourceCode.getIndexFromLoc({ line: message.line, column: message.column - 1 })
+  return synthesizedLabelAtNode(message, sourceCode.getNodeByRangeIndex(index))
+}

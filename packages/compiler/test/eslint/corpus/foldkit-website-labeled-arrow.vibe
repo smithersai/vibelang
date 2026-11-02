@@ -1,0 +1,3 @@
+// Foldkit website migration: this action label is written by the user.
+const a = 1
+ChangedUrl: ({ url }) => ({ url, a })

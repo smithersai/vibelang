@@ -232,6 +232,19 @@ example as `test script discovery`, keeps the diagnostic in
 `.cache/check-examples/<name>.log` and continues checking the other examples.
 Only a successful read with no test script skips the test step.
 
+## Source labels in the ESLint corpus
+
+The ESLint corpus includes formatter and control-flow fixtures with deliberately
+unused labels. Its `no-unused-labels` check accepts a diagnostic only when the
+reported label is an ordinary identifier at that source location. A missing,
+renamed or synthesized label remains a corpus failure; normal unused-label
+diagnostics remain visible to ESLint users.
+
+`packages/compiler/test/eslint-corpus-labels.test.mjs` runs the native guard in
+`//packages:compiler-test` without the optional ESLint install. The standalone
+suite also checks minimized real corpus runs and generated labels with ESLint's
+actual `no-unused-labels` rule.
+
 ## Forms-table checks
 
 `//typescript:forms-generator` builds `typescript/built/local/vibelang-forms`
