@@ -19,8 +19,8 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,406 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 15,474 |
-| The skill and the user guide (140 pages) | 380,365 |
-| The user guide alone | 375,959 |
+| The skill and the user guide (140 pages) | 380,685 |
+| The user guide alone | 376,279 |
 | The specification (10 chapters) | 154,902 |
 | The decision log, `docs/design/history/DECISIONS.md` | 141,629 |
 
@@ -131,9 +131,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Zed](../setup/zed.md) | 479 |
 | [Other editors](../setup/other-editors.md) | 492 |
 | [Coding agents](../setup/coding-agents.md) | 1,062 |
-| **Upgrade** | **92,840** |
-| [Release notes](../setup/release-notes.md) | 92,840 |
-| **All 19 pages** | **129,778** |
+| **Upgrade** | **93,085** |
+| [Release notes](../setup/release-notes.md) | 93,085 |
+| **All 19 pages** | **130,023** |
 
 ### Guides
 
@@ -226,10 +226,10 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Behaviour** | **2,185** |
 | [Equivalence](../behaviour/083-equivalence.md) | 697 |
 | [Order](../behaviour/084-order.md) | 1,488 |
-| **Schema** | **37,391** |
+| **Schema** | **37,466** |
 | [Introduction](../schema/085-introduction.md) | 1,532 |
 | [Getting Started](../schema/086-getting-started.md) | 3,342 |
-| [Basic Usage](../schema/087-basic-usage.md) | 3,994 |
+| [Basic Usage](../schema/087-basic-usage.md) | 4,069 |
 | [Filters](../schema/088-filters.md) | 1,628 |
 | [Advanced Usage](../schema/089-advanced-usage.md) | 3,255 |
 | [Projections](../schema/090-projections.md) | 805 |
@@ -257,7 +257,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Platform globals in VibeLang](../platform/platform-globals.md) | 6,199 |
 | [Cloudflare Workers](../platform/cloudflare-workers.md) | 790 |
 | [Alchemy](../platform/alchemy.md) | 2,527 |
-| **All 101 pages** | **174,160** |
+| **All 101 pages** | **174,235** |
 
 ### VibeLang features
 
