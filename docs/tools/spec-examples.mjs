@@ -14,7 +14,7 @@ export function expectations(source) {
   })
 }
 export function examples(text) {
-  return [...text.matchAll(/^(`{3,}|~{3,})(ts(?: effect)?|typescript|vibe(?: es)?|vibex|tsx)\s*\n([\s\S]*?)^\1\s*$/gm)].map((m, i) => ({
+  return [...text.matchAll(/^[ \t]{0,3}(`{3,}|~{3,})(ts(?: effect)?|typescript|vibe(?: es)?|vibex|tsx)\s*\n([\s\S]*?)^[ \t]{0,3}\1[ \t]*$/gm)].map((m, i) => ({
     number: i + 1, offset: m.index, source: m[3],
     language: /^(?:ts effect|tsx)$/.test(m[2]) ? (m[2] === "tsx" ? "tsx" : "ts") : m[2] === "typescript" ? "ts" : m[2] === "vibex" ? "vibex" : "vibe",
     expected: expectations(m[3]).flatMap(x => x.codes),

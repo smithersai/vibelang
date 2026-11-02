@@ -221,3 +221,20 @@ test("a standalone attributed quotation may record a denied VIP rationale", () =
   writeFileSync(join(root, "docs/design/src/999-quotation.md"), "\"A little bit of ambiguity is unacceptable\" (VIP-8).\n")
   assert.deepEqual(lintAuthority(root).filter(f => f.path.endsWith("999-quotation.md") || (f.path === chapter && f.line > addedAfter)), [])
 }))
+
+test("r7 ASTRA-4 neighbourhood: a list-indented VIP fence cannot hide catch guest", () => {
+  const found = examples("  ```vibe\n  effect function load() { return fail(1) catch guest }\n  ```\n")
+  assert.equal(found.length, 1)
+  assert.ok(verdict(found[0], { status: 0, stdout: "" }).some(f => f.severity === "error" && f.message.includes("EK0509")))
+})
+test("VIP-9 default-value example is included among compiler inputs", () => {
+  assert.ok(examples(read(repository, "docs/design/vips/0009-service-declarations.md")).some(e => e.source.includes("service Flags")))
+})
+test("fast-check: fenced examples retain retired-form checks across list indentation", () => {
+  fc.assert(fc.property(fc.integer({ min: 0, max: 3 }), fc.constantFrom("```", "~~~"), (depth, fence) => {
+    const pad = " ".repeat(depth)
+    const found = examples(pad + fence + "vibe\n" + pad + "effect function f() { return fail(1) catch guest }\n" + pad + fence + "\n")
+    assert.equal(found.length, 1)
+    assert.ok(verdict(found[0], { status: 0, stdout: "" }).some(f => f.severity === "error" && f.message.includes("EK0509")))
+  }), { seed: 90704, numRuns: 40 })
+})
