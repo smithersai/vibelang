@@ -267,6 +267,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 ### Bugs fixed since 0.0.10
 
 - Four spec quote guards (`TestEffectFnParameterDeclarationQuoted`, `TestInferredEffectDeclarationQuoted`, `TestPipeDeclarationAliasesQuoted`, `TestTopLevelAwaitVIPQuoted`) landed outside the pre-merge spec gate, so a spec edit could break them unseen; the gate now runs them.
+- Compiler fuzz checks could mistake a lifted `do` guard for a written statement and insert semicolons into a `return` operand; layout mutations now read the written `do` form before lowering.
+
 - A guarded `do` body such as `x !== undefined && do { x.length }` could report that `x` was possibly `undefined`; `&&`, `||` and `??` now retain the source guard’s TypeScript narrowing, evaluate the left operand once and still invalidate narrowing after an assignment.
 
 - Missing-runtime fuzz checks assumed every Effect function imported `vibelang-runtime`; they now inspect parsed module imports and preserve independent errors when no runtime helper is needed.

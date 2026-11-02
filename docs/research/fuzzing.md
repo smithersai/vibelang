@@ -212,6 +212,8 @@ Completeness is checked, not claimed. Each of these tests reads the specificatio
 
 A pending line skips only the disagreement its own key names. A reproduction's `corpus:` line marks it for XPASS and never excuses a new failure. The merge queue runs `//:go-vibelangfuzz-pending` before landing a change on `main`; the full short seed corpus runs post-merge. The pending target requires `//:go-vibelangfuzz-hangs`, which runs `TestPendingHangs` in its own cached check because named corpus tests skip known hangs. A resolved hang marker therefore fails the merge gate. Verbose probe logs report the target, key, elapsed time, exit status and whether a stage watchdog or outer deadline ended the child. Compiler progress summaries contain fixed harness phase names rather than project payloads. Missing dependencies fail these checks instead of skipping.
 
+`FuzzFormatGuard` reads `do` expressions before statement lifting when choosing source layout mutations. A compiler capture can share the position of a parenthesized `return` operand; it is not a written statement where an empty statement may be inserted. Keyed `&&`, `||` and `??` probes retain that boundary.
+
 A fixed hang graduates to an active regression instead of retaining a time-dependent pending expectation. The literal `match` regression keeps its keyed corpus below the mutation size cap, generates string and numeric unions in both arm orders, and retains the original 3,000-arm workload in `TestCompileLargeLiteralMatch`. `TestLiteralMatchCorpusActive` runs in the gate so that a pending line or size skip cannot silently disable that coverage. The checker allocation guards detect repeated union-removal work independently of host load.
 
 ## Results

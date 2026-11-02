@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 	"github.com/microsoft/TypeScript/tsc/internal/vibelangfmt"
 )
@@ -92,7 +94,13 @@ func formatGuardKey(err error) string {
 // template, and braces around each picked body of one statement
 // that has none.
 func formatGuardRewrite(source string, mask []byte) string {
-	file := toolsParse("main.vibe", source)
+	// Read written do expressions before statement lifting. A synthesized
+	// capture may share the position of a parenthesized return operand;
+	// inserting an empty statement there would split the return.
+	file := parser.ParseSourceFile(ast.SourceFileParseOptions{
+		FileName: "/vibelang-fuzz/main.vibe", PathKey: "/vibelang-fuzz/main.vibe",
+		VibeLangDoAsFunction: true,
+	}, source, core.ScriptKindTS)
 	type insertion struct {
 		pos  int
 		text string
