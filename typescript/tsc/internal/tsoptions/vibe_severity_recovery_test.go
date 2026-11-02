@@ -70,6 +70,13 @@ func TestVibeInvalidSeverityExtendsOrderAndCache(t *testing.T) {
 			if len(errors) != 0 {
 				t.Fatal(errors)
 			}
+			wantErrors := 0
+			if name == "inherited" || name == "diamond" {
+				wantErrors = 1
+			}
+			if len(config.Errors) != wantErrors {
+				t.Fatalf("effective config wants %d errors, got %v", wantErrors, config.Errors)
+			}
 			want := map[string]string{"EK4609": "off", "EK0508": "off"}
 			switch name {
 			case "replaced":
@@ -86,5 +93,65 @@ func TestVibeInvalidSeverityExtendsOrderAndCache(t *testing.T) {
 				t.Fatal("unaffected inherited option lost")
 			}
 		})
+	}
+}
+
+// VIP-30 / detail 208: validate entries after the extends merge, while retaining
+// independent config errors and the winning invalid entry`s source span.
+func TestVibeSeverityEffectiveDiagnostics(t *testing.T) {
+	for _, name := range []string{"tsconfig.json", "vibe.config.json", "jsconfig.json"} {
+		for _, value := range []string{`"bad"`, `42`, `null`, `true`, `[]`, `{}`} {
+			for _, mode := range []string{"child", "later-base", "invalid-child", "inherited", "independent-key", "container", "unknown-option"} {
+				t.Run(name+"/"+value+"/"+mode, func(t *testing.T) {
+					base := fmt.Sprintf(`{"vibe":{"severities":{"EK4609":%s}}}`, value)
+					child := `"extends":"./base.json","vibe":{"severities":{"EK4609":"off"}}`
+					wantCode := int32(0)
+					wantFile := "/p/base.json"
+					switch mode {
+					case "later-base":
+						child = `"extends":["./base.json","./later.json"]`
+					case "invalid-child":
+						base = `{"vibe":{"severities":{"EK4609":"off"}}}`
+						child = fmt.Sprintf(`"extends":"./base.json","vibe":{"severities":{"EK4609":%s}}`, value)
+						wantCode, wantFile = 3006, "/p/"+name
+					case "inherited":
+						child, wantCode = `"extends":"./base.json"`, 3006
+					case "independent-key":
+						base = fmt.Sprintf(`{"vibe":{"severities":{"EK4609":%s,"EK0508":%s}}}`, value, value)
+						wantCode = 3006
+					case "container":
+						base, wantCode = `{"vibe":{"severities":[]}}`, 3007
+					case "unknown-option":
+						base, wantCode = `{"vibe":{"unexpected":true}}`, 3007
+					}
+					fs := vfstest.FromMap(map[string]string{
+						"/p/base.json":  base,
+						"/p/later.json": `{"vibe":{"severities":{"EK4609":"off"}}}`,
+						"/p/" + name:    `{` + child + `,"files":["main.vibe"]}`,
+						"/p/main.vibe":  "export const n = 1",
+					}, tspath.CaseSensitive)
+					config, readErrors := tsoptions.GetParsedCommandLineOfConfigFile(tspath.RootedFilePath("/p/"+name), &core.CompilerOptions{}, nil, fs, nil)
+					if len(readErrors) != 0 {
+						t.Fatal(readErrors)
+					}
+					if wantCode == 0 {
+						if len(config.Errors) != 0 {
+							t.Fatalf("overridden ancestor still fails: %v", config.Errors)
+						}
+					} else {
+						if len(config.Errors) != 1 || config.Errors[0].Source() != "EK" || config.Errors[0].Code() != wantCode {
+							t.Fatalf("want one EK%d, got %v", wantCode, config.Errors)
+						}
+						d := config.Errors[0]
+						if d.File() == nil || d.File().FileName().AsString() != wantFile {
+							t.Fatalf("wrong diagnostic origin: %v", d)
+						}
+						if wantCode == 3006 && d.File().Text()[d.Pos():d.End()] != value {
+							t.Fatalf("wrong winning value span: %v", d)
+						}
+					}
+				})
+			}
+		}
 	}
 }

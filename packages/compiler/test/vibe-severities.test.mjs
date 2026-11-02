@@ -215,3 +215,30 @@ for (const [shape, legacy] of Object.entries(legacyCommentShapes)) {
   }
  }
 }
+
+for (const mode of ["child", "later-base", "invalid-child", "independent", "container"]) {
+ test("effective severity diagnostics: "+mode, {skip}, t => {
+  const settings = mode === "later-base"
+   ? {extends:["./base.json", "./later.json"]}
+   : {extends:"./base.json", vibe:{severities:{EK4609:mode === "invalid-child" ? 42 : "off"}}}
+  const dir = project(t, settings, source)
+  const config = JSON.parse(readFileSync(join(dir, "tsconfig.json"), "utf8"))
+  config.compilerOptions.noEmit = false
+  writeFileSync(join(dir, "tsconfig.json"), JSON.stringify(config))
+  const base = mode === "container" ? {vibe:{severities:[]}}
+   : {vibe:{severities:{EK4609:mode === "invalid-child" ? "error" : "bad", ...(mode === "independent" ? {EK0508:null} : {})}}}
+  writeFileSync(join(dir, "base.json"), JSON.stringify(base))
+  writeFileSync(join(dir, "later.json"), JSON.stringify({vibe:{severities:{EK4609:"off"}}}))
+  const result = run(dir)
+  const invalid = !["child", "later-base"].includes(mode)
+  assert.equal(result.status === 0, !invalid, result.stdout+result.stderr)
+  assert.equal(existsSync(join(dir, "dist/main.js")), !invalid, result.stdout)
+  if (invalid) {
+   assert.match(result.stdout, mode === "container" ? /error EK3007:/ : /error EK3006:/)
+   assert.equal((result.stdout.match(/error EK300[67]:/g) || []).length, 1, result.stdout)
+   assert.match(result.stdout, mode === "invalid-child" ? /tsconfig\.json/ : /base\.json/)
+  } else {
+   assert.doesNotMatch(result.stdout, /EK3006|EK4609/)
+  }
+ })
+}

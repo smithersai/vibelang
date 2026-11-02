@@ -92,10 +92,11 @@ func (e *ExtendedConfigCacheEntry) ExtendedFileNames() []tspath.RootedFilePath {
 }
 
 type parsedTsconfig struct {
-	raw                 any
-	options             *parsedCompilerOptions
-	typeAcquisition     *core.TypeAcquisition
-	extendedConfigPaths []tspath.RootedFilePath
+	vibeSeverityDiagnostics map[string]*ast.Diagnostic
+	raw                     any
+	options                 *parsedCompilerOptions
+	typeAcquisition         *core.TypeAcquisition
+	extendedConfigPaths     []tspath.RootedFilePath
 }
 
 type parsedCompilerOptions struct {
@@ -121,6 +122,7 @@ func parseOwnConfigOfJsonSourceFile(
 	var extendedConfigPaths []tspath.RootedFilePath
 	var rootCompilerOptions []*ast.PropertyName
 	var vibeOptions *core.VibeLangOptions
+	var vibeSeverityDiagnostics map[string]*ast.Diagnostic
 	var errors []*ast.Diagnostic
 	onPropertySet := func(
 		keyText string,
@@ -181,7 +183,7 @@ func parseOwnConfigOfJsonSourceFile(
 			} else if option == nil {
 				if keyText == "vibe" {
 					var vibeErrors []*ast.Diagnostic
-					vibeOptions, vibeErrors = parseVibeSettings(value, propertyAssignment.Initializer, sourceFile, basePath)
+					vibeOptions, vibeErrors, vibeSeverityDiagnostics = parseVibeSettings(value, propertyAssignment.Initializer, sourceFile, basePath)
 					propertySetErrors = append(propertySetErrors, vibeErrors...)
 				}
 				if keyText == "excludes" {
@@ -224,10 +226,11 @@ func parseOwnConfigOfJsonSourceFile(
 		))
 	}
 	return &parsedTsconfig{
-		raw:                 json,
-		options:             compilerOptions,
-		typeAcquisition:     typeAcquisition,
-		extendedConfigPaths: extendedConfigPaths,
+		vibeSeverityDiagnostics: vibeSeverityDiagnostics,
+		raw:                     json,
+		options:                 compilerOptions,
+		typeAcquisition:         typeAcquisition,
+		extendedConfigPaths:     extendedConfigPaths,
 	}, errors
 }
 
@@ -880,8 +883,10 @@ func parseOwnConfigOfJson(
 		errors = append(errors, ast.NewCompilerDiagnostic(diagnostics.Unknown_option_excludes_Did_you_mean_exclude))
 	}
 	options, err := convertCompilerOptionsFromJsonWorker(json.GetOrZero("compilerOptions"), basePath, configFileName)
+	var vibeSeverityDiagnostics map[string]*ast.Diagnostic
 	if value, exists := json.Get("vibe"); exists {
-		vibeOptions, vibeErrors := parseVibeSettings(value, nil, nil, basePath)
+		vibeOptions, vibeErrors, severityDiagnostics := parseVibeSettings(value, nil, nil, basePath)
+		vibeSeverityDiagnostics = severityDiagnostics
 		options.VibeLang = core.MergeVibeSettings(vibeOptions, options.VibeLang)
 		errors = append(errors, vibeErrors...)
 	}
@@ -898,10 +903,11 @@ func parseOwnConfigOfJson(
 		errors = append(errors, err...)
 	}
 	parsedConfig := &parsedTsconfig{
-		raw:                 json,
-		options:             options,
-		typeAcquisition:     typeAcquisition,
-		extendedConfigPaths: extendedConfigPaths,
+		vibeSeverityDiagnostics: vibeSeverityDiagnostics,
+		raw:                     json,
+		options:                 options,
+		typeAcquisition:         typeAcquisition,
+		extendedConfigPaths:     extendedConfigPaths,
 	}
 	return parsedConfig, errors
 }
@@ -1040,10 +1046,12 @@ func parseConfig(
 		ownConfig.options.PathsBasePath = basePath
 	}
 
+	var inheritedSeverityDiagnostics map[string]*ast.Diagnostic
 	applyExtendedConfig := func(result *extendsResult, extendedConfigPath tspath.RootedFilePath) {
 		extendedConfig, extendedErrors := getExtendedConfig(sourceFile, extendedConfigPath, fs, resolutionStack, extendedConfigCache, result)
 		errors = append(errors, extendedErrors...)
 		if extendedConfig != nil && extendedConfig.options != nil {
+			inheritedSeverityDiagnostics = mergeVibeSeverityDiagnostics(inheritedSeverityDiagnostics, extendedConfig.vibeSeverityDiagnostics)
 			extendsRaw := extendedConfig.raw
 			relativeDifference := ""
 			setPropertyValue := func(propertyName string) {
@@ -1134,6 +1142,7 @@ func parseConfig(
 		}
 		ownConfig.options = mergeParsedCompilerOptions(result.options, ownConfig.options, ownConfig.raw, configFileName.AsString(), basePath.AsString())
 	}
+	ownConfig.vibeSeverityDiagnostics = mergeVibeSeverityDiagnostics(inheritedSeverityDiagnostics, ownConfig.vibeSeverityDiagnostics)
 	return ownConfig, errors
 }
 
@@ -1178,6 +1187,13 @@ func parseJsonConfigFileContentWorker(
 
 	var errors []*ast.Diagnostic
 	parsedConfig, errors := parseConfig(json, sourceFile, fs, baseDirectory, configFileName, resolutionStack, extendedConfigCache)
+	// Only winning entries are diagnosed. Keep the original node/file so an
+	// inherited invalid value points to its declaring config in CLI and LSP.
+	for _, code := range slices.Sorted(maps.Keys(parsedConfig.vibeSeverityDiagnostics)) {
+		if diagnostic := parsedConfig.vibeSeverityDiagnostics[code]; diagnostic != nil {
+			errors = append(errors, diagnostic)
+		}
+	}
 	mergeParsedCompilerOptions(parsedConfig.options, &parsedCompilerOptions{CompilerOptions: existingOptions}, existingOptionsRaw, configFileName.AsString(), baseDirectory.AsString())
 	handleOptionConfigDirTemplateSubstitution(parsedConfig.options, basePathForFileNames)
 	if options := parsedConfig.options; options != nil && options.CompilerOptions != nil && options.VibeLang != nil && startsWithConfigDirTemplate(options.VibeLang.SidecarDir) {

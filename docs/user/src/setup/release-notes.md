@@ -502,6 +502,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Waiting for a pending browser commit or animation frame required a plain host callback; `Experimental.Animations.nextFrameUnless` now checks and registers atomically inside a cold Effect, with cancellation on interruption (decided detail 261).
 
 - Browser file reads could report an unexpected result exactly like a host error; `Experimental.FileReader` now identifies unexpected results with `InvalidData`, preserving the origin even when the cause and message coincide.
+- A valid severity override could still fail compilation because an overridden base entry was invalid; only effective severity entries now report `EK3006`, and valid overrides allow emission again.
+
 
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 

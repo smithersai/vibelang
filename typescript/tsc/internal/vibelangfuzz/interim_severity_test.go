@@ -14,12 +14,14 @@ import (
 const interimSeverityQuote = "an interim `EK92xx` code, even one printed as a warning"
 
 func TestInterimSeverityRulesQuoted(t *testing.T) {
+	severityInheritanceQuoted(t)
 	if !strings.Contains(SpecText("007-tooling.md"), interimSeverityQuote) {
 		t.Fatal(interimSeverityQuote)
 	}
 }
 func FuzzInterimSeverityRules(f *testing.F) {
 	startShortBudget(f)
+	severityInheritanceQuoted(f)
 	for n := uint8(0); n < 8; n++ {
 		f.Add("config:severity-interim-rejected", n, n, n)
 	}
@@ -64,10 +66,10 @@ func FuzzInterimSeverityRules(f *testing.F) {
 				t.Errorf("unexpected diagnostic: %v", d)
 			}
 		}
+		// VIP-30 validates effective entries after merging by code. The
+		// duplicate invalid code in the base is displaced, even though the
+		// winning child is independently invalid and must still be rejected.
 		want := 1
-		if placement%3 == 2 {
-			want = 2
-		} // each invalid written entry is reported, even if overridden
 		if count != want {
 			Gap(t, "FuzzInterimSeverityRules", "config:severity-interim-rejected", "%s %s: want %d EK3006, got %v", key, bad, want, parsed.Errors)
 		}

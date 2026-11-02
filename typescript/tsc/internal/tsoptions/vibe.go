@@ -12,18 +12,23 @@ import (
 )
 
 // parseVibeSettings validates VIP-30 settings, retaining source spans in JSONC.
-// Severity-entry errors are EK3006; other errors are EK3007.
-func parseVibeSettings(value any, expression *ast.Node, file *ast.SourceFile, basePath tspath.RootedDirectoryPath) (*core.VibeLangOptions, []*ast.Diagnostic) {
+// Severity-entry diagnostics are deferred until after the extends merge. A nil
+// entry records a valid override that displaces an ancestor's diagnostic.
+func parseVibeSettings(value any, expression *ast.Node, file *ast.SourceFile, basePath tspath.RootedDirectoryPath) (*core.VibeLangOptions, []*ast.Diagnostic, map[string]*ast.Diagnostic) {
 	options := &core.VibeLangOptions{VibeOnly: true}
 	var errors []*ast.Diagnostic
-	report := func(node *ast.Node, code int32, text string) {
+	severityDiagnostics := map[string]*ast.Diagnostic{}
+	diagnostic := func(node *ast.Node, code int32, text string) *ast.Diagnostic {
 		d := CreateDiagnosticForNodeInSourceFileOrCompilerDiagnostic(file, node, diagnostics.Unknown_compiler_option_0, "vibe")
-		errors = append(errors, ast.NewExternalDiagnostic(d.File(), d.Loc(), "EK", diagnostics.CategoryError, code, text))
+		return ast.NewExternalDiagnostic(d.File(), d.Loc(), "EK", diagnostics.CategoryError, code, text)
+	}
+	report := func(node *ast.Node, code int32, text string) {
+		errors = append(errors, diagnostic(node, code, text))
 	}
 	object, ok := value.(*collections.OrderedMap[string, any])
 	if !ok {
 		report(expression, core.VibeInvalidConfigCode, "vibe must be an object; put language options inside an object.")
-		return options, errors
+		return options, errors, severityDiagnostics
 	}
 	for key, value := range object.Entries() {
 		property := jsonProperty(expression, key)
@@ -66,7 +71,7 @@ func parseVibeSettings(value any, expression *ast.Node, file *ast.SourceFile, ba
 			for code, value := range codes.Entries() {
 				entry := jsonProperty(node, code)
 				if !core.VibeSeverityCode(code) {
-					report(jsonName(entry), core.VibeInvalidSeverityCode, fmt.Sprintf("%s cannot appear in vibe.severities; remove the entry. Only warning codes and assigned EK38 lint codes can be configured.", code))
+					severityDiagnostics[code] = diagnostic(jsonName(entry), core.VibeInvalidSeverityCode, fmt.Sprintf("%s cannot appear in vibe.severities; remove the entry. Only warning codes and assigned EK38 lint codes can be configured.", code))
 					continue
 				}
 				severity, ok := value.(string)
@@ -75,13 +80,14 @@ func parseVibeSettings(value any, expression *ast.Node, file *ast.SourceFile, ba
 						options.InvalidSeverities = map[string]bool{}
 					}
 					options.InvalidSeverities[code] = true
-					report(jsonInitializer(entry), core.VibeInvalidSeverityCode, "vibe.severities."+code+" must be error, warning, suggestion or off; replace this value.")
+					severityDiagnostics[code] = diagnostic(jsonInitializer(entry), core.VibeInvalidSeverityCode, "vibe.severities."+code+" must be error, warning, suggestion or off; replace this value.")
 					continue
 				}
+				severityDiagnostics[code] = nil
 				options.Severities[code] = severity
 			}
 			for _, name := range jsonEmptyNames(node) {
-				report(name, core.VibeInvalidSeverityCode, "An empty diagnostic code cannot appear in vibe.severities; remove the entry.")
+				severityDiagnostics[""] = diagnostic(name, core.VibeInvalidSeverityCode, "An empty diagnostic code cannot appear in vibe.severities; remove the entry.")
 			}
 		default:
 			report(jsonName(property), core.VibeInvalidConfigCode, "Unknown vibe option "+key+"; use effectGlobals, effectModules, severities or sidecarDir, or remove the option.")
@@ -90,7 +96,7 @@ func parseVibeSettings(value any, expression *ast.Node, file *ast.SourceFile, ba
 	for _, name := range jsonEmptyNames(expression) {
 		report(name, core.VibeInvalidConfigCode, "An empty key is not a vibe option; remove it.")
 	}
-	return options, errors
+	return options, errors, severityDiagnostics
 }
 
 func serializeVibeSettings(options *core.VibeLangOptions, configFileName tspath.RootedFilePath, caseSensitivity tspath.CaseSensitivity) *collections.OrderedMap[string, any] {
@@ -120,6 +126,19 @@ func serializeVibeSettings(options *core.VibeLangOptions, configFileName tspath.
 			codes.Set(code, options.Severities[code])
 		}
 		result.Set("severities", codes)
+	}
+	return result
+}
+
+// Merge without mutating the cached base: sibling projects can select different
+// winners from the same extended config, including a later invalid winner.
+func mergeVibeSeverityDiagnostics(base, child map[string]*ast.Diagnostic) map[string]*ast.Diagnostic {
+	result := maps.Clone(base)
+	if len(child) != 0 {
+		if result == nil {
+			result = map[string]*ast.Diagnostic{}
+		}
+		maps.Copy(result, child)
 	}
 	return result
 }
