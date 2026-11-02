@@ -473,6 +473,9 @@ func (b *BuildInfoResolvedRoot) UnmarshalJSON(data []byte) error {
 
 type BuildInfo struct {
 	Version string `json:"version,omitzero"`
+	// Compiler is the Go build ID of the compiler that wrote this build info
+	// (CompilerBuild): VibeLang compilers share TypeScript's version.
+	Compiler string `json:"compiler,omitzero"`
 
 	// Common between incremental and tsc -b buildinfo for non incremental programs
 	Errors                  bool             `json:"errors,omitzero"`
@@ -502,7 +505,7 @@ type BuildInfo struct {
 }
 
 func (b *BuildInfo) IsValidVersion() bool {
-	return b.Version == core.Version()
+	return b.Version == core.Version() && b.Compiler == CompilerBuild()
 }
 
 // ContentMapperIdentities returns the project's sorted mapper transform identities. A nil project means

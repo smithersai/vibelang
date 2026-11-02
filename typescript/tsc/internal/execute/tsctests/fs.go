@@ -40,6 +40,9 @@ func (f *testFs) readFileHandlingBuildInfo(path tspath.RootedFilePath) (contents
 		err := json.Unmarshal([]byte(contents), &buildInfo)
 		if err == nil && buildInfo.Version == harnessutil.FakeTSVersion {
 			buildInfo.Version = core.Version()
+			if buildInfo.Compiler == "" {
+				buildInfo.Compiler = incremental.CompilerBuild()
+			}
 			newContents, err := json.Marshal(&buildInfo)
 			if err != nil {
 				panic("testFs.ReadFile: failed to marshal build info after fixing version: " + err.Error())
@@ -63,6 +66,10 @@ func (f *testFs) writeFileHandlingBuildInfo(path tspath.RootedFilePath, data str
 			if buildInfo.Version == core.Version() {
 				// Change it to harnessutil.FakeTSVersion
 				buildInfo.Version = harnessutil.FakeTSVersion
+				// The test binary's build ID differs per build; baselines omit it.
+				if buildInfo.Compiler == incremental.CompilerBuild() {
+					buildInfo.Compiler = ""
+				}
 				newData, err := json.Marshal(&buildInfo)
 				if err != nil {
 					return fmt.Errorf("testFs.WriteFile: failed to marshal build info after fixing version: %w", err)

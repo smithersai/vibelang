@@ -21,6 +21,7 @@ func snapshotToBuildInfo(snapshot *snapshot, program *compiler.Program, buildInf
 	}
 	buildInfo := &BuildInfo{
 		Version:                 core.Version(),
+		Compiler:                CompilerBuild(),
 		ContentMapperIdentities: contentMapperIdentities,
 		Effect:                  snapshot.options.Effect,
 	}

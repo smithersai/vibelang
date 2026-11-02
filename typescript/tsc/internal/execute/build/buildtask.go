@@ -383,6 +383,10 @@ func (t *BuildTask) getUpToDateStatus(orchestrator *Orchestrator, configPath tsp
 
 	// build info version
 	if !buildInfo.IsValidVersion() {
+		if buildInfo.Version == core.Version() {
+			// The same TypeScript version from another compiler build (foldkit-123).
+			return &upToDateStatus{kind: upToDateStatusTypeTsVersionOutputOfDate, data: compilerBuildMismatch{buildInfo.Compiler, incremental.CompilerBuild()}}
+		}
 		return &upToDateStatus{kind: upToDateStatusTypeTsVersionOutputOfDate, data: buildInfo.Version}
 	}
 
@@ -737,11 +741,17 @@ func (t *BuildTask) reportUpToDateStatus(orchestrator *Orchestrator) {
 			orchestrator.relativePath(inputOutput.input),
 		))
 	case upToDateStatusTypeTsVersionOutputOfDate:
+		previous, current := core.Version(), core.Version()
+		if builds, ok := t.status.data.(compilerBuildMismatch); ok {
+			previous, current = builds.versionText(builds.previous), builds.versionText(builds.current)
+		} else {
+			previous = t.status.data.(string)
+		}
 		t.result.reportStatus(ast.NewCompilerDiagnostic(
 			diagnostics.Project_0_is_out_of_date_because_output_for_it_was_generated_with_version_1_that_differs_with_current_version_2,
 			orchestrator.relativeFileName(t.config),
-			t.status.data.(string),
-			core.Version(),
+			previous,
+			current,
 		))
 	case upToDateStatusTypeForceBuild:
 		t.result.reportStatus(ast.NewCompilerDiagnostic(
@@ -934,4 +944,15 @@ func (t *BuildTask) writeFile(orchestrator *Orchestrator, fileName tspath.Rooted
 		}
 	}
 	return err
+}
+
+// compilerBuildMismatch is the status data of a build info that the same
+// TypeScript version wrote from another compiler build.
+type compilerBuildMismatch struct{ previous, current string }
+
+func (compilerBuildMismatch) versionText(build string) string {
+	if build == "" {
+		build = "unrecorded"
+	}
+	return core.Version() + " (compiler build " + build + ")"
 }

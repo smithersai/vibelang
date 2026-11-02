@@ -110,6 +110,7 @@ func TestDynamicContentMapperIdentities(t *testing.T) {
 
 	buildInfo := &incremental.BuildInfo{
 		Version:                 core.Version(),
+		Compiler:                incremental.CompilerBuild(),
 		FileNames:               []incremental.BuildInfoPath{"/src/a.ts"},
 		ContentMapperIdentities: []string{"dynamic@1.0.0:old"},
 	}
@@ -133,6 +134,7 @@ func TestReadBuildInfoProgramContentMapperIdentityMismatch(t *testing.T) {
 	// project cannot be reused: the old program is discarded (nil) so the project is rebuilt.
 	buildInfo := &incremental.BuildInfo{
 		Version:                 core.Version(),
+		Compiler:                incremental.CompilerBuild(),
 		FileNames:               []incremental.BuildInfoPath{"/src/a.ts"},
 		ContentMapperIdentities: []string{"vue@1.0.0"},
 	}
