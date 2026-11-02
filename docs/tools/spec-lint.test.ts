@@ -104,3 +104,10 @@ test("retired-forms rejects round 7 ASTRA-4's `catch guest` in VIP-5's Decision 
     expect.stringMatching(/^vips\/0005-try-runs-effects\.md:12 the value handler `x catch guest` is removed/)
   ])
 })
+
+test("retired-forms rejects round 7 OPUS-6's bare `Effect<User, NotFound, Users>` in VIP-1 (row 45)", () => {
+  const defect = withEdit("vips/0001-effect-and-async-functions.md", text => text.replace("effect function load(id): User!NotFound!Users {", "effect function load(id): Effect<User, NotFound, Users> {"))
+  expect(lint(defect, rule("retired-forms")).map(v => `${v.file}:${v.line} ${v.message}`)).toEqual([
+    expect.stringMatching(/^vips\/0001-effect-and-async-functions\.md:27 the bare type `Effect<A, E, R>` is removed/)
+  ])
+})

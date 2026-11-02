@@ -24,7 +24,7 @@ const c = (id) => fetchUser(id)   // neither keyword: plain JavaScript; returns 
 - An `effect` function's return type is an Effect, just as an `async` function's is a Promise. Like any function's return type, it can be written or left out, in which case it is inferred. An inferred type takes its success from what the function returns, and its errors and requirements from the Effects its body runs, as `Effect.gen` infers them.
 
   ```ts
-  effect function load(id): Effect<User, NotFound, Users> { return try fetchUser(id) }   // written
+  effect function load(id): User!NotFound!Users { return try fetchUser(id) }             // written
   effect function load(id) { return try fetchUser(id) }                                  // inferred: the same type
   async function get(q): Promise<Row[]> { return await queryDb(q) }                      // as in TypeScript
   ```
@@ -73,6 +73,8 @@ A forbidden `await` expression in directly evaluated formal-parameter initializa
 *Corrected 2026-10-29: the return-type example uses `effect function` and `async function`, as the 2026-10-29 amendment requires.*
 
 *Corrected 2026-10-29: the examples call `queryDb`, a Promise-returning function imported from a `.ts` module, because VIP-33 forbids platform calls such as `fetch` anywhere in a `.vibe` file.*
+
+*Corrected 2026-11-02: the written return type is `User!NotFound!Users` (VIP-3), as chapter 1 writes the same example; a bare `Effect<A, E, R>` type is not a VibeLang form (decided detail 260), and with Effect's modules in scope `Effect` names the namespace (found by the round-7 review).*
 
 ## Alternative considered and withdrawn (2026-10-29)
 

@@ -253,10 +253,12 @@ const deniedVipRepairs: Rule = {
 const retired: { form: string; pattern: RegExp; source: string }[] = [
   { form: "the value handler `x catch guest`", pattern: /\bcatch\s+(?!effect\b|async\b|\(|<)[A-Za-z_$][\w$]*\s*(?:\/\/.*)?$/,
     source: "VIP-5, amended 2026-10-29: `x catch () => guest` replaces the value form `x catch guest`, which is removed" },
+  { form: "the bare type `Effect<A, E, R>`", pattern: /(?<![\w.$])Effect</,
+    source: "decided detail 260: a bare `Effect<A, E, R>` type is not a VibeLang form; write `A!E!R` or `Effect.Effect<A, E, R>`" },
 ]
 const retiredForms: Rule = {
   name: "retired-forms",
-  finding: "r7 ASTRA-4 (row 46): VIP-5's Decision example used the removed value handler `catch guest`",
+  finding: "r7 ASTRA-4 (row 46): VIP-5's Decision example used the removed value handler `catch guest`; r7 OPUS-6 (row 45): VIP-1's written-type example used bare `Effect<A, E, R>`",
   check(spec) {
     const out: Violation[] = []
     for (const [file, text] of [...chapters(spec), ...acceptedVips(spec)]) {
