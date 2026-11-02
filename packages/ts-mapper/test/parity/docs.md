@@ -50,3 +50,14 @@ multiple lists, alongside their local declarations. Renaming or removing
 Public names in named export lists retain their spelling even when a local
 import binds that name. The local side of an alias still resolves through its
 import, so renaming that local alias with the same public name stays equivalent.
+
+## Selecting runtime cases
+
+With the `PARITY_*` environment prepared, `bun runtime.ts [case...]` selects
+runnable cases by exact name or substring. No selectors runs every runnable
+case. Multiple selectors take the union of their matches. A case without an
+`expect-result` header does not count as runnable. If nothing is selected,
+the command prints `no runnable cases`, names any selectors, and exits with
+status `2` before creating its runtime workspace. An empty corpus has the
+same failure status. Regression and generated selector checks run with
+`node --test scripts/mapper-runtime-selection.test.mjs`.

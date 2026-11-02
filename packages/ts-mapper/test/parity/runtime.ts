@@ -235,6 +235,11 @@ if (import.meta.main) {
   const selectors = process.argv.slice(2).filter((a) => !a.startsWith("--"))
   let cases = runnableCases(root)
   if (selectors.length > 0) cases = cases.filter((c) => selectors.some((s) => c.id === s || c.id.includes(s)))
+  if (cases.length === 0) {
+    const requested = selectors.length ? ` matching ${selectors.map((s) => JSON.stringify(s)).join(", ")}` : ""
+    console.error(`runtime parity: no runnable cases${requested}`)
+    process.exit(2)
+  }
   const o: RuntimeOptions = {
     outDir: process.env.PARITY_OUT ?? path.join(here, "out"),
     mapper: env("PARITY_MAPPER"),
