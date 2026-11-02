@@ -1,8 +1,13 @@
-import { test, expect } from "bun:test"
+import { test, expect, afterAll } from "bun:test"
+import { scratchSite } from "./site-scratch"
 import { resolve } from "node:path"
 
+// A private copy of site/: the build replaces its node_modules, pages and dist, which other targets read meanwhile.
+const scratch = scratchSite(resolve(import.meta.dir, "../.."))
+afterAll(() => scratch.finish())
+
 test("built home, onboarding and cheat sheet have zero contrast violations in both themes", async () => {
-  const site = resolve(import.meta.dir, "../../site")
+  const site = scratch.site
   // Exercise the production build in the release validator's docs/tools step.
   // Install Chromium once with: cd site && bunx playwright install chromium
   for (const command of [

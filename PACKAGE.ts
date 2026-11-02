@@ -283,15 +283,14 @@ const targets = {
     [Typescript.compiler, Packages["runtime-dist"], Packages["compiler-native"], siteSpecLinks],
     [bun, node]
   ),
-  // It installs the site with `npm ci` and builds it, so it runs only when
-  // selected: `smthrs test //... --include-exclusive` (the post-merge suite).
+  // It installs and builds a private copy of site/ (docs/tools/site-scratch.ts),
+  // so it runs beside the other targets.
   "site-contrast": S.Shell.Test({
     summary: "The built site's pages have no contrast violations in either theme.",
     shell: "cd docs/tools && bun test --timeout 60000 site-contrast.test.ts",
     data: [tree],
     tools: [bun, node],
     sandbox: "none",
-    exclusive: true,
     timeout: "30m"
   }),
   "docs-check": check("Generated docs and tracked-leak checks.", "cd .smithers && bun run docs:check", [], [bun, node, gofmt]),

@@ -152,7 +152,7 @@ hand, rebuild it after changing compiler sources.
   :go-vibelangfuzz-compile      the compile oracles over their short sample of cases and documentation examples (merge gate)
   :go-vibelangfuzz-config       the project-settings oracles over every case's vibelang section (merge gate)
   :release :snippets :tokens :forms :docs-tools :docs-check :site-spec-links
-  :site-contrast                exclusive: runs only with --include-exclusive
+  :site-contrast                npm ci and a production build of a private copy of site/, then the contrast audit
   :design-files                 Filegroup: docs/design
   :spec-tests                   the Go tests that read docs/design (registry, whole printed diagnostic numbers, VIP citations, pending lines), the cost guards of --fix and flow narrowing
 ```
@@ -306,7 +306,7 @@ fails it: `.smithers/flows/first-bad/README.md`.
 
 A gate that needs only some checks names their labels, for example
 `sh scripts/ci.sh //packages/... //:docs-check --jobs 8`; a full run is
-`sh scripts/ci.sh //... --include-exclusive --jobs 8`. Each checkout keeps its
+`sh scripts/ci.sh //... --jobs 8`. Each checkout keeps its
 `.flows/` between runs, so a long-lived CI checkout replays everything an
 earlier run already proved.
 
