@@ -11,6 +11,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 
 ## 0.0.11 (unreleased)
+- A `throw` in a plain function drew `EK4804`, `EK4811` or `EK4815`, the advisories about what an Effect function's typed failure fails with, though a plain function's `throw` is JavaScript's (VIP-4); t3code's throwing plain helpers failed the migrate flow's style gate on them. Only an Effect function's `throw` reports them now.
 - The migrate flow's `record` formatted a batch's `.vibe` files with `vibelang-format`, which takes only the quote style and print width from a dprint configuration, so where that configuration loads VibeLang's dprint plugin, `dprint check` failed on them over settings such as `trailingCommas` and `arrowFunction.useParentheses` (Smithers: 258 files); `record` now runs the repository's `dprint fmt` on those files.
 - A `do` expression ending in a declaration, a loop or an `if` without an `else` reported TypeScript's `TS1109`; it now reports `EK0201`, which names the statement (decided detail 247). A `do` ending in `break` or `continue` does not also report `EK0201`; a permitted jump keeps its enclosing target. A `do` ending in a labeled block, a `switch` (an empty case block included), an empty statement or a `var` statement is admitted, as the proposal's predicate admits them, and a `switch` clause ending in a loop, a bare `if` or a declaration is `EK0201`. A `do` ending in an empty interruption block, `do { uninterruptible {} }`, returned the block's marker call and failed to run; it is `undefined`.
 | `try do { …; value }` in effect code whose value is not an Effect, such as `try do { try sleep(d); "late" }` | The `do` was a program that `try` ran; it now runs where it stands and `try` runs its value (VIP-2), so a value that is not an Effect is `EK0502`. `vibelang --fix` writes `try effect { return do { … } }`, which runs the block when `try` does and keeps its completion value. |
@@ -269,6 +270,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Large `--fix` rounds could stop without saving progress. The fixer now saves verified checkpoints and bounds refusal isolation, so an interrupted run keeps its verified changes.
 
 - The migrate flow's platform split left a module's file-wide directives, such as t3code Desktop's `// @effect-diagnostics nodeBuiltinImport:off`, on the `.vibe` module only, so the `<Name>.platform.ts` sibling that now held the `node:child_process` import reported `EK3877` and the module went back to TypeScript; the sibling now starts with the same directives.- With `stripInternal`, an `@internal` schema lost both its constant and type alias from declarations; it now drops only the constant, matching the equivalent Effect TypeScript pair.
+- An `effect` body that ran an Effect failing with `Error | ApiError` and threw an `Error` subclass declared its error channel as `Error`, so a `catch` arm on `ApiError`'s tag failed with `TS2339`; it now declares `Error | ApiError`, as `Effect.gen` infers.
 
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 
@@ -323,6 +325,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A declaration sidecar left imports unresolved when a relative filename contained quotes or Unicode escapes; sidecar imports now resolve the decoded filename and keep valid escaping and the declaration's quote style.
 
 - An explicit `./model.vibe` import or re-export could make stock TypeScript read an unrelated `model.ts` or `model.d.ts` sibling and report `TS2322`; declaration sidecars now keep the explicit `.vibe` target, while native imports keep their native target.
+
+- A closure created in a plain `for...of` loop's iterable expression could read an outer variable when the loop declared the same name in a destructured `let` or `const` head; it now captures the loop's uninitialized head binding and throws `ReferenceError`, as in TypeScript.
 
 - `vibelang --fix` deleted comments from legacy diagnostic maps, including empty maps and entries superseded by modern settings; it now keeps every comment in direct and extended configs, with the same settings and a stable second run.
 
