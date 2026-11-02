@@ -214,6 +214,8 @@ A pending line skips only the disagreement its own key names. A reproduction's `
 
 `FuzzFormatGuard` reads `do` expressions before statement lifting when choosing source layout mutations. A compiler capture can share the position of a parenthesized `return` operand; it is not a written statement where an empty statement may be inserted. Keyed `&&`, `||` and `??` probes retain that boundary.
 
+The `FuzzCompile` statement-mapping oracle compares executable AST shapes through annotations and type assertions. A typed local or asserted assignment can emit the same tokens as an untyped statement elsewhere; both original spans remain candidates. Different binding names, values and unary operators remain distinct. The keyed `platform-stable-local-let-statements` corpus and wrong-value controls cover this distinction.
+
 A fixed hang graduates to an active regression instead of retaining a time-dependent pending expectation. The literal `match` regression keeps its keyed corpus below the mutation size cap, generates string and numeric unions in both arm orders, and retains the original 3,000-arm workload in `TestCompileLargeLiteralMatch`. `TestLiteralMatchCorpusActive` runs in the gate so that a pending line or size skip cannot silently disable that coverage. The checker allocation guards detect repeated union-removal work independently of host load.
 
 ## Results

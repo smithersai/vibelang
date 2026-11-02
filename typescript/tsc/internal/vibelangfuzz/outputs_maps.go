@@ -30,6 +30,41 @@ func statementKey(text string) string {
 	return key.String()
 }
 
+// statementShape retains executable syntax through TypeScript type erasure.
+// Exact source spelling alone can match only an untyped lookalike while
+// excluding the corresponding typed declaration or asserted assignment.
+func statementShape(node *ast.Node) string {
+	var key strings.Builder
+	var visit ast.Visitor
+	visit = func(n *ast.Node) bool {
+		if ast.IsTypeNode(n) || n.Kind == ast.KindTypeParameter {
+			return false
+		}
+		switch n.Kind {
+		case ast.KindParenthesizedExpression, ast.KindAsExpression, ast.KindTypeAssertionExpression, ast.KindNonNullExpression, ast.KindSatisfiesExpression:
+			visit(n.Expression())
+			return false
+		}
+		fmt.Fprintf(&key, "(%d", n.Kind)
+		if ast.IsIdentifier(n) || ast.IsPrivateIdentifier(n) || ast.IsLiteralExpression(n) {
+			fmt.Fprintf(&key, ":%q", n.Text())
+		}
+		switch n.Kind {
+		case ast.KindVariableDeclarationList:
+			fmt.Fprintf(&key, ":%d", n.Flags&ast.NodeFlagsBlockScoped)
+		case ast.KindPrefixUnaryExpression:
+			fmt.Fprintf(&key, ":%d", n.AsPrefixUnaryExpression().Operator)
+		case ast.KindPostfixUnaryExpression:
+			fmt.Fprintf(&key, ":%d", n.AsPostfixUnaryExpression().Operator)
+		}
+		n.ForEachChild(visit)
+		key.WriteByte(')')
+		return false
+	}
+	visit(node)
+	return key.String()
+}
+
 // statementIdentity recognizes named declarations across TypeScript's type
 // erasure and VibeLang's initializer lowering. It is used only when unique in
 // the source, so a generated statement cannot borrow another scope's binding.
@@ -70,6 +105,10 @@ func (oc *OutputChecker) checkStatementMappings(name, generated, source string, 
 	emitted := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: tspath.RootedFilePath("/emitted/" + name), PathKey: tspath.PathKey("/emitted/" + name)}, generated, core.ScriptKindJS)
 	var spans []statementSpan
 	byKey := map[string][]statementSpan{}
+	var originals []struct {
+		span statementSpan
+		node *ast.Node
+	}
 	byIdentity := map[string][]statementSpan{}
 	var visit ast.Visitor
 	visit = func(n *ast.Node) bool {
@@ -88,6 +127,10 @@ func (oc *OutputChecker) checkStatementMappings(name, generated, source string, 
 					}
 				}
 				spans = append(spans, span)
+				originals = append(originals, struct {
+					span statementSpan
+					node *ast.Node
+				}{span, n})
 				if identity := statementIdentity(n); identity != "" {
 					byIdentity[identity] = append(byIdentity[identity], span)
 				}
@@ -182,14 +225,20 @@ func (oc *OutputChecker) checkStatementMappings(name, generated, source string, 
 			retained = false
 		}
 		inside := func(span statementSpan) bool { return pos >= span.start && pos < span.end }
-		// Emit erases `as T` and `satisfies T`, so a statement can read as
-		// another source statement; it still maps to its own.
-		erasedAt := func(span statementSpan) bool {
-			rest, ok := strings.CutPrefix(statementKey(source[span.start:span.end]), statementKey(generated[start:n.End()]))
-			return inside(span) && ok && (strings.Contains(rest, "as") || strings.Contains(rest, "satisfies"))
+		// Only a mismatch needs executable-shape comparison. Building keys
+		// for every compound statement would repeatedly walk large bodies.
+		erasedAt := func() bool {
+			shape := statementShape(n)
+			for _, original := range originals {
+				if inside(original.span) && original.node.Kind == n.Kind && statementShape(original.node) == shape {
+					return true
+				}
+			}
+			return false
 		}
+
 		if retained {
-			if !slices.ContainsFunc(candidates, inside) && !slices.ContainsFunc(spans, erasedAt) {
+			if !slices.ContainsFunc(candidates, inside) && !erasedAt() {
 				oc.G.Add("feature:source-map-statement", "D34: %s unchanged statement at %d:%d maps to source byte %d outside its statement [%d,%d): %q", name, line, column, pos, candidates[0].start, candidates[0].end, excerpt(generated, start))
 			}
 		} else {
