@@ -128,8 +128,8 @@ hand, rebuild it after changing compiler sources.
 .smithers/WORKSPACE.ts          toolchain (node, go, bun), cache in .flows/
 //typescript/tsc                the Go module
   :srcs                         Filegroup: what go build reads (no *_test.go, no testdata/)
-  :go-checker :go-parser        go test, one target per Go package tree
-  :go-format :go-core
+  :go-checker :go-parser        go test, one target per Go package tree (merge gate,
+  :go-format :go-core           when the change edits that tree)
   :vibelang-files ...           Filegroups: one Go package's tests and testdata
 //typescript
   :compiler                     go build ./cmd/tsc -> typescript/built/local/tsc
