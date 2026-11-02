@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url"
 import fc from "fast-check"
 import { checkProperty } from "../../../scripts/testing/property.mjs"
 import { compileProjectSync, projects } from "../project.mjs"
+import { observedChild } from "./observed-child.mjs"
 
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const compiler = process.env.VIBELANG_BINARY || join(repo, "typescript/built/local/tsc")
@@ -132,7 +133,7 @@ async function checkHistory(input, loaders = false) {
     const options = { root: app, project, compiler: binary, cache: { directory }, debug: trace }
     const modules = projects(options)
     for (const [stage, revision] of revisions(input).entries()) {
-      trace(`cache-fresh revision ${stage}: ${JSON.stringify(revision.edit ?? "initial")}`)
+      trace(`cache-${loaders ? "loaders" : "fresh"} revision ${stage}: ${JSON.stringify(revision.edit ?? "initial")}`)
       for (const file of Object.keys(previous.files)) if (!(file in revision.files)) rmSync(join(root, file))
       for (const [file, text] of Object.entries(revision.files)) {
         if (previous.files[file] === text) continue
@@ -176,14 +177,15 @@ async function checkHistory(input, loaders = false) {
       if (loaders) for (const engine of ["node", "bun"]) {
         const args = engine === "node" ? ["--import", join(repo, "packages/compiler/register.mjs"), "main.ts"] :
           ["--preload", join(repo, "packages/compiler/bun.mjs"), "main.ts"]
-        const run = disabled => spawnSync(engine, args, {
+        const run = disabled => observedChild(engine, args, {
           cwd: app, encoding: "utf8", timeout: 30000, maxBuffer: 1 << 20,
           env: { ...process.env, VIBELANG_BINARY: binary, VIBELANG_PROJECT: "", VIBELANG_CACHE_DIR: directory,
             VIBELANG_DISABLE_CACHE: disabled ? "1" : "", NO_COLOR: "1" }
-        })
-        const cached = run(false), disabled = run(true)
-        trace(`${engine}: ${cached.stderr}\nfresh: ${disabled.stderr}`)
-        assert.ifError(cached.error); assert.ifError(disabled.error)
+        }, `revision=${stage} ${engine} ${disabled ? "fresh" : "cached"}`, trace)
+        const cached = run(false)
+        assert.ifError(cached.error)
+        const disabled = run(true)
+        assert.ifError(disabled.error)
         assert.equal(cached.status, disabled.status)
         assert.equal(cached.stdout, disabled.stdout)
         assert.deepEqual(diagnosticCodes(cached.stderr), diagnosticCodes(disabled.stderr))

@@ -656,6 +656,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The ESLint corpus check rejected two deliberately malformed compiler and editor fixtures as regressions; it now verifies their exact intended syntax errors and rejects changed or missing errors.
 
 - Producers accepted `yield*` even though delegation is not specified; it now reports `EK2103`. Native generator delegation keeps its ordinary behavior.
+- A timed-out `cache-loaders` validation hid which engine and cache mode failed; each child now records its stage, elapsed time, termination reason and partial output.
 
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 

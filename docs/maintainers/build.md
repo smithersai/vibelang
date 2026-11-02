@@ -682,6 +682,15 @@ measuring compiler performance.
 
 ## Cache contracts
 
+The `cache-loaders` property logs each child before and after execution with
+its revision, engine (`node` or `bun`) and cache mode (`cached` or `fresh`).
+The completion record includes elapsed milliseconds, exit status, signal,
+spawn error code and the last `4000` characters of each output pipe. These
+records distinguish a loader timeout from a compiler failure while retaining
+the original `30000` millisecond child budget. Replay the property with the
+`FC_PROPERTY`, `FC_SEED` and `FC_PATH` printed in its failure.
+
+
 The compiler and Vite package tests consume `//:migration-sources`, a root-owned filegroup that holds every file of the migrate flow, so a new flow file needs no entry in any `PACKAGE.ts`. A `//` prefix roots a glob's path but does not change its package scope: a glob declared in `packages/PACKAGE.ts` selects none of the root-owned `.smithers/flows/migrate/` files, and `smthrs explain` shows it with `"files": []`. `migration-inputs.ts` defines the shared group without a declaration-module import cycle. The compiler package's cache-contract tests use `smthrs explain` to check the real dependency and that every file under `.smithers/flows/migrate/` is an input with its current content digest.
 
 
