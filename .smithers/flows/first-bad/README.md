@@ -15,7 +15,7 @@ prepare ──▶ reproduce ──▶ bisect ──▶ report
 | --- | --- | --- |
 | prepare | Resolves good and bad, lists the commits between them (refusing a history with merges), and adds the flow's jj workspace at bad | `prepare.json` |
 | reproduce | Runs the targets at bad, then reruns each failing target until it passes or the tries run out (3 by default) | `reproduce.json` |
-| bisect | Runs the broken targets at good, then bisects each one that passes there; targets whose ranges overlap share a run | `bisect.json` |
+| bisect | Runs the broken targets at good, then bisects each one that passes there; targets whose ranges overlap share a run; a Go target runs only the tests that failed at bad | `bisect.json` |
 | report | Each target's state, and for a broken one the first bad commit, the files it changes, the failing tests and the end of their output | `report.json`, `report.md` |
 
 Every run checks out one commit in the flow's workspace (without a snapshot,
@@ -32,6 +32,20 @@ run's results and graph log stay in `runs/`.
 | `flaky` | Failed, then passed with the same inputs | No commit broke it; the report names the cause (the ci-health flow's classes) |
 | `not-reproduced` | Passed at bad on the first try | The RED came from the host (load, disk); check the post-merge log |
 | `untestable` | Never ran at bad: a dependency failed | Name the dependency as the target instead |
+
+Bisection narrows a Go target (`//:go-vibelangfuzz`, its topic targets and
+`//:go-vibelang`) to the tests that failed at bad. At each commit the graph
+builds `//packages:runtime-dist`, and the flow runs `go test -run
+'^(<names>)$'` with the package and environment `PACKAGE.ts` gives the target
+(`GO_TARGETS` in `lib/steps.mjs`; a test checks them against `PACKAGE.ts`). A
+whole `//:go-vibelangfuzz` run took over 15 minutes on loaded nyc-01; one test
+takes its compile. The graph cannot run part of a target, because its cache
+would record the part's pass as the target's. A commit where the tests do not
+build is untestable. Reproduce runs whole targets unless `--tests` names a Go
+target's failing tests, as post-merge's RED line does; then every run, at bad
+too, runs only those tests. A whole `//:go-vibelangfuzz` run at bad waited 55
+minutes for the loaded host on 11-02. A narrowed target that passes at bad is
+`not-reproduced` for the named tests only.
 
 A run where a target never ran (a dependency failed) is retried once at the
 same commit: on a shared host a build can die of the host, such as a cache file
@@ -52,7 +66,9 @@ cd .smithers && bun flows/first-bad/run.ts --run <run dir> --repo .. \
   --good <rev> --bad <rev> //typescript/vibelang:some-case //:docs-tools
 ```
 
-`--tries N` sets the runs at bad before a failing target counts as broken,
+`--tests '<target>=<Test>,<Test>'` (repeatable) runs only those tests of a Go
+target, at bad and at every bisection commit. `--tries N` sets the runs at bad
+before a failing target counts as broken,
 `--jobs N` is passed to `scripts/ci.sh`, and `--keep` keeps the flow's
 workspace after the run. A commit that changes the compiler rebuilds it; the
 Go build cache makes that incremental.

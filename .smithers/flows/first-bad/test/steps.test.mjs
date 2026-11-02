@@ -1,9 +1,9 @@
 import assert from "node:assert/strict"
-import { mkdtempSync, rmSync } from "node:fs"
+import { mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
-import { classify, explain, next, parseHistory, parseResults, probe, record, start, verdict } from "../lib/steps.mjs"
+import { classify, explain, GO_DEPS, GO_TARGETS, goVerdict, narrowed, next, parseHistory, parseResults, parseTests, probe, record, reproduceRuns, start, verdict } from "../lib/steps.mjs"
 
 const run = (targets) => ({ targets: Object.fromEntries(Object.entries(targets).map(([t, v]) => [t, { verdict: v, tests: [], cause: "", excerpt: "" }])) })
 
@@ -80,7 +80,7 @@ test("a run directory answers one question", () => {
   const dir = mkdtempSync(join(tmpdir(), "first-bad-test-"))
   try {
     const o = start(dir, { repo: "/r", good: "g", bad: "b", targets: ["//a"] })
-    assert.deepEqual(o, { tries: 3, jobs: 8, repo: "/r", good: "g", bad: "b", targets: ["//a"] })
+    assert.deepEqual(o, { tries: 3, jobs: 8, repo: "/r", good: "g", bad: "b", targets: ["//a"], tests: {} })
     assert.deepEqual(start(dir, { repo: "/r", good: "g", bad: "b", targets: ["//a"] }), o)
     assert.throws(() => start(dir, { repo: "/r", good: "g", bad: "b", targets: ["//b"] }), /is a run of g..b/)
     assert.throws(() => start(join(dir, "x"), { repo: "/r", good: "g", bad: "b", targets: [] }), /at least one target/)
@@ -104,4 +104,78 @@ test("a target that never ran is run once more at the same commit; a failure is 
   answers.splice(0, 2, { "//a": "fail" })
   probe("/run", "c1", ["//a"], 5, once)
   assert.equal(calls.length, 1)
+})
+
+test("bisect runs a Go target's failing tests alone: top-level names, Test and Fuzz functions only", () => {
+  const n = narrowed("//:go-vibelangfuzz", ["TestDoContextualResult/match-arm/conditional", "TestDoContextualResult", "FuzzFix"])
+  assert.equal(n.run, "^(FuzzFix|TestDoContextualResult)$")
+  assert.equal(n.pkg, "./internal/vibelangfuzz/...")
+  assert.equal(narrowed("//:go-vibelangfuzz-topic-do", ["TestDoContextualResult"]).pkg, "./internal/vibelangfuzz/...")
+  assert.equal(narrowed("//:go-vibelang", ["TestFixProject"]).pkg, "./internal/vibelang/...")
+  // Pending and hang targets set their own environment; cases and other targets are not Go tests.
+  for (const label of ["//:go-vibelangfuzz-pending", "//:go-vibelangfuzz-hangs", "//typescript/vibelang:hello", "//:spec-tests"]) assert.equal(narrowed(label, ["TestA"]), null, label)
+  assert.equal(narrowed("//:go-vibelangfuzz", []), null)
+  assert.equal(narrowed("//:go-vibelangfuzz", ["hello"]), null)
+  assert.equal(narrowed("//:go-vibelangfuzz", undefined), null)
+})
+
+test("a narrowed go test that fails to build or set up is untestable, not a failure", () => {
+  assert.equal(goVerdict(0, "ok  \tpkg\t1.2s\n"), "pass")
+  assert.equal(goVerdict(1, "--- FAIL: TestX (0.1s)\nFAIL\nFAIL\tpkg\t1.0s\n"), "fail")
+  assert.equal(goVerdict(1, "FAIL\tgithub.com/x/pkg [build failed]\n"), "untestable")
+  assert.equal(goVerdict(1, "FAIL\tgithub.com/x/pkg [setup failed]\n"), "untestable")
+  assert.equal(goVerdict(2, "go: cannot find main module\n"), "untestable")
+})
+
+test("probe passes the narrowed tests to every try", () => {
+  const seen = []
+  const once = (_run, _commit, targets, name, tests) => {
+    seen.push([name, tests])
+    return { code: 1, seconds: 1, ...run({ "//:go-vibelangfuzz": seen.length === 1 ? "untestable" : "fail" }) }
+  }
+  const tests = { "//:go-vibelangfuzz": ["TestA"] }
+  probe("/run", "c1", ["//:go-vibelangfuzz"], 3, once, tests)
+  assert.deepEqual(seen, [["3", tests], ["3b", tests]])
+})
+
+test("GO_TARGETS runs each target's tests as PACKAGE.ts does", () => {
+  const pkg = readFileSync(new URL("../../../../PACKAGE.ts", import.meta.url), "utf8")
+  const block = (start) => { const i = pkg.indexOf(start); assert.ok(i >= 0, start); return pkg.slice(i, pkg.indexOf("\n  )", i) + 4) }
+  const helper = block("const goVibelang = ")
+  for (const dep of GO_DEPS) assert.ok(helper.includes(`Packages["${dep.split(":")[1]}"]`), `goVibelang builds ${dep}`)
+  assert.ok(helper.includes("cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs"))
+  const cases = [["//:go-vibelangfuzz", block(`"go-vibelangfuzz": goVibelang(`)], ["//:go-vibelangfuzz-topic-do", block("const fuzzTopicTargets = ")], ["//:go-vibelang", block(`"go-vibelang": goVibelang(`)]]
+  for (const [label, text] of cases) {
+    const g = GO_TARGETS.find((x) => x.label.test(label))
+    for (const word of g.env.split(" ")) assert.ok(text.includes(word), `${label} sets ${word}`)
+    assert.ok(text.includes(g.pkg.replace(/\.\.\.$/, "")), `${label} tests ${g.pkg}`)
+    assert.equal(g.flags.includes("-short"), text.includes("-short"), `${label} -short`)
+    assert.ok(text.includes("${effect}"), `${label} sets EFFECT_NODE_MODULES`)
+  }
+})
+
+test("reproduce runs a Go target on the tests the RED named, at every try", () => {
+  const seen = []
+  const probeAt = (_run, _commit, targets, n, _attempt, tests) => {
+    seen.push([n, targets, tests])
+    return { n, ...run(Object.fromEntries(targets.map((t) => [t, "fail"]))) }
+  }
+  const tests = { "//:go-vibelangfuzz": ["TestDoContextualResult"] }
+  const runs = reproduceRuns("/run", "bad", ["//:go-vibelangfuzz", "//a"], 2, tests, probeAt)
+  assert.equal(runs.length, 2)
+  assert.deepEqual(seen, [[1, ["//:go-vibelangfuzz", "//a"], tests], [2, ["//:go-vibelangfuzz", "//a"], tests]])
+})
+
+test("parseTests reads <target>=<Test>,<Test> pairs; a run directory keeps its tests", () => {
+  assert.deepEqual(parseTests("//:go-vibelangfuzz=TestA,TestB  //:go-vibelang=TestC"), { "//:go-vibelangfuzz": ["TestA", "TestB"], "//:go-vibelang": ["TestC"] })
+  assert.deepEqual(parseTests(""), {})
+  assert.throws(() => parseTests("TestA"), /is not <target>=<Test>/)
+  const dir = mkdtempSync(join(tmpdir(), "first-bad-tests-"))
+  try {
+    const o = start(dir, { repo: "/r", good: "g", bad: "b", targets: ["//:go-vibelang"], tests: { "//:go-vibelang": ["TestC"] } })
+    assert.deepEqual(o.tests, { "//:go-vibelang": ["TestC"] })
+    assert.throws(() => start(dir, { repo: "/r", good: "g", bad: "b", targets: ["//:go-vibelang"] }), /is a run of g..b/)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
 })

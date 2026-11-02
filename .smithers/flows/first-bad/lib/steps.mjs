@@ -104,21 +104,70 @@ export function verdict(statuses, label) {
   return "untestable"
 }
 
+// The Go targets whose failing tests bisect runs alone, with the package and
+// the environment PACKAGE.ts gives each target's go test. A whole
+// //:go-vibelangfuzz run took over 15 minutes on loaded nyc-01 (11-02 17:20Z),
+// and bisect reran it at every commit; one named test takes its compile and
+// seconds. The graph cannot run part of a target: its cache would record the
+// part's pass as the target's. Test: test/steps.test.mjs reads PACKAGE.ts.
+export const GO_TARGETS = [
+  { label: /^\/\/:go-vibelangfuzz(?:-topic-[a-z0-9]+)?$/, pkg: "./internal/vibelangfuzz/...", env: "CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s", flags: "-short -count=1 -timeout=40m -trimpath" },
+  { label: /^\/\/:go-vibelang$/, pkg: "./internal/vibelang/...", env: "CGO_ENABLED=0", flags: "-count=1 -timeout=45m -trimpath" }
+]
+// The runtime the Go tests run compiled programs against: goVibelang's data.
+export const GO_DEPS = ["//packages:runtime-dist"]
+
+// narrowed says how to run only a target's named failing tests: null for a
+// target not in GO_TARGETS, or tests that are not Go Test or Fuzz functions.
+// A subtest's failure runs its top-level function; a Fuzz function runs its seeds.
+export function narrowed(label, tests) {
+  const g = GO_TARGETS.find((x) => x.label.test(label))
+  const names = [...new Set((tests ?? []).map((n) => n.split("/")[0]))].sort()
+  if (!g || !names.length || !names.every((n) => /^(Test|Fuzz)[A-Za-z0-9_]+$/.test(n))) return null
+  return { ...g, names, run: `^(${names.join("|")})$` }
+}
+
+// goVerdict reads one narrowed go test run: a build or setup failure means the
+// commit could not run the tests (untestable), as a graph dependency failure does.
+export function goVerdict(code, text) {
+  if (code === 0) return "pass"
+  if (/\[(build|setup) failed\]/.test(text) || !/^(--- FAIL|FAIL\s)/m.test(text)) return "untestable"
+  return "fail"
+}
+
 // attempt runs targets at one commit once and keeps the run's results and log
-// under runs/<name>.json and .log.
-function attempt(run, commit, targets, name) {
+// under runs/<name>.json and .log. A target with an entry in tests runs only
+// those tests (narrowed), after the graph builds GO_DEPS; its log is
+// runs/<name>-go.log.
+function attempt(run, commit, targets, name, tests = {}) {
   const dir = path.join(run, "runs")
   mkdirSync(dir, { recursive: true })
   const results = path.join(dir, `${name}.json`), log = path.join(dir, `${name}.log`)
   rmSync(results, { force: true })
   checkout(run, commit)
   const { jobs } = read(paths(run).options)
-  const r = sh(`CI_RESULTS=${quote(results)} sh scripts/ci.sh ${targets.map(quote).join(" ")} --jobs ${jobs} > ${quote(log)} 2>&1`, workspace(run))
+  const narrow = Object.fromEntries(targets.map((t) => [t, narrowed(t, tests[t])]).filter(([, n]) => n))
+  const graph = [...targets.filter((t) => !narrow[t]), ...(Object.keys(narrow).length ? GO_DEPS : [])]
+  const r = sh(`CI_RESULTS=${quote(results)} sh scripts/ci.sh ${graph.map(quote).join(" ")} --jobs ${jobs} > ${quote(log)} 2>&1`, workspace(run))
   const statuses = existsSync(results) ? parseResults(readFileSync(results, "utf8")) : null
   const text = existsSync(log) ? readFileSync(log, "utf8") : ""
+  const depsOk = GO_DEPS.every((d) => verdict(statuses, d) === "pass")
+  let seconds = r.seconds, go = ""
+  const out = {}
+  for (const [t, n] of Object.entries(narrow)) {
+    if (!depsOk) { out[t] = { verdict: "untestable", tests: [], cause: "", excerpt: "", narrowed: n.names }; continue }
+    const goLog = path.join(dir, `${name}-go.log`)
+    const g = sh(`cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs ${n.env} EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test ${n.flags} -run ${quote(n.run)} ${n.pkg} > ${quote(goLog)} 2>&1`, workspace(run))
+    seconds += g.seconds
+    go = existsSync(goLog) ? readFileSync(goLog, "utf8") : ""
+    const lines = go.split("\n")
+    const v = goVerdict(g.code, go)
+    out[t] = { verdict: v, tests: v === "fail" ? failedTests(lines) : [], cause: "", excerpt: v === "pass" ? "" : lines.slice(-30).join("\n"), narrowed: n.names }
+  }
   return {
-    code: r.code, seconds: r.seconds,
+    code: r.code, seconds,
     targets: Object.fromEntries(targets.map((t) => {
+      if (out[t]) return [t, out[t]]
       const v = verdict(statuses, t)
       const lines = v === "fail" ? targetLines(text, t) : []
       return [t, { verdict: v, tests: failedTests(lines), cause: v === "fail" ? cause(lines) : "", excerpt: lines.slice(-30).join("\n") }]
@@ -129,11 +178,11 @@ function attempt(run, commit, targets, name) {
 // probe runs targets at one commit. A target that never ran is run once more:
 // on a shared host its dependency's build can die of the host (a build cache
 // file deleted mid-link, 2026-11-01), not of the commit.
-export function probe(run, commit, targets, n, once = attempt) {
-  const first = once(run, commit, targets, `${n}`)
+export function probe(run, commit, targets, n, once = attempt, tests = {}) {
+  const first = once(run, commit, targets, `${n}`, tests)
   const again = targets.filter((t) => first.targets[t].verdict === "untestable")
   if (!again.length) return { n, commit, ...first }
-  const second = once(run, commit, again, `${n}b`)
+  const second = once(run, commit, again, `${n}b`, tests)
   return { n, commit, code: second.code, seconds: first.seconds + second.seconds, retried: again, targets: { ...first.targets, ...second.targets } }
 }
 
@@ -158,17 +207,35 @@ export function classify(runs, targets) {
   }))
 }
 
-// reproduce runs the targets at bad, and reruns the ones that failed until
-// they pass or the tries run out.
-export const reproduce = (run) => once(run, "reproduce", ({ targets, tries }) => {
-  const p = read(paths(run).prepare)
-  const runs = [probe(run, p.bad, targets, 1)]
+// parseTests reads the tests option: "<target>=<Test>,<Test> ...", the
+// failing tests post-merge named for each target. A target without an entry
+// runs whole.
+export function parseTests(text) {
+  return Object.fromEntries((text ?? "").split(/\s+/).filter(Boolean).map((pair) => {
+    const at = pair.lastIndexOf("=")
+    if (at <= 0) throw new Error(`tests: "${pair}" is not <target>=<Test>,<Test>`)
+    return [pair.slice(0, at), pair.slice(at + 1).split(",").filter(Boolean)]
+  }))
+}
+
+// reproduceRuns runs the targets at bad, and reruns the ones that failed until
+// they pass or the tries run out. A Go target with named tests runs only those
+// (narrowed): a whole //:go-vibelangfuzz run at bad waited 55+ minutes for the
+// loaded host (11-02 18:00Z), and the RED line already names what failed.
+export function reproduceRuns(run, bad, targets, tries, tests = {}, probeAt = probe) {
+  const runs = [probeAt(run, bad, targets, 1, attempt, tests)]
   let failing = targets.filter((t) => runs[0].targets[t].verdict === "fail")
   while (failing.length && runs.length < tries) {
-    const r = probe(run, p.bad, failing, runs.length + 1)
+    const r = probeAt(run, bad, failing, runs.length + 1, attempt, tests)
     runs.push(r)
     failing = failing.filter((t) => r.targets[t].verdict === "fail")
   }
+  return runs
+}
+
+export const reproduce = (run) => once(run, "reproduce", ({ targets, tries, tests }) => {
+  const p = read(paths(run).prepare)
+  const runs = reproduceRuns(run, p.bad, targets, tries, tests ?? {})
   const states = classify(runs, targets)
   const broken = targets.filter((t) => states[t] === "broken")
   return { ok: true, runs, states, broken, summary: targets.map((t) => `${t} ${states[t]}`).join(", ") }
@@ -214,7 +281,9 @@ export const bisect = (run) => once(run, "bisect", () => {
   const runs = []
   let n = r.runs.length
   if (!r.broken.length) return { ok: true, runs, ranges: {}, atGood: [], goodUntestable: [], skipped: [], summary: "nothing to bisect" }
-  const atGoodRun = probe(run, p.good, r.broken, ++n)
+  // A Go target bisects on the tests that failed at bad (narrowed).
+  const tests = Object.fromEntries(r.broken.map((t) => [t, [...new Set(r.runs.flatMap((x) => x.targets[t]?.tests ?? []))]]))
+  const atGoodRun = probe(run, p.good, r.broken, ++n, attempt, tests)
   runs.push({ ...atGoodRun, index: -1 })
   // Only a failure at good means broken-at-good. A target that cannot run at
   // good (its dependency does not build there) is taken as good on the
@@ -228,7 +297,7 @@ export const bisect = (run) => once(run, "bisect", () => {
     if (probed.has(i)) throw new Error(`bisection made no progress at ${p.commits[i].commit}`)
     probed.add(i)
     const open = Object.keys(ranges).filter((t) => ranges[t][0] < i && i < ranges[t][1])
-    const result = probe(run, p.commits[i].commit, open, ++n)
+    const result = probe(run, p.commits[i].commit, open, ++n, attempt, tests)
     runs.push({ ...result, index: i })
     ranges = record(ranges, i, Object.fromEntries(open.map((t) => [t, result.targets[t].verdict])), skipped)
   }
@@ -283,7 +352,10 @@ export const report = (run) => once(run, "report", ({ repo, targets }) => {
   for (const [t, e] of Object.entries(found).filter(([, e]) => e.firstBad)) {
     const files = sh(`jj --ignore-working-copy diff --name-only -r ${e.firstBad}`, repo).output.split("\n").filter(Boolean)
     const passes = e.goodUntestable && e.lastGood === p.good ? `could not run at good \`${p.good}\`, taken as passing there` : `passes at \`${e.lastGood}\``
-    lines.push("", `## \`${t}\``, "", `Fails first at \`${e.firstBad}\` (${e.title}); ${passes}.`, "", "Files that commit changes:", "", ...files.slice(0, 40).map((f) => `- \`${f}\``))
+    const only = b.runs.find((x) => x.targets[t]?.narrowed)?.targets[t].narrowed
+    lines.push("", `## \`${t}\``, "", `Fails first at \`${e.firstBad}\` (${e.title}); ${passes}.`)
+    if (only) lines.push("", `Bisected on the tests that failed at bad, run alone: ${only.map((x) => `\`${x}\``).join(", ")}.`)
+    lines.push("", "Files that commit changes:", "", ...files.slice(0, 40).map((f) => `- \`${f}\``))
     if (e.excerpt) lines.push("", "```text", e.excerpt, "```")
   }
   writeFileSync(path.join(run, "report.md"), lines.join("\n") + "\n")
@@ -307,11 +379,12 @@ export const run = { prepare, reproduce, bisect, report }
 // answers one question: one repository, pair of commits and set of targets.
 export function start(runDir, options) {
   const file = paths(runDir).options
-  const o = { tries: 3, jobs: 8, ...options, targets: [...options.targets] }
+  const o = { tries: 3, jobs: 8, ...options, targets: [...options.targets], tests: options.tests ?? {} }
   if (!o.targets.length) throw new Error("name at least one target")
   if (existsSync(file)) {
     const old = read(file)
-    if (old.repo !== o.repo || old.good !== o.good || old.bad !== o.bad || old.targets.join(" ") !== o.targets.join(" ")) {
+    if (old.repo !== o.repo || old.good !== o.good || old.bad !== o.bad || old.targets.join(" ") !== o.targets.join(" ")
+      || JSON.stringify(old.tests ?? {}) !== JSON.stringify(o.tests)) {
       throw new Error(`${runDir} is a run of ${old.good}..${old.bad} for ${old.targets.join(" ")}`)
     }
     return old

@@ -1,7 +1,7 @@
 import { Action, Flow } from "@smthrs/flow";
 import { Node } from "@smthrs/plan";
 import { Effect, Layer, Schema } from "effect";
-import { run as steps, start } from "./lib/steps.mjs";
+import { parseTests, run as steps, start } from "./lib/steps.mjs";
 
 // One execution answers: which of these targets, failing at bad, did a commit
 // after good break, and which commit? Each step reads and writes the run
@@ -16,6 +16,8 @@ export class StepFailed extends Schema.TaggedError<StepFailed>()("StepFailed", {
 
 // targets: graph labels, space-separated. tries: runs at bad before a failing
 // target counts as broken rather than flaky. jobs: --jobs for scripts/ci.sh.
+// tests: "<target>=<Test>,<Test> ...", the failing tests to run alone in a Go
+// target at every commit; "" runs every target whole at bad.
 const StartPayload = {
   run: Schema.String,
   repo: Schema.String,
@@ -23,7 +25,8 @@ const StartPayload = {
   bad: Schema.String,
   targets: Schema.String,
   tries: Schema.Number,
-  jobs: Schema.Number
+  jobs: Schema.Number,
+  tests: Schema.String
 };
 const RunPayload = { run: Schema.String };
 
@@ -46,7 +49,7 @@ const step = (name: keyof typeof steps, run: string) =>
 
 const begin = (input: Schema.Struct.Type<typeof StartPayload>) =>
   Effect.try({
-    try: () => start(input.run, { ...input, targets: input.targets.split(/\s+/).filter(Boolean) }),
+    try: () => start(input.run, { ...input, targets: input.targets.split(/\s+/).filter(Boolean), tests: parseTests(input.tests) }),
     catch: (error) => new StepFailed({ step: "prepare", message: error instanceof Error ? error.message : String(error) })
   });
 

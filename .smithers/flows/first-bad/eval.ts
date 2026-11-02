@@ -9,6 +9,12 @@
 //   cross-package error tag matching (VIP-13)", which changes the runtime's
 //   match prelude) and pass at its parent, 8938ad232196; decl-error-family
 //   prints family [true,false,false,false] where it wants all true.
+// - do-contextual-result: post-merge reported //:go-vibelangfuzz RED on main
+//   c9b86d733a10 at 17:17Z on 2026-11-02 (TestDoContextualResult and its
+//   subtests); 5e496f0dc5ec passed it. By hand: 00b2aa8370ee ("test(fuzz):
+//   contextually type the alternatives a do expression contributes") adds the
+//   test and fails it; its parent has no such test. Bisection runs only that
+//   test at each commit (narrowed), not the whole target.
 // - load-timeouts: post-merge reported two case targets RED on main
 //   bd9b5e296a19 at 06:10Z on 2026-11-01; both were spawn timeouts at load 269,
 //   and the same main went GREEN on a quieter host at 06:19Z. No commit broke
@@ -17,7 +23,8 @@
 // Scorers: state, each target's state is the known one; culprit, the first bad
 // commit is the known one, and none is blamed when nothing broke; tests, the
 // report names the failing tests at the first bad commit; runs, bisection took
-// one run at good plus at most log2 of the commits.
+// one run at good plus at most log2 of the commits; narrowed, every run of a Go
+// target ran only its failing tests, from the RED line at bad and from bad after.
 //
 //   bun .smithers/flows/first-bad/eval.ts            run, compare with baseline.json, exit 1 on a drop
 //   bun .smithers/flows/first-bad/eval.ts --update   run and record baseline.json
@@ -45,6 +52,8 @@ type Input = {
   readonly states: Readonly<Record<string, string>>;
   readonly firstBad: Readonly<Record<string, string>>;
   readonly tests: ReadonlyArray<string>;
+  // The failing tests the RED line named, as pm-first-bad.py passes them.
+  readonly red?: Readonly<Record<string, ReadonlyArray<string>>>;
 };
 type Output = {
   readonly states: Readonly<Record<string, string>>;
@@ -52,6 +61,7 @@ type Output = {
   readonly tests: ReadonlyArray<string>;
   readonly commits: number;
   readonly bisectRuns: number;
+  readonly narrowed: boolean;
 };
 
 const cases = [
@@ -63,6 +73,17 @@ const cases = [
       states: { "//typescript/vibelang:decl-error-family": "broken", "//typescript/vibelang:match-class-patterns": "broken" },
       firstBad: { "//typescript/vibelang:decl-error-family": "f6fe7a68d976", "//typescript/vibelang:match-class-patterns": "f6fe7a68d976" },
       tests: ["decl-error-family", "match-class-patterns"]
+    } satisfies Input
+  },
+  {
+    name: "do-contextual-result",
+    input: {
+      good: "5e496f0dc5ec",
+      bad: "c9b86d733a10",
+      states: { "//:go-vibelangfuzz": "broken" },
+      firstBad: { "//:go-vibelangfuzz": "00b2aa8370ee" },
+      tests: ["TestDoContextualResult"],
+      red: { "//:go-vibelangfuzz": ["TestDoContextualResult"] }
     } satisfies Input
   },
   {
@@ -92,12 +113,16 @@ const culprit = score("culprit", (i, o) => {
 });
 const tests = score("tests", (i, o) => (i.tests.length === 0 ? 1 : i.tests.filter((t) => o.tests.includes(t)).length / i.tests.length));
 const runs = score("runs", (_, o) => (o.bisectRuns <= 1 + Math.ceil(Math.log2(o.commits)) ? 1 : 0));
+// Every run of a Go target ran only the tests post-merge named (reproduce) or
+// that failed at bad (bisect).
+const narrowed = score("narrowed", (_, o) => (o.narrowed ? 1 : 0));
 
 async function answer(input: Input): Promise<Output> {
   const run = mkdtempSync(join(tmpdir(), "first-bad-eval-"));
   try {
     const targets = Object.keys(input.states);
-    const exit = await execute({ run, repo, good: input.good, bad: input.bad, targets: targets.join(" "), tries: 3, jobs: 8 });
+    const exit = await execute({ run, repo, good: input.good, bad: input.bad, targets: targets.join(" "), tries: 3, jobs: 8,
+      tests: Object.entries(input.red ?? {}).map(([t, names]) => `${t}=${names.join(",")}`).join(" ") });
     if (Exit.isFailure(exit)) throw new Error(String(exit.cause));
     const read = (step: string) => JSON.parse(readFileSync(join(run, `${step}.json`), "utf8"));
     const found = read("report").targets as Record<string, { state: string; firstBad?: string; tests?: ReadonlyArray<string> }>;
@@ -106,7 +131,9 @@ async function answer(input: Input): Promise<Output> {
       firstBad: Object.fromEntries(Object.entries(found).filter(([, e]) => e.firstBad).map(([t, e]) => [t, e.firstBad!])),
       tests: Object.values(found).flatMap((e) => (e.firstBad ? e.tests ?? [] : [])),
       commits: read("prepare").commits.length,
-      bisectRuns: read("bisect").runs.length
+      bisectRuns: read("bisect").runs.length,
+      narrowed: ([...read("reproduce").runs, ...read("bisect").runs] as ReadonlyArray<{ targets: Record<string, { narrowed?: ReadonlyArray<string> }> }>).every((r) =>
+        Object.entries(r.targets).every(([t, e]) => !t.startsWith("//:go-") || (e.narrowed?.length ?? 0) > 0))
     };
   } finally {
     rmSync(run, { recursive: true, force: true });
@@ -126,7 +153,7 @@ const program = Effect.gen(function* () {
   const suite = yield* Suite.make({
     name: "first-bad",
     cases,
-    bindings: [state, culprit, tests, runs].map((scorer) => Binding.make({ scorer, appliesTo: target })),
+    bindings: [state, culprit, tests, runs, narrowed].map((scorer) => Binding.make({ scorer, appliesTo: target })),
     concurrency: 1
   });
   const run = yield* Runner.run(suite, { runId: `first-bad-${Date.now()}`, at: new Date().toISOString() });
