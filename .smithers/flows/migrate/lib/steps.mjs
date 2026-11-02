@@ -1428,7 +1428,28 @@ export async function codemod(options) {
   const emittedJs = await emitMigratedJs(config, t, join(p.batch(b), "logs"))
   state.attempts.at(-1).finishedAt = new Date().toISOString()
   saveState(p.codemodState(b), state)
-  const result = { batch: b, at: new Date().toISOString(), files, platform: platformResult, formatted, plain, functionModel, renames, exportEdits, buildEntries, importEdits, lintPaths: state.lintPaths, refEdits, scriptEdits, packageScriptEdits, packageScriptEdits, referenceEdits, referenceWarnings, referenceScan, selectorChecks, fix: { settled, rounds, byFile, totals: rewriteTotals(byFile), refused, restored: [...new Set(restored)].sort() } }
+  const result = {
+    batch: b,
+    at: new Date().toISOString(),
+    files,
+    platform: platformResult,
+    formatted,
+    plain,
+    functionModel,
+    renames,
+    exportEdits,
+    buildEntries,
+    importEdits,
+    lintPaths: state.lintPaths,
+    refEdits,
+    scriptEdits,
+    packageScriptEdits,
+    referenceEdits,
+    referenceWarnings,
+    referenceScan,
+    selectorChecks,
+    fix: { settled, rounds, byFile, totals: rewriteTotals(byFile), refused, restored: [...new Set(restored)].sort() }
+  }
   result.emittedJs = emittedJs
   const scopedResult = withPackingScope(result, emittedJs)
   durableWrite(p.codemod(b), JSON.stringify(scopedResult, null, 2) + "\n")
@@ -1463,7 +1484,16 @@ export async function compile(options) {
     baseline: pkg => join(p.baseline, "dts", slug(pkg.dir)), files, diagnostics,
     original: file => originalSourceOf(p, thePlan, file)
   })
-  const result = { batch: b, at: new Date().toISOString(), files, summary: summarize(diagnostics, files), style: styleProblems(diagnostics, files, preserved.accepted), styleExemptions: preserved.decisions, newErrors: added, diagnostics: diagnostics.filter((d) => files.includes(d.file) || added.includes(d)) }
+  const result = {
+    batch: b,
+    at: new Date().toISOString(),
+    files,
+    summary: summarize(diagnostics, files),
+    style: styleProblems(diagnostics, files, preserved.accepted),
+    styleExemptions: preserved.decisions,
+    newErrors: added,
+    diagnostics: diagnostics.filter((d) => files.includes(d.file) || added.includes(d))
+  }
   if (!options.noRecord) writeJson(p.compile(b), result)
   return result
 }
@@ -1478,7 +1508,14 @@ export async function repair(options) {
   if (thePlan?.mode === "one-pass") {
     const settled = await (await import("./onepass.mjs")).onePassStep("settle", options)
     if (!settled.settled) throw new Error("NOT SETTLED: see " + join(p.batch(b), "settle.json"))
-    const result = { batch: b, at: new Date().toISOString(), agent: "one-pass", files: batchFiles(config, thePlan, b), recorded: { "codemod-gap": 0, issue: 0, idiom: 0 }, notes: "settled by cause; see settle.json" }
+    const result = {
+      batch: b,
+      at: new Date().toISOString(),
+      agent: "one-pass",
+      files: batchFiles(config, thePlan, b),
+      recorded: { "codemod-gap": 0, issue: 0, idiom: 0 },
+      notes: "settled by cause; see settle.json"
+    }
     writeJson(p.repair(b), result)
     return result
   }
@@ -1843,7 +1880,19 @@ export async function record(options) {
   await assertScope()
   const commit = await Jj.commit(t, lines.join("\n"))
   if (commit) await Jj.setBookmark(t, config.bookmark, commit)
-  const result = { batch: b, at: new Date().toISOString(), commit, bookmark: config.bookmark, files: rows, tokens, formatted, vibeFormatted, verificationRefreshed, testDiff, forced: verified?.ok ? null : options.force }
+  const result = {
+    batch: b,
+    at: new Date().toISOString(),
+    commit,
+    bookmark: config.bookmark,
+    files: rows,
+    tokens,
+    formatted,
+    vibeFormatted,
+    verificationRefreshed,
+    testDiff,
+    forced: verified?.ok ? null : options.force
+  }
   writeJson(p.record(b), result)
   return result
 }
