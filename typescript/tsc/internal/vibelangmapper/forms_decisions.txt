@@ -370,6 +370,14 @@ typescript/vibelang/cases/catch-arrow-pipe-body/main.vibe:16:20 lambda effectFn 
 typescript/vibelang/cases/catch-arrow-pipe-body/main.vibe:16:33 lambda effectFn table
 typescript/vibelang/cases/catch-binding-default/main.vibe:15:21 lambda effectFn table
 typescript/vibelang/cases/catch-binding-default/main.vibe:15:34 lambda effectFn table
+typescript/vibelang/cases/catch-contextual-arrow-parameter/main.vibe:3:13 lambda effectFn table
+typescript/vibelang/cases/catch-contextual-arrow-parameter/main.vibe:3:38 lambda effectFn table
+typescript/vibelang/cases/catch-contextual-arrow-parameter/main.vibe:4:13 lambda effectFn table
+typescript/vibelang/cases/catch-contextual-arrow-parameter/main.vibe:4:38 lambda effectFn table
+typescript/vibelang/cases/catch-contextual-arrow-parameter/main.vibe:5:13 lambda effectFn table
+typescript/vibelang/cases/catch-contextual-arrow-parameter/main.vibe:5:38 lambda effectFn table
+typescript/vibelang/cases/catch-contextual-arrow-parameter/main.vibe:6:13 lambda effectFn table
+typescript/vibelang/cases/catch-contextual-arrow-parameter/main.vibe:6:38 lambda effectFn table
 typescript/vibelang/cases/catch-expression-context.fail/main.vibe:17:10 lambda effectFn table
 typescript/vibelang/cases/catch-expression-context.fail/main.vibe:17:25 lambda effectFn table
 typescript/vibelang/cases/catch-expression-context.fail/main.vibe:21:10 lambda effectFn table
@@ -739,6 +747,9 @@ typescript/vibelang/cases/ch24-profile/ch24-profile.vibe:48:14 lambda effectFn s
 typescript/vibelang/cases/ch24-profile/ch24-profile.vibe:55:36 lambda program table
 typescript/vibelang/cases/ch24-profile/ch24-profile.vibe:56:38 lambda program table
 typescript/vibelang/cases/ch24-profile/ch24-profile.vibe:59:24 lambda program table
+typescript/vibelang/cases/concurrent-body-scope/main.vibe:12:28 lambda effectFn table
+typescript/vibelang/cases/concurrent-body-scope/main.vibe:4:28 lambda effectFn table
+typescript/vibelang/cases/concurrent-body-scope/main.vibe:8:26 lambda effectFn table
 typescript/vibelang/cases/concurrent-continue-boundary.fail/main.vibe:12:25 lambda effectFn table
 typescript/vibelang/cases/concurrent-continue-boundary.fail/main.vibe:4:15 lambda dual fallback
 typescript/vibelang/cases/concurrent-continue-boundary.fail/main.vibe:5:29 lambda effectFn table

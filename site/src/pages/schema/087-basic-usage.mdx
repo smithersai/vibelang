@@ -259,6 +259,10 @@ A `schema` declaration retains the runtime `Schema` dependency used by its gener
 
 For an older function-local or namespace `schema` alias, unsupported named, optional or rest tuples used to become `Schema.Unknown`. The explicit compatibility upgrade `vibelang --fix --fix-migration-only` writes that old codec at the affected tuple position, retaining enclosing array or union mappings. Ordinary `--fix` keeps valid new tuple schemas. Module-level aliases and struct fields keep their existing tuple behavior.
 
+Schema aliases use the same mappings inside functions and namespaces. An unsupported type or a reference without a Schema value reports `EK2109` there too; for example, write `Schema.Unknown` instead of `unknown`.
+
+Older compiler versions lowered unsupported keyword types in function-local or namespace `schema` aliases to `Schema.Unknown`. These aliases now report `EK2109`. Their first quick fix, also used by `vibelang --fix`, writes `Schema.Unknown` to preserve the codec and decoded type. The keyword’s explicit schema remains a separate editor action; module-level aliases and struct fields keep their existing suggestions.
+
 ---
 
 The matching Effect page: [effect.website/docs/v4/schema/basic-usage](https://effect.website/docs/v4/schema/basic-usage/)
