@@ -122,3 +122,11 @@ test("property: only paths under a .vibelang/js directory leave the foreign chec
     assert.deepEqual(foreignChanges(foreign, batch), foreign)
   }), { seed: 411021, numRuns: 150 })
 })
+
+test("packing receipts authorize only the exact generated policy and ignore files",()=>{
+ const codemod={emittedJs:[{packingFiles:["packages/code/.npmignore","packages/code/.vibelang/pack-policy.json"]}]}
+ const own=codemod.emittedJs[0].packingFiles.map(path=>({status:"M",path}))
+ const foreign=[{status:"M",path:"packages/other/.npmignore"},{status:"M",path:"packages/code/secret.txt"},{status:"M",path:"packages/code/.gitignore"}]
+ assert.deepEqual(foreignChanges([...own,...foreign],{files:[],codemod}),foreign)
+ assert.deepEqual(foreignChanges(own,{files:[],codemod:{}}),own)
+})

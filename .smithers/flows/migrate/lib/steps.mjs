@@ -1266,7 +1266,9 @@ async function emitMigratedJs(config, t, logs) {
     const manifest = join(t, pkg.dir, "package.json")
     if (!existsSync(manifest)) continue
     if (!hasVibeSource(join(t, pkg.dir))) {
-      routeEmittedExports(join(t, pkg.dir), {}, { restore: true })
+      let packingFiles=[]
+      routeEmittedExports(join(t, pkg.dir), {}, { restore: true, onPacking:files=>packingFiles=files.map(file=>posix.join(pkg.dir,file)) })
+      if(packingFiles.length) emitted.push({package:pkg.dir,files:0,code:0,packingFiles,restored:true})
       continue
     }
     const packageText = readFileSync(manifest, "utf8")
@@ -1274,10 +1276,10 @@ async function emitMigratedJs(config, t, logs) {
     const tsconfigs = Wire.projectsOf(typeScriptOf(config), join(t, pkg.dir), pkg.tsconfig)
     const result = await emitPackageJs({ compiler: compilerOf(config), tsconfigs, packageDir: join(t, pkg.dir), root: t, log: join(logs, `js-${slug(pkg.dir)}.log`) })
     // Nonzero emits can still write valid package-owned files (for example TS6059).
-    let runtimeRouting
-    const exportsChanged = routeEmittedExports(join(t, pkg.dir), result.outputs, { typescript:typeScriptOf(config), onGraph:graph=>runtimeRouting=graph })
+    let runtimeRouting, packingFiles=[]
+    const exportsChanged = routeEmittedExports(join(t, pkg.dir), result.outputs, { typescript:typeScriptOf(config), onGraph:graph=>runtimeRouting=graph, onPacking:files=>packingFiles=files.map(file=>posix.join(pkg.dir,file)) })
     const loaderRecords = await writeLoaderRecords({ compiler: compilerOf(config), packageDir: join(t, pkg.dir), root: t })
-    emitted.push({ package: pkg.dir, files: result.files, code: result.code, exportsChanged, runtimeRouting, loaderRecords, diagnostics: result.diagnostics })
+    emitted.push({ package: pkg.dir, files: result.files, code: result.code, exportsChanged, runtimeRouting, packingFiles, loaderRecords, diagnostics: result.diagnostics })
   }
   return emitted
 }

@@ -1,0 +1,13 @@
+{
+  "property": "opencode-emitted-pack",
+  "rule": "A migrated export's emitted JavaScript and loader records must be present in the installed package, while existing private-file exclusions remain effective.",
+  "input": { "files": true, "ignore": "npm", "packer": "bun" },
+  "repoPattern": {
+    "package": "@opencode/codemode",
+    "files": ["dist"],
+    "native": "./src/index.ts",
+    "routedDefault": "./.vibelang/js/src/index.js",
+    "barrel": "export { value } from './leaf.vibe'",
+    "leaf": "export const value = 42"
+  }
+}

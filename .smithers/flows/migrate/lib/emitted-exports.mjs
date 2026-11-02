@@ -4,6 +4,7 @@ import { join, posix } from "node:path"
 import { fileURLToPath } from "node:url"
 import { loadTypeScript } from "./declarations.mjs"
 import { pathAliases } from "./codemod.mjs"
+import { syncPackPolicy } from "./pack-policy.mjs"
 import { resolveRelative, resolveFile, resolveAliased } from "./imports.mjs"
 
 const native = /(?<!\.d)\.(?:[cm]?tsx?|[cm]?jsx?)$/
@@ -168,7 +169,7 @@ function emittedTarget(source, outputs) {
 }
 
 /** Route native entries only to files the package's actual compile produced. */
-export function routeEmittedExports(packageDir, outputs, { restore = false, onGraph, typescript } = {}) {
+export function routeEmittedExports(packageDir, outputs, { restore = false, onGraph, onPacking, typescript } = {}) {
   const path = join(packageDir, "package.json")
   if (!existsSync(path)) return false
   const before = readFileSync(path, "utf8")
@@ -209,7 +210,9 @@ export function routeEmittedExports(packageDir, outputs, { restore = false, onGr
     }
     pkg[field]=next
   }
-  if (JSON.stringify(JSON.parse(before)) === JSON.stringify(pkg)) return false
+  const packing = syncPackPolicy(packageDir, pkg)
+  onPacking?.(packing.files)
+  if (JSON.stringify(JSON.parse(before)) === JSON.stringify(pkg)) return packing.changed
   writeFileSync(path, JSON.stringify(pkg, null, 2) + "\n")
   return true
 }
