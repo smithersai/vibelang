@@ -142,7 +142,10 @@ export function splitPlatform(text, file, ts, { globals = [] } = {}) {
   if (typesFromModule.size) platformImports.push(`import type { ${[...typesFromModule].sort().join(", ")} } from "./${posix.basename(file)}"`)
   const platformBody = movedList.map((d) => (!d.exported && fromSibling.some((n) => d.names.has(n)) ? exportedText(source, d.statement) : statementText(source, d.statement)))
   const note = `// The platform code of ${posix.basename(file).replace(/\.m?ts$/, ".vibe")}, which a .vibe file does not import as a value (EK4402).`
-  const platformText = joinParts([note], platformImports, platformBody)
+  // A file-wide directive governed the moved code too, so the sibling keeps it
+  // (t3code Desktop: `// @effect-diagnostics nodeBuiltinImport:off`).
+  const directives = fileDirectives(source, ts).filter((d) => !platformImports.some((i) => i.includes(d)))
+  const platformText = joinParts(directives, [note], platformImports, platformBody)
   return { module: moduleText, platform: platformText, moved: movedList.filter((d) => moved.has(d)).map((d) => [...d.names]).flat(), wrapped: wrappers.map((w) => w.name) }
 }
 
@@ -317,6 +320,19 @@ function leadingComments(source, statement) {
   const leading = source.text.slice(statement === source.statements[0] ? headerEnd(source) : statement.pos, statement.getStart(source))
   const trimmed = leading.replace(/^\s*\n/, "").replace(/^\n+/, "")
   return trimmed.trim() ? trimmed : ""
+}
+
+// A comment that governs the whole file wherever its leading comments put it:
+// Effect's `@effect-diagnostics x:off`, `@ts-nocheck`, a block `eslint-disable`
+// or `oxlint-disable`, `biome-ignore-all`, a JSX pragma, a triple-slash
+// directive. A -next-line or -line form governs one statement and moves with it.
+const fileDirective = /^(?:\/\/\/\s*<(?:reference|amd-module|amd-dependency)\b|\/\/\s*@ts-(?:no)?check\b|(?:\/\/|\/\*+)\s*(?:@effect-diagnostics(?!-next-line)\b|(?:eslint|oxlint)-disable(?![-\w])|biome-ignore-all\b|@jsx(?:ImportSource|Runtime|Frag)?\b))/
+
+// The file-wide directives among the comments before the first statement, in order.
+function fileDirectives(source, ts) {
+  return (ts.getLeadingCommentRanges(source.text, 0) ?? [])
+    .map((r) => source.text.slice(r.pos, r.end))
+    .filter((c) => fileDirective.test(c))
 }
 
 // The file's header comment, the comments before its first statement that a
