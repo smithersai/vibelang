@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- ids.vibe --\nimport * as Schema from \"effect/Schema\"\nconst makeId = () => Schema.String\nexport const Id = makeId()\n-- user.vibe --\nimport { Effect, Schema } from \"effect\"\nimport { Id } from \"./ids.vibe\"\ndeclare const other: typeof Id extends Effect.Effect<unknown> ? number : Effect.Effect<typeof Schema.String>\ndeclare function needsNumber(n: number): void\nneedsNumber(Id)\nneedsNumber(other)\n")
