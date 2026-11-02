@@ -100,6 +100,7 @@ const specTests = [
   "TestNonrelativeAliasSpellingQuoted",
   "TestHelperReexportDeclarationsQuoted",
   "TestFileSchemaBoundaryQuoted",
+  "TestIncrementalDiagnosticsQuoted",
   "TestDoForTryDiagnosticOwnerQuoted",
   "TestDoDeclarationBytesQuoted",
   "TestDoContextualResultFuzzQuoted",

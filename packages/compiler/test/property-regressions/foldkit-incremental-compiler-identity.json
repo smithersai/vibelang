@@ -1,0 +1,9 @@
+{
+  "key": "foldkit-123:incremental-compiler-identity",
+  "input": {"name":"isHot","member":"hot","kind":"vibe","boundary":true},
+  "pending": {
+    "key":"cross-artifact:same-typescript-version",
+    "owner":"compiler",
+    "reason":"Switching from an older native artifact that accepts the source must invalidate cached diagnostics. This same-artifact property does not certify that separate two-artifact case."
+  }
+}
