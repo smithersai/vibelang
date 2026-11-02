@@ -24,9 +24,9 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,341 |
 | The skill and the [cheat sheet](/vibelang-features/115-cheat-sheet) | 15,294 |
-| The skill and the user guide (140 pages) | 364,832 |
-| The user guide alone | 360,491 |
-| The specification (10 chapters) | 150,190 |
+| The skill and the user guide (140 pages) | 364,796 |
+| The user guide alone | 360,455 |
+| The specification (10 chapters) | 149,986 |
 | The decision log, `docs/design/history/DECISIONS.md` | 141,629 |
 
 ## Effect TypeScript beside VibeLang
@@ -101,13 +101,13 @@ Each row is one [cheat sheet](/vibelang-features/115-cheat-sheet) entry: its Eff
 | [Creating Effects](/getting-started/005-creating-effects) | 3,158 |
 | [Two Types of Errors](/error-management/006-two-error-types) | 699 |
 | [Basic Concurrency](/concurrency/007-basic-concurrency) | 2,454 |
-| **Core Concepts** | **22,140** |
+| **Core Concepts** | **21,870** |
 | [Effect's Modules](/getting-started/008-importing-effect) | 3,028 |
-| [Running Effects](/getting-started/009-running-effects) | 1,849 |
-| [Sequencing Effects](/getting-started/010-using-generators) | 1,810 |
+| [Running Effects](/getting-started/009-running-effects) | 1,819 |
+| [Sequencing Effects](/getting-started/010-using-generators) | 1,710 |
 | [Building Pipelines](/getting-started/011-building-pipelines) | 2,012 |
-| [Devtools](/getting-started/012-devtools) | 13,441 |
-| **All 12 pages** | **36,241** |
+| [Devtools](/getting-started/012-devtools) | 13,301 |
+| **All 12 pages** | **35,971** |
 
 ### Setup
 
@@ -118,8 +118,8 @@ Each row is one [cheat sheet](/vibelang-features/115-cheat-sheet) entry: its Eff
 | **Start a project** | **2,405** |
 | [New project](/setup/new-project) | 543 |
 | [Existing project](/setup/existing-project) | 1,862 |
-| **Build and test** | **10,239** |
-| [vibelang CLI](/setup/vibelang-cli) | 7,608 |
+| **Build and test** | **9,977** |
+| [vibelang CLI](/setup/vibelang-cli) | 7,346 |
 | [Vite and Vitest](/setup/vite) | 2,631 |
 | **Format and lint** | **4,617** |
 | [Format with dprint](/setup/formatting) | 2,001 |
@@ -136,9 +136,9 @@ Each row is one [cheat sheet](/vibelang-features/115-cheat-sheet) entry: its Eff
 | [Zed](/setup/zed) | 479 |
 | [Other editors](/setup/other-editors) | 492 |
 | [Coding agents](/setup/coding-agents) | 1,062 |
-| **Upgrade** | **82,548** |
-| [Release notes](/setup/release-notes) | 82,548 |
-| **All 19 pages** | **116,367** |
+| **Upgrade** | **83,113** |
+| [Release notes](/setup/release-notes) | 83,113 |
+| **All 19 pages** | **116,670** |
 
 ### Guides
 
@@ -171,7 +171,7 @@ Each row is one [cheat sheet](/vibelang-features/115-cheat-sheet) entry: its Eff
 | [Tracing](/observability/033-tracing) | 2,659 |
 | [Tracking Fibers](/observability/034-tracking-fibers) | 986 |
 | [Configuration](/035-configuration) | 3,106 |
-| [Runtime](/036-runtime) | 1,618 |
+| [Runtime](/036-runtime) | 1,589 |
 | **Scheduling** | **5,824** |
 | [Using schedules](/scheduling/037-using-schedules) | 1,162 |
 | [Choosing and combining schedules](/scheduling/038-choosing-and-combining-schedules) | 1,804 |
@@ -185,8 +185,8 @@ Each row is one [cheat sheet](/vibelang-features/115-cheat-sheet) entry: its Eff
 | **Caching** | **2,226** |
 | [Caching Effects](/caching/045-caching-effects) | 1,039 |
 | [Cache](/caching/046-cache) | 1,187 |
-| **Concurrency** | **9,079** |
-| [Fibers](/concurrency/047-fibers) | 3,537 |
+| **Concurrency** | **9,057** |
+| [Fibers](/concurrency/047-fibers) | 3,515 |
 | [Deferred](/concurrency/048-deferred) | 1,104 |
 | [Queue](/concurrency/049-queue) | 1,495 |
 | [PubSub](/concurrency/050-pubsub) | 1,362 |
@@ -262,7 +262,7 @@ Each row is one [cheat sheet](/vibelang-features/115-cheat-sheet) entry: its Eff
 | [Platform globals in VibeLang](/platform/platform-globals) | 6,199 |
 | [Cloudflare Workers](/platform/cloudflare-workers) | 790 |
 | [Alchemy](/platform/alchemy) | 2,527 |
-| **All 101 pages** | **173,426** |
+| **All 101 pages** | **173,375** |
 
 ### VibeLang features
 
@@ -274,24 +274,24 @@ Each row is one [cheat sheet](/vibelang-features/115-cheat-sheet) entry: its Eff
 | [VibeLang for Effect users](/vibelang-features/114-vibelang-for-effect-users) | 6,020 |
 | [Cheat sheet](/vibelang-features/115-cheat-sheet) | 10,953 |
 | [Pattern matching with match and is](/vibelang-features/116-match-and-is) | 6,797 |
-| [Diagnostic code map](/vibelang-features/diagnostic-code-map) | 2,432 |
+| [Diagnostic code map](/vibelang-features/diagnostic-code-map) | 2,414 |
 | [Experimental platform APIs](/vibelang-features/118-experimental-platform-apis) | 3,813 |
-| **All 8 pages** | **34,457** |
+| **All 8 pages** | **34,439** |
 
 ### Specification
 
 | Page | Tokens |
 | --- | ---: |
 | [Introduction](/spec/000-intro) | 2,586 |
-| **The language** | **116,838** |
+| **The language** | **116,709** |
 | [1. Functions and Effect types](/spec/001-functions) | 12,356 |
 | [2. Running Effects](/spec/002-running) | 27,027 |
 | [3. Failures](/spec/003-failures) | 15,122 |
 | [4. Pattern matching](/spec/004-match) | 21,244 |
 | [5. Services and the environment](/spec/005-services) | 11,616 |
 | [6. Data](/spec/006-data) | 8,379 |
-| [7. Configuration and tooling](/spec/007-tooling) | 13,907 |
+| [7. Configuration and tooling](/spec/007-tooling) | 13,778 |
 | [8. Runtime guarantees](/spec/008-runtime) | 7,187 |
-| **Appendices** | **30,766** |
-| [Grammar, diagnostics, and denied and open VIPs](/spec/900-appendices) | 30,766 |
-| **All 10 pages** | **150,190** |
+| **Appendices** | **30,691** |
+| [Grammar, diagnostics, and denied and open VIPs](/spec/900-appendices) | 30,691 |
+| **All 10 pages** | **149,986** |
