@@ -7,11 +7,18 @@ import { join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { issue, read, repository, vipRegistry } from "./spec-rules.mjs"
 
+export function expectations(source) {
+  return source.split("\n").flatMap((line, index) => {
+    const marker = /\/\/\s*expect-error:\s*((?:(?:EK|TS)\d+[ ,]*)+)/.exec(line)
+    return marker ? [{ line: line.slice(0, marker.index).trim() ? index + 1 : undefined, codes: marker[1].match(/(?:EK|TS)\d+/g) }] : []
+  })
+}
 export function examples(text) {
   return [...text.matchAll(/^(`{3,}|~{3,})(ts(?: effect)?|typescript|vibe(?: es)?|vibex|tsx)\s*\n([\s\S]*?)^\1\s*$/gm)].map((m, i) => ({
     number: i + 1, offset: m.index, source: m[3],
     language: /^(?:ts effect|tsx)$/.test(m[2]) ? (m[2] === "tsx" ? "tsx" : "ts") : m[2] === "typescript" ? "ts" : m[2] === "vibex" ? "vibex" : "vibe",
-    expected: [...m[3].matchAll(/\/\/\s*expect-error:\s*((?:(?:EK|TS)\d+[ ,]*)+)/g)].flatMap(x => x[1].match(/(?:EK|TS)\d+/g)),
+    expected: expectations(m[3]).flatMap(x => x.codes),
+    expectations: expectations(m[3]),
     fragment: /\/\/\s*fragment(?:\s*:|\s*$)/m.test(m[3]),
     gap: m[3].match(/\/\/\s*compiler-gap:\s*([^\n]+)/)?.[1],
     schematic: /…|\b(?:function|class)\s+\w+[^\n]*\{\s*\.\.\./.test(m[3])
@@ -43,9 +50,13 @@ export function verdict(example, result) {
   const output = (result.stdout ?? "") + (result.stderr ?? ""), rows = diagnostics(output)
   if (result.status && !rows.length) throw new Error("VIP compiler failed without source diagnostics: " + output.slice(0, 1000))
   const codes = new Set(rows.map(x => x.code)), findings = removedHandlers(example.source).filter(f => !example.expected.includes("EK0509"))
-  for (const code of example.expected) if (!codes.has(code)) findings.push({ severity: "error", message: "expected " + code + " was not reported" })
+  for (const code of example.expected) {
+    const sites = example.expectations?.filter(x => x.codes.includes(code)) ?? []
+    const matched = sites.length ? sites.every(site => rows.some(d => d.code === code && (site.line === undefined || d.line === site.line))) : codes.has(code)
+    if (!matched) findings.push({ severity: "error", message: "expected " + code + " was not reported" + (sites.some(x => x.line !== undefined) ? " at its marked line" : "") })
+  }
   const mixedComparison = /\/\/.*(?:exactly.*Effect TS|Effect TS)/i.test(example.source) && example.language === "vibe"
-  const missingFixture = !example.expected.length && rows.some(d => /^(?:TS2304|TS2307|TS2552|TS18004|TS2503|TS7026|TS7006|TS7031)$/.test(d.code))
+  const missingFixture = rows.some(d => /^(?:TS2304|TS2307|TS2552|TS18004|TS2503|TS7026|TS7006|TS7031)$/.test(d.code))
   const missingContext = /^(?:const \w+ = )?(?:try |fork |fork\.|join |provide )/m.test(example.source)
   const fixtureGap = example.fragment || example.schematic || example.gap || mixedComparison || missingFixture || missingContext
   for (const d of rows) {

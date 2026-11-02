@@ -58,7 +58,7 @@ class Users extends Context.Service<Users, {
 // compiler-gap: pending VIP-9
 service NodeKey { static readonly key = "test/NodeKey"; next?: NodeKey.Shape }
 function bad<T>() {
-  service Store { static readonly key = "test/Store"; value: T } // error: the Shape depends on outer T
+  service Store { static readonly key = "test/Store"; value: T } // expect-error: EK3005; the Shape depends on outer T
   return Store
 }
 service Fixed { static readonly key = "test/Fixed"; identity<T>(value: T): T }

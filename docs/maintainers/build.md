@@ -738,7 +738,7 @@ and explicitly marked `spec-copy` sections byte for byte. The
 from VIP-39.
 
 VIP examples run through the native compiler. A negative example uses
-`// expect-error: EK0509` with its required code; a different diagnostic or
+`// expect-error: EK0509` with its required code; an inline marker also checks the source line. A different diagnostic or
 an unexpectedly successful compilation fails. Missing fixture bindings,
 schematic ellipses and explicitly marked fragments are visible warnings.
 They are not evidence that an example compiles. Removed value handlers are

@@ -147,3 +147,21 @@ test("denied-link-filename: a link path containing denied cannot excuse positive
   edit(chapter, s => s + "\nThe resource extension follows [VIP-8](../vips/0008-using-denied.md).\n")
   assert.ok(lintAuthority(root).some(f => f.message.includes("VIP-8") && f.path === chapter))
 }))
+
+test("negative VIP examples declare the assigned rejection code beside the example", () => {
+  for (const [path, code] of [["0004-throw.md", "EK0403"], ["0005-try-runs-effects.md", "EK0102"], ["0009-service-declarations.md", "EK3005"]]) {
+    assert.ok(diagnosticRegistry(repository).has(code))
+    assert.ok(examples(read(repository, "docs/design/vips/" + path)).some(x => x.expected.includes(code)))
+  }
+})
+test("an inline negative diagnostic must occur on its marked source line", () => {
+  const example = examples("```vibe\neffect function f() { return try 1 } // expect-error: EK0502\n```\n")[0]
+  assert.equal(verdict(example, { status: 1, stdout: "main.vibe(1,1): error EK0502: operand\n" }).length, 0)
+  assert.ok(verdict(example, { status: 1, stdout: "main.vibe(2,1): error EK0502: operand\n" }).some(f => f.message.includes("marked line")))
+})
+test("fast-check: moving a negative diagnostic never satisfies the original marker", () => {
+  const example = examples("```vibe\neffect function f() { return try 1 } // expect-error: EK0502\n```\n")[0]
+  fc.assert(fc.property(fc.integer({ min: 2, max: 1000 }), line => {
+    assert.ok(verdict(example, { status: 1, stdout: "main.vibe(" + line + ",1): error EK0502: operand\n" }).some(f => f.severity === "error"))
+  }), { seed: 502, numRuns: 40 })
+})
