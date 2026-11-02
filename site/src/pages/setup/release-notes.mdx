@@ -294,6 +294,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 ### Bugs fixed since 0.0.10
 
 - The fibers guide suggested Effect-body repairs inside ordinary async functions; it now shows `runPromise` bridges that run in the original Promise context.
+
+- Coverage and profiling with sharded Go tests could retain only one shard's measurements; profile output now comes from one complete test process.
 - The `EK0509` repair of an object-literal value fallback, `x catch { directory }`, wrote `() => { directory }`, a block that returns nothing, and refused with `TS2322`; it now writes `() => ({ directory })`.
 - After VIP-1, `vibelang --fix --fix-vip-only` left a call that ran inside a catch's head cold, as in `decode(fs.readFileString(path)) catch …` (`TS2375`, `EK9202`); it now writes the head as the program it was, `(effect { return decode(try fs.readFileString(path)) }) catch …`.
 
@@ -311,6 +313,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The compiler fuzz suite treated a warning configured as an error through legacy `vibelang.diagnostics` as a compiler defect; it now checks each parsed legacy override while retaining modern settings and unrelated defaults.
 
+- Grammar-admission fuzzing missed bare reserved parameters such as `effect join => 1` and reported variants as new unknown forms. Its grammar reader now reserves `fork` and `join` in bare Effect-arrow heads, and the oracle tracks them with parenthesized parameters, retaining plain-arrow and line-break controls.
+
 - Four spec quote guards (`TestEffectFnParameterDeclarationQuoted`, `TestInferredEffectDeclarationQuoted`, `TestPipeDeclarationAliasesQuoted`, `TestTopLevelAwaitVIPQuoted`) landed outside the pre-merge spec gate, so a spec edit could break them unseen; the gate now runs them.
 - Source-map fuzz checks could reject correct mappings after TypeScript erased annotations or assertions beside an untyped lookalike; they now compare each statement’s executable syntax as well as its written tokens.
 
@@ -326,6 +330,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Concurrent migration batches could restore another package's files to their old bytes after it reported successful fixes; restoration now stays inside each compiler source graph, and overlapping graphs take turns.
 
+- A `private` or `protected` member named like a member of the error base, such as `private message: string`, in an `error` or `schema error` body reported TypeScript's `TS2415` at the declaration's name beside `EK1304`. It now reports `EK1304` alone.
 - Migrating an Effect pipeline could change its public declaration from an expanded intersection to a named alias, as in opencode's reconnect service; the quick fix now keeps the native `.pipe(...)` when uncurrying a stage would change inferred type names.
 - After VIP-1, a `catch` passed where an Effect is expected, as in `FiberMap.run(map, key, (effect { … }) catch effect (e) => …)`, ran instead of being passed, and `vibelang --fix --fix-vip-only` left it; the migration now writes it as `effect { return … catch … }`, the program the old compiler passed.
 
@@ -655,6 +660,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Diagnostic validation still treated `EK0202` as unimplemented after the compiler registered it; the registry checks and jump fuzz corpus now validate the implemented diagnostic directly.
 
 - Compiler validation could fail to build when two independent `restore` fuzz suites used the same Go test names; both suites now retain their coverage under distinct names.
+
 - Awaiting a Fiber or Deferred in effect code reported an error using the configurable warning codes `EK4609` and `EK4610`; it now reports the fixed placement error `EK0102` separately, so advisory severity settings keep their meaning without allowing `await` in effect code.
 
 - `vibelang agents check` could report `no errors` and succeed when its compiler failed or was terminated; checks and hooks now fail with the compiler's status, signal or spawn error and standard error output, including failures caused by errors outside the selected files.
@@ -723,6 +729,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The shipped skill taught `fork.in(scope)`, `fork.scoped` and `fork.detached`, which the release compiler could not parse; its examples now use `try Effect.forkIn`, `try Effect.forkScoped` and `try Effect.forkDetach` instead.
 
 
+- Compiler and loader benchmarks could silently use an old `effect` or `vibelang-runtime` installation in a reused output directory; staging now rejects that collision and asks for a fresh output directory.
+
+
 - `vibelang --fix` could remove an explicit `<{}>` payload from a fieldless `Data.TaggedError` class, changing its published declaration. Projects that emit declarations now keep the class and receive an explanation instead.
 - Reverting a migration importer before its dependency could replace an original `.js` import with `.ts`; either revert order now restores the original specifier.
 
@@ -775,6 +784,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A missing `vibelang-runtime` was reported twice when a `.ts` import and generated `.vibe` helpers referenced it; mixed projects now report the missing package once and keep independent TypeScript errors.
 - A project that resolved an `effect` other than the pinned 4.1.1 compiled, and its first Effect-typed use then failed with unrelated type errors; the compiler now reports one `EK3201` naming the resolved version, the VibeLang release and the pin.
 - Documentation checks repeated the full thrown-signature analysis even when its inputs were unchanged; the inventory CLI now verifies a content-keyed receipt and the generated file before reusing a successful result.
+- Sharded Go checks could report success without running tests when the external selector-joining command failed; selectors now use shell builtins and retain every assigned test.
+
+- The standalone forms check could fail when a compiler cache file disappeared during its build; it now retries that build once and keeps both attempts' diagnostics.
 - `FuzzCommandLine` could fail with `the compilation rewrote the source main.d.vibe.ts` in a checkout where an earlier compile had left that sidecar in an acceptance case; the fuzz seeds now skip these generated files.
 - Listing a `.vibe` source and its declaration sidecar explicitly in `files` silently overwrote the sidecar; the compiler now reports `TS5055`, exits `1`, and preserves its bytes, including in `vibe.sidecarDir`.
 
@@ -886,6 +898,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The runtime's `main` tests, which start Node and Bun child processes, could fail at Bun's 5 s default on a loaded host; the runtime suite and every other `bun test` the build graph runs now pass an explicit `--timeout`, and a check keeps the flag in place.
 
+- A constructor in an `error` body compiled silently, and one in a `schema error` body got only the `EK4814` warning; both now report `EK1301` alone, and the quick fix keeps the constructor in an Effect TypeScript class.
+- An `error` or `schema error` body accepted an initialized property, a `private`, `protected`, `public` or `declare` property, a private name, an `accessor` property or an index signature, silently or with TypeScript's errors; each now reports `EK1304` alone, and the quick fix keeps the member in an Effect TypeScript class.
 - `vibelang --fix --fix-vip-only` left an `effect` arrow whose body is a call without `try`, as in `effect (k) => withSpan(program, "load")`, although the call runs today; once a function's `effect` mark alone decides, that arrow returns the call's Effect unrun. The codemod now writes `effect (k) => try withSpan(program, "load")`, as it already did for `return f()` in a block body.
 - `vibelang --fix` left `x |> Effect.withSpan(%, name)`, `x |> Effect.provide(%, L)` under `try`, and `try Effect.void` as written. It now writes the prelude's `withSpan`, a `provide` block, and nothing for `Effect.void`.
 - `vibelang --fix` left `x |> Effect.catch(%, h)`, `Effect.orElseSucceed`, `Effect.mapError`, `Effect.sync` and `Effect.suspend` as calls, and offered a broken rewrite for the first. It now writes a catch expression where the pipeline runs and an `effect` block for a thunk, and writes `x catch () => v`, not the retired `x catch v`.
