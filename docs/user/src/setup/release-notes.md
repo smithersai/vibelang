@@ -290,6 +290,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A `do` block ending with `var` compiled even though the pinned proposal rejects it; it now reports `EK0201`, including through empty statements and blocks. A later value expression still allows `var` to hoist.
 - A read of `this` before a later `do` could move past `super()`, hiding a derived-constructor error; the read now stays in source order, preserving TypeScript’s diagnostic and native `ReferenceError`.
+
+- Anonymous functions and classes captured around `do` could acquire private compiler names, and lifted object properties lost their source names; value-only positions now stay unnamed and property initializers keep their names before class static initialization.
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 
 - Migration setup could leave a native type exported through a TypeScript namespace barrel as an error type in project-aware linters; setup now enables source declaration redirects in owned configs and records those edits.

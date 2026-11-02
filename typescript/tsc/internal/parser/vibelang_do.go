@@ -870,7 +870,7 @@ func (l *doLowering) complete(name *ast.Node, s *ast.Node) []*ast.Node {
 	case ast.KindExpressionStatement:
 		statement := s.AsExpressionStatement()
 		value := statement.Expression
-		statement.Expression = l.assign(l.ref(name, value.Loc), value, value.Loc)
+		statement.Expression = l.assign(l.ref(name, value.Loc), l.valueOnly(value), value.Loc)
 		l.p.overrideParentInImmediateChildren(s)
 		if l.marked[value] {
 			// keep the path to a do expression inside it
@@ -1422,14 +1422,28 @@ func (l *doLowering) properties(properties []*ast.Node, pre *[]*ast.Node) {
 			if name := a.Name(); name.Kind == ast.KindComputedPropertyName {
 				computed := name.AsComputedPropertyName()
 				computed.Expression = l.expr(computed.Expression, pre)
-				if l.marked[a.Initializer] || i < last {
+				if l.marked[a.Initializer] || i < last && !anonymousDoValue(a.Initializer) {
 					computed.Expression = l.spill(computed.Expression, pre)
 				}
 				l.p.overrideParentInImmediateChildren(name)
 			}
 			a.Initializer = l.expr(a.Initializer, pre)
 			if i < last {
-				a.Initializer = l.spill(a.Initializer, pre)
+				name := a.Name()
+				prototype := name.Kind != ast.KindComputedPropertyName && name.Text() == "__proto__"
+				if anonymousDoValue(a.Initializer) && !prototype {
+					// Capture the entire property in its native naming context. Spreading
+					// this fresh data property later preserves its key and value without
+					// evaluating or coercing a computed key a second time. Class static
+					// elements see the source name at creation, before any later do runs.
+					at := property.Loc
+					object := l.p.vibelangSpanning(l.p.factory.NewObjectLiteralExpression(l.p.newNodeList(at, []*ast.Node{property}), false), at)
+					value := l.spill(object, pre)
+					property = l.p.vibelangSpanning(l.p.factory.NewSpreadAssignment(value), at)
+					properties[i] = property
+				} else {
+					a.Initializer = l.spill(a.Initializer, pre)
+				}
 			}
 		case ast.KindShorthandPropertyAssignment:
 			if i < last {
@@ -1618,6 +1632,37 @@ func compoundOperator(kind ast.Kind) ast.Kind {
 	panic(fmt.Sprintf("not a compound assignment: %v", kind))
 }
 
+// anonymousDoValue follows only wrappers erased by JavaScript emission.
+// A do completion or an ordered operand is value-only, even when its
+// temporary is a native NamedEvaluation source.
+func anonymousDoValue(e *ast.Node) bool {
+	if e == nil {
+		return false
+	}
+	e = ast.SkipOuterExpressions(e, ast.OEKParentheses|ast.OEKTypeAssertions|ast.OEKNonNullAssertions|ast.OEKSatisfies|ast.OEKPartiallyEmittedExpressions)
+	// Generated program arrows stand for source blocks, not function values.
+	// Keep their enclosing form context available to the resolver.
+	if isSynthesizedArrow(e) {
+		return false
+	}
+	switch e.Kind {
+	case ast.KindArrowFunction, ast.KindFunctionExpression, ast.KindClassExpression:
+		return e.Name() == nil
+	}
+	return false
+}
+
+func (l *doLowering) valueOnly(e *ast.Node) *ast.Node {
+	if !anonymousDoValue(e) {
+		return e
+	}
+	at := l.p.sourceRange(e)
+	// void 0 is inert, cannot be shadowed and does not trigger TS2695.
+	// A comma expression suppresses native inferred names before a class's
+	// static elements run; parentheses alone would still infer the name.
+	return l.p.mParens(l.p.mBinary(l.undefined(at), ast.KindCommaToken, e, at), at)
+}
+
 // spill reads e into a constant, unless reading it has no effect and a do
 // expression that runs after it cannot tell when it ran.
 func (l *doLowering) spill(e *ast.Node, pre *[]*ast.Node) *ast.Node {
@@ -1626,7 +1671,7 @@ func (l *doLowering) spill(e *ast.Node, pre *[]*ast.Node) *ast.Node {
 	}
 	at := l.p.sourceRange(e)
 	name := l.temp("$do_t", at)
-	*pre = append(*pre, l.p.mConst(name, ast.NodeFlagsConst, e, at))
+	*pre = append(*pre, l.p.mConst(name, ast.NodeFlagsConst, l.valueOnly(e), at))
 	return l.ref(name, at)
 }
 

@@ -58,6 +58,7 @@ const specTests = [
   "TestMigrationFunctionResourcesQuoted",
   "TestMigrationAssertedColdQuoted",
   "TestErrorShallowReadonlyQuoted",
+  "TestDoSourceNamesQuoted",
   "TestDoForTryDiagnosticOwnerQuoted",
   "TestDoDeclarationBytesQuoted",
   "TestDoContextualResultFuzzQuoted",

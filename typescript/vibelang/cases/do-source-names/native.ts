@@ -1,0 +1,37 @@
+// RC-33: compare every source naming context with native IIFE returns.
+export function names(): unknown[] {
+ const out: unknown[] = []
+ const arrow = (() => { return (): number => 1 })()
+ const fn = (() => { return (function (): number { return 1 }) })()
+ const C = (() => { return (class { static observed = this.name }) })()
+ out.push(arrow.name, fn.name, [C.name, C.observed])
+ const array = [(): number => 1, (() => { return 2 })()] as const
+ const classes = [class { static observed = this.name }, (() => { return 2 })()] as const
+ out.push(array[0].name, [classes[0].name, classes[0].observed])
+ const object = { f: (): number => 1, C: class { static observed = this.name }, x: (() => { return 2 })() }
+ out.push(object.f.name, [object.C.name, object.C.observed])
+ const quoted = { "a-b": function (): number { return 1 }, 7: class { static observed = this.name }, x: (() => { return 2 })() }
+ out.push(quoted["a-b"].name, [quoted[7].name, quoted[7].observed])
+ const events: string[] = []
+ const key: any = { toString(): string { events.push("key"); return "computed" } }
+ const computed: any = { [key]: class { static observed = this.name; static { events.push(this.name) } }, x: (() => { events.push("do"); return 2 })() }
+ out.push([computed.computed.name, computed.computed.observed], events)
+ const symbol = Symbol("slot")
+ const symbolic = { [symbol]: class { static observed = this.name }, x: (() => { return 2 })() }
+ out.push([symbolic[symbol].name, symbolic[symbol].observed])
+ const proto = { __proto__: (): number => 1, x: (() => { return 2 })() }
+ out.push(Object.getPrototypeOf(proto).name)
+ const named = (() => { return (function written(): number { return 1 }) })()
+ const Named = (() => { return (class Written { static observed = this.name }) })()
+ const bound = (() => { const source = (): number => 1; return source })()
+ out.push(named.name, [Named.name, Named.observed], bound.name)
+ const typed = [(function (): number { return 1 }) as (() => number), (() => { return 2 })()] as const
+ out.push(typed[0].name)
+ const branch = (() => { if (true) { return (): number => 1 } else { return (function (): number { return 2 }) } })()
+ out.push(branch.name)
+ function parameter(value = (() => { return (class { static observed = this.name }) })()): string[] { return [value.name, value.observed] }
+ out.push(parameter())
+ const nested = (() => { return (() => { return ((() => { return (class { static observed = this.name }) })()) })() })()
+ out.push([nested.name, nested.observed])
+ return out
+}

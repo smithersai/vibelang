@@ -877,3 +877,16 @@ const pure = (x: number) => do { x + 1; }`)
 		}
 	}
 }
+
+func TestResolverDoEffectOperandSourceContext(t *testing.T) {
+	// VIP-2: a generated capture may not detach a source effect block from
+	// the try.all element whose program context it receives.
+	for depth := 1; depth <= 3; depth++ {
+		value := strings.Repeat("(do { ", depth) + "effect { return 1 }" + strings.Repeat(" })", depth)
+		r := resolve(t, "effect function main() { return try.all ["+value+
+			", effect { try succeed(2); return 2 }, "+value+"] }")
+		if d := r.lambda(t, "effect { try succeed(2)"); d.Form != FormProgram || d.Provenance != FromTable || d.Choice != nil {
+			t.Errorf("depth %d: effect element = %+v, want program from table without choice", depth, d)
+		}
+	}
+}

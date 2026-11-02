@@ -277,3 +277,67 @@ func init() {
 		},
 	})
 }
+
+// Chapter 1: "Generated captures preserve the source NamedEvaluation context."
+// These plain do operands compare against native IIFE returns (VIP-2).
+func init() {
+	Register(&Construct{
+		Key: "vip02.do-names-plain", VIP: 2, Plain: true,
+		Citations: []Citation{{
+			VIP: 2, Template: "(() => { return ‹value› })()",
+			Quote:   "It runs now and gives its last statement's value, like an IIFE.",
+			Reading: "Chapter 001-functions source-names requires generated captures to preserve the source NamedEvaluation context, including class static observations; native returns are value-only, while native properties retain their keys.",
+		}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			depth := 1 + g.Intn(3)
+			operands := []string{
+				"(): number => 1",
+				"(function (): number { return 1 })",
+				"(function written(): number { return 1 })",
+				"(class { static observed = this.name })",
+				"(class Written { static observed = this.name })",
+				"source",
+			}
+			choice := g.Intn(len(operands))
+			operand := operands[choice]
+			position := g.Intn(4)
+			wrap := func(body string, native bool) string {
+				for range depth {
+					if native {
+						body = "(() => { return " + body + " })()"
+					} else {
+						body = "(do { " + body + " })"
+					}
+				}
+				return body
+			}
+			program := func(native bool) string {
+				later := wrap("2", native)
+				var prefix, value string
+				switch position {
+				case 0:
+					prefix, value = "const value = "+wrap(operand, native)+"; ", "value"
+				case 1:
+					prefix, value = "const values = ["+operand+", "+later+"] as const; ", "values[0]"
+				case 2:
+					prefix, value = "const values = { f: "+operand+", x: "+later+" }; ", "values.f"
+				default:
+					prefix, value = "const key = Symbol(\"slot\"); const values = { [key]: "+operand+", x: "+later+" }; ", "values[key]"
+				}
+				if choice == 5 {
+					prefix = "const source = (): number => 1; " + prefix
+				}
+				if choice == 3 || choice == 4 {
+					return prefix + fmt.Sprintf("return [%s.name, %s.observed]", value, value)
+				}
+				return prefix + "return " + value + ".name"
+			}
+			name := g.Name("doNames")
+			g.AddDecl(&FixedPair{
+				Source:    "function " + name + "(): unknown { " + program(false) + " }",
+				Reference: "function " + name + "() { " + strings.NewReplacer(": number", "", " as const", "").Replace(program(true)) + " }",
+			})
+			return []Stmt{&Return{Value: &Call{Name: name}, Succeed: true}}
+		},
+	})
+}
