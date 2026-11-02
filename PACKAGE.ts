@@ -123,6 +123,7 @@ const specTests = [
   "TestRecursiveInferredDeclarationsQuoted",
   "TestTrySubtypeShapesQuoted",
   "TestUnionPipeRequirementsQuoted",
+  "TestLoaderScriptProjectQuoted",
   "TestDoForTryDiagnosticOwnerQuoted",
   "TestDoDeclarationBytesQuoted",
   "TestDoContextualResultFuzzQuoted",

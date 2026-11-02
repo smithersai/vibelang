@@ -683,3 +683,5 @@ The tools property `react-emitted-phi.property.test.mjs` feeds the native emit a
 The docs-tools gate inventories every static-rule quote test against the root build gate. Its generated-name property checks that comments, formatting and unrelated lists cannot hide an omitted test. A spec edit therefore checks all registered static-rule quotations before merge.
 
 When a quick-fix check reports added errors, its file-and-code counts decide the failure. The diagnostic printed below that count includes its file, code and byte span. It comes from the edited program after matching the original diagnostic messages as a multiset, so an existing error with the same code does not hide the added diagnostic. A changed message alone does not change the count oracle.
+
+The loader script-project property covers Opencode's excluded script, missing projects, nested script paths and custom config names through both Node and Bun. Native TypeScript scripts remain controls; an explicit `VIBELANG_PROJECT` selects a config that includes the `.vibe` script.
