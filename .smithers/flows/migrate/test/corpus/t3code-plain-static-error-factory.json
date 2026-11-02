@@ -1,0 +1,6 @@
+{
+  "key": "t3code-plain-static-error-factory",
+  "source": "t3code packages/contracts/src/vcs.ts (VcsProcessExitError.fromProcessExit), drive-t3code 19:07Z and 19:44Z",
+  "before": "import * as Schema from \"effect/Schema\";\n\nexport class VcsProcessExitError extends Schema.TaggedError<VcsProcessExitError>()(\"VcsProcessExitError\", {\n  exitCode: Schema.Number,\n}) {\n  static fromProcessExit(exitCode: number) {\n    return new VcsProcessExitError({ exitCode });\n  }\n}\n",
+  "after": "import * as Schema from \"effect/Schema\";\n\nexport class VcsProcessExitError extends Schema.TaggedError<VcsProcessExitError>()(\"VcsProcessExitError\", {\n  exitCode: Schema.Number,\n}) {\n  static fromProcessExit(exitCode: number): infer _ {\n    return new VcsProcessExitError({ exitCode });\n  }\n}\n"
+}

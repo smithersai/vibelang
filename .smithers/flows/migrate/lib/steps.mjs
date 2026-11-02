@@ -20,6 +20,7 @@ import { restoreViteScripts } from "./vite-config.mjs"
 import { applyState, durableWrite, prepareReferences, prepareState, saveState } from "./codemod-state.mjs"
 import { checkSelectorEdits, restoreSourceLiterals, rewriteSourceLiterals } from "./source-paths.mjs"
 import { splitBatchPlatform } from "./platform.mjs"
+import { toolchainKeepsFunctionsPlain } from "./plain.mjs"
 import { check, newErrors, styleProblems, summarize } from "./diagnostics.mjs"
 import { preservedErrorAdvisories } from "./preserved-errors.mjs"
 import { compareDeclarations, recordDeclarationSurface, emitDeclarations, emitErrorsIn, emitPackageJs, loadTypeScript, sidecarChanges, writeLoaderRecords } from "./declarations.mjs"
@@ -157,6 +158,16 @@ function batchFiles(config, plan, b) {
 }
 
 const packageOf = (config, file) => config.packages.find((pkg) => pkg.dir === "." || file.startsWith(pkg.dir + "/"))
+
+/** Each package's files among files, with its projects: what prepareState's plain marks read types through (lib/plain.mjs). */
+export function plainGroupsOf(config, files, ts, { flipped = false } = {}) {
+  if (!ts) return []
+  return config.packages.filter((pkg) => files.some((f) => packageOf(config, f) === pkg)).map((pkg) => ({
+    files: files.filter((f) => packageOf(config, f) === pkg),
+    tsconfigs: Wire.projectsOf(ts, join(config.target, pkg.dir), pkg.tsconfig).map((tsconfig) => posix.join(pkg.dir, tsconfig)),
+    flipped
+  }))
+}
 
 /** Builds the run's config from setup's options. */
 export function makeConfig(options) {
@@ -1294,7 +1305,8 @@ export async function codemod(options) {
     // A repository that exports its .vibe modules by bare paths gets its new ones that way too.
     const owned = Wire.ownedPaths(t)
     const manifests = tracked.filter((file) => /(?:^|\/)package\.json$/.test(file) && !/(?:^|\/)node_modules\//.test(file) && owned(file))
-    state = prepareState(t, files, await importers(t), { ts: typeScriptOf(config), aliases: aliasesOf(config), references: references(), catalog: [...new Set([...tracked, ...references()])], bareEntries: bareVibeExports(t, manifests) })
+    const flipped = await toolchainKeepsFunctionsPlain({ compiler: compilerOf(config), modules: join(t, config.packages[0].dir, "node_modules"), dir: join(p.batch(b), "probe") })
+    state = prepareState(t, files, await importers(t), { ts: typeScriptOf(config), aliases: aliasesOf(config), references: references(), catalog: [...new Set([...tracked, ...references()])], bareEntries: bareVibeExports(t, manifests), plainGroups: plainGroupsOf(config, files, typeScriptOf(config), { flipped }) })
     state.toolConfigReferences = 1
     state.referenceScan.toolConfigFiles = toolConfigs.length
     saveState(p.codemodState(b), state)
@@ -1343,7 +1355,7 @@ export async function codemod(options) {
     state.referencePending = false
     saveState(p.codemodState(b), state)
   }
-  const { renames, exportEdits, importEdits, refEdits = [], scriptEdits = [], referenceEdits = [], referenceWarnings = [], referenceScan, selectorChecks = [] } = state
+  const { renames, exportEdits, importEdits, refEdits = [], scriptEdits = [], referenceEdits = [], referenceWarnings = [], referenceScan, selectorChecks = [], plain = {}, functionModel = "unprobed" } = state
   const platform = state.platform ?? { splits: [], refused: [] }
   const attempt = state.attempts.length + 1
   state.attempts.push({ attempt, compiler: compilerOf(config), startedAt: new Date().toISOString(), projects: [] })
@@ -1385,7 +1397,7 @@ export async function codemod(options) {
   const emittedJs = await emitMigratedJs(config, t, join(p.batch(b), "logs"))
   state.attempts.at(-1).finishedAt = new Date().toISOString()
   saveState(p.codemodState(b), state)
-  const result = { batch: b, at: new Date().toISOString(), files, platform: platformResult, formatted, renames, exportEdits, importEdits, refEdits, scriptEdits, referenceEdits, referenceWarnings, referenceScan, selectorChecks, fix: { settled, rounds, byFile, totals: rewriteTotals(byFile), refused } }
+  const result = { batch: b, at: new Date().toISOString(), files, platform: platformResult, formatted, plain, functionModel, renames, exportEdits, importEdits, refEdits, scriptEdits, referenceEdits, referenceWarnings, referenceScan, selectorChecks, fix: { settled, rounds, byFile, totals: rewriteTotals(byFile), refused } }
   result.emittedJs = emittedJs
   durableWrite(p.codemod(b), JSON.stringify(result, null, 2) + "\n")
   return result

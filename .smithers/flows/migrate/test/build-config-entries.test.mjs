@@ -1,3 +1,4 @@
+import { writeProbeAwareCompiler } from "./fake-vibelang.mjs"
 import assert from "node:assert/strict"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
@@ -36,7 +37,7 @@ for (const legacy of ["fresh", "legacy", "v1"]) test("Alchemy entries outside sr
     await Jj.commit(target,"original")
     mkdirSync(join(target,"node_modules/.bin"),{recursive:true})
     symlinkSync(dirname(require.resolve("typescript/package.json")),join(target,"node_modules/typescript"))
-    put("node_modules/.bin/vibelang","#!/bin/sh\necho 'vibelang --fix: 0 fixes in 0 files.'\n")
+    writeProbeAwareCompiler(join(target,"node_modules/.bin/vibelang"),"#!/bin/sh\necho 'vibelang --fix: 0 fixes in 0 files.'\n")
     await must("chmod +x node_modules/.bin/vibelang",{cwd:target})
     const p = paths(run)
     writeJson(p.config, makeConfig({target,test:"true",vibelangVersion:"0.0.11"}))

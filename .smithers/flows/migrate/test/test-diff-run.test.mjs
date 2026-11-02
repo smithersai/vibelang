@@ -1,3 +1,4 @@
+import { writeProbeAwareCompiler } from "./fake-vibelang.mjs"
 import assert from "node:assert/strict"
 import { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
@@ -84,7 +85,7 @@ test("verify fails a batch even when all target tests and compiler checks pass",
   writeJson(p.config, config)
   put(target, "package.json", '{"private":true}')
   put(target, "tsconfig.json", '{"include":["src/**/*"]}')
-  put(target, "node_modules/.bin/vibelang", "#!/bin/sh\nexit 0\n")
+  writeProbeAwareCompiler(join(target, "node_modules/.bin/vibelang"), "#!/bin/sh\nexit 0\n")
   await must("chmod +x node_modules/.bin/vibelang", { cwd: target })
   writeJson(join(p.baseline, "compile-root.json"), [])
   writeJson(join(p.baseline, "tests.json"), { code: 0, tests: null })

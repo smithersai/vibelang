@@ -1,3 +1,4 @@
+import { writeProbeAwareCompiler } from "./fake-vibelang.mjs"
 import assert from "node:assert/strict"
 import { symlinkSync, chmodSync, existsSync, readdirSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
@@ -39,7 +40,7 @@ async function fixture() {
   await Jj.commit(target, "fixture")
   const compiler = join(tool, "compiler.cjs")
   put(root, "tool/toolchain.json", JSON.stringify({ compiler: "compiler.cjs" }))
-  put(root, "tool/compiler.cjs", `#!/usr/bin/env node
+  writeProbeAwareCompiler(join(root, "tool/compiler.cjs"), `#!/usr/bin/env node
 const fs = require("node:fs"), path = require("node:path")
 const args = process.argv.slice(2), project = args[args.indexOf("-p") + 1]
 const cwd = process.cwd(), root = path.dirname(cwd), pkg = path.basename(cwd)
@@ -132,7 +133,7 @@ test("settle refuses global, new TS, crash and exhausted-round failures", async 
       await onePassStep("plan", { run: f.run, scope: f.scope })
       await onePassStep("rename", { run: f.run })
       if (failure !== "limit") {
-        writeFileSync(f.compiler, `#!/usr/bin/env node\nconsole.log(${JSON.stringify(failure === "global" ? "error TS9998: global failure" : failure === "ts" ? "src/unrelated.ts(1,1): error TS9998: unrelated" : "panic: bad compiler")}); process.exitCode = 1\n`, { mode: 0o755 })
+        writeProbeAwareCompiler(f.compiler, `#!/usr/bin/env node\nconsole.log(${JSON.stringify(failure === "global" ? "error TS9998: global failure" : failure === "ts" ? "src/unrelated.ts(1,1): error TS9998: unrelated" : "panic: bad compiler")}); process.exitCode = 1\n`, { mode: 0o755 })
       }
       const out = await onePassStep("settle", { run: f.run, rounds: 1 })
       assert.equal(out.settled, false, failure)
@@ -188,7 +189,7 @@ test("fix timeouts fail loudly with receipts, even after ordinary diagnostics", 
     await onePassStep("plan", { run: f.run, scope: f.scope })
     await onePassStep("rename", { run: f.run })
     const before = text(f.root, "tool/compiler.cjs")
-    writeFileSync(f.compiler, before.replace('if (args.includes("--fix")) {', 'if (args.includes("--fix")) { console.log("src/index.vibe(1,1): error EK1002: still fixing"); setInterval(() => {}, 1000); return;'), { mode: 0o755 })
+    writeProbeAwareCompiler(f.compiler, before.replace('if (args.includes("--fix")) {', 'if (args.includes("--fix")) { console.log("src/index.vibe(1,1): error EK1002: still fixing"); setInterval(() => {}, 1000); return;'), { mode: 0o755 })
     await assert.rejects(onePassStep("fix", { run: f.run, timeout: 1, jobs: 2 }), /fix failed.*did not finish/s)
     const receipt = readJson(paths(f.run).codemod("01"))
     assert.equal(receipt.fix.settled, false)
@@ -261,7 +262,7 @@ if (args.includes("--fix")) {
   }
   console.log("vibelang --fix: " + total + " fixes"); process.exit(0)
 }`)
-    writeFileSync(f.compiler, next, { mode: 0o755 })
+    writeProbeAwareCompiler(f.compiler, next, { mode: 0o755 })
     const fixed = await onePassStep("fix", { run: f.run, jobs: 2 })
     assert.equal(fixed.settled, true)
     assert.equal(Object.keys(fixed.byFile).length, 245)

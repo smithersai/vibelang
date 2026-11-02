@@ -1,3 +1,4 @@
+import { writeProbeAwareCompiler } from "./fake-vibelang.mjs"
 import assert from "node:assert/strict"
 import { spawn } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -29,11 +30,11 @@ async function fixture(files = corpus.files, batch = corpus.batch, manifest = { 
   mkdirSync(join(target, "node_modules/.bin"), { recursive: true })
   symlinkSync(ts, join(target, "node_modules/typescript"))
   const compiler = join(target, "node_modules/.bin/vibelang")
-  writeFileSync(compiler, `#!/usr/bin/env node
+  writeProbeAwareCompiler(compiler, `#!/usr/bin/env node
 const fs = require("node:fs")
 if (!fs.existsSync("continue")) {
   fs.writeFileSync("started", String(process.pid))
-  setInterval(() => {}, 1000)
+  if (process.argv.includes("--fix")) setInterval(() => {}, 1000)
 } else {
   console.log("vibelang --fix: 0 fixes in 0 files.")
 }
@@ -85,9 +86,9 @@ test("foldkit-74: SIGKILL during compiler work resumes without renaming or losin
 test("foldkit-74: compiler failure leaves a replayable journal and per-file revert evidence", async () => {
   const f = await fixture()
   try {
-    writeFileSync(f.compiler, "#!/bin/sh\nkill -TERM $$\n", { mode: 0o755 })
+    writeProbeAwareCompiler(f.compiler, "#!/bin/sh\nkill -TERM $$\n", { mode: 0o755 })
     await assert.rejects(codemod({ run: f.run }), /signal|terminated|exit|finish/i)
-    writeFileSync(f.compiler, "#!/bin/sh\necho 'vibelang --fix: 0 fixes in 0 files.'\n", { mode: 0o755 })
+    writeProbeAwareCompiler(f.compiler, "#!/bin/sh\necho 'vibelang --fix: 0 fixes in 0 files.'\n", { mode: 0o755 })
     const result = await codemod({ run: f.run })
     assert.equal(result.importEdits.length, 2)
     assert.equal(readJson(paths(f.run).codemodState("01")).attempts.length, 2)
@@ -151,7 +152,7 @@ test("foldkit-74: replay refuses competing paths and changed contents without ov
 test("foldkit-74: per-file revert works before the compiler completes", async () => {
   const f = await fixture()
   try {
-    writeFileSync(f.compiler, "#!/bin/sh\nkill -TERM $$\n", { mode: 0o755 })
+    writeProbeAwareCompiler(f.compiler, "#!/bin/sh\nkill -TERM $$\n", { mode: 0o755 })
     await assert.rejects(codemod({ run: f.run }))
     assert.equal(existsSync(paths(f.run).codemod("01")), false)
     await revert({ run: f.run, batch: "01", file: "src/value.vibe", reason: "interrupted compiler" })

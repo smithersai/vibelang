@@ -541,3 +541,7 @@ Setup preserves source declaration resolution for typed tools in referenced proj
 The scope guard admits protected files only after a fresh `testDiff` proof certifies their permitted literal, selector or formatter-only edits. It checks the proof before and after verification and before recording, so a later assertion edit cannot reuse an earlier receipt. Setup manifests remain in the setup commit; an unrecorded manifest edit is still foreign.
 
 A stock Strada compiler that rejects `--singleThreaded` is retried with only that Go-specific switch removed. The rejected command stays in the sibling `.single-threaded.log`; final emit errors still fail the oracle. The selected compiler is preserved.
+
+The codemod preserves value-only TypeScript helpers before the fix gate. It probes the selected compiler once: a compiler using C1 legacy inference needs `: infer _`, while a compiler implementing VIP-1 keeps unmodified functions plain and gets no marker (decided detail 269). The durable journal and batch/one-pass receipts record `functionModel` and `plain`; schema, `Layer`, `Stream`, tagged error and overloaded reader helpers retain their TypeScript declarations.
+
+The function-model probe must finish successfully and emit a recognized declaration before any source rename. A signal, timeout, missing declaration or unknown declaration stops the codemod with its stage and reason; it never guesses that a failed probe means legacy C1.

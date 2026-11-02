@@ -1,5 +1,6 @@
 // Repository-independent whole-scope conversion. The run directory owns every receipt.
 import { applyState, prepareState, saveState, durableWrite } from "./codemod-state.mjs"
+import { toolchainKeepsFunctionsPlain } from "./plain.mjs"
 import { createHash } from "node:crypto"
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join, posix, resolve } from "node:path"
@@ -14,7 +15,7 @@ import { assertNoTestBundleRename, testBundleDeferrals } from "./test-bundles.mj
 import { loadTypeScript } from "./declarations.mjs"
 import { projectsOf } from "./wire.mjs"
 import { readToolchain } from "./toolchain.mjs"
-import { aliasesOf, paths, importers, revertMany } from "./steps.mjs"
+import { aliasesOf, paths, importers, plainGroupsOf, revertMany } from "./steps.mjs"
 import { regenerate } from "./hooks.mjs"
 import * as Jj from "./jj.mjs"
 import { appendJsonl, isDeclarationFile, quote, readJson, readJsonIf, run, slug, writeJson } from "./util.mjs"
@@ -448,7 +449,7 @@ export async function onePassStep(step, options) {
         fileURLToPath(new URL("../../../../packages/runtime", import.meta.url))
       ])
       const catalog = await Jj.trackedFiles(config.target)
-      state = prepareState(config.target, files, await importers(config.target), { ts, aliases: aliasesOf(config), referenceFiles: catalog, references: catalog, catalog })
+      state = prepareState(config.target, files, await importers(config.target), { ts, aliases: aliasesOf(config), referenceFiles: catalog, references: catalog, catalog, plainGroups: plainGroupsOf(config, files, ts, { flipped: await toolchainKeepsFunctionsPlain({ compiler: compilerOf(config), modules: join(config.target, config.packages[0].dir, "node_modules"), dir: join(p.run, "probe") }) }) })
       saveState(p.codemodState("01"), state)
     }
     if (state.target !== config.target || JSON.stringify(state.files) !== JSON.stringify(files)) throw new Error("rename journal does not match target and scope")
@@ -458,7 +459,7 @@ export async function onePassStep(step, options) {
       saveState(p.codemodState("01"), state)
     }
     const { renames, exportEdits, importEdits, refEdits = [], platform } = state
-    const cm = { batch: "01", at: new Date().toISOString(), files, renames, exportEdits, importEdits, refEdits, platform, scriptEdits: state.scriptEdits, referenceEdits: state.referenceEdits, referenceWarnings: state.referenceWarnings, selectorChecks: state.selectorChecks, referenceScan: state.referenceScan, renameComplete: true, fix: { settled: false, rounds: [], byFile: {}, totals: {}, refused: [] } }
+    const cm = { batch: "01", at: new Date().toISOString(), files, renames, exportEdits, importEdits, refEdits, platform, plain: state.plain, functionModel: state.functionModel, scriptEdits: state.scriptEdits, referenceEdits: state.referenceEdits, referenceWarnings: state.referenceWarnings, selectorChecks: state.selectorChecks, referenceScan: state.referenceScan, renameComplete: true, fix: { settled: false, rounds: [], byFile: {}, totals: {}, refused: [] } }
     durableWrite(p.codemod("01"), JSON.stringify(cm, null, 2) + "\n")
     return cm
   }

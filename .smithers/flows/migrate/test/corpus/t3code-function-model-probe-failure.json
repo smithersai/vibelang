@@ -1,0 +1,27 @@
+{
+  "repo": "t3code",
+  "pattern": "interrupted compiler function-model probe before the schema-helper pass",
+  "oracle": "C1 and VIP-1/detail 269 require different written forms; failed or unknown compiler output establishes neither and must stop before a rename.",
+  "cases": [
+    {
+      "body": "exit 3",
+      "diagnostic": "exit 3"
+    },
+    {
+      "body": "kill -TERM $$",
+      "diagnostic": "SIGTERM"
+    },
+    {
+      "body": "exit 0",
+      "diagnostic": "no declaration"
+    },
+    {
+      "body": "mkdir -p out; echo 'export declare const f: () => string;' > out/probe.d.ts",
+      "diagnostic": "unknown declaration"
+    },
+    {
+      "body": "mkdir -p out; echo 'export declare const f: () => number;' > out/probe.d.ts; exit 9",
+      "diagnostic": "exit 9"
+    }
+  ]
+}

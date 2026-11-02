@@ -4,6 +4,7 @@ import { closeSync, existsSync, fsyncSync, lstatSync, mkdirSync, openSync, readF
 import { dirname, join } from "node:path"
 import { pathReadDeferrals, rewriteReferences } from "./references.mjs"
 import { splitBatchPlatform } from "./platform.mjs"
+import { markPlainFunctions } from "./plain.mjs"
 import { rewriteViteScripts } from "./vite-config.mjs"
 import { rewriteSourceLiterals } from "./source-paths.mjs"
 import { assertModuleBoundary, rewriteExports, rewriteImports, vibePath } from "./codemod.mjs"
@@ -29,7 +30,7 @@ export function durableWrite(path, data, mode = 0o600) {
 export const saveState = (path, state) => durableWrite(path, JSON.stringify(state, null, 2) + "\n")
 
 /** Plan all edits without changing the target; original source bytes live in the journal. */
-export function prepareState(target, files, scope, { ts, aliases, referenceFiles = scope, references = [], catalog = scope, bareEntries = false } = {}) {
+export function prepareState(target, files, scope, { ts, aliases, referenceFiles = scope, references = [], catalog = scope, bareEntries = false, plainGroups = [] } = {}) {
   for (const from of files) assertModuleBoundary(target, from)
   const deferred = pathReadDeferrals(target, files, referenceFiles)
   if (deferred.length) throw new Error("source text test requires .ts: " + deferred.map(d => d.file).join(", "))
@@ -51,6 +52,10 @@ export function prepareState(target, files, scope, { ts, aliases, referenceFiles
     else writes.push({ file, before: disk(file), after, mode: existsSync(join(target, fromOf.get(file) ?? file)) ? statSync(join(target, fromOf.get(file) ?? file)).mode & 0o777 : 0o644 })
   }
   const platform = ts ? splitBatchPlatform(target, files, ts, { read, write }) : { splits: [], refused: [] }
+  // Read the TypeScript after platform splitting and before renaming. Detail
+  // 269: a post-VIP-1 compiler needs no legacy plain return annotation.
+  const plain = {}
+  if (ts) for (const group of plainGroups) Object.assign(plain, markPlainFunctions(ts, target, group.files, group.tsconfigs, { read, write, exists: file => writes.some(w => w.file === (toOf.get(file) ?? file) && w.after !== null) || existsSync(join(target, file)), flipped: group.flipped }))
   const exportEdits = rewriteExports(target, renames, { write, bareEntries })
   const scriptEdits = rewriteViteScripts(target, renames, { read, write })
   const refEdits = rewriteReferences(target, renames, referenceFiles.map(file => toOf.get(file) ?? file), { read, write, literals: !ts })
@@ -72,7 +77,7 @@ export function prepareState(target, files, scope, { ts, aliases, referenceFiles
     selectorChecks.push(...(changed.selectorChecks ?? []))
     if (changed.edits.length) write(file, changed.text)
   }
-  return { version: 1, target, files, phase: "prepared", referenceVersion: 1, referencePending: false, referenceScan: { files: references.length, patterns: matcherCache.size, durationMs: Math.round(performance.now() - started) }, referenceEdits, referenceWarnings, selectorChecks, platform, renames, originals, writes, exportEdits, importEdits, refEdits, scriptEdits, attempts: [] }
+  return { version: 1, target, files, phase: "prepared", referenceVersion: 1, referencePending: false, referenceScan: { files: references.length, patterns: matcherCache.size, durationMs: Math.round(performance.now() - started) }, referenceEdits, referenceWarnings, selectorChecks, platform, plain, functionModel: plainGroups.length ? (plainGroups.every(g => g.flipped) ? "plain-by-syntax" : "legacy-inference") : "unprobed", renames, originals, writes, exportEdits, importEdits, refEdits, scriptEdits, attempts: [] }
 }
 
 /** Replay a prepared transaction, accepting each operation before or after its atomic write. */

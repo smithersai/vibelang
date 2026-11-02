@@ -1,0 +1,6 @@
+{
+  "key": "t3code-atom-reader-callback-kind",
+  "source": "t3code apps/web/src/state/query.ts, drive-t3code-apps 01:04Z",
+  "before": "import { Atom, AsyncResult } from \"effect/reactivity\";\nconst source = Atom.make(AsyncResult.initial<never, never>(false));\nexport const derived = Atom.make((get) => get(source)._tag === \"Initial\");\n",
+  "after": "import { Atom, AsyncResult } from \"effect/reactivity\";\nconst source = Atom.make(AsyncResult.initial<never, never>(false));\nexport const derived = Atom.make((get): infer _ => get(source)._tag === \"Initial\");\n"
+}

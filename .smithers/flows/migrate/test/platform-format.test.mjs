@@ -1,3 +1,4 @@
+import { writeProbeAwareCompiler } from "./fake-vibelang.mjs"
 import assert from "node:assert/strict"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
@@ -23,7 +24,7 @@ async function fixture({ file = corpus.file, source = corpus.source, formatter =
   writeJson(join(target, "tsconfig.json"), { compilerOptions: { noEmit: true }, include: ["src/**/*"] })
   writeFileSync(join(target, file), source)
   writeFileSync(join(target, "unrelated.ts"), "export const  untouched=1\n")
-  writeFileSync(join(target, "node_modules/.bin/vibelang"), "#!/bin/sh\nexit 0\n", { mode: 0o755 })
+  writeProbeAwareCompiler(join(target, "node_modules/.bin/vibelang"), "#!/bin/sh\nexit 0\n", { mode: 0o755 })
   const calls = join(root, "format-args.json")
   const script = fail
     ? '#!/usr/bin/env node\nrequire("node:fs").writeFileSync(' + JSON.stringify(calls) + ', JSON.stringify(process.argv.slice(2))); console.error("formatter rejected platform sibling"); process.exit(17);\n'

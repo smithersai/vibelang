@@ -1,3 +1,4 @@
+import { writeProbeAwareCompiler } from "./fake-vibelang.mjs"
 import assert from "node:assert/strict"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
@@ -29,7 +30,7 @@ for (const split of [false, true]) for (const legacy of [false, true]) for (cons
     await Jj.commit(target,"original")
     mkdirSync(join(target,"node_modules/.bin"),{recursive:true})
     symlinkSync(tsdir,join(target,"node_modules/typescript"))
-    writeFileSync(join(target,"node_modules/.bin/vibelang"),"#!/bin/sh\necho 'vibelang --fix: 0 fixes in 0 files.'\n",{mode:0o755})
+    writeProbeAwareCompiler(join(target,"node_modules/.bin/vibelang"),"#!/bin/sh\necho 'vibelang --fix: 0 fixes in 0 files.'\n",{mode:0o755})
     writeJson(paths(run).config,makeConfig({target,test:"true",vibelangVersion:"0.0.11"}))
     writeJson(paths(run).inventory,{files:Object.keys(originals).map(path=>({path}))})
     const batches=split ? [["src/value.ts"],["src/main.ts"]] : [corpus.batch]
