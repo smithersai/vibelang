@@ -1,0 +1,3 @@
+// expect: EK0902
+export service Callable { static readonly key = "unused/callable"; (value: number): number }
+export service Constructible { static readonly key = "unused/constructible"; new(): number }

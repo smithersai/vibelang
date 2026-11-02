@@ -1,0 +1,9 @@
+// expect-result: 1
+export service Contracts {
+ static readonly key = "unused/contracts"
+ read(n: number): number!!
+ readonly label: string
+ optional?(value: string): string!!
+ map<A>(value: A): A
+}
+export effect function main() { return 1 }

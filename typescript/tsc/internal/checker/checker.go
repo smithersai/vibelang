@@ -7381,10 +7381,11 @@ func (c *Checker) checkUnusedClassMembers(node *ast.Node) {
 					c.reportUnused(parameter, UnusedKindLocal, NewDiagnosticForNode(parameter.Name(), diagnostics.Property_0_is_declared_but_its_value_is_never_read, ast.SymbolName(parameter.Symbol())))
 				}
 			}
-		case ast.KindIndexSignature, ast.KindSemicolonClassElement, ast.KindClassStaticBlockDeclaration, ast.KindJSTypeAliasDeclaration:
-			// Can't be private
+		case ast.KindCallSignature, ast.KindConstructSignature, ast.KindMethodSignature, ast.KindPropertySignature, ast.KindIndexSignature, ast.KindSemicolonClassElement, ast.KindClassStaticBlockDeclaration, ast.KindJSTypeAliasDeclaration:
+			// Signature-only service contracts have no implementation to be unused.
+			// The remaining declarations can't be private.
 		default:
-			panic("Unhandled case in checkUnusedClassMembers")
+			panic(fmt.Sprintf("Unhandled case in checkUnusedClassMembers: %v", member.Kind))
 		}
 	}
 }

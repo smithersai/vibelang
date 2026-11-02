@@ -702,6 +702,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Helper re-export declaration properties required a manually configured compiler path; they now use the built checkout compiler by default and retain an explicit `VIBELANG_BINARY` override.
 - Incremental diagnostic properties required a manually configured compiler path; they now use the built checkout compiler by default and retain an explicit `VIBELANG_BINARY` override.
 - Incremental artifact identity properties required a manually configured compiler path; they now use the built checkout compiler by default and retain an explicit `VIBELANG_BINARY` override.
+- Checking an incomplete service in the editor, or with `noUnusedLocals` enabled, could panic; unsupported call and construct signatures now report `EK0902` while unused private implementation members are still checked.
 - A resize observer could remain allocated when the browser rejected its first target; `Experimental.ResizeObserver` now disconnects it when the scope closes, including after setup fails.
 - Waiting for a pending browser commit or animation frame required a plain host callback; `Experimental.Animations.nextFrameUnless` now checks and registers atomically inside a cold Effect, with cancellation on interruption (decided detail 261).
 - Browser file reads could report an unexpected result exactly like a host error; `Experimental.FileReader` now identifies unexpected results with `InvalidData`, preserving the origin even when the cause and message coincide.
