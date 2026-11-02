@@ -1,0 +1,12 @@
+export function probe(): unknown[] {
+  const events: string[] = []
+  class Probe {
+    result: unknown[]
+    constructor() {
+      const values = [new.target, do { events.push("after"); 3 }]
+      const name = new.target[do { events.push("key"); "name" as const }]
+      this.result = [values[0] === Probe, name, events]
+    }
+  }
+  return new Probe().result
+}

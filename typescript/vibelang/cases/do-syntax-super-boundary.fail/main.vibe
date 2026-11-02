@@ -1,0 +1,9 @@
+// expect: EK0204
+class Base { set value(n: number) {} }
+class Child extends Base {
+  read(): number {
+    super.value = do { return 7; 0 }
+    return 0
+  }
+}
+export {}

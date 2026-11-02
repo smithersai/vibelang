@@ -1,0 +1,13 @@
+export function probe(): unknown[] {
+  const events: string[] = []
+  class Base {
+    value = 4
+    tag(_strings: TemplateStringsArray, n: number): number { events.push("tag"); return this.value + n }
+  }
+  class Child extends Base {
+    probe(): unknown[] {
+      return [super[do { events.push("key"); "tag" as const }]`v:${do { events.push("substitution"); 3 }}`, events]
+    }
+  }
+  return new Child().probe()
+}

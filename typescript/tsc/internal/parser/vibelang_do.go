@@ -740,6 +740,16 @@ func (p *Parser) doSite(do *ast.Node) *ast.Node {
 				// Keep the same inline function boundary as binding patterns.
 				return nil
 			}
+			if child == binary.Right && operator == ast.KindEqualsToken {
+				left := ast.SkipOuterExpressions(binary.Left, ast.OEKAll)
+				if (left.Kind == ast.KindPropertyAccessExpression || left.Kind == ast.KindElementAccessExpression) &&
+					left.Expression().Kind == ast.KindSuperKeyword {
+					// The native assignment holds its Super Reference (base
+					// and receiver) while the RHS runs. It cannot be spilled.
+					// Keep the existing IIFE path and its EK0204 boundary.
+					return nil
+				}
+			}
 			if child == binary.Right && ast.IsCompoundAssignmentOperator(operator) && !ast.IsIdentifier(ast.SkipParentheses(binary.Left)) {
 				return nil
 			}
@@ -1271,10 +1281,25 @@ func (l *doLowering) expr(e *ast.Node, pre *[]*ast.Node) *ast.Node {
 	}
 	switch e.Kind {
 	case ast.KindParenthesizedExpression, ast.KindAsExpression, ast.KindSatisfiesExpression, ast.KindNonNullExpression,
-		ast.KindTypeAssertionExpression, ast.KindTypeOfExpression, ast.KindVoidExpression, ast.KindDeleteExpression,
+		ast.KindTypeAssertionExpression, ast.KindTypeOfExpression, ast.KindVoidExpression,
 		ast.KindAwaitExpression, ast.KindYieldExpression, ast.KindSpreadElement, ast.KindSpreadAssignment,
 		ast.KindPropertyAccessExpression, ast.KindTemplateSpan, ast.KindComputedPropertyName:
 		setExpression(e, l.expr(e.Expression(), pre))
+	case ast.KindDeleteExpression:
+		operand := ast.SkipOuterExpressions(e.Expression(), ast.OEKAll)
+		value := l.expr(e.Expression(), pre)
+		switch operand.Kind {
+		case ast.KindIdentifier, ast.KindPropertyAccessExpression, ast.KindElementAccessExpression:
+			// These source operands are references: delete must retain the
+			// native reference without reading the property being deleted.
+		default:
+			// A lifted value expression may become a temporary identifier.
+			// Keep it a value, rather than deleting that identifier (which
+			// is invalid JavaScript in strict mode).
+			at := l.p.sourceRange(e.Expression())
+			value = l.p.mParens(l.p.mBinary(l.p.mNumber(0, at), ast.KindCommaToken, value, at), at)
+		}
+		setExpression(e, value)
 	case ast.KindPrefixUnaryExpression:
 		u := e.AsPrefixUnaryExpression()
 		u.Operand = l.expr(u.Operand, pre)
@@ -1498,7 +1523,10 @@ func (l *doLowering) method(callee *ast.Node, at core.TextRange, pre *[]*ast.Nod
 	}
 	// receiver returns the object the callee reads and the bound this.
 	receiver := func(object *ast.Node) (*ast.Node, *ast.Node) {
-		if object.Kind == ast.KindSuperKeyword || object.Kind == ast.KindThisKeyword {
+		if object.Kind == ast.KindSuperKeyword {
+			return l.spill(object, pre), this()
+		}
+		if object.Kind == ast.KindThisKeyword {
 			return object, this()
 		}
 		name := l.temp("$do_t", at)
@@ -1613,8 +1641,11 @@ func (l *doLowering) propertyKey(k *ast.Node, pre *[]*ast.Node) *ast.Node {
 // argument holds a do expression, a receiver or callee that may have effects
 // is read into a constant first, and the call keeps its receiver.
 func (l *doLowering) callee(callee *ast.Node, arguments []*ast.Node, pre *[]*ast.Node) *ast.Node {
-	if ast.SkipParentheses(callee).Kind == ast.KindSuperKeyword {
-		return callee // super(...) is syntax and cannot be captured as a value.
+	switch ast.SkipParentheses(callee).Kind {
+	case ast.KindSuperKeyword, ast.KindImportKeyword:
+		// super(...) and import(...) are syntax, not first-class callee
+		// values. Keep the native expression and lower only its operands.
+		return callee
 	}
 	callee = l.expr(callee, pre)
 	later := false
@@ -1812,6 +1843,15 @@ func (l *doLowering) valueOnly(e *ast.Node) *ast.Node {
 // spill reads e into a constant, unless reading it has no effect and a do
 // expression that runs after it cannot tell when it ran.
 func (l *doLowering) spill(e *ast.Node, pre *[]*ast.Node) *ast.Node {
+	if e != nil && e.Kind == ast.KindSuperKeyword {
+		// A super-property receiver is syntax too. Validate its lexical
+		// this before a computed key or RHS runs (decided detail 193),
+		// but leave super in the native reference, never const t = super.
+		at := l.p.sourceRange(e)
+		this := l.p.vibelangSynthesized(l.p.factory.NewKeywordExpression(ast.KindThisKeyword), at)
+		*pre = append(*pre, l.statement(this, at))
+		return e
+	}
 	if e == nil || isPureRead(e) {
 		return e
 	}

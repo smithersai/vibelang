@@ -1,0 +1,5 @@
+export async function probe() {
+  const events: string[] = []
+  const loaded = await import((events.push("specifier"), "./dep.js"), do { events.push("options"); ({ with: {} }) })
+  return [loaded.value, events]
+}

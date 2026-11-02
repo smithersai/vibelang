@@ -1,0 +1,15 @@
+const events: string[] = []
+class Base {
+  own = 0
+  set value(n: number) { events.push("set:" + n); this.own = n }
+}
+class Child extends Base {
+  probe(): unknown[] {
+    super.value = do { events.push("rhs"); 7 }
+    super[do { events.push("key"); "value" as const }] = do { events.push("rhs2"); 8 }
+    const alternate = { set value(n: number) { events.push("alternate-base:" + n) } }
+    super.value = do { events.push("change-base"); Object.setPrototypeOf(Child.prototype, alternate); 9 }
+    return [this.own, events]
+  }
+}
+export function probe(): unknown[] { return new Child().probe() }

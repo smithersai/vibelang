@@ -1,0 +1,14 @@
+export function probe(): unknown[] {
+  const events: string[] = []
+  class Base {
+    constructor(readonly value: number) { events.push("base") }
+    method(n: number): number { events.push("method"); return this.value + n }
+  }
+  class Child extends Base {
+    constructor() { super(do { events.push("argument"); 4 }) }
+    probe(): unknown[] {
+      return [super.method(do { events.push("method-argument"); 3 }), events]
+    }
+  }
+  return new Child().probe()
+}

@@ -1,0 +1,14 @@
+export function probe(): unknown[] {
+  const events: string[] = []
+  const missing = null as { value?: number, f: (n: number) => number } | null
+  const present = { value: 4, f(n: number): number { events.push("call"); return this.value + n } }
+  const a = missing?.[do { events.push("wrong-key"); "value" as const }]
+  const b = missing?.f(do { events.push("wrong-argument"); 1 })
+  const c = present?.f(do { events.push("argument"); 3 })
+  const d = delete missing?.[do { events.push("wrong-delete"); "value" as const }]
+  const absent = null as ((n: number) => number) | null
+  const e = absent?.(do { events.push("wrong-optional-call"); 1 })
+  const f = present.f?.(do { events.push("optional-argument"); 4 })
+  const g = present?.[do { events.push("live-key"); "f" as const }](do { events.push("live-argument"); 5 })
+  return [a === undefined, b === undefined, c, d, e === undefined, f, g, events]
+}
