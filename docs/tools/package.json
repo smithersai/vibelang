@@ -23,6 +23,7 @@
     "@effect/platform-bun": "4.1.1",
     "@effect/platform-browser": "4.1.1",
     "js-tiktoken": "1.0.21",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "fast-check": "4.10.2"
   }
 }

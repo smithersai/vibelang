@@ -493,7 +493,50 @@ const vibelangTopicTargets = Object.fromEntries(
   ])
 )
 
+// Specification checks share the normal graph and cache. The existing forms
+// gate selection reaches these dependencies without a pre-gate change.
+const specInputs = S.Filegroup({ srcs: [...S.glob([
+  "docs/design/**", "docs/tools/spec-rules*", "docs/tools/spec-examples*",
+  "docs/tools/package.json", "docs/tools/bun.lock",
+  "typescript/tsc/internal/diagnostics/diagnosticMessages.json",
+  "typescript/tsc/internal/tsoptions/declarations_generated.go"
+])] })
+const specSharedTables = S.Generate({
+  command: "node docs/tools/spec-rules.mjs generate",
+  changes: ["docs/design/generated/resolution.md"],
+  data: [S.Filegroup({ srcs: [...S.glob(["docs/tools/spec-rules.mjs", "docs/design/vips/0039-vibex.md"])] })],
+  mode: "check", sandbox: "none"
+})
+const specCheck = (kind: string, deps: ReadonlyArray<unknown> = []) => S.Shell.Test({
+  summary: "Specification " + kind + " contracts agree with published VIP authority.",
+  shell: "node docs/tools/spec-rules.mjs " + kind,
+  data: [specInputs, ...deps] as Array<never>, tools: [node], sandbox: "none", timeout: "2m"
+})
+const specRegistry = specCheck("registry")
+const specTables = specCheck("tables")
+const specCopies = specCheck("copies", [specSharedTables])
+const specAuthority = specCheck("authority")
+const specExamples = S.Shell.Test({
+  summary: "Accepted VIP examples compile; negative examples report their stated codes.",
+  shell: "EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node docs/tools/spec-examples.mjs",
+  data: [specInputs, Typescript.compiler, Packages["compiler-native"], Packages["runtime-dist"]] as Array<never>,
+  tools: [node], sandbox: "none", timeout: "15m"
+})
+const specLinterTests = S.Shell.Test({
+  summary: "Historical spec defects, seeded properties and native example checks reject regressions.",
+  shell: "node --test docs/tools/spec-rules.test.mjs docs/tools/spec-examples-compiler.test.mjs",
+  data: [specInputs, Packages["compiler-native"], Packages["runtime-dist"]] as Array<never>,
+  tools: [node], sandbox: "none", timeout: "5m"
+})
+
 const targets = {
+  "spec-shared-tables": specSharedTables,
+  "spec-registry": specRegistry,
+  "spec-tables": specTables,
+  "spec-copies": specCopies,
+  "spec-authority": specAuthority,
+  "spec-vip-examples": specExamples,
+  "spec-linters-test": specLinterTests,
   "go-vibelangfuzz-hangs": pendingHangs,
   "site-spec-links": siteSpecLinks,
   "spec-lint": specLint,
@@ -517,7 +560,7 @@ const targets = {
     "The forms table and its decisions match a fresh generation.",
     "FORMS_BINARY=$PWD/typescript/built/local/vibelang-forms " +
       "GOCACHE=$HOME/.cache/go-build-smthrs bash scripts/check-forms-table.sh",
-    [Typescript["forms-generator"]],
+    [Typescript["forms-generator"], specRegistry, specTables, specCopies, specAuthority, specLinterTests],
     [bun, node]
   ),
   "docs-tools": check(

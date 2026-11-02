@@ -13,6 +13,7 @@
         "@effect/platform-node": "4.1.1",
         "@effect/vitest": "4.1.1",
         "effect": "4.1.1",
+        "fast-check": "4.10.2",
         "js-tiktoken": "1.0.21",
         "marked": "18.0.12",
         "typescript": "5.9.3",

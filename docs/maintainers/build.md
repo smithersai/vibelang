@@ -720,6 +720,43 @@ never logged; unreadable or disappearing processes are counted and skipped.
 RSS sums can count shared pages more than once, so compare the classes with
 memory availability and cgroup accounting before choosing a resource bound.
 
+## Specification contracts
+
+The existing `//:forms` gate target also requires `//:spec-registry`,
+`//:spec-tables`, `//:spec-copies`, `//:spec-authority`,
+`//:spec-linters-test`. They use the normal
+Smithers graph and cache; no extra pre-gate script is needed.
+
+The registry check reads Appendix B until the one-file diagnostic registry
+lands. One adapter selects that source when present. TypeScript codes and
+options come from the pinned compiler registry. VibeLang names require
+published VIP authority; unresolved authority is reported as a warning.
+The table check compares decided config keys, denied VIP membership and
+repair forms, and resolution order. The copy check compares shared tables
+and explicitly marked `spec-copy` sections byte for byte. The
+`//:spec-shared-tables` generated target derives the resolution reference
+from VIP-39.
+
+VIP examples run through the native compiler. A negative example uses
+`// expect-error: EK0509` with its required code; a different diagnostic or
+an unexpectedly successful compilation fails. Missing fixture bindings,
+schematic ellipses and explicitly marked fragments are visible warnings.
+They are not evidence that an example compiles. Removed value handlers are
+checked even in schematic examples, so `catch guest` cannot hide behind a
+missing binding or a parser cascade. Compiler launch failures fail the target.
+
+Run the focused contracts with:
+
+```sh
+sh scripts/ci.sh //:spec-registry //:spec-tables //:spec-copies //:spec-authority //:spec-linters-test --jobs 8
+```
+
+Each diagnostic names the source file and line. The historical regressions
+name their review finding; fast-check mutates registry tokens and resolution
+order with reproducible seeds.
+
+Run the compiler-backed VIP contract separately with `sh scripts/ci.sh //:spec-vip-examples --jobs 8`. It reports missing assigned diagnostics as errors; schematic examples remain visible warnings.
+
 The throws inventory CLI, `node docs/tools/throws-inventory.mjs --check` or
 `--write`, reuses a successful analysis from `.cache/throws-inventory.json`.
 Each invocation hashes the bundled declarations and version, Effect sources,
