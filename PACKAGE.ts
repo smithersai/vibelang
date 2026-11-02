@@ -263,7 +263,8 @@ const siteSpecLinks = S.Shell.Test({
 })
 
 // One target per fuzz topic (fuzz-topics.ts): the Fuzz functions of
-// internal/vibelangfuzz/<topic>_*_test.go over their seeds. The
+// internal/vibelangfuzz/<topic>_*_test.go over their seeds, and the Test
+// functions of those files. The
 // merge gate runs a topic for a change to a compiler source file or a fuzz
 // test of that topic (ls/gate-cases.sh), where //:go-vibelangfuzz runs only
 // post-merge: 58bb695700ad changed the note in prelude_collision_diagnostic.go
@@ -273,7 +274,7 @@ const fuzzTopicTargets = Object.fromEntries(
   [...fuzzTopics].map(([topic, names]) => [
     `go-vibelangfuzz-topic-${topic}`,
     goVibelang(
-      `The ${topic} fuzz oracles over their seeds: ${names.join(", ")}.`,
+      `The ${topic} fuzz oracles over their seeds, and the topic's tests: ${names.join(", ")}.`,
       `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} ` +
         `go test -short -count=1 -timeout=15m -trimpath -run '^(${names.join("|")})$' ./internal/vibelangfuzz/`,
       [Tsc["vibelangfuzz-files"]],

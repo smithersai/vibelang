@@ -54,12 +54,19 @@ test("each fuzz topic runs its Fuzz functions over their seeds", () => {
   assert.ok(prelude.data.includes("tsc.vibelangfuzz-files"))
 })
 
-test("the fuzz topics name every Fuzz function by its file's first word", async () => {
+test("the fuzz topics name every Fuzz and Test function by its file's first word", async () => {
   const { fuzzTopics } = await import("../fuzz-topics.ts")
   assert.ok(fuzzTopics.get("prelude").includes("FuzzPreludeGlobalMember"), "prelude_global_member_fuzz_test.go")
   assert.ok(fuzzTopics.get("fix").includes("FuzzFix"), "fix_fuzz_test.go")
+  // A topic's Test functions break main as its oracles do: both turned 2519454b6513 RED post-merge.
+  assert.ok(fuzzTopics.get("declaration").includes("TestDeclarationIdentityCanonicalization"), "declaration_identity_fuzz_test.go")
+  assert.ok(fuzzTopics.get("data").includes("TestDataCounterpartFoldkit"), "data_counterpart_fuzz_test.go")
+  // A file whose first word names no Fuzz function makes no topic: imported_codes_test.go has only tests.
+  assert.equal(fuzzTopics.has("imported"), false)
   for (const [topic, names] of fuzzTopics) {
     assert.match(topic, /^[a-z0-9]+$/)
-    for (const name of names) assert.match(name, /^Fuzz[A-Za-z0-9_]+$/)
+    assert.ok(names.some((name) => name.startsWith("Fuzz")), topic + " has no Fuzz function")
+    assert.equal(new Set(names).size, names.length, topic + " names a function twice")
+    for (const name of names) assert.match(name, /^(Fuzz|Test)[A-Za-z0-9_]+$/)
   }
 })
