@@ -743,7 +743,7 @@ an unexpectedly successful compilation fails. Missing fixture bindings,
 schematic ellipses and explicitly marked fragments are visible warnings.
 They are not evidence that an example compiles. Removed value handlers are
 checked even in schematic examples, so `catch guest` cannot hide behind a
-missing binding or a parser cascade. Compiler launch failures fail the target.
+missing binding or a parser cascade. Compiler launch failures fail the target. A future example may name an exact `// compiler-gap:` code under its published prerequisites; unrelated errors remain checked, and the marker fails once that code disappears.
 
 Run the focused contracts with:
 

@@ -55,19 +55,23 @@ export function verdict(example, result) {
     const matched = sites.length ? sites.every(site => rows.some(d => d.code === code && (site.line === undefined || d.line === site.line))) : codes.has(code)
     if (!matched) findings.push({ severity: "error", message: "expected " + code + " was not reported" + (sites.some(x => x.line !== undefined) ? " at its marked line" : "") })
   }
+  const gapCodes = example.gap?.match(/(?:TS|EK)\d+/g) ?? []
+  for (const code of gapCodes) if (!codes.has(code))
+    findings.push({ severity: "error", message: "stale compiler-gap marker: " + code + " is no longer reported" })
   const mixedComparison = /\/\/.*(?:exactly.*Effect TS|Effect TS)/i.test(example.source) && example.language === "vibe"
   const missingFixture = rows.some(d => /^(?:TS2304|TS2307|TS2552|TS18004|TS2503|TS7026|TS7006|TS7031)$/.test(d.code))
   const missingContext = /^(?:const \w+ = )?(?:try |fork |fork\.|join |provide )/m.test(example.source)
-  const fixtureGap = example.fragment || example.schematic || example.gap || mixedComparison || missingFixture || missingContext
+  const fixtureGap = example.fragment || example.schematic || (example.gap && !gapCodes.length) || mixedComparison || missingFixture || missingContext
   for (const d of rows) {
     if (example.expected.includes(d.code) || d.category === "warning") continue
     const sourceLine = example.source.split("\n")[d.line - 1] ?? ""
     // Inline negative examples must state the code; prose saying only "error"
     // is debt, not a successful negative test.
     const marked = /\/\/.*\b(?:error|invalid|illegal|forbidden|rejected)\b/i.test(sourceLine)
-    const incomplete = fixtureGap || /^(?:EK0501|EK1701)$/.test(d.code)
+    const incomplete = fixtureGap || gapCodes.includes(d.code) || /^(?:EK0501|EK1701)$/.test(d.code)
     findings.push({ severity: d.code === "EK0509" && !marked ? "error" : marked || incomplete ? "warning" : "error", message: d.code + ": " + d.message })
   }
+  if (gapCodes.some(code => codes.has(code))) findings.push({ severity: "warning", message: "published prerequisite pending: " + example.gap })
   if (fixtureGap) findings.push({ severity: "warning", message: "example is not validated as a complete program: " + (example.gap ?? (mixedComparison ? "mixed counterpart" : example.schematic ? "ellipsis" : missingContext ? "enclosing Effect context" : "missing fixture bindings")) })
   return findings
 }

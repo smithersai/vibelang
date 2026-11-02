@@ -184,3 +184,21 @@ test("fast-check: pending diagnostic authorities stay unresolved across the fres
     assert.ok(lintRegistry(root).some(f => f.message.startsWith(code + " has only open VIP authority")))
   }), { seed: 1404, numRuns: 30 })
 }))
+
+test("VIP-39 Preconditions: only the named pending code is allowed, and its marker cannot go stale", () => {
+  const example = { source: "const view = <p/>", language: "vibex", expected: [], gap: "VIP-39 TS6054" }
+  const missing = { status: 1, stdout: "error TS6054: unsupported extension\n" }
+  assert.ok(!verdict(example, missing).some(f => f.severity === "error"))
+  assert.ok(verdict(example, { status: 0, stdout: "" }).some(f => f.message.includes("stale compiler-gap")))
+  assert.ok(verdict(example, { status: 1, stdout: "error TS6054: unsupported\nmain.vibex(1,1): error TS1005: syntax\n" }).some(f => f.severity === "error"))
+  assert.ok(verdict({ ...example, source: "effect function f() { return fail(1) catch guest }" }, missing).some(f => f.message.includes("EK0509") && f.severity === "error"))
+  for (const item of examples(read(repository, "docs/design/vips/0039-vibex.md")).filter(x => x.language === "vibex")) assert.ok(item.gap.includes("VIP-39 TS6054"))
+})
+test("fast-check: a code-specific prerequisite never hides another error or a stale marker", () => {
+  fc.assert(fc.property(fc.integer({ min: 6100, max: 9900 }), number => {
+    const code = "TS" + number, example = { source: "const value = 1", expected: [], gap: "VIP-39 " + code }
+    assert.ok(!verdict(example, { status: 1, stdout: "error " + code + ": pending\n" }).some(f => f.severity === "error"))
+    assert.ok(verdict(example, { status: 0, stdout: "" }).some(f => f.message.includes("stale compiler-gap")))
+    assert.ok(verdict(example, { status: 1, stdout: "error " + code + ": pending\nmain.vibe(1,1): error TS1005: syntax\n" }).some(f => f.severity === "error"))
+  }), { seed: 396054, numRuns: 40 })
+})
