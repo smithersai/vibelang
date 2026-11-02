@@ -302,8 +302,8 @@ The result is cached on disk, so the next process starts in milliseconds until
 a source, a tsconfig, an installed package, or the compiler changes. Set
 `VIBELANG_CACHE_DIR` to move the cache and `VIBELANG_DISABLE_CACHE=1` to turn it
 off, and `VIBELANG_REGISTER_DEBUG=1` to print how long each project's compile
-took, stage by stage. A type error stops the import with the compiler's
-diagnostics, and a stack trace names `.vibe` lines. A workspace package the
+took, stage by stage. Errors in the loaded source and project-wide errors
+stop the import with the compiler's diagnostics, and a stack trace names `.vibe` lines. A workspace package the
 project imports as source is checked by that package's own compile, when one of
 its `.vibe` modules loads. The cache tracks that package's nearest config,
 `vibe.config.json`, then `tsconfig.json`, then `jsconfig.json`, so editing it
@@ -322,7 +322,7 @@ preload = ["vibelang/bun"]
 preload = ["vibelang/bun"]
 ```
 
-or on the command line: `bun --preload vibelang/bun src/main.ts`. The first `.vibe` import compiles the whole project in the nearest `tsconfig.json` above the module, once per process, with the same cache as Node. Set `VIBELANG_PROJECT` to a tsconfig path to choose another project for the modules in its directory; a module of another workspace package compiles with that package's own `tsconfig.json`. A TypeScript module may import a `.vibe` module by its emitted name, such as `./x.js` for `x.vibe`, as a migrated project does after it replaces `x.ts`; an `x.ts` beside it still wins. An extensionless import, such as `../src/archive`, resolves to `archive.vibe` or a directory's `index.vibe` as TypeScript's `Bundler` resolution does. So does an alias of the nearest `tsconfig.json`'s `paths`, through its `extends` chain: with `"@/*": ["./src/*"]`, `@/archive` and `@/archive.js` load `src/archive.vibe` when TypeScript resolves them there, and an `archive.ts` still wins. The preload rewrites these imports in the module's source before runtime resolution. The rewrite is synchronous, so `require()` and a `createRequire` require load such a module wherever they load it when the modules it imports are `.ts`. A composite project compiles too. Diagnostics that stop the compile fail the import. Bun ignores a plugin's source maps, so a stack frame names the `.vibe` file with the line of its compiled JavaScript.
+or on the command line: `bun --preload vibelang/bun src/main.ts`. The first `.vibe` import compiles the project's `.vibe` files in the nearest `tsconfig.json` above the module, once per process, with the same cache as Node. Set `VIBELANG_PROJECT` to a tsconfig path to choose another project for the modules in its directory; a module of another workspace package compiles with that package's own `tsconfig.json`. A TypeScript module may import a `.vibe` module by its emitted name, such as `./x.js` for `x.vibe`, as a migrated project does after it replaces `x.ts`; an `x.ts` beside it still wins. An extensionless import, such as `../src/archive`, resolves to `archive.vibe` or a directory's `index.vibe` as TypeScript's `Bundler` resolution does. So does an alias of the nearest `tsconfig.json`'s `paths`, through its `extends` chain: with `"@/*": ["./src/*"]`, `@/archive` and `@/archive.js` load `src/archive.vibe` when TypeScript resolves them there, and an `archive.ts` still wins. The preload rewrites these imports in the module's source before runtime resolution. The rewrite is synchronous, so `require()` and a `createRequire` require load such a module wherever they load it when the modules it imports are `.ts`. A composite project compiles too. Errors in the loaded source and project-wide errors fail the import. Bun ignores a plugin's source maps, so a stack frame names the `.vibe` file with the line of its compiled JavaScript.
 
 The preload discovers imports in the project's sources, leaving dependency modules in `node_modules` to Bun's native loader. A workspace package linked into `node_modules` still uses its real source path, so its extensionless imports can reach `.vibe` files. Tests that load only TypeScript keep the native dependency loader even when the project contains migrated files. A CommonJS `require("./archive")` reaches `archive.vibe` through Node's CommonJS resolve hook. Bun 1.3.13 calls a replaced hook without the requiring module for a `require` that `createRequire(url)` made, so the request would resolve from the working directory instead of `url`. On such a Bun the preload leaves the hook alone: `createRequire` keeps resolving from its URL, and a CommonJS `require` of a `.vibe` module names its extension, `require("./archive.vibe")`. Bun 1.4.2 has the hook.
 
@@ -352,7 +352,7 @@ In the tsconfig that includes the tests, add `"bun"` to `compilerOptions.types` 
 { "compilerOptions": { "types": ["bun"] } }
 ```
 
-Keep any existing type names in that array. The preload checks the whole project, including tests selected by `include`, even when running a different entry point. In `bunfig.toml`:
+Keep any existing type names in that array. Run `vibelang -p tsconfig.json` to check every selected project file, including native TypeScript tests selected by `include`. The preload checks and emits only the project's own `.vibe` files under its directory. Selected native TypeScript files supply types to those modules, but their independent errors are not checked. Errors in the loaded `.vibe` module and project-wide errors fail its import; an unrelated `.vibe` module's errors do not. In `bunfig.toml`:
 
 ```toml
 [test]

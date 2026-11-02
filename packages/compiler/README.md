@@ -69,10 +69,11 @@ node --import vibelang/register src/main.ts
 TypeScript entry point, a script, or a test that spawns `node` needs no `dist/`.
 A committed loader record from `writeLoaderRecord` in `vibelang/project` can move with the checkout. It relocates recorded file paths and source-map sources while preserving emitted JavaScript bytes, including strings containing the old checkout path. Records from the older format are ignored and compiled again.
 
-The first `.vibe` import compiles the whole project in the nearest
+The first `.vibe` import compiles the project's `.vibe` files in the nearest
 `tsconfig.json` above the module, once per process; every `.vibe` module of that
-project comes from that compile. The compile type-checks the project's own
-files, those under its directory. A workspace package the project imports as
+project comes from that compile. It checks and emits only `.vibe` sources
+under the project's directory. Native TypeScript files supply types to those
+modules, but their independent errors are not checked. A workspace package the project imports as
 source only supplies types to it; that package's own compile checks it when
 one of its `.vibe` modules loads. Set `VIBELANG_PROJECT` to a tsconfig path to
 choose another project, such as `tsconfig.test.json` for an example beside a
@@ -426,7 +427,7 @@ In the tsconfig that includes the tests, add `"bun"` to `compilerOptions.types` 
 { "compilerOptions": { "types": ["bun"] } }
 ```
 
-Keep any existing type names in that array. The preload checks the whole project, including tests selected by `include`, even when running a different entry point. In `bunfig.toml`:
+Keep any existing type names in that array. Run `vibelang -p tsconfig.json` to check every selected project file, including native TypeScript tests selected by `include`. The preload checks and emits only the project's own `.vibe` files under its directory. Selected native TypeScript files supply types to those modules, but their independent errors are not checked. Errors in the loaded `.vibe` module and project-wide errors fail its import; an unrelated `.vibe` module's errors do not. In `bunfig.toml`:
 
 ```toml
 [test]
@@ -448,10 +449,8 @@ test("greeting", () => {
 
 Run `bun test`. Use `Effect.runPromise` in an async test when the Effect is asynchronous; provide any required services before running it.
 
-The source loaders compile the whole project for type-directed emit, but report
-only diagnostics for the source being loaded and project-wide errors, including
-configuration diagnostics.
-An unrelated file's type errors do not prevent loading a clean module. Run
-`vibelang -p tsconfig.json` to check every project file.
+The source loaders use the project program for type-directed emit, with the
+same checking scope as the preload described above. Run
+`vibelang -p tsconfig.json` to check every selected project file.
 
 In a mixed migrated package, emitted native TypeScript entries under `.vibelang/js` resolve back to their original sources under the Node and Bun source hooks. Relative source imports and package imports therefore share module instances.

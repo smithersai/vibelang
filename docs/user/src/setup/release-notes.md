@@ -386,6 +386,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Migration regression checks now cover callback properties, object-result spreads and contextual handler results against the original TypeScript programs.
 
+- The Bun preload guide promised a whole-project type check, including native TypeScript tests; it now describes the preload's `.vibe` checking scope and directs you to `vibelang -p tsconfig.json` for a complete project check.
+
 - Moving a checkout with a committed loader record changed ordinary string values containing the old checkout path; records now relocate only structured file paths and source-map sources, preserving the emitted program bytes.
 
 - Sharded Go tests could start several fuzz campaigns when `-test.fuzz` used a separate selector argument; that form now runs once with its original arguments and exit status.

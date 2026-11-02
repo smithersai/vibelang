@@ -31,6 +31,7 @@ const vibe = fc.record({
   outside: fc.boolean() // imports a .vibe module of another package
 })
 const typescript = fc.record({
+  bunTest: fc.boolean(), // an included native test, with an undeclared test global
   own: fc.boolean(), // an error of its own
   vibe: fc.integer({ min: -1, max: 2 }) // the .vibe module it imports, or none
 })
@@ -55,14 +56,16 @@ function files(input) {
   }
   const ts = (index) => index >= 0 && index < input.ts.length ? index : -1
   const vibes = (index) => index >= 0 && index < input.vibes.length ? index : -1
+  const tsFile = (i) => "t" + i + (input.ts[i].bunTest ? ".test" : "") + ".ts"
   input.ts.forEach((spec, i) => {
     const target = vibes(spec.vibe)
-    result[`app/src/t${i}.ts`] = [
+    result[`app/src/${tsFile(i)}`] = [
       'import { Effect } from "effect"',
       target >= 0 ? `import { v${target} } from "./v${target}.vibe"` : "",
       `export const t${i}: number = ${i}`,
       `export const eff${i} = Effect.succeed(${i})`,
       target >= 0 ? `export const use${i}: number = v${target} + 1` : "",
+      spec.bunTest ? 'test("native", () => {})' : "",
       spec.own ? `export const bad${i}: number = "x" as string` : "",
       ""
     ].filter((line, index, all) => line || index === all.length - 1).join("\n")
@@ -70,7 +73,7 @@ function files(input) {
   input.vibes.forEach((spec, i) => {
     const source = ts(spec.ts)
     result[`app/src/v${i}.vibe`] = [
-      source >= 0 ? `import { t${source}, eff${source} } from "./t${source}.ts"` : "",
+      source >= 0 ? `import { t${source}, eff${source} } from "./${tsFile(source)}"` : "",
       spec.outside ? 'import { l } from "../../lib/src/l.vibe"' : "",
       spec.module ? "import { clean } from text" : "",
       spec.module ? `module text {\nexport function clean(value: string): string { return value.trim() + "${i}" }\n}` : "",

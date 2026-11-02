@@ -1,0 +1,25 @@
+{
+  "property": "loader-check-scope",
+  "rule": "RD-024: native TypeScript tests only supply types to the preload; the full compiler checks their independent errors",
+  "input": {
+    "vibes": [
+      {
+        "ts": 0,
+        "own": false,
+        "contract": false,
+        "effect": false,
+        "module": false,
+        "outside": false
+      }
+    ],
+    "ts": [
+      {
+        "bunTest": true,
+        "own": true,
+        "vibe": -1
+      }
+    ],
+    "libraryError": false
+  },
+  "generatorVersion": 1
+}
