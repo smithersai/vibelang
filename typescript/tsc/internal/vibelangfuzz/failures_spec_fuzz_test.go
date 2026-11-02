@@ -409,6 +409,7 @@ func failuresCases() []*failCase {
 	add(&failCase{Name: "effect-decoder-sync-build", Quote: "| `Schema.decodeUnknownSync(Schema.String)` or `Schema.decodeSync(Schema.String)` | `never` | call directly to build the decoder |", Body: "const decode = Schema.decodeSync(Schema.String)"})
 	add(&failCase{Name: "effect-decoder-sync-call", Quote: "| `decode(value)` for that decoder | `SchemaError` | `try Effect.try(() => decode(value))` |", Body: "const decode = Schema.decodeSync(Schema.String)\n⟦decode(s)⟧"})
 	add(&failCase{Name: "effect-decoder-sync-wrapped", Quote: "| `decode(value)` for that decoder | `SchemaError` | `try Effect.try(() => decode(value))` |", Body: "const decode = Schema.decodeSync(Schema.String)\nreturn try Effect.try(() => decode(s))"})
+	cases = append(cases, failuresErrorFamilyCases()...)
 	return append(cases, failuresExtraCases()...)
 }
 
