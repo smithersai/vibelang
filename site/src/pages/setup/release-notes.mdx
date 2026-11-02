@@ -270,6 +270,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 | Old diagnostic numbers, including `EK4617` | Appendix B numbering, including `EK0103`. Diagnostic triggers are unchanged. See the [old-to-new map](/vibelang-features/diagnostic-code-map). |
 
 ### Bugs fixed since 0.0.10
+- The `EK0509` repair of an object-literal value fallback, `x catch { directory }`, wrote `() => { directory }`, a block that returns nothing, and refused with `TS2322`; it now writes `() => ({ directory })`.
+- After VIP-1, `vibelang --fix --fix-vip-only` left a call that ran inside a catch's head cold, as in `decode(fs.readFileString(path)) catch …` (`TS2375`, `EK9202`); it now writes the head as the program it was, `(effect { return decode(try fs.readFileString(path)) }) catch …`.
 
 - Four spec quote guards (`TestEffectFnParameterDeclarationQuoted`, `TestInferredEffectDeclarationQuoted`, `TestPipeDeclarationAliasesQuoted`, `TestTopLevelAwaitVIPQuoted`) landed outside the pre-merge spec gate, so a spec edit could break them unseen; the gate now runs them.
 - Source-map fuzz checks could reject correct mappings after TypeScript erased annotations or assertions beside an untyped lookalike; they now compare each statement’s executable syntax as well as its written tokens.
@@ -886,6 +888,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Calling an Effect value, such as `body()` for an Effect parameter, type-checked as the Effect but ran it, so `Effect.provideService(flag ? body() : other, Tag, 1)` compiled and then died with `Not a valid effect`. An Effect is now not callable, as in TypeScript (`TS2349`), and `try body` runs it (VIP-5).
 - An unmarked function became an Effect function when its body ran an Effect or threw, or when its return type was an Effect, so `export function f() { return 7 }` could return an Effect and a local function named `provide` or `succeed` was read as a program; now only `effect` makes an Effect function (VIP-1), `try` outside effect code is `EK0501`, and an `effect` function's written return type must be an Effect type (`EK0106`).
 
+- The LSP benchmark could loop forever with an infinite hover count or crash with an empty sample set; it now rejects invalid counts and missing arguments before reading a project or starting the server.
+
 - The site's contrast check could lose its Chromium renderer under build-host memory pressure; it now audits each single-document page in place instead of opening a second renderer to combine the results.
 - VIP migration could remove `try` from calls returning tagged errors and turn their failures into success values; it now preserves execution of those Effects, while non-Effect Yieldables retain their `asEffect()` repair.
 
@@ -899,11 +903,17 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Oxlint scripts that select TypeScript files by extension skipped converted `.vibe` files and their `warn` rules; migration setup now includes them through ESLint with the same configured rule names, severities, source lines and warning policy, while keeping upstream `oxlint`.
 - A migrated `oxlint src` command stopped before ESLint when the directory contained only `.vibe` files; setup now permits an empty native pass so those files still receive lint checks.
 - Oxlint suppression comments stopped working when the migrate flow checked a converted file through ESLint; the generated parser now honors the same disable/enable scopes and rule aliases while preserving source lines.
+
+- The LSP benchmark counted declaration sidecars and other generated files as extra modules, then failed to open nonexistent source files; it now selects only the project's numbered source files.
+
+- The loader benchmark accepted fractional or infinite workload counts and silently disabled its timing guard with `--budget NaN`; it now reports invalid numeric options before creating a workspace.
 - Editor smoke validation rejected the safe `catch (cause: Cause)` migration; it now checks the replacement with `try exit(effect { ... })` and verifies that applying it adds no error.
 
 - The migrate flow planned a tool's config that uses Effect, such as `graphql.config.ts`, for `.vibe`, and the tool, which finds its config by name, then failed with `config file not found`. A `*.config.ts` file now stays `.ts`, and a plan that names one is refused.
 
 - Migration setup could lint native files excluded by the original Oxlint policy; its ESLint bridge now preserves `ignorePatterns`, source-extension globs and ordered negations.
+- Runtime import-check deadlines could silently fall below their child-process limits; a regression check now verifies the combined time budget.
+
 - With a `paths` alias such as `"@/*": ["./lib/*", "./src/*"]`, an import of `@/x.vibe` compiled against `lib/x.d.ts` but the loaders ran `src/x.vibe`; the loaders now resolve it as the compiler does, so both use `lib/x.d.ts`.
 
 - Compiler fuzz validation left selection modes around rare syntax untested; named splice fixtures now exercise every category and fuzz replay, source spans and donor choices.
@@ -936,6 +946,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The migrate flow's setup stopped with `the config's plugins is not an array literal` on a Vite config whose `plugins` array carries `as any`, and stopped on any test config it could not wire; it now looks through `as`, `satisfies`, `!` and parentheses, and names a config it cannot wire in its warnings and goes on.
 
 - The `Layer.mergeAll` dependency warning recommended unsupported `wire`; it now points to `Layer.provide` and `Layer.provideMerge`.
+- The private-path check failed a run with `ENOENT` when a parallel test removed a temporary file the check had listed; it now skips a file that no longer exists.
 - Cross-platform compiler builds could fail without naming the affected platform or its exit status; each target now keeps a completion record and silent failures are identified.
 
 - Chapter 2 did not say where a `Cause` with both a failure and a defect comes from after dropping the wrong `try.any` example; it now names `Effect.failCause` in TypeScript code.
@@ -1002,6 +1013,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A migration could need a second `vibelang --fix` run after an import cleanup exposed another fix; one invocation now repeats its passes, and reports any fixes left at its limit.
 
+- The contributor guide said there was no CI; it now points to the cached build graph and hosted merge-queue checks while keeping the maintainer-run pull-request checks explicit.
+
 
 - Checking documentation examples with a symlinked `TMPDIR` could stop with `Compiler failed` instead of reporting an example's type error; diagnostics now stay attached to their examples and later pages are checked.
 
@@ -1012,6 +1025,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `vibelang lint` with `effecttsgo/unnecessaryArrowBlock` on reported every `effect { return x }` block as an unnecessary arrow block (EK4823), and its quick fix wrote `effect x`, which does not parse; an effect block's braces are its syntax, so only real arrows and effect arrows are reported now.
 
 - Migrating a module could leave extensionless TypeScript imports unresolved; the migration now names the `.vibe` source and accepts its emitted declaration spelling only when both names resolve to the same module.
+
+- The `async` function refactor could keep an object as data instead of adopting its result, even after `return await` or through a `void` return type; it now declines uncertain returns and keeps existing value-discarding returns eligible.
 
 - Fixes for the unpublished 0.0.11 candidate were listed under 0.0.12; they now appear together under 0.0.11, and the release check compares that section with npm's last published version.
 
@@ -1284,6 +1299,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Iterator guidance promised cleanup for every JavaScript error; it now follows native closing decisions and distinguishes abandoned `Effect` execution from JavaScript unwinding, including defaults after exhaustion.
 
 - The pattern reference left parameter-default binding scopes undefined; it now assigns `EK0705` to an `is` binding needing that unsettled parameter home and shows explicit block-local repairs.
+
+- A required schema tuple position could disappear when its schema reference carried optional-key flags; it now reports `EK2109`, and `vibelang --fix` preserves existing decoding with explicit Effect codecs.
 
 - A writable interface or object-type property became `readonly` in emitted declarations, preventing TypeScript consumers from assigning to it; declarations now keep the source's property and index-signature modifiers, including optional and nested members.
 
@@ -1653,6 +1670,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 | `when -0:` or `when +0:` written to match either zero | Write `when 0:`, which matches both zeros. A signed zero now matches only that zero, and `EK4701` reports a `match` that relied on it to cover `0`. |
 | An explicitly `readonly` schema field referencing mutable or uncertain decoded key flags | `EK2109`: run `vibelang --fix` to retain the existing codec as an explicit `Schema.Struct` value. Nested value mutability is unchanged. |
 | A `match` arm that ends in a new line, in `,`, or at `}` without `;` | `EK0701`: run `vibelang --fix` to write the `;`. |
+| Required tuple positions used a schema reference with optional decoded keys | `EK2109`; run `vibelang --fix` to preserve the existing codec, declarations and decoding with explicit Effect codecs. Schema-error declarations keep their constructor and matcher behavior. |
 
 - EK4802's quick fix "Call it to run it" was offered in a function whose written contract rejects what the call runs, such as `return Exit.fail("data")` in an `unknown!!` function, and applying it added EK2001. It is now offered only where the contract accepts the call's failure, requirements and success.
 

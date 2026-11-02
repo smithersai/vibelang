@@ -66,7 +66,9 @@ The Go suites run from `typescript/tsc/`. Install Effect with `(cd experiments &
 
 Runtime `main` subprocess failures emit a `[runtime-child]` JSON record with the host, elapsed milliseconds, explicit timeout, signal and output byte counts. `timeoutReported` is Bun's child-timeout flag; Bun can terminate a child at the enclosing test deadline while this flag is `false`. Source, arguments, paths and output contents are omitted. Reproduce the bounded timeout regression with `(cd packages/runtime && bun test tests/subprocess.property.test.ts)`.
 
-The repository has no CI or commit statuses. For each pull request, a maintainer runs `sh scripts/e2e.sh` and the compiler case suite, `(cd typescript && sh vibelang/smoke.sh --jobs 8)`, and records the results in the pull request.
+Run the cached build graph locally with `sh scripts/ci.sh`; [the build graph](docs/maintainers/build.md) lists its targets and cache inputs. The merge queue runs its selected checks on build hosts and through `.github/workflows/mq-pregate.yml`, dispatched with the `mq-pregate` repository event.
+
+For each pull request, a maintainer runs `sh scripts/e2e.sh` and the compiler case suite, `(cd typescript && sh vibelang/smoke.sh --jobs 8)`, and records the results in the pull request.
 
 The end-to-end check runs setup, then scaffolds, installs, builds, runs and tests a temporary app, and stops at the first failing step. A compiler case is a directory under `typescript/vibelang/cases/`; `typescript/vibelang/harness.mjs` describes the format. A passing check doesn't prove every language feature works, so list the checks you ran, the ones that failed and the ones you couldn't run.
 
@@ -93,4 +95,4 @@ Start with [good first issues](https://github.com/smithersai/vibelang/issues?q=i
 
 Ask with the [question form](https://github.com/smithersai/vibelang/issues/new?template=question.yml). Report a vulnerability privately, never in an issue: see [SECURITY.md](.github/SECURITY.md).
 
-<sub>2,496 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
+<sub>2,555 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
