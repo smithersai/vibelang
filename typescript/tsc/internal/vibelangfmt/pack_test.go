@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -70,6 +71,15 @@ func TestWriteArchiveOwnsTemporaryFile(t *testing.T) {
 				entry.Close()
 				if err != nil || string(got) != string(payload) {
 					t.Fatalf("wrong archive content: %q, %v", got, err)
+				}
+			}
+			entries, err := os.ReadDir(dir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, entry := range entries {
+				if strings.HasPrefix(entry.Name(), ".plugin.zip-") {
+					t.Fatalf("owned temporary remains: %s", entry.Name())
 				}
 			}
 			if _, err := os.Stat(output + ".tmp"); !os.IsNotExist(err) {

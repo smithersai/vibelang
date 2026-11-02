@@ -72,12 +72,19 @@ func writeArchive(path, executable, name string) (string, error) {
 		return "", err
 	}
 	defer in.Close()
-	temporary := path + ".tmp"
+	// A sibling directory keeps the final rename on the same filesystem.
+	// Each writer owns its directory, including cleanup after a failed rename;
+	// overlapping builds must never truncate or remove another writer's zip.
+	temporaryDir, err := os.MkdirTemp(filepath.Dir(path), "."+filepath.Base(path)+"-")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(temporaryDir)
+	temporary := filepath.Join(temporaryDir, "archive.zip")
 	out, err := os.Create(temporary)
 	if err != nil {
 		return "", err
 	}
-	defer os.Remove(temporary)
 	hash := sha256.New()
 	archive := zip.NewWriter(io.MultiWriter(out, hash))
 	header := &zip.FileHeader{Name: name, Method: zip.Store}

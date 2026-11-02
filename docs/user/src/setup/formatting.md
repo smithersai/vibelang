@@ -101,7 +101,7 @@ Files containing the Unicode line and paragraph separators, `U+2028` and `U+2029
 
 ## From a VibeLang checkout
 
-`sh scripts/build-vibelang.sh` builds the compiler and writes the plugin beside it: `packages/compiler/dprint-plugin.json`, which names a zip archive of the compiler in `packages/compiler/native/`. A project whose `node_modules/vibelang` links to the checkout formats with the freshly built compiler. `vibelang --write-dprint-plugin <directory>` writes the plugin for another copy of the package.
+`sh scripts/build-vibelang.sh` builds the compiler and writes the plugin beside it: `packages/compiler/dprint-plugin.json`, which names a zip archive of the compiler in `packages/compiler/native/`. A project whose `node_modules/vibelang` links to the checkout formats with the freshly built compiler. `vibelang --write-dprint-plugin <directory>` writes the plugin for another copy of the package. Overlapping builds of the same compiler prepare separate temporary archives; one build cannot remove or overwrite another build's temporary archive.
 
 ## The editor
 
