@@ -1,4 +1,3 @@
-error EK4503: Path.sep belongs to the service implementation; read it with (try Path.Path).sep.
-error EK4503: Terminal.columns belongs to the service implementation; read it with (try Terminal.Terminal).columns.
-(try Terminal.Terminal).columns is a program, as the service declares it; try (try Terminal.Terminal).columns runs it.
-error EK4503: Path.Path.sep belongs to the service implementation; read it with (try Path.Path).sep.
+Write try Path.Path to read the service implementation, then read its sep member.
+Write try Terminal.Terminal to read the service implementation, then use its columns member: (try Terminal.Terminal).columns.
+Property 'sep' does not exist on type 'Service<Path, Path>'.

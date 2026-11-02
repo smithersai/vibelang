@@ -1,5 +1,75 @@
 [
   {
+    "code": "EK9211",
+    "case": "typescript/vibelang/cases/ref2-missing-provider.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied shorthand and required explicit-lookup migration; docs/design/vips/0034-compiler-and-tooling.md: diagnostic identities follow the owning rule"
+    },
+    "reason": "The explicit-lookup fixture port keeps its existing missing-provider rejection. The current compatibility identity is EK9211, as Appendix B states; EK3201 is reserved for the Effect version pin. This corrects the expected code, adding no rejected form."
+  },
+  {
+    "code": "EK9211",
+    "case": "typescript/vibelang/cases/vibelang-wire-discard.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied shorthand and required explicit-lookup migration; docs/design/vips/0034-compiler-and-tooling.md: diagnostic identities follow the owning rule"
+    },
+    "reason": "The explicit-lookup fixture port keeps its existing missing-provider rejection. The current compatibility identity is EK9211, as Appendix B states; EK3201 is reserved for the Effect version pin. This corrects the expected code, adding no rejected form."
+  },
+  {
+    "code": "EK9211",
+    "case": "typescript/vibelang/cases/vibelang-wire-missing.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied shorthand and required explicit-lookup migration; docs/design/vips/0034-compiler-and-tooling.md: diagnostic identities follow the owning rule"
+    },
+    "reason": "The explicit-lookup fixture port keeps its existing missing-provider rejection. The current compatibility identity is EK9211, as Appendix B states; EK3201 is reserved for the Effect version pin. This corrects the expected code, adding no rejected form."
+  },
+  {
+    "code": "EK9211",
+    "case": "typescript/vibelang/cases/ek3201-runner-services.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied service-call shorthand; the implementation note requires explicit implementation lookup migration"
+    },
+    "reason": "VIP-10 ports this fixture's service member calls to explicit lookups. The earlier diagnostic-identity-only allowance no longer describes its source; the accepted service migration authorizes this fixture port without changing the expected rejection."
+  },
+  {
+    "code": "EK9211",
+    "case": "typescript/vibelang/cases/entry-main-services.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied service-call shorthand; the implementation note requires explicit implementation lookup migration"
+    },
+    "reason": "VIP-10 ports this fixture's service member calls to explicit lookups. The earlier diagnostic-identity-only allowance no longer describes its source; the accepted service migration authorizes this fixture port without changing the expected rejection."
+  },
+  {
+    "code": "EK9211",
+    "case": "typescript/vibelang/cases/entry-platform-layer-services.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied service-call shorthand; the implementation note requires explicit implementation lookup migration"
+    },
+    "reason": "VIP-10 ports this fixture's service member calls to explicit lookups. The earlier diagnostic-identity-only allowance no longer describes its source; the accepted service migration authorizes this fixture port without changing the expected rejection."
+  },
+  {
+    "code": "TS2339",
+    "case": "typescript/vibelang/cases/module-service-values.fail",
+    "vip": "VIP-10",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0010-service-call-shorthand-denied.md: denied by Will (2026-10-28), 'There is no shorthand: get the service, then call it'; the VIP's implementation note retires the shorthand and EK4503"
+    },
+    "reason": "VIP-10 retires EK4503: a module's name no longer reads its service's members, so Path.sep and Terminal.columns are TypeScript's TS2339, with the note that writes try Path.Path. The case rejects the same reads at the same positions."
+  },
+  {
     "code": "EK9201",
     "case": "typescript/vibelang/cases/d362-service-default-contract.fail",
     "vip": "VIP-10",
@@ -925,7 +995,7 @@
     "severity": "error",
     "approval": {
       "by": "Will",
-      "reference": "Current user task “diag-identity”, items 1–2: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
+      "reference": "Current user task \u201cdiag-identity\u201d, items 1\u20132: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
     },
     "reason": "Rename the existing EK2104 layer setup order report; normalized-token differential proves its checker bodies and activation hooks unchanged. Existing severity, refusal and repair behavior are preserved.",
     "identityRenumbering": "docs/design/diagnostic-identity-renames.json"
@@ -936,7 +1006,7 @@
     "severity": "error",
     "approval": {
       "by": "Will",
-      "reference": "Current user task “diag-identity”, items 1–2: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
+      "reference": "Current user task \u201cdiag-identity\u201d, items 1\u20132: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
     },
     "reason": "Rename the existing EK2005 resumeWith contract report; normalized-token differential proves its checker bodies and activation hooks unchanged. Existing severity, refusal and repair behavior are preserved.",
     "identityRenumbering": "docs/design/diagnostic-identity-renames.json"
@@ -947,7 +1017,7 @@
     "severity": "error",
     "approval": {
       "by": "Will",
-      "reference": "Current user task “diag-identity”, items 1–2: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
+      "reference": "Current user task \u201cdiag-identity\u201d, items 1\u20132: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
     },
     "reason": "Rename the existing EK3201 legacy provider report; normalized-token differential proves its checker bodies and activation hooks unchanged. Existing severity, refusal and repair behavior are preserved.",
     "identityRenumbering": "docs/design/diagnostic-identity-renames.json"
@@ -958,7 +1028,7 @@
     "severity": "error",
     "approval": {
       "by": "Will",
-      "reference": "Current user task “diag-identity”, items 1–2: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
+      "reference": "Current user task \u201cdiag-identity\u201d, items 1\u20132: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
     },
     "reason": "Rename the existing EK3007 service-key arguments report; normalized-token differential proves its checker bodies and activation hooks unchanged. Existing severity, refusal and repair behavior are preserved.",
     "identityRenumbering": "docs/design/diagnostic-identity-renames.json"
@@ -969,7 +1039,7 @@
     "severity": "error",
     "approval": {
       "by": "Will",
-      "reference": "Current user task “diag-identity”, items 1–2: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
+      "reference": "Current user task \u201cdiag-identity\u201d, items 1\u20132: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
     },
     "reason": "Rename the existing EK9100 fatal mapper form choice report; normalized-token differential proves its checker bodies and activation hooks unchanged. Existing severity, refusal and repair behavior are preserved.",
     "identityRenumbering": "docs/design/diagnostic-identity-renames.json"
@@ -980,7 +1050,7 @@
     "severity": "error",
     "approval": {
       "by": "Will",
-      "reference": "Current user task “diag-identity”, items 1–2: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
+      "reference": "Current user task \u201cdiag-identity\u201d, items 1\u20132: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
     },
     "reason": "Rename the existing EK9101 fatal mapper data-method choice report; normalized-token differential proves its checker bodies and activation hooks unchanged. Existing severity, refusal and repair behavior are preserved.",
     "identityRenumbering": "docs/design/diagnostic-identity-renames.json"
@@ -1154,72 +1224,6 @@
     }
   },
   {
-    "code": "EK9211",
-    "vip": "VIP-34",
-    "case": "typescript/vibelang/cases/ek3201-runner-services.fail",
-    "approval": {
-      "by": "Will",
-      "reference": "Current diag-identity task, item 2: align code meanings and update every named test/document. This records that existing task authorization for unchanged-program expectation edits."
-    },
-    "reason": "This pre-existing failing fixture changes only diagnostic expectations or explanatory comments. All executable tokens and the full configuration match the parent; no new rejection is authorized.",
-    "identityOnly": {
-      "source": "main.vibe",
-      "sources": [
-        {
-          "source": "main.vibe",
-          "tokensSha256": "45290d9ee1c1efd91d4623f038904e7e162df2921066fe5e80b5a0105c20af8a"
-        },
-        {
-          "source": "stubs/platform-node/NodeRuntime.d.ts",
-          "tokensSha256": "c2eec5c695db5488041fdc6048934dc07c4bb7848bf0774aadd158385040a59a"
-        },
-        {
-          "source": "stubs/platform-node/index.d.ts",
-          "tokensSha256": "e5cf7a309fe4828dd182308061c03df01bc1c7b80c2351f38043ccde232ef3f5"
-        },
-        {
-          "source": "stubs/vitest/index.d.ts",
-          "tokensSha256": "fcf198eba21f0b1a785c293c32d590a3f5258b1721d92fefa6f2e255c443aa16"
-        }
-      ],
-      "tokensSha256": "45290d9ee1c1efd91d4623f038904e7e162df2921066fe5e80b5a0105c20af8a",
-      "configSha256": "549c0939a06acd68decd375e3a63ad8f83fa38101eeb5e60cf80345953d1ecd9"
-    }
-  },
-  {
-    "code": "TS2322",
-    "vip": "VIP-34",
-    "case": "typescript/vibelang/cases/ek3201-runner-services.fail",
-    "approval": {
-      "by": "Will",
-      "reference": "Current diag-identity task, item 2: align code meanings and update every named test/document. This records that existing task authorization for unchanged-program expectation edits."
-    },
-    "reason": "This pre-existing failing fixture changes only diagnostic expectations or explanatory comments. All executable tokens and the full configuration match the parent; no new rejection is authorized.",
-    "identityOnly": {
-      "source": "main.vibe",
-      "sources": [
-        {
-          "source": "main.vibe",
-          "tokensSha256": "45290d9ee1c1efd91d4623f038904e7e162df2921066fe5e80b5a0105c20af8a"
-        },
-        {
-          "source": "stubs/platform-node/NodeRuntime.d.ts",
-          "tokensSha256": "c2eec5c695db5488041fdc6048934dc07c4bb7848bf0774aadd158385040a59a"
-        },
-        {
-          "source": "stubs/platform-node/index.d.ts",
-          "tokensSha256": "e5cf7a309fe4828dd182308061c03df01bc1c7b80c2351f38043ccde232ef3f5"
-        },
-        {
-          "source": "stubs/vitest/index.d.ts",
-          "tokensSha256": "fcf198eba21f0b1a785c293c32d590a3f5258b1721d92fefa6f2e255c443aa16"
-        }
-      ],
-      "tokensSha256": "45290d9ee1c1efd91d4623f038904e7e162df2921066fe5e80b5a0105c20af8a",
-      "configSha256": "549c0939a06acd68decd375e3a63ad8f83fa38101eeb5e60cf80345953d1ecd9"
-    }
-  },
-  {
     "code": "EK4008",
     "vip": "VIP-34",
     "case": "typescript/vibelang/cases/ek4008-module-cjs.fail",
@@ -1238,463 +1242,6 @@
       ],
       "tokensSha256": "79b59cec05fb7ba5a35899bee489815a2146fdc93340820d9b77f8eb9ab47fe2",
       "configSha256": "78431f463d0bc3ed50ff14dac25dc665e70b793ef219db03cc2afb7298c0b67e"
-    }
-  },
-  {
-    "code": "EK9211",
-    "vip": "VIP-34",
-    "case": "typescript/vibelang/cases/entry-main-services.fail",
-    "approval": {
-      "by": "Will",
-      "reference": "Current diag-identity task, item 2: align code meanings and update every named test/document. This records that existing task authorization for unchanged-program expectation edits."
-    },
-    "reason": "This pre-existing failing fixture changes only diagnostic expectations or explanatory comments. All executable tokens and the full configuration match the parent; no new rejection is authorized.",
-    "identityOnly": {
-      "source": "main.vibe",
-      "sources": [
-        {
-          "source": "imported.vibe",
-          "tokensSha256": "8d57b1ac0186853fa8826e4592e30475dbec7e39b4ccde6526deccaca11c302d"
-        },
-        {
-          "source": "importer.vibe",
-          "tokensSha256": "feea12fb5cf70f64891b44a6267c05091df12a68ac27241c1f6efc0e327c8d98"
-        },
-        {
-          "source": "main.vibe",
-          "tokensSha256": "8d57b1ac0186853fa8826e4592e30475dbec7e39b4ccde6526deccaca11c302d"
-        },
-        {
-          "source": "namespaced.vibe",
-          "tokensSha256": "68eb0f95e627e20ad27ab9524508608cc238cb28d4f4b7ab0d3cfe52dffb0dab"
-        },
-        {
-          "source": "parameter.vibe",
-          "tokensSha256": "a67fb12d69e5fc915cee3c7a8ac923050500d515ba1d18da20be457ef04e0f5d"
-        },
-        {
-          "source": "partial.vibe",
-          "tokensSha256": "b3989a794b9226dfa9fbadff68c5ddcc106801acde330fdb776c04ccba6b1730"
-        },
-        {
-          "source": "provided.vibe",
-          "tokensSha256": "97a09b0bbfd8471cfc7d977042190a69ea613540147f59d426273c5eef902f6f"
-        },
-        {
-          "source": "reexported.vibe",
-          "tokensSha256": "4622965bcc8b2bfbe76cac4eb65b14b48abbccced66e47aa29ab5317b8977843"
-        },
-        {
-          "source": "runner.vibe",
-          "tokensSha256": "0e8817963591926d2b86d9aab9f24d58f84fbada41f835437de5081f599b8c00"
-        },
-        {
-          "source": "services.vibe",
-          "tokensSha256": "2b2292ba13e5745ca0ef4c3ea7d571b1d901cbcf75c4ed3010ca9e5ce9672d54"
-        },
-        {
-          "source": "sideeffect.vibe",
-          "tokensSha256": "b6801dc44ef1e42ce11b548a20b8a51548912d4e2ce64ed86005b722e6f3005a"
-        },
-        {
-          "source": "start.vibe",
-          "tokensSha256": "f589f63edbab227a97745aa68389ec1d5dd22ac49078d16a195f869223fe4e6b"
-        },
-        {
-          "source": "through.vibe",
-          "tokensSha256": "29ca0e83c03d568c67d7c063dea42dd015c71768a09647a30cfc3a4b89a8fbe9"
-        },
-        {
-          "source": "typeonly.vibe",
-          "tokensSha256": "37569fbeaa2ac7033eeb29f6ad4386babf6cd50ba1d1f5dd7142a03f1d998235"
-        },
-        {
-          "source": "unexported.vibe",
-          "tokensSha256": "0d92b3f9e05f8b8720d177420f941888726b7d98ce9ccbb9c77edda952a9765a"
-        }
-      ],
-      "tokensSha256": "8d57b1ac0186853fa8826e4592e30475dbec7e39b4ccde6526deccaca11c302d",
-      "configSha256": "4ca2423e2c1998779a3bf6663292772f9ce55e4fc79916421f0723c2b3f389c5"
-    }
-  },
-  {
-    "code": "EK9211",
-    "vip": "VIP-34",
-    "case": "typescript/vibelang/cases/entry-platform-layer-services.fail",
-    "approval": {
-      "by": "Will",
-      "reference": "Current diag-identity task, item 2: align code meanings and update every named test/document. This records that existing task authorization for unchanged-program expectation edits."
-    },
-    "reason": "This pre-existing failing fixture changes only diagnostic expectations or explanatory comments. All executable tokens and the full configuration match the parent; no new rejection is authorized.",
-    "identityOnly": {
-      "source": "mixed.vibe",
-      "sources": [
-        {
-          "source": "mixed.vibe",
-          "tokensSha256": "44a90efd8caac5248fdee906d2b82407d0c378a71cadb30d5c552962af1dc2bc"
-        },
-        {
-          "source": "platform.test.vibe",
-          "tokensSha256": "29e3f10b48fda87a9efeb0612e31e24be24e3213c837222860519b7b8643a335"
-        },
-        {
-          "source": "platform.vibe",
-          "tokensSha256": "6c52d5109ea5737b80ada19072d35189e3b5b0222dcc3d8d840d16b5efc67bc9"
-        },
-        {
-          "source": "provided.vibe",
-          "tokensSha256": "07cad524de5160978cdea005cf078dc94e3a8d19969436400ce79e7b3482d99f"
-        },
-        {
-          "source": "services.vibe",
-          "tokensSha256": "194c2081dbbc3958386063cb5afb6ec940cf9a430d61c8cb24ff75587dfcd226"
-        },
-        {
-          "source": "stubs/platform-node/NodeRuntime.d.ts",
-          "tokensSha256": "c2eec5c695db5488041fdc6048934dc07c4bb7848bf0774aadd158385040a59a"
-        },
-        {
-          "source": "stubs/platform-node/NodeServices.d.ts",
-          "tokensSha256": "323c367503c73682c6ed7ebc1d68e8dea2df3ae0aae05223e84f309f8583ba3f"
-        },
-        {
-          "source": "stubs/platform-node/index.d.ts",
-          "tokensSha256": "7846890b335419da0004d933b6c68b26e4d4a6847fe85b898626b752b183085a"
-        },
-        {
-          "source": "stubs/vitest/index.d.ts",
-          "tokensSha256": "fcf198eba21f0b1a785c293c32d590a3f5258b1721d92fefa6f2e255c443aa16"
-        },
-        {
-          "source": "uninstalled.vibe",
-          "tokensSha256": "186ee7ce0e9171262df6d30b725d10d66134bf141010b2045e4aa03604d1a09f"
-        },
-        {
-          "source": "unnamed.vibe",
-          "tokensSha256": "d2602e7a6be1db53ba3029cfcc45e803be9f670c57d1231a0bfa56eed5e1d394"
-        },
-        {
-          "source": "users.vibe",
-          "tokensSha256": "821cbe5540cf32d94329ecab44d0335a30601812d12668e5511743b7d13c76cb"
-        }
-      ],
-      "tokensSha256": "44a90efd8caac5248fdee906d2b82407d0c378a71cadb30d5c552962af1dc2bc",
-      "configSha256": "4ca2423e2c1998779a3bf6663292772f9ce55e4fc79916421f0723c2b3f389c5"
-    }
-  },
-  {
-    "code": "EK4801",
-    "vip": "VIP-34",
-    "case": "typescript/vibelang/cases/lsrules.fail",
-    "approval": {
-      "by": "Will",
-      "reference": "Current diag-identity task, item 2: align code meanings and update every named test/document. This records that existing task authorization for unchanged-program expectation edits."
-    },
-    "reason": "This pre-existing failing fixture changes only diagnostic expectations or explanatory comments. All executable tokens and the full configuration match the parent; no new rejection is authorized.",
-    "identityOnly": {
-      "source": "main.vibe",
-      "sources": [
-        {
-          "source": "main.vibe",
-          "tokensSha256": "3957cac81ebb87fcdabdcc7246ea4a2acb3756b1b5dad0565209bd4acb408d67"
-        }
-      ],
-      "tokensSha256": "3957cac81ebb87fcdabdcc7246ea4a2acb3756b1b5dad0565209bd4acb408d67",
-      "configSha256": "83014fb9a5798cfa9446a212771f4b1b102c4ea086b1b8ec79852e049ec6b675"
-    }
-  },
-  {
-    "code": "EK4804",
-    "vip": "VIP-34",
-    "case": "typescript/vibelang/cases/lsrules.fail",
-    "approval": {
-      "by": "Will",
-      "reference": "Current diag-identity task, item 2: align code meanings and update every named test/document. This records that existing task authorization for unchanged-program expectation edits."
-    },
-    "reason": "This pre-existing failing fixture changes only diagnostic expectations or explanatory comments. All executable tokens and the full configuration match the parent; no new rejection is authorized.",
-    "identityOnly": {
-      "source": "main.vibe",
-      "sources": [
-        {
-          "source": "main.vibe",
-          "tokensSha256": "3957cac81ebb87fcdabdcc7246ea4a2acb3756b1b5dad0565209bd4acb408d67"
-        }
-      ],
-      "tokensSha256": "3957cac81ebb87fcdabdcc7246ea4a2acb3756b1b5dad0565209bd4acb408d67",
-      "configSha256": "83014fb9a5798cfa9446a212771f4b1b102c4ea086b1b8ec79852e049ec6b675"
-    }
-  },
-  {
-    "code": "EK4805",
-    "vip": "VIP-34",
-    "case": "typescript/vibelang/cases/lsrules.fail",
-    "approval": {
-      "by": "Will",
-      "reference": "Current diag-identity task, item 2: align code meanings and update every named test/document. This records that existing task authorization for unchanged-program expectation edits."
-    },
-    "reason": "This pre-existing failing fixture changes only diagnostic expectations or explanatory comments. All executable tokens and the full configuration match the parent; no new rejection is authorized.",
-    "identityOnly": {
-      "source": "main.vibe",
-      "sources": [
-        {
-          "source": "main.vibe",
-          "tokensSha256": "3957cac81ebb87fcdabdcc7246ea4a2acb3756b1b5dad0565209bd4acb408d67"
-        }
-      ],
-      "tokensSha256": "3957cac81ebb87fcdabdcc7246ea4a2acb3756b1b5dad0565209bd4acb408d67",
-      "configSha256": "83014fb9a5798cfa9446a212771f4b1b102c4ea086b1b8ec79852e049ec6b675"
-    }
-  },
-  {
-    "code": "EK4806",
-    "vip": "VIP-34",
-    "case": "typescript/vibelang/cases/lsrules.fail",
-    "approval": {
-      "by": "Will",
-      "reference": "Current diag-identity task, item 2: align code meanings and update every named test/document. This records that existing task authorization for unchanged-program expectation edits."
-    },
-    "reason": "This pre-existing failing fixture changes only diagnostic expectations or explanatory comments. All executable tokens and the full configuration match the parent; no new rejection is authorized.",
-    "identityOnly": {
-      "source": "main.vibe",
-      "sources": [
-        {
-          "source": "main.vibe",
-          "tokensSha256": "3957cac81ebb87fcdabdcc7246ea4a2acb3756b1b5dad0565209bd4acb408d67"
-        }
-      ],
-      "tokensSha256": "3957cac81ebb87fcdabdcc7246ea4a2acb3756b1b5dad0565209bd4acb408d67",
-      "configSha256": "83014fb9a5798cfa9446a212771f4b1b102c4ea086b1b8ec79852e049ec6b675"
-    }
-  },
-  {
-    "code": "EK4807",
-    "vip": "VIP-34",
-    "case": "typescript/vibelang/cases/lsrules.fail",
-    "approval": {
-      "by": "Will",
-      "reference": "Current diag-identity task, item 2: align code meanings and update every named test/document. This records that existing task authorization for unchanged-program expectation edits."
-    },
-    "reason": "This pre-existing failing fixture changes only diagnostic expectations or explanatory comments. All executable tokens and the full configuration match the parent; no new rejection is authorized.",
-    "identityOnly": {
-      "source": "main.vibe",
-      "sources": [
-        {
-          "source": "main.vibe",
-          "tokensSha256": "3957cac81ebb87fcdabdcc7246ea4a2acb3756b1b5dad0565209bd4acb408d67"
-        }
-      ],
-      "tokensSha256": "3957cac81ebb87fcdabdcc7246ea4a2acb3756b1b5dad0565209bd4acb408d67",
-      "configSha256": "83014fb9a5798cfa9446a212771f4b1b102c4ea086b1b8ec79852e049ec6b675"
-    }
-  },
-  {
-    "code": "EK4816",
-    "vip": "VIP-34",
-    "case": "typescript/vibelang/cases/lsrules.fail",
-    "approval": {
-      "by": "Will",
-      "reference": "Current diag-identity task, item 2: align code meanings and update every named test/document. This records that existing task authorization for unchanged-program expectation edits."
-    },
-    "reason": "This pre-existing failing fixture changes only diagnostic expectations or explanatory comments. All executable tokens and the full configuration match the parent; no new rejection is authorized.",
-    "identityOnly": {
-      "source": "main.vibe",
-      "sources": [
-        {
-          "source": "main.vibe",
-          "tokensSha256": "3957cac81ebb87fcdabdcc7246ea4a2acb3756b1b5dad0565209bd4acb408d67"
-        }
-      ],
-      "tokensSha256": "3957cac81ebb87fcdabdcc7246ea4a2acb3756b1b5dad0565209bd4acb408d67",
-      "configSha256": "83014fb9a5798cfa9446a212771f4b1b102c4ea086b1b8ec79852e049ec6b675"
-    }
-  },
-  {
-    "code": "EK4808",
-    "vip": "VIP-34",
-    "case": "typescript/vibelang/cases/lsrules.fail",
-    "approval": {
-      "by": "Will",
-      "reference": "Current diag-identity task, item 2: align code meanings and update every named test/document. This records that existing task authorization for unchanged-program expectation edits."
-    },
-    "reason": "This pre-existing failing fixture changes only diagnostic expectations or explanatory comments. All executable tokens and the full configuration match the parent; no new rejection is authorized.",
-    "identityOnly": {
-      "source": "main.vibe",
-      "sources": [
-        {
-          "source": "main.vibe",
-          "tokensSha256": "3957cac81ebb87fcdabdcc7246ea4a2acb3756b1b5dad0565209bd4acb408d67"
-        }
-      ],
-      "tokensSha256": "3957cac81ebb87fcdabdcc7246ea4a2acb3756b1b5dad0565209bd4acb408d67",
-      "configSha256": "83014fb9a5798cfa9446a212771f4b1b102c4ea086b1b8ec79852e049ec6b675"
-    }
-  },
-  {
-    "code": "EK4809",
-    "vip": "VIP-34",
-    "case": "typescript/vibelang/cases/lsrules.fail",
-    "approval": {
-      "by": "Will",
-      "reference": "Current diag-identity task, item 2: align code meanings and update every named test/document. This records that existing task authorization for unchanged-program expectation edits."
-    },
-    "reason": "This pre-existing failing fixture changes only diagnostic expectations or explanatory comments. All executable tokens and the full configuration match the parent; no new rejection is authorized.",
-    "identityOnly": {
-      "source": "main.vibe",
-      "sources": [
-        {
-          "source": "main.vibe",
-          "tokensSha256": "3957cac81ebb87fcdabdcc7246ea4a2acb3756b1b5dad0565209bd4acb408d67"
-        }
-      ],
-      "tokensSha256": "3957cac81ebb87fcdabdcc7246ea4a2acb3756b1b5dad0565209bd4acb408d67",
-      "configSha256": "83014fb9a5798cfa9446a212771f4b1b102c4ea086b1b8ec79852e049ec6b675"
-    }
-  },
-  {
-    "code": "EK4810",
-    "vip": "VIP-34",
-    "case": "typescript/vibelang/cases/lsrules.fail",
-    "approval": {
-      "by": "Will",
-      "reference": "Current diag-identity task, item 2: align code meanings and update every named test/document. This records that existing task authorization for unchanged-program expectation edits."
-    },
-    "reason": "This pre-existing failing fixture changes only diagnostic expectations or explanatory comments. All executable tokens and the full configuration match the parent; no new rejection is authorized.",
-    "identityOnly": {
-      "source": "main.vibe",
-      "sources": [
-        {
-          "source": "main.vibe",
-          "tokensSha256": "3957cac81ebb87fcdabdcc7246ea4a2acb3756b1b5dad0565209bd4acb408d67"
-        }
-      ],
-      "tokensSha256": "3957cac81ebb87fcdabdcc7246ea4a2acb3756b1b5dad0565209bd4acb408d67",
-      "configSha256": "83014fb9a5798cfa9446a212771f4b1b102c4ea086b1b8ec79852e049ec6b675"
-    }
-  },
-  {
-    "code": "EK4811",
-    "vip": "VIP-34",
-    "case": "typescript/vibelang/cases/lsrules.fail",
-    "approval": {
-      "by": "Will",
-      "reference": "Current diag-identity task, item 2: align code meanings and update every named test/document. This records that existing task authorization for unchanged-program expectation edits."
-    },
-    "reason": "This pre-existing failing fixture changes only diagnostic expectations or explanatory comments. All executable tokens and the full configuration match the parent; no new rejection is authorized.",
-    "identityOnly": {
-      "source": "main.vibe",
-      "sources": [
-        {
-          "source": "main.vibe",
-          "tokensSha256": "3957cac81ebb87fcdabdcc7246ea4a2acb3756b1b5dad0565209bd4acb408d67"
-        }
-      ],
-      "tokensSha256": "3957cac81ebb87fcdabdcc7246ea4a2acb3756b1b5dad0565209bd4acb408d67",
-      "configSha256": "83014fb9a5798cfa9446a212771f4b1b102c4ea086b1b8ec79852e049ec6b675"
-    }
-  },
-  {
-    "code": "EK4812",
-    "vip": "VIP-34",
-    "case": "typescript/vibelang/cases/lsrules.fail",
-    "approval": {
-      "by": "Will",
-      "reference": "Current diag-identity task, item 2: align code meanings and update every named test/document. This records that existing task authorization for unchanged-program expectation edits."
-    },
-    "reason": "This pre-existing failing fixture changes only diagnostic expectations or explanatory comments. All executable tokens and the full configuration match the parent; no new rejection is authorized.",
-    "identityOnly": {
-      "source": "main.vibe",
-      "sources": [
-        {
-          "source": "main.vibe",
-          "tokensSha256": "3957cac81ebb87fcdabdcc7246ea4a2acb3756b1b5dad0565209bd4acb408d67"
-        }
-      ],
-      "tokensSha256": "3957cac81ebb87fcdabdcc7246ea4a2acb3756b1b5dad0565209bd4acb408d67",
-      "configSha256": "83014fb9a5798cfa9446a212771f4b1b102c4ea086b1b8ec79852e049ec6b675"
-    }
-  },
-  {
-    "code": "EK4813",
-    "vip": "VIP-34",
-    "case": "typescript/vibelang/cases/lsrules.fail",
-    "approval": {
-      "by": "Will",
-      "reference": "Current diag-identity task, item 2: align code meanings and update every named test/document. This records that existing task authorization for unchanged-program expectation edits."
-    },
-    "reason": "This pre-existing failing fixture changes only diagnostic expectations or explanatory comments. All executable tokens and the full configuration match the parent; no new rejection is authorized.",
-    "identityOnly": {
-      "source": "main.vibe",
-      "sources": [
-        {
-          "source": "main.vibe",
-          "tokensSha256": "3957cac81ebb87fcdabdcc7246ea4a2acb3756b1b5dad0565209bd4acb408d67"
-        }
-      ],
-      "tokensSha256": "3957cac81ebb87fcdabdcc7246ea4a2acb3756b1b5dad0565209bd4acb408d67",
-      "configSha256": "83014fb9a5798cfa9446a212771f4b1b102c4ea086b1b8ec79852e049ec6b675"
-    }
-  },
-  {
-    "code": "EK4817",
-    "vip": "VIP-34",
-    "case": "typescript/vibelang/cases/lsrules.fail",
-    "approval": {
-      "by": "Will",
-      "reference": "Current diag-identity task, item 2: align code meanings and update every named test/document. This records that existing task authorization for unchanged-program expectation edits."
-    },
-    "reason": "This pre-existing failing fixture changes only diagnostic expectations or explanatory comments. All executable tokens and the full configuration match the parent; no new rejection is authorized.",
-    "identityOnly": {
-      "source": "main.vibe",
-      "sources": [
-        {
-          "source": "main.vibe",
-          "tokensSha256": "3957cac81ebb87fcdabdcc7246ea4a2acb3756b1b5dad0565209bd4acb408d67"
-        }
-      ],
-      "tokensSha256": "3957cac81ebb87fcdabdcc7246ea4a2acb3756b1b5dad0565209bd4acb408d67",
-      "configSha256": "83014fb9a5798cfa9446a212771f4b1b102c4ea086b1b8ec79852e049ec6b675"
-    }
-  },
-  {
-    "code": "EK4815",
-    "vip": "VIP-34",
-    "case": "typescript/vibelang/cases/lsrules.fail",
-    "approval": {
-      "by": "Will",
-      "reference": "Current diag-identity task, item 2: align code meanings and update every named test/document. This records that existing task authorization for unchanged-program expectation edits."
-    },
-    "reason": "This pre-existing failing fixture changes only diagnostic expectations or explanatory comments. All executable tokens and the full configuration match the parent; no new rejection is authorized.",
-    "identityOnly": {
-      "source": "main.vibe",
-      "sources": [
-        {
-          "source": "main.vibe",
-          "tokensSha256": "3957cac81ebb87fcdabdcc7246ea4a2acb3756b1b5dad0565209bd4acb408d67"
-        }
-      ],
-      "tokensSha256": "3957cac81ebb87fcdabdcc7246ea4a2acb3756b1b5dad0565209bd4acb408d67",
-      "configSha256": "83014fb9a5798cfa9446a212771f4b1b102c4ea086b1b8ec79852e049ec6b675"
-    }
-  },
-  {
-    "code": "EK4818",
-    "vip": "VIP-34",
-    "case": "typescript/vibelang/cases/lsrules.fail",
-    "approval": {
-      "by": "Will",
-      "reference": "Current diag-identity task, item 2: align code meanings and update every named test/document. This records that existing task authorization for unchanged-program expectation edits."
-    },
-    "reason": "This pre-existing failing fixture changes only diagnostic expectations or explanatory comments. All executable tokens and the full configuration match the parent; no new rejection is authorized.",
-    "identityOnly": {
-      "source": "main.vibe",
-      "sources": [
-        {
-          "source": "main.vibe",
-          "tokensSha256": "3957cac81ebb87fcdabdcc7246ea4a2acb3756b1b5dad0565209bd4acb408d67"
-        }
-      ],
-      "tokensSha256": "3957cac81ebb87fcdabdcc7246ea4a2acb3756b1b5dad0565209bd4acb408d67",
-      "configSha256": "83014fb9a5798cfa9446a212771f4b1b102c4ea086b1b8ec79852e049ec6b675"
     }
   },
   {
@@ -1777,7 +1324,7 @@
       "by": "Will",
       "reference": "docs/design/vips/0040-module-declarations.md: Status: accepted, 2026-11-03. Will: \"Are you asking me if I accept a vip I already asked you to add?\" Replaces denied [VIP-25](0025-inline-modules-denied.md). See the restricted syntax and module-name binding rules. This cites existing explicit acceptance, not a new approval."
     },
-    "reason": "Accepted VIP-40 makes a module name a lexical binding: a second module of the same name, or a module beside a value binding, is the error EK4005. This fixture witnesses Appendix B’s EK4408 retirement sentence. Choosing which binding to rename can change identity or API, so no automatic rename is asserted."
+    "reason": "Accepted VIP-40 makes a module name a lexical binding: a second module of the same name, or a module beside a value binding, is the error EK4005. This fixture witnesses Appendix B\u2019s EK4408 retirement sentence. Choosing which binding to rename can change identity or API, so no automatic rename is asserted."
   },
   {
     "code": "TS2345",

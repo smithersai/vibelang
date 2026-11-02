@@ -1,4 +1,4 @@
-// expect: EK3201
+// expect: EK9211
 // Reference program 2 / D27: no provider for Smtp. wire(MailerLive) leaves Smtp in the layer's
 // inputs, as Layer.provide would, and the compiler reports it with its dependency path where the
 // program's R must be empty: here, at the runner.

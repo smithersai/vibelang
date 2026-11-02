@@ -130,7 +130,7 @@ A service can declare `static readonly defaultValue = () => implementation` to s
 
 A reference declared with a member body has `Flags.Shape` for its implementation and `typeof Flags` for its key value, but no `Flags` identifier type. Writing `let value: Flags` reports `TS2749`, as for Effect's `Context.Reference`; references do not appear in `R`. An import type such as `import("./flags.vibe").Flags` reports `TS2694`; use `typeof import("./flags.vibe").Flags` for the key value.
 
-A service key has its native TypeScript properties. `Users.find(id)` does not look up an implementation and reports TypeScript's missing-property error; `Users.name` and `Users.key` still read the key. Write `(try Users).find(id)` to build a member's Effect, and `try (try Users).find(id)` to run it. There is no `EK4503` replacement for native property diagnostics.
+A service key has its native TypeScript properties. `Users.find(id)` does not look up an implementation and reports TypeScript's missing-property error; `Users.name` and `Users.key` still read the key. Write `(try Users).find(id)` to build a member's Effect, and `try (try Users).find(id)` to run it. The old `EK4503` is retired; native property diagnostics apply.
 
 `try Sequence` looks up the implementation, to capture it or read value members; `try sequence.next()` runs its Effect-returning method. Supply every requirement before running the program.
 

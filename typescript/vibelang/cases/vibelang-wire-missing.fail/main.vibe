@@ -1,4 +1,4 @@
-// expect: EK3201
+// expect: EK9211
 // An input that no wire argument provides stays in the layer's In, as with
 // Layer.provide, and is reported where the program's requirements must be
 // empty: here, at the runner (D27).

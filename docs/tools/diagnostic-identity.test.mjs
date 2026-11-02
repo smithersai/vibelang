@@ -334,3 +334,13 @@ test("declared context categories never weaken the registry default or unrelated
  const wrong=compilerCategories([{path:"core/registry.go",text:'var VibeDiagnosticCategories = map[string]string{"EK1010":"warning"}'}])
  assert.equal(auditCategories(wrong,new Map([["EK1010","error: throw. Category variants: `error`, `warning`."]])).length,1)
 })
+
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | The old `EK4503` is retired and will never be reassigned: native TypeScript property diagnostics replace the denied service shorthand (VIP-10).
+test("retired service-member diagnostics have no active row or archive replay", async () => {
+ const {loadIdentity}=await import("./diagnostic-identity.mjs")
+ const audit=loadIdentity(repository)
+ assert.equal(audit.registered.has("EK4503"),false)
+ assert.equal(audit.appendix.has("EK4503"),false)
+ const fixtures=JSON.parse(readFileSync(new URL("../../typescript/vibelang/cases/appendix-diagnostic-identities/examples.json",import.meta.url),"utf8"))
+ assert.equal(fixtures.some(example=>example.code==="EK4503"),false)
+})

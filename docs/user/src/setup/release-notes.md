@@ -34,6 +34,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A compiler regression check still expected retired handler syntax to run unchanged; it now checks `EK3501`, preserving service migration and refusal of continuation-dependent rewrites.
 - Diagnostic-advice checks omitted clock and randomness replacements; they now typecheck every replacement against the pinned Effect declarations.
 - Conformance checks could treat supported `async match` expressions returning a `Promise` as an unimplemented feature. They now enforce the required `EK0404` diagnostic as a normal regression.
+- The diagnostic reference still listed the retired `EK4503` service error and linked to a removed example; it now records its retirement, and missing-provider examples use the current `EK9211` diagnostic.
 - Moving an exported `unique symbol` into a private module could make an unchanged API fail migration verification. The checker now follows its public export path while still rejecting changed symbol keys, member types and documentation.
 
 ## 0.0.11
