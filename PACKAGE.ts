@@ -1,6 +1,5 @@
 import { Smithers as S } from "@smthrs/targets"
 import { fuzzTopics } from "./fuzz-topics.ts"
-import { vibelangTopics } from "./vibelang-topics.ts"
 import { migrationSources } from "./migration-inputs.ts"
 import { Package as Packages } from "./packages/PACKAGE.ts"
 import { Package as Typescript } from "./typescript/PACKAGE.ts"
@@ -274,25 +273,6 @@ const fuzzTopicTargets = Object.fromEntries(
   ])
 )
 
-// One target per internal/vibelang test topic (vibelang-topics.ts): the Test
-// functions of internal/vibelang/<topic>_test.go and <topic>_*_test.go. The
-// merge gate runs a topic for a change to a source or test file of
-// internal/vibelang the topic names (ls/gate-cases.sh), where //:go-vibelang
-// runs only post-merge: c87f85092cc6 changed fix.go and main 0d0c6b46ee6e went
-// RED on TestFixReachesFixedPoint. Post-merge names its labels, so these
-// targets run only when selected.
-const vibelangTopicTargets = Object.fromEntries(
-  [...vibelangTopics].map(([topic, names]) => [
-    `go-vibelang-topic-${topic}`,
-    goVibelang(
-      `The ${topic} Go tests of internal/vibelang: ${names.join(", ")}.`,
-      `CGO_ENABLED=0 ${effect} go test -count=1 -timeout=15m -trimpath -run '^(${names.join("|")})$' ./internal/vibelang/`,
-      [Tsc["vibelang-files"]],
-      "30m"
-    )
-  ])
-)
-
 const targets = {
   "go-vibelangfuzz-hangs": pendingHangs,
   "site-spec-links": siteSpecLinks,
@@ -429,4 +409,4 @@ const targets = {
 }
 
 export const Package = S.Package({ targets: {
-    "migration-sources": migrationSources, tree, "design-files": design, ...targets, ...fuzzTopicTargets, ...vibelangTopicTargets } })
+    "migration-sources": migrationSources, tree, "design-files": design, ...targets, ...fuzzTopicTargets } })
