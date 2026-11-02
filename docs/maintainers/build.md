@@ -154,6 +154,8 @@ hand, rebuild it after changing compiler sources.
   :go-vibelangfuzz-config       the project-settings oracles over every case's vibelang section (merge gate)
   :go-vibelangfuzz-topic-<t>    the Fuzz functions of internal/vibelangfuzz/<t>_*_test.go (merge gate, when the
                                 change edits a compiler source or fuzz test of topic <t>)
+  :go-vibelang-topic-<t>        the Test functions of internal/vibelang/<t>_test.go and <t>_*_test.go (merge gate,
+                                when the change edits a source or test file of internal/vibelang of topic <t>)
   :release :snippets :tokens :forms :docs-tools :docs-check :site-spec-links
   :site-contrast                npm ci and a production build of a private copy of site/, then the contrast audit
   :design-files                 Filegroup: docs/design

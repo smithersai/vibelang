@@ -11,6 +11,7 @@ function targets() {
   const group = prefix => new Proxy({}, { get: (_, name) => prefix + "." + name })
   const context = {
     fuzzTopics: new Map([["prelude", ["FuzzPreludeGlobalMember", "FuzzPreludeShadowed"]]]),
+    vibelangTopics: new Map([["fix", ["TestFixReachesFixedPoint", "TestFixArguments"]]]),
     migrationSources: { migrationSources: true },
     S: { Filegroup: spec => spec, glob: glob => glob, file: file => file,
       Shell: { Test: spec => spec }, Host: { bin: bin => bin }, Package: spec => spec },
@@ -61,5 +62,22 @@ test("the fuzz topics name every Fuzz function by its file's first word", async 
   for (const [topic, names] of fuzzTopics) {
     assert.match(topic, /^[a-z0-9]+$/)
     for (const name of names) assert.match(name, /^Fuzz[A-Za-z0-9_]+$/)
+  }
+})
+
+test("each internal/vibelang test topic runs its Test functions", () => {
+  const fix = targets()["go-vibelang-topic-fix"]
+  assert.ok(fix, "the merge gate selects //:go-vibelang-topic-<topic> (ls/gate-cases.sh)")
+  assert.match(fix.shell, /go test -count=1 .*-run '\^\(TestFixReachesFixedPoint\|TestFixArguments\)\$' \.\/internal\/vibelang\/$/)
+  assert.ok(fix.data.includes("tsc.vibelang-files"))
+})
+
+test("the internal/vibelang topics name every Test function by its file's first word", async () => {
+  const { vibelangTopics } = await import("../vibelang-topics.ts")
+  assert.ok(vibelangTopics.get("fix").includes("TestFixReachesFixedPoint"), "fix_fixedpoint_test.go")
+  assert.ok(vibelangTopics.get("tsforms").includes("TestTypeScriptFormCasesFix"), "tsforms_test.go")
+  for (const [topic, names] of vibelangTopics) {
+    assert.match(topic, /^[a-z0-9]+$/)
+    for (const name of names) assert.match(name, /^Test[A-Za-z0-9_]+$/)
   }
 })
