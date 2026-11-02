@@ -18,6 +18,7 @@
 //                              variables run.sh sets; prints one line per case
 import { mapperEntry } from "./mapper-options"
 import { parseJsonc } from "../../../compiler/cache.mjs"
+import { exec } from "./command"
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
@@ -64,15 +65,6 @@ function walk(dir: string): string[] {
   }
   visit("")
   return files
-}
-
-async function exec(argv: string[], cwd: string, timeoutMs: number): Promise<{ code: number | string; stdout: string; stderr: string }> {
-  const proc = Bun.spawn(argv, { cwd, stdout: "pipe", stderr: "pipe" })
-  const timer = setTimeout(() => proc.kill("SIGKILL"), timeoutMs)
-  const [stdout, stderr] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()])
-  const code = await proc.exited
-  clearTimeout(timer)
-  return { code: proc.signalCode ? `killed by ${proc.signalCode}` : code, stdout, stderr }
 }
 
 async function pool<T>(items: T[], size: number, fn: (item: T) => Promise<void>) {

@@ -20,6 +20,7 @@ import { runDocs } from "./docs.ts"
 import { linkModules } from "../../../../docs/tools/check-snippets.ts"
 import { mapperEntry } from "./mapper-options"
 import { parseJsonc } from "../../../compiler/cache.mjs"
+import { exec as runCommand } from "./command"
 import fs from "node:fs"
 import { createRequire, isBuiltin } from "node:module"
 import os from "node:os"
@@ -106,12 +107,8 @@ type Exec = { code: number | string; output: string; ms: number }
 
 async function exec(argv: string[], cwd: string, timeoutMs = 180_000): Promise<Exec> {
   const t0 = performance.now()
-  const proc = Bun.spawn(argv, { cwd, stdout: "pipe", stderr: "pipe" })
-  const timer = setTimeout(() => proc.kill("SIGKILL"), timeoutMs)
-  const [stdout, stderr] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()])
-  const code = await proc.exited
-  clearTimeout(timer)
-  return { code: proc.signalCode ? `killed by ${proc.signalCode}` : code, output: stdout + stderr, ms: Math.round(performance.now() - t0) }
+  const { code, stdout, stderr } = await runCommand(argv, cwd, timeoutMs)
+  return { code, output: stdout + stderr, ms: Math.round(performance.now() - t0) }
 }
 
 async function pool<T>(items: T[], size: number, fn: (item: T) => Promise<void>) {

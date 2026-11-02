@@ -821,6 +821,9 @@ and frame chunk sizes, including reversed response order.
 
 The mapper parity harness shares `parseJsonc` from `packages/compiler/cache.mjs` between its declaration and runtime columns. Configuration strings remain literal, including commas before `]` or `}`, comment lookalikes and escaped quotes; comments, trailing commas outside strings and an initial byte-order mark are accepted. `node --test scripts/mapper-parity-jsonc.test.mjs` checks generated JSON data and compiles and runs real TypeScript fixtures through the runtime column with the mapper package's pinned stock compiler and Effect install. It also checks the emitted paths against the source configuration. The release target includes this suite.
 
+
+The declaration and runtime columns of mapper parity share `packages/ts-mapper/test/parity/command.ts`. A command's deadline covers both process exit and stdout/stderr draining. On POSIX, the command owns a separate process group; a timeout stops that group, including descendants holding inherited pipes after their parent exits. The reported status names the timeout even when the parent exited `0`; spontaneous signals keep their signal status, and ordinary commands keep their exit code and separate output streams. Windows retains direct-child termination. `node --test scripts/mapper-parity-command.test.mjs` checks real process trees, generated stream ownership and nesting, partial output, isolated concurrent commands and spawn failures; the release target runs it.
+
 ## Known gaps
 
 - **Sandboxing.** The targets run with `sandbox: "none"`: the harness writes
