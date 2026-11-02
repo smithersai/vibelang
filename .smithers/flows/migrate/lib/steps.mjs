@@ -20,6 +20,7 @@ import { restoreViteScripts } from "./vite-config.mjs"
 import { applyState, durableWrite, prepareReferences, prepareState, saveState } from "./codemod-state.mjs"
 import { checkSelectorEdits, restoreSourceLiterals, rewriteSourceLiterals } from "./source-paths.mjs"
 import { splitBatchPlatform } from "./platform.mjs"
+import { restoreBuildEntrypoints } from "./build-entrypoints.mjs"
 import { toolchainKeepsFunctionsPlain } from "./plain.mjs"
 import { check, newErrors, styleProblems, summarize } from "./diagnostics.mjs"
 import { preservedErrorAdvisories } from "./preserved-errors.mjs"
@@ -1307,7 +1308,7 @@ export async function codemod(options) {
     const owned = Wire.ownedPaths(t)
     const manifests = tracked.filter((file) => /(?:^|\/)package\.json$/.test(file) && !/(?:^|\/)node_modules\//.test(file) && owned(file))
     const flipped = await toolchainKeepsFunctionsPlain({ compiler: compilerOf(config), modules: join(t, config.packages[0].dir, "node_modules"), dir: join(p.batch(b), "probe") })
-    state = prepareState(t, files, await importers(t), { ts: typeScriptOf(config), aliases: aliasesOf(config), references: references(), catalog: [...new Set([...tracked, ...references()])], bareEntries: bareVibeExports(t, manifests), plainGroups: plainGroupsOf(config, files, typeScriptOf(config), { flipped }) })
+    state = prepareState(t, files, await importers(t), { ts: typeScriptOf(config), aliases: aliasesOf(config), references: references(), catalog: [...new Set([...tracked, ...references()])], bareEntries: bareVibeExports(t, manifests), tracked, plainGroups: plainGroupsOf(config, files, typeScriptOf(config), { flipped }) })
     state.toolConfigReferences = 1
     state.referenceScan.toolConfigFiles = toolConfigs.length
     saveState(p.codemodState(b), state)
@@ -1357,6 +1358,7 @@ export async function codemod(options) {
     saveState(p.codemodState(b), state)
   }
   const { renames, exportEdits, importEdits, refEdits = [], scriptEdits = [], referenceEdits = [], referenceWarnings = [], referenceScan, selectorChecks = [], plain = {}, functionModel = "unprobed" } = state
+  const buildEntries = state.buildEntries ?? { edits: [], warnings: [] }
   const platform = state.platform ?? { splits: [], refused: [] }
   const attempt = state.attempts.length + 1
   state.attempts.push({ attempt, compiler: compilerOf(config), startedAt: new Date().toISOString(), projects: [] })
@@ -1400,7 +1402,7 @@ export async function codemod(options) {
   const emittedJs = await emitMigratedJs(config, t, join(p.batch(b), "logs"))
   state.attempts.at(-1).finishedAt = new Date().toISOString()
   saveState(p.codemodState(b), state)
-  const result = { batch: b, at: new Date().toISOString(), files, platform: platformResult, formatted, plain, functionModel, renames, exportEdits, importEdits, refEdits, scriptEdits, referenceEdits, referenceWarnings, referenceScan, selectorChecks, fix: { settled, rounds, byFile, totals: rewriteTotals(byFile), refused, restored: [...new Set(restored)].sort() } }
+  const result = { batch: b, at: new Date().toISOString(), files, platform: platformResult, formatted, plain, functionModel, renames, exportEdits, buildEntries, importEdits, refEdits, scriptEdits, referenceEdits, referenceWarnings, referenceScan, selectorChecks, fix: { settled, rounds, byFile, totals: rewriteTotals(byFile), refused, restored: [...new Set(restored)].sort() } }
   result.emittedJs = emittedJs
   durableWrite(p.codemod(b), JSON.stringify(result, null, 2) + "\n")
   return result
@@ -1540,6 +1542,9 @@ export async function revertMany(options) {
     const cm = readJsonIf(p.codemod(source.batch)) ?? readJsonIf(p.codemodState(source.batch)) ?? {}
     const split = cm.platform?.splits?.find(s => s.file === ts)
     if (split) rmSync(join(config.target, split.platform), { force: true })
+    const recordedBuildEntries = cm.buildEntries?.edits ?? []
+    const buildEntryEdits = recordedBuildEntries.some(edit => edit.source === ts)
+      ? restoreBuildEntrypoints(config.target, recordedBuildEntries, ts, typeScriptOf(config)) : []
     const exportEdits = restoreExports(config.target, cm.exportEdits ?? [], ts)
     const scriptEdits = restoreViteScripts(config.target, cm.scriptEdits ?? [], ts)
     // A newly migrated consumer keeps its source spelling; an existing
@@ -1574,7 +1579,7 @@ export async function revertMany(options) {
       if (rewired.edits.length) writeFileSync(join(config.target, ts), rewired.text)
       referenceEdits.push(...rewired.edits)
     }
-    results.push({ file: ts, reason, at: new Date().toISOString(), ...(source.batch === b ? {} : { from: source.batch }), exportEdits, importEdits, scriptEdits, referenceEdits, ...(cm.refEdits ? { refEdits } : {}) })
+    results.push({ file: ts, reason, at: new Date().toISOString(), ...(source.batch === b ? {} : { from: source.batch }), exportEdits, ...(buildEntryEdits.length ? { buildEntryEdits } : {}), importEdits, scriptEdits, referenceEdits, ...(cm.refEdits ? { refEdits } : {}) })
   }
   const restored = results.flatMap(result => result.importEdits)
   const importEdits = rewriteImports(config.target, await importers(config.target), prepared.map(x => x.ts), aliases, { preserve: restored })
@@ -1910,7 +1915,7 @@ const summaries = {
   "upgrade-effect": (r) => (r.skipped ? `skipped: ${r.skipped}` : `Effect ${r.effect.from} -> ${r.effect.to} in ${r.changed.length} files; ${r.regressions && (r.regressions.newFailures.length || r.regressions.missing.length) ? "tests regressed (a setup issue)" : testsPassed(r.tests) ? "tests pass as before" : r.tests?.code === undefined ? "test command status not recorded" : "tests still FAIL (exit " + r.tests.code + ", " + failedCount(r.tests) + " failing tests)"}`),
   setup: (r) => `baseline: ${r.tests.passed ?? "?"} tests pass, ${r.tests.failed.length} fail; ${r.inventory.effectValueFiles} Effect files`,
   plan: (r) => (r.accepted ? `${r.plan.batches.length} batches` : `waiting for a plan at ${r.output}`),
-  codemod: (r) => `${r.renames.length} renamed, ${r.importEdits.length} imports rewritten, ${Object.values(r.fix.totals).reduce((a, b) => a + b, 0)} fixes, ${r.fix.refused.length} refused`,
+  codemod: (r) => `${r.renames.length} renamed, ${r.importEdits.length} imports rewritten, ${Object.values(r.fix.totals).reduce((a, b) => a + b, 0)} fixes, ${r.fix.refused.length} refused${r.buildEntries?.edits.length || r.buildEntries?.warnings.length ? `, ${r.buildEntries.edits.length} build entries updated, ${r.buildEntries.warnings.length} build warnings` : ""}`,
   compile: (r) => `${r.summary.batch.errors} errors, ${r.summary.batch.warnings} warnings in the batch; ${r.newErrors.length} new errors`,
   repair: (r) => (r.done === false ? `waiting for the repair agent: ${r.prompt}` : `repaired; recorded ${JSON.stringify(r.recorded)}`),
   verify: (r) => (r.ok ? (testsPassed(r.tests) ? "pass" : r.tests?.code === undefined ? "baseline matched; test status unknown" : "baseline matched; tests FAIL") : "FAIL") + ": " + JSON.stringify(r.checks),

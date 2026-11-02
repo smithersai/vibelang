@@ -1,0 +1,8 @@
+{
+  "key": "codemod-gap:bundler-entrypoint-renames",
+  "config": "export default { build: { lib: { entry: \"src/entry.ts\" } } };\n",
+  "source": "export const marker = 73;\n",
+  "from": "src/entry.ts",
+  "to": "src/entry.vibe",
+  "packConfig": "import { defineConfig } from \"vite-plus\";\nexport default defineConfig({ pack: [{ entry: [\"src/leaf.ts\"], ...(launch ? { onSuccess: \"node launch.mjs\" } : {}) }, { entry: [\"src/worker.ts\"] }] });\n"
+}

@@ -14,6 +14,8 @@ export function repairPrompt({ context, run, batch, target, packages, test, file
   const contextsOf = proof => proof.kind === "source-regex" ? proof.contexts.map(({ before, after, mapped, ...counts }) => counts) : proof.contexts
   const selectorChecks = (codemod.selectorChecks ?? []).map(proof => "- " + proof.file + ":" + proof.line + " " + (proof.pass ? "PASS" : "FAIL") + ": " + JSON.stringify(contextsOf(proof)))
   const referenceWarnings = (codemod.referenceWarnings ?? []).map(w => "- " + w)
+  const buildEdits = (codemod.buildEntries?.edits ?? []).map(edit => `- ${edit.file}: \`${edit.from}\` -> \`${edit.to}\``)
+  const buildWarnings = (codemod.buildEntries?.warnings ?? []).map(warning => `- ${warning}`)
   const batchDiagnostics = compile.diagnostics.filter((d) => files.includes(d.file))
   const elsewhere = compile.newErrors.filter((d) => !files.includes(d.file))
   return `${context.trimEnd()}
@@ -46,6 +48,7 @@ ${selectorChecks.length ? "Selected-set identity (include the exact lists in the
 
 Keep existing test assertions, expected values, budgets, skips and names. In a test, change only filename literals or selector literals with a passing selected-set identity proof, and list each path-only diff and proof in the batch progress. Exclude generated declaration sidecars. Record an unsupported selector as a codemod gap.
 
+${buildEdits.length || buildWarnings.length ? `Build inputs updated:\n\n${buildEdits.length ? buildEdits.join("\n") : "- none"}\n\nBuild inputs requiring review:\n\n${buildWarnings.length ? buildWarnings.join("\n") : "- none"}\n` : ""}
 ## What the compiler reports
 
 ${batchDiagnostics.length ? diagnosticLines(batchDiagnostics).join("\n") : "No diagnostic in the batch's files."}

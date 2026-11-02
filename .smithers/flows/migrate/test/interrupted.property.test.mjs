@@ -269,3 +269,29 @@ test("foldkit-74: one-pass rename replays every durable prefix and bulk-reverts 
     }finally{rmSync(f.root,{recursive:true,force:true})}
   }),{numRuns:8,seed:740011})
 })
+
+// 8e01612ea773 on the journal: a literal Vite build input that names a renamed
+// module is part of the prepared edits, so a codemod whose compiler dies
+// resumes with it and revert takes it back.
+test("a killed codemod's journal carries its Vite build entries for resume and revert", async () => {
+  const vite = 'export default { build: { lib: { entry: "src/b.ts" } } };\n'
+  const f = await fixture({
+    "src/b.ts": "export const b = 1\n",
+    "src/a.ts": 'import { b } from "./b.ts"\nexport const a = b\n',
+    "vite.config.ts": vite
+  }, ["src/b.ts"])
+  try {
+    writeFileSync(f.compiler, "#!/bin/sh\nif [ -f probe.vibe ]; then mkdir -p out; printf '%s\\n' 'export declare const f: () => Effect.Effect<number, never, never>;' > out/probe.d.ts; exit 0; fi\nkill -KILL $$\n", { mode: 0o755 })
+    await assert.rejects(codemod({ run: f.run }), /did not finish/)
+    assert.deepEqual(readJson(paths(f.run).codemodState("01")).buildEntries.edits, [{ file: "vite.config.ts", source: "src/b.ts", from: "src/b.ts", to: "src/b.vibe" }])
+    assert.equal(readFileSync(join(f.target, "vite.config.ts"), "utf8"), vite.replace("src/b.ts", "src/b.vibe"))
+    writeFileSync(f.compiler, "#!/bin/sh\nif [ -f probe.vibe ]; then mkdir -p out; printf '%s\\n' 'export declare const f: () => Effect.Effect<number, never, never>;' > out/probe.d.ts; exit 0; fi\necho 'vibelang --fix: 0 fixes in 0 files.'\n", { mode: 0o755 })
+    const result = await codemod({ run: f.run })
+    assert.equal(result.buildEntries.edits.length, 1)
+    assert.equal(readFileSync(join(f.target, "vite.config.ts"), "utf8"), vite.replace("src/b.ts", "src/b.vibe"))
+    await revert({ run: f.run, batch: "01", file: "src/b.vibe", reason: "build entry recovery" })
+    assert.equal(readFileSync(join(f.target, "vite.config.ts"), "utf8"), vite)
+  } finally {
+    rmSync(f.root, { recursive: true, force: true })
+  }
+})
