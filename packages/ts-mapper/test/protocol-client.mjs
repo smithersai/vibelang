@@ -5,35 +5,61 @@ import { pathToFileURL } from "node:url"
 
 export function client(binary, args, cwd) {
   const child = spawn(binary, args, { cwd, stdio: ["pipe", "pipe", "pipe"] })
+  const closed = new Promise(resolve => child.once("close", resolve))
   let buffer = Buffer.alloc(0), stderr = "", nextId = 0, stopped = false
+  let failure, closing
   const pending = new Map()
   const log = () => `${binary}: pending ${[...pending.values()].map(p => p.method).join(", ")}\n${stderr}`
-  function fail(error) {
-    for (const p of pending.values()) { clearTimeout(p.timer); p.reject(error) }
+  const requestError = (id, method) => new Error(`RPC request ${id} (${method}): ${failure}`)
+  function fail(reason) {
+    failure ??= reason
+    for (const [id, p] of pending) { clearTimeout(p.timer); p.reject(requestError(id, p.method)) }
     pending.clear()
   }
   function send(message) {
+    if (failure) throw new Error(`RPC transport unavailable: ${failure}`)
     const body = Buffer.from(JSON.stringify({ jsonrpc: "2.0", ...message }))
     child.stdin.write(`Content-Length: ${body.length}\r\n\r\n`)
     child.stdin.write(body)
   }
+  function close() {
+    fail("client closed")
+    if (stopped) return closed
+    if (!closing) {
+      child.kill()
+      const timer = setTimeout(() => child.kill("SIGKILL"), 1000)
+      closing = closed.finally(() => clearTimeout(timer))
+    }
+    return closing
+  }
   child.stderr.on("data", chunk => { stderr = (stderr + chunk).slice(-12000) })
-  child.on("error", error => { stopped = true; fail(error) })
-  child.stdin.on("error", fail)
-  child.on("close", (code, signal) => { stopped = true; fail(new Error(`RPC exited ${code}/${signal}: ${log()}`)) })
+  child.stderr.on("error", error => fail(`stderr failed (${error.code ?? "read"})`))
+  child.on("error", error => fail(`spawn failed (${error.code ?? "spawn"})`))
+  child.stdin.on("error", error => fail(`stdin failed (${error.code ?? "write"})`))
+  child.on("close", (code, signal) => { stopped = true; fail(`exited ${code}/${signal}`) })
+  child.stdout.on("end", () => fail("stdout closed"))
+  child.stdout.on("error", error => fail(`stdout failed (${error.code ?? "read"})`))
   child.stdout.on("data", chunk => {
+    if (failure) return
+    let stage = "headers"
     try {
       buffer = Buffer.concat([buffer, chunk])
       assert.ok(buffer.length <= 8 << 20, "RPC frame exceeds 8 MiB")
       for (;;) {
+        stage = "headers"
         const end = buffer.indexOf("\r\n\r\n")
         if (end < 0) return
-        const match = /Content-Length: (\d+)/i.exec(buffer.subarray(0, end).toString())
-        assert.ok(match, "missing RPC Content-Length")
+        const lengths = buffer.subarray(0, end).toString().split("\r\n").filter(line => /^Content-Length:/i.test(line))
+        const match = lengths.length === 1 ? /^Content-Length: *(\d+) *$/i.exec(lengths[0]) : null
+        assert.ok(match, "invalid RPC Content-Length")
         const length = Number(match[1])
+        assert.ok(Number.isSafeInteger(length) && length <= 8 << 20, "invalid RPC frame length")
         if (buffer.length < end + 4 + length) return
+        stage = "body"
         const message = JSON.parse(buffer.subarray(end + 4, end + 4 + length).toString())
         buffer = buffer.subarray(end + 4 + length)
+        stage = "dispatch"
+        assert.ok(message && typeof message === "object" && !Array.isArray(message), "invalid RPC message")
         if (message.method && message.id !== undefined) {
           send({ id: message.id, result: message.method === "workspace/configuration"
             ? message.params.items.map(() => null) : null })
@@ -44,28 +70,26 @@ export function client(binary, args, cwd) {
           else p.resolve(message.result)
         }
       }
-    } catch (error) { fail(error); child.kill() }
+    } catch {
+      // Parser errors can quote the response body; report only the protocol stage.
+      fail(`invalid response at ${stage}`)
+      void close()
+    }
   })
   return {
     log,
     notify: (method, params) => send({ method, params }),
     request(method, params) {
-      if (stopped) return Promise.reject(new Error(`RPC already exited: ${log()}`))
+      const id = ++nextId
+      if (failure) return Promise.reject(requestError(id, method))
       return new Promise((resolve, reject) => {
-        const id = ++nextId
-        const timer = setTimeout(() => { fail(new Error(`RPC timeout at ${method}: ${log()}`)); child.kill() }, 30000)
+        const timer = setTimeout(() => { fail(`timeout at ${method}`); void close() }, 30000)
         pending.set(id, { resolve, reject, timer, method })
-        send({ id, method, params })
+        try { send({ id, method, params }) }
+        catch (error) { fail(`send failed (${error.code ?? "write"})`); void close() }
       })
     },
-    async close() {
-      if (stopped) return
-      const closed = new Promise(resolve => child.once("close", resolve))
-      child.kill()
-      const timer = setTimeout(() => child.kill("SIGKILL"), 1000)
-      await closed
-      clearTimeout(timer)
-    }
+    close
   }
 }
 

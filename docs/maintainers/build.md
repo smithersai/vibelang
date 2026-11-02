@@ -773,6 +773,20 @@ copying a malformed response's body. Hover generation can then close its
 server and remove its temporary projects; a server that ignores termination
 is killed after the existing two-second cleanup deadline.
 
+## Mapper protocol checks
+
+The mapper test client's `packages/ts-mapper/test/protocol-client.mjs`
+remembers a failed transport. EOF, malformed frames and pipe errors reject
+every pending request and reject future requests immediately. Errors identify
+the request id, method and transport stage without copying malformed response
+bodies. Callers close the owned server in `finally`; `close()` also rejects
+pending work and escalates to `SIGKILL` after one second if needed.
+
+`node --test scripts/mapper-rpc.test.mjs`, also run by `//:release`, checks
+real stdio peers, concurrent failures, repeated cleanup and response-error
+recovery. Its `fast-check` property varies Unicode results, request counts
+and frame chunk sizes, including reversed response order.
+
 ## Known gaps
 
 - **Sandboxing.** The targets run with `sandbox: "none"`: the harness writes
