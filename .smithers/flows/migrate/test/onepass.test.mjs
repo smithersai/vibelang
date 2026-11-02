@@ -105,6 +105,8 @@ test("three-package one-pass checks every project, reverts the root cause, and k
     await onePassStep("plan", { run: f.run, scope: f.scope })
     const renamed = await onePassStep("rename", { run: f.run, jobs: 2 })
     assert.equal(renamed.renames.length, 2)
+    assert.equal(readJson(join(f.target, "core/package.json")).scripts.start, "node src/index.vibe")
+    assert.ok(renamed.packageScriptEdits.some(edit => edit.manifest === "core/package.json" && edit.script === "start"))
     assert.match(text(f.target, "run.sh"), /core\/src\/index.vibe/)
     assert.match(text(f.target, "core/package.json"), /src\/index.vibe/)
     await onePassStep("fix", { run: f.run, jobs: 2, timeout: 10 })
@@ -170,6 +172,7 @@ test("bulk reverts restore arbitrary subsets, exports, path references, sources 
         assert.equal(existsSync(join(f.target, pkg, "src/index.vibe")), !reverted)
         assert.equal(existsSync(join(f.target, pkg, "src/index.d.vibe.ts")), false)
         if (reverted) assert.deepEqual(readJson(join(f.target, pkg, "package.json")).exports, { "./*": "./src/*.ts" })
+        assert.equal(readJson(join(f.target, pkg, "package.json")).scripts.start, "node src/index." + (reverted ? "ts" : "vibe"))
       }
       if (subset.includes("core")) {
         assert.match(text(f.target, "entry.vibe"), /index.ts/)

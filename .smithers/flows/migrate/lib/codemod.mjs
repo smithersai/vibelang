@@ -336,6 +336,72 @@ export function restoreExports(root, edits, module) {
   return undone
 }
 
+/** text with each word that is path, or ./path, replaced by replacement: a word is bounded by the command's spaces, quotes, = and ;&|(). */
+function replaceWord(text, path, replacement) {
+  const escaped = path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  return text.replace(new RegExp(`(^|[\\s"'=(])(\\./)?${escaped}(?=$|[\\s"';&|)])`, "g"), (_, before, dot) => before + (dot ?? "") + replacement)
+}
+
+/**
+ * Points each package script at a renamed entry point. In the scripts of the
+ * module's package and of every package above it, a word naming the module by
+ * its path from that manifest, `scripts/run.ts` or `./scripts/run.ts`, names
+ * `scripts/run.vibe`, which `node --import vibelang/register` runs: the .ts
+ * file is gone. Returns the edits, { manifest, script, module }, for
+ * restoreScripts.
+ */
+export function rewriteScripts(root, renames, { read = (file) => readFileSync(join(root, file), "utf8"), write = (file, text) => writeFileSync(join(root, file), text) } = {}) {
+  const edits = []
+  const byManifest = new Map()
+  for (const rename of renames) {
+    for (let dir = posix.dirname(rename.from); ; dir = posix.dirname(dir)) {
+      if (existsSync(join(root, dir, "package.json"))) byManifest.set(dir, [...(byManifest.get(dir) ?? []), rename])
+      if (dir === ".") break
+    }
+  }
+  for (const [dir, moved] of byManifest) {
+    const manifest = posix.join(dir, "package.json")
+    const pkg = JSON.parse(read(manifest))
+    if (pkg.scripts === null || typeof pkg.scripts !== "object") continue
+    let changed = false
+    for (const [script, command] of Object.entries(pkg.scripts)) {
+      if (typeof command !== "string") continue
+      let next = command
+      for (const { from, to } of moved) {
+        const rewritten = replaceWord(next, posix.relative(dir, from), posix.relative(dir, to))
+        if (rewritten !== next) edits.push({ manifest, script, module: to })
+        next = rewritten
+      }
+      if (next !== command) {
+        pkg.scripts[script] = next
+        changed = true
+      }
+    }
+    if (changed) write(manifest, JSON.stringify(pkg, null, 2) + "\n")
+  }
+  return edits
+}
+
+/**
+ * Undoes rewriteScripts for one module that revert returns to .ts
+ * (repository-relative, now .ts): each script it pointed at the .vibe file
+ * names the .ts file again. Returns the edits it undid.
+ */
+export function restoreScripts(root, edits, module) {
+  const vibe = module.replace(/\.ts$/, ".vibe")
+  const undone = edits.filter((edit) => edit.module === vibe)
+  for (const edit of undone) {
+    const path = join(root, edit.manifest)
+    if (!existsSync(path)) continue
+    const pkg = JSON.parse(readFileSync(path, "utf8"))
+    const dir = posix.dirname(edit.manifest)
+    if (typeof pkg.scripts?.[edit.script] !== "string") continue
+    pkg.scripts[edit.script] = replaceWord(pkg.scripts[edit.script], posix.relative(dir, vibe), posix.relative(dir, module))
+    writeFileSync(path, JSON.stringify(pkg, null, 2) + "\n")
+  }
+  return undone
+}
+
 /**
  * The specifier that names target from a file, by VibeLang's rules: a .vibe
  * file imports a local module by its source name (./user.vibe, ./util.ts). A

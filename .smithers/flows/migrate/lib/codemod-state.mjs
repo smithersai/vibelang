@@ -7,7 +7,7 @@ import { splitBatchPlatform } from "./platform.mjs"
 import { markPlainFunctions } from "./plain.mjs"
 import { rewriteViteScripts } from "./vite-config.mjs"
 import { rewriteSourceLiterals } from "./source-paths.mjs"
-import { assertModuleBoundary, rewriteExports, rewriteImports, vibePath } from "./codemod.mjs"
+import { assertModuleBoundary, rewriteExports, rewriteImports, rewriteScripts, vibePath } from "./codemod.mjs"
 import { rewriteBuildEntrypoints } from "./build-entrypoints.mjs"
 
 function syncDirectory(path) {
@@ -59,6 +59,7 @@ export function prepareState(target, files, scope, { ts, aliases, referenceFiles
   if (ts) for (const group of plainGroups) Object.assign(plain, markPlainFunctions(ts, target, group.files, group.tsconfigs, { read, write, exists: file => writes.some(w => w.file === (toOf.get(file) ?? file) && w.after !== null) || existsSync(join(target, file)), flipped: group.flipped }))
   const exportEdits = rewriteExports(target, renames, { write, bareEntries })
   const scriptEdits = rewriteViteScripts(target, renames, { read, write })
+  const packageScriptEdits = rewriteScripts(target, renames, { read, write })
   const refEdits = rewriteReferences(target, renames, referenceFiles.map(file => toOf.get(file) ?? file), { read, write, literals: !ts })
   // Literal Vite build inputs that name a renamed module (tracked: the repository's files).
   const buildEntries = ts && tracked ? rewriteBuildEntrypoints(target, tracked, renames, ts, { read, write }) : { edits: [], warnings: [] }
@@ -80,7 +81,7 @@ export function prepareState(target, files, scope, { ts, aliases, referenceFiles
     selectorChecks.push(...(changed.selectorChecks ?? []))
     if (changed.edits.length) write(file, changed.text)
   }
-  return { version: 1, target, files, phase: "prepared", referenceVersion: 1, referencePending: false, referenceScan: { files: references.length, patterns: matcherCache.size, durationMs: Math.round(performance.now() - started) }, referenceEdits, referenceWarnings, selectorChecks, platform, plain, functionModel: plainGroups.length ? (plainGroups.every(g => g.flipped) ? "plain-by-syntax" : "legacy-inference") : "unprobed", renames, originals, writes, exportEdits, buildEntries, importEdits, refEdits, scriptEdits, attempts: [] }
+  return { version: 1, target, files, phase: "prepared", referenceVersion: 1, referencePending: false, referenceScan: { files: references.length, patterns: matcherCache.size, durationMs: Math.round(performance.now() - started) }, referenceEdits, referenceWarnings, selectorChecks, platform, plain, functionModel: plainGroups.length ? (plainGroups.every(g => g.flipped) ? "plain-by-syntax" : "legacy-inference") : "unprobed", renames, originals, writes, exportEdits, buildEntries, importEdits, refEdits, scriptEdits, packageScriptEdits, attempts: [] }
 }
 
 /** Replay a prepared transaction, accepting each operation before or after its atomic write. */

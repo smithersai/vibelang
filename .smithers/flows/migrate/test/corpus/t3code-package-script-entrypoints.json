@@ -1,0 +1,38 @@
+{
+  "key": "t3code-package-script-entrypoints",
+  "source": "t3code root, packages/effect-acp and evals package.json scripts (drive-t3code 19:05Z: 17 entry points; server 19:07Z: 10)",
+  "manifests": {
+    "package.json": {
+      "dev": "node --import vibelang/register scripts/dev-runner.ts dev",
+      "icons:export": "node --import vibelang/register scripts/export-brand-icons.ts",
+      "dist:desktop:dmg": "node --import vibelang/register scripts/build-desktop-artifact.ts --platform mac --target dmg",
+      "lint": "vp lint"
+    },
+    "packages/effect-acp/package.json": {
+      "generate": "node --import vibelang/register scripts/generate.ts"
+    },
+    "evals/package.json": {
+      "mcp-tool-use": "node --import vibelang/register --env-file-if-exists=../.env mcp-tool-use/run.ts"
+    }
+  },
+  "renames": [
+    "scripts/dev-runner.ts",
+    "scripts/build-desktop-artifact.ts",
+    "packages/effect-acp/scripts/generate.ts",
+    "evals/mcp-tool-use/run.ts"
+  ],
+  "after": {
+    "package.json": {
+      "dev": "node --import vibelang/register scripts/dev-runner.vibe dev",
+      "icons:export": "node --import vibelang/register scripts/export-brand-icons.ts",
+      "dist:desktop:dmg": "node --import vibelang/register scripts/build-desktop-artifact.vibe --platform mac --target dmg",
+      "lint": "vp lint"
+    },
+    "packages/effect-acp/package.json": {
+      "generate": "node --import vibelang/register scripts/generate.vibe"
+    },
+    "evals/package.json": {
+      "mcp-tool-use": "node --import vibelang/register --env-file-if-exists=../.env mcp-tool-use/run.vibe"
+    }
+  }
+}

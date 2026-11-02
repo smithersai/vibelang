@@ -15,7 +15,7 @@ import { buildInventory, listSources, readCoverage, tsconfigPaths } from "./inve
 import * as Enumerations from "./enumerations.mjs"
 import { sidecarPath } from "./sidecar-config.mjs"
 import { defaultLimits, draftPlan, migrationScope, planPrompt, validatePlan } from "./plan.mjs"
-import { bareVibeExports, fixToFixedPoint, importerFile, pathAliases, restoreExports, restoreSpecifiers, rewriteImports, rewriteTotals, vibePath } from "./codemod.mjs"
+import { bareVibeExports, fixToFixedPoint, importerFile, pathAliases, restoreExports, restoreScripts, restoreSpecifiers, rewriteImports, rewriteTotals, vibePath } from "./codemod.mjs"
 import { restoreViteScripts } from "./vite-config.mjs"
 import { applyState, durableWrite, prepareReferences, prepareState, saveState } from "./codemod-state.mjs"
 import { checkSelectorEdits, restoreSourceLiterals, rewriteSourceLiterals } from "./source-paths.mjs"
@@ -1357,7 +1357,7 @@ export async function codemod(options) {
     state.referencePending = false
     saveState(p.codemodState(b), state)
   }
-  const { renames, exportEdits, importEdits, refEdits = [], scriptEdits = [], referenceEdits = [], referenceWarnings = [], referenceScan, selectorChecks = [], plain = {}, functionModel = "unprobed" } = state
+  const { renames, exportEdits, importEdits, refEdits = [], scriptEdits = [], referenceEdits = [], referenceWarnings = [], referenceScan, selectorChecks = [], plain = {}, functionModel = "unprobed", packageScriptEdits = [] } = state
   const buildEntries = state.buildEntries ?? { edits: [], warnings: [] }
   const platform = state.platform ?? { splits: [], refused: [] }
   const attempt = state.attempts.length + 1
@@ -1402,7 +1402,7 @@ export async function codemod(options) {
   const emittedJs = await emitMigratedJs(config, t, join(p.batch(b), "logs"))
   state.attempts.at(-1).finishedAt = new Date().toISOString()
   saveState(p.codemodState(b), state)
-  const result = { batch: b, at: new Date().toISOString(), files, platform: platformResult, formatted, plain, functionModel, renames, exportEdits, buildEntries, importEdits, refEdits, scriptEdits, referenceEdits, referenceWarnings, referenceScan, selectorChecks, fix: { settled, rounds, byFile, totals: rewriteTotals(byFile), refused, restored: [...new Set(restored)].sort() } }
+  const result = { batch: b, at: new Date().toISOString(), files, platform: platformResult, formatted, plain, functionModel, renames, exportEdits, buildEntries, importEdits, refEdits, scriptEdits, packageScriptEdits, referenceEdits, referenceWarnings, referenceScan, selectorChecks, fix: { settled, rounds, byFile, totals: rewriteTotals(byFile), refused, restored: [...new Set(restored)].sort() } }
   result.emittedJs = emittedJs
   durableWrite(p.codemod(b), JSON.stringify(result, null, 2) + "\n")
   return result
@@ -1547,6 +1547,7 @@ export async function revertMany(options) {
       ? restoreBuildEntrypoints(config.target, recordedBuildEntries, ts, typeScriptOf(config)) : []
     const exportEdits = restoreExports(config.target, cm.exportEdits ?? [], ts)
     const scriptEdits = restoreViteScripts(config.target, cm.scriptEdits ?? [], ts)
+    const packageScriptEdits = restoreScripts(config.target, cm.packageScriptEdits ?? [], ts)
     // A newly migrated consumer keeps its source spelling; an existing
     // VibeLang consumer keeps the name recorded before this migration.
     const before = source.original ? null : priorFiles.get(source.revision)
@@ -1579,7 +1580,7 @@ export async function revertMany(options) {
       if (rewired.edits.length) writeFileSync(join(config.target, ts), rewired.text)
       referenceEdits.push(...rewired.edits)
     }
-    results.push({ file: ts, reason, at: new Date().toISOString(), ...(source.batch === b ? {} : { from: source.batch }), exportEdits, ...(buildEntryEdits.length ? { buildEntryEdits } : {}), importEdits, scriptEdits, referenceEdits, ...(cm.refEdits ? { refEdits } : {}) })
+    results.push({ file: ts, reason, at: new Date().toISOString(), ...(source.batch === b ? {} : { from: source.batch }), exportEdits, ...(buildEntryEdits.length ? { buildEntryEdits } : {}), importEdits, scriptEdits, ...(packageScriptEdits.length ? { packageScriptEdits } : {}), referenceEdits, ...(cm.refEdits ? { refEdits } : {}) })
   }
   const restored = results.flatMap(result => result.importEdits)
   const importEdits = rewriteImports(config.target, await importers(config.target), prepared.map(x => x.ts), aliases, { preserve: restored })
