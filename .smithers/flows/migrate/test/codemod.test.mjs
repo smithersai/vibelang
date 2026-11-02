@@ -14,13 +14,18 @@ test("vibePath renames only .ts modules", () => {
   assert.throws(() => vibePath("src/a.tsx"))
 })
 
-test("a .vibe importer names local modules by their source names", () => {
+test("a .vibe importer names a renamed module by its source name and keeps every other written specifier", () => {
   assert.equal(rewriteSpecifier("src/a.vibe", "./b.js", "src/b.vibe"), "./b.vibe")
-  assert.equal(rewriteSpecifier("src/a.vibe", "./c.js", "src/c.ts"), "./c.ts")
-  assert.equal(rewriteSpecifier("src/a.vibe", "../d/index.js", "d/index.ts"), "../d/index.ts")
-  assert.equal(rewriteSpecifier("src/a.vibe", "./e", "src/e.ts"), "./e.ts")
   assert.equal(rewriteSpecifier("src/a.vibe", "./dir", "src/dir/index.vibe"), "./dir/index.vibe")
   assert.equal(rewriteSpecifier("src/a.vibe", "./b.vibe", "src/b.vibe"), "./b.vibe")
+  // A module that stays TypeScript keeps the specifier the repository wrote (detail 272):
+  // foldkit's asyncData.vibe imports '../schema/index.js', and its declaration keeps it.
+  assert.equal(rewriteSpecifier("src/a.vibe", "./c.js", "src/c.ts"), "./c.js")
+  assert.equal(rewriteSpecifier("src/a.vibe", "../d/index.js", "d/index.ts"), "../d/index.js")
+  assert.equal(rewriteSpecifier("src/a.vibe", "./e", "src/e.ts"), "./e")
+  assert.equal(rewriteSpecifier("src/a.vibe", "./c.ts", "src/c.ts"), "./c.ts")
+  // After revert returns b to .ts, the codemod's .vibe specifier names it again.
+  assert.equal(rewriteSpecifier("src/a.vibe", "./b.vibe", "src/b.ts"), "./b.ts")
 })
 
 test("a .ts importer names a .vibe module by its source name, which stock TypeScript resolves to its sidecar", () => {
@@ -174,13 +179,13 @@ test("renameBatch and rewriteImports update a small package", () => {
     assert.deepEqual(renames, [{ from: "src/a.ts", to: "src/a.vibe" }])
     assert.throws(() => renameBatch(root, ["src/a.ts"]), /does not exist/)
     const edits = rewriteImports(root, ["src/a.vibe", "src/b.ts", "src/c.ts", "src/d.vibe"])
+    // The renamed module's importers name it by its source name; a.vibe's own
+    // imports of modules that stay TypeScript keep their written spelling.
     assert.deepEqual(edits, [
-      { file: "src/a.vibe", from: "./b.js", to: "./b.ts" },
-      { file: "src/a.vibe", from: "./c.js", to: "./c.ts" },
       { file: "src/c.ts", from: "./a.js", to: "./a.vibe" },
       { file: "src/d.vibe", from: "./a.ts", to: "./a.vibe" }
     ])
-    assert.equal(readFileSync(join(root, "src/a.vibe"), "utf8"), "import { b } from './b.ts'\nimport { c } from './c.ts'\nexport const a = b + c\n")
+    assert.equal(readFileSync(join(root, "src/a.vibe"), "utf8"), "import { b } from './b.js'\nimport { c } from './c.js'\nexport const a = b + c\n")
     assert.equal(readFileSync(join(root, "src/c.ts"), "utf8"), "import { a } from './a.vibe'\nexport const c = 2\n")
     assert.equal(existsSync(join(root, "src/a.ts")), false)
     assert.deepEqual(rewriteImports(root, ["src/a.vibe", "src/b.ts", "src/c.ts", "src/d.vibe"]), [])
@@ -293,7 +298,7 @@ test("the fix loop asks for declarations, so --fix keeps what they print under a
 
 test("directory slash specifiers keep the selected index source", () => {
   assert.equal(rewriteSpecifier("pkg/a.vibe", "./runtime/", "pkg/runtime/index.vibe"), "./runtime/index.vibe")
-  assert.equal(rewriteSpecifier("pkg/a.vibe", "./", "pkg/index.ts"), "./index.ts")
+  assert.equal(rewriteSpecifier("pkg/a.vibe", "./", "pkg/index.ts"), "./")
   assert.equal(rewriteSpecifier("pkg/a.vibe", "../", "index.vibe"), "../index.vibe")
   // A .ts importer names the migrated index by its source name too (opencode-19).
   assert.equal(rewriteSpecifier("pkg/a.ts", "./runtime/", "pkg/runtime/index.vibe"), "./runtime/index.vibe")

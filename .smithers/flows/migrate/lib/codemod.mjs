@@ -416,18 +416,25 @@ export function restoreScripts(root, edits, module) {
  * naming the module its test imports. A .vibe specifier of a module that
  * revert returned to .ts names its .ts source again.
  */
-export function rewriteSpecifier(importer, specifier, target, { mock = false, base: aliased } = {}) {
+export function rewriteSpecifier(importer, specifier, target, { base: aliased } = {}) {
   const targetExt = posix.extname(target)
   const ext = posix.extname(specifier)
-  const vibeImporter = importer.endsWith(".vibe") || (mock && targetExt === ".vibe")
-  if (vibeImporter || targetExt === ".vibe") {
-    if (ext === targetExt) return specifier
-    if ([".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts", ".vibe"].includes(ext)) return specifier.slice(0, -ext.length) + targetExt
+  if (targetExt === ".vibe") {
+    // The target is a renamed module: every importer names it by its source name.
+    if (ext === ".vibe") return specifier
+    if ([".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts"].includes(ext)) return specifier.slice(0, -ext.length) + ".vibe"
     // Extensionless: name the file, or the directory's index file.
     const base = aliased ?? posix.normalize(posix.join(posix.dirname(importer), specifier))
-    if (target === posix.normalize(`${base}/index${targetExt}`)) return `${specifier.replace(/\/$/, "")}/index${targetExt}`
-    return specifier + targetExt
+    if (target === posix.normalize(`${base}/index.vibe`)) return `${specifier.replace(/\/$/, "")}/index.vibe`
+    return specifier + ".vibe"
   }
+  // The target stays TypeScript, or revert returned it to TypeScript: only a
+  // specifier the codemod spelled .vibe changes, back to the file's extension.
+  // Every other written specifier stays as the repository wrote it, in a .vibe
+  // importer as in a .ts one (decided detail 272): VibeLang resolves ./c.js,
+  // ../d/index.js and ./e as TypeScript does, and a declaration keeps the
+  // written spelling, so the published .d.ts matches the original byte for byte
+  // (foldkit: 18 declarations differed only by this rewrite).
   if (ext === ".vibe") return specifier.slice(0, -ext.length) + targetExt
   return specifier
 }
@@ -524,7 +531,7 @@ export function rewriteImports(root, scope, moved, aliases, { preserve = [], rea
       // `~/leaf.ts`, a non-relative TypeScript name, is TS2877 under
       // rewriteRelativeImportExtensions (t3code web, 23 modules).
       if (aliased && !target.endsWith(".vibe") && posix.extname(i.specifier) !== ".vibe") continue
-      let next = rewriteSpecifier(file, i.specifier, target, { mock: i.kind === "mock", base: aliased?.base })
+      let next = rewriteSpecifier(file, i.specifier, target, { base: aliased?.base })
       if (aliased && target.endsWith(".vibe") && aliases?.rewriteRelativeImportExtensions?.(file)) {
         // Native TS2877 rejects non-relative source names under this option.
         // Use the same resolved source through a name the compiler can emit.

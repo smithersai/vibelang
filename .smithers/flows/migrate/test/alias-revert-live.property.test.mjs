@@ -88,7 +88,9 @@ function injectedIO({kind=".vibe",target=".ts",nested=false,quote='"',preserve=t
     read:name=>{reads.push(name);assert.ok(texts.has(name));return texts.get(name)},
     write:(name,text)=>{writes.push(name);texts.set(name,text)}
   })
-  const rewrite=(kind===".vibe"||target===".vibe")&&(!/\.[cm]?jsx?$/.test(kind)||sourceLiteral)
+  // Only a specifier naming the renamed .vibe module changes (decided detail 272): a .vibe
+  // consumer keeps its written ./dep.js of a module that stays TypeScript.
+  const rewrite=target===".vibe"&&(!/\.[cm]?jsx?$/.test(kind)||sourceLiteral)
   const next=literal=>rewrite?literal.slice(0,-suffix.length)+target:literal
   const expected=original.replace(first,preserve?first:next(first)).replace(second,next(second))
   assert.equal(texts.get(file),expected)
