@@ -4,6 +4,24 @@ Researched 2026-10-27; suite built 2026-10-27 and 2026-10-28. This is a snapshot
 
 Compiled regression replays in the spec gate use the same `VIBELANG_FUZZ_HANG=120s` stage budget as the full seed suite, so emitted-output checks retain their normal allowance on a busy host.
 
+## Missing-runtime package oracle
+
+`FuzzMissingRuntimeDependency` follows the conditional rule quoted from
+`007-tooling.md`: emitted JavaScript that imports `vibelang-runtime` requires
+that package. It parses the installed twin's JavaScript module uses, then
+checks the package-absent twin against that requirement. This metamorphism
+does not assume which language forms need helpers. Runtime-free Effect forms,
+ordinary strings and comments naming the package do not create a dependency.
+Written imports still resolve even when TypeScript elides them from JavaScript,
+including unused namespace and type-only imports. Independent native diagnostics
+remain required; when only foreign TypeScript
+sources import the missing package, their separate errors retain their count.
+
+The keyed corpus includes runtime-free Effect functions, three foreign
+imports, a package-name literal, and multiple explicit runtime imports.
+The oracle rejects missing or invalid emitted JavaScript, so absent output
+cannot silently prove that the package is unnecessary.
+
 ## Current diagnostic oracle
 
 The registry and default severity oracle reads [Appendix B](../design/src/900-appendices.md#appendix-b-diagnostics), plus VibeLang’s own warning table in [Configuration and tooling](../design/src/007-tooling.md). A rule starting with `warning` or `lint warning` is a warning; other language rules are errors. Only those warnings and imported `EK38xx` codes are configurable through `vibe.severities`. Reused numbers are current rules, not retired codes.

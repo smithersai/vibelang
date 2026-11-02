@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 	"github.com/microsoft/TypeScript/tsc/internal/vfs"
@@ -34,7 +35,7 @@ func TestMissingRuntimeQuoted(t *testing.T) { missingRuntimeQuoted(t) }
 func FuzzMissingRuntimeDependency(f *testing.F) {
 	startShortBudget(f)
 	missingRuntimeQuoted(f)
-	keys := []string{"effect", "producer", "catch", "catch-destructure", "catch-rest", "error", "value", "plain", "independent", "explicit", "independent-any", "explicit-only", "disabled-module", "foreign-explicit", "foreign-independent", "native-only"}
+	keys := []string{"effect", "producer", "catch", "catch-destructure", "catch-rest", "error", "value", "plain", "independent", "explicit", "independent-any", "explicit-only", "disabled-module", "foreign-explicit", "foreign-independent", "native-only", "literal-only"}
 	for _, key := range keys {
 		f.Add([]byte(key))
 		f.Add([]byte(key + "\x00\x03"))
@@ -101,6 +102,8 @@ func FuzzMissingRuntimeDependency(f *testing.F) {
 				source = fmt.Sprintf("export const value%d = Experimental\n", i)
 			case "plain":
 				source = fmt.Sprintf("export function value%d(): number { return %d }\n", i, i)
+			case "literal-only":
+				source = fmt.Sprintf("/* import 'vibelang-runtime' */\nexport const value%d = \"vibelang-runtime\"\n", i)
 			}
 			if key == "disabled-module" {
 				source = fmt.Sprintf("export effect function value%d() { return Effect }\n", i)
@@ -157,50 +160,33 @@ func FuzzMissingRuntimeDependency(f *testing.F) {
 			}
 		}
 		listed, _ := json.Marshal(names)
-		config := fmt.Sprintf(`{"compilerOptions":{"target":"ES2022","module":"NodeNext","moduleResolution":"NodeNext","strict":true,"skipLibCheck":true,"noEmit":true,"types":[]},"files":%s}`, listed)
+		config := fmt.Sprintf(`{"compilerOptions":{"target":"ES2022","module":"NodeNext","moduleResolution":"NodeNext","strict":true,"skipLibCheck":true,"types":[]},"files":%s}`, listed)
 		if key == "disabled-module" {
 			config = strings.TrimSuffix(config, "}") + `,"vibe":{"effectModules":false}}`
 		}
-		// Chapter 7's TS2307 rule holds only for a compilation whose emitted JavaScript imports vibelang-runtime. Under
-		// VIP-1 an effect function lowers to effect/Effect alone, so the shape does not decide it: emit the program with
-		// the runtime installed and expect the missing-runtime error only when that emit imports the package.
-		// A source that writes its own import of the package (explicit, foreign, native-only) needs it whatever the emit.
-		writesImport := strings.HasPrefix(key, "explicit") || strings.HasPrefix(key, "foreign") || key == "native-only"
-		vibeImports := func() bool {
-			r, err := present.Compile(t.Context(), Project{Files: files, Config: strings.Replace(config, `"noEmit":true`, `"noEmit":false`, 1)})
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer r.Remove()
-			for name, out := range r.Outputs {
-				if strings.HasPrefix(filepath.Base(name), "source") && strings.Contains(out, `"vibelang-runtime`) {
-					return true
-				}
-			}
-			return false
-		}()
-		importsRuntime := writesImport || vibeImports
+		// Chapter 7 conditions the missing-package error on an emitted import.
+		// Compare the installed program's module uses with the package-absent
+		// twin; do not assume that every Effect form needs a runtime helper.
+		runtimeErrors := 0
 		for _, control := range []struct {
 			key     string
 			w       *Workspace
 			missing bool
-		}{{"absent", absent, true}, {"installed", present, false}} {
+		}{{"installed", present, false}, {"absent", absent, true}} {
 			r, err := control.w.Compile(t.Context(), Project{Files: files, Config: config})
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer r.Remove()
+			if !control.missing {
+				runtimeErrors, err = missingRuntimeRequirements(files, r.Outputs)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
 			want := map[int32]int{}
-			if key != "plain" && control.missing && importsRuntime {
-				want[2307] = 1
-			}
-			if key == "native-only" && control.missing {
-				want[2307] = count
-			}
-			// Each foreign .ts file's own import reports TS2307 where it stands; only a .vibe emit that imports the
-			// package makes it one error for the compilation (chapter 7), as before VIP-1 every effect function did.
-			if strings.HasPrefix(key, "foreign") && control.missing && !vibeImports {
-				want[2307] = count
+			if control.missing && runtimeErrors > 0 {
+				want[2307] = runtimeErrors
 			}
 			if key == "disabled-module" {
 				want[2304] = count
@@ -238,6 +224,60 @@ func FuzzMissingRuntimeDependency(f *testing.F) {
 	})
 }
 
+// missingRuntimeRequirements applies chapter 7's conditional-import rule to
+// the installed twin. This is a package-presence metamorphism, not a claim
+// about which language forms must lower through the runtime. Native-only
+// missing imports keep TypeScript's independent diagnostic occurrences.
+func missingRuntimeRequirements(sources, outputs map[string]string) (int, error) {
+	vibe, native := false, 0
+	for name, source := range sources {
+		if !strings.HasSuffix(name, ".vibe") && !strings.HasSuffix(name, ".ts") {
+			continue
+		}
+		js := strings.TrimSuffix(name, filepath.Ext(name)) + ".js"
+		text, ok := outputs[js]
+		if !ok {
+			return 0, fmt.Errorf("missing-runtime oracle: no emitted JavaScript for %s", name)
+		}
+		file, ds := ParseJS(js, text)
+		if len(ds) != 0 {
+			return 0, fmt.Errorf("missing-runtime oracle: invalid JavaScript for %s: %v", name, ds)
+		}
+		isRuntime := func(specifier string) bool {
+			return specifier == "vibelang-runtime" || strings.HasPrefix(specifier, "vibelang-runtime/")
+		}
+		// A written import still resolves even if TypeScript elides it from
+		// JavaScript (for example an unused namespace or a type-only import).
+		written := 0
+		for _, statement := range toolsParse(name, source).Statements.Nodes {
+			var specifier *ast.Node
+			if ast.IsImportDeclaration(statement) {
+				specifier = statement.AsImportDeclaration().ModuleSpecifier
+			} else if ast.IsExportDeclaration(statement) {
+				specifier = statement.AsExportDeclaration().ModuleSpecifier
+			}
+			if specifier != nil && isRuntime(specifier.Text()) {
+				written++
+			}
+		}
+		emitted := 0
+		for _, use := range ModuleUses(file) {
+			if isRuntime(use.Specifier) {
+				emitted++
+			}
+		}
+		if strings.HasSuffix(name, ".vibe") {
+			vibe = vibe || written > 0 || emitted > 0
+		} else {
+			native += max(written, emitted)
+		}
+	}
+	if vibe {
+		return 1, nil
+	}
+	return native, nil
+}
+
 // A missing-runtime oracle must not see installations above its workspace.
 type missingRuntimeFuzzFS struct{ vfs.FS }
 
@@ -255,4 +295,69 @@ func (fs missingRuntimeFuzzFS) ReadFile(name tspath.RootedFilePath) (string, boo
 }
 func (fs missingRuntimeFuzzFS) DirectoryExists(name tspath.RootedDirectoryPath) bool {
 	return !missingRuntimeFuzzPath(name.AsString()) && fs.FS.DirectoryExists(name)
+}
+
+func TestMissingRuntimeEmittedImportOracle(t *testing.T) {
+	missingRuntimeQuoted(t)
+	tests := []struct {
+		name, vibe, native string
+		want               int
+	}{
+		{"runtime-free", `import * as Effect from "effect/Effect"; export const value = Effect.succeed(1);`, "", 0},
+		{"ordinary-literals", `// import "vibelang-runtime"
+export const name = "vibelang-runtime";`, "", 0},
+		{"helper", `import * as Runtime from "vibelang-runtime"; export const value = Runtime;`, "", 1},
+		{"subpath", `import * as Runtime from "vibelang-runtime/experimental"; export const value = Runtime;`, "", 1},
+		{"lookalike", `import "vibelang-runtime-extra";`, "", 0},
+		{"native-imports", `export const value = 1;`, `import "vibelang-runtime";`, 2},
+		{"mixed-helper", `import "vibelang-runtime";`, `import "vibelang-runtime";`, 1},
+		{"native-subpath", `export const value = 1;`, `import "vibelang-runtime/experimental";`, 2},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			for modules := 1; modules <= 3; modules++ {
+				sources, outputs := map[string]string{}, map[string]string{}
+				for i := 0; i < modules; i++ {
+					name := fmt.Sprintf("source%d", i)
+					sources[name+".vibe"] = test.vibe
+					outputs[name+".js"] = "/* retained */\r\n" + strings.ReplaceAll(test.vibe, "\n", "\r\n")
+				}
+				if test.native != "" {
+					for _, name := range []string{"first", "nested path/second"} {
+						sources[name+".ts"] = test.native
+						outputs[name+".js"] = test.native
+					}
+				}
+				got, err := missingRuntimeRequirements(sources, outputs)
+				if err != nil || got != test.want {
+					t.Fatalf("modules=%d: want %d, got %d, error %v", modules, test.want, got, err)
+				}
+			}
+		})
+	}
+}
+
+func TestMissingRuntimeOracleRequiresRealEmission(t *testing.T) {
+	for _, outputs := range []map[string]string{{}, {"source.js": "const = ;"}} {
+		if _, err := missingRuntimeRequirements(map[string]string{"source.vibe": "source"}, outputs); err == nil {
+			t.Fatal("an absent or invalid emitted program cannot prove package independence")
+		}
+	}
+}
+
+func TestMissingRuntimeElidedWrittenImports(t *testing.T) {
+	for _, test := range []struct {
+		name, source string
+	}{
+		{"unused.vibe", "import * as Existing from 'vibelang-runtime'"},
+		{"type-only.vibe", "import type * as Existing from 'vibelang-runtime'"},
+		{"unused.ts", "import * as Existing from 'vibelang-runtime'"},
+		{"type-only.ts", "import type * as Existing from 'vibelang-runtime'"},
+	} {
+		js := strings.TrimSuffix(test.name, filepath.Ext(test.name)) + ".js"
+		got, err := missingRuntimeRequirements(map[string]string{test.name: test.source}, map[string]string{js: "export {};\n"})
+		if err != nil || got != 1 {
+			t.Fatalf("%s: an elided written import must still resolve: got %d, %v", test.name, got, err)
+		}
+	}
 }

@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("effect\x00\x02")
