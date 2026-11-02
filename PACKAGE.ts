@@ -551,7 +551,7 @@ const targets = {
       ".smithers/flows/effect-bump/test/*.test.mjs .smithers/flows/ts-bump/test/*.test.mjs .smithers/flows/ci-health/test/*.test.mjs .smithers/flows/first-bad/test/*.test.mjs " +
       ".smithers/flows/test/*.test.mjs",
     [Packages["compiler-native"], Packages["runtime-dist"]],
-    [node, gofmt, bun, S.Host.bin("diff3")]
+    [node, bun, gofmt, bun, S.Host.bin("diff3")]
   ),
   snippets: check(
     "Compile every code block in the docs.",
@@ -570,7 +570,7 @@ const targets = {
   ),
   "docs-tools": check(
     "docs/tools' bun tests, with cached specification links and linters and without site contrast.",
-    "cd docs/tools && bun test --timeout 60000 $(ls *.test.* | grep -vE '^(site-(contrast|spec-links)|spec-lint)\\.test\\.')",
+    "cd docs/tools && bun test --timeout 60000 --parallel=3 --no-isolate $(ls *.test.* | grep -vE '^(site-(contrast|spec-links)|spec-lint)\\.test\\.')",
     [Typescript.compiler, Packages["runtime-dist"], Packages["compiler-native"], siteSpecLinks, specLint],
     [bun, node]
   ),

@@ -525,6 +525,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Migration could leave `.ts` build entries pointing at renamed files when a configuration was outside `src`; batched codemods now wire owned configurations and retain that wiring on resume and revert.
 
+- Contributor documentation checks ran every test file in sequence; `//:docs-tools` now runs files on three isolated workers, keeps tests within each file ordered, and reports a failure from any worker.
+
 - Unparenthesized execution expressions before `**` reported a native TypeScript diagnostic; they now report `EK0510` with an editor action and a preserving `vibelang --fix` repair to add parentheses.
 
 - The migrate flow could borrow a callback's `Error` channel from an `async` function or generator, even though that function returns a `Promise` or iterator containing the Effect; only a plain function returning the Effect directly now supplies that proof.

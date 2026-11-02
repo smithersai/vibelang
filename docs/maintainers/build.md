@@ -690,6 +690,14 @@ available for diagnosis. Only successful generation is used for measurement.
 
 The [specification contracts](#specification-contracts) run in `//:spec-lint`. A new class of inconsistency gets a rule and a failing-defect test in the commit that fixes it.
 
+The `//:docs-tools` target runs its test files with `bun test --timeout 60000 --parallel=3 --no-isolate`.
+Three worker processes run files in parallel; tests within each file retain their normal order.
+Each worker reuses its module registry between files, as the serial runner does.
+All `docs/tools/*.test.*` files are discovered on each run, except the separately declared
+`site-contrast` and `site-spec-links` tests. A failure in any worker fails the target.
+`scripts/docs-tools-parallel.test.mjs` exercises that command with real files, a
+cross-file barrier, per-file ordering checks and a failing worker.
+
 `//:site-spec-links` checks the generated specification and VIP pages for unconverted `.md` links, missing pages and missing anchors. `//:docs-tools` depends on it, so the pre-merge gate runs it. Its inputs are `site/src/pages/spec/**`, `site/src/pages/vips/**` and `docs/tools/site-spec-links.test.ts`; unrelated changes reuse its cached result.
 
 The `//:site-contrast` browser audit emits `site contrast diagnostic:` JSON
