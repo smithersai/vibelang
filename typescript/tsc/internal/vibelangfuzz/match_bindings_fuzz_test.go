@@ -16,6 +16,15 @@ const matchBindingElementQuote = "the element type of the subject's iterable (tu
 
 const matchBindingObjectQuote = "`tracking`: the narrowed subject's property type"
 
+// An is binds as a match arm does: chapter 4's `is` expressions.
+const matchBindingIsQuote = "`subject is P` evaluates the subject once and returns the pattern's Boolean result, using the same cache and finishing rules as `match`."
+
+// matchBindingForms are the forms a pattern binds in: a match arm, and an is
+// in an if head, whose bindings and subject reads the parser hoists to the
+// block (Smithers agent/fs Incur.vibe: a hoisted read of an array element
+// took another name than its declaration, TS2552 on $match6).
+var matchBindingForms = []string{"match", "is"}
+
 // matchBindingOptions are the compiler options a program must not depend on.
 var matchBindingAccessOptions = []string{
 	"noUncheckedIndexedAccess",
@@ -59,7 +68,7 @@ var matchBindingPatterns = []struct {
 // The element types. A generic element cannot reach a declaration's own T.
 var matchBindingTypes = []string{"number", "A", "string | null", "{ readonly n: number }", "readonly string[]", "number | undefined"}
 
-func matchBindingProgram(i, j int) string {
+func matchBindingProgram(i, j int, form string) string {
 	p := matchBindingPatterns[i]
 	element := matchBindingTypes[j]
 	if p.decl != "" && element == "A" {
@@ -71,7 +80,11 @@ func matchBindingProgram(i, j int) string {
 		binds = "T"
 	}
 	binds = fill(binds)
-	return fill(p.decl) + "\nexport function f<A>(s: " + fill(p.subject) + ", fallback: " + binds + "): " + binds + " {\n  return match (s) { when " + p.pattern + ": v; default: fallback; }\n}\n"
+	body := "  return match (s) { when " + p.pattern + ": v; default: fallback; }\n"
+	if form == "is" {
+		body = "  if (s is " + p.pattern + ") return v\n  return fallback\n"
+	}
+	return fill(p.decl) + "\nexport function f<A>(s: " + fill(p.subject) + ", fallback: " + binds + "): " + binds + " {\n" + body + "}\n"
 }
 
 func matchBindingConfig(option string) string {
@@ -92,6 +105,9 @@ func matchBindingsChapter(f testing.TB) string {
 			f.Fatalf("%s: chapter 4 no longer says %q", p.key, p.quote)
 		}
 	}
+	if !strings.Contains(string(chapter), matchBindingIsQuote) {
+		f.Fatalf("chapter 4 no longer says %q", matchBindingIsQuote)
+	}
 	return string(chapter)
 }
 
@@ -107,6 +123,7 @@ func FuzzMatchBindingTypes(f *testing.F) {
 	matchBindingsChapter(f)
 	for i, p := range matchBindingPatterns {
 		f.Add([]byte(p.key + "/" + matchBindingTypes[i%len(matchBindingTypes)]))
+		f.Add([]byte("is:" + p.key + "/" + matchBindingTypes[(i+1)%len(matchBindingTypes)]))
 	}
 	w := NewWorkspace(f)
 	errorsOf := func(t *testing.T, source, option string) []string {
@@ -124,35 +141,49 @@ func FuzzMatchBindingTypes(f *testing.F) {
 		return found
 	}
 	f.Fuzz(func(t *testing.T, data []byte) {
-		i, j := 0, 0
+		i, j, form := 0, 0, "match"
 		if len(data) > 0 {
 			i = int(data[0]) % len(matchBindingPatterns)
 		}
 		if len(data) > 1 {
 			j = int(data[1]) % len(matchBindingTypes)
 		}
-		for pi, p := range matchBindingPatterns {
-			for ti, element := range matchBindingTypes {
-				if string(data) == p.key+"/"+element {
-					i, j = pi, ti
+		if len(data) > 2 {
+			form = matchBindingForms[int(data[2])%len(matchBindingForms)]
+		}
+		// A key without a form prefix is a match, as before forms were added.
+		for _, candidate := range matchBindingForms {
+			prefix := candidate + ":"
+			if candidate == "match" {
+				prefix = ""
+			}
+			for pi, p := range matchBindingPatterns {
+				for ti, element := range matchBindingTypes {
+					if string(data) == prefix+p.key+"/"+element {
+						i, j, form = pi, ti, candidate
+					}
 				}
 			}
 		}
 		p := matchBindingPatterns[i]
-		source := matchBindingProgram(i, j)
-		key := p.key + "/" + matchBindingTypes[j]
+		source := matchBindingProgram(i, j, form)
+		formKey := ""
+		if form != "match" {
+			formKey = form + ":"
+		}
+		key := formKey + p.key + "/" + matchBindingTypes[j]
 		if found := errorsOf(t, source, ""); len(found) != 0 {
-			Gap(t, "FuzzMatchBindingTypes", "control:"+p.key, "chapter 4: %s; the binding's type is rejected:\n%s\n%s", p.quote, source, strings.Join(found, "\n"))
+			Gap(t, "FuzzMatchBindingTypes", "control:"+formKey+p.key, "chapter 4: %s; the binding's type is rejected:\n%s\n%s", p.quote, source, strings.Join(found, "\n"))
 			return
 		}
 		for _, option := range matchBindingAccessOptions {
 			if found := errorsOf(t, source, option); len(found) != 0 {
-				Gap(t, "FuzzMatchBindingTypes", option+":"+p.key, "chapter 4: %s; %s under %s:\n%s\n%s", p.quote, key, option, source, strings.Join(found, "\n"))
+				Gap(t, "FuzzMatchBindingTypes", option+":"+formKey+p.key, "chapter 4: %s; %s under %s:\n%s\n%s", p.quote, key, option, source, strings.Join(found, "\n"))
 				return
 			}
-			ExpectPending(t, "FuzzMatchBindingTypes", option+":"+p.key)
+			ExpectPending(t, "FuzzMatchBindingTypes", option+":"+formKey+p.key)
 		}
-		ExpectPending(t, "FuzzMatchBindingTypes", "control:"+p.key)
+		ExpectPending(t, "FuzzMatchBindingTypes", "control:"+formKey+p.key)
 		ExpectPending(t, "FuzzMatchBindingTypes", specCorpusKey(t))
 	})
 }

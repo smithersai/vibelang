@@ -1313,8 +1313,13 @@ func (p *Parser) enterSubject(path matchPath, pat *pattern, steps *[]matchStep, 
 	}
 	p.vibelangMatchTemps++
 	name := "$match" + strconv.Itoa(p.vibelangMatchTemps)
-	*steps = append(*steps, matchStep{decl: p.mConst(p.mIdent(name, pat.anchor), ast.NodeFlagsConst, path(), pat.anchor)})
-	return func() *ast.Node { return p.mIdent(name, pat.anchor) }
+	// Every occurrence is a temp (mTemp), as subjectPath's are, so
+	// freshenVibeLangTemps renames all of them or none. A plain identifier
+	// read as one the file spells: an is that hoists this const assigns it
+	// through a temp, which then took the next free number ($match6) while
+	// its declaration and reads kept $match4 (Smithers agent/fs Incur.vibe).
+	*steps = append(*steps, matchStep{decl: p.mConst(p.mTemp(name, pat.anchor), ast.NodeFlagsConst, path(), pat.anchor)})
+	return func() *ast.Node { return p.mTemp(name, pat.anchor) }
 }
 
 // subjectReads returns how many times compilePattern, outside an inline

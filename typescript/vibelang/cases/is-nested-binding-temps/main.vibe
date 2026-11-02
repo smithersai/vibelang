@@ -1,0 +1,38 @@
+// expect-result: ["oops","none","x","a","n",[3,"oops"]]
+// Chapter 004: an is evaluates its subject once and binds as a match does. A
+// part of the subject that its pattern tests and binds, such as an array's
+// element read by an object pattern, is read once through a const; an is
+// hoists that const with its bindings. Smithers agent/fs Incur.vibe:
+// `cause.reasons is [{ _tag: "Fail", error: FsError and let error }]`
+// declared $match4 but assigned $match6, so the test never matched and the
+// assignment threw a ReferenceError.
+error Oops { code: string }
+
+export const failed = (reasons: ReadonlyArray<{ _tag: string; error: unknown }>): string => {
+  if (reasons is [{ _tag: "Fail", error: Oops and let error }]) return error.code
+  return "none"
+}
+
+export const element = (xs: ReadonlyArray<unknown>): string => {
+  if (xs is [{ name: let name }]) return String(name)
+  return "none"
+}
+
+export const field = (x: { readonly inner: unknown }): string => {
+  if (x is { inner: { key: let key } }) return String(key)
+  return "none"
+}
+
+export effect function main() {
+  const exit = try Effect.exit(Effect.fail(new Oops({ code: "oops" })))
+  let both: [number, string] | undefined = undefined
+  if (exit is Exit.Failure(let cause) && ([3, cause.reasons] as const) is [let n, [{ _tag: "Fail", error: Oops and let e }]]) both = [n, e.code]
+  return [
+    failed([{ _tag: "Fail", error: new Oops({ code: "oops" }) }]),
+    failed([{ _tag: "Die", error: 1 }]),
+    element([{ name: "x" }]),
+    field({ inner: { key: "a" } }),
+    element([]).slice(0, 1),
+    both,
+  ]
+}
