@@ -101,6 +101,10 @@ var legacyFormOwners = map[string]struct {
 	"declaration":     {"function g(n: number) {\n  const a = CATCH\n  return a\n}\n", false},
 	"infer-factory":   {"const g = (n: number): infer _ => {\n  trace.push(\"factory\")\n  const p: number!! = CATCH\n  return p\n}\n", true},
 	"top-level":       {"const p: number!! = CATCH\nconst g = (n: number): infer _ => p\n", false},
+	// In effect code at a held position the catch was the program the
+	// position received (foldkit playground's FiberMap.run argument).
+	"held-argument": {"effect function g(n: number) {\n  return legacyHold(CATCH)\n}\n", false},
+	"held-const":    {"effect function g(n: number) {\n  const p: number!! = CATCH\n  return try p\n}\n", false},
 }
 
 // legacyFormOperands are a catch's left side: its source, whether it fails
@@ -145,6 +149,10 @@ effect function legacyBoom(): never!LegacyMiss {
 function legacyMake(): number!! {
   trace.push("make")
   return Effect.succeed(7)
+}
+
+function legacyHold(p: number!!): number!! {
+  return p
 }
 
 effect function legacyWork() {

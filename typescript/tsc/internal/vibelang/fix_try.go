@@ -79,7 +79,7 @@ func tryEdits(c *checker.Checker, file *ast.SourceFile, unmatched map[int]bool) 
 			edits = append(edits, sourceEdit{scanner.SkipTrivia(text, node.Pos()), node.End(), m.blockText(file, node)})
 			return false
 		}
-		if m.plainCatch(node) {
+		if m.plainCatch(node) || m.heldCatch(node) {
 			insert(scanner.SkipTrivia(text, node.Pos()), "effect { return ")
 			edits = append(edits, sourceEdit{node.End(), node.End(), " }"})
 		}

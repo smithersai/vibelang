@@ -714,3 +714,22 @@ func (m *legacyModel) plainCatch(node *ast.Node) bool {
 	owner := effectCodeOwner(node)
 	return owner == nil || !m.marked(owner)
 }
+
+// heldCatch reports whether node is a catch expression in effect code at a
+// position the old compiler held: an argument whose parameter expects an
+// Effect, an Effect field (both by name, D147, D265), or a declared Effect
+// const (D262). There the catch was the program $catchExpression builds,
+// which the call or const received; after VIP-1 a catch in effect code runs,
+// and the position would get its result (foldkit playground's
+// FiberMap.run(map, key, (effect { … }) catch effect (e) => …)). The
+// migration writes it as effect { return … }, decided detail 274.
+func (m *legacyModel) heldCatch(node *ast.Node) bool {
+	if catchExpressionOf(node) == nil || inCatchLeft(node) {
+		return false
+	}
+	if owner := effectCodeOwner(node); !inEffectCode(node) && (owner == nil || !m.marked(owner)) {
+		return false
+	}
+	held, byName, _ := legacyHold(m.a, node)
+	return held && (byName || vibelangmapper.HeldConstDeclaration(node) != nil)
+}
