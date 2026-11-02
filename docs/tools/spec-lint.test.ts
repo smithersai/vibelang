@@ -41,3 +41,22 @@ test("resolution-claims accepts a claim the table lists and rejects a table that
   const drift = withEdit("src/007-tooling.md", text => text.replace("| `./App.vibe` | `App.vibe`, `App.d.ts` |", "| `./App.vibe` | `App.vibe`, `App.ts`, `App.d.ts` |"))
   expect(lint(drift, rule("resolution-claims")).map(v => v.message)).toEqual(["the resolution table differs from VIP-39's"])
 })
+
+const opus3 = "Root `vibelang.declarationImportStyle`, or `compilerOptions.vibelang.declarationImportStyle`, is `\".js\"` (the default), `\"extensionless\"` or `\".ts\"`. It decides how an emitted declaration spells a relative import of a `.vibe` module ([Declaration output](001-functions.md#declaration-output)). Any other value is a configuration error (`TS6046`). It sits in the legacy `vibelang` section with `trustedPackages` and `tracing`, so a child config's own `vibelang` section replaces an inherited one as a whole."
+
+test("config-keys rejects round 14 OPUS-3's paragraph: a second path, two keys and a TypeScript code with no VIP", () => {
+  const defect = withEdit("src/007-tooling.md", text => text.replace(/^Root `vibelang\.declarationImportStyle`.*$/m, opus3))
+  expect(lint(defect, rule("config-keys")).map(v => v.message)).toEqual([
+    "`compilerOptions.vibelang.declarationImportStyle` appears in no accepted VIP",
+    "a VibeLang configuration error is given TypeScript's `TS6046`",
+    "`vibelang.trustedPackages` appears in no accepted VIP",
+    "`vibelang.tracing` appears in no accepted VIP"
+  ])
+})
+
+test("config-keys rejects a chapter key once no accepted VIP publishes it", () => {
+  const unpublished: Spec = new Map([...spec].map(([file, text]) =>
+    [file, file.startsWith("vips/") ? text.replaceAll("vibelang.declarationImportStyle", "vibelang.removed") : text]))
+  expect(lint(unpublished, rule("config-keys")).map(v => v.message)).toContain("`vibelang.declarationImportStyle` appears in no accepted VIP")
+  expect(lint(spec, rule("config-keys"))).toEqual([])
+})

@@ -269,6 +269,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Regression tests for forbidden error inheritance missed native parents with extensible tags; fuzz coverage now records these unresolved cases explicitly.
 
+- The specification gave `vibelang.declarationImportStyle` a second path, `compilerOptions.vibelang.declarationImportStyle`, two sibling keys (`trustedPackages`, `tracing`) and the TypeScript code `TS6046`, none approved by a proposal; chapter 7 now names only the root key, VIP-30 publishes it, the compiler is unchanged, and `//:spec-lint` rejects a configuration key no accepted VIP names.
 - The specification said a relative `./x.ts` import reaches `x.vibe`, a resolution rule no proposal approved; chapter 7 no longer states it, the compiler still resolves such imports, and a new specification linter (`//:spec-lint`) rejects resolution claims VIP-39's table does not list.
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 

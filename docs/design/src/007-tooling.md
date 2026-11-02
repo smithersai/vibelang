@@ -104,7 +104,7 @@ The configured category controls reporting: an `"error"` makes both `vibelang` a
 
 ### Declaration import spelling
 
-Root `vibelang.declarationImportStyle`, or `compilerOptions.vibelang.declarationImportStyle`, is `".js"` (the default), `"extensionless"` or `".ts"`. It decides how an emitted declaration spells a relative import of a `.vibe` module ([Declaration output](001-functions.md#declaration-output)). Any other value is a configuration error (`TS6046`). It sits in the legacy `vibelang` section with `trustedPackages` and `tracing`, so a child config's own `vibelang` section replaces an inherited one as a whole.
+Root `vibelang.declarationImportStyle` is `".js"` (the default), `"extensionless"` or `".ts"` ([VIP-30](../vips/0030-config-files.md#decision), amended). It decides how an emitted declaration spells a relative import of a `.vibe` module ([Declaration output](001-functions.md#declaration-output)). Any other value is a configuration error. It sits in the legacy `vibelang` section, so a child config's own `vibelang` section replaces an inherited one as a whole, as an explicit child legacy section does for [legacy severity maps](#legacy-severity-maps).
 
 ### Legacy severity maps
 

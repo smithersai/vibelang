@@ -31,6 +31,15 @@ const acceptedVips = (spec: Spec) =>
 // Prose with fenced code blocks blanked, so offsets still give line numbers.
 export const prose = (text: string) => text.replace(/^```[^]*?^```/gm, block => block.replace(/[^\n]/g, " "))
 
+// The sentences of a text's prose, each with its offset.
+export function sentences(text: string): { text: string; index: number }[] {
+  const out: { text: string; index: number }[] = []
+  const body = prose(text)
+  const re = /[^\n.!?]*(?:(?:\.(?=[\w`"'(])|`[^`\n]*`|[^\n.!?`])[^\n.!?]*)*[.!?]?/g
+  for (const m of body.matchAll(re)) if (m[0].trim()) out.push({ text: m[0], index: m.index! })
+  return out
+}
+
 // The rows of the first table after `marker`, each a list of trimmed cells.
 function tableAfter(text: string, marker: string): string[][] | undefined {
   const at = text.indexOf(marker)
@@ -91,7 +100,41 @@ const resolutionClaims: Rule = {
   }
 }
 
-export const rules: Rule[] = [resolutionClaims]
+// Configuration keys (round 14 OPUS-3). Chapter 7 named a second path,
+// `compilerOptions.vibelang.declarationImportStyle`, two sibling keys,
+// `trustedPackages` and `tracing`, and a TypeScript code, `TS6046`, for a
+// VibeLang option, none with a VIP behind it. A configuration path a chapter
+// names must appear in an accepted VIP; so must each key a chapter lists as
+// part of the legacy `vibelang` section; and a VibeLang option's
+// configuration error is not given a TypeScript code.
+const configPath = /`((?:compilerOptions\.)?vibe(?:lang)?\.[a-z][A-Za-z]*)`/g
+const configKeys: Rule = {
+  name: "config-keys",
+  finding: "r14 OPUS-3: 007 named `compilerOptions.vibelang.declarationImportStyle`, `trustedPackages`, `tracing` and `TS6046` with no VIP",
+  check(spec) {
+    const out: Violation[] = []
+    const vips = acceptedVips(spec).map(([, text]) => text).join("\n")
+    for (const [file, text] of chapters(spec)) {
+      for (const m of prose(text).matchAll(configPath)) {
+        if (!vips.includes(m[1]!)) out.push({ rule: this.name, file, line: lineAt(text, m.index!), message: `\`${m[1]}\` appears in no accepted VIP` })
+      }
+      for (const sentence of sentences(text)) {
+        const listed = sentence.text.match(/`vibelang` section with ((?:`\w+`(?:,? and |, )?)+)/)
+        for (const [, key] of listed?.[1]!.matchAll(/`(\w+)`/g) ?? []) {
+          if (!vips.includes(`vibelang.${key}`)) out.push({ rule: this.name, file, line: lineAt(text, sentence.index), message: `\`vibelang.${key}\` appears in no accepted VIP` })
+        }
+        if (/\bconfig(?:uration)? error\b/.test(sentence.text)) {
+          for (const [code] of sentence.text.matchAll(/TS\d{4,5}/g)) {
+            out.push({ rule: this.name, file, line: lineAt(text, sentence.index), message: `a VibeLang configuration error is given TypeScript's \`${code}\`` })
+          }
+        }
+      }
+    }
+    return out
+  }
+}
+
+export const rules: Rule[] = [resolutionClaims, configKeys]
 
 export const lint = (spec: Spec, only = rules) => only.flatMap(rule => rule.check(spec))
 
