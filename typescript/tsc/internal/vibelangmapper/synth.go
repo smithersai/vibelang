@@ -621,7 +621,16 @@ func (p *projector) isMatchForm(node *ast.Node) bool {
 		return startsWord(p.text[start:], "match") || startsWord(p.text[start:], "do") || startsWord(p.text[start:], "throw") ||
 			!strings.HasPrefix(p.text[p.tokenStart(callee):], "(")
 	case ast.KindParenthesizedExpression:
-		return !at("(")
+		if !at("(") {
+			return true
+		}
+		// An is that binds names is a holder spanning its subject and
+		// pattern, so it starts with the subject's own parenthesis in
+		// `(x as T) is [let a]`. Source parentheses close right after their
+		// expression; the holder's expression, the parser's tests, ends at
+		// the is word, before the pattern.
+		close := scanner.SkipTrivia(p.text, node.Expression().End())
+		return close != node.End()-1 || close >= len(p.text) || p.text[close] != ')'
 	case ast.KindBlock:
 		return at("return") || at("if")
 	case ast.KindLabeledStatement:
