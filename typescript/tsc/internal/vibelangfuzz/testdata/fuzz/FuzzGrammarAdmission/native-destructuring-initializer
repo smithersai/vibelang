@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:native-destructuring-initializer\nconst { p = effect { return 1 ; } } ;")

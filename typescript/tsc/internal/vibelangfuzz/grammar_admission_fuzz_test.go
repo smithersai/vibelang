@@ -64,6 +64,10 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"trailing-block-bare", "M {}"},
 	{"async-shorthand", "async f() { return 1; }"},
 	{"fork-block", "effect function f() { const a = fork { return 1; }; return join a; }"},
+	// campaign37 mutation:fa4ea6cbedab637b: no initializer after a binding
+	// pattern is TS1182, a native grammar rejection, not an admitted form.
+	{"native-destructuring-initializer", "const { p = effect { return 1 ; } } ;"},
+	{"native-destructuring-initializer-array", "const [a] ;"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -656,6 +660,12 @@ func grammarAdmissionSyntaxDiagnostic(d *ast.Diagnostic) bool {
 	// checker's throw check: a line break after throw (TS1142).
 	case 1200, 1142:
 		return true
+	// checkGrammarVariableDeclaration: a binding pattern with no initializer
+	// (TS1182). ECMAScript's LexicalBinding and VariableDeclaration require an
+	// Initializer after a BindingPattern, so `const { p = 1 };` has no
+	// derivation; TypeScript parses it for recovery and the checker rejects it.
+	case 1182:
+		return true
 	}
 	return false
 }
@@ -694,6 +704,10 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		{"native-arrow-line-terminator-warning", "", diagnostics.CategoryWarning, 1200, false},
 		{"native-throw-line-break", "", diagnostics.CategoryError, 1142, true},
 		{"native-throw-line-break-warning", "", diagnostics.CategoryWarning, 1142, false},
+		{"native-destructuring-initializer", "", diagnostics.CategoryError, 1182, true},
+		{"native-destructuring-initializer-warning", "", diagnostics.CategoryWarning, 1182, false},
+		{"external-destructuring-initializer-code-collision", "other", diagnostics.CategoryError, 1182, false},
+		{"ek-destructuring-initializer-code-collision", "EK", diagnostics.CategoryError, 1182, false},
 		{"native-module-type-error", "", diagnostics.CategoryError, 1192, false},
 		{"native-return-type-error", "", diagnostics.CategoryError, 1064, false},
 		{"native-name-error", "", diagnostics.CategoryError, 2304, false},

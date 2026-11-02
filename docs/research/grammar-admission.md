@@ -47,7 +47,9 @@ placement, handler and declaration recovery count as syntax rejection only
 when their diagnostic is an error. Native empty declaration lists and modifier placement, order and
 duplication errors reported by TypeScript's checker are grammar rejection
 too, as are its module-element context errors (an `import`, `export` or
-`export =` inside a block, such as `TS1231`); native type, name and module
+`export =` inside a block, such as `TS1231`) and a binding pattern with no
+initializer (`const { p = 1 };`, `TS1182`, which ECMAScript's grammar does
+not derive); native type, name and module
 resolution errors remain non-syntax errors. `EK1007`, a topic `%` outside
 every pipe body, is the early error of VIP-23's TC39 topic grammar and counts
 as syntax rejection. Warnings
