@@ -86,6 +86,11 @@ func FuzzFix(f *testing.F) {
 	})
 	f.Fuzz(func(t *testing.T, archive string) {
 		toolsGuard(t, "FuzzFix", func() {
+			nativeTS := strings.HasPrefix(archive, nativeFixReferenceKey)
+			if nativeTS {
+				TestCatchScopeFixQuoted(t)
+				archive = strings.TrimPrefix(archive, nativeFixReferenceKey)
+			}
 			directOption := strings.HasPrefix(archive, optionMatchFixKey)
 			if directOption {
 				TestOptionMatchFixQuoted(t)
@@ -98,6 +103,20 @@ func FuzzFix(f *testing.F) {
 			}
 			r := toolsCompile(t, w, "FuzzFix", files)
 			defer r.Remove()
+			// Native TypeScript migration inputs may be invalid in the old
+			// VibeLang execution model before fixing. Compare their native
+			// reference, rather than silently dropping the runtime oracle.
+			runtimeBefore := r
+			if nativeTS {
+				if len(files) != 1 || files["main.vibe"] == "" {
+					return
+				}
+				runtimeBefore = toolsCompile(t, w, "FuzzFix", map[string]string{"main.ts": files["main.vibe"]})
+				defer runtimeBefore.Remove()
+				if !toolsErrorFree(runtimeBefore) {
+					t.Skip("not an admissible native TypeScript reference")
+				}
+			}
 			config := toolsConfig(w, r.Dir)
 			if r.Program == nil || config == nil || len(config.Errors) > 0 {
 				return
@@ -176,6 +195,9 @@ func FuzzFix(f *testing.F) {
 				toolsUnappliedFixes(t, w, after, codes, second.Refused, archive)
 			}
 			if len(result.Files) == 0 {
+				if nativeTS {
+					t.Log("native-ts reference valid; no rewrite offered")
+				}
 				return
 			}
 			// "Each fix keeps the program's meaning ... It has the same types too:
@@ -184,10 +206,10 @@ func FuzzFix(f *testing.F) {
 			// write; a declaration may print it differently after a fix (an
 			// error class becomes an error declaration, D284-D290), so the
 			// contracts are compared by assignability in both directions.
-			if toolsErrorFree(r) && toolsErrorFree(after) {
-				if mismatch := toolsContractMismatch(t, w, r, after, false); mismatch != "" {
+			if toolsErrorFree(runtimeBefore) && toolsErrorFree(after) {
+				if mismatch := toolsContractMismatch(t, w, runtimeBefore, after, false); mismatch != "" {
 					key := "fix:types"
-					if toolsContractMismatch(t, w, r, after, true) == "" {
+					if toolsContractMismatch(t, w, runtimeBefore, after, true) == "" {
 						key = "fix:types:directory-service-key"
 					}
 					Gap(t, "FuzzFix", key, "--fix changed a contract: %s\nsource:\n%s\nfixed:\n%s", mismatch, archive, Archive(fixed))
@@ -195,26 +217,35 @@ func FuzzFix(f *testing.F) {
 			}
 			// D372: compare every callable exported Effect, not only main fixtures
 			// marked with expect-result. Chapter 26 requires the same exit.
-			if !toolsTrailingBlockRunnable(r) || !toolsErrorFree(after) {
+			if !toolsTrailingBlockRunnable(runtimeBefore) || !toolsErrorFree(after) {
+				if nativeTS {
+					t.Logf("native-ts remaining diagnostics prevent runtime comparison: %v", SortedKeys(Keys(after.Dir, after.Diagnostics)))
+				}
 				return
 			}
-			resultKey := "fix:result"
+			resultKey := fixResultInputKey(archive, options.VIPOnly, nativeTS)
 			if directOption {
 				resultKey = "fix:direct-option-match:value-and-events"
 			}
-			for _, entry := range toolsRunnableExports(r) {
+			for _, entry := range toolsRunnableExports(runtimeBefore) {
 				if node == nil {
 					var err error
 					if node, err = NewNode(w.Dir); err != nil {
 						t.Fatalf("cannot verify D372 runtime equivalence: %v", err)
 					}
 				}
-				was, is := node.Run(r, entry.file, entry.name), node.Run(after, entry.file, entry.name)
+				was, is := node.Run(runtimeBefore, entry.file, entry.name), node.Run(after, entry.file, entry.name)
+				if nativeTS {
+					t.Logf("native-ts runtime comparison %s:%s original=%s/%s fixed=%s/%s", entry.file, entry.name, was.Kind, was.Value, is.Kind, is.Value)
+				}
 				// D372 says the fix keeps the program's outcome. An original that
 				// doesn't run as an Effect program, such as one whose package.json
 				// Node rejects before any user code, has no outcome to keep; a
 				// fixed program that stops running does break it.
 				if toolsInvalidOutcome(was) {
+					if nativeTS {
+						Gap(t, "FuzzFix", "fix:native-ts:runtime", "native reference must run: %+v\n%s", was, archive)
+					}
 					if directOption {
 						Gap(t, "FuzzFix", "fix:direct-option-match:runtime", "generated Option.match must run for value/event comparison: %+v\n%s", was, archive)
 					}
@@ -229,12 +260,12 @@ func FuzzFix(f *testing.F) {
 				// A cached module can vary because a previous call changed its state.
 				// Only variation across fresh original modules makes this input
 				// inconclusive; crashes, timeouts and plain results never do.
-				repeated := toolsFreshOutcome(t, w, r, entry)
+				repeated := toolsFreshOutcome(t, w, runtimeBefore, entry)
 				if toolsInvalidOutcome(repeated) {
 					Gap(t, "FuzzFix", resultKey, "D372: a fresh original %s:%s returned %+v\n%s", entry.file, entry.name, repeated, archive)
 				}
 				if !toolsSameOutcome(was, repeated) {
-					repeatedAgain := toolsFreshOutcome(t, w, r, entry)
+					repeatedAgain := toolsFreshOutcome(t, w, runtimeBefore, entry)
 					if toolsInvalidOutcome(repeatedAgain) {
 						Gap(t, "FuzzFix", resultKey, "D372: a fresh original %s:%s returned %+v\n%s", entry.file, entry.name, repeatedAgain, archive)
 					}
