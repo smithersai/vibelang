@@ -199,14 +199,12 @@ var typeScriptFormFix = &ls.CodeFixProvider{
 // withImportRemovals adds to r's edits the removal of every import binding
 // whose only uses in file lie in the ranges r's edits replace: a rewrite that
 // drops the last use of Data or Context drops its import too.
-// withImportRemovals adds to r the edits that remove the imports its edits
-// leave unused. A name in kept stays imported, as if the rewrite wrote it.
-func withImportRemovals(c *checker.Checker, file *ast.SourceFile, r *formRewrite, kept ...string) *formRewrite {
+func withImportRemovals(c *checker.Checker, file *ast.SourceFile, r *formRewrite) *formRewrite {
 	if !r.fixable() {
 		return r
 	}
 	var replaced []core.TextRange
-	written := slices.Clone(kept)
+	var written []string
 	for _, edit := range r.edits {
 		replaced = append(replaced, core.NewTextRange(edit.start, edit.end))
 		written = append(written, edit.text)

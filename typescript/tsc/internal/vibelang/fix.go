@@ -434,7 +434,6 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 				}
 			}
 			p.cleanImports = !options.MigrationOnly && !options.VIPOnly
-			p.declarations = program.Options().GetEmitDeclarations()
 			if len(p.fixes) > 0 {
 				proposals = append(proposals, p)
 			}
@@ -579,7 +578,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 func removeUnusedEffectImports(g *fixGate, texts map[tspath.RootedFilePath]string, result *FixResult) {
 	cleaned := map[tspath.RootedFilePath]string{}
 	for _, name := range result.Order {
-		if text, ok := withoutUnusedEffectImports(name, result.Files[name].Original, texts[name], program.Options().GetEmitDeclarations()); ok {
+		if text, ok := withoutUnusedEffectImports(name, result.Files[name].Original, texts[name]); ok {
 			cleaned[name] = text
 		}
 	}
@@ -1078,7 +1077,6 @@ type proposal struct {
 	file         *ast.SourceFile
 	fixes        []fileFix
 	cleanImports bool
-	declarations bool // the project emits declarations (D501)
 }
 
 // text returns the proposal's file with its fixes applied.
@@ -1091,7 +1089,7 @@ func (p proposal) text() string {
 	// Check the complete proposed rewrite. Delaying this cleanup until after
 	// acceptance would make noUnusedLocals reject a fix for its unused import.
 	if p.cleanImports {
-		if cleaned, ok := withoutUnusedEffectImports(p.file.FileName(), p.file.Text(), text, p.declarations); ok {
+		if cleaned, ok := withoutUnusedEffectImports(p.file.FileName(), p.file.Text(), text); ok {
 			return cleaned
 		}
 	}
@@ -1214,11 +1212,8 @@ func applyEdits(text string, edits []sourceEdit) string {
 
 // withoutUnusedEffectImports removes from text, a file the fixes changed
 // from original, each import binding of effect or one of its modules that
-// original's code used and text's does not. In a project that emits
-// declarations (declarations), an import the declaration file writes
-// through stays (D501), as a service's Context does once a fix turned a
-// Context.Service class into a service declaration.
-func withoutUnusedEffectImports(name tspath.RootedFilePath, original, text string, declarations bool) (string, bool) {
+// original's code used and text's does not.
+func withoutUnusedEffectImports(name tspath.RootedFilePath, original, text string) (string, bool) {
 	parse := func(source string) *ast.SourceFile {
 		return parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: name, PathKey: tspath.CaseSensitive.PathKey(tspath.RootedPath(name))}, source, core.ScriptKindTS)
 	}
@@ -1240,11 +1235,6 @@ func withoutUnusedEffectImports(name tspath.RootedFilePath, original, text strin
 	for name := range names {
 		if used[name] > 0 && still[name] == 0 {
 			gone[name] = used[name]
-		}
-	}
-	if declarations {
-		for _, statement := range declarationImports(after) {
-			delete(gone, namespaceImportOfModule(statement))
 		}
 	}
 	if len(gone) == 0 {
