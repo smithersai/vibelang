@@ -173,7 +173,8 @@ function pointAt(value, source, { condition, entry = false, bare = false, sideca
     return entry ? { types: sidecar(stem), ...runtime } : runtime
   }
   if (Array.isArray(value)) return value.map((item) => pointAt(item, source, { condition, bare, sidecar }))
-  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, pointAt(item, source, { condition: key, bare, sidecar })]))
+  // A nested condition refines declaration lookup; it cannot turn it into runtime lookup.
+  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, pointAt(item, source, { condition: typeConditions.has(condition) ? condition : key, bare, sidecar })]))
   return value
 }
 

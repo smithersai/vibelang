@@ -1,0 +1,18 @@
+{
+  "source": "src/client.ts",
+  "manifest": {
+    "name": "opencode-nested-types-repro",
+    "exports": {
+      "./client": {
+        "types": { "default": "./src/client.ts" },
+        "vibelang-source": "./src/client.ts",
+        "default": "./.vibelang/js/src/client.js"
+      }
+    }
+  },
+  "expected": {
+    "types": { "default": "./src/client.d.vibe.ts" },
+    "vibelang-source": "./src/client.vibe",
+    "default": "./.vibelang/js/src/client.js"
+  }
+}
