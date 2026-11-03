@@ -114,7 +114,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [New project](../setup/new-project.md) | 540 |
 | [Existing project](../setup/existing-project.md) | 1,900 |
 | **Build and test** | **12,000** |
-| [vibelang CLI](../setup/vibelang-cli.md) | 9,000 |
+| [vibelang CLI](../setup/vibelang-cli.md) | 9,100 |
 | [Vite and Vitest](../setup/vite.md) | 2,900 |
 | **Format and lint** | **6,200** |
 | [Format with dprint](../setup/formatting.md) | 2,200 |
@@ -254,7 +254,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [PlatformLogger](../platform/108-platformlogger.md) | 790 |
 | [Runtime](../platform/109-runtime.md) | 1,400 |
 | [Terminal](../platform/110-terminal.md) | 1,800 |
-| [Platform globals in VibeLang](../platform/platform-globals.md) | 6,400 |
+| [Platform globals in VibeLang](../platform/platform-globals.md) | 6,500 |
 | [Cloudflare Workers](../platform/cloudflare-workers.md) | 760 |
 | [Alchemy](../platform/alchemy.md) | 2,500 |
 | **All 101 pages** | **170,000** |
@@ -270,7 +270,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Cheat sheet](115-cheat-sheet.md) | 11,000 |
 | [Pattern matching with match and is](116-match-and-is.md) | 7,500 |
 | [Diagnostic code map](diagnostic-code-map.md) | 2,500 |
-| [Experimental platform APIs](118-experimental-platform-apis.md) | 6,000 |
+| [Experimental platform APIs](118-experimental-platform-apis.md) | 6,400 |
 | **All 8 pages** | **38,000** |
 
 ### Specification

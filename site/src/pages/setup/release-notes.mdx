@@ -41,6 +41,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The migrate flow's setup wrote an array compiler option without spaces, such as `"customConditions": ["vibelang","bun"]`, so a repository's dprint or Prettier check failed on every tsconfig it edited (Smithers: about 60 packages, for `moduleSuffixes`); it now writes `["vibelang", "bun"]`, as those formatters do.
 - The migrate flow's setup added compiler options to every root `tsconfig*.json` it found, test fixtures included, such as the project an LSP test in Smithers' `platform-node` type-checks as data, and did it again on each run; setup now leaves the tsconfigs under `test`, `tests`, `__tests__`, fixture and `templates` directories as they are.
 - Documentation examples could not import `@effect/vitest` when another dependency supplied a different `@effect` package; snippet projects now link every scoped package from both dependency trees without changing shared installs.
+- A `.vibe` script run by `NodeRuntime.runMain` exited 130 for both `SIGINT` and `SIGTERM`, because `runMain` interrupts on each and nothing told the program which arrived, so a script that exits 143 on `SIGTERM` had to keep a raw `process.once` listener in a `.ts` file; `(try Experimental.Process.Process).observeSignals(["SIGINT", "SIGTERM"])` now records the first signal received for a cleanup finalizer to read, and EK4402 for `process.on` and `process.once` names it.
 - The formatter refused a file with `try x as T catch h`, `try x satisfies T catch h` or `try f<T> catch h`, or with `x as T catch h` outside parentheses, with an internal error (its TypeScript form did not parse), so `vibelang format` and the editor could not format it; it now formats the file and writes the parentheses the operand needs, `(try x as T) catch h`.
 - In the editor, Find References and Go to Definition on the subject of an `is` pattern that binds names, such as `x` in `(x is { id: let id })`, found nothing, because the test the parser writes for the subject started at the `is` keyword; they now find the subject and its other references.
 - The migrate flow's codemod wrote each renamed module's bare package export as `{ "types": "./x.d.vibe.ts", "default": "./x.vibe" }` even in a repository that already exports its `.vibe` modules as `"./src/X.vibe"` and checks that form, such as Smithers' export-map contracts; where any of the repository's manifests maps a subpath to a `.vibe` file by a bare path, the codemod now writes the bare path.
@@ -235,7 +236,7 @@ The fixes keep a rewrite only when it adds no compiler error.
 | An abstract class used as a service | EK4854 (VIP-9): write a `service` declaration. `--fix` removes the class spelling and preserves its members and key. Abstract classes now have ordinary TypeScript semantics. |
 | `static readonly default = shape` on a service | EK4855 (VIP-9): write `static readonly defaultValue = () => shape`. `--fix` renames the member, wraps its type and value in a thunk, and updates its value and type reads (`typeof S.default` becomes `ReturnType<typeof S.defaultValue>`). |
 | `A!E` on a function with a body inferred its requirements | EK4853 (VIP-3): every omitted slot is `never`, exactly as in `Effect<A, E, R>`. `--fix` writes the requirements previously inferred from the body. Leave out the annotation to infer the whole contract. |
-| `for (const x of stream)` or `for await (const x of stream)` | Write `for try (const x of stream)` inside effect code. `EK2007` offers this rewrite through `vibelang --fix`. Replace a body `return` with `break` and return after the loop. |
+| `for (const x of stream)` or native `for await (const x of stream)` | Native loops keep JavaScript iteration and TypeScript operand diagnostics. Choose `for try (const x of stream)` explicitly for `Stream` consumption inside effect code; `for await` in effect code is `EK0102`. |
 
 Direct platform calls such as `console.log` and `process.env.NAME` were
 already EK4402 in 0.0.10; holding their values and importing Node values
@@ -301,6 +302,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Coverage and profiling with sharded Go tests could retain only one shard's measurements; profile output now comes from one complete test process.
 
 - Sharded Go tests could report success after a partitioning tool failed and omitted tests; any failed weighting, sorting, slicing or assignment stage now stops the run with a diagnostic.
+
+- Awaiting a Promise, Effect or ordinary value inside effect code could report a retired await diagnostic; every operand now reports the assigned placement error `EK0102`, while native `async` awaiting keeps its behavior.
 - The `EK0509` repair of an object-literal value fallback, `x catch { directory }`, wrote `() => { directory }`, a block that returns nothing, and refused with `TS2322`; it now writes `() => ({ directory })`.
 - After VIP-1, `vibelang --fix --fix-vip-only` left a call that ran inside a catch's head cold, as in `decode(fs.readFileString(path)) catch …` (`TS2375`, `EK9202`); it now writes the head as the program it was, `(effect { return decode(try fs.readFileString(path)) }) catch …`.
 
@@ -505,6 +508,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Waiting for a pending browser commit or animation frame required a plain host callback; `Experimental.Animations.nextFrameUnless` now checks and registers atomically inside a cold Effect, with cancellation on interruption (decided detail 261).
 
 - Browser file reads could report an unexpected result exactly like a host error; `Experimental.FileReader` now identifies unexpected results with `InvalidData`, preserving the origin even when the cause and message coincide.
+- A valid severity override could still fail compilation because an overridden base entry was invalid; only effective severity entries now report `EK3006`, and valid overrides allow emission again.
+- With a repeated configuration key, an invalid-value error could underline the earlier valid value; it now points at the last value that the config uses.
+
 
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 
@@ -518,11 +524,15 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Migrating a package with wildcard exports could add a new public `.platform` module, as Alchemy's AWS platform splits did; the flow now refuses that split before writing files, and the declaration gate rejects new published `.d.ts` files.
 
 - Programmatic Rolldown builds and exported plugin sets could not bundle migrated modules, including Alchemy's lazy bundles and framework adapters; setup now wires the native plugin into supported calls and typed plugin factories, preserves test-pinned plugin positions, and installs runtime dependencies for published code.
+
+- Compiler benchmarks overwrote earlier trials and targets' diagnostic logs. Every invocation now retains all trial logs, commands and parsed samples, including failed trials, when you reuse `--out`.
 - Schema fuzzing could miss readonly-record alias regressions outside one spelling; keyed checks now cover the alias, mutability and required-key combinations while keeping unresolved compiler gaps explicit.
 
 - The install site named an unpublished compiler version and native Windows packages; it now uses npm’s published version and platforms, with WSL guidance until Windows packages are published.
 
 - Migration could leave `.ts` build entries pointing at renamed files when a configuration was outside `src`; batched codemods now wire owned configurations and retain that wiring on resume and revert.
+
+- Contributor documentation checks ran every test file in sequence; `//:docs-tools` now runs files on three isolated workers, keeps tests within each file ordered, and reports a failure from any worker.
 
 - Unparenthesized execution expressions before `**` reported a native TypeScript diagnostic; they now report `EK0510` with an editor action and a preserving `vibelang --fix` repair to add parentheses.
 
@@ -558,6 +568,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Editor and compiler tests with a missing fixture package could fail with unrelated type or rewrite assertions; they now name the missing package directory and the `sh scripts/setup.sh` command before constructing the fixture.
 
+- Native loops over values that also implement `Stream` were rejected or rewritten to consume the `Stream`; they now keep native TypeScript diagnostics and the written JavaScript iteration protocol.
+
 - Migration could break a plugin host that derives virtual module names from a resolved package entry and source-file extension; scope planning now keeps the observed packages native and records the source-enumeration cause, preserving the unchanged host.
 
 - The migrate flow rejected a native acquisition's unchanged `!Error` contract when its original function returned `Effect.callback<A, Error>`, as in foldkit's WebSocket example; it now recognizes that explicit returned channel when the callback becomes a platform service, while nested callbacks and changed contracts remain rejected.
@@ -577,6 +589,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Quick-fix fuzz failures could show an existing error in another method when an edit added an error with the same code; they now show a diagnostic absent from the original program, while retaining the same error-count check.
 
 - Retired `await.all`, `await.race`, `await.any` and `await.allSettled` spellings in async code produced an unrelated parse error; they now report `EK1802` with async-context guidance and no effect-only automatic rewrite.
+
+- Documentation generation formatted the same declaration signatures again for re-exported aliases; each checker now reuses their formatted text while producing the same inventory.
 
 - `vibelang --fix` deleted comments from legacy diagnostic maps, including empty maps and entries superseded by modern settings; it now keeps every comment in direct and extended configs, with the same settings and a stable second run.
 
@@ -606,6 +620,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The pattern-binding chapter cited unpublished decision numbers for binding homes and redeclarations. It now links a public VIP-7 amendment stating those same rules.
 
 - Native `await` warned about empty tuples, containers and objects with only a `Fiber` or `Deferred` marker; the warning now requires the corresponding interface, so these ordinary values compile even when the advisories are promoted to errors.
+
+- Parenthesized arrow handlers after `catch` could be returned as function values or lose their parameter types; they now receive the failure and run as handlers.
 - A typed catch clause whose binding destructures, such as `catch ({ id }: NotFound)`, crashed the compiler and the editor with `Unhandled case in Node.Text`; it now reports `EK2112`, suggesting `catch (e)`, and its quick fix leaves the pattern alone.
 
 - Bundling a package that mixed `.ts` and `.vibe` modules could include two copies of a shared service or schema, so a built CLI failed at startup although its tests passed. The bundler plugins now select the package's `vibelang-source` exports and preserve the bundler's existing conditions, keeping one source graph.
