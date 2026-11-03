@@ -607,6 +607,15 @@ const specLint = S.Shell.Test({
   sandbox: "none", timeout: "1m"
 })
 
+const foreignCallExamples = S.Shell.Test({
+  summary: "VIP-4 unknown-call rules and prelude examples agree, with regression and generated mutations.",
+  shell: "node --test docs/tools/spec-foreign-call-contract.test.mjs",
+  data: [design, S.Filegroup({ srcs: [...S.glob(["docs/tools/spec-foreign-call-contract*.mjs", "docs/tools/package.json", "docs/tools/bun.lock"])] })],
+  tools: [node],
+  sandbox: "none",
+  timeout: "5m"
+})
+
 const targets = {
   "spec-coverage-census": S.Shell.Run({
     summary: "Inventory main rules with passing, pending, missing and tag-linked evidence.",
@@ -621,6 +630,7 @@ const targets = {
     shell: "bun test docs/tools/coverage-census.test.ts",
     data: [tree], tools: [bun], sandbox: "none", timeout: "2m"
   }),
+  "spec-foreign-call-contract": foreignCallExamples,
   // A Run has no graph replay: revision and external decisions are runtime
   // inputs. The script pins the revision/diff verdict, including failures.
   // Platform owns attachment to the pre-gate; grounded violations reject by default.
