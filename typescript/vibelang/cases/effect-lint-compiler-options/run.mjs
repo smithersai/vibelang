@@ -27,7 +27,7 @@ try {
     assert.equal(readdirSync(dir).some(name => name.endsWith(".d.vibe.ts") || name.endsWith(".js")), false)
   }
   const issues = []
-  for (const args of [["--fix"], ["--config", "anything.json"], ["--not-a-compiler-option"]]) {
+  for (const args of [["--fix"], ["--config", "anything.json"], ["--config=anything.json"], ["--config"], ["--not-a-compiler-option"]]) {
     const r = invoke(["lint", ...args])
     try {
     assert.notEqual(r.status, 0, JSON.stringify(args))

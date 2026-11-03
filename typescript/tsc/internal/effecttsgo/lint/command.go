@@ -74,7 +74,7 @@ func Command(ctx context.Context, sys tsc.System, args []string) int {
 	// must not change the compiler project's inputs, options or diagnostics.
 	legacy := slices.ContainsFunc(args, func(arg string) bool {
 		name, _, _ := strings.Cut(arg, "=")
-		return slices.Contains([]string{"-c", "--config", "--deny-warnings", "--ignore-path", "--ignore-pattern", "--no-ignore"}, name)
+		return slices.Contains([]string{"-c", "--deny-warnings", "--ignore-path", "--ignore-pattern", "--no-ignore"}, name)
 	})
 	if !legacy {
 		return int(execute.CommandLine(ctx, analysisOnlySystem{sys}, append(slices.Clone(args), "--noEmit"), nil).Status)
@@ -93,7 +93,7 @@ func Command(ctx context.Context, sys tsc.System, args []string) int {
 			arg, inline = args[i], false
 		}
 		switch arg {
-		case "-c", "--config", "-p", "--project", "--ignore-path", "--ignore-pattern":
+		case "-c", "-p", "--project", "--ignore-path", "--ignore-pattern":
 			if !inline {
 				if i+1 == len(args) {
 					fmt.Fprintf(errOut, "vibelang lint: %s needs a value\n\n%s", arg, usage)
@@ -103,7 +103,7 @@ func Command(ctx context.Context, sys tsc.System, args []string) int {
 				value = args[i]
 			}
 			switch arg {
-			case "-c", "--config":
+			case "-c":
 				configPath = value
 			case "--ignore-path":
 				ignore.ignorePath = value
@@ -118,7 +118,13 @@ func Command(ctx context.Context, sys tsc.System, args []string) int {
 			// Compatibility spelling; promote a code in vibe.severities to fail CI.
 		default:
 			if strings.HasPrefix(arg, "-") {
-				fmt.Fprintf(errOut, "vibelang lint: unknown option %s\n\n%s", arg, usage)
+				diagnosticwriter.WriteFormatDiagnostic(out,
+					diagnosticwriter.WrapASTDiagnostic(ast.NewCompilerDiagnostic(diagnostics.Unknown_compiler_option_0, arg)),
+					&diagnosticwriter.FormattingOptions{
+						CaseSensitivity:  sys.FS().CaseSensitivity(),
+						CurrentDirectory: sys.GetCurrentDirectory(),
+						NewLine:          "\n",
+					})
 				return 2
 			}
 			paths = append(paths, arg)

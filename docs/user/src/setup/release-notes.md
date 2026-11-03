@@ -716,6 +716,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The `EK4853` quick fix could write an imported service's original name instead of its alias, introducing an unknown name or silently widening the requirement to an unrelated local `any` or `unknown` type. The editor and `--fix` now keep the bound alias or namespace qualifier and decline inaccessible requirement types.
 
+- `vibelang lint --config anything.json` tried to open an unsupported custom configuration; it now reports `TS5023`, including when an Oxlint configuration is present. Select a compiler project with `-p` or `--project`.
+
 - Identical recursive generic declaration APIs could fail with `TS2589`; exact resolved type identity now proves those comparisons.
 - API checks treated identical JSDoc links as different when a private target resolved in only one snapshot. Link targets and labels now compare consistently while real comment changes remain differences.
 

@@ -223,3 +223,34 @@ func TestCommandRejectsInvalidProjectOptions(t *testing.T) {
 		t.Fatalf("status %d; want config error TS5024\n%s%s", status, sys.out.String(), sys.err.String())
 	}
 }
+
+// VIP-38 admits compiler options, so --config must not select the Oxlint adapter.
+func TestCommandRejectsUnsupportedConfigAlias(t *testing.T) {
+	for _, config := range []string{"", ".oxlintrc.json", "oxlint.config.ts"} {
+		for _, args := range [][]string{
+			{"--config", "anything.json"},
+			{"--config=anything.json"},
+			{"--config"},
+			{"-c", "missing.json", "--config", "anything.json"},
+			{"--config=anything.json", "-p", "missing-project.json"},
+		} {
+			t.Run(config+strings.Join(args, " "), func(t *testing.T) {
+				dir := t.TempDir()
+				if config != "" {
+					if err := os.WriteFile(filepath.Join(dir, config), []byte("not a config"), 0644); err != nil {
+						t.Fatal(err)
+					}
+				}
+				sys := &testSys{cwd: tspath.RootedDirectoryPathFromAbsolute(dir)}
+				status := Command(t.Context(), sys, args)
+				output := sys.out.String() + sys.err.String()
+				if status == 0 || !strings.Contains(output, "error TS5023: Unknown compiler option") || !strings.Contains(output, "--config") {
+					t.Fatalf("status=%d, want TS5023 before reading config files:\n%s", status, output)
+				}
+				if strings.Contains(output, "vibelang lint:") {
+					t.Fatalf("entered the adapter before option admission: %s", output)
+				}
+			})
+		}
+	}
+}
