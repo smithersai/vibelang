@@ -161,6 +161,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Custom compiler-case runners could fail before invoking the compiler; they now receive the same compiler executable that checked the case.
 
 - The specification checks failed after an approved module-resolution table edit left the generated reference stale. The reference now follows VIP-39 exactly, with a regression check against a fresh generation.
+
+- Renaming a symbol in a file with an unfinished `module { ... }` declaration could crash the editor. Rename now skips the missing module name and still updates other bindings.
 - Loading a `.vibe` module through `vibelang/register`, `vibelang/bun` or a bundler plugin failed with `TS6305: Output file '…/lib/x.d.ts' has not been built from source file '…/src/x.ts'` when its tsconfig `references` a project that was not built yet, as in a fresh clone before `vibelang -b`; the loader's compile now reads a referenced project's types from its sources, as the editor does, and a relative import into that project no longer reports `TS2878`.
 
 - Checking a large declaration dependency graph could exhaust memory before comparing exports; input diagnostics now use fresh checker groups and retain the complete dependency diagnostics.

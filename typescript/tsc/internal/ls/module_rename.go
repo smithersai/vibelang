@@ -31,6 +31,11 @@ func (l *LanguageService) moduleDeclarationRename(uri lsproto.DocumentUri, posit
 			if declaration {
 				target = node.Name()
 			}
+			// Recovery may supply an empty name while a module is being typed.
+			// It has no source occurrence to rename.
+			if ast.NodeIsMissing(target) {
+				return false
+			}
 			start := scanner.SkipTrivia(file.Text(), target.Pos())
 			span, fidelity := l.converters.ToLSPRange(file, core.NewTextRange(start, target.End()))
 			if fidelity.IsExact() {
