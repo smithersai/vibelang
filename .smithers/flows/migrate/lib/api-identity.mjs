@@ -461,6 +461,14 @@ export function compareApiIdentity(ts, before, after, options = {}) {
       return sources
     }
     const ambientLeft = ambient(left, before), ambientRight = ambient(right, after)
+    // Global overload precedence follows source-file binding order.
+    // Equal per-file closures cannot prove a reordered ambient environment.
+    if (JSON.stringify([...ambientLeft.keys()]) !== JSON.stringify([...ambientRight.keys()])) {
+      result.environmentDiagnostics.push({ blocking: true,
+        diagnostic: "Ambient declaration load order differs; shared-program comparison is unavailable" })
+      result.comparisonComplete = false
+      return result
+    }
     const ambientProof = equivalentModules(ts, program, host, Object.fromEntries(ambientLeft), Object.fromEntries(ambientRight), externalGroups, ambientDocumentation)
     for (const key of new Set([...ambientLeft.keys(), ...ambientRight.keys()])) {
       const a = ambientLeft.get(key), b = ambientRight.get(key)

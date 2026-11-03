@@ -52,11 +52,11 @@ Formatter tests may continue to compare bytes to test their formatting.
 Global declarations and module augmentations can merge when both input trees
 enter one TypeScript program. Before probing, the checker reads each tree in
 isolation and proves the ambient declaration dependency closures equivalent,
-including normalized JSDoc from their dependencies. An unproved ambient change
+including normalized JSDoc from their dependencies and the isolated ambient source load order. An unproved ambient change
 makes the comparison unavailable with exit status `2`; it is never accepted as
 identical or counted as a type difference. Unchanged ambient declarations and
 doc-comment whitespace remain comparable. This conservative guard does not yet
-classify changed global environments by export.
+classify changed global environments by export; a reordered ambient closure can remain unavailable even when its order is irrelevant to a particular export.
 
 
 The reusable synchronous API is
