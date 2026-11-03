@@ -12,6 +12,7 @@
     "check:release": "node release-docs.mjs --check"
   },
   "devDependencies": {
+    "fast-check": "4.10.2",
     "marked": "18.0.12",
     "@effect/platform-node": "4.1.0",
     "@effect/vitest": "4.1.0",

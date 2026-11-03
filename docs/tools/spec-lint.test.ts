@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test"
+import fc from "fast-check"
 import { lint, loadSpec, rules, type Spec } from "./spec-lint"
 
 const spec = legacyStyleFixtures(loadSpec())
@@ -79,6 +80,18 @@ test("declaration-import-style-scope rejects round 14 OPUS-5's `.vibe`-only decl
   expect(lint(defect, rule("declaration-import-style-scope")).map(v => `${v.file}:${v.line} ${v.message}`)).toEqual([
     expect.stringMatching(/^src\/007-tooling\.md:\d+ a chapter paragraph naming `declarationImportStyle` states no rule for a `\.\/x\.vibex` import$/)
   ])
+})
+
+test("retired declaration notices accept arbitrary examples at both historical paths", () => {
+  fc.assert(fc.property(
+    fc.constantFrom("vibelang.declarationImportStyle", "compilerOptions.vibelang.declarationImportStyle"),
+    fc.jsonValue(),
+    (path, value) => {
+      const fixture = new Map(retiredStyle)
+      fixture.set("src/007-tooling.md", "The retired `" + path + "` is ignored with a nonfatal deprecation warning for every value.\n\n```json\n" + JSON.stringify({ value }) + "\n```\n")
+      expect(lint(fixture, rule("declaration-import-style-scope"))).toEqual([])
+    }
+  ), { numRuns: 100, seed: 1007 })
 })
 
 test("declaration-import-form rejects round 14 OPUS-4's `import type` beside `import` for the same added import", () => {
