@@ -177,22 +177,18 @@ function entriesOf(text, file, ts, native) {
   return bundles
 }
 
-/** For selected source modules, the unchanged test bundle entries and their transitive runtime graphs. */
-export function testBundleDeferrals(root, selected, { paths = {}, ts, onWarning = () => {}, routed = false } = {}) {
-  // routeBundledImports gives these graphs a boundary the bundler can read, so nothing stays back.
-  if (!selected.length || routed) return []
-  const { files, manifests, owner } = repository(root), known = new Set(files)
-  const protectedFiles = new Set()
-  for (const [dir, manifest] of manifests) for (const file of testOnlyScripts(root, dir, packageScripts(root, dir), manifest)) {
-    if (known.has(file)) protectedFiles.add(file)
-  }
+/**
+ * The repository's owned scripts, and the runtime edges between them, followed
+ * through relative imports, tsconfig aliases and workspace export maps. An
+ * emitted .js entry is a boundary only when its package's map names it.
+ */
+export function sourceGraph(root, { paths = {}, ts, repo = repository(root) } = {}) {
+  const { files, manifests, owner } = repo, known = new Set(files)
   const texts = new Map()
   const text = file => {
     if (!texts.has(file)) texts.set(file, readFileSync(join(root, file), "utf8"))
     return texts.get(file)
   }
-  const tests = [...protectedFiles].filter(file => /["'](?:rolldown|esbuild|vite|(?:node:)?child_process)["']|\bBun\.build\b|\bBun\.spawn(?:Sync)?\b/.test(text(file)))
-  if (!tests.length) return []
   ts ??= loadTypeScript([root, fileURLToPath(new URL("../../../../packages/runtime", import.meta.url)), fileURLToPath(new URL("../../../../docs/tools", import.meta.url))])
   // Scope and rename checks can run without the setup's persisted paths.
   paths = { ...paths }
@@ -239,12 +235,30 @@ export function testBundleDeferrals(root, selected, { paths = {}, ts, onWarning 
   const dependency = (from, specifier) => specifier.startsWith(".")
     ? [runtimeFile(posix.join(posix.dirname(from),specifier))].filter(Boolean)
     : [resolveAlias(specifier,paths[owner(from)],known),...bare(from,specifier)].filter(Boolean)
-  const native = nativeBundleProof(root, ts, dependency)
   const graph = new Map()
   const deps = file => {
     if (!graph.has(file)) graph.set(file, parseImports(text(file)).filter(i => !i.typeOnly).flatMap(i => dependency(file,i.specifier)))
     return graph.get(file)
   }
+  return { files, manifests, owner, known, text, ts, bare, dependency, runtimeFile, deps }
+}
+
+/** For selected source modules, the unchanged test bundle entries and their transitive runtime graphs. */
+export function testBundleDeferrals(root, selected, { paths = {}, ts, onWarning = () => {}, routed = false } = {}) {
+  // routeBundledImports gives these graphs a boundary the bundler can read, so nothing stays back.
+  if (!selected.length || routed) return []
+  const repo = repository(root), { files, manifests } = repo, known = new Set(files)
+  const protectedFiles = new Set()
+  for (const [dir, manifest] of manifests) for (const file of testOnlyScripts(root, dir, packageScripts(root, dir), manifest)) {
+    if (known.has(file)) protectedFiles.add(file)
+  }
+  const protectedText = file => readFileSync(join(root, file), "utf8")
+  const tests = [...protectedFiles].filter(file => /["'](?:rolldown|esbuild|vite|(?:node:)?child_process)["']|\bBun\.build\b|\bBun\.spawn(?:Sync)?\b/.test(protectedText(file)))
+  if (!tests.length) return []
+  const graph = sourceGraph(root, { paths, ts, repo })
+  ts = graph.ts
+  const { text, owner, bare, dependency, runtimeFile, deps } = graph
+  const native = nativeBundleProof(root, ts, dependency)
   const wanted = new Set(selected), found = new Map()
   for (const test of tests) for (const bundle of entriesOf(text(test), test, ts, native)) {
     const roots = new Set()

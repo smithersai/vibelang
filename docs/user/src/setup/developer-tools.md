@@ -21,6 +21,20 @@ entries, including expanded `tsdown` entry globs. Array order and named
 entry aliases stay as configured; `.ts` and `.vibe` sources still build.
 Use the `.vibe` source when choosing a single entry.
 
+## Runners with no VibeLang loader
+
+Node on a package `bin`, `bun file` from a directory whose `bunfig.toml` has no `vibelang/bun` preload, and Playwright's Babel cannot read a `.vibe` module. The compile, declarations and tests pass, and the tool fails only when someone runs it. Setup wires the runners it can. A batched migration keeps the modules the others reach TypeScript, names them under `deferred` in `plan.json`, and lists the entries under `bareRunners` in `setup.json`:
+
+```ts
+// packages/pkg/package.json: "bin": { "pkg": "./src/cli/bin.ts" }
+// Node runs bin.ts, so bin.ts and each module it imports at run time stay .ts.
+
+// A fixture's package.json: "dev": "bun run ../../tools/src/e2e/Cli.ts"
+// No bunfig in the fixture, so Cli.ts and what it imports stay .ts.
+```
+
+Where a loader does serve a script, as in `node --import vibelang/register src/x.ts`, the modules it reaches can migrate, and `src/x.ts` keeps its name because no step rewrites a script's path. To migrate a module this keeps, wire its runner or change the entry in its own commit first. A module already `.vibe` that such a runner reaches is a setup warning. Other bundlers, such as vinext, are not followed.
+
 ## Prettier and Oxfmt
 
 Setup and record split large formatter file lists into bounded argument chunks. Their format log retains each command and exit status. A failing chunk makes the step fail after all selected files have been attempted.

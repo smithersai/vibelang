@@ -12,6 +12,7 @@ import { pathReadDeferrals, rewriteReferences } from "./references.mjs"
 import { isToolConfig } from "./plan.mjs"
 import { assertBaselineSafe } from "./baseline.mjs"
 import { assertNoTestBundleRename, testBundleDeferrals } from "./test-bundles.mjs"
+import { bareRunnerDeferrals } from "./bare-runners.mjs"
 import { loadTypeScript } from "./declarations.mjs"
 import { projectsOf } from "./wire.mjs"
 import { readToolchain } from "./toolchain.mjs"
@@ -40,6 +41,11 @@ export function planScope(root, scope, { nativeConfigs = [] } = {}) {
   const bundled = testBundleDeferrals(root, files)
   const retained = new Set(bundled.map(d => d.file))
   deferred.push(...bundled)
+  for (const bare of bareRunnerDeferrals(root, files).deferred) {
+    if (retained.has(bare.file)) continue
+    retained.add(bare.file)
+    deferred.push(bare)
+  }
   for (let i = files.length - 1; i >= 0; i--) if (retained.has(files[i])) files.splice(i, 1)
   if (!files.length) throw new Error("scope contains no .ts or .mts modules to migrate; " + deferred.map(d => d.reason).join("; "))
   return { version: 1, mode: "one-pass", batches: [{ files, reason: "One whole-scope pass; settle returns failing modules by diagnostic cause, dependency roots first." }], deferred }

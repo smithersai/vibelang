@@ -7,6 +7,7 @@ import { join, posix } from "node:path"
 import { fileURLToPath } from "node:url"
 import { loadTypeScript } from "./declarations.mjs"
 import { testBundleDeferrals } from "./test-bundles.mjs"
+import { bareRunnerDeferrals } from "./bare-runners.mjs"
 import { effectUse, isEffectSpecifier, parseImports, resolveAlias, resolveRelative } from "./imports.mjs"
 import { describe, enumerates, namedSelectors } from "./enumerations.mjs"
 import { isDeclarationFile, readJson, rel } from "./util.mjs"
@@ -138,10 +139,17 @@ export function buildInventory({ root, packages, tokens = {}, coverage = {}, pat
     record.bundledBy = deferred.bundledBy
     record.bundleReason = deferred.reason
   }
+  const bareRunners = bareRunnerDeferrals(root, records.map(r => r.path), { paths })
+  for (const deferred of bareRunners.deferred) {
+    const record = byPath.get(deferred.file)
+    record.bareRunBy = deferred.runBy
+    record.bareRunReason = deferred.reason
+  }
   const effectful = records.filter((r) => r.effect !== "none")
   return {
     version: 1,
     ...(bundleWarnings.length ? { bundleWarnings } : {}),
+    bareRunners: { entries: bareRunners.entries, wired: bareRunners.wired, modules: bareRunners.deferred.map(d => d.file) },
     root,
     packages: packages.map((p) => p.dir),
     summary: {

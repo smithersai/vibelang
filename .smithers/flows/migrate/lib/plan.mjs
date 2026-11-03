@@ -21,7 +21,7 @@ export function isToolConfig(path) {
 
 /** Sources with Effect values may migrate unless a selector needs their TypeScript filename. Tool configs require setup's native-loader proof. */
 export function candidates(inventory, { includeTests = false, nativeConfigs = [] } = {}) {
-  return inventory.files.filter((f) => f.effect === "values" && (includeTests || !f.test) && /\.(?:ts|mts)$/.test(f.path) && !isDeclarationFile(f.path) && (!isToolConfig(f.path) || nativeConfigs.includes(f.path)) && !f.namedBy && !f.bundledBy?.length && !f.enumeratedBy?.length)
+  return inventory.files.filter((f) => f.effect === "values" && (includeTests || !f.test) && /\.(?:ts|mts)$/.test(f.path) && !isDeclarationFile(f.path) && (!isToolConfig(f.path) || nativeConfigs.includes(f.path)) && !f.namedBy && !f.bundledBy?.length && !f.bareRunBy?.length && !f.enumeratedBy?.length)
 }
 
 /** Report the full owned inventory separately from automatic and explicit selections (detail 279). */
@@ -106,7 +106,10 @@ export function draftPlan(inventory, limits = defaultLimits, options = {}) {
         `${b.lines} lines`
       ].join("; ")
     })),
-    deferred: inventory.files.filter(f => f.bundledBy?.length).map(f => ({file:f.path,reason:f.bundleReason??"test-owned bundle graph stays TypeScript (decided detail 272)"})),
+    deferred: [
+      ...inventory.files.filter(f => f.bundledBy?.length).map(f => ({file:f.path,reason:f.bundleReason??"test-owned bundle graph stays TypeScript (decided detail 272)"})),
+      ...inventory.files.filter(f => f.bareRunBy?.length && !f.bundledBy?.length).map(f => ({file:f.path,reason:f.bareRunReason}))
+    ],
     notes: "Drafted by plan.mjs without a model."
   }
 }
@@ -133,6 +136,7 @@ export function validatePlan(plan, inventory, limits = defaultLimits, { nativeCo
       if (!/\.(?:ts|mts)$/.test(path) || isDeclarationFile(path)) errors.push(`${name}: ${path} is not a .ts module or .mts source module; only those files become .vibe`)
       if (f.effect === "none") errors.push(`${name}: ${path} has no Effect code, so it keeps its TypeScript filename`)
       if (f.bundledBy?.length) errors.push(name + ": " + path + " belongs to a test-owned bundle graph and stays TypeScript: " + (f.bundleReason ?? "decided detail 272"))
+      if (f.bareRunBy?.length) errors.push(name + ": " + path + ": " + f.bareRunReason)
       if (f.enumeratedBy?.length) errors.push(`${name}: ${path} stays ${posix.extname(path)}: ${f.enumeratedBy[0]}, and would no longer select it as ${path.replace(/\.(?:ts|mts)$/, ".vibe")}`)
       if (isToolConfig(path) && !nativeConfigs.includes(path)) errors.push(`${name}: ${path} is a tool's config, which the tool finds by its name, so it keeps its TypeScript filename`)
       else if (f.namedBy) errors.push(`${name}: ${path} is a file ${f.namedBy} finds by its name, so it keeps its TypeScript filename`)

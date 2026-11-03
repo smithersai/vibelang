@@ -1290,6 +1290,10 @@ export async function setup(options) {
   const aliasPaths = Object.fromEntries(config.packages.map((pkg) => [pkg.dir, tsconfigPaths(ts, t, Wire.projectsOf(ts, join(t, pkg.dir), pkg.tsconfig).map((tsconfig) => join(t, pkg.dir, tsconfig)))]))
   const inventory = buildInventory({ root: t, packages: config.packages, tokens, coverage: readCoverage(t, config.packages), paths: aliasPaths, enumerations: wired?.sidecarDir?.findings ?? [], routedBundles: Boolean(config.routeBundledImports) })
   if (wired) wired.warnings.push(...(inventory.bundleWarnings ?? []))
+  // A module a bare runner already loads as .vibe breaks that tool; one still .ts stays .ts, by name in the plan.
+  if (wired) for (const file of inventory.bareRunners.modules.filter(file => file.endsWith(".vibe"))) {
+    wired.warnings.push(file + ": " + inventory.files.find(f => f.path === file).bareRunReason)
+  }
   writeJson(p.inventory, inventory)
 
   // The target's coding agents get the skill, the language server and a check after each edit.
@@ -1311,7 +1315,8 @@ export async function setup(options) {
     wiringRegressions: wiring && { newFailures: wiring.newFailures, missing: wiring.missing, exit: { before: upstream.code, after: tests.code } },
     compile,
     declarations,
-    inventory: inventory.summary
+    inventory: inventory.summary,
+    bareRunners: inventory.bareRunners
   }
   writeJson(p.setup, result)
   return result
