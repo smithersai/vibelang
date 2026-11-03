@@ -414,6 +414,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Declaration-oracle tests still rejected harmless published member reorderings and accepted changed export comments. They now check the same exported names, strict types and normalized documentation in compiler probes and published packages; the Foldkit counterpart keeps matching comments, with its original differing constructor comment retained as a rejection control.
 
+- Unknown foreign calls in effect code reported the legacy `EK4401` trust error; they now report `EK0403`, with the existing preserving `--fix` rewrite still available.
+
 - Declaration checks could compare an unused `types` export instead of an earlier matching package condition, hiding a real API change. Published entry discovery now follows TypeScript's conditional export order and preserves mirrored `.vibe` sidecar resolution.
 
 - Declaration checks could miss a type change selected by an explicit `resolution-mode` import attribute. They now resolve each import using its own mode throughout the comparison.
@@ -458,6 +460,12 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Form warnings missed direct `try` operands wrapped in parentheses or erased TypeScript expressions and warned about Effects stored or consumed elsewhere. `EK4834`, `EK4835` and the provider forms of `EK4836` now follow only the direct bare-`try` operand, recognize import aliases, and explain when a safe quick fix is unavailable.
 
 - A trailing block separated from its call by JavaScript whitespace such as a nonbreaking space had no automatic repair; `vibelang --fix` now writes the callback argument for every single-line whitespace spelling.
+
+- `Symbol.customMatcher` in a `.vibe` file reported `TS2339`, though chapter 4 and these docs write it; it now names the runtime's key without an import, unless the file declares its own `Symbol`.
+- A class that inherited a static `Symbol.customMatcher` from a superclass matched through it; a class now uses only its own matcher, and `class B extends A {}` tests `instanceof`. Error families keep their generated tag matcher.
+- An `Option.match` repair could write an unqualified payload type or a shortened record type and then be refused; generated callback annotations now keep qualified names and complete types.
+
+- Plain JavaScript runners such as `Effect.runSyncExit(program)` incorrectly reported `EK4301` when their returned `Exit` was discarded; plain functions, callbacks and module statements now keep TypeScript's call behavior.
 
 - Bun's release-age setting blocked newly published VibeLang packages in example projects; the examples now exempt their pinned VibeLang packages from that age check.
 - Editor fixes could write invalid annotations around `this` or `super`, a loop binding or a `finally` binding; they now decline edits that cannot preserve the program.
@@ -683,6 +691,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - An animation frame timestamp earlier than its starting clock produced a negative delta; `Experimental.Animations.frameDeltas` now clamps negative deltas to zero.
 
 - A service-default editor repair could rename the declaration while leaving aliased, parenthesized, union-indexed or instantiated type reads broken; it now retains `EK4855` with a manual-repair explanation and offers no partial edit.
+- `new f()` on a function declared in a `.vibe` file reported the retired `EK1020` and hid TypeScript's errors. It now uses TypeScript's constructor checks alone, including assertions and `@ts-ignore`.
 - Resolved schema-binding regressions still appeared as pending gaps; namespace, function and escaped-name coverage now checks `EK2109` strictly while keeping every keyed corpus.
 - Schema library-alias checks now compare array decoding and mutability with native TypeScript and explicit Schema controls; remaining decoder gaps keep precise pending records.
 

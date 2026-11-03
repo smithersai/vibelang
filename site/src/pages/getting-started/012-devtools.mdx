@@ -88,6 +88,8 @@ Place the cursor in a top-level `module parse { … }` declaration and request *
 
 If `parse.ts` or a conflicting sibling name is taken, compared case-insensitively, the refactor chooses `main.parse.ts` for `main.vibe`, then adds a number if needed. The rewritten specifier ends in `.ts` when `rewriteRelativeImportExtensions` or `allowImportingTsExtensions` is enabled, and `.js` otherwise. The editor applies file creation and source edits together and does not overwrite an existing file. This move is an explicit refactor; `vibelang --fix` leaves legal module declarations in place.
 
+`new f()` on a function declared in a `.vibe` file uses TypeScript's own constructor checks. VibeLang adds no constructor diagnostic, so assertions and `@ts-ignore` keep TypeScript's behavior.
+
 ## Diagnostic reference: additional codes
 
 Each entry gives the condition and the repair. The examples and language-service tables on this page cover the other registered codes for these forms.
@@ -96,7 +98,6 @@ Each entry gives the condition and the repair. The examples and language-service
 | --- | --- | --- |
 | EK1006 | A pipe body never uses its input topic, `%`. | Put `%` where the input belongs in the call after the pipe. |
 | EK1007 | `%` appears outside a pipe body. | Use it only after the pipe operator, or name the value with a variable. |
-| EK1020 | `new` calls a function declared in a `.vibe` file, which is not a constructor. | Declare a class, or call the function without `new`. |
 | EK1017 | A `provide` statement was used in an expression position. | Write `provide layer { statements }` as a statement and return from inside its block. |
 | EK2111 | A `restore` block has no enclosing `uninterruptible` block. | Put it inside `uninterruptible`, or use `interruptible { … }`. |
 | EK3001 | Two services share a key. | Rename one of the declarations named by the diagnostic. |
