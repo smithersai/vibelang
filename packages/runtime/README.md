@@ -408,3 +408,5 @@ stream, as a loop that ends early does, interrupts that fiber, which runs the
 producer's cleanup; a failure of that cleanup reaches no one, as in Effect.
 
 `Experimental.Stdio` extends Effect standard I/O with `awaitInputClosed`, a cold listener-only wait for stdin end/close. It preserves transport input bytes and error ownership; Node/Bun layers and test overrides are available through the experimental subpaths.
+
+The guarded package entry exports every runtime ABI helper with the same identity as the ABI module, including generated error matcher registration. Keep compiler and runtime versions aligned when distributing generated modules.

@@ -254,7 +254,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [FileSystem](../platform/106-file-system.md) | 1,300 |
 | [Path](../platform/107-path.md) | 950 |
 | [PlatformLogger](../platform/108-platformlogger.md) | 790 |
-| [Runtime](../platform/109-runtime.md) | 1,300 |
+| [Runtime](../platform/109-runtime.md) | 1,400 |
 | [Terminal](../platform/110-terminal.md) | 1,600 |
 | [Platform globals in VibeLang](../platform/platform-globals.md) | 7,200 |
 | [Cloudflare Workers](../platform/cloudflare-workers.md) | 760 |

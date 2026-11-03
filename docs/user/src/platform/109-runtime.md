@@ -130,3 +130,7 @@ console.log(`custom failure: ${failedCustom.status}`)
 // Output: batch: 1, cleaned: true
 // Output: custom failure: 2
 ```
+
+## Runtime package compatibility
+
+Keep the compiler and `vibelang-runtime` at matching versions when distributing generated JavaScript. The guarded runtime package entry supplies every compiler ABI helper, including generated error matcher registration, and checks the supported Effect version before loading the ABI.
