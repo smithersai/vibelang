@@ -1076,6 +1076,8 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK4841` | lint warning: A schema `const` immediately followed by its matching `typeof Name.Type` alias | 15, 34 | [Configuration and tooling](007-tooling.md#typescript-spellings-with-vibelang-forms) |
 | `EK4842` | lint warning: An Effect module imported under a conflicting JavaScript global name | 14, 34 | [Configuration and tooling](007-tooling.md#typescript-spellings-with-vibelang-forms) |
 
+Trailing blocks are rejected by [VIP-11](../vips/0011-trailing-blocks-denied.md#amendments); their preserving repair and native-parser recovery follow VIP-34. Classification requires proven legacy lowering, never the callee's parameter type alone. Versioned dual compatibility retains its native call error or transitional `EK1023`, without duplicate `EK1101`.
+
 ### Transitional compiler diagnostics
 
 A transitional compiler may still print compatibility diagnostics from the old language. The following inventory covers the `EK92xx` codes in its [registry](../../../typescript/tsc/internal/vibelang/diagnostics.go), separately from the normative rules above: an interim code does not establish a language rule or reserve a new VIP block. Their retirement follows the named VIPs; a compiler renumbering must update this inventory with the registry.
@@ -1259,7 +1261,7 @@ A denied VIP is not part of the language. Each records what was proposed and why
 | --- | --- | --- |
 | [8](../vips/0008-using-denied.md) | special syntax for Effect resources (`using` with Effect meaning, a `scoped` keyword) | `using` is TypeScript's; Effect resources use `scoped(effect { … })` |
 | [10](../vips/0010-service-call-shorthand-denied.md) | the `Users.find(id)` shorthand | `try (try Users).find(id)` |
-| [11](../vips/0011-trailing-blocks-denied.md) | trailing blocks, `f(x) { … }` | `f(x, () => { … })`, `f(x, effect () => { … })` or `f(x, effect { … })`, as `EK1101`'s quick fix chooses |
+| [11](../vips/0011-trailing-blocks-denied.md) | trailing blocks, `f(x) { … }` | `f(x, () => { … })`, `f(x, effect () => { … })` or `f(x, effect { … })`, as the proven legacy lowering chooses; refuse an unproved choice (VIP-11) |
 | [24](../vips/0024-wire-denied.md) | `wire`, automatic layer composition | Effect's `Layer.provide` and `Layer.provideMerge` |
 | [25](../vips/0025-inline-modules-denied.md) | inline `module` declarations as a TypeScript escape; superseded by [VIP-40](../vips/0040-module-declarations.md) | a `.ts` file, or a `module` declaration |
 
