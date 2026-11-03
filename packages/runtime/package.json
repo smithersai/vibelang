@@ -131,6 +131,11 @@
       "types": "./dist/experimental/platform-worker/index.d.ts",
       "import": "./dist/experimental/platform-worker/index.js",
       "default": "./dist/experimental/platform-worker/index.js"
+    },
+    "./experimental/AudioContext": {
+      "types": "./dist/experimental/AudioContext.d.ts",
+      "import": "./dist/experimental/AudioContext.js",
+      "default": "./dist/experimental/AudioContext.js"
     }
   },
   "files": [

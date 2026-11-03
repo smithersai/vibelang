@@ -9,6 +9,7 @@
  */
 import * as Layer from "effect/Layer"
 import type * as Animations from "../Animations.js"
+import type * as AudioContext from "../AudioContext.js"
 import type * as FileReader from "../FileReader.js"
 import type * as ResizeObserver from "../ResizeObserver.js"
 import type * as Document from "../Document.js"
@@ -18,6 +19,7 @@ import type * as Crypto from "../Crypto.js"
 import type * as Locks from "../Locks.js"
 import type * as MediaQuery from "../MediaQuery.js"
 import * as ExperimentalBrowserAnimations from "./ExperimentalBrowserAnimations.js"
+import * as ExperimentalBrowserAudioContext from "./ExperimentalBrowserAudioContext.js"
 import * as ExperimentalBrowserFileReader from "./ExperimentalBrowserFileReader.js"
 import * as ExperimentalBrowserResizeObserver from "./ExperimentalBrowserResizeObserver.js"
 import * as ExperimentalBrowserDocument from "./ExperimentalBrowserDocument.js"
@@ -35,6 +37,7 @@ import * as ExperimentalBrowserMediaQuery from "./ExperimentalBrowserMediaQuery.
  */
 export type ExperimentalBrowserServices =
   | Animations.Animations
+  | AudioContext.AudioContext
   | FileReader.FileReader
   | ResizeObserver.ResizeObserver
   | Document.Document
@@ -60,6 +63,7 @@ export const layer: Layer.Layer<ExperimentalBrowserServices> = Layer.mergeAll(
   ExperimentalBrowserResizeObserver.layer,
   ExperimentalBrowserFileReader.layer,
   ExperimentalBrowserAnimations.layer,
+  ExperimentalBrowserAudioContext.layer,
   ExperimentalBrowserCrypto.layer,
   ExperimentalBrowserLocks.layer,
   ExperimentalBrowserMediaQuery.layer

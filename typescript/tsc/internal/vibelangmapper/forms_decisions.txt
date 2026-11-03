@@ -2947,6 +2947,7 @@ typescript/vibelang/cases/experimental-animations/main.vibe:22:39 lambda effectF
 typescript/vibelang/cases/experimental-animations/main.vibe:22:52 lambda effectFn annotation
 typescript/vibelang/cases/experimental-animations/main.vibe:22:58 lambda plain fallback
 typescript/vibelang/cases/experimental-animations/main.vibe:6:34 lambda plain annotation
+typescript/vibelang/cases/experimental-audio-context/main.vibe:15:23 byname program table
 typescript/vibelang/cases/experimental-computed-style/main.vibe:13:72 lambda plain fallback
 typescript/vibelang/cases/experimental-computed-style/main.vibe:14:40 lambda effectFn annotation
 typescript/vibelang/cases/experimental-document-helpers/main.vibe:20:21 lambda plain fallback

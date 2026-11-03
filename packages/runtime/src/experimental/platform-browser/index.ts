@@ -7,6 +7,7 @@
  * @since 0.0.11
  */
 export * as ExperimentalBrowserAnimations from "./ExperimentalBrowserAnimations.js"
+export * as ExperimentalBrowserAudioContext from "./ExperimentalBrowserAudioContext.js"
 export * as ExperimentalBrowserCrypto from "./ExperimentalBrowserCrypto.js"
 export * as ExperimentalBrowserDocument from "./ExperimentalBrowserDocument.js"
 export * as ExperimentalBrowserFileReader from "./ExperimentalBrowserFileReader.js"

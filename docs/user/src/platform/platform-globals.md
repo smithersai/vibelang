@@ -37,6 +37,7 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `CSS` | `try (try Experimental.Document.Document).escapeSelector(value)` |
 | `Deno` | escape to TypeScript for now: A runtime's own API belongs to its platform package's layers, such as @effect/platform-bun's, or to a .ts file. |
 | `EventSource` | `try HttpClient.get(url)` |
+| `AudioContext` | `try (try Experimental.AudioContext.AudioContext).acquire` |
 | `FileReader` | `try (try Experimental.FileReader.FileReader).readAsText(blob)` |
 | `HTMLElement` | `(try Experimental.Document.Document).isHTMLElement(value)` |
 | `ResizeObserver` | `try (try Experimental.ResizeObserver.ResizeObserver).observe(element, onResize)` |
@@ -292,7 +293,8 @@ effect function experimental(path: string, pid: number, killSignal: ChildProcess
   const style = try (try Experimental.Window.Window).computedStyle(element)
   const isElement = (try Experimental.Document.Document).isHTMLElement(value)
   const selector = try (try Experimental.Document.Document).escapeSelector(value)
-  return { id, platform, arch, executable, versions, memory, host, cores, origin, running, file, mac, signed, valid, sealed, opened, pair, lock, reducedMotion, frame, text, element, isolated, agent, style, isElement, selector }
+  const context = try (try Experimental.AudioContext.AudioContext).acquire
+  return { id, platform, arch, executable, versions, memory, host, cores, origin, running, file, mac, signed, valid, sealed, opened, pair, lock, reducedMotion, frame, text, element, isolated, agent, style, isElement, selector, context }
 }
 ```
 

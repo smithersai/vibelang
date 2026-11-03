@@ -30,6 +30,7 @@ declare var requestAnimationFrame: (callback: (time: number) => void) => number
 declare var cancelAnimationFrame: (id: number) => void
 declare var FileReader: { new(): unknown }
 declare var ResizeObserver: { new(callback: () => void): unknown }
+declare var AudioContext: { new(): unknown }
 declare var crossOriginIsolated: boolean
 declare type Element = unknown
 declare var getComputedStyle: (element: Element) => unknown
@@ -232,6 +233,10 @@ export const run = (key: Uint8Array) => createHmac("sha256", key)`, []string{
 		{"resize observer", `export const run = () => new ResizeObserver(() => {})`, []string{
 			"ResizeObserver is platform code, which VibeLang code does not use directly.",
 			"Use the experimental ResizeObserver service:   try (try Experimental.ResizeObserver.ResizeObserver).observe(element, onResize)", provideExperimentalBrowser,
+		}},
+		{"audio context", `export const run = () => new AudioContext()`, []string{
+			"AudioContext is platform code, which VibeLang code does not use directly.",
+			"Use the experimental AudioContext service:   try (try Experimental.AudioContext.AudioContext).acquire", provideExperimentalBrowser,
 		}},
 		{"cross-origin isolation", `export const run = () => crossOriginIsolated`, []string{
 			"crossOriginIsolated is platform code, which VibeLang code does not use directly.",

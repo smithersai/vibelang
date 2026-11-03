@@ -1,0 +1,27 @@
+{
+  "key": "foldkit:note-player-audio-context",
+  "basis": "VIP-33 injected browser capabilities and Effect scoped acquire/release lifetimes.",
+  "minimized_pattern": "new AudioContext(); resume(); close() when the note-player scope ends",
+  "scenarios": [
+    {
+      "state": "running",
+      "rejects": false,
+      "finish": "success"
+    },
+    {
+      "state": "suspended",
+      "rejects": true,
+      "finish": "failure"
+    },
+    {
+      "state": "closed",
+      "rejects": true,
+      "finish": "interrupt"
+    },
+    {
+      "state": "running",
+      "rejects": false,
+      "finish": "closed-in-body"
+    }
+  ]
+}

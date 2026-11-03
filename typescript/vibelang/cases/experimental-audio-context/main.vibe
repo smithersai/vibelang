@@ -1,0 +1,18 @@
+// expect-result: ["running A4","closed"]
+// foldkit's website/src/page/home/notePlayerDemo.ts: the context closes with its Scope, and the graph stays in a .ts
+// file.
+import { fakeContext, playNote } from "./page.ts"
+
+effect function play(log: Array<string>, note: string) {
+  const audio = try Experimental.AudioContext.AudioContext
+  const context = try audio.acquire
+  playNote(context, log, note)
+}
+
+export effect function main() {
+  const log: Array<string> = []
+  provide Experimental.AudioContext.layerTest(fakeContext(log)) {
+    try Effect.scoped(play(log, "A4"))
+  }
+  return log
+}

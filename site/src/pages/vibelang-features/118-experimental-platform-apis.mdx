@@ -23,6 +23,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.ResizeObserver` | `observe` of an element, until the Scope closes | browser |
 | `Experimental.FileReader` | `readAsText`, `readAsDataUrl`, `readAsArrayBuffer` of a `Blob` or a `File` | browser |
 | `Experimental.Animations` | `nextFrame`, `nextFrameUnless`, `frameDeltas`, `settled` over animation frames and the Web Animations API | browser |
+| `Experimental.AudioContext` | `acquire`, an `AudioContext` that closes with the Scope | browser |
 
 `Experimental` is in scope in every `.vibe` file without an import, as Effect's modules are. A local value declaration or an import named `Experimental` shadows it in expressions. A local type alias or interface keeps its type meaning without hiding the implicit value namespace. TypeScript imports the same modules from `vibelang-runtime/experimental`, or one module from its subpath, such as `vibelang-runtime/experimental/FileSystem`.
 
@@ -39,7 +40,7 @@ Provide a platform layer at the application boundary. The layers live beside Eff
 | `vibelang-runtime/experimental/platform-worker` | `ExperimentalWorkerDns.layer`, requiring Effect `HttpClient`; `layerWith` for an injected TCP adapter |
 | `vibelang-runtime/experimental/platform-node` | `ExperimentalNodeServices.layer`: `@effect/platform-node`'s bundle plus `FileSystem`, `Crypto`, `Process` and `Stdio`; `ExperimentalNodeFileSystem.layer`, `ExperimentalNodeCrypto.layer`, `ExperimentalNodeProcess.layer`, `ExperimentalNodeStdio.layer`; `ExperimentalNodeLocks.layer`, within one process; `ExperimentalNodeHttpServer.layer` and `layerConfig`; `ExperimentalNodeDns.layer` and `layerWith` |
 | `vibelang-runtime/experimental/platform-bun` | `ExperimentalBunServices.layer`: `@effect/platform-bun`'s bundle plus `FileSystem`, `Crypto`, `Process` and `Stdio`; `ExperimentalBunFileSystem.layer`, `ExperimentalBunCrypto.layer`, `ExperimentalBunProcess.layer`, `ExperimentalBunStdio.layer` |
-| `vibelang-runtime/experimental/platform-browser` | `ExperimentalBrowserServices.layer`: `Crypto`, `@effect/platform-browser`'s crypto services and the browser services; `ExperimentalBrowserCrypto.layer`, `ExperimentalBrowserLocks.layer`, `ExperimentalBrowserMediaQuery.layer`, `ExperimentalBrowserInfo.layer`, `ExperimentalBrowserWindow.layer`, `ExperimentalBrowserDocument.layer`, `ExperimentalBrowserResizeObserver.layer`, `ExperimentalBrowserFileReader.layer`, `ExperimentalBrowserAnimations.layer` |
+| `vibelang-runtime/experimental/platform-browser` | `ExperimentalBrowserServices.layer`: `Crypto`, `@effect/platform-browser`'s crypto services and the browser services; `ExperimentalBrowserCrypto.layer`, `ExperimentalBrowserLocks.layer`, `ExperimentalBrowserMediaQuery.layer`, `ExperimentalBrowserInfo.layer`, `ExperimentalBrowserWindow.layer`, `ExperimentalBrowserDocument.layer`, `ExperimentalBrowserResizeObserver.layer`, `ExperimentalBrowserFileReader.layer`, `ExperimentalBrowserAnimations.layer`, `ExperimentalBrowserAudioContext.layer` |
 
 `ExperimentalNodeServices.layer` replaces `@effect/platform-node`'s `NodeServices.layer`: it provides every service Effect's does. Each `Crypto` layer, such as `ExperimentalNodeCrypto.layer`, provides the experimental `Crypto` and the platform's Effect crypto services, such as `SecureRandom` and `Digest`; the bundles for Node and Bun, like Effect's, hold none of Effect's crypto services. The runtime lists `@effect/platform-node`, `@effect/platform-bun` and `@effect/platform-browser` as optional peer dependencies: install the one your program runs on. Failures are Effect's `PlatformError`, as for Effect's services.
 
@@ -521,3 +522,18 @@ Each fact is an Effect that cannot fail, as `Experimental.Process`'s are:
 ## When Effect ships them
 
 Each addition has a matching change prepared for Effect. When an Effect release has the member, the experimental module re-exports Effect's, and a later VibeLang release removes the module.
+
+## AudioContext
+
+```vibe
+// sound.vibe
+effect function sampleRate() {
+  const audio = try Experimental.AudioContext.AudioContext
+  const context = try audio.acquire
+  return context.sampleRate
+}
+```
+
+`try audio.acquire` opens an `AudioContext` that closes when the Scope closes, unless the program closed it first. A close that rejects does not fail the scope. It fails with a `PlatformError` whose `description` is the browser's message, including on a host with no `AudioContext`. The context is the host's own object: build its graph of nodes in a `.ts` file or a named top-level `module` body.
+
+`ExperimentalBrowserAudioContext.layer`, also in `ExperimentalBrowserServices.layer`, uses the host's `AudioContext`. `Experimental.AudioContext.layerTest(context)` gives a fake, which still closes with the Scope.
