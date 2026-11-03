@@ -248,14 +248,16 @@ func requiredParameterCount(fn *ast.Node) int {
 	return n
 }
 
-// contextualReturnType makes what a .vibe function returns contextually typed
-// by the success type of the Effect expected of it. Its body returns the
-// success value, because the calls in it run: an Effect function expected as
+// contextualReturnType makes what a .vibe effect function returns contextually
+// typed by the success type of the Effect expected of it. Its body returns the
+// success value, because the calls in it run: an effect function expected as
 // (a) => Effect<B, E, R> returns a B. A program expected as Effect<A, E, R>
 // has no contextual signature, so its body is typed by A, as the object a
-// Layer.effect program returns is typed by the service's shape.
+// Layer.effect program returns is typed by the service's shape. A plain
+// function returns what its body gives, so an Effect expected of it types its
+// body as TypeScript does: Effect.succeed({ kind: "a" }) keeps the literal.
 func contextualReturnType(c *checker.Checker, fn *ast.Node, t *checker.Type, getContextual func() *checker.Type) *checker.Type {
-	if !isLowerable(fn) {
+	if !isLowerable(fn) || markedForm(fn) == formNone && !isProducer(fn) {
 		return t
 	}
 	if t == nil {

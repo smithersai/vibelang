@@ -509,6 +509,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The no-match fuzz corpus reported an unexpected pass after the empty-message `TypeError` fix. It now checks that behavior without an obsolete exception (VIP-7, chapter 4).
 
 - Loader cache tests now cover explicitly included hidden native additions after warm hits, alongside visible-source and existing-file controls; missing invalidations are tracked explicitly.
+- A plain function expected to return an Effect typed its body by the Effect's success, so `probe: () => Effect.succeed({ kind: "a" })` widened the literal and failed with TS2375 where the same TypeScript compiled; the body now gets the Effect as its contextual type.
 - Resolved schema-binding regressions still appeared as pending gaps; namespace, function and escaped-name coverage now checks `EK2109` strictly while keeping every keyed corpus.
 - Schema library-alias checks now compare array decoding and mutability with native TypeScript and explicit Schema controls; remaining decoder gaps keep precise pending records.
 

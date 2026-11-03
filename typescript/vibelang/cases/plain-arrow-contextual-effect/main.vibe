@@ -1,0 +1,35 @@
+// expect-result: ["unknown","idle","a","x","a","a","late","idle"]
+// A plain function's body is TypeScript, so the Effect expected of it types
+// what it returns as TypeScript does. Smithers control's Health.vibe.
+import { Effect, Exit } from "effect"
+
+type Report = { readonly activity: "idle" | "unknown"; readonly reason?: "ok" | "late" | undefined }
+type Checker<C = unknown> = { readonly id: string; readonly probe: (context: number, config: C) => Report!unknown }
+
+export const session: Checker = { id: "session", probe: () => Effect.succeed({ activity: "unknown", reason: "ok" }) }
+export const annotated: () => Report!! = () => Effect.succeed({ activity: "idle" })
+export const blockBody: () => "a" | "b"!string = () => {
+  return Effect.succeed("a")
+}
+export const expression: () => readonly [1, "x"]!! = function () {
+  return Effect.succeed([1, "x"])
+}
+export const exit: () => Exit.Exit<"a" | "b"> = () => Exit.succeed("a")
+export const factory: () => () => "a" | "b"!! = () => () => Effect.succeed("a")
+
+// An effect function's body gives the success value, so it is typed by that.
+export const marked: () => Report!! = effect () => ({ activity: "unknown", reason: "late" })
+export const program: Report!! = effect { return { activity: "idle" } }
+
+export effect function main() {
+  return [
+    (try session.probe(0, undefined)).activity,
+    (try annotated()).activity,
+    try blockBody(),
+    (try expression())[1],
+    try exit(),
+    try factory()(),
+    (try marked()).reason,
+    (try program).activity
+  ]
+}
