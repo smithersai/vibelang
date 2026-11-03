@@ -13,6 +13,10 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vfs/vfstest"
 )
 
+// Chapter 007 / invalid child severity does not restore base or discard siblings: docs/design/src/007-tooling.md#a93edda2dbfc32e0
+// Chapter 007 / invalid child severity does not restore base or discard siblings: docs/design/src/007-tooling.md#69605d417661012f
+// Chapter 007 / whole EK3801 and EK38100 severity keys: docs/design/src/007-tooling.md#40032308a488183d
+// Chapter 007 / whole EK3801 and EK38100 severity keys: docs/design/src/007-tooling.md#b68573e481f09b49
 func TestVibeInvalidSeverityShadowsBase(t *testing.T) {
 	for _, code := range []string{"EK0801", "EK3801", "EK38100"} {
 		for _, value := range []string{`"bad"`, `""`, `42`, `null`, `true`, `[]`, `{}`} {

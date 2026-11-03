@@ -97,6 +97,7 @@ func TestVibeLangConfigDiagnosticLocations(t *testing.T) {
 	}
 }
 
+// Chapter 007 / legacy section replaces inherited section: docs/design/src/007-tooling.md#05b41a5466581c26
 func TestVibeLangConfigInheritance(t *testing.T) {
 	base := `{"compilerOptions":{"vibelang":{"trustedPackages":["@smthrs/*"],"diagnostics":{"EK4403":"off"}}},"files":["main.vibe"]}`
 	for _, test := range []struct {

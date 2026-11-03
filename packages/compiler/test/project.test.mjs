@@ -561,6 +561,7 @@ process.exit(1)
   })
 }
 
+// Chapter 007 / project adapter nearest-directory precedence: docs/design/src/007-tooling.md#e352740c4179068c
 test("config discovery uses VIP-30 precedence in the nearest directory", (t) => {
   const root = mkdtempSync(join(tmpdir(), "vibe-config-precedence-"))
   t.after(() => rmSync(root, { recursive: true, force: true }))

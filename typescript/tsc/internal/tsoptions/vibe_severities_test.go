@@ -11,6 +11,13 @@ import (
 	"testing"
 )
 
+// Chapter 007 / config key/type validation and non-adjustable errors: docs/design/src/007-tooling.md#ce733ec7969bc214
+// Chapter 007 / config key/type validation and non-adjustable errors: docs/design/src/007-tooling.md#441567dd8b6892e9
+// Chapter 007 / config key/type validation and non-adjustable errors: docs/design/src/007-tooling.md#7a11b3119f7a250b
+// Chapter 007 / config key/type validation and non-adjustable errors: docs/design/src/007-tooling.md#ee3665746d919ed8
+// Chapter 007 / config key/type validation and non-adjustable errors: docs/design/src/007-tooling.md#fdf418ba9cf6caec
+// Chapter 007 / config key/type validation and non-adjustable errors: docs/design/src/007-tooling.md#3dfaf25e0a0292c4
+// Chapter 007 / config key/type validation and non-adjustable errors: docs/design/src/007-tooling.md#ffe3b817a5b026d7
 func TestVibeSeveritiesValidation(t *testing.T) {
 	for _, test := range []struct {
 		value, span string
@@ -48,6 +55,10 @@ func TestVibeSeveritiesValidation(t *testing.T) {
 	}
 }
 
+// Chapter 007 / per-code inheritance and all severity values: docs/design/src/007-tooling.md#39bb78fb02bc84b9
+// Chapter 007 / per-code inheritance and all severity values: docs/design/src/007-tooling.md#04b503c4e869d201
+// Chapter 007 / per-code inheritance and all severity values: docs/design/src/007-tooling.md#c52b8e28c2511c90
+// Chapter 007 / per-code inheritance and all severity values: docs/design/src/007-tooling.md#6882b210cd12be04
 func TestVibeSeveritiesRoundTripAndInheritance(t *testing.T) {
 	for _, severity := range []string{"error", "warning", "suggestion", "off"} {
 		t.Run(severity, func(t *testing.T) {
@@ -76,6 +87,8 @@ func TestVibeSeveritiesRoundTripAndInheritance(t *testing.T) {
 	}
 }
 
+// Chapter 007 / legacy EK3009 migration and idempotence: docs/design/src/007-tooling.md#6f4906296e80bddc
+// Chapter 007 / legacy EK3009 migration and idempotence: docs/design/src/007-tooling.md#7514d98e5542a36b
 func TestVibeSeverityLegacyMigration(t *testing.T) {
 	for _, text := range []string{
 		`{"vibelang":{"diagnostics":{"EK4609":"off"}},"files":["main.vibe"]}`,
@@ -115,6 +128,7 @@ func TestVibeSeverityLegacyMigration(t *testing.T) {
 	}
 }
 
+// Chapter 007 / left-to-right extends arrays and sibling isolation: docs/design/src/007-tooling.md#f8bed900fe15013c
 func TestVibeSeveritiesExtendsArrayAndSiblings(t *testing.T) {
 	fs := vfstest.FromMap(map[string]string{
 		"/p/a.json":        `{"vibe":{"effectGlobals":false,"severities":{"EK4609":"off","EK4610":"warning"}}}`,
@@ -138,6 +152,7 @@ func TestVibeSeveritiesExtendsArrayAndSiblings(t *testing.T) {
 	}
 }
 
+// Chapter 007 / legacy options preserve whole-section inheritance: docs/design/src/007-tooling.md#de3fe9aa3ec27c8b
 func TestVibeSeveritiesLegacyCoexistence(t *testing.T) {
 	base := `{"vibelang":{"trustedPackages":["example"]},"vibe":{"severities":{"EK4610":"warning"}}}`
 	for _, test := range []struct {

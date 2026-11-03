@@ -7,6 +7,10 @@ import (
 	"testing"
 )
 
+// Chapter 007 / nearest-directory config precedence: docs/design/src/007-tooling.md#08f671ebc135a31b
+// Chapter 007 / nearest-directory config precedence: docs/design/src/007-tooling.md#e9ea081f2137ad5a
+// Chapter 007 / nearest-directory config precedence: docs/design/src/007-tooling.md#c6d2a2b2adc66f19
+// Chapter 007 / nearest-directory config precedence: docs/design/src/007-tooling.md#da8a3469f87d8049
 func TestVibeConfigDiscovery(t *testing.T) {
 	for _, test := range []struct {
 		name  string

@@ -49,6 +49,7 @@ test("project selection still reads the config", { skip }, t => {
   assert.notEqual(result.status, 0)
   assert.match(result.stdout + result.stderr, /TS2322/)
 })
+// Chapter 007 / explicit files bypass discovery and cannot accompany project selection: docs/design/src/007-tooling.md#a1301fe440f20b62
 test("project and explicit files remain incompatible", { skip }, t => {
   const dir = project(t, "vibe.config.json", "vibe")
   const result = run(dir, ["-p", ".", "main.vibe", "--pretty", "false"])

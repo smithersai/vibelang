@@ -25,6 +25,11 @@ function run(dir,...args) {return spawnSync(native,["-p","tsconfig.json","--pret
 const source = `import type { Fiber } from "effect"
 export async function wait(fiber: Fiber.Fiber<number>) { return await fiber }
 `
+// Chapter 007 / Fiber warning reporting, status and noEmitOnError across four severities: docs/design/src/007-tooling.md#bc2663339d8154bc
+// Chapter 007 / Fiber warning reporting, status and noEmitOnError across four severities: docs/design/src/007-tooling.md#cc7166d61cac2455
+// Chapter 007 / Fiber warning reporting, status and noEmitOnError across four severities: docs/design/src/007-tooling.md#8848fe61649e9321
+// Chapter 007 / Fiber warning reporting, status and noEmitOnError across four severities: docs/design/src/007-tooling.md#9a21abd24afa95c8
+// Chapter 007 / Fiber warning reporting, status and noEmitOnError across four severities: docs/design/src/007-tooling.md#b6d9b844cce809ee
 for (const severity of ["error","warning","suggestion","off"]) {
  test(`vibe.severities ${severity} controls CLI, status and noEmitOnError`,{skip},t=>{
   const dir=project(t,{vibe:{severities:{EK4609:severity}}},source)
@@ -69,7 +74,8 @@ export effect function pause() { try Effect.sleep(0); return 1 }
 }
 
 for (const severity of ["error","warning","suggestion","off"]) {
- test(`Deferred EK4610 ${severity} controls reporting and exit status`,{skip},t=>{
+ // Chapter 007 / Deferred warning reporting, status and noEmitOnError: docs/design/src/007-tooling.md#b8b4de61a34046b0
+test(`Deferred EK4610 ${severity} controls reporting and exit status`,{skip},t=>{
   const dir=project(t,{vibe:{severities:{EK4610:severity}}},`import type { Deferred } from "effect"
 export async function wait(value: Deferred.Deferred<number>) { return await value }
 `)
@@ -216,6 +222,7 @@ for (const [shape, legacy] of Object.entries(legacyCommentShapes)) {
  }
 }
 
+// Chapter 007 / invalid severity container retains error and emit consequences: docs/design/src/007-tooling.md#0df7b52faa5489ea
 for (const mode of ["child", "later-base", "invalid-child", "independent", "container"]) {
  test("effective severity diagnostics: "+mode, {skip}, t => {
   const settings = mode === "later-base"
