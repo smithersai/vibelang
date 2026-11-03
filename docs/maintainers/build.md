@@ -305,6 +305,8 @@ pattern and actual error, retaining the original error as their cause.
 A saved known failure that succeeds remains `XPASS`: remove its
 `knownFailure` marker after fixing the defect.
 
+The native ESLint corpus tree oracle compares each source token with the decoded `Identifier.name` at the same offset. Unicode escapes keep their written token ranges, diagnostics and contextual-keyword checks. `packages/compiler/test/eslint-escaped-name.property.test.mjs` runs in `compiler-test`, covering fixed and braced escapes in six declaration forms and missing-node mutations, including escaped `match` and `effect` bindings.
+
 ## Packages
 
 ```text

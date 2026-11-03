@@ -75,9 +75,17 @@ export function problems(code, ast, visitorKeys) {
     const effectModifier = word === "effect" && effectPrefixes.some(([start, end]) => start <= token.range[0] && token.range[1] <= end)
     const exempt = effectModifier || formWords.has(word) || contextualKeywords.has(word) || patternWords.has(word) ||
       previous === "." || previous === "infer"
-    if (!named.has(`${token.range[0]}:${word}`) && !exempt) found.push(`name ${word} at ${token.range[0]} has no node`)
+    if (!named.has(`${token.range[0]}:${identifierName(word)}`) && !exempt) found.push(`name ${word} at ${token.range[0]} has no node`)
   })
   return found
+}
+
+// Tokens preserve source spelling; ESTree Identifier.name is decoded.
+// Keep raw spelling for contextual-word exemptions and failure messages, so
+// escaped bindings named match or effect still require an Identifier node.
+function identifierName(word) {
+  return word.replace(/\\u(?:([0-9a-fA-F]{4})|\{([0-9a-fA-F]+)\})/g,
+    (_, fixed, braced) => String.fromCodePoint(Number.parseInt(fixed ?? braced, 16)))
 }
 
 // Globals a pattern or a cause catch clause names, which the parser turns
