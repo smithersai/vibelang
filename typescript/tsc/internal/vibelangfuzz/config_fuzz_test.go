@@ -127,6 +127,10 @@ func settingProblems(settings map[string]any) []string {
 	var problems []string
 	for key, value := range settings {
 		switch key {
+		case "sidecarDir":
+			if _, ok := value.(string); !ok {
+				problems = append(problems, "sidecarDir is not a directory string")
+			}
 		case "severities":
 			codes, ok := value.(map[string]any)
 			if !ok {
@@ -154,6 +158,23 @@ func settingProblems(settings map[string]any) []string {
 	}
 	slices.Sort(problems)
 	return problems
+}
+
+// Chapter 007: sidecarDir is a directory string; every other JSON kind is EK3007.
+func TestSidecarDirectorySettings(t *testing.T) {
+	for name, value := range map[string]any{
+		"empty": "", "relative": "types", "nested": ".vibe/declarations",
+		"null": nil, "boolean": false, "number": float64(1),
+		"array": []any{}, "object": map[string]any{},
+	} {
+		t.Run(name, func(t *testing.T) {
+			problems := settingProblems(map[string]any{"sidecarDir": value})
+			_, valid := value.(string)
+			if (len(problems) == 0) != valid {
+				t.Fatalf("sidecarDir=%#v: problems=%v, string accepted=%v", value, problems, valid)
+			}
+		})
+	}
 }
 
 // duplicateKeys reports whether a JSON text repeats a key in one object,
