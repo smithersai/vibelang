@@ -968,7 +968,7 @@ Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34)
 
 The old `EK2101` is retired and will never be reassigned: it rejected a bodyless declaration whose return type was not an Effect, a restriction VIP-9 removed. The old `EK0511` is retired too: VIP-4 makes a `throw` in a plain `catch` handler the error `EK0401`.
 
-The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`, `EK4839`, `EK4841` and `EK4842` assignments. Their triggers and safe repairs are in [TypeScript spellings with VibeLang forms](007-tooling.md#typescript-spellings-with-vibelang-forms). They are configurable warnings, separate from the imported Effect rules and their `EK38xx` codes. Obsolete owned-fiber, Option extension-method and magic-entry rules have no rows here.
+The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`, `EK4839`, `EK4841` and `EK4842` assignments. Their triggers and safe repairs are in [TypeScript spellings with VibeLang forms](007-tooling.md#typescript-spellings-with-vibelang-forms). They are configurable warnings, separate from the imported Effect rules and their `EK38xx` codes. Transitional, migration and removal codes keep the assignments their sources give them, outside their VIPs' blocks, until a coordinated renumber: `EK1023` (VIP-11, amended), `EK4607` ([retired `select`](000-intro.md#retired-continuation-forms)) and `EK4853` to `EK4857` (VIP-3 and VIP-9, amended). Obsolete owned-fiber, Option extension-method and magic-entry rules have no rows here.
 
 | Code | Rule | VIP | Chapter |
 | --- | --- | --- | --- |
