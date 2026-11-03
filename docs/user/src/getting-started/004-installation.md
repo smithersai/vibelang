@@ -77,7 +77,7 @@ This keeps the platform package from selecting a newer patch with a different Ef
 
 ```sh
 bun add --exact vibelang-runtime@0.0.11 effect@4.1.1 @effect/platform-node@4.1.1
-bun add -d --exact vibelang@0.0.11 vibelang-vite@0.0.11 vitest@5.0.5 @effect/vitest@4.1.1
+bun add -d --exact vibelang@0.0.11 vibelang-vite@0.0.11 vitest@5.1.0 @effect/vitest@4.1.1
 ```
 
 With npm, run `npm install --save-exact` for the first line and `npm install --save-dev --save-exact` for the second.
@@ -88,7 +88,7 @@ With npm, run `npm install --save-exact` for the first line and `npm install --s
 | `effect`, `@effect/platform-node` | Dependency | Effect 4.1.1 and its Node platform |
 | `vibelang` | Dev dependency | The compiler and language server, its native binary, and the VS Code extension |
 | `vibelang-vite` | Dev dependency | Compiles `.vibe` modules for Vite and Vitest |
-| `vitest`, `@effect/vitest` | Dev dependency | Vitest 5.0.5 and `@effect/vitest` 4.1.1 for tests |
+| `vitest`, `@effect/vitest` | Dev dependency | Vitest 5.1.0 and `@effect/vitest` 4.1.1 for tests |
 
 The compiler reads the `effect` the project resolves and reports `EK3201` when its version is not the pinned 4.1.1 (`The resolved effect is 4.0.3; VibeLang 0.0.11 pins 4.1.1: upgrade both together`), in the CLI and the editor. Upgrade `effect` and VibeLang together.
 

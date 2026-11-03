@@ -212,6 +212,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Editor regression tests now exercise qualified Option handlers around anonymous payload-size boundaries and verify that every input reaches its actual quick fix.
 
+- `npm create vibelang` failed on Node 22, whose npm 10 crashes installing the pinned Vitest (`Cannot read properties of null (reading 'edgesOut')`), as do the install pages' `npm install` commands. The starter and those pages now pin Vitest 5.1.0, which npm 10 installs.
 - Bun's release-age setting blocked newly published VibeLang packages in example projects; the examples now exempt their pinned VibeLang packages from that age check.
 - Editor fixes could write invalid annotations around `this` or `super`, a loop binding or a `finally` binding; they now decline edits that cannot preserve the program.
 - Hover and rename missed references in match guards, `is` subjects, `and` patterns and error `extends` clauses; the editor now finds those original source references.

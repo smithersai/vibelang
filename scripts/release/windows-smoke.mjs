@@ -1,5 +1,5 @@
 // Run after installing the release tarballs in a directory with spaces, # and %.
-// Run the optional --vitest check in a path without #; Vitest 5.0.5 also fails there for plain TypeScript.
+// Run the optional --vitest check in a path without #; Vitest 5.1.0 also fails there for plain TypeScript.
 // This deliberately invokes Node with an argv array, never a shell command string.
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
@@ -9,7 +9,7 @@ import { pathToFileURL } from "node:url"
 
 const root = resolve(process.argv[2])
 if (process.argv.includes("--vitest") && root.includes("#")) {
-  console.error("windows-smoke: Vitest 5.0.5 cannot load tests from a project path containing #. Run this path without --vitest; run --vitest from a path without #.")
+  console.error("windows-smoke: Vitest 5.1.0 cannot load tests from a project path containing #. Run this path without --vitest; run --vitest from a path without #.")
   process.exit(2)
 }
 const launcher = join(root, "node_modules/vibelang/bin/vibelang")

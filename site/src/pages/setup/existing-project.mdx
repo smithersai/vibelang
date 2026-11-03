@@ -56,14 +56,14 @@ With Bun, run:
 
 ```sh
 bun add --exact vibelang-runtime@0.0.11 effect@4.1.1 @effect/platform-node@4.1.1
-bun add -d --exact vibelang@0.0.11 vibelang-vite@0.0.11 vitest@5.0.5 @effect/vitest@4.1.1
+bun add -d --exact vibelang@0.0.11 vibelang-vite@0.0.11 vitest@5.1.0 @effect/vitest@4.1.1
 ```
 
 With npm, run:
 
 ```sh
 npm install --save-exact vibelang-runtime@0.0.11 effect@4.1.1 @effect/platform-node@4.1.1
-npm install --save-dev --save-exact vibelang@0.0.11 vibelang-vite@0.0.11 vitest@5.0.5 @effect/vitest@4.1.1
+npm install --save-dev --save-exact vibelang@0.0.11 vibelang-vite@0.0.11 vitest@5.1.0 @effect/vitest@4.1.1
 ```
 
 With pnpm, first allow the install script of `dprint`, which `vibelang` depends on. pnpm 11 and later fail an install with `ERR_PNPM_IGNORED_BUILDS` when a dependency's build script is neither allowed nor denied. Add this to `pnpm-workspace.yaml`:
@@ -77,7 +77,7 @@ Then run:
 
 ```sh
 pnpm add --save-exact vibelang-runtime@0.0.11 effect@4.1.1 @effect/platform-node@4.1.1
-pnpm add --save-dev --save-exact vibelang@0.0.11 vibelang-vite@0.0.11 vitest@5.0.5 @effect/vitest@4.1.1
+pnpm add --save-dev --save-exact vibelang@0.0.11 vibelang-vite@0.0.11 vitest@5.1.0 @effect/vitest@4.1.1
 ```
 
 | Package | Install as | Purpose |
@@ -86,7 +86,7 @@ pnpm add --save-dev --save-exact vibelang@0.0.11 vibelang-vite@0.0.11 vitest@5.0
 | `effect`, `@effect/platform-node` | Dependency | Effect 4.1.1 and its Node platform |
 | `vibelang` | Dev dependency | The compiler and language server, its native binary, and the VS Code extension |
 | `vibelang-vite` | Dev dependency | Compiles `.vibe` modules for Vite and Vitest |
-| `vitest`, `@effect/vitest` | Dev dependency | Vitest 5.0.5 and `@effect/vitest` 4.1.1 for tests |
+| `vitest`, `@effect/vitest` | Dev dependency | Vitest 5.1.0 and `@effect/vitest` 4.1.1 for tests |
 
 Keep `effect`, `@effect/platform-node`, and `@effect/vitest` at 4.1.1. `vibelang`, `vibelang-runtime`, and `vibelang-vite` release together; keep them at one version.
 

@@ -8,7 +8,7 @@ VibeLang is in early alpha.
 - Editors: [VS Code and Cursor use the bundled VSIX](vscode.md). VS Code Marketplace and Open VSX publishing are not ready.
 - Stability: [v0: breaking changes expected](release-notes.md). Read release notes before upgrading.
 
-Vitest `5.0.5` cannot load tests when the absolute project path contains `#`, including plain TypeScript tests. [Use a project path without `#`](vibelang-cli.md#5-test-with-vitest).
+Vitest `5.1.0` cannot load tests when the absolute project path contains `#`, including plain TypeScript tests. [Use a project path without `#`](vibelang-cli.md#5-test-with-vitest).
 
 Calls through `any` can hide an Effect and its failure and service channels.
 EK4409 warns when an effectful body returns such a call. It also warns when a

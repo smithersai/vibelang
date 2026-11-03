@@ -11,7 +11,7 @@ mkdir my-stack && cd my-stack
 bun init -y
 bun add alchemy@2.0.0-beta.84 @alchemy.run/cloudflare@2.0.0-beta.84 effect@4.1.1 \
   @effect/platform-bun@4.1.1 @effect/platform-node@4.1.1 vibelang-runtime@0.0.11
-bun add -d vibelang@0.0.11 vibelang-vite@0.0.11 vitest@5.0.5 @effect/vitest@4.1.1
+bun add -d vibelang@0.0.11 vibelang-vite@0.0.11 vitest@5.1.0 @effect/vitest@4.1.1
 ```
 
 Until Alchemy publishes a build for Effect 4.1, patch the installed `alchemy` with Alchemy's own Effect 4.1 port ([alchemy-run/alchemy#2754](https://github.com/alchemy-run/alchemy/pull/2754)). Copy `patches/alchemy@2.0.0-beta.84.patch` from the example and add it to `package.json`; `bun install` applies it:
