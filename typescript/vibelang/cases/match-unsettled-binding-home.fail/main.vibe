@@ -37,3 +37,5 @@ enum E{A=(1 is let one)?1:0}
 // VIP-7 parameter-home is binding owns EK0705; rule: docs/design/vips/0007-match.md#6d8a26bb3dd5a9f4
 
 // Appendix B: EK0705 — spec-rule: docs/design/src/900-appendices.md#fc426d87c9e6c5f5
+
+// Appendix B: EK0705 — spec-rule: docs/design/src/900-appendices.md#fc426d87c9e6c5f5

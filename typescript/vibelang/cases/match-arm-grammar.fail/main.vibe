@@ -51,3 +51,9 @@ export function guarded(s: string, kind: string) {
 
 // Appendix A: match-arm-grammar.fail — spec-rule: docs/design/src/900-appendices.md#4b0f08d0f12d8ef7
 // Appendix A: match-arm-grammar.fail — spec-rule: docs/design/src/900-appendices.md#8c43dbcaf35be7f4
+
+// Appendix B: EK0707 — spec-rule: docs/design/src/900-appendices.md#9cf6cc43842e7927
+// Appendix B: EK0701 — spec-rule: docs/design/src/900-appendices.md#39ae927d4f1a344d
+
+// Appendix A: match-arm-grammar.fail — spec-rule: docs/design/src/900-appendices.md#4b0f08d0f12d8ef7
+// Appendix A: match-arm-grammar.fail — spec-rule: docs/design/src/900-appendices.md#8c43dbcaf35be7f4

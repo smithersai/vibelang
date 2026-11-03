@@ -22,3 +22,7 @@ export effect function jumps(xs: number[]) {
 // Appendix B: EK0202 — spec-rule: docs/design/src/900-appendices.md#aa9a005e48eda266
 
 // Appendix A: effect-block-jumps.fail — spec-rule: docs/design/src/900-appendices.md#cc20db318fea4eb9
+
+// Appendix B: EK0202 — spec-rule: docs/design/src/900-appendices.md#aa9a005e48eda266
+
+// Appendix A: effect-block-jumps.fail — spec-rule: docs/design/src/900-appendices.md#cc20db318fea4eb9
