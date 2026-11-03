@@ -2872,6 +2872,13 @@ func (p *Parser) parseExportSpecifier() *ast.Node {
 // TYPES
 
 func (p *Parser) parseType() *ast.TypeNode {
+	// A type nested in an Effect type slot, such as a tuple element, keeps
+	// TypeScript's postfix ?: only the slot's own type excludes it.
+	if p.vibeLangSlotDepth > 0 {
+		saveSlotDepth := p.vibeLangSlotDepth
+		p.vibeLangSlotDepth = 0
+		defer func() { p.vibeLangSlotDepth = saveSlotDepth }()
+	}
 	saveContextFlags := p.contextFlags
 	p.setContextFlags(ast.NodeFlagsTypeExcludesFlags, false)
 	var typeNode *ast.TypeNode
