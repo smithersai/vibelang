@@ -662,6 +662,16 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Compiler validation could fail to build when two independent `restore` fuzz suites used the same Go test names; both suites now retain their coverage under distinct names.
 
+
+- A compiler case could pass after compilation exited with `1` or `2` without printing an error; the harness now fails it before running or comparing outputs and retains the compiler's exit status and diagnostics.
+
+- A compiler case could hang past its deadline when a subprocess kept output pipes open after its parent exited; the harness now stops waiting at the deadline, records the timeout and parent exit separately, and cleans up its process group on Unix.
+
+- Compiler cases could fail because captured non-ASCII output was corrupted at pipe boundaries; the harness now preserves UTF-8 characters in program output, compiler diagnostics and retained logs.
+
+- Piped compiler-case reports could lose diagnostics and the final summary when the harness exited; it now drains its output before returning the same success or failure status.
+
+- Compiler cases returning large Effect values could fail because their runner exited before printing the complete result; it now flushes the result and failure details before exiting.
 - Awaiting a Fiber or Deferred in effect code reported an error using the configurable warning codes `EK4609` and `EK4610`; it now reports the fixed placement error `EK0102` separately, so advisory severity settings keep their meaning without allowing `await` in effect code.
 
 - `vibelang agents check` could report `no errors` and succeed when its compiler failed or was terminated; checks and hooks now fail with the compiler's status, signal or spawn error and standard error output, including failures caused by errors outside the selected files.
@@ -706,6 +716,12 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The measurement wrapper printed a failing compiler's status but returned success to its caller; it now returns the child status and reports signal termination as shell failure.
 
 - Compiler benchmarks lost a sample and crashed while summarizing it when a diagnostic lacked a final newline or the compiler died by signal; they now retain the measurement and its exit status.
+
+- Documentation checks could silently use an installed `vibelang` when the checkout was not built; snippet checking, `--run`, fixes and hover generation now keep the checkout compiler path and fail until it is built, unless a compiler is explicitly selected.
+
+- The compiler case harness could report success without running any cases when `--jobs` was zero or invalid. Invalid worker counts now fail before any case runs, and valid counts start at most one worker per selected case.
+
+- Example checks could report a compiler failure with only a local log path; they now include the compiler's exit status and a bounded diagnostic excerpt in the command output.
 - After the migrate flow renamed a module to `.vibe`, an importer that named it through a tsconfig `paths` alias, `@/composer/schema`, kept that spelling, which the project’s `bun check` script invoking stock TypeScript cannot resolve (`TS2307`); the codemod now writes `@/composer/schema.vibe` there too, as for a relative import, and `revert` puts it back.
 
 
@@ -955,6 +971,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The build guide incorrectly listed the LSP smoke test as outside the graph; it now consistently identifies `//typescript/vibelang:lsp-smoke` as a cached target.
 
 - Invalid compiler benchmark counts or scaling shapes could fail after setup or earlier measurements, and `--runs 0` crashed while summarizing empty results; `scripts/bench/compiler.sh` now reports the invalid option and exits before setup.
+
+- A default-exported `service` could produce a generic TypeScript syntax error; it now reports `EK0905` and shows how to write the named declaration and indirect default export.
+- Default-exporting an `error` or `schema error` used to report an unrelated semicolon error; it now reports `EK1305` and explains `export { Name as default }`.
 
 - Formatting valid `for` heads with `is` patterns could fail with an internal parse error; they now format at narrow and normal widths while keeping `is` attached to its subject.
 - Formatting native `Option` control flow could reject parenthesized `return (match …)` expressions and binding `is` branches; these forms now format while preserving their parsed structure.
