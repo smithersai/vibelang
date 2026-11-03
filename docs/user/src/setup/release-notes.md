@@ -224,6 +224,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The VIP migration could refuse a generic call with an Effect supplied by another argument, reporting `EK0502` after running a program the old call held. It now preserves that sibling-established program context.
 
 - The compiler's keyword coverage check treated a quoted `"constructor"` member name as a VibeLang keyword and failed the parser suite. It now distinguishes guarded string-literal data from keyword comparisons and ignores examples in comments or test fixtures.
+- The grammar admission inventory stopped accounting for every compiler helper after a hatch operand helper was extracted; that helper now has an explicit pending row under the existing hatch audit.
 - The fuzz suite refused an editor regression’s pending record because it lacked a specification reference; it now cites `VIP-34` and retains the same reproducer.
 - The grammar admission audit could mistake TypeScript’s `for await…of` loops for undefined VibeLang syntax; its grammar now derives those loops and checks malformed heads separately.
 - `Effect.forkChild(e)`, `Effect.forkDetach(e)` and other calls whose type parameter is constrained to an `Effect`, such as `<Arg extends Effect<any, any, any> | Options>`, warned `EK4802` that the call receives the unrun program. Such a parameter declares that it takes a program, so it no longer warns.
