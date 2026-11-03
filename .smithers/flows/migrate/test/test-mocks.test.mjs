@@ -45,10 +45,10 @@ test("t3code: a Vitest mock of a renamed module names it as the rewritten import
   assert.match(after, /vi\.mock\("\.\/leaf\.vibe", /)
   assert.match(after, /vi\.mock\("\.\/other\.ts", /, "a module the batch did not rename stays as written")
   assert.match(after, /vi\.importActual<typeof import\('\.\/leaf\.vibe'\)>\('\.\/leaf\.vibe'\)/)
-  assert.match(after, /vi\.doMock\("\.\/leaf\.vibe", /, "an extensionless path takes the source name, as an import does (D298)")
-  assert.equal(edits.filter((e) => e.file === "src/leaf.test.ts").length, 5)
+  assert.match(after, /vi\.doMock\("\.\/leaf", /, "an extensionless path needs no edit (detail 272's first addendum)")
+  assert.equal(edits.filter((e) => e.file === "src/leaf.test.ts").length, 4)
   const restored = restoreSpecifiers(root, edits, "src/leaf.ts")
-  assert.equal(restored.length, 5)
+  assert.equal(restored.length, 4)
   assert.equal(readFileSync(join(root, "src/leaf.test.ts"), "utf8"), test)
 })
 
@@ -80,8 +80,8 @@ test("property: every Vitest or Jest mock names what the test's import of the sa
       const renames = renameBatch(root, ["leaf.ts"])
       const edits = rewriteImports(root, ["leaf.vibe", "other.ts", "a.test.ts"], renames.map((r) => r.to))
       const after = readFileSync(join(root, "a.test.ts"), "utf8").split("\n")
-      // Every spelling of the module, an extensionless one too, takes its source name (D298).
-      const rewrite = () => "./leaf.vibe"
+      // A spelling with an extension takes the source name; an extensionless one needs no edit (detail 272's first addendum).
+      const rewrite = (e) => e === "" ? "./leaf" : "./leaf.vibe"
       assert.equal(after[0], `import { marker } from "${rewrite(importExt)}";`)
       calls.forEach(([call, e, q, name], k) => {
         assert.equal(after[k + 1], `${call}(${q}${name === "leaf" ? rewrite(e) : `./other${e}`}${q});`)

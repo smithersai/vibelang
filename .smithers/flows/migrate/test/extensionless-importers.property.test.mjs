@@ -70,3 +70,46 @@ test("extensionless TypeScript dependencies stay unchanged, native imports and d
   assert.equal(rewriteSpecifier("src/use.ts", "./leaf/", "src/leaf/index.vibe"), "./leaf/index.vibe")
   assert.equal(rewriteSpecifier("src/use.ts", "./native.module", "src/native.module.vibe"), "./native.module.vibe")
 })
+// Detail 272's first addendum: "Extensionless specifiers (`../src/X`) need no edit", and test-diff.mjs refuses one.
+// Smithers' packages/smithers/ui/tests/app-operations.test.ts and 120 apps/mvp tests were refused for this edit.
+test("a test keeps its extensionless specifier and renames only what names the renamed file", () => {
+  const dir = fc.constantFrom("test", "tests", "__tests__", "src", "src/deep/tests")
+  const name = fc.constantFrom("app.test.ts", "app.spec.tsx", "helper.ts", "e2e.test.js", "app.test.vibe")
+  const spelling = fc.constantFrom("", ".ts", ".js")
+  const form = fc.constantFrom(s => `import { a } from ${s}\n`, s => `export { a } from ${s}\n`, s => `const m = await import(${s})\n`, s => `vi.mock(${s})\n`)
+  fc.assert(fc.property(dir, name, spelling, fc.boolean(), form, (dirname, file, ext, index, write) => {
+    const importer = posix.join(dirname, file)
+    if (!/(?:^|\/)(?:test|tests|__tests__)\//.test(importer) && !/\.(?:test|spec)\./.test(file)) return
+    if (file.endsWith(".js") && ext !== ".ts") return // a JavaScript file names JavaScript by ./x.js, and has no extensionless .vibe import
+    const root = mkdtempSync(join(tmpdir(), "extensionless-test-"))
+    try {
+      const target = index ? "lib/leaf/index.vibe" : "lib/leaf.vibe"
+      const named = (index && ext ? "lib/leaf/index" : "lib/leaf") + ext
+      let specifier = posix.relative(posix.dirname(importer), named)
+      if (!specifier.startsWith(".")) specifier = "./" + specifier
+      const text = write(JSON.stringify(specifier))
+      put(root, importer, text)
+      put(root, target, "export const a = 1\n")
+      const edits = rewriteImports(root, [importer, target], [target])
+      if (ext === "") {
+        assert.deepEqual(edits, [], JSON.stringify({ importer, specifier }))
+        assert.equal(readFileSync(join(root, importer), "utf8"), text)
+      } else {
+        assert.deepEqual(edits, [{ file: importer, from: specifier, to: specifier.slice(0, -ext.length) + ".vibe" }])
+      }
+    } finally { rmSync(root, { recursive: true, force: true }) }
+  }), { seed: 272, numRuns: 150 })
+})
+test("Smithers ui wiki: the test keeps ../src/app-operations/wiki and ../src/flow-form", () => {
+  const root = mkdtempSync(join(tmpdir(), "extensionless-wiki-"))
+  try {
+    const test = "packages/smithers/ui/tests/app-operations.test.ts"
+    const text = 'import { a } from "../src/app-operations/wiki"\nimport { b } from "../src/flow-form"\n'
+    put(root, test, text)
+    put(root, "packages/smithers/ui/src/app-operations/wiki.vibe", "export const a = 1\n")
+    put(root, "packages/smithers/ui/src/flow-form.vibe", "export const b = 1\n")
+    const scope = [test, "packages/smithers/ui/src/app-operations/wiki.vibe", "packages/smithers/ui/src/flow-form.vibe"]
+    assert.deepEqual(rewriteImports(root, scope, scope.slice(1)), [])
+    assert.equal(readFileSync(join(root, test), "utf8"), text)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
