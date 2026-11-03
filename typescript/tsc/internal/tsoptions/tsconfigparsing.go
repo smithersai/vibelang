@@ -1882,6 +1882,36 @@ func removeWildcardFilesWithLowerPriorityExtension[V any](file tspath.RootedFile
 // options is the Compiler options.
 // host is the host used to resolve files and directories.
 // extraExtensions are additional file extensions (e.g. from content mappers) to treat as supported.
+// isModuleBodyDeclaration reports whether file, x.vibe.name.d.ts, is the
+// declaration the compiler writes for a body of x.vibe. A name has no dot, so
+// its last dot ends the source's name. A file of that shape whose source
+// declares no such module is the project's own.
+func isModuleBodyDeclaration(file tspath.RootedFilePath, host vfs.FS) bool {
+	stem, ok := strings.CutSuffix(file.AsString(), tspath.ExtensionDts)
+	dot := strings.LastIndexByte(stem, '.')
+	if !ok || dot < 0 {
+		return false
+	}
+	source := tspath.RootedFilePathFromNormalized(stem[:dot])
+	if !source.IsVibeLangSource() {
+		return false
+	}
+	text, ok := host.ReadFile(source)
+	if !ok {
+		return false
+	}
+	parsed := parser.ParseSourceFile(ast.SourceFileParseOptions{
+		FileName: source,
+		PathKey:  host.CaseSensitivity().PathKey(source.AsPath()),
+	}, text, core.GetScriptKindFromFileName(source))
+	for _, body := range parsed.EmbeddedModules() {
+		if tspath.RemoveFileExtension(string(body.FileName())) == stem {
+			return true
+		}
+	}
+	return false
+}
+
 func getFileNamesFromConfigSpecs(
 	configFileSpecs configFileSpecs,
 	basePath tspath.RootedDirectoryPath, // considering this is the current directory
@@ -1947,6 +1977,10 @@ func getFileNamesFromConfigSpecs(
 			// With vibe.sidecarDir, a sidecar there mirrors its source's path
 			// under the config's directory (decided detail 268).
 			if name := file.AsString(); strings.HasSuffix(name, ".d.vibe.ts") && (host.FileExists(tspath.RootedFilePathFromNormalized(strings.TrimSuffix(name, ".d.vibe.ts")+tspath.ExtensionVibe)) || host.FileExists(tspath.RootedFilePathFromNormalized(options.VibeSidecarSource(name, host.CaseSensitivity())))) {
+				continue
+			}
+			// So is x.vibe.name.d.ts, when x.vibe declares module name (VIP-40).
+			if isModuleBodyDeclaration(file, host) {
 				continue
 			}
 			// If we have already included a literal or wildcard path with a

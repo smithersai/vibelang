@@ -1455,6 +1455,14 @@ func (p *Program) verifyCompilerOptions() {
 		for _, source := range p.declarationSidecarSources() {
 			sidecar, _ := options.VibeSidecarPaths(string(source.FileName()), p.caseSensitivity)
 			verifyEmitFilePath(tspath.RootedFilePathFromNormalized(sidecar))
+			// So is each body's declaration, which may be the path its ordinary
+			// declaration output already claimed.
+			for _, body := range source.EmbeddedModules() {
+				declaration := tspath.RootedFilePathFromNormalized(moduleBodyDeclarationPath(body))
+				if !emitFilesSeen.Has(p.PathKeyForFileName(declaration)) {
+					verifyEmitFilePath(declaration)
+				}
+			}
 		}
 	}
 }

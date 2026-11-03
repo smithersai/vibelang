@@ -188,6 +188,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The documentation checks reported new spec quote tests as missing even when the build gate selected them by name. They now check the gate’s actual test selector and package scope.
 
 - `vibelang --fix-vip-only` refused a whole file when an argument passed by name was itself an effect block, such as `try (effect { return id(load(1)) } |> Effect.orDie(%))`, and reported the retired `try(…)` form (`EK4616`); it now writes `try` inside the block and leaves the block as it stands.
+- A TypeScript consumer of a `.vibe` sidecar that re-exported a `module` body's members could not resolve their declaration; body declarations now accompany the source, including with `--noEmit`, so stock `tsc` reads their types and `@throws` JSDoc (VIP-40).
+
 - Bun's release-age setting blocked newly published VibeLang packages in example projects; the examples now exempt their pinned VibeLang packages from that age check.
 - Editor fixes could write invalid annotations around `this` or `super`, a loop binding or a `finally` binding; they now decline edits that cannot preserve the program.
 - Hover and rename missed references in match guards, `is` subjects, `and` patterns and error `extends` clauses; the editor now finds those original source references.

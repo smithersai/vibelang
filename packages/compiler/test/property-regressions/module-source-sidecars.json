@@ -1,0 +1,5 @@
+{
+  "property": "module-source-sidecars",
+  "rule": "VIP-40: body declarations beside the source resolve from mirrored compatibility sidecars",
+  "input": { "name": "parse", "form": "named", "layout": "types", "noEmit": true, "discovery": true }
+}

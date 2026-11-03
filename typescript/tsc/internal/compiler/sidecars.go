@@ -4,11 +4,13 @@ import (
 	"context"
 	"regexp"
 	"strings"
+	"sync"
 	"sync/atomic"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
+	"github.com/microsoft/TypeScript/tsc/internal/outputpaths"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/printer"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
@@ -41,6 +43,11 @@ var (
 // file system the sidecars go to, it also deletes each module's sidecar from
 // the place the other layout puts it, so switching vibe.sidecarDir on or off
 // leaves one sidecar per module.
+//
+// A module declaration's body has no sidecar of its own. A sidecar that refers
+// to one, ./main.vibe.parse.js, reaches TypeScript's declaration of the body,
+// which it also writes, beside the .vibe file (VIP-40), so that a checker
+// without the .vibe file resolves it.
 func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileName string, text string) error, outputs ...vfs.FS) *EmitResult {
 	var output vfs.FS
 	if len(outputs) != 0 {
@@ -58,50 +65,98 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 		sidecar, _ := p.Options().VibeSidecarPaths(string(file.FileName()), p.caseSensitivity)
 		selected[p.PathKeyForFileName(tspath.RootedFilePathFromNormalized(sidecar))] = true
 	}
+	bodies := map[string]*ast.SourceFile{} // a body's file name, without its extension
+	for _, file := range sources {
+		for _, body := range file.EmbeddedModules() {
+			bodies[tspath.RemoveFileExtension(string(body.FileName()))] = body
+		}
+	}
+	var mutex sync.Mutex
+	var referenced []*ast.SourceFile
+	visited := map[*ast.SourceFile]bool{}
+	// refer records the body a relative specifier names, in any of the
+	// spellings of vibelang.declarationImportStyle: ./main.vibe.parse.js,
+	// ./main.vibe.parse or ./main.vibe.parse.ts.
+	refer := func(target string) {
+		body := bodies[target]
+		if body == nil {
+			body = bodies[tspath.RemoveFileExtension(target)]
+		}
+		if body == nil {
+			return
+		}
+		mutex.Lock()
+		defer mutex.Unlock()
+		if !visited[body] {
+			visited[body] = true
+			referenced = append(referenced, body)
+		}
+	}
 	fs := p.Host().FS()
 	resolver := p.newResolver()
 	var blocked atomic.Bool
-	result := p.Emit(ctx, EmitOptions{
-		VibeDeclarationSidecar: true,
-		TargetSourceFiles:      sources,
-		EmitOnly:               EmitOnlyDts,
-		ForceEmit:              true,
-		WriteFile: func(fileName tspath.RootedFilePath, text string, data *WriteFileData) error {
-			if data == nil || data.SourceFile == nil || !tspath.IsDeclarationFileName(string(fileName)) {
-				return nil // the declaration map
-			}
-			source := string(data.SourceFile.FileName())
-			sidecar, stale := p.Options().VibeSidecarPaths(source, p.caseSensitivity)
-			if p.IsEmitBlocked(tspath.RootedFilePathFromNormalized(sidecar)) {
-				blocked.Store(true)
-				return nil
-			}
-			if output != nil && stale != "" && !selected[p.PathKeyForFileName(tspath.RootedFilePathFromNormalized(stale))] && output.FileExists(tspath.RootedFilePathFromNormalized(stale)) {
-				if err := output.Remove(tspath.RootedPathFromNormalized(stale)); err != nil {
-					return err
+	emit := func(targets []*ast.SourceFile) *EmitResult {
+		return p.Emit(ctx, EmitOptions{
+			VibeDeclarationSidecar: true,
+			TargetSourceFiles:      targets,
+			EmitOnly:               EmitOnlyDts,
+			ForceEmit:              true,
+			WriteFile: func(fileName tspath.RootedFilePath, text string, data *WriteFileData) error {
+				if data == nil || data.SourceFile == nil || !tspath.IsDeclarationFileName(string(fileName)) {
+					return nil // the declaration map
 				}
-				p.pruneSidecarDirectories(tspath.GetDirectoryPath(stale), output)
-			}
-			// Resolve from the source using the real module resolver, then write
-			// relative to the final compatibility output. Another project's
-			// checker never inherits this project's rootDirs (opencode-53).
-			resolve := func(specifier string) string {
-				resolved, _, _ := resolver.ResolveModuleName(specifier, data.SourceFile.FileName(), p.GetDefaultResolutionModeForFile(data.SourceFile), nil)
-				if resolved != nil && resolved.Extension == tspath.ExtensionVibe {
-					target, _ := p.Options().VibeSidecarPaths(string(resolved.ResolvedFileName), p.caseSensitivity)
-					return strings.TrimSuffix(target, ".d"+tspath.ExtensionVibe+".ts") + tspath.ExtensionVibe
+				source := string(data.SourceFile.FileName())
+				isBody := data.SourceFile.EmbeddedModule() != nil
+				var sidecar, stale string
+				if isBody {
+					sidecar = moduleBodyDeclarationPath(data.SourceFile)
+				} else {
+					sidecar, stale = p.Options().VibeSidecarPaths(source, p.caseSensitivity)
 				}
-				return tspath.ResolvePath(tspath.GetDirectoryPath(source), specifier)
-			}
-			text = relocatedSidecarText(text, string(fileName), tspath.GetDirectoryPath(sidecar), resolve, p.caseSensitivity)
-			if existing, ok := fs.ReadFile(tspath.RootedFilePathFromNormalized(sidecar)); ok && existing == text {
-				return nil
-			}
-			return write(sidecar, text)
-		},
-	})
+				if p.IsEmitBlocked(tspath.RootedFilePathFromNormalized(sidecar)) {
+					blocked.Store(true)
+					return nil
+				}
+				if output != nil && stale != "" && !selected[p.PathKeyForFileName(tspath.RootedFilePathFromNormalized(stale))] && output.FileExists(tspath.RootedFilePathFromNormalized(stale)) {
+					if err := output.Remove(tspath.RootedPathFromNormalized(stale)); err != nil {
+						return err
+					}
+					p.pruneSidecarDirectories(tspath.GetDirectoryPath(stale), output)
+				}
+				// Resolve from the source using the real module resolver, then write
+				// relative to the final compatibility output. Another project's
+				// checker never inherits this project's rootDirs (opencode-53).
+				resolve := func(specifier string) string {
+					refer(tspath.ResolvePath(tspath.GetDirectoryPath(source), specifier))
+					resolved, _, _ := resolver.ResolveModuleName(specifier, data.SourceFile.FileName(), p.GetDefaultResolutionModeForFile(data.SourceFile), nil)
+					if resolved != nil && resolved.Extension == tspath.ExtensionVibe {
+						target, _ := p.Options().VibeSidecarPaths(string(resolved.ResolvedFileName), p.caseSensitivity)
+						return strings.TrimSuffix(target, ".d"+tspath.ExtensionVibe+".ts") + tspath.ExtensionVibe
+					}
+					return tspath.ResolvePath(tspath.GetDirectoryPath(source), specifier)
+				}
+				text = relocatedSidecarText(text, string(fileName), tspath.GetDirectoryPath(sidecar), resolve, p.caseSensitivity)
+				// The project's own declaration output owns this path, and its
+				// specifiers serve both the sidecar and a reader of its .d.ts.
+				if isBody && p.emitsDeclarationAt(data.SourceFile, sidecar) {
+					return nil
+				}
+				if existing, ok := fs.ReadFile(tspath.RootedFilePathFromNormalized(sidecar)); ok && existing == text {
+					return nil
+				}
+				return write(sidecar, text)
+			},
+		})
+	}
+	result := emit(sources)
 	if result == nil {
 		return nil
+	}
+	// A body's declaration can refer to another body, through an inferred type.
+	for len(referenced) != 0 {
+		targets := referenced
+		referenced = nil
+		result = CombineEmitResults([]*EmitResult{result, emit(targets)})
 	}
 	// What a sidecar cannot print is an error where the project declares its
 	// modules: emit writes any in its place, such as TS7056's fallback for a
@@ -146,11 +201,15 @@ func (p *Program) sidecarReaderDiagnostics(reported []*ast.Diagnostic, sources [
 	}
 	var kept []*ast.Diagnostic
 	for _, d := range reported {
-		if d.File() == nil || !vibe[d.File()] {
+		file := d.File()
+		if file != nil && file.EmbeddedModule() != nil {
+			file = file.CanonicalSourceFile() // a body is read through its .vibe file's sidecar
+		}
+		if file == nil || !vibe[file] {
 			kept = append(kept, d)
 			continue
 		}
-		for _, at := range imports[d.File()] {
+		for _, at := range imports[file] {
 			kept = append(kept, ast.NewDiagnosticFromSerialized(at.File(), at.Loc(), d.Code(), d.Category(), d.MessageKey(), d.MessageArgs(), d.MessageChain(), append([]*ast.Diagnostic{d}, d.RelatedInformation()...), d.ReportsUnnecessary(), d.ReportsDeprecated(), d.SkippedOnNoEmit()))
 		}
 	}
@@ -167,6 +226,24 @@ func (p *Program) declarationSidecarSources() []*ast.SourceFile {
 		sources = append(sources, file)
 	}
 	return sources
+}
+
+// moduleBodyDeclarationPath returns where a module declaration's body writes
+// the declaration its .vibe file's sidecar reaches: main.vibe.parse.d.ts beside
+// main.vibe, under every sidecar layout (VIP-40).
+func moduleBodyDeclarationPath(body *ast.SourceFile) string {
+	return tspath.RemoveFileExtension(string(body.FileName())) + tspath.ExtensionDts
+}
+
+// emitsDeclarationAt reports whether the project's ordinary emit writes file's
+// declaration to path.
+func (p *Program) emitsDeclarationAt(file *ast.SourceFile, path string) bool {
+	options := p.Options()
+	if options.NoEmit.IsTrue() || !options.GetEmitDeclarations() {
+		return false
+	}
+	declaration := outputpaths.GetOutputPathsFor(file, options, p, outputpaths.ForceEmitPaths{}).DeclarationFilePath()
+	return p.PathKeyForFileName(declaration) == p.PathKeyForFileName(tspath.RootedFilePathFromNormalized(path))
 }
 
 // pruneSidecarDirectories removes directory and its ancestors while they are
