@@ -148,6 +148,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 ### Bugs fixed since 0.0.10
 - Loading a `.vibe` module through `vibelang/register`, `vibelang/bun` or a bundler plugin failed with `TS6305: Output file '…/lib/x.d.ts' has not been built from source file '…/src/x.ts'` when its tsconfig `references` a project that was not built yet, as in a fresh clone before `vibelang -b`; the loader's compile now reads a referenced project's types from its sources, as the editor does, and a relative import into that project no longer reports `TS2878`.
 
+- Comparing many independent declaration entry points could exhaust the heap even with small type probes; published entry points now use fresh, bounded groups while preserving the complete comparison verdict.
+
 - Published API checks rejected identical JSON exports as non-modules; JSON assets now retain their `resolveJsonModule` types, and real type changes still fail.
 
 - Source-child loader wiring introduced a `fileURLToPath` import alias and failed repositories’ native import policies. Setup now uses a namespace import and refreshes its own previously generated helpers while preserving manually observed bindings.

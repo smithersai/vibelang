@@ -127,3 +127,9 @@ Export documentation and erroneous-type walks use explicit worklists, so deeply
 nested exported objects do not consume the JavaScript call stack. Proven equal
 module closures reuse documentation only when their attached comments also agree.
 Use `--profile` to record stages, elapsed time, batch offsets and memory use.
+
+Published entry points are processed in groups of at most `8`, so earlier input
+programs can be collected before the next group starts. `entryBatchSize` accepts
+a positive safe integer for batch-invariance controls. All name, type, comment
+and environment records are combined; one incomplete group makes the whole
+comparison unavailable, even if every other group is identical.

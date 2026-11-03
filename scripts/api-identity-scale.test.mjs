@@ -1,5 +1,6 @@
+import { spawnSync } from "node:child_process"
 import assert from "node:assert/strict"
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs"
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { createRequire } from "node:module"
@@ -79,7 +80,7 @@ test("property: generated large package verdicts equal small-batch verdicts", as
     rule: "Will: exported names, strict bidirectional types and docs are identical regardless of batch size; identical trees report identical",
     command: "node --test scripts/api-identity-scale.test.mjs",
     numRuns: 4,
-    arbitrary: fc.record({ modules: fc.integer({ min: 4, max: 8 }), exports: fc.integer({ min: 16, max: 24 }),
+    arbitrary: fc.record({ modules: fc.integer({ min: 9, max: 12 }), exports: fc.integer({ min: 8, max: 12 }),
       mutation: fc.constantFrom("none", "type", "doc", "name"), value: fc.integer({ min: 1, max: 1000 }) }),
     check: ({ modules, exports, mutation, value }) => {
       const before = {}, after = {}
@@ -95,13 +96,40 @@ test("property: generated large package verdicts equal small-batch verdicts", as
         after[`m${m}.d.ts`] = lines.join("")
       }
       fixture(before, after, (a, b) => {
-        const whole = compareApiIdentity(ts, a, b, { ...options, probeBatchSize: 10000 })
-        const small = compareApiIdentity(ts, a, b, { ...options, probeBatchSize: 7 })
+        const whole = compareApiIdentity(ts, a, b, { ...options, entryBatchSize: 10000, probeBatchSize: 10000 })
+        const small = compareApiIdentity(ts, a, b, { ...options, entryBatchSize: 2, probeBatchSize: 7 })
         assert.equal(whole.comparisonComplete, true, JSON.stringify(whole))
         assert.equal(whole.identical, mutation === "none")
         assert.deepEqual(verdict(small), verdict(whole))
-        assert.equal(compareApiIdentity(ts, a, a, { ...options, probeBatchSize: 7 }).identical, true)
+        assert.equal(compareApiIdentity(ts, a, a, { ...options, entryBatchSize: 2, probeBatchSize: 7 }).identical, true)
       })
     },
+  })
+})
+
+test("independent generic entry points fit a bounded heap", () => {
+  const corpus = JSON.parse(readFileSync(new URL("./api-identity-corpus/opencode-large-entry-batches.json", import.meta.url)))
+  const files = {}
+  for (let i = 0; i < corpus.moduleCount; i++) files[`m${i}.d.ts`] =
+    `type Tuple<N extends number, T extends unknown[] = []> = T["length"] extends N ? T : Tuple<N, [...T, ${i}]>;
+type Assert<T extends true> = T;
+type Force = Assert<Tuple<${corpus.tupleDepth}>["length"] extends ${corpus.tupleDepth} ? true : false>;
+/** Tuple export ${i} */
+export type X = { value: Tuple<${corpus.tupleDepth}>; tag: ${i} };`
+  fixture(files, files, (a, b) => {
+    const source = `import { readFileSync } from "node:fs";
+import { compareApiIdentity, loadTypeScript } from ${JSON.stringify(new URL("./api-identity.mjs", import.meta.url).href)};
+const [a, b] = JSON.parse(readFileSync(0, "utf8"));
+const result = compareApiIdentity(loadTypeScript(), a, b, { compilerOptions: { lib: ["lib.es5.d.ts"] } });
+console.log(JSON.stringify(result));
+process.exitCode = result.identical ? 0 : result.comparisonComplete ? 1 : 2;`
+    const child = spawnSync(process.execPath, [`--max-old-space-size=${corpus.heapLimitMiB}`, "--input-type=module", "--eval", source], {
+      input: JSON.stringify([a, b]), encoding: "utf8", timeout: 120000, maxBuffer: 1024 * 1024,
+    })
+    assert.equal(child.status, 0, child.stdout + child.stderr)
+    assert.equal(child.signal, null)
+    const result = JSON.parse(child.stdout)
+    assert.equal(result.comparisonComplete, true)
+    assert.equal(result.identical, true)
   })
 })

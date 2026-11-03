@@ -1,0 +1,7 @@
+{
+  "rule": "Will: same exported names, each export's type identical to tsc in both directions, and the same doc comment; large packages must finish in a normal run-heavy box.",
+  "qualification": "Generated independent-generic workload, not the original opencode declaration snapshots.",
+  "moduleCount": 128,
+  "tupleDepth": 192,
+  "heapLimitMiB": 256
+}

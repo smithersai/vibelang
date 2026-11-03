@@ -417,12 +417,37 @@ export function compareApiIdentity(ts, before, after, options = {}) {
   let stage = "entrypoints", progressDetails = {}
   const started = performance.now()
   try {
-    return compareUnchecked(ts, before, after, options, (value, details = {}) => {
-      stage = value
-      progressDetails = details
-      if (options.profile) console.error(JSON.stringify({ stage,
-        elapsedMs: Math.round(performance.now() - started), ...details, ...process.memoryUsage() }))
-    })
+    before = resolve(before); after = resolve(after)
+    const left = Object.fromEntries(Object.entries(options.beforeEntrypoints ?? publishedEntrypoints(before, ts))
+      .map(([key, path]) => [key, resolve(before, path)]))
+    const right = Object.fromEntries(Object.entries(options.afterEntrypoints ?? publishedEntrypoints(after, ts))
+      .map(([key, path]) => [key, resolve(after, path)]))
+    const keys = [...new Set([...Object.keys(left), ...Object.keys(right)])].sort()
+    const size = options.entryBatchSize ?? 8
+    if (!Number.isSafeInteger(size) || size < 1) throw new Error("entryBatchSize must be a positive safe integer")
+    const result = { identical: true, comparisonComplete: true, nameDifferences: [], typeDifferences: [], docDifferences: [], environmentDiagnostics: [] }
+    const seen = new Set()
+    for (let offset = 0; offset < Math.max(1, keys.length); offset += size) {
+      const batch = keys.slice(offset, offset + size)
+      const pick = entries => Object.fromEntries(batch.filter(key => entries[key]).map(key => [key, entries[key]]))
+      const part = compareUnchecked(ts, before, after,
+        { ...options, beforeEntrypoints: pick(left), afterEntrypoints: pick(right) }, (value, details = {}) => {
+          stage = value
+          progressDetails = { entryOffset: offset, entryCount: batch.length, totalEntries: keys.length, ...details }
+          if (options.profile) console.error(JSON.stringify({ stage,
+            elapsedMs: Math.round(performance.now() - started), ...progressDetails, ...process.memoryUsage() }))
+        })
+      for (const field of ["nameDifferences", "typeDifferences", "docDifferences", "environmentDiagnostics"]) {
+        for (const item of part[field]) {
+          const key = field + ":" + JSON.stringify(item)
+          if (!seen.has(key)) { result[field].push(item); seen.add(key) }
+        }
+      }
+      result.identical &&= part.identical
+      result.comparisonComplete &&= part.comparisonComplete
+    }
+    if (!result.comparisonComplete) result.typeDifferences = []
+    return result
   } catch (error) {
     const failure = { stage, ...progressDetails, elapsedMs: Math.round(performance.now() - started),
       error: error?.name ?? "Error", ...process.memoryUsage() }
