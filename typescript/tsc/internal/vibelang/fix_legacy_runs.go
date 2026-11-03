@@ -524,8 +524,9 @@ func (m *legacyModel) wrapperTry(call *ast.Node) bool {
 // SchemaBridge.recover(decode(snapshotDecoded(value)), …). The program ran n
 // in an Effect body, so effect { return try n } with those calls tried means
 // what it meant, the program its parameter receives (D147: "as if written
-// () => fetchReport()"). A function written inside n keeps its own form, so
-// such an n is left to the reported refusal.
+// () => fetchReport()"). A function written inside n keeps its own form, which
+// the block does not change when nothing in it runs an Effect
+// (holdsFunctionWithRuns); any other such n is left to the reported refusal.
 func (m *legacyModel) byNameBlock(n *ast.Node) bool {
 	if done, ok := m.blocks[n]; ok {
 		return done
@@ -533,7 +534,7 @@ func (m *legacyModel) byNameBlock(n *ast.Node) bool {
 	m.blocks[n] = false
 	result := false
 	if parent := n.Parent; parent != nil && (ast.IsCallExpression(parent) || ast.IsNewExpression(parent) || ast.IsArrayLiteralExpression(parent) || ast.IsPropertyAssignment(parent) || isPipe(parent)) && !ast.IsParenthesizedExpression(n) {
-		if owner := effectCodeOwner(n); owner != nil && (inEffectCode(n) || m.marked(owner)) && !legacyHoldsFunction(n) {
+		if owner := effectCodeOwner(n); owner != nil && (inEffectCode(n) || m.marked(owner)) && !m.holdsFunctionWithRuns(n) {
 			if held, byName, _ := legacyHold(m.a, n); held && byName {
 				result = len(m.blockRuns(n)) > 0
 			}
@@ -543,20 +544,48 @@ func (m *legacyModel) byNameBlock(n *ast.Node) bool {
 	return result
 }
 
-// legacyHoldsFunction reports whether n holds a function written in the
-// source, other than the arrows the parser calls in place.
-func legacyHoldsFunction(n *ast.Node) bool {
+// holdsFunctionWithRuns reports whether n holds a function written in the
+// source, other than the arrows the parser calls in place, whose form the
+// migration would have to decide: one it marks, or one whose body holds a try
+// or a call that gives an Effect. A function marked effect has its form; a
+// plain function with neither keeps its form inside the block, as
+// Schema.suspend((): typeof Schema.String => { throw e }) does in Smithers
+// agent/fs SchemaBridge.test.vibe.
+func (m *legacyModel) holdsFunctionWithRuns(n *ast.Node) bool {
 	found := false
-	var visit func(node *ast.Node) bool
-	visit = func(node *ast.Node) bool {
-		if isFunctionBoundary(node) && !isCalledInPlace(node) {
+	var body func(node *ast.Node) bool
+	body = func(node *ast.Node) bool {
+		if isFunctionBoundary(node) && isMarkedEffect(node) {
+			return false
+		}
+		if isTryCall(node) || node.Flags&ast.NodeFlagsVibeLangTry != 0 || isInvocation(node) && m.effectResult(node) {
 			found = true
 			return true
+		}
+		return node.ForEachChild(body)
+	}
+	var visit func(node *ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if isWrittenFunction(node) {
+			if isMarkedEffect(node) {
+				return false
+			}
+			if m.marked(node) {
+				found = true
+				return true
+			}
+			return node.ForEachChild(body)
 		}
 		return node.ForEachChild(visit)
 	}
 	visit(n)
 	return found
+}
+
+// isWrittenFunction reports whether node is a function written in the source,
+// not an arrow the parser calls in place.
+func isWrittenFunction(node *ast.Node) bool {
+	return isFunctionBoundary(node) && !isCalledInPlace(node)
 }
 
 // blockRuns returns the calls inside block, an expression passed by name,
@@ -566,6 +595,9 @@ func (m *legacyModel) blockRuns(block *ast.Node) []*ast.Node {
 	var runs []*ast.Node
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
+		if isWrittenFunction(node) {
+			return false // its own form: nothing in it ran in this program
+		}
 		if node != block && isInvocation(node) && !tried(node) && node.Flags&ast.NodeFlagsVibeLangTry == 0 && !isTryCall(node) && triesSyntax(m.a, ast.GetSourceFileOfNode(node), node) && m.effectResult(node) {
 			ran := true
 			for p := node; p != block; p = p.Parent {
@@ -607,6 +639,9 @@ func (m *legacyModel) blockText(file *ast.SourceFile, block *ast.Node) string {
 	}
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
+		if isWrittenFunction(node) {
+			return false
+		}
 		at := scanner.SkipTrivia(text, node.Pos())
 		if m.byNameBlock(node) {
 			edits = append(edits, sourceEdit{at - start, node.End() - start, m.blockText(file, node)})

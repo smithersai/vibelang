@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport { Effect, Schema } from \"effect\"\n\neffect function toCommandSchema(ref: string, schema: Schema.Top): string!! {\n  return `${ref}:${String(schema)}`\n}\n\neffect function failureOf(program: string!!): string!! {\n  return try program\n}\n\nexport const test = effect () => {\n  return try failureOf(toCommandSchema(\n    \"ref\",\n    sync(() =>\n      Schema.suspend((): typeof Schema.String => {\n        throw new Error(\"private schema cause\")\n      })\n    )\n  ))\n}\n")

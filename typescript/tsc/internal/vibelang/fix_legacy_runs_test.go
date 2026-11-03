@@ -142,7 +142,7 @@ func TestFixVIPLegacyRunPositions(t *testing.T) {
 func TestFixVIPLegacyRunRefusals(t *testing.T) {
 	for _, c := range []struct{ name, legacy, reason string }{
 		{"callback", "effect function f() {\n  return [1].map((n) => {\n    load(n)\n    return n\n  })\n}\n", "inferred before VIP-1 from where it is passed"},
-		{"inside-by-name-function", "effect function f() {\n  return Effect.map(factory(load(1) + [1].map((x) => x)[0]), (n) => n + 1)\n}\n", "passed by name"},
+		{"inside-by-name-function", "effect function f() {\n  return Effect.map(factory(load(1) + [1].map((x) => load(x))[0]), (n) => n + 1)\n}\n", "passed by name"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			result, name := fixVIPOnlySource(t, legacyRunsPrelude+c.legacy)
