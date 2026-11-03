@@ -1,0 +1,3 @@
+// expect: TS1382
+// VIP-39 p a b p pipe text with a bare: docs/design/vips/0039-vibex.md#d067ddd5641947c7
+const v = <p>a |> b</p>

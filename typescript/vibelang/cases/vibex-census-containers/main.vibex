@@ -1,0 +1,61 @@
+// VIP-39 cited positive or negative witness: docs/design/vips/0039-vibex.md#0281cfb2644df90d
+// VIP-39 cited positive or negative witness: docs/design/vips/0039-vibex.md#48a04d3b9594ac74
+// VIP-39 A JSX value goes after the arm s: docs/design/vips/0039-vibex.md#914a57e035e0fd52
+// VIP-39 Every JSX production and its scanning checking and emit: docs/design/vips/0039-vibex.md#752cb91ee48cc829
+// VIP-39 Renaming x.tsx to x.vibex changes nothing in its JSX: docs/design/vips/0039-vibex.md#723bf93c4b6f1484
+// VIP-39 No stricter mode. .vibex implies no option check or: docs/design/vips/0039-vibex.md#dd7e489539b23c55
+// VIP-39 vibex is one extension that selects .tsx s language: docs/design/vips/0039-vibex.md#8133178cd36054c4
+// VIP-39 A function boundary for the topic at arrows inside: docs/design/vips/0039-vibex.md#078bbbf31acdbb79
+// VIP-39 Every VibeLang production is exactly .vibe s: docs/design/vips/0039-vibex.md#5ea7ef351d3396b3
+// VIP-39 Every .vibe rule applies. VIP-30 every source file is: docs/design/vips/0039-vibex.md#0870a27897611f57
+// VIP-39 holds a VibeLang expression. Child containers attribute containers and: docs/design/vips/0039-vibex.md#167c6da421eb8fbb
+// VIP-39 try load is legal exactly where try load is: docs/design/vips/0039-vibex.md#bcf24c9b1734639d
+// VIP-39 The pipe topic crosses JSX. VIP-23 s ContainsOuterTopic recurses: docs/design/vips/0039-vibex.md#20176ff57ae31542
+// VIP-39 Task User NotFound run load passes Effect.Effect User NotFound: docs/design/vips/0039-vibex.md#da7babf5c2ce5c9c
+// VIP-39 VIP-3 s optional-slot rule ends a type before and: docs/design/vips/0039-vibex.md#6d75be38062638f4
+// VIP-39 TypeScript s void callback assignability means that mistake is: docs/design/vips/0039-vibex.md#00108f4df432696a
+// VIP-39 try inside JSX is legal and lowers in place.: docs/design/vips/0039-vibex.md#3702c34d750b8919
+// VIP-39 Comp User NotFound v 1 Effect.Effect User NotFound JSDoc: docs/design/vips/0039-vibex.md#145a7229340638dd
+// VIP-39 const p User src inside do omitted slots then: docs/design/vips/0039-vibex.md#adaa9e9ff7700f56
+// VIP-39 x as A Comp A text Comp JSX.Element div: docs/design/vips/0039-vibex.md#23ca6aeefdb66a49
+// VIP-39 T extends User NotFound v T v constrained generic: docs/design/vips/0039-vibex.md#5ea5b57c435adaeb
+// VIP-39 effect m T x T class C effect render: docs/design/vips/0039-vibex.md#5fed66651fcf9592
+// VIP-39 div match x when 0 Zero default Other div: docs/design/vips/0039-vibex.md#51ab174bf2a14702
+// VIP-39 x Box f Box n 2 topic captured through: docs/design/vips/0039-vibex.md#7776b2f4d569710f
+// VIP-39 n 2 is remainder Astra Sol Opus Fable: docs/design/vips/0039-vibex.md#4a58fb6d14b6bcab
+// VIP-39 Box task effect return 1 value effect 1 Effect: docs/design/vips/0039-vibex.md#b1f3dba1adb879e1
+// VIP-39 vibex adds no inference: docs/design/vips/0039-vibex.md#57d9c09b1998a1cf
+import { Effect } from "effect"
+import { h, type VNode } from "./jsx.js"
+declare global {
+ namespace JSX {
+  type Element = VNode
+  interface IntrinsicElements { task: {task?: Effect.Effect<number>; run?: unknown; onClick?: () => void}; [tag: string]: Record<string, unknown> }
+ }
+}
+error Missing { id: string }
+type User = { id: string }
+function Task<T>(props: { run: T }): VNode { return <task run={props.run}/> }
+const lift = effect <T extends User!Missing>(v: T) => v
+export const identity = effect <T,>(x: T) => x
+export effect function main(): Effect.Effect<Array<VNode>> {
+ let calls = 0
+ const work = effect { calls++; return 7 }
+ const cold = <task task={work} onClick={effect () => { calls++; return 9 }}/>
+ const before = <count>{calls}</count>
+ const n = try identity(try work)
+ const view = n |> <box f={() => %}>{%}{n % 2}</box>
+ const value = match (n) { when 0: <small/>; default: <big/>; }
+ const child = <root>{try Effect.succeed(2)}{do { 3 }}{match (n) { when 7: <seven/>; default: <other/>; }}</root>
+ const nested = <box task={effect { return 1 }} value={{ effect: 1 }} />
+ const typed = <Task<User!Missing> run={Effect.succeed({ id: "u" })} />
+ const slots = <Task<User!!> run={Effect.succeed({ id: "v" })} />
+ const props = do { const p: number!!=Effect.succeed(4); ({ p }); }
+ const spread = <box {...props} />
+ class C { effect render() { return <b/> } }
+ const obj = { effect m<T>(x: T) { return x } }
+ const rendered = try new C().render()
+ const fromMethod = try obj.m(5)
+ const recovered = Effect.fail("missing") catch <E,>(e: E) => 11
+ return [cold, before, view, value, child, nested, typed, slots, spread, rendered, <count>{fromMethod}{recovered}{calls}</count>]
+}

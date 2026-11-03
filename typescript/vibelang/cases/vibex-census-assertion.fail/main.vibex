@@ -1,0 +1,4 @@
+// expect: TS17008 TS1005
+// VIP-39 T x is JSX never a type assertion: docs/design/vips/0039-vibex.md#ec4da8970ab4333f
+// VIP-39 const s string y type assertion element string parseSimpleUnaryExpression: docs/design/vips/0039-vibex.md#d15b3b4ca6cf3394
+const s = <string>y

@@ -1,0 +1,2 @@
+// VIP-39 A .vibex with no JSX is legal: docs/design/vips/0039-vibex.md#48685a04cca9f363
+export const value = 1

@@ -1,0 +1,8 @@
+// VIP-39 Put them in do effect or a function body: docs/design/vips/0039-vibex.md#b2051d07184a7e9d
+const view = <box value={do {
+ error E
+ service S {}
+ schema N = number
+ data D { A }
+ 1
+}}/>

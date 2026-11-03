@@ -1,0 +1,7 @@
+// VIP-39 return div effect x x ASI and modifier lookahead: docs/design/vips/0039-vibex.md#2be01f79afd6c3d4
+function render() { return
+ <div/>
+}
+const effect = 1
+const f = (effect
+, (x: number) => x)

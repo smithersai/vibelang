@@ -1,0 +1,5 @@
+// VIP-39 An attribute value is a string a container or: docs/design/vips/0039-vibex.md#87471b93ac0bdaf5
+// VIP-39 Write or gt all four: docs/design/vips/0039-vibex.md#92d0520ad56af6f0
+// VIP-39 p Hi 50 off p x b title b: docs/design/vips/0039-vibex.md#b7cfc047360fc42b
+// VIP-39 x .test s try p p text p templates: docs/design/vips/0039-vibex.md#d69cdb59645accaa
+const v = <p title="50% off!" other=<b/> >Hi! 50% off {"|>"} |&gt; {`! % |> ${x}`}{/[!%>]/.test(s)}{/* try p */}// text</p>

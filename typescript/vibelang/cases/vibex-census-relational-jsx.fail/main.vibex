@@ -1,0 +1,4 @@
+// expect: TS1161
+// VIP-39 cited positive or negative witness: docs/design/vips/0039-vibex.md#783707e5fb472590
+// VIP-39 match n when b 1 default 2 x is: docs/design/vips/0039-vibex.md#78bc2d0ba11e2fe5
+const n = 1; const x = match (n) { when <b/>: 1; default: 2; }

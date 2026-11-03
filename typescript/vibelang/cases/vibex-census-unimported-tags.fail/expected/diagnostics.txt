@@ -1,0 +1,2 @@
+main.vibex(5,19): error TS2604
+main.vibex(5,46): error TS2604

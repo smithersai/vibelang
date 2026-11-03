@@ -1,0 +1,13 @@
+// VIP-39 An is binding binds in the enclosing lexical home: docs/design/vips/0039-vibex.md#ee05b46e5151c353
+// VIP-39 Box ok x is let name label name binding: docs/design/vips/0039-vibex.md#b87fb2e35e7e74dc
+import { Effect } from "effect"
+import { h, type VNode } from "./jsx.js"
+declare global { namespace JSX {
+ type Element = VNode
+ interface IntrinsicElements { [tag: string]: Record<string, unknown> }
+}}
+export effect function main(): Effect.Effect<Array<unknown>> {
+ const x: unknown = {name:"Ada"}
+ const view = <box ok={x is { let name }} label={name} />
+ return [view,name]
+}

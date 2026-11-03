@@ -1,0 +1,5 @@
+// expect: TS2604
+// VIP-39 Match Option with no import VIP-14 Effect s module: docs/design/vips/0039-vibex.md#56c06b5d23377324
+declare global { namespace JSX { type Element = unknown } };
+declare function h(...args:any[]):any;
+export const a = <Match/>; export const b = <Option/>
