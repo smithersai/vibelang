@@ -549,12 +549,33 @@ const serviceShapeGrammar: Rule = {
   }
 }
 
-export const rules: Rule[] = [serviceShapeGrammar, vipReferences, specLinks, resolutionClaims, nativeSourceResolution, configKeys, importStyleScope, declarationImportForm, deniedVipRepairs, retiredForms, platformImports, counterpartUsing, collisionConditional, rulingClaims, compilerGaps, moduleExtractionTwins]
+const writtenSchemaDocs: Rule = {
+  name: "written-schema-docs",
+  finding: "admitted written aliases contradicted by declaration documentation",
+  check(spec) {
+    if (![...spec.values()].some(text => /written[^\n]*replaces the synthesized alias/.test(prose(text)))) return []
+    const out: Violation[] = []
+    for (const file of ["src/006-data.md", "vips/0015-schema-declarations.md", "vips/0027-declaration-output.md"]) {
+      const text = spec.get(file) ?? ""
+      for (const pattern of [
+        /its \x60typeof \w+\.Type\x60 alias has no comment/g,
+        /To retain distinct documentation[^.]*keep the ordinary TypeScript pair/g,
+        /A separate type-comment form is not introduced/g
+      ]) for (const m of prose(text).matchAll(pattern)) {
+        out.push({ rule: this.name, file, line: lineAt(text, m.index!),
+          message: "only the synthesized schema alias is necessarily bare; a written alias keeps its own documentation" })
+      }
+    }
+    return out
+  }
+}
+
+export const rules: Rule[] = [writtenSchemaDocs, serviceShapeGrammar, vipReferences, specLinks, resolutionClaims, nativeSourceResolution, configKeys, importStyleScope, declarationImportForm, deniedVipRepairs, retiredForms, platformImports, counterpartUsing, collisionConditional, rulingClaims, compilerGaps, moduleExtractionTwins]
 
 const kinds: Record<string, string[]> = {
   registry: ["config-keys"],
   tables: ["service-shape-grammar", "native-source-resolution", "resolution-claims", "declaration-import-style-scope", "denied-vip-repairs", "collision-conditional", "compiler-gaps-not-rules"],
-  copies: ["declaration-import-form", "counterpart-using"],
+  copies: ["written-schema-docs", "declaration-import-form", "counterpart-using"],
   authority: ["vip-references", "ruling-claims"],
   examples: ["retired-forms", "platform-imports", "module-extraction-twins"]
 }

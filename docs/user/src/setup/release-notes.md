@@ -212,6 +212,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Declaration validation now accepts the generated `@throws {never}` contract in written-import tests while continuing to check every import specifier against the untouched TypeScript twin.
 - Migration checks could reject correctly rewritten Bun build scripts or run the same suites twice through compiler wrappers; they now check command and entrypoint rewrites together and run each suite in its own target.
 
+- Schema documentation rules denied comments on written type aliases; the specification checks now reject that contradiction across the chapter and proposals.
+
 - The specification admitted whole-shape services without a matching grammar production; its checks now require that form in the grammar and reject conflicting body-only claims.
 
 - The specification checks missed broken VIP links and superseded proposals still listed as denied; they now reject both inconsistencies.

@@ -545,3 +545,27 @@ test("whole-shape service grammar property covers names and grammar layout", () 
     expect(lint(fixture, rule("service-shape-grammar"))).toHaveLength(1)
   }), { seed: 16002, numRuns: 100 })
 })
+
+
+
+test("schema alias documentation rejects a historical declaration contradiction", () => {
+  const fixture: Spec = new Map([
+    ["src/006-data.md", "One written, nongeneric `type X = typeof X.Type` replaces the synthesized alias.\nA schema's declaration has a comment; its `typeof Name.Type` alias has no comment.\nTo retain distinct documentation on a constant and its type alias, keep the ordinary TypeScript pair."],
+    ["vips/0027-declaration-output.md", "A separate type-comment form is not introduced."]
+  ])
+  expect(lint(fixture, rule("written-schema-docs"))).toHaveLength(3)
+  fixture.set("src/006-data.md", "One written, nongeneric alias replaces the synthesized alias.\nIts synthesized alias is bare; a written alias keeps its own JSDoc.")
+  fixture.set("vips/0027-declaration-output.md", "Written aliases keep their own JSDoc.")
+  expect(lint(fixture, rule("written-schema-docs"))).toEqual([])
+})
+
+test("schema documentation property covers every owning document and alias names", () => {
+  // Written declarations keep their own JSDoc, order and export status.
+  fc.assert(fc.property(fc.constantFrom("src/006-data.md", "vips/0015-schema-declarations.md", "vips/0027-declaration-output.md"), fc.constantFrom("X", "Message", "S42"), (file, name) => {
+    const fixture: Spec = new Map([["src/006-data.md", "A written alias replaces the synthesized alias."]])
+    fixture.set(file, (fixture.get(file) ?? "") + `\nits \`typeof ${name}.Type\` alias has no comment.`)
+    expect(lint(fixture, rule("written-schema-docs"))).toHaveLength(1)
+    fixture.set(file, fixture.get(file)!.replace("its `typeof", "its synthesized `typeof"))
+    expect(lint(fixture, rule("written-schema-docs"))).toEqual([])
+  }), { seed: 16003, numRuns: 100 })
+})
