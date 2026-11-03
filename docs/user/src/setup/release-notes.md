@@ -608,6 +608,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Migration setup rejected an emitting project built by bare `vibelang -b` or `vibelang --build`; it now recognizes their default `tsconfig.json` while still refusing unrelated projects.
 - Migration setup rejected projects containing `.d.vibe.ts` sidecars because those files emit no JavaScript; it now excludes declaration inputs and preserves them unchanged.
+- Specification rules could change without an executable example in the same entry; the new `//:spec-rule-evidence` check reports the affected sentence and requires a relevant compiler case or a compiled Effect TypeScript twin with matching declarations.
+
 
 - The fibers guide suggested Effect-body repairs inside ordinary async functions; it now shows `runPromise` bridges that run in the original Promise context.
 - Only the first `catch` outside effect code in a file reported `EK0504` and `EK0509`; every later one went unreported, and `vibelang --fix` had no repair for its value fallback. Every catch is now checked.

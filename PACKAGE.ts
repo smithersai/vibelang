@@ -539,6 +539,32 @@ const specLinterTests = S.Shell.Test({
   tools: [node, bun], sandbox: "none", timeout: "5m"
 })
 
+// Entry diffs depend on jj history. Require immutable commit IDs in the
+// environment so both sides enter the key; mutable revision names are refused.
+// Explicit selection keeps a diff-only check out of ordinary wildcard CI.
+const ruleEvidenceEnv = {
+  RULE_EVIDENCE_BASE: process.env.RULE_EVIDENCE_BASE ?? "",
+  RULE_EVIDENCE_HEAD: process.env.RULE_EVIDENCE_HEAD ?? ""
+}
+const specRuleEvidence = S.Shell.Test({
+  summary: "Changed specification rules carry a relevant case or a compiled Effect twin with identical declarations or Exit.",
+  shell: "bun docs/tools/rule-evidence.ts --immutable",
+  data: [tree, Packages["compiler-native"], Packages["runtime-dist"]],
+  tools: [bun, node, S.Host.bin("jj")],
+  env: ruleEvidenceEnv,
+  exclusive: true,
+  sandbox: "none",
+  timeout: "10m"
+})
+const specRuleEvidenceTest = S.Shell.Test({
+  summary: "Rule evidence rejection classes, exempt controls, mutations and real compiled twins.",
+  shell: "bun test --timeout 120000 docs/tools/rule-evidence.test.ts",
+  data: [tree, Packages["compiler-native"], Packages["runtime-dist"]],
+  tools: [bun, node, S.Host.bin("jj")],
+  sandbox: "none",
+  timeout: "5m"
+})
+
 // Both gate entry points select this aggregate. Each check has one owning
 // target; shared graph dependencies execute once and retain their own cache.
 const specLint = S.Shell.Test({
@@ -576,6 +602,8 @@ const targets = {
   "spec-tables": specTables,
   "spec-copies": specCopies,
   "spec-authority": specAuthority,
+  "spec-rule-evidence": specRuleEvidence,
+  "spec-rule-evidence-test": specRuleEvidenceTest,
   "spec-vip-examples": specExamples,
   "spec-linters-test": specLinterTests,
   "go-vibelangfuzz-hangs": pendingHangs,
@@ -631,7 +659,7 @@ const targets = {
     "docs/tools' bun tests, with cached specification links and linters and without site contrast.",
     "cd docs/tools && bun test --timeout 60000 --parallel=3 --no-isolate $(ls *.test.* | grep -vE '^(site-(contrast|spec-links)|spec-lint)\\.test\\.')",
     [Typescript.compiler, Packages["runtime-dist"], Packages["compiler-native"], siteSpecLinks, specLint],
-    [bun, node]
+    [bun, node, S.Host.bin("jj")]
   ),
   // It installs and builds a private copy of site/ (docs/tools/site-scratch.ts),
   // so it runs beside the other targets.

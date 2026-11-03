@@ -338,3 +338,65 @@ bun test docs/tools/published-site.test.ts
 ```
 
 The test uses `testdata/npm-0.0.10.json`; it never contacts npm.
+
+## Evidence for changed specification rules
+
+The independently selectable `//:spec-rule-evidence` target checks one entry's
+complete diff. Platform selects it when wiring the gate; it is not a dependency
+of the pre-gate targets. Pass the entry's immutable base and head commit IDs:
+
+```sh
+RULE_EVIDENCE_BASE=<base-commit> RULE_EVIDENCE_HEAD=<entry-commit> \
+  .smithers/node_modules/.bin/smthrs test //:spec-rule-evidence --jobs 8
+bun docs/tools/rule-evidence.ts --base <base-commit> --head <entry-commit> --json evidence.json
+bun test --timeout 120000 docs/tools/rule-evidence.test.ts
+```
+
+The checker reads snapshots through `jj`, including deletions, and reports each
+changed normative sentence in `docs/design/src/` and `docs/design/vips/`.
+A sentence with inline code, an `EK` or `TS` diagnostic code, `must`,
+`is an error`, `compiles` or `means` is normative. Code fences themselves
+are examples, not prose rules. Generated pages, headings, unchanged sentences
+moved or copied between chapters and VIPs, whitespace, emphasis, link destinations, citation-only
+replacements, Effect version citations in otherwise unchanged prose and a
+closed list of common prose typos are exempt. A note that an existing
+diagnostic range keeps its specific triggers is also prose. Inline code
+never receives typo correction. This lexical check cannot decide arbitrary
+semantic equivalence or whether an assertion proves a rule; `rule-judge`
+reviews those questions.
+
+Each sentence needs either a new or changed executable compiler case in that
+entry, or a nearby pair of complete `vibe` and `ts effect` fences. A changed
+case must contain a diagnostic or form named by the sentence; member names
+such as `Users.Shape` also match `Local.Shape`, and grammar productions such
+as `CatchExpression` match `catch`. Existing case comments that cite a VIP
+also attribute the witness to that VIP; a chapter diagnostic shared with the
+changed VIP uses the same attribution. A follow-up sentence with only a prose
+label can use the preceding rule in the same section, within 40 lines. For prose with no code anchor, put an
+explicit reference above the changed witness:
+
+```text
+// rule-evidence: docs/design/src/001-functions.md#effect-functions
+```
+
+The reference names the chapter and its heading slug (or just the file for a
+rule before any heading). Comments alone, deleted cases and generated case
+outputs do not count. Diagnostic `// expect:` changes are executable evidence.
+A changed case manifest that updates its Effect dependency to the version named
+by the pin rule exercises the supported-version branch.
+
+A twin pair stays in the rule's heading section, within 40 lines. Neither
+block may be a fragment, pending, a compiler gap or an expected failure.
+Both compile as separate strict modules using the snippet checker's dependency
+isolation and the checkout compiler. Both must export a nonempty API and emit
+byte-identical `main.d.ts`; two empty `export {}` modules prove nothing.
+Alternatively, both blocks may put `// rule-evidence-exit: program` above an
+exported Effect value named `program`. The checker compiles both modules,
+runs `Effect.exit` on each value in one process and compares the actual Exit
+objects with Node's `isDeepStrictEqual`. Both must export an Effect; a timeout,
+failure to load or unequal Exit fails the comparison.
+A missing twin, a compile failure or a declaration mismatch names the sentence
+and the missing evidence. Diagnostic rules can use a failing compiler case.
+The checker exits `0` for an evidenced or exempt entry, `1` for missing
+evidence and `2` for a setup or revision error. The target requires full immutable commit IDs; both enter its cache key.
+It is exclusive so ordinary wildcard CI can run without an entry diff.

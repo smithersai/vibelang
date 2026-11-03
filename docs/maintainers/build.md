@@ -1092,3 +1092,16 @@ case's output directory, so a dependency named `run.mjs` keeps its emitted
 exports. Run `node --test scripts/mapper-runtime-runner.test.mjs` for real
 pinned stock-TypeScript module graphs, byte comparisons against an
 independent emit, and generated direct/reexport graphs in `//:release`.
+
+## Evidence for specification rule changes
+
+`//:spec-rule-evidence` checks the diff from `RULE_EVIDENCE_BASE` to
+`RULE_EVIDENCE_HEAD`, both supplied by the caller. A changed normative
+sentence in a design chapter or VIP needs a relevant changed compiler case
+or an adjacent VibeLang / Effect TypeScript example whose declarations compile
+and match. `//:spec-rule-evidence-test` runs rejection, exemption, mutation
+and real compiler regressions. The diff target is independently selectable,
+keys its result on both immutable commit IDs, and is not wired into the pre-gate.
+It requires explicit selection, so wildcard CI does not need a diff. See
+[the evidence contract](../tools/README.md#evidence-for-changed-specification-rules)
+for sentence classification, case references, twin layout and exit codes.
