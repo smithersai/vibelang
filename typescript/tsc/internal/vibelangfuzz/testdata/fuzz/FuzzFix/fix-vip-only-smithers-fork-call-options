@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport { Effect } from \"effect\"\n\nconst call = (n: number): number!! => n + 1\n\nexport const go = (): number!! => {\n  const source = { n: 1 }\n  const pending = fork(call(source.n), { startImmediately: true })\n  source.n = 2\n  return join pending\n}\n")

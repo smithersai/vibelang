@@ -115,6 +115,34 @@ func tryEdits(c *checker.Checker, file *ast.SourceFile, unmatched map[int]bool) 
 			edits = append(edits, sourceEdit{at, scanner.SkipTrivia(text, at+len("try")), ""})
 			return node.ForEachChild(visit)
 		}
+		if m.forkWithOptions(node) {
+			start := scanner.SkipTrivia(text, node.Pos())
+			run, reason := legacyNoRun, ""
+			if !isTryCall(node) && !tried(node) {
+				run, reason = m.runOf(node)
+			}
+			if reason != "" {
+				refusals = append(refusals, tryRefusal{start, reason})
+				return node.ForEachChild(visit)
+			}
+			open := ""
+			if run == legacyRan {
+				open = "try "
+				if tryNeedsParentheses(node) {
+					open = "(try "
+					if continuesStatement(text, node, start) {
+						open = ";(try "
+					}
+					edits = append(edits, sourceEdit{node.End(), node.End(), ")"})
+				}
+			}
+			insert(start, open+"Effect.forkChild")
+			edits[opens[start]].end = node.Expression().End()
+			for _, argument := range node.Arguments() {
+				visit(argument)
+			}
+			return false
+		}
 		write, reason := triesHere(m, file, node)
 		if reason != "" {
 			refusals = append(refusals, tryRefusal{scanner.SkipTrivia(text, node.Pos()), reason})

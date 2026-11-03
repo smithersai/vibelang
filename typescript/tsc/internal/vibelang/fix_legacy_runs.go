@@ -148,6 +148,31 @@ func legacyServiceMemberResult(a *analyzer, call *ast.Node) bool {
 	return false
 }
 
+// forkWithOptions reports whether call is fork(program, options), a call of
+// the prelude's fork in code that is effect code once migrated. The old
+// parser read an unmarked function's fork(a, b) as that call; in effect code
+// fork is reserved (VIP-17), so the same text is fork over the comma
+// expression (a, b), and no fork form takes options. fork e is
+// Effect.forkChild(e) (spec 002, "Owner"), the spelling that takes them
+// (Smithers agent/fs CommandSurface.test.vibe:
+// const pending = fork(call(source.n), { startImmediately: true })).
+func (m *legacyModel) forkWithOptions(call *ast.Node) bool {
+	if !ast.IsCallExpression(call) || call.QuestionDotToken() != nil || len(call.Arguments()) != 2 || call.Flags&(ast.NodeFlagsReparsed|ast.NodeFlagsVibeLang) != 0 {
+		return false
+	}
+	callee := call.Expression()
+	if !ast.IsIdentifier(callee) || callee.Flags&ast.NodeFlagsVibeLangIntrinsic != 0 || !isRuntimeExport(m.a.checker, callee, "fork") {
+		return false
+	}
+	for _, argument := range call.Arguments() {
+		if ast.IsSpreadElement(argument) {
+			return false
+		}
+	}
+	owner := effectCodeOwner(call)
+	return owner != nil && (inEffectCode(call) || m.marked(owner))
+}
+
 // plainOwner decides call in the body of owner, a function without the
 // effect mark outside effect code. The old compiler inferred such a function's
 // form. Where nothing around it chose a form (marks), it ran the call as an
