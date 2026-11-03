@@ -42,6 +42,7 @@ test("new alphabetical predecessors append, and removed codes remain reserved", 
   assert.equal(assignCodes(["middle"], next).middle, first.middle)
   assert.throws(() => assignCodes([], { a: "EK3801", b: "EK3801" }), /duplicate/)
 })
+// docs/design/src/900-appendices.md#eb73fb77849128fd — Chapter 900: imported floatingEffect has one pinned EK3801 identity.
 test("the EK38 namespace accommodates the complete upstream registry", () => {
   const codes = assignCodes(Array.from({ length: 130 }, (_, i) => String(i).padStart(3, "0")))
   assert.equal(codes["098"], "EK38100")

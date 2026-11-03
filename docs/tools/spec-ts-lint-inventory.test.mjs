@@ -21,6 +21,10 @@ const chapter = read("docs/design/src/007-tooling.md")
 const appendix = read("docs/design/src/900-appendices.md")
 const rows = (text, code) => text.split("\n").filter(line => line.startsWith("| `" + code + "` |"))
 
+// docs/design/src/900-appendices.md#fd027162427da536 — Chapter 900: own advisories retain codes, triggers and repairs.
+// docs/design/src/900-appendices.md#faa5d3b7c50241b4 — Chapter 900: own advisories retain codes, triggers and repairs.
+// docs/design/src/900-appendices.md#79aaa899300def80 — Chapter 900: own advisories retain codes, triggers and repairs.
+// docs/design/src/900-appendices.md#32d92f84d45af860 — Chapter 900: own advisories retain codes, triggers and repairs.
 test("every surviving TypeScript-form lint has a normative trigger and repair", () => {
   assert.ok(codes.size >= 8, "the compiler's TypeScript-form rule inventory must be read")
   for (const code of [...codes].sort()) {
@@ -39,6 +43,7 @@ test("every surviving TypeScript-form lint has one warning code in Appendix B", 
   }
 })
 
+// docs/design/src/900-appendices.md#7e0685e0df5777eb — Chapter 900: unsupported Option methods and magic main have no diagnostics.
 test("superseded form rules do not return as specification diagnostics", () => {
   for (const code of ["EK4838", "EK4840", "EK4843"]) {
     assert.deepEqual(rows(appendix, code), [], code + " has no accepted VIP")

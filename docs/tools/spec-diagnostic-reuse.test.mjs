@@ -2,6 +2,8 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { chapter, read } from "./spec-witness.mjs"
 
+// docs/design/src/900-appendices.md#34719c33a344c1a7 — Chapter 900: versioned meanings remain distinct.
+// docs/design/src/900-appendices.md#ef73fdd489b63278 — Chapter 900: versioned meanings remain distinct.
 test("the reuse inventory covers each historical core rule assigned a different normative meaning", () => {
   const rows = text => new Map([...text.matchAll(/^\| `?(EK\d+)`? \| ([^|]+)\|/gm)].map(m => [m[1], m[2]]))
   const history = rows(read("docs/design/history/src/428-part4-ch28-tooling.md"))
@@ -32,6 +34,8 @@ test("the reuse inventory covers each historical core rule assigned a different 
   }
 })
 
+// docs/design/src/900-appendices.md#9c4c04ae41c203a7 — Chapter 900: compatibility allocation is labelled separately.
+// docs/design/src/900-appendices.md#2d42c434fcc99246 — Chapter 900: compatibility allocation is labelled separately.
 test("current compiler registry status stays separate from normative code allocation", () => {
   const appendix = chapter("900-appendices")
   const intro = appendix.split("## Appendix B. Diagnostics")[1].split("| Code |")[0]
@@ -50,6 +54,7 @@ test("current compiler registry status stays separate from normative code alloca
   }
 })
 
+// docs/design/src/900-appendices.md#0c83f8db2077910c — Chapter 900: EK2101 stays retired.
 test("the historical producer-number candidate stays retired in both public accounts", () => {
   const appendix = chapter("900-appendices")
   const retirement = appendix.split("\n").find(line => line.includes("old `EK2101`") && line.includes("retired"))

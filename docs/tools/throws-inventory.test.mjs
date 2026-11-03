@@ -6,6 +6,8 @@ import { tmpdir } from "node:os"
 import { root, artifactPath, generateThrowsInventory, serializeInventory } from "./throws-inventory.mjs"
 import { SourceAnalysis } from "./throws-source.mjs"
 
+// docs/design/src/900-appendices.md#dd1857ebbe980673 — Chapter 900: regeneration retains pinned hashes and version.
+// docs/design/src/900-appendices.md#1dc003daa4fd712c — Chapter 900: regeneration retains pinned hashes and version.
 test("the normative throws inventory is current for the exact pinned inputs", { timeout: 300_000 }, () => {
   const actual = readFileSync(resolve(root, artifactPath), "utf8")
   const expected = serializeInventory(generateThrowsInventory())
@@ -18,6 +20,15 @@ test("the normative throws inventory is current for the exact pinned inputs", { 
   }
 })
 
+// docs/design/src/900-appendices.md#0e3f68b54a3b63f6 — Chapter 900: selected call, callback and returned-decoder contracts.
+// docs/design/src/900-appendices.md#0c3ab20bfe82cf18 — Chapter 900: selected call, callback and returned-decoder contracts.
+// docs/design/src/900-appendices.md#01ce61d6b8554cf7 — Chapter 900: selected call, callback and returned-decoder contracts.
+// docs/design/src/900-appendices.md#1749de8c27032a41 — Chapter 900: selected call, callback and returned-decoder contracts.
+// docs/design/src/900-appendices.md#acbeef14294fa781 — Chapter 900: selected call, callback and returned-decoder contracts.
+// docs/design/src/900-appendices.md#ae1b4015fc0db0f0 — Chapter 900: selected call, callback and returned-decoder contracts.
+// docs/design/src/900-appendices.md#14d84decbaaafdd7 — Chapter 900: selected call, callback and returned-decoder contracts.
+// docs/design/src/900-appendices.md#ac164d47dcfa1702 — Chapter 900: selected call, callback and returned-decoder contracts.
+// docs/design/src/900-appendices.md#8a66d1b86c46953f — Chapter 900: safe literals retain full signature thrown bounds.
 test("direct calls, callbacks, validation and returned decoders have separate contracts", () => {
   const { entries, inputs } = JSON.parse(readFileSync(resolve(root, artifactPath), "utf8"))
   assert.equal(inputs.effect.version, "4.1.1")
@@ -76,6 +87,11 @@ test("direct calls, callbacks, validation and returned decoders have separate co
   assert.equal(new Set(keys).size, keys.length)
 })
 
+// docs/design/src/900-appendices.md#e637ff4fcfa994a1 — Chapter 900: source traversal keeps unresolved throws conservative.
+// docs/design/src/900-appendices.md#a913baec6c2f11a1 — Chapter 900: source traversal keeps unresolved throws conservative.
+// docs/design/src/900-appendices.md#c77bd4681ab4d222 — Chapter 900: source traversal keeps unresolved throws conservative.
+// docs/design/src/900-appendices.md#1a4b92c9f0820495 — Chapter 900: source traversal keeps unresolved throws conservative.
+// docs/design/src/900-appendices.md#556a0583cd8c325e — Chapter 900: source traversal keeps unresolved throws conservative.
 test("source proofs follow imports and constructors, skip returned bodies, and retain unknown calls", () => {
   const temp = mkdtempSync(join(tmpdir(), "vibelang-throws-"))
   try {
@@ -180,6 +196,10 @@ test("native proofs cover typed iterables, null targets and byte syntax", () => 
   assert.ok(find("Date.toISOString").every(e => e.ownThrows === "never"), "invalid receiver state is implicit (detail 81)")
 })
 
+// docs/design/src/900-appendices.md#3c9901e228748485 — Chapter 900: iterator hooks and dual-factory phases.
+// docs/design/src/900-appendices.md#550330c19a8e895a — Chapter 900: iterator hooks and dual-factory phases.
+// docs/design/src/900-appendices.md#65a3ab133e10d843 — Chapter 900: iterator hooks and dual-factory phases.
+// docs/design/src/900-appendices.md#ac95a42c7fe2f389 — Chapter 900: iterator hooks and dual-factory phases.
 test("protocol hooks are implicit and dual factories defer full invocations (detail 202)", () => {
   const { entries } = JSON.parse(readFileSync(resolve(root, artifactPath), "utf8"))
   const find = (module, declaration) => {
@@ -230,6 +250,7 @@ test("dual selectors need a proof; numeric aliases and namespace imports remain 
   } finally { rmSync(temp, { recursive: true, force: true }) }
 })
 
+// docs/design/src/900-appendices.md#99557b212cbf9c49 — Chapter 900: generated throws inventory is published.
 test("normative chapters publish the throws inventory and its generator", () => {
   for (const page of ["docs/design/src/003-failures.md", "docs/design/src/900-appendices.md"]) {
     const text = readFileSync(resolve(root, page), "utf8")

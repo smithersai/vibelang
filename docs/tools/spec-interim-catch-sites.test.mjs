@@ -3,6 +3,8 @@ import test from "node:test"
 import { Effect } from "effect"
 import { chapter, read } from "./spec-witness.mjs"
 
+// docs/design/src/900-appendices.md#a1a5370c8aa322b4 — Chapter 900: statement and expression dead-catch sites stay distinct.
+// docs/design/src/900-appendices.md#e38848aafeb69b68 — Chapter 900: statement and expression dead-catch sites stay distinct.
 test("interim EK9204 inventories both sites and their separate retirement", () => {
   const row = chapter("900-appendices").split("\n").find(l => l.startsWith("| interim `EK9204`"))
   assert.match(row, /catch. expression.*cannot fail/)
