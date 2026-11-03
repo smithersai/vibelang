@@ -6,7 +6,7 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSyn
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
-import { test } from "node:test"
+import { after, before, test } from "node:test"
 import { probeVip1, probeTargetVip1 } from "../lib/vip-flip.mjs"
 import { upgradeEffect } from "../lib/steps.mjs"
 import * as Jj from "../lib/jj.mjs"
@@ -15,9 +15,36 @@ import { must, writeJson } from "../lib/util.mjs"
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const fc = require("fast-check")
 
+// Keep capability tests offline: the installer still has to request the exact
+// target dependencies, and the compiler below independently reads their pins.
+const npmRoot = mkdtempSync(join(tmpdir(), "migrate-vip-installer-"))
+const originalNpmPath = process.env.PATH
+before(() => {
+  writeFileSync(join(npmRoot, "npm"), `#!/usr/bin/env node
+const fs = require("node:fs"), path = require("node:path")
+const args = process.argv.slice(2)
+if (!args.includes("--ignore-scripts") || !args.includes("--package-lock=false")) process.exit(97)
+const effect = args.find(arg => arg.startsWith("effect@"))?.slice(7)
+const runtime = args.at(-1)
+if (!effect || !runtime.endsWith(".tgz")) process.exit(98)
+if (fs.readFileSync(runtime, "utf8").startsWith("fail-install")) { console.error("fixture dependency unavailable"); process.exit(37) }
+const prefix = args[args.indexOf("--prefix") + 1]
+for (const [name, version] of [["effect", effect], ["vibelang-runtime", "0.0.12"]]) {
+  const dir = path.join(prefix, "node_modules", name)
+  fs.mkdirSync(dir, { recursive: true })
+  fs.writeFileSync(path.join(dir, "package.json"), JSON.stringify({ name, version }))
+}
+`, { mode: 0o755 })
+  process.env.PATH = npmRoot + ":" + originalNpmPath
+})
+after(() => {
+  process.env.PATH = originalNpmPath
+  rmSync(npmRoot, { recursive: true, force: true })
+})
+
 const quote = "it first runs the installed `vibelang --fix --fix-vip-only` on each project with a tracked `.vibe` file"
 
-function fakeCompiler(bin, { side, target, calls, fixCode = 0, probeCode = 0, declaration, version = "0.0.11", finishServices = false }) {
+function fakeCompiler(bin, { side, target, calls, fixCode = 0, probeCode = 0, declaration, version = "0.0.11", finishServices = false, expectedEffect, expectedRuntime }) {
   writeFileSync(bin, `#!/usr/bin/env node
 const fs = require("node:fs"), path = require("node:path")
 const args = process.argv.slice(2)
@@ -27,6 +54,12 @@ if (args.includes("--emitDeclarationOnly") && project && fs.readFileSync(project
   const config = JSON.parse(fs.readFileSync(project, "utf8"))
   const source = path.join(path.dirname(project), "probe.vibe")
   if (config.files.join() !== "probe.vibe" || fs.readFileSync(source, "utf8") !== ${JSON.stringify("export const f = (n: number) => n + 1\n")}) process.exit(99)
+  for (const [name, expected] of [["effect", ${JSON.stringify(expectedEffect)}], ["vibelang-runtime", ${JSON.stringify(expectedRuntime)}]]) {
+    if (!expected) continue
+    let actual
+    try { actual = JSON.parse(fs.readFileSync(path.join(path.dirname(project), "node_modules", name, "package.json"), "utf8")).version } catch {}
+    if (actual !== expected) { console.error("EK3201: " + name + " " + actual + " does not match " + expected); process.exit(2) }
+  }
   if (${probeCode}) process.exit(${probeCode})
   const out = args[args.indexOf("--outDir") + 1]
   fs.mkdirSync(out, { recursive: true })
@@ -92,7 +125,8 @@ async function fixture(root, files) {
   fakeCompiler(join(toolchain, "native/vibelang"), { side: "post" })
   const base = await Jj.commit(target, "base")
   writeFileSync(join(toolchain, "vibelang-new.tgz"), "tarball\n")
-  writeJson(join(toolchain, "toolchain.json"), { version: "0.0.12", commit: "fedcba9876543210fedc", effect: "4.0.6", compiler: "native/vibelang", packages: { vibelang: "vibelang-new.tgz" } })
+  writeFileSync(join(toolchain, "runtime-new.tgz"), "tarball\\n")
+  writeJson(join(toolchain, "toolchain.json"), { version: "0.0.12", commit: "fedcba9876543210fedc", effect: "4.0.6", compiler: "native/vibelang", packages: { vibelang: "vibelang-new.tgz", "vibelang-runtime": "runtime-new.tgz" } })
   return { target, toolchain, base, calls }
 }
 
@@ -323,6 +357,11 @@ const bin = path.join(prefix, "node_modules/.bin/vibelang")
 fs.mkdirSync(path.dirname(bin), { recursive: true })
 fs.copyFileSync(${JSON.stringify(requested)}, bin)
 fs.chmodSync(bin, 0o755)
+for (const [name, version] of [["effect", "4.1.1"], ["vibelang-runtime", "0.0.11"]]) {
+  const dir = path.join(prefix, "node_modules", name)
+  fs.mkdirSync(dir, { recursive: true })
+  fs.writeFileSync(path.join(dir, "package.json"), JSON.stringify({ name, version }))
+}
 `, { mode: 0o755 })
     process.env.PATH = root + ":" + originalPath
     const result = await probeTargetVip1({ toolchain: { kind: "npm", version: "0.0.11" },
@@ -488,3 +527,77 @@ test("alchemy VIP refusal property retains nonzero status after partial repairs"
     } finally { rmSync(root, { recursive: true, force: true }) }
   }), { seed: 560203, numRuns: 12 })
 })
+
+// The documented upgrade rule requires the predecessor's native migrations
+// before repinning. A new target's exact Effect pin cannot choose whether they run.
+test("Foldkit's Effect pin upgrade probes the new dependencies and still runs the predecessor", async () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-vip-effect-pin-"))
+  try {
+    const corpus = JSON.parse(readFileSync(new URL("./corpus/foldkit-target-probe-effect-pin.json", import.meta.url), "utf8"))
+    const { target, toolchain, base, calls } = await fixture(root, {
+      "tsconfig.json": "{}\n", "src/api.vibe": "export function unwrap(id: string) { return try load(id) }\n"
+    })
+    const file = join(toolchain, "toolchain.json")
+    const staged = JSON.parse(readFileSync(file, "utf8"))
+    writeJson(file, { ...staged, effect: corpus.targetEffect })
+    mkdirSync(join(target, "node_modules/effect"))
+    writeJson(join(target, "node_modules/effect/package.json"), { version: corpus.consumerEffect })
+    fakeCompiler(join(toolchain, "native/vibelang"), { side: "post", expectedEffect: corpus.targetEffect, expectedRuntime: "0.0.12" })
+    const result = await upgradeEffect({ run: join(root, "run"), target, packages: ["."], test: "true", toolchain, install: "true", base })
+    assert.equal(result.vipFixes.probes.target.side, "post")
+    assert.deepEqual(result.vipFixes.probes.target.dependencies, { effect: corpus.targetEffect, "vibelang-runtime": "0.0.12" })
+    assert.deepEqual(result.vipFixes.changed, ["src/api.vibe"])
+    assert.match(readFileSync(calls, "utf8"), /vibelang-old\.tgz/)
+    assert.equal(JSON.parse(readFileSync(join(target, "node_modules/effect/package.json"), "utf8")).version, corpus.consumerEffect,
+      "probing must not replace the predecessor's installed dependencies")
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+test("target probes are independent of the consumer's Effect version and install location", async () => {
+  await fc.assert(fc.asyncProperty(fc.integer({ min: 0, max: 20 }), fc.integer({ min: 0, max: 20 }), fc.boolean(),
+    async (oldPatch, newPatch, spaced) => {
+      const root = mkdtempSync(join(tmpdir(), "migrate-vip-pin-property-"))
+      try {
+        const target = join(root, spaced ? "old consumer with spaces" : "old-consumer")
+        mkdirSync(join(target, "node_modules/effect"), { recursive: true })
+        const oldManifest = JSON.stringify({ version: `4.0.${oldPatch}` })
+        writeFileSync(join(target, "node_modules/effect/package.json"), oldManifest)
+        const dir = join(root, spaced ? "new toolchain with spaces" : "new-toolchain")
+        mkdirSync(dir)
+        writeFileSync(join(dir, "runtime.tgz"), "tarball\n")
+        const compiler = join(dir, "compiler")
+        const effect = `4.1.${newPatch}`
+        fakeCompiler(compiler, { side: "post", expectedEffect: effect, expectedRuntime: "0.0.12" })
+        const result = await probeTargetVip1({ toolchain: { kind: "staged", dir },
+          readToolchain: () => ({ compiler, effect, packages: { "vibelang-runtime": "runtime.tgz" } }),
+          nodeModules: join(target, "node_modules"), directory: root, log: join(root, "probe.log"), ts: require("typescript") })
+        assert.equal(result.side, "post", JSON.stringify(result))
+        assert.deepEqual(result.dependencies, { effect, "vibelang-runtime": "0.0.12" })
+        assert.equal(readFileSync(join(target, "node_modules/effect/package.json"), "utf8"), oldManifest)
+        assert.deepEqual(readdirSync(root).filter(name => /^vip1-(target|probe)-/.test(name)), [])
+      } finally { rmSync(root, { recursive: true, force: true }) }
+    }), { seed: 1707401, numRuns: 40 })
+})
+
+for (const failure of ["dependencies", "pin"]) {
+  test(`a target ${failure} failure stops before repinning and retains its diagnostic receipt`, async () => {
+    const root = mkdtempSync(join(tmpdir(), "migrate-vip-pin-failure-"))
+    try {
+      const source = "export function unwrap(id: string) { return try load(id) }\n"
+      const { target, toolchain, base, calls } = await fixture(root, { "tsconfig.json": "{}\n", "src/api.vibe": source })
+      const manifest = readFileSync(join(target, "package.json"), "utf8")
+      if (failure === "dependencies") writeFileSync(join(toolchain, "runtime-new.tgz"), "fail-install\n")
+      else fakeCompiler(join(toolchain, "native/vibelang"), { side: "post", expectedEffect: "99.0.0" })
+      await assert.rejects(upgradeEffect({ run: join(root, "run"), target, packages: ["."], test: "true", toolchain, install: "true", base }),
+        failure === "dependencies" ? /dependencies install exited 37/ : /EK3201/)
+      assert.equal(readFileSync(join(target, "package.json"), "utf8"), manifest)
+      assert.equal(readFileSync(join(target, "src/api.vibe"), "utf8"), source)
+      assert.equal(existsSync(calls), false)
+      const receipt = JSON.parse(readFileSync(join(root, "run/baseline/logs/vip-probe-result.json"), "utf8")).target
+      assert.equal(receipt.fatal, true)
+      assert.equal(receipt.stage, failure === "dependencies" ? "dependencies" : "compile")
+      assert.match(readFileSync(receipt.log, "utf8"), failure === "dependencies" ? /fixture dependency unavailable/ : /EK3201/)
+      assert.deepEqual(readdirSync(join(root, "run/baseline/logs")).filter(name => /^vip1-(target|probe)-/.test(name)), [])
+    } finally { rmSync(root, { recursive: true, force: true }) }
+  })
+}

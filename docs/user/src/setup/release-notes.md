@@ -668,6 +668,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A timing comparison saved inside a trial directory spoiled later comparisons with its own report; the tool now refuses that path before writing.
 
 - Migrating a service default could widen an exported literal type such as `typeof Flags.default` in declarations; type reads now retain their original primitive type for downstream consumers.
+
+- An upgrade could skip the required explicit-effects migration when the new compiler pinned a different `effect` version. The target capability probe now installs matching dependencies separately and reports dependency failures before changing the consumer.
 - API checks invented ambient exports or hid an ambient type change when one input directory contained the other. Contributions now follow each snapshot’s dependency closure, and nested private-class origins remain distinct where required.
 
 - The editor outline merged separate `module` declarations as TypeScript namespaces and hid a later declaration with the same name; each VibeLang module now keeps its own outline entry and name range, including an invalid duplicate.

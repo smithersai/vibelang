@@ -658,6 +658,11 @@ async function applyEarlierVipFixes(config, logs) {
     nodeModules: first && dirname(dirname(join(t, first.compiler))), directory: logs,
     log: join(logs, "vip-probe-target.log"), ts })
   const probes = { target, installed: [] }
+  if (target.fatal) {
+    const receipt = join(logs, "vip-probe-result.json")
+    writeJson(receipt, probes)
+    throw new Error(`${target.error}${target.diagnosticCodes?.length ? ": " + target.diagnosticCodes.join(", ") : ""}; see ${target.log ?? receipt} (probe receipt: ${receipt})`)
+  }
   if (target.error) return { ...empty, skipped: target.error, probes }
   const before = new Map(vibe.map((f) => [f, readFileSync(join(t, f), "utf8")]))
   const failed = [], projects = [], skippedProjects = [], installed = new Map()

@@ -2,7 +2,7 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { listDeclarations } from "./declarations.mjs"
-import { quote, run, writeJson } from "./util.mjs"
+import { quote, readJson, run, writeJson } from "./util.mjs"
 
 /** Compile an isolated .vibe project and read the unmarked arrow's return type. */
 export async function probeVip1({ compiler, nodeModules, directory, log, ts, timeoutMs = 30000 }) {
@@ -21,7 +21,8 @@ export async function probeVip1({ compiler, nodeModules, directory, log, ts, tim
     const out = join(probe, "out")
     const result = await run(`${quote(compiler)} -p ${quote(join(probe, "tsconfig.json"))} --singleThreaded --declaration --emitDeclarationOnly --pretty false --outDir ${quote(out)}`,
       { cwd: probe, log, timeoutMs })
-    if (result.code !== 0) return { error: `VIP-1 probe exited ${result.code}${result.timedOut ? " (timed out)" : ""}`, log }
+    if (result.code !== 0) return { error: `VIP-1 probe exited ${result.code}${result.timedOut ? " (timed out)" : ""}`,
+      diagnosticCodes: [...new Set((result.stdout + result.stderr).match(/\b(?:EK|TS)\d{4,5}\b/g) ?? [])], log }
     const files = listDeclarations(out)
     if (files.length !== 1) return { error: `VIP-1 probe emitted ${files.length} declaration files; expected one`, log }
     const declaration = readFileSync(join(out, files[0]), "utf8")
@@ -49,24 +50,33 @@ export async function probeVip1({ compiler, nodeModules, directory, log, ts, tim
   }
 }
 
-/** Probe the run's target compiler, before repinning the installed predecessor. */
-export async function probeTargetVip1({ toolchain, readToolchain, nodeModules, directory, log, ts }) {
-  if (toolchain.kind === "staged") {
-    try { return await probeVip1({ compiler: readToolchain(toolchain.dir).compiler, nodeModules, directory, log, ts }) }
-    catch (error) { return { error: `target VIP-1 probe failed: ${error.message}`, log } }
-  }
-  // compilerOf(config) still names the predecessor for npm runs at this point.
-  // Install the exact requested release in isolation so it cannot select that
-  // predecessor from the target's node_modules or change the target's pins.
+/**
+ * Probe the target with its own Effect/runtime, before repinning the predecessor.
+ * The consumer's dependencies belong to the installed compiler: reusing them
+ * here can make the new compiler refuse an otherwise valid probe with EK3201.
+ */
+export async function probeTargetVip1({ toolchain, readToolchain, directory, log, ts }) {
   mkdirSync(directory, { recursive: true })
   const install = mkdtempSync(join(directory, "vip1-target-"))
+  const installLog = log && log + ".install"
   try {
-    const result = await run(`npm install --prefix ${quote(install)} --no-audit --no-fund --package-lock=false ${quote("vibelang@" + toolchain.version)}`,
-      { cwd: install, log: log + ".install", timeoutMs: 120000 })
-    if (result.code !== 0) return { error: `target VIP-1 compiler install exited ${result.code}`, log: log + ".install" }
-    return await probeVip1({ compiler: join(install, "node_modules/.bin/vibelang"), nodeModules, directory, log, ts })
+    const staged = toolchain.kind === "staged" ? readToolchain(toolchain.dir) : undefined
+    const packages = staged
+      ? [`effect@${staged.effect}`, join(staged.dir ?? toolchain.dir, staged.packages["vibelang-runtime"])]
+      : [`vibelang@${toolchain.version}`, `vibelang-runtime@${toolchain.version}`]
+    writeJson(join(install, "package.json"), { private: true, type: "module" })
+    const result = await run(`npm install --prefix ${quote(install)} --ignore-scripts --no-audit --no-fund --package-lock=false ${packages.map(quote).join(" ")}`,
+      { cwd: install, log: installLog, timeoutMs: 120000 })
+    if (result.code !== 0) return { error: `target VIP-1 dependencies install exited ${result.code}${result.timedOut ? " (timed out)" : ""}`,
+      fatal: true, stage: "dependencies", log: installLog }
+    const nodeModules = join(install, "node_modules")
+    const dependencies = Object.fromEntries(["effect", "vibelang-runtime"].map(name =>
+      [name, readJson(join(nodeModules, name, "package.json")).version]))
+    const probe = await probeVip1({ compiler: staged?.compiler ?? join(nodeModules, ".bin/vibelang"),
+      nodeModules, directory, log, ts })
+    return { ...probe, dependencies, ...(probe.diagnosticCodes?.includes("EK3201") ? { fatal: true, stage: "compile" } : {}) }
   } catch (error) {
-    return { error: `target VIP-1 probe failed: ${error.message}`, log }
+    return { error: `target VIP-1 probe failed: ${error.message}`, fatal: true, stage: "dependencies", log: installLog }
   } finally {
     rmSync(install, { recursive: true, force: true })
   }
