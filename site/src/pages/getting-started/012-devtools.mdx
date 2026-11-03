@@ -35,6 +35,8 @@ Other editors configure their LSP client to run `vibelang --lsp --stdio` for `*.
 
 Organize Imports and Remove Unused Imports keep type-only bindings used by generic `schema` mappings. An import that supplies a shadowing type still counts as used when it causes `EK2109`; organizing imports keeps that diagnostic instead of silently selecting a different schema. Unused aliases and names hidden by a local type are still removed. Rename and Find References also follow those schema type uses, including default and namespace imports; renaming a binding preserves the selected decoder and its diagnostics.
 
+The `EK0401` quick fix that makes a function effectful and uses `die` keeps written statement separators and comments, so a following statement or `else` stays separate.
+
 The editor outline gives each `module` declaration its own entry, including a second declaration whose duplicate name reports `EK4005`, so every written name remains available for navigation.
 
 For GitHub highlighting, add `*.vibe linguist-language=TypeScript` to `.gitattributes`; the starter's `.gitattributes` already has this line. Effect's type-aware lint rules, `@effect/tsgo`'s `effecttsgo/*` rules, are built into `vibelang`: see [Lint Effect code](/setup/vibelang-cli#lint-effect-code).

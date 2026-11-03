@@ -72,7 +72,8 @@ var nothrowFix = &ls.CodeFixProvider{
 		if site.Kind == ast.KindThrowStatement && enclosingFunction(site) == home {
 			// a throw statement, not a throw expression, whose arrow the parser writes
 			operand := site.Expression()
-			die := append(append([]*lsproto.TextEdit{}, edits...), replaceRange(fix, nodeStart(file, site), site.End(), "return try die("+nodeText(file, operand)+")")...)
+			// Leave the statement terminator and trailing comments in place.
+			die := append(append([]*lsproto.TextEdit{}, edits...), replaceRange(fix, nodeStart(file, site), operand.End(), "return try die("+nodeText(file, operand)+")")...)
 			actions = append(actions, &ls.CodeAction{Description: description + " and fail with a defect: die", Changes: die})
 		}
 		return actions, nil
