@@ -427,7 +427,7 @@ A data payload is emitted as a TypeScript type literal in `Data.TaggedEnum`. Its
 ```vibe es
 // compiler-gap: pending VIP-16
 let keyReads = 0; let initializerRuns = 0
-const Keys = { get field(): number { keyReads++; throw new Error("not evaluated") } }
+const Keys = { get field(): number { keyReads++; return 1 } }
 const initializedKey = (++initializerRuns, 2)
 data Reads { Item { [Keys.field]: string } }
 data Initialized { Item { [initializedKey]: string } }
