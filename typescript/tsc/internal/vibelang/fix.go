@@ -1423,7 +1423,11 @@ func fileFixes(ctx context.Context, program *compiler.Program, file *ast.SourceF
 				fix, ok := effectGenNativePipesFix(c, file, d, key, refused)
 				done()
 				if ok {
+					// The fallback repairs the refused site itself, so the site guard
+					// resolves the site instead of blocking the fix (fix_sites.go).
+					fix.siteStart, fix.siteEnd, fix.sited = d.Pos(), d.End(), true
 					candidates = append(candidates, fix)
+					continue
 				}
 			}
 			declined = append(declined, declinedSite{d.Pos(), d.End(), d.Code(), key, ""})
