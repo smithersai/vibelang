@@ -1,0 +1,13 @@
+{
+  "repo": "opencode",
+  "pattern": "setup's Bun pins in root resolutions are ignored because the root package.json already has overrides",
+  "bun": "1.4.2 (744846f84)",
+  "source": "oven-sh/bun bun-v1.4.2 src/install/lockfile/OverrideMap.rs: parse_count and parse_append read \"overrides\" when the key exists, else \"resolutions\"",
+  "root": {
+    "name": "root-fixture",
+    "private": true,
+    "workspaces": ["child"],
+    "overrides": { "effect": "4.1.1" },
+    "resolutions": { "untouched": "7.7.7" }
+  }
+}

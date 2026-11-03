@@ -181,6 +181,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Migration verification reported passing React Compiler coverage cases as missing after their source paths changed from `.ts` to `.vibe`; test titles now follow recorded source renames while retaining case counts and failures.
 
 - `vibelang -p` panicked with `path must be rooted and normalized` on a `.d.ts` file whose directory or own name starts with or contains a dot, such as `/work/.hidden/proj/env.d.ts`, `.env.d.ts` or `..d.ts`, when an `include` pattern selected it; the compiler took the text before the last dot for a module body declaration source (`x.vibe.name.d.ts`) and now checks for a `.vibe` file name within the file name first, so these files are inputs as in tsc.
+- Migrate setup pinned a Bun project's staged toolchain in root `resolutions`, which Bun ignores when the root `package.json` has `overrides`, so `bun install` asked the registry for an unpublished `vibelang-runtime` and failed. Setup now adds Bun's pins to an existing `overrides`, keeps `resolutions` otherwise, and removes a pin table it created when the pins are removed.
 - Identical recursive generic declaration APIs could fail with `TS2589`; exact resolved type identity now proves those comparisons.
 - API checks treated identical JSDoc links as different when a private target resolved in only one snapshot. Link targets and labels now compare consistently while real comment changes remain differences.
 

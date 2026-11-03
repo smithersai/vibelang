@@ -75,7 +75,8 @@ function yamlSlot(text, name) {
 
 /**
  * pnpm/Bun/Yarn install staged builds through root pins; npm uses a dev
- * dependency mirror. Duplicating the mirror makes Bun query the registry. Pins cover the staged toolchain,
+ * dependency mirror. Bun reads root overrides whenever that key exists and
+ * resolutions only otherwise, so its pins follow the author's overrides. Duplicating the mirror makes Bun query the registry. Pins cover the staged toolchain,
  * including a compiler that source-child wiring later needs at runtime.
  * Only observed public dependencies appear in releaseRequired. The receipt
  * owns generated overrides, so switching to a published build removes those
@@ -119,10 +120,17 @@ export function prepareToolchainPublication({ target, manifests, manager, specsF
     }
     if (JSON.stringify(pkg) !== JSON.stringify(json(file))) put(file, pkg)
   }
+  const rootPackage = existsSync(join(target, "package.json")) ? json("package.json") : {}
+  // Bun 1.4 (src/install/lockfile/OverrideMap.rs) consults resolutions only
+  // when the root has no overrides key, even an empty one.
+  const bunTable = Object.hasOwn(rootPackage, "overrides") ? "overrides" : "resolutions"
+  if (manager === "bun" && bunTable === "overrides" && Object.keys(pins).length && (rootPackage.overrides === null || typeof rootPackage.overrides !== "object" || Array.isArray(rootPackage.overrides))) {
+    throw new Error("Bun reads the root overrides instead of resolutions, and it is not an object; make it an object so setup can pin the staged toolchain there")
+  }
   const slotFor = (name, value) => ({
     name, value,
     file: manager === "pnpm" && existsSync(join(target, "pnpm-workspace.yaml")) ? "pnpm-workspace.yaml" : "package.json",
-    table: manager === "pnpm" ? (existsSync(join(target, "pnpm-workspace.yaml")) ? "overrides" : "pnpm.overrides") : (manager === "yarn" || manager === "bun") ? "resolutions" : "overrides"
+    table: manager === "pnpm" ? (existsSync(join(target, "pnpm-workspace.yaml")) ? "overrides" : "pnpm.overrides") : manager === "bun" ? bunTable : manager === "yarn" ? "resolutions" : "overrides"
   })
   const desired = manager === "npm" ? [] : Object.entries(pins).map(([name, value]) => slotFor(name, value))
   const get = slot => {
@@ -160,14 +168,36 @@ export function prepareToolchainPublication({ target, manifests, manager, specsF
     }
   }
   const sameSlot = (a, b) => a.file === b.file && a.table === b.table && a.name === b.name
+  const sameTable = (a, b) => a.file === b.file && a.table === b.table
+  // The outermost table key setup creates, so removing its last pin removes the table too.
+  const missingTable = slot => {
+    if (slot.file.endsWith(".yaml")) return undefined
+    let map = json(slot.file), path = []
+    for (const key of slot.table.split(".")) {
+      path.push(key)
+      if (map?.[key] === undefined) return path.join(".")
+      map = map[key]
+    }
+  }
+  const created = new Map(desired.map(slot => [slot, old?.overrides?.find(previous => sameTable(previous, slot) && previous.createdTable)?.createdTable ?? missingTable(slot)]))
+  const emptyTree = value => value !== null && typeof value === "object" && Object.values(value).every(emptyTree)
   for (const slot of old?.overrides ?? []) {
     if (!toolchainPackageNames.includes(slot.name) || get(slot) !== slot.value) throw new Error("The managed " + slot.name + " override changed; reconcile " + receiptPath + " before switching toolchains")
-    if (!desired.some(next => sameSlot(slot, next))) set(slot, slot.hadValue ? rootSpecs[slot.name] ?? slot.previous : undefined)
+    // A published spec updates an author's pin; when only the table moves, the author's value returns.
+    if (!desired.some(next => sameSlot(slot, next))) set(slot, slot.hadValue ? (local(rootSpecs[slot.name]) ? slot.previous : rootSpecs[slot.name] ?? slot.previous) : undefined)
+  }
+  for (const slot of old?.overrides ?? []) {
+    if (!slot.createdTable || desired.some(next => sameTable(slot, next))) continue
+    const pkg = json(slot.file), keys = slot.createdTable.split("."), last = keys.pop()
+    let parent = pkg
+    for (const key of keys) parent = parent?.[key]
+    if (parent && Object.hasOwn(parent, last) && emptyTree(parent[last])) { delete parent[last]; put(slot.file, pkg) }
   }
   const overrides = desired.map(slot => {
     const previousSlot = old?.overrides?.find(previous => sameSlot(previous, slot))
     const previous = previousSlot ? previousSlot.previous : get(slot)
-    const result = { ...slot, hadValue: previousSlot ? previousSlot.hadValue : previous !== undefined, ...(previous !== undefined ? { previous } : {}) }
+    const createdTable = created.get(slot)
+    const result = { ...slot, hadValue: previousSlot ? previousSlot.hadValue : previous !== undefined, ...(previous !== undefined ? { previous } : {}), ...(createdTable ? { createdTable } : {}) }
     set(slot, slot.value)
     return result
   })

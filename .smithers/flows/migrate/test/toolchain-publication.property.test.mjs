@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
@@ -123,12 +124,12 @@ test("a changed managed override fails before modifying any package", () => {
   try {
     prepareToolchainPublication(f.options)
     const root = read(join(f.root, "package.json"))
-    root.resolutions["vibelang-runtime"] = "authored-change"
+    root.overrides["vibelang-runtime"] = "authored-change"
     write(join(f.root, "package.json"), root)
     const before = readFileSync(join(f.root, f.file), "utf8")
     assert.throws(() => prepareToolchainPublication(f.options), /managed vibelang-runtime override changed/)
     assert.equal(readFileSync(join(f.root, f.file), "utf8"), before)
-    assert.equal(read(join(f.root, "package.json")).resolutions["vibelang-runtime"], "authored-change")
+    assert.equal(read(join(f.root, "package.json")).overrides["vibelang-runtime"], "authored-change")
   } finally { f.dispose() }
 })
 
@@ -160,4 +161,167 @@ test("opencode source-child compiler corpus uses a released dependency and manag
     assert.equal(after.devDependencies.vibelang, manager === "npm" ? spec : undefined)
     assert.deepEqual(original, corpus.manifest)
   }
+})
+
+// Bun 1.4.2 reads root "overrides" whenever that key exists and consults
+// "resolutions" only otherwise (oven-sh/bun bun-v1.4.2
+// src/install/lockfile/OverrideMap.rs parse_count/parse_append), so staged
+// pins must go where Bun looks.
+const bunReads = root => Object.hasOwn(root, "overrides") ? root.overrides : root.resolutions
+const corpus = read(new URL("./corpus/opencode-bun-existing-overrides.json", import.meta.url))
+
+function pinFixture(manager, root) {
+  const target = mkdtempSync(join(tmpdir(), "toolchain-pin-table-"))
+  const tarballs = Object.fromEntries(toolchainPackageNames.map(name => {
+    mkdirSync(join(target, ".vibelang-toolchain"), { recursive: true })
+    writeFileSync(join(target, ".vibelang-toolchain", name + ".tgz"), artifact({ name, version: "0.0.11" }))
+    return [name, name + ".tgz"]
+  }))
+  const specsFor = dir => toolchainSpecs(dir, tarballs)
+  write(join(target, "package.json"), root)
+  write(join(target, "child/package.json"), { name: "fixture-child", version: "1.0.0", dependencies: { "vibelang-runtime": specsFor("child")["vibelang-runtime"] } })
+  return { target, specsFor, options: { target, manifests: ["package.json", "child/package.json"], manager, specsFor }, dispose: () => rmSync(target, { recursive: true, force: true }) }
+}
+
+test("opencode-bun-existing-overrides: Bun pins go into an author's existing overrides, which Bun reads instead of resolutions", () => {
+  const f = pinFixture("bun", structuredClone(corpus.root))
+  try {
+    prepareToolchainPublication(f.options)
+    const root = read(join(f.target, "package.json"))
+    for (const [name, value] of Object.entries(corpus.root.overrides)) assert.equal(root.overrides[name], value, "author override kept")
+    assert.equal(bunReads(root)["vibelang-runtime"], f.specsFor(".")["vibelang-runtime"])
+    assert.deepEqual(root.resolutions, corpus.root.resolutions, "the field Bun ignores is left as the author wrote it")
+  } finally { f.dispose() }
+})
+
+for (const [label, overrides, table] of [["absent", undefined, "resolutions"], ["empty", {}, "overrides"], ["non-empty", { effect: "4.1.1" }, "overrides"]]) {
+  test("bun with root overrides " + label + " pins the staged toolchain in " + table + " and a publication switch restores the root manifest", () => {
+    const root = { name: "root", private: true, workspaces: ["child"], ...(overrides ? { overrides } : {}) }
+    const f = pinFixture("bun", structuredClone(root))
+    try {
+      prepareToolchainPublication(f.options)
+      const after = read(join(f.target, "package.json"))
+      for (const name of toolchainPackageNames) assert.equal(after[table][name], f.specsFor(".")[name])
+      assert.equal(bunReads(after)["vibelang-runtime"], f.specsFor(".")["vibelang-runtime"])
+      assert.equal(Object.hasOwn(after, table === "overrides" ? "resolutions" : "overrides"), false, "no second pin table")
+      const published = Object.fromEntries(toolchainPackageNames.map(name => [name, "0.0.11"]))
+      prepareToolchainPublication({ ...f.options, specsFor: () => published })
+      assert.deepEqual(read(join(f.target, "package.json")), root, "restore leaves the author's root manifest, with no empty table setup created")
+    } finally { f.dispose() }
+  })
+}
+
+test("bun: a conflicting author override for a toolchain package yields to the staged pin and comes back on restore", () => {
+  const root = { name: "root", private: true, workspaces: ["child"], overrides: { effect: "4.1.1", "vibelang-runtime": "0.0.9" } }
+  const f = pinFixture("bun", structuredClone(root))
+  try {
+    prepareToolchainPublication(f.options)
+    assert.equal(read(join(f.target, "package.json")).overrides["vibelang-runtime"], f.specsFor(".")["vibelang-runtime"], "the staged build wins while staged")
+    const receipt = read(join(f.target, ".vibelang/toolchain-publication.json"))
+    assert.deepEqual(receipt.overrides.find(slot => slot.name === "vibelang-runtime"), { name: "vibelang-runtime", value: f.specsFor(".")["vibelang-runtime"], file: "package.json", table: "overrides", hadValue: true, previous: "0.0.9" })
+    const published = Object.fromEntries(toolchainPackageNames.map(name => [name, "0.0.12"]))
+    prepareToolchainPublication({ ...f.options, specsFor: () => published })
+    assert.deepEqual(read(join(f.target, "package.json")).overrides, { effect: "4.1.1", "vibelang-runtime": "0.0.12" }, "an existing author pin moves to the published release, as before")
+  } finally { f.dispose() }
+})
+
+test("bun: a receipt whose pins sit in resolutions moves them into the author's overrides and restores resolutions exactly", () => {
+  const root = { name: "root", private: true, workspaces: ["child"], overrides: { effect: "4.1.1" }, resolutions: { untouched: "7.7.7", "vibelang-runtime": "0.0.9" } }
+  const f = pinFixture("bun", structuredClone(root))
+  try {
+    // The receipt an earlier setup wrote when it always used resolutions.
+    const staged = f.specsFor(".")
+    const old = structuredClone(root)
+    for (const name of toolchainPackageNames) old.resolutions[name] = staged[name]
+    write(join(f.target, "package.json"), old)
+    write(join(f.target, "child/package.json"), { name: "fixture-child", version: "1.0.0", dependencies: { "vibelang-runtime": "0.0.11" } })
+    write(join(f.target, ".vibelang/toolchain-publication.json"), { version: 1, manager: "bun", versions: Object.fromEntries(toolchainPackageNames.map(name => [name, "0.0.11"])), packages: ["child/package.json"], localPins: staged, releaseRequired: [{ name: "vibelang-runtime", version: "0.0.11" }], overrides: toolchainPackageNames.map(name => ({ name, value: staged[name], file: "package.json", table: "resolutions", hadValue: name === "vibelang-runtime", ...(name === "vibelang-runtime" ? { previous: "0.0.9" } : {}) })) })
+    prepareToolchainPublication(f.options)
+    const after = read(join(f.target, "package.json"))
+    assert.deepEqual(after.resolutions, root.resolutions, "the author's resolutions come back, not the staged path")
+    for (const name of toolchainPackageNames) assert.equal(after.overrides[name], staged[name])
+    assert.equal(after.overrides.effect, "4.1.1")
+    assert.deepEqual(prepareToolchainPublication(f.options).changed, [], "idempotent")
+  } finally { f.dispose() }
+})
+
+test("yarn keeps resolutions even when overrides exist, and a non-object Bun overrides stops setup", () => {
+  const f = pinFixture("yarn", { name: "root", private: true, workspaces: ["child"], overrides: { effect: "4.1.1" } })
+  try {
+    prepareToolchainPublication(f.options)
+    const after = read(join(f.target, "package.json"))
+    assert.equal(after.resolutions["vibelang-runtime"], f.specsFor(".")["vibelang-runtime"])
+    assert.deepEqual(after.overrides, { effect: "4.1.1" })
+  } finally { f.dispose() }
+  for (const overrides of [null, "x", []]) {
+    const g = pinFixture("bun", { name: "root", private: true, workspaces: ["child"], overrides })
+    try {
+      const before = readFileSync(join(g.target, "package.json"), "utf8")
+      assert.throws(() => prepareToolchainPublication(g.options), /Bun reads the root overrides/)
+      assert.equal(readFileSync(join(g.target, "package.json"), "utf8"), before)
+    } finally { g.dispose() }
+  }
+})
+
+test("property: Bun's effective pin table holds every staged pin; author entries survive; a publication switch restores the root", () => {
+  const map = fc.option(fc.dictionary(fc.constantFrom("effect", "untouched", "vibelang-runtime", "vibelang"), fc.constantFrom("4.1.1", "0.0.9", "^1.0.0"), { maxKeys: 3 }), { nil: undefined })
+  fc.assert(fc.property(fc.constantFrom("bun", "yarn", "pnpm"), map, map, fc.boolean(), (manager, overrides, resolutions, rerun) => {
+    const root = { name: "root", private: true, workspaces: ["child"], ...(overrides ? { overrides } : {}), ...(resolutions ? { resolutions } : {}) }
+    const f = pinFixture(manager, structuredClone(root))
+    try {
+      prepareToolchainPublication(f.options)
+      if (rerun) assert.deepEqual(prepareToolchainPublication(f.options).changed, [], "idempotent")
+      const after = read(join(f.target, "package.json"))
+      const effective = manager === "bun" ? bunReads(after) : manager === "yarn" ? after.resolutions : after.pnpm.overrides
+      for (const name of toolchainPackageNames) assert.equal(effective[name], f.specsFor(".")[name])
+      for (const field of ["overrides", "resolutions"]) for (const [name, value] of Object.entries(root[field] ?? {})) {
+        if (after[field] !== effective || !toolchainPackageNames.includes(name)) assert.equal(after[field][name], value, field + "." + name + " kept")
+      }
+      const published = Object.fromEntries(toolchainPackageNames.map(name => [name, "0.0.12"]))
+      prepareToolchainPublication({ ...f.options, specsFor: () => published })
+      const restored = read(join(f.target, "package.json")), expected = structuredClone(root)
+      const table = manager === "bun" ? (overrides ? expected.overrides : expected.resolutions) : manager === "yarn" ? expected.resolutions : undefined
+      for (const name of toolchainPackageNames) if (table && Object.hasOwn(table, name)) table[name] = "0.0.12"
+      assert.deepEqual(restored, expected)
+    } finally { f.dispose() }
+  }), { numRuns: 150, seed: 1903 })
+})
+
+function tarball(files) {
+  const blocks = []
+  for (const [name, text] of Object.entries(files)) {
+    const body = Buffer.from(text), header = Buffer.alloc(512)
+    header.write("package/" + name)
+    header.write("0000644\0", 100); header.write("0000000\0", 108); header.write("0000000\0", 116)
+    header.write(body.length.toString(8).padStart(11, "0") + "\0", 124)
+    header.write("00000000000\0", 136); header.fill(32, 148, 156); header.write("0", 156)
+    header.write("ustar\0", 257); header.write("00", 263)
+    header.write([...header].reduce((a, b) => a + b, 0).toString(8).padStart(6, "0") + "\0 ", 148)
+    blocks.push(header, body, Buffer.alloc((512 - body.length % 512) % 512))
+  }
+  return gzipSync(Buffer.concat([...blocks, Buffer.alloc(1024)]))
+}
+const bun = spawnSync("bun", ["--version"], { encoding: "utf8" })
+
+test("a real Bun workspace install with author overrides imports the staged runtime", { skip: bun.status !== 0 && "bun is not installed", timeout: 120000 }, () => {
+  const target = mkdtempSync(join(tmpdir(), "toolchain-pin-bun-"))
+  try {
+    const tarballs = {}
+    for (const name of toolchainPackageNames) {
+      mkdirSync(join(target, ".vibelang-toolchain"), { recursive: true })
+      writeFileSync(join(target, ".vibelang-toolchain", name + ".tgz"), tarball({ "package.json": JSON.stringify({ name, version: "0.0.11", type: "module", main: "index.js" }), "index.js": "export const marker = " + JSON.stringify("staged " + name) + "\n" }))
+      tarballs[name] = name + ".tgz"
+    }
+    const specsFor = dir => toolchainSpecs(dir, tarballs)
+    write(join(target, "package.json"), structuredClone(corpus.root))
+    write(join(target, "child/package.json"), { name: "fixture-child", version: "1.0.0", type: "module", dependencies: { "vibelang-runtime": specsFor("child")["vibelang-runtime"] } })
+    prepareToolchainPublication({ target, manifests: ["package.json", "child/package.json"], manager: "bun", specsFor })
+    assert.equal(read(join(target, "child/package.json")).dependencies["vibelang-runtime"], "0.0.11", "the published dependency is the release version")
+    // An unreachable registry: the install passes only if Bun takes the staged pin.
+    const env = { ...process.env, BUN_INSTALL_CACHE_DIR: join(target, ".bun-cache"), NPM_CONFIG_REGISTRY: "http://127.0.0.1:9/" }
+    const install = spawnSync("bun", ["install", "--ignore-scripts", "--registry", "http://127.0.0.1:9/"], { cwd: target, env, encoding: "utf8", timeout: 90000 })
+    assert.equal(install.status, 0, install.stdout + install.stderr)
+    const loaded = spawnSync("bun", ["-e", "console.log((await import('vibelang-runtime')).marker)"], { cwd: join(target, "child"), env, encoding: "utf8" })
+    assert.equal(loaded.stdout.trim(), "staged vibelang-runtime", loaded.stderr)
+  } finally { rmSync(target, { recursive: true, force: true }) }
 })
