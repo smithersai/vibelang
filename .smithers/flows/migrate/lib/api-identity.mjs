@@ -320,6 +320,7 @@ type __Assert<T extends true> = T;
 // Changed or unresolved dependencies invalidate every ancestor, including cycles.
 function equivalentModules(ts, program, host, left, right, externalGroups, documentation) {
   const printer = ts.createPrinter({ removeComments: true })
+  const checker = program.getTypeChecker()
   const nodes = new Map(), normalized = new Map(), origins = new Map()
   function externalOrigin(file) {
     if (origins.has(file)) return origins.get(file)
@@ -388,9 +389,25 @@ function equivalentModules(ts, program, host, left, right, externalGroups, docum
       }
     }
     const transformed = ts.transform(source, [transform])
-    const text = printer.printFile(transformed.transformed[0]) + (documentation?.get(file) ?? "")
+    let text = printer.printFile(transformed.transformed[0]) + (documentation?.get(file) ?? "")
     transformed.dispose()
-    const deps = host.resolveModuleNameLiterals(imports, file, undefined, program.getCompilerOptions(), source).map(x => x.resolvedModule?.resolvedFileName)
+    const resolved = host.resolveModuleNameLiterals(imports, file, undefined, program.getCompilerOptions(), source)
+    const ambientImports = []
+    const deps = imports.flatMap((literal, index) => {
+      if (resolved[index].resolvedModule) return [resolved[index].resolvedModule.resolvedFileName]
+      // Built-ins such as node:stream resolve to ambient module declarations,
+      // not a physical module file. Prove those declaration sources too; a
+      // genuinely missing import still invalidates the complete closure.
+      const declarations = checker.getSymbolAtLocation(literal)?.declarations
+      if (!declarations?.length || !declarations.every(node =>
+        ts.isModuleDeclaration(node) && ts.isStringLiteral(node.name))) return [undefined]
+      const files = [...new Set(declarations.map(node => node.getSourceFile().fileName))]
+      // Two ambient names can live in the same file and have distinct nominal
+      // exports. Keep the selected name and edge boundary in the syntax proof.
+      ambientImports.push([index, literal.text, files.length])
+      return files
+    })
+    text += JSON.stringify(ambientImports)
     for (const ref of source.referencedFiles) deps.push(resolve(dirname(file), ref.fileName))
     for (const ref of source.typeReferenceDirectives)
       deps.push(ts.resolveTypeReferenceDirective(ref.fileName, file, program.getCompilerOptions(), host).resolvedTypeReferenceDirective?.resolvedFileName)

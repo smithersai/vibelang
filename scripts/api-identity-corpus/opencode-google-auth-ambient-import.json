@@ -1,0 +1,7 @@
+{
+  "repository": "opencode",
+  "pattern": "google-auth-library private class imports a Node ambient module",
+  "ambient": "declare module \"node:fixture\" { export class Shape { private token; value: number; } }",
+  "dependency": "import type { Shape } from \"node:fixture\"; export declare class Client { private hidden; value: Shape; }",
+  "entry": "import type { Client } from \"auth\"; export declare const load: () => Promise<Client>;"
+}

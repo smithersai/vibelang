@@ -53,6 +53,10 @@ generated type checks. Identical deferred
 resolved dependency closures equivalent, including cycles and `import = require(...)` edges. The proof ignores declaration import/member order and equivalent type-import spelling; overload order and distinct external nominal origins remain significant. Only the module argument of an `import()` type is a dependency edge; literal
 generic arguments keep their type meaning, even when they resemble module paths.
 This preserves identity for copied generic functions such as `makeEventGroup`.
+Imports of ambient modules such as `node:stream` follow the declaration sources
+that TypeScript selected, including their dependencies. Their module names stay
+in the proof because different ambient modules can share one declaration file.
+A missing module remains unresolved and cannot establish equivalent closures.
 A changed dependency
 invalidates that proof. Separate installations with the same package name and
 version remain separate until proved equivalent. Peer-qualified pnpm store slots
