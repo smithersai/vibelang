@@ -60,55 +60,60 @@ var legacyDeclared = map[int32]string{
 	4403: "lane del-rest",                                                                                                                                                 // diagnostics.go
 	4405: "lane del-rest",                                                                                                                                                 // diagnostics.go
 	4406: "lane del-rest",                                                                                                                                                 // diagnostics.go
-	4407: "lane del-rest",                                                                                                                                                 // diagnostics.go
-	4408: "lane del-rest",                                                                                                                                                 // diagnostics.go
-	4409: "decide-live decides",                                                                                                                                           // diagnostics.go
-	4410: "lane del-rest",                                                                                                                                                 // keyword_bindings.go
-	4501: "lane del-rest",                                                                                                                                                 // diagnostics.go
-	4502: "lane del-rest",                                                                                                                                                 // call_pipe_diagnostic.go
-	4503: "lane del-rest",                                                                                                                                                 // service_value_diagnostic.go
-	4601: "lane del-rest; declaration only: effect-body await uses EK0102, so no reduced source witness reaches this legacy fallback",                                     // fibers.go
-	4602: "lane del-rest",                                                                                                                                                 // fibers.go
-	4603: "lane del-rest",                                                                                                                                                 // fibers.go
-	4604: "lane del-rest",                                                                                                                                                 // fibers.go
-	4607: "lane del-rest",                                                                                                                                                 // fibers.go
-	4611: "lane del-rest",                                                                                                                                                 // fibers.go
-	4612: "lane del-rest",                                                                                                                                                 // fibers.go
-	4702: "lane del-rest",                                                                                                                                                 // match.go
-	4703: "lane del-rest",                                                                                                                                                 // match.go
-	4704: "lane del-rest",                                                                                                                                                 // match.go
-	4705: "lane del-rest",                                                                                                                                                 // match.go
-	4706: "lane del-rest",                                                                                                                                                 // data.go
-	4707: "lane del-rest",                                                                                                                                                 // data.go
-	4801: "lane del-rest",                                                                                                                                                 // lsrules.go
-	4803: "lane del-rest",                                                                                                                                                 // lsrules.go
-	4804: "lane del-rest",                                                                                                                                                 // lsrules.go
-	4805: "lane del-rest",                                                                                                                                                 // lsrules.go
-	4806: "lane del-rest",                                                                                                                                                 // lsrules.go
-	4807: "lane del-rest",                                                                                                                                                 // lsrules.go
-	4808: "lane del-rest",                                                                                                                                                 // lsrules.go
-	4809: "lane del-rest",                                                                                                                                                 // lsrules.go
-	4810: "lane del-rest",                                                                                                                                                 // lsrules.go
-	4811: "lane del-rest",                                                                                                                                                 // messageOff in lsrules.go
-	4812: "lane del-rest",                                                                                                                                                 // lsrules.go
-	4813: "lane del-rest",                                                                                                                                                 // lsrules.go
-	4814: "lane del-rest",                                                                                                                                                 // lsrules.go
-	4815: "lane del-rest",                                                                                                                                                 // lsrules.go
-	4816: "lane del-rest",                                                                                                                                                 // messageOff in lsrules.go
-	4817: "lane del-rest",                                                                                                                                                 // messageOff in lsrules.go
-	4818: "lane del-rest",                                                                                                                                                 // messageOff in lsrules.go
-	4819: "lane del-rest; declaration only: editor lint diagnostic has no reached emission witness",                                                                       // lsrules_ts.go
-	4820: "lane del-rest; declaration only: editor lint diagnostic has no reached emission witness",                                                                       // lsrules_ts.go
-	4821: "lane del-rest",                                                                                                                                                 // messageOff in lsrules_style.go
-	4822: "lane del-rest",                                                                                                                                                 // messageOff in lsrules_style.go
-	4823: "lane del-rest",                                                                                                                                                 // messageOff in lsrules_style.go
-	4824: "lane del-rest",                                                                                                                                                 // messageOff in lsrules_style.go
-	4825: "lane del-rest",                                                                                                                                                 // messageOff in lsrules_style.go
-	4838: "lane del-4",                                                                                                                                                    // fork_escape.go
-	4840: "lane del-rest",                                                                                                                                                 // fix_option.go
-	4843: "lane del-4",                                                                                                                                                    // entry_const_main.go
-	9100: "lane core-land; declaration only: annotation-migration report is an editor tool diagnostic",                                                                    // lsrules_fixes.go
-	9101: "lane core-land; declaration only: data-method annotation report is an editor tool diagnostic",                                                                  // lsrules_fixes.go
+	4001: "lane vip40-core",
+	4002: "lane vip40-core",
+	4003: "lane vip40-core",
+	4004: "lane vip40-core",
+	4006: "lane vip40-core",
+	4008: "lane vip40-core",
+	4408: "lane del-rest",                                                                                                             // diagnostics.go
+	4409: "decide-live decides",                                                                                                       // diagnostics.go
+	4410: "lane del-rest",                                                                                                             // keyword_bindings.go
+	4501: "lane del-rest",                                                                                                             // diagnostics.go
+	4502: "lane del-rest",                                                                                                             // call_pipe_diagnostic.go
+	4503: "lane del-rest",                                                                                                             // service_value_diagnostic.go
+	4601: "lane del-rest; declaration only: effect-body await uses EK0102, so no reduced source witness reaches this legacy fallback", // fibers.go
+	4602: "lane del-rest",                                                                                                             // fibers.go
+	4603: "lane del-rest",                                                                                                             // fibers.go
+	4604: "lane del-rest",                                                                                                             // fibers.go
+	4607: "lane del-rest",                                                                                                             // fibers.go
+	4611: "lane del-rest",                                                                                                             // fibers.go
+	4612: "lane del-rest",                                                                                                             // fibers.go
+	4702: "lane del-rest",                                                                                                             // match.go
+	4703: "lane del-rest",                                                                                                             // match.go
+	4704: "lane del-rest",                                                                                                             // match.go
+	4705: "lane del-rest",                                                                                                             // match.go
+	4706: "lane del-rest",                                                                                                             // data.go
+	4707: "lane del-rest",                                                                                                             // data.go
+	4801: "lane del-rest",                                                                                                             // lsrules.go
+	4803: "lane del-rest",                                                                                                             // lsrules.go
+	4804: "lane del-rest",                                                                                                             // lsrules.go
+	4805: "lane del-rest",                                                                                                             // lsrules.go
+	4806: "lane del-rest",                                                                                                             // lsrules.go
+	4807: "lane del-rest",                                                                                                             // lsrules.go
+	4808: "lane del-rest",                                                                                                             // lsrules.go
+	4809: "lane del-rest",                                                                                                             // lsrules.go
+	4810: "lane del-rest",                                                                                                             // lsrules.go
+	4811: "lane del-rest",                                                                                                             // messageOff in lsrules.go
+	4812: "lane del-rest",                                                                                                             // lsrules.go
+	4813: "lane del-rest",                                                                                                             // lsrules.go
+	4814: "lane del-rest",                                                                                                             // lsrules.go
+	4815: "lane del-rest",                                                                                                             // lsrules.go
+	4816: "lane del-rest",                                                                                                             // messageOff in lsrules.go
+	4817: "lane del-rest",                                                                                                             // messageOff in lsrules.go
+	4818: "lane del-rest",                                                                                                             // messageOff in lsrules.go
+	4819: "lane del-rest; declaration only: editor lint diagnostic has no reached emission witness",                                   // lsrules_ts.go
+	4820: "lane del-rest; declaration only: editor lint diagnostic has no reached emission witness",                                   // lsrules_ts.go
+	4821: "lane del-rest",                                                                                                             // messageOff in lsrules_style.go
+	4822: "lane del-rest",                                                                                                             // messageOff in lsrules_style.go
+	4823: "lane del-rest",                                                                                                             // messageOff in lsrules_style.go
+	4824: "lane del-rest",                                                                                                             // messageOff in lsrules_style.go
+	4825: "lane del-rest",                                                                                                             // messageOff in lsrules_style.go
+	4838: "lane del-4",                                                                                                                // fork_escape.go
+	4840: "lane del-rest",                                                                                                             // fix_option.go
+	4843: "lane del-4",                                                                                                                // entry_const_main.go
+	9100: "lane core-land; declaration only: annotation-migration report is an editor tool diagnostic",                                // lsrules_fixes.go
+	9101: "lane core-land; declaration only: data-method annotation report is an editor tool diagnostic",                              // lsrules_fixes.go
 }
 
 // TestRegistryDebtLedger checks the two views of one debt ledger. An emitted

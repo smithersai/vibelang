@@ -101,8 +101,18 @@ FuzzSplice registry:EK4405 compiler Appendix B: "A transitional compiler may sti
 FuzzSplice corpus:registry-EK4405 compiler Appendix B: reproduction of registry:EK4405; lane del-rest.
 FuzzSplice registry:EK4406 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 4406 with no current assignment; lane del-rest.
 FuzzSplice corpus:registry-EK4406 compiler Appendix B: reproduction of registry:EK4406; lane del-rest.
-FuzzSplice registry:EK4407 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 4407 with no current assignment; lane del-rest.
-FuzzSplice corpus:registry-EK4407 compiler Appendix B: reproduction of registry:EK4407; lane del-rest.
+FuzzSplice registry:EK4001 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 4001 with no current assignment; lane vip40-core.
+FuzzSplice registry:EK4002 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 4002 with no current assignment; lane vip40-core.
+FuzzSplice registry:EK4003 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 4003 with no current assignment; lane vip40-core.
+FuzzSplice registry:EK4004 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 4004 with no current assignment; lane vip40-core.
+FuzzSplice registry:EK4006 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 4006 with no current assignment; lane vip40-core.
+FuzzSplice registry:EK4008 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 4008 with no current assignment; lane vip40-core.
+FuzzSplice corpus:registry-EK4001 compiler Appendix B: reproduction of registry:EK4001; lane vip40-core.
+FuzzSplice corpus:registry-EK4002 compiler Appendix B: reproduction of registry:EK4002; lane vip40-core.
+FuzzSplice corpus:registry-EK4003 compiler Appendix B: reproduction of registry:EK4003; lane vip40-core.
+FuzzSplice corpus:registry-EK4004 compiler Appendix B: reproduction of registry:EK4004; lane vip40-core.
+FuzzSplice corpus:registry-EK4006 compiler Appendix B: reproduction of registry:EK4006; lane vip40-core.
+FuzzSplice corpus:registry-EK4008 compiler Appendix B: reproduction of registry:EK4008; lane vip40-core.
 FuzzSplice registry:EK4408 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 4408 with no current assignment; lane del-rest.
 FuzzSplice corpus:registry-EK4408 compiler Appendix B: reproduction of registry:EK4408; lane del-rest.
 FuzzSplice registry:EK4409 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 4409 with no current assignment; decide-live decides.

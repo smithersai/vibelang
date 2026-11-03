@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\n// expect: EK4001\nfunction f() {\n  module text { export const n = 1 }\n}\nexport {}\n")

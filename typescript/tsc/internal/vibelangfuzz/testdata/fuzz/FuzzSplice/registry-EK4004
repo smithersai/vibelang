@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\n// expect: EK4004 EK4004 EK4004 EK4004 EK4004 EK4004\nmodule text { export const n = 1 }\nexport const value = text.n\nexport const kind = typeof text\nexport const promise = import(text)\nexport const object = { text }\nfunction accept(value: unknown) {}\naccept(text)\nexport type Query = typeof text\n")
