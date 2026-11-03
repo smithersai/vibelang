@@ -1,0 +1,13 @@
+// expect: EK1307
+// VIP-13/29 and chapter 003: ambient rejection precedes member classification.
+declare error WrittenConstructor { constructor() { super() } }
+declare schema error WrittenSetter { set value(n: number) {} }
+declare namespace API {
+  export error StaticMember { static value = 1 }
+  export schema error Generic<T> {}
+}
+declare global {
+  error ReservedTag { _tag: string }
+  schema error Initialized { value = 1 }
+}
+export {}

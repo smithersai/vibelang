@@ -632,6 +632,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Running a parenthesized `effect { ... }` block with `try` was diagnosed as an old hatch; it now runs the block and preserves errors inside it.
 
 - Ordinary classes used as extractors, including `when C():`, could compile without a diagnostic. They now report `EK0704` for every argument count; inheriting a custom matcher does not supply an own matcher.
+
+- Ambient `error` and `schema error` declarations could also report member-restriction errors. They now report `EK1307` first, while preserving independent field-type errors.
 - Generic `data` helper names used unstable suffixes and could collide with source names; they now use `$Name$Definition` and the first free numbered suffix.
 - Async-to-Effect conversion could skip a returned object's `then` getter or its error; conversions now preserve that Promise-adoption read by declining accessors and aliased objects, while keeping fresh data-property literals available.
 
