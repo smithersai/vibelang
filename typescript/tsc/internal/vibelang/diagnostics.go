@@ -310,7 +310,11 @@ func newDiagnosticAt(options *core.CompilerOptions, file *ast.SourceFile, loc co
 		n, _ := strconv.Atoi(strings.TrimPrefix(name, "EK"))
 		code = int32(n)
 	}
-	return ast.NewExternalDiagnostic(file, loc, diagnosticSource, category, code, format(m.Text, args))
+	d := ast.NewExternalDiagnostic(file, loc, diagnosticSource, category, code, format(m.Text, args))
+	if m.Code == EK4802.Code {
+		note(d, "No automatic fix: running the returned program changes the value seen by its caller. Write try explicitly to run it, or keep the program as data with a written return contract.")
+	}
+	return d
 }
 
 // report adds a diagnostic with message m at node to the diagnostics of c,

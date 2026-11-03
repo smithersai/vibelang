@@ -45,10 +45,6 @@ FuzzQuickFixBehavior corpus:registry-EK9201 quickfix-generators Chapter 7 / VIP-
 FuzzQuickFixBehavior opencode-mixed-generators:editor:api compiler Chapter 7 / VIP-34: an isolated Effect.gen/fn editor repair leaves another native generator broken; lane silentfix-opencode/conf-effect
 FuzzQuickFixBehavior opencode-mixed-generators:editor:outcome compiler Chapter 7 / VIP-34: an isolated Effect.gen/fn editor repair leaves another native generator broken; lane silentfix-opencode/conf-effect
 FuzzQuickFixBehavior corpus:opencode-mixed-generators compiler Chapter 7 / VIP-34: opencode-mixed-generators:editor:outcome; lane silentfix-opencode/conf-effect
-FuzzQuickFixBehavior EK4802:editor:api compiler Chapter 7 / VIP-34 and VIP-5: running a held return changes its public Effect success type; lane fuzz-quickfix-behavior
-FuzzQuickFixBehavior EK4802:editor:outcome compiler Chapter 7 / VIP-34 and VIP-5: the editor runs a returned Effect that was data, changing its value and trace; lane fuzz-quickfix-behavior
-FuzzQuickFixBehavior corpus:registry-EK4802 compiler Chapter 7 / VIP-34: EK4802:editor:outcome; lane fuzz-quickfix-behavior
-FuzzQuickFixBehavior corpus:held-return-order compiler Chapter 7 / VIP-34: EK4802:editor:outcome; lane fuzz-quickfix-behavior
 FuzzQuickFixBehavior EK4807:editor:api compiler Chapter 7 / VIP-34: wire changes the external layer input and its observed value; lane fuzz-quickfix-behavior
 FuzzQuickFixBehavior EK4807:editor:outcome compiler Chapter 7 / VIP-34: wire changes the external layer input and its observed value; lane fuzz-quickfix-behavior
 FuzzQuickFixBehavior EK4810:editor:api compiler Chapter 7 / VIP-34: removing an assertion widens the exported failure channel; lane fuzz-quickfix-behavior

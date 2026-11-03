@@ -309,13 +309,13 @@ effect function discard() {
 | Anti-pattern | `effectFnIife` | An effect function call returns an Effect | `(() => load())()` |
 | Anti-pattern | `effectGenUsesAdapter` | Effect functions use `try` | None |
 | Anti-pattern | `effectInFailure` | EK4815, warning | `throw program`; run it: `try program` |
-| Anti-pattern | `effectInVoidSuccess` | EK4802, warning, with a quick fix; TS2322 under a `void!!` contract | `return program` from a function that runs Effects |
+| Anti-pattern | `effectInVoidSuccess` | `EK4802`, warning; executing a returned program has no automatic fix; `TS2322` under a `void!!` contract | `return program` from a function that runs Effects |
 | Anti-pattern | `globalErrorInEffectCatch` | EK4804, warning | `Effect.try({ try: code, catch: (cause) => new Error(String(cause)) })` |
 | Anti-pattern | `globalErrorInEffectFailure` | EK4804, warning | `throw new Error("boom")`; declare `error Boom { }` |
 | Anti-pattern | `lazyPromiseInEffectSync` | Use `promise` for a Promise whose rejection is a defect | `try promise(() => load(url))`, with `load` from a `.ts` module |
 | Anti-pattern | `leakingRequirements` | EK4809, warning; `@vibelang leakable` exempts a service | `service Users { find(): User!!Db; all(): User[]!!Db }` |
 | Anti-pattern | `multipleEffectProvide` | `EK4808`, warning | `provide A { provide B { … } }`; nesting alone does not imply separate layer builds. `Layer.provideMerge(A)(B)` retains both layers when `B` needs `A`; review evaluation and build order before composing manually. There is no automatic merge. |
-| Anti-pattern | `returnEffectInGen` | EK4802, warning | `return program`; use `return try program` |
+| Anti-pattern | `returnEffectInGen` | `EK4802`, warning; no automatic execution repair | `return program`; use `return try program` |
 | Anti-pattern | `runEffectInsideEffect` | Covered: EK1005 | `Effect.runPromise(load())` inside a function |
 | Anti-pattern | `schemaSyncInEffect` | Effect 3 only | None |
 | Anti-pattern | `scopeInLayerEffect` | Effect 3 only: Effect 4's `Layer.effect` owns its scope | `Layer.effect(Users, effect { const pool = try open(); … })` |

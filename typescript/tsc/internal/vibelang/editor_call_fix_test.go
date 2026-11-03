@@ -8,18 +8,16 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 )
 
-// TestEditorCallFixKeepsTheContract checks that EK4802's run-it fix is
-// offered under a written contract only where the contract accepts what the
-// run gives: try Exit.fail("data") in an unknown!! function would fail
-// with string, which E = never rejects (EK2001). A quick fix adds no error
-// (Chapter 28, Rewrites keep meaning).
+// TestEditorCallFixKeepsTheContract checks that a written broad contract
+// does not permit running returned data. Both successful and failed Exit
+// values belong to the caller; executing them would change its result.
 func TestEditorCallFixKeepsTheContract(t *testing.T) {
 	for _, test := range []struct {
 		name, source string
 		offered      bool
 	}{
 		{"a failure the contract rejects", "import * as Exit from \"effect/Exit\"\neffect function broad(): unknown!! { return Exit.fail(\"data\") }\n", false},
-		{"a call the contract accepts", "import * as Exit from \"effect/Exit\"\neffect function broad(): unknown!! { return Exit.succeed(4) }\n", true},
+		{"a success still returned as data", "import * as Exit from \"effect/Exit\"\neffect function broad(): unknown!! { return Exit.succeed(4) }\n", false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			program, file, service, converters := editorProgram(t, test.source)

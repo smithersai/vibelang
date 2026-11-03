@@ -248,6 +248,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Compiler regression tests could miss quick fixes that changed values read by JavaScript callers. The checks now observe Promise results, generator completion values, thrown values, public types, comments, and refused source spans.
 
+- The editor's `EK4802` repair could run an Effect that the function returned as data, changing its result, type and side effects. It now leaves that return unchanged and explains the manual choices.
+
 - The migration checks generated callback failure unions without their required parentheses and failed to parse them. They now write valid compound slots while checking the same preserved channels and refusal controls.
 
 

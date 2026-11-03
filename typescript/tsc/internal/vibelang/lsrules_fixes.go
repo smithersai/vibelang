@@ -55,7 +55,7 @@ func nodeStart(file *ast.SourceFile, node *ast.Node) int {
 	return scanner.SkipTrivia(file.Text(), node.Pos())
 }
 
-// callEffectFix runs the Effect value that EK4801 or EK4802 reports with try
+// callEffectFix runs the discarded Effect that EK4801 reports with try
 // (VIP-5): e becomes try e, a ?? b becomes try (a ?? b), and a program named
 // by reference, a function of no arguments, becomes try f(). Only effect
 // code runs an Effect, so plain code gets no fix.
@@ -63,6 +63,12 @@ var callEffectFix = &ls.CodeFixProvider{
 	Source:     diagnosticSource,
 	ErrorCodes: []int32{EK4801.Code, EK4802.Code},
 	GetCodeActions: func(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
+		// VIP-1 / VIP-5 return a held program as data. Running that value
+		// changes the caller's result, channels or evaluation (Chapter 7).
+		// The explicit VIP migration uses its historical model separately.
+		if fix.ErrorCode == EK4802.Code {
+			return nil, nil
+		}
 		value := reportedNode(fix.SourceFile, fix.Span, func(node *ast.Node) bool {
 			parent := node.Parent
 			switch {
