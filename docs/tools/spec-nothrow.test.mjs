@@ -48,8 +48,9 @@ export function plainThrows(fence) {
     const transparent = node.type === "ArrowFunctionExpression" && !writtenArrow && first !== "effect" && !node.async
     if (callable && !transparent) {
       const method = parent && ["Property", "MethodDefinition"].includes(parent.type) && parent.value === node
+      const headStart = method ? Math.max(parent.range[0], ...(parent.decorators ?? []).map(d => d.range[1])) : node.range[0]
       const effect = method
-        ? tokens.some(t => t.range[0] >= parent.range[0] && t.range[1] <= parent.key.range[0] && t.value === "effect")
+        ? tokens.some(t => t.range[0] >= headStart && t.range[1] <= parent.key.range[0] && t.value === "effect")
         : tokenAt(node.range[0])?.value === "effect"
       visit(node.body, effect || node.async, node)
       for (const parameter of node.params) visit(parameter, node.async && !node.generator && !effect, node)
@@ -370,4 +371,15 @@ test("plainThrows keeps field decorators in the enclosing source context (PREVIE
     assert.equal(plainThrows(`export ${modifier} function f(flag: boolean) { class C { ${field} = do { if (flag) throw ${value}; 0 } }; return C }`).length, 1)
     assert.equal(plainThrows(`export ${modifier} function f() { class C { @(() => { throw ${value} }) ${field} = 0 }; return C }`).length, 1)
   }), { seed: 9720, numRuns: 100 })
+})
+
+test("plainThrows excludes decorator names from method modifier detection", () => {
+  fc.assert(fc.property(fc.integer(), fc.constantFrom(" ", "\n  "), (value, layout) => {
+    for (const decorator of ["decorate", "effect"]) {
+      const prefix = `declare const ${decorator}: any; class C { @${decorator}${layout}`
+      assert.equal(plainThrows(prefix + `method() { throw ${value} } }`).length, 1)
+      assert.deepEqual(plainThrows(prefix + `effect method() { throw ${value} } }`), [])
+      assert.deepEqual(plainThrows(prefix + `async method(flag: boolean, x = do { if (flag) throw ${value}; 0 }) { return x } }`), [])
+    }
+  }), { seed: 110322, numRuns: 100 })
 })

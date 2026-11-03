@@ -167,6 +167,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The failure-spec fuzz suite still marked seven working Promise-wrapper and typed-failure rules as broken. Their stale pending markers are removed, so those regression cases now run normally.
 
+- A method decorator named `effect` confused the no-throw documentation check with an `effect` modifier. Method bodies and async parameter defaults now keep their own declared context regardless of decorator names.
+
 - `EK0401` offered no TypeScript-file migration and `--fix` skipped safe no-throw repairs. The editor now moves self-contained declarations with their imports and re-exports, preferring that option for published exports; `--fix` repairs plain handlers and unused local functions.
 
 - The no-throw documentation check rejected a field decorator inside `async` or `effect` code as though it were a field initializer. It now checks decorator expressions in their surrounding context and field values in their own synchronous context.
