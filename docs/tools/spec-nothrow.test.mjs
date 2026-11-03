@@ -48,11 +48,20 @@ export function plainThrows(fence) {
 }
 
 function typescriptFence(fence) {
+  // Slash tokens require parser context: a quote or brace in a regex is not a string or a block.
+  const regexStarts = new Set()
+  const original = ts.createSourceFile("fence.ts", fence, ts.ScriptTarget.Latest, false, ts.ScriptKind.TS)
+  function collectRegex(node) {
+    if (ts.isRegularExpressionLiteral(node)) regexStarts.add(node.getStart(original))
+    ts.forEachChild(node, collectRegex)
+  }
+  collectRegex(original)
   const scanner = ts.createScanner(ts.ScriptTarget.Latest, false, ts.LanguageVariant.Standard, fence)
   const tokens = []
   const expectedErrors = new Set()
   const templates = []
   for (let kind = scanner.scan(); kind !== ts.SyntaxKind.EndOfFileToken; kind = scanner.scan()) {
+    if (regexStarts.has(scanner.getTokenPos())) kind = scanner.reScanSlashToken()
     if (kind === ts.SyntaxKind.TemplateHead) templates.push(0)
     else if (templates.length && kind === ts.SyntaxKind.OpenBraceToken) templates[templates.length - 1]++
     else if (templates.length && kind === ts.SyntaxKind.CloseBraceToken) {
@@ -351,4 +360,12 @@ test("plainThrows preserves templates, foreign modules and callable boundaries",
     ['function f() { throw 1 } /* EK0401 */', 0],
   ]
   for (const [code, expected] of witnesses) assert.equal(plainThrows(code).length, expected, code)
+})
+
+test("plainThrows keeps regex literals opaque during modifier projection", () => {
+  fc.assert(fc.property(fc.constantFrom('/"/', '/[{}]/', '/effect/'), fc.integer(), (regex, value) => {
+    const prefix = `const pattern = ${regex}; `
+    assert.equal(plainThrows(prefix + `effect function f() { throw ${value} }`).length, 0)
+    assert.equal(plainThrows(prefix + `function f() { throw ${value} }`).length, 1)
+  }), { seed: 8818, numRuns: 100 })
 })
