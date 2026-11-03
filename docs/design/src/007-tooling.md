@@ -113,7 +113,7 @@ Effect.runSync(Effect.succeed(42)) // 42
 
 The configured category controls reporting: an `"error"` makes both `vibelang` and `vibelang lint` exit non-zero and participates in `noEmitOnError`; a `"warning"` prints without changing exit status ([VIP-34](../vips/0034-compiler-and-tooling.md#decision)). A `"suggestion"` is shown by the language server only; `"off"` reports nothing. To fail CI on a configurable warning, set it to `"error"`.
 
-`trustedPackages` is removed (VIP-4, amended 2026-11-02). A tsconfig that still sets it gets a deprecation warning and the key is ignored. Module resolution follows TypeScript's tsconfig-driven rules, with `.vibe` and `.vibex` as source extensions beside `.ts` and `.tsx`: under NodeNext `./user.js` resolves to `user.vibe`, and a written `./x.ts` finds only `x.ts`, so a stale one is `TS2307`. Migration never writes `moduleSuffixes`.
+The retired `trustedPackages` key is ignored in `vibe` and every supported legacy section (VIP-4, amended 2026-11-02), with warning `EK3010`. Remove it: npm functions follow the same foreign-callable contract as local TypeScript, including `unknown` when no `@throws` is written; use a signature contract or an explicit `Effect.try` bridge. Module resolution follows TypeScript's tsconfig-driven rules, with `.vibe` and `.vibex` as source extensions beside `.ts` and `.tsx`: under NodeNext `./user.js` resolves to `user.vibe`, and a written `./x.ts` finds only `x.ts`, so a stale one is `TS2307`. Migration never writes `moduleSuffixes`.
 
 ### Declaration import spelling
 

@@ -571,6 +571,8 @@ const output = Console$.log("hi")
 
 The prelude preserves the imported signatures' thrown contracts. These non-effectful npm calls have no written `@throws`, so their thrown type is `unknown`. Inside the example's effect function they need explicit `Effect.try` bridges under [Thrown types](003-failures.md#thrown-types), or report `EK0403`.
 
+The prelude preserves each imported signature’s thrown contract. An npm signature without `@throws` throws `unknown`, so these non-effectful calls use `Effect.try` bridges; an actual explicit annotation keeps its ordinary contract ([Thrown types](003-failures.md#thrown-types)).
+
 ```vibe es
 // compiler-gap: pending VIP-14
 effect function preludeExamples() {

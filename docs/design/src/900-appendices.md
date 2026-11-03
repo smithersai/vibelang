@@ -1074,6 +1074,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK3006` | an error code or an unknown code in `vibe.severities`, or a severity entry whose value is not one of the four strings, whatever its JSON type | 30 | [Configuration and tooling](007-tooling.md) |
 | `EK3007` | an unknown `vibe` key, or a `vibe` value of the wrong type other than a `severities` entry (`EK3006`), including a `severities` value that is not an object | 30 | [Configuration and tooling](007-tooling.md#config-files) |
 | `EK3009` | warning: root `vibelang.diagnostics` or `compilerOptions.vibelang.diagnostics` in any supported config or extended config needs migration; supported legacy settings still apply, modern entries win, and `--fix` migrates eligible maps | 30 | [Legacy severity maps](007-tooling.md#legacy-severity-maps) |
+| `EK3010` | warning: retired `trustedPackages` is ignored in `vibe` and supported legacy sections; remove the key and use the ordinary foreign-callable contract | 4, 30 | [Configuration](007-tooling.md#config-files) |
 | `EK3201` | a resolved `effect` version other than the pin | 32 | [Configuration and tooling](007-tooling.md#the-effect-version) |
 | `EK4001` | a module declaration below the file's top level | 40 | [Modules](001-functions.md#module-declarations) |
 | `EK4002` | an exported module declaration | 40 | [Modules](001-functions.md#module-declarations) |
