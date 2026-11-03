@@ -1889,13 +1889,17 @@ func removeWildcardFilesWithLowerPriorityExtension[V any](file tspath.RootedFile
 func isModuleBodyDeclaration(file tspath.RootedFilePath, host vfs.FS) bool {
 	stem, ok := strings.CutSuffix(file.AsString(), tspath.ExtensionDts)
 	dot := strings.LastIndexByte(stem, '.')
-	if !ok || dot < 0 {
+	// The dot must be in the file's own name: in /a/.b/env.d.ts it starts a
+	// directory's name, and /a/ is no source.
+	if !ok || dot <= strings.LastIndexByte(stem, '/') {
+		return false
+	}
+	// Check the name before making it a path: before the last dot of .env.d.ts
+	// or ..d.ts is /a/, and of ...d.ts /a/., and neither is a normalized file path.
+	if !tspath.IsVibeLangSource(stem[:dot]) {
 		return false
 	}
 	source := tspath.RootedFilePathFromNormalized(stem[:dot])
-	if !source.IsVibeLangSource() {
-		return false
-	}
 	text, ok := host.ReadFile(source)
 	if !ok {
 		return false

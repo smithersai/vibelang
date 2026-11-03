@@ -2,6 +2,7 @@ package compiler_test
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -176,4 +177,113 @@ func TestModuleDeclarationSidecarDiscovery(t *testing.T) {
 			}
 		}
 	}
+}
+
+// A project under a hidden directory: the last dot of /work/.hidden/proj/env is in
+// a directory's name, so env.d.ts is the project's own file.
+func TestModuleDeclarationDiscoveryUnderHiddenDirectory(t *testing.T) {
+	names := projectFileNames(t, "/work/.hidden/proj", `["*"]`, nil)
+	if !slices.Contains(names, "env.d.ts") {
+		t.Fatalf("env.d.ts not in %v", names)
+	}
+}
+
+// A declaration whose name starts with a dot is the project's own file, as tsc
+// selects it: the text before its last dot (/p/ for .env.d.ts and ..d.ts, /p/.
+// for ...d.ts) is no source path. Each panicked before, through a wildcard
+// that matches dotfiles or a pattern that names the file.
+func TestModuleDeclarationDiscoveryDotPrefixedNames(t *testing.T) {
+	for _, name := range []string{".env.d.ts", "..d.ts", "...d.ts", ".d.ts", ".x.vibe.d.ts", ".vibe.d.ts"} {
+		for _, include := range []string{`["*", ".*"]`, fmt.Sprintf(`["main.vibe", %q]`, name)} {
+			t.Run(name+" "+include, func(t *testing.T) {
+				names := projectFileNames(t, "/work/proj", include, map[string]string{name: "declare const dotValue: string\n"})
+				if !slices.Contains(names, name) {
+					t.Fatalf("%s not in %v", name, names)
+				}
+			})
+		}
+	}
+}
+
+// projectFileNames parses the project at dir with the include patterns and
+// extra files and lists its input files relative to dir, sorted. A panic
+// fails the caller.
+func projectFileNames(t *testing.T, dir string, include string, extra map[string]string) []string {
+	t.Helper()
+	files := map[string]any{
+		dir + "/tsconfig.json":        `{"compilerOptions":{"strict":true,"target":"esnext","module":"esnext","moduleResolution":"bundler","types":[],"noEmit":true},"include":` + include + `}`,
+		dir + "/main.vibe":            "export const a = 1\n",
+		dir + "/index.ts":             "export const b = 2\n",
+		dir + "/env.d.ts":             "declare const envValue: string\n",
+		dir + "/env.local.d.ts":       "declare const localValue: string\n",
+		dir + "/main.vibe.parse.d.ts": "declare const parseValue: string\n",
+	}
+	for name, text := range extra {
+		files[dir+"/"+name] = text
+	}
+	fs := bundled.WrapFS(vfstest.FromMap(files, tspath.CaseSensitive))
+	config, ds := tsoptions.GetParsedCommandLineOfConfigFile(tspath.RootedFilePathFromNormalized(dir+"/tsconfig.json"), &core.CompilerOptions{}, nil, fs, nil)
+	if len(ds) != 0 {
+		t.Fatalf("%s: %v", dir, ds)
+	}
+	var names []string
+	for _, name := range config.FileNames() {
+		names = append(names, strings.TrimPrefix(name.AsString(), dir+"/"))
+	}
+	slices.Sort(names)
+	return names
+}
+
+// sanitizeSegment keeps the characters a path segment may hold in this test.
+func sanitizeSegment(segment string) string {
+	return strings.Map(func(r rune) rune {
+		if r == '.' || r == '-' || r == '_' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' {
+			return r
+		}
+		return '_'
+	}, segment)
+}
+
+// Property: a project parses the same wherever it sits, and a declaration
+// whose name starts with a dot is its own input. Directories above it may be
+// hidden (.x), dotted (a.b) or end in .vibe; tsc reads their names as names, so
+// the input files match those of the same project at /work/plain/proj.
+// main.vibe declares no module, so main.vibe.parse.d.ts and every <name>.d.ts
+// are the project's own files in both places.
+func FuzzModuleDeclarationDiscoveryUnderDottedDirectories(f *testing.F) {
+	for _, seed := range [][2]string{
+		{".hidden", ".env"}, {"a.b/.c", "."}, {"x.vibe", ".."}, {"x.vibe.d", ".x.vibe"}, {".vibe", ".vibe"},
+		{"..x/.y.z", "...."}, {"a.vibe.b/c", ".a.b.c"}, {".a/.b/.c/.d", ".main.vibe.parse"}, {"main.vibe", ".env.local"},
+	} {
+		f.Add(seed[0], seed[1])
+	}
+	f.Fuzz(func(t *testing.T, path string, stem string) {
+		var segments []string
+		for _, segment := range strings.Split(path, "/") {
+			segment = sanitizeSegment(segment)
+			if segment != "" && segment != "." && segment != ".." && len(segments) < 4 {
+				segments = append(segments, segment)
+			}
+		}
+		if len(segments) == 0 {
+			t.Skip()
+		}
+		// A dot-prefixed name collides with no other file of the project.
+		name := "." + strings.TrimPrefix(sanitizeSegment(stem), ".")
+		if len(name) > 40 {
+			name = name[:40]
+		}
+		name += tspath.ExtensionDts
+		extra := map[string]string{name: "declare const dotValue: string\n"}
+		plain := projectFileNames(t, "/work/plain/proj", `["*", ".*"]`, extra)
+		for _, want := range []string{"env.d.ts", "main.vibe.parse.d.ts", name} {
+			if !slices.Contains(plain, want) {
+				t.Fatalf("%s not at /work/plain/proj: %v", want, plain)
+			}
+		}
+		dir := "/work/" + strings.Join(segments, "/") + "/proj"
+		if got := projectFileNames(t, dir, `["*", ".*"]`, extra); !slices.Equal(got, plain) {
+			t.Fatalf("%s: %v, at /work/plain/proj: %v", dir, got, plain)
+		}
+	})
 }
