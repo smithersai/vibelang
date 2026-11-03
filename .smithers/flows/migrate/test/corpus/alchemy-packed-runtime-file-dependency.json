@@ -1,0 +1,11 @@
+{
+  "repo": "alchemy",
+  "pattern": "pnpm pack retains runtime file dependency outside the packed package",
+  "runtimeVersion": "0.0.11",
+  "manifest": {
+    "name": "alchemy-runtime-fixture",
+    "version": "1.0.0",
+    "type": "module"
+  },
+  "originalRuntimeSpec": "file:../../.vibelang-toolchain/vibelang-runtime-0.0.11-2fe05486ecc6.tgz"
+}

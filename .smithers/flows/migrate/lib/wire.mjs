@@ -190,6 +190,11 @@ export function hasVibeLang(pkg) {
 export function specsFrom(pkg, fromDir, toDir) {
   const names = ["vibelang-runtime", "vibelang", "vibelang-vite", "vibelang-unplugin"]
   const all = { ...pkg.devDependencies, ...pkg.dependencies }
+  // A public manifest keeps a registry dependency and a staged development install.
+  for (const name of names) {
+    const staged = pkg.devDependencies?.[name]
+    if (staged?.startsWith("file:") && !pkg.dependencies?.[name]?.startsWith("file:")) all[name] = staged
+  }
   return Object.fromEntries(names.filter((name) => all[name] !== undefined).map((name) => {
     const spec = all[name]
     const relative = /^file:(?!\/)(.*)$/.exec(spec)

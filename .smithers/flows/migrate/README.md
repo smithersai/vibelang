@@ -273,13 +273,21 @@ The existing flow uses this path when `plan.json` has `mode: "one-pass"`:
 The target's test, declaration and style gates still run in `verify` before
 `record`. A clean settle alone does not prove those gates passed.
 
+### Staged dependencies in published packages
+
+When a public package needs a staged toolchain package at runtime, setup keeps its production dependency at the exact version read from that artifact's `package.json`. This includes `vibelang-runtime` and the `vibelang` loader needed by a source child. An `npm pack` consumer therefore resolves a release rather than a path inside the migration checkout. Setup also normalizes public sibling manifests changed by loader wiring, even when those packages were not selected for conversion.
+
+Development still installs the staged artifacts before those versions are published: npm uses matching `file:` development dependencies; pnpm, Bun and Yarn use root overrides or resolutions without duplicate development dependencies. Setup records the versions, local pins, changed files and required releases in `.vibelang/toolchain-publication.json` and its step result's `toolchainPublication`. It preserves unrelated settings and stops if an override it manages was changed independently.
+
+This does not publish a release or prove registry availability. Publish each exact artifact version listed under `releaseRequired` before distributing the target package. Switching with `--vibelang-version` removes the generated local overrides and replaces development pins with registry versions.
+
 ### Registry versions
 
 `step.mjs` runs from a copy of `.smithers/flows/migrate` with no `node_modules` in reach, as `toolchain` and `upgrade-effect` must before a target has `vibelang` installed: the flow bundles minimatch in `lib/vendor/`, and its loader-record step takes `vibelang/project` from the target's installed `vibelang`.
 
 Once VibeLang publishes the version a migration needs, use the registry instead of a staged toolchain: start the run with `--vibelang-version <version>` in place of `--toolchain <dir>`. Setup then writes exact versions (`"vibelang": "0.0.12"`) and makes no `.vibelang-toolchain/`. Anyone can install the result, and the fork's pull request no longer depends on the tarballs.
 
-To switch a target that a staged toolchain set up, start a new run on it with `--vibelang-version`. Upgrade-effect continues on the `vibe` bookmark, and commits only when the version needs another Effect. Setup then replaces the three `file:` specifiers with the version, deletes `.vibelang-toolchain/` and its `.gitignore` line, reinstalls, records a new baseline, and commits the switch on top. The batches already on `vibe` stay as they are.
+To switch a target that a staged toolchain set up, start a new run on it with `--vibelang-version`. Upgrade-effect continues on the `vibe` bookmark, and commits only when the version needs another Effect. Setup then replaces the staged `file:` specifiers with the version, deletes `.vibelang-toolchain/` and its `.gitignore` line, reinstalls, records a new baseline, and commits the switch on top. The batches already on `vibe` stay as they are.
 
 ### Step by step
 

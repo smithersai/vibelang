@@ -1,0 +1,13 @@
+{
+  "repo": "opencode",
+  "pattern": "wireSourceChildren puts a staged compiler tarball into a public runtime dependency",
+  "version": "0.0.11",
+  "manifest": {
+    "name": "opencode-source-child-fixture",
+    "version": "1.0.0",
+    "dependencies": {
+      "vibelang": "file:../../.vibelang-toolchain/vibelang-0.0.11-d9b61b22e5f8.tgz"
+    },
+    "devDependencies": { "unchanged": "1.2.3" }
+  }
+}

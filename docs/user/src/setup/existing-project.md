@@ -30,6 +30,10 @@ Use Effect services for platform, clock and randomness APIs, such as `Console`, 
 
 The VibeLang runtime requires `effect` 4.1.1 exactly. The compiler declares the same exact peer dependency, so package managers can report an incompatible version during installation. The runtime depends on Effect internals and checks the exact version at load. VibeLang follows Effect 4.0.6's defect precedence, which 4.1.1 keeps: a failure whose cleanup crashes is a defect. Read the [release notes](../setup/release-notes.md) before updating code that inspects causes or recovers mixed failures. If your project depends on another `effect` version, review the migration before changing it. Upgrade an existing project to the pinned Effect version first, fix any failures, and verify its tests. Convert files to `.vibe` only after the Effect upgrade passes.
 
+For a published library, keep `vibelang-runtime` in production dependencies at a registry version. A package that starts source children through `vibelang/register` or `vibelang/bun` also needs `vibelang` in production dependencies. A production `file:` path into a local toolchain does not travel with an `npm pack` tarball.
+
+The migration flow keeps these production dependencies at the staged artifacts' actual release versions while retaining local development pins. Its `.vibelang/toolchain-publication.json` receipt lists the exact versions that must be published before consumers can install the target tarball. A successful local setup does not establish that those releases are available in the registry.
+
 ## 2. Install the packages
 
 Before installing, add this transitive pin to `package.json` (npm and Bun both honor `overrides`):

@@ -1,4 +1,5 @@
 import { compareApiIdentityInWorker as compareApiIdentity, formatResult as formatApiIdentity } from "./api-identity.mjs"
+import { prepareToolchainPublication, stagedToolchainSpecs } from "./toolchain-publication.mjs"
 import { prepareBuilds } from "./builds.mjs"
 import { ownedToolConfigs } from "./tool-config-references.mjs"
 // The migrate flow's steps. Each reads and writes the run directory, so it can
@@ -758,8 +759,9 @@ function repinVibeLang(config, manifests) {
       changed.push(f.path)
     }
   }
+  const publication = prepareToolchainPublication({ target: t, manifests: files.map(file => file.path), manager: Wire.packageManager(readdirSync(t)), specsFor })
   const carried = carryVibeLangPatches(t, moved, version, release)
-  return { manifests: changed, ...carried, written: [...ignored, ...carried.written] }
+  return { manifests: [...new Set([...changed, ...publication.changed.filter(path => posix.basename(path) === "package.json")])], ...carried, written: [...ignored, ...carried.written, ...publication.changed.filter(path => posix.basename(path) !== "package.json")], toolchainPublication: publication }
 }
 
 /**
@@ -900,7 +902,7 @@ export async function wireNewPackages(config, log) {
   // No wired package to take specifiers from: wire nothing, as --no-wire says, rather than guess them.
   if (!wired) return null
   const from = readJson(join(t, wired.dir, "package.json"))
-  const specsFor = (dir) => Wire.specsFrom(from, wired.dir, dir)
+  const specsFor = (dir) => ({ ...Wire.specsFrom(from, wired.dir, dir), ...stagedToolchainSpecs(t, dir) })
   const changed = []
   const writeIfChanged = (path, before, after) => {
     if (before === after) return
@@ -912,12 +914,14 @@ export async function wireNewPackages(config, log) {
   const layout = await prepareSidecarLayout(t)
   wirePackages({ t, ts, packages: added, specsFor, writeIfChanged, warnings, layout })
   const sidecarDir = finishSidecarLayout({ t, ts, layout, changed, warnings, log })
+  const publication = prepareToolchainPublication({ target: t, manifests: ["package.json", ...packages.map(pkg => posix.join(pkg.dir, "package.json")), ...changed.filter(file => posix.basename(file) === "package.json")], manager: Wire.packageManager(readdirSync(t)), specsFor })
+  changed.push(...publication.changed)
   const formatted = await formatWritten(t, changed, join(log, "setup-format.log"))
   if (formatted.code !== 0) warnings.push(`${formatted.formatter} exited ${formatted.code} on the files setup wrote; see ${join(log, "setup-format.log")}`)
   const manager = Wire.packageManager(readdirSync(t))
   const install = config.install ?? Wire.installCommand(manager, readdirSync(t))
   await must(install, { cwd: t, log: join(log, "install.log") })
-  return { manager, sidecarDir, added: added.map((pkg) => pkg.dir), specs: Object.fromEntries(added.map((pkg) => [pkg.dir, specsFor(pkg.dir)])), formatted, changed, warnings, install }
+  return { toolchainPublication: publication, manager, sidecarDir, added: added.map((pkg) => pkg.dir), specs: Object.fromEntries(added.map((pkg) => [pkg.dir, specsFor(pkg.dir)])), formatted, changed, warnings, install }
 }
 
 /** Sets VibeLang up in the target: dependencies, scripts, the Vite plugin, tsconfigs and the declaration sidecars' format ignore. Returns what it changed. */
@@ -1062,6 +1066,8 @@ export async function wireTarget(config, log) {
   const lintPaths = followLintRenames(t, await Jj.trackedFiles(t))
   changed.push(...new Set(lintPaths.map((edit) => edit.config).filter((file) => !changed.includes(file))))
   // What setup wrote is in the repository's own format.
+  const publication = prepareToolchainPublication({ target: t, manifests: ["package.json", ...packages.map(pkg => posix.join(pkg.dir, "package.json")), ...changed.filter(file => posix.basename(file) === "package.json")], manager: Wire.packageManager(readdirSync(t)), specsFor })
+  changed.push(...publication.changed)
   const formatted = await formatWritten(t, changed, join(log, "setup-format.log"))
   if (formatted.code !== 0) warnings.push(`${formatted.formatter} exited ${formatted.code} on the files setup wrote; see ${join(log, "setup-format.log")}`)
   const manager = Wire.packageManager(readdirSync(t))
@@ -1072,7 +1078,7 @@ export async function wireTarget(config, log) {
   changed.push(...emittedImports.changed.filter(file => !changed.includes(file)))
   const existingVibe = await formatExistingVibe(config, join(log, "setup-format-vibe.log"))
   if (existingVibe.code !== 0) warnings.push(`vibelang-format exited ${existingVibe.code} on the repository's .vibe files; see ${join(log, "setup-format-vibe.log")}`)
-  return { manager, typecheck, declarationRedirects, emittedImports, sidecarDir, formattedVibe: existingVibe.files, specs: Object.fromEntries(packages.map((pkg) => [pkg.dir, specsFor(pkg.dir)])), viteConfigs: vite.configs, viteAppConfigs: apps.configs, nativeViteConfigs: apps.nativeConfigs ?? [], knipConfig: knip.config,
+  return { toolchainPublication: publication, manager, typecheck, declarationRedirects, emittedImports, sidecarDir, formattedVibe: existingVibe.files, specs: Object.fromEntries(packages.map((pkg) => [pkg.dir, specsFor(pkg.dir)])), viteConfigs: vite.configs, viteAppConfigs: apps.configs, nativeViteConfigs: apps.nativeConfigs ?? [], knipConfig: knip.config,
     // Each test-project bridge setup wrote, with its exact text, which verify's test diff accepts as setup's own.
     testProjects: testProjects.projects.map(({ config, text }) => ({ config, text })), formatted, changed, warnings, install }
 }
