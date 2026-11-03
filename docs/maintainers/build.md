@@ -447,6 +447,31 @@ The `//typescript/vibelang:coverage-twin-oracle` target runs the parity oracle's
 
 CI-health reports identify Node `Cannot find package` errors as `missing package` before a surrounding assertion can mask the missing install. The requester's pinned package installation and module root are the first checks. Native Node diagnostics and real same-key graph receipts cover this classification; the `missing-package` eval runs the actual workflow, preserving its Go-cache and duration-regression cases.
 
+### Go test progress
+
+The `//:spec-tests` target runs `go test -json` through
+`scripts/go-test-progress.mjs`. The original JSON stream is preserved, including
+failures, and `go-progress` records appear immediately, every ten seconds, at
+package boundaries and on exit. Each record includes a run identifier,
+elapsed time and counts of started and finished packages and tests.
+
+On Linux, a bounded sample of the child process tree reports executable kinds:
+`launcher`, `go`, `compile`, `link`, `test` and `other`. A `launcher` phase with no
+`go` process identifies a shell launcher before Go starts; `go-setup-or-build`
+covers Go preparation when no compiler child is sampled, and `tests` starts
+with the JSON package-start event. On other hosts, JSON events still report
+test progress. Sampling reads no process arguments or environment values.
+These samples describe the observed phase; they do not establish why a launcher
+waited or why a test took time.
+
+The target retains its 15-minute deadline, required dependency checks,
+`VIBELANG_FUZZ_HANG=120s` and `-count=1` to rerun external oracles.
+Run it with:
+
+```sh
+sh scripts/ci.sh //:spec-tests --jobs 8
+```
+
 ## Packages
 
 ```text

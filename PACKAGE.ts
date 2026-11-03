@@ -357,6 +357,8 @@ const sidecarRootContract = S.Shell.Test({
   timeout: "5m"
 })
 
+const goTestProgress = S.Filegroup({ srcs: [...S.glob(["scripts/go-test-progress.mjs"])] })
+
 const targets = {
   "spec-coverage-census": S.Shell.Run({
     summary: "Inventory main rules with passing, pending, missing and tag-linked evidence.",
@@ -426,7 +428,7 @@ const targets = {
       ".smithers/flows/effect-bump/test/*.test.mjs .smithers/flows/ts-bump/test/*.test.mjs .smithers/flows/ci-health/test/*.test.mjs .smithers/flows/first-bad/test/*.test.mjs " +
       ".smithers/flows/test/*.test.mjs",
     [Packages["compiler-native"], Packages["runtime-dist"]],
-    [node, bun, gofmt, bun, S.Host.bin("diff3")]
+    [node, bun, gofmt, bun, go, S.Host.bin("diff3")]
   ),
   snippets: check(
     "Compile every code block in the docs.",
@@ -598,8 +600,8 @@ const targets = {
     summary: "The Go tests that read docs/design (the registry, the VIP citations and coverage, the pending lines) and the cost guards of --fix and flow narrowing.",
     shell:
       `cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} ` +
-      `go test -count=1 -trimpath -run '^(Test[A-Za-z0-9_]*Quoted|${[...specTests, ...fixCostTests, ...narrowingCostTests].join("|")})$' ./internal/checker/ ./internal/vibelang/ ./internal/vibelangfuzz/ ./internal/effecttsgo/shim/checker/`,
-    data: [design, migrationSources, Tsc.srcs, Tsc["effect-shim-files"], Tsc["vibelang-files"], Tsc["vibelangfuzz-files"], Packages["runtime-dist"]] as Array<never>,
+      `node ../../scripts/go-test-progress.mjs go test -json -count=1 -trimpath -run '^(Test[A-Za-z0-9_]*Quoted|${[...specTests, ...fixCostTests, ...narrowingCostTests].join("|")})$' ./internal/checker/ ./internal/vibelang/ ./internal/vibelangfuzz/ ./internal/effecttsgo/shim/checker/`,
+    data: [design, goTestProgress, migrationSources, Tsc.srcs, Tsc["effect-shim-files"], Tsc["vibelang-files"], Tsc["vibelangfuzz-files"], Packages["runtime-dist"]] as Array<never>,
     tools: [go, node],
     sandbox: "none",
     timeout: "15m"

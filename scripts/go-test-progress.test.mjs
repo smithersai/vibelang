@@ -1,0 +1,148 @@
+import assert from "node:assert/strict"
+import { spawn, spawnSync } from "node:child_process"
+import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join, delimiter } from "node:path"
+import { fileURLToPath } from "node:url"
+import { test } from "node:test"
+import { processKinds, progressState } from "./go-test-progress.mjs"
+
+const script = fileURLToPath(new URL("./go-test-progress.mjs", import.meta.url))
+function fixture(t, body) {
+  const dir = mkdtempSync(join(tmpdir(), "go-progress-"))
+  t.after(() => rmSync(dir, { recursive: true, force: true }))
+  // This is a process/stream fixture, not a compiler or a Go admission implementation.
+  writeFileSync(join(dir, "fixture.mjs"), body)
+  writeFileSync(join(dir, "go"), '#!/bin/sh\nexec "' + process.execPath + '" "' + join(dir, "fixture.mjs") + '" "$@"\n', { mode: 0o700 })
+  return { ...process.env, PATH: dir, OBSERVABILITY_TEST_VALUE: "private-fixture-value" }
+}
+const args = [script, "go", "test", "-json", "-count=1", "private-fixture-argument"]
+
+test("Go progress counts fragmented events and recovers after a bounded oversized line", () => {
+  const observer = progressState(), events = []
+  const consume = text => observer.consume(text, event => events.push(event))
+  consume('{"Action":"sta')
+  consume('rt","Package":"fixture"}\n{"Action":"run","Test":"TestOne"}\n')
+  consume('{"Action":"output","Output":"' + "x".repeat(70000))
+  consume('"}\n{"Action":"pass","Test":"TestOne"}\nnot-json\n')
+  consume('{"Action":"pass","Package":"fixture"}\n')
+  assert.deepEqual(observer.state, { packagesStarted: 1, packagesFinished: 1, testsStarted: 1, testsFinished: 1 })
+  assert.deepEqual(events, ["package-start", "package-pass"])
+})
+
+test("Go progress classifies only bounded executable kinds, tolerating missing and cyclic processes", t => {
+  const dir = mkdtempSync(join(tmpdir(), "go-progress-proc-"))
+  t.after(() => rmSync(dir, { recursive: true, force: true }))
+  for (const [pid, exe, children] of [[1,"bash","2"], [2,"go","3 4 9"], [3,"compile","1"], [4,"vibelang.test",""]]) {
+    const base = join(dir, String(pid))
+    mkdirSync(join(base, "task", String(pid)), { recursive: true })
+    symlinkSync("/private-fixture-path/" + exe, join(base, "exe"))
+    writeFileSync(join(base, "task", String(pid), "children"), children)
+  }
+  assert.deepEqual(processKinds(1, dir), { launcher: 1, go: 1, compile: 1, link: 0, test: 1, other: 0 })
+  assert.equal(processKinds(999, dir), null)
+})
+
+for (const code of [0, 7]) test("Go progress preserves output and exit " + code + " without logging arguments or environment", t => {
+  const output = '{"Action":"start","Package":"fixture"}\n{"Action":"run","Test":"TestUnicode"}\n' +
+    '{"Action":"output","Output":"λ private-fixture-value"}\n' +
+    '{"Action":"' + (code ? "fail" : "pass") + '","Test":"TestUnicode"}\n' +
+    '{"Action":"' + (code ? "fail" : "pass") + '","Package":"fixture"}\n'
+  const env = fixture(t, "const b=Buffer.from(" + JSON.stringify(output) + "); const split=b.indexOf(Buffer.from(\"λ\"))+1; process.stdout.write(b.subarray(0,split)); setImmediate(()=>{process.stdout.write(b.subarray(split)); process.exitCode=" + code + "})")
+  const result = spawnSync(process.execPath, args, { env, encoding: "utf8", timeout: 10000 })
+  assert.equal(result.status, code, result.stderr)
+  assert.equal(result.stdout, output)
+  assert.match(result.stderr, /event=start.*packages_started=0/)
+  assert.match(result.stderr, /event=package-start.*phase=tests/)
+  assert.match(result.stderr, /event=finish.*packages_finished=1.*tests_finished=1.*cause=exit code=/)
+  assert.doesNotMatch(result.stderr, /private-fixture-(value|argument|path)/)
+})
+
+test("Go progress records spawn failure without leaking command arguments", t => {
+  const dir = mkdtempSync(join(tmpdir(), "go-progress-empty-"))
+  t.after(() => rmSync(dir, { recursive: true, force: true }))
+  const result = spawnSync(process.execPath, args, { env: { ...process.env, PATH: dir }, encoding: "utf8" })
+  assert.equal(result.status, 1)
+  assert.match(result.stderr, /event=finish.*cause=spawn code=ENOENT/)
+  assert.doesNotMatch(result.stderr, /private-fixture-argument/)
+})
+
+test("Go progress requires JSON test events", () => {
+  const result = spawnSync(process.execPath, [script, "go", "test"], { encoding: "utf8" })
+  assert.equal(result.status, 2)
+  assert.match(result.stderr, /usage:/)
+})
+
+test("Go progress forwards termination and reports the signal", async t => {
+  const env = fixture(t, 'process.stdout.write(\'{"Action":"start","Package":"fixture"}\\n\'); setInterval(()=>{},1000)')
+  const child = spawn(process.execPath, args, { env, stdio: ["ignore", "pipe", "pipe"] })
+  t.after(() => { if (child.exitCode === null) child.kill("SIGKILL") })
+  let stderr = ""
+  child.stderr.on("data", chunk => { stderr += chunk })
+  const closed = new Promise((resolve, reject) => {
+    child.on("error", reject)
+    child.on("close", (code, signal) => resolve({ code, signal }))
+  })
+  await new Promise((resolve, reject) => {
+    child.stdout.once("data", resolve)
+    child.once("error", reject)
+    child.once("close", () => reject(new Error("fixture closed before startup")))
+  })
+  child.kill("SIGTERM")
+  const result = await closed
+  assert.deepEqual(result, { code: 143, signal: null })
+  assert.match(stderr, /event=finish.*cause=signal.*signal=SIGTERM/)
+})
+
+test("Go progress is invariant across seeded stream chunk boundaries", () => {
+  const lines = [
+    { Action: "start", Package: "fixture" },
+    { Action: "run", Test: "TestParent" },
+    { Action: "run", Test: "TestParent/λ" },
+    { Action: "output", Output: "arbitrary output stays outside metadata" },
+    { Action: "skip", Test: "TestParent/λ" },
+    { Action: "fail", Test: "TestParent" },
+    { Action: "fail", Package: "fixture" }
+  ].map(x => JSON.stringify(x) + "\n").join("")
+  for (let seed = 1; seed <= 64; seed++) {
+    let random = seed, offset = 0
+    const observer = progressState(), events = []
+    while (offset < lines.length) {
+      random = (Math.imul(random, 1664525) + 1013904223) >>> 0
+      const width = 1 + random % 29
+      observer.consume(lines.slice(offset, offset + width), event => events.push(event))
+      offset += width
+    }
+    assert.deepEqual(observer.state, { packagesStarted: 1, packagesFinished: 1, testsStarted: 2, testsFinished: 2 }, "seed " + seed)
+    assert.deepEqual(events, ["package-start", "package-fail"], "seed " + seed)
+  }
+})
+
+test("Go progress preserves real native test events and pass/fail exits", { timeout: 600_000 }, t => {
+  const dir = mkdtempSync(join(tmpdir(), "go-progress-native-"))
+  t.after(() => rmSync(dir, { recursive: true, force: true }))
+  writeFileSync(join(dir, "go.mod"), "module progress.fixture\n\ngo 1.27\n")
+  writeFileSync(join(dir, "progress_test.go"), `package progress
+import "testing"
+func TestProgressPass(t *testing.T) { t.Log("real native output λ") }
+func TestProgressFail(t *testing.T) { t.Fatal("intentional native failure") }
+`)
+  // Like go-test-cache.test.mjs, run the small native fixture with the
+  // selected toolchain directly, inside the caller's admitted test job.
+  const goroot = spawnSync("go", ["env", "GOROOT"], { encoding: "utf8" })
+  assert.equal(goroot.status, 0, goroot.stderr)
+  const nativePath = join(goroot.stdout.trim(), "bin") + delimiter + process.env.PATH
+  for (const [pattern, code, finished] of [["^TestProgressPass$", 0, 1], ["^TestProgress", 1, 2]]) {
+    const result = spawnSync(process.execPath,
+      [script, "go", "test", "-json", "-count=1", "-p", "8", "-run", pattern, "."],
+      { cwd: dir, env: { ...process.env, GOMAXPROCS: "8", GOFLAGS: "", GOWORK: "off", PATH: nativePath },
+        encoding: "utf8", timeout: 280_000 })
+    assert.equal(result.status, code, result.stdout + result.stderr)
+    const items = result.stdout.trim().split("\n").map(line => JSON.parse(line))
+    assert.ok(items.some(item => item.Test === "TestProgressPass" && item.Action === "pass"))
+    if (code) assert.ok(items.some(item => item.Test === "TestProgressFail" && item.Action === "fail"))
+    assert.match(result.stdout, /real native output λ/)
+    assert.match(result.stderr, new RegExp("event=finish.*packages_finished=1.*tests_finished=" + finished + ".*cause=exit code=" + code))
+    assert.match(result.stderr, /event=start.*packages_started=0/)
+  }
+})
