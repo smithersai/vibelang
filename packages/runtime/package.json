@@ -92,6 +92,11 @@
       "import": "./dist/experimental/ResizeObserver.js",
       "default": "./dist/experimental/ResizeObserver.js"
     },
+    "./experimental/Window": {
+      "types": "./dist/experimental/Window.d.ts",
+      "import": "./dist/experimental/Window.js",
+      "default": "./dist/experimental/Window.js"
+    },
     "./experimental/platform-browser": {
       "types": "./dist/experimental/platform-browser/index.d.ts",
       "import": "./dist/experimental/platform-browser/index.js",

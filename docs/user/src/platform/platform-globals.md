@@ -134,7 +134,7 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `setImmediate` | `try yieldNow` |
 | `setInterval` | `try repeat(program, Schedule.spaced("1 second"))` |
 | `setTimeout` | `try sleep("1 second")` |
-| `window` | escape to TypeScript for now: Effect has no service for the DOM; UI code belongs in a .ts or .tsx file, such as a React component's. |
+| `window` | escape to TypeScript for now: Effect has no service for the DOM; try (try Experimental.Window.Window).current gives an API that takes it the page's Window, and other UI code belongs in a .ts or .tsx file, such as a React component's. |
 | `window.FileReader` | `try (try Experimental.FileReader.FileReader).readAsText(blob)` |
 | `window.ResizeObserver` | `try (try Experimental.ResizeObserver.ResizeObserver).observe(element, onResize)` |
 | `window.addEventListener` | `BrowserStream.fromEventListenerWindow("resize")` |

@@ -1,0 +1,18 @@
+// expect-result: {"origin":"https://foldkit.dev","received":["ours"]}
+// foldkit's website/src/page/example/exampleDetail.ts: the injected Window goes to a helper that filters in the
+// dispatch stack, and the predicate reads the origin there.
+import { fakeWindow, filterMessages, postFrom } from "./page.ts"
+
+export effect function main() {
+  provide Experimental.Window.layerTest(fakeWindow("https://foldkit.dev")) {
+    const window = try (try Experimental.Window.Window).current
+    const origin = window.location.origin
+    const received: Array<string> = []
+    filterMessages(window, (event) => event.origin === origin, (event) => {
+      received.push(event.data)
+    })
+    postFrom(window, origin, "ours")
+    postFrom(window, "https://elsewhere.example", "theirs")
+    return { origin, received }
+  }
+}
