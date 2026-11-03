@@ -1,0 +1,12 @@
+// expect: EK0106
+// VIP-1: written return annotations must resolve to an Effect container.
+type AnyAlias = any
+type UnknownAlias = unknown
+export effect function f(): unknown { return 1 }
+export effect function a(): any { return 1 }
+export const expression = effect function(): UnknownAlias { return 1 }
+export const arrow = effect (): AnyAlias => 1
+export const o = { effect method(): number | unknown { return 1 } }
+export class C { effect method(): number | any { return 1 } }
+export effect function valid(): unknown!! { return 1 }
+export function plain(): unknown { return 1 }

@@ -31,10 +31,6 @@ FuzzFunctionBoundaries rule:arguments-default compiler VIP-1: arguments is banne
 FuzzFunctionBoundaries corpus:fz-func-arguments-default compiler VIP-1: minimized default binding ban; lane vip-core2
 FuzzFunctionBoundaries rule:await-effect-union compiler VIP-1: `await` on a union with an Effect member must report EK0103 by the Result test; lane vip-core2
 FuzzFunctionBoundaries corpus:fz-func-await-effect-union compiler VIP-1: minimized await-effect-union violation; lane vip-core2
-FuzzFunctionBoundaries rule:return-type-any compiler VIP-1: a written `any` return type on an effect function reports nothing, not EK0106; lane vip-core2
-FuzzFunctionBoundaries corpus:fz-func-return-type-any compiler VIP-1: minimized return-type-any violation; lane vip-core2
-FuzzFunctionBoundaries rule:return-type-unknown compiler VIP-1: a written `unknown` return type on an effect function reports nothing, not EK0106; lane vip-core2
-FuzzFunctionBoundaries corpus:fz-func-return-type-unknown compiler VIP-1: minimized return-type-unknown violation; lane vip-core2
 FuzzLegacyEffectAlias legacy-global compiler VIP-3: missing identity-selected EK4856 transition warning; lane impl-hunt-func
 FuzzLegacyEffectAlias corpus:legacy-global compiler VIP-3: minimized old global alias; lane impl-hunt-func
 FuzzEffectChannelsDeclaration feature:effect-channels:vibe-callee compiler Chapter 1 declaration identity: an unannotated .vibe callee adds its E and R but no run, so its never error is no infer-E candidate and `quiet(n)` beside `Effect<A, Error | ApiError>` declares `ApiError | Error` where Effect.fn declares `Error`; lane migfix-alchemy

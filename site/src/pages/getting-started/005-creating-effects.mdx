@@ -26,6 +26,8 @@ effect function reserve(item: string, available: boolean) {
 
 The compiler records the returned object in `A` and `Unavailable` in `E`. `succeed(value)` and `fail(error)` build Effects; run them with `try`. To store the work, write `const reservation = reserve("notebook", true)`.
 
+A return annotation on an `effect` function describes the whole Effect: write `unknown!!` for an Effect that succeeds with an unknown value, or leave the annotation out to infer its success, error and requirement channels. Bare `any` and `unknown`, including aliases and unions that resolve to them, report `EK0106`; they do not name an Effect container. `vibelang --fix` can remove a broad annotation from a function with a body and infer its contract, preserving the body and its cold execution. The fix gate refuses a repair that introduces another error, such as recursive inference that still needs a written contract.
+
 ## Track errors as values
 
 ```vibe

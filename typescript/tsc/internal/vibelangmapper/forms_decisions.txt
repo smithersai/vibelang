@@ -2110,6 +2110,9 @@ typescript/vibelang/cases/effect-value-call.fail/main.vibe:21:36 byname program 
 typescript/vibelang/cases/effect-values/main.vibe:21:36 lambda program table
 typescript/vibelang/cases/effect-values/main.vibe:38:33 lambda program table
 typescript/vibelang/cases/effect-values/main.vibe:8:53 lambda effectFn service
+typescript/vibelang/cases/effect-written-container.fail/main.vibe:7:27 lambda plain annotation
+typescript/vibelang/cases/effect-written-container.fail/main.vibe:8:22 lambda plain annotation
+typescript/vibelang/cases/effect-written-container.fail/main.vibe:9:20 lambda plain annotation
 typescript/vibelang/cases/ek1001-top-level.fail/main.vibe:15:19 byname program table
 typescript/vibelang/cases/ek1001-top-level.fail/main.vibe:16:39 byname program table
 typescript/vibelang/cases/ek1001-top-level.fail/main.vibe:16:58 lambda plain table
