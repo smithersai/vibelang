@@ -14,7 +14,7 @@ VIP-15 and Will’s standing TypeScript rule govern optionality. The written sch
 
 Folded: 1793656127-no-trusted-packages.patch (applied at docs/design/src/007-tooling.md:116)
 
-Folded: 1793693643-sl18-fix-astra-2.patch (applied at docs/design/src/005-services.md:574)
+Folded: 1793693643-sl18-fix-astra-2.patch (applied at docs/design/src/005-services.md:572)
 
 Will’s 2026-11-02 ruling and VIP-4 supersede the stale VIP-40 sentence that permitted an unannotated foreign call in plain code. Preserve explicit intrinsic/thunk annotations; neither the prelude nor an inventory grants package trust. The paired prelude bridge examples were already present.
 
@@ -28,15 +28,15 @@ Will’s no-relics ruling governs retirement. Historical D-numbers are not autho
 
 ## fold ordinary mutable-marker migration and retirement
 
-Folded: relic-mutable-codemod.patch (applied at docs/design/src/007-tooling.md:257)
+Folded: relic-mutable-codemod.patch (applied at docs/design/src/007-tooling.md:259)
 
-Folded: relic-mutable-rejection-HELD.patch (applied at docs/design/src/007-tooling.md:261)
+Folded: relic-mutable-rejection-HELD.patch (applied at docs/design/src/007-tooling.md:263)
 
 Will’s no-relics ruling settles the language rule. The HELD note constrains enforcement rollout, not publication of approved spec text: preserving codemods and fresh zero-count receipts remain prerequisites to rejection.
 
 ## fold data receiver-method retirement
 
-Folded: relic-data-methods.patch (applied at docs/design/src/007-tooling.md:263)
+Folded: relic-data-methods.patch (applied at docs/design/src/007-tooling.md:265)
 
 Folded: relic-data-methods-rejection.patch (applied at docs/design/src/900-appendices.md:1029)
 
@@ -44,19 +44,19 @@ The no-relics ruling retires the compiler receiver extension. Namespace calls an
 
 ## fold resolved prelude and Effect-alias migrations
 
-Folded: relic-rest-a-scope-codemod.patch (applied at docs/design/src/007-tooling.md:269)
+Folded: relic-rest-a-scope-codemod.patch (applied at docs/design/src/007-tooling.md:271)
 
-Folded: relic-rest-b-module-codemod.patch (applied at docs/design/src/007-tooling.md:271)
+Folded: relic-rest-b-module-codemod.patch (applied at docs/design/src/007-tooling.md:273)
 
-Folded: rc-ek4833-alias.patch (applied at docs/design/src/007-tooling.md:182)
+Folded: rc-ek4833-alias.patch (applied at docs/design/src/007-tooling.md:184)
 
 VIP-14 provides namespaces, not same-name export shorthands. Migrations and advisories use resolved identity; reordered/defaulted/wrapped Effect aliases must not change type meaning.
 
 ## fold fork and wire migration contracts
 
-Folded: relic-try-forms-fork-codemod.patch (applied at docs/design/src/007-tooling.md:275)
+Folded: relic-try-forms-fork-codemod.patch (applied at docs/design/src/007-tooling.md:277)
 
-Folded: relic-try-forms-try-wire-codemods.patch (applied at docs/design/src/007-tooling.md:277)
+Folded: relic-try-forms-try-wire-codemods.patch (applied at docs/design/src/007-tooling.md:279)
 
 Folded: relic-try-forms-rejections-HELD.patch (applied at docs/design/src/900-appendices.md:1049)
 
@@ -64,7 +64,7 @@ VIP-2/VIP-5/VIP-17 and denied VIP-24 settle the forms. HELD is an enforcement ro
 
 ## fold empty legacy trust-wrapper retirement
 
-Folded: relic-trusted-empty-wrapper.patch (applied at docs/design/src/007-tooling.md:285)
+Folded: relic-trusted-empty-wrapper.patch (applied at docs/design/src/007-tooling.md:287)
 
 Will’s no-relics ruling removes the unapproved wrapper. Preserve defect identity rather than silently replacing a defect with an UnknownError failure. The source HOLD remains an enforcement prerequisite, not a spec-publication dependency.
 
@@ -78,17 +78,17 @@ EK4802 remains a configurable advisory; explicit program-data type arguments opt
 
 ## fold ordinary fix file selection
 
-Folded: 1793683286-fixscope-alchemy.patch (applied at docs/design/src/007-tooling.md:297)
+Folded: 1793683286-fixscope-alchemy.patch (applied at docs/design/src/007-tooling.md:295)
 
-Folded: 1793657811-trailing-blocks-final.patch (already stated at docs/design/src/007-tooling.md:241)
+Folded: 1793657811-trailing-blocks-final.patch (already stated at docs/design/src/007-tooling.md:243)
 
 VIP-34’s write boundary and VIP-11’s denied trailing blocks remain intact. The selected-file option affects repair writes, not the compiler’s normal declaration emission.
 
 ## fold resolution migration and package declaration layout
 
-Folded: 1793633870-resolve-like-tsc.patch (applied at docs/design/src/007-tooling.md:118)
+Folded: 1793633870-resolve-like-tsc.patch (applied at docs/design/src/007-tooling.md:120)
 
-Folded: 1793689889-flow-sidecar-pack.patch (applied at docs/design/src/007-tooling.md:124)
+Folded: 1793689889-flow-sidecar-pack.patch (applied at docs/design/src/007-tooling.md:126)
 
 Folded: sidecar-outside-root.patch (already stated at docs/design/src/007-tooling.md:54)
 
@@ -98,11 +98,11 @@ Will’s module-resolution ruling and VIP-27 govern the simplified text. Sidecar
 
 ## reconcile declaration spelling with the TypeScript twin
 
-Folded: 1793682039-declstyle-from-tsc.patch (applied at docs/design/src/001-functions.md:563)
+Folded: 1793682039-declstyle-from-tsc.patch (applied at docs/design/src/001-functions.md:561)
 
 Folded: 1793667173-rc-entry1.patch (applied at docs/design/src/001-functions.md:484)
 
-Folded: 1793657310-vip3-sugar.patch (already stated at docs/design/src/900-appendices.md:1153)
+Folded: 1793657310-vip3-sugar.patch (already stated at docs/design/src/900-appendices.md:1155)
 
 VIP-27/VIP-30’s later TypeScript-twin amendment wins over the patch’s old rule changing .vibe to .ts in declarations; written declaration specifiers remain written. tsc 5.9.3 emits ./dep.ts unchanged even with rewriteRelativeImportExtensions=true. The obsolete declarationImportStyle paths are ignored for every value with a nonfatal warning; no spelling option returns. VIP-3’s infer-slot retirement and VIP-26’s lexical main binding were already stated.
 
@@ -140,7 +140,7 @@ Both old registry patches mechanically centralized the then-current grammar/diag
 
 ## fold preserving legacy entry-dispatch migration
 
-Folded: relic-rest-b-entry-marker-codemod.patch (applied at docs/design/src/007-tooling.md:287)
+Folded: relic-rest-b-entry-marker-codemod.patch (applied at docs/design/src/007-tooling.md:289)
 
 VIP-26 and VIP-33 require explicit runner calls and retain the platform boundary. Expand proved legacy CommonJS startup without changing callable kind or import-only behavior; preserve and report unsupported ESM sites rather than guessing bundled entry identity. No new language form or Will question is required.
 
@@ -174,6 +174,6 @@ The earlier fold’s claim that preserving `./dep.ts` means a package should pre
 
 ## Round 19: give the retired declaration-style warning its owner
 
-Folded: 1793682039-declstyle-from-tsc.patch (retired-setting warning reconciled at docs/design/vips/0030-config-files.md:26, docs/design/src/007-tooling.md:122 and Appendix B’s `EK3011` row).
+Folded: 1793682039-declstyle-from-tsc.patch (retired-setting warning reconciled at docs/design/vips/0030-config-files.md:26, docs/design/src/007-tooling.md:124 and Appendix B’s `EK3011` row).
 
 The named input’s retirement behavior is adopted for every value, invalid values included. Its proposed `TS5101` is replaced by `EK3011`: VIP-34 keeps `TS` codes for native TypeScript syntax/static errors and requires the owning VIP’s `EK` code for a VibeLang rule. Stock TypeScript `5.9.3` ignores the custom root section and produces no deprecation diagnostic for this key. VIP-30’s next unused allocation is `EK3011`; warning configuration and exit status follow the existing warning rules. No new deprecation policy is introduced.
