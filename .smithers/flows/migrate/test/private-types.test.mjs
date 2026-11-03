@@ -20,22 +20,26 @@ test("corpus: a migrated private schema's unused type alias is no declaration ch
   assert.ok(same(corpus.before, corpus.after), corpus.key)
 })
 
-// chatAttachment.d.ts is published (the package's index re-exports it), and a
-// published file is compared byte for byte (done criterion 3): the alias is a
-// change there. In a declaration file nothing publishes, it is none.
-test("corpus: compareDeclarations ignores the unused private alias only in a file nothing publishes", (t) => {
+// A private alias is not an exported API change, including in a file reached
+// from the published package entrypoint.
+test("corpus: compareDeclarations ignores an unused private alias on the published surface", (t) => {
   const corpus = JSON.parse(readFileSync(new URL("./corpus/t3code-private-schema-alias.json", import.meta.url), "utf8"))
-  const compare = (surface) => {
+  const compare = (surface, after = corpus.after) => {
     const root = mkdtempSync(join(tmpdir(), "migrate-private-types-"))
     t.after(() => rmSync(root, { recursive: true, force: true }))
-    for (const [side, text] of [["before", corpus.before], ["after", corpus.after]]) {
+    for (const [side, text] of [["before", corpus.before], ["after", after]]) {
       mkdirSync(join(root, side))
       writeFileSync(join(root, side, "public-surface.json"), JSON.stringify(surface))
+      writeFileSync(join(root, side, "package.json"), JSON.stringify({
+        exports: Object.fromEntries(surface.roots.map((file, i) => ["./entry-" + i, { types: "./" + file }]))
+      }))
       writeFileSync(join(root, side, "chatAttachment.d.ts"), text)
     }
     return compareDeclarations(ts, join(root, "before"), join(root, "after"))
   }
-  assert.equal(compare({ roots: ["chatAttachment.d.ts"], reachable: ["chatAttachment.d.ts"], unresolved: [] }).identical, false, "a published file keeps every byte")
+  assert.equal(compare({ roots: ["chatAttachment.d.ts"], reachable: ["chatAttachment.d.ts"], unresolved: [] }).identical, true, "the published API keeps the same names, types and comments")
+  assert.equal(compare({ roots: ["chatAttachment.d.ts"], reachable: ["chatAttachment.d.ts"], unresolved: [] },
+    corpus.after + "\nexport type Public = string;\n").identical, false, "a genuinely added exported name still fails")
   const unpublished = compare({ roots: [], reachable: [], unresolved: [] })
   assert.equal(unpublished.identical, true, JSON.stringify(unpublished.changed))
 })

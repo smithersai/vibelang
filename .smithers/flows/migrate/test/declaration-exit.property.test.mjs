@@ -5,7 +5,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { makeConfig, paths, verify, report } from "../lib/steps.mjs"
-import { emitErrorsIn } from "../lib/declarations.mjs"
+import { emitErrorsIn, recordDeclarationSurface } from "../lib/declarations.mjs"
 import { must, slug, writeJson } from "../lib/util.mjs"
 import * as Jj from "../lib/jj.mjs"
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
@@ -44,13 +44,13 @@ async function check(code, diagnostic) {
     const baseline = join(p.baseline, "dts", slug("."))
     mkdirSync(baseline, { recursive: true })
     writeFileSync(join(baseline, "main.d.ts"), declaration)
-    writeJson(join(baseline, "public-surface.json"), { roots: ["main.d.ts"], reachable: ["main.d.ts"], unresolved: [] })
+    recordDeclarationSurface(require("typescript"), baseline, target, [{ tsconfig: "tsconfig.json", prefix: "." }])
     if (code && !diagnostic) {
       await assert.rejects(verify({ run, batch: "01" }), /compiler did not finish/)
       return
     }
     const result = await verify({ run, batch: "01" })
-    assert.equal(result.checks.declarations, true, "the raw files intentionally match")
+    assert.equal(result.checks.declarations, true, "the published APIs intentionally match")
     assert.equal(result.checks.declarationEmit, code === 0 && !diagnostic)
     assert.equal(result.ok, code === 0 && !diagnostic)
     if (code) assert.ok(result.compile.emitErrors.length, JSON.stringify(result))

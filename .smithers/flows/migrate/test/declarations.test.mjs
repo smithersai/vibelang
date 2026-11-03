@@ -120,7 +120,7 @@ test("canonical text keeps every other .ts: a declaration file, a package, a str
   ]) assert.notEqual(canonicalize(ts, a), canonicalize(ts, b), a)
 })
 
-test("compareDeclarations compares a tree without surface metadata as published: only a proven D298 spelling is excused", () => {
+test("compareDeclarations compares a bare declaration tree by exported names, types and JSDoc", () => {
   const root = mkdtempSync(join(tmpdir(), "migrate-dts-"))
   const compare = (before, after) => {
     for (const [dir, index] of [["ts", before], ["vibe", after]]) {
@@ -135,13 +135,13 @@ test("compareDeclarations compares a tree without surface metadata as published:
   try {
     const spelled = compare(`export * from "./leaf.ts";\n`, `export * from "./leaf.js";\n`)
     assert.equal(spelled.identical, true, JSON.stringify(spelled.changed))
-    assert.equal(spelled.comparison, "all bytes")
+    assert.equal(spelled.comparison, "API identity")
     assert.deepEqual(spelled.excused.map((e) => [e.before, e.after]), [["./leaf.ts", "./leaf.js"]])
-    // No canonical leeway: order and comments count, as in a published file.
-    assert.equal(compare(`export * from "./leaf.js";\nexport * from "./other.js";\n`, `export * from "./other.js";\nexport * from "./leaf.js";\n`).identical, false)
-    assert.equal(compare(`/** contract */\nexport * from "./leaf.js";\n`, `export * from "./leaf.js";\n`).identical, false)
-    // Only an extensionless or .ts name may become its emitted .js (D298); another explicit extension stays.
-    assert.equal(compare(`export * from "./leaf.jsx";\n`, `export * from "./leaf.js";\n`).identical, false)
+    // Export order and import extension spelling do not change the API.
+    assert.equal(compare(`export * from "./leaf.js";\nexport * from "./other.js";\n`, `export * from "./other.js";\nexport * from "./leaf.js";\n`).identical, true)
+    assert.equal(compare(`/** contract */\nexport type Tag=string;\n`, `export type Tag=string;\n`).identical, false)
+    // TypeScript also resolves this explicit .jsx spelling to the same .d.ts.
+    assert.equal(compare(`export * from "./leaf.jsx";\n`, `export * from "./leaf.js";\n`).identical, true)
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
@@ -172,10 +172,10 @@ test("compareDeclarations reports changed, added and removed files", () => {
     assert.deepEqual(listDeclarations(join(root, "after")), ["a.d.ts", "b.d.ts", "new/c.d.ts"])
     const result = compareDeclarations(ts, join(root, "before"), join(root, "after"))
     assert.equal(result.identical, false)
-    assert.deepEqual(result.changed.map((c) => c.file), ["a.d.ts", "b.d.ts"])
+    assert.deepEqual(result.changed.map((c) => c.file), ["b.d.ts", "gone.d.ts", "new/c.d.ts"])
     assert.deepEqual(result.added, ["new/c.d.ts"])
     assert.deepEqual(result.removed, ["gone.d.ts"])
-    assert.deepEqual(result.changed.find(c => c.file === "b.d.ts").diff, ["-1: export type B = string;", "+1: export type B = number;"])
+    assert.deepEqual(result.changed.find(c => c.file === "b.d.ts").diff.slice(0, 2), ["-1: export type B = string;", "+1: export type B = number;"])
     assert.equal(compareDeclarations(ts, join(root, "before"), join(root, "before")).identical, true)
   } finally {
     rmSync(root, { recursive: true, force: true })

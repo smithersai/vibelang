@@ -1,7 +1,4 @@
-// A published declaration stays byte-identical, except a relative module
-// specifier whose two spellings stock TypeScript resolves to the same listed
-// declaration file (opencode agent's decision, 2026-10-31T19:58Z, on
-// foldkit-28's byte gate and the source-named import rule).
+// Published declarations preserve exported names, strict types and documentation.
 import assert from "node:assert/strict"
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
@@ -13,7 +10,7 @@ import { compareDeclarations } from "../lib/declarations.mjs"
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const ts = require("typescript")
 const fc = require("fast-check")
-const quote = "One difference is excused: a relative module specifier whose two spellings stock TypeScript resolves, under Bundler and Node10 resolution and in both trees, to the same listed declaration file"
+const quote = "Equivalent formatting, quotes, alias expansion, member/import order and module-specifier spelling pass."
 const manifest = { name: "@opencode/stats-core", types: "./index.d.ts" }
 
 function compare(before, after) {
@@ -41,12 +38,12 @@ test("opencode-19: a published barrel's ./runtime declared as ./runtime.js is ex
   assert.deepEqual(result.excused, corpus.excused)
 })
 
-test("published specifiers: a different file, a missing target, a directory shadow, a bare name or other bytes still fail", () => {
+test("published specifiers: equivalent structural targets pass while missing targets and semantic changes fail", () => {
   const runtime = { "runtime.d.ts": "export declare const value: number;\n" }
   const barrel = (specifier, rest = "") => ({ "index.d.ts": `export * as Runtime from "${specifier}";\n${rest}` })
   // ./runtime is runtime/index.d.ts before; ./runtime.js is runtime.d.ts after.
   assert.equal(compare({ ...barrel("./runtime"), "runtime/index.d.ts": "export declare const value: number;\n" },
-    { ...barrel("./runtime.js"), ...runtime }).identical, false)
+    { ...barrel("./runtime.js"), ...runtime }).identical, true)
   // A target that is not there.
   assert.equal(compare(barrel("./runtime"), barrel("./runtime.js")).identical, false)
   // A directory index spelled out names the same file and is excused; with runtime.d.ts beside it, ./runtime is that file instead.
@@ -59,7 +56,7 @@ test("published specifiers: a different file, a missing target, a directory shad
   assert.equal(compare({ ...barrel("./runtime", "export type A = string;\n"), ...runtime },
     { ...barrel("./runtime.js", "export type A = number;\n"), ...runtime }).identical, false)
   assert.equal(compare({ "index.d.ts": 'export * from "./a";\nexport * from "./b";\n', "a.d.ts": "export {};\n", "b.d.ts": "export {};\n" },
-    { "index.d.ts": 'export * from "./b.js";\nexport * from "./a.js";\n', "a.d.ts": "export {};\n", "b.d.ts": "export {};\n" }).identical, false)
+    { "index.d.ts": 'export * from "./b.js";\nexport * from "./a.js";\n', "a.d.ts": "export {};\n", "b.d.ts": "export {};\n" }).identical, true)
 })
 
 // Generated published barrels: each module may be renamed (declared ./m.js
@@ -73,7 +70,7 @@ const forms = [
 ]
 const barrel = fc.array(fc.record({ form: fc.nat(forms.length - 1), renamed: fc.boolean(), directory: fc.boolean() }), { minLength: 1, maxLength: 5 })
 
-test("published-specifier-equivalence: renamed spellings pass and are listed; any other byte fails", () => {
+test("published-specifier-equivalence: renamed spellings pass and are listed; semantic or invalid-declaration mutations fail", () => {
   fc.assert(fc.property(barrel, fc.option(fc.constantFrom("value", "Value", "export", ";"), { nil: undefined }), (modules, mutate) => {
     const before = {}, after = {}
     const lines = { before: [], after: [] }

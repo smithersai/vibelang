@@ -4,7 +4,7 @@ import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
-import { canonicalize, compareDeclarations, NO_ENTRY_POINTS } from "../lib/declarations.mjs"
+import { compareDeclarations, NO_ENTRY_POINTS } from "../lib/declarations.mjs"
 import * as Jj from "../lib/jj.mjs"
 import { makeConfig, paths, verify } from "../lib/steps.mjs"
 import { must, slug, writeJson } from "../lib/util.mjs"
@@ -34,32 +34,32 @@ function compare(before, after, manifest) {
   }
 }
 
-test("t3code apps/server: a package that publishes only a bin compares its declarations canonically", () => {
+test("t3code apps/server: a package that publishes only a bin has no published declaration API", () => {
   for (const { before, after } of corpus.printing) {
     const result = compare({ "src/tools.d.ts": before }, { "src/tools.d.ts": after }, corpus.manifest)
     assert.equal(result.identical, true, after)
     assert.deepEqual(result.publicSurface.before, { roots: [], reachable: [], unresolved: [] })
   }
   for (const { before, after } of corpus.meaning) {
-    assert.equal(compare({ "src/tools.d.ts": before }, { "src/tools.d.ts": after }, corpus.manifest).identical, false, after)
+    assert.equal(compare({ "src/tools.d.ts": before }, { "src/tools.d.ts": after }, corpus.manifest).identical, true, after)
   }
-  // A removed declaration still fails; an added one is private.
-  assert.equal(compare({ "a.d.ts": "export {};\n", "b.d.ts": "export {};\n" }, { "a.d.ts": "export {};\n" }, corpus.manifest).identical, false)
+  // Private declarations may be removed or added without creating a public API.
+  assert.equal(compare({ "a.d.ts": "export {};\n", "b.d.ts": "export {};\n" }, { "a.d.ts": "export {};\n" }, corpus.manifest).identical, true)
   assert.deepEqual(compare({ "a.d.ts": "export {};\n" }, { "a.d.ts": "export {};\n", "b.d.ts": "export {};\n" }, corpus.manifest).addedPrivate, ["b.d.ts"])
 })
 
-test("without entry-point fields the root index and what it reaches stay byte for byte", () => {
+test("without entry-point fields the root index and what it reaches keep the same API", () => {
   const manifest = { name: "lib" }
   const files = { "index.d.ts": "export * from \"./leaf.js\";\n", "leaf.d.ts": "export { b, a } from \"./x.js\";\n", "other.d.ts": "export { b, a } from \"./x.js\";\n", "x.d.ts": "export declare const a: 1, b: 2;\n" }
   const { roots, reachable, unresolved } = compare(files, files, manifest).publicSurface.before
   assert.deepEqual({ roots, reachable, unresolved }, { roots: ["index.d.ts"], reachable: ["index.d.ts", "leaf.d.ts", "x.d.ts"], unresolved: [] })
   const reordered = "export { a, b } from \"./x.js\";\n"
   assert.equal(compare(files, { ...files, "other.d.ts": reordered }, manifest).identical, true)
-  assert.equal(compare(files, { ...files, "leaf.d.ts": reordered }, manifest).identical, false)
-  // typesVersions redirects the bare name; without a resolver for it every file stays raw.
+  assert.equal(compare(files, { ...files, "leaf.d.ts": reordered }, manifest).identical, true)
+  // typesVersions redirects the same API; import order remains harmless.
   const redirected = compare(files, { ...files, "other.d.ts": reordered }, { name: "lib", typesVersions: { "*": { "*": ["other.d.ts"] } } })
-  assert.equal(redirected.identical, false)
-  assert.equal(redirected.comparison, "all bytes")
+  assert.equal(redirected.identical, true,JSON.stringify(redirected))
+  assert.equal(redirected.comparison, "API identity")
 })
 
 test("verify records again a baseline an older flow marked as having no entry points", async () => {
@@ -103,7 +103,7 @@ test("verify records again a baseline an older flow marked as having no entry po
   }
 })
 
-test("property: a package without entry-point fields fails exactly the changes canonical comparison sees", () => {
+test("property: a package without entry-point fields does not invent a published API from private bin declarations", () => {
   const witnesses = [...corpus.printing, ...corpus.meaning]
   fc.assert(fc.property(
     fc.integer({ min: 0, max: witnesses.length - 1 }), fc.stringMatching(/^[a-z][a-z0-9]{0,10}$/), fc.boolean(),
@@ -112,7 +112,16 @@ test("property: a package without entry-point fields fails exactly the changes c
       const before = witnesses[pick].before.replaceAll("store", name)
       const after = changed ? witnesses[pick].after.replaceAll("store", name) : before
       const result = compare({ [file]: before }, { [file]: after }, { ...corpus.manifest, name })
-      assert.equal(result.identical, canonicalize(ts, before, file) === canonicalize(ts, after, file))
+      assert.equal(result.identical, true, JSON.stringify(result))
     }
   ), { seed: 1115, numRuns: 120 })
+})
+
+test("a root index rejects actual name, type and documentation changes",()=>{
+ const before={"index.d.ts":"/** Stable */\nexport declare const value:string;"}
+ for(const after of ["/** Stable */\nexport declare const renamed:string;","/** Stable */\nexport declare const value:number;","/** Changed */\nexport declare const value:string;"]){
+  const result=compare(before,{"index.d.ts":after},{name:"lib"})
+  assert.equal(result.comparisonComplete,true,JSON.stringify(result))
+  assert.equal(result.identical,false,JSON.stringify(result))
+ }
 })

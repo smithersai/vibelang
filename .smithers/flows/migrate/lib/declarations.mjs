@@ -1,18 +1,13 @@
-// Declaration identity preserves the emitted public API. Canonical text drops
-// comments, sorts union/property/import members, removes redundant type
-// parentheses and reads Readonly<{ a: T }> as { readonly a: T }, the one
-// spelling a .vibe data payload has for it. D298 makes relative .ts and .js
-// names equivalent. An extensionless relative name becomes its emitted .js
-// spelling only when stock TypeScript proves both select the same present
-// emitted declaration.
-// Explicit names, unresolved modules and literal type values stay as written.
-// A published declaration (public-surface.json) is compared byte for byte.
-// When either snapshot cannot establish its public graph, every declaration
-// is compared as a published one, never canonically.
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
+// Declaration gates share the canonical exported-name/type/JSDoc checker.
+// Text canonicalization remains available for syntax/formatting utilities;
+// public API decisions never depend on its printed spelling.
+import { existsSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
+import { tmpdir } from "node:os"
 import { dirname, join, posix, relative, resolve, sep } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
+import { compareApiIdentityInWorker as compareApiIdentity, publishedEntrypoints } from "./api-identity.mjs"
+import { apiProjection } from "./api-projection.mjs"
 import { assertFinished, parseDiagnostics } from "./diagnostics.mjs"
 import { quote, rel, run } from "./util.mjs"
 
@@ -32,6 +27,12 @@ export function loadTypeScript(directories) {
 }
 
 const compare = (a, b) => (a < b ? -1 : a > b ? 1 : 0)
+const apiDiffLines = group => [
+  ...group.nameDifferences.map(d => `API name ${d.entrypoint}::${d.export} is present ${d.side}`),
+  ...group.typeDifferences.map(d => `API type ${d.entrypoint}::${d.export} [${d.aspect}]: ${d.diagnostic}`),
+  ...group.docDifferences.map(d => `API documentation ${d.entrypoint}::${d.export} changed`),
+]
+
 
 /** Whether a string literal is the module name of an import, export, `import()` type, `require` or augmentation, not a string in a type. */
 const isModuleName = (ts, node) => {
@@ -216,24 +217,48 @@ export function listDeclarations(dir) {
  * readonly members).
  */
 export function sidecarChanges(ts, sidecars, outDir) {
-  const emitted = listDeclarations(outDir)
-  const changed = []
-  const missing = []
+  const emitted = listDeclarations(outDir), changed = [], missing = []
+  const pairs = []
   for (const [sidecar, text] of Object.entries(sidecars)) {
     const declaration = sidecar.replace(/\.d\.vibe\.ts$/, ".d.ts")
-    // outDir mirrors the project's rootDir, with a subdirectory per project when there are several.
     const match = emitted
-      .flatMap((file) => [file, file.split("/").slice(1).join("/")].filter((f) => f && (declaration === f || declaration.endsWith(`/${f}`))).map((f) => ({ file, length: f.length })))
+      .flatMap(file => [file, file.split("/").slice(1).join("/")].filter(f => f && (declaration === f || declaration.endsWith("/" + f))).map(f => ({ file, length: f.length })))
       .sort((a, b) => b.length - a.length)[0]
-    if (!match) {
-      missing.push(sidecar)
-      continue
-    }
-    const before = canonicalize(ts, text, declaration)
-    const after = canonicalize(ts, readFileSync(join(outDir, match.file), "utf8"), declaration)
-    if (before !== after) changed.push({ file: sidecar, declaration: match.file, diff: lineDiff(before, after) })
+    if (!match) missing.push(sidecar)
+    else pairs.push({ sidecar, text, file: match.file })
   }
-  return { files: Object.keys(sidecars).length, changed, missing }
+  if (!pairs.length) return { files: Object.keys(sidecars).length, changed, missing }
+  const before = mkdtempSync(join(tmpdir(), "migrate-earlier-api-"))
+  let left, right
+  try {
+    for (const file of emitted) {
+      mkdirSync(join(before, file, ".."), { recursive: true })
+      writeFileSync(join(before, file), readFileSync(join(outDir, file)))
+    }
+    for (const pair of pairs) writeFileSync(join(before, pair.file), pair.text)
+    const metadata = join(outDir, "public-surface.json")
+    const surface = existsSync(metadata) ? JSON.parse(readFileSync(metadata,"utf8")) : null
+    left = apiProjection(ts,before,surface,emitted)
+    right = apiProjection(ts,outDir,surface,emitted)
+    const entries = projection => Object.fromEntries(pairs.map(pair => [pair.sidecar,
+      join(projection.directory,projection.destinations.get(pair.file))]))
+    const api = compareApiIdentity(ts, left.directory, right.directory, {
+      beforeEntrypoints: entries(left), afterEntrypoints: entries(right),
+      moduleRoots: [dirname(dirname(dirname(ts.sys.getExecutingFilePath())))],
+    })
+    if (!api.comparisonComplete) return { files: Object.keys(sidecars).length, changed, missing,
+      comparisonComplete: false, environmentDiagnostics: api.environmentDiagnostics }
+    for (const pair of pairs) {
+      const differences = Object.fromEntries(["nameDifferences", "typeDifferences", "docDifferences"]
+        .map(kind => [kind, api[kind].filter(d => d.entrypoint === pair.sidecar)]))
+      if (Object.values(differences).some(list => list.length)) changed.push({
+        file: pair.sidecar, declaration: pair.file, ...differences,
+        diff: [...lineDiff(pair.text, readFileSync(join(outDir, pair.file), "utf8")),
+          ...apiDiffLines(differences)],
+      })
+    }
+    return { files: Object.keys(sidecars).length, changed, missing }
+  } finally { left?.cleanup(); right?.cleanup(); rmSync(before, { recursive: true, force: true }) }
 }
 
 /** The first lines where two texts differ, as a short unified-style excerpt. */
@@ -362,7 +387,7 @@ export function declarationSurface(ts, dir, manifest, aliases = {}, logicalPaths
 
 /** Snapshot entry-point aliases while the original package manifest and tsconfigs still exist. */
 export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest = JSON.parse(readFileSync(join(packageDir, "package.json"), "utf8")), { handwritten } = {}) {
-  const aliases = {}, logicalPaths = {}
+  const aliases = {}, logicalPaths = {}, layouts = []
   const shippedDir = ".migrate-shipped"
   rmSync(join(dir, shippedDir), { recursive: true, force: true })
   for (const { tsconfig, prefix } of projects) {
@@ -371,6 +396,10 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
     if (config.error) throw new Error("cannot read declaration project " + tsconfig)
     const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, posix.dirname(path), { allowNonTsExtensions: true }, path,
       undefined, [{ extension: ".vibe", isMixedContent: false, scriptKind: ts.ScriptKind.Deferred }])
+    const layout = { prefix: posix.normalize(prefix) }
+    const configuredOutput = parsed.options.declarationDir ?? parsed.options.outDir ?? parsed.options.rootDir
+    if (configuredOutput) layout.directory = rel(packageDir, configuredOutput) || "."
+    layouts.push(layout)
     const emitted = { ...parsed, options: { ...parsed.options, outDir: resolve(dir, prefix), declarationDir: undefined, composite: false, declaration: true, emitDeclarationOnly: true } }
     for (const source of parsed.fileNames.filter(f => !/\.d\.(?:vibe\.)?[cm]?ts$/.test(f))) {
       // Stock TypeScript does not know .vibe; its output layout is that of .ts.
@@ -386,6 +415,11 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
       for (const original of outputNames({ ...parsed.options, declaration: true, emitDeclarationOnly: true })) {
         aliases[rel(packageDir, original)] = declaration
         logicalPaths[declaration] ??= rel(packageDir, original)
+        const tail = posix.relative(prefix, declaration)
+        const logical = logicalPaths[declaration]
+        if (logical === tail) layout.directory = "."
+        else if (logical.endsWith("/" + tail)) layout.directory = logical.slice(0, -tail.length - 1) || "."
+
         aliases[rel(packageDir, original).replace(/\.d\.ts$/, ".js").replace(/\.d\.mts$/, ".mjs").replace(/\.d\.cts$/, ".cjs")] = declaration
       }
     }
@@ -401,12 +435,12 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
     aliases[file] = stored
     logicalPaths[stored] = file
   }
-  const surface = { ...declarationSurface(ts, dir, manifest, aliases, logicalPaths), snapshotVersion: 2 }
+  const surface = { ...declarationSurface(ts, dir, manifest, aliases, logicalPaths), snapshotVersion: 3, apiMetadata: { manifest, aliases, logicalPaths, layouts, packageDir: resolve(packageDir) } }
   writeFileSync(join(dir, "public-surface.json"), JSON.stringify(surface, null, 2) + "\n")
   return surface
 }
 
-/** Public files keep the exact identity gate, as does every file when either side's entry-point metadata is missing or unresolved. Stock/native oracle comparison explicitly requests canonical form. */
+// Formatting receipts are retained separately from semantic API decisions.
 // The relative module specifiers a declaration file names: import and export
 // declarations, import types, and import-equals requires, each as
 // { text, start, end, line } with start and end inside the quotes.
@@ -429,13 +463,9 @@ function moduleSpecifiers(ts, text) {
 }
 
 /**
- * Compares a published declaration file byte for byte, except a relative
- * module specifier whose two spellings stock TypeScript resolves to the same
- * listed declaration file in both trees, under Bundler and Node10 resolution:
- * `./runtime` and `./runtime.js`, which a migrated module's importer declares
- * once the codemod names it `./runtime.vibe` (VIP-27, D298). Returns the
- * excused pairs, { line, before, after, declaration }, or null when anything
- * else differs.
+ * Records the former D298 formatting-only specifier replacements. These
+ * receipts explain source spelling changes; they never decide API identity.
+ * Returns proved spelling pairs, or null when other text also differs.
  */
 function publishedEquivalent(ts, a, b, sides) {
   if (a === b) return []
@@ -465,7 +495,7 @@ function publishedEquivalent(ts, a, b, sides) {
   return excused
 }
 
-export function compareDeclarations(ts, baselineDir, currentDir, { canonical = false } = {}) {
+export function compareDeclarations(ts, baselineDir, currentDir, { canonical = false, includePrivate = false } = {}) {
   const before = listDeclarations(baselineDir)
   const after = listDeclarations(currentDir)
   const surface = dir => {
@@ -491,21 +521,6 @@ export function compareDeclarations(ts, baselineDir, currentDir, { canonical = f
     if (publicFiles.has(destination)) publicFiles.add(source)
   }
   const originalName = new Map([...moved].map(([source, destination]) => [destination, source]))
-  // D298's extensionless source import and emitted .js name select one
-  // module only when stock TypeScript proves the same present declaration.
-  // Explicit extensions, unresolved paths and external names stay as written.
-  const modulePath = (directory, file, declarations) => (text) => {
-    if (!/^\.\.?\//.test(text) || /\.(?:d\.[cm]?ts|[cm]?[jt]s|[jt]sx|json|vibe)$/.test(text)) return text
-    const options = { module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler }
-    const select = (name) => ts.resolveModuleName(name, join(directory, file), options, ts.sys).resolvedModule?.resolvedFileName
-    const selected = select(text)
-    if (!selected) return text
-    const target = rel(directory, selected)
-    if (!declarations.has(target) || !target.endsWith(".d.ts")) return text
-    const relative = posix.relative(posix.dirname(file), target.slice(0, -5) + ".js")
-    const output = relative.startsWith("./") || relative.startsWith("../") ? relative : "./" + relative
-    return select(output) === selected ? output : text
-  }
   // The listed declaration file a relative specifier in file selects, under each resolution mode.
   const modes = [ts.ModuleResolutionKind.Bundler, ts.ModuleResolutionKind.Node10]
   const side = (directory, file, declarations) => ({
@@ -515,25 +530,19 @@ export function compareDeclarations(ts, baselineDir, currentDir, { canonical = f
       return target && declarations.has(target) ? target : undefined
     })
   })
-  const changed = []
   const excused = []
-  for (const file of before.filter(f => afterSet.has(f))) {
+  // The legacy canonical option suppresses formatting receipts only. Every
+  // caller below still uses the same exported-name/type/JSDoc proof.
+  if (!canonical) for (const file of before.filter(f => afterSet.has(f))) {
     const current = moved.get(file) ?? file
-    const text = dir => readFileSync(join(dir, dir === currentDir ? current : file), "utf8")
-    if ((!resolved || publicFiles.has(file)) && !canonical) {
-      const pairs = publishedEquivalent(ts, text(baselineDir), text(currentDir), [side(baselineDir, file, beforeSet), side(currentDir, current, afterSet)])
-      if (pairs === null) changed.push({ file, diff: lineDiff(text(baselineDir), text(currentDir)) })
-      else for (const pair of pairs) excused.push({ file, ...pair })
-      continue
-    }
-    const a = canonicalize(ts, text(baselineDir), file, modulePath(baselineDir, file, beforeSet))
-    const b = canonicalize(ts, text(currentDir), file, modulePath(currentDir, current, afterSet))
-    if (a !== b) changed.push({ file, diff: lineDiff(a, b) })
+    const pairs = publishedEquivalent(ts, readFileSync(join(baselineDir, file), "utf8"),
+      readFileSync(join(currentDir, current), "utf8"),
+      [side(baselineDir, file, beforeSet), side(currentDir, current, afterSet)])
+    for (const pair of pairs ?? []) excused.push({ file, ...pair })
   }
   const removed = before.filter(f => !afterSet.has(f))
   const additions = after.filter(f => !beforeSet.has(f))
-  const addedPrivate = resolved ? additions.filter(f => !publicFiles.has(f)) : []
-  const added = additions.filter(f => !addedPrivate.includes(f))
+  let addedPrivate = [], added = additions
   const rootsChanged = resolved && JSON.stringify(aSurface.roots) !== JSON.stringify(bSurface.roots.map(file => originalName.get(file) ?? file).sort())
   const remap = file => originalName.get(file) ?? file
   const reachableChanged = resolved && JSON.stringify(aSurface.reachable) !== JSON.stringify(bSurface.reachable.map(remap).sort())
@@ -546,7 +555,68 @@ export function compareDeclarations(ts, baselineDir, currentDir, { canonical = f
   }).sort((a,b) => JSON.stringify(a).localeCompare(JSON.stringify(b)))
   const resolutionChanged = resolved && aSurface.resolutions && bSurface.resolutions &&
     JSON.stringify(edges(aSurface)) !== JSON.stringify(edges(bSurface, remap, true))
-  return { identical: !changed.length && !removed.length && !added.length && !rootsChanged && !reachableChanged && !resolutionChanged, comparison: resolved ? "public bytes" : "all bytes", files: before.length, added, addedPrivate, renamed: [...moved].map(([from, to]) => ({ from, to })), removed, changed, excused,
+  // Raw file/graph changes remain receipts. Only exported API differences
+  // decide this gate; private layout and spelling are not public contracts.
+  let left, right, api
+  const semantic = []
+  try {
+    left = apiProjection(ts, baselineDir, aSurface, before, { published: !includePrivate })
+    right = apiProjection(ts, currentDir, bSurface, after, { published: !includePrivate })
+    const entries = (projection, saved) => {
+      const physical = file => {
+        const stored = projection.originals.get(rel(projection.directory, file))
+        return stored ? join(projection.directory, projection.destinations.get(stored)) : file
+      }
+      const published = existsSync(join(projection.directory, "package.json"))
+        ? Object.fromEntries(Object.entries(publishedEntrypoints(projection.directory, ts)).map(([key, file]) => [key, physical(file)]))
+        : null
+      if (includePrivate && published && !Object.keys(published).length) {
+        if (!saved?.apiMetadata) throw new Error("Private declaration snapshot lacks its original source entrypoints; refresh setup")
+        const modules = [...new Set(Object.values(saved.apiMetadata.aliases))]
+        return Object.fromEntries(modules.map(file => [originalName.get(file) ?? file,
+          join(projection.directory, projection.destinations.get(file))]))
+      }
+      if (published) return published
+      if (saved && !saved.apiMetadata)
+        throw new Error("Legacy declaration snapshot lacks published entrypoint names; refresh setup from its saved commit before comparing APIs")
+      return publishedEntrypoints(projection.directory, ts)
+    }
+    const aEntries = entries(left, aSurface), bEntries = entries(right, bSurface)
+    const modules = [left.moduleRoots ?? [], right.moduleRoots ?? [],
+      [dirname(dirname(dirname(ts.sys.getExecutingFilePath()))) ]].flat()
+    api = compareApiIdentity(ts, left.directory, right.directory, {
+      beforeEntrypoints: aEntries, afterEntrypoints: bEntries, moduleRoots: [...new Set(modules)], includeComparedFiles: true,
+    })
+    const comparedFiles = Object.fromEntries([["before", left], ["after", right]].map(([side, projection]) =>
+      [side, [...new Set((api.comparedFiles?.[side] ?? []).map(file =>
+        projection.originals.get(rel(projection.directory, file))).filter(Boolean))].sort()]))
+    api.comparedFiles = comparedFiles
+    if (api.comparisonComplete) {
+      const reachable = new Set([...comparedFiles.before, ...comparedFiles.after])
+      addedPrivate = additions.filter(file => !reachable.has(file))
+      added = additions.filter(file => reachable.has(file))
+    }
+    const groups = new Map()
+    if (api.comparisonComplete) for (const kind of ["nameDifferences", "typeDifferences", "docDifferences"]) for (const difference of api[kind]) {
+      const selected = aEntries[difference.entrypoint] ?? bEntries[difference.entrypoint]
+      const owner = aEntries[difference.entrypoint] ? left : right
+      const logical = selected && rel(owner.directory, selected)
+      const file = owner.originals.get(logical) ?? logical ?? difference.entrypoint
+      if (!groups.has(file)) groups.set(file, { file, nameDifferences: [], typeDifferences: [], docDifferences: [] })
+      groups.get(file)[kind].push(difference)
+    }
+    for (const group of groups.values()) {
+      const aFile = join(baselineDir, group.file), bFile = join(currentDir, moved.get(group.file) ?? group.file)
+      const raw = existsSync(aFile) && existsSync(bFile) ? lineDiff(readFileSync(aFile, "utf8"), readFileSync(bFile, "utf8")) : []
+      semantic.push({ ...group, diff: [...raw, ...apiDiffLines(group)] })
+    }
+  } catch (error) {
+    api = { identical: false, comparisonComplete: false, nameDifferences: [], typeDifferences: [], docDifferences: [],
+      environmentDiagnostics: [{ blocking: true, diagnostic: "Declaration snapshot comparison unavailable: " + error.message }] }
+  } finally { left?.cleanup(); right?.cleanup() }
+  semantic.sort((a, b) => compare(a.file, b.file))
+  return { ...api, comparison: "API identity", files: before.length, added, addedPrivate,
+    renamed: [...moved].map(([from, to]) => ({ from, to })), removed, changed: semantic, excused,
     ...(aSurface || bSurface ? { publicSurface: { before: aSurface, after: bSurface, rootsChanged: Boolean(rootsChanged), reachableChanged: Boolean(reachableChanged), resolutionChanged: Boolean(resolutionChanged) } } : {}) }
 }
 

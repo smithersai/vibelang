@@ -1,4 +1,4 @@
-import { compareApiIdentityInWorker as compareApiIdentity, formatResult as formatApiIdentity } from "./api-identity.mjs"
+import { formatResult as formatApiIdentity } from "./api-identity.mjs"
 import { prepareToolchainPublication, stagedToolchainSpecs } from "./toolchain-publication.mjs"
 import { prepareBuilds } from "./builds.mjs"
 import { ownedToolConfigs } from "./tool-config-references.mjs"
@@ -393,7 +393,14 @@ export async function earlierDeclarationChanges({ ts, t, revision, pkg, outDir }
       if (text !== null) sidecars[file] = text
     }
   }
-  return sidecarChanges(ts, sidecars, outDir)
+  const result = sidecarChanges(ts, sidecars, outDir)
+  if (result.comparisonComplete === false) {
+    const error = new Error("Earlier declaration API comparison unavailable: " +
+      result.environmentDiagnostics.map(d => d.diagnostic).join("; "))
+    error.code = "API_IDENTITY_UNAVAILABLE"
+    throw error
+  }
+  return result
 }
 
 /** The setup issue for a toolchain that changed the declarations of modules earlier runs migrated. */
@@ -1129,22 +1136,9 @@ export async function wireEmittedProjects(config, ts, log) {
     const formatted = await formatWritten(root, plan.changed, join(log, "format.log"))
     if (formatted.code !== 0) throw new Error("emitted import wiring: formatting failed; see " + join(log, "format.log"))
     const after = await snapshot("after")
-    const snapshotSurface = dir => {
-      const file = join(dir, "public-surface.json")
-      if (!existsSync(file)) return {}
-      const surface = readJson(file)
-      if (surface.unresolved?.length)
-        throw new Error("emitted import wiring: unresolved published declaration metadata: " + surface.unresolved.join(", "))
-      return { entries: Object.fromEntries(surface.roots.map(file => [file, file])), resolutions: surface.resolutions }
-    }
     for (const [pkg, baseline] of before.packages) {
       const current = after.packages.get(pkg)
-      const a = snapshotSurface(baseline), b = snapshotSurface(current)
-      const compared = compareApiIdentity(ts, baseline, current, {
-        beforeEntrypoints: a.entries, afterEntrypoints: b.entries,
-        beforeResolutions: a.resolutions, afterResolutions: b.resolutions,
-        moduleRoots: [join(root, pkg, "node_modules"), join(root, "node_modules")]
-      })
+      const compared = compareDeclarations(ts, baseline, current)
       if (!compared.identical) throw new Error((compared.comparisonComplete === false
         ? "emitted import wiring cannot compare published declarations in "
         : "emitted import wiring changes published declarations in ") + pkg + ":\n" + formatApiIdentity(compared))
@@ -1887,7 +1881,7 @@ export async function verify(options) {
     const baselineDir = join(p.baseline, "dts", slug(pkg.dir))
     const surfacePath = join(baselineDir, "public-surface.json")
     const oldSurface = existsSync(surfacePath) ? readJson(surfacePath) : null
-    if (!oldSurface || (!oldSurface.snapshotVersion && oldSurface.unresolved?.length) || oldSurface.unresolved?.includes(NO_ENTRY_POINTS)) {
+    if (!oldSurface?.apiMetadata || oldSurface.unresolved?.includes(NO_ENTRY_POINTS)) {
       // A legacy run must snapshot the setup commit's shipped declarations,
       // never the candidate's current package files.
       const setup = readJson(p.setup)
@@ -1906,7 +1900,9 @@ export async function verify(options) {
           projects.map(tsconfig => ({ tsconfig, prefix: projects.length === 1 ? "." : slug(tsconfig) })), JSON.parse(original), { handwritten })
       }
     }
-    declarations[pkg.dir] = compareDeclarations(ts, baselineDir, outDir)
+    declarations[pkg.dir] = compareDeclarations(ts, baselineDir, outDir, {
+      includePrivate: config.declarations?.includePrivate === true && readJson(join(t, pkg.dir, "package.json")).private === true,
+    })
     emitErrors.push(...emitErrorsIn(emitted.diagnostics, migrated, { code: emitted.code, log: join(logs, "dts-" + slug(pkg.dir) + ".log") }))
     const stock = oracle?.[pkg.dir]
     const projects = Wire.projectsOf(ts, join(t, pkg.dir), pkg.dtsTsconfig)

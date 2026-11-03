@@ -17,7 +17,7 @@ function prepare(root, label, { folder = "feature", form = "star", addition = "p
   put(pkg, "package.json", JSON.stringify(manifest))
   put(pkg, "tsconfig.json", JSON.stringify({ compilerOptions: { rootDir: "src", outDir: "dist", declaration: true }, include: ["src/**/*"] }))
   const body = form === "namespace" ? 'export * as Feature from "./dist/' + folder + '";\n' : form === "type" ? 'export type API = import("./dist/' + folder + '").Item;\n' : 'export * from "./dist/' + folder + '";\n'
-  put(pkg, "content.d.ts", (changed && label === "after" ? "// changed public bytes\n" : "") + body)
+  put(pkg, "content.d.ts", (changed && label === "after" ? "export type Introduced = number;\n" : "") + body)
   const files = { "index.d.ts": "export declare const main: number;\n", [folder + "/index.d.ts"]: "export interface Item { original: number }\n" }
   if (label === "after") files[addition === "shadow" ? folder + ".d.ts" : "private.d.ts"] = "export interface Item { introduced: string }\n"
   for (const [file, text] of Object.entries(files)) {
@@ -50,7 +50,7 @@ test("foldkit-80: a shipped content root admits only genuinely private declarati
   // VIP-27/007 ruling: "Resolving shipped hand-written roots against the package tree and following their declaration dependencies".
   for (const input of corpus.cases) check(input)
 })
-test("handwritten-root resolution follows TypeScript file-before-directory priority and preserves bytes", () => {
+test("handwritten-root resolution follows TypeScript file-before-directory priority and preserves APIs", () => {
   fc.assert(fc.property(fc.record({
     folder: fc.tuple(fc.constantFrom("feature", "vite", "api"), fc.stringMatching(/^[a-z][a-z0-9]{0,5}$/)).map(([a,b]) => a + "/" + b),
     form: fc.constantFrom("star", "namespace", "type"),

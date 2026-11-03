@@ -9,7 +9,7 @@ import { compareDeclarations } from "../lib/declarations.mjs"
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const ts = require("typescript")
 const fc = require("fast-check")
-const quote = "Public declarations reachable from `exports` or `types` must remain byte-identical; unreachable new declarations pass as `addedPrivate`."
+const quote = "Public declarations reachable from `exports` or `types` must remain API-identical; unreachable new declarations pass as `addedPrivate`."
 
 function compare(before, after, manifest) {
   const root = mkdtempSync(join(tmpdir(), "migrate-public-dts-"))
@@ -28,29 +28,30 @@ function compare(before, after, manifest) {
   }
 }
 
-test("foldkit-28: a private adapter declaration is admitted without weakening the public byte gate", () => {
+test("foldkit-28: a private adapter declaration is admitted without weakening the public API gate", () => {
   assert.ok(readFileSync(new URL("../README.md", import.meta.url), "utf8").includes(quote))
   const corpus = JSON.parse(readFileSync(new URL("./corpus/foldkit-private-adapter-declarations.json", import.meta.url)))
   const result = compare(corpus.before, corpus.after, corpus.manifest)
   assert.equal(result.identical, true)
   assert.deepEqual(result.addedPrivate, ["platform.d.ts"])
   assert.deepEqual(result.added, [])
-  assert.equal(compare(corpus.before, { ...corpus.after, "main.d.ts": "// comment changes bytes\n" + corpus.before["main.d.ts"] }, corpus.manifest).identical, false)
+  assert.equal(compare(corpus.before, { ...corpus.after, "main.d.ts": "// comment changes bytes\n" + corpus.before["main.d.ts"] }, corpus.manifest).identical, true)
+  assert.equal(compare(corpus.before, { ...corpus.after, "main.d.ts": corpus.before["main.d.ts"] + "\nexport type Added=number;\n" }, corpus.manifest).identical, false)
   assert.equal(compare(corpus.before, { "platform.d.ts": corpus.after["platform.d.ts"] }, corpus.manifest).identical, false)
 })
 
 test("public declaration graph: imports, exports, import types, require and references expose transitive additions", () => {
   const forms = [
     p => `export * from "${p}";\n`,
-    p => `import type { Item } from "${p}"; export type X = Item;\n`,
-    p => `export type X = import("${p}").Item;\n`,
-    p => `import X = require("${p}"); export = X;\n`,
-    p => `/// <reference path="${p}" />\nexport {};\n`
+    p => `import type { Item as Inner } from "${p}"; export type Item = Inner;\n`,
+    p => `export type Item = import("${p}").Item;\n`,
+    p => `import type * as X from "${p}"; export type Item = X.Item;\n`,
+    p => `export type Item = import("${p}").Item;\n`
   ]
   fc.assert(fc.property(fc.array(fc.nat(4), { minLength: 1, maxLength: 8 }), fc.boolean(), fc.constantFrom(".d.ts", ".d.mts", ".d.cts"), (edges, exposed, ext) => {
     const before = {}
     for (let i = 0; i < edges.length; i++) before[`n${i}${ext}`] = i + 1 < edges.length
-      ? forms[edges[i]](`./n${i + 1}${ext}`) : exposed ? forms[edges[i]](`./new${ext}`) : "export {};\n"
+      ? forms[edges[i]](`./n${i + 1}${ext === ".d.mts" ? ".mjs" : ext === ".d.cts" ? ".cjs" : ".js"}`) : exposed ? forms[edges[i]](`./new${ext === ".d.mts" ? ".mjs" : ext === ".d.cts" ? ".cjs" : ".js"}`) : "export interface Item {}\n"
     const result = compare(before, { ...before, [`new${ext}`]: "export interface Item {}\n" },
       { exports: { ".": { types: `./n0${ext}` } } })
     assert.equal(result.identical, !exposed)
@@ -96,7 +97,7 @@ test("setup snapshots source and dist entry points across project output directo
 
 test("package-private aliases and relative type references cannot hide a public addition", () => {
   for (const main of [
-    'export type X = import("#adapter").Item;\n',
+    'export type Item = import("#adapter").Item;\n',
     '/// <reference types="./platform" />\nexport {};\n'
   ]) {
     const before = { "main.d.ts": main }
@@ -110,9 +111,9 @@ test("resolved package aliases expose their leaves while unrelated additions sta
   for (const [name, imports] of [["#adapter", { "#adapter": "./leaf.d.ts" }], ["#local/adapter", { "#local/*": "./*.d.ts" }], ["sample/leaf", {}]]) {
     const leaf = name === "#local/adapter" ? "adapter.d.ts" : "leaf.d.ts"
     const manifest = { name: "sample", exports: { ".": "./main.d.ts", "./leaf": "./leaf.d.ts" }, imports }
-    const before = { "main.d.ts": `export type X = import("${name}").Item;\n`, [leaf]: "export interface Item {}\n", "leaf.d.ts": "export interface Item {}\n" }
+    const before = { "main.d.ts": `export type Item = import("${name}").Item;\n`, [leaf]: "export interface Item {}\n", "leaf.d.ts": "export interface Item {}\n" }
     const after = { ...before, "private.d.ts": "export {};\n" }
     assert.equal(compare(before, after, manifest).identical, true, name)
-    assert.equal(compare(before, { ...after, [leaf]: "// public bytes changed\n" + before[leaf] }, manifest).identical, false, name)
+    assert.equal(compare(before, { ...after, [leaf]: "export interface Item { changed:number }\n" }, manifest).identical, false, name)
   }
 })

@@ -178,6 +178,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Specification checks for generic data helpers failed after the public wording dropped an internal decision reference. They now cite the current public rule; the existing collision-suffix compiler gaps remain tracked across all four generic arities.
 
 - Declaration fuzz checks still rejected harmless spacing, member order and import spelling changes in migration output. They now compare complete declaration trees by exported names, types and comments.
+- Migration verification rejected unchanged published APIs because their declaration text or private file layout differed. It now uses the shared API checker for published packages, stock compiler proofs and earlier sidecars, preserving publication names and reporting unavailable probes separately.
 
 - JavaScript launch scripts could fail strict `checkJs` after setup inserted a source-child helper. Generated JavaScript now keeps the helper’s parameter and tuple types, preserves native declarations, and retains readable spacing.
 

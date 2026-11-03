@@ -18,6 +18,10 @@ function compare(before, after, metadata) {
       const dir = join(root, side)
       mkdirSync(dir)
       writeFileSync(join(dir, "main.d.ts"), text)
+      writeFileSync(join(dir, "config.d.ts"), "export declare const a:1,b:2; export interface Config {}\n")
+      mkdirSync(join(dir,"node_modules/@t3tools/contracts"),{recursive:true})
+      writeFileSync(join(dir,"node_modules/@t3tools/contracts/package.json"),JSON.stringify({types:"index.d.ts"}))
+      writeFileSync(join(dir,"node_modules/@t3tools/contracts/index.d.ts"),"export declare const ThreadId: string; export interface ScopedThreadRef {}")
       if (metadata === "resolved" || metadata === "unresolved" || metadata === side) {
         writeFileSync(join(dir, "public-surface.json"), JSON.stringify({
           roots: ["main.d.ts"], reachable: ["main.d.ts"],
@@ -31,32 +35,33 @@ function compare(before, after, metadata) {
   }
 }
 
-test("t3code: legacy declaration baselines preserve ordinary TS imports, order and comments", () => {
-  assert.ok(readFileSync(new URL("../rules.md", import.meta.url), "utf8").includes("a published package’s emitted declarations must stay identical."))
+test("t3code: equivalent import spellings and order pass; missing legacy metadata is unavailable", () => {
   for (const metadata of ["none", "before", "after", "unresolved", "resolved"]) {
-    for (const { before, after } of corpus.modules) {
-      const result = compare(before, after, metadata)
-      assert.equal(result.identical, false, metadata + ": " + before)
-      assert.equal(result.comparison, metadata === "resolved" ? "public bytes" : "all bytes")
-      assert.deepEqual(result.changed.map(file => file.file), ["main.d.ts"])
-      assert.ok(result.changed[0].diff.length)
-      assert.equal(compare(before, before, metadata).identical, true)
+    for (const [i,{before,after}] of corpus.modules.entries()) {
+      const result=compare(before,after,metadata)
+      assert.equal(result.comparison,"API identity")
+      if(metadata!=="none"){
+        assert.equal(result.comparisonComplete,false,JSON.stringify(result))
+        assert.deepEqual(result.changed,[])
+        assert.ok(result.environmentDiagnostics.length)
+      } else {
+        assert.equal(result.comparisonComplete,true,JSON.stringify(result))
+        assert.equal(result.identical,i!==3,JSON.stringify(result))
+        if(i===3) assert.ok(result.docDifferences.length)
+        assert.equal(compare(before,before,metadata).identical,true)
+      }
     }
   }
 })
-
-test("property: missing or unresolved public metadata never weakens the raw declaration gate", () => {
-  // VIP-27/detail 263 preserve ordinary TypeScript sibling references; detail
-  // 277 includes import order and provenance in the required declaration surface.
+test("property: legacy metadata never proves identity; complete modules compare their API",()=>{
   fc.assert(fc.property(
-    fc.constantFrom("none", "before", "after", "unresolved", "resolved"),
-    fc.integer({ min: 0, max: corpus.modules.length - 1 }),
-    fc.stringMatching(/^[a-z][a-z0-9_-]{0,12}$/), fc.boolean(),
-    (metadata, pattern, name, changed) => {
-      const witness = corpus.modules[pattern]
-      const before = witness.before.replaceAll("config", name)
-      const after = changed ? witness.after.replaceAll("config", name) : before
-      assert.equal(compare(before, after, metadata).identical, before === after)
+    fc.constantFrom("none","before","after","unresolved","resolved"),
+    fc.integer({min:0,max:corpus.modules.length-1}),fc.boolean(),
+    (metadata,pattern,changed)=>{
+      const witness=corpus.modules[pattern]
+      const result=compare(witness.before,changed?witness.after:witness.before,metadata)
+      assert.equal(result.comparisonComplete,metadata==="none",JSON.stringify(result))
+      assert.equal(result.identical,metadata==="none"&&(!changed||pattern!==3),JSON.stringify(result))
     }
-  ), { seed: 263277, numRuns: 160 })
+  ),{seed:263277,numRuns:160})
 })

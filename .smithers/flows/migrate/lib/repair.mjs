@@ -56,7 +56,7 @@ ${elsewhere.length ? `\nNew errors outside the batch, in files that import it:\n
 ## Done means (verify checks each)
 
 1. \`${test}\` passes: no test fails that passed before, and none is gone.
-2. The package's emitted declarations are identical to the baseline's: the public API does not change.
+2. The package's published entrypoints preserve the baseline's exported names, strict type identity and normalized JSDoc; formatting and import order do not change API identity.
 3. The batch's files report no error, no TypeScript-style Effect form (EK48xx, except a Struct constant --fix leaves and a Context.Service class with no quick fix) and no platform global (EK4402), and no file reports an error it did not before.
 4. Every batch file is idiomatic VibeLang, or stays .ts with a recorded reason.
 5. Change only this batch's source files. The codemod's recorded importer, manifest, literal path-reference and platform-sibling edits are allowed; earlier batches, tests and configs stay as committed. Verification and recording reject any other changed file.

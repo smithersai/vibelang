@@ -17,7 +17,7 @@ const member = fc.record({
   type: fc.constantFrom("string", "number", "Name", "readonly string[]", "(element: Element) => void")
 })
 const declare = (members, quote, order) => [
-  `import type { Element } from ${quote}dom${quote};`,
+  `import type { Element } from ${quote}./dom.js${quote};`,
   "export interface Item<Name extends string> {",
   ...order(members).map((m) => `    ${m.readonly ? "readonly " : ""}${m.name}${m.optional ? "?" : ""}: ${m.type};`),
   "}",
@@ -30,6 +30,7 @@ const declare = (members, quote, order) => [
 test("foldkit-11: setup reports exactly the earlier declarations whose members a new toolchain changes", () => {
   const outDir = mkdtempSync(join(tmpdir(), "migrate-earlier-property-"))
   try {
+    writeFileSync(join(outDir, "dom.d.ts"), "export interface Element {}")
     fc.assert(fc.property(
       fc.uniqueArray(member, { selector: (m) => m.name, minLength: 1, maxLength: 4 }),
       fc.option(fc.tuple(fc.nat(3), fc.constantFrom("readonly", "optional"))),

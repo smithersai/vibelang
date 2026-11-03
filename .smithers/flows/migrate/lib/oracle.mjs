@@ -79,16 +79,29 @@ export function declarationNames(ts, packageDir, projects) {
 
 /**
  * Where the native baseline's declarations (nativeDir) differ from the stock
- * compiler's (stockDir), each compared in canonical form, since two compilers
+ * compiler's (stockDir), each compared by exported names, tsc type identity and JSDoc, since two compilers
  * may spell one type differently: a file whose types differ, one the stock
  * compiler wrote and vibelang did not, and one only vibelang wrote.
  */
 export function unprovenDeclarations(ts, stockDir, nativeDir) {
-  const c = compareDeclarations(ts, stockDir, nativeDir, { canonical: true })
-  const changed = c.changed.map((x) => x.file)
-  const missing = c.removed
-  const extra = [...c.added, ...c.addedPrivate]
-  return { identical: c.identical, files: [...new Set([...changed, ...missing, ...extra])].sort(), changed: c.changed, missing, extra }
+  const surface = join(nativeDir, "public-surface.json")
+  const includePrivate = existsSync(surface) &&
+    JSON.parse(readFileSync(surface, "utf8")).apiMetadata?.manifest.private === true
+  const c = compareDeclarations(ts, stockDir, nativeDir, { canonical: true, includePrivate })
+  if (c.comparisonComplete === false) return {
+    identical: false, files: [], changed: [], missing: [], extra: [],
+    unavailable: "Declaration API comparison unavailable: " + c.environmentDiagnostics.map(d => d.diagnostic).join("; "),
+    comparisonComplete: false, environmentDiagnostics: c.environmentDiagnostics,
+  }
+  if (c.identical) return { identical: true, files: [], changed: [], missing: [], extra: [] }
+  // A changed public root can depend on a declaration whose filename is not
+  // itself an entrypoint. None of that root's stored dependency closure is a
+  // proven stock/native counterpart while its exported API differs.
+  const affected = new Set([...c.changed.map(x => x.file),
+    ...(c.comparedFiles?.before ?? []), ...(c.comparedFiles?.after ?? [])])
+  const missing = c.removed.filter(file => affected.has(file))
+  const extra = c.added.filter(file => affected.has(file))
+  return { identical: false, files: [...affected].sort(), changed: c.changed, missing, extra }
 }
 
 /**

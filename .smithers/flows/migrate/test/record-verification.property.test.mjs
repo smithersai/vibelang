@@ -4,6 +4,7 @@ import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
+import { recordDeclarationSurface } from "../lib/declarations.mjs"
 import { makeConfig, paths, record, verify } from "../lib/steps.mjs"
 import { countTokens } from "../lib/tokens.mjs"
 import * as Jj from "../lib/jj.mjs"
@@ -51,37 +52,37 @@ async function fixture(drift, name, action, pattern=corpus) {
     const baseline=join(p.baseline,"dts",slug("."))
     mkdirSync(baseline,{recursive:true})
     writeFileSync(join(baseline,"main.d.ts"),before)
-    writeJson(join(baseline,"public-surface.json"),{roots:["main.d.ts"],reachable:["main.d.ts"],unresolved:[]})
+    recordDeclarationSurface(require("typescript"),baseline,target,[{tsconfig:"tsconfig.json",prefix:"."}])
     return await action({root,target,run,p,source,formatted})
   } finally {rmSync(root,{recursive:true,force:true})}
 }
 
 test("foldkit-13-record: verify certifies the formatted public declarations", async()=>{
   const contract=readFileSync(new URL("../README.md",import.meta.url),"utf8")
-  assert.ok(contract.includes("Public declarations reachable from `exports` or `types` must remain byte-identical"))
+  assert.ok(contract.includes("Public declarations reachable from `exports` or `types` must remain API-identical"))
   await fixture(true,"createLazy",async({run,target,formatted})=>{
     const result=await verify({run,batch:"01"})
     assert.equal(readFileSync(join(target,"main.vibe"),"utf8"),formatted)
-    assert.equal(result.ok,false)
-    assert.equal(result.checks.declarations,false)
+    assert.equal(result.ok,true)
+    assert.equal(result.checks.declarations,true)
   })
 })
 
-test("foldkit-13-record: record rechecks a legacy receipt after formatting and refuses changed declarations",async()=>{
+test("foldkit-13-record: record rechecks a legacy receipt after formatting and refuses a changed API",async()=>{
   await fixture(true,"createLazy",async({run,p,target})=>{
     writeJson(p.verify("01"),{ok:true})
     await assert.rejects(record({run,batch:"01"}),/after formatting/)
     assert.equal(readJson(p.verify("01")).checks.declarations,false)
     assert.equal((await Jj.changedPaths(target)).length>0,true)
-  })
+  },{...corpus,formattedDeclaration:corpus.formattedDeclaration.replaceAll("void","string")})
 })
 
-test("foldkit-13-record: generated signature names retain byte gating and final token receipts",async()=>{
+test("foldkit-13-record: generated signature names retain API gating and final token receipts",async()=>{
   await fc.assert(fc.asyncProperty(fc.boolean(),fc.stringMatching(/^[a-z][a-z0-9]{0,7}$/),fc.constantFrom(corpus,...corpus.neighbours),async(drift,name,pattern)=>{
     await fixture(drift,name,async({run,p,target,formatted})=>{
       const checked=await verify({run,batch:"01"})
-      assert.equal(checked.ok,!drift)
-      if(drift) return
+      assert.equal(checked.ok,true,JSON.stringify(checked))
+      assert.equal(checked.checks.declarations,true)
       const recorded=await record({run,batch:"01"})
       assert.ok(recorded.commit)
       assert.equal(readFileSync(join(target,"main.vibe"),"utf8"),formatted)

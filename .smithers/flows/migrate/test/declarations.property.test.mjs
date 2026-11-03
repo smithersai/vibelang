@@ -10,7 +10,7 @@ const require = createRequire(new URL("../../../../packages/runtime/package.json
 const ts = require("typescript")
 const fc = require("fast-check")
 
-const quote = "Only proven private declarations use canonical comparison."
+const quote = "Every declaration gate compares exported names, type identity and doc comments through the shared checker."
 const rules = new URL("../rules.md", import.meta.url)
 
 const forms = [
@@ -28,7 +28,7 @@ const modulePath = fc.tuple(
   fc.array(fc.oneof(segment, fc.constantFrom("with space", "café", "under.score", "x.ts-folder")), { minLength: 1, maxLength: 4 })
 ).map(([prefix, parts]) => prefix + parts.join("/"))
 
-test("private canonical comparison groups relative source extensions without granting public equality", () => {
+test("the canonical formatting utility groups relative source extensions independently of API verification", () => {
   assert.ok(readFileSync(rules, "utf8").includes(quote), "update the quoted migration rule")
   const corpus = JSON.parse(readFileSync(new URL("./corpus/alchemy-relative-module.json", import.meta.url), "utf8"))
   assert.equal(canonicalize(ts, corpus.before), canonicalize(ts, corpus.after), corpus.key)

@@ -496,6 +496,7 @@ export function compareApiIdentity(ts, before, after, options = {}) {
     const size = options.entryBatchSize ?? 8
     if (!Number.isSafeInteger(size) || size < 1) throw new Error("entryBatchSize must be a positive safe integer")
     const result = { identical: true, comparisonComplete: true, nameDifferences: [], typeDifferences: [], docDifferences: [], environmentDiagnostics: [] }
+    if (options.includeComparedFiles) result.comparedFiles = { before: [], after: [] }
     const seen = new Set()
     for (let offset = 0; offset < Math.max(1, keys.length); offset += size) {
       const batch = keys.slice(offset, offset + size)
@@ -513,6 +514,8 @@ export function compareApiIdentity(ts, before, after, options = {}) {
           if (!seen.has(key)) { result[field].push(item); seen.add(key) }
         }
       }
+      if (result.comparedFiles) for (const side of ["before", "after"])
+        result.comparedFiles[side] = [...new Set([...result.comparedFiles[side], ...(part.comparedFiles?.[side] ?? [])])].sort()
       result.identical &&= part.identical
       result.comparisonComplete &&= part.comparisonComplete
       // A later crash must not replace the diagnostic that already made this
@@ -676,6 +679,14 @@ function prepareComparison(ts, before, after, options, progress) {
   const roots = [...new Set([...Object.values(left), ...Object.values(right)])]
   progress("create-input-program")
   let program = ts.createProgram(roots, compilerOptions, host)
+  if (options.includeComparedFiles) {
+    const ownedInputFiles = program.getSourceFiles().filter(source => [before, after].some(base =>
+      (source.fileName === base || source.fileName.startsWith(base + "/")) &&
+      !source.fileName.includes("/node_modules/"))).map(source => source.fileName)
+    result.comparedFiles = Object.fromEntries(
+      [["before", before], ["after", after]].map(([side, base]) => [side,
+        ownedInputFiles.filter(file => file === base || file.startsWith(base + "/")).sort()]))
+  }
   const ambient = isolateAmbientSnapshots(ts, [{ base: before, entries: left }, { base: after, entries: right }], compilerOptions, host, program,
     (isolated, entries, files) => collectInputDiagnostics(ts, entries, compilerOptions, host, files, options, progress, "input-diagnostics"))
   const originalDiagnostics = ambient.diagnostics
@@ -684,6 +695,7 @@ function prepareComparison(ts, before, after, options, progress) {
     moduleResolutions.clear()
     program = ts.createProgram(roots, compilerOptions, host)
   }
+
 
   // A shared program merges ambient globals and module augmentations. Prove
   // these shared contributions equivalent using separate dependency closures.

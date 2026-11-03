@@ -187,6 +187,20 @@ The comparison always forces `noCheck: false`, alongside its strict type
 relation settings. A project's emission shortcut cannot turn unchecked
 identity assertions into a proof or suppress an invalid exported input type.
 
+Migration snapshots retain their original publication manifest, declaration
+aliases and logical output paths in `public-surface.json` (`snapshotVersion: 3`).
+The API comparison reconstructs a temporary package from stored declarations;
+source/runtime aliases forward to those declarations, including default and
+`export =` modules. Publication subpaths and conditions retain their names.
+The migration adapter uses the shared supervised worker and retains its resource limits.
+The opt-in `includeComparedFiles` receipt records TypeScript’s actual input closure
+for private-addition and unproven-module attribution, including file shadowing.
+Legacy metadata is refreshed from the saved setup commit. Missing evidence or
+an unavailable type probe is an environment failure. Earlier sidecars are
+compared in a complete dependency tree; missing outputs remain explicit receipts,
+and an unavailable probe cannot establish a new setup baseline. Formatting receipts in
+`excusedSpecifiers` describe spelling changes without deciding API identity.
+
 Go declaration fuzz oracles pass complete emitted module trees to the same
 checker. Relative aliases and dependencies resolve within each snapshot;
 formatting, member order and equivalent import spelling do not fail a

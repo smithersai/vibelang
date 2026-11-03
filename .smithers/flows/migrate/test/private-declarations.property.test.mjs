@@ -4,6 +4,7 @@ import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
+import { recordDeclarationSurface } from "../lib/declarations.mjs"
 import { makeConfig, paths, verify } from "../lib/steps.mjs"
 import * as Jj from "../lib/jj.mjs"
 import { must, slug, writeJson } from "../lib/util.mjs"
@@ -55,7 +56,8 @@ async function fixture(manifest, { before = corpus.before, after = corpus.after,
     mkdirSync(baseline, { recursive: true })
     writeFileSync(join(baseline, "main.d.ts"), before)
     // Also usable with the public-surface gate, without manufacturing a setup commit.
-    writeJson(join(baseline, "public-surface.json"), { roots: ["main.d.ts"], reachable: ["main.d.ts"], unresolved: [] })
+    recordDeclarationSurface(require("typescript"), baseline, join(target, pkg),
+      [{ tsconfig: "tsconfig.json", prefix: "." }], manifest)
     // verify now proves test identity against real pinned jj trees as well.
     writeFileSync(join(target, ".gitignore"), "node_modules/\n")
     await must("jj git init && jj config set --repo user.name test && jj config set --repo user.email test@localhost", { cwd: target })

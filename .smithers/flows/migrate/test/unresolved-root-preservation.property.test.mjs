@@ -5,7 +5,7 @@ import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
-import { compareDeclarations } from "../lib/declarations.mjs"
+import { compareDeclarations, recordDeclarationSurface } from "../lib/declarations.mjs"
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const fc = require("fast-check")
 const ts = require("typescript")
@@ -58,17 +58,28 @@ function check(input) {
     assert.equal(changed.identical, false, "matching unresolved roots must not hide a changed native export")
     assert.deepEqual(changed.added, [input.stem + ".d.ts"])
     assert.deepEqual(changed.addedPrivate, [])
+    assert.equal(changed.comparisonComplete,false)
+    assert.deepEqual(changed.changed,[])
+    // Restore actual publication evidence, then prove the resolver-selected
+    // shadow changes the API without changing the old declaration text.
+    for(const dir of [before,after]){
+      writeFileSync(join(dir,"package.json"),JSON.stringify({types:"./ambient.d.ts"}))
+      writeFileSync(join(dir,"tsconfig.json"),JSON.stringify({compilerOptions:{rootDir:"src",outDir:"dist",declaration:true},include:["src/**/*"]}))
+      mkdirSync(join(dir,"src",input.stem),{recursive:true})
+      writeFileSync(join(dir,"src",input.stem,"index.ts"),"export {};")
+      recordDeclarationSurface(ts,join(dir,"dist"),dir,[{tsconfig:"tsconfig.json",prefix:"."}])
+    }
+    const proven=compareDeclarations(ts,join(before,"dist"),join(after,"dist"))
+    assert.equal(proven.comparisonComplete,true,JSON.stringify(proven))
+    assert.equal(proven.identical,false,JSON.stringify(proven))
+    assert.ok(proven.nameDifferences.length,JSON.stringify(proven))
 
     // A genuinely private addition is admitted after complete root resolution,
     // never merely because both runs failed to resolve the same root.
     rmSync(join(after, "dist", input.stem + ".d.ts"))
     writeFileSync(join(after, "dist", "private.d.ts"), "export declare const privateValue: string;\n")
     assert.deepEqual(exportsOf(after, "ambient.d.ts"), [prefix + "original"])
-    for (const dir of [before, after]) {
-      writeFileSync(join(dir, "dist", "public-surface.json"), JSON.stringify({
-        roots: ["../ambient.d.ts"], reachable: [input.stem + "/index.d.ts"], unresolved: []
-      }))
-    }
+    for (const dir of [before,after]) recordDeclarationSurface(ts,join(dir,"dist"),dir,[{tsconfig:"tsconfig.json",prefix:"."}])
     const same = compareDeclarations(ts, join(before, "dist"), join(after, "dist"))
     assert.equal(same.identical, true)
     assert.deepEqual(same.addedPrivate, ["private.d.ts"])
