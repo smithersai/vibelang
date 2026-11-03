@@ -49,7 +49,7 @@ func effectChannelParentheses(_ *checker.Checker, file *ast.SourceFile, node *as
 		b.close++
 		at[start], at[end] = a, b
 	}
-	for _, part := range parser.VibeLangEffectChannelParts(node, node.Parent) {
+	for _, part := range parser.VibeLangEffectChannelParts(node, node.Parent, file.Text()) {
 		wrap(part)
 	}
 	if len(at) == 0 {

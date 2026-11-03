@@ -62,6 +62,8 @@ Unparenthesized combinations report `EK0301`. The quick fix and `vibelang --fix`
 
 After an assertion, `x as A!! < 3` leaves `R` omitted and continues with a comparison; ordinary operand checks still apply. Parenthesize a generic function requirement, such as `A!!(<T>() => T)`. A tuple still fills the requirement slot: `x as A!![0]` has `R = [0]`; write `(x as A!!)[0]` for a later element access.
 
+An Effect type operand is an ordinary TypeScript source type. An invalid operand such as `number!!(string?)` reports TypeScript's syntax error. The `EK0301` parenthesis repair applies to actual compound operands, including written function and constructor types.
+
 Hovers show contracts this way, and declaration files keep `Effect.Effect<A, E, R>` for TypeScript callers. `Effect.Effect<A, E, R>` is accepted anywhere a type is.
 
 ## Check selected channels

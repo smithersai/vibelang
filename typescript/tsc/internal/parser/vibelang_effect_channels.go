@@ -5,6 +5,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+	"strings"
 )
 
 // VibeLangEffectChannelMessage is shared by the syntax diagnostic and its fix.
@@ -12,7 +13,7 @@ const VibeLangEffectChannelMessage = "! beside a union, an intersection, a funct
 
 // VibeLangEffectChannelParts returns the written operands that need parentheses.
 // Retain the recovered legacy grouping so migration preserves each channel.
-func VibeLangEffectChannelParts(node, parent *ast.Node) []*ast.Node {
+func VibeLangEffectChannelParts(node, parent *ast.Node, source string) []*ast.Node {
 	if node == nil || !ast.IsTypeReferenceNode(node) {
 		return nil
 	}
@@ -27,8 +28,12 @@ func VibeLangEffectChannelParts(node, parent *ast.Node) []*ast.Node {
 	var parts []*ast.Node
 	for _, channel := range node.TypeArguments() {
 		switch channel.Kind {
-		case ast.KindUnionType, ast.KindIntersectionType, ast.KindConditionalType, ast.KindFunctionType, ast.KindConstructorType:
+		case ast.KindUnionType, ast.KindIntersectionType, ast.KindConditionalType:
 			parts = append(parts, channel)
+		case ast.KindFunctionType, ast.KindConstructorType:
+			if !vibeLangFunctionTypeIsMissingArrow(channel, source) {
+				parts = append(parts, channel)
+			}
 		}
 	}
 	// Conditional parts need grouping, but a function type's return is a Type.
@@ -38,13 +43,30 @@ func VibeLangEffectChannelParts(node, parent *ast.Node) []*ast.Node {
 	return parts
 }
 
+// A closed parameter list with no following arrow is parser recovery, as
+// in (string?), not a written function-type operand. Nested arrows and
+// comments do not supply that outer token. Keep the existing handling of
+// other malformed callables, including an unclosed parameter list.
+func vibeLangFunctionTypeIsMissingArrow(node *ast.Node, source string) bool {
+	parameters := node.ParameterList()
+	if parameters == nil || parameters.End() < 0 || parameters.End() > len(source) {
+		return false
+	}
+	at := scanner.SkipTrivia(source, parameters.End())
+	if at >= len(source) || source[at] != ')' {
+		return false
+	}
+	at = scanner.SkipTrivia(source, at+1)
+	return !strings.HasPrefix(source[at:], "=>")
+}
+
 // Run after source parsing, including top-level-await reparsing, so this syntax
 // rule applies with --noCheck and sees each operand's actual source parent.
 func (p *Parser) checkVibeLangEffectChannels(file *ast.SourceFile) {
 	seen := map[core.TextRange]bool{}
 	var visit func(*ast.Node, *ast.Node)
 	visit = func(node, parent *ast.Node) {
-		if len(VibeLangEffectChannelParts(node, parent)) != 0 {
+		if len(VibeLangEffectChannelParts(node, parent, file.Text())) != 0 {
 			span := core.NewTextRange(scanner.SkipTrivia(file.Text(), node.Pos()), node.End())
 			if !seen[span] {
 				file.SetDiagnostics(append(file.Diagnostics(), ast.NewExternalDiagnostic(file, span, "EK", diagnostics.CategoryError, 301, VibeLangEffectChannelMessage)))

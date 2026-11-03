@@ -571,6 +571,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Binding a computed property from an `unknown` match subject could report `TS7053`; the binding now has type `unknown`, while typed records and source-written accesses keep their checks.
 
+- An invalid Effect type operand such as `number!!(string?)` also offered an unrelated parenthesis repair; it now reports the ordinary syntax error.
 - A service with a written shape annotation gained an extra public `Shape` namespace in its declarations. It now keeps the written shape directly and exposes no implicit namespace outside its own body.
 - Formatting a generated subprocess helper could make migration setup treat it as hand-edited and retain unused loader imports. Setup now recognizes formatting changes while preserving edited code, types, comments and documentation for review.
 - Migration setup could add source-loader helpers to JavaScript CLI launches merely because later arguments were dynamic, introducing unnecessary install-time dependencies. Proven JavaScript entrypoints now keep their native launch; unknown and typed source entrypoints retain loader handling.
