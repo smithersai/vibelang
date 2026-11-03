@@ -172,7 +172,7 @@ In the `EK4834`, `EK4835` and `EK4836` rows, the call is the direct operand of b
 | Code | Trigger | Repair |
 | --- | --- | --- |
 | `EK4830` | A class written with `Data.TaggedError("Name")` | Use `error Name { … }` only when its tag and class behavior are preserved. |
-| `EK4831` | A class written with `Context.Service` | Use `service Name { … }`, preserving the key with `static readonly key`. |
+| `EK4831` | A class written with `Context.Service` | Use `service Name { … }`, preserving the key with `static readonly key`. A class the module exports, by `export` or an export list, becomes `service Name: Shape { … }` with its written shape, because the body form adds a public `Name.Shape` that its declaration output lacked. |
 | `EK4832` | A `const` holding `Schema.Struct({ … })` | Use `schema Name { … }` where the field mapping and associated type are preserved. In a declaration-emitting project, preserve an own type written as `Schema.Schema.Type<typeof Name>`, private or exported, because a `schema` declaration prints `typeof Name.Type`. |
 | `EK4833` | A written `Effect.Effect<A, E, R>` type, except an interface's `extends` element, which `A!E!R` cannot spell | Use the equivalent `A!E!R` spelling, preserving `never` slots and required parentheses. |
 | `EK4834` | `Effect.succeed(v)` or `Effect.fail(e)` as the direct operand of bare `try` in effect code | Use the value `v` or `throw e`. |

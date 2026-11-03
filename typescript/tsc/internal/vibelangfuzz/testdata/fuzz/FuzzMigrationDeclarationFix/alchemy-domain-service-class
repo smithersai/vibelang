@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport * as Context from \"effect/Context\"\n/** The flow work belongs to. */\nexport class Correlation extends Context.Service<Correlation, { readonly id: string }>()(\n  \"alchemy/Domain/Correlation\",\n) {}\n")

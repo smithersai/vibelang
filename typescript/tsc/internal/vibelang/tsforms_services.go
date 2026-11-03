@@ -29,7 +29,17 @@ import (
 // whose shape is a named type draws the warning
 // without a fix: the declaration needs the members written out. A shape that
 // is not an object type, such as Context.Service<Port, number>, draws
-// nothing. D281's service Name: Type writes both, once the parser accepts it.
+// nothing.
+//
+// A module export keeps its declaration output, which chapter 7 requires of
+// every quick fix: the body form above declares a public Users.Shape
+// namespace that the class never had (005-services, two types), so an
+// exported class, by its modifier or an export list, becomes the written
+// whole-shape form, which passes its shape to Context.Service as written and
+// adds no helper or namespace (VIP-9, amended):
+//
+//	export class Users extends Context.Service<Users, { readonly find: (id: string) => Effect.Effect<User> }>()("app/Users") {}
+//	export service Users: { readonly find: (id: string) => Effect.Effect<User> } { static readonly key = "app/Users" }
 
 func init() {
 	tsFormRules[EK4831.Code] = &tsFormRule{
@@ -130,12 +140,18 @@ func serviceClassRewrite(c *checker.Checker, file *ast.SourceFile, class *ast.No
 	if statics {
 		return &formRewrite{why: "No quick fix: move its static members into the declaration." + keyNote}
 	}
-	body, why := serviceBodyText(c, file, shape)
-	if why != "" {
-		return &formRewrite{why: "No quick fix: " + why + "." + keyNote}
-	}
-	if keyText != "" {
-		body = withServiceKey(body, keyText)
+	whole := isModuleExport(c, file, class)
+	var body string
+	if whole {
+		body = sourceText(file, shape)
+	} else {
+		var why string
+		if body, why = serviceBodyText(c, file, shape); why != "" {
+			return &formRewrite{why: "No quick fix: " + why + "." + keyNote}
+		}
+		if keyText != "" {
+			body = withServiceKey(body, keyText)
+		}
 	}
 	text := file.Text()
 	start := nodeStart(file, class)
@@ -152,12 +168,37 @@ func serviceClassRewrite(c *checker.Checker, file *ast.SourceFile, class *ast.No
 	if len(shapeIndent) > len(classIndent) && strings.HasPrefix(shapeIndent, classIndent) {
 		body = dedentText(body, len(shapeIndent)-len(classIndent))
 	}
-	declaration := "service " + name + " " + body
+	declaration, short := "service "+name+" "+body, "service "+name+" { … }"
+	if whole {
+		keyBody := "{}"
+		if keyText != "" {
+			keyBody = "{ static readonly key = " + keyText + " }"
+		}
+		declaration, short = "service "+name+": "+body+" "+keyBody, "service "+name+": { … } "+keyBody
+	}
 	rewrite := withImportRemovals(c, file, &formRewrite{
 		edits:       []sourceEdit{{start, class.End(), declaration}},
-		description: shortText(declaration, "service "+name+" { … }"),
+		description: shortText(declaration, short),
 	})
 	return rewrite
+}
+
+// isModuleExport reports whether class is an export of its module, by an
+// export modifier or an export list.
+func isModuleExport(c *checker.Checker, file *ast.SourceFile, class *ast.Node) bool {
+	if ast.HasSyntacticModifier(class, ast.ModifierFlagsExport) {
+		return true
+	}
+	symbol, module := c.GetSymbolOfDeclaration(class), file.AsNode().Symbol()
+	if symbol == nil || module == nil {
+		return false
+	}
+	for _, export := range c.GetExportsOfModule(module) {
+		if c.SkipAlias(export) == symbol {
+			return true
+		}
+	}
+	return false
 }
 
 // withServiceKey returns body, a service declaration's body, with

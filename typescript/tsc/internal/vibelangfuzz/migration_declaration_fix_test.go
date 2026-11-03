@@ -26,6 +26,12 @@ func migrationDeclarationWitnesses() map[string]string {
 		"alchemy-metric-module":     "import * as Metric from \"effect/Metric\"\nexport interface Tracked<M extends Metric.Metric<number, any>> { readonly metric: M }\n",
 		"opencode-type-modifier":    "import type { HttpClientResponse } from \"effect/http\"\nexport interface Options { readonly response: HttpClientResponse.HttpClientResponse }\n",
 		"foldkit-type-only":         "import type { Duration, Scope } from \"effect\"\nexport interface Options { readonly duration: Duration.Duration; readonly scope: Scope.Scope }\n",
+		// EK4831 on an exported Context.Service class: alchemy's Domain
+		// Correlation and Platform, and t3code's server services, which an
+		// export list exports.
+		"alchemy-domain-service-class":       "import * as Context from \"effect/Context\"\n/** The flow work belongs to. */\nexport class Correlation extends Context.Service<Correlation, { readonly id: string }>()(\n  \"alchemy/Domain/Correlation\",\n) {}\n",
+		"alchemy-domain-service-class-lines": "import * as Context from \"effect/Context\"\nimport * as Effect from \"effect/Effect\"\nexport interface Kit { readonly name: string }\nexport class Platform extends Context.Service<\n  Platform,\n  {\n    readonly aggregate: (name: string, kit: Kit) => Effect.Effect<number>\n    readonly view: (name: string) => Effect.Effect<string>\n  }\n>()(\"alchemy/Domain/Platform\") {}\n",
+		"t3code-server-service-export-list":  "import * as Context from \"effect/Context\"\nimport * as Effect from \"effect/Effect\"\nclass WorkspacePaths extends Context.Service<WorkspacePaths, { readonly root: string; resolve(path: string): Effect.Effect<string> }>()(\"t3/WorkspacePaths\") {}\nexport { WorkspacePaths }\n",
 	}
 }
 
@@ -55,6 +61,30 @@ func migrationDeclarationVariants() []string {
 					sources = append(sources, prefix+body)
 				}
 			}
+		}
+	}
+	return sources
+}
+
+// EK4831 variants: every way a module exports a Context.Service class, by
+// every member kind its written shape may hold. Chapter 7 holds each fix to
+// the class's declaration output, whichever service form it writes.
+func migrationServiceClassVariants() []string {
+	var sources []string
+	for _, export := range []struct{ modifier, list string }{
+		{"export ", ""},
+		{"", "export { Port }\n"},
+		{"", "export { Port as Gate }\n"},
+		{"", "export type { Port }\n"},
+	} {
+		for _, shape := range []string{
+			"{ readonly value: string }",
+			"{ value: number; readonly label: string }",
+			"{ find(id: string): Effect.Effect<number> }",
+			"{\n    readonly read: (id: string) => Effect.Effect<string>\n    count: number\n  }",
+		} {
+			sources = append(sources, "import * as Context from \"effect/Context\"\nimport * as Effect from \"effect/Effect\"\n/** A port. */\n"+
+				export.modifier+"class Port extends Context.Service<Port, "+shape+">()(\"app/Port\") {}\n"+export.list)
 		}
 	}
 	return sources
@@ -159,9 +189,14 @@ func FuzzMigrationDeclarationFix(f *testing.F) {
 	startShortBudget(f)
 	variants := migrationDeclarationVariants()
 	if testing.Short() && !toolsFuzzing() {
-		// Corpus files retain all four original witnesses. Four additional
-		// combinations bound short-run cost; campaigns explore all 24.
+		// Corpus files retain every witness. Four additional
+		// combinations, and three of the 16 service-class ones, bound short-run
+		// cost; campaigns explore all of them.
 		variants = []string{variants[1], variants[5], variants[10], variants[21]}
+		services := migrationServiceClassVariants()
+		variants = append(variants, services[2], services[7], services[13])
+	} else {
+		variants = append(variants, migrationServiceClassVariants()...)
 	}
 	for _, source := range variants {
 		f.Add(Archive(map[string]string{"main.vibe": source}))

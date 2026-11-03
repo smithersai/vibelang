@@ -1,7 +1,7 @@
 // expect-result: {"name":"Ada","region":"eu","size":3,"named":"named","port":8080}
 // A Context.Service class draws EK4831 (D285). Its quick fix writes a service
-// declaration, keeping the key as static readonly key (D501), when the
-// shape's members are written in place; a named shape keeps the warning
+// declaration with the key (D501) and, for an export, its shape as written,
+// when the shape's members are written in place; a named shape keeps the warning
 // without a fix, and a shape that is not an object type has no service form
 // and draws nothing. tsforms-services-fixed is what vibelang --fix writes.
 import { Context } from "effect"
