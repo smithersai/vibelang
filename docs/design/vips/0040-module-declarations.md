@@ -54,11 +54,14 @@ export function readText(path: string): string { /* as above */ }
 // config.ts
 import { Data, Effect } from "effect"
 import { port, readText } from "./parse.ts"
-export class BadPort extends Data.TaggedError("BadPort")<{ readonly raw: string }> {}
-export const loadPort = (raw: string) =>
-  Effect.try({ try: () => port(raw), catch: () => new BadPort({ raw }) })
+class BadPort extends Data.TaggedError("BadPort")<{ readonly raw: string }> {}
+export function loadPort(raw: string) {
+  return Effect.gen(function* () { return yield* Effect.try({ try: () => port(raw), catch: () => new BadPort({ raw }) }) })
+}
 export function label(raw: string): string { return `port ${port(raw)}` }  // compiles; may throw
 ```
+
+*Corrected 2026-11-03: the counterpart keeps `loadPort` a function declaration returning `Effect.gen`, and `BadPort` unexported, as the source writes them: VIP-1 puts `effect` "exactly where TypeScript allows `async`", and [Functions](../src/001-functions.md#meaning) says "A declaration stays a hoisted function declaration".*
 
 The rule that decides every detail below:
 

@@ -530,7 +530,7 @@ export function port(raw: string): number { /* as above */ }
 // config.ts
 import { Effect } from "effect"
 import { port } from "./parse.ts"
-export const loadPort = (raw: string) => Effect.gen(function* () { return yield* Effect.try(() => port(raw)) })
+export function loadPort(raw: string) { return Effect.gen(function* () { return yield* Effect.try(() => port(raw)) }) }
 ```
 
 | Rule | Diagnostic | Quick fix |
