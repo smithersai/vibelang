@@ -1,0 +1,12 @@
+{
+  "source": "foldkit-161: packages/foldkit sidecars import neighbours as ./calendarDate.vibe; minimized by fk-core-foldkit (scratch-fk-core-foldkit/repro-flow-earlier-api)",
+  "sidecars": {
+    "src/a.d.vibe.ts": "import { type B } from \"./b.vibe\";\nexport declare const a: B;\n",
+    "src/b.d.vibe.ts": "export type B = number;\n"
+  },
+  "emitted": {
+    "a.d.ts": "import { type B } from \"./b.js\";\nexport declare const a: B;\n",
+    "b.d.ts": "export type B = number;\n"
+  },
+  "changed": "import { type B } from \"./b.js\";\nexport declare const a: B | string;\n"
+}

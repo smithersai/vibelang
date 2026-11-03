@@ -6,6 +6,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 
 ## 0.0.11 (unreleased)
+- The migrate flow's setup stopped with `TS2307: Cannot find module './calendarDate.vibe'` in a package whose committed declaration sidecars import a migrated neighbour as `./x.vibe`, such as `packages/foldkit` in Foldkit: the check of earlier runs' declarations copied the sidecars into a tree that holds only `x.d.ts`. It now spells those imports as the emitted declarations do, `./x.js`, and compares the APIs.
 - In a package where the migrate flow's setup turned on `vibe.sidecarDir`, `verify` and `record` refused every batch: the batch's own sidecar and a rewritten importer's counted as outside its scope, and a `*.fixture.d.vibe.ts` that setup moved counted as a renamed fixture. Those are now compiler output wherever they live; a sidecar with no `.vibe` source stays protected.
 - Oxlint's native rules now run on `.vibe` and `.vibex` files. Setup's lint scripts run stock Oxlint on the projected TypeScript through `.vibelang/oxlint.mjs --vibe-native`, with the repository's overrides and `ignorePatterns`, reports mapped back to source lines and reports on generated code dropped. `vibelang --ts-projection <file>` prints the projection and its span map, and `vibelang/oxlint` is the pass. Rerun setup to get it; existing findings a `.ts` file would get now appear on `.vibe` files.
 Update `vibelang`, `vibelang-runtime` and your bundler plugin together to

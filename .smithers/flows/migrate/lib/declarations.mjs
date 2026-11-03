@@ -216,6 +216,25 @@ export function listDeclarations(dir) {
  * the baseline every batch passes against (foldkit-11: mount/index lost its
  * readonly members).
  */
+/**
+ * A committed sidecar sits beside its source and names a migrated neighbour by
+ * its source name, `./b.vibe`, which resolves to `b.d.vibe.ts`. The emitted tree
+ * the comparison copies it into holds `b.d.ts`, so stock TypeScript reported
+ * TS2307 and the earlier-API comparison gave up for the whole package
+ * (foldkit-161). Spell each relative `.vibe` or `.vibex` specifier as VibeLang
+ * emits it, `./b.js` (D298); both name the same module.
+ */
+function emittedSpelling(ts, text) {
+  const edits = ts.preProcessFile(text, true, true).importedFiles
+    .filter(f => /^\.\.?\//.test(f.fileName) && /\.vibex?$/.test(f.fileName))
+  // pos is the opening quote; the specifier follows it.
+  for (const f of edits.sort((a, b) => b.pos - a.pos)) {
+    const start = f.pos + 1, end = start + f.fileName.length
+    if (text.slice(start, end) === f.fileName) text = text.slice(0, start) + f.fileName.replace(/\.vibex?$/, ".js") + text.slice(end)
+  }
+  return text
+}
+
 export function sidecarChanges(ts, sidecars, outDir) {
   const emitted = listDeclarations(outDir), changed = [], missing = []
   const pairs = []
@@ -235,7 +254,7 @@ export function sidecarChanges(ts, sidecars, outDir) {
       mkdirSync(join(before, file, ".."), { recursive: true })
       writeFileSync(join(before, file), readFileSync(join(outDir, file)))
     }
-    for (const pair of pairs) writeFileSync(join(before, pair.file), pair.text)
+    for (const pair of pairs) writeFileSync(join(before, pair.file), emittedSpelling(ts, pair.text))
     const metadata = join(outDir, "public-surface.json")
     const surface = existsSync(metadata) ? JSON.parse(readFileSync(metadata,"utf8")) : null
     left = apiProjection(ts,before,surface,emitted)
