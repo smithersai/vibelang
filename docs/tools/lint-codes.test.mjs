@@ -497,6 +497,24 @@ test("the EK38 namespace accommodates the complete upstream registry", () => {
 // Chapter 007 / lint registry effecttsgo/strictEffectProvide: docs/design/src/007-tooling.md#7213bda6d258d22e
 // Chapter 007 / lint registry effecttsgo/syncToSucceed: docs/design/src/007-tooling.md#047b44e7bd83426f
 // Chapter 007 / lint registry effecttsgo/timeoutCatchTagToTimeoutOrElse: docs/design/src/007-tooling.md#7d7974ac2450ce93
+// Chapter 007 / lint registry effecttsgo/tryCatchInEffectGen: docs/design/src/007-tooling.md#b1d1ad1cd85ade23
+// Chapter 007 / lint registry effecttsgo/unknownInEffectCatch: docs/design/src/007-tooling.md#d01da7d5ea451c92
+// Chapter 007 / lint registry effecttsgo/unnecessaryArrowBlock: docs/design/src/007-tooling.md#7c984e58cfb625df
+// Chapter 007 / lint registry effecttsgo/unnecessaryEffectGen: docs/design/src/007-tooling.md#a635aca526a1adfd
+// Chapter 007 / lint registry effecttsgo/unnecessaryFailYieldableError: docs/design/src/007-tooling.md#45a35f66995f6e6f
+// Chapter 007 / lint registry effecttsgo/unnecessaryPipe: docs/design/src/007-tooling.md#8c706a545743ff1f
+// Chapter 007 / lint registry effecttsgo/unnecessaryPipeChain: docs/design/src/007-tooling.md#0aeece7beadcd87d
+// Chapter 007 / lint registry effecttsgo/unnecessaryTypeofType: docs/design/src/007-tooling.md#8f392f2e5ad901b1
+// Chapter 007 / lint registry effecttsgo/unsafeEffectTypeAssertion: docs/design/src/007-tooling.md#0835934b995a15bf
+// Chapter 007 / lint registry effecttsgo/unstableApiUsage: docs/design/src/007-tooling.md#783d2355bf1b9319
+// Chapter 007 / pinned lint inventory and stable allocation: docs/design/src/007-tooling.md#8846ecc0fcfb9e63
+// Chapter 007 / pinned lint inventory and stable allocation: docs/design/src/007-tooling.md#ec2a3c8293e8569b
+// Chapter 007 / pinned lint inventory and stable allocation: docs/design/src/007-tooling.md#3889df02b4d9a8f6
+// Chapter 007 / pinned lint inventory and stable allocation: docs/design/src/007-tooling.md#a768fa449dda5023
+// Chapter 007 / pinned lint inventory and stable allocation: docs/design/src/007-tooling.md#8100f5821e92c4cc
+// Chapter 007 / pinned lint inventory and stable allocation: docs/design/src/007-tooling.md#82359d28919234b9
+// Chapter 007 / pinned lint inventory and stable allocation: docs/design/src/007-tooling.md#436dbe155eda6f43
+// Chapter 007 / pinned lint inventory and stable allocation: docs/design/src/007-tooling.md#146e6c2b73d4f926
 test("both tables expose every inventory code as an Appendix B diagnostic row", () => {
   const { inventory } = generateLintCodes()
   for (const [path, output] of lintOutputs()) {
