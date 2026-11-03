@@ -1,0 +1,2 @@
+// expect: EK0707
+export function f(x:unknown){return match(x){when {__proto__?}:1;default:0;}}

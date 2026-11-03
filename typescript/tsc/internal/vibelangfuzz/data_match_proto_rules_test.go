@@ -31,5 +31,20 @@ func dataMatchProtoRules() []dataRule {
 			rules = append(rules, dataRule{fmt.Sprintf("proto-property-control-%d-%d", i, j), "004-match.md", quote, source, "", "impl-hunt-data"})
 		}
 	}
+
+	for i, key := range []string{"__proto__", `"__proto__"`, "'__proto__'", `__pr\u006fto__`, `"__pr\u006fto__"`} {
+		for j, source := range []string{
+			"function f(x:unknown){return match(x){when {" + key + "?}:1;default:0;}}",
+			"function f(x:unknown){return x is {" + key + "?}}",
+		} {
+			rules = append(rules, dataRule{fmt.Sprintf("proto-property-optional-%d-%d", i, j), "004-match.md", quote, source, "only:EK0707", "impl-hunt-data"})
+		}
+	}
+	for i, expression := range []string{
+		`match(x){when {__proto__, "__proto__"}:1;default:0;}`,
+		`x is {__proto__, "__proto__"}`,
+	} {
+		rules = append(rules, dataRule{fmt.Sprintf("proto-property-two-errors-%d", i), "004-match.md", quote, "function f(x:unknown){return " + expression + "}", "only:EK0707,EK0707", "impl-hunt-data"})
+	}
 	return rules
 }

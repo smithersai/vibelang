@@ -417,7 +417,7 @@ An extractor pattern whose argument count can never match what its matcher extra
 
 Coverage restrictions do not change TypeScript narrowing while a pattern runs or inside its arm. Nested `or` alternatives keep their ordinary flow types even when an enclosing `and` or `not` contributes no exhaustiveness coverage.
 
-An object pattern rejects a literal `__proto__` key, including quoted and escaped spellings, with `EK0707`. Write `{ ["__proto__"]: let value }` for that property. Computed keys, `{ let __proto__ }` binding shorthand and ordinary object literals retain their meanings.
+An object pattern rejects a literal `__proto__` key, including quoted and escaped spellings, with one `EK0707` for each invalid key. Write `{ ["__proto__"]: let value }` for that property. Computed keys, `{ let __proto__ }` binding shorthand and ordinary object literals retain their meanings.
 
 Primitive constructor patterns such as `when Number:` and `when Number(let n):` do not prove exhaustiveness for a finite literal union. Add `default`, literal arms or a bare binding arm. Ordinary `is`, arm and default-flow narrowing stay the same (VIP-7, decided detail78).
 

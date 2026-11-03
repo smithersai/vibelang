@@ -188,6 +188,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A generated grammar census was mistaken for hundreds of new language rules by the evidence gate. Valid census metadata is now recognized without exempting adjacent or handwritten rules.
 
+- A literal `__proto__` key in a `match` or `is` pattern could report `EK0707` twice; it now reports one error per invalid key.
+
 - A `match` could miss cases after a guard narrowed a broad subject to a finite type. `EK4701` now checks the type at the match expression, including narrowed properties and assigned values.
 
 - Regular-expression and relational patterns, such as `when /^a/:` and `when >= 10 and < 20:`, reported `EK4704` or a syntax error; they now run as the pinned proposal says, including stored `RegExp` values, and a regular expression with an argument list extracts its match.
