@@ -6,9 +6,11 @@ import { dirname, join } from "node:path"
 import { test } from "node:test"
 import { makeConfig, paths, setup, verify } from "../lib/steps.mjs"
 import { commitId } from "../lib/jj.mjs"
+import { packRepository } from "../lib/pack-policy.mjs"
 import { must, writeJson } from "../lib/util.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
+const packCorpus = JSON.parse(readFileSync(new URL("./corpus/t3code-verify-pack-prerequisites.json", import.meta.url), "utf8"))
 const corpus = JSON.parse(readFileSync(new URL("./corpus/alchemy-stock-oracle-builders.json", import.meta.url), "utf8"))
 
 async function fixture(action, { identical = false, stock = true, stockExit = 0, privatePackage = false, mixed = false, custom = false, includePrivate = false } = {}) {
@@ -37,7 +39,7 @@ async function fixture(action, { identical = false, stock = true, stockExit = 0,
     chmodSync(join(target, "node_modules/.bin/" + name), 0o755)
   }
   try {
-    put("package.json", JSON.stringify({ name: "alchemy-stock-oracle-corpus", scripts: { build: "node build.mjs", types: "tsrs --emitDeclarationOnly" }, types: "./lib/Ok.d.ts", ...(privatePackage ? { private: true } : {}) }))
+    put("package.json", JSON.stringify({ ...packCorpus.publicManifest, scripts: { build: "node build.mjs", types: "tsrs --emitDeclarationOnly" }, types: "./lib/Ok.d.ts", ...(privatePackage ? { private: true } : {}) }))
     // Product preparation must succeed independently of the oracle under test.
     // Missing/failed stock compilers should reach the declaration gate.
     put("build.mjs", 'import {writeFileSync} from "node:fs"; writeFileSync("build-ready.txt", "ready")\n')
@@ -53,6 +55,7 @@ async function fixture(action, { identical = false, stock = true, stockExit = 0,
     writeJson(p.config, makeConfig({ target, test: "true", vibelangVersion: "0.0.11", wire: false, includePrivateDeclarations: includePrivate, ...(custom ? { stockCompiler: "node_modules/.bin/custom-tsc" } : {}) }))
     writeJson(p.upgrade, { jj: { initialized: true, commit: await commitId(target) }, effect: { to: "4.1.0" }, changed: [], tests: {} })
     writeJson(join(p.baseline, "upgraded-tests.json"), { code: 0, tests: {} })
+    writeJson(join(p.baseline, "upstream-packs.json"), await packRepository({ target }, join(run, "upstream-packs")))
     const baseline = await setup({ run })
     assert.equal(readFileSync(join(target, "build-ready.txt"), "utf8"), "ready")
     const module = includePrivate ? "src/Ok" : "src/Pipes/builders"
@@ -133,6 +136,7 @@ test("t3code: opted-in private packages record a stock API oracle; changed or un
       const result = await verify({ run, batch: "01" })
       assert.equal(result.checks.declarationOracle, options.identical === true && options.stock !== false && !options.stockExit)
       assert.equal(result.checks.declarations, true, "candidate matches native baseline; stock identity is independently required")
+      assert.equal(result.checks.packs, true, "the declaration oracle is tested with a valid upstream pack receipt")
     }, { ...options, privatePackage: true, includePrivate: true })
   }), { seed: 31103, numRuns: 6, examples: t3code.variants.map(x => [x]) })
 })

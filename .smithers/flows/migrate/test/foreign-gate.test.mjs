@@ -1,16 +1,18 @@
 import assert from "node:assert/strict"
-import { mkdirSync, mkdtempSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { rewriteScripts } from "../lib/codemod.mjs"
+import { packRepository } from "../lib/pack-policy.mjs"
 import { makeConfig, paths, record, verify } from "../lib/steps.mjs"
 import { must, quote, slug, writeJson } from "../lib/util.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
+const packCorpus = JSON.parse(readFileSync(new URL("./corpus/t3code-verify-pack-prerequisites.json", import.meta.url), "utf8"))
 
-async function fixture(action, { before = false, during = false, packageScripts = false } = {}) {
+async function fixture(action, { before = false, during = false, packageScripts = false, packBaseline = true } = {}) {
   const root = mkdtempSync(join(tmpdir(), "alchemy-foreign-gate-"))
   const target = join(root, "repo"), run = join(root, "run")
   try {
@@ -28,6 +30,7 @@ async function fixture(action, { before = false, during = false, packageScripts 
     await must("jj commit -m fixture", { cwd: target })
     renameSync(join(target, "src/main.ts"), join(target, "src/main.vibe"))
     const p = paths(run)
+    if (packBaseline) writeJson(join(p.baseline, "upstream-packs.json"), await packRepository({ target }, join(run, "upstream-packs")))
     if (packageScripts) {
       const renames = [{ from: "src/main.ts", to: "src/main.vibe" }]
       writeJson(p.codemod("01"), { renames, packageScriptEdits: rewriteScripts(target, renames) })
@@ -92,4 +95,14 @@ test("t3code package scripts pass verify, but extra manifest edits fail verify a
     assert.deepEqual(bad.foreign.map(change => change.path), ["package.json"])
     await assert.rejects(record({ run, batch: "01", force: "negative control" }), /outside.*scope/)
   }, { packageScripts: true })
+})
+
+test("verify still rejects a fixture with no upstream pack receipt", async () => {
+  await fixture(async ({ run }) => {
+    const result = await verify({ run, batch: "01" })
+    assert.equal(result.checks.foreignFiles, true)
+    assert.equal(result.checks.packs, false)
+    assert.equal(result.ok, false)
+    assert.ok(result.packs.reason.includes(packCorpus.missingBaselineReason))
+  }, { packBaseline: false })
 })

@@ -1,0 +1,12 @@
+{
+  "key": "migrate-test-fixtures:missing-upstream-pack-baseline",
+  "publicManifest": {
+    "name": "alchemy-stock-oracle-corpus",
+    "version": "1.0.0",
+    "files": [
+      "src"
+    ]
+  },
+  "missingBaselineReason": "missing upstream pack baseline",
+  "privatePackage": true
+}

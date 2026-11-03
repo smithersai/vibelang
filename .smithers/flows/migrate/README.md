@@ -814,3 +814,10 @@ Setup keeps declaration sidecars out of public packages: it appends `!**/*.d.vib
 After the upstream build, `upgrade-effect` saves every owned public package's actual tarball file list in `baseline/upstream-packs.json`. `verify` packs again after the candidate build, including publication lifecycle scripts, and records `packs` and `checks.packs`. A sidecar in any tarball fails the gate. Missing or extra files also fail, except an explicitly migrated `.vibe` or `.vibex` source replacing its published `.ts` or `.tsx` twin. Runtime chunks, declaration files and assets must all remain present. One-pass measurements collect the pack receipts in the same job as the builds. An older run without a pack baseline must restart `upgrade-effect` in a new run directory.
 
 Published `types` targets must name the build's ordinary `.d.ts` files, as the TypeScript package does. A source-side `types` target that requires a sidecar is a consumer exception to repair in that package's publication mapping; excluding sidecars does not make that target valid. `vibe.sidecarDir` can protect source walks and export globs inside the repository, but a hidden directory alone is no guarantee that a pack excludes sidecars.
+
+Integration fixtures that call `setup` or `verify` directly must retain the real
+`packRepository` receipt in `baseline/upstream-packs.json` before conversion,
+just as `upgrade-effect` does. Public fixture manifests need a valid `name`
+and `version`; private fixtures still need the empty public-package receipt.
+Tests must keep a missing-receipt negative control rather than bypassing
+`checks.packs`.
