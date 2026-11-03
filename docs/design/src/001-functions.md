@@ -609,10 +609,8 @@ export interface Store { find(id: string): string }
 import { Effect, Stream } from "effect"
 export declare function load(id: string): Effect.Effect<User, NotFound, Users>   // effectful: no @throws
 export declare function users(ids: string[]): Stream.Stream<string>              // effectful: no @throws
-export declare const add: {
-  /** @throws {never} */
-  (a: number, b: number): number
-}
+/** @throws {never} */
+export declare const add: (a: number, b: number) => number
 /** @throws {never} */
 export declare function get(q: string): Promise<Row[]>
 export declare class Id {
