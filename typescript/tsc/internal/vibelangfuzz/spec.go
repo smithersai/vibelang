@@ -89,10 +89,10 @@ var SpecListedCodes = sync.OnceValue(func() []int32 {
 // vipCodes are the codes the accepted VIPs (docs/design/vips) add, which
 // override Chapter 28 until it is rewritten from them: VIP-5's EK0502,
 // EK4616, and EK0103, VIP-39's EK4618, and VIP-18's EK1802 for a
-// removed await operation. VIP-20 adds EK2007, EK0201 and EK0202.
+// removed await operation. VIP-20 adds EK0201 and EK0202.
 // Appendix B now lists the earlier migration warnings.
 var (
-	vipCodes = []int32{502, 4616, 103, 2801, 4618, 1802, 2007, 201, 202}
+	vipCodes = []int32{502, 4616, 103, 2801, 4618, 1802, 201, 202}
 )
 
 // SpecHasCode reports whether the current registry, its transitional
