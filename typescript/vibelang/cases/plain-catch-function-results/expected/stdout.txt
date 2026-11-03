@@ -1,0 +1,1 @@
+plain function catch results match Effect.succeed

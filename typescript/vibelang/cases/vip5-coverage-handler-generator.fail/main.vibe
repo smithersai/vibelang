@@ -1,3 +1,7 @@
-// expect: EK0509
+// expect: EK0509 EK0509 EK0509 EK0509 TS2304
 // VIP-5: handler-generator rejection; expected contract comes from the specification.
 effect function bad() { return Effect.fail("x") catch function* () { yield 7 } }
+
+effect function effectGenerator() { return Effect.fail("x") catch effect function* () { yield 7 } }
+effect function groupedGenerator() { return Effect.fail("x") catch (function* () { yield 7 }) }
+effect function sourceError() { return Effect.fail("x") catch function* () { yield missingHandlerValue } }

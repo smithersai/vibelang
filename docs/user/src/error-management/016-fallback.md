@@ -49,9 +49,11 @@ Saved issue
 
 `x catch effect () => …` runs the left-hand Effect and calls its handler only after an expected failure. The handler is always a function literal: an effect handler can name the error and run Effects before returning its value, and a plain arrow returns a success value, where a `throw` is a defect. A value, a name or an `effect { … }` block after `catch` is a syntax error.
 
+Plain function expressions are handlers too: `latestTitle() catch function (error) { return error._tag }`. Their immediate result stays a success value, including a `Promise`, thenable or Effect; it is not awaited or run. Parentheses keep the same handler kind. A parameter annotation is an ordinary TypeScript type; it does not filter failures. A statically known `Promise` or thenable result still receives `EK0507`; run it through `promise` or `tryPromise` in an effect handler.
+
 Parentheses keep an arrow as the handler: `latestTitle() catch ((error) => error._tag)` receives the failure, just as an unparenthesized arrow does. Its parameter keeps the failure type, and its body still runs only after a failure.
 
-An `async` or generator function is not a catch handler. Its quick fix removes `async` or `*` only when the result is a valid plain handler. Native `await`, `for await`, `await using` and `yield`, returned `Promise` values, and incompatible written return types need an explicit rewrite; the diagnostic explains why no automatic repair is offered.
+An `async` or generator function is not a catch handler. It receives `EK0509` without synthetic callback-call type errors; independent TypeScript errors inside the expression retain their `TS` codes. Its quick fix removes `async` or `*` only when the result is a valid plain handler. Native `await`, `for await`, `await using` and `yield`, returned `Promise` values, and incompatible written return types need an explicit rewrite; the diagnostic explains why no automatic repair is offered.
 
 `try Effect.catch(latestTitle(), () => cachedTitle())` also works, with the same rule as source catch: it leaves a cause with a defect alone and recovers an expected failure beside an interruption, dropping the interruption. When interruption must propagate intact, match on `exit(...)`. `Effect.catchTag`, `Effect.catchIf`, and `Effect.catchFilter` also select domain failures, under Effect's own recovery policy.
 

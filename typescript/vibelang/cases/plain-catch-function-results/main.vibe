@@ -1,0 +1,15 @@
+import { Effect } from "effect"
+export effect function sample() {
+  let calls = 0
+  let thenCalls = 0
+  const promised: any = Promise.resolve(7)
+  const lazy: any = { then(resolve: any) { thenCalls++; resolve(9) } }
+  const obj = { value: 3 }
+  const nested: any = Effect.succeed(5)
+  const a = Effect.fail(0) catch function () { calls++; return promised }
+  const b = Effect.fail(0) catch function named(e: number) { calls++; return lazy }
+  const c = Effect.fail(0) catch (function () { calls++; return obj })
+  const d = Effect.fail(0) catch function () { calls++; return nested }
+  const e = Effect.succeed(8) catch function () { calls++; return 99 }
+  return [a === promised, b === lazy, c === obj, d === nested, e, calls, thenCalls]
+}

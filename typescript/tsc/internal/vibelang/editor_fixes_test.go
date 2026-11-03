@@ -183,8 +183,11 @@ func TestEditorQuickFixSkipsMissingCatchType(t *testing.T) {
 					}
 				}
 			}
-			if !found {
-				t.Fatal("missing EK2112")
+			if !found && strings.Contains(source, "try {") {
+				t.Fatal("missing EK2112 on a legacy catch clause")
+			}
+			if found && !strings.Contains(source, "try {") {
+				t.Fatal("ordinary arrow parameter annotation received EK2112")
 			}
 		})
 	}

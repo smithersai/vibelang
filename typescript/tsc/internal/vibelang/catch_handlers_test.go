@@ -30,6 +30,8 @@ func TestCatchHandlerEK0509QuickFix(t *testing.T) {
 		{"async (e) => 7", "(e) => 7"},
 		{"async e => 7", "e => 7"},
 		{"async function () { return 7 }", "function () { return 7 }"},
+		{"async function (e) { return e.length }", "function (e) { return e.length }"},
+		{"function* (e) { return e.length }", "function (e) { return e.length }"},
 		{"function* () { return 7 }", "function () { return 7 }"},
 		{"class C {}", ""},
 	} {
@@ -38,9 +40,7 @@ func TestCatchHandlerEK0509QuickFix(t *testing.T) {
 			if test.want != "" {
 				want = prefix + test.want + " }\n"
 			}
-			// A function expression handler is valid but not yet admitted by the
-			// parser (catch-parenthesized-literal-parse), so its parameter is untyped.
-			checkCatchHandlerFix(t, prefix+test.written+" }\n", test.written, want, !strings.Contains(test.want, "function"))
+			checkCatchHandlerFix(t, prefix+test.written+" }\n", test.written, want, true)
 		})
 	}
 }

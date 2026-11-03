@@ -52,12 +52,24 @@ func (p *Parser) parseVibeLangCatchRest(left *ast.Expression, pos int) *ast.Expr
 	return left
 }
 
-// parseVibeLangCatchHandler parses the handler of `catch (e) => …`,
+// parseVibeLangCatchHandler parses function expressions and the handler of `catch (e) => …`,
 // `catch e => …`, `catch effect (e) => …` or `catch async (e) => …`,
 // parenthesized or not, or returns nil when what follows catch is a fallback,
 // which the checker reports as EK0509 unless it is a parenthesized function
 // literal or a function expression.
 func (p *Parser) parseVibeLangCatchHandler() *ast.Node {
+	if p.token == ast.KindFunctionKeyword {
+		if p.lookAhead(func(p *Parser) bool { p.nextToken(); return p.token == ast.KindAsteriskToken }) {
+			return nil // Invalid generators keep value recovery without a synthetic callback type error.
+		}
+		return p.parseFunctionExpression(false /*effect*/)
+	}
+	if p.isStartOfVibeLangEffectExpression() {
+		if p.lookAhead(func(p *Parser) bool { p.nextToken(); p.nextToken(); return p.token == ast.KindAsteriskToken }) {
+			return nil
+		}
+		return p.parseVibeLangEffectExpression()
+	}
 	if arrow := p.tryParseVibeLangEffectArrow(true /*allowReturnTypeInArrowFunction*/); arrow != nil {
 		return arrow // catch effect (e) => … (VIP-5)
 	}

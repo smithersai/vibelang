@@ -983,3 +983,5 @@ The unplugin sidecar-entry quotation guard reads VIP-27's authoritative
 compatibility-declaration amendment alongside Chapter 007's tooling rule.
 Its existing 80 seeded entry models retain source, alias, query and declaration
 lookalike checks; changing the citation does not change their filtering oracle.
+
+`FuzzCatchValueDiagnostics` compares invalid handlers with the same expressions outside `catch`: native syntax uses TypeScript, while Effect-only syntax uses a normal VibeLang value context. Keyed generator, async-function, Effect-generator and Effect-block inputs, with parentheses and comments, require one `EK0509` and preserve independent source errors without inventing callback-call diagnostics.
