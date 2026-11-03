@@ -860,3 +860,9 @@ The service-access migration matrix includes ordinary callable controls whose pa
 After the mapped schema library-binding fixes, retained namespace, function and escaped-name rules run without pending exemptions. Each `feature:` and `corpus:` marker is retired only after its own observed `XPASS`; all minimized inputs and strict value-only-shadow and scope-exit controls remain.
 
 The T3code/Foldkit 109 `FuzzEditor` neighborhood includes explicit namespace `Option.Option` payloads with 4, 8, 15, 16, 17, 32, and 64 fields. A named package declares Effect and disables implicit Effect modules. Admission guards require every source to compile and produce `EK4839` before the existing editor oracle applies code actions; setup failures cannot count as successful coverage. Each literal corpus retains the reported minimized field access and the shared safe-fix/type/declaration contract.
+
+After the mapped schema library-binding fixes, retained namespace, function and escaped-name rules run without pending exemptions. Each `feature:` and `corpus:` marker is retired only after its own observed `XPASS`; all minimized inputs and strict value-only-shadow and scope-exit controls remain.
+
+`FuzzServiceShorthandContexts` retains Smithers Egress catch-head shapes under the current VIP-10 denial: get the service, then call it. Sixteen keyed syntax/alias variants pair rejected static calls with admitted instance calls, covering direct `try`, catch operands, parentheses, and `Effect.option`. This static oracle does not restore the retired shortcut or assign runtime semantics to rejected source.
+
+The current-vibe raw matrix admits all eight dotted shortcut variants and rejects their computed-member twins. Eight exact rejection keys and paired corpus records remain pending under `migfix2-smithers`. Every explicit-service counterpart compiles; this is an admission gap under the denied shorthand, not a new runtime promise.

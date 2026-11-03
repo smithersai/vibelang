@@ -1,0 +1,16 @@
+FuzzServiceShorthandContexts reject:try-direct:0 compiler VIP-10: dotted static service shortcuts still compile despite denial, including catch heads and value aliases; lane migfix2-smithers
+FuzzServiceShorthandContexts corpus:smithers-egress-service-try-direct-0 compiler VIP-10: dotted static service shortcuts still compile despite denial, including catch heads and value aliases; lane migfix2-smithers
+FuzzServiceShorthandContexts reject:try-direct:2 compiler VIP-10: dotted static service shortcuts still compile despite denial, including catch heads and value aliases; lane migfix2-smithers
+FuzzServiceShorthandContexts corpus:smithers-egress-service-try-direct-2 compiler VIP-10: dotted static service shortcuts still compile despite denial, including catch heads and value aliases; lane migfix2-smithers
+FuzzServiceShorthandContexts reject:catch-head:0 compiler VIP-10: dotted static service shortcuts still compile despite denial, including catch heads and value aliases; lane migfix2-smithers
+FuzzServiceShorthandContexts corpus:smithers-egress-service-catch-head-0 compiler VIP-10: dotted static service shortcuts still compile despite denial, including catch heads and value aliases; lane migfix2-smithers
+FuzzServiceShorthandContexts reject:catch-head:2 compiler VIP-10: dotted static service shortcuts still compile despite denial, including catch heads and value aliases; lane migfix2-smithers
+FuzzServiceShorthandContexts corpus:smithers-egress-service-catch-head-2 compiler VIP-10: dotted static service shortcuts still compile despite denial, including catch heads and value aliases; lane migfix2-smithers
+FuzzServiceShorthandContexts reject:parenthesized-catch-head:0 compiler VIP-10: dotted static service shortcuts still compile despite denial, including catch heads and value aliases; lane migfix2-smithers
+FuzzServiceShorthandContexts corpus:smithers-egress-service-parenthesized-catch-head-0 compiler VIP-10: dotted static service shortcuts still compile despite denial, including catch heads and value aliases; lane migfix2-smithers
+FuzzServiceShorthandContexts reject:parenthesized-catch-head:2 compiler VIP-10: dotted static service shortcuts still compile despite denial, including catch heads and value aliases; lane migfix2-smithers
+FuzzServiceShorthandContexts corpus:smithers-egress-service-parenthesized-catch-head-2 compiler VIP-10: dotted static service shortcuts still compile despite denial, including catch heads and value aliases; lane migfix2-smithers
+FuzzServiceShorthandContexts reject:option-argument:0 compiler VIP-10: dotted static service shortcuts still compile despite denial, including catch heads and value aliases; lane migfix2-smithers
+FuzzServiceShorthandContexts corpus:smithers-egress-service-option-argument-0 compiler VIP-10: dotted static service shortcuts still compile despite denial, including catch heads and value aliases; lane migfix2-smithers
+FuzzServiceShorthandContexts reject:option-argument:2 compiler VIP-10: dotted static service shortcuts still compile despite denial, including catch heads and value aliases; lane migfix2-smithers
+FuzzServiceShorthandContexts corpus:smithers-egress-service-option-argument-2 compiler VIP-10: dotted static service shortcuts still compile despite denial, including catch heads and value aliases; lane migfix2-smithers
