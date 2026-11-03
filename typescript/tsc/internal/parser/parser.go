@@ -523,6 +523,9 @@ func (p *Parser) parseSourceFileWorker() *ast.SourceFile {
 	result.VibeLangSchemaGenerics = p.vibelangSchemaGenerics
 	result.VibeLangSchemaOptionals = p.vibelangSchemaOptionals
 	p.attachVibeLangSchemaGenericScopes(result)
+	for _, ref := range result.VibeLangSchemaOptionals {
+		ref.Exact.Parent = ref.Expression.Parent
+	}
 	collectExternalModuleReferences(result)
 	if ast.IsInJSFile(node) {
 		result.SetJSDiagnostics(attachFileToDiagnostics(p.jsDiagnostics, result))

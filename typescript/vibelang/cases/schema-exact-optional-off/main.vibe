@@ -1,0 +1,9 @@
+export schema S { mutable plain?: string; readonly frozen?: number; mutable loose?: string | undefined; mutable nested?: { mutable value?: boolean }; mutable converted?: Schema.NumberFromString; readonly broad?: Schema.Unknown; readonly anything?: Schema.Any }
+export schema error E { plain?: string; loose?: string | undefined }
+export schema T = [plain?: string, loose?: number | undefined]
+export schema U = readonly [string?, (number | undefined)?]
+export data D { Ready { plain?: string; loose?: string | undefined } }
+export type SDecoded = typeof S.Type
+export type SEncoded = typeof S.Encoded
+export type EEncoded = typeof E.Encoded
+export type TEncoded = typeof T.Encoded

@@ -2371,6 +2371,7 @@ type TokenCacheKey struct {
 // SchemaOptionalReference keeps the written type span of a mapped optional
 // field or tuple element for the explicit compatibility migration.
 type SchemaOptionalReference struct {
+	Exact           *Node
 	Expression      *Node
 	TypeRange       core.TextRange
 	AllowsUndefined bool

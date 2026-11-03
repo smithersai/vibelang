@@ -34,7 +34,7 @@ import (
 // as the native pair did. Anything else, a check, an annotation, a pipe,
 // Schema.optionalKey, a spread, a computed key, a comment, or a declaration
 // with a type annotation or more than one binding, keeps the constant and
-// draws no warning: no schema declaration says the same. So does an exported
+// draws no warning, preserving its codec API. So does an exported
 // constant with no type of its name in a project that emits declarations:
 // the declaration would add the type to the declaration file, which the
 // TypeScript did not export (D501). EK4841
@@ -298,6 +298,9 @@ func structFieldType(c *checker.Checker, file *ast.SourceFile, property *ast.Nod
 		mutable, value = true, value.Arguments()[0]
 	}
 	if isSchemaCall(c, value, "optional", 1) {
+		if c.CompilerOptions().ExactOptionalPropertyTypes.IsTrue() {
+			return "", false
+		}
 		optional, value = true, value.Arguments()[0]
 	}
 	if !optional {

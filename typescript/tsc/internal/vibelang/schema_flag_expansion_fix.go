@@ -201,6 +201,9 @@ func schemaFlagExpressionMode(c *checker.Checker, file *ast.SourceFile, value *a
 	// parser's provisional expression. Preserve the selected decoder in fixes.
 	var selected *ast.NodeVisitor
 	selected = ast.NewNodeVisitor(func(node *ast.Node) *ast.Node {
+		if replacement := schemaOptionalReplacement(c, node); resolveGenerics && replacement != nil {
+			node = replacement
+		}
 		if replacement := schemaGenericReplacement(c, node); resolveGenerics && replacement != nil {
 			node = replacement
 		}

@@ -406,6 +406,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A pre-VIP-1 `fork(program, options)` left inside an already marked `effect` function made `--fix-vip-only` refuse the file with `EK1703`. It now writes `try Effect.forkChild(program, options)`, as it already did when adding the `effect` mark itself.
 - A source-child helper inserted by migration failed with `EK4402` after its file became VibeLang. The codemod now keeps the helper in a private TypeScript module body, preserving loader arguments and declarations without adding public exports.
+
+- Optional schema fields and tuple elements accepted explicit `undefined` even with `exactOptionalPropertyTypes` enabled. They now use `Schema.optionalKey` under that setting; an explicit `| undefined` keeps the previous acceptance.
 - API identity checks rejected two identical copies of a generic function using an `import()` type with literal type arguments. Copies now compare identically, while changed literal arguments and dependencies remain differences.
 
 - Publication checks for source-child packages could not install an already-published Effect dependency while simulating an unreleased VibeLang SDK. Their registry fixture now serves the pinned Effect release while continuing to withhold the SDK.

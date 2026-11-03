@@ -88,6 +88,9 @@ func populateFilePlan(c *checker.Checker, file *ast.SourceFile, p *plan) {
 	a := analyzerFor(c)
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
+		if replacement := schemaOptionalReplacement(c, node); replacement != nil {
+			p.schemaGenerics[node] = replacement
+		}
 		if replacement := schemaGenericReplacement(c, node); replacement != nil {
 			p.schemaGenerics[node] = replacement
 		}
