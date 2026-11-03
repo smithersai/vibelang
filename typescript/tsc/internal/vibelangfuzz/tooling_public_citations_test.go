@@ -49,7 +49,7 @@ func toolingPublicText(t testing.TB) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return string(text)
+	return withoutFoldedDetails(string(text))
 }
 
 func checkToolingPublicRule(t testing.TB, text string, rule toolingPublicRule) {

@@ -84,7 +84,7 @@ func TestSpecCodesInAppendixB(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		body := strings.Replace(string(text), table, "", 1)
+		body := withoutFoldedDetails(strings.Replace(string(text), table, "", 1))
 		for code, sentence := range citedCodes(body) {
 			if !listed(code) {
 				t.Errorf("%s cites EK%s, which Appendix B does not list: %q", filepath.Base(path), code, sentence)
@@ -135,4 +135,20 @@ func TestCitedCodesReadWholeCodes(t *testing.T) {
 	if len(codes) != 3 {
 		t.Errorf("citedCodes = %v, want exactly three whole codes", codes)
 	}
+}
+
+// withoutFoldedDetails returns a chapter without its "## Details" section, the
+// retired decided details folded in verbatim, which record history: retired
+// codes and numbered rule citations.
+func withoutFoldedDetails(chapter string) string {
+	const heading = "\n## Details\n"
+	start := strings.Index(chapter, heading)
+	if start < 0 {
+		return chapter
+	}
+	rest := chapter[start+len(heading):]
+	if next := strings.Index(rest, "\n## "); next >= 0 {
+		return chapter[:start] + rest[next:]
+	}
+	return chapter[:start+1]
 }
