@@ -50,6 +50,14 @@ fi
 # Coverage and profiling share one output path. Use one process so shards
 # cannot truncate each other's measurements.
 for arg in "$@"; do
+  # Go stops parsing options at a positional argument or --, so a selector
+  # appended below would be ignored. Split flag values also take this safe
+  # path: custom flag types cannot be inferred here.
+  case $arg in
+    -|--) exec "$bin" "$@" ;;
+    -*) ;;
+    *) exec "$bin" "$@" ;;
+  esac
   # Go accepts one or two leading dashes. Inspect a copy; keep "$@" intact.
   case $arg in --test.*) arg=${arg#-} ;; esac
   case $arg in

@@ -649,6 +649,8 @@ preserves their arguments and exit status without adding a shard's
 run the seed corpus in shards. In particular, benchmark selections pass
 through unchanged so a benchmark runs once, rather than once in every shard.
 
+Go's flag parser stops at a positional argument, a standalone `-` or `--`. The launcher forwards these invocations unchanged once, before discovery. Split values such as `-test.timeout 40m` also take this conservative path, since a custom flag's value can look like a positional argument. Flags such as `-test.short=true` keep the ordinary sharding policy.
+
 Discovery retains Unicode names from Go for tests, fuzz targets and examples,
 including when `LC_ALL=C`. Benchmark names and diagnostic lines containing
 whitespace do not become shard selectors.
