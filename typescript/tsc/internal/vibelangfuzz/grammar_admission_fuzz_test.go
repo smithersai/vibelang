@@ -750,8 +750,6 @@ func grammarAdmissionForm(source string) string {
 			}
 		case parser.VibeSyntaxForkBlock:
 			return "admission:fork-block"
-		case parser.VibeSyntaxBlockParam:
-			return "admission:trailing-block"
 		}
 	}
 	return ""
@@ -874,8 +872,10 @@ func TestGrammarAdmissionMutationKeys(t *testing.T) {
 			t.Errorf("%q classified as %s", source, key)
 		}
 	}
+	// VIP-11 retired trailing-block parsing (65605c68): the parser no longer
+	// records one, and the compiler rejects each with EK1101, so none is keyed.
 	for _, source := range []string{"M {}", "o.m {}", "g(1) {}"} {
-		if got := grammarAdmissionForm(source); got != "admission:trailing-block" {
+		if got := grammarAdmissionForm(source); got != "" {
 			t.Errorf("%s: %s", source, got)
 		}
 	}
