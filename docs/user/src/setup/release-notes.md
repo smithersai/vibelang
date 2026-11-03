@@ -278,6 +278,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `for concurrent("unbounded")` and limits typed `Types.Concurrency` incorrectly failed with an argument type error; they now accept Effect's full concurrency domain.
 
 - Old bare `fork { ... }` blocks, including `fork{}`, stayed behind during migration; `vibelang --fix` now writes explicit Effect construction while preserving the body and captures.
+- Legacy `wire` calls kept their automatic dependency ordering after migration; `vibelang --fix` now writes explicit layer composition while preserving argument evaluation and public declaration types.
 - Renaming a shorthand pattern binding could change the property it matched and add `TS2339`; rename now keeps the property key and writes an explicit binding.
 
 - Rolldown entry globs could bundle generated `.d.vibex.ts` declarations as empty entrypoints; the plugin now excludes those sidecars and retains the JSX source entries and aliases.

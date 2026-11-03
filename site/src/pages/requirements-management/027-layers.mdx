@@ -251,6 +251,14 @@ Parentheses keep one provider expression intact. `provide (record(), Live) { …
 
 A line break before or after a provider-separating comma keeps the `provide` reading and reports `EK1202`. Keep the providers on one line, or compose them inside `Layer.mergeAll(…)`, where line breaks remain allowed. `vibelang --fix` joins separator whitespace only when it can keep comments unchanged. A line break inside a block comment has no automatic fix; move the comment or compose the providers inside `Layer.mergeAll(…)`.
 
+For an old compiler-intrinsic `wire(A, B)` call, run `vibelang --fix`. The `wire compositions` codemod captures arguments once in source order and writes the resolved `Layer.provideMerge` composition explicitly. It leaves ordinary functions named `wire` alone and refuses unresolved graphs, spreads and calls whose receiver evaluation cannot be preserved.
+
+The codemod uses aliased native imports when introducing a namespace would change declaration text. It checks the emitted declaration bytes and leaves a migration unchanged if they would differ.
+
+The codemod passes a captured tuple to an immediately called arrow that composes the layers. Argument expressions stay in their original scope, including inside a `provide wire(...) { ... }` header.
+
+The migration leaves a candidate unchanged if it adds a compiler error, even when its declaration text would match.
+
 ---
 
 The matching Effect page: [effect.website/docs/v4/requirements-management/layers](https://effect.website/docs/v4/requirements-management/layers/)

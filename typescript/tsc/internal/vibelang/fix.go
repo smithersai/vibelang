@@ -624,6 +624,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			if len(p.fixes) == 0 {
 				p = relicControlMigrationFixes(ctx, program, file, g.refused, refuse)
 			}
+			p = p.withFixes(preserveRelicDeclarations(ctx, program, texts, relicWireFixes(ctx, program, file, g.refused), build, refuse))
 			p.cleanImports = !options.MigrationOnly && !options.VIPOnly
 			// Refuse each fix that would edit a refused site (fix_sites.go).
 			name, text := p.file.FileName(), p.file.Text()

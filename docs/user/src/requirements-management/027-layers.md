@@ -255,3 +255,11 @@ Parentheses keep one provider expression intact. `provide (record(), Live) { …
 `service` declarations, with layer constants beside them, replace hand-written key classes, and `effect { ... }` replaces generator-based factories. The Layer graph, memoization, and resource semantics stay Effect 4's. `Effect.provide(…)` draws `EK4836` only as the direct operand of bare `try`, including erased expression wrappers; a stored Effect, `fork` operand or batch element keeps its call without a warning. A safe statement or return has a quick fix to write a `provide` block; a wrapped operand keeps its written type effects and explains why it has no automatic fix. `Effect.provideService` retains its native call: `provide Key = value` builds a `Layer`, changing `Scope` and `Layer.CurrentMemoMap`. `EK4836` explains why the service call has no automatic block rewrite.
 
 A line break before or after a provider-separating comma keeps the `provide` reading and reports `EK1202`. Keep the providers on one line, or compose them inside `Layer.mergeAll(…)`, where line breaks remain allowed. `vibelang --fix` joins separator whitespace only when it can keep comments unchanged. A line break inside a block comment has no automatic fix; move the comment or compose the providers inside `Layer.mergeAll(…)`.
+
+For an old compiler-intrinsic `wire(A, B)` call, run `vibelang --fix`. The `wire compositions` codemod captures arguments once in source order and writes the resolved `Layer.provideMerge` composition explicitly. It leaves ordinary functions named `wire` alone and refuses unresolved graphs, spreads and calls whose receiver evaluation cannot be preserved.
+
+The codemod uses aliased native imports when introducing a namespace would change declaration text. It checks the emitted declaration bytes and leaves a migration unchanged if they would differ.
+
+The codemod passes a captured tuple to an immediately called arrow that composes the layers. Argument expressions stay in their original scope, including inside a `provide wire(...) { ... }` header.
+
+The migration leaves a candidate unchanged if it adds a compiler error, even when its declaration text would match.
