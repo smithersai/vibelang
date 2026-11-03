@@ -193,7 +193,17 @@ func init() {
 		Focus: func(g *Gen, s *Scope) []Stmt {
 			g.UseEffect()
 			g.UseModule("Stream", true)
-			return []Stmt{&catchEdge{vibe: "let probe: () => unknown = () => 0; for try (const x of (probe = () => x, Stream.fromIterable([1]))) { ev(\"item\" + x) }; return try Effect.sync(() => { try { probe(); return \"read\" } catch (e) { return (e as Error).name } })", ref: "let probe = () => 0; let s; for (const x of (probe = () => x, s = Stream.fromIterable([1]), [])) { }; yield* Stream.runForEachWhile(s, (x) => Effect.gen(function* () { ev(\"item\" + x); return true })); return yield* Effect.sync(() => { try { probe(); return \"read\" } catch (e) { return e.name } })"}}
+			// A return annotation avoids TypeScript's own recursive TS7022
+			// inference error. The outer x makes a missing TDZ cell observable:
+			// capturing it would return 99 rather than throw ReferenceError.
+			heads := []string{"const x", "let x", "const [x]", "let { x }"}
+			rows := []string{"[1]", "[1]", "[[1]]", "[{ x: 1 }]"}
+			i := g.Intn(len(heads))
+			prefix := "const x = 99; let probe: () => unknown = () => 0; "
+			ending := "return try Effect.sync(() => { try { probe(); return \"read\" } catch (e) { return (e as Error).name } })"
+			vibe := prefix + "for try (" + heads[i] + " of (probe = (): unknown => x, Stream.fromIterable(" + rows[i] + "))) { ev(\"item\" + x) }; " + ending
+			ref := "const x = 99; let probe = () => 0; let s; for (" + heads[i] + " of (probe = () => x, s = Stream.fromIterable(" + rows[i] + "), [])) {}; yield* Stream.runForEachWhile(s, (" + strings.TrimPrefix(strings.TrimPrefix(heads[i], "const "), "let ") + ") => Effect.gen(function* () { ev(\"item\" + x); return true })); return yield* Effect.sync(() => { try { probe(); return \"read\" } catch (e) { return e.name } })"
+			return []Stmt{&catchEdge{vibe: vibe, ref: ref}}
 		},
 	})
 }

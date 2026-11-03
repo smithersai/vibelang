@@ -115,7 +115,15 @@ func GetDoNarrowingOrigin(binding *ast.Node) *DoNarrowingOrigin {
 // parseVibeLangDos checks and lowers the file's do expressions.
 func (p *Parser) parseVibeLangDos(file *ast.SourceFile) {
 	if len(p.vibelangDoOrder) == 0 {
-		return
+		// for try also lifts its RHS out of the native loop. It needs the
+		// same uninitialized head cells even when the source contains no do.
+		var hasForTry func(*ast.Node) bool
+		hasForTry = func(n *ast.Node) bool {
+			return n.Kind == ast.KindForOfStatement && n.Flags&ast.NodeFlagsVibeLang != 0 || n.ForEachChild(hasForTry)
+		}
+		if !hasForTry(file.AsNode()) {
+			return
+		}
 	}
 	p.prepareDoMatches()
 	marked := map[*ast.Node]bool{}
@@ -2046,6 +2054,17 @@ func (l *doLowering) loopHead(loop *ast.Node, labels []*ast.Node) ([]*ast.Node, 
 	f := loop.AsForInOrOfStatement()
 	var pre []*ast.Node
 	f.Expression = l.expr(f.Expression, &pre)
+	init := f.Initializer
+	if loop.Kind == ast.KindForOfStatement && loop.Flags&ast.NodeFlagsVibeLang != 0 &&
+		ast.IsVariableDeclarationList(init) && init.Flags&ast.NodeFlagsBlockScoped != 0 {
+		// Stream.runForEachWhile evaluates the RHS before entering its item
+		// callback. Capture it in the never-initialized source head environment,
+		// independently of the callback's fresh initialized item bindings.
+		rhs := f.Expression
+		temp := l.temp("$forTryHead", rhs.Loc)
+		pre = append(pre, l.p.mConst(temp, ast.NodeFlagsConst, l.valueOnly(rhs), rhs.Loc))
+		f.Expression = l.ref(temp, rhs.Loc)
+	}
 	l.p.overrideParentInImmediateChildren(loop)
 	statement := loop
 	for i := len(labels) - 1; i >= 0; i-- {
@@ -2053,7 +2072,6 @@ func (l *doLowering) loopHead(loop *ast.Node, labels []*ast.Node) ([]*ast.Node, 
 		l.p.overrideParentInImmediateChildren(labels[i])
 		statement = labels[i]
 	}
-	init := f.Initializer
 	if len(pre) == 0 || !ast.IsVariableDeclarationList(init) || init.Flags&ast.NodeFlagsBlockScoped == 0 {
 		return pre, statement
 	}

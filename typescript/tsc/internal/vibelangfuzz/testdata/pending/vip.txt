@@ -47,7 +47,6 @@ FuzzVIPDifferential  feature:vip33.platform         vip       not generated: VIP
 FuzzVIPDifferential exit:called/vip05.async-forms-plain compiler VIP-1: a plain main must execute its call-time event before returning the Promise-backed Effect; lane vip-core2
 FuzzVIPDifferential feature:vip12.concurrent-own-label compiler VIP-12: a labeled `continue` naming the `for concurrent` itself reports TS1107 instead of ending the item, as chapter 2 requires; lane impl-hunt-run (queued 8d1bd3ad7a4c)
 FuzzVIPDifferential corpus:fz-func-vip12-concurrent-own-label compiler VIP-12: minimized own-label continue probe; lane impl-hunt-run
-FuzzVIPDifferential feature:vip20.rhs-tdz compiler VIP-20: the operand's closure over the head name is TS7022, and the lowering evaluates the operand outside the head's uninitialized bindings (spec compiler-gap pending VIP-19, VIP-20); lane core-fortry
 FuzzVIPDifferential feature:vip22.concurrent-own-label compiler VIP-22: a labeled `continue` naming the `for concurrent` itself reports TS1107 instead of ending the item, as chapter 2 requires; lane impl-hunt-run (queued 8d1bd3ad7a4c)
 FuzzVIPDifferential corpus:fz-func-vip22-concurrent-own-label compiler VIP-22: minimized own-label continue probe; lane impl-hunt-run
 FuzzVIPDifferential exit:called/vip31.for-of-label-chain-plain compiler VIP-1: the generated unannotated plain main defers its call-time event, the same implicit-function classification gap as vip23.pipe-plain; lane vip-core2

@@ -1,0 +1,34 @@
+// expect-result: [["item1", "ReferenceError"], ["item1", "ReferenceError"], ["item1", "ReferenceError"], ["item1", "ReferenceError"]]
+export effect function main() {
+ const results: string[][] = []
+ const x = 99
+ {
+  const events: string[] = []
+  let probe: () => unknown = () => 0
+  for try (const x of (probe = (): unknown => x, Stream.fromIterable([1]))) { events.push("item" + x) }
+  events.push(try Effect.sync(() => { try { probe(); return "read" } catch (e) { return (e as Error).name } }))
+  results.push(events)
+ }
+ {
+  const events: string[] = []
+  let probe: () => unknown = () => 0
+  for try (let x of (probe = (): unknown => x, Stream.fromIterable([1]))) { events.push("item" + x) }
+  events.push(try Effect.sync(() => { try { probe(); return "read" } catch (e) { return (e as Error).name } }))
+  results.push(events)
+ }
+ {
+  const events: string[] = []
+  let probe: () => unknown = () => 0
+  for try (const [x] of (probe = (): unknown => x, Stream.fromIterable([[1]]))) { events.push("item" + x) }
+  events.push(try Effect.sync(() => { try { probe(); return "read" } catch (e) { return (e as Error).name } }))
+  results.push(events)
+ }
+ {
+  const events: string[] = []
+  let probe: () => unknown = () => 0
+  for try (let { x } of (probe = (): unknown => x, Stream.fromIterable([{ x: 1 }]))) { events.push("item" + x) }
+  events.push(try Effect.sync(() => { try { probe(); return "read" } catch (e) { return (e as Error).name } }))
+  results.push(events)
+ }
+ return results
+}
